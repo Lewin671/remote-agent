@@ -9,15 +9,18 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/relay"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type sizeFailureBackend struct {
 	relay.Backend
 	attempts atomic.Int32
+	after    atomic.Uint64
 }
 
 func (b *sizeFailureBackend) EachEvents(id string, after uint64, fn func(*pb.Event) error) (<-chan struct{}, error) {
 	if id == "bad" {
+		b.after.Store(after)
 		b.attempts.Add(1)
 	}
 	return b.Backend.EachEvents(id, after, fn)
@@ -27,11 +30,14 @@ func (b *sizeFailureBackend) EachEvents(id string, after uint64, fn func(*pb.Eve
 // forwarding; only the local CLI backend is a fake. An impossible question
 // must stay unuploaded while another question and client commands still pass.
 func TestOversizedQuestionTransportAndFailureIsolation(t *testing.T) {
-	var logins atomic.Int32
+	var logins, notifies atomic.Int32
 	e := setupWithHandler(t, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasSuffix(r.URL.Path, "/Login") {
 				logins.Add(1)
+			}
+			if strings.HasSuffix(r.URL.Path, "/Notify") {
+				notifies.Add(1)
 			}
 			next.ServeHTTP(w, r)
 		})
@@ -41,7 +47,13 @@ func TestOversizedQuestionTransportAndFailureIsolation(t *testing.T) {
 	for range 4000 {
 		q.Options = append(q.Options, &pb.QuestionOption{Label: strings.Repeat("label", 60)})
 	}
-	if err := bad.Append("bad", []*pb.Event{{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "impossible", Questions: []*pb.Question{q}}}}}, "", 0); err != nil {
+	if err := bad.Append("bad", []*pb.Event{
+		{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "valid prefix"}}},
+		{Time: timestamppb.Now(), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "prefix-approval", Command: "echo prefix"}}},
+		turnEnded(),
+		{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "impossible", Questions: []*pb.Question{q}}}},
+		{Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Text: "must not skip the oversized event"}}},
+	}, "", 0); err != nil {
 		t.Fatal(err)
 	}
 	healthy := e.backend.add(t, "healthy")
@@ -62,10 +74,16 @@ func TestOversizedQuestionTransportAndFailureIsolation(t *testing.T) {
 	}
 	waitFor(t, "size failure retries", func() bool { return backend.attempts.Load() >= 3 })
 	// The unsent sequence is not skipped or replaced on any retry.
-	bs := e.session(t, "bad", 0)
+	bs := e.session(t, "bad", 3)
 	badEvents, err := e.client.Events(context.Background(), bs, 0)
-	if err != nil || len(badEvents) != 0 {
-		t.Fatalf("oversized event was replaced/uploaded: %d %v", len(badEvents), err)
+	if err != nil || len(badEvents) != 3 {
+		t.Fatalf("valid prefix missing or oversized event uploaded: %d %v", len(badEvents), err)
+	}
+	if bs.LastSeq != 3 || backend.after.Load() != 3 || badEvents[0].GetUserMessage().GetText() != "valid prefix" || badEvents[1].GetApprovalRequested().GetApprovalId() != "prefix-approval" || badEvents[2].GetTurnEnded() == nil {
+		t.Fatal("prefix content or retry cursor lost")
+	}
+	if n := notifies.Load(); n != 2 {
+		t.Fatalf("prefix notifications=%d, want 2", n)
 	}
 	appendText(t, healthy, "healthy", "continues")
 	s = e.session(t, "healthy", 2)

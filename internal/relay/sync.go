@@ -110,7 +110,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 			state.running = true
 			state.ended = isEnded
 			head := heads[id]
-			if state.completed || head == nil && state.onServer {
+			if state.completed || head == nil && state.onServer || head != nil && state.after > head.LastSeq {
 				head = &pb.SessionHead{LastSeq: state.after, EndedMs: EndedMs(state.meta)}
 			}
 			go func(id string, head *pb.SessionHead) {
@@ -147,6 +147,11 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 				var failure *syncError
 				if errors.As(result.err, &failure) && failure.connection {
 					return fmt.Errorf("session %s: %w", result.id, result.err)
+				}
+				// A failed worker may already have committed a valid prefix.
+				// Resume after it rather than replaying its notifications.
+				if result.after > state.after {
+					state.after, state.onServer = result.after, true
 				}
 				category := "events"
 				if failure != nil {
@@ -250,15 +255,17 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 		var notifyBatch []*pb.Event
 		batchBytes := 0
 		flush := func() error {
-			if len(batch) == 0 {
+			if len(batch) == 0 && (attemptedOwed || len(owed) == 0) {
 				return nil
 			}
-			res, err := c.machine.UploadEvents(ctx, connect.NewRequest(&pb.UploadEventsRequest{SessionId: id, Events: batch}))
-			if err != nil {
-				return rpcSyncError("upload_events", err)
+			if len(batch) > 0 {
+				res, err := c.machine.UploadEvents(ctx, connect.NewRequest(&pb.UploadEventsRequest{SessionId: id, Events: batch}))
+				if err != nil {
+					return rpcSyncError("upload_events", err)
+				}
+				after = res.Msg.LastSeq
+				batch, batchBytes = nil, 0
 			}
-			after = res.Msg.LastSeq
-			batch, batchBytes = nil, 0
 			info, err := put()
 			if err != nil {
 				owed = boundedOwed(append(owed, notifyBatch...))
@@ -279,13 +286,23 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 			}
 			return nil
 		}
-		changed, err := c.r.backend.EachEvents(id, after, func(e *pb.Event) error {
+		callbackFailed := false
+		changed, err := c.r.backend.EachEvents(id, after, func(e *pb.Event) (err error) {
+			defer func() { callbackFailed = err != nil }()
 			// Images first: a client that sees the event can open them.
 			if err := c.uploadImages(ctx, key, id, []*pb.Event{e}); err != nil {
 				return err
 			}
 			env, err := c.sealEvent(key, id, c.withImageStates(id, e))
 			if err != nil {
+				var failure *syncError
+				if errors.As(err, &failure) && failure.category == "event_size" {
+					// This event will fail on every retry. Commit the valid
+					// prefix (and its notifications) before blocking here.
+					if flushErr := flush(); flushErr != nil {
+						return flushErr
+					}
+				}
 				return err
 			}
 			batch = append(batch, &pb.StoredEvent{Seq: e.Seq, Envelope: env})
@@ -299,6 +316,14 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 			return nil
 		})
 		if err != nil {
+			// A damaged local record can also stop every scan at the same
+			// point. Preserve the decoded prefix, but do not retry a failed
+			// callback's upload / flush here.
+			if !callbackFailed {
+				if flushErr := flush(); flushErr != nil {
+					err = flushErr
+				}
+			}
 			c.r.oweNotify(id, owed)
 			return after, nil, false, err
 		}
