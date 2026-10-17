@@ -312,3 +312,14 @@ macOS、Codex CLI 0.163.0、当前 checkout 的 dev 构建；通过 `ios/scripts
 相同的隔离 dev-env、Codex CLI 0.163.0 和 Go `remoteclient` 调试链路重新验收：先远程收发一轮，再向隔离 rollout 追加一条字段类型错误和一条未知类型，随后再远程收发一轮。客户端解密元数据的 `statusDetail` 仍为空，本机 `ls -a` 的独立诊断列显示 `parse failures=1 unknown=1`、最近位置和类型；客户端累计读到两次真实回复及两次正常轮次结束。停止后客户端元数据的 `statusDetail` 精确为 `stopped`，本机诊断仍可查。测试账户、进程、tmux 和 Codex home 均已清理。
 
 自动回归覆盖带存储故障及解析诊断时 `info()` 的全部元数据不变、空状态/弹窗标题/`stopped` 原样保留、本机存储快照的保存/清除、诊断文件不可写时的限频日志，以及未知类型不告警、不唤醒同步。`go test ./...` 和指定 daemon/Claude/Codex race 检查通过；六组反向验证在撤掉对应修复后均以测试断言失败。未直接操作客户端界面，本轮未重复磁盘镜像注入；整个文件系统无法写入时，本机存储快照也可能无法保存，日志是其回退途径。
+
+### 存储失败时的拒绝与已受理消息（第二轮反馈）
+
+macOS、Codex CLI 0.163.0、`e9ccf793` 的 dev 构建，沿用独立 dev-env 的临时账户、数据库、tmux 和 CODEX_HOME。事件日志单独放在 16 MiB HFS+ 磁盘镜像，填充到真实 ENOSPC；队列和本机诊断留在另一文件系统。
+
+- 通过真实 `remote-agent hook codex` 命令向正在管理的测试会话发 PermissionRequest（调试触发，不是模型原生发起的审批）。事件追加失败时，命令仍以 exit 0 输出 `behavior: deny` 的 JSON，没有因 RPC 错误丢掉拒绝 payload。请求、超时、退出、远程拒绝四种分支的 handler 回归也验证 payload 成功返回。
+- 加长测试请求 ID 至 128 KiB，使排队和 SUBMITTING 事件跨过文件已有预分配块，稳定触发追加失败；实际发给模型的文本只有 34 字节。通过 Go remoteclient 加密转发受理消息后，磁盘上的队列仍为 WAITING、Inflight 为空；释放磁盘后只观察队列文件，没有重发、重启 daemon 或发送唤醒指令，该消息自动提交。客户端解密事件确认该请求的原生 UserMessage、SUBMITTED 和预期模型回复各出现一次，没有 UNCONFIRMED；含基线的一共两轮正常结束。
+
+未知记录、坏 JSON、错误的 task_complete / turn_aborted 字段和诊断保存失败重试，均有组件回归验证之前暂存的 ImageView、用户图片仍正常发出。逐项换回修复前源码的反向测试都以断言失败确认。满盘复测发现的通用 inject 重复警告已另外去重，限频日志由最终代码的真实注入循环测试覆盖。全量 Go 与 daemon/Claude/Codex/tail race 检查通过。
+
+已停止测试进程和 tmux、卸载并删除镜像、清理 dev-env 和临时认证副本。未直接操作客户端界面；本轮未验证模型原生审批界面在满盘时的完整交互，也没有 Claude 原生 CLI 故障注入。标记已经持久化而终端写入结果未知的崩溃窗口继续沿用原有保守恢复，不自动重发。

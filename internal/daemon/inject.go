@@ -215,7 +215,7 @@ func (s *session) injectLoop(ctx context.Context) {
 			default:
 				outcome, err = s.inject(next)
 			}
-			if err != nil {
+			if err != nil && !errors.Is(err, errEventCommit) {
 				slog.Warn("inject", "session", s.meta.ID, "err", errClass(err))
 			}
 			switch outcome {

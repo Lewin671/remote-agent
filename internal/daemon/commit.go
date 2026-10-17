@@ -1,12 +1,15 @@
 package daemon
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
+
+var errEventCommit = errors.New("record session events")
 
 // appendLocked is the event commit boundary. Hold mu; projections and
 // parser replay may only change after it succeeds. A failed write must be
@@ -17,7 +20,7 @@ func (s *session) appendLocked(evs []*pb.Event, path string, offset int64) error
 		s.noteStorageLocked(err)
 	}
 	if err != nil {
-		return fmt.Errorf("record session events: %w", err)
+		return fmt.Errorf("%w: %w", errEventCommit, err)
 	}
 	return nil
 }
