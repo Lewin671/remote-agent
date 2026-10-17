@@ -5,6 +5,7 @@ import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
 import io.github.lewin671.remoteagent.proto.AgentMessage
 import io.github.lewin671.remoteagent.proto.Event
+import io.github.lewin671.remoteagent.proto.ToolBackground
 import io.github.lewin671.remoteagent.proto.ToolCall
 import io.github.lewin671.remoteagent.proto.ToolKind
 import io.github.lewin671.remoteagent.proto.ToolStarted
@@ -76,7 +77,7 @@ class RunningToolsTest {
     @Test
     fun aBackgroundCallIsNotShownAsASuccess() {
         val input = """{"command":"npm run dev","run_in_background":true}"""
-        val items = chat(listOf(turn, start(2, "npm run dev", "a", input), call(3, "npm run dev", "a", input = input)))
+        val items = chat(listOf(turn, start(2, "npm run dev", "a", input), ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("a").setInput(input).setBackground(ToolBackground.TOOL_BACKGROUND_REQUESTED)))))
         assertTrue((items[0] as ChatItem.Tool).background)
     }
 

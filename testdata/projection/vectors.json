@@ -2801,6 +2801,66 @@
           }
         }
       ]
+    },
+    {
+      "name": "background-uses-explicit-result-fact",
+      "agent": 1,
+      "events": [
+        {
+          "turnStarted": {},
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolStarted": {
+            "callId": "a",
+            "input": "{\"run_in_background\":true}"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "callId": "a",
+            "status": "completed"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": true,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {
+              "2": "3"
+            },
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
     }
   ]
 }

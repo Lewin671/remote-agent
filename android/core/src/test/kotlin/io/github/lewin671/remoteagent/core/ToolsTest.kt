@@ -4,6 +4,7 @@ import com.google.protobuf.Timestamp
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
 import io.github.lewin671.remoteagent.proto.Event
+import io.github.lewin671.remoteagent.proto.ToolBackground
 import io.github.lewin671.remoteagent.proto.ToolCall
 import io.github.lewin671.remoteagent.proto.ToolKind
 import io.github.lewin671.remoteagent.proto.ToolStarted
@@ -65,11 +66,10 @@ class ToolsTest {
     @Test
     fun aBackgroundRunIsNotASuccess() {
         val input = """{"command":"npm run dev","run_in_background":true}"""
-        val d = derive(listOf(turn, start(2, "npm run dev", "x", input), call(3, "npm run dev", "x", input)), Agent.AGENT_CLAUDE)
+        val d = derive(listOf(turn, start(2, "npm run dev", "x", input), ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("x").setInput(input).setBackground(ToolBackground.TOOL_BACKGROUND_REQUESTED)))), Agent.AGENT_CLAUDE)
         assertTrue(d.tools.isEmpty())
         assertEquals(1, d.background.size)
         assertTrue(d.background[0].returned)
-        assertFalse(backgroundInput("""{"run_in_background":false}"""))
         // Claude Code backgrounds a long command by itself: the daemon says so on the result.
         val auto = derive(
             listOf(turn, start(2, "sleep 45", "y", "sleep 45"), ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("y").setInput("sleep 45").setBackground(io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_TIMED_OUT).setOutput("Command running in background with ID: b2wvqs0hj. Output is being written to: /tmp/x")))),

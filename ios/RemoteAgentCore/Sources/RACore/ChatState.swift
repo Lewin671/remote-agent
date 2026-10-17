@@ -33,14 +33,7 @@ public struct RunningTool: Equatable, Sendable {
         self.inputDigest = inputDigest
     }
 
-    /// Claude Code's Bash told to run in the background: its call returns while the command goes on.
-    public var toBackground: Bool { backgroundInput(input) }
 }
-
-private let backgroundFlag = Rx("\"run_in_background\"\(Jre.space)*:\(Jre.space)*true")
-
-/// Whether a tool input asks for a background run (Claude Code's Bash run_in_background).
-public func backgroundInput(_ input: String) -> Bool { backgroundFlag.containsMatch(in: input) }
 
 /// The call went on in the background: this event is its start, not its
 /// end. The daemon says so (ToolCall.background).
@@ -298,7 +291,7 @@ struct EventReducer: Sendable {
             if !id.isEmpty, let j = d.tools.firstIndex(where: { $0.callId == id }) {
                 let t = d.tools.remove(at: j)
                 d.completedAt[t.seq] = e.seq
-                if t.toBackground || wentToBackground(c) { d.background.append(BackgroundTool(tool: t, returned: true)) }
+                if wentToBackground(c) { d.background.append(BackgroundTool(tool: t, returned: true)) }
             } else if !id.isEmpty, let t = unfinishedById[id], d.completedAt[t.seq] == nil {
                 // A call reported after its turn ended (a Codex exec still
                 // running): it belongs to that start, not to a new row.

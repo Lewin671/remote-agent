@@ -473,7 +473,7 @@ public func buildChat(
         switch e.kind {
         case .toolStarted:
             if let c = callAt[e.seq] {
-                addCall(k, c, background: startedTools[e.seq]?.toBackground == true || wentToBackground(c.toolCall))
+                addCall(k, c, background: wentToBackground(c.toolCall))
             } else {
                 let r = running[e.seq]
                 if r != nil || d.unfinished.contains(e.seq), let tool = r ?? startedTools[e.seq] {

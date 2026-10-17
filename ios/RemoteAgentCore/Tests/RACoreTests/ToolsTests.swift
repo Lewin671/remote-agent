@@ -52,11 +52,10 @@ import Testing
 
     @Test func aBackgroundRunIsNotASuccess() {
         let input = #"{"command":"npm run dev","run_in_background":true}"#
-        let d = derive([turn, start(2, "npm run dev", "x", input: input), call(3, "npm run dev", "x", input: input)], agent: .claude)
+        let d = derive([turn, start(2, "npm run dev", "x", input: input), Mk.ev(3, .toolCall(.with { $0.callID = "x"; $0.input = input; $0.background = .requested }))], agent: .claude)
         #expect(d.tools.isEmpty)
         #expect(d.background.count == 1)
         #expect(d.background[0].returned)
-        #expect(!backgroundInput(#"{"run_in_background":false}"#))
         // Claude Code backgrounds a long command by itself: the daemon says so on the result.
         let auto = derive(
             [

@@ -363,14 +363,11 @@ import Testing
         #expect(minutesLeft(deadlineMs: 0, now: 5) == 0)
     }
 
-    @Test func optionsAndBackgroundInputsAreReadByPattern() {
+    @Test func optionRecommendationsAreReadByPattern() {
         #expect(optionLabel("Use Postgres (Recommended)").label == "Use Postgres")
         #expect(optionLabel("Use Postgres (recommended) ").recommended)
         #expect(optionLabel("用 Postgres（推荐）") == ("用 Postgres（推荐）", false))
         #expect(optionLabel("用 Postgres (推荐)") == ("用 Postgres", true))
-        #expect(backgroundInput("{\"run_in_background\" :\ttrue}"))
-        // \s is ASCII: a no-break space is not one.
-        #expect(!backgroundInput("{\"run_in_background\":\u{a0}true}"))
     }
 }
 

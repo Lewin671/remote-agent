@@ -60,7 +60,7 @@ import Testing
 
     @Test func aBackgroundCallIsNotShownAsASuccess() {
         let input = #"{"command":"npm run dev","run_in_background":true}"#
-        let items = chat([turn, start(2, "npm run dev", "a", input: input), call(3, "npm run dev", "a", input: input)])
+        let items = chat([turn, start(2, "npm run dev", "a", input: input), Mk.ev(3, .toolCall(.with { $0.callID = "a"; $0.input = input; $0.background = .requested }))])
         if case .tool(let t) = items[0] { #expect(t.background) } else { Issue.record("not a tool: \(items[0])") }
     }
 

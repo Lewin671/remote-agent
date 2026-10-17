@@ -494,13 +494,7 @@ class RunningTool(
     val seq: Long = 0,
     val input: String = "",
     val inputDigest: String = "",
-) {
-    /** Claude Code's Bash told to run in the background: its call returns while the command goes on. */
-    val toBackground: Boolean get() = backgroundInput(input)
-}
-
-/** Whether a tool input asks for a background run (Claude Code's Bash run_in_background). */
-fun backgroundInput(input: String): Boolean = Regex("\"run_in_background\"\\s*:\\s*true").containsMatchIn(input)
+)
 
 /**
  * The call went on in the background: this event is its start, not its
@@ -701,7 +695,7 @@ internal class EventReducer(agent: Agent) {
                     if (j >= 0) {
                         val t = d.tools.removeAt(j)
                         d.completedAt[t.seq] = e.seq
-                        if (t.toBackground || wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
+                        if (wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
                     } else if (id.isNotEmpty()) {
                         // A call reported after its turn ended (a Codex exec still
                         // running): it belongs to that start, not to a new row.

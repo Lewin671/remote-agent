@@ -286,8 +286,7 @@ fun buildChat(
             Event.KindCase.TOOL_STARTED -> {
                 val c = callAt[e.seq]
                 if (c != null) {
-                    val started = startedTools[e.seq]
-                    addCall(k, c, started?.toBackground == true || io.github.lewin671.remoteagent.core.wentToBackground(c.toolCall))
+                    addCall(k, c, io.github.lewin671.remoteagent.core.wentToBackground(c.toolCall))
                 } else {
                     val r = running[e.seq]
                     if (r != null || e.seq in d.unfinished) {
