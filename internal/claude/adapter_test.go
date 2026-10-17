@@ -137,6 +137,7 @@ type fakeClaude struct {
 	plan       bool
 	stuck      bool   // s does nothing in the model menu
 	noWrap     bool   // ←/→ stop at the ends instead of cycling (2.1.300)
+	cursorMark string // a scroll marker drawn on the cursor row in the menu
 	wrap       int    // wrap question and plan text after this many characters
 	planText   string // the plan prompt as drawn, if set
 	background string // appended to the mode line
@@ -168,7 +169,7 @@ func (f *fakeClaude) draw() {
 		for i, l := range f.menu {
 			c := "  "
 			if i == f.cursor {
-				c = "❯ "
+				c = "❯ " + f.cursorMark
 			}
 			b.WriteString("  " + c + string(rune('1'+i)) + ". " + l + "                Something · desc\n")
 		}

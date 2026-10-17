@@ -59,7 +59,13 @@ func readyComposer(t agent.Term) (agent.Screen, error) {
 }
 
 // menuRow matches a numbered row: its number and label, up to two spaces.
-var menuRow = regexp.MustCompile(`^\s*(❯)?\s*(\d+)\.\s+(.+?)(?:\s{2,}(.*))?$`)
+// A scroll marker (↑/↓) may sit before the number, alone or next to the
+// cursor (claude-code-notes §9): a small window marks the first and last
+// visible rows, and Claude Code does not draw a marker on the cursor row,
+// but a version or size could. The marks are read in any order and the
+// cursor is found by its own mark, so a marked row is not dropped and the
+// cursor row is not missed.
+var menuRow = regexp.MustCompile(`^\s*((?:[❯↓↑]\s*)*)(\d+)\.\s+(.+?)(?:\s{2,}(.*))?$`)
 
 type row struct {
 	num    int
@@ -91,7 +97,7 @@ func rowsAfter(plain, title string) []row {
 			continue
 		}
 		n, _ := strconv.Atoi(m[2])
-		out = append(out, row{num: n, label: strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(m[3]), "✔")), detail: m[4], cursor: m[1] != ""})
+		out = append(out, row{num: n, label: strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(m[3]), "✔")), detail: m[4], cursor: strings.Contains(m[1], "❯")})
 	}
 	return out
 }
