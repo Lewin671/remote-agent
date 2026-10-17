@@ -14,11 +14,12 @@ encryption, transport, or real CLI tests**.
 
 Normalization compares pending IDs in insertion order; inputs in acceptance
 order with numeric status, retained stage/mode and current pause flag; accepted
-text/images/origin; decisions and answers; running, completed, unknown and
+text/images/origin; queued IDs, input failure reasons and the latest plan; decisions and answers; running, completed, unknown and
 interrupted tool starts; current turn background tools; local-source annotations;
 compaction percentages (`null` = unknown); terminal configuration change event
 IDs; unambiguous approval/call associations. Sequences are decimal strings;
-sequence arrays are numerically sorted, ID sets lexically sorted, maps compared
+A background result without a matching start uses the result event as its known
+start; it does not consume another tool. Sequence arrays are numerically sorted, ID sets lexically sorted, maps compared
 without key order. `local` is an annotation, not a fabricated device identity.
 Unknown origin is `0`. No layout or translated display strings are expected.
 
@@ -38,4 +39,6 @@ swift test --package-path ios/RemoteAgentCore -j 2 --filter ProjectionVectorsTes
 `internal/remoteclient` opens and validates events but has no session reducer;
 it is deliberately not given a fourth copy of the projection logic. Go tests
 validate the JSON corpus against the generated protobuf schema and sequence/cut
-boundaries. UI wording and async-question rendering remain platform tests.
+boundaries. The shared async-question history observation is also checked through Web
+`timeline`, Swift `buildChat`, and Android app `ProjectionRowsVectorsTest`.
+UI wording remains in platform tests.

@@ -273,3 +273,13 @@ Xcode 27.0、iOS 27 的 iPhone 18 Pro 模拟器，从当前任务代码构建。
 未覆盖真实 Codex 的异常退出注入、真实 daemon 崩溃注入、API 错误、图片或超长原文恢复，以及浏览器和移动客户端界面。测试结束后清理隔离环境。
 
 **软折行补验收（同日，Claude Code 2.1.300 / haiku）**：隔离环境将 tmux 终端调为 44 列、55 行，发送一条不含空白的中文长提示，首条输出前中断。原文在中文字之间折成五行；未修比较规则时仍报 RUNNING，修复后 daemon 重启恢复为 IDLE。Go 调试客户端再经本地 server 发送同样长提示并中断，读回 ABORTED（input restored by CLI）；随后 QUEUE 消息收到真实回复和 COMPLETED。清空多行恢复草稿由 tmux 调试触发，没有直接操作浏览器或手机。中文、长 token、原有空格和换行的多行提示均补了适配层和 daemon 回归测试，原比较规则下全部失败；全量 Go 测试及 daemon/Claude race 测试通过。仍未覆盖超过输入框识别行数范围的超长草稿和图片。
+
+## 客户端状态推导共享向量
+
+2026-10-16，macOS arm64，基线产品版本 0.36.5 的本地任务分支（未发布）：[`testdata/projection/`](../testdata/projection/README.md) 的 37 个场景、50 个观察点、183 个批次切点通过网页、Android core/app、iOS core 的共享检查。原生端核对完整重放、每个切点的 reducer 追加、EventProjection 更新和旧结果值的独立性；网页使用完整重放。异步问题还核对了三端 timeline/buildChat 中保留的聊天记录。Go remoteclient 没有领域 reducer，只检查相同输入的 protobuf JSON、序号和切点。共同规则见 [架构](architecture.md#客户端状态推导的共同规则)。
+
+最终检查全部通过：`GOMAXPROCS=2 go test -p 2 ./...`；网页 `pnpm typecheck`、`pnpm test --maxWorkers=2`（716 项）及 `pnpm build`；Android `ANDROID_HOME=~/Library/Android/sdk ./gradlew --max-workers=2 -PappIdSuffix=.v2dev :core:test :app:testDebugUnitTest :app:lintDebug`（core 214、app 203 项单测，全部无跳过，lint 通过）；iOS `swift test --package-path ios/RemoteAgentCore -j 2`（421 项、63 个 suite）。检查按顺序执行，构建并发限制为 2。
+
+8 处行为修正按提交分别撤掉生产代码后，共 16 次共享 runner 检查都因指定向量失败；随后恢复代码重新跑上述全套检查。覆盖入队边界、明确来源认领、工具 ID 配对与迟到追补、退出/分叉状态、含未决请求的 digest 消歧、显式后台状态及无起点后台结果。
+
+本次只到自动测试：没有启动模拟器、没有直接界面操作或调试信号驱动的真实 CLI 链路；没有连接线上或日常会话。没有验证持久快照、序列化 continuation 恢复、导出裁剪/图片冻结或历史分页，不能把内存切点测试当成这些能力的验收。

@@ -557,8 +557,7 @@ class Derived(
     /**
      * Messages that never went out because the session ended: request ID to
      * the seq of the event that says so. The daemon records them as CANCELED
-     * with reason "exited"; ones queued before that existed, left queued
-     * when the session ended, count too.
+     * with reason "exited". An exit alone does not invent input outcomes.
      */
     val unsent: LinkedHashMap<String, Long> = LinkedHashMap(),
     var running: Boolean = false,
@@ -598,9 +597,9 @@ internal class EventReducer(agent: Agent) {
     // right after: Claude Code records the message first.
     private var unclaimed: Long? = null
     private val queuedAt = HashMap<String, Long>()
+    private var compacting: Long? = null
     // A plan was proposed since entering plan mode: leaving it is the plan's
     // answer, however given, not a mode switch made in the terminal.
-    private var compacting: Long? = null
     private var planned = false
     private val claude = effectiveAgent(agent) == Agent.AGENT_CLAUDE
     // Starts a turn ended without a result, by call ID, for a result that comes later.

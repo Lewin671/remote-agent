@@ -32,7 +32,6 @@ public struct RunningTool: Equatable, Sendable {
         self.input = input
         self.inputDigest = inputDigest
     }
-
 }
 
 /// The call went on in the background: this event is its start, not its
@@ -103,13 +102,14 @@ public struct ApprovalOutcome: Equatable, Sendable {
     }
 }
 
-/// What a session's events add up to. A value: one handed out never changes
-/// when more events are reduced.
+/// Context occupancy before compaction and at the first usage afterwards.
 public struct Compaction: Equatable, Sendable {
     public var before: Int?
     public var after: Int?
 }
 
+/// What a session's events add up to. A value: one handed out never changes
+/// when more events are reduced.
 public struct Derived: Equatable, Sendable {
     /// Pending approvals, in the order they were asked.
     public var approvals = OrderedMap<String, PBApprovalRequested>()
@@ -128,8 +128,7 @@ public struct Derived: Equatable, Sendable {
     public var failures = [String: String]()
     /// Messages that never went out because the session ended: request ID to
     /// the seq of the event that says so. The daemon records them as CANCELED
-    /// with reason "exited"; ones queued before that existed, left queued
-    /// when the session ended, count too.
+    /// with reason "exited". An exit alone does not invent input outcomes.
     public var unsent = OrderedMap<String, UInt64>()
     public var running = false
     public var compactions = [UInt64: Compaction]()
@@ -174,9 +173,9 @@ struct EventReducer: Sendable {
     // right after: Claude Code records the message first.
     private var unclaimed: UInt64?
     private var queuedAt = [String: UInt64]()
+    private var compacting: UInt64?
     // A plan was proposed since entering plan mode: leaving it is the plan's
     // answer, however given, not a mode switch made in the terminal.
-    private var compacting: UInt64?
     private var planned = false
     private let claude: Bool
     // Starts a turn ended without a result, by call ID, for a result that comes later.

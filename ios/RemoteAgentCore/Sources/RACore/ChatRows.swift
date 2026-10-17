@@ -356,8 +356,8 @@ private struct DigestKey: Hashable {
 /// of their own, exactly as approvalsOnCalls in web/src/model.ts. Only the
 /// daemon's digests count (ApprovalRequested.input_digest against
 /// ToolCall.input_digest, the same computation on the daemon), never one
-/// worked out here: the tool and digest must match exactly one decided
-/// request and exactly one call, and the call must come after the request.
+/// worked out here: the tool and digest must match exactly one
+/// request (including pending requests in the count), which has a decision, and exactly one call, and the call must come after the request.
 /// Codex gives no digest, so its approvals keep their
 /// own line; so do parallel or repeated calls that cannot be told apart.
 public func approvalDecisions(_ events: some Sequence<PBEvent>, d: Derived) -> ApprovalDecisions {

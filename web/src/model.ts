@@ -818,8 +818,8 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         });
         break;
       case "toolCall": {
-        // Claude Code runs tools in parallel and names the call; Codex does
-        // not, and its calls complete in the order they started.
+        // Both CLIs pair starts and results by exact call ID. An ID-less
+        // result or an extra #2 command cannot complete another start.
         const id = k.value.callId;
         const i = id ? d.tools.findIndex((t) => t.callId === id) : -1;
         if (i >= 0) {
@@ -1255,8 +1255,8 @@ export function timeline(events: Event[], d: Derived): Item[] {
 /** Resolved approvals to show on their tool calls: only where the call is
  * surely the one approved, its tool and input digest (the daemon's, on
  * both events, compared as strings) matching exactly one
- * resolved approval requested before it, and that approval matching no
- * other call. Parallel calls, repeated identical calls and events without
+ * approval requested before it which has a decision, and no second request
+ * (even pending) or call. Parallel calls, repeated identical calls and events without
  * a digest (Codex) keep the approval as a row of its own. */
 export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigint, ApprovalDecision>; approvals: Set<string>; ids: Map<bigint, string> } {
   const approvals = new Map<string, { id: string; seq: bigint }[]>();
