@@ -158,8 +158,9 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
     const ids = ours ? (o?.imageIds ?? acc?.imageIds ?? []) : [];
     const foreign = !ours && (acc?.imageIds.length ?? 0) > 0;
     // All of the message or none of it: never a message short of images.
-    if (ids.length && !tray.restore(ids.map((imageId, i) => ({ imageId, thumb: o?.thumbs?.[i] }))))
+    if (ids.length && !tray.restore(ids.map((imageId, i) => ({ imageId, thumb: o?.thumbs?.[i], file: o?.attachments?.files[i] })), o?.attachments?.original))
       return setToast(`输入框里已有 ${tray.items.length} 张图，放不下这条消息的 ${ids.length} 张；先移除一些再放回`);
+    if (o) remote.dismissSend(sid, o.sendId);
     const draft = remote.drafts.get(sid) ?? "";
     remote.drafts.set(sid, draft.trim() ? draft.trimEnd() + "\n\n" + text : text);
     if (foreign) setToast("这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片");
@@ -356,7 +357,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             wide={wide}
             onFocus={(v) => setTyping(v)}
             onSend={(text, mode) => {
-              remote.send(sid, text, tray.imageIds(), tray.items.map((i) => i.thumb!).filter(Boolean), mode);
+              remote.send(sid, text, tray.imageIds(), tray.items.map((i) => i.thumb!).filter(Boolean), mode, { original: tray.original, files: tray.items.map((i) => i.file) });
               tray.clear();
             }}
             onInterrupt={interrupt}
@@ -582,7 +583,7 @@ function ChatBody({
           </div>] : [];
         })}
         {pending.map((o) => (
-          <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={awaiting(o) ? "written" : phaseOf(o, d.inputs.get(o.sendId))} agent={agent} />
+          <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={awaiting(o) ? "written" : phaseOf(o, d.inputs.get(o.sendId))} agent={agent} onRestore={onRestore} />
         ))}
         <PendingBubbles remote={remote} session={session} d={d} />
   </>);
@@ -633,7 +634,7 @@ function ChatBody({
   );
 }
 
-function Pending({ remote, sid, o, phase, agent }: { remote: Remote; sid: string; o: Outgoing; phase: string; agent: Agent }) {
+function Pending({ remote, sid, o, phase, agent, onRestore }: { remote: Remote; sid: string; o: Outgoing; phase: string; agent: Agent; onRestore: (text: string, from?: string) => void }) {
   if (phase === "failed")
     return (
       <div className="me fail">
@@ -641,7 +642,8 @@ function Pending({ remote, sid, o, phase, agent }: { remote: Remote; sid: string
         {o.text && <div>{o.text}</div>}
         <small>
           没能确认送达：{o.error}
-          <button onClick={() => remote.retrySend(sid, o.sendId)}>重试</button>
+          {!o.unknown && !!o.imageIds?.length && <button onClick={() => { onRestore(o.text, o.sendId); }}>放回输入框</button>}
+          {!o.missingImages && <button onClick={() => remote.retrySend(sid, o.sendId)}>重试</button>}
           <button onClick={() => remote.dismissSend(sid, o.sendId)}>移除此提示</button>
         </small>
       </div>

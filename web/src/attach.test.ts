@@ -14,7 +14,7 @@ function setup(opts: { failUpload?: (n: number) => boolean; slow?: boolean } = {
     if (opts.slow) await new Promise((r) => setTimeout(r, 30));
     progress(p.bytes.length, p.bytes.length);
     if (opts.failUpload?.(i)) throw new Error("连接超时");
-    return "id" + i;
+    return { imageId: "id" + i, expiresMs: Number.MAX_SAFE_INTEGER };
   });
   const tray = new Tray(prepare, upload, () => undefined);
   tray.machineId = "mac";
@@ -83,7 +83,7 @@ it("tells the machine to drop an image that was removed or replaced", async () =
     async (m, _p, _progress, started) => {
       const id = `${m}-${++n}`;
       started?.(() => aborted.push(id));
-      return id;
+      return { imageId: id, expiresMs: Number.MAX_SAFE_INTEGER };
     },
     () => undefined,
   );
@@ -109,7 +109,7 @@ it("never sends the compressed bytes when 原图 is on and the original failed (
     },
     async (_m, p) => {
       uploaded.push(p.bytes.length);
-      return "id" + uploaded.length;
+      return { imageId: "id" + uploaded.length, expiresMs: Number.MAX_SAFE_INTEGER };
     },
     () => undefined,
   );
@@ -163,7 +163,7 @@ it("serializes bitmap preparation across drafts and skips superseded queued work
     active--;
     return png(original ? 100 : 10);
   });
-  const upload = vi.fn(async () => "id");
+  const upload = vi.fn(async () => ({ imageId: "id", expiresMs: Number.MAX_SAFE_INTEGER }));
   const first = new Tray(prepare, upload, () => undefined);
   const second = new Tray(prepare, upload, () => undefined);
   first.machineId = second.machineId = "m";
@@ -188,7 +188,7 @@ it("serializes bitmap preparation across drafts and skips superseded queued work
 
 it("continues preparing the next image after a failed decoder", async () => {
   let n = 0;
-  const tray = new Tray(async () => { if (++n === 1) throw new Error("bad"); return png(); }, async () => "ok", () => undefined);
+  const tray = new Tray(async () => { if (++n === 1) throw new Error("bad"); return png(); }, async () => ({ imageId: "ok", expiresMs: Number.MAX_SAFE_INTEGER }), () => undefined);
   tray.machineId = "m";
   tray.add([file("bad"), file("good")]);
   await vi.waitFor(() => expect(tray.items.map((it) => it.state)).toEqual(["failed", "done"]));
@@ -210,4 +210,39 @@ it("requires reselection when a restored image has only an unverified remote ID"
   expect(tray.items[0].state).toBe("failed");
   expect(prepare).not.toHaveBeenCalled();
   expect(upload).not.toHaveBeenCalled();
+});
+
+it("expires at the exact deadline and uploads fresh bytes without preparing them again", async () => {
+  vi.useFakeTimers();
+  try {
+    vi.setSystemTime(1000);
+    let uploads = 0;
+    const prepared = vi.fn(async () => png());
+    const tray = new Tray(prepared, async () => ({ imageId: "image-" + ++uploads, expiresMs: Date.now() + 100 }), () => undefined);
+    tray.machineId = "m";
+    tray.add([file("a")]);
+    // The serial preparation and upload consist only of microtasks.
+    for (let n = 0; n < 10; n++) await Promise.resolve();
+    expect(tray.ready()).toBe(true);
+    vi.setSystemTime(1099);
+    expect(tray.ready()).toBe(true);
+    vi.setSystemTime(1100);
+    expect(tray.ready()).toBe(false);
+    tray.refreshExpired();
+    expect(tray.ready()).toBe(false);
+    for (let n = 0; n < 10; n++) await Promise.resolve();
+    expect(tray.ready()).toBe(true);
+    expect(tray.imageIds()).toEqual(["image-2"]);
+    expect(prepared).toHaveBeenCalledTimes(1);
+  } finally { vi.useRealTimers(); }
+});
+
+it("puts the original option and source file back, then prepares in that mode", async () => {
+  const { tray, prepare } = setup();
+  const source = file("original-source");
+  tray.restore([{ imageId: "gone", file: source, thumb: file("compressed-preview") }], true);
+  await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  expect(tray.original).toBe(true);
+  expect(prepare).toHaveBeenCalledWith(source, true);
+  expect(tray.totalBytes()).toBe(100);
 });

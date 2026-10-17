@@ -39,6 +39,7 @@ type StartPayload = { machineId: string; req: CreateReq };
  * unknown, and the wide home shows one project after another in one box. */
 class Start {
   readonly attempt = new Attempt<StartPayload>();
+  images: { key: string; prepared?: import("../attach").Prepared }[] = [];
   /** Its request is on its way. Nothing else is started in the project
    * meanwhile, whichever page is open. */
   running = false;
@@ -330,7 +331,12 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
    * whose outcome is unknown. */
   const changes = (prompt: string, mode?: ApprovalMode): boolean => {
     const pending = current.payload;
-    return !!pending && JSON.stringify(payloadFor(prompt, mode)) !== JSON.stringify(pending);
+    if (!pending) return false;
+    // Renewing an upload changes only its transport ID, never the unknown request.
+    const wanted = payloadFor(prompt, mode);
+    wanted.req.imageIds = pending.req.imageIds;
+    return JSON.stringify(wanted) !== JSON.stringify(pending) || start.images.length !== tray.items.length ||
+      start.images.some((im, i) => im.key !== tray.items[i].key || im.prepared !== tray.items[i].prepared);
   };
   // Images for the first message go to the chosen machine; a new machine
   // gets them again (the tray keeps them prepared).
@@ -345,7 +351,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     // While an earlier attempt's outcome is unknown, only it is retried.
     const retry = current.frozen;
     const sent = current.next(payloadFor(prompt, mode));
-    if (!retry) start.page = { local, picked: pick, latched: held };
+    if (!retry) { start.page = { local, picked: pick, latched: held }; start.images = tray.items.map((i) => ({ key: i.key, prepared: i.prepared })); }
     const { payload, slot } = sent;
     const open = fromHere(go);
     start.running = true;
@@ -389,6 +395,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       setError(errorText(e));
       return false;
     } finally {
+      if (!current.frozen) start.images = [];
       start.running = false;
       remote.touch();
       redraw((n) => n + 1);
@@ -401,6 +408,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const abandon = () => {
     adopt();
     current.abandon();
+    start.images = [];
     setError("");
     redraw((n) => n + 1);
   };
@@ -503,6 +511,7 @@ export function NewBox({
     // machine first, and there is no session without a first message: the
     // send button is disabled for these, but 重试 comes here too.
     if (cannot || (ns.expired && !ns.changes(prompt))) return;
+    ns.tray.refreshExpired();
     if (ns.tray.items.length ? !ns.tray.ready() : !prompt.trim()) return;
     // Retrying an unknown start sends it as it was.
     await ns.create(prompt.trim());

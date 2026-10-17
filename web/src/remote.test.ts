@@ -262,13 +262,13 @@ it("uploads an image in chunks and resumes from what the machine has after a los
         return create(CommandResultSchema, { kind: { case: "getImageUploadStatus", value: status() } });
       case "completeImageUpload":
         calls.push("complete");
-        return create(CommandResultSchema, { kind: { case: "completeImageUpload", value: status({ state: 2, imageId: "img-1" }) } });
+        return create(CommandResultSchema, { kind: { case: "completeImageUpload", value: status({ state: 2, imageId: "img-1", expiresMs: 123456789n }) } });
     }
     throw new Error("unexpected " + cmd?.case);
   };
   const progress: number[] = [];
   const id = await Remote.prototype.uploadImage.call(r, "mac", { bytes, format: "jpeg" }, (d: number) => progress.push(d));
-  expect(id).toBe("img-1");
+  expect(id).toEqual({ imageId: "img-1", expiresMs: 123456789 });
   // Chunks of at most 768 KiB, each starting where the machine is.
   expect(calls).toEqual([`begin 2000000 32`, "put 0 786432", "put 786432 786432", "status", "put 1572864 427136", "complete"]);
   expect(progress.at(-1)).toBe(2_000_000);

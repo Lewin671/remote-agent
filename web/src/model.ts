@@ -1017,6 +1017,8 @@ export interface Outgoing {
   imageIds?: string[];
   // This device's copies of them, shown until the CLI records the message.
   thumbs?: Blob[];
+  attachments?: { original: boolean; files: Blob[] };
+  missingImages?: boolean;
   status: "sending" | "sent" | "failed";
   error?: string;
   // A try may have reached the computer: retries keep this request.

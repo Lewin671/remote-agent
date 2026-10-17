@@ -676,7 +676,7 @@ export class DemoRemote extends Remote {
   }
 
   // Uploads take a moment per piece; a file named with "fail" fails.
-  override async uploadImage(machineId: string, p: { bytes: Uint8Array; format: string }, progress: (done: number, total: number) => void = () => undefined): Promise<string> {
+  override async uploadImage(machineId: string, p: { bytes: Uint8Array; format: string }, progress: (done: number, total: number) => void = () => undefined): Promise<{ imageId: string; expiresMs: number }> {
     const total = p.bytes.length;
     for (let done = 0; done < total; done += 786432) {
       progress(done, total);
@@ -686,7 +686,7 @@ export class DemoRemote extends Remote {
     await sleep(300);
     if (!this.machines.get(machineId)?.online) throw new CommandError("unavailable", "电脑不在线，指令没有发出");
     if ((p as { name?: string }).name?.includes("fail")) throw new CommandError("unavailable", "连接超时");
-    return "up-" + Math.random().toString(16).slice(2, 10);
+    return { imageId: "up-" + Math.random().toString(16).slice(2, 10), expiresMs: Date.now() + 86400000 };
   }
 
   override async getImage(sid: string, imageId: string) {

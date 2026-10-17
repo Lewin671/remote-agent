@@ -1376,8 +1376,8 @@ export class Remote {
 
   /** Sends text, and images uploaded to the machine, to a session; its
    * progress shows in outbox(sid). */
-  send(sid: string, text: string, imageIds: string[] = [], thumbs: Blob[] = [], mode = SendMode.STEER): string {
-    const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, imageIds, thumbs, mode, status: "sending" };
+  send(sid: string, text: string, imageIds: string[] = [], thumbs: Blob[] = [], mode = SendMode.STEER, attachments?: Outgoing["attachments"]): string {
+    const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, imageIds, thumbs, mode, attachments, status: "sending" };
     this.outboxes.set(sid, [...this.outbox(sid), o]);
     this.changed();
     void this.deliver(sid, o);
@@ -1425,7 +1425,7 @@ export class Remote {
   }
 
   private async deliver(sid: string, o: Outgoing) {
-    this.patchOut(sid, o.sendId, { status: "sending", error: undefined });
+    this.patchOut(sid, o.sendId, { status: "sending", error: undefined, missingImages: false });
     try {
       const slot = await this.sendMessage(sid, o.text, o.sendId, { requestId: o.requestId, deadline: o.deadline }, o.unknown, o.imageIds, o.mode);
       this.patchOut(sid, o.sendId, { status: "sent", ...slot });
@@ -1433,7 +1433,8 @@ export class Remote {
       // Once unknown, it stays unknown and keeps its request (attempt.ts);
       // the send ID also keeps the daemon from queueing the text twice.
       const still = stillUnknown(e, o.unknown ?? false);
-      this.patchOut(sid, o.sendId, { status: "failed", error: errorText(e), unknown: still, ...(still ? {} : newSlot()) });
+      const missingImages = !still && e instanceof CommandError && e.code === "not_found" && !!o.imageIds?.length && e.message.includes("is not on this machine; upload it again");
+      this.patchOut(sid, o.sendId, { status: "failed", error: missingImages ? "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留" : errorText(e), missingImages, unknown: still, ...(still ? {} : newSlot()) });
     }
   }
 
@@ -1726,7 +1727,7 @@ export class Remote {
    * one command, and returns the image ID to send with it. After a reply
    * that was lost, it asks the machine how far it got and goes on from
    * there; the machine checks the length and hash at the end. */
-  async uploadImage(machineId: string, p: { bytes: Uint8Array; format: string }, progress: (done: number, total: number) => void = () => undefined, started: (abort: () => void) => void = () => undefined): Promise<string> {
+  async uploadImage(machineId: string, p: { bytes: Uint8Array; format: string }, progress: (done: number, total: number) => void = () => undefined, started: (abort: () => void) => void = () => undefined): Promise<{ imageId: string; expiresMs: number }> {
     const format = { jpeg: ImageFormat.JPEG, png: ImageFormat.PNG, webp: ImageFormat.WEBP, gif: ImageFormat.GIF }[p.format] ?? ImageFormat.UNSPECIFIED;
     const transferId = newRequestID();
     const sha256 = new Uint8Array(await crypto.subtle.digest("SHA-256", p.bytes as Uint8Array<ArrayBuffer>));
@@ -1766,7 +1767,7 @@ export class Remote {
     progress(total, total);
     st = await step({ case: "completeImageUpload", value: { transferId } });
     if (!st.imageId) throw new Error("电脑没有返回图片 ID");
-    return st.imageId;
+    return { imageId: st.imageId, expiresMs: Number(st.expiresMs) };
   }
 
   // Display copies opened this visit, newest last, so a picture seen once

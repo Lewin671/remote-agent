@@ -14,8 +14,10 @@ export interface Prepared {
 
 /** Prepares a chosen file: compressed, or the original when asked. */
 export type Prepare = (file: Blob, original: boolean) => Promise<Prepared>;
-/** Uploads prepared bytes to a machine; resolves the image ID to send. */
-export type Upload = (machineId: string, p: Prepared, progress: (done: number, total: number) => void, started?: (abort: () => void) => void) => Promise<string>;
+/** Uploads prepared bytes to a machine; resolves the image ID and its deadline. */
+export interface UploadedImage { imageId: string; expiresMs: number }
+
+export type Upload = (machineId: string, p: Prepared, progress: (done: number, total: number) => void, started?: (abort: () => void) => void) => Promise<UploadedImage>;
 
 export interface TrayItem {
   key: string;
@@ -26,6 +28,7 @@ export interface TrayItem {
   preparedOriginal?: boolean; // which way prepared was made
   thumb?: Blob; // what the tray shows: the prepared image once there is one
   imageId?: string;
+  expiresMs?: number;
   machineId?: string; // where imageId is
   error?: string;
   bytes?: number;
@@ -87,10 +90,11 @@ export class Tray {
   /** Images put back from a message that was not sent. Local bytes are
    * uploaded again: the machine may have cleaned up the old file. All or nothing:
    * false, with nothing added, when they do not all fit. */
-  restore(images: { imageId: string; thumb?: Blob }[]): boolean {
+  restore(images: { imageId: string; thumb?: Blob; file?: Blob }[], original = false): boolean {
     if (this.items.length + images.length > this.max) return false;
+    if (!this.items.length) this.original = original;
     for (const im of images) {
-      const item: TrayItem = { key: "t" + ++keys, file: im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId, remoteOnly: !im.thumb };
+      const item: TrayItem = { key: "t" + ++keys, file: im.file ?? im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId, remoteOnly: !im.file && !im.thumb };
       this.items.push(item);
       void this.run(item, true);
     }
@@ -152,7 +156,14 @@ export class Tray {
 
   /** Every image is on the current machine. */
   ready(): boolean {
-    return this.items.length > 0 && this.items.every((i) => i.state === "done" && i.machineId === this.machineId);
+    return this.items.length > 0 && this.items.every((i) => i.state === "done" && i.machineId === this.machineId && (i.expiresMs ?? 0) > Date.now());
+  }
+
+  /** Expired uploads have local bytes, but need a new transfer before sending. */
+  refreshExpired() {
+    for (const i of this.items) {
+      if (i.state === "done" && (i.expiresMs ?? 0) <= Date.now()) void this.run(i, !this.fresh(i));
+    }
   }
 
   /** Still preparing or uploading. */
@@ -201,7 +212,7 @@ export class Tray {
         set({ prepared: p, preparedOriginal: original, bytes: p.bytes.length, thumb: new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: "image/" + p.format }) });
       }
       set({ state: "uploading", progress: 0, error: undefined, imageId: undefined, machineId: undefined });
-      const id = await this.upload(
+      const uploaded = await this.upload(
         machineId,
         item.prepared!,
         (done, total) => set({ progress: total ? done / total : 0 }),
@@ -211,7 +222,7 @@ export class Tray {
           else abort();
         },
       );
-      set({ state: "done", progress: 1, imageId: id, machineId });
+      set({ state: "done", progress: 1, imageId: uploaded.imageId, expiresMs: uploaded.expiresMs, machineId });
     } catch (e) {
       set({ state: "failed", error: e instanceof Error ? e.message : String(e) });
     }

@@ -88,7 +88,8 @@ export function Composer({
   const images = tray?.items.length ?? 0;
   const canSend = online && (images ? tray!.ready() : !!t);
   const submit = (force = false, sendMode = SendMode.STEER) => {
-    if (!canSend) return;
+    tray?.refreshExpired();
+    if (!canSend || (images && !tray!.ready())) return;
     // Slash commands typed as text go to the model; menus they would open
     // are not visible here.
     if (t.startsWith("/") && !force && !images) return setSlash(sendMode);

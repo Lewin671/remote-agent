@@ -764,7 +764,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     const uploads: string[] = [];
     r.uploadImage = async (m) => {
       uploads.push(m);
-      return `${m}-image-${uploads.length}`;
+      return { imageId: `${m}-image-${uploads.length}`, expiresMs: Number.MAX_SAFE_INTEGER };
     };
     const sent: { machine: string; id: string; prompt?: string; imageIds?: string[] }[] = [];
     r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
@@ -800,6 +800,10 @@ describe("an unknown session start, after leaving its page and coming back", () 
     expect(host.querySelector(".project-summary")!.textContent).toContain("iMac");
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(1);
     expect(uploads).toEqual(["imac"]);
+    const tray = r.trays.get("new:/work/remote-agent") ?? [...r.trays.values()][0];
+    await act(async () => { tray.items[0].expiresMs = 0; tray.refreshExpired(); });
+    expect(uploads).toEqual(["imac", "imac"]);
+    expect(tray.imageIds()).toEqual(["imac-image-2"]);
     await click(button("重试"));
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toEqual(sent[0]);
@@ -1720,7 +1724,7 @@ describe("sending images (v2)", () => {
     r.uploadImage = async (_m, p) => {
       const name = (p as { name?: string }).name ?? "";
       if (fail(name)) throw new CommandError("unavailable", "连接超时");
-      return "id-" + name;
+      return { imageId: "id-" + name, expiresMs: Number.MAX_SAFE_INTEGER };
     };
     const sent: { text?: string; imageIds?: string[] }[] = [];
     const real = r.command.bind(r);
@@ -1875,7 +1879,7 @@ describe("a failed message with images (review B6)", () => {
     const t = setup("看这两张");
     t.r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
     let uploads = 0;
-    t.r.uploadImage = async () => "restored-" + ++uploads;
+    t.r.uploadImage = async () => ({ imageId: "restored-" + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
     await click(button("放回输入框", row()));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(2);
@@ -1903,7 +1907,7 @@ describe("an image-only new-session draft (review B8)", () => {
     });
   const stub = (r: DemoRemote) => {
     r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
-    r.uploadImage = async () => "id-a";
+    r.uploadImage = async () => ({ imageId: "id-a", expiresMs: Number.MAX_SAFE_INTEGER });
   };
   const bump = (r: DemoRemote, sid: string) =>
     act(() => {
@@ -1991,7 +1995,7 @@ it("marks a quota window as waiting for an update once its reset time passes (re
 it("starts a new session with images and no words (Go 61c4bb2)", async () => {
   const r = demo();
   r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
-  r.uploadImage = async () => "id-a";
+  r.uploadImage = async () => ({ imageId: "id-a", expiresMs: Number.MAX_SAFE_INTEGER });
   const sent: { prompt?: string; imageIds?: string[] }[] = [];
   r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
     if (cmd?.case === "createSession") {
@@ -2820,4 +2824,36 @@ it("shows async questions as ordinary chat with options and accepts a typed repl
   await click(sendButton());
   await vi.waitFor(() => expect(command).toHaveBeenCalled());
   expect(command.mock.calls[0][1]).toMatchObject({ case: "send", value: { text: "选择 A" } });
+});
+
+it("puts a daemon-rejected image message back with its text, original option and source", async () => {
+  const r = demo();
+  r.prepareImage = async (_f, original) => ({ bytes: new Uint8Array(original ? 20 : 4), format: "png", width: 1, height: 1 });
+  let uploads = 0;
+  r.uploadImage = async () => ({ imageId: "id-" + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
+  r.command = async () => { throw new CommandError("not_found", "image id is not on this machine; upload it again"); };
+  mount(<SessionPage remote={r} session={r.sessions.get("s-idle")!} onBack={() => undefined} wide={false} />);
+  const source = new File(["source"], "a.png", { type: "image/png" });
+  await act(async () => {
+    const picker = host.querySelector<HTMLInputElement>("input[type=file]")!;
+    Object.defineProperty(picker, "files", { value: [source], configurable: true });
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await click(host.querySelector<HTMLButtonElement>('[role="switch"].orig')!);
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "看原图");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(sendButton());
+  await vi.waitFor(() => expect(host.textContent).toContain("图片不在电脑上"));
+  expect(host.querySelector(".me.fail")!.textContent).not.toContain("重试");
+  await click(button("放回输入框"));
+  const tray = r.trays.get("s-idle")!;
+  expect(r.drafts.get("s-idle")).toBe("看原图");
+  expect(tray.original).toBe(true);
+  expect(tray.items[0].file).toBe(source);
+  expect(tray.totalBytes()).toBe(20);
+  expect(r.outbox("s-idle")).toEqual([]);
+  expect(uploads).toBe(3);
 });

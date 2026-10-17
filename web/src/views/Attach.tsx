@@ -23,6 +23,22 @@ export function useTray(remote: Remote, key: string, machineId: string, max: num
   useEffect(() => {
     tray.retarget(machineId);
   }, [tray, machineId]);
+  const deadlines = tray.items.map((i) => i.expiresMs ?? 0).join(",");
+  const online = !attachBlocked(remote, remote.machines.get(machineId));
+  useEffect(() => {
+    if (!online) return;
+    const refresh = () => { tray.refreshExpired(); remote.touch(); };
+    refresh();
+    const next = Math.min(...tray.items.filter((i) => i.state === "done" && i.expiresMs! > Date.now()).map((i) => i.expiresMs!));
+    const timer = Number.isFinite(next) ? setTimeout(refresh, Math.min(2147483647, Math.max(1, next - Date.now()))) : undefined;
+    addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearTimeout(timer);
+      removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [tray, remote, online, deadlines, tray.items.length]);
   return tray;
 }
 
