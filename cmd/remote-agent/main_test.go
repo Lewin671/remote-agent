@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"connectrpc.com/connect"
@@ -41,6 +42,10 @@ func TestEnsureUTF8(t *testing.T) {
 // restarted is still retried for the whole window: it runs from the moment
 // the daemon was lost.
 func TestHookRetriesFromWhenTheDaemonWasLost(t *testing.T) {
+	synctest.Test(t, testHookRetriesFromWhenTheDaemonWasLost)
+}
+
+func testHookRetriesFromWhenTheDaemonWasLost(t *testing.T) {
 	down := connect.NewError(connect.CodeUnavailable, errors.New("daemon gone"))
 	const retryFor, pause = 200 * time.Millisecond, 10 * time.Millisecond
 	calls := 0
