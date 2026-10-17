@@ -846,29 +846,35 @@ func (s *session) saveSettledLocked() {
 // markInflight records, before the head message's text and Enter are
 // written, where the submit log and the event log stood.
 func (s *session) markInflight(offset int64, requestID string) error {
-	seq := s.log.LastSeq()
 	s.mu.Lock()
-	// The head may have been paused, or be a queue message whose turn
-	// started, while the injector looked at the screen.
+	defer s.mu.Unlock()
+	// Nothing can cancel or move this head between preparing the mark and
+	// committing it. Both records must be durable before any terminal write.
 	if s.meta.Exited || len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID || s.holdsLocked(s.queue.Queue[0]) {
-		s.mu.Unlock()
 		return errHeadChanged
 	}
 	prev := s.queue.Queue[0]
-	// Queue messages after this one wait for the turn it lands in.
-	s.gate, s.gateAt = s.turnEnds+1, time.Now()
 	s.queue.Queue[0].Inflight = &offset
-	s.queue.Queue[0].InflightSeq = seq
+	s.queue.Queue[0].InflightSeq = s.log.LastSeq()
 	s.queue.Queue[0].Stage = pb.InputStage_INPUT_STAGE_SUBMITTING
-	if err := s.queue.save(s.dir); err != nil {
+	e := &pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_InputState{InputState: &pb.InputState{
+		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_SUBMITTING,
+	}}}
+	// Append first: if it fails, the on-disk queue still has the original
+	// pre-write state. Rolling back a saved mark could itself fail on a full
+	// disk, falsely making an untouched message look written after restart.
+	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
 		s.queue.Queue[0] = prev
-		s.mu.Unlock()
 		return err
 	}
-	s.mu.Unlock()
-	return s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
-		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_SUBMITTING,
-	}}})
+	if err := s.queue.save(s.dir); err != nil {
+		s.queue.Queue[0] = prev
+		return err
+	}
+	// Queue messages after this one wait for the turn it lands in. Do not
+	// advance this gate for an attempt that never reached the terminal.
+	s.gate, s.gateAt = s.turnEnds+1, time.Now()
+	return nil
 }
 
 // boxHolds reports whether the input box holds exactly the placeholders
