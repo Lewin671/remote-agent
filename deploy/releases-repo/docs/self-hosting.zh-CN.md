@@ -92,7 +92,7 @@ remote-agent account init --server https://ra.example.com
 - 从手机或网页新开的会话由你自己的登录 shell 启动（加载 `.zshrc`、`.profile` 等），环境每次现算：升级 nvm、装新命令、`codex`/`claude` 换了位置都在下一个会话生效，不用重新安装服务。
 - CLI 需要的环境变量（比如代理）写进 `~/.remote-agent/agent.env`，一行一个 `KEY=VALUE`；这里设置的值会覆盖 shell 配置算出来的结果。
 - 升级 Codex 或 Claude Code 之后运行 `remote-agent doctor`，检查它和 remote-agent 是否仍然配合正常。它会启动一个很短的真实会话，所以会用掉一点模型额度。
-- 后台服务记住的是安装它时那个 shell 的 `PATH`，它决定 daemon 自己找到哪个 `codex`/`claude`（终端里开的会话、版本检查和 `doctor` 用它）。`tmux` 换了位置，或想让 `codex`/`claude` 用它找到的那一个，就重新运行一次 `remote-agent-service install`。
+- 后台服务记住的是安装它时那个 shell 的 `PATH`，daemon 自己据此找 `codex`/`claude`（`doctor` 用它，版本检查跟着会话实际跑的那个）。从终端开的会话跑的是那个终端的 `PATH` 里找到的 CLI，找不到就不启动。`tmux` 换了位置，或想让 daemon 找到另一个 `codex`/`claude`，就重新运行一次 `remote-agent-service install`。
 - Linux 上，用户服务在你退出登录后会停止，除非打开 lingering：`loginctl enable-linger "$USER"`。
 - `~/.remote-agent/account.json` 保存着这台电脑的密钥。请妥善保管；如果加入账户的所有设备都丢了，中继上的数据就无法解密。
 - Codex 第一次在某个目录启动时会问是否信任该目录，需要在终端里回答。

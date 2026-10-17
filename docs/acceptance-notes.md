@@ -407,3 +407,14 @@ macOS arm64，本 worktree 构建的二进制，独立的 `REMOTE_AGENT_HOME`（
 - 停掉终端会话，先开一个客户端会话让 daemon 学到 shell 那个，再 `remote-agent resume`：恢复后跑的仍是 terminal 那个，按 `env.json` 里的 PATH 重新找到
 
 单元测试覆盖 PATH 里第一个可执行的普通文件胜出（空项、相对路径、不可执行文件、同名目录都跳过）、显式配置的路径不被当成命令名查、找不到时回退、`doctor` 的会话（`agent.env` 设了 PATH 也）不变、恢复和分叉按保存的 PATH 找、定时任务从终端会话派生的新会话按来源的 PATH 找；逐项撤掉对应的判断后这些测试都会失败。未覆盖：分叉和定时任务的端到端（假 CLI 不产生 transcript，不能分叉）；Claude Code（同一段代码，只测了 codex）；Linux。测试进程、tmux 和临时目录均已清理。
+
+## 2026-10-17：终端会话找不到 CLI 时失败
+
+macOS arm64，本 worktree 的 Go 自动测试，加一轮本 worktree 构建的隔离环境（`ios/scripts/dev-env.sh start --daemon`，独立 `RA_DEV_DIR`、server、账户和 tmux socket；没有连日常 daemon 或账户）。dev-env 默认给 daemon 传 `--codex <绝对路径>`，属于「配置了路径」，不走 PATH 查找，所以端到端那一轮把 daemon 换成不带 `--codex` 重启（与 `daemon.sh install` 装的服务一致）。
+
+- 从终端新建、恢复、分叉和从终端会话派生的定时新会话，在终端 PATH（或 `env.json` 里保存的 PATH）中找不到 codex 时直接失败，错误为 `codex was not found in the terminal's PATH; install it there or set REMOTE_AGENT_CODEX`（恢复、分叉和定时任务为 `the session's saved PATH`）。没有创建 tmux 会话；新建和分叉也没有留下会话目录。
+- 没有 PATH 的环境与 PATH 里没有 codex 一样失败；定时任务连源会话的 `env.json` 缺失也按失败记录。
+- 定时任务把失败记进执行历史，`reason` 是 `could_not_start_session: ` 加同一句错误。
+- 反向验证：临时把 `terminalCLI` 改回返回 daemon 的 CLI，上述用例全部失败；恢复后 `go test ./...` 通过。
+- 端到端：在 `PATH=/usr/bin:/bin:/usr/sbin:/sbin` 的 shell 里跑 `remote-agent codex`，终端打印 `remote-agent: codex was not found in the terminal's PATH; install it there or set REMOTE_AGENT_CODEX`，退出码 1，没有会话目录也没有 tmux 会话；PATH 前面放一个假 codex 再 `remote-agent new`，pty-host 的 argv 和画面都是这个假 codex，而不是 daemon 启动时找到的 `~/.local/shims/codex`。
+- 未覆盖：客户端界面上恢复和分叉的报错展示、定时任务的实际派发链路（这几条只有单元测试）；Claude Code（同一段代码，只测了 codex）；Linux。测试 server、daemon、tmux 和临时目录均已清理。
