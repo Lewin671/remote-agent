@@ -21,6 +21,7 @@ import Testing
             "accepted": d.accepted.mapValues { a -> [String: Any] in
                 ["text": a.text, "images": a.imageIds, "origin": a.origin?.kind.rawValue ?? 0]
             },
+            "failures": d.failures, "queue": pendingInputs(d).map(\.id), "plan": d.plan?.text as Any? ?? NSNull(),
             "unsent": d.unsent.entries.map(\.key).sorted(), "local": seqs(d.typedLocally),
             "runningTools": seqs(d.tools.map(\.seq)), "unknownTools": seqs(d.unfinished),
             "interruptedTools": seqs(d.unfinished.subtracting(d.noResult)),

@@ -3,20 +3,22 @@ import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import corpus from "../../testdata/projection/vectors.json";
 import { Agent, EventSchema, InputStage, type Event } from "./gen/remoteagent/v1/event_pb";
-import { approvalsOnCalls, derive, timeline, type Derived } from "./model";
+import { approvalsOnCalls, derive, timeline, queuedIds, type Derived } from "./model";
 
 function normalize(events: Event[], d: Derived) {
   const seqs = (values: Iterable<bigint>) => [...values].sort((a, b) => a < b ? -1 : 1).map(String);
   const merged = approvalsOnCalls(events, d);
   const background = new Set(d.unsettled.filter(t => d.abortedTools.has(t.seq)).map(t => t.seq));
   for (const c of d.background) {
-    for (const e of events) if (e.kind.case === "toolStarted" && e.kind.value.callId === c.callId && c.callId) background.add(e.seq);
+    const result = events.find(e => e.kind.case === "toolCall" && e.kind.value === c)?.seq;
+    if (result !== undefined) background.add([...d.toolEnds].find(([, end]) => end === result)?.[0] ?? result);
   }
   return {
     running: d.running, approvals: [...d.approvals.keys()], resolved: Object.fromEntries([...d.resolved].map(([id, r]) => [id, r.decision])),
     questions: [...d.questions.keys()], answered: Object.fromEntries(d.answered),
     inputs: [...d.inputs].map(([id, status]) => ({ id, status, stage: d.stages.get(id) ?? InputStage.UNSPECIFIED, mode: d.accepted.get(id)?.mode ?? 0, paused: d.paused.has(id) })),
     accepted: Object.fromEntries([...d.accepted].map(([id, a]) => [id, { text: a.text, images: a.imageIds, origin: a.origin?.kind ?? 0 }])),
+    failures: Object.fromEntries(d.inputReasons), queue: queuedIds(d), plan: d.plan?.text ?? null,
     unsent: [...d.unsent].sort(), local: seqs(d.typedLocally), runningTools: seqs(d.tools.map(t => t.seq)),
     unknownTools: seqs([...d.toolEnds].filter(([, end]) => end === "unsettled").map(([seq]) => seq)),
     interruptedTools: seqs(d.abortedTools), completed: Object.fromEntries([...d.toolEnds].filter(([, end]) => typeof end === "bigint").map(([seq, end]) => [String(seq), String(end)])),

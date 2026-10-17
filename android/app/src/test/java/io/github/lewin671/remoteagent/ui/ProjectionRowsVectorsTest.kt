@@ -14,7 +14,7 @@ import org.junit.Test
  * async question is a chat message even though it is not pending. */
 class ProjectionRowsVectorsTest {
     @Test fun sharedHistoryFactsReachChat() {
-        val corpus = Json.parseToJsonElement(File(System.getProperty("projectionVectors")).readText()).jsonObject
+        val corpus = Json.parseToJsonElement(File(requireNotNull(System.getProperty("projectionVectors"))).readText()).jsonObject
         for (item in corpus.getValue("vectors").jsonArray) {
             val v = item.jsonObject
             val name = v.getValue("name").jsonPrimitive.content

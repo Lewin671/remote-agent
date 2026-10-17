@@ -691,8 +691,10 @@ internal class EventReducer(agent: Agent) {
                     // Starts and calls pair by call ID (for Codex, later
                     // entries of one call carry "<id>#2" and have no start).
                     val id = e.toolCall.callId
+                    var matched = false
                     val j = if (id.isNotEmpty()) d.tools.indexOfFirst { it.callId == id } else -1
                     if (j >= 0) {
+                        matched = true
                         val t = d.tools.removeAt(j)
                         d.completedAt[t.seq] = e.seq
                         if (wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
@@ -701,12 +703,20 @@ internal class EventReducer(agent: Agent) {
                         // running): it belongs to that start, not to a new row.
                         val t = unfinishedById[id]
                         if (t != null && t.seq !in d.completedAt) {
+                            matched = true
                             d.completedAt[t.seq] = e.seq
                             d.unfinished -= t.seq
                             d.noResult -= t.seq
                             d.background.removeAll { it.tool.seq == t.seq }
                             if (wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
                         }
+                    }
+                    if (!matched && wentToBackground(e.toolCall)) {
+                        val c = e.toolCall
+                        // A background result is itself a known start, even
+                        // without ToolStarted (e.g. an extra exec command).
+                        val t = RunningTool(c.title, id, eventTime(e), c.kind, c.itemType, e.seq, c.input, c.inputDigest)
+                        d.background += BackgroundTool(t, returned = true)
                     }
                 }
                 Event.KindCase.TOKEN_USAGE -> {

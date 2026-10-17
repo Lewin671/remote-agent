@@ -26,6 +26,8 @@ class ProjectionVectorsTest {
                 put("text", a.text); put("images", JsonArray(a.imageIds.map(::JsonPrimitive))); put("origin", a.origin?.kindValue ?: 0)
             }) })
             fun strings(key: String, xs: Iterable<String>) { put(key, JsonArray(xs.map(::JsonPrimitive))) }
+            put("failures", buildJsonObject { for ((id, reason) in d.failures) put(id, reason) })
+            strings("queue", pendingInputs(d).map { it.id }); put("plan", d.plan?.text?.let(::JsonPrimitive) ?: JsonNull)
             strings("unsent", d.unsent.keys.sorted()); strings("local", seqs(d.typedLocally))
             strings("runningTools", seqs(d.tools.map { it.seq })); strings("unknownTools", seqs(d.unfinished))
             strings("interruptedTools", seqs(d.unfinished - d.noResult))

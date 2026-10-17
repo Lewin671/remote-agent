@@ -288,11 +288,14 @@ struct EventReducer: Sendable {
             // Starts and calls pair by call ID (for Codex, later
             // entries of one call carry "<id>#2" and have no start).
             let id = c.callID
+            var matched = false
             if !id.isEmpty, let j = d.tools.firstIndex(where: { $0.callId == id }) {
+                matched = true
                 let t = d.tools.remove(at: j)
                 d.completedAt[t.seq] = e.seq
                 if wentToBackground(c) { d.background.append(BackgroundTool(tool: t, returned: true)) }
             } else if !id.isEmpty, let t = unfinishedById[id], d.completedAt[t.seq] == nil {
+                matched = true
                 // A call reported after its turn ended (a Codex exec still
                 // running): it belongs to that start, not to a new row.
                 d.completedAt[t.seq] = e.seq
@@ -300,6 +303,13 @@ struct EventReducer: Sendable {
                 d.noResult.remove(t.seq)
                 d.background.removeAll { $0.tool.seq == t.seq }
                 if wentToBackground(c) { d.background.append(BackgroundTool(tool: t, returned: true)) }
+            }
+            if !matched && wentToBackground(c) {
+                // Without a separate ToolStarted the result is the first
+                // known start; it must not consume another tool's start.
+                let t = RunningTool(title: c.title, callId: id, since: eventTime(e), kind: c.kind,
+                    itemType: c.itemType, seq: e.seq, input: c.input, inputDigest: c.inputDigest)
+                d.background.append(BackgroundTool(tool: t, returned: true))
             }
         case .tokenUsage(let u):
             d.usage = u
