@@ -820,8 +820,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         // Claude Code runs tools in parallel and names the call; Codex does
         // not, and its calls complete in the order they started.
         const id = k.value.callId;
-        let i = id ? d.tools.findIndex((t) => t.callId === id) : -1;
-        if (i < 0) i = d.tools.findIndex((t) => !t.callId);
+        const i = id ? d.tools.findIndex((t) => t.callId === id) : -1;
         if (i >= 0) {
           d.toolEnds.set(d.tools[i].seq, e.seq);
           d.tools.splice(i, 1);
