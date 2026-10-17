@@ -21,6 +21,7 @@ from pathlib import Path
 # Our hosts, addresses and machines; a CI runner's paths; private keys.
 DENIED = [
     "workstation",
+    "remote-agent.top",
     "example-cn-vps",
     "foxmail",
     "alibabaweijun",
