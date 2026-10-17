@@ -174,39 +174,59 @@ func drainOutput(stdout io.Writer, ptmx io.Reader) {
 	}
 }
 
-// waitForChild waits for the CLI to exit. A hangup or termination is passed
-// on; if the CLI is still running after the grace period, its process group
-// is terminated and then killed, so a stopped session leaves nothing behind.
+// waitForChild preserves the CLI's exit result and always cleans up the
+// process group created by pty.Start, including after a prompt leader exit.
 func waitForChild(cmd *exec.Cmd, sigs <-chan os.Signal, options runOptions) error {
 	wait := make(chan error, 1)
 	go func() { wait <- cmd.Wait() }()
 
+	var err error
+	var exited bool
 	select {
-	case err := <-wait:
-		return err
+	case err = <-wait:
+		exited = true
 	case sig := <-sigs:
 		_ = cmd.Process.Signal(sig)
+		err, exited = waitForExit(wait, sigs, cmd, options.childSignalGrace)
 	}
+	return finishProcessGroup(cmd, wait, sigs, options.groupTermGrace, err, exited)
+}
 
-	if err, exited := waitForExit(wait, sigs, cmd, options.childSignalGrace); exited {
-		return err
-	}
-	if err, exited := waitForExit(wait, sigs, cmd, 0); exited {
-		return err
-	}
-	if err := signalProcessGroup(cmd, syscall.SIGTERM); err != nil {
+// The leader's Wait result says nothing about its helpers. Give the group
+// its own TERM grace period, then KILL any survivors regardless of when the
+// leader exits. Only the process group of this particular launch is signaled.
+func finishProcessGroup(cmd *exec.Cmd, wait <-chan error, sigs <-chan os.Signal, grace time.Duration, result error, exited bool) error {
+	if err := signalProcessGroup(cmd, syscall.SIGTERM); err != nil && !exited {
 		_ = cmd.Process.Signal(syscall.SIGTERM)
 	}
-	if err, exited := waitForExit(wait, sigs, cmd, options.groupTermGrace); exited {
-		return err
+	if exited {
+		wait = nil
 	}
-	if err, exited := waitForExit(wait, sigs, cmd, 0); exited {
-		return err
+	timer := time.NewTimer(grace)
+	defer timer.Stop()
+	tick := time.NewTicker(10 * time.Millisecond)
+	defer tick.Stop()
+cleanup:
+	for !errors.Is(signalProcessGroup(cmd, 0), syscall.ESRCH) {
+		select {
+		case result = <-wait:
+			exited, wait = true, nil
+		case sig := <-sigs:
+			if !exited {
+				_ = cmd.Process.Signal(sig)
+			}
+		case <-tick.C:
+		case <-timer.C:
+			break cleanup
+		}
 	}
-	if err := signalProcessGroup(cmd, syscall.SIGKILL); err != nil {
+	if err := signalProcessGroup(cmd, syscall.SIGKILL); err != nil && !exited {
 		_ = cmd.Process.Kill()
 	}
-	return <-wait
+	if !exited {
+		result = <-wait
+	}
+	return result
 }
 
 func waitForExit(wait <-chan error, sigs <-chan os.Signal, cmd *exec.Cmd, d time.Duration) (error, bool) {

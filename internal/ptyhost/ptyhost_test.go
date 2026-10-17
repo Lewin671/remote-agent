@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/creack/pty"
 )
 
 func shortTempDir(t *testing.T) string {
@@ -647,5 +649,57 @@ func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 			t.Fatal("subsequent remote input was lost or reordered")
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// Cleanup follows the process group lifetime, even when its leader exits
+// promptly on HUP, during TERM escalation, or before a stop signal arrives.
+func TestExitedLeaderStillCleansProcessGroup(t *testing.T) {
+	for _, mode := range []string{"hangup", "termination", "natural"} {
+		t.Run(mode, func(t *testing.T) {
+			dir := shortTempDir(t)
+			pidfile := filepath.Join(dir, "grandchild")
+			child := "trap '' HUP TERM; printf '%s' \"$$\" > " + shellQuote(pidfile) + "; while :; do sleep 1; done"
+			script := "trap 'exit 0' HUP; sh -c " + shellQuote(child) + " & wait"
+			if mode == "termination" {
+				script = "trap '' HUP; trap 'exit 0' TERM; sh -c " + shellQuote(child) + " & wait"
+			}
+			if mode == "natural" {
+				script = "sh -c " + shellQuote(child) + " & while [ ! -s " + shellQuote(pidfile) + " ]; do sleep 0.01; done; exit 0"
+			}
+			cmd := exec.Command("/bin/sh", "-c", script)
+			master, err := pty.Start(cmd)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer master.Close()
+			defer syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			if err := waitForFile(pidfile, time.Second); err != nil {
+				t.Fatal(err)
+			}
+			b, err := os.ReadFile(pidfile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pid, err := strconv.Atoi(string(b))
+			if err != nil {
+				t.Fatal(err)
+			}
+			sigs := make(chan os.Signal, 1)
+			if mode != "natural" {
+				sigs <- syscall.SIGHUP
+			}
+			started := time.Now()
+			if err := waitForChild(cmd, sigs, runOptions{childSignalGrace: 100 * time.Millisecond, groupTermGrace: 150 * time.Millisecond}); err != nil {
+				t.Fatal(err)
+			}
+			master.Close()
+			if elapsed := time.Since(started); elapsed > time.Second {
+				t.Fatalf("cleanup took %s, want bounded shutdown", elapsed)
+			}
+			if err := waitForProcessExit(pid, time.Second); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
