@@ -21,13 +21,13 @@
 |---|---|---|
 | `remote-agent` | Go 单二进制：daemon、本地 CLI（`remote-agent codex` 等）和 hook 入口都在里面 | 每台电脑一个 |
 | `remote-agent-server` | Go 单二进制，SQLite 存储，不直接对外暴露端口 | VPS 上，前面由 Caddy 负责 HTTPS 和反向代理，域名为 `api.<域名>`（当前部署在 `ra.remote-agent.top`，见下文） |
-| `web` | PWA，React + Vite + TypeScript | Cloudflare Pages，挂在子域名 `app.<域名>` 上，用 CNAME 指过去，域名不用迁到 Cloudflare |
+| `web` | PWA，React + Vite + TypeScript | Cloudflare Pages，和 server 在同一个注册域名下（当前在 `remote-agent.top`，见下文） |
 | `android` | 原生 App，Kotlin + Jetpack Compose，见 [android-client.md](android-client.md) | 自己签名的 APK，侧载安装 |
 | `ios` | 原生 App，Swift + SwiftUI，见 [ios-client.md](ios-client.md) | 装到真机的渠道未定（[plan.md](plan.md)），目前只在模拟器上运行 |
 
 当前的 VPS 上有一个多个服务共用的 Caddy（docker compose 项目 `/opt/caddy`，占用 80/443），server 因此也用容器部署：接入 Caddy 所在的 docker 网络 `proxy`，不映射主机端口，Caddyfile 里只加一个站点块反代过去。镜像基于 `scratch`，以 nobody 运行，内存上限 128 MiB。`scratch` 里没有 CA 根证书，而 Web Push 和 FCM 都要访问 HTTPS，所以 server 二进制带上了 Go 的 `x509roots/fallback`（Mozilla 的根证书），系统里没有根证书时使用它。部署文件和脚本在 `deploy/`。
 
-网页部署在 Cloudflare Pages 的项目 `remote-agent` 上（`remote-agent.pages.dev`），自定义域名 `remote-agent.top` 由阿里云 DNS 用 CNAME 指过去。用的是经典的 Pages 而不是 Workers 静态资源：Workers 绑定自定义域名要求域名托管在 Cloudflare，Pages 则支持外部 DNS 用 CNAME 接入。新版 wrangler 默认把 `pages project create` 转成 Workers，所以创建项目时要加 `--force`，之后的部署不用。构建时会生成 `_headers`，让 Pages 在响应头里带上和页面里一致的 CSP，外加 `frame-ancestors 'none'` 等只能靠响应头生效的限制。server 的 `ALLOWED_ORIGINS` 要包含网页的地址。
+网页部署在 Cloudflare Pages 的项目 `remote-agent` 上（`remote-agent.pages.dev`），绑定根域名 `remote-agent.top`。Pages 绑定根域名要求域名的 DNS 托管在 Cloudflare，所以 `remote-agent.top` 的 NS 指向 Cloudflare：根域名由 Pages 自动解析，`ra` 是指向 VPS 的 A 记录，只做 DNS、不经 Cloudflare 代理（Caddy 自己签证书，WebSocket 直连）。绑子域名时 Pages 也接受外部 DNS 用 CNAME 接入，那样域名不用迁。新版 wrangler 默认把 `pages project create` 转成 Workers，所以创建项目时要加 `--force`，之后的部署不用。构建时会生成 `_headers`，让 Pages 在响应头里带上和页面里一致的 CSP，外加 `frame-ancestors 'none'` 等只能靠响应头生效的限制。server 的 `ALLOWED_ORIGINS` 要包含网页的地址。
 
 网页代码**不由 VPS 提供**：如果 VPS 被攻破后能替换网页的 JS，端到端加密就会被绕过。放在另一个平台上，攻击者必须同时攻破两处才行。Cloudflare 账号因此也成了关键资产，必须开启两步验证。
 
