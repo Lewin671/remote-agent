@@ -197,29 +197,12 @@ class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged
  * own line; so do parallel or repeated calls that cannot be told apart.
  */
 fun approvalDecisions(events: List<Event>, d: Derived): ApprovalDecisions {
-    val reqs = LinkedHashMap<String, MutableList<Pair<String, Long>>>()
-    val calls = HashMap<String, MutableList<Long>>()
-    for (e in events) when (e.kindCase) {
-        Event.KindCase.APPROVAL_REQUESTED -> {
-            val a = e.approvalRequested
-            if (a.approvalId !in d.resolved || a.inputDigest.isEmpty()) continue
-            reqs.getOrPut(a.toolName + "\u0000" + a.inputDigest) { mutableListOf() } += a.approvalId to e.seq
-        }
-        Event.KindCase.TOOL_CALL -> {
-            val t = e.toolCall
-            if (t.inputDigest.isNotEmpty()) calls.getOrPut(t.itemType + "\u0000" + t.inputDigest) { mutableListOf() } += e.seq
-        }
-        else -> {}
+    val ids = io.github.lewin671.remoteagent.core.approvalCallIDs(events, d)
+    val onCall = ids.mapValues { (_, id) ->
+        val (decision, message) = d.resolved.getValue(id)
+        decisionLine(decision, message) to (decision != ApprovalDecision.APPROVAL_DECISION_DENY && decision != ApprovalDecision.APPROVAL_DECISION_TIMEOUT)
     }
-    val onCall = HashMap<Long, Pair<String, Boolean>>()
-    val merged = HashSet<String>()
-    for ((key, rs) in reqs) {
-        val cs = calls[key].orEmpty()
-        if (rs.size != 1 || cs.size != 1 || cs[0] < rs[0].second) continue
-        val (decision, message) = d.resolved.getValue(rs[0].first)
-        onCall[cs[0]] = decisionLine(decision, message) to (decision != ApprovalDecision.APPROVAL_DECISION_DENY && decision != ApprovalDecision.APPROVAL_DECISION_TIMEOUT)
-        merged += rs[0].first
-    }
+    val merged = ids.values.toSet()
     return ApprovalDecisions(onCall, merged)
 }
 
@@ -245,9 +228,6 @@ fun buildChat(
     val decisions = approvalDecisions(events, d)
     var turnTokens = 0L
     var lastTotal = 0L
-    var lastPct: Int? = null
-    // A compaction note waiting for the usage after it: its index and the percent before.
-    var compacted: Pair<Int, Int?>? = null
     fun flushRun() {
         when (run.size) {
             0 -> {}
@@ -363,13 +343,6 @@ fun buildChat(
             Event.KindCase.TOKEN_USAGE -> {
                 if (lastTotal > 0) turnTokens += (e.tokenUsage.totalTokens - lastTotal).coerceAtLeast(0)
                 lastTotal = e.tokenUsage.totalTokens
-                val u = e.tokenUsage
-                lastPct = if (u.contextWindow > 0) minOf(100, (u.lastTotalTokens * 100 / u.contextWindow).toInt()) else null
-                compacted?.let { (i, before) ->
-                    val note = out[i] as ChatItem.Note
-                    if (before != null && lastPct != null) out[i] = note.copy(text = "上下文已压缩 · $before% → $lastPct%")
-                    compacted = null
-                }
             }
             Event.KindCase.TURN_STARTED -> turnTokens = 0
             Event.KindCase.TURN_ENDED -> {
@@ -384,14 +357,17 @@ fun buildChat(
             Event.KindCase.SETTINGS_CHANGED -> {
                 val c = e.settingsChanged
                 val by = who(e.originOrNull())?.takeIf { it != "本客户端" }
-                val text = when {
+                var text = when {
                     c.compacted -> "上下文已压缩"
                     c.model.isNotEmpty() -> (by?.let { "$it 将模型切到 " } ?: "已切换到 ") + c.model + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
                     else -> modeOf(c.mode)?.let { (by?.let { b -> "$b 将模式切到 " } ?: "审批模式切到了 ") + it.text }
                 }
                 if (text != null) {
                     flush()
-                    if (c.compacted) compacted = out.size to lastPct
+                    if (c.compacted) {
+                        val usage = d.compactions[e.seq]
+                        if (usage?.before != null && usage.after != null) text = "上下文已压缩 · ${usage.before}% → ${usage.after}%"
+                    }
                     out += ChatItem.Note(k, text)
                 }
             }

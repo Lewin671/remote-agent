@@ -1,0 +1,2730 @@
+{
+  "projectionVersion": 1,
+  "vectors": [
+    {
+      "name": "empty",
+      "agent": 1,
+      "events": [],
+      "cuts": [
+        0
+      ],
+      "observations": [
+        {
+          "through": "0",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "ordinary-conversation",
+      "agent": 1,
+      "events": [
+        {
+          "userMessage": {
+            "text": "hello"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnStarted": {},
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "agentMessage": {
+            "text": "world"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnEnded": {
+            "outcome": 1
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "observations": [
+        {
+          "through": "4",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [
+              "1"
+            ],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "claude-does-not-claim-before-queue",
+      "agent": 2,
+      "events": [
+        {
+          "userMessage": {
+            "text": "same"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 1,
+            "text": "same"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 2
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "text": "same"
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "observations": [
+        {
+          "through": "4",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [
+              {
+                "id": "r",
+                "status": 2,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              }
+            ],
+            "accepted": {
+              "r": {
+                "text": "same",
+                "images": [],
+                "origin": 0
+              }
+            },
+            "unsent": [],
+            "local": [
+              "1"
+            ],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "claude-claims-after-queue",
+      "agent": 2,
+      "events": [
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 1,
+            "text": "hello"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "text": "hello"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 2
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [
+              {
+                "id": "r",
+                "status": 2,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              }
+            ],
+            "accepted": {
+              "r": {
+                "text": "hello",
+                "images": [],
+                "origin": 0
+              }
+            },
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "claude-no-queue-evidence",
+      "agent": 2,
+      "events": [
+        {
+          "userMessage": {
+            "text": "hello"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 2
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2
+      ],
+      "observations": [
+        {
+          "through": "2",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [
+              {
+                "id": "r",
+                "status": 2,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              }
+            ],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "claude-late-confirmation",
+      "agent": 2,
+      "events": [
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 1,
+            "text": "remote"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 3
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "text": "local"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 2
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "text": "remote"
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "observations": [
+        {
+          "through": "5",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [
+              {
+                "id": "r",
+                "status": 2,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              }
+            ],
+            "accepted": {
+              "r": {
+                "text": "remote",
+                "images": [],
+                "origin": 0
+              }
+            },
+            "unsent": [],
+            "local": [
+              "3"
+            ],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "explicit-origin-does-not-consume-another-request",
+      "agent": 1,
+      "events": [
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 2
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "text": "other"
+          },
+          "origin": {
+            "kind": 1,
+            "deviceId": "other"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "text": "remote"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [
+              {
+                "id": "r",
+                "status": 2,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              }
+            ],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "special-plan-text-and-explicit-local",
+      "agent": 1,
+      "events": [
+        {
+          "userMessage": {
+            "text": "Implement the plan."
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "text": "Implement the plan."
+          },
+          "origin": {
+            "kind": 3
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "text": "Implement the plan!"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [
+              "2",
+              "3"
+            ],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "parallel-tool-results",
+      "agent": 1,
+      "events": [
+        {
+          "turnStarted": {},
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolStarted": {
+            "callId": "a"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolStarted": {
+            "callId": "b"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "callId": "b",
+            "status": "completed"
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "callId": "a",
+            "status": "failed",
+            "exitCode": 1
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "observations": [
+        {
+          "through": "5",
+          "state": {
+            "running": true,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {
+              "2": "5",
+              "3": "4"
+            },
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "late-tool-after-next-turn",
+      "agent": 1,
+      "events": [
+        {
+          "turnStarted": {},
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolStarted": {
+            "callId": "a"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnEnded": {
+            "outcome": 1
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnStarted": {},
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "callId": "a",
+            "status": "completed"
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [
+              "2"
+            ],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "5",
+          "state": {
+            "running": true,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {
+              "2": "5"
+            },
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "interrupt-and-late-tool",
+      "agent": 1,
+      "events": [
+        {
+          "turnStarted": {},
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolStarted": {
+            "callId": "a"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnEnded": {
+            "outcome": 2
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "callId": "a",
+            "status": "completed"
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [
+              "2"
+            ],
+            "interruptedTools": [
+              "2"
+            ],
+            "completed": {},
+            "background": [
+              "2"
+            ],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "4",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {
+              "2": "4"
+            },
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "idless-tools-are-not-guessed",
+      "agent": 1,
+      "events": [
+        {
+          "toolStarted": {},
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "callId": "unrelated",
+            "status": "completed"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "status": "completed"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [
+              "1"
+            ],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "additional-command-does-not-complete-start",
+      "agent": 1,
+      "events": [
+        {
+          "toolStarted": {
+            "callId": "a"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "callId": "a#2",
+            "status": "completed"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2
+      ],
+      "observations": [
+        {
+          "through": "2",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [
+              "1"
+            ],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "background-cleared-on-next-turn",
+      "agent": 1,
+      "events": [
+        {
+          "turnStarted": {},
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolStarted": {
+            "callId": "a"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "callId": "a",
+            "background": 1
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnEnded": {
+            "outcome": 1
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnStarted": {},
+          "seq": "5",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "observations": [
+        {
+          "through": "4",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {
+              "2": "3"
+            },
+            "background": [
+              "2"
+            ],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "5",
+          "state": {
+            "running": true,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {
+              "2": "3"
+            },
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "exit-clears-current-tools-and-waits",
+      "agent": 1,
+      "events": [
+        {
+          "turnStarted": {},
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalRequested": {
+            "approvalId": "a"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "questionAsked": {
+            "questionId": "q"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolStarted": {
+            "callId": "t"
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "sessionState": {
+            "status": 5
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "observations": [
+        {
+          "through": "5",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [
+              "4"
+            ],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "fork-resets-source-claims-and-waits",
+      "agent": 1,
+      "events": [
+        {
+          "inputState": {
+            "requestId": "source",
+            "status": 2
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnStarted": {},
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalRequested": {
+            "approvalId": "a"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "questionAsked": {
+            "questionId": "q"
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolStarted": {
+            "callId": "t"
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        },
+        {
+          "sessionForked": {
+            "sourceSessionId": "source"
+          },
+          "seq": "6",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "text": "fork local"
+          },
+          "seq": "7",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "observations": [
+        {
+          "through": "7",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [
+              {
+                "id": "source",
+                "status": 2,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              }
+            ],
+            "accepted": {},
+            "unsent": [],
+            "local": [
+              "7"
+            ],
+            "runningTools": [],
+            "unknownTools": [
+              "5"
+            ],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "queue-held-pause-resume",
+      "agent": 1,
+      "events": [
+        {
+          "inputState": {
+            "requestId": "a",
+            "status": 1,
+            "text": "one",
+            "stage": 1,
+            "mode": 2,
+            "paused": true
+          },
+          "origin": {
+            "kind": 1,
+            "deviceId": "device"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "b",
+            "status": 1,
+            "text": "two",
+            "mode": 1
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "a",
+            "status": 1,
+            "stage": 4
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "a",
+            "status": 7
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "b",
+            "status": 4
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "observations": [
+        {
+          "through": "1",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [
+              {
+                "id": "a",
+                "status": 1,
+                "stage": 1,
+                "mode": 2,
+                "paused": true
+              }
+            ],
+            "accepted": {
+              "a": {
+                "text": "one",
+                "images": [],
+                "origin": 1
+              }
+            },
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "5",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [
+              {
+                "id": "a",
+                "status": 7,
+                "stage": 4,
+                "mode": 2,
+                "paused": false
+              },
+              {
+                "id": "b",
+                "status": 4,
+                "stage": 0,
+                "mode": 1,
+                "paused": false
+              }
+            ],
+            "accepted": {
+              "a": {
+                "text": "one",
+                "images": [],
+                "origin": 1
+              },
+              "b": {
+                "text": "two",
+                "images": [],
+                "origin": 0
+              }
+            },
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "input-outcomes",
+      "agent": 1,
+      "events": [
+        {
+          "inputState": {
+            "requestId": "u",
+            "status": 3
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "f",
+            "status": 5,
+            "reason": "timeout"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "n",
+            "status": 6,
+            "reason": "input_changed"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "c",
+            "status": 4
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "x",
+            "status": 1,
+            "text": "not sent"
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "x",
+            "status": 4,
+            "reason": "exited"
+          },
+          "seq": "6",
+          "sessionId": "projection-test"
+        },
+        {
+          "sessionState": {
+            "status": 5
+          },
+          "seq": "7",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "observations": [
+        {
+          "through": "7",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [
+              {
+                "id": "u",
+                "status": 3,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              },
+              {
+                "id": "f",
+                "status": 5,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              },
+              {
+                "id": "n",
+                "status": 6,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              },
+              {
+                "id": "c",
+                "status": 4,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              },
+              {
+                "id": "x",
+                "status": 4,
+                "stage": 0,
+                "mode": 0,
+                "paused": false
+              }
+            ],
+            "accepted": {
+              "x": {
+                "text": "not sent",
+                "images": [],
+                "origin": 0
+              }
+            },
+            "unsent": [
+              "x"
+            ],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "async-and-sync-questions",
+      "agent": 1,
+      "events": [
+        {
+          "turnStarted": {},
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "questionAsked": {
+            "questionId": "async",
+            "async": true,
+            "questions": [
+              {
+                "id": "a",
+                "text": "Choose",
+                "options": [
+                  {
+                    "label": "A"
+                  }
+                ]
+              }
+            ]
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "questionAsked": {
+            "questionId": "sync",
+            "questions": [
+              {
+                "id": "s",
+                "text": "Choose"
+              }
+            ]
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "questionAnswered": {
+            "questionId": "sync",
+            "answers": [
+              {
+                "questionId": "s",
+                "answers": [
+                  "A",
+                  "B"
+                ]
+              }
+            ]
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "questionAsked": {
+            "questionId": "left"
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnEnded": {
+            "outcome": 1
+          },
+          "seq": "6",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": true,
+            "approvals": [],
+            "resolved": {},
+            "questions": [
+              "sync"
+            ],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "6",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {
+              "sync": [
+                "A",
+                "B"
+              ]
+            },
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "approval-allow",
+      "agent": 1,
+      "events": [
+        {
+          "approvalRequested": {
+            "approvalId": "a",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "a",
+            "decision": 1
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "1",
+          "state": {
+            "running": false,
+            "approvals": [
+              "a"
+            ],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {
+              "a": 1
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [
+              "a"
+            ],
+            "callDecisions": [
+              "3"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "approval-deny",
+      "agent": 1,
+      "events": [
+        {
+          "approvalRequested": {
+            "approvalId": "a",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "a",
+            "decision": 2
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "1",
+          "state": {
+            "running": false,
+            "approvals": [
+              "a"
+            ],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {
+              "a": 2
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [
+              "a"
+            ],
+            "callDecisions": [
+              "3"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "approval-timeout",
+      "agent": 1,
+      "events": [
+        {
+          "approvalRequested": {
+            "approvalId": "a",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "a",
+            "decision": 3
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "1",
+          "state": {
+            "running": false,
+            "approvals": [
+              "a"
+            ],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {
+              "a": 3
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [
+              "a"
+            ],
+            "callDecisions": [
+              "3"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "approval-cancel",
+      "agent": 1,
+      "events": [
+        {
+          "approvalRequested": {
+            "approvalId": "a",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "a",
+            "decision": 4
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "1",
+          "state": {
+            "running": false,
+            "approvals": [
+              "a"
+            ],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {
+              "a": 4
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [
+              "a"
+            ],
+            "callDecisions": [
+              "3"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "approval-terminal",
+      "agent": 1,
+      "events": [
+        {
+          "approvalRequested": {
+            "approvalId": "a",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "a",
+            "decision": 5
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "1",
+          "state": {
+            "running": false,
+            "approvals": [
+              "a"
+            ],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {
+              "a": 5
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [
+              "a"
+            ],
+            "callDecisions": [
+              "3"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "approval-always",
+      "agent": 1,
+      "events": [
+        {
+          "approvalRequested": {
+            "approvalId": "a",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "a",
+            "decision": 6
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "1",
+          "state": {
+            "running": false,
+            "approvals": [
+              "a"
+            ],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {
+              "a": 6
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [
+              "a"
+            ],
+            "callDecisions": [
+              "3"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "digest-ambiguous-calls",
+      "agent": 1,
+      "events": [
+        {
+          "approvalRequested": {
+            "approvalId": "a",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "a",
+            "decision": 1
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {
+              "a": 1
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [
+              "a"
+            ],
+            "callDecisions": [
+              "3"
+            ]
+          }
+        },
+        {
+          "through": "4",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {
+              "a": 1
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "digest-ambiguous-requests",
+      "agent": 1,
+      "events": [
+        {
+          "approvalRequested": {
+            "approvalId": "a",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "a",
+            "decision": 1
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalRequested": {
+            "approvalId": "b",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "b",
+            "decision": 2
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "observations": [
+        {
+          "through": "5",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {
+              "a": 1,
+              "b": 2
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "digest-missing-or-call-before-request",
+      "agent": 1,
+      "events": [
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalRequested": {
+            "approvalId": "a",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "a",
+            "decision": 1
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalRequested": {
+            "approvalId": "b",
+            "toolName": "Bash"
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "b",
+            "decision": 2
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash"
+          },
+          "seq": "6",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "observations": [
+        {
+          "through": "6",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {
+              "a": 1,
+              "b": 2
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "compaction-before-and-after",
+      "agent": 1,
+      "events": [
+        {
+          "tokenUsage": {
+            "lastTotalTokens": "850",
+            "contextWindow": "1000"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "settingsChanged": {
+            "compacted": true
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "tokenUsage": {
+            "lastTotalTokens": "200",
+            "contextWindow": "1000"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "2",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {
+              "2": [
+                85,
+                null
+              ]
+            },
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        },
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {
+              "2": [
+                85,
+                20
+              ]
+            },
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "compaction-unknown-and-consecutive",
+      "agent": 1,
+      "events": [
+        {
+          "settingsChanged": {
+            "compacted": true
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "settingsChanged": {
+            "compacted": true
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "tokenUsage": {
+            "lastTotalTokens": "12",
+            "contextWindow": "0"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {
+              "1": [
+                null,
+                null
+              ],
+              "2": [
+                null,
+                null
+              ]
+            },
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "model-settings-plan-and-terminal-change",
+      "agent": 2,
+      "events": [
+        {
+          "turnContext": {
+            "model": "claude-sonnet-4-5",
+            "permissionMode": "default"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "settingsChanged": {
+            "model": "sonnet",
+            "mode": 4
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnContext": {
+            "model": "claude-opus-4",
+            "permissionMode": "plan"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "planProposed": {
+            "text": "plan"
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnContext": {
+            "model": "claude-sonnet-4-5",
+            "permissionMode": "default"
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnContext": {
+            "model": "claude-opus-4",
+            "permissionMode": "default"
+          },
+          "seq": "6",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "observations": [
+        {
+          "through": "6",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [
+              "6"
+            ],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    }
+  ]
+}

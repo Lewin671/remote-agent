@@ -407,9 +407,6 @@ public func buildChat(
     let decisions = approvalDecisions(events, d: d)
     var turnTokens: Int64 = 0
     var lastTotal: Int64 = 0
-    var lastPct: Int?
-    // A compaction note waiting for the usage after it: its index and the percent before.
-    var compacted: (index: Int, before: Int?)?
     func flush() {
         switch run.count {
         case 0: break
@@ -542,14 +539,7 @@ public func buildChat(
         case .tokenUsage(let u):
             if lastTotal > 0 { turnTokens += max(0, u.totalTokens - lastTotal) }
             lastTotal = u.totalTokens
-            lastPct = u.contextWindow > 0 ? min(100, Int(Int32(truncatingIfNeeded: (u.lastTotalTokens &* 100) / u.contextWindow))) : nil
-            if let c = compacted {
-                if let before = c.before, let lastPct, case .note(var note) = out[c.index] {
-                    note.text = "上下文已压缩 · \(before)% → \(lastPct)%"
-                    out[c.index] = .note(note)
-                }
-                compacted = nil
-            }
+
         case .turnStarted: turnTokens = 0
         case .turnEnded(let t):
             flush()
@@ -562,7 +552,9 @@ public func buildChat(
             let by = other(e.originOrNil)
             let text: String?
             if c.compacted {
-                text = "上下文已压缩"
+                if let usage = d.compactions[e.seq], let before = usage.before, let after = usage.after {
+                    text = "上下文已压缩 · \(before)% → \(after)%"
+                } else { text = "上下文已压缩" }
             } else if !c.model.isEmpty {
                 text = (by.map { "\($0) 将模型切到 " } ?? "已切换到 ") + c.model + (c.effort.isEmpty ? "" : " · \(c.effort)")
             } else {
@@ -570,7 +562,6 @@ public func buildChat(
             }
             if let text {
                 flush()
-                if c.compacted { compacted = (out.count, lastPct) }
                 out.append(.note(.init(key: k, text: text)))
             }
         case .turnContext:

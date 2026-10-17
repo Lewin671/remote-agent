@@ -112,6 +112,11 @@ public struct ApprovalOutcome: Equatable, Sendable {
 
 /// What a session's events add up to. A value: one handed out never changes
 /// when more events are reduced.
+public struct Compaction: Equatable, Sendable {
+    public var before: Int?
+    public var after: Int?
+}
+
 public struct Derived: Equatable, Sendable {
     /// Pending approvals, in the order they were asked.
     public var approvals = OrderedMap<String, PBApprovalRequested>()
@@ -134,6 +139,7 @@ public struct Derived: Equatable, Sendable {
     /// when the session ended, count too.
     public var unsent = OrderedMap<String, UInt64>()
     public var running = false
+    public var compactions = [UInt64: Compaction]()
     public var usage: PBTokenUsage?
     public var plan: PBPlanProposed?
     /// Tools started and not yet completed in this turn, oldest first.
@@ -176,6 +182,7 @@ struct EventReducer: Sendable {
     private var unclaimed: UInt64?
     // A plan was proposed since entering plan mode: leaving it is the plan's
     // answer, however given, not a mode switch made in the terminal.
+    private var compacting: UInt64?
     private var planned = false
     private let claude: Bool
     // Starts a turn ended without a result, by call ID, for a result that comes later.
@@ -293,11 +300,18 @@ struct EventReducer: Sendable {
                 d.background.removeAll { $0.tool.seq == t.seq }
                 if wentToBackground(c) { d.background.append(BackgroundTool(tool: t, returned: true)) }
             }
-        case .tokenUsage(let u): d.usage = u
+        case .tokenUsage(let u):
+            d.usage = u
+            if let seq = compacting { d.compactions[seq]?.after = usagePercent(u) }
+            compacting = nil
         case .planProposed(let p):
             d.plan = p
             planned = true
         case .settingsChanged(let c):
+            if c.compacted {
+                d.compactions[e.seq] = Compaction(before: usagePercent(d.usage))
+                compacting = e.seq
+            }
             // The next context should show this model; the client names it
             // by slug or alias, the context by the CLI's own ID.
             if !c.model.isEmpty { expected = (c.model, c.effort) }
@@ -537,4 +551,9 @@ public func cancelOutcome(status: PBInputStatus?, canceledHere: Bool) -> CancelO
     case .submitted, .unconfirmed: return .written
     default: return .unknown
     }
+}
+
+private func usagePercent(_ u: PBTokenUsage?) -> Int? {
+    guard let u, u.contextWindow > 0 else { return nil }
+    return min(100, Int((u.lastTotalTokens * 100) / u.contextWindow))
 }

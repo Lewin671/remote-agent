@@ -542,6 +542,8 @@ data class Accepted(
     val stage: io.github.lewin671.remoteagent.proto.InputStage,
 )
 
+data class Compaction(val before: Int?, val after: Int? = null)
+
 class Derived(
     /** Pending approvals, in the order they were asked. */
     val approvals: LinkedHashMap<String, ApprovalRequested> = LinkedHashMap(),
@@ -567,6 +569,7 @@ class Derived(
     val unsent: LinkedHashMap<String, Long> = LinkedHashMap(),
     var running: Boolean = false,
     var usage: TokenUsage? = null,
+    val compactions: HashMap<Long, Compaction> = HashMap(),
     var plan: PlanProposed? = null,
     /** Tools started and not yet completed in this turn, oldest first. */
     val tools: MutableList<RunningTool> = mutableListOf(),
@@ -602,6 +605,7 @@ internal class EventReducer(agent: Agent) {
     private var unclaimed: Long? = null
     // A plan was proposed since entering plan mode: leaving it is the plan's
     // answer, however given, not a mode switch made in the terminal.
+    private var compacting: Long? = null
     private var planned = false
     private val claude = effectiveAgent(agent) == Agent.AGENT_CLAUDE
     // Starts a turn ended without a result, by call ID, for a result that comes later.
@@ -708,13 +712,21 @@ internal class EventReducer(agent: Agent) {
                         }
                     }
                 }
-                Event.KindCase.TOKEN_USAGE -> d.usage = e.tokenUsage
+                Event.KindCase.TOKEN_USAGE -> {
+                    d.usage = e.tokenUsage
+                    compacting?.let { seq -> d.compactions[seq]?.let { d.compactions[seq] = it.copy(after = usagePercent(e.tokenUsage)) } }
+                    compacting = null
+                }
                 Event.KindCase.PLAN_PROPOSED -> {
                     d.plan = e.planProposed
                     planned = true
                 }
                 Event.KindCase.SETTINGS_CHANGED -> {
                     val c = e.settingsChanged
+                    if (c.compacted) {
+                        d.compactions[e.seq] = Compaction(usagePercent(d.usage))
+                        compacting = e.seq
+                    }
                     // The next context should show this model; the client names it
                     // by slug or alias, the context by the CLI's own ID.
                     if (c.model.isNotEmpty()) expected = c.model to c.effort
@@ -791,7 +803,7 @@ internal class EventReducer(agent: Agent) {
         noResult = HashSet(d.noResult),
         typedLocally = HashSet(d.typedLocally),
         terminalChanges = HashMap(d.terminalChanges),
-        running = d.running, usage = d.usage, plan = d.plan,
+        running = d.running, usage = d.usage, plan = d.plan, compactions = HashMap(d.compactions),
     )
 }
 
@@ -1109,3 +1121,31 @@ fun contextText(tokens: Long): String? = when {
 
 /** The standard context window, which a Claude Code session can be held to. */
 const val STANDARD_WINDOW = 200_000L
+
+/** Context occupancy is unknown without a window; whole percentages match the web. */
+private fun usagePercent(u: TokenUsage?): Int? =
+    if (u == null || u.contextWindow <= 0) null else minOf(100, (u.lastTotalTokens * 100 / u.contextWindow).toInt())
+
+/** Unambiguous daemon digest associations over the complete observed history. */
+fun approvalCallIDs(events: List<Event>, d: Derived): Map<Long, String> {
+    val reqs = HashMap<Pair<String, String>, MutableList<Pair<String, Long>>>()
+    val calls = HashMap<Pair<String, String>, MutableList<Long>>()
+    for (e in events) when (e.kindCase) {
+        Event.KindCase.APPROVAL_REQUESTED -> {
+            val a = e.approvalRequested
+            if (a.approvalId in d.resolved && a.inputDigest.isNotEmpty())
+                reqs.getOrPut(a.toolName to a.inputDigest) { mutableListOf() } += a.approvalId to e.seq
+        }
+        Event.KindCase.TOOL_CALL -> {
+            val t = e.toolCall
+            if (t.inputDigest.isNotEmpty()) calls.getOrPut(t.itemType to t.inputDigest) { mutableListOf() } += e.seq
+        }
+        else -> {}
+    }
+    return buildMap {
+        for ((key, rs) in reqs) {
+            val cs = calls[key].orEmpty()
+            if (rs.size == 1 && cs.size == 1 && cs[0] > rs[0].second) put(cs[0], rs[0].first)
+        }
+    }
+}
