@@ -383,6 +383,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
                 $0.totalBytes = total
                 $0.maxChunkBytes = maxChunk
                 $0.state = done ? .complete : .receiving
+                $0.expiresMs = Int64.max
                 $0.imageID = done ? "img1" : ""
             }
         }
@@ -426,7 +427,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
 
     @Test func sendsEveryChunkAndCompletes() async throws {
         let d = FakeDaemon()
-        #expect(try await uploadImage(d, transferId: "t", data: png) == "img1")
+        #expect(try await uploadImage(d, transferId: "t", data: png) == UploadedImage(imageId: "img1", expiresMs: Int64.max))
         #expect(await d.stored == png)
         #expect(await d.puts == (png.count + 9) / 10)
     }
@@ -434,7 +435,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
     @Test func aLostReplyGoesOnFromWhatTheDaemonStored() async throws {
         let d = FakeDaemon()
         await d.lose()
-        #expect(try await uploadImage(d, transferId: "t", data: png) == "img1")
+        #expect(try await uploadImage(d, transferId: "t", data: png) == UploadedImage(imageId: "img1", expiresMs: Int64.max))
         #expect(await d.stored == png)
     }
 
@@ -442,7 +443,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
     @Test func aDaemonThatStoppedHalfwayGoesOnFromWhatItStored() async throws {
         let d = FakeDaemon()
         await d.stop()
-        #expect(try await uploadImage(d, transferId: "t", data: png) == "img1")
+        #expect(try await uploadImage(d, transferId: "t", data: png) == UploadedImage(imageId: "img1", expiresMs: Int64.max))
         #expect(await d.stored == png)
     }
 
@@ -458,7 +459,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
         let d = FakeDaemon(maxChunk: 0)
         var seen = [Int64]()
         // The daemon names no chunk size: the caller's is used.
-        #expect(try await uploadImage(d, transferId: "t", data: png, maxChunk: 40) { done, _ in seen.append(done) } == "img1")
+        #expect(try await uploadImage(d, transferId: "t", data: png, maxChunk: 40) { done, _ in seen.append(done) } == UploadedImage(imageId: "img1", expiresMs: Int64.max))
         #expect(seen == Array(stride(from: 0, to: Int64(png.count), by: 40)) + [Int64(png.count)])
 
         struct AlwaysLost: UploadChannel {
@@ -475,7 +476,8 @@ private let exifHeader = Data("Exif\0\0".utf8)
         // A daemon that completes without naming the image.
         struct NoId: UploadChannel {
             func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
-                .with { $0.state = .complete }
+                .with { $0.state = .complete
+            $0.expiresMs = Int64.max }
             }
             func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus { PBImageUploadStatus() }
             func status(transferId: String) async throws -> PBImageUploadStatus { PBImageUploadStatus() }

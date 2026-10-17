@@ -54,6 +54,7 @@ private final class FailureCount: @unchecked Sendable {
         i.state = .ready
         i.machineId = "mac"
         i.imageId = "img-\(id)"
+        i.expiresMs = Int64.max
         return i
     }
 
@@ -268,6 +269,7 @@ private final class FailureCount: @unchecked Sendable {
         #expect(i.startUpload(to: "vps"))
         #expect(i.transferId != second && i.machineId == "vps")
         i.imageId = "img-9"
+        i.expiresMs = Int64.max
         i.state = .ready
         #expect(d.ready(machineId: "vps") && d.ids(machineId: "vps") == ["img-9"])
         #expect(d.totalBytes == 3)

@@ -50,11 +50,14 @@ public final class PendingImage: Identifiable {
     public nonisolated let uri: String?
 
     public var processed: Processed?
+    public var needsProcessing = false
     public var state: State = .processing
 
     /// The machine it goes to (the latest asked for) and the image ID the daemon gave it there.
     public var machineId: String?
     public var imageId: String?
+    public var expiresMs: Int64 = 0
+    @ObservationIgnored public var refreshJob: Task<Void, Never>?
     public var transferId: String = newRequestId()
     /// What is preparing or uploading it now, to stop when that is overtaken.
     @ObservationIgnored public var job: Task<Void, Never>?
@@ -64,11 +67,15 @@ public final class PendingImage: Identifiable {
         self.uri = uri
     }
 
-    public func readyFor(_ machine: String) -> Bool { state == .ready && machineId == machine && imageId != nil }
+    public func readyFor(_ machine: String, now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> Bool {
+        !needsProcessing && state == .ready && machineId == machine && imageId != nil && expiresMs > now
+    }
 
     /// Lets go of the bytes and stops what works on it.
     public func release() {
         job?.cancel()
+        refreshJob?.cancel()
+        refreshJob = nil
         job = nil
         processed = nil
     }
@@ -77,14 +84,16 @@ public final class PendingImage: Identifiable {
     /// its way there already; true when an upload is to be started. An upload
     /// to another machine is dropped: the latest target wins, with a transfer
     /// of its own.
-    public func startUpload(to machineId: String) -> Bool {
-        if !needsUpload(self, machineId: machineId) { return false }
+    public func startUpload(to machineId: String, now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> Bool {
+        if !needsUpload(self, machineId: machineId, now: now) { return false }
         job?.cancel()
-        if self.machineId != machineId {
+        refreshJob?.cancel()
+        if self.machineId != machineId || (imageId != nil && expiresMs <= now) {
             transferId = newRequestId()
             imageId = nil
         }
         self.machineId = machineId
+        expiresMs = 0
         state = .uploading(progress: 0)
         return true
     }
@@ -94,10 +103,10 @@ public final class PendingImage: Identifiable {
 /// or already on its way there. An upload to another machine does not
 /// count: the latest target wins and the old upload is dropped.
 @MainActor
-public func needsUpload(_ img: PendingImage, machineId: String) -> Bool {
+public func needsUpload(_ img: PendingImage, machineId: String, now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> Bool {
     var uploadingThere = false
     if case .uploading = img.state { uploadingThere = img.machineId == machineId }
-    return img.processed != nil && !img.readyFor(machineId) && !uploadingThere
+    return !img.needsProcessing && img.processed != nil && !img.readyFor(machineId, now: now) && !uploadingThere
 }
 
 /// Whether a machine takes images, and if not, why, in words.
@@ -123,6 +132,7 @@ struct StoredImage: Sendable {
     var id: String
     var uri: String?
     var processed: Processed?
+    var needsProcessing = false
 }
 
 private func utf8(_ s: String) -> Data { Data(s.utf8) }
@@ -133,7 +143,7 @@ func saveImages(_ files: any SealedFiles, folder: String, images: [StoredImage],
     for img in images {
         guard let p = img.processed else { continue }
         try files.put(folder: folder, name: img.id + ".img", data: p.bytes)
-        let meta = ["\(p.format.rawValue)", "\(p.width)", "\(p.height)", original ? "1" : "0", img.uri ?? "", p.note].joined(separator: "\n")
+        let meta = ["\(p.format.rawValue)", "\(p.width)", "\(p.height)", (img.needsProcessing ? !original : original) ? "1" : "0", img.uri ?? "", p.note].joined(separator: "\n")
         try files.put(folder: folder, name: img.id + ".meta", data: utf8(meta))
     }
 }
@@ -159,16 +169,17 @@ func loadStored(_ files: any SealedFiles, folder: String) throws -> (images: [St
         out.append(
             StoredImage(
                 id: id, uri: meta[4].isEmpty ? nil : meta[4],
-                processed: Processed(bytes: bytes, format: format, width: width, height: height, note: meta[5])))
+                processed: Processed(bytes: bytes, format: format, width: width, height: height, note: meta[5]), needsProcessing: (meta[3] == "1") != original))
     }
     return (out, original)
 }
 
 @MainActor
-private func revive(_ stored: [StoredImage]) -> [PendingImage] {
+private func reviveStored(_ stored: [StoredImage]) -> [PendingImage] {
     stored.map { s in
         let img = PendingImage(id: s.id, uri: s.uri)
         img.processed = s.processed
+        img.needsProcessing = s.needsProcessing
         // Uploads are the daemon's for a while only: send them again.
         img.state = .failed(error: "需要重新传到电脑")
         return img
@@ -194,6 +205,7 @@ public final class ImageDraft {
     @ObservationIgnored private var waiting: [(ids: [String], then: @MainActor () -> Void)] = []
 
     public var images: [PendingImage] = []
+    public var restoring = false
     public private(set) var original = false
 
     /// Said once after a pick or a put back: how many did not fit.
@@ -218,6 +230,7 @@ public final class ImageDraft {
 
     /// Adds images just picked, still to be prepared, and keeps their order.
     public func append(_ picked: [PendingImage]) {
+        restoring = false
         images.append(contentsOf: picked)
         persist()
     }
@@ -227,7 +240,7 @@ public final class ImageDraft {
     public func persist() {
         let now = images
         let fresh = now.filter { saved[$0.id] == nil && !stale.contains($0.id) && $0.processed != nil }
-        let write = fresh.map { StoredImage(id: $0.id, uri: $0.uri, processed: $0.processed) }
+        let write = fresh.map { StoredImage(id: $0.id, uri: $0.uri, processed: $0.processed, needsProcessing: $0.needsProcessing) }
         let ids = now.map(\.id)
         // Taken as written now; put back below if the write fails.
         lastSave += 1
@@ -302,12 +315,15 @@ public final class ImageDraft {
 
     /// An image is being prepared again: its bytes, in memory and on disk, are the old ones until `prepared`.
     public func invalidate(_ img: PendingImage) {
+        img.needsProcessing = true
+        img.refreshJob?.cancel()
         saved[img.id] = nil
         stale.insert(img.id)
     }
 
     /// An image has the bytes it was prepared for: they are saved.
     public func prepared(_ img: PendingImage) {
+        img.needsProcessing = false
         stale.remove(img.id)
         persist()
     }
@@ -316,6 +332,7 @@ public final class ImageDraft {
     public func setOriginal(_ v: Bool) -> Bool {
         if v == original { return false }
         original = v
+        for img in images { invalidate(img) }
         persist()
         return true
     }
@@ -344,7 +361,7 @@ public final class ImageDraft {
 
     public func ready(machineId: String?) -> Bool {
         guard let machineId else { return false }
-        return !images.isEmpty && images.allSatisfy { $0.readyFor(machineId) }
+        return !restoring && !images.isEmpty && images.allSatisfy { $0.readyFor(machineId) }
     }
 
     public func ids(machineId: String) -> [String] { images.compactMap { $0.readyFor(machineId) ? $0.imageId : nil } }
@@ -352,8 +369,8 @@ public final class ImageDraft {
     public var totalBytes: Int64 { images.reduce(0) { $0 + Int64($1.processed?.bytes.count ?? 0) } }
 
     /// The images to send to `machineId` now, e.g. after the new-session card changed machines: those prepared and not there.
-    public func toSend(machineId: String) -> [PendingImage] {
-        images.filter { $0.processed != nil && !$0.readyFor(machineId) && $0.state != .processing }
+    public func toSend(machineId: String, now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> [PendingImage] {
+        images.filter { !$0.needsProcessing && $0.processed != nil && !$0.readyFor(machineId, now: now) && $0.state != .processing }
     }
 
     /// Takes `taken` out of the draft once a message carries them; images
@@ -361,7 +378,7 @@ public final class ImageDraft {
     /// The caller keeps the images until the CLI has them.
     public func detach(_ taken: [PendingImage]) {
         images.removeAll { img in taken.contains { $0 === img } }
-        for img in taken { forget(img) }
+        for img in taken { img.refreshJob?.cancel(); forget(img) }
         if images.isEmpty { original = false }
         persist()
         settle()
@@ -373,12 +390,16 @@ public final class ImageDraft {
     /// `wereOriginal` nil keeps what the draft has.
     @discardableResult
     public func attach(_ back: [PendingImage], max: Int, wereOriginal: Bool? = nil) -> Bool {
+        guard !restoring else { notice = "正在恢复待发图片，请稍后再放回"; return false }
         if images.count + back.count > max {
             notice = "输入框里已有 \(images.count) 张图，放回这 \(back.count) 张会超过 \(max) 张。先移除一些再放回"
             return false
         }
         if images.isEmpty { original = wereOriginal ?? original }
         for img in back {
+            if let wereOriginal, wereOriginal != original { img.needsProcessing = true }
+            img.expiresMs = 0
+            img.refreshJob?.cancel()
             img.imageId = nil
             img.machineId = nil
             img.state = .failed(error: "需要重新传到电脑")
@@ -400,9 +421,21 @@ public final class ImageDraft {
 
     /// Images kept from before the process was reclaimed, in the order they were picked; they go to the machine again.
     public func restore() throws {
-        let (list, orig) = try loadStored(files, folder: key)
+        apply(try loadStored(files, folder: key))
+    }
+
+    /// Reads and decrypts off the main actor; edits made while loading win.
+    public func restoreAsync() async throws {
+        let (files, key) = (files, key)
+        let stored = try await Task.detached { try loadStored(files, folder: key) }.value
+        guard !Task.isCancelled, images.isEmpty, lastSave == 0 else { return }
+        apply(stored)
+    }
+
+    private func apply(_ stored: (images: [StoredImage], original: Bool)) {
+        let (list, orig) = stored
         original = orig
-        images.append(contentsOf: revive(list))
+        images.append(contentsOf: reviveStored(list))
         for img in list {
             saved[img.id] = lastSave
             landed.insert(img.id)
@@ -429,6 +462,8 @@ public final class Outgoing: Identifiable {
 
     public var state = State.sending
     public var error = ""
+    public var missingImages = false
+    public var canPutBack: Bool { state == .failed && !images.isEmpty }
 
     public nonisolated var id: String { requestId }
 
@@ -448,7 +483,7 @@ public final class Outgoing: Identifiable {
     public var record: OutgoingRecord {
         OutgoingRecord(
             requestId: requestId, text: text, imageIds: imageIds,
-            images: images.map { StoredImage(id: $0.id, uri: $0.uri, processed: $0.processed) }, original: original, mode: mode)
+            images: images.map { StoredImage(id: $0.id, uri: $0.uri, processed: $0.processed, needsProcessing: $0.needsProcessing) }, original: original, mode: mode)
     }
 }
 
@@ -526,9 +561,8 @@ public struct OutgoingRecords: Sendable {
     }
 
     /// The messages kept for a session, as a run that ended left them: whether they reached the computer is not known.
-    @MainActor
-    public func load(sid: String) throws -> [Outgoing] {
-        try index().compactMap { line -> Outgoing? in
+    public func loadRecords(sid: String) throws -> [OutgoingRecord] {
+        try index().compactMap { line -> OutgoingRecord? in
             let parts = line.split(ascii: 0x09)
             guard parts.count == 2, parts[0] == sid else { return nil }
             let f = folder(sid, parts[1])
@@ -536,12 +570,19 @@ public struct OutgoingRecords: Sendable {
             let ids = try files.get(folder: f, name: "ids").map { text($0).split(ascii: 0x0A).filter { !$0.isEmpty } } ?? []
             let (images, original) = try loadStored(files, folder: f)
             let mode = try files.get(folder: f, name: "mode").flatMap { modeNamed(text($0)) } ?? .steer
-            let o = Outgoing(requestId: parts[1], text: text(body), imageIds: ids, images: revive(images), original: original, mode: mode)
-            // From a run that ended: whether it reached the computer is not known.
-            o.state = .unknown
-            o.error = "App 重启过，不确定这条有没有送到"
-            return o
+            return OutgoingRecord(requestId: parts[1], text: text(body), imageIds: ids, images: images, original: original, mode: mode)
         }
+    }
+
+    @MainActor
+    public func load(sid: String) throws -> [Outgoing] { try loadRecords(sid: sid).map(Self.revive) }
+
+    @MainActor
+    public static func revive(_ r: OutgoingRecord) -> Outgoing {
+        let o = Outgoing(requestId: r.requestId, text: r.text, imageIds: r.imageIds, images: reviveStored(r.images), original: r.original, mode: r.mode)
+        o.state = .unknown
+        o.error = "App 重启过，不确定这条有没有送到"
+        return o
     }
 
     public func remove(sid: String, requestId: String) throws {

@@ -13,6 +13,8 @@ public final class ImageUploads {
     /// Reads what was picked at `uri` and prepares it, compressed or as an original. Runs off the main actor.
     public typealias Prepare = @Sendable (_ uri: String, _ original: Bool) async throws -> Processed
 
+    private let clock: @MainActor () -> Int64
+    private let sleep: @Sendable (Int64) async throws -> Void
     private let prepare: Prepare
     private let channel: @Sendable (_ machineId: String) -> any UploadChannel
     /// Whether what was picked at a URI can still be read: not after the run that picked it.
@@ -22,8 +24,12 @@ public final class ImageUploads {
 
     public init(
         prepare: @escaping Prepare, channel: @escaping @Sendable (_ machineId: String) -> any UploadChannel,
-        readable: @escaping @MainActor (_ uri: String) -> Bool = { _ in true }
+        readable: @escaping @MainActor (_ uri: String) -> Bool = { _ in true },
+        clock: @escaping @MainActor () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
+        sleep: @escaping @Sendable (Int64) async throws -> Void = { try await Task.sleep(for: .milliseconds($0)) }
     ) {
+        self.clock = clock
+        self.sleep = sleep
         self.prepare = prepare
         self.channel = channel
         self.readable = readable
@@ -73,13 +79,13 @@ public final class ImageUploads {
     /// Sends the image to `machineId` unless it is there or on its way there.
     /// An upload to another machine is dropped: the latest target wins.
     public func upload(_ img: PendingImage, machineId: String) {
-        guard let p = img.processed, img.startUpload(to: machineId) else { return }
+        guard let p = img.processed, img.startUpload(to: machineId, now: clock()) else { return }
         let ch = channel(machineId)
         img.job = Task {
             do {
-                let id: String
+                let uploaded: UploadedImage
                 do {
-                    id = try await uploadImage(ch, transferId: img.transferId, data: p.bytes) { done, total in
+                    uploaded = try await uploadImage(ch, transferId: img.transferId, data: p.bytes) { done, total in
                         if !Task.isCancelled, img.machineId == machineId {
                             img.state = .uploading(progress: total > 0 ? Float(done) / Float(total) : 0)
                         }
@@ -87,12 +93,14 @@ public final class ImageUploads {
                 } catch let e as any UploadFailure where e.code == "not_found" && !Task.isCancelled {
                     // The transfer expired on the daemon: start a new one.
                     img.transferId = newRequestId()
-                    id = try await uploadImage(ch, transferId: img.transferId, data: p.bytes)
+                    uploaded = try await uploadImage(ch, transferId: img.transferId, data: p.bytes)
                 }
                 if Task.isCancelled { return }
                 if img.machineId == machineId {
-                    img.imageId = id
+                    img.imageId = uploaded.imageId
+                    img.expiresMs = uploaded.expiresMs
                     img.state = .ready
+                    scheduleRefresh(img, machineId: machineId, expiresMs: uploaded.expiresMs)
                 }
             } catch {
                 if Task.isCancelled || error is CancellationError { return }
@@ -101,14 +109,26 @@ public final class ImageUploads {
         }
     }
 
+    private func scheduleRefresh(_ img: PendingImage, machineId: String, expiresMs: Int64) {
+        guard expiresMs > clock() else { return }
+        let delay = max(1, expiresMs - clock())
+        let sleep = self.sleep
+        img.refreshJob?.cancel()
+        img.refreshJob = Task { [weak self, weak img] in
+            do { try await sleep(delay) } catch { return }
+            guard let self, let img, !Task.isCancelled else { return }
+            self.upload(img, machineId: machineId)
+        }
+    }
+
     /// Makes sure every image is on `machineId`, e.g. after the new-session card changed machines.
     public func sendAll(_ draft: ImageDraft, machineId: String) {
-        for img in draft.toSend(machineId: machineId) { upload(img, machineId: machineId) }
+        for img in draft.toSend(machineId: machineId, now: clock()) { upload(img, machineId: machineId) }
     }
 
     /// What a tap on a failed image does: prepares it if that is what failed, sends it otherwise.
     public func retry(_ draft: ImageDraft, _ img: PendingImage, machine: @escaping @MainActor () -> String?) {
-        if img.processed == nil, img.uri != nil {
+        if img.needsProcessing || img.processed == nil {
             process(draft, img, machine: machine)
         } else if let m = machine() {
             upload(img, machineId: m)
@@ -117,12 +137,12 @@ public final class ImageUploads {
 
     /// Whether 原图 can still change what a draft sends: some image of it can be read again.
     public func canReprepare(_ draft: ImageDraft) -> Bool {
-        draft.images.contains { img in img.uri.map(readable) ?? false }
+        !draft.images.isEmpty && draft.images.allSatisfy { img in img.uri.map(readable) ?? false }
     }
 
     /// Originals or compressed, for this message: every image that can still be read is prepared again from what was picked.
     public func setOriginal(_ draft: ImageDraft, _ v: Bool, machine: @escaping @MainActor () -> String?) {
-        guard draft.setOriginal(v) else { return }
+        guard canReprepare(draft), draft.setOriginal(v) else { return }
         for img in draft.images {
             if let uri = img.uri, readable(uri) { process(draft, img, machine: machine) }
         }

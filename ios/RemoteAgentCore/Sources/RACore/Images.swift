@@ -433,8 +433,13 @@ public struct UploadError: UploadFailure, LocalizedError, Equatable {
     public var errorDescription: String? { message }
 }
 
-/// Sends one image to a machine in chunks and returns the image ID to send
-/// with a message. Every step can be repeated: beginning again returns the
+/// A completed upload and the deadline after which its image ID needs renewing.
+public struct UploadedImage: Equatable, Sendable {
+    public var imageId: String
+    public var expiresMs: Int64
+}
+
+/// Sends one image to a machine in chunks and returns its image ID and deadline. Every step can be repeated: beginning again returns the
 /// transfer's state, a chunk is resent from where the daemon has durably
 /// stored bytes, and completing again returns the same ID. When a step's
 /// outcome is unknown, the daemon's status says where to go on; a definite
@@ -448,7 +453,7 @@ public func uploadImage(
     maxChunk: Int = defaultChunkBytes,
     retries: Int = 3,
     onProgress: (Int64, Int64) -> Void = { _, _ in }
-) async throws -> String {
+) async throws -> UploadedImage {
     guard let format = detectFormat(data) else { throw UserError("不支持的图片格式") }
     let bytes = Data(data)
     let total = Int64(bytes.count)
@@ -495,7 +500,7 @@ public func uploadImage(
         }
     }
     if st.imageID.isEmpty { throw UploadError(code: "internal", message: "电脑没有给出图片 ID") }
-    return st.imageID
+    return UploadedImage(imageId: st.imageID, expiresMs: st.expiresMs)
 }
 
 // --- images in a session ---

@@ -19,6 +19,8 @@ private actor FakeMachines {
     private var forgotten = 0
     private var held: [CheckedContinuation<Void, Never>] = []
     private var holding = false
+    private var expiry = Int64.max
+    func expires(_ value: Int64) { expiry = value }
 
     func fail(_ code: String, _ message: String) { failing = Refused(code: code, message: message) }
     func mend() { failing = nil }
@@ -60,6 +62,7 @@ private actor FakeMachines {
         .with {
             $0.transferID = id
             $0.state = .complete
+            $0.expiresMs = expiry
             $0.imageID = "\(machine)-img-\(id.prefix(6))"
         }
     }
@@ -258,25 +261,71 @@ private actor Gate {
         #expect(d.ready(machineId: "mac"))
     }
 
-    @Test func originalPreparesAgainOnlyWhatCanStillBeRead() async throws {
-        // What was picked in this run can be read again; what came back from disk cannot.
+    @Test func changingModeRequiresEverySourceSoOldBytesAreNeverSentAsOriginals() async {
         let u = uploads(readable: { $0 != "picked:old" })
         let d = draft()
         let added = u.add(d, uris: ["picked:old", "picked:new"], machine: { "mac" })
         for img in added { await settled(img) }
+        #expect(!u.canReprepare(d))
+        u.setOriginal(d, true, machine: { "mac" })
+        #expect(!d.original)
+        #expect(sources.count("picked:new") == 1)
+        d.remove(added[0])
         #expect(u.canReprepare(d))
         u.setOriginal(d, true, machine: { "mac" })
-        #expect(d.original)
-        #expect(added[0].state == .ready && added[1].state == .processing)
-        for img in added { await settled(img) }
-        #expect(added[0].processed?.note == "" && added[1].processed?.note == "原")
-        #expect(sources.count("picked:old") == 1 && sources.count("picked:new") == 2)
-        #expect(d.ready(machineId: "mac"))
-        // The same again changes nothing.
+        await added[1].job?.value
+        await added[1].job?.value
+        #expect(d.original && added[1].processed?.note == "原" && added[1].readyFor("mac"))
+    }
+
+    @Test func failedModePreparationRetriesTheSourceAndNeverUploadsOldBytes() async {
+        let (u, d) = (uploads(), draft())
+        let img = u.add(d, uris: ["picked:a"], machine: { "mac" })[0]
+        await img.job?.value
+        await img.job?.value
+        let old = img.processed
+        sources.breakIt("picked:a")
         u.setOriginal(d, true, machine: { "mac" })
-        #expect(sources.count("picked:new") == 2)
-        d.remove(added[1])
-        #expect(!u.canReprepare(d))
+        await img.job?.value
+        #expect(img.processed == old && img.needsProcessing)
+        u.sendAll(d, machineId: "vps")
+        #expect(await machines.transfers("vps").isEmpty)
+        u.retry(d, img, machine: { "mac" })
+        await img.job?.value
+        #expect(sources.count("picked:a") == 3)
+        #expect(await machines.transfers("mac").count == 1)
+        sources.mend("picked:a")
+        u.retry(d, img, machine: { "mac" })
+        await img.job?.value
+        await img.job?.value
+        #expect(!img.needsProcessing && img.processed?.note == "原" && img.readyFor("mac"))
+    }
+
+    @Test func expiryRenewsTheTransferAtTheExactDeadlineAndDetachingCancelsTheTimer() async {
+        let gate = Gate()
+        let machines = machines
+        var now: Int64 = 1000
+        await machines.expires(1100)
+        let u = ImageUploads(
+            prepare: { _, _ in Processed(bytes: FakeSources.png, format: .png, width: 1, height: 1) },
+            channel: { FakeChannel(machines: machines, machine: $0) }, clock: { now }, sleep: { _ in await gate.wait() })
+        let d = draft()
+        let img = u.add(d, uris: ["picked:a"], machine: { "mac" })[0]
+        await img.job?.value
+        await img.job?.value
+        let transfer = img.transferId
+        #expect(img.expiresMs == 1100 && img.readyFor("mac", now: 1099))
+        #expect(!img.readyFor("mac", now: 1100))
+        now = 1100
+        await machines.expires(1200)
+        let timer = img.refreshJob
+        await gate.letThrough()
+        await timer?.value
+        await img.job?.value
+        #expect(img.transferId != transfer && img.expiresMs == 1200)
+        #expect(await machines.transfers("mac").count == 2)
+        d.detach([img])
+        #expect(img.refreshJob?.isCancelled == true)
     }
 
     @Test func anImageStillBeingPreparedAgainIsNotTakenForSaved() async throws {
@@ -317,5 +366,31 @@ private actor Gate {
         try? await Task.sleep(nanoseconds: 30_000_000)
         #expect(d.images.isEmpty && img.imageId == nil && img.processed == nil)
         #expect(img.state == .uploading(progress: 0))
+    }
+}
+
+extension ImageSendingTests {
+    @Test func aRestoredDraftKeepsOldModeBytesForRecoveryAndDoesNotUploadThem() async throws {
+        let (u, first) = (uploads(), draft())
+        let img = u.add(first, uris: ["picked:a"], machine: { "mac" })[0]
+        await img.job?.value
+        await img.job?.value
+        sources.breakIt("picked:a")
+        u.setOriginal(first, true, machine: { "mac" })
+        await img.job?.value
+        let restored = draft()
+        try await restored.restoreAsync()
+        let back = try #require(restored.images.first)
+        #expect(restored.original && back.needsProcessing && back.processed?.note == "")
+        u.sendAll(restored, machineId: "vps")
+        #expect(await machines.transfers("vps").isEmpty)
+        sources.mend("picked:a")
+        u.retry(restored, back, machine: { "vps" })
+        await back.job?.value
+        await back.job?.value
+        #expect(back.processed?.note == "原" && back.readyFor("vps"))
+        let again = draft()
+        try await again.restoreAsync()
+        #expect(again.original && again.images.first?.needsProcessing == false && again.images.first?.processed?.note == "原")
     }
 }
