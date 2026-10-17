@@ -146,7 +146,8 @@ type Source interface {
 // Parser turns transcript lines into unified events.
 type Parser interface {
 	// Parse converts one line into zero or more events without seq and
-	// session ID.
+	// session ID. On error it must leave pending state from earlier valid
+	// records unchanged; callers may skip the bad record and continue.
 	Parse(line []byte) ([]*pb.Event, error)
 	// Replay feeds an event logged earlier, so that a parser created after
 	// a restart knows what it needs about the past.

@@ -497,27 +497,16 @@ func (s *session) readBatch() (more, ok bool) {
 			evs, err = s.parser.Parse(l.Data)
 		}
 		if err != nil {
-			// Parsing may have changed state before returning an error. Rebuild
-			// from committed events before proceeding; never use partial output.
-			path, off := s.log.Checkpoint()
-			if path != r.Path {
-				off = 0
-			}
-			diagnosticErr := s.noteParseFailure(r.Path, l.Start, l.End, l.Data, err)
-			p := s.ag.NewParser()
-			replayErr := s.log.Each(p.Replay)
-			if replayErr == nil && off > 0 {
-				replayErr = p.Restore(r.Path, off)
-			}
-			if diagnosticErr != nil || replayErr != nil {
+			// Parser errors are nonmutating. Keep pending state belonging to
+			// earlier valid records (such as images not emitted yet), rather
+			// than replacing it with an event-log projection that lacks it.
+			if diagnosticErr := s.noteParseFailure(r.Path, l.Start, l.End, l.Data, err); diagnosticErr != nil {
 				s.mu.Lock()
-				s.reader = tail.NewReader(r.Path, off)
-				s.parserReplayPending = true
-				s.parserReplayPath, s.parserReplayOffset = r.Path, off
+				s.reader = tail.NewReader(r.Path, l.Start)
 				s.mu.Unlock()
 				return false, false
 			}
-			s.parser, evs = p, nil
+			evs = nil
 		}
 		found := s.parser.Images()
 		for _, f := range found {

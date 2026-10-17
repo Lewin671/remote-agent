@@ -235,8 +235,6 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 		}
 		return one(m.TurnID, &pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}), nil
 	case "task_complete":
-		flushed := append(p.flushView(), p.runningCells()...)
-		p.endCalls()
 		var m struct {
 			TurnID     string `json:"turn_id"`
 			DurationMS int64  `json:"duration_ms"`
@@ -244,12 +242,12 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 		if err := json.Unmarshal(raw, &m); err != nil {
 			return nil, err
 		}
+		flushed := append(p.flushView(), p.runningCells()...)
+		p.endCalls()
 		return append(flushed, one(m.TurnID, &pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{
 			Outcome: pb.TurnOutcome_TURN_OUTCOME_COMPLETED, DurationMs: m.DurationMS,
 		}}})...), nil
 	case "turn_aborted":
-		flushed := append(p.flushView(), p.runningCells()...)
-		p.endCalls()
 		var m struct {
 			TurnID     string `json:"turn_id"`
 			Reason     string `json:"reason"`
@@ -258,6 +256,8 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 		if err := json.Unmarshal(raw, &m); err != nil {
 			return nil, err
 		}
+		flushed := append(p.flushView(), p.runningCells()...)
+		p.endCalls()
 		return append(flushed, one(m.TurnID, &pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{
 			Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED, Reason: m.Reason, DurationMs: m.DurationMS,
 		}}})...), nil

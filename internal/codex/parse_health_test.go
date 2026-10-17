@@ -20,3 +20,22 @@ func TestRecordClassification(t *testing.T) {
 		}
 	}
 }
+
+func TestMalformedTurnEndDoesNotConsumePendingView(t *testing.T) {
+	for _, kind := range []string{"task_complete", "turn_aborted"} {
+		t.Run(kind, func(t *testing.T) {
+			p := NewParser()
+			_, err := p.Parse([]byte(`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t","item":{"type":"ImageView","id":"view","path":"/tmp/pending.png"}}}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = p.Parse([]byte(`{"type":"event_msg","payload":{"type":"` + kind + `","duration_ms":"bad"}}`)); err == nil {
+				t.Fatal("invalid duration accepted")
+			}
+			evs, err := p.Parse([]byte(`{"type":"event_msg","payload":{"type":"task_complete","turn_id":"t"}}`))
+			if err != nil || len(evs) != 2 || evs[0].GetToolCall().GetCallId() != "view" || evs[1].GetTurnEnded() == nil {
+				t.Fatalf("earlier valid pending view lost: %v %v", evs, err)
+			}
+		})
+	}
+}
