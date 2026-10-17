@@ -143,3 +143,18 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.meta, color = p.muted, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
     }
 }
+
+/** Upload again when an unused image expires, including after the page returns from the background. */
+@Composable
+internal fun RefreshDraftUploads(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?) {
+    val deadlines = draft.images.map { it.expiresMs }
+    LaunchedEffect(draft, machineId, blocked, deadlines, draft.images.size) {
+        if (machineId == null || blocked != null) return@LaunchedEffect
+        draft.sendAllTo(remote, machineId)
+        val next = draft.images.filter { it.readyFor(machineId) }.minOfOrNull { it.expiresMs }
+        if (next != null) {
+            kotlinx.coroutines.delay((next - System.currentTimeMillis()).coerceAtLeast(1))
+            draft.sendAllTo(remote, machineId)
+        }
+    }
+}

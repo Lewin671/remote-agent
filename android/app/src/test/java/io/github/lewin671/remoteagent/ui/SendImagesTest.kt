@@ -13,6 +13,69 @@ import org.junit.Test
 
 class SendImagesTest {
     @Test
+    fun anImageExpiringWhileItsRecordIsSavedDoesNotSendOrDetach() = kotlinx.coroutines.runBlocking {
+        val image = PendingImage("picked", null).apply {
+            processed = Processed(byteArrayOf(1), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
+            machineId = "mac"
+            uploaded(io.github.lewin671.remoteagent.core.UploadedImage("uploaded", Long.MAX_VALUE))
+        }
+        val disk = MemoryFiles()
+        val records = OutgoingRecords(disk)
+        val remote = throwingRemote()
+        val done = kotlinx.coroutines.CompletableDeferred<Result<Unit>>()
+        try {
+            Outbox.sendWithImages(this, remote, "expires-during-save", "保留文字", listOf("uploaded"), listOf(image), false,
+                store = { sid, o, orig -> records.save(sid, o, orig); image.expiresMs = 0 },
+                discard = records::remove,
+            ) {
+                assertTrue("expired uploads must fail before detaching or sending", it.isFailure)
+                done.complete(it)
+            }
+            assertTrue(done.await().isFailure)
+            assertTrue(Outbox.of("expires-during-save").isEmpty())
+            assertTrue(records.load("expires-during-save").isEmpty())
+            assertNotNull(image.processed)
+            assertTrue(needsUpload(image, "mac"))
+        } finally { remote.close() }
+    }
+
+    @Test
+    fun missingImagesOfferRecoveryWithTextAndOriginalBytes() = kotlinx.coroutines.runBlocking {
+        val image = PendingImage("picked", null).apply {
+            processed = Processed(byteArrayOf(1, 2), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
+        }
+        val outgoing = Outgoing("same-request", "保留文字", listOf("expired"), listOf(image), original = true)
+        outgoing.deliver { throw io.github.lewin671.remoteagent.core.CommandException("not_found", "image expired is not on this machine; upload it again", fromDaemon = true) }
+        assertEquals(Outgoing.State.FAILED, outgoing.state)
+        assertTrue(outgoing.missingImages)
+        assertTrue(outgoing.canPutBack)
+        assertTrue(outgoing.error.contains("文字和图片都会保留"))
+        val draft = ImageDraft("session:recover", MemoryFiles())
+        assertTrue(draft.attach(outgoing.images, 6, outgoing.original))
+        assertSame(image, draft.images.single())
+        assertTrue(draft.original)
+        assertEquals("保留文字", outgoing.text)
+        assertTrue(needsUpload(image, "mac"))
+    }
+
+    @Test
+    fun unknownMessagesRetryTheSameRequestAndImagesWithoutOfferingANewSend() = kotlinx.coroutines.runBlocking {
+        val outgoing = Outgoing("same-request", "看图", listOf("original-id"), listOf(PendingImage("picked", null)))
+        val requests = mutableListOf<io.github.lewin671.remoteagent.proto.SendRequest>()
+        outgoing.deliver { requests += it; throw io.github.lewin671.remoteagent.core.CommandException(io.github.lewin671.remoteagent.core.CommandException.UNKNOWN, "reply lost") }
+        assertEquals(Outgoing.State.UNKNOWN, outgoing.state)
+        assertFalse(outgoing.canPutBack)
+        outgoing.deliver { requests += it; throw io.github.lewin671.remoteagent.core.CommandException("unavailable", "offline") }
+        assertEquals(Outgoing.State.UNKNOWN, outgoing.state)
+        assertFalse(outgoing.canPutBack)
+        outgoing.deliver { requests += it }
+        assertEquals(Outgoing.State.SENT, outgoing.state)
+        assertEquals(listOf(requests.first(), requests.first(), requests.first()), requests)
+        assertEquals("same-request", requests.last().requestId)
+        assertEquals(listOf("original-id"), requests.last().imageIdsList)
+    }
+
+    @Test
     fun aSaveThatFinishesAfterLogoutDoesNotSendOrCallTheOldPage() = kotlinx.coroutines.runBlocking {
         val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
         val release = java.util.concurrent.CountDownLatch(1)

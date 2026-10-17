@@ -205,7 +205,7 @@ class UploadTest {
         private fun st() = io.github.lewin671.remoteagent.proto.ImageUploadStatus.newBuilder().setTransferId("t").setPersistedBytes(stored.size.toLong()).setTotalBytes(total)
             .setMaxChunkBytes(maxChunk)
             .setState(if (done) io.github.lewin671.remoteagent.proto.ImageUploadState.IMAGE_UPLOAD_STATE_COMPLETE else io.github.lewin671.remoteagent.proto.ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING)
-            .setImageId(if (done) "img1" else "").build()
+            .setImageId(if (done) "img1" else "").setExpiresMs(123456).build()
         override suspend fun begin(transferId: String, format: ImageFormat, total: Long, sha256: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus {
             this.total = total; sha = sha256; return st()
         }
@@ -236,7 +236,7 @@ class UploadTest {
     @Test
     fun sendsEveryChunkAndCompletes() = kotlinx.coroutines.runBlocking {
         val d = FakeDaemon()
-        assertEquals("img1", uploadImage(d, "t", png))
+        assertEquals(UploadedImage("img1", 123456), uploadImage(d, "t", png))
         assertArrayEquals(png, d.stored)
         assertEquals((png.size + 9) / 10, d.puts)
     }
@@ -245,7 +245,7 @@ class UploadTest {
     fun aLostReplyGoesOnFromWhatTheDaemonStored() = kotlinx.coroutines.runBlocking {
         val d = FakeDaemon()
         d.failNextPutAfterStoring = true
-        assertEquals("img1", uploadImage(d, "t", png))
+        assertEquals(UploadedImage("img1", 123456), uploadImage(d, "t", png))
         assertArrayEquals(png, d.stored)
     }
 

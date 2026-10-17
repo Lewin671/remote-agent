@@ -59,10 +59,19 @@ class PendingImage(val id: String, val uri: String?) {
     /** The machine it goes to (the latest asked for) and the image ID the daemon gave it there. */
     var machineId: String? = null
     var imageId: String? = null
+    var expiresMs by mutableStateOf(0L)
+        internal set
     var transferId: String = newRequestId()
     internal var job: Job? = null
 
-    fun readyFor(machine: String) = !needsProcessing && state == State.Ready && machineId == machine && imageId != null
+    fun readyFor(machine: String, now: Long = System.currentTimeMillis()) =
+        !needsProcessing && state == State.Ready && machineId == machine && imageId != null && expiresMs > now
+
+    internal fun uploaded(result: io.github.lewin671.remoteagent.core.UploadedImage) {
+        imageId = result.imageId
+        expiresMs = result.expiresMs
+        state = State.Ready
+    }
 
     /** Lets go of the bytes, the thumbnail and the picker's grant. */
     fun release() {
@@ -285,11 +294,12 @@ class ImageDraft(
         val p = img.processed ?: return
         if (!needsUpload(img, machineId)) return
         img.job?.cancel()
-        if (img.machineId != machineId) {
+        if (img.machineId != machineId || (img.imageId != null && img.expiresMs <= System.currentTimeMillis())) {
             img.transferId = newRequestId()
             img.imageId = null
         }
         img.machineId = machineId
+        img.expiresMs = 0
         img.state = PendingImage.State.Uploading(0f)
         img.job = RaApp.instance.scope.launch {
             try {
@@ -304,8 +314,7 @@ class ImageDraft(
                     uploadImage(remote.uploadChannel(machineId), img.transferId, p.bytes)
                 }
                 if (img.machineId == machineId) {
-                    img.imageId = id
-                    img.state = PendingImage.State.Ready
+                    img.uploaded(id)
                 }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e

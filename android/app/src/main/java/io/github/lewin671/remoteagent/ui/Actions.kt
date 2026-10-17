@@ -72,6 +72,34 @@ class Outgoing(
 
     var state by mutableStateOf(State.SENDING)
     var error by mutableStateOf("")
+    var missingImages by mutableStateOf(false)
+        private set
+    val canPutBack: Boolean get() = state == State.FAILED && images.isNotEmpty()
+
+    /** Retries preserve the message request and image IDs, even when an upload has since expired. */
+    internal suspend fun deliver(send: suspend (SendRequest) -> Unit) {
+        if (state == State.SENDING && delivering) return
+        val wasUnknown = state == State.UNKNOWN
+        delivering = true
+        state = State.SENDING
+        error = ""
+        missingImages = false
+        try {
+            send(SendRequest.newBuilder().setText(text).setRequestId(requestId).addAllImageIds(imageIds).setMode(mode).build())
+            state = State.SENT
+        } catch (e: Exception) {
+            val ce = e as? CommandException
+            val unknown = ce?.unknown == true || (wasUnknown && ce?.fromDaemon != true)
+            state = if (unknown) State.UNKNOWN else State.FAILED
+            missingImages = !unknown && ce?.fromDaemon == true && ce.code == "not_found" &&
+                imageIds.isNotEmpty() && ce.message.orEmpty().contains("is not on this machine; upload it again")
+            error = if (missingImages) "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留" else errorText(e)
+        } finally {
+            delivering = false
+        }
+    }
+
+    private var delivering = false
 }
 
 /**
@@ -250,15 +278,31 @@ object Outbox {
         imageIds: List<String>, images: List<PendingImage>, original: Boolean,
         mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER,
         store: ((String, Outgoing, Boolean) -> Unit)? = null,
+        discard: ((String, String) -> Unit)? = null,
         onKept: (Result<Unit>) -> Unit,
     ) {
         if (keeping(sid)) return
         keepingNow[sid] = true
         val o = Outgoing(newRequestId(), text, imageIds, images, original, mode)
         val account = AccountMemory.token
-        val keep = store ?: records.let { r -> { s: String, message: Outgoing, orig: Boolean -> r.save(s, message, orig) } }
+        val ownedRecords = if (store == null) records else null
+        val keep = store ?: { s: String, message: Outgoing, orig: Boolean -> ownedRecords!!.save(s, message, orig) }
+        val drop = discard ?: { s: String, id: String -> ownedRecords?.remove(s, id); Unit }
+        val machine = images.firstOrNull()?.machineId
         scope.launch {
-            val kept = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { keep(sid, o, original) } }
+            val kept = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    keep(sid, o, original)
+                    // Saving large originals can outlast the upload. Nothing has been sent yet:
+                    // discard this record and leave the draft to upload again with a fresh ID.
+                    if (machine == null || images.size != imageIds.size || images.indices.any { i ->
+                        !images[i].readyFor(machine) || images[i].imageId != imageIds[i]
+                    }) {
+                        drop(sid, o.requestId)
+                        throw IllegalStateException("图片需要重新传到电脑，请上传完成后再发送")
+                    }
+                }
+            }
             if (account !== AccountMemory.token) return@launch
             keepingNow.remove(sid)
             onKept(kept)
@@ -309,17 +353,9 @@ object Outbox {
     }
 
     fun deliver(scope: CoroutineScope, remote: Remote, sid: String, o: Outgoing) {
-        o.state = Outgoing.State.SENDING
-        o.error = ""
         scope.launch {
-            try {
-                remote.command(sid, remote.cmd {
-                    send = SendRequest.newBuilder().setSessionId(sid).setText(o.text).setRequestId(o.requestId).addAllImageIds(o.imageIds).setMode(o.mode).build()
-                })
-                o.state = Outgoing.State.SENT
-            } catch (e: Exception) {
-                o.error = errorText(e)
-                o.state = if ((e as? CommandException)?.unknown == true) Outgoing.State.UNKNOWN else Outgoing.State.FAILED
+            o.deliver { request ->
+                remote.command(sid, remote.cmd { send = request.toBuilder().setSessionId(sid).build() })
             }
         }
     }

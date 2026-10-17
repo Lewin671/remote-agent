@@ -615,7 +615,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     val defaults = config?.let { defaultModeOf(state.machines[it.machineId], it.agent) } ?: DefaultMode(null, false, false)
     // Images go to the machine the session will start on; a new machine gets them again.
     val blocked = uploadBlocked(machine?.let { state.machines[it] }, online, machine?.let { machineLabel(state, it) }.orEmpty())
-    LaunchedEffect(machine, blocked, images.images.size) { if (machine != null && blocked == null) images.sendAllTo(remote, machine) }
+    RefreshDraftUploads(images, remote, machine, blocked)
     val pick = rememberImagePicker(images, remote, machine, blocked, maxImages(machine?.let { state.machines[it] }))
     val act = rememberAction()
     // Whether a session can be started with the draft as it is: ↑ is drawn by it, and 重试 after a
@@ -665,7 +665,9 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         }
     }
     fun start() {
+        if (machine != null && blocked == null) images.sendAllTo(remote, machine)
         if (!canStart) return
+        if (!startable(text, images.images, machine ?: return)) return
         val cfg = config ?: return
         val st = Starts.of(key)
         // Another message, other images, another machine or other settings is a new start; the unknown one is given up.
@@ -1148,11 +1150,13 @@ object Starts {
         /** The upload IDs frozen when the request is prepared; draft images can be uploaded again. */
         var imageIds: List<String> = emptyList()
             private set
+        private var preparedImages: List<Processed?> = emptyList()
         /** The images the prepared request names, kept for a retry of the same request. */
         var taken: List<PendingImage> = emptyList()
             set(value) {
                 field = value
                 imageIds = value.mapNotNull { it.imageId }
+                preparedImages = value.map { it.processed }
             }
 
         /**
@@ -1161,7 +1165,8 @@ object Starts {
          * request again.
          */
         fun same(prompt: String, cfg: NewConfig, images: List<PendingImage>): Boolean =
-            prompt == this.prompt && cfg == config && images.mapNotNull { it.imageId } == imageIds
+            prompt == this.prompt && cfg == config && images.map { it.id } == taken.map { it.id } &&
+                images.map { it.processed } == preparedImages
     }
 
     private val byProject = HashMap<String, Start>()

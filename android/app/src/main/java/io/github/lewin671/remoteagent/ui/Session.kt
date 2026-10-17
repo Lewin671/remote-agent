@@ -439,7 +439,8 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
         }
         o.state == Outgoing.State.SENT -> "已送达电脑" to p.muted
         else -> {
-            links += "重试" to { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }
+            if (o.canPutBack) links += "放回输入框" to { putBack(remote, sid, o); Unit }
+            if (!o.missingImages) links += "重试" to { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }
             links += "移除此提示" to { Outbox.remove(sid, o); o.images.forEach { it.release() } }
             (if (o.state == Outgoing.State.UNKNOWN) "没能确认送达：" else "没能送达：") + o.error to p.red
         }
@@ -546,11 +547,12 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
     val maxImg = maxImages(machine)
     val blocked = uploadBlocked(machine, online, machineLabel(state, s.machineId))
     // Images picked before the machine went away go there again once it is back.
-    LaunchedEffect(blocked, images.images.size) { if (blocked == null) images.sendAllTo(remote, s.machineId) }
+    RefreshDraftUploads(images, remote, s.machineId, blocked)
     val pick = rememberImagePicker(images, remote, s.machineId, blocked, maxImg)
     fun send(mode: SendMode = SendMode.SEND_MODE_STEER) {
         val msg = text.trim()
         if (msg.isEmpty() && images.images.isEmpty()) return
+        images.sendAllTo(remote, s.machineId)
         // Every image must be on the computer first: never a message with some of them.
         if (!images.ready(s.machineId) && images.images.isNotEmpty()) return
         val picked = images.images.toList()
@@ -565,7 +567,10 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
             kept.onSuccess {
                 if (text.trim() == msg) text = ""
                 images.detach(picked)
-            }.onFailure { images.notice = "没能保存待发的图，这条没有发出：${errorText(it)}" }
+            }.onFailure {
+                images.notice = "这条没有发出：${errorText(it)}"
+                images.sendAllTo(remote, s.machineId)
+            }
         }
     }
     ComposeBox(

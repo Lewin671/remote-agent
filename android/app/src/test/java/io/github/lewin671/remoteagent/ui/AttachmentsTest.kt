@@ -48,6 +48,32 @@ class MemoryFiles : SealedFiles {
 
 class AttachmentsTest {
     @Test
+    fun aCompletedUploadExpiresAndMustGoToTheMachineAgain() = kotlinx.coroutines.runBlocking {
+        val expires = System.currentTimeMillis() + 60_000
+        val status = io.github.lewin671.remoteagent.proto.ImageUploadStatus.newBuilder()
+            .setState(io.github.lewin671.remoteagent.proto.ImageUploadState.IMAGE_UPLOAD_STATE_COMPLETE)
+            .setImageId("uploaded").setExpiresMs(expires).build()
+        val channel = object : io.github.lewin671.remoteagent.core.UploadChannel {
+            override suspend fun begin(transferId: String, format: ImageFormat, total: Long, sha256: ByteArray) = status
+            override suspend fun put(transferId: String, offset: Long, data: ByteArray) = error("already complete")
+            override suspend fun status(transferId: String) = error("already complete")
+            override suspend fun complete(transferId: String) = error("already complete")
+        }
+        val image = img("expiry")
+        image.processed = Processed(byteArrayOf(0x89.toByte(), 80, 78, 71, 13, 10, 26, 10), ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
+        image.uploaded(io.github.lewin671.remoteagent.core.uploadImage(channel, "transfer", image.processed!!.bytes))
+        assertEquals(expires, image.expiresMs)
+        assertTrue(image.readyFor("mac", expires - 1))
+        assertFalse(image.readyFor("mac", expires))
+        image.expiresMs = System.currentTimeMillis() - 1
+        val draft = ImageDraft("session:expiry", MemoryFiles()).apply { images += image }
+        assertFalse(draft.ready("mac"))
+        assertTrue(draft.ids("mac").isEmpty())
+        assertFalse(startable("看图", draft.images, "mac"))
+        assertTrue(needsUpload(image, "mac"))
+    }
+
+    @Test
     fun failedModeProcessingCannotUploadOldBytesAndRetryNeedsTheSource() {
         val draft = ImageDraft("session:mode", MemoryFiles())
         val image = img("a")
@@ -78,6 +104,7 @@ class AttachmentsTest {
     private fun img(id: String): PendingImage = PendingImage(id, "content://picker/$id").apply {
         processed = Processed(byteArrayOf(1, 2, id.length.toByte()), ImageFormat.IMAGE_FORMAT_JPEG, 10, 20)
         state = PendingImage.State.Ready
+        expiresMs = Long.MAX_VALUE
         machineId = "mac"
         imageId = "img-$id"
     }
@@ -185,6 +212,7 @@ class AttachmentsTest {
         assertTrue(needsUpload(i, "new"))
         assertFalse(needsUpload(i, "old"))
         i.state = PendingImage.State.Ready
+        i.expiresMs = Long.MAX_VALUE
         i.machineId = "new"
         assertFalse(needsUpload(i, "new"))
     }

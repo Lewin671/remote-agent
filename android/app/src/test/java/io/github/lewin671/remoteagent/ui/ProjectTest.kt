@@ -253,7 +253,9 @@ class ProjectTest {
 
     private fun image(id: String, on: String? = "mac") = PendingImage(id, null).also {
         if (on != null) {
+            it.processed = Processed(byteArrayOf(1), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
             it.state = PendingImage.State.Ready
+            it.expiresMs = Long.MAX_VALUE
             it.machineId = on
             it.imageId = "on-$on-$id"
         } else it.state = PendingImage.State.Uploading(0.4f)
@@ -290,14 +292,26 @@ class ProjectTest {
     }
 
     @Test
-    fun reuploadingTheSameImageChangesThePreparedStart() {
+    fun repreparingTheSameImageChangesThePreparedStart() {
         val cfg = NewConfig("mac", path, Agent.AGENT_CODEX)
         val a = image("a")
         val start = Starts.Start().apply { prompt = ""; config = cfg; taken = listOf(a) }
         assertEquals(true, start.same("", cfg, listOf(a)))
-        // Selecting 原图 uploads the same mutable draft image under a new ID.
+        // Selecting 原图 prepares new bytes for the same mutable draft image.
+        a.processed = Processed(byteArrayOf(9), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG, 30, 40)
         a.imageId = "original-a"
         assertEquals(false, start.same("", cfg, listOf(a)))
+    }
+
+    @Test
+    fun renewingAnExpiredUploadKeepsTheUnknownStartAndItsOriginalImageIds() {
+        val cfg = NewConfig("mac", path, Agent.AGENT_CODEX)
+        val a = image("a")
+        val start = Starts.Start().apply { prompt = "看图"; config = cfg; taken = listOf(a) }
+        val ids = start.imageIds
+        a.imageId = "renewed-upload"
+        assertEquals(true, start.same("看图", cfg, listOf(a)))
+        assertEquals(ids, start.imageIds)
     }
 
     @Test

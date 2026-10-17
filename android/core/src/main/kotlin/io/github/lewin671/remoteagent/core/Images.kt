@@ -356,9 +356,12 @@ interface UploadChannel {
     suspend fun complete(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus
 }
 
+/** A completed upload is usable only until the daemon-provided deadline. */
+data class UploadedImage(val imageId: String, val expiresMs: Long)
+
 /**
- * Sends one image to a machine in chunks and returns the image ID to send
- * with a message. Every step can be repeated: beginning again returns the
+ * Sends one image to a machine in chunks and returns its ID and expiry
+ * for sending with a message. Every step can be repeated: beginning again returns the
  * transfer's state, a chunk is resent from where the daemon has durably
  * stored bytes, and completing again returns the same ID. When a step's
  * outcome is unknown, the daemon's status says where to go on; a definite
@@ -371,7 +374,7 @@ suspend fun uploadImage(
     maxChunk: Int = DEFAULT_CHUNK_BYTES,
     retries: Int = 3,
     onProgress: (Long, Long) -> Unit = { _, _ -> },
-): String {
+): UploadedImage {
     val format = detectFormat(data) ?: throw IllegalArgumentException("不支持的图片格式")
     val total = data.size.toLong()
     var tries = 0
@@ -399,7 +402,7 @@ suspend fun uploadImage(
         st = step({ ch.complete(transferId) }) { st = ch.status(transferId) }
     }
     if (st.imageId.isEmpty()) throw CommandException("internal", "电脑没有给出图片 ID")
-    return st.imageId
+    return UploadedImage(st.imageId, st.expiresMs)
 }
 
 // --- images in a session ---
