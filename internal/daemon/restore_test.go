@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -109,17 +110,49 @@ func TestRestoreRegistersSessionsUnderTheLock(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := r.d.restore(); err != nil {
+	// This is a registration/read concurrency test, not a 64-session timer
+	// stress test. Read in one worker while restore adds sessions; do not
+	// spawn tmux processes at 1 ms intervals for every restored session.
+	r.d.cfg.PollInterval = time.Hour
+	stop, done := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			r.d.mu.Lock()
+			all := make([]*session, 0, len(r.d.sessions))
+			for _, s := range r.d.sessions {
+				all = append(all, s)
+			}
+			r.d.mu.Unlock()
+			for _, s := range all {
+				s.readRollout()
+			}
+			select {
+			case <-stop:
+				return
+			default:
+				runtime.Gosched()
+			}
+		}
+	}()
+	err := r.d.restore()
+	close(stop)
+	<-done
+	if err != nil {
 		t.Fatal(err)
 	}
 	if n := len(r.d.list(true)); n != 64 {
 		t.Fatalf("restored %d sessions", n)
 	}
-	last := r.session(fmt.Sprintf("%08x00000000", 64))
-	eventually(t, "transcripts read", func() bool {
-		_, off := last.log.Checkpoint()
-		return off > 0
-	})
+	for i := range 64 {
+		s := r.session(fmt.Sprintf("%08x00000000", i+1))
+		if !s.readRollout() {
+			t.Fatal("transcript read failed")
+		}
+		if _, off := s.log.Checkpoint(); off == 0 {
+			t.Fatalf("session %s transcript not read", s.meta.ID)
+		}
+	}
 }
 
 // The CLI went on and exited while the daemon was down: what it wrote to
