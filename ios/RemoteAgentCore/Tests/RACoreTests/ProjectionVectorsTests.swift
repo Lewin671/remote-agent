@@ -50,6 +50,18 @@ import Testing
             for o in v["observations"] as! [[String: Any]] {
                 let prefix = Array(events.prefix(Int(o["through"] as! String)!))
                 let expected = o["state"] as! NSDictionary
+                if let history = o["history"] as? NSDictionary {
+                    let rows = buildChat(prefix, d: derive(prefix, agent: agent), machine: "test")
+                    let asyncQuestions = rows.compactMap { row -> String? in
+                        if case .asyncQuestion(let q) = row { return String(q.key.dropFirst()) }
+                        return nil
+                    }
+                    #expect(["asyncQuestions": asyncQuestions] as NSDictionary == history, "\(name) async history")
+                }
+                if name == "background-uses-explicit-result-fact" {
+                    let rows = buildChat(prefix, d: derive(prefix, agent: agent), machine: "test")
+                    #expect(rows.contains { if case .tool(let t) = $0 { return !t.background }; return false })
+                }
                 #expect(normalize(prefix, derive(prefix, agent: agent)) == expected, "\(name) full through \(prefix.count)")
                 for cut in (v["cuts"] as! [Int]).filter({ $0 <= prefix.count }) {
                     var r = EventReducer(agent: agent)

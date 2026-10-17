@@ -1609,6 +1609,11 @@
             "terminalChanges": [],
             "merged": [],
             "callDecisions": []
+          },
+          "history": {
+            "asyncQuestions": [
+              "2"
+            ]
           }
         },
         {
@@ -1637,6 +1642,11 @@
             "terminalChanges": [],
             "merged": [],
             "callDecisions": []
+          },
+          "history": {
+            "asyncQuestions": [
+              "2"
+            ]
           }
         }
       ]
@@ -2853,6 +2863,249 @@
             "completed": {
               "2": "3"
             },
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "exit-late-result-and-resumed-turn",
+      "agent": 1,
+      "events": [
+        {
+          "turnStarted": {},
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolStarted": {
+            "callId": "a"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "sessionState": {
+            "status": 5
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "callId": "a",
+            "status": "completed"
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "sessionState": {
+            "status": 2
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "text": "resume"
+          },
+          "seq": "6",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnStarted": {},
+          "seq": "7",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "observations": [
+        {
+          "through": "7",
+          "state": {
+            "running": true,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [
+              "6"
+            ],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {
+              "2": "4"
+            },
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "fork-does-not-complete-source-tool",
+      "agent": 1,
+      "events": [
+        {
+          "toolStarted": {
+            "callId": "source"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "sessionForked": {
+            "sourceSessionId": "source"
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "callId": "source",
+            "status": "completed"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [
+              "1"
+            ],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "accepted-images-and-authoritative-origin",
+      "agent": 1,
+      "events": [
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 1,
+            "text": "[Image #1]",
+            "imageIds": [
+              "image"
+            ],
+            "stage": 1,
+            "mode": 1
+          },
+          "origin": {
+            "kind": 1,
+            "deviceId": "device"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "inputState": {
+            "requestId": "r",
+            "status": 2
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "userMessage": {
+            "requestId": "r",
+            "text": "[Image #1]"
+          },
+          "origin": {
+            "kind": 1,
+            "deviceId": "device"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [
+              {
+                "id": "r",
+                "status": 2,
+                "stage": 1,
+                "mode": 1,
+                "paused": false
+              }
+            ],
+            "accepted": {
+              "r": {
+                "text": "[Image #1]",
+                "images": [
+                  "image"
+                ],
+                "origin": 1
+              }
+            },
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
             "background": [],
             "compactions": {},
             "terminalChanges": [],

@@ -3,7 +3,7 @@ import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import corpus from "../../testdata/projection/vectors.json";
 import { Agent, EventSchema, InputStage, type Event } from "./gen/remoteagent/v1/event_pb";
-import { approvalsOnCalls, derive, type Derived } from "./model";
+import { approvalsOnCalls, derive, timeline, type Derived } from "./model";
 
 function normalize(events: Event[], d: Derived) {
   const seqs = (values: Iterable<bigint>) => [...values].sort((a, b) => a < b ? -1 : 1).map(String);
@@ -30,6 +30,11 @@ for (const v of corpus.vectors) it(`shared projection: ${v.name}`, () => {
   const events = v.events.map(e => fromJson(EventSchema, e as JsonValue));
   for (const o of v.observations) {
     const prefix = events.slice(0, Number(o.through));
+    const d = derive(prefix, v.agent as Agent);
+    if ("history" in o) {
+      const asyncQuestions = timeline(prefix, d).flatMap(item => item.kind === "event" && item.event.kind.case === "questionAsked" && item.event.kind.value.async ? [String(item.event.seq)] : []);
+      expect({ asyncQuestions }).toEqual(o.history);
+    }
     expect(normalize(prefix, derive(prefix, v.agent as Agent)), `through ${o.through}`).toEqual(o.state);
     // Web's reducer is a full replay. Test every batch boundary using newly
     // decoded handles too; native runners exercise their incremental path.

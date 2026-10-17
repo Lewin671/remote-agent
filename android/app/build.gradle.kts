@@ -40,6 +40,7 @@ if (officialRelease) {
 }
 
 android {
+    sourceSets.getByName("test").java.srcDir(rootProject.file("../testdata/projection/kotlin"))
     namespace = "io.github.lewin671.remoteagent"
     compileSdk = 36
 
@@ -114,6 +115,8 @@ kotlin {
 
 // The Markdown and terminal history cases the clients read by live outside this build.
 tasks.withType<Test>().configureEach {
+    inputs.file(rootProject.file("../testdata/projection/vectors.json")).withPathSensitivity(PathSensitivity.NONE)
+    systemProperty("projectionVectors", rootProject.file("../testdata/projection/vectors.json").absolutePath)
     inputs.file(rootProject.file("../testdata/markdown/cases.json")).withPathSensitivity(PathSensitivity.NONE)
     inputs.file(rootProject.file("../testdata/terminal/history-sgr.json")).withPathSensitivity(PathSensitivity.NONE)
 }
