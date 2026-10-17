@@ -425,14 +425,17 @@ func (d *Daemon) hookSession(ctx context.Context, id string) (*session, error) {
 // create starts a new CLI session in tmux with the daemon's own
 // environment, as `remote-agent doctor` uses it.
 func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
-	return d.createBy(req, originLocal, false)
+	return d.createBy(req, originLocal, false, false, "the terminal's PATH")
 }
 
 // createBy is create on behalf of origin, who sent the first message's
 // images. viaShell starts the CLI through the user's login shell instead
 // of with the daemon's environment: what a session a client created does,
-// so that its environment comes from the shell's configuration.
-func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaShell bool) (*session, error) {
+// so that its environment comes from the shell's configuration. terminal
+// says the caller is a terminal on this machine, whose environment the
+// session runs with and whose CLI it must find. pathFrom names the PATH
+// that CLI is looked up in, for the error that says where it was missing.
+func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaShell, terminal bool, pathFrom string) (*session, error) {
 	cwd := req.Cwd
 	if cwd == "" {
 		return nil, errors.New("cwd is required")
@@ -467,9 +470,32 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaSh
 	id := newID(8)
 	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true,
 		StandardContext: req.Agent == pb.Agent_AGENT_CLAUDE && req.StandardContext, Shell: viaShell}
+	// The environment the CLI starts with: a client-created session's
+	// login shell gets what a new terminal gives it and builds the rest
+	// from the user's configuration; any other session gets the caller's
+	// own environment, as from that terminal, and runs the CLI that
+	// terminal would. A session without a caller's environment (doctor's)
+	// runs the daemon's. A terminal session that cannot find the CLI in
+	// its PATH does not start: the daemon's own is a different CLI.
+	var env map[string]string
+	bin := ag.Bin()
+	if m.Shell {
+		env = shellSessionEnv(d.cfg.Env)
+	} else {
+		env = sessionEnv(req.Env, d.cfg.Env)
+		if terminal {
+			if bin, err = d.terminalCLI(ag, env["PATH"], pathFrom); err != nil {
+				return nil, err
+			}
+		}
+	}
+	d.cliEnv(env, &m)
 	dir := paths.SessionDir(id)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
+	}
+	if m.Shell {
+		clearShellReport(dir)
 	}
 	launch := &agent.Launch{Dir: dir, Args: args, Cwd: cwd, Exe: d.cfg.Exe, RemoteSession: id}
 	cliArgs, err := ag.Argv(launch)
@@ -485,24 +511,6 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaSh
 		return nil, err
 	}
 
-	// The environment the CLI starts with: a client-created session's
-	// login shell gets what a new terminal gives it and builds the rest
-	// from the user's configuration; any other session gets the caller's
-	// own environment, as from that terminal, and runs the CLI that
-	// terminal would. A session without a caller's environment (doctor's)
-	// runs the daemon's.
-	var env map[string]string
-	bin := ag.Bin()
-	if m.Shell {
-		env = shellSessionEnv(d.cfg.Env)
-		clearShellReport(dir)
-	} else {
-		env = sessionEnv(req.Env, d.cfg.Env)
-		if len(req.Env) > 0 {
-			bin = d.terminalCLI(ag, env["PATH"])
-		}
-	}
-	d.cliEnv(env, &m)
 	envFile, err := startEnv(dir, env)
 	if err != nil {
 		log.Close()
@@ -783,22 +791,25 @@ func (d *Daemon) learnCLI(kind pb.Agent, bin string) {
 // terminalCLI is the CLI a session started from a terminal runs: what
 // typing the CLI's name in that terminal would start, found in path, the
 // PATH of the session's environment. A CLI the user configured by path
-// runs from that path. When the environment has no PATH, or no such
-// command in it, the daemon's own is used, so the session still starts.
-// What it finds is learned like a login shell's report, so that version
-// checks follow what sessions run.
-func (d *Daemon) terminalCLI(ag agent.Adapter, path string) string {
+// runs from that path. When path is empty or has no such command, the
+// session does not start: the daemon's own CLI is not what the terminal
+// would run. What it finds is learned like a login shell's report, so that
+// version checks follow what sessions run.
+func (d *Daemon) terminalCLI(ag agent.Adapter, path, where string) (string, error) {
 	cmd := d.shellCmd(ag.Kind())
-	if cmd == "" || strings.ContainsRune(cmd, '/') || path == "" {
-		return ag.Bin()
+	if cmd == "" || strings.ContainsRune(cmd, '/') {
+		return ag.Bin(), nil
 	}
 	bin := findInPath(cmd, path)
 	if bin == "" {
-		slog.Warn("the session's PATH has no such CLI; starting the daemon's", "agent", ag.Name(), "command", cmd, "bin", ag.Bin())
-		return ag.Bin()
+		variable := "REMOTE_AGENT_CODEX"
+		if ag.Kind() == pb.Agent_AGENT_CLAUDE {
+			variable = "REMOTE_AGENT_CLAUDE"
+		}
+		return "", fmt.Errorf("%s was not found in %s; install it there or set %s", cmd, where, variable)
 	}
 	d.learnCLI(ag.Kind(), bin)
-	return bin
+	return bin, nil
 }
 
 // findInPath looks name up in path the way a shell does: the first
@@ -950,7 +961,9 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 		if env, err = readEnvFile(filepath.Join(s.dir, "env.json")); err != nil {
 			return nil, fmt.Errorf("read the session's environment: %w", err)
 		}
-		bin = d.terminalCLI(s.ag, env["PATH"])
+		if bin, err = d.terminalCLI(s.ag, env["PATH"], "the session's saved PATH"); err != nil {
+			return nil, err
+		}
 	}
 	d.cliEnv(env, &m)
 	envFile, err := startEnv(s.dir, env)

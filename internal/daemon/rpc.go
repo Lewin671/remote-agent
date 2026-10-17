@@ -41,7 +41,8 @@ func (h *handler) CreateSession(ctx context.Context, req *connect.Request[pb.Cre
 	// phone's environment would name. Such a session starts through the
 	// user's login shell so that its environment is the machine's own,
 	// computed at that moment.
-	s, err := h.d.createBy(req.Msg, originOf(ctx), len(req.Msg.Env) == 0)
+	terminal := len(req.Msg.Env) > 0
+	s, err := h.d.createBy(req.Msg, originOf(ctx), !terminal, terminal, "the terminal's PATH")
 	if err != nil && queueAccepted(err) {
 		// The error names the live session and its accepted first request.
 		// Do not misclassify a recording failure as invalid creation input.

@@ -24,7 +24,7 @@ func TestCreateRefusesDuplicateImages(t *testing.T) {
 	h := newHarness(t, Config{})
 	u := h.d.uploads
 	st := completeUpload(t, u, "local")
-	_, err := h.d.createBy(&pb.CreateSessionRequest{Cwd: h.dir, Prompt: "x", ImageIds: []string{st.ImageId, st.ImageId}}, originLocal, false)
+	_, err := h.d.createBy(&pb.CreateSessionRequest{Cwd: h.dir, Prompt: "x", ImageIds: []string{st.ImageId, st.ImageId}}, originLocal, false, false, "the terminal's PATH")
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("duplicate images: %v", err)
 	}

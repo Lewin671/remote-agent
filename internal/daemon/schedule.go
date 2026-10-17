@@ -654,7 +654,10 @@ func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
 		mode, _ := scheduleMode(target.Mode)
 		// A run continues its source session's way: one that started
 		// through the login shell does so again (its environment is
-		// computed then), any other keeps the saved environment.
+		// computed then), any other keeps the saved environment. A run
+		// derived from a terminal is terminal-origin even when its saved
+		// environment cannot be read: it must not fall back to the
+		// daemon's CLI.
 		env := map[string]string{}
 		shell := false
 		if t.SourceSession != "" {
@@ -663,12 +666,13 @@ func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
 			}
 			env, _ = readEnvFile(filepath.Join(paths.SessionDir(t.SourceSession), "env.json"))
 		}
+		terminal := t.SourceSession != "" && !shell
 		// No prompt here: the scheduled input uses its own stable request ID.
-		s, err = d.createBy(&pb.CreateSessionRequest{Cwd: target.Cwd, Agent: kind, Model: target.Model, Effort: target.Effort, Mode: mode, Env: env}, originSystem, shell)
+		s, err = d.createBy(&pb.CreateSessionRequest{Cwd: target.Cwd, Agent: kind, Model: target.Model, Effort: target.Effort, Mode: mode, Env: env}, originSystem, shell, terminal, "the session's saved PATH")
 	}
 	if err != nil {
 		run.Status = "failed"
-		run.Reason = "could_not_start_session"
+		run.Reason = "could_not_start_session: " + err.Error()
 		run.EndedAt = &now
 		t.Runs = appendRun(t.Runs, *run)
 		t.Active = nil

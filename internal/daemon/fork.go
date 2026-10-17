@@ -107,7 +107,9 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	} else if env, err = readEnvFile(filepath.Join(src.dir, "env.json")); err != nil {
 		return fail(fmt.Errorf("read the session's environment: %w", err))
 	} else {
-		bin = d.terminalCLI(src.ag, env["PATH"])
+		if bin, err = d.terminalCLI(src.ag, env["PATH"], "the session's saved PATH"); err != nil {
+			return fail(err)
+		}
 	}
 	d.cliEnv(env, &nm)
 	envFile, err := startEnv(dir, env)

@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 )
@@ -56,6 +58,46 @@ func startedCLI(t *testing.T, calls string) string {
 	return strings.TrimPrefix(line, "ARG: ")
 }
 
+// missingCLI checks the error names the command, where it was not found and
+// the variable that would name its path instead.
+func missingCLI(t *testing.T, err error, where string) {
+	t.Helper()
+	want := "codex was not found in " + where + "; install it there or set REMOTE_AGENT_CODEX"
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("error is %v, want it to contain %q", err, want)
+	}
+}
+
+// noSessionStarted checks that no tmux session was created. The fake tmux
+// records each call, so a missing file, or one without new-session, means
+// nothing started.
+func noSessionStarted(t *testing.T, calls string) {
+	t.Helper()
+	b, err := os.ReadFile(calls)
+	if os.IsNotExist(err) {
+		return
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "ARG: new-session") {
+		t.Fatalf("a tmux session was started:\n%s", b)
+	}
+}
+
+// noSessionDir checks that a session that failed to start left nothing
+// behind under the daemon's sessions directory.
+func noSessionDir(t *testing.T) {
+	t.Helper()
+	entries, err := os.ReadDir(paths.SessionsDir())
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	if len(entries) > 0 {
+		t.Fatalf("the failed start left %d session directories", len(entries))
+	}
+}
+
 func startTerminalSession(t *testing.T, cfg Config, env map[string]string) (*harness, *session, string) {
 	t.Helper()
 	h := newHarness(t, cfg)
@@ -101,11 +143,31 @@ func TestTerminalSessionKeepsAConfiguredCLI(t *testing.T) {
 	}
 }
 
-// When the terminal's PATH has no codex, the daemon's still starts it.
-func TestTerminalSessionFallsBackToTheDaemonsCLI(t *testing.T) {
-	_, _, got := startTerminalSession(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"}, map[string]string{"PATH": t.TempDir()})
-	if got != "/bin/echo" {
-		t.Fatalf("the session runs %q, want the daemon's /bin/echo", got)
+// When the terminal's PATH has no codex, creation fails instead of
+// starting the daemon's CLI: the session runs what the terminal would, or
+// nothing at all.
+func TestTerminalSessionFailsWithoutTheCLIInItsPATH(t *testing.T) {
+	missing := t.TempDir()
+	for _, tc := range []struct {
+		name string
+		env  map[string]string
+	}{
+		{"PATH without codex", map[string]string{"PATH": missing}},
+		{"no PATH", map[string]string{"HOME": t.TempDir()}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+			calls := fakeTmux(t, h)
+			_, err := (&handler{d: h.d}).CreateSession(agent.WithOrigin(context.Background(), originLocal), connect.NewRequest(&pb.CreateSessionRequest{
+				Cwd: h.dir, Agent: pb.Agent_AGENT_CODEX, Env: tc.env,
+			}))
+			missingCLI(t, err, "the terminal's PATH")
+			if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {
+				t.Fatalf("create returns %v, want InvalidArgument", code)
+			}
+			noSessionStarted(t, calls)
+			noSessionDir(t)
+		})
 	}
 }
 
@@ -169,6 +231,52 @@ func TestResumeAndForkFindTheCLIInTheSavedPATH(t *testing.T) {
 	}
 }
 
+// Resuming or forking starts the CLI the session's saved PATH holds, and
+// fails when it holds none rather than running the daemon's.
+func TestResumeAndForkFailWithoutTheCLIInTheSavedPATH(t *testing.T) {
+	missing := t.TempDir()
+	for _, tc := range []struct {
+		name string
+		env  map[string]string
+	}{
+		{"PATH without codex", map[string]string{"PATH": missing}},
+		{"no PATH", map[string]string{"HOME": t.TempDir()}},
+	} {
+		for _, op := range []string{"resume", "fork"} {
+			t.Run(op+"/"+tc.name, func(t *testing.T) {
+				h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+				h.d.sessions[h.s.meta.ID] = h.s
+				calls := fakeTmux(t, h)
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				h.d.ctx = ctx
+				if err := writeEnvFile(filepath.Join(h.dir, "env.json"), tc.env); err != nil {
+					t.Fatal(err)
+				}
+				if op == "fork" {
+					rollout := filepath.Join(h.dir, "rollout.jsonl")
+					h.writeRollout(`{"type":"event_msg","payload":{"type":"task_started","turn_id":"t1"}}`)
+					h.s.bindRollout("cli-src", rollout)
+					h.s.readRollout()
+					h.s.mu.Lock()
+					h.s.meta.RolloutPath = rollout
+					h.s.mu.Unlock()
+				}
+				h.s.markExited("test")
+				var err error
+				if op == "resume" {
+					_, err = (&handler{d: h.d}).ResumeSession(context.Background(), connect.NewRequest(&pb.ResumeSessionRequest{SessionId: h.s.meta.ID}))
+				} else {
+					_, err = (&handler{d: h.d}).ForkSession(agent.WithOrigin(context.Background(), originLocal), connect.NewRequest(&pb.ForkSessionRequest{SessionId: h.s.meta.ID}))
+				}
+				missingCLI(t, err, "the session's saved PATH")
+				noSessionStarted(t, calls)
+				noSessionDir(t)
+			})
+		}
+	}
+}
+
 // A scheduled run that opens a new session from a terminal's session runs
 // the CLI of that session's PATH, as the session itself does.
 func TestScheduledSessionFromATerminalFindsTheCLIInItsPATH(t *testing.T) {
@@ -204,5 +312,65 @@ func TestScheduledSessionFromATerminalFindsTheCLIInItsPATH(t *testing.T) {
 	}
 	if got := startedCLI(t, calls); got != want {
 		t.Fatalf("the scheduled session runs %q, want the source's PATH's %q", got, want)
+	}
+}
+
+// A scheduled run derived from a terminal's session fails when that
+// session's saved PATH holds no codex, or none is saved, and records why:
+// it must not open the daemon's CLI instead.
+func TestScheduledSessionFromATerminalFailsWithoutTheCLIInItsPATH(t *testing.T) {
+	missing := t.TempDir()
+	for _, tc := range []struct {
+		name string
+		env  map[string]string
+	}{
+		{"PATH without codex", map[string]string{"PATH": missing}},
+		{"no PATH", map[string]string{"HOME": t.TempDir()}},
+		{"no saved environment", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+			calls := fakeTmux(t, h)
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			h.d.ctx = ctx
+			if err := h.d.loadSchedules(); err != nil {
+				t.Fatal(err)
+			}
+			src := "fedcba9876543210"
+			dir := paths.SessionDir(src)
+			if err := paths.EnsureDir(dir); err != nil {
+				t.Fatal(err)
+			}
+			if err := (&meta{ID: src, Agent: pb.Agent_AGENT_CODEX, Cwd: h.dir}).save(dir); err != nil {
+				t.Fatal(err)
+			}
+			if tc.env != nil {
+				if err := writeEnvFile(filepath.Join(dir, "env.json"), tc.env); err != nil {
+					t.Fatal(err)
+				}
+			}
+			now := time.Now()
+			task := &schedule.Task{ID: "task1", SourceSession: src, NextRunAt: &now,
+				Spec: schedule.Spec{Message: "go", Target: schedule.Target{Type: "new_session", Cwd: h.dir, Agent: "codex"}}}
+			h.d.dispatchScheduled(task, now)
+			if task.Active != nil {
+				t.Fatalf("the failed run is still active: %+v", task.Active)
+			}
+			if len(task.Runs) != 1 {
+				t.Fatalf("the run left %d history entries, want 1", len(task.Runs))
+			}
+			want := "could_not_start_session: codex was not found in the session's saved PATH; install it there or set REMOTE_AGENT_CODEX"
+			if run := task.Runs[0]; run.Status != "failed" || !strings.Contains(run.Reason, want) {
+				t.Fatalf("the run is %q (%q), want failed with %q", run.Status, run.Reason, want)
+			}
+			if task.Status != "failed" || !strings.Contains(task.Reason, want) || task.NextRunAt != nil {
+				t.Fatalf("the task is %q (%q) next at %v, want failed with %q and no next run", task.Status, task.Reason, task.NextRunAt, want)
+			}
+			noSessionStarted(t, calls)
+			if entries, err := os.ReadDir(paths.SessionsDir()); err != nil || len(entries) != 1 || entries[0].Name() != src {
+				t.Fatalf("the failed run left session directories: %v (%v)", entries, err)
+			}
+		})
 	}
 }

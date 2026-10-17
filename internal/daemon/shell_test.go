@@ -143,6 +143,18 @@ func tmuxCalls(t *testing.T, path string) string {
 	return string(b)
 }
 
+// terminalBin makes a directory holding an executable codex, for a test
+// PATH that only needs to resolve one.
+func terminalBin(t *testing.T) (dir, bin string) {
+	t.Helper()
+	dir = t.TempDir()
+	bin = filepath.Join(dir, "codex")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return dir, bin
+}
+
 func sessionEnvFile(t *testing.T, dir string) map[string]string {
 	t.Helper()
 	env, err := readEnvFile(filepath.Join(dir, "env.json"))
@@ -213,9 +225,11 @@ func TestTerminalSessionKeepsItsEnvironment(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	h.d.ctx = ctx
+	binDir, codex := terminalBin(t)
+	path := binDir + ":" + systemPath()
 
 	s := createSession(t, h, &pb.CreateSessionRequest{Cwd: h.dir, Agent: pb.Agent_AGENT_CODEX, Env: map[string]string{
-		"PATH": "/my/terminal/bin:" + systemPath(), "RA_TERMINAL_MARK": "yes",
+		"PATH": path, "RA_TERMINAL_MARK": "yes",
 	}})
 	defer func() { s.stop(); <-s.done; _ = s.log.Close() }()
 
@@ -226,11 +240,11 @@ func TestTerminalSessionKeepsItsEnvironment(t *testing.T) {
 	if strings.Contains(got, "ARG: --clean-env") {
 		t.Fatalf("the daemon's environment was replaced for a terminal session:\n%s", got)
 	}
-	if !strings.Contains(got, "ARG: /bin/echo\n") {
+	if !strings.Contains(got, "ARG: "+codex+"\n") {
 		t.Fatalf("the CLI was not started directly:\n%s", got)
 	}
 	env := sessionEnvFile(t, s.dir)
-	if env["PATH"] != "/my/terminal/bin:"+systemPath() || env["RA_TERMINAL_MARK"] != "yes" {
+	if env["PATH"] != path || env["RA_TERMINAL_MARK"] != "yes" {
 		t.Fatalf("the terminal's environment was not kept: %v", env)
 	}
 }
@@ -245,7 +259,8 @@ func TestResumeFollowsTheLaunchStyle(t *testing.T) {
 			h.d.sessions[h.s.meta.ID] = h.s
 			calls := fakeTmux(t, h)
 			h.d.ctx = context.Background()
-			saved := map[string]string{"PATH": "/saved/bin", "RA_SAVED_MARK": "yes"}
+			savedDir, _ := terminalBin(t)
+			saved := map[string]string{"PATH": savedDir, "RA_SAVED_MARK": "yes"}
 			if err := writeEnvFile(filepath.Join(h.dir, "env.json"), saved); err != nil {
 				t.Fatal(err)
 			}
@@ -272,7 +287,7 @@ func TestResumeFollowsTheLaunchStyle(t *testing.T) {
 				if strings.Contains(got, "ARG: --clean-env") {
 					t.Fatalf("a terminal session resumed through the login shell:\n%s", got)
 				}
-				if env["PATH"] != "/saved/bin" || env["RA_SAVED_MARK"] != "yes" {
+				if env["PATH"] != savedDir || env["RA_SAVED_MARK"] != "yes" {
 					t.Fatalf("the saved environment was not used: %v", env)
 				}
 			}
@@ -290,7 +305,8 @@ func TestForkFollowsTheSourceLaunchStyle(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
 			h.d.ctx = ctx
-			saved := map[string]string{"PATH": "/saved/bin", "RA_SAVED_MARK": "yes"}
+			savedDir, _ := terminalBin(t)
+			saved := map[string]string{"PATH": savedDir, "RA_SAVED_MARK": "yes"}
 			if err := writeEnvFile(filepath.Join(h.dir, "env.json"), saved); err != nil {
 				t.Fatal(err)
 			}
@@ -328,7 +344,7 @@ func TestForkFollowsTheSourceLaunchStyle(t *testing.T) {
 				if strings.Contains(got, "ARG: --clean-env") {
 					t.Fatalf("a terminal source's fork started through the login shell:\n%s", got)
 				}
-				if env["PATH"] != "/saved/bin" || env["RA_SAVED_MARK"] != "yes" {
+				if env["PATH"] != savedDir || env["RA_SAVED_MARK"] != "yes" {
 					t.Fatalf("the source's environment was not used: %v", env)
 				}
 			}
