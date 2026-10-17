@@ -120,7 +120,7 @@ struct SessionComposer: View {
             case .success:
                 if store.draft(sid).jvmTrim() == message { store.setDraft(sid, "") }
             case .failure(let error):
-                notice = "没能保存待发的图，这条没有发出：\(errorText(error))"
+                notice = "这条没有发出：\(errorText(error))"
             }
         }
         // The message's images are being kept before it is sent (`SessionStore.isKeeping`).
