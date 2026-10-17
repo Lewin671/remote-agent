@@ -1254,10 +1254,14 @@ export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigi
       const digest = k.value.inputDigest;
       if (!digest) continue;
       const key = k.value.toolName + "\0" + digest;
-      approvals.set(key, [...(approvals.get(key) ?? []), { id: k.value.approvalId, seq: e.seq }]);
+      let group = approvals.get(key);
+      if (!group) approvals.set(key, (group = []));
+      group.push({ id: k.value.approvalId, seq: e.seq });
     } else if (k.case === "toolCall" && k.value.inputDigest) {
       const key = k.value.itemType + "\0" + k.value.inputDigest;
-      calls.set(key, [...(calls.get(key) ?? []), e.seq]);
+      let group = calls.get(key);
+      if (!group) calls.set(key, (group = []));
+      group.push(e.seq);
     }
   }
   const out = { calls: new Map<bigint, ApprovalDecision>(), approvals: new Set<string>(), ids: new Map<bigint, string>() };

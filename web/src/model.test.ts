@@ -956,3 +956,26 @@ it("updates accepted send mode while keeping original message content and origin
   const d = derive(list);
   expect(d.accepted.get("m")).toMatchObject({ mode: SendMode.STEER, text: "text", imageIds: ["image"] });
 });
+
+it("groups repeated approval digests with linear iteration work and keeps ambiguous matches separate", async () => {
+  const { approvalsOnCalls } = await import("./model");
+  const repeated = events(...Array.from({ length: 1000 }, (_, i) => [
+    { case: "approvalRequested", value: { approvalId: "a" + i, toolName: "Read", inputDigest: "same" } },
+    { case: "approvalResolved", value: { approvalId: "a" + i, decision: ApprovalDecision.ALLOW } },
+    { case: "toolCall", value: { callId: "c" + i, itemType: "Read", inputDigest: "same" } },
+  ]).flat());
+  const d = derive(repeated);
+  // Count actual array elements traversed, rather than asserting a wall
+  // clock threshold that changes with the machine running the tests.
+  let traversed = 0;
+  const iterator = Array.prototype[Symbol.iterator];
+  Array.prototype[Symbol.iterator] = function* (this: unknown[]) {
+    for (let i = 0; i < this.length; i++) { traversed++; yield this[i]; }
+    return undefined;
+  };
+  let result;
+  try { result = approvalsOnCalls(repeated, d); } finally { Array.prototype[Symbol.iterator] = iterator; }
+  expect(result.calls.size).toBe(0);
+  expect(result.approvals.size).toBe(0);
+  expect(traversed).toBeLessThan(repeated.length * 10);
+});
