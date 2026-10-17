@@ -768,7 +768,11 @@ internal class EventReducer(agent: Agent) {
                     d.running = false
                     d.approvals.clear()
                     d.questions.clear()
-                    for (t in d.tools) d.unfinished += t.seq
+                    for (t in d.tools) {
+                        d.unfinished += t.seq
+                        d.noResult += t.seq
+                        if (t.callId.isNotEmpty()) unfinishedById[t.callId] = t
+                    }
                     d.tools.clear()
                     d.background.clear()
                 }
@@ -778,11 +782,16 @@ internal class EventReducer(agent: Agent) {
                     d.running = false
                     d.approvals.clear()
                     d.questions.clear()
-                    for (t in d.tools) d.unfinished += t.seq
+                    for (t in d.tools) {
+                        d.unfinished += t.seq
+                        d.noResult += t.seq
+                        if (t.callId.isNotEmpty()) unfinishedById[t.callId] = t
+                    }
                     d.tools.clear()
                     d.background.clear()
                     submitted = 0
                     unclaimed = null
+                    unfinishedById.clear()
                 }
                 else -> {}
             }

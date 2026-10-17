@@ -201,7 +201,11 @@ struct EventReducer: Sendable {
         d.running = false
         d.approvals.removeAll()
         d.questions.removeAll()
-        for t in d.tools { d.unfinished.insert(t.seq) }
+        for t in d.tools {
+            d.unfinished.insert(t.seq)
+            d.noResult.insert(t.seq)
+            if !t.callId.isEmpty { unfinishedById[t.callId] = t }
+        }
         d.tools.removeAll()
         d.background.removeAll()
     }
@@ -357,6 +361,7 @@ struct EventReducer: Sendable {
             endTools()
             submitted = 0
             unclaimed = nil
+            unfinishedById.removeAll()
         default: break
         }
     }

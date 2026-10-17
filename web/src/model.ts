@@ -885,7 +885,9 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
           d.running = false;
           d.approvals.clear();
           d.questions.clear();
-          settle(d, false);
+          settle(d, false, unfinishedById);
+          d.unsettled = [];
+          d.background = [];
         }
         break;
       case "sessionForked":
@@ -895,6 +897,11 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         d.approvals.clear();
         d.questions.clear();
         settle(d, false);
+        d.unsettled = [];
+        d.background = [];
+        submitted = 0;
+        unclaimed = undefined;
+        unfinishedById.clear();
         break;
     }
   }
