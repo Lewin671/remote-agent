@@ -189,8 +189,9 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 	case *pb.Command_CreateSession:
 		err = machine(func() error {
 			req := k.CreateSession
-			// A remote client's environment means nothing here; the
-			// session gets the daemon's.
+			// A remote client's environment means nothing here: the
+			// session starts through the machine's login shell, which
+			// builds one from its own configuration.
 			req.Env = nil
 			return call(ctx, l.CreateSession, req, func(m *pb.CreateSessionResponse) { out.Kind = &pb.CommandResult_CreateSession{CreateSession: m} })
 		})

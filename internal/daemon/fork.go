@@ -76,7 +76,7 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	nid := newID(8)
 	nm := meta{ID: nid, Agent: m.Agent, Cwd: m.Cwd, Tmux: "ra-" + nid[:8], Args: m.Args, CreatedAt: time.Now().UTC(),
 		Title: m.Title, NoFullAccess: m.NoFullAccess, StandardContext: m.StandardContext, Starting: true,
-		ForkedFrom: m.ID}
+		ForkedFrom: m.ID, Shell: m.Shell}
 	dir := paths.SessionDir(nid)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
@@ -98,15 +98,15 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 		return fail(err)
 	}
 	// The same environment as the source: its caller's shell may have
-	// provided credentials or proxies.
-	env, err := readEnvFile(filepath.Join(src.dir, "env.json"))
-	if err != nil {
+	// provided credentials or proxies. A source that started through the
+	// login shell computes it again instead, like a resume.
+	var env map[string]string
+	if nm.Shell {
+		env = shellSessionEnv(d.cfg.Env)
+	} else if env, err = readEnvFile(filepath.Join(src.dir, "env.json")); err != nil {
 		return fail(fmt.Errorf("read the session's environment: %w", err))
 	}
-	d.ownEnv(env, nid)
-	if m.Agent == pb.Agent_AGENT_CLAUDE {
-		env["CLAUDE_CODE_DISABLE_CRON"] = "1"
-	}
+	d.cliEnv(env, &nm)
 	envFile, err := startEnv(dir, env)
 	if err != nil {
 		return fail(err)
@@ -133,8 +133,7 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	if err := log.Append(nid, []*pb.Event{forked}, "", 0); err != nil {
 		return fail(err)
 	}
-	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(nid), "--env-file", envFile, "--", src.ag.Bin()}
-	argv = append(argv, cliArgs...)
+	argv := d.ptyHostArgv(dir, &nm, cliArgs, envFile)
 	defer d.beginStart(nid)()
 	if err := d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: nm.Tmux, Dir: nm.Cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
@@ -152,6 +151,7 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 		_ = d.cfg.Tmux.KillSession(nm.Tmux)
 		return fail(err)
 	}
+	s.noteShellLaunch()
 	s.mu.Lock()
 	s.meta.Starting = false
 	started := s.meta

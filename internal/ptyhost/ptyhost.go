@@ -45,6 +45,9 @@ const (
 type runOptions struct {
 	childSignalGrace time.Duration
 	groupTermGrace   time.Duration
+	// env, when non-nil, is the command's whole environment instead of
+	// this process's.
+	env []string
 }
 
 // Request is one control message, sent as a JSON line.
@@ -81,11 +84,15 @@ type Host struct {
 }
 
 // Run starts argv in a PTY attached to the process's own terminal, serves
-// the control socket at socketPath, and returns the child's exit code.
-func Run(socketPath string, argv []string) (int, error) {
+// the control socket at socketPath, and returns the child's exit code. env,
+// when not nil, is the command's whole environment, not this process's;
+// callers use it to start a command with an environment of their own
+// choosing, such as a login shell's.
+func Run(socketPath string, argv []string, env []string) (int, error) {
 	return run(socketPath, argv, os.Stdin, os.Stdout, runOptions{
 		childSignalGrace: childSignalGrace,
 		groupTermGrace:   groupTermGrace,
+		env:              env,
 	})
 }
 
@@ -95,6 +102,9 @@ func run(socketPath string, argv []string, stdin *os.File, stdout io.Writer, shu
 	}
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Env = os.Environ()
+	if shutdown.env != nil {
+		cmd.Env = shutdown.env
+	}
 
 	stdinFD := int(stdin.Fd())
 	isTTY := term.IsTerminal(stdinFD)

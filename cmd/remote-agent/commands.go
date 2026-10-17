@@ -77,17 +77,21 @@ func runDaemon(args []string) error {
 }
 
 // daemonConfig finds the CLIs, this binary and the CLIs' files. Codex is
-// required; Claude Code is optional.
+// required; Claude Code is optional. A CLI the user did not configure is
+// also named for client-created sessions to find in the user's login
+// shell, so that those sessions follow the shell's configuration rather
+// than this process's PATH.
 func daemonConfig(codexBin, claudeBin string, tc *tmux.Client) (daemon.Config, error) {
 	if _, err := tc.CheckVersion(); err != nil {
 		return daemon.Config{}, err
 	}
+	codexCmd := codexBin
 	if codexBin == "" {
 		p, err := exec.LookPath("codex")
 		if err != nil {
 			return daemon.Config{}, errors.New("codex not found in PATH; pass --codex")
 		}
-		codexBin = p
+		codexBin, codexCmd = p, "codex"
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -105,7 +109,9 @@ func daemonConfig(codexBin, claudeBin string, tc *tmux.Client) (daemon.Config, e
 	if codexHome == "" {
 		codexHome = filepath.Join(home, ".codex")
 	}
+	claudeCmd := claudeBin
 	if claudeBin == "" {
+		claudeCmd = "claude"
 		// The path in PATH, not the versioned file it links to, which
 		// Claude Code's updates replace.
 		claudeBin, _ = exec.LookPath("claude")
@@ -117,8 +123,10 @@ func daemonConfig(codexBin, claudeBin string, tc *tmux.Client) (daemon.Config, e
 	return daemon.Config{
 		Exe:         exe,
 		CodexBin:    codexBin,
+		CodexCmd:    codexCmd,
 		CodexHome:   codexHome,
 		ClaudeBin:   claudeBin,
+		ClaudeCmd:   claudeCmd,
 		ClaudeHome:  claudeHome,
 		Tmux:        tc,
 		HistoryPath: filepath.Join(codexHome, "history.jsonl"),
@@ -581,18 +589,35 @@ func runPTYHost(args []string) int {
 	fs := flag.NewFlagSet("pty-host", flag.ContinueOnError)
 	sock := fs.String("socket", "", "control socket path")
 	envFile := fs.String("env-file", "", "JSON file with environment variables for the command; deleted once read")
-	if err := fs.Parse(args); err != nil || *sock == "" || fs.NArg() == 0 {
-		fmt.Fprintln(os.Stderr, "usage: remote-agent pty-host --socket PATH [--env-file PATH] -- command [args]")
+	cleanEnv := fs.Bool("clean-env", false, "give the command only the environment in --env-file, not this process's")
+	if err := fs.Parse(args); err != nil || *sock == "" || fs.NArg() == 0 || (*cleanEnv && *envFile == "") {
+		fmt.Fprintln(os.Stderr, "usage: remote-agent pty-host --socket PATH [--env-file PATH] [--clean-env] -- command [args]")
 		return 2
 	}
+	var env []string
 	if *envFile != "" {
-		if err := loadEnvFile(*envFile); err != nil {
+		vars, err := loadEnvFile(*envFile)
+		if err != nil {
 			fmt.Fprintln(os.Stderr, "remote-agent pty-host:", err)
 			time.Sleep(3 * time.Second)
 			return 1
 		}
+		if *cleanEnv {
+			// The command starts with exactly these variables. A login
+			// shell must not inherit this process's environment: it is
+			// the daemon's copy, which may hold an outdated PATH.
+			env = envList(vars)
+		} else {
+			for k, v := range vars {
+				if err := os.Setenv(k, v); err != nil {
+					fmt.Fprintln(os.Stderr, "remote-agent pty-host:", err)
+					time.Sleep(3 * time.Second)
+					return 1
+				}
+			}
+		}
 	}
-	code, err := ptyhost.Run(*sock, fs.Args())
+	code, err := ptyhost.Run(*sock, fs.Args(), env)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "remote-agent pty-host:", err)
 		// Keep the message visible if the pane is about to close.
@@ -601,23 +626,34 @@ func runPTYHost(args []string) int {
 	return code
 }
 
-// loadEnvFile sets the variables in a JSON file and deletes the file.
-func loadEnvFile(path string) error {
+// envList renders an environment file's variables as the list exec takes.
+// The pane's TERM is kept unless the file sets it: the terminal a login
+// shell starts in is this pane, whatever tmux calls it.
+func envList(vars map[string]string) []string {
+	if _, ok := vars["TERM"]; !ok {
+		if term := os.Getenv("TERM"); term != "" {
+			vars["TERM"] = term
+		}
+	}
+	env := make([]string, 0, len(vars))
+	for k, v := range vars {
+		env = append(env, k+"="+v)
+	}
+	return env
+}
+
+// loadEnvFile reads the variables in a JSON file and deletes the file.
+func loadEnvFile(path string) (map[string]string, error) {
 	b, err := os.ReadFile(path)
 	os.Remove(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	env := map[string]string{}
 	if err := json.Unmarshal(b, &env); err != nil {
-		return fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	for k, v := range env {
-		if err := os.Setenv(k, v); err != nil {
-			return err
-		}
-	}
-	return nil
+	return env, nil
 }
 
 // backend adapts the daemon to what the relay needs.

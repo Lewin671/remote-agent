@@ -55,6 +55,9 @@ type Launcher interface {
 	Name() string
 	// Bin is the CLI's executable.
 	Bin() string
+	// SetBin replaces it with the executable a launch resolved, when a
+	// session's shell finds a different one than the daemon did.
+	SetBin(bin string)
 	// Version is the installed CLI's version, read again when the
 	// executable changes; empty if unknown.
 	Version() string

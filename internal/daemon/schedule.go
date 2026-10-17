@@ -652,12 +652,19 @@ func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
 	} else {
 		kind, _ := scheduleAgent(target.Agent)
 		mode, _ := scheduleMode(target.Mode)
+		// A run continues its source session's way: one that started
+		// through the login shell does so again (its environment is
+		// computed then), any other keeps the saved environment.
 		env := map[string]string{}
+		shell := false
 		if t.SourceSession != "" {
+			if m, err := loadMeta(paths.SessionDir(t.SourceSession)); err == nil {
+				shell = m.Shell
+			}
 			env, _ = readEnvFile(filepath.Join(paths.SessionDir(t.SourceSession), "env.json"))
 		}
 		// No prompt here: the scheduled input uses its own stable request ID.
-		s, err = d.createBy(&pb.CreateSessionRequest{Cwd: target.Cwd, Agent: kind, Model: target.Model, Effort: target.Effort, Mode: mode, Env: env}, originSystem)
+		s, err = d.createBy(&pb.CreateSessionRequest{Cwd: target.Cwd, Agent: kind, Model: target.Model, Effort: target.Effort, Mode: mode, Env: env}, originSystem, shell)
 	}
 	if err != nil {
 		run.Status = "failed"

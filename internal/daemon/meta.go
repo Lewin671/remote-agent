@@ -33,6 +33,10 @@ type meta struct {
 	// StandardContext: a Claude Code session held to the standard context
 	// window; its environment says so to the CLI, also when resumed.
 	StandardContext bool `json:"standard_context,omitempty"`
+	// Shell: the session's CLI starts through the user's login shell, so
+	// its environment comes from the shell's configuration rather than
+	// from a copy the daemon keeps (client-created sessions).
+	Shell bool `json:"shell,omitempty"`
 	// ForkedFrom is the session this one was forked from, and ForkedSeq
 	// the seq of its SessionForked event, after the source's history.
 	ForkedFrom string `json:"forked_from,omitempty"`

@@ -36,7 +36,12 @@ func rpcErr(err error) error {
 }
 
 func (h *handler) CreateSession(ctx context.Context, req *connect.Request[pb.CreateSessionRequest]) (*connect.Response[pb.CreateSessionResponse], error) {
-	s, err := h.d.createBy(req.Msg, originOf(ctx))
+	// No environment means the caller is not a terminal on this machine:
+	// a client's command arrives through the relay, which drops what the
+	// phone's environment would name. Such a session starts through the
+	// user's login shell so that its environment is the machine's own,
+	// computed at that moment.
+	s, err := h.d.createBy(req.Msg, originOf(ctx), len(req.Msg.Env) == 0)
 	if err != nil && queueAccepted(err) {
 		// The error names the live session and its accepted first request.
 		// Do not misclassify a recording failure as invalid creation input.

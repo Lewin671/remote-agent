@@ -40,6 +40,34 @@ func waitForSocket(t *testing.T, path string) *Conn {
 	return nil
 }
 
+// A command started with an environment of its own gets exactly that
+// environment: nothing of the host process's leaks into it. The login
+// shell a client-created session runs must not inherit the daemon's.
+func TestRunEnvReplacesTheHostEnvironment(t *testing.T) {
+	dir := shortTempDir(t)
+	sock := filepath.Join(dir, "c.sock")
+	out := filepath.Join(dir, "out")
+	t.Setenv("RA_HOST_ONLY", "host")
+
+	stdinR, stdinW, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stdinW.Close()
+	code, err := run(sock, []string{"/bin/sh", "-c", `printf '%s|%s' "$RA_ONLY" "$RA_HOST_ONLY" > ` + out},
+		stdinR, io.Discard, runOptions{env: []string{"RA_ONLY=session", "PATH=" + os.Getenv("PATH")}})
+	if err != nil || code != 0 {
+		t.Fatalf("run: %d %v", code, err)
+	}
+	got, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "session|" {
+		t.Fatalf("the command saw %q, want the given environment only", got)
+	}
+}
+
 // Local bytes typed while input is held must reach the child after the
 // injected bytes, not interleaved with them and not lost.
 func TestHoldBuffersLocalInput(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -21,6 +22,7 @@ import (
 
 // Adapter is Codex's agent.Adapter.
 type Adapter struct {
+	mu      sync.Mutex // guards bin
 	bin     string
 	home    string
 	history string
@@ -42,15 +44,26 @@ func New(bin, home, history string) *Adapter {
 
 func (a *Adapter) Kind() pb.Agent { return pb.Agent_AGENT_CODEX }
 func (a *Adapter) Name() string   { return "Codex" }
-func (a *Adapter) Bin() string    { return a.bin }
+
+func (a *Adapter) Bin() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.bin
+}
+
+func (a *Adapter) SetBin(bin string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.bin = bin
+}
 
 // Version is `codex --version` without the program name, read again when
 // the executable changes.
 func (a *Adapter) Version() string {
-	return a.version.Get(a.bin, func() string {
+	return a.version.Get(a.Bin(), func() string {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		out, err := exec.CommandContext(ctx, a.bin, "--version").Output()
+		out, err := exec.CommandContext(ctx, a.Bin(), "--version").Output()
 		if err == nil {
 			if f := strings.Fields(string(out)); len(f) > 0 {
 				return f[len(f)-1]

@@ -104,6 +104,10 @@ type session struct {
 	sawComposer  bool
 	// readySince is when the session last left STARTING.
 	readySince time.Time
+	// shellStart is when this daemon started the session through the
+	// user's login shell, while the shell has not yet reported the CLI it
+	// started; zero once it has, and for every other session.
+	shellStart time.Time
 	planOpen   bool
 	driving    bool // a control operation is using the terminal's menus
 	// seenModes are the permission modes the screen has shown, by the
@@ -418,6 +422,10 @@ func (s *session) pollLoop(ctx context.Context) {
 	defer rollout.Stop()
 	screen := time.NewTicker(s.d.cfg.ScreenInterval)
 	defer screen.Stop()
+	if !s.checkShellStart(ctx) {
+		s.readRollout()
+		return
+	}
 	if !s.checkScreenContext(ctx) {
 		return
 	}
@@ -428,12 +436,77 @@ func (s *session) pollLoop(ctx context.Context) {
 		case <-rollout.C:
 			s.readRollout()
 		case <-screen.C:
+			if !s.checkShellStart(ctx) {
+				s.readRollout()
+				return
+			}
 			if !s.checkScreenContext(ctx) {
 				s.readRollout()
 				return
 			}
 		}
 	}
+}
+
+// noteShellLaunch arms the startup watchdog of a login-shell launch: the
+// shell must report the CLI it started within cfg.ShellStartTimeout, or
+// the session is ended with the reason. Without it a shell whose
+// configuration waits for input would leave the session starting forever.
+func (s *session) noteShellLaunch() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.meta.Shell {
+		s.shellStart = time.Now()
+	}
+}
+
+// checkShellStart reads what a login-shell launch reported and learns the
+// CLI it started. It ends the session when the shell has not got that far
+// within the timeout, and reports false then.
+func (s *session) checkShellStart(ctx context.Context) bool {
+	s.mu.Lock()
+	started, starting := s.shellStart, s.status == pb.SessionStatus_SESSION_STATUS_STARTING && !s.meta.Exited
+	s.mu.Unlock()
+	if started.IsZero() {
+		return true
+	}
+	if bin, _, ok := shellReport(s.dir); ok {
+		s.mu.Lock()
+		s.shellStart = time.Time{}
+		s.mu.Unlock()
+		if bin != "" {
+			// The CLI the sessions actually run, for version checks and
+			// the installed list.
+			s.d.learnCLI(s.ag.Kind(), bin)
+		}
+		return true
+	}
+	if !starting {
+		// The screen shows the CLI, so the shell got there; its report
+		// just never arrived. Nothing left to watch.
+		s.mu.Lock()
+		s.shellStart = time.Time{}
+		s.mu.Unlock()
+		return true
+	}
+	// Past the timeout the shell has neither started the CLI nor failed
+	// to find it: its configuration is stuck (or the shell never ran the
+	// script).
+	if time.Since(started) < s.d.cfg.ShellStartTimeout {
+		return true
+	}
+	detail := fmt.Sprintf("the login shell did not start the CLI within %s", s.d.cfg.ShellStartTimeout)
+	slog.Warn("ending a session whose login shell never started the CLI",
+		"session", s.meta.ID, "agent", s.ag.Name(), "timeout", s.d.cfg.ShellStartTimeout)
+	if err := s.term.Kill(); err != nil && s.term.Alive() {
+		slog.Warn("cannot end a session whose login shell is stuck", "session", s.meta.ID, "err", errClass(err))
+		return true // try again on the next poll
+	}
+	if err := s.waitForPTYHostGone(ctx); err != nil {
+		slog.Warn("pty-host still running after ending a stuck session", "session", s.meta.ID, "err", errClass(err))
+	}
+	_ = s.markExited(detail)
+	return false
 }
 
 // readRollout appends events for rollout lines written since the last read.
@@ -627,7 +700,7 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 			}
 			slog.Warn("pty-host still running after its tmux session ended", "session", s.meta.ID, "err", errClass(err))
 		}
-		s.markExited("")
+		s.markExited(s.shellExitDetail())
 		return false
 	}
 	styled, err := s.term.Capture()
@@ -759,6 +832,25 @@ func (s *session) abortTurnLocked(reason string) bool {
 	s.interruptedBy = nil
 	clear(s.answeredBy)
 	return true
+}
+
+// shellExitDetail explains an exit that happened before a login-shell
+// launch got as far as starting the CLI: the shell's own message, or a
+// plain statement that the CLI never ran. It is empty once the CLI
+// started (or for any other session), where an exit is just the CLI
+// ending.
+func (s *session) shellExitDetail() string {
+	s.mu.Lock()
+	shell := s.meta.Shell
+	s.mu.Unlock()
+	if !shell {
+		return ""
+	}
+	_, msg, ok := shellReport(s.dir)
+	if !ok {
+		return "the login shell did not start the CLI"
+	}
+	return msg
 }
 
 func (s *session) markExited(detail string) error {

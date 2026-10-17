@@ -40,7 +40,13 @@ type Config struct {
 	Exe string
 	// CodexBin is the real codex executable.
 	CodexBin string
-	Tmux     *tmux.Client
+	// CodexCmd and ClaudeCmd are what a client-created session runs in
+	// the user's login shell: the executable the user configured, or the
+	// command name for the shell to resolve in its own PATH when they
+	// configured none.
+	CodexCmd  string
+	ClaudeCmd string
+	Tmux      *tmux.Client
 	// CodexHome is Codex's state directory, ~/.codex by default.
 	CodexHome string
 	// HistoryPath is Codex's history.jsonl.
@@ -57,7 +63,11 @@ type Config struct {
 	ScreenInterval  time.Duration // screen and liveness checks
 	RetryInterval   time.Duration // retry of blocked input
 	SubmitTimeout   time.Duration // wait for history.jsonl after injecting
-	Width, Height   int           // size of new sessions until attached
+	// ShellStartTimeout bounds how long a client-created session's login
+	// shell may take to start the CLI; a shell whose configuration waits
+	// or exits otherwise leaves the session starting forever.
+	ShellStartTimeout time.Duration
+	Width, Height     int // size of new sessions until attached
 
 	// Started, if set, runs in its own goroutine once the daemon holds its
 	// lock and has restored its sessions.
@@ -80,8 +90,17 @@ func (c *Config) defaults() {
 	if c.SubmitTimeout == 0 {
 		c.SubmitTimeout = 10 * time.Second
 	}
+	if c.ShellStartTimeout == 0 {
+		c.ShellStartTimeout = time.Minute
+	}
 	if c.Width == 0 {
 		c.Width, c.Height = 160, 48
+	}
+	if c.CodexCmd == "" {
+		c.CodexCmd = c.CodexBin
+	}
+	if c.ClaudeCmd == "" {
+		c.ClaudeCmd = c.ClaudeBin
 	}
 	if c.CodexHome == "" && c.HistoryPath != "" {
 		c.CodexHome = filepath.Dir(c.HistoryPath)
@@ -318,6 +337,9 @@ func (d *Daemon) restore() error {
 			continue
 		}
 		slog.Info("reattached session", "session", m.ID, "tmux", m.Tmux)
+		// A launch through the login shell that has not started its CLI
+		// gets a fresh watchdog window after the restart.
+		s.noteShellLaunch()
 		s.start(d.ctx)
 	}
 	return nil
@@ -399,14 +421,17 @@ func (d *Daemon) hookSession(ctx context.Context, id string) (*session, error) {
 	return d.session(id)
 }
 
-// create starts a new CLI session in tmux.
+// create starts a new CLI session in tmux with the daemon's own
+// environment, as `remote-agent doctor` uses it.
 func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
-	return d.createBy(req, originLocal)
+	return d.createBy(req, originLocal, false)
 }
 
 // createBy is create on behalf of origin, who sent the first message's
-// images.
-func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*session, error) {
+// images. viaShell starts the CLI through the user's login shell instead
+// of with the daemon's environment: what a session a client created does,
+// so that its environment comes from the shell's configuration.
+func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaShell bool) (*session, error) {
 	cwd := req.Cwd
 	if cwd == "" {
 		return nil, errors.New("cwd is required")
@@ -440,7 +465,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	}
 	id := newID(8)
 	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true,
-		StandardContext: req.Agent == pb.Agent_AGENT_CLAUDE && req.StandardContext}
+		StandardContext: req.Agent == pb.Agent_AGENT_CLAUDE && req.StandardContext, Shell: viaShell}
 	dir := paths.SessionDir(id)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
@@ -459,14 +484,18 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 		return nil, err
 	}
 
-	env := sessionEnv(req.Env, d.cfg.Env)
-	d.ownEnv(env, id)
-	if m.Agent == pb.Agent_AGENT_CLAUDE {
-		env["CLAUDE_CODE_DISABLE_CRON"] = "1"
-		if m.StandardContext {
-			env[claude.StandardContextEnv] = "1"
-		}
+	// The environment the CLI starts with: a client-created session's
+	// login shell gets what a new terminal gives it and builds the rest
+	// from the user's configuration; any other session gets the caller's
+	// own environment, as from that terminal.
+	var env map[string]string
+	if m.Shell {
+		env = shellSessionEnv(d.cfg.Env)
+		clearShellReport(dir)
+	} else {
+		env = sessionEnv(req.Env, d.cfg.Env)
 	}
+	d.cliEnv(env, &m)
 	envFile, err := startEnv(dir, env)
 	if err != nil {
 		log.Close()
@@ -487,8 +516,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 		_ = os.RemoveAll(dir) // a session that never started leaves nothing
 		return nil, err
 	}
-	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", ag.Bin()}
-	argv = append(argv, cliArgs...)
+	argv := d.ptyHostArgv(dir, &m, cliArgs, envFile)
 	defer d.beginStart(id)()
 	err = d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
@@ -509,6 +537,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 		_ = d.cfg.Tmux.KillSession(m.Tmux)
 		return fail(err)
 	}
+	s.noteShellLaunch()
 	if err := s.emit(&pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_STARTING,
 	}}}); err != nil {
@@ -675,6 +704,75 @@ func (d *Daemon) ownEnv(env map[string]string, id string) {
 	env["REMOTE_AGENT_HOME"] = paths.Dir()
 }
 
+// cliEnv sets the variables a session's CLI needs: which session it is,
+// the executable the hooks run, and the CLI's own switches.
+func (d *Daemon) cliEnv(env map[string]string, m *meta) {
+	d.ownEnv(env, m.ID)
+	if m.Agent == pb.Agent_AGENT_CLAUDE {
+		env["CLAUDE_CODE_DISABLE_CRON"] = "1"
+		if m.StandardContext {
+			env[claude.StandardContextEnv] = "1"
+		}
+	}
+}
+
+// shellSessionEnv is the environment a client-created session's login
+// shell starts with: a new terminal's, then agent.env, then the shell
+// computes the rest. The daemon's PATH deliberately stays out of it.
+func shellSessionEnv(agentEnv map[string]string) map[string]string {
+	env := shellStartEnv(loginShell())
+	for k, v := range agentEnv {
+		env[k] = v
+	}
+	return env
+}
+
+// shellCmd is what a client-created session's login shell runs: the
+// executable the user configured for the CLI, or its name for the shell
+// to resolve — the same command the user would type.
+func (d *Daemon) shellCmd(kind pb.Agent) string {
+	if kind == pb.Agent_AGENT_CLAUDE {
+		return d.cfg.ClaudeCmd
+	}
+	return d.cfg.CodexCmd
+}
+
+// ptyHostArgv is the command that runs a session's CLI in its tmux pane:
+// pty-host wrapping either the CLI itself or the user's login shell.
+func (d *Daemon) ptyHostArgv(dir string, m *meta, args []string, envFile string) []string {
+	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(m.ID), "--env-file", envFile}
+	if !m.Shell {
+		argv = append(argv, "--", d.adapter(m.Agent).Bin())
+		return append(argv, args...)
+	}
+	// The login shell starts from exactly envFile (--clean-env): the
+	// daemon's own environment, with its outdated PATH, must not leak in.
+	shell := loginShell()
+	slog.Info("starting a session through the login shell", "session", m.ID, "agent", d.adapter(m.Agent).Name(), "shell", shell)
+	argv = append(argv, "--clean-env", "--")
+	return append(argv, shellLaunchArgv(shell, dir, d.shellCmd(m.Agent), args)...)
+}
+
+// learnCLI records the CLI a login-shell launch resolved, so that version
+// checks, the installed list and doctor follow what sessions actually run
+// rather than the daemon's own PATH at the time it started. The shell
+// reports a plain name when it resolved an alias or function instead of a
+// file; that is not something the daemon can use.
+func (d *Daemon) learnCLI(kind pb.Agent, bin string) {
+	ag, ok := d.agents[kind]
+	if !ok || !filepath.IsAbs(bin) {
+		return
+	}
+	if st, err := os.Stat(bin); err != nil || st.IsDir() {
+		return
+	}
+	if ag.Bin() == bin {
+		return
+	}
+	ag.SetBin(bin)
+	slog.Info("the login shell resolved a session's CLI", "agent", ag.Name(), "bin", bin)
+}
+
 // skipEnv lists variables that belong to the caller's terminal rather than
 // to the CLI process.
 var skipEnv = map[string]bool{
@@ -795,21 +893,24 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 		return nil, err
 	}
 	// The same environment it started with: the caller's shell may have
-	// provided credentials or proxies.
-	env, err := readEnvFile(filepath.Join(s.dir, "env.json"))
-	if err != nil {
-		return nil, fmt.Errorf("read the session's environment: %w", err)
+	// provided credentials or proxies. A session that started through the
+	// login shell computes its environment the same way again, so that
+	// configuration changes since apply — that is why it starts that way.
+	var env map[string]string
+	if m.Shell {
+		env = shellSessionEnv(d.cfg.Env)
+		clearShellReport(s.dir)
+	} else {
+		if env, err = readEnvFile(filepath.Join(s.dir, "env.json")); err != nil {
+			return nil, fmt.Errorf("read the session's environment: %w", err)
+		}
 	}
-	d.ownEnv(env, id)
-	if m.Agent == pb.Agent_AGENT_CLAUDE {
-		env["CLAUDE_CODE_DISABLE_CRON"] = "1"
-	}
+	d.cliEnv(env, &m)
 	envFile, err := startEnv(s.dir, env)
 	if err != nil {
 		return nil, err
 	}
-	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", s.ag.Bin()}
-	argv = append(argv, cliArgs...)
+	argv := d.ptyHostArgv(s.dir, &m, cliArgs, envFile)
 	if err := d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: m.Cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
 	}); err != nil {
@@ -828,6 +929,7 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 	s.done = make(chan struct{})
 	m = s.meta
 	s.mu.Unlock()
+	s.noteShellLaunch()
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", id, "err", errClass(err))
 	}

@@ -149,7 +149,7 @@ func TestCreateKeepsSessionAfterFirstPromptAccepted(t *testing.T) {
 			if via == "rpc" {
 				_, err = (&handler{d: h.d}).CreateSession(agent.WithOrigin(context.Background(), origin), connect.NewRequest(req))
 			} else {
-				_, err = h.d.createBy(req, origin)
+				_, err = h.d.createBy(req, origin, false)
 			}
 			if err == nil || !queueAccepted(err) || !strings.Contains(err.Error(), "already created") || connect.CodeOf(err) == connect.CodeInvalidArgument {
 				t.Fatalf("accepted creation rejected: %v", err)
