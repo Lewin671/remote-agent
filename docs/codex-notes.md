@@ -94,9 +94,11 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 | 维度 | 取值 | 怎么切 | 从哪读 |
 |---|---|---|---|
 | 权限 | `/permissions` 菜单里的 3 档：`Ask for approval`、`Approve for me`、`Full Access` | 空闲时输入 `/permissions`，回车，方向键选，回车；屏幕出现 `Permission selection requested: <档位>` | rollout 的 `turn_context`：`approval_policy`、`sandbox_policy`、`approvals_reviewer`（`user` 或 `auto_review`）；`/status` 的 `Permissions` 一行 |
-| 协作模式 | `Default`、`Plan` | Shift+Tab 开关 | `turn_context.collaboration_mode.mode`；屏幕右下角出现 `Plan mode` |
+| 协作模式 | `Default`、`Plan` | `/plan` 进入 Plan；空闲时 Shift+Tab 开关 | `turn_context.collaboration_mode.mode`；屏幕右下角出现 `Plan mode` |
 
 **Codex 0.163.0，真实 CLI 屏幕与回归测试已证实（2026-10-16）**：空闲页脚的标记是 `Plan mode (⇧tab to cycle)`，后面还可能有警告提示，不能只用整行是否以 `Plan mode` 结尾判断。当前输入框上方的旧聊天即使引用这个标记，也不是当前模式。隔离网页验收中旧识别导致进入 Plan 已实际切换却等待超时，之后离开时又跳过退出 Plan；修正后在同一隔离网页环境分别进入、离开，两个方向均已重验通过。
+
+**Codex 0.163.0，隔离真实 CLI 与可控 MCP 初始化已证实（2026-10-17）**：MCP 初始化尚未完成时，输入框和普通 footer 已可见，但 Shift+Tab 被忽略。阻塞测试 MCP 的 initialize 回复，首次切换等待约 4.25 秒超时；释放回复后重试成功。同一条件下 `/plan` 可立即进入 Plan，完成确认后才释放 MCP 回复，证明它不依赖初始化完成。此时 footer 没有快捷键提示，带警告时为 `Plan mode    ⚠ 2 warnings · f2 to view`。对应版本源码中，[忙碌状态包含 MCP 初始化且隐藏指示](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/tui/src/chatwidget/turn_runtime.rs)，[Shift+Tab 要求非忙碌](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/tui/src/chatwidget/interaction.rs)，而 [`/plan` 显式选择模式](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/tui/src/chatwidget/slash_dispatch.rs)。这不证明 Shift+Tab 在 MCP 初始化中可用于退出 Plan，或在模型运行中可用。
 
 **Codex 0.163.0，真实 CLI 已证实（2026-10-16）**：`/permissions` 用 `(current)` 标出当前项；再次选择当前项会关闭菜单，但不再输出新的 `Permission selection requested`。在 Plan 下请求原来的权限级别时，仍要先退出 Plan；不能把缺少这句提示当成权限切换失败。
 

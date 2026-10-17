@@ -115,6 +115,7 @@ func TestPlanModeFooterWithCycleHint(t *testing.T) {
 	}{
 		{"cycle hint and warning", prompt + "  GPT-6.1-Sol medium · /tmp/work   Plan mode (⇧tab to cycle)    ⚠ 1 warning · f2 to view\n", true},
 		{"cycle hint only", prompt + "  GPT-6.1-Sol medium · /tmp/work   Plan mode (⇧tab to cycle)\n", true},
+		{"MCP startup hides cycle hint", prompt + "  GPT-6.1-Sol medium · /tmp/work   Plan mode    ⚠ 2 warnings · f2 to view\n", true},
 		{"ordinary footer", prompt + "  GPT-6.1-Sol medium · /tmp/work    ⚠ 1 warning · f2 to view\n", false},
 		{"quoted old mode above composer", "• The previous footer said Plan mode (⇧tab to cycle)\n" + prompt + "  GPT-6.1-Sol medium · /tmp/work\n", false},
 		{"model word is not mode", prompt + "  Plan model medium · /tmp/work\n", false},

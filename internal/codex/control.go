@@ -261,7 +261,7 @@ var permissionLevels = map[pb.ApprovalMode]int{
 
 // SetMode switches the permission level or Plan mode. Choosing Plan turns
 // Plan mode on and leaves permissions alone; any other mode turns Plan
-// mode off first. Both work while a turn runs and apply from the next.
+// mode off first. Permissions and collaboration mode remain independent.
 func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, _ agent.ModeFacts) error {
 	level, isLevel := permissionLevels[mode]
 	if !isLevel && mode != pb.ApprovalMode_APPROVAL_MODE_PLAN {
@@ -276,10 +276,18 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, _ ag
 	}
 	wantPlan := mode == pb.ApprovalMode_APPROVAL_MODE_PLAN
 	if scr.PlanMode != wantPlan {
-		if err := t.Write([]byte(agent.KeyBTab)); err != nil {
+		if wantPlan {
+			// Codex can show an idle composer while MCP is still starting.
+			// It ignores Shift+Tab then, but accepts the explicit /plan command.
+			if err := agent.Slash(t, "/plan"); err != nil {
+				return err
+			}
+		} else if err := t.Write([]byte(agent.KeyBTab)); err != nil {
 			return err
 		}
-		if _, err := waitFor(t, "Plan mode to switch", func(scr Screen, _ string) bool { return scr.PlanMode == wantPlan }); err != nil {
+		if _, err := waitFor(t, "Plan mode to switch", func(scr Screen, _ string) bool {
+			return scr.ComposerReady && scr.DraftEmpty && scr.PlanMode == wantPlan
+		}); err != nil {
 			return err
 		}
 	}

@@ -26,7 +26,7 @@ type Screen struct {
 }
 
 // A current footer may append the cycle shortcut and warning indicators.
-var planModeRE = regexp.MustCompile(`(?:^|\s)Plan mode(?:$|\s+\()`)
+var planModeRE = regexp.MustCompile(`(?:^|\s)Plan mode(?:$|\s+(?:\(|⚠))`)
 
 var sgrRE = regexp.MustCompile("\x1b\\[[0-9;:]*[A-Za-z]")
 

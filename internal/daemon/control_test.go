@@ -58,8 +58,13 @@ func fakeCodex(footer *string) func(f *fakeTerm, b string) {
 	cursor := 1
 	return func(f *fakeTerm, b string) {
 		switch {
-		case b == "/model" || b == "/permissions" || b == "/compact":
+		case b == "/model" || b == "/permissions" || b == "/compact" || b == "/plan":
 			typed = b
+		case b == "\r" && typed == "/plan":
+			if !strings.HasSuffix(*footer, "Plan mode") {
+				*footer += "   Plan mode"
+			}
+			f.screen = composer(*footer)
 		case b == "\r" && typed == "/model":
 			f.screen = modelMenu
 		case b == "\r" && typed == "/permissions":

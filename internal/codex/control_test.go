@@ -1,8 +1,10 @@
 package codex
 
 import (
+	"errors"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
@@ -56,5 +58,92 @@ func TestSetModePreservesCurrentPermission(t *testing.T) {
 				t.Fatalf("reselected an already current permission: %q", got)
 			}
 		})
+	}
+}
+
+// Codex 0.163.0 hides its busy indicator during MCP startup but still
+// ignores Shift+Tab (chatwidget/interaction.rs and turn_runtime.rs).
+// /plan is accepted in that state (slash_dispatch.rs).
+type startingMCPTerm struct {
+	currentPermissionTerm
+	command string
+	applied chan struct{}
+	render  chan struct{}
+	failure error
+}
+
+func (t *startingMCPTerm) Write(b []byte) error {
+	if t.failure != nil {
+		return t.failure
+	}
+	t.writes = append(t.writes, string(b))
+	switch string(b) {
+	case agent.KeyBTab:
+		// Native TUI deliberately ignores this while MCP starts.
+	case agent.KeyEnter:
+		if t.command == "/plan" {
+			close(t.applied)
+			t.command = ""
+		}
+	default:
+		t.command += string(b)
+	}
+	return nil
+}
+
+func (t *startingMCPTerm) Capture() (string, error) {
+	select {
+	case <-t.render:
+		t.plan = true
+	default:
+	}
+	styled, err := t.currentPermissionTerm.Capture()
+	// The busy TUI suppresses the cycle shortcut, retaining the warning badge.
+	return strings.ReplaceAll(styled, "Plan mode (⇧tab to cycle)", "Plan mode"), err
+}
+
+func TestSetPlanDuringMCPStartup(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		term := &startingMCPTerm{applied: make(chan struct{}), render: make(chan struct{})}
+		done := make(chan error, 1)
+		go func() {
+			done <- new(Adapter).SetMode(term, pb.ApprovalMode_APPROVAL_MODE_PLAN, false, agent.ModeFacts{})
+		}()
+		select {
+		case <-term.applied:
+		case err := <-done:
+			t.Fatalf("Plan command was not accepted during MCP startup: %v", err)
+		}
+		synctest.Wait()
+		select {
+		case err := <-done:
+			t.Fatalf("returned before the footer confirmed Plan mode: %v", err)
+		default:
+		}
+		close(term.render)
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+		if !term.plan {
+			t.Fatal("Plan mode was not applied")
+		}
+	})
+}
+
+func TestSetPlanAlreadyEnabled(t *testing.T) {
+	term := &currentPermissionTerm{plan: true}
+	if err := new(Adapter).SetMode(term, pb.ApprovalMode_APPROVAL_MODE_PLAN, false, agent.ModeFacts{}); err != nil {
+		t.Fatal(err)
+	}
+	if len(term.writes) != 0 {
+		t.Fatalf("already enabled Plan mode wrote keys: %q", term.writes)
+	}
+}
+
+func TestSetPlanPropagatesWriteError(t *testing.T) {
+	want := errors.New("write failed")
+	term := &startingMCPTerm{failure: want}
+	if err := new(Adapter).SetMode(term, pb.ApprovalMode_APPROVAL_MODE_PLAN, false, agent.ModeFacts{}); !errors.Is(err, want) {
+		t.Fatalf("got %v, want %v", err, want)
 	}
 }

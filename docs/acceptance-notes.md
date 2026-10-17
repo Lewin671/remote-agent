@@ -353,3 +353,13 @@ macOS、Codex CLI 0.163.0、当前 worktree 构建；通过 dev-env.sh 使用隔
 自动回归覆盖坏 JSON、截断 JSON、字段类型错误和不可读目录不影响会话恢复及发送/取消；同 inode 截断、同路径短/等长/更长文件替换；空文件重置持久化；重置保存失败后文件增长的重试；旧 checkpoint 加无关 daemon 事件后重启去重，以及新 transcript checkpoint 恢复使用。全量 Go、daemon/Claude/Codex/tail/eventlog/schedulemcp race 检查通过，七组反向验证撤掉相应修复后均断言失败。
 
 已清理隔离环境、测试进程、tmux 和临时认证副本。没有验证 Claude 原生 CLI 或三端界面；没有覆盖 daemon 停机期间的等长替换，或同 inode 在两次读取之间截断后又长过旧位置的识别。这些没有 reader 重置信号的情况不在本轮保证内。
+
+## 2026-10-17：Codex 首次进入 Plan
+
+macOS、Codex CLI 0.163.0、当前 worktree 构建；`ios/scripts/dev-env.sh` 的独立 RA_DEV_DIR、临时账户、server 数据库、daemon 状态目录和 tmux socket。Go remoteclient 调试客户端经 server 加密转发请求，daemon 驱动真实 CLI，再由客户端接收结果；终端 capture-pane 保存状态变化。没有操作浏览器或原生 App，也没有连接线上服务或日常 remote-agent 账户。
+
+未修复时，两组新建会话的首次进入分别为 4/5、9/10，两个失败都在约 4.2 秒后超时、重试成功。另用测试 MCP 的 initialize 回复闸门控制初始化：闸门关闭时稳定复现超时，释放后立即重试成功。外部 CLI 的具体行为见 [codex-notes.md 第 4 节](codex-notes.md#4-审批模式)。完整修复后，在相同的关闭闸门条件下约 281 毫秒内确认 Plan，确认之后才释放 MCP 回复；自然启动的 10 个新会话连续进入 Plan、退出到 Ask 全部成功，进入 10/10、退出 10/10，没有重试。
+
+`testing/synctest` 与明确的命令接受/屏幕呈现同步点覆盖 MCP 初始化期间的切换和等待确认；另覆盖已在 Plan 时不写键、写入错误向上传播、带警告但无快捷键提示的 footer。分别撤掉命令修复和识别修复，对应回归均以断言失败。`GOMAXPROCS=2 go test -p=2 ./...` 与新增 Codex 用例的 race 检查通过。测试环境和临时进程、tmux 已清理；保留本机探针源码、终端快照、时间线和测试日志供复核。
+
+未覆盖：网页/Android/iOS 直接界面操作、模型生成中的切换、MCP 仍在初始化时退出 Plan，以及其他 Codex 版本；没有向模型发送任务或验证后续同步提问流程。本次只本地提交，不推送、不发版。
