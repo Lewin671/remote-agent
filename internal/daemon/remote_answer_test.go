@@ -1,0 +1,250 @@
+package daemon
+
+import (
+	"context"
+	"strings"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/relay"
+)
+
+func oldClientContext() context.Context {
+	return agent.WithOrigin(context.Background(), &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "old-client"})
+}
+
+func restartAnswerHarness(t *testing.T, h *harness) {
+	t.Helper()
+	m := h.s.meta
+	if err := h.s.log.Close(); err != nil {
+		t.Fatal(err)
+	}
+	h.open(m)
+	h.d.sessions[m.ID] = h.s
+}
+
+func requireTruncatedAnswer(t *testing.T, err error) {
+	t.Helper()
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "内容被截断，请在终端处理") {
+		t.Fatalf("expected explicit terminal-only error, got code %s", connect.CodeOf(err))
+	}
+}
+
+// Invoke the same RPC handler reached by relay, with its authenticated origin,
+// without any client-side suffix checks. The real permission-hook output is
+// the authority for whether an allow escaped to the CLI.
+func TestOldClientCannotAllowTruncatedApproval(t *testing.T) {
+	for _, restart := range []bool{false, true} {
+		t.Run(map[bool]string{false: "live", true: "restarted"}[restart], func(t *testing.T) {
+			h := newHarness(t, Config{ApprovalTimeout: time.Minute})
+			if restart {
+				restartAnswerHarness(t, h)
+			}
+			h.d.sessions[h.s.meta.ID] = h.s
+			h.writeRollout(turnContextLine("user"))
+			h.s.bindRollout("codex-1", h.dir+"/rollout.jsonl")
+			out := make(chan []byte, 1)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			go func() {
+				b, err := h.s.permission(ctx, &agent.Hook{ToolName: "shell", ToolInput: []byte(`{"command":"` + strings.Repeat("x", 1<<20) + `"}`)})
+				if err != nil {
+					t.Error(err)
+				}
+				out <- b
+			}()
+			eventually(t, "pending oversized approval", func() bool { return h.s.info().PendingApprovals == 1 })
+			var id string
+			for _, e := range h.events() {
+				if a := e.GetApprovalRequested(); a != nil {
+					id = a.ApprovalId
+				}
+			}
+			rpc := &handler{d: h.d}
+			for _, always := range []bool{false, true} {
+				_, err := rpc.ResolveApproval(oldClientContext(), connect.NewRequest(&pb.ResolveApprovalRequest{SessionId: h.s.meta.ID, ApprovalId: id, Allow: true, Always: always}))
+				requireTruncatedAnswer(t, err)
+				select {
+				case b := <-out:
+					t.Fatalf("CLI received decision before deny: %s", b)
+				default:
+				}
+			}
+			_, err := rpc.ResolveApproval(oldClientContext(), connect.NewRequest(&pb.ResolveApprovalRequest{SessionId: h.s.meta.ID, ApprovalId: id}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case b := <-out:
+				if !strings.Contains(string(b), `"behavior":"deny"`) {
+					t.Fatalf("CLI output: %s", b)
+				}
+			case <-ctx.Done():
+				t.Fatal(ctx.Err())
+			}
+		})
+	}
+}
+
+func TestRemoteApprovalSafetyFromOriginalHistory(t *testing.T) {
+	for _, field := range []string{"description", "command", "tool_input", "skeleton", "rewritten_id", "normal"} {
+		for _, restart := range []bool{false, true} {
+			t.Run(field+map[bool]string{false: "/live", true: "/replay"}[restart], func(t *testing.T) {
+				h := newHarness(t, Config{})
+				a := &pb.ApprovalRequested{ApprovalId: "a", Command: "true"}
+				e := &pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: a}}
+				switch field {
+				case "description":
+					a.Description = strings.Repeat("x", 1<<20)
+				case "command":
+					a.Command = strings.Repeat("x", 1<<20)
+				case "tool_input":
+					a.ToolInputJson = strings.Repeat("x", 1<<20)
+				case "skeleton":
+					e.TurnId = strings.Repeat("x", 1<<20)
+				case "rewritten_id":
+					a.ApprovalId = strings.Repeat("x", 1<<20)
+				}
+				if err := h.s.emit(e); err != nil {
+					t.Fatal(err)
+				}
+				if restart {
+					restartAnswerHarness(t, h)
+				}
+				h.d.sessions[h.s.meta.ID] = h.s
+				rpc := &handler{d: h.d}
+				view := relay.RemoteAnswerSafety(h.events()[0])
+				ids := []string{a.ApprovalId}
+				if view.ID != a.ApprovalId {
+					ids = append(ids, view.ID)
+				}
+				for _, id := range ids {
+					if id != a.ApprovalId {
+						if err := h.s.emit(&pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: id, Command: "true"}}}); err != nil {
+							t.Fatal(err)
+						}
+					}
+					// Supplying an alias equal to another live request's real ID must
+					// still fail before that request is claimed.
+					pending := &approval{id: id, decision: make(chan decision, 1), deadline: time.Now().Add(time.Minute)}
+					h.s.approvals[id] = pending
+					for _, allow := range []bool{true, false} {
+						_, err := rpc.ResolveApproval(oldClientContext(), connect.NewRequest(&pb.ResolveApprovalRequest{SessionId: h.s.meta.ID, ApprovalId: id, Allow: allow}))
+						blocked := view.TerminalOnly || allow && view.ApprovalTruncated
+						if blocked {
+							requireTruncatedAnswer(t, err)
+							if pending.claimed || len(pending.decision) != 0 {
+								t.Fatal("blocked answer reached hook")
+							}
+						} else {
+							if err != nil {
+								t.Fatal(err)
+							}
+							if d := <-pending.decision; d.allow != allow {
+								t.Fatal("wrong hook decision")
+							}
+							// Give the next independent attempt a live hook.
+							pending.claimed = false
+							h.s.approvals[id] = pending
+						}
+					}
+					delete(h.s.approvals, id)
+				}
+				// Local RPC bypasses remote content policy (native always-grant
+				// restrictions still apply independently).
+				pending := &approval{id: a.ApprovalId, decision: make(chan decision, 1), deadline: time.Now().Add(time.Minute)}
+				h.s.approvals[a.ApprovalId] = pending
+				if _, err := rpc.ResolveApproval(context.Background(), connect.NewRequest(&pb.ResolveApprovalRequest{SessionId: h.s.meta.ID, ApprovalId: a.ApprovalId, Allow: true})); err != nil {
+					t.Fatal(err)
+				}
+				if !(<-pending.decision).allow {
+					t.Fatal("local approval blocked")
+				}
+			})
+		}
+	}
+}
+
+func TestRemoteQuestionSafetySurvivesRestart(t *testing.T) {
+	for _, kind := range []string{"normal", "labels", "rewritten_id"} {
+		for _, restart := range []bool{false, true} {
+			t.Run(kind+map[bool]string{false: "/live", true: "/replay"}[restart], func(t *testing.T) {
+				h := newHarness(t, Config{})
+				q := &pb.QuestionAsked{QuestionId: "q", Questions: []*pb.Question{{Text: "Which language?", Options: []*pb.QuestionOption{{Label: "Go"}}}}}
+				if kind == "labels" {
+					q.Questions[0].Options[0].Label = strings.Repeat("x", 1<<20)
+				}
+				if kind == "rewritten_id" {
+					q.QuestionId = strings.Repeat("x", 1<<20)
+				}
+				if err := h.s.emit(&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: q}}); err != nil {
+					t.Fatal(err)
+				}
+				if restart {
+					restartAnswerHarness(t, h)
+				}
+				h.d.sessions[h.s.meta.ID] = h.s
+				rpc := &handler{d: h.d}
+				h.term.setScreen("  Question 1/1 (1 unanswered)\n  Which language?\n  \x1b[1;7m› 1. Go\n")
+				ids := []string{q.QuestionId}
+				view := relay.RemoteAnswerSafety(h.events()[0])
+				if view.ID != q.QuestionId {
+					ids = append(ids, view.ID)
+				}
+				for _, id := range ids {
+					_, err := rpc.AnswerQuestion(oldClientContext(), connect.NewRequest(&pb.AnswerQuestionRequest{SessionId: h.s.meta.ID, QuestionId: id, Option: 1}))
+					if kind != "normal" {
+						requireTruncatedAnswer(t, err)
+						if len(h.term.written()) != 0 {
+							t.Fatal("skeleton wrote terminal keys")
+						}
+					} else if err != nil {
+						t.Fatal(err)
+					}
+				}
+				if kind != "normal" {
+					if _, err := rpc.AnswerQuestion(context.Background(), connect.NewRequest(&pb.AnswerQuestionRequest{SessionId: h.s.meta.ID, QuestionId: q.QuestionId, Option: 1})); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if w := h.term.written(); len(w) != 1 || w[0] != "1" {
+					t.Fatalf("writes %q", w)
+				}
+			})
+		}
+	}
+}
+
+func TestRemoteSkeletonPlanCannotWriteKeys(t *testing.T) {
+	for _, restart := range []bool{false, true} {
+		t.Run(map[bool]string{false: "live", true: "replay"}[restart], func(t *testing.T) {
+			h, _ := controlHarness(t)
+			if err := h.s.emit(&pb.Event{TurnId: strings.Repeat("x", 1<<20), Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: "plan"}}}); err != nil {
+				t.Fatal(err)
+			}
+			// A plan prompt remains actionable after the model turn ends.
+			if err := h.s.emit(&pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{}}}); err != nil {
+				t.Fatal(err)
+			}
+			if restart {
+				restartAnswerHarness(t, h)
+			}
+			h.d.sessions[h.s.meta.ID] = h.s
+			h.term.setScreen("  Implement this plan?\n\x1b[1;7m› 1. Yes, implement this plan  Switch\n\x1b[0m  2. Yes, clear context  Fresh\n  3. No, stay in Plan mode  Continue\n")
+			rpc := &handler{d: h.d}
+			for _, choice := range []pb.PlanChoice{pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING} {
+				_, err := rpc.AnswerPlan(oldClientContext(), connect.NewRequest(&pb.AnswerPlanRequest{SessionId: h.s.meta.ID, Choice: choice}))
+				requireTruncatedAnswer(t, err)
+			}
+			if len(h.term.written()) != 0 {
+				t.Fatal("skeleton plan wrote terminal keys")
+			}
+			if _, err := rpc.AnswerPlan(context.Background(), connect.NewRequest(&pb.AnswerPlanRequest{SessionId: h.s.meta.ID, Choice: pb.PlanChoice_PLAN_CHOICE_IMPLEMENT})); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

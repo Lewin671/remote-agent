@@ -183,7 +183,15 @@ func (s *session) answerPlan(choice pb.PlanChoice) error { return s.answerPlanBy
 // answerPlanBy is answerPlan on behalf of origin, which is recorded.
 func (s *session) answerPlanBy(choice pb.PlanChoice, origin *pb.Origin) error {
 	// The adapter checks on the held screen that the plan prompt shows.
-	if err := s.drive(func(t agent.Term, _ bool) error { return s.ag.AnswerPlan(t, choice) }); err != nil {
+	if err := s.drive(func(t agent.Term, _ bool) error {
+		s.mu.Lock()
+		err := s.checkRemoteAnswer(remotePlan, "", false, origin)
+		s.mu.Unlock()
+		if err != nil {
+			return err
+		}
+		return s.ag.AnswerPlan(t, choice)
+	}); err != nil {
 		return err
 	}
 	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}, origin)); err != nil {

@@ -1120,6 +1120,10 @@ func (s *session) answer(questionID string, options []int32, index *int32) error
 func (s *session) answerBy(questionID string, options []int32, index *int32, origin *pb.Origin) error {
 	s.readRollout()
 	s.mu.Lock()
+	if err := s.checkRemoteAnswer(remoteQuestion, questionID, false, origin); err != nil {
+		s.mu.Unlock()
+		return err
+	}
 	_, ok := s.questions[questionID]
 	exited := s.meta.Exited
 	s.mu.Unlock()
@@ -1154,7 +1158,11 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 	s.readRollout()
 	s.mu.Lock()
 	q, ok := s.questions[questionID]
+	err = s.checkRemoteAnswer(remoteQuestion, questionID, false, origin)
 	s.mu.Unlock()
+	if err != nil {
+		return err
+	}
 	if !ok {
 		return fmt.Errorf("question %s was already answered: %w", questionID, errNotFound)
 	}
@@ -1511,14 +1519,19 @@ func (s *session) resolve(id string, allow bool, message string) error {
 
 // resolveBy is resolve on behalf of origin.
 func (s *session) resolveBy(id string, allow, always bool, message string, origin *pb.Origin) error {
+	s.mu.Lock()
+	if err := s.checkRemoteAnswer(remoteApproval, id, allow, origin); err != nil {
+		s.mu.Unlock()
+		return err
+	}
 	// Native permission prompts expose no stable tool request ID. Screen
 	// text (especially command prefixes or basenames) cannot prove which
 	// request would receive a permanent grant. Leave it pending for the
 	// user to decide in the native terminal; never silently grant once.
 	if allow && always {
+		s.mu.Unlock()
 		return fmt.Errorf("permanent approvals must be answered in the native terminal: %w", agent.ErrUnsupported)
 	}
-	s.mu.Lock()
 	a, ok := s.approvals[id]
 	if !ok || a.claimed {
 		s.mu.Unlock()
