@@ -62,6 +62,7 @@ fun rememberImagePicker(draft: ImageDraft, remote: Remote, machineId: String?, b
     }
     return {
         when {
+            draft.restoring -> Unit
             blocked != null -> ImageNotices.show(draft.key, blocked)
             room == 0 -> ImageNotices.show(draft.key, "一条消息最多 $max 张")
             else -> {
@@ -95,6 +96,10 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
             kotlinx.coroutines.delay(4000)
             ImageNotices.text.remove(draft.key)
         }
+    }
+    if (draft.restoring) {
+        Text("正在恢复待发图片…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.meta, color = p.muted)
+        return
     }
     if (draft.images.isEmpty()) {
         if (notice != null) Text(notice, Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.meta, color = p.orangeInk)
@@ -148,8 +153,8 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
 @Composable
 internal fun RefreshDraftUploads(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?) {
     val deadlines = draft.images.map { it.expiresMs }
-    LaunchedEffect(draft, machineId, blocked, deadlines, draft.images.size) {
-        if (machineId == null || blocked != null) return@LaunchedEffect
+    LaunchedEffect(draft, machineId, blocked, deadlines, draft.images.size, draft.restoring) {
+        if (draft.restoring || machineId == null || blocked != null) return@LaunchedEffect
         draft.sendAllTo(remote, machineId)
         val next = draft.images.filter { it.readyFor(machineId) }.minOfOrNull { it.expiresMs }
         if (next != null) {

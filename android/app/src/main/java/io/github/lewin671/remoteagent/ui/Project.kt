@@ -620,7 +620,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     val act = rememberAction()
     // Whether a session can be started with the draft as it is: ↑ is drawn by it, and 重试 after a
     // failure is held to it too.
-    val canStart = config != null && settled && !act.running && machineOnline && startable(text, images.images, config.machineId)
+    val canStart = !images.restoring && config != null && settled && !act.running && machineOnline && startable(text, images.images, config.machineId)
     fun launch(cfg: NewConfig, mode: ApprovalMode) {
         // While an earlier start's outcome is unknown, only it is sent
         // again, as it was: the daemon then answers from its log instead
@@ -715,7 +715,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         text, { text = it }, "描述任务…",
         canSend = canStart,
         onSend = ::start,
-        onPlus = pick, plusEnabled = blocked == null,
+        onPlus = pick, plusEnabled = !images.restoring && blocked == null,
         sendLabel = "开始", focusRequester = fr,
         top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
     )

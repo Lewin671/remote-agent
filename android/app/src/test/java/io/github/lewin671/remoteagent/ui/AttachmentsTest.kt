@@ -142,7 +142,7 @@ class AttachmentsTest {
         saveImages(files, "session:s", picked, original = true)
         saveOrder(files, "session:s", picked, original = true)
         val d = ImageDraft("session:s", files)
-        d.restore { null }
+        kotlinx.coroutines.runBlocking { d.restore(this) { null }.join() }
         assertEquals(listOf("zz", "aa", "mm"), d.images.map { it.id })
         assertTrue(d.original)
     }

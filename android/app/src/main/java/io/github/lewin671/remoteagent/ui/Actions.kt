@@ -255,8 +255,28 @@ object Outbox {
     private val bySession = HashMap<String, androidx.compose.runtime.snapshots.SnapshotStateList<Outgoing>>()
     private val records get() = OutgoingRecords(io.github.lewin671.remoteagent.RaApp.instance.pendingStore.scoped())
 
-    fun of(sid: String) = bySession.getOrPut(sid) {
-        mutableStateListOf<Outgoing>().also { list -> runCatching { list += records.load(sid, ::thumbnail) } }
+    fun of(sid: String): androidx.compose.runtime.snapshots.SnapshotStateList<Outgoing> {
+        bySession[sid]?.let { return it }
+        val list = mutableStateListOf<Outgoing>()
+        bySession[sid] = list
+        io.github.lewin671.remoteagent.RaApp.scopeOrNull()?.let { scope -> restore(sid, scope, records) }
+        return list
+    }
+
+    /** A session may collect new messages while its old encrypted records are read on IO. */
+    internal fun restore(
+        sid: String, scope: CoroutineScope, records: OutgoingRecords,
+        thumb: (ByteArray) -> androidx.compose.ui.graphics.ImageBitmap? = ::thumbnail,
+    ): kotlinx.coroutines.Job {
+        val list = bySession.getOrPut(sid) { mutableStateListOf() }
+        val account = AccountMemory.token
+        return scope.launch {
+            val loaded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { records.load(sid, thumb) }.getOrDefault(emptyList())
+            }
+            if (account !== AccountMemory.token || bySession[sid] !== list) return@launch
+            list += loaded.filter { old -> list.none { it.requestId == old.requestId } }
+        }
     }
 
     fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String, mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER) {

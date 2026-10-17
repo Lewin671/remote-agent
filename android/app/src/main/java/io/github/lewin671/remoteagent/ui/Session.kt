@@ -273,7 +273,7 @@ private fun ChatPane(
     val home = state.machines[s.machineId]?.meta?.home.orEmpty()
     val outbox = Outbox.of(s.id)
     // Messages with images from an earlier run are followed until the CLI has them.
-    LaunchedEffect(s.id) { if (Outbox.of(s.id).any { it.images.isNotEmpty() }) Outbox.watch(remote, s.id) }
+    LaunchedEffect(s.id, outbox.any { it.images.isNotEmpty() }) { if (outbox.any { it.images.isNotEmpty() }) Outbox.watch(remote, s.id) }
     val devices = state.devices
     val initialPrompt = Outbox.prompt(s.id)
     val initialId = if (initialPrompt != null) d.inputs.keys.firstOrNull { id -> outbox.none { it.requestId == id } } else null
@@ -285,7 +285,7 @@ private fun ChatPane(
         }
     }
     val pendingInputs = pendingInputs(d)
-    LaunchedEffect(d.inputs) {
+    LaunchedEffect(d.inputs, outbox.size) {
         // The messages the CLI has recorded are the chat's own rows from here on.
         Outbox.settle(s.id, d.inputDetails)
         d.inputs.forEach { (id, status) ->
@@ -551,7 +551,7 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
     val pick = rememberImagePicker(images, remote, s.machineId, blocked, maxImg)
     fun send(mode: SendMode = SendMode.SEND_MODE_STEER) {
         val msg = text.trim()
-        if (msg.isEmpty() && images.images.isEmpty()) return
+        if (images.restoring || (msg.isEmpty() && images.images.isEmpty())) return
         images.sendAllTo(remote, s.machineId)
         // Every image must be on the computer first: never a message with some of them.
         if (!images.ready(s.machineId) && images.images.isNotEmpty()) return
@@ -580,9 +580,9 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
             d.tools.isNotEmpty() -> "消息…"
             else -> "消息"
         },
-        canSend = !keeping && online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
+        canSend = !images.restoring && !keeping && online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
         onSend = { send() },
-        onPlus = pick, plusEnabled = blocked == null,
+        onPlus = pick, plusEnabled = !images.restoring && blocked == null,
         onQueue = if (running) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt = if (running) ({ interruptAction.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) }) else null,
         canInterrupt = online && !interruptAction.running,

@@ -161,6 +161,10 @@ class ImageDraft(
     private val scope: kotlinx.coroutines.CoroutineScope? = RaApp.scopeOrNull(),
 ) {
     val images = mutableStateListOf<PendingImage>()
+    var restoring by mutableStateOf(false)
+        private set
+    private var restoreJob: Job? = null
+
     var original by mutableStateOf(false)
         private set
 
@@ -168,6 +172,7 @@ class ImageDraft(
     var notice by mutableStateOf("")
 
     fun add(context: Context, picked: List<Uri>, max: Int, remote: Remote, machine: () -> String?) {
+        if (restoring) return
         val (taken, left) = takePicked(images.size, picked, max)
         notice = if (left > 0) "一条消息最多 $max 张，多选的 $left 张没有加入" else ""
         for (uri in taken) {
@@ -336,7 +341,7 @@ class ImageDraft(
 
     /** Originals or compressed, for this message: every image is prepared again from what was picked. */
     fun setOriginal(context: Context, v: Boolean, remote: Remote, machine: () -> String?) {
-        if (v == original) return
+        if (restoring || v == original) return
         original = v
         for (img in images) if (img.uri != null) process(context, img, remote, machine)
         persistOrder()
@@ -361,7 +366,7 @@ class ImageDraft(
         }
     }
 
-    fun ready(machineId: String?) = machineId != null && images.isNotEmpty() && images.all { it.readyFor(machineId) }
+    fun ready(machineId: String?) = !restoring && machineId != null && images.isNotEmpty() && images.all { it.readyFor(machineId) }
 
     fun ids(machineId: String): List<String> = images.mapNotNull { if (it.readyFor(machineId)) it.imageId else null }
 
@@ -386,6 +391,10 @@ class ImageDraft(
      * is put back and [notice] says why. Returns whether they went in.
      */
     fun attach(back: List<PendingImage>, max: Int, wereOriginal: Boolean = original): Boolean {
+        if (restoring) {
+            notice = "正在恢复待发图片，请稍后再放回"
+            return false
+        }
         if (images.size + back.size > max) {
             notice = "输入框里已有 ${images.size} 张图，放回这 ${back.size} 张会超过 $max 张。先移除一些再放回"
             return false
@@ -403,19 +412,46 @@ class ImageDraft(
 
     /** Forgets every image, e.g. when the draft is dropped. */
     fun clear() {
+        cancelRestore()
         for (img in images.toList()) remove(img)
         notice = ""
         original = false
         enqueue { runCatching { files.clearFolder(key) } }
     }
 
-    /** Images kept from before the process was reclaimed, in the order they were picked; they go to the machine again. */
-    internal fun restore(thumb: (ByteArray) -> ImageBitmap? = ::thumbnail) {
-        val (list, orig) = loadImages(files, key, thumb)
-        original = orig
-        images += list
-        synchronized(marks) { saved += list.map { it.id } }
+    /** Restores disk bytes and thumbnails on IO; only this account may receive the result. */
+    internal fun restore(
+        scope: kotlinx.coroutines.CoroutineScope,
+        thumb: (ByteArray) -> ImageBitmap? = ::thumbnail,
+    ): Job {
+        restoring = true
+        val account = AccountMemory.token
+        return scope.launch {
+            try {
+                val (list, orig) = withContext(Dispatchers.IO) { loadImages(files, key, thumb) }
+                if (account !== AccountMemory.token) return@launch
+                original = orig
+                images += list
+                synchronized(marks) {
+                    saved += list.filterNot { it.stale }.map { it.id }
+                    stale += list.filter { it.stale }.map { it.id }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (account === AccountMemory.token) notice = "没能恢复待发图片：${errorText(e)}"
+            } finally {
+                restoring = false
+            }
+        }.also { restoreJob = it }
     }
+
+    internal fun cancelRestore() {
+        restoreJob?.cancel()
+        restoreJob = null
+        restoring = false
+    }
+
 }
 
 internal fun thumbnail(bytes: ByteArray): ImageBitmap? {
@@ -430,13 +466,15 @@ internal fun thumbnail(bytes: ByteArray): ImageBitmap? {
 object ImageDrafts {
     private val drafts = HashMap<String, ImageDraft>()
 
-    fun of(key: String): ImageDraft = drafts.getOrPut(key) { ImageDraft(key).also { runCatching { it.restore() } } }
+    fun of(key: String): ImageDraft = drafts.getOrPut(key) {
+        ImageDraft(key).also { draft -> RaApp.scopeOrNull()?.let { draft.restore(it) } }
+    }
 
     fun forSession(sid: String) = of("session:$sid")
     fun forProject(key: String) = of("new:$key")
 
     fun clear() {
-        drafts.values.forEach { d -> d.images.forEach { it.job?.cancel() } }
+        drafts.values.forEach { d -> d.cancelRestore(); d.images.forEach { it.job?.cancel() } }
         drafts.clear()
     }
 }
