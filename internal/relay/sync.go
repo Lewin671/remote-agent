@@ -546,7 +546,7 @@ func (c *conn) notifyRequest(sessionID string, info *pb.Session, kind pb.NotifyK
 		} else {
 			na.ToolInput, cut = clip(a.ToolInputJson, notifyCommand)
 		}
-		na.Truncated = na.Truncated || cut
+		na.Truncated = na.Truncated || cut || approvalTextTruncated(a)
 		if a.Deadline != nil {
 			na.DeadlineMs = a.Deadline.AsTime().UnixMilli()
 		}

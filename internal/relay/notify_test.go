@@ -115,3 +115,77 @@ func TestSkeletonNotificationHasNoApprovalActions(t *testing.T) {
 		}
 	}
 }
+
+// A large identity can force fitEvent to shorten the command below the
+// notification's own limit. clip must not erase that earlier truncation.
+func TestApprovalNotificationRetainsFitTruncation(t *testing.T) {
+	keys, err := e2e.Derive(make([]byte, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	original := &pb.Event{TurnId: strings.Repeat("t", maxEventBytes-512), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "approval", Command: strings.Repeat("c", 4000), Description: "why"}}}
+	fitted := fitEvent(original)
+	a := fitted.GetApprovalRequested()
+	if eventSkeleton(fitted) || !strings.HasSuffix(a.Command, truncatedNote) || len([]rune(a.Command)) >= notifyCommand {
+		t.Fatal("fixture did not produce an already shortened, sub-limit command")
+	}
+	if _, cut := clip(a.Command, notifyCommand); cut {
+		t.Fatal("fixture clipped again")
+	}
+	req, err := c.notifyRequest("session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, fitted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := &pb.NotifyContent{}
+	if _, err := e2e.OpenMessage(keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: "machine", SessionId: "session", RequestId: "approval", Sender: "machine"}, got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Approval == nil || !got.Approval.Truncated || got.Approval.Command != a.Command {
+		t.Fatal("notification lost fitEvent's truncation flag")
+	}
+	if original.GetApprovalRequested().Command == a.Command {
+		t.Fatal("original event was modified")
+	}
+}
+
+func TestApprovalNotificationRecognizesExistingMarkersInEveryField(t *testing.T) {
+	keys, err := e2e.Derive(make([]byte, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	for _, field := range []string{"description", "command", "tool_input"} {
+		for _, note := range []string{truncatedNote, skeletonNote} {
+			t.Run(field+note, func(t *testing.T) {
+				a := &pb.ApprovalRequested{ApprovalId: "approval", Command: "true", Description: "why", ToolInputJson: "{}"}
+				switch field {
+				case "description":
+					a.Description += note
+				case "command":
+					a.Command += note
+				case "tool_input":
+					a.ToolInputJson += note
+				}
+				if !approvalTextTruncated(a) {
+					t.Fatal("existing marker missed")
+				}
+				req, err := c.notifyRequest("session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, &pb.Event{Seq: 1, Kind: &pb.Event_ApprovalRequested{ApprovalRequested: a}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				got := &pb.NotifyContent{}
+				if _, err := e2e.OpenMessage(keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: "machine", SessionId: "session", RequestId: req.DedupeKey, Sender: "machine"}, got); err != nil {
+					t.Fatal(err)
+				}
+				if note == skeletonNote {
+					if got.Approval != nil {
+						t.Fatal("skeleton offered notification approval")
+					}
+				} else if got.Approval == nil || !got.Approval.Truncated {
+					t.Fatal("already truncated field offered notification allow")
+				}
+			})
+		}
+	}
+}
