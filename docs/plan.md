@@ -11,7 +11,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | 部分 | 已实现 | 验证到哪 | 还缺什么 |
 |---|---|---|---|
 | daemon 和本地命令（Codex） | 托管会话、注入、rollout 解析、审批、提问、计划、中断、切换模型和模式、压缩、恢复、`doctor`；事件提交错误返回调用方，存储故障与持久解析诊断仅本机可查询 | 真实 CLI（`scripts/acceptance.sh`，[记录](acceptance-notes.md#2-本地和端到端p0-到-p2)） | Codex 0.159.2 的命令结果没有退出码，失败的命令显示成 ✓（见「待确认」） |
-| daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集、退出结算和首条输出前中断恢复 | 真实 CLI（`scripts/acceptance-claude.sh`，[记录](acceptance-notes.md#3-claude-code)） | 网页和原生客户端的直接界面操作；图片、auto 模式和推理强度切换、审批超时、压缩、分叉 |
+| daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集、退出结算和首条输出前中断恢复；模型列表、档位、上下文窗口和 auto 是否可用都读 Claude Code 自己的模型目录，模型按具体 ID 选择 | 真实 CLI（`scripts/acceptance-claude.sh`，[记录](acceptance-notes.md#3-claude-code)） | 网页和原生客户端的直接界面操作；图片、auto 模式、审批超时、压缩、分叉 |
 | server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩 | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩在线上账户里用网页走过一遍（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 协议版本 3 在 Android、Safari、多项目和断线重连下的验收 |
 | 网页 | 当前界面稿 [client-v39](design/client-v42.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
 | Android App | 当前界面稿的手机画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI（到 v8）；v7、v8 的画面用示例数据对照过；v9 以后的改动只过自动测试 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；下方「Android 的小缺口」 |
@@ -98,7 +98,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - API 出错时一轮怎么结束：transcript 里有没有 `turn_duration` 或其他结束记录；没有的话会一直显示运行中
 - AskUserQuestion 的选择框里按 Esc、选 `Type something.` 和 `Chat about this` 的结果
 - 2.1.293 忽略项目设置里的 bypass 默认值（[notes §5](claude-code-notes.md#5-权限模式)），daemon 读出的默认模式（[architecture §7](architecture.md#7-审批)）这时仍报「完全放行」。被忽略后是退回用户级的 `defaultMode` 还是直接 manual、托管设置里的算不算，都没测；测清后再改读法
-- 2.1.293 的 Haiku 5.5 有 effort，代码里的模型列表仍按 Haiku 4.5 写成没有，所以客户端不能给 haiku 选推理强度；Plan 模式里的 Haiku 4.5 会话（回复临时换成 sonnet）循环里有没有 auto 也没测。2.1.300 的别名 haiku 仍是 Haiku 5.5、仍有 effort（`/model` 的 effort 行、状态栏的 `○ low · /effort`，[notes §9](claude-code-notes.md#9-切换模型和-effort)），列表仍没改
+- Plan 模式里会话的模型会被临时换掉（回复用 sonnet），这时 Shift+Tab 的循环按哪个模型算（Haiku 4.5 的会话在 Plan 模式下有没有 auto）没测
 
 **Android 待验证**
 

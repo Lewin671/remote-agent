@@ -543,7 +543,7 @@ daemon 的设置存在 `~/.remote-agent/settings.json`，客户端可以读取�
 - **审批关联**：在全部已观察历史内，`(tool_name, input_digest)` 必须恰好有一个请求、一个晚于请求的调用，且该请求已有决议，才把决议关联到调用。任意第二个请求（包括未决请求）或调用都会造成歧义，撤销该合并；无 digest 时独立保留审批。这样后到事件不会让未证实的对应关系成为事实。
 - **输入结算**：每个请求以最后一个明确 `InputState.status` 为准；首次受理的正文、图片和来源保留，缺省的 stage/mode 不覆盖已知值，pause 取本次值。`QUEUED` 和 `HELD_BY_CLI` 都仍待处理；`UNCONFIRMED` 表示已写入但无法确认，不能据此重发。`CANCELED` 且 reason 为 `exited` 才注记退出未发送，和用户取消分开；仅看到退出事件不伪造取消或提交结果。缺少 daemon 最终结算时，输入事实仍不完整。
 - **提问**：同步问题按 ID 等待、按回答或轮次结束退场；异步问题保留正文和选项作为聊天消息，不成为待答卡，也不阻塞轮次。多题回答按事件中的顺序保留。
-- **配置与压缩**：客户端设置先建立模型/effort 的预期，下一次非计划模式的有模型上下文再核对别名和已知 effort；计划模式的临时配置不冒充用户切换。已提计划后离开计划模式视为处理计划，不额外注记终端切模式。每次压缩保留此前占用和此后第一次 usage 的占用；无窗口时为未知，连续压缩只给最后一次补上后值。百分比是截到整数且最多 100；原生界面直接使用 core 的压缩事实，不能另算一套。
+- **配置与压缩**：客户端设置先建立模型/effort 的预期，下一次非计划模式的有模型上下文再核对模型和已知 effort；计划模式的临时配置不冒充用户切换。已提计划后离开计划模式视为处理计划，不额外注记终端切模式。每次压缩保留此前占用和此后第一次 usage 的占用；无窗口时为未知，连续压缩只给最后一次补上后值。百分比是截到整数且最多 100；原生界面直接使用 core 的压缩事实，不能另算一套。
 
 这里的推导函数 `R` 按连续事件前缀执行；在任意切点追加后继，结果须与从头重放相同。继续推导所需的状态不仅是可见结果，还包括首次入队序号、提交计数及待认领消息、未完成工具的 ID 关联、上一配置及待核对设置、已提计划标记、等待后续 usage 的压缩点。未来如果序列化 continuation，必须保留这些状态及历史消歧索引，再另外验证序列化恢复等价；本次切点测试没有证明持久快照恢复。
 
@@ -577,11 +577,11 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 下面是 Claude Code 这一侧的具体做法，括号里的「notes §n」指 [claude-code-notes.md](claude-code-notes.md) 的第 n 节。
 
 - **启动**：`claude --settings <会话目录>/claude-settings.json --session-id <uuid> …`，由 PTY 代理启动，来源判定和起点环境见第 6 节（终端开的会话直接执行；客户端开的先经过用户的登录 shell）。settings 文件只放 remote-agent 的 hook（`SessionStart`、`PermissionRequest`，以及只匹配 AskUserQuestion 和 ExitPlanMode 的 `PreToolUse`），命令同样写成 `"$RA_EXE" hook claude`；它和用户自己的 hook 一起运行，不改 `~/.claude/settings.json`，也不需要信任（notes §1、§3）。会话 ID 由 daemon 生成，记作会话的 CLI 会话 ID
-- **模型、推理强度、审批模式**：新建时换成 `--model`、`--effort`、`--permission-mode`；没指定就不传，沿用 Claude Code 自己的配置。「完全放行」对应 `bypassPermissions`：只有启动时就允许了 bypass 的会话能切过去（notes §5），daemon 按启动参数和 `~/.claude/settings.json` 的 `defaultMode` 判断，不可用时会话信息里标出来，客户端置灰。remote-agent 不替用户加 `--allow-dangerously-skip-permissions`
+- **模型、推理强度、审批模式**：新建时换成 `--model`、`--effort`、`--permission-mode`；没指定就不传，沿用 Claude Code 自己的配置。模型是**具体 ID**（`claude-sonnet-5-5`），来自 Claude Code 自己的模型目录；推理强度是这一行模型自己的档位（目录的 `runtime.effort_levels`），没有档位的模型不传。Claude Code 自己兜底：模型没有档位时忽略 `--effort`，档位超出模型时按上限收窄，认不出的值打印一行警告后忽略。「完全放行」对应 `bypassPermissions`：只有启动时就允许了 bypass 的会话能切过去（notes §5），daemon 按启动参数和 `~/.claude/settings.json` 的 `defaultMode` 判断，不可用时会话信息里标出来，客户端置灰。remote-agent 不替用户加 `--allow-dangerously-skip-permissions`
 - **恢复会话**：transcript 已经存在时用 `--resume <id>`，否则（从没发过消息）仍用 `--session-id <id>`；沿用原来的参数（取多个值的选项保留全部的值，少一个就可能放宽限制），再用最近一轮的模型、推理强度和审批模式覆盖，同名选项先从原参数里去掉。Plan 模式下 Claude Code 临时换用的模型不算会话的模型，免得恢复后一直用它。bypass 是否可用按启动时记下的结果，不重新读可能已经改过的全局设置。恢复时 transcript 里的 `permission-mode` 记录是上次的模式（notes §2），所以当前模式以屏幕上的模式行为准。`--bare`、`--safe-mode` 会关掉 settings 里的 hook，不接受
 - **启动弹窗**：信任目录的光标默认在 `No, exit`，回车就退出（notes §1），和 Codex 一样留给用户在终端里处理，客户端提示去终端
 - **找到 transcript**：`SessionStart` hook 在信任目录后、第一条消息前就触发，带 `transcript_path`
-- **解析 transcript**：带 `origin.kind: human` 的用户记录是新一轮的开始和用户消息，`task-notification` 的只开始一轮（后台工作结束后 Claude Code 自己回应）；`turn_duration` 是正常结束，`[Request interrupted by user…]` 是被中断，两者可能先后都有，只记第一个；`isMeta`、斜杠命令、压缩摘要都不算用户消息；运行中并入这一轮的消息（`queued_command` 附件）记为用户消息但不开新的一轮。`tool_use` 记为 `ToolStarted`（带调用 ID），`tool_result` 按调用 ID 配成 `ToolCall`；`thinking` 记为推理（终端里默认折叠，按 ctrl+o 能看到同样的内容）。`compact_boundary` 记为「上下文已压缩」。模型和推理强度取自 `assistant` 记录，以及 `/model` 的输出记录（notes §9）：在电脑终端里切的模型要到下一次回复才出现在 `assistant` 记录里，Plan 模式下的回复又不算数，只看回复会把已经换掉的模型当成当前的，进而判错 auto 是否可用。输出里的显示名换成别名（`Sonnet 5.5` 记作 `sonnet`），和经 remote-agent 切换时记的一样；不属于这几个别名的保留原名。上下文占用由 `usage` 算出，窗口大小按模型推断（notes §2）
+- **解析 transcript**：带 `origin.kind: human` 的用户记录是新一轮的开始和用户消息，`task-notification` 的只开始一轮（后台工作结束后 Claude Code 自己回应）；`turn_duration` 是正常结束，`[Request interrupted by user…]` 是被中断，两者可能先后都有，只记第一个；`isMeta`、斜杠命令、压缩摘要都不算用户消息；运行中并入这一轮的消息（`queued_command` 附件）记为用户消息但不开新的一轮。`tool_use` 记为 `ToolStarted`（带调用 ID），`tool_result` 按调用 ID 配成 `ToolCall`；`thinking` 记为推理（终端里默认折叠，按 ctrl+o 能看到同样的内容）。`compact_boundary` 记为「上下文已压缩」。**模型就是记录里的 ID**（`message.model`，如 `claude-sonnet-5-5`），不再换算；终端里切模型要等下一条回复才出现在 `assistant` 记录里，Plan 模式下的回复又不算数，所以 `/model` 的输出记录也要读：它写的是显示名，用模型目录换回 ID（`Sonnet 5.5` → `claude-sonnet-5-5`），换不出的（目录里没有的名字）照原样留着。上下文占用由 `usage` 算出，窗口大小按 ID 从目录取（notes §2、§13）
 - **输入**：和 Codex 相同的排队、暂存本地按键、bracketed paste。输入框的判断按 Claude Code 的画法：两条横线之间只有一行，`❯` 后面没有普通样式的字（光标是反色的一格，占位提示是淡色）才算空（notes §4）。运行中也可以注入，Claude Code 会把它排进当前这一轮；以 transcript 里出现这条用户消息或 `queue-operation` 的 `enqueue` 记录为已提交
 - **计划框和菜单的折行**：窄屏时标题和选项会折行，识别时把相邻两行连起来看，选项的续行并入选项。`/model` 菜单末行的提示和切换成功的那句话同样会折行（notes §9），都去掉折行再比，否则模型已经切了却报失败
 - **本地先答审批**：除了看到的权限框消失、这一轮结束，这个请求的工具调用完成也算，覆盖状态检测还没看到框就已经在终端答了的情况。调用和请求按完整输入的摘要对应（审批事件和工具调用都带这个摘要，客户端直接比较，不自己算）；几个请求输入完全相同时，一次完成收回其中最早的一个。审批请求一律出卡片，daemon 不预判「调用已经执行过」：
@@ -593,17 +593,17 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 - **切换审批模式**：空闲时切到 Plan 用 `/plan`，直接到达。其余用 Shift+Tab 在模式行上一格一格地走到目标模式，每按一次都读模式行确认；转一圈都没遇到目标就报错并回到原来的模式。按放行的范围，模式从严到宽是 plan、manual、accept edits、auto、bypass。运行中也能切（notes §5），但途中（以及目标不可用时回来的路上）只要有一个模式比目标宽，就不切，免得那一瞬间放行了工具调用。是否运行中在拿到终端控制之后才判断（切模型、压缩同样如此）：之前拿着控制的注入可能刚开始了一轮，所以要重新读 transcript，并把「已写入还没确认的消息」和屏幕上的忙碌迹象（输入框上方的转圈行、变暗的提示符，notes §4）也算作运行中。
   - **空闲时途经更宽的模式**（主要是从 Plan 模式切出：Shift+Tab 只能单向走，也没有离开 Plan 模式的命令，notes §5）：
     - **做法**：屏幕上有后台工作（模式行的 `· 1 shell`、输入框上方的 `Waiting for N background agent`、模式行下的后台子代理列表，notes §10）时不切，告诉用户原因；否则先算出整条路径，把要按的 Shift+Tab 一次写完，中间不读屏幕，最后核对模式行。
-    - **哪些模式可用**：算路径要知道 bypass 和 auto 可不可用：bypass 按会话启动时记下的能力（`full_access_unavailable`）；auto 按模型（Haiku 4.5 及更早的没有；其余 Claude 模型有：sonnet、Haiku 5.5 实测，opus、fable 推测；只知道别名 `haiku` 时算未知，因为它指 4.5 还是 5.5 随 Claude Code 版本变，notes §5），或这个会话用同一模型时屏幕上出现过 auto；未知的按可能可用处理，运行中不走会经过它的路；状态栏的 `auto mode unavailable for this model` 不作依据，它在换到有 auto 的模型之后还会留一阵（notes §5）。已知不可用的目标直接报错，不按键。
+    - **哪些模式可用**：算路径要知道 bypass 和 auto 可不可用：bypass 按会话启动时记下的能力（`full_access_unavailable`）；auto 按会话当前模型在 Claude Code 模型目录里的那一行（`auto_permission_mode` 为 `unavailable` 的没有，notes §5、§13），或这个会话用这个模型时屏幕上出现过 auto；目录里没有这个模型（老的别名设置）时算未知，未知的按可能可用处理，运行中不走会经过它的路；状态栏的 `auto mode unavailable for this model` 不作依据，它在换到有 auto 的模型之后还会留一阵（notes §5）。已知不可用的目标直接报错，不按键。
     - **唯一的例外**是 auto 可不可用算不出来（还不知道会话的模型、屏幕也没提示）：这时按「不可用」计数，只会少按、不会多按；如果因此停在 auto 上（比目标宽），立即把差的键补上，这是第二次写入。目标实际不可用时回到原来的模式
   - **为什么这样取舍**：一律拒绝的话，bypass 或 auto 可用的会话（本机默认就是）就没法从远程离开 Plan 模式。空闲时这一轮没有工具调用；可能在这一瞬间调用工具的只有后台工作，看得到就拒绝
   - **残余风险**：连按期间 Claude Code 依次经过的宽松模式仍会存在几十毫秒（按键和界面刷新的时间，未精确测量）；屏幕上看不出来的后台工作（比如列表被挤出屏幕、Claude Code 改了提示的写法）挡不住；后台工作在检查之后、连按之前的一瞬间启动也挡不住
-- **切换模型和推理强度**：空闲时 `/model`，用方向键移到模型那一行、推理强度按目标相对当前档位的方向按 ← 或 →（不假定循环：2.1.300 两端停住，2.1.284 到 2.1.287 会首尾相接，按方向在两种行为下都能到目标），按 `s` 只改当前会话。菜单有两种列法（notes §9）：每个别名一行时就是那一行；按版本列、后面还跟着旧版本时，别名指的是同名里版本号最高的那一行，版本号分不出高低（相同，或名字后面不只是版本号）就报错不选，不能把最后一个同名的旧版本当成这个别名。弹出 `Switch model?` 时按它的「Yes, switch to」那一项，只在菜单已经消失、确认框和这一项都在时才按，免得把数字按进菜单改掉默认模型。以对话里出现 `Set model to … for this session only` 为成功。数字键和回车会改全局默认值，不用（notes §9）。
-  - **可选的模型**：可选的模型是 Claude Code 的别名（opus、fable、sonnet、haiku），列表写在代码里；会话信息里的模型是完整的模型 ID。
+- **切换模型和推理强度**：空闲时 `/model`，用方向键移到模型那一行、推理强度按目标相对当前档位的方向按 ← 或 →（不假定循环：2.1.300 两端停住，2.1.284 到 2.1.287 会首尾相接，按方向在两种行为下都能到目标），按 `s` 只改当前会话。**那一行按模型目录的显示名找**（`Sonnet 5.5`），不在可见窗口里（窗口矮时会滚动，首尾两行带 `↑`/`↓` 标记，行号始终是全表里的绝对编号）就按它在该表里的位置算步数，移完按名字核对，对不上就报错不按 `s`——菜单和目录对不上时宁可报错，也不能落到另一个模型上。弹出 `Switch model?` 时按它的「Yes, switch to」那一项，只在菜单已经消失、确认框和这一项都在时才按，免得把数字按进菜单改掉默认模型。以对话里出现 `Set model to … for this session only` 为成功。数字键、回车，以及 `/model <ID>` 都会改全局默认值，不用（notes §9）。
+  - **可选的模型**：可选的模型是 Claude Code 自己缓存的模型目录（notes §13），daemon **只读**它，不写。会话信息里的模型就是这个目录里的 ID。目录缺失（新装的 CLI 还没取到、或用户关掉了它）时列表是空的，daemon 报「读不到模型列表」，客户端只能用 CLI 自己的默认模型，会话里也不能切换——ID 是 CLI 自己定的，宁可说没有，也不拿别处的名字去猜。
   - **上下文窗口**是项目设置里独立的一项（`ProjectSettings.standard_context`，新建时随 `CreateSessionRequest.standard_context` 交给 daemon），只对 Claude Code 有意义，默认 1M：这是 Claude Code 自己的默认值，所以没设置过的项目行为不变，用默认模型时也能选。
   - **选标准时**：选标准时 daemon 在会话环境里加 `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`，固定为 200k（notes §2）；环境随会话保存，恢复时不变，会话信息里的窗口也按 200k 报告。
-  - **选 1M 时**：选 1M 且模型是有 1M 窗口的别名时，daemon 把它写成 `opus[1m]` 交给 `--model`，窗口本来就是 1M，这样做只是让终端标题写出 `(1M context)`；没指定模型时不改参数。
+  - **选 1M 时**：什么都不用做：具体 ID 下窗口本来就是模型自己的（目录的 `runtime.max_input_tokens`），`[1m]` 后缀只是让 `/context` 把模型名写成 `…[1m]`，不影响窗口，所以不再加。没指定模型时不改参数。
   - **为什么不编码进模型名**：不把窗口编码进模型名：那样默认模型下没法选，也会让已有项目的含义悄悄改变。窗口在启动时就定了，会话里切换模型不涉及它。
-  - **模型列表**：模型列表带每个模型最大的上下文窗口（`ModelInfo.context_window`），客户端据此判断模型有没有 1M 可选（Haiku 没有）；Codex 不填，因为 `models_cache.json` 里的窗口和会话实际报告的不一致（codex-notes §1），它的实际窗口在会话的上下文占用里看
+  - **模型列表**：模型列表带每个模型最大的上下文窗口（`ModelInfo.context_window`，取自目录）和它有没有 auto（`ModelInfo.auto_unavailable`，即目录里 `auto_permission_mode` 为 `unavailable` 的行，如 Haiku 4.5；客户端据此置灰自动模式，不再按模型名判断）。Codex 不填窗口，因为 `models_cache.json` 里的窗口和会话实际报告的不一致（codex-notes §1），它的实际窗口在会话的上下文占用里看；auto 对 Codex 一律为否（不适用）。
 - **压缩**：空闲时 `/compact`，以屏幕出现 `Compacting conversation` 或 transcript 出现 `compact_boundary` 为开始
 - **额度**：从状态栏命令的输入采集，见下节
 

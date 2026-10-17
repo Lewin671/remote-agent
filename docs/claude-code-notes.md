@@ -4,7 +4,7 @@
 
 没有特别标注的条目都是实测结果，推断或没测过的会在句中标「推测」「未验证」。升级 Claude Code 后，涉及的条目要重新验证。
 
-最近一次验证：Claude Code **2.1.300**，macOS，tmux 3.7c，2026-10-17；在此之前是 2.1.287（2026-10-03）和 2.1.284（2026-09-29）。实测在独立的 tmux socket 里进行，会话用 `--settings <文件>` 注入 hook，模型用 `--model haiku`（部分条目用 sonnet，已注明）。本机 `~/.claude/settings.json` 的 `permissions.defaultMode` 是 `bypassPermissions`、`skipDangerousModePermissionPrompt` 为 true、`language` 为中文，下文凡是受它们影响的地方会注明。`permissions.defaultMode` 是 bypass 时，`FullAccess` 为真（第 5 节），启动时用 `--permission-mode default` 仍会进入 manual。
+最近一次验证：Claude Code **2.1.300**，macOS，tmux 3.7c，2026-10-17；在此之前是 2.1.287（2026-10-03）和 2.1.284（2026-09-29）。实测在独立的 tmux socket 里进行，会话用 `--settings <文件>` 注入 hook，2026-10-17 起用**模型目录里的具体 ID**（如 `claude-haiku-5-5`、`claude-sonnet-5-5`）；此前用别名 `--model haiku`（部分条目用 sonnet，已注明）。本机 `~/.claude/settings.json` 的 `permissions.defaultMode` 是 `bypassPermissions`、`skipDangerousModePermissionPrompt` 为 true、`language` 为中文，下文凡是受它们影响的地方会注明。`permissions.defaultMode` 是 bypass 时，`FullAccess` 为真（第 5 节），启动时用 `--permission-mode default` 仍会进入 manual。
 
 标注了版本的条目以该版本为准；升级后重新验证过的会在版本号里带上新版本。
 
@@ -15,8 +15,8 @@
 | `--settings <文件或 JSON>` | 叠加一份设置，只对这次启动生效。里面的 `hooks` 和 `~/.claude/settings.json` 里的 hook **一起运行**（实测两边的 Stop hook 都被调用）。不需要像 Codex 那样先信任 hook |
 | `--session-id <uuid>` | 指定 Claude Code 的会话 ID，transcript 路径随之确定（第 2 节） |
 | `--resume <id>` | 恢复会话：沿用同一个会话 ID，**追加写同一个 transcript** |
-| `--model <别名或全名>` | `opus`、`fable`、`sonnet`、`haiku` 等别名，或完整的模型 ID |
-| `--effort <档位>` | `low`、`medium`、`high`、`xhigh`、`max` |
+| `--model <模型 ID>` | 目录里的完整 ID，如 `claude-sonnet-5-5`、`claude-haiku-4-5-20251001`（第 13 节）。别名（`opus`、`fable`、`sonnet`、`haiku`）仍然接受，但指向哪个模型随版本变：2.1.300 上 `haiku` 是 Haiku 5.5。已下架的老 ID（`claude-3-5-haiku`）能启动，只在屏幕上提示已退役 |
+| `--effort <档位>` | `low`、`medium`、`high`、`xhigh`、`max`；别的值会打印一行 `Warning: Unknown --effort value …` 后忽略，仍以默认档启动。**模型没有档位时也接受**（实测 Haiku 4.5 + `--effort low`：照常启动，会话不显示档位，切到有档位的模型后这个 low 生效）；档位超出模型自己的档位时按模型的上限收窄（`--model claude-opus-4-6 --effort xhigh` 启动后标题写 `with high effort`） |
 | `--permission-mode <模式>` | `acceptEdits`、`auto`、`bypassPermissions`、`manual`、`dontAsk`、`plan`；`default` 也接受，就是 manual |
 | `--allow-dangerously-skip-permissions` | 把 bypass 加进 Shift+Tab 的循环，但不直接进入 |
 | `--bare`、`--safe-mode` | 按 `--help` 的说明，不运行 settings 里的 hook（未实测） |
@@ -44,7 +44,7 @@
 | `type: "user"`，`isCompactSummary: true` | 压缩后的摘要 |
 | `type: "user"`，`content` 里是 `tool_result` 块 | 工具结果：`tool_use_id`、`content`、`is_error`；同一行的 `toolUseResult` 是结构化结果（Bash 为 `stdout`、`stderr`、`interrupted`；AskUserQuestion 为 `questions`、`answers`） |
 | `type: "user"`，`content` 里是 text 块 `[Request interrupted by user]` 或 `[Request interrupted by user for tool use]` | 这一轮**被中断** |
-| `type: "assistant"` | 模型输出，**每个内容块一行**（`thinking`、`text`、`tool_use`），同一次回复的几行 `message.id` 相同。带 `message.model`（完整 ID，如 `claude-haiku-4-5-20251001`）、`message.usage`、`perTurnEffort`（haiku 为 null，sonnet 为 `medium` 等）。`thinking` 块里有一种是**旁白**（2.1.287 实测，Opus 5.5、Fable 5.1 会写）：模型写给用户看的进度说明，终端把它当普通消息显示，不折叠成 `Thought for …`。它和思考的 JSON 字段完全一样，只有 `signature` 里的标签不同：base64 解开是 protobuf，字段 2 → 1 → 8 是字符串 `narration`（思考是 `thinking`）。旁白通常是同一次回复的第二个块（`apiBlockIndex: 1`），但也见过排在第一个的，不能靠位置判断 |
+| `type: "assistant"` | 模型输出，**每个内容块一行**（`thinking`、`text`、`tool_use`），同一次回复的几行 `message.id` 相同。带 `message.model`（**模型目录里的那个 ID**，如 `claude-haiku-4-5-20251001`、`claude-sonnet-5-5`；2.1.300 实测：`--model claude-sonnet-5-5[1m]` 记录的也是 `claude-sonnet-5-5`）、`message.usage`、`perTurnEffort`（Haiku 4.5 为 null，Sonnet 5.5 为 `medium` 等）。`thinking` 块里有一种是**旁白**（2.1.287 实测，Opus 5.5、Fable 5.1 会写）：模型写给用户看的进度说明，终端把它当普通消息显示，不折叠成 `Thought for …`。它和思考的 JSON 字段完全一样，只有 `signature` 里的标签不同：base64 解开是 protobuf，字段 2 → 1 → 8 是字符串 `narration`（思考是 `thinking`）。旁白通常是同一次回复的第二个块（`apiBlockIndex: 1`），但也见过排在第一个的，不能靠位置判断 |
 | `type: "system"`，`subtype: "turn_duration"`，`durationMs` | 一轮**正常结束**。之前还有一条 `stop_hook_summary` |
 | `type: "system"`，`subtype: "compact_boundary"`，`compactMetadata.trigger`（`manual`/`auto`）、`preTokens`、`postTokens` | 上下文已压缩 |
 | `type: "attachment"`，`attachment.type: "queued_command"`，`prompt`，`origin.kind: "human"` | 运行中发来的消息被并入当前这一轮（第 10 节） |
@@ -57,7 +57,7 @@
 - **`tool_use` 在工具开始前就写入**：`sleep 30` 运行中去读，transcript 里已经有它的 `tool_use`，还没有 `tool_result`
 - **但 AskUserQuestion 不一定**：一次两问的提问，选择框已经显示了 70 多秒，transcript 里还只有用户消息，这次回复的 `thinking` 和 `tool_use` 直到回答之后才和 `tool_result` 一起写入。同一会话里之前的单问提问、以及注册了 `PreToolUse` hook 的会话里，问题显示时 `tool_use` 已经在 transcript 里。什么情况下会延迟，没有查清；`PreToolUse` hook 每次都在选择框出现前收到这次调用
 - 被中断的文字回复照样写一行 `assistant` text，`stop_reason` 为 null，内容是中断前生成的部分
-- 上下文占用：`usage.input_tokens + cache_creation_input_tokens + cache_read_input_tokens`。transcript 里没有窗口大小。按状态栏的百分比反推：haiku 4.5 是 200k，sonnet 5.5 是 1M。`/context` 直接写出窗口（2.1.287，Claude Max 账户，2026-10-02）：`--model opus`、`fable`、`sonnet` 都是 `…/1m tokens`，不需要 `[1m]` 后缀；`--model 'opus[1m]'` 同样是 1M，只是标题和模型 ID 变成 `Opus 5.5 (1M context)`、`claude-opus-5-5[1m]`；`sonnet[1m]`、`fable[1m]` 和不带后缀时显示一致。`haiku[1m]` 能启动且显示 1M，是否真能用到没有验证。其他套餐下不带后缀是不是 1M，未验证。环境变量 `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` 把窗口改回标准的 200k（同一版本和账户）：`--model opus`、`sonnet`、`fable` 和不带 `--model` 时 `/context` 都是 `…/200k tokens`；它和 `opus[1m]` 一起用时标题变成 `opus[1m]`，并提示自动压缩把会话保持在 200k 内，所以两者不要同时用
+- 上下文占用：`usage.input_tokens + cache_creation_input_tokens + cache_read_input_tokens`。transcript 里没有窗口大小，得从模型目录拿（第 13 节）。`/context` 直接写出窗口（2.1.287，Claude Max 账户，2026-10-02）：`--model opus`、`fable`、`sonnet` 都是 `…/1m tokens`，不需要 `[1m]` 后缀；`--model 'opus[1m]'` 同样是 1M，只是标题和模型 ID 变成 `Opus 5.5 (1M context)`、`claude-opus-5-5[1m]`；`sonnet[1m]`、`fable[1m]` 和不带后缀时显示一致。`haiku[1m]` 能启动且显示 1M，是否真能用到没有验证。其他套餐下不带后缀是不是 1M，未验证。**2.1.300 实测（2026-10-17，同一个 Max 账户）**：`--model claude-sonnet-5-5` 的 `/context` 写 `17.9k/600k tokens`，下面一行 `Auto-compact window: 600k tokens`——这是 `~/.claude/settings.json` 里的 `autoCompactWindow: 600000` 压的结果，不是模型的窗口；`claude-sonnet-5-5[1m]` 的窗口和它一样（`/context` 里的模型名带 `[1m]`），`claude-haiku-4-5-20251001` 是 `…/200k`。环境变量 `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` 把窗口改回标准的 200k（同一版本和账户）：`--model opus`、`sonnet`、`fable` 和不带 `--model` 时 `/context` 都是 `…/200k tokens`；它和 `opus[1m]` 一起用时标题变成 `opus[1m]`，并提示自动压缩把会话保持在 200k 内，所以两者不要同时用；**具体 ID 也一样**（`--model claude-sonnet-5-5` + 该变量 → `…/200k`）
 - **图片**以 base64 内嵌在 transcript 里（2.1.280 到 2.1.284 的历史记录统计，2026-09-29）。用户粘贴的图：`type: "user"` 的 `content` 变成数组，正文里是 `[Image #1]` 占位，另有 `{type: "image", source: {type: "base64", media_type, data}}` 块，同一行带 `imagePasteIds`；单张最大约 480 KB。模型用 `Read` 读图片文件时，`tool_result.content` 是同样的 image 块，`toolUseResult` 为 `{type: "image", file: {base64, type, originalSize, dimensions}}`，`dimensions` 里有原始尺寸和实际尺寸，长边超过 2000px 的会被缩小到 2000px；单张最大约 380 KB。本机记录里返回图片的工具只有 `Read`；Claude Code 自己不生成图片
 - 账户额度不在 transcript 里（状态栏脚本的输入里有 `rate_limits.five_hour` 等，那是 statusLine 命令的输入，不落盘）
 - **官方文档核对（2026-09-30，非本机实测）**：[statusLine 文档](https://code.claude.com/docs/en/statusline) 列出 `rate_limits.five_hour`、`seven_day` 的 `used_percentage` 与 `resets_at`（Unix 秒）。额度在首次 API 响应后才出现；Pro / Max 订阅或配置支出限额的 Claude apps gateway 可提供相关字段，各窗口可单独缺失，过了重置时间会移除。API 计费不能套用订阅窗口；缺字段也不能证明是 API 计费。接入 remote-agent 的采集链路见下一条的实测。
@@ -118,8 +118,8 @@
 
 - **Shift+Tab 按固定顺序循环**：manual → accept edits → plan → bypass → auto → manual。不可用的模式跳过：
   - bypass 只有在以 bypass 启动（本机是 `defaultMode` 设成了 bypass）、带 `--permission-mode bypassPermissions` 或带 `--allow-dangerously-skip-permissions` 时才在循环里。以 `--permission-mode auto` 或 `default` 启动的会话，循环里没有 bypass；恢复时带 `--permission-mode default` 也一样
-  - auto 要模型支持：haiku 下状态栏右侧显示 `auto mode unavailable for this model`，循环里没有 auto；sonnet 下有。这句提示在 Shift+Tab 跳过 auto 之后也会出现，并停留几秒以上：实测 haiku 下切换模式后马上用 `/model` 换到 sonnet，daemon 7 秒后读到的状态栏里仍有这句，一分钟后再看已经没有了，所以它不能说明当前模型有没有 auto
-  - 2.1.293（Claude Max，2026-10-09，`--setting-sources project,local --model haiku`）：别名 haiku 是 Haiku 5.5，循环是 manual → accept edits → plan → auto → manual，**有 auto**；`/model` 里它也有 effort 行（`◐ Medium effort (default)`）。所以「haiku 没有 auto、没有 effort」只对 Haiku 4.5 成立
+  - auto 要模型支持：没有 auto 的模型下状态栏右侧显示 `auto mode unavailable for this model`，循环里没有 auto；有的模型下有。这句提示在 Shift+Tab 跳过 auto 之后也会出现，并停留几秒以上：实测 haiku 下切换模式后马上用 `/model` 换到 sonnet，daemon 7 秒后读到的状态栏里仍有这句，一分钟后再看已经没有了，所以它不能说明当前模型有没有 auto
+  - **哪些模型没有 auto，直接从模型目录读**（第 13 节，2.1.300 实测）：目录里 Haiku 4.5 那一行有 `"auto_permission_mode": "unavailable"`（另有 `"auto_permission_mode_note": "Requires Claude 4.6 or newer"`），其余各行的这个字段都没有；`/model` 菜单里选中 Haiku 4.5 时状态栏右侧同样显示 `auto mode unavailable for this model`，选中 Haiku 5.5 不显示。**别按名字判断**：「haiku 没有 auto、没有 effort」只对 Haiku 4.5 成立（2.1.293 起别名 `haiku` 是 Haiku 5.5，有 auto 也有 effort；目录里还有 `claude-opus-4-5-20251101` 标着 `unavailable`，但它是下架的）
   - 项目里的设置不能把 bypass 设成默认（同一次实测，用户级设置用 `--setting-sources project,local` 排除在外）：`.claude/settings.local.json` 写 `permissions.defaultMode: "bypassPermissions"`（再加 `skipDangerousModePermissionPrompt: true` 也一样），或写在 `.claude/settings.json` 里，会话都以 manual 启动，没有任何提示，循环里也没有 bypass；同一个文件写 `acceptEdits` 则生效。排除掉用户级设置后它会不会退回用户级的 `defaultMode`，未验证
 - **运行中也能 Shift+Tab**：实测一轮运行时连按两次，模式行从 bypass 变到 manual、再到 accept edits
 - **没有反向的按键**，模式只能沿上面的顺序往前走。`/plan`（`Enable plan mode or view the current session plan`）空闲时直接进入 Plan 模式，对话里记 `Enabled plan mode`，不经过别的模式；运行中输入 `/plan` 只会排队，这一轮结束后才生效。没有找到直接离开 Plan 模式或切到其他模式的命令（`/permissions` 管的是允许和拒绝规则）
@@ -165,14 +165,16 @@
 
 ## 9. 切换模型和 effort
 
-- `/model` 回车打开 `Select model`：`1. Default (recommended)`、`2. Opus`、`3. Fable`、`4. Sonnet`、`5. Haiku`，每行后面是显示名和说明（`Opus 5.5 · Best for everyday, complex tasks`），当前模型带 `✔`，光标（`❯`）停在当前模型上。列表随账号和版本变化：2.1.287（Claude Max，2026-10-02）列的是带版本号的 `Opus 5.5`、`Fable 5.1`、`Sonnet 5.5`、`Haiku 4.5`，后面还有旧版本模型，没有单独的 1M 上下文选项；2.1.293（Claude Max，2026-10-09）又是每个别名一行：`1. Default (recommended)`、`2. Opus`、`3. Fable`、`4. Sonnet`、`5. Haiku`，后面的显示名是 `Opus 5.5`、`Fable 5.1`、`Sonnet 5.5`、`Haiku 5.5`，没有旧版本；2.1.300（Claude Max，2026-10-17）也是每个别名一行，别名行之后另有带版本号的 `Haiku 4.5`、`Sonnet 5`、`Opus 5`、`Fable 5`、`Opus 4.8`，末尾一行 `… +3 models`（开头的字符是 U+2026 `…`，不是别的箭头符号；窗口越矮这个数字越大，20 行窗口下是 `… +8 models`）表示还有更多。**小窗口里列表首尾的可见行各带一个 `↑`/`↓` 标记**（如 `  ↑ 3.  Fable 5.1`、`  ↓ 5.  Haiku 5.5 ✔`），光标行本身不带标记（2.1.300 实测，缩小的窗口里光标始终留在中间、不进标记行）；2.1.287 的列表末行同样带 `↓`，全窗口也如此（2026-10-17 实测）。解析时必须认这些标记，否则标记行会连同它的选项一起丢掉；光标行万一带标记（如 `❯ ↓ 10.`）也要能认出光标。截图见 `internal/claude/testdata/model/model-2.1.300.txt` 和 `model-2.1.300-narrow.txt`
-- 列表下面是 effort 行：`◐ Medium effort (default) ←/→ to adjust`。档位从低到高是 low、medium、high、xhigh、max，`←/→` 每按一次走一档。两端的行为随版本不同：**2.1.300 两端停住、不循环**（在 Max 再按 → 仍是 Max，在 Low 再按 ← 仍是 Low）；**2.1.287 首尾相接**（2026-10-17 用 npm 临时前缀装的 2.1.287、haiku 会话实测：从 Medium 按 ← 到 Low，在 Low 再按 ← 到 Max，在 Max 按 → 回到 Low）。两个版本的档位顺序相同，只是 2.1.287 会循环，所以按「目标相对当前档位」的方向按键在两种行为下都能到目标，不需要按版本分支，取舍见 [architecture.md](architecture.md) 第 16 节。haiku：2.1.287 的 Haiku 4.5 显示 `○ Effort not supported for Haiku`（2.1.284 同），2.1.300 的别名 haiku 是 Haiku 5.5，有 effort 行，状态栏右侧显示 `○ low · /effort`（和 2.1.293 一致，见第 5 节）
-- 底部：`Enter to set as default · s to use this session only · Esc to cancel`。和 Codex 一样，**回车改全局默认值，`s` 只改当前会话**；按 `s` 后 `~/.claude/settings.json` 不变
+- `/model` 回车打开 `Select model`：`1. Default (recommended)`，然后是**模型目录的行，按目录的顺序**（第 13 节）。2.1.300（Claude Max，2026-10-17）是 `2. Opus 5.5`、`3. Fable 5.1`、`4. Sonnet 5.5`、`5. Haiku 5.5`（目录的 main 段），接着 `6. Haiku 4.5`、`7. Sonnet 5`、`8. Opus 5`、`9. Fable 5`、`10. Opus 4.8`…（overflow 段，这一档是各家族当前模型的上一代），末尾一行 `… +3 models`（开头的字符是 U+2026 `…`，不是别的箭头符号；窗口越矮这个数字越大，20 行窗口下是 `… +10 models`）表示还有更多，全部 12 行。每行后面是显示名和说明（`2.  Opus 5.5  For complex work and everyday tasks`），当前模型带 `✔`，光标（`❯`）停在当前模型上。2.1.293（2026-10-09）是同样的列法：`2. Opus`、`3. Fable`、`4. Sonnet`、`5. Haiku`，显示名写当前的 `Opus 5.5`、`Fable 5.1`、`Sonnet 5.5`、`Haiku 5.5`，没有旧版本；**目录不可用时会退回编译在二进制里的清单**（同一天用 `CLAUDE_CODE_MODEL_CATALOG=1` 实测：行一样，只有 `Default (recommended)` 后面写的默认模型不同——目录说 Opus 5.5，内置清单说 Sonnet 5.5），两种列法都得能认。**小窗口里列表首尾的可见行各带一个 `↑`/`↓` 标记**（如 `  ↑ 3.  Fable 5.1`、`  ↓ 5.  Haiku 5.5 ✔`），光标行本身不带标记（2.1.300 实测，缩小的窗口里光标始终留在中间、不进标记行）；滚动后行号仍是全表里的绝对编号（实测：20 行窗口里从 1 按 10 次 ↓ 到 11），**按 ↓ 到底会回到第一行（会绕圈）**。解析时必须认这些标记，否则标记行会连同它的选项一起丢掉；光标行万一带标记（如 `❯ ↓ 10.`）也要能认出光标。截图见 `internal/claude/testdata/model/model-2.1.300.txt` 和 `model-2.1.300-narrow.txt`
+- 列表下面是 effort 行：`◐ Medium effort (default) ←/→ to adjust`。**档位是这一行模型自己的**（目录的 `runtime.effort_levels`；Opus 4.6 没有 xhigh，实测它的档位是 low、medium、high、max），`←/→` 每按一次走一档。两端的行为随版本不同：**2.1.300 两端停住、不循环**（在 Max 再按 → 仍是 Max，在 Low 再按 ← 仍是 Low）；**2.1.287 首尾相接**（2026-10-17 用 npm 临时前缀装的 2.1.287、haiku 会话实测：从 Medium 按 ← 到 Low，在 Low 再按 ← 到 Max，在 Max 按 → 回到 Low）。两个版本的档位顺序相同，只是 2.1.287 会循环，所以按「目标相对当前档位」的方向按键在两种行为下都能到目标，不需要按版本分支，取舍见 [architecture.md](architecture.md) 第 16 节。没有档位的模型显示 `○ Effort not supported for Haiku 4.5`（2.1.300 实测，跟着光标走：光标停在 Haiku 4.5 那一行就写它，哪怕会话在用别的模型；2.1.287 的 Haiku 4.5 写 `○ Effort not supported for Haiku`，2.1.284 同）
+- 底部：`Enter to set as default · s to use this session only · Esc to cancel`。**回车改全局默认值，`s` 只改当前会话**；按 `s` 后 `~/.claude/settings.json` 不变
 - **按数字键等于移到那一行再按回车**（走「设为默认」这条路），不能用
-- 对话已有缓存时，按 `s` 后还会弹 `Switch model?` / `❯ 1. Yes, switch to Haiku 4.5` / `2. No, go back`，按 1 确认后仍然只改当前会话
-- 成功后对话里出现 `⎿  Set model to Sonnet 5.5 for this session only with low effort`（haiku 没有 effort 部分；effort 没变时也不写这一段），状态栏右侧显示 `○ low · /effort`。transcript 里是一条没有 `origin` 的用户记录，正文为 `<local-command-stdout>…</local-command-stdout>`，文字相同，只是模型名和 effort 各用反引号括起来（``Set model to `Sonnet 5.5` for this session only with `low` effort``，2.1.284 的记录）；回车设为默认时是 ``Set model to `Fable 5.1` and saved as your default for new sessions``（2.1.258 到 2.1.280 的本机记录，名字可能带 `(1M context)`、`(default)`）。这条记录的时间戳是执行命令的时刻，排在下一条用户消息之前
+- **`/model <ID>` 也是「设为默认」这条路，不能用**（2.1.300 实测）：`/model claude-sonnet-5-5` 会弹 `Switch model?` 确认，确认后对话里写 ``Set model to `Sonnet 5.5` and saved as your default for new sessions``，并把 `"model": "claude-sonnet-5-5"` 写进 `~/.claude/settings.json`。要只改当前会话只能走菜单加 `s`。`/effort <档位>` 同样保存默认（见下）
+- 对话已有缓存时，按 `s` 后还会弹 `Switch model?` / `❯ 1. Yes, switch to Haiku 4.5` / `2. No, go back`（实测从 Haiku 4.5 切到 Sonnet 5.5、以及从 Opus 5.5 切到 Haiku 4.5 都会弹），按 1 确认后仍然只改当前会话
+- 成功后对话里出现 `⎿  Set model to Sonnet 5.5 for this session only with low effort`（模型没有 effort 部分；effort 没变时也不写这一段），状态栏右侧显示 `○ low · /effort`。transcript 里是一条没有 `origin` 的用户记录，正文为 `<local-command-stdout>…</local-command-stdout>`，文字相同，只是模型名和 effort 各用反引号括起来（``Set model to `Sonnet 5.5` for this session only with `low` effort``，2.1.300 实测）；回车设为默认时是 ``Set model to `Opus 5.5 (default)` and saved as your default for new sessions``（2.1.300 实测，`Default (recommended)` 那一行这么写；2.1.258 到 2.1.280 的记录里名字可能带 `(1M context)`、`(default)`）。**记录里写的是显示名，不是 ID**，要按目录把名字换回 ID。这条记录的时间戳是执行命令的时刻，排在下一条用户消息之前
+- **`/effort` 单独回车**打开一个滑条：`Effort` / `low medium high xhigh max` / `←/→ to adjust · Enter to confirm · s for this session only · Esc to cancel`，`s` 只改当前会话。`/effort high` 这样直接带参数则**保存为默认**（`Set effort level to high (saved as your default for new sessions): …`），写进 `~/.claude/settings.json` 的 `modelSettings`：键是**去掉日期后缀的模型 ID**（`claude-haiku-4-5`），值是 `"effortLevel": "high"`；`/effort auto` 清掉这个值（键留着，值为空对象）。模型没有档位时 `/effort` 也照收（Haiku 4.5 实测），会话里不生效
 - 窄窗口下的折行（2.1.293，46 列，2026-10-09）：菜单每行的说明折成几行，缩进到说明那一列；末行提示折成 `Enter to set as default · s to use this` / `session only · Esc to cancel`；成功的那句话折成 `  ⎿  Set model to Fable 5.1 for this session` / `     only with xhigh effort`，续行缩进 5 格，和正文对齐
-- 下一次回复的 `assistant` 记录里 `message.model`、`perTurnEffort` 随之变化
+- 下一次回复的 `assistant` 记录里 `message.model`、`perTurnEffort` 随之变化（2.1.300 实测：会话里按 `s` 切到 Sonnet 5.5 + xhigh 后，下一条记录是 `model=claude-sonnet-5-5`、`perTurnEffort=xhigh`）
 
 ## 10. 中断和运行中的输入
 
@@ -223,9 +225,23 @@
 
 - 用独立的 tmux socket，测完 `kill-server`；hook 用 `--settings` 注入，不要改 `~/.claude/settings.json`，测前测后对比它的校验值
 - 信任目录会写进 `~/.claude.json`（和 Codex 的信任写进 `config.toml` 一样，是全局状态）
-- 测试用 `--model haiku` 省额度；但 haiku 没有 auto 模式和 effort，这两项要用 sonnet 测
-- 不要在菜单里按数字键或回车，以免改掉全局默认模型
+- 测试用具体模型 ID，别用别名：`--model claude-haiku-5-5` 省额度，但它有 auto 和 effort，`claude-haiku-4-5-20251001` 两样都没有（别名 `haiku` 指哪个模型随版本变）
+- 不要在菜单里按数字键或回车，也不要打 `/model <ID>` 或 `/effort <档位>`：都会改掉全局默认模型（第 9 节）
 
+
+## 13. 模型目录
+
+Claude Code 自己有一份模型目录：`/model` 列什么、每个模型的档位、上下文窗口和它带不带 auto，都来自这里。它从网上取一份**按账号和组织签名**的文档，缓存在本机（2026-10-17，2.1.300，本机实测；目录的结构和刷新规则同时对着二进制的字符串核过）。
+
+- **位置和命名**：`~/.claude/cache/model-catalog/<组织 UUID>-<账号散列 12 位>-<surface>.json`，一个账号一个文件（实测本机只有 `…-cc.json` 一个）。`<surface>` 是 `cc`（终端这个 CLI）、`ccr`（云端会话）、`ccd`，别的 surface 的行不能用。文件 JSON，一层 `catalog`：
+  ```
+  {"version":2,"fetchedAt":<毫秒>,"staleAt":<毫秒>,
+   "catalog":{"surface":"cc","config":{"models":[…]},"state":{…}}}
+  ```
+- **刷新**：`staleAt` 是 `fetchedAt` 加一小时上下浮动一成（二进制的 `3600000 × (1 + 0.1 × (2r-1))`，本机实测 65 分钟）。启动时读缓存；缓存过时就试着刷新（最多等 2 秒，失败就用旧的那份）。用 `-p` 这类非交互启动不联网取，只读缓存。环境变量 `CLAUDE_CODE_MODEL_CATALOG` 可以直接关掉这条路径（实测 `=1` 时 `/model` 退回到编译在二进制里的清单）。**取不到时 CLI 不报错**，用编译进去的备用清单或内置表继续（二进制的日志里写 `using compiled behavior`）
+- **一行有什么**（`catalog.config.models[]`，实测本机 12 行）：`id`（就是 `--model` 收的、transcript 记的那个 ID，如 `claude-haiku-4-5-20251001`）、`name`（`/model` 那一行的显示名，如 `Haiku 4.5`）、`short_name`（`Haiku`）、`description`、`section`（`main` 在前，`overflow` 是旧一代，`deprecated` 更旧）、`disabled`（下架的行）、`thinking`（有档位的行是 `{"type":"effort","effort_options":[…]}`，**没有档位的行是 `{"type":"none"}` 或整个字段不在**）、`runtime.effort_levels`（档位，低到高）、`runtime.default_effort`（默认档）、`runtime.max_input_tokens`（模型最大的上下文窗口，本机是 1M 或 200k）、`runtime.max_output_tokens`、`runtime.family`、`image_limits`、`min_claude_code_version`（低于它就只列给更新的 CLI）、`auto_permission_mode`（`"unavailable"` = 这个模型没有 auto，另有 `auto_permission_mode_note` 说明原因）。Haiku 4.5 一行是：没有 `effort_levels`、没有 `default_effort`、`max_input_tokens` 200000、`"auto_permission_mode":"unavailable"`
+- **窗口**：`runtime.max_input_tokens` 是模型的上限。会话实际用的窗口还可能被别的压小：`~/.claude/settings.json` 的 `autoCompactWindow`（本机 600000，`/context` 就写 `…/600k`），或环境变量 `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`（压回 200k，第 2 节）。会话里没有别的字段能读出窗口
+- **写给谁看**：这份文档是 Claude Code 自己的，remote-agent 只读它、不写（[architecture.md](architecture.md) 第 16 节）
 
 ## 定时任务 MCP 接入实测
 

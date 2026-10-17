@@ -45,6 +45,14 @@
 - `/model` 菜单：2.1.300 全窗口和 90×20 小窗口的真实抓屏各存进 `internal/claude/testdata/model/`，由回归测试核对整份行的解析（小窗口首尾行的 `↑`/`↓` 标记行不能被丢掉、光标行带标记也要认出）。另外用 npm 装到临时前缀的 2.1.287 抽查了 `/model` 的推理强度 ←（会两端循环）和末行的 `↓` 标记，不动用户全局 claude。
 - 未覆盖：网页、Android 和 iOS 的直接界面操作；图片；auto 模式和推理强度切换；审批超时；压缩；分叉；线上 server 和日常账户。
 
+**模型改为按具体 ID，2.1.300**（2026-10-17，macOS，Claude Code 2.1.300，Max 账户；当前 worktree 构建的二进制，独立的 `REMOTE_AGENT_HOME`、tmux socket 和临时工作目录，用**用户正常的 Claude Code 配置和登录**，没有 `CLAUDE_CONFIG_DIR` 隔离；直连本地 daemon 的 CLI，没有连线上 server、日常 daemon 或账户）：
+
+- 逐条实测模型目录和它的行为（[notes §13](claude-code-notes.md#13-模型目录)、§1、§2、§5、§9）：`~/.claude/cache/model-catalog/…-cc.json` 的命名、字段和刷新时间；`--model <完整 ID> --effort <档位>` 照常启动（无档位的 Haiku 4.5 也接受，档位留着给之后切到的模型；超出模型的档位按上限收窄，认不出的值打印警告后忽略）；`/model <完整 ID>` 和 `/effort <档位>` 都**改全局默认**（写 `~/.claude/settings.json`），只有菜单加 `s` 只改当前会话；transcript 的 `message.model` 就是目录里的 ID（`--model claude-sonnet-5-5[1m]` 记录的也是 `claude-sonnet-5-5`），`perTurnEffort` 跟着会话的档位。测试写坏了本机 `~/.claude/settings.json` 两次（`/model <ID>` 的 `model` 键、`/effort high` 的 `modelSettings`），都用 CLI 自己的路径改回来了（菜单里的 `Default (recommended)`、`/effort auto`）；文件语义与测前一致，只留下一个空的 `modelSettings` 对象
+- `scripts/acceptance-claude.sh`（用具体 ID `claude-haiku-5-5`，新增第 8 步）：全绿——新建会话、一轮收发、审批允许和拒绝、单选和多选提问、中断、草稿排队、**切换模型和推理强度（`claude-sonnet-5-5` + `low`）并核对 `~/.claude/settings.json` 未变**、切换审批模式、计划批准、stop/resume、daemon 重启后序号连续
+- `remote-agent doctor claude`（私有的 daemon、状态目录和 tmux socket，工作目录在临时状态目录里；实际登录和目录）：全部通过，新增的「读模型列表」一步读到 12 个模型，「切换模型和推理强度」用目录里两个较旧的模型（`claude-sonnet-4-6` → `claude-opus-5-5`）来回切换通过
+- 隔离的 `dev-env.sh` 环境（独立 RA_DEV_DIR、临时账户、server 数据库、daemon 状态目录和 tmux socket，Go 调试客户端经加密 server/daemon 操作真实 CLI）：新建会话选 `claude-haiku-5-5` + `low`（pty-host 的实际参数是 `--model claude-haiku-5-5 --effort low --permission-mode default`，终端标题写 `Haiku 5.5 with low effort`）→ 发一轮，transcript 记 `model=claude-haiku-5-5`、`perTurnEffort=low`；**中途切到没有档位的 `claude-haiku-4-5-20251001`**（菜单里 `s`，屏幕写 `Set model to Haiku 4.5 for this session only`，事件 `settingsChanged.model` 是完整 ID）→ 再发一轮，transcript 记 `claude-haiku-4-5-20251001`、`perTurnEffort=null`。全程 `~/.claude/settings.json` 校验值不变（两次切换前后各比对一次）；`model claude` 列出的 12 行与目录一致（Haiku 4.5 无档位，Opus 4.6、Sonnet 4.6 无 xhigh）
+- 未覆盖：网页、Android 和 iOS 的直接界面操作（换模型、自动模式置灰仍待三端界面验收）；`standard_context` 的两种窗口在真实会话里的差别；auto 模式在具体 ID 下的 Shift+Tab 循环；目录缺失时的退化路径（只由单元测试覆盖：`TestModels` 断言无目录时报错、`TestLoadCatalogMissing`）；目录取不到时 CLI 自己的内置清单（只对着二进制和一次 `CLAUDE_CODE_MODEL_CATALOG=1` 的启动核对过）；线上 server 和日常 daemon。测试环境、tmux 和临时进程已清理；只本地提交，不推送、不发版。
+
 ## 4. 网页
 
 **按 v1 界面稿**（2026-09-29）：本机 Chrome 上逐屏对照过 390 宽和 1280 宽、亮色和暗色；用真实的 daemon 和 Codex（GPT-6-Luna，低档位）走过配对加入、在项目里新建、信任目录的弹窗停靠后去终端处理、适配和还原终端、发消息、结束和恢复、切换审批模式。`pnpm test` 覆盖状态优先级、停靠区顺序、消息发送状态和 Markdown 渲染。

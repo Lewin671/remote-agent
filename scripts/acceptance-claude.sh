@@ -1,12 +1,15 @@
 #!/bin/sh
 # Claude Code acceptance run. Like scripts/acceptance.sh it is not part of
 # `go test`: it needs an authenticated claude, network access and a few
-# minutes, and it spends a little of your Claude quota. It uses haiku, the
-# cheapest model.
+# minutes, and it spends a little of your Claude quota. It uses Haiku, the
+# cheapest model Claude Code's catalog offers; when that model is retired,
+# name the new one here (its ID, as `claude --model` takes it).
 #
 # It uses its own state directory and tmux socket, so it does not touch
-# your sessions. The first run in a new work directory stops at Claude
-# Code's trust prompt; the script answers it the way a local user would.
+# your sessions, and the user's own Claude Code configuration (the catalog
+# it caches and its login). The first run in a new work directory stops at
+# Claude Code's trust prompt; the script answers it the way a local user
+# would.
 #
 # Usage: scripts/acceptance-claude.sh [work-dir]
 set -u
@@ -15,6 +18,8 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${1:-/tmp/ra-cc-acceptance-work}
 STATE=$(mktemp -d /tmp/ra-cc-acc.XXXXXX)
 BIN=/tmp/ra-cc-acceptance-bin/remote-agent
+MODEL=claude-haiku-5-5
+OTHER=claude-sonnet-5-5
 mkdir -p /tmp/ra-cc-acceptance-bin
 export REMOTE_AGENT_HOME="$STATE"
 export REMOTE_AGENT_TMUX_SOCKET="ra-cc-acc-$$"
@@ -59,6 +64,10 @@ pane() { printf 'ra-%s:' "$(printf %s "$1" | cut -c1-8)"; }
 lsrow() { "$BIN" ls -a | grep "^$(short "$1")" || true; }
 idle() { "$BIN" ls | grep "^$(short "$1")" | grep -q idle; }
 last_seq() { events "$1" | tail -1 | sed -n 's/.*"seq":"\{0,1\}\([0-9]*\)".*/\1/p'; }
+# sha <file>: its SHA-256, with whichever tool this machine has (as dist-smoke.sh).
+sha() {
+	if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi
+}
 
 # wait_new <seconds> <id> <seq> <pattern>: retry until an event after seq
 # matches pattern. Scoping to the sequence keeps a leftover event from an
@@ -103,7 +112,7 @@ start_daemon 60s
 cd "$WORK"
 
 # 1. A new session starts and reaches the input box.
-ID=$("$BIN" new --agent claude --model haiku --permission-mode default)
+ID=$("$BIN" new --agent claude --model "$MODEL" --permission-mode default)
 if settle "$ID"; then pass "session starts and reaches the input box"; else fail "session start"; fi
 
 # 2. Send a message; the turn's events arrive in order and the reply reads back.
@@ -208,7 +217,23 @@ else
 fi
 wait_for 30 idle "$ID" || true
 
-# 8. Switch the approval mode and see it recorded.
+# 8. Switch the model and effort for this session only: the daemon records it
+# and the user's own Claude Code settings are not touched (the menu's `s`).
+settings="$HOME/.claude/settings.json"
+before=$(sha "$settings" 2>/dev/null | awk '{print $1}')
+seq=$(last_seq "$ID")
+if "$BIN" model "$ID" "$OTHER" low >/dev/null 2>&1; then
+	pass "switch model and effort"
+else
+	fail "switch model and effort"
+fi
+wait_new 30 "$ID" "$seq" "\"settingsChanged\":{\"model\":\"$OTHER\"" || fail "the switch is not recorded"
+after=$(sha "$settings" 2>/dev/null | awk '{print $1}')
+if [ "$before" = "$after" ]; then pass "the switch left settings.json alone"; else fail "settings.json changed"; fi
+"$BIN" model "$ID" "$MODEL" >/dev/null 2>&1 || fail "switch back to $MODEL"
+wait_for 30 idle "$ID" || true
+
+# 9. Switch the approval mode and see it recorded.
 mode_case() {
 	want=$1
 	if "$BIN" mode "$ID" "$want" >/dev/null 2>&1; then
@@ -220,7 +245,7 @@ mode_case() {
 mode_case plan
 mode_case ask
 
-# 9. Move to Plan mode, propose a plan and approve it.
+# 10. Move to Plan mode, propose a plan and approve it.
 if ! wait_for 20 idle "$ID"; then fail "the session is not idle before the plan step"; fi
 seq=$(last_seq "$ID")
 "$BIN" mode "$ID" plan >/dev/null 2>&1 || fail "cannot enter Plan mode for the plan step"
@@ -244,7 +269,7 @@ if wait_for 30 sh -c "'$BIN' ls | grep -q '1 approval'"; then
 fi
 wait_for 90 idle "$ID" || true
 
-# 10. Stop the session and resume it: it continues the same conversation.
+# 11. Stop the session and resume it: it continues the same conversation.
 seq=$(last_seq "$ID")
 "$BIN" send "$ID" "Remember the codeword BANANA-77. Reply with just OK."
 wait_new 90 "$ID" "$seq" '"turnEnded"' || true
@@ -257,7 +282,7 @@ seq=$(last_seq "$ID")
 if wait_new 90 "$ID" "$seq" "BANANA-77"; then pass "resume continues the same conversation"; else fail "resume"; fi
 wait_for 60 idle "$ID" || true
 
-# 11. Restart the daemon: sessions come back and events continue.
+# 12. Restart the daemon: sessions come back and events continue.
 before=$("$BIN" ls | grep -c . || true)
 last=$(last_seq "$ID")
 kill "$DAEMON_PID" 2>/dev/null
