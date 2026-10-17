@@ -15,13 +15,14 @@ import (
 // Images. Daemons store the display copy of each image in a session as a
 // sealed envelope; clients fetch it when a picture is opened. The server
 // sees the session, a random image ID, the size and the times, nothing
-// else. Images are kept for a while (Config.ImageRetention) and the
-// account has a quota of stored bytes (Config.ImageQuota), checked in the
-// same transaction as the insert. An expired image leaves a row without
+// else. Images are kept for a while (Config.ImageRetention) and each
+// account has a quota of stored bytes (its plan's), checked in the same
+// transaction as the insert. An expired image leaves a row without
 // its envelope, so that clients can tell "expired" from "never stored".
 
 const imageSchema = `
 CREATE TABLE IF NOT EXISTS images (
+	account_id TEXT NOT NULL,
 	session_id TEXT NOT NULL,
 	image_id TEXT NOT NULL,
 	machine_id TEXT NOT NULL,
@@ -29,7 +30,7 @@ CREATE TABLE IF NOT EXISTS images (
 	bytes INTEGER NOT NULL,
 	created_ms INTEGER NOT NULL,
 	expires_ms INTEGER NOT NULL,
-	PRIMARY KEY (session_id, image_id)
+	PRIMARY KEY (account_id, session_id, image_id)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS images_expiry ON images (expires_ms) WHERE envelope IS NOT NULL;
 `
@@ -44,21 +45,21 @@ var errQuota = errors.New("the account's image storage is full")
 
 // putImage stores a sealed image unless it is stored already, and returns
 // when it expires.
-func (s *store) putImage(ctx context.Context, machineID, sessionID, imageID string, env []byte, retention time.Duration, quota int64) (int64, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+func (t *tstore) putImage(ctx context.Context, machineID, sessionID, imageID string, env []byte, retention time.Duration, quota int64) (int64, error) {
+	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback()
 	var owner string
-	if err := tx.QueryRowContext(ctx, `SELECT machine_id FROM sessions WHERE session_id = ?`, sessionID).Scan(&owner); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT machine_id FROM sessions WHERE account_id = ? AND session_id = ?`, t.acct, sessionID).Scan(&owner); err != nil {
 		return 0, err
 	}
 	if owner != machineID {
 		return 0, errOtherMachine
 	}
 	var expires int64
-	err = tx.QueryRowContext(ctx, `SELECT expires_ms FROM images WHERE session_id = ? AND image_id = ?`, sessionID, imageID).Scan(&expires)
+	err = tx.QueryRowContext(ctx, `SELECT expires_ms FROM images WHERE account_id = ? AND session_id = ? AND image_id = ?`, t.acct, sessionID, imageID).Scan(&expires)
 	if err == nil {
 		// Stored before; an expired one is not brought back under the
 		// same ID.
@@ -68,29 +69,29 @@ func (s *store) putImage(ctx context.Context, machineID, sessionID, imageID stri
 		return 0, err
 	}
 	now := nowMs()
-	if _, err := tx.ExecContext(ctx, `UPDATE images SET envelope = NULL WHERE envelope IS NOT NULL AND expires_ms <= ?`, now); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE images SET envelope = NULL WHERE account_id = ? AND envelope IS NOT NULL AND expires_ms <= ?`, t.acct, now); err != nil {
 		return 0, err
 	}
 	var used int64
-	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(bytes), 0) FROM images WHERE envelope IS NOT NULL`).Scan(&used); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(bytes), 0) FROM images WHERE account_id = ? AND envelope IS NOT NULL`, t.acct).Scan(&used); err != nil {
 		return 0, err
 	}
 	if used+int64(len(env)) > quota {
 		return 0, errQuota
 	}
 	expires = now + retention.Milliseconds()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO images (session_id, image_id, machine_id, envelope, bytes, created_ms, expires_ms)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`, sessionID, imageID, machineID, env, len(env), now, expires); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO images (account_id, session_id, image_id, machine_id, envelope, bytes, created_ms, expires_ms)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, t.acct, sessionID, imageID, machineID, env, len(env), now, expires); err != nil {
 		return 0, err
 	}
 	return expires, tx.Commit()
 }
 
 // image returns a stored image; a nil envelope means it expired.
-func (s *store) image(ctx context.Context, sessionID, imageID string) ([]byte, int64, error) {
+func (t *tstore) image(ctx context.Context, sessionID, imageID string) ([]byte, int64, error) {
 	var env []byte
 	var expires int64
-	err := s.db.QueryRowContext(ctx, `SELECT envelope, expires_ms FROM images WHERE session_id = ? AND image_id = ?`, sessionID, imageID).Scan(&env, &expires)
+	err := t.db.QueryRowContext(ctx, `SELECT envelope, expires_ms FROM images WHERE account_id = ? AND session_id = ? AND image_id = ?`, t.acct, sessionID, imageID).Scan(&env, &expires)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -101,7 +102,7 @@ func (s *store) image(ctx context.Context, sessionID, imageID string) ([]byte, i
 }
 
 // expireImages drops the envelopes of images past their time, keeping
-// the rows. It returns how many it dropped.
+// the rows, in every account. It returns how many it dropped.
 func (s *store) expireImages(ctx context.Context) (int64, error) {
 	res, err := s.db.ExecContext(ctx, `UPDATE images SET envelope = NULL WHERE envelope IS NOT NULL AND expires_ms <= ?`, nowMs())
 	if err != nil {
@@ -141,8 +142,12 @@ func (m *machineService) PutImage(ctx context.Context, req *connect.Request[pb.P
 	}); err != nil {
 		return nil, err
 	}
+	if m.s.diskLow.Load() {
+		return nil, errFull("this relay is out of storage; try again later")
+	}
 	b, _ := proto.Marshal(req.Msg.Image)
-	expires, err := m.s.store.putImage(ctx, id, req.Msg.SessionId, req.Msg.ImageId, b, m.s.cfg.ImageRetention, m.s.cfg.ImageQuota)
+	t := m.s.tenantFrom(ctx)
+	expires, err := t.store.putImage(ctx, id, req.Msg.SessionId, req.Msg.ImageId, b, m.s.cfg.ImageRetention, t.imageQuota(m.s))
 	switch {
 	case errors.Is(err, errNoRows):
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown session; put it first"))
@@ -157,7 +162,7 @@ func (m *machineService) PutImage(ctx context.Context, req *connect.Request[pb.P
 }
 
 func (c *clientService) GetImage(ctx context.Context, req *connect.Request[pb.GetImageRequest]) (*connect.Response[pb.GetImageResponse], error) {
-	env, expires, err := c.s.store.image(ctx, req.Msg.SessionId, req.Msg.ImageId)
+	env, expires, err := c.s.tenantFrom(ctx).store.image(ctx, req.Msg.SessionId, req.Msg.ImageId)
 	if errors.Is(err, errNoRows) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such image"))
 	}

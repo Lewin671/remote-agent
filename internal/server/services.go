@@ -1,11 +1,9 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/subtle"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -65,34 +63,50 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 	if !e2e.VerifyRegistration(reg.AccountPublicKey, req.Msg.Registration, req.Msg.Signature) {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("bad account signature"))
 	}
-	account, err := a.s.store.accountKey(ctx)
-	if err != nil {
-		return nil, internal(err)
-	}
-	var create []byte
+	acct := e2e.AccountID(reg.AccountPublicKey)
+	var create *newAccount
+	pl := planOf("")
+	existing, err := a.s.store.account(ctx, acct)
 	switch {
-	case account == nil:
-		tok := a.s.cfg.SetupToken
-		if tok == "" || subtle.ConstantTimeCompare([]byte(tok), []byte(req.Msg.SetupToken)) != 1 {
-			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("no account yet; a valid setup token is required"))
+	case errors.Is(err, errNoRows):
+		if create, err = a.s.newAccountFor(req); err != nil {
+			return nil, err
 		}
-		create = reg.AccountPublicKey
-	case !bytes.Equal(account, reg.AccountPublicKey):
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("device belongs to another account"))
+		create.publicKey, create.max = reg.AccountPublicKey, a.s.cfg.MaxAccounts
+		pl = planOf(create.plan)
+	case err != nil:
+		return nil, internal(err)
+	case existing.status != accountActive:
+		return nil, connect.NewError(connect.CodePermissionDenied, errSuspended)
+	default:
+		pl = planOf(existing.plan)
 	}
 	id := e2e.DeviceID(reg.DevicePublicKey)
-	if err := a.s.store.addDevice(ctx, create, id, reg, req.Msg.Registration, req.Msg.Signature); err != nil {
-		if errors.Is(err, errDeviceRevoked) || errors.Is(err, errRegistrationStale) {
+	limit := func(u accountUsage) error {
+		if a.s.diskLow.Load() {
+			return errFull("this relay is out of storage; try again later")
+		}
+		return pl.check(u)
+	}
+	if err := a.s.store.addDevice(ctx, acct, create, id, reg, req.Msg.Registration, req.Msg.Signature, limit); err != nil {
+		var apiErr *connect.Error
+		switch {
+		case errors.As(err, &apiErr):
+			return nil, err
+		case errors.Is(err, errDeviceRevoked), errors.Is(err, errRegistrationStale), errors.Is(err, errOtherAccount):
 			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		case errors.Is(err, errNoRoom):
+			return nil, connect.NewError(connect.CodeResourceExhausted, err)
 		}
 		return nil, internal(err)
 	}
 	if create != nil {
-		slog.Info("account created")
+		slog.Info("account created", "account", acct, "plan", create.plan)
 	}
-	slog.Info("device registered", "device", id, "kind", reg.Kind.String())
-	if d, err := a.s.store.deviceEntry(ctx, id); err == nil {
-		a.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceUpdated{DeviceUpdated: &pb.DeviceUpdated{Device: d}}})
+	slog.Info("device registered", "account", acct, "device", id, "kind", reg.Kind.String())
+	t := &tenant{acct: acct, plan: pl, store: a.s.store.tenant(acct), hub: a.s.hub.account(acct)}
+	if d, err := t.store.deviceEntry(ctx, id); err == nil {
+		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceUpdated{DeviceUpdated: &pb.DeviceUpdated{Device: d}}})
 	}
 	return connect.NewResponse(&pb.RegisterDeviceResponse{DeviceId: id}), nil
 }
@@ -137,9 +151,20 @@ func (a *authService) Login(ctx context.Context, req *connect.Request[pb.LoginRe
 	if !e2e.VerifyLogin(d.publicKey, req.Msg.Challenge, req.Msg.Signature) {
 		return nil, denied
 	}
+	acct, err := a.s.store.account(ctx, d.account)
+	if err != nil {
+		return nil, internal(err)
+	}
+	if acct.status != accountActive {
+		return nil, connect.NewError(connect.CodePermissionDenied, errSuspended)
+	}
 	token := newToken()
 	expires := time.Now().Add(a.s.cfg.TokenTTL).UnixMilli()
-	if err := a.s.store.addToken(ctx, hashToken(token), d.id, expires); err != nil {
+	t := a.s.store.tenant(d.account)
+	if err := t.addToken(ctx, hashToken(token), d.id, expires); err != nil {
+		return nil, internal(err)
+	}
+	if err := t.touchAccount(ctx); err != nil {
 		return nil, internal(err)
 	}
 	return connect.NewResponse(&pb.LoginResponse{Token: token, ExpiresMs: expires}), nil
@@ -151,22 +176,24 @@ type clientService struct {
 }
 
 func (c *clientService) ListMachines(ctx context.Context, req *connect.Request[pb.ListMachinesRequest]) (*connect.Response[pb.ListMachinesResponse], error) {
-	ms, err := c.s.store.machines(ctx)
+	t := c.s.tenantFrom(ctx)
+	ms, err := t.store.machines(ctx)
 	if err != nil {
 		return nil, internal(err)
 	}
 	for _, m := range ms {
-		m.Online = c.s.hub.online(m.Id)
+		m.Online = t.hub.online(m.Id)
 	}
 	return connect.NewResponse(&pb.ListMachinesResponse{Machines: ms}), nil
 }
 
 func (c *clientService) ListRemoteSessions(ctx context.Context, req *connect.Request[pb.ListRemoteSessionsRequest]) (*connect.Response[pb.ListRemoteSessionsResponse], error) {
+	t := c.s.tenantFrom(ctx)
 	if ids := req.Msg.SessionIds; len(ids) > 0 {
 		if len(ids) > maxSessionPage {
 			return nil, invalid("at most %d session IDs per request", maxSessionPage)
 		}
-		ss, err := c.s.store.sessionsByID(ctx, ids)
+		ss, err := t.store.sessionsByID(ctx, ids)
 		if err != nil {
 			return nil, internal(err)
 		}
@@ -179,13 +206,13 @@ func (c *clientService) ListRemoteSessions(ctx context.Context, req *connect.Req
 	limit = min(limit, maxSessionPage)
 	var out []*pb.RemoteSession
 	if req.Msg.After == nil {
-		live, err := c.s.store.liveSessions(ctx)
+		live, err := t.store.liveSessions(ctx)
 		if err != nil {
 			return nil, internal(err)
 		}
 		out = live
 	}
-	ended, next, err := c.s.store.endedSessions(ctx, req.Msg.After, limit)
+	ended, next, err := t.store.endedSessions(ctx, req.Msg.After, limit)
 	if err != nil {
 		return nil, internal(err)
 	}
@@ -198,7 +225,7 @@ func (c *clientService) GetEvents(ctx context.Context, req *connect.Request[pb.G
 		limit = defaultEventPage
 	}
 	limit = min(limit, maxEventPage)
-	evs, more, err := c.s.store.events(ctx, req.Msg.SessionId, req.Msg.AfterSeq, limit)
+	evs, more, err := c.s.tenantFrom(ctx).store.events(ctx, req.Msg.SessionId, req.Msg.AfterSeq, limit)
 	if err != nil {
 		return nil, internal(err)
 	}
@@ -218,11 +245,12 @@ func (c *clientService) Forward(ctx context.Context, req *connect.Request[pb.For
 	if h := headerOf(req.Msg.Command); h.Sender != dev.id {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the command's sender is not the logged-in device"))
 	}
-	reg, err := c.s.store.registration(ctx, dev.id)
+	t := c.s.tenantOf(dev)
+	reg, err := t.store.registration(ctx, dev.id)
 	if err != nil {
 		return nil, internal(err)
 	}
-	res, err := c.s.hub.forward(ctx, req.Msg.MachineId, &pb.ForwardCall{
+	res, err := t.hub.forward(ctx, req.Msg.MachineId, &pb.ForwardCall{
 		Command: req.Msg.Command, SenderDeviceId: dev.id, SenderRegistration: reg.raw, SenderRegistrationSignature: reg.sig,
 	})
 	if err != nil {
@@ -255,10 +283,11 @@ func (m *machineService) PutMachine(ctx context.Context, req *connect.Request[pb
 		return nil, err
 	}
 	b, _ := proto.Marshal(req.Msg.Meta)
-	if err := m.s.store.putMachineMeta(ctx, id, b, h.Seq); err != nil {
+	t := m.s.tenantFrom(ctx)
+	if err := t.store.putMachineMeta(ctx, id, b, h.Seq); err != nil {
 		return nil, internal(err)
 	}
-	m.s.hub.machineChanged(id)
+	t.hub.machineChanged(id)
 	return connect.NewResponse(&pb.PutMachineResponse{}), nil
 }
 
@@ -290,8 +319,12 @@ func (m *machineService) PutSession(ctx context.Context, req *connect.Request[pb
 	if req.Msg.EndedMs < 0 {
 		return nil, invalid("ended_ms must not be negative")
 	}
-	rs, err := m.s.store.putSession(ctx, id, sid, key, meta, revision, req.Msg.EndedMs)
+	t := m.s.tenantFrom(ctx)
+	rs, err := t.store.putSession(ctx, id, sid, key, meta, revision, req.Msg.EndedMs, t.limit(m.s))
+	var apiErr *connect.Error
 	switch {
+	case errors.As(err, &apiErr):
+		return nil, err
 	case errors.Is(err, errNoKey):
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, errOtherMachine), errors.Is(err, errNoMachine):
@@ -299,7 +332,7 @@ func (m *machineService) PutSession(ctx context.Context, req *connect.Request[pb
 	case err != nil:
 		return nil, internal(err)
 	}
-	m.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_SessionUpdated{SessionUpdated: &pb.SessionUpdated{Session: rs}}})
+	t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_SessionUpdated{SessionUpdated: &pb.SessionUpdated{Session: rs}}})
 	return connect.NewResponse(&pb.PutSessionResponse{}), nil
 }
 
@@ -322,9 +355,13 @@ func (m *machineService) UploadEvents(ctx context.Context, req *connect.Request[
 			return nil, invalid("event seq must start at 1")
 		}
 	}
-	added, rs, err := m.s.store.appendEvents(ctx, id, sid, req.Msg.Events)
+	t := m.s.tenantFrom(ctx)
+	added, rs, err := t.store.appendEvents(ctx, id, sid, req.Msg.Events, t.limit(m.s))
 	var gap *gapError
+	var apiErr *connect.Error
 	switch {
+	case errors.As(err, &apiErr):
+		return nil, err
 	case errors.Is(err, errNoRows):
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown session; put it first"))
 	case errors.Is(err, errOtherMachine):
@@ -335,10 +372,10 @@ func (m *machineService) UploadEvents(ctx context.Context, req *connect.Request[
 		return nil, internal(err)
 	}
 	if len(added) > 0 {
-		m.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_EventsAppended{EventsAppended: &pb.EventsAppended{
+		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_EventsAppended{EventsAppended: &pb.EventsAppended{
 			MachineId: id, SessionId: sid, Events: added,
 		}}})
-		m.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_SessionUpdated{SessionUpdated: &pb.SessionUpdated{Session: rs}}})
+		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_SessionUpdated{SessionUpdated: &pb.SessionUpdated{Session: rs}}})
 	}
 	return connect.NewResponse(&pb.UploadEventsResponse{LastSeq: rs.LastSeq}), nil
 }
@@ -348,7 +385,7 @@ func (m *machineService) ListSessionHeads(ctx context.Context, req *connect.Requ
 	if err != nil {
 		return nil, err
 	}
-	heads, err := m.s.store.sessionHeads(ctx, id)
+	heads, err := m.s.tenantFrom(ctx).store.sessionHeads(ctx, id)
 	if err != nil {
 		return nil, internal(err)
 	}

@@ -25,7 +25,7 @@ func TestRegistrationOlderThanFloorIsRefusedForUnknownDevices(t *testing.T) {
 	if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(known)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ts.srv.store.db.Exec(`UPDATE registration_policy SET freshness_floor_ms = ?`, time.Now().Add(-time.Minute).UnixMilli()); err != nil {
+	if _, err := ts.srv.store.db.Exec(`UPDATE accounts SET registration_floor_ms = ?`, time.Now().Add(-time.Minute).UnixMilli()); err != nil {
 		t.Fatal(err)
 	}
 	for _, created := range []int64{old, 0} {

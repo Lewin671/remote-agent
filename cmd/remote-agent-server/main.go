@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -29,8 +31,20 @@ func main() {
 		fmt.Println("remote-agent-server", buildinfo.String())
 		return
 	}
+	if len(os.Args) >= 2 {
+		switch os.Args[1] {
+		case "admin":
+			os.Exit(runAdmin(os.Args[2:]))
+		case "healthcheck":
+			os.Exit(runHealthcheck(os.Args[2:]))
+		}
+	}
 	listen := flag.String("listen", "127.0.0.1:8080", "address to listen on")
 	db := flag.String("db", "remote-agent.db", "SQLite database file")
+	signup := flag.String("signup", envOr("RA_SIGNUP", "token"), "who may create accounts (RA_SIGNUP): token, only with RA_SETUP_TOKEN; open, anyone, with a proof of work")
+	maxAccounts := flag.Int("max-accounts", envInt("RA_MAX_ACCOUNTS", 0), "most accounts on this relay (RA_MAX_ACCOUNTS); 0 means 1 with token signup, 100 with open")
+	trusted := flag.String("trusted-proxies", os.Getenv("RA_TRUSTED_PROXIES"), "comma-separated CIDRs of reverse proxies whose X-Forwarded-For names the client (RA_TRUSTED_PROXIES)")
+	minFree := flag.Int64("min-free-bytes", 2<<30, "free disk below which accounts stop growing; 0 turns the check off")
 	origins := flag.String("allowed-origins", "", "comma-separated web origins allowed to use the API, e.g. http://localhost:5173")
 	fcmAccount := flag.String("fcm-service-account", os.Getenv("RA_FCM_SERVICE_ACCOUNT"), "Firebase service account key file for Android pushes (RA_FCM_SERVICE_ACCOUNT); empty turns them off")
 	retention := flag.Duration("image-retention", 30*24*time.Hour, "how long image display copies are kept")
@@ -43,9 +57,25 @@ func main() {
 			allowed = append(allowed, o)
 		}
 	}
+	var proxies []netip.Prefix
+	for _, c := range strings.Split(*trusted, ",") {
+		if c = strings.TrimSpace(c); c == "" {
+			continue
+		}
+		p, err := netip.ParsePrefix(c)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "remote-agent-server: --trusted-proxies:", err)
+			os.Exit(2)
+		}
+		proxies = append(proxies, p)
+	}
 	srv, err := server.New(server.Config{
 		DBPath:         *db,
 		SetupToken:     os.Getenv("RA_SETUP_TOKEN"),
+		Signup:         server.Signup(*signup),
+		MaxAccounts:    *maxAccounts,
+		TrustedProxies: proxies,
+		MinFreeBytes:   *minFree,
 		AllowedOrigins: allowed,
 
 		FCMServiceAccount: *fcmAccount,
@@ -67,9 +97,43 @@ func main() {
 		defer cancel()
 		_ = hs.Shutdown(sctx)
 	}()
-	slog.Info("listening", "version", buildinfo.Version, "commit", buildinfo.Commit, "addr", *listen, "allowed_origins", allowed)
+	slog.Info("listening", "version", buildinfo.Version, "commit", buildinfo.Commit, "addr", *listen, "allowed_origins", allowed, "signup", *signup)
 	if err := hs.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Fprintln(os.Stderr, "remote-agent-server:", err)
 		os.Exit(1)
 	}
+}
+
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+func envInt(key string, def int) int {
+	if v, err := strconv.Atoi(os.Getenv(key)); err == nil {
+		return v
+	}
+	return def
+}
+
+// runHealthcheck asks the running server whether it answers, for the
+// container's health check: the image has no shell or curl.
+func runHealthcheck(args []string) int {
+	fs := flag.NewFlagSet("healthcheck", flag.ExitOnError)
+	addr := fs.String("addr", "127.0.0.1:8080", "the server's listen address")
+	fs.Parse(args)
+	c := &http.Client{Timeout: 5 * time.Second}
+	res, err := c.Get("http://" + *addr + "/healthz")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "healthcheck:", err)
+		return 1
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		fmt.Fprintln(os.Stderr, "healthcheck: status", res.StatusCode)
+		return 1
+	}
+	return 0
 }

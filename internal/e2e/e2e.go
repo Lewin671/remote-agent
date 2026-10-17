@@ -119,6 +119,10 @@ func DeviceID(pub ed25519.PublicKey) string {
 	return hex.EncodeToString(sum[:16])
 }
 
+// AccountID identifies an account by its account public key, in the same
+// way: a relay derives it, no client names it.
+func AccountID(pub ed25519.PublicKey) string { return DeviceID(pub) }
+
 // Packing limits. A payload below PackMin is sent as it is: packing would
 // save nothing worth the work. A payload that unpacks to more than
 // MaxUnpacked is refused, so that a small envelope cannot fill memory.

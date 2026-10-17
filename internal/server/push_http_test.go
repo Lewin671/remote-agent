@@ -36,7 +36,7 @@ func TestPushEndpointRejectsInternalDestinations(t *testing.T) {
 		t.Fatal("push client follows redirects")
 	}
 	ts := newTestServer(t)
-	if err := ts.srv.push.subscribe(ctx, "client", pushSubscription(t, "https://127.0.0.1/"), nil); err == nil {
+	if err := ts.srv.push.subscribe(ctx, ts.tenant(), "client", pushSubscription(t, "https://127.0.0.1/"), nil); err == nil {
 		t.Fatal("stored private push endpoint")
 	}
 }
@@ -61,21 +61,21 @@ func TestGoneSubscriptionDoesNotDeleteItsReplacement(t *testing.T) {
 		})}
 	}
 	old, replacement := pushSubscription(t, "https://push.example/old"), pushSubscription(t, "https://push.example/new")
-	if err := p.subscribe(ctx, "client", old, kinds); err != nil {
+	if err := p.subscribe(ctx, ts.tenant(), "client", old, kinds); err != nil {
 		t.Fatal(err)
 	}
 	// Notifications are turned off and on again while a delivery is out.
 	p.client = gone(func() {
-		if err := p.subscribe(ctx, "client", replacement, kinds); err != nil {
+		if err := p.subscribe(ctx, ts.tenant(), "client", replacement, kinds); err != nil {
 			t.Error(err)
 		}
 	})
-	p.send("client", old, []byte(`{}`))
+	p.send(ts.tenant(), "client", old, []byte(`{}`))
 	if stored() != replacement {
 		t.Fatal("a delivery to the old subscription deleted the one that replaced it")
 	}
 	p.client = gone(func() {})
-	p.send("client", replacement, []byte(`{}`))
+	p.send(ts.tenant(), "client", replacement, []byte(`{}`))
 	if stored() != "" {
 		t.Fatal("a subscription the push service dropped is still stored")
 	}

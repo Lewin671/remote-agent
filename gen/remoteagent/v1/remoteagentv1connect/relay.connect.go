@@ -47,6 +47,9 @@ const (
 	AuthServiceGetChallengeProcedure = "/remoteagent.v1.AuthService/GetChallenge"
 	// AuthServiceLoginProcedure is the fully-qualified name of the AuthService's Login RPC.
 	AuthServiceLoginProcedure = "/remoteagent.v1.AuthService/Login"
+	// AuthServiceGetSignupChallengeProcedure is the fully-qualified name of the AuthService's
+	// GetSignupChallenge RPC.
+	AuthServiceGetSignupChallengeProcedure = "/remoteagent.v1.AuthService/GetSignupChallenge"
 	// PairingServiceCreatePairingProcedure is the fully-qualified name of the PairingService's
 	// CreatePairing RPC.
 	PairingServiceCreatePairingProcedure = "/remoteagent.v1.PairingService/CreatePairing"
@@ -124,6 +127,10 @@ type AuthServiceClient interface {
 	RegisterDevice(context.Context, *connect.Request[v1.RegisterDeviceRequest]) (*connect.Response[v1.RegisterDeviceResponse], error)
 	GetChallenge(context.Context, *connect.Request[v1.GetChallengeRequest]) (*connect.Response[v1.GetChallengeResponse], error)
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	// A relay that lets anyone create an account asks for a proof of work
+	// instead of a setup token: RegisterDevice refuses a new account with
+	// FAILED_PRECONDITION, and the client solves a challenge from here.
+	GetSignupChallenge(context.Context, *connect.Request[v1.GetSignupChallengeRequest]) (*connect.Response[v1.GetSignupChallengeResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the remoteagent.v1.AuthService service. By default,
@@ -155,14 +162,21 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("Login")),
 			connect.WithClientOptions(opts...),
 		),
+		getSignupChallenge: connect.NewClient[v1.GetSignupChallengeRequest, v1.GetSignupChallengeResponse](
+			httpClient,
+			baseURL+AuthServiceGetSignupChallengeProcedure,
+			connect.WithSchema(authServiceMethods.ByName("GetSignupChallenge")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	registerDevice *connect.Client[v1.RegisterDeviceRequest, v1.RegisterDeviceResponse]
-	getChallenge   *connect.Client[v1.GetChallengeRequest, v1.GetChallengeResponse]
-	login          *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	registerDevice     *connect.Client[v1.RegisterDeviceRequest, v1.RegisterDeviceResponse]
+	getChallenge       *connect.Client[v1.GetChallengeRequest, v1.GetChallengeResponse]
+	login              *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	getSignupChallenge *connect.Client[v1.GetSignupChallengeRequest, v1.GetSignupChallengeResponse]
 }
 
 // RegisterDevice calls remoteagent.v1.AuthService.RegisterDevice.
@@ -180,11 +194,20 @@ func (c *authServiceClient) Login(ctx context.Context, req *connect.Request[v1.L
 	return c.login.CallUnary(ctx, req)
 }
 
+// GetSignupChallenge calls remoteagent.v1.AuthService.GetSignupChallenge.
+func (c *authServiceClient) GetSignupChallenge(ctx context.Context, req *connect.Request[v1.GetSignupChallengeRequest]) (*connect.Response[v1.GetSignupChallengeResponse], error) {
+	return c.getSignupChallenge.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the remoteagent.v1.AuthService service.
 type AuthServiceHandler interface {
 	RegisterDevice(context.Context, *connect.Request[v1.RegisterDeviceRequest]) (*connect.Response[v1.RegisterDeviceResponse], error)
 	GetChallenge(context.Context, *connect.Request[v1.GetChallengeRequest]) (*connect.Response[v1.GetChallengeResponse], error)
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	// A relay that lets anyone create an account asks for a proof of work
+	// instead of a setup token: RegisterDevice refuses a new account with
+	// FAILED_PRECONDITION, and the client solves a challenge from here.
+	GetSignupChallenge(context.Context, *connect.Request[v1.GetSignupChallengeRequest]) (*connect.Response[v1.GetSignupChallengeResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -212,6 +235,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("Login")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceGetSignupChallengeHandler := connect.NewUnaryHandler(
+		AuthServiceGetSignupChallengeProcedure,
+		svc.GetSignupChallenge,
+		connect.WithSchema(authServiceMethods.ByName("GetSignupChallenge")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/remoteagent.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceRegisterDeviceProcedure:
@@ -220,6 +249,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceGetChallengeHandler.ServeHTTP(w, r)
 		case AuthServiceLoginProcedure:
 			authServiceLoginHandler.ServeHTTP(w, r)
+		case AuthServiceGetSignupChallengeProcedure:
+			authServiceGetSignupChallengeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -239,6 +270,10 @@ func (UnimplementedAuthServiceHandler) GetChallenge(context.Context, *connect.Re
 
 func (UnimplementedAuthServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.AuthService.Login is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) GetSignupChallenge(context.Context, *connect.Request[v1.GetSignupChallengeRequest]) (*connect.Response[v1.GetSignupChallengeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.AuthService.GetSignupChallenge is not implemented"))
 }
 
 // PairingServiceClient is a client for the remoteagent.v1.PairingService service.

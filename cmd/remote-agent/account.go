@@ -59,16 +59,12 @@ func runAccountInit(args []string) error {
 	if *server == "" {
 		return errors.New("--server is required")
 	}
-	token := os.Getenv("RA_SETUP_TOKEN")
-	if token == "" {
-		var err error
-		if token, err = readLine("Setup token (RA_SETUP_TOKEN on the server): "); err != nil {
-			return err
-		}
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	// The relay says what it needs: its setup token, asked for only then,
+	// or on a relay open to anyone, a proof of work, solved here.
+	ask := func() (string, error) { return readLine("Setup token (RA_SETUP_TOKEN on the server): ") }
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	a, err := relay.Join(ctx, *server, e2e.NewKey(), token)
+	a, err := relay.CreateAccount(ctx, *server, os.Getenv("RA_SETUP_TOKEN"), ask)
 	if err != nil {
 		return explainJoin(err)
 	}

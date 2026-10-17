@@ -19,12 +19,14 @@ import (
 // still hand a new device an old copy, which no revision check can catch
 // (architecture §8).
 
-const v2Schema = imageSchema + `
+const prefsSchema = `
 CREATE TABLE IF NOT EXISTS account_prefs (
-	object_id TEXT PRIMARY KEY,
+	account_id TEXT NOT NULL,
+	object_id TEXT NOT NULL,
 	revision INTEGER NOT NULL,
 	envelope BLOB NOT NULL,
-	updated_ms INTEGER NOT NULL
+	updated_ms INTEGER NOT NULL,
+	PRIMARY KEY (account_id, object_id)
 );
 `
 
@@ -49,8 +51,8 @@ func scanDevice(sc interface{ Scan(...any) error }) (*pb.Device, error) {
 
 const deviceColumns = `id, kind, created_ms, meta, meta_revision, last_seen_ms`
 
-func (s *store) devices(ctx context.Context) ([]*pb.Device, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+deviceColumns+` FROM devices ORDER BY created_ms, id`)
+func (t *tstore) devices(ctx context.Context) ([]*pb.Device, error) {
+	rows, err := t.db.QueryContext(ctx, `SELECT `+deviceColumns+` FROM devices WHERE account_id = ? ORDER BY created_ms, id`, t.acct)
 	if err != nil {
 		return nil, err
 	}
@@ -67,24 +69,26 @@ func (s *store) devices(ctx context.Context) ([]*pb.Device, error) {
 }
 
 // touchDevice records that a client's stream connected or closed just now.
-func (s *store) touchDevice(ctx context.Context, id string) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE devices SET last_seen_ms = ? WHERE id = ?`, nowMs(), id)
-	return err
+func (t *tstore) touchDevice(ctx context.Context, id string) error {
+	if _, err := t.db.ExecContext(ctx, `UPDATE devices SET last_seen_ms = ? WHERE account_id = ? AND id = ?`, nowMs(), t.acct, id); err != nil {
+		return err
+	}
+	return t.touchAccount(ctx)
 }
 
-func (s *store) deviceEntry(ctx context.Context, id string) (*pb.Device, error) {
-	return scanDevice(s.db.QueryRowContext(ctx, `SELECT `+deviceColumns+` FROM devices WHERE id = ?`, id))
+func (t *tstore) deviceEntry(ctx context.Context, id string) (*pb.Device, error) {
+	return scanDevice(t.db.QueryRowContext(ctx, `SELECT `+deviceColumns+` FROM devices WHERE account_id = ? AND id = ?`, t.acct, id))
 }
 
 // putDeviceMeta replaces a client device's metadata if its revision is
 // expected. It returns the device as stored afterwards.
-func (s *store) putDeviceMeta(ctx context.Context, id string, expected uint64, env []byte) (bool, *pb.Device, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+func (t *tstore) putDeviceMeta(ctx context.Context, id string, expected uint64, env []byte) (bool, *pb.Device, error) {
+	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, nil, err
 	}
 	defer tx.Rollback()
-	d, err := scanDevice(tx.QueryRowContext(ctx, `SELECT `+deviceColumns+` FROM devices WHERE id = ?`, id))
+	d, err := scanDevice(tx.QueryRowContext(ctx, `SELECT `+deviceColumns+` FROM devices WHERE account_id = ? AND id = ?`, t.acct, id))
 	if err != nil {
 		return false, nil, err
 	}
@@ -94,7 +98,7 @@ func (s *store) putDeviceMeta(ctx context.Context, id string, expected uint64, e
 	cur, _ := marshalEnv(d.Meta)
 	switch {
 	case d.MetaRevision == expected:
-		if _, err := tx.ExecContext(ctx, `UPDATE devices SET meta = ?, meta_revision = ? WHERE id = ?`, env, expected+1, id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE devices SET meta = ?, meta_revision = ? WHERE account_id = ? AND id = ?`, env, expected+1, t.acct, id); err != nil {
 			return false, nil, err
 		}
 		d.Meta, d.MetaRevision = unmarshalEnv(env), expected+1
@@ -107,14 +111,14 @@ func (s *store) putDeviceMeta(ctx context.Context, id string, expected uint64, e
 
 var errNotClient = errors.New("only a client device has metadata of its own")
 
-func (s *store) prefs(ctx context.Context, objectID string) (*pb.AccountPrefsObject, error) {
-	return prefsTx(ctx, s.db, objectID)
+func (t *tstore) prefs(ctx context.Context, objectID string) (*pb.AccountPrefsObject, error) {
+	return prefsTx(ctx, t.db, t.acct, objectID)
 }
 
-func prefsTx(ctx context.Context, q querier, objectID string) (*pb.AccountPrefsObject, error) {
+func prefsTx(ctx context.Context, q querier, acct, objectID string) (*pb.AccountPrefsObject, error) {
 	o := &pb.AccountPrefsObject{ObjectId: objectID}
 	var env []byte
-	err := q.QueryRowContext(ctx, `SELECT revision, envelope, updated_ms FROM account_prefs WHERE object_id = ?`, objectID).
+	err := q.QueryRowContext(ctx, `SELECT revision, envelope, updated_ms FROM account_prefs WHERE account_id = ? AND object_id = ?`, acct, objectID).
 		Scan(&o.Revision, &env, &o.UpdatedMs)
 	if errors.Is(err, sql.ErrNoRows) {
 		return o, nil
@@ -128,13 +132,13 @@ func prefsTx(ctx context.Context, q querier, objectID string) (*pb.AccountPrefsO
 
 // putPrefs replaces a preferences object if its revision is expected. It
 // returns the object as stored afterwards.
-func (s *store) putPrefs(ctx context.Context, objectID string, expected uint64, env []byte) (bool, *pb.AccountPrefsObject, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+func (t *tstore) putPrefs(ctx context.Context, objectID string, expected uint64, env []byte) (bool, *pb.AccountPrefsObject, error) {
+	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, nil, err
 	}
 	defer tx.Rollback()
-	o, err := prefsTx(ctx, tx, objectID)
+	o, err := prefsTx(ctx, tx, t.acct, objectID)
 	if err != nil {
 		return false, nil, err
 	}
@@ -142,9 +146,9 @@ func (s *store) putPrefs(ctx context.Context, objectID string, expected uint64, 
 	switch {
 	case o.Revision == expected:
 		now := nowMs()
-		if _, err := tx.ExecContext(ctx, `INSERT INTO account_prefs (object_id, revision, envelope, updated_ms) VALUES (?, ?, ?, ?)
-			ON CONFLICT (object_id) DO UPDATE SET revision = excluded.revision, envelope = excluded.envelope, updated_ms = excluded.updated_ms`,
-			objectID, expected+1, env, now); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO account_prefs (account_id, object_id, revision, envelope, updated_ms) VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT (account_id, object_id) DO UPDATE SET revision = excluded.revision, envelope = excluded.envelope, updated_ms = excluded.updated_ms`,
+			t.acct, objectID, expected+1, env, now); err != nil {
 			return false, nil, err
 		}
 		o = &pb.AccountPrefsObject{ObjectId: objectID, Revision: expected + 1, Envelope: unmarshalEnv(env), UpdatedMs: now}
@@ -178,11 +182,12 @@ func validObjectID(id string) bool {
 }
 
 func (c *clientService) ListDevices(ctx context.Context, req *connect.Request[pb.ListDevicesRequest]) (*connect.Response[pb.ListDevicesResponse], error) {
-	ds, err := c.s.store.devices(ctx)
+	t := c.s.tenantFrom(ctx)
+	ds, err := t.store.devices(ctx)
 	if err != nil {
 		return nil, internal(err)
 	}
-	c.s.hub.stampSeen(ds...)
+	t.hub.stampSeen(ds...)
 	return connect.NewResponse(&pb.ListDevicesResponse{Devices: ds, CurrentDeviceId: deviceFrom(ctx).id}), nil
 }
 
@@ -204,7 +209,8 @@ func (c *clientService) PutDeviceMeta(ctx context.Context, req *connect.Request[
 	if len(b) > maxDeviceMetaBytes {
 		return nil, invalid("device metadata larger than %d bytes", maxDeviceMetaBytes)
 	}
-	applied, d, err := c.s.store.putDeviceMeta(ctx, m.DeviceId, m.ExpectedRevision, b)
+	t := c.s.tenantFrom(ctx)
+	applied, d, err := t.store.putDeviceMeta(ctx, m.DeviceId, m.ExpectedRevision, b)
 	switch {
 	case errors.Is(err, errNoRows):
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such device"))
@@ -214,10 +220,10 @@ func (c *clientService) PutDeviceMeta(ctx context.Context, req *connect.Request[
 		return nil, internal(err)
 	}
 	if d != nil {
-		c.s.hub.stampSeen(d)
+		t.hub.stampSeen(d)
 	}
 	if applied {
-		c.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceUpdated{DeviceUpdated: &pb.DeviceUpdated{Device: d}}})
+		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceUpdated{DeviceUpdated: &pb.DeviceUpdated{Device: d}}})
 	}
 	return connect.NewResponse(&pb.PutDeviceMetaResponse{Applied: applied, Device: d}), nil
 }
@@ -229,7 +235,7 @@ func (c *clientService) GetAccountPrefs(ctx context.Context, req *connect.Reques
 	if !validObjectID(req.Msg.ObjectId) {
 		return nil, invalid("malformed object ID")
 	}
-	o, err := c.s.store.prefs(ctx, req.Msg.ObjectId)
+	o, err := c.s.tenantFrom(ctx).store.prefs(ctx, req.Msg.ObjectId)
 	if err != nil {
 		return nil, internal(err)
 	}
@@ -254,12 +260,13 @@ func (c *clientService) PutAccountPrefs(ctx context.Context, req *connect.Reques
 	if len(b) > maxPrefsBytes {
 		return nil, invalid("preferences larger than %d bytes", maxPrefsBytes)
 	}
-	applied, o, err := c.s.store.putPrefs(ctx, m.ObjectId, m.ExpectedRevision, b)
+	t := c.s.tenantFrom(ctx)
+	applied, o, err := t.store.putPrefs(ctx, m.ObjectId, m.ExpectedRevision, b)
 	if err != nil {
 		return nil, internal(err)
 	}
 	if applied {
-		c.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_AccountPrefsUpdated{AccountPrefsUpdated: &pb.AccountPrefsUpdated{Object: o}}})
+		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_AccountPrefsUpdated{AccountPrefsUpdated: &pb.AccountPrefsUpdated{Object: o}}})
 	}
 	return connect.NewResponse(&pb.PutAccountPrefsResponse{Applied: applied, Object: o}), nil
 }

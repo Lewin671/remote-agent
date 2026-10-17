@@ -43,6 +43,12 @@ func newTestServer(t *testing.T) *testServer {
 	return &testServer{srv: s, url: hs.URL, keys: keys, auth: remoteagentv1connect.NewAuthServiceClient(http.DefaultClient, hs.URL)}
 }
 
+// acct is the ID of the test server's account, made with ts.keys.
+func (ts *testServer) acct() string { return e2e.AccountID(ts.keys.AccountPublicKey()) }
+
+// tenant is the store of the test server's account.
+func (ts *testServer) tenant() *tstore { return ts.srv.store.tenant(ts.acct()) }
+
 func (ts *testServer) register(t *testing.T, keys *e2e.Keys, kind pb.DeviceKind, token string) (ed25519.PrivateKey, string, error) {
 	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(nil)
@@ -96,7 +102,8 @@ func TestRegistration(t *testing.T) {
 		t.Fatal(err)
 	}
 	other, _ := e2e.Derive(e2e.NewKey())
-	if _, _, err := ts.register(t, other, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup"); connect.CodeOf(err) != connect.CodePermissionDenied {
+	// A relay of one's own holds one account, setup token or not.
+	if _, _, err := ts.register(t, other, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup"); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("second account: %v", err)
 	}
 	// A registration signed by someone else is refused.

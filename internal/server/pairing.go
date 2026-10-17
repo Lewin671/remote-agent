@@ -29,14 +29,19 @@ const (
 	// pairingDeliveredTTL keeps a delivered pairing for the initiator to
 	// see that it went through.
 	pairingDeliveredTTL = time.Minute
-	maxPairings         = 64
-	// badCodesPerMinute bounds wrong codes across all callers.
-	badCodesPerMinute = 30
+	maxPairings         = 512
+	maxAccountPairings  = 4
+	// Wrong codes are bounded per address, so that one caller cannot
+	// guess codes, and in total, so that many cannot; the budget per
+	// address keeps one caller from using up everyone's.
+	badCodesPerMinute     = 300
+	badCodesPerMinuteAddr = 10
 )
 
 type pairing struct {
 	id         string
 	code       string
+	account    string // the initiator's
 	initiator  string // device ID
 	commit     []byte
 	expires    time.Time
@@ -69,14 +74,15 @@ func (p *pairing) state() pb.PairingState {
 type pairingService struct {
 	s *Server
 
-	mu       sync.Mutex
-	byID     map[string]*pairing
-	byCode   map[string]*pairing
-	badCodes []time.Time
+	mu           sync.Mutex
+	byID         map[string]*pairing
+	byCode       map[string]*pairing
+	badCodes     []time.Time
+	badCodesAddr map[string][]time.Time
 }
 
 func newPairingService(s *Server) *pairingService {
-	return &pairingService{s: s, byID: map[string]*pairing{}, byCode: map[string]*pairing{}}
+	return &pairingService{s: s, byID: map[string]*pairing{}, byCode: map[string]*pairing{}, badCodesAddr: map[string][]time.Time{}}
 }
 
 func (ps *pairingService) sweepLocked() {
@@ -118,7 +124,13 @@ func (ps *pairingService) CreatePairing(ctx context.Context, req *connect.Reques
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
 	ps.sweepLocked()
-	if len(ps.byID) >= maxPairings {
+	mine := 0
+	for _, p := range ps.byID {
+		if p.account == d.account {
+			mine++
+		}
+	}
+	if len(ps.byID) >= maxPairings || mine >= maxAccountPairings {
 		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many pairings in progress"))
 	}
 	var code string
@@ -130,7 +142,7 @@ func (ps *pairingService) CreatePairing(ctx context.Context, req *connect.Reques
 			break
 		}
 	}
-	p := &pairing{id: randomHex(16), code: code, initiator: d.id, commit: req.Msg.Commit, expires: time.Now().Add(pairingTTL)}
+	p := &pairing{id: randomHex(16), code: code, account: d.account, initiator: d.id, commit: req.Msg.Commit, expires: time.Now().Add(pairingTTL)}
 	ps.byID[p.id], ps.byCode[code] = p, p
 	return connect.NewResponse(&pb.CreatePairingResponse{PairingId: p.id, Code: code, ExpiresMs: p.expires.UnixMilli()}), nil
 }
@@ -150,19 +162,22 @@ func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[
 	// exhausted the budget can still test unlimited codes and distinguish
 	// valid ones from the rate-limited invalid responses.
 	now := time.Now()
-	kept := ps.badCodes[:0]
-	for _, t := range ps.badCodes {
-		if now.Sub(t) < time.Minute {
-			kept = append(kept, t)
+	addr := ps.s.clientAddr(req.Peer().Addr, req.Header())
+	for a, ts := range ps.badCodesAddr {
+		if ps.badCodesAddr[a], _ = recent(ts, now, time.Minute, 0); len(ps.badCodesAddr[a]) == 0 {
+			delete(ps.badCodesAddr, a)
 		}
 	}
-	ps.badCodes = kept
-	if len(ps.badCodes) >= badCodesPerMinute {
+	var okAll, okAddr bool
+	ps.badCodes, okAll = recent(ps.badCodes, now, time.Minute, badCodesPerMinute)
+	_, okAddr = recent(ps.badCodesAddr[addr], now, time.Minute, badCodesPerMinuteAddr)
+	if !okAll || !okAddr {
 		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many wrong codes; try again in a minute"))
 	}
 	p := ps.byCode[code]
 	if p == nil {
 		ps.badCodes = append(ps.badCodes, now)
+		ps.badCodesAddr[addr] = append(ps.badCodesAddr[addr], now)
 		return nil, errNoPairing
 	}
 	if p.canceled || p.joinerPub != nil {

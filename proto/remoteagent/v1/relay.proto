@@ -16,6 +16,10 @@ service AuthService {
   rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
   rpc GetChallenge(GetChallengeRequest) returns (GetChallengeResponse);
   rpc Login(LoginRequest) returns (LoginResponse);
+  // A relay that lets anyone create an account asks for a proof of work
+  // instead of a setup token: RegisterDevice refuses a new account with
+  // FAILED_PRECONDITION, and the client solves a challenge from here.
+  rpc GetSignupChallenge(GetSignupChallengeRequest) returns (GetSignupChallengeResponse);
 }
 
 enum DeviceKind {
@@ -40,8 +44,27 @@ message RegisterDeviceRequest {
   // Ed25519 signature by the account key over "remote-agent/v1/register\x00"
   // followed by registration.
   bytes signature = 2;
-  // Required only to create the account, i.e. for the first device.
+  // Required only to create the account, i.e. for the first device, on a
+  // relay that creates accounts with a setup token.
   string setup_token = 3;
+  // Required only to create the account on a relay open to anyone.
+  SignupProof signup_proof = 4;
+}
+
+message GetSignupChallengeRequest {}
+
+message GetSignupChallengeResponse {
+  bytes challenge = 1;
+  // SHA-256 of challenge followed by the nonce must start with this many
+  // zero bits.
+  uint32 difficulty_bits = 2;
+  int64 expires_ms = 3;
+}
+
+// A solved signup challenge; each challenge creates one account at most.
+message SignupProof {
+  bytes challenge = 1;
+  bytes nonce = 2;
 }
 
 message RegisterDeviceResponse {

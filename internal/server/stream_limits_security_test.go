@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
@@ -103,6 +104,7 @@ func TestStreamHelloFrameSizeIsBoundedBeforeAuthentication(t *testing.T) {
 
 func TestAuthenticatedStreamCountsAreBoundedAndReusable(t *testing.T) {
 	ts := newTestServer(t)
+	ts.srv.cfg.MaxAccounts = 2 * maxTotalStreams / maxAccountStreams
 	ctx := context.Background()
 	var releases []context.CancelFunc
 	defer func() {
@@ -110,14 +112,13 @@ func TestAuthenticatedStreamCountsAreBoundedAndReusable(t *testing.T) {
 			release()
 		}
 	}()
-	var lastToken string
-	for i := 0; i < maxTotalStreams/maxDeviceStreams; i++ {
-		cp, cid, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
+	// open fills a new device's streams of an account and returns its token.
+	open := func(keys *e2e.Keys) string {
+		cp, cid, err := ts.register(t, keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
 		if err != nil {
 			t.Fatal(err)
 		}
 		token := ts.login(t, cp, cid)
-		lastToken = token
 		for range maxDeviceStreams {
 			_, _, release, err := ts.srv.beginStream(ctx, token)
 			if err != nil {
@@ -131,15 +132,38 @@ func TestAuthenticatedStreamCountsAreBoundedAndReusable(t *testing.T) {
 			}
 			t.Fatalf("per-device stream limit not enforced: %v", err)
 		}
+		return token
 	}
-	cp, cid, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
-	if _, _, release, err := ts.srv.beginStream(ctx, ts.login(t, cp, cid)); connect.CodeOf(err) != connect.CodeResourceExhausted {
-		if release != nil {
-			release()
+	refused := func(keys *e2e.Keys, what string) {
+		t.Helper()
+		cp, cid, err := ts.register(t, keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
+		if err != nil {
+			t.Fatal(err)
 		}
-		t.Fatalf("global stream limit not enforced: %v", err)
+		if _, _, release, err := ts.srv.beginStream(ctx, ts.login(t, cp, cid)); connect.CodeOf(err) != connect.CodeResourceExhausted {
+			if release != nil {
+				release()
+			}
+			t.Fatalf("%s stream limit not enforced: %v", what, err)
+		}
 	}
-	releases[len(releases)-1]()
+	// One account cannot take the relay's streams.
+	var lastToken string
+	for range maxAccountStreams / maxDeviceStreams {
+		lastToken = open(ts.keys)
+	}
+	refused(ts.keys, "per-account")
+	// Nor can all of them together take more than the relay's.
+	for range maxTotalStreams/maxAccountStreams - 1 {
+		keys, _ := e2e.Derive(e2e.NewKey())
+		for range maxAccountStreams / maxDeviceStreams {
+			open(keys)
+		}
+	}
+	other, _ := e2e.Derive(e2e.NewKey())
+	refused(other, "global")
+	// The first account's last stream is released for the first account.
+	releases[maxAccountStreams-1]()
 	_, _, release, err := ts.srv.beginStream(ctx, lastToken)
 	if err != nil {
 		t.Fatalf("released stream slot not reusable: %v", err)

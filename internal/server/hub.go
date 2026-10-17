@@ -16,14 +16,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// hub tracks stream connections: every connected client receives the
-// pushes, and each machine has at most one current connection, which
-// carries forwarded commands.
+// hub tracks stream connections: every connected client of an account
+// receives the account's pushes, and each machine has at most one current
+// connection, which carries forwarded commands. Requests reach it only
+// through accountHub, which is bound to one account.
 type hub struct {
 	s *Server
 
-	mu       sync.Mutex
-	clients  map[*peer]bool
+	mu sync.Mutex
+	// clients are the connected clients by account.
+	clients map[string]map[*peer]bool
+	// machines are keyed by machine ID, which is unique across accounts;
+	// a lookup through accountHub also checks the account.
 	machines map[string]*peer
 	nextCall uint64
 	calls    map[uint64]*call
@@ -54,23 +58,56 @@ type call struct {
 }
 
 func newHub(s *Server) *hub {
-	return &hub{s: s, clients: map[*peer]bool{}, machines: map[string]*peer{}, calls: map[uint64]*call{}}
+	return &hub{s: s, clients: map[string]map[*peer]bool{}, machines: map[string]*peer{}, calls: map[uint64]*call{}}
 }
 
-func (h *hub) online(machineID string) bool {
+// accountHub is the hub as one account sees it.
+type accountHub struct {
+	h    *hub
+	acct string
+}
+
+func (h *hub) account(acct string) accountHub { return accountHub{h: h, acct: acct} }
+
+// machineLocked returns the account's connected machine.
+func (a accountHub) machineLocked(machineID string) *peer {
+	p := a.h.machines[machineID]
+	if p == nil || p.dev.account != a.acct {
+		return nil
+	}
+	return p
+}
+
+// deviceIDs returns the devices with a stream open, of every account.
+func (h *hub) deviceIDs() []string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return h.machines[machineID] != nil
+	var out []string
+	for id := range h.machines {
+		out = append(out, id)
+	}
+	for _, ps := range h.clients {
+		for p := range ps {
+			out = append(out, p.dev.id)
+		}
+	}
+	return out
+}
+
+func (a accountHub) online(machineID string) bool {
+	a.h.mu.Lock()
+	defer a.h.mu.Unlock()
+	return a.machineLocked(machineID) != nil
 }
 
 // stampSeen makes the current time the last-seen time of the clients with
 // a stream open: they are in use now, whenever they connected.
-func (h *hub) stampSeen(ds ...*pb.Device) {
+func (a accountHub) stampSeen(ds ...*pb.Device) {
 	now := nowMs()
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	a.h.mu.Lock()
+	defer a.h.mu.Unlock()
 	for _, d := range ds {
-		for p := range h.clients {
+		for p := range a.h.clients[a.acct] {
 			if p.dev.id == d.Id {
 				d.LastSeenMs = now
 				break
@@ -217,7 +254,10 @@ func (h *hub) add(p *peer) {
 		old = h.machines[p.dev.id]
 		h.machines[p.dev.id] = p
 	} else {
-		h.clients[p] = true
+		if h.clients[p.dev.account] == nil {
+			h.clients[p.dev.account] = map[*peer]bool{}
+		}
+		h.clients[p.dev.account][p] = true
 	}
 	h.mu.Unlock()
 	if old != nil {
@@ -225,9 +265,9 @@ func (h *hub) add(p *peer) {
 	}
 	if p.dev.kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
 		slog.Info("machine connected", "machine", p.dev.id)
-		h.machineChanged(p.dev.id)
+		h.account(p.dev.account).machineChanged(p.dev.id)
 	} else {
-		_ = h.s.store.touchDevice(context.Background(), p.dev.id)
+		_ = h.s.store.tenant(p.dev.account).touchDevice(context.Background(), p.dev.id)
 	}
 }
 
@@ -246,15 +286,18 @@ func (h *hub) remove(p *peer) {
 			}
 		}
 	} else {
-		delete(h.clients, p)
+		delete(h.clients[p.dev.account], p)
+		if len(h.clients[p.dev.account]) == 0 {
+			delete(h.clients, p.dev.account)
+		}
 	}
 	h.mu.Unlock()
 	if p.dev.kind != pb.DeviceKind_DEVICE_KIND_MACHINE {
-		_ = h.s.store.touchDevice(context.Background(), p.dev.id)
+		_ = h.s.store.tenant(p.dev.account).touchDevice(context.Background(), p.dev.id)
 	}
 	if gone {
 		slog.Info("machine disconnected", "machine", p.dev.id)
-		h.machineChanged(p.dev.id)
+		h.account(p.dev.account).machineChanged(p.dev.id)
 	}
 }
 
@@ -275,26 +318,28 @@ func (h *hub) send(p *peer, f *pb.ServerFrame) bool {
 	return false
 }
 
-// broadcast pushes f to every client, after the change is stored.
-func (h *hub) broadcast(f *pb.ServerFrame) {
+// broadcast pushes f to every client of the account, after the change is
+// stored.
+func (a accountHub) broadcast(f *pb.ServerFrame) {
 	if ev := f.GetEventsAppended(); ev != nil {
 		for _, part := range splitEvents(ev) {
-			h.broadcastFrame(&pb.ServerFrame{Kind: &pb.ServerFrame_EventsAppended{EventsAppended: part}})
+			a.broadcastFrame(&pb.ServerFrame{Kind: &pb.ServerFrame_EventsAppended{EventsAppended: part}})
 		}
 		return
 	}
-	h.broadcastFrame(f)
+	a.broadcastFrame(f)
 }
 
-func (h *hub) broadcastFrame(f *pb.ServerFrame) {
-	h.mu.Lock()
-	peers := make([]*peer, 0, len(h.clients))
-	for p := range h.clients {
+func (a accountHub) broadcastFrame(f *pb.ServerFrame) {
+	a.h.mu.Lock()
+	clients := a.h.clients[a.acct]
+	peers := make([]*peer, 0, len(clients))
+	for p := range clients {
 		peers = append(peers, p)
 	}
-	h.mu.Unlock()
+	a.h.mu.Unlock()
 	for _, p := range peers {
-		h.send(p, f)
+		a.h.send(p, f)
 	}
 }
 
@@ -323,19 +368,23 @@ func splitEvents(ev *pb.EventsAppended) []*pb.EventsAppended {
 // connect and disconnect is followed by a call, and calls do not overlap:
 // the last broadcast is the machine's last state. Clients take the online
 // flag as it comes, so a stale one would stay until the next change.
-func (h *hub) machineChanged(id string) {
-	h.changeMu.Lock()
-	defer h.changeMu.Unlock()
+func (a accountHub) machineChanged(id string) {
+	a.h.changeMu.Lock()
+	defer a.h.changeMu.Unlock()
+	st := a.h.s.store.tenant(a.acct)
 	// The machine was seen just now whichever way it changed: it
 	// connected, sent metadata, or was connected until this moment.
-	_ = h.s.store.touchMachine(context.Background(), id)
-	m, err := h.s.store.machine(context.Background(), id)
+	_ = st.touchMachine(context.Background(), id)
+	m, err := st.machine(context.Background(), id)
+	if errors.Is(err, errNoRows) {
+		return // removed meanwhile
+	}
 	if err != nil {
 		slog.Error("load machine", "machine", id, "err", err)
 		return
 	}
-	m.Online = h.online(id)
-	h.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineUpdated{MachineUpdated: &pb.MachineUpdated{Machine: m}}})
+	m.Online = a.online(id)
+	a.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineUpdated{MachineUpdated: &pb.MachineUpdated{Machine: m}}})
 }
 
 // errUnknown is returned when a command reached the daemon, or may have,
@@ -346,9 +395,10 @@ func errUnknown(why string) error {
 }
 
 // forward sends a sealed command to a machine and waits for the result.
-func (h *hub) forward(ctx context.Context, machineID string, fc *pb.ForwardCall) (*pb.Envelope, error) {
+func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.ForwardCall) (*pb.Envelope, error) {
+	h := a.h
 	h.mu.Lock()
-	p := h.machines[machineID]
+	p := a.machineLocked(machineID)
 	if p == nil {
 		h.mu.Unlock()
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("machine is offline"))
@@ -392,10 +442,10 @@ func (h *hub) forward(ctx context.Context, machineID string, fc *pb.ForwardCall)
 }
 
 // drop disconnects a machine, e.g. after it was removed.
-func (h *hub) drop(machineID string) {
-	h.mu.Lock()
-	p := h.machines[machineID]
-	h.mu.Unlock()
+func (a accountHub) drop(machineID string) {
+	a.h.mu.Lock()
+	p := a.machineLocked(machineID)
+	a.h.mu.Unlock()
 	if p != nil {
 		p.cancel()
 	}

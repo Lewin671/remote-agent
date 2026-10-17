@@ -56,11 +56,11 @@ func TestRevokedDeviceRegistrationCannotBeReplayed(t *testing.T) {
 func TestRevocationSurvivesStoreReopen(t *testing.T) {
 	ts := newTestServer(t)
 	_, id, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
-	reg, err := ts.srv.store.registration(context.Background(), id)
+	reg, err := ts.tenant().registration(context.Background(), id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ts.srv.store.removeDevice(context.Background(), id); err != nil {
+	if _, err := ts.tenant().removeDevice(context.Background(), id); err != nil {
 		t.Fatal(err)
 	}
 	// A new connection to the same on-disk database models a server restart.
@@ -73,7 +73,7 @@ func TestRevocationSurvivesStoreReopen(t *testing.T) {
 	if err := proto.Unmarshal(reg.raw, registration); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.addDevice(context.Background(), nil, id, registration, reg.raw, reg.sig); err != errDeviceRevoked {
+	if err := st.addDevice(context.Background(), ts.acct(), nil, id, registration, reg.raw, reg.sig, nil); err != errDeviceRevoked {
 		t.Fatalf("persistent revocation lost: %v", err)
 	}
 }
@@ -86,7 +86,7 @@ func TestConcurrentRegistrationCannotUndoRemoval(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		reg, err := ts.srv.store.registration(ctx, id)
+		reg, err := ts.tenant().registration(ctx, id)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -99,7 +99,7 @@ func TestConcurrentRegistrationCannotUndoRemoval(t *testing.T) {
 		for range 8 {
 			wg.Go(func() {
 				<-start
-				err := ts.srv.store.addDevice(ctx, nil, id, parsed, reg.raw, reg.sig)
+				err := ts.srv.store.addDevice(ctx, ts.acct(), nil, id, parsed, reg.raw, reg.sig, nil)
 				if err != nil && err != errDeviceRevoked {
 					t.Errorf("register: %v", err)
 				}
@@ -107,7 +107,7 @@ func TestConcurrentRegistrationCannotUndoRemoval(t *testing.T) {
 		}
 		wg.Go(func() {
 			<-start
-			if _, err := ts.srv.store.removeDevice(ctx, id); err != nil {
+			if _, err := ts.tenant().removeDevice(ctx, id); err != nil {
 				t.Errorf("remove: %v", err)
 			}
 		})
@@ -116,7 +116,7 @@ func TestConcurrentRegistrationCannotUndoRemoval(t *testing.T) {
 		if _, err := ts.srv.store.device(ctx, id); err != errNoRows {
 			t.Fatalf("registration raced past removal: %v", err)
 		}
-		if _, err := ts.srv.store.machine(ctx, id); err != errNoRows {
+		if _, err := ts.tenant().machine(ctx, id); err != errNoRows {
 			t.Fatalf("registration restored machine routing: %v", err)
 		}
 	}
@@ -132,7 +132,7 @@ func TestRemovedMachineCannotPutSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The request is past the interceptor; only the store can refuse it.
-	if _, err := ts.srv.store.putSession(ctx, mid, "s1", []byte("key"), []byte("meta"), 1, 0); !errors.Is(err, errNoMachine) {
+	if _, err := ts.tenant().putSession(ctx, mid, "s1", []byte("key"), []byte("meta"), 1, 0, nil); !errors.Is(err, errNoMachine) {
 		t.Fatalf("put session for a removed machine: %v", err)
 	}
 	var sessions int
@@ -141,7 +141,7 @@ func TestRemovedMachineCannotPutSession(t *testing.T) {
 	}
 	svc := &machineService{s: ts.srv}
 	key, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s2"}, e2e.NewKey())
-	_, err := svc.PutSession(context.WithValue(ctx, ctxKey{}, &device{id: mid, kind: pb.DeviceKind_DEVICE_KIND_MACHINE}), connect.NewRequest(&pb.PutSessionRequest{SessionId: "s2", Key: key}))
+	_, err := svc.PutSession(context.WithValue(ctx, ctxKey{}, &device{id: mid, account: ts.acct(), kind: pb.DeviceKind_DEVICE_KIND_MACHINE}), connect.NewRequest(&pb.PutSessionRequest{SessionId: "s2", Key: key}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("put session for a removed machine: %v", err)
 	}

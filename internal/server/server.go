@@ -11,11 +11,14 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -27,9 +30,24 @@ import (
 type Config struct {
 	// DBPath is the SQLite database file.
 	DBPath string
-	// SetupToken allows creating the account. Once the account exists it
-	// is no longer used.
+	// SetupToken creates accounts of the owner's plan.
 	SetupToken string
+	// Signup decides who else may create accounts: SignupToken (the
+	// default) only the holder of the setup token, SignupOpen anyone, with
+	// a proof of work of SignupBits bits (20 by default).
+	Signup     Signup
+	SignupBits uint
+	// MaxAccounts bounds the accounts on the relay: 1 by default with
+	// SignupToken, 100 with SignupOpen.
+	MaxAccounts int
+	// TrustedProxies are the reverse proxies whose X-Forwarded-For gives
+	// the client's address, for the limits per address.
+	TrustedProxies []netip.Prefix
+	// MinFreeBytes of free disk below which accounts stop growing; 0
+	// turns the check off.
+	MinFreeBytes int64
+	// SweepInterval is how often streams of suspended or deleted accounts
+	// are ended, 30 seconds by default.
 	// AllowedOrigins are the web origins, like "http://localhost:5173",
 	// allowed to call the API from a browser.
 	AllowedOrigins []string
@@ -47,6 +65,7 @@ type Config struct {
 	// default.
 	ImageRetention time.Duration
 	ImageQuota     int64
+	SweepInterval  time.Duration
 }
 
 // Limits on what peers may send.
@@ -89,12 +108,16 @@ type Server struct {
 
 	streamMu            sync.Mutex
 	streams             map[string]map[*streamAuth]struct{}
+	accountStreams      map[string]int
 	pendingStreamHellos chan struct{}
 	rpcRequests         chan struct{}
 	smallRPCRequests    chan struct{}
 
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
+
+	signup  *signupGuard
+	diskLow atomic.Bool
 }
 
 type challenge struct {
@@ -119,15 +142,30 @@ func New(cfg Config) (*Server, error) {
 	if cfg.ImageQuota == 0 {
 		cfg.ImageQuota = defaultImageQuota
 	}
+	switch cfg.Signup {
+	case "":
+		cfg.Signup = SignupToken
+	case SignupToken, SignupOpen:
+	default:
+		return nil, fmt.Errorf("unknown signup mode %q", cfg.Signup)
+	}
+	if cfg.MaxAccounts == 0 {
+		cfg.MaxAccounts = 1
+		if cfg.Signup == SignupOpen {
+			cfg.MaxAccounts = 100
+		}
+	}
+	if cfg.SignupBits == 0 {
+		cfg.SignupBits = defaultSignupBits
+	}
+	if cfg.SweepInterval == 0 {
+		cfg.SweepInterval = 30 * time.Second
+	}
 	st, err := openStore(cfg.DBPath)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := st.db.Exec(v2Schema); err != nil {
-		st.Close()
-		return nil, err
-	}
-	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), smallRPCRequests: make(chan struct{}, maxConcurrentSmallRPCRequests), stop: make(chan struct{})}
+	s := &Server{cfg: cfg, store: st, signup: newSignupGuard(), challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, accountStreams: map[string]int{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), smallRPCRequests: make(chan struct{}, maxConcurrentSmallRPCRequests), stop: make(chan struct{})}
 	s.hub = newHub(s)
 	s.term = newTermHub(s)
 	s.pairing = newPairingService(s)
@@ -136,6 +174,8 @@ func New(cfg Config) (*Server, error) {
 		return nil, err
 	}
 	go s.expireLoop(s.stop)
+	go s.watchDisk(s.stop)
+	go s.sweepAccounts(s.stop)
 	return s, nil
 }
 
@@ -230,6 +270,9 @@ func (s *Server) authenticate(ctx context.Context, token string) (*device, error
 	d, err := s.store.tokenDevice(ctx, hashToken(token))
 	if errors.Is(err, errNoRows) {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid or expired token"))
+	}
+	if errors.Is(err, errSuspended) {
+		return nil, connect.NewError(connect.CodePermissionDenied, err)
 	}
 	if err != nil {
 		return nil, internal(err)

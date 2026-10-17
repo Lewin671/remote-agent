@@ -16,7 +16,8 @@ const (
 	maxStreamHelloBytes    = 4096
 	maxPendingStreamHellos = 16
 	maxDeviceStreams       = 16
-	maxTotalStreams        = 128
+	maxAccountStreams      = 32
+	maxTotalStreams        = 512
 )
 
 // acquireStreamHello limits connections waiting for authentication across
@@ -52,7 +53,7 @@ func (s *Server) beginStream(parent context.Context, token string) (context.Cont
 	for _, streams := range s.streams {
 		total += len(streams)
 	}
-	if total >= maxTotalStreams {
+	if total >= maxTotalStreams || s.accountStreams[d.account] >= maxAccountStreams {
 		return nil, nil, nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many streams"))
 	}
 	ctx, cancel := context.WithDeadline(parent, time.UnixMilli(d.expiresMs))
@@ -61,11 +62,17 @@ func (s *Server) beginStream(parent context.Context, token string) (context.Cont
 		s.streams[d.id] = map[*streamAuth]struct{}{}
 	}
 	s.streams[d.id][a] = struct{}{}
+	s.accountStreams[d.account]++
 	release := func() {
 		cancel()
 		s.streamMu.Lock()
 		defer s.streamMu.Unlock()
-		delete(s.streams[d.id], a)
+		if _, ok := s.streams[d.id][a]; ok {
+			delete(s.streams[d.id], a)
+			if s.accountStreams[d.account]--; s.accountStreams[d.account] <= 0 {
+				delete(s.accountStreams, d.account)
+			}
+		}
 		if len(s.streams[d.id]) == 0 {
 			delete(s.streams, d.id)
 		}
@@ -79,5 +86,6 @@ func (s *Server) revokeStreams(deviceID string) {
 	for a := range s.streams[deviceID] {
 		a.cancel()
 	}
-	delete(s.streams, deviceID)
+	// The entries go when each stream releases itself; counting them down
+	// there keeps the counts per account right.
 }

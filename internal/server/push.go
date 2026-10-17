@@ -36,14 +36,18 @@ CREATE TABLE IF NOT EXISTS kv (
 );
 CREATE TABLE IF NOT EXISTS push_subs (
 	device_id TEXT PRIMARY KEY,
+	account_id TEXT NOT NULL,
 	subscription TEXT NOT NULL,
 	kinds INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS push_subs_account ON push_subs (account_id);
 CREATE TABLE IF NOT EXISTS fcm_targets (
 	device_id TEXT PRIMARY KEY,
+	account_id TEXT NOT NULL,
 	token TEXT NOT NULL,
 	kinds INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS fcm_targets_account ON fcm_targets (account_id);
 `
 
 // pushCoalesce drops repeated notifications of one kind for a session.
@@ -53,18 +57,22 @@ const pushCoalesce = 15 * time.Second
 // remembered: longer than any approval waits.
 const pushDedupe = time.Hour
 
-// Bound both retained dedupe state and asynchronous network deliveries.
+// Bound both retained dedupe state and asynchronous network deliveries,
+// for the relay and for each account, so that one account cannot take
+// the others' notifications.
 const (
-	maxPushRecent     = 4096
-	maxPushDeliveries = 32
+	maxPushRecent            = 4096
+	maxAccountPushRecent     = 256
+	maxPushDeliveries        = 64
+	maxAccountPushDeliveries = 16
 )
 
 var errPushBusy = errors.New("push capacity exhausted; try again later")
 
 // Retained keys have a fixed size even when a peer supplies a very long
 // session identifier. JSON framing also keeps the fields unambiguous.
-func pushRecentKey(sessionID string, kind pb.NotifyKind, dedupeKey string) string {
-	b, _ := json.Marshal([]string{sessionID, kind.String(), dedupeKey})
+func pushRecentKey(acct, sessionID string, kind pb.NotifyKind, dedupeKey string) string {
+	b, _ := json.Marshal([]string{acct, sessionID, kind.String(), dedupeKey})
 	sum := sha256.Sum256(b)
 	key := hex.EncodeToString(sum[:])
 	if dedupeKey != "" {
@@ -73,11 +81,16 @@ func pushRecentKey(sessionID string, kind pb.NotifyKind, dedupeKey string) strin
 	return key
 }
 
+// pusher sends the notifications of every account. Its VAPID keys and
+// clients identify the relay, not an account; what it reads and deletes
+// is the targets of the account it notifies.
 type pusher struct {
-	s          *Server
-	mu         sync.Mutex
-	pub, priv  string
-	recent     map[string]time.Time
+	s         *Server
+	mu        sync.Mutex
+	pub, priv string
+	recent    map[string]pushRecent
+	// busy counts the deliveries in flight by account.
+	busy       map[string]int
 	subscriber string
 	client     *http.Client
 	fcm        *fcm // nil when not configured
@@ -85,10 +98,7 @@ type pusher struct {
 }
 
 func newPusher(s *Server) (*pusher, error) {
-	if _, err := s.store.db.Exec(pushSchema); err != nil {
-		return nil, err
-	}
-	p := &pusher{s: s, recent: map[string]time.Time{}, subscriber: "https://github.com/Lewin671/remote-agent", client: newPushHTTPClient(), deliveries: make(chan struct{}, maxPushDeliveries)}
+	p := &pusher{s: s, recent: map[string]pushRecent{}, busy: map[string]int{}, subscriber: "https://github.com/Lewin671/remote-agent", client: newPushHTTPClient(), deliveries: make(chan struct{}, maxPushDeliveries)}
 	if s.cfg.FCMServiceAccount != "" {
 		f, err := loadFCM(s.cfg.FCMServiceAccount)
 		if err != nil {
@@ -132,13 +142,17 @@ func validNotifyKinds(kinds []pb.NotifyKind) bool {
 	return true
 }
 
-func (p *pusher) subscribe(ctx context.Context, deviceID, sub string, kinds []pb.NotifyKind) error {
-	db := p.s.store.db
+type pushRecent struct {
+	acct string
+	at   time.Time
+}
+
+func (p *pusher) subscribe(ctx context.Context, t *tstore, deviceID, sub string, kinds []pb.NotifyKind) error {
 	if !validNotifyKinds(kinds) {
 		return errors.New("unknown notification kind")
 	}
 	if sub == "" {
-		_, err := db.ExecContext(ctx, `DELETE FROM push_subs WHERE device_id = ?`, deviceID)
+		_, err := t.db.ExecContext(ctx, `DELETE FROM push_subs WHERE account_id = ? AND device_id = ?`, t.acct, deviceID)
 		return err
 	}
 	var s webpush.Subscription
@@ -152,8 +166,9 @@ func (p *pusher) subscribe(ctx context.Context, deviceID, sub string, kinds []pb
 	for _, k := range kinds {
 		mask |= kindBit(k)
 	}
-	_, err := db.ExecContext(ctx, `INSERT INTO push_subs (device_id, subscription, kinds) VALUES (?, ?, ?)
-		ON CONFLICT (device_id) DO UPDATE SET subscription = excluded.subscription, kinds = excluded.kinds`, deviceID, sub, mask)
+	_, err := t.db.ExecContext(ctx, `INSERT INTO push_subs (device_id, account_id, subscription, kinds) VALUES (?, ?, ?, ?)
+		ON CONFLICT (device_id) DO UPDATE SET subscription = excluded.subscription, kinds = excluded.kinds
+		WHERE push_subs.account_id = excluded.account_id`, deviceID, t.acct, sub, mask)
 	return err
 }
 
@@ -165,20 +180,20 @@ func kindMask(kinds []pb.NotifyKind) int {
 	return mask
 }
 
-func (p *pusher) setFCM(ctx context.Context, deviceID, token string, kinds []pb.NotifyKind) error {
-	db := p.s.store.db
+func (p *pusher) setFCM(ctx context.Context, t *tstore, deviceID, token string, kinds []pb.NotifyKind) error {
 	if !validNotifyKinds(kinds) {
 		return errors.New("unknown notification kind")
 	}
 	if token == "" {
-		_, err := db.ExecContext(ctx, `DELETE FROM fcm_targets WHERE device_id = ?`, deviceID)
+		_, err := t.db.ExecContext(ctx, `DELETE FROM fcm_targets WHERE account_id = ? AND device_id = ?`, t.acct, deviceID)
 		return err
 	}
 	if len(token) > 4096 || strings.ContainsAny(token, " \n\t") {
 		return errors.New("malformed FCM token")
 	}
-	_, err := db.ExecContext(ctx, `INSERT INTO fcm_targets (device_id, token, kinds) VALUES (?, ?, ?)
-		ON CONFLICT (device_id) DO UPDATE SET token = excluded.token, kinds = excluded.kinds`, deviceID, token, kindMask(kinds))
+	_, err := t.db.ExecContext(ctx, `INSERT INTO fcm_targets (device_id, account_id, token, kinds) VALUES (?, ?, ?, ?)
+		ON CONFLICT (device_id) DO UPDATE SET token = excluded.token, kinds = excluded.kinds
+		WHERE fcm_targets.account_id = excluded.account_id`, deviceID, t.acct, token, kindMask(kinds))
 	return err
 }
 
@@ -191,12 +206,12 @@ var pushText = map[pb.NotifyKind]string{
 // serialized NOTIFY envelope for FCM targets, or nil. With a dedupe key the
 // notification is sent once per key; without one, once per session and
 // kind within pushCoalesce.
-func (p *pusher) notify(sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
+func (p *pusher) notify(st *tstore, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
 	body, ok := pushText[kind]
 	if !ok {
 		return invalid("unknown notification kind")
 	}
-	key := pushRecentKey(sessionID, kind, dedupeKey)
+	key := pushRecentKey(st.acct, sessionID, kind, dedupeKey)
 	window := pushCoalesce
 	if dedupeKey != "" {
 		window = pushDedupe
@@ -204,21 +219,24 @@ func (p *pusher) notify(sessionID string, kind pb.NotifyKind, content []byte, de
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	now := time.Now()
-	for k, t := range p.recent {
-		if now.Sub(t) >= pushDedupe || (!strings.HasPrefix(k, "d/") && now.Sub(t) >= pushCoalesce) {
+	mine := 0
+	for k, r := range p.recent {
+		if now.Sub(r.at) >= pushDedupe || (!strings.HasPrefix(k, "d/") && now.Sub(r.at) >= pushCoalesce) {
 			delete(p.recent, k)
+		} else if r.acct == st.acct {
+			mine++
 		}
 	}
-	if t, ok := p.recent[key]; ok && now.Sub(t) < window {
+	if r, ok := p.recent[key]; ok && now.Sub(r.at) < window {
 		return nil
 	}
-	if len(p.recent) >= maxPushRecent {
+	if len(p.recent) >= maxPushRecent || mine >= maxAccountPushRecent {
 		return errPushBusy
 	}
 
 	type target struct{ device, sub, token string }
 	var targets []target
-	rows, err := p.s.store.db.Query(`SELECT device_id, subscription FROM push_subs WHERE kinds & ? != 0 LIMIT ?`, kindBit(kind), maxPushDeliveries+1)
+	rows, err := st.db.Query(`SELECT device_id, subscription FROM push_subs WHERE account_id = ? AND kinds & ? != 0 LIMIT ?`, st.acct, kindBit(kind), maxAccountPushDeliveries+1)
 	if err != nil {
 		return err
 	}
@@ -236,7 +254,7 @@ func (p *pusher) notify(sessionID string, kind pb.NotifyKind, content []byte, de
 		return err
 	}
 	if p.fcm != nil {
-		rows, err := p.s.store.db.Query(`SELECT device_id, token FROM fcm_targets WHERE kinds & ? != 0 LIMIT ?`, kindBit(kind), maxPushDeliveries+1)
+		rows, err := st.db.Query(`SELECT device_id, token FROM fcm_targets WHERE account_id = ? AND kinds & ? != 0 LIMIT ?`, st.acct, kindBit(kind), maxAccountPushDeliveries+1)
 		if err != nil {
 			return err
 		}
@@ -254,7 +272,7 @@ func (p *pusher) notify(sessionID string, kind pb.NotifyKind, content []byte, de
 			return err
 		}
 	}
-	if len(targets) > cap(p.deliveries)-len(p.deliveries) {
+	if len(targets) > cap(p.deliveries)-len(p.deliveries) || p.busy[st.acct]+len(targets) > maxAccountPushDeliveries {
 		return errPushBusy
 	}
 	// Reserve every delivery before remembering the key. Rejected work can
@@ -262,7 +280,10 @@ func (p *pusher) notify(sessionID string, kind pb.NotifyKind, content []byte, de
 	for range targets {
 		p.deliveries <- struct{}{}
 	}
-	p.recent[key] = now
+	if len(targets) > 0 {
+		p.busy[st.acct] += len(targets)
+	}
+	p.recent[key] = pushRecent{acct: st.acct, at: now}
 	payload, _ := json.Marshal(map[string]string{"title": "remote-agent", "body": body, "tag": sessionID + "/" + kind.String(), "session": sessionID})
 	data := map[string]string{"session": sessionID, "kind": strconv.Itoa(int(kind))}
 	if c := base64.StdEncoding.EncodeToString(content); len(content) > 0 && len(c) <= fcmMaxData {
@@ -270,18 +291,25 @@ func (p *pusher) notify(sessionID string, kind pb.NotifyKind, content []byte, de
 	}
 	for _, t := range targets {
 		go func() {
-			defer func() { <-p.deliveries }()
+			defer func() {
+				p.mu.Lock()
+				if p.busy[st.acct]--; p.busy[st.acct] <= 0 {
+					delete(p.busy, st.acct)
+				}
+				p.mu.Unlock()
+				<-p.deliveries
+			}()
 			if t.sub != "" {
-				p.send(t.device, t.sub, payload)
+				p.send(st, t.device, t.sub, payload)
 			} else {
-				p.sendFCM(t.device, t.token, data)
+				p.sendFCM(st, t.device, t.token, data)
 			}
 		}()
 	}
 	return nil
 }
 
-func (p *pusher) send(deviceID, sub string, payload []byte) {
+func (p *pusher) send(st *tstore, deviceID, sub string, payload []byte) {
 	var s webpush.Subscription
 	if json.Unmarshal([]byte(sub), &s) != nil || validatePushEndpoint(s.Endpoint) != nil {
 		return
@@ -301,19 +329,19 @@ func (p *pusher) send(deviceID, sub string, payload []byte) {
 	case res.StatusCode == http.StatusNotFound || res.StatusCode == http.StatusGone:
 		// The browser dropped the subscription: this one, not one the
 		// device has registered since the delivery began.
-		_, _ = p.s.store.db.Exec(`DELETE FROM push_subs WHERE device_id = ? AND subscription = ?`, deviceID, sub)
+		_, _ = st.db.Exec(`DELETE FROM push_subs WHERE account_id = ? AND device_id = ? AND subscription = ?`, st.acct, deviceID, sub)
 	case res.StatusCode >= 300:
 		slog.Warn("web push refused", "device", deviceID, "status", res.StatusCode)
 	}
 }
 
-func (p *pusher) sendFCM(deviceID, token string, data map[string]string) {
+func (p *pusher) sendFCM(st *tstore, deviceID, token string, data map[string]string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	err := p.fcm.sendRetrying(ctx, token, data, 10*time.Minute)
 	switch {
 	case errors.Is(err, errFCMToken):
-		_, _ = p.s.store.db.Exec(`DELETE FROM fcm_targets WHERE device_id = ? AND token = ?`, deviceID, token)
+		_, _ = st.db.Exec(`DELETE FROM fcm_targets WHERE account_id = ? AND device_id = ? AND token = ?`, st.acct, deviceID, token)
 	case err != nil:
 		slog.Warn("fcm push", "device", deviceID, "err", err)
 	}
@@ -333,7 +361,7 @@ func (c *clientService) SetPushSubscription(ctx context.Context, req *connect.Re
 	if len(req.Msg.SubscriptionJson) > 4096 {
 		return nil, invalid("subscription too large")
 	}
-	if err := c.s.push.subscribe(ctx, d.id, req.Msg.SubscriptionJson, req.Msg.Kinds); err != nil {
+	if err := c.s.push.subscribe(ctx, c.s.tenantOf(d).store, d.id, req.Msg.SubscriptionJson, req.Msg.Kinds); err != nil {
 		return nil, invalid("%v", err)
 	}
 	return connect.NewResponse(&pb.SetPushSubscriptionResponse{}), nil
@@ -349,11 +377,12 @@ func (c *clientService) SetPushTarget(ctx context.Context, req *connect.Request[
 	}
 	var err error
 	enabled := true
+	st := c.s.tenantOf(d).store
 	switch req.Msg.Type {
 	case pb.PushType_PUSH_TYPE_WEB_PUSH:
-		err = c.s.push.subscribe(ctx, d.id, req.Msg.Target, req.Msg.Kinds)
+		err = c.s.push.subscribe(ctx, st, d.id, req.Msg.Target, req.Msg.Kinds)
 	case pb.PushType_PUSH_TYPE_FCM:
-		err = c.s.push.setFCM(ctx, d.id, req.Msg.Target, req.Msg.Kinds)
+		err = c.s.push.setFCM(ctx, st, d.id, req.Msg.Target, req.Msg.Kinds)
 		enabled = c.s.push.fcm != nil
 	default:
 		return nil, invalid("unknown push type")
@@ -369,8 +398,8 @@ func (m *machineService) Notify(ctx context.Context, req *connect.Request[pb.Not
 	if err != nil {
 		return nil, err
 	}
-	var owner string
-	err = m.s.store.db.QueryRowContext(ctx, `SELECT machine_id FROM sessions WHERE session_id = ?`, req.Msg.SessionId).Scan(&owner)
+	t := m.s.tenantFrom(ctx)
+	owner, err := t.store.sessionMachine(ctx, req.Msg.SessionId)
 	if err != nil || owner != id {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown session"))
 	}
@@ -384,7 +413,7 @@ func (m *machineService) Notify(ctx context.Context, req *connect.Request[pb.Not
 	if len(req.Msg.DedupeKey) > 128 {
 		return nil, invalid("dedupe key too long")
 	}
-	if err := m.s.push.notify(req.Msg.SessionId, req.Msg.Kind, content, req.Msg.DedupeKey); err != nil {
+	if err := m.s.push.notify(t.store, req.Msg.SessionId, req.Msg.Kind, content, req.Msg.DedupeKey); err != nil {
 		if errors.Is(err, errPushBusy) {
 			return nil, connect.NewError(connect.CodeResourceExhausted, err)
 		}
@@ -401,7 +430,8 @@ func (c *clientService) RemoveDevice(ctx context.Context, req *connect.Request[p
 	if deviceFrom(ctx).kind != pb.DeviceKind_DEVICE_KIND_CLIENT {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only clients remove devices"))
 	}
-	machine, err := c.s.store.removeDevice(ctx, req.Msg.DeviceId)
+	t := c.s.tenantFrom(ctx)
+	machine, err := t.store.removeDevice(ctx, req.Msg.DeviceId)
 	if errors.Is(err, errNoRows) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such device"))
 	}
@@ -410,10 +440,10 @@ func (c *clientService) RemoveDevice(ctx context.Context, req *connect.Request[p
 	}
 	c.s.revokeStreams(req.Msg.DeviceId)
 	slog.Info("device removed", "device", req.Msg.DeviceId)
-	c.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: req.Msg.DeviceId}}})
+	t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: req.Msg.DeviceId}}})
 	if machine {
-		c.s.hub.drop(req.Msg.DeviceId)
-		c.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineRemoved{MachineRemoved: &pb.MachineRemoved{MachineId: req.Msg.DeviceId}}})
+		t.hub.drop(req.Msg.DeviceId)
+		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineRemoved{MachineRemoved: &pb.MachineRemoved{MachineId: req.Msg.DeviceId}}})
 	}
 	return connect.NewResponse(&pb.RemoveDeviceResponse{}), nil
 }

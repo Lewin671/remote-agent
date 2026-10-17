@@ -30,7 +30,7 @@ func TestReadyPrecedesConcurrentBroadcasts(t *testing.T) {
 			case <-stop:
 				return
 			default:
-				ts.srv.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: "nobody"}}})
+				ts.srv.hub.account(ts.acct()).broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: "nobody"}}})
 				time.Sleep(200 * time.Microsecond) // slow enough for a stream to keep up
 			}
 		}
@@ -52,12 +52,12 @@ func TestOnlineStateIsBroadcastInOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := ts.srv.hub
-	client := &peer{dev: &device{id: "client", kind: pb.DeviceKind_DEVICE_KIND_CLIENT}, out: make(chan queuedFrame, sendQueue), cancel: func() {}}
+	client := &peer{dev: &device{id: "client", account: ts.acct(), kind: pb.DeviceKind_DEVICE_KIND_CLIENT}, out: make(chan queuedFrame, sendQueue), cancel: func() {}}
 	h.mu.Lock()
-	h.clients[client] = true
+	h.clients[ts.acct()] = map[*peer]bool{client: true}
 	h.mu.Unlock()
 	for round := range 100 {
-		machine := &peer{dev: &device{id: mid, kind: pb.DeviceKind_DEVICE_KIND_MACHINE}, out: make(chan queuedFrame, sendQueue), cancel: func() {}}
+		machine := &peer{dev: &device{id: mid, account: ts.acct(), kind: pb.DeviceKind_DEVICE_KIND_MACHINE}, out: make(chan queuedFrame, sendQueue), cancel: func() {}}
 		h.add(machine)
 		// Several PutMachine calls are under way as the stream drops.
 		var wg sync.WaitGroup
@@ -65,7 +65,7 @@ func TestOnlineStateIsBroadcastInOrder(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				h.machineChanged(mid)
+				h.account(ts.acct()).machineChanged(mid)
 			}()
 		}
 		time.Sleep(time.Duration(round%10) * 50 * time.Microsecond)
@@ -127,14 +127,14 @@ func TestSlowStreamPeerIsDroppedByBytesQueued(t *testing.T) {
 	ts := newTestServer(t)
 	h := ts.srv.hub
 	dropped := false
-	slow := &peer{dev: &device{id: "client", kind: pb.DeviceKind_DEVICE_KIND_CLIENT}, out: make(chan queuedFrame, sendQueue), cancel: func() { dropped = true }}
+	slow := &peer{dev: &device{id: "client", account: "a", kind: pb.DeviceKind_DEVICE_KIND_CLIENT}, out: make(chan queuedFrame, sendQueue), cancel: func() { dropped = true }}
 	h.mu.Lock()
-	h.clients[slow] = true
+	h.clients["a"] = map[*peer]bool{slow: true}
 	h.mu.Unlock()
 	f := bigEvents(900 << 10)
 	sent := 0
 	for !dropped && sent < sendQueue {
-		h.broadcast(f)
+		h.account("a").broadcast(f)
 		sent++
 	}
 	if !dropped {
@@ -155,7 +155,7 @@ func TestStreamPeerThatKeepsUpIsNotDropped(t *testing.T) {
 	s := ts.stream(t, ts.login(t, cpriv, cid))
 	f := bigEvents(900 << 10)
 	for i := range 2 * sendQueueBytes / proto.Size(f) {
-		ts.srv.hub.broadcast(f)
+		ts.srv.hub.account(ts.acct()).broadcast(f)
 		if got := s.next(t, func(f *pb.ServerFrame) bool { return f.GetEventsAppended() != nil }); len(got.GetEventsAppended().Events) != 1 {
 			t.Fatalf("frame %d: %d events", i, len(got.GetEventsAppended().Events))
 		}

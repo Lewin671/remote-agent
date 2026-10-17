@@ -20,12 +20,14 @@ func TestSessionPaging(t *testing.T) {
 	}
 	defer st.Close()
 	ctx := context.Background()
-	if _, err := st.db.Exec(`INSERT INTO machines (id) VALUES ('m')`); err != nil {
+	if _, err := st.db.Exec(`INSERT INTO accounts (id, public_key, plan, created_ms) VALUES ('a', x'00', 'owner', 0);
+		INSERT INTO machines (id, account_id) VALUES ('m', 'a')`); err != nil {
 		t.Fatal(err)
 	}
+	ts := st.tenant("a")
 	put := func(id string, ended int64) {
 		t.Helper()
-		if _, err := st.putSession(ctx, "m", id, []byte("key"), []byte("meta"), 1, ended); err != nil {
+		if _, err := ts.putSession(ctx, "m", id, []byte("key"), []byte("meta"), 1, ended, nil); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -35,7 +37,7 @@ func TestSessionPaging(t *testing.T) {
 	for i := 1; i <= 7; i++ {
 		put(fmt.Sprintf("ended-%d", i), int64(1000*(i/2+1)))
 	}
-	live, err := st.liveSessions(ctx)
+	live, err := ts.liveSessions(ctx)
 	if err != nil || len(live) != 2 {
 		t.Fatalf("live sessions: %v, %v", live, err)
 	}
@@ -43,7 +45,7 @@ func TestSessionPaging(t *testing.T) {
 	var after *pb.SessionCursor
 	pages := 0
 	for {
-		page, next, err := st.endedSessions(ctx, after, 3)
+		page, next, err := ts.endedSessions(ctx, after, 3)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -64,40 +66,40 @@ func TestSessionPaging(t *testing.T) {
 		t.Fatalf("ended sessions in %d pages: %v, want %v", pages, got, want)
 	}
 	// A full last page has no cursor after it.
-	if page, next, _ := st.endedSessions(ctx, nil, 7); len(page) != 7 || next != nil {
+	if page, next, _ := ts.endedSessions(ctx, nil, 7); len(page) != 7 || next != nil {
 		t.Fatalf("a page of exactly the rest: %d sessions, next %v", len(page), next)
 	}
 
 	// A session that ends leaves the live ones; resumed, it returns. An
 	// older revision changes neither.
-	if _, err := st.putSession(ctx, "m", "live-a", nil, []byte("meta"), 2, 9000); err != nil {
+	if _, err := ts.putSession(ctx, "m", "live-a", nil, []byte("meta"), 2, 9000, nil); err != nil {
 		t.Fatal(err)
 	}
-	if live, _ := st.liveSessions(ctx); len(live) != 1 || live[0].SessionId != "live-b" {
+	if live, _ := ts.liveSessions(ctx); len(live) != 1 || live[0].SessionId != "live-b" {
 		t.Fatalf("live after one ended: %v", live)
 	}
-	if page, _, _ := st.endedSessions(ctx, nil, 1); page[0].SessionId != "live-a" {
+	if page, _, _ := ts.endedSessions(ctx, nil, 1); page[0].SessionId != "live-a" {
 		t.Fatalf("latest ended: %v", page[0].SessionId)
 	}
-	if _, err := st.putSession(ctx, "m", "live-a", nil, []byte("meta"), 1, 0); err != nil {
+	if _, err := ts.putSession(ctx, "m", "live-a", nil, []byte("meta"), 1, 0, nil); err != nil {
 		t.Fatal(err)
 	}
-	if live, _ := st.liveSessions(ctx); len(live) != 1 {
+	if live, _ := ts.liveSessions(ctx); len(live) != 1 {
 		t.Fatal("an older revision brought the session back")
 	}
-	if _, err := st.putSession(ctx, "m", "live-a", nil, []byte("meta"), 3, 0); err != nil {
+	if _, err := ts.putSession(ctx, "m", "live-a", nil, []byte("meta"), 3, 0, nil); err != nil {
 		t.Fatal(err)
 	}
-	if live, _ := st.liveSessions(ctx); len(live) != 2 {
+	if live, _ := ts.liveSessions(ctx); len(live) != 2 {
 		t.Fatal("a resumed session is not live")
 	}
 
 	// By ID: those that exist, whatever their state.
-	byID, err := st.sessionsByID(ctx, []string{"ended-1", "nope", "live-b"})
+	byID, err := ts.sessionsByID(ctx, []string{"ended-1", "nope", "live-b"})
 	if err != nil || len(byID) != 2 || byID[0].SessionId != "ended-1" || byID[0].EndedMs != 1000 {
 		t.Fatalf("by ID: %v, %v", byID, err)
 	}
-	heads, err := st.sessionHeads(ctx, "m")
+	heads, err := ts.sessionHeads(ctx, "m")
 	if err != nil || len(heads) != 9 {
 		t.Fatalf("heads: %d, %v", len(heads), err)
 	}
@@ -117,8 +119,8 @@ func TestSessionPageSeeks(t *testing.T) {
 	}
 	defer st.Close()
 	rows, err := st.db.Query(`EXPLAIN QUERY PLAN SELECT session_id FROM sessions
-		WHERE ended_ms > 0 AND ended_ms <= ? AND (ended_ms < ? OR session_id > ?)
-		ORDER BY ended_ms DESC, session_id LIMIT ?`, 5, 5, "x", 3)
+		WHERE account_id = ? AND ended_ms > 0 AND ended_ms <= ? AND (ended_ms < ? OR session_id > ?)
+		ORDER BY ended_ms DESC, session_id LIMIT ?`, "a", 5, 5, "x", 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +134,7 @@ func TestSessionPageSeeks(t *testing.T) {
 		}
 		plan += detail + "\n"
 	}
-	if !strings.Contains(plan, "SEARCH sessions USING") || !strings.Contains(plan, "sessions_ended (ended_ms>? AND ended_ms<?)") || strings.Contains(plan, "TEMP B-TREE") {
+	if !strings.Contains(plan, "SEARCH sessions USING") || !strings.Contains(plan, "sessions_ended (account_id=? AND ended_ms>? AND ended_ms<?)") || strings.Contains(plan, "TEMP B-TREE") {
 		t.Fatalf("the page query does not seek, or sorts:\n%s", plan)
 	}
 }

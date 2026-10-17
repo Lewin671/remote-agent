@@ -14,19 +14,53 @@ import (
 )
 
 // store keeps the server's state in SQLite. Content is only ever stored as
-// sealed envelopes.
+// sealed envelopes. One database holds every account; each row of an
+// account's data carries its account ID. store itself only reaches what
+// belongs to no account or is looked up before the account is known:
+// accounts, devices by ID for logging in, tokens. Everything else goes
+// through a tstore, which is bound to one account and has no way to name
+// another.
 type store struct {
 	db *sql.DB
 }
 
+// tstore is the store of one account. Every statement it runs is limited
+// to its account.
+type tstore struct {
+	db   *sql.DB
+	acct string
+}
+
+// tenant returns the store of an account.
+func (s *store) tenant(account string) *tstore {
+	if account == "" {
+		panic("tenant store without an account")
+	}
+	return &tstore{db: s.db, acct: account}
+}
+
+// schemaVersion is PRAGMA user_version of the current layout. The layout
+// of one account per relay, before accounts had IDs, had none.
+const schemaVersion = 3
+
 const schema = `
-CREATE TABLE IF NOT EXISTS account (
-	id INTEGER PRIMARY KEY CHECK (id = 1),
-	public_key BLOB NOT NULL,
-	created_ms INTEGER NOT NULL
+CREATE TABLE IF NOT EXISTS accounts (
+	id TEXT PRIMARY KEY,
+	public_key BLOB NOT NULL UNIQUE,
+	plan TEXT NOT NULL,
+	status INTEGER NOT NULL DEFAULT 0,
+	created_ms INTEGER NOT NULL,
+	last_active_ms INTEGER NOT NULL DEFAULT 0,
+	-- Bytes of stored event envelopes, kept with every insert for the quota.
+	event_bytes INTEGER NOT NULL DEFAULT 0,
+	-- Registrations signed before this are refused for unknown devices.
+	registration_floor_ms INTEGER NOT NULL DEFAULT 0
 );
+-- Device IDs are derived from device keys and unique across accounts: a
+-- device belongs to one account.
 CREATE TABLE IF NOT EXISTS devices (
 	id TEXT PRIMARY KEY,
+	account_id TEXT NOT NULL REFERENCES accounts (id),
 	public_key BLOB NOT NULL,
 	kind INTEGER NOT NULL,
 	registration BLOB NOT NULL,
@@ -36,27 +70,31 @@ CREATE TABLE IF NOT EXISTS devices (
 	meta_revision INTEGER NOT NULL DEFAULT 0,
 	last_seen_ms INTEGER NOT NULL DEFAULT 0
 );
-CREATE TABLE IF NOT EXISTS registration_policy (
-	id INTEGER PRIMARY KEY CHECK (id = 1),
-	freshness_floor_ms INTEGER NOT NULL
-);
+CREATE INDEX IF NOT EXISTS devices_account ON devices (account_id, created_ms, id);
+-- A removed device key must never register again, in any account.
 CREATE TABLE IF NOT EXISTS revoked_devices (
 	id TEXT PRIMARY KEY,
+	account_id TEXT NOT NULL,
 	revoked_ms INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS tokens (
 	hash BLOB PRIMARY KEY,
+	account_id TEXT NOT NULL,
 	device_id TEXT NOT NULL,
 	expires_ms INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS tokens_device ON tokens (account_id, device_id);
 CREATE TABLE IF NOT EXISTS machines (
 	id TEXT PRIMARY KEY,
+	account_id TEXT NOT NULL,
 	meta BLOB,
 	meta_revision INTEGER NOT NULL DEFAULT 0,
 	last_seen_ms INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS machines_account ON machines (account_id, id);
 CREATE TABLE IF NOT EXISTS sessions (
-	session_id TEXT PRIMARY KEY,
+	account_id TEXT NOT NULL,
+	session_id TEXT NOT NULL,
 	machine_id TEXT NOT NULL,
 	key BLOB NOT NULL,
 	meta BLOB,
@@ -65,16 +103,22 @@ CREATE TABLE IF NOT EXISTS sessions (
 	updated_ms INTEGER NOT NULL,
 	-- When the session ended, 0 while it has not: the one thing about a
 	-- session's state the server is told in the clear, to page the listing.
-	ended_ms INTEGER NOT NULL DEFAULT 0
+	ended_ms INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY (account_id, session_id)
 );
-CREATE INDEX IF NOT EXISTS sessions_ended ON sessions (ended_ms DESC, session_id);
+CREATE INDEX IF NOT EXISTS sessions_ended ON sessions (account_id, ended_ms DESC, session_id);
+CREATE INDEX IF NOT EXISTS sessions_machine ON sessions (account_id, machine_id);
 CREATE TABLE IF NOT EXISTS events (
+	account_id TEXT NOT NULL,
 	session_id TEXT NOT NULL,
 	seq INTEGER NOT NULL,
 	envelope BLOB NOT NULL,
-	PRIMARY KEY (session_id, seq)
+	PRIMARY KEY (account_id, session_id, seq)
 ) WITHOUT ROWID;
 `
+
+var errOldLayout = errors.New("this database has the layout of a relay with a single account; " +
+	"move it to the current layout as the release notes describe (docs/self-hosting.md, \"Upgrading to multiple accounts\") before starting this version")
 
 func openStore(path string) (*store, error) {
 	// One connection: SQLite serializes writers anyway, and it keeps
@@ -85,17 +129,34 @@ func openStore(path string) (*store, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("create schema: %w", err)
-	}
-	// Registrations signed before the floor are refused for unknown
-	// devices; a new database has none.
-	if _, err := db.Exec(`INSERT INTO registration_policy (id, freshness_floor_ms) VALUES (1, 0) ON CONFLICT (id) DO NOTHING`); err != nil {
+	// The layout is checked before anything is created: a database of the
+	// single-account layout must not get new tables next to its old ones.
+	var version int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
 		db.Close()
 		return nil, err
 	}
-
+	var tables int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'`).Scan(&tables); err != nil {
+		db.Close()
+		return nil, err
+	}
+	switch {
+	case version == schemaVersion:
+	case version == 0 && tables == 0:
+	case version == 0:
+		db.Close()
+		return nil, errOldLayout
+	default:
+		db.Close()
+		return nil, fmt.Errorf("the database has layout %d; this version knows layout %d", version, schemaVersion)
+	}
+	for _, q := range []string{schema, imageSchema, prefsSchema, pushSchema, fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion)} {
+		if _, err := db.Exec(q); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("create schema: %w", err)
+		}
+	}
 	return &store{db: db}, nil
 }
 
@@ -105,21 +166,141 @@ func nowMs() int64 { return time.Now().UnixMilli() }
 
 var errNoRows = sql.ErrNoRows
 
-func (s *store) accountKey(ctx context.Context) ([]byte, error) {
-	var k []byte
-	err := s.db.QueryRowContext(ctx, `SELECT public_key FROM account WHERE id = 1`).Scan(&k)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
+// Account states.
+const (
+	accountActive    = 0
+	accountSuspended = 1
+)
+
+type accountRow struct {
+	id         string
+	publicKey  []byte
+	plan       string
+	status     int
+	createdMs  int64
+	lastActive int64
+	eventBytes int64
+}
+
+const accountColumns = `id, public_key, plan, status, created_ms, last_active_ms, event_bytes`
+
+func scanAccount(sc interface{ Scan(...any) error }) (*accountRow, error) {
+	a := &accountRow{}
+	err := sc.Scan(&a.id, &a.publicKey, &a.plan, &a.status, &a.createdMs, &a.lastActive, &a.eventBytes)
+	return a, err
+}
+
+// account returns an account by ID, or errNoRows.
+func (s *store) account(ctx context.Context, id string) (*accountRow, error) {
+	return scanAccount(s.db.QueryRowContext(ctx, `SELECT `+accountColumns+` FROM accounts WHERE id = ?`, id))
+}
+
+func (s *store) accounts(ctx context.Context) ([]*accountRow, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT `+accountColumns+` FROM accounts ORDER BY created_ms, id`)
+	if err != nil {
+		return nil, err
 	}
-	return k, err
+	defer rows.Close()
+	var out []*accountRow
+	for rows.Next() {
+		a, err := scanAccount(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+func (s *store) accountCount(ctx context.Context) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM accounts`).Scan(&n)
+	return n, err
+}
+
+func (s *store) setAccountStatus(ctx context.Context, id string, status int) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE accounts SET status = ? WHERE id = ?`, status, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errNoRows
+	}
+	return nil
+}
+
+// accountTables are the tables holding an account's data, in the order
+// its rows are deleted.
+var accountTables = []string{"events", "images", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
+
+// deleteAccount deletes an account and everything stored for it. Its
+// device keys stay revoked, so that its registrations cannot come back.
+func (s *store) deleteAccount(ctx context.Context, id string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `INSERT INTO revoked_devices (id, account_id, revoked_ms)
+		SELECT id, account_id, ? FROM devices WHERE account_id = ? ON CONFLICT (id) DO NOTHING`, nowMs(), id); err != nil {
+		return err
+	}
+	for _, t := range accountTables {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM `+t+` WHERE account_id = ?`, id); err != nil {
+			return err
+		}
+	}
+	res, err := tx.ExecContext(ctx, `DELETE FROM accounts WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errNoRows
+	}
+	return tx.Commit()
+}
+
+// accountUsage is what an account has stored, for its quota.
+type accountUsage struct {
+	devices, machines, sessions int
+	eventBytes, imageBytes      int64
+}
+
+func (t *tstore) usage(ctx context.Context) (accountUsage, error) {
+	return usageTx(ctx, t.db, t.acct)
+}
+
+func usageTx(ctx context.Context, q querier, acct string) (accountUsage, error) {
+	var u accountUsage
+	err := q.QueryRowContext(ctx, `SELECT
+		(SELECT COUNT(*) FROM devices WHERE account_id = ?1),
+		(SELECT COUNT(*) FROM machines WHERE account_id = ?1),
+		(SELECT COUNT(*) FROM sessions WHERE account_id = ?1),
+		(SELECT event_bytes FROM accounts WHERE id = ?1),
+		(SELECT COALESCE(SUM(bytes), 0) FROM images WHERE account_id = ?1 AND envelope IS NOT NULL)`, acct).
+		Scan(&u.devices, &u.machines, &u.sessions, &u.eventBytes, &u.imageBytes)
+	return u, err
 }
 
 var errDeviceRevoked = errors.New("device has been revoked; pair again with a new device key")
 var errRegistrationStale = errors.New("registration is older than this server accepts; pair again and check the device clock")
+var errOtherAccount = errors.New("device belongs to another account")
 
-// addDevice stores a registered device, creating the account first when
-// account is not nil. Registering the same key again is a no-op.
-func (s *store) addDevice(ctx context.Context, account []byte, id string, reg *pb.DeviceRegistration, raw, sig []byte) error {
+// newAccount is an account to create along with its first device, if the
+// relay holds fewer than max accounts.
+type newAccount struct {
+	publicKey []byte
+	plan      string
+	max       int
+}
+
+var errNoRoom = errors.New("this relay has no room for another account")
+
+// addDevice stores a registered device of account, creating the account
+// first when create is not nil. Registering the same key again is a no-op.
+// limit, if not nil, is checked against the account's usage before a new
+// device is stored.
+func (s *store) addDevice(ctx context.Context, account string, create *newAccount, id string, reg *pb.DeviceRegistration, raw, sig []byte, limit func(accountUsage) error) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -132,31 +313,57 @@ func (s *store) addDevice(ctx context.Context, account []byte, id string, reg *p
 	if revoked != 0 {
 		return errDeviceRevoked
 	}
+	if create != nil {
+		var n int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM accounts`).Scan(&n); err != nil {
+			return err
+		}
+		if n >= create.max {
+			return errNoRoom
+		}
+		// Two first devices of one account may race; the account is made once.
+		if _, err := tx.ExecContext(ctx, `INSERT INTO accounts (id, public_key, plan, created_ms, last_active_ms) VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT (id) DO NOTHING`, account, create.publicKey, create.plan, nowMs(), nowMs()); err != nil {
+			return err
+		}
+	}
+	var owner string
+	err = tx.QueryRowContext(ctx, `SELECT account_id FROM devices WHERE id = ?`, id).Scan(&owner)
+	switch {
+	case err == nil && owner != account:
+		return errOtherAccount
+	case err == nil:
+		return tx.Commit() // registered before
+	case !errors.Is(err, sql.ErrNoRows):
+		return err
+	}
 	var floor int64
-	if err := tx.QueryRowContext(ctx, `SELECT freshness_floor_ms FROM registration_policy WHERE id = 1`).Scan(&floor); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT registration_floor_ms FROM accounts WHERE id = ?`, account).Scan(&floor); err != nil {
 		return err
 	}
 	if reg.CreatedMs < floor {
-		var existing int
-		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE id = ?`, id).Scan(&existing); err != nil {
+		return errRegistrationStale
+	}
+	if limit != nil {
+		u, err := usageTx(ctx, tx, account)
+		if err != nil {
 			return err
 		}
-		if existing == 0 {
-			return errRegistrationStale
+		if reg.Kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
+			u.machines++
 		}
-	}
-	if account != nil {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO account (id, public_key, created_ms) VALUES (1, ?, ?)`, account, nowMs()); err != nil {
+		u.devices++
+		if err := limit(u); err != nil {
 			return err
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO devices (id, public_key, kind, registration, signature, created_ms)
-		VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
-		id, reg.DevicePublicKey, int32(reg.Kind), raw, sig, nowMs()); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO devices (id, account_id, public_key, kind, registration, signature, created_ms)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		id, account, reg.DevicePublicKey, int32(reg.Kind), raw, sig, nowMs()); err != nil {
 		return err
 	}
 	if reg.Kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO machines (id) VALUES (?) ON CONFLICT (id) DO NOTHING`, id); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO machines (id, account_id) VALUES (?, ?)`, id, account); err != nil {
 			return err
 		}
 	}
@@ -165,15 +372,18 @@ func (s *store) addDevice(ctx context.Context, account []byte, id string, reg *p
 
 type device struct {
 	id        string
+	account   string
+	plan      string
 	publicKey []byte
 	kind      pb.DeviceKind
 	expiresMs int64
 }
 
+// device looks a device up by ID, before its account is known: to log in.
 func (s *store) device(ctx context.Context, id string) (*device, error) {
 	d := &device{id: id}
 	var kind int32
-	err := s.db.QueryRowContext(ctx, `SELECT public_key, kind FROM devices WHERE id = ?`, id).Scan(&d.publicKey, &kind)
+	err := s.db.QueryRowContext(ctx, `SELECT account_id, public_key, kind FROM devices WHERE id = ?`, id).Scan(&d.account, &d.publicKey, &kind)
 	if err != nil {
 		return nil, err
 	}
@@ -185,36 +395,49 @@ type registration struct{ raw, sig []byte }
 
 // registration returns a device's registration and the account's
 // signature over it, as stored when it registered.
-func (s *store) registration(ctx context.Context, id string) (registration, error) {
+func (t *tstore) registration(ctx context.Context, id string) (registration, error) {
 	var r registration
-	err := s.db.QueryRowContext(ctx, `SELECT registration, signature FROM devices WHERE id = ?`, id).Scan(&r.raw, &r.sig)
+	err := t.db.QueryRowContext(ctx, `SELECT registration, signature FROM devices WHERE account_id = ? AND id = ?`, t.acct, id).Scan(&r.raw, &r.sig)
 	return r, err
 }
 
-func (s *store) addToken(ctx context.Context, hash []byte, deviceID string, expires int64) error {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO tokens (hash, device_id, expires_ms) VALUES (?, ?, ?)`, hash, deviceID, expires)
+func (t *tstore) addToken(ctx context.Context, hash []byte, deviceID string, expires int64) error {
+	_, err := t.db.ExecContext(ctx, `INSERT INTO tokens (hash, account_id, device_id, expires_ms) VALUES (?, ?, ?, ?)`, hash, t.acct, deviceID, expires)
 	if err != nil {
 		return err
 	}
-	_, err = s.db.ExecContext(ctx, `DELETE FROM tokens WHERE expires_ms < ?`, nowMs())
+	_, err = t.db.ExecContext(ctx, `DELETE FROM tokens WHERE expires_ms < ?`, nowMs())
 	return err
 }
 
+var errSuspended = errors.New("this account is suspended on this relay")
+
+// tokenDevice resolves a login token to its device, which carries its
+// account. A suspended account's tokens are refused.
 func (s *store) tokenDevice(ctx context.Context, hash []byte) (*device, error) {
-	var id string
-	var expires int64
-	err := s.db.QueryRowContext(ctx, `SELECT device_id, expires_ms FROM tokens WHERE hash = ?`, hash).Scan(&id, &expires)
+	d := &device{}
+	var kind int32
+	var status int
+	err := s.db.QueryRowContext(ctx, `SELECT t.device_id, t.account_id, t.expires_ms, d.public_key, d.kind, a.plan, a.status
+		FROM tokens t JOIN devices d ON d.id = t.device_id AND d.account_id = t.account_id JOIN accounts a ON a.id = t.account_id
+		WHERE t.hash = ?`, hash).Scan(&d.id, &d.account, &d.expiresMs, &d.publicKey, &kind, &d.plan, &status)
 	if err != nil {
 		return nil, err
 	}
-	if expires <= nowMs() {
+	if d.expiresMs <= nowMs() {
 		return nil, errNoRows
 	}
-	d, err := s.device(ctx, id)
-	if err == nil {
-		d.expiresMs = expires
+	if status != accountActive {
+		return nil, errSuspended
 	}
-	return d, err
+	d.kind = pb.DeviceKind(kind)
+	return d, nil
+}
+
+// touchAccount records that an account was in use just now.
+func (t *tstore) touchAccount(ctx context.Context) error {
+	_, err := t.db.ExecContext(ctx, `UPDATE accounts SET last_active_ms = ? WHERE id = ?`, nowMs(), t.acct)
+	return err
 }
 
 func marshalEnv(e *pb.Envelope) ([]byte, error) {
@@ -236,19 +459,22 @@ func unmarshalEnv(b []byte) *pb.Envelope {
 }
 
 // putMachineMeta stores meta unless a newer revision is stored already.
-func (s *store) putMachineMeta(ctx context.Context, id string, meta []byte, revision uint64) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE machines SET meta = ?, meta_revision = ? WHERE id = ? AND meta_revision <= ?`,
-		meta, revision, id, revision)
+func (t *tstore) putMachineMeta(ctx context.Context, id string, meta []byte, revision uint64) error {
+	_, err := t.db.ExecContext(ctx, `UPDATE machines SET meta = ?, meta_revision = ? WHERE account_id = ? AND id = ? AND meta_revision <= ?`,
+		meta, revision, t.acct, id, revision)
 	return err
 }
 
-func (s *store) touchMachine(ctx context.Context, id string) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE machines SET last_seen_ms = ? WHERE id = ?`, nowMs(), id)
-	return err
+func (t *tstore) touchMachine(ctx context.Context, id string) error {
+	now := nowMs()
+	if _, err := t.db.ExecContext(ctx, `UPDATE machines SET last_seen_ms = ? WHERE account_id = ? AND id = ?`, now, t.acct, id); err != nil {
+		return err
+	}
+	return t.touchAccount(ctx)
 }
 
-func (s *store) machines(ctx context.Context) ([]*pb.Machine, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, meta, last_seen_ms FROM machines ORDER BY id`)
+func (t *tstore) machines(ctx context.Context) ([]*pb.Machine, error) {
+	rows, err := t.db.QueryContext(ctx, `SELECT id, meta, last_seen_ms FROM machines WHERE account_id = ? ORDER BY id`, t.acct)
 	if err != nil {
 		return nil, err
 	}
@@ -266,10 +492,10 @@ func (s *store) machines(ctx context.Context) ([]*pb.Machine, error) {
 	return out, rows.Err()
 }
 
-func (s *store) machine(ctx context.Context, id string) (*pb.Machine, error) {
+func (t *tstore) machine(ctx context.Context, id string) (*pb.Machine, error) {
 	m := &pb.Machine{Id: id}
 	var meta []byte
-	err := s.db.QueryRowContext(ctx, `SELECT meta, last_seen_ms FROM machines WHERE id = ?`, id).Scan(&meta, &m.LastSeenMs)
+	err := t.db.QueryRowContext(ctx, `SELECT meta, last_seen_ms FROM machines WHERE account_id = ? AND id = ?`, t.acct, id).Scan(&meta, &m.LastSeenMs)
 	if err != nil {
 		return nil, err
 	}
@@ -282,9 +508,10 @@ var errNoMachine = errors.New("the machine has been removed")
 
 // putSession creates the session with key, or updates its metadata, and
 // with it when the session ended, unless a newer revision is stored. It
-// returns the stored session.
-func (s *store) putSession(ctx context.Context, machineID, sessionID string, key, meta []byte, revision uint64, endedMs int64) (*pb.RemoteSession, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+// returns the stored session. limit, if not nil, is checked against the
+// account's usage before a new session is created.
+func (t *tstore) putSession(ctx context.Context, machineID, sessionID string, key, meta []byte, revision uint64, endedMs int64, limit func(accountUsage) error) (*pb.RemoteSession, error) {
+	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -293,33 +520,43 @@ func (s *store) putSession(ctx context.Context, machineID, sessionID string, key
 	// machine may have been removed since, sessions and all. They must
 	// not come back.
 	var registered int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM machines WHERE id = ?`, machineID).Scan(&registered); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM machines WHERE account_id = ? AND id = ?`, t.acct, machineID).Scan(&registered); err != nil {
 		return nil, err
 	}
 	if registered == 0 {
 		return nil, errNoMachine
 	}
 	var owner string
-	err = tx.QueryRowContext(ctx, `SELECT machine_id FROM sessions WHERE session_id = ?`, sessionID).Scan(&owner)
+	err = tx.QueryRowContext(ctx, `SELECT machine_id FROM sessions WHERE account_id = ? AND session_id = ?`, t.acct, sessionID).Scan(&owner)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		if key == nil {
 			return nil, errNoKey
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO sessions (session_id, machine_id, key, meta, meta_revision, updated_ms, ended_ms)
-			VALUES (?, ?, ?, ?, ?, ?, ?)`, sessionID, machineID, key, meta, revision, nowMs(), endedMs)
+		if limit != nil {
+			u, err := usageTx(ctx, tx, t.acct)
+			if err != nil {
+				return nil, err
+			}
+			u.sessions++
+			if err := limit(u); err != nil {
+				return nil, err
+			}
+		}
+		_, err = tx.ExecContext(ctx, `INSERT INTO sessions (account_id, session_id, machine_id, key, meta, meta_revision, updated_ms, ended_ms)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, t.acct, sessionID, machineID, key, meta, revision, nowMs(), endedMs)
 	case err != nil:
 		return nil, err
 	case owner != machineID:
 		return nil, errOtherMachine
 	case meta != nil:
 		_, err = tx.ExecContext(ctx, `UPDATE sessions SET meta = ?, meta_revision = ?, updated_ms = ?, ended_ms = ?
-			WHERE session_id = ? AND meta_revision <= ?`, meta, revision, nowMs(), endedMs, sessionID, revision)
+			WHERE account_id = ? AND session_id = ? AND meta_revision <= ?`, meta, revision, nowMs(), endedMs, t.acct, sessionID, revision)
 	}
 	if err != nil {
 		return nil, err
 	}
-	rs, err := sessionTx(ctx, tx, sessionID)
+	rs, err := sessionTx(ctx, tx, t.acct, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -332,10 +569,10 @@ type querier interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-func sessionTx(ctx context.Context, q querier, id string) (*pb.RemoteSession, error) {
+func sessionTx(ctx context.Context, q querier, acct, id string) (*pb.RemoteSession, error) {
 	rs := &pb.RemoteSession{SessionId: id}
 	var key, meta []byte
-	err := q.QueryRowContext(ctx, `SELECT machine_id, key, meta, last_seq, updated_ms, ended_ms FROM sessions WHERE session_id = ?`, id).
+	err := q.QueryRowContext(ctx, `SELECT machine_id, key, meta, last_seq, updated_ms, ended_ms FROM sessions WHERE account_id = ? AND session_id = ?`, acct, id).
 		Scan(&rs.MachineId, &key, &meta, &rs.LastSeq, &rs.UpdatedMs, &rs.EndedMs)
 	if err != nil {
 		return nil, err
@@ -362,8 +599,8 @@ func scanSessions(rows *sql.Rows) ([]*pb.RemoteSession, error) {
 }
 
 // liveSessions returns every session that has not ended.
-func (s *store) liveSessions(ctx context.Context) ([]*pb.RemoteSession, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE ended_ms = 0 ORDER BY updated_ms DESC`)
+func (t *tstore) liveSessions(ctx context.Context) ([]*pb.RemoteSession, error) {
+	rows, err := t.db.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND ended_ms = 0 ORDER BY updated_ms DESC`, t.acct)
 	if err != nil {
 		return nil, err
 	}
@@ -373,16 +610,16 @@ func (s *store) liveSessions(ctx context.Context) ([]*pb.RemoteSession, error) {
 // endedSessions returns up to limit ended sessions after the cursor, from
 // the latest ended to the earliest, and the cursor for the rest if there
 // are more.
-func (s *store) endedSessions(ctx context.Context, after *pb.SessionCursor, limit int) ([]*pb.RemoteSession, *pb.SessionCursor, error) {
-	query := `SELECT ` + sessionColumns + ` FROM sessions WHERE ended_ms > 0`
-	var args []any
+func (t *tstore) endedSessions(ctx context.Context, after *pb.SessionCursor, limit int) ([]*pb.RemoteSession, *pb.SessionCursor, error) {
+	query := `SELECT ` + sessionColumns + ` FROM sessions WHERE account_id = ? AND ended_ms > 0`
+	args := []any{t.acct}
 	if after != nil {
 		// The bound on ended_ms alone lets SQLite seek into the index to
 		// the cursor; without it every page scans the ones before it.
 		query += ` AND ended_ms <= ? AND (ended_ms < ? OR session_id > ?)`
 		args = append(args, after.EndedMs, after.EndedMs, after.SessionId)
 	}
-	rows, err := s.db.QueryContext(ctx, query+` ORDER BY ended_ms DESC, session_id LIMIT ?`, append(args, limit+1)...)
+	rows, err := t.db.QueryContext(ctx, query+` ORDER BY ended_ms DESC, session_id LIMIT ?`, append(args, limit+1)...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -395,10 +632,10 @@ func (s *store) endedSessions(ctx context.Context, after *pb.SessionCursor, limi
 }
 
 // sessionsByID returns those of the sessions named that exist.
-func (s *store) sessionsByID(ctx context.Context, ids []string) ([]*pb.RemoteSession, error) {
+func (t *tstore) sessionsByID(ctx context.Context, ids []string) ([]*pb.RemoteSession, error) {
 	var out []*pb.RemoteSession
 	for _, id := range ids {
-		rs, err := sessionTx(ctx, s.db, id)
+		rs, err := sessionTx(ctx, t.db, t.acct, id)
 		if errors.Is(err, sql.ErrNoRows) {
 			continue
 		}
@@ -410,8 +647,15 @@ func (s *store) sessionsByID(ctx context.Context, ids []string) ([]*pb.RemoteSes
 	return out, nil
 }
 
-func (s *store) sessionHeads(ctx context.Context, machineID string) ([]*pb.SessionHead, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT session_id, last_seq, meta_revision, ended_ms FROM sessions WHERE machine_id = ?`, machineID)
+// sessionMachine returns the machine a session belongs to.
+func (t *tstore) sessionMachine(ctx context.Context, sessionID string) (string, error) {
+	var owner string
+	err := t.db.QueryRowContext(ctx, `SELECT machine_id FROM sessions WHERE account_id = ? AND session_id = ?`, t.acct, sessionID).Scan(&owner)
+	return owner, err
+}
+
+func (t *tstore) sessionHeads(ctx context.Context, machineID string) ([]*pb.SessionHead, error) {
+	rows, err := t.db.QueryContext(ctx, `SELECT session_id, last_seq, meta_revision, ended_ms FROM sessions WHERE account_id = ? AND machine_id = ?`, t.acct, machineID)
 	if err != nil {
 		return nil, err
 	}
@@ -436,16 +680,17 @@ func (e *gapError) Error() string {
 
 // appendEvents stores the events that follow the stored ones and skips
 // those already stored. It returns the newly stored events and the new
-// last seq.
-func (s *store) appendEvents(ctx context.Context, machineID, sessionID string, evs []*pb.StoredEvent) ([]*pb.StoredEvent, *pb.RemoteSession, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+// last seq. limit, if not nil, is checked against the account's usage
+// with the new events counted.
+func (t *tstore) appendEvents(ctx context.Context, machineID, sessionID string, evs []*pb.StoredEvent, limit func(accountUsage) error) ([]*pb.StoredEvent, *pb.RemoteSession, error) {
+	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer tx.Rollback()
 	var owner string
 	var last uint64
-	err = tx.QueryRowContext(ctx, `SELECT machine_id, last_seq FROM sessions WHERE session_id = ?`, sessionID).Scan(&owner, &last)
+	err = tx.QueryRowContext(ctx, `SELECT machine_id, last_seq FROM sessions WHERE account_id = ? AND session_id = ?`, t.acct, sessionID).Scan(&owner, &last)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -453,6 +698,7 @@ func (s *store) appendEvents(ctx context.Context, machineID, sessionID string, e
 		return nil, nil, errOtherMachine
 	}
 	var added []*pb.StoredEvent
+	var bytes int64
 	for _, e := range evs {
 		if e.Seq <= last {
 			continue
@@ -464,27 +710,41 @@ func (s *store) appendEvents(ctx context.Context, machineID, sessionID string, e
 		if err != nil {
 			return nil, nil, err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO events (session_id, seq, envelope) VALUES (?, ?, ?)`, sessionID, e.Seq, b); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO events (account_id, session_id, seq, envelope) VALUES (?, ?, ?, ?)`, t.acct, sessionID, e.Seq, b); err != nil {
 			return nil, nil, err
 		}
 		last = e.Seq
+		bytes += int64(len(b))
 		added = append(added, e)
 	}
 	if len(added) > 0 {
-		if _, err := tx.ExecContext(ctx, `UPDATE sessions SET last_seq = ?, updated_ms = ? WHERE session_id = ?`, last, nowMs(), sessionID); err != nil {
+		if limit != nil {
+			u, err := usageTx(ctx, tx, t.acct)
+			if err != nil {
+				return nil, nil, err
+			}
+			u.eventBytes += bytes
+			if err := limit(u); err != nil {
+				return nil, nil, err
+			}
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE sessions SET last_seq = ?, updated_ms = ? WHERE account_id = ? AND session_id = ?`, last, nowMs(), t.acct, sessionID); err != nil {
+			return nil, nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE accounts SET event_bytes = event_bytes + ? WHERE id = ?`, bytes, t.acct); err != nil {
 			return nil, nil, err
 		}
 	}
-	rs, err := sessionTx(ctx, tx, sessionID)
+	rs, err := sessionTx(ctx, tx, t.acct, sessionID)
 	if err != nil {
 		return nil, nil, err
 	}
 	return added, rs, tx.Commit()
 }
 
-func (s *store) events(ctx context.Context, sessionID string, after uint64, limit int) ([]*pb.StoredEvent, bool, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT seq, envelope FROM events WHERE session_id = ? AND seq > ? ORDER BY seq LIMIT ?`,
-		sessionID, after, limit+1)
+func (t *tstore) events(ctx context.Context, sessionID string, after uint64, limit int) ([]*pb.StoredEvent, bool, error) {
+	rows, err := t.db.QueryContext(ctx, `SELECT seq, envelope FROM events WHERE account_id = ? AND session_id = ? AND seq > ? ORDER BY seq LIMIT ?`,
+		t.acct, sessionID, after, limit+1)
 	if err != nil {
 		return nil, false, err
 	}
@@ -518,38 +778,43 @@ func (s *store) events(ctx context.Context, sessionID string, after uint64, limi
 	return out, more, nil
 }
 
-// removeDevice deletes a device and its logins. For a machine it also
-// deletes its sessions and their events. It reports whether the device was
-// a machine.
-func (s *store) removeDevice(ctx context.Context, id string) (bool, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+// removeDevice deletes a device of the account and its logins. For a
+// machine it also deletes its sessions and their events. It reports
+// whether the device was a machine.
+func (t *tstore) removeDevice(ctx context.Context, id string) (bool, error) {
+	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
 	}
 	defer tx.Rollback()
 	var kind int32
-	if err := tx.QueryRowContext(ctx, `SELECT kind FROM devices WHERE id = ?`, id).Scan(&kind); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT kind FROM devices WHERE account_id = ? AND id = ?`, t.acct, id).Scan(&kind); err != nil {
 		return false, err
 	}
 	// Keep a tombstone: the old signed registration remains valid even after
 	// the live device row is deleted, and must never resurrect this key.
-	if _, err := tx.ExecContext(ctx, `INSERT INTO revoked_devices (id, revoked_ms) VALUES (?, ?) ON CONFLICT (id) DO NOTHING`, id, nowMs()); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO revoked_devices (id, account_id, revoked_ms) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING`, id, t.acct, nowMs()); err != nil {
 		return false, err
 	}
 	stmts := []string{
-		`DELETE FROM devices WHERE id = ?`,
-		`DELETE FROM tokens WHERE device_id = ?`,
-		`DELETE FROM push_subs WHERE device_id = ?`,
-		`DELETE FROM fcm_targets WHERE device_id = ?`,
-		`DELETE FROM events WHERE session_id IN (SELECT session_id FROM sessions WHERE machine_id = ?)`,
-		`DELETE FROM images WHERE machine_id = ?`,
-		`DELETE FROM sessions WHERE machine_id = ?`,
-		`DELETE FROM machines WHERE id = ?`,
+		`DELETE FROM devices WHERE account_id = ?1 AND id = ?2`,
+		`DELETE FROM tokens WHERE account_id = ?1 AND device_id = ?2`,
+		`DELETE FROM push_subs WHERE account_id = ?1 AND device_id = ?2`,
+		`DELETE FROM fcm_targets WHERE account_id = ?1 AND device_id = ?2`,
+		`DELETE FROM events WHERE account_id = ?1 AND session_id IN (SELECT session_id FROM sessions WHERE account_id = ?1 AND machine_id = ?2)`,
+		`DELETE FROM images WHERE account_id = ?1 AND machine_id = ?2`,
+		`DELETE FROM sessions WHERE account_id = ?1 AND machine_id = ?2`,
+		`DELETE FROM machines WHERE account_id = ?1 AND id = ?2`,
 	}
 	for _, q := range stmts {
-		if _, err := tx.ExecContext(ctx, q, id); err != nil {
+		if _, err := tx.ExecContext(ctx, q, t.acct, id); err != nil {
 			return false, err
 		}
+	}
+	// What is left after deleting a machine's sessions, counted again
+	// rather than subtracted, so that the counter cannot drift.
+	if _, err := tx.ExecContext(ctx, `UPDATE accounts SET event_bytes = (SELECT COALESCE(SUM(LENGTH(envelope)), 0) FROM events WHERE account_id = ?1) WHERE id = ?1`, t.acct); err != nil {
+		return false, err
 	}
 	return pb.DeviceKind(kind) == pb.DeviceKind_DEVICE_KIND_MACHINE, tx.Commit()
 }

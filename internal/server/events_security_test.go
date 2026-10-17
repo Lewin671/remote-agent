@@ -21,7 +21,7 @@ func TestEventPagesBoundBytesAndPreserveCursor(t *testing.T) {
 	key := e2e.NewKey()
 	env, _ := e2e.Seal(key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "large-events"}, key[:])
 	raw, _ := marshalEnv(env)
-	if _, err := ts.srv.store.putSession(ctx, mid, "large-events", raw, nil, 0, 0); err != nil {
+	if _, err := ts.tenant().putSession(ctx, mid, "large-events", raw, nil, 0, 0, nil); err != nil {
 		t.Fatal(err)
 	}
 	const count = 24
@@ -36,7 +36,7 @@ func TestEventPagesBoundBytesAndPreserveCursor(t *testing.T) {
 		}
 		events = append(events, &pb.StoredEvent{Seq: seq, Envelope: envelope})
 	}
-	if _, _, err := ts.srv.store.appendEvents(ctx, mid, "large-events", events); err != nil {
+	if _, _, err := ts.tenant().appendEvents(ctx, mid, "large-events", events, nil); err != nil {
 		t.Fatal(err)
 	}
 	client := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, cp, cid)))

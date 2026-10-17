@@ -80,7 +80,10 @@ func (t *termHub) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	peer, err := t.join(hello.StreamId, me)
+	// Streams are named by their account as well: a client cannot take the
+	// place of another account's waiting side by guessing its stream ID.
+	key := dev.account + "/" + hello.StreamId
+	peer, err := t.join(key, me)
 	if err != nil {
 		conn.Close(websocket.StatusPolicyViolation, err.Error())
 		return
@@ -90,11 +93,11 @@ func (t *termHub) serve(w http.ResponseWriter, r *http.Request) {
 		select {
 		case peer = <-me.joined:
 		case <-time.After(termJoinWait):
-			t.leave(hello.StreamId, me)
+			t.leave(key, me)
 			conn.Close(websocket.StatusTryAgainLater, "the other side did not join")
 			return
 		case <-ctx.Done():
-			t.leave(hello.StreamId, me)
+			t.leave(key, me)
 			return
 		}
 	}
@@ -118,7 +121,8 @@ func (t *termHub) join(id string, me *termEnd) (*termEnd, error) {
 	if me.dev.kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
 		client, machine = other, me
 	}
-	if client.dev.kind != pb.DeviceKind_DEVICE_KIND_CLIENT || machine.dev.kind != pb.DeviceKind_DEVICE_KIND_MACHINE || client.machine != machine.dev.id {
+	if client.dev.kind != pb.DeviceKind_DEVICE_KIND_CLIENT || machine.dev.kind != pb.DeviceKind_DEVICE_KIND_MACHINE || client.machine != machine.dev.id ||
+		client.dev.account != machine.dev.account {
 		return nil, errors.New("stream belongs to someone else")
 	}
 	delete(t.waiting, id)
