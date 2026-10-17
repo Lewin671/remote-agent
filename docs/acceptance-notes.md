@@ -396,3 +396,14 @@ daemon 故意用过期 PATH 启动（`/tmp/ra-ls-stale/bin` 在前，里面放�
 回归测试覆盖起点环境（PATH 换成系统默认、身份和 locale 保留）、argv 与固定脚本、在真实登录 shell 里跑一遍脚本（找到和找不到两条路）、登录 shell 的取法（dscl 与 passwd 解析）、来源判定（带环境变量走直接启动、不带走登录 shell）、恢复和分叉沿用最初的启动方式、定时任务沿用来源会话的方式、学到 CLI 路径后版本检查与已装列表跟着走、卡住与找不到 CLI 的结束原因，以及 pty-host 的 `--clean-env` 只给出文件里的环境。六次反向验证（撤掉起点环境、来源判定两个方向、看门狗、退出原因、pty-host 的环境）都让对应回归断言失败。
 
 未覆盖：fish（本机没装，脚本按 fish 的 `$argv` 惯例写，未实测）和 csh/tcsh 登录 shell；Windows；真实 iOS、网页或 Android 的界面操作，以及真实 CLI 发消息后的完整链路；daemon 重启时恰好停在启动中的登录 shell 会话（恢复路径的看门狗逻辑有单元测试，没有做成端到端）。测试 session、server、daemon、tmux 与临时配置均已清理；只本地提交，不推送、不发版。
+
+## 2026-10-17：从终端开的会话按终端的 PATH 找 CLI
+
+macOS arm64，本 worktree 构建的二进制，独立的 `REMOTE_AGENT_HOME`（/tmp 下短路径）、tmux socket 和 HOME，只起 daemon，不连 server；未碰日常 daemon、账户或 `~/.local/shims`。三个假 codex（`--version` 输出 `codex-cli 0.163.0`，其余情况把 `FROM=<标识>`、`$0` 和环境写进文件后 `exec sleep 600`）：daemon PATH 里一个（daemon），只在「终端 PATH」里一个（terminal），测试 HOME 的 `.zshrc` 加进 PATH 的一个（shell）。新建请求走本地 socket 的 Connect JSON 调用和本 worktree 的 `remote-agent new`，属于调试触发，没有经过 server 和客户端界面。
+
+- 带 `env.PATH=<终端目录>:<daemon 目录>:/usr/bin:/bin` 的请求：会话跑的是 terminal 那个（`$0`、pty-host 的 argv 都是终端目录的路径），环境里有请求带的标记变量；daemon 日志记下「a session resolved its CLI」。从 PATH 只含终端目录的 shell 里跑 `remote-agent new`，结果相同
+- 不带 `env` 的请求（客户端）：仍经登录 shell，跑 shell 那个，`shell-bin` 记的是它
+- 请求的 PATH 里没有 codex：会话照常启动，用 daemon 当时记着的 CLI（这时已学成 shell 那个），日志有「the session's PATH has no such CLI; starting the daemon's」警告
+- 停掉终端会话，先开一个客户端会话让 daemon 学到 shell 那个，再 `remote-agent resume`：恢复后跑的仍是 terminal 那个，按 `env.json` 里的 PATH 重新找到
+
+单元测试覆盖 PATH 里第一个可执行的普通文件胜出（空项、相对路径、不可执行文件、同名目录都跳过）、显式配置的路径不被当成命令名查、找不到时回退、`doctor` 的会话（`agent.env` 设了 PATH 也）不变、恢复和分叉按保存的 PATH 找、定时任务从终端会话派生的新会话按来源的 PATH 找；逐项撤掉对应的判断后这些测试都会失败。未覆盖：分叉和定时任务的端到端（假 CLI 不产生 transcript，不能分叉）；Claude Code（同一段代码，只测了 codex）；Linux。测试进程、tmux 和临时目录均已清理。
