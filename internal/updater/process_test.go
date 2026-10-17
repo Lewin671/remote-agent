@@ -2,6 +2,7 @@ package updater
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -12,7 +13,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 )
 
 type processService struct {
@@ -29,10 +29,32 @@ func (s *processService) stop() {
 		s.cmd = nil
 	}
 }
-func (s *processService) Restart(context.Context) error {
+func (s *processService) Restart(ctx context.Context) error {
 	s.stop()
 	s.cmd = exec.Command(s.u.exe, "daemon", filepath.Join(s.u.state, "daemon.sock"))
-	return s.cmd.Start()
+	// Service readiness is a subprocess handshake, not a guess that a
+	// 2-second health budget covers OS process startup under -race.
+	out, err := s.cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	if err := s.cmd.Start(); err != nil {
+		return err
+	}
+	ready := make(chan error, 1)
+	go func() {
+		line, err := bufio.NewReader(out).ReadString('\n')
+		if err == nil && line != "ready\n" {
+			err = fmt.Errorf("unexpected startup message %q", line)
+		}
+		ready <- err
+	}()
+	select {
+	case err := <-ready:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func TestUpdateWithRealProcesses(t *testing.T) {
@@ -78,8 +100,10 @@ func TestUpdateWithRealProcesses(t *testing.T) {
 			// Keep the genuine downloaded-build probe and Unix health transport.
 			f.u.probe = u.probe
 			f.u.health = u.health
-			f.u.healthTimeout = 2 * time.Second
-			f.u.stableFor = 10 * time.Millisecond
+			// Stability/repeated PID checks have their own virtual-clock test.
+			// Here the helper is already listening when Restart returns.
+			f.u.healthTimeout = u.healthTimeout
+			f.u.stableFor = 0
 			service := &processService{u: f.u}
 			f.u.service = service
 			defer service.stop()
@@ -91,18 +115,11 @@ func TestUpdateWithRealProcesses(t *testing.T) {
 			if err := service.Restart(context.Background()); err != nil {
 				t.Fatal(err)
 			}
-			deadline := time.Now().Add(3 * time.Second)
-			for {
-				h, err := u.health(context.Background())
-				if err == nil {
-					f.u.current = h
-					break
-				}
-				if time.Now().After(deadline) {
-					t.Fatal(err)
-				}
-				time.Sleep(10 * time.Millisecond)
+			h, err := u.health(context.Background())
+			if err != nil {
+				t.Fatal(err)
 			}
+			f.u.current = h
 			var b bytes.Buffer
 			gz := gzip.NewWriter(&b)
 			tw := tar.NewWriter(gz)
@@ -124,8 +141,8 @@ func TestUpdateWithRealProcesses(t *testing.T) {
 				t.Fatal(err)
 			}
 			f.archive = b.Bytes()
-			h := sha256.Sum256(f.archive)
-			f.metadata = []byte(fmt.Sprintf("version=1.2.0\nprotocol=6\ndaemonUpdate=1\ndaemonState=1\ndaemonAutomatic=true\ndaemon.linux-amd64.sha256=%s\ndaemon.linux-amd64.size=%d\n", hex.EncodeToString(h[:]), len(f.archive)))
+			hash := sha256.Sum256(f.archive)
+			f.metadata = []byte(fmt.Sprintf("version=1.2.0\nprotocol=6\ndaemonUpdate=1\ndaemonState=1\ndaemonAutomatic=true\ndaemon.linux-amd64.sha256=%s\ndaemon.linux-amd64.size=%d\n", hex.EncodeToString(hash[:]), len(f.archive)))
 			previousPID := service.cmd.Process.Pid
 			r, err := f.u.Apply(context.Background(), "", false)
 			want := "updated"

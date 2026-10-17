@@ -3,6 +3,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -29,6 +30,7 @@ func main() {
 	if err != nil {
 		os.Exit(4)
 	}
+	fmt.Println("ready")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update/health", func(w http.ResponseWriter, r *http.Request) { _ = json.NewEncoder(w).Encode(h) })
 	_ = http.Serve(ln, mux)

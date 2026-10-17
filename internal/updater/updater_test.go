@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -323,18 +324,34 @@ func TestInterruptedTransactionsRecoverBeforeNetwork(t *testing.T) {
 }
 
 func TestHealthyRequiresStableManagedPID(t *testing.T) {
-	f := setup(t)
-	f.u.stableFor = 10 * time.Millisecond
-	f.u.healthTimeout = 30 * time.Millisecond
-	f.u.health = func(context.Context) (Health, error) { f.live.PID++; return f.live, nil }
-	if err := f.u.waitHealthy(context.Background(), f.live, false); err == nil {
-		t.Fatal("accepted unstable process")
-	}
-	f.u.stableFor = 0
-	f.managerPID = 999
-	if err := f.u.waitHealthy(context.Background(), f.live, false); err == nil {
-		t.Fatal("accepted unmanaged process")
-	}
+	synctest.Test(t, func(t *testing.T) {
+		// More than one 250 ms health poll must run: the former 30 ms
+		// deadline rejected even a stable PID before its second observation.
+		f := &fixture{u: &Updater{exe: "/test/daemon", stableFor: 500 * time.Millisecond, healthTimeout: 2 * time.Second}}
+		f.live = Health{Version: "1.1.0", PID: 100, Executable: f.u.exe}
+		f.u.service = fakeService{f}
+		calls := 0
+		f.u.health = func(context.Context) (Health, error) { calls++; f.live.PID++; return f.live, nil }
+		if err := f.u.waitHealthy(context.Background(), f.live, false); err == nil {
+			t.Fatal("accepted unstable process")
+		}
+		if calls < 2 {
+			t.Fatal("stability was not checked across polls")
+		}
+		f.u.health = func(context.Context) (Health, error) { return f.live, nil }
+		start := time.Now()
+		if err := f.u.waitHealthy(context.Background(), f.live, false); err != nil {
+			t.Fatal(err)
+		}
+		if time.Since(start) != f.u.stableFor {
+			t.Fatal("did not wait for stability")
+		}
+		f.u.stableFor = 0
+		f.managerPID = 999
+		if err := f.u.waitHealthy(context.Background(), f.live, false); err == nil {
+			t.Fatal("accepted unmanaged process")
+		}
+	})
 }
 
 func TestExclusiveUpdaterLock(t *testing.T) {
