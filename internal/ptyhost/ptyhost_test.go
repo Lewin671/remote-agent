@@ -609,7 +609,7 @@ func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 	}
 	// The timed-out remote write now gives way to a blocked local writer.
 	// State and new holds must still respond without overtaking those keys.
-	if _, err := observer.Hold(time.Second); err == nil || !strings.Contains(err.Error(), "still being written") {
+	if _, err := observer.Hold(time.Second); err == nil || !strings.Contains(err.Error(), "deadline") {
 		t.Fatalf("hold overtook blocked local input: %v", err)
 	}
 	if st, err := observer.Status(); err != nil || st.Held {
@@ -701,5 +701,158 @@ func TestExitedLeaderStillCleansProcessGroup(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+// A write lasting longer than daemon holdFor/2 must not reject its owner's
+// renewal or let buffered keys through at the original lease's expiry.
+func TestHolderRenewsDuringOwnBlockedWrite(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	defer w.Close()
+	h := &Host{ptmx: w, cmd: &exec.Cmd{}}
+	const holdFor = 3 * time.Second // daemon renews this lease every 1.5 s
+	if err := h.hold(1, holdFor); err != nil {
+		t.Fatal(err)
+	}
+	defer h.release(1)
+	started := time.Now()
+	result := make(chan error, 1)
+	go func() { result <- h.write(1, bytes.Repeat([]byte("x"), 1<<20)) }()
+	// Receiving a prefix proves the write is in flight before renewal.
+	if _, err := io.ReadFull(r, make([]byte, 1)); err != nil {
+		t.Fatal(err)
+	}
+	h.local([]byte("LOCAL"))
+	time.Sleep(holdFor/2 + 100*time.Millisecond)
+	select {
+	case err := <-result:
+		t.Fatalf("write finished before renewal: %v", err)
+	default:
+	}
+	if err := h.hold(1, holdFor); err != nil {
+		t.Fatalf("owner could not renew during its own write: %v", err)
+	}
+	if err := <-result; err == nil {
+		t.Fatal("expected the non-reading pipe to time out")
+	}
+	if remaining := time.Until(started.Add(holdFor + 100*time.Millisecond)); remaining > 0 {
+		time.Sleep(remaining)
+	}
+	if !h.status().Held {
+		t.Fatal("renewed lease expired at the original deadline")
+	}
+	h.mu.Lock()
+	pending := string(h.pending)
+	h.mu.Unlock()
+	if pending != "LOCAL" {
+		t.Fatalf("local input escaped renewed hold: %q", pending)
+	}
+}
+
+// Brief local backpressure should delay new remote operations, not fail
+// them. Both operations must remain responsive to status while waiting.
+func TestRemoteOperationsWaitForLocalFlush(t *testing.T) {
+	for _, op := range []string{"hold", "write"} {
+		t.Run(op, func(t *testing.T) {
+			r, w, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			defer w.Close()
+			h := &Host{ptmx: w, cmd: &exec.Cmd{}}
+			defer h.release(1)
+			local := bytes.Repeat([]byte("x"), 1<<20)
+			h.local(local)
+			first := make([]byte, 1)
+			if _, err := io.ReadFull(r, first); err != nil {
+				t.Fatal(err)
+			}
+			result := make(chan error, 1)
+			go func() {
+				if op == "hold" {
+					result <- h.hold(1, time.Second)
+				} else {
+					result <- h.write(1, []byte("REMOTE"))
+				}
+			}()
+			select {
+			case err := <-result:
+				t.Fatalf("%s returned before local flush finished: %v", op, err)
+			case <-time.After(50 * time.Millisecond):
+			}
+			if !h.status().OK {
+				t.Fatal("status failed during writer wait")
+			}
+			rest := make([]byte, len(local)-1)
+			if _, err := io.ReadFull(r, rest); err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(append(first, rest...), local) {
+				t.Fatal("local bytes changed")
+			}
+			select {
+			case err := <-result:
+				if err != nil {
+					t.Fatal(err)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("operation did not resume after local flush")
+			}
+			if op == "hold" {
+				if !h.status().Held {
+					t.Fatal("hold not acquired after local flush")
+				}
+			} else {
+				remote := make([]byte, len("REMOTE"))
+				if _, err := io.ReadFull(r, remote); err != nil || string(remote) != "REMOTE" {
+					t.Fatalf("remote input after local flush = %q, %v", remote, err)
+				}
+			}
+		})
+	}
+}
+
+// Contention must not grant a fresh I/O budget after the prior local
+// writer drains; the remote caller has one deadline for the whole call.
+func TestRemoteWriteSharesDeadlineWithWriterWait(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	defer w.Close()
+	h := &Host{ptmx: w, cmd: &exec.Cmd{}}
+	local := bytes.Repeat([]byte("l"), 1<<20)
+	h.local(local)
+	if _, err := io.ReadFull(r, make([]byte, 1)); err != nil {
+		t.Fatal(err)
+	}
+	result := make(chan error, 1)
+	started := time.Now()
+	go func() { result <- h.write(1, bytes.Repeat([]byte("r"), 1<<20)) }()
+	time.Sleep(remoteWriteTimeout/2 + 100*time.Millisecond)
+	select {
+	case err := <-result:
+		t.Fatalf("remote write returned before local drain: %v", err)
+	default:
+	}
+	if _, err := io.ReadFull(r, make([]byte, len(local)-1)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-result:
+		if err == nil || !strings.Contains(err.Error(), "deadline") {
+			t.Fatalf("remote write = %v, want deadline failure", err)
+		}
+		if elapsed := time.Since(started); elapsed > remoteWriteTimeout+700*time.Millisecond {
+			t.Fatalf("writer wait and I/O exceeded shared deadline: %s", elapsed)
+		}
+	case <-time.After(remoteWriteTimeout):
+		t.Fatal("writer wait reset the I/O deadline")
 	}
 }

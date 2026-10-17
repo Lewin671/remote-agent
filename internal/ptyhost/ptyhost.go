@@ -69,8 +69,8 @@ type Host struct {
 	ptmx *os.File
 	cmd  *exec.Cmd
 
-	mu             sync.Mutex // guards the fields below, never held during PTY I/O
-	writing        bool       // one writer for both local and remote bytes
+	mu             sync.Mutex    // guards the fields below, never held during PTY I/O
+	writing        chan struct{} // nil when idle; closed when the active writer finishes
 	held           bool
 	holder         int // connection that holds input, 0 when not held
 	nextConn       int
@@ -345,17 +345,18 @@ func (h *Host) local(b []byte) {
 // flushLocalLocked starts at most one writer. Local bytes have no expiry:
 // a CLI that resumes reading must still receive every buffered keystroke.
 func (h *Host) flushLocalLocked() {
-	if h.held || h.writing || len(h.pending) == 0 {
+	if h.held || h.writing != nil || len(h.pending) == 0 {
 		return
 	}
 	b := h.pending
 	h.pending = nil
-	h.writing = true
+	h.writing = make(chan struct{})
 	go func() {
 		_, _ = h.ptmx.Write(b)
 		h.mu.Lock()
 		defer h.mu.Unlock()
-		h.writing = false
+		close(h.writing)
+		h.writing = nil
 		h.flushLocalLocked()
 	}()
 }
@@ -363,8 +364,43 @@ func (h *Host) flushLocalLocked() {
 // errHeld is returned when another connection already holds input.
 var errHeld = errors.New("input is held by another controller")
 
-// A hold must not check the screen while earlier input is still in flight.
-var errWriting = errors.New("input is still being written")
+// Waiting for prior input shares the same bound as the remote write itself.
+var errWriting = errors.New("input write deadline exceeded waiting for previous input")
+
+// waitForWriterLocked returns with mu held. Renewing the current owner's
+// lease never waits for I/O; a new hold or write must follow all prior bytes.
+// Each wake-up rechecks ownership and the active writer, since another local
+// batch or controller may have acquired the input in the meantime.
+func (h *Host) waitForWriterLocked(conn int, renewHold bool, deadline time.Time) error {
+	timer := time.NewTimer(time.Until(deadline))
+	defer timer.Stop()
+	for {
+		if h.held && h.holder != conn {
+			return errHeld
+		}
+		if renewHold && h.held && h.holder == conn {
+			return nil
+		}
+		if !time.Now().Before(deadline) {
+			return errWriting
+		}
+		if h.writing == nil {
+			return nil
+		}
+		done := h.writing
+		h.mu.Unlock()
+		timedOut := false
+		select {
+		case <-done:
+		case <-timer.C:
+			timedOut = true
+		}
+		h.mu.Lock()
+		if timedOut {
+			return errWriting
+		}
+	}
+}
 
 // hold holds local input on behalf of connection conn. Only one connection
 // may hold at a time, so that one controller's release cannot cut short
@@ -375,11 +411,8 @@ func (h *Host) hold(conn int, d time.Duration) error {
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.held && h.holder != conn {
-		return errHeld
-	}
-	if h.writing {
-		return errWriting
+	if err := h.waitForWriterLocked(conn, true, time.Now().Add(remoteWriteTimeout)); err != nil {
+		return err
 	}
 	h.held, h.holder = true, conn
 	if h.holdTimer != nil {
@@ -425,27 +458,27 @@ func (h *Host) releaseLocked(conn int) {
 // write sends b to the CLI. While input is held, only the holder may
 // write.
 func (h *Host) write(conn int, b []byte) error {
+	// Queueing and I/O consume one shared budget, so contention cannot push
+	// the reply past the control connection's five-second deadline.
+	deadline := time.Now().Add(remoteWriteTimeout)
 	h.mu.Lock()
-	if h.held && h.holder != conn {
+	if err := h.waitForWriterLocked(conn, false, deadline); err != nil {
 		h.mu.Unlock()
-		return errHeld
+		return err
 	}
-	if h.writing {
-		h.mu.Unlock()
-		return errWriting
-	}
-	h.writing = true
+	h.writing = make(chan struct{})
 	h.mu.Unlock()
 
 	// A timeout may follow a partial write. Never retry its remainder: that
 	// could enter a later draft after the controller has reported failure.
-	err := h.ptmx.SetWriteDeadline(time.Now().Add(remoteWriteTimeout))
+	err := h.ptmx.SetWriteDeadline(deadline)
 	if err == nil {
 		_, err = h.ptmx.Write(b)
 	}
 	_ = h.ptmx.SetWriteDeadline(time.Time{})
 	h.mu.Lock()
-	h.writing = false
+	close(h.writing)
+	h.writing = nil
 	h.flushLocalLocked()
 	h.mu.Unlock()
 	if errors.Is(err, os.ErrDeadlineExceeded) {
