@@ -354,7 +354,6 @@ func (s *session) emitLocked(settings bool, evs ...*pb.Event) error {
 		if settings && (e.GetSettingsChanged() != nil || e.GetTurnContext() != nil) {
 			s.parser.Replay(e)
 		}
-		s.observe(e)
 	}
 	return nil
 }
@@ -522,6 +521,16 @@ func (s *session) readBatch() (more, ok bool) {
 		evs = s.confirmLate(evs)
 		s.mu.Lock()
 		appendErr := s.appendLocked(evs, r.Path, l.End)
+		if appendErr == nil {
+			// Annotation is consumed only after commit, under the same lock
+			// as the projection. A failed append will match this line again.
+			consume()
+			for _, e := range evs {
+				if st := e.GetInputState(); st != nil {
+					delete(s.unproven, st.RequestId)
+				}
+			}
+		}
 		s.mu.Unlock()
 		if appendErr != nil {
 			// Read this line and the rest of the batch again next time,
@@ -541,17 +550,7 @@ func (s *session) readBatch() (more, ok bool) {
 			s.mu.Unlock()
 			return false, false
 		}
-		s.mu.Lock()
-		// Only now that the events are logged are the records they were
-		// matched to used up; a failed write reads them again.
-		consume()
-		for _, e := range evs {
-			if st := e.GetInputState(); st != nil {
-				delete(s.unproven, st.RequestId) // confirmed late, and logged
-			}
-			s.observe(e)
-		}
-		s.mu.Unlock()
+
 		if len(evs) > 0 {
 			// The log takes writes: an outcome an earlier failure left
 			// owing is logged now.
@@ -730,7 +729,6 @@ func (s *session) abortTurnLocked(reason string) bool {
 		return false
 	}
 	s.parser.Replay(e)
-	s.observe(e)
 	s.interruptedBy = nil
 	clear(s.answeredBy)
 	return true

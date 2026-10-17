@@ -7,20 +7,33 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var errEventCommit = errors.New("record session events")
 
-// appendLocked is the event commit boundary. Hold mu; projections and
-// parser replay may only change after it succeeds. A failed write must be
-// visible even when the same storage cannot save a SessionState event.
+// appendLocked commits and projects events exactly once. Hold mu; parser
+// Replay remains explicit at callers holding readMu (parsed events must not
+// be replayed twice). Failure is visible even when the same storage cannot
+// save a SessionState event.
 func (s *session) appendLocked(evs []*pb.Event, path string, offset int64) error {
+	if path == "" {
+		now := timestamppb.Now()
+		for _, e := range evs {
+			if e.Time == nil {
+				e.Time = now
+			}
+		}
+	}
 	err := s.log.Append(s.meta.ID, evs, path, offset)
 	if err != nil || len(evs) > 0 {
 		s.noteStorageLocked(err)
 	}
 	if err != nil {
 		return fmt.Errorf("%w: %w", errEventCommit, err)
+	}
+	for _, e := range evs {
+		s.observe(e)
 	}
 	return nil
 }
