@@ -12,7 +12,6 @@ import (
 	"math/rand/v2"
 	"sync"
 	"testing"
-	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
@@ -224,16 +223,22 @@ func TestProcessIsBounded(t *testing.T) {
 	var mu sync.Mutex
 	active, most := 0, 0
 	release := make(chan struct{})
+	entered := make(chan struct{}, 3)
 	var wg sync.WaitGroup
 	for range 3 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			first := true
 			Process(b, DefaultLimits, func(Encoded) bool {
 				mu.Lock()
 				active++
 				most = max(most, active)
 				mu.Unlock()
+				if first {
+					first = false
+					entered <- struct{}{}
+				}
 				<-release
 				mu.Lock()
 				active--
@@ -242,10 +247,11 @@ func TestProcessIsBounded(t *testing.T) {
 			})
 		}()
 	}
-	time.Sleep(300 * time.Millisecond)
+	<-entered
+	<-entered
 	close(release)
 	wg.Wait()
-	if most > 2 {
+	if most != 2 {
 		t.Fatalf("%d images encoded at once", most)
 	}
 }
