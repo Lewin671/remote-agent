@@ -77,7 +77,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - SwiftTerm 固定在 1.11.2，升级要另装 Metal Toolchain 或跳过插件校验（[ios-client · 终端](ios-client.md#终端)）
 - 终端仿真器的应答 iOS 不发回电脑，网页和 Android 会发；三端要不要统一未定
 - 设置和设备页里客户端一行的说法 iOS 统一成了「当前客户端 / 上次使用」，Android 的设置页还是「当前 / 已配对」；Android 要不要跟着改
-- Codex 0.162.0 上切换审批模式超时（`timed out waiting for Codex to confirm the permissions`）：iOS 发的指令和其他端相同，手动在终端里切是成功的，问题在 daemon 等确认的那一步，没有再查
+- Codex 0.162.0 上切换审批模式超时（`timed out waiting for Codex to confirm the permissions`）：iOS 发的指令和其他端相同，手动在终端里切是成功的，问题在 daemon 等确认的那一步。2026-10-16 在 Codex 0.163.0 上找到一个原因并修复：选的正是当前模式时 Codex 不再输出确认句，daemon 现在按菜单里的 `(current)` 标记确认（[codex-notes](codex-notes.md)）；iOS 当时是否就是这种情况没有复现，下次在 iOS 上切换审批模式时确认后删掉这条
 - 真机上要看的：手势（下拉收键盘、长按菜单、捏合和下滑关闭大图、边缘返回）、中文输入法在终端里、硬件键盘、旋转、VoiceOver、iPad
 
 **Codex 待实测**
