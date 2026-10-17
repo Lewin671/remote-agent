@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // catalogSample is a copy of the catalog Claude Code 2.1.300 fetched for
@@ -153,5 +154,61 @@ func TestLoadCatalogMissing(t *testing.T) {
 	}
 	if _, err := LoadCatalog(home); err == nil {
 		t.Fatal("an empty catalog was accepted")
+	}
+}
+
+// A row needing a newer Claude Code than the installed one is not in
+// /model, so it is neither offered nor counted when finding a row.
+func TestCatalogForVersion(t *testing.T) {
+	cat := testCatalog(t)
+	var need *Model
+	for _, m := range cat.Models {
+		if m.MinVersion != "" {
+			need = m
+			break
+		}
+	}
+	if need == nil {
+		t.Fatal("the sample has no row with a minimum version")
+	}
+	if got := cat.ForVersion(need.MinVersion).ByID(need.ID); got == nil {
+		t.Fatalf("%s missing at its own minimum %s", need.ID, need.MinVersion)
+	}
+	older := cat.ForVersion("2.0.0")
+	if older.ByID(need.ID) != nil || older.ByName(need.Name) != nil {
+		t.Fatalf("%s (needs %s) listed for 2.0.0", need.ID, need.MinVersion)
+	}
+	if len(older.Models) >= len(cat.Models) {
+		t.Fatalf("2.0.0 keeps %d of %d rows", len(older.Models), len(cat.Models))
+	}
+	if got := cat.ForVersion(""); len(got.Models) != len(cat.Models) {
+		t.Fatalf("unknown version keeps %d of %d rows", len(got.Models), len(cat.Models))
+	}
+	for _, c := range []struct {
+		a, b string
+		less bool
+	}{{"2.1.284", "2.1.300", true}, {"2.1.300", "2.1.280", false}, {"2.1.300", "2.1.300", false}, {"2.1", "2.1.1", true}} {
+		if got := versionLess(c.a, c.b); got != c.less {
+			t.Errorf("versionLess(%s, %s) = %v", c.a, c.b, got)
+		}
+	}
+}
+
+// A session made before Claude Code had fetched a catalog reads it again
+// once a /model name or a model ID turns up that it does not know.
+func TestParserReadsCatalogLater(t *testing.T) {
+	p := NewParser()
+	var cat *Catalog
+	p.loadCatalog = func() *Catalog { return cat }
+	if w := p.contextWindow("claude-sonnet-5-5"); w != 0 {
+		t.Fatalf("window without a catalog: %d", w)
+	}
+	cat = testCatalog(t)
+	p.reloadedAt = time.Time{} // a minute has passed
+	if m := p.modelNamed("Sonnet 5.5"); m == nil || m.ID != "claude-sonnet-5-5" {
+		t.Fatalf("Sonnet 5.5 after the catalog appeared: %v", m)
+	}
+	if w := p.contextWindow("claude-sonnet-5-5"); w == 0 {
+		t.Fatal("no window after the catalog appeared")
 	}
 }

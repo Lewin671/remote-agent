@@ -322,7 +322,7 @@ private let modelWordBreak = Rx("[-_.\(Jre.s)]")
 /// as one of its words.
 public func findModel<M>(_ models: [M], id: String, slug: (M) -> String) -> M? {
     if id.isEmpty { return nil }
-    // Claude Code is started as opus[1m] to name its 1M window; the model is opus.
+    // A "[1m]" suffix names the 1M window on the command line; it is not part of the ID.
     let id = id.removingSuffix("[1m]")
     if let exact = models.first(where: { slug($0) == id }) { return exact }
     let words = modelWordBreak.split(id.lowercased())

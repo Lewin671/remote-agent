@@ -28,7 +28,7 @@ import (
 
 // TestedVersions are the Claude Code versions the screen analysis, menus
 // and transcript parsing were checked against (docs/claude-code-notes.md).
-var TestedVersions = []string{"2.1.284", "2.1.300"}
+var TestedVersions = []string{"2.1.300"}
 
 // hookCommand runs remote-agent's hook; the session environment names the
 // executable in RA_EXE, as for Codex.
@@ -110,7 +110,7 @@ const (
 // models are named by IDs Claude Code itself chooses, so none can be
 // offered or switched to.
 func (a *Adapter) Models() (*pb.ListModelsResponse, error) {
-	cat, err := LoadCatalog(a.home)
+	cat, err := a.catalog()
 	if err != nil {
 		return nil, err
 	}
@@ -527,13 +527,24 @@ func newUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
-// NewParser returns a transcript parser. It reads the model catalog once:
-// the transcript names models by ID, and the parser needs their rows and
-// context windows (claude-code-notes §2, §9).
+// NewParser returns a transcript parser. The transcript names models by ID,
+// and the parser needs their rows and context windows (claude-code-notes §2,
+// §9); it reads the catalog again when a model is not in it, since Claude
+// Code may fetch one only after the session started.
 func (a *Adapter) NewParser() agent.Parser {
 	p := NewParser()
-	p.catalog, _ = LoadCatalog(a.home)
+	p.loadCatalog = func() *Catalog { c, _ := a.catalog(); return c }
+	p.catalog = p.loadCatalog()
 	return p
+}
+
+// catalog is Claude Code's model catalog as the installed CLI lists it.
+func (a *Adapter) catalog() (*Catalog, error) {
+	c, err := LoadCatalog(a.home)
+	if err != nil {
+		return nil, err
+	}
+	return c.ForVersion(a.Version()), nil
 }
 
 // SubmitLog is the transcript itself: submitted messages show up there
@@ -654,7 +665,7 @@ func (a *Adapter) Interrupt() []byte { return []byte(agent.KeyEsc) }
 // at its own default level, and the newest to switch to and back from. The
 // check sends its message on the older one, which is the cheaper.
 func (a *Adapter) DoctorModels() (string, string, string, string) {
-	cat, err := LoadCatalog(a.home)
+	cat, err := a.catalog()
 	if err != nil {
 		return "", "", "", ""
 	}

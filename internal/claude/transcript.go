@@ -41,6 +41,41 @@ type Parser struct {
 	// records, and the rows give a model's name, effort levels and context
 	// window (claude-code-notes §2, §9). Nil when there is none.
 	catalog *Catalog
+	// loadCatalog reads the catalog again, at most once a minute, when a
+	// model is not in it: Claude Code may fetch one, or a newer one with
+	// new models, after the session started. Nil in tests without one.
+	loadCatalog func() *Catalog
+	reloadedAt  time.Time
+}
+
+// reload reads the catalog again unless it was read within the last minute.
+func (p *Parser) reload() bool {
+	if p.loadCatalog == nil || time.Since(p.reloadedAt) < time.Minute {
+		return false
+	}
+	p.reloadedAt = time.Now()
+	if c := p.loadCatalog(); c != nil {
+		p.catalog = c
+	}
+	return true
+}
+
+// modelNamed is the catalog row of a /model name, reading the catalog
+// again when it does not know the name.
+func (p *Parser) modelNamed(name string) *Model {
+	if m := p.catalog.ByName(name); m != nil || !p.reload() {
+		return m
+	}
+	return p.catalog.ByName(name)
+}
+
+// contextWindow is a model's context window, reading the catalog again
+// when it does not know the model.
+func (p *Parser) contextWindow(id string) int64 {
+	if w := p.catalog.ContextWindow(id); w != 0 || !p.reload() {
+		return w
+	}
+	return p.catalog.ContextWindow(id)
 }
 
 // Images returns the images found by the last Parse.
@@ -386,7 +421,7 @@ func (p *Parser) modelSet(text string) *pb.Event {
 		next = proto.CloneOf(p.ctx)
 	}
 	next.Model = m[1]
-	if info := p.catalog.ByName(m[1]); info != nil {
+	if info := p.modelNamed(m[1]); info != nil {
 		next.Model = info.ID
 		if len(info.Efforts) == 0 {
 			next.Effort = ""
@@ -511,7 +546,7 @@ func (p *Parser) assistant(r *record) ([]*pb.Event, error) {
 		u.OutputTokens += m.Usage.Output
 		u.TotalTokens = u.InputTokens + u.OutputTokens
 		u.LastTotalTokens = in + m.Usage.Output
-		u.ContextWindow = p.catalog.ContextWindow(m.Model)
+		u.ContextWindow = p.contextWindow(m.Model)
 		u.MessageId = m.ID
 		p.usage = u
 		evs = append(evs, &pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: proto.CloneOf(u)}})

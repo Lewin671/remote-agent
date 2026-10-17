@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -47,6 +48,9 @@ type Model struct {
 	// AutoUnavailable: the auto approval mode is not offered with this
 	// model (its rows say so up to Claude 4.5).
 	AutoUnavailable bool
+	// MinVersion is the oldest Claude Code release that lists the model;
+	// empty when the row does not say.
+	MinVersion string
 }
 
 // Catalog is the model list Claude Code has cached, in the order /model
@@ -98,10 +102,12 @@ func (c *Catalog) ContextWindow(id string) int64 {
 	return 0
 }
 
-// LoadCatalog reads the newest catalog Claude Code has cached for this CLI's
-// surface under home. A catalog for another account (another file) or for
-// another surface is ignored; a file that cannot be read is passed over, and
-// an error is returned only when no usable catalog is there at all.
+// LoadCatalog reads the most recently fetched catalog Claude Code has
+// cached for this CLI's surface under home. Each account has its own file;
+// the newest is taken, which is the logged-in account's unless another one
+// fetched later. A catalog for another surface is ignored, a file that
+// cannot be read is passed over, and an error is returned only when no
+// usable catalog is there at all.
 func LoadCatalog(home string) (*Catalog, error) {
 	dir := filepath.Join(home, catalogDir)
 	entries, err := os.ReadDir(dir)
@@ -167,6 +173,7 @@ type catalogRow struct {
 		MaxInputTokens int64    `json:"max_input_tokens"`
 	} `json:"runtime"`
 	AutoPermissionMode string `json:"auto_permission_mode"`
+	MinVersion         string `json:"min_claude_code_version"`
 }
 
 // parseCatalog reads one cached file: nil for anything that is not this
@@ -196,6 +203,7 @@ func parseCatalog(b []byte) *Catalog {
 			m.DefaultEffort = ""
 		}
 		m.AutoUnavailable = r.AutoPermissionMode == "unavailable"
+		m.MinVersion = r.MinVersion
 		c.Models = append(c.Models, m)
 		c.byID[m.ID] = m
 		if m.Name != "" {
@@ -203,4 +211,44 @@ func parseCatalog(b []byte) *Catalog {
 		}
 	}
 	return c
+}
+
+// ForVersion is the catalog as Claude Code version v lists it in /model: a
+// row needing a newer release is left out, so the rows and their positions
+// match the menu. An unknown version keeps every row.
+func (c *Catalog) ForVersion(v string) *Catalog {
+	if c == nil || v == "" {
+		return c
+	}
+	out := &Catalog{fetchedAt: c.fetchedAt, byID: map[string]*Model{}, byName: map[string]*Model{}}
+	for _, m := range c.Models {
+		if m.MinVersion != "" && versionLess(v, m.MinVersion) {
+			continue
+		}
+		out.Models = append(out.Models, m)
+		out.byID[m.ID] = m
+		if m.Name != "" {
+			out.byName[m.Name] = m
+		}
+	}
+	return out
+}
+
+// versionLess reports whether dotted version a is older than b. Parts that
+// are not numbers compare as 0.
+func versionLess(a, b string) bool {
+	pa, pb := strings.Split(a, "."), strings.Split(b, ".")
+	for i := 0; i < len(pa) || i < len(pb); i++ {
+		var x, y int
+		if i < len(pa) {
+			x, _ = strconv.Atoi(pa[i])
+		}
+		if i < len(pb) {
+			y, _ = strconv.Atoi(pb[i])
+		}
+		if x != y {
+			return x < y
+		}
+	}
+	return false
 }

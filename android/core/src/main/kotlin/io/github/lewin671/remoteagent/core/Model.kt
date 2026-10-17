@@ -460,7 +460,7 @@ fun autoUnavailable(models: List<io.github.lewin671.remoteagent.proto.ModelInfo>
  */
 fun <M> findModel(models: List<M>, id: String, slug: (M) -> String): M? {
     if (id.isEmpty()) return null
-    // Claude Code is started as opus[1m] to name its 1M window; the model is opus.
+    // A "[1m]" suffix names the 1M window on the command line; it is not part of the ID.
     val id = id.removeSuffix("[1m]")
     models.firstOrNull { slug(it) == id }?.let { return it }
     val words = id.lowercase().split(Regex("[-_.\\s]"))

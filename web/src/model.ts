@@ -508,7 +508,7 @@ export function contextPercent(s: SessionLike): number | undefined {
  * ID that has it as one of its words. */
 export function findModel<M extends { slug: string }>(models: M[] | undefined, id: string): M | undefined {
   if (!models || !id) return undefined;
-  // Claude Code is started as opus[1m] to name its 1M window; the model is opus.
+  // A "[1m]" suffix names the 1M window on the command line; it is not part of the ID.
   id = id.replace(/\[1m\]$/, "");
   return models.find((m) => m.slug === id) ?? models.find((m) => modelIs(id, m.slug));
 }

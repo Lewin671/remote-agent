@@ -187,7 +187,7 @@ func modelRow(cat *Catalog, rows []row, m *Model) (row, error) {
 // with ←/→ and presses s, which applies to this session only; the number
 // keys and Enter would change the default.
 func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
-	cat, err := LoadCatalog(a.home)
+	cat, err := a.catalog()
 	if err != nil {
 		return err
 	}
@@ -417,7 +417,7 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, fact
 	if !ok {
 		return fmt.Errorf("unknown approval mode %v", mode)
 	}
-	cat, _ := LoadCatalog(a.home)
+	cat, _ := a.catalog()
 	scr, err := readyComposer(t)
 	if err != nil {
 		return err
