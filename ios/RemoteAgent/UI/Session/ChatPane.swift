@@ -628,7 +628,7 @@ private struct OutgoingBubble: View {
     }
 
     var body: some View {
-        let note = outgoingNote(state: message.state, error: message.error, input: input, failure: failure, agent: session.agent)
+        let note = outgoingNote(state: message.state, error: message.error, input: input, failure: failure, agent: session.agent, hasImages: !message.images.isEmpty, missingImages: message.missingImages)
         let ink: Color = switch note.tone {
         case .plain: Theme.muted
         case .warn: Theme.orangeInk

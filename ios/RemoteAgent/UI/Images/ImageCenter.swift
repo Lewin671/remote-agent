@@ -86,6 +86,7 @@ final class ImageCenter {
 
     /// Called when an account comes into use. `live` false is sample data: nothing is uploaded.
     static func install(remote: Remote, files: any RACore.SealedFiles, live: Bool = true) {
+        centers[ObjectIdentifier(remote)]?.close()
         centers[ObjectIdentifier(remote)] = ImageCenter(remote: remote, files: files, live: live)
     }
 
@@ -119,6 +120,7 @@ final class ImageCenter {
     /// Messages with images sent from here, by session, until the CLI has them.
     @ObservationIgnored private var kept: [String: [Outgoing]] = [:]
     @ObservationIgnored private var restored = Set<String>()
+    @ObservationIgnored private var restorations: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var watchers: [String: Task<Void, Never>] = [:]
     /// The account was left: what was on its way when that happened must not go on for it.
     @ObservationIgnored private var closed = false
@@ -171,8 +173,10 @@ final class ImageCenter {
 
     private func close() {
         closed = true
-        for draft in drafts.values { for img in draft.images { img.job?.cancel() } }
+        for draft in drafts.values { for img in draft.images { img.release() } }
         for task in watchers.values { task.cancel() }
+        for task in restorations.values { task.cancel() }
+        restorations.removeAll()
         watchers.removeAll()
         drafts.removeAll()
         sources.removeAll()
@@ -217,10 +221,23 @@ final class ImageCenter {
     func draft(_ key: String) -> ImageDraft {
         if let d = drafts[key] { return d }
         let d = ImageDraft(key: key, files: files)
-        try? d.restore()
         drafts[key] = d
-        for img in d.images { makeThumb(img) }
+        d.restoring = true
+        restorations[key] = Task { [weak self] in
+            try? await d.restoreAsync()
+            d.restoring = false
+            guard let self, !closed, !Task.isCancelled else { return }
+            for img in d.images { makeThumb(img) }
+        }
         return d
+    }
+
+    func restoredDraft(_ key: String) async {
+        await restorations[key]?.value
+    }
+
+    func restoredOutgoing(_ sid: String) async {
+        await restorations["out:" + sid]?.value
     }
 
     func thumb(_ img: PendingImage) -> UIImage? { thumbs[img.id] }
@@ -262,6 +279,14 @@ final class ImageCenter {
     /// Adds what was picked, as many as fit, and starts preparing them.
     func add(_ key: String, _ picked: [Source], max: Int) {
         let draft = draft(key)
+        if draft.restoring {
+            Task { [weak self] in
+                await self?.restoredDraft(key)
+                guard let self, !closed else { return }
+                add(key, picked, max: max)
+            }
+            return
+        }
         let taken = draft.admit(picked, max: max)
         let uris = taken.map { _ in "picked:\(newRequestId())" }
         for (uri, source) in zip(uris, taken) { sources[uri] = source }
@@ -364,6 +389,11 @@ final class ImageCenter {
         let draft = draft(Self.sessionKey(sid))
         let picked = draft.images
         if picked.isEmpty { return false }
+        uploads.sendAll(draft, machineId: machineId)
+        guard draft.ready(machineId: machineId) else {
+            Task { done(.failure(UserError("图片需要重新传到电脑，请上传完成后再发送"))) }
+            return true
+        }
         let original = draft.original
         let o = Outgoing(
             requestId: newRequestId(), text: text, imageIds: draft.ids(machineId: machineId), images: picked, original: original, mode: mode)
@@ -384,6 +414,13 @@ final class ImageCenter {
                 done(.failure(UserError("已退出账户")))
                 return
             }
+            // Saving originals can outlast an upload. Nothing has been sent yet.
+            guard picked.count == o.imageIds.count, zip(picked, o.imageIds).allSatisfy({ $0.readyFor(machineId) && $0.imageId == $1 }) else {
+                try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }.value
+                uploads.sendAll(draft, machineId: machineId)
+                done(.failure(UserError("图片需要重新传到电脑，请上传完成后再发送")))
+                return
+            }
             // The message has them now; images picked meanwhile stay in the box.
             draft.detach(picked)
             store.add(sid, o)
@@ -396,11 +433,17 @@ final class ImageCenter {
 
     /// Brings back the messages with images a run that ended left behind, once per session and run.
     func restoreOutgoing(_ sid: String, store: SessionStore) {
-        guard restored.insert(sid).inserted, let list = try? records.load(sid: sid) else { return }
-        for o in list where store.find(sid, requestId: o.requestId) == nil {
-            store.add(sid, o)
-            for img in o.images { makeThumb(img) }
-            hold(sid, o, store)
+        guard restored.insert(sid).inserted else { return }
+        let records = records
+        restorations["out:" + sid] = Task { [weak self] in
+            let list = (try? await Task.detached { try records.loadRecords(sid: sid) }.value) ?? []
+            guard let self, !closed, !Task.isCancelled else { return }
+            for record in list where store.find(sid, requestId: record.requestId) == nil {
+                let o = OutgoingRecords.revive(record)
+                store.add(sid, o)
+                for img in o.images { makeThumb(img) }
+                hold(sid, o, store)
+            }
         }
     }
 
@@ -505,6 +548,7 @@ private struct SampleUploads: UploadChannel {
             $0.persistedBytes = persisted
             $0.maxChunkBytes = 64 * 1024
             $0.state = done ? .complete : .receiving
+            $0.expiresMs = Int64.max
             $0.imageID = done ? "sample-\(id.prefix(8))" : ""
         }
     }

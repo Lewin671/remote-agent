@@ -171,8 +171,10 @@ final class SessionStore {
     func deliver(_ commands: any SessionCommands, sid: String, _ o: Outgoing) -> Task<Void, Never> {
         // One try at a time: a second tap while the first is on its way adds nothing.
         guard delivering.insert(o.requestId).inserted else { return Task {} }
+        let wasUnknown = o.state == .unknown
         o.state = .sending
         o.error = ""
+        o.missingImages = false
         var cmd = PBCommand()
         cmd.send = .with {
             $0.sessionID = sid
@@ -187,8 +189,14 @@ final class SessionStore {
                 try await commands.command(sid, cmd)
                 o.state = .sent
             } catch {
-                o.error = errorText(error)
-                o.state = uncertain(error) ? .unknown : .failed
+                let ce = error as? CommandError
+                // A failure that came from the computer settles it; one from here leaves an already
+                // unknown message unknown, keeping the same request (Android's Outgoing.deliver).
+                let unknown = uncertain(error) || (wasUnknown && ce?.fromDaemon != true)
+                o.state = unknown ? .unknown : .failed
+                o.missingImages = !unknown && ce?.fromDaemon == true && ce?.code == "not_found" && !o.imageIds.isEmpty &&
+                    ce?.message.contains("is not on this machine; upload it again") == true
+                o.error = o.missingImages ? "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留" : errorText(error)
             }
             delivering.remove(o.requestId)
         }

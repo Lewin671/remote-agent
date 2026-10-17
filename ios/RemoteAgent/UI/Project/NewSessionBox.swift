@@ -133,6 +133,8 @@ struct NewSessionBox: View {
     }
 
     private func start(_ draft: NewSessionDraft) {
+        let refresh = ProjectImageContext(state: state, key: key, config: draft.config.value, remote: context.remote)
+        ProjectImages.refresh(refresh)
         guard canStart(draft), let cfg = draft.config.value else { return }
         let machine = initial?.machineId
         let images = ProjectImageContext(state: state, key: key, config: cfg, remote: context.remote)

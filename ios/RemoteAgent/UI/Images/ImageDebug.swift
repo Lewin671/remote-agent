@@ -10,7 +10,7 @@
 //                                 expired, offline, failed, corrupt
 //
 // Signals: images.add (the paths in `defaults write <bundle> debug.imagePaths`), images.pick (what ＋ does),
-// images.original, images.retry, images.remove; viewer.close, viewer.next, viewer.zoom, viewer.retry,
+// images.original, images.retry, images.remove, images.expire; viewer.close, viewer.next, viewer.zoom, viewer.retry,
 // viewer.save, viewer.share.
 import RACore
 import RAProto
@@ -69,6 +69,7 @@ enum ImageDebug {
         if state == .ready {
             img.machineId = SessionSamples.machine
             img.imageId = "sample-image-\(n)"
+            img.expiresMs = Int64.max
         }
         return img
     }
@@ -185,6 +186,11 @@ private struct ImageDraftDebug: ViewModifier {
                 for img in center.draft(key).images {
                     if case .failed = img.state { center.retry(key, img) }
                 }
+            }
+            .debugSignal("images.expire") {
+                // Forces the client deadline without changing the daemon's retention policy.
+                for img in center.draft(key).images { img.expiresMs = 0 }
+                print("IMAGES expiry forced")
             }
             .debugSignal("images.remove") {
                 if let first = center.draft(key).images.first { center.remove(key, first) }

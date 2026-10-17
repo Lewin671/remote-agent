@@ -52,10 +52,14 @@ enum ProjectImages {
 
     static func hasImages(_ context: ProjectImageContext) -> Bool { !draft(context).images.isEmpty }
 
+    static func refresh(_ context: ProjectImageContext) {
+        center(context).aim(ImageCenter.projectKey(context.key), at: context.machineId, blocked: context.blocked != nil)
+    }
+
     /// Every image of the draft is on the machine the session starts on: never a start with some of them.
     static func ready(_ context: ProjectImageContext) -> Bool {
         let d = draft(context)
-        return d.images.isEmpty || d.ready(machineId: context.machineId)
+        return !d.restoring && (d.images.isEmpty || d.ready(machineId: context.machineId))
     }
 
     /// A session started with these images: they leave the draft, and what was held for them goes.

@@ -106,7 +106,7 @@ struct OutgoingNote: Equatable, Sendable {
 
 /// `input`: what the daemon's events say of the message, nil while they say nothing yet.
 func outgoingNote(
-    state: Outgoing.State, error: String, input: PBInputStatus?, failure: String?, agent: PBAgent
+    state: Outgoing.State, error: String, input: PBInputStatus?, failure: String?, agent: PBAgent, hasImages: Bool = false, missingImages: Bool = false
 ) -> OutgoingNote {
     let failed = input == .failed || input == .needsTerminal || (input == nil && state != .sending && state != .sent)
     switch input {
@@ -131,7 +131,7 @@ func outgoingNote(
     case .sent: return OutgoingNote(caption: "已送达电脑", failed: failed)
     // The same request again: the daemon runs a request ID at most once.
     case .unknown: return OutgoingNote(caption: "没能确认送达：" + error, tone: .error, failed: failed, actions: [.retry, .remove])
-    case .failed: return OutgoingNote(caption: "没能送达：" + error, tone: .error, failed: failed, actions: [.retry, .remove])
+    case .failed: return OutgoingNote(caption: "没能送达：" + error, tone: .error, failed: failed, actions: (hasImages ? [.putBack] : []) + (missingImages ? [] : [.retry]) + [.remove])
     }
 }
 

@@ -35,6 +35,7 @@ final class NewSessionDraft {
     @ObservationIgnored private var sent: Start?
     /// The images the prepared request names, kept for a retry of the same request.
     @ObservationIgnored private var taken: [PendingImage] = []
+    @ObservationIgnored private var preparedImages: [Processed?] = []
     private(set) var running = false
     private(set) var error = ""
     private(set) var frozen = false
@@ -69,9 +70,13 @@ final class NewSessionDraft {
         guard !typed.isEmpty || !attached.isEmpty, attached.allSatisfy({ $0.readyFor(cfg.machineId) }) else { return }
         let wanted = Start(prompt: typed, config: cfg, imageIds: attached.compactMap(\.imageId))
         // Another message, other images, another machine or other settings is a new start; the unknown one is given up.
-        if attempt.frozen && wanted != sent {
+        // An image uploaded again after its deadline is the same picked image, so the unknown start keeps its image IDs.
+        let same = typed == sent?.prompt && cfg == sent?.config &&
+            attached.map(\.id) == taken.map(\.id) && attached.map(\.processed) == preparedImages
+        if attempt.frozen && !same {
             attempt.abandon()
             taken = []
+            preparedImages = []
         }
         // An unknown start is resent as prepared, with the mode it had.
         let retry = attempt.frozen
@@ -84,6 +89,7 @@ final class NewSessionDraft {
                     prompt = typed
                     // The images this request carries; any picked after it stay in the draft.
                     taken = attached
+                    preparedImages = attached.map(\.processed)
                     return try remote.prepare(
                         machineId: cfg.machineId, sessionId: "",
                         createSessionCommand(cfg, prompt: typed, mode: cfg.mode?.proto ?? .unspecified, imageIds: wanted.imageIds))
@@ -96,6 +102,7 @@ final class NewSessionDraft {
                     if promptText(text) == prompt { text = "" }
                     let used = taken
                     taken = []
+                    preparedImages = []
                     if !used.isEmpty { onImagesUsed(used) }
                     // What the session started with is what the request said, not what the page says by now.
                     onStarted(sid, sent?.config ?? cfg, prompt)
@@ -110,6 +117,7 @@ final class NewSessionDraft {
     func abandon() {
         attempt.abandon()
         taken = []
+        preparedImages = []
         finish("")
     }
 

@@ -66,10 +66,14 @@ enum SessionImages {
     /// 3. The session's draft holds images.
     static func hasImages(_ context: SessionImageContext) -> Bool { !draft(context).images.isEmpty }
 
+    static func refresh(_ context: SessionImageContext) {
+        center(context).aim(ImageCenter.sessionKey(context.sessionId), at: context.machineId, blocked: context.blocked != nil)
+    }
+
     /// 3. Every image of the draft is on the computer.
     static func ready(_ context: SessionImageContext) -> Bool {
         let d = draft(context)
-        return d.images.isEmpty || d.ready(machineId: context.machineId)
+        return !d.restoring && (d.images.isEmpty || d.ready(machineId: context.machineId))
     }
 
     /// 4. Sends `text` with the draft's images, or returns false when the draft has none.

@@ -111,6 +111,7 @@ struct SessionComposer: View {
         let images = images
         let attached = SessionImages.hasImages(images)
         if message.isEmpty && !attached { return }
+        SessionImages.refresh(images)
         // Every image must be on the computer first: never a message with some of them.
         if attached && !SessionImages.ready(images) { return }
         SessionHaptics.tap()

@@ -75,6 +75,7 @@
 //   -imageAdd <path[,path…]>         once a message box is up: these files through what the picker's results go through
 //   -imageDraft <state>              with -demo: the strip in a fixed state: ready, crowded, uploading, failed,
 //                                    original, full, notice
+//   images.expire                    force the on-screen draft upload deadline (debug signal)
 //   -imageOutgoing                   with -demo: a message with images on its way, in the session shown
 //   -viewerState <state>             with -demo: the viewer's display copy: loading, ready, notSynced, expired,
 //                                    offline, failed, corrupt

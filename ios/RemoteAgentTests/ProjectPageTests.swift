@@ -26,6 +26,7 @@ import Testing
             img.state = .ready
             img.machineId = machine
             img.imageId = "on-\(machine)-\(id)"
+            img.expiresMs = Int64.max
         } else {
             img.state = .uploading(progress: 0.4)
         }
@@ -91,6 +92,8 @@ import Testing
         #expect(computer.forwarded.map(\.id) == ["r1", "r2"])
         #expect(computer.forwarded.map(\.retry) == [false, false])
         #expect(computer.sent.map(\.createSession.imageIds) == [["on-mac-a"], ["on-mac-b"]])
+        // The same picked image has been uploaded again after its deadline. The unknown request stays frozen.
+        attached.images[0].imageId = "renewed-upload"
         // The same start once more is the same request, which the computer answers from its log.
         computer.answer(lost)
         _ = await start(draft, cfg, attached)

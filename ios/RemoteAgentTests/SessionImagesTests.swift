@@ -28,6 +28,7 @@ import Testing
         img.state = .ready
         img.machineId = "mac"
         img.imageId = "on-mac-\(id)"
+        img.expiresMs = Int64.max
         return img
     }
 
@@ -299,6 +300,12 @@ import Testing
         #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
         await eventually("let go of when put back") { remote.events(sid).followers == 0 }
 
+        // The put-back image has to finish a fresh upload before another message can use it.
+        let renewed = c.draft(ImageCenter.sessionKey(sid)).images[0]
+        renewed.machineId = "mac"
+        renewed.imageId = "renewed-a"
+        renewed.expiresMs = Int64.max
+        renewed.state = .ready
         // Sent again and followed again; then removed in the chat.
         _ = await send(c, "再看")
         let again = try #require(store.outgoing(sid).first)
@@ -326,11 +333,13 @@ import Testing
         let later = SessionStore()
         let c = center()
         c.restoreOutgoing(sid, store: later)
+        await c.restoredOutgoing(sid)
         let o = try #require(later.outgoing(sid).first)
         #expect(o.requestId == sent.requestId && o.text == "看图" && o.imageIds == ["on-mac-a"])
         #expect(o.state == .unknown && o.error == "App 重启过，不确定这条有没有送到")
         // Asked again, it is not doubled.
         c.restoreOutgoing(sid, store: later)
+        await c.restoredOutgoing(sid)
         #expect(later.outgoing(sid).count == 1)
     }
 
@@ -347,9 +356,11 @@ import Testing
         #expect(o.images[0].processed == nil)
     }
 
-    @Test func theButtonsFollowTheDraft() {
+    @Test func theButtonsFollowTheDraft() async {
         let c = center()
         let context = SessionImageContext(sessionId: sid, machineId: "mac", remote: remote, store: store, blocked: nil, limit: 6)
+        _ = c.draft(ImageCenter.sessionKey(sid))
+        await c.restoredDraft(ImageCenter.sessionKey(sid))
         #expect(!SessionImages.hasImages(context) && SessionImages.ready(context))
         let waiting = PendingImage(id: "w", uri: nil)
         c.draft(ImageCenter.sessionKey(sid)).append([ready("a"), waiting])
@@ -379,6 +390,8 @@ import Testing
     @Test func pickedFilesArePreparedAndTheExtraOnesAreLeftOut() async throws {
         let c = center()
         let key = ImageCenter.sessionKey(sid)
+        _ = c.draft(key)
+        await c.restoredDraft(key)
         // Not pictures: what matters here is how many go in, and what is said of the rest and of each.
         c.add(key, (1...8).map { .data(Data("not a picture \($0)".utf8)) }, max: 6)
         let draft = c.draft(key)
@@ -441,3 +454,90 @@ import Testing
         #expect(!FileManager.default.fileExists(atPath: root.path))
     }
 }
+
+extension SessionImagesTests {
+    @Test func anUploadThatExpiresWhileItsMessageIsSavedStaysInTheDraft() async throws {
+        let c = center()
+        let draft = c.draft(ImageCenter.sessionKey(sid))
+        let img = ready("a")
+        draft.append([img])
+        let entered = DispatchSemaphore(value: 0)
+        let release = DispatchSemaphore(value: 0)
+        let sending = Task { await send(c, "看图") { _, _, _ in entered.signal(); release.wait() } }
+        await Task.detached { waitForDisk(entered) }.value
+        img.expiresMs = 0
+        release.signal()
+        let outcome = await sending.value
+        guard case .failure? = outcome else { Issue.record("expired upload must not be sent"); return }
+        #expect(computer.sent.isEmpty && store.outgoing(sid).isEmpty)
+        #expect(draft.images.first === img && img.processed != nil)
+        ImageCenter.remove(remote)
+    }
+}
+
+/// Explicit synchronization around the real sealed-file restore. It refuses to
+/// block the main thread, so a regression reports a failure instead of hanging.
+private final class RestoreFiles: RACore.SealedFiles, @unchecked Sendable {
+    let base = VolatileFiles()
+    let entered = DispatchSemaphore(value: 0)
+    let release = DispatchSemaphore(value: 0)
+    private let lock = NSLock()
+    private var held = false
+    private(set) var mainRead = false
+    func hold() { lock.withLock { held = true } }
+    func put(folder: String, name: String, data: Data) throws { base.put(folder: folder, name: name, data: data) }
+    func get(folder: String, name: String) throws -> Data? {
+        let stop = lock.withLock { () -> Bool in
+            guard held else { return false }
+            held = false
+            mainRead = Thread.isMainThread
+            return true
+        }
+        if stop { entered.signal(); if !Thread.isMainThread { release.wait() } }
+        return base.get(folder: folder, name: name)
+    }
+    func remove(folder: String, name: String) throws { base.remove(folder: folder, name: name) }
+    func clearFolder(_ folder: String) throws { base.clearFolder(folder) }
+}
+
+extension SessionImagesTests {
+    @Test func restoringDraftsReadsOffMainAndCannotRefillAnAccountAfterItWasClosed() async throws {
+        let disk = RestoreFiles()
+        let first = ImageDraft(key: "session:s1", files: disk, saves: nil)
+        first.append([ready("old")])
+        disk.hold()
+        ImageCenter.install(remote: remote, files: disk)
+        let c = ImageCenter.of(remote)
+        let restored = c.draft("session:s1")
+        let waiting = Task { await c.restoredDraft("session:s1") }
+        await Task.detached { waitForDisk(disk.entered) }.value
+        #expect(!disk.mainRead)
+        #expect(restored.images.isEmpty && restored.restoring)
+        ImageCenter.remove(remote)
+        ImageCenter.install(remote: remote, files: VolatileFiles())
+        disk.release.signal()
+        await waiting.value
+        #expect(restored.images.isEmpty)
+        #expect(ImageCenter.of(remote).draft("session:s1").images.isEmpty)
+        ImageCenter.remove(remote)
+    }
+
+    @Test func restoringPendingMessagesReadsOffMainAndCannotCrossAccounts() async throws {
+        let disk = RestoreFiles()
+        let o = Outgoing(requestId: "old", text: "旧账户", imageIds: ["old-image"], images: [ready("old")], original: true)
+        try OutgoingRecords(files: disk).save(sid: sid, o.record, original: true)
+        disk.hold()
+        ImageCenter.install(remote: remote, files: disk)
+        let c = ImageCenter.of(remote)
+        c.restoreOutgoing(sid, store: store)
+        let waiting = Task { await c.restoredOutgoing(sid) }
+        await Task.detached { waitForDisk(disk.entered) }.value
+        #expect(!disk.mainRead && store.outgoing(sid).isEmpty)
+        ImageCenter.remove(remote)
+        disk.release.signal()
+        await waiting.value
+        #expect(store.outgoing(sid).isEmpty)
+    }
+}
+
+private func waitForDisk(_ semaphore: DispatchSemaphore) { semaphore.wait() }

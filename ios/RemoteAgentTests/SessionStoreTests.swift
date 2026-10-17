@@ -437,3 +437,37 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         #expect(store.cancels["q2"] != nil)
     }
 }
+
+@MainActor @Suite struct MissingImageSendTests {
+    @Test func aDaemonMissingImageReplyCanBePutBackWithTextImagesAndOriginalOption() async {
+        let store = SessionStore()
+        let commands = FakeCommands()
+        let image = PendingImage(id: "picked", uri: "source")
+        let o = Outgoing(requestId: "request", text: "看图", imageIds: ["old"], images: [image], original: true)
+        commands.answer(CommandError("not_found", "image old is not on this machine; upload it again", fromDaemon: true))
+        store.add("s", o)
+        await store.deliver(commands, sid: "s", o).value
+        #expect(o.state == .failed && o.missingImages && o.canPutBack)
+        let note = outgoingNote(state: o.state, error: o.error, input: nil, failure: nil, agent: .codex, hasImages: true, missingImages: o.missingImages)
+        #expect(note.actions == [.putBack, .remove])
+        #expect(o.text == "看图" && o.images[0] === image && o.original)
+    }
+
+    @Test func anUnknownMessageKeepsItsRequestAndImageIdsAfterExpiryAndAnOfflineRetry() async {
+        let store = SessionStore()
+        let commands = FakeCommands()
+        let image = PendingImage(id: "picked", uri: nil)
+        let o = Outgoing(requestId: "request", text: "看图", imageIds: ["old"], images: [image])
+        commands.answer(CommandError(CommandError.unknownOutcome, "lost"), CommandError("unavailable", "offline"))
+        store.add("s", o)
+        await store.deliver(commands, sid: "s", o).value
+        image.imageId = "renewed"
+        image.expiresMs = 0
+        await store.deliver(commands, sid: "s", o).value
+        #expect(o.state == .unknown && !o.canPutBack && !o.missingImages)
+        #expect(commands.sent.map(\.send.requestID) == ["request", "request"])
+        #expect(commands.sent.map(\.send.imageIds) == [["old"], ["old"]])
+        let note = outgoingNote(state: o.state, error: o.error, input: nil, failure: nil, agent: .codex, hasImages: true)
+        #expect(note.actions == [.retry, .remove])
+    }
+}

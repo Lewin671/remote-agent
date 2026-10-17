@@ -20,6 +20,8 @@ struct ImageStrip: View {
     let blocked: String?
     let max: Int
 
+    @Environment(\.scenePhase) private var scenePhase
+
     @ScaledMetric(relativeTo: .caption) private var scaledSide: CGFloat = 56
 
     /// What the images are sent to and when: a change of any of it sends the ones not there yet.
@@ -55,6 +57,9 @@ struct ImageStrip: View {
         .modifier(ImagePickerHost(center: center, key: key, max: max))
         .onChange(of: Aim(machine: machineId, blocked: blocked != nil, count: draft.images.count), initial: true) { _, aim in
             center.aim(key, at: aim.machine, blocked: aim.blocked)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { center.aim(key, at: machineId, blocked: blocked != nil) }
         }
         // A reason is said for a moment, not kept under the box.
         .task(id: notice) {
