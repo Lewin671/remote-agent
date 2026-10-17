@@ -80,7 +80,8 @@ type session struct {
 
 	mu      sync.Mutex
 	meta    meta
-	running bool // a turn is in progress
+	running bool   // a turn is in progress
+	turnID  string // the turn that still needs an outcome
 	// turnEnds counts the turns that ended; aborted is set when the last
 	// one was interrupted, until the waiting input is paused.
 	turnEnds uint64
@@ -234,6 +235,7 @@ func (s *session) observe(e *pb.Event) {
 	switch k := e.Kind.(type) {
 	case *pb.Event_TurnStarted:
 		s.running = true
+		s.turnID = e.TurnId
 	case *pb.Event_TurnEnded:
 		s.running = false
 		s.turnEnds++
@@ -400,17 +402,27 @@ func (s *session) pollLoop(ctx context.Context) {
 }
 
 // readRollout appends events for rollout lines written since the last read.
-func (s *session) readRollout() {
+func (s *session) readRollout() bool {
 	s.readMu.Lock()
 	defer s.readMu.Unlock()
+	return s.readRolloutLocked()
+}
+
+// readRolloutLocked reports whether all available records were persisted.
+// Callers hold readMu, including when settling a turn after the final read.
+func (s *session) readRolloutLocked() bool {
 	// A backlog comes in batches of bounded size (tail.MaxBatch).
-	for s.readBatch() {
+	for {
+		more, ok := s.readBatch()
+		if !more || !ok {
+			return ok
+		}
 	}
 }
 
 // readBatch appends events for the next rollout lines and reports whether
 // there may be more. Callers hold readMu.
-func (s *session) readBatch() bool {
+func (s *session) readBatch() (more, ok bool) {
 	s.mu.Lock()
 	r := s.reader
 	pending, replayPath, replayOffset := s.parserReplayPending, s.parserReplayPath, s.parserReplayOffset
@@ -419,12 +431,12 @@ func (s *session) readBatch() bool {
 		p := s.ag.NewParser()
 		if err := s.log.Each(p.Replay); err != nil {
 			slog.Error("replay session events after append failure", "session", s.meta.ID, "err", errClass(err))
-			return false
+			return false, false
 		}
 		if replayOffset > 0 {
 			if err := p.Restore(replayPath, replayOffset); err != nil {
 				slog.Warn("restore parser after append failure", "session", s.meta.ID, "err", errClass(err))
-				return false
+				return false, false
 			}
 		}
 		s.mu.Lock()
@@ -436,22 +448,23 @@ func (s *session) readBatch() bool {
 		s.mu.Unlock()
 	}
 	if r == nil {
-		return false
+		return false, true
 	}
 	lines, truncated, err := r.Next()
 	if err != nil {
 		slog.Warn("read rollout", "session", s.meta.ID, "err", errClass(err))
-		return false
+		return false, false
 	}
 	if truncated {
 		slog.Warn("rollout shrank; reading it again from the start", "session", s.meta.ID)
 	}
 	for _, l := range lines {
+		var evs []*pb.Event
 		if s.copied != nil && s.copied(l.Data) {
-			_ = s.log.Append(s.meta.ID, nil, r.Path, l.End)
-			continue
+			evs = nil
+		} else {
+			evs, err = s.parser.Parse(l.Data)
 		}
-		evs, err := s.parser.Parse(l.Data)
 		if err != nil {
 			slog.Warn("parse rollout line", "session", s.meta.ID, "offset", l.End, "err", errClass(err))
 		}
@@ -484,7 +497,7 @@ func (s *session) readBatch() bool {
 			s.parserReplayPath = r.Path
 			s.parserReplayOffset = off
 			s.mu.Unlock()
-			return false
+			return false, false
 		}
 		s.mu.Lock()
 		// Only now that the events are logged are the records they were
@@ -529,7 +542,7 @@ func (s *session) readBatch() bool {
 			}
 		}
 	}
-	return len(lines) > 0
+	return len(lines) > 0, true
 }
 
 // checkScreen updates the session status from the screen. It returns false
@@ -638,10 +651,8 @@ func (s *session) markExited(detail string) {
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", m.ID, "err", errClass(err))
 	}
-	// What the CLI wrote last is read now: nothing reads an exited
-	// session's transcript again. It may have been written while no daemon
-	// ran, and it tells what became of a message that was written.
-	s.readRollout()
+	// Read the final records before settling the old turn and input. A
+	// failed read or append is retried when restoring or resuming.
 	s.settleExited()
 	s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: detail,
@@ -660,9 +671,33 @@ func (s *session) markExited(detail string) {
 // without a word. Nothing else touches the queue of an exited session. It
 // reports whether none is left queued.
 func (s *session) settleExited() bool {
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+	if !s.readRolloutLocked() {
+		return false
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !s.meta.Exited || len(s.queue.Queue) == 0 {
+	if !s.meta.Exited {
+		return true
+	}
+	// A dead CLI cannot finish its old turn after a resume. Log the end
+	// only after its final records, and teach the live parser as well as
+	// replay so the next launch starts from the same state.
+	if s.running {
+		e := withOrigin(&pb.Event{TurnId: s.turnID, Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{
+			Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED, Reason: "session exited",
+		}}}, s.interruptedBy)
+		if !s.logOutcomeLocked(e) {
+			return false
+		}
+		s.parser.Replay(e)
+		s.observe(e)
+		s.interruptedBy = nil
+		clear(s.answeredBy)
+	}
+	s.aborted = false // exiting cancels old input; new input belongs to the next CLI
+	if len(s.queue.Queue) == 0 {
 		return true
 	}
 	var outcomes []*pb.Event
