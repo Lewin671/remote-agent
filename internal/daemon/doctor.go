@@ -193,7 +193,10 @@ func (d *Daemon) Doctor(ctx context.Context, kind pb.Agent, dir string, out io.W
 
 	step("interrupt a running turn", func() error {
 		seq := s.log.LastSeq()
-		if _, err := s.send("Run this shell command and nothing else: sleep 30", ""); err != nil {
+		// Claude Code 2.1.300 blocks a standalone `sleep` (docs/claude-code-notes.md
+		// §10); the until-loop its own message suggests keeps a command
+		// running until it is interrupted, which is what this step needs.
+		if _, err := s.send("Run exactly this shell command and nothing else: until [ -f remote-agent-doctor-never ]; do sleep 2; done", ""); err != nil {
 			return err
 		}
 		if _, err := event(seq, 60*time.Second, func(e *pb.Event) bool { return e.GetToolStarted() != nil }); err != nil {
