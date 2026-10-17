@@ -3520,6 +3520,97 @@
           }
         }
       ]
+    },
+    {
+      "name": "truncated-structural-prompts-retain-pending-state",
+      "agent": 1,
+      "events": [
+        {
+          "seq": "1",
+          "sessionId": "projection-test",
+          "turnStarted": {}
+        },
+        {
+          "seq": "2",
+          "sessionId": "projection-test",
+          "questionAsked": {
+            "questionId": "large-question",
+            "questions": [
+              {
+                "id": "q1",
+                "header": "缩短的标题\n…（remote-agent：内容过长，已截断）",
+                "text": "缩短的问题正文\n…（remote-agent：内容过长，已截断）",
+                "options": [
+                  {
+                    "label": "A",
+                    "description": "缩短的说明\n…（remote-agent：内容过长，已截断）"
+                  },
+                  {
+                    "label": "B",
+                    "description": "缩短的说明\n…（remote-agent：内容过长，已截断）"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "seq": "3",
+          "sessionId": "projection-test",
+          "approvalRequested": {
+            "approvalId": "large-approval",
+            "command": "缩短的命令\n…（remote-agent：内容过长，已截断）",
+            "inputDigest": "digest"
+          }
+        },
+        {
+          "seq": "4",
+          "sessionId": "projection-test",
+          "planProposed": {
+            "callId": "plan",
+            "text": "缩短的计划\n…（remote-agent：内容过长，已截断）"
+          }
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "observations": [
+        {
+          "through": "4",
+          "state": {
+            "running": true,
+            "approvals": [
+              "large-approval"
+            ],
+            "resolved": {},
+            "questions": [
+              "large-question"
+            ],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": [],
+            "failures": {},
+            "queue": [],
+            "plan": "缩短的计划\n…（remote-agent：内容过长，已截断）"
+          }
+        }
+      ]
     }
   ]
 }

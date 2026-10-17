@@ -6,7 +6,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
-import { approvalDisplay } from "../approval-display";
+import { approvalTruncated, approvalTruncatedMessage, approvalDisplay } from "../approval-display";
 import { Markdown } from "../markdown";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { agentName, agentOf, askTitle, minutesLeft, optionLabel, type DockItem } from "../model";
@@ -85,6 +85,7 @@ export function ApprovalActions({
   };
   const deadline = deadlineOf(a);
   const expired = deadline > 0 && now >= deadline;
+  const truncated = approvalTruncated(a);
   // An answer whose outcome is unknown holds: only a retry of it may go.
   const locked = !!ap.busy || expired || (!!ap.error && ap.unknown);
   const open = (v: boolean) => {
@@ -117,7 +118,7 @@ export function ApprovalActions({
       <button className="btn no" disabled={locked} onClick={() => open(true)}>
         不允许
       </button>
-      <button className="btn pri" disabled={locked} onClick={() => void ap.resolve(true)}>
+      <button className="btn pri" disabled={locked || truncated} onClick={() => void ap.resolve(true)}>
         {ap.busy.startsWith("allow") ? "允许中…" : "允许"}
       </button>
     </div>
@@ -125,8 +126,9 @@ export function ApprovalActions({
   const always = remote.machines.get(remote.sessions.get(sid)?.machineId ?? "")?.meta?.capabilities?.approvalAlways;
   return (
     <>
+      {truncated && <div className="approval-status red">{approvalTruncatedMessage}</div>}
       {buttons}
-      {always && <div className="foot"><button className="link" disabled={locked} onClick={() => void ap.resolve(true, "", true)}>允许，这类请求以后不再问</button></div>}
+      {always && <div className="foot"><button className="link" disabled={locked || truncated} onClick={() => void ap.resolve(true, "", true)}>允许，这类请求以后不再问</button></div>}
       {error}
     </>
   );

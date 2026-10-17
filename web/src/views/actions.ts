@@ -8,6 +8,7 @@ import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { agentOf, derive, type Derived } from "../model";
 import { stillUnknown } from "../attempt";
 import { errorText, newSlot, type AnswerState, type CommandKind, type Remote, type RequestSlot } from "../remote";
+import { approvalTruncated } from "../approval-display";
 import { useRemote } from "../ui";
 
 export function useDerived(remote: Remote, sid: string): Derived {
@@ -63,7 +64,7 @@ function useCommand(remote: Remote, sid: string) {
 export function useApproval(remote: Remote, sid: string, a: ApprovalRequested) {
   const c = useCommand(remote, sid);
   const resolve = (allow: boolean, message = "", always = false) =>
-    c.run(`${allow ? "allow" : "deny"}:${always ? "always" : "once"}:${message}`, { case: "resolveApproval", value: { sessionId: sid, approvalId: a.approvalId, allow, message, always } });
+    allow && approvalTruncated(a) ? Promise.resolve(false) : c.run(`${allow ? "allow" : "deny"}:${always ? "always" : "once"}:${message}`, { case: "resolveApproval", value: { sessionId: sid, approvalId: a.approvalId, allow, message, always } });
   const retry = () => {
     const key = c.retry();
     if (!key) return;

@@ -313,6 +313,7 @@ struct ApprovalButtons: View {
     @State private var started = false
 
     private func resolve(_ allow: Bool, message: String = "", always: Bool = false) {
+        guard !allow || !approvalTruncated(approval) else { return }
         if allow { SessionHaptics.decide() } else { Haptics.destructive() }
         let sent = context.sessionStore.decide(
             context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID, allow: allow,
@@ -322,6 +323,7 @@ struct ApprovalButtons: View {
     }
 
     private func retry() {
+        guard !approvalTruncated(approval) || !context.sessionStore.resolve(approval.approvalID).allow else { return }
         context.sessionStore.retryDecision(
             context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID)
     }
@@ -332,7 +334,9 @@ struct ApprovalButtons: View {
         let r = store.resolve(id)
         let always = capabilities(model.state.machines[session.machineId])?.approvalAlways == true
         let surface: Color? = onCard ? Theme.card : nil
+        let truncated = approvalTruncated(approval)
         VStack(alignment: .leading, spacing: 0) {
+            if truncated { Text(approvalTruncatedMessage).type(T.sm, Theme.red) }
             if r.running || r.frozen || r.decided {
                 if r.running || (r.error.isEmpty && !r.frozen) {
                     Text(r.running ? "正在送到电脑…" : "已提交，等待电脑确认").type(T.meta, Theme.muted)
@@ -357,9 +361,9 @@ struct ApprovalButtons: View {
             } else {
                 Btns {
                     Btn("不允许", kind: .negative, background: surface) { reasonOpen = true }
-                    Btn("允许", kind: .primary) { resolve(true) }
+                    Btn("允许", kind: .primary, enabled: !truncated) { resolve(true) }
                 }
-                if always {
+                if always && !truncated {
                     TextAction("允许，这类请求以后不再问", alignment: .center) { resolve(true, always: true) }
                         .frame(maxWidth: .infinity)
                         // On a card its 44 pt to the finger reach into the card's own padding.

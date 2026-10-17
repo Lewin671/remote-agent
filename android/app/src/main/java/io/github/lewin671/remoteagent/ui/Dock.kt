@@ -198,6 +198,7 @@ object Resolves {
 /** Sends [allow], or the earlier decision while its outcome is unknown; returns the decision that went. */
 suspend fun resolveApproval(remote: io.github.lewin671.remoteagent.core.Remote, s: SessionView, a: ApprovalRequested, allow: Boolean, message: String, always: Boolean = false): Boolean {
     val r = Resolves.of(a.approvalId)
+    require(!approvalTruncated(a) || !(allow || (r.attempt.frozen && r.allow))) { approvalTruncatedMessage }
     try {
         val retry = r.attempt.frozen
         val prepared = r.attempt.next {
@@ -234,6 +235,8 @@ fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean, reas
     var opened by remember(a.approvalId) { mutableStateOf(false) }
     val alwaysAvailable = io.github.lewin671.remoteagent.core.capabilities(state.machines[s.machineId])?.approvalAlways == true
     val stuck = r.attempt.frozen
+    val truncated = approvalTruncated(a)
+    if (truncated) Text(approvalTruncatedMessage, style = T.sm, color = p.red)
     fun resolve(allow: Boolean, message: String = "", always: Boolean = false) {
         which = allow
         act.run({ resolveApproval(remote, s, a, allow, message, always); null })
@@ -250,9 +253,9 @@ fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean, reas
     } else {
         Btns {
             Btn("不允许", { opened = true; onReason(true) }, Modifier.weight(1f), BtnKind.NEGATIVE, bg = if (onCard) p.card else null)
-            Btn("允许", { resolve(true) }, Modifier.weight(1f), BtnKind.PRIMARY)
+            Btn("允许", { resolve(true) }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !truncated)
         }
-        if (alwaysAvailable) TextAction("允许，这类请求以后不再问", { resolve(true, always = true) }, modifier = Modifier.fillMaxWidth(), style = T.smB, alignment = Alignment.Center)
+        if (alwaysAvailable && !truncated) TextAction("允许，这类请求以后不再问", { resolve(true, always = true) }, modifier = Modifier.fillMaxWidth(), style = T.smB, alignment = Alignment.Center)
     }
     if (!act.running && stuck) {
         val what = if (r.allow) "允许" else "拒绝"

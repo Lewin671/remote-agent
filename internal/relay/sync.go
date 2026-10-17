@@ -286,7 +286,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 			}
 			env, err := c.sealEvent(key, id, c.withImageStates(id, e))
 			if err != nil {
-				return localSyncError("encryption", err)
+				return err
 			}
 			batch = append(batch, &pb.StoredEvent{Seq: e.Seq, Envelope: env})
 			batchBytes += proto.Size(env)
@@ -443,10 +443,18 @@ func metaDigest(server string, key []byte, info *pb.Session, revision uint64) []
 }
 
 func (c *conn) sealEvent(key []byte, sessionID string, e *pb.Event) (*pb.Envelope, error) {
-	return e2e.SealMessage(key, &pb.Header{
+	fitted, err := fitEvent(slimEvent(e))
+	if err != nil {
+		return nil, localSyncError("event_size", err)
+	}
+	env, err := e2e.SealMessage(key, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: c.acct.DeviceID, SessionId: sessionID,
 		Seq: e.Seq, Sender: c.acct.DeviceID,
-	}, fitEvent(slimEvent(e)))
+	}, fitted)
+	if err != nil {
+		return nil, localSyncError("encryption", err)
+	}
+	return env, nil
 }
 
 // EndedMs is when a session ended as the server is told in the clear, 0
@@ -516,13 +524,15 @@ func (c *conn) notifyRequest(sessionID string, info *pb.Session, kind pb.NotifyK
 		a := k.ApprovalRequested
 		dedupe = a.ApprovalId
 		na := &pb.NotifyApproval{ApprovalId: a.ApprovalId, ToolName: a.ToolName}
-		na.Description, _ = clip(a.Description, notifyText)
+		na.Description, na.Truncated = clip(a.Description, notifyText)
 		// A command is shown as one; any other tool by its name and input.
+		var cut bool
 		if a.Command != "" {
-			na.Command, na.Truncated = clip(a.Command, notifyCommand)
+			na.Command, cut = clip(a.Command, notifyCommand)
 		} else {
-			na.ToolInput, na.Truncated = clip(a.ToolInputJson, notifyCommand)
+			na.ToolInput, cut = clip(a.ToolInputJson, notifyCommand)
 		}
+		na.Truncated = na.Truncated || cut
 		if a.Deadline != nil {
 			na.DeadlineMs = a.Deadline.AsTime().UnixMilli()
 		}

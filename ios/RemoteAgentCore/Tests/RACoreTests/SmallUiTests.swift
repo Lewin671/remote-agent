@@ -24,6 +24,19 @@ import Testing
         #expect(try a.serializedData() == before)
     }
 
+    @Test func detectsTruncationInEveryApprovalTextWithoutChangingTheEvent() throws {
+        let marker = "\n…（remote-agent：内容过长，已截断）"
+        #expect(!approvalTruncated(.with { $0.command = "complete" }))
+        for a in [PBApprovalRequested.with { $0.command = "cut" + marker },
+                  .with { $0.command = "complete"; $0.description_p = "cut" + marker },
+                  .with { $0.command = "complete"; $0.toolInputJson = "cut" + marker }] {
+            let before = try a.serializedData()
+            #expect(approvalTruncated(a))
+            #expect(approvalTruncatedMessage == "内容被截断，请在终端查看")
+            #expect(try a.serializedData() == before)
+        }
+    }
+
     // --- not in Android's tests ---
 
     @Test func theDockSaysOneLineOfWhateverWaits() {

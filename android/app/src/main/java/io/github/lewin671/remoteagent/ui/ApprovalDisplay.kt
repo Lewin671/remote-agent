@@ -23,3 +23,9 @@ fun approvalHead(a: ApprovalRequested): String =
  * is not a shell command has no command, only its input.
  */
 fun approvalBody(a: ApprovalRequested): String = approvalDisplay(a.command.ifEmpty { a.toolInputJson })
+
+// The relay's existing suffix marks every field shortened for upload.
+private const val truncatedNote = "\n…（remote-agent：内容过长，已截断）"
+const val approvalTruncatedMessage = "内容被截断，请在终端查看"
+fun approvalTruncated(a: ApprovalRequested): Boolean =
+    listOf(a.description, a.command, a.toolInputJson).any { it.endsWith(truncatedNote) }

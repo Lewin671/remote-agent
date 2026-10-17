@@ -35,4 +35,18 @@ class ApprovalDisplayTest {
         assertEquals(raw, a.command)
         assertArrayEquals(before, a.toByteArray())
     }
+    @Test fun detectsTruncationInEveryApprovalTextWithoutChangingTheEvent() {
+        val marker = "\n…（remote-agent：内容过长，已截断）"
+        val base = ApprovalRequested.newBuilder().setApprovalId("approval").setCommand("complete")
+        assertFalse(approvalTruncated(base.build()))
+        for (a in listOf(base.clone().setCommand("cut" + marker).build(),
+                base.clone().setDescription("cut" + marker).build(),
+                base.clone().setToolInputJson("cut" + marker).build())) {
+            val before = a.toByteArray()
+            assertTrue(approvalTruncated(a))
+            assertEquals("内容被截断，请在终端查看", approvalTruncatedMessage)
+            assertArrayEquals(before, a.toByteArray())
+        }
+    }
+
 }

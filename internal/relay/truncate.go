@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"fmt"
 	"slices"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -9,17 +10,19 @@ import (
 )
 
 // maxEventBytes keeps a sealed event well below the server's 1 MiB
-// envelope limit. An event the server refuses would stop the session's
-// upload for good, since events are uploaded in order.
+// envelope limit. Events are uploaded in order; an irreducible oversized
+// event blocks only its session, which retries with the normal backoff.
 const maxEventBytes = 768 << 10
 
 const truncatedNote = "\n…（remote-agent：内容过长，已截断）"
 
-// fitEvent returns e, or a copy with its longest texts cut so that it fits
-// in maxEventBytes. The local log keeps the full event.
-func fitEvent(e *pb.Event) *pb.Event {
+// fitEvent cuts display text and previews without changing event semantics.
+// IDs, option labels, configuration values and state codes are never cut.
+// The local log keeps the full event. If the remaining structure cannot fit,
+// fail rather than replace a state transition with an unrelated message.
+func fitEvent(e *pb.Event) (*pb.Event, error) {
 	if proto.Size(e) <= maxEventBytes {
-		return e
+		return e, nil
 	}
 	e = proto.CloneOf(e)
 	// Previews go first, largest first: the text, the image refs and the
@@ -29,12 +32,12 @@ func fitEvent(e *pb.Event) *pb.Event {
 	slices.SortFunc(refs, func(a, b *pb.ImageRef) int { return len(b.Preview) - len(a.Preview) })
 	for _, ref := range refs {
 		if proto.Size(e) <= maxEventBytes {
-			return e
+			return e, nil
 		}
 		ref.Preview, ref.PreviewFormat, ref.PreviewWidth, ref.PreviewHeight = nil, pb.ImageFormat_IMAGE_FORMAT_UNSPECIFIED, 0, 0
 	}
 	if proto.Size(e) <= maxEventBytes {
-		return e
+		return e, nil
 	}
 	var fields []*string
 	switch k := e.Kind.(type) {
@@ -52,6 +55,30 @@ func fitEvent(e *pb.Event) *pb.Event {
 				k.ToolCall.OutputTruncated = true
 			}
 		}()
+	case *pb.Event_ToolStarted:
+		fields = []*string{&k.ToolStarted.Title, &k.ToolStarted.Input}
+	case *pb.Event_TurnEnded:
+		fields = []*string{&k.TurnEnded.Reason}
+	case *pb.Event_ApprovalResolved:
+		fields = []*string{&k.ApprovalResolved.Message}
+	case *pb.Event_QuestionAsked:
+		for _, q := range k.QuestionAsked.Questions {
+			fields = append(fields, &q.Header, &q.Text)
+			for _, o := range q.Options {
+				// Labels are the selectable answers, not disposable previews.
+				fields = append(fields, &o.Description)
+			}
+		}
+	case *pb.Event_QuestionAnswered:
+		for _, a := range k.QuestionAnswered.Answers {
+			for i := range a.Answers {
+				fields = append(fields, &a.Answers[i])
+			}
+		}
+	case *pb.Event_SessionState:
+		fields = []*string{&k.SessionState.Detail}
+	case *pb.Event_SessionForked:
+		fields = []*string{&k.SessionForked.SourceTitle}
 	case *pb.Event_InputState:
 		fields = []*string{&k.InputState.Text}
 	case *pb.Event_ImageGenerated:
@@ -61,20 +88,27 @@ func fitEvent(e *pb.Event) *pb.Event {
 	case *pb.Event_ApprovalRequested:
 		fields = []*string{&k.ApprovalRequested.ToolInputJson, &k.ApprovalRequested.Command, &k.ApprovalRequested.Description}
 	}
-	// Cut each field to an equal share of the budget, longest first.
-	budget := maxEventBytes / 2
-	for _, f := range fields {
-		if len(*f) > budget/len(fields) {
-			*f = cutUTF8(*f, budget/len(fields)) + truncatedNote
+	// Keep a visible marker on every shortened field. Start with a shared
+	// text budget, then shrink it if IDs / labels / repeated structure take
+	// more room. Never inflate short strings just to add a marker.
+	original := make([]string, len(fields))
+	for i, f := range fields {
+		original[i] = *f
+	}
+	for cap := maxEventBytes / 2 / max(1, len(fields)); ; cap /= 2 {
+		for i, f := range fields {
+			if len(original[i]) > cap+len(truncatedNote) {
+				*f = cutUTF8(original[i], cap) + truncatedNote
+			}
+		}
+		if proto.Size(e) <= maxEventBytes {
+			return e, nil
+		}
+		if cap == 0 {
+			// No content in the error: this category is safe to diagnose.
+			return nil, fmt.Errorf("event structure exceeds %d bytes", maxEventBytes)
 		}
 	}
-	if proto.Size(e) > maxEventBytes {
-		// Nothing left to cut: say so rather than block the session.
-		e.Kind = &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{
-			Text: "（remote-agent：这条事件过大，没有上传，请在终端里查看）", Phase: "commentary",
-		}}
-	}
-	return e
 }
 
 // cutUTF8 shortens s to at most n bytes without splitting a character.

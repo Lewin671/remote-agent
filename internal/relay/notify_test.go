@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Lewin671/remote-agent/internal/e2e"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -47,5 +49,39 @@ func TestOwedNotifyCopiesBoundedTail(t *testing.T) {
 	got := r.takeOwedNotify("session")
 	if len(got) != maxOwedNotify || got[0].Seq != 4 || got[len(got)-1].Seq != uint64(maxOwedNotify+3) {
 		t.Fatalf("owed notification tail = %v", got)
+	}
+}
+
+func TestApprovalNotificationMarksAnyShortenedContent(t *testing.T) {
+	key := make([]byte, 32)
+	keys, err := e2e.Derive(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	for _, field := range []string{"description", "command", "tool_input", "complete"} {
+		t.Run(field, func(t *testing.T) {
+			a := &pb.ApprovalRequested{ApprovalId: "approval", Command: "short", Description: "why"}
+			switch field {
+			case "description":
+				a.Description = strings.Repeat("长", notifyText+1)
+			case "command":
+				a.Command = strings.Repeat("长", notifyCommand+1)
+			case "tool_input":
+				a.Command = ""
+				a.ToolInputJson = strings.Repeat("长", notifyCommand+1)
+			}
+			req, err := c.notifyRequest("session", &pb.Session{Title: "session"}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, &pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: a}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := &pb.NotifyContent{}
+			if _, err := e2e.OpenMessage(c.keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: "machine", SessionId: "session", RequestId: "approval", Sender: "machine"}, got); err != nil {
+				t.Fatal(err)
+			}
+			if got.Approval.Truncated != (field != "complete") || got.Approval.ApprovalId != "approval" {
+				t.Fatal("notification truncation not marked")
+			}
+		})
 	}
 }

@@ -32,3 +32,10 @@ public func approvalHead(_ a: PBApprovalRequested) -> String {
 public func approvalBody(_ a: PBApprovalRequested) -> String {
     approvalDisplay(a.command.isEmpty ? a.toolInputJson : a.command)
 }
+
+// The relay's existing suffix marks every field shortened for upload.
+private let truncatedNote = "\n…（remote-agent：内容过长，已截断）"
+public let approvalTruncatedMessage = "内容被截断，请在终端查看"
+public func approvalTruncated(_ a: PBApprovalRequested) -> Bool {
+    [a.description_p, a.command, a.toolInputJson].contains { $0.hasSuffix(truncatedNote) }
+}
