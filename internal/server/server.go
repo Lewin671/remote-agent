@@ -121,8 +121,8 @@ type Server struct {
 }
 
 type challenge struct {
-	deviceID string
-	expires  time.Time
+	deviceID, account string
+	expires           time.Time
 }
 
 // New opens the database and returns a server.
@@ -302,16 +302,18 @@ func internal(err error) error {
 
 // Login challenges can be requested without logging in, so they are
 // bounded: only registered devices get stored challenges, each at most
-// maxDeviceChallenges, the oldest giving way.
+// maxDeviceChallenges and each account maxAccountChallenges, the oldest
+// giving way, so that no account can take the others' logins.
 const (
-	maxDeviceChallenges = 8
-	maxChallenges       = 4096
+	maxDeviceChallenges  = 8
+	maxAccountChallenges = 64
+	maxChallenges        = 4096
 )
 
 var errTooManyChallenges = errors.New("too many pending logins; try again in a minute")
 
 // newChallenge issues a one-time login challenge for a registered device.
-func (s *Server) newChallenge(deviceID string) ([]byte, error) {
+func (s *Server) newChallenge(deviceID, account string) ([]byte, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		panic(err)
@@ -319,28 +321,37 @@ func (s *Server) newChallenge(deviceID string) ([]byte, error) {
 	s.challengeMu.Lock()
 	defer s.challengeMu.Unlock()
 	now := time.Now()
-	var mine []string
+	var mine, ours []string
 	for k, c := range s.challenges {
 		switch {
 		case now.After(c.expires):
 			delete(s.challenges, k)
 		case c.deviceID == deviceID:
 			mine = append(mine, k)
+			ours = append(ours, k)
+		case c.account == account:
+			ours = append(ours, k)
 		}
 	}
-	if len(mine) >= maxDeviceChallenges {
-		oldest := mine[0]
-		for _, k := range mine[1:] {
-			if s.challenges[k].expires.Before(s.challenges[oldest].expires) {
-				oldest = k
+	oldest := func(keys []string) string {
+		o := keys[0]
+		for _, k := range keys[1:] {
+			if s.challenges[k].expires.Before(s.challenges[o].expires) {
+				o = k
 			}
 		}
-		delete(s.challenges, oldest)
+		return o
+	}
+	switch {
+	case len(mine) >= maxDeviceChallenges:
+		delete(s.challenges, oldest(mine))
+	case len(ours) >= maxAccountChallenges:
+		delete(s.challenges, oldest(ours))
 	}
 	if len(s.challenges) >= maxChallenges {
 		return nil, errTooManyChallenges
 	}
-	s.challenges[string(b)] = challenge{deviceID: deviceID, expires: now.Add(time.Minute)}
+	s.challenges[string(b)] = challenge{deviceID: deviceID, account: account, expires: now.Add(time.Minute)}
 	return b, nil
 }
 

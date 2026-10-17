@@ -38,13 +38,20 @@ type plan struct {
 	sessions   int
 	eventBytes int64
 	imageBytes int64
+	// revoked bounds the devices an account removed, whose keys the relay
+	// remembers for good; prefs the preference objects it stores.
+	revoked int
+	prefs   int
+	// streams bounds the account's open streams, a main and a terminal
+	// stream for each of its devices.
+	streams int
 }
 
 // Plans: accounts made with the setup token belong to the relay's owner;
 // accounts anyone made are for trying remote-agent out.
 var plans = map[string]plan{
-	"owner": {name: "owner", devices: 32, machines: 16},
-	"trial": {name: "trial", devices: 8, machines: 2, sessions: 200, eventBytes: 256 << 20, imageBytes: 64 << 20},
+	"owner": {name: "owner", devices: 32, machines: 16, prefs: 16, streams: 64},
+	"trial": {name: "trial", devices: 8, machines: 2, sessions: 200, eventBytes: 256 << 20, imageBytes: 64 << 20, revoked: 64, prefs: 16, streams: 16},
 }
 
 func planOf(name string) plan {
@@ -71,6 +78,10 @@ func (p plan) check(u accountUsage) error {
 		return errFull(fmt.Sprintf("this account has its %d sessions already on this relay", p.sessions))
 	case p.eventBytes > 0 && u.eventBytes > p.eventBytes:
 		return errFull("this account's storage on this relay is full")
+	case p.revoked > 0 && u.revoked > p.revoked:
+		return errFull(fmt.Sprintf("this account has removed %d devices on this relay, which takes no more", p.revoked))
+	case p.prefs > 0 && u.prefs > p.prefs:
+		return errFull(fmt.Sprintf("this account has its %d preference objects already", p.prefs))
 	}
 	return nil
 }
@@ -139,9 +150,9 @@ func (s *Server) watchDisk(stop <-chan struct{}) {
 	}
 }
 
-// sweepAccounts ends the streams of devices whose account was suspended
-// or deleted, or which were removed, by the operator's admin command
-// while they were connected.
+// sweepAccounts ends the streams, main and terminal, of devices whose
+// account was suspended or deleted, or which were removed, by the
+// operator's admin command while they were connected.
 func (s *Server) sweepAccounts(stop <-chan struct{}) {
 	t := time.NewTicker(s.cfg.SweepInterval)
 	defer t.Stop()
@@ -151,7 +162,7 @@ func (s *Server) sweepAccounts(stop <-chan struct{}) {
 			return
 		case <-t.C:
 		}
-		for _, id := range s.hub.deviceIDs() {
+		for _, id := range s.streamDevices() {
 			d, err := s.store.device(context.Background(), id)
 			if err == nil {
 				var a *accountRow

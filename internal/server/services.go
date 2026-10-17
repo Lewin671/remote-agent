@@ -65,11 +65,12 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 	}
 	acct := e2e.AccountID(reg.AccountPublicKey)
 	var create *newAccount
+	undo := func() {}
 	pl := planOf("")
 	existing, err := a.s.store.account(ctx, acct)
 	switch {
 	case errors.Is(err, errNoRows):
-		if create, err = a.s.newAccountFor(req); err != nil {
+		if create, undo, err = a.s.newAccountFor(req); err != nil {
 			return nil, err
 		}
 		create.publicKey, create.max = reg.AccountPublicKey, a.s.cfg.MaxAccounts
@@ -89,6 +90,8 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 		return pl.check(u)
 	}
 	if err := a.s.store.addDevice(ctx, acct, create, id, reg, req.Msg.Registration, req.Msg.Signature, limit); err != nil {
+		// No account was made: the signup it was admitted for is not used up.
+		undo()
 		var apiErr *connect.Error
 		switch {
 		case errors.As(err, &apiErr):
@@ -115,7 +118,7 @@ func (a *authService) GetChallenge(ctx context.Context, req *connect.Request[pb.
 	if !validDeviceID(req.Msg.DeviceId) {
 		return nil, invalid("malformed device ID")
 	}
-	_, err := a.s.store.device(ctx, req.Msg.DeviceId)
+	dev, err := a.s.store.device(ctx, req.Msg.DeviceId)
 	if errors.Is(err, errNoRows) {
 		// Unknown devices get a challenge that is never stored, so they
 		// take no space and cannot tell that the device does not exist;
@@ -129,7 +132,7 @@ func (a *authService) GetChallenge(ctx context.Context, req *connect.Request[pb.
 	if err != nil {
 		return nil, internal(err)
 	}
-	ch, err := a.s.newChallenge(req.Msg.DeviceId)
+	ch, err := a.s.newChallenge(dev.id, dev.account)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeResourceExhausted, err)
 	}

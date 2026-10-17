@@ -98,26 +98,47 @@ func (g *signupGuard) challenge(addr string) ([]byte, time.Time, error) {
 
 // admit consumes a solved challenge and counts a new account for addr. It
 // refuses an address or a relay that created too many accounts lately.
-func (g *signupGuard) admit(addr string, p *pb.SignupProof, bits uint) error {
+// undo gives the challenge and the count back, for an account that was
+// not created after all.
+func (g *signupGuard) admit(addr string, p *pb.SignupProof, bits uint) (undo func(), err error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	now := time.Now()
 	g.sweepLocked(now)
 	var ok bool
 	if g.created[addr], ok = recent(g.created[addr], now, time.Hour, signupsPerHour); !ok {
-		return errFull("too many new accounts from this address; try again later")
+		return nil, errFull("too many new accounts from this address; try again later")
 	}
 	if g.total, ok = recent(g.total, now, time.Hour, signupsPerHourTotal); !ok {
-		return errFull("this relay takes no more new accounts for now; try again later")
+		return nil, errFull("this relay takes no more new accounts for now; try again later")
 	}
-	exp, found := g.challenges[string(p.GetChallenge())]
+	c := string(p.GetChallenge())
+	exp, found := g.challenges[c]
 	if !found || now.After(exp) || len(p.GetNonce()) > maxSignupNonceBytes || !solved(p.GetChallenge(), p.GetNonce(), bits) {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("the proof of work is wrong or expired; try again"))
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the proof of work is wrong or expired; try again"))
 	}
-	delete(g.challenges, string(p.GetChallenge()))
+	delete(g.challenges, c)
 	g.created[addr] = append(g.created[addr], now)
 	g.total = append(g.total, now)
-	return nil
+	return func() {
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		g.created[addr] = without(g.created[addr], now)
+		g.total = without(g.total, now)
+		if len(g.challenges) < maxSignupChallenges {
+			g.challenges[c] = exp
+		}
+	}, nil
+}
+
+// without removes one t from ts.
+func without(ts []time.Time, t time.Time) []time.Time {
+	for i, x := range ts {
+		if x.Equal(t) {
+			return append(ts[:i], ts[i+1:]...)
+		}
+	}
+	return ts
 }
 
 // solved reports whether SHA-256(challenge || nonce) starts with n zero bits.
@@ -135,26 +156,28 @@ func solved(challenge, nonce []byte, n uint) bool {
 }
 
 // newAccountFor decides whether a registration may create its account,
-// and with which plan.
-func (s *Server) newAccountFor(req *connect.Request[pb.RegisterDeviceRequest]) (*newAccount, error) {
+// and with which plan. If the account is not created after all, undo
+// gives back what deciding took.
+func (s *Server) newAccountFor(req *connect.Request[pb.RegisterDeviceRequest]) (a *newAccount, undo func(), err error) {
 	tok := s.cfg.SetupToken
 	if tok != "" && subtle.ConstantTimeCompare([]byte(tok), []byte(req.Msg.SetupToken)) == 1 {
-		return &newAccount{plan: "owner"}, nil
+		return &newAccount{plan: "owner"}, func() {}, nil
 	}
 	if s.cfg.Signup != SignupOpen {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("no account yet; a valid setup token is required"))
+		return nil, nil, connect.NewError(connect.CodePermissionDenied, errors.New("no account yet; a valid setup token is required"))
 	}
 	if req.Msg.SignupProof == nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition,
+		return nil, nil, connect.NewError(connect.CodeFailedPrecondition,
 			errors.New("this relay creates accounts with a proof of work; update remote-agent to create one here"))
 	}
 	if s.diskLow.Load() {
-		return nil, errFull("this relay is out of storage; try again later")
+		return nil, nil, errFull("this relay is out of storage; try again later")
 	}
-	if err := s.signup.admit(s.clientAddr(req.Peer().Addr, req.Header()), req.Msg.SignupProof, s.cfg.SignupBits); err != nil {
-		return nil, err
+	undo, err = s.signup.admit(s.clientAddr(req.Peer().Addr, req.Header()), req.Msg.SignupProof, s.cfg.SignupBits)
+	if err != nil {
+		return nil, nil, err
 	}
-	return &newAccount{plan: "trial"}, nil
+	return &newAccount{plan: "trial"}, undo, nil
 }
 
 func (a *authService) GetSignupChallenge(ctx context.Context, req *connect.Request[pb.GetSignupChallengeRequest]) (*connect.Response[pb.GetSignupChallengeResponse], error) {

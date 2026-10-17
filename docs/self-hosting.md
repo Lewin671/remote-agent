@@ -52,7 +52,7 @@ RA_SIGNUP=open          # anyone may create an account, with a proof of work
 RA_MAX_ACCOUNTS=100     # at most this many accounts on the relay
 ```
 
-then `docker compose up -d`. With open signup, `remote-agent account init` creates an account without a setup token: the computer spends a second or so on a proof of work, and the relay creates only a few accounts an hour for each address. Such accounts are on a trial plan, with room for 8 devices, 2 computers, 200 sessions and 256 MB of events; accounts made with the setup token have room for 32 devices and 16 computers. When the disk has less than 2 GB free, no account can grow until there is room again.
+then `docker compose up -d` (with the `compose.yaml` of v0.41.0 or later, which passes these settings to the relay). With open signup, `remote-agent account init` creates an account without a setup token: the computer spends a second or so on a proof of work, and the relay creates only a few accounts an hour for each address. Such accounts are on a trial plan, with room for 8 devices, 2 computers, 200 sessions and 256 MB of events; accounts made with the setup token have room for 32 devices and 16 computers. When the disk has less than 2 GB free, no account can add devices, sessions, events, images or settings until there is room again.
 
 The relay counts addresses as Caddy reports them, which the bundled `compose.yaml` arranges with `RA_TRUSTED_PROXIES`. Behind a proxy of your own, set `RA_TRUSTED_PROXIES` to the proxy's address range, or every account looks as if it comes from the proxy.
 
@@ -63,7 +63,7 @@ docker compose exec remote-agent-server /remote-agent-server admin -db /data/rem
 docker compose exec remote-agent-server /remote-agent-server admin -db /data/remote-agent.db suspend <account>   # resume, delete, plan <account> owner|trial
 ```
 
-`delete` removes an account and everything the relay stored for it, at once and for good. The relay never deletes accounts by itself.
+`delete` removes an account and everything the relay stored for it, for good, and its devices are disconnected within half a minute. Only the IDs of devices the account removed stay, so that those keys can never register again. The relay never deletes accounts by itself.
 
 ## 2. The web client
 
@@ -162,13 +162,15 @@ After deploying the web client, reload it **twice** on each device: the first lo
 
 ### Upgrading to v0.41.0
 
-v0.41.0 stores the relay's data in a new layout, one that holds many accounts, and does not start on the database of an earlier release: it says so and exits. Move the database once, on the relay's machine:
+v0.41.0 stores the relay's data in a new layout, one that holds many accounts, and does not start on the database of an earlier release: it says so and exits. Move the database once, on the relay's machine, as root (`sudo -i`): the `data` directory belongs to the relay's own user. The release's `compose.yaml` passes the new settings to the relay and adds a healthcheck, so it replaces yours too; if you changed yours, carry your changes over from the copy kept beside it.
 
 ```sh
 cd /opt/remote-agent
-docker compose stop remote-agent-server
+docker compose down                                # keeps your data and certificates
 cp -a data data.before-v0.41.0                    # to go back to, if anything goes wrong
 curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | REMOTE_AGENT_VERSION=v0.41.0 sh -s -- server /opt/remote-agent
+mv compose.yaml compose.yaml.before-v0.41.0
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/v0.41.0/deploy/self-host/compose.yaml -o compose.yaml
 docker compose build remote-agent-server
 # an empty database in the new layout
 docker compose run --rm --no-deps --entrypoint /remote-agent-server remote-agent-server admin -db /data/new.db accounts
@@ -216,7 +218,7 @@ docker compose up -d
 docker compose exec remote-agent-server /remote-agent-server admin -db /data/remote-agent.db accounts
 ```
 
-The last command lists your account, with its devices and sessions. Every device stays signed in. Once all is well, remove `data/old-layout.db` and `data.before-v0.41.0`. To go back instead: stop the relay, put `data.before-v0.41.0` back as `data`, and install v0.40.0 the same way.
+The last command lists your account, with the number of its devices and sessions. Every device stays signed in. Once all is well, remove `data/old-layout.db` and `data.before-v0.41.0`. To go back instead: stop the relay, put `data.before-v0.41.0` back as `data`, and install v0.40.0 the same way.
 
 ## Troubleshooting
 

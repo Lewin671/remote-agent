@@ -104,6 +104,7 @@ func TestStreamHelloFrameSizeIsBoundedBeforeAuthentication(t *testing.T) {
 
 func TestAuthenticatedStreamCountsAreBoundedAndReusable(t *testing.T) {
 	ts := newTestServer(t)
+	maxAccountStreams := planOf("owner").streams
 	ts.srv.cfg.MaxAccounts = 2 * maxTotalStreams / maxAccountStreams
 	ctx := context.Background()
 	var releases []context.CancelFunc

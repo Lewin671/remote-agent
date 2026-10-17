@@ -63,8 +63,8 @@ const pushDedupe = time.Hour
 const (
 	maxPushRecent            = 4096
 	maxAccountPushRecent     = 256
-	maxPushDeliveries        = 64
-	maxAccountPushDeliveries = 16
+	maxPushDeliveries        = 128
+	maxAccountPushDeliveries = 32
 )
 
 var errPushBusy = errors.New("push capacity exhausted; try again later")

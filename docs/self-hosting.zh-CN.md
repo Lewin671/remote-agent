@@ -52,7 +52,7 @@ RA_SIGNUP=open          # 任何人都能建账户，需要完成一次工作量
 RA_MAX_ACCOUNTS=100     # 这台中继最多容纳的账户数
 ```
 
-然后执行 `docker compose up -d`。开放注册后，`remote-agent account init` 不需要 setup token 就能建账户：电脑花一秒左右完成工作量证明，同一个地址每小时只能建几个账户。这样建的账户使用试用额度：8 台设备、2 台电脑、200 个会话、256 MB 事件；用 setup token 建的账户可以有 32 台设备、16 台电脑。磁盘剩余空间不足 2 GB 时，所有账户都暂停增长，直到腾出空间。
+然后执行 `docker compose up -d`（需要 v0.41.0 及以后的 `compose.yaml`，它会把这些设置传给中继）。开放注册后，`remote-agent account init` 不需要 setup token 就能建账户：电脑花一秒左右完成工作量证明，同一个地址每小时只能建几个账户。这样建的账户使用试用额度：8 台设备、2 台电脑、200 个会话、256 MB 事件；用 setup token 建的账户可以有 32 台设备、16 台电脑。磁盘剩余空间不足 2 GB 时，所有账户都不能再添加设备、会话、事件、图片或设置，直到腾出空间。
 
 中继按 Caddy 报告的地址计数，自带的 `compose.yaml` 已经用 `RA_TRUSTED_PROXIES` 配好。如果放在你自己的反向代理后面，把 `RA_TRUSTED_PROXIES` 设成代理所在的地址段，否则所有账户看起来都来自代理这一个地址。
 
@@ -63,7 +63,7 @@ docker compose exec remote-agent-server /remote-agent-server admin -db /data/rem
 docker compose exec remote-agent-server /remote-agent-server admin -db /data/remote-agent.db suspend <账户>   # 另有 resume、delete、plan <账户> owner|trial
 ```
 
-`delete` 会立即、永久删除一个账户以及中继为它存的所有数据。中继自己从不删除账户。
+`delete` 会永久删除一个账户以及中继为它存的所有数据，它的设备在半分钟内断开。只有这个账户删除过的设备 ID 会保留下来，这些密钥永远不能再登记。中继自己从不删除账户。
 
 ## 2. 网页
 
@@ -162,13 +162,15 @@ npx wrangler pages deploy remote-agent-web --project-name <你的项目名> --br
 
 ### 升级到 v0.41.0
 
-v0.41.0 换了中继数据的存储格式，以便容纳多个账户；它不会在旧版本的数据库上启动，而是提示原因后退出。在中继所在的机器上迁移一次数据库：
+v0.41.0 换了中继数据的存储格式，以便容纳多个账户；它不会在旧版本的数据库上启动，而是提示原因后退出。以 root 身份（`sudo -i`）在中继所在的机器上迁移一次数据库：`data` 目录属于中继自己的用户。新版的 `compose.yaml` 会把新设置传给中继，并加上健康检查，所以也要替换；如果你改过自己的那份，照着旁边留下的副本把改动搬过去。
 
 ```sh
 cd /opt/remote-agent
-docker compose stop remote-agent-server
+docker compose down                                # 数据和证书都保留
 cp -a data data.before-v0.41.0                    # 出问题时用来回退
 curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | REMOTE_AGENT_VERSION=v0.41.0 sh -s -- server /opt/remote-agent
+mv compose.yaml compose.yaml.before-v0.41.0
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/v0.41.0/deploy/self-host/compose.yaml -o compose.yaml
 docker compose build remote-agent-server
 # 新格式的空数据库
 docker compose run --rm --no-deps --entrypoint /remote-agent-server remote-agent-server admin -db /data/new.db accounts
@@ -216,7 +218,7 @@ docker compose up -d
 docker compose exec remote-agent-server /remote-agent-server admin -db /data/remote-agent.db accounts
 ```
 
-最后一条命令会列出你的账户及其设备和会话数，所有设备保持登录。确认没问题后，删掉 `data/old-layout.db` 和 `data.before-v0.41.0`。如果要回退：停掉中继，把 `data.before-v0.41.0` 改回 `data`，再用同样的方式安装 v0.40.0。
+最后一条命令会列出你的账户，以及它的设备数和会话数，所有设备保持登录。确认没问题后，删掉 `data/old-layout.db` 和 `data.before-v0.41.0`。如果要回退：停掉中继，把 `data.before-v0.41.0` 改回 `data`，再用同样的方式安装 v0.40.0。
 
 ## 常见问题
 

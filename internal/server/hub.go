@@ -78,21 +78,6 @@ func (a accountHub) machineLocked(machineID string) *peer {
 	return p
 }
 
-// deviceIDs returns the devices with a stream open, of every account.
-func (h *hub) deviceIDs() []string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	var out []string
-	for id := range h.machines {
-		out = append(out, id)
-	}
-	for _, ps := range h.clients {
-		for p := range ps {
-			out = append(out, p.dev.id)
-		}
-	}
-	return out
-}
 
 func (a accountHub) online(machineID string) bool {
 	a.h.mu.Lock()

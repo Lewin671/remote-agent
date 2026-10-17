@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS events (
 `
 
 var errOldLayout = errors.New("this database has the layout of a relay with a single account; " +
-	"move it to the current layout as the release notes describe (docs/self-hosting.md, \"Upgrading to multiple accounts\") before starting this version")
+	"move it to the current layout as the release notes describe (docs/self-hosting.md, \"Upgrading to v0.41.0\") before starting this version")
 
 func openStore(path string) (*store, error) {
 	// One connection: SQLite serializes writers anyway, and it keeps
@@ -151,13 +151,27 @@ func openStore(path string) (*store, error) {
 		db.Close()
 		return nil, fmt.Errorf("the database has layout %d; this version knows layout %d", version, schemaVersion)
 	}
-	for _, q := range []string{schema, imageSchema, prefsSchema, pushSchema, fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion)} {
-		if _, err := db.Exec(q); err != nil {
-			db.Close()
-			return nil, fmt.Errorf("create schema: %w", err)
-		}
+	// In one transaction with the version, so that a start cut short leaves
+	// no tables without it, which would look like the old layout.
+	if err := createSchema(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("create schema: %w", err)
 	}
 	return &store{db: db}, nil
+}
+
+func createSchema(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, q := range []string{schema, imageSchema, prefsSchema, pushSchema, fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion)} {
+		if _, err := tx.Exec(q); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *store) Close() error { return s.db.Close() }
@@ -264,6 +278,7 @@ func (s *store) deleteAccount(ctx context.Context, id string) error {
 type accountUsage struct {
 	devices, machines, sessions int
 	eventBytes, imageBytes      int64
+	revoked, prefs              int
 }
 
 func (t *tstore) usage(ctx context.Context) (accountUsage, error) {
@@ -277,8 +292,10 @@ func usageTx(ctx context.Context, q querier, acct string) (accountUsage, error) 
 		(SELECT COUNT(*) FROM machines WHERE account_id = ?1),
 		(SELECT COUNT(*) FROM sessions WHERE account_id = ?1),
 		(SELECT event_bytes FROM accounts WHERE id = ?1),
-		(SELECT COALESCE(SUM(bytes), 0) FROM images WHERE account_id = ?1 AND envelope IS NOT NULL)`, acct).
-		Scan(&u.devices, &u.machines, &u.sessions, &u.eventBytes, &u.imageBytes)
+		(SELECT COALESCE(SUM(bytes), 0) FROM images WHERE account_id = ?1 AND envelope IS NOT NULL),
+		(SELECT COUNT(*) FROM revoked_devices WHERE account_id = ?1),
+		(SELECT COUNT(*) FROM account_prefs WHERE account_id = ?1)`, acct).
+		Scan(&u.devices, &u.machines, &u.sessions, &u.eventBytes, &u.imageBytes, &u.revoked, &u.prefs)
 	return u, err
 }
 
@@ -401,9 +418,18 @@ func (t *tstore) registration(ctx context.Context, id string) (registration, err
 	return r, err
 }
 
+// maxDeviceTokens is how many login tokens a device keeps: a login past
+// that ends the device's oldest one, so logging in again and again takes
+// no room.
+const maxDeviceTokens = 16
+
 func (t *tstore) addToken(ctx context.Context, hash []byte, deviceID string, expires int64) error {
 	_, err := t.db.ExecContext(ctx, `INSERT INTO tokens (hash, account_id, device_id, expires_ms) VALUES (?, ?, ?, ?)`, hash, t.acct, deviceID, expires)
 	if err != nil {
+		return err
+	}
+	if _, err = t.db.ExecContext(ctx, `DELETE FROM tokens WHERE account_id = ?1 AND device_id = ?2 AND hash NOT IN
+		(SELECT hash FROM tokens WHERE account_id = ?1 AND device_id = ?2 ORDER BY expires_ms DESC LIMIT ?3)`, t.acct, deviceID, maxDeviceTokens); err != nil {
 		return err
 	}
 	_, err = t.db.ExecContext(ctx, `DELETE FROM tokens WHERE expires_ms < ?`, nowMs())

@@ -16,7 +16,6 @@ const (
 	maxStreamHelloBytes    = 4096
 	maxPendingStreamHellos = 16
 	maxDeviceStreams       = 16
-	maxAccountStreams      = 32
 	maxTotalStreams        = 512
 )
 
@@ -39,6 +38,17 @@ type streamAuth struct{ cancel context.CancelFunc }
 
 // Registration and revocation share a lock so a hello racing device deletion
 // cannot leave an authenticated stream alive after revocation has finished.
+// streamDevices lists the devices with open streams.
+func (s *Server) streamDevices() []string {
+	s.streamMu.Lock()
+	defer s.streamMu.Unlock()
+	out := make([]string, 0, len(s.streams))
+	for id := range s.streams {
+		out = append(out, id)
+	}
+	return out
+}
+
 func (s *Server) beginStream(parent context.Context, token string) (context.Context, *device, context.CancelFunc, error) {
 	s.streamMu.Lock()
 	defer s.streamMu.Unlock()
@@ -53,7 +63,7 @@ func (s *Server) beginStream(parent context.Context, token string) (context.Cont
 	for _, streams := range s.streams {
 		total += len(streams)
 	}
-	if total >= maxTotalStreams || s.accountStreams[d.account] >= maxAccountStreams {
+	if total >= maxTotalStreams || s.accountStreams[d.account] >= planOf(d.plan).streams {
 		return nil, nil, nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many streams"))
 	}
 	ctx, cancel := context.WithDeadline(parent, time.UnixMilli(d.expiresMs))

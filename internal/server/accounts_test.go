@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/netip"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/coder/websocket"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
@@ -247,8 +249,26 @@ func TestOpenSignup(t *testing.T) {
 	if a, err := ts.srv.store.account(ctx, e2e.AccountID(owner.AccountPublicKey())); err != nil || a.plan != "owner" {
 		t.Fatalf("owner's account: %v %v", a, err)
 	}
+	// A registration that makes no account uses up neither its proof nor
+	// the address's allowance: here its device key is the owner's machine.
+	_, ownerMachine, _ := ts.register(t, owner, machine, "")
+	taken, _ := ts.srv.store.tenant(e2e.AccountID(owner.AccountPublicKey())).registration(ctx, ownerMachine)
+	takenReg := &pb.DeviceRegistration{}
+	proto.Unmarshal(taken.raw, takenReg)
+	thief := newKeys()
+	stolen, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: thief.AccountPublicKey(), DevicePublicKey: takenReg.DevicePublicKey, Kind: machine})
+	again := ts.proof(t)
+	for range signupsPerHour + 1 {
+		_, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{Registration: stolen, Signature: thief.SignRegistration(stolen), SignupProof: again}))
+		if connect.CodeOf(err) != connect.CodePermissionDenied || !strings.Contains(err.Error(), "another account") {
+			t.Fatalf("another account's device key: %v", err)
+		}
+	}
+	if err := ts.signup(t, newKeys(), machine, again); err != nil {
+		t.Fatalf("proof after a failed signup: %v", err)
+	}
 	// One address makes only a few accounts an hour.
-	for range signupsPerHour - 1 {
+	for range signupsPerHour - 2 {
 		if err := ts.signup(t, newKeys(), machine, ts.proof(t)); err != nil {
 			t.Fatal(err)
 		}
@@ -368,6 +388,22 @@ func TestAdmin(t *testing.T) {
 		t.Fatal("unknown plan set")
 	}
 
+	// A terminal stream waiting for its machine, the only stream of its device.
+	term, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(ts.url, "http")+"/v1/term", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer term.CloseNow()
+	hello, _ := proto.Marshal(&pb.TermHello{Token: a.ctok, MachineId: a.mid, StreamId: "admin-term-stream-1"})
+	if err := term.Write(ctx, websocket.MessageBinary, hello); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the terminal stream", func() bool {
+		ts.srv.streamMu.Lock()
+		defer ts.srv.streamMu.Unlock()
+		return len(ts.srv.streams[a.cid]) == 1
+	})
+
 	// A suspended account cannot do anything; the other one can.
 	if err := adm.SetSuspended(ctx, ts.acct(), true); err != nil {
 		t.Fatal(err)
@@ -388,12 +424,14 @@ func TestAdmin(t *testing.T) {
 	go ts.srv.sweepAccounts(sweep)
 	rctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	for {
-		if _, _, err := a.machineFrame.ws.Read(rctx); err != nil {
-			if rctx.Err() != nil {
-				t.Fatal("a suspended account's stream stayed open")
+	for _, conn := range []*websocket.Conn{a.machineFrame.ws, term} {
+		for {
+			if _, _, err := conn.Read(rctx); err != nil {
+				if rctx.Err() != nil {
+					t.Fatal("a suspended account's stream stayed open")
+				}
+				break
 			}
-			break
 		}
 	}
 	if err := adm.SetSuspended(ctx, ts.acct(), false); err != nil {
@@ -480,5 +518,65 @@ func TestNotificationsStayInTheirAccount(t *testing.T) {
 	waitFor(t, "deliveries", func() bool { p.mu.Lock(); defer p.mu.Unlock(); return len(p.deliveries) == 0 })
 	if len(hits) != 0 {
 		t.Fatalf("b's notification went to %s too", <-hits)
+	}
+}
+
+// Writes that need no plan of their own are bounded all the same.
+func TestAccountGrowthIsBounded(t *testing.T) {
+	ts := openRelay(t)
+	ctx := context.Background()
+	keys, _ := e2e.Derive(e2e.NewKey())
+	if err := ts.signup(t, keys, pb.DeviceKind_DEVICE_KIND_MACHINE, ts.proof(t)); err != nil {
+		t.Fatal(err)
+	}
+	cp, cid, err := ts.register(t, keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, cp, cid)))
+	put := func(id string, expected uint64) error {
+		env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: id, Seq: expected + 1, Sender: cid}, []byte("prefs"))
+		_, err := client.PutAccountPrefs(ctx, connect.NewRequest(&pb.PutAccountPrefsRequest{ObjectId: id, ExpectedRevision: expected, Envelope: env}))
+		return err
+	}
+	limit := planOf("trial").prefs
+	for i := range limit {
+		if err := put(fmt.Sprint("object-", i), 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := put("one-more", 0); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("preference objects beyond the plan: %v", err)
+	}
+	if err := put("object-0", 1); err != nil {
+		t.Fatalf("a new revision of an object: %v", err)
+	}
+	// Logging in again and again keeps a bounded number of tokens.
+	for range maxDeviceTokens + 4 {
+		ts.login(t, cp, cid)
+	}
+	var tokens int
+	if err := ts.srv.store.db.QueryRow(`SELECT COUNT(*) FROM tokens WHERE device_id = ?`, cid).Scan(&tokens); err != nil || tokens != maxDeviceTokens {
+		t.Fatalf("%d tokens of one device: %v", tokens, err)
+	}
+	// Removed devices are remembered up to the plan's bound.
+	if err := planOf("trial").check(accountUsage{revoked: planOf("trial").revoked + 1}); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("removed devices beyond the plan: %v", err)
+	}
+}
+
+// One account's logins cannot take the relay's login challenges.
+func TestLoginChallengesAreBoundedPerAccount(t *testing.T) {
+	ts := newTestServer(t)
+	for i := range maxAccountChallenges * 2 {
+		if _, err := ts.srv.newChallenge(fmt.Sprintf("device-%d", i), "a"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := ts.srv.pendingChallenges(); n != maxAccountChallenges {
+		t.Fatalf("one account holds %d challenges", n)
+	}
+	if _, err := ts.srv.newChallenge("device-b", "b"); err != nil {
+		t.Fatal(err)
 	}
 }

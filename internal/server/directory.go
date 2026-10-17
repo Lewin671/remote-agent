@@ -132,7 +132,7 @@ func prefsTx(ctx context.Context, q querier, acct, objectID string) (*pb.Account
 
 // putPrefs replaces a preferences object if its revision is expected. It
 // returns the object as stored afterwards.
-func (t *tstore) putPrefs(ctx context.Context, objectID string, expected uint64, env []byte) (bool, *pb.AccountPrefsObject, error) {
+func (t *tstore) putPrefs(ctx context.Context, objectID string, expected uint64, env []byte, limit func(accountUsage) error) (bool, *pb.AccountPrefsObject, error) {
 	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, nil, err
@@ -150,6 +150,16 @@ func (t *tstore) putPrefs(ctx context.Context, objectID string, expected uint64,
 			ON CONFLICT (account_id, object_id) DO UPDATE SET revision = excluded.revision, envelope = excluded.envelope, updated_ms = excluded.updated_ms`,
 			t.acct, objectID, expected+1, env, now); err != nil {
 			return false, nil, err
+		}
+		// A new object makes the account grow; a new revision does not.
+		if expected == 0 && limit != nil {
+			u, err := usageTx(ctx, tx, t.acct)
+			if err != nil {
+				return false, nil, err
+			}
+			if err := limit(u); err != nil {
+				return false, nil, err
+			}
 		}
 		o = &pb.AccountPrefsObject{ObjectId: objectID, Revision: expected + 1, Envelope: unmarshalEnv(env), UpdatedMs: now}
 		return true, o, tx.Commit()
@@ -261,7 +271,11 @@ func (c *clientService) PutAccountPrefs(ctx context.Context, req *connect.Reques
 		return nil, invalid("preferences larger than %d bytes", maxPrefsBytes)
 	}
 	t := c.s.tenantFrom(ctx)
-	applied, o, err := t.store.putPrefs(ctx, m.ObjectId, m.ExpectedRevision, b)
+	applied, o, err := t.store.putPrefs(ctx, m.ObjectId, m.ExpectedRevision, b, t.limit(c.s))
+	var apiErr *connect.Error
+	if errors.As(err, &apiErr) {
+		return nil, err
+	}
 	if err != nil {
 		return nil, internal(err)
 	}
