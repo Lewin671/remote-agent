@@ -187,7 +187,7 @@ func TestCatalogForVersion(t *testing.T) {
 	for _, c := range []struct {
 		a, b string
 		less bool
-	}{{"2.1.284", "2.1.300", true}, {"2.1.300", "2.1.280", false}, {"2.1.300", "2.1.300", false}, {"2.1", "2.1.1", true}} {
+	}{{"2.1.284", "2.1.300", true}, {"2.1.300", "2.1.280", false}, {"2.1.300", "2.1.300", false}, {"2.1", "2.1.1", true}, {"2.1.300-beta", "2.1.280", false}} {
 		if got := versionLess(c.a, c.b); got != c.less {
 			t.Errorf("versionLess(%s, %s) = %v", c.a, c.b, got)
 		}

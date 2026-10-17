@@ -234,10 +234,16 @@ func (c *Catalog) ForVersion(v string) *Catalog {
 	return out
 }
 
-// versionLess reports whether dotted version a is older than b. Parts that
-// are not numbers compare as 0.
+// versionLess reports whether dotted version a is older than b. A suffix
+// after the numbers ("2.1.300-beta") is ignored.
 func versionLess(a, b string) bool {
-	pa, pb := strings.Split(a, "."), strings.Split(b, ".")
+	num := func(v string) string {
+		if i := strings.IndexFunc(v, func(r rune) bool { return r != '.' && (r < '0' || r > '9') }); i >= 0 {
+			v = v[:i]
+		}
+		return v
+	}
+	pa, pb := strings.Split(num(a), "."), strings.Split(num(b), ".")
 	for i := 0; i < len(pa) || i < len(pb); i++ {
 		var x, y int
 		if i < len(pa) {
