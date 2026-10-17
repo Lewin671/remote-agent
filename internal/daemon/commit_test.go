@@ -55,8 +55,8 @@ func TestCommitApprovalRequestFailureDoesNotWait(t *testing.T) {
 	h.s.log.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err := h.s.permission(ctx, &agent.Hook{ToolName: "shell", ToolInput: []byte(`{"command":"true"}`)})
-	if err == nil || errors.Is(err, context.DeadlineExceeded) {
+	out, err := h.s.permission(ctx, &agent.Hook{ToolName: "shell", ToolInput: []byte(`{"command":"true"}`)})
+	if err != nil || !strings.Contains(string(out), `"behavior":"deny"`) {
 		t.Fatalf("request failure: %v", err)
 	}
 	if h.s.info().PendingApprovals != 0 {

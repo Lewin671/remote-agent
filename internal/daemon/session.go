@@ -1405,7 +1405,10 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 	e.Time = timestamppb.Now()
 	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
 		s.mu.Unlock()
-		return agent.PermissionDecision(false, "remote-agent: could not record approval request; denied"), err
+		// A transport error would make the hook discard this payload and
+		// fall back to native approval. The denial must reach the CLI;
+		// appendLocked already reports the storage fault locally.
+		return agent.PermissionDecision(false, "remote-agent: could not record approval request; denied"), nil
 	}
 	s.approvals[a.id] = a
 	s.mu.Unlock()
@@ -1431,8 +1434,8 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 			break
 		}
 		msg := fmt.Sprintf("remote-agent: no answer within %s, denied", timeout)
-		err := resolved(pb.ApprovalDecision_APPROVAL_DECISION_TIMEOUT, msg, originSystem)
-		return agent.PermissionDecision(false, msg), err
+		_ = resolved(pb.ApprovalDecision_APPROVAL_DECISION_TIMEOUT, msg, originSystem)
+		return agent.PermissionDecision(false, msg), nil
 	case <-ctx.Done():
 		if !s.claim(a) {
 			d = <-a.decision
@@ -1453,7 +1456,11 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 			kind = pb.ApprovalDecision_APPROVAL_DECISION_ALLOW
 		}
 		if err := resolved(kind, d.message, d.origin); err != nil {
-			return agent.PermissionDecision(false, "remote-agent: could not record approval result; denied"), err
+			msg := "remote-agent: could not record approval result; denied"
+			if !d.allow {
+				msg = denialFor(d)
+			}
+			return agent.PermissionDecision(false, msg), nil
 		}
 	}
 	return agent.PermissionDecision(d.allow, denialFor(d)), nil
@@ -1516,14 +1523,18 @@ func (s *session) resolveBy(id string, allow, always bool, message string, origi
 	e := withOrigin(&pb.Event{TurnId: a.turnID, Time: timestamppb.Now(), Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{
 		ApprovalId: id, Decision: kind, Message: message,
 	}}}, origin)
-	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
+	commitErr := s.appendLocked([]*pb.Event{e}, "", 0)
+	if commitErr != nil && allow {
 		s.mu.Unlock()
-		return fmt.Errorf("approval was not delivered; could not record result: %w", err)
+		return fmt.Errorf("approval was not delivered; could not record result: %w", commitErr)
 	}
 	a.claimed = true
 	delete(s.approvals, id)
 	s.mu.Unlock()
-	a.decision <- decision{allow: allow, message: message, origin: origin, recorded: true}
+	a.decision <- decision{allow: allow, message: message, origin: origin, recorded: commitErr == nil}
+	if commitErr != nil {
+		return fmt.Errorf("approval denied but could not record result: %w", commitErr)
+	}
 	return nil
 }
 
