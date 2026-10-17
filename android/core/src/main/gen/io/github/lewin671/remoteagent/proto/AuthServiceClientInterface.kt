@@ -19,4 +19,11 @@ public interface AuthServiceClientInterface {
   public suspend fun getChallenge(request: GetChallengeRequest, headers: Headers = emptyMap()): ResponseMessage<GetChallengeResponse>
 
   public suspend fun login(request: LoginRequest, headers: Headers = emptyMap()): ResponseMessage<LoginResponse>
+
+  /**
+   *  A relay that lets anyone create an account asks for a proof of work
+   *  instead of a setup token: RegisterDevice refuses a new account with
+   *  FAILED_PRECONDITION, and the client solves a challenge from here.
+   */
+  public suspend fun getSignupChallenge(request: GetSignupChallengeRequest, headers: Headers = emptyMap()): ResponseMessage<GetSignupChallengeResponse>
 }

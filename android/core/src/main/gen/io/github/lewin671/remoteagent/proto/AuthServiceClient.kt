@@ -54,4 +54,21 @@ public class AuthServiceClient(
     ),
   )
 
+
+  /**
+   *  A relay that lets anyone create an account asks for a proof of work
+   *  instead of a setup token: RegisterDevice refuses a new account with
+   *  FAILED_PRECONDITION, and the client solves a challenge from here.
+   */
+  override suspend fun getSignupChallenge(request: GetSignupChallengeRequest, headers: Headers): ResponseMessage<GetSignupChallengeResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.AuthService/GetSignupChallenge",
+      io.github.lewin671.remoteagent.proto.GetSignupChallengeRequest::class,
+      io.github.lewin671.remoteagent.proto.GetSignupChallengeResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
 }

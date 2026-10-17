@@ -33,7 +33,8 @@ public interface RegisterDeviceRequestOrBuilder extends
 
   /**
    * <pre>
-   * Required only to create the account, i.e. for the first device.
+   * Required only to create the account, i.e. for the first device, on a
+   * relay that creates accounts with a setup token.
    * </pre>
    *
    * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -42,7 +43,8 @@ public interface RegisterDeviceRequestOrBuilder extends
   java.lang.String getSetupToken();
   /**
    * <pre>
-   * Required only to create the account, i.e. for the first device.
+   * Required only to create the account, i.e. for the first device, on a
+   * relay that creates accounts with a setup token.
    * </pre>
    *
    * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -50,4 +52,23 @@ public interface RegisterDeviceRequestOrBuilder extends
    */
   com.google.protobuf.ByteString
       getSetupTokenBytes();
+
+  /**
+   * <pre>
+   * Required only to create the account on a relay open to anyone.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+   * @return Whether the signupProof field is set.
+   */
+  boolean hasSignupProof();
+  /**
+   * <pre>
+   * Required only to create the account on a relay open to anyone.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+   * @return The signupProof.
+   */
+  io.github.lewin671.remoteagent.proto.SignupProof getSignupProof();
 }

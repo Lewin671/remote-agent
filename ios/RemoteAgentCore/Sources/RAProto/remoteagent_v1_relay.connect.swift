@@ -23,6 +23,12 @@ public protocol PBAuthServiceClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `login`(request: PBLoginRequest, headers: Connect.Headers) async -> ResponseMessage<PBLoginResponse>
+
+    /// A relay that lets anyone create an account asks for a proof of work
+    /// instead of a setup token: RegisterDevice refuses a new account with
+    /// FAILED_PRECONDITION, and the client solves a challenge from here.
+    @available(iOS 13, *)
+    func `getSignupChallenge`(request: PBGetSignupChallengeRequest, headers: Connect.Headers) async -> ResponseMessage<PBGetSignupChallengeResponse>
 }
 
 /// Concrete implementation of `PBAuthServiceClientInterface`.
@@ -48,11 +54,17 @@ public final class PBAuthServiceClient: PBAuthServiceClientInterface, Sendable {
         return await self.client.unary(path: "/remoteagent.v1.AuthService/Login", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
+    @available(iOS 13, *)
+    public func `getSignupChallenge`(request: PBGetSignupChallengeRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBGetSignupChallengeResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.AuthService/GetSignupChallenge", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
     public enum Metadata {
         public enum Methods {
             public static let registerDevice = Connect.MethodSpec(name: "RegisterDevice", service: "remoteagent.v1.AuthService", type: .unary)
             public static let getChallenge = Connect.MethodSpec(name: "GetChallenge", service: "remoteagent.v1.AuthService", type: .unary)
             public static let login = Connect.MethodSpec(name: "Login", service: "remoteagent.v1.AuthService", type: .unary)
+            public static let getSignupChallenge = Connect.MethodSpec(name: "GetSignupChallenge", service: "remoteagent.v1.AuthService", type: .unary)
         }
     }
 }

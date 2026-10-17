@@ -244,8 +244,64 @@ public struct PBRegisterDeviceRequest: Sendable {
   /// followed by registration.
   public var signature: Data = Data()
 
-  /// Required only to create the account, i.e. for the first device.
+  /// Required only to create the account, i.e. for the first device, on a
+  /// relay that creates accounts with a setup token.
   public var setupToken: String = String()
+
+  /// Required only to create the account on a relay open to anyone.
+  public var signupProof: PBSignupProof {
+    get {return _signupProof ?? PBSignupProof()}
+    set {_signupProof = newValue}
+  }
+  /// Returns true if `signupProof` has been explicitly set.
+  public var hasSignupProof: Bool {return self._signupProof != nil}
+  /// Clears the value of `signupProof`. Subsequent reads from it will return its default value.
+  public mutating func clearSignupProof() {self._signupProof = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _signupProof: PBSignupProof? = nil
+}
+
+public struct PBGetSignupChallengeRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBGetSignupChallengeResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var challenge: Data = Data()
+
+  /// SHA-256 of challenge followed by the nonce must start with this many
+  /// zero bits.
+  public var difficultyBits: UInt32 = 0
+
+  public var expiresMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A solved signup challenge; each challenge creates one account at most.
+public struct PBSignupProof: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var challenge: Data = Data()
+
+  public var nonce: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1862,7 +1918,7 @@ extension PBDeviceRegistration: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBRegisterDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RegisterDeviceRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}registration\0\u{1}signature\0\u{3}setup_token\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}registration\0\u{1}signature\0\u{3}setup_token\0\u{3}signup_proof\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1873,12 +1929,17 @@ extension PBRegisterDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
       case 1: try { try decoder.decodeSingularBytesField(value: &self.registration) }()
       case 2: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.setupToken) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._signupProof) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if !self.registration.isEmpty {
       try visitor.visitSingularBytesField(value: self.registration, fieldNumber: 1)
     }
@@ -1888,6 +1949,9 @@ extension PBRegisterDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
     if !self.setupToken.isEmpty {
       try visitor.visitSingularStringField(value: self.setupToken, fieldNumber: 3)
     }
+    try { if let v = self._signupProof {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1895,6 +1959,101 @@ extension PBRegisterDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
     if lhs.registration != rhs.registration {return false}
     if lhs.signature != rhs.signature {return false}
     if lhs.setupToken != rhs.setupToken {return false}
+    if lhs._signupProof != rhs._signupProof {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBGetSignupChallengeRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetSignupChallengeRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBGetSignupChallengeRequest, rhs: PBGetSignupChallengeRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBGetSignupChallengeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetSignupChallengeResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}challenge\0\u{3}difficulty_bits\0\u{3}expires_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.challenge) }()
+      case 2: try { try decoder.decodeSingularUInt32Field(value: &self.difficultyBits) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.expiresMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.challenge.isEmpty {
+      try visitor.visitSingularBytesField(value: self.challenge, fieldNumber: 1)
+    }
+    if self.difficultyBits != 0 {
+      try visitor.visitSingularUInt32Field(value: self.difficultyBits, fieldNumber: 2)
+    }
+    if self.expiresMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.expiresMs, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBGetSignupChallengeResponse, rhs: PBGetSignupChallengeResponse) -> Bool {
+    if lhs.challenge != rhs.challenge {return false}
+    if lhs.difficultyBits != rhs.difficultyBits {return false}
+    if lhs.expiresMs != rhs.expiresMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSignupProof: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SignupProof"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}challenge\0\u{1}nonce\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.challenge) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.nonce) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.challenge.isEmpty {
+      try visitor.visitSingularBytesField(value: self.challenge, fieldNumber: 1)
+    }
+    if !self.nonce.isEmpty {
+      try visitor.visitSingularBytesField(value: self.nonce, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSignupProof, rhs: PBSignupProof) -> Bool {
+    if lhs.challenge != rhs.challenge {return false}
+    if lhs.nonce != rhs.nonce {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

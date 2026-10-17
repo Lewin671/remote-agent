@@ -19,6 +19,7 @@ public  final class RegisterDeviceRequest extends
     signature_ = com.google.protobuf.ByteString.EMPTY;
     setupToken_ = "";
   }
+  private int bitField0_;
   public static final int REGISTRATION_FIELD_NUMBER = 1;
   private com.google.protobuf.ByteString registration_;
   /**
@@ -104,7 +105,8 @@ public  final class RegisterDeviceRequest extends
   private java.lang.String setupToken_;
   /**
    * <pre>
-   * Required only to create the account, i.e. for the first device.
+   * Required only to create the account, i.e. for the first device, on a
+   * relay that creates accounts with a setup token.
    * </pre>
    *
    * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -116,7 +118,8 @@ public  final class RegisterDeviceRequest extends
   }
   /**
    * <pre>
-   * Required only to create the account, i.e. for the first device.
+   * Required only to create the account, i.e. for the first device, on a
+   * relay that creates accounts with a setup token.
    * </pre>
    *
    * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -129,7 +132,8 @@ public  final class RegisterDeviceRequest extends
   }
   /**
    * <pre>
-   * Required only to create the account, i.e. for the first device.
+   * Required only to create the account, i.e. for the first device, on a
+   * relay that creates accounts with a setup token.
    * </pre>
    *
    * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -144,7 +148,8 @@ public  final class RegisterDeviceRequest extends
   }
   /**
    * <pre>
-   * Required only to create the account, i.e. for the first device.
+   * Required only to create the account, i.e. for the first device, on a
+   * relay that creates accounts with a setup token.
    * </pre>
    *
    * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -155,7 +160,8 @@ public  final class RegisterDeviceRequest extends
   }
   /**
    * <pre>
-   * Required only to create the account, i.e. for the first device.
+   * Required only to create the account, i.e. for the first device, on a
+   * relay that creates accounts with a setup token.
    * </pre>
    *
    * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -166,6 +172,74 @@ public  final class RegisterDeviceRequest extends
     checkByteStringIsUtf8(value);
     setupToken_ = value.toStringUtf8();
 
+  }
+
+  public static final int SIGNUP_PROOF_FIELD_NUMBER = 4;
+  private io.github.lewin671.remoteagent.proto.SignupProof signupProof_;
+  /**
+   * <pre>
+   * Required only to create the account on a relay open to anyone.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSignupProof() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <pre>
+   * Required only to create the account on a relay open to anyone.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.SignupProof getSignupProof() {
+    return signupProof_ == null ? io.github.lewin671.remoteagent.proto.SignupProof.getDefaultInstance() : signupProof_;
+  }
+  /**
+   * <pre>
+   * Required only to create the account on a relay open to anyone.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSignupProof(io.github.lewin671.remoteagent.proto.SignupProof value) {
+    value.getClass();  // minimal bytecode null check
+    signupProof_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <pre>
+   * Required only to create the account on a relay open to anyone.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSignupProof(io.github.lewin671.remoteagent.proto.SignupProof value) {
+    value.getClass();  // minimal bytecode null check
+    if (signupProof_ != null &&
+        signupProof_ != io.github.lewin671.remoteagent.proto.SignupProof.getDefaultInstance()) {
+      signupProof_ =
+        io.github.lewin671.remoteagent.proto.SignupProof.newBuilder(signupProof_).mergeFrom(value).buildPartial();
+    } else {
+      signupProof_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <pre>
+   * Required only to create the account on a relay open to anyone.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+   */
+  private void clearSignupProof() {
+    signupProof_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.proto.RegisterDeviceRequest parseFrom(
@@ -350,7 +424,8 @@ public  final class RegisterDeviceRequest extends
 
     /**
      * <pre>
-     * Required only to create the account, i.e. for the first device.
+     * Required only to create the account, i.e. for the first device, on a
+     * relay that creates accounts with a setup token.
      * </pre>
      *
      * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -362,7 +437,8 @@ public  final class RegisterDeviceRequest extends
     }
     /**
      * <pre>
-     * Required only to create the account, i.e. for the first device.
+     * Required only to create the account, i.e. for the first device, on a
+     * relay that creates accounts with a setup token.
      * </pre>
      *
      * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -375,7 +451,8 @@ public  final class RegisterDeviceRequest extends
     }
     /**
      * <pre>
-     * Required only to create the account, i.e. for the first device.
+     * Required only to create the account, i.e. for the first device, on a
+     * relay that creates accounts with a setup token.
      * </pre>
      *
      * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -390,7 +467,8 @@ public  final class RegisterDeviceRequest extends
     }
     /**
      * <pre>
-     * Required only to create the account, i.e. for the first device.
+     * Required only to create the account, i.e. for the first device, on a
+     * relay that creates accounts with a setup token.
      * </pre>
      *
      * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -403,7 +481,8 @@ public  final class RegisterDeviceRequest extends
     }
     /**
      * <pre>
-     * Required only to create the account, i.e. for the first device.
+     * Required only to create the account, i.e. for the first device, on a
+     * relay that creates accounts with a setup token.
      * </pre>
      *
      * <code>string setup_token = 3 [json_name = "setupToken"];</code>
@@ -414,6 +493,77 @@ public  final class RegisterDeviceRequest extends
         com.google.protobuf.ByteString value) {
       copyOnWrite();
       instance.setSetupTokenBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Required only to create the account on a relay open to anyone.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSignupProof() {
+      return instance.hasSignupProof();
+    }
+    /**
+     * <pre>
+     * Required only to create the account on a relay open to anyone.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.SignupProof getSignupProof() {
+      return instance.getSignupProof();
+    }
+    /**
+     * <pre>
+     * Required only to create the account on a relay open to anyone.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+     */
+    public Builder setSignupProof(io.github.lewin671.remoteagent.proto.SignupProof value) {
+      copyOnWrite();
+      instance.setSignupProof(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Required only to create the account on a relay open to anyone.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+     */
+    public Builder setSignupProof(
+        io.github.lewin671.remoteagent.proto.SignupProof.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSignupProof(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Required only to create the account on a relay open to anyone.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+     */
+    public Builder mergeSignupProof(io.github.lewin671.remoteagent.proto.SignupProof value) {
+      copyOnWrite();
+      instance.mergeSignupProof(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Required only to create the account on a relay open to anyone.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SignupProof signup_proof = 4 [json_name = "signupProof"];</code>
+     */
+    public Builder clearSignupProof() {  copyOnWrite();
+      instance.clearSignupProof();
       return this;
     }
 
@@ -433,13 +583,15 @@ public  final class RegisterDeviceRequest extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "registration_",
             "signature_",
             "setupToken_",
+            "signupProof_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
-              "\u0208";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
+              "\u0208\u0004\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
