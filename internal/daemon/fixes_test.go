@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -48,6 +49,10 @@ func TestQueueSurvivesRestart(t *testing.T) {
 // A message that was being written when the daemon died is settled from
 // history after the restart and never written again.
 func TestInflightIsSettledNotReplayed(t *testing.T) {
+	synctest.Test(t, testInflightIsSettledNotReplayed)
+}
+
+func testInflightIsSettledNotReplayed(t *testing.T) {
 	for _, submitted := range []bool{true, false} {
 		h := newHarness(t, Config{SubmitTimeout: 100 * time.Millisecond})
 		off := int64(0)
@@ -93,6 +98,10 @@ func inputStatus(h *harness, requestID string) pb.InputStatus {
 // submission; with neither, the message is reported unconfirmed, not
 // silently dropped and not sent again.
 func TestSubmissionConfirmation(t *testing.T) {
+	synctest.Test(t, testSubmissionConfirmation)
+}
+
+func testSubmissionConfirmation(t *testing.T) {
 	h := newHarness(t, Config{SubmitTimeout: 200 * time.Millisecond})
 	h.term.history = filepath.Join(h.dir, "elsewhere.jsonl") // Codex writes no history
 	h.s.bindRollout("codex-1", filepath.Join(h.dir, "rollout.jsonl"))
@@ -370,6 +379,10 @@ func TestMarkInflightFailureKeepsMessageQueued(t *testing.T) {
 // wait for it ran out: the record then confirms a message that was already
 // reported unconfirmed, and no later record confirms it again.
 func TestLateRecordConfirmsUnconfirmedMessage(t *testing.T) {
+	synctest.Test(t, testLateRecordConfirmsUnconfirmedMessage)
+}
+
+func testLateRecordConfirmsUnconfirmedMessage(t *testing.T) {
 	h := newHarness(t, Config{SubmitTimeout: 100 * time.Millisecond})
 	h.term.history = filepath.Join(h.dir, "elsewhere.jsonl") // Codex writes no history
 	h.s.bindRollout("codex-1", filepath.Join(h.dir, "rollout.jsonl"))
@@ -423,6 +436,10 @@ func TestLateRecordConfirmsUnconfirmedMessage(t *testing.T) {
 // A write whose reply fails counts as possibly written: it is settled from
 // Codex's records and never written again.
 func TestAmbiguousWriteIsNotRetried(t *testing.T) {
+	synctest.Test(t, testAmbiguousWriteIsNotRetried)
+}
+
+func testAmbiguousWriteIsNotRetried(t *testing.T) {
 	h := newHarness(t, Config{SubmitTimeout: 100 * time.Millisecond})
 	h.term.failWrites = true
 	ctx, cancel := context.WithCancel(context.Background())
@@ -823,6 +840,10 @@ func TestLateRecordConfirmsUnconfirmedMessageAfterRestart(t *testing.T) {
 // that nothing overwrites the file, instead of carrying on as if it had
 // never been given anything.
 func TestUnreadableQueueIsKeptAndBlocksInput(t *testing.T) {
+	synctest.Test(t, testUnreadableQueueIsKeptAndBlocksInput)
+}
+
+func testUnreadableQueueIsKeptAndBlocksInput(t *testing.T) {
 	h := newHarness(t, Config{})
 	h.term.setScreen(draftScreen)
 	if _, err := h.s.send("accepted", "r1"); err != nil {

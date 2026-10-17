@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -90,6 +91,10 @@ func TestCancelHeldMessage(t *testing.T) {
 // box, which holds the CLI's queue by then, is emptied: a daemon that
 // stops in between comes back with them paused, not gone.
 func TestCancelHeldSavesTheOthersBeforeClearing(t *testing.T) {
+	synctest.Test(t, testCancelHeldSavesTheOthersBeforeClearing)
+}
+
+func testCancelHeldSavesTheOthersBeforeClearing(t *testing.T) {
 	h, clears, _ := heldPair(t)
 	var atClear []byte
 	inner := h.term.onWrite
@@ -134,7 +139,7 @@ func TestCancelHeldSavesTheOthersBeforeClearing(t *testing.T) {
 	}
 	n := len(h.term.written())
 	runInjector(t, h)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(2 * time.Second) // cover the held-input retry
 	if len(h.term.written()) != n {
 		t.Fatal("written again without the user's word")
 	}

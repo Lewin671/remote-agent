@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 	"unsafe"
 
@@ -189,6 +190,10 @@ func eventually(t *testing.T, what string, cond func() bool) {
 }
 
 func TestSendWaitsForLocalDraftAndPopups(t *testing.T) {
+	synctest.Test(t, testSendWaitsForLocalDraftAndPopups)
+}
+
+func testSendWaitsForLocalDraftAndPopups(t *testing.T) {
 	h := newHarness(t, Config{})
 	h.term.setScreen(draftScreen)
 	ctx, cancel := context.WithCancel(context.Background())

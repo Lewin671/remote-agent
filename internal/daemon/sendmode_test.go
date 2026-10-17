@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -55,6 +56,10 @@ func TestQueueOrderKeepsSteerAhead(t *testing.T) {
 
 // A steer is written during the turn; a queue message only after it ends.
 func TestQueueWaitsForTurnEnd(t *testing.T) {
+	synctest.Test(t, testQueueWaitsForTurnEnd)
+}
+
+func testQueueWaitsForTurnEnd(t *testing.T) {
 	h := newHarness(t, Config{})
 	h.writeRollout(taskStarted)
 	h.s.bindRollout("codex-1", filepath.Join(h.dir, "rollout.jsonl"))
@@ -73,7 +78,7 @@ func TestQueueWaitsForTurnEnd(t *testing.T) {
 	if w := h.term.written(); w[0] != string(codex.PasteBytes("now")) {
 		t.Fatalf("writes %q", w)
 	}
-	time.Sleep(150 * time.Millisecond)
+	time.Sleep(2 * time.Second) // cover the one-second held-input retry
 	if w := h.term.written(); len(w) != 1 {
 		t.Fatalf("queue message written during the turn: %q", w)
 	}
@@ -90,6 +95,10 @@ func TestQueueWaitsForTurnEnd(t *testing.T) {
 
 // An interrupted turn pauses what was not written; ResumeInput sends it.
 func TestInterruptPausesWaitingInput(t *testing.T) {
+	synctest.Test(t, testInterruptPausesWaitingInput)
+}
+
+func testInterruptPausesWaitingInput(t *testing.T) {
 	h := newHarness(t, Config{})
 	h.writeRollout(taskStarted)
 	h.s.bindRollout("codex-1", filepath.Join(h.dir, "rollout.jsonl"))
@@ -110,7 +119,7 @@ func TestInterruptPausesWaitingInput(t *testing.T) {
 		return len(st) > 1 && st[len(st)-1].Paused
 	})
 	h.term.setScreen(idleScreen)
-	time.Sleep(150 * time.Millisecond)
+	time.Sleep(2 * time.Second) // cover the one-second held-input retry
 	if w := h.term.written(); len(w) != 0 {
 		t.Fatalf("paused input written: %q", w)
 	}
@@ -168,6 +177,10 @@ func turnEnd(outcome pb.TurnOutcome) *pb.Event {
 // before the waiting input was saved as paused: the next daemon pauses it
 // before anything is written.
 func TestRestartAfterInterruptPausesWaitingInput(t *testing.T) {
+	synctest.Test(t, testRestartAfterInterruptPausesWaitingInput)
+}
+
+func testRestartAfterInterruptPausesWaitingInput(t *testing.T) {
 	h := newHarness(t, Config{})
 	h.term.setScreen(draftScreen)
 	h.s.emit(&pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
@@ -187,7 +200,7 @@ func TestRestartAfterInterruptPausesWaitingInput(t *testing.T) {
 	}
 	h.term.setScreen(idleScreen)
 	runInjector(t, h)
-	time.Sleep(150 * time.Millisecond)
+	time.Sleep(2 * time.Second) // cover the one-second held-input retry
 	if w := h.term.written(); len(w) != 0 {
 		t.Fatalf("interrupted input written after restart: %q", w)
 	}

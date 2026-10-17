@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"connectrpc.com/connect"
@@ -56,6 +57,10 @@ func TestClearLeavesMultilineDrafts(t *testing.T) {
 // an empty input box proves nothing at first: a placeholder that shows up
 // later makes it the terminal's to sort out, and nothing is deleted.
 func TestRestartWaitsForLateConversion(t *testing.T) {
+	synctest.Test(t, testRestartWaitsForLateConversion)
+}
+
+func testRestartWaitsForLateConversion(t *testing.T) {
 	defer func(w time.Duration) { conversionWindow = w }(conversionWindow)
 	conversionWindow = 1500 * time.Millisecond
 	h := newHarness(t, Config{})
@@ -83,6 +88,10 @@ func TestRestartWaitsForLateConversion(t *testing.T) {
 
 // With the box empty for the whole window, the message failed cleanly.
 func TestRestartWithEmptyBoxFails(t *testing.T) {
+	synctest.Test(t, testRestartWithEmptyBoxFails)
+}
+
+func testRestartWithEmptyBoxFails(t *testing.T) {
 	defer func(w time.Duration) { conversionWindow = w }(conversionWindow)
 	conversionWindow = 300 * time.Millisecond
 	h := newHarness(t, Config{})
@@ -120,13 +129,15 @@ func (c *failingHold) Hold(d time.Duration) error {
 // G4: once the hold may have lapsed, nothing more is written: not the
 // text and Enter, not Ctrl-U.
 func TestNoWritesAfterTheHoldLapses(t *testing.T) {
+	synctest.Test(t, testNoWritesAfterTheHoldLapses)
+}
+
+func testNoWritesAfterTheHoldLapses(t *testing.T) {
 	h := newHarness(t, Config{})
 	imgs := imagesFor(t, h.dir, "a.png")
 	h.s.term = failingHoldTerm{h.term}
-	pasted := time.Time{}
 	h.term.onWrite = func(f *fakeTerm, b string) {
 		if strings.Contains(b, imgs[0].Path) {
-			pasted = time.Now()
 			go func() {
 				// Converted slowly, after the hold lapsed.
 				time.Sleep(holdFor)
@@ -146,7 +157,6 @@ func TestNoWritesAfterTheHoldLapses(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	_ = pasted
 	for _, w := range h.term.written() {
 		if strings.Contains(w, "\r") || w == "\x15" {
 			t.Fatalf("wrote %q after the hold lapsed", w)

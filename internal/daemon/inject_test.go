@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -198,6 +199,10 @@ func TestRestartWhilePastingImages(t *testing.T) {
 
 // A hold is renewed while images are pasted.
 func TestLeaseRenews(t *testing.T) {
+	synctest.Test(t, testLeaseRenews)
+}
+
+func testLeaseRenews(t *testing.T) {
 	f := &fakeTerm{}
 	c := &countingControl{fakeControl: fakeControl{f}}
 	l, err := holdLease(c, time.Minute)
@@ -250,6 +255,10 @@ func TestExitWhileWritingDoesNotSettleTwice(t *testing.T) {
 }
 
 func TestSendWithImagesAfterTerminalResize(t *testing.T) {
+	synctest.Test(t, testSendWithImagesAfterTerminalResize)
+}
+
+func testSendWithImagesAfterTerminalResize(t *testing.T) {
 	h := newHarness(t, Config{})
 	imgs := imagesFor(t, h.dir, "a.png")
 	fakeCodexImages(t, h, map[string]bool{imgs[0].Path: true})
@@ -261,10 +270,15 @@ func TestSendWithImagesAfterTerminalResize(t *testing.T) {
 	}
 	h.s.enqueue("look", "resize", imgs, originLocal)
 	runInjector(t, h)
-	eventually(t, "submitted despite resize", func() bool {
-		st := inputStates(h, "resize")
-		return len(st) > 0 && st[len(st)-1].Status == pb.InputStatus_INPUT_STATUS_SUBMITTED
-	})
+	// Let the in-process injector finish on the virtual clock. A three-
+	// second wall deadline was shorter than even one imageWait (six
+	// seconds), and could expire before a runnable injector was scheduled.
+	time.Sleep(injectBase + injectPerImage + h.d.cfg.SubmitTimeout)
+	synctest.Wait()
+	st := inputStates(h, "resize")
+	if len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+		t.Fatalf("input states %v", st)
+	}
 	for _, b := range h.term.written() {
 		if b == "\x15" {
 			t.Fatal("cleared a recognized image")
