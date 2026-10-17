@@ -180,6 +180,7 @@ struct EventReducer: Sendable {
     // A user message with no submitted state before it, which may still come
     // right after: Claude Code records the message first.
     private var unclaimed: UInt64?
+    private var queuedAt = [String: UInt64]()
     // A plan was proposed since entering plan mode: leaving it is the plan's
     // answer, however given, not a mode switch made in the terminal.
     private var compacting: UInt64?
@@ -254,13 +255,15 @@ struct EventReducer: Sendable {
             }
             if st.status == .failed || st.status == .needsTerminal { d.failures[st.requestID] = st.reason }
             if st.status == .canceled && st.reason == "exited" { d.unsent[st.requestID] = e.seq }
+            if st.status == .queued && queuedAt[st.requestID] == nil { queuedAt[st.requestID] = e.seq }
             if st.status == .submitted {
                 // Codex marks a message submitted before recording it;
                 // Claude Code records the message first and the state
-                // follows, claiming the message just before it. A
+                // follows, claiming only a message after its enqueue. A
                 // message confirmed after it was reported unconfirmed is
                 // the one recorded right after this state.
-                if !late, claude, let u = unclaimed, Int64(bitPattern: e.seq) &- Int64(bitPattern: u) <= 3 {
+                if !late, claude, let u = unclaimed, e.seq >= u, e.seq - u <= 3,
+                    queuedAt[st.requestID].map({ u > $0 }) ?? true {
                     d.typedLocally.remove(u)
                     unclaimed = nil
                 } else {

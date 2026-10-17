@@ -603,6 +603,7 @@ internal class EventReducer(agent: Agent) {
     // A user message with no submitted state before it, which may still come
     // right after: Claude Code records the message first.
     private var unclaimed: Long? = null
+    private val queuedAt = HashMap<String, Long>()
     // A plan was proposed since entering plan mode: leaving it is the plan's
     // answer, however given, not a mode switch made in the terminal.
     private var compacting: Long? = null
@@ -660,14 +661,16 @@ internal class EventReducer(agent: Agent) {
                     }
                     if (st.status == InputStatus.INPUT_STATUS_FAILED || st.status == InputStatus.INPUT_STATUS_NEEDS_TERMINAL) d.failures[st.requestId] = st.reason
                     if (e.inputState.status == InputStatus.INPUT_STATUS_CANCELED && e.inputState.reason == "exited") d.unsent[e.inputState.requestId] = e.seq
+                    if (st.status == InputStatus.INPUT_STATUS_QUEUED) queuedAt.putIfAbsent(st.requestId, e.seq)
                     if (e.inputState.status == InputStatus.INPUT_STATUS_SUBMITTED) {
                         // Codex marks a message submitted before recording it;
                         // Claude Code records the message first and the state
-                        // follows, claiming the message just before it. A
+                        // follows, claiming only a message after its enqueue. A
                         // message confirmed after it was reported unconfirmed
                         // is the one recorded right after this state.
                         val u = unclaimed
-                        if (!late && claude && u != null && e.seq - u <= 3) {
+                        val since = queuedAt[st.requestId]
+                        if (!late && claude && u != null && e.seq - u <= 3 && (since == null || u > since)) {
                             d.typedLocally.remove(u)
                             unclaimed = null
                         } else {
