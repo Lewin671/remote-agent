@@ -4,4 +4,4 @@
 // feature by feature. Keep it equal to Version in Go's internal/protocol
 // and to Android's PROTOCOL_VERSION. It is not the envelope version
 // (VERSION in crypto.ts), which stored data keeps.
-export const PROTOCOL_VERSION = 6;
+export const PROTOCOL_VERSION = 7;

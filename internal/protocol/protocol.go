@@ -15,7 +15,7 @@ import (
 // falling back feature by feature. Raise it with any change an older peer
 // would misread, in step with PROTOCOL_VERSION in web/src and android/core.
 // Data already stored keeps its envelope version (e2e.Version).
-const Version = 6
+const Version = 7
 
 // Header carries Version on the daemon's local socket, in both directions.
 const Header = "Remote-Agent-Protocol"

@@ -1362,3 +1362,22 @@ func TestRejectedNotificationIsNotOfferedAgain(t *testing.T) {
 		t.Fatalf("%d notify calls for one rejected notification", n)
 	}
 }
+
+// Protocol 6 predates terminal-only skeletons and must never execute a
+// structured command against a daemon that uses their answer restrictions.
+func TestProtocol6CommandsRefused(t *testing.T) {
+	e := setup(t)
+	e.backend.add(t, "session")
+	e.startRelay()
+	s := e.session(t, "session", 0)
+	e.online(t, true)
+	cmd := &pb.Command{ProtocolVersion: 6, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: s.ID, Text: "old-client-answer", RequestId: "old-answer"}}}
+	_, err := e.client.Do(context.Background(), s, cmd)
+	var ce *remoteclient.CommandError
+	if !errors.As(err, &ce) || ce.Code != connect.CodeFailedPrecondition.String() || !strings.Contains(ce.Message, "update") {
+		t.Fatalf("protocol 6 was not told to update: %v", err)
+	}
+	if e.backend.sendCount() != 0 {
+		t.Fatal("protocol 6 command reached the CLI backend")
+	}
+}

@@ -142,7 +142,7 @@ func TestUpdateWithRealProcesses(t *testing.T) {
 			}
 			f.archive = b.Bytes()
 			hash := sha256.Sum256(f.archive)
-			f.metadata = []byte(fmt.Sprintf("version=1.2.0\nprotocol=6\ndaemonUpdate=1\ndaemonState=1\ndaemonAutomatic=true\ndaemon.linux-amd64.sha256=%s\ndaemon.linux-amd64.size=%d\n", hex.EncodeToString(hash[:]), len(f.archive)))
+			f.metadata = []byte(fmt.Sprintf("version=1.2.0\nprotocol=%d\ndaemonUpdate=1\ndaemonState=1\ndaemonAutomatic=true\ndaemon.linux-amd64.sha256=%s\ndaemon.linux-amd64.size=%d\n", f.u.current.Protocol, hex.EncodeToString(hash[:]), len(f.archive)))
 			previousPID := service.cmd.Process.Pid
 			r, err := f.u.Apply(context.Background(), "", false)
 			want := "updated"
