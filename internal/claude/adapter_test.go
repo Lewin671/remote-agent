@@ -3,6 +3,7 @@ package claude
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -123,11 +124,13 @@ type fakeClaude struct {
 	noAuto     bool
 	typed      string
 	menu       []string // model menu labels
-	models     []string // the labels /model lists, if not 2.1.284's
+	models     []string // the labels /model lists, if not the catalog's
+	cat        *Catalog // the catalog the menu mirrors, when set
 	cursor     int
 	effort     int // index in efforts
 	cached     bool
 	confirm    bool
+	pending    string // the label the confirmation would switch to
 	note       string
 	question   *pb.Question
 	picked     []int
@@ -138,9 +141,27 @@ type fakeClaude struct {
 	stuck      bool   // s does nothing in the model menu
 	noWrap     bool   // ←/→ stop at the ends instead of cycling (2.1.300)
 	cursorMark string // a scroll marker drawn on the cursor row in the menu
+	window     int    // draw only this many menu rows, as a narrow window does
 	wrap       int    // wrap question and plan text after this many characters
 	planText   string // the plan prompt as drawn, if set
 	background string // appended to the mode line
+}
+
+// menuLabels are the rows /model opens with: the catalog's models, or the
+// labels a test set.
+func (f *fakeClaude) menuLabels() []string {
+	if f.models != nil {
+		return f.models
+	}
+	if f.cat != nil {
+		return menuOf(f.cat)
+	}
+	return []string{"Default (recommended)", "Opus 5.5", "Fable 5.1", "Sonnet 5.5", "Haiku 4.5"}
+}
+
+// modelOf is the catalog row a menu label is, if the fake has a catalog.
+func (f *fakeClaude) modelOf(label string) *Model {
+	return f.cat.ByName(strings.TrimSuffix(label, " ✔"))
 }
 
 func (f *fakeClaude) wrapped(s string) string {
@@ -163,18 +184,38 @@ func (f *fakeClaude) draw() {
 	b.WriteString(f.note + "\n")
 	switch {
 	case f.confirm:
-		b.WriteString(rule + "\n  Switch model?\n  ❯ 1. Yes, switch to Haiku 4.5\n    2. No, go back\n")
+		b.WriteString(rule + "\n  Switch model?\n  ❯ 1. Yes, switch to " + f.pending + "\n    2. No, go back\n")
 	case f.menu != nil:
 		b.WriteString(rule + "\n  Select model\n")
-		for i, l := range f.menu {
-			c := "  "
-			if i == f.cursor {
-				c = "❯ " + f.cursorMark
+		from, to := 0, len(f.menu)
+		if f.window > 0 && len(f.menu) > f.window {
+			// A narrow window scrolls the list: only the rows around the
+			// cursor are drawn, the first and last carrying "↑"/"↓".
+			from = f.cursor - f.window/2
+			if from < 0 {
+				from = 0
 			}
-			b.WriteString("  " + c + string(rune('1'+i)) + ". " + l + "                Something · desc\n")
+			if to = from + f.window; to > len(f.menu) {
+				to, from = len(f.menu), len(f.menu)-f.window
+			}
 		}
-		if strings.HasPrefix(f.menu[f.cursor], "Haiku") {
-			b.WriteString("  ○ Effort not supported for Haiku\n")
+		for i := from; i < to; i++ {
+			c := "  "
+			switch {
+			case i == f.cursor:
+				c = "❯ " + f.cursorMark
+			case i == from && from > 0:
+				c = "↑ "
+			case i == to-1 && to < len(f.menu):
+				c = "↓ "
+			}
+			b.WriteString(fmt.Sprintf("  %s%d. %-24sSomething · desc\n", c, i+1, f.menu[i]))
+		}
+		if to < len(f.menu) {
+			b.WriteString(fmt.Sprintf("     … +%d models\n", len(f.menu)-to))
+		}
+		if m := f.modelOf(f.menu[f.cursor]); m != nil && len(m.Efforts) == 0 {
+			b.WriteString("  ○ Effort not supported for " + m.Name + "\n")
 		} else {
 			b.WriteString("  ◐ " + []string{"Low", "Medium", "High", "xHigh", "Max"}[f.effort] + " effort ←/→ to adjust\n")
 		}
@@ -224,13 +265,16 @@ func (f *fakeClaude) Write(b []byte) error {
 	switch {
 	case f.confirm && k == "1":
 		f.confirm, f.menu = false, nil
-		f.note = "⎿  Set model to Haiku 4.5 for this session only"
+		f.note = "⎿  Set model to " + f.pending + " for this session only"
+		if m := f.modelOf(f.pending); m == nil || len(m.Efforts) > 0 {
+			f.note += " with " + efforts[f.effort] + " effort"
+		}
 	case f.menu != nil:
 		switch k {
 		case agent.KeyUp:
-			f.cursor--
+			f.cursor = (f.cursor + len(f.menu) - 1) % len(f.menu)
 		case agent.KeyDown:
-			f.cursor++
+			f.cursor = (f.cursor + 1) % len(f.menu)
 		case agent.KeyRight:
 			if f.noWrap {
 				if f.effort < len(efforts)-1 {
@@ -251,19 +295,24 @@ func (f *fakeClaude) Write(b []byte) error {
 			if f.stuck {
 				return nil
 			}
-			label := strings.TrimSuffix(f.menu[f.cursor], " ✔")
-			if len(strings.Fields(label)) == 1 {
-				label += " 5.5" // a row named by alias
+			label, levels := f.menu[f.cursor], efforts
+			if m := f.modelOf(label); m != nil {
+				label, levels = m.Name, m.Efforts
 			}
 			if f.cached {
+				f.pending = label
 				f.confirm = true
 				return nil
 			}
 			f.menu = nil
-			f.note = "⎿  Set model to " + label + " for this session only with " + efforts[f.effort] + " effort"
-			if f.wrap > 0 {
-				f.note = "  ⎿  Set model to " + label + " for this session\n     only with " + efforts[f.effort] + " effort"
+			note := "⎿  Set model to " + label + " for this session only"
+			if len(levels) > 0 {
+				note += " with " + efforts[f.effort] + " effort"
+				if f.wrap > 0 {
+					note = "  ⎿  Set model to " + label + " for this session\n     only with " + efforts[f.effort] + " effort"
+				}
 			}
+			f.note = note
 		case agent.KeyEsc:
 			f.menu = nil
 		}
@@ -319,7 +368,7 @@ var (
 )
 
 func TestSetMode(t *testing.T) {
-	a := New("claude", "")
+	a, _ := testAdapter(t)
 	f := &fakeClaude{noBypass: true, noAuto: true}
 	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, false, factsHaiku); err != nil || cycle[f.mode] != "plan" {
 		t.Fatalf("plan: %v %s", err, cycle[f.mode])
@@ -366,32 +415,42 @@ func TestSetMode(t *testing.T) {
 }
 
 func TestSetModel(t *testing.T) {
-	a := New("claude", "")
-	f := &fakeClaude{}
-	if err := a.SetModel(f, "sonnet", "max"); err != nil {
+	a, cat := testAdapter(t)
+	f := &fakeClaude{cat: cat, models: menuOf(cat)}
+	f.cursor, f.effort = 4, 1 // on Haiku 5.5, medium
+	if err := a.SetModel(f, "claude-sonnet-5-5", "max"); err != nil {
 		t.Fatal(err)
 	}
 	w := strings.Join(f.writes, "|")
 	if w != "/model|\r|"+agent.KeyUp+"|"+agent.KeyRight+"|"+agent.KeyRight+"|"+agent.KeyRight+"|s" {
 		t.Fatalf("keys %q", f.writes)
 	}
-	// A cached conversation asks to confirm; haiku has no effort.
-	f = &fakeClaude{cached: true}
-	if err := a.SetModel(f, "haiku", ""); err != nil {
+	// A cached conversation asks to confirm; Haiku 4.5 has no effort, and
+	// a level sent with it is dropped rather than refusing the switch.
+	f = &fakeClaude{cat: cat, models: menuOf(cat), cached: true}
+	if err := a.SetModel(f, "claude-haiku-4-5-20251001", ""); err != nil {
 		t.Fatal(err)
 	}
-	if w := strings.Join(f.writes, "|"); w != "/model|\r|s|1" {
+	if w := strings.Join(f.writes, "|"); w != "/model|\r|"+agent.KeyDown+"|s|1" {
 		t.Fatalf("keys %q", f.writes)
 	}
-	if err := a.SetModel(f, "haiku", "low"); !errors.Is(err, agent.ErrUnsupported) {
-		t.Fatalf("haiku effort: %v", err)
+	if err := a.SetModel(f, "claude-haiku-4-5-20251001", "low"); err != nil {
+		t.Fatalf("haiku with a leftover effort: %v", err)
+	}
+	// An effort the model does not take is refused, and so is a model that
+	// is not in the catalog at all.
+	if err := a.SetModel(f, "claude-opus-4-6", "xhigh"); !errors.Is(err, agent.ErrUnsupported) {
+		t.Fatalf("xhigh for Opus 4.6: %v", err)
+	}
+	if err := a.SetModel(f, "haiku", ""); !errors.Is(err, agent.ErrNotFound) {
+		t.Fatalf("alias: %v", err)
 	}
 	if err := a.SetModel(f, "gpt-9", ""); !errors.Is(err, agent.ErrNotFound) {
 		t.Fatalf("unknown model: %v", err)
 	}
 	// Never over a draft.
-	f = &fakeClaude{typed: "my draft"}
-	if err := a.SetModel(f, "sonnet", "low"); !errors.Is(err, agent.ErrNotReady) || len(f.writes) != 0 {
+	f = &fakeClaude{cat: cat, models: menuOf(cat), typed: "my draft"}
+	if err := a.SetModel(f, "claude-sonnet-5-5", "low"); !errors.Is(err, agent.ErrNotReady) || len(f.writes) != 0 {
 		t.Fatalf("draft: %v %q", err, f.writes)
 	}
 }
@@ -452,9 +511,9 @@ func TestResumeKeepsVariadicValues(t *testing.T) {
 // Only the real confirmation gets its 1: the same words in the
 // conversation, with the menu still up, are not it (review C3).
 func TestSetModelConfirmIsTheDialog(t *testing.T) {
-	a := New("claude", "")
+	a, _ := testAdapter(t)
 	f := &fakeClaude{stuck: true, note: "⏺ You asked: Switch model?\n  ❯ 1. Yes, switch to Opus"}
-	if err := a.SetModel(f, "sonnet", ""); err == nil {
+	if err := a.SetModel(f, "claude-sonnet-5-5", ""); err == nil {
 		t.Fatal("no error for a menu that stayed up")
 	}
 	for _, w := range f.writes {
@@ -525,19 +584,19 @@ func TestAnswerPlanWrapped(t *testing.T) {
 // made, would be reported as failed.
 func TestSetModelWrapped(t *testing.T) {
 	note := "❯ /model\n  ⎿  Set model to Fable 5.1 for this session\n     only with xhigh effort\n" + rule + "\n❯ \n" + rule + "\n"
-	if !confirmed(note, "Fable", "xhigh") || !confirmed(note, "Fable", "") {
+	if !confirmed(note, "Fable 5.1", "xhigh") || !confirmed(note, "Fable 5.1", "") {
 		t.Fatal("wrapped confirmation not recognized")
 	}
-	if confirmed(note, "Fable", "low") || confirmed(note, "Sonnet", "xhigh") {
+	if confirmed(note, "Fable 5.1", "low") || confirmed(note, "Sonnet 5.5", "xhigh") {
 		t.Fatal("wrapped confirmation of another switch accepted")
 	}
 	// What follows the note is not part of it.
-	if !confirmed("  ⎿  Set model to Fable 5.1\n     for this session only\n\n     with low effort is what I asked for\n", "Fable", "xhigh") {
+	if !confirmed("  ⎿  Set model to Fable 5.1\n     for this session only\n\n     with low effort is what I asked for\n", "Fable 5.1", "xhigh") {
 		t.Fatal("text after the note was read as its effort")
 	}
-	a := New("claude", "")
-	f := &fakeClaude{wrap: 46}
-	if err := a.SetModel(f, "sonnet", "max"); err != nil {
+	a, cat := testAdapter(t)
+	f := &fakeClaude{wrap: 46, cat: cat, models: menuOf(cat)}
+	if err := a.SetModel(f, "claude-sonnet-5-5", "max"); err != nil {
 		t.Fatal(err)
 	}
 	if f.menu != nil || !strings.Contains(f.note, "Set model to Sonnet 5.5") {
@@ -546,7 +605,7 @@ func TestSetModelWrapped(t *testing.T) {
 	// The menu, wrapped, still tells the words in the conversation from the
 	// confirmation (review C3).
 	f = &fakeClaude{wrap: 46, stuck: true, note: "⏺ You asked: Switch model?\n  ❯ 1. Yes, switch to Opus"}
-	if err := a.SetModel(f, "sonnet", ""); err == nil || slices.Contains(f.writes, "1") {
+	if err := a.SetModel(f, "claude-sonnet-5-5", ""); err == nil || slices.Contains(f.writes, "1") {
 		t.Fatalf("pressed into a wrapped menu: %v %q", err, f.writes)
 	}
 }
@@ -589,7 +648,7 @@ func TestResumeDoesNotTakeUpALaterBypassDefault(t *testing.T) {
 // presses follow in a second write. With background work showing it is
 // refused.
 func TestSetModeIdleBurst(t *testing.T) {
-	a := New("claude", "")
+	a, cat := testAdapter(t)
 	bt := func(n int) string { return strings.Repeat(agent.KeyBTab, n) }
 	for _, c := range []struct {
 		name   string
@@ -629,10 +688,10 @@ func TestSetModeIdleBurst(t *testing.T) {
 		t.Fatalf("safe way: %v %s", err, cycle[f.mode])
 	}
 	// With no model known, auto is not known either.
-	if _, known := offered(factsUnknown)["auto"]; known {
+	if _, known := offered(cat, factsUnknown)["auto"]; known {
 		t.Fatal("auto known without a model")
 	}
-	if o := offered(agent.ModeFacts{Seen: []string{"auto"}, Model: "claude-sonnet-5-5"}); !o["auto"] {
+	if o := offered(cat, agent.ModeFacts{Seen: []string{"auto"}, Model: "claude-sonnet-5-5"}); !o["auto"] {
 		t.Fatal("a mode seen on the screen is on offer")
 	}
 }
@@ -656,7 +715,7 @@ func TestBackgroundWork(t *testing.T) {
 // (Claude Code shows it for a while after Shift+Tab skipped auto), it must
 // not make a running Plan → ask look safe when that passes auto.
 func TestAutoNoteIgnored(t *testing.T) {
-	a := New("claude", "")
+	a, _ := testAdapter(t)
 	facts := agent.ModeFacts{Model: "claude-sonnet-5-5"} // no bypass; auto on offer
 	for _, note := range []string{"⏺ The CLI said: auto mode unavailable for this model", ""} {
 		f := &fakeClaude{noBypass: true, note: note, background: map[bool]string{true: "  auto mode unavailable for this model", false: ""}[note == ""]}
@@ -667,26 +726,35 @@ func TestAutoNoteIgnored(t *testing.T) {
 	}
 }
 
-// The list gives each alias once with its largest window, and the aliases
-// with a 1M window are started under their [1m] name.
-func TestModelsContextWindow(t *testing.T) {
-	list, err := (&Adapter{home: t.TempDir()}).Models()
+// The list is Claude Code's own catalog, as the daemon serves it: each
+// model by its ID, with its name, effort levels, context window and
+// whether auto comes with it. Without a catalog there is no list: the
+// models are Claude Code's to choose.
+func TestModels(t *testing.T) {
+	a, cat := testAdapter(t)
+	list, err := a.Models()
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]int64{"opus": 1_000_000, "fable": 1_000_000, "sonnet": 1_000_000, "haiku": 200_000}
-	if len(list.Models) != len(want) {
-		t.Fatalf("%d models, want %d", len(list.Models), len(want))
+	if len(list.Models) != len(cat.Models) {
+		t.Fatalf("%d models, want %d", len(list.Models), len(cat.Models))
 	}
-	for _, m := range list.Models {
-		if m.ContextWindow != want[m.Slug] {
-			t.Errorf("%s: context window %d, want %d", m.Slug, m.ContextWindow, want[m.Slug])
+	for i, m := range list.Models {
+		c := cat.Models[i]
+		if m.Slug != c.ID || m.DisplayName != c.Name || m.ContextWindow != c.ContextWindow ||
+			m.DefaultEffort != c.DefaultEffort || m.AutoUnavailable != c.AutoUnavailable || !slices.Equal(m.Efforts, c.Efforts) {
+			t.Errorf("row %d: %+v, want %+v", i, m, c)
 		}
 	}
-	for in, out := range map[string]string{"opus": "opus[1m]", "sonnet": "sonnet[1m]", "haiku": "haiku", "": "", "claude-opus-5-5": "claude-opus-5-5", "opus[1m]": "opus[1m]"} {
-		if got := LargeModel(in); got != out {
-			t.Errorf("LargeModel(%q) = %q, want %q", in, got, out)
-		}
+	if list.DefaultModel != "" {
+		t.Errorf("default model %q, want none: the test home has no settings", list.DefaultModel)
+	}
+	os.WriteFile(filepath.Join(a.home, "settings.json"), []byte(`{"model":"claude-opus-5-5"}`), 0o600)
+	if list, err = a.Models(); err != nil || list.DefaultModel != "claude-opus-5-5" {
+		t.Fatalf("default model from settings: %q, %v", list.DefaultModel, err)
+	}
+	if _, err := New("claude", t.TempDir()).Models(); err == nil {
+		t.Fatal("a home without a catalog gave a list")
 	}
 }
 
@@ -720,38 +788,14 @@ func TestAnswerNotOnReviewPage(t *testing.T) {
 	}
 }
 
-// A menu that names its rows by version lists older models of an alias
-// after the current ones (2.1.287): the alias is its newest model, not the
-// last row that starts with its name. Rows that the version does not tell
-// apart are not chosen between.
-func TestSetModelAmongVersions(t *testing.T) {
-	a := New("claude", "")
-	f := &fakeClaude{models: []string{"Default (recommended)", "Opus 5.5", "Fable 5.1", "Sonnet 5.5", "Haiku 4.5 ✔", "Opus 5", "Sonnet 5", "Sonnet 4.5"}}
-	if err := a.SetModel(f, "sonnet", ""); err != nil {
-		t.Fatal(err)
-	}
-	if w := strings.Join(f.writes, "|"); w != "/model|\r|"+agent.KeyUp+"|s" || !strings.Contains(f.note, "Set model to Sonnet 5.5 for") {
-		t.Fatalf("keys %q, note %q", f.writes, f.note)
-	}
-	// Below the cursor, and a two-digit version.
-	f = &fakeClaude{models: []string{"Default (recommended)", "Opus 5.5", "Fable 5.1", "Sonnet 5.5", "Haiku 4.5 ✔", "Haiku 4.10", "Haiku 4.9"}}
-	if err := a.SetModel(f, "haiku", ""); err != nil || f.cursor != 5 {
-		t.Fatalf("haiku: %v, cursor on row %d", err, f.cursor)
-	}
-	for _, rows := range [][]string{
-		{"Default (recommended)", "Opus 5.5", "Opus 5.5 (1M context)", "Sonnet 5.5", "Haiku 4.5 ✔"},
-		{"Default (recommended)", "Opus 5.5", "Opus 5.5", "Sonnet 5.5", "Haiku 4.5 ✔"},
-		{"Default (recommended)", "Opus latest", "Opus 5.5", "Sonnet 5.5", "Haiku 4.5 ✔"},
-	} {
-		f = &fakeClaude{models: rows}
-		err := a.SetModel(f, "opus", "")
-		if err == nil || f.menu != nil || slices.Contains(f.writes, "s") {
-			t.Errorf("%q: %v, keys %q", rows, err, f.writes)
-		}
-	}
-	// The alias's own row wins over versions of it.
-	f = &fakeClaude{models: []string{"Default (recommended)", "Opus", "Opus 5", "Sonnet", "Haiku ✔"}}
-	if err := a.SetModel(f, "opus", ""); err != nil || f.cursor != 1 {
-		t.Fatalf("opus: %v, cursor on row %d", err, f.cursor)
+// A row whose number in the menu is not the one the catalog gives it is
+// not pressed into: the label is checked after the move, and the switch
+// fails rather than landing on another model.
+func TestSetModelWrongRowNumber(t *testing.T) {
+	a, cat := testAdapter(t)
+	f := &fakeClaude{cat: cat, models: []string{"Default (recommended)", "Opus", "Fable", "Sonnet 5.5", "Haiku ✔"}}
+	f.cursor = 1
+	if err := a.SetModel(f, "claude-haiku-5-5", ""); err == nil || slices.Contains(f.writes, "s") {
+		t.Fatalf("a menu of another shape: %v %q", err, f.writes)
 	}
 }

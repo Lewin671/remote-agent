@@ -61,6 +61,22 @@ func (d *Daemon) Doctor(ctx context.Context, kind pb.Agent, dir string, out io.W
 		return false, nil
 	}
 
+	// The model list is what the check switches between, so a list that
+	// cannot be read is told apart from a switch that fails.
+	if !step("read the model list", func() error {
+		list, err := ag.Models()
+		if err != nil {
+			return err
+		}
+		if len(list.Models) == 0 {
+			return errors.New("the list is empty")
+		}
+		fmt.Fprintf(out, "%d models ", len(list.Models))
+		return nil
+	}) {
+		return false, nil
+	}
+
 	model, effort, other, otherEffort := chk.DoctorModels()
 	if !step("start a session", func() error {
 		var err error

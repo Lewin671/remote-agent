@@ -36,6 +36,11 @@ type Parser struct {
 	usage     *pb.TokenUsage  // running totals
 	lastMsgID string          // assistant message whose usage was counted
 	found     []agent.FoundImage
+	// catalog is Claude Code's model catalog, read by the adapter when the
+	// parser is made: the parser names models by the ID the transcript
+	// records, and the rows give a model's name, effort levels and context
+	// window (claude-code-notes §2, §9). Nil when there is none.
+	catalog *Catalog
 }
 
 // Images returns the images found by the last Parse.
@@ -367,9 +372,10 @@ var modelSetRE = regexp.MustCompile("^<local-command-stdout>Set model to `?([^`<
 
 // modelSet reads a model switch from the output of /model, however it was
 // run: typed in the terminal, it is recorded nowhere else until the next
-// reply, and in Plan mode not even there. The model becomes its alias, as
-// for a switch made through remote-agent; one that is none of the aliases
-// keeps the name Claude Code prints.
+// reply, and in Plan mode not even there. The note names the model by its
+// /model row; the catalog turns that into the ID the transcript records. A
+// model the catalog does not know keeps the name Claude Code printed, and a
+// model without effort levels takes none.
 func (p *Parser) modelSet(text string) *pb.Event {
 	m := modelSetRE.FindStringSubmatch(text)
 	if m == nil {
@@ -380,12 +386,10 @@ func (p *Parser) modelSet(text string) *pb.Event {
 		next = proto.CloneOf(p.ctx)
 	}
 	next.Model = m[1]
-	for _, info := range models {
-		if strings.EqualFold(strings.Fields(m[1])[0], info.DisplayName) {
-			next.Model = info.Slug
-			if len(info.Efforts) == 0 {
-				next.Effort = ""
-			}
+	if info := p.catalog.ByName(m[1]); info != nil {
+		next.Model = info.ID
+		if len(info.Efforts) == 0 {
+			next.Effort = ""
 		}
 	}
 	if m[2] != "" {
@@ -507,7 +511,7 @@ func (p *Parser) assistant(r *record) ([]*pb.Event, error) {
 		u.OutputTokens += m.Usage.Output
 		u.TotalTokens = u.InputTokens + u.OutputTokens
 		u.LastTotalTokens = in + m.Usage.Output
-		u.ContextWindow = ContextWindow(m.Model)
+		u.ContextWindow = p.catalog.ContextWindow(m.Model)
 		u.MessageId = m.ID
 		p.usage = u
 		evs = append(evs, &pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: proto.CloneOf(u)}})
@@ -862,24 +866,6 @@ func splitAnswer(item *pb.Question, a string) []string {
 		}
 	}
 	return parts
-}
-
-// ContextWindow is the context size of a model. Claude Code does not write
-// it to the transcript; haiku 4.5 has 200k and sonnet 5.5 1M
-// (claude-code-notes §2). Other current models are assumed to have 1M.
-func ContextWindow(model string) int64 {
-	m := strings.ToLower(model)
-	switch {
-	case strings.Contains(m, "[1m]"):
-		return 1_000_000
-	case strings.Contains(m, "haiku"):
-		return 200_000
-	case strings.Contains(m, "claude-3"), strings.Contains(m, "-4-"), strings.HasSuffix(m, "-4"):
-		return 200_000
-	case strings.HasPrefix(m, "claude-"):
-		return 1_000_000
-	}
-	return 0
 }
 
 func compactJSON(raw json.RawMessage) string {

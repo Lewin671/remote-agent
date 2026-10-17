@@ -53,7 +53,9 @@ func kind(e *pb.Event) string {
 // several, multi-select, answered by a hook), plans, a message queued
 // mid-turn, /model, /compact, /exit and a resume.
 func TestTranscriptFixture(t *testing.T) {
-	evs := parseFile(t, NewParser(), "testdata/transcript-2.1.284.jsonl")
+	p := NewParser()
+	p.catalog = testCatalog(t)
+	evs := parseFile(t, p, "testdata/transcript-2.1.284.jsonl")
 
 	var users []string
 	started, ended, aborted := 0, 0, 0
@@ -196,15 +198,14 @@ func TestTranscriptFixture(t *testing.T) {
 	if !slices.Contains(models, "claude-haiku-4-5-20251001//plan") || !slices.Contains(models, "claude-haiku-4-5-20251001//default") {
 		t.Errorf("contexts %q", models)
 	}
-	for _, m := range models {
-		if strings.Contains(m, "claude-sonnet") {
-			t.Errorf("the planning model became the session's: %q", models)
-		}
-	}
 	// The two /model switches typed in the terminal, in Plan mode, are read
-	// from the command's output.
-	if i := slices.Index(models, "sonnet/low/plan"); i < 0 || i+1 >= len(models) || models[i+1] != "haiku//plan" {
+	// from the command's output and named by the ID the catalog gives. The
+	// planning model appears only there, never as the session's.
+	if i := slices.Index(models, "claude-sonnet-5-5/low/plan"); i < 0 || i+1 >= len(models) || models[i+1] != "claude-haiku-4-5-20251001//plan" {
 		t.Errorf("/model in the terminal: %q", models)
+	}
+	if n := strings.Count(strings.Join(models, " "), "claude-sonnet-5-5"); n != 1 {
+		t.Errorf("the planning model became the session's: %q", models)
 	}
 }
 
@@ -244,13 +245,17 @@ func TestParserReplay(t *testing.T) {
 }
 
 func TestContextWindow(t *testing.T) {
+	cat := testCatalog(t)
 	for model, want := range map[string]int64{
-		"claude-haiku-4-5-20251001": 200_000, "claude-sonnet-5-5": 1_000_000, "claude-sonnet-4-5-20250929": 200_000,
-		"claude-opus-4-8[1m]": 1_000_000, "gpt-6": 0,
+		"claude-haiku-4-5-20251001": 200_000, "claude-sonnet-5-5": 1_000_000, "claude-sonnet-4-5-20250929": 0,
+		"claude-opus-4-8[1m]": 1_000_000, "gpt-6": 0, "": 0,
 	} {
-		if got := ContextWindow(model); got != want {
+		if got := cat.ContextWindow(model); got != want {
 			t.Errorf("%s: %d, want %d", model, got, want)
 		}
+	}
+	if got := (*Catalog)(nil).ContextWindow("claude-sonnet-5-5"); got != 0 {
+		t.Errorf("without a catalog: %d", got)
 	}
 }
 

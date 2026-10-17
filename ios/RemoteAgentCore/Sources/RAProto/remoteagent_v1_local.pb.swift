@@ -739,11 +739,12 @@ public struct PBSetModelRequest: Sendable {
 
   public var sessionID: String = String()
 
-  /// Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
+  /// Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's
+  /// "claude-sonnet-5-5".
   public var model: String = String()
 
   /// "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
-  /// for Claude Code models without effort levels, such as haiku.
+  /// for models without effort levels, such as Claude Code's Haiku 4.5.
   public var effort: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -791,6 +792,11 @@ public struct PBModelInfo: Sendable {
 
   /// Context window in tokens; 0 when unknown.
   public var contextWindow: Int64 = 0
+
+  /// The CLI's auto approval mode is not offered with this model (Claude
+  /// Code: its model catalog says so). False when unknown, so an older
+  /// daemon leaves the mode on offer.
+  public var autoUnavailable: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2655,7 +2661,7 @@ extension PBListModelsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBModelInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ModelInfo"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}slug\0\u{3}display_name\0\u{1}description\0\u{1}efforts\0\u{3}default_effort\0\u{3}context_window\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}slug\0\u{3}display_name\0\u{1}description\0\u{1}efforts\0\u{3}default_effort\0\u{3}context_window\0\u{3}auto_unavailable\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2669,6 +2675,7 @@ extension PBModelInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       case 4: try { try decoder.decodeRepeatedStringField(value: &self.efforts) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.defaultEffort) }()
       case 6: try { try decoder.decodeSingularInt64Field(value: &self.contextWindow) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.autoUnavailable) }()
       default: break
       }
     }
@@ -2693,6 +2700,9 @@ extension PBModelInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
     if self.contextWindow != 0 {
       try visitor.visitSingularInt64Field(value: self.contextWindow, fieldNumber: 6)
     }
+    if self.autoUnavailable != false {
+      try visitor.visitSingularBoolField(value: self.autoUnavailable, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2703,6 +2713,7 @@ extension PBModelInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
     if lhs.efforts != rhs.efforts {return false}
     if lhs.defaultEffort != rhs.defaultEffort {return false}
     if lhs.contextWindow != rhs.contextWindow {return false}
+    if lhs.autoUnavailable != rhs.autoUnavailable {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

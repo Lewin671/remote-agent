@@ -1716,10 +1716,11 @@ func (x *HookResponse) GetOutput() []byte {
 type SetModelRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
+	// Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's
+	// "claude-sonnet-5-5".
 	Model string `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
 	// "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
-	// for Claude Code models without effort levels, such as haiku.
+	// for models without effort levels, such as Claude Code's Haiku 4.5.
 	Effort        string `protobuf:"bytes,3,opt,name=effort,proto3" json:"effort,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1866,8 +1867,12 @@ type ModelInfo struct {
 	DefaultEffort string                 `protobuf:"bytes,5,opt,name=default_effort,json=defaultEffort,proto3" json:"default_effort,omitempty"`
 	// Context window in tokens; 0 when unknown.
 	ContextWindow int64 `protobuf:"varint,6,opt,name=context_window,json=contextWindow,proto3" json:"context_window,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The CLI's auto approval mode is not offered with this model (Claude
+	// Code: its model catalog says so). False when unknown, so an older
+	// daemon leaves the mode on offer.
+	AutoUnavailable bool `protobuf:"varint,7,opt,name=auto_unavailable,json=autoUnavailable,proto3" json:"auto_unavailable,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ModelInfo) Reset() {
@@ -1940,6 +1945,13 @@ func (x *ModelInfo) GetContextWindow() int64 {
 		return x.ContextWindow
 	}
 	return 0
+}
+
+func (x *ModelInfo) GetAutoUnavailable() bool {
+	if x != nil {
+		return x.AutoUnavailable
+	}
+	return false
 }
 
 type ListModelsResponse struct {
@@ -4000,14 +4012,15 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x06effort\x18\x03 \x01(\tR\x06effort\"\x12\n" +
 	"\x10SetModelResponse\"@\n" +
 	"\x11ListModelsRequest\x12+\n" +
-	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\"\xcc\x01\n" +
+	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\"\xf7\x01\n" +
 	"\tModelInfo\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x18\n" +
 	"\aefforts\x18\x04 \x03(\tR\aefforts\x12%\n" +
 	"\x0edefault_effort\x18\x05 \x01(\tR\rdefaultEffort\x12%\n" +
-	"\x0econtext_window\x18\x06 \x01(\x03R\rcontextWindow\"l\n" +
+	"\x0econtext_window\x18\x06 \x01(\x03R\rcontextWindow\x12)\n" +
+	"\x10auto_unavailable\x18\a \x01(\bR\x0fautoUnavailable\"l\n" +
 	"\x12ListModelsResponse\x121\n" +
 	"\x06models\x18\x01 \x03(\v2\x19.remoteagent.v1.ModelInfoR\x06models\x12#\n" +
 	"\rdefault_model\x18\x02 \x01(\tR\fdefaultModel\"i\n" +

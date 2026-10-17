@@ -92,4 +92,16 @@ public interface ModelInfoOrBuilder extends
    * @return The contextWindow.
    */
   long getContextWindow();
+
+  /**
+   * <pre>
+   * The CLI's auto approval mode is not offered with this model (Claude
+   * Code: its model catalog says so). False when unknown, so an older
+   * daemon leaves the mode on offer.
+   * </pre>
+   *
+   * <code>bool auto_unavailable = 7 [json_name = "autoUnavailable"];</code>
+   * @return The autoUnavailable.
+   */
+  boolean getAutoUnavailable();
 }

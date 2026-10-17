@@ -95,46 +95,36 @@ func (a *Adapter) Tested(v string) bool { return slices.Contains(TestedVersions,
 // direction to the wanted level rather than assuming either.
 var efforts = []string{"low", "medium", "high", "xhigh", "max"}
 
-// models are the aliases /model lists, each with the largest context
-// window a session with it gets (claude-code-notes §2). Which model an
-// alias stands for changes with Claude Code releases; the menu shows it.
-var models = []*pb.ModelInfo{
-	{Slug: "opus", DisplayName: "Opus", Description: "Best for everyday, complex tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
-	{Slug: "fable", DisplayName: "Fable", Description: "Most capable for your hardest and longest-running tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
-	{Slug: "sonnet", DisplayName: "Sonnet", Description: "Efficient for routine tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
-	{Slug: "haiku", DisplayName: "Haiku", Description: "Fastest for quick answers", ContextWindow: StandardWindow},
-}
-
 const (
 	// StandardWindow is the context window of a session held to the
 	// standard one, and of models without a larger one.
 	StandardWindow = 200_000
-	largeContext   = 1_000_000
-	largeSuffix    = "[1m]"
 	// StandardContextEnv makes Claude Code use the standard window for
 	// models that otherwise get 1M (claude-code-notes §2).
 	StandardContextEnv = "CLAUDE_CODE_DISABLE_1M_CONTEXT"
 )
 
-// LargeModel is the name to start model with so that Claude Code says the
-// session has the 1M window: opus[1m] for an alias with one. The window is
-// 1M under the bare alias too; only the terminal's title differs. Other
-// names, and none, are returned as they are.
-func LargeModel(model string) string {
-	for _, m := range models {
-		if m.Slug == model && m.ContextWindow > StandardWindow {
-			return model + largeSuffix
-		}
-	}
-	return model
-}
-
-// Models lists the aliases of /model. The default is the model set in
-// ~/.claude/settings.json, if any.
+// Models lists the models of Claude Code's own catalog. The default is the
+// model set in ~/.claude/settings.json, if any. Without a catalog (a fresh
+// install Claude Code has not fetched one for yet) there is no list: the
+// models are named by IDs Claude Code itself chooses, so none can be
+// offered or switched to.
 func (a *Adapter) Models() (*pb.ListModelsResponse, error) {
+	cat, err := LoadCatalog(a.home)
+	if err != nil {
+		return nil, err
+	}
 	out := &pb.ListModelsResponse{}
-	for _, m := range models {
-		out.Models = append(out.Models, proto.CloneOf(m))
+	for _, m := range cat.Models {
+		out.Models = append(out.Models, &pb.ModelInfo{
+			Slug:            m.ID,
+			DisplayName:     m.Name,
+			Description:     m.Description,
+			Efforts:         m.Efforts,
+			DefaultEffort:   m.DefaultEffort,
+			ContextWindow:   m.ContextWindow,
+			AutoUnavailable: m.AutoUnavailable,
+		})
 	}
 	var st struct {
 		Model string `json:"model"`
@@ -537,8 +527,14 @@ func newUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
-// NewParser returns a transcript parser.
-func (a *Adapter) NewParser() agent.Parser { return NewParser() }
+// NewParser returns a transcript parser. It reads the model catalog once:
+// the transcript names models by ID, and the parser needs their rows and
+// context windows (claude-code-notes §2, §9).
+func (a *Adapter) NewParser() agent.Parser {
+	p := NewParser()
+	p.catalog, _ = LoadCatalog(a.home)
+	return p
+}
 
 // SubmitLog is the transcript itself: submitted messages show up there
 // at once, or as queued while a turn runs.
@@ -654,10 +650,27 @@ func (a *Adapter) ClearInput() []byte                           { return []byte(
 // input box it opens the rewind menu.
 func (a *Adapter) Interrupt() []byte { return []byte(agent.KeyEsc) }
 
-// DoctorModels: haiku, which has no effort levels, and sonnet at low
-// effort to switch to.
+// DoctorModels: the oldest model of the catalog that takes effort levels,
+// at its own default level, and the newest to switch to and back from. The
+// check sends its message on the older one, which is the cheaper.
 func (a *Adapter) DoctorModels() (string, string, string, string) {
-	return "haiku", "", "sonnet", "low"
+	cat, err := LoadCatalog(a.home)
+	if err != nil {
+		return "", "", "", ""
+	}
+	// Models whose own default level is named: a check reading the effort
+	// back needs one that is not left to the session.
+	var picks []*Model
+	for _, m := range cat.Models {
+		if len(m.Efforts) > 0 && m.DefaultEffort != "" {
+			picks = append(picks, m)
+		}
+	}
+	if len(picks) < 2 {
+		return "", "", "", ""
+	}
+	cheap, other := picks[len(picks)-1], picks[0]
+	return cheap.ID, cheap.DefaultEffort, other.ID, other.DefaultEffort
 }
 
 // DoctorModes: from manual through accept edits to plan, and back, which

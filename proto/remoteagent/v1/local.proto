@@ -276,10 +276,11 @@ message HookResponse {
 
 message SetModelRequest {
   string session_id = 1;
-  // Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
+  // Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's
+  // "claude-sonnet-5-5".
   string model = 2;
   // "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
-  // for Claude Code models without effort levels, such as haiku.
+  // for models without effort levels, such as Claude Code's Haiku 4.5.
   string effort = 3;
 }
 
@@ -298,6 +299,10 @@ message ModelInfo {
   string default_effort = 5;
   // Context window in tokens; 0 when unknown.
   int64 context_window = 6;
+  // The CLI's auto approval mode is not offered with this model (Claude
+  // Code: its model catalog says so). False when unknown, so an older
+  // daemon leaves the mode on offer.
+  bool auto_unavailable = 7;
 }
 
 message ListModelsResponse {

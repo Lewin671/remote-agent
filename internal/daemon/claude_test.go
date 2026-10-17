@@ -175,15 +175,11 @@ func TestInstalledAgentsAndClaudeDefaults(t *testing.T) {
 	if strings.Join(args, " ") != "-m gpt-6-luna" {
 		t.Fatalf("codex defaults %q", args)
 	}
-	// A model with a 1M window is started under the name that says so,
-	// unless the session is held to the standard window.
-	args, _ = h.d.sessionArgs(h.d.adapter(pb.Agent_AGENT_CLAUDE), &pb.CreateSessionRequest{Agent: pb.Agent_AGENT_CLAUDE, Model: "opus"})
-	if strings.Join(args, " ") != "--model opus[1m] --permission-mode default" {
-		t.Fatalf("1M window %q", args)
-	}
-	args, _ = h.d.sessionArgs(h.d.adapter(pb.Agent_AGENT_CLAUDE), &pb.CreateSessionRequest{Agent: pb.Agent_AGENT_CLAUDE, Model: "opus", StandardContext: true})
-	if strings.Join(args, " ") != "--model opus --permission-mode default" {
-		t.Fatalf("standard window %q", args)
+	// A model is started under the ID it was chosen by; the standard
+	// window is the session's own environment variable, not its name.
+	args, _ = h.d.sessionArgs(h.d.adapter(pb.Agent_AGENT_CLAUDE), &pb.CreateSessionRequest{Agent: pb.Agent_AGENT_CLAUDE, Model: "claude-opus-5-5"})
+	if strings.Join(args, " ") != "--model claude-opus-5-5 --permission-mode default" {
+		t.Fatalf("model ID %q", args)
 	}
 }
 
@@ -473,11 +469,11 @@ func TestClaudeSeenModesPerModel(t *testing.T) {
 	if f := h.s.modeFacts(); !slices.Contains(f.Seen, "auto") {
 		t.Fatalf("sonnet: %v", f)
 	}
-	h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "haiku"}}})
+	h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "claude-haiku-5-5"}}})
 	if f := h.s.modeFacts(); slices.Contains(f.Seen, "auto") {
 		t.Fatalf("haiku: %v", f)
 	}
-	h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}})
+	h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "claude-sonnet-5-5", Effort: "low"}}})
 	if f := h.s.modeFacts(); !slices.Contains(f.Seen, "auto") {
 		t.Fatalf("sonnet again: %v", f)
 	}

@@ -163,80 +163,48 @@ func shownEffort(plain string) string {
 // versionRE matches a version as /model prints it after a model's name.
 var versionRE = regexp.MustCompile(`^\d+(\.\d+)*$`)
 
-// modelRow finds the row of /model for the alias called name. The menu
-// has one row per alias ("Sonnet"), or names its rows by version ("Sonnet
-// 5.5") and lists older models after the current ones (claude-code-notes
-// §9): the alias is the newest of them. Rows the version does not tell
-// apart are not chosen between.
-func modelRow(rows []row, name string) (int, error) {
-	var found []int
-	for i, r := range rows {
-		if strings.EqualFold(strings.Fields(r.label)[0], name) {
-			found = append(found, i)
+// modelRow is the /model row a model is switched by. Its label is the
+// catalog's name for it; a narrow window may have scrolled the row out of
+// sight, in which case the number the row has in the list is used. The
+// menu lists the catalog's models in their order, under "Default
+// (recommended)" as its first row, so the number is the model's place in
+// the catalog plus two; the label is checked after the move.
+func modelRow(cat *Catalog, rows []row, m *Model) (row, error) {
+	for _, r := range rows {
+		if r.label == m.Name {
+			return r, nil
 		}
 	}
-	if len(found) == 0 {
-		return -1, fmt.Errorf("model %s is not in Claude Code's /model menu", name)
-	}
-	if len(found) == 1 {
-		return found[0], nil
-	}
-	ambiguous := fmt.Errorf("the /model menu lists %d models named %s that cannot be told apart", len(found), name)
-	// The alias's own row.
-	own := -1
-	for _, i := range found {
-		if len(strings.Fields(rows[i].label)) == 1 {
-			if own >= 0 {
-				return -1, ambiguous
-			}
-			own = i
+	for i, c := range cat.Models {
+		if c == m {
+			return row{num: i + 2, label: m.Name}, nil
 		}
 	}
-	if own >= 0 {
-		return own, nil
-	}
-	best, tie := -1, false
-	var newest []int
-	for _, i := range found {
-		f := strings.Fields(rows[i].label)
-		if len(f) != 2 || !versionRE.MatchString(f[1]) {
-			return -1, ambiguous
-		}
-		var v []int
-		for _, part := range strings.Split(f[1], ".") {
-			n, _ := strconv.Atoi(part)
-			v = append(v, n)
-		}
-		switch c := slices.Compare(v, newest); {
-		case c > 0:
-			best, newest, tie = i, v, false
-		case c == 0:
-			tie = true
-		}
-	}
-	if tie {
-		return -1, ambiguous
-	}
-	return best, nil
+	return row{}, fmt.Errorf("model %s has no row in Claude Code's /model menu", m.ID)
 }
 
 // SetModel picks the model in /model with the arrow keys, sets the effort
 // with ←/→ and presses s, which applies to this session only; the number
 // keys and Enter would change the default.
 func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
-	// The window is fixed when the session starts; /model lists the aliases.
-	model = strings.TrimSuffix(model, largeSuffix)
-	var info *pb.ModelInfo
-	for _, m := range models {
-		if m.Slug == model {
-			info = m
-		}
+	cat, err := LoadCatalog(a.home)
+	if err != nil {
+		return err
 	}
-	if info == nil {
-		return fmt.Errorf("model %s: %w", model, agent.ErrNotFound)
+	info := cat.ByID(model)
+	if info == nil || info.Name == "" {
+		return fmt.Errorf("model %s is not one Claude Code offers: %w", model, agent.ErrNotFound)
 	}
-	if effort != "" && len(info.Efforts) == 0 {
-		return fmt.Errorf("%s has no effort levels: %w", info.DisplayName, agent.ErrUnsupported)
+	switch {
+	case effort == "":
+	case len(info.Efforts) == 0:
+		// A model without effort levels (Haiku 4.5). A level sent with it
+		// is left over from settings that had one; the model is switched
+		// without it and the session reports none, rather than refusing
+		// the switch.
+		effort = ""
+	case !slices.Contains(info.Efforts, effort):
+		return fmt.Errorf("effort %s is not offered for %s: %w", effort, info.Name, agent.ErrUnsupported)
 	}
 	if _, err := readyComposer(t); err != nil {
 		return err
@@ -252,18 +220,19 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		return err
 	}
 	rows := rowsAfter(plain, "Select model")
-	target, err := modelRow(rows, info.DisplayName)
 	cur := slices.IndexFunc(rows, func(r row) bool { return r.cursor })
-	if err == nil && cur < 0 {
-		err = errors.New("cannot find the cursor in Claude Code's /model menu")
+	if cur < 0 {
+		bail(t)
+		return errors.New("cannot find the cursor in Claude Code's /model menu")
 	}
+	target, err := modelRow(cat, rows, info)
 	if err != nil {
 		bail(t)
 		return err
 	}
-	label := rows[target].label
+	label := target.label
 	key := agent.KeyDown
-	steps := target - cur
+	steps := target.num - rows[cur].num
 	if steps < 0 {
 		key, steps = agent.KeyUp, -steps
 	}
@@ -274,9 +243,9 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		time.Sleep(60 * time.Millisecond)
 	}
 	plain, err = waitFor(t, "the cursor on "+label, func(_ agent.Screen, p string) bool {
-		for i, r := range rowsAfter(p, "Select model") {
+		for _, r := range rowsAfter(p, "Select model") {
 			if r.cursor {
-				return i == target && r.label == label
+				return r.label == label
 			}
 		}
 		return false
@@ -286,16 +255,16 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		return err
 	}
 	if effort != "" {
-		// ←/→ step one level along low … max and stop at the ends rather
-		// than wrapping (2.1.300); the level may be below the one showing.
-		// The order is the same on both sides, so which key to press is
-		// the direction to the wanted one.
-		want := slices.Index(efforts, effort)
+		// ←/→ step one level along the model's own levels and stop at the
+		// ends rather than wrapping (2.1.300); the level may be below the
+		// one showing. The order is the same on both sides, so which key
+		// to press is the direction to the wanted one.
+		want := slices.Index(info.Efforts, effort)
 		for i := 0; shownEffort(plain) != effort; i++ {
-			cur := slices.Index(efforts, shownEffort(plain))
-			if i >= len(efforts) || want < 0 || cur < 0 {
+			cur := slices.Index(info.Efforts, shownEffort(plain))
+			if i >= len(info.Efforts) || want < 0 || cur < 0 {
 				bail(t)
-				return fmt.Errorf("effort %s is not offered for %s", effort, info.DisplayName)
+				return fmt.Errorf("effort %s is not offered for %s", effort, info.Name)
 			}
 			key := agent.KeyRight
 			if want < cur {
@@ -337,7 +306,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		}
 	}
 	if _, err := waitFor(t, "Claude Code to confirm the model", func(scr agent.Screen, p string) bool {
-		return scr.ComposerReady && confirmed(p, info.DisplayName, effort)
+		return scr.ComposerReady && confirmed(p, info.Name, effort)
 	}); err != nil {
 		bail(t)
 		return err
@@ -404,29 +373,24 @@ func crosses(from, to string, limit int, offer map[string]bool) bool {
 	}
 }
 
-// noAutoRE matches the models known to have no auto mode: Haiku up to 4.5
-// (claude-code-notes §5).
-var noAutoRE = regexp.MustCompile(`^claude-(?:3(?:-5)?-haiku|haiku-[34])\b`)
-
 // offered is which of the modes not always on offer, bypass and auto, the
 // session offers, as far as known: bypass from the session's launch-time
-// capability; auto from the model (Haiku 4.5 has none, Haiku 5.5 has, and
-// which of them the alias is depends on Claude Code's version, so for
-// "haiku" it is not known) or from having shown auto on the screen with
-// this model. The status
+// capability; auto from the model's row in Claude Code's catalog (Haiku 4.5
+// and older take none, and a model the catalog does not know — an alias
+// from older settings, say — gives no answer) or from having shown auto on
+// the screen with this model. The status
 // area's "auto mode unavailable for this model" is not used: Claude Code
 // shows it for a while after Shift+Tab skipped auto, and it stays after a
 // switch to a model that has auto. A mode missing from the map is not
 // known.
-func offered(facts agent.ModeFacts) map[string]bool {
+func offered(cat *Catalog, facts agent.ModeFacts) map[string]bool {
 	offer := map[string]bool{"default": true, "acceptEdits": true, "plan": true, "bypassPermissions": facts.FullAccess}
-	model := strings.ToLower(facts.Model)
-	switch {
-	case noAutoRE.MatchString(model):
+	switch m := cat.ByID(facts.Model); {
+	case m != nil && m.AutoUnavailable:
 		offer["auto"] = false
 	case slices.Contains(facts.Seen, "auto"):
 		offer["auto"] = true
-	case strings.HasPrefix(model, "claude-") || model == "sonnet" || model == "opus" || model == "fable":
+	case m != nil:
 		offer["auto"] = true
 	}
 	if slices.Contains(facts.Seen, "bypassPermissions") {
@@ -453,6 +417,7 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, fact
 	if !ok {
 		return fmt.Errorf("unknown approval mode %v", mode)
 	}
+	cat, _ := LoadCatalog(a.home)
 	scr, err := readyComposer(t)
 	if err != nil {
 		return err
@@ -461,7 +426,7 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, fact
 	if err != nil {
 		return err
 	}
-	offer := offered(facts)
+	offer := offered(cat, facts)
 	if on, known := offer[want]; known && !on {
 		if mode == pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS {
 			return fmt.Errorf("%w: this session was not started with bypass permissions allowed", agent.ErrUnsupported)

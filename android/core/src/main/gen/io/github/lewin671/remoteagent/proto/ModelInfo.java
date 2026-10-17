@@ -346,6 +346,50 @@ public  final class ModelInfo extends
     contextWindow_ = 0L;
   }
 
+  public static final int AUTO_UNAVAILABLE_FIELD_NUMBER = 7;
+  private boolean autoUnavailable_;
+  /**
+   * <pre>
+   * The CLI's auto approval mode is not offered with this model (Claude
+   * Code: its model catalog says so). False when unknown, so an older
+   * daemon leaves the mode on offer.
+   * </pre>
+   *
+   * <code>bool auto_unavailable = 7 [json_name = "autoUnavailable"];</code>
+   * @return The autoUnavailable.
+   */
+  @java.lang.Override
+  public boolean getAutoUnavailable() {
+    return autoUnavailable_;
+  }
+  /**
+   * <pre>
+   * The CLI's auto approval mode is not offered with this model (Claude
+   * Code: its model catalog says so). False when unknown, so an older
+   * daemon leaves the mode on offer.
+   * </pre>
+   *
+   * <code>bool auto_unavailable = 7 [json_name = "autoUnavailable"];</code>
+   * @param value The autoUnavailable to set.
+   */
+  private void setAutoUnavailable(boolean value) {
+    
+    autoUnavailable_ = value;
+  }
+  /**
+   * <pre>
+   * The CLI's auto approval mode is not offered with this model (Claude
+   * Code: its model catalog says so). False when unknown, so an older
+   * daemon leaves the mode on offer.
+   * </pre>
+   *
+   * <code>bool auto_unavailable = 7 [json_name = "autoUnavailable"];</code>
+   */
+  private void clearAutoUnavailable() {
+
+    autoUnavailable_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.ModelInfo parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -771,6 +815,52 @@ public  final class ModelInfo extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The CLI's auto approval mode is not offered with this model (Claude
+     * Code: its model catalog says so). False when unknown, so an older
+     * daemon leaves the mode on offer.
+     * </pre>
+     *
+     * <code>bool auto_unavailable = 7 [json_name = "autoUnavailable"];</code>
+     * @return The autoUnavailable.
+     */
+    @java.lang.Override
+    public boolean getAutoUnavailable() {
+      return instance.getAutoUnavailable();
+    }
+    /**
+     * <pre>
+     * The CLI's auto approval mode is not offered with this model (Claude
+     * Code: its model catalog says so). False when unknown, so an older
+     * daemon leaves the mode on offer.
+     * </pre>
+     *
+     * <code>bool auto_unavailable = 7 [json_name = "autoUnavailable"];</code>
+     * @param value The autoUnavailable to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAutoUnavailable(boolean value) {
+      copyOnWrite();
+      instance.setAutoUnavailable(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The CLI's auto approval mode is not offered with this model (Claude
+     * Code: its model catalog says so). False when unknown, so an older
+     * daemon leaves the mode on offer.
+     * </pre>
+     *
+     * <code>bool auto_unavailable = 7 [json_name = "autoUnavailable"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAutoUnavailable() {
+      copyOnWrite();
+      instance.clearAutoUnavailable();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ModelInfo)
   }
   @java.lang.Override
@@ -793,10 +883,11 @@ public  final class ModelInfo extends
             "efforts_",
             "defaultEffort_",
             "contextWindow_",
+            "autoUnavailable_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u021a\u0005\u0208\u0006\u0002";
+              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u021a\u0005\u0208\u0006\u0002\u0007\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -110,7 +110,7 @@ func runDoctor(args []string) error {
 	for _, k := range kinds {
 		name, how := "Codex", "GPT-6-Luna, low effort"
 		if k == pb.Agent_AGENT_CLAUDE {
-			name, how = "Claude Code", "haiku"
+			name, how = "Claude Code", "the catalog's models"
 		}
 		fmt.Printf("Checking the installed %s with a throwaway session (%s)\n", name, how)
 		fmt.Printf("in %s. Startup prompts there are answered for you.\n\n", work)

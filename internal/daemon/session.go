@@ -379,7 +379,7 @@ func (s *session) modeFacts() agent.ModeFacts {
 	if s.context != nil {
 		f.Model = s.context.Model
 	}
-	for m := range s.seenModes[agent.ModelFamily(f.Model)] {
+	for m := range s.seenModes[f.Model] {
 		f.Seen = append(f.Seen, m)
 	}
 	return f
@@ -728,17 +728,17 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	planChanged := s.planOpen != scr.PlanOpen
 	retract := s.watchApprovals(scr, styled)
 	if scr.Mode != "" {
-		family := ""
+		model := ""
 		if s.context != nil {
-			family = agent.ModelFamily(s.context.Model)
+			model = s.context.Model
 		}
 		if s.seenModes == nil {
 			s.seenModes = map[string]map[string]bool{}
 		}
-		if s.seenModes[family] == nil {
-			s.seenModes[family] = map[string]bool{}
+		if s.seenModes[model] == nil {
+			s.seenModes[model] = map[string]bool{}
 		}
-		s.seenModes[family][scr.Mode] = true
+		s.seenModes[model][scr.Mode] = true
 	}
 	modeSeen := ""
 	if scr.Mode != "" && (s.context == nil || s.context.PermissionMode != scr.Mode) {

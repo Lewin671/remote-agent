@@ -35,23 +35,20 @@ func TestModelMenu2_1_300(t *testing.T) {
 	if rows[9].label != "Opus 4.8" {
 		t.Errorf("last row is %q, want Opus 4.8", rows[9].label)
 	}
-	// The number keys cannot be used: the label carries it twice as
-	// "/model" would print it, so only the alias and its version matter.
-	for _, c := range []struct {
-		name string
-		want string
-	}{
-		{"Sonnet", "Sonnet 5.5"}, // newest of Sonnet 5.5 and Sonnet 5
-		{"Haiku", "Haiku 5.5"},   // newest of Haiku 5.5 and Haiku 4.5
-		{"Opus", "Opus 5.5"},     // newest of Opus 5.5, Opus 5 and Opus 4.8
-	} {
-		i, err := modelRow(rows, c.name)
-		if err != nil {
-			t.Fatalf("%s: %v", c.name, err)
+	// The menu lists the catalog's models in their order under "Default
+	// (recommended)": each row is found by the name the catalog gives the
+	// model, and one the window does not reach is looked up by the place
+	// the catalog gives it.
+	cat := testCatalog(t)
+	for i, m := range cat.Models[:9] {
+		got, err := modelRow(cat, rows, m)
+		if err != nil || got.num != i+2 || got.label != m.Name {
+			t.Errorf("%s: %+v, %v", m.ID, got, err)
 		}
-		if rows[i].label != c.want {
-			t.Errorf("%s: chose %q, want %q", c.name, rows[i].label, c.want)
-		}
+	}
+	scrolled := cat.Models[9] // Opus 4.7, below the drawn rows
+	if got, err := modelRow(cat, rows, scrolled); err != nil || got.num != 11 || got.label != "Opus 4.7" {
+		t.Errorf("scrolled row: %+v, %v", got, err)
 	}
 	if cur := cursorRow(rows); cur < 0 || !strings.HasPrefix(rows[cur].label, "Haiku 5.5") {
 		t.Fatalf("cursor row: %+v", rows)
@@ -141,10 +138,10 @@ func readPlain(t *testing.T, path string) string {
 // far end. Setting low from medium must press ← once (regression: the
 // older code only ever pressed → and timed out).
 func TestSetModelEffortBelowMedium(t *testing.T) {
-	a := New("claude", "")
-	f := &fakeClaude{noWrap: true, models: []string{"Default (recommended)", "Opus 5.5", "Fable 5.1", "Sonnet 5.5", "Haiku 5.5 ✔"}}
+	a, cat := testAdapter(t)
+	f := &fakeClaude{noWrap: true, cat: cat, models: menuOf(cat)}
 	f.cursor, f.effort = 4, 1 // on Haiku 5.5, medium
-	if err := a.SetModel(f, "sonnet", "low"); err != nil {
+	if err := a.SetModel(f, "claude-sonnet-5-5", "low"); err != nil {
 		t.Fatal(err)
 	}
 	if got := strings.Join(f.writes, "|"); got != "/model|\r|"+agent.KeyUp+"|"+agent.KeyLeft+"|s" {
@@ -156,13 +153,47 @@ func TestSetModelEffortBelowMedium(t *testing.T) {
 // report "cannot find the cursor". The fake terminal draws a "↓" on the
 // cursor row as a version that marks it would.
 func TestSetModelCursorOnMarkedRow(t *testing.T) {
-	a := New("claude", "")
-	f := &fakeClaude{cursorMark: "↓ ", models: []string{"Default (recommended)", "Opus", "Fable", "Sonnet", "Haiku ✔"}}
+	a, cat := testAdapter(t)
+	f := &fakeClaude{cursorMark: "↓ ", cat: cat, models: menuOf(cat)}
 	f.cursor, f.effort = 4, 1
-	if err := a.SetModel(f, "sonnet", "low"); err != nil {
+	if err := a.SetModel(f, "claude-sonnet-5-5", "low"); err != nil {
 		t.Fatal(err)
 	}
 	if f.menu != nil || !strings.Contains(f.note, "Set model to Sonnet 5.5") {
 		t.Fatalf("keys %q, note %q", f.writes, f.note)
+	}
+}
+
+// A narrow window scrolls the list: a row below the cursor that is not
+// drawn is still reached, by its number, and the label is checked once the
+// cursor has moved (2.1.300 wraps the list at the ends, so the steps are
+// counted exactly).
+func TestSetModelScrollsToRow(t *testing.T) {
+	a, cat := testAdapter(t)
+	f := &fakeClaude{cat: cat, models: menuOf(cat), window: 3}
+	f.cursor, f.effort = 4, 1 // Haiku 5.5, medium
+	if err := a.SetModel(f, "claude-sonnet-4-6", "high"); err != nil {
+		t.Fatal(err)
+	}
+	if f.cursor != 12 {
+		t.Fatalf("cursor on row %d, want the last one", f.cursor+1)
+	}
+	if f.menu != nil || !strings.Contains(f.note, "Set model to Sonnet 4.6") {
+		t.Fatalf("keys %q, note %q", f.writes, f.note)
+	}
+}
+
+// modelRow finds a model by its menu label; one scrolled out of the window
+// is looked up by the place the catalog gives it.
+func TestModelRow(t *testing.T) {
+	cat := testCatalog(t)
+	rows := []row{{num: 3, label: "Fable 5.1"}, {num: 4, label: "Sonnet 5.5", cursor: true}}
+	got, err := modelRow(cat, rows, cat.ByID("claude-sonnet-5-5"))
+	if err != nil || got.num != 4 || got.label != "Sonnet 5.5" {
+		t.Fatalf("visible row: %+v, %v", got, err)
+	}
+	got, err = modelRow(cat, rows, cat.ByID("claude-sonnet-4-6"))
+	if err != nil || got.num != 13 || got.label != "Sonnet 4.6" {
+		t.Fatalf("scrolled row: %+v, %v", got, err)
 	}
 }

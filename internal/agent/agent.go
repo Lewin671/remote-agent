@@ -222,20 +222,8 @@ type ModeFacts struct {
 	// Model is the session's model as last recorded.
 	Model string
 	// Seen are the modes the screen has shown in this session while it
-	// used Model (or another model of its family).
+	// used Model.
 	Seen []string
-}
-
-// ModelFamily groups a model's names: a Claude Code alias and its full
-// IDs ("sonnet", "claude-sonnet-5-5") share one; other names are their own.
-func ModelFamily(model string) string {
-	m := strings.ToLower(model)
-	for _, f := range []string{"haiku", "sonnet", "opus", "fable"} {
-		if strings.Contains(m, f) {
-			return f
-		}
-	}
-	return m
 }
 
 // Screen is what the daemon needs to know from the terminal.

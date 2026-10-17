@@ -13,10 +13,11 @@ import (
 // Current evidence that auto is not on offer wins over having seen it
 // with another model (review verify3 P2).
 func TestAutoSeenWithAnotherModel(t *testing.T) {
-	if o := offered(agent.ModeFacts{Seen: []string{"auto"}, Model: "claude-haiku-4-5-20251001"}); o["auto"] {
+	cat := testCatalog(t)
+	if o := offered(cat, agent.ModeFacts{Seen: []string{"auto"}, Model: "claude-haiku-4-5-20251001"}); o["auto"] {
 		t.Fatal("haiku now, auto seen before")
 	}
-	a := New("claude", "")
+	a, _ := testAdapter(t)
 	f := &fakeClaude{noAuto: true}
 	f.mode = index("plan")
 	err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false, agent.ModeFacts{FullAccess: true, Model: "claude-haiku-4-5-20251001", Seen: []string{"auto"}})
@@ -32,6 +33,7 @@ func TestAutoSeenWithAnotherModel(t *testing.T) {
 // Plan → ask, which then passes auto, as safe.
 func TestModelSwitchedInTerminal(t *testing.T) {
 	p := NewParser()
+	p.catalog = testCatalog(t)
 	var ctx *pb.TurnContext
 	feed := func(lines ...string) {
 		t.Helper()
@@ -55,17 +57,17 @@ func TestModelSwitchedInTerminal(t *testing.T) {
 		`{"type":"user","message":{"role":"user","content":"<command-name>/model</command-name>\n            <command-message>model</command-message>\n            <command-args></command-args>"}}`,
 		"{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"<local-command-stdout>Set model to `Sonnet 5.5` for this session only with `low` effort</local-command-stdout>\"}}",
 	)
-	if ctx == nil || ctx.Model != "sonnet" || ctx.Effort != "low" || ctx.PermissionMode != "default" {
+	if ctx == nil || ctx.Model != "claude-sonnet-5-5" || ctx.Effort != "low" || ctx.PermissionMode != "default" {
 		t.Fatalf("context after /model: %v", ctx)
 	}
 	feed(
 		`{"type":"user","promptId":"p2","origin":{"kind":"human"},"permissionMode":"plan","message":{"role":"user","content":"plan it"}}`,
 		`{"type":"assistant","message":{"id":"m2","model":"claude-sonnet-5-5","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"sleep 20"}}]},"perTurnEffort":"medium"}`,
 	)
-	if ctx.Model != "sonnet" || ctx.Effort != "low" || ctx.PermissionMode != "plan" {
+	if ctx.Model != "claude-sonnet-5-5" || ctx.Effort != "low" || ctx.PermissionMode != "plan" {
 		t.Fatalf("context in the Plan turn: %v", ctx)
 	}
-	a := New("claude", "")
+	a, _ := testAdapter(t)
 	f := &fakeClaude{noBypass: true}
 	f.mode = index("plan")
 	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, true, agent.ModeFacts{Model: ctx.Model}); !errors.Is(err, agent.ErrBusy) || len(f.writes) != 0 {
@@ -74,13 +76,13 @@ func TestModelSwitchedInTerminal(t *testing.T) {
 
 	// The other ways Claude Code words it: an effort that did not change is
 	// not named and stays; as the default; without the quotes of 2.1.284's
-	// first builds; a model that is none of the aliases keeps its name.
+	// first builds; a model that is not in the catalog keeps its name.
 	for _, c := range []struct{ out, model, effort string }{
-		{"Set model to `Opus 5.5` for this session only", "opus", "low"},
-		{"Set model to `Fable 5.1` and saved as your default for new sessions", "fable", "low"},
-		{"Set model to `Opus 5.5 (1M context) (default)` and saved as your default for new sessions", "opus", "low"},
-		{"Set model to Sonnet 5.5 for this session only with high effort", "sonnet", "high"},
-		{"Set model to `Haiku 4.5` for this session only", "haiku", ""},
+		{"Set model to `Opus 5.5` for this session only", "claude-opus-5-5", "low"},
+		{"Set model to `Fable 5.1` and saved as your default for new sessions", "claude-fable-5-1", "low"},
+		{"Set model to `Opus 5.5 (1M context) (default)` and saved as your default for new sessions", "claude-opus-5-5", "low"},
+		{"Set model to Sonnet 5.5 for this session only with high effort", "claude-sonnet-5-5", "high"},
+		{"Set model to `Haiku 4.5` for this session only", "claude-haiku-4-5-20251001", ""},
 		{"Set model to `Mythos 1` for this session only", "Mythos 1", ""},
 	} {
 		line, _ := json.Marshal(map[string]any{"type": "user", "message": map[string]any{"role": "user", "content": "<local-command-stdout>" + c.out + "</local-command-stdout>"}})
@@ -101,25 +103,26 @@ func TestModelSwitchedInTerminal(t *testing.T) {
 	}
 }
 
-// Only Haiku 4.5 and older are known to have no auto mode. Haiku 5.5 has
-// it (2.1.293), and which of them the alias stands for depends on Claude
-// Code's version: for the alias auto is not known, and a running turn is
-// not taken from Plan to ask through it.
-func TestAutoWithHaiku(t *testing.T) {
+// Auto comes with the model, as the catalog says: Haiku 4.5 and older
+// take none, the models after it do. A model the catalog does not know —
+// an alias older settings name, or one from another CLI — gives no answer,
+// and a running turn is not taken from Plan to ask through it.
+func TestAutoOfModels(t *testing.T) {
+	cat := testCatalog(t)
 	for model, want := range map[string]string{
-		"claude-haiku-4-5-20251001": "off", "claude-3-5-haiku-20241022": "off", "claude-3-haiku-20240307": "off",
-		"claude-haiku-5-5": "on", "haiku": "unknown", "": "unknown",
+		"claude-haiku-4-5-20251001": "off", "claude-3-5-haiku-20241022": "unknown",
+		"claude-haiku-5-5": "on", "claude-sonnet-5-5": "on", "haiku": "unknown", "": "unknown",
 	} {
 		got := "unknown"
-		if on, known := offered(agent.ModeFacts{Model: model})["auto"]; known {
+		if on, known := offered(cat, agent.ModeFacts{Model: model})["auto"]; known {
 			got = map[bool]string{true: "on", false: "off"}[on]
 		}
 		if got != want {
 			t.Errorf("%q: auto %s, want %s", model, got, want)
 		}
 	}
-	a := New("claude", "")
-	for _, model := range []string{"haiku", "claude-haiku-5-5"} {
+	a, _ := testAdapter(t)
+	for _, model := range []string{"haiku", "claude-haiku-5-5", "claude-sonnet-5-5"} {
 		f := &fakeClaude{noBypass: true}
 		f.mode = index("plan")
 		if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, true, agent.ModeFacts{Model: model}); !errors.Is(err, agent.ErrBusy) || len(f.writes) != 0 {
