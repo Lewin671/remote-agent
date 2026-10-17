@@ -24,6 +24,10 @@ type parseHealth struct {
 	End      int64  `json:"end"`
 	Type     string `json:"type"`
 	Category string `json:"category"`
+	// Until a new event is committed, the event log's durable transcript
+	// checkpoint still belongs to the source before this reset.
+	ResetPath string `json:"reset_path,omitempty"`
+	ResetSeq  uint64 `json:"reset_seq,omitempty"`
 }
 
 func loadParseHealth(dir string) (parseHealth, error) {
@@ -105,6 +109,46 @@ func (s *session) noteParseFailure(path string, start, end int64, raw []byte, pa
 	} else {
 		h.Failures++
 	}
+	if err := s.saveParseHealthLocked(h); err != nil {
+		return err
+	}
+	if !errors.Is(parseErr, agent.ErrUnknownRecord) && (s.parseWarnAt.IsZero() || time.Since(s.parseWarnAt) >= time.Minute) {
+		slog.Warn("CLI parse failure", "session", s.meta.ID, "start", start, "end", end, "type", h.Type, "category", h.Category, "failures", h.Failures)
+		s.parseWarnAt = time.Now()
+	}
+	return nil
+}
+
+// resetParseWatermark preserves cumulative counts and the latest diagnostic,
+// but invalidates the source of its byte watermark. Persist even an empty
+// replacement: a restart must not suppress a new short bad line using the old
+// file's offsets. readMu is held; a failed save must be retried before reading.
+func (s *session) resetParseWatermark(path string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.parseHealthResetPending = true
+	h := s.parseHealth
+	h.Path = ""
+	h.ResetPath, h.ResetSeq = path, s.log.CheckpointSeq()
+	if err := s.saveParseHealthLocked(h); err != nil {
+		return err
+	}
+	s.parseHealthResetPending = false
+	return nil
+}
+
+// rolloutOffset ignores an obsolete event checkpoint until a post-reset
+// event makes a checkpoint for the new source durable. Hold mu or be the sole
+// owner during startup. Replaying diagnostics alone must not signal another
+// reset and count those same records again after restart.
+func (s *session) rolloutOffset(path string, offset int64) int64 {
+	if s.parseHealth.ResetPath == path && s.parseHealth.ResetSeq == s.log.CheckpointSeq() {
+		return 0
+	}
+	return offset
+}
+
+func (s *session) saveParseHealthLocked(h parseHealth) error {
 	b, err := json.Marshal(h)
 	if err == nil {
 		err = writeFileSync(filepath.Join(s.dir, "parse-health.json"), append(b, '\n'))
@@ -114,10 +158,6 @@ func (s *session) noteParseFailure(path string, start, end int64, raw []byte, pa
 		return fmt.Errorf("save parse diagnostic: %w", err)
 	}
 	s.parseHealth = h
-	if !errors.Is(parseErr, agent.ErrUnknownRecord) && (s.parseWarnAt.IsZero() || time.Since(s.parseWarnAt) >= time.Minute) {
-		slog.Warn("CLI parse failure", "session", s.meta.ID, "start", start, "end", end, "type", h.Type, "category", h.Category, "failures", h.Failures)
-		s.parseWarnAt = time.Now()
-	}
 	return nil
 }
 

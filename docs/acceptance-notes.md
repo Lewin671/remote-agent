@@ -343,3 +343,13 @@ macOS、Codex CLI 0.163.0、当前 worktree 的 dev 构建；独立 dev-env 的�
 组件回归覆盖新建会话首条消息受理后不被清理、图片不退回 pending、恢复输入和 held 释放统一受理标记、真实 MCP/HTTP 工具读取 queued 警告并拒绝重复执行、本地 send 输出原请求 ID。首条消息和 held 取消的精确提交边界使用 protobuf 编码失败注入，不代表真实 CLI 的这两条故障链路。全量 Go、daemon/Claude/Codex/tail/schedulemcp race 检查通过；九组反向验证均在撤掉修复后以断言失败。
 
 未覆盖 Claude 原生 CLI 故障注入或三端直接界面验收。普通 RPC 目前不能同时携带成功结果和记录警告：三端仍按通用错误呈现，本地 send 仍以非零退出报告记录错误；本轮依约不改协议，该限制与后续协议设计见 [plan.md](plan.md#待确认)。
+
+### 损坏诊断恢复与 transcript 水位（第五轮反馈，2026-10-17）
+
+macOS、Codex CLI 0.163.0、当前 worktree 构建；通过 dev-env.sh 使用隔离的 server、账户、daemon、tmux socket 和 CODEX_HOME。Go remoteclient 经加密 server/daemon 操作真实 CLI，没有操作三端界面。先正常收发，再停止测试 daemon 并把 parse-health.json 写成截断 JSON；重启后会话仍可控制，远程发送得到真实回复，本机记录不含正文的诊断读取警告。之后追加一条未知记录，下一次诊断保存覆盖了坏文件。
+
+将同一隔离 transcript 截短为一条字段类型错误记录：原诊断 End 为 105722，新错误 End 为 76，累计 unknown=1、failures=1，新位置/类别和本机警告均更新。再重启测试 daemon，诊断次数和最新位置保持不变，证明旧的持久事件 checkpoint 没有让这次截断被再次计数。最后回填隔离 transcript 并再次发送，真实 CLI 回复继续可读；回填重新导入了部分历史事件，因此该阶段不作为消息投递次数或历史无重复的验收。最终事件汇总包含五条用户/助手事件，而实际调试程序只发送了三条消息。
+
+自动回归覆盖坏 JSON、截断 JSON、字段类型错误和不可读目录不影响会话恢复及发送/取消；同 inode 截断、同路径短/等长/更长文件替换；空文件重置持久化；重置保存失败后文件增长的重试；旧 checkpoint 加无关 daemon 事件后重启去重，以及新 transcript checkpoint 恢复使用。全量 Go、daemon/Claude/Codex/tail/eventlog/schedulemcp race 检查通过，七组反向验证撤掉相应修复后均断言失败。
+
+已清理隔离环境、测试进程、tmux 和临时认证副本。没有验证 Claude 原生 CLI 或三端界面；没有覆盖 daemon 停机期间的等长替换，或同 inode 在两次读取之间截断后又长过旧位置的识别。这些没有 reader 重置信号的情况不在本轮保证内。

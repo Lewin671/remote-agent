@@ -65,16 +65,17 @@ type Log struct {
 	dirty  bool
 	closed bool
 
-	events     []*pb.Event // contiguous tail starting at cacheStart
-	cacheStart uint64
-	cacheBytes int
-	cacheOn    bool
-	index      []anchor // recent offsets, one per indexStride events
-	n          uint64
-	usedAt     time.Time
-	rollout    string
-	offset     int64
-	changed    chan struct{} // closed and replaced on every append
+	events        []*pb.Event // contiguous tail starting at cacheStart
+	cacheStart    uint64
+	cacheBytes    int
+	cacheOn       bool
+	index         []anchor // recent offsets, one per indexStride events
+	n             uint64
+	usedAt        time.Time
+	rollout       string
+	offset        int64
+	checkpointSeq uint64        // last event that durably advanced the rollout checkpoint
+	changed       chan struct{} // closed and replaced on every append
 }
 
 // file is what the log needs of its append handle.
@@ -130,6 +131,7 @@ func (l *Log) load(f *os.File) (int64, error) {
 	var seq uint64
 	var rollout, wholeRollout string
 	var offset, wholeOffset int64
+	var checkpointSeq, wholeCheckpointSeq uint64
 	var pending []*pb.Event
 	var pendingBytes int
 	pendingDropped := false
@@ -140,6 +142,7 @@ func (l *Log) load(f *os.File) (int64, error) {
 			// A line without newline is torn; drop it and any complete
 			// records still waiting for the rest of their batch.
 			l.rollout, l.offset = wholeRollout, wholeOffset
+			l.checkpointSeq = wholeCheckpointSeq
 			return whole, nil
 		}
 		if err != nil {
@@ -156,6 +159,7 @@ func (l *Log) load(f *os.File) (int64, error) {
 		}
 		if rec.Rollout != "" {
 			rollout, offset = rec.Rollout, rec.Offset
+			checkpointSeq = seq
 		}
 		if (seq-1)%indexStride == 0 {
 			pendingIndex = append(pendingIndex, anchor{seq: seq, offset: good})
@@ -183,6 +187,7 @@ func (l *Log) load(f *os.File) (int64, error) {
 			whole = good
 			l.n = seq
 			wholeRollout, wholeOffset = rollout, offset
+			wholeCheckpointSeq = checkpointSeq
 			if pendingDropped {
 				l.events = nil
 				l.cacheBytes = 0
@@ -260,6 +265,14 @@ func (l *Log) Checkpoint() (string, int64) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return l.rollout, l.offset
+}
+
+// CheckpointSeq identifies the last durable rollout checkpoint. Daemon events
+// and source lines that emit no event do not advance it.
+func (l *Log) CheckpointSeq() uint64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.checkpointSeq
 }
 
 // LastSeq is the highest sequence number, 0 when empty.
@@ -399,6 +412,7 @@ func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset i
 	l.n = seq
 	if rollout != "" {
 		l.rollout, l.offset = rollout, offset
+		l.checkpointSeq = seq
 	}
 	close(l.changed)
 	l.changed = make(chan struct{})

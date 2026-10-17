@@ -109,18 +109,21 @@ type session struct {
 	// model family in use then: which modes are on offer depends on it.
 	seenModes map[string]map[string]bool
 	// Why queued input is not being written, and since when.
-	waitReason     string
-	waitSince      time.Time
-	warned         bool
-	status         pb.SessionStatus
-	detail         string
-	storageFault   string
-	storageWarnAt  time.Time
-	parseHealth    parseHealth
-	parseWarnAt    time.Time
-	approvals      map[string]*approval
-	staleApprovals []string
-	questions      map[string]*pb.QuestionAsked
+	waitReason    string
+	waitSince     time.Time
+	warned        bool
+	status        pb.SessionStatus
+	detail        string
+	storageFault  string
+	storageWarnAt time.Time
+	parseHealth   parseHealth
+	parseWarnAt   time.Time
+	// Retain a transcript reset until its diagnostic watermark invalidation
+	// is durable, even if the file grows again while storage is unavailable.
+	parseHealthResetPending bool
+	approvals               map[string]*approval
+	staleApprovals          []string
+	questions               map[string]*pb.QuestionAsked
 	// answeredBy and interruptedBy remember who answered a question or
 	// interrupted the turn through remote-agent, for the transcript
 	// record that follows.
@@ -238,6 +241,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		if path != m.RolloutPath {
 			off = 0
 		}
+		off = s.rolloutOffset(m.RolloutPath, off)
 		if off > 0 {
 			if err := s.parser.Restore(m.RolloutPath, off); err != nil {
 				slog.Warn("restore the parser from the rollout", "session", m.ID, "err", errClass(err))
@@ -456,6 +460,10 @@ func (s *session) readBatch() (more, ok bool) {
 	s.mu.Lock()
 	r := s.reader
 	pending, replayPath, replayOffset := s.parserReplayPending, s.parserReplayPath, s.parserReplayOffset
+	resetHealth := s.parseHealthResetPending
+	if pending {
+		replayOffset = s.rolloutOffset(replayPath, replayOffset)
+	}
 	s.mu.Unlock()
 	if pending {
 		p := s.ag.NewParser()
@@ -480,13 +488,26 @@ func (s *session) readBatch() (more, ok bool) {
 	if r == nil {
 		return false, true
 	}
+	if resetHealth {
+		if err := s.resetParseWatermark(r.Path); err != nil {
+			return false, false
+		}
+	}
 	lines, truncated, err := r.Next()
+	if truncated {
+		// The same pathname now names a new byte sequence. Invalidate the
+		// diagnostic watermark before comparing any of its positions.
+		if resetErr := s.resetParseWatermark(r.Path); resetErr != nil {
+			s.mu.Lock()
+			s.reader = tail.NewReader(r.Path, 0)
+			s.mu.Unlock()
+			return false, false
+		}
+		slog.Warn("rollout reset; reading it again from the start", "session", s.meta.ID)
+	}
 	if err != nil {
 		slog.Warn("read rollout", "session", s.meta.ID, "err", errClass(err))
 		return false, false
-	}
-	if truncated {
-		slog.Warn("rollout shrank; reading it again from the start", "session", s.meta.ID)
 	}
 	for _, l := range lines {
 		var evs []*pb.Event
@@ -546,6 +567,7 @@ func (s *session) readBatch() (more, ok bool) {
 				off = 0
 			}
 			s.mu.Lock()
+			off = s.rolloutOffset(r.Path, off)
 			s.reader = tail.NewReader(r.Path, off)
 			s.parserReplayPending = true
 			s.parserReplayPath = r.Path

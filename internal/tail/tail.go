@@ -60,7 +60,8 @@ type Line struct {
 // line without a newline is read again once it is completed.
 type Reader struct {
 	Path string
-	off  int64 // offset of the first byte not yet returned as a line
+	off  int64       // offset of the first byte not yet returned as a line
+	info os.FileInfo // identity last observed by this reader
 }
 
 // NewReader starts reading path at offset off.
@@ -74,8 +75,8 @@ func (r *Reader) Offset() int64 { return r.off }
 // Next returns the complete lines appended since the last call, or the
 // first MaxBatch bytes of them: no lines means there are none left. A
 // missing file yields no lines and no error. If the file shrank below the
-// current offset it was replaced, and reading restarts from the beginning;
-// truncated reports that.
+// current offset, or its identity changed since the previous call, reading
+// restarts from the beginning; truncated reports that.
 func (r *Reader) Next() (lines []Line, truncated bool, err error) {
 	f, err := os.Open(r.Path)
 	if err != nil {
@@ -90,9 +91,10 @@ func (r *Reader) Next() (lines []Line, truncated bool, err error) {
 		return nil, false, err
 	}
 	size := st.Size()
-	if size < r.off {
+	if size < r.off || r.info != nil && !os.SameFile(r.info, st) {
 		r.off, truncated = 0, true
 	}
+	r.info = st
 	if size == r.off {
 		return nil, truncated, nil
 	}
