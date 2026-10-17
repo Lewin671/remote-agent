@@ -54,7 +54,6 @@ wait_for() {
 
 events() { "$BIN" events "$1" --json; }
 after_events() { "$BIN" events "$1" --after "$2" --json; }
-has_event() { events "$1" | grep -q "$2"; }
 short() { printf %s "$1" | cut -c1-12; }
 pane() { printf 'ra-%s:' "$(printf %s "$1" | cut -c1-8)"; }
 lsrow() { "$BIN" ls -a | grep "^$(short "$1")" || true; }
