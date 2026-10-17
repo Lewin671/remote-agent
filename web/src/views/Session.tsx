@@ -764,6 +764,19 @@ function Row({
       );
     }
     case "questionAsked": {
+      // Async questions use the ordinary composer; there is no terminal
+      // answer card or answer command for them.
+      if (k.value.async) return (
+        <div className="ai">
+          {k.value.questions.map((q, i) => <div key={i}>
+            {q.header && <b>{q.header}</b>}
+            <Markdown text={q.text} />
+            {q.options.length > 0 && <ul>{q.options.map((o, j) => <li key={j}>
+              <b>{o.label}</b>{o.description && ` · ${o.description}`}
+            </li>)}</ul>}
+          </div>)}
+        </div>
+      );
       const a = d.answered.get(k.value.questionId);
       const by = d.by.get(k.value.questionId);
       return a ? (

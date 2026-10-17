@@ -2787,3 +2787,30 @@ it("consumes only the new-session text sent by a successful start while its page
   act(() => root!.render(<Box />));
   expect(input().value).toBe("");
 });
+
+it("shows async questions as ordinary chat with options and accepts a typed reply", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-idle")!;
+  const es = r.events(s.id);
+  es.push(create(EventSchema, { seq: BigInt(es.length + 1), kind: { case: "questionAsked", value: {
+    questionId: "async", async: true, questions: [
+      { text: "请选择测试方式。", options: [{ label: "A", description: "完整测试" }, { label: "B", description: "快速测试" }] },
+      { text: "还有什么要求？" },
+    ],
+  } } }));
+  const command = vi.spyOn(r, "command").mockResolvedValue(create(CommandResultSchema));
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const messages = [...host.querySelectorAll(".ai")].map(el => el.textContent).join("\n");
+  expect(messages).toContain("请选择测试方式。");
+  expect(messages).toContain("A");
+  expect(messages).toContain("完整测试");
+  expect(messages).toContain("B");
+  expect(messages).toContain("快速测试");
+  expect(messages).toContain("还有什么要求？");
+  expect(derive(es).questions.size).toBe(0);
+  expect(host.querySelector(".dock")).toBeNull();
+  await reviewType(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="消息"]')!, "选择 A");
+  await click(sendButton());
+  await vi.waitFor(() => expect(command).toHaveBeenCalled());
+  expect(command.mock.calls[0][1]).toMatchObject({ case: "send", value: { text: "选择 A" } });
+});

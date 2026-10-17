@@ -1115,7 +1115,7 @@ function visible(e: Event, d: Derived): boolean {
     case "approvalRequested":
       return d.resolved.has(k.value.approvalId);
     case "questionAsked":
-      return d.answered.has(k.value.questionId);
+      return k.value.async || d.answered.has(k.value.questionId);
     case "inputState":
       // A message never sent shows once, where it was queued.
       if (d.unsent.has(k.value.requestId)) return k.value.status === InputStatus.QUEUED;
