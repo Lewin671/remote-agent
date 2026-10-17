@@ -25,6 +25,9 @@ type Screen struct {
 	Footer string
 }
 
+// A current footer may append the cycle shortcut and warning indicators.
+var planModeRE = regexp.MustCompile(`(?:^|\s)Plan mode(?:$|\s+\()`)
+
 var sgrRE = regexp.MustCompile("\x1b\\[[0-9;:]*[A-Za-z]")
 
 // StripANSI removes SGR and other CSI sequences.
@@ -99,8 +102,12 @@ func AnalyzeScreen(styled string) Screen {
 	}
 	s.QuestionOpen = s.Popup == "question"
 	s.PlanOpen = s.Popup == "plan"
-	for _, l := range lines {
-		if strings.HasSuffix(strings.TrimSpace(StripANSI(l)), "Plan mode") {
+	for i, l := range lines {
+		// A quoted mode in older conversation is not the current footer.
+		if composer >= 0 && i <= composer {
+			continue
+		}
+		if planModeRE.MatchString(strings.TrimSpace(StripANSI(l))) {
 			s.PlanMode = true
 		}
 	}

@@ -106,6 +106,28 @@ func TestScreenFooter(t *testing.T) {
 	}
 }
 
+// Codex 0.163.0 adds a cycle hint and may put warnings after the mode.
+func TestPlanModeFooterWithCycleHint(t *testing.T) {
+	prompt := "\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n"
+	cases := []struct {
+		name, screen string
+		want         bool
+	}{
+		{"cycle hint and warning", prompt + "  GPT-6.1-Sol medium · /tmp/work   Plan mode (⇧tab to cycle)    ⚠ 1 warning · f2 to view\n", true},
+		{"cycle hint only", prompt + "  GPT-6.1-Sol medium · /tmp/work   Plan mode (⇧tab to cycle)\n", true},
+		{"ordinary footer", prompt + "  GPT-6.1-Sol medium · /tmp/work    ⚠ 1 warning · f2 to view\n", false},
+		{"quoted old mode above composer", "• The previous footer said Plan mode (⇧tab to cycle)\n" + prompt + "  GPT-6.1-Sol medium · /tmp/work\n", false},
+		{"model word is not mode", prompt + "  Plan model medium · /tmp/work\n", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := AnalyzeScreen(c.screen); got.PlanMode != c.want || !got.ComposerReady || !got.DraftEmpty {
+				t.Fatalf("got %+v, want PlanMode=%v and an idle composer", got, c.want)
+			}
+		})
+	}
+}
+
 // The same marks written with other escape sequences, as other Codex
 // versions do.
 func TestAnalyzeScreenStyleVariants(t *testing.T) {

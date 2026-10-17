@@ -3332,6 +3332,119 @@
           }
         }
       ]
+    },
+    {
+      "name": "explicit-plan-switches-do-not-become-terminal-changes",
+      "agent": 1,
+      "events": [
+        {
+          "turnContext": {
+            "model": "gpt-6.1-sol",
+            "effort": "low",
+            "approvalPolicy": "on-request",
+            "sandbox": "workspace-write"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "settingsChanged": {
+            "mode": 4
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnContext": {
+            "model": "gpt-6.1-sol",
+            "effort": "medium",
+            "collaborationMode": "plan",
+            "approvalPolicy": "on-request",
+            "sandbox": "workspace-write"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "settingsChanged": {
+            "mode": 1
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        },
+        {
+          "turnContext": {
+            "model": "gpt-6.1-sol",
+            "effort": "low",
+            "approvalPolicy": "on-request",
+            "sandbox": "workspace-write"
+          },
+          "seq": "5",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "observations": [
+        {
+          "through": "3",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": [],
+            "failures": {},
+            "queue": [],
+            "plan": null
+          }
+        },
+        {
+          "through": "5",
+          "state": {
+            "running": false,
+            "approvals": [],
+            "resolved": {},
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": [],
+            "failures": {},
+            "queue": [],
+            "plan": null
+          }
+        }
+      ]
     }
   ]
 }
