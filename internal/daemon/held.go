@@ -49,10 +49,10 @@ func (s *session) hold(in input) {
 		s.rememberLocked(s.queue.Queue[0])
 		s.queue.Queue = s.queue.Queue[1:]
 		s.queue.Held = append(s.queue.Held[:len(s.queue.Held):len(s.queue.Held)], in)
-		if err := s.queue.save(s.dir); err != nil {
+		e := &pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_HELD_BY_CLI}}}
+		if saved, _ := s.saveQueueLocked(e); !saved {
 			s.queue.Queue, s.queue.Held = prevQueue, prevHeld
 			ok = false
-			slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
 		}
 	}
 	s.mu.Unlock()
@@ -61,7 +61,6 @@ func (s *session) hold(in input) {
 		return
 	}
 	s.d.uploads.releaseRefs(in.Images, s.meta.ID, in.RequestID)
-	_ = s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_HELD_BY_CLI}}})
 }
 
 // received settles a held message once the model got it: the user message
@@ -213,7 +212,7 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
 	// lost, and not written while the box may still hold their text.
 	others, err := s.requeueHeld(held, requestID)
 	if err != nil {
-		return fmt.Errorf("save input queue: %w", err)
+		return err
 	}
 	if !s.emptyBox(c, l, footer, len(held)*4+4) {
 		for _, in := range others {
@@ -259,7 +258,7 @@ func (s *session) requeueHeld(held []input, requestID string) ([]input, error) {
 	if len(moved) == 0 {
 		return nil, nil
 	}
-	if err := s.queue.save(s.dir); err != nil {
+	if _, err := s.saveQueueLocked(); err != nil {
 		s.queue.Queue, s.queue.Held, s.recent = prevQueue, prevHeld, prevRecent
 		return nil, err
 	}
@@ -287,26 +286,26 @@ func (s *session) releaseRequeued(moved []input) error {
 		}
 	}
 	s.queue.Queue = append(append(front, released...), rest...)
-	if err := s.queue.save(s.dir); err != nil {
-		// They stay paused, for the user to send.
-		slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
+	var events []*pb.Event
+	for _, in := range released {
+		events = append(events, &pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+			RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: in.Mode,
+		}}})
+	}
+	saved, err := s.saveQueueLocked(events...)
+	if !saved {
 		s.queue.Queue = prev
 		s.mu.Unlock()
 		for _, in := range released {
 			in.Paused = true
 			_ = s.emit(pausedState(in))
 		}
-		return fmt.Errorf("save input queue: %w", err)
+		return err
 	}
 	s.mu.Unlock()
-	for _, in := range released {
-		if err := s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
-			RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: in.Mode,
-		}}}); err != nil {
-			return err
-		}
+	if err != nil {
+		return err
 	}
-	s.poke()
 	return nil
 }
 

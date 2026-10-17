@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"errors"
-	"log/slog"
 	"slices"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -281,9 +280,7 @@ func (s *session) dropSettled(l *logged) {
 	if len(s.queue.Queue)+len(s.queue.Held) == n {
 		return
 	}
-	if err := s.queue.save(s.dir); err != nil {
-		slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
-	}
+	_, _ = s.saveQueueLocked()
 }
 
 // restorePause finishes what afterTurn was doing when a previous daemon
@@ -322,10 +319,14 @@ func (s *session) restorePause(l *logged) {
 		slices.SortStableFunc(s.queue.Queue, func(a, b input) int {
 			return btoi(!a.writing() && a.Paused) - btoi(!b.writing() && b.Paused)
 		})
-		if err := s.queue.save(s.dir); err != nil {
-			// Paused in memory all the same: nothing interrupted is written.
-			slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
+		var events []*pb.Event
+		for _, in := range report {
+			events = append(events, pausedState(in))
 		}
+		// A failed save keeps the memory pause, but must not leave a
+		// notification that a later restart mistakes for a persisted pause.
+		_, _ = s.saveQueueLocked(events...)
+		return
 	}
 	for _, in := range report {
 		_ = s.emit(pausedState(in))

@@ -323,3 +323,11 @@ macOS、Codex CLI 0.163.0、`e9ccf793` 的 dev 构建，沿用独立 dev-env 的
 未知记录、坏 JSON、错误的 task_complete / turn_aborted 字段和诊断保存失败重试，均有组件回归验证之前暂存的 ImageView、用户图片仍正常发出。逐项换回修复前源码的反向测试都以断言失败确认。满盘复测发现的通用 inject 重复警告已另外去重，限频日志由最终代码的真实注入循环测试覆盖。全量 Go 与 daemon/Claude/Codex/tail race 检查通过。
 
 已停止测试进程和 tmux、卸载并删除镜像、清理 dev-env 和临时认证副本。未直接操作客户端界面；本轮未验证模型原生审批界面在满盘时的完整交互，也没有 Claude 原生 CLI 故障注入。标记已经持久化而终端写入结果未知的崩溃窗口继续沿用原有保守恢复，不自动重发。
+
+### 统一投影与队列提交（第三轮反馈）
+
+系统检查了全部运行期直接提交、fork 初始化写入及 queue.json 保存路径。组件故障回归确认：两个真实 permission 调用的等待时间按请求事件设置、按解决事件切换和清除；推断结束与 transcript 结束各只投影一次，重启结果一致；首次图片阶段追加失败时，文件和内存均保持 WAITING，修复事件日志后图片和文字各提交一次，没有 restarted 或 UNCONFIRMED；解除暂停和 held 释放的通知失败后，持久 ready 状态仍会唤醒投递。暂停队列文件保存失败时，运行期和重启恢复都保持安全暂停，不写未保存的暂停通知，下次恢复重新保存。事件与队列保存错误共用本机限频诊断。
+
+独立 dev-env、macOS、Codex CLI 0.163.0，当前工作区构建：Go remoteclient 经加密 server/daemon 向真实 Codex 完成一轮消息收发。随后通过生产 hook 命令调试触发审批；远程解密元数据确认待审批时 AttentionSince 非空，远程拒绝后清空，hook 成功返回 deny。不是客户端界面操作或模型原生审批触发。图片阶段与 held 故障由真实队列文件、事件存储和替身终端的组件测试验证，本轮未重复磁盘镜像或 Claude 原生 CLI 故障注入。
+
+全量 Go 与 daemon/Claude/Codex/tail race 检查通过；八组反向验证均在撤掉相应修复后以断言失败。测试账户、进程、tmux、Codex home 和临时认证副本均已清理。

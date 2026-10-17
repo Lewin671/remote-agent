@@ -10,7 +10,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var errEventCommit = errors.New("record session events")
+var (
+	errEventCommit = errors.New("record session events")
+	errQueueCommit = errors.New("save input queue")
+)
 
 // appendLocked commits and projects events exactly once. Hold mu; parser
 // Replay remains explicit at callers holding readMu (parsed events must not
@@ -36,6 +39,23 @@ func (s *session) appendLocked(evs []*pb.Event, path string, offset int64) error
 		s.observe(e)
 	}
 	return nil
+}
+
+// saveQueueLocked persists the new canonical queue, then attempts its events.
+// Once saved it always wakes delivery, even when recording a notification
+// fails. saved distinguishes that case from a failed queue save: callers
+// must not undo memory that already became durable. Hold mu, or be the sole
+// owner while restoring before the session starts.
+func (s *session) saveQueueLocked(evs ...*pb.Event) (saved bool, err error) {
+	if err := s.queue.save(s.dir); err != nil {
+		s.noteStorageLocked(err)
+		return false, fmt.Errorf("%w: %w", errQueueCommit, err)
+	}
+	defer s.poke()
+	if len(evs) > 0 {
+		return true, s.appendLocked(evs, "", 0)
+	}
+	return true, nil
 }
 
 func (s *session) noteStorageLocked(err error) {

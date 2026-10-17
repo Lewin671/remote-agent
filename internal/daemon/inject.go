@@ -157,20 +157,18 @@ func (s *session) enqueueMode(text, requestID string, images []queuedImage, orig
 		Text: text, RequestID: requestID, Images: images, Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: mode,
 	})
 	s.queue.remember(requestID)
-	if err := s.queue.save(s.dir); err != nil {
-		s.queue.Queue, s.queue.Seen = prevQueue, prevSeen
-		s.mu.Unlock()
-		return 0, fmt.Errorf("save input queue: %w", err)
-	}
-	// Durable acceptance must wake the injector even if its event cannot
-	// be recorded. A retry with the same ID is also a wake, never a resend.
-	defer s.poke()
-	s.mu.Unlock()
 	st := &pb.InputState{RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Text: text, Mode: mode}
 	for _, im := range images {
 		st.ImageIds = append(st.ImageIds, im.ID)
 	}
-	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: st}}, origin)); err != nil {
+	saved, err := s.saveQueueLocked(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: st}}, origin))
+	if !saved {
+		s.queue.Queue, s.queue.Seen = prevQueue, prevSeen
+		s.mu.Unlock()
+		return 0, err
+	}
+	s.mu.Unlock()
+	if err != nil {
 		return pos, fmt.Errorf("%w; message is saved and may still be sent; do not resend with a new request ID: %w", errQueueAccepted, err)
 	}
 	return pos, nil
@@ -215,7 +213,7 @@ func (s *session) injectLoop(ctx context.Context) {
 			default:
 				outcome, err = s.inject(next)
 			}
-			if err != nil && !errors.Is(err, errEventCommit) {
+			if err != nil && !errors.Is(err, errEventCommit) && !errors.Is(err, errQueueCommit) {
 				slog.Warn("inject", "session", s.meta.ID, "err", errClass(err))
 			}
 			switch outcome {
@@ -538,30 +536,30 @@ func (s *session) recoverPaste(in input) (inputOutcome, error) {
 // setStage saves how far the head message has got and reports it.
 func (s *session) setStage(requestID string, stage pb.InputStage, indexes []int32) error {
 	s.mu.Lock()
-	// The head may have been paused, or be a queue message whose turn
-	// started, while the injector looked at the screen.
+	defer s.mu.Unlock()
 	if s.meta.Exited || len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID || s.holdsLocked(s.queue.Queue[0]) {
-		s.mu.Unlock()
 		return errHeadChanged
 	}
 	prev := s.queue.Queue[0]
+	// A stage which precedes a terminal write is not durable until its event
+	// is committed. In particular a failed first PASTING_IMAGES event must
+	// leave WAITING, rather than send untouched input through recoverPaste.
+	if stage != prev.Stage {
+		if err := s.appendLocked([]*pb.Event{{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+			RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: stage,
+		}}}}, "", 0); err != nil {
+			return err
+		}
+	}
 	if stage == pb.InputStage_INPUT_STAGE_PASTING_IMAGES {
 		if err := s.d.uploads.expose(s.queue.Queue[0].Images); err != nil {
-			s.mu.Unlock()
 			return err
 		}
 	}
 	s.queue.Queue[0].Stage, s.queue.Queue[0].Indexes = stage, slices.Clone(indexes)
-	if err := s.queue.save(s.dir); err != nil {
+	if _, err := s.saveQueueLocked(); err != nil {
 		s.queue.Queue[0] = prev
-		s.mu.Unlock()
 		return err
-	}
-	s.mu.Unlock()
-	if stage != prev.Stage {
-		return s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
-			RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: stage,
-		}}})
 	}
 	return nil
 }
@@ -827,7 +825,8 @@ func (s *session) logOutcomeLocked(outcomes ...*pb.Event) bool {
 			e.Time = now
 		}
 	}
-	// An InputState changes no derived state: nothing to observe.
+	// All outcomes use the same commit/projection boundary, including the
+	// inferred TurnEnded passed by abortTurnLocked.
 	if err := s.appendLocked(outcomes, "", 0); err != nil {
 		return false
 	}
@@ -838,9 +837,9 @@ func (s *session) logOutcomeLocked(outcomes ...*pb.Event) bool {
 // logged were removed. If that fails they stay removed: the log has the
 // last word, and the next start puts the file right. Callers hold s.mu.
 func (s *session) saveSettledLocked() {
-	if err := s.queue.save(s.dir); err != nil {
-		slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
-	}
+	// The final outcome is already durable even if queue cleanup fails.
+	defer s.poke()
+	_, _ = s.saveQueueLocked()
 }
 
 // markInflight records, before the head message's text and Enter are
@@ -867,7 +866,7 @@ func (s *session) markInflight(offset int64, requestID string) error {
 		s.queue.Queue[0] = prev
 		return err
 	}
-	if err := s.queue.save(s.dir); err != nil {
+	if _, err := s.saveQueueLocked(); err != nil {
 		s.queue.Queue[0] = prev
 		return err
 	}
@@ -902,7 +901,5 @@ func (s *session) unmarkInflight(requestID string, stage pb.InputStage) {
 		return
 	}
 	s.queue.Queue[0].Inflight, s.queue.Queue[0].InflightSeq, s.queue.Queue[0].Stage = nil, 0, stage
-	if err := s.queue.save(s.dir); err != nil {
-		slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
-	}
+	_, _ = s.saveQueueLocked()
 }

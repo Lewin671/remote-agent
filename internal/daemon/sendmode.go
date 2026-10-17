@@ -50,29 +50,25 @@ func (s *session) afterTurn() {
 	s.mu.Lock()
 	aborted := s.aborted
 	s.aborted = false
-	var paused []input
 	if aborted {
-		prev := append([]input(nil), s.queue.Queue...)
+		var events []*pb.Event
 		for i, in := range s.queue.Queue {
 			if !in.writing() && !in.Paused {
 				s.queue.Queue[i].Paused = true
-				paused = append(paused, s.queue.Queue[i])
+				events = append(events, pausedState(s.queue.Queue[i]))
 			}
 		}
-		if len(paused) > 0 {
-			if err := s.queue.save(s.dir); err != nil {
-				s.queue.Queue = prev
-				paused = nil
-			}
+		if len(events) > 0 {
+			// Keep the safe pause in memory if saving fails. The committed
+			// turn end lets a restart retry it; the helper never reports a
+			// pause absent from queue.json and logs storage errors centrally.
+			_, _ = s.saveQueueLocked(events...)
 		}
 	}
 	held := len(s.queue.Held) > 0
 	s.mu.Unlock()
 	if held {
 		time.AfterFunc(heldSweep, s.sweepHeld)
-	}
-	for _, in := range paused {
-		_ = s.emit(pausedState(in))
 	}
 	s.poke()
 }
@@ -106,6 +102,7 @@ func (s *session) resumeInputBy(requestID string, origin *pb.Origin) error {
 	in := s.queue.Queue[idx]
 	if !in.Paused {
 		s.mu.Unlock()
+		s.poke()
 		return nil
 	}
 	prev := s.queue.Queue
@@ -113,18 +110,18 @@ func (s *session) resumeInputBy(requestID string, origin *pb.Origin) error {
 	in.Paused, in.Mode = false, pb.SendMode_SEND_MODE_STEER
 	s.queue.Queue = rest
 	s.queue.insert(in)
-	if err := s.queue.save(s.dir); err != nil {
+	e := withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: pb.SendMode_SEND_MODE_STEER,
+	}}}, origin)
+	saved, err := s.saveQueueLocked(e)
+	if !saved {
 		s.queue.Queue = prev
 		s.mu.Unlock()
-		return fmt.Errorf("save input queue: %w", err)
+		return err
 	}
 	s.mu.Unlock()
-	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
-		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING,
-		Mode: pb.SendMode_SEND_MODE_STEER,
-	}}}, origin)); err != nil {
+	if err != nil {
 		return fmt.Errorf("message is saved for sending but could not record resumed state: %w", err)
 	}
-	s.poke()
 	return nil
 }
