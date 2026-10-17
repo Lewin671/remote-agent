@@ -32,6 +32,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 3. **定时任务的客户端**。客户端通过 `MachineCapabilities.scheduled_tasks` 判断支持情况，复用 Schedule 机器指令查询和管理任务；先定变更订阅和离线快照，再出界面稿，然后做全局任务页和会话内入口。设计见 [architecture §18](architecture.md#18-定时任务)
 4. **历史分段读取**。现在事件层从序号 1 读全量，长会话第一次打开慢（瓶颈是下载量，见 [architecture §10](architecture.md#10-报文同步和指令) 的「后台和内存」）；网页再次打开已经靠本地密文缓存只取增量。剩下的是第一次打开：先取最新一段显示，更早的在后台补，需要让状态推导不依赖从序号 1 开始的完整历史。三端共同规则和共享向量已建立，见 [共同规则](architecture.md#客户端状态推导的共同规则)；快照及历史分段读取尚未实现，网页、Android 和 iOS 都要接入
 5. **v8 以后的界面改动补验收**。两端逐屏对照 client-v38（网页的 v8 改动也没有逐屏对照过），并连真实 CLI 走一遍设置类页面
+6. **清理被登录 shell 取代的机制**。客户端开的会话现在由登录 shell 现算环境（[architecture §6](architecture.md#6-接入-codex)），`agent.env`、`daemon.sh install` 写进服务的 `PATH`、以及用户自己的 `~/.local/shims` 包装脚本都只是为了在没有这步之前把环境补上。先在真实使用里观察一段时间：从手机新开的会话能直接用到新装的命令和升级过的 CLI，不需要重装服务或改 `agent.env`；确认后删掉 daemon 读 `agent.env`/`codex.env` 和 install 写 `PATH` 的逻辑，并同步 README 和 architecture §6
 
 **Android 的小缺口**（没排期，碰到相关改动时一起做）：
 

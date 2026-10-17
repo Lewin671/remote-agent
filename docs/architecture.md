@@ -220,14 +220,19 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 下面每条做法都基于 [codex-notes.md](codex-notes.md) 里的实测，括号里的「notes §n」指它的第 n 节。升级 Codex 后要跟着复核。
 
-- **启动**：tmux pane 里运行 `remote-agent pty-host -- codex …`。
-  - **环境变量**：环境变量取自发起的 `remote-agent codex` 进程，再叠加 `~/.remote-agent/agent.env`（放代理等变量，所有 CLI 共用一份；daemon 由 launchd 启动时读不到 shell 里的配置。没有这个文件时读以前的 `codex.env`），并设置 `RA_SESSION=<会话 ID>`、`RA_EXE=<remote-agent 的路径>`。
-  - **不上命令行**：这些变量不经过 tmux 的命令行（命令行对本机所有用户可见，而环境变量里常有 API key），而是存进会话目录下只有自己可读的 `env.json`，供恢复会话时沿用；每次启动另写一份副本交给 PTY 代理，读取后删除。
+- **启动**：tmux pane 里运行 `remote-agent pty-host -- …`。会话分两种来源，按新建请求里有没有带环境变量区分（客户端经过 relay 来的命令不带，relay 会把客户端的去掉）：
+  - **从终端开的会话**：`pty-host -- codex …`，直接执行 CLI；环境变量取自发起的 `remote-agent codex` 进程，也就是那个终端，里面临时 `export` 的变量照旧有效。
+  - **客户端开的会话**：`pty-host --clean-env -- <登录 shell> -l -i -c <脚本> …`。账号的登录 shell（macOS 从目录服务、Linux 从 `/etc/passwd` 取；取不到时退回 `$SHELL`，再退回 `/bin/sh`）以交互式登录 shell 加载用户的 shell 配置后 `exec` CLI，和电脑上新开一个终端标签页一样；CLI 按用户配置的路径（`REMOTE_AGENT_CODEX`/`REMOTE_AGENT_CLAUDE`，或 `--codex`/`--claude`）或按命令名在新 shell 的 PATH 里解析。环境每次现算，所以改了 shell 配置、升级 nvm、装新命令、CLI 换了位置，都在下一个会话生效，不用重新 `install` 或重启 daemon。
+    - **起点环境**：shell 拿到的是新终端的环境，不是 daemon 的：身份和系统变量（HOME、USER、LOGNAME、SHELL、TMPDIR、locale、`SSH_AUTH_SOCK`）加系统默认 PATH，再叠加 `~/.remote-agent/agent.env` 和 remote-agent 自己的变量（`RA_SESSION`、`RA_EXE`、`REMOTE_AGENT_HOME`、`CLAUDE_CODE_DISABLE_CRON`、`CLAUDE_CODE_DISABLE_1M_CONTEXT`）。daemon 的 PATH 是它启动时的快照，传下去的话 nvm 之类的工具会沿用旧路径，所以不传；`--clean-env` 让 PTY 代理只把这份环境交给 shell，不继承 tmux（即 daemon）的环境。
+    - **CLI 怎么找**：命令和参数作为位置参数传给脚本，脚本本身是固定代码，不拼 shell 字符串。脚本解析到 CLI 后把路径写进会话目录的 `shell-bin` 再 `exec`；找不到就写 `shell-error` 并退出。daemon 读到路径就把它记成这个 CLI 的位置，之后的版本检查、机器元数据里的已装列表和 `doctor` 都用它——它们跟着会话实际跑的 CLI 走，而不是 daemon 启动时 PATH 里的那个；每次启动前清掉上一份报告。
+    - **失败要看得见**：shell 一直没启动 CLI（例如配置里有等待输入的命令）时，超过 `ShellStartTimeout`（默认 1 分钟）daemon 结束这个会话并在状态详情里写明；shell 找不到 CLI（配置的 PATH 里没有）或没跑到脚本就退出（配置报错）时，会话直接以对应原因结束。两种都不会一直停在「启动中」。
+  - **环境变量**：`~/.remote-agent/agent.env`（放代理等变量，所有 CLI 共用一份；daemon 由 launchd 启动时读不到 shell 里的配置。没有这个文件时读以前的 `codex.env`）叠加在两种来源之上，并设置 `RA_SESSION=<会话 ID>`、`RA_EXE=<remote-agent 的路径>`。
+  - **不上命令行**：这些变量不经过 tmux 的命令行（命令行对本机所有用户可见，而环境变量里常有 API key），而是存进会话目录下只有自己可读的 `env.json`：从终端开的会话在恢复时沿用它，客户端开的会话只有起点环境（shell 现算的结果不落盘），每次启动另写一份副本交给 PTY 代理，读取后删除。
   - **hook**：用 `-c` 注入 `PermissionRequest`、`SessionStart` 两个 hook，只对这个会话生效。hook 的定义（命令和 `timeout`）必须固定：Codex 每个 hook 位置只记一份信任，定义一变就要重新信任，而且会顶掉之前的信任。所以命令写成 `"$RA_EXE" hook codex`，不含二进制的路径，换了路径或同时跑测试用的另一份二进制也不用重新信任（notes §3、§5）
 - **退出清理**：会话结束后清理该次 PTY 启动创建的进程组。停止信号先交给 CLI，给它时间保存历史；无论主进程何时退出，都向同组剩余进程发 TERM，并在有界宽限后对仍存在的组发 KILL，避免主进程及时退出却留下忽略挂断的 helper。PTY 代理在终端消失后继续排空输出，避免 CLI 因输出阻塞无法退出。
 - **locale**：daemon 没有 UTF-8 的 locale 时（launchd、systemd 启动就是这样）自己补上 `LC_CTYPE`，tmux 和 Codex 都继承它。否则 tmux 会把输出里的 tab 和非 ASCII 字符换成 `_`：会话列表读不出来，所有会话都会被当成已经消失，屏幕里的 `›` 也认不出来。标成已结束、但 tmux 会话其实还在的会话，daemon 启动时会重新接上
 - **退出结算**：两个 CLI 确认退出后，先补读并持久化最后的 transcript，再把仍未结束的轮次记为中断。新启动的 CLI 不继承旧进程的运行状态；daemon 排队消息和 Claude 持有的消息一起结算：未写入的取消，transcript 已证明模型收到的记为提交，其余写入过的记为无法确认；先记结果，再移出队列，恢复时不自动重发。退出标记只记录进程已结束，不表示 transcript 已导入；重启时已退出会话也按事件 checkpoint 补读。最终读取或事件落盘失败时不结算输入，恢复前重试，避免漏回复或重复投递。
-- **恢复会话**：`codex resume <Codex 会话 ID>`，沿用原来的环境变量和参数，去掉位置参数（如第一句话），再用最近一轮的模型、effort 和审批模式覆盖；审批模式只在最近一轮的沙箱、审批策略和审批方与某个标准模式完全一致时才覆盖，免得把只读沙箱之类的更严设置放宽。Codex 不接受重复的 `-m`，命令行的审批选项又比 `-c` 优先，所以被覆盖的选项先从原参数里去掉
+- **恢复会话**：`codex resume <Codex 会话 ID>`，沿用原来的参数，去掉位置参数（如第一句话），再用最近一轮的模型、effort 和审批模式覆盖；审批模式只在最近一轮的沙箱、审批策略和审批方与某个标准模式完全一致时才覆盖，免得把只读沙箱之类的更严设置放宽。Codex 不接受重复的 `-m`，命令行的审批选项又比 `-c` 优先，所以被覆盖的选项先从原参数里去掉。启动方式和最初的会话一致：从终端开的沿用 `env.json` 里的环境变量，客户端开的再经过登录 shell 现算一次（会话记着自己是哪种）。分叉同理（第 13 节）
 - **启动弹窗**：用 `-c` 关掉检查更新、限额换模型提示等能关的弹窗；关不掉的 `Trust this folder?`、`Hooks need review` 每个目录或每套 hook 只问一次，客户端提示去终端处理。能不弹就不弹；信任目录是安全决定，留给用户在终端里做（notes §5）
 - **启动时不注入**：Codex 在新目录启动时会先闪一下输入框再弹出信任对话框（notes §10），所以会话处于「启动中」时不注入，等状态检测连续两次看到同样的画面、进入空闲再说
 - **防弹窗挡输入**：每次注入前先抓屏，确认没有弹窗挡着。判断画面时只看屏幕底部；以列表里选中的行判断有没有弹窗，标题只用来给弹窗命名，对话里出现同样的字不算（notes §5、§6、§10）
@@ -502,7 +507,7 @@ server 首次启动时生成 VAPID 密钥对，存在数据库里。客户端订
 
 daemon 的设置存在 `~/.remote-agent/settings.json`，客户端可以读取和修改：审批超时（30 秒到 hook 超时之前）、新项目默认的模型、effort 和审批模式（项目设置的初值，也是项目设置不适用时的回退）。未设置的项沿用启动参数或 Codex 自己的配置。
 
-- **远程新建会话**：客户端指定机器、目录、第一句话，以及可选的模型、effort、审批模式；daemon 把它们换成 codex 的 `-m` 和 `-c` 参数，第一句话像普通消息一样排队，等 Codex 的输入框出现再发。会话的环境变量用 daemon 自己的，不用客户端的。目录由客户端通过 `ListDirectories` 逐级浏览选择，隐藏目录不列出
+- **远程新建会话**：客户端指定机器、目录、第一句话，以及可选的模型、effort、审批模式；daemon 把它们换成 codex 的 `-m` 和 `-c` 参数，第一句话像普通消息一样排队，等 Codex 的输入框出现再发。会话的环境变量由机器上用户自己的登录 shell 现算，不用客户端的（第 6 节），所以新装的命令和升级过的工具在下一个会话就能用。目录由客户端通过 `ListDirectories` 逐级浏览选择，隐藏目录不列出
 - **新会话的配置属于项目，用哪个 CLI 每次新建时选**：每个项目有一份项目设置，写明新会话用的机器，以及每个 CLI 各一套的模型、effort 和审批模式（Claude Code 还有上下文窗口），改动只影响之后新建的会话。理由：配置是项目的属性，放在输入框的「＋」里会和「这条消息带图片」混成一层；从最近一个会话隐式继承又让人看不出、也预测不到下一次会用什么。CLI 是例外：同一个目录里不同的任务常常适合不同的 CLI，放进项目设置的话每换一次都要进出设置，还顺带改掉了项目的默认值；所以新建输入框旁常驻一个 CLI 切换，项目只记住上次用的那个作为下次的默认。切换一直看得见，下一次会用什么仍然可以预测；每个 CLI 各存一套，来回切换不丢另一套的模型和审批。项目设置存在账户偏好里（第 8 节），用 `account-prefs` 加密，按项目路径匹配，所以换设备也一样，server 看不到内容
   - **目录不是设置**：项目就是按目录路径认的（第 8 节），换目录等于换项目，所以项目设置里只显示路径、不能改；要在别的目录开会话，从主页标题的范围菜单换项目或选「新项目…」
   - **初值**：新项目从所选机器的默认设置（daemon 设置，见下文）开始；还没保存过设置的已有项目，用列表顺序里最靠前的会话（未结束的优先，否则最近结束的，见[第 8 节](#会话列表排序)）的配置作初值，计划模式换成机器默认。第一次从项目里新建会话时把所用配置存为项目设置，之后只有用户改才会变；某个 CLI 在这个项目里还没用过时，它那一套从机器默认开始；记住的 CLI 随每次新建更新
@@ -571,7 +576,7 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 
 下面是 Claude Code 这一侧的具体做法，括号里的「notes §n」指 [claude-code-notes.md](claude-code-notes.md) 的第 n 节。
 
-- **启动**：`remote-agent pty-host -- claude --settings <会话目录>/claude-settings.json --session-id <uuid> …`。settings 文件只放 remote-agent 的 hook（`SessionStart`、`PermissionRequest`，以及只匹配 AskUserQuestion 和 ExitPlanMode 的 `PreToolUse`），命令同样写成 `"$RA_EXE" hook claude`；它和用户自己的 hook 一起运行，不改 `~/.claude/settings.json`，也不需要信任（notes §1、§3）。会话 ID 由 daemon 生成，记作会话的 CLI 会话 ID
+- **启动**：`claude --settings <会话目录>/claude-settings.json --session-id <uuid> …`，由 PTY 代理启动，来源判定和起点环境见第 6 节（终端开的会话直接执行；客户端开的先经过用户的登录 shell）。settings 文件只放 remote-agent 的 hook（`SessionStart`、`PermissionRequest`，以及只匹配 AskUserQuestion 和 ExitPlanMode 的 `PreToolUse`），命令同样写成 `"$RA_EXE" hook claude`；它和用户自己的 hook 一起运行，不改 `~/.claude/settings.json`，也不需要信任（notes §1、§3）。会话 ID 由 daemon 生成，记作会话的 CLI 会话 ID
 - **模型、推理强度、审批模式**：新建时换成 `--model`、`--effort`、`--permission-mode`；没指定就不传，沿用 Claude Code 自己的配置。「完全放行」对应 `bypassPermissions`：只有启动时就允许了 bypass 的会话能切过去（notes §5），daemon 按启动参数和 `~/.claude/settings.json` 的 `defaultMode` 判断，不可用时会话信息里标出来，客户端置灰。remote-agent 不替用户加 `--allow-dangerously-skip-permissions`
 - **恢复会话**：transcript 已经存在时用 `--resume <id>`，否则（从没发过消息）仍用 `--session-id <id>`；沿用原来的参数（取多个值的选项保留全部的值，少一个就可能放宽限制），再用最近一轮的模型、推理强度和审批模式覆盖，同名选项先从原参数里去掉。Plan 模式下 Claude Code 临时换用的模型不算会话的模型，免得恢复后一直用它。bypass 是否可用按启动时记下的结果，不重新读可能已经改过的全局设置。恢复时 transcript 里的 `permission-mode` 记录是上次的模式（notes §2），所以当前模式以屏幕上的模式行为准。`--bare`、`--safe-mode` 会关掉 settings 里的 hook，不接受
 - **启动弹窗**：信任目录的光标默认在 `No, exit`，回车就退出（notes §1），和 Codex 一样留给用户在终端里处理，客户端提示去终端
@@ -645,7 +650,7 @@ MCP 每次操作先确认 daemon 支持受限委托；不支持时拒绝工具�
 
 支持一次性带时区的绝对时间、固定经过时长的周期，以及当前轮结束后的延迟。固定间隔不承诺每日当地时间或夏令时语义。`after_turn` 在登记时绑定具体轮次；已经空闲或退出时从登记时计时，审批和提问不会结束这一轮。绑定轮次被中断或未经正常结束就退出时暂停，用户明确恢复后才重新安排。重复的延迟任务从每次执行结束后再计时，同一任务不重叠、不累计排队遗漏周期；可限制执行次数。
 
-执行目标可恢复原会话，或在指定项目新开对话。恢复保持原 Remote Agent ID、CLI 对话 ID、环境及原有恢复规则；新开对话从来源会话取项目、CLI 和可继承的配置，换 CLI 时不继承另一 CLI 的模型与 effort。新会话不能直接以 Plan 模式启动；来源模式未知或非标准时，用户需明确指定启动模式。创建时已有明确配置的字段固定在任务中，留空且无法继承的字段使用执行时 daemon/CLI 默认值。
+执行目标可恢复原会话，或在指定项目新开对话。恢复保持原 Remote Agent ID、CLI 对话 ID、环境及原有恢复规则；新开对话从来源会话取项目、CLI 和可继承的配置，启动方式（是否经过登录 shell）也沿用来源会话，换 CLI 时不继承另一 CLI 的模型与 effort。新会话不能直接以 Plan 模式启动；来源模式未知或非标准时，用户需明确指定启动模式。创建时已有明确配置的字段固定在任务中，留空且无法继承的字段使用执行时 daemon/CLI 默认值。
 
 执行消息进入现有 queue 模式，等待当前轮结束，不覆盖本地草稿、绕过弹窗或改变审批权限。任务暂停和取消只停止未来调度，不中断或撤回已经交给会话队列的消息；使用现有取消输入、中断和恢复输入操作处理当前执行。轮次正常结束只表示该次执行结束，不代表消息中的业务目标成功。
 

@@ -89,9 +89,10 @@ Connect the computer to your relay. This asks for the setup token from the relay
 remote-agent account init --server https://ra.example.com
 ```
 
-- Environment variables your CLIs need, such as proxies, go in `~/.remote-agent/agent.env`, one `KEY=VALUE` per line.
+- Sessions you start from your phone or the web run through your login shell (loading `.zshrc`, `.profile` and so on), and their environment is computed fresh each time: an nvm upgrade, a newly installed command or a moved `codex`/`claude` applies to the next session without reinstalling the service.
+- Environment variables your CLIs need, such as proxies, go in `~/.remote-agent/agent.env`, one `KEY=VALUE` per line; what you set there overrides what the shell configuration produces.
 - After upgrading Codex or Claude Code, run `remote-agent doctor` to check that it still works with remote-agent. It starts a short real session, so it uses a little of your model quota.
-- The service remembers the `PATH` of the shell that installed it. If `codex`, `claude` or `tmux` move, run `remote-agent-service install` again.
+- The service remembers the `PATH` of the shell that installed it; that decides which `codex`/`claude` the daemon itself finds (sessions started from a terminal, version checks and `doctor` use it). If `tmux` moves, or you want `codex`/`claude` to be the one it found, run `remote-agent-service install` again.
 - On Linux, a user service stops when you log out unless lingering is on: `loginctl enable-linger "$USER"`.
 - `~/.remote-agent/account.json` holds this computer's keys. Keep it private; if you lose every device that has joined the account, the relay's data cannot be decrypted.
 - The first time Codex starts in a directory it asks whether to trust it; answer in the terminal.

@@ -382,3 +382,17 @@ macOS、Codex CLI 0.163.0、当前 worktree 构建；`ios/scripts/dev-env.sh` �
 组件回归覆盖两个方向在 running 下零键写入、草稿在空闲/运行中均保留、已经处于 Plan 时的无操作请求、普通权限档位仍可在 running 下操作，以及拒绝后不投影 SettingsChanged；撤掉运行检查后，两方向的 adapter/daemon 回归均断言失败。原有 MCP 启动和 footer 识别回归继续通过。全量 `GOMAXPROCS=2 go test -p=2 ./...` 以及相关 Codex/daemon 用例的 race 检查通过。
 
 本轮补齐了模型运行中和本地草稿的验证；其他 Codex 版本、直接手机/网页界面，以及 MCP 未初始化时退出 Plan 仍未覆盖。测试 session、server、daemon、tmux、数据库与 CODEX_HOME 均已清理；只本地提交，不推送、不发版。
+
+## 2026-10-17：客户端开的会话经过登录 shell
+
+macOS arm64，本 worktree 构建的隔离环境（`ios/scripts/dev-env.sh`，RA_DEV_DIR 放在 /tmp 下的短软链接后以满足 socket 路径长度），独立 server、临时账户、数据库、daemon 状态目录和 tmux socket；未连接线上服务、日常 daemon 或日常账户。客户端身份用本地 socket 的测试调用（Connect JSON 加协议头，不带 `Env`，与 relay 转发后的新建请求一致），从终端开的会话用 `dev-env.sh cli new`。测试 daemon 在 `agent.env` 里放 `ZDOTDIR` 指向临时 zsh 配置，CLI 用把环境写进文件的假脚本；真实 CLI 一节用真实的 Codex 0.163.0 和 Claude Code 2.1.300。
+
+daemon 故意用过期 PATH 启动（`/tmp/ra-ls-stale/bin` 在前，里面放一个只在老位置的假 codex）。客户端新开的会话里，CLI 是登录 shell 按自己的 PATH 解析出的另一个假 codex，进程的环境里有测试配置 export 的标记变量和新 PATH，没有 daemon 的过期目录；daemon 日志按会话记下「the login shell resolved a session's CLI」。改测试配置的值后不重启 daemon 再开一个会话，新值生效，先前的会话不受影响。终端开的会话仍带发起终端的变量，看不到登录 shell 的测试标记。
+
+失败两例：配置里 `exit 3` 时，会话立刻以「the login shell did not start the CLI」结束；配置里 `read` 等待输入时，daemon 在 1 分钟后（`ShellStartTimeout` 默认值）结束会话，原因为「the login shell did not start the CLI within 1m0s」。两次客户端读到的都是 EXITED 加该原因，没有停在「启动中」，对应的 tmux 会话也已消失。
+
+用真实登录 shell 配置（不设 ZDOTDIR）：从客户端各开一个 Codex 和 Claude Code 会话，两个 CLI 都由 shell 解析到用户自己的 `~/.local/shims`，codex 进程跑在 `/Users/workstation/.nvm/versions/node/v22.23.3/bin/node` 上（`lsof` 读到的可执行文件，与新登录 shell 的 `node` 一致；daemon 自己 PATH 里的 node 还是升级前的 v22.17.0）。Codex 会话进入空闲并画出界面；Claude Code 停在信任目录的弹窗，界面已画出。没有发送任何消息，没有消耗模型额度。
+
+回归测试覆盖起点环境（PATH 换成系统默认、身份和 locale 保留）、argv 与固定脚本、在真实登录 shell 里跑一遍脚本（找到和找不到两条路）、登录 shell 的取法（dscl 与 passwd 解析）、来源判定（带环境变量走直接启动、不带走登录 shell）、恢复和分叉沿用最初的启动方式、定时任务沿用来源会话的方式、学到 CLI 路径后版本检查与已装列表跟着走、卡住与找不到 CLI 的结束原因，以及 pty-host 的 `--clean-env` 只给出文件里的环境。六次反向验证（撤掉起点环境、来源判定两个方向、看门狗、退出原因、pty-host 的环境）都让对应回归断言失败。
+
+未覆盖：fish（本机没装，脚本按 fish 的 `$argv` 惯例写，未实测）和 csh/tcsh 登录 shell；Windows；真实 iOS、网页或 Android 的界面操作，以及真实 CLI 发消息后的完整链路；daemon 重启时恰好停在启动中的登录 shell 会话（恢复路径的看门狗逻辑有单元测试，没有做成端到端）。测试 session、server、daemon、tmux 与临时配置均已清理；只本地提交，不推送、不发版。
