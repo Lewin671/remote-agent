@@ -289,3 +289,15 @@ func ComposerText(styled string) (string, bool) {
 	}
 	return strings.TrimSpace(strings.Join(parts, "\n")), true
 }
+
+// RestoredPrompt recognizes an early-canceled request restored for editing
+// by Claude Code 2.1.300. The composer remains visible while working, so
+// its presence alone is not an end signal. Ignore wrapping whitespace.
+func RestoredPrompt(styled, prompt string) bool {
+	scr := AnalyzeScreen(styled)
+	if !scr.ComposerReady || scr.Busy || scr.DraftEmpty || strings.TrimSpace(prompt) == "" {
+		return false
+	}
+	text, ok := ComposerText(styled)
+	return ok && strings.Join(strings.Fields(text), " ") == strings.Join(strings.Fields(prompt), " ")
+}

@@ -1,15 +1,18 @@
 package daemon
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/Lewin671/remote-agent/internal/tmux"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 func TestResumeAfterMissingTurnEndAllowsScheduledInput(t *testing.T) {
@@ -37,7 +40,7 @@ func TestResumeAfterMissingTurnEndAllowsScheduledInput(t *testing.T) {
 		defer h.s.mu.Unlock()
 		return h.s.status == pb.SessionStatus_SESSION_STATUS_IDLE
 	})
-	time.Sleep(150 * time.Millisecond)
+	eventually(t, "scheduled input written", func() bool { return len(h.term.written()) > 0 })
 	h.s.mu.Lock()
 	running := h.s.running
 	queued := len(h.s.queue.Queue)
@@ -45,7 +48,7 @@ func TestResumeAfterMissingTurnEndAllowsScheduledInput(t *testing.T) {
 	h.s.mu.Unlock()
 	got := readTask(t, h.d, task.ID)
 	t.Logf("after resume and scheduled send: screen=idle status=%s running=%v queued=%d blocked=%v writes=%d task=%s", h.s.info().Status, running, queued, blocked, len(h.term.written()), got.Status)
-	if blocked {
+	if blocked || running {
 		t.Error("a turn belonging to the dead CLI blocks queued/scheduled input in the resumed idle CLI")
 	}
 }
@@ -224,5 +227,116 @@ func TestExitSettlesHeldInputOnlyAfterOutcomeIsLogged(t *testing.T) {
 	h.reopen()
 	if len(h.s.queue.Held) != 0 {
 		t.Fatal("settled input restored")
+	}
+}
+
+// 2.1.300 writes the user record but no interrupted text or turn_duration
+// when Esc wins the race with the first assistant response.
+const earlyClaudeUser = `{"type":"user","promptId":"early","origin":{"kind":"human"},"message":{"content":"original question"}}`
+
+func TestClaudeRestoredPromptSettlesEarlyInterruptAfterRestart(t *testing.T) {
+	h := claudeHarness(t, Config{ScreenInterval: 10 * time.Millisecond})
+	h.writeRollout(earlyClaudeUser)
+	h.s.bindRollout("cli", filepath.Join(h.dir, "rollout.jsonl"))
+	if _, err := h.s.enqueueMode("next", "next", nil, originLocal, pb.SendMode_SEND_MODE_QUEUE); err != nil {
+		t.Fatal(err)
+	}
+	h.reopen() // no in-memory interrupt intent survives
+	h.term.setScreen(ccBox("original question"))
+	ctx, cancel := context.WithCancel(context.Background())
+	h.s.start(ctx)
+	defer func() { cancel(); <-h.s.done }()
+	eventually(t, "early interrupt ended", func() bool { h.s.mu.Lock(); defer h.s.mu.Unlock(); return !h.s.running })
+	h.s.mu.Lock()
+	if len(h.s.queue.Queue) != 1 || !h.s.queue.Queue[0].Paused {
+		t.Error("waiting input not paused by interruption")
+	}
+	h.s.mu.Unlock()
+	var ends int
+	for _, e := range h.events() {
+		if end := e.GetTurnEnded(); end != nil {
+			ends++
+			if e.TurnId != "early" || end.Outcome != pb.TurnOutcome_TURN_OUTCOME_ABORTED {
+				t.Fatalf("end %v", e)
+			}
+		}
+	}
+	if ends != 1 {
+		t.Fatalf("ends=%d", ends)
+	}
+	// The live parser learned the inferred end: the next real turn must
+	// not abort the old turn again.
+	h.writeRollout(`{"type":"user","promptId":"next","origin":{"kind":"human"},"message":{"content":"different question"}}`, `{"type":"system","subtype":"turn_duration","durationMs":1}`)
+	h.s.readRollout()
+	ends = 0
+	for _, e := range h.events() {
+		if e.GetTurnEnded() != nil {
+			ends++
+		}
+	}
+	if ends != 2 {
+		t.Fatalf("parser did not learn inferred end: %d ends", ends)
+	}
+}
+
+func TestClaudeInterruptKeyAloneDoesNotEndTurn(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	h.writeRollout(earlyClaudeUser)
+	h.s.bindRollout("cli", filepath.Join(h.dir, "rollout.jsonl"))
+	if _, err := h.s.interrupt(); err != nil {
+		t.Fatal(err)
+	}
+	h.s.checkScreen()
+	h.s.checkScreen()
+	h.s.mu.Lock()
+	defer h.s.mu.Unlock()
+	if !h.s.running || !h.s.restoredPromptSince.IsZero() {
+		t.Fatal("Esc or idle screen alone ended the turn")
+	}
+}
+
+func TestClaudeRestoredPromptDoesNotOverrideFinalTranscript(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	h.writeRollout(earlyClaudeUser)
+	h.s.bindRollout("cli", filepath.Join(h.dir, "rollout.jsonl"))
+	h.term.setScreen(ccBox("original question"))
+	h.s.settleRestoredPrompt(ccBox("original question"))
+	h.s.restoredPromptSince = time.Now().Add(-2 * time.Second)
+	h.writeRollout(`{"type":"system","subtype":"turn_duration","durationMs":1}`)
+	h.s.settleRestoredPrompt(ccBox("original question"))
+	for _, e := range h.events() {
+		if end := e.GetTurnEnded(); end != nil && end.Outcome != pb.TurnOutcome_TURN_OUTCOME_COMPLETED {
+			t.Fatal("inferred end overrode final transcript")
+		}
+	}
+}
+
+func TestClaudeRestoredPromptKeepsOutputTurnAndRetriesFailedEnd(t *testing.T) {
+	for _, output := range []bool{false, true} {
+		t.Run(fmt.Sprint(output), func(t *testing.T) {
+			h := claudeHarness(t, Config{})
+			h.writeRollout(earlyClaudeUser)
+			h.s.bindRollout("cli", filepath.Join(h.dir, "rollout.jsonl"))
+			if output {
+				h.s.emit(&pb.Event{TurnId: "early", Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Text: "partial reply"}}})
+			}
+			h.term.setScreen(ccBox("original question"))
+			h.s.settleRestoredPrompt(ccBox("original question"))
+			h.s.restoredPromptSince = time.Now().Add(-2 * time.Second)
+			h.s.log.Close()
+			h.s.settleRestoredPrompt(ccBox("original question"))
+			if !h.s.running {
+				t.Fatal("ended without durable outcome")
+			}
+			l, err := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			h.s.log = l
+			h.s.settleRestoredPrompt(ccBox("original question"))
+			if h.s.running != output {
+				t.Fatalf("running=%v output=%v", h.s.running, output)
+			}
+		})
 	}
 }

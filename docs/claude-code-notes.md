@@ -50,7 +50,7 @@
 | `type: "permission-mode"`，`permissionMode` | 权限模式，切换后在下一次写 transcript 时记一条。**恢复会话时记的是上次的模式，不是这次启动的模式**（实测以 manual 恢复，记的是 acceptEdits） |
 | 其他：`attachment`（环境、语言、工具列表、CLAUDE.md 等）、`mode`、`atis-latch`、`last-prompt`、`ai-title`、`agent-name`、`file-history-snapshot`、`cost-state` | 和聊天内容无关 |
 
-- **轮次结束有两种写法**：正常结束是 `turn_duration`；运行中按 Esc 打断时**只有** `[Request interrupted by user…]`，没有 `turn_duration`。在审批框或计划框里按 Esc（或选 No）时两条都有，先中断文字、后 `turn_duration`
+- **有结束记录的轮次有两种写法**（2.1.284；2.1.300 首条输出前中断的例外见第 10 节）：正常结束是 `turn_duration`；运行中按 Esc 打断时**只有** `[Request interrupted by user…]`，没有 `turn_duration`。在审批框或计划框里按 Esc（或选 No）时两条都有，先中断文字、后 `turn_duration`
 - **并行工具**：一次回复里的几个 `tool_use` 各占一行、紧挨着写，结果各自一行 `tool_result`，按 `tool_use_id` 对应，完成顺序不一定和调用顺序相同
 - **`tool_use` 在工具开始前就写入**：`sleep 30` 运行中去读，transcript 里已经有它的 `tool_use`，还没有 `tool_result`
 - **但 AskUserQuestion 不一定**：一次两问的提问，选择框已经显示了 70 多秒，transcript 里还只有用户消息，这次回复的 `thinking` 和 `tool_use` 直到回答之后才和 `tool_result` 一起写入。同一会话里之前的单问提问、以及注册了 `PreToolUse` hook 的会话里，问题显示时 `tool_use` 已经在 transcript 里。什么情况下会延迟，没有查清；`PreToolUse` hook 每次都在选择框出现前收到这次调用
@@ -179,6 +179,7 @@
 | Esc | 中断这一轮：工具运行中时，这个工具记为被拒绝（`User rejected tool use`），另记 `[Request interrupted by user for tool use]`；生成文字时记 `[Request interrupted by user]`。都没有 `turn_duration`，也不触发 Stop hook | 未测；按两次会打开回退菜单（推测，未验证） |
 | Enter | 输入框里的消息**排队**：transcript 记 `queue-operation` `enqueue`，输入框上方显示这条消息，占位提示变成 `Press up to edit queued messages`。工具结束时它被并入当前这一轮（`queue-operation` `remove`，`reason: absorbed_mid_turn`，再有一条 `queued_command` 附件），模型在同一轮里回应 | 发送 |
 
+- **首条输出前中断**（2.1.300，haiku，2026-10-16，本地隔离环境实测）：用户消息写入后立即发 Esc，CLI 返回非忙碌输入框，并把本轮原文恢复为草稿。transcript 保留这条 `user` 和请求元数据，却没有 assistant 回复、`[Request interrupted by user…]` 或 `turn_duration`。修复前本地命令仍报 running；修复后通过 Go 调试客户端经本地 server 连续三次复现相同原生状态，并收到中断结束事件，随后 QUEUE 消息正常完成。此项为调试触发，未直接操作浏览器或手机；API 错误、图片和超长草稿未验证。
 - **撤回排队的消息**（2.1.285，haiku，2026-09-30 实测）：运行中有排队消息时按 ↑，所有排队的消息一起回到输入框，多条之间换行，transcript 记一条 `queue-operation` `popAll`（实测 `content` 只有最后一条）。这时 Ctrl-U 清空输入框，这些消息就不会再发出：这一轮照常结束，之后也不会作为新的一轮提交。要撤回其中一条，只能全部拉回、清空，再把其余的重新回车排队
 - 中断时正在运行的 `sleep 30` 界面显示 `Interrupted · What should Claude do instead?`；后台是否继续运行，未测
 

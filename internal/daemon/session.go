@@ -78,10 +78,13 @@ type session struct {
 	// source's records, which the fork has as events already; nil if none.
 	copied func(line []byte) bool
 
-	mu      sync.Mutex
-	meta    meta
-	running bool   // a turn is in progress
-	turnID  string // the turn that still needs an outcome
+	mu                  sync.Mutex
+	meta                meta
+	running             bool   // a turn is in progress
+	turnID              string // the turn that still needs an outcome
+	turnPrompt          string // first user message, for a CLI-restored prompt
+	turnOutput          bool   // the turn has produced assistant or tool output
+	restoredPromptSince time.Time
 	// turnEnds counts the turns that ended; aborted is set when the last
 	// one was interrupted, until the waiting input is paused.
 	turnEnds uint64
@@ -236,6 +239,8 @@ func (s *session) observe(e *pb.Event) {
 	case *pb.Event_TurnStarted:
 		s.running = true
 		s.turnID = e.TurnId
+		s.turnPrompt, s.turnOutput = "", false
+		s.restoredPromptSince = time.Time{}
 	case *pb.Event_TurnEnded:
 		s.running = false
 		s.turnEnds++
@@ -254,14 +259,20 @@ func (s *session) observe(e *pb.Event) {
 	case *pb.Event_SettingsChanged:
 		s.context = s.ag.ApplySettings(s.context, k.SettingsChanged)
 	case *pb.Event_UserMessage:
+		if s.running && e.TurnId == s.turnID && s.turnPrompt == "" {
+			s.turnPrompt = k.UserMessage.Text
+		}
 		if s.title == "" {
 			s.title = titleFrom(k.UserMessage.Text)
 		}
 	case *pb.Event_AgentMessage:
+		s.turnOutput = true
 		s.preview = summary(k.AgentMessage.Text, 120)
 	case *pb.Event_ToolCall:
+		s.turnOutput = true
 		s.preview = "✓ " + summary(k.ToolCall.Title, 110)
 	case *pb.Event_ToolStarted:
+		s.turnOutput = true
 		s.preview = "正在执行 " + summary(k.ToolStarted.Title, 110)
 	case *pb.Event_QuestionAsked:
 		if !k.QuestionAsked.Async {
@@ -574,11 +585,13 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	stable := scr == s.prevScreen
 	s.prevScreen = scr
 	if !stable {
+		s.restoredPromptSince = time.Time{}
 		s.mu.Unlock()
 		return true
 	}
 	if s.driving {
 		// Menus opened by a control operation are not the user's popups.
+		s.restoredPromptSince = time.Time{}
 		s.mu.Unlock()
 		return true
 	}
@@ -629,6 +642,67 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	if next != status || nextDetail != detail || planChanged {
 		s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: next, Detail: nextDetail, PlanOpen: scr.PlanOpen}}})
 	}
+	s.settleRestoredPrompt(styled)
+	return true
+}
+
+// settleRestoredPrompt handles Claude's early cancellation, which writes
+// no end record (claude-code-notes §10). A plain idle composer or a sent
+// Esc proves nothing: the CLI must restore this turn's original text,
+// without any output, in a non-busy composer across successive polls.
+// Replayed user/turn events provide the same evidence after a restart.
+func (s *session) settleRestoredPrompt(styled string) {
+	if s.ag.Kind() != pb.Agent_AGENT_CLAUDE {
+		return
+	}
+	s.mu.Lock()
+	prompt, turnID := s.turnPrompt, s.turnID
+	if !s.running || s.turnOutput || s.driving || s.meta.Exited || !claude.RestoredPrompt(styled, prompt) {
+		s.restoredPromptSince = time.Time{}
+		s.mu.Unlock()
+		return
+	}
+	if s.restoredPromptSince.IsZero() {
+		s.restoredPromptSince = time.Now()
+	}
+	ready := time.Since(s.restoredPromptSince) >= time.Second
+	s.mu.Unlock()
+	if !ready {
+		return
+	}
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+	if !s.readRolloutLocked() {
+		return
+	}
+	// Reading a backlog may have taken time or ended the turn. Recheck
+	// both the screen and the turn before appending an inferred end.
+	styled, err := s.term.Capture()
+	if err != nil || !claude.RestoredPrompt(styled, prompt) {
+		return
+	}
+	s.mu.Lock()
+	ended := s.running && s.turnID == turnID && !s.turnOutput && !s.driving && !s.meta.Exited && s.abortTurnLocked("input restored by CLI")
+	s.mu.Unlock()
+	if ended {
+		s.retractApprovals()
+		s.afterTurn()
+	}
+}
+
+// abortTurnLocked persists a missing end before changing derived state,
+// and keeps the live parser in step with replay. Hold readMu and mu.
+func (s *session) abortTurnLocked(reason string) bool {
+	e := withOrigin(&pb.Event{TurnId: s.turnID, Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{
+		Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED, Reason: reason,
+	}}}, s.interruptedBy)
+	if !s.logOutcomeLocked(e) {
+		return false
+	}
+	s.parser.Replay(e)
+	s.observe(e)
+	s.interruptedBy = nil
+	clear(s.answeredBy)
 	return true
 }
 
@@ -685,16 +759,9 @@ func (s *session) settleExited() bool {
 	// only after its final records, and teach the live parser as well as
 	// replay so the next launch starts from the same state.
 	if s.running {
-		e := withOrigin(&pb.Event{TurnId: s.turnID, Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{
-			Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED, Reason: "session exited",
-		}}}, s.interruptedBy)
-		if !s.logOutcomeLocked(e) {
+		if !s.abortTurnLocked("session exited") {
 			return false
 		}
-		s.parser.Replay(e)
-		s.observe(e)
-		s.interruptedBy = nil
-		clear(s.answeredBy)
 	}
 	s.aborted = false // exiting cancels old input; new input belongs to the next CLI
 	if len(s.queue.Queue) == 0 && len(s.queue.Held) == 0 {

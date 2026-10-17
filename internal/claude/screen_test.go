@@ -102,3 +102,25 @@ func TestAnalyzeDialogs(t *testing.T) {
 		}
 	}
 }
+
+func TestRestoredPromptRequiresOriginalNonBusyDraft(t *testing.T) {
+	const rule = "────────────────────────────────────────"
+	for _, tt := range []struct {
+		name, screen, prompt string
+		want                 bool
+	}{
+		{"restored", rule + "\n❯ original question\n" + rule, "original question", true},
+		{"wrapped", rule + "\n❯ original\n question\n" + rule, "original question", true},
+		{"empty", rule + "\n❯ \n" + rule, "original question", false},
+		{"unrelated draft", rule + "\n❯ another question\n" + rule, "original question", false},
+		{"busy prompt", rule + "\n\x1b[38;5;246m❯ original question\n" + rule, "original question", false},
+		{"spinner", "· Thinking… (2s · ↓ 1 tokens)\n" + rule + "\n❯ original question\n" + rule, "original question", false},
+		{"no prompt", rule + "\n❯ original question\n" + rule, "", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RestoredPrompt(tt.screen, tt.prompt); got != tt.want {
+				t.Fatalf("got %v want %v", got, tt.want)
+			}
+		})
+	}
+}

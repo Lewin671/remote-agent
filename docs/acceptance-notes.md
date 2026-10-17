@@ -261,3 +261,13 @@ Xcode 27.0、iOS 27 的 iPhone 18 Pro 模拟器，从当前任务代码构建。
 `TestUpdateWithRealProcesses` 从独立测试程序构建两个版本，用真正的进程、Unix HTTP 健康接口和候选程序探测，走过下载、替换当前文件、重启并核对新版本/PID，以及新程序启动失败后恢复旧程序。服务管理器由测试适配器替代，没有使用日常账户、会话或中继，也没有启动真实 Codex/Claude Code。这是更新器流程验收，不是 Agent 端到端验收。
 
 `RA_TEST_LAUNCHD=1 go test ./internal/updater -run TestLaunchAgentLoads -v` 在本机 GUI domain 加载独立测试 label，用生成的 plist 触发无副作用的记录程序，确认生成配置可加载并执行；测试主动 kickstart，未等待凌晨日历事件。测试 label 已卸载，不改日常 daemon/定时器。Linux 配置生成有自动测试，尚未实际运行 Linux user timer；没有验证真实断电、睡眠唤醒或长时间崩溃后恢复。自动更新默认关闭，本次未开启生产机器定时更新。
+
+## 2026-10-16：daemon 退出结算与首条输出前中断
+
+在独立 worktree 的修复代码上，用 `ios/scripts/dev-env.sh start --daemon` 启动隔离本地 server、daemon、账户、数据库、状态目录和 tmux socket，未连接线上环境或日常 daemon。真实 CLI 为 Claude Code 2.1.300 / haiku。Go 调试客户端注册到临时账户，通过 server 加密转发发送、中断、QUEUE 消息，并解密读回事件和会话元数据；未直接操作网页、Android 或 iOS。启动目录信任和每轮清空已恢复草稿由 tmux 调试触发。
+
+先在未修代码上复现首条输出前中断：原生输入框恢复本轮原文，没有 transcript 结束记录，daemon 持续报 running。换成修复代码、重启隔离 daemon 后，旧轮次结算为空闲；通过调试客户端连续三次发送并立即中断，每次都在原生恢复输入框后收到唯一的 ABORTED 结束事件，来源保留客户端身份。随后发送 QUEUE 消息，收到真实模型的 `LIFECYCLE_RECOVERED` 回复和 COMPLETED 结束事件，客户端元数据为 IDLE。
+
+退出无结束记录、退出标记先落盘的恢复快照、最终事件写入失败重试、Claude 持有输入的最终状态和持久化顺序由正式 Go 回归测试覆盖，两个 CLI 的遗留轮次都验证重放后不再阻塞。移除相应修复时，回归断言失败。验收命令为 `go test ./...` 和 `go test -race ./internal/daemon/... ./internal/claude/... ./internal/codex/...`。
+
+未覆盖真实 Codex 的异常退出注入、真实 daemon 崩溃注入、API 错误、图片或超长原文恢复，以及浏览器和移动客户端界面。测试结束后清理隔离环境。
