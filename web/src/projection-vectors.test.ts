@@ -38,8 +38,8 @@ for (const v of corpus.vectors) it(`shared projection: ${v.name}`, () => {
       expect({ asyncQuestions }).toEqual(o.history);
     }
     expect(normalize(prefix, derive(prefix, v.agent as Agent)), `through ${o.through}`).toEqual(o.state);
-    // Web's reducer is a full replay. Test every batch boundary using newly
-    // decoded handles too; native runners exercise their incremental path.
+    // Web replays the concatenated batches from scratch. Native runners
+    // additionally retain the reducer across the same cuts.
     for (const cut of v.cuts.filter(c => c <= prefix.length)) {
       const batches = [...prefix.slice(0, cut), ...prefix.slice(cut)];
       expect(normalize(batches, derive(batches, v.agent as Agent)), `cut ${cut}`).toEqual(o.state);

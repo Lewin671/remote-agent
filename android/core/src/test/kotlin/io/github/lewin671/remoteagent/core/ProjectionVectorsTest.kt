@@ -56,14 +56,15 @@ class ProjectionVectorsTest {
                 for (c in v.getValue("cuts").jsonArray.map { it.jsonPrimitive.int }.filter { it <= prefix.size }) {
                     val r = EventReducer(agent)
                     r.append(prefix.take(c))
-                    val held = normalize(prefix.take(c), r.snapshot())
+                    val snapshot = r.snapshot()
+                    val held = normalize(prefix.take(c), snapshot)
                     val projection = EventProjection()
                     projection.update(prefix.take(c), agent)
                     r.append(prefix.drop(c))
                     assertEquals("$name cut $c", expected, normalize(prefix, r.snapshot()))
                     assertEquals("$name projection $c", expected, normalize(prefix, projection.update(prefix, agent)))
                     // A previously returned normalized value stays independent.
-                    assertEquals(held, normalize(prefix.take(c), derive(prefix.take(c), agent)))
+                    assertEquals(held, normalize(prefix.take(c), snapshot))
                 }
             }
         }
