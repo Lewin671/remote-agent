@@ -76,8 +76,10 @@ func (a *Adapter) Version() string {
 
 func (a *Adapter) Tested(v string) bool { return slices.Contains(TestedVersions, v) }
 
-// efforts are the levels /model and --effort take, in the order →
-// cycles through them from medium.
+// efforts are the levels /model and --effort take, from low to max. The
+// ←/→ keys step one level along this order; whether they stop at the ends
+// or wrap depends on the Claude Code version, so SetModel presses the
+// direction to the wanted level rather than assuming either.
 var efforts = []string{"low", "medium", "high", "xhigh", "max"}
 
 // models are the aliases /model lists, each with the largest context
