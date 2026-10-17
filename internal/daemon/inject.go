@@ -149,6 +149,7 @@ func (s *session) enqueueMode(text, requestID string, images []queuedImage, orig
 		requestID = newID(8)
 	} else if s.queue.seen(requestID) {
 		s.mu.Unlock()
+		s.poke()
 		return 0, nil
 	}
 	prevQueue, prevSeen := s.queue.Queue, s.queue.Seen
@@ -161,6 +162,9 @@ func (s *session) enqueueMode(text, requestID string, images []queuedImage, orig
 		s.mu.Unlock()
 		return 0, fmt.Errorf("save input queue: %w", err)
 	}
+	// Durable acceptance must wake the injector even if its event cannot
+	// be recorded. A retry with the same ID is also a wake, never a resend.
+	defer s.poke()
 	s.mu.Unlock()
 	st := &pb.InputState{RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Text: text, Mode: mode}
 	for _, im := range images {
@@ -168,10 +172,6 @@ func (s *session) enqueueMode(text, requestID string, images []queuedImage, orig
 	}
 	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: st}}, origin)); err != nil {
 		return pos, fmt.Errorf("%w; message is saved and may still be sent; do not resend with a new request ID: %w", errQueueAccepted, err)
-	}
-	select {
-	case s.wake <- struct{}{}:
-	default:
 	}
 	return pos, nil
 }

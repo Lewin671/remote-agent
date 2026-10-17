@@ -76,6 +76,7 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 	seen := s.queue.seen(req.Msg.RequestId)
 	s.mu.Unlock()
 	if seen {
+		s.poke()
 		return connect.NewResponse(&pb.SendResponse{}), nil
 	}
 	if len(req.Msg.ImageIds) > 0 {
