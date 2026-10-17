@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +48,7 @@ import io.github.lewin671.remoteagent.core.modeOf
 import io.github.lewin671.remoteagent.core.originOrNull
 import io.github.lewin671.remoteagent.proto.ApprovalDecision
 import io.github.lewin671.remoteagent.proto.Event
+import io.github.lewin671.remoteagent.proto.Question
 import io.github.lewin671.remoteagent.proto.SessionStatus
 import io.github.lewin671.remoteagent.proto.ToolCall
 import io.github.lewin671.remoteagent.proto.ToolKind
@@ -91,6 +93,8 @@ sealed interface ChatItem {
     /** Images the agent made, as a card of their own. */
     data class Generated(override val key: String, val seq: Long, val prompt: String, val images: List<io.github.lewin671.remoteagent.proto.ImageRef>) : ChatItem
     data class Agent(override val key: String, val text: String) : ChatItem
+    /** Ordinary AI text; async questions are answered through the composer, never the dock. */
+    data class AsyncQuestion(override val key: String, val questions: List<Question>) : ChatItem
     data class Thought(override val key: String, val text: String) : ChatItem
 
     /**
@@ -322,6 +326,10 @@ fun buildChat(
                 flush()
                 out += ChatItem.Agent(k, e.agentMessage.text)
             }
+            Event.KindCase.QUESTION_ASKED -> if (e.questionAsked.async) {
+                flush()
+                out += ChatItem.AsyncQuestion(k, e.questionAsked.questionsList)
+            }
             Event.KindCase.REASONING -> if (e.reasoning.text.isNotBlank()) {
                 flush()
                 out += ChatItem.Thought(k, e.reasoning.text)
@@ -525,6 +533,23 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             top = if (item.images.isNotEmpty()) ({ ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp)) }) else null,
         )
         is ChatItem.Agent -> Markdown(item.text, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), bleed = 14.dp)
+        is ChatItem.AsyncQuestion -> SelectionContainer {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (q in item.questions) {
+                    if (q.header.isNotEmpty()) Text(q.header, style = T.chat.copy(fontWeight = platformWeight(FontWeight.SemiBold)), color = p.fg)
+                    Markdown(q.text, bleed = 14.dp)
+                    for (o in q.optionsList) Row {
+                        Text("•  ", style = T.chat, color = p.muted)
+                        Text(androidx.compose.ui.text.buildAnnotatedString {
+                            pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = platformWeight(FontWeight.SemiBold)))
+                            append(o.label)
+                            pop()
+                            if (o.description.isNotEmpty()) append(" · ${o.description}")
+                        }, style = T.chat, color = p.fg)
+                    }
+                }
+            }
+        }
         is ChatItem.Thought -> Expandable("思考过程", Modifier.padding(horizontal = 14.dp)) {
             Text(item.text, style = T.sm, color = p.muted, modifier = Modifier.padding(bottom = 6.dp))
         }

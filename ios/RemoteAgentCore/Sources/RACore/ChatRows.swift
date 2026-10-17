@@ -43,6 +43,7 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
     case user(User)
     case generated(Generated)
     case agent(Agent)
+    case asyncQuestion(AsyncQuestion)
     case thought(Thought)
     case tool(Tool)
     case running(Running)
@@ -96,6 +97,17 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
         public init(key: String, text: String) {
             self.key = key
             self.text = text
+        }
+    }
+
+    /// Ordinary AI text, answered through the composer rather than a question card.
+    public struct AsyncQuestion: Equatable, Sendable {
+        public var key: String
+        public var questions: [PBQuestion]
+
+        public init(key: String, questions: [PBQuestion]) {
+            self.key = key
+            self.questions = questions
         }
     }
 
@@ -229,6 +241,7 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
         case .user(let x): return x.key
         case .generated(let x): return x.key
         case .agent(let x): return x.key
+        case .asyncQuestion(let x): return x.key
         case .thought(let x): return x.key
         case .tool(let x): return x.key
         case .running(let x): return x.key
@@ -484,6 +497,11 @@ public func buildChat(
             if !m.text.jvmIsBlank {
                 flush()
                 out.append(.agent(.init(key: k, text: m.text)))
+            }
+        case .questionAsked(let q):
+            if q.async {
+                flush()
+                out.append(.asyncQuestion(.init(key: k, questions: q.questions)))
             }
         case .reasoning(let r):
             if !r.text.jvmIsBlank {

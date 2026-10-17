@@ -95,6 +95,26 @@ struct ChatRowView: View, Equatable {
                 .messageMenu(m.text, actions: actions)
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("\(agentName(env.agent)) 的回复")
+        case .asyncQuestion(let m):
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(m.questions.enumerated()), id: \.offset) { _, q in
+                    if !q.header.isEmpty {
+                        Text(verbatim: q.header).type(T.chat.with(weight: .semibold), Theme.fg)
+                    }
+                    MarkdownView(q.text, bleed: chatMargin)
+                    ForEach(Array(q.options.enumerated()), id: \.offset) { _, o in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("•").type(T.chat, Theme.muted)
+                            (Text(verbatim: o.label).bold() + Text(verbatim: o.description_p.isEmpty ? "" : " · \(o.description_p)"))
+                                .type(T.chat, Theme.fg)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, chatMargin).padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("\(agentName(env.agent)) 的回复")
         case .thought(let t):
             ChatExpandable("思考过程", key: t.key) {
                 Text(t.text).type(T.sm, Theme.muted).padding(.bottom, 6)
