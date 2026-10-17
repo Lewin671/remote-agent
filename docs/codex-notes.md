@@ -98,6 +98,8 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 
 **Codex 0.163.0，真实 CLI 屏幕与回归测试已证实（2026-10-16）**：空闲页脚的标记是 `Plan mode (⇧tab to cycle)`，后面还可能有警告提示，不能只用整行是否以 `Plan mode` 结尾判断。当前输入框上方的旧聊天即使引用这个标记，也不是当前模式。隔离网页验收中旧识别导致进入 Plan 已实际切换却等待超时，之后离开时又跳过退出 Plan；修正后在同一隔离网页环境分别进入、离开，两个方向均已重验通过。
 
+**Codex 0.163.0，真实 CLI 已证实（2026-10-16）**：`/permissions` 用 `(current)` 标出当前项；再次选择当前项会关闭菜单，但不再输出新的 `Permission selection requested`。在 Plan 下请求原来的权限级别时，仍要先退出 Plan；不能把缺少这句提示当成权限切换失败。
+
 **计划模式怎么结束**：模型给出计划后，rollout 里先有一条 `item_completed`，`item.type` 为 `Plan`、`item.text` 是计划正文，再有一条正文包在 `<proposed_plan>` 里的助手消息，然后这一轮以 `task_complete` 正常结束。同时屏幕上弹出 `Implement this plan?`：`1. Yes, implement this plan`（切回 Default 并开始执行）、`2. Yes, clear context and implement`、`3. No, stay in Plan mode`，数字键直接选。选 1 后 Codex 自己发起新的一轮，用户消息是 `Implement the plan.`，`turn_context` 的 `collaboration_mode` 变回 `default`
 
 - `/permissions` 的选择**只对当前会话生效**：实测切换后 `config.toml` 没有变化

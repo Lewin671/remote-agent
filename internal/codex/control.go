@@ -61,10 +61,11 @@ func readyComposer(t agent.Term) error {
 var menuLine = regexp.MustCompile(`^\s*(?:›\s*)?(\d+)\.\s+(.+?)(?:\s{2,}.*)?$`)
 
 type menuEntry struct {
-	num    int
-	label  string
-	cursor bool
-	row    int
+	num     int
+	label   string
+	cursor  bool
+	current bool
+	row     int
 }
 
 // menuEntries reads the numbered entries after the line containing title.
@@ -86,8 +87,9 @@ func menuEntries(plain, title string) []menuEntry {
 			continue
 		}
 		n, _ := strconv.Atoi(m[1])
+		current := strings.HasSuffix(strings.TrimSpace(m[2]), "(current)")
 		label := strings.TrimSpace(strings.TrimSuffix(strings.TrimSuffix(strings.TrimSpace(m[2]), "(current)"), "(default)"))
-		out = append(out, menuEntry{num: n, label: strings.TrimSpace(label), cursor: strings.Contains(l, "›"), row: i})
+		out = append(out, menuEntry{num: n, label: strings.TrimSpace(label), cursor: strings.Contains(l, "›"), current: current, row: i})
 	}
 	return out
 }
@@ -287,9 +289,21 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, _ ag
 	if err := agent.Slash(t, "/permissions"); err != nil {
 		return err
 	}
-	if _, err := waitFor(t, "the permissions menu", func(_ Screen, p string) bool { return strings.Contains(p, "Update Model Permissions") }); err != nil {
+	menu, err := waitFor(t, "the permissions menu", func(_ Screen, p string) bool { return strings.Contains(p, "Update Model Permissions") })
+	if err != nil {
 		bail(t)
 		return err
+	}
+	for _, entry := range menuEntries(menu, "Update Model Permissions") {
+		if entry.num == level && entry.current {
+			// The menu positively identifies the requested level. Codex
+			// does not emit a new confirmation for selecting it again.
+			if err := t.Write([]byte(agent.KeyEsc)); err != nil {
+				return err
+			}
+			_, err := waitFor(t, "the permissions menu to close", func(scr Screen, _ string) bool { return scr.Popup == "" && scr.ComposerReady })
+			return err
+		}
 	}
 	if err := t.Write([]byte(strconv.Itoa(level))); err != nil {
 		return err
