@@ -54,7 +54,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_release_tooling_and_public_pages_do_not_release(self):
         for path in ('scripts/release.py', 'scripts/public_scan.py', 'scripts/publish-public.sh', 'scripts/dist-smoke.sh', '.github/workflows/release.yml',
-                     'deploy/deploy.sh', 'install.sh', 'docs/assets/architecture-light.svg', 'README.md'):
+                     'deploy/deploy.sh', 'install.sh', 'docs/assets/demo-light.svg', 'README.md'):
             self.assertFalse(release.product_change(path), path)
 
     def test_what_is_packed_or_decides_the_build_releases(self):

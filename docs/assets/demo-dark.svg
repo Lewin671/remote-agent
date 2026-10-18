@@ -1,116 +1,117 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="960" height="470" role="img" aria-label="Animated demo: Claude Code running in tmux on a computer asks to run go test; the request crosses the relay as ciphertext; it is approved on the phone; the same session continues; the next message is sent from the phone.">
-<title>Animated demo: Claude Code running in tmux on a computer asks to run go test; the request crosses the relay as ciphertext; it is approved on the phone; the same session continues; the next message is sent from the phone.</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 456" width="880" height="456" role="img" aria-label="Animated overview: Claude Code runs natively in tmux on your computer and asks to run go test; the request is encrypted and crosses a relay you host, which sees only IDs, timestamps and sizes; you approve it on your phone; the same session carries on; the next message is sent from the phone. Also: Codex and Claude Code, live terminal, images, start and fork sessions, many computers, Web, Android and iOS (preview) clients.">
+<title>Animated overview: Claude Code runs natively in tmux on your computer and asks to run go test; the request is encrypted and crosses a relay you host, which sees only IDs, timestamps and sizes; you approve it on your phone; the same session carries on; the next message is sent from the phone. Also: Codex and Claude Code, live terminal, images, start and fork sessions, many computers, Web, Android and iOS (preview) clients.</title>
 <style>
 svg{fill:#e8eaed}
 text{font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Helvetica, Arial, sans-serif}
-.h{font-size:15px;font-weight:600}
-.t{font-size:15px}
+.h{font-size:15px;font-weight:700}
+.t{font-size:14px}
 .b{font-size:13px}
 .s{font-size:12px;fill:#a0a7af}
 .x{font-size:11px;fill:#a0a7af}
-.c{font-size:16px;font-weight:500}
-.m{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "PingFang SC", monospace;font-size:12.5px}
-.a{animation-duration:16.0s;animation-iteration-count:infinite;animation-timing-function:linear}
+.m{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "PingFang SC", monospace;font-size:12px}
+.a{animation-duration:12.0s;animation-iteration-count:infinite;animation-timing-function:linear}
 .p{transform-box:fill-box;transform-origin:center}
-.cover{transform-box:fill-box;transform-origin:right}
 .blink{animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
-@keyframes k1{0%{opacity:0}1.875%{opacity:0}3.438%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k2{0%{opacity:0}5.000%{opacity:0}6.562%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k3{0%{opacity:0}8.750%{opacity:0}10.312%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k4{0%{opacity:0}13.750%{opacity:0}15.313%{opacity:1}47.500%{opacity:1}49.062%{opacity:0}100%{opacity:0}}
-@keyframes k5{0%{opacity:0}48.438%{opacity:0}50.000%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k6{0%{opacity:0}51.250%{opacity:0}52.812%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k7{0%{opacity:0}55.625%{opacity:0}57.188%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k8{0%{opacity:0}80.000%{opacity:0}81.562%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k9{0%{opacity:0}83.750%{opacity:0}85.312%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k10{0%{opacity:0;transform:translateX(384px)}15.625%{opacity:0;transform:translateX(384px)}15.937%{opacity:1;transform:translateX(384px)}19.375%{opacity:1;transform:translateX(530px)}21.250%{opacity:1;transform:translateX(530px)}24.375%{opacity:1;transform:translateX(676px)}25.000%{opacity:0;transform:translateX(676px)}100%{opacity:0;transform:translateX(676px)}}
-@keyframes k11{0%{opacity:0}18.125%{opacity:0}19.688%{opacity:1}22.500%{opacity:1}24.062%{opacity:0}100%{opacity:0}}
-@keyframes k12{0%{opacity:0;transform:translateX(676px)}40.000%{opacity:0;transform:translateX(676px)}40.312%{opacity:1;transform:translateX(676px)}43.125%{opacity:1;transform:translateX(530px)}44.375%{opacity:1;transform:translateX(530px)}47.500%{opacity:1;transform:translateX(384px)}48.125%{opacity:0;transform:translateX(384px)}100%{opacity:0;transform:translateX(384px)}}
-@keyframes k13{0%{opacity:0}42.500%{opacity:0}44.062%{opacity:1}45.625%{opacity:1}47.188%{opacity:0}100%{opacity:0}}
-@keyframes k14{0%{opacity:0;transform:translateX(676px)}71.875%{opacity:0;transform:translateX(676px)}72.188%{opacity:1;transform:translateX(676px)}75.000%{opacity:1;transform:translateX(530px)}76.250%{opacity:1;transform:translateX(530px)}79.375%{opacity:1;transform:translateX(384px)}80.000%{opacity:0;transform:translateX(384px)}100%{opacity:0;transform:translateX(384px)}}
-@keyframes k15{0%{opacity:0}74.375%{opacity:0}75.938%{opacity:1}77.500%{opacity:1}79.062%{opacity:0}100%{opacity:0}}
-@keyframes k16{0%{opacity:0}1.875%{opacity:0}3.438%{opacity:1}25.000%{opacity:1}26.562%{opacity:0}100%{opacity:0}}
-@keyframes k17{0%{opacity:0}25.000%{opacity:0}26.562%{opacity:1}39.375%{opacity:1}40.938%{opacity:0}100%{opacity:0}}
-@keyframes k18{0%{opacity:0}39.375%{opacity:0}40.938%{opacity:1}58.125%{opacity:1}59.688%{opacity:0}100%{opacity:0}}
-@keyframes k19{0%{opacity:0}58.125%{opacity:0}59.688%{opacity:1}71.875%{opacity:1}73.438%{opacity:0}100%{opacity:0}}
-@keyframes k20{0%{opacity:0}71.875%{opacity:0}73.438%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k21{0%{opacity:0}7.500%{opacity:0}9.062%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k22{0%{opacity:0}11.250%{opacity:0}12.812%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k23{0%{opacity:0}39.375%{opacity:0}40.938%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k24{0%{opacity:0}58.125%{opacity:0}59.688%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k25{0%{opacity:0}71.250%{opacity:0}72.812%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k26{0%{opacity:0}25.000%{opacity:0}26.562%{opacity:1}39.375%{opacity:1}40.938%{opacity:0}100%{opacity:0}}
-@keyframes k27{0%{opacity:0;transform:scale(.4)}35.625%{opacity:0;transform:scale(.4)}35.938%{opacity:.55;transform:scale(.5)}39.062%{opacity:0;transform:scale(1.6)}100%{opacity:0;transform:scale(1.6)}}
-@keyframes k28{0%{opacity:0}0.000%{opacity:0}1.562%{opacity:1}63.125%{opacity:1}64.688%{opacity:0}71.250%{opacity:0}72.812%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@keyframes k29{0%{transform:scaleX(1)}63.750%{transform:scaleX(1)}68.125%{transform:scaleX(0)}100%{transform:scaleX(0)}}
-@keyframes k30{0%{opacity:0}63.125%{opacity:0}64.688%{opacity:1}71.250%{opacity:1}72.812%{opacity:0}100%{opacity:0}}
-@keyframes k31{0%{opacity:0;transform:scale(.4)}69.375%{opacity:0;transform:scale(.4)}69.688%{opacity:.55;transform:scale(.5)}72.812%{opacity:0;transform:scale(1.6)}100%{opacity:0;transform:scale(1.6)}}
-@keyframes k32{0%{opacity:0}0.000%{opacity:0}1.562%{opacity:1}13.750%{opacity:1}15.313%{opacity:0}100%{opacity:0}}
-@keyframes k33{0%{opacity:0}13.750%{opacity:0}15.313%{opacity:1}27.500%{opacity:1}29.063%{opacity:0}100%{opacity:0}}
-@keyframes k34{0%{opacity:0}27.500%{opacity:0}29.063%{opacity:1}46.250%{opacity:1}47.812%{opacity:0}100%{opacity:0}}
-@keyframes k35{0%{opacity:0}46.250%{opacity:0}47.812%{opacity:1}62.500%{opacity:1}64.062%{opacity:0}100%{opacity:0}}
-@keyframes k36{0%{opacity:0}62.500%{opacity:0}64.062%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.a,.blink{animation:none!important}.tr{display:none}}
+@keyframes k1{0%{opacity:1}3.333%{opacity:1}5.000%{opacity:0}88.333%{opacity:0}90.000%{opacity:1}100%{opacity:1}}
+@keyframes k2{0%{opacity:0}3.333%{opacity:0}5.000%{opacity:1}15.000%{opacity:1}16.667%{opacity:0}100%{opacity:0}}
+@keyframes k3{0%{opacity:0}15.000%{opacity:0}16.667%{opacity:1}24.167%{opacity:1}25.833%{opacity:0}100%{opacity:0}}
+@keyframes k4{0%{opacity:0}24.167%{opacity:0}25.833%{opacity:1}88.333%{opacity:1}90.000%{opacity:0}100%{opacity:0}}
+@keyframes k5{0%{opacity:1}24.167%{opacity:1}25.833%{opacity:0}88.333%{opacity:0}90.000%{opacity:1}100%{opacity:1}}
+@keyframes k6{0%{opacity:0}24.167%{opacity:0}25.833%{opacity:1}88.333%{opacity:1}90.000%{opacity:0}100%{opacity:0}}
+@keyframes k7{0%{opacity:0}27.500%{opacity:0}29.167%{opacity:1}88.333%{opacity:1}90.000%{opacity:0}100%{opacity:0}}
+@keyframes k8{0%{opacity:0}30.833%{opacity:0}32.500%{opacity:1}88.333%{opacity:1}90.000%{opacity:0}100%{opacity:0}}
+@keyframes k9{0%{opacity:0}56.667%{opacity:0}58.333%{opacity:1}88.333%{opacity:1}90.000%{opacity:0}100%{opacity:0}}
+@keyframes k10{0%{opacity:0}60.833%{opacity:0}62.500%{opacity:1}88.333%{opacity:1}90.000%{opacity:0}100%{opacity:0}}
+@keyframes k11{0%{opacity:0;transform:translateX(384px)}3.333%{opacity:0;transform:translateX(384px)}3.750%{opacity:1;transform:translateX(384px)}7.500%{opacity:1;transform:translateX(490.0px)}9.167%{opacity:1;transform:translateX(490.0px)}13.333%{opacity:1;transform:translateX(596px)}14.167%{opacity:0;transform:translateX(596px)}100%{opacity:0;transform:translateX(596px)}}
+@keyframes k12{0%{opacity:0;transform:translateX(596px)}18.333%{opacity:0;transform:translateX(596px)}18.750%{opacity:1;transform:translateX(596px)}20.833%{opacity:1;transform:translateX(490.0px)}21.667%{opacity:1;transform:translateX(490.0px)}24.167%{opacity:1;transform:translateX(384px)}25.000%{opacity:0;transform:translateX(384px)}100%{opacity:0;transform:translateX(384px)}}
+@keyframes k13{0%{opacity:0;transform:translateX(596px)}50.000%{opacity:0;transform:translateX(596px)}50.417%{opacity:1;transform:translateX(596px)}52.500%{opacity:1;transform:translateX(490.0px)}53.333%{opacity:1;transform:translateX(490.0px)}55.833%{opacity:1;transform:translateX(384px)}56.667%{opacity:0;transform:translateX(384px)}100%{opacity:0;transform:translateX(384px)}}
+@keyframes k14{0%{opacity:1}17.500%{opacity:1}19.167%{opacity:0}88.333%{opacity:0}90.000%{opacity:1}100%{opacity:1}}
+@keyframes k15{0%{opacity:0}17.500%{opacity:0}19.167%{opacity:1}33.333%{opacity:1}35.000%{opacity:0}100%{opacity:0}}
+@keyframes k16{0%{opacity:0}33.333%{opacity:0}35.000%{opacity:1}50.000%{opacity:1}51.667%{opacity:0}100%{opacity:0}}
+@keyframes k17{0%{opacity:0}50.000%{opacity:0}51.667%{opacity:1}88.333%{opacity:1}90.000%{opacity:0}100%{opacity:0}}
+@keyframes k18{0%{opacity:0}17.500%{opacity:0}19.167%{opacity:1}88.333%{opacity:1}90.000%{opacity:0}100%{opacity:0}}
+@keyframes k19{0%{opacity:0}33.333%{opacity:0}35.000%{opacity:1}88.333%{opacity:1}90.000%{opacity:0}100%{opacity:0}}
+@keyframes k20{0%{opacity:0}50.000%{opacity:0}51.667%{opacity:1}88.333%{opacity:1}90.000%{opacity:0}100%{opacity:0}}
+@keyframes k21{0%{opacity:1}17.500%{opacity:1}19.167%{opacity:0}88.333%{opacity:0}90.000%{opacity:1}100%{opacity:1}}
+@keyframes k22{0%{opacity:0;transform:scale(.4)}15.000%{opacity:0;transform:scale(.4)}15.417%{opacity:.5;transform:scale(.5)}19.167%{opacity:0;transform:scale(1.6)}100%{opacity:0;transform:scale(1.6)}}
+@keyframes k23{0%{opacity:1}41.667%{opacity:1}43.333%{opacity:0}50.000%{opacity:0}51.667%{opacity:1}100%{opacity:1}}
+@keyframes k24{0%{opacity:0}41.667%{opacity:0}43.333%{opacity:1}50.000%{opacity:1}51.667%{opacity:0}100%{opacity:0}}
+@keyframes k25{0%{opacity:0;transform:scale(.4)}48.333%{opacity:0;transform:scale(.4)}48.750%{opacity:.5;transform:scale(.5)}52.500%{opacity:0;transform:scale(1.6)}100%{opacity:0;transform:scale(1.6)}}
+@media (prefers-reduced-motion:reduce){.a,.blink{animation:none!important}.post{display:none}}
 
 </style>
-<rect width="960" height="470" rx="16" fill="#0d1117"/>
-<text class="h" x="20" y="26">Your computer</text>
-<rect x="20" y="40" width="360" height="330" rx="10" fill="#0d1117" stroke="#30363d"/>
-<path d="M20 68H380" stroke="#30363d"/>
-<circle cx="38" cy="54" r="5" fill="#ff5f57"/>
-<circle cx="54" cy="54" r="5" fill="#febc2e"/>
-<circle cx="70" cy="54" r="5" fill="#28c840"/>
-<text class="m" x="200.0" y="58" text-anchor="middle" fill="#8b949e" font-size="11">tmux · ~/api</text>
-<g class="a" style="animation-name:k1"><text class="m" x="34" y="92" fill="#c9d1d9"><tspan fill="#7ee787">$</tspan> remote-agent claude</text></g>
-<g class="a" style="animation-name:k2"><text class="m" x="34" y="118" fill="#ffffff"><tspan fill="#8b949e">&gt;</tspan> Split the handlers into a package</text></g>
-<g class="a" style="animation-name:k3"><text class="m" x="34" y="142" fill="#c9d1d9"><tspan fill="#d2a8ff">●</tspan> Edited 5 files  +84 −61</text></g>
-<g class="a tr" style="animation-name:k4"><rect x="30" y="156" width="340" height="80" rx="6" fill="none" stroke="#f0a04b"/><text class="m" x="42" y="176" fill="#f0a04b" font-weight="600">Bash command</text><text class="m" x="42" y="196" fill="#ffffff">go test ./... -count=1</text><text class="m" x="42" y="222" fill="#c9d1d9">Do you want to proceed?  <tspan fill="#7ee787">❯ 1. Yes</tspan>  2. No</text></g>
-<g class="a" style="animation-name:k5"><text class="m" x="34" y="176" fill="#c9d1d9"><tspan fill="#7ee787">●</tspan> Bash(go test ./... -count=1)</text></g>
-<g class="a" style="animation-name:k6"><text class="m" x="34" y="198" fill="#8b949e"><tspan fill="#8b949e">  ⎿</tspan>  ok   api/internal/handler  0.42s</text></g>
-<g class="a" style="animation-name:k7"><text class="m" x="34" y="224" fill="#c9d1d9"><tspan fill="#d2a8ff">●</tspan> All tests pass.</text></g>
-<g class="a" style="animation-name:k8"><text class="m" x="34" y="254" fill="#ffffff"><tspan fill="#8b949e">&gt;</tspan> Also open a PR</text></g>
-<g class="a" style="animation-name:k9"><text class="m" x="34" y="278" fill="#c9d1d9"><tspan fill="#d2a8ff">●</tspan> Creating a branch and opening the PR…</text></g>
-<g class="blink tr"><rect x="34" y="340" width="8" height="14" fill="#c9d1d9"/></g>
-<path d="M384 210H476M584 210H676" stroke="#a0a7af" stroke-dasharray="3 5" stroke-width="1.5"/>
-<g class="a tr" style="animation-name:k10"><g transform="translate(0 210)"><rect x="-22" y="-11" width="44" height="22" rx="11" fill="#3fbf73"/><path d="M-5 -3v-3a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="1.8"/><rect x="-8" y="-3" width="16" height="11" rx="2" fill="#fff"/></g></g>
-<g class="a tr" style="animation-name:k11"><rect x="488" y="280" width="84" height="22" rx="6" fill="#272a2f"/><text class="m" x="530.0" y="295" text-anchor="middle" fill="#a0a7af" font-size="11">7f3a·c91e…</text></g>
-<g class="a tr" style="animation-name:k12"><g transform="translate(0 210)"><rect x="-22" y="-11" width="44" height="22" rx="11" fill="#3fbf73"/><path d="M-5 -3v-3a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="1.8"/><rect x="-8" y="-3" width="16" height="11" rx="2" fill="#fff"/></g></g>
-<g class="a tr" style="animation-name:k13"><rect x="488" y="280" width="84" height="22" rx="6" fill="#272a2f"/><text class="m" x="530.0" y="295" text-anchor="middle" fill="#a0a7af" font-size="11">e15d·9a07…</text></g>
-<g class="a tr" style="animation-name:k14"><g transform="translate(0 210)"><rect x="-22" y="-11" width="44" height="22" rx="11" fill="#3fbf73"/><path d="M-5 -3v-3a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="1.8"/><rect x="-8" y="-3" width="16" height="11" rx="2" fill="#fff"/></g></g>
-<g class="a tr" style="animation-name:k15"><rect x="488" y="280" width="84" height="22" rx="6" fill="#272a2f"/><text class="m" x="530.0" y="295" text-anchor="middle" fill="#a0a7af" font-size="11">b62e·58d1…</text></g>
-<rect x="480" y="150" width="100" height="120" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
-<text class="h" x="530.0" y="178" text-anchor="middle">Your relay</text>
-<text class="s" x="530.0" y="198" text-anchor="middle">sees ciphertext only</text>
-<rect x="498" y="216" width="64" height="6" rx="3" fill="#2a2d32"/>
-<rect x="498" y="228" width="64" height="6" rx="3" fill="#2a2d32"/>
-<rect x="498" y="240" width="64" height="6" rx="3" fill="#2a2d32"/>
-<rect x="680" y="20" width="260" height="420" rx="34" fill="#17181b" stroke="#3a3d42" stroke-width="5"/>
-<text class="s" x="710" y="48" font-weight="600" fill="#e8eaed">9:41</text>
-<rect x="774.0" y="32" width="72" height="20" rx="10" fill="#3a3d42"/>
-<text class="t" x="810.0" y="80" text-anchor="middle" font-weight="600">API refactor</text>
-<g class="a tr" style="animation-name:k16"><circle cx="785.74" cy="95" r="3.5" fill="#7aa7ff"/><text class="s" x="793.24" y="99">Working</text></g>
-<g class="a tr" style="animation-name:k17"><circle cx="763.48" cy="95" r="3.5" fill="#f0a04b"/><text class="s" x="770.98" y="99">Needs approval</text></g>
-<g class="a tr" style="animation-name:k18"><circle cx="785.74" cy="95" r="3.5" fill="#7aa7ff"/><text class="s" x="793.24" y="99">Working</text></g>
-<g class="a tr" style="animation-name:k19"><circle cx="795.28" cy="95" r="3.5" fill="#3fbf73"/><text class="s" x="802.78" y="99">Idle</text></g>
-<g class="a" style="animation-name:k20"><circle cx="785.74" cy="95" r="3.5" fill="#7aa7ff"/><text class="s" x="793.24" y="99">Working</text></g>
-<path d="M683 112H937" stroke="#2a2d32"/>
-<g class="a" style="animation-name:k21"><rect x="714" y="126" width="210" height="30" rx="15" fill="rgba(90,145,255,.16)"/><text class="b" x="913" y="146" text-anchor="end">Split the handlers into a package</text><text class="x" x="918" y="171" text-anchor="end">MacBook terminal</text></g>
-<g class="a" style="animation-name:k22"><text class="m" x="696" y="200" fill="#c9ced4"><tspan fill="#3fbf73">✓</tspan> Edited 5 files  +84 −61</text></g>
-<g class="a" style="animation-name:k23"><text class="m" x="696" y="226" fill="#c9ced4"><tspan fill="#3fbf73">✓</tspan> go test ./...  <tspan class="x" fill="#a0a7af">Allowed</tspan></text></g>
-<g class="a" style="animation-name:k24"><text class="b" x="696" y="254">All tests pass.</text></g>
-<g class="a" style="animation-name:k25"><rect x="803.54" y="276" width="120.46000000000001" height="30" rx="15" fill="rgba(90,145,255,.16)"/><text class="b" x="913" y="296" text-anchor="end">Also open a PR</text></g>
-<g class="a tr" style="animation-name:k26"><rect x="690" y="268" width="240" height="114" rx="14" fill="#1f2125" stroke="#2a2d32"/><circle cx="706" cy="288" r="4" fill="#f0a04b"/><text class="b" x="716" y="293" font-weight="600">Run command</text><rect x="700" y="304" width="220" height="26" rx="6" fill="#17181b"/><text class="m" x="710" y="321" fill="#c9ced4">go test ./... -count=1</text><rect x="700" y="340" width="105.0" height="32" rx="10" fill="#272a2f"/><text class="b" x="752.5" y="361" text-anchor="middle" fill="#ff7b7b" font-weight="600">Deny</text><rect x="815.0" y="340" width="105.0" height="32" rx="10" fill="#2f6feb"/><text class="b" x="867.5" y="361" text-anchor="middle" fill="#fff" font-weight="600">Allow</text></g>
-<g transform="translate(867.5 356)"><circle class="a tr p" r="22" fill="#7aa7ff" style="animation-name:k27"/></g>
-<rect x="692" y="382" width="236" height="38" rx="19" fill="#1f2125" stroke="#2a2d32"/>
-<g class="a" style="animation-name:k28"><text class="b" x="708" y="406" fill="#a0a7af">Message</text></g>
-<g class="a tr" style="animation-name:k30"><text class="b" x="708" y="406">Also open a PR</text><rect class="a cover" x="704" y="388" width="170" height="26" fill="#1f2125" style="animation-name:k29"/></g>
-<circle cx="908" cy="401" r="14" fill="#2f6feb"/><path d="M908 407V395M903 400L908 395L913 400" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(908 401)"><circle class="a tr p" r="20" fill="#7aa7ff" style="animation-name:k31"/></g>
-<g class="a tr" style="animation-name:k32"><circle cx="32" cy="406" r="12" fill="#2f6feb"/><text class="b" x="32" y="411" text-anchor="middle" fill="#fff" font-weight="600">1</text><text class="c" x="54" y="412">Start Codex or Claude Code on your computer, as usual</text></g>
-<g class="a tr" style="animation-name:k33"><circle cx="32" cy="406" r="12" fill="#2f6feb"/><text class="b" x="32" y="411" text-anchor="middle" fill="#fff" font-weight="600">2</text><text class="c" x="54" y="412">The request is encrypted; the relay only forwards ciphertext</text></g>
-<g class="a tr" style="animation-name:k34"><circle cx="32" cy="406" r="12" fill="#2f6feb"/><text class="b" x="32" y="411" text-anchor="middle" fill="#fff" font-weight="600">3</text><text class="c" x="54" y="412">Approve it on your phone</text></g>
-<g class="a tr" style="animation-name:k35"><circle cx="32" cy="406" r="12" fill="#2f6feb"/><text class="b" x="32" y="411" text-anchor="middle" fill="#fff" font-weight="600">4</text><text class="c" x="54" y="412">The same tmux session carries on</text></g>
-<g class="a" style="animation-name:k36"><circle cx="32" cy="406" r="12" fill="#2f6feb"/><text class="b" x="32" y="411" text-anchor="middle" fill="#fff" font-weight="600">5</text><text class="c" x="54" y="412">Send the next message from anywhere</text></g>
-<text class="h" x="810.0" y="458" text-anchor="middle">Your phone</text>
+<rect width="880" height="456" rx="16" fill="#0d1117"/>
+<path d="M34 29H706.0" stroke="#2a2d32" stroke-width="2"/>
+<circle cx="34.0" cy="29" r="11" fill="#2f6feb"/><text x="34.0" y="33.5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text><text class="b" x="52.0" y="33.5" font-weight="600">Start in tmux</text>
+<g class="a" style="animation-name:k1"><rect x="184.0" y="15" width="103.2" height="28" rx="14" fill="rgba(90,145,255,.16)" stroke="#7aa7ff" stroke-width="1"/></g>
+<circle cx="202.0" cy="29" r="11" fill="#2f6feb"/><text x="202.0" y="33.5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2</text><text class="b" x="220.0" y="33.5" font-weight="600">CLI asks</text>
+<g class="a post" style="animation-name:k2"><rect x="352.0" y="15" width="153.25" height="28" rx="14" fill="rgba(90,145,255,.16)" stroke="#7aa7ff" stroke-width="1"/></g>
+<circle cx="370.0" cy="29" r="11" fill="#2f6feb"/><text x="370.0" y="33.5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3</text><text class="b" x="388.0" y="33.5" font-weight="600">Encrypted relay</text>
+<g class="a post" style="animation-name:k3"><rect x="520.0" y="15" width="160.4" height="28" rx="14" fill="rgba(90,145,255,.16)" stroke="#7aa7ff" stroke-width="1"/></g>
+<circle cx="538.0" cy="29" r="11" fill="#2f6feb"/><text x="538.0" y="33.5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">4</text><text class="b" x="556.0" y="33.5" font-weight="600">Approve on phone</text>
+<g class="a post" style="animation-name:k4"><rect x="688.0" y="15" width="167.55" height="28" rx="14" fill="rgba(90,145,255,.16)" stroke="#7aa7ff" stroke-width="1"/></g>
+<circle cx="706.0" cy="29" r="11" fill="#2f6feb"/><text x="706.0" y="33.5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">5</text><text class="b" x="724.0" y="33.5" font-weight="600">Session continues</text>
+<rect x="20" y="58" width="360" height="316" rx="10" fill="#0d1117" stroke="#30363d"/>
+<path d="M20 84H380" stroke="#30363d"/>
+<circle cx="36" cy="71" r="4.5" fill="#ff5f57"/>
+<circle cx="51" cy="71" r="4.5" fill="#febc2e"/>
+<circle cx="66" cy="71" r="4.5" fill="#28c840"/>
+<text x="220.0" y="75" text-anchor="middle" fill="#8b949e" font-size="11.5">Your computer — tmux · ~/api</text>
+<text class="m" x="32" y="104" fill="#c9d1d9"><tspan fill="#7ee787">$</tspan> remote-agent claude</text>
+<text class="m" x="32" y="126" fill="#ffffff"><tspan fill="#8b949e">&gt;</tspan> Split out the handlers</text>
+<text class="m" x="32" y="148" fill="#c9d1d9"><tspan fill="#d2a8ff">●</tspan> Edited 5 files  +84 −61</text>
+<g class="a" style="animation-name:k5"><rect x="28" y="160" width="344" height="80" rx="6" fill="none" stroke="#f0a04b"/><text class="m" x="40" y="180" fill="#f0a04b" font-weight="600">Bash command</text><text x="360" y="180" text-anchor="end" font-size="11" fill="#f0a04b">↗ also on your phone</text><text class="m" x="40" y="201" fill="#ffffff">go test ./... -count=1</text><text class="m" x="40" y="226" fill="#c9d1d9">Do you want to proceed?  <tspan fill="#7ee787">❯ 1. Yes</tspan>  2. No</text></g>
+<g class="a post" style="animation-name:k6"><text class="m" x="32" y="180" fill="#c9d1d9"><tspan fill="#7ee787">●</tspan> Bash(go test ./... -count=1)</text></g>
+<g class="a post" style="animation-name:k7"><text class="m" x="32" y="202" fill="#8b949e"><tspan fill="#8b949e">  ⎿</tspan>  ok   api/internal/handler  0.42s</text></g>
+<g class="a post" style="animation-name:k8"><text class="m" x="32" y="226" fill="#c9d1d9"><tspan fill="#d2a8ff">●</tspan> All tests pass.</text></g>
+<g class="a post" style="animation-name:k9"><text class="m" x="32" y="258" fill="#ffffff"><tspan fill="#8b949e">&gt;</tspan> Also open a PR</text></g>
+<g class="a post" style="animation-name:k10"><text class="m" x="32" y="280" fill="#c9d1d9"><tspan fill="#d2a8ff">●</tspan> Creating a branch and opening the PR…</text></g>
+<rect class="blink post" x="32" y="322" width="8" height="14" fill="#c9d1d9"/>
+<rect x="21" y="346" width="358" height="20" fill="#2ea043"/><text class="m" x="30" y="360" fill="#0d1117">[api] 0:claude*  1:codex  2:zsh</text>
+<text class="s" x="20" y="392">One session: the terminal and every client drive it</text>
+<rect x="404" y="96" width="172" height="252" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+<text class="h" x="490.0" y="122" text-anchor="middle">Your relay</text>
+<text class="s" x="490.0" y="140" text-anchor="middle">you host it · holds no key</text>
+<rect x="414" y="150" width="152" height="22" rx="11" fill="#272a2f"/>
+<text class="x" x="490.0" y="165" text-anchor="middle">ciphertext</text>
+<path d="M384 161H402M578 161H596" stroke="#a0a7af" stroke-dasharray="3 5" stroke-width="1.5"/>
+<text x="420" y="196" font-size="11" font-weight="700" fill="#a0a7af">SEES</text>
+<text class="b" x="420" y="215" fill="#c9ced4">device &amp; session IDs</text>
+<text class="b" x="420" y="233" fill="#c9ced4">timestamps, sizes</text>
+<text x="420" y="262" font-size="11" font-weight="700" fill="#3fbf73">NEVER SEES</text>
+<text class="b" x="420" y="281" fill="#c9ced4">messages, tool output</text>
+<text class="b" x="420" y="299" fill="#c9ced4">terminal, images</text>
+<text class="b" x="420" y="317" fill="#c9ced4">paths, project names</text>
+<text class="b" x="420" y="335" fill="#c9ced4">keys</text>
+<g class="a post" style="animation-name:k11"><g transform="translate(0 161)"><rect x="-20" y="-10" width="40" height="20" rx="10" fill="#f0a04b"/><path d="M-4.5 -2.5v-2.5a4.5 4.5 0 0 1 9 0v2.5" fill="none" stroke="#fff" stroke-width="1.7"/><rect x="-7" y="-2.5" width="14" height="9.5" rx="2" fill="#fff"/></g></g>
+<g class="a post" style="animation-name:k12"><g transform="translate(0 161)"><rect x="-20" y="-10" width="40" height="20" rx="10" fill="#3fbf73"/><path d="M-4.5 -2.5v-2.5a4.5 4.5 0 0 1 9 0v2.5" fill="none" stroke="#fff" stroke-width="1.7"/><rect x="-7" y="-2.5" width="14" height="9.5" rx="2" fill="#fff"/></g></g>
+<g class="a post" style="animation-name:k13"><g transform="translate(0 161)"><rect x="-20" y="-10" width="40" height="20" rx="10" fill="#2f6feb"/><path d="M-4.5 -2.5v-2.5a4.5 4.5 0 0 1 9 0v2.5" fill="none" stroke="#fff" stroke-width="1.7"/><rect x="-7" y="-2.5" width="14" height="9.5" rx="2" fill="#fff"/></g></g>
+<rect x="600" y="58" width="260" height="316" rx="28" fill="#17181b" stroke="#3a3d42" stroke-width="5"/>
+<text class="t" x="730.0" y="90" text-anchor="middle" font-weight="600">api · Claude Code</text>
+<g class="a" style="animation-name:k14"><circle cx="681.8" cy="104" r="3.5" fill="#f0a04b"/><text class="s" x="689.3" y="108">Needs approval</text></g>
+<g class="a post" style="animation-name:k15"><circle cx="704.9" cy="104" r="3.5" fill="#7aa7ff"/><text class="s" x="712.4" y="108">Running</text></g>
+<g class="a post" style="animation-name:k16"><circle cx="714.8" cy="104" r="3.5" fill="#3fbf73"/><text class="s" x="722.3" y="108">Idle</text></g>
+<g class="a post" style="animation-name:k17"><circle cx="704.9" cy="104" r="3.5" fill="#7aa7ff"/><text class="s" x="712.4" y="108">Running</text></g>
+<rect x="616" y="118" width="228" height="24" rx="8" fill="#272a2f"/><rect x="618" y="120" width="112.0" height="20" rx="6" fill="#17181b"/><text class="x" x="674.0" y="134" text-anchor="middle" font-weight="600" style="fill:#e8eaed">Chat</text><text class="x" x="786.0" y="134" text-anchor="middle">Terminal</text>
+<rect x="666.7" y="152" width="179.3" height="28" rx="14" fill="rgba(90,145,255,.16)"/><text class="b" x="835" y="171" text-anchor="end">Split out the handlers</text>
+<text class="x" x="842" y="194" text-anchor="end">from the terminal</text>
+<text class="m" x="614" y="214" fill="#c9ced4"><tspan fill="#3fbf73">✓</tspan> Edited 5 files  +84 −61</text>
+<g class="a post" style="animation-name:k18"><text class="m" x="614" y="238" fill="#c9ced4"><tspan fill="#3fbf73">✓</tspan> go test ./...  <tspan class="x">Allowed</tspan></text></g>
+<g class="a post" style="animation-name:k19"><text class="b" x="614" y="262">All tests pass.</text></g>
+<g class="a post" style="animation-name:k20"><rect x="723.9" y="274" width="122.10000000000001" height="28" rx="14" fill="rgba(90,145,255,.16)"/><text class="b" x="835" y="293" text-anchor="end">Also open a PR</text></g>
+<g class="a" style="animation-name:k21"><rect x="610" y="226" width="240" height="96" rx="14" fill="#1f2125" stroke="#2a2d32"/><circle cx="625" cy="243" r="4" fill="#f0a04b"/><text class="b" x="635" y="248" font-weight="600">Run command</text><rect x="620" y="256" width="220" height="24" rx="6" fill="#17181b"/><text class="m" x="628" y="272" fill="#c9ced4">go test ./... -count=1</text><rect x="620" y="286" width="104.0" height="28" rx="9" fill="#272a2f"/><text class="b" x="672.0" y="305" text-anchor="middle" fill="#ff7b7b" font-weight="600">Deny</text><rect x="736.0" y="286" width="104.0" height="28" rx="9" fill="#2f6feb"/><text class="b" x="788.0" y="305" text-anchor="middle" fill="#fff" font-weight="600">Allow</text></g>
+<g transform="translate(788.0 300)"><circle class="a post p" r="20" fill="#7aa7ff" style="animation-name:k22"/></g>
+<rect x="612" y="326" width="236" height="34" rx="17" fill="#1f2125" stroke="#2a2d32"/>
+<g class="a" style="animation-name:k23"><text class="b" x="628" y="348" fill="#a0a7af">Message</text></g>
+<g class="a post" style="animation-name:k24"><text class="b" x="628" y="348">Also open a PR</text></g>
+<circle cx="830" cy="343" r="12" fill="#2f6feb"/><path d="M830 348V338M825.5 342.5L830 338L834.5 342.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(830 343)"><circle class="a post p" r="18" fill="#7aa7ff" style="animation-name:k25"/></g>
+<text class="x" x="860" y="392" text-anchor="end">Shown in English; the client UI is in Simplified Chinese</text>
+<rect x="20" y="396" width="124.90000000000002" height="46" rx="10" fill="#1f2125" stroke="#2a2d32"/><text x="32" y="415" font-size="12.5" font-weight="700">Native CLI</text><text x="32" y="432" font-size="11.5" fill="#a0a7af">Codex, Claude Code</text>
+<rect x="152.90000000000003" y="396" width="131.225" height="46" rx="10" fill="#1f2125" stroke="#2a2d32"/><text x="164.90000000000003" y="415" font-size="12.5" font-weight="700">Live terminal</text><text x="164.90000000000003" y="432" font-size="11.5" fill="#a0a7af">scrollback and keys</text>
+<rect x="292.125" y="396" width="93.275" height="46" rx="10" fill="#1f2125" stroke="#2a2d32"/><text x="304.125" y="415" font-size="12.5" font-weight="700">Images</text><text x="304.125" y="432" font-size="11.5" fill="#a0a7af">view and send</text>
+<rect x="393.4" y="396" width="143.875" height="46" rx="10" fill="#1f2125" stroke="#2a2d32"/><text x="405.4" y="415" font-size="12.5" font-weight="700">Sessions</text><text x="405.4" y="432" font-size="11.5" fill="#a0a7af">start · fork · rename</text>
+<rect x="545.275" y="396" width="124.90000000000002" height="46" rx="10" fill="#1f2125" stroke="#2a2d32"/><text x="557.275" y="415" font-size="12.5" font-weight="700">Many computers</text><text x="557.275" y="432" font-size="11.5" fill="#a0a7af">grouped by project</text>
+<rect x="678.175" y="396" width="181.825" height="46" rx="10" fill="#1f2125" stroke="#2a2d32"/><text x="690.175" y="415" font-size="12.5" font-weight="700">Clients</text><text x="690.175" y="432" font-size="11.5" fill="#a0a7af">Web · Android · iOS preview</text>
 </svg>

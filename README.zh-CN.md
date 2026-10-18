@@ -2,58 +2,53 @@
 
 # remote-agent
 
-**在自己的电脑上运行 Codex 和 Claude Code，在任何设备上操作它们。**
+**在自己电脑的 tmux 里运行 Codex 和 Claude Code，在手机或浏览器上接着用同一个会话。**
 
-tmux 里的原生 CLI 会话 · 端到端加密 · 自部署
+daemon 跑在 macOS 或 Linux · 中继自己部署 · 网页、Android 和 iOS（预览）客户端 · 端到端加密：中继只存储和转发密文
 
 [![最新版本](https://img.shields.io/github/v/release/Lewin671/remote-agent?label=release&color=1a7f37)](https://github.com/Lewin671/remote-agent/releases/latest)
 [![许可证：AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 ![Daemon](https://img.shields.io/badge/daemon-macOS%20%7C%20Linux-555)
-![客户端](https://img.shields.io/badge/clients-Web%20%7C%20Android%20%7C%20iOS-555)
+![客户端](https://img.shields.io/badge/clients-Web%20%7C%20Android%20%7C%20iOS%20preview-555)
 
-[English](README.md) · 简体中文
+[English](README.md) · 简体中文 · [在公共中继上试用](#在公共中继上试用)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/demo-dark.zh-CN.svg">
-  <img src="docs/assets/demo-light.zh-CN.svg" alt="动画演示：电脑上 tmux 里的 Claude Code 请求执行 go test；请求以密文经过中继；在手机上点允许；同一个会话接着运行；再从手机发出下一条消息。" width="960">
+  <img src="docs/assets/demo-light.zh-CN.svg" alt="动画概览：Claude Code 以原生形态跑在你电脑的 tmux 里，请求执行 go test；请求加密后经过你自己部署的中继，中继只看得到 ID、时间和大小；你在手机上允许；同一个会话接着运行；再从手机发出下一条消息。" width="880">
 </picture>
 
 </div>
 
-**一圈看懂：** ① 照常在电脑上运行 `remote-agent claude`（或 `codex`）→ ② agent 请求权限时，请求在电脑上加密，中继只转发密文 → ③ 你在手机上点「允许」→ ④ 同一个 tmux 会话接着运行 → ⑤ 人在哪儿都能发下一条消息。
+**一圈看懂：** ① 运行 `remote-agent claude`（或 `codex`），CLI 以原生形态跑在 tmux 里 → ② 它请求权限 → ③ 请求在电脑上加密，以密文经过你的中继 → ④ 在手机上允许 → ⑤ 同一个会话接着运行，人在哪儿都能发下一条消息。
 
-## 简介
+> [!NOTE]
+> 尚未到 1.0，变化较快。客户端界面是简体中文。iOS App 是预览版，需要从源码构建，还没有 App Store 或 TestFlight 版本。详见[现状与限制](#现状与限制)。
 
-remote-agent 让你离开电脑时，编程 agent 不用停下。你照常在电脑上启动 Codex 或 Claude Code，同一个会话随即出现在手机（Android 或 iOS）和浏览器里：查看进展、发送下一条消息、回答它的提问、允许或拒绝权限请求、中断它，或者打开实时终端。
+## 一眼看懂
 
 | | |
 |---|---|
-| **原生 CLI** | agent 以自己的交互形态跑在 tmux 里，不经过 SDK，也不是另做的聊天界面。桌上的终端和手里的客户端操作的是同一个会话。 |
-| **端到端加密** | 消息、工具调用、终端输出、图片、项目名和路径都在你的设备上加密。中继只存储和转发密文，从不持有密钥。 |
-| **自部署** | 中继跑在你自己的服务器上，网页也由你自己托管。不需要第三方账户，中间也没有聊天平台。想先试试，可以用[公共中继](#在公共中继上试用)。 |
-| **多台电脑，一处查看** | 每台电脑跑一个 daemon，客户端按项目汇总所有会话。 |
+| **运行** | Codex 和 Claude Code 以自己的交互式 TUI 跑在 tmux 里，macOS 或 Linux（arm64、amd64）。一个账户可以接多台电脑。 |
+| **客户端** | 任意浏览器上的网页 PWA · Android 8.0+ · iOS 17+ 的 iPhone 和 iPad（预览版，从源码构建） |
+| **隐私** | 端到端加密：消息、工具调用、终端输出、图片、项目名和路径都在你的设备上加密。中继看得到设备和会话 ID、时间戳、密文大小和会话是否结束，看不到内容，也没有密钥。 |
+| **部署** | 中继跑在你的 Linux 服务器上（Docker），网页放在任意 HTTPS 静态托管。不需要第三方账户，中间也没有聊天平台。 |
+| **账户** | 一个账户就是一个人；一台中继可以承载多个互相看不到的账户。 |
 
-> [!NOTE]
-> 客户端界面目前是简体中文。项目尚未到 1.0，变化较快，依赖它之前请先读[现状与限制](#现状与限制)。
+## 在客户端里能做什么
 
-## 工作方式
+- **跟进和操作：** 实时对话，含推理摘要、工具调用和结果、token 用量；回复，也能发图片；回答 CLI 自己的提问；允许或拒绝权限请求（超时没处理默认拒绝）；中断当前一轮。
+- **及时提醒：** 一轮结束或有请求等你处理时推送通知：网页处处支持 Web Push，Android 可以直接在通知里审批（自部署中继的情况见[限制](#现状与限制)）。
+- **聊天之外：** 打开真正的 tmux 终端，可回看，带特殊按键栏；在任意一台电脑上新建会话；分叉、重命名或结束会话；切换模型、推理强度和审批模式；压缩上下文；所有电脑上的会话按项目汇总。
 
-<p align="center">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
-  <img src="docs/assets/architecture-light.svg" alt="你的设备（网页、Android App、iOS App）通过一台只看得到密文的中继连到你的电脑" width="880">
-</picture>
-</p>
+## 和别的方案有什么不同
 
-| 组件 | 运行在 | 职责 |
-|---|---|---|
-| **Daemon**（`remote-agent`） | 每台放代码的电脑，macOS 或 Linux | 在 tmux 里托管 agent 会话，读取 transcript，通过 CLI 的 hook 转交审批，注入输入。同一个二进制也是命令行工具。 |
-| **中继**（`remote-agent-server`） | 你掌控的一台 Linux 服务器 | 设备鉴权，存储和转发密文，发送推送通知。读不到内容。 |
-| **网页** | 任意 HTTPS 静态托管 | 可安装的 PWA：对话视图、实时终端、审批、Web Push。 |
-| **Android App** | Android 8.0 及以上 | 原生客户端，带原生终端，可在通知里直接审批。 |
-| **iOS App**（预览） | iPhone 和 iPad，iOS 17 及以上 | SwiftUI 原生客户端，带原生终端、审批和图片。还没有分发，见[现状与限制](#现状与限制)。 |
-
-账户密钥只在各台设备上，中继上没有。新设备通过扫二维码或输入配对码加入账户，双方核对一串相同的 emoji 后才交换密钥。
+| 它不是 | 因为 |
+|---|---|
+| **云端 agent** | CLI 和代码都留在你自己的电脑上，用的是你自己的 CLI 登录和配置。 |
+| **SDK 包装或仿制的聊天界面** | 真正的 CLI 跑在 tmux 里，和你自己运行时一模一样。桌上的终端和每个客户端操作的是同一个会话，没有任何重新实现。 |
+| **聊天平台桥接** | 不经过 Slack、Telegram 之类的平台。中继没有密钥，网页也不由中继提供，所以中继即使被攻破也读不到内容。 |
+| **只是 SSH 加 tmux** | 还多了原生的手机界面来看对话、审批和回答提问，有推送通知，多台电脑一处查看；原始终端也只差一下点击。 |
 
 ## 在公共中继上试用
 
@@ -68,6 +63,18 @@ remote-agent codex                                               # 或：remote-
 ```
 
 和在别处一样，你的会话在这里也是端到端加密的：中继只看得到[安全模型](#安全模型)里列出的元数据，看不到内容。不过 `remote-agent.top` 上的网页由维护者提供，用它就意味着信任这份客户端；命令行和 Android App 不依赖它。这是试用服务：每个账户最多 8 台设备、2 台电脑、200 个会话，不保证可用性，滥用的账户可能被暂停。日常使用请照下文自己部署；迁移时在你自己的中继上新建账户即可。
+
+## 工作方式
+
+| 组件 | 运行在 | 职责 |
+|---|---|---|
+| **Daemon**（`remote-agent`） | 每台放代码的电脑，macOS 或 Linux | 在 tmux 里托管 agent 会话，读取 transcript，通过 CLI 的 hook 转交审批，注入输入。同一个二进制也是命令行工具。 |
+| **中继**（`remote-agent-server`） | 你掌控的一台 Linux 服务器 | 设备鉴权，存储和转发密文，发送推送通知。读不到内容。 |
+| **网页** | 任意 HTTPS 静态托管 | 可安装的 PWA：对话视图、实时终端、审批、Web Push。 |
+| **Android App** | Android 8.0 及以上 | 原生客户端，带原生终端，可在通知里直接审批。 |
+| **iOS App**（预览） | iPhone 和 iPad，iOS 17 及以上 | SwiftUI 原生客户端，带原生终端、审批和图片。还没有分发，见[现状与限制](#现状与限制)。 |
+
+账户密钥只在各台设备上，中继上没有。新设备通过扫二维码或输入配对码加入账户，双方核对一串相同的 emoji 后才交换密钥。
 
 ## 快速开始
 

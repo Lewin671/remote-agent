@@ -2,58 +2,53 @@
 
 # remote-agent
 
-**Run Codex and Claude Code on your own computer. Drive them from any device.**
+**Run Codex and Claude Code in tmux on your own computer. Use the same session from your phone or browser.**
 
-Native CLI sessions in tmux · End-to-end encrypted · Self-hosted
+A daemon on macOS or Linux · a relay you host · Web, Android and iOS (preview) clients · end-to-end encrypted: the relay stores and forwards only ciphertext
 
 [![Latest release](https://img.shields.io/github/v/release/Lewin671/remote-agent?label=release&color=1a7f37)](https://github.com/Lewin671/remote-agent/releases/latest)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 ![Daemon](https://img.shields.io/badge/daemon-macOS%20%7C%20Linux-555)
-![Clients](https://img.shields.io/badge/clients-Web%20%7C%20Android%20%7C%20iOS-555)
+![Clients](https://img.shields.io/badge/clients-Web%20%7C%20Android%20%7C%20iOS%20preview-555)
 
-English · [简体中文](README.zh-CN.md)
+English · [简体中文](README.zh-CN.md) · [Try it on the public relay](#try-it-on-the-public-relay)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/demo-dark.svg">
-  <img src="docs/assets/demo-light.svg" alt="Animated demo: Claude Code in tmux on a computer asks to run go test; the request crosses the relay as ciphertext; it is approved on the phone; the same session continues; the next message is sent from the phone." width="960">
+  <img src="docs/assets/demo-light.svg" alt="Animated overview: Claude Code runs natively in tmux on your computer and asks to run go test; the request is encrypted and crosses a relay you host, which sees only IDs, timestamps and sizes; you approve it on your phone; the same session carries on; the next message is sent from the phone." width="880">
 </picture>
 
 </div>
 
-**In one loop:** ① you start `remote-agent claude` (or `codex`) on your computer as usual → ② when the agent asks for permission, the request is encrypted on your computer and the relay forwards only ciphertext → ③ you tap **Allow** on your phone → ④ the very same tmux session carries on → ⑤ you send the next message from wherever you are.
+**The loop:** ① start `remote-agent claude` (or `codex`) — the CLI runs natively in tmux → ② it asks for a permission → ③ the request is encrypted on your computer and crosses your relay as ciphertext → ④ approve it on your phone → ⑤ the same session carries on, and you send the next message from wherever you are.
 
-## Overview
+> [!NOTE]
+> Pre-1.0 and moving quickly. The client UI is in Simplified Chinese. The iOS app is a preview you build from source; it has no App Store or TestFlight build yet. See [Status and limitations](#status-and-limitations).
 
-remote-agent lets you leave your desk without leaving your coding agent. You start Codex or Claude Code on your computer as usual; the same session is then available on your phone (Android or iOS) or in a browser, where you can follow its progress, send the next message, answer its questions, approve or deny permission requests, interrupt it, or open the live terminal.
+## At a glance
 
 | | |
 |---|---|
-| **The real CLI** | Agents run in their own interactive form inside tmux — not through an SDK or a reimplemented chat. The terminal on your desk and the client in your hand operate one and the same session. |
-| **End-to-end encrypted** | Messages, tool calls, terminal output, images, project names and paths are encrypted on your devices. The relay only stores and forwards ciphertext and never holds a key. |
-| **Self-hosted** | You run the relay on your own server and host the web client yourself. There is no account with a third party and no chat platform in between. To try it first, use the [public relay](#try-it-on-the-public-relay). |
-| **Several computers, one view** | Run a daemon on each machine; clients group every session by project. |
+| **Runs** | Codex and Claude Code in their own interactive TUI, inside tmux, on macOS or Linux (arm64, amd64). Several computers per account. |
+| **Clients** | Web PWA on any browser · Android 8.0+ · iPhone and iPad on iOS 17+ (preview, built from source) |
+| **Privacy** | End-to-end encrypted: messages, tool calls, terminal output, images, project names and paths are encrypted on your devices. The relay sees device and session IDs, timestamps, ciphertext sizes and whether a session ended — never content, never a key. |
+| **Hosting** | Your relay on a Linux server (Docker), the web client on any static HTTPS host. No third-party account, no chat platform in between. |
+| **Accounts** | One person per account; one relay can host many accounts that see nothing of each other. |
 
-> [!NOTE]
-> The client interfaces are currently in Simplified Chinese. The project is pre-1.0 and moves quickly — read [Status and limitations](#status-and-limitations) before relying on it.
+## What you can do from a client
 
-## How it works
+- **Follow and steer:** the live conversation with reasoning summaries, tool calls and results, and token use; reply, also with images; answer the CLI's own questions; approve or deny a permission request (unanswered requests are denied on timeout); interrupt the turn.
+- **Get pinged:** a push notification when a turn ends or a request needs you — Web Push everywhere, Android notifications you can approve from directly (on a self-hosted relay, see [limitations](#status-and-limitations)).
+- **Beyond the chat:** open the real tmux terminal with scrollback and a key bar; start new sessions on any computer; fork, rename or end a session; switch model, reasoning effort and approval mode; compact the context; see every session grouped by project across your computers.
 
-<p align="center">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
-  <img src="docs/assets/architecture-light.svg" alt="Your devices — web app, Android app, iOS app — reach your computer through a relay that only sees ciphertext" width="880">
-</picture>
-</p>
+## Why it is different
 
-| Component | Runs on | Role |
-|---|---|---|
-| **Daemon** (`remote-agent`) | Each computer with your code — macOS or Linux | Hosts agent sessions in tmux, reads their transcripts, relays approvals through CLI hooks, injects input. The same binary is the command-line interface. |
-| **Relay** (`remote-agent-server`) | A Linux server you control | Authenticates devices, stores and forwards ciphertext, sends push notifications. Cannot read content. |
-| **Web client** | Any static HTTPS host | Installable PWA: conversation view, live terminal, approvals, Web Push. |
-| **Android app** | Android 8.0 or later | Native client with a native terminal and approvals from the notification. |
-| **iOS app** (preview) | iPhone and iPad, iOS 17 or later | Native SwiftUI client with a native terminal, approvals and images. Not distributed yet — see [Status and limitations](#status-and-limitations). |
-
-Every device holds the account key; the relay holds none. Devices join an account by scanning a QR code or entering a pairing code, and both sides confirm a short emoji sequence before keys are exchanged.
+| It is not | Because |
+|---|---|
+| **A cloud agent** | The CLI and your code stay on your computer, with your own CLI login and configuration. |
+| **An SDK wrapper or a chat clone** | The real CLI runs in tmux exactly as you would run it yourself. The terminal on your desk and every client drive one and the same session; nothing is reimplemented. |
+| **A chat bridge** | No Slack, Telegram or other platform reads your session. The relay holds no key and the web client is not served by it, so even a compromised relay cannot read content. |
+| **Just SSH and tmux** | You also get the conversation, approvals and questions as a native mobile UI, push notifications, and one view across computers — with the raw terminal one tap away. |
 
 ## Try it on the public relay
 
@@ -68,6 +63,18 @@ remote-agent codex                                               # or: remote-ag
 ```
 
 Your sessions are end-to-end encrypted there as everywhere: the relay sees the metadata listed under [Security model](#security-model), never content. The page at `remote-agent.top` is served by the maintainer, though, so using it means trusting that copy of the client; the CLI and the Android app do not depend on it. It is a trial service: an account has room for 8 devices, 2 computers and 200 sessions, there is no uptime promise, and accounts that abuse it may be suspended. For everyday use, host your own as below; to move, create a new account on your relay.
+
+## How it works
+
+| Component | Runs on | Role |
+|---|---|---|
+| **Daemon** (`remote-agent`) | Each computer with your code — macOS or Linux | Hosts agent sessions in tmux, reads their transcripts, relays approvals through CLI hooks, injects input. The same binary is the command-line interface. |
+| **Relay** (`remote-agent-server`) | A Linux server you control | Authenticates devices, stores and forwards ciphertext, sends push notifications. Cannot read content. |
+| **Web client** | Any static HTTPS host | Installable PWA: conversation view, live terminal, approvals, Web Push. |
+| **Android app** | Android 8.0 or later | Native client with a native terminal and approvals from the notification. |
+| **iOS app** (preview) | iPhone and iPad, iOS 17 or later | Native SwiftUI client with a native terminal, approvals and images. Not distributed yet — see [Status and limitations](#status-and-limitations). |
+
+Every device holds the account key; the relay holds none. Devices join an account by scanning a QR code or entering a pairing code, and both sides confirm a short emoji sequence before keys are exchanged.
 
 ## Quick start
 
