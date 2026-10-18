@@ -230,4 +230,4 @@ The last command lists your account, with the number of its devices and sessions
 | The relay exits saying the database has the layout of a relay with a single account | Move the database as described in [Upgrading to v0.41.0](#upgrading-to-v0410). |
 | `account init` says the relay has no room for another account | This relay already has its account. Join it with `account pair` / `account join`, or let it hold more accounts (see [Opening the relay to others](#opening-the-relay-to-others)). |
 | A client asks you to update | Its protocol version differs from the daemon's. Upgrade every part to the same release. |
-| No notifications in the Android app | Expected on your own relay; see the limits in the [README](../README.md#status-and-limits). |
+| No notifications in the Android app | Expected on your own relay; see the limits in the [README](../README.md#status-and-limitations). |

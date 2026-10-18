@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Generate the animated README demo (docs/assets/demo-*.svg).
 
-Every frame is a complete poster: the loop opens on a pending permission
-request, so a visitor who looks for one second already sees the computer,
-the relay's trust boundary, the phone, the five steps and the capabilities.
-Motion only changes state: the request crosses the relay as ciphertext, it
+Pictures, not prose: the computer, the relay and the phone, with almost no
+labels. The loop opens on a pending permission request, so every frame is a
+complete picture. Motion only changes state: the request crosses the relay as ciphertext, it
 is approved on the phone, the same session carries on, and the next message
 comes from the phone. Plain CSS animation, so GitHub plays it inside <img>;
 with reduced motion the opening poster is shown.
@@ -20,7 +19,7 @@ from xml.sax.saxutils import escape
 T = 12.0      # loop length, seconds
 RESET = 10.6  # what the loop added fades out and the pending request returns
 FADE = 0.2
-W, H = 880, 456
+W, H = 880, 348
 
 HERE = pathlib.Path(__file__).resolve().parent
 
@@ -39,46 +38,29 @@ TEXT = {
     "en": dict(
         alt=("Animated overview: Claude Code runs natively in tmux on your computer and asks to run go test; "
              "the request is encrypted and crosses a relay you host, which sees only IDs, timestamps and sizes; "
-             "you approve it on your phone; the same session carries on; the next message is sent from the phone. "
-             "Also: Codex and Claude Code, live terminal, images, start and fork sessions, many computers, "
-             "Web, Android and iOS (preview) clients."),
-        steps=["Start in tmux", "CLI asks", "Encrypted relay", "Approve on phone", "Session continues"],
+             "you approve it on your phone; the same session carries on; the next message is sent from the phone. "),
         tmux="Your computer — tmux · ~/api",
         prompt1="Split out the handlers", prompt2="Also open a PR",
-        edited="Edited 5 files  +84 −61", also="also on your phone",
+        edited="Edited 5 files  +84 −61",
         t_reply="All tests pass.", t_next="Creating a branch and opening the PR…",
-        under_term="One session: the terminal and every client drive it",
-        relay="Your relay", relay_sub="you host it · holds no key", lane="ciphertext",
-        sees="SEES", sees_items=["device & session IDs", "timestamps, sizes"],
-        never="NEVER SEES", never_items=["messages, tool output", "terminal, images", "paths, project names", "keys"],
+        relay="Your relay", relay_sub="sees ciphertext only", lane="7f3a·c91e·04b2…",
         title="api · Claude Code", waiting="Needs approval", working="Running", idle="Idle",
         chat="Chat", term="Terminal", from_term="from the terminal",
         run="Run command", deny="Deny", allow="Allow", allowed="Allowed",
-        message="Message", under_phone="Shown in English; the client UI is in Simplified Chinese",
-        chips=[("Native CLI", "Codex, Claude Code"), ("Live terminal", "scrollback and keys"),
-               ("Images", "view and send"), ("Sessions", "start · fork · rename"),
-               ("Many computers", "grouped by project"), ("Clients", "Web · Android · iOS preview")],
+        message="Message",
     ),
     "zh": dict(
         alt=("动画概览：Claude Code 以原生形态跑在你电脑的 tmux 里，请求执行 go test；请求加密后经过你自己部署的中继，"
-             "中继只看得到 ID、时间和大小；你在手机上允许；同一个会话接着运行；再从手机发出下一条消息。"
-             "另有：Codex 和 Claude Code、实时终端、图片、新建和分叉会话、多台电脑、网页、Android 和 iOS（预览）客户端。"),
-        steps=["tmux 里启动", "CLI 请求权限", "密文经过中继", "手机上允许", "会话接着运行"],
+             "中继只看得到 ID、时间和大小；你在手机上允许；同一个会话接着运行；再从手机发出下一条消息。"),
         tmux="你的电脑 — tmux · ~/api",
         prompt1="把 handler 拆到单独的包里", prompt2="再开个 PR",
-        edited="编辑 5 个文件  +84 −61", also="手机上同时出现",
+        edited="编辑 5 个文件  +84 −61",
         t_reply="测试全部通过。", t_next="正在新建分支并创建 PR…",
-        under_term="同一个会话：终端和每个客户端操作的都是它",
-        relay="你的中继", relay_sub="自己部署 · 不持有密钥", lane="密文",
-        sees="看得到", sees_items=["设备和会话 ID", "时间、密文大小"],
-        never="看不到", never_items=["消息、工具输出", "终端、图片", "路径、项目名", "密钥"],
+        relay="你的中继", relay_sub="只看得到密文", lane="7f3a·c91e·04b2…",
         title="api · Claude Code", waiting="等待审批", working="运行中", idle="空闲",
         chat="聊天", term="终端", from_term="来自终端",
         run="请求执行", deny="不允许", allow="允许", allowed="已允许",
-        message="消息", under_phone="",
-        chips=[("原生 CLI", "Codex、Claude Code"), ("实时终端", "可回看、可输入"),
-               ("图片", "查看和发送"), ("会话", "新建 · 分叉 · 重命名"),
-               ("多台电脑", "按项目汇总"), ("客户端", "网页 · Android · iOS 预览")],
+        message="消息",
     ),
 }
 
@@ -151,23 +133,8 @@ def build(lang, theme, at=None, scale=1.0):
 
     pending = [(0, 2.1), (RESET, T)]
 
-    # ---------- step rail ----------
-    x = 20
-    step_w = (W - 40) / 5
-    add(f'<path d="M{20 + 14} 29H{W - 20 - step_w + 14}" stroke="{c["line"]}" stroke-width="2"/>')
-    active = [None, [(0, 0.4), (RESET, T)], [(0.4, 1.8)], [(1.8, 2.9)], [(2.9, RESET)]]
-    for i, label in enumerate(s["steps"]):
-        x0 = 20 + i * step_w
-        if active[i]:
-            pill = (f'<rect x="{x0 - 4}" y="15" width="{width(label, 13) + 46}" height="28" rx="14" '
-                    f'fill="{c["blue_soft"]}" stroke="{c["blue"]}" stroke-width="1"/>')
-            g(active[i], pill, post=i != 1)
-        add(f'<circle cx="{x0 + 14}" cy="29" r="11" fill="{c["blue_bg"]}"/>'
-            f'<text x="{x0 + 14}" y="33.5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">{i + 1}</text>'
-            f'<text class="b" x="{x0 + 32}" y="33.5" font-weight="600">{e(label)}</text>')
-
     # ---------- computer: a tmux window running Claude Code ----------
-    tx, ty, tw, th = 20, 58, 360, 316
+    tx, ty, tw, th = 20, 16, 360, 316
     add(f'<rect x="{tx}" y="{ty}" width="{tw}" height="{th}" rx="10" fill="#0d1117" stroke="{c["edge"]}"/>')
     add(f'<path d="M{tx} {ty + 26}H{tx + tw}" stroke="#30363d"/>')
     for i, col in enumerate(["#ff5f57", "#febc2e", "#28c840"]):
@@ -188,7 +155,6 @@ def build(lang, theme, at=None, scale=1.0):
     by = ty + 102
     box = (f'<rect x="{tx + 8}" y="{by}" width="{tw - 16}" height="80" rx="6" fill="none" stroke="{or_}"/>'
            f'<text class="m" x="{tx + 20}" y="{by + 20}" fill="{or_}" font-weight="600">Bash command</text>'
-           f'<text x="{tx + tw - 20}" y="{by + 20}" text-anchor="end" font-size="11" fill="{or_}">↗ {e(s["also"])}</text>'
            f'<text class="m" x="{tx + 20}" y="{by + 41}" fill="#ffffff">go test ./... -count=1</text>'
            f'<text class="m" x="{tx + 20}" y="{by + 66}" fill="#c9d1d9">Do you want to proceed?  '
            f'<tspan fill="#7ee787">❯ 1. Yes</tspan>  2. No</text>')
@@ -203,11 +169,10 @@ def build(lang, theme, at=None, scale=1.0):
     sy = ty + th - 28
     add(f'<rect x="{tx + 1}" y="{sy}" width="{tw - 2}" height="20" fill="#2ea043"/>'
         f'<text class="m" x="{tx + 10}" y="{sy + 14}" fill="#0d1117">[api] 0:claude*  1:codex  2:zsh</text>')
-    add(f'<text class="s" x="{tx}" y="{ty + th + 18}">{e(s["under_term"])}</text>')
 
     # ---------- relay ----------
-    rx0, ry0, rw, rh = 404, 96, 172, 252
-    lane_y = 161
+    lane_y = 119
+    rx0, ry0, rw, rh = 404, lane_y - 66, 172, 190
     add(f'<rect x="{rx0}" y="{ry0}" width="{rw}" height="{rh}" rx="12" fill="{c["relay"]}" stroke="{c["edge"]}" stroke-width="1.5"/>')
     add(f'<text class="h" x="{rx0 + rw / 2}" y="{ry0 + 26}" text-anchor="middle">{e(s["relay"])}</text>')
     add(f'<text class="s" x="{rx0 + rw / 2}" y="{ry0 + 44}" text-anchor="middle">{e(s["relay_sub"])}</text>')
@@ -215,15 +180,10 @@ def build(lang, theme, at=None, scale=1.0):
     add(f'<text class="x" x="{rx0 + rw / 2}" y="{lane_y + 4}" text-anchor="middle">{e(s["lane"])}</text>')
     add(f'<path d="M{tx + tw + 4} {lane_y}H{rx0 - 2}M{rx0 + rw + 2} {lane_y}H596" stroke="{c["muted"]}" '
         f'stroke-dasharray="3 5" stroke-width="1.5"/>')
-    ly = ry0 + 100
-    add(f'<text x="{rx0 + 16}" y="{ly}" font-size="11" font-weight="700" fill="{c["muted"]}">{e(s["sees"])}</text>')
-    for i, item in enumerate(s["sees_items"]):
-        add(f'<text class="b" x="{rx0 + 16}" y="{ly + 19 + i * 18}" fill="{c["fg2"]}">{e(item)}</text>')
-    ly += 66
-    add(f'<text x="{rx0 + 16}" y="{ly}" font-size="11" font-weight="700" fill="{c["green"]}">{e(s["never"])}</text>')
-    for i, item in enumerate(s["never_items"]):
-        add(f'<text class="b" x="{rx0 + 16}" y="{ly + 19 + i * 18}" fill="{c["fg2"]}">{e(item)}</text>')
-
+    # what the relay stores: ciphertext it cannot read
+    for i, blob in enumerate(["e15d 9a07 3fc8 b62e", "58d1 aa90 0c4f 71e3", "d208 6b1a 94ce 2f57", "3a6c f0b9 17e4 c85d"]):
+        add(f'<text class="m" x="{rx0 + rw / 2}" y="{lane_y + 40 + i * 20}" text-anchor="middle" fill="{c["muted"]}" '
+            f'opacity=".55">{blob}</text>')
     lock = ('<rect x="-20" y="-10" width="40" height="20" rx="10" fill="{fill}"/>'
             '<path d="M-4.5 -2.5v-2.5a4.5 4.5 0 0 1 9 0v2.5" fill="none" stroke="#fff" stroke-width="1.7"/>'
             '<rect x="-7" y="-2.5" width="14" height="9.5" rx="2" fill="#fff"/>')
@@ -238,7 +198,7 @@ def build(lang, theme, at=None, scale=1.0):
     packet([(6.0, 596), (6.3, mid), (6.4, mid), (6.7, 384)], c["blue_bg"])  # the next message
 
     # ---------- phone ----------
-    px, py, pw, ph = 600, 58, 260, 316
+    px, py, pw, ph = 600, 16, 260, 316
     cx = px + pw / 2
     add(f'<rect x="{px}" y="{py}" width="{pw}" height="{ph}" rx="28" fill="{c["card"]}" stroke="{c["frame"]}" stroke-width="5"/>')
     add(f'<text class="t" x="{cx}" y="{py + 32}" text-anchor="middle" font-weight="600">{e(s["title"])}</text>')
@@ -302,21 +262,6 @@ def build(lang, theme, at=None, scale=1.0):
         f'stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>')
     add(f'<g transform="translate({sx} {sy2})"><circle class="a post p" r="18" fill="{c["blue"]}" '
         f'style="animation-name:{a.pulse(5.8)}"/></g>')
-    if s["under_phone"]:
-        add(f'<text class="x" x="{px + pw}" y="{py + ph + 18}" text-anchor="end">{e(s["under_phone"])}</text>')
-
-    # ---------- capabilities ----------
-    chip_y, chip_h, gap = 396, 46, 8
-    need = [max(width(t, 12.5) * 1.1, width(sub, 11.5) * 1.1) + 26 for t, sub in s["chips"]]
-    extra = (W - 40 - gap * (len(need) - 1) - sum(need)) / len(need)
-    x = 20
-    for (t, sub), n in zip(s["chips"], need):
-        w = n + extra
-        add(f'<rect x="{x}" y="{chip_y}" width="{w}" height="{chip_h}" rx="10" fill="{c["soft"]}" stroke="{c["line"]}"/>'
-            f'<text x="{x + 12}" y="{chip_y + 19}" font-size="12.5" font-weight="700">{e(t)}</text>'
-            f'<text x="{x + 12}" y="{chip_y + 36}" font-size="11.5" fill="{c["muted"]}">{e(sub)}</text>')
-        x += w + gap
-
     frozen = f".a,.blink{{animation-play-state:paused!important;animation-delay:-{at}s!important}}" if at is not None else ""
     fonts = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Helvetica, Arial, sans-serif'
     mono = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "PingFang SC", monospace'
