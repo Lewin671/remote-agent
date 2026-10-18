@@ -28,24 +28,23 @@ Sessions started from a client and sessions started in a terminal are the same k
 | `remote-agent send <id> <text>` | Send a message without attaching |
 | `remote-agent events <id> -f` | Follow a session's events |
 | `remote-agent doctor` | Check that the installed CLIs behave as remote-agent expects; run it after upgrading Codex or Claude Code |
-| `remote-agent account pair` | Add another device to the account |
-| `remote-agent account security-init` | Establish the fixed authority on the chosen existing computer |
-| `remote-agent account security-enroll --server URL --code CODE` | Bind a retained computer without replacing its identity |
+| `remote-agent account join --server URL --code CODE` | Join an account with the code shown by the Android app |
+| `remote-agent account secret` | Print offline decryption material for legacy history; it cannot enroll a device or recover management |
 
 `remote-agent --help` lists every command.
 
 ## Security model
 
-The relay is untrusted. Devices pin a fixed authority daemon after comparing pairing symbols locally on both devices. Removal rotates content keys and waits for every retained executor to install its fence automatically; offline computers keep it pending. After completion, old root/session keys and a removed device's private keys cannot authorize new control or decrypt new content.
+The relay is untrusted. The Android app holds the account's authority key and signs membership states; every device signs its own envelopes. Adding a device is started and approved only on the phone, after both sides compare four symbols. Removal rotates the content key and the relay revokes the removed device as soon as it receives the new state; if the removed device is a computer, the relay also deletes that computer's hosted machines, sessions, events and images. Retained devices install the new state in the background within 60 seconds. A removed device cannot decrypt new content or authorize new control.
 
-Retained endpoints, their OS/client code, randomness and local security state must remain trusted and must not be rolled back. Already downloaded content cannot be erased. The authority computer cannot be removed normally; handoff and root-only recovery are not implemented. When it is offline, new remote authorization pauses while the local CLI continues. Legacy history and images are marked unverified and read-only. See the [full security boundary](scope.md#设备加入与移除) and [protocol 9 upgrade steps](self-hosting.md#upgrading-the-device-security-domain-protocol-9).
+Retained endpoints, their OS/client code, randomness and local security state must remain trusted and must not be rolled back. Already downloaded content cannot be erased. The phone cannot be removed normally and there is no second authority. Its membership lease lasts 72 hours: open the app at least that often, otherwise remote control pauses while viewing and the local CLI continue. A recovery code transfers management to a new phone after 48 hours, during which the old phone can veto. The code only signs; the new phone cannot decrypt content from before the recovery. Retained computers keep running and re-publish their current session metadata, keys and current-state snapshots under the new content key, so live sessions reappear; older history stays readable only on devices that already had it. Legacy history and images are marked unverified and read-only. See the [full security boundary](scope.md#设备加入与移除) and [protocol 10 upgrade steps](self-hosting.md#upgrading-to-the-phone-authority-protocol-10).
 
 | Data | Visible to the relay |
 |---|---|
 | Messages, tool calls, terminal output, approval requests, images | No |
 | Project names, paths, git remotes, session titles, machine names | No |
-| Account and session keys | No |
-| Device, machine and session IDs, timestamps, ciphertext sizes | Yes — needed for routing |
+| Account, device and authority keys, recovery code, content and session keys | No |
+| Device, machine and session IDs, membership, state epochs and lease times, timestamps, ciphertext sizes | Yes — needed for routing and state distribution |
 | Whether and when a session ended | Yes |
 | Your devices' IP addresses | Yes — as to any server |
 

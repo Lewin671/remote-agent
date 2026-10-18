@@ -52,7 +52,7 @@ RA_SIGNUP=open          # anyone may create an account, with a proof of work
 RA_MAX_ACCOUNTS=100     # at most this many accounts on the relay
 ```
 
-then `docker compose up -d` (with the `compose.yaml` of v0.41.0 or later, which passes these settings to the relay). With open signup, `remote-agent account init` creates an account without a setup token: the computer spends a second or so on a proof of work, and the relay creates only a few accounts an hour for each address. Such accounts are on a trial plan, with room for 8 devices, 2 computers, 200 sessions and 256 MB of events; accounts made with the setup token have room for 32 devices and 16 computers. The relay checks its free disk space every minute; while it is below 2 GB, no account can add devices, sessions, events, images or settings until there is room again.
+then `docker compose up -d` (with the `compose.yaml` of v0.41.0 or later, which passes these settings to the relay). With open signup, creating an account in the Android app needs no setup token: the phone spends a second or so on a proof of work, and the relay creates only a few accounts an hour for each address. Such accounts are on a trial plan, with room for 8 devices, 2 computers, 200 sessions and 256 MB of events; accounts made with the setup token have room for 32 devices and 16 computers. The relay checks its free disk space every minute; while it is below 2 GB, no account can add devices, sessions, events, images or settings until there is room again.
 
 The relay counts addresses as Caddy reports them, which the bundled `compose.yaml` arranges with `RA_TRUSTED_PROXIES`. Behind a proxy of your own, set `RA_TRUSTED_PROXIES` to the proxy's address range, or every account looks as if it comes from the proxy.
 
@@ -105,10 +105,10 @@ remote-agent-service install
 
 runs the daemon in the background, now and at every login (launchd on macOS, systemd user service on Linux). `remote-agent-service status | log | restart | stop | uninstall` manage it. Restarting the daemon does not interrupt sessions running in tmux.
 
-Connect the computer to your relay. This asks for the setup token from the relay's `.env`:
+Connect the computer to your relay after the phone has created the account. The phone shows a pairing code:
 
 ```sh
-remote-agent account init --server https://ra.example.com
+remote-agent account join --server https://ra.example.com --code 1234 5678
 ```
 
 - Sessions you start from your phone or the web run through your login shell (loading `.zshrc`, `.profile` and so on), and their environment is computed fresh each time: an nvm upgrade, a newly installed command or a moved `codex`/`claude` applies to the next session without reinstalling the service.
@@ -116,22 +116,19 @@ remote-agent account init --server https://ra.example.com
 - After upgrading Codex or Claude Code, run `remote-agent doctor` to check that it still works with remote-agent. It starts a short real session, so it uses a little of your model quota.
 - The service remembers the `PATH` of the shell that installed it; that decides which `codex`/`claude` the daemon itself finds (`doctor` uses it, and version checks follow what sessions run). A session started from a terminal runs the CLI its terminal's `PATH` finds, and does not start if there is none. If `tmux` moves, or you want the daemon to find a different `codex`/`claude`, run `remote-agent-service install` again.
 - On Linux, a user service stops when you log out unless lingering is on: `loginctl enable-linger "$USER"`.
-- `~/.remote-agent/account.json` holds this computer's keys. Keep it private; if you lose every device that has joined the account, the relay's data cannot be decrypted.
+- `~/.remote-agent/account.json` holds this computer's keys. Keep it private; losing every device and the recovery code means the relay's data cannot be decrypted.
 - The first time Codex starts in a directory it asks whether to trust it; answer in the terminal.
 
 ## 4. Your phone and other devices
 
-On the computer:
+Install the Android APK from the [latest release](https://github.com/Lewin671/remote-agent/releases/latest) first. In the app, create the account on this relay (it asks for the setup token) and save the recovery code it shows once. The phone is the account's manager: only it can add or remove devices, renew the lease and recover the account.
 
-```sh
-remote-agent account pair --web https://app.example.com
-```
-
-This shows a QR code, a link and a pairing code.
-
-- **Web:** scan the QR code or open the link, and confirm that both sides show the same emoji. In the browser's menu, install the page as an app to get a home-screen icon and Web Push notifications.
-- **Android:** install the APK from the [latest release](https://github.com/Lewin671/remote-agent/releases/latest), open it and scan the same QR code. When you later add a device *from the app*, its QR code points at `app.<your domain>` if your relay is `ra.<your domain>`, and at the relay itself otherwise; with other names, pair from the computer as above. The app includes Google's Firebase messaging library and may contact Google to register for pushes, even though your relay sends none.
-- **Another computer:** install the daemon there, then `remote-agent account join --server https://ra.example.com --code <pairing code>`.
+- **Computer:** run `remote-agent account join --server https://ra.example.com --code <code from the phone>`; the running daemon connects within a few seconds. Compare the four symbols on both screens: confirm on the computer first, then allow on the phone.
+- **Web:** open `https://app.example.com`, choose the join flow, and enter the code or scan the phone's QR code. Confirm the same four symbols in the browser, then allow on the phone. In the browser's menu, install the page as an app to get a home-screen icon and Web Push notifications.
+- **iOS:** join the same way; it is a normal client and cannot manage the account.
+- **Another device later:** open the phone's device page and choose add device. The QR code and code come from the phone, not from a computer.
+- **Removal:** only from the phone's device page. Browsers and computers show a prompt to use the phone.
+- **Lease:** open the app at least once every 72 hours. After the lease expires, remote control pauses; chat, history and the terminal view keep working until the phone renews it.
 
 Now start a session and it appears on every device:
 
@@ -141,11 +138,11 @@ remote-agent codex      # or: remote-agent claude
 ```
 
 > [!CAUTION]
-> `remote-agent account secret` prints root material for legacy history; it does not include the authority or current membership secrets. Keep it offline; it cannot authorize a new device. Enroll new devices by pairing, never paste it into an issue or a chat.
+> `remote-agent account secret` prints root material for legacy history; it does not include the authority key or the recovery code. Keep it offline; it cannot authorize a new device or recover management. Enroll new devices by pairing in the app, never paste it into an issue or a chat.
 
 ## Upgrading
 
-Before restarting a layout-3 relay, apply the [protocol-8 device enrollment database upgrade](#upgrading-device-enrollment-protocol-8). Older single-account databases first need the [v0.41.0 layout conversion](#upgrading-to-v0410), followed by the layout-3 upgrade.
+Before restarting a layout-3 relay, apply the [protocol-8 device enrollment database upgrade](#upgrading-device-enrollment-protocol-8) and then the [phone authority upgrade](#upgrading-to-the-phone-authority-protocol-10). Older single-account databases first need the [v0.41.0 layout conversion](#upgrading-to-v0410), followed by the layout-3 upgrade.
 
 Upgrade every part to the same release, and read the release notes first: before 1.0, a release may require all parts to move together or stored data to be recreated.
 
@@ -226,12 +223,12 @@ The last command lists your account, with the number of its devices and sessions
 
 | Symptom | Likely cause |
 |---|---|
-| Relay startup reports layout 3 / layout 4 | Run the [manual enrollment upgrade](#upgrading-device-enrollment-protocol-8) before restarting. |
+| Relay startup reports layout 3 / layout 4 / layout 5 | Run the [manual device enrollment upgrade](#upgrading-device-enrollment-protocol-8) and then the [phone authority upgrade](#upgrading-to-the-phone-authority-protocol-10) before restarting. |
 | The web client signs in but stays "not connected" | A content blocker is stopping the WebSocket. Host the web client and relay under the same registrable domain, or allow your relay's domain in the blocker. |
 | The web client cannot reach the relay at all | Its address is missing from `ALLOWED_ORIGINS`, or the relay was not restarted after editing `.env`. |
-| `account init` says a valid setup token is required | The token does not match `RA_SETUP_TOKEN` in the relay's `.env`. |
+| The Android app says the setup token is required | The token does not match `RA_SETUP_TOKEN` in the relay's `.env`. |
 | The relay exits saying the database has the layout of a relay with a single account | Move the database as described in [Upgrading to v0.41.0](#upgrading-to-v0410). |
-| `account init` says the relay has no room for another account | This relay already has its account. Join it with `account pair` / `account join`, or let it hold more accounts (see [Opening the relay to others](#opening-the-relay-to-others)). |
+| The Android app says the relay has no room for another account | This relay already has its account. Create the account in the Android app, or let the relay hold more accounts (see [Opening the relay to others](#opening-the-relay-to-others)). |
 | A client asks you to update | Its protocol version differs from the daemon's. Upgrade every part to the same release. |
 | No notifications in the Android app | Expected on your own relay; see the limits in the [README](../README.md#status-and-limitations). |
 
@@ -241,7 +238,7 @@ The last command lists your account, with the number of its devices and sessions
 
 Protocol 8 requires database layout 4. Upgrade the relay, daemons, web client and apps together. Already enrolled devices and conversation history remain valid; unfinished pairings must be started again. An account secret can no longer enroll a device, including when every device is lost. Keep at least one enrolled device with its local state.
 
-Protocol 9 additionally requires the [security domain upgrade](#upgrading-the-device-security-domain-protocol-9). For an existing layout-3 relay, stop the relay and make a private backup of `data` first. On the relay host, run the following once against `data/remote-agent.db` with SQLite. Check `PRAGMA user_version` is **3** before running it; do not apply this SQL to any other layout.
+Protocol 10 additionally requires the [phone authority upgrade](#upgrading-to-the-phone-authority-protocol-10). For an existing layout-3 relay, stop the relay and make a private backup of `data` first. On the relay host, run the following once against `data/remote-agent.db` with SQLite. Check `PRAGMA user_version` is **3** before running it; do not apply this SQL to any other layout.
 
 ```sql
 BEGIN IMMEDIATE;
@@ -263,14 +260,14 @@ PRAGMA user_version = 4;
 COMMIT;
 ```
 
-This is only the intermediate layout 3→4 step. Complete the protocol 9 / layout 5 steps below before starting the current relay. Remove the migration backup after verification according to your own retention policy: restoring the entire old database would also restore old device permissions. No account root or private device key is needed for this SQL.
+This is only the intermediate layout 3→4 step. Continue with the 4→5 and 5→6 steps below before starting the current relay. Remove the migration backup after verification according to your own retention policy: restoring the entire old database would also restore old device permissions. No account root or private device key is needed for this SQL.
 
 
-## Upgrading the device security domain (protocol 9)
+## Upgrading to the phone authority (protocol 10)
 
-This version requires relay layout 5 and daemon storage generation 2. Automatic installation and automatic data migration are disabled. Stop remote activity on every old daemon and client before upgrading all components. Replacing the relay alone is insufficient: a malicious relay can still communicate with old executors. Preserve account identities and history. Do not print account secrets, export private keys, or give local state to the relay.
+This version requires relay layout 6 and daemon storage generation 3. Stop every old daemon and client before upgrading: components of different protocol versions refuse each other, and a malicious relay could otherwise keep talking to old executors. The Android phone that will manage the account must already be a member before the upgrade; pair it with the current protocol 9 release first. Protocol 10 cannot enroll a phone that was never a member, so an account without such a phone has to be rebuilt and its old data discarded. Do not print account secrets, export private keys, or give local state to the relay.
 
-1. Stop the relay and make a private backup. Check `PRAGMA user_version`. For layout 3, apply the 3→4 SQL above first without starting the old server. Only layout 4 may apply this SQL:
+1. Stop the relay and make a private backup. Check `PRAGMA user_version`. Work through the steps in order until the layout is 6: layout 3 applies the 3→4 SQL above, layout 4 the 4→5 SQL below, and layout 5 the 5→6 SQL. Never apply a step twice.
 
 ```sql
 BEGIN IMMEDIATE;
@@ -281,24 +278,56 @@ PRAGMA user_version = 5;
 COMMIT;
 ```
 
-2. Stop each retained daemon and privately back up its local state. After verifying that its `state-generation` file is `1`, manually change it to `2`, preserving owner-only permissions. For older unmarked state, verify its format first; do not blindly add a marker. Keep `account.json`, sessions, queues, images and settings. Do not copy another machine's security database. The new security state is created separately; old acceptance logs are not converted, and old protocol commands are refused.
-3. Install all new programs. Choose one trusted computer that normally stays online as the fixed authority. Run `remote-agent account security-init` with its existing account, keep its daemon stopped. Do not initialize separate authorities on the other computers. Run `remote-agent account security-genesis --output public-genesis.bin`. Transfer this **public signed state only** to the relay operator over a trusted channel. Before the relay listens, use the SQLite CLI to pin it to the exact public account ID (the `account-id` from `account status`):
+```sql
+BEGIN IMMEDIATE;
+CREATE TABLE security_states (
+  account_id TEXT NOT NULL REFERENCES accounts(id),
+  epoch INTEGER NOT NULL,
+  state BLOB NOT NULL,
+  recovery BLOB,
+  recovery_ed BLOB NOT NULL,
+  received_ms INTEGER NOT NULL,
+  PRIMARY KEY (account_id, epoch)
+);
+CREATE INDEX security_states_recovery ON security_states(recovery_ed);
+CREATE TABLE security_recovery (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES accounts(id),
+  request BLOB NOT NULL,
+  state BLOB NOT NULL,
+  received_ms INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX security_recovery_account ON security_recovery(account_id);
+ALTER TABLE sessions ADD COLUMN key_content_epoch INTEGER NOT NULL DEFAULT 0;
+UPDATE accounts SET security_genesis = NULL;
+UPDATE pairing_admissions SET canceled_ms = CAST(strftime('%s','now') AS INTEGER)*1000
+ WHERE used_ms = 0 AND canceled_ms = 0;
+PRAGMA user_version = 6;
+COMMIT;
+```
+
+Clearing `security_genesis` discards the protocol 9 pin. Every account on the relay has to pin the protocol 10 genesis before it can use remote control.
+
+2. Stop each retained daemon and make a private backup of its local state. After the backup, delete the protocol 9 security files (`security-v2.db` and, on the old authority computer, `authority-v2.db`); keep `account.json`, sessions, queues, images and settings. Write `3` to the `state-generation` file, preserving owner-only permissions. The new daemon refuses generation 2 and never converts the old security state. Protocol 9 content keys are not imported: if you need protocol 9 history, read it with the old version or keep the old state backup, because the protocol 10 daemon cannot open it. Protocol 8 and earlier history still needs the account root.
+
+3. Install all new programs. For an existing account, keep the relay stopped and pin offline in step 5. For a fresh relay with no account, start it now; the phone creates the account and pins over the network. It does not accept protocol 9 clients.
+
+4. On the Android phone, update the app and choose to rebuild the security domain and become the authority. It keeps the existing account root and Ed25519 device identity, discards the protocol 9 security state, and generates the authority key, a new recovery code and the genesis state (the phone is the only member). Save the recovery code offline; the app shows it once and does not keep it. The code only signs a recovery statement: a new phone will not decrypt content from before the recovery. Retained computers re-publish their current session metadata, session keys and current-state snapshots under the new content key, so live sessions reappear; older history stays on devices that already had it.
+
+5. Pin the genesis. An existing account must be pinned offline before the relay starts: old device tokens are still in the database and could otherwise race the phone to the first pin. A newly created account has no earlier tokens, so the phone may pin over the network. Export the public genesis from the app to `public-genesis.bin`, transfer it over a trusted channel, and run this with the relay stopped:
 
 ```sql
 .bail on
 BEGIN IMMEDIATE;
 CREATE TEMP TABLE pin_check(n INTEGER CHECK (n = 1));
 UPDATE accounts SET security_genesis=readfile('public-genesis.bin')
- WHERE id='PUBLIC_ACCOUNT_ID' AND security_genesis IS NULL
- AND length(readfile('public-genesis.bin')) > 0;
+ WHERE id='PUBLIC_ACCOUNT_ID' AND length(readfile('public-genesis.bin')) > 0;
 INSERT INTO temp.pin_check VALUES (changes());
 COMMIT;
 ```
 
-Run it as a file, `sqlite3 remote-agent.db < pin.sql`: `.bail on` stops at the check and the open transaction is rolled back unless exactly one unpinned account matched a non-empty file. Never overwrite an existing pin; compare `shasum -a 256 public-genesis.bin` on both ends over the trusted channel, and verify the file came from the chosen trusted computer, not from a relay/device listing. Repeat for each existing account before reopening the relay. Only then start the relay and authority daemon. **Skipping offline pinning allows a still-registered legacy machine to claim the relay domain first and delete relay data using its own fake completions.** Network first-pin is only for a freshly created account with no other enrolled machines; it is not an existing-account migration procedure.
-4. Run `remote-agent account pair` on the authority. Other retained computers use `remote-agent account security-enroll --server https://relay.example.com --code CODE`; existing browsers and apps choose the security binding setup. Compare all four symbols: confirm on the candidate first, then allow on the initiating device. This retains the existing Ed25519 identity and history while adding an independent exchange key and pinned domain. Only then start that computer's new daemon.
-5. Check every retained identity, directory and history, then exercise a remote command and removal. Old relay registrations that never joined the new domain are not trusted members. They cannot obtain new domain authorization, but should be cleaned up offline as described below. Use normal client removal for domain members; deleting a server row is not cryptographic revocation.
+Run it as a file, `sqlite3 remote-agent.db < pin.sql`: `.bail on` stops at the check and the open transaction is rolled back unless exactly one account matched a non-empty file. Compare `shasum -a 256 public-genesis.bin` on both ends over the trusted channel and verify the file came from the phone, not from a relay or device listing. Repeat for each existing account, then start the relay if it is still stopped; with network pinning it is already running. Skipping offline pinning makes the first pin depend on the relay; the phone still holds the only signing key, so a malicious relay can refuse or misdirect setup but cannot forge a genesis.
 
-**Manual cleanup of old registrations:** only remove exact public device IDs confirmed as unwanted and never enrolled in the new domain. With the relay stopped, use one transaction to insert their ID, account ID and current millisecond timestamp into `revoked_devices`; delete matching account/device rows from `tokens`, `push_subs`, `fcm_targets` and `devices`. For a machine, first delete its session `events`, then its `images`, `sessions` and `machines`; recompute the account's `event_bytes` from remaining event envelopes. Cancel all unused `pairing_admissions` for that account. Consult `internal/server/store.go` for the schema. Preserve other accounts, retained devices, tombstones and `security_genesis`. Restoring an old backup restores old permissions. This is honest-relay access cleanup, not a substitute for domain key rotation and executor acknowledgements.
+6. On each retained computer, run `remote-agent account join --server https://relay.example.com --code CODE` with the code shown by the phone. Existing browsers and apps choose to pair again. Compare all four symbols: confirm on the candidate first, then allow on the phone. Re-pairing keeps the Ed25519 identity and replaces the exchange key; start that computer's new daemon only after joining. Remove the migration backup after verification: restoring it restores old permissions.
 
-The authority computer cannot be removed normally. Authority handoff and root-only recovery are not implemented. If its local security state is lost, stop; do not erase pins and reconstruct trust from the relay. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. New enrollment requires the authority online. An offline retained computer keeps removal pending until it installs the fence automatically; browsers and phones do not require individual user approval. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.
+Old protocol 9 registrations that are not paired again are not members. After the genesis exists, the relay checks every logged-in device against the signed member list and refuses anything else, so a leftover row or bearer token cannot read the account or upload state. Delete those rows offline if you want the device list clean; re-pairing replaces a retained device's row. The protocol 10 authority phone cannot be removed normally: it has no second authority and no immediate handoff. A new phone takes over through the recovery code after 48 hours, during which the old phone can veto. It cannot decrypt content from before the recovery; retained computers keep the history they already hold and re-publish current-state session snapshots under the new key. Open the app at least once every 72 hours to keep remote control; after that, viewing continues but control pauses until the phone renews the lease. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.

@@ -52,7 +52,7 @@ RA_SIGNUP=open          # 任何人都能建账户，需要完成一次工作量
 RA_MAX_ACCOUNTS=100     # 这台中继最多容纳的账户数
 ```
 
-然后执行 `docker compose up -d`（需要 v0.41.0 及以后的 `compose.yaml`，它会把这些设置传给中继）。开放注册后，`remote-agent account init` 不需要 setup token 就能建账户：电脑花一秒左右完成工作量证明，同一个地址每小时只能建几个账户。这样建的账户使用试用额度：8 台设备、2 台电脑、200 个会话、256 MB 事件；用 setup token 建的账户可以有 32 台设备、16 台电脑。中继每分钟检查一次磁盘剩余空间；低于 2 GB 期间，所有账户都不能再添加设备、会话、事件、图片或设置，直到腾出空间。
+然后执行 `docker compose up -d`（需要 v0.41.0 及以后的 `compose.yaml`，它会把这些设置传给中继）。开放注册后，在 Android App 里建账户不需要 setup token：手机花一秒左右完成工作量证明，同一个地址每小时只能建几个账户。这样建的账户使用试用额度：8 台设备、2 台电脑、200 个会话、256 MB 事件；用 setup token 建的账户可以有 32 台设备、16 台电脑。中继每分钟检查一次磁盘剩余空间；低于 2 GB 期间，所有账户都不能再添加设备、会话、事件、图片或设置，直到腾出空间。
 
 中继按 Caddy 报告的地址计数，自带的 `compose.yaml` 已经用 `RA_TRUSTED_PROXIES` 配好。如果放在你自己的反向代理后面，把 `RA_TRUSTED_PROXIES` 设成代理所在的地址段，否则所有账户看起来都来自代理这一个地址。
 
@@ -105,10 +105,10 @@ remote-agent-service install
 
 让 daemon 在后台运行，并在每次登录时自动启动（macOS 用 launchd，Linux 用 systemd 用户服务）。日常用 `remote-agent-service status | log | restart | stop | uninstall` 管理。重启 daemon 不会打断 tmux 里正在运行的会话。
 
-把电脑连到你的中继，过程中会要求输入中继 `.env` 里的 setup token：
+等手机建好账户后，再把电脑连到中继。手机显示配对码：
 
 ```sh
-remote-agent account init --server https://ra.example.com
+remote-agent account join --server https://ra.example.com --code 1234 5678
 ```
 
 - 从手机或网页新开的会话由你自己的登录 shell 启动（加载 `.zshrc`、`.profile` 等），环境每次现算：升级 nvm、装新命令、`codex`/`claude` 换了位置都在下一个会话生效，不用重新安装服务。
@@ -116,22 +116,19 @@ remote-agent account init --server https://ra.example.com
 - 升级 Codex 或 Claude Code 之后运行 `remote-agent doctor`，检查它和 remote-agent 是否仍然配合正常。它会启动一个很短的真实会话，所以会用掉一点模型额度。
 - 后台服务记住的是安装它时那个 shell 的 `PATH`，daemon 自己据此找 `codex`/`claude`（`doctor` 用它，版本检查跟着会话实际跑的那个）。从终端开的会话跑的是那个终端的 `PATH` 里找到的 CLI，找不到就不启动。`tmux` 换了位置，或想让 daemon 找到另一个 `codex`/`claude`，就重新运行一次 `remote-agent-service install`。
 - Linux 上，用户服务在你退出登录后会停止，除非打开 lingering：`loginctl enable-linger "$USER"`。
-- `~/.remote-agent/account.json` 保存着这台电脑的密钥。请妥善保管；如果加入账户的所有设备都丢了，中继上的数据就无法解密。
+- `~/.remote-agent/account.json` 保存着这台电脑的密钥。请妥善保管；丢掉所有设备和恢复码后，中继上的数据就无法解密。
 - Codex 第一次在某个目录启动时会问是否信任该目录，需要在终端里回答。
 
 ## 4. 手机和其他设备
 
-在电脑上：
+先从[最新 Release](https://github.com/Lewin671/remote-agent/releases/latest) 安装 Android APK。在 App 里在这个中继上建账户（会要求输入 setup token），并保存只显示一次的恢复码。手机是这个账户的管理端：只有它能添加和删除设备、续租约和恢复账户。
 
-```sh
-remote-agent account pair --web https://app.example.com
-```
-
-它会显示二维码、链接和配对码。
-
-- **网页：** 扫二维码或打开链接，确认两边显示的 emoji 相同。在浏览器菜单里把页面安装成应用，就有主屏幕图标和 Web Push 通知。
-- **Android：** 从[最新 Release](https://github.com/Lewin671/remote-agent/releases/latest) 安装 APK，打开后扫同一个二维码。以后*在 App 里*添加设备时，如果中继是 `ra.<你的域名>`，二维码会指向 `app.<你的域名>`，否则指向中继本身；用了别的命名时，请像上面那样从电脑上配对。App 内含 Google 的 Firebase 推送库，即使你的中继不发推送，它也可能连接 Google 注册推送。
-- **另一台电脑：** 在那台电脑上装好 daemon，然后 `remote-agent account join --server https://ra.example.com --code <配对码>`。
+- **电脑：** 运行 `remote-agent account join --server https://ra.example.com --code <手机上的配对码>`；运行中的 daemon 会在几秒内连上。两边核对四个图案：候选设备先确认，手机再允许。
+- **网页：** 打开 `https://app.example.com`，选择加入流程，输入配对码或扫手机上的二维码。在浏览器里核对同样的四个图案，再在手机上允许。在浏览器菜单里把页面安装成应用，就有主屏幕图标和 Web Push 通知。
+- **iOS：** 用同样的方式加入；它只是普通客户端，不能管理账户。
+- **以后再加设备：** 打开手机的设备页，点添加设备。二维码和配对码都来自手机，不再从电脑上发起。
+- **删除：** 只能在手机的设备页操作；网页和电脑只提示去手机上删除。
+- **租约：** 至少每 72 小时打开一次 App。租约过期后远程控制暂停，聊天、历史和终端查看继续可用，手机续期后恢复。
 
 现在启动一个会话，它会出现在所有设备上：
 
@@ -141,11 +138,11 @@ remote-agent codex      # 或者：remote-agent claude
 ```
 
 > [!CAUTION]
-> `remote-agent account secret` 打印旧格式历史的 root 解密材料，不包含管理端密钥或当前成员时期密钥。只离线保管；它不能授权新设备加入。新增设备请走配对，不要把密钥贴进 issue 或聊天里。
+> `remote-agent account secret` 打印旧格式历史的 root 解密材料，不包含管理端密钥或恢复码。只离线保管；它不能授权新设备加入，也不能恢复管理权。新增设备请在 App 里配对，不要把密钥贴进 issue 或聊天里。
 
 ## 升级
 
-协议 9 还需执行[安全域升级](#升级设备安全域协议-9)。格式 3 的中继在重启新版前，先执行[协议 8 的设备加入授权数据库升级](#升级设备加入授权协议-8)。更早的单账户数据库先按[升级到 v0.41.0](#升级到-v0410) 转成格式 3，再完成上述升级。
+协议 10 还需执行[升级到手机管理端](#升级到手机管理端协议-10)。格式 3 的中继在重启新版前，先执行[协议 8 的设备加入授权数据库升级](#升级设备加入授权协议-8)，再做协议 10 的格式 5→6 升级。更早的单账户数据库先按[升级到 v0.41.0](#升级到-v0410) 转成格式 3，再完成上述升级。
 
 所有部分升级到同一个版本，并先读发布说明：1.0 之前，某个版本可能要求各部分一起升级，或者重建存储的数据。
 
@@ -228,10 +225,10 @@ docker compose exec remote-agent-server /remote-agent-server admin -db /data/rem
 |---|---|
 | 网页能登录但一直「未连接」 | 广告拦截扩展挡住了 WebSocket。把网页和中继放在同一个注册域名下，或在扩展里放行中继的域名。 |
 | 网页完全连不上中继 | 网页地址没有写进 `ALLOWED_ORIGINS`，或者改完 `.env` 后没有重启中继。 |
-| `account init` 提示需要有效的 setup token | 输入的 token 和中继 `.env` 里的 `RA_SETUP_TOKEN` 不一致。 |
-| 中继启动后退出，提示格式 3 / 格式 4 / 格式 5 | 按[安全域升级](#升级设备安全域协议-9)核对当前格式并逐步执行一次性 SQL。 |
+| App 提示需要有效的 setup token | 输入的 token 和中继 `.env` 里的 `RA_SETUP_TOKEN` 不一致。 |
+| 中继启动后退出，提示格式 3 / 格式 4 / 格式 5 / 格式 6 | 按[设备加入授权升级](#升级设备加入授权协议-8)和[手机管理端升级](#升级到手机管理端协议-10)核对当前格式并逐步执行一次性 SQL。 |
 | 中继启动后退出，提示数据库是单账户中继的格式 | 按[升级到 v0.41.0](#升级到-v0410) 迁移数据库。 |
-| `account init` 提示中继没有空间容纳另一个账户 | 这台中继已经有它的账户了。用 `account pair` / `account join` 加入它，或者让它容纳更多账户（见[向他人开放中继](#向他人开放中继)）。 |
+| App 提示中继没有空间容纳另一个账户 | 这台中继已经有它的账户了。在 App 里建账户，或者让它容纳更多账户（见[向他人开放中继](#向他人开放中继)）。 |
 | 客户端提示需要更新 | 它的协议版本和 daemon 的不一样。把所有部分升级到同一个版本。 |
 | Android App 收不到通知 | 在自己的中继上是预期行为，见 [README](../README.zh-CN.md#现状与限制) 里的限制。 |
 
@@ -262,14 +259,14 @@ PRAGMA user_version = 4;
 COMMIT;
 ```
 
-这只是格式 3→4 的中间步骤；继续完成下面的协议 9 / 格式 5 升级后才启动当前版本。验收后按自己的保留策略删除迁移备份：整库恢复也会恢复旧设备权限。这段 SQL 不需要账户根密钥或设备私钥。
+这只是格式 3→4 的中间步骤；继续完成下面的协议 10 格式 5→6 升级后才启动当前版本。验收后按自己的保留策略删除迁移备份：整库恢复也会恢复旧设备权限。这段 SQL 不需要账户根密钥或设备私钥。
 
 
-## 升级设备安全域（协议 9）
+## 升级到手机管理端（协议 10）
 
-本版要求中继数据库格式 5、daemon 状态代数 2；不自动安装，不自动转换旧数据。先暂停所有旧 daemon 和客户端的远程活动，再整体升级，不能只换中继：恶意中继仍可和旧执行程序通信。保留账户文件、设备身份和历史；不要运行 `account secret`、导出私钥或把状态目录交给中继。
+本版要求中继数据库格式 6、daemon 状态代数 3；不自动安装，不自动转换旧数据。先暂停所有旧 daemon 和客户端，再整体升级：不同协议版本会互相拒绝，只换中继的话恶意中继仍可和旧执行程序通信。作为管理端的 Android 手机必须在升级前已经是账户成员：先用当前协议 9 的版本把它配对进来。协议 10 不能把一个从未加入过的手机变成管理端；没有这样一台手机的账户只能重建，旧数据不迁移。不要运行 `account secret`、导出私钥或把状态目录交给中继。
 
-1. 停止中继，在权限受限的位置备份数据；确认 SQLite 的 `PRAGMA user_version`。格式 3 先执行上面的格式 3→4 SQL（不启动旧版），格式 4 才执行下面的 SQL。其他格式停止处理。
+1. 停止中继，在权限受限的位置备份数据；确认 SQLite 的 `PRAGMA user_version`。按顺序一路做到格式 6：格式 3 执行上面的 3→4 SQL，格式 4 执行下面的 4→5 SQL，格式 5 再执行 5→6 SQL。每一步只执行一次。
 
 ```sql
 BEGIN IMMEDIATE;
@@ -280,24 +277,56 @@ PRAGMA user_version = 5;
 COMMIT;
 ```
 
-2. 在每台保留电脑停止后台 daemon，给本地状态做权限受限备份。在确认现有 `state-generation` 为 `1` 后，将该文件手工改为 `2`（保留 owner-only 权限）；没有代数标记的更早安装先核实其格式，不能盲目写入标记。保留 `account.json`、会话、队列、图片和设置，不复制其他机器的安全数据库。新版会新建安全状态，不转换旧受理日志；旧协议远程指令不会被接纳。
-3. 安装全部新版程序。选定一台可信、通常在线的电脑作为固定管理端，在原账户下运行 `remote-agent account security-init`，保持 daemon 停止，不要在多台电脑重复初始化。运行 `remote-agent account security-genesis --output public-genesis.bin`，通过可信渠道把这个**仅含公开签名状态**的文件交给中继管理员。在中继监听网络前，用 SQLite CLI 将其固定到准确的公开账户 ID（用 `account status` 的 `account-id` 核对）：
+```sql
+BEGIN IMMEDIATE;
+CREATE TABLE security_states (
+  account_id TEXT NOT NULL REFERENCES accounts(id),
+  epoch INTEGER NOT NULL,
+  state BLOB NOT NULL,
+  recovery BLOB,
+  recovery_ed BLOB NOT NULL,
+  received_ms INTEGER NOT NULL,
+  PRIMARY KEY (account_id, epoch)
+);
+CREATE INDEX security_states_recovery ON security_states(recovery_ed);
+CREATE TABLE security_recovery (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES accounts(id),
+  request BLOB NOT NULL,
+  state BLOB NOT NULL,
+  received_ms INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX security_recovery_account ON security_recovery(account_id);
+ALTER TABLE sessions ADD COLUMN key_content_epoch INTEGER NOT NULL DEFAULT 0;
+UPDATE accounts SET security_genesis = NULL;
+UPDATE pairing_admissions SET canceled_ms = CAST(strftime('%s','now') AS INTEGER)*1000
+ WHERE used_ms = 0 AND canceled_ms = 0;
+PRAGMA user_version = 6;
+COMMIT;
+```
+
+清空 `security_genesis` 就是丢弃协议 9 的固定值。中继上每个账户都要在能用远程控制前重新钉住协议 10 的创世状态。
+
+2. 在每台保留电脑停止后台 daemon，给本地状态做权限受限备份。备份后删掉协议 9 的安全文件（`security-v2.db`，旧管理电脑上还有 `authority-v2.db`）；保留 `account.json`、会话、队列、图片和设置。把 `state-generation` 写成 `3`，保留 owner-only 权限。新版 daemon 拒绝代数 2，也不转换旧安全状态。协议 9 的内容密钥不会导入：需要协议 9 的历史就先用旧版本读，或保留旧状态备份，协议 10 的 daemon 打不开它。协议 8 及更早的历史仍需要账户根密钥。
+
+3. 安装全部新版程序。已有账户先不要启动中继，在第 5 步离线固定。全新的、还没有账户的中继可以现在启动，由手机建账户并联网固定。它不再接受协议 9 客户端。
+
+4. 在 Android 手机上更新 App，选择重建安全域并成为管理端。它保留原账户根密钥和 Ed25519 设备身份，丢弃协议 9 的安全状态，生成管理端密钥、新恢复码和创世状态（手机是唯一成员）。恢复码只显示一次、App 不保存，请离线记下。恢复码只签恢复声明：新手机读不到恢复前的内容。保留电脑会用新内容密钥重新发布当前的会话元数据、会话密钥和当前状态快照，所以还在进行的会话能看到；更早的历史留在原来有密钥的设备上。
+
+5. 钉住创世状态。已有账户要在中继停服时离线固定：旧设备的 token 还在数据库里，否则可能和手机抢第一次固定。新建账户没有更早的 token，可以由手机联网钉住。从 App 导出公开创世状态到 `public-genesis.bin`，通过可信渠道传回，在中继停服时执行：
 
 ```sql
 .bail on
 BEGIN IMMEDIATE;
 CREATE TEMP TABLE pin_check(n INTEGER CHECK (n = 1));
 UPDATE accounts SET security_genesis=readfile('public-genesis.bin')
- WHERE id='PUBLIC_ACCOUNT_ID' AND security_genesis IS NULL
- AND length(readfile('public-genesis.bin')) > 0;
+ WHERE id='PUBLIC_ACCOUNT_ID' AND length(readfile('public-genesis.bin')) > 0;
 INSERT INTO temp.pin_check VALUES (changes());
 COMMIT;
 ```
 
-把它存成文件后用 `sqlite3 remote-agent.db < pin.sql` 执行：除非恰好有一个尚未固定的账户匹配且文件非空，`.bail on` 会在检查处停止，未提交的事务随之回滚。不能覆盖已有固定值；通过可信渠道比对两端 `shasum -a 256 public-genesis.bin` 的结果，核实文件来自选定的可信电脑，不能从中继或设备列表取得。所有已有账户完成后才重开中继，再启动管理端 daemon。**跳过离线固定会允许仍有登记的旧机器抢先建立假的中继安全域，并用伪造域的完成证明删除中继数据。** 网络首次固定只适用于没有其他机器的新建账户，不能用于旧账户迁移。
-4. 管理端运行 `remote-agent account pair`；每台保留电脑用 `remote-agent account security-enroll --server https://relay.example.com --code CODE`，浏览器与 App 选择“建立安全绑定”。两端核对四个图案：候选设备先确认，发起方再允许。首次绑定保留旧 Ed25519 身份和历史，只增加独立交换密钥与安全域固定；之后才启动该电脑的新版 daemon。
-5. 核对所有保留设备的身份、目录和历史，进行一次远程操作与删除测试。未纳入新安全域的旧中继登记不会显示为可信成员；它们不能取得新域授权，但仍应在停服状态下由管理员清除旧登记、token 和推送（下面给出操作范围）。新域内的设备只能用 App/网页的正常删除，不能通过直接删服务端行来假报加密撤销。
+把它存成文件后用 `sqlite3 remote-agent.db < pin.sql` 执行：除非恰好有一个账户匹配且文件非空，`.bail on` 会在检查处停止，未提交的事务随之回滚。通过可信渠道比对两端 `shasum -a 256 public-genesis.bin` 的结果，核实文件来自那台手机，不能从中继或设备列表取得。所有已有账户完成后，如果中继还停着就启动它；联网固定时它已经在运行。跳过离线固定会让第一次固定依赖中继；签名密钥仍只在手机上，恶意中继可以拒绝或误导设置，但造不出创世状态。
 
-**旧登记的手动清理**：只对已经确认不保留、且从未加入新安全域的公开设备 ID 操作。中继停服后，在同一事务中向 `revoked_devices` 写入 ID、account_id 和当前毫秒时间，再按这两个 ID 精确删除 `tokens`、`push_subs`、`fcm_targets` 和 `devices` 中的行；机器还需先按它的会话 ID 删除 `events`，再删其 `images`、`sessions` 和 `machines`，最后按剩余事件重新计算该账户的 `event_bytes`。同时取消该账户全部未消费的 `pairing_admissions`。表结构以 `internal/server/store.go` 为准。不要删除其他账户、保留设备、墓碑或 `security_genesis`；不要把备份恢复成旧权限。清理仅维护诚实中继的访问控制，不能代替新域密钥轮换和执行端确认。
+6. 每台保留电脑用手机上的配对码运行 `remote-agent account join --server https://relay.example.com --code CODE`；已有的浏览器和 App 选择重新配对。两端核对四个图案：候选设备先确认，手机再允许。重新配对保留 Ed25519 身份、换新的交换密钥；加入后才启动这台电脑的新 daemon。验收后删除迁移备份：恢复它会恢复旧权限。
 
-管理电脑不能普通移除；没有管理权转交或仅凭 root 恢复的入口。其本地安全状态丢失时停止操作，不能清除固定信息并从中继重建。备份包含解密材料与权限状态，应限制访问；验收后按自己的策略处理。新加入设备需在线管理端。删除过程中保留电脑离线时保持待完成，重新联网后后台安装隔离，不需逐台点击。旧历史显示未验证，当前审批以电脑的新鲜快照为准。
+没有重新配对的旧协议 9 登记不是成员。创世状态建立后，中继在每次鉴权时按签名成员表核对，残留的设备行或 bearer token 既读不到账户也不能上传状态。要清理设备列表可以离线删掉这些行；保留设备重新配对时会替换原来的行。协议 10 的管理端手机不能普通移除，也没有第二管理端或即时转交；新手机用恢复码在 48 小时后接管，期间旧手机可以否决；它读不到恢复前的内容，保留电脑保有自己已经拿到的历史，并会用新密钥重新发布当前状态会话快照。至少每 72 小时打开一次 App 才能保持远程控制；过期后查看继续，控制暂停到手机续期。备份包含解密材料与权限状态，应限制访问；验收后按自己的策略处理。旧历史显示未验证，当前审批以电脑的新鲜快照为准。
