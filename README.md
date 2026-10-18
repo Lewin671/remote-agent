@@ -9,20 +9,22 @@ Native CLI sessions in tmux · End-to-end encrypted · Self-hosted
 [![Latest release](https://img.shields.io/github/v/release/Lewin671/remote-agent?label=release&color=1a7f37)](https://github.com/Lewin671/remote-agent/releases/latest)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 ![Daemon](https://img.shields.io/badge/daemon-macOS%20%7C%20Linux-555)
-![Clients](https://img.shields.io/badge/clients-Web%20%7C%20Android-555)
+![Clients](https://img.shields.io/badge/clients-Web%20%7C%20Android%20%7C%20iOS-555)
 
 English · [简体中文](README.zh-CN.md)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
-  <img src="docs/assets/architecture-light.svg" alt="Your devices reach your computer through a relay that only sees ciphertext" width="880">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/demo-dark.svg">
+  <img src="docs/assets/demo-light.svg" alt="Animated demo: Claude Code in tmux on a computer asks to run go test; the request crosses the relay as ciphertext; it is approved on the phone; the same session continues; the next message is sent from the phone." width="960">
 </picture>
 
 </div>
 
+**In one loop:** ① you start `remote-agent claude` (or `codex`) on your computer as usual → ② when the agent asks for permission, the request is encrypted on your computer and the relay forwards only ciphertext → ③ you tap **Allow** on your phone → ④ the very same tmux session carries on → ⑤ you send the next message from wherever you are.
+
 ## Overview
 
-remote-agent lets you leave your desk without leaving your coding agent. You start Codex or Claude Code on your computer as usual; the same session is then available on your phone or in a browser, where you can follow its progress, send the next message, answer its questions, approve or deny permission requests, interrupt it, or open the live terminal.
+remote-agent lets you leave your desk without leaving your coding agent. You start Codex or Claude Code on your computer as usual; the same session is then available on your phone (Android or iOS) or in a browser, where you can follow its progress, send the next message, answer its questions, approve or deny permission requests, interrupt it, or open the live terminal.
 
 | | |
 |---|---|
@@ -36,12 +38,20 @@ remote-agent lets you leave your desk without leaving your coding agent. You sta
 
 ## How it works
 
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
+  <img src="docs/assets/architecture-light.svg" alt="Your devices — web app, Android app, iOS app — reach your computer through a relay that only sees ciphertext" width="880">
+</picture>
+</p>
+
 | Component | Runs on | Role |
 |---|---|---|
 | **Daemon** (`remote-agent`) | Each computer with your code — macOS or Linux | Hosts agent sessions in tmux, reads their transcripts, relays approvals through CLI hooks, injects input. The same binary is the command-line interface. |
 | **Relay** (`remote-agent-server`) | A Linux server you control | Authenticates devices, stores and forwards ciphertext, sends push notifications. Cannot read content. |
 | **Web client** | Any static HTTPS host | Installable PWA: conversation view, live terminal, approvals, Web Push. |
 | **Android app** | Android 8.0 or later | Native client with a native terminal and approvals from the notification. |
+| **iOS app** (preview) | iPhone and iPad, iOS 17 or later | Native SwiftUI client with a native terminal, approvals and images. Not distributed yet — see [Status and limitations](#status-and-limitations). |
 
 Every device holds the account key; the relay holds none. Devices join an account by scanning a QR code or entering a pairing code, and both sides confirm a short emoji sequence before keys are exchanged.
 
@@ -159,7 +169,7 @@ The Android app is always signed with the same key. Its certificate's SHA-256 fi
 - **Pre-1.0.** Components of different versions are not guaranteed to interoperate, and stored data may have to be recreated between releases. Upgrade the daemon, relay, web client and app together, and read the release notes first.
 - **One person per account.** An account has no teams, sharing or roles: every device in it holds the same key. A relay can host many accounts, which see nothing of each other; your own relay holds just yours unless you [open it to others](docs/self-hosting.md#opening-the-relay-to-others).
 - **No Android push notifications on a self-hosted relay.** The published app receives pushes only through the maintainer's Firebase project. It works normally while open; for notifications on your own relay, use the web client, which supports Web Push everywhere. To use your own Firebase project, build the app from source.
-- **No iOS app yet.** A native client is in development; until then, open the web client in Safari and add it to the Home Screen.
+- **The iOS app is a preview.** The native client in [`ios/`](ios) covers conversations, the terminal, approvals and images, but has no App Store or TestFlight build and no push notifications yet, and so far it has been tested only in the simulator. Build it from source with Xcode ([iOS client notes](docs/ios-client.md), in Chinese), or open the web client in Safari and add it to the Home Screen.
 - **No support guarantee.** Bug reports are welcome in [Issues](https://github.com/Lewin671/remote-agent/issues). Never paste account secrets, setup tokens, pairing links, or unredacted logs.
 
 ## Development

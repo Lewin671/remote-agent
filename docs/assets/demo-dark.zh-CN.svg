@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="960" height="470" role="img" aria-label="动画演示：电脑上 tmux 里的 Claude Code 请求执行 go test；请求以密文经过中继；在手机上点允许；同一个会话接着运行；再从手机发出下一条消息。">
+<title>动画演示：电脑上 tmux 里的 Claude Code 请求执行 go test；请求以密文经过中继；在手机上点允许；同一个会话接着运行；再从手机发出下一条消息。</title>
+<style>
+svg{fill:#e8eaed}
+text{font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Helvetica, Arial, sans-serif}
+.h{font-size:15px;font-weight:600}
+.t{font-size:15px}
+.b{font-size:13px}
+.s{font-size:12px;fill:#a0a7af}
+.x{font-size:11px;fill:#a0a7af}
+.c{font-size:16px;font-weight:500}
+.m{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "PingFang SC", monospace;font-size:12.5px}
+.a{animation-duration:16.0s;animation-iteration-count:infinite;animation-timing-function:linear}
+.p{transform-box:fill-box;transform-origin:center}
+.cover{transform-box:fill-box;transform-origin:right}
+.blink{animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@keyframes k1{0%{opacity:0}1.875%{opacity:0}3.438%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k2{0%{opacity:0}5.000%{opacity:0}6.562%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k3{0%{opacity:0}8.750%{opacity:0}10.312%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k4{0%{opacity:0}13.750%{opacity:0}15.313%{opacity:1}47.500%{opacity:1}49.062%{opacity:0}100%{opacity:0}}
+@keyframes k5{0%{opacity:0}48.438%{opacity:0}50.000%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k6{0%{opacity:0}51.250%{opacity:0}52.812%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k7{0%{opacity:0}55.625%{opacity:0}57.188%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k8{0%{opacity:0}80.000%{opacity:0}81.562%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k9{0%{opacity:0}83.750%{opacity:0}85.312%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k10{0%{opacity:0;transform:translateX(384px)}15.625%{opacity:0;transform:translateX(384px)}15.937%{opacity:1;transform:translateX(384px)}19.375%{opacity:1;transform:translateX(530px)}21.250%{opacity:1;transform:translateX(530px)}24.375%{opacity:1;transform:translateX(676px)}25.000%{opacity:0;transform:translateX(676px)}100%{opacity:0;transform:translateX(676px)}}
+@keyframes k11{0%{opacity:0}18.125%{opacity:0}19.688%{opacity:1}22.500%{opacity:1}24.062%{opacity:0}100%{opacity:0}}
+@keyframes k12{0%{opacity:0;transform:translateX(676px)}40.000%{opacity:0;transform:translateX(676px)}40.312%{opacity:1;transform:translateX(676px)}43.125%{opacity:1;transform:translateX(530px)}44.375%{opacity:1;transform:translateX(530px)}47.500%{opacity:1;transform:translateX(384px)}48.125%{opacity:0;transform:translateX(384px)}100%{opacity:0;transform:translateX(384px)}}
+@keyframes k13{0%{opacity:0}42.500%{opacity:0}44.062%{opacity:1}45.625%{opacity:1}47.188%{opacity:0}100%{opacity:0}}
+@keyframes k14{0%{opacity:0;transform:translateX(676px)}71.875%{opacity:0;transform:translateX(676px)}72.188%{opacity:1;transform:translateX(676px)}75.000%{opacity:1;transform:translateX(530px)}76.250%{opacity:1;transform:translateX(530px)}79.375%{opacity:1;transform:translateX(384px)}80.000%{opacity:0;transform:translateX(384px)}100%{opacity:0;transform:translateX(384px)}}
+@keyframes k15{0%{opacity:0}74.375%{opacity:0}75.938%{opacity:1}77.500%{opacity:1}79.062%{opacity:0}100%{opacity:0}}
+@keyframes k16{0%{opacity:0}1.875%{opacity:0}3.438%{opacity:1}25.000%{opacity:1}26.562%{opacity:0}100%{opacity:0}}
+@keyframes k17{0%{opacity:0}25.000%{opacity:0}26.562%{opacity:1}39.375%{opacity:1}40.938%{opacity:0}100%{opacity:0}}
+@keyframes k18{0%{opacity:0}39.375%{opacity:0}40.938%{opacity:1}58.125%{opacity:1}59.688%{opacity:0}100%{opacity:0}}
+@keyframes k19{0%{opacity:0}58.125%{opacity:0}59.688%{opacity:1}71.875%{opacity:1}73.438%{opacity:0}100%{opacity:0}}
+@keyframes k20{0%{opacity:0}71.875%{opacity:0}73.438%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k21{0%{opacity:0}7.500%{opacity:0}9.062%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k22{0%{opacity:0}11.250%{opacity:0}12.812%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k23{0%{opacity:0}39.375%{opacity:0}40.938%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k24{0%{opacity:0}58.125%{opacity:0}59.688%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k25{0%{opacity:0}71.250%{opacity:0}72.812%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k26{0%{opacity:0}25.000%{opacity:0}26.562%{opacity:1}39.375%{opacity:1}40.938%{opacity:0}100%{opacity:0}}
+@keyframes k27{0%{opacity:0;transform:scale(.4)}35.625%{opacity:0;transform:scale(.4)}35.938%{opacity:.55;transform:scale(.5)}39.062%{opacity:0;transform:scale(1.6)}100%{opacity:0;transform:scale(1.6)}}
+@keyframes k28{0%{opacity:0}0.000%{opacity:0}1.562%{opacity:1}63.125%{opacity:1}64.688%{opacity:0}71.250%{opacity:0}72.812%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@keyframes k29{0%{transform:scaleX(1)}63.750%{transform:scaleX(1)}68.125%{transform:scaleX(0)}100%{transform:scaleX(0)}}
+@keyframes k30{0%{opacity:0}63.125%{opacity:0}64.688%{opacity:1}71.250%{opacity:1}72.812%{opacity:0}100%{opacity:0}}
+@keyframes k31{0%{opacity:0;transform:scale(.4)}69.375%{opacity:0;transform:scale(.4)}69.688%{opacity:.55;transform:scale(.5)}72.812%{opacity:0;transform:scale(1.6)}100%{opacity:0;transform:scale(1.6)}}
+@keyframes k32{0%{opacity:0}0.000%{opacity:0}1.562%{opacity:1}13.750%{opacity:1}15.313%{opacity:0}100%{opacity:0}}
+@keyframes k33{0%{opacity:0}13.750%{opacity:0}15.313%{opacity:1}27.500%{opacity:1}29.063%{opacity:0}100%{opacity:0}}
+@keyframes k34{0%{opacity:0}27.500%{opacity:0}29.063%{opacity:1}46.250%{opacity:1}47.812%{opacity:0}100%{opacity:0}}
+@keyframes k35{0%{opacity:0}46.250%{opacity:0}47.812%{opacity:1}62.500%{opacity:1}64.062%{opacity:0}100%{opacity:0}}
+@keyframes k36{0%{opacity:0}62.500%{opacity:0}64.062%{opacity:1}95.625%{opacity:1}97.188%{opacity:0}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.a,.blink{animation:none!important}.tr{display:none}}
+
+</style>
+<rect width="960" height="470" rx="16" fill="#0d1117"/>
+<text class="h" x="20" y="26">你的电脑</text>
+<rect x="20" y="40" width="360" height="330" rx="10" fill="#0d1117" stroke="#30363d"/>
+<path d="M20 68H380" stroke="#30363d"/>
+<circle cx="38" cy="54" r="5" fill="#ff5f57"/>
+<circle cx="54" cy="54" r="5" fill="#febc2e"/>
+<circle cx="70" cy="54" r="5" fill="#28c840"/>
+<text class="m" x="200.0" y="58" text-anchor="middle" fill="#8b949e" font-size="11">tmux · ~/api</text>
+<g class="a" style="animation-name:k1"><text class="m" x="34" y="92" fill="#c9d1d9"><tspan fill="#7ee787">$</tspan> remote-agent claude</text></g>
+<g class="a" style="animation-name:k2"><text class="m" x="34" y="118" fill="#ffffff"><tspan fill="#8b949e">&gt;</tspan> 把 handler 拆到单独的包里</text></g>
+<g class="a" style="animation-name:k3"><text class="m" x="34" y="142" fill="#c9d1d9"><tspan fill="#d2a8ff">●</tspan> 编辑 5 个文件  +84 −61</text></g>
+<g class="a tr" style="animation-name:k4"><rect x="30" y="156" width="340" height="80" rx="6" fill="none" stroke="#f0a04b"/><text class="m" x="42" y="176" fill="#f0a04b" font-weight="600">Bash command</text><text class="m" x="42" y="196" fill="#ffffff">go test ./... -count=1</text><text class="m" x="42" y="222" fill="#c9d1d9">Do you want to proceed?  <tspan fill="#7ee787">❯ 1. Yes</tspan>  2. No</text></g>
+<g class="a" style="animation-name:k5"><text class="m" x="34" y="176" fill="#c9d1d9"><tspan fill="#7ee787">●</tspan> Bash(go test ./... -count=1)</text></g>
+<g class="a" style="animation-name:k6"><text class="m" x="34" y="198" fill="#8b949e"><tspan fill="#8b949e">  ⎿</tspan>  ok   api/internal/handler  0.42s</text></g>
+<g class="a" style="animation-name:k7"><text class="m" x="34" y="224" fill="#c9d1d9"><tspan fill="#d2a8ff">●</tspan> 测试全部通过。</text></g>
+<g class="a" style="animation-name:k8"><text class="m" x="34" y="254" fill="#ffffff"><tspan fill="#8b949e">&gt;</tspan> 再开个 PR</text></g>
+<g class="a" style="animation-name:k9"><text class="m" x="34" y="278" fill="#c9d1d9"><tspan fill="#d2a8ff">●</tspan> 正在新建分支并创建 PR…</text></g>
+<g class="blink tr"><rect x="34" y="340" width="8" height="14" fill="#c9d1d9"/></g>
+<path d="M384 210H476M584 210H676" stroke="#a0a7af" stroke-dasharray="3 5" stroke-width="1.5"/>
+<g class="a tr" style="animation-name:k10"><g transform="translate(0 210)"><rect x="-22" y="-11" width="44" height="22" rx="11" fill="#3fbf73"/><path d="M-5 -3v-3a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="1.8"/><rect x="-8" y="-3" width="16" height="11" rx="2" fill="#fff"/></g></g>
+<g class="a tr" style="animation-name:k11"><rect x="488" y="280" width="84" height="22" rx="6" fill="#272a2f"/><text class="m" x="530.0" y="295" text-anchor="middle" fill="#a0a7af" font-size="11">7f3a·c91e…</text></g>
+<g class="a tr" style="animation-name:k12"><g transform="translate(0 210)"><rect x="-22" y="-11" width="44" height="22" rx="11" fill="#3fbf73"/><path d="M-5 -3v-3a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="1.8"/><rect x="-8" y="-3" width="16" height="11" rx="2" fill="#fff"/></g></g>
+<g class="a tr" style="animation-name:k13"><rect x="488" y="280" width="84" height="22" rx="6" fill="#272a2f"/><text class="m" x="530.0" y="295" text-anchor="middle" fill="#a0a7af" font-size="11">e15d·9a07…</text></g>
+<g class="a tr" style="animation-name:k14"><g transform="translate(0 210)"><rect x="-22" y="-11" width="44" height="22" rx="11" fill="#3fbf73"/><path d="M-5 -3v-3a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="1.8"/><rect x="-8" y="-3" width="16" height="11" rx="2" fill="#fff"/></g></g>
+<g class="a tr" style="animation-name:k15"><rect x="488" y="280" width="84" height="22" rx="6" fill="#272a2f"/><text class="m" x="530.0" y="295" text-anchor="middle" fill="#a0a7af" font-size="11">b62e·58d1…</text></g>
+<rect x="480" y="150" width="100" height="120" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+<text class="h" x="530.0" y="178" text-anchor="middle">你的中继</text>
+<text class="s" x="530.0" y="198" text-anchor="middle">只看得到密文</text>
+<rect x="498" y="216" width="64" height="6" rx="3" fill="#2a2d32"/>
+<rect x="498" y="228" width="64" height="6" rx="3" fill="#2a2d32"/>
+<rect x="498" y="240" width="64" height="6" rx="3" fill="#2a2d32"/>
+<rect x="680" y="20" width="260" height="420" rx="34" fill="#17181b" stroke="#3a3d42" stroke-width="5"/>
+<text class="s" x="710" y="48" font-weight="600" fill="#e8eaed">9:41</text>
+<rect x="774.0" y="32" width="72" height="20" rx="10" fill="#3a3d42"/>
+<text class="t" x="810.0" y="80" text-anchor="middle" font-weight="600">重构 API 层</text>
+<g class="a tr" style="animation-name:k16"><circle cx="790.0" cy="95" r="3.5" fill="#7aa7ff"/><text class="s" x="797.5" y="99">运行中</text></g>
+<g class="a tr" style="animation-name:k17"><circle cx="784.0" cy="95" r="3.5" fill="#f0a04b"/><text class="s" x="791.5" y="99">等待审批</text></g>
+<g class="a tr" style="animation-name:k18"><circle cx="790.0" cy="95" r="3.5" fill="#7aa7ff"/><text class="s" x="797.5" y="99">运行中</text></g>
+<g class="a tr" style="animation-name:k19"><circle cx="796.0" cy="95" r="3.5" fill="#3fbf73"/><text class="s" x="803.5" y="99">空闲</text></g>
+<g class="a" style="animation-name:k20"><circle cx="790.0" cy="95" r="3.5" fill="#7aa7ff"/><text class="s" x="797.5" y="99">运行中</text></g>
+<path d="M683 112H937" stroke="#2a2d32"/>
+<g class="a" style="animation-name:k21"><rect x="733.99" y="126" width="190.01" height="30" rx="15" fill="rgba(90,145,255,.16)"/><text class="b" x="913" y="146" text-anchor="end">把 handler 拆到单独的包里</text><text class="x" x="918" y="171" text-anchor="end">MacBook 终端</text></g>
+<g class="a" style="animation-name:k22"><text class="m" x="696" y="200" fill="#c9ced4"><tspan fill="#3fbf73">✓</tspan> 编辑 5 个文件  +84 −61</text></g>
+<g class="a" style="animation-name:k23"><text class="m" x="696" y="226" fill="#c9ced4"><tspan fill="#3fbf73">✓</tspan> go test ./...  <tspan class="x" fill="#a0a7af">已允许</tspan></text></g>
+<g class="a" style="animation-name:k24"><text class="b" x="696" y="254">测试全部通过。</text></g>
+<g class="a" style="animation-name:k25"><rect x="840.33" y="276" width="83.67" height="30" rx="15" fill="rgba(90,145,255,.16)"/><text class="b" x="913" y="296" text-anchor="end">再开个 PR</text></g>
+<g class="a tr" style="animation-name:k26"><rect x="690" y="268" width="240" height="114" rx="14" fill="#1f2125" stroke="#2a2d32"/><circle cx="706" cy="288" r="4" fill="#f0a04b"/><text class="b" x="716" y="293" font-weight="600">请求执行</text><rect x="700" y="304" width="220" height="26" rx="6" fill="#17181b"/><text class="m" x="710" y="321" fill="#c9ced4">go test ./... -count=1</text><rect x="700" y="340" width="105.0" height="32" rx="10" fill="#272a2f"/><text class="b" x="752.5" y="361" text-anchor="middle" fill="#ff7b7b" font-weight="600">不允许</text><rect x="815.0" y="340" width="105.0" height="32" rx="10" fill="#2f6feb"/><text class="b" x="867.5" y="361" text-anchor="middle" fill="#fff" font-weight="600">允许</text></g>
+<g transform="translate(867.5 356)"><circle class="a tr p" r="22" fill="#7aa7ff" style="animation-name:k27"/></g>
+<rect x="692" y="382" width="236" height="38" rx="19" fill="#1f2125" stroke="#2a2d32"/>
+<g class="a" style="animation-name:k28"><text class="b" x="708" y="406" fill="#a0a7af">消息</text></g>
+<g class="a tr" style="animation-name:k30"><text class="b" x="708" y="406">再开个 PR</text><rect class="a cover" x="704" y="388" width="170" height="26" fill="#1f2125" style="animation-name:k29"/></g>
+<circle cx="908" cy="401" r="14" fill="#2f6feb"/><path d="M908 407V395M903 400L908 395L913 400" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(908 401)"><circle class="a tr p" r="20" fill="#7aa7ff" style="animation-name:k31"/></g>
+<g class="a tr" style="animation-name:k32"><circle cx="32" cy="406" r="12" fill="#2f6feb"/><text class="b" x="32" y="411" text-anchor="middle" fill="#fff" font-weight="600">1</text><text class="c" x="54" y="412">照常在电脑上启动 Codex 或 Claude Code</text></g>
+<g class="a tr" style="animation-name:k33"><circle cx="32" cy="406" r="12" fill="#2f6feb"/><text class="b" x="32" y="411" text-anchor="middle" fill="#fff" font-weight="600">2</text><text class="c" x="54" y="412">请求在电脑上加密，中继只转发密文</text></g>
+<g class="a tr" style="animation-name:k34"><circle cx="32" cy="406" r="12" fill="#2f6feb"/><text class="b" x="32" y="411" text-anchor="middle" fill="#fff" font-weight="600">3</text><text class="c" x="54" y="412">在手机上点「允许」</text></g>
+<g class="a tr" style="animation-name:k35"><circle cx="32" cy="406" r="12" fill="#2f6feb"/><text class="b" x="32" y="411" text-anchor="middle" fill="#fff" font-weight="600">4</text><text class="c" x="54" y="412">同一个 tmux 会话接着运行</text></g>
+<g class="a" style="animation-name:k36"><circle cx="32" cy="406" r="12" fill="#2f6feb"/><text class="b" x="32" y="411" text-anchor="middle" fill="#fff" font-weight="600">5</text><text class="c" x="54" y="412">在哪儿都能发下一条消息</text></g>
+<text class="h" x="810.0" y="458" text-anchor="middle">你的手机</text>
+</svg>

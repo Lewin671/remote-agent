@@ -9,20 +9,22 @@ tmux 里的原生 CLI 会话 · 端到端加密 · 自部署
 [![最新版本](https://img.shields.io/github/v/release/Lewin671/remote-agent?label=release&color=1a7f37)](https://github.com/Lewin671/remote-agent/releases/latest)
 [![许可证：AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 ![Daemon](https://img.shields.io/badge/daemon-macOS%20%7C%20Linux-555)
-![客户端](https://img.shields.io/badge/clients-Web%20%7C%20Android-555)
+![客户端](https://img.shields.io/badge/clients-Web%20%7C%20Android%20%7C%20iOS-555)
 
 [English](README.md) · 简体中文
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
-  <img src="docs/assets/architecture-light.svg" alt="你的设备通过一台只看得到密文的中继连到你的电脑" width="880">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/demo-dark.zh-CN.svg">
+  <img src="docs/assets/demo-light.zh-CN.svg" alt="动画演示：电脑上 tmux 里的 Claude Code 请求执行 go test；请求以密文经过中继；在手机上点允许；同一个会话接着运行；再从手机发出下一条消息。" width="960">
 </picture>
 
 </div>
 
+**一圈看懂：** ① 照常在电脑上运行 `remote-agent claude`（或 `codex`）→ ② agent 请求权限时，请求在电脑上加密，中继只转发密文 → ③ 你在手机上点「允许」→ ④ 同一个 tmux 会话接着运行 → ⑤ 人在哪儿都能发下一条消息。
+
 ## 简介
 
-remote-agent 让你离开电脑时，编程 agent 不用停下。你照常在电脑上启动 Codex 或 Claude Code，同一个会话随即出现在手机和浏览器里：查看进展、发送下一条消息、回答它的提问、允许或拒绝权限请求、中断它，或者打开实时终端。
+remote-agent 让你离开电脑时，编程 agent 不用停下。你照常在电脑上启动 Codex 或 Claude Code，同一个会话随即出现在手机（Android 或 iOS）和浏览器里：查看进展、发送下一条消息、回答它的提问、允许或拒绝权限请求、中断它，或者打开实时终端。
 
 | | |
 |---|---|
@@ -36,12 +38,20 @@ remote-agent 让你离开电脑时，编程 agent 不用停下。你照常在电
 
 ## 工作方式
 
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-dark.svg">
+  <img src="docs/assets/architecture-light.svg" alt="你的设备（网页、Android App、iOS App）通过一台只看得到密文的中继连到你的电脑" width="880">
+</picture>
+</p>
+
 | 组件 | 运行在 | 职责 |
 |---|---|---|
 | **Daemon**（`remote-agent`） | 每台放代码的电脑，macOS 或 Linux | 在 tmux 里托管 agent 会话，读取 transcript，通过 CLI 的 hook 转交审批，注入输入。同一个二进制也是命令行工具。 |
 | **中继**（`remote-agent-server`） | 你掌控的一台 Linux 服务器 | 设备鉴权，存储和转发密文，发送推送通知。读不到内容。 |
 | **网页** | 任意 HTTPS 静态托管 | 可安装的 PWA：对话视图、实时终端、审批、Web Push。 |
 | **Android App** | Android 8.0 及以上 | 原生客户端，带原生终端，可在通知里直接审批。 |
+| **iOS App**（预览） | iPhone 和 iPad，iOS 17 及以上 | SwiftUI 原生客户端，带原生终端、审批和图片。还没有分发，见[现状与限制](#现状与限制)。 |
 
 账户密钥只在各台设备上，中继上没有。新设备通过扫二维码或输入配对码加入账户，双方核对一串相同的 emoji 后才交换密钥。
 
@@ -159,7 +169,7 @@ Android App 始终用同一把密钥签名，证书的 SHA-256 指纹是：
 - **尚未到 1.0。** 不同版本的组件不保证互通，版本之间可能需要重建存储的数据。daemon、中继、网页和 App 请一起升级，升级前先读发布说明。
 - **一个账户就是一个人。** 账户内没有团队、共享或权限分级：账户里的每台设备都持有同一把密钥。一台中继可以承载多个互相看不见的账户；你自己的中继默认只有你的账户，除非你[向他人开放](docs/self-hosting.zh-CN.md#向他人开放中继)。
 - **自部署的中继上 Android 没有推送。** 发布的 App 只能通过维护者的 Firebase 项目接收推送。App 打开时一切正常；要在自己的中继上收到通知，请用支持 Web Push 的网页。想用自己的 Firebase 项目，需要从源码构建 App。
-- **还没有 iOS App。** 原生客户端正在开发；在那之前，用 Safari 打开网页并添加到主屏幕。
+- **iOS App 还是预览版。** [`ios/`](ios) 里的原生客户端已经能看对话、开终端、审批和收发图片，但还没有 App Store 或 TestFlight 版本，也没有推送，目前只在模拟器上测过。可以用 Xcode 从源码构建（[iOS 客户端说明](docs/ios-client.md)），或者用 Safari 打开网页并添加到主屏幕。
 - **不保证支持。** 欢迎在 [Issues](https://github.com/Lewin671/remote-agent/issues) 里报告问题。不要贴出账户密钥、setup token、配对链接或未脱敏的日志。
 
 ## 开发
