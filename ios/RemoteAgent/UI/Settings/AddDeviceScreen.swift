@@ -71,7 +71,7 @@ struct AddDeviceSteps: View {
             case .done:
                 Banner("新设备已加入", action: "完成", onAction: onDone, icon: Lucide.check).padding(.top, 14)
             case .failed(let why, let uncertain):
-                Banner(why, tone: uncertain ? .warn : .error, action: "换一个", onAction: model.start).padding(.top, 14)
+                Banner(why, tone: uncertain ? .warn : .error, action: model.canRetryApproval ? "重试" : "换一个", onAction: model.retry).padding(.top, 14)
             }
         }
         .padding(.horizontal, Theme.Space.page)

@@ -38,6 +38,8 @@ final class AddDeviceModel {
     }
 
     private(set) var phase = Phase.starting
+    private(set) var canRetryApproval = false
+    @ObservationIgnored private var approved: (emoji: [String], machine: Bool)?
     @ObservationIgnored private let begin: @Sendable () async throws -> any PairingInitiation
     @ObservationIgnored private var pairing: (any PairingInitiation)?
     /// Bumped by each start and by leaving: a pairing that answers after that is not this page's any more.
@@ -76,6 +78,20 @@ final class AddDeviceModel {
     /// 图案一致，允许.
     func approve() {
         guard case .compare(let emoji, let machine) = phase, let pairing else { return }
+        approved = (emoji, machine)
+        sendApproval(pairing, emoji: emoji, machine: machine)
+    }
+
+    /// The failure action preserves the operation that was already approved.
+    func retry() {
+        guard case .failed = phase else { return }
+        if canRetryApproval, let pairing, let approved {
+            sendApproval(pairing, emoji: approved.emoji, machine: approved.machine)
+        } else { start() }
+    }
+
+    private func sendApproval(_ pairing: any PairingInitiation, emoji: [String], machine: Bool) {
+        canRetryApproval = false
         phase = .sending(emoji: emoji, machine: machine)
         let run = run
         Task {
@@ -83,9 +99,11 @@ final class AddDeviceModel {
                 try await pairing.approve()
                 guard run == self.run else { return }
                 self.pairing = nil
+                approved = nil
                 phase = .done
             } catch {
                 guard run == self.run else { return }
+                canRetryApproval = RACore.canRetryPairApproval(error)
                 // The pairing is kept: the server may hold the key for the
                 // device that asked, and leaving or 换一个 has to withdraw it.
                 // The pairing's own words say what is known. Anything else
@@ -108,6 +126,8 @@ final class AddDeviceModel {
     /// Cancels the pairing on the server unless it is done, also one whose
     /// allowing failed: the key may be there for the taking until it expires.
     private func withdraw() {
+        canRetryApproval = false
+        approved = nil
         guard let pairing else { return }
         self.pairing = nil
         if phase != .done { Task { await pairing.cancelOnServer() } }

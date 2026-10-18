@@ -2,7 +2,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import qrcode from "qrcode-generator";
 import { useEffect, useRef, useState } from "react";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import { initiate, joinByPairing, PairCanceled, parsePairLink, type Initiation } from "../pairing";
+import { canRetryPairApproval, initiate, joinByPairing, PairCanceled, parsePairLink, type Initiation } from "../pairing";
 import { errorText, type Remote } from "../remote";
 import { Banner, NavBar, useRemote } from "../ui";
 import { Check, LoaderCircle } from "../icons";
@@ -35,65 +35,55 @@ export function AddDevicePage({ remote, onBack }: { remote: Remote; onBack: () =
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   useRemote(remote);
-  // Pairing calls need the login token: wait for the connection.
+  const [retryApproval, setRetryApproval] = useState(false);
+  const operation = useRef<{ active: boolean; started: boolean; pairing?: Initiation } | undefined>(undefined);
   const online = remote.conn === "online";
+  // Only replacement/account change/unmount owns cancellation. A temporary
+  // connection change must retain the identity the user already approved.
   useEffect(() => {
-    if (!online) return;
-    let cur: Initiation | undefined;
-    let alive = true;
-    setP(undefined);
-    setReq(undefined);
-    setState("waiting");
-    setError("");
+    const op = { active: true, started: false, pairing: undefined as Initiation | undefined };
+    operation.current = op;
+    setP(undefined); setReq(undefined); setState("waiting"); setError(""); setRetryApproval(false);
+    return () => { op.active = false; op.pairing?.cancel(); };
+  }, [remote, attempt]);
+  useEffect(() => {
+    const op = operation.current;
+    if (!online || !op?.active || op.started) return;
+    op.started = true;
     initiate(remote).then(
       (x) => {
-        cur = x;
-        if (!alive) return x.cancel();
-        setP(x);
-        x.joined.then(
-          (r) => alive && setReq(r),
-          (e) => alive && setError(errorText(e)),
-        );
+        if (!op.active) return x.cancel();
+        op.pairing = x; setP(x);
+        x.joined.then((r) => { if (op.active) setReq(r); }, (e) => { if (op.active) setError(errorText(e)); });
       },
-      (e) => alive && setError(errorText(e)),
+      (e) => { if (op.active) setError(errorText(e)); },
     );
-    return () => {
-      alive = false;
-      cur?.cancel();
-    };
   }, [remote, attempt, online]);
   const approve = async () => {
-    if (!p) return;
-    setState("sending");
+    const op = operation.current;
+    if (!op?.active || !op.pairing || !req || !online || state === "sending" || state === "done") return;
+    setError(""); setRetryApproval(false); setState("sending");
     try {
-      await p.approve();
-      setState("done");
+      await op.pairing.approve();
+      if (op.active) setState("done");
     } catch (e) {
-      setError(errorText(e));
+      if (op.active) { setError(errorText(e)); setState("waiting"); setRetryApproval(canRetryPairApproval(e)); }
     }
   };
   const again = () => setAttempt((a) => a + 1);
   const who = req ? kindName(req.kind) : "新设备";
   let banner;
   if (error) {
-    if (/不确定|可能没有加入成功/.test(error))
+    if (retryApproval)
       banner = (
-        <Banner kind="warn" action="重试" onAction={again}>
+        <Banner kind="warn" action={online ? "重试" : undefined} onAction={() => void approve()}>
           不确定{who}收到没有，到{who}上看一眼是否已加入
         </Banner>
       );
     else if (/过期/.test(error))
-      banner = (
-        <Banner kind="err" action="换一个" onAction={again}>
-          配对码过期了
-        </Banner>
-      );
+      banner = <Banner kind="err" action="换一个" onAction={again}>配对码过期了</Banner>;
     else
-      banner = (
-        <Banner kind="err" action="重新开始" onAction={again}>
-          {error}
-        </Banner>
-      );
+      banner = <Banner kind="err" action="重新开始" onAction={again}>{error}</Banner>;
   } else if (state === "sending") banner = <Banner><LoaderCircle /> 正在把密钥交给{who}…</Banner>;
   else if (state === "done")
     banner = (
@@ -129,10 +119,10 @@ export function AddDevicePage({ remote, onBack }: { remote: Remote; onBack: () =
               和新设备上的 4 个图案一模一样才允许
             </div>
             <div className="btns">
-              <button className="btn no" disabled={state === "sending"} onClick={() => (p?.cancel(), again())}>
+              <button className="btn no" disabled={state === "sending" || !online} onClick={() => (p?.cancel(), again())}>
                 拒绝
               </button>
-              <button className="btn pri" disabled={state === "sending"} onClick={() => void approve()}>
+              <button className="btn pri" disabled={state === "sending" || !online} onClick={() => void approve()}>
                 图案一致，允许
               </button>
             </div>

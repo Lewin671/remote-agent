@@ -2,7 +2,7 @@
 
 本文写会话里的图片怎么从 CLI 的记录里取出、编码、加密上传和显示，以及客户端怎么把图片发给 Agent、失败时怎么收场、电脑和手机上各存多少。信封、指令和密钥的通用规则见 [architecture.md](architecture.md)，取值里还没定的见 [plan.md](plan.md) 的「待确认」。
 
-客户端显示会话里出现过的图片，也能发图片给 Agent。显示的图片包括：用户粘贴的（电脑上或客户端发的）、Agent 查看的（Claude Code 的 `Read`，Codex 的 `view_image`、浏览器截图等）、Codex 生成的。界面见 [design/client-v43.html](design/client-v43.html#images)，两个 CLI 怎么记录图片见 [codex-notes §1](codex-notes.md#1-数据从哪读)、[claude-code-notes §2](claude-code-notes.md#2-transcript)。
+客户端显示会话里出现过的图片，也能发图片给 Agent。显示的图片包括：用户粘贴的（电脑上或客户端发的）、Agent 查看的（Claude Code 的 `Read`，Codex 的 `view_image`、浏览器截图等）、Codex 生成的。界面见 [design/client-v44.html](design/client-v44.html#images)，两个 CLI 怎么记录图片见 [codex-notes §1](codex-notes.md#1-数据从哪读)、[claude-code-notes §2](claude-code-notes.md#2-transcript)。
 
 ## 显示会话里的图片
 

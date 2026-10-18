@@ -55,8 +55,10 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.update.Updater
 import io.github.lewin671.remoteagent.core.Initiation
+import io.github.lewin671.remoteagent.core.PairingController
+import io.github.lewin671.remoteagent.core.PairingUiState
+import io.github.lewin671.remoteagent.proto.DeviceKind
 import io.github.lewin671.remoteagent.core.Mode
-import io.github.lewin671.remoteagent.core.PairException
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.machineAgents
@@ -551,69 +553,53 @@ fun PairScreen() {
     val settings by RaApp.instance.prefs.settings.collectAsState(Settings())
     val p = pal
     val scope = rememberCoroutineScope()
-    var init by remember { mutableStateOf<Initiation?>(null) }
-    var emoji by remember { mutableStateOf<List<String>?>(null) }
-    var phase by remember { mutableStateOf("start") } // start, wait, emoji, sending, done, error
-    var error by remember { mutableStateOf("") }
-    var attempt by remember { mutableStateOf(0) }
-    LaunchedEffect(attempt) {
-        phase = "start"
-        emoji = null
-        error = ""
-        try {
-            val i = Initiation.start(remote)
-            init = i
-            phase = "wait"
-            val (e, _) = i.joined()
-            emoji = e
-            phase = "emoji"
-        } catch (e: Exception) {
-            error = if (e is PairException) e.message.orEmpty() else errorText(e)
-            phase = "error"
-        }
+    val model = remember(remote, scope) {
+        PairingController(scope, RaApp.instance.scope) { Initiation.start(remote) }
     }
-    DisposableEffect(Unit) { onDispose { init?.let { i -> if (phase != "done") RaApp.instance.scope.launch { i.cancelOnServer() } } } }
+    val state by model.state.collectAsState()
+    LaunchedEffect(model) { model.start() }
+    DisposableEffect(model) { onDispose { model.leave() } }
     PageScaffold("添加设备") {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            val i = init
-            when (phase) {
-                "start" -> Skeleton()
-                "wait" -> if (i != null) {
-                    val bmp = remember(i) { qrBitmap(i.link.url(webOrigin(remote.account.server, settings.webOrigin))) }
+            when (val step = state) {
+                PairingUiState.Starting -> Skeleton()
+                is PairingUiState.Waiting -> {
+                    val bmp = remember(step.link) { qrBitmap(step.link.url(webOrigin(remote.account.server, settings.webOrigin))) }
                     Box(Modifier.padding(top = 14.dp, bottom = 10.dp).size(170.dp).clip(RoundedCornerShape(20.dp)).background(Color.White).padding(12.dp)) {
                         Image(bmp.asImageBitmap(), "配对二维码", Modifier.fillMaxSize(), filterQuality = FilterQuality.None)
                     }
-                    Text(i.code.chunked(4).joinToString(" "), style = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = 4.sp), color = p.fg)
+                    Text(step.code.chunked(4).joinToString(" "), style = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = 4.sp), color = p.fg)
                     Text("在新设备上扫码，或输入这 8 位配对码。5 分钟内有效。", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
                     IconText(Lucide.LoaderCircle, "等待新设备…", p.muted, T.sm, Modifier.padding(top = 10.dp))
                 }
-                "emoji", "sending" -> Column(Modifier.padding(top = 14.dp).fillMaxWidth().clip(Radii.MD).background(p.soft).padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(Modifier.fillMaxWidth()) {
-                        Text("新电脑", style = T.smB, color = p.fg)
-                        Text(" 请求加入", style = T.sm, color = p.muted)
+                is PairingUiState.Compare,
+                is PairingUiState.Sending -> {
+                    val sending = step is PairingUiState.Sending
+                    val emoji = when (step) {
+                        is PairingUiState.Compare -> step.emoji
+                        is PairingUiState.Sending -> step.emoji
+                        else -> emptyList()
                     }
-                    Text(emoji.orEmpty().joinToString("  "), fontSize = 30.sp, modifier = Modifier.padding(top = 10.dp, bottom = 12.dp))
-                    Text("和新设备上的 4 个图案一模一样才允许", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 10.dp))
-                    Btns {
-                        Btn("拒绝", { RaApp.instance.scope.launch { i?.cancelOnServer() }; nav.back() }, Modifier.weight(1f), BtnKind.NEGATIVE, enabled = phase == "emoji", bg = p.card)
-                        Btn(if (phase == "sending") "正在交给新设备…" else "图案一致，允许", {
-                            phase = "sending"
-                            scope.launch {
-                                try {
-                                    i?.approve()
-                                    phase = "done"
-                                } catch (e: Exception) {
-                                    error = if (e is PairException) e.message.orEmpty() else "不确定新设备收到没有，到新设备上看一眼是否已加入：" + errorText(e)
-                                    phase = "error"
-                                }
-                            }
-                        }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = phase == "emoji")
+                    val kind = when (step) {
+                        is PairingUiState.Compare -> step.kind
+                        is PairingUiState.Sending -> step.kind
+                        else -> DeviceKind.DEVICE_KIND_UNSPECIFIED
+                    }
+                    Column(Modifier.padding(top = 14.dp).fillMaxWidth().clip(Radii.MD).background(p.soft).padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(Modifier.fillMaxWidth()) {
+                            Text(if (kind == DeviceKind.DEVICE_KIND_MACHINE) "新电脑" else "新设备", style = T.smB, color = p.fg)
+                            Text(" 请求加入", style = T.sm, color = p.muted)
+                        }
+                        Text(emoji.joinToString("  "), fontSize = 30.sp, modifier = Modifier.padding(top = 10.dp, bottom = 12.dp))
+                        Text("和新设备上的 4 个图案一模一样才允许", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 10.dp))
+                        Btns {
+                            Btn("拒绝", { model.leave(); nav.back() }, Modifier.weight(1f), BtnKind.NEGATIVE, enabled = !sending, bg = p.card)
+                            Btn(if (sending) "正在交给新设备…" else "图案一致，允许", model::approve, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !sending)
+                        }
                     }
                 }
-                "done" -> {
-                    Banner("新设备已加入", Modifier.padding(top = 14.dp), action = "完成", onAction = nav.back, lead = { Mark(Lucide.Check, p.fg2, iconSize(T.sm)) })
-                }
-                else -> Banner(error, Modifier.padding(top = 14.dp), Tone2.ERROR, action = "换一个", onAction = { attempt++ })
+                PairingUiState.Done -> Banner("新设备已加入", Modifier.padding(top = 14.dp), action = "完成", onAction = nav.back, lead = { Mark(Lucide.Check, p.fg2, iconSize(T.sm)) })
+                is PairingUiState.Failed -> Banner(step.message, Modifier.padding(top = 14.dp), if (step.uncertain) Tone2.PLAIN else Tone2.ERROR, action = if (step.canRetry) "重试" else "换一个", onAction = model::retry)
             }
         }
     }

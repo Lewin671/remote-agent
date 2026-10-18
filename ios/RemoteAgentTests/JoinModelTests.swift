@@ -260,8 +260,10 @@ final class FakeInitiation: PairingInitiation, @unchecked Sendable {
     private var joinEnd: CheckedContinuation<(emoji: [String], kind: PBDeviceKind), Error>?
     private var approveEnd: CheckedContinuation<Void, Error>?
     private var cancels = 0
+    private var approves = 0
 
     var cancelled: Int { lock.withLock { cancels } }
+    var approvalCount: Int { lock.withLock { approves } }
     var waitingForJoin: Bool { lock.withLock { joinEnd != nil } }
     var waitingForApprove: Bool { lock.withLock { approveEnd != nil } }
 
@@ -270,7 +272,7 @@ final class FakeInitiation: PairingInitiation, @unchecked Sendable {
     }
 
     func approve() async throws {
-        try await withCheckedThrowingContinuation { c in lock.withLock { approveEnd = c } }
+        try await withCheckedThrowingContinuation { c in lock.withLock { approves += 1; approveEnd = c } }
     }
 
     func cancelOnServer() async { lock.withLock { cancels += 1 } }
@@ -360,6 +362,36 @@ final class FakeInitiation: PairingInitiation, @unchecked Sendable {
         let lost = "新设备没有来取账户密钥，它可能没有加入成功。请在新设备上确认，必要时重新配对。"
         made.list[1].approved(.failure(PairError(lost)))
         await eventually("failed") { m2.phase == .failed(lost, uncertain: true) }
+    }
+
+    @Test func failureActionRetriesTheSameApprovalInsteadOfWithdrawingIt() async {
+        let (m, p) = await comparing()
+        m.approve()
+        await eventually("approving") { p.waitingForApprove }
+        p.approved(.failure(URLError(.networkConnectionLost)))
+        await eventually("retryable failure") { m.canRetryApproval }
+        m.retry()
+        await eventually("same approval retried") { p.waitingForApprove && p.approvalCount == 2 }
+        #expect(made.list.count == 1 && p.cancelled == 0)
+        #expect(m.phase == .sending(emoji: emoji, machine: false))
+        p.approved(.success(()))
+        await eventually("done") { m.phase == .done }
+        m.leave()
+        #expect(p.cancelled == 0)
+    }
+
+    @Test func anExpiredApprovalCanBeReplacedWithoutReusingTheOldConsent() async {
+        let (m, p) = await comparing()
+        m.approve()
+        await eventually("approving") { p.waitingForApprove }
+        p.approved(.failure(PairError("配对已过期")))
+        await eventually("failed") { if case .failed = m.phase { true } else { false } }
+        #expect(!m.canRetryApproval)
+        m.retry()
+        await eventually("new code") { made.list.count == 2 && made.list[1].waitingForJoin && p.cancelled == 1 }
+        #expect(made.list[1].approvalCount == 0)
+        made.list[1].join(.failure(PairError("已取消")))
+        m.leave()
     }
 
     @Test func aKeyOfferedAndNotConfirmedIsWithdrawnOnLeaving() async {

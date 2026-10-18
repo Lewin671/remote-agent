@@ -14,6 +14,15 @@ public struct PairError: Error, LocalizedError, Equatable, Sendable, CustomStrin
     public var description: String { message }
 }
 
+/// Retry the same approved identity after uncertain transport outcomes. A
+/// definitive rejection/expiry needs a new pairing and fresh user approval.
+public func canRetryPairApproval(_ error: Error) -> Bool {
+    if let e = error as? ConnectError,
+       [.notFound, .permissionDenied, .failedPrecondition, .invalidArgument, .canceled].contains(e.code) { return false }
+    let words = (error as? PairError)?.message ?? error.localizedDescription
+    return !["过期", "取消", "拒绝", "无效", "不匹配"].contains(where: words.contains)
+}
+
 /// How long a pairing waits between two looks at its state.
 public typealias Sleeper = @Sendable (_ ms: Int64) async throws -> Void
 

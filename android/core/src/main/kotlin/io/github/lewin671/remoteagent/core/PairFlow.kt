@@ -27,6 +27,21 @@ import java.util.Base64
 
 class PairException(message: String) : Exception(message)
 
+/** A single pairing operation, retained after uncertain approval outcomes. */
+interface PairingInitiation {
+    val code: String
+    val link: PairLink
+    suspend fun joined(): Pair<List<String>, DeviceKind>
+    suspend fun approve()
+    suspend fun cancelOnServer()
+}
+
+fun canRetryPairApproval(error: Exception): Boolean {
+    if (error is ConnectException && error.code in setOf(Code.NOT_FOUND, Code.PERMISSION_DENIED, Code.FAILED_PRECONDITION, Code.INVALID_ARGUMENT, Code.CANCELED)) return false
+    val words = error.message.orEmpty()
+    return listOf("过期", "取消", "拒绝", "无效", "不匹配").none { it in words }
+}
+
 /** What a QR code carries: the code, the initiator's commitment and the server. */
 data class PairLink(val code: String, val server: String, val commit: ByteArray? = null) {
     /** The link for the web client at [web]; opening it starts joining. */
@@ -82,13 +97,13 @@ private suspend fun poll(stopped: () -> Boolean, want: PairingState, get: suspen
 
 /** Adding a device from this one. */
 class Initiation internal constructor(
-    val code: String,
-    val link: PairLink,
+    override val code: String,
+    override val link: PairLink,
     private val remote: Remote,
     private val pairingId: String,
     private val key: PairKey,
     private val expires: Long,
-) {
+) : PairingInitiation {
     @Volatile private var stopped = false
     private var secrets: PairSecrets? = null
     private var candidate: ByteArray? = null
@@ -97,7 +112,7 @@ class Initiation internal constructor(
     private var approvalRequest: ApprovePairingRequest? = null
 
     /** Waits for a device to ask to join; returns the emoji to compare and its kind. */
-    suspend fun joined(): Pair<List<String>, DeviceKind> {
+    override suspend fun joined(): Pair<List<String>, DeviceKind> {
         val tok = remote.currentToken()
         val st = poll({ stopped }, PairingState.PAIRING_STATE_JOINED) {
             remote.api.pairing.getPairing(GetPairingRequest.newBuilder().setPairingId(pairingId).build(), Api.headers(tok)).value()
@@ -115,7 +130,7 @@ class Initiation internal constructor(
     }
 
     /** Sends the root key; returns when the new device has it. */
-    suspend fun approve() {
+    override suspend fun approve() {
         val s = secrets ?: throw PairException("还没有设备加入")
         val acct = remote.account
         val tok = remote.currentToken()
@@ -152,7 +167,7 @@ class Initiation internal constructor(
     }
 
     /** Tells the server; best effort. */
-    suspend fun cancelOnServer() {
+    override suspend fun cancelOnServer() {
         stopped = true
         try {
             remote.api.pairing.cancelPairing(CancelPairingRequest.newBuilder().setPairingId(pairingId).build(), Api.headers(remote.currentToken()))

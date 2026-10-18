@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v43 · 2026-10-18 UTC</title>
+<title>remote-agent 客户端设计稿 v44 · 2026-10-18 UTC</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -927,14 +927,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v43 · 2026-10-18 UTC · 上一版 v42 在 git 历史里（<code>git log -- docs/design/client-v42.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v44 · 2026-10-18 UTC · 上一版 v43 在 git 历史里（<code>git log -- docs/design/client-v43.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v42 的改动</h4><ul><li>新设备加入只提供经有效设备批准的配对，移除裸账户密钥加入入口。</li><li>设备移除说明明确再次加入需要有效设备批准；不承诺内容密钥轮换。</li></ul>
+  <h4>相对 v43 的改动</h4><ul><li>批准后网络失败时，「重试」继续同一次批准；短暂断网保留这次配对。</li><li>明确过期、拒绝或取消后才用「换一个」重新配对；离开页面会撤回尚未完成的批准。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
@@ -3998,6 +3998,7 @@ git status --short gen/</pre>
     <div class="banner" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg> 新电脑已加入<b>完成</b></div>
     <div class="banner err" style="margin-top:8px">配对码过期了<b>换一个</b></div>
     <div class="banner warn" style="margin-top:8px">不确定新电脑收到没有，到新电脑上看一眼是否已加入<b>重试</b></div>
+    <div class="st-c">「重试」继续同一次已经允许的批准，不生成新配对码；断网时暂停按钮，恢复连接后仍可重试。过期、拒绝或取消时「换一个」重新配对并重新核对图案；离开页面撤回尚未完成的批准。</div>
   </div>
   <div class="st">
     <div class="st-h">配对 · 新设备这边</div>

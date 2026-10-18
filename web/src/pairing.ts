@@ -32,6 +32,13 @@ function client(server: string, auth?: () => string) {
   return createClient(PairingService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(server), useBinaryFormat: true, interceptors }));
 }
 
+/** A retry of the same approval is safe only while the operation still exists.
+ * Authentication/transport interruptions do not withdraw the user's consent. */
+export function canRetryPairApproval(error: unknown): boolean {
+  if (error instanceof ConnectError && [Code.NotFound, Code.PermissionDenied, Code.FailedPrecondition, Code.InvalidArgument, Code.Canceled].includes(error.code)) return false;
+  return !/过期|取消|拒绝|无效|不匹配/.test(error instanceof Error ? error.message : String(error));
+}
+
 export interface PairLink {
   code: string;
   commit?: Uint8Array;
