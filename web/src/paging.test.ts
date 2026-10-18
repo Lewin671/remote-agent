@@ -25,6 +25,9 @@ import {
   stateHash,
 } from "./device-security";
 import type { Envelope } from "./gen/remoteagent/v1/envelope_pb";
+// Each test starts a Go security fixture and seals every session through it:
+// about 3 s here and over 5 s on a two-core CI runner, most of it the fixture.
+vi.setConfig({ testTimeout: 20_000 });
 const opened: GoSecurityFixture[] = [];
 afterEach(async () => {
   for (const f of opened.splice(0)) await f.close();
