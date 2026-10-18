@@ -28,6 +28,8 @@ const accountUsage = `Usage:
   remote-agent account security-enroll --server URL --code CODE
                                           pin management on a retained device without changing its identity
   remote-agent account security-init        initialize the pinned authority locally (existing accounts)
+  remote-agent account security-genesis --output FILE
+                                          export signed public genesis for offline relay setup
   remote-agent account secret               print offline decryption backup material (not enrollment authorization)
   remote-agent account status               show this machine's account
 `
@@ -44,6 +46,33 @@ func runAccount(args []string) error {
 			return err
 		}
 		return a.InitSecurityAuthority()
+	case "security-genesis":
+		fs := flag.NewFlagSet("account security-genesis", flag.ContinueOnError)
+		output := fs.String("output", "", "new public genesis file (daemon must be stopped)")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		if *output == "" || fs.NArg() != 0 {
+			return errors.New("--output FILE is required")
+		}
+		a, err := relay.LoadAccount()
+		if err != nil {
+			return err
+		}
+		genesis, err := a.PublicSecurityGenesis()
+		if err != nil {
+			return err
+		}
+		f, err := os.OpenFile(*output, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if err != nil {
+			return err
+		}
+		_, err = f.Write(genesis)
+		closeErr := f.Close()
+		if err != nil {
+			return err
+		}
+		return closeErr
 	case "security-enroll":
 		return runAccountPairJoin(args[1:], true)
 	case "init":
@@ -235,7 +264,7 @@ func runAccountStatus() error {
 		return err
 	}
 	sum := sha256.Sum256(keys.AccountPublicKey())
-	fmt.Printf("server:   %s\nmachine:  %s\naccount:  %s\nfile:     %s\n", a.Server, a.DeviceID, hex.EncodeToString(sum[:6]), paths.Account())
+	fmt.Printf("server:   %s\nmachine:  %s\naccount:  %s\naccount-id: %s\nfile:     %s\n", a.Server, a.DeviceID, hex.EncodeToString(sum[:6]), e2e.AccountID(keys.AccountPublicKey()), paths.Account())
 	return nil
 }
 

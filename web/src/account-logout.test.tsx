@@ -99,3 +99,19 @@ it("stops another tab and reloads the joining page after the user forgets the ac
   }
   expect(Channel.all.size).toBe(0);
 });
+
+for (const failure of ["onblocked", "onerror"] as const) {
+  it(`keeps the account available when security erasure fails: ${failure}`, async () => {
+    const open = vi.fn();
+    vi.stubGlobal("indexedDB", {
+      open,
+      deleteDatabase: () => {
+        const req = { onblocked: () => undefined, onerror: () => undefined, error: new Error("erase failed") };
+        queueMicrotask(() => req[failure]());
+        return req;
+      },
+    });
+    await expect(forgetAccount()).rejects.toBeDefined();
+    expect(open).not.toHaveBeenCalled();
+  });
+}

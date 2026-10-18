@@ -21,7 +21,7 @@ English · [简体中文](README.zh-CN.md)
 - **The real CLI** — Codex and Claude Code run natively in tmux; your terminal and your phone drive the same session.
 - **End-to-end encrypted** — the relay only stores and forwards ciphertext and never holds a key.
 - **Self-hosted** — your relay, your web client, no third-party account.
-- **On every screen** — Web, Android and iOS (preview): chat, approvals, push, live terminal, images, all your computers in one list.
+- **On every screen** — Web, Android and iOS (preview): chat, approvals, live terminal, images (push on Android and Web), all your computers in one list.
 
 Devices pin a fixed management daemon; removal rotates keys after retained executors automatically confirm. See the [security model and limits](docs/reference.md#security-model).
 

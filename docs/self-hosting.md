@@ -282,7 +282,18 @@ COMMIT;
 ```
 
 2. Stop each retained daemon and privately back up its local state. After verifying that its `state-generation` file is `1`, manually change it to `2`, preserving owner-only permissions. For older unmarked state, verify its format first; do not blindly add a marker. Keep `account.json`, sessions, queues, images and settings. Do not copy another machine's security database. The new security state is created separately; old acceptance logs are not converted, and old protocol commands are refused.
-3. Install all new programs. Choose one trusted computer that normally stays online as the fixed authority. Run `remote-agent account security-init` with its existing account, then start its new daemon. Do not initialize separate authorities on the other computers. Startup pins the public genesis on the relay.
+3. Install all new programs. Choose one trusted computer that normally stays online as the fixed authority. Run `remote-agent account security-init` with its existing account, keep its daemon stopped. Do not initialize separate authorities on the other computers. Run `remote-agent account security-genesis --output public-genesis.bin`. Transfer this **public signed state only** to the relay operator over a trusted channel. Before the relay listens, use the SQLite CLI to pin it to the exact public account ID (the `account-id` from `account status`):
+
+```sql
+BEGIN IMMEDIATE;
+UPDATE accounts SET security_genesis=readfile('public-genesis.bin')
+ WHERE id='PUBLIC_ACCOUNT_ID' AND security_genesis IS NULL
+ AND length(readfile('public-genesis.bin')) > 0;
+SELECT changes(); -- must be exactly 1; otherwise ROLLBACK and investigate
+COMMIT;
+```
+
+Never overwrite an existing pin; verify the file came from the chosen trusted computer, not from a relay/device listing. Repeat for each existing account before reopening the relay. Only then start the relay and authority daemon. **Skipping offline pinning allows a still-registered legacy machine to claim the relay domain first and delete relay data using its own fake completions.** Network first-pin is only for a freshly created account with no other enrolled machines; it is not an existing-account migration procedure.
 4. Run `remote-agent account pair` on the authority. Other retained computers use `remote-agent account security-enroll --server https://relay.example.com --code CODE`; existing browsers and apps choose the security binding setup. Compare all four symbols: confirm on the candidate first, then allow on the initiating device. This retains the existing Ed25519 identity and history while adding an independent exchange key and pinned domain. Only then start that computer's new daemon.
 5. Check every retained identity, directory and history, then exercise a remote command and removal. Old relay registrations that never joined the new domain are not trusted members. They cannot obtain new domain authorization, but should be cleaned up offline as described below. Use normal client removal for domain members; deleting a server row is not cryptographic revocation.
 

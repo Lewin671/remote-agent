@@ -173,3 +173,56 @@ func TestRemovalRequiresPinnedCompletionAndProtectsAuthority(t *testing.T) {
 		t.Fatal("authority transport identity disappeared")
 	}
 }
+
+func TestOfflinePinnedGenesisRejectsLegacyMachineFirstClaim(t *testing.T) {
+	ts, mid, cid, machine, client, _ := newV2Env(t)
+	ctx := context.Background()
+	// Operator pins the chosen trusted authority before accepting network traffic.
+	makeGenesis := func(id string) []byte {
+		t.Helper()
+		ed := ts.enrollmentKeys[id]
+		_, xp, err := deviceauth.NewXKey()
+		if err != nil {
+			t.Fatal(err)
+		}
+		member, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xp, deviceauth.Machine)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a, err := deviceauth.InitAuthority(filepath.Join(t.TempDir(), "authority.db"), ts.acct(), member)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer a.Close()
+		_, state := a.Snapshot()
+		raw, err := state.MarshalBinary()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	trusted := makeGenesis(mid)
+	if _, err := ts.srv.store.db.ExecContext(ctx, `UPDATE accounts SET security_genesis=? WHERE id=?`, trusted, ts.acct()); err != nil {
+		t.Fatal(err)
+	}
+	ed, legacy, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_MACHINE, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale := remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, ed, legacy)))
+	fake := makeGenesis(legacy)
+	if _, err := stale.PinSecurityDomain(ctx, connect.NewRequest(&pb.PinSecurityDomainRequest{GenesisState: fake})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("legacy first claim: %v", err)
+	}
+	if _, err := machine.PinSecurityDomain(ctx, connect.NewRequest(&pb.PinSecurityDomainRequest{GenesisState: trusted})); err != nil {
+		t.Fatal("trusted idempotent pin", err)
+	}
+	if _, err := client.RemoveDevice(ctx, connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: mid, SecurityChain: [][]byte{fake}, SecurityCompletion: []byte(`{}`), SecurityRequest: []byte(`{}`)})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("fake-domain cleanup: %v", err)
+	}
+	for _, id := range []string{mid, cid, legacy} {
+		if _, err := ts.srv.store.device(ctx, id); err != nil {
+			t.Fatal("identity deleted", err)
+		}
+	}
+}

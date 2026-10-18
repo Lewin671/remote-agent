@@ -66,6 +66,31 @@ func (a *Account) InitSecurityAuthority() error {
 	return a.Save()
 }
 
+// PublicSecurityGenesis exports only the signed public bootstrap state, never
+// account secrets or authority private keys. Stop the daemon before calling it.
+func (a *Account) PublicSecurityGenesis() ([]byte, error) {
+	if a.Security == nil || !a.Security.Authority {
+		return nil, deviceauth.ErrUntrusted
+	}
+	authority, err := deviceauth.OpenAuthority(authorityPath())
+	if err != nil {
+		return nil, err
+	}
+	defer authority.Close()
+	pin, _ := authority.Snapshot()
+	if pin != a.Security.Pin {
+		return nil, deviceauth.ErrUntrusted
+	}
+	states, err := authority.StatePage(0)
+	if err != nil {
+		return nil, err
+	}
+	if len(states) == 0 || pin.Verify(states[0]) != nil || states[0].Core.Epoch != 1 {
+		return nil, deviceauth.ErrUntrusted
+	}
+	return states[0].MarshalBinary()
+}
+
 type securitySession struct {
 	remote    *deviceauth.Remote
 	authority *deviceauth.Authority
