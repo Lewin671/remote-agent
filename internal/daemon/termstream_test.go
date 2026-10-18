@@ -144,14 +144,22 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := remoteclient.Register(ctx, account.Secret(), account.DeviceKey())
-	if err != nil {
-		t.Fatal(err)
-	}
 	r := relay.New(historyBackend{d})
 	finished := make(chan struct{})
 	go func() { defer close(finished); r.Run(ctx) }()
 	defer func() { cancel(); <-finished }()
+	for !r.Connected() {
+		select {
+		case <-ctx.Done():
+			t.Fatal("authority stream did not become ready")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	client, err := remoteclient.Register(ctx, account.Secret(), account.DeviceKey(), account.Security.Pin, account.Security.XPrivate, filepath.Join(t.TempDir(), "client-security.db"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	var listed []remoteclient.Session
 	for ctx.Err() == nil {
 		listed, err = client.Sessions(ctx)

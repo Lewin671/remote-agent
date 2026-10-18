@@ -15,6 +15,7 @@ public  final class ForwardResponse extends
     // @@protoc_insertion_point(message_implements:remoteagent.v1.ForwardResponse)
     ForwardResponseOrBuilder {
   private ForwardResponse() {
+    securityRpc_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int RESULT_FIELD_NUMBER = 1;
@@ -83,6 +84,33 @@ public  final class ForwardResponse extends
   private void clearResult() {
     result_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int SECURITY_RPC_FIELD_NUMBER = 2;
+  private com.google.protobuf.ByteString securityRpc_;
+  /**
+   * <code>bytes security_rpc = 2 [json_name = "securityRpc"];</code>
+   * @return The securityRpc.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSecurityRpc() {
+    return securityRpc_;
+  }
+  /**
+   * <code>bytes security_rpc = 2 [json_name = "securityRpc"];</code>
+   * @param value The securityRpc to set.
+   */
+  private void setSecurityRpc(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    securityRpc_ = value;
+  }
+  /**
+   * <code>bytes security_rpc = 2 [json_name = "securityRpc"];</code>
+   */
+  private void clearSecurityRpc() {
+
+    securityRpc_ = getDefaultInstance().getSecurityRpc();
   }
 
   public static io.github.lewin671.remoteagent.proto.ForwardResponse parseFrom(
@@ -253,6 +281,34 @@ public  final class ForwardResponse extends
       return this;
     }
 
+    /**
+     * <code>bytes security_rpc = 2 [json_name = "securityRpc"];</code>
+     * @return The securityRpc.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSecurityRpc() {
+      return instance.getSecurityRpc();
+    }
+    /**
+     * <code>bytes security_rpc = 2 [json_name = "securityRpc"];</code>
+     * @param value The securityRpc to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSecurityRpc(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSecurityRpc(value);
+      return this;
+    }
+    /**
+     * <code>bytes security_rpc = 2 [json_name = "securityRpc"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSecurityRpc() {
+      copyOnWrite();
+      instance.clearSecurityRpc();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ForwardResponse)
   }
   @java.lang.Override
@@ -271,9 +327,11 @@ public  final class ForwardResponse extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "bitField0_",
             "result_",
+            "securityRpc_",
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0001\u0001\u0001\u0001\u0000\u0000\u0000\u0001\u1009\u0000";
+              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u1009\u0000\u0002" +
+              "\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

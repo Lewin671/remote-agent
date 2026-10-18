@@ -1,11 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"log/slog"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -35,7 +38,11 @@ func checkEnvelope(env *pb.Envelope, want *pb.Header) (*pb.Header, error) {
 	if err := proto.Unmarshal(env.Header, h); err != nil {
 		return nil, invalid("malformed envelope header")
 	}
-	if h.Version != e2e.Version {
+	version := uint32(deviceauth.Version)
+	if want.Kind == pb.PayloadKind_PAYLOAD_KIND_PAIRING {
+		version = e2e.Version
+	}
+	if h.Version != version {
 		return nil, invalid("unsupported envelope version %d", h.Version)
 	}
 	if e2e.Expect(h, want) != nil {
@@ -50,6 +57,9 @@ type authService struct {
 }
 
 func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[pb.RegisterDeviceRequest]) (*connect.Response[pb.RegisterDeviceResponse], error) {
+	if req.Msg.ProtocolVersion != protocol.Version {
+		return nil, protocol.Mismatch("the device", req.Msg.ProtocolVersion)
+	}
 	reg := &pb.DeviceRegistration{}
 	if err := proto.Unmarshal(req.Msg.Registration, reg); err != nil {
 		return nil, invalid("malformed registration")
@@ -145,6 +155,9 @@ func (a *authService) GetChallenge(ctx context.Context, req *connect.Request[pb.
 }
 
 func (a *authService) Login(ctx context.Context, req *connect.Request[pb.LoginRequest]) (*connect.Response[pb.LoginResponse], error) {
+	if req.Msg.ProtocolVersion != protocol.Version {
+		return nil, protocol.Mismatch("the device", req.Msg.ProtocolVersion)
+	}
 	denied := connect.NewError(connect.CodePermissionDenied, errors.New("login failed"))
 	if !a.s.takeChallenge(req.Msg.DeviceId, req.Msg.Challenge) {
 		return nil, denied
@@ -175,7 +188,7 @@ func (a *authService) Login(ctx context.Context, req *connect.Request[pb.LoginRe
 	if err := t.touchAccount(ctx); err != nil {
 		return nil, internal(err)
 	}
-	return connect.NewResponse(&pb.LoginResponse{Token: token, ExpiresMs: expires}), nil
+	return connect.NewResponse(&pb.LoginResponse{DevicePublicKey: bytes.Clone(d.publicKey), Token: token, ExpiresMs: expires}), nil
 }
 
 type clientService struct {
@@ -242,6 +255,20 @@ func (c *clientService) GetEvents(ctx context.Context, req *connect.Request[pb.G
 
 func (c *clientService) Forward(ctx context.Context, req *connect.Request[pb.ForwardRequest]) (*connect.Response[pb.ForwardResponse], error) {
 	dev := deviceFrom(ctx)
+	if len(req.Msg.SecurityRpc) > 0 {
+		if req.Msg.Command != nil || len(req.Msg.SecurityRpc) > deviceauth.MaxRPCBytes+512 {
+			return nil, invalid("invalid security RPC")
+		}
+		capsule, err := deviceauth.ParseCapsule(req.Msg.SecurityRpc)
+		if err != nil || capsule.From != dev.id || capsule.To != req.Msg.MachineId {
+			return nil, invalid("security RPC routing mismatch")
+		}
+		res, err := c.s.tenantOf(dev).hub.forward(ctx, req.Msg.MachineId, &pb.ForwardCall{SecurityRpc: req.Msg.SecurityRpc, SenderDeviceId: dev.id})
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&pb.ForwardResponse{SecurityRpc: res.SecurityRpc}), nil
+	}
 	// The sender in the sealed header must be the device that is logged
 	// in. The daemon checks the device's signature itself; this catches a
 	// client that claims to be another device early.
@@ -264,7 +291,7 @@ func (c *clientService) Forward(ctx context.Context, req *connect.Request[pb.For
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&pb.ForwardResponse{Result: res}), nil
+	return connect.NewResponse(&pb.ForwardResponse{Result: res.Result}), nil
 }
 
 type machineService struct {

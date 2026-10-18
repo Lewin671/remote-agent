@@ -19,12 +19,12 @@ import io.github.lewin671.remoteagent.proto.LoginRequest
 import io.github.lewin671.remoteagent.proto.LoginResponse
 import io.github.lewin671.remoteagent.proto.PairingServiceClient
 import io.github.lewin671.remoteagent.proto.RegisterDeviceRequest
-import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
+import okhttp3.OkHttpClient
 
 /**
- * A device of the account. [root] and [deviceSeed] are secrets: the app keeps
- * them wrapped with a Keystore key and never logs them.
+ * A device of the account. [root] and [deviceSeed] are secrets: the app keeps them wrapped with a
+ * Keystore key and never logs them.
  */
 class Account(
     val server: String,
@@ -40,15 +40,18 @@ class Api(server: String, http: OkHttpClient) {
     // 10.0.2.2 is the emulator's host loopback. Release Android network
     // policy still blocks all cleartext; no remote HTTP origin is accepted.
     val server = Secret.checkServer(server, allowPlainHttp = true)
-    private val protocol = ProtocolClient(
-        // Never replay login, registration or pairing bodies at another URL.
-        ConnectOkHttpClient(http.newBuilder().followRedirects(false).followSslRedirects(false).build()),
-        ProtocolClientConfig(
-            host = this.server,
-            serializationStrategy = LiteProtobufStrategy,
-            networkProtocol = NetworkProtocol.CONNECT,
-        ),
-    )
+    private val protocol =
+        ProtocolClient(
+            // Never replay login, registration or pairing bodies at another URL.
+            ConnectOkHttpClient(
+                http.newBuilder().followRedirects(false).followSslRedirects(false).build(),
+            ),
+            ProtocolClientConfig(
+                host = this.server,
+                serializationStrategy = LiteProtobufStrategy,
+                networkProtocol = NetworkProtocol.CONNECT,
+            ),
+        )
     val auth = AuthServiceClient(protocol)
     val client = ClientServiceClient(protocol)
     val pairing = PairingServiceClient(protocol)
@@ -58,14 +61,15 @@ class Api(server: String, http: OkHttpClient) {
             if (token.isEmpty()) emptyMap() else mapOf("Authorization" to listOf("Bearer $token"))
 
         /** An HTTP client with the timeouts the protocol expects: Forward waits up to 30 s. */
-        fun defaultHttp(): OkHttpClient = OkHttpClient.Builder()
-            .followRedirects(false)
-            .followSslRedirects(false)
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(45, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .pingInterval(0, TimeUnit.SECONDS)
-            .build()
+        fun defaultHttp(): OkHttpClient =
+            OkHttpClient.Builder()
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(45, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .pingInterval(0, TimeUnit.SECONDS)
+                .build()
     }
 }
 
@@ -85,25 +89,33 @@ suspend fun joinWithRoot(
     val seed = enrollment?.seed ?: randomBytes(32)
     val device = SigningKey(seed)
     if (enrollment != null) verifyPairApproval(enrollment, root, kind, now)
-    val reg = DeviceRegistration.newBuilder()
-        .setAccountPublicKey(ByteString.copyFrom(keys.account.publicKey))
-        .setDevicePublicKey(ByteString.copyFrom(device.publicKey))
-        .setKind(kind)
-        .setCreatedMs(now)
-        .build()
-        .toByteArray()
+    val reg =
+        DeviceRegistration.newBuilder()
+            .setAccountPublicKey(ByteString.copyFrom(keys.account.publicKey))
+            .setDevicePublicKey(ByteString.copyFrom(device.publicKey))
+            .setKind(kind)
+            .setCreatedMs(now)
+            .build()
+            .toByteArray()
     val api = Api(server, http)
-    val res = api.auth.registerDevice(
-        RegisterDeviceRequest.newBuilder()
-            .setRegistration(ByteString.copyFrom(reg))
-            .setSignature(ByteString.copyFrom(keys.account.sign(registerMessage(reg))))
-            .setSetupToken(setupToken)
-            .setApproval(ByteString.copyFrom(enrollment?.approval ?: byteArrayOf()))
-            .setApprovalSignature(ByteString.copyFrom(enrollment?.signature ?: byteArrayOf()))
-            .build(),
-        emptyMap(),
-    ).value()
-    if (res.deviceId != deviceId(device.publicKey)) throw IllegalStateException("server 返回了意外的设备 ID")
+    val res =
+        api.auth
+            .registerDevice(
+                RegisterDeviceRequest.newBuilder()
+                    .setProtocolVersion(PROTOCOL_VERSION)
+                    .setRegistration(ByteString.copyFrom(reg))
+                    .setSignature(ByteString.copyFrom(keys.account.sign(registerMessage(reg))))
+                    .setSetupToken(setupToken)
+                    .setApproval(ByteString.copyFrom(enrollment?.approval ?: byteArrayOf()))
+                    .setApprovalSignature(
+                        ByteString.copyFrom(enrollment?.signature ?: byteArrayOf()),
+                    )
+                    .build(),
+                emptyMap(),
+            )
+            .value()
+    if (res.deviceId != deviceId(device.publicKey))
+        throw IllegalStateException("server 返回了意外的设备 ID")
     return Account(server, root.copyOf(), seed, res.deviceId)
 }
 
@@ -112,28 +124,39 @@ suspend fun login(api: Api, account: Account): String = loginResponse(api, accou
 
 /** Logs in with the device key and returns the token with its expiry. */
 suspend fun loginResponse(api: Api, account: Account): LoginResponse {
-    val ch = api.auth.getChallenge(GetChallengeRequest.newBuilder().setDeviceId(account.deviceId).build(), emptyMap()).value()
+    val ch =
+        api.auth
+            .getChallenge(
+                GetChallengeRequest.newBuilder().setDeviceId(account.deviceId).build(),
+                emptyMap(),
+            )
+            .value()
     val sig = SigningKey(account.deviceSeed).sign(loginMessage(ch.challenge.toByteArray()))
-    return api.auth.login(
-        LoginRequest.newBuilder()
-            .setDeviceId(account.deviceId)
-            .setChallenge(ch.challenge)
-            .setSignature(ByteString.copyFrom(sig))
-            .build(),
-        emptyMap(),
-    ).value()
+    return api.auth
+        .login(
+            LoginRequest.newBuilder()
+                .setProtocolVersion(PROTOCOL_VERSION)
+                .setDeviceId(account.deviceId)
+                .setChallenge(ch.challenge)
+                .setSignature(ByteString.copyFrom(sig))
+                .build(),
+            emptyMap(),
+        )
+        .value()
 }
 
 /** A daemon's answer, or a failure to get one. [code] is a Connect code name. */
-class CommandException(val code: String, message: String, val fromDaemon: Boolean = false) : Exception(message) {
+class CommandException(val code: String, message: String, val fromDaemon: Boolean = false) :
+    Exception(message) {
     // fromDaemon: the daemon's own answer for this request, the final word
     // on it (except that it expired before reaching the daemon).
 
     /**
-     * The command may or may not have run; retrying with the same request ID is safe.
-     * A daemon that stopped halfway through it answers "aborted" ever after.
+     * The command may or may not have run; retrying with the same request ID is safe. A daemon that
+     * stopped halfway through it answers "aborted" ever after.
      */
-    val unknown: Boolean get() = code == UNKNOWN || (fromDaemon && code == "aborted")
+    val unknown: Boolean
+        get() = code == UNKNOWN || (fromDaemon && code == "aborted")
 
     companion object {
         const val UNKNOWN = "unknown_outcome"
@@ -143,32 +166,44 @@ class CommandException(val code: String, message: String, val fromDaemon: Boolea
 }
 
 /** Short text for an error, without content. */
-fun errorText(e: Throwable): String = when (e) {
-    is CommandException -> e.message ?: e.code
-    // A request that never reached the server carries the network failure
-    // as its cause, and that failure's own message as its text.
-    is ConnectException -> networkText(e.exception) ?: when (e.code) {
-        Code.UNAVAILABLE -> "连不上服务器" + (e.message?.let { "：$it" } ?: "")
-        Code.UNAUTHENTICATED -> "登录失效：" + (e.message ?: "")
-        else -> e.message ?: e.code.codeName
+fun errorText(e: Throwable): String =
+    when (e) {
+        is CommandException -> e.message ?: e.code
+        // A request that never reached the server carries the network failure
+        // as its cause, and that failure's own message as its text.
+        is ConnectException ->
+            networkText(e.exception)
+                ?: when (e.code) {
+                    Code.UNAVAILABLE -> "连不上服务器" + (e.message?.let { "：$it" } ?: "")
+                    Code.UNAUTHENTICATED -> "登录失效：" + (e.message ?: "")
+                    else -> e.message ?: e.code.codeName
+                }
+        else -> networkText(e) ?: e.message ?: e.javaClass.simpleName
     }
-    else -> networkText(e) ?: e.message ?: e.javaClass.simpleName
-}
 
 /** The failure as the system worded it, for the details of a lost connection; without content. */
 fun detailText(e: Throwable): String {
     val cause = (e as? ConnectException)?.exception ?: e
-    return listOfNotNull(cause.javaClass.simpleName.takeIf { cause.javaClass != Exception::class.java }, cause.message).joinToString(": ")
+    return listOfNotNull(
+            cause.javaClass.simpleName.takeIf { cause.javaClass != Exception::class.java },
+            cause.message,
+        )
+        .joinToString(": ")
 }
 
-/** The server's address did not resolve: on a phone, the network is down whatever the status bar shows. */
-fun unresolvedHost(e: Throwable): Boolean = ((e as? ConnectException)?.exception ?: e) is java.net.UnknownHostException
+/**
+ * The server's address did not resolve: on a phone, the network is down whatever the status bar
+ * shows.
+ */
+fun unresolvedHost(e: Throwable): Boolean =
+    ((e as? ConnectException)?.exception ?: e) is java.net.UnknownHostException
 
-private fun networkText(e: Throwable?): String? = when (e) {
-    // No address for the server: on a phone, nearly always no network.
-    is java.net.UnknownHostException -> "找不到服务器，检查一下网络"
-    is java.net.ConnectException -> "连不上服务器"
-    is java.net.SocketTimeoutException -> "连接超时"
-    is javax.net.ssl.SSLException -> "安全连接失败：" + (e.message ?: "")
-    else -> null
-}
+private fun networkText(e: Throwable?): String? =
+    when (e) {
+        // No address for the server: on a phone, nearly always no network.
+        is java.net.UnknownHostException -> "找不到服务器，检查一下网络"
+        is java.net.ConnectException -> "连不上服务器"
+        is java.net.SocketTimeoutException -> "连接超时"
+        is javax.net.ssl.SSLException -> "安全连接失败：" + (e.message ?: "")
+        else -> null
+    }

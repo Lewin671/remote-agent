@@ -54,4 +54,20 @@ public interface OriginOrBuilder extends
    */
   com.google.protobuf.ByteString
       getRequestIdBytes();
+
+  /**
+   * <pre>
+   * Encrypted command preconditions, checked atomically on the owner.
+   * </pre>
+   *
+   * <code>uint64 observed_event_seq = 4 [json_name = "observedEventSeq"];</code>
+   * @return The observedEventSeq.
+   */
+  long getObservedEventSeq();
+
+  /**
+   * <code>bytes observed_screen_hash = 5 [json_name = "observedScreenHash"];</code>
+   * @return The observedScreenHash.
+   */
+  com.google.protobuf.ByteString getObservedScreenHash();
 }

@@ -373,6 +373,32 @@ public  final class NotifyContent extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
+  public static final int SOURCE_EVENT_SEQ_FIELD_NUMBER = 7;
+  private long sourceEventSeq_;
+  /**
+   * <code>uint64 source_event_seq = 7 [json_name = "sourceEventSeq"];</code>
+   * @return The sourceEventSeq.
+   */
+  @java.lang.Override
+  public long getSourceEventSeq() {
+    return sourceEventSeq_;
+  }
+  /**
+   * <code>uint64 source_event_seq = 7 [json_name = "sourceEventSeq"];</code>
+   * @param value The sourceEventSeq to set.
+   */
+  private void setSourceEventSeq(long value) {
+    
+    sourceEventSeq_ = value;
+  }
+  /**
+   * <code>uint64 source_event_seq = 7 [json_name = "sourceEventSeq"];</code>
+   */
+  private void clearSourceEventSeq() {
+
+    sourceEventSeq_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.proto.NotifyContent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -834,6 +860,34 @@ public  final class NotifyContent extends
       return this;
     }
 
+    /**
+     * <code>uint64 source_event_seq = 7 [json_name = "sourceEventSeq"];</code>
+     * @return The sourceEventSeq.
+     */
+    @java.lang.Override
+    public long getSourceEventSeq() {
+      return instance.getSourceEventSeq();
+    }
+    /**
+     * <code>uint64 source_event_seq = 7 [json_name = "sourceEventSeq"];</code>
+     * @param value The sourceEventSeq to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSourceEventSeq(long value) {
+      copyOnWrite();
+      instance.setSourceEventSeq(value);
+      return this;
+    }
+    /**
+     * <code>uint64 source_event_seq = 7 [json_name = "sourceEventSeq"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSourceEventSeq() {
+      copyOnWrite();
+      instance.clearSourceEventSeq();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.NotifyContent)
   }
   @java.lang.Override
@@ -857,10 +911,11 @@ public  final class NotifyContent extends
             "title_",
             "text_",
             "approval_",
+            "sourceEventSeq_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\f\u0004\u0208\u0005\u0208\u0006\u1009\u0000";
+              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\f\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

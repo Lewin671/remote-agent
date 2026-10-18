@@ -23,7 +23,7 @@ English · [简体中文](README.zh-CN.md)
 - **Self-hosted** — your relay, your web client, no third-party account.
 - **On every screen** — Web, Android and iOS (preview): chat, approvals, push, live terminal, images, all your computers in one list.
 
-Adding a device requires a currently enrolled device to approve its exact identity. An account secret alone cannot re-enroll a removed device. Removal revokes relay access; it does not erase downloaded history or rotate content keys. See the [security boundary](docs/scope.md#设备加入与移除).
+Devices pin a fixed management daemon; removal rotates keys after retained executors automatically confirm. See the [security model and limits](docs/reference.md#security-model).
 
 ## Try it on the public relay
 

@@ -53,6 +53,7 @@ message RegisterDeviceRequest {
   // a device to an existing account. Never replaced by root-key possession.
   bytes approval = 5;
   bytes approval_signature = 6;
+  uint32 protocol_version = 7;
 }
 
 message GetSignupChallengeRequest {}
@@ -90,12 +91,14 @@ message LoginRequest {
   // Ed25519 signature by the device key over "remote-agent/v1/login\x00"
   // followed by challenge.
   bytes signature = 3;
+  uint32 protocol_version = 4;
 }
 
 message LoginResponse {
   // Bearer token for the other services and the stream.
   string token = 1;
   int64 expires_ms = 2;
+  bytes device_public_key = 3;
 }
 
 // PairingService moves the root key from an existing device (the
@@ -103,6 +106,8 @@ message LoginResponse {
 // internal/e2e/pair.go. The initiator is logged in; the joiner is not and
 // uses the candidate token it gets when joining.
 service PairingService {
+  // Freeze this response before exposing the joiner ephemeral public key.
+  rpc PeekPairing(PeekPairingRequest) returns (PeekPairingResponse);
   rpc CreatePairing(CreatePairingRequest) returns (CreatePairingResponse);
   rpc JoinPairing(JoinPairingRequest) returns (JoinPairingResponse);
   rpc GetPairing(GetPairingRequest) returns (GetPairingResponse);
@@ -137,12 +142,18 @@ message PairApproval {
   bytes nonce = 8;
 }
 
+message PeekPairingRequest { string code = 1; uint32 protocol_version = 2; }
+message PeekPairingResponse { string pairing_id = 1; bytes commit = 2; }
+
 message JoinPairingRequest {
   string code = 1;
   bytes joiner_public = 2;
   DeviceKind joiner_kind = 3;
   // Ed25519 signing identity, generated before comparing the SAS.
   bytes device_public_key = 4;
+  // Independent long-term X25519 recipient key, bound by the SAS.
+  bytes device_hpke_public_key = 5;
+  uint32 protocol_version = 6;
 }
 
 message JoinPairingResponse {
@@ -177,6 +188,8 @@ message GetPairingRequest {
   // the server then drops the key and tells the initiator. Until then
   // the joiner can fetch the key again, e.g. after a lost response.
   bool received = 3;
+  // Candidate signature over the authority PairContext after reveal.
+  bytes candidate_signature = 4;
 }
 
 message GetPairingResponse {
@@ -188,11 +201,17 @@ message GetPairingResponse {
   // PAIRING envelope, for the joiner once approved.
   Envelope payload = 6;
   bytes device_public_key = 7;
+  bytes device_hpke_public_key = 8;
+  bytes security_context = 9;
+  bytes candidate_signature = 10;
 }
 
 message RevealPairingRequest {
   string pairing_id = 1;
   bytes initiator_public = 2;
+  // Signed active authority PairContext. SAS binds its precommitted trust
+  // descriptor; the late context nonce/head/expiry are signed separately.
+  bytes security_context = 3;
 }
 
 message RevealPairingResponse {}
@@ -328,15 +347,22 @@ message ForwardRequest {
   // COMMAND envelope. Its header's sender must be the calling device, or
   // the server refuses it.
   Envelope command = 2;
+  // Opaque pinned-authority HPKE Capsule, mutually exclusive with command.
+  // The relay only routes it to machine_id and does not open it.
+  bytes security_rpc = 3;
 }
 
 message ForwardResponse {
   // COMMAND_RESULT envelope.
   Envelope result = 1;
+  bytes security_rpc = 2;
 }
 
 // MachineService is used by daemons.
 service MachineService {
+  // One-time transport pin, installed by the authority host. Endpoints keep
+  // their independently SAS-pinned authority; this is only server-side ACL.
+  rpc PinSecurityDomain(PinSecurityDomainRequest) returns (PinSecurityDomainResponse);
   rpc PutMachine(PutMachineRequest) returns (PutMachineResponse);
   rpc PutSession(PutSessionRequest) returns (PutSessionResponse);
   // UploadEvents appends events in order. Events the server already has
@@ -467,6 +493,7 @@ message ForwardCall {
   string sender_device_id = 3;
   bytes sender_registration = 4;
   bytes sender_registration_signature = 5;
+  bytes security_rpc = 6;
 }
 
 message ForwardReply {
@@ -475,6 +502,7 @@ message ForwardReply {
   // Set when the daemon could not produce a sealed result, e.g. the
   // envelope did not open. The text never contains content.
   string error = 3;
+  bytes security_rpc = 4;
 }
 
 // Terminal streams use a WebSocket at /v1/term. Each side first sends a
@@ -511,8 +539,15 @@ message SetPushSubscriptionRequest {
 
 message SetPushSubscriptionResponse {}
 
+message PinSecurityDomainRequest { bytes genesis_state = 1; }
+message PinSecurityDomainResponse {}
+
 message RemoveDeviceRequest {
   string device_id = 1;
+  // Signed Completion, original DeleteRequest, and canonical State chain.
+  bytes security_completion = 2;
+  bytes security_request = 3;
+  repeated bytes security_chain = 4;
 }
 
 message RemoveDeviceResponse {}

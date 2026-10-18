@@ -4,25 +4,47 @@
 // URLs, each revoked as soon as nothing shows it.
 
 import { useRowExpanded } from "./RowState";
-import { createContext, useContext, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import type { ImageRef } from "../gen/remoteagent/v1/event_pb";
 import { ImageSync } from "../gen/remoteagent/v1/event_pb";
 import { hhmm } from "../model";
-import { aspectOf, baseName, extOf, matchesFormat, mimeOf, sizeText, type SessionImage } from "../imageview";
+import {
+  aspectOf,
+  baseName,
+  extOf,
+  matchesFormat,
+  mimeOf,
+  sizeText,
+  type SessionImage,
+} from "../imageview";
 import { errorText, type ImageResult, type Remote } from "../remote";
 import { Exp, useRemote } from "../ui";
 import { ChevronLeft, ChevronRight, X } from "../icons";
 
 /** Opens the viewer at a picture; provided by the session page. */
-export const OpenImage = createContext<(ref: ImageRef) => void>(() => undefined);
+export const OpenImage = createContext<(ref: ImageRef) => void>(
+  () => undefined,
+);
 
 /** A blob: URL for bytes, made while mounted and revoked after. Made in
  * an effect, not during render, so no URL outlives what shows it. */
-export function useBlobUrl(bytes: Uint8Array | undefined, type: string): string | undefined {
+export function useBlobUrl(
+  bytes: Uint8Array | undefined,
+  type: string,
+): string | undefined {
   const [url, setUrl] = useState<string>();
   useEffect(() => {
     if (!bytes || !bytes.length || !type) return setUrl(undefined);
-    const u = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type }));
+    const u = URL.createObjectURL(
+      new Blob([bytes as Uint8Array<ArrayBuffer>], { type }),
+    );
     setUrl(u);
     return () => URL.revokeObjectURL(u);
   }, [bytes, type]);
@@ -43,34 +65,77 @@ function useObjectUrl(blob: Blob | undefined): string | undefined {
 
 /** A ref's embedded preview, if it is what it claims to be. */
 function usePreview(ref: ImageRef): string | undefined {
-  const ok = ref.preview.length > 0 && matchesFormat(ref.preview, ref.previewFormat);
+  const ok =
+    ref.preview.length > 0 && matchesFormat(ref.preview, ref.previewFormat);
   return useBlobUrl(ok ? ref.preview : undefined, mimeOf(ref.previewFormat));
 }
 
 /** One preview, laid out at its own proportions before it loads. */
-export function Pic({ image: r, height = 96, number, badge, onOpen, className = "" }: { image: ImageRef; height?: number; number?: number; badge?: string; onOpen?: () => void; className?: string }) {
+export function Pic({
+  image: r,
+  height = 96,
+  number,
+  badge,
+  onOpen,
+  className = "",
+}: {
+  image: ImageRef;
+  height?: number;
+  number?: number;
+  badge?: string;
+  onOpen?: () => void;
+  className?: string;
+}) {
   const url = usePreview(r);
   const aspect = Math.min(3, Math.max(0.4, aspectOf(r)));
   // height 0: as wide as the chat, at the image's proportions.
-  const style: CSSProperties = height ? { height, width: Math.round(height * aspect) } : { aspectRatio: String(aspectOf(r)) };
+  const style: CSSProperties = height
+    ? { height, width: Math.round(height * aspect) }
+    : { aspectRatio: String(aspectOf(r)) };
   if (r.sync === ImageSync.NAME_ONLY || (!url && r.sync !== ImageSync.SYNCED))
     return (
-      <button className={"pic miss " + className} style={height ? { ...style, width: Math.max(style.width as number, 120) } : style} onClick={onOpen} aria-label="图片没有同步">
+      <button
+        className={"pic miss " + className}
+        style={
+          height
+            ? { ...style, width: Math.max(style.width as number, 120) }
+            : style
+        }
+        onClick={onOpen}
+        aria-label="图片没有同步"
+      >
         图片没有同步
         {r.path && <code>{baseName(r.path)}</code>}
       </button>
     );
   return (
-    <button className={"pic " + className} style={style} onClick={onOpen} aria-label={r.path ? `图片 ${baseName(r.path)}` : "图片"}>
+    <button
+      className={"pic " + className}
+      style={style}
+      onClick={onOpen}
+      aria-label={r.path ? `图片 ${baseName(r.path)}` : "图片"}
+    >
       {url && <img src={url} alt="" draggable={false} />}
       {number ? <span className="n">{number}</span> : null}
-      {(badge ?? (r.sync === ImageSync.PREVIEW_ONLY ? "只有预览" : "")) && <span className="badge">{badge ?? "只有预览"}</span>}
+      {(badge ?? (r.sync === ImageSync.PREVIEW_ONLY ? "只有预览" : "")) && (
+        <span className="badge">{badge ?? "只有预览"}</span>
+      )}
     </button>
   );
 }
 
 /** A row of previews: at most four, the rest folded into +N. */
-export function ImageStrip({ refs, numbered, className = "", height }: { refs: ImageRef[]; numbered?: boolean; className?: string; height?: number }) {
+export function ImageStrip({
+  refs,
+  numbered,
+  className = "",
+  height,
+}: {
+  refs: ImageRef[];
+  numbered?: boolean;
+  className?: string;
+  height?: number;
+}) {
   const open = useContext(OpenImage);
   if (!refs.length) return null;
   const shown = refs.slice(0, 4);
@@ -79,9 +144,18 @@ export function ImageStrip({ refs, numbered, className = "", height }: { refs: I
     <span className={"pics " + className}>
       {shown.map((r, i) => (
         <span key={i} className="picwrap">
-          <Pic image={r} height={height} number={numbered && r.cliIndex ? r.cliIndex : undefined} onOpen={() => open(r)} />
+          <Pic
+            image={r}
+            height={height}
+            number={numbered && r.cliIndex ? r.cliIndex : undefined}
+            onOpen={() => open(r)}
+          />
           {more > 0 && i === shown.length - 1 && (
-            <button className="more" onClick={() => open(r)} aria-label={`还有 ${more} 张`}>
+            <button
+              className="more"
+              onClick={() => open(r)}
+              aria-label={`还有 ${more} 张`}
+            >
               +{more}
             </button>
           )}
@@ -92,7 +166,13 @@ export function ImageStrip({ refs, numbered, className = "", height }: { refs: I
 }
 
 /** An image the agent made: full width, with its rewritten prompt. */
-export function GenCard({ refs, prompt }: { refs: ImageRef[]; prompt: string }) {
+export function GenCard({
+  refs,
+  prompt,
+}: {
+  refs: ImageRef[];
+  prompt: string;
+}) {
   const open = useContext(OpenImage);
   const [shown, setShown] = useRowExpanded("image-prompt");
   return (
@@ -103,7 +183,11 @@ export function GenCard({ refs, prompt }: { refs: ImageRef[]; prompt: string }) 
           <div className="meta">
             <span>生成的图片{sizeText(r) && ` · ${sizeText(r)}`}</span>
             {prompt && i === 0 && (
-              <button className="link" onClick={() => setShown(!shown)} aria-expanded={shown}>
+              <button
+                className="link"
+                onClick={() => setShown(!shown)}
+                aria-expanded={shown}
+              >
                 提示词 <Exp up={shown} />
               </button>
             )}
@@ -115,19 +199,39 @@ export function GenCard({ refs, prompt }: { refs: ImageRef[]; prompt: string }) 
   );
 }
 
-const NO_REF = { preview: new Uint8Array(), previewFormat: 0 } as unknown as ImageRef;
+const NO_REF = {
+  preview: new Uint8Array(),
+  previewFormat: 0,
+} as unknown as ImageRef;
 
-type Load = { kind: "idle" | "loading" | "offline" | "error" | "preview-only" | "name-only"; error?: string } | ImageResult;
+type Load =
+  | {
+      kind:
+        | "idle"
+        | "loading"
+        | "offline"
+        | "error"
+        | "preview-only"
+        | "name-only";
+      error?: string;
+    }
+  | ImageResult;
 
 /** Fetches the display copy of the picture shown, once per picture. */
-function useDisplay(remote: Remote, sid: string, img: SessionImage | undefined, attempt: number): Load {
+function useDisplay(
+  remote: Remote,
+  sid: string,
+  img: SessionImage | undefined,
+  attempt: number,
+): Load {
   useRemote(remote);
   const [state, setState] = useState<Load>({ kind: "idle" });
   useEffect(() => {
     if (!img) return;
     const r = img.ref;
     if (r.sync === ImageSync.NAME_ONLY) return setState({ kind: "name-only" });
-    if (r.sync !== ImageSync.SYNCED || !r.imageId) return setState({ kind: "preview-only" });
+    if (r.sync !== ImageSync.SYNCED || !r.imageId)
+      return setState({ kind: "preview-only" });
     const cached = remote.cachedImage(sid, r.imageId);
     if (cached) return setState(cached);
     if (remote.conn !== "online") return setState({ kind: "offline" });
@@ -135,7 +239,12 @@ function useDisplay(remote: Remote, sid: string, img: SessionImage | undefined, 
     setState({ kind: "loading" });
     remote.getImage(sid, r.imageId).then(
       (res) => alive && setState(res),
-      (e) => alive && setState({ kind: remote.conn === "online" ? "error" : "offline", error: errorText(e) }),
+      (e) =>
+        alive &&
+        setState({
+          kind: remote.conn === "online" ? "error" : "offline",
+          error: errorText(e),
+        }),
     );
     return () => {
       alive = false;
@@ -170,6 +279,8 @@ function loadNote(l: Load): string {
       return "只有预览，原图在电脑上";
     case "name-only":
       return "图片没有同步";
+    case "ok":
+      return l.unverifiedLegacy ? "旧图片的内容和来源未验证，仅供阅读" : "";
   }
   return "";
 }
@@ -219,11 +330,15 @@ export function ImageViewer({
     return () => removeEventListener("keydown", onKey);
   });
   // Swipes: sideways to page, down to close. Two fingers zoom.
-  const touch = useRef<{ x: number; y: number; d?: number } | undefined>(undefined);
+  const touch = useRef<{ x: number; y: number; d?: number } | undefined>(
+    undefined,
+  );
   const [zoom, setZoom] = useState(1);
   useEffect(() => setZoom(1), [i]);
   if (!img) return null;
-  const name = img.ref.path ? baseName(img.ref.path) : `image-${i + 1}.${extOf(load.kind === "ok" ? load.format : img.ref.format)}`;
+  const name = img.ref.path
+    ? baseName(img.ref.path)
+    : `image-${i + 1}.${extOf(load.kind === "ok" ? load.format : img.ref.format)}`;
   const blob = load.kind === "ok" ? load.blob : undefined;
   const save = () => {
     if (!full) return;
@@ -233,13 +348,17 @@ export function ImageViewer({
     a.click();
   };
   const file = blob ? new File([blob], name, { type: blob.type }) : undefined;
-  const canShare = !!file && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
+  const canShare =
+    !!file &&
+    typeof navigator.canShare === "function" &&
+    navigator.canShare({ files: [file] });
   const share = async () => {
     if (!file) return;
     try {
       await navigator.share({ files: [file] });
     } catch (e) {
-      if ((e as Error).name !== "AbortError") setNote("没能分享：" + errorText(e));
+      if ((e as Error).name !== "AbortError")
+        setNote("没能分享：" + errorText(e));
     }
   };
   const copy = async () => {
@@ -247,7 +366,9 @@ export function ImageViewer({
     try {
       // Clipboards take PNG; other formats are converted first.
       const png = blob.type === "image/png" ? blob : await toPng(blob);
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": png }),
+      ]);
       setNote("已复制");
     } catch (e) {
       setNote("没能复制：" + errorText(e));
@@ -265,22 +386,38 @@ export function ImageViewer({
         if (!t || zoom > 1) return;
         const dx = e.clientX - t.x;
         const dy = e.clientY - t.y;
-        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy))
+          go(dx < 0 ? 1 : -1);
         else if (!wide && dy > 90) onClose();
       }}
       onTouchMove={(e) => {
         if (e.touches.length !== 2) return;
-        const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        const d = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY,
+        );
         const t = touch.current ?? { x: 0, y: 0 };
         if (t.d) setZoom((z) => Math.max(1, Math.min(4, (z * d) / t.d!)));
         touch.current = { ...t, d };
       }}
       onDoubleClick={() => setZoom((z) => (z > 1 ? 1 : 2))}
     >
-      {(full || preview) && <img src={full ?? preview} alt="" style={{ transform: `scale(${zoom})` }} draggable={false} className={full ? "" : "soft"} />}
+      {(full || preview) && (
+        <img
+          src={full ?? preview}
+          alt=""
+          style={{ transform: `scale(${zoom})` }}
+          draggable={false}
+          className={full ? "" : "soft"}
+        />
+      )}
       {load.kind === "loading" && <span className="ring" aria-label="加载中" />}
       {status && (
-        <button className="vnote" onClick={retryable ? () => setAttempt((a) => a + 1) : undefined} disabled={!retryable}>
+        <button
+          className="vnote"
+          onClick={retryable ? () => setAttempt((a) => a + 1) : undefined}
+          disabled={!retryable}
+        >
           {status}
         </button>
       )}
@@ -296,12 +433,19 @@ export function ImageViewer({
         </>
       )}
       {" · "}
-      {[sizeText(img.ref), title, img.time ? hhmm(img.time) : ""].filter(Boolean).join(" · ")}
+      {[sizeText(img.ref), title, img.time ? hhmm(img.time) : ""]
+        .filter(Boolean)
+        .join(" · ")}
     </>
   );
   if (wide)
     return (
-      <div className="lightbox" role="dialog" aria-modal="true" aria-label="查看图片">
+      <div
+        className="lightbox"
+        role="dialog"
+        aria-modal="true"
+        aria-label="查看图片"
+      >
         <div className="lb-top">
           <span>
             {i + 1} / {images.length} · {sourceText(img, agent)}
@@ -310,11 +454,21 @@ export function ImageViewer({
             <X />
           </button>
         </div>
-        <button className="arr" onClick={() => go(-1)} disabled={i === 0} aria-label="上一张">
+        <button
+          className="arr"
+          onClick={() => go(-1)}
+          disabled={i === 0}
+          aria-label="上一张"
+        >
           <ChevronLeft />
         </button>
         <div className="lb-img">{picture}</div>
-        <button className="arr" onClick={() => go(1)} disabled={i >= images.length - 1} aria-label="下一张">
+        <button
+          className="arr"
+          onClick={() => go(1)}
+          disabled={i >= images.length - 1}
+          aria-label="下一张"
+        >
           <ChevronRight />
         </button>
         <div className="lb-foot">
@@ -324,7 +478,10 @@ export function ImageViewer({
             <button onClick={save} disabled={!full}>
               保存
             </button>
-            <button onClick={() => void copy()} disabled={!blob || typeof ClipboardItem === "undefined"}>
+            <button
+              onClick={() => void copy()}
+              disabled={!blob || typeof ClipboardItem === "undefined"}
+            >
               复制
             </button>
             <button onClick={onClose}>回到消息</button>
@@ -333,7 +490,12 @@ export function ImageViewer({
       </div>
     );
   return (
-    <div className="viewer" role="dialog" aria-modal="true" aria-label="查看图片">
+    <div
+      className="viewer"
+      role="dialog"
+      aria-modal="true"
+      aria-label="查看图片"
+    >
       <div className="vbar">
         <button onClick={onClose} aria-label="关闭">
           <X />
@@ -347,7 +509,11 @@ export function ImageViewer({
       <div className="vinfo">
         <b>{sourceText(img, agent)}</b>
         {img.ref.path && <code>{showPath(img.ref.path)}</code>}
-        <div>{[sizeText(img.ref), title, img.time ? hhmm(img.time) : ""].filter(Boolean).join(" · ")}</div>
+        <div>
+          {[sizeText(img.ref), title, img.time ? hhmm(img.time) : ""]
+            .filter(Boolean)
+            .join(" · ")}
+        </div>
         {img.prompt && <div className="vprompt">{img.prompt}</div>}
         {note && <div>{note}</div>}
       </div>
@@ -369,7 +535,9 @@ async function toPng(blob: Blob): Promise<Blob> {
   c.height = bmp.height;
   c.getContext("2d")!.drawImage(bmp, 0, 0);
   bmp.close();
-  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("转换失败"))), "image/png"));
+  return new Promise((res, rej) =>
+    c.toBlob((b) => (b ? res(b) : rej(new Error("转换失败"))), "image/png"),
+  );
 }
 
 /** This device's copies of images on their way: shown until the CLI
@@ -392,4 +560,3 @@ export function LocalThumbs({ blobs }: { blobs?: Blob[] }) {
     </span>
   );
 }
-

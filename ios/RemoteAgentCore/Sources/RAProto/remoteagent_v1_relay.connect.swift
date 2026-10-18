@@ -75,6 +75,10 @@ public final class PBAuthServiceClient: PBAuthServiceClientInterface, Sendable {
 /// uses the candidate token it gets when joining.
 public protocol PBPairingServiceClientInterface: Sendable {
 
+    /// Freeze this response before exposing the joiner ephemeral public key.
+    @available(iOS 13, *)
+    func `peekPairing`(request: PBPeekPairingRequest, headers: Connect.Headers) async -> ResponseMessage<PBPeekPairingResponse>
+
     @available(iOS 13, *)
     func `createPairing`(request: PBCreatePairingRequest, headers: Connect.Headers) async -> ResponseMessage<PBCreatePairingResponse>
 
@@ -100,6 +104,11 @@ public final class PBPairingServiceClient: PBPairingServiceClientInterface, Send
 
     public init(client: Connect.ProtocolClientInterface) {
         self.client = client
+    }
+
+    @available(iOS 13, *)
+    public func `peekPairing`(request: PBPeekPairingRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBPeekPairingResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.PairingService/PeekPairing", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -134,6 +143,7 @@ public final class PBPairingServiceClient: PBPairingServiceClientInterface, Send
 
     public enum Metadata {
         public enum Methods {
+            public static let peekPairing = Connect.MethodSpec(name: "PeekPairing", service: "remoteagent.v1.PairingService", type: .unary)
             public static let createPairing = Connect.MethodSpec(name: "CreatePairing", service: "remoteagent.v1.PairingService", type: .unary)
             public static let joinPairing = Connect.MethodSpec(name: "JoinPairing", service: "remoteagent.v1.PairingService", type: .unary)
             public static let getPairing = Connect.MethodSpec(name: "GetPairing", service: "remoteagent.v1.PairingService", type: .unary)
@@ -298,6 +308,11 @@ public final class PBClientServiceClient: PBClientServiceClientInterface, Sendab
 /// MachineService is used by daemons.
 public protocol PBMachineServiceClientInterface: Sendable {
 
+    /// One-time transport pin, installed by the authority host. Endpoints keep
+    /// their independently SAS-pinned authority; this is only server-side ACL.
+    @available(iOS 13, *)
+    func `pinSecurityDomain`(request: PBPinSecurityDomainRequest, headers: Connect.Headers) async -> ResponseMessage<PBPinSecurityDomainResponse>
+
     @available(iOS 13, *)
     func `putMachine`(request: PBPutMachineRequest, headers: Connect.Headers) async -> ResponseMessage<PBPutMachineResponse>
 
@@ -332,6 +347,11 @@ public final class PBMachineServiceClient: PBMachineServiceClientInterface, Send
     }
 
     @available(iOS 13, *)
+    public func `pinSecurityDomain`(request: PBPinSecurityDomainRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBPinSecurityDomainResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.MachineService/PinSecurityDomain", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `putMachine`(request: PBPutMachineRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBPutMachineResponse> {
         return await self.client.unary(path: "/remoteagent.v1.MachineService/PutMachine", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -363,6 +383,7 @@ public final class PBMachineServiceClient: PBMachineServiceClientInterface, Send
 
     public enum Metadata {
         public enum Methods {
+            public static let pinSecurityDomain = Connect.MethodSpec(name: "PinSecurityDomain", service: "remoteagent.v1.MachineService", type: .unary)
             public static let putMachine = Connect.MethodSpec(name: "PutMachine", service: "remoteagent.v1.MachineService", type: .unary)
             public static let putSession = Connect.MethodSpec(name: "PutSession", service: "remoteagent.v1.MachineService", type: .unary)
             public static let uploadEvents = Connect.MethodSpec(name: "UploadEvents", service: "remoteagent.v1.MachineService", type: .unary)

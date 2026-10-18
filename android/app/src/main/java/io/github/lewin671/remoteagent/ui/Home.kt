@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,7 +59,6 @@ import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.RowMeta
 import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.Status
-import io.github.lewin671.remoteagent.core.statusOf
 import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.cardMeta
@@ -74,33 +72,34 @@ import io.github.lewin671.remoteagent.core.filterTail
 import io.github.lewin671.remoteagent.core.groupEnded
 import io.github.lewin671.remoteagent.core.groupTitle
 import io.github.lewin671.remoteagent.core.homeTimeline
-import io.github.lewin671.remoteagent.core.needsEndedPage
-import io.github.lewin671.remoteagent.core.projects
 import io.github.lewin671.remoteagent.core.listedProjects
 import io.github.lewin671.remoteagent.core.metaLine
 import io.github.lewin671.remoteagent.core.minutesLeft
+import io.github.lewin671.remoteagent.core.needsEndedPage
 import io.github.lewin671.remoteagent.core.previewOf
 import io.github.lewin671.remoteagent.core.projectKey
 import io.github.lewin671.remoteagent.core.projectName
+import io.github.lewin671.remoteagent.core.projects
 import io.github.lewin671.remoteagent.core.resolveScope
 import io.github.lewin671.remoteagent.core.scopeKey
 import io.github.lewin671.remoteagent.core.scopeRows
+import io.github.lewin671.remoteagent.core.statusOf
 import io.github.lewin671.remoteagent.core.titleOf
 import io.github.lewin671.remoteagent.core.whenText
 
 /**
- * The home page's scope as this device remembers it (client-v27,
- * architecture §8): kept with the device's own settings and not in the
- * account's preferences, because different devices often look at different
- * projects. Those settings are plaintext on disk, so a project is kept as a
- * mark made with the account's key ([encodeScope]) and never as its path.
- * Nothing is remembered until the user chose a scope; what the page then
- * uses is resolveScope's answer. `root` is the account's root key.
+ * The home page's scope as this device remembers it (client-v27, architecture §8): kept with the
+ * device's own settings and not in the account's preferences, because different devices often look
+ * at different projects. Those settings are plaintext on disk, so a project is kept as a mark made
+ * with the account's key ([encodeScope]) and never as its path. Nothing is remembered until the
+ * user chose a scope; what the page then uses is resolveScope's answer. `root` is the account's
+ * root key.
  */
 object HomeScopes {
     private var stored: MutableState<String?>? = null
 
-    private fun store(context: Context) = context.applicationContext.getSharedPreferences("home-scope", Context.MODE_PRIVATE)
+    private fun store(context: Context) =
+        context.applicationContext.getSharedPreferences("home-scope", Context.MODE_PRIVATE)
 
     private fun stored(context: Context): MutableState<String?> =
         stored ?: mutableStateOf(store(context).getString("scope", null)).also { stored = it }
@@ -123,9 +122,9 @@ object HomeScopes {
 }
 
 /**
- * 主页 (client-v27): one timeline of sessions for a scope, a project or
- * every project. What needs you comes first and is not scoped, then what is
- * running, then the ended sessions by day, a page at a time.
+ * 主页 (client-v27): one timeline of sessions for a scope, a project or every project. What needs you
+ * comes first and is not scoped, then what is running, then the ended sessions by day, a page at a
+ * time.
  */
 @Composable
 fun HomeScreen() {
@@ -159,8 +158,10 @@ fun HomeScreen() {
     LazyColumn(Modifier.fillMaxSize().background(p.card)) {
         item {
             ScopeTitle(
-                scope.takeIf { anyProject }, onOpen = { menu = true },
-                // A project as the scope is where the new session goes; every project asks which first.
+                scope.takeIf { anyProject },
+                onOpen = { menu = true },
+                // A project as the scope is where the new session goes; every project asks which
+                // first.
                 onNew = { if (scope is HomeScope.Of) nav.projectNew(scope.key) else pick = true },
             )
             if (state.conn != ConnState.ONLINE) ConnBanner(state)
@@ -178,17 +179,34 @@ fun HomeScreen() {
             item { Label("需要处理", tl.attention.size) }
             val shown = if (showAll || filtering) tl.attention else tl.attention.take(ATTENTION_MAX)
             items(shown, key = { "a" + it.id }) { s -> AttentionCard(state, s, t, scope) }
-            if (shown.size < tl.attention.size) item {
-                Box(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 4.dp).heightIn(min = 44.dp).clickable { showAll = true }.padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
-                    ArrowText("还有 ${tl.attention.size - shown.size} 项待处理", p.blue, T.smB)
+            if (shown.size < tl.attention.size)
+                item {
+                    Box(
+                        Modifier.padding(start = 12.dp, end = 12.dp, bottom = 4.dp)
+                            .heightIn(min = 44.dp)
+                            .clickable { showAll = true }
+                            .padding(horizontal = 4.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        ArrowText("还有 ${tl.attention.size - shown.size} 项待处理", p.blue, T.smB)
+                    }
                 }
-            }
         }
         if (tl.running.isNotEmpty()) {
             item { Label("进行中", tl.running.size) }
             val shown = if (showRunning || filtering) tl.running else tl.running.take(RUNNING_MAX)
-            items(shown, key = { "r" + it.id }) { s -> SessionRow(state, s, t, tl.meta, last = s == shown.last()) }
-            if (shown.size < tl.running.size) item { TextAction("还有 ${tl.running.size - shown.size} 个进行中", { showRunning = true }, Modifier.padding(horizontal = 16.dp), arrow = true) }
+            items(shown, key = { "r" + it.id }) { s ->
+                SessionRow(state, s, t, tl.meta, last = s == shown.last())
+            }
+            if (shown.size < tl.running.size)
+                item {
+                    TextAction(
+                        "还有 ${tl.running.size - shown.size} 个进行中",
+                        { showRunning = true },
+                        Modifier.padding(horizontal = 16.dp),
+                        arrow = true,
+                    )
+                }
         }
         val ended = tl.ended.take(shownEnded)
         for ((group, list) in groupEnded(ended, t)) {
@@ -198,46 +216,86 @@ fun HomeScreen() {
         // More to show: held here and not rendered yet, or still on the server.
         val held = ended.size < tl.ended.size
         val more = held || (!filtering && state.moreSessions && tl.ended.size < tl.endedTotal)
-        val tailModifier = Modifier.padding(start = 35.dp, end = 16.dp, top = 12.dp, bottom = 4.dp).testTag("timeline-tail")
+        val tailModifier =
+            Modifier.padding(start = 35.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
+                .testTag("timeline-tail")
         // What a filter matched is only known once every page is here.
-        val tail = if (filtering) filterTail(tl.size, query).takeUnless { wantAll } else endedTail(tl.endedTotal, more)
-        // The listing's first page could not be fetched: said here with its retry, whatever the list wants.
+        val tail =
+            if (filtering) filterTail(tl.size, query).takeUnless { wantAll }
+            else endedTail(tl.endedTotal, more)
+        // The listing's first page could not be fetched: said here with its retry, whatever the
+        // list wants.
         val listFailed = !state.sessionsListed && state.sessionsError.isNotEmpty()
-        if (tail != null || more || wantAll || wantPage || listFailed) item(key = "tail") {
-            // Reaching the end shows the next thirty, once the ones before them are all rendered;
-            // those not fetched yet are asked for above.
-            if (more && shownEnded <= tl.ended.size) LaunchedEffect(shownEnded, tl.ended.size) { shownEnded += ENDED_PAGE }
-            // While pages are on their way the line says so, unless it already counts the scope's sessions;
-            // a page that failed is said either way, with its retry.
-            if (listFailed || ((wantAll || wantPage) && (tail == null || state.sessionsError.isNotEmpty()))) EarlierTail(state, tailModifier)
-            else Text(tail.orEmpty(), style = T.meta, color = p.muted, modifier = tailModifier)
-        }
+        if (tail != null || more || wantAll || wantPage || listFailed)
+            item(key = "tail") {
+                // Reaching the end shows the next thirty, once the ones before them are all
+                // rendered;
+                // those not fetched yet are asked for above.
+                if (more && shownEnded <= tl.ended.size)
+                    LaunchedEffect(shownEnded, tl.ended.size) { shownEnded += ENDED_PAGE }
+                // While pages are on their way the line says so, unless it already counts the
+                // scope's sessions;
+                // a page that failed is said either way, with its retry.
+                if (
+                    listFailed ||
+                        ((wantAll || wantPage) &&
+                            (tail == null || state.sessionsError.isNotEmpty()))
+                )
+                    EarlierTail(state, tailModifier)
+                else Text(tail.orEmpty(), style = T.meta, color = p.muted, modifier = tailModifier)
+            }
         item { Spacer(Modifier.height(24.dp)) }
     }
     if (pick) PickProjectSheet(state) { pick = false }
-    if (menu) ScopeSheet(state, scope, t, onPick = { HomeScopes.choose(context, remote.account.root, it) }) { menu = false }
+    if (menu)
+        ScopeSheet(
+            state,
+            scope,
+            t,
+            onPick = { HomeScopes.choose(context, remote.account.root, it) },
+        ) {
+            menu = false
+        }
 }
 
 /**
- * The home page's title is its scope (client-v27): the project's avatar and
- * name, or 全 on grey and 全部项目, 22 with an arrow down; a tap opens
- * 看哪个项目. Without any project ([scope] null) it is a plain 会话 that
- * does nothing. The new-session button stays at the right.
+ * The home page's title is its scope (client-v27): the project's avatar and name, or 全 on grey and
+ * 全部项目, 22 with an arrow down; a tap opens 看哪个项目. Without any project ([scope] null) it is a plain
+ * 会话 that does nothing. The new-session button stays at the right.
  */
 @Composable
 private fun ScopeTitle(scope: HomeScope?, onOpen: () -> Unit, onNew: () -> Unit) {
     val p = pal
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         if (scope == null) {
-            Text("会话", style = T.title30, color = p.fg, modifier = Modifier.weight(1f).padding(vertical = 3.dp))
+            Text(
+                "会话",
+                style = T.title30,
+                color = p.fg,
+                modifier = Modifier.weight(1f).padding(vertical = 3.dp),
+            )
         } else {
             Box(Modifier.weight(1f)) {
                 Row(
-                    Modifier.heightIn(min = 44.dp).clip(Radii.SM).clickable(onClickLabel = "换范围", role = Role.Button, onClick = onOpen).testTag("scope-title"),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    Modifier.heightIn(min = 44.dp)
+                        .clip(Radii.SM)
+                        .clickable(onClickLabel = "换范围", role = Role.Button, onClick = onOpen)
+                        .testTag("scope-title"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     ScopeAvatar(scope, 28)
-                    Text(scopeName(scope), style = T.h22, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Text(
+                        scopeName(scope),
+                        style = T.h22,
+                        color = p.fg,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
                     Arrow(p.faint, ts(17.sp, lineHeight = 1f), down = true)
                 }
             }
@@ -246,10 +304,11 @@ private fun ScopeTitle(scope: HomeScope?, onOpen: () -> Unit, onNew: () -> Unit)
     }
 }
 
-private fun scopeName(scope: HomeScope): String = when (scope) {
-    HomeScope.All -> "全部项目"
-    is HomeScope.Of -> projectName(scope.key)
-}
+private fun scopeName(scope: HomeScope): String =
+    when (scope) {
+        HomeScope.All -> "全部项目"
+        is HomeScope.Of -> projectName(scope.key)
+    }
 
 /** A scope's avatar: the project's, or 全 on grey for every project. */
 @Composable
@@ -257,20 +316,35 @@ private fun ScopeAvatar(scope: HomeScope, size: Int) {
     val p = pal
     when (scope) {
         is HomeScope.Of -> Avatar(scope.key, size)
-        HomeScope.All -> Box(Modifier.size(size.dp).clip(RoundedCornerShape(if (size >= 28) 8.dp else 6.dp)).background(p.chip), contentAlignment = Alignment.Center) {
-            Text("全", style = ts(if (size >= 28) 15.sp else 12.sp, FontWeight.SemiBold, 1.2f), color = p.muted)
-        }
+        HomeScope.All ->
+            Box(
+                Modifier.size(size.dp)
+                    .clip(RoundedCornerShape(if (size >= 28) 8.dp else 6.dp))
+                    .background(p.chip),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "全",
+                    style = ts(if (size >= 28) 15.sp else 12.sp, FontWeight.SemiBold, 1.2f),
+                    color = p.muted,
+                )
+            }
     }
 }
 
 /**
- * 看哪个项目 (client-v27): 全部项目 when there is more than one project,
- * the pinned ones, then the others, each with its path and what runs there,
- * a check on the current scope; a search above more than eight. 新项目… picks a
- * machine and a folder in the same sheet; 管理项目 goes to 项目管理.
+ * 看哪个项目 (client-v27): 全部项目 when there is more than one project, the pinned ones, then the others,
+ * each with its path and what runs there, a check on the current scope; a search above more than
+ * eight. 新项目… picks a machine and a folder in the same sheet; 管理项目 goes to 项目管理.
  */
 @Composable
-private fun ScopeSheet(state: RemoteState, scope: HomeScope, t: Long, onPick: (HomeScope) -> Unit, onClose: () -> Unit) {
+private fun ScopeSheet(
+    state: RemoteState,
+    scope: HomeScope,
+    t: Long,
+    onPick: (HomeScope) -> Unit,
+    onClose: () -> Unit,
+) {
     val p = pal
     val nav = LocalNav.current
     var browsing by remember { mutableStateOf(false) }
@@ -278,63 +352,140 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, t: Long, onPick: (H
     Sheet(onClose) {
         if (browsing) {
             SheetHead("新项目 · 选目录", "取消", onClose, onBack = { browsing = false })
-            DirPicker(state) { machine, path -> onClose(); nav.newProjectAt(machine, path) }
+            DirPicker(state) { machine, path ->
+                onClose()
+                nav.newProjectAt(machine, path)
+            }
             return@Sheet
         }
         SheetHead("看哪个项目", "取消", onClose)
         @Composable
-        fun check(on: Boolean) = Box(Modifier.size(16.dp).semantics { if (on) contentDescription = "当前范围" }, contentAlignment = Alignment.Center) {
-            if (on) Mark(Lucide.Check, p.blue, 16.dp)
-        }
-        ProjectList(state, onNew = { browsing = true }, first = {
-            // 全部项目, when there is more than one project to choose between.
-            scopeRows(state, scope).firstOrNull { it.scope == HomeScope.All }?.let { all ->
-                Row(
-                    Modifier.fillMaxWidth().heightIn(min = 52.dp).bottomLine(p.line).clickable(role = Role.Button) { onPick(all.scope); onClose() }.padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    ScopeAvatar(all.scope, 22)
-                    Column(Modifier.weight(1f)) {
-                        Text(all.name, style = T.bodyB, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(all.detail, style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    check(all.current)
-                }
+        fun check(on: Boolean) =
+            Box(
+                Modifier.size(16.dp).semantics { if (on) contentDescription = "当前范围" },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (on) Mark(Lucide.Check, p.blue, 16.dp)
             }
-        }) { pr ->
-            ProjectRow(state, pr, onClick = { onPick(HomeScope.Of(pr.key)); onClose() }) { check(scope == HomeScope.Of(pr.key)) }
+        ProjectList(
+            state,
+            onNew = { browsing = true },
+            first = {
+                // 全部项目, when there is more than one project to choose between.
+                scopeRows(state, scope)
+                    .firstOrNull { it.scope == HomeScope.All }
+                    ?.let { all ->
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .heightIn(min = 52.dp)
+                                .bottomLine(p.line)
+                                .clickable(role = Role.Button) {
+                                    onPick(all.scope)
+                                    onClose()
+                                }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            ScopeAvatar(all.scope, 22)
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    all.name,
+                                    style = T.bodyB,
+                                    color = p.fg,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    all.detail,
+                                    style = T.meta,
+                                    color = p.muted,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            check(all.current)
+                        }
+                    }
+            },
+        ) { pr ->
+            ProjectRow(
+                state,
+                pr,
+                onClick = {
+                    onPick(HomeScope.Of(pr.key))
+                    onClose()
+                },
+            ) {
+                check(scope == HomeScope.Of(pr.key))
+            }
         }
-        TextAction("管理项目", { onClose(); nav.manageProjects() }, Modifier.fillMaxWidth().padding(start = 34.dp), style = T.body, arrow = true)
+        TextAction(
+            "管理项目",
+            {
+                onClose()
+                nav.manageProjects()
+            },
+            Modifier.fillMaxWidth().padding(start = 34.dp),
+            style = T.body,
+            arrow = true,
+        )
     }
 }
 
 /**
- * The title filter (client-v27, design-system §6 筛选框): a pill on chip
- * grey with a search icon, 按标题筛选 until something is typed, then an x to clear.
+ * The title filter (client-v27, design-system §6 筛选框): a pill on chip grey with a search icon,
+ * 按标题筛选 until something is typed, then an x to clear.
  */
 @Composable
 private fun FilterBox(value: String, onChange: (String) -> Unit) {
     val p = pal
-    Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
+    Box(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 16.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
         BasicTextField(
-            value, onChange, Modifier.fillMaxWidth().testTag("title-filter"), singleLine = true,
-            textStyle = T.body.copy(color = p.fg), cursorBrush = SolidColor(p.blue),
+            value,
+            onChange,
+            Modifier.fillMaxWidth().testTag("title-filter"),
+            singleLine = true,
+            textStyle = T.body.copy(color = p.fg),
+            cursorBrush = SolidColor(p.blue),
             decorationBox = { inner ->
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 36.dp).clip(RoundedCornerShape(18.dp)).background(p.chip).padding(start = 14.dp, end = if (value.isEmpty()) 14.dp else 44.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    Modifier.fillMaxWidth()
+                        .heightIn(min = 36.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(p.chip)
+                        .padding(start = 14.dp, end = if (value.isEmpty()) 14.dp else 44.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Ic(Lucide.Search, iconSize(T.body), p.muted)
                     Box(Modifier.weight(1f)) {
-                        if (value.isEmpty()) Text("按标题筛选", style = T.body, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (value.isEmpty())
+                            Text(
+                                "按标题筛选",
+                                style = T.body,
+                                color = p.muted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         inner()
                     }
                 }
             },
         )
-        if (value.isNotEmpty()) Box(Modifier.align(Alignment.CenterEnd).size(44.dp).tap { onChange("") }.semantics { contentDescription = "清空筛选" }, contentAlignment = Alignment.Center) {
-            Ic(Lucide.X, 16.dp, p.faint)
-        }
+        if (value.isNotEmpty())
+            Box(
+                Modifier.align(Alignment.CenterEnd)
+                    .size(44.dp)
+                    .tap { onChange("") }
+                    .semantics { contentDescription = "清空筛选" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Ic(Lucide.X, 16.dp, p.faint)
+            }
     }
 }
 
@@ -342,9 +493,18 @@ private fun FilterBox(value: String, onChange: (String) -> Unit) {
 @Composable
 private fun EmptyScope() {
     val p = pal
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Text("这个项目还没有会话", style = T.h17, color = p.fg)
-        Text("点右上角的新建按钮开始一个", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+        Text(
+            "点右上角的新建按钮开始一个",
+            style = T.sm,
+            color = p.muted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 
@@ -353,16 +513,37 @@ private fun EmptyAccount(state: RemoteState) {
     val p = pal
     val nav = LocalNav.current
     val online = state.machines.values.filter { it.online }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Text("还没有会话", style = T.h17, color = p.fg)
         when {
             state.machines.isEmpty() -> {
-                Text("这个账户还没有电脑。在电脑上运行 remote-agent account join 加入。", style = T.sm, color = p.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = 4.dp, bottom = 14.dp))
+                Text(
+                    "这个账户还没有电脑。在电脑上运行 remote-agent account join 加入。",
+                    style = T.sm,
+                    color = p.muted,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
+                )
                 Btn("添加设备", { nav.pair() }, Modifier.fillMaxWidth(), BtnKind.PRIMARY)
             }
-            online.isEmpty() -> Text("没有在线的电脑。在电脑上运行 remote-agent daemon。", style = T.sm, color = p.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+            online.isEmpty() ->
+                Text(
+                    "没有在线的电脑。在电脑上运行 remote-agent daemon。",
+                    style = T.sm,
+                    color = p.muted,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             else -> {
-                Text("${machineLabel(state, online.first().id)} 在线，可以直接开始", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 4.dp, bottom = 14.dp))
+                Text(
+                    "${machineLabel(state, online.first().id)} 在线，可以直接开始",
+                    style = T.sm,
+                    color = p.muted,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
+                )
                 Btn("开始第一个会话", { nav.newProject() }, Modifier.fillMaxWidth(), BtnKind.PRIMARY)
             }
         }
@@ -370,82 +551,150 @@ private fun EmptyAccount(state: RemoteState) {
 }
 
 /**
- * One session in a list (client-v27): a dot, the title and time, then the
- * status word in its color · the preview, then only what differs between
- * the rows of this list ([meta]): 分叉 · project · CLI · machine, and no
- * third line when none does. An ended session is an [EndedRow]. The line
- * under a row starts where its text does.
+ * One session in a list (client-v27): a dot, the title and time, then the status word in its color
+ * · the preview, then only what differs between the rows of this list ([meta]): 分叉 · project · CLI
+ * · machine, and no third line when none does. An ended session is an [EndedRow]. The line under a
+ * row starts where its text does.
  */
 @Composable
-fun SessionRow(state: RemoteState, s: SessionView, t: Long, meta: RowMeta = RowMeta(), last: Boolean = false, selected: Boolean = false) {
+fun SessionRow(
+    state: RemoteState,
+    s: SessionView,
+    t: Long,
+    meta: RowMeta = RowMeta(),
+    last: Boolean = false,
+    selected: Boolean = false,
+) {
     if (exited(s)) return EndedRow(s, t, project = meta.project, selected = selected)
     val p = pal
     val nav = LocalNav.current
     val st = statusIn(state, s)
     Row(
-        Modifier.fillMaxWidth().background(if (selected) p.blueSoft else Color.Transparent).clickableRow { nav.session(s.id) }.padding(start = 16.dp, end = 16.dp, top = 10.dp),
-        verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(11.dp),
+        Modifier.fillMaxWidth()
+            .background(if (selected) p.blueSoft else Color.Transparent)
+            .clickableRow { nav.session(s.id) }
+            .padding(start = 16.dp, end = 16.dp, top = 10.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {
         Box(Modifier.padding(top = 8.dp)) { Dot(p.tone(st.tone)) }
-        Column(Modifier.weight(1f).then(if (!last) Modifier.bottomLine(p.line) else Modifier).padding(bottom = 10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(titleOf(s), style = T.bodyB, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Column(
+            Modifier.weight(1f)
+                .then(if (!last) Modifier.bottomLine(p.line) else Modifier)
+                .padding(bottom = 10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    titleOf(s),
+                    style = T.bodyB,
+                    color = p.fg,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
                 Text(whenText(s.updatedMs, t), style = T.meta, color = p.muted, maxLines = 1)
             }
             val pv = previewOf(s, st)
             Text(
                 buildAnnotatedString {
-                    pushStyle(SpanStyle(color = p.toneInk(st.tone), fontWeight = platformWeight(FontWeight.SemiBold)))
+                    pushStyle(
+                        SpanStyle(
+                            color = p.toneInk(st.tone),
+                            fontWeight = platformWeight(FontWeight.SemiBold),
+                        ),
+                    )
                     append(st.text)
                     pop()
                     // The status word already says a plan waits.
                     if (pv.isNotEmpty() && pv != st.text) append(" · $pv")
                 },
-                style = T.sm, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                style = T.sm,
+                color = p.muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             val rest = metaLine(state, s, meta)
-            if (rest.isNotEmpty()) Text(rest, style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp))
+            if (rest.isNotEmpty())
+                Text(
+                    rest,
+                    style = T.meta,
+                    color = p.muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 1.dp),
+                )
         }
     }
 }
 
 /**
- * An ended session takes one line (client-v27): the title, and at the right
- * when it ended, after the project where the list spans projects. No dot:
- * the group's title above says these have ended. The time is the time of
- * day for today and yesterday, the weekday within a week, else the date.
+ * An ended session takes one line (client-v27): the title, and at the right when it ended, after
+ * the project where the list spans projects. No dot: the group's title above says these have ended.
+ * The time is the time of day for today and yesterday, the weekday within a week, else the date.
  */
 @Composable
 fun EndedRow(s: SessionView, t: Long, project: Boolean = false, selected: Boolean = false) {
     val p = pal
     val nav = LocalNav.current
     val time = endedTime(endedMs(s), t)
-    val base = Modifier.fillMaxWidth().background(if (selected) p.blueSoft else Color.Transparent).clickableRow { nav.session(s.id) }.heightIn(min = 44.dp)
-        .padding(start = 35.dp, end = 16.dp)
+    val base =
+        Modifier.fillMaxWidth()
+            .background(if (selected) p.blueSoft else Color.Transparent)
+            .clickableRow { nav.session(s.id) }
+            .heightIn(min = 44.dp)
+            .padding(start = 35.dp, end = 16.dp)
     val right: @Composable () -> Unit = {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (project) Text(projectName(projectKey(s)) + if (time.isNotEmpty()) " · " else "", style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 120.dp))
+            if (project)
+                Text(
+                    projectName(projectKey(s)) + if (time.isNotEmpty()) " · " else "",
+                    style = T.meta,
+                    color = p.muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 120.dp),
+                )
             Text(time, style = T.meta, color = p.muted, maxLines = 1)
         }
     }
-    // At a large font size the two do not fit side by side: the time goes under the title, at the right.
+    // At a large font size the two do not fit side by side: the time goes under the title, at the
+    // right.
     if (LocalDensity.current.fontScale >= 1.8f) {
         Column(base.padding(vertical = 6.dp)) {
-            Text(titleOf(s), style = T.body, color = p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                titleOf(s),
+                style = T.body,
+                color = p.fg2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { right() }
         }
         return
     }
-    Row(base, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(titleOf(s), style = T.body, color = p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+    Row(
+        base,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            titleOf(s),
+            style = T.body,
+            color = p.fg2,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
         right()
     }
 }
 
 /**
- * A session that waits for the user, on a grey card. Approvals are decided
- * right here; questions, plans and popups open the session. The cards are
- * the whole account's, whatever the scope.
+ * A session that waits for the user, on a grey card. Approvals are decided right here; questions,
+ * plans and popups open the session. The cards are the whole account's, whatever the scope.
  */
 @Composable
 private fun AttentionCard(state: RemoteState, s: SessionView, t: Long, scope: HomeScope) {
@@ -455,48 +704,113 @@ private fun AttentionCard(state: RemoteState, s: SessionView, t: Long, scope: Ho
     // What it waits for stays true while the server is out of reach.
     val st = statusOf(s, null)
     val events by remote.events(s.id).collectAsState()
-    val d = rememberDerived(events.events, s.agent())
+    val d = rememberDerived(events, s.agent())
     val a = d.approvals.values.firstOrNull()
-    Column(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp).fillMaxWidth().clip(Radii.MD).background(p.soft).padding(horizontal = 13.dp, vertical = 11.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            Dot(p.orangeInk, 8)
-            Text(
-                when (st) {
-                    Status.APPROVAL -> a?.let(::approvalHead) ?: "请求权限"
-                    Status.QUESTION -> "${agentName(s.agent())} 在问你"
-                    else -> st.text
-                },
-                style = T.metaB, color = p.orangeInk, 
-            )
+    Column(
+        Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
+            .fillMaxWidth()
+            .clip(Radii.MD)
+            .background(p.soft)
+            .padding(horizontal = 13.dp, vertical = 11.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Dot(p.orangeInk, 8)
+                Text(
+                    when (st) {
+                        Status.APPROVAL -> a?.let(::approvalHead) ?: "请求权限"
+                        Status.QUESTION -> "${agentName(s.agent())} 在问你"
+                        else -> st.text
+                    },
+                    style = T.metaB,
+                    color = p.orangeInk,
+                )
             }
             Text(
-                if (st == Status.APPROVAL && a != null && a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟，超时拒绝" else whenText(s.updatedMs, t),
-                style = T.meta, color = p.muted,
+                if (st == Status.APPROVAL && a != null && a.hasDeadline())
+                    "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟，超时拒绝"
+                else whenText(s.updatedMs, t),
+                style = T.meta,
+                color = p.muted,
             )
         }
-        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(titleOf(s), style = T.bodyB, color = p.fg, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Box(Modifier.clickable { nav.session(s.id) }) { ArrowText(if (st == Status.APPROVAL) "查看会话" else if (st == Status.QUESTION) "去回答" else "去处理", p.blue, T.smB) }
+        Row(
+            Modifier.padding(top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                titleOf(s),
+                style = T.bodyB,
+                color = p.fg,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Box(Modifier.clickable { nav.session(s.id) }) {
+                ArrowText(
+                    if (st == Status.APPROVAL) "查看会话"
+                    else if (st == Status.QUESTION) "去回答" else "去处理",
+                    p.blue,
+                    T.smB,
+                )
+            }
         }
         val q = d.questions.values.firstOrNull()?.questionsList?.firstOrNull()?.text
         // Not scoped: a card from another project than the scope's says which (client-v27).
         val line = (cardMeta(state, s, scope) + listOfNotNull(q)).joinToString(" · ")
-        if (line.isNotEmpty()) Text(line, style = T.meta, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        if (st == Status.APPROVAL && a != null) {
-            if (a.description.isNotEmpty()) Text(approvalDisplay(a.description), style = T.sm, color = p.fg2, modifier = Modifier.padding(top = 6.dp))
-            // 允许 is never offered next to nothing: a tool that is not a shell command shows its input.
-            val what = approvalBody(a)
-            if (what.isNotEmpty()) Text(
-                what, style = T.mono, color = p.fg2, maxLines = 3, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth().clip(Radii.XS).background(p.card).border(1.dp, p.line, Radii.XS).padding(horizontal = 10.dp, vertical = 7.dp),
+        if (line.isNotEmpty())
+            Text(
+                line,
+                style = T.meta,
+                color = p.muted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
+        if (st == Status.APPROVAL && a != null) {
+            if (a.description.isNotEmpty())
+                Text(
+                    approvalDisplay(a.description),
+                    style = T.sm,
+                    color = p.fg2,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            // 允许 is never offered next to nothing: a tool that is not a shell command shows its
+            // input.
+            val what = approvalBody(a)
+            if (what.isNotEmpty())
+                Text(
+                    what,
+                    style = T.mono,
+                    color = p.fg2,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier =
+                        Modifier.padding(vertical = 8.dp)
+                            .fillMaxWidth()
+                            .clip(Radii.XS)
+                            .background(p.card)
+                            .border(1.dp, p.line, Radii.XS)
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                )
             if (state.conn == ConnState.ONLINE && state.machines[s.machineId]?.online == true) {
                 ApprovalButtons(s, a, compact = true, onCard = true)
             }
         }
         if (state.conn != ConnState.ONLINE || state.machines[s.machineId]?.online != true) {
-            Text(if (state.conn != ConnState.ONLINE) "未连接" else "电脑离线", style = T.meta, color = p.muted, modifier = Modifier.padding(top = 6.dp))
+            Text(
+                if (state.conn != ConnState.ONLINE) "未连接" else "电脑离线",
+                style = T.meta,
+                color = p.muted,
+                modifier = Modifier.padding(top = 6.dp),
+            )
         }
     }
 }

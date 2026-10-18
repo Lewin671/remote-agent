@@ -8,6 +8,7 @@ import RAProto
 public enum BigImage: Equatable, Sendable {
     case loading
     case ready
+    case unverifiedLegacy
     /// The event says there is no display copy.
     case notSynced
     case expired
@@ -21,6 +22,7 @@ public enum BigImage: Equatable, Sendable {
 public func viewerNote(_ big: BigImage, sync: PBImageSync) -> String? {
     switch big {
     case .loading, .ready: return nil
+    case .unverifiedLegacy: return "旧图片的内容和来源未验证，仅供阅读"
     case .notSynced: return sync == .nameOnly ? "图片没有同步：只有文件名，原图在电脑上" : "只有预览，原图在电脑上"
     case .expired: return "大图已过期，只剩预览"
     case .offline: return "连上后加载"
@@ -38,12 +40,17 @@ public func viewerCanRetry(_ big: BigImage) -> Bool {
 }
 
 /// Whether the event says a display copy was uploaded at all.
-public func hasDisplayCopy(_ ref: PBImageRef) -> Bool { ref.sync == .synced && !ref.imageID.isEmpty }
+public func hasDisplayCopy(_ ref: PBImageRef) -> Bool {
+    ref.sync == .synced && !ref.imageID.isEmpty
+}
 
 /// How fetching a display copy ended, as the viewer's state; the payload when it is there to decode.
-public func viewerOutcome(_ result: Result<ImageResult, any Error>, online: Bool) -> (state: BigImage, payload: PBImagePayload?) {
+public func viewerOutcome(_ result: Result<ImageResult, any Error>, online: Bool) -> (
+    state: BigImage, payload: PBImagePayload?
+) {
     switch result {
     case .success(.loaded(let payload)): return (.ready, payload)
+    case .success(.legacy(let payload)): return (.unverifiedLegacy, payload)
     case .success(.expired): return (.expired, nil)
     case .success(.missing): return (.notSynced, nil)
     case .success(.corrupt(let why)): return (.corrupt(why: why), nil)

@@ -18,7 +18,9 @@ public struct MachineView: Equatable, Sendable, Identifiable {
     public var meta: PBMachineMeta?
     public var metaRev: UInt64
 
-    public init(id: String, online: Bool, lastSeenMs: Int64, meta: PBMachineMeta? = nil, metaRev: UInt64 = 0) {
+    public init(
+        id: String, online: Bool, lastSeenMs: Int64, meta: PBMachineMeta? = nil, metaRev: UInt64 = 0
+    ) {
         self.id = id
         self.online = online
         self.lastSeenMs = lastSeenMs
@@ -40,7 +42,8 @@ public struct SessionView: Equatable, Sendable, Identifiable {
     public var listedEndedMs: Int64
 
     public init(
-        id: String, machineId: String, info: PBSession? = nil, metaRev: UInt64 = 0, lastSeq: UInt64 = 0,
+        id: String, machineId: String, info: PBSession? = nil, metaRev: UInt64 = 0,
+        lastSeq: UInt64 = 0,
         updatedMs: Int64 = 0, listedEndedMs: Int64 = 0
     ) {
         self.id = id
@@ -66,7 +69,8 @@ public struct SessionPlace: Equatable, Sendable {
 
 /// Whether a session ended at `endedMs` comes after `place` in the listing; one that has not ended is never there.
 public func afterPlace(endedMs: Int64, sessionId: String, place: SessionPlace) -> Bool {
-    endedMs != 0 && (endedMs < place.endedMs || (endedMs == place.endedMs && sessionId > place.sessionId))
+    endedMs != 0
+        && (endedMs < place.endedMs || (endedMs == place.endedMs && sessionId > place.sessionId))
 }
 
 /// Ended sessions asked for per page of the listing.
@@ -86,6 +90,8 @@ public struct RemoteState: Equatable, Sendable {
     /// The account's devices, machines and clients (ListDevices).
     public var devices: [String: DeviceView] = [:]
     /// The server no longer knows this device: removed from the account, or the server's data is gone.
+    public var authorityDeviceId = ""
+    public var removals: [DeviceSecurityClient.Removal] = []
     public var removed = false
     /// Where the next page of ended sessions starts (architecture §8
     /// 「会话列表分页」): `sessions` holds every session that has not ended and
@@ -110,7 +116,9 @@ public struct RemoteState: Equatable, Sendable {
 
     /// Nothing here is known to still hold: the server is out of reach, or
     /// has not been reached yet. A connection lost a moment ago does not count.
-    public var unlinked: Bool { link == .noNetwork || link == .noServer || (link == .waiting && !synced) }
+    public var unlinked: Bool {
+        link == .noNetwork || link == .noServer || (link == .waiting && !synced)
+    }
 
     /// The server has, or may have, ended sessions that were not fetched yet.
     public var moreSessions: Bool { !sessionsListed || sessionsNext != nil }
@@ -127,7 +135,8 @@ public struct DeviceView: Equatable, Sendable, Identifiable {
     public var lastSeenMs: Int64
 
     public init(
-        id: String, kind: PBDeviceKind, createdMs: Int64, meta: PBDeviceMeta? = nil, metaRev: UInt64 = 0,
+        id: String, kind: PBDeviceKind, createdMs: Int64, meta: PBDeviceMeta? = nil,
+        metaRev: UInt64 = 0,
         lastSeenMs: Int64 = 0
     ) {
         self.id = id
@@ -144,6 +153,10 @@ public struct DeviceView: Equatable, Sendable, Identifiable {
 /// for every event that arrives, and `events.extends(previous.events)` tells
 /// cheaply that it only grew.
 public struct SessionEvents: Sendable {
+    public var live: PBLiveSnapshot?
+    public var liveError: String?
+    public var unverifiedLegacy = false
+    public var verifiedEvents = PagedList<PBEvent>()
     public var events: PagedList<PBEvent> = []
     public var loaded = false
     /// Set when an event does not open: history stops before it.
@@ -152,7 +165,8 @@ public struct SessionEvents: Sendable {
     public var fetchError: String?
 
     public init(
-        events: PagedList<PBEvent> = [], loaded: Bool = false, error: String? = nil, fetchError: String? = nil
+        events: PagedList<PBEvent> = [], loaded: Bool = false, error: String? = nil,
+        fetchError: String? = nil
     ) {
         self.events = events
         self.loaded = loaded
@@ -160,7 +174,9 @@ public struct SessionEvents: Sendable {
         self.fetchError = fetchError
     }
 
-    public init(events: [PBEvent], loaded: Bool = false, error: String? = nil, fetchError: String? = nil) {
+    public init(
+        events: [PBEvent], loaded: Bool = false, error: String? = nil, fetchError: String? = nil
+    ) {
         self.init(events: PagedList(events), loaded: loaded, error: error, fetchError: fetchError)
     }
 }

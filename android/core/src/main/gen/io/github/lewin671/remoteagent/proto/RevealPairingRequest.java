@@ -17,6 +17,7 @@ public  final class RevealPairingRequest extends
   private RevealPairingRequest() {
     pairingId_ = "";
     initiatorPublic_ = com.google.protobuf.ByteString.EMPTY;
+    securityContext_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int PAIRING_ID_FIELD_NUMBER = 1;
   private java.lang.String pairingId_;
@@ -91,6 +92,48 @@ public  final class RevealPairingRequest extends
   private void clearInitiatorPublic() {
 
     initiatorPublic_ = getDefaultInstance().getInitiatorPublic();
+  }
+
+  public static final int SECURITY_CONTEXT_FIELD_NUMBER = 3;
+  private com.google.protobuf.ByteString securityContext_;
+  /**
+   * <pre>
+   * Signed active authority PairContext. SAS binds its precommitted trust
+   * descriptor; the late context nonce/head/expiry are signed separately.
+   * </pre>
+   *
+   * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
+   * @return The securityContext.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSecurityContext() {
+    return securityContext_;
+  }
+  /**
+   * <pre>
+   * Signed active authority PairContext. SAS binds its precommitted trust
+   * descriptor; the late context nonce/head/expiry are signed separately.
+   * </pre>
+   *
+   * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
+   * @param value The securityContext to set.
+   */
+  private void setSecurityContext(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    securityContext_ = value;
+  }
+  /**
+   * <pre>
+   * Signed active authority PairContext. SAS binds its precommitted trust
+   * descriptor; the late context nonce/head/expiry are signed separately.
+   * </pre>
+   *
+   * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
+   */
+  private void clearSecurityContext() {
+
+    securityContext_ = getDefaultInstance().getSecurityContext();
   }
 
   public static io.github.lewin671.remoteagent.proto.RevealPairingRequest parseFrom(
@@ -267,6 +310,49 @@ public  final class RevealPairingRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Signed active authority PairContext. SAS binds its precommitted trust
+     * descriptor; the late context nonce/head/expiry are signed separately.
+     * </pre>
+     *
+     * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
+     * @return The securityContext.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSecurityContext() {
+      return instance.getSecurityContext();
+    }
+    /**
+     * <pre>
+     * Signed active authority PairContext. SAS binds its precommitted trust
+     * descriptor; the late context nonce/head/expiry are signed separately.
+     * </pre>
+     *
+     * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
+     * @param value The securityContext to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSecurityContext(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSecurityContext(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Signed active authority PairContext. SAS binds its precommitted trust
+     * descriptor; the late context nonce/head/expiry are signed separately.
+     * </pre>
+     *
+     * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSecurityContext() {
+      copyOnWrite();
+      instance.clearSecurityContext();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.RevealPairingRequest)
   }
   @java.lang.Override
@@ -285,10 +371,11 @@ public  final class RevealPairingRequest extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "pairingId_",
             "initiatorPublic_",
+            "securityContext_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\n" +
-              "";
+              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\n" +
+              "\u0003\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -182,6 +182,7 @@ message Command {
     CompleteImageUploadRequest complete_image_upload = 28;
     AbortImageUploadRequest abort_image_upload = 29;
     ScheduleRequest schedule = 30;
+    GetLiveSnapshotRequest get_live_snapshot = 31;
   }
   // The protocol version the client speaks (internal/protocol). A daemon
   // of another version refuses the command and says which side to update.
@@ -223,6 +224,7 @@ message CommandResult {
     CompleteImageUploadResponse complete_image_upload = 38;
     AbortImageUploadResponse abort_image_upload = 39;
     ScheduleResponse schedule = 40;
+    LiveSnapshot live_snapshot = 41;
   }
 }
 
@@ -288,6 +290,8 @@ message PairingPayload {
   string server = 2;
   bytes approval = 3;
   bytes approval_signature = 4;
+  // Complete signed membership state produced by consuming the exact context.
+  bytes security_state = 5;
 }
 
 // NotifyContent is what a daemon tells the Android app in a push, sealed
@@ -303,6 +307,7 @@ message NotifyContent {
   // Set for a permission request, so that it can be decided from the
   // notification.
   NotifyApproval approval = 6;
+  uint64 source_event_seq = 7;
 }
 
 message NotifyApproval {
@@ -397,4 +402,16 @@ message ProjectPref {
   string path = 1;
   // Unix milliseconds when it was pinned or hidden.
   int64 since_ms = 2;
+}
+
+// A current owner snapshot, returned only inside a nonce/request-bound command
+// result. Historical events alone never create current actionable prompts.
+message GetLiveSnapshotRequest { string session_id = 1; }
+message LiveSnapshot {
+  Session session = 1;
+  repeated Event actions = 2;
+  uint64 plan_event_seq = 3;
+  bytes plan_screen_hash = 4;
+  string plan_screen = 5;
+  bool running = 6;
 }

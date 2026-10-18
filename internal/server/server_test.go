@@ -25,6 +25,7 @@ import (
 )
 
 type testServer struct {
+	securityDomain *testSecurityDomain
 	enrollmentMu   sync.Mutex
 	enrollmentKeys map[string]ed25519.PrivateKey
 	srv            *Server
@@ -55,7 +56,7 @@ func (ts *testServer) register(t *testing.T, keys *e2e.Keys, kind pb.DeviceKind,
 	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(nil)
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: keys.AccountPublicKey(), DevicePublicKey: pub, Kind: kind})
-	req := &pb.RegisterDeviceRequest{Registration: reg, Signature: keys.SignRegistration(reg), SetupToken: token}
+	req := &pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: reg, Signature: keys.SignRegistration(reg), SetupToken: token}
 	ts.admitRegistration(t, req)
 	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(req))
 	if err != nil {
@@ -122,12 +123,12 @@ func (ts *testServer) login(t *testing.T, priv ed25519.PrivateKey, id string) st
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(priv, ch.Msg.Challenge)}))
+	res, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: 9, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(priv, ch.Msg.Challenge)}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// A challenge works once.
-	if _, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(priv, ch.Msg.Challenge)})); err == nil {
+	if _, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: 9, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(priv, ch.Msg.Challenge)})); err == nil {
 		t.Fatal("challenge reused")
 	}
 	return res.Msg.Token
@@ -162,7 +163,7 @@ func TestRegistration(t *testing.T) {
 	// A registration signed by someone else is refused.
 	pub, _, _ := ed25519.GenerateKey(nil)
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: pub, Kind: pb.DeviceKind_DEVICE_KIND_CLIENT})
-	_, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{Registration: reg, Signature: other.SignRegistration(reg)}))
+	_, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: reg, Signature: other.SignRegistration(reg)}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("forged registration: %v", err)
 	}
@@ -179,7 +180,7 @@ func TestLoginAndAuthorization(t *testing.T) {
 
 	// Wrong key.
 	ch, _ := ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: mid}))
-	if _, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{DeviceId: mid, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(cpriv, ch.Msg.Challenge)})); err == nil {
+	if _, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: 9, DeviceId: mid, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(cpriv, ch.Msg.Challenge)})); err == nil {
 		t.Fatal("login with another device's key")
 	}
 
@@ -209,7 +210,7 @@ func TestUploadRules(t *testing.T) {
 	ctx := context.Background()
 	skey := e2e.NewKey()
 	ev := func(machine string, seq uint64) *pb.StoredEvent {
-		env, _ := e2e.Seal(skey, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: machine, SessionId: "s", Seq: seq}, []byte("x"))
+		env, _ := e2e.Seal(skey, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: machine, SessionId: "s", Seq: seq}, []byte("x"))
 		return &pb.StoredEvent{Seq: seq, Envelope: env}
 	}
 	upload := func(c remoteagentv1connect.MachineServiceClient, evs ...*pb.StoredEvent) (uint64, error) {
@@ -222,7 +223,7 @@ func TestUploadRules(t *testing.T) {
 	if _, err := upload(m, ev(mid, 1)); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("unknown session: %v", err)
 	}
-	keyEnv, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
+	keyEnv, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
 	if _, err := m.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s"})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("session without key: %v", err)
 	}
@@ -249,7 +250,7 @@ func TestUploadRules(t *testing.T) {
 	if _, err := upload(m2, ev(mid2, 4)); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("other machine: %v", err)
 	}
-	keyEnv2, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid2, SessionId: "s"}, skey)
+	keyEnv2, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid2, SessionId: "s"}, skey)
 	if _, err := m2.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s", Key: keyEnv2})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("other machine put: %v", err)
 	}
@@ -336,7 +337,7 @@ func TestPushAndRemoveDevice(t *testing.T) {
 	c := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, cpriv, cid)))
 
 	skey := e2e.NewKey()
-	keyEnv, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
+	keyEnv, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
 	if _, err := m.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s", Key: keyEnv})); err != nil {
 		t.Fatal(err)
 	}
@@ -414,7 +415,7 @@ func TestPushAndRemoveDevice(t *testing.T) {
 	}
 
 	// Removing the machine deletes its sessions and ends its logins.
-	if _, err := c.RemoveDevice(ctx, connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: mid})); err != nil {
+	if _, err := c.RemoveDevice(ctx, connect.NewRequest(ts.removalProof(t, cid, mid))); err != nil {
 		t.Fatal(err)
 	}
 	ss, _ := c.ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
@@ -436,17 +437,17 @@ func TestPairingLimits(t *testing.T) {
 	pc := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, priv, id)))
 	anon := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url)
 	ikey, _ := e2e.NewPairKey()
-	if _, err := anon.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairCommit(ikey.Public())})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	if _, err := anon.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: routingPairCommit(ikey.Public())})); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("anonymous create: %v", err)
 	}
-	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairCommit(ikey.Public())}))
+	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: routingPairCommit(ikey.Public())}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	jkey, _ := e2e.NewPairKey()
 	candidate, _, _ := ed25519.GenerateKey(nil)
 	join := func(code string) (*connect.Response[pb.JoinPairingResponse], error) {
-		return anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{Code: code, JoinerPublic: jkey.Public(), DevicePublicKey: candidate, JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+		return anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: 9, Code: code, JoinerPublic: jkey.Public(), DeviceHpkePublicKey: jkey.Public(), DevicePublicKey: candidate, JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 	}
 	joined, err := join(created.Msg.Code)
 	if err != nil {
@@ -462,13 +463,13 @@ func TestPairingLimits(t *testing.T) {
 	}
 	// The reveal must match the commitment.
 	other, _ := e2e.NewPairKey()
-	if _, err := pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{PairingId: joined.Msg.PairingId, InitiatorPublic: other.Public()})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{SecurityContext: routingPairContextBytes(), PairingId: joined.Msg.PairingId, InitiatorPublic: other.Public()})); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("reveal of another key: %v", err)
 	}
-	if _, err := pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{PairingId: joined.Msg.PairingId, InitiatorPublic: ikey.Public()})); err != nil {
+	if _, err := pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{SecurityContext: routingPairContextBytes(), PairingId: joined.Msg.PairingId, InitiatorPublic: ikey.Public()})); err != nil {
 		t.Fatal(err)
 	}
-	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: joined.Msg.PairingId}, []byte("x"))
+	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 1, Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: joined.Msg.PairingId}, []byte("x"))
 	approval, approvalSig, _ := e2e.NewPairApproval(ts.acct(), joined.Msg.PairingId, priv, candidate, pb.DeviceKind_DEVICE_KIND_CLIENT, created.Msg.ExpiresMs)
 	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: joined.Msg.PairingId, Payload: env, Approval: approval, ApprovalSignature: approvalSig})); err != nil {
 		t.Fatal(err)
@@ -497,7 +498,7 @@ func TestPairingLimits(t *testing.T) {
 		t.Fatalf("unregistered candidate claimed delivery: %v", err)
 	}
 	raw, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: candidate, Kind: pb.DeviceKind_DEVICE_KIND_CLIENT})
-	if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{Registration: raw, Signature: ts.keys.SignRegistration(raw), Approval: approval, ApprovalSignature: approvalSig})); err != nil {
+	if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: raw, Signature: ts.keys.SignRegistration(raw), Approval: approval, ApprovalSignature: approvalSig})); err != nil {
 		t.Fatal(err)
 	}
 	if res, err := get(true); err != nil || res.Msg.State != pb.PairingState_PAIRING_STATE_DELIVERED {

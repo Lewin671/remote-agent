@@ -25,6 +25,9 @@ const accountUsage = `Usage:
   remote-agent account pair [--web URL]     add a device: show a QR code and a pairing code
   remote-agent account join --server URL --code CODE
   remote-agent account join LINK            join with a pairing code or link from another device
+  remote-agent account security-enroll --server URL --code CODE
+                                          pin management on a retained device without changing its identity
+  remote-agent account security-init        initialize the pinned authority locally (existing accounts)
   remote-agent account secret               print offline decryption backup material (not enrollment authorization)
   remote-agent account status               show this machine's account
 `
@@ -35,6 +38,14 @@ func runAccount(args []string) error {
 		os.Exit(2)
 	}
 	switch args[0] {
+	case "security-init":
+		a, err := relay.LoadAccount()
+		if err != nil {
+			return err
+		}
+		return a.InitSecurityAuthority()
+	case "security-enroll":
+		return runAccountPairJoin(args[1:], true)
 	case "init":
 		return runAccountInit(args[1:])
 	case "join":
@@ -73,7 +84,8 @@ func runAccountInit(args []string) error {
 	return nil
 }
 
-func runAccountJoin(args []string) error {
+func runAccountJoin(args []string) error { return runAccountPairJoin(args, false) }
+func runAccountPairJoin(args []string, existing bool) error {
 	fs := flag.NewFlagSet("account join", flag.ExitOnError)
 	server := fs.String("server", "", "server URL, with --code")
 	code := fs.String("code", "", "pairing code shown by the other device")
@@ -97,8 +109,14 @@ func runAccountJoin(args []string) error {
 		return joinWithSecret(ctx)
 	}
 	fmt.Println("Waiting for the other device…")
-	a, err := relay.JoinByPairing(ctx, link, func(emoji []string) {
-		fmt.Printf("\nCheck that the other device shows the same four pictures:\n\n    %s\n\nthen allow the pairing there.\n", strings.Join(emoji, "  "))
+	join := relay.JoinByPairing
+	if existing {
+		join = relay.EnrollByPairing
+	}
+	a, err := join(ctx, link, func(emoji []string) bool {
+		fmt.Printf("\nCheck that the management device shows the same four pictures:\n\n    %s\n\n", strings.Join(emoji, "  "))
+		answer, _ := readVisibleLine("Do all four match? Trust this management device [y/N]: ")
+		return strings.EqualFold(strings.TrimSpace(answer), "y")
 	})
 	if err != nil {
 		return explainJoin(err)

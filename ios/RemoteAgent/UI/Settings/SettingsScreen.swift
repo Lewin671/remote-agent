@@ -23,6 +23,7 @@ struct SettingsScreen: View {
                 VStack(alignment: .leading, spacing: 0) {
                     LargeTitle("设置")
                     ConnectionBar()
+                    RemovalProgress(state: state)
                     Ticking { now in
                         computers(state, now: now)
                         clients(state, now: now)
@@ -38,8 +39,10 @@ struct SettingsScreen: View {
                     GroupLabel("账户")
                     GroupCard {
                         GRow("服务器", value: hostOf(context.account.server))
-                        GRow("连接检测", value: connWord(state), chevron: true) { nav.open(.connectionCheck) }
-                            .valueLead { Dot(state.conn == .online ? Theme.green : Theme.gray) }
+                        GRow("连接检测", value: connWord(state), chevron: true) {
+                            nav.open(.connectionCheck)
+                        }
+                        .valueLead { Dot(state.conn == .online ? Theme.green : Theme.gray) }
                         GRow("版本", value: AppInfo.versionLine)
                         GRow("开源许可", chevron: true) { nav.open(.licenses) }
                         // It asks first, as every row that ends in an ellipsis does (design-system §8).
@@ -58,7 +61,12 @@ struct SettingsScreen: View {
         }
         // Read each time the page comes back: an image may have been viewed or sent meanwhile.
         .task {
-            let made = images ?? ImageStorageModel(files: model.isDemo ? .demoFiles : .stores(cache: model.imageCache, pending: model.pendingImages))
+            let made =
+                images
+                ?? ImageStorageModel(
+                    files: model.isDemo
+                        ? .demoFiles
+                        : .stores(cache: model.imageCache, pending: model.pendingImages))
             images = made
             await made.load()
         }
@@ -77,7 +85,8 @@ struct SettingsScreen: View {
     /// This client and the first few others, drawn and ordered as 设备 lists them.
     @ViewBuilder private func clients(_ state: RemoteState, now: Int64) -> some View {
         let me = context.me
-        let others = sortClients(state.devices.values.filter { $0.kind == .client }, me: me).filter { $0.id != me }.prefix(3)
+        let others = sortClients(state.devices.values.filter { $0.kind == .client }, me: me).filter
+        { $0.id != me }.prefix(3)
         GroupLabel("客户端")
         GroupCard {
             ClientRow(client: state.devices[me], id: me, me: me, now: now)
@@ -114,12 +123,12 @@ struct SettingsScreen: View {
     }
 }
 
-private extension LocalImageFiles {
-    static var demoFiles: LocalImageFiles {
+extension LocalImageFiles {
+    fileprivate static var demoFiles: LocalImageFiles {
         #if DEBUG
-        .demo(nil)
+            .demo(nil)
         #else
-        LocalImageFiles(pendingUsed: { 0 }, cacheUsed: { 0 }, clearCache: {})
+            LocalImageFiles(pendingUsed: { 0 }, cacheUsed: { 0 }, clearCache: {})
         #endif
     }
 }

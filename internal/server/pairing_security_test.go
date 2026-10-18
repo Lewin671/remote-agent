@@ -17,7 +17,7 @@ func TestPairingRateLimitDoesNotRevealValidCodes(t *testing.T) {
 	pc := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, cp, cid)))
 	anon := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url)
 	key, _ := e2e.NewPairKey()
-	created, err := pc.CreatePairing(context.Background(), connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairCommit(key.Public())}))
+	created, err := pc.CreatePairing(context.Background(), connect.NewRequest(&pb.CreatePairingRequest{Commit: routingPairCommit(key.Public())}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestPairingRateLimitDoesNotRevealValidCodes(t *testing.T) {
 	}
 	ts.srv.pairing.mu.Unlock()
 	for _, code := range []string{"invalid-code", created.Msg.Code} {
-		_, err := anon.JoinPairing(context.Background(), connect.NewRequest(&pb.JoinPairingRequest{Code: code, JoinerPublic: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+		_, err := anon.JoinPairing(context.Background(), connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: 9, Code: code, JoinerPublic: key.Public(), DeviceHpkePublicKey: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 		if connect.CodeOf(err) != connect.CodeResourceExhausted {
 			t.Fatalf("rate-limited lookup leaked validity: %v", err)
 		}
@@ -41,19 +41,19 @@ func TestCanceledPairingCannotReleaseApprovedPayload(t *testing.T) {
 	anon := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url)
 	ctx := context.Background()
 	key, _ := e2e.NewPairKey()
-	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairCommit(key.Public())}))
+	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: routingPairCommit(key.Public())}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{Code: created.Msg.Code, JoinerPublic: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+	joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: 9, Code: created.Msg.Code, JoinerPublic: key.Public(), DeviceHpkePublicKey: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := created.Msg.PairingId
-	if _, err := pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{PairingId: id, InitiatorPublic: key.Public()})); err != nil {
+	if _, err := pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{SecurityContext: routingPairContextBytes(), PairingId: id, InitiatorPublic: key.Public()})); err != nil {
 		t.Fatal(err)
 	}
-	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: id}, []byte("sealed account secret"))
+	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 1, Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: id}, []byte("sealed account secret"))
 	approval, sig, _ := e2e.NewPairApproval(ts.acct(), id, cp, key.Public(), pb.DeviceKind_DEVICE_KIND_CLIENT, created.Msg.ExpiresMs)
 	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: id, Payload: env, Approval: approval, ApprovalSignature: sig})); err != nil {
 		t.Fatal(err)
@@ -89,19 +89,19 @@ SELECT 'capacity-' || i, ?, 'synthetic-approver', 'synthetic-candidate', 2, X'01
 			pc := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, cp, cid)))
 			anon := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url)
 			key, _ := e2e.NewPairKey()
-			created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairCommit(key.Public())}))
+			created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: routingPairCommit(key.Public())}))
 			if err != nil {
 				t.Fatal(err)
 			}
 			id := created.Msg.PairingId
-			joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{Code: created.Msg.Code, JoinerPublic: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+			joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: 9, Code: created.Msg.Code, JoinerPublic: key.Public(), DeviceHpkePublicKey: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err = pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{PairingId: id, InitiatorPublic: key.Public()})); err != nil {
+			if _, err = pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{SecurityContext: routingPairContextBytes(), PairingId: id, InitiatorPublic: key.Public()})); err != nil {
 				t.Fatal(err)
 			}
-			env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: id}, []byte("synthetic payload"))
+			env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 1, Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: id}, []byte("synthetic payload"))
 			raw, sig, _ := e2e.NewPairApproval(ts.acct(), id, cp, key.Public(), pb.DeviceKind_DEVICE_KIND_CLIENT, created.Msg.ExpiresMs)
 			req := &pb.ApprovePairingRequest{PairingId: id, Payload: env, Approval: raw, ApprovalSignature: sig}
 			var args []any

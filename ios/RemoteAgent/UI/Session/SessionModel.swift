@@ -46,6 +46,7 @@ struct ChatParams: Equatable, Sendable {
     var texts: [String: String] = [:]
     /// The first message of a session started from here.
     var prompt: String?
+    var live: PBLiveSnapshot?
 }
 
 /// What one pass over the events gives.
@@ -82,13 +83,16 @@ actor ChatBuilder {
         self.parse = parse
     }
 
-    func build(_ events: PagedList<PBEvent>, _ p: ChatParams) -> ChatSnapshot {
-        let d = reduce.update(events, agent: p.agent)
+    func build(
+        _ events: PagedList<PBEvent>, _ p: ChatParams, stateEvents: PagedList<PBEvent>? = nil
+    ) -> ChatSnapshot {
+        let d = currentActions(reduce.update(stateEvents ?? events, agent: p.agent), live: p.live)
         let local = Set(p.texts.keys)
         // The daemon queues a new session's first message under an ID of its own.
         let initialId = p.prompt == nil ? nil : d.inputs.keys.first { !local.contains($0) }
         let next = Key(
-            agent: p.agent, machine: p.machine, cwd: p.cwd, home: p.home, me: p.me, devices: p.devices, sent: p.texts.count,
+            agent: p.agent, machine: p.machine, cwd: p.cwd, home: p.home, me: p.me,
+            devices: p.devices, sent: p.texts.count,
             prompt: p.prompt, initialId: initialId)
         // Rows name clients and carry the texts sent from here: when those
         // change, the rows kept from before may say something else.
@@ -125,7 +129,8 @@ actor ChatBuilder {
             parsed = parsed.filter { keys.contains($0.key) }
         }
         return ChatSnapshot(
-            derived: d, rows: rows, startPrompt: pendingStartPrompt(p.prompt, events: events, d: d, localIds: local),
+            derived: d, rows: rows,
+            startPrompt: pendingStartPrompt(p.prompt, events: events, d: d, localIds: local),
             // The title is the screen's to look at; this is the other half of the rule.
             spoke: sentMessage(SessionView(id: "", machineId: ""), events: events))
     }
@@ -136,6 +141,8 @@ actor ChatBuilder {
 final class SessionModel {
     private(set) var rows: [ChatRow] = []
     private(set) var derived = Derived()
+    private(set) var liveError: String?
+    private(set) var unverifiedLegacy = false
     private(set) var startPrompt: StartPrompt?
     /// A message was sent in the history read so far.
     private(set) var spoke = false
@@ -150,14 +157,15 @@ final class SessionModel {
 
     @ObservationIgnored private let builder: ChatBuilder
     @ObservationIgnored private var events = PagedList<PBEvent>()
+    @ObservationIgnored private var stateEvents = PagedList<PBEvent>()
     @ObservationIgnored private var params = ChatParams()
     @ObservationIgnored private var asked = 0
     @ObservationIgnored private var applied = 0
     #if DEBUG
-    /// How long the last pass took off the main actor, and how long applying it took on it, in ms.
-    @ObservationIgnored private(set) var lastBuildMs = 0.0
-    @ObservationIgnored private(set) var lastApplyMs = 0.0
-    @ObservationIgnored private(set) var passes = 0
+        /// How long the last pass took off the main actor, and how long applying it took on it, in ms.
+        @ObservationIgnored private(set) var lastBuildMs = 0.0
+        @ObservationIgnored private(set) var lastApplyMs = 0.0
+        @ObservationIgnored private(set) var passes = 0
     #endif
 
     init(builder: ChatBuilder = ChatBuilder()) {
@@ -178,6 +186,10 @@ final class SessionModel {
     /// Takes a snapshot of the history. Apart from `follow` for tests and sample data.
     func show(_ snapshot: SessionEvents) async {
         events = snapshot.events
+        stateEvents = snapshot.unverifiedLegacy ? snapshot.verifiedEvents : snapshot.events
+        params.live = snapshot.live
+        liveError = snapshot.liveError
+        unverifiedLegacy = snapshot.unverifiedLegacy
         await rebuild()
         if loaded != snapshot.loaded { loaded = snapshot.loaded }
         if error != snapshot.error { error = snapshot.error }
@@ -187,7 +199,9 @@ final class SessionModel {
     /// What the rows depend on besides the events; a change builds them again.
     func use(_ p: ChatParams) {
         guard p != params else { return }
+        let live = params.live
         params = p
+        params.live = live
         Task { await rebuild() }
     }
 
@@ -195,14 +209,14 @@ final class SessionModel {
         asked += 1
         let turn = asked
         #if DEBUG
-        let started = ContinuousClock.now
+            let started = ContinuousClock.now
         #endif
-        let snapshot = await builder.build(events, params)
+        let snapshot = await builder.build(events, params, stateEvents: stateEvents)
         // A later pass that finished first already shows more.
         guard turn > applied else { return }
         applied = turn
         #if DEBUG
-        let built = ContinuousClock.now
+            let built = ContinuousClock.now
         #endif
         if snapshot.rows != rows { rows = snapshot.rows }
         if snapshot.derived != derived { derived = snapshot.derived }
@@ -210,14 +224,20 @@ final class SessionModel {
         if snapshot.spoke != spoke { spoke = snapshot.spoke }
         if !ready { ready = true }
         #if DEBUG
-        lastBuildMs = Double((built - started).components.attoseconds) / 1e15 + Double((built - started).components.seconds) * 1000
-        let done = ContinuousClock.now - built
-        lastApplyMs = Double(done.components.attoseconds) / 1e15 + Double(done.components.seconds) * 1000
-        passes += 1
-        // `-sessionPerf`: what each pass cost, in numbers only.
-        if SessionDebug.perf {
-            print(String(format: "PERF pass %d events %d rows %d build %.2f ms apply %.3f ms", passes, events.count, rows.count, lastBuildMs, lastApplyMs))
-        }
+            lastBuildMs =
+                Double((built - started).components.attoseconds) / 1e15 + Double(
+                    (built - started).components.seconds) * 1000
+            let done = ContinuousClock.now - built
+            lastApplyMs =
+                Double(done.components.attoseconds) / 1e15 + Double(done.components.seconds) * 1000
+            passes += 1
+            // `-sessionPerf`: what each pass cost, in numbers only.
+            if SessionDebug.perf {
+                print(
+                    String(
+                        format: "PERF pass %d events %d rows %d build %.2f ms apply %.3f ms",
+                        passes, events.count, rows.count, lastBuildMs, lastApplyMs))
+            }
         #endif
     }
 }
@@ -241,7 +261,8 @@ final class SessionFinder {
         // `lookUpSession` reports from wherever it runs; the stream brings its word back here.
         let (stream, word) = AsyncStream<SessionLookup>.makeStream()
         let work = Task.detached {
-            try? await lookUpSession(fetch: { try await remote.fetchSession(sid) }, report: { word.yield($0) })
+            try? await lookUpSession(
+                fetch: { try await remote.fetchSession(sid) }, report: { word.yield($0) })
             word.finish()
         }
         await withTaskCancellationHandler {
@@ -270,7 +291,9 @@ private struct SessionLookupTask: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        let key = Key(sid: sid, held: model.state.sessions[sid] != nil, online: model.state.conn == .online, attempt: attempt)
+        let key = Key(
+            sid: sid, held: model.state.sessions[sid] != nil, online: model.state.conn == .online,
+            attempt: attempt)
         content.task(id: key) {
             if key.held || !key.online { return }
             await finder.run(context.remote, sid, sample: model.isDemo)
@@ -304,7 +327,9 @@ private struct SessionFollow: ViewModifier {
         let session = model.state.sessions[sid]
         content
             // Asked for again once the session is held: a history is only read for a session that is known.
-            .task(id: Key(sid: sid, held: session != nil)) { await chat.follow(context.remote, sid) }
+            .task(id: Key(sid: sid, held: session != nil)) {
+                await chat.follow(context.remote, sid)
+            }
             .onChange(of: session?.agent, initial: true) { _, agent in
                 // Which CLI it is decides how its events are read.
                 chat.use(ChatParams(agent: agent ?? .codex, me: context.me))

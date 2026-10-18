@@ -35,10 +35,12 @@ import Testing
 
         /// The opening command of stream `i` answers. Its socket goes nowhere; what is sent is kept as it is sealed.
         func answer(_ i: Int) {
-            let socket = Socket(http: HTTP(), url: URL(string: "ws://127.0.0.1:1/v1/term")!, hello: Data()) { _ in }
+            let socket = Socket(
+                http: HTTP(), url: URL(string: "ws://127.0.0.1:1/v1/term")!, hello: Data()
+            ) { _ in }
             let conn = TermConn(
                 socket: socket,
-                seal: { [self] frame, _ in
+                seal: { [self] frame, _, _ in
                     lock.withLock { typed.append(frame) }
                     return Data()
                 }, finish: { _ in }, closeLocal: {})
@@ -55,7 +57,9 @@ import Testing
         }
     }
 
-    private func terminal(_ streams: Streams, online: Flag = Flag(), fail: String? = nil) -> RemoteTerminal {
+    private func terminal(_ streams: Streams, online: Flag = Flag(), fail: String? = nil)
+        -> RemoteTerminal
+    {
         let terminal = RemoteTerminal()
         terminal.host.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
         terminal.host.layoutIfNeeded()
@@ -74,7 +78,13 @@ import Testing
     }
 
     private func snapshot(_ text: String, cols: Int32 = 80, rows: Int32 = 24) -> PBTerminalFrame {
-        .with { $0.snapshot = .with { $0.cols = cols; $0.rows = rows; $0.data = Data(text.utf8) } }
+        .with {
+            $0.snapshot = .with {
+                $0.cols = cols
+                $0.rows = rows
+                $0.data = Data(text.utf8)
+            }
+        }
     }
 
     private func output(_ text: String) -> PBTerminalFrame { .with { $0.output = Data(text.utf8) } }
@@ -96,11 +106,18 @@ import Testing
 
         t.readUp(40)
         #expect(t.reading && t.history.phase == .opening && t.history.entryPull == 40)
+        await until { streams.sent.last?.historyRequest.requestID.isEmpty == false }
         let request = streams.sent.last!.historyRequest
         #expect(!request.requestID.isEmpty && request.cursor.isEmpty)
 
         streams.listener(0).onFrame(
-            .with { $0.historyPage = .with { $0.requestID = request.requestID; $0.lines = ["older"]; $0.nextCursor = "capture:200" } })
+            .with {
+                $0.historyPage = .with {
+                    $0.requestID = request.requestID
+                    $0.lines = ["older"]
+                    $0.nextCursor = "capture:200"
+                }
+            })
         streams.listener(0).onFrame(output(" output"))
         await until { t.history.pending.isEmpty }
         #expect(t.history.open && t.history.pages.first?.lines == ["older"])
@@ -112,6 +129,7 @@ import Testing
         // A key leaves reading first, and then goes as it always did.
         t.send(Data("input".utf8))
         #expect(!t.reading)
+        await until { streams.sent.last?.input == Data("input".utf8) }
         #expect(streams.sent.last?.input == Data("input".utf8))
         t.close()
     }
@@ -137,6 +155,7 @@ import Testing
         t.readUp(RemoteTerminal.readPull - 1)
         #expect(!t.reading && streams.sent.count == before)
         t.readUp(RemoteTerminal.readPull)
+        await until { streams.sent.count == before + 1 }
         #expect(t.history.phase == .opening && streams.sent.count == before + 1)
         t.close()
     }
@@ -152,24 +171,39 @@ import Testing
         await until { t.state == .live }
 
         t.readUp(40)
+        await until { streams.sent.last?.historyRequest.requestID.isEmpty == false }
         let first = streams.sent.last!.historyRequest
         streams.listener(0).onFrame(
-            .with { $0.historyPage = .with { $0.requestID = first.requestID; $0.error = "cannot capture terminal history; retry" } })
+            .with {
+                $0.historyPage = .with {
+                    $0.requestID = first.requestID
+                    $0.error = "cannot capture terminal history; retry"
+                }
+            })
         await until { t.history.phase == .openingFailed }
-        #expect(!t.history.open && t.history.opening == TerminalHistory.Opening.failed && t.state == .live)
+        #expect(
+            !t.history.open && t.history.opening == TerminalHistory.Opening.failed
+                && t.state == .live)
         // The live screen behind the line is untouched.
         #expect(t.host.screenText == "live")
 
         // A key-bar key clears it first, and then goes as it always did.
         t.send(Data("x".utf8))
         #expect(!t.reading && t.history.opening == nil)
+        await until { streams.sent.last?.input == Data("x".utf8) }
         #expect(streams.sent.last?.input == Data("x".utf8))
 
         // The 键盘 key does the same before it acts.
         t.readUp(40)
+        await until { streams.sent.last?.historyRequest.requestID.isEmpty == false }
         let asked = streams.sent.last!.historyRequest
         streams.listener(0).onFrame(
-            .with { $0.historyPage = .with { $0.requestID = asked.requestID; $0.error = "cannot capture terminal history; retry" } })
+            .with {
+                $0.historyPage = .with {
+                    $0.requestID = asked.requestID
+                    $0.error = "cannot capture terminal history; retry"
+                }
+            })
         await until { t.history.phase == .openingFailed }
         t.leaveReading()
         #expect(!t.reading)
@@ -177,11 +211,18 @@ import Testing
         // Another pull up asks for the capture again, with no cursor.
         let before = streams.sent.count
         t.readUp(40)
+        await until { streams.sent.count == before + 1 }
         #expect(t.history.phase == .opening && streams.sent.count == before + 1)
         let second = streams.sent.last!.historyRequest
         #expect(second.cursor.isEmpty && second.requestID != first.requestID)
         streams.listener(0).onFrame(
-            .with { $0.historyPage = .with { $0.requestID = second.requestID; $0.lines = ["older"]; $0.nextCursor = "capture:200" } })
+            .with {
+                $0.historyPage = .with {
+                    $0.requestID = second.requestID
+                    $0.lines = ["older"]
+                    $0.nextCursor = "capture:200"
+                }
+            })
         await until { t.history.open }
         #expect(t.history.pages.first?.lines == ["older"])
         t.close()
@@ -285,6 +326,7 @@ import Testing
         #expect(t.state == .live)
         #expect(t.fitted && streams.sent.map(\.resize.fit) == [true])
         t.send(Data("ls".utf8))
+        await until { streams.sent.last?.input == Data("ls".utf8) }
         #expect(streams.sent.last?.input == Data("ls".utf8))
         t.close()
     }

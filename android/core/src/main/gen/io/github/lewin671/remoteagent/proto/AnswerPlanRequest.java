@@ -16,6 +16,7 @@ public  final class AnswerPlanRequest extends
     AnswerPlanRequestOrBuilder {
   private AnswerPlanRequest() {
     sessionId_ = "";
+    observedScreenHash_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int SESSION_ID_FIELD_NUMBER = 1;
   private java.lang.String sessionId_;
@@ -105,6 +106,59 @@ public  final class AnswerPlanRequest extends
   private void clearChoice() {
 
     choice_ = 0;
+  }
+
+  public static final int OBSERVED_EVENT_SEQ_FIELD_NUMBER = 3;
+  private long observedEventSeq_;
+  /**
+   * <code>uint64 observed_event_seq = 3 [json_name = "observedEventSeq"];</code>
+   * @return The observedEventSeq.
+   */
+  @java.lang.Override
+  public long getObservedEventSeq() {
+    return observedEventSeq_;
+  }
+  /**
+   * <code>uint64 observed_event_seq = 3 [json_name = "observedEventSeq"];</code>
+   * @param value The observedEventSeq to set.
+   */
+  private void setObservedEventSeq(long value) {
+    
+    observedEventSeq_ = value;
+  }
+  /**
+   * <code>uint64 observed_event_seq = 3 [json_name = "observedEventSeq"];</code>
+   */
+  private void clearObservedEventSeq() {
+
+    observedEventSeq_ = 0L;
+  }
+
+  public static final int OBSERVED_SCREEN_HASH_FIELD_NUMBER = 4;
+  private com.google.protobuf.ByteString observedScreenHash_;
+  /**
+   * <code>bytes observed_screen_hash = 4 [json_name = "observedScreenHash"];</code>
+   * @return The observedScreenHash.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getObservedScreenHash() {
+    return observedScreenHash_;
+  }
+  /**
+   * <code>bytes observed_screen_hash = 4 [json_name = "observedScreenHash"];</code>
+   * @param value The observedScreenHash to set.
+   */
+  private void setObservedScreenHash(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    observedScreenHash_ = value;
+  }
+  /**
+   * <code>bytes observed_screen_hash = 4 [json_name = "observedScreenHash"];</code>
+   */
+  private void clearObservedScreenHash() {
+
+    observedScreenHash_ = getDefaultInstance().getObservedScreenHash();
   }
 
   public static io.github.lewin671.remoteagent.proto.AnswerPlanRequest parseFrom(
@@ -299,6 +353,62 @@ public  final class AnswerPlanRequest extends
       return this;
     }
 
+    /**
+     * <code>uint64 observed_event_seq = 3 [json_name = "observedEventSeq"];</code>
+     * @return The observedEventSeq.
+     */
+    @java.lang.Override
+    public long getObservedEventSeq() {
+      return instance.getObservedEventSeq();
+    }
+    /**
+     * <code>uint64 observed_event_seq = 3 [json_name = "observedEventSeq"];</code>
+     * @param value The observedEventSeq to set.
+     * @return This builder for chaining.
+     */
+    public Builder setObservedEventSeq(long value) {
+      copyOnWrite();
+      instance.setObservedEventSeq(value);
+      return this;
+    }
+    /**
+     * <code>uint64 observed_event_seq = 3 [json_name = "observedEventSeq"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearObservedEventSeq() {
+      copyOnWrite();
+      instance.clearObservedEventSeq();
+      return this;
+    }
+
+    /**
+     * <code>bytes observed_screen_hash = 4 [json_name = "observedScreenHash"];</code>
+     * @return The observedScreenHash.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getObservedScreenHash() {
+      return instance.getObservedScreenHash();
+    }
+    /**
+     * <code>bytes observed_screen_hash = 4 [json_name = "observedScreenHash"];</code>
+     * @param value The observedScreenHash to set.
+     * @return This builder for chaining.
+     */
+    public Builder setObservedScreenHash(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setObservedScreenHash(value);
+      return this;
+    }
+    /**
+     * <code>bytes observed_screen_hash = 4 [json_name = "observedScreenHash"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearObservedScreenHash() {
+      copyOnWrite();
+      instance.clearObservedScreenHash();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.AnswerPlanRequest)
   }
   @java.lang.Override
@@ -317,10 +427,12 @@ public  final class AnswerPlanRequest extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "sessionId_",
             "choice_",
+            "observedEventSeq_",
+            "observedScreenHash_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u0003\u0004\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

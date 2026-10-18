@@ -200,9 +200,15 @@ type Envelope struct {
 	//
 	// (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
 	// header's sender must be the ID of the signing device.
-	Signature     []byte `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Signature []byte `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
+	// Version-2 canonical deviceauth Header; the protobuf Header above is only
+	// a routing projection. Receivers compare every projection field to this.
+	SecurityHeader []byte `protobuf:"bytes,5,opt,name=security_header,json=securityHeader,proto3" json:"security_header,omitempty"`
+	// Exact-ciphertext authority authorization and its Ed25519 signature.
+	Authorization          []byte `protobuf:"bytes,6,opt,name=authorization,proto3" json:"authorization,omitempty"`
+	AuthorizationSignature []byte `protobuf:"bytes,7,opt,name=authorization_signature,json=authorizationSignature,proto3" json:"authorization_signature,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Envelope) Reset() {
@@ -259,6 +265,27 @@ func (x *Envelope) GetCiphertext() []byte {
 func (x *Envelope) GetSignature() []byte {
 	if x != nil {
 		return x.Signature
+	}
+	return nil
+}
+
+func (x *Envelope) GetSecurityHeader() []byte {
+	if x != nil {
+		return x.SecurityHeader
+	}
+	return nil
+}
+
+func (x *Envelope) GetAuthorization() []byte {
+	if x != nil {
+		return x.Authorization
+	}
+	return nil
+}
+
+func (x *Envelope) GetAuthorizationSignature() []byte {
+	if x != nil {
+		return x.AuthorizationSignature
 	}
 	return nil
 }
@@ -394,14 +421,17 @@ var File_remoteagent_v1_envelope_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"\n" +
-	"\x1dremoteagent/v1/envelope.proto\x12\x0eremoteagent.v1\"v\n" +
+	"\x1dremoteagent/v1/envelope.proto\x12\x0eremoteagent.v1\"\xfe\x01\n" +
 	"\bEnvelope\x12\x16\n" +
 	"\x06header\x18\x01 \x01(\fR\x06header\x12\x14\n" +
 	"\x05nonce\x18\x02 \x01(\fR\x05nonce\x12\x1e\n" +
 	"\n" +
 	"ciphertext\x18\x03 \x01(\fR\n" +
 	"ciphertext\x12\x1c\n" +
-	"\tsignature\x18\x04 \x01(\fR\tsignature\"\xba\x02\n" +
+	"\tsignature\x18\x04 \x01(\fR\tsignature\x12'\n" +
+	"\x0fsecurity_header\x18\x05 \x01(\fR\x0esecurityHeader\x12$\n" +
+	"\rauthorization\x18\x06 \x01(\fR\rauthorization\x127\n" +
+	"\x17authorization_signature\x18\a \x01(\fR\x16authorizationSignature\"\xba\x02\n" +
 	"\x06Header\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12/\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1b.remoteagent.v1.PayloadKindR\x04kind\x12\x1d\n" +

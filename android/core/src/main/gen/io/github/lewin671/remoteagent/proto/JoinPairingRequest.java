@@ -18,6 +18,7 @@ public  final class JoinPairingRequest extends
     code_ = "";
     joinerPublic_ = com.google.protobuf.ByteString.EMPTY;
     devicePublicKey_ = com.google.protobuf.ByteString.EMPTY;
+    deviceHpkePublicKey_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int CODE_FIELD_NUMBER = 1;
   private java.lang.String code_;
@@ -173,6 +174,71 @@ public  final class JoinPairingRequest extends
   private void clearDevicePublicKey() {
 
     devicePublicKey_ = getDefaultInstance().getDevicePublicKey();
+  }
+
+  public static final int DEVICE_HPKE_PUBLIC_KEY_FIELD_NUMBER = 5;
+  private com.google.protobuf.ByteString deviceHpkePublicKey_;
+  /**
+   * <pre>
+   * Independent long-term X25519 recipient key, bound by the SAS.
+   * </pre>
+   *
+   * <code>bytes device_hpke_public_key = 5 [json_name = "deviceHpkePublicKey"];</code>
+   * @return The deviceHpkePublicKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getDeviceHpkePublicKey() {
+    return deviceHpkePublicKey_;
+  }
+  /**
+   * <pre>
+   * Independent long-term X25519 recipient key, bound by the SAS.
+   * </pre>
+   *
+   * <code>bytes device_hpke_public_key = 5 [json_name = "deviceHpkePublicKey"];</code>
+   * @param value The deviceHpkePublicKey to set.
+   */
+  private void setDeviceHpkePublicKey(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    deviceHpkePublicKey_ = value;
+  }
+  /**
+   * <pre>
+   * Independent long-term X25519 recipient key, bound by the SAS.
+   * </pre>
+   *
+   * <code>bytes device_hpke_public_key = 5 [json_name = "deviceHpkePublicKey"];</code>
+   */
+  private void clearDeviceHpkePublicKey() {
+
+    deviceHpkePublicKey_ = getDefaultInstance().getDeviceHpkePublicKey();
+  }
+
+  public static final int PROTOCOL_VERSION_FIELD_NUMBER = 6;
+  private int protocolVersion_;
+  /**
+   * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
+   * @return The protocolVersion.
+   */
+  @java.lang.Override
+  public int getProtocolVersion() {
+    return protocolVersion_;
+  }
+  /**
+   * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
+   * @param value The protocolVersion to set.
+   */
+  private void setProtocolVersion(int value) {
+    
+    protocolVersion_ = value;
+  }
+  /**
+   * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
+   */
+  private void clearProtocolVersion() {
+
+    protocolVersion_ = 0;
   }
 
   public static io.github.lewin671.remoteagent.proto.JoinPairingRequest parseFrom(
@@ -435,6 +501,74 @@ public  final class JoinPairingRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Independent long-term X25519 recipient key, bound by the SAS.
+     * </pre>
+     *
+     * <code>bytes device_hpke_public_key = 5 [json_name = "deviceHpkePublicKey"];</code>
+     * @return The deviceHpkePublicKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getDeviceHpkePublicKey() {
+      return instance.getDeviceHpkePublicKey();
+    }
+    /**
+     * <pre>
+     * Independent long-term X25519 recipient key, bound by the SAS.
+     * </pre>
+     *
+     * <code>bytes device_hpke_public_key = 5 [json_name = "deviceHpkePublicKey"];</code>
+     * @param value The deviceHpkePublicKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDeviceHpkePublicKey(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDeviceHpkePublicKey(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Independent long-term X25519 recipient key, bound by the SAS.
+     * </pre>
+     *
+     * <code>bytes device_hpke_public_key = 5 [json_name = "deviceHpkePublicKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDeviceHpkePublicKey() {
+      copyOnWrite();
+      instance.clearDeviceHpkePublicKey();
+      return this;
+    }
+
+    /**
+     * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
+     * @return The protocolVersion.
+     */
+    @java.lang.Override
+    public int getProtocolVersion() {
+      return instance.getProtocolVersion();
+    }
+    /**
+     * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
+     * @param value The protocolVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setProtocolVersion(int value) {
+      copyOnWrite();
+      instance.setProtocolVersion(value);
+      return this;
+    }
+    /**
+     * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearProtocolVersion() {
+      copyOnWrite();
+      instance.clearProtocolVersion();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.JoinPairingRequest)
   }
   @java.lang.Override
@@ -455,10 +589,12 @@ public  final class JoinPairingRequest extends
             "joinerPublic_",
             "joinerKind_",
             "devicePublicKey_",
+            "deviceHpkePublicKey_",
+            "protocolVersion_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\n" +
-              "\u0003\f\u0004\n";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\n" +
+              "\u0003\f\u0004\n\u0005\n\u0006\u000b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

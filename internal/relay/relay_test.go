@@ -21,6 +21,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/protocol"
@@ -307,7 +308,17 @@ func setupWithHandler(t *testing.T, wrap func(http.Handler) http.Handler, config
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.client, err = remoteclient.Register(ctx, e.acct.Secret(), e.acct.DeviceKey())
+	authority, err := deviceauth.OpenAuthority(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "authority-v2.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.client, err = remoteclient.Register(ctx, e.acct.Secret(), e.acct.DeviceKey(), e.acct.Security.Pin, e.acct.Security.XPrivate, filepath.Join(t.TempDir(), "client-security.db"), func(_ context.Context, c deviceauth.Capsule) (deviceauth.Capsule, error) { return authority.Handle(c) })
+	authority.Close()
+	t.Cleanup(func() {
+		if e.client != nil {
+			e.client.Close()
+		}
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -733,29 +744,26 @@ func TestCommandsRejected(t *testing.T) {
 	ctx := context.Background()
 	send := &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "sess1", Text: "hi"}}}
 
-	expired, _ := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(-time.Second), send)
-	var ce *remoteclient.CommandError
-	if _, err := e.client.Forward(ctx, s.MachineID, expired); !errors.As(err, &ce) || ce.Code != "deadline_exceeded" {
-		t.Fatalf("expired: %v", err)
+	if _, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(-time.Second), send); err == nil {
+		t.Fatal("expired command received authority authorization")
 	}
-	far, _ := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Hour), send)
-	if _, err := e.client.Forward(ctx, s.MachineID, far); !errors.As(err, &ce) || ce.Code != "invalid_argument" {
-		t.Fatalf("far deadline: %v", err)
+	if _, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Hour), send); err == nil {
+		t.Fatal("far-future command received authority authorization")
 	}
 
 	// A tampered command does not open.
 	good, _ := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send)
 	good.Ciphertext[0] ^= 1
-	if _, err := e.client.Forward(ctx, s.MachineID, good); connect.CodeOf(err) != connect.CodeAborted {
+	if _, err := e.client.Forward(ctx, s.MachineID, good); connect.CodeOf(err) != connect.CodeUnknown {
 		t.Fatalf("tampered: %v", err)
 	}
 	// A command sealed with another account's key does not open.
 	stranger, _ := e2e.Derive(e2e.NewKey())
-	forged, _ := e2e.SealMessage(stranger.Command, &pb.Header{
+	forged, _ := e2e.SealMessage(stranger.Command, &pb.Header{Version: 2,
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: s.MachineID, SessionId: s.ID,
 		RequestId: remoteclient.NewRequestID(), DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: e.client.DeviceID,
 	}, send)
-	if _, err := e.client.Forward(ctx, s.MachineID, forged); connect.CodeOf(err) != connect.CodeAborted {
+	if _, err := e.client.Forward(ctx, s.MachineID, forged); connect.CodeOf(err) != connect.CodeUnknown {
 		t.Fatalf("forged: %v", err)
 	}
 	if n := e.backend.sendCount(); n != 0 {
@@ -765,20 +773,10 @@ func TestCommandsRejected(t *testing.T) {
 	// Offline machines fail at once, and nothing is queued for later.
 	e.stopRelay()
 	e.online(t, false)
-	start := time.Now()
-	later, _ := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send)
-	if _, err := e.client.Forward(ctx, s.MachineID, later); connect.CodeOf(err) != connect.CodeUnavailable {
-		t.Fatalf("offline: %v", err)
+	if _, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send); err == nil {
+		t.Fatal("authority offline still issued a new write authorization")
 	}
-	if time.Since(start) > 2*time.Second {
-		t.Fatal("offline forward did not fail fast")
-	}
-	e.startRelay()
-	e.online(t, true)
-	time.Sleep(200 * time.Millisecond)
-	if n := e.backend.sendCount(); n != 0 {
-		t.Fatalf("a command ran after reconnecting: %d", n)
-	}
+
 }
 
 func TestLostSessionKeyIsNotReplaced(t *testing.T) {
@@ -895,6 +893,8 @@ func TestTerminalStream(t *testing.T) {
 
 func TestPairingMachines(t *testing.T) {
 	e := setup(t)
+	e.startRelay()
+	e.online(t, true)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
@@ -921,7 +921,7 @@ func TestPairingMachines(t *testing.T) {
 
 	// The new machine has its own state directory.
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	acct, err := relay.JoinByPairing(ctx, parsed, func(emoji []string) { seen <- emoji })
+	acct, err := relay.JoinByPairing(ctx, parsed, func(emoji []string) bool { seen <- emoji; return true })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -935,6 +935,8 @@ func TestPairingMachines(t *testing.T) {
 
 func TestPairingRefusals(t *testing.T) {
 	e := setup(t)
+	e.startRelay()
+	e.online(t, true)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
@@ -945,7 +947,7 @@ func TestPairingRefusals(t *testing.T) {
 	l := <-links
 	l.Commit = bytes.Repeat([]byte{1}, 32)
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	if _, err := relay.JoinByPairing(ctx, l, func([]string) {}); err == nil || !strings.Contains(err.Error(), "commitment") {
+	if _, err := relay.JoinByPairing(ctx, l, func([]string) bool { return false }); err == nil || !strings.Contains(err.Error(), "commitment") {
 		t.Fatalf("swapped commitment: %v", err)
 	}
 
@@ -954,7 +956,7 @@ func TestPairingRefusals(t *testing.T) {
 	go relay.Initiate(ctx, e.acct, func(l relay.PairLink) { links2 <- l }, func([]string, pb.DeviceKind) bool { return false })
 	l2 := <-links2
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	if _, err := relay.JoinByPairing(ctx, l2, func([]string) {}); err == nil || !strings.Contains(err.Error(), "canceled") {
+	if _, err := relay.JoinByPairing(ctx, l2, func([]string) bool { return true }); err == nil || !strings.Contains(err.Error(), "canceled") {
 		t.Fatalf("refused pairing: %v", err)
 	}
 }
@@ -1033,13 +1035,13 @@ func TestCommandOrigins(t *testing.T) {
 	// Unsigned: the server's word about the sender is not taken.
 	env, _ := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send("b"))
 	env.Signature = nil
-	if _, err := e.client.Forward(ctx, s.MachineID, env); connect.CodeOf(err) != connect.CodeAborted {
+	if _, err := e.client.Forward(ctx, s.MachineID, env); connect.CodeOf(err) != connect.CodeUnknown {
 		t.Fatalf("unsigned: %v", err)
 	}
 	// A signature that does not check out is refused.
 	env, _ = e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send("c"))
 	env.Signature[0] ^= 1
-	if _, err := e.client.Forward(ctx, s.MachineID, env); connect.CodeOf(err) != connect.CodeAborted {
+	if _, err := e.client.Forward(ctx, s.MachineID, env); connect.CodeOf(err) != connect.CodeUnknown {
 		t.Fatalf("bad signature: %v", err)
 	}
 	// A client of another protocol version is told to update; nothing runs.

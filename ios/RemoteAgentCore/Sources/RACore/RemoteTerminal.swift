@@ -22,16 +22,18 @@ public final class TermConn: Sendable {
     private struct Out {
         var seq: UInt64 = 0
         var queued = 0
+        var tail: Task<Void, Never>?
     }
 
     private let socket: Socket
     private let out = OSAllocatedUnfairLock(initialState: Out())
-    private let seal: @Sendable (PBTerminalFrame, UInt64) throws -> Data
+    private let seal: @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> Data
     private let finish: @Sendable (String) -> Void
     private let closeLocal: @Sendable () -> Void
 
     init(
-        socket: Socket, seal: @escaping @Sendable (PBTerminalFrame, UInt64) throws -> Data,
+        socket: Socket,
+        seal: @escaping @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> Data,
         finish: @escaping @Sendable (String) -> Void, closeLocal: @escaping @Sendable () -> Void
     ) {
         self.socket = socket
@@ -44,15 +46,26 @@ public final class TermConn: Sendable {
     public func send(_ frame: PBTerminalFrame) {
         // Numbered, sealed and queued under one lock: the daemon ends the
         // stream on a number that does not go up.
+        let bytes = (try? frame.serializedData().count) ?? 0
+        let deadline = UInt64(Date().timeIntervalSince1970 * 1000) + 60_000
         let failure: String? = out.withLock { o in
+            guard o.queued + bytes <= termSendBudget else { return "终端输入等待授权，已暂停" }
             o.seq += 1
-            guard let bytes = try? seal(frame, o.seq) else { return "终端连接断开：加密失败" }
-            // Written too slowly to keep up: ending the stream is said out
-            // loud, where dropping input would not be.
-            if o.queued + bytes.count > termSendBudget { return "终端连接断开" }
-            o.queued += bytes.count
-            let n = bytes.count
-            socket.send(bytes) { [out] _ in out.withLock { $0.queued -= n } }
+            o.queued += bytes
+            let seq = o.seq
+            let previous = o.tail
+            o.tail = Task { [socket, seal, finish, out] in
+                await previous?.value
+                do {
+                    try Task.checkCancellation()
+                    let encoded = try await seal(frame, seq, deadline)
+                    socket.send(encoded) { _ in }
+                } catch {
+                    finish("终端输入未获授权，已停止")
+                    socket.cancel()
+                }
+                out.withLock { $0.queued -= bytes }
+            }
             return nil
         }
         if let failure {
@@ -71,7 +84,9 @@ extension Remote {
     /// Joins a session's terminal stream. Frames are sealed with the session key
     /// and numbered; each side refuses frames out of order.
     public func openTerminal(_ sid: String, listener: any TermListener) async throws -> TermConn {
-        guard let s = sessions[sid], let key = sessionKeys[sid] else { throw CommandError("not_found", "未知会话") }
+        guard let s = sessions[sid], let key = sessionKeys[sid] else {
+            throw CommandError("not_found", "未知会话")
+        }
         let tok = try await currentToken()
         let streamId = newRequestId()
         let machineId = s.machineId
@@ -87,7 +102,9 @@ extension Remote {
         hello.token = tok
         hello.streamID = streamId
         hello.machineID = machineId
-        let socket = Socket(http: http, url: api.socketURL("/v1/term"), hello: try hello.serializedData(), sleep: sleep)
+        let socket = Socket(
+            http: http, url: api.socketURL("/v1/term"), hello: try hello.serializedData(),
+            sleep: sleep)
         // The upgrade gets 20 s, the time the server keeps the first side waiting for the other.
         let sleep = self.sleep
         let limit = Task {
@@ -100,15 +117,19 @@ extension Remote {
             socket.cancel()
             throw UserError("连不上终端")
         }
+        let security = try securitySession()
         Task.detached {
             var last: UInt64 = 0
             while let bytes = try? await socket.receive() {
                 if closed.withLock({ $0 }) { continue }
                 do {
-                    let (h, frame) = try Envelopes.openMessage(
-                        key: key, envelope: try PBEnvelope(serializedBytes: bytes),
-                        want: Place(.terminalOutput, machineId: machineId, sessionId: sid, requestId: streamId),
-                        as: PBTerminalFrame.self)
+                    let (h, frame) = try await security.openMessage(
+                        PBEnvelope(serializedBytes: bytes), as: PBTerminalFrame.self,
+                        history: false,
+                        sessionSeed: key)
+                    guard h.purpose == .terminalOutput, h.machine == machineId, h.session == sid,
+                        h.request == streamId
+                    else { throw DeviceSecurity.Failure.untrusted }
                     if h.seq <= last { throw OpenError("终端帧顺序不对") }
                     last = h.seq
                     listener.onFrame(frame)
@@ -130,18 +151,22 @@ extension Remote {
             socket.cancel()
             throw error
         }
-        let sender = account.deviceId
         return TermConn(
             socket: socket,
-            seal: { frame, seq in
-                var h = PBHeader()
-                h.kind = .terminalInput
-                h.machineID = machineId
-                h.sessionID = sid
-                h.requestID = streamId
-                h.seq = seq
-                h.sender = sender
-                return try Envelopes.seal(key: key, header: h, message: frame).serializedData()
+            seal: { frame, seq, deadline in
+                guard !closed.withLock({ $0 }) else { throw DeviceSecurity.Failure.storage }
+                let purpose: DeviceSecurity.Purpose
+                switch frame.kind {
+                case .input: purpose = .terminalInput
+                case .resize: purpose = .terminalResize
+                case .historyRequest: purpose = .terminalHistory
+                default: throw DeviceSecurity.Failure.invalid
+                }
+                let env = try await security.seal(
+                    purpose: purpose, machine: machineId, session: sid, request: streamId, seq: seq,
+                    deadline: deadline, plaintext: frame.serializedData(), sessionSeed: key)
+                guard !closed.withLock({ $0 }) else { throw DeviceSecurity.Failure.storage }
+                return try env.serializedData()
             },
             finish: finish,
             closeLocal: { closed.withLock { $0 = true } })

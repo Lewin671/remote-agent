@@ -17,6 +17,7 @@ public  final class GetPairingRequest extends
   private GetPairingRequest() {
     pairingId_ = "";
     candidateToken_ = "";
+    candidateSignature_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int PAIRING_ID_FIELD_NUMBER = 1;
   private java.lang.String pairingId_;
@@ -176,6 +177,45 @@ public  final class GetPairingRequest extends
   private void clearReceived() {
 
     received_ = false;
+  }
+
+  public static final int CANDIDATE_SIGNATURE_FIELD_NUMBER = 4;
+  private com.google.protobuf.ByteString candidateSignature_;
+  /**
+   * <pre>
+   * Candidate signature over the authority PairContext after reveal.
+   * </pre>
+   *
+   * <code>bytes candidate_signature = 4 [json_name = "candidateSignature"];</code>
+   * @return The candidateSignature.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getCandidateSignature() {
+    return candidateSignature_;
+  }
+  /**
+   * <pre>
+   * Candidate signature over the authority PairContext after reveal.
+   * </pre>
+   *
+   * <code>bytes candidate_signature = 4 [json_name = "candidateSignature"];</code>
+   * @param value The candidateSignature to set.
+   */
+  private void setCandidateSignature(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    candidateSignature_ = value;
+  }
+  /**
+   * <pre>
+   * Candidate signature over the authority PairContext after reveal.
+   * </pre>
+   *
+   * <code>bytes candidate_signature = 4 [json_name = "candidateSignature"];</code>
+   */
+  private void clearCandidateSignature() {
+
+    candidateSignature_ = getDefaultInstance().getCandidateSignature();
   }
 
   public static io.github.lewin671.remoteagent.proto.GetPairingRequest parseFrom(
@@ -439,6 +479,46 @@ public  final class GetPairingRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Candidate signature over the authority PairContext after reveal.
+     * </pre>
+     *
+     * <code>bytes candidate_signature = 4 [json_name = "candidateSignature"];</code>
+     * @return The candidateSignature.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getCandidateSignature() {
+      return instance.getCandidateSignature();
+    }
+    /**
+     * <pre>
+     * Candidate signature over the authority PairContext after reveal.
+     * </pre>
+     *
+     * <code>bytes candidate_signature = 4 [json_name = "candidateSignature"];</code>
+     * @param value The candidateSignature to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCandidateSignature(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setCandidateSignature(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Candidate signature over the authority PairContext after reveal.
+     * </pre>
+     *
+     * <code>bytes candidate_signature = 4 [json_name = "candidateSignature"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCandidateSignature() {
+      copyOnWrite();
+      instance.clearCandidateSignature();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.GetPairingRequest)
   }
   @java.lang.Override
@@ -458,10 +538,11 @@ public  final class GetPairingRequest extends
             "pairingId_",
             "candidateToken_",
             "received_",
+            "candidateSignature_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

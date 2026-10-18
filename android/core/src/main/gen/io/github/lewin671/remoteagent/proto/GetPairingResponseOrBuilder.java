@@ -74,4 +74,22 @@ public interface GetPairingResponseOrBuilder extends
    * @return The devicePublicKey.
    */
   com.google.protobuf.ByteString getDevicePublicKey();
+
+  /**
+   * <code>bytes device_hpke_public_key = 8 [json_name = "deviceHpkePublicKey"];</code>
+   * @return The deviceHpkePublicKey.
+   */
+  com.google.protobuf.ByteString getDeviceHpkePublicKey();
+
+  /**
+   * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
+   * @return The securityContext.
+   */
+  com.google.protobuf.ByteString getSecurityContext();
+
+  /**
+   * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
+   * @return The candidateSignature.
+   */
+  com.google.protobuf.ByteString getCandidateSignature();
 }

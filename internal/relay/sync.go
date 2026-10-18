@@ -17,7 +17,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -293,7 +293,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 			if err := c.uploadImages(ctx, key, id, []*pb.Event{e}); err != nil {
 				return err
 			}
-			env, err := c.sealEvent(key, id, c.withImageStates(id, e))
+			env, err := c.sealEvent(ctx, key, id, c.withImageStates(id, e))
 			if err != nil {
 				return err
 			}
@@ -376,7 +376,7 @@ func (c *conn) sendNotifications(ctx context.Context, id string, info *pb.Sessio
 			continue
 		}
 		if kind := notifyKind(e); kind != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
-			req, err := c.notifyRequest(id, info, kind, e)
+			req, err := c.notifyRequest(ctx, id, info, kind, e)
 			if err != nil {
 				owed = append(owed, pending[i:]...)
 				return boundedOwed(owed), localSyncError("encryption", err)
@@ -459,12 +459,12 @@ func metaDigest(server string, key []byte, info *pb.Session, revision uint64) []
 	return h.Sum(nil)
 }
 
-func (c *conn) sealEvent(key []byte, sessionID string, e *pb.Event) (*pb.Envelope, error) {
+func (c *conn) sealEvent(ctx context.Context, key []byte, sessionID string, e *pb.Event) (*pb.Envelope, error) {
 	fitted := fitEvent(slimEvent(e))
-	env, err := e2e.SealMessage(key, &pb.Header{
+	env, err := c.security.sealMessage(ctx, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: c.acct.DeviceID, SessionId: sessionID,
 		Seq: e.Seq, Sender: c.acct.DeviceID,
-	}, fitted)
+	}, deviceauth.Event, key, fitted)
 	if err != nil {
 		return nil, localSyncError("encryption", err)
 	}
@@ -489,17 +489,17 @@ func EndedMs(info *pb.Session) int64 {
 // putSession stores a session's key and metadata, and returns the
 // metadata's revision.
 func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session) (uint64, error) {
-	keyEnv, err := e2e.Seal(c.keys.Wrap, &pb.Header{
-		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: c.acct.DeviceID, SessionId: id, Sender: c.acct.DeviceID,
-	}, key)
+	keyEnv, err := c.security.seal(ctx, &pb.Header{
+		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, Seq: 1, MachineId: c.acct.DeviceID, SessionId: id, Sender: c.acct.DeviceID,
+	}, deviceauth.SessionKey, nil, key)
 	if err != nil {
 		return 0, localSyncError("encryption", err)
 	}
-	rev := revision()
-	meta, err := e2e.SealMessage(key, &pb.Header{
+	rev := uint64(1)
+	meta, err := c.security.sealMessage(ctx, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_META, MachineId: c.acct.DeviceID, SessionId: id,
 		Seq: rev, Sender: c.acct.DeviceID,
-	}, info)
+	}, deviceauth.SessionMeta, nil, info)
 	if err != nil {
 		return 0, localSyncError("encryption", err)
 	}
@@ -508,7 +508,7 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 		return 0, rpcSyncError("put_session", err)
 	}
 	slog.Debug("relay: session metadata sent", "session", id)
-	return rev, nil
+	return headerOfSecurity(meta).Seq, nil
 }
 
 // Limits on what a notification carries, so that it fits FCM's 4 KB.
@@ -529,8 +529,8 @@ func clip(s string, n int) (string, bool) {
 // notifyRequest describes event e for a push. The content is sealed with
 // the notify key for the Android app; the server only passes it on.
 // Approvals and questions are pushed once each, by their ID.
-func (c *conn) notifyRequest(sessionID string, info *pb.Session, kind pb.NotifyKind, e *pb.Event) (*pb.NotifyRequest, error) {
-	nc := &pb.NotifyContent{MachineId: c.acct.DeviceID, SessionId: sessionID, Kind: kind}
+func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Session, kind pb.NotifyKind, e *pb.Event) (*pb.NotifyRequest, error) {
+	nc := &pb.NotifyContent{SourceEventSeq: e.Seq, MachineId: c.acct.DeviceID, SessionId: sessionID, Kind: kind}
 	nc.Title, _ = clip(info.GetTitle(), notifyTitle)
 	var dedupe string
 	switch k := e.Kind.(type) {
@@ -573,10 +573,14 @@ func (c *conn) notifyRequest(sessionID string, info *pb.Session, kind pb.NotifyK
 		dedupe = fmt.Sprintf("skeleton:%d", e.Seq)
 	}
 
-	env, err := e2e.SealMessage(c.keys.Notify, &pb.Header{
+	routingID := dedupe
+	if routingID == "" {
+		routingID = fmt.Sprintf("notify:%d:%d", kind, e.Seq)
+	}
+	env, err := c.security.sealMessage(ctx, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, SessionId: sessionID,
-		RequestId: dedupe, Sender: c.acct.DeviceID,
-	}, nc)
+		RequestId: routingID, Sender: c.acct.DeviceID,
+	}, deviceauth.Notify, nil, nc)
 	if err != nil {
 		return nil, err
 	}

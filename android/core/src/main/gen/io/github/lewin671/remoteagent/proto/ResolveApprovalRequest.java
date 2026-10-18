@@ -262,6 +262,32 @@ public  final class ResolveApprovalRequest extends
     always_ = false;
   }
 
+  public static final int OBSERVED_EVENT_SEQ_FIELD_NUMBER = 6;
+  private long observedEventSeq_;
+  /**
+   * <code>uint64 observed_event_seq = 6 [json_name = "observedEventSeq"];</code>
+   * @return The observedEventSeq.
+   */
+  @java.lang.Override
+  public long getObservedEventSeq() {
+    return observedEventSeq_;
+  }
+  /**
+   * <code>uint64 observed_event_seq = 6 [json_name = "observedEventSeq"];</code>
+   * @param value The observedEventSeq to set.
+   */
+  private void setObservedEventSeq(long value) {
+    
+    observedEventSeq_ = value;
+  }
+  /**
+   * <code>uint64 observed_event_seq = 6 [json_name = "observedEventSeq"];</code>
+   */
+  private void clearObservedEventSeq() {
+
+    observedEventSeq_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.proto.ResolveApprovalRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -609,6 +635,34 @@ public  final class ResolveApprovalRequest extends
       return this;
     }
 
+    /**
+     * <code>uint64 observed_event_seq = 6 [json_name = "observedEventSeq"];</code>
+     * @return The observedEventSeq.
+     */
+    @java.lang.Override
+    public long getObservedEventSeq() {
+      return instance.getObservedEventSeq();
+    }
+    /**
+     * <code>uint64 observed_event_seq = 6 [json_name = "observedEventSeq"];</code>
+     * @param value The observedEventSeq to set.
+     * @return This builder for chaining.
+     */
+    public Builder setObservedEventSeq(long value) {
+      copyOnWrite();
+      instance.setObservedEventSeq(value);
+      return this;
+    }
+    /**
+     * <code>uint64 observed_event_seq = 6 [json_name = "observedEventSeq"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearObservedEventSeq() {
+      copyOnWrite();
+      instance.clearObservedEventSeq();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ResolveApprovalRequest)
   }
   @java.lang.Override
@@ -630,10 +684,11 @@ public  final class ResolveApprovalRequest extends
             "allow_",
             "message_",
             "always_",
+            "observedEventSeq_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007\u0004\u0208\u0005\u0007";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\u0208\u0005\u0007\u0006\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

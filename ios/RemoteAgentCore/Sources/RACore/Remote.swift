@@ -23,19 +23,77 @@ public let commandTTLMs: Int64 = 60_000
 let listRetryMs: Int64 = 2_000
 
 /// A sealed command ready to send; resending it reuses its request ID and deadline.
-public final class PreparedCommand: Sendable {
+public final class PreparedCommand: @unchecked Sendable {
     public let machineId: String
     public let sessionId: String
     public let requestId: String
     public let deadlineMs: Int64
     public let envelope: PBEnvelope
+    let command: PBCommand?
+    private let sealLock = NSLock()
+    private var sealJob: Task<PBEnvelope, Error>?
+    private var sealID: UUID?
+    private var sealState: Data?
+    private var everAuthorized = false
+    private func clearAuthorization(_ id: UUID) {
+        sealLock.lock()
+        defer { sealLock.unlock() }
+        if sealID == id {
+            sealJob = nil
+            sealID = nil
+            sealState = nil
+        }
+    }
+    private func authorized(_ id: UUID) {
+        sealLock.lock()
+        defer { sealLock.unlock() }
+        if sealID == id { everAuthorized = true }
+    }
+    func authorizationTask(
+        stateHash: Data, _ make: @escaping @Sendable (Bool) -> Task<PBEnvelope, Error>
+    ) -> Task<PBEnvelope, Error> {
+        sealLock.lock()
+        defer { sealLock.unlock() }
+        if let sealJob, sealState == stateHash { return sealJob }
+        let id = UUID()
+        sealID = id
+        sealState = stateHash
+        let verifyObservation = !everAuthorized
+        let task = Task {
+            do {
+                let envelope = try await make(verifyObservation).value
+                self.authorized(id)
+                return envelope
+            } catch {
+                self.clearAuthorization(id)
+                throw error
+            }
+        }
+        sealJob = task
+        return task
+    }
 
-    public init(machineId: String, sessionId: String, requestId: String, deadlineMs: Int64, envelope: PBEnvelope) {
+    public init(
+        machineId: String, sessionId: String, requestId: String, deadlineMs: Int64,
+        envelope: PBEnvelope
+    ) {
         self.machineId = machineId
         self.sessionId = sessionId
         self.requestId = requestId
         self.deadlineMs = deadlineMs
         self.envelope = envelope
+        self.command = nil
+    }
+    init(
+        machineId: String, sessionId: String, requestId: String, deadlineMs: Int64,
+        command: PBCommand
+    ) {
+        self.machineId = machineId
+        self.sessionId = sessionId
+        self.requestId = requestId
+        self.deadlineMs = deadlineMs
+        self.command = command
+        self.envelope = PBEnvelope()
     }
 }
 
@@ -43,7 +101,9 @@ public final class PreparedCommand: Sendable {
 /// (architecture §10 「WebSocket」: both ends keep the last token and open the
 /// stream with it). It is a bearer credential: the app stores it with the
 /// account's keys, and it describes itself without the token.
-public struct SavedLogin: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+public struct SavedLogin: Equatable, Sendable, CustomStringConvertible,
+    CustomDebugStringConvertible, CustomReflectable
+{
     public let token: String
     /// When the server stops taking it, in milliseconds since 1970.
     public let expiresMs: Int64
@@ -62,7 +122,9 @@ public struct SavedLogin: Equatable, Sendable, CustomStringConvertible, CustomDe
 struct TimedOut: Error {}
 
 /// Runs `body`, giving up after `ms`: it is cancelled then, and `TimedOut` thrown.
-func withTimeout<T: Sendable>(_ ms: Int64, sleep: @escaping Sleeper, _ body: @escaping @Sendable () async throws -> T) async throws -> T {
+func withTimeout<T: Sendable>(
+    _ ms: Int64, sleep: @escaping Sleeper, _ body: @escaping @Sendable () async throws -> T
+) async throws -> T {
     try await withThrowingTaskGroup(of: T.self) { group in
         group.addTask { try await body() }
         group.addTask {
@@ -83,7 +145,6 @@ public actor Remote {
     nonisolated let http: HTTP
     nonisolated let keys: Keys
     nonisolated let device: SigningKey
-    nonisolated let prefsCodec: PrefsCodec
     nonisolated let cache: (any CipherCache)?
     nonisolated let log: @Sendable (String) -> Void
     nonisolated let clock: @Sendable () -> Int64
@@ -103,7 +164,8 @@ public actor Remote {
     var sessionKeys: [String: Data] = [:]
     var buffers: [String: Buffer] = [:]
     /// The histories handed out, by session. Read from any thread: `events` is not isolated.
-    nonisolated let eventFeeds = OSAllocatedUnfairLock<[String: Feed<SessionEvents>]>(initialState: [:])
+    nonisolated let eventFeeds = OSAllocatedUnfairLock<[String: Feed<SessionEvents>]>(
+        initialState: [:])
     var conn = ConnState.connecting
     var error = ""
     var loaded = false
@@ -118,6 +180,16 @@ public actor Remote {
     var waited = false
     var prefs: PrefsObject?
     var devices: [String: DeviceView] = [:]
+    var trustedMembers: [String: DeviceSecurity.Member] = [:]
+    var trustedMetadata: [String: PBEnvelope] = [:]
+    var deviceBindings: [String: (state: Data, commit: Data)] = [:]
+    var directoryVersion = 0
+    var authorityDeviceId = ""
+    var removals: [DeviceSecurityClient.Removal] = []
+    var removalJob: Task<Void, Never>?
+    var liveSnapshots: [String: PBLiveSnapshot] = [:]
+    var liveErrors: [String: String] = [:]
+    var liveJobs: [String: Task<Void, Never>] = [:]
 
     // Pushes seen per machine, session and machine removal, so that a list
     // fetched before a push cannot undo it.
@@ -185,7 +257,9 @@ public actor Remote {
         case start, stop, close, reconnectNow, clearRemoved
         case keepLogin(SavedLogin?, @Sendable (SavedLogin?) -> Void)
         case setNetwork(Bool)
-        case touch(String), followers(String), retryEvents(String)
+        case touch(String)
+        case followers(String)
+        case retryEvents(String)
     }
 
     private nonisolated let ops: AsyncStream<Op>.Continuation
@@ -205,6 +279,9 @@ public actor Remote {
     }
 
     final class Buffer {
+        var unverifiedLegacy = false
+        var verifiedSeqs = Set<UInt64>()
+        var verifiedEvents = PagedList<PBEvent>()
         var events = PagedList<PBEvent>()
         var bytes: Int64 = 0
         var usedAt: Int64 = 0
@@ -231,6 +308,8 @@ public actor Remote {
     ///   - clock: the time in milliseconds since 1970.
     ///   - sleep: how every wait here passes, so that tests need not wait.
     ///   - jitter: a number in 0..<1 that spreads reconnects apart.
+    let securityStorage: (any DeviceSecurity.Storage)?
+    var deviceSecurity: DeviceSecurityClient?
     public init(
         account: Account,
         http: HTTP,
@@ -244,9 +323,11 @@ public actor Remote {
         historyIdleCount: Int = 8,
         historyIdleBytes: Int64 = 16 * 1024 * 1024,
         streamOpenMs: Int64 = 15_000,
-        linkGraceMs: Int64 = 10_000
+        linkGraceMs: Int64 = 10_000,
+        securityStorage: (any DeviceSecurity.Storage)? = nil
     ) throws {
         self.account = account
+        self.securityStorage = securityStorage
         self.http = http
         self.cache = cache
         self.log = log
@@ -261,7 +342,6 @@ public actor Remote {
         self.linkGraceMs = linkGraceMs
         keys = try Keys.derive(root: account.root)
         device = try SigningKey(seed: account.deviceSeed)
-        prefsCodec = PrefsCodec(key: keys.prefs, sender: account.deviceId)
         api = try Api(server: account.server, http: http)
         state = Feed(RemoteState())
         let (stream, ops) = AsyncStream<Op>.makeStream()
@@ -314,7 +394,9 @@ public actor Remote {
     /// when the one in use stops being any good: the server refused it, or
     /// no longer knows this device. It is called on the actor, in the order
     /// things happened, and must not block for long.
-    public nonisolated func keepLogin(_ saved: SavedLogin?, onChange: @escaping @Sendable (SavedLogin?) -> Void) {
+    public nonisolated func keepLogin(
+        _ saved: SavedLogin?, onChange: @escaping @Sendable (SavedLogin?) -> Void
+    ) {
         ops.yield(.keepLogin(saved, onChange))
     }
 
@@ -332,6 +414,13 @@ public actor Remote {
         case .close:
             halt()
             closed = true
+            removalJob?.cancel()
+            removalJob = nil
+            for job in liveJobs.values { job.cancel() }
+            liveJobs.removeAll()
+            liveSnapshots.removeAll()
+            liveErrors.removeAll()
+            if let deviceSecurity { Task { await deviceSecurity.close() } }
             onLogin = nil
             historySweep?.cancel()
             historySweep = nil
@@ -398,7 +487,9 @@ public actor Remote {
     /// Runs `run` on the actor after `ms` unless cancelled first. `run` gets
     /// the timer's ID: a timer cancelled just as it fired still gets here, and
     /// must find its place taken or empty.
-    func schedule(_ ms: Int64, _ run: @escaping @Sendable (isolated Remote, Int) async -> Void) -> Scheduled {
+    func schedule(_ ms: Int64, _ run: @escaping @Sendable (isolated Remote, Int) async -> Void)
+        -> Scheduled
+    {
         timerSeq += 1
         let id = timerSeq
         let sleep = self.sleep
@@ -445,6 +536,8 @@ public actor Remote {
         s.offlineSinceMs = offlineSince
         s.prefs = prefs
         s.devices = devices
+        s.authorityDeviceId = authorityDeviceId
+        s.removals = removals
         s.removed = removed
         s.sessionsNext = next
         s.loadingSessions = pageJob != nil
@@ -519,11 +612,26 @@ public actor Remote {
     }
 
     private func readCache(_ cache: any CipherCache) async {
+        do {
+            let identity = try securityIdentity()
+            trustedMembers = Dictionary(
+                uniqueKeysWithValues: identity.1.core.members.map { ($0.id, $0) })
+            authorityDeviceId = identity.0.authorityID
+        } catch {
+            report(error)
+            return
+        }
         for var m in await cache.machines() {
+            if m.hasMeta && !m.meta.securityHeader.isEmpty {
+                trustedMetadata["machine:" + m.id] = m.meta
+            }
             m.online = false
             await putMachine(m, save: false)
         }
         for s in await cache.sessions() {
+            if s.hasMeta && !s.meta.securityHeader.isEmpty {
+                trustedMetadata["session:" + s.machineID + ":" + s.sessionID] = s.meta
+            }
             listed.insert(s.sessionID)
             await putSession(s, save: false, publish: false)
         }
@@ -566,23 +674,29 @@ public actor Remote {
             // refused connection; the server refusing it closes the stream,
             // and the next try logs in.
             if token.isEmpty || tokenExpires < clock() + 86_400_000 {
-                token = try await withTimeout(streamOpenMs, sleep: sleep) { try await self.signIn() }
+                token = try await withTimeout(streamOpenMs, sleep: sleep) {
+                    try await self.signIn()
+                }
             }
         } catch {
             // Replaced or stopped meanwhile: that attempt says what happens next.
-            if running && gen == generation { fail(error is TimedOut ? URLError(.timedOut) as Error : error) }
+            if running && gen == generation {
+                fail(error is TimedOut ? URLError(.timedOut) as Error : error)
+            }
             return
         }
         if !running || gen != generation { return }
         var frame = PBPeerFrame()
         frame.hello.token = token
         guard let hello: Data = try? frame.serializedData() else { return }
-        let socket = Socket(http: http, url: api.socketURL("/v1/stream"), hello: hello, sleep: sleep)
+        let socket = Socket(
+            http: http, url: api.socketURL("/v1/stream"), hello: hello, sleep: sleep)
         ws = socket
         // Bounded: a reader that falls behind drops the stream and catches up
         // from history after reconnecting, instead of queueing without end.
         // What was queued before that is still handled; nothing is skipped.
-        let (frames, queue) = AsyncStream<Data>.makeStream(bufferingPolicy: .bufferingOldest(max(frameQueue, 1)))
+        let (frames, queue) = AsyncStream<Data>.makeStream(
+            bufferingPolicy: .bufferingOldest(max(frameQueue, 1)))
         Task.detached {
             while let bytes = try? await socket.receive() {
                 if case .dropped = queue.yield(bytes) {
@@ -664,7 +778,9 @@ public actor Remote {
             // Subscribed first, then catch up: nothing falls in between.
             _ = await refresh()
             if !running || gen != generation { return }
-            let followed = eventFeeds.withLock { feeds in feeds.filter { $0.value.followers > 0 }.map(\.key) }
+            let followed = eventFeeds.withLock { feeds in
+                feeds.filter { $0.value.followers > 0 }.map(\.key)
+            }
             for sid in Set(buffers.keys).union(followed) {
                 Task {
                     await self.loadEvents(sid)
@@ -677,21 +793,17 @@ public actor Remote {
             if u.object.objectID == projectPrefsID { await putPrefs(u.object) }
         case .deviceUpdated(let u)?:
             bump(&devicePushes, u.device.id)
-            putDevice(u.device)
+            await putDevice(u.device)
             publish()
-        case .deviceRemoved(let r)?:
-            bump(&devicePushes, r.deviceID)
-            devices[r.deviceID] = nil
-            publish()
-        case .machineRemoved(let r)?:
-            bump(&removedPushes, r.machineID)
-            await dropMachine(r.machineID)
-            publish()
+        case .deviceRemoved?, .machineRemoved?:
+            await loadDevices()
         case .machineUpdated(let u)?:
             bump(&machinePushes, u.machine.id)
+            do { try await refreshTrustedDirectory() } catch { report(error) }
             await putMachine(u.machine)
         case .sessionUpdated(let u)?:
             bump(&sessionPushes, u.session.sessionID)
+            do { try await refreshTrustedDirectory() } catch { report(error) }
             await putSession(u.session, save: onFirstPage(u.session))
         case .eventsAppended(let a)?:
             let sid = a.sessionID
@@ -726,7 +838,8 @@ public actor Remote {
         state.set(shown)
         for m in modelLists {
             let response = m.models
-            models["\(m.machineId)/\(m.agent.rawValue)"] = ModelList(task: Task<PBListModelsResponse, Error> { response }, done: true)
+            models["\(m.machineId)/\(m.agent.rawValue)"] = ModelList(
+                task: Task<PBListModelsResponse, Error> { response }, done: true)
         }
         for (sid, list) in events {
             eventFeed(sid).set(SessionEvents(events: PagedList(list), loaded: true))

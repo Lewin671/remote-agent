@@ -33,7 +33,12 @@ it("keeps an unknown start unknown when its retry comes back expired", () => {
   const retry = a.next("y");
   expect(retry.slot).toBe(first.slot);
   // The daemon forgot it: that says nothing about whether it ran.
-  a.settle(new CommandError("deadline_exceeded", "the command expired before it reached the machine"));
+  a.settle(
+    new CommandError(
+      "deadline_exceeded",
+      "the command expired before it reached the machine",
+    ),
+  );
   expect(a.frozen).toBe(true);
   expect(a.expired).toBe(true);
   // Nothing new replaces it until it is given up.
@@ -76,4 +81,22 @@ it("is settled only by the request that came back", () => {
   // Nor does a failure of x free y.
   a.settle(new CommandError("failed_precondition", "no"), x);
   expect(a.next("z").slot).toBe(y.slot);
+});
+
+it("never replaces an unknown intent after reauthorization fails locally", () => {
+  const a = new Attempt<string>();
+  const first = a.next("x");
+  a.settle(new CommandError("unknown", "relay withheld result"));
+  a.next("x");
+  a.settle(new CommandError("authorization_unavailable", "authority offline"));
+  expect(a.frozen).toBe(true);
+  expect(a.next("y").slot).toBe(first.slot);
+  a.settle(
+    new CommandError(
+      "failed_precondition",
+      "authenticated executor refusal",
+      true,
+    ),
+  );
+  expect(a.frozen).toBe(false);
 });

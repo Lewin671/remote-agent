@@ -21,4 +21,37 @@ public interface RemoveDeviceRequestOrBuilder extends
    */
   com.google.protobuf.ByteString
       getDeviceIdBytes();
+
+  /**
+   * <pre>
+   * Signed Completion, original DeleteRequest, and canonical State chain.
+   * </pre>
+   *
+   * <code>bytes security_completion = 2 [json_name = "securityCompletion"];</code>
+   * @return The securityCompletion.
+   */
+  com.google.protobuf.ByteString getSecurityCompletion();
+
+  /**
+   * <code>bytes security_request = 3 [json_name = "securityRequest"];</code>
+   * @return The securityRequest.
+   */
+  com.google.protobuf.ByteString getSecurityRequest();
+
+  /**
+   * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+   * @return A list containing the securityChain.
+   */
+  java.util.List<com.google.protobuf.ByteString> getSecurityChainList();
+  /**
+   * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+   * @return The count of securityChain.
+   */
+  int getSecurityChainCount();
+  /**
+   * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+   * @param index The index of the element to return.
+   * @return The securityChain at the given index.
+   */
+  com.google.protobuf.ByteString getSecurityChain(int index);
 }

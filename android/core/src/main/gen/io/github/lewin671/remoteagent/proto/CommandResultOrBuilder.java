@@ -330,5 +330,16 @@ public interface CommandResultOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.ScheduleResponse getSchedule();
 
+  /**
+   * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+   * @return Whether the liveSnapshot field is set.
+   */
+  boolean hasLiveSnapshot();
+  /**
+   * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+   * @return The liveSnapshot.
+   */
+  io.github.lewin671.remoteagent.proto.LiveSnapshot getLiveSnapshot();
+
   public io.github.lewin671.remoteagent.proto.CommandResult.KindCase getKindCase();
 }

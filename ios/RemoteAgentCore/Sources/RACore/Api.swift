@@ -62,7 +62,8 @@ public final class HTTP: Sendable {
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let box = OSAllocatedUnfairLock<URLSessionDataTask?>(initialState: nil)
         return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { (c: CheckedContinuation<(Data, HTTPURLResponse), Error>) in
+            try await withCheckedThrowingContinuation {
+                (c: CheckedContinuation<(Data, HTTPURLResponse), Error>) in
                 let task = session.dataTask(with: request) { data, response, error in
                     if error == nil, let http = response as? HTTPURLResponse {
                         c.resume(returning: (data ?? Data(), http))
@@ -94,7 +95,9 @@ struct SocketHandlers: Sendable {
     var completed: @Sendable (_ error: Error?) -> Void
 }
 
-private final class SessionDelegate: NSObject, URLSessionWebSocketDelegate, URLSessionDataDelegate, Sendable {
+private final class SessionDelegate: NSObject, URLSessionWebSocketDelegate, URLSessionDataDelegate,
+    Sendable
+{
     private let sockets = OSAllocatedUnfairLock<[Int: SocketHandlers]>(initialState: [:])
 
     func register(_ id: Int, _ handlers: SocketHandlers) {
@@ -102,14 +105,18 @@ private final class SessionDelegate: NSObject, URLSessionWebSocketDelegate, URLS
     }
 
     func urlSession(
-        _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+        _ session: URLSession, task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
         newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void
     ) {
         // Refused: the task ends with the redirect itself as its response.
         completionHandler(nil)
     }
 
-    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
+    func urlSession(
+        _ session: URLSession, webSocketTask: URLSessionWebSocketTask,
+        didOpenWithProtocol protocol: String?
+    ) {
         sockets.withLock { $0[webSocketTask.taskIdentifier] }?.opened()
     }
 
@@ -120,7 +127,8 @@ private final class SessionDelegate: NSObject, URLSessionWebSocketDelegate, URLS
         sockets.withLock { $0[webSocketTask.taskIdentifier] }?.closed(closeCode.rawValue)
     }
 
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?)
+    {
         sockets.withLock { $0.removeValue(forKey: task.taskIdentifier) }?.completed(error)
     }
 }
@@ -134,7 +142,9 @@ extension HTTP: HTTPClientInterface {
         var r = URLRequest(url: request.url)
         r.httpMethod = request.method.rawValue
         r.httpBody = request.message
-        for (name, values) in request.headers { r.setValue(values.joined(separator: ","), forHTTPHeaderField: name) }
+        for (name, values) in request.headers {
+            r.setValue(values.joined(separator: ","), forHTTPHeaderField: name)
+        }
         let task = session.dataTask(with: r) { data, response, error in
             // An answer cut short is no answer: its status says nothing of what follows.
             if error == nil, let http = response as? HTTPURLResponse {
@@ -142,11 +152,15 @@ extension HTTP: HTTPClientInterface {
                 for (k, v) in http.allHeaderFields {
                     guard let name = (k as? String)?.lowercased() else { continue }
                     let value = v as? String ?? String(describing: v)
-                    headers[name] = value.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                    headers[name] = value.components(separatedBy: ",").map {
+                        $0.trimmingCharacters(in: .whitespaces)
+                    }
                 }
-                onResponse(HTTPResponse(
-                    code: Code.fromHTTPStatus(http.statusCode), headers: headers, message: data, trailers: [:],
-                    error: nil, tracingInfo: .init(httpStatus: http.statusCode)))
+                onResponse(
+                    HTTPResponse(
+                        code: Code.fromHTTPStatus(http.statusCode), headers: headers, message: data,
+                        trailers: [:],
+                        error: nil, tracingInfo: .init(httpStatus: http.statusCode)))
                 return
             }
             // No answer at all. The code says only how it ended, as on
@@ -159,18 +173,24 @@ extension HTTP: HTTPClientInterface {
             case .cancelled?: code = .canceled
             default: code = .unknown
             }
-            onResponse(HTTPResponse(
-                code: code, headers: [:], message: nil, trailers: [:],
-                error: ConnectError(code: code, message: failure.localizedDescription, exception: failure),
-                tracingInfo: nil))
+            onResponse(
+                HTTPResponse(
+                    code: code, headers: [:], message: nil, trailers: [:],
+                    error: ConnectError(
+                        code: code, message: failure.localizedDescription, exception: failure),
+                    tracingInfo: nil))
         }
         task.resume()
         return Cancelable { task.cancel() }
     }
 
     /// The server has no streaming RPCs: its streams are WebSockets.
-    public func stream(request: HTTPRequest<Data?>, responseCallbacks: ResponseCallbacks) -> RequestCallbacks<Data> {
-        responseCallbacks.receiveClose(.unimplemented, [:], ConnectError(code: .unimplemented, message: "streaming RPCs are not used"))
+    public func stream(request: HTTPRequest<Data?>, responseCallbacks: ResponseCallbacks)
+        -> RequestCallbacks<Data>
+    {
+        responseCallbacks.receiveClose(
+            .unimplemented, [:],
+            ConnectError(code: .unimplemented, message: "streaming RPCs are not used"))
         return RequestCallbacks(cancel: {}, sendData: { _ in }, sendClose: {})
     }
 }
@@ -190,7 +210,8 @@ public final class Api: Sendable {
         self.http = http
         protocolClient = ProtocolClient(
             httpClient: http,
-            config: ProtocolClientConfig(host: self.server, networkProtocol: .connect, codec: ProtoCodec()))
+            config: ProtocolClientConfig(
+                host: self.server, networkProtocol: .connect, codec: ProtoCodec()))
         auth = PBAuthServiceClient(client: protocolClient)
         client = PBClientServiceClient(client: protocolClient)
         pairing = PBPairingServiceClient(client: protocolClient)
@@ -229,12 +250,18 @@ public func joinWithRoot(
     let regBytes: Data = try reg.serializedData()
     let api = try Api(server: server, http: http)
     var req = PBRegisterDeviceRequest()
+    req.protocolVersion = protocolVersion
     req.registration = regBytes
     req.signature = keys.account.sign(registerMessage(regBytes))
     req.setupToken = setupToken
-    if let enrollment { req.approval = enrollment.approval; req.approvalSignature = enrollment.signature }
+    if let enrollment {
+        req.approval = enrollment.approval
+        req.approvalSignature = enrollment.signature
+    }
     let res = try await api.auth.registerDevice(request: req).value()
-    if res.deviceID != deviceId(publicKey: device.publicKey) { throw UserError("server 返回了意外的设备 ID") }
+    if res.deviceID != deviceId(publicKey: device.publicKey) {
+        throw UserError("server 返回了意外的设备 ID")
+    }
     return Account(server: api.server, root: root, deviceSeed: seed, deviceId: res.deviceID)
 }
 
@@ -249,6 +276,7 @@ public func loginResponse(api: Api, account: Account) async throws -> PBLoginRes
     ask.deviceID = account.deviceId
     let ch = try await api.auth.getChallenge(request: ask).value()
     var req = PBLoginRequest()
+    req.protocolVersion = protocolVersion
     req.deviceID = account.deviceId
     req.challenge = ch.challenge
     req.signature = try SigningKey(seed: account.deviceSeed).sign(loginMessage(ch.challenge))
@@ -271,7 +299,9 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
 
     /// The command may or may not have run; retrying with the same request ID is safe.
     /// A daemon that stopped halfway through it answers "aborted" ever after.
-    public var unknown: Bool { code == CommandError.unknownOutcome || (fromDaemon && code == "aborted") }
+    public var unknown: Bool {
+        code == CommandError.unknownOutcome || (fromDaemon && code == "aborted")
+    }
     public var errorDescription: String? { message }
     public var description: String { message }
 
@@ -307,7 +337,8 @@ func networkFailure(_ e: Error?) -> NetworkFailure? {
         case NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateHasBadDate,
             NSURLErrorServerCertificateUntrusted, NSURLErrorServerCertificateHasUnknownRoot,
             NSURLErrorServerCertificateNotYetValid, NSURLErrorClientCertificateRejected,
-            NSURLErrorClientCertificateRequired, NSURLErrorAppTransportSecurityRequiresSecureConnection:
+            NSURLErrorClientCertificateRequired,
+            NSURLErrorAppTransportSecurityRequiresSecureConnection:
             return .insecure(ns.localizedDescription)
         default: return nil
         }

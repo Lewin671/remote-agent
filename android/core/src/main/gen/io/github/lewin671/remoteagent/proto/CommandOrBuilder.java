@@ -307,6 +307,17 @@ public interface CommandOrBuilder extends
   io.github.lewin671.remoteagent.proto.ScheduleRequest getSchedule();
 
   /**
+   * <code>.remoteagent.v1.GetLiveSnapshotRequest get_live_snapshot = 31 [json_name = "getLiveSnapshot"];</code>
+   * @return Whether the getLiveSnapshot field is set.
+   */
+  boolean hasGetLiveSnapshot();
+  /**
+   * <code>.remoteagent.v1.GetLiveSnapshotRequest get_live_snapshot = 31 [json_name = "getLiveSnapshot"];</code>
+   * @return The getLiveSnapshot.
+   */
+  io.github.lewin671.remoteagent.proto.GetLiveSnapshotRequest getGetLiveSnapshot();
+
+  /**
    * <pre>
    * The protocol version the client speaks (internal/protocol). A daemon
    * of another version refuses the command and says which side to update.

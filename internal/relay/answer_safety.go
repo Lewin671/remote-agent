@@ -9,6 +9,7 @@ import (
 // AnswerSafety describes the actionable content actually sent to a client.
 // ID may differ from the original only for a terminal-only skeleton.
 type AnswerSafety struct {
+	EventSeq          uint64
 	ID                string
 	TerminalOnly      bool
 	ApprovalTruncated bool
@@ -19,7 +20,7 @@ type AnswerSafety struct {
 // without trusting a client's version or its rendering of warnings.
 func RemoteAnswerSafety(e *pb.Event) AnswerSafety {
 	fitted := fitEvent(slimEvent(e))
-	s := AnswerSafety{TerminalOnly: eventSkeleton(fitted)}
+	s := AnswerSafety{EventSeq: e.Seq, TerminalOnly: eventSkeleton(fitted)}
 	switch k := fitted.Kind.(type) {
 	case *pb.Event_ApprovalRequested:
 		s.ID = k.ApprovalRequested.ApprovalId
@@ -45,3 +46,6 @@ func approvalTextTruncated(a *pb.ApprovalRequested) bool {
 func TerminalOnlyAnswerID(id string) bool {
 	return strings.HasSuffix(id, skeletonNote)
 }
+
+// LiveActionEvent uses the same bounded representation as event publication.
+func LiveActionEvent(e *pb.Event) *pb.Event { return fitEvent(slimEvent(e)) }

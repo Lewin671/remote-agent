@@ -6,10 +6,32 @@ import { approvalDisplay } from "./approval-display";
 // so the rules in docs/design/client-v1.html can be tested directly.
 
 import { timestampMs } from "@bufbuild/protobuf/wkt";
-import type { ApprovalRequested, Event, PlanProposed, QuestionAsked, TokenUsage, ToolCall } from "./gen/remoteagent/v1/event_pb";
-import { Agent, ApprovalDecision, ApprovalMode, InputStage, InputStatus, OriginKind, SendMode, SessionStatus, ToolBackground, ToolKind, TurnOutcome } from "./gen/remoteagent/v1/event_pb";
+import type {
+  ApprovalRequested,
+  Event,
+  PlanProposed,
+  QuestionAsked,
+  TokenUsage,
+  ToolCall,
+} from "./gen/remoteagent/v1/event_pb";
+import {
+  Agent,
+  ApprovalDecision,
+  ApprovalMode,
+  InputStage,
+  InputStatus,
+  OriginKind,
+  SendMode,
+  SessionStatus,
+  ToolBackground,
+  ToolKind,
+  TurnOutcome,
+} from "./gen/remoteagent/v1/event_pb";
 import type { ModelInfo, Session } from "./gen/remoteagent/v1/local_pb";
-import { DefaultModeSource, type MachineMeta } from "./gen/remoteagent/v1/remote_pb";
+import {
+  DefaultModeSource,
+  type MachineMeta,
+} from "./gen/remoteagent/v1/remote_pb";
 
 // The parts of Remote's views the rules need; kept structural so tests can
 // build them without a Remote.
@@ -28,21 +50,37 @@ export interface SessionLike {
 }
 
 // List positions use session lifecycle times, not relay upload times.
-const byID = (a: SessionLike, b: SessionLike) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-export const createdMs = (s: SessionLike) => s.info?.createdAt ? timestampMs(s.info.createdAt) : 0;
-export const endedMs = (s: SessionLike) => s.info?.endedAt ? timestampMs(s.info.endedAt) : createdMs(s);
-export const attentionMs = (s: SessionLike) => s.info?.attentionSince ? timestampMs(s.info.attentionSince) : createdMs(s);
-export const compareLive = (a: SessionLike, b: SessionLike) => createdMs(b) - createdMs(a) || byID(a, b);
-export const compareEnded = (a: SessionLike, b: SessionLike) => endedMs(b) - endedMs(a) || byID(a, b);
-export function compareAttention(a: SessionLike, b: SessionLike, machines: ReadonlyMap<string, MachineLike>): number {
-  return statePriority.indexOf(stateOf(a, machines.get(a.machineId)).kind) - statePriority.indexOf(stateOf(b, machines.get(b.machineId)).kind) || attentionMs(a) - attentionMs(b) || byID(a, b);
+const byID = (a: SessionLike, b: SessionLike) =>
+  a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+export const createdMs = (s: SessionLike) =>
+  s.info?.createdAt ? timestampMs(s.info.createdAt) : 0;
+export const endedMs = (s: SessionLike) =>
+  s.info?.endedAt ? timestampMs(s.info.endedAt) : createdMs(s);
+export const attentionMs = (s: SessionLike) =>
+  s.info?.attentionSince ? timestampMs(s.info.attentionSince) : createdMs(s);
+export const compareLive = (a: SessionLike, b: SessionLike) =>
+  createdMs(b) - createdMs(a) || byID(a, b);
+export const compareEnded = (a: SessionLike, b: SessionLike) =>
+  endedMs(b) - endedMs(a) || byID(a, b);
+export function compareAttention(
+  a: SessionLike,
+  b: SessionLike,
+  machines: ReadonlyMap<string, MachineLike>,
+): number {
+  return (
+    statePriority.indexOf(stateOf(a, machines.get(a.machineId)).kind) -
+      statePriority.indexOf(stateOf(b, machines.get(b.machineId)).kind) ||
+    attentionMs(a) - attentionMs(b) ||
+    byID(a, b)
+  );
 }
 
 // --- agents ---
 
 /** The CLI a session runs; Codex until the session's record says. */
 export function agentOf(s?: { info?: Session } | Session): Agent {
-  const a = s && "info" in s ? s.info?.agent : (s as Session | undefined)?.agent;
+  const a =
+    s && "info" in s ? s.info?.agent : (s as Session | undefined)?.agent;
   return a === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX;
 }
 
@@ -52,7 +90,10 @@ export function agentName(a: Agent): string {
 
 /** The CLIs a machine can start; Codex while its list is not known. */
 export function machineAgents(m?: MachineLike): Agent[] {
-  const list = m?.meta?.agents.map((a) => (a.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX)) ?? [];
+  const list =
+    m?.meta?.agents.map((a) =>
+      a.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX,
+    ) ?? [];
   const uniq = [...new Set(list)];
   return uniq.length ? uniq : [Agent.CODEX];
 }
@@ -83,7 +124,13 @@ export function projectName(key: string): string {
   return key.split("/").filter(Boolean).pop() || "未知项目";
 }
 
-export const compareProjects = (a: Pick<Project, "key" | "hasLive" | "latestCreatedMs">, b: Pick<Project, "key" | "hasLive" | "latestCreatedMs">) => Number(b.hasLive) - Number(a.hasLive) || b.latestCreatedMs - a.latestCreatedMs || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+export const compareProjects = (
+  a: Pick<Project, "key" | "hasLive" | "latestCreatedMs">,
+  b: Pick<Project, "key" | "hasLive" | "latestCreatedMs">,
+) =>
+  Number(b.hasLive) - Number(a.hasLive) ||
+  b.latestCreatedMs - a.latestCreatedMs ||
+  (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
 
 /** The account's projects: those of the sessions held, those the
  * machines report (MachineMeta.projects), and those added that have no
@@ -94,17 +141,36 @@ export const compareProjects = (a: Pick<Project, "key" | "hasLive" | "latestCrea
  * from its settings (ProjectPrefs.settings) until its first session: it
  * is listed while the machine chosen for it is one of the account's, as
  * created when it was added. */
-export function projects<S extends SessionLike>(sessions: Iterable<S>, machines: Iterable<MachineLike> = [], settings: Iterable<{ path: string; machineId: string; updatedMs: bigint }> = []): Project<S>[] {
+export function projects<S extends SessionLike>(
+  sessions: Iterable<S>,
+  machines: Iterable<MachineLike> = [],
+  settings: Iterable<{
+    path: string;
+    machineId: string;
+    updatedMs: bigint;
+  }> = [],
+): Project<S>[] {
   const byKey = new Map<string, Project<S>>();
   const project = (key: string) => {
     let p = byKey.get(key);
     if (!p) {
-      p = { key, name: projectName(key), sessions: [], updatedMs: 0, hasLive: false, latestCreatedMs: 0, machines: [], ended: 0 };
+      p = {
+        key,
+        name: projectName(key),
+        sessions: [],
+        updatedMs: 0,
+        hasLive: false,
+        latestCreatedMs: 0,
+        machines: [],
+        ended: 0,
+      };
       byKey.set(key, p);
     }
     return p;
   };
-  const sorted = [...sessions].sort((a, b) => Number(b.updatedMs - a.updatedMs) || byID(a, b));
+  const sorted = [...sessions].sort(
+    (a, b) => Number(b.updatedMs - a.updatedMs) || byID(a, b),
+  );
   for (const s of sorted) {
     const p = project(projectKey(s));
     p.sessions.push(s);
@@ -124,7 +190,8 @@ export function projects<S extends SessionLike>(sessions: Iterable<S>, machines:
   };
   for (const p of byKey.values()) {
     const held = new Map<string, number>();
-    for (const s of p.sessions) if (exited(s)) held.set(s.machineId, (held.get(s.machineId) ?? 0) + 1);
+    for (const s of p.sessions)
+      if (exited(s)) held.set(s.machineId, (held.get(s.machineId) ?? 0) + 1);
     for (const [machineId, n] of held) count(p.key, machineId, n);
   }
   const machineIds = new Set<string>();
@@ -133,8 +200,15 @@ export function projects<S extends SessionLike>(sessions: Iterable<S>, machines:
     for (const x of m.meta?.projects ?? []) {
       const p = project(x.path);
       count(x.path, m.id, x.ended);
-      p.latestCreatedMs = Math.max(p.latestCreatedMs, Number(x.latestCreatedMs));
-      p.updatedMs = Math.max(p.updatedMs, Number(x.latestCreatedMs), Number(x.latestEndedMs));
+      p.latestCreatedMs = Math.max(
+        p.latestCreatedMs,
+        Number(x.latestCreatedMs),
+      );
+      p.updatedMs = Math.max(
+        p.updatedMs,
+        Number(x.latestCreatedMs),
+        Number(x.latestEndedMs),
+      );
       if (!p.machines.includes(m.id)) p.machines.push(m.id);
     }
   }
@@ -144,12 +218,19 @@ export function projects<S extends SessionLike>(sessions: Iterable<S>, machines:
     p.machines.push(s.machineId);
     p.latestCreatedMs = p.updatedMs = Number(s.updatedMs);
   }
-  for (const p of byKey.values()) p.ended = [...(counted.get(p.key)?.values() ?? [])].reduce((a, b) => a + b, 0);
+  for (const p of byKey.values())
+    p.ended = [...(counted.get(p.key)?.values() ?? [])].reduce(
+      (a, b) => a + b,
+      0,
+    );
   return [...byKey.values()].sort(compareProjects);
 }
 
 export function machineName(m?: MachineLike): string {
-  return m?.meta?.hostname?.replace(/\.local$/, "") || (m ? m.id.slice(0, 8) : "未知电脑");
+  return (
+    m?.meta?.hostname?.replace(/\.local$/, "") ||
+    (m ? m.id.slice(0, 8) : "未知电脑")
+  );
 }
 
 /** Avatar color class, stable per project. */
@@ -165,9 +246,29 @@ export type Tone = "run" | "wait" | "idle" | "off";
 
 /** Session states from highest priority to lowest: lists, the navigation
  * bar and the bottom of a session all show only the highest one. */
-export type StateKind = "ended" | "offline" | "unlinked" | "approval" | "question" | "plan" | "popup" | "starting" | "running" | "idle";
+export type StateKind =
+  | "ended"
+  | "offline"
+  | "unlinked"
+  | "approval"
+  | "question"
+  | "plan"
+  | "popup"
+  | "starting"
+  | "running"
+  | "idle";
 
-export const statePriority: StateKind[] = ["ended", "offline", "approval", "question", "plan", "popup", "starting", "running", "idle"];
+export const statePriority: StateKind[] = [
+  "ended",
+  "offline",
+  "approval",
+  "question",
+  "plan",
+  "popup",
+  "starting",
+  "running",
+  "idle",
+];
 
 export interface State {
   kind: StateKind;
@@ -214,7 +315,11 @@ export function stateOf(s: SessionLike, machine?: MachineLike): State {
 /** The state to show for a session. Out of reach of the server, the last
  * one heard is not shown as if it still held (client-v30 「断线」); that a
  * session ended stays true. */
-export function shownStateOf(s: SessionLike, machine: MachineLike | undefined, unlinked: boolean): State {
+export function shownStateOf(
+  s: SessionLike,
+  machine: MachineLike | undefined,
+  unlinked: boolean,
+): State {
   const st = stateOf(s, machine);
   if (!unlinked || st.kind === "ended") return st;
   const [tone, text] = stateText.unlinked;
@@ -225,7 +330,11 @@ export function shownStateOf(s: SessionLike, machine: MachineLike | undefined, u
  * conversation between turns, and there must be one (architecture §13).
  * running is what the session's events say, which may be ahead of its
  * summary. */
-export function forkBlocked(s: SessionLike, machine?: MachineLike, running = false): string {
+export function forkBlocked(
+  s: SessionLike,
+  machine?: MachineLike,
+  running = false,
+): string {
   switch (stateOf(s, machine).kind) {
     case "starting":
       return "启动完成后可用";
@@ -249,16 +358,24 @@ export function needsAttention(s: SessionLike, machine?: MachineLike): boolean {
 export function titleOf(s: SessionLike): string {
   const t = plain(s.info?.title || "");
   if (t) return t;
-  const start = s.info?.createdAt ? timestampMs(s.info.createdAt) : Number(s.updatedMs);
+  const start = s.info?.createdAt
+    ? timestampMs(s.info.createdAt)
+    : Number(s.updatedMs);
   return `${projectName(projectKey(s))}${start ? " · " + hhmm(start) : ""}`;
 }
 
 /** One-line preview for a list row, by state. */
-export function previewOf(s: SessionLike, st: State, pending?: { approval?: ApprovalRequested; question?: QuestionAsked }): string {
+export function previewOf(
+  s: SessionLike,
+  st: State,
+  pending?: { approval?: ApprovalRequested; question?: QuestionAsked },
+): string {
   switch (st.kind) {
     case "approval":
       if (!pending?.approval) return st.text;
-      return pending.approval.command ? "请求执行 " + oneLine(approvalDisplay(pending.approval.command)) : "请求权限 · " + approvalDisplay(pending.approval.toolName);
+      return pending.approval.command
+        ? "请求执行 " + oneLine(approvalDisplay(pending.approval.command))
+        : "请求权限 · " + approvalDisplay(pending.approval.toolName);
     case "question":
       return pending?.question?.questions[0]?.text || st.text;
     case "plan":
@@ -301,7 +418,8 @@ export function when(ms: number | bigint, now = Date.now()): string {
   if (d < 3_600_000) return `${Math.floor(d / 60_000)} 分钟前`;
   const then = new Date(t);
   if (then.toDateString() === new Date(now).toDateString()) return hhmm(t);
-  if (then.toDateString() === new Date(now - 86_400_000).toDateString()) return "昨天";
+  if (then.toDateString() === new Date(now - 86_400_000).toDateString())
+    return "昨天";
   return `${then.getMonth() + 1}月${then.getDate()}日`;
 }
 
@@ -310,7 +428,12 @@ export function ago(ms: number | bigint, now = Date.now()): string {
   const t = Number(ms);
   if (!t) return "";
   const d = now - t;
-  if (d >= 3_600_000 && d < 86_400_000 && new Date(t).toDateString() === new Date(now).toDateString()) return `${Math.floor(d / 3_600_000)} 小时前`;
+  if (
+    d >= 3_600_000 &&
+    d < 86_400_000 &&
+    new Date(t).toDateString() === new Date(now).toDateString()
+  )
+    return `${Math.floor(d / 3_600_000)} 小时前`;
   return when(t, now);
 }
 
@@ -331,7 +454,9 @@ export function dayGroup(ms: number, now = Date.now()): string {
   if (n === 1) return "昨天";
   if (n < 7) return "近 7 天";
   const d = new Date(ms);
-  return d.getFullYear() === new Date(now).getFullYear() ? `${d.getMonth() + 1} 月` : `${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
+  return d.getFullYear() === new Date(now).getFullYear()
+    ? `${d.getMonth() + 1} 月`
+    : `${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
 }
 
 /** When a session ended, in the terms of its date group: the time under
@@ -341,7 +466,9 @@ export function endedTime(ms: number, now = Date.now()): string {
   const n = daysAgo(ms, now);
   if (n <= 1) return hhmm(ms);
   const d = new Date(ms);
-  return n < 7 ? "周" + "日一二三四五六"[d.getDay()] : `${d.getMonth() + 1}月${d.getDate()}日`;
+  return n < 7
+    ? "周" + "日一二三四五六"[d.getDay()]
+    : `${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
 export function hhmm(ms: number): string {
@@ -397,12 +524,21 @@ function samePlace(p: string): string {
  * /private/etc count as /tmp, /var and /etc. The expanded details keep the
  * original text. */
 export function shortenPaths(text: string, cwd: string, home = ""): string {
-  return text.replace(/(^|[\s=:([{,])(?:(["'])(\/[^"'\n]*)\2|(\/[^\s"'`]*))/g, (all, before: string, q: string | undefined, quoted?: string, bare?: string) => {
-    const path = quoted ?? bare ?? "";
-    const short = shortenPath(path, cwd, home);
-    if (short === path) return all;
-    return quoted !== undefined ? before + q + short + q : before + short;
-  });
+  return text.replace(
+    /(^|[\s=:([{,])(?:(["'])(\/[^"'\n]*)\2|(\/[^\s"'`]*))/g,
+    (
+      all,
+      before: string,
+      q: string | undefined,
+      quoted?: string,
+      bare?: string,
+    ) => {
+      const path = quoted ?? bare ?? "";
+      const short = shortenPath(path, cwd, home);
+      if (short === path) return all;
+      return quoted !== undefined ? before + q + short + q : before + short;
+    },
+  );
 }
 
 /** One whole path shortened by the same rules, spaces and all, as a file
@@ -415,11 +551,18 @@ export function shortenPath(path: string, cwd: string, home = ""): string {
   const under = (p: string, dir: string): string | undefined => {
     if (!dir || !p.startsWith(dir)) return undefined;
     const rest = p.slice(dir.length);
-    return rest === "" || rest[0] === "/" || /^:\d+(:\d+)*$/.test(rest) ? rest : undefined;
+    return rest === "" || rest[0] === "/" || /^:\d+(:\d+)*$/.test(rest)
+      ? rest
+      : undefined;
   };
   const p = samePlace(path);
   const inCwd = under(p, base);
-  if (inCwd !== undefined) return inCwd === "" || inCwd === "/" ? "." : inCwd[0] === "/" ? inCwd.slice(1) : "." + inCwd;
+  if (inCwd !== undefined)
+    return inCwd === "" || inCwd === "/"
+      ? "."
+      : inCwd[0] === "/"
+        ? inCwd.slice(1)
+        : "." + inCwd;
   const hm = h || /^\/(?:Users|home)\/[^/:]+/.exec(p)?.[0] || "";
   const inHome = under(p, hm);
   return inHome === undefined ? path : "~" + inHome;
@@ -431,7 +574,11 @@ export function tailPath(p: string, max = 28): string {
   if (s.length <= max) return s;
   const parts = s.split("/");
   let out = parts.pop() || "";
-  while (parts.length && out.length + parts[parts.length - 1].length + 1 <= max - 2) out = parts.pop() + "/" + out;
+  while (
+    parts.length &&
+    out.length + parts[parts.length - 1].length + 1 <= max - 2
+  )
+    out = parts.pop() + "/" + out;
   return "…/" + out;
 }
 
@@ -442,12 +589,28 @@ export function tailPath(p: string, max = 28): string {
  * outside them, such as acceptEdits, keeps its own name (architecture §7:
  * shown as the CLI has it). */
 export function permissionModeName(pm: string): string {
-  return ({ default: "询问", auto: "自动", plan: "计划", bypassPermissions: "完全放行", acceptEdits: "accept edits" } as Record<string, string>)[pm] ?? pm;
+  return (
+    (
+      {
+        default: "询问",
+        auto: "自动",
+        plan: "计划",
+        bypassPermissions: "完全放行",
+        acceptEdits: "accept edits",
+      } as Record<string, string>
+    )[pm] ?? pm
+  );
 }
 
 /** The approval mode named from turn-context fields: Claude Code's
  * permission mode, or Codex's approval fields. */
-export function contextMode(reviewer: string, policy: string, sandbox: string, collaboration: string, permission = ""): string {
+export function contextMode(
+  reviewer: string,
+  policy: string,
+  sandbox: string,
+  collaboration: string,
+  permission = "",
+): string {
   if (permission) return permissionModeName(permission);
   if (!reviewer && !policy && !collaboration) return "";
   if (collaboration === "plan") return "计划";
@@ -468,10 +631,17 @@ export function modeName(m: ApprovalMode): string {
 }
 
 export function modeByName(name: string): ApprovalMode {
-  return (Number(Object.keys(modeNames).find((k) => modeNames[Number(k)] === name)) || ApprovalMode.UNSPECIFIED) as ApprovalMode;
+  return (Number(
+    Object.keys(modeNames).find((k) => modeNames[Number(k)] === name),
+  ) || ApprovalMode.UNSPECIFIED) as ApprovalMode;
 }
 
-const modeClass: Record<string, string> = { 计划: "m-plan", 完全放行: "m-danger", 自动: "m-auto", 询问: "" };
+const modeClass: Record<string, string> = {
+  计划: "m-plan",
+  完全放行: "m-danger",
+  自动: "m-auto",
+  询问: "",
+};
 
 export interface ModeChip {
   cls: string;
@@ -485,14 +655,23 @@ export function modeOf(s: SessionLike): ModeChip | undefined {
   if (!i) return undefined;
   // Session.mode is either CLI's mode as a client mode; UNSPECIFIED with a
   // permission mode is one of Claude Code's own, shown by its name.
-  const text = i.mode ? modeName(i.mode) : i.permissionMode ? permissionModeName(i.permissionMode) : "";
-  return text ? { cls: modeClass[text] ?? "", text, mode: modeByName(text) } : undefined;
+  const text = i.mode
+    ? modeName(i.mode)
+    : i.permissionMode
+      ? permissionModeName(i.permissionMode)
+      : "";
+  return text
+    ? { cls: modeClass[text] ?? "", text, mode: modeByName(text) }
+    : undefined;
 }
 
 /** Whether the auto approval mode is not offered with a model: the CLI's
  * own list says so (Claude Code's Haiku 4.5 and older take none). A model
  * the list does not know, or a list not read yet, gives no answer. */
-export function autoUnavailable(models: ModelInfo[] | undefined, model: string): boolean {
+export function autoUnavailable(
+  models: ModelInfo[] | undefined,
+  model: string,
+): boolean {
   return !!findModel(models, model)?.autoUnavailable;
 }
 
@@ -506,11 +685,16 @@ export function contextPercent(s: SessionLike): number | undefined {
  * the slug it was started with; Claude Code offers aliases (sonnet, opus)
  * but records the full ID (claude-sonnet-5-5), so an alias matches a full
  * ID that has it as one of its words. */
-export function findModel<M extends { slug: string }>(models: M[] | undefined, id: string): M | undefined {
+export function findModel<M extends { slug: string }>(
+  models: M[] | undefined,
+  id: string,
+): M | undefined {
   if (!models || !id) return undefined;
   // A "[1m]" suffix names the 1M window on the command line; it is not part of the ID.
   id = id.replace(/\[1m\]$/, "");
-  return models.find((m) => m.slug === id) ?? models.find((m) => modelIs(id, m.slug));
+  return (
+    models.find((m) => m.slug === id) ?? models.find((m) => modelIs(id, m.slug))
+  );
 }
 
 /** The standard context window, which a Claude Code session can be held to. */
@@ -528,21 +712,35 @@ export function contextText(tokens: bigint | undefined): string {
  * missing from the list (the machine's default may be one Codex hides
  * from /model), the name Codex gives such slugs: gpt-6.1-sol is
  * GPT-6.1-Sol. */
-export function modelLabel<M extends { slug: string; displayName: string }>(models: M[] | undefined, id: string, agent: Agent = Agent.CODEX): string {
+export function modelLabel<M extends { slug: string; displayName: string }>(
+  models: M[] | undefined,
+  id: string,
+  agent: Agent = Agent.CODEX,
+): string {
   if (!id) return "";
   const m = findModel(models, id);
   if (m?.displayName) return m.displayName;
   if (!models || agent === Agent.CLAUDE) return id;
   return id
     .split("-")
-    .map((w) => (/^gpt$/i.test(w) ? "GPT" : w.charAt(0).toUpperCase() + w.slice(1)))
+    .map((w) =>
+      /^gpt$/i.test(w) ? "GPT" : w.charAt(0).toUpperCase() + w.slice(1),
+    )
     .join("-");
 }
 
 /** Whether the model a CLI reports (id) is the one chosen by slug or
  * alias. */
 export function modelIs(id: string, slug: string): boolean {
-  return !!id && !!slug && (id === slug || id.toLowerCase().split(/[-_.\s]/).includes(slug.toLowerCase()));
+  return (
+    !!id &&
+    !!slug &&
+    (id === slug ||
+      id
+        .toLowerCase()
+        .split(/[-_.\s]/)
+        .includes(slug.toLowerCase()))
+  );
 }
 
 /** Context above this share turns the chip orange. */
@@ -567,18 +765,31 @@ export interface NewConfig {
  * session's by default), the machine's defaults if it has none. Plan is a
  * passing state; an offline machine stays selected until the user picks
  * another for this start. */
-export function inheritConfig(p: Project<SessionLike> | undefined, machines: Map<string, MachineLike>, cwd = p?.key ?? "", agent?: Agent): NewConfig | undefined {
+export function inheritConfig(
+  p: Project<SessionLike> | undefined,
+  machines: Map<string, MachineLike>,
+  cwd = p?.key ?? "",
+  agent?: Agent,
+): NewConfig | undefined {
   // In the order of the listing, live sessions before ended ones: the
   // listing is fetched in that order, so the pages held always include
   // the session inherited from.
-  const order = p ? [...p.sessions.filter((s) => !exited(s)).sort(compareLive), ...p.sessions.filter(exited).sort(compareEnded)] : [];
+  const order = p
+    ? [
+        ...p.sessions.filter((s) => !exited(s)).sort(compareLive),
+        ...p.sessions.filter(exited).sort(compareEnded),
+      ]
+    : [];
   const latest = order[0];
   if (!p || !latest) return undefined;
   const a = agent ?? agentOf(latest);
   const from = order.find((s) => agentOf(s) === a);
   void machines;
   const mode = (from && modeOf(from)?.mode) ?? ApprovalMode.UNSPECIFIED;
-  const keep = mode === ApprovalMode.ASK || mode === ApprovalMode.AUTO || mode === ApprovalMode.FULL_ACCESS;
+  const keep =
+    mode === ApprovalMode.ASK ||
+    mode === ApprovalMode.AUTO ||
+    mode === ApprovalMode.FULL_ACCESS;
   return {
     machineId: latest.machineId,
     cwd,
@@ -595,12 +806,29 @@ export function inheritConfig(p: Project<SessionLike> | undefined, machines: Map
  * defaults again. */
 export function switchMachine(cfg: NewConfig, m: MachineLike): NewConfig {
   const agents = machineAgents(m);
-  return { ...cfg, machineId: m.id, agent: agents.includes(cfg.agent) ? cfg.agent : agents[0], model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
+  return {
+    ...cfg,
+    machineId: m.id,
+    agent: agents.includes(cfg.agent) ? cfg.agent : agents[0],
+    model: "",
+    effort: "",
+    mode: ApprovalMode.UNSPECIFIED,
+  };
 }
 
 /** Why a new session cannot start with this CLI, model and mode, or "". */
-export function newConfigIssue(agent: Agent, model: string, mode: ApprovalMode, models?: ModelInfo[]): string {
-  if (agent === Agent.CLAUDE && mode === ApprovalMode.AUTO && autoUnavailable(models, model)) return "这个模型没有自动模式，换一种审批模式再开始";
+export function newConfigIssue(
+  agent: Agent,
+  model: string,
+  mode: ApprovalMode,
+  models?: ModelInfo[],
+): string {
+  if (
+    agent === Agent.CLAUDE &&
+    mode === ApprovalMode.AUTO &&
+    autoUnavailable(models, model)
+  )
+    return "这个模型没有自动模式，换一种审批模式再开始";
   return "";
 }
 
@@ -614,17 +842,37 @@ export interface DefaultMode {
   varies: boolean; // the folder's project settings may change it (Claude Code)
 }
 
-export function defaultModeOf(m: MachineLike | undefined, agent: Agent): DefaultMode {
+export function defaultModeOf(
+  m: MachineLike | undefined,
+  agent: Agent,
+): DefaultMode {
   const want = agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX;
-  const info = m?.meta?.agents.find((a) => (a.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX) === want);
-  const known = !!info && (info.defaultModeSource === DefaultModeSource.DAEMON_SETTINGS || info.defaultModeSource === DefaultModeSource.CLI_CONFIG);
-  return { mode: known ? info!.defaultMode : ApprovalMode.UNSPECIFIED, known, varies: !!info?.defaultModeVaries };
+  const info = m?.meta?.agents.find(
+    (a) => (a.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX) === want,
+  );
+  const known =
+    !!info &&
+    (info.defaultModeSource === DefaultModeSource.DAEMON_SETTINGS ||
+      info.defaultModeSource === DefaultModeSource.CLI_CONFIG);
+  return {
+    mode: known ? info!.defaultMode : ApprovalMode.UNSPECIFIED,
+    known,
+    varies: !!info?.defaultModeVaries,
+  };
 }
 
 /** The mode a new session will start in, as the card writes it. */
-export function modeLabel(chosen: ApprovalMode, d: DefaultMode, agent: Agent): string {
+export function modeLabel(
+  chosen: ApprovalMode,
+  d: DefaultMode,
+  agent: Agent,
+): string {
   if (chosen) return modeName(chosen);
-  const base = !d.known ? "默认模式（不确定，可能是完全放行）" : d.mode ? `默认：${modeName(d.mode)}` : `默认：${agentName(agent)} 自己的模式`;
+  const base = !d.known
+    ? "默认模式（不确定，可能是完全放行）"
+    : d.mode
+      ? `默认：${modeName(d.mode)}`
+      : `默认：${agentName(agent)} 自己的模式`;
   return base + (d.varies ? "（项目设置可能不同）" : "");
 }
 
@@ -653,7 +901,15 @@ export interface Derived {
   // What the computer accepted for each message, as its first QUEUED state
   // says: the text and images, and who sent it; so every client shows
   // the same queue.
-  accepted: Map<string, { text: string; imageIds: string[]; origin?: Event["origin"]; mode: SendMode }>;
+  accepted: Map<
+    string,
+    {
+      text: string;
+      imageIds: string[];
+      origin?: Event["origin"];
+      mode: SendMode;
+    }
+  >;
   paused: Set<string>;
   stages: Map<string, InputStage>; // how far a queued message got
   inputReasons: Map<string, string>; // why a message failed
@@ -738,7 +994,10 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         break;
       case "approvalResolved":
         d.approvals.delete(k.value.approvalId);
-        d.resolved.set(k.value.approvalId, { decision: k.value.decision, message: k.value.message });
+        d.resolved.set(k.value.approvalId, {
+          decision: k.value.decision,
+          message: k.value.message,
+        });
         if (e.origin) d.by.set(k.value.approvalId, e.origin);
         break;
       case "questionAsked":
@@ -763,19 +1022,38 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         settle(d, k.value.outcome === TurnOutcome.ABORTED, unfinishedById);
         break;
       case "inputState": {
-        const late = d.inputs.get(k.value.requestId) === InputStatus.UNCONFIRMED;
+        const late =
+          d.inputs.get(k.value.requestId) === InputStatus.UNCONFIRMED;
         d.inputs.set(k.value.requestId, k.value.status);
-        if (k.value.status === InputStatus.QUEUED && !d.accepted.has(k.value.requestId) && (k.value.text || k.value.imageIds.length))
-          d.accepted.set(k.value.requestId, { text: k.value.text, imageIds: [...k.value.imageIds], origin: e.origin, mode: k.value.mode });
+        if (
+          k.value.status === InputStatus.QUEUED &&
+          !d.accepted.has(k.value.requestId) &&
+          (k.value.text || k.value.imageIds.length)
+        )
+          d.accepted.set(k.value.requestId, {
+            text: k.value.text,
+            imageIds: [...k.value.imageIds],
+            origin: e.origin,
+            mode: k.value.mode,
+          });
         const accepted = d.accepted.get(k.value.requestId);
         if (accepted && k.value.mode) accepted.mode = k.value.mode;
         if (k.value.paused) d.paused.add(k.value.requestId);
         else d.paused.delete(k.value.requestId);
         if (k.value.stage) d.stages.set(k.value.requestId, k.value.stage);
-        if (k.value.status === InputStatus.FAILED || k.value.status === InputStatus.NEEDS_TERMINAL) d.inputReasons.set(k.value.requestId, k.value.reason);
+        if (
+          k.value.status === InputStatus.FAILED ||
+          k.value.status === InputStatus.NEEDS_TERMINAL
+        )
+          d.inputReasons.set(k.value.requestId, k.value.reason);
         if (endedUnsent(k.value)) d.unsent.add(k.value.requestId);
-        else if (k.value.status !== InputStatus.QUEUED) d.unsent.delete(k.value.requestId);
-        if (k.value.status === InputStatus.QUEUED && !queuedAt.has(k.value.requestId)) queuedAt.set(k.value.requestId, e.seq);
+        else if (k.value.status !== InputStatus.QUEUED)
+          d.unsent.delete(k.value.requestId);
+        if (
+          k.value.status === InputStatus.QUEUED &&
+          !queuedAt.has(k.value.requestId)
+        )
+          queuedAt.set(k.value.requestId, e.seq);
         if (k.value.status === InputStatus.SUBMITTED) {
           // Codex marks a message submitted before recording it. Claude
           // Code usually records the message first and the state follows;
@@ -786,7 +1064,13 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
           // A message confirmed after it was reported unconfirmed is the
           // one recorded right after this state, never one before it.
           const since = queuedAt.get(k.value.requestId);
-          if (!late && agent === Agent.CLAUDE && unclaimed !== undefined && e.seq - unclaimed <= 3n && (since === undefined || unclaimed > since)) {
+          if (
+            !late &&
+            agent === Agent.CLAUDE &&
+            unclaimed !== undefined &&
+            e.seq - unclaimed <= 3n &&
+            (since === undefined || unclaimed > since)
+          ) {
             d.typedLocally.delete(unclaimed);
             unclaimed = undefined;
           } else submitted++;
@@ -855,7 +1139,8 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         // Changed through remote-agent; recorded as such already.
         // The next context should show this model; the client names it by
         // slug or alias, the context by the CLI's own ID.
-        if (k.value.model) expected = { model: k.value.model, effort: k.value.effort };
+        if (k.value.model)
+          expected = { model: k.value.model, effort: k.value.effort };
         if (k.value.mode) mode = modeName(k.value.mode);
         if (k.value.compacted) {
           d.compactions.set(e.seq, { before: usagePercent(d.usage) });
@@ -864,19 +1149,35 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         break;
       case "turnContext": {
         const c = k.value;
-        const m = contextMode(c.approvalsReviewer, c.approvalPolicy, c.sandbox, c.collaborationMode, c.permissionMode);
-        const planning = c.collaborationMode === "plan" || c.permissionMode === "plan";
+        const m = contextMode(
+          c.approvalsReviewer,
+          c.approvalPolicy,
+          c.sandbox,
+          c.collaborationMode,
+          c.permissionMode,
+        );
+        const planning =
+          c.collaborationMode === "plan" || c.permissionMode === "plan";
         const mm = `${c.model} ${c.effort}`;
         const changes: string[] = [];
-        if (mode && m && m !== mode && !(mode === "计划" && planned)) changes.push(`模式切到了 ${m}`);
+        if (mode && m && m !== mode && !(mode === "计划" && planned))
+          changes.push(`模式切到了 ${m}`);
         if (m && m !== mode) planned = false;
         // Plan mode runs at its own effort; only a model change counts there.
         // A context without a model is Claude Code's mode, read off the
         // screen; it says nothing about the model.
         // After a switch from here, the next context is compared with what
         // was chosen; a different model means the terminal changed it since.
-        const changed = expected ? !(modelIs(c.model, expected.model) && (!expected.effort || !c.effort || c.effort === expected.effort)) : mm !== model;
-        if ((model || expected) && c.model && changed && !planning) changes.push(`模型切到了 ${c.model}${c.effort ? " · " + c.effort : ""}`);
+        const changed = expected
+          ? !(
+              modelIs(c.model, expected.model) &&
+              (!expected.effort || !c.effort || c.effort === expected.effort)
+            )
+          : mm !== model;
+        if ((model || expected) && c.model && changed && !planning)
+          changes.push(
+            `模型切到了 ${c.model}${c.effort ? " · " + c.effort : ""}`,
+          );
         if (c.model && !planning) expected = undefined;
         if (changes.length) d.terminalChanges.set(e.seq, changes.join("，"));
         if (m) mode = m;
@@ -913,7 +1214,11 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
 
 /** Ends the turn for the tools still running: no result came for them,
  * so their state is unknown from here (architecture §13, 工具执行反馈). */
-function settle(d: Derived, aborted: boolean, unfinishedById?: Map<string, RunningTool>) {
+function settle(
+  d: Derived,
+  aborted: boolean,
+  unfinishedById?: Map<string, RunningTool>,
+) {
   for (const t of d.tools) {
     d.toolEnds.set(t.seq, "unsettled");
     if (t.callId) unfinishedById?.set(t.callId, t);
@@ -927,10 +1232,17 @@ function settle(d: Derived, aborted: boolean, unfinishedById?: Map<string, Runni
  * client is cut off from the server (since lostAt) the reading stops
  * there: it cannot tell whether the tool still runs. An unknown start is
  * not guessed. */
-export function toolClock(since: number, now: number, lostAt: number | undefined): { ms: number; frozen: boolean } | undefined {
+export function toolClock(
+  since: number,
+  now: number,
+  lostAt: number | undefined,
+): { ms: number; frozen: boolean } | undefined {
   if (!since) return undefined;
   const frozen = lostAt !== undefined;
-  return { ms: Math.max(0, (frozen ? Math.min(now, lostAt) : now) - since), frozen };
+  return {
+    ms: Math.max(0, (frozen ? Math.min(now, lostAt) : now) - since),
+    frozen,
+  };
 }
 
 /** m:ss, as a frozen or full tool clock is written. */
@@ -942,7 +1254,12 @@ export function clock(ms: number): string {
 /** A running tool's short name: the CLI's tool name (Bash), or for
  * Codex, which gives none, 命令 or 工具. */
 export function toolName(t: Pick<RunningTool, "itemType" | "kind">): string {
-  return t.itemType || (t.kind === ToolKind.COMMAND || t.kind === ToolKind.UNSPECIFIED ? "命令" : "工具");
+  return (
+    t.itemType ||
+    (t.kind === ToolKind.COMMAND || t.kind === ToolKind.UNSPECIFIED
+      ? "命令"
+      : "工具")
+  );
 }
 
 export function eventTime(e: Event): number {
@@ -968,18 +1285,29 @@ export function decisionText(d: ApprovalDecision): string {
 }
 
 export function alwaysText(message: string): string {
-  const command = message.match(/commands that start with [`'“]?(.+?)[`'”]?(?:\s*$)/i);
-  if (command) return `「${command[1].replace(/[`'”]$/, "")}」开头的命令以后不再问`;
-  const dir = message.match(/always allow access to (.+?)(?: from this project)?\s*$/i);
+  const command = message.match(
+    /commands that start with [`'“]?(.+?)[`'”]?(?:\s*$)/i,
+  );
+  if (command)
+    return `「${command[1].replace(/[`'”]$/, "")}」开头的命令以后不再问`;
+  const dir = message.match(
+    /always allow access to (.+?)(?: from this project)?\s*$/i,
+  );
   if (dir) return `本项目访问 ${dir[1]} 以后不再问`;
-  if (/accept edits|automatically accept edits/i.test(message)) return "本会话自动接受编辑";
+  if (/accept edits|automatically accept edits/i.test(message))
+    return "本会话自动接受编辑";
   return message;
 }
 
 /** Splits the "(Recommended)" marker off an option label. */
-export function optionLabel(label: string): { text: string; recommended: boolean } {
+export function optionLabel(label: string): {
+  text: string;
+  recommended: boolean;
+} {
   const m = label.match(/^(.*?)\s*\((Recommended|推荐)\)\s*$/i);
-  return m ? { text: m[1], recommended: true } : { text: label, recommended: false };
+  return m
+    ? { text: m[1], recommended: true }
+    : { text: label, recommended: false };
 }
 
 // --- the dock above the input ---
@@ -993,14 +1321,22 @@ export type DockItem =
 /** Everything waiting for the user, in the state table's order. Only the
  * first is docked; the rest wait their turn. An ended or offline session
  * shows a status card instead. */
-export function dockItems(s: SessionLike, d: Derived, machine?: MachineLike): DockItem[] {
+export function dockItems(
+  s: SessionLike,
+  d: Derived,
+  machine?: MachineLike,
+): DockItem[] {
   const st = stateOf(s, machine);
   if (st.kind === "ended" || st.kind === "offline") return [];
   const out: DockItem[] = [];
-  for (const a of d.approvals.values()) out.push({ kind: "approval", id: "a:" + a.approvalId, approval: a });
-  for (const q of d.questions.values()) out.push({ kind: "question", id: "q:" + q.questionId, question: q });
-  if (s.info?.planOpen) out.push({ kind: "plan", id: "plan", plan: d.plan });
-  if (s.info?.status === SessionStatus.BLOCKED) out.push({ kind: "popup", id: "popup", title: s.info.statusDetail });
+  for (const a of d.approvals.values())
+    out.push({ kind: "approval", id: "a:" + a.approvalId, approval: a });
+  for (const q of d.questions.values())
+    out.push({ kind: "question", id: "q:" + q.questionId, question: q });
+  if (s.info?.planOpen && d.plan)
+    out.push({ kind: "plan", id: "plan", plan: d.plan });
+  if (s.info?.status === SessionStatus.BLOCKED)
+    out.push({ kind: "popup", id: "popup", title: s.info.statusDetail });
   return out;
 }
 
@@ -1039,7 +1375,10 @@ export type Phase =
   | "needsTerminal"; // failed, and the terminal may hold part of it
 
 /** Where a message stands, from the send call and the daemon's events. */
-export function phaseOf(o: Pick<Outgoing, "status">, input?: InputStatus): Phase {
+export function phaseOf(
+  o: Pick<Outgoing, "status">,
+  input?: InputStatus,
+): Phase {
   switch (input) {
     case InputStatus.SUBMITTED:
       return "done";
@@ -1064,7 +1403,8 @@ export function queueReason(s: SessionLike, d: Derived): string {
   const i = s.info;
   if (i?.inputWait === "unrecognized") return "认不出输入框，已暂停";
   if (i?.inputWait === "draft") return "终端里有没发出的草稿，发完或清掉后再发";
-  if (i?.status === SessionStatus.BLOCKED || i?.inputWait === "popup") return "就绪后发送";
+  if (i?.status === SessionStatus.BLOCKED || i?.inputWait === "popup")
+    return "就绪后发送";
   if (d.questions.size > 0 || d.approvals.size > 0) return "就绪后发送";
   if (i?.planOpen) return "就绪后发送";
   if (i?.status === SessionStatus.STARTING) return "启动后发送";
@@ -1076,12 +1416,22 @@ export function queueReason(s: SessionLike, d: Derived): string {
  * them: queued, and not left behind by a session that ended. skip is the
  * first message of a session started here, which the chat shows. */
 export function queuedIds(d: Derived, skip?: string): string[] {
-  return [...d.inputs.entries()].filter(([id, st]) => (st === InputStatus.QUEUED || st === InputStatus.HELD_BY_CLI) && !d.unsent.has(id) && id !== skip).map(([id]) => id);
+  return [...d.inputs.entries()]
+    .filter(
+      ([id, st]) =>
+        (st === InputStatus.QUEUED || st === InputStatus.HELD_BY_CLI) &&
+        !d.unsent.has(id) &&
+        id !== skip,
+    )
+    .map(([id]) => id);
 }
 
 /** Whether a message's state says the session ended before writing it:
  * canceled by the daemon, not by anyone, and offered to be put back. */
-export function endedUnsent(state: { status: InputStatus; reason: string }): boolean {
+export function endedUnsent(state: {
+  status: InputStatus;
+  reason: string;
+}): boolean {
   return state.status === InputStatus.CANCELED && state.reason === "exited";
 }
 
@@ -1106,7 +1456,13 @@ export function inputFailure(reason: string, agent: Agent): string {
 
 export type Item =
   // decision: an approval's result shown on the tool call it was for.
-  | { kind: "event"; key: string; event: Event; decision?: ApprovalDecision; approvalId?: string }
+  | {
+      kind: "event";
+      key: string;
+      event: Event;
+      decision?: ApprovalDecision;
+      approvalId?: string;
+    }
   | { kind: "tools"; key: string; calls: ToolCall[] }
   | { kind: "turn"; key: string; ms: number }
   // A tool that started and has no result yet, and one the turn ended
@@ -1131,18 +1487,26 @@ function visible(e: Event, d: Derived): boolean {
     case "sessionForked":
       return true;
     case "turnEnded":
-      return k.value.outcome === TurnOutcome.ABORTED || k.value.durationMs >= 1000n;
+      return (
+        k.value.outcome === TurnOutcome.ABORTED || k.value.durationMs >= 1000n
+      );
     case "approvalRequested":
       return d.resolved.has(k.value.approvalId);
     case "questionAsked":
       return k.value.async || d.answered.has(k.value.questionId);
     case "inputState":
       // A message never sent shows once, where it was queued.
-      if (d.unsent.has(k.value.requestId)) return k.value.status === InputStatus.QUEUED;
+      if (d.unsent.has(k.value.requestId))
+        return k.value.status === InputStatus.QUEUED;
       // The CLI's record may come after the daemon stopped waiting for
       // it: the message was submitted after all.
-      if (k.value.status === InputStatus.UNCONFIRMED) return d.inputs.get(k.value.requestId) === InputStatus.UNCONFIRMED;
-      return [InputStatus.CANCELED, InputStatus.FAILED, InputStatus.NEEDS_TERMINAL].includes(k.value.status);
+      if (k.value.status === InputStatus.UNCONFIRMED)
+        return d.inputs.get(k.value.requestId) === InputStatus.UNCONFIRMED;
+      return [
+        InputStatus.CANCELED,
+        InputStatus.FAILED,
+        InputStatus.NEEDS_TERMINAL,
+      ].includes(k.value.status);
     case "settingsChanged":
       return k.value.compacted || !!k.value.model || !!modeName(k.value.mode);
     case "turnContext":
@@ -1176,7 +1540,9 @@ export function backgroundNote(b: ToolBackground): string {
 }
 
 function toolOk(t: ToolCall): boolean {
-  return t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0);
+  return (
+    t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0)
+  );
 }
 
 /** The chat's rows: runs of two or more completed tool calls in a row
@@ -1187,8 +1553,10 @@ export function timeline(events: Event[], d: Derived): Item[] {
   let run: { first: Event; calls: ToolCall[] } | undefined;
   const flush = () => {
     if (!run) return;
-    if (run.calls.length > 1) out.push({ kind: "tools", key: "t" + run.first.seq, calls: run.calls });
-    else out.push({ kind: "event", key: String(run.first.seq), event: run.first });
+    if (run.calls.length > 1)
+      out.push({ kind: "tools", key: "t" + run.first.seq, calls: run.calls });
+    else
+      out.push({ kind: "event", key: String(run.first.seq), event: run.first });
     run = undefined;
   };
   const unsentShown = new Set<string>();
@@ -1212,7 +1580,13 @@ export function timeline(events: Event[], d: Derived): Item[] {
     if (decision !== undefined) {
       // Shown on its own, so the decision is not folded away.
       flush();
-      out.push({ kind: "event", key: String(e.seq), event: e, decision, approvalId: merged.ids.get(e.seq) });
+      out.push({
+        kind: "event",
+        key: String(e.seq),
+        event: e,
+        decision,
+        approvalId: merged.ids.get(e.seq),
+      });
       return;
     }
     if (k.case === "toolCall" && isBackground(k.value)) {
@@ -1226,11 +1600,20 @@ export function timeline(events: Event[], d: Derived): Item[] {
       return;
     }
     flush();
-    if (k.case === "turnEnded" && k.value.outcome !== TurnOutcome.ABORTED) out.push({ kind: "turn", key: String(e.seq), ms: Number(k.value.durationMs) });
+    if (k.case === "turnEnded" && k.value.outcome !== TurnOutcome.ABORTED)
+      out.push({
+        kind: "turn",
+        key: String(e.seq),
+        ms: Number(k.value.durationMs),
+      });
     else out.push({ kind: "event", key: String(e.seq), event: e });
   };
   for (const e of events) {
-    if (isSkeleton(e)) { flush(); out.push({ kind: "event", key: String(e.seq), event: e }); continue; }
+    if (isSkeleton(e)) {
+      flush();
+      out.push({ kind: "event", key: String(e.seq), event: e });
+      continue;
+    }
     if (!visible(e, d)) continue;
     const k = e.kind;
     if (k.case === "toolStarted") {
@@ -1242,8 +1625,26 @@ export function timeline(events: Event[], d: Derived): Item[] {
       const t = running.get(e.seq) ?? loose.get(e.seq);
       if (!t && end !== "unsettled") continue;
       flush();
-      const tool = t ?? { title: k.value.title, since: eventTime(e), callId: k.value.callId, kind: k.value.kind, itemType: k.value.itemType, input: k.value.input, inputDigest: k.value.inputDigest, seq: e.seq };
-      out.push(end === "unsettled" ? { kind: "unsettled", key: "u" + e.seq, tool, aborted: d.abortedTools.has(e.seq) } : { kind: "running", key: "r" + e.seq, tool });
+      const tool = t ?? {
+        title: k.value.title,
+        since: eventTime(e),
+        callId: k.value.callId,
+        kind: k.value.kind,
+        itemType: k.value.itemType,
+        input: k.value.input,
+        inputDigest: k.value.inputDigest,
+        seq: e.seq,
+      };
+      out.push(
+        end === "unsettled"
+          ? {
+              kind: "unsettled",
+              key: "u" + e.seq,
+              tool,
+              aborted: d.abortedTools.has(e.seq),
+            }
+          : { kind: "running", key: "r" + e.seq, tool },
+      );
       continue;
     }
     if (k.case === "toolCall" && placed.has(e.seq)) continue;
@@ -1251,7 +1652,11 @@ export function timeline(events: Event[], d: Derived): Item[] {
       if (unsentShown.has(k.value.requestId)) continue;
       unsentShown.add(k.value.requestId);
     }
-    if (k.case === "approvalRequested" && merged.approvals.has(k.value.approvalId)) continue;
+    if (
+      k.case === "approvalRequested" &&
+      merged.approvals.has(k.value.approvalId)
+    )
+      continue;
     place(e);
   }
   flush();
@@ -1264,7 +1669,14 @@ export function timeline(events: Event[], d: Derived): Item[] {
  * approval requested before it which has a decision, and no second request
  * (even pending) or call. Parallel calls, repeated identical calls and events without
  * a digest (Codex) keep the approval as a row of its own. */
-export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigint, ApprovalDecision>; approvals: Set<string>; ids: Map<bigint, string> } {
+export function approvalsOnCalls(
+  events: Event[],
+  d: Derived,
+): {
+  calls: Map<bigint, ApprovalDecision>;
+  approvals: Set<string>;
+  ids: Map<bigint, string>;
+} {
   const approvals = new Map<string, { id: string; seq: bigint }[]>();
   const calls = new Map<string, bigint[]>();
   for (const e of events) {
@@ -1285,10 +1697,20 @@ export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigi
       group.push(e.seq);
     }
   }
-  const out = { calls: new Map<bigint, ApprovalDecision>(), approvals: new Set<string>(), ids: new Map<bigint, string>() };
+  const out = {
+    calls: new Map<bigint, ApprovalDecision>(),
+    approvals: new Set<string>(),
+    ids: new Map<bigint, string>(),
+  };
   for (const [key, as] of approvals) {
     const cs = calls.get(key) ?? [];
-    if (as.length !== 1 || cs.length !== 1 || cs[0] < as[0].seq || !d.resolved.has(as[0].id)) continue;
+    if (
+      as.length !== 1 ||
+      cs.length !== 1 ||
+      cs[0] < as[0].seq ||
+      !d.resolved.has(as[0].id)
+    )
+      continue;
     out.calls.set(cs[0], d.resolved.get(as[0].id)!.decision);
     out.approvals.add(as[0].id);
     out.ids.set(cs[0], as[0].id);
@@ -1299,8 +1721,10 @@ export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigi
 /** "运行了 3 条命令" and the like, for a folded run of tool calls. */
 export function toolsSummary(calls: ToolCall[]): string {
   const n = calls.length;
-  if (calls.every((c) => c.kind === ToolKind.COMMAND)) return `运行了 ${n} 条命令`;
-  if (calls.every((c) => c.kind === ToolKind.FILE_CHANGE)) return `编辑了 ${n} 个文件`;
+  if (calls.every((c) => c.kind === ToolKind.COMMAND))
+    return `运行了 ${n} 条命令`;
+  if (calls.every((c) => c.kind === ToolKind.FILE_CHANGE))
+    return `编辑了 ${n} 个文件`;
   return `完成了 ${n} 个工具调用`;
 }
 
@@ -1314,7 +1738,9 @@ const loginShellTimeoutDetail = "did not start the CLI within";
 export function exitReason(detail: string): string {
   if (detail === "stopped") return "会话是被手动结束的。";
   if (detail.startsWith(loginShellDetail)) {
-    const stuck = detail.includes(loginShellTimeoutDetail) ? "，可能卡在等待输入" : "";
+    const stuck = detail.includes(loginShellTimeoutDetail)
+      ? "，可能卡在等待输入"
+      : "";
     return `电脑上的登录 shell 没能启动 CLI（${detail}）${stuck}。请检查电脑上的 shell 配置，比如 ~/.zshrc。`;
   }
   return "tmux 会话已经不在了。";

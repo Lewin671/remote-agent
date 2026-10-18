@@ -21,7 +21,8 @@ final class World: @unchecked Sendable {
     private init() async throws {
         server = try await TestServer()
         do {
-            daemon = try await FakeDaemon.create(root: root, server: server.url, http: http, setupToken: server.setupToken)
+            daemon = try await FakeDaemon.create(
+                root: root, server: server.url, http: http, setupToken: server.setupToken)
         } catch {
             server.close()
             throw error
@@ -29,7 +30,9 @@ final class World: @unchecked Sendable {
     }
 
     /// Runs a test in a fresh world, set up by `setUp`, and takes everything down afterwards.
-    static func run(setUp: (World) async throws -> Void, _ body: (World) async throws -> Void) async throws {
+    static func run(setUp: (World) async throws -> Void, _ body: (World) async throws -> Void)
+        async throws
+    {
         let w = try await World()
         do {
             try await setUp(w)
@@ -50,25 +53,34 @@ final class World: @unchecked Sendable {
     }
 
     /// A new client device of the account.
-    func join() async throws -> Account { try await approvedClient(authorizer: daemon.account, http: http) }
+    func join() async throws -> Account {
+        try await approvedClient(authorizer: daemon.account, http: http)
+    }
 
     func remote(
-        _ account: Account, http: HTTP? = nil, cache: (any CipherCache)? = nil, frameQueue: Int = 1024,
-        historyIdleMs: Int64 = 60_000, historyIdleCount: Int = 8, streamOpenMs: Int64 = 15_000, linkGraceMs: Int64 = 10_000
+        _ account: Account, http: HTTP? = nil, cache: (any CipherCache)? = nil,
+        frameQueue: Int = 1024,
+        historyIdleMs: Int64 = 60_000, historyIdleCount: Int = 8, streamOpenMs: Int64 = 15_000,
+        linkGraceMs: Int64 = 10_000
     ) throws -> Remote {
-        let r = try Remote(
-            account: account, http: http ?? self.http, cache: cache, frameQueue: frameQueue, historyIdleMs: historyIdleMs,
-            historyIdleCount: historyIdleCount, streamOpenMs: streamOpenMs, linkGraceMs: linkGraceMs)
+        let r = try fixtureRemote(
+            account: account, http: http ?? self.http, cache: cache, frameQueue: frameQueue,
+            historyIdleMs: historyIdleMs,
+            historyIdleCount: historyIdleCount, streamOpenMs: streamOpenMs,
+            linkGraceMs: linkGraceMs,
+            securityStorage: TestSecurity.find(server.url)?.store(account.deviceId))
         onClose { r.close() }
         return r
     }
 
     func client(
-        cache: (any CipherCache)? = nil, http: HTTP? = nil, frameQueue: Int = 1024, historyIdleMs: Int64 = 60_000,
+        cache: (any CipherCache)? = nil, http: HTTP? = nil, frameQueue: Int = 1024,
+        historyIdleMs: Int64 = 60_000,
         historyIdleCount: Int = 8, linkGraceMs: Int64 = 10_000
     ) async throws -> Remote {
         try remote(
-            try await join(), http: http, cache: cache, frameQueue: frameQueue, historyIdleMs: historyIdleMs,
+            try await join(), http: http, cache: cache, frameQueue: frameQueue,
+            historyIdleMs: historyIdleMs,
             historyIdleCount: historyIdleCount, linkGraceMs: linkGraceMs)
     }
 }
@@ -111,12 +123,13 @@ extension ServerTests {
     /// The sync engine against the real Go server and a fake daemon.
     @Suite struct RemoteTests {
         private func world(_ body: (World) async throws -> Void) async throws {
-            try await World.run(setUp: { w in
-                try await w.daemon.putMachine("fake-mac.local")
-                try await w.daemon.putSession("s1", session("/Users/me/Code/foo", "修复登录超时"))
-                try await w.daemon.upload("s1", user("你好"), agent("你好，有什么要做的？"), agent("第三条"))
-                try await w.daemon.connect()
-            }, body)
+            try await World.run(
+                setUp: { w in
+                    try await w.daemon.putMachine("fake-mac.local")
+                    try await w.daemon.putSession("s1", session("/Users/me/Code/foo", "修复登录超时"))
+                    try await w.daemon.upload("s1", user("你好"), agent("你好，有什么要做的？"), agent("第三条"))
+                    try await w.daemon.connect()
+                }, body)
         }
 
         @Test func aRemovedClientLearnsItAndStopsConnecting() async throws {
@@ -125,9 +138,17 @@ extension ServerTests {
                 let other = try await w.client()
                 r.start()
                 other.start()
-                _ = try await r.awaitState("online") { $0.conn == .online }
-                _ = try await other.awaitState("online") { $0.conn == .online }
+                _ = try await r.awaitState("online") {
+                    $0.conn == .online && $0.devices[r.account.deviceId] != nil
+                }
+                _ = try await other.awaitState("online") {
+                    $0.conn == .online && $0.devices[r.account.deviceId] != nil
+                }
+                await other.loadDevices()
                 try await other.removeDevice(r.account.deviceId)
+                _ = try await other.awaitState("revocation completed") {
+                    $0.removals.contains { $0.phase == "complete" && $0.serverCleaned }
+                }
                 let st = try await r.awaitState("removed") { $0.removed }
                 #expect(st.conn == .offline)
                 // It stays put rather than reconnecting, also when asked to start.
@@ -154,8 +175,12 @@ extension ServerTests {
                 #expect(feed.value.events.count == 3)
                 follower.cancel()
                 await follower.value
-                try await eventually("the idle history to be reclaimed", ms: 5_000) { feed.value.events.isEmpty }
-                let restored = try await feed.await("the history again", ms: 5_000) { $0.events.count == 3 }
+                try await eventually("the idle history to be reclaimed", ms: 5_000) {
+                    feed.value.events.isEmpty
+                }
+                let restored = try await feed.await("the history again", ms: 5_000) {
+                    $0.events.count == 3
+                }
                 #expect(restored.seqs == [1, 2, 3])
                 // The snapshot handed out before did not change under its holder.
                 #expect(old.count == 3)
@@ -179,7 +204,9 @@ extension ServerTests {
                 _ = try await second.await("s2") { $0.events.count == 1 }
                 let third = r.events("s3")
                 _ = try await third.await("s3") { $0.events.count == 1 }
-                try await eventually("s2 to be reclaimed", ms: 5_000) { second.value.events.isEmpty }
+                try await eventually("s2 to be reclaimed", ms: 5_000) {
+                    second.value.events.isEmpty
+                }
                 #expect(active.value.events.count == 3)
             }
         }
@@ -236,7 +263,9 @@ extension ServerTests {
             try await world { w in
                 let r = try await w.client()
                 r.start()
-                let st = try await r.awaitState("session meta") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                let st = try await r.awaitState("session meta") {
+                    $0.conn == .online && $0.sessions["s1"]?.info != nil
+                }
                 let machine = try #require(st.machines[w.daemon.id])
                 #expect(machine.meta?.hostname == "fake-mac.local")
                 #expect(machine.online)
@@ -266,7 +295,8 @@ extension ServerTests {
                 r.start()
                 let id = w.daemon.id
                 _ = try await r.awaitState("online machine") {
-                    $0.conn == .online && $0.machines[id]?.online == true && $0.sessions["s1"]?.info != nil
+                    $0.conn == .online && $0.machines[id]?.online == true
+                        && $0.sessions["s1"]?.info != nil
                 }
                 var send = PBCommand()
                 send.send.sessionID = "s1"
@@ -298,7 +328,7 @@ extension ServerTests {
                     try await r.command("s1", interrupt())
                     Issue.record("expected unavailable")
                 } catch let e as CommandError {
-                    #expect(e.code == CommandError.unavailable)
+                    #expect(e.code == "authorization_unavailable")
                 }
             }
         }
@@ -308,10 +338,13 @@ extension ServerTests {
             r.start()
             let id = w.daemon.id
             _ = try await r.awaitState("online machine") {
-                $0.conn == .online && $0.machines[id]?.online == true && $0.sessions["s1"]?.info != nil
+                $0.conn == .online && $0.machines[id]?.online == true
+                    && $0.sessions["s1"]?.info != nil
             }
             try await w.daemon.putMachine("fake-mac.local", protocol: version)
-            _ = try await r.awaitState("machine protocol") { $0.machines[id]?.meta?.protocolVersion == version }
+            _ = try await r.awaitState("machine protocol") {
+                $0.machines[id]?.meta?.protocolVersion == version
+            }
             do {
                 try await r.command("s1", interrupt())
             } catch let e as CommandError {
@@ -345,7 +378,8 @@ extension ServerTests {
                 r.start()
                 let id = w.daemon.id
                 _ = try await r.awaitState("session") {
-                    $0.conn == .online && $0.sessions["s1"] != nil && $0.machines[id]?.online == true
+                    $0.conn == .online && $0.sessions["s1"] != nil
+                        && $0.machines[id]?.online == true
                 }
                 let heard = Frames()
                 let conn = try await r.openTerminal("s1", listener: heard)
@@ -358,8 +392,11 @@ extension ServerTests {
                 b.input = Data("\u{1b}[A".utf8)
                 conn.send(a)
                 conn.send(b)
-                #expect(try #require(await w.daemon.termInput.poll(5_000)).input == Data("中文\r".utf8))
-                #expect(try #require(await w.daemon.termInput.poll(5_000)).input == Data("\u{1b}[A".utf8))
+                #expect(
+                    try #require(await w.daemon.termInput.poll(5_000)).input == Data("中文\r".utf8))
+                #expect(
+                    try #require(await w.daemon.termInput.poll(5_000)).input
+                        == Data("\u{1b}[A".utf8))
                 conn.close()
                 // Closed by this side: the listener is not told.
                 #expect(await heard.closes.poll(300) == nil)
@@ -372,7 +409,8 @@ extension ServerTests {
                 r.start()
                 let id = w.daemon.id
                 _ = try await r.awaitState("session") {
-                    $0.conn == .online && $0.sessions["s1"] != nil && $0.machines[id]?.online == true
+                    $0.conn == .online && $0.sessions["s1"] != nil
+                        && $0.machines[id]?.online == true
                 }
                 await w.daemon.setReplayTerminal(true)
                 let heard = Frames()
@@ -390,10 +428,14 @@ extension ServerTests {
             try await world { w in
                 let r = try await w.client()
                 r.start()
-                _ = try await r.awaitState("session") { $0.conn == .online && $0.sessions["s1"] != nil }
+                _ = try await r.awaitState("session") {
+                    $0.conn == .online && $0.sessions["s1"] != nil
+                }
                 let heard = Frames()
                 // No such session: nothing is opened.
-                await #expect(throws: CommandError.self) { try await r.openTerminal("nope", listener: heard) }
+                await #expect(throws: CommandError.self) {
+                    try await r.openTerminal("nope", listener: heard)
+                }
                 w.server.stop()
                 do {
                     _ = try await r.openTerminal("s1", listener: heard)
@@ -412,7 +454,9 @@ extension ServerTests {
                 let api = try Api(server: w.server.url, http: w.http)
                 var hello = PBPeerFrame()
                 hello.hello.token = try await login(api: api, account: acct)
-                let socket = Socket(http: w.http, url: api.socketURL("/v1/stream"), hello: try hello.serializedData(), pingMs: 100, sleep: realSleep)
+                let socket = Socket(
+                    http: w.http, url: api.socketURL("/v1/stream"),
+                    hello: try hello.serializedData(), pingMs: 100, sleep: realSleep)
                 #expect(await socket.opened())
                 let first = try PBServerFrame(serializedBytes: try await socket.receive())
                 guard case .ready? = first.kind else {
@@ -440,11 +484,15 @@ extension ServerTests {
                 r.start()
                 _ = try await r.awaitState("online") { $0.conn == .online }
                 let initiation = try await Initiation.start(remote: r)
-                let link = try #require(PairLink.parse(initiation.link.url(web: "https://app.example.com")))
+                let link = try #require(
+                    PairLink.parse(initiation.link.url(web: "https://app.example.com")))
                 #expect(link.code == initiation.code)
                 let joinerEmoji = Mailbox<[String]>()
                 let http = w.http
-                async let joining = joinByPairing(link: link, http: http, onEmoji: { joinerEmoji.put($0) }, stopped: { false })
+                async let joining = joinByPairing(
+                    link: link, http: http, onEmoji: { joinerEmoji.put($0) }, stopped: { false },
+                    persist: { acct, record in try TestSecurity.get(acct.server).install(record) },
+                    confirm: { _ in true })
                 let (emoji, kind) = try await initiation.joined()
                 try await initiation.approve()
                 let acct = try await joining
@@ -456,7 +504,9 @@ extension ServerTests {
                 // The device that joined is the account's: it logs in and lists like any other.
                 let joined = try w.remote(acct)
                 joined.start()
-                _ = try await joined.awaitState("the new device's lists") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                _ = try await joined.awaitState("the new device's lists") {
+                    $0.conn == .online && $0.sessions["s1"]?.info != nil
+                }
             }
         }
 
@@ -481,7 +531,9 @@ extension ServerTests {
         }
 
         /// A client whose logins are counted, and the logins it was told to keep, in order.
-        private func counted(_ w: World, _ account: Account) throws -> (Remote, Counter, Mailbox<SavedLogin?>) {
+        private func counted(_ w: World, _ account: Account) throws -> (
+            Remote, Counter, Mailbox<SavedLogin?>
+        ) {
             let logins = Counter()
             let counting = Intercept.http(for: w.server.url) { request in
                 if request.url?.path.hasSuffix("/Login") == true { logins.increment() }
@@ -498,7 +550,10 @@ extension ServerTests {
                 first.start()
                 _ = try await first.awaitState("online") { $0.conn == .online }
                 let saved = try #require(await kept.poll(2000) ?? nil)
-                #expect(!saved.token.isEmpty && saved.expiresMs > Int64(Date().timeIntervalSince1970 * 1000) + 86_400_000)
+                #expect(
+                    !saved.token.isEmpty
+                        && saved.expiresMs > Int64(Date().timeIntervalSince1970 * 1000) + 86_400_000
+                )
                 #expect(logins.value == 1)
                 first.close()
 
@@ -523,7 +578,9 @@ extension ServerTests {
                 let acct = try await w.join()
                 let (r, logins, kept) = try counted(w, acct)
                 // A token the server never gave, as one it revoked or lost with its data: it lasts long by its own word.
-                let stale = SavedLogin(token: "not-a-token-of-this-server", expiresMs: Int64(Date().timeIntervalSince1970 * 1000) + 30 * 86_400_000)
+                let stale = SavedLogin(
+                    token: "not-a-token-of-this-server",
+                    expiresMs: Int64(Date().timeIntervalSince1970 * 1000) + 30 * 86_400_000)
                 r.keepLogin(stale) { kept.put($0) }
                 r.start()
                 // Refused with 1008: dropped first, then a login of the device's own.
@@ -548,7 +605,9 @@ extension ServerTests {
                 first.close()
 
                 let (second, logins, keptAgain) = try counted(w, acct)
-                let soon = SavedLogin(token: saved.token, expiresMs: Int64(Date().timeIntervalSince1970 * 1000) + 3_600_000)
+                let soon = SavedLogin(
+                    token: saved.token,
+                    expiresMs: Int64(Date().timeIntervalSince1970 * 1000) + 3_600_000)
                 second.keepLogin(soon) { keptAgain.put($0) }
                 second.start()
                 _ = try await second.awaitState("online") { $0.conn == .online }
@@ -570,6 +629,7 @@ extension ServerTests {
                 let other = try await w.client()
                 other.start()
                 _ = try await other.awaitState("online") { $0.conn == .online }
+                await other.loadDevices()
                 try await other.removeDevice(acct.deviceId)
                 _ = try await r.awaitState("removed", ms: 20_000) { $0.removed }
                 #expect(kept.all.last == .some(nil))
@@ -594,10 +654,14 @@ extension ServerTests {
                 let real = w.server.url
                 let routed = Intercept.http(for: hole.url) { $0.moved(to: real) }
                 let r = try w.remote(
-                    Account(server: hole.url, root: acct.root, deviceSeed: acct.deviceSeed, deviceId: acct.deviceId),
+                    Account(
+                        server: hole.url, root: acct.root, deviceSeed: acct.deviceSeed,
+                        deviceId: acct.deviceId),
                     http: routed, streamOpenMs: 300)
                 r.start()
-                _ = try await r.awaitState("missing Ready timeout") { $0.conn == .offline && $0.error.contains("超时") }
+                _ = try await r.awaitState("missing Ready timeout") {
+                    $0.conn == .offline && $0.error.contains("超时")
+                }
                 r.reconnectNow()
                 _ = try await r.awaitState("replacement ready") { $0.conn == .online }
                 #expect(hole.attempts.value == 2)
@@ -605,7 +669,9 @@ extension ServerTests {
         }
 
         /// How many logins a client makes when its first stream is closed with `code` and the next one works.
-        private func loginsWhenTheFirstStreamIsClosed(_ w: World, with code: Int) async throws -> Int {
+        private func loginsWhenTheFirstStreamIsClosed(_ w: World, with code: Int) async throws
+            -> Int
+        {
             let acct = try await w.join()
             let hole = try StreamBlackhole(firstClose: code)
             w.onClose { hole.close() }
@@ -616,7 +682,9 @@ extension ServerTests {
                 return request.moved(to: real)
             }
             let r = try w.remote(
-                Account(server: hole.url, root: acct.root, deviceSeed: acct.deviceSeed, deviceId: acct.deviceId), http: routed)
+                Account(
+                    server: hole.url, root: acct.root, deviceSeed: acct.deviceSeed,
+                    deviceId: acct.deviceId), http: routed)
             r.start()
             let lost = try await r.awaitState("the closed stream") { $0.conn == .offline }
             #expect(lost.error == "与 server 的连接断开")
@@ -652,7 +720,9 @@ extension ServerTests {
                     await cache.inner.putEvents(sessionId: sid, events: events)
                 }
                 let r = try w.remote(
-                    Account(server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed, deviceId: acct.deviceId),
+                    Account(
+                        server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed,
+                        deviceId: acct.deviceId),
                     cache: cache, frameQueue: 1)
                 r.start()
                 _ = try await r.awaitEvents("s1", 3)
@@ -661,7 +731,9 @@ extension ServerTests {
                 #expect(ev.seqs == Array(1...33))
                 // The queue did overflow: the stream was dropped and made again, and history filled the gap.
                 #expect(proxy.streams.value >= 2)
-                try await eventually("every event to be cached") { await cache.inner.events(sessionId: "s1").count == 33 }
+                try await eventually("every event to be cached") {
+                    await cache.inner.events(sessionId: "s1").count == 33
+                }
             }
         }
 
@@ -685,7 +757,9 @@ extension ServerTests {
                     return request
                 }
                 let r = try w.remote(
-                    Account(server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed, deviceId: acct.deviceId),
+                    Account(
+                        server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed,
+                        deviceId: acct.deviceId),
                     http: blocked)
                 r.start()
                 #expect(await entered.wait(5_000))
@@ -730,7 +804,9 @@ extension ServerTests {
                 let proxy = try CountingProxy(to: w.server.port)
                 w.onClose { proxy.close() }
                 let r = try w.remote(
-                    Account(server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed, deviceId: acct.deviceId))
+                    Account(
+                        server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed,
+                        deviceId: acct.deviceId))
                 r.start()
                 _ = try await r.awaitEvents("s1", 3)
                 r.reconnectNow()
@@ -783,7 +859,9 @@ extension ServerTests {
                 w.onClose { gate.set() }
                 let r = try await w.client(cache: cache)
                 r.start()
-                _ = try await r.awaitState("session") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                _ = try await r.awaitState("session") {
+                    $0.conn == .online && $0.sessions["s1"]?.info != nil
+                }
                 // Loading the history writes it to the cache, which hangs here.
                 _ = r.events("s1")
                 #expect(await blocked.wait(10_000))
@@ -802,7 +880,9 @@ extension ServerTests {
                 let base = MemoryCache()
                 let source = try await w.client(cache: base)
                 source.start()
-                _ = try await source.awaitState("lists") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                _ = try await source.awaitState("lists") {
+                    $0.conn == .online && $0.sessions["s1"]?.info != nil
+                }
                 source.stop()
                 let gate = Signal()
                 let blocked = Signal()
@@ -824,7 +904,9 @@ extension ServerTests {
                 #expect(r.current.conn != .online)
                 gate.set()
                 let mid = w.daemon.id
-                _ = try await r.awaitState("the machine online") { $0.conn == .online && $0.machines[mid]?.online == true }
+                _ = try await r.awaitState("the machine online") {
+                    $0.conn == .online && $0.machines[mid]?.online == true
+                }
                 await sleepMs(200)
                 #expect(r.current.machines[mid]?.online == true)
             }
@@ -835,13 +917,19 @@ extension ServerTests {
                 let r = try await w.client()
                 r.start()
                 let id = w.daemon.id
-                _ = try await r.awaitState("online machine") { $0.conn == .online && $0.machines[id]?.online == true }
+                _ = try await r.awaitState("online machine") {
+                    $0.conn == .online && $0.machines[id]?.online == true
+                }
                 let a = Attempt()
-                let first = try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) }
+                let first = try a.next {
+                    try r.prepare(machineId: id, sessionId: "s1", interrupt())
+                }
                 try await r.forward(first)
                 // Pretend the answer was lost: the retry carries the same request ID and deadline.
                 a.settle(CommandError(CommandError.unknownOutcome, "lost"))
-                try await r.forward(try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) })
+                _ = try await w.join()  // Membership advances; retry must reauthorize the same intent.
+                try await r.forward(
+                    try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) })
                 let (h1, _) = try #require(await w.daemon.commands.poll(5_000))
                 let (h2, _) = try #require(await w.daemon.commands.poll(5_000))
                 #expect(h1.requestID == h2.requestID)
@@ -854,7 +942,9 @@ extension ServerTests {
                 let r = try await w.client()
                 r.start()
                 let daemon = w.daemon
-                _ = try await r.awaitState("online machine") { $0.conn == .online && $0.machines[daemon.id]?.online == true }
+                _ = try await r.awaitState("online machine") {
+                    $0.conn == .online && $0.machines[daemon.id]?.online == true
+                }
                 // The daemon takes the command and drops off before answering: it may
                 // have run. The retry then finds the machine offline, which says
                 // nothing about the first try.
@@ -863,7 +953,8 @@ extension ServerTests {
                     return FakeDaemon.defaultResult(c)
                 }
                 do {
-                    try await r.forward(try r.prepare(machineId: daemon.id, sessionId: "s1", interrupt()))
+                    try await r.forward(
+                        try r.prepare(machineId: daemon.id, sessionId: "s1", interrupt()))
                     Issue.record("expected an error")
                 } catch let e as CommandError {
                     #expect(e.code == CommandError.unknownOutcome)
@@ -879,6 +970,7 @@ extension ServerTests {
                 let p = try r.prepare(machineId: w.daemon.id, sessionId: "s1", interrupt())
                 // The login is refused from here on: the retry is told to log in
                 // again, and that fails. The command it retries may have run.
+                await r.loadDevices()
                 try await r.removeDevice(r.account.deviceId)
                 do {
                     try await r.forward(p, retryOfUnknown: true)
@@ -894,10 +986,14 @@ extension ServerTests {
                 let r = try await w.client()
                 r.start()
                 let id = w.daemon.id
-                _ = try await r.awaitState("online machine") { $0.conn == .online && $0.machines[id]?.online == true }
+                _ = try await r.awaitState("online machine") {
+                    $0.conn == .online && $0.machines[id]?.online == true
+                }
                 await w.daemon.setGarbleResults(true)
                 let a = Attempt()
-                let first = try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) }
+                let first = try a.next {
+                    try r.prepare(machineId: id, sessionId: "s1", interrupt())
+                }
                 var shown: Error?
                 do {
                     try await r.forward(first)
@@ -907,7 +1003,9 @@ extension ServerTests {
                 // The daemon did get it; its answer could not be read. Retry the same.
                 #expect((shown as? CommandError)?.unknown == true)
                 #expect(a.frozen)
-                #expect(try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) } === first)
+                #expect(
+                    try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) }
+                        === first)
             }
         }
 
@@ -915,7 +1013,9 @@ extension ServerTests {
             try await world { w in
                 let r = try await w.client(linkGraceMs: 300)
                 r.start()
-                let on = try await r.awaitState("session") { $0.link == .online && $0.sessions["s1"]?.info != nil }
+                let on = try await r.awaitState("session") {
+                    $0.link == .online && $0.sessions["s1"]?.info != nil
+                }
                 #expect(!on.unlinked)
                 w.server.stop()
                 // Just lost: it is being remade, and what was known still shows.
@@ -951,7 +1051,9 @@ extension ServerTests {
             try await world { w in
                 let r = try await w.client()
                 r.start()
-                _ = try await r.awaitState("session") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                _ = try await r.awaitState("session") {
+                    $0.conn == .online && $0.sessions["s1"]?.info != nil
+                }
                 w.server.stop()
                 // Which comes first is a race the client does not decide: the read failing, which is
                 // said on the session, or the stream dropping, after which a failed read is not said
@@ -964,7 +1066,9 @@ extension ServerTests {
                 // Back again, a retry loads it and clears the error.
                 try await w.server.start()
                 r.retryEvents("s1")
-                let ok = try await events.await("the history", ms: 20_000) { $0.events.count == 3 && $0.fetchError == nil }
+                let ok = try await events.await("the history", ms: 20_000) {
+                    $0.events.count == 3 && $0.fetchError == nil
+                }
                 #expect(ok.events.count == 3)
             }
         }
@@ -975,18 +1079,26 @@ extension ServerTests {
                 let source = try await w.client(cache: cache)
                 source.start()
                 _ = try await source.awaitEvents("s1", 3)
-                try await eventually("the events cached") { await cache.events(sessionId: "s1").count == 3 }
+                try await eventually("the events cached") {
+                    await cache.events(sessionId: "s1").count == 3
+                }
                 source.close()
                 let good = try #require(await cache.events(sessionId: "s1").first { $0.seq == 2 })
-                cache.damage(sessionId: "s1", seq: 2) { $0.envelope.ciphertext = Data($0.envelope.ciphertext.reversed()) }
+                cache.damage(sessionId: "s1", seq: 2) {
+                    $0.envelope.ciphertext = Data($0.envelope.ciphertext.reversed())
+                }
 
                 let r = try await w.client(cache: cache)
                 r.start()
-                let ev = try await r.events("s1").await("the whole history") { $0.loaded && $0.events.count == 3 }
+                let ev = try await r.events("s1").await("the whole history") {
+                    $0.loaded && $0.events.count == 3
+                }
                 #expect(ev.seqs == [1, 2, 3])
                 // Nothing is missing, so nothing says so; and the next opening does not meet the bad copy again.
                 #expect(ev.error == nil)
-                try await eventually("the cache filled again") { await cache.events(sessionId: "s1").count == 3 }
+                try await eventually("the cache filled again") {
+                    await cache.events(sessionId: "s1").count == 3
+                }
                 let again = try #require(await cache.events(sessionId: "s1").first { $0.seq == 2 })
                 #expect(again.envelope == good.envelope)
             }
@@ -1018,7 +1130,9 @@ extension ServerTests {
                 let cache = MemoryCache()
                 let r = try await w.client(cache: cache)
                 r.start()
-                _ = try await r.awaitState("session") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                _ = try await r.awaitState("session") {
+                    $0.conn == .online && $0.sessions["s1"]?.info != nil
+                }
                 let png = Data([0x89, 0x50, 0x4E, 0x47, 13, 10, 26, 10, 1, 2, 3])
                 var payload = PBImagePayload()
                 payload.format = .png
@@ -1032,18 +1146,34 @@ extension ServerTests {
                     return
                 }
                 #expect(loaded.data == png)
+                let legacyID = "00000000000000000000000000000003"
+                let legacyKey = try #require(await w.daemon.sessionKeys["s1"])
+                var legacyHeader = PBHeader()
+                legacyHeader.kind = .image
+                legacyHeader.machineID = w.daemon.id
+                legacyHeader.sessionID = "s1"
+                legacyHeader.requestID = legacyID
+                let legacy = try Envelopes.seal(
+                    key: legacyKey, header: legacyHeader, message: payload)
+                await cache.putImage(key: "s1/" + legacyID, envelope: try legacy.serializedData())
+                #expect(try await r.image("s1", imageId: legacyID) == .legacy(payload))
                 // What the cache holds is the sealed envelope, not the picture.
                 let stored = try #require(cache.images["s1/00000000000000000000000000000001"])
                 #expect(stored.range(of: png) == nil)
                 // The second time it comes from the cache, and is opened and checked again.
                 #expect(try await r.image("s1", imageId: "00000000000000000000000000000001") == got)
-                #expect(try await r.image("s1", imageId: "ffffffffffffffffffffffffffffffff") == .missing)
+                #expect(
+                    try await r.image("s1", imageId: "ffffffffffffffffffffffffffffffff") == .missing
+                )
                 // A format that does not match its bytes is refused.
                 var wrong = PBImagePayload()
                 wrong.format = .jpeg
                 wrong.data = png
                 try await w.daemon.putImage("s1", "00000000000000000000000000000002", wrong)
-                guard case .corrupt = try await r.image("s1", imageId: "00000000000000000000000000000002") else {
+                guard
+                    case .corrupt = try await r.image(
+                        "s1", imageId: "00000000000000000000000000000002")
+                else {
                     Issue.record("expected a corrupt image")
                     return
                 }
@@ -1061,7 +1191,9 @@ extension ServerTests {
                 try await a.changePrefs(.pin(path: "/Users/me/Code/foo"))
                 // b has not seen a's write yet when it writes: the server refuses, b redoes its change on a's.
                 try await b.changePrefs(.hide(path: "/Users/me/Code/billing"))
-                let sa = try await a.awaitState("a sees both") { $0.prefs?.hidden.contains("/Users/me/Code/billing") == true }
+                let sa = try await a.awaitState("a sees both") {
+                    $0.prefs?.hidden.contains("/Users/me/Code/billing") == true
+                }
                 #expect(sa.prefs?.pinned == ["/Users/me/Code/foo"])
                 #expect(sa.prefs?.revision == 2)
             }
@@ -1071,7 +1203,13 @@ extension ServerTests {
             try await world { w in
                 let reads = Counter()
                 let flaky = Intercept.http(for: w.server.url) { request in
-                    if request.url?.path.hasSuffix("/GetAccountPrefs") == true, reads.increment() == 1 {
+                    if request.url?.path.hasSuffix("/Forward") == true,
+                        let body = request.httpBody,
+                        let rpc = try? PBForwardRequest(serializedBytes: body),
+                        let capsule = try? DeviceSecurity.parseCapsule(rpc.securityRpc),
+                        capsule.method == .catalog,
+                        reads.increment() == 1
+                    {
                         throw URLError(.networkConnectionLost)
                     }
                     return request
@@ -1084,7 +1222,7 @@ extension ServerTests {
                 let st = try await r.awaitState("preferences") { $0.prefs != nil }
                 #expect(st.conn == .online)
                 #expect(prefsBlocked(st) == nil)
-                #expect(reads.value == 2)
+                #expect(reads.value >= 2)
             }
         }
 
@@ -1095,11 +1233,15 @@ extension ServerTests {
                 a.start()
                 b.start()
                 let id = a.account.deviceId
-                _ = try await a.awaitState("a devices") { $0.conn == .online && $0.devices[id] != nil }
+                _ = try await a.awaitState("a devices") {
+                    $0.conn == .online && $0.devices[id] != nil
+                }
                 _ = try await b.awaitState("b sees a") { $0.devices[id] != nil }
                 try await a.describeSelf(platform: "ios", description: "iOS 26 · iPhone")
                 try await a.renameDevice(id, name: "我的手机")
-                let sb = try await b.awaitState("b sees the name") { $0.devices[id]?.meta?.name == "我的手机" }
+                let sb = try await b.awaitState("b sees the name") {
+                    $0.devices[id]?.meta?.name == "我的手机"
+                }
                 // Naming it kept what it said of itself.
                 #expect(sb.devices[id]?.meta?.platform == "ios")
                 #expect(sb.devices[id]?.kind == .client)
@@ -1109,28 +1251,42 @@ extension ServerTests {
         @Test func aDeviceListInFlightDoesNotUndoWhatWasPushedMeanwhile() async throws {
             try await world { w in
                 let hold = Signal()
+                let intercepted = Counter()
                 let held = Signal()
                 let gate = Signal()
                 w.onClose { gate.set() }
-                let slow = Intercept.http(for: w.server.url, answered: { request in
-                    guard hold.isSet, request.url?.path.hasSuffix("/ListDevices") == true else { return }
-                    held.set()
-                    await gate.wait()
-                }) { $0 }
+                let slow = Intercept.http(
+                    for: w.server.url,
+                    answered: { request in
+                        guard hold.isSet, request.url?.path.hasSuffix("/ListDevices") == true,
+                            intercepted.increment() == 1
+                        else { return }
+                        held.set()
+                        await gate.wait()
+                    }
+                ) { $0 }
                 let a = try w.remote(try await w.join(), http: slow)
                 let other = try await w.client()
                 let leaving = try await w.join()
                 a.start()
                 other.start()
-                _ = try await a.awaitState("a devices") { $0.conn == .online && $0.devices[leaving.deviceId] != nil }
+                _ = try await a.awaitState("a devices") {
+                    $0.conn == .online && $0.devices[leaving.deviceId] != nil
+                }
                 _ = try await other.awaitState("other online") { $0.conn == .online }
                 // The server has answered with the list as it is now; the answer is still on its way.
                 hold.set()
                 let reading = Task { await a.refreshDevices() }
                 #expect(await held.wait(10_000))
+                await other.loadDevices()
                 try await other.removeDevice(leaving.deviceId)
+                _ = try await other.awaitState("revocation completed") {
+                    $0.removals.contains { $0.phase == "complete" && $0.serverCleaned }
+                }
                 let joined = try await w.join()
-                _ = try await a.awaitState("both pushes") { $0.devices[leaving.deviceId] == nil && $0.devices[joined.deviceId] != nil }
+                _ = try await a.awaitState("both pushes") {
+                    $0.devices[leaving.deviceId] == nil && $0.devices[joined.deviceId] != nil
+                }
                 gate.set()
                 await reading.value
                 #expect(a.current.devices[leaving.deviceId] == nil)
@@ -1144,7 +1300,9 @@ extension ServerTests {
                 let r = try await w.client()
                 r.start()
                 let id = w.daemon.id
-                _ = try await r.awaitState("online machine") { $0.conn == .online && $0.machines[id]?.online == true }
+                _ = try await r.awaitState("online machine") {
+                    $0.conn == .online && $0.machines[id]?.online == true
+                }
                 #expect(try await r.pingServer() >= 0)
                 // The fake daemon has no settings: its refusal is still an answer that made the round trip.
                 do {

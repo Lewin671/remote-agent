@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -57,7 +58,7 @@ func TestStorageGenerationGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 	marker := filepath.Join(dir, "state-generation")
-	for _, text := range []string{"0", "2", "corrupt"} {
+	for _, text := range []string{"0", strconv.Itoa(BuildPolicy().State + 1), "corrupt"} {
 		if err := os.WriteFile(marker, []byte(text), 0600); err != nil {
 			t.Fatal(err)
 		}

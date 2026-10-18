@@ -18,7 +18,7 @@ func TestRegistrationOlderThanFloorIsRefusedForUnknownDevices(t *testing.T) {
 	make := func(created int64) (*pb.RegisterDeviceRequest, ed25519.PrivateKey, string) {
 		pub, priv, _ := ed25519.GenerateKey(nil)
 		raw, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: pub, Kind: pb.DeviceKind_DEVICE_KIND_CLIENT, CreatedMs: created})
-		return &pb.RegisterDeviceRequest{Registration: raw, Signature: ts.keys.SignRegistration(raw), SetupToken: "setup"}, priv, e2e.DeviceID(pub)
+		return &pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: raw, Signature: ts.keys.SignRegistration(raw), SetupToken: "setup"}, priv, e2e.DeviceID(pub)
 	}
 	old := time.Now().Add(-time.Hour).UnixMilli()
 	known, knownPriv, knownID := make(old)

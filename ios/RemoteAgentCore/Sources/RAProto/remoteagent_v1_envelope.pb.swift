@@ -207,6 +207,15 @@ public struct PBEnvelope: Sendable {
   /// header's sender must be the ID of the signing device.
   public var signature: Data = Data()
 
+  /// Version-2 canonical deviceauth Header; the protobuf Header above is only
+  /// a routing projection. Receivers compare every projection field to this.
+  public var securityHeader: Data = Data()
+
+  /// Exact-ciphertext authority authorization and its Ed25519 signature.
+  public var authorization: Data = Data()
+
+  public var authorizationSignature: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -273,7 +282,7 @@ extension PBCompression: SwiftProtobuf._ProtoNameProviding {
 
 extension PBEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Envelope"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}header\0\u{1}nonce\0\u{1}ciphertext\0\u{1}signature\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}header\0\u{1}nonce\0\u{1}ciphertext\0\u{1}signature\0\u{3}security_header\0\u{1}authorization\0\u{3}authorization_signature\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -285,6 +294,9 @@ extension PBEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
       case 2: try { try decoder.decodeSingularBytesField(value: &self.nonce) }()
       case 3: try { try decoder.decodeSingularBytesField(value: &self.ciphertext) }()
       case 4: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
+      case 5: try { try decoder.decodeSingularBytesField(value: &self.securityHeader) }()
+      case 6: try { try decoder.decodeSingularBytesField(value: &self.authorization) }()
+      case 7: try { try decoder.decodeSingularBytesField(value: &self.authorizationSignature) }()
       default: break
       }
     }
@@ -303,6 +315,15 @@ extension PBEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
     if !self.signature.isEmpty {
       try visitor.visitSingularBytesField(value: self.signature, fieldNumber: 4)
     }
+    if !self.securityHeader.isEmpty {
+      try visitor.visitSingularBytesField(value: self.securityHeader, fieldNumber: 5)
+    }
+    if !self.authorization.isEmpty {
+      try visitor.visitSingularBytesField(value: self.authorization, fieldNumber: 6)
+    }
+    if !self.authorizationSignature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.authorizationSignature, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -311,6 +332,9 @@ extension PBEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
     if lhs.nonce != rhs.nonce {return false}
     if lhs.ciphertext != rhs.ciphertext {return false}
     if lhs.signature != rhs.signature {return false}
+    if lhs.securityHeader != rhs.securityHeader {return false}
+    if lhs.authorization != rhs.authorization {return false}
+    if lhs.authorizationSignature != rhs.authorizationSignature {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

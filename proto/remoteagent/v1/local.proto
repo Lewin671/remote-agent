@@ -230,6 +230,7 @@ message ResolveApprovalRequest {
   // has no such option it allows this request only, and ApprovalResolved
   // tells which happened. Needs MachineCapabilities.approval_always.
   bool always = 5;
+  uint64 observed_event_seq = 6;
 }
 
 message ResolveApprovalResponse {}
@@ -246,6 +247,7 @@ message AnswerQuestionRequest {
   // 1-based option numbers for a multi_select question (Claude Code); when
   // set, option is ignored.
   repeated int32 options = 5;
+  uint64 observed_event_seq = 6;
 }
 
 message AnswerQuestionResponse {}
@@ -348,6 +350,8 @@ enum PlanChoice {
 message AnswerPlanRequest {
   string session_id = 1;
   PlanChoice choice = 2;
+  uint64 observed_event_seq = 3;
+  bytes observed_screen_hash = 4;
 }
 
 message AnswerPlanResponse {}

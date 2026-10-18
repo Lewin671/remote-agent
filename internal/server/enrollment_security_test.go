@@ -46,12 +46,12 @@ func TestRemovedDeviceCannotRegisterNewDeviceKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	admin := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, owner, ownerID)))
-	if _, err := admin.RemoveDevice(context.Background(), connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: removedID})); err != nil {
+	if _, err := admin.RemoveDevice(context.Background(), connect.NewRequest(ts.removalProof(t, ownerID, removedID))); err != nil {
 		t.Fatal(err)
 	}
 	pub, _, _ := ed25519.GenerateKey(nil)
 	raw, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: pub, Kind: pb.DeviceKind_DEVICE_KIND_CLIENT, CreatedMs: time.Now().UnixMilli()})
-	_, err = ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{Registration: raw, Signature: ts.keys.SignRegistration(raw), SetupToken: "setup"}))
+	_, err = ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: raw, Signature: ts.keys.SignRegistration(raw), SetupToken: "setup"}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("removed root holder minted a fresh identity: %v", err)
 	}
@@ -61,7 +61,7 @@ func candidateRequest(t *testing.T, ts *testServer) *pb.RegisterDeviceRequest {
 	t.Helper()
 	pub, _, _ := ed25519.GenerateKey(nil)
 	raw, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: pub, Kind: pb.DeviceKind_DEVICE_KIND_CLIENT, CreatedMs: time.Now().UnixMilli()})
-	return &pb.RegisterDeviceRequest{Registration: raw, Signature: ts.keys.SignRegistration(raw)}
+	return &pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: raw, Signature: ts.keys.SignRegistration(raw)}
 }
 
 func TestEnrollmentApprovalCannotBeSubstitutedOrUsedAfterRevocation(t *testing.T) {

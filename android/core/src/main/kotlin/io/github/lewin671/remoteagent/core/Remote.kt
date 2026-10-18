@@ -7,6 +7,7 @@ package io.github.lewin671.remoteagent.core
 
 import com.connectrpc.Code
 import com.connectrpc.ConnectException
+import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.CommandResult
 import io.github.lewin671.remoteagent.proto.Envelope
@@ -15,6 +16,7 @@ import io.github.lewin671.remoteagent.proto.ForwardRequest
 import io.github.lewin671.remoteagent.proto.GetEventsRequest
 import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.ListMachinesRequest
+import io.github.lewin671.remoteagent.proto.ListModelsRequest
 import io.github.lewin671.remoteagent.proto.ListModelsResponse
 import io.github.lewin671.remoteagent.proto.ListRemoteSessionsRequest
 import io.github.lewin671.remoteagent.proto.LoginResponse
@@ -25,16 +27,17 @@ import io.github.lewin671.remoteagent.proto.PeerFrame
 import io.github.lewin671.remoteagent.proto.RemoteSession
 import io.github.lewin671.remoteagent.proto.RemoveDeviceRequest
 import io.github.lewin671.remoteagent.proto.ServerFrame
-import io.github.lewin671.remoteagent.proto.SessionCursor
 import io.github.lewin671.remoteagent.proto.Session
+import io.github.lewin671.remoteagent.proto.SessionCursor
 import io.github.lewin671.remoteagent.proto.StoredEvent
 import io.github.lewin671.remoteagent.proto.StreamHello
 import io.github.lewin671.remoteagent.proto.TermHello
 import io.github.lewin671.remoteagent.proto.TerminalFrame
-import io.github.lewin671.remoteagent.proto.Agent
-import io.github.lewin671.remoteagent.proto.ListModelsRequest
+import java.util.TreeMap
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -42,6 +45,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
@@ -57,6 +61,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -64,19 +71,24 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
-import java.util.TreeMap
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
-import kotlin.random.Random
 
-enum class ConnState { CONNECTING, ONLINE, OFFLINE }
+enum class ConnState {
+    CONNECTING,
+    ONLINE,
+    OFFLINE,
+}
 
 /**
- * Which stretch of the way to the computer is down, the nearest one only
- * (client-v30 「断线」): past it nothing is known. WAITING is a connection
- * being made or just lost, which mostly comes back by itself.
+ * Which stretch of the way to the computer is down, the nearest one only (client-v30 「断线」): past it
+ * nothing is known. WAITING is a connection being made or just lost, which mostly comes back by
+ * itself.
  */
-enum class Link { ONLINE, WAITING, NO_NETWORK, NO_SERVER }
+enum class Link {
+    ONLINE,
+    WAITING,
+    NO_NETWORK,
+    NO_SERVER,
+}
 
 data class MachineView(
     val id: String,
@@ -94,24 +106,34 @@ data class SessionView(
     val lastSeq: Long = 0,
     val updatedMs: Long = 0,
     /**
-     * When the session ended as the server lists it (RemoteSession.ended_ms),
-     * 0 while it has not. It only places the session among the pages of the
-     * listing; what is shown and sorted by comes from [info].
+     * When the session ended as the server lists it (RemoteSession.ended_ms), 0 while it has not.
+     * It only places the session among the pages of the listing; what is shown and sorted by comes
+     * from [info].
      */
     val listedEndedMs: Long = 0,
 )
 
-/** A place in the server's listing of ended sessions: the latest ended first, by session ID where those are equal. */
+/**
+ * A place in the server's listing of ended sessions: the latest ended first, by session ID where
+ * those are equal.
+ */
 data class SessionPlace(val endedMs: Long, val sessionId: String)
 
-/** Whether a session ended at [endedMs] comes after [place] in the listing; one that has not ended is never there. */
+/**
+ * Whether a session ended at [endedMs] comes after [place] in the listing; one that has not ended
+ * is never there.
+ */
 fun afterPlace(endedMs: Long, sessionId: String, place: SessionPlace): Boolean =
-    endedMs != 0L && (endedMs < place.endedMs || (endedMs == place.endedMs && sessionId > place.sessionId))
+    endedMs != 0L &&
+        (endedMs < place.endedMs || (endedMs == place.endedMs && sessionId > place.sessionId))
 
 /** Ended sessions asked for per page of the listing. */
 const val SESSION_PAGE = 50
 
-/** How long after the lists could not be fetched they are asked for again; twice as long each time, up to half a minute. */
+/**
+ * How long after the lists could not be fetched they are asked for again; twice as long each time,
+ * up to half a minute.
+ */
 private const val LIST_RETRY_MS = 2_000L
 
 data class RemoteState(
@@ -121,19 +143,24 @@ data class RemoteState(
     val error: String = "",
     /** The lists have been fetched once since start, or read from the cache. */
     val loaded: Boolean = false,
-    /** When the connection was last lost; 0 while online. Timers stop here: what happened since is not known. */
+    /**
+     * When the connection was last lost; 0 while online. Timers stop here: what happened since is
+     * not known.
+     */
     val offlineSinceMs: Long = 0,
     /** The account's project preferences; null until read (from the server or the cache). */
     val prefs: PrefsObject? = null,
     /** The account's devices, machines and clients (ListDevices). */
     val devices: Map<String, DeviceView> = emptyMap(),
-    /** The server no longer knows this device: removed from the account, or the server's data is gone. */
+    /**
+     * The server no longer knows this device: removed from the account, or the server's data is
+     * gone.
+     */
     val removed: Boolean = false,
     /**
-     * Where the next page of ended sessions starts (architecture §8
-     * 「会话列表分页」): [sessions] holds every session that has not ended and
-     * the ended ones up to here, besides any fetched on their own. Null when
-     * every page was fetched, and before the first one ([sessionsListed]).
+     * Where the next page of ended sessions starts (architecture §8 「会话列表分页」): [sessions] holds
+     * every session that has not ended and the ended ones up to here, besides any fetched on their
+     * own. Null when every page was fetched, and before the first one ([sessionsListed]).
      */
     val sessionsNext: SessionPlace? = null,
     /** A page of the listing is being fetched. */
@@ -141,25 +168,32 @@ data class RemoteState(
     /** Why the last page could not be fetched; empty once one was, or the first page came again. */
     val sessionsError: String = "",
     /**
-     * The listing's first page was fetched in this run. Before that the
-     * sessions held are what the cache kept of an earlier run, and how many
-     * pages there are is not known.
+     * The listing's first page was fetched in this run. Before that the sessions held are what the
+     * cache kept of an earlier run, and how many pages there are is not known.
      */
     val sessionsListed: Boolean = true,
     val link: Link = Link.WAITING,
-    /** The lists came from the server since start: what they say of the computers is not from the cache. */
+    /**
+     * The lists came from the server since start: what they say of the computers is not from the
+     * cache.
+     */
     val synced: Boolean = false,
+    val authorityDeviceId: String = "",
+    val removals: List<DeviceSecurityClient.Removal> = emptyList(),
     /** The failure behind [error] in its own words, for the details. */
     val errorDetail: String = "",
 ) {
     /**
-     * Nothing here is known to still hold: the server is out of reach, or
-     * has not been reached yet. A connection lost a moment ago does not count.
+     * Nothing here is known to still hold: the server is out of reach, or has not been reached yet.
+     * A connection lost a moment ago does not count.
      */
-    val unlinked: Boolean get() = link == Link.NO_NETWORK || link == Link.NO_SERVER || (link == Link.WAITING && !synced)
+    val unlinked: Boolean
+        get() =
+            link == Link.NO_NETWORK || link == Link.NO_SERVER || (link == Link.WAITING && !synced)
 
     /** The server has, or may have, ended sessions that were not fetched yet. */
-    val moreSessions: Boolean get() = !sessionsListed || sessionsNext != null
+    val moreSessions: Boolean
+        get() = !sessionsListed || sessionsNext != null
 }
 
 /** A device of the account; a client's name is in its sealed metadata. */
@@ -181,19 +215,31 @@ data class SessionEvents(
     val error: String? = null,
     /** Set when the last fetch failed; the next connection fetches again. */
     val fetchError: String? = null,
+    val live: io.github.lewin671.remoteagent.proto.LiveSnapshot? = null,
+    val unverifiedLegacy: Boolean = false,
+    val liveError: String? = null,
+    val verifiedEvents: List<Event> = events,
 )
 
 /** Where envelopes are cached between runs. Only ciphertext is stored. */
 interface CipherCache {
     suspend fun machines(): List<Machine>
+
     suspend fun sessions(): List<RemoteSession>
+
     suspend fun events(sessionId: String): List<StoredEvent>
+
     suspend fun putMachine(m: Machine)
+
     suspend fun putSession(s: RemoteSession)
+
     suspend fun putEvents(sessionId: String, events: List<StoredEvent>)
 
-    /** Forgets a session's events, e.g. when one of them does not open; the session stays listed. */
+    /**
+     * Forgets a session's events, e.g. when one of them does not open; the session stays listed.
+     */
     suspend fun dropEvents(sessionId: String)
+
     suspend fun removeMachine(id: String)
 
     /** A session that no longer exists: its entry and its events. */
@@ -203,18 +249,20 @@ interface CipherCache {
     suspend fun unlistSession(id: String)
 
     /**
-     * Notes whose a session outside the cached list is (one of a later page,
-     * or fetched by its ID), so that events kept for it go with its machine.
-     * A session already noted, listed or not, is left as it is.
+     * Notes whose a session outside the cached list is (one of a later page, or fetched by its ID),
+     * so that events kept for it go with its machine. A session already noted, listed or not, is
+     * left as it is.
      */
     suspend fun keepOwner(s: RemoteSession) {}
 
     /** An image's display copy as fetched: its sealed envelope, never decrypted bytes. */
     suspend fun image(key: String): ByteArray? = null
+
     suspend fun putImage(key: String, envelope: ByteArray) {}
 
     /** Other sealed objects by name, such as the account's project preferences. */
     suspend fun blob(name: String): ByteArray? = null
+
     suspend fun putBlob(name: String, data: ByteArray) {}
 }
 
@@ -225,17 +273,29 @@ class PreparedCommand(
     val requestId: String,
     val deadlineMs: Long,
     val envelope: Envelope,
-)
+    internal val command: Command? = null,
+) {
+    internal val sealMutex = kotlinx.coroutines.sync.Mutex()
+    internal var authorizedEnvelope: Envelope? = null
+
+    override fun toString() = "PreparedCommand(request=$requestId)"
+}
 
 interface TermListener {
     /** Called on the socket's reader thread, in order. */
     fun onFrame(frame: TerminalFrame)
+
     fun onClose(reason: String)
 }
 
-class TermConn internal constructor(private val ws: WebSocket, private val seal: (TerminalFrame) -> ByteArray, private val closeLocal: () -> Unit) {
+class TermConn
+internal constructor(
+    private val ws: WebSocket,
+    private val sendFrame: (TerminalFrame) -> Unit,
+    private val closeLocal: () -> Unit,
+) {
     fun send(frame: TerminalFrame) {
-        ws.send(seal(frame).toByteString())
+        sendFrame(frame)
     }
 
     fun close() {
@@ -245,6 +305,7 @@ class TermConn internal constructor(private val ws: WebSocket, private val seal:
 }
 
 internal fun ucmp(a: Long, b: Long): Int = java.lang.Long.compareUnsigned(a, b)
+
 internal fun umax(a: Long, b: Long): Long = if (ucmp(a, b) >= 0) a else b
 
 const val COMMAND_TTL_MS = 60_000L
@@ -265,18 +326,51 @@ class Remote(
     private val cache: CipherCache? = null,
     private val log: (String) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
-    /** Stream frames waiting to be handled before the stream is dropped and caught up from history. */
+    /**
+     * Stream frames waiting to be handled before the stream is dropped and caught up from history.
+     */
     private val frameQueue: Int = 1024,
     private val historyIdleMs: Long = 60_000,
     private val historyIdleCount: Int = 8,
     private val historyIdleBytes: Long = 16L * 1024 * 1024,
     private val streamOpenMs: Long = STREAM_OPEN_MS,
-    /** How long a lost connection is only being remade, before the server counts as out of reach. */
+    /**
+     * How long a lost connection is only being remade, before the server counts as out of reach.
+     */
     private val linkGraceMs: Long = 10_000,
+    private val securityStorage: DeviceSecurity.Storage? = null,
 ) {
     private val keys = Keys.derive(account.root)
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http)
+    val security =
+        DeviceSecurityClient(
+            securityStorage ?: MissingDeviceSecurityStorage,
+            account.deviceId,
+            device,
+            expectedAccount = deviceId(keys.account.publicKey),
+        ) { capsule ->
+            if (token.isEmpty()) token = signIn()
+            val request =
+                ForwardRequest.newBuilder()
+                    .setMachineId(capsule.to)
+                    .setSecurityRpc(
+                        com.google.protobuf.ByteString.copyFrom(
+                            DeviceSecurityRPC.capsuleBytes(capsule),
+                        ),
+                    )
+                    .build()
+            val result = api.client.forward(request, Api.headers(token)).value()
+            if (result.hasResult()) throw DeviceSecurity.Failure("untrusted")
+            DeviceSecurityRPC.parseCapsule(result.securityRpc.toByteArray())
+        }
+    private var authorityDeviceId = ""
+    private val trustedMembers = HashMap<String, DeviceSecurity.Member>()
+    private val trustedMetadata = HashMap<String, Envelope>()
+    private val deviceBindings = HashMap<String, Pair<ByteArray, ByteArray>>()
+    private var directoryVersion = 0L
+    private var removals = emptyList<DeviceSecurityClient.Removal>()
+    private var removalJob: Job? = null
     private val dispatcher = Dispatchers.IO.limitedParallelism(1)
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
@@ -288,6 +382,11 @@ class Remote(
     private val sessionKeys = ConcurrentHashMap<String, ByteArray>()
     private val buffers = HashMap<String, Buffer>()
     private val eventFlows = ConcurrentHashMap<String, MutableStateFlow<SessionEvents>>()
+    private val liveErrors = ConcurrentHashMap<String, String>()
+    private val liveSnapshots =
+        ConcurrentHashMap<String, io.github.lewin671.remoteagent.proto.LiveSnapshot>()
+    private val liveJobs = HashMap<String, Job>()
+    private val legacySessions = HashSet<String>()
     private var conn = ConnState.CONNECTING
     private var error = ""
     private var loaded = false
@@ -315,7 +414,8 @@ class Remote(
     @Volatile private var tokenExpires = 0L
     // The stream pings so that a link that died silently, as when a phone
     // changes networks, is noticed and replaced. Requests share its pool.
-    private val streamHttp = http.newBuilder().pingInterval(STREAM_PING_SECONDS, TimeUnit.SECONDS).build()
+    private val streamHttp =
+        http.newBuilder().pingInterval(STREAM_PING_SECONDS, TimeUnit.SECONDS).build()
     private var ws: WebSocket? = null
     private var retry = 1000L
     private var running = false
@@ -327,7 +427,9 @@ class Remote(
     // Bumped by stop: a connection attempt suspended in login when the app
     // went to the background must not open the stream afterwards.
     private var generation = 0
-    /** Putting what the cache holds in place, started once; no connection is made before it is done. */
+    /**
+     * Putting what the cache holds in place, started once; no connection is made before it is done.
+     */
     private var restoring: Job? = null
     private var historySweep: Job? = null
 
@@ -344,7 +446,8 @@ class Remote(
     private val applying = Mutex()
     private var listRetry: Job? = null
     private var listBackoff = LIST_RETRY_MS
-    // The same for the preferences while there is no copy of them at all: nothing of them can be changed until one is read.
+    // The same for the preferences while there is no copy of them at all: nothing of them can be
+    // changed until one is read.
     private var prefsRetry: Job? = null
     private var prefsBackoff = LIST_RETRY_MS
     private var next: SessionPlace? = null
@@ -360,6 +463,8 @@ class Remote(
 
     private class Buffer {
         var events = PagedList.empty<Event>()
+        var verifiedEvents = PagedList.empty<Event>()
+        val verifiedSeqs = HashSet<Long>()
         var bytes = 0L
         var usedAt = 0L
         val pending = TreeMap<Long, Event>(java.lang.Long::compareUnsigned)
@@ -408,8 +513,8 @@ class Remote(
     }
 
     /**
-     * Whether the device has a network at all. Losing it ends the connection
-     * at once rather than at the next ping; getting one starts over.
+     * Whether the device has a network at all. Losing it ends the connection at once rather than at
+     * the next ping; getting one starts over.
      */
     fun setNetwork(available: Boolean) {
         scope.launch {
@@ -442,7 +547,8 @@ class Remote(
     }
 
     private fun publish() {
-        if (conn == ConnState.ONLINE) offlineSince = 0 else if (offlineSince == 0L) offlineSince = clock()
+        if (conn == ConnState.ONLINE) offlineSince = 0
+        else if (offlineSince == 0L) offlineSince = clock()
         if (conn == ConnState.ONLINE || !running) {
             grace?.cancel()
             grace = null
@@ -455,24 +561,40 @@ class Remote(
                 publish()
             }
         }
-        val link = when {
-            conn == ConnState.ONLINE -> Link.ONLINE
-            !network || unresolved -> Link.NO_NETWORK
-            !waited -> Link.WAITING
-            else -> Link.NO_SERVER
-        }
-        _state.value = RemoteState(
-            machines.toMap(), sessions.toMap(), conn, error, loaded, offlineSince, prefs, devices.toMap(), removed,
-            sessionsNext = next, loadingSessions = pageJob != null, sessionsError = pageError, sessionsListed = firstPage,
-            link = link, synced = synced, errorDetail = errorDetail,
-        )
+        val link =
+            when {
+                conn == ConnState.ONLINE -> Link.ONLINE
+                !network || unresolved -> Link.NO_NETWORK
+                !waited -> Link.WAITING
+                else -> Link.NO_SERVER
+            }
+        _state.value =
+            RemoteState(
+                machines.toMap(),
+                sessions.toMap(),
+                conn,
+                error,
+                loaded,
+                offlineSince,
+                prefs,
+                devices.toMap(),
+                removed,
+                sessionsNext = next,
+                loadingSessions = pageJob != null,
+                sessionsError = pageError,
+                sessionsListed = firstPage,
+                link = link,
+                synced = synced,
+                errorDetail = errorDetail,
+                authorityDeviceId = authorityDeviceId,
+                removals = removals.toList(),
+            )
     }
 
     /**
-     * Logs in, one login at a time: the server keeps few challenges per
-     * device, and a denial has to mean what it says. A server restarted
-     * between the two calls forgets the challenge; denied a fresh one too,
-     * it no longer knows this device, and nothing connects until it joins again.
+     * Logs in, one login at a time: the server keeps few challenges per device, and a denial has to
+     * mean what it says. A server restarted between the two calls forgets the challenge; denied a
+     * fresh one too, it no longer knows this device, and nothing connects until it joins again.
      */
     private suspend fun signIn(): String = signingIn.withLock {
         try {
@@ -482,17 +604,18 @@ class Remote(
             try {
                 signedIn(loginResponse(api, account))
             } catch (e: ConnectException) {
-                if (e.code == Code.PERMISSION_DENIED) withContext(dispatcher) {
-                    removed = true
-                    running = false
-                    generation++
-                    reconnect?.cancel()
-                    reconnect = null
-                    ws?.close(1000, null)
-                    ws = null
-                    conn = ConnState.OFFLINE
-                    publish()
-                }
+                if (e.code == Code.PERMISSION_DENIED)
+                    withContext(dispatcher) {
+                        removed = true
+                        running = false
+                        generation++
+                        reconnect?.cancel()
+                        reconnect = null
+                        ws?.close(1000, null)
+                        ws = null
+                        conn = ConnState.OFFLINE
+                        publish()
+                    }
                 throw e
             }
         }
@@ -513,9 +636,9 @@ class Remote(
     }
 
     /**
-     * Waits until what the cache holds is in place. It is read once, however
-     * many connections wait: one made while it was still being read would
-     * have its lists overwritten by what was cached before them.
+     * Waits until what the cache holds is in place. It is read once, however many connections wait:
+     * one made while it was still being read would have its lists overwritten by what was cached
+     * before them.
      */
     private suspend fun restored() {
         if (cache == null) return
@@ -525,12 +648,26 @@ class Remote(
 
     private suspend fun readCache(cache: CipherCache) {
         try {
-            for (m in cache.machines()) putMachine(m.toBuilder().setOnline(false).build(), save = false)
+            val identity = security.identity()
+            trustedMembers.putAll(identity.second.core.members.associateBy { it.id })
+            authorityDeviceId = identity.first.authorityID
+            for (m in cache.machines()) {
+                if (m.hasMeta() && !m.meta.securityHeader.isEmpty)
+                    trustedMetadata["machine:${m.id}"] = m.meta
+                putMachine(m.toBuilder().setOnline(false).build(), save = false)
+            }
             for (s in cache.sessions()) {
+                if (s.hasMeta() && !s.meta.securityHeader.isEmpty)
+                    trustedMetadata["session:${s.machineId}:${s.sessionId}"] = s.meta
                 listed += s.sessionId
                 putSession(s, save = false, publish = false)
             }
-            cache.blob(PROJECT_PREFS)?.let { putPrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject.parseFrom(it), save = false) }
+            cache.blob(PROJECT_PREFS)?.let {
+                putPrefs(
+                    io.github.lewin671.remoteagent.proto.AccountPrefsObject.parseFrom(it),
+                    save = false,
+                )
+            }
             if (machines.isNotEmpty() || sessions.isNotEmpty()) loaded = true
         } catch (e: Exception) {
             report(e)
@@ -565,7 +702,8 @@ class Remote(
             // each time the app comes back. One about to expire is not worth a
             // refused connection; the server refusing it closes the stream,
             // and the next try logs in.
-            if (token.isEmpty() || tokenExpires < clock() + 86_400_000) token = withTimeout(streamOpenMs) { signIn() }
+            if (token.isEmpty() || tokenExpires < clock() + 86_400_000)
+                token = withTimeout(streamOpenMs) { signIn() }
         } catch (e: Exception) {
             if (e is CancellationException && e !is TimeoutCancellationException) throw e
             if (running && gen == generation) fail(e)
@@ -576,52 +714,65 @@ class Remote(
         // Bounded: a reader that falls behind drops the stream and catches up
         // from history after reconnecting, instead of queueing without end.
         val queuedBytes = java.util.concurrent.atomic.AtomicLong()
-        val frames = Channel<ByteArray>(frameQueue, onUndeliveredElement = { queuedBytes.addAndGet(-it.size.toLong()) })
-        val hello = PeerFrame.newBuilder().setHello(StreamHello.newBuilder().setToken(token)).build().toByteArray()
+        val frames =
+            Channel<ByteArray>(
+                frameQueue,
+                onUndeliveredElement = { queuedBytes.addAndGet(-it.size.toLong()) },
+            )
+        val hello =
+            PeerFrame.newBuilder()
+                .setHello(StreamHello.newBuilder().setToken(token))
+                .build()
+                .toByteArray()
         val refused = java.util.concurrent.atomic.AtomicBoolean(false)
         val broken = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
-        val socket = streamHttp.newWebSocket(
-            Request.Builder().url(url).build(),
-            object : WebSocketListener() {
-                override fun onOpen(webSocket: WebSocket, response: Response) {
-                    webSocket.send(hello.toByteString())
-                }
-
-                override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                    if (bytes.size > STREAM_FRAME_BYTES) {
-                        webSocket.cancel()
-                        frames.cancel()
-                        return
+        val socket =
+            streamHttp.newWebSocket(
+                Request.Builder().url(url).build(),
+                object : WebSocketListener() {
+                    override fun onOpen(webSocket: WebSocket, response: Response) {
+                        webSocket.send(hello.toByteString())
                     }
-                    if (queuedBytes.addAndGet(bytes.size.toLong()) > STREAM_QUEUE_BYTES) {
-                        queuedBytes.addAndGet(-bytes.size.toLong())
-                        webSocket.cancel()
-                        frames.cancel()
-                        return
+
+                    override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                        if (bytes.size > STREAM_FRAME_BYTES) {
+                            webSocket.cancel()
+                            frames.cancel()
+                            return
+                        }
+                        if (queuedBytes.addAndGet(bytes.size.toLong()) > STREAM_QUEUE_BYTES) {
+                            queuedBytes.addAndGet(-bytes.size.toLong())
+                            webSocket.cancel()
+                            frames.cancel()
+                            return
+                        }
+                        if (frames.trySend(bytes.toByteArray()).isFailure) {
+                            queuedBytes.addAndGet(-bytes.size.toLong())
+                            webSocket.cancel()
+                            frames.cancel()
+                        }
                     }
-                    if (frames.trySend(bytes.toByteArray()).isFailure) {
-                        queuedBytes.addAndGet(-bytes.size.toLong())
-                        webSocket.cancel()
-                        frames.cancel()
+
+                    override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                        if (code == POLICY_VIOLATION) refused.set(true)
+                        webSocket.close(1000, null)
+                        frames.close()
                     }
-                }
 
-                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                    if (code == POLICY_VIOLATION) refused.set(true)
-                    webSocket.close(1000, null)
-                    frames.close()
-                }
+                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                        frames.close()
+                    }
 
-                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                    frames.close()
-                }
-
-                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    broken.set(t)
-                    frames.close()
-                }
-            },
-        )
+                    override fun onFailure(
+                        webSocket: WebSocket,
+                        t: Throwable,
+                        response: Response?,
+                    ) {
+                        broken.set(t)
+                        frames.close()
+                    }
+                },
+            )
         ws = socket
         opening = scope.launch {
             delay(streamOpenMs)
@@ -700,36 +851,36 @@ class Remote(
                 // Subscribed first, then catch up: nothing falls in between.
                 refresh()
                 if (!running || gen != generation) return
-                val histories = buffers.keys + eventFlows.filterValues { it.subscriptionCount.value > 0 }.keys
-                for (sid in histories.toList()) scope.launch { loadEvents(sid); fetchEvents(sid) }
+                val histories =
+                    buffers.keys + eventFlows.filterValues { it.subscriptionCount.value > 0 }.keys
+                for (sid in histories.toList()) scope.launch {
+                    loadEvents(sid)
+                    fetchEvents(sid)
+                }
                 scope.launch { loadPrefs() }
                 scope.launch { loadDevices() }
             }
             ServerFrame.KindCase.ACCOUNT_PREFS_UPDATED -> {
-                if (f.accountPrefsUpdated.`object`.objectId == PROJECT_PREFS) putPrefs(f.accountPrefsUpdated.`object`)
+                if (f.accountPrefsUpdated.`object`.objectId == PROJECT_PREFS)
+                    putPrefs(f.accountPrefsUpdated.`object`)
             }
             ServerFrame.KindCase.DEVICE_UPDATED -> {
                 bump(devicePushes, f.deviceUpdated.device.id)
                 putDevice(f.deviceUpdated.device)
                 publish()
             }
-            ServerFrame.KindCase.DEVICE_REMOVED -> {
-                bump(devicePushes, f.deviceRemoved.deviceId)
-                devices.remove(f.deviceRemoved.deviceId)
-                publish()
-            }
+            ServerFrame.KindCase.DEVICE_REMOVED,
             ServerFrame.KindCase.MACHINE_REMOVED -> {
-                val id = f.machineRemoved.machineId
-                bump(removedPushes, id)
-                dropMachine(id)
-                publish()
+                loadDevices()
             }
             ServerFrame.KindCase.MACHINE_UPDATED -> {
                 bump(machinePushes, f.machineUpdated.machine.id)
+                loadDevices()
                 putMachine(f.machineUpdated.machine)
             }
             ServerFrame.KindCase.SESSION_UPDATED -> {
                 bump(sessionPushes, f.sessionUpdated.session.sessionId)
+                loadDevices()
                 putSession(f.sessionUpdated.session, save = onFirstPage(f.sessionUpdated.session))
             }
             ServerFrame.KindCase.EVENTS_APPENDED -> {
@@ -775,97 +926,122 @@ class Remote(
     }
 
     /**
-     * Reloads machines and the first page of sessions: every session that
-     * has not ended and the latest ended ones. Pushes that arrive while the
-     * lists are in flight are newer and win. Returns whether the lists are
-     * in place. When they could not be fetched [RemoteState.sessionsError]
-     * says why, and it is tried again by itself, ever more slowly, while the
-     * connection holds.
+     * Reloads machines and the first page of sessions: every session that has not ended and the
+     * latest ended ones. Pushes that arrive while the lists are in flight are newer and win.
+     * Returns whether the lists are in place. When they could not be fetched
+     * [RemoteState.sessionsError] says why, and it is tried again by itself, ever more slowly,
+     * while the connection holds.
      */
-    suspend fun refresh(): Boolean = withContext(dispatcher) {
-        val run = ++refreshRun
-        listRetry?.cancel()
-        listRetry = null
-        listsInFlight.value++
-        try {
-            val mp = HashMap(machinePushes)
-            val sp = HashMap(sessionPushes)
-            val rp = HashMap(removedPushes)
-            val ms = api.client.listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(token)).value()
-            val ss = api.client.listRemoteSessions(ListRemoteSessionsRequest.newBuilder().setLimit(SESSION_PAGE).build(), Api.headers(token)).value()
-            // Putting the lists in place suspends on the cache: one at a time.
-            applying.withLock {
-                // Asked for again since: that answer is the newer one, and this one would undo it.
-                if (run != refreshRun) return@withContext false
-                // The listing starts over: a later page still in flight continued the old one.
-                listing++
-                // Forget what the server no longer has, e.g. a machine another
-                // device removed while this one was offline.
-                val mids = ms.machinesList.map { it.id }.toSet()
-                val sids = ss.sessionsList.map { it.sessionId }.toSet()
-                val end = if (ss.hasNext()) SessionPlace(ss.next.endedMs, ss.next.sessionId) else null
-                for (id in machines.keys.toList()) if (id !in mids && !pushed(machinePushes, mp, id)) dropMachine(id)
-                fun hasMachine(id: String) = id in mids || machines.containsKey(id)
-                // A session held here that this page does not have (architecture §8
-                // 「重新连接后」): one that ended and comes after the page's end is
-                // a later page's and stays; any other goes. Without a later page
-                // the page is the whole listing, and what it lacks does not exist.
-                for (v in sessions.values.toList()) {
-                    if (v.id in sids || pushed(sessionPushes, sp, v.id)) continue
-                    if (end != null && hasMachine(v.machineId) && afterPlace(v.listedEndedMs, v.id, end)) continue
-                    sessions.remove(v.id)
-                    sessionKeys.remove(v.id)
-                    listed.remove(v.id)
-                    // Its events go with it only when it is known not to exist; else it
-                    // may be on a later page with what is held here out of date.
-                    try {
-                        if (end == null || !hasMachine(v.machineId)) cache?.removeSession(v.id) else cache?.unlistSession(v.id)
-                    } catch (e: Exception) {
-                        report(e)
+    suspend fun refresh(): Boolean =
+        withContext(dispatcher) {
+            val run = ++refreshRun
+            listRetry?.cancel()
+            listRetry = null
+            listsInFlight.value++
+            try {
+                val mp = HashMap(machinePushes)
+                val sp = HashMap(sessionPushes)
+                val rp = HashMap(removedPushes)
+                loadDevices()
+                val ms =
+                    api.client
+                        .listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(token))
+                        .value()
+                val ss =
+                    api.client
+                        .listRemoteSessions(
+                            ListRemoteSessionsRequest.newBuilder().setLimit(SESSION_PAGE).build(),
+                            Api.headers(token),
+                        )
+                        .value()
+                // Putting the lists in place suspends on the cache: one at a time.
+                applying.withLock {
+                    // Asked for again since: that answer is the newer one, and this one would undo
+                    // it.
+                    if (run != refreshRun) return@withContext false
+                    // The listing starts over: a later page still in flight continued the old one.
+                    listing++
+                    // Forget what the server no longer has, e.g. a machine another
+                    // device removed while this one was offline.
+                    val mids = ms.machinesList.map { it.id }.toSet()
+                    val sids = ss.sessionsList.map { it.sessionId }.toSet()
+                    val end =
+                        if (ss.hasNext()) SessionPlace(ss.next.endedMs, ss.next.sessionId) else null
+                    for (id in machines.keys.toList()) if (
+                        id !in mids && !pushed(machinePushes, mp, id)
+                    )
+                        dropMachine(id)
+                    fun hasMachine(id: String) = id in mids || machines.containsKey(id)
+                    // A session held here that this page does not have (architecture §8
+                    // 「重新连接后」): one that ended and comes after the page's end is
+                    // a later page's and stays; any other goes. Without a later page
+                    // the page is the whole listing, and what it lacks does not exist.
+                    for (v in sessions.values.toList()) {
+                        if (v.id in sids || pushed(sessionPushes, sp, v.id)) continue
+                        if (
+                            end != null &&
+                                hasMachine(v.machineId) &&
+                                afterPlace(v.listedEndedMs, v.id, end)
+                        )
+                            continue
+                        sessions.remove(v.id)
+                        sessionKeys.remove(v.id)
+                        listed.remove(v.id)
+                        // Its events go with it only when it is known not to exist; else it
+                        // may be on a later page with what is held here out of date.
+                        try {
+                            if (end == null || !hasMachine(v.machineId)) cache?.removeSession(v.id)
+                            else cache?.unlistSession(v.id)
+                        } catch (e: Exception) {
+                            report(e)
+                        }
                     }
-                }
-                // The cache keeps the first page only.
-                for (id in listed.toList()) {
-                    if (id in sids || pushed(sessionPushes, sp, id)) continue
-                    listed.remove(id)
-                    try {
-                        cache?.unlistSession(id)
-                    } catch (e: Exception) {
-                        report(e)
+                    // The cache keeps the first page only.
+                    for (id in listed.toList()) {
+                        if (id in sids || pushed(sessionPushes, sp, id)) continue
+                        listed.remove(id)
+                        try {
+                            cache?.unlistSession(id)
+                        } catch (e: Exception) {
+                            report(e)
+                        }
                     }
+                    for (m in ms.machinesList) {
+                        if (pushed(removedPushes, rp, m.id)) continue
+                        putMachine(m, staleOnline = pushed(machinePushes, mp, m.id))
+                    }
+                    for (s in ss.sessionsList) if (!pushed(removedPushes, rp, s.machineId))
+                        putSession(s, publish = false)
+                    next = end
+                    firstEnd = end
+                    firstPage = true
+                    synced = true
+                    pageError = ""
+                    listBackoff = LIST_RETRY_MS
+                    loaded = true
+                    publish()
                 }
-                for (m in ms.machinesList) {
-                    if (pushed(removedPushes, rp, m.id)) continue
-                    putMachine(m, staleOnline = pushed(machinePushes, mp, m.id))
+                true
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                report(e)
+                // What is held stays as it was, with the cursor it had.
+                if (run == refreshRun) {
+                    pageError = errorText(e)
+                    retryListing(run)
                 }
-                for (s in ss.sessionsList) if (!pushed(removedPushes, rp, s.machineId)) putSession(s, publish = false)
-                next = end
-                firstEnd = end
-                firstPage = true
-                synced = true
-                pageError = ""
-                listBackoff = LIST_RETRY_MS
-                loaded = true
                 publish()
+                false
+            } finally {
+                listsInFlight.value--
             }
-            true
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            report(e)
-            // What is held stays as it was, with the cursor it had.
-            if (run == refreshRun) {
-                pageError = errorText(e)
-                retryListing(run)
-            }
-            publish()
-            false
-        } finally {
-            listsInFlight.value--
         }
-    }
 
-    /** Asks for the lists again after a while, unless they were asked for meanwhile or the connection is gone. */
+    /**
+     * Asks for the lists again after a while, unless they were asked for meanwhile or the
+     * connection is gone.
+     */
     private fun retryListing(run: Int) {
         val wait = listBackoff
         listBackoff = minOf(listBackoff * 2, 30_000)
@@ -877,43 +1053,59 @@ class Remote(
         }
     }
 
-    private fun pushed(now: Map<String, Int>, then: Map<String, Int>, id: String) = (now[id] ?: 0) != (then[id] ?: 0)
+    private fun pushed(now: Map<String, Int>, then: Map<String, Int>, id: String) =
+        (now[id] ?: 0) != (then[id] ?: 0)
 
-    /** Whether the listing's first page, as last fetched, would hold this session: the cache keeps that page. */
+    /**
+     * Whether the listing's first page, as last fetched, would hold this session: the cache keeps
+     * that page.
+     */
     private fun onFirstPage(rs: RemoteSession): Boolean =
         firstPage && firstEnd.let { it == null || !afterPlace(rs.endedMs, rs.sessionId, it) }
 
     /**
-     * Fetches the next page of ended sessions, which is the first one while
-     * that has not come ([RemoteState.sessionsListed]); calls made while one
-     * is in flight wait for that one. Returns whether there are more after it.
-     * Throws when the page could not be fetched, which [RemoteState.sessionsError]
-     * then says until a page comes.
+     * Fetches the next page of ended sessions, which is the first one while that has not come
+     * ([RemoteState.sessionsListed]); calls made while one is in flight wait for that one. Returns
+     * whether there are more after it. Throws when the page could not be fetched, which
+     * [RemoteState.sessionsError] then says until a page comes.
      */
-    suspend fun loadMoreSessions(): Boolean = withContext(dispatcher) {
-        pageJob ?: scope.async {
-            try {
-                fetchPage()
-            } finally {
-                pageJob = null
-                publish()
+    suspend fun loadMoreSessions(): Boolean =
+        withContext(dispatcher) {
+                pageJob
+                    ?: scope
+                        .async {
+                            try {
+                                fetchPage()
+                            } finally {
+                                pageJob = null
+                                publish()
+                            }
+                        }
+                        .also {
+                            pageJob = it
+                            publish()
+                        }
             }
-        }.also {
-            pageJob = it
-            publish()
-        }
-    }.await()
+            .await()
 
-    /** Fetches every page that is left, e.g. to filter by title; calls made meanwhile wait for the same run. */
-    suspend fun loadAllSessions() = withContext(dispatcher) {
-        allJob ?: scope.async {
-            try {
-                while (!firstPage || next != null) loadMoreSessions()
-            } finally {
-                allJob = null
+    /**
+     * Fetches every page that is left, e.g. to filter by title; calls made meanwhile wait for the
+     * same run.
+     */
+    suspend fun loadAllSessions() =
+        withContext(dispatcher) {
+                allJob
+                    ?: scope
+                        .async {
+                            try {
+                                while (!firstPage || next != null) loadMoreSessions()
+                            } finally {
+                                allJob = null
+                            }
+                        }
+                        .also { allJob = it }
             }
-        }.also { allJob = it }
-    }.await()
+            .await()
 
     private suspend fun fetchPage(): Boolean {
         while (true) {
@@ -932,32 +1124,45 @@ class Remote(
                 if (refresh()) return next != null
                 // Asked for again meanwhile: that one is waited for above.
                 if (listsInFlight.value > 0 || firstPage) continue
-                throw CommandException(CommandException.UNAVAILABLE, pageError.ifEmpty { "没能读取会话列表" })
+                throw CommandException(
+                    CommandException.UNAVAILABLE,
+                    pageError.ifEmpty { "没能读取会话列表" },
+                )
             }
             val after = next ?: return false
             val epoch = listing
             val rp = HashMap(removedPushes)
-            val res = try {
-                api.client.listRemoteSessions(
-                    ListRemoteSessionsRequest.newBuilder()
-                        .setAfter(SessionCursor.newBuilder().setEndedMs(after.endedMs).setSessionId(after.sessionId))
-                        .setLimit(SESSION_PAGE).build(),
-                    Api.headers(currentToken()),
-                ).value()
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // The first page was fetched again meanwhile: what failed continued the listing before it.
-                if (epoch != listing) continue
-                log("remote-agent: " + errorText(e))
-                pageError = errorText(e)
-                throw e
-            }
+            val res =
+                try {
+                    api.client
+                        .listRemoteSessions(
+                            ListRemoteSessionsRequest.newBuilder()
+                                .setAfter(
+                                    SessionCursor.newBuilder()
+                                        .setEndedMs(after.endedMs)
+                                        .setSessionId(after.sessionId),
+                                )
+                                .setLimit(SESSION_PAGE)
+                                .build(),
+                            Api.headers(currentToken()),
+                        )
+                        .value()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // The first page was fetched again meanwhile: what failed continued the listing
+                    // before it.
+                    if (epoch != listing) continue
+                    log("remote-agent: " + errorText(e))
+                    pageError = errorText(e)
+                    throw e
+                }
             // The first page was fetched again meanwhile: this page continued the
             // listing before it. The caller still wants a page: the one after the new cursor.
             if (epoch != listing) continue
             // Putting a session suspends on the cache: the listing may start over meanwhile too.
-            for (s in res.sessionsList) if (epoch == listing && accepts(s, rp)) putSession(s, save = false, publish = false)
+            for (s in res.sessionsList) if (epoch == listing && accepts(s, rp))
+                putSession(s, save = false, publish = false)
             if (epoch != listing) continue
             next = if (res.hasNext()) SessionPlace(res.next.endedMs, res.next.sessionId) else null
             pageError = ""
@@ -966,37 +1171,59 @@ class Remote(
     }
 
     /**
-     * Whether a session the server answered a request with is taken: not
-     * one of a machine removed since the request was made ([removalsThen]),
-     * nor of one the listing of machines does not have.
+     * Whether a session the server answered a request with is taken: not one of a machine removed
+     * since the request was made ([removalsThen]), nor of one the listing of machines does not
+     * have.
      */
     private fun accepts(rs: RemoteSession, removalsThen: Map<String, Int>): Boolean =
-        !pushed(removedPushes, removalsThen, rs.machineId) && (!firstPage || machines.containsKey(rs.machineId))
+        !pushed(removedPushes, removalsThen, rs.machineId) &&
+            (!firstPage || machines.containsKey(rs.machineId))
 
     /**
-     * Fetches one session by its ID when it is not held here: one opened
-     * from a notification or a link may be on a page not fetched yet.
-     * Returns whether it is held now; false means the server does not have
-     * it. Throws when the server could not be asked.
+     * Fetches one session by its ID when it is not held here: one opened from a notification or a
+     * link may be on a page not fetched yet. Returns whether it is held now; false means the server
+     * does not have it. Throws when the server could not be asked.
      */
-    suspend fun fetchSession(id: String): Boolean = withContext(dispatcher) {
-        if (sessions[id] != null) return@withContext CompletableDeferred(true)
-        byId[id] ?: scope.async {
-            try {
-                val rp = HashMap(removedPushes)
-                val res = api.client.listRemoteSessions(ListRemoteSessionsRequest.newBuilder().addSessionIds(id).build(), Api.headers(currentToken())).value()
-                val rs = res.sessionsList.firstOrNull { it.sessionId == id }
-                // A session of a machine removed meanwhile, or one the listing of
-                // machines no longer has, is as good as gone.
-                if (rs != null && accepts(rs, rp)) putSession(rs, save = onFirstPage(rs))
-                sessions[id] != null
-            } finally {
-                byId.remove(id)
+    suspend fun fetchSession(id: String): Boolean =
+        withContext(dispatcher) {
+                if (sessions[id] != null) return@withContext CompletableDeferred(true)
+                byId[id]
+                    ?: scope
+                        .async {
+                            try {
+                                val rp = HashMap(removedPushes)
+                                val res =
+                                    api.client
+                                        .listRemoteSessions(
+                                            ListRemoteSessionsRequest.newBuilder()
+                                                .addSessionIds(id)
+                                                .build(),
+                                            Api.headers(currentToken()),
+                                        )
+                                        .value()
+                                val rs = res.sessionsList.firstOrNull { it.sessionId == id }
+                                // A session of a machine removed meanwhile, or one the listing of
+                                // machines no longer has, is as good as gone.
+                                if (rs != null && accepts(rs, rp))
+                                    putSession(rs, save = onFirstPage(rs))
+                                sessions[id] != null
+                            } finally {
+                                byId.remove(id)
+                            }
+                        }
+                        .also { byId[id] = it }
             }
-        }.also { byId[id] = it }
-    }.await()
+            .await()
 
-    private suspend fun putMachine(m: Machine, staleOnline: Boolean = false, save: Boolean = true) {
+    private suspend fun putMachine(
+        incoming: Machine,
+        staleOnline: Boolean = false,
+        save: Boolean = true,
+    ) {
+        if (trustedMembers[incoming.id]?.kind != 1u) return
+        val builder = incoming.toBuilder().clearMeta()
+        trustedMetadata["machine:${incoming.id}"]?.let { builder.setMeta(it) }
+        val m = builder.build()
         val old = machines[m.id]
         var view = old ?: MachineView(m.id, m.online, m.lastSeenMs)
         if (!staleOnline) view = view.copy(online = m.online)
@@ -1004,7 +1231,13 @@ class Remote(
         var store = old == null
         if (m.hasMeta()) {
             try {
-                val (h, meta) = Envelopes.openMessage(keys.meta, m.meta, Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id), MachineMeta::parseFrom)
+                val (h, meta) =
+                    openSecureMessage(
+                        keys.meta,
+                        m.meta,
+                        Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
+                        MachineMeta::parseFrom,
+                    )
                 if (ucmp(h.seq, view.metaRev) >= 0) {
                     view = view.copy(meta = meta, metaRev = h.seq)
                     store = true
@@ -1013,6 +1246,11 @@ class Remote(
                 report(e)
             }
         }
+        if (
+            trustedMembers[m.id]?.kind != 1u ||
+                ucmp(machines[m.id]?.metaRev ?: 0L, view.metaRev) > 0
+        )
+            return
         machines[m.id] = view
         if (save && store) {
             try {
@@ -1024,37 +1262,77 @@ class Remote(
         publish()
     }
 
-    private suspend fun putSession(rs: RemoteSession, save: Boolean = true, publish: Boolean = true) {
+    private suspend fun putSession(
+        incoming: RemoteSession,
+        save: Boolean = true,
+        publish: Boolean = true,
+    ) {
+        if (trustedMembers[incoming.machineId]?.kind != 1u) return
+        val builder = incoming.toBuilder().clearMeta()
+        trustedMetadata["session:${incoming.machineId}:${incoming.sessionId}"]?.let {
+            builder.setMeta(it)
+        }
+        val rs = builder.build()
         var view = sessions[rs.sessionId]
         val removals = removedPushes[rs.machineId] ?: 0
         try {
             if (view == null) {
-                val (h, raw) = Envelopes.open(keys.wrap, rs.key)
-                Envelopes.expect(h, Place(PayloadKind.PAYLOAD_KIND_SESSION_KEY, machineId = rs.machineId, sessionId = rs.sessionId))
+                val route = Header.parseFrom(rs.key.header)
+                val (h, raw) =
+                    if (route.version == 1) Envelopes.open(keys.wrap, rs.key)
+                    else {
+                        val (h, raw) = security.openHistory(rs.key)
+                        projection(h) to raw
+                    }
+                Envelopes.expect(
+                    h,
+                    Place(
+                        PayloadKind.PAYLOAD_KIND_SESSION_KEY,
+                        machineId = rs.machineId,
+                        sessionId = rs.sessionId,
+                    ),
+                )
                 if (raw.size != KEY_SIZE) throw OpenException("bad session key")
                 if ((removedPushes[rs.machineId] ?: 0) != removals) return
                 sessionKeys[rs.sessionId] = raw
                 view = SessionView(rs.sessionId, rs.machineId)
             }
             if (view.machineId != rs.machineId) throw OpenException("会话记录的机器被改动")
-            view = view.copy(lastSeq = umax(view.lastSeq, rs.lastSeq), updatedMs = maxOf(view.updatedMs, rs.updatedMs))
+            view =
+                view.copy(
+                    lastSeq = umax(view.lastSeq, rs.lastSeq),
+                    updatedMs = maxOf(view.updatedMs, rs.updatedMs),
+                )
             var store = sessions[rs.sessionId] == null
             if (store) view = view.copy(listedEndedMs = rs.endedMs)
             if (rs.hasMeta()) {
                 val key = sessionKeys[rs.sessionId]!!
-                val (h, info) = Envelopes.openMessage(
-                    key, rs.meta,
-                    Place(PayloadKind.PAYLOAD_KIND_SESSION_META, machineId = rs.machineId, sessionId = rs.sessionId),
-                    Session::parseFrom,
-                )
+                val (h, info) =
+                    openSecureMessage(
+                        key,
+                        rs.meta,
+                        Place(
+                            PayloadKind.PAYLOAD_KIND_SESSION_META,
+                            machineId = rs.machineId,
+                            sessionId = rs.sessionId,
+                        ),
+                        Session::parseFrom,
+                    )
                 if (ucmp(h.seq, view.metaRev) >= 0) {
                     // The server stores when it ended with the metadata.
                     view = view.copy(info = info, metaRev = h.seq, listedEndedMs = rs.endedMs)
                     store = true
                 }
             }
+            if (
+                (removedPushes[rs.machineId] ?: 0) != removals ||
+                    trustedMembers[rs.machineId]?.kind != 1u ||
+                    ucmp(sessions[rs.sessionId]?.metaRev ?: 0L, view.metaRev) > 0
+            )
+                return
             sessions[rs.sessionId] = view
-            if ((eventFlows[rs.sessionId]?.subscriptionCount?.value ?: 0) > 0) scope.launch { loadEvents(rs.sessionId) }
+            if ((eventFlows[rs.sessionId]?.subscriptionCount?.value ?: 0) > 0)
+                scope.launch { loadEvents(rs.sessionId) }
             if (save && store) {
                 listed += rs.sessionId
                 cache?.putSession(rs)
@@ -1069,19 +1347,24 @@ class Remote(
 
     // --- account preferences and devices ---
 
-    private val prefsCodec = PrefsCodec(keys.prefs, account.deviceId)
-
     /**
-     * Reads the preferences. With no copy of them here nothing of them can
-     * be changed, so a read that fails then is tried again by itself, ever
-     * more slowly, while the connection holds.
+     * Reads the preferences. With no copy of them here nothing of them can be changed, so a read
+     * that fails then is tried again by itself, ever more slowly, while the connection holds.
      */
     private suspend fun loadPrefs() {
         prefsRetry?.cancel()
         prefsRetry = null
         val gen = generation
         try {
-            val o = api.client.getAccountPrefs(io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest.newBuilder().setObjectId(PROJECT_PREFS).build(), Api.headers(token)).value()
+            val o =
+                api.client
+                    .getAccountPrefs(
+                        io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest.newBuilder()
+                            .setObjectId(PROJECT_PREFS)
+                            .build(),
+                        Api.headers(token),
+                    )
+                    .value()
             putPrefs(o.`object`)
             prefsBackoff = LIST_RETRY_MS
         } catch (e: Exception) {
@@ -1095,19 +1378,39 @@ class Remote(
                 delay(wait)
                 // Not this job's to cancel itself from loadPrefs.
                 prefsRetry = null
-                if (running && conn == ConnState.ONLINE && gen == generation && prefs == null) loadPrefs()
+                if (running && conn == ConnState.ONLINE && gen == generation && prefs == null)
+                    loadPrefs()
             }
         }
     }
 
     /** Takes an object from the server when it is not older than what is known here. */
-    private suspend fun putPrefs(o: io.github.lewin671.remoteagent.proto.AccountPrefsObject, save: Boolean = true) {
-        val opened = try {
-            prefsCodec.open(o)
-        } catch (e: Exception) {
-            report(e)
-            return
-        }
+    private suspend fun putPrefs(
+        o: io.github.lewin671.remoteagent.proto.AccountPrefsObject,
+        save: Boolean = true,
+    ) {
+        val opened =
+            try {
+                if (save) readTrustedPrefs()
+                else {
+                    if (!o.hasEnvelope() || o.envelope.securityHeader.isEmpty)
+                        throw DeviceSecurity.Failure("untrusted")
+                    val (h, p) =
+                        openSecureMessage(
+                            keys.prefs,
+                            o.envelope,
+                            Place(
+                                PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS,
+                                requestId = PROJECT_PREFS,
+                            ),
+                            io.github.lewin671.remoteagent.proto.ProjectPrefs::parseFrom,
+                        )
+                    PrefsObject(h.seq, p)
+                }
+            } catch (e: Exception) {
+                report(e)
+                return
+            }
         val before = prefs
         prefs = newerPrefs(before, opened)
         if (save && prefs === opened && o.revision > 0) {
@@ -1121,78 +1424,249 @@ class Remote(
     }
 
     /**
-     * Pins, unpins, hides or restores a project for the whole account.
-     * Returns once the server has it; a conflict is redone on the newer
-     * object. Needs the connection: offline, changes wait.
+     * Pins, unpins, hides or restores a project for the whole account. Returns once the server has
+     * it; a conflict is redone on the newer object. Needs the connection: offline, changes wait.
      */
+    private suspend fun readTrustedPrefs(): PrefsObject {
+        val catalog = security.catalog()
+        val wire =
+            catalog.entries.firstOrNull {
+                DeviceSecurity.parseHeader(it.formed.header).purpose == DeviceSecurity.Purpose.PREFS
+            } ?: return PrefsObject.EMPTY
+        val env = DeviceSecurity.envelope(wire)
+        val (h, p) =
+            openSecureMessage(
+                keys.prefs,
+                env,
+                Place(PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS, requestId = PROJECT_PREFS),
+                io.github.lewin671.remoteagent.proto.ProjectPrefs::parseFrom,
+            )
+        return PrefsObject(h.seq, p)
+    }
+
     suspend fun changePrefs(op: PrefsOp) {
-        val base = withContext(dispatcher) {
-            if (conn != ConnState.ONLINE) throw CommandException(CommandException.UNAVAILABLE, "没有连上服务器，连上后才能修改")
-            prefs ?: PrefsObject.EMPTY
-        }
-        var stored: io.github.lewin671.remoteagent.proto.AccountPrefsObject? = null
-        val result = writePrefsOp(
-            prefsCodec, base, op, newRequestId(), clock(),
-            put = { expected, env ->
-                val r = api.client.putAccountPrefs(
-                    io.github.lewin671.remoteagent.proto.PutAccountPrefsRequest.newBuilder().setObjectId(PROJECT_PREFS).setExpectedRevision(expected).setEnvelope(env).build(),
-                    Api.headers(currentToken()),
-                ).value()
-                if (r.applied) stored = r.`object`.takeIf { it.hasEnvelope() } ?: io.github.lewin671.remoteagent.proto.AccountPrefsObject.newBuilder().setObjectId(PROJECT_PREFS).setRevision(expected + 1).setEnvelope(env).build()
-                PutResult(r.applied, r.`object`)
-            },
-            get = {
-                api.client.getAccountPrefs(io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest.newBuilder().setObjectId(PROJECT_PREFS).build(), Api.headers(currentToken())).value().`object`.also { stored = it }
-            },
-        )
-        withContext(dispatcher) {
-            val o = stored
-            if (o != null && o.revision == result.revision) putPrefs(o) else {
-                prefs = newerPrefs(prefs, result)
-                publish()
+        val operation = newRequestId()
+        repeat(5) {
+            val base = readTrustedPrefs()
+            if (base.prefs.recentOpsList.contains(operation)) {
+                withContext(dispatcher) {
+                    prefs = base
+                    publish()
+                }
+                return
+            }
+            val next = applyPrefsOp(base.prefs, op, operation, clock())
+            try {
+                val env =
+                    security.seal(
+                        DeviceSecurity.Purpose.PREFS,
+                        request = PROJECT_PREFS,
+                        seq = (base.revision + 1).toULong(),
+                        plain = next.toByteArray(),
+                    )
+                runCatching {
+                    api.client
+                        .putAccountPrefs(
+                            io.github.lewin671.remoteagent.proto.PutAccountPrefsRequest.newBuilder()
+                                .setObjectId(PROJECT_PREFS)
+                                .setExpectedRevision(base.revision)
+                                .setEnvelope(env)
+                                .build(),
+                            Api.headers(currentToken()),
+                        )
+                        .value()
+                }
+                val current = readTrustedPrefs()
+                withContext(dispatcher) {
+                    prefs = current
+                    publish()
+                }
+                return
+            } catch (e: DeviceSecurity.Failure) {
+                if (e.code != "conflict") throw e
             }
         }
+        throw CommandException("aborted", "项目偏好正在变化，请重试")
     }
 
     /** Reads the device list again, for a page whose times are as of opening it. */
     suspend fun refreshDevices() = withContext(dispatcher) { loadDevices() }
 
     private suspend fun loadDevices() {
+        val version = ++directoryVersion
         try {
-            val dp = HashMap(devicePushes)
-            val r = api.client.listDevices(io.github.lewin671.remoteagent.proto.ListDevicesRequest.getDefaultInstance(), Api.headers(token)).value()
-            // A device pushed while the list was in flight is as the push left it:
-            // the list may be from before, and nothing would correct it afterwards.
-            val ids = r.devicesList.map { it.id }.toSet()
-            devices.keys.retainAll { it in ids || pushed(devicePushes, dp, it) }
-            for (d in r.devicesList) if (!pushed(devicePushes, dp, d.id)) putDevice(d)
+            val catalog = security.catalog()
+            val stateHash = DeviceSecurity.stateHash(catalog.state)
+            val listed =
+                api.client
+                    .listDevices(
+                        io.github.lewin671.remoteagent.proto.ListDevicesRequest
+                            .getDefaultInstance(),
+                        Api.headers(token),
+                    )
+                    .value()
+            val members = catalog.state.core.members.associateBy { it.id }
+            val metadata = HashMap<String, Envelope>()
+            for (w in catalog.entries) {
+                val h = DeviceSecurity.parseHeader(w.formed.header)
+                val key =
+                    when (h.purpose) {
+                        DeviceSecurity.Purpose.MACHINE_META -> "machine:${h.machine}"
+                        DeviceSecurity.Purpose.DEVICE_META -> "device:${h.request}"
+                        DeviceSecurity.Purpose.SESSION_META -> "session:${h.machine}:${h.session}"
+                        DeviceSecurity.Purpose.PREFS -> "prefs"
+                        else -> ""
+                    }
+                if (key.isNotEmpty()) metadata[key] = DeviceSecurity.envelope(w)
+            }
+            val newDevices = HashMap<String, DeviceView>()
+            val newMachines = HashMap(machines)
+            val bindings = HashMap<String, Pair<ByteArray, ByteArray>>()
+            for (m in catalog.state.core.members) {
+                val hint = listed.devicesList.firstOrNull { it.id == m.id }
+                var view =
+                    DeviceView(
+                        m.id,
+                        io.github.lewin671.remoteagent.proto.DeviceKind.forNumber(m.kind.toInt()),
+                        hint?.createdMs ?: 0L,
+                        lastSeenMs = hint?.lastSeenMs ?: 0L,
+                    )
+                val env = metadata[(if (m.kind == 1u) "machine:" else "device:") + m.id]
+                val binding =
+                    if (env != null) {
+                        val w = DeviceSecurity.fromEnvelope(env)
+                        if (m.kind == 2u) {
+                            val (h, meta) =
+                                openSecureMessage(
+                                    keys.deviceMeta,
+                                    env,
+                                    Place(PayloadKind.PAYLOAD_KIND_DEVICE_META, requestId = m.id),
+                                    io.github.lewin671.remoteagent.proto.DeviceMeta::parseFrom,
+                                )
+                            view = view.copy(meta = meta, metaRev = h.seq)
+                        } else {
+                            val (h, meta) =
+                                openSecureMessage(
+                                    keys.meta,
+                                    env,
+                                    Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
+                                    MachineMeta::parseFrom,
+                                )
+                            val old = machines[m.id]
+                            newMachines[m.id] =
+                                if (old == null)
+                                    MachineView(m.id, false, 0L, meta = meta, metaRev = h.seq)
+                                else old.copy(meta = meta, metaRev = h.seq)
+                        }
+                        DeviceSecurity.commitment(w.formed)
+                    } else {
+                        if (m.kind == 1u && !newMachines.containsKey(m.id))
+                            newMachines[m.id] = MachineView(m.id, false, 0L)
+                        DeviceSecurityRemoval.unnamedCommit(catalog.state, m)
+                    }
+                newDevices[m.id] = view
+                bindings[m.id] = stateHash to binding
+            }
+            if (version != directoryVersion) return
+            if (!DeviceSecurity.stateHash(security.identity().second).contentEquals(stateHash))
+                throw DeviceSecurity.Failure("stale")
+            for ((id, d) in newDevices) if (
+                (devices[id]?.metaRev ?: 0L) > d.metaRev &&
+                    d.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT
+            )
+                throw DeviceSecurity.Failure("stale")
+            for (id in
+                trustedMembers.values
+                    .filter { it.kind == 1u && it.id !in members }
+                    .map { it.id }) dropMachine(id)
+            trustedMembers.clear()
+            trustedMembers.putAll(members)
+            trustedMetadata.clear()
+            trustedMetadata.putAll(metadata)
+            deviceBindings.clear()
+            deviceBindings.putAll(bindings)
+            devices.clear()
+            devices.putAll(newDevices)
+            machines.clear()
+            machines.putAll(newMachines.filterKeys { it in members })
+            authorityDeviceId = catalog.state.core.authorityID
+            publish()
+            if (removalJob == null)
+                removalJob = scope.launch {
+                    try {
+                        while (running) {
+                            pollRemovals()
+                            if (removals.none { it.phase != "complete" || !it.serverCleaned }) break
+                            delay(2000)
+                        }
+                    } finally {
+                        removalJob = null
+                    }
+                }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            if (version == directoryVersion) deviceBindings.clear()
             report(e)
         }
         publish()
     }
 
-    private fun putDevice(d: io.github.lewin671.remoteagent.proto.Device) {
-        val old = devices[d.id]
-        var view = DeviceView(d.id, d.kind, d.createdMs, old?.meta, old?.metaRev ?: 0, d.lastSeenMs)
-        if (d.hasMeta() && ucmp(d.metaRevision, view.metaRev) >= 0) {
-            try {
-                val (_, meta) = Envelopes.openMessage(
-                    keys.deviceMeta, d.meta,
-                    Place(PayloadKind.PAYLOAD_KIND_DEVICE_META, requestId = d.id, seq = d.metaRevision),
-                    io.github.lewin671.remoteagent.proto.DeviceMeta::parseFrom,
-                )
-                view = view.copy(meta = meta, metaRev = d.metaRevision)
-            } catch (e: Exception) {
-                report(e)
+    private suspend fun putDevice(d: io.github.lewin671.remoteagent.proto.Device) {
+        loadDevices()
+    }
+
+    private suspend fun cleanupRemoval(
+        op: DeviceSecurityClient.Removal,
+    ): DeviceSecurityClient.Removal {
+        if (op.phase != "complete" || op.serverCleaned || op.completion == null) return op
+        return try {
+            for (target in op.request["Targets"]!!.jsonArray) {
+                val request =
+                    io.github.lewin671.remoteagent.proto.RemoveDeviceRequest.newBuilder()
+                        .setDeviceId(target.jsonObject["ID"]!!.jsonPrimitive.content)
+                        .setSecurityCompletion(
+                            com.google.protobuf.ByteString.copyFrom(op.completion),
+                        )
+                        .setSecurityRequest(
+                            com.google.protobuf.ByteString.copyFrom(
+                                op.request.toString().toByteArray(Charsets.UTF_8),
+                            ),
+                        )
+                        .addAllSecurityChain(
+                            op.chain.map { com.google.protobuf.ByteString.copyFrom(it) },
+                        )
+                        .build()
+                try {
+                    api.client.removeDevice(request, Api.headers(currentToken())).value()
+                } catch (e: com.connectrpc.ConnectException) {
+                    if (e.code != com.connectrpc.Code.NOT_FOUND) throw e
+                }
             }
+            security.markServerCleaned(op)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            op
         }
-        devices[d.id] = view
+    }
+
+    private suspend fun pollRemovals() {
+        val old = security.removalOperations()
+        removals = old.map { op ->
+            if (op.phase == "complete") cleanupRemoval(op)
+            else
+                try {
+                    cleanupRemoval(security.pollRemoval(op))
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    if (op.phase == "unconfirmed") security.retryRemoval(op) else op
+                }
+        }
+        publish()
     }
 
     /**
-     * Names a client device for the whole account, keeping what else its
-     * metadata says; a conflict is redone on the stored metadata.
+     * Names a client device for the whole account, keeping what else its metadata says; a conflict
+     * is redone on the stored metadata.
      */
     suspend fun renameDevice(id: String, name: String) = changeDeviceMeta(id) { it.setName(name) }
 
@@ -1200,34 +1674,52 @@ class Remote(
     suspend fun describeSelf(platform: String, description: String) =
         changeDeviceMeta(account.deviceId) { it.setPlatform(platform).setDescription(description) }
 
-    private suspend fun changeDeviceMeta(id: String, change: (io.github.lewin671.remoteagent.proto.DeviceMeta.Builder) -> Unit) {
-        var base = withContext(dispatcher) { devices[id] } ?: throw CommandException("not_found", "没有这台设备")
+    private suspend fun changeDeviceMeta(
+        id: String,
+        change: (io.github.lewin671.remoteagent.proto.DeviceMeta.Builder) -> Unit,
+    ) {
         repeat(5) {
-            val meta = (base.meta?.toBuilder() ?: io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder()).also(change).build()
-            val env = Envelopes.seal(
-                keys.deviceMeta,
-                Header.newBuilder().setKind(PayloadKind.PAYLOAD_KIND_DEVICE_META).setRequestId(id).setSeq(base.metaRev + 1).setSender(account.deviceId).build(),
-                meta,
-            )
-            val r = api.client.putDeviceMeta(
-                io.github.lewin671.remoteagent.proto.PutDeviceMetaRequest.newBuilder().setDeviceId(id).setExpectedRevision(base.metaRev).setMeta(env).build(),
-                Api.headers(currentToken()),
-            ).value()
-            withContext(dispatcher) {
-                if (r.hasDevice()) putDevice(r.device)
-                if (r.applied && (!r.hasDevice() || !r.device.hasMeta())) devices[id] = base.copy(meta = meta, metaRev = base.metaRev + 1)
-                publish()
+            withContext(dispatcher) { loadDevices() }
+            val current =
+                withContext(dispatcher) { devices[id] }
+                    ?: throw CommandException("not_found", "没有这台设备")
+            val next =
+                (current.meta?.toBuilder()
+                        ?: io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder())
+                    .also(change)
+                    .build()
+            try {
+                val env =
+                    security.seal(
+                        DeviceSecurity.Purpose.DEVICE_META,
+                        request = id,
+                        seq = (current.metaRev + 1).toULong(),
+                        plain = next.toByteArray(),
+                    )
+                runCatching {
+                    api.client
+                        .putDeviceMeta(
+                            io.github.lewin671.remoteagent.proto.PutDeviceMetaRequest.newBuilder()
+                                .setDeviceId(id)
+                                .setExpectedRevision(current.metaRev)
+                                .setMeta(env)
+                                .build(),
+                            Api.headers(currentToken()),
+                        )
+                        .value()
+                }
+                withContext(dispatcher) { loadDevices() }
+                return
+            } catch (e: DeviceSecurity.Failure) {
+                if (e.code != "conflict") throw e
             }
-            if (r.applied) return
-            base = withContext(dispatcher) { devices[id] } ?: throw CommandException("not_found", "没有这台设备")
         }
-        throw CommandException("aborted", "设备名称一直在被其他客户端修改，没能保存")
+        throw CommandException("aborted", "设备信息正在变化，请重试")
     }
 
     /**
-     * Shows fixed lists and histories without a server, for layout tests and
-     * screenshots of the screens. Only for a Remote that was never started:
-     * nothing is fetched, and commands fail as they would offline.
+     * Fixed layout-test values only, on a stopped engine. This never installs a security record,
+     * grants, content keys, or any network authority.
      */
     fun showForTest(
         state: RemoteState,
@@ -1236,28 +1728,49 @@ class Remote(
     ) {
         check(!running) { "showForTest on a started Remote" }
         _state.value = state
-        for ((key, response) in modelLists) models["${key.first}/${key.second.number}"] = CompletableDeferred(response)
-        for ((sid, list) in events) eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(list, loaded = true)
+        for ((key, response) in modelLists) models["${key.first}/${key.second.number}"] =
+            CompletableDeferred(response)
+        for ((sid, list) in events) eventFlows
+            .getOrPut(sid) { MutableStateFlow(SessionEvents()) }
+            .value = SessionEvents(list, loaded = true)
     }
 
     // --- events ---
 
     /** A session's events; loads them from the cache and the server on first use. */
     fun events(sid: String): StateFlow<SessionEvents> {
-        val flow = eventFlows.getOrPut(sid) {
-            MutableStateFlow(SessionEvents()).also { f ->
-                scope.launch {
-                    f.subscriptionCount.collect { count ->
-                        if (count > 0) scope.launch { loadEvents(sid) }
-                        else { buffers[sid]?.usedAt = clock(); trimHistory() }
+        val flow =
+            eventFlows.getOrPut(sid) {
+                MutableStateFlow(SessionEvents()).also { f ->
+                    scope.launch {
+                        f.subscriptionCount.collect { count ->
+                            if (count > 0) {
+                                scope.launch { loadEvents(sid) }
+                                if (liveJobs[sid] == null)
+                                    liveJobs[sid] = scope.launch {
+                                        while (true) {
+                                            if (running) refreshLiveSnapshot(sid)
+                                            delay(5000)
+                                        }
+                                    }
+                            } else {
+                                liveJobs.remove(sid)?.cancel()
+                                liveSnapshots.remove(sid)
+                                buffers[sid]?.usedAt = clock()
+                                trimHistory()
+                            }
+                        }
                     }
                 }
             }
-        }
         scope.launch {
-            if (historySweep == null) historySweep = scope.launch {
-                while (true) { delay(historyIdleMs.coerceAtLeast(1)); trimHistory() }
-            }
+            if (historySweep == null)
+                historySweep = scope.launch {
+                    while (true) {
+                        delay(historyIdleMs.coerceAtLeast(1))
+                        trimHistory()
+                    }
+                }
             buffers[sid]?.usedAt = clock()
             loadEvents(sid)
         }
@@ -1265,17 +1778,25 @@ class Remote(
     }
 
     private fun trimHistory() {
-        val idle = buffers.entries.filter { (sid, _) -> eventFlows[sid]?.subscriptionCount?.value == 0 }
-            .sortedBy { it.value.usedAt }
+        val idle =
+            buffers.entries
+                .filter { (sid, _) -> eventFlows[sid]?.subscriptionCount?.value == 0 }
+                .sortedBy { it.value.usedAt }
         var bytes = idle.sumOf { it.value.bytes }
         var count = idle.size
         for ((sid, b) in idle) {
-            if (sessions[sid] == null || count > historyIdleCount || bytes > historyIdleBytes || clock() - b.usedAt >= historyIdleMs) {
+            if (
+                sessions[sid] == null ||
+                    count > historyIdleCount ||
+                    bytes > historyIdleBytes ||
+                    clock() - b.usedAt >= historyIdleMs
+            ) {
                 buffers.remove(sid)
                 // Keep the small flow identity for consumers about to subscribe;
                 // its subscription watcher reloads a reclaimed history.
                 eventFlows[sid]?.value = SessionEvents()
-                count--; bytes -= b.bytes
+                count--
+                bytes -= b.bytes
             }
         }
     }
@@ -1284,8 +1805,13 @@ class Remote(
         if (buffers[sid] != null || sessions[sid] == null) return
         val b = Buffer().apply { usedAt = clock() }
         buffers[sid] = b
-        val cached = try { cache?.events(sid).orEmpty() }
-        catch (e: Exception) { report(e); emptyList() }
+        val cached =
+            try {
+                cache?.events(sid).orEmpty()
+            } catch (e: Exception) {
+                report(e)
+                emptyList()
+            }
         if (buffers[sid] !== b) return
         if (cached.isNotEmpty()) {
             ingest(sid, cached, fillGaps = false, save = false)
@@ -1294,10 +1820,16 @@ class Remote(
             // fetched whole (architecture §10 「后台和内存」): the cache keeps
             // an event as first stored, so the bad one would stay for good.
             if (b.error != null) {
-                try { cache?.dropEvents(sid) } catch (e: Exception) { report(e) }
+                try {
+                    cache?.dropEvents(sid)
+                } catch (e: Exception) {
+                    report(e)
+                }
                 if (buffers[sid] !== b) return
                 b.events = PagedList.empty()
                 b.pending.clear()
+                b.verifiedSeqs.clear()
+                b.verifiedEvents = PagedList.empty()
                 b.bytes = 0
                 b.error = null
                 publishEvents(sid, b)
@@ -1324,10 +1856,17 @@ class Remote(
                 while (true) {
                     if (!running || gen != generation || buffers[sid] !== b) return
                     val before = b.events.size
-                    val res = api.client.getEvents(
-                        GetEventsRequest.newBuilder().setSessionId(sid).setAfterSeq(before.toLong()).setLimit(500).build(),
-                        Api.headers(token),
-                    ).value()
+                    val res =
+                        api.client
+                            .getEvents(
+                                GetEventsRequest.newBuilder()
+                                    .setSessionId(sid)
+                                    .setAfterSeq(before.toLong())
+                                    .setLimit(500)
+                                    .build(),
+                                Api.headers(token),
+                            )
+                            .value()
                     if (!running || gen != generation || buffers[sid] !== b) return
                     ingest(sid, res.eventsList, fillGaps = false, save = true)
                     if (!running || gen != generation || buffers[sid] !== b) return
@@ -1350,7 +1889,12 @@ class Remote(
         }
     }
 
-    private suspend fun ingest(sid: String, stored: List<StoredEvent>, fillGaps: Boolean, save: Boolean) {
+    private suspend fun ingest(
+        sid: String,
+        stored: List<StoredEvent>,
+        fillGaps: Boolean,
+        save: Boolean,
+    ) {
         val b = buffers[sid] ?: return
         val s = sessions[sid] ?: return
         val key = sessionKeys[sid] ?: return
@@ -1358,12 +1902,20 @@ class Remote(
         for (se in stored) {
             if (ucmp(se.seq, b.events.size.toLong()) <= 0 || b.pending.containsKey(se.seq)) continue
             try {
-                val (_, ev) = Envelopes.openMessage(
-                    key, se.envelope,
-                    Place(PayloadKind.PAYLOAD_KIND_EVENT, machineId = s.machineId, sessionId = sid, seq = se.seq),
-                    Event::parseFrom,
-                )
+                val (_, ev) =
+                    openSecureMessage(
+                        key,
+                        se.envelope,
+                        Place(
+                            PayloadKind.PAYLOAD_KIND_EVENT,
+                            machineId = s.machineId,
+                            sessionId = sid,
+                            seq = se.seq,
+                        ),
+                        Event::parseFrom,
+                    )
                 if (ev.seq != se.seq || ev.sessionId != sid) throw OpenException("事件的位置被改动")
+                if (Header.parseFrom(se.envelope.header).version == 2) b.verifiedSeqs.add(se.seq)
                 b.pending[se.seq] = ev
                 opened += se
                 // What is held is the event as opened; its ciphertext may be packed.
@@ -1381,6 +1933,7 @@ class Remote(
             added += ev
         }
         b.events = b.events.append(added)
+        b.verifiedEvents = b.verifiedEvents.append(added.filter { it.seq in b.verifiedSeqs })
         if (save && opened.isNotEmpty()) {
             try {
                 cache?.putEvents(sid, opened)
@@ -1391,7 +1944,9 @@ class Remote(
         if (buffers[sid] !== b) return
         // The cache write suspended: newer metadata may have arrived, or the
         // session gone. Only the event progress is ours to update.
-        sessions[sid]?.let { cur -> sessions[sid] = cur.copy(lastSeq = umax(cur.lastSeq, b.events.size.toLong())) }
+        sessions[sid]?.let { cur ->
+            sessions[sid] = cur.copy(lastSeq = umax(cur.lastSeq, b.events.size.toLong()))
+        }
         if (fillGaps && b.pending.isNotEmpty()) scope.launch { fetchEvents(sid) }
         publishEvents(sid, b)
         publish()
@@ -1400,7 +1955,17 @@ class Remote(
 
     private fun publishEvents(sid: String, b: Buffer) {
         if (buffers[sid] !== b) return
-        eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(b.events, b.loaded, b.error, b.fetchError)
+        eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value =
+            SessionEvents(
+                b.events,
+                b.loaded,
+                b.error,
+                b.fetchError,
+                liveSnapshots[sid],
+                legacySessions.contains(sid),
+                liveErrors[sid],
+                b.verifiedEvents,
+            )
     }
 
     /** Asks for missing events again, e.g. after one failed to open. */
@@ -1419,54 +1984,242 @@ class Remote(
         val deadline = clock() + COMMAND_TTL_MS
         // Signed by this device, so a daemon can tell who sent it
         // (architecture §9).
-        val env = signEnvelope(device, Envelopes.seal(
-            keys.command,
-            Header.newBuilder()
-                .setKind(PayloadKind.PAYLOAD_KIND_COMMAND)
-                .setMachineId(machineId)
-                .setSessionId(sessionId)
-                .setRequestId(requestId)
-                .setDeadlineMs(deadline)
-                .setSender(account.deviceId)
-                .build(),
-            cmd.toBuilder().setProtocolVersion(PROTOCOL_VERSION).build(),
-        ))
-        return PreparedCommand(machineId, sessionId, requestId, deadline, env)
+        val versioned = cmd.toBuilder().setProtocolVersion(PROTOCOL_VERSION).build()
+        val observed =
+            if (isObservedAction(versioned) && observedSeq(versioned) == 0L)
+                observeAction(versioned, eventFlows[sessionId]?.value?.live)
+            else versioned
+        return PreparedCommand(
+            machineId,
+            sessionId,
+            requestId,
+            deadline,
+            Envelope.getDefaultInstance(),
+            observed,
+        )
     }
 
     /** Sends a command about a session. */
     suspend fun command(sid: String, cmd: Command): CommandResult {
-        val s = withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
-        return forward(prepare(s.machineId, sid, cmd))
+        val s =
+            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
+        var actual = cmd
+        if (
+            cmd.kindCase in
+                setOf(
+                    Command.KindCase.RESOLVE_APPROVAL,
+                    Command.KindCase.ANSWER_QUESTION,
+                    Command.KindCase.ANSWER_PLAN,
+                )
+        ) {
+            val shown =
+                liveSnapshots[sid] ?: throw CommandException("failed_precondition", "当前请求尚未由电脑核实")
+            val approval = cmd.kindCase == Command.KindCase.RESOLVE_APPROVAL
+            val plan = cmd.kindCase == Command.KindCase.ANSWER_PLAN
+            val id =
+                if (approval) cmd.resolveApproval.approvalId
+                else if (!plan) cmd.answerQuestion.questionId else ""
+            val displayed =
+                shown.actionsList.firstOrNull {
+                    if (approval) it.hasApprovalRequested() && it.approvalRequested.approvalId == id
+                    else it.hasQuestionAsked() && it.questionAsked.questionId == id
+                }
+            val seq = if (plan) shown.planEventSeq else displayed?.seq ?: 0L
+            if (seq == 0L) throw CommandException("failed_precondition", "请求已不可操作")
+            refreshLiveSnapshot(sid)
+            val fresh =
+                liveSnapshots[sid] ?: throw CommandException("failed_precondition", "无法核实当前请求")
+            if (plan) {
+                if (fresh.planEventSeq != seq || !fresh.planScreenHash.equals(shown.planScreenHash))
+                    throw CommandException("failed_precondition", "计划画面已变化，请重新核对")
+                actual =
+                    cmd.toBuilder()
+                        .setAnswerPlan(
+                            cmd.answerPlan
+                                .toBuilder()
+                                .setObservedEventSeq(seq)
+                                .setObservedScreenHash(shown.planScreenHash),
+                        )
+                        .build()
+            } else {
+                val current =
+                    fresh.actionsList.firstOrNull {
+                        if (approval)
+                            it.hasApprovalRequested() && it.approvalRequested.approvalId == id
+                        else it.hasQuestionAsked() && it.questionAsked.questionId == id
+                    }
+                if (current == null || current != displayed)
+                    throw CommandException("failed_precondition", "当前请求已变化，请重新核对")
+                actual =
+                    if (approval)
+                        cmd.toBuilder()
+                            .setResolveApproval(
+                                cmd.resolveApproval.toBuilder().setObservedEventSeq(seq),
+                            )
+                            .build()
+                    else
+                        cmd.toBuilder()
+                            .setAnswerQuestion(
+                                cmd.answerQuestion.toBuilder().setObservedEventSeq(seq),
+                            )
+                            .build()
+            }
+        }
+        return forward(prepare(s.machineId, sid, actual))
+    }
+
+    private fun isObservedAction(cmd: Command) =
+        cmd.kindCase in
+            setOf(
+                Command.KindCase.RESOLVE_APPROVAL,
+                Command.KindCase.ANSWER_QUESTION,
+                Command.KindCase.ANSWER_PLAN,
+            )
+
+    private fun observedSeq(cmd: Command): Long =
+        when (cmd.kindCase) {
+            Command.KindCase.RESOLVE_APPROVAL -> cmd.resolveApproval.observedEventSeq
+            Command.KindCase.ANSWER_QUESTION -> cmd.answerQuestion.observedEventSeq
+            Command.KindCase.ANSWER_PLAN -> cmd.answerPlan.observedEventSeq
+            else -> 0L
+        }
+
+    private fun observeAction(
+        cmd: Command,
+        snapshot: io.github.lewin671.remoteagent.proto.LiveSnapshot?,
+    ): Command {
+        if (!isObservedAction(cmd)) return cmd
+        val fresh = snapshot ?: throw CommandException("failed_precondition", "当前请求尚未由电脑核实")
+        return when (cmd.kindCase) {
+            Command.KindCase.RESOLVE_APPROVAL -> {
+                val event =
+                    fresh.actionsList.firstOrNull {
+                        it.hasApprovalRequested() &&
+                            it.approvalRequested.approvalId == cmd.resolveApproval.approvalId
+                    } ?: throw DeviceSecurity.Failure("stale")
+                cmd.toBuilder()
+                    .setResolveApproval(
+                        cmd.resolveApproval.toBuilder().setObservedEventSeq(event.seq),
+                    )
+                    .build()
+            }
+            Command.KindCase.ANSWER_QUESTION -> {
+                val event =
+                    fresh.actionsList.firstOrNull {
+                        it.hasQuestionAsked() &&
+                            it.questionAsked.questionId == cmd.answerQuestion.questionId
+                    } ?: throw DeviceSecurity.Failure("stale")
+                cmd.toBuilder()
+                    .setAnswerQuestion(
+                        cmd.answerQuestion.toBuilder().setObservedEventSeq(event.seq),
+                    )
+                    .build()
+            }
+            Command.KindCase.ANSWER_PLAN -> {
+                if (fresh.planEventSeq == 0L || fresh.planScreenHash.size() != 32)
+                    throw DeviceSecurity.Failure("stale")
+                cmd.toBuilder()
+                    .setAnswerPlan(
+                        cmd.answerPlan
+                            .toBuilder()
+                            .setObservedEventSeq(fresh.planEventSeq)
+                            .setObservedScreenHash(fresh.planScreenHash),
+                    )
+                    .build()
+            }
+            else -> cmd
+        }
+    }
+
+    private suspend fun fetchLiveSnapshot(
+        sid: String,
+    ): io.github.lewin671.remoteagent.proto.LiveSnapshot {
+        val session =
+            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
+        val result =
+            forward(
+                prepare(
+                    session.machineId,
+                    sid,
+                    Command.newBuilder()
+                        .setGetLiveSnapshot(
+                            io.github.lewin671.remoteagent.proto.GetLiveSnapshotRequest.newBuilder()
+                                .setSessionId(sid),
+                        )
+                        .build(),
+                ),
+            )
+        if (!result.hasLiveSnapshot() || result.liveSnapshot.session.id != sid)
+            throw DeviceSecurity.Failure()
+        return result.liveSnapshot
+    }
+
+    private suspend fun refreshLiveSnapshot(sid: String) {
+        try {
+            val fresh = fetchLiveSnapshot(sid)
+            if (!running) return
+            liveSnapshots[sid] = fresh
+            liveErrors.remove(sid)
+            buffers[sid]?.let { publishEvents(sid, it) }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            liveSnapshots.remove(sid)
+            liveErrors[sid] = "无法核实电脑上的待处理请求，请重试或在电脑终端处理"
+            buffers[sid]?.let { publishEvents(sid, it) }
+        }
     }
 
     /** Sends a command about a machine, such as starting a session. */
-    suspend fun machineCommand(machineId: String, cmd: Command): CommandResult = forward(prepare(machineId, "", cmd))
+    suspend fun machineCommand(machineId: String, cmd: Command): CommandResult =
+        forward(prepare(machineId, "", cmd))
 
     /**
-     * How long one round trip to the server takes now, in ms: a request that does nothing
-     * there (连接检测). Throws when no answer comes in [timeoutMs].
+     * How long one round trip to the server takes now, in ms: a request that does nothing there
+     * (连接检测). Throws when no answer comes in [timeoutMs].
      */
-    suspend fun pingServer(timeoutMs: Long = 8_000): Long = withContext(Dispatchers.IO) {
-        val call = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
-            .newCall(okhttp3.Request.Builder().url(api.server.trimEnd('/') + "/healthz").header("Cache-Control", "no-store").build())
-        val started = System.nanoTime()
-        try {
-            call.execute().use { res ->
-                res.body?.bytes()
-                if (!res.isSuccessful) throw java.io.IOException("服务器返回 ${res.code}")
+    suspend fun pingServer(timeoutMs: Long = 8_000): Long =
+        withContext(Dispatchers.IO) {
+            val call =
+                http
+                    .newBuilder()
+                    .callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    .build()
+                    .newCall(
+                        okhttp3.Request.Builder()
+                            .url(api.server.trimEnd('/') + "/healthz")
+                            .header("Cache-Control", "no-store")
+                            .build(),
+                    )
+            val started = System.nanoTime()
+            try {
+                call.execute().use { res ->
+                    res.body?.bytes()
+                    if (!res.isSuccessful) throw java.io.IOException("服务器返回 ${res.code}")
+                }
+            } catch (e: java.io.InterruptedIOException) {
+                throw java.io.IOException("没有回应", e)
             }
-        } catch (e: java.io.InterruptedIOException) {
-            throw java.io.IOException("没有回应", e)
+            (System.nanoTime() - started) / 1_000_000
         }
-        (System.nanoTime() - started) / 1_000_000
-    }
 
-    /** How long one round trip to a computer takes, through the server and back: a sealed command that only reads its settings. */
+    /**
+     * How long one round trip to a computer takes, through the server and back: a sealed command
+     * that only reads its settings.
+     */
     suspend fun pingMachine(machineId: String, timeoutMs: Long = 15_000): Long {
         val started = System.nanoTime()
         try {
-            withTimeout(timeoutMs) { machineCommand(machineId, Command.newBuilder().setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsRequest.getDefaultInstance()).build()) }
+            withTimeout(timeoutMs) {
+                machineCommand(
+                    machineId,
+                    Command.newBuilder()
+                        .setGetSettings(
+                            io.github.lewin671.remoteagent.proto.GetSettingsRequest
+                                .getDefaultInstance(),
+                        )
+                        .build(),
+                )
+            }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
             throw java.io.IOException("没有回应", e)
         }
@@ -1474,24 +2227,74 @@ class Remote(
     }
 
     /**
-     * Forwards a prepared command and returns the opened result. Transport
-     * failures are retried with the same request ID, which the daemon runs at
-     * most once; when the outcome stays unknown the error says so.
+     * Forwards a prepared command and returns the opened result. Transport failures are retried
+     * with the same request ID, which the daemon runs at most once; when the outcome stays unknown
+     * the error says so.
      */
+    suspend fun authorize(p: PreparedCommand): Envelope {
+        try {
+            return authorizeIntent(p)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            throw CommandException("authorization_unavailable", "安全授权或当前请求尚未核实，操作没有发出；请重试")
+        }
+    }
+
+    private suspend fun authorizeIntent(p: PreparedCommand): Envelope =
+        p.sealMutex.withLock {
+            val current = security.sync()
+            val previous = p.authorizedEnvelope
+            if (
+                previous != null &&
+                    DeviceSecurity.parseHeader(previous.securityHeader.toByteArray())
+                        .state
+                        .contentEquals(DeviceSecurity.stateHash(current.state))
+            )
+                return@withLock previous
+            val env =
+                if (p.command != null) {
+                    // A retry keeps the exact original observation. The executor's
+                    // durable request log settles it before considering a new action.
+                    if (previous == null && isObservedAction(p.command)) {
+                        val fresh = fetchLiveSnapshot(p.sessionId)
+                        if (observeAction(p.command, fresh) != p.command)
+                            throw CommandException("failed_precondition", "当前请求已变化，请重新核对")
+                    }
+                    security.seal(
+                        DeviceSecurity.Purpose.COMMAND,
+                        p.machineId,
+                        p.sessionId,
+                        p.requestId,
+                        deadline = p.deadlineMs.toULong(),
+                        plain = p.command.toByteArray(),
+                    )
+                } else {
+                    DeviceSecurity.fromEnvelope(p.envelope)
+                    p.envelope
+                }
+            p.authorizedEnvelope = env
+            env
+        }
+
     suspend fun forward(p: PreparedCommand, retryOfUnknown: Boolean = false): CommandResult {
         // A machine of another protocol version would refuse it: say which
         // side to update instead of sending.
-        protocolMismatch(state.value.machines[p.machineId])?.let { throw CommandException("failed_precondition", it) }
+        protocolMismatch(state.value.machines[p.machineId])?.let {
+            throw CommandException("failed_precondition", it)
+        }
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
-        if (!retryOfUnknown && clock() >= p.deadlineMs) throw CommandException(CommandException.EXPIRED, "这条指令已过期，没有发出")
+        if (!retryOfUnknown && clock() >= p.deadlineMs)
+            throw CommandException(CommandException.EXPIRED, "这条指令已过期，没有发出")
         var attempt = 0
         // Once a try may have reached the daemon, a later try that surely did
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
         var mayHaveRun = retryOfUnknown
         fun notSent(code: String, text: String, later: String) =
-            if (mayHaveRun) CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后$later") else CommandException(code, text)
+            if (mayHaveRun)
+                CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后$later")
+            else CommandException(code, text)
         var waiting = false
         try {
             while (true) {
@@ -1499,28 +2302,51 @@ class Remote(
                 try {
                     if (token.isEmpty()) token = relogin(mayHaveRun)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    val authorized = authorize(p)
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     waiting = true
-                    val res = api.client.forward(
-                        ForwardRequest.newBuilder().setMachineId(p.machineId).setCommand(p.envelope).build(),
-                        Api.headers(token),
-                    ).value()
-                    val (_, msg) = try {
-                        Envelopes.openMessage(
-                            keys.command, res.result,
-                            Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = p.machineId, sessionId = p.sessionId, requestId = p.requestId),
-                            CommandResult::parseFrom,
+                    mayHaveRun = true
+                    val res =
+                        api.client
+                            .forward(
+                                ForwardRequest.newBuilder()
+                                    .setMachineId(p.machineId)
+                                    .setCommand(authorized)
+                                    .build(),
+                                Api.headers(token),
+                            )
+                            .value()
+                    val (_, msg) =
+                        try {
+                            openSecureMessage(
+                                keys.command,
+                                res.result,
+                                Place(
+                                    PayloadKind.PAYLOAD_KIND_COMMAND_RESULT,
+                                    machineId = p.machineId,
+                                    sessionId = p.sessionId,
+                                    requestId = p.requestId,
+                                ),
+                                CommandResult::parseFrom,
+                            )
+                        } catch (e: Exception) {
+                            // A result that does not open says nothing about whether
+                            // the command ran; retrying the same request asks again.
+                            throw CommandException(CommandException.UNKNOWN, "电脑的回复打不开，不确定指令有没有执行")
+                        }
+                    if (msg.errorCode.isNotEmpty())
+                        throw CommandException(
+                            msg.errorCode,
+                            msg.errorMessage.ifEmpty { msg.errorCode },
+                            fromDaemon = true,
                         )
-                    } catch (e: OpenException) {
-                        // A result that does not open says nothing about whether
-                        // the command ran; retrying the same request asks again.
-                        throw CommandException(CommandException.UNKNOWN, "电脑的回复打不开，不确定指令有没有执行")
-                    }
-                    if (msg.errorCode.isNotEmpty()) throw CommandException(msg.errorCode, msg.errorMessage.ifEmpty { msg.errorCode }, fromDaemon = true)
                     return msg
                 } catch (ce: ConnectException) {
                     waiting = false
                     val cause = ce.exception
-                    if (cause is java.net.UnknownHostException || cause is java.net.ConnectException) {
+                    if (
+                        cause is java.net.UnknownHostException || cause is java.net.ConnectException
+                    ) {
                         throw notSent("network", "网络不通，指令没有发出", "网络断了")
                     }
                     if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
@@ -1529,59 +2355,113 @@ class Remote(
                         continue
                     }
                     // ABORTED: the daemon could not seal a result, as on the web.
-                    val unknown = ce.code in setOf(Code.DEADLINE_EXCEEDED, Code.UNKNOWN, Code.INTERNAL_ERROR, Code.CANCELED, Code.ABORTED)
+                    val unknown =
+                        ce.code in
+                            setOf(
+                                Code.DEADLINE_EXCEEDED,
+                                Code.UNKNOWN,
+                                Code.INTERNAL_ERROR,
+                                Code.CANCELED,
+                                Code.ABORTED,
+                            )
                     if (unknown) mayHaveRun = true
                     if (unknown && attempt < 3 && clock() + 2000 < p.deadlineMs) {
                         attempt++
                         delay(1000L * attempt)
                         continue
                     }
-                    if (ce.code == Code.UNAVAILABLE && cause == null) throw notSent(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", "电脑离线了")
+                    if (ce.code == Code.UNAVAILABLE && cause == null)
+                        throw notSent(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", "电脑离线了")
                     if (unknown || ce.code == Code.UNAVAILABLE) {
-                        throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：${errorText(ce)}")
+                        throw CommandException(
+                            CommandException.UNKNOWN,
+                            "不确定电脑有没有执行：${errorText(ce)}",
+                        )
                     }
-                    throw CommandException(ce.code.codeName, errorText(ce))
+                    throw CommandException(CommandException.UNKNOWN, "中继未提供可验证的执行结果，请重试同一请求")
                 }
             }
         } catch (e: CancellationException) {
-            if (waiting || mayHaveRun) throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求")
+            if (waiting || mayHaveRun)
+                throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求")
+            throw e
+        } catch (e: Exception) {
+            if (e is CommandException && e.fromDaemon) throw e
+            if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, "未收到可验证的执行结果，请重试同一请求")
             throw e
         }
     }
 
     /**
-     * Logs in again during a forward. When an earlier try may already have
-     * run the command, a failure here is no answer about it: it stays unknown.
+     * Logs in again during a forward. When an earlier try may already have run the command, a
+     * failure here is no answer about it: it stays unknown.
      */
-    private suspend fun relogin(mayHaveRun: Boolean): String = try {
-        signIn()
-    } catch (e: Exception) {
-        if (!mayHaveRun) throw e
-        throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后登录失败（${errorText(e)}）")
-    }
+    private suspend fun relogin(mayHaveRun: Boolean): String =
+        try {
+            signIn()
+        } catch (e: Exception) {
+            if (!mayHaveRun) throw e
+            throw CommandException(
+                CommandException.UNKNOWN,
+                "不确定电脑有没有执行：请求可能已经送到，之后登录失败（${errorText(e)}）",
+            )
+        }
 
     /** The models a machine's CLI offers, refreshed when a picker opens. */
-    suspend fun listModels(machineId: String, agent: Agent = Agent.AGENT_UNSPECIFIED, fresh: Boolean = false): ListModelsResponse {
-        val d = withContext(dispatcher) {
-            val k = "$machineId/${agent.number}"
-            models[k]?.takeUnless { it.isCompleted && (fresh || it.getCompletionExceptionOrNull() != null) } ?: scope.async {
-                val r = machineCommand(machineId, Command.newBuilder().setListModels(ListModelsRequest.newBuilder().setAgent(agent)).build())
-                if (!r.hasListModels()) throw CommandException("internal", "意外的回复")
-                r.listModels
-            }.also { models[k] = it }
-        }
+    suspend fun listModels(
+        machineId: String,
+        agent: Agent = Agent.AGENT_UNSPECIFIED,
+        fresh: Boolean = false,
+    ): ListModelsResponse {
+        val d =
+            withContext(dispatcher) {
+                val k = "$machineId/${agent.number}"
+                models[k]?.takeUnless {
+                    it.isCompleted && (fresh || it.getCompletionExceptionOrNull() != null)
+                }
+                    ?: scope
+                        .async {
+                            val r =
+                                machineCommand(
+                                    machineId,
+                                    Command.newBuilder()
+                                        .setListModels(
+                                            ListModelsRequest.newBuilder().setAgent(agent),
+                                        )
+                                        .build(),
+                                )
+                            if (!r.hasListModels()) throw CommandException("internal", "意外的回复")
+                            r.listModels
+                        }
+                        .also { models[k] = it }
+            }
         return d.await()
     }
 
     /** Unregisters a device; a machine's sessions go with it. */
     suspend fun removeDevice(deviceId: String) {
-        api.client.removeDevice(RemoveDeviceRequest.newBuilder().setDeviceId(deviceId).build(), Api.headers(token)).value()
+        val binding =
+            withContext(dispatcher) {
+                if (deviceId == authorityDeviceId)
+                    throw CommandException("failed_precondition", "管理电脑不能普通移除")
+                deviceBindings[deviceId]
+            } ?: throw CommandException("failed_precondition", "需要先核实当前设备信息")
+        val op = security.remove(deviceId, binding.second, binding.first)
+        cleanupRemoval(op)
         withContext(dispatcher) {
-            dropMachine(deviceId)
-            bump(devicePushes, deviceId)
-            devices.remove(deviceId)
+            removals = security.removalOperations()
+            loadDevices()
             publish()
         }
+    }
+
+    suspend fun retryDeviceRemoval(operation: String) {
+        val op =
+            security.removalOperations().firstOrNull {
+                it.request["Operation"]?.jsonPrimitive?.content == operation
+            } ?: return
+        security.retryRemoval(op)
+        withContext(dispatcher) { pollRemovals() }
     }
 
     /** The bearer token of the current login, for services used outside this class. */
@@ -1594,89 +2474,145 @@ class Remote(
 
     /** A display copy fetched for viewing: its pixels, or why there are none. */
     sealed interface ImageResult {
-        class Loaded(val payload: io.github.lewin671.remoteagent.proto.ImagePayload) : ImageResult
+        class Loaded(
+            val payload: io.github.lewin671.remoteagent.proto.ImagePayload,
+            val unverifiedLegacy: Boolean = false,
+        ) : ImageResult
+
         /** Kept past its retention: only the preview in the event is left. */
         data object Expired : ImageResult
+
         /** The server never had it. */
         data object Missing : ImageResult
+
         /** The bytes are not the image they claim to be, or do not open. */
         data class Corrupt(val why: String) : ImageResult
     }
 
     /**
-     * An image's display copy, from the cache of envelopes or the server.
-     * Only the envelope is cached; it is opened and checked in memory each
-     * time: bound to this machine, session and image, and data that starts
-     * with its format's signature.
+     * An image's display copy, from the cache of envelopes or the server. Only the envelope is
+     * cached; it is opened and checked in memory each time: bound to this machine, session and
+     * image, and data that starts with its format's signature.
      */
     suspend fun image(sid: String, imageId: String): ImageResult {
-        val s = withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
+        val s =
+            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
         val key = sessionKeys[sid] ?: throw CommandException("not_found", "未知会话")
         val cacheKey = "$sid/$imageId"
-        var env = try {
-            cache?.image(cacheKey)?.let { Envelope.parseFrom(it) }
-        } catch (e: Exception) {
-            null
-        }
-        if (env == null) {
-            val r = try {
-                api.client.getImage(io.github.lewin671.remoteagent.proto.GetImageRequest.newBuilder().setSessionId(sid).setImageId(imageId).build(), Api.headers(currentToken())).value()
-            } catch (e: ConnectException) {
-                if (e.code == Code.NOT_FOUND) return ImageResult.Missing
-                throw e
+        var env =
+            try {
+                cache?.image(cacheKey)?.let { Envelope.parseFrom(it) }
+            } catch (e: Exception) {
+                null
             }
+        if (env == null) {
+            val r =
+                try {
+                    api.client
+                        .getImage(
+                            io.github.lewin671.remoteagent.proto.GetImageRequest.newBuilder()
+                                .setSessionId(sid)
+                                .setImageId(imageId)
+                                .build(),
+                            Api.headers(currentToken()),
+                        )
+                        .value()
+                } catch (e: ConnectException) {
+                    if (e.code == Code.NOT_FOUND) return ImageResult.Missing
+                    throw e
+                }
             if (r.expired || !r.hasImage()) return ImageResult.Expired
             env = r.image
         }
-        val payload = try {
-            Envelopes.openMessage(
-                key, env,
-                Place(PayloadKind.PAYLOAD_KIND_IMAGE, machineId = s.machineId, sessionId = sid, requestId = imageId),
-                io.github.lewin671.remoteagent.proto.ImagePayload::parseFrom,
-            ).second
-        } catch (e: OpenException) {
-            return ImageResult.Corrupt(e.message ?: "打不开")
-        }
-        if (detectFormat(payload.data.toByteArray()) != payload.format) return ImageResult.Corrupt("图片内容和格式对不上")
+        val payload =
+            try {
+                openSecureMessage(
+                        key,
+                        env,
+                        Place(
+                            PayloadKind.PAYLOAD_KIND_IMAGE,
+                            machineId = s.machineId,
+                            sessionId = sid,
+                            requestId = imageId,
+                        ),
+                        io.github.lewin671.remoteagent.proto.ImagePayload::parseFrom,
+                    )
+                    .second
+            } catch (e: OpenException) {
+                return ImageResult.Corrupt(e.message ?: "打不开")
+            }
+        if (detectFormat(payload.data.toByteArray()) != payload.format)
+            return ImageResult.Corrupt("图片内容和格式对不上")
         try {
             cache?.putImage(cacheKey, env.toByteArray())
         } catch (e: Exception) {
             report(e)
         }
-        return ImageResult.Loaded(payload)
+        return ImageResult.Loaded(payload, Header.parseFrom(env.header).version == 1)
     }
 
     /** The image upload commands on one machine. */
-    fun uploadChannel(machineId: String): UploadChannel = object : UploadChannel {
-        private suspend fun run(b: Command.Builder.() -> Unit): CommandResult = machineCommand(machineId, Command.newBuilder().apply(b).build())
+    fun uploadChannel(machineId: String): UploadChannel =
+        object : UploadChannel {
+            private suspend fun run(b: Command.Builder.() -> Unit): CommandResult =
+                machineCommand(machineId, Command.newBuilder().apply(b).build())
 
-        override suspend fun begin(transferId: String, format: io.github.lewin671.remoteagent.proto.ImageFormat, total: Long, sha256: ByteArray) =
-            run {
-                beginImageUpload = io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.newBuilder().setTransferId(transferId).setFormat(format)
-                    .setTotalBytes(total).setSha256(com.google.protobuf.ByteString.copyFrom(sha256)).build()
-            }.beginImageUpload.status
+            override suspend fun begin(
+                transferId: String,
+                format: io.github.lewin671.remoteagent.proto.ImageFormat,
+                total: Long,
+                sha256: ByteArray,
+            ) = run {
+                beginImageUpload =
+                    io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.newBuilder()
+                        .setTransferId(transferId)
+                        .setFormat(format)
+                        .setTotalBytes(total)
+                        .setSha256(com.google.protobuf.ByteString.copyFrom(sha256))
+                        .build()
+            }
+                .beginImageUpload
+                .status
 
-        override suspend fun put(transferId: String, offset: Long, data: ByteArray) =
-            run {
-                putImageChunk = io.github.lewin671.remoteagent.proto.PutImageChunkRequest.newBuilder().setTransferId(transferId).setOffset(offset)
-                    .setData(com.google.protobuf.ByteString.copyFrom(data)).build()
-            }.putImageChunk.status
+            override suspend fun put(transferId: String, offset: Long, data: ByteArray) = run {
+                putImageChunk =
+                    io.github.lewin671.remoteagent.proto.PutImageChunkRequest.newBuilder()
+                        .setTransferId(transferId)
+                        .setOffset(offset)
+                        .setData(com.google.protobuf.ByteString.copyFrom(data))
+                        .build()
+            }
+                .putImageChunk
+                .status
 
-        override suspend fun status(transferId: String) =
-            run { getImageUploadStatus = io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder().setTransferId(transferId).build() }.getImageUploadStatus.status
+            override suspend fun status(transferId: String) = run {
+                getImageUploadStatus =
+                    io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder()
+                        .setTransferId(transferId)
+                        .build()
+            }
+                .getImageUploadStatus
+                .status
 
-        override suspend fun complete(transferId: String) =
-            run { completeImageUpload = io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.newBuilder().setTransferId(transferId).build() }.completeImageUpload.status
-    }
+            override suspend fun complete(transferId: String) = run {
+                completeImageUpload =
+                    io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.newBuilder()
+                        .setTransferId(transferId)
+                        .build()
+            }
+                .completeImageUpload
+                .status
+        }
 
     // --- terminal ---
 
     /**
-     * Joins a session's terminal stream. Frames are sealed with the session key
-     * and numbered; each side refuses frames out of order.
+     * Joins a session's terminal stream. Frames are sealed with the session key and numbered; each
+     * side refuses frames out of order.
      */
     suspend fun openTerminal(sid: String, listener: TermListener): TermConn {
-        val s = withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
+        val s =
+            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
         val key = sessionKeys[sid] ?: throw CommandException("not_found", "未知会话")
         val tok = currentToken()
         val streamId = newRequestId()
@@ -1686,79 +2622,149 @@ class Remote(
             if (closed.compareAndSet(false, true)) listener.onClose(reason)
         }
         var last = 0L
-        val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
-        val ws = streamHttp.newWebSocket(
-            Request.Builder().url(url).build(),
-            object : WebSocketListener() {
-                override fun onOpen(webSocket: WebSocket, response: Response) {
-                    val hello = TermHello.newBuilder().setToken(tok).setStreamId(streamId).setMachineId(s.machineId).build()
-                    webSocket.send(hello.toByteArray().toByteString())
-                    opened.complete(Unit)
-                }
-
-                override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                    if (closed.get()) return
+        val incoming = kotlinx.coroutines.channels.Channel<ByteArray>(64)
+        data class QueuedInput(val frame: TerminalFrame, val deadline: Long)
+        val outgoing = kotlinx.coroutines.channels.Channel<QueuedInput>(64)
+        val queuedBytes = java.util.concurrent.atomic.AtomicLong(0)
+        val reader = scope.launch {
+            try {
+                for (raw in incoming) {
                     try {
-                        val env = Envelope.parseFrom(bytes.toByteArray())
-                        val (h, frame) = Envelopes.openMessage(
-                            key, env,
-                            Place(PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT, machineId = s.machineId, sessionId = sid, requestId = streamId),
-                            TerminalFrame::parseFrom,
-                        )
+                        val env = Envelope.parseFrom(raw)
+                        val (h, frame) =
+                            openSecureMessage(
+                                key,
+                                env,
+                                Place(
+                                    PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT,
+                                    machineId = s.machineId,
+                                    sessionId = sid,
+                                    requestId = streamId,
+                                ),
+                                TerminalFrame::parseFrom,
+                            )
                         if (ucmp(h.seq, last) <= 0) throw OpenException("终端帧顺序不对")
                         last = h.seq
                         listener.onFrame(frame)
-                    } catch (e: Exception) {
-                        finish(errorText(e))
-                        webSocket.cancel()
+                    } finally {
+                        queuedBytes.addAndGet(-raw.size.toLong())
                     }
                 }
+            } catch (e: Exception) {
+                finish(errorText(e))
+            }
+        }
+        val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
+        val ws =
+            streamHttp.newWebSocket(
+                Request.Builder().url(url).build(),
+                object : WebSocketListener() {
+                    override fun onOpen(webSocket: WebSocket, response: Response) {
+                        val hello =
+                            TermHello.newBuilder()
+                                .setToken(tok)
+                                .setStreamId(streamId)
+                                .setMachineId(s.machineId)
+                                .build()
+                        webSocket.send(hello.toByteArray().toByteString())
+                        opened.complete(Unit)
+                    }
 
-                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                    webSocket.close(1000, null)
-                    finish("终端连接断开")
-                }
+                    override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                        if (closed.get()) return
+                        val raw = bytes.toByteArray()
+                        if (
+                            raw.size > 1 shl 20 ||
+                                queuedBytes.addAndGet(raw.size.toLong()) > 2L * 1024 * 1024 ||
+                                incoming.trySend(raw).isFailure
+                        ) {
+                            finish("终端输出积压，已停止接收")
+                            webSocket.cancel()
+                            incoming.close()
+                        }
+                    }
 
-                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) = finish("终端连接断开")
+                    override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                        webSocket.close(1000, null)
+                        finish("终端连接断开")
+                    }
 
-                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    opened.completeExceptionally(Exception("连不上终端"))
-                    finish("终端连接断开：" + errorText(t))
-                }
-            },
-        )
+                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) =
+                        finish("终端连接断开")
+
+                    override fun onFailure(
+                        webSocket: WebSocket,
+                        t: Throwable,
+                        response: Response?,
+                    ) {
+                        opened.completeExceptionally(Exception("连不上终端"))
+                        finish("终端连接断开：" + errorText(t))
+                    }
+                },
+            )
         try {
             withTimeout(20_000) { opened.await() }
-            command(sid, Command.newBuilder().setOpenTerminal(
-                io.github.lewin671.remoteagent.proto.OpenTerminalRequest.newBuilder().setSessionId(sid).setStreamId(streamId),
-            ).build())
+            command(
+                sid,
+                Command.newBuilder()
+                    .setOpenTerminal(
+                        io.github.lewin671.remoteagent.proto.OpenTerminalRequest.newBuilder()
+                            .setSessionId(sid)
+                            .setStreamId(streamId),
+                    )
+                    .build(),
+            )
         } catch (e: Exception) {
             closed.set(true)
             ws.cancel()
             throw e
         }
         var seq = 0L
-        val lock = Any()
+        val writer = scope.launch {
+            try {
+                for (item in outgoing) {
+                    val frame = item.frame
+                    if (closed.get()) break
+                    seq++
+                    val env =
+                        sealSecureMessage(
+                            key,
+                            Header.newBuilder()
+                                .setKind(PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT)
+                                .setMachineId(s.machineId)
+                                .setSessionId(sid)
+                                .setRequestId(streamId)
+                                .setSeq(seq)
+                                .setDeadlineMs(item.deadline)
+                                .setSender(account.deviceId)
+                                .build(),
+                            frame,
+                        )
+                    if (!closed.get()) ws.send(env.toByteArray().toByteString())
+                }
+            } catch (e: Exception) {
+                finish(errorText(e))
+                ws.cancel()
+            }
+        }
         return TermConn(
             ws,
-            seal = { frame ->
-                synchronized(lock) {
-                    seq++
-                    Envelopes.seal(
-                        key,
-                        Header.newBuilder()
-                            .setKind(PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT)
-                            .setMachineId(s.machineId)
-                            .setSessionId(sid)
-                            .setRequestId(streamId)
-                            .setSeq(seq)
-                            .setSender(account.deviceId)
-                            .build(),
-                        frame,
-                    ).toByteArray()
+            sendFrame = { frame ->
+                if (
+                    frame.serializedSize > 64 * 1024 ||
+                        outgoing.trySend(QueuedInput(frame, clock() + 60_000)).isFailure
+                ) {
+                    finish("终端输入等待授权，已暂停")
+                    ws.cancel()
                 }
             },
-            closeLocal = { closed.set(true) },
+            closeLocal = {
+                closed.set(true)
+                incoming.close()
+                outgoing.close()
+                reader.cancel()
+                writer.cancel()
+            },
         )
     }
 
@@ -1766,5 +2772,72 @@ class Remote(
         // Only the error text: never content or keys.
         log("remote-agent: " + errorText(e))
         error = errorText(e)
+    }
+
+    private fun projection(h: DeviceSecurity.Header): Header =
+        Header.newBuilder()
+            .setVersion(2)
+            .setKindValue(h.kind.toInt())
+            .setMachineId(h.machine)
+            .setSessionId(h.session)
+            .setRequestId(h.request)
+            .setSeq(h.seq.toLong())
+            .setDeadlineMs(h.deadline.toLong())
+            .setSender(h.sender)
+            .setCompressionValue(h.compression.toInt())
+            .build()
+
+    private suspend fun <T : com.google.protobuf.MessageLite> openSecureMessage(
+        legacyKey: ByteArray,
+        env: Envelope,
+        want: Place,
+        parse: (ByteArray) -> T,
+    ): Pair<Header, T> {
+        val route = Header.parseFrom(env.header)
+        if (
+            want.kind in setOf(PayloadKind.PAYLOAD_KIND_EVENT, PayloadKind.PAYLOAD_KIND_IMAGE) &&
+                route.version == 1
+        ) {
+            legacySessions.add(want.sessionId)
+            return Envelopes.openMessage(legacyKey, env, want, parse)
+        }
+        val h = DeviceSecurity.parseHeader(env.securityHeader.toByteArray())
+        val live = false
+        val seed = if (h.purpose.sessionKey) sessionKeys[h.session] else null
+        val (header, m) = security.openMessage(env, !live, seed, parse)
+        val projected = projection(header)
+        Envelopes.expect(projected, want)
+        return projected to m
+    }
+
+    private suspend fun sealSecureMessage(
+        legacyKey: ByteArray,
+        h: Header,
+        m: com.google.protobuf.MessageLite,
+    ): Envelope {
+        var purpose =
+            DeviceSecurity.Purpose.entries.firstOrNull { it.value == h.kindValue.toUInt() }
+                ?: throw DeviceSecurity.Failure()
+        if (m is TerminalFrame) {
+            purpose =
+                when (m.kindCase) {
+                    TerminalFrame.KindCase.INPUT -> DeviceSecurity.Purpose.TERMINAL_INPUT
+                    TerminalFrame.KindCase.RESIZE -> DeviceSecurity.Purpose.TERMINAL_RESIZE
+                    TerminalFrame.KindCase.HISTORY_REQUEST ->
+                        DeviceSecurity.Purpose.TERMINAL_HISTORY
+                    else -> purpose
+                }
+        }
+        val seed = if (purpose.sessionKey) sessionKeys[h.sessionId] else null
+        return security.seal(
+            purpose,
+            h.machineId,
+            h.sessionId,
+            h.requestId,
+            h.seq.toULong(),
+            h.deadlineMs.toULong(),
+            m.toByteArray(),
+            seed,
+        )
     }
 }

@@ -38,4 +38,10 @@ public interface LoginRequestOrBuilder extends
    * @return The signature.
    */
   com.google.protobuf.ByteString getSignature();
+
+  /**
+   * <code>uint32 protocol_version = 4 [json_name = "protocolVersion"];</code>
+   * @return The protocolVersion.
+   */
+  int getProtocolVersion();
 }

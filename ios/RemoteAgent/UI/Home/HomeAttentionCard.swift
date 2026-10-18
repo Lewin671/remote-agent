@@ -20,7 +20,10 @@ private final class CardEvents {
 
     func follow(_ remote: Remote, _ sid: String, agent: PBAgent) async {
         for await snapshot in remote.events(sid).updates() {
-            derived = projection.update(snapshot.events, agent: agent)
+            derived = currentActions(
+                projection.update(
+                    snapshot.unverifiedLegacy ? snapshot.verifiedEvents : snapshot.events,
+                    agent: agent), live: snapshot.live)
             // The feed keeps the latest for a reader that is behind; a frame passes between two.
             if (try? await Task.sleep(nanoseconds: 16_000_000)) == nil { return }
         }
@@ -44,23 +47,33 @@ struct HomeAttentionCard: View {
         let status = statusOf(session, machine: state.machines[session.machineId])
         let approval = d.approvals.values.first
         let t = attentionCardText(
-            state, session, scope: scope, approval: approval, question: d.questions.values.first?.questions.first?.text, now: now)
+            state, session, scope: scope, approval: approval,
+            question: d.questions.values.first?.questions.first?.text, now: now)
         VStack(alignment: .leading, spacing: 0) {
             Button {
                 nav.open(.session(id: session.id))
             } label: {
                 VStack(alignment: .leading, spacing: 0) {
                     // The deadline is metadata until its last minute (design-system §1), as in the session's dock.
-                    head(t, last: status == .approval && approval.flatMap { ApprovalDeadline($0, now: now) }?.last == true)
+                    head(
+                        t,
+                        last: status == .approval
+                            && approval.flatMap { ApprovalDeadline($0, now: now) }?.last == true)
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(t.title).type(T.bodyB, Theme.fg).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        if !typeSize.isAccessibilitySize { ArrowText(t.action, style: T.smB).fixedSize() }
+                        Text(t.title).type(T.bodyB, Theme.fg).lineLimit(
+                            typeSize.isAccessibilitySize ? 2 : 1
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        if !typeSize.isAccessibilitySize {
+                            ArrowText(t.action, style: T.smB).fixedSize()
+                        }
                     }
                     .padding(.top, 4)
                     if !t.meta.isEmpty { Text(t.meta).type(T.meta, Theme.muted).lineLimit(2) }
                     if typeSize.isAccessibilitySize {
-                        ArrowText(t.action, style: T.smB).frame(maxWidth: .infinity, alignment: .trailing).padding(.top, 2)
+                        ArrowText(t.action, style: T.smB).frame(
+                            maxWidth: .infinity, alignment: .trailing
+                        ).padding(.top, 2)
                     }
                 }
                 .contentShape(Rectangle())
@@ -72,12 +85,14 @@ struct HomeAttentionCard: View {
             .accessibilityAddTraits(.isButton)
             if status == .approval, let approval {
                 if !approval.description_p.isEmpty {
-                    Text(approvalDisplay(approval.description_p)).type(T.sm, Theme.fg2).padding(.top, 6)
+                    Text(approvalDisplay(approval.description_p)).type(T.sm, Theme.fg2).padding(
+                        .top, 6)
                 }
                 // 允许 is never offered next to nothing: a tool that is not a shell command shows its input.
                 let what = approvalBody(approval)
                 if !what.isEmpty {
-                    Code(what, maxLines: 3, background: Theme.card, border: true).padding(.vertical, 8)
+                    Code(what, maxLines: 3, background: Theme.card, border: true).padding(
+                        .vertical, 8)
                 }
                 ApprovalButtons(session: session, approval: approval, onCard: true)
                     .padding(.top, what.isEmpty ? 8 : 0)
@@ -85,11 +100,15 @@ struct HomeAttentionCard: View {
         }
         .padding(.horizontal, 13).padding(.vertical, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .background(
+            Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+        )
         // Notices on the card use the surface above it.
         .environment(\.onSoft, true)
         .padding(.horizontal, 12).padding(.bottom, 8)
-        .task(id: session.id) { await events.follow(context.remote, session.id, agent: session.agent) }
+        .task(id: session.id) {
+            await events.follow(context.remote, session.id, agent: session.agent)
+        }
     }
 
     /// 「● 请求执行」 at the left, the deadline or the time at the right; one under the other when the text is large.

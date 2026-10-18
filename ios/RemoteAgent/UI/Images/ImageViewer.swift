@@ -42,10 +42,14 @@ struct ViewerLoader {
     /// Where the image's display copy stands, fetching it if the event says there is one.
     func load(_ ref: PBImageRef, online: Bool) async -> (state: BigImage, image: ViewedImage?) {
         #if DEBUG
-        if let sample = await ImageDebug.viewerSample(ref, center: center, online: online) { return sample }
+            if let sample = await ImageDebug.viewerSample(ref, center: center, online: online) {
+                return sample
+            }
         #endif
         guard hasDisplayCopy(ref) else { return (.notSynced, nil) }
-        if let held = held(ref) { return (.ready, held) }
+        if let held = held(ref) {
+            return (held.unverifiedLegacy ? .unverifiedLegacy : .ready, held)
+        }
         let fetched: Result<ImageResult, any Error>
         do {
             fetched = .success(try await center.remote.image(session, imageId: ref.imageID))
@@ -59,11 +63,13 @@ struct ViewerLoader {
         // Decoded off the main actor, and before it is shown rather than while it is drawn.
         let decoded = await Task.detached { () -> ViewedImage? in
             guard let image = UIImage(data: data) else { return nil }
-            return ViewedImage(image: image.preparingForDisplay() ?? image, bytes: data, format: format)
+            return ViewedImage(
+                unverifiedLegacy: state == .unverifiedLegacy,
+                image: image.preparingForDisplay() ?? image, bytes: data, format: format)
         }.value
         guard let decoded else { return (.corrupt(why: "解不出图片"), nil) }
         keep(ref, decoded)
-        return (.ready, decoded)
+        return (state, decoded)
     }
 }
 
@@ -98,16 +104,21 @@ struct ViewerPage: View {
         let retry = viewerCanRetry(big)
         ZStack {
             if let shown {
-                ZoomableImage(image: shown, zoomToggles: zoomToggles, reduceMotion: reduceMotion, onDrag: onDrag, onClose: onClose)
-                    .ignoresSafeArea()
-                    .accessibilityElement()
-                    .accessibilityLabel(ref.path.isEmpty ? "图片" : fileName(ref.path))
-                    .accessibilityValue(big == .loading ? "正在下载大图" : note ?? "")
-                    .accessibilityAddTraits(.isImage)
-                    .accessibilityAction(named: "放大或还原") { zoomToggles += 1 }
+                ZoomableImage(
+                    image: shown, zoomToggles: zoomToggles, reduceMotion: reduceMotion,
+                    onDrag: onDrag, onClose: onClose
+                )
+                .ignoresSafeArea()
+                .accessibilityElement()
+                .accessibilityLabel(ref.path.isEmpty ? "图片" : fileName(ref.path))
+                .accessibilityValue(big == .loading ? "正在下载大图" : note ?? "")
+                .accessibilityAddTraits(.isImage)
+                .accessibilityAction(named: "放大或还原") { zoomToggles += 1 }
             } else {
                 // Not even a preview: the file's name is all there is.
-                Text(fileName(ref.path)).type(T.mono13, ViewerInk.text).multilineTextAlignment(.center).padding(24)
+                Text(fileName(ref.path)).type(T.mono13, ViewerInk.text).multilineTextAlignment(
+                    .center
+                ).padding(24)
             }
             if big == .loading {
                 Mark(Lucide.loaderCircle, color: ViewerInk.text, size: 36, relativeTo: .title)
@@ -124,7 +135,9 @@ struct ViewerPage: View {
                     Text(note).type(T.sm, ViewerInk.text).multilineTextAlignment(.center)
                         .padding(.horizontal, 12).padding(.vertical, 8)
                         .frame(minHeight: retry ? Theme.minHit : 0)
-                        .background(ViewerInk.chip, in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+                        .background(
+                            ViewerInk.chip,
+                            in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
                 }
                 .buttonStyle(PressStyle())
                 .disabled(!retry)
@@ -136,9 +149,9 @@ struct ViewerPage: View {
         }
         .task(id: Ask(id: ref.imageID, attempt: attempt, online: online)) {
             // A copy already here is not asked for again when the connection comes and goes.
-            if sharp != nil, big == .ready { return }
+            if sharp != nil, big == .ready || big == .unverifiedLegacy { return }
             if let held = loader.held(ref) {
-                (big, sharp) = (.ready, held.image)
+                (big, sharp) = (held.unverifiedLegacy ? .unverifiedLegacy : .ready, held.image)
                 return
             }
             big = .loading
@@ -191,10 +204,14 @@ enum ImageLeaving {
     @MainActor
     static func picture(_ ref: PBImageRef, loader: ViewerLoader) -> LeavingImage? {
         if let held = loader.held(ref) {
-            return LeavingImage(bytes: held.bytes, format: held.format, name: savedImageName(path: ref.path, format: held.format))
+            return LeavingImage(
+                bytes: held.bytes, format: held.format,
+                name: savedImageName(path: ref.path, format: held.format))
         }
         if ref.preview.isEmpty { return nil }
-        return LeavingImage(bytes: ref.preview, format: ref.previewFormat, name: savedImageName(path: ref.path, format: ref.previewFormat))
+        return LeavingImage(
+            bytes: ref.preview, format: ref.previewFormat,
+            name: savedImageName(path: ref.path, format: ref.previewFormat))
     }
 
     /// Adds the picture to the photo library, with the access that only adds: the app never reads the library.
@@ -206,7 +223,8 @@ enum ImageLeaving {
             let options = PHAssetResourceCreationOptions()
             options.originalFilename = name
             // The bytes as they are: the format the computer encoded, not a copy re-encoded here.
-            PHAssetCreationRequest.forAsset().addResource(with: .photo, data: bytes, options: options)
+            PHAssetCreationRequest.forAsset().addResource(
+                with: .photo, data: bytes, options: options)
         }
     }
 }
@@ -219,7 +237,9 @@ struct ShareSheet: UIViewControllerRepresentable {
         let provider = NSItemProvider()
         provider.suggestedName = picture.name
         let bytes = picture.bytes
-        provider.registerDataRepresentation(forTypeIdentifier: picture.type.identifier, visibility: .all) { done in
+        provider.registerDataRepresentation(
+            forTypeIdentifier: picture.type.identifier, visibility: .all
+        ) { done in
             done(bytes, nil)
             return nil
         }

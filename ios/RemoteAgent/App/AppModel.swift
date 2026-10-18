@@ -103,14 +103,37 @@ final class AppModel {
         var network: any NetworkWatching = SystemNetwork()
         var defaults: UserDefaults = .standard
         /// Opens the account's cache of ciphertext. Called off the main actor.
-        var openCache: @Sendable (_ root: URL, _ account: Account) throws -> CipherStore = { root, account in
-            try CipherStore.open(root: root, account: CipherStore.accountKey(server: account.server, deviceId: account.deviceId))
+        var openCache: @Sendable (_ root: URL, _ account: Account) throws -> CipherStore = {
+            root, account in
+            try CipherStore.open(
+                root: root,
+                account: CipherStore.accountKey(server: account.server, deviceId: account.deviceId))
         }
-        var makeEngine: @MainActor (_ account: Account, _ cache: (any CipherCache)?) throws -> EngineParts = { account, cache in
-            let log = Logger(subsystem: "io.github.lewin671.remoteagent", category: "sync")
-            // The engine hands over error texts only, never content or keys.
-            let remote = try Remote(account: account, http: AppModel.http, cache: cache, log: { log.info("\($0, privacy: .public)") })
-            return EngineParts(engine: remote, remote: remote)
+        var makeEngine:
+            @MainActor (
+                _ account: Account, _ cache: (any CipherCache)?,
+                _ security: any DeviceSecurity.Storage
+            ) throws -> EngineParts = { account, cache, security in
+                let log = Logger(subsystem: "io.github.lewin671.remoteagent", category: "sync")
+                // The engine hands over error texts only, never content or keys.
+                let remote = try Remote(
+                    account: account, http: AppModel.http, cache: cache,
+                    log: { log.info("\($0, privacy: .public)") }, securityStorage: security)
+                return EngineParts(engine: remote, remote: remote)
+            }
+        var saveJoined: @Sendable (Vault, Account) throws -> Void = { vault, account in
+            try vault.save(
+                account.stored,
+                notifyKey: DeviceSecurity.NotifyRecord(record: vault.readSecurity()).bytes())
+        }
+        var securityReady: @Sendable (Vault, Account) throws -> Bool = { vault, account in
+            guard try vault.read(.securityState) != nil else { return false }
+            let record = try vault.readSecurity()
+            let keys = try Keys.derive(root: account.root)
+            guard record.memberID == account.deviceId,
+                record.pin.account == deviceId(publicKey: keys.account.publicKey)
+            else { throw DeviceSecurity.Failure.untrusted }
+            return true
         }
         /// The pause between two copies of the engine's state to the main actor: a frame.
         var frame: Sleeper = realSleep
@@ -120,7 +143,8 @@ final class AppModel {
         }
         /// Erases what is stored for the account: the keys, the cache and the pending images. Called off the main actor.
         var erase: @Sendable (AccountStorage) throws -> Void = { storage in
-            try LocalAccountData.erase(vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
+            try LocalAccountData.erase(
+                vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
         }
         /// Notifications may show the old account's approvals in full.
         var clearNotifications: @MainActor () -> Void = {
@@ -143,6 +167,10 @@ final class AppModel {
     private(set) var foreground = false
     /// The server of the account just left, to fill in when joining again. Only in memory.
     private(set) var lastServer = ""
+    private(set) var securitySetup: Account?
+    var joiningCalls: JoinCalls {
+        .live(http: Self.http, existing: securitySetup, vault: parts.storage.vault)
+    }
     /// Sample data is shown and nothing is stored or sent (`-demo`, debug builds).
     private(set) var isDemo = false
     let settings: SettingsStore
@@ -178,7 +206,8 @@ final class AppModel {
     @ObservationIgnored private var terminals: [UUID: TermConn] = [:]
     /// The revision of this device's metadata a description was last sent for on this connection.
     @ObservationIgnored private var described: String?
-    @ObservationIgnored private let log = Logger(subsystem: "io.github.lewin671.remoteagent", category: "app")
+    @ObservationIgnored private let log = Logger(
+        subsystem: "io.github.lewin671.remoteagent", category: "app")
 
     init(settings: SettingsStore, parts: Parts = Parts()) {
         self.settings = settings
@@ -239,42 +268,58 @@ final class AppModel {
     /// is what is tried again: the user asked for the account to go, and
     /// nothing is read or joined over what is left of it.
     func loadAccount() {
-        guard context == nil, !loading, !erasing, !isDemo, foreground else { return }
+        guard context == nil, securitySetup == nil, !loading, !erasing, !isDemo, foreground else {
+            return
+        }
         loading = true
         let storage = parts.storage
         let erase = unerased ? parts.erase : nil
+        let securityReady = parts.securityReady
         let gen = generation
         Task {
             // The Keychain call blocks.
             let result = await Task.detached {
                 Result {
                     try erase?(storage)
-                    return try storage.vault.load()
+                    let stored = try storage.vault.load()
+                    let ready =
+                        try stored.map { try securityReady(storage.vault, Account($0)) } ?? false
+                    return (stored, ready)
                 }
             }.value
             loading = false
             guard gen == generation, context == nil else { return }
             if case .success = result { unerased = false }
             switch result {
-            case .success(let stored?):
-                await use(Account(stored))
-            case .success(nil):
+            case .success((let stored?, let ready)):
+                if ready {
+                    await use(Account(stored))
+                } else {
+                    securitySetup = Account(stored)
+                    lastServer = stored.server
+                    stage = .join
+                }
+            case .success((nil, _)):
                 stage = .join
             case .failure(let error):
-                log.error("stored account does not open: \(String(describing: type(of: error)), privacy: .public)")
+                log.error(
+                    "stored account does not open: \(String(describing: type(of: error)), privacy: .public)"
+                )
                 stage = .failed(error.localizedDescription)
             }
         }
     }
 
     private func use(_ account: Account) async {
+        securitySetup = nil
         generation += 1
         let gen = generation
         let root = parts.storage.cacheRoot
         let open = parts.openCache
         // Opening the database touches the disk. Without it the app still
         // works, from the server alone.
-        let keeper = LoginKeeper(vault: parts.storage.vault, server: account.server, deviceId: account.deviceId)
+        let keeper = LoginKeeper(
+            vault: parts.storage.vault, server: account.server, deviceId: account.deviceId)
         let (store, kept) = await Task.detached { (try? open(root, account), keeper.load()) }.value
         guard gen == generation else {
             try? store?.close()
@@ -283,7 +328,7 @@ final class AppModel {
         if store == nil { log.error("the cache does not open; going on without it") }
         let made: EngineParts
         do {
-            made = try parts.makeEngine(account, store)
+            made = try parts.makeEngine(account, store, parts.storage.vault)
         } catch {
             try? store?.close()
             stage = .failed(errorText(error))
@@ -330,15 +375,18 @@ final class AppModel {
         guard gen == generation else { return }
         if snapshot != state {
             #if DEBUG
-            if snapshot.link != state.link || snapshot.machines.count != state.machines.count || snapshot.removed != state.removed {
-                // IDs and counts only (scope §4).
-                log.info("""
-                    state link=\(String(describing: snapshot.link), privacy: .public) \
-                    machines=\(snapshot.machines.keys.sorted().joined(separator: ","), privacy: .public) \
-                    online=\(snapshot.machines.values.filter(\.online).count) sessions=\(snapshot.sessions.count) \
-                    devices=\(snapshot.devices.count) removed=\(snapshot.removed)
-                    """)
-            }
+                if snapshot.link != state.link || snapshot.machines.count != state.machines.count
+                    || snapshot.removed != state.removed
+                {
+                    // IDs and counts only (scope §4).
+                    log.info(
+                        """
+                        state link=\(String(describing: snapshot.link), privacy: .public) \
+                        machines=\(snapshot.machines.keys.sorted().joined(separator: ","), privacy: .public) \
+                        online=\(snapshot.machines.values.filter(\.online).count) sessions=\(snapshot.sessions.count) \
+                        devices=\(snapshot.devices.count) removed=\(snapshot.removed)
+                        """)
+                }
             #endif
             state = snapshot
         }
@@ -377,9 +425,8 @@ final class AppModel {
         // A real account from here on, whatever was being shown.
         isDemo = false
         let vault = parts.storage.vault
-        try await Task.detached {
-            try vault.save(account.stored, notifyKey: Keys.derive(root: account.root).notify)
-        }.value
+        let saveJoined = parts.saveJoined
+        try await Task.detached { try saveJoined(vault, account) }.value
         await use(account)
     }
 
@@ -437,7 +484,9 @@ final class AppModel {
         case .success:
             stage = .join
         case .failure(let error):
-            log.error("erasing the account failed: \(String(describing: type(of: error)), privacy: .public)")
+            log.error(
+                "erasing the account failed: \(String(describing: type(of: error)), privacy: .public)"
+            )
             stage = .failed(error.localizedDescription)
         }
     }
@@ -465,27 +514,30 @@ final class AppModel {
     // MARK: Sample data
 
     #if DEBUG
-    /// Shows fixed state without a server (`-demo`). The Remote is never
-    /// started; `initial` is what it is about to show, for the first frame.
-    func showDemo(account: Account, remote: Remote, initial: RemoteState, load: @escaping @Sendable () async -> Void) {
-        isDemo = true
-        generation += 1
-        let gen = generation
-        state = initial
-        context = AccountContext(account: account, remote: remote)
-        ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
-        stage = .ready
-        Task {
-            await load()
-            if gen == generation { follow(remote.state, gen: gen) }
+        /// Shows fixed state without a server (`-demo`). The Remote is never
+        /// started; `initial` is what it is about to show, for the first frame.
+        func showDemo(
+            account: Account, remote: Remote, initial: RemoteState,
+            load: @escaping @Sendable () async -> Void
+        ) {
+            isDemo = true
+            generation += 1
+            let gen = generation
+            state = initial
+            context = AccountContext(account: account, remote: remote)
+            ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
+            stage = .ready
+            Task {
+                await load()
+                if gen == generation { follow(remote.state, gen: gen) }
+            }
         }
-    }
 
-    /// The join flow without reading the Keychain, for looking at its states (`-joinStep`).
-    func showJoinForDemo(lastServer: String) {
-        isDemo = true
-        self.lastServer = lastServer
-        stage = .join
-    }
+        /// The join flow without reading the Keychain, for looking at its states (`-joinStep`).
+        func showJoinForDemo(lastServer: String) {
+            isDemo = true
+            self.lastServer = lastServer
+            stage = .join
+        }
     #endif
 }

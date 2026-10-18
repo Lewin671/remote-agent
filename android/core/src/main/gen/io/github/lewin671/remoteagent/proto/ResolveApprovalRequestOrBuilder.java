@@ -74,4 +74,10 @@ public interface ResolveApprovalRequestOrBuilder extends
    * @return The always.
    */
   boolean getAlways();
+
+  /**
+   * <code>uint64 observed_event_seq = 6 [json_name = "observedEventSeq"];</code>
+   * @return The observedEventSeq.
+   */
+  long getObservedEventSeq();
 }

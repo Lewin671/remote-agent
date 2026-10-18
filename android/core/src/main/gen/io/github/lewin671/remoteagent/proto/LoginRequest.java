@@ -136,6 +136,32 @@ public  final class LoginRequest extends
     signature_ = getDefaultInstance().getSignature();
   }
 
+  public static final int PROTOCOL_VERSION_FIELD_NUMBER = 4;
+  private int protocolVersion_;
+  /**
+   * <code>uint32 protocol_version = 4 [json_name = "protocolVersion"];</code>
+   * @return The protocolVersion.
+   */
+  @java.lang.Override
+  public int getProtocolVersion() {
+    return protocolVersion_;
+  }
+  /**
+   * <code>uint32 protocol_version = 4 [json_name = "protocolVersion"];</code>
+   * @param value The protocolVersion to set.
+   */
+  private void setProtocolVersion(int value) {
+    
+    protocolVersion_ = value;
+  }
+  /**
+   * <code>uint32 protocol_version = 4 [json_name = "protocolVersion"];</code>
+   */
+  private void clearProtocolVersion() {
+
+    protocolVersion_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.proto.LoginRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -353,6 +379,34 @@ public  final class LoginRequest extends
       return this;
     }
 
+    /**
+     * <code>uint32 protocol_version = 4 [json_name = "protocolVersion"];</code>
+     * @return The protocolVersion.
+     */
+    @java.lang.Override
+    public int getProtocolVersion() {
+      return instance.getProtocolVersion();
+    }
+    /**
+     * <code>uint32 protocol_version = 4 [json_name = "protocolVersion"];</code>
+     * @param value The protocolVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setProtocolVersion(int value) {
+      copyOnWrite();
+      instance.setProtocolVersion(value);
+      return this;
+    }
+    /**
+     * <code>uint32 protocol_version = 4 [json_name = "protocolVersion"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearProtocolVersion() {
+      copyOnWrite();
+      instance.clearProtocolVersion();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.LoginRequest)
   }
   @java.lang.Override
@@ -372,10 +426,11 @@ public  final class LoginRequest extends
             "deviceId_",
             "challenge_",
             "signature_",
+            "protocolVersion_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\n" +
-              "\u0003\n";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\n" +
+              "\u0003\n\u0004\u000b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

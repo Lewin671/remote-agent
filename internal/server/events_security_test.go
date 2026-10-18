@@ -19,7 +19,7 @@ func TestEventPagesBoundBytesAndPreserveCursor(t *testing.T) {
 	cp, cid, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
 	ctx := context.Background()
 	key := e2e.NewKey()
-	env, _ := e2e.Seal(key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "large-events"}, key[:])
+	env, _ := e2e.Seal(key, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "large-events"}, key[:])
 	raw, _ := marshalEnv(env)
 	if _, err := ts.tenant().putSession(ctx, mid, "large-events", raw, nil, 0, 0, nil); err != nil {
 		t.Fatal(err)
@@ -30,7 +30,7 @@ func TestEventPagesBoundBytesAndPreserveCursor(t *testing.T) {
 	payload := make([]byte, 512<<10)
 	rand.Read(payload)
 	for seq := uint64(1); seq <= count; seq++ {
-		envelope, err := e2e.Seal(key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: mid, SessionId: "large-events", Seq: seq}, payload)
+		envelope, err := e2e.Seal(key, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: mid, SessionId: "large-events", Seq: seq}, payload)
 		if err != nil {
 			t.Fatal(err)
 		}

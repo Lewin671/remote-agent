@@ -3,34 +3,23 @@ package io.github.lewin671.remoteagent.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -38,36 +27,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.repeatOnLifecycle
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.Link
-import io.github.lewin671.remoteagent.core.shownStatus
-import io.github.lewin671.remoteagent.core.whenText
 import io.github.lewin671.remoteagent.core.MachineView
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.SessionLookup
 import io.github.lewin671.remoteagent.core.SessionView
-import io.github.lewin671.remoteagent.core.lookUpSession
 import io.github.lewin671.remoteagent.core.Status
-import io.github.lewin671.remoteagent.core.avatarIndex
+import io.github.lewin671.remoteagent.core.lookUpSession
 import io.github.lewin671.remoteagent.core.machineName
-import io.github.lewin671.remoteagent.core.projectName
-import io.github.lewin671.remoteagent.core.statusOf
+import io.github.lewin671.remoteagent.core.shownStatus
+import io.github.lewin671.remoteagent.core.whenText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 val LocalRemote = staticCompositionLocalOf<Remote> { error("no remote") }
 
 /**
- * Asks for a session that is not held here by its ID: the listing comes a
- * page at a time, so one opened from a notification, a link or a fork's
- * source may not have been fetched (architecture §8 「按 ID 取」). Null once
- * it is held; else how the lookup stands ([lookUpSession]): still reading,
- * missing, or why the server could not be asked. It waits for the
- * connection, and [attempt] changing asks again at once.
+ * Asks for a session that is not held here by its ID: the listing comes a page at a time, so one
+ * opened from a notification, a link or a fork's source may not have been fetched (architecture §8
+ * 「按 ID 取」). Null once it is held; else how the lookup stands ([lookUpSession]): still reading,
+ * missing, or why the server could not be asked. It waits for the connection, and [attempt]
+ * changing asks again at once.
  */
 @Composable
 fun sessionLookup(sid: String, attempt: Int = 0): SessionLookup? {
@@ -85,14 +70,15 @@ fun sessionLookup(sid: String, attempt: Int = 0): SessionLookup? {
 }
 
 /**
- * Fetches earlier pages of the session listing while a list wants them:
- * the next one for [page], every page left for [all] (filtering by title).
- * It waits for the connection, and after a failed page for a retry.
+ * Fetches earlier pages of the session listing while a list wants them: the next one for [page],
+ * every page left for [all] (filtering by title). It waits for the connection, and after a failed
+ * page for a retry.
  */
 @Composable
 fun FetchEarlier(state: RemoteState, page: Boolean, all: Boolean = false) {
     val remote = LocalRemote.current
-    val ready = state.moreSessions && state.conn == ConnState.ONLINE && state.sessionsError.isEmpty()
+    val ready =
+        state.moreSessions && state.conn == ConnState.ONLINE && state.sessionsError.isEmpty()
     LaunchedEffect(page, all, ready, state.sessionsNext) {
         if (!ready) return@LaunchedEffect
         try {
@@ -105,15 +91,27 @@ fun FetchEarlier(state: RemoteState, page: Boolean, all: Boolean = false) {
     }
 }
 
-/** The line that ends a list whose earlier sessions are wanted and not all fetched; after a failure a tap tries again. */
+/**
+ * The line that ends a list whose earlier sessions are wanted and not all fetched; after a failure
+ * a tap tries again.
+ */
 @Composable
 fun EarlierTail(state: RemoteState, modifier: Modifier = Modifier) {
     val remote = LocalRemote.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val failed = state.conn == ConnState.ONLINE && state.sessionsError.isNotEmpty()
     Text(
-        io.github.lewin671.remoteagent.core.earlierTail(state), style = T.meta, color = pal.muted,
-        modifier = modifier.then(if (failed) Modifier.clickable { scope.launch { runCatching { remote.loadMoreSessions() } } } else Modifier),
+        io.github.lewin671.remoteagent.core.earlierTail(state),
+        style = T.meta,
+        color = pal.muted,
+        modifier =
+            modifier.then(
+                if (failed)
+                    Modifier.clickable {
+                        scope.launch { runCatching { remote.loadMoreSessions() } }
+                    }
+                else Modifier,
+            ),
     )
 }
 
@@ -176,13 +174,26 @@ fun StatusLabel(status: Status, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun SectionHeader(title: String, count: Int? = null, modifier: Modifier = Modifier) = Label(title, count, modifier)
+fun SectionHeader(title: String, count: Int? = null, modifier: Modifier = Modifier) =
+    Label(title, count, modifier)
 
 /** A card on a grey page. */
 @Composable
-fun Card(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
+fun Card(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
     val p = pal
-    Box(modifier.fillMaxWidth().clip(Radii.MD).background(p.card).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)) { content() }
+    Box(
+        modifier
+            .fillMaxWidth()
+            .clip(Radii.MD)
+            .background(p.card)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+    ) {
+        content()
+    }
 }
 
 /** A small grey pill; 44 dp tall when it can be tapped. */
@@ -190,21 +201,28 @@ fun Card(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: 
 fun Chip(text: String, color: Color? = null, bg: Color? = null, onClick: (() -> Unit)? = null) {
     val p = pal
     Box(
-        Modifier.heightIn(min = if (onClick != null) 44.dp else 26.dp).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        Modifier.heightIn(min = if (onClick != null) 44.dp else 26.dp)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text, style = T.meta, color = color ?: p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(bg ?: p.chip).padding(horizontal = 9.dp, vertical = 4.dp),
+            text,
+            style = T.meta,
+            color = color ?: p.fg2,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier =
+                Modifier.clip(RoundedCornerShape(14.dp))
+                    .background(bg ?: p.chip)
+                    .padding(horizontal = 9.dp, vertical = 4.dp),
         )
     }
 }
 
 /**
- * The way to the server, under the navigation bar and apart from the
- * session's state; nothing when online. It names the nearest stretch that
- * is down (client-v30 「断线」): this device's network, or the server, whose
- * details open from the bar.
+ * The way to the server, under the navigation bar and apart from the session's state; nothing when
+ * online. It names the nearest stretch that is down (client-v30 「断线」): this device's network, or
+ * the server, whose details open from the bar.
  */
 @Composable
 fun ConnBanner(state: RemoteState) {
@@ -213,27 +231,41 @@ fun ConnBanner(state: RemoteState) {
     var details by remember { mutableStateOf(false) }
     // Nothing kept from before to show: the bar says what the connection is needed for.
     val failed = state.link == Link.NO_SERVER && !state.loaded && state.error.isNotEmpty()
-    val icon = when (state.link) {
-        Link.NO_NETWORK -> Lucide.WifiOff
-        Link.NO_SERVER -> if (failed) Lucide.X else Lucide.CloudOff
-        else -> Lucide.LoaderCircle
-    }
-    val text = when (state.link) {
-        Link.NO_NETWORK -> "本机网络不通 · " + if (state.loaded) "显示的是上次的内容" else "联网后才能读取会话"
-        Link.NO_SERVER -> if (failed) "连不上服务器：${state.error}" else "连不上服务器 · 正在重试"
-        else -> if (state.synced) "正在重连…" else "连接中…"
-    }
+    val icon =
+        when (state.link) {
+            Link.NO_NETWORK -> Lucide.WifiOff
+            Link.NO_SERVER -> if (failed) Lucide.X else Lucide.CloudOff
+            else -> Lucide.LoaderCircle
+        }
+    val text =
+        when (state.link) {
+            Link.NO_NETWORK -> "本机网络不通 · " + if (state.loaded) "显示的是上次的内容" else "联网后才能读取会话"
+            Link.NO_SERVER -> if (failed) "连不上服务器：${state.error}" else "连不上服务器 · 正在重试"
+            else -> if (state.synced) "正在重连…" else "连接中…"
+        }
     val color = if (failed) p.red else p.muted
     Row(
-        Modifier.fillMaxWidth().background(p.soft)
-            .then(if (state.link == Link.NO_SERVER) Modifier.clickable { details = true } else Modifier)
+        Modifier.fillMaxWidth()
+            .background(p.soft)
+            .then(
+                if (state.link == Link.NO_SERVER) Modifier.clickable { details = true }
+                else Modifier,
+            )
             .padding(horizontal = 16.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Mark(icon, color, 12.dp)
         Spacer(Modifier.width(6.dp))
-        Text(text, Modifier.weight(1f), style = T.meta, color = color, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        if (state.link == Link.NO_SERVER) Text("详情", Modifier.padding(start = 8.dp), style = T.metaB, color = p.blue)
+        Text(
+            text,
+            Modifier.weight(1f),
+            style = T.meta,
+            color = color,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (state.link == Link.NO_SERVER)
+            Text("详情", Modifier.padding(start = 8.dp), style = T.metaB, color = p.blue)
     }
     if (details && state.link == Link.NO_SERVER) ServerDetails(state) { details = false }
 }
@@ -245,25 +277,66 @@ private fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
     val remote = LocalRemote.current
     Sheet(onClose) {
         SheetHead("连不上服务器")
-        Text("本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。", style = T.sm, color = p.fg2)
-        Text("服务器　${remote.account.server.substringAfter("://")}", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 10.dp))
+        Text(
+            "本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。",
+            style = T.sm,
+            color = p.fg2,
+        )
+        Text(
+            "服务器　${remote.account.server.substringAfter("://")}",
+            style = T.sm,
+            color = p.muted,
+            modifier = Modifier.padding(top = 10.dp),
+        )
         // Since start nothing was reached: when it was last is not known here.
-        if (state.synced) Text("断开于　${whenText(state.offlineSinceMs, now())}", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 2.dp))
-        if (state.error.isNotEmpty()) Text("原因　${state.error}", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 2.dp))
-        if (state.errorDetail.isNotEmpty() && state.errorDetail != state.error) Code(state.errorDetail, Modifier.fillMaxWidth().padding(top = 10.dp), maxLines = 4)
-        Btn("立即重试", { remote.reconnectNow(); onClose() }, Modifier.fillMaxWidth().padding(top = 14.dp))
+        if (state.synced)
+            Text(
+                "断开于　${whenText(state.offlineSinceMs, now())}",
+                style = T.sm,
+                color = p.muted,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        if (state.error.isNotEmpty())
+            Text(
+                "原因　${state.error}",
+                style = T.sm,
+                color = p.muted,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        if (state.errorDetail.isNotEmpty() && state.errorDetail != state.error)
+            Code(state.errorDetail, Modifier.fillMaxWidth().padding(top = 10.dp), maxLines = 4)
+        Btn(
+            "立即重试",
+            {
+                remote.reconnectNow()
+                onClose()
+            },
+            Modifier.fillMaxWidth().padding(top = 14.dp),
+        )
     }
 }
 
 @Composable
-fun Confirm(title: String, text: String, confirm: String, danger: Boolean = false, onDismiss: () -> Unit, onConfirm: () -> Unit) =
-    Alert(title, text, confirm, danger, onDismiss, onConfirm)
+fun Confirm(
+    title: String,
+    text: String,
+    confirm: String,
+    danger: Boolean = false,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) = Alert(title, text, confirm, danger, onDismiss, onConfirm)
 
 /** A 44 dp row with the page's side padding. */
 @Composable
-fun Row44(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable RowScope.() -> Unit) {
+fun Row44(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable RowScope.() -> Unit,
+) {
     Row(
-        modifier.fillMaxWidth().heightIn(min = 44.dp)
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -284,14 +357,48 @@ fun statusIn(state: RemoteState, s: SessionView): Status = shownStatus(state, s)
 
 fun machineLabel(state: RemoteState, id: String): String = machineName(state.machines[id], id)
 
-/** 聊天 / 终端 for a session: the terminal greys out once the session has ended and gets a dot when it needs you. */
+/**
+ * 聊天 / 终端 for a session: the terminal greys out once the session has ended and gets a dot when it
+ * needs you.
+ */
 @Composable
-fun SessionTabs(selected: Int, terminalEnabled: Boolean, needsTerminal: Boolean, dark: Boolean = false, onSelect: (Int) -> Unit) =
-    ViewTabs(listOf("聊天", "终端"), selected, onSelect, enabled = { it == 0 || terminalEnabled }, dot = if (needsTerminal) 1 else -1, dark = dark)
+fun SessionTabs(
+    selected: Int,
+    terminalEnabled: Boolean,
+    needsTerminal: Boolean,
+    dark: Boolean = false,
+    onSelect: (Int) -> Unit,
+) =
+    ViewTabs(
+        listOf("聊天", "终端"),
+        selected,
+        onSelect,
+        enabled = { it == 0 || terminalEnabled },
+        dot = if (needsTerminal) 1 else -1,
+        dark = dark,
+    )
 
 /** Incremental event state, with an immutable result per history snapshot. */
 @Composable
-fun rememberDerived(events: List<io.github.lewin671.remoteagent.proto.Event>, agent: io.github.lewin671.remoteagent.proto.Agent): io.github.lewin671.remoteagent.core.Derived {
+fun rememberDerived(
+    events: List<io.github.lewin671.remoteagent.proto.Event>,
+    agent: io.github.lewin671.remoteagent.proto.Agent,
+): io.github.lewin671.remoteagent.core.Derived {
     val projection = remember { io.github.lewin671.remoteagent.core.EventProjection() }
     return remember(events, agent) { projection.update(events, agent) }
+}
+
+@Composable
+fun rememberDerived(
+    events: io.github.lewin671.remoteagent.core.SessionEvents,
+    agent: io.github.lewin671.remoteagent.proto.Agent,
+): io.github.lewin671.remoteagent.core.Derived {
+    val history =
+        rememberDerived(
+            if (events.unverifiedLegacy) events.verifiedEvents else events.events,
+            agent,
+        )
+    return remember(history, events.live) {
+        io.github.lewin671.remoteagent.core.currentActions(history, events.live)
+    }
 }

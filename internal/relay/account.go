@@ -33,7 +33,8 @@ import (
 // Account is this machine's membership in an account, account.json. It
 // holds the root key and must stay private to the user.
 type Account struct {
-	Server string `json:"server"`
+	Security *SecurityConfig `json:"security,omitempty"`
+	Server   string          `json:"server"`
 	// Root is the account root key.
 	Root []byte `json:"root"`
 	// DeviceSeed is the seed of this machine's Ed25519 device key.
@@ -110,7 +111,7 @@ func Join(ctx context.Context, server string, root []byte, setupToken string) (*
 	if err != nil {
 		return nil, err
 	}
-	return j.register(ctx, &pb.RegisterDeviceRequest{SetupToken: setupToken})
+	return j.register(ctx, &pb.RegisterDeviceRequest{ProtocolVersion: 9, SetupToken: setupToken})
 }
 
 // CreateAccount creates an account with a new root key on the server and
@@ -123,7 +124,7 @@ func CreateAccount(ctx context.Context, server, setupToken string, askToken func
 	if err != nil {
 		return nil, err
 	}
-	req := &pb.RegisterDeviceRequest{SetupToken: setupToken}
+	req := &pb.RegisterDeviceRequest{ProtocolVersion: 9, SetupToken: setupToken}
 	for asked := false; ; {
 		a, err := j.register(ctx, req)
 		switch connect.CodeOf(err) {
@@ -198,6 +199,11 @@ func (j *joiner) register(ctx context.Context, req *pb.RegisterDeviceRequest) (*
 		return nil, errors.New("server returned an unexpected device ID")
 	}
 	a := &Account{Server: j.server, Root: j.root, DeviceSeed: j.priv.Seed(), DeviceID: res.Msg.DeviceId}
+	if len(req.Approval) == 0 {
+		if err := a.InitSecurityAuthority(); err != nil {
+			return nil, err
+		}
+	}
 	if err := a.save(); err != nil {
 		return nil, err
 	}

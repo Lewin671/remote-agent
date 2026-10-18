@@ -12,6 +12,7 @@ final class FakeJoin: @unchecked Sendable {
         let onEmoji: @Sendable ([String]) -> Void
         let stopped: @Sendable () -> Bool
         let onRegistering: @Sendable () -> Void
+        let confirm: @Sendable ([String]) async -> Bool
         let end: CheckedContinuation<Account, Error>
     }
 
@@ -24,10 +25,13 @@ final class FakeJoin: @unchecked Sendable {
 
     var calls: JoinCalls {
         JoinCalls(
-            byPairing: { link, onEmoji, stopped, onRegistering in
+            byPairing: { link, onEmoji, stopped, onRegistering, confirm in
                 try await withCheckedThrowingContinuation { end in
                     self.lock.withLock {
-                        self.pairingList.append(Pairing(link: link, onEmoji: onEmoji, stopped: stopped, onRegistering: onRegistering, end: end))
+                        self.pairingList.append(
+                            Pairing(
+                                link: link, onEmoji: onEmoji, stopped: stopped,
+                                onRegistering: onRegistering, confirm: confirm, end: end))
                     }
                 }
             },
@@ -43,7 +47,9 @@ final class FakeJoin: @unchecked Sendable {
 @Suite struct JoinModelTests {
     let fake = FakeJoin()
     let joined = Joined()
-    let account = Account(server: "https://ra.example.com", root: Data(repeating: 1, count: 32), deviceSeed: Data(repeating: 2, count: 32), deviceId: "d1")
+    let account = Account(
+        server: "https://ra.example.com", root: Data(repeating: 1, count: 32),
+        deviceSeed: Data(repeating: 2, count: 32), deviceId: "d1")
 
     @MainActor final class Joined {
         var accounts: [Account] = []
@@ -67,6 +73,29 @@ final class FakeJoin: @unchecked Sendable {
         return (m, fake.pairings[0])
     }
 
+    @Test func candidateConsentWaitsForTheLocalButton() async {
+        let (m, p) = await started()
+        let task = Task { await p.confirm(["🦊", "🌵", "🍉", "🌙"]) }
+        await eventually("local comparison") { m.comparisonPending }
+        #expect(joined.accounts.isEmpty && m.canCancel)
+        m.confirmPictures()
+        #expect(await task.value)
+        #expect(!m.canCancel && !m.comparisonPending)
+        m.cancel()
+        #expect(!p.stopped())
+        p.end.resume(returning: account)
+        await eventually("joined") { joined.accounts.count == 1 }
+    }
+
+    @Test func cancelingTheLocalComparisonRefusesTrust() async {
+        let (m, p) = await started()
+        let task = Task { await p.confirm(["🦊", "🌵", "🍉", "🌙"]) }
+        await eventually("local comparison") { m.comparisonPending }
+        m.cancel()
+        #expect(await task.value == false)
+        #expect(p.stopped() && joined.accounts.isEmpty)
+        p.end.resume(throwing: PairError("已取消"))
+    }
     @Test func theCodeKeepsOnlyEightDigitsAndIsShownInTwoGroups() {
         let m = model()
         #expect(m.server == "https://")
@@ -89,7 +118,9 @@ final class FakeJoin: @unchecked Sendable {
     @Test func anAddressThatIsNotAllowedIsSaidWithoutCallingAnything() async {
         let m = model()
         m.typeCode("48291756")
-        for bad in ["http://ra.example.com", "https://user:pw@ra.example.com", "ftp://ra.example.com"] {
+        for bad in [
+            "http://ra.example.com", "https://user:pw@ra.example.com", "ftp://ra.example.com",
+        ] {
             m.server = bad
             m.joinWithCode()
             #expect(m.step == .form && m.noticeIsError && !m.notice.isEmpty, "\(bad)")
@@ -99,7 +130,8 @@ final class FakeJoin: @unchecked Sendable {
         m.server = "http://LOCALHOST:8080/"
         m.joinWithCode()
         await eventually("called") { fake.pairings.count == 1 }
-        #expect(fake.pairings[0].link == PairLink(code: "48291756", server: "http://localhost:8080"))
+        #expect(
+            fake.pairings[0].link == PairLink(code: "48291756", server: "http://localhost:8080"))
         #expect(m.step == .working && m.notice.isEmpty)
     }
 
@@ -107,16 +139,24 @@ final class FakeJoin: @unchecked Sendable {
         let m = model()
         let commit = Data(repeating: 9, count: 32)
         m.showScanner()
-        m.scanned(PairLink(code: "12345678", server: "https://ra.example.com", commit: commit).url(web: "https://app.example.com"))
+        m.scanned(
+            PairLink(code: "12345678", server: "https://ra.example.com", commit: commit).url(
+                web: "https://app.example.com"))
         await eventually("called") { fake.pairings.count == 1 }
-        #expect(fake.pairings[0].link == PairLink(code: "12345678", server: "https://ra.example.com", commit: commit))
+        #expect(
+            fake.pairings[0].link
+                == PairLink(code: "12345678", server: "https://ra.example.com", commit: commit))
         #expect(m.code == "12345678" && m.server == "https://ra.example.com" && m.step == .working)
     }
 
     @Test func aCodeTypedAfterScanningIsNotCheckedAgainstTheScannedCommitment() async {
         let m = model()
         m.showScanner()
-        m.scanned(PairLink(code: "12345678", server: "https://ra.example.com", commit: Data(repeating: 9, count: 32)).url(web: "https://app.example.com"))
+        m.scanned(
+            PairLink(
+                code: "12345678", server: "https://ra.example.com",
+                commit: Data(repeating: 9, count: 32)
+            ).url(web: "https://app.example.com"))
         await eventually("called") { fake.pairings.count == 1 }
         m.cancel()
         m.typeCode("87654321")
@@ -127,7 +167,10 @@ final class FakeJoin: @unchecked Sendable {
 
     @Test func whatIsNotAPairingCodeOfThisAppIsRefused() {
         let m = model()
-        for text in ["https://example.com", "WIFI:S:home;;", "https://app.example.com/#/pair?code=12&s=https%3A%2F%2Fra.example.com", ""] {
+        for text in [
+            "https://example.com", "WIFI:S:home;;",
+            "https://app.example.com/#/pair?code=12&s=https%3A%2F%2Fra.example.com", "",
+        ] {
             m.showScanner()
             m.scanned(text)
             #expect(m.step == .form && m.notice == "这不是 remote-agent 的配对二维码" && m.noticeIsError)
@@ -154,7 +197,8 @@ final class FakeJoin: @unchecked Sendable {
         #expect(!p.stopped())
         m.cancel()
         #expect(p.stopped())
-        #expect(m.step == .form && m.code.isEmpty && m.server == "https://ra.example.com" && !m.canJoin)
+        #expect(
+            m.step == .form && m.code.isEmpty && m.server == "https://ra.example.com" && !m.canJoin)
         // It says what this device did, and that the other one still holds the request.
         #expect(m.notice == "已取消本次加入。旧请求可能还占着配对码：请在已有设备上拒绝它，再生成新码")
         #expect(!m.noticeIsError)
@@ -175,7 +219,11 @@ final class FakeJoin: @unchecked Sendable {
         m.typeCode("")
         // 取消 on the scanner; the camera had read a code that reaches the page afterwards.
         m.showForm()
-        m.scanned(PairLink(code: "12345678", server: "https://other.example.com", commit: Data(repeating: 9, count: 32)).url(web: "https://app.example.com"))
+        m.scanned(
+            PairLink(
+                code: "12345678", server: "https://other.example.com",
+                commit: Data(repeating: 9, count: 32)
+            ).url(web: "https://app.example.com"))
         try? await Task.sleep(nanoseconds: 50_000_000)
         #expect(m.step == .form && m.code.isEmpty && m.server == "https://" && m.notice.isEmpty)
         #expect(fake.pairings.isEmpty)
@@ -208,7 +256,9 @@ final class FakeJoin: @unchecked Sendable {
         p.onRegistering()
         p.end.resume(throwing: URLError(.networkConnectionLost))
         await eventually("failed") { m.step == .form }
-        #expect(m.notice.hasPrefix("不确定") && m.notice.contains("有没有加入") && m.notice.hasSuffix("可以在已有设备的设置里看看客户端列表"))
+        #expect(
+            m.notice.hasPrefix("不确定") && m.notice.contains("有没有加入")
+                && m.notice.hasSuffix("可以在已有设备的设置里看看客户端列表"))
         #expect(m.noticeIsError)
     }
 
@@ -233,7 +283,10 @@ final class FakeJoin: @unchecked Sendable {
 
     @Test func anAccountSecretCannotEnrollEvenWhenWellFormed() {
         let m = model()
-        for value in ["ra1.nonsense", "ra1.\(Data(repeating: 7, count: 32).base64URL).\(Data("https://ra.example.com".utf8).base64URL)"] {
+        for value in [
+            "ra1.nonsense",
+            "ra1.\(Data(repeating: 7, count: 32).base64URL).\(Data("https://ra.example.com".utf8).base64URL)",
+        ] {
             m.secret = value
             m.joinWithSecret()
             #expect(m.step == .form && m.noticeIsError && m.secret.isEmpty)
@@ -255,7 +308,8 @@ final class FakeJoin: @unchecked Sendable {
 /// A pairing started from this device, played by the test.
 final class FakeInitiation: PairingInitiation, @unchecked Sendable {
     let code = "48291756"
-    let link = PairLink(code: "48291756", server: "https://ra.example.com", commit: Data(repeating: 3, count: 32))
+    let link = PairLink(
+        code: "48291756", server: "https://ra.example.com", commit: Data(repeating: 3, count: 32))
     private let lock = NSLock()
     private var joinEnd: CheckedContinuation<(emoji: [String], kind: PBDeviceKind), Error>?
     private var approveEnd: CheckedContinuation<Void, Error>?
@@ -272,7 +326,12 @@ final class FakeInitiation: PairingInitiation, @unchecked Sendable {
     }
 
     func approve() async throws {
-        try await withCheckedThrowingContinuation { c in lock.withLock { approves += 1; approveEnd = c } }
+        try await withCheckedThrowingContinuation { c in
+            lock.withLock {
+                approves += 1
+                approveEnd = c
+            }
+        }
     }
 
     func cancelOnServer() async { lock.withLock { cancels += 1 } }
@@ -388,7 +447,9 @@ final class FakeInitiation: PairingInitiation, @unchecked Sendable {
         await eventually("failed") { if case .failed = m.phase { true } else { false } }
         #expect(!m.canRetryApproval)
         m.retry()
-        await eventually("new code") { made.list.count == 2 && made.list[1].waitingForJoin && p.cancelled == 1 }
+        await eventually("new code") {
+            made.list.count == 2 && made.list[1].waitingForJoin && p.cancelled == 1
+        }
         #expect(made.list[1].approvalCount == 0)
         made.list[1].join(.failure(PairError("已取消")))
         m.leave()

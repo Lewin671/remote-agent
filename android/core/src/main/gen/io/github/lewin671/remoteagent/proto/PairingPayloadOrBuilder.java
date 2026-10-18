@@ -39,4 +39,14 @@ public interface PairingPayloadOrBuilder extends
    * @return The approvalSignature.
    */
   com.google.protobuf.ByteString getApprovalSignature();
+
+  /**
+   * <pre>
+   * Complete signed membership state produced by consuming the exact context.
+   * </pre>
+   *
+   * <code>bytes security_state = 5 [json_name = "securityState"];</code>
+   * @return The securityState.
+   */
+  com.google.protobuf.ByteString getSecurityState();
 }

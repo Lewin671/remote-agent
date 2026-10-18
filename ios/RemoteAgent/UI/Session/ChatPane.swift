@@ -85,7 +85,9 @@ final class ChatScrollTracker {
     private func settle(changed: Bool) -> Bool {
         // A change of size alone is not the user leaving the end: the list is asked whether it follows
         // before the new place is judged. Under a finger the place is the user's doing, and is judged first.
-        if dragging || !changed { scroll.observe(userDragging: dragging, atBottom: atBottom, rows: rows) }
+        if dragging || !changed {
+            scroll.observe(userDragging: dragging, atBottom: atBottom, rows: rows)
+        }
         let go = changed && scroll.contentChanged(rows: rows)
         publish()
         return go
@@ -116,7 +118,9 @@ private struct DragWatch: ViewModifier {
             }
         } else {
             content.simultaneousGesture(
-                DragGesture(minimumDistance: 4).onChanged { _ in onChange(true) }.onEnded { _ in onChange(false) })
+                DragGesture(minimumDistance: 4).onChanged { _ in onChange(true) }.onEnded { _ in
+                    onChange(false)
+                })
         }
     }
 }
@@ -223,8 +227,10 @@ private struct KeyboardProbe: UIViewRepresentable {
 
         func pin(to window: UIWindow) {
             NSLayoutConstraint.activate([
-                topAnchor.constraint(equalTo: window.topAnchor), bottomAnchor.constraint(equalTo: window.bottomAnchor),
-                leadingAnchor.constraint(equalTo: window.leadingAnchor), trailingAnchor.constraint(equalTo: window.trailingAnchor),
+                topAnchor.constraint(equalTo: window.topAnchor),
+                bottomAnchor.constraint(equalTo: window.bottomAnchor),
+                leadingAnchor.constraint(equalTo: window.leadingAnchor),
+                trailingAnchor.constraint(equalTo: window.trailingAnchor),
             ])
         }
 
@@ -300,8 +306,11 @@ struct ChatPane: View {
     }
 
     private func dockItems(_ d: Derived) -> [DockItem] {
-        var items = d.approvals.values.map(DockItem.approval) + d.questions.values.map(DockItem.question)
-        if session.info?.planOpen == true, let plan = d.plan { items.append(.plan(text: plan.text)) }
+        var items =
+            d.approvals.values.map(DockItem.approval) + d.questions.values.map(DockItem.question)
+        if session.info?.planOpen == true, let plan = d.plan {
+            items.append(.plan(text: plan.text))
+        }
         if status == .popup { items.append(.popup(title: session.info?.statusDetail ?? "")) }
         return items
     }
@@ -314,8 +323,10 @@ struct ChatPane: View {
         let sid = session.id
         let online = state.conn == .online
         let env = ChatEnv(
-            agent: session.agent, cwd: session.info?.cwd ?? "", home: state.machines[session.machineId]?.meta?.home ?? "",
-            frozenAt: online ? 0 : state.offlineSinceMs, approvals: d.approvals, noResult: d.noResult)
+            agent: session.agent, cwd: session.info?.cwd ?? "",
+            home: state.machines[session.machineId]?.meta?.home ?? "",
+            frozenAt: online ? 0 : state.offlineSinceMs, approvals: d.approvals,
+            noResult: d.noResult)
         let pending = pendingInputs(d)
         let outgoing = store.outgoing(sid).filter { outgoingShown(input: d.inputs[$0.requestId]) }
         let dock = dockItems(d)
@@ -323,9 +334,22 @@ struct ChatPane: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     Color.clear.frame(height: 6)
-                    if !chat.ready || (!chat.loaded && rows.isEmpty && chat.startPrompt == nil) { Skeleton(inset: chatMargin) }
+                    if !chat.ready || (!chat.loaded && rows.isEmpty && chat.startPrompt == nil) {
+                        Skeleton(inset: chatMargin)
+                    }
+                    if chat.unverifiedLegacy {
+                        Banner("旧格式记录的内容和来源未验证，仅供阅读。当前操作以电脑的已验证快照为准。", tone: .error).padding(
+                            .horizontal, chatMargin)
+                    }
+                    if let message = chat.liveError {
+                        Banner(message, tone: .error, action: "重试") {
+                            context.remote.retryEvents(sid)
+                        }.padding(.horizontal, chatMargin)
+                    }
                     if let start = chat.startPrompt {
-                        ChatBubble(start.text, caption: start.caption, captionColor: start.warning ? Theme.orangeInk : Theme.muted)
+                        ChatBubble(
+                            start.text, caption: start.caption,
+                            captionColor: start.warning ? Theme.orangeInk : Theme.muted)
                     }
                     ForEach(rows) { row in
                         ChatRowView(row: row, env: env).equatable().id(row.id)
@@ -333,33 +357,44 @@ struct ChatPane: View {
                     // Offline, the connection bar says the content may be stale and the next
                     // connection fetches again: a failed fetch adds nothing to that.
                     if let failure = chat.error ?? (online ? chat.fetchError : nil) {
-                        Banner("后面的记录没读到：\(failure)", tone: .error, action: "重试") { context.remote.retryEvents(sid) }
-                            .padding(.horizontal, chatMargin).padding(.vertical, 8)
+                        Banner("后面的记录没读到：\(failure)", tone: .error, action: "重试") {
+                            context.remote.retryEvents(sid)
+                        }
+                        .padding(.horizontal, chatMargin).padding(.vertical, 8)
                     }
                     let visible = shownPending(pending, expanded: allPending)
                     // A waiting message and the same message on its way share a request ID: each kind of
                     // bubble is told apart from the other, or the list keeps the one it had.
                     ForEach(Array(visible.enumerated()), id: \.element.id) { i, p in
                         PendingBubble(
-                            session: session, pending: p, index: i + 1, starting: status == .starting ? agentName(session.agent) : nil)
-                            .id("pending-" + p.id)
+                            session: session, pending: p, index: i + 1,
+                            starting: status == .starting ? agentName(session.agent) : nil
+                        )
+                        .id("pending-" + p.id)
                     }
                     if visible.count < pending.count {
-                        TextAction("还有 \(pending.count - 2) 条排队 展开", style: T.metaB, alignment: .trailing) { allPending = true }
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                            .padding(.horizontal, chatMargin)
+                        TextAction(
+                            "还有 \(pending.count - 2) 条排队 展开", style: T.metaB, alignment: .trailing
+                        ) { allPending = true }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.horizontal, chatMargin)
                     }
                     // Messages from this client, until the chat shows them.
                     ForEach(outgoing) { o in
-                        OutgoingBubble(session: session, message: o, input: d.inputs[o.requestId], failure: d.failures[o.requestId], onTerminal: onTerminal)
-                            .id("out-" + o.requestId)
+                        OutgoingBubble(
+                            session: session, message: o, input: d.inputs[o.requestId],
+                            failure: d.failures[o.requestId], onTerminal: onTerminal
+                        )
+                        .id("out-" + o.requestId)
                     }
                     Color.clear.frame(height: 8).id(Self.end)
                 }
                 // A reply is a column of text: on a wide screen it keeps the width it reads well at (design-system §4).
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
+                .onGeometryChange(for: CGRect.self) {
+                    $0.frame(in: .global)
+                } action: { frame in
                     if tracker.content(height: frame.height, endY: frame.maxY) { toEnd(proxy) }
                 }
             }
@@ -371,7 +406,9 @@ struct ChatPane: View {
                     .frame(maxWidth: 760)
                     .frame(maxWidth: .infinity)
                     .background(Theme.card.ignoresSafeArea(edges: .bottom))
-                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { y in
+                    .onGeometryChange(for: CGFloat.self) {
+                        $0.frame(in: .global).minY
+                    } action: { y in
                         if tracker.floor(y) { toEnd(proxy) }
                     }
                     .overlay(alignment: .top) {
@@ -397,24 +434,35 @@ struct ChatPane: View {
             }
             .debugSignal("session.back") {
                 tracker.leave()
-                if let row = chat.rows.dropFirst(chat.rows.count * 3 / 4).first { proxy.scrollTo(row.id, anchor: .top) }
+                if let row = chat.rows.dropFirst(chat.rows.count * 3 / 4).first {
+                    proxy.scrollTo(row.id, anchor: .top)
+                }
             }
         }
         .background { KeyboardProbe(track: keyboard).frame(width: 0, height: 0) }
-        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { keyboard.inset = $0 }
+        .onGeometryChange(for: CGFloat.self) {
+            $0.safeAreaInsets.bottom
+        } action: {
+            keyboard.inset = $0
+        }
         .environment(open)
-        .environment(\.chatActions, ChatActions(
-            image: { seq, index in nav.open(.image(session: sid, seq: seq, index: index)) },
-            session: { nav.open(.session(id: $0)) },
-            putBack: { requestId, text in
-                // A message the session ended before writing: its text goes back into the box.
-                if let o = store.find(sid, requestId: requestId) {
-                    SessionImages.putBack(o, session: sid, state: model.state, remote: context.remote, store: store)
-                } else {
-                    store.appendToDraft(sid, text)
-                }
-            },
-            select: selectMessage))
+        .environment(
+            \.chatActions,
+            ChatActions(
+                image: { seq, index in nav.open(.image(session: sid, seq: seq, index: index)) },
+                session: { nav.open(.session(id: $0)) },
+                putBack: { requestId, text in
+                    // A message the session ended before writing: its text goes back into the box.
+                    if let o = store.find(sid, requestId: requestId) {
+                        SessionImages.putBack(
+                            o, session: sid, state: model.state, remote: context.remote,
+                            store: store)
+                    } else {
+                        store.appendToDraft(sid, text)
+                    }
+                },
+                select: selectMessage)
+        )
         .sheet(item: $selecting) { picked in
             MessageTextSelection(text: picked.text) { selecting = nil }
         }
@@ -441,7 +489,8 @@ struct ChatPane: View {
         // What was there when the page opened is read, not announced.
         let initial = !announced || !chat.ready
         if chat.ready { announced = true }
-        let word = announcer.announce(last: last, dock: dock, agent: agentName(session.agent), now: nowMs(), initial: initial)
+        let word = announcer.announce(
+            last: last, dock: dock, agent: agentName(session.agent), now: nowMs(), initial: initial)
         if let word, UIAccessibility.isVoiceOverRunning {
             AccessibilityNotification.Announcement(word).post()
         }
@@ -454,9 +503,14 @@ struct ChatPane: View {
                 IconText(Lucide.arrowDown, "\(tracker.fresh) 条新消息", color: Theme.blue, style: T.smB)
                     .padding(.horizontal, 12)
                     .frame(minHeight: Theme.minHit)
-                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(
+                        Theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
                     // In the dark a shadow shows nothing: the line tells the pill from the chat under it.
-                    .overlay { RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Theme.line, lineWidth: 1) }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(
+                            Theme.line, lineWidth: 1)
+                    }
                     .compositingGroup()
                     .shadow(color: .black.opacity(0.15), radius: 10, y: 3)
             }
@@ -488,7 +542,10 @@ struct ChatPane: View {
         } else if status == .offline {
             Ticking { now in
                 let seen = machine?.lastSeenMs ?? 0
-                SessionEndCard("\(name) 不在线", text: offlineText(lastSeen: seen > 0 ? whenText(seen, now: now) : "")) { EmptyView() }
+                SessionEndCard(
+                    "\(name) 不在线",
+                    text: offlineText(lastSeen: seen > 0 ? whenText(seen, now: now) : "")
+                ) { EmptyView() }
             }
         } else {
             VStack(spacing: 0) {
@@ -499,21 +556,28 @@ struct ChatPane: View {
                         switch first {
                         case .approval(let a):
                             ApprovalDock(
-                                session: session, approval: a, more: more, startOpen: SessionDebug.shows("dock") || SessionDebug.shows("reason"),
+                                session: session, approval: a, more: more,
+                                startOpen: SessionDebug.shows("dock")
+                                    || SessionDebug.shows("reason"),
                                 startReason: SessionDebug.shows("reason"), onOpen: hide
                             ) { nav.open(.approval(session: session.id, approval: a.approvalID)) }
                         case .question(let q):
                             QuestionDock(
-                                session: session, question: q, more: more, startOpen: SessionDebug.shows("dock"), onOpen: hide,
+                                session: session, question: q, more: more,
+                                startOpen: SessionDebug.shows("dock"), onOpen: hide,
                                 onTerminal: onTerminal
                             ) { nav.open(.question(session: session.id, question: q.questionID)) }
                         case .plan(let text):
-                            PlanDock(session: session, text: text, more: more, startOpen: SessionDebug.shows("dock"), onOpen: hide) {
+                            PlanDock(
+                                session: session, text: text, more: more,
+                                startOpen: SessionDebug.shows("dock"), onOpen: hide
+                            ) {
                                 nav.open(.plan(session: session.id))
                             }
                         case .popup(let title):
                             PopupDock(
-                                session: session, title: title, more: more, startOpen: SessionDebug.shows("dock"), onOpen: hide,
+                                session: session, title: title, more: more,
+                                startOpen: SessionDebug.shows("dock"), onOpen: hide,
                                 onTerminal: onTerminal)
                         }
                     }
@@ -547,7 +611,9 @@ private struct PendingBubble: View {
         let online = model.state.conn == .online
         let canceling = cancel == .canceling
         let cancelFailed = cancel != nil && !canceling
-        let label = pendingLabel(pending, cancel: cancel, resuming: resume.running, resumeFailed: !resume.error.isEmpty, starting: starting)
+        let label = pendingLabel(
+            pending, cancel: cancel, resuming: resume.running, resumeFailed: !resume.error.isEmpty,
+            starting: starting)
         let origin = originLabel(pending.origin, state: model.state, me: context.me, machine: "")
         if isSkeleton(pending.id) || isSkeleton(pending.text) {
             Text(skeletonMessage).type(T.sm, Theme.muted)
@@ -556,9 +622,12 @@ private struct PendingBubble: View {
                 Button {
                     expanded.toggle()
                 } label: {
-                    ChatBubble(pending.text.isEmpty ? "（图片）" : pending.text, pending: true, lines: expanded ? nil : 4, padded: false)
-                        .padding(.vertical, -8)
-                        .opacity(canceling ? 0.5 : 1)
+                    ChatBubble(
+                        pending.text.isEmpty ? "（图片）" : pending.text, pending: true,
+                        lines: expanded ? nil : 4, padded: false
+                    )
+                    .padding(.vertical, -8)
+                    .opacity(canceling ? 0.5 : 1)
                 }
                 .buttonStyle(PressStyle())
                 .accessibilityHint(expanded ? "收起" : "展开全文")
@@ -568,7 +637,10 @@ private struct PendingBubble: View {
                         .type(T.meta, cancelFailed ? Theme.red : Theme.muted).lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     if pending.paused && !canceling {
-                        TextAction(resume.error.isEmpty ? "发送" : "重试发送", style: T.metaB, enabled: online && !resume.running, alignment: .center) {
+                        TextAction(
+                            resume.error.isEmpty ? "发送" : "重试发送", style: T.metaB,
+                            enabled: online && !resume.running, alignment: .center
+                        ) {
                             SessionHaptics.tap()
                             resume.run {
                                 var cmd = PBCommand()
@@ -581,7 +653,10 @@ private struct PendingBubble: View {
                         }
                     }
                     if !canceling {
-                        TextAction(cancelFailed ? "重试" : "取消", style: T.metaB, enabled: online, alignment: .trailing) {
+                        TextAction(
+                            cancelFailed ? "重试" : "取消", style: T.metaB, enabled: online,
+                            alignment: .trailing
+                        ) {
                             store.cancel(remote, sid: sid, requestId: id)
                         }
                     }
@@ -622,18 +697,25 @@ private struct OutgoingBubble: View {
         case .remove:
             store.remove(session.id, message)
             message.images.forEach { $0.release() }
-        case .putBack: SessionImages.putBack(message, session: session.id, state: model.state, remote: context.remote, store: store)
+        case .putBack:
+            SessionImages.putBack(
+                message, session: session.id, state: model.state, remote: context.remote,
+                store: store)
         case .terminal: onTerminal()
         }
     }
 
     var body: some View {
-        let note = outgoingNote(state: message.state, error: message.error, input: input, failure: failure, agent: session.agent, hasImages: !message.images.isEmpty, missingImages: message.missingImages)
-        let ink: Color = switch note.tone {
-        case .plain: Theme.muted
-        case .warn: Theme.orangeInk
-        case .error: Theme.red
-        }
+        let note = outgoingNote(
+            state: message.state, error: message.error, input: input, failure: failure,
+            agent: session.agent, hasImages: !message.images.isEmpty,
+            missingImages: message.missingImages)
+        let ink: Color =
+            switch note.tone {
+            case .plain: Theme.muted
+            case .warn: Theme.orangeInk
+            case .error: Theme.red
+            }
         ChatBubble(
             message.text.isEmpty ? nil : message.text, caption: note.caption, captionColor: ink,
             captionIcon: note.sending ? Lucide.loaderCircle : nil, failed: note.failed,
@@ -652,7 +734,9 @@ struct SessionEndCard<Actions: View>: View {
     private let dot: Color
     private let actions: Actions
 
-    init(_ title: String, text: String, dot: Color = Theme.gray, @ViewBuilder actions: () -> Actions) {
+    init(
+        _ title: String, text: String, dot: Color = Theme.gray, @ViewBuilder actions: () -> Actions
+    ) {
         self.title = title
         self.text = text
         self.dot = dot
@@ -676,7 +760,9 @@ struct SessionEndCard<Actions: View>: View {
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
-        .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .background(
+            Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+        )
         .padding(.init(top: 6, leading: 12, bottom: 8, trailing: 12))
     }
 }
@@ -697,12 +783,14 @@ private struct EndedCard: View {
         SessionEndCard(
             act.running ? "正在恢复…" : "会话已结束",
             text: endedText(
-                detail: session.info?.statusDetail ?? "", unlinked: state.unlinked, machineOnline: machine?.online == true, machine: name),
+                detail: session.info?.statusDetail ?? "", unlinked: state.unlinked,
+                machineOnline: machine?.online == true, machine: name),
             dot: act.running ? Theme.blueBg : Theme.gray
         ) {
             if reachable && !act.running {
                 Btn(
-                    act.error.isEmpty ? "恢复会话" : "再试一次", kind: act.error.isEmpty ? .primary : .secondary,
+                    act.error.isEmpty ? "恢复会话" : "再试一次",
+                    kind: act.error.isEmpty ? .primary : .secondary,
                     enabled: state.conn == .online, background: act.error.isEmpty ? nil : Theme.card
                 ) {
                     SessionHaptics.tap()
@@ -713,7 +801,9 @@ private struct EndedCard: View {
                     }
                 }
             }
-            if !act.error.isEmpty { Text("恢复失败：\(act.error)").type(T.meta, Theme.red).padding(.top, 6) }
+            if !act.error.isEmpty {
+                Text("恢复失败：\(act.error)").type(T.meta, Theme.red).padding(.top, 6)
+            }
         }
     }
 }

@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -54,10 +54,10 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 			b.ImageUploaded(sessionID, imageID, false, 0)
 			return nil
 		}
-		env, err := e2e.SealMessage(key, &pb.Header{
+		env, err := c.security.sealMessage(ctx, &pb.Header{
 			Kind: pb.PayloadKind_PAYLOAD_KIND_IMAGE, MachineId: c.acct.DeviceID, SessionId: sessionID,
 			RequestId: imageID, Sender: c.acct.DeviceID,
-		}, payload)
+		}, deviceauth.Image, key, payload)
 		if err != nil || proto.Size(env) > 1<<20 {
 			b.ImageUploaded(sessionID, imageID, false, 0)
 			return nil

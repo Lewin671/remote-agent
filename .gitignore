@@ -30,3 +30,6 @@ __pycache__/
 *.keystore
 signing.properties
 fcm-service-account.json
+
+# SwiftPM markers from package checks invoked at the repository root
+/.build/

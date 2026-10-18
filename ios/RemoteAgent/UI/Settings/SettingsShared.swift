@@ -14,7 +14,9 @@ struct SettingsPage<Content: View>: View {
     private let refresh: (@MainActor @Sendable () async -> Void)?
     private let content: Content
 
-    init(refresh: (@MainActor @Sendable () async -> Void)? = nil, @ViewBuilder content: () -> Content) {
+    init(
+        refresh: (@MainActor @Sendable () async -> Void)? = nil, @ViewBuilder content: () -> Content
+    ) {
         self.refresh = refresh
         self.content = content()
     }
@@ -64,7 +66,10 @@ struct GroupBanner: View {
     private let action: String?
     private let onAction: (() -> Void)?
 
-    init(_ text: String, tone: BannerTone = .plain, action: String? = nil, onAction: (() -> Void)? = nil) {
+    init(
+        _ text: String, tone: BannerTone = .plain, action: String? = nil,
+        onAction: (() -> Void)? = nil
+    ) {
         self.text = text
         self.tone = tone
         self.action = action
@@ -100,7 +105,9 @@ func wholeBytes(_ n: Int64) -> String {
 /// seen. Nothing while this client is not connected to the server: what the
 /// cache says of the computers is not known to still hold (architecture §9
 /// 「断线时显示什么」), and the connection bar already says why.
-func machineStatus(_ m: MachineView, state: RemoteState, now: Int64) -> (text: String, online: Bool)? {
+func machineStatus(_ m: MachineView, state: RemoteState, now: Int64) -> (
+    text: String, online: Bool
+)? {
     if state.unlinked { return nil }
     if m.online { return ("在线", true) }
     return (whenText(m.lastSeenMs, now: now).or("不在线"), false)
@@ -120,7 +127,9 @@ func asKnown(_ m: MachineView, state: RemoteState) -> MachineView {
 /// A computer's quota in one short line under its name: the first CLI's
 /// last window that has a number (Android's SettingsScreen).
 func machineQuotaSummary(_ m: MachineView, now: Int64) -> String? {
-    guard let g = quotaGroups(m, now: now).first, let row = g.rows.last(where: { $0.percent != nil }) else { return nil }
+    guard let g = quotaGroups(m, now: now).first,
+        let row = g.rows.last(where: { $0.percent != nil })
+    else { return nil }
     return "\(agentName(g.agent)) · \(row.label)\(row.used)"
 }
 
@@ -158,15 +167,18 @@ struct MachineRow: View {
         let id = machine.id
         let status = machineStatus(machine, state: state, now: now)
         GRow(
-            machineLabel(state, id: id), sub: machineQuotaSummary(asKnown(machine, state: state), now: now), value: status?.text,
+            machineLabel(state, id: id),
+            sub: machineQuotaSummary(asKnown(machine, state: state), now: now),
+            value: id == state.authorityDeviceId
+                ? "管理电脑 · \(status?.text ?? "状态未知")" : status?.text,
             chevron: true
         ) { nav.open(.machine(id: id)) }
-            .lead { IconBadge(Lucide.laptop, color: Theme.blueBg) }
-            .valueLead { if let status { Dot(status.online ? Theme.green : Theme.gray) } }
-            .contextMenu {
-                Button("账户额度") { nav.open(.quota(machine: id)) }
-                Button("连接检测") { nav.open(.connectionCheck) }
-            }
+        .lead { IconBadge(Lucide.laptop, color: Theme.blueBg) }
+        .valueLead { if let status { Dot(status.online ? Theme.green : Theme.gray) } }
+        .contextMenu {
+            Button("账户额度") { nav.open(.quota(machine: id)) }
+            Button("连接检测") { nav.open(.connectionCheck) }
+        }
     }
 }
 
@@ -186,14 +198,15 @@ struct ClientRow: View {
     var body: some View {
         let mine = id == me
         GRow(
-            clientName(client, id: id), sub: client.map { clientDetail($0) }, value: mine ? "当前客户端" : clientUsed(client, now: now),
+            clientName(client, id: id), sub: client.map { clientDetail($0) },
+            value: mine ? "当前客户端" : clientUsed(client, now: now),
             chevron: true
         ) { nav.open(.client(id: id)) }
-            .contextMenu {
-                if let onRename { Button("重命名", action: onRename) }
-                Button("复制设备 ID") { UIPasteboard.general.string = id }
-                if let onRemove, !mine { Button("移除这个客户端…", role: .destructive, action: onRemove) }
-            }
+        .contextMenu {
+            if let onRename { Button("重命名", action: onRename) }
+            Button("复制设备 ID") { UIPasteboard.general.string = id }
+            if let onRemove, !mine { Button("移除这个客户端…", role: .destructive, action: onRemove) }
+        }
     }
 }
 
@@ -201,56 +214,61 @@ enum RemovalText {
     static let machineNote = "移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。"
     static let machineConfirm = "它的会话记录会从服务器上删除，它要重新加入账户才能再连上。"
     static let clientNote = "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入需要另一台已登记设备批准。"
-    static let clientConfirm = "它的登录和推送订阅会被清除，电脑上的会话和历史不受影响。再次加入需要另一台已登记设备批准。"
 }
 
 extension View {
     /// `-settingsEnd` (debug builds) opens a settings page scrolled to its end, to look at what is below the fold.
     @ViewBuilder func startAtEndForScreenshots() -> some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-settingsEnd") { defaultScrollAnchor(.bottom) } else { self }
+            if ProcessInfo.processInfo.arguments.contains("-settingsEnd") {
+                defaultScrollAnchor(.bottom)
+            } else {
+                self
+            }
         #else
-        self
+            self
         #endif
     }
 }
 
 #if DEBUG
-/// With `-demo` nothing answers a command, so the pages that ask a computer
-/// or the server show fixed answers instead, and `-settingsState <name>`
-/// picks which: a page's loading, failed and unknown-outcome states can be
-/// looked at without a computer that misbehaves on cue.
-///
-///   machine/<id>      loading, failed, saveFailed, saveUnknown, mismatch
-///   connection        checking, serverDown, machineDown
-///   image-storage     empty, clearing
-///   licenses          <a licence's id>: opened on its text
-///   client/<id>, devices   renaming, removing: with the dialog up
-enum SettingsDemo {
-    static let state: String? = {
-        let args = ProcessInfo.processInfo.arguments
-        guard let i = args.firstIndex(of: "-settingsState"), i + 1 < args.count else { return nil }
-        return args[i + 1]
-    }()
+    /// With `-demo` nothing answers a command, so the pages that ask a computer
+    /// or the server show fixed answers instead, and `-settingsState <name>`
+    /// picks which: a page's loading, failed and unknown-outcome states can be
+    /// looked at without a computer that misbehaves on cue.
+    ///
+    ///   machine/<id>      loading, failed, saveFailed, saveUnknown, mismatch
+    ///   connection        checking, serverDown, machineDown
+    ///   image-storage     empty, clearing
+    ///   licenses          <a licence's id>: opened on its text
+    ///   client/<id>, devices   renaming, removing: with the dialog up
+    enum SettingsDemo {
+        static let state: String? = {
+            let args = ProcessInfo.processInfo.arguments
+            guard let i = args.firstIndex(of: "-settingsState"), i + 1 < args.count else {
+                return nil
+            }
+            return args[i + 1]
+        }()
 
-    static var daemonSettings: PBDaemonSettings {
-        .with {
-            $0.approvalTimeoutSeconds = 600
-            $0.defaultModel = "gpt-6-astra"
-            $0.defaultEffort = "medium"
-            $0.defaultMode = .ask
-            $0.claude = .with { $0.model = "claude-opus-5-5-preview-20261001-extended" }
-            $0.imageUploadQuotaBytes = 1 << 30
+        static var daemonSettings: PBDaemonSettings {
+            .with {
+                $0.approvalTimeoutSeconds = 600
+                $0.defaultModel = "gpt-6-astra"
+                $0.defaultEffort = "medium"
+                $0.defaultMode = .ask
+                $0.claude = .with { $0.model = "claude-opus-5-5-preview-20261001-extended" }
+                $0.imageUploadQuotaBytes = 1 << 30
+            }
+        }
+
+        static var imageStorage: PBImageStorageUsage {
+            .with {
+                $0.uploadBytes = 187 << 20
+                $0.reclaimableBytes = 96 << 20
+                $0.reservedBytes = 3 << 20
+                $0.cacheBytes = 41 << 20
+            }
         }
     }
-
-    static var imageStorage: PBImageStorageUsage {
-        .with {
-            $0.uploadBytes = 187 << 20
-            $0.reclaimableBytes = 96 << 20
-            $0.reservedBytes = 3 << 20
-            $0.cacheBytes = 41 << 20
-        }
-    }
-}
 #endif

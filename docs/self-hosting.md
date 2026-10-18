@@ -141,7 +141,7 @@ remote-agent codex      # or: remote-agent claude
 ```
 
 > [!CAUTION]
-> `remote-agent account secret` prints the key that decrypts every session. Keep it offline; it cannot authorize a new device. Enroll new devices by pairing, never paste it into an issue or a chat.
+> `remote-agent account secret` prints root material for legacy history; it does not include the authority or current membership secrets. Keep it offline; it cannot authorize a new device. Enroll new devices by pairing, never paste it into an issue or a chat.
 
 ## Upgrading
 
@@ -241,7 +241,7 @@ The last command lists your account, with the number of its devices and sessions
 
 Protocol 8 requires database layout 4. Upgrade the relay, daemons, web client and apps together. Already enrolled devices and conversation history remain valid; unfinished pairings must be started again. An account secret can no longer enroll a device, including when every device is lost. Keep at least one enrolled device with its local state.
 
-For an existing layout-3 relay, stop the relay and make a private backup of `data` first. On the relay host, run the following once against `data/remote-agent.db` with SQLite. Check `PRAGMA user_version` is **3** before running it; do not apply this SQL to any other layout.
+Protocol 9 additionally requires the [security domain upgrade](#upgrading-the-device-security-domain-protocol-9). For an existing layout-3 relay, stop the relay and make a private backup of `data` first. On the relay host, run the following once against `data/remote-agent.db` with SQLite. Check `PRAGMA user_version` is **3** before running it; do not apply this SQL to any other layout.
 
 ```sql
 BEGIN IMMEDIATE;
@@ -263,4 +263,29 @@ PRAGMA user_version = 4;
 COMMIT;
 ```
 
-Start the new relay after the transaction, then upgrade the remaining components. Check layout 4, log in with an existing device, and complete a new pairing. Remove the migration backup after verification according to your own retention policy: restoring the entire old database would also restore old device permissions. No account root or private device key is needed for this SQL.
+This is only the intermediate layout 3→4 step. Complete the protocol 9 / layout 5 steps below before starting the current relay. Remove the migration backup after verification according to your own retention policy: restoring the entire old database would also restore old device permissions. No account root or private device key is needed for this SQL.
+
+
+## Upgrading the device security domain (protocol 9)
+
+This version requires relay layout 5 and daemon storage generation 2. Automatic installation and automatic data migration are disabled. Stop remote activity on every old daemon and client before upgrading all components. Replacing the relay alone is insufficient: a malicious relay can still communicate with old executors. Preserve account identities and history. Do not print account secrets, export private keys, or give local state to the relay.
+
+1. Stop the relay and make a private backup. Check `PRAGMA user_version`. For layout 3, apply the 3→4 SQL above first without starting the old server. Only layout 4 may apply this SQL:
+
+```sql
+BEGIN IMMEDIATE;
+ALTER TABLE accounts ADD COLUMN security_genesis BLOB;
+UPDATE pairing_admissions SET canceled_ms = CAST(strftime('%s','now') AS INTEGER)*1000
+ WHERE used_ms = 0 AND canceled_ms = 0;
+PRAGMA user_version = 5;
+COMMIT;
+```
+
+2. Stop each retained daemon and privately back up its local state. After verifying that its `state-generation` file is `1`, manually change it to `2`, preserving owner-only permissions. For older unmarked state, verify its format first; do not blindly add a marker. Keep `account.json`, sessions, queues, images and settings. Do not copy another machine's security database. The new security state is created separately; old acceptance logs are not converted, and old protocol commands are refused.
+3. Install all new programs. Choose one trusted computer that normally stays online as the fixed authority. Run `remote-agent account security-init` with its existing account, then start its new daemon. Do not initialize separate authorities on the other computers. Startup pins the public genesis on the relay.
+4. Run `remote-agent account pair` on the authority. Other retained computers use `remote-agent account security-enroll --server https://relay.example.com --code CODE`; existing browsers and apps choose the security binding setup. Compare all four symbols: confirm on the candidate first, then allow on the initiating device. This retains the existing Ed25519 identity and history while adding an independent exchange key and pinned domain. Only then start that computer's new daemon.
+5. Check every retained identity, directory and history, then exercise a remote command and removal. Old relay registrations that never joined the new domain are not trusted members. They cannot obtain new domain authorization, but should be cleaned up offline as described below. Use normal client removal for domain members; deleting a server row is not cryptographic revocation.
+
+**Manual cleanup of old registrations:** only remove exact public device IDs confirmed as unwanted and never enrolled in the new domain. With the relay stopped, use one transaction to insert their ID, account ID and current millisecond timestamp into `revoked_devices`; delete matching account/device rows from `tokens`, `push_subs`, `fcm_targets` and `devices`. For a machine, first delete its session `events`, then its `images`, `sessions` and `machines`; recompute the account's `event_bytes` from remaining event envelopes. Cancel all unused `pairing_admissions` for that account. Consult `internal/server/store.go` for the schema. Preserve other accounts, retained devices, tombstones and `security_genesis`. Restoring an old backup restores old permissions. This is honest-relay access cleanup, not a substitute for domain key rotation and executor acknowledgements.
+
+The authority computer cannot be removed normally. Authority handoff and root-only recovery are not implemented. If its local security state is lost, stop; do not erase pins and reconstruct trust from the relay. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. New enrollment requires the authority online. An offline retained computer keeps removal pending until it installs the fence automatically; browsers and phones do not require individual user approval. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.

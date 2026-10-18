@@ -18,20 +18,33 @@ import UIKit
 import os
 
 /// How this device is called in the join flow's sentences.
-@MainActor var thisDeviceWord: String { UIDevice.current.userInterfaceIdiom == .pad ? "这台 iPad" : "这台手机" }
+@MainActor var thisDeviceWord: String {
+    UIDevice.current.userInterfaceIdiom == .pad ? "这台 iPad" : "这台手机"
+}
 
 /// The calls that reach the server, so that the rules are tested without one.
 struct JoinCalls: Sendable {
-    var byPairing: @Sendable (
-        _ link: PairLink, _ onEmoji: @escaping @Sendable ([String]) -> Void, _ stopped: @escaping @Sendable () -> Bool,
-        _ onRegistering: @escaping @Sendable () -> Void
-    ) async throws -> Account
+    var byPairing:
+        @Sendable (
+            _ link: PairLink, _ onEmoji: @escaping @Sendable ([String]) -> Void,
+            _ stopped: @escaping @Sendable () -> Bool,
+            _ onRegistering: @escaping @Sendable () -> Void,
+            _ confirm: @escaping @Sendable ([String]) async -> Bool
+        ) async throws -> Account
     var withSecret: @Sendable (_ secret: Secret) async throws -> Account
 
-    static func live(http: HTTP) -> JoinCalls {
+    static func live(http: HTTP, existing: Account? = nil, vault: Vault = Vault()) -> JoinCalls {
         JoinCalls(
-            byPairing: { link, onEmoji, stopped, onRegistering in
-                try await joinByPairing(link: link, http: http, onEmoji: onEmoji, stopped: stopped, onRegistering: onRegistering)
+            byPairing: { link, onEmoji, stopped, onRegistering, confirm in
+                try await joinByPairing(
+                    link: link, http: http, onEmoji: onEmoji, stopped: stopped,
+                    onRegistering: onRegistering,
+                    persist: { acct, record in
+                        try vault.initializeSecurity(record)
+                        try vault.save(
+                            acct.stored,
+                            notifyKey: DeviceSecurity.NotifyRecord(record: record).bytes())
+                    }, existing: existing, confirm: confirm)
             },
             withSecret: { secret in
                 try await joinWithRoot(root: secret.root, server: secret.server, http: http)
@@ -44,6 +57,8 @@ private final class JoinAttempt: Sendable {
     private struct Flags {
         var stopped = false
         var registering = false
+        var decision: Bool?
+        var confirmation: CheckedContinuation<Bool, Never>?
     }
 
     private let flags = OSAllocatedUnfairLock(initialState: Flags())
@@ -54,13 +69,40 @@ private final class JoinAttempt: Sendable {
     func beginRegistering() { flags.withLock { $0.registering = true } }
 
     /// Stops the attempt unless it is already registering; says whether it stopped.
-    func stop() -> Bool {
-        flags.withLock { f in
-            if f.registering { return false }
-            f.stopped = true
-            return true
+    func comparisonDecision(_ accepted: Bool) {
+        let continuation = flags.withLock { f in
+            f.decision = accepted
+            if accepted { f.registering = true }
+            let waiting = f.confirmation
+            f.confirmation = nil
+            return waiting
+        }
+        continuation?.resume(returning: accepted)
+    }
+    func waitForComparison() async -> Bool {
+        await withCheckedContinuation { continuation in
+            let immediate: Bool? = flags.withLock { f in
+                if f.stopped { return false }
+                if let decision = f.decision { return decision }
+                f.confirmation = continuation
+                return nil
+            }
+            if let immediate { continuation.resume(returning: immediate) }
         }
     }
+    func stop() -> Bool {
+        let stopped = flags.withLock { f -> (Bool, CheckedContinuation<Bool, Never>?) in
+            if f.registering { return (false, nil) }
+            f.stopped = true
+            f.decision = false
+            let waiting = f.confirmation
+            f.confirmation = nil
+            return (true, waiting)
+        }
+        stopped.1?.resume(returning: false)
+        return stopped.0
+    }
+
 }
 
 @MainActor
@@ -80,6 +122,7 @@ final class JoinModel {
     }
 
     private(set) var step = Step.form
+    private(set) var comparisonPending = false
     /// The pairing code: digits only, eight at most. Typed through `typeCode`.
     private(set) var code = ""
     var server: String
@@ -98,8 +141,13 @@ final class JoinModel {
     @ObservationIgnored private let calls: JoinCalls
     @ObservationIgnored private let onJoined: @MainActor (Account) async throws -> Void
 
-    init(lastServer: String, calls: JoinCalls, onJoined: @escaping @MainActor (Account) async throws -> Void) {
+    let retainedIdentity: Bool
+    init(
+        lastServer: String, calls: JoinCalls, retainedIdentity: Bool = false,
+        onJoined: @escaping @MainActor (Account) async throws -> Void
+    ) {
         server = lastServer.isEmpty ? "https://" : lastServer
+        self.retainedIdentity = retainedIdentity
         self.calls = calls
         self.onJoined = onJoined
     }
@@ -112,7 +160,7 @@ final class JoinModel {
     var canJoin: Bool { code.count == 8 && server.count > 8 }
     var canJoinWithSecret: Bool { !secret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     /// Working can still be left: a pairing that has not begun to register.
-    var canCancel: Bool { !joiningWithSecret }
+    var canCancel: Bool { !joiningWithSecret && attempt?.registering != true }
 
     /// What was typed or pasted into the code field: its digits are kept,
     /// so a code copied as "4829 1756" goes in as it is.
@@ -183,7 +231,8 @@ final class JoinModel {
                     link,
                     { emoji in Task { @MainActor in self.show(emoji, of: attempt) } },
                     { attempt.stopped },
-                    { attempt.beginRegistering() })
+                    { attempt.beginRegistering() },
+                    { emoji in await self.requestComparison(emoji, of: attempt) })
                 await finished(attempt, account)
             } catch {
                 failed(attempt, error)
@@ -191,6 +240,17 @@ final class JoinModel {
         }
     }
 
+    private func requestComparison(_ emoji: [String], of attempt: JoinAttempt) async -> Bool {
+        guard self.attempt === attempt, !attempt.stopped else { return false }
+        step = .emoji(emoji)
+        comparisonPending = true
+        return await attempt.waitForComparison()
+    }
+    func confirmPictures() {
+        guard comparisonPending, let attempt else { return }
+        comparisonPending = false
+        attempt.comparisonDecision(true)
+    }
     private func show(_ emoji: [String], of attempt: JoinAttempt) {
         guard self.attempt === attempt, !attempt.stopped, step == .working else { return }
         step = .emoji(emoji)
@@ -201,10 +261,12 @@ final class JoinModel {
         // account, so it is used. An attempt begun after the cancel gives way.
         if self.attempt !== attempt { _ = self.attempt?.stop() }
         self.attempt = nil
+        comparisonPending = false
         await hand(over: account)
     }
 
     private func failed(_ attempt: JoinAttempt, _ error: Error) {
+        comparisonPending = false
         let current = self.attempt === attempt
         if attempt.registering {
             // Whatever the page says now, this is what is known of the device.
@@ -275,14 +337,17 @@ final class JoinModel {
     // MARK: Fixed states
 
     #if DEBUG
-    /// Puts the flow in a state to look at, without a server (`-joinStep`).
-    func show(step: Step, code: String = "", server: String? = nil, secret: String = "", notice: String = "", error: Bool = false) {
-        typeCode(code)
-        if let server { self.server = server }
-        self.secret = secret
-        self.notice = notice
-        noticeIsError = error
-        self.step = step
-    }
+        /// Puts the flow in a state to look at, without a server (`-joinStep`).
+        func show(
+            step: Step, code: String = "", server: String? = nil, secret: String = "",
+            notice: String = "", error: Bool = false
+        ) {
+            typeCode(code)
+            if let server { self.server = server }
+            self.secret = secret
+            self.notice = notice
+            noticeIsError = error
+            self.step = step
+        }
     #endif
 }

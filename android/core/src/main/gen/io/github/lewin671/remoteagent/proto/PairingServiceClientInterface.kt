@@ -14,6 +14,11 @@ import com.connectrpc.ResponseMessage
  *  uses the candidate token it gets when joining.
  */
 public interface PairingServiceClientInterface {
+  /**
+   *  Freeze this response before exposing the joiner ephemeral public key.
+   */
+  public suspend fun peekPairing(request: PeekPairingRequest, headers: Headers = emptyMap()): ResponseMessage<PeekPairingResponse>
+
   public suspend fun createPairing(request: CreatePairingRequest, headers: Headers = emptyMap()): ResponseMessage<CreatePairingResponse>
 
   public suspend fun joinPairing(request: JoinPairingRequest, headers: Headers = emptyMap()): ResponseMessage<JoinPairingResponse>

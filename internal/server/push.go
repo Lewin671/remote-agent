@@ -431,6 +431,9 @@ func (c *clientService) RemoveDevice(ctx context.Context, req *connect.Request[p
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only clients remove devices"))
 	}
 	t := c.s.tenantFrom(ctx)
+	if err := t.store.verifyRemoval(ctx, deviceFrom(ctx).id, req.Msg); err != nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("a verified security-domain removal completion is required"))
+	}
 	c.s.pairing.mu.Lock()
 	defer c.s.pairing.mu.Unlock()
 	machine, err := t.store.removeDevice(ctx, req.Msg.DeviceId)

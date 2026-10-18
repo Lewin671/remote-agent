@@ -68,6 +68,9 @@ message Origin {
   // The command's request ID, for ORIGIN_KIND_CLIENT and
   // ORIGIN_KIND_UNVERIFIED_CLIENT.
   string request_id = 3;
+  // Encrypted command preconditions, checked atomically on the owner.
+  uint64 observed_event_seq = 4;
+  bytes observed_screen_hash = 5;
 }
 
 enum ImageFormat {

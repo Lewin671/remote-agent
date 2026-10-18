@@ -9,7 +9,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
@@ -69,10 +69,10 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 	var seq uint64
 	send := func(f *pb.TerminalFrame) error {
 		seq++
-		env, err := e2e.SealMessage(key, &pb.Header{
+		env, err := c.security.sealMessage(ctx, &pb.Header{
 			Kind: pb.PayloadKind_PAYLOAD_KIND_TERMINAL_OUTPUT, MachineId: c.acct.DeviceID, SessionId: sessionID,
 			RequestId: streamID, Seq: seq, Sender: c.acct.DeviceID,
-		}, f)
+		}, deviceauth.TerminalOutput, key, f)
 		if err != nil {
 			return err
 		}
@@ -166,32 +166,50 @@ func (c *conn) readTerminal(ctx context.Context, ws *websocket.Conn, t Terminal,
 		if proto.Unmarshal(b, env) != nil {
 			return
 		}
-		f := &pb.TerminalFrame{}
-		h, err := e2e.OpenMessage(key, env, &pb.Header{
-			Kind: pb.PayloadKind_PAYLOAD_KIND_TERMINAL_INPUT, MachineId: c.acct.DeviceID, SessionId: sessionID, RequestId: streamID,
-		}, f)
-		if err != nil || h.Seq <= last {
-			slog.Warn("relay: terminal frame refused", "stream", streamID[:8])
+
+		wire, err := deviceauth.FromEnvelope(env)
+		if err != nil {
 			return
 		}
-		last = h.Seq
-		switch k := f.Kind.(type) {
-		case *pb.TerminalFrame_Input:
-			err = t.Input(k.Input)
-		case *pb.TerminalFrame_HistoryRequest:
-			if k.HistoryRequest == nil || len(k.HistoryRequest.RequestId) == 0 || len(k.HistoryRequest.RequestId) > 128 || len(k.HistoryRequest.Cursor) > 128 {
-				return
-			}
-			// Bound queued work. A flooding client closes its own stream instead of
-			// starving input or accumulating captures on the daemon.
-			select {
-			case historyRequests <- k.HistoryRequest:
-			default:
-				return
-			}
-		case *pb.TerminalFrame_Resize:
-			err = t.Resize(int(k.Resize.Cols), int(k.Resize.Rows), k.Resize.Fit)
+		h, err := deviceauth.ParseHeader(wire.Header)
+		if err != nil || h.Machine != c.acct.DeviceID || h.Session != sessionID || h.Request != streamID || h.Seq <= last || !h.Purpose.Control() || h.Purpose == deviceauth.Command {
+			return
 		}
+		if err := c.security.remote.Sync(ctx); err != nil {
+			return
+		}
+		err = c.security.remote.Endpoint.Execute(wire, key, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) error {
+			plain, err := deviceauth.Unpack(h, plain)
+			if err != nil {
+				return err
+			}
+			f := &pb.TerminalFrame{}
+			if proto.Unmarshal(plain, f) != nil {
+				return deviceauth.ErrInvalid
+			}
+			switch k := f.Kind.(type) {
+			case *pb.TerminalFrame_Input:
+				return t.Input(k.Input)
+			case *pb.TerminalFrame_Resize:
+				return t.Resize(int(k.Resize.Cols), int(k.Resize.Rows), k.Resize.Fit)
+			case *pb.TerminalFrame_HistoryRequest:
+				if k.HistoryRequest == nil || len(k.HistoryRequest.RequestId) == 0 || len(k.HistoryRequest.RequestId) > 128 || len(k.HistoryRequest.Cursor) > 128 {
+					return deviceauth.ErrInvalid
+				}
+				select {
+				case historyRequests <- k.HistoryRequest:
+					return nil
+				default:
+					return deviceauth.ErrCapacity
+				}
+			default:
+				return deviceauth.ErrInvalid
+			}
+		})
+		if err == nil {
+			last = h.Seq
+		}
+
 		if err != nil {
 			slog.Warn("relay: terminal input", "stream", streamID[:8], "err", err)
 		}

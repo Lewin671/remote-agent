@@ -35,4 +35,10 @@ public interface LoginResponseOrBuilder extends
    * @return The expiresMs.
    */
   long getExpiresMs();
+
+  /**
+   * <code>bytes device_public_key = 3 [json_name = "devicePublicKey"];</code>
+   * @return The devicePublicKey.
+   */
+  com.google.protobuf.ByteString getDevicePublicKey();
 }

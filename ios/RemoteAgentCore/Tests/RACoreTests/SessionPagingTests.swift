@@ -38,14 +38,17 @@ extension RemoteState {
 }
 
 private let pageOneEnd = SessionPlace(endedMs: endedAt(71), sessionId: endedId(71))
-private func endedDown(_ from: Int, _ to: Int) -> [String] { stride(from: from, through: to, by: -1).map(endedId) }
+private func endedDown(_ from: Int, _ to: Int) -> [String] {
+    stride(from: from, through: to, by: -1).map(endedId)
+}
 
 extension Remote {
     /// Connected, with the first page: every session that has not ended and the fifty ended last.
     fileprivate func started() async throws -> RemoteState {
         start()
         return try await awaitState("the first page", ms: 15_000) {
-            $0.conn == .online && $0.loaded && $0.sessionsNext == pageOneEnd && $0.sessions.count == 52
+            $0.conn == .online && $0.loaded && $0.sessionsNext == pageOneEnd
+                && $0.sessions.count == 52
         }
     }
 }
@@ -61,7 +64,9 @@ private final class Flaky: @unchecked Sendable {
 
     func http(for origin: String) -> HTTP {
         Intercept.http(for: origin) { [self] request in
-            if down, request.url?.path.hasSuffix("ListMachines") == true { throw URLError(.networkConnectionLost) }
+            if down, request.url?.path.hasSuffix("ListMachines") == true {
+                throw URLError(.networkConnectionLost)
+            }
             return request
         }
     }
@@ -73,19 +78,23 @@ extension ServerTests {
     /// ended, so the first page and two more.
     @Suite struct SessionPagingTests {
         private func world(_ body: (World) async throws -> Void) async throws {
-            try await World.run(setUp: { w in
-                try await w.daemon.putMachine("fake-mac.local")
-                try await w.daemon.putSession("live1", live("/Users/me/Code/foo", "进行中一"))
-                try await w.daemon.putSession("live2", live("/Users/me/Code/bar", "进行中二"))
-                // e120 ended last: the first page is e120 down to e071.
-                for i in 1...120 {
-                    try await w.daemon.putSession(endedId(i), ended("/Users/me/Code/foo", "结束 \(i)", endedAt(i)), endedMs: endedAt(i))
-                }
-                try await w.daemon.connect()
-            }, body)
+            try await World.run(
+                setUp: { w in
+                    try await w.daemon.putMachine("fake-mac.local")
+                    try await w.daemon.putSession("live1", live("/Users/me/Code/foo", "进行中一"))
+                    try await w.daemon.putSession("live2", live("/Users/me/Code/bar", "进行中二"))
+                    // e120 ended last: the first page is e120 down to e071.
+                    for i in 1...120 {
+                        try await w.daemon.putSession(
+                            endedId(i), ended("/Users/me/Code/foo", "结束 \(i)", endedAt(i)),
+                            endedMs: endedAt(i))
+                    }
+                    try await w.daemon.connect()
+                }, body)
         }
 
-        @Test func theFirstPageIsEverySessionNotEndedAndTheLatestEndedThenPagesMerge() async throws {
+        @Test func theFirstPageIsEverySessionNotEndedAndTheLatestEndedThenPagesMerge() async throws
+        {
             try await world { w in
                 let r = try await w.client()
                 let st = try await r.started()
@@ -102,7 +111,8 @@ extension ServerTests {
                 #expect(try await r.loadMoreSessions())
                 var next = r.current
                 #expect(next.endedIds == endedDown(120, 21))
-                #expect(next.sessionsNext == SessionPlace(endedMs: endedAt(21), sessionId: endedId(21)))
+                #expect(
+                    next.sessionsNext == SessionPlace(endedMs: endedAt(21), sessionId: endedId(21)))
                 #expect(next.liveIds == ["live1", "live2"])
 
                 // The last page: nothing is left, and asking again fetches nothing.
@@ -128,7 +138,8 @@ extension ServerTests {
                 #expect(try await [a, b, c] == [true, true, true])
                 let st = r.current
                 #expect(st.endedIds == endedDown(120, 21))
-                #expect(st.sessionsNext == SessionPlace(endedMs: endedAt(21), sessionId: endedId(21)))
+                #expect(
+                    st.sessionsNext == SessionPlace(endedMs: endedAt(21), sessionId: endedId(21)))
                 #expect(!st.loadingSessions)
             }
         }
@@ -175,7 +186,9 @@ extension ServerTests {
                 #expect(try await [a, b] == [true, true])
                 // Its events load like any other session's.
                 try await w.daemon.upload(endedId(3), agent("旧会话的内容"))
-                let ev = try await r.events(endedId(3)).await("the old session's event") { $0.events.count == 1 }
+                let ev = try await r.events(endedId(3)).await("the old session's event") {
+                    $0.events.count == 1
+                }
                 #expect(ev.events[0].agentMessage.text == "旧会话的内容")
             }
         }
@@ -189,10 +202,14 @@ extension ServerTests {
                 r.stop()
                 _ = try await r.awaitState("offline") { $0.conn == .offline }
                 // A session ends while this client is away: it leads the next first page, which now ends at e072.
-                try await w.daemon.putSession("live2", ended("/Users/me/Code/bar", "进行中二", endedAt(500)), endedMs: endedAt(500))
+                try await w.daemon.putSession(
+                    "live2", ended("/Users/me/Code/bar", "进行中二", endedAt(500)),
+                    endedMs: endedAt(500))
                 r.start()
                 let end = SessionPlace(endedMs: endedAt(72), sessionId: endedId(72))
-                let st = try await r.awaitState("the first page again", ms: 15_000) { $0.conn == .online && $0.sessionsNext == end }
+                let st = try await r.awaitState("the first page again", ms: 15_000) {
+                    $0.conn == .online && $0.sessionsNext == end
+                }
                 // The pages start over from the first, and what was fetched of the later ones is kept:
                 // e071 to e021 from the second page, and e002 fetched on its own.
                 #expect(st.endedIds == ["live2"] + endedDown(120, 21) + [endedId(2)])
@@ -206,40 +223,52 @@ extension ServerTests {
 
         @Test func afterAReconnectASessionOfAMachineThatIsGoneGoes() async throws {
             try await world { w in
-                let otherAccount = try await approvedClient(authorizer: w.daemon.account, http: w.http, kind: .machine)
+                let otherAccount = try await approvedClient(
+                    authorizer: w.daemon.account, http: w.http, kind: .machine)
                 let other = try FakeDaemon(account: otherAccount, http: w.http)
                 try await other.login()
                 try await other.putMachine("other-mac.local")
                 try await other.putSession("there", live("/Users/me/Code/baz", "另一台上的"))
                 // Ended before everything else: far past the first page, where an ended session would stay.
-                try await other.putSession("old-there", ended("/Users/me/Code/baz", "另一台上的旧会话", base - 10), endedMs: base - 10)
+                try await other.putSession(
+                    "old-there", ended("/Users/me/Code/baz", "另一台上的旧会话", base - 10),
+                    endedMs: base - 10)
                 try await other.upload("old-there", agent("旧内容"))
                 let cache = MemoryCache()
                 let r = try await w.client(cache: cache)
                 r.start()
                 _ = try await r.awaitState("both machines", ms: 15_000) {
-                    $0.conn == .online && $0.sessionsNext == pageOneEnd && $0.sessions["there"] != nil
+                    $0.conn == .online && $0.sessionsNext == pageOneEnd
+                        && $0.sessions["there"] != nil
                 }
                 #expect(try await r.fetchSession("old-there"))
                 _ = try await r.events("old-there").await("its event") { $0.events.count == 1 }
-                try await eventually("the event to be cached") { await cache.events(sessionId: "old-there").count == 1 }
+                try await eventually("the event to be cached") {
+                    await cache.events(sessionId: "old-there").count == 1
+                }
                 r.stop()
                 _ = try await r.awaitState("offline") { $0.conn == .offline }
                 // Another client removes that machine meanwhile.
                 let admin = try await w.client()
                 admin.start()
-                _ = try await admin.awaitState("admin online", ms: 15_000) { $0.conn == .online && $0.machines[other.id] != nil }
+                _ = try await admin.awaitState("admin online", ms: 15_000) {
+                    $0.conn == .online && $0.machines[other.id] != nil
+                }
+                await admin.refreshDevices()
                 try await admin.removeDevice(other.id)
                 r.start()
                 let id = w.daemon.id
                 let st = try await r.awaitState("the machine gone", ms: 15_000) {
-                    $0.conn == .online && $0.machines[other.id] == nil && $0.machines[id]?.online == true
+                    $0.conn == .online && $0.machines[other.id] == nil
+                        && $0.machines[id]?.online == true
                 }
                 #expect(st.sessions["there"] == nil)
                 #expect(st.sessions["old-there"] == nil)
                 #expect(st.sessions.count == 52)
                 // Known not to exist any more: its cached events go too.
-                try await eventually("its cached events to go", ms: 5_000) { await cache.events(sessionId: "old-there").isEmpty }
+                try await eventually("its cached events to go", ms: 5_000) {
+                    await cache.events(sessionId: "old-there").isEmpty
+                }
                 #expect(await !cache.sessions().contains { $0.machineID == other.id })
             }
         }
@@ -251,14 +280,19 @@ extension ServerTests {
                 _ = try await r.started()
                 try await w.daemon.upload("live1", agent("进行中的内容"))
                 _ = try await r.events("live1").await("its event") { $0.events.count == 1 }
-                try await eventually("the event to be cached") { await cache.events(sessionId: "live1").count == 1 }
+                try await eventually("the event to be cached") {
+                    await cache.events(sessionId: "live1").count == 1
+                }
                 r.stop()
                 _ = try await r.awaitState("offline") { $0.conn == .offline }
                 // It ended while this client was away, at a time before every other: it is on the last
                 // page now. Here it is still held as not ended, so nothing says it is a later page's.
-                try await w.daemon.putSession("live1", ended("/Users/me/Code/foo", "进行中一", base - 5), endedMs: base - 5)
+                try await w.daemon.putSession(
+                    "live1", ended("/Users/me/Code/foo", "进行中一", base - 5), endedMs: base - 5)
                 r.start()
-                let st = try await r.awaitState("the stale session gone", ms: 15_000) { $0.conn == .online && $0.sessions["live1"] == nil }
+                let st = try await r.awaitState("the stale session gone", ms: 15_000) {
+                    $0.conn == .online && $0.sessions["live1"] == nil
+                }
                 #expect(st.liveIds == ["live2"])
                 #expect(st.sessionsNext == pageOneEnd)
                 // It was not known to be gone, so its events stay cached; it is back, as ended, with its page.
@@ -295,8 +329,12 @@ extension ServerTests {
                 limit.cancel()
                 #expect(!r.current.loadingSessions)
                 try await w.server.start()
+                try await w.daemon.login()
+                try await w.daemon.connect()
                 r.reconnectNow()
-                _ = try await r.awaitState("online again", ms: 15_000) { $0.conn == .online && $0.sessionsError.isEmpty }
+                _ = try await r.awaitState("online again", ms: 15_000) {
+                    $0.conn == .online && $0.sessionsError.isEmpty
+                }
                 #expect(try await r.loadMoreSessions())
                 st = r.current
                 #expect(st.sessionsError == "")
@@ -313,25 +351,37 @@ extension ServerTests {
                 #expect(try await r.fetchSession(endedId(1)))
                 try await w.daemon.upload(endedId(1), agent("最早的会话"))
                 _ = try await r.events(endedId(1)).await("its event") { $0.events.count == 1 }
-                try await eventually("the event to be cached") { await cache.events(sessionId: endedId(1)).count == 1 }
+                try await eventually("the event to be cached") {
+                    await cache.events(sessionId: endedId(1)).count == 1
+                }
                 // Only the first page is listed in the cache, whatever else was fetched.
                 let firstPage = (["live1", "live2"] + (71...120).map(endedId)).sorted()
                 #expect(await cache.sessions().map(\.sessionID).sorted() == firstPage)
                 // A session that ends now is on the first page; one whose metadata comes again from a later page is not.
-                try await w.daemon.putSession("live2", ended("/Users/me/Code/bar", "进行中二", endedAt(500)), endedMs: endedAt(500))
-                _ = try await r.awaitState("live2 ended") { $0.sessions["live2"].map(exited) == true }
-                try await w.daemon.putSession(endedId(1), ended("/Users/me/Code/foo", "结束 1 改名", endedAt(1)), endedMs: endedAt(1))
-                _ = try await r.awaitState("e001 renamed") { $0.sessions[endedId(1)]?.info?.title == "结束 1 改名" }
+                try await w.daemon.putSession(
+                    "live2", ended("/Users/me/Code/bar", "进行中二", endedAt(500)),
+                    endedMs: endedAt(500))
+                _ = try await r.awaitState("live2 ended") {
+                    $0.sessions["live2"].map(exited) == true
+                }
+                try await w.daemon.putSession(
+                    endedId(1), ended("/Users/me/Code/foo", "结束 1 改名", endedAt(1)),
+                    endedMs: endedAt(1))
+                _ = try await r.awaitState("e001 renamed") {
+                    $0.sessions[endedId(1)]?.info?.title == "结束 1 改名"
+                }
                 #expect(await !cache.sessions().contains { $0.sessionID == endedId(1) })
                 #expect(await cache.sessions().contains { $0.sessionID == "live2" })
                 r.stop()
                 _ = try await r.awaitState("offline") { $0.conn == .offline }
 
                 // The next run shows the cached first page before it connects, and the events are still there.
-                let again = try await w.client(cache: cache)
+                let again = try w.remote(r.account, cache: cache)
                 w.server.stop()
                 again.start()
-                let st = try await again.awaitState("the cached page") { $0.loaded && $0.sessions.count == 52 }
+                let st = try await again.awaitState("the cached page") {
+                    $0.loaded && $0.sessions.count == 52
+                }
                 // What the cache kept is one page of an earlier run: whether there are more is not known until the first page comes.
                 #expect(!st.sessionsListed)
                 #expect(st.moreSessions)
@@ -340,13 +390,19 @@ extension ServerTests {
                 #expect(await cache.events(sessionId: endedId(1)).count == 1)
                 // After reconnecting the cache is the new first page: e071 left it for live2.
                 try await w.server.start()
+                try await w.daemon.login()
+                try await w.daemon.connect()
                 again.reconnectNow()
                 let end = SessionPlace(endedMs: endedAt(72), sessionId: endedId(72))
-                _ = try await again.awaitState("online", ms: 15_000) { $0.conn == .online && $0.sessionsNext == end }
+                _ = try await again.awaitState("online", ms: 15_000) {
+                    $0.conn == .online && $0.sessionsNext == end
+                }
                 try await eventually("e071 to leave the cached page", ms: 5_000) {
                     await !cache.sessions().contains { $0.sessionID == endedId(71) }
                 }
-                #expect(await cache.sessions().map(\.sessionID).sorted() == (["live1", "live2"] + (72...120).map(endedId)).sorted())
+                #expect(
+                    await cache.sessions().map(\.sessionID).sorted()
+                        == (["live1", "live2"] + (72...120).map(endedId)).sorted())
                 #expect(await cache.events(sessionId: endedId(1)).count == 1)
             }
         }
@@ -385,7 +441,8 @@ extension ServerTests {
                 #expect(try await page.value)
                 let st = r.current
                 #expect(st.endedIds == endedDown(120, 21))
-                #expect(st.sessionsNext == SessionPlace(endedMs: endedAt(21), sessionId: endedId(21)))
+                #expect(
+                    st.sessionsNext == SessionPlace(endedMs: endedAt(21), sessionId: endedId(21)))
                 #expect(!st.loadingSessions)
             }
         }
@@ -397,14 +454,18 @@ extension ServerTests {
                 let r = try await w.client(http: flaky.http(for: w.server.url))
                 r.start()
                 // Connected, with no listing: it is not taken for an empty one, nor for one with nothing more to fetch.
-                let failed = try await r.awaitState("the failed listing") { $0.conn == .online && !$0.sessionsError.isEmpty }
+                let failed = try await r.awaitState("the failed listing") {
+                    $0.conn == .online && !$0.sessionsError.isEmpty
+                }
                 #expect(!failed.sessionsListed)
                 #expect(!failed.loaded)
                 #expect(failed.moreSessions)
                 #expect(failed.sessionsNext == nil)
                 flaky.down = false
                 // No reconnect and no call from the screen: it comes by itself.
-                let st = try await r.awaitState("the first page", ms: 15_000) { $0.sessionsListed && $0.sessions.count == 52 }
+                let st = try await r.awaitState("the first page", ms: 15_000) {
+                    $0.sessionsListed && $0.sessions.count == 52
+                }
                 #expect(st.sessionsError == "")
                 #expect(st.sessionsNext == pageOneEnd)
                 #expect(st.conn == .online)
@@ -418,7 +479,9 @@ extension ServerTests {
                 w.onClose { flaky.down = false }
                 let r = try await w.client(http: flaky.http(for: w.server.url))
                 r.start()
-                _ = try await r.awaitState("the failed listing") { $0.conn == .online && !$0.sessionsError.isEmpty }
+                _ = try await r.awaitState("the failed listing") {
+                    $0.conn == .online && !$0.sessionsError.isEmpty
+                }
                 // Still failing: the retry says so and leaves nothing loading.
                 await #expect(throws: (any Error).self) { try await r.loadMoreSessions() }
                 #expect(!r.current.loadingSessions)
@@ -435,7 +498,9 @@ extension ServerTests {
                 flaky.down = true
                 let again = try await w.client(http: flaky.http(for: w.server.url))
                 again.start()
-                _ = try await again.awaitState("the failed listing") { $0.conn == .online && !$0.sessionsError.isEmpty }
+                _ = try await again.awaitState("the failed listing") {
+                    $0.conn == .online && !$0.sessionsError.isEmpty
+                }
                 await #expect(throws: (any Error).self) { try await again.loadAllSessions() }
             }
         }
@@ -483,7 +548,9 @@ extension ServerTests {
                 #expect(r.current.sessionsNext == pageOneEnd)
                 // Back online the reason is gone and the listing goes on.
                 r.start()
-                _ = try await r.awaitState("online again", ms: 15_000) { $0.conn == .online && $0.sessionsError.isEmpty }
+                _ = try await r.awaitState("online again", ms: 15_000) {
+                    $0.conn == .online && $0.sessionsError.isEmpty
+                }
                 #expect(try await r.loadMoreSessions())
             }
         }

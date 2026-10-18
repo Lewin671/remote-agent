@@ -313,6 +313,32 @@ public  final class RegisterDeviceRequest extends
     approvalSignature_ = getDefaultInstance().getApprovalSignature();
   }
 
+  public static final int PROTOCOL_VERSION_FIELD_NUMBER = 7;
+  private int protocolVersion_;
+  /**
+   * <code>uint32 protocol_version = 7 [json_name = "protocolVersion"];</code>
+   * @return The protocolVersion.
+   */
+  @java.lang.Override
+  public int getProtocolVersion() {
+    return protocolVersion_;
+  }
+  /**
+   * <code>uint32 protocol_version = 7 [json_name = "protocolVersion"];</code>
+   * @param value The protocolVersion to set.
+   */
+  private void setProtocolVersion(int value) {
+    
+    protocolVersion_ = value;
+  }
+  /**
+   * <code>uint32 protocol_version = 7 [json_name = "protocolVersion"];</code>
+   */
+  private void clearProtocolVersion() {
+
+    protocolVersion_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.proto.RegisterDeviceRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -709,6 +735,34 @@ public  final class RegisterDeviceRequest extends
       return this;
     }
 
+    /**
+     * <code>uint32 protocol_version = 7 [json_name = "protocolVersion"];</code>
+     * @return The protocolVersion.
+     */
+    @java.lang.Override
+    public int getProtocolVersion() {
+      return instance.getProtocolVersion();
+    }
+    /**
+     * <code>uint32 protocol_version = 7 [json_name = "protocolVersion"];</code>
+     * @param value The protocolVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setProtocolVersion(int value) {
+      copyOnWrite();
+      instance.setProtocolVersion(value);
+      return this;
+    }
+    /**
+     * <code>uint32 protocol_version = 7 [json_name = "protocolVersion"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearProtocolVersion() {
+      copyOnWrite();
+      instance.clearProtocolVersion();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.RegisterDeviceRequest)
   }
   @java.lang.Override
@@ -732,10 +786,11 @@ public  final class RegisterDeviceRequest extends
             "signupProof_",
             "approval_",
             "approvalSignature_",
+            "protocolVersion_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
-              "\u0208\u0004\u1009\u0000\u0005\n\u0006\n";
+              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
+              "\u0208\u0004\u1009\u0000\u0005\n\u0006\n\u0007\u000b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

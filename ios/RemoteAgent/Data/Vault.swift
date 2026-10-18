@@ -15,7 +15,9 @@ import Security
 
 /// The account as it is kept on this device: where the server is, the root
 /// key everything is derived from, and this device's signing seed and ID.
-struct VaultAccount: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+struct VaultAccount: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
     var server: String
     var root: Data
     var deviceSeed: Data
@@ -31,15 +33,21 @@ struct VaultAccount: Equatable, Sendable, CustomStringConvertible, CustomDebugSt
 /// not sign in again before it runs out. It is kept with whose it is, the
 /// server and this device's ID there, and is only ever given back for
 /// exactly those: a token saved for one account is never offered to another.
-struct LoginToken: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+struct LoginToken: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
     var token: String
     var expiresAt: Date
     var server: String
     var deviceId: String
 
-    var description: String { "LoginToken(server=\(server), device=\(deviceId), expiresAt=\(expiresAt))" }
+    var description: String {
+        "LoginToken(server=\(server), device=\(deviceId), expiresAt=\(expiresAt))"
+    }
     var debugDescription: String { description }
-    var customMirror: Mirror { Mirror(self, children: ["server": server, "deviceId": deviceId, "expiresAt": expiresAt]) }
+    var customMirror: Mirror {
+        Mirror(self, children: ["server": server, "deviceId": deviceId, "expiresAt": expiresAt])
+    }
 }
 
 /// The Keychain refused, or what it holds cannot be read. `status` is the system's OSStatus, 0 when the data itself is at fault.
@@ -75,6 +83,7 @@ struct Vault: Sendable {
     enum Item: String, Sendable, CaseIterable {
         /// Server, device ID, root key and device seed, in one item so that they are written and read together.
         case account
+        case securityState = "security-v2"
         /// The notify key (architecture §9), on its own so that a push can be opened without the root key.
         case notifyKey = "notify-key"
         case loginToken = "login-token"
@@ -85,7 +94,10 @@ struct Vault: Sendable {
     /// The Keychain service the items are under. The debug build's bundle ID differs, so its items are its own.
     let service: String
 
-    init(service: String = (Bundle.main.bundleIdentifier ?? "io.github.lewin671.remoteagent") + ".vault") {
+    init(
+        service: String = (Bundle.main.bundleIdentifier ?? "io.github.lewin671.remoteagent")
+            + ".vault"
+    ) {
         self.service = service
     }
 
@@ -97,10 +109,12 @@ struct Vault: Sendable {
     /// The stored account, or nil when this device has not joined one.
     func load() throws -> VaultAccount? {
         guard let blob = try read(.account) else { return nil }
-        guard let plist = try? PropertyListSerialization.propertyList(from: blob, format: nil) as? [String: Any],
-              plist["v"] as? Int == 1,
-              let server = plist["server"] as? String, let deviceId = plist["deviceId"] as? String,
-              let root = plist["root"] as? Data, let seed = plist["seed"] as? Data
+        guard
+            let plist = try? PropertyListSerialization.propertyList(from: blob, format: nil)
+                as? [String: Any],
+            plist["v"] as? Int == 1,
+            let server = plist["server"] as? String, let deviceId = plist["deviceId"] as? String,
+            let root = plist["root"] as? Data, let seed = plist["seed"] as? Data
         else { throw VaultError.unreadable }
         return VaultAccount(server: server, root: root, deviceSeed: seed, deviceId: deviceId)
     }
@@ -112,7 +126,9 @@ struct Vault: Sendable {
             "v": 1, "server": account.server, "deviceId": account.deviceId, "root": account.root,
             "seed": account.deviceSeed,
         ]
-        guard let blob = try? PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
+        guard
+            let blob = try? PropertyListSerialization.data(
+                fromPropertyList: plist, format: .binary, options: 0)
         else { throw VaultError(operation: .save, status: errSecParam) }
         try write(.notifyKey, notifyKey)
         try write(.account, blob)
@@ -134,20 +150,25 @@ struct Vault: Sendable {
     /// login; whoever asks signs in anew, and the next one kept replaces it.
     func loginToken(server: String, deviceId: String) throws -> LoginToken? {
         guard let blob = try read(.loginToken) else { return nil }
-        guard let plist = try? PropertyListSerialization.propertyList(from: blob, format: nil) as? [String: Any],
-              let token = plist["token"] as? String, let expires = plist["expiresAt"] as? Date
+        guard
+            let plist = try? PropertyListSerialization.propertyList(from: blob, format: nil)
+                as? [String: Any],
+            let token = plist["token"] as? String, let expires = plist["expiresAt"] as? Date
         else { throw VaultError.unreadable }
         guard let owner = plist["server"] as? String, let device = plist["deviceId"] as? String,
-              owner == server, device == deviceId, !deviceId.isEmpty
+            owner == server, device == deviceId, !deviceId.isEmpty
         else { return nil }
         return LoginToken(token: token, expiresAt: expires, server: owner, deviceId: device)
     }
 
     func saveLoginToken(_ token: LoginToken) throws {
         let plist: [String: Any] = [
-            "token": token.token, "expiresAt": token.expiresAt, "server": token.server, "deviceId": token.deviceId,
+            "token": token.token, "expiresAt": token.expiresAt, "server": token.server,
+            "deviceId": token.deviceId,
         ]
-        guard let blob = try? PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
+        guard
+            let blob = try? PropertyListSerialization.data(
+                fromPropertyList: plist, format: .binary, options: 0)
         else { throw VaultError(operation: .save, status: errSecParam) }
         try write(.loginToken, blob)
     }
@@ -158,6 +179,8 @@ struct Vault: Sendable {
 
     /// Logging out: removes every item of the vault.
     func clear() throws {
+        SecurityVaultLock.lock.lock()
+        defer { SecurityVaultLock.lock.unlock() }
         let status = SecItemDelete(query(nil) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw VaultError(operation: .delete, status: status)
@@ -173,7 +196,9 @@ struct Vault: Sendable {
         var out: CFTypeRef?
         let status = SecItemCopyMatching(q as CFDictionary, &out)
         if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess, let data = out as? Data else { throw VaultError(operation: .read, status: status) }
+        guard status == errSecSuccess, let data = out as? Data else {
+            throw VaultError(operation: .read, status: status)
+        }
         return data
     }
 
@@ -185,7 +210,8 @@ struct Vault: Sendable {
         var status = SecItemAdd(add as CFDictionary, nil)
         if status == errSecDuplicateItem {
             let change: [CFString: Any] = [
-                kSecValueData: data, kSecAttrAccessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                kSecValueData: data,
+                kSecAttrAccessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
             ]
             status = SecItemUpdate(query(item) as CFDictionary, change as CFDictionary)
         }
@@ -214,9 +240,41 @@ struct Vault: Sendable {
     /// One item, or all of the service's. Only items that do not sync are ever written or matched.
     private func query(_ item: Item?) -> [CFString: Any] {
         var q: [CFString: Any] = [
-            kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrSynchronizable: false,
+            kSecClass: kSecClassGenericPassword, kSecAttrService: service,
+            kSecAttrSynchronizable: false,
         ]
         if let item { q[kSecAttrAccount] = item.rawValue }
         return q
     }
+    func readNamed(_ name: String) throws -> Data? {
+        var q = query(nil)
+        q[kSecAttrAccount] = name
+        q[kSecReturnData] = true
+        q[kSecMatchLimit] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        let status = SecItemCopyMatching(q as CFDictionary, &out)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = out as? Data else {
+            throw VaultError(operation: .read, status: status)
+        }
+        return data
+    }
+    func writeNamed(_ name: String, _ data: Data) throws {
+        var q = query(nil)
+        q[kSecAttrAccount] = name
+        var add = q
+        add[kSecValueData] = data
+        add[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        var status = SecItemAdd(add as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            status = SecItemUpdate(
+                q as CFDictionary,
+                [
+                    kSecValueData: data,
+                    kSecAttrAccessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                ] as CFDictionary)
+        }
+        guard status == errSecSuccess else { throw VaultError(operation: .save, status: status) }
+    }
+
 }

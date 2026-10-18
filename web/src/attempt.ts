@@ -17,11 +17,23 @@ export function expiredError(e: unknown): boolean {
  * deadline), not an offline machine or a network error. Only the daemon's
  * own answer for the request settles it. */
 export function stillUnknown(error: unknown, wasUnknown: boolean): boolean {
-  return uncertain(error) || (wasUnknown && (expiredError(error) || (error instanceof CommandError && error.code === "unavailable")));
+  return (
+    uncertain(error) ||
+    (wasUnknown &&
+      (!(error instanceof CommandError) ||
+        !error.fromDaemon ||
+        expiredError(error) ||
+        error.code === "unavailable"))
+  );
 }
 
 export class Attempt<P> {
-  private pending?: { payload: P; slot: RequestSlot; tries: number; expired: boolean };
+  private pending?: {
+    payload: P;
+    slot: RequestSlot;
+    tries: number;
+    expired: boolean;
+  };
 
   /** What to send: an earlier attempt whose outcome is unknown wins over
    * payload, and is sent sealed as it was, even past its deadline: the

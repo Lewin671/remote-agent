@@ -16,6 +16,7 @@ public  final class LoginResponse extends
     LoginResponseOrBuilder {
   private LoginResponse() {
     token_ = "";
+    devicePublicKey_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int TOKEN_FIELD_NUMBER = 1;
   private java.lang.String token_;
@@ -109,6 +110,33 @@ public  final class LoginResponse extends
   private void clearExpiresMs() {
 
     expiresMs_ = 0L;
+  }
+
+  public static final int DEVICE_PUBLIC_KEY_FIELD_NUMBER = 3;
+  private com.google.protobuf.ByteString devicePublicKey_;
+  /**
+   * <code>bytes device_public_key = 3 [json_name = "devicePublicKey"];</code>
+   * @return The devicePublicKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getDevicePublicKey() {
+    return devicePublicKey_;
+  }
+  /**
+   * <code>bytes device_public_key = 3 [json_name = "devicePublicKey"];</code>
+   * @param value The devicePublicKey to set.
+   */
+  private void setDevicePublicKey(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    devicePublicKey_ = value;
+  }
+  /**
+   * <code>bytes device_public_key = 3 [json_name = "devicePublicKey"];</code>
+   */
+  private void clearDevicePublicKey() {
+
+    devicePublicKey_ = getDefaultInstance().getDevicePublicKey();
   }
 
   public static io.github.lewin671.remoteagent.proto.LoginResponse parseFrom(
@@ -305,6 +333,34 @@ public  final class LoginResponse extends
       return this;
     }
 
+    /**
+     * <code>bytes device_public_key = 3 [json_name = "devicePublicKey"];</code>
+     * @return The devicePublicKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getDevicePublicKey() {
+      return instance.getDevicePublicKey();
+    }
+    /**
+     * <code>bytes device_public_key = 3 [json_name = "devicePublicKey"];</code>
+     * @param value The devicePublicKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDevicePublicKey(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDevicePublicKey(value);
+      return this;
+    }
+    /**
+     * <code>bytes device_public_key = 3 [json_name = "devicePublicKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDevicePublicKey() {
+      copyOnWrite();
+      instance.clearDevicePublicKey();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.LoginResponse)
   }
   @java.lang.Override
@@ -323,10 +379,11 @@ public  final class LoginResponse extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "token_",
             "expiresMs_",
+            "devicePublicKey_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0002" +
-              "";
+              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0002" +
+              "\u0003\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

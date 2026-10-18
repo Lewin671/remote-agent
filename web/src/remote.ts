@@ -1,10 +1,43 @@
+import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
+import { type LiveSnapshot } from "./gen/remoteagent/v1/remote_pb";
+import { derive, agentOf, type Derived } from "./model";
+import { unnamedMemberCommit } from "./device-security-removal";
+import { type StoredRemoval } from "./device-security-store";
+import {
+  DeviceSecurityClient,
+  type SecurityStorage,
+} from "./device-security-client";
+import {
+  capsuleBytes,
+  parseCapsule,
+  Purpose,
+  parseHeader,
+  toEnvelope,
+  commitment,
+  stateHash,
+  type Member,
+  type SecurityHeader,
+} from "./device-security";
 import { PairApprovalSchema } from "./gen/remoteagent/v1/relay_pb";
 // Remote keeps the page in sync with the server: it logs in, holds the
 // decrypted machines, sessions and events, follows the push stream, and
 // sends sealed commands. Content is only ever decrypted here.
 
-import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
-import { Code, ConnectError, createClient, type Client, type Interceptor } from "@connectrpc/connect";
+import {
+  create,
+  fromBinary,
+  toBinary,
+  type MessageInitShape,
+  type DescMessage,
+  type MessageShape,
+} from "@bufbuild/protobuf";
+import {
+  Code,
+  ConnectError,
+  createClient,
+  type Client,
+  type Interceptor,
+} from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { relayFetch } from "./transport";
 import { restorePushPrefs } from "./push";
@@ -18,20 +51,37 @@ import {
   importSessionKey,
   newDeviceKey,
   newRequestID,
-  open,
-  openMessage,
-  OpenError,
+  openMessage as openLegacyMessage,
+  open as openLegacyEnvelope,
   REGISTER_CONTEXT,
-  sealMessage,
-  signEnvelope,
   signLogin,
   expect,
   type Keys,
 } from "./crypto";
-import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
-import { Agent, ImageFormat, InputStatus, SendMode, SessionStatus, type Event } from "./gen/remoteagent/v1/event_pb";
+import {
+  EnvelopeSchema,
+  HeaderSchema,
+  type Envelope,
+  PayloadKind,
+} from "./gen/remoteagent/v1/envelope_pb";
+import {
+  Agent,
+  ImageFormat,
+  InputStatus,
+  SendMode,
+  SessionStatus,
+  type Event,
+} from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
-import { DaemonSettingsSchema, ListModelsResponseSchema, SessionSchema, type ImageStorageUsage, type DaemonSettings, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
+import {
+  DaemonSettingsSchema,
+  ListModelsResponseSchema,
+  SessionSchema,
+  type ImageStorageUsage,
+  type DaemonSettings,
+  type ListModelsResponse,
+  type Session,
+} from "./gen/remoteagent/v1/local_pb";
 import {
   AuthService,
   ClientService,
@@ -71,7 +121,14 @@ import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { stillUnknown } from "./attempt";
 import { describeBrowser, type DeviceInfo } from "./devices";
 import type { Prepare, Tray } from "./attach";
-import { commitOp, emptyPrefs, type PrefKind, type PrefOp, type PrefsSnapshot, type PrefsStore } from "./prefs";
+import {
+  commitOp,
+  emptyPrefs,
+  type PrefKind,
+  type PrefOp,
+  type PrefsSnapshot,
+  type PrefsStore,
+} from "./prefs";
 import { endedUnsent, machineName, modelLabel, type Outgoing } from "./model";
 import { eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PROTOCOL_VERSION } from "./protocol";
@@ -105,6 +162,10 @@ const RETRY_MS = 5000;
 export const SESSION_PAGE = 50;
 
 interface EventBuffer {
+  unverifiedLegacy?: boolean;
+  verifiedSeqs?: Set<bigint>;
+  verifiedEvents?: Event[];
+  verifiedDerived?: { count: number; agent: Agent; value: Derived };
   events: Event[]; // contiguous from seq 1
   pending: Map<bigint, Event>; // arrived ahead of a gap
   fetching: boolean;
@@ -145,6 +206,7 @@ export class CommandError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    readonly fromDaemon = false,
   ) {
     super(message);
   }
@@ -155,7 +217,8 @@ export class CommandError extends Error {
  * running it again. A definite answer (done, refused, never sent) lets
  * the next attempt start afresh. */
 export function uncertain(e: unknown): boolean {
-  if (e instanceof CommandError) return e.code === "unknown" || e.code === "aborted";
+  if (e instanceof CommandError)
+    return e.code === "unknown" || e.code === "aborted";
   return e instanceof ConnectError;
 }
 
@@ -171,7 +234,13 @@ export interface AnswerState {
   unknown: boolean; // the last failure left the outcome unknown
 }
 
-const noAnswer: AnswerState = { index: 0, ticked: [], busy: "", error: "", unknown: false };
+const noAnswer: AnswerState = {
+  index: 0,
+  ticked: [],
+  busy: "",
+  error: "",
+  unknown: false,
+};
 
 /** Where the API is reached: the account's server, or with
  * VITE_SAME_ORIGIN_API the page's own origin, which forwards to it. */
@@ -203,7 +272,14 @@ const IMAGE_CACHE = 40;
 /** A display copy fetched with GetImage: shown only when it opened where
  * it belongs and is the format it says. */
 export type ImageResult =
-  | { kind: "ok"; blob: Blob; width: number; height: number; format: ImageFormat }
+  | {
+      kind: "ok";
+      unverifiedLegacy?: boolean;
+      blob: Blob;
+      width: number;
+      height: number;
+      format: ImageFormat;
+    }
   | { kind: "expired" } // kept past its retention: only the preview is left
   | { kind: "missing" } // never stored
   | { kind: "bad" }; // did not open, or is not the format it claims
@@ -224,18 +300,60 @@ export interface PrefsState {
 }
 
 /** Registers this browser as a device of the account with root key root. */
-export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: string, enrollment?: { device: CryptoKeyPair; pairingId: string; approval: Uint8Array; approvalSignature: Uint8Array }): Promise<StoredAccount> {
+export async function joinWithRoot(
+  rootRaw: Uint8Array<ArrayBuffer>,
+  server: string,
+  enrollment?: {
+    device: CryptoKeyPair;
+    pairingId: string;
+    approval: Uint8Array;
+    approvalSignature: Uint8Array;
+  },
+): Promise<StoredAccount> {
   server = checkServer(server);
   const root = await importRoot(rootRaw);
   const acct = await accountKey(root);
-  const device = enrollment?.device ?? await newDeviceKey();
-  const pub = new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey));
+  const device = enrollment?.device ?? (await newDeviceKey());
+  const pub = new Uint8Array(
+    await crypto.subtle.exportKey("raw", device.publicKey),
+  );
   if (enrollment) {
     const a = fromBinary(PairApprovalSchema, enrollment.approval);
-    const same = (x: Uint8Array, y: Uint8Array) => x.length === y.length && x.every((v, i) => v === y[i]);
-    if (a.accountId !== await deviceID(acct.publicKey as Uint8Array<ArrayBuffer>) || a.pairingId !== enrollment.pairingId || a.candidateKind !== DeviceKind.CLIENT || !same(a.candidateDevicePublicKey, pub) || a.nonce.length !== 16 || a.expiresMs <= BigInt(Date.now()) || a.approverPublicKey.length !== 32 || await deviceID(a.approverPublicKey as Uint8Array<ArrayBuffer>) !== a.approverDeviceId || a.approverDeviceId === await deviceID(pub)) throw new Error("配对批准与这台设备不匹配或已过期");
-    const signer = await crypto.subtle.importKey("raw", a.approverPublicKey as Uint8Array<ArrayBuffer>, "Ed25519", false, ["verify"]);
-    if (!await crypto.subtle.verify("Ed25519", signer, enrollment.approvalSignature as Uint8Array<ArrayBuffer>, concat(new TextEncoder().encode("remote-agent/v1/pair-approval\0"), enrollment.approval))) throw new Error("配对批准签名无效");
+    const same = (x: Uint8Array, y: Uint8Array) =>
+      x.length === y.length && x.every((v, i) => v === y[i]);
+    if (
+      a.accountId !==
+        (await deviceID(acct.publicKey as Uint8Array<ArrayBuffer>)) ||
+      a.pairingId !== enrollment.pairingId ||
+      a.candidateKind !== DeviceKind.CLIENT ||
+      !same(a.candidateDevicePublicKey, pub) ||
+      a.nonce.length !== 16 ||
+      a.expiresMs <= BigInt(Date.now()) ||
+      a.approverPublicKey.length !== 32 ||
+      (await deviceID(a.approverPublicKey as Uint8Array<ArrayBuffer>)) !==
+        a.approverDeviceId ||
+      a.approverDeviceId === (await deviceID(pub))
+    )
+      throw new Error("配对批准与这台设备不匹配或已过期");
+    const signer = await crypto.subtle.importKey(
+      "raw",
+      a.approverPublicKey as Uint8Array<ArrayBuffer>,
+      "Ed25519",
+      false,
+      ["verify"],
+    );
+    if (
+      !(await crypto.subtle.verify(
+        "Ed25519",
+        signer,
+        enrollment.approvalSignature as Uint8Array<ArrayBuffer>,
+        concat(
+          new TextEncoder().encode("remote-agent/v1/pair-approval\0"),
+          enrollment.approval,
+        ),
+      ))
+    )
+      throw new Error("配对批准签名无效");
   }
   const reg = toBinary(
     DeviceRegistrationSchema,
@@ -246,10 +364,32 @@ export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: str
       createdMs: BigInt(Date.now()),
     }),
   );
-  const auth = createClient(AuthService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(server), useBinaryFormat: true }));
-  const res = await auth.registerDevice({ registration: reg, signature: acct.sign(concat(new TextEncoder().encode(REGISTER_CONTEXT), reg)), approval: enrollment?.approval, approvalSignature: enrollment?.approvalSignature });
-  if (res.deviceId !== (await deviceID(pub))) throw new Error("server 返回了意外的设备 ID");
-  const stored: StoredAccount = { server, root, rootRaw: new Uint8Array(rootRaw), devicePrivate: device.privateKey, deviceId: res.deviceId };
+  const auth = createClient(
+    AuthService,
+    createConnectTransport({
+      fetch: relayFetch,
+      baseUrl: apiBase(server),
+      useBinaryFormat: true,
+    }),
+  );
+  const res = await auth.registerDevice({
+    protocolVersion: PROTOCOL_VERSION,
+    registration: reg,
+    signature: acct.sign(
+      concat(new TextEncoder().encode(REGISTER_CONTEXT), reg),
+    ),
+    approval: enrollment?.approval,
+    approvalSignature: enrollment?.approvalSignature,
+  });
+  if (res.deviceId !== (await deviceID(pub)))
+    throw new Error("server 返回了意外的设备 ID");
+  const stored: StoredAccount = {
+    server,
+    root,
+    rootRaw: new Uint8Array(rootRaw),
+    devicePrivate: device.privateKey,
+    deviceId: res.deviceId,
+  };
   await saveAccount(stored);
   localStorage.setItem("ra-server", server);
   return stored;
@@ -261,8 +401,28 @@ const STREAM_IDLE_MS = 60_000;
 const RPC_TIMEOUT_MS = 45_000;
 
 export class Remote {
+  private expectedAccountID?: Promise<string>;
+  private liveSnapshots = new Map<string, LiveSnapshot>();
+  private liveErrors = new Map<string, string>();
+  private liveJobs = new Map<string, Promise<void>>();
+
+  private directoryReadVersion = 0;
+  private trustedMembers = new Map<string, Member>();
+  private trustedMetadata = new Map<string, Envelope>();
+  private deviceBindings = new Map<
+    string,
+    { state: Uint8Array<ArrayBuffer>; commit: Uint8Array<ArrayBuffer> }
+  >();
+  authorityDeviceId = "";
+  removals: StoredRemoval[] = [];
+  private removalTimer?: ReturnType<typeof setTimeout>;
+
+  private sessionSeeds = new Map<string, Uint8Array<ArrayBuffer>>();
+  readonly security: DeviceSecurityClient;
   /** Development fixture hooks; the real client never enables these. */
-  demoFlag(_name: string): boolean { return false; }
+  demoFlag(_name: string): boolean {
+    return false;
+  }
   machines = new Map<string, MachineView>();
   sessions = new Map<string, SessionView>();
   conn: ConnState = "connecting";
@@ -339,7 +499,8 @@ export class Remote {
   // "new:" + project path), and how a chosen file is prepared for sending.
   trays = new Map<string, Tray>();
   // The image codecs are fetched when the first image is chosen.
-  prepareImage: Prepare = async (file, original) => (await import("./sendimages")).prepareForSending(file, original);
+  prepareImage: Prepare = async (file, original) =>
+    (await import("./sendimages")).prepareForSending(file, original);
   // Cancels asked for from this page, by the queued message's request ID,
   // until the message leaves the queue.
   cancels = new Map<string, { state: "canceling" | "failed"; error: string }>();
@@ -374,7 +535,8 @@ export class Remote {
       if (released) return;
       released = true;
       const n = (this.historyUsers.get(sid) ?? 1) - 1;
-      if (n) this.historyUsers.set(sid, n); else this.historyUsers.delete(sid);
+      if (n) this.historyUsers.set(sid, n);
+      else this.historyUsers.delete(sid);
       const b = this.buffers.get(sid);
       if (b) b.usedAt = Date.now();
       this.trimHistory();
@@ -383,24 +545,46 @@ export class Remote {
 
   private trimHistory() {
     clearTimeout(this.historyTrim);
-    const idle = [...this.buffers].filter(([sid, b]) => !this.historyUsers.has(sid) && !this.outbox(sid).some((o) => {
-      const status = b.inputStatuses?.get(o.sendId);
-      const finished = this.sessions.get(sid)?.info?.status === SessionStatus.EXITED ||
-        (status !== undefined && [InputStatus.CANCELED, InputStatus.FAILED, InputStatus.NEEDS_TERMINAL, InputStatus.UNCONFIRMED].includes(status));
-      return o.status === "sending" || (o.status === "sent" && !!o.thumbs?.length && !finished);
-    }))
+    const idle = [...this.buffers]
+      .filter(
+        ([sid, b]) =>
+          !this.historyUsers.has(sid) &&
+          !this.outbox(sid).some((o) => {
+            const status = b.inputStatuses?.get(o.sendId);
+            const finished =
+              this.sessions.get(sid)?.info?.status === SessionStatus.EXITED ||
+              (status !== undefined &&
+                [
+                  InputStatus.CANCELED,
+                  InputStatus.FAILED,
+                  InputStatus.NEEDS_TERMINAL,
+                  InputStatus.UNCONFIRMED,
+                ].includes(status));
+            return (
+              o.status === "sending" ||
+              (o.status === "sent" && !!o.thumbs?.length && !finished)
+            );
+          }),
+      )
       .sort((a, b) => (a[1].usedAt ?? 0) - (b[1].usedAt ?? 0));
     let bytes = idle.reduce((n, [, b]) => n + (b.bytes ?? 0), 0);
     let count = idle.length;
     const now = Date.now();
     for (const [sid, b] of idle) {
-      if (!this.sessions.has(sid) || count > 8 || bytes > 16 * 1024 * 1024 || now - (b.usedAt ?? now) >= 60_000) {
+      if (
+        !this.sessions.has(sid) ||
+        count > 8 ||
+        bytes > 16 * 1024 * 1024 ||
+        now - (b.usedAt ?? now) >= 60_000
+      ) {
         this.buffers.delete(sid);
-        count--; bytes -= b.bytes ?? 0;
+        count--;
+        bytes -= b.bytes ?? 0;
       }
     }
     // Deferred trimming also catches histories read once without a mounted consumer.
-    if (!this.closed && this.buffers.size) this.historyTrim = setTimeout(() => this.trimHistory(), 60_000);
+    if (!this.closed && this.buffers.size)
+      this.historyTrim = setTimeout(() => this.trimHistory(), 60_000);
   }
   // Pushes seen per machine, session and machine removal, so that a list
   // fetched before a push cannot undo it.
@@ -424,16 +608,137 @@ export class Remote {
 
   protected constructor(
     readonly account: StoredAccount,
-    private keys: Keys,
+    private legacyKeys: Keys,
     private cache?: EventCache,
+    securityStorage?: SecurityStorage,
   ) {
     const auth: Interceptor = (next) => (req) => {
       req.header.set("Authorization", "Bearer " + this.token);
       return next(req);
     };
-    this.api = createClient(ClientService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(account.server), useBinaryFormat: true, defaultTimeoutMs: RPC_TIMEOUT_MS, interceptors: [auth] }));
+    this.api = createClient(
+      ClientService,
+      createConnectTransport({
+        fetch: relayFetch,
+        baseUrl: apiBase(account.server),
+        useBinaryFormat: true,
+        defaultTimeoutMs: RPC_TIMEOUT_MS,
+        interceptors: [auth],
+      }),
+    );
+    this.security = new DeviceSecurityClient(
+      account.deviceId,
+      account.devicePrivate,
+      async (capsule) => {
+        const reply = await this.api.forward({
+          machineId: capsule.to,
+          securityRpc: capsuleBytes(capsule),
+        });
+        if (reply.result) throw new Error("安全回复格式无效");
+        return parseCapsule(new Uint8Array(reply.securityRpc));
+      },
+      () => !this.closed,
+      securityStorage,
+      () =>
+        (this.expectedAccountID ??= accountKey(account.root).then((k) =>
+          deviceID(new Uint8Array(k.publicKey)),
+        )),
+    );
   }
 
+  private projectHeader(h: SecurityHeader) {
+    return create(HeaderSchema, {
+      version: 2,
+      kind: h.kind,
+      machineId: h.machine,
+      sessionId: h.session,
+      requestId: h.request,
+      seq: h.seq,
+      deadlineMs: h.deadline,
+      sender: h.sender,
+      compression: h.compression,
+    });
+  }
+  private async openSecureMessage<D extends DescMessage>(
+    env: Envelope | undefined,
+    want: Parameters<typeof expect>[1],
+    schema: D,
+  ) {
+    if (!env) throw new Error("缺少安全信封");
+    const history = true;
+    const seed = [
+      PayloadKind.EVENT,
+      PayloadKind.IMAGE,
+      PayloadKind.TERMINAL_OUTPUT,
+      PayloadKind.TERMINAL_INPUT,
+    ].includes(want.kind)
+      ? this.sessionSeeds.get(want.sessionId ?? "")
+      : undefined;
+    if (
+      history &&
+      [PayloadKind.EVENT, PayloadKind.IMAGE].includes(want.kind) &&
+      fromBinary(HeaderSchema, env.header).version === 1
+    ) {
+      const rawSeed = this.sessionSeeds.get(want.sessionId ?? "");
+      if (!rawSeed) throw new Error("旧历史的会话种子缺失");
+      return openLegacyMessage(
+        await importSessionKey(rawSeed),
+        env,
+        want,
+        schema,
+      );
+    }
+    const out = history
+      ? await this.security.openHistory(env, seed)
+      : await this.security.openCurrent(env, seed);
+    const header = this.projectHeader(out.header);
+    expect(header, want);
+    const { validateSecurityBody } = await import("./device-security-client");
+    let msg: MessageShape<D>;
+    try {
+      msg = fromBinary(schema, out.plaintext);
+      validateSecurityBody(out.header, schema.typeName, msg);
+    } catch {
+      throw new Error("安全正文类型或方向不匹配");
+    }
+    return { header, msg, size: out.plaintext.length };
+  }
+  private async sealSecureMessage<D extends DescMessage>(
+    h: Omit<
+      Partial<import("./gen/remoteagent/v1/envelope_pb").Header>,
+      "$typeName"
+    >,
+    schema: D,
+    msg: MessageShape<D>,
+  ) {
+    let purpose = Number(h.kind) as Purpose;
+    if (h.kind === PayloadKind.TERMINAL_INPUT) {
+      const f = msg as unknown as { kind: { case?: string } };
+      if (f.kind.case === "resize") purpose = Purpose.TerminalResize;
+      if (f.kind.case === "historyRequest") purpose = Purpose.TerminalHistory;
+    }
+    const seed = [1, 7, 8, 11, 14, 15].includes(purpose)
+      ? this.sessionSeeds.get(h.sessionId ?? "")
+      : undefined;
+    return this.security.seal(
+      {
+        kind: Number(h.kind),
+        purpose,
+        machine: h.machineId ?? "",
+        session: h.sessionId ?? "",
+        request: h.requestId ?? "",
+        seq: h.seq ?? 0n,
+        deadline:
+          h.deadlineMs ??
+          (h.kind === PayloadKind.TERMINAL_INPUT
+            ? BigInt(Date.now() + 60000)
+            : 0n),
+        compression: 0,
+      },
+      toBinary(schema, msg) as Uint8Array<ArrayBuffer>,
+      seed,
+    );
+  }
   static async load(): Promise<Remote | undefined> {
     const acct = await loadAccount();
     if (!acct) return undefined;
@@ -467,7 +772,11 @@ export class Remote {
    * has not been reached yet. A connection lost a moment ago does not count. */
   get unlinked(): boolean {
     const link = this.link;
-    return link === "no-network" || link === "no-server" || (link === "waiting" && !this.listed);
+    return (
+      link === "no-network" ||
+      link === "no-server" ||
+      (link === "waiting" && !this.listed)
+    );
   }
 
   /** Whether the device has a network at all. Losing it ends the
@@ -526,21 +835,71 @@ export class Remote {
       if (!this.cache) return;
       const mine = (v: unknown): Record<string, unknown> | undefined => {
         const o = v as Record<string, unknown> | undefined;
-        return o && o.deviceId === this.account.deviceId && o.server === this.account.server ? o : undefined;
+        return o &&
+          o.deviceId === this.account.deviceId &&
+          o.server === this.account.server
+          ? o
+          : undefined;
       };
       try {
-        const [token, machines, sessions, prefs, info] = (await Promise.all(["token", "machines", "sessions", "prefs", "info"].map((k) => this.cache!.get(k)))).map(mine);
-        if (token && !this.token) [this.token, this.tokenExpires] = [String(token.token), Number(token.expiresMs)];
+        const identity = await this.security.localIdentity();
+        this.trustedMembers = new Map(
+          identity.state.core.members.map((m) => [m.id, m]),
+        );
+        this.authorityDeviceId = identity.pin.authorityID;
+        const [token, machines, sessions, prefs, info] = (
+          await Promise.all(
+            ["token", "machines", "sessions", "prefs", "info"].map((k) =>
+              this.cache!.get(k),
+            ),
+          )
+        ).map(mine);
+        if (token && !this.token)
+          [this.token, this.tokenExpires] = [
+            String(token.token),
+            Number(token.expiresMs),
+          ];
         if (machines && sessions && !this.listed)
           await this.quietly(async () => {
-            for (const m of fromBinary(ListMachinesResponseSchema, machines.bytes as Uint8Array).machines) await this.putMachine({ ...m, online: false });
-            for (const s of fromBinary(ListRemoteSessionsResponseSchema, sessions.bytes as Uint8Array).sessions) await this.putSession(s);
+            for (const m of fromBinary(
+              ListMachinesResponseSchema,
+              machines.bytes as Uint8Array,
+            ).machines) {
+              if (m.meta?.securityHeader.length)
+                this.trustedMetadata.set("machine:" + m.id, m.meta);
+              await this.putMachine({ ...m, online: false });
+            }
+            for (const s of fromBinary(
+              ListRemoteSessionsResponseSchema,
+              sessions.bytes as Uint8Array,
+            ).sessions) {
+              if (s.meta?.securityHeader.length)
+                this.trustedMetadata.set(
+                  "session:" + s.machineId + ":" + s.sessionId,
+                  s.meta,
+                );
+              await this.putSession(s);
+            }
           });
         // Still "loading": the list is shown as it was, and changed only once the server's copy is read.
-        if (prefs && !this.prefs.snap) this.prefs = { ...this.prefs, snap: await this.openPrefs(fromBinary(AccountPrefsObjectSchema, prefs.bytes as Uint8Array)) };
+        if (prefs && !this.prefs.snap)
+          this.prefs = {
+            ...this.prefs,
+            snap: await this.openPrefs(
+              fromBinary(AccountPrefsObjectSchema, prefs.bytes as Uint8Array),
+            ),
+          };
         if (info) {
-          for (const [k, b] of Object.entries((info.models ?? {}) as Record<string, Uint8Array>)) if (!this.modelLists.has(k)) this.modelLists.set(k, fromBinary(ListModelsResponseSchema, b));
-          for (const [k, b] of Object.entries((info.settings ?? {}) as Record<string, Uint8Array>)) if (!this.settingsRead.has(k)) this.settingsRead.set(k, fromBinary(DaemonSettingsSchema, b));
+          for (const [k, b] of Object.entries(
+            (info.models ?? {}) as Record<string, Uint8Array>,
+          ))
+            if (!this.modelLists.has(k))
+              this.modelLists.set(k, fromBinary(ListModelsResponseSchema, b));
+          for (const [k, b] of Object.entries(
+            (info.settings ?? {}) as Record<string, Uint8Array>,
+          ))
+            if (!this.settingsRead.has(k))
+              this.settingsRead.set(k, fromBinary(DaemonSettingsSchema, b));
         }
         if (prefs || info) this.changed();
       } catch {
@@ -550,13 +909,27 @@ export class Remote {
   }
 
   private keepValue(name: string, value: Record<string, unknown> | undefined) {
-    void this.cache?.set(name, value && { ...value, deviceId: this.account.deviceId, server: this.account.server }).catch(() => undefined);
+    void this.cache
+      ?.set(
+        name,
+        value && {
+          ...value,
+          deviceId: this.account.deviceId,
+          server: this.account.server,
+        },
+      )
+      .catch(() => undefined);
   }
 
   // --- connection ---
 
   start() {
-    if (this.removed || (!this.closed && (this.ws || (this.generation > 0 && this.conn === "connecting")))) return;
+    if (
+      this.removed ||
+      (!this.closed &&
+        (this.ws || (this.generation > 0 && this.conn === "connecting")))
+    )
+      return;
     this.closed = false;
     this.begun = true;
     this.trimHistory();
@@ -566,6 +939,7 @@ export class Remote {
   stop() {
     this.closed = true;
     clearTimeout(this.historyTrim);
+    clearTimeout(this.removalTimer);
     this.historyTrim = undefined;
     this.generation++;
     clearTimeout(this.retryTimer);
@@ -594,7 +968,8 @@ export class Remote {
       const ws = this.ws;
       this.ws = undefined;
       ws?.close();
-      for (const close of this.terminals.values()) close("网络已变化，正在重连");
+      for (const close of this.terminals.values())
+        close("网络已变化，正在重连");
     } else if (this.ws || this.retryTimer === undefined) return;
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
@@ -609,7 +984,10 @@ export class Remote {
     const timer = setTimeout(() => stop.abort(), timeoutMs);
     const started = performance.now();
     try {
-      const res = await relayFetch(apiBase(this.account.server) + "/healthz", { cache: "no-store", signal: stop.signal });
+      const res = await relayFetch(apiBase(this.account.server) + "/healthz", {
+        cache: "no-store",
+        signal: stop.signal,
+      });
       await res.arrayBuffer();
       if (!res.ok) throw new Error(`服务器返回 ${res.status}`);
       return Math.round(performance.now() - started);
@@ -628,7 +1006,13 @@ export class Remote {
     try {
       await Promise.race([
         this.machineCommand(machineId, { case: "getSettings", value: {} }),
-        new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("没有回应")), timeoutMs))),
+        new Promise<never>(
+          (_, reject) =>
+            (timer = setTimeout(
+              () => reject(new Error("没有回应")),
+              timeoutMs,
+            )),
+        ),
       ]);
       return Math.round(performance.now() - started);
     } finally {
@@ -639,22 +1023,41 @@ export class Remote {
   /** One login at a time: the server keeps few challenges per device, and
    * a denial has to mean what it says. */
   private login(): Promise<void> {
-    return (this.loggingIn ??= this.signIn().finally(() => (this.loggingIn = undefined)));
+    return (this.loggingIn ??= this.signIn().finally(
+      () => (this.loggingIn = undefined),
+    ));
   }
 
   private async signIn() {
-    const auth = createClient(AuthService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(this.account.server), useBinaryFormat: true, defaultTimeoutMs: OPEN_TIMEOUT_MS }));
+    const auth = createClient(
+      AuthService,
+      createConnectTransport({
+        fetch: relayFetch,
+        baseUrl: apiBase(this.account.server),
+        useBinaryFormat: true,
+        defaultTimeoutMs: OPEN_TIMEOUT_MS,
+      }),
+    );
     for (let again = true; ; again = false) {
       try {
         const ch = await auth.getChallenge({ deviceId: this.account.deviceId });
         const sig = await signLogin(this.account.devicePrivate, ch.challenge);
-        const res = await auth.login({ deviceId: this.account.deviceId, challenge: ch.challenge, signature: sig });
+        const res = await auth.login({
+          protocolVersion: PROTOCOL_VERSION,
+          deviceId: this.account.deviceId,
+          challenge: ch.challenge,
+          signature: sig,
+        });
         this.token = res.token;
         this.tokenExpires = Number(res.expiresMs);
-        this.keepValue("token", { token: res.token, expiresMs: Number(res.expiresMs) });
+        this.keepValue("token", {
+          token: res.token,
+          expiresMs: Number(res.expiresMs),
+        });
         return;
       } catch (e) {
-        if (!(e instanceof ConnectError) || e.code !== Code.PermissionDenied) throw e;
+        if (!(e instanceof ConnectError) || e.code !== Code.PermissionDenied)
+          throw e;
         // A server restarted between the two calls forgets the challenge;
         // denied a fresh one too, it no longer knows this device.
         if (again) continue;
@@ -686,13 +1089,15 @@ export class Remote {
       // A token kept from an earlier visit saves the two login calls. One
       // about to expire is not worth a refused connection; the server
       // refusing it closes the stream, and the next try logs in.
-      if (!this.token || this.tokenExpires < Date.now() + 86_400_000) await this.login();
+      if (!this.token || this.tokenExpires < Date.now() + 86_400_000)
+        await this.login();
     } catch (e) {
       if (generation === this.generation && !this.closed) this.fail(e);
       return;
     }
     if (generation !== this.generation || this.closed) return;
-    const url = apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
+    const url =
+      apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
     const ws = new WebSocket(url);
     ws.binaryType = "arraybuffer";
     this.ws = ws;
@@ -704,12 +1109,16 @@ export class Remote {
       clearTimeout(this.idleTimer);
       if (code === 1008) this.token = "";
       ws.close();
-      for (const close of this.terminals.values()) close("与 server 的连接断开");
+      for (const close of this.terminals.values())
+        close("与 server 的连接断开");
       this.fail(e);
     };
     const watch = () => {
       clearTimeout(this.idleTimer);
-      this.idleTimer = setTimeout(() => drop(new Error("连接超时，正在重连")), STREAM_IDLE_MS);
+      this.idleTimer = setTimeout(
+        () => drop(new Error("连接超时，正在重连")),
+        STREAM_IDLE_MS,
+      );
     };
     // A browser gives up on a handshake whose packets are lost only after
     // minutes; the next attempt usually gets through much sooner.
@@ -718,8 +1127,11 @@ export class Remote {
       drop(new Error("连接超时，正在重连"));
     }, OPEN_TIMEOUT_MS);
     ws.onopen = () => {
-      if (this.ws !== ws || this.closed || generation !== this.generation) return;
-      const hello = create(PeerFrameSchema, { kind: { case: "hello", value: { token: this.token } } });
+      if (this.ws !== ws || this.closed || generation !== this.generation)
+        return;
+      const hello = create(PeerFrameSchema, {
+        kind: { case: "hello", value: { token: this.token } },
+      });
       ws.send(toBinary(PeerFrameSchema, hello));
     };
     let processing = Promise.resolve();
@@ -737,19 +1149,27 @@ export class Remote {
         drop(new Error("推送积压，正在重连"));
         return;
       }
-      processing = processing.then(async () => {
-        if (this.closed || generation !== this.generation || overflow) return;
-        let f;
-        try {
-          f = fromBinary(ServerFrameSchema, new Uint8Array(data));
-        } catch {
-          overflow = true;
-          drop(new Error("无效的推送帧"));
-          return;
-        }
-        await this.onFrame(f.kind, generation);
-      }).catch((e) => { this.report(e); drop(e); })
-        .finally(() => { queuedBytes -= data.byteLength; queuedFrames--; });
+      processing = processing
+        .then(async () => {
+          if (this.closed || generation !== this.generation || overflow) return;
+          let f;
+          try {
+            f = fromBinary(ServerFrameSchema, new Uint8Array(data));
+          } catch {
+            overflow = true;
+            drop(new Error("无效的推送帧"));
+            return;
+          }
+          await this.onFrame(f.kind, generation);
+        })
+        .catch((e) => {
+          this.report(e);
+          drop(e);
+        })
+        .finally(() => {
+          queuedBytes -= data.byteLength;
+          queuedFrames--;
+        });
     };
     ws.onclose = (e) => drop(new Error("与 server 的连接断开"), e?.code);
   }
@@ -765,10 +1185,16 @@ export class Remote {
     const delay = this.retry;
     this.retry = Math.min(this.retry * 2, 30_000);
     clearTimeout(this.retryTimer);
-    this.retryTimer = setTimeout(() => void this.connect(), delay + Math.random() * delay * 0.25);
+    this.retryTimer = setTimeout(
+      () => void this.connect(),
+      delay + Math.random() * delay * 0.25,
+    );
   }
 
-  private async onFrame(kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"], generation = this.generation) {
+  private async onFrame(
+    kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"],
+    generation = this.generation,
+  ) {
     if (this.closed || generation !== this.generation) return;
     switch (kind.case) {
       case "heartbeat":
@@ -802,27 +1228,21 @@ export class Remote {
         }
         break;
       case "deviceRemoved":
-        this.devicePushed(kind.value.deviceId);
-        this.deviceRemovals.set(kind.value.deviceId, (this.deviceRemovals.get(kind.value.deviceId) ?? 0) + 1);
-        this.devices.delete(kind.value.deviceId);
-        this.changed();
-        break;
       case "machineRemoved":
-        this.bump(this.removedPushes, kind.value.machineId);
-        this.machines.delete(kind.value.machineId);
-        for (const [id, s] of this.sessions) if (s.machineId === kind.value.machineId) this.forget(id);
-        this.changed();
+        void this.loadDevices(false);
         break;
       case "machineUpdated":
         if (kind.value.machine) {
           const id = kind.value.machine.id;
           this.bump(this.machinePushes, id);
+          await this.loadDevices(false);
           await this.putMachine(kind.value.machine);
         }
         break;
       case "sessionUpdated":
         if (kind.value.session) {
           this.bump(this.sessionPushes, kind.value.session.sessionId);
+          await this.loadDevices(false);
           await this.putSession(kind.value.session);
         }
         break;
@@ -830,7 +1250,11 @@ export class Remote {
         const sid = kind.value.sessionId;
         const s = this.sessions.get(sid);
         if (!s || !this.buffers.has(sid)) {
-          if (s) s.lastSeq = maxBig(s.lastSeq, ...kind.value.events.map((e) => e.seq));
+          if (s)
+            s.lastSeq = maxBig(
+              s.lastSeq,
+              ...kind.value.events.map((e) => e.seq),
+            );
           this.changed();
           break;
         }
@@ -850,14 +1274,21 @@ export class Remote {
    * removedPushes: an answer asked for before must not bring its
    * sessions back. */
   private goneSince(removals: Map<string, number>, machineId: string): boolean {
-    return (this.removedPushes.get(machineId) ?? 0) !== (removals.get(machineId) ?? 0);
+    return (
+      (this.removedPushes.get(machineId) ?? 0) !==
+      (removals.get(machineId) ?? 0)
+    );
   }
 
   /** Whether a session held here lies past where the fetched pages end:
    * kept from before a reconnect, or fetched by its ID. Sessions not
    * fetched yet may come before it in the listing. */
   pastPages(s: SessionView): boolean {
-    return !!this.nextSessions && s.endedMs !== 0n && afterCursor(s, this.nextSessions);
+    return (
+      !!this.nextSessions &&
+      s.endedMs !== 0n &&
+      afterCursor(s, this.nextSessions)
+    );
   }
 
   /** Drops a session of a machine that is gone, with its kept events:
@@ -878,22 +1309,36 @@ export class Remote {
       const mp = new Map(this.machinePushes);
       const sp = new Map(this.sessionPushes);
       const rp = new Map(this.removedPushes);
-      const pushed = (now: Map<string, number>, then: Map<string, number>, id: string) => (now.get(id) ?? 0) !== (then.get(id) ?? 0);
+      const pushed = (
+        now: Map<string, number>,
+        then: Map<string, number>,
+        id: string,
+      ) => (now.get(id) ?? 0) !== (then.get(id) ?? 0);
       // From here on the cursor held belongs to the listing before: no
       // page is asked for with it, nor taken, until this one is in. It
       // still says which of the sessions held lie past the pages fetched.
       const listing = ++this.listing;
       this.relisting++;
-      const [ms, ss] = await Promise.all([this.api.listMachines({}), this.api.listRemoteSessions({ limit: SESSION_PAGE })]);
+      await this.loadDevices(false);
+      if (this.devicesStatus !== "ready") throw new Error("无法核实当前成员");
+      const [ms, ss] = await Promise.all([
+        this.api.listMachines({}),
+        this.api.listRemoteSessions({ limit: SESSION_PAGE }),
+      ]);
       if (listing !== this.listing) return;
       // Forget what the server no longer has, e.g. a machine another
       // device removed while this one was offline. The first page holds
       // every session that has not ended and the latest ended ones: a
       // session held here and not on it is kept only if it belongs to a
       // later page, that is, it ended before the page's last.
-      const machines = new Set(ms.machines.map((m) => m.id));
+      const machines = new Set(
+        [...this.trustedMembers.values()]
+          .filter((m) => m.kind === 1)
+          .map((m) => m.id),
+      );
       const sessions = new Set(ss.sessions.map((s) => s.sessionId));
-      const later = (s: SessionView) => !!ss.next && s.endedMs !== 0n && afterCursor(s, ss.next);
+      const later = (s: SessionView) =>
+        !!ss.next && s.endedMs !== 0n && afterCursor(s, ss.next);
       // A machine found gone here counts as removed, as if its removal
       // had been pushed: a session of its that is being opened for a page
       // or a lookup asked for before must not be taken after this.
@@ -920,11 +1365,16 @@ export class Remote {
           if (removed(m.id)) continue;
           await this.putMachine(m, pushed(this.machinePushes, mp, m.id));
         }
-        for (const s of ss.sessions) if (!removed(s.machineId)) await this.putSession(s);
+        for (const s of ss.sessions)
+          if (!removed(s.machineId)) await this.putSession(s);
       });
       if (this.cache) {
-        this.keepValue("machines", { bytes: toBinary(ListMachinesResponseSchema, ms) });
-        this.keepValue("sessions", { bytes: toBinary(ListRemoteSessionsResponseSchema, ss) });
+        this.keepValue("machines", {
+          bytes: toBinary(ListMachinesResponseSchema, ms),
+        });
+        this.keepValue("sessions", {
+          bytes: toBinary(ListRemoteSessionsResponseSchema, ss),
+        });
       }
       this.listed = true;
       this.listError = "";
@@ -957,20 +1407,31 @@ export class Remote {
   loadMoreSessions(): Promise<boolean> {
     if (this.paging) return this.paging;
     const after = this.nextSessions;
-    if (!after || this.relisting || this.conn !== "online" || Date.now() < this.pageRetryAt) return Promise.resolve(false);
+    if (
+      !after ||
+      this.relisting ||
+      this.conn !== "online" ||
+      Date.now() < this.pageRetryAt
+    )
+      return Promise.resolve(false);
     const listing = this.listing;
     this.loadingSessions = true;
     this.changed();
     this.paging = (async () => {
       try {
         const rp = new Map(this.removedPushes);
-        const res = await this.api.listRemoteSessions({ after, limit: SESSION_PAGE });
+        const res = await this.api.listRemoteSessions({
+          after,
+          limit: SESSION_PAGE,
+        });
         // The listing was started over meanwhile: this page continued the
         // one before, which may have held sessions that are gone since,
         // and it is not where the new listing continues.
         if (listing !== this.listing) return true;
         await this.quietly(async () => {
-          for (const s of res.sessions) if (listing === this.listing && !this.goneSince(rp, s.machineId)) await this.putSession(s);
+          for (const s of res.sessions)
+            if (listing === this.listing && !this.goneSince(rp, s.machineId))
+              await this.putSession(s);
         });
         // Opening the page took a while too: the cursor is only this
         // page's to move if the listing is still the one it continued.
@@ -1008,7 +1469,14 @@ export class Remote {
    * a notification, a link or a fork's source. One that does not exist
    * is noted in missing. */
   async ensureSession(id: string) {
-    if (!id || this.sessions.has(id) || this.missing.has(id) || this.asking.has(id) || this.conn !== "online") return;
+    if (
+      !id ||
+      this.sessions.has(id) ||
+      this.missing.has(id) ||
+      this.asking.has(id) ||
+      this.conn !== "online"
+    )
+      return;
     // One that failed is not asked for again at once: callers ask on every render.
     if (Date.now() < (this.askRetryAt.get(id) ?? 0)) return;
     this.asking.add(id);
@@ -1018,7 +1486,12 @@ export class Remote {
       const rs = res.sessions.find((s) => s.sessionId === id);
       // A session of a machine removed meanwhile, or one the listing of
       // machines no longer has, is as good as gone.
-      if (rs && !this.goneSince(rp, rs.machineId) && (!this.listed || this.machines.has(rs.machineId))) await this.putSession(rs);
+      if (
+        rs &&
+        !this.goneSince(rp, rs.machineId) &&
+        (!this.listed || this.machines.has(rs.machineId))
+      )
+        await this.putSession(rs);
       // One whose key does not open is not held either, and asking again
       // would bring the same record: it cannot be shown.
       if (!this.sessions.has(id)) this.missing.add(id);
@@ -1043,16 +1516,27 @@ export class Remote {
   /** Stores a machine. staleOnline: a push arrived after m was fetched,
    * so its online flag is out of date. */
   private async putMachine(m: RemoteMachine, staleOnline = false) {
+    if (!this.trustedMembers.has(m.id)) return;
+    m = { ...m, meta: this.trustedMetadata.get("machine:" + m.id) };
     let view = this.machines.get(m.id);
     if (!view) {
-      view = { id: m.id, online: m.online, lastSeenMs: m.lastSeenMs, metaRev: 0n };
+      view = {
+        id: m.id,
+        online: m.online,
+        lastSeenMs: m.lastSeenMs,
+        metaRev: 0n,
+      };
       this.machines.set(m.id, view);
     }
     if (!staleOnline) view.online = m.online;
     if (m.lastSeenMs > view.lastSeenMs) view.lastSeenMs = m.lastSeenMs;
     if (m.meta) {
       try {
-        const { header, msg } = await openMessage(this.keys.meta, m.meta, { kind: PayloadKind.MACHINE_META, machineId: m.id }, MachineMetaSchema);
+        const { header, msg } = await this.openSecureMessage(
+          m.meta,
+          { kind: PayloadKind.MACHINE_META, machineId: m.id },
+          MachineMetaSchema,
+        );
         if (header.seq >= view.metaRev) {
           view.meta = msg;
           view.metaRev = header.seq;
@@ -1065,15 +1549,48 @@ export class Remote {
   }
 
   private async putSession(rs: RemoteSession) {
+    if (this.trustedMembers.get(rs.machineId)?.kind !== 1) return;
+    rs = {
+      ...rs,
+      meta: this.trustedMetadata.get(
+        "session:" + rs.machineId + ":" + rs.sessionId,
+      ),
+    };
     let view = this.sessions.get(rs.sessionId);
     const removals = this.removedPushes.get(rs.machineId) ?? 0;
     try {
       if (!view) {
-        const { header, plaintext } = await open(this.keys.wrap, rs.key);
-        expect(header, { kind: PayloadKind.SESSION_KEY, machineId: rs.machineId, sessionId: rs.sessionId });
-        const key = await importSessionKey(plaintext as Uint8Array<ArrayBuffer>);
+        if (!rs.key) throw new Error("缺少会话密钥信封");
+        const route = fromBinary(HeaderSchema, rs.key.header);
+        let header: import("./gen/remoteagent/v1/envelope_pb").Header,
+          plaintext: Uint8Array;
+        if (route.version === 1) {
+          const legacy = await openLegacyEnvelope(this.legacyKeys.wrap, rs.key);
+          header = legacy.header;
+          plaintext = legacy.plaintext;
+        } else {
+          const opened = await this.security.openHistory(rs.key);
+          header = this.projectHeader(opened.header);
+          plaintext = opened.plaintext;
+        }
+        if (plaintext.length !== 32) throw new Error("无效的会话种子");
+        this.sessionSeeds.set(rs.sessionId, new Uint8Array(plaintext));
+        expect(header, {
+          kind: PayloadKind.SESSION_KEY,
+          machineId: rs.machineId,
+          sessionId: rs.sessionId,
+        });
+        const key = await importSessionKey(
+          plaintext as Uint8Array<ArrayBuffer>,
+        );
         // The machine may have been removed while the key was opened.
-        if ((this.removedPushes.get(rs.machineId) ?? 0) !== removals) return;
+        if (
+          (this.removedPushes.get(rs.machineId) ?? 0) !== removals ||
+          this.trustedMembers.get(rs.machineId)?.kind !== 1
+        ) {
+          this.sessionSeeds.delete(rs.sessionId);
+          return;
+        }
         view = this.sessions.get(rs.sessionId) ?? {
           id: rs.sessionId,
           machineId: rs.machineId,
@@ -1085,16 +1602,25 @@ export class Remote {
         };
         this.sessions.set(rs.sessionId, view);
       }
-      if (view.machineId !== rs.machineId) throw new Error("会话记录的机器被改动");
+      if (view.machineId !== rs.machineId)
+        throw new Error("会话记录的机器被改动");
       view.lastSeq = maxBig(view.lastSeq, rs.lastSeq);
       view.updatedMs = maxBig(view.updatedMs, rs.updatedMs);
       if (rs.meta) {
-        const { header, msg } = await openMessage(
-          view.key,
+        const { header, msg } = await this.openSecureMessage(
           rs.meta,
-          { kind: PayloadKind.SESSION_META, machineId: rs.machineId, sessionId: rs.sessionId },
+          {
+            kind: PayloadKind.SESSION_META,
+            machineId: rs.machineId,
+            sessionId: rs.sessionId,
+          },
           SessionSchema,
         );
+        if (
+          (this.removedPushes.get(rs.machineId) ?? 0) !== removals ||
+          this.trustedMembers.get(rs.machineId)?.kind !== 1
+        )
+          return;
         if (header.seq >= view.metaRev) {
           view.info = msg;
           view.metaRev = header.seq;
@@ -1116,7 +1642,18 @@ export class Remote {
     const b = this.buffers.get(sid);
     if (b) b.usedAt = Date.now();
     if (!b) {
-      this.buffers.set(sid, { events: [], pending: new Map(), fetching: false, refetch: false, loaded: false, restored: false, error: "", broken: false, bytes: 0, usedAt: Date.now() });
+      this.buffers.set(sid, {
+        events: [],
+        pending: new Map(),
+        fetching: false,
+        refetch: false,
+        loaded: false,
+        restored: false,
+        error: "",
+        broken: false,
+        bytes: 0,
+        usedAt: Date.now(),
+      });
       void this.fetchEvents(sid);
       return [];
     }
@@ -1129,7 +1666,11 @@ export class Remote {
 
   history(sid: string): History {
     const b = this.buffers.get(sid);
-    return { loaded: b?.loaded ?? false, error: b?.error ?? "", broken: b?.broken ?? false };
+    return {
+      loaded: b?.loaded ?? false,
+      error: b?.error ?? "",
+      broken: b?.broken ?? false,
+    };
   }
 
   /** Fetches a session's events again after a failure. */
@@ -1154,7 +1695,17 @@ export class Remote {
     if (BigInt(rows.length) <= s.lastSeq) {
       await this.ingest(s, rows, false, true);
       if (stale() || !b.broken) return;
-      Object.assign(b, { events: [], pending: new Map(), broken: false, bytes: 0, inputStatuses: undefined });
+      Object.assign(b, {
+        events: [],
+        pending: new Map(),
+        broken: false,
+        bytes: 0,
+        inputStatuses: undefined,
+        verifiedSeqs: undefined,
+        verifiedEvents: undefined,
+        verifiedDerived: undefined,
+        unverifiedLegacy: false,
+      });
     }
     await this.cache.drop(s.id).catch(() => undefined);
   }
@@ -1175,10 +1726,24 @@ export class Remote {
       do {
         b.refetch = false;
         for (;;) {
-          if (this.closed || generation !== this.generation || this.buffers.get(sid) !== b) return;
+          if (
+            this.closed ||
+            generation !== this.generation ||
+            this.buffers.get(sid) !== b
+          )
+            return;
           const before = b.events.length;
-          const res = await this.api.getEvents({ sessionId: sid, afterSeq: BigInt(before), limit: 500 });
-          if (this.closed || generation !== this.generation || this.buffers.get(sid) !== b) return;
+          const res = await this.api.getEvents({
+            sessionId: sid,
+            afterSeq: BigInt(before),
+            limit: 500,
+          });
+          if (
+            this.closed ||
+            generation !== this.generation ||
+            this.buffers.get(sid) !== b
+          )
+            return;
           await this.ingest(s, res.events, false);
           // An event that does not open stops progress; asking for the
           // same page again would not help.
@@ -1193,31 +1758,48 @@ export class Remote {
       this.report(e);
     } finally {
       b.fetching = false;
-      if (b.refetch && !this.closed && generation !== this.generation) void this.fetchEvents(sid);
+      if (b.refetch && !this.closed && generation !== this.generation)
+        void this.fetchEvents(sid);
       this.trimHistory();
       this.changed();
     }
   }
 
-  private async ingest(s: SessionView, stored: StoredEvent[] | CachedEvent[], fillGaps = true, cached = false) {
+  private async ingest(
+    s: SessionView,
+    stored: StoredEvent[] | CachedEvent[],
+    fillGaps = true,
+    cached = false,
+  ) {
     const b = this.buffers.get(s.id);
     if (!b) return;
     const fresh: CachedEvent[] = [];
     const save = () => {
-      if (fresh.length && !cached) void this.cache?.append(s.id, fresh).catch(() => undefined);
+      if (fresh.length && !cached)
+        void this.cache?.append(s.id, fresh).catch(() => undefined);
     };
     for (const se of stored) {
       if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq)) continue;
       try {
-        const { msg, size } = await openMessage(
-          s.key,
+        const { msg, size } = await this.openSecureMessage(
           se.envelope,
-          { kind: PayloadKind.EVENT, machineId: s.machineId, sessionId: s.id, seq: se.seq },
+          {
+            kind: PayloadKind.EVENT,
+            machineId: s.machineId,
+            sessionId: s.id,
+            seq: se.seq,
+          },
           EventSchema,
         );
         if (this.buffers.get(s.id) !== b) return;
-        if (msg.seq !== se.seq || msg.sessionId !== s.id) throw new Error("事件的位置被改动");
-        if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq)) continue;
+        if (msg.seq !== se.seq || msg.sessionId !== s.id)
+          throw new Error("事件的位置被改动");
+        if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq))
+          continue;
+        if (fromBinary(HeaderSchema, se.envelope!.header).version === 1)
+          b.unverifiedLegacy = true;
+        if (fromBinary(HeaderSchema, se.envelope!.header).version === 2)
+          (b.verifiedSeqs ??= new Set()).add(se.seq);
         b.pending.set(se.seq, msg);
         // What is held is the opened event: a packed envelope is smaller than it.
         b.bytes = (b.bytes ?? 0) + size + 256;
@@ -1233,44 +1815,241 @@ export class Remote {
     const before = b.events.length;
     for (let next = BigInt(b.events.length + 1); b.pending.has(next); next++) {
       const event = b.pending.get(next)!;
-      if (event.kind.case === "inputState") {
+      if (b.verifiedSeqs?.has(next)) (b.verifiedEvents ??= []).push(event);
+      if (b.verifiedSeqs?.has(next) && event.kind.case === "inputState") {
         const { requestId, status } = event.kind.value;
         (b.inputStatuses ??= new Map()).set(requestId, status);
         // A message someone canceled is gone, and its local image copies
         // with it. One the session ended before writing can still be put
         // back into the input: it keeps them for that.
         if (status === InputStatus.CANCELED && !endedUnsent(event.kind.value)) {
-          this.outboxes.set(s.id, this.outbox(s.id).filter((o) => o.sendId !== requestId));
+          this.outboxes.set(
+            s.id,
+            this.outbox(s.id).filter((o) => o.sendId !== requestId),
+          );
         }
       }
       b.events.push(event);
       b.pending.delete(next);
     }
     s.lastSeq = maxBig(s.lastSeq, BigInt(b.events.length));
-    this.recorded(s.id, recordedIds(b.events.slice(before)));
+    this.recorded(
+      s.id,
+      recordedIds(
+        b.events.slice(before).filter((e) => b.verifiedSeqs?.has(e.seq)),
+      ),
+    );
     if (fillGaps && b.pending.size > 0) void this.fetchEvents(s.id);
     this.changed();
   }
 
   // --- commands ---
 
+  async refreshLiveSnapshot(sid: string): Promise<void> {
+    if (this.liveJobs.has(sid)) return this.liveJobs.get(sid);
+    const job = (async () => {
+      try {
+        const s = this.sessions.get(sid);
+        if (!s) throw new Error("未知会话");
+        const reply = await this.forward(s.machineId, sid, {
+          case: "getLiveSnapshot",
+          value: { sessionId: sid },
+        });
+        if (
+          reply.kind.case !== "liveSnapshot" ||
+          reply.kind.value.session?.id !== sid
+        )
+          throw new Error("当前请求快照无效");
+        this.liveSnapshots.set(sid, reply.kind.value);
+        this.liveErrors.delete(sid);
+        if (s.info) s.info = { ...s.info, ...reply.kind.value.session };
+        this.changed();
+      } catch {
+        this.liveSnapshots.delete(sid);
+        this.liveErrors.set(
+          sid,
+          "无法核实电脑上的待处理请求，请重试或在电脑终端处理",
+        );
+        this.changed();
+      } finally {
+        this.liveJobs.delete(sid);
+      }
+    })();
+    this.liveJobs.set(sid, job);
+    return job;
+  }
+  currentDerived(sid: string, d: Derived): Derived {
+    const buffer = this.buffers.get(sid);
+    if (buffer?.unverifiedLegacy) {
+      const verified = buffer.verifiedEvents ?? [],
+        agent = agentOf(this.sessions.get(sid));
+      if (
+        !buffer.verifiedDerived ||
+        buffer.verifiedDerived.count !== verified.length ||
+        buffer.verifiedDerived.agent !== agent
+      )
+        buffer.verifiedDerived = {
+          count: verified.length,
+          agent,
+          value: derive(verified, agent),
+        };
+      d = buffer.verifiedDerived.value;
+    }
+    const live = this.liveSnapshots.get(sid);
+    const out = {
+      ...d,
+      approvals: new Map(),
+      questions: new Map(),
+      plan: undefined,
+    } as Derived;
+    if (!live) return out;
+    const observed = derive(live.actions, agentOf(this.sessions.get(sid)));
+    out.running = live.running;
+    out.inputs = new Map(d.inputs);
+    out.paused = new Set(d.paused);
+    out.stages = new Map(d.stages);
+    out.inputReasons = new Map(d.inputReasons);
+    out.accepted = new Map(d.accepted);
+    for (const [id, status] of out.inputs)
+      if (
+        [InputStatus.QUEUED, InputStatus.HELD_BY_CLI].includes(status) &&
+        !observed.inputs.has(id)
+      ) {
+        out.inputs.set(id, InputStatus.UNCONFIRMED);
+        out.paused.delete(id);
+        out.stages.delete(id);
+      }
+    for (const [id, status] of observed.inputs) out.inputs.set(id, status);
+    for (const id of observed.paused) out.paused.add(id);
+    for (const [id, stage] of observed.stages) out.stages.set(id, stage);
+    for (const [id, reason] of observed.inputReasons)
+      out.inputReasons.set(id, reason);
+    for (const [id, accepted] of observed.accepted)
+      out.accepted.set(id, accepted);
+    for (const event of live.actions) {
+      if (event.kind.case === "approvalRequested")
+        out.approvals.set(event.kind.value.approvalId, event.kind.value);
+      if (event.kind.case === "questionAsked" && !event.kind.value.async)
+        out.questions.set(event.kind.value.questionId, event.kind.value);
+    }
+    if (
+      live.planEventSeq > 0n &&
+      live.planScreenHash.length === 32 &&
+      live.session?.planOpen
+    )
+      out.plan = create(PlanProposedSchema, { text: live.planScreen });
+    return out;
+  }
+  liveSnapshotError(sid: string): string | undefined {
+    return this.liveErrors.get(sid);
+  }
+  unverifiedEvent(sid: string, seq: bigint): boolean {
+    const b = this.buffers.get(sid);
+    return !!b?.unverifiedLegacy && !b.verifiedSeqs?.has(seq);
+  }
+  hasUnverifiedHistory(sid: string): boolean {
+    return this.buffers.get(sid)?.unverifiedLegacy ?? false;
+  }
   /** Sends a command about a session. slot, when given, is the request
    * ID and deadline of an earlier attempt of the same command. */
-  async command(sid: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> {
+  async command(
+    sid: string,
+    cmd: CommandKind,
+    slot?: RequestSlot,
+  ): Promise<CommandResult> {
     const s = this.sessions.get(sid);
     if (!s) throw new Error("未知会话");
+    if (
+      cmd?.case === "resolveApproval" ||
+      cmd?.case === "answerQuestion" ||
+      cmd?.case === "answerPlan"
+    ) {
+      const action = cmd;
+      const shown = this.liveSnapshots.get(sid);
+      if (!shown) throw new Error("当前请求尚未由电脑核实，请等待同步");
+      const key =
+        action.case === "resolveApproval"
+          ? action.value.approvalId
+          : action.case === "answerQuestion"
+            ? action.value.questionId
+            : "";
+      const displayed = shown.actions.find((e) =>
+        action.case === "resolveApproval"
+          ? e.kind.case === "approvalRequested" &&
+            e.kind.value.approvalId === key
+          : e.kind.case === "questionAsked" && e.kind.value.questionId === key,
+      );
+      const observed =
+        action.case === "answerPlan"
+          ? shown.planEventSeq
+          : (displayed?.seq ?? 0n);
+      if (observed === 0n) throw new Error("当前请求已不可操作");
+      await this.refreshLiveSnapshot(sid);
+      const fresh = this.liveSnapshots.get(sid);
+      if (!fresh) throw new Error("无法重新核实当前请求");
+      const current = fresh.actions.find((e) =>
+        action.case === "resolveApproval"
+          ? e.kind.case === "approvalRequested" &&
+            e.kind.value.approvalId === key
+          : e.kind.case === "questionAsked" && e.kind.value.questionId === key,
+      );
+      if (action.case === "answerPlan") {
+        if (
+          fresh.planEventSeq !== observed ||
+          !equalBytes(fresh.planScreenHash, shown.planScreenHash)
+        )
+          throw new Error("计划画面已变化，请重新核对");
+        cmd = {
+          case: "answerPlan",
+          value: {
+            ...action.value,
+            observedEventSeq: observed,
+            observedScreenHash: shown.planScreenHash,
+          },
+        };
+      } else {
+        if (
+          current?.seq !== observed ||
+          !displayed ||
+          !equalBytes(
+            toBinary(EventSchema, current),
+            toBinary(EventSchema, displayed),
+          )
+        )
+          throw new Error("电脑上的请求已变化，请重新核对");
+        if (action.case === "resolveApproval")
+          cmd = {
+            case: "resolveApproval",
+            value: { ...action.value, observedEventSeq: observed },
+          };
+        else
+          cmd = {
+            case: "answerQuestion",
+            value: { ...action.value, observedEventSeq: observed },
+          };
+      }
+    }
     return this.forward(s.machineId, sid, cmd, slot);
   }
 
   /** Sends a command about a machine, such as starting a session. */
-  machineCommand(machineId: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> {
+  machineCommand(
+    machineId: string,
+    cmd: CommandKind,
+    slot?: RequestSlot,
+  ): Promise<CommandResult> {
     return this.forward(machineId, "", cmd, slot);
   }
 
   /** Seals cmd, forwards it and returns the opened result. Network
    * failures are retried with the same request ID, which the daemon
    * runs at most once. */
-  private async forward(machineId: string, sid: string, cmd: CommandKind, slot = newSlot()): Promise<CommandResult> {
+  private async forward(
+    machineId: string,
+    sid: string,
+    cmd: CommandKind,
+    slot = newSlot(),
+  ): Promise<CommandResult> {
     const { requestId, deadline } = slot;
     // A machine of another protocol version would refuse the command, in
     // words that do not say which side to update: say so here, unsent.
@@ -1279,14 +2058,15 @@ export class Remote {
     if (theirs !== undefined && theirs !== PROTOCOL_VERSION)
       throw new CommandError(
         "failed_precondition",
-        theirs < PROTOCOL_VERSION ? `${machineName(m)} 上的 remote-agent 版本较旧，请在电脑上更新后再试` : "这个网页版本较旧，请刷新或更新后再试",
+        theirs < PROTOCOL_VERSION
+          ? `${machineName(m)} 上的 remote-agent 版本较旧，请在电脑上更新后再试`
+          : "这个网页版本较旧，请刷新或更新后再试",
       );
     // Signed by this device, so the daemon knows who sent it whatever the
     // server says (the server also checks the sender is the caller).
-    const env = await signEnvelope(
-      this.account.devicePrivate,
-      await sealMessage(
-        this.keys.command,
+    let env: Envelope;
+    try {
+      env = await this.sealSecureMessage(
         {
           kind: PayloadKind.COMMAND,
           machineId,
@@ -1297,42 +2077,83 @@ export class Remote {
         },
         CommandSchema,
         create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }),
-      ),
-    );
+      );
+    } catch {
+      throw new CommandError(
+        "authorization_unavailable",
+        "未取得安全授权，操作尚未发出；请重试",
+      );
+    }
     // Once a try may have reached the daemon, no later failure of this
     // request can say it did not run.
     let mayHaveRun = false;
     for (let attempt = 0; ; attempt++) {
       try {
+        // Once C is handed to an untrusted relay, no outer status proves it
+        // was not executed. Only an authenticated daemon result is final.
+        mayHaveRun = true;
         const res = await this.api.forward({ machineId, command: env });
-        const { msg } = await openMessage(
-          this.keys.command,
-          res.result,
-          { kind: PayloadKind.COMMAND_RESULT, machineId, sessionId: sid, requestId },
-          CommandResultSchema,
-        );
-        if (msg.errorCode) throw new CommandError(msg.errorCode, msg.errorMessage);
+        let msg: CommandResult;
+        try {
+          msg = (
+            await this.openSecureMessage(
+              res.result,
+              {
+                kind: PayloadKind.COMMAND_RESULT,
+                machineId,
+                sessionId: sid,
+                requestId,
+              },
+              CommandResultSchema,
+            )
+          ).msg;
+        } catch {
+          throw new CommandError(
+            "unknown",
+            "电脑的回复未通过验证，不确定指令是否执行",
+          );
+        }
+        if (msg.errorCode)
+          throw new CommandError(msg.errorCode, msg.errorMessage, true);
         return msg;
       } catch (e) {
         // The daemon's answer is final; only transport failures are retried.
-        if (e instanceof OpenError) throw new CommandError("unknown", "电脑的回复打不开，不确定指令有没有执行");
         if (!(e instanceof ConnectError)) throw e;
         const ce = e;
         if (ce.code === Code.Unauthenticated && attempt < 3) {
-          await this.login();
+          try {
+            await this.login();
+          } catch {
+            throw new CommandError(
+              "unknown",
+              "之前请求的结果仍未知，当前无法重新登录",
+            );
+          }
           continue;
         }
         // DeadlineExceeded is also the server's word for a daemon that gave
         // no result: it may have run.
-        const unknown = [Code.DeadlineExceeded, Code.Unknown, Code.Internal, Code.Canceled].includes(ce.code);
+        const unknown = [
+          Code.DeadlineExceeded,
+          Code.Unknown,
+          Code.Internal,
+          Code.Canceled,
+        ].includes(ce.code);
         if (unknown) mayHaveRun = true;
         if (unknown && attempt < 3 && Date.now() + 2000 < deadline) {
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
           continue;
         }
         if (ce.code === Code.Unavailable)
-          throw mayHaveRun ? new CommandError("unknown", "电脑断开了，不确定指令是否已经执行") : new CommandError("unavailable", "电脑不在线，指令没有发出");
+          throw mayHaveRun
+            ? new CommandError("unknown", "电脑断开了，不确定指令是否已经执行")
+            : new CommandError("unavailable", "电脑不在线，指令没有发出");
         if (unknown) throw new CommandError("unknown", "连接超时");
+        if (mayHaveRun)
+          throw new CommandError(
+            "unknown",
+            "中继未提供可验证的执行结果，请重试同一请求",
+          );
         throw e;
       }
     }
@@ -1343,14 +2164,31 @@ export class Remote {
    * reaching the computer is a new one used; the send ID still keeps the
    * daemon from queueing the text twice. Returns the slot that got an
    * answer. */
-  async sendMessage(sid: string, text: string, sendId: string, slot: RequestSlot, wasUnknown = false, imageIds: string[] = [], mode = SendMode.STEER): Promise<RequestSlot> {
-    const cmd: CommandKind = { case: "send", value: { sessionId: sid, text, requestId: sendId, imageIds, mode } };
+  async sendMessage(
+    sid: string,
+    text: string,
+    sendId: string,
+    slot: RequestSlot,
+    wasUnknown = false,
+    imageIds: string[] = [],
+    mode = SendMode.STEER,
+  ): Promise<RequestSlot> {
+    const cmd: CommandKind = {
+      case: "send",
+      value: { sessionId: sid, text, requestId: sendId, imageIds, mode },
+    };
     try {
       await this.command(sid, cmd, slot);
       return slot;
     } catch (e) {
       // A send whose outcome was unknown is never sealed afresh.
-      if (wasUnknown || !(e instanceof CommandError) || e.code !== "deadline_exceeded" || Date.now() < slot.deadline) throw e;
+      if (
+        wasUnknown ||
+        !(e instanceof CommandError) ||
+        e.code !== "deadline_exceeded" ||
+        Date.now() < slot.deadline
+      )
+        throw e;
       const fresh = newSlot();
       await this.command(sid, cmd, fresh);
       return fresh;
@@ -1370,15 +2208,33 @@ export class Remote {
     if (!this.outbox(sid).some((o) => o.sendId === sendId)) return;
     this.outboxes.set(
       sid,
-      this.outbox(sid).map((o) => (o.sendId === sendId ? { ...o, ...patch } : o)),
+      this.outbox(sid).map((o) =>
+        o.sendId === sendId ? { ...o, ...patch } : o,
+      ),
     );
     this.changed();
   }
 
   /** Sends text, and images uploaded to the machine, to a session; its
    * progress shows in outbox(sid). */
-  send(sid: string, text: string, imageIds: string[] = [], thumbs: Blob[] = [], mode = SendMode.STEER, attachments?: Outgoing["attachments"]): string {
-    const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, imageIds, thumbs, mode, attachments, status: "sending" };
+  send(
+    sid: string,
+    text: string,
+    imageIds: string[] = [],
+    thumbs: Blob[] = [],
+    mode = SendMode.STEER,
+    attachments?: Outgoing["attachments"],
+  ): string {
+    const o: Outgoing = {
+      sendId: newRequestID(),
+      ...newSlot(),
+      text,
+      imageIds,
+      thumbs,
+      mode,
+      attachments,
+      status: "sending",
+    };
     this.outboxes.set(sid, [...this.outbox(sid), o]);
     this.changed();
     void this.deliver(sid, o);
@@ -1391,7 +2247,13 @@ export class Remote {
 
   /** Sends a message that failed before Enter again, as a new message,
    * once: pressing retry again, or after the new one went, does nothing. */
-  resend(sid: string, failedId: string, text: string, imageIds: string[] = [], thumbs: Blob[] = []) {
+  resend(
+    sid: string,
+    failedId: string,
+    text: string,
+    imageIds: string[] = [],
+    thumbs: Blob[] = [],
+  ) {
     if (this.replaced.has(failedId)) return;
     this.replaced.set(failedId, this.send(sid, text, imageIds, thumbs));
   }
@@ -1426,27 +2288,59 @@ export class Remote {
   }
 
   private async deliver(sid: string, o: Outgoing) {
-    this.patchOut(sid, o.sendId, { status: "sending", error: undefined, missingImages: false });
+    this.patchOut(sid, o.sendId, {
+      status: "sending",
+      error: undefined,
+      missingImages: false,
+    });
     try {
-      const slot = await this.sendMessage(sid, o.text, o.sendId, { requestId: o.requestId, deadline: o.deadline }, o.unknown, o.imageIds, o.mode);
+      const slot = await this.sendMessage(
+        sid,
+        o.text,
+        o.sendId,
+        { requestId: o.requestId, deadline: o.deadline },
+        o.unknown,
+        o.imageIds,
+        o.mode,
+      );
       this.patchOut(sid, o.sendId, { status: "sent", ...slot });
     } catch (e) {
       // Once unknown, it stays unknown and keeps its request (attempt.ts);
       // the send ID also keeps the daemon from queueing the text twice.
       const still = stillUnknown(e, o.unknown ?? false);
-      const missingImages = !still && e instanceof CommandError && e.code === "not_found" && !!o.imageIds?.length && e.message.includes("is not on this machine; upload it again");
-      this.patchOut(sid, o.sendId, { status: "failed", error: missingImages ? "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留" : errorText(e), missingImages, unknown: still, ...(still ? {} : newSlot()) });
+      const missingImages =
+        !still &&
+        e instanceof CommandError &&
+        e.code === "not_found" &&
+        !!o.imageIds?.length &&
+        e.message.includes("is not on this machine; upload it again");
+      this.patchOut(sid, o.sendId, {
+        status: "failed",
+        error: missingImages
+          ? "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留"
+          : errorText(e),
+        missingImages,
+        unknown: still,
+        ...(still ? {} : newSlot()),
+      });
     }
   }
 
   /** Joins a session's terminal stream. Frames are sealed with the session
    * key and numbered; each side refuses frames out of order. */
-  async openTerminal(sid: string, onFrame: (f: TerminalFrame) => void | Promise<void>, onClose: (reason: string) => void, signal?: AbortSignal): Promise<TermConn> {
+  async openTerminal(
+    sid: string,
+    onFrame: (f: TerminalFrame) => void | Promise<void>,
+    onClose: (reason: string) => void,
+    signal?: AbortSignal,
+  ): Promise<TermConn> {
     const s = this.sessions.get(sid);
     if (!s) throw new Error("未知会话");
     if (signal?.aborted) throw new Error("终端连接已取消");
     const streamId = newRequestID();
-    const ws = new WebSocket(apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term");
+    const ws = new WebSocket(
+      apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term",
+    );
     ws.binaryType = "arraybuffer";
     let closed = false;
     let openingTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1466,14 +2360,28 @@ export class Remote {
     signal?.addEventListener("abort", abort, { once: true });
     await new Promise<void>((resolve, reject) => {
       rejectOpening = reject;
-      openingTimer = setTimeout(() => finish("连接终端超时，请重新连接"), OPEN_TIMEOUT_MS);
+      openingTimer = setTimeout(
+        () => finish("连接终端超时，请重新连接"),
+        OPEN_TIMEOUT_MS,
+      );
       ws.onopen = () => {
         if (closed) return;
         clearTimeout(openingTimer);
         try {
-          ws.send(toBinary(TermHelloSchema, create(TermHelloSchema, { token: this.token, streamId, machineId: s.machineId })));
+          ws.send(
+            toBinary(
+              TermHelloSchema,
+              create(TermHelloSchema, {
+                token: this.token,
+                streamId,
+                machineId: s.machineId,
+              }),
+            ),
+          );
           resolve();
-        } catch (e) { finish(errorText(e)); }
+        } catch (e) {
+          finish(errorText(e));
+        }
       };
       ws.onerror = () => finish("连不上终端");
       ws.onclose = () => finish("终端连接已关闭");
@@ -1487,16 +2395,27 @@ export class Remote {
       const size = (m.data as ArrayBuffer).byteLength;
       pendingBytes += size;
       pendingFrames++;
-      if (pendingBytes > 2 * 1024 * 1024 || pendingFrames > 512) { finish("终端输出积压，请重新连接以获取最新画面"); ws.close(); return; }
+      if (pendingBytes > 2 * 1024 * 1024 || pendingFrames > 512) {
+        finish("终端输出积压，请重新连接以获取最新画面");
+        ws.close();
+        return;
+      }
       // Open in arrival order.
       queue = queue.then(async () => {
         try {
           if (closed) return;
-          const env = fromBinary(EnvelopeSchema, new Uint8Array(m.data as ArrayBuffer));
-          const { header, msg } = await openMessage(
-            s.key,
+          const env = fromBinary(
+            EnvelopeSchema,
+            new Uint8Array(m.data as ArrayBuffer),
+          );
+          const { header, msg } = await this.openSecureMessage(
             env,
-            { kind: PayloadKind.TERMINAL_OUTPUT, machineId: s.machineId, sessionId: sid, requestId: streamId },
+            {
+              kind: PayloadKind.TERMINAL_OUTPUT,
+              machineId: s.machineId,
+              sessionId: sid,
+              requestId: streamId,
+            },
             TerminalFrameSchema,
           );
           if (closed) return;
@@ -1506,13 +2425,19 @@ export class Remote {
         } catch (e) {
           finish(errorText(e));
           ws.close();
-        } finally { pendingBytes -= size; pendingFrames--; }
+        } finally {
+          pendingBytes -= size;
+          pendingFrames--;
+        }
       });
     };
     ws.onclose = () => finish("终端连接断开");
     if (closed) throw new Error("终端连接已关闭");
     try {
-      await this.command(sid, { case: "openTerminal", value: { sessionId: sid, streamId } });
+      await this.command(sid, {
+        case: "openTerminal",
+        value: { sessionId: sid, streamId },
+      });
     } catch (e) {
       finish(errorText(e));
       throw e;
@@ -1525,13 +2450,20 @@ export class Remote {
         sending = sending.then(async () => {
           if (closed || ws.readyState !== WebSocket.OPEN) return;
           seq++;
-          const env = await sealMessage(
-            s.key,
-            { kind: PayloadKind.TERMINAL_INPUT, machineId: s.machineId, sessionId: sid, requestId: streamId, seq, sender: this.account.deviceId },
+          const env = await this.sealSecureMessage(
+            {
+              kind: PayloadKind.TERMINAL_INPUT,
+              machineId: s.machineId,
+              sessionId: sid,
+              requestId: streamId,
+              seq,
+              sender: this.account.deviceId,
+            },
             TerminalFrameSchema,
             create(TerminalFrameSchema, frame),
           );
-          if (!closed && ws.readyState === WebSocket.OPEN) ws.send(toBinary(EnvelopeSchema, env));
+          if (!closed && ws.readyState === WebSocket.OPEN)
+            ws.send(toBinary(EnvelopeSchema, env));
         });
       },
       close: () => finish("终端连接已关闭", false),
@@ -1541,28 +2473,185 @@ export class Remote {
   // --- devices ---
 
   /** Lists the account's devices. */
-  async loadDevices() {
+  async loadDevices(describe = true) {
+    const version = ++this.directoryReadVersion;
     try {
-      const then = new Map(this.devicePushes);
-      const r = await this.api.listDevices({});
-      // A device pushed while the list was in flight is as the push left it:
-      // the list may be from before, and nothing would correct it afterwards.
-      const pushed = (id: string) => (this.devicePushes.get(id) ?? 0) !== (then.get(id) ?? 0);
-      const ids = new Set(r.devices.map((d) => d.id));
-      for (const id of this.devices.keys()) if (!ids.has(id) && !pushed(id)) this.devices.delete(id);
-      for (const d of r.devices) if (!pushed(d.id)) await this.putDevice(d);
+      const [catalog, listed, online] = await Promise.all([
+        this.security.catalog(),
+        this.api.listDevices({}),
+        this.api.listMachines({}),
+      ]);
+      const members = new Map(catalog.state.core.members.map((m) => [m.id, m]));
+      const state = await stateHash(catalog.state);
+      const metadata = new Map<string, Envelope>();
+      for (const entry of catalog.entries) {
+        const h = parseHeader(entry.wire.header);
+        const key =
+          h.purpose === Purpose.MachineMeta
+            ? "machine:" + h.machine
+            : h.purpose === Purpose.DeviceMeta
+              ? "device:" + h.request
+              : h.purpose === Purpose.SessionMeta
+                ? "session:" + h.machine + ":" + h.session
+                : h.purpose === Purpose.Prefs
+                  ? "prefs"
+                  : "";
+        if (key) metadata.set(key, toEnvelope(entry.wire));
+      }
+      const nextMachines = new Map(this.machines);
+      const nextDevices = new Map<string, DeviceInfo>(),
+        bindings = new Map<
+          string,
+          { state: Uint8Array<ArrayBuffer>; commit: Uint8Array<ArrayBuffer> }
+        >();
+      for (const m of catalog.state.core.members) {
+        const hint = listed.devices.find((d) => d.id === m.id);
+        const d: DeviceInfo = {
+          id: m.id,
+          kind: m.kind,
+          createdMs: hint?.createdMs ?? 0n,
+          lastSeenMs: hint?.lastSeenMs ?? 0n,
+          metaRev: 0n,
+        };
+        const meta = metadata.get(
+          (m.kind === 1 ? "machine:" : "device:") + m.id,
+        );
+        let binding: Uint8Array<ArrayBuffer>;
+        if (meta) {
+          const w = (await import("./device-security")).fromEnvelope(meta);
+          binding = await commitment(w);
+          if (m.kind === 2) {
+            const opened = await this.openSecureMessage(
+              meta,
+              { kind: PayloadKind.DEVICE_META, requestId: m.id },
+              DeviceMetaSchema,
+            );
+            d.meta = opened.msg;
+            d.metaRev = opened.header.seq;
+          } else {
+            const opened = await this.openSecureMessage(
+              meta,
+              { kind: PayloadKind.MACHINE_META, machineId: m.id },
+              MachineMetaSchema,
+            );
+            const old = this.machines.get(m.id),
+              status = online.machines.find((x) => x.id === m.id);
+            nextMachines.set(m.id, {
+              ...(old ?? {
+                id: m.id,
+                online: false,
+                lastSeenMs: 0n,
+                metaRev: 0n,
+              }),
+              online: status?.online ?? false,
+              lastSeenMs: status?.lastSeenMs ?? old?.lastSeenMs ?? 0n,
+              meta: opened.msg,
+              metaRev: opened.header.seq,
+            });
+          }
+        } else {
+          binding = await unnamedMemberCommit(catalog.state, m);
+          if (m.kind === 1 && !nextMachines.has(m.id))
+            nextMachines.set(m.id, {
+              id: m.id,
+              online: false,
+              lastSeenMs: 0n,
+              metaRev: 0n,
+            });
+        }
+        nextDevices.set(m.id, d);
+        bindings.set(m.id, { state, commit: binding });
+      }
+      if (version !== this.directoryReadVersion) return;
+      if (!equalBytes(await this.security.localStateHash(), state))
+        throw new Error("设备目录状态已变化");
+      for (const [id, d] of nextDevices) {
+        if ((this.devices.get(id)?.metaRev ?? 0n) > d.metaRev)
+          throw new Error("设备目录响应已过时");
+      }
+      this.machines = nextMachines;
+      for (const [id, old] of this.trustedMembers)
+        if (old.kind === 1 && !members.has(id))
+          this.bump(this.removedPushes, id);
+      this.trustedMembers = members;
+      this.trustedMetadata = metadata;
+      this.deviceBindings = bindings;
+      this.devices = nextDevices;
+      this.authorityDeviceId = catalog.state.core.authorityID;
+      for (const id of this.machines.keys())
+        if (!members.has(id)) {
+          this.machines.delete(id);
+          for (const [sid, s] of this.sessions)
+            if (s.machineId === id) this.forget(sid);
+        }
       this.devicesStatus = "ready";
       this.changed();
-      await this.describeSelf();
+      if (describe) await this.describeSelf();
+      void this.pollRemovals();
     } catch (e) {
+      if (version !== this.directoryReadVersion) return;
       this.devicesStatus = "error";
+      this.deviceBindings.clear();
       this.changed();
     }
+  }
+  private async cleanupRemoval(op: StoredRemoval): Promise<StoredRemoval> {
+    if (op.phase !== "complete" || op.serverCleaned || !op.cleanup) return op;
+    try {
+      for (const target of op.request.Targets) {
+        await this.api
+          .removeDevice({
+            deviceId: target.ID,
+            securityCompletion: op.cleanup.completion,
+            securityRequest: op.cleanup.request,
+            securityChain: op.cleanup.chain,
+          })
+          .catch((e) => {
+            if (!(e instanceof ConnectError && e.code === Code.NotFound))
+              throw e;
+          });
+      }
+      return await this.security.markServerCleaned(op);
+    } catch {
+      return op;
+    }
+  }
+  private async pollRemovals() {
+    clearTimeout(this.removalTimer);
+    try {
+      const saved = await this.security.pendingRemovals();
+      const next: StoredRemoval[] = [];
+      for (const op of saved) {
+        if (op.phase === "complete") {
+          next.push(await this.cleanupRemoval(op));
+          continue;
+        }
+        try {
+          next.push(
+            await this.cleanupRemoval(await this.security.pollRemoval(op)),
+          );
+        } catch {
+          if (op.phase === "unconfirmed") {
+            try {
+              next.push(await this.security.retryRemoval(op));
+            } catch {
+              next.push(op);
+            }
+          } else next.push(op);
+        }
+      }
+      this.removals = next;
+      this.changed();
+      if (
+        !this.closed &&
+        next.some((o) => o.phase !== "complete" || !o.serverCleaned)
+      )
+        this.removalTimer = setTimeout(() => void this.pollRemovals(), 2000);
+    } catch {}
   }
 
   // Removals seen per device, so that metadata still opening when its
   // device goes does not bring it back.
-  private deviceRemovals = new Map<string, number>();
 
   // Pushes seen per device, registered, changed or removed, so that a list
   // fetched before a push cannot undo it.
@@ -1572,82 +2661,133 @@ export class Remote {
     this.devicePushes.set(id, (this.devicePushes.get(id) ?? 0) + 1);
   }
 
-  private async putDevice(d: Device) {
-    const removals = this.deviceRemovals.get(d.id) ?? 0;
-    let meta: DeviceMeta | undefined;
-    if (d.meta) {
-      try {
-        ({ msg: meta } = await openMessage(this.keys.deviceMeta, d.meta, { kind: PayloadKind.DEVICE_META, requestId: d.id, seq: d.metaRevision }, DeviceMetaSchema));
-      } catch (e) {
-        this.report(e);
-      }
-    }
-    // Checked after opening, against what is stored now: another update
-    // may have landed, or the device gone, in the meantime.
-    if ((this.deviceRemovals.get(d.id) ?? 0) !== removals) return;
-    const cur = this.devices.get(d.id);
-    const info: DeviceInfo = { id: d.id, kind: d.kind, createdMs: d.createdMs, metaRev: cur?.metaRev ?? 0n, meta: cur?.meta, lastSeenMs: d.lastSeenMs };
-    if (meta && d.metaRevision >= info.metaRev) {
-      info.meta = meta;
-      info.metaRev = d.metaRevision;
-    }
-    this.devices.set(d.id, info);
+  private async putDevice(_d: Device) {
+    await this.loadDevices(false);
   }
 
   /** Says what this browser is, once, so other clients can name it. */
   private async describeSelf() {
     const me = this.devices.get(this.account.deviceId);
     if (!me || me.meta) return;
-    await this.changeDeviceMeta(this.account.deviceId, (m) => ({ name: m?.name ?? "", platform: "web", description: m?.description || describeBrowser(navigator.userAgent) })).catch((e) => this.report(e));
+    await this.changeDeviceMeta(this.account.deviceId, (m) => ({
+      name: m?.name ?? "",
+      platform: "web",
+      description: m?.description || describeBrowser(navigator.userAgent),
+    })).catch((e) => this.report(e));
   }
 
   /** Renames a client; the name is sealed, the server sees none. */
   renameDevice(id: string, name: string): Promise<void> {
-    return this.changeDeviceMeta(id, (m) => ({ name: name.trim(), platform: m?.platform ?? "", description: m?.description ?? "" }));
+    return this.changeDeviceMeta(id, (m) => ({
+      name: name.trim(),
+      platform: m?.platform ?? "",
+      description: m?.description ?? "",
+    }));
   }
 
   /** Replaces a device's metadata with change(current). If another client
    * wrote first, the change is made again on what it wrote. */
-  private async changeDeviceMeta(id: string, change: (m: DeviceMeta | undefined) => Omit<Partial<DeviceMeta>, "$typeName">) {
-    let cur = this.devices.get(id);
+  private async changeDeviceMeta(
+    id: string,
+    change: (
+      m: DeviceMeta | undefined,
+    ) => Omit<Partial<DeviceMeta>, "$typeName">,
+  ) {
     for (let i = 0; i < 5; i++) {
-      const rev = cur?.metaRev ?? 0n;
-      const env = await sealMessage(this.keys.deviceMeta, { kind: PayloadKind.DEVICE_META, requestId: id, seq: rev + 1n, sender: this.account.deviceId }, DeviceMetaSchema, create(DeviceMetaSchema, change(cur?.meta)));
-      const r = await this.api.putDeviceMeta({ deviceId: id, expectedRevision: rev, meta: env });
-      if (r.device) await this.putDevice(r.device);
-      this.changed();
-      if (r.applied) return;
-      cur = this.devices.get(id);
+      await this.loadDevices(false);
+      if (this.devicesStatus !== "ready") throw new Error("无法核实设备信息");
+      const cur = this.devices.get(id),
+        rev = cur?.metaRev ?? 0n;
+      try {
+        const env = await this.sealSecureMessage(
+          {
+            kind: PayloadKind.DEVICE_META,
+            requestId: id,
+            seq: rev + 1n,
+            sender: this.account.deviceId,
+          },
+          DeviceMetaSchema,
+          create(DeviceMetaSchema, change(cur?.meta)),
+        );
+        await this.api
+          .putDeviceMeta({ deviceId: id, expectedRevision: rev, meta: env })
+          .catch(() => undefined);
+        await this.loadDevices(false);
+        return;
+      } catch (e) {
+        if (
+          !(e instanceof (await import("./device-security")).SecurityError) ||
+          e.code !== "conflict"
+        )
+          throw e;
+      }
     }
-    throw new Error("设备信息一直在被别的客户端修改，没能保存");
+    throw new Error("设备信息正在变化，请重试");
   }
 
   // --- project list preferences ---
 
   protected prefsStore: PrefsStore = {
-    get: async () => {
-      const r = await this.api.getAccountPrefs({ objectId: PREFS_OBJECT });
-      return this.openPrefs(r.object);
-    },
+    get: async () => this.readTrustedPrefs(),
     put: async (expected, next) => {
-      const env = await sealMessage(this.keys.prefs, { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: expected + 1n, sender: this.account.deviceId }, ProjectPrefsSchema, next);
-      const r = await this.api.putAccountPrefs({ objectId: PREFS_OBJECT, expectedRevision: expected, envelope: env });
-      const current = await this.openPrefs(r.object);
-      this.keepPrefs(r.object);
-      return { applied: r.applied, current };
+      try {
+        const env = await this.sealSecureMessage(
+          {
+            kind: PayloadKind.ACCOUNT_PREFS,
+            requestId: PREFS_OBJECT,
+            seq: expected + 1n,
+            sender: this.account.deviceId,
+          },
+          ProjectPrefsSchema,
+          next,
+        );
+        await this.api
+          .putAccountPrefs({
+            objectId: PREFS_OBJECT,
+            expectedRevision: expected,
+            envelope: env,
+          })
+          .catch(() => undefined);
+        return { applied: true, current: await this.readTrustedPrefs() };
+      } catch (e) {
+        if (
+          e instanceof (await import("./device-security")).SecurityError &&
+          e.code === "conflict"
+        )
+          return { applied: false, current: await this.readTrustedPrefs() };
+        throw e;
+      }
     },
   };
-
-  private async openPrefs(o: AccountPrefsObject | undefined): Promise<PrefsSnapshot> {
-    if (!o || o.revision === 0n || !o.envelope) return { revision: 0n, prefs: emptyPrefs() };
-    const { msg } = await openMessage(this.keys.prefs, o.envelope, { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: o.revision }, ProjectPrefsSchema);
-    if (msg.schema !== 1) throw new Error("项目偏好的格式比这个网页新，请刷新网页");
-    return { revision: o.revision, prefs: msg };
+  private async readTrustedPrefs(): Promise<PrefsSnapshot> {
+    const catalog = await this.security.catalog();
+    for (const e of catalog.entries) {
+      const h = parseHeader(e.wire.header);
+      if (h.purpose !== Purpose.Prefs) continue;
+      const { msg } = await this.openSecureMessage(
+        toEnvelope(e.wire),
+        {
+          kind: PayloadKind.ACCOUNT_PREFS,
+          requestId: PREFS_OBJECT,
+          seq: h.seq,
+        },
+        ProjectPrefsSchema,
+      );
+      if (msg.schema !== 1) throw new Error("项目偏好格式不受支持");
+      return { revision: h.seq, prefs: msg };
+    }
+    return { revision: 0n, prefs: emptyPrefs() };
+  }
+  private async openPrefs(
+    _o: AccountPrefsObject | undefined,
+  ): Promise<PrefsSnapshot> {
+    return this.readTrustedPrefs();
   }
 
   /** Keeps the server's copy, sealed as it came, for the next visit's first paint. */
   private keepPrefs(o: AccountPrefsObject | undefined) {
-    if (o && this.cache) this.keepValue("prefs", { bytes: toBinary(AccountPrefsObjectSchema, o) });
+    if (o && this.cache)
+      this.keepValue("prefs", { bytes: toBinary(AccountPrefsObjectSchema, o) });
   }
 
   /** The account's pinned and removed projects; empty until read. */
@@ -1661,7 +2801,11 @@ export class Remote {
       await this.takePrefs(r.object, false);
       this.prefs = { ...this.prefs, status: "ready", error: "" };
     } catch (e) {
-      this.prefs = { ...this.prefs, status: this.prefs.snap ? "ready" : "error", error: errorText(e) };
+      this.prefs = {
+        ...this.prefs,
+        status: this.prefs.snap ? "ready" : "error",
+        error: errorText(e),
+      };
     }
     this.changed();
   }
@@ -1670,15 +2814,26 @@ export class Remote {
   private async takePrefs(o: AccountPrefsObject | undefined, pushed: boolean) {
     try {
       const snap = await this.openPrefs(o);
-      if (!this.prefs.snap || snap.revision >= this.prefs.snap.revision) this.keepPrefs(o);
+      if (!this.prefs.snap || snap.revision >= this.prefs.snap.revision)
+        this.keepPrefs(o);
       if (this.prefs.snap && snap.revision <= this.prefs.snap.revision) return;
       // Changed by another client while nothing of this one's is in flight.
-      const elsewhere = pushed && this.prefs.pending.size === 0 && !!this.prefs.snap;
-      this.prefs = { ...this.prefs, snap, status: "ready", changedAt: elsewhere ? Date.now() : this.prefs.changedAt };
+      const elsewhere =
+        pushed && this.prefs.pending.size === 0 && !!this.prefs.snap;
+      this.prefs = {
+        ...this.prefs,
+        snap,
+        status: "ready",
+        changedAt: elsewhere ? Date.now() : this.prefs.changedAt,
+      };
       this.changed();
     } catch (e) {
       if (!pushed) throw e;
-      this.prefs = { ...this.prefs, status: this.prefs.snap ? "ready" : "error", error: errorText(e) };
+      this.prefs = {
+        ...this.prefs,
+        status: this.prefs.snap ? "ready" : "error",
+        error: errorText(e),
+      };
       this.report(e);
     }
   }
@@ -1689,23 +2844,37 @@ export class Remote {
    * was, and retryPrefs tries the same operation again. */
   private settingsWrites = new Map<string, Promise<boolean>>();
 
-  changePrefs(kind: PrefKind, path: string, op: PrefOp = { id: newRequestID(), kind, path, at: Date.now() }): Promise<boolean> {
+  changePrefs(
+    kind: PrefKind,
+    path: string,
+    op: PrefOp = { id: newRequestID(), kind, path, at: Date.now() },
+  ): Promise<boolean> {
     if (kind !== "settings") return this.changePrefsNow(kind, path, op);
     const prior = this.settingsWrites.get(path);
-    const next = (prior ? prior.catch(() => false).then(() => this.changePrefsNow(kind, path, op)) : this.changePrefsNow(kind, path, op));
+    const next = prior
+      ? prior.catch(() => false).then(() => this.changePrefsNow(kind, path, op))
+      : this.changePrefsNow(kind, path, op);
     this.settingsWrites.set(path, next);
-    void next.finally(() => { if (this.settingsWrites.get(path) === next) this.settingsWrites.delete(path); });
+    void next.finally(() => {
+      if (this.settingsWrites.get(path) === next)
+        this.settingsWrites.delete(path);
+    });
     return next;
   }
 
-  private async changePrefsNow(kind: PrefKind, path: string, op: PrefOp): Promise<boolean> {
+  private async changePrefsNow(
+    kind: PrefKind,
+    path: string,
+    op: PrefOp,
+  ): Promise<boolean> {
     if (this.conn !== "online" || this.prefs.status !== "ready") return false;
     this.prefs.pending.set(path, kind);
     this.prefs = { ...this.prefs, failed: undefined };
     this.changed();
     try {
       const snap = await commitOp(this.prefsStore, op, this.prefs.snap);
-      if (!this.prefs.snap || snap.revision >= this.prefs.snap.revision) this.prefs = { ...this.prefs, snap };
+      if (!this.prefs.snap || snap.revision >= this.prefs.snap.revision)
+        this.prefs = { ...this.prefs, snap };
       return true;
     } catch (e) {
       this.prefs = { ...this.prefs, failed: { op, error: errorText(e) } };
@@ -1728,14 +2897,33 @@ export class Remote {
    * one command, and returns the image ID to send with it. After a reply
    * that was lost, it asks the machine how far it got and goes on from
    * there; the machine checks the length and hash at the end. */
-  async uploadImage(machineId: string, p: { bytes: Uint8Array; format: string }, progress: (done: number, total: number) => void = () => undefined, started: (abort: () => void) => void = () => undefined): Promise<{ imageId: string; expiresMs: number }> {
-    const format = { jpeg: ImageFormat.JPEG, png: ImageFormat.PNG, webp: ImageFormat.WEBP, gif: ImageFormat.GIF }[p.format] ?? ImageFormat.UNSPECIFIED;
+  async uploadImage(
+    machineId: string,
+    p: { bytes: Uint8Array; format: string },
+    progress: (done: number, total: number) => void = () => undefined,
+    started: (abort: () => void) => void = () => undefined,
+  ): Promise<{ imageId: string; expiresMs: number }> {
+    const format =
+      {
+        jpeg: ImageFormat.JPEG,
+        png: ImageFormat.PNG,
+        webp: ImageFormat.WEBP,
+        gif: ImageFormat.GIF,
+      }[p.format] ?? ImageFormat.UNSPECIFIED;
     const transferId = newRequestID();
-    const sha256 = new Uint8Array(await crypto.subtle.digest("SHA-256", p.bytes as Uint8Array<ArrayBuffer>));
+    const sha256 = new Uint8Array(
+      await crypto.subtle.digest("SHA-256", p.bytes as Uint8Array<ArrayBuffer>),
+    );
     const total = p.bytes.length;
     const statusOf = (r: CommandResult) => {
       const k = r.kind;
-      const st = k.case === "beginImageUpload" || k.case === "putImageChunk" || k.case === "getImageUploadStatus" || k.case === "completeImageUpload" ? k.value.status : undefined;
+      const st =
+        k.case === "beginImageUpload" ||
+        k.case === "putImageChunk" ||
+        k.case === "getImageUploadStatus" ||
+        k.case === "completeImageUpload"
+          ? k.value.status
+          : undefined;
       if (!st) throw new Error("意外的回复");
       return st;
     };
@@ -1747,23 +2935,47 @@ export class Remote {
         } catch (e) {
           if (!uncertain(e) || i >= 2) throw e;
           try {
-            return statusOf(await this.machineCommand(machineId, { case: "getImageUploadStatus", value: { transferId } }));
+            return statusOf(
+              await this.machineCommand(machineId, {
+                case: "getImageUploadStatus",
+                value: { transferId },
+              }),
+            );
           } catch (e2) {
             if (!uncertain(e2) || i >= 2) throw e2;
           }
         }
       }
     };
-    let st = await step({ case: "beginImageUpload", value: { transferId, format, totalBytes: BigInt(total), sha256 } });
+    let st = await step({
+      case: "beginImageUpload",
+      value: { transferId, format, totalBytes: BigInt(total), sha256 },
+    });
     // Dropped later (removed, 原图 switched, another machine): the machine
     // is told so rather than keeping it until it expires.
-    started(() => void this.machineCommand(machineId, { case: "abortImageUpload", value: { transferId } }).catch(() => undefined));
-    const chunk = Math.min(UPLOAD_CHUNK, st.maxChunkBytes > 0 ? st.maxChunkBytes : UPLOAD_CHUNK);
+    started(
+      () =>
+        void this.machineCommand(machineId, {
+          case: "abortImageUpload",
+          value: { transferId },
+        }).catch(() => undefined),
+    );
+    const chunk = Math.min(
+      UPLOAD_CHUNK,
+      st.maxChunkBytes > 0 ? st.maxChunkBytes : UPLOAD_CHUNK,
+    );
     for (let guard = 0; Number(st.persistedBytes) < total; guard++) {
       if (guard > total / chunk + 10) throw new Error("上传没有进展");
       const offset = Number(st.persistedBytes);
       progress(offset, total);
-      st = await step({ case: "putImageChunk", value: { transferId, offset: BigInt(offset), data: p.bytes.subarray(offset, offset + chunk) } });
+      st = await step({
+        case: "putImageChunk",
+        value: {
+          transferId,
+          offset: BigInt(offset),
+          data: p.bytes.subarray(offset, offset + chunk),
+        },
+      });
     }
     progress(total, total);
     st = await step({ case: "completeImageUpload", value: { transferId } });
@@ -1792,21 +3004,45 @@ export class Remote {
     try {
       res = await this.api.getImage({ sessionId: sid, imageId });
     } catch (e) {
-      if (e instanceof ConnectError && e.code === Code.NotFound) return { kind: "missing" };
+      if (e instanceof ConnectError && e.code === Code.NotFound)
+        return { kind: "missing" };
       throw e;
     }
     if (res.expired || !res.image) return { kind: "expired" };
     let out: ImageResult;
     try {
-      const { msg } = await openMessage(s.key, res.image, { kind: PayloadKind.IMAGE, machineId: s.machineId, sessionId: sid, requestId: imageId }, ImagePayloadSchema);
-      out = matchesFormat(msg.data, msg.format) ? { kind: "ok", blob: new Blob([msg.data as Uint8Array<ArrayBuffer>], { type: mimeOf(msg.format) }), width: msg.width, height: msg.height, format: msg.format } : { kind: "bad" };
+      const { msg } = await this.openSecureMessage(
+        res.image,
+        {
+          kind: PayloadKind.IMAGE,
+          machineId: s.machineId,
+          sessionId: sid,
+          requestId: imageId,
+        },
+        ImagePayloadSchema,
+      );
+      out = matchesFormat(msg.data, msg.format)
+        ? {
+            kind: "ok",
+            ...(fromBinary(HeaderSchema, res.image.header).version === 1
+              ? { unverifiedLegacy: true }
+              : {}),
+            blob: new Blob([msg.data as Uint8Array<ArrayBuffer>], {
+              type: mimeOf(msg.format),
+            }),
+            width: msg.width,
+            height: msg.height,
+            format: msg.format,
+          }
+        : { kind: "bad" };
     } catch (e) {
       this.report(e);
       out = { kind: "bad" };
     }
     if (out.kind === "ok") {
       this.imageCache.set(key, out);
-      while (this.imageCache.size > IMAGE_CACHE) this.imageCache.delete(this.imageCache.keys().next().value!);
+      while (this.imageCache.size > IMAGE_CACHE)
+        this.imageCache.delete(this.imageCache.keys().next().value!);
     }
     return out;
   }
@@ -1825,19 +3061,44 @@ export class Remote {
     return (await this.api.getPushKey({})).publicKey;
   }
 
-  async setPushSubscription(subscriptionJson: string, kinds: NotifyKind[]): Promise<void> {
+  async setPushSubscription(
+    subscriptionJson: string,
+    kinds: NotifyKind[],
+  ): Promise<void> {
     await this.api.setPushSubscription({ subscriptionJson, kinds });
   }
 
   /** Unregisters a device; a machine's sessions go with it. */
   async removeDevice(deviceId: string): Promise<void> {
-    await this.api.removeDevice({ deviceId });
-    this.devicePushed(deviceId);
-    this.deviceRemovals.set(deviceId, (this.deviceRemovals.get(deviceId) ?? 0) + 1);
-    this.devices.delete(deviceId);
-    for (const [id, s] of this.sessions) if (s.machineId === deviceId) this.forget(id);
-    this.machines.delete(deviceId);
+    if (deviceId === this.authorityDeviceId)
+      throw new Error("管理电脑不能通过普通移除操作删除");
+    const binding = this.deviceBindings.get(deviceId);
+    if (!binding || this.devicesStatus !== "ready")
+      throw new Error("需要先核实当前设备信息");
+    const op = await this.security.remove(
+      deviceId,
+      binding.commit,
+      binding.state,
+    );
+    this.removals = [
+      ...this.removals.filter(
+        (o) => o.request.Operation !== op.request.Operation,
+      ),
+      op,
+    ];
     this.changed();
+    await this.loadDevices(false);
+    void this.pollRemovals();
+  }
+  async retryDeviceRemoval(operation: string) {
+    const op = this.removals.find((o) => o.request.Operation === operation);
+    if (!op) return;
+    const next = await this.security.retryRemoval(op);
+    this.removals = this.removals.map((o) =>
+      o.request.Operation === operation ? next : o,
+    );
+    this.changed();
+    void this.pollRemovals();
   }
 
   private models = new Map<string, Promise<ListModelsResponse>>();
@@ -1846,20 +3107,35 @@ export class Remote {
 
   /** A model's display name, once the machine's list has been fetched. */
   modelName(machineId: string, agent: Agent, slug: string): string {
-    return modelLabel(this.modelLists.get(machineId + "/" + agent)?.models, slug, agent);
+    return modelLabel(
+      this.modelLists.get(machineId + "/" + agent)?.models,
+      slug,
+      agent,
+    );
   }
 
   /** The model list last read from a machine's CLI, if any: what a page shows while it reads again. */
-  cachedModels(machineId: string, agent: Agent): ListModelsResponse | undefined {
+  cachedModels(
+    machineId: string,
+    agent: Agent,
+  ): ListModelsResponse | undefined {
     return this.modelLists.get(machineId + "/" + agent);
   }
 
   /** The models a machine's CLI offers; pickers refresh completed reads. */
-  listModels(machineId: string, agent: Agent = Agent.CODEX, fresh = false): Promise<ListModelsResponse> {
+  listModels(
+    machineId: string,
+    agent: Agent = Agent.CODEX,
+    fresh = false,
+  ): Promise<ListModelsResponse> {
     const key = machineId + "/" + agent;
-    let p = fresh && !this.modelReads.has(key) ? undefined : this.models.get(key);
+    let p =
+      fresh && !this.modelReads.has(key) ? undefined : this.models.get(key);
     if (!p) {
-      p = this.machineCommand(machineId, { case: "listModels", value: { agent } }).then((r) => {
+      p = this.machineCommand(machineId, {
+        case: "listModels",
+        value: { agent },
+      }).then((r) => {
         if (r.kind.case !== "listModels") throw new Error("意外的回复");
         this.modelLists.set(key, r.kind.value);
         this.keepInfo();
@@ -1867,10 +3143,13 @@ export class Remote {
         return r.kind.value;
       });
       this.modelReads.add(key);
-      p.then(() => this.modelReads.delete(key), () => {
-        this.modelReads.delete(key);
-        if (this.models.get(key) === p) this.models.delete(key);
-      });
+      p.then(
+        () => this.modelReads.delete(key),
+        () => {
+          this.modelReads.delete(key);
+          if (this.models.get(key) === p) this.models.delete(key);
+        },
+      );
       this.models.set(key, p);
     }
     return p;
@@ -1878,7 +3157,10 @@ export class Remote {
 
   imageStorage = new Map<string, ImageStorageUsage>();
 
-  private settingsCache = new Map<string, Promise<DaemonSettings | undefined>>();
+  private settingsCache = new Map<
+    string,
+    Promise<DaemonSettings | undefined>
+  >();
   private settingsRead = new Map<string, DaemonSettings | undefined>();
 
   /** Keeps the model lists and settings read so far for the next visit: the
@@ -1886,9 +3168,11 @@ export class Remote {
   private keepInfo() {
     if (!this.cache) return;
     const models: Record<string, Uint8Array> = {};
-    for (const [k, v] of this.modelLists) models[k] = toBinary(ListModelsResponseSchema, v);
+    for (const [k, v] of this.modelLists)
+      models[k] = toBinary(ListModelsResponseSchema, v);
     const settings: Record<string, Uint8Array> = {};
-    for (const [k, v] of this.settingsRead) if (v) settings[k] = toBinary(DaemonSettingsSchema, v);
+    for (const [k, v] of this.settingsRead)
+      if (v) settings[k] = toBinary(DaemonSettingsSchema, v);
     this.keepValue("info", { models, settings });
   }
 
@@ -1898,12 +3182,19 @@ export class Remote {
   }
 
   /** A machine's daemon settings, fetched once per page load. */
-  settings(machineId: string, fresh = false): Promise<DaemonSettings | undefined> {
+  settings(
+    machineId: string,
+    fresh = false,
+  ): Promise<DaemonSettings | undefined> {
     let p = fresh ? undefined : this.settingsCache.get(machineId);
     if (!p) {
-      p = this.machineCommand(machineId, { case: "getSettings", value: {} }).then((r) => {
+      p = this.machineCommand(machineId, {
+        case: "getSettings",
+        value: {},
+      }).then((r) => {
         if (r.kind.case !== "getSettings") throw new Error("意外的回复");
-        if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
+        if (r.kind.value.imageStorage)
+          this.imageStorage.set(machineId, r.kind.value.imageStorage);
         this.settingsRead.set(machineId, r.kind.value.settings);
         this.keepInfo();
         this.changed();
@@ -1915,10 +3206,18 @@ export class Remote {
     return p;
   }
 
-  async saveSettings(machineId: string, next: DaemonSettings, cleanImages = false): Promise<DaemonSettings | undefined> {
-    const r = await this.machineCommand(machineId, { case: "updateSettings", value: { settings: next, cleanImages } });
+  async saveSettings(
+    machineId: string,
+    next: DaemonSettings,
+    cleanImages = false,
+  ): Promise<DaemonSettings | undefined> {
+    const r = await this.machineCommand(machineId, {
+      case: "updateSettings",
+      value: { settings: next, cleanImages },
+    });
     if (r.kind.case !== "updateSettings") throw new Error("意外的回复");
-    if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
+    if (r.kind.value.imageStorage)
+      this.imageStorage.set(machineId, r.kind.value.imageStorage);
     this.changed();
     this.settingsCache.set(machineId, Promise.resolve(r.kind.value.settings));
     this.settingsRead.set(machineId, r.kind.value.settings);
@@ -1935,13 +3234,19 @@ export class Remote {
 
 /** Request IDs of the messages recorded among events. */
 function recordedIds(events: Event[]): string[] {
-  return events.flatMap((e) => (e.kind.case === "userMessage" && e.kind.value.requestId ? [e.kind.value.requestId] : []));
+  return events.flatMap((e) =>
+    e.kind.case === "userMessage" && e.kind.value.requestId
+      ? [e.kind.value.requestId]
+      : [],
+  );
 }
 
 /** Whether an ended session comes after a cursor in the listing, which
  * runs from the latest ended to the earliest, then by session ID. */
 function afterCursor(s: SessionView, c: SessionCursor): boolean {
-  return s.endedMs < c.endedMs || (s.endedMs === c.endedMs && s.id > c.sessionId);
+  return (
+    s.endedMs < c.endedMs || (s.endedMs === c.endedMs && s.id > c.sessionId)
+  );
 }
 
 function maxBig(a: bigint, ...rest: bigint[]): bigint {
@@ -1953,4 +3258,8 @@ export function errorText(e: unknown): string {
   if (e instanceof ConnectError) return e.rawMessage || e.message;
   if (e instanceof Error) return e.message;
   return String(e);
+}
+
+function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
 }

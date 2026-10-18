@@ -23,6 +23,7 @@ public  final class Origin extends
   private Origin() {
     deviceId_ = "";
     requestId_ = "";
+    observedScreenHash_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int KIND_FIELD_NUMBER = 1;
   private int kind_;
@@ -185,6 +186,71 @@ public  final class Origin extends
     checkByteStringIsUtf8(value);
     requestId_ = value.toStringUtf8();
 
+  }
+
+  public static final int OBSERVED_EVENT_SEQ_FIELD_NUMBER = 4;
+  private long observedEventSeq_;
+  /**
+   * <pre>
+   * Encrypted command preconditions, checked atomically on the owner.
+   * </pre>
+   *
+   * <code>uint64 observed_event_seq = 4 [json_name = "observedEventSeq"];</code>
+   * @return The observedEventSeq.
+   */
+  @java.lang.Override
+  public long getObservedEventSeq() {
+    return observedEventSeq_;
+  }
+  /**
+   * <pre>
+   * Encrypted command preconditions, checked atomically on the owner.
+   * </pre>
+   *
+   * <code>uint64 observed_event_seq = 4 [json_name = "observedEventSeq"];</code>
+   * @param value The observedEventSeq to set.
+   */
+  private void setObservedEventSeq(long value) {
+    
+    observedEventSeq_ = value;
+  }
+  /**
+   * <pre>
+   * Encrypted command preconditions, checked atomically on the owner.
+   * </pre>
+   *
+   * <code>uint64 observed_event_seq = 4 [json_name = "observedEventSeq"];</code>
+   */
+  private void clearObservedEventSeq() {
+
+    observedEventSeq_ = 0L;
+  }
+
+  public static final int OBSERVED_SCREEN_HASH_FIELD_NUMBER = 5;
+  private com.google.protobuf.ByteString observedScreenHash_;
+  /**
+   * <code>bytes observed_screen_hash = 5 [json_name = "observedScreenHash"];</code>
+   * @return The observedScreenHash.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getObservedScreenHash() {
+    return observedScreenHash_;
+  }
+  /**
+   * <code>bytes observed_screen_hash = 5 [json_name = "observedScreenHash"];</code>
+   * @param value The observedScreenHash to set.
+   */
+  private void setObservedScreenHash(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    observedScreenHash_ = value;
+  }
+  /**
+   * <code>bytes observed_screen_hash = 5 [json_name = "observedScreenHash"];</code>
+   */
+  private void clearObservedScreenHash() {
+
+    observedScreenHash_ = getDefaultInstance().getObservedScreenHash();
   }
 
   public static io.github.lewin671.remoteagent.proto.Origin parseFrom(
@@ -459,6 +525,74 @@ public  final class Origin extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Encrypted command preconditions, checked atomically on the owner.
+     * </pre>
+     *
+     * <code>uint64 observed_event_seq = 4 [json_name = "observedEventSeq"];</code>
+     * @return The observedEventSeq.
+     */
+    @java.lang.Override
+    public long getObservedEventSeq() {
+      return instance.getObservedEventSeq();
+    }
+    /**
+     * <pre>
+     * Encrypted command preconditions, checked atomically on the owner.
+     * </pre>
+     *
+     * <code>uint64 observed_event_seq = 4 [json_name = "observedEventSeq"];</code>
+     * @param value The observedEventSeq to set.
+     * @return This builder for chaining.
+     */
+    public Builder setObservedEventSeq(long value) {
+      copyOnWrite();
+      instance.setObservedEventSeq(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Encrypted command preconditions, checked atomically on the owner.
+     * </pre>
+     *
+     * <code>uint64 observed_event_seq = 4 [json_name = "observedEventSeq"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearObservedEventSeq() {
+      copyOnWrite();
+      instance.clearObservedEventSeq();
+      return this;
+    }
+
+    /**
+     * <code>bytes observed_screen_hash = 5 [json_name = "observedScreenHash"];</code>
+     * @return The observedScreenHash.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getObservedScreenHash() {
+      return instance.getObservedScreenHash();
+    }
+    /**
+     * <code>bytes observed_screen_hash = 5 [json_name = "observedScreenHash"];</code>
+     * @param value The observedScreenHash to set.
+     * @return This builder for chaining.
+     */
+    public Builder setObservedScreenHash(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setObservedScreenHash(value);
+      return this;
+    }
+    /**
+     * <code>bytes observed_screen_hash = 5 [json_name = "observedScreenHash"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearObservedScreenHash() {
+      copyOnWrite();
+      instance.clearObservedScreenHash();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Origin)
   }
   @java.lang.Override
@@ -478,10 +612,12 @@ public  final class Origin extends
             "kind_",
             "deviceId_",
             "requestId_",
+            "observedEventSeq_",
+            "observedScreenHash_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\f\u0002\u0208" +
-              "\u0003\u0208";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\f\u0002\u0208" +
+              "\u0003\u0208\u0004\u0003\u0005\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

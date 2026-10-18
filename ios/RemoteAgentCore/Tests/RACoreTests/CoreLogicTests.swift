@@ -10,7 +10,9 @@ import Testing
         var n = 0
         func make() -> PreparedCommand {
             n += 1
-            return PreparedCommand(machineId: "m", sessionId: "", requestId: "req-\(n)", deadlineMs: 1000, envelope: PBEnvelope())
+            return PreparedCommand(
+                machineId: "m", sessionId: "", requestId: "req-\(n)", deadlineMs: 1000,
+                envelope: PBEnvelope())
         }
     }
 
@@ -31,7 +33,8 @@ import Testing
         let a = Attempt()
         let first = try a.next(m.make)
         // What the daemon answers for a request it began and has no result for (errUnknownOutcome in internal/relay).
-        let stopped = CommandError("aborted", "the daemon stopped while running this command", fromDaemon: true)
+        let stopped = CommandError(
+            "aborted", "the daemon stopped while running this command", fromDaemon: true)
         #expect(uncertain(stopped))
         a.settle(stopped)
         #expect(a.frozen)
@@ -60,7 +63,10 @@ import Testing
         a.settle(CommandError(CommandError.unknownOutcome, "timeout"))
         #expect(try a.next(m.make) === first)
         // The retry comes back expired: still unknown, and never sealed again.
-        let e = a.settle(CommandError("deadline_exceeded", "the command expired before it reached the machine", fromDaemon: true))
+        let e = a.settle(
+            CommandError(
+                "deadline_exceeded", "the command expired before it reached the machine",
+                fromDaemon: true))
         #expect((e as? CommandError)?.code == CommandError.unknownOutcome)
         #expect(a.frozen && a.expired)
         for _ in 0..<2 {
@@ -93,7 +99,8 @@ import Testing
         a.settle(CommandError(CommandError.unknownOutcome, "timeout"))
         // A retry that fails to log in, or on the network, says nothing about the first try.
         let later: [Error] = [
-            UserError("login failed"), CommandError("network", "网络不通"), CommandError(CommandError.unavailable, "电脑不在线"),
+            UserError("login failed"), CommandError("network", "网络不通"),
+            CommandError(CommandError.unavailable, "电脑不在线"),
         ]
         for e in later {
             let shown = a.settle(e) as? CommandError
@@ -127,15 +134,22 @@ import Testing
     }
 
     @Test func aServersOwnAnswerKeepsItsText() {
-        #expect(errorText(ConnectError(code: .unauthenticated, message: "token expired")) == "登录失效：token expired")
-        #expect(errorText(ConnectError(code: .unavailable, message: "machine is offline")) == "连不上服务器：machine is offline")
+        #expect(
+            errorText(ConnectError(code: .unauthenticated, message: "token expired"))
+                == "登录失效：token expired")
+        #expect(
+            errorText(ConnectError(code: .unavailable, message: "machine is offline"))
+                == "连不上服务器：machine is offline")
         #expect(errorText(ConnectError(code: .notFound, message: nil)) == "not_found")
     }
 
     /// What Android says for java.net's failures, said for URLSession's.
     @Test func theSystemsFailuresAreSaidInTheSameWords() {
         // Without a network URLSession does not look the name up: it is the same case.
-        for code in [URLError.Code.cannotFindHost, .dnsLookupFailed, .notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff] {
+        for code in [
+            URLError.Code.cannotFindHost, .dnsLookupFailed, .notConnectedToInternet,
+            .dataNotAllowed, .internationalRoamingOff,
+        ] {
             #expect(errorText(URLError(code)) == "找不到服务器，检查一下网络")
             #expect(unresolvedHost(URLError(code)))
         }
@@ -159,7 +173,8 @@ import Testing
         #expect(errorText(UserError("连接超时，正在重连")) == "连接超时，正在重连")
         #expect(detailText(UserError("与 server 的连接断开")) == "与 server 的连接断开")
         #expect(errorText(OpenError("envelope does not open")) == "envelope does not open")
-        #expect(detailText(OpenError("envelope does not open")) == "OpenError: envelope does not open")
+        #expect(
+            detailText(OpenError("envelope does not open")) == "OpenError: envelope does not open")
         #expect(errorText(PairError("已取消")) == "已取消")
         #expect(errorText(PrefsConflictError()) == "项目偏好一直在被其他客户端修改，没能保存")
         // One without words is called by its type, never by NSError's sentence about it.
@@ -291,11 +306,15 @@ import Testing
         ] {
             #expect(PairLink.parse("https://app.example/#/pair?\(query)") == nil, "\(query)")
         }
-        #expect(PairLink.parse("https://app.example/?code=12345678&s=https%3A%2F%2Frelay.example") == nil)
+        #expect(
+            PairLink.parse("https://app.example/?code=12345678&s=https%3A%2F%2Frelay.example")
+                == nil)
     }
 
     @Test func validQrRoundTrips() throws {
-        let link = PairLink(code: "12345678", server: "https://relay.example", commit: Data((0..<32).map { UInt8($0) }))
+        let link = PairLink(
+            code: "12345678", server: "https://relay.example",
+            commit: Data((0..<32).map { UInt8($0) }))
         let url = link.url(web: "https://app.example/")
         #expect(url.hasPrefix("https://app.example/#/pair?code=12345678&c="))
         #expect(url.hasSuffix("&s=https%3A%2F%2Frelay.example"))
@@ -310,9 +329,10 @@ import Testing
 /// The fixed state that layout tests and screenshots render, without a server.
 @Suite struct ShowForTestTests {
     @Test func showsStateAndHistoryWithoutFetching() async throws {
-        let remote = try Remote(
+        let remote = try fixtureRemote(
             account: Account(
-                server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "2222222222222222"),
+                server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32),
+                deviceId: "2222222222222222"),
             http: HTTP())
         defer { remote.close() }
         let m = MachineView(id: "m", online: true, lastSeenMs: 1)
@@ -324,7 +344,9 @@ import Testing
         state.loaded = true
         var list = PBListModelsResponse()
         list.defaultModel = "astra"
-        await remote.showForTest(state: state, events: ["s": [e]], modelLists: [(machineId: "m", agent: .codex, models: list)])
+        await remote.showForTest(
+            state: state, events: ["s": [e]],
+            modelLists: [(machineId: "m", agent: .codex, models: list)])
         #expect(remote.current.machines["m"] == m)
         let feed = remote.events("s")
         await sleepMs(200)

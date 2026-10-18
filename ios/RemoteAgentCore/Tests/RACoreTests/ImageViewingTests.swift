@@ -15,7 +15,9 @@ import Testing
         return r
     }
 
-    private func image(_ seq: UInt64) -> SessionImage { SessionImage(ref: ref(), seq: seq, kind: .userMessage) }
+    private func image(_ seq: UInt64) -> SessionImage {
+        SessionImage(ref: ref(), seq: seq, kind: .userMessage)
+    }
 
     @Test func eachStateSaysWhatIsThereToSee() {
         #expect(viewerNote(.loading, sync: .synced) == nil)
@@ -30,7 +32,9 @@ import Testing
 
     @Test func onlyAFetchThatMayWorkNextTimeIsRetried() {
         #expect(viewerCanRetry(.failed(why: "x")) && viewerCanRetry(.offline))
-        for b in [BigImage.loading, .ready, .notSynced, .expired, .corrupt(why: "x")] { #expect(!viewerCanRetry(b)) }
+        for b in [BigImage.loading, .ready, .notSynced, .expired, .corrupt(why: "x")] {
+            #expect(!viewerCanRetry(b))
+        }
     }
 
     @Test func aDisplayCopyIsOnlyAskedForWhenTheEventSaysThereIsOne() {
@@ -47,9 +51,13 @@ import Testing
         }
         let loaded = viewerOutcome(.success(.loaded(payload)), online: true)
         #expect(loaded.state == .ready && loaded.payload == payload)
+        let old = viewerOutcome(.success(.legacy(payload)), online: true)
+        #expect(old.state == .unverifiedLegacy && old.payload == payload)
+        #expect(viewerNote(old.state, sync: .synced) == "旧图片的内容和来源未验证，仅供阅读")
         #expect(viewerOutcome(.success(.expired), online: true).state == .expired)
         #expect(viewerOutcome(.success(.missing), online: true).state == .notSynced)
-        #expect(viewerOutcome(.success(.corrupt(why: "坏了")), online: true).state == .corrupt(why: "坏了"))
+        #expect(
+            viewerOutcome(.success(.corrupt(why: "坏了")), online: true).state == .corrupt(why: "坏了"))
         // Without a connection a failure is no failure of the image's: it loads once there is one.
         #expect(viewerOutcome(.failure(UserError("断了")), online: false).state == .offline)
         #expect(viewerOutcome(.failure(UserError("断了")), online: true).state == .failed(why: "断了"))
@@ -78,16 +86,34 @@ import Testing
 
     @Test func theSizeIsTheOneOnTheComputer() {
         #expect(viewerSize(ref()) == nil)
-        #expect(viewerSize(ref { $0.width = 1024; $0.height = 768 }) == "1024 × 768")
-        #expect(viewerSize(ref { $0.width = 1024; $0.height = 768; $0.originalWidth = 2880; $0.originalHeight = 1800 }) == "2880 × 1800")
+        #expect(
+            viewerSize(
+                ref {
+                    $0.width = 1024
+                    $0.height = 768
+                }) == "1024 × 768")
+        #expect(
+            viewerSize(
+                ref {
+                    $0.width = 1024
+                    $0.height = 768
+                    $0.originalWidth = 2880
+                    $0.originalHeight = 1800
+                }) == "2880 × 1800")
     }
 
     @Test func aPictureLeavesUnderItsOwnNameAndFormat() {
-        #expect(imageExtension(.png) == "png" && imageExtension(.webp) == "webp" && imageExtension(.gif) == "gif")
+        #expect(
+            imageExtension(.png) == "png" && imageExtension(.webp) == "webp"
+                && imageExtension(.gif) == "gif")
         #expect(imageExtension(.jpeg) == "jpg" && imageExtension(.unspecified) == "jpg")
         #expect(imageMime(.jpeg) == "image/jpeg" && imageMime(.unspecified) == "image/jpeg")
-        #expect(imageMime(.png) == "image/png" && imageMime(.webp) == "image/webp" && imageMime(.gif) == "image/gif")
-        #expect(savedImageName(path: "/Users/me/shots/empty-after.png", format: .jpeg, nowMs: 1700) == "empty-after-1700.jpg")
+        #expect(
+            imageMime(.png) == "image/png" && imageMime(.webp) == "image/webp"
+                && imageMime(.gif) == "image/gif")
+        #expect(
+            savedImageName(path: "/Users/me/shots/empty-after.png", format: .jpeg, nowMs: 1700)
+                == "empty-after-1700.jpg")
         #expect(savedImageName(path: "shots/a.b.png", format: .png, nowMs: 5) == "a.b-5.png")
         // Without a path the name is the word the chat uses for it; a name that is only an extension has none.
         #expect(savedImageName(path: "", format: .png, nowMs: 5) == "图片-5.png")

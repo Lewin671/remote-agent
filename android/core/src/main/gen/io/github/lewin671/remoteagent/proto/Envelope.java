@@ -24,6 +24,9 @@ public  final class Envelope extends
     nonce_ = com.google.protobuf.ByteString.EMPTY;
     ciphertext_ = com.google.protobuf.ByteString.EMPTY;
     signature_ = com.google.protobuf.ByteString.EMPTY;
+    securityHeader_ = com.google.protobuf.ByteString.EMPTY;
+    authorization_ = com.google.protobuf.ByteString.EMPTY;
+    authorizationSignature_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int HEADER_FIELD_NUMBER = 1;
   private com.google.protobuf.ByteString header_;
@@ -212,6 +215,114 @@ public  final class Envelope extends
   private void clearSignature() {
 
     signature_ = getDefaultInstance().getSignature();
+  }
+
+  public static final int SECURITY_HEADER_FIELD_NUMBER = 5;
+  private com.google.protobuf.ByteString securityHeader_;
+  /**
+   * <pre>
+   * Version-2 canonical deviceauth Header; the protobuf Header above is only
+   * a routing projection. Receivers compare every projection field to this.
+   * </pre>
+   *
+   * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
+   * @return The securityHeader.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSecurityHeader() {
+    return securityHeader_;
+  }
+  /**
+   * <pre>
+   * Version-2 canonical deviceauth Header; the protobuf Header above is only
+   * a routing projection. Receivers compare every projection field to this.
+   * </pre>
+   *
+   * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
+   * @param value The securityHeader to set.
+   */
+  private void setSecurityHeader(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    securityHeader_ = value;
+  }
+  /**
+   * <pre>
+   * Version-2 canonical deviceauth Header; the protobuf Header above is only
+   * a routing projection. Receivers compare every projection field to this.
+   * </pre>
+   *
+   * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
+   */
+  private void clearSecurityHeader() {
+
+    securityHeader_ = getDefaultInstance().getSecurityHeader();
+  }
+
+  public static final int AUTHORIZATION_FIELD_NUMBER = 6;
+  private com.google.protobuf.ByteString authorization_;
+  /**
+   * <pre>
+   * Exact-ciphertext authority authorization and its Ed25519 signature.
+   * </pre>
+   *
+   * <code>bytes authorization = 6 [json_name = "authorization"];</code>
+   * @return The authorization.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getAuthorization() {
+    return authorization_;
+  }
+  /**
+   * <pre>
+   * Exact-ciphertext authority authorization and its Ed25519 signature.
+   * </pre>
+   *
+   * <code>bytes authorization = 6 [json_name = "authorization"];</code>
+   * @param value The authorization to set.
+   */
+  private void setAuthorization(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    authorization_ = value;
+  }
+  /**
+   * <pre>
+   * Exact-ciphertext authority authorization and its Ed25519 signature.
+   * </pre>
+   *
+   * <code>bytes authorization = 6 [json_name = "authorization"];</code>
+   */
+  private void clearAuthorization() {
+
+    authorization_ = getDefaultInstance().getAuthorization();
+  }
+
+  public static final int AUTHORIZATION_SIGNATURE_FIELD_NUMBER = 7;
+  private com.google.protobuf.ByteString authorizationSignature_;
+  /**
+   * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
+   * @return The authorizationSignature.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getAuthorizationSignature() {
+    return authorizationSignature_;
+  }
+  /**
+   * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
+   * @param value The authorizationSignature to set.
+   */
+  private void setAuthorizationSignature(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    authorizationSignature_ = value;
+  }
+  /**
+   * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
+   */
+  private void clearAuthorizationSignature() {
+
+    authorizationSignature_ = getDefaultInstance().getAuthorizationSignature();
   }
 
   public static io.github.lewin671.remoteagent.proto.Envelope parseFrom(
@@ -509,6 +620,117 @@ public  final class Envelope extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Version-2 canonical deviceauth Header; the protobuf Header above is only
+     * a routing projection. Receivers compare every projection field to this.
+     * </pre>
+     *
+     * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
+     * @return The securityHeader.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSecurityHeader() {
+      return instance.getSecurityHeader();
+    }
+    /**
+     * <pre>
+     * Version-2 canonical deviceauth Header; the protobuf Header above is only
+     * a routing projection. Receivers compare every projection field to this.
+     * </pre>
+     *
+     * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
+     * @param value The securityHeader to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSecurityHeader(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSecurityHeader(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Version-2 canonical deviceauth Header; the protobuf Header above is only
+     * a routing projection. Receivers compare every projection field to this.
+     * </pre>
+     *
+     * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSecurityHeader() {
+      copyOnWrite();
+      instance.clearSecurityHeader();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Exact-ciphertext authority authorization and its Ed25519 signature.
+     * </pre>
+     *
+     * <code>bytes authorization = 6 [json_name = "authorization"];</code>
+     * @return The authorization.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getAuthorization() {
+      return instance.getAuthorization();
+    }
+    /**
+     * <pre>
+     * Exact-ciphertext authority authorization and its Ed25519 signature.
+     * </pre>
+     *
+     * <code>bytes authorization = 6 [json_name = "authorization"];</code>
+     * @param value The authorization to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAuthorization(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setAuthorization(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Exact-ciphertext authority authorization and its Ed25519 signature.
+     * </pre>
+     *
+     * <code>bytes authorization = 6 [json_name = "authorization"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAuthorization() {
+      copyOnWrite();
+      instance.clearAuthorization();
+      return this;
+    }
+
+    /**
+     * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
+     * @return The authorizationSignature.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getAuthorizationSignature() {
+      return instance.getAuthorizationSignature();
+    }
+    /**
+     * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
+     * @param value The authorizationSignature to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAuthorizationSignature(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setAuthorizationSignature(value);
+      return this;
+    }
+    /**
+     * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAuthorizationSignature() {
+      copyOnWrite();
+      instance.clearAuthorizationSignature();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Envelope)
   }
   @java.lang.Override
@@ -529,10 +751,13 @@ public  final class Envelope extends
             "nonce_",
             "ciphertext_",
             "signature_",
+            "securityHeader_",
+            "authorization_",
+            "authorizationSignature_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
-              "\n\u0004\n";
+              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
+              "\n\u0004\n\u0005\n\u0006\n\u0007\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

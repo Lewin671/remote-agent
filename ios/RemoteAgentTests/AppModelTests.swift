@@ -62,13 +62,15 @@ final class FakeNetwork: NetworkWatching, @unchecked Sendable {
 @MainActor
 final class Harness {
     let vault = Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)")
-    let root = FileManager.default.temporaryDirectory.appending(path: "ra-app-\(UUID().uuidString)", directoryHint: .isDirectory)
+    let root = FileManager.default.temporaryDirectory.appending(
+        path: "ra-app-\(UUID().uuidString)", directoryHint: .isDirectory)
     let suite = "ra-app-\(UUID().uuidString)"
     let defaults: UserDefaults
     let settings: SettingsStore
     let pending: PendingStore
     let account = Account(
-        server: "http://127.0.0.1:1", root: Data((0..<32).map { UInt8($0) }), deviceSeed: Data((0..<32).map { UInt8(90 - $0) }),
+        server: "http://127.0.0.1:1", root: Data((0..<32).map { UInt8($0) }),
+        deviceSeed: Data((0..<32).map { UInt8(90 - $0) }),
         deviceId: "00112233445566778899aabbccddeeff")
     private(set) var engines: [FakeEngine] = []
     var cleared = 0
@@ -76,10 +78,15 @@ final class Harness {
     var erase: (@Sendable (AccountStorage) throws -> Void)?
     lazy var model: AppModel = {
         var parts = AppModel.Parts()
-        parts.storage = AccountStorage(vault: vault, cacheRoot: root.appending(path: "cache"), pending: pending)
+        parts.storage = AccountStorage(
+            vault: vault, cacheRoot: root.appending(path: "cache"), pending: pending)
         parts.network = FakeNetwork()
         parts.defaults = defaults
-        parts.makeEngine = { [unowned self] account, _ in
+        parts.saveJoined = { vault, account in
+            try vault.save(account.stored, notifyKey: Data(repeating: 0, count: 32))
+        }
+        parts.securityReady = { _, _ in true }  // This lifecycle suite uses a mock engine; protocol setup has separate tests.
+        parts.makeEngine = { [unowned self] account, _, _ in
             let engine = try FakeEngine(account: account)
             self.engines.append(engine)
             return EngineParts(engine: engine, remote: engine.remote)
@@ -94,7 +101,8 @@ final class Harness {
     init() {
         defaults = UserDefaults(suiteName: suite)!
         settings = SettingsStore(defaults: defaults)
-        pending = PendingStore(directory: root.appending(path: "pending"), vault: vault, defaults: defaults)
+        pending = PendingStore(
+            directory: root.appending(path: "pending"), vault: vault, defaults: defaults)
     }
 
     var engine: FakeEngine { engines.last! }
@@ -139,7 +147,9 @@ final class Harness {
         #expect(h.engine.calls == ["network true", "start"])
         // The cache is the account's own directory, named by neither the server nor the device.
         let key = CipherStore.accountKey(server: h.account.server, deviceId: h.account.deviceId)
-        #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "cache/\(key)/cache.sqlite").path))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: h.root.appending(path: "cache/\(key)/cache.sqlite").path))
     }
 
     @Test func nothingIsReadInTheBackground() async throws {
@@ -243,7 +253,8 @@ final class Harness {
         defer { h.cleanUp() }
         try await h.ready()
         var s = RemoteState()
-        s.devices[h.account.deviceId] = DeviceView(id: h.account.deviceId, kind: .client, createdMs: 1)
+        s.devices[h.account.deviceId] = DeviceView(
+            id: h.account.deviceId, kind: .client, createdMs: 1)
         await h.engine.remote.showForTest(state: s)
         await eventually("state") { h.model.state == s }
         // Not while offline.
@@ -271,7 +282,7 @@ final class Harness {
         try await h.model.joined(h.account)
         #expect(h.model.stage == .ready)
         #expect(try h.vault.load() == h.account.stored)
-        #expect(try h.vault.notifyKey() == Keys.derive(root: h.account.root).notify)
+        #expect(try h.vault.notifyKey() == Data(repeating: 0, count: 32))
         #expect(h.engine.calls == ["network true", "start"])
     }
 
@@ -323,10 +334,13 @@ final class Harness {
         try await h.ready()
         weak var oldContext = h.model.context
         func failRemoval(_ context: AccountContext) async {
-            context.prefsChanges.run(.hide(path: "/work/app"), onDone: { _ = context.account }) { _ in
+            context.prefsChanges.run(.hide(path: "/work/app"), onDone: { _ = context.account }) {
+                _ in
                 throw URLError(.timedOut)
             }
-            await eventually("preference write failed") { context.prefsChanges.states.values.contains { !$0.saving } }
+            await eventually("preference write failed") {
+                context.prefsChanges.states.values.contains { !$0.saving }
+            }
         }
         try await failRemoval(#require(h.model.context))
         #expect(oldContext != nil)
@@ -342,7 +356,8 @@ final class Harness {
         h.erase = { storage in
             started.withLock { $0 = true }
             go.wait()
-            try LocalAccountData.erase(vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
+            try LocalAccountData.erase(
+                vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
         }
         try await h.ready()
         let leaving = Task { await h.model.logout() }
@@ -368,11 +383,15 @@ final class Harness {
         let tries = OSAllocatedUnfairLock(initialState: 0)
         h.erase = { storage in
             // The first try gets as far as the keys.
-            if tries.withLock({ $0 += 1; return $0 }) == 1 {
+            if tries.withLock({
+                $0 += 1
+                return $0
+            }) == 1 {
                 try storage.vault.clear()
                 throw Stuck()
             }
-            try LocalAccountData.erase(vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
+            try LocalAccountData.erase(
+                vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
         }
         try await h.ready()
         try h.pending.put(folder: "s", name: "a", data: Data([1, 2, 3]))
@@ -397,7 +416,8 @@ final class Harness {
         try await h.ready()
         h.engine.describeFailure = URLError(.networkConnectionLost)
         var s = RemoteState()
-        s.devices[h.account.deviceId] = DeviceView(id: h.account.deviceId, kind: .client, createdMs: 1)
+        s.devices[h.account.deviceId] = DeviceView(
+            id: h.account.deviceId, kind: .client, createdMs: 1)
         s.conn = .online
         s.link = .online
         await h.engine.remote.showForTest(state: s)
@@ -415,6 +435,8 @@ final class Harness {
         await eventually("offline") { h.model.state == off }
         h.engine.describeFailure = nil
         await h.engine.remote.showForTest(state: s)
-        await eventually("tried again") { h.engine.calls.filter { $0.hasPrefix("describe") }.count == 2 }
+        await eventually("tried again") {
+            h.engine.calls.filter { $0.hasPrefix("describe") }.count == 2
+        }
     }
 }

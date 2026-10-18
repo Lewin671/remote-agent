@@ -50,11 +50,13 @@ extension Remote {
             }
         }
         if let b = buffers[sid] { used(b) }
+        startLivePolling(sid)
         Task { await self.loadEvents(sid) }
     }
 
     func followersChanged(_ sid: String) {
         if followers(sid) > 0 {
+            startLivePolling(sid)
             Task { await self.loadEvents(sid) }
         } else {
             if let b = buffers[sid] { used(b) }
@@ -72,12 +74,15 @@ extension Remote {
     }
 
     func trimHistory() {
-        let idle = buffers.filter { isIdle($0.key) }.sorted { $0.value.useOrder < $1.value.useOrder }
+        let idle = buffers.filter { isIdle($0.key) }.sorted {
+            $0.value.useOrder < $1.value.useOrder
+        }
         var bytes = idle.reduce(Int64(0)) { $0 + $1.value.bytes }
         var count = idle.count
         for (sid, b) in idle {
             if sessions[sid] == nil || count > historyIdleCount || bytes > historyIdleBytes
-                || clock() - b.usedAt >= historyIdleMs {
+                || clock() - b.usedAt >= historyIdleMs
+            {
                 buffers[sid] = nil
                 // The feed stays the same one for consumers about to follow
                 // it; following it reloads a reclaimed history.
@@ -106,6 +111,9 @@ extension Remote {
                 if buffers[sid] !== b { return }
                 b.events = PagedList()
                 b.pending = [:]
+                b.verifiedSeqs.removeAll()
+                b.verifiedEvents = PagedList()
+                b.unverifiedLegacy = false
                 b.bytes = 0
                 b.error = nil
                 publishEvents(sid, b)
@@ -140,7 +148,9 @@ extension Remote {
                     ask.sessionID = sid
                     ask.afterSeq = UInt64(before)
                     ask.limit = 500
-                    let res = try await api.client.getEvents(request: ask, headers: Api.headers(token: token)).value()
+                    let res = try await api.client.getEvents(
+                        request: ask, headers: Api.headers(token: token)
+                    ).value()
                     if !running || gen != generation || buffers[sid] !== b { return }
                     await ingest(sid, res.events, fillGaps: false, save: true)
                     // An event that does not open stops progress; asking for the
@@ -159,15 +169,32 @@ extension Remote {
     }
 
     func ingest(_ sid: String, _ stored: [PBStoredEvent], fillGaps: Bool, save: Bool) async {
-        guard let b = buffers[sid], let s = sessions[sid], let key = sessionKeys[sid] else { return }
+        guard let b = buffers[sid], let s = sessions[sid], let key = sessionKeys[sid] else {
+            return
+        }
         var opened: [PBStoredEvent] = []
         for se in stored {
             if se.seq <= UInt64(b.events.count) || b.pending[se.seq] != nil { continue }
             do {
-                let (h, plain) = try Envelopes.open(key: key, envelope: se.envelope)
-                try Envelopes.expect(h, Place(.event, machineId: s.machineId, sessionId: sid, seq: se.seq))
-                guard let ev = try? PBEvent(serializedBytes: plain) else { throw OpenError("malformed content") }
+                let route = try PBHeader(serializedBytes: se.envelope.header)
+                let h: PBHeader
+                let plain: Data
+                if route.version == 1 {
+                    b.unverifiedLegacy = true
+                    (h, plain) = try Envelopes.open(key: key, envelope: se.envelope)
+                } else {
+                    let opened = try await securitySession().openHistory(
+                        se.envelope, sessionSeed: key)
+                    h = projection(opened.0)
+                    plain = opened.1
+                }
+                try Envelopes.expect(
+                    h, Place(.event, machineId: s.machineId, sessionId: sid, seq: se.seq))
+                guard let ev = try? PBEvent(serializedBytes: plain) else {
+                    throw OpenError("malformed content")
+                }
                 if ev.seq != se.seq || ev.sessionID != sid { throw OpenError("事件的位置被改动") }
+                if route.version == 2 { b.verifiedSeqs.insert(se.seq) }
                 b.pending[se.seq] = ev
                 opened.append(se)
                 // What is held is the event as opened; its ciphertext may be packed.
@@ -183,6 +210,8 @@ extension Remote {
             added.append(ev)
         }
         b.events = b.events.appending(added)
+        b.verifiedEvents = b.verifiedEvents.appending(
+            added.filter { b.verifiedSeqs.contains($0.seq) })
         if save && !opened.isEmpty { await cache?.putEvents(sessionId: sid, events: opened) }
         if buffers[sid] !== b { return }
         // The cache write awaited: newer metadata may have arrived, or the
@@ -197,8 +226,14 @@ extension Remote {
         trimHistory()
     }
 
-    private func publishEvents(_ sid: String, _ b: Buffer) {
+    func publishEvents(_ sid: String, _ b: Buffer) {
         if buffers[sid] !== b { return }
-        eventFeed(sid).set(SessionEvents(events: b.events, loaded: b.loaded, error: b.error, fetchError: b.fetchError))
+        var snapshot = SessionEvents(
+            events: b.events, loaded: b.loaded, error: b.error, fetchError: b.fetchError)
+        snapshot.live = liveSnapshots[sid]
+        snapshot.liveError = liveErrors[sid]
+        snapshot.unverifiedLegacy = b.unverifiedLegacy
+        snapshot.verifiedEvents = b.verifiedEvents
+        eventFeed(sid).set(snapshot)
     }
 }

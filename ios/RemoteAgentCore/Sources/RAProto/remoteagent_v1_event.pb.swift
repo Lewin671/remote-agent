@@ -1017,6 +1017,11 @@ public struct PBOrigin: Sendable {
   /// ORIGIN_KIND_UNVERIFIED_CLIENT.
   public var requestID: String = String()
 
+  /// Encrypted command preconditions, checked atomically on the owner.
+  public var observedEventSeq: UInt64 = 0
+
+  public var observedScreenHash: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2206,7 +2211,7 @@ extension PBEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBa
 
 extension PBOrigin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Origin"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}device_id\0\u{3}request_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}device_id\0\u{3}request_id\0\u{3}observed_event_seq\0\u{3}observed_screen_hash\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2217,6 +2222,8 @@ extension PBOrigin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationB
       case 1: try { try decoder.decodeSingularEnumField(value: &self.kind) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
+      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.observedEventSeq) }()
+      case 5: try { try decoder.decodeSingularBytesField(value: &self.observedScreenHash) }()
       default: break
       }
     }
@@ -2232,6 +2239,12 @@ extension PBOrigin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationB
     if !self.requestID.isEmpty {
       try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 3)
     }
+    if self.observedEventSeq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.observedEventSeq, fieldNumber: 4)
+    }
+    if !self.observedScreenHash.isEmpty {
+      try visitor.visitSingularBytesField(value: self.observedScreenHash, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2239,6 +2252,8 @@ extension PBOrigin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationB
     if lhs.kind != rhs.kind {return false}
     if lhs.deviceID != rhs.deviceID {return false}
     if lhs.requestID != rhs.requestID {return false}
+    if lhs.observedEventSeq != rhs.observedEventSeq {return false}
+    if lhs.observedScreenHash != rhs.observedScreenHash {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

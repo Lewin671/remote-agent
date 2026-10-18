@@ -1282,9 +1282,12 @@ type Origin struct {
 	DeviceId string                 `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
 	// The command's request ID, for ORIGIN_KIND_CLIENT and
 	// ORIGIN_KIND_UNVERIFIED_CLIENT.
-	RequestId     string `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	// Encrypted command preconditions, checked atomically on the owner.
+	ObservedEventSeq   uint64 `protobuf:"varint,4,opt,name=observed_event_seq,json=observedEventSeq,proto3" json:"observed_event_seq,omitempty"`
+	ObservedScreenHash []byte `protobuf:"bytes,5,opt,name=observed_screen_hash,json=observedScreenHash,proto3" json:"observed_screen_hash,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Origin) Reset() {
@@ -1336,6 +1339,20 @@ func (x *Origin) GetRequestId() string {
 		return x.RequestId
 	}
 	return ""
+}
+
+func (x *Origin) GetObservedEventSeq() uint64 {
+	if x != nil {
+		return x.ObservedEventSeq
+	}
+	return 0
+}
+
+func (x *Origin) GetObservedScreenHash() []byte {
+	if x != nil {
+		return x.ObservedScreenHash
+	}
+	return nil
 }
 
 // ImageRef is one appearance of an image in a session. The same picture
@@ -3301,12 +3318,14 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x0fimage_generated\x18\x1b \x01(\v2\x1e.remoteagent.v1.ImageGeneratedH\x00R\x0eimageGenerated\x12C\n" +
 	"\rplan_answered\x18\x1c \x01(\v2\x1c.remoteagent.v1.PlanAnsweredH\x00R\fplanAnswered\x12F\n" +
 	"\x0esession_forked\x18\x1d \x01(\v2\x1d.remoteagent.v1.SessionForkedH\x00R\rsessionForkedB\x06\n" +
-	"\x04kind\"t\n" +
+	"\x04kind\"\xd4\x01\n" +
 	"\x06Origin\x12.\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1a.remoteagent.v1.OriginKindR\x04kind\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12\x1d\n" +
 	"\n" +
-	"request_id\x18\x03 \x01(\tR\trequestId\"\x96\x05\n" +
+	"request_id\x18\x03 \x01(\tR\trequestId\x12,\n" +
+	"\x12observed_event_seq\x18\x04 \x01(\x04R\x10observedEventSeq\x120\n" +
+	"\x14observed_screen_hash\x18\x05 \x01(\fR\x12observedScreenHash\"\x96\x05\n" +
 	"\bImageRef\x12\x19\n" +
 	"\bimage_id\x18\x01 \x01(\tR\aimageId\x123\n" +
 	"\x06source\x18\x02 \x01(\x0e2\x1b.remoteagent.v1.ImageSourceR\x06source\x12-\n" +

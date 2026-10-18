@@ -29,12 +29,16 @@
 | `remote-agent events <id> -f` | 持续查看会话事件 |
 | `remote-agent doctor` | 检查已安装的 CLI 是否符合 remote-agent 的预期；升级 Codex 或 Claude Code 后运行一次 |
 | `remote-agent account pair` | 给账户添加一台设备 |
+| `remote-agent account security-init` | 在选定的已有电脑上建立固定管理端 |
+| `remote-agent account security-enroll --server URL --code CODE` | 保留旧身份，为其他电脑建立安全绑定 |
 
 全部命令见 `remote-agent --help`。
 
 ## 安全模型
 
-中继被当作不可信的一方。即使服务器被攻破，泄露的也只是元数据，而不是内容。
+中继不可信。设备在双方本机核对配对图案后固定管理 daemon。删除会轮换内容密钥，所有保留执行电脑在后台安装隔离后才完成；离线电脑使其保持待完成。完成后旧 root、会话密钥和已移除设备的私钥不能控制设备或解密新内容。
+
+保留端点的操作系统、客户端代码、随机数、私钥和本地安全状态必须可信且不能回滚。已下载内容不能擦除。管理电脑不能普通移除，本版没有管理权转交或仅凭 root 恢复的入口；管理端离线时暂停新远程授权，本地 CLI 继续可用。旧历史与图片明确标记未验证，只供阅读。完整前提见[安全边界](scope.md#设备加入与移除)，升级见[协议 9 指南](self-hosting.zh-CN.md#升级设备安全域协议-9)。
 
 | 数据 | 中继能否看到 |
 |---|---|

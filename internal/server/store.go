@@ -42,7 +42,7 @@ func (s *store) tenant(account string) *tstore {
 
 // schemaVersion is PRAGMA user_version of the current layout. The layout
 // of one account per relay, before accounts had IDs, had none.
-const schemaVersion = 4
+const schemaVersion = 5
 
 const schema = `
 CREATE TABLE IF NOT EXISTS accounts (
@@ -55,7 +55,8 @@ CREATE TABLE IF NOT EXISTS accounts (
 	-- Bytes of stored event envelopes, kept with every insert for the quota.
 	event_bytes INTEGER NOT NULL DEFAULT 0,
 	-- Registrations signed before this are refused for unknown devices.
-	registration_floor_ms INTEGER NOT NULL DEFAULT 0
+	registration_floor_ms INTEGER NOT NULL DEFAULT 0,
+ security_genesis BLOB
 );
 -- Device IDs are derived from device keys and unique across accounts: a
 -- device belongs to one account.

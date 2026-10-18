@@ -19,6 +19,9 @@ public  final class GetPairingResponse extends
     joinerPublic_ = com.google.protobuf.ByteString.EMPTY;
     initiatorPublic_ = com.google.protobuf.ByteString.EMPTY;
     devicePublicKey_ = com.google.protobuf.ByteString.EMPTY;
+    deviceHpkePublicKey_ = com.google.protobuf.ByteString.EMPTY;
+    securityContext_ = com.google.protobuf.ByteString.EMPTY;
+    candidateSignature_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int STATE_FIELD_NUMBER = 1;
@@ -279,6 +282,87 @@ public  final class GetPairingResponse extends
   private void clearDevicePublicKey() {
 
     devicePublicKey_ = getDefaultInstance().getDevicePublicKey();
+  }
+
+  public static final int DEVICE_HPKE_PUBLIC_KEY_FIELD_NUMBER = 8;
+  private com.google.protobuf.ByteString deviceHpkePublicKey_;
+  /**
+   * <code>bytes device_hpke_public_key = 8 [json_name = "deviceHpkePublicKey"];</code>
+   * @return The deviceHpkePublicKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getDeviceHpkePublicKey() {
+    return deviceHpkePublicKey_;
+  }
+  /**
+   * <code>bytes device_hpke_public_key = 8 [json_name = "deviceHpkePublicKey"];</code>
+   * @param value The deviceHpkePublicKey to set.
+   */
+  private void setDeviceHpkePublicKey(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    deviceHpkePublicKey_ = value;
+  }
+  /**
+   * <code>bytes device_hpke_public_key = 8 [json_name = "deviceHpkePublicKey"];</code>
+   */
+  private void clearDeviceHpkePublicKey() {
+
+    deviceHpkePublicKey_ = getDefaultInstance().getDeviceHpkePublicKey();
+  }
+
+  public static final int SECURITY_CONTEXT_FIELD_NUMBER = 9;
+  private com.google.protobuf.ByteString securityContext_;
+  /**
+   * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
+   * @return The securityContext.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSecurityContext() {
+    return securityContext_;
+  }
+  /**
+   * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
+   * @param value The securityContext to set.
+   */
+  private void setSecurityContext(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    securityContext_ = value;
+  }
+  /**
+   * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
+   */
+  private void clearSecurityContext() {
+
+    securityContext_ = getDefaultInstance().getSecurityContext();
+  }
+
+  public static final int CANDIDATE_SIGNATURE_FIELD_NUMBER = 10;
+  private com.google.protobuf.ByteString candidateSignature_;
+  /**
+   * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
+   * @return The candidateSignature.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getCandidateSignature() {
+    return candidateSignature_;
+  }
+  /**
+   * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
+   * @param value The candidateSignature to set.
+   */
+  private void setCandidateSignature(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    candidateSignature_ = value;
+  }
+  /**
+   * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
+   */
+  private void clearCandidateSignature() {
+
+    candidateSignature_ = getDefaultInstance().getCandidateSignature();
   }
 
   public static io.github.lewin671.remoteagent.proto.GetPairingResponse parseFrom(
@@ -653,6 +737,90 @@ public  final class GetPairingResponse extends
       return this;
     }
 
+    /**
+     * <code>bytes device_hpke_public_key = 8 [json_name = "deviceHpkePublicKey"];</code>
+     * @return The deviceHpkePublicKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getDeviceHpkePublicKey() {
+      return instance.getDeviceHpkePublicKey();
+    }
+    /**
+     * <code>bytes device_hpke_public_key = 8 [json_name = "deviceHpkePublicKey"];</code>
+     * @param value The deviceHpkePublicKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDeviceHpkePublicKey(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDeviceHpkePublicKey(value);
+      return this;
+    }
+    /**
+     * <code>bytes device_hpke_public_key = 8 [json_name = "deviceHpkePublicKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDeviceHpkePublicKey() {
+      copyOnWrite();
+      instance.clearDeviceHpkePublicKey();
+      return this;
+    }
+
+    /**
+     * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
+     * @return The securityContext.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSecurityContext() {
+      return instance.getSecurityContext();
+    }
+    /**
+     * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
+     * @param value The securityContext to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSecurityContext(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSecurityContext(value);
+      return this;
+    }
+    /**
+     * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSecurityContext() {
+      copyOnWrite();
+      instance.clearSecurityContext();
+      return this;
+    }
+
+    /**
+     * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
+     * @return The candidateSignature.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getCandidateSignature() {
+      return instance.getCandidateSignature();
+    }
+    /**
+     * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
+     * @param value The candidateSignature to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCandidateSignature(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setCandidateSignature(value);
+      return this;
+    }
+    /**
+     * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCandidateSignature() {
+      copyOnWrite();
+      instance.clearCandidateSignature();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.GetPairingResponse)
   }
   @java.lang.Override
@@ -677,10 +845,13 @@ public  final class GetPairingResponse extends
             "initiatorPublic_",
             "payload_",
             "devicePublicKey_",
+            "deviceHpkePublicKey_",
+            "securityContext_",
+            "candidateSignature_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\f\u0002\n\u0003" +
-              "\n\u0004\f\u0005\n\u0006\u1009\u0000\u0007\n";
+              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\f\u0002\n\u0003\n\u0004\f" +
+              "\u0005\n\u0006\u1009\u0000\u0007\n\b\n\t\n\n\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

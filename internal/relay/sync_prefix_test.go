@@ -111,6 +111,7 @@ func TestSkeletonUploadAndPrefixFailure(t *testing.T) {
 			}
 			r := New(b)
 			c := &conn{r: r, acct: &Account{DeviceID: "machine"}, keys: keys, machine: m}
+			initializeTestSecurity(t, c)
 			after, _, skipped, err := c.syncSession(context.Background(), "session", nil, nil)
 			var se *syncError
 			classified := errors.As(err, &se)

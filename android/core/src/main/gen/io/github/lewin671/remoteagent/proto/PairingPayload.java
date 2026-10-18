@@ -23,6 +23,7 @@ public  final class PairingPayload extends
     server_ = "";
     approval_ = com.google.protobuf.ByteString.EMPTY;
     approvalSignature_ = com.google.protobuf.ByteString.EMPTY;
+    securityState_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int ROOT_FIELD_NUMBER = 1;
   private com.google.protobuf.ByteString root_;
@@ -151,6 +152,45 @@ public  final class PairingPayload extends
   private void clearApprovalSignature() {
 
     approvalSignature_ = getDefaultInstance().getApprovalSignature();
+  }
+
+  public static final int SECURITY_STATE_FIELD_NUMBER = 5;
+  private com.google.protobuf.ByteString securityState_;
+  /**
+   * <pre>
+   * Complete signed membership state produced by consuming the exact context.
+   * </pre>
+   *
+   * <code>bytes security_state = 5 [json_name = "securityState"];</code>
+   * @return The securityState.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSecurityState() {
+    return securityState_;
+  }
+  /**
+   * <pre>
+   * Complete signed membership state produced by consuming the exact context.
+   * </pre>
+   *
+   * <code>bytes security_state = 5 [json_name = "securityState"];</code>
+   * @param value The securityState to set.
+   */
+  private void setSecurityState(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    securityState_ = value;
+  }
+  /**
+   * <pre>
+   * Complete signed membership state produced by consuming the exact context.
+   * </pre>
+   *
+   * <code>bytes security_state = 5 [json_name = "securityState"];</code>
+   */
+  private void clearSecurityState() {
+
+    securityState_ = getDefaultInstance().getSecurityState();
   }
 
   public static io.github.lewin671.remoteagent.proto.PairingPayload parseFrom(
@@ -387,6 +427,46 @@ public  final class PairingPayload extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Complete signed membership state produced by consuming the exact context.
+     * </pre>
+     *
+     * <code>bytes security_state = 5 [json_name = "securityState"];</code>
+     * @return The securityState.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSecurityState() {
+      return instance.getSecurityState();
+    }
+    /**
+     * <pre>
+     * Complete signed membership state produced by consuming the exact context.
+     * </pre>
+     *
+     * <code>bytes security_state = 5 [json_name = "securityState"];</code>
+     * @param value The securityState to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSecurityState(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSecurityState(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Complete signed membership state produced by consuming the exact context.
+     * </pre>
+     *
+     * <code>bytes security_state = 5 [json_name = "securityState"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSecurityState() {
+      copyOnWrite();
+      instance.clearSecurityState();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.PairingPayload)
   }
   @java.lang.Override
@@ -407,10 +487,11 @@ public  final class PairingPayload extends
             "server_",
             "approval_",
             "approvalSignature_",
+            "securityState_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\n\u0002\u0208" +
-              "\u0003\n\u0004\n";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\n\u0002\u0208" +
+              "\u0003\n\u0004\n\u0005\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -48,4 +48,10 @@ public interface ForwardReplyOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>bytes security_rpc = 4 [json_name = "securityRpc"];</code>
+   * @return The securityRpc.
+   */
+  com.google.protobuf.ByteString getSecurityRpc();
 }

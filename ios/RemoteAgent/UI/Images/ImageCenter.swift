@@ -32,10 +32,14 @@ final class VolatileFiles: RACore.SealedFiles, @unchecked Sendable {
     private let lock = NSLock()
     private var data: [String: Data] = [:]
 
-    func put(folder: String, name: String, data: Data) { lock.withLock { self.data["\(folder)/\(name)"] = data } }
+    func put(folder: String, name: String, data: Data) {
+        lock.withLock { self.data["\(folder)/\(name)"] = data }
+    }
     func get(folder: String, name: String) -> Data? { lock.withLock { data["\(folder)/\(name)"] } }
     func remove(folder: String, name: String) { lock.withLock { data["\(folder)/\(name)"] = nil } }
-    func clearFolder(_ folder: String) { lock.withLock { for k in data.keys where k.hasPrefix("\(folder)/") { data[k] = nil } } }
+    func clearFolder(_ folder: String) {
+        lock.withLock { for k in data.keys where k.hasPrefix("\(folder)/") { data[k] = nil } }
+    }
 }
 
 /// A photo picked from the library, taken as the file the picker hands over: its size is known before any
@@ -58,6 +62,7 @@ struct PickedPhoto: Transferable, Sendable {
 
 /// A display copy decrypted for the viewer: in memory only, for as long as the account is in use.
 struct ViewedImage: @unchecked Sendable {
+    var unverifiedLegacy = false
     let image: UIImage
     let bytes: Data
     let format: PBImageFormat
@@ -137,8 +142,8 @@ final class ImageCenter {
     }()
 
     #if DEBUG
-    /// Sample images stay in the states they were shown in: nothing sends them.
-    @ObservationIgnored var frozen = false
+        /// Sample images stay in the states they were shown in: nothing sends them.
+        @ObservationIgnored var frozen = false
     #endif
 
     private var thumbs: [String: UIImage] = [:]
@@ -158,13 +163,13 @@ final class ImageCenter {
             },
             channel: { [remote] machine in
                 #if DEBUG
-                if !live { return SampleUploads() }
+                    if !live { return SampleUploads() }
                 #endif
                 return remote.uploadChannel(machineId: machine)
             },
             readable: { [weak self] uri in
                 #if DEBUG
-                if self?.frozen == true { return true }
+                    if self?.frozen == true { return true }
                 #endif
                 return self?.sources[uri] != nil
             })
@@ -246,7 +251,9 @@ final class ImageCenter {
         guard let bytes = img.processed?.bytes else { return }
         let id = img.id
         Task {
-            let made = await Task.detached { thumbnailImage(bytes, maxLong: 256).map { UIImage(cgImage: $0) } }.value
+            let made = await Task.detached {
+                thumbnailImage(bytes, maxLong: 256).map { UIImage(cgImage: $0) }
+            }.value
             if let made, !closed { thumbs[id] = made }
         }
     }
@@ -255,7 +262,7 @@ final class ImageCenter {
     func aim(_ key: String, at machineId: String?, blocked: Bool) {
         targets[key] = machineId
         #if DEBUG
-        if frozen { return }
+            if frozen { return }
         #endif
         if let machineId, !blocked { uploads.sendAll(draft(key), machineId: machineId) }
     }
@@ -295,7 +302,9 @@ final class ImageCenter {
 
     /// Adds the images on the clipboard.
     func paste(_ key: String, max: Int) {
-        let providers = UIPasteboard.general.itemProviders.filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
+        let providers = UIPasteboard.general.itemProviders.filter {
+            $0.hasItemConformingToTypeIdentifier(UTType.image.identifier)
+        }
         if providers.isEmpty {
             say(key, "剪贴板里没有图片")
         } else {
@@ -348,18 +357,27 @@ final class ImageCenter {
         switch source {
         case .data(let d): return d
         case .item(let item):
-            guard let photo = try await item.loadTransferable(type: PickedPhoto.self) else { throw unreadable }
+            guard let photo = try await item.loadTransferable(type: PickedPhoto.self) else {
+                throw unreadable
+            }
             data = try photo.read.get()
         case .provider(let provider):
             // The clipboard hands over bytes, not a file: there is no size to ask for first.
             data = try await withCheckedThrowingContinuation { done in
-                _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { d, error in
-                    if let d { done.resume(returning: d) } else { done.resume(throwing: error ?? unreadable) }
+                _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) {
+                    d, error in
+                    if let d {
+                        done.resume(returning: d)
+                    } else {
+                        done.resume(throwing: error ?? unreadable)
+                    }
                 }
             }
         }
         // Not held when it is more than is ever read of one: preparing refuses it in words.
-        if Int64(data.count) <= pickedReadLimit(original: false), sources[uri] != nil { sources[uri] = .data(data) }
+        if Int64(data.count) <= pickedReadLimit(original: false), sources[uri] != nil {
+            sources[uri] = .data(data)
+        }
         return data
     }
 
@@ -383,7 +401,8 @@ final class ImageCenter {
     /// stays as it is and `done` gets the reason.
     func send(
         sid: String, machineId: String, store: SessionStore, text: String, mode: PBSendMode,
-        commands: (any SessionCommands)? = nil, keep: (@Sendable (String, OutgoingRecord, Bool) throws -> Void)? = nil,
+        commands: (any SessionCommands)? = nil,
+        keep: (@Sendable (String, OutgoingRecord, Bool) throws -> Void)? = nil,
         done: @escaping @MainActor (Result<Void, Error>) -> Void
     ) -> Bool {
         let draft = draft(Self.sessionKey(sid))
@@ -396,13 +415,17 @@ final class ImageCenter {
         }
         let original = draft.original
         let o = Outgoing(
-            requestId: newRequestId(), text: text, imageIds: draft.ids(machineId: machineId), images: picked, original: original, mode: mode)
+            requestId: newRequestId(), text: text, imageIds: draft.ids(machineId: machineId),
+            images: picked, original: original, mode: mode)
         let record = o.record
         let records = records
         let commands: any SessionCommands = commands ?? remote
         Task {
             let kept: Result<Void, Error> = await Task.detached {
-                Result { try (keep ?? { try records.save(sid: $0, $1, original: $2) })(sid, record, original) }
+                Result {
+                    try (keep ?? { try records.save(sid: $0, $1, original: $2) })(
+                        sid, record, original)
+                }
             }.value
             if case .failure = kept {
                 done(kept)
@@ -415,8 +438,11 @@ final class ImageCenter {
                 return
             }
             // Saving originals can outlast an upload. Nothing has been sent yet.
-            guard picked.count == o.imageIds.count, zip(picked, o.imageIds).allSatisfy({ $0.readyFor(machineId) && $0.imageId == $1 }) else {
-                try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }.value
+            guard picked.count == o.imageIds.count,
+                zip(picked, o.imageIds).allSatisfy({ $0.readyFor(machineId) && $0.imageId == $1 })
+            else {
+                try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }
+                    .value
                 uploads.sendAll(draft, machineId: machineId)
                 done(.failure(UserError("图片需要重新传到电脑，请上传完成后再发送")))
                 return
@@ -502,7 +528,9 @@ final class ImageCenter {
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
-                for o in self.kept[sid] ?? [] where store.find(sid, requestId: o.requestId) == nil { self.release(sid, o) }
+                for o in self.kept[sid] ?? [] where store.find(sid, requestId: o.requestId) == nil {
+                    self.release(sid, o)
+                }
                 if self.kept[sid]?.isEmpty == false { self.observe(sid, store) }
             }
         }
@@ -521,48 +549,57 @@ final class ImageCenter {
     }
 
     #if DEBUG
-    /// Shows a message with images as it would stand after sending, for sample data.
-    func debugShow(_ sid: String, _ o: Outgoing, store: SessionStore) {
-        if store.find(sid, requestId: o.requestId) == nil { store.add(sid, o) }
-        for img in o.images { makeThumb(img) }
-    }
+        /// Shows a message with images as it would stand after sending, for sample data.
+        func debugShow(_ sid: String, _ o: Outgoing, store: SessionStore) {
+            if store.find(sid, requestId: o.requestId) == nil { store.add(sid, o) }
+            for img in o.images { makeThumb(img) }
+        }
 
-    /// Puts images in a draft as they would stand, without preparing or sending them, for sample data.
-    func debugShow(_ key: String, _ images: [PendingImage], original: Bool = false, notice: String = "") {
-        let d = draft(key)
-        guard d.images.isEmpty else { return }
-        d.append(images)
-        _ = d.setOriginal(original)
-        d.notice = notice
-        for img in images { makeThumb(img) }
-    }
+        /// Puts images in a draft as they would stand, without preparing or sending them, for sample data.
+        func debugShow(
+            _ key: String, _ images: [PendingImage], original: Bool = false, notice: String = ""
+        ) {
+            let d = draft(key)
+            guard d.images.isEmpty else { return }
+            d.append(images)
+            _ = d.setOriginal(original)
+            d.notice = notice
+            for img in images { makeThumb(img) }
+        }
     #endif
 }
 
 #if DEBUG
-/// A computer that takes every upload, slowly enough to be seen: for sample data.
-private struct SampleUploads: UploadChannel {
-    private func status(_ id: String, done: Bool, persisted: Int64 = 0) -> PBImageUploadStatus {
-        .with {
-            $0.transferID = id
-            $0.persistedBytes = persisted
-            $0.maxChunkBytes = 64 * 1024
-            $0.state = done ? .complete : .receiving
-            $0.expiresMs = Int64.max
-            $0.imageID = done ? "sample-\(id.prefix(8))" : ""
+    /// A computer that takes every upload, slowly enough to be seen: for sample data.
+    private struct SampleUploads: UploadChannel {
+        private func status(_ id: String, done: Bool, persisted: Int64 = 0) -> PBImageUploadStatus {
+            .with {
+                $0.transferID = id
+                $0.persistedBytes = persisted
+                $0.maxChunkBytes = 64 * 1024
+                $0.state = done ? .complete : .receiving
+                $0.expiresMs = Int64.max
+                $0.imageID = done ? "sample-\(id.prefix(8))" : ""
+            }
+        }
+
+        func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data)
+            async throws -> PBImageUploadStatus
+        {
+            status(transferId, done: false)
+        }
+
+        func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus
+        {
+            try await Task.sleep(for: .milliseconds(120))
+            return status(transferId, done: false, persisted: offset + Int64(data.count))
+        }
+
+        func status(transferId: String) async throws -> PBImageUploadStatus {
+            status(transferId, done: false)
+        }
+        func complete(transferId: String) async throws -> PBImageUploadStatus {
+            status(transferId, done: true)
         }
     }
-
-    func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
-        status(transferId, done: false)
-    }
-
-    func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus {
-        try await Task.sleep(for: .milliseconds(120))
-        return status(transferId, done: false, persisted: offset + Int64(data.count))
-    }
-
-    func status(transferId: String) async throws -> PBImageUploadStatus { status(transferId, done: false) }
-    func complete(transferId: String) async throws -> PBImageUploadStatus { status(transferId, done: true) }
-}
 #endif

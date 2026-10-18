@@ -1,3 +1,4 @@
+import { forgetSecurity } from "./device-security-store";
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import { clearEventCache } from "./eventcache";
 import type { NewConfig } from "./model";
@@ -29,7 +30,10 @@ function db(): Promise<IDBDatabase> {
   });
 }
 
-function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest): Promise<T> {
+function run<T>(
+  mode: IDBTransactionMode,
+  fn: (s: IDBObjectStore) => IDBRequest,
+): Promise<T> {
   return db().then(
     (d) =>
       new Promise<T>((resolve, reject) => {
@@ -74,6 +78,7 @@ export function watchAccountLogout(onLogout: () => void): () => void {
 /** Forgets the account, and the sealed history cached for it. */
 export async function forgetAccount(): Promise<void> {
   await run("readwrite", (s) => s.delete(KEY));
+  await forgetSecurity();
   // The account store is shared by same-origin tabs. Notify them as soon
   // as the deletion commits, even if clearing the sealed cache fails.
   // Reuse this page's listener so it does not receive its own broadcast:
@@ -89,31 +94,70 @@ export async function forgetAccount(): Promise<void> {
 
 type ProjectConfig = Omit<NewConfig, "from">;
 function projectConfigKey(account: StoredAccount, project: string): string {
-  return "ra-project-config/" + JSON.stringify([account.server, account.deviceId, project]);
+  return (
+    "ra-project-config/" +
+    JSON.stringify([account.server, account.deviceId, project])
+  );
 }
 
-export function loadProjectConfig(account: StoredAccount, project: string): ProjectConfig | undefined {
+export function loadProjectConfig(
+  account: StoredAccount,
+  project: string,
+): ProjectConfig | undefined {
   try {
     const raw = localStorage.getItem(projectConfigKey(account, project));
     if (!raw) return undefined;
     const c = JSON.parse(raw);
-    if (!c || typeof c.machineId !== "string" || typeof c.cwd !== "string" ||
-        typeof c.model !== "string" || typeof c.effort !== "string" ||
-        ![Agent.CODEX, Agent.CLAUDE].includes(c.agent) ||
-        ![ApprovalMode.UNSPECIFIED, ApprovalMode.ASK, ApprovalMode.AUTO].includes(c.mode)) return undefined;
-    return { machineId: c.machineId, cwd: c.cwd, agent: c.agent, model: c.model, effort: c.effort, mode: c.mode };
+    if (
+      !c ||
+      typeof c.machineId !== "string" ||
+      typeof c.cwd !== "string" ||
+      typeof c.model !== "string" ||
+      typeof c.effort !== "string" ||
+      ![Agent.CODEX, Agent.CLAUDE].includes(c.agent) ||
+      ![ApprovalMode.UNSPECIFIED, ApprovalMode.ASK, ApprovalMode.AUTO].includes(
+        c.mode,
+      )
+    )
+      return undefined;
+    return {
+      machineId: c.machineId,
+      cwd: c.cwd,
+      agent: c.agent,
+      model: c.model,
+      effort: c.effort,
+      mode: c.mode,
+    };
   } catch {
     return undefined;
   }
 }
 
-export function saveProjectConfig(account: StoredAccount, project: string, c: NewConfig): void {
-  const mode = c.mode === ApprovalMode.ASK || c.mode === ApprovalMode.AUTO ? c.mode : ApprovalMode.UNSPECIFIED;
-  localStorage.setItem(projectConfigKey(account, project), JSON.stringify({
-    machineId: c.machineId, cwd: c.cwd, agent: c.agent, model: c.model, effort: c.effort, mode,
-  }));
+export function saveProjectConfig(
+  account: StoredAccount,
+  project: string,
+  c: NewConfig,
+): void {
+  const mode =
+    c.mode === ApprovalMode.ASK || c.mode === ApprovalMode.AUTO
+      ? c.mode
+      : ApprovalMode.UNSPECIFIED;
+  localStorage.setItem(
+    projectConfigKey(account, project),
+    JSON.stringify({
+      machineId: c.machineId,
+      cwd: c.cwd,
+      agent: c.agent,
+      model: c.model,
+      effort: c.effort,
+      mode,
+    }),
+  );
 }
 
-export function clearProjectConfig(account: StoredAccount, project: string): void {
+export function clearProjectConfig(
+  account: StoredAccount,
+  project: string,
+): void {
   localStorage.removeItem(projectConfigKey(account, project));
 }

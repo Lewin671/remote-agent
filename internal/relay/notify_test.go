@@ -60,6 +60,7 @@ func TestApprovalNotificationMarksAnyShortenedContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	initializeTestSecurity(t, c)
 	for _, field := range []string{"description", "command", "tool_input", "complete"} {
 		t.Run(field, func(t *testing.T) {
 			a := &pb.ApprovalRequested{ApprovalId: "approval", Command: "short", Description: "why"}
@@ -72,12 +73,12 @@ func TestApprovalNotificationMarksAnyShortenedContent(t *testing.T) {
 				a.Command = ""
 				a.ToolInputJson = strings.Repeat("长", notifyCommand+1)
 			}
-			req, err := c.notifyRequest("session", &pb.Session{Title: "session"}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, &pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: a}})
+			req, err := c.notifyRequest(context.Background(), "session", &pb.Session{Title: "session"}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, &pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: a}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			got := &pb.NotifyContent{}
-			if _, err := e2e.OpenMessage(c.keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: "machine", SessionId: "session", RequestId: "approval", Sender: "machine"}, got); err != nil {
+			if _, err := openTestSecureMessage(c, nil, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, SessionId: "session", RequestId: "approval", Sender: c.acct.DeviceID}, got); err != nil {
 				t.Fatal(err)
 			}
 			if got.Approval.Truncated != (field != "complete") || got.Approval.ApprovalId != "approval" {
@@ -93,18 +94,19 @@ func TestSkeletonNotificationHasNoApprovalActions(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	initializeTestSecurity(t, c)
 	for _, e := range []*pb.Event{
 		{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "private-prefix…#0123456789abcdef" + skeletonNote, Description: skeletonNote}}},
 		{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "question", Questions: []*pb.Question{{Text: skeletonNote}}}}},
 		{Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: skeletonNote}}},
 	} {
 		e.Seq = 7
-		req, err := c.notifyRequest("session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, e)
+		req, err := c.notifyRequest(context.Background(), "session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, e)
 		if err != nil {
 			t.Fatal(err)
 		}
 		got := &pb.NotifyContent{}
-		if _, err := e2e.OpenMessage(keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY}, got); err != nil {
+		if _, err := openTestSecureMessage(c, nil, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY}, got); err != nil {
 			t.Fatal(err)
 		}
 		if req.DedupeKey != "skeleton:7" || strings.Contains(string(req.Content.Header), "private-prefix") {
@@ -124,6 +126,7 @@ func TestApprovalNotificationRetainsFitTruncation(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	initializeTestSecurity(t, c)
 	original := &pb.Event{TurnId: strings.Repeat("t", maxEventBytes-512), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "approval", Command: strings.Repeat("c", 4000), Description: "why"}}}
 	fitted := fitEvent(original)
 	a := fitted.GetApprovalRequested()
@@ -133,12 +136,12 @@ func TestApprovalNotificationRetainsFitTruncation(t *testing.T) {
 	if _, cut := clip(a.Command, notifyCommand); cut {
 		t.Fatal("fixture clipped again")
 	}
-	req, err := c.notifyRequest("session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, fitted)
+	req, err := c.notifyRequest(context.Background(), "session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, fitted)
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := &pb.NotifyContent{}
-	if _, err := e2e.OpenMessage(keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: "machine", SessionId: "session", RequestId: "approval", Sender: "machine"}, got); err != nil {
+	if _, err := openTestSecureMessage(c, nil, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, SessionId: "session", RequestId: "approval", Sender: c.acct.DeviceID}, got); err != nil {
 		t.Fatal(err)
 	}
 	if got.Approval == nil || !got.Approval.Truncated || got.Approval.Command != a.Command {
@@ -155,6 +158,7 @@ func TestApprovalNotificationRecognizesExistingMarkersInEveryField(t *testing.T)
 		t.Fatal(err)
 	}
 	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	initializeTestSecurity(t, c)
 	for _, field := range []string{"description", "command", "tool_input"} {
 		for _, note := range []string{truncatedNote, skeletonNote} {
 			t.Run(field+note, func(t *testing.T) {
@@ -170,12 +174,12 @@ func TestApprovalNotificationRecognizesExistingMarkersInEveryField(t *testing.T)
 				if !approvalTextTruncated(a) {
 					t.Fatal("existing marker missed")
 				}
-				req, err := c.notifyRequest("session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, &pb.Event{Seq: 1, Kind: &pb.Event_ApprovalRequested{ApprovalRequested: a}})
+				req, err := c.notifyRequest(context.Background(), "session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, &pb.Event{Seq: 1, Kind: &pb.Event_ApprovalRequested{ApprovalRequested: a}})
 				if err != nil {
 					t.Fatal(err)
 				}
 				got := &pb.NotifyContent{}
-				if _, err := e2e.OpenMessage(keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: "machine", SessionId: "session", RequestId: req.DedupeKey, Sender: "machine"}, got); err != nil {
+				if _, err := openTestSecureMessage(c, nil, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, SessionId: "session", RequestId: req.DedupeKey, Sender: c.acct.DeviceID}, got); err != nil {
 					t.Fatal(err)
 				}
 				if note == skeletonNote {

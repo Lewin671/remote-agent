@@ -52,6 +52,7 @@ public  final class CommandResult extends
     COMPLETE_IMAGE_UPLOAD(38),
     ABORT_IMAGE_UPLOAD(39),
     SCHEDULE(40),
+    LIVE_SNAPSHOT(41),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -93,6 +94,7 @@ public  final class CommandResult extends
         case 38: return COMPLETE_IMAGE_UPLOAD;
         case 39: return ABORT_IMAGE_UPLOAD;
         case 40: return SCHEDULE;
+        case 41: return LIVE_SNAPSHOT;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -1587,6 +1589,58 @@ public  final class CommandResult extends
     }
   }
 
+  public static final int LIVE_SNAPSHOT_FIELD_NUMBER = 41;
+  /**
+   * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+   */
+  @java.lang.Override
+  public boolean hasLiveSnapshot() {
+    return kindCase_ == 41;
+  }
+  /**
+   * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.LiveSnapshot getLiveSnapshot() {
+    if (kindCase_ == 41) {
+       return (io.github.lewin671.remoteagent.proto.LiveSnapshot) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.LiveSnapshot.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLiveSnapshot(io.github.lewin671.remoteagent.proto.LiveSnapshot value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 41;
+  }
+  /**
+   * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeLiveSnapshot(io.github.lewin671.remoteagent.proto.LiveSnapshot value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 41 &&
+        kind_ != io.github.lewin671.remoteagent.proto.LiveSnapshot.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.LiveSnapshot.newBuilder((io.github.lewin671.remoteagent.proto.LiveSnapshot) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 41;
+  }
+  /**
+   * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+   */
+  private void clearLiveSnapshot() {
+    if (kindCase_ == 41) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
   public static io.github.lewin671.remoteagent.proto.CommandResult parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3072,6 +3126,54 @@ public  final class CommandResult extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+     */
+    @java.lang.Override
+    public boolean hasLiveSnapshot() {
+      return instance.hasLiveSnapshot();
+    }
+    /**
+     * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.LiveSnapshot getLiveSnapshot() {
+      return instance.getLiveSnapshot();
+    }
+    /**
+     * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+     */
+    public Builder setLiveSnapshot(io.github.lewin671.remoteagent.proto.LiveSnapshot value) {
+      copyOnWrite();
+      instance.setLiveSnapshot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+     */
+    public Builder setLiveSnapshot(
+        io.github.lewin671.remoteagent.proto.LiveSnapshot.Builder builderForValue) {
+      copyOnWrite();
+      instance.setLiveSnapshot(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+     */
+    public Builder mergeLiveSnapshot(io.github.lewin671.remoteagent.proto.LiveSnapshot value) {
+      copyOnWrite();
+      instance.mergeLiveSnapshot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.LiveSnapshot live_snapshot = 41 [json_name = "liveSnapshot"];</code>
+     */
+    public Builder clearLiveSnapshot() {
+      copyOnWrite();
+      instance.clearLiveSnapshot();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CommandResult)
   }
   @java.lang.Override
@@ -3118,13 +3220,14 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.CompleteImageUploadResponse.class,
             io.github.lewin671.remoteagent.proto.AbortImageUploadResponse.class,
             io.github.lewin671.remoteagent.proto.ScheduleResponse.class,
+            io.github.lewin671.remoteagent.proto.LiveSnapshot.class,
           };
           java.lang.String info =
-              "\u0000\u001c\u0001\u0000\u0001(\u001c\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
+              "\u0000\u001d\u0001\u0000\u0001)\u001d\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
               "<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
               "\u0018<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000" +
-              "%<\u0000&<\u0000\'<\u0000(<\u0000";
+              "%<\u0000&<\u0000\'<\u0000(<\u0000)<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

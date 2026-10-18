@@ -19,6 +19,21 @@ import com.connectrpc.StreamType
 public class PairingServiceClient(
   private val client: ProtocolClientInterface,
 ) : PairingServiceClientInterface {
+  /**
+   *  Freeze this response before exposing the joiner ephemeral public key.
+   */
+  override suspend fun peekPairing(request: PeekPairingRequest, headers: Headers): ResponseMessage<PeekPairingResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.PairingService/PeekPairing",
+      io.github.lewin671.remoteagent.proto.PeekPairingRequest::class,
+      io.github.lewin671.remoteagent.proto.PeekPairingResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
   override suspend fun createPairing(request: CreatePairingRequest, headers: Headers): ResponseMessage<CreatePairingResponse> = client.unary(
     request,
     headers,

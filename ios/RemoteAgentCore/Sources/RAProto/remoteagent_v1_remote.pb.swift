@@ -584,6 +584,14 @@ public struct PBCommand: Sendable {
     set {kind = .schedule(newValue)}
   }
 
+  public var getLiveSnapshot: PBGetLiveSnapshotRequest {
+    get {
+      if case .getLiveSnapshot(let v)? = kind {return v}
+      return PBGetLiveSnapshotRequest()
+    }
+    set {kind = .getLiveSnapshot(newValue)}
+  }
+
   /// The protocol version the client speaks (internal/protocol). A daemon
   /// of another version refuses the command and says which side to update.
   public var protocolVersion: UInt32 = 0
@@ -619,6 +627,7 @@ public struct PBCommand: Sendable {
     case completeImageUpload(PBCompleteImageUploadRequest)
     case abortImageUpload(PBAbortImageUploadRequest)
     case schedule(PBScheduleRequest)
+    case getLiveSnapshot(PBGetLiveSnapshotRequest)
 
   }
 
@@ -848,6 +857,14 @@ public struct PBCommandResult: Sendable {
     set {kind = .schedule(newValue)}
   }
 
+  public var liveSnapshot: PBLiveSnapshot {
+    get {
+      if case .liveSnapshot(let v)? = kind {return v}
+      return PBLiveSnapshot()
+    }
+    set {kind = .liveSnapshot(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Kind: Equatable, Sendable {
@@ -877,6 +894,7 @@ public struct PBCommandResult: Sendable {
     case completeImageUpload(PBCompleteImageUploadResponse)
     case abortImageUpload(PBAbortImageUploadResponse)
     case schedule(PBScheduleResponse)
+    case liveSnapshot(PBLiveSnapshot)
 
   }
 
@@ -1081,6 +1099,9 @@ public struct PBPairingPayload: Sendable {
 
   public var approvalSignature: Data = Data()
 
+  /// Complete signed membership state produced by consuming the exact context.
+  public var securityState: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1115,6 +1136,8 @@ public struct PBNotifyContent: Sendable {
   public var hasApproval: Bool {return self._approval != nil}
   /// Clears the value of `approval`. Subsequent reads from it will return its default value.
   public mutating func clearApproval() {self._approval = nil}
+
+  public var sourceEventSeq: UInt64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1294,6 +1317,51 @@ public struct PBProjectPref: Sendable {
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+}
+
+/// A current owner snapshot, returned only inside a nonce/request-bound command
+/// result. Historical events alone never create current actionable prompts.
+public struct PBGetLiveSnapshotRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sessionID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBLiveSnapshot: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var session: PBSession {
+    get {return _session ?? PBSession()}
+    set {_session = newValue}
+  }
+  /// Returns true if `session` has been explicitly set.
+  public var hasSession: Bool {return self._session != nil}
+  /// Clears the value of `session`. Subsequent reads from it will return its default value.
+  public mutating func clearSession() {self._session = nil}
+
+  public var actions: [PBEvent] = []
+
+  public var planEventSeq: UInt64 = 0
+
+  public var planScreenHash: Data = Data()
+
+  public var planScreen: String = String()
+
+  public var running: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _session: PBSession? = nil
 }
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
@@ -1667,7 +1735,7 @@ extension PBAgentInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
 
 extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Command"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{5}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{4}F\u{1}protocol_version\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{5}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}get_live_snapshot\0\u{4}E\u{1}protocol_version\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2013,6 +2081,19 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
           self.kind = .schedule(v)
         }
       }()
+      case 31: try {
+        var v: PBGetLiveSnapshotRequest?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .getLiveSnapshot(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .getLiveSnapshot(v)
+        }
+      }()
       case 100: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
       default: break
       }
@@ -2129,6 +2210,10 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
       guard case .schedule(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 30)
     }()
+    case .getLiveSnapshot?: try {
+      guard case .getLiveSnapshot(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 31)
+    }()
     case nil: break
     }
     if self.protocolVersion != 0 {
@@ -2147,7 +2232,7 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
 
 extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CommandResult"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}error_code\0\u{3}error_message\0\u{2}\u{8}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{6}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}error_code\0\u{3}error_message\0\u{2}\u{8}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{6}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}live_snapshot\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2495,6 +2580,19 @@ extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
           self.kind = .schedule(v)
         }
       }()
+      case 41: try {
+        var v: PBLiveSnapshot?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .liveSnapshot(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .liveSnapshot(v)
+        }
+      }()
       default: break
       }
     }
@@ -2615,6 +2713,10 @@ extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     case .schedule?: try {
       guard case .schedule(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 40)
+    }()
+    case .liveSnapshot?: try {
+      guard case .liveSnapshot(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 41)
     }()
     case nil: break
     }
@@ -2983,7 +3085,7 @@ extension PBTerminalResize: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PairingPayload"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}root\0\u{1}server\0\u{1}approval\0\u{3}approval_signature\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}root\0\u{1}server\0\u{1}approval\0\u{3}approval_signature\0\u{3}security_state\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2995,6 +3097,7 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       case 2: try { try decoder.decodeSingularStringField(value: &self.server) }()
       case 3: try { try decoder.decodeSingularBytesField(value: &self.approval) }()
       case 4: try { try decoder.decodeSingularBytesField(value: &self.approvalSignature) }()
+      case 5: try { try decoder.decodeSingularBytesField(value: &self.securityState) }()
       default: break
       }
     }
@@ -3013,6 +3116,9 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if !self.approvalSignature.isEmpty {
       try visitor.visitSingularBytesField(value: self.approvalSignature, fieldNumber: 4)
     }
+    if !self.securityState.isEmpty {
+      try visitor.visitSingularBytesField(value: self.securityState, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3021,6 +3127,7 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if lhs.server != rhs.server {return false}
     if lhs.approval != rhs.approval {return false}
     if lhs.approvalSignature != rhs.approvalSignature {return false}
+    if lhs.securityState != rhs.securityState {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3028,7 +3135,7 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".NotifyContent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}kind\0\u{1}title\0\u{1}text\0\u{1}approval\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}kind\0\u{1}title\0\u{1}text\0\u{1}approval\0\u{3}source_event_seq\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3042,6 +3149,7 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       case 4: try { try decoder.decodeSingularStringField(value: &self.title) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.text) }()
       case 6: try { try decoder.decodeSingularMessageField(value: &self._approval) }()
+      case 7: try { try decoder.decodeSingularUInt64Field(value: &self.sourceEventSeq) }()
       default: break
       }
     }
@@ -3070,6 +3178,9 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try { if let v = self._approval {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
     } }()
+    if self.sourceEventSeq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.sourceEventSeq, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3080,6 +3191,7 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     if lhs.title != rhs.title {return false}
     if lhs.text != rhs.text {return false}
     if lhs._approval != rhs._approval {return false}
+    if lhs.sourceEventSeq != rhs.sourceEventSeq {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3410,6 +3522,95 @@ extension PBProjectPref: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   public static func ==(lhs: PBProjectPref, rhs: PBProjectPref) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.sinceMs != rhs.sinceMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBGetLiveSnapshotRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetLiveSnapshotRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBGetLiveSnapshotRequest, rhs: PBGetLiveSnapshotRequest) -> Bool {
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBLiveSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".LiveSnapshot"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}session\0\u{1}actions\0\u{3}plan_event_seq\0\u{3}plan_screen_hash\0\u{3}plan_screen\0\u{1}running\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._session) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.actions) }()
+      case 3: try { try decoder.decodeSingularUInt64Field(value: &self.planEventSeq) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.planScreenHash) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.planScreen) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.running) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._session {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.actions.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.actions, fieldNumber: 2)
+    }
+    if self.planEventSeq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.planEventSeq, fieldNumber: 3)
+    }
+    if !self.planScreenHash.isEmpty {
+      try visitor.visitSingularBytesField(value: self.planScreenHash, fieldNumber: 4)
+    }
+    if !self.planScreen.isEmpty {
+      try visitor.visitSingularStringField(value: self.planScreen, fieldNumber: 5)
+    }
+    if self.running != false {
+      try visitor.visitSingularBoolField(value: self.running, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBLiveSnapshot, rhs: PBLiveSnapshot) -> Bool {
+    if lhs._session != rhs._session {return false}
+    if lhs.actions != rhs.actions {return false}
+    if lhs.planEventSeq != rhs.planEventSeq {return false}
+    if lhs.planScreenHash != rhs.planScreenHash {return false}
+    if lhs.planScreen != rhs.planScreen {return false}
+    if lhs.running != rhs.running {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

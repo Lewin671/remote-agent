@@ -1,6 +1,8 @@
 package daemon
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"time"
 
@@ -190,6 +192,16 @@ func (s *session) answerPlanBy(choice pb.PlanChoice, origin *pb.Origin) error {
 		if err != nil {
 			return err
 		}
+		if origin.GetKind() == pb.OriginKind_ORIGIN_KIND_CLIENT {
+			styled, err := t.Capture()
+			if err != nil {
+				return err
+			}
+			sum := planScreenHash(styled)
+			if !bytes.Equal(sum, origin.ObservedScreenHash) {
+				return errRemoteAnswerStale
+			}
+		}
 		return s.ag.AnswerPlan(t, choice)
 	}); err != nil {
 		return err
@@ -198,4 +210,9 @@ func (s *session) answerPlanBy(choice pb.PlanChoice, origin *pb.Origin) error {
 		return fmt.Errorf("plan answer already applied on the computer but could not be recorded: %w", err)
 	}
 	return nil
+}
+
+func planScreenHash(styled string) []byte {
+	sum := sha256.Sum256(append([]byte("ra2/plan-screen\x00"), []byte(agent.StripANSI(styled))...))
+	return sum[:]
 }

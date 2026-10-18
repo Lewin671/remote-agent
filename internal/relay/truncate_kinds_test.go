@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -9,7 +10,6 @@ import (
 	"unicode/utf8"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/e2e"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -141,13 +141,14 @@ func TestSealEventFitsIrreducibleStructure(t *testing.T) {
 	e := &pb.Event{Seq: 7, SessionId: "session", Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "call", Questions: []*pb.Question{q}}}}
 	before := proto.CloneOf(e)
 	c := &conn{acct: &Account{DeviceID: "machine"}}
+	initializeTestSecurity(t, c)
 	key := make([]byte, 32)
-	env, err := c.sealEvent(key, "session", e)
+	env, err := c.sealEvent(context.Background(), key, "session", e)
 	if err != nil || proto.Size(env) > 1<<20 {
 		t.Fatalf("skeleton upload: %v", err)
 	}
 	got := &pb.Event{}
-	if _, err := e2e.OpenMessage(key, env, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, SessionId: "session", Seq: 7}, got); err != nil {
+	if _, err := openTestSecureMessage(c, key, env, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, SessionId: "session", Seq: 7}, got); err != nil {
 		t.Fatal(err)
 	}
 	if got.GetQuestionAsked() == nil || got.GetQuestionAsked().QuestionId != "call" || !eventSkeleton(got) || !proto.Equal(e, before) {
@@ -159,12 +160,13 @@ func TestSealEventPreservesOversizedQuestion(t *testing.T) {
 	e := &pb.Event{Seq: 7, SessionId: "session", Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "call", Questions: []*pb.Question{{Id: "q", Text: strings.Repeat("长", 1<<20), Options: []*pb.QuestionOption{{Label: "A"}, {Label: "B"}}}}}}}
 	key := make([]byte, 32)
 	c := &conn{acct: &Account{DeviceID: "machine"}}
-	env, err := c.sealEvent(key, "session", e)
+	initializeTestSecurity(t, c)
+	env, err := c.sealEvent(context.Background(), key, "session", e)
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := &pb.Event{}
-	if _, err := e2e.OpenMessage(key, env, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: "machine", SessionId: "session", Seq: 7, Sender: "machine"}, got); err != nil {
+	if _, err := openTestSecureMessage(c, key, env, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: c.acct.DeviceID, SessionId: "session", Seq: 7, Sender: c.acct.DeviceID}, got); err != nil {
 		t.Fatal(err)
 	}
 	q := got.GetQuestionAsked()

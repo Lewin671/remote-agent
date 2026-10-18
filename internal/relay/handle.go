@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"google.golang.org/protobuf/proto"
 )
@@ -24,68 +24,69 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 	fail := func(msg string) {
 		c.reply(ctx, &pb.ForwardReply{CallId: call.CallId, Error: msg})
 	}
-	h, plain, err := e2e.Open(c.keys.Command, call.Command)
-	switch {
-	case errors.Is(err, e2e.ErrVersion):
-		fail("unsupported envelope version")
-		return
-	case err != nil:
-		fail("the command does not open with this account's key")
-		return
-	case e2e.Expect(h, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: c.acct.DeviceID}) != nil:
-		fail("the command is addressed to another machine")
-		return
-	case len(h.RequestId) < minRequestID:
-		fail("the command has no valid request ID")
+
+	if c.security == nil {
+		fail("remote security is not initialized")
 		return
 	}
-
-	// Who sent it: a device whose signature checks out against its
-	// registration with the account key. The server's word is not taken.
-	id, err := e2e.VerifySender(c.keys.AccountPublicKey(), call.Command, h.Sender, call.SenderRegistration, call.SenderRegistrationSignature)
+	wire, err := deviceauth.FromEnvelope(call.Command)
 	if err != nil {
-		fail("the command's device signature does not verify")
+		fail("the command has no valid authority authorization")
 		return
 	}
-	ctx = agent.WithOrigin(ctx, &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: id, RequestId: h.RequestId})
-
-	var reject *pb.CommandResult
-	now := time.Now()
-	switch deadline := time.UnixMilli(h.DeadlineMs); {
-	case !now.Before(deadline):
-		reject = &pb.CommandResult{ErrorCode: connect.CodeDeadlineExceeded.String(), ErrorMessage: "the command expired before it reached the machine"}
-	case deadline.After(now.Add(maxAhead)):
-		reject = &pb.CommandResult{ErrorCode: connect.CodeInvalidArgument.String(), ErrorMessage: "the command's deadline is too far ahead; check the device clocks"}
+	header, err := deviceauth.ParseHeader(wire.Header)
+	if err != nil || header.Purpose != deviceauth.Command || header.Machine != c.acct.DeviceID || len(header.Request) < minRequestID {
+		fail("invalid command scope")
+		return
 	}
-	res := c.r.cmds.do(ctx, h.RequestId, h.DeadlineMs, reject, func() *pb.CommandResult {
+	// State synchronization and authority traffic happen OUTSIDE the acceptance
+	// gate. The endpoint re-verifies the exact state once it holds that gate.
+	if err := c.security.remote.Sync(ctx); err != nil {
+		fail("cannot verify current security state")
+		return
+	}
+	result, err := c.security.remote.Endpoint.Accept(wire, nil, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) ([]byte, error) {
 		cmd := &pb.Command{}
-		if err := proto.Unmarshal(plain, cmd); err != nil {
-			return &pb.CommandResult{ErrorCode: connect.CodeInvalidArgument.String(), ErrorMessage: "malformed command"}
+		plain, err := deviceauth.Unpack(h, plain)
+		if err != nil || proto.Unmarshal(plain, cmd) != nil {
+			return nil, deviceauth.ErrInvalid
 		}
+		var res *pb.CommandResult
 		if cmd.ProtocolVersion != protocol.Version {
-			return &pb.CommandResult{ErrorCode: connect.CodeFailedPrecondition.String(), ErrorMessage: protocol.Mismatch("the client", cmd.ProtocolVersion).(*connect.Error).Message()}
+			res = &pb.CommandResult{ErrorCode: connect.CodeFailedPrecondition.String(), ErrorMessage: protocol.Mismatch("the client", cmd.ProtocolVersion).(*connect.Error).Message()}
+		} else {
+			origin := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: h.Sender, RequestId: h.Request}
+			switch k := cmd.Kind.(type) {
+			case *pb.Command_ResolveApproval:
+				origin.ObservedEventSeq = k.ResolveApproval.ObservedEventSeq
+			case *pb.Command_AnswerQuestion:
+				origin.ObservedEventSeq = k.AnswerQuestion.ObservedEventSeq
+			case *pb.Command_AnswerPlan:
+				origin.ObservedEventSeq = k.AnswerPlan.ObservedEventSeq
+				origin.ObservedScreenHash = k.AnswerPlan.ObservedScreenHash
+			}
+			callCtx := agent.WithOrigin(ctx, origin)
+			cancel := func() {}
+			switch cmd.Kind.(type) {
+			case *pb.Command_StopSession, *pb.Command_ResumeSession:
+				callCtx, cancel = context.WithDeadline(callCtx, time.UnixMilli(int64(h.Deadline)))
+			}
+			defer cancel()
+			res = c.execute(callCtx, h.Session, cmd)
 		}
-		callCtx := ctx
-		cancel := func() {}
-		switch cmd.Kind.(type) {
-		case *pb.Command_StopSession, *pb.Command_ResumeSession:
-			// These synchronous calls can wait for a pty-host to exit.
-			// Other commands, such as OpenTerminal, start background work
-			// that must outlive the command RPC.
-			callCtx, cancel = context.WithDeadline(ctx, time.UnixMilli(h.DeadlineMs))
-		}
-		defer cancel()
-		return c.execute(callCtx, h.SessionId, cmd)
+		return proto.Marshal(res)
 	})
-	env, err := e2e.SealMessage(c.keys.Command, &pb.Header{
-		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: h.SessionId,
-		RequestId: h.RequestId, Sender: c.acct.DeviceID,
-	}, res)
 	if err != nil {
-		fail("cannot seal the result")
+		fail("the command was refused or its outcome is unknown; it was not repeated")
+		return
+	}
+	env, err := c.security.seal(ctx, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: header.Session, RequestId: header.Request, Sender: c.acct.DeviceID}, deviceauth.Result, nil, result)
+	if err != nil {
+		fail("cannot authorize the result")
 		return
 	}
 	c.reply(ctx, &pb.ForwardReply{CallId: call.CallId, Result: env})
+
 }
 
 // execute runs a command on the session named in its sealed header.
@@ -239,6 +240,25 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 				out.Kind = &pb.CommandResult_AbortImageUpload{AbortImageUpload: m}
 			})
 		})
+	case *pb.Command_GetLiveSnapshot:
+		err = on(k.GetLiveSnapshot.SessionId, func() error {
+			owner, ok := r.backend.(interface {
+				LiveSnapshot(string) (*pb.LiveSnapshot, error)
+			})
+			if !ok {
+				return connect.NewError(connect.CodeFailedPrecondition, errors.New("live owner snapshot unavailable"))
+			}
+			snapshot, err := owner.LiveSnapshot(sessionID)
+			if err != nil {
+				return err
+			}
+			if proto.Size(snapshot) > 512<<10 {
+				return connect.NewError(connect.CodeResourceExhausted, errors.New("live snapshot too large; use native terminal"))
+			}
+			out.Kind = &pb.CommandResult_LiveSnapshot{LiveSnapshot: snapshot}
+			return nil
+		})
+
 	case *pb.Command_Schedule:
 		err = machine(func() error {
 			return call(ctx, l.Schedule, k.Schedule, func(m *pb.ScheduleResponse) {

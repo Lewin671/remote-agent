@@ -12,7 +12,9 @@ enum GoServer {
         // RA_TEST_NO_GO=1 runs the suite as a machine without Go would.
         if ProcessInfo.processInfo.environment["RA_TEST_NO_GO"] == "1" { return nil }
         let path = ProcessInfo.processInfo.environment["PATH"] ?? ""
-        for dir in path.split(separator: ":").map(String.init) + ["/opt/homebrew/bin", "/usr/local/go/bin", "/usr/local/bin"] {
+        for dir in path.split(separator: ":").map(String.init) + [
+            "/opt/homebrew/bin", "/usr/local/go/bin", "/usr/local/bin",
+        ] {
             let candidate = dir + "/go"
             if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
         }
@@ -20,18 +22,24 @@ enum GoServer {
     }()
 
     static var available: Bool { go != nil }
-    static let missing: Comment = "the Go toolchain is not installed: tests against the real server are skipped"
+    static let missing: Comment =
+        "the Go toolchain is not installed: tests against the real server are skipped"
 
     /// The built binary, or why the build failed. A failed build fails the tests; it does not skip them.
     static let binary: Result<URL, TestFailure> = {
         guard let go else { return .failure(TestFailure("go is not installed")) }
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ra-server-bin-\(getpid())")
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "ra-server-bin-\(getpid())")
         do {
             try? FileManager.default.removeItem(at: dir)
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             // The binary is this run's own: it goes when the run ends.
             builtIn.withLock { $0 = dir.path }
-            atexit { if let path = builtIn.withLock({ $0 }) { try? FileManager.default.removeItem(atPath: path) } }
+            atexit {
+                if let path = builtIn.withLock({ $0 }) {
+                    try? FileManager.default.removeItem(atPath: path)
+                }
+            }
             let out = dir.appendingPathComponent("remote-agent-server")
             let p = Process()
             p.executableURL = URL(fileURLWithPath: go)
@@ -44,7 +52,9 @@ enum GoServer {
             let output = log.fileHandleForReading.readDataToEndOfFile()
             while p.isRunning { usleep(10_000) }
             guard p.terminationStatus == 0 else {
-                return .failure(TestFailure("go build failed: " + String(decoding: output.suffix(2000), as: UTF8.self)))
+                return .failure(
+                    TestFailure(
+                        "go build failed: " + String(decoding: output.suffix(2000), as: UTF8.self)))
             }
             return .success(out)
         } catch {
@@ -68,9 +78,15 @@ func freePort() -> Int {
     addr.sin_family = sa_family_t(AF_INET)
     addr.sin_addr.s_addr = inet_addr("127.0.0.1")
     addr.sin_port = 0
-    _ = withUnsafePointer(to: &addr) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
+    _ = withUnsafePointer(to: &addr) {
+        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+            bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+        }
+    }
     var len = socklen_t(MemoryLayout<sockaddr_in>.size)
-    _ = withUnsafeMutablePointer(to: &addr) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(fd, $0, &len) } }
+    _ = withUnsafeMutablePointer(to: &addr) {
+        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(fd, $0, &len) }
+    }
     return Int(UInt16(bigEndian: addr.sin_port))
 }
 
@@ -86,7 +102,8 @@ final class TestServer: @unchecked Sendable {
     init() async throws {
         port = freePort()
         url = "http://127.0.0.1:\(port)"
-        dbDir = FileManager.default.temporaryDirectory.appendingPathComponent("ra-server-\(UUID().uuidString)")
+        dbDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "ra-server-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dbDir, withIntermediateDirectories: true)
         try await start()
     }
@@ -95,12 +112,16 @@ final class TestServer: @unchecked Sendable {
         let bin = try GoServer.binary.get()
         let p = Process()
         p.executableURL = bin
-        p.arguments = ["-listen", "127.0.0.1:\(port)", "-db", dbDir.appendingPathComponent("ra.db").path]
+        p.arguments = [
+            "-listen", "127.0.0.1:\(port)", "-db", dbDir.appendingPathComponent("ra.db").path,
+        ]
         var env = ProcessInfo.processInfo.environment
         env["RA_SETUP_TOKEN"] = setupToken
         p.environment = env
         let logURL = dbDir.appendingPathComponent("server.log")
-        if !FileManager.default.fileExists(atPath: logURL.path) { FileManager.default.createFile(atPath: logURL.path, contents: nil) }
+        if !FileManager.default.fileExists(atPath: logURL.path) {
+            FileManager.default.createFile(atPath: logURL.path, contents: nil)
+        }
         let log = try FileHandle(forWritingTo: logURL)
         log.seekToEndOfFile()
         p.standardOutput = log
@@ -141,6 +162,7 @@ final class TestServer: @unchecked Sendable {
 
     func close() {
         stop()
+        TestSecurity.remove(url)
         try? FileManager.default.removeItem(at: dbDir)
     }
 }
@@ -171,15 +193,19 @@ actor FakeDaemon {
     nonisolated let account: Account
     nonisolated let id: String
     private let http: HTTP
+    private var security: TestSecurity { get throws { try TestSecurity.get(account.server) } }
     private let keys: Keys
     private let api: PBMachineServiceClient
     private let rpc: Api
     private var token = ""
+    private var ready = false
     private var ws: Socket?
     private var metaRev: UInt64 = 0
     private(set) var sessionKeys: [String: Data] = [:]
     private var sessionRevs: [String: UInt64] = [:]
     private var lastSeq: [String: UInt64] = [:]
+    private var info: [String: PBSession] = [:]
+    private var history: [String: [PBEvent]] = [:]
     nonisolated let commands = Mailbox<(PBHeader, PBCommand)>()
     nonisolated let termInput = Mailbox<PBTerminalFrame>()
 
@@ -192,8 +218,12 @@ actor FakeDaemon {
     func setReplayTerminal(_ on: Bool) { replayTerminal = on }
 
     /// What to answer; the default is an empty success of the right kind.
-    private var answer: @Sendable (PBHeader, PBCommand) async -> PBCommandResult = { _, c in FakeDaemon.defaultResult(c) }
-    func setAnswer(_ answer: @escaping @Sendable (PBHeader, PBCommand) async -> PBCommandResult) { self.answer = answer }
+    private var answer: @Sendable (PBHeader, PBCommand) async -> PBCommandResult = { _, c in
+        FakeDaemon.defaultResult(c)
+    }
+    func setAnswer(_ answer: @escaping @Sendable (PBHeader, PBCommand) async -> PBCommandResult) {
+        self.answer = answer
+    }
 
     init(account: Account, http: HTTP) throws {
         self.account = account
@@ -204,8 +234,11 @@ actor FakeDaemon {
         api = PBMachineServiceClient(client: rpc.protocolClient)
     }
 
-    static func create(root: Data, server: String, http: HTTP, setupToken: String) async throws -> FakeDaemon {
-        let acct = try await joinWithRoot(root: root, server: server, http: http, setupToken: setupToken, kind: .machine)
+    static func create(root: Data, server: String, http: HTTP, setupToken: String) async throws
+        -> FakeDaemon
+    {
+        let acct = try await joinWithRoot(
+            root: root, server: server, http: http, setupToken: setupToken, kind: .machine)
         let d = try FakeDaemon(account: acct, http: http)
         try await d.login()
         return d
@@ -213,6 +246,14 @@ actor FakeDaemon {
 
     func login() async throws {
         token = try await RACore.login(api: rpc, account: account)
+        if TestSecurity.find(account.server) == nil {
+            let (_, genesis) = try TestSecurity.initialize(account)
+            var request = PBPinSecurityDomainRequest()
+            request.genesisState = genesis
+            _ = try await api.pinSecurityDomain(
+                request: request, headers: Api.headers(token: token)
+            ).value()
+        }
     }
 
     private func header(_ kind: PBPayloadKind) -> PBHeader {
@@ -233,7 +274,7 @@ actor FakeDaemon {
         var h = header(.machineMeta)
         h.seq = metaRev
         var req = PBPutMachineRequest()
-        req.meta = try Envelopes.seal(key: keys.meta, header: h, message: meta)
+        req.meta = try security.seal(account, h, meta)
         _ = try await api.putMachine(request: req, headers: Api.headers(token: token)).value()
     }
 
@@ -245,15 +286,17 @@ actor FakeDaemon {
         sessionRevs[sid] = rev
         var kh = header(.sessionKey)
         kh.sessionID = sid
+        kh.seq = 1
         var mh = header(.sessionMeta)
         mh.sessionID = sid
         mh.seq = rev
         var named = info
         named.id = sid
+        self.info[sid] = named
         var req = PBPutSessionRequest()
         req.sessionID = sid
-        req.key = try Envelopes.seal(key: keys.wrap, header: kh, plaintext: key)
-        req.meta = try Envelopes.seal(key: key, header: mh, message: named)
+        req.key = try security.seal(account, kh, key)
+        req.meta = try security.seal(account, mh, named)
         req.endedMs = endedMs
         _ = try await api.putSession(request: req, headers: Api.headers(token: token)).value()
     }
@@ -266,7 +309,7 @@ actor FakeDaemon {
         var req = PBPutImageRequest()
         req.sessionID = sid
         req.imageID = imageId
-        req.image = try Envelopes.seal(key: sessionKeys[sid]!, header: h, message: payload)
+        req.image = try security.seal(account, h, payload, seed: sessionKeys[sid]!)
         _ = try await api.putImage(request: req, headers: Api.headers(token: token)).value()
     }
 
@@ -286,43 +329,96 @@ actor FakeDaemon {
             h.seq = seq
             var stored = PBStoredEvent()
             stored.seq = seq
-            stored.envelope = try Envelopes.seal(key: key, header: h, message: ev)
+            history[sid, default: []].append(ev)
+            stored.envelope = try security.seal(account, h, ev, seed: key)
             req.events.append(stored)
         }
         _ = try await api.uploadEvents(request: req, headers: Api.headers(token: token)).value()
     }
 
     /// Connects the stream and answers forwarded commands.
+    func waitReady() async throws {
+        let deadline = Date().addingTimeInterval(5)
+        while !ready {
+            if Date() > deadline { throw TestFailure("synthetic authority stream not ready") }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+    }
     func connect() throws {
+        ready = false
         var hello = PBPeerFrame()
         hello.hello.token = token
-        let socket = Socket(http: http, url: rpc.socketURL("/v1/stream"), hello: try hello.serializedData(), sleep: realSleep)
+        let socket = Socket(
+            http: http, url: rpc.socketURL("/v1/stream"), hello: try hello.serializedData(),
+            sleep: realSleep)
         ws = socket
         Task {
             while let bytes = try? await socket.receive() {
-                guard let f = try? PBServerFrame(serializedBytes: bytes), case .forwardCall(let call)? = f.kind else { continue }
+                guard let f = try? PBServerFrame(serializedBytes: bytes) else { continue }
+                if case .ready? = f.kind {
+                    self.ready = true
+                    continue
+                }
+                guard case .forwardCall(let call)? = f.kind else { continue }
                 await self.handle(call, on: socket)
             }
         }
     }
 
     private func handle(_ call: PBForwardCall, on socket: Socket) async {
-        guard let (h, pt) = try? Envelopes.open(key: keys.command, envelope: call.command),
-              let cmd = try? PBCommand(serializedBytes: pt) else { return }
-        commands.put((h, cmd))
-        if case .openTerminal(let open)? = cmd.kind { serveTerminal(open) }
-        let result = await answer(h, cmd)
+        if !call.securityRpc.isEmpty {
+            guard let raw = try? security.rpc(call.securityRpc) else { return }
+            var reply = PBPeerFrame()
+            reply.forwardReply.callID = call.callID
+            reply.forwardReply.securityRpc = raw
+            if let data = try? reply.serializedData() { socket.send(data) }
+            return
+        }
+        guard let (h, pt) = try? security.open(account, call.command),
+            let cmd = try? PBCommand(serializedBytes: pt)
+        else { return }
+        let result: PBCommandResult
+        if case .getLiveSnapshot(let ask)? = cmd.kind {
+            let events = history[ask.sessionID] ?? []
+            let derived = derive(events)
+            let actions = events.filter { event in
+                switch event.kind {
+                case .approvalRequested(let request)?:
+                    return derived.approvals[request.approvalID] != nil
+                case .questionAsked(let request)?:
+                    return derived.questions[request.questionID] != nil
+                case .inputState(let state)?:
+                    return derived.inputs[state.requestID] == .queued
+                        || derived.inputs[state.requestID] == .heldByCli
+                default: return false
+                }
+            }
+            var snapshot = PBLiveSnapshot()
+            snapshot.running = derived.running
+            snapshot.session = info[ask.sessionID] ?? PBSession()
+            snapshot.session.id = ask.sessionID
+            snapshot.actions = actions
+            var r = PBCommandResult()
+            r.liveSnapshot = snapshot
+            result = r
+        } else {
+            commands.put((h, cmd))
+            if case .openTerminal(let open)? = cmd.kind { serveTerminal(open) }
+            result = await answer(h, cmd)
+        }
         var rh = header(.commandResult)
         rh.sessionID = h.sessionID
         rh.requestID = h.requestID
         var reply = PBPeerFrame()
         reply.forwardReply.callID = call.callID
-        guard let env = try? Envelopes.seal(key: garbleResults ? randomBytes(32) : keys.command, header: rh, message: result) else { return }
+        guard var env = try? security.seal(account, rh, result) else { return }
+        if garbleResults { env.ciphertext = randomBytes(env.ciphertext.count) }
         reply.forwardReply.result = env
-        if let bytes: Data = try? reply.serializedData() { socket.send(bytes) }
+        if let bytes = try? reply.serializedData() { socket.send(bytes) }
     }
 
     func disconnect() {
+        ready = false
         ws?.close()
         ws = nil
     }
@@ -335,7 +431,8 @@ actor FakeDaemon {
         hello.token = token
         hello.streamID = stream
         guard let helloBytes: Data = try? hello.serializedData() else { return }
-        let socket = Socket(http: http, url: rpc.socketURL("/v1/term"), hello: helloBytes, sleep: realSleep)
+        let socket = Socket(
+            http: http, url: rpc.socketURL("/v1/term"), hello: helloBytes, sleep: realSleep)
         let out = header(.terminalOutput)
         let input = termInput
         let replay = replayTerminal
@@ -354,13 +451,17 @@ actor FakeDaemon {
                 h.sessionID = sid
                 h.requestID = stream
                 h.seq = seq
-                if let bytes: Data = try? Envelopes.seal(key: key, header: h, message: f).serializedData() { socket.send(bytes) }
+                if let bytes: Data = try? security.seal(account, h, f, seed: key).serializedData() {
+                    socket.send(bytes)
+                }
             }
             while let bytes = try? await socket.receive() {
-                guard let (hh, frame) = try? Envelopes.openMessage(
-                    key: key, envelope: try PBEnvelope(serializedBytes: bytes),
-                    want: Place(.terminalInput, sessionId: sid, requestId: stream), as: PBTerminalFrame.self),
-                    hh.seq > 0 else { continue }
+                guard let env = try? PBEnvelope(serializedBytes: bytes),
+                    let (hh, raw) = try? security.open(account, env, seed: key),
+                    let frame = try? PBTerminalFrame(serializedBytes: raw), hh.seq > 0,
+                    (try? Envelopes.expect(
+                        hh, Place(.terminalInput, sessionId: sid, requestId: stream))) != nil
+                else { continue }
                 input.put(frame)
             }
         }
@@ -391,7 +492,9 @@ final class MemoryCache: CipherCache, @unchecked Sendable {
 
     var images: [String: Data] { lock.withLock { imageStore } }
     func image(key: String) async -> Data? { lock.withLock { imageStore[key] } }
-    func putImage(key: String, envelope: Data) async { lock.withLock { imageStore[key] = envelope } }
+    func putImage(key: String, envelope: Data) async {
+        lock.withLock { imageStore[key] = envelope }
+    }
     func blob(name: String) async -> Data? { lock.withLock { blobs[name] } }
     func putBlob(name: String, data: Data) async { lock.withLock { blobs[name] = data } }
 
@@ -404,7 +507,11 @@ final class MemoryCache: CipherCache, @unchecked Sendable {
     func putSession(_ s: PBRemoteSession) async { lock.withLock { sessionStore[s.sessionID] = s } }
     func putEvents(sessionId: String, events: [PBStoredEvent]) async {
         // An event already stored is left as it is, as in the app's store.
-        lock.withLock { for e in events where eventStore[sessionId]?[e.seq] == nil { eventStore[sessionId, default: [:]][e.seq] = e } }
+        lock.withLock {
+            for e in events where eventStore[sessionId]?[e.seq] == nil {
+                eventStore[sessionId, default: [:]][e.seq] = e
+            }
+        }
     }
     func dropEvents(sessionId: String) async { lock.withLock { eventStore[sessionId] = nil } }
 
@@ -451,9 +558,15 @@ final class HookedCache: CipherCache, @unchecked Sendable {
 
     /// Runs before the machines are read.
     func hookMachines(_ f: (@Sendable () async -> Void)?) { lock.withLock { _machines = f } }
-    func hookEvents(_ f: (@Sendable (String) async -> [PBStoredEvent])?) { lock.withLock { _events = f } }
-    func hookPutEvents(_ f: (@Sendable (String, [PBStoredEvent]) async -> Void)?) { lock.withLock { _putEvents = f } }
-    func hookPutMachine(_ f: (@Sendable (PBMachine) async -> Void)?) { lock.withLock { _putMachine = f } }
+    func hookEvents(_ f: (@Sendable (String) async -> [PBStoredEvent])?) {
+        lock.withLock { _events = f }
+    }
+    func hookPutEvents(_ f: (@Sendable (String, [PBStoredEvent]) async -> Void)?) {
+        lock.withLock { _putEvents = f }
+    }
+    func hookPutMachine(_ f: (@Sendable (PBMachine) async -> Void)?) {
+        lock.withLock { _putMachine = f }
+    }
 
     func machines() async -> [PBMachine] {
         if let f = lock.withLock({ _machines }) { await f() }
@@ -478,7 +591,9 @@ final class HookedCache: CipherCache, @unchecked Sendable {
     func removeSession(id: String) async { await inner.removeSession(id: id) }
     func unlistSession(id: String) async { await inner.unlistSession(id: id) }
     func image(key: String) async -> Data? { await inner.image(key: key) }
-    func putImage(key: String, envelope: Data) async { await inner.putImage(key: key, envelope: envelope) }
+    func putImage(key: String, envelope: Data) async {
+        await inner.putImage(key: key, envelope: envelope)
+    }
     func blob(name: String) async -> Data? { await inner.blob(name: name) }
     func putBlob(name: String, data: Data) async { await inner.putBlob(name: name, data: data) }
 }
@@ -531,7 +646,9 @@ func eventually(_ what: String, ms: Int = 10_000, _ ok: @Sendable () async -> Bo
 
 extension Feed {
     /// The first value that satisfies `ok`; throws when none comes in `ms`.
-    func await(_ what: String, ms: Int = 10_000, _ ok: @escaping @Sendable (Value) -> Bool) async throws -> Value {
+    func await(_ what: String, ms: Int = 10_000, _ ok: @escaping @Sendable (Value) -> Bool)
+        async throws -> Value
+    {
         let found = Task { await self.first(where: ok) }
         let limit = Task {
             try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
@@ -544,14 +661,17 @@ extension Feed {
 }
 
 extension Remote {
-    func awaitState(_ what: String, ms: Int = 10_000, _ ok: @escaping @Sendable (RemoteState) -> Bool) async throws -> RemoteState {
+    func awaitState(
+        _ what: String, ms: Int = 10_000, _ ok: @escaping @Sendable (RemoteState) -> Bool
+    ) async throws -> RemoteState {
         do {
             return try await state.await(what, ms: ms, ok)
         } catch {
             // Lengths and IDs only: a state holds titles.
             let st = current
             throw TestFailure(
-                "timed out waiting for \(what): \(st.sessions.count) sessions, next \(String(describing: st.sessionsNext)), \(st.conn), link \(st.link), removed \(st.removed), error \(st.error), sessionsError \(st.sessionsError)")
+                "timed out waiting for \(what): \(st.sessions.count) sessions, next \(String(describing: st.sessionsNext)), \(st.conn), link \(st.link), removed \(st.removed), error \(st.error), sessionsError \(st.sessionsError)"
+            )
         }
     }
 

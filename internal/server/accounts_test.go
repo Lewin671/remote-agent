@@ -53,14 +53,14 @@ func (ts *testServer) account(t *testing.T, keys *e2e.Keys) *testAccount {
 
 func (a *testAccount) putSession(t *testing.T, sid string) {
 	t.Helper()
-	key, _ := e2e.Seal(a.keys.Wrap, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: a.mid, SessionId: sid}, e2e.NewKey())
+	key, _ := e2e.Seal(a.keys.Wrap, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: a.mid, SessionId: sid}, e2e.NewKey())
 	if _, err := a.machine.PutSession(context.Background(), connect.NewRequest(&pb.PutSessionRequest{SessionId: sid, Key: key})); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func (a *testAccount) putPrefs(t *testing.T, expected uint64) error {
-	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: "project-prefs", Seq: expected + 1, Sender: a.cid}, []byte("prefs"))
+	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: "project-prefs", Seq: expected + 1, Sender: a.cid}, []byte("prefs"))
 	_, err := a.client.PutAccountPrefs(context.Background(), connect.NewRequest(&pb.PutAccountPrefsRequest{ObjectId: "project-prefs", ExpectedRevision: expected, Envelope: env}))
 	return err
 }
@@ -78,7 +78,7 @@ func TestAccountsAreIsolated(t *testing.T) {
 	// Both accounts have a session s1; only a's has events and an image.
 	a.putSession(t, "s1")
 	b.putSession(t, "s1")
-	ev, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: a.mid, SessionId: "s1", Seq: 1}, []byte("event"))
+	ev, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: a.mid, SessionId: "s1", Seq: 1}, []byte("event"))
 	if _, err := a.machine.UploadEvents(ctx, connect.NewRequest(&pb.UploadEventsRequest{SessionId: "s1", Events: []*pb.StoredEvent{{Seq: 1, Envelope: ev}}})); err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestAccountsAreIsolated(t *testing.T) {
 			}
 		}
 	}
-	meta, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_DEVICE_META, RequestId: a.cid, Seq: 1, Sender: b.cid}, []byte("name"))
+	meta, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_DEVICE_META, RequestId: a.cid, Seq: 1, Sender: b.cid}, []byte("name"))
 	if _, err := b.client.PutDeviceMeta(ctx, connect.NewRequest(&pb.PutDeviceMetaRequest{DeviceId: a.cid, Meta: meta})); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("b names a's device: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestAccountsAreIsolated(t *testing.T) {
 	if _, err := ts.srv.store.device(ctx, a.mid); err != nil {
 		t.Fatalf("a's machine after b removed it: %v", err)
 	}
-	cmd, _ := e2e.Seal(b.keys.Command, &pb.Header{
+	cmd, _ := e2e.Seal(b.keys.Command, &pb.Header{Version: 2,
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: a.mid, RequestId: "0123456789abcdef0123456789abcdef",
 		DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: b.cid,
 	}, []byte("cmd"))
@@ -190,7 +190,7 @@ func (ts *testServer) signup(t *testing.T, keys *e2e.Keys, kind pb.DeviceKind, p
 	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(nil)
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: keys.AccountPublicKey(), DevicePublicKey: pub, Kind: kind})
-	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{Registration: reg, Signature: keys.SignRegistration(reg), SignupProof: proof}))
+	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: reg, Signature: keys.SignRegistration(reg), SignupProof: proof}))
 	if err == nil {
 		ts.rememberKey(res.Msg.DeviceId, priv)
 	}
@@ -262,7 +262,7 @@ func TestOpenSignup(t *testing.T) {
 	stolen, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: thief.AccountPublicKey(), DevicePublicKey: takenReg.DevicePublicKey, Kind: machine})
 	again := ts.proof(t)
 	for range signupsPerHour + 1 {
-		_, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{Registration: stolen, Signature: thief.SignRegistration(stolen), SignupProof: again}))
+		_, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: stolen, Signature: thief.SignRegistration(stolen), SignupProof: again}))
 		if connect.CodeOf(err) != connect.CodePermissionDenied || !strings.Contains(err.Error(), "another account") {
 			t.Fatalf("another account's device key: %v", err)
 		}
@@ -538,7 +538,7 @@ func TestAccountGrowthIsBounded(t *testing.T) {
 	}
 	client := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, cp, cid)))
 	put := func(id string, expected uint64) error {
-		env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: id, Seq: expected + 1, Sender: cid}, []byte("prefs"))
+		env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: id, Seq: expected + 1, Sender: cid}, []byte("prefs"))
 		_, err := client.PutAccountPrefs(ctx, connect.NewRequest(&pb.PutAccountPrefsRequest{ObjectId: id, ExpectedRevision: expected, Envelope: env}))
 		return err
 	}

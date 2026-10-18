@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -379,7 +380,7 @@ func errUnknown(why string) error {
 }
 
 // forward sends a sealed command to a machine and waits for the result.
-func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.ForwardCall) (*pb.Envelope, error) {
+func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.ForwardCall) (*pb.ForwardReply, error) {
 	h := a.h
 	h.mu.Lock()
 	p := a.machineLocked(machineID)
@@ -411,13 +412,18 @@ func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.Forwar
 			return nil, errUnknown("the machine disconnected")
 		case r.Error != "":
 			return nil, connect.NewError(connect.CodeAborted, errors.New("machine: "+strings.TrimSpace(r.Error)))
-		case r.Result == nil:
+		case len(fc.SecurityRpc) > 0:
+			if r.Result != nil || len(r.SecurityRpc) == 0 || len(r.SecurityRpc) > deviceauth.MaxRPCBytes+512 {
+				return nil, errUnknown("the machine sent a malformed security reply")
+			}
+			return r, nil
+		case r.Result == nil || len(r.SecurityRpc) != 0:
 			return nil, errUnknown("the machine sent no result")
 		}
 		if _, err := checkEnvelope(r.Result, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: machineID}); err != nil {
 			return nil, errUnknown("the machine sent a malformed result")
 		}
-		return r.Result, nil
+		return r, nil
 	case <-timer.C:
 		return nil, errUnknown("no reply from the machine in time")
 	case <-ctx.Done():

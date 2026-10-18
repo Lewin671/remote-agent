@@ -13,7 +13,11 @@ import Testing
         listener.serve { fd in
             guard readHead(fd) != nil else { return }
             requests.increment()
-            writeAll(fd, Data("HTTP/1.1 307 Temporary Redirect\r\nLocation: http://127.0.0.1:\(port)/leak\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".utf8))
+            writeAll(
+                fd,
+                Data(
+                    "HTTP/1.1 307 Temporary Redirect\r\nLocation: http://127.0.0.1:\(port)/leak\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                        .utf8))
         }
         return (listener, requests)
     }
@@ -22,7 +26,8 @@ import Testing
         let (listener, requests) = try redirector()
         defer { listener.close() }
         // The system's default configuration follows redirects; the stack built on it must not.
-        let api = try Api(server: "http://127.0.0.1:\(listener.port)", http: HTTP(configuration: .default))
+        let api = try Api(
+            server: "http://127.0.0.1:\(listener.port)", http: HTTP(configuration: .default))
         var ask = PBGetChallengeRequest()
         ask.deviceID = "test"
         #expect(await api.auth.getChallenge(request: ask).error != nil)
@@ -33,7 +38,8 @@ import Testing
     @Test func aPlainRequestDoesNotFollowRedirects() async throws {
         let (listener, requests) = try redirector()
         defer { listener.close() }
-        let (_, response) = try await HTTP().data(for: URLRequest(url: URL(string: "http://127.0.0.1:\(listener.port)/healthz")!))
+        let (_, response) = try await HTTP().data(
+            for: URLRequest(url: URL(string: "http://127.0.0.1:\(listener.port)/healthz")!))
         // The redirect is the answer.
         #expect(response.statusCode == 307)
         await sleepMs(300)
@@ -45,7 +51,8 @@ import Testing
         let (listener, requests) = try redirector()
         defer { listener.close() }
         let socket = Socket(
-            http: HTTP(), url: URL(string: "ws://127.0.0.1:\(listener.port)/v1/stream")!, hello: Data("token".utf8), sleep: realSleep)
+            http: HTTP(), url: URL(string: "ws://127.0.0.1:\(listener.port)/v1/stream")!,
+            hello: Data("token".utf8), sleep: realSleep)
         #expect(await !socket.opened())
         let end = await socket.ended()
         #expect(end.error != nil)
@@ -59,7 +66,8 @@ import Testing
         let hole = try StreamBlackhole()
         defer { hole.close() }
         let socket = Socket(
-            http: HTTP(), url: URL(string: "ws" + hole.url.dropFirst(4) + "/v1/stream")!, hello: Data("x".utf8), pingMs: 150,
+            http: HTTP(), url: URL(string: "ws" + hole.url.dropFirst(4) + "/v1/stream")!,
+            hello: Data("x".utf8), pingMs: 150,
             sleep: realSleep)
         #expect(await socket.opened())
         let started = Date()
@@ -74,7 +82,8 @@ import Testing
         let hole = try StreamBlackhole(firstClose: 1008)
         defer { hole.close() }
         let socket = Socket(
-            http: HTTP(), url: URL(string: "ws" + hole.url.dropFirst(4) + "/v1/stream")!, hello: Data("x".utf8), sleep: realSleep)
+            http: HTTP(), url: URL(string: "ws" + hole.url.dropFirst(4) + "/v1/stream")!,
+            hello: Data("x".utf8), sleep: realSleep)
         await #expect(throws: (any Error).self) { try await socket.receive() }
         let end = await socket.ended()
         #expect(end.closeCode == 1008)
@@ -100,17 +109,31 @@ import Testing
     }
 
     @Test func everyRpcEntryRejectsInsecureRemoteOrigins() throws {
-        for server in ["http://relay.example", "http://192.168.1.2:8080", "https://user:password@relay.example", "ftp://relay.example", ""] {
+        for server in [
+            "http://relay.example", "http://192.168.1.2:8080",
+            "https://user:password@relay.example", "ftp://relay.example", "",
+        ] {
             #expect(throws: UserError.self, "\(server)") { try Api(server: server, http: HTTP()) }
             #expect(throws: UserError.self, "\(server)") {
-                try Remote(account: Account(server: server, root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "d"), http: HTTP())
+                try fixtureRemote(
+                    account: Account(
+                        server: server, root: Data(count: 32), deviceSeed: Data(count: 32),
+                        deviceId: "d"), http: HTTP())
             }
         }
         // Plain http only on this device: a simulator's server, or a test's.
-        #expect(try Api(server: "http://127.0.0.1:8080", http: HTTP()).server == "http://127.0.0.1:8080")
-        #expect(try Api(server: " HTTPS://Relay.Example/ ", http: HTTP()).server == "https://relay.example")
-        #expect(try Api(server: "https://relay.example", http: HTTP()).socketURL("/v1/stream").absoluteString == "wss://relay.example/v1/stream")
-        #expect(try Api(server: "http://localhost:8787", http: HTTP()).socketURL("/v1/term").absoluteString == "ws://localhost:8787/v1/term")
+        #expect(
+            try Api(server: "http://127.0.0.1:8080", http: HTTP()).server == "http://127.0.0.1:8080"
+        )
+        #expect(
+            try Api(server: " HTTPS://Relay.Example/ ", http: HTTP()).server
+                == "https://relay.example")
+        #expect(
+            try Api(server: "https://relay.example", http: HTTP()).socketURL("/v1/stream")
+                .absoluteString == "wss://relay.example/v1/stream")
+        #expect(
+            try Api(server: "http://localhost:8787", http: HTTP()).socketURL("/v1/term")
+                .absoluteString == "ws://localhost:8787/v1/term")
     }
 
     @Test func theDefaultStackKeepsNothingBetweenRequests() {

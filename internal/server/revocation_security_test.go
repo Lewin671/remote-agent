@@ -23,19 +23,20 @@ func TestRevokedDeviceRegistrationCannotBeReplayed(t *testing.T) {
 	for _, kind := range []pb.DeviceKind{pb.DeviceKind_DEVICE_KIND_CLIENT, pb.DeviceKind_DEVICE_KIND_MACHINE} {
 		pub, priv, _ := ed25519.GenerateKey(nil)
 		raw, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: pub, Kind: kind})
-		request := &pb.RegisterDeviceRequest{Registration: raw, Signature: ts.keys.SignRegistration(raw)}
+		request := &pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: raw, Signature: ts.keys.SignRegistration(raw)}
 		ts.admitRegistration(t, request)
 		registered, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(request))
 		if err != nil {
 			t.Fatal(err)
 		}
 		id := registered.Msg.DeviceId
+		ts.rememberKey(id, priv)
 		oldToken := ts.login(t, priv, id)
 		// Legitimate registration retries remain idempotent until revocation.
 		if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(request)); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := admin.RemoveDevice(ctx, connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: id})); err != nil {
+		if _, err := admin.RemoveDevice(ctx, connect.NewRequest(ts.removalProof(t, aid, id))); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(request)); connect.CodeOf(err) != connect.CodePermissionDenied {
@@ -48,7 +49,7 @@ func TestRevokedDeviceRegistrationCannotBeReplayed(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{DeviceId: id, Challenge: challenge.Msg.Challenge, Signature: e2e.SignLogin(priv, challenge.Msg.Challenge)})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		if _, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: 9, DeviceId: id, Challenge: challenge.Msg.Challenge, Signature: e2e.SignLogin(priv, challenge.Msg.Challenge)})); connect.CodeOf(err) != connect.CodePermissionDenied {
 			t.Fatalf("revoked device logged in: %v", err)
 		}
 	}
@@ -129,10 +130,10 @@ func TestConcurrentRegistrationCannotUndoRemoval(t *testing.T) {
 // A PutSession that passed authentication before its machine was removed
 // must not bring the machine's sessions back.
 func TestRemovedMachineCannotPutSession(t *testing.T) {
-	ts, mid, _, machine, client, _ := newV2Env(t)
+	ts, mid, cid, machine, client, _ := newV2Env(t)
 	ctx := context.Background()
 	putTestSession(t, ts, machine, mid, "s1")
-	if _, err := client.RemoveDevice(ctx, connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: mid})); err != nil {
+	if _, err := client.RemoveDevice(ctx, connect.NewRequest(ts.removalProof(t, cid, mid))); err != nil {
 		t.Fatal(err)
 	}
 	// The request is past the interceptor; only the store can refuse it.
@@ -144,7 +145,7 @@ func TestRemovedMachineCannotPutSession(t *testing.T) {
 		t.Fatalf("%d sessions of a removed machine stored, %v", sessions, err)
 	}
 	svc := &machineService{s: ts.srv}
-	key, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s2"}, e2e.NewKey())
+	key, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s2"}, e2e.NewKey())
 	_, err := svc.PutSession(context.WithValue(ctx, ctxKey{}, &device{id: mid, account: ts.acct(), kind: pb.DeviceKind_DEVICE_KIND_MACHINE}), connect.NewRequest(&pb.PutSessionRequest{SessionId: "s2", Key: key}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("put session for a removed machine: %v", err)

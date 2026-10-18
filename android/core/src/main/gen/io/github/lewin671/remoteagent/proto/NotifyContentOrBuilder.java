@@ -105,4 +105,10 @@ public interface NotifyContentOrBuilder extends
    * @return The approval.
    */
   io.github.lewin671.remoteagent.proto.NotifyApproval getApproval();
+
+  /**
+   * <code>uint64 source_event_seq = 7 [json_name = "sourceEventSeq"];</code>
+   * @return The sourceEventSeq.
+   */
+  long getSourceEventSeq();
 }

@@ -27,4 +27,15 @@ public interface RevealPairingRequestOrBuilder extends
    * @return The initiatorPublic.
    */
   com.google.protobuf.ByteString getInitiatorPublic();
+
+  /**
+   * <pre>
+   * Signed active authority PairContext. SAS binds its precommitted trust
+   * descriptor; the late context nonce/head/expiry are signed separately.
+   * </pre>
+   *
+   * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
+   * @return The securityContext.
+   */
+  com.google.protobuf.ByteString getSecurityContext();
 }

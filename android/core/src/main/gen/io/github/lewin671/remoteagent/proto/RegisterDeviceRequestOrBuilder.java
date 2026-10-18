@@ -88,4 +88,10 @@ public interface RegisterDeviceRequestOrBuilder extends
    * @return The approvalSignature.
    */
   com.google.protobuf.ByteString getApprovalSignature();
+
+  /**
+   * <code>uint32 protocol_version = 7 [json_name = "protocolVersion"];</code>
+   * @return The protocolVersion.
+   */
+  int getProtocolVersion();
 }

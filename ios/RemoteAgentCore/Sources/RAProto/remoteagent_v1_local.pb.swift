@@ -604,6 +604,8 @@ public struct PBResolveApprovalRequest: Sendable {
   /// tells which happened. Needs MachineCapabilities.approval_always.
   public var always: Bool = false
 
+  public var observedEventSeq: UInt64 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -646,6 +648,8 @@ public struct PBAnswerQuestionRequest: Sendable {
   /// 1-based option numbers for a multi_select question (Claude Code); when
   /// set, option is ignored.
   public var options: [Int32] = []
+
+  public var observedEventSeq: UInt64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -898,6 +902,10 @@ public struct PBAnswerPlanRequest: Sendable {
   public var sessionID: String = String()
 
   public var choice: PBPlanChoice = .unspecified
+
+  public var observedEventSeq: UInt64 = 0
+
+  public var observedScreenHash: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2291,7 +2299,7 @@ extension PBResumeInputResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBResolveApprovalRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ResolveApprovalRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}approval_id\0\u{1}allow\0\u{1}message\0\u{1}always\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}approval_id\0\u{1}allow\0\u{1}message\0\u{1}always\0\u{3}observed_event_seq\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2304,6 +2312,7 @@ extension PBResolveApprovalRequest: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 3: try { try decoder.decodeSingularBoolField(value: &self.allow) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.message) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.always) }()
+      case 6: try { try decoder.decodeSingularUInt64Field(value: &self.observedEventSeq) }()
       default: break
       }
     }
@@ -2325,6 +2334,9 @@ extension PBResolveApprovalRequest: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.always != false {
       try visitor.visitSingularBoolField(value: self.always, fieldNumber: 5)
     }
+    if self.observedEventSeq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.observedEventSeq, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2334,6 +2346,7 @@ extension PBResolveApprovalRequest: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.allow != rhs.allow {return false}
     if lhs.message != rhs.message {return false}
     if lhs.always != rhs.always {return false}
+    if lhs.observedEventSeq != rhs.observedEventSeq {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2360,7 +2373,7 @@ extension PBResolveApprovalResponse: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBAnswerQuestionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AnswerQuestionRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}question_id\0\u{1}option\0\u{3}question_index\0\u{1}options\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}question_id\0\u{1}option\0\u{3}question_index\0\u{1}options\0\u{3}observed_event_seq\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2373,6 +2386,7 @@ extension PBAnswerQuestionRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
       case 3: try { try decoder.decodeSingularInt32Field(value: &self.option) }()
       case 4: try { try decoder.decodeSingularInt32Field(value: &self._questionIndex) }()
       case 5: try { try decoder.decodeRepeatedInt32Field(value: &self.options) }()
+      case 6: try { try decoder.decodeSingularUInt64Field(value: &self.observedEventSeq) }()
       default: break
       }
     }
@@ -2398,6 +2412,9 @@ extension PBAnswerQuestionRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
     if !self.options.isEmpty {
       try visitor.visitPackedInt32Field(value: self.options, fieldNumber: 5)
     }
+    if self.observedEventSeq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.observedEventSeq, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2407,6 +2424,7 @@ extension PBAnswerQuestionRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
     if lhs.option != rhs.option {return false}
     if lhs._questionIndex != rhs._questionIndex {return false}
     if lhs.options != rhs.options {return false}
+    if lhs.observedEventSeq != rhs.observedEventSeq {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2913,7 +2931,7 @@ extension PBCompactResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
 
 extension PBAnswerPlanRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AnswerPlanRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{1}choice\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{1}choice\0\u{3}observed_event_seq\0\u{3}observed_screen_hash\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2923,6 +2941,8 @@ extension PBAnswerPlanRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
       case 2: try { try decoder.decodeSingularEnumField(value: &self.choice) }()
+      case 3: try { try decoder.decodeSingularUInt64Field(value: &self.observedEventSeq) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.observedScreenHash) }()
       default: break
       }
     }
@@ -2935,12 +2955,20 @@ extension PBAnswerPlanRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if self.choice != .unspecified {
       try visitor.visitSingularEnumField(value: self.choice, fieldNumber: 2)
     }
+    if self.observedEventSeq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.observedEventSeq, fieldNumber: 3)
+    }
+    if !self.observedScreenHash.isEmpty {
+      try visitor.visitSingularBytesField(value: self.observedScreenHash, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBAnswerPlanRequest, rhs: PBAnswerPlanRequest) -> Bool {
     if lhs.sessionID != rhs.sessionID {return false}
     if lhs.choice != rhs.choice {return false}
+    if lhs.observedEventSeq != rhs.observedEventSeq {return false}
+    if lhs.observedScreenHash != rhs.observedScreenHash {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

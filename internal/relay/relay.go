@@ -15,8 +15,8 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
@@ -57,7 +57,6 @@ type ImageUpload struct {
 // Relay keeps the daemon connected to the server.
 type Relay struct {
 	backend     Backend
-	cmds        *commandLog
 	calls       chan struct{} // bounds command workers across reconnects
 	machineRPCs chan struct{} // bounds session uploads across reconnects
 	// backlog admits one ended session at a time to its first sync after
@@ -88,7 +87,7 @@ type Relay struct {
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second}
+	return &Relay{backend: backend, calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.
@@ -143,12 +142,13 @@ func sleep(ctx context.Context, d time.Duration) {
 
 // conn is one connected period: the login token, clients and keys.
 type conn struct {
-	r       *Relay
-	acct    *Account
-	keys    *e2e.Keys
-	machine remoteagentv1connect.MachineServiceClient
-	ws      *websocket.Conn
-	token   string
+	security *securitySession
+	r        *Relay
+	acct     *Account
+	keys     *e2e.Keys
+	machine  remoteagentv1connect.MachineServiceClient
+	ws       *websocket.Conn
+	token    string
 }
 
 // session logs in, opens the stream, and serves until an error.
@@ -166,6 +166,26 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	hc := httpClient()
 	c := &conn{r: r, acct: acct, keys: keys, token: token,
 		machine: remoteagentv1connect.NewMachineServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token), r.limitMachineRPCs()))}
+
+	securityClient := remoteagentv1connect.NewClientServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token)))
+	c.security, err = openSecuritySession(acct, securityClient)
+	if err != nil {
+		return err
+	}
+	defer func() { cancel(); c.security.Close() }()
+	if c.security.authority != nil {
+		states, err := c.security.authority.StatePage(0)
+		if err != nil || len(states) == 0 {
+			return deviceauth.ErrStorage
+		}
+		genesis, err := states[0].MarshalBinary()
+		if err != nil {
+			return err
+		}
+		if _, err := c.machine.PinSecurityDomain(ctx, connect.NewRequest(&pb.PinSecurityDomainRequest{GenesisState: genesis})); err != nil {
+			return fmt.Errorf("pin relay transport domain: %w", err)
+		}
+	}
 
 	wsURL := "ws" + strings.TrimPrefix(acct.Server, "http") + "/v1/stream"
 	ws, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: httpClient()})
@@ -186,6 +206,11 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	} else if f.GetReady() == nil {
 		return errors.New("server did not accept the stream")
 	}
+	errc := make(chan error, 4)
+	go func() { errc <- c.readLoop(ctx) }()
+	if err := c.security.remote.Sync(ctx); err != nil {
+		return err
+	}
 	meta := c.r.backend.MachineMeta()
 	if err := c.putMachine(ctx, meta); err != nil {
 		return err
@@ -200,9 +225,8 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	}()
 	slog.Info("relay: connected", "server", acct.Server, "machine", acct.DeviceID)
 
-	errc := make(chan error, 2)
-	go func() { errc <- c.readLoop(ctx) }()
 	go func() { errc <- c.syncLoop(ctx, meta) }()
+	go func() { errc <- c.securitySyncLoop(ctx) }()
 	go func() {
 		// Keep the connection alive through proxies and notice a dead one.
 		t := time.NewTicker(25 * time.Second)
@@ -231,7 +255,7 @@ func login(ctx context.Context, acct *Account) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{
+	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: 9,
 		DeviceId: acct.DeviceID, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(acct.DeviceKey(), ch.Msg.Challenge),
 	}))
 	if err != nil {
@@ -294,9 +318,9 @@ func revision() uint64 {
 }
 
 func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {
-	env, err := e2e.SealMessage(c.keys.Meta, &pb.Header{
+	env, err := c.security.sealMessage(ctx, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_MACHINE_META, MachineId: c.acct.DeviceID, Seq: revision(), Sender: c.acct.DeviceID,
-	}, meta)
+	}, deviceauth.MachineMeta, nil, meta)
 	if err != nil {
 		return err
 	}
@@ -311,7 +335,7 @@ const maxConcurrentCalls = 8
 func (c *conn) readLoop(ctx context.Context) error {
 	return readForwardCalls(ctx, c.r.calls, func() (*pb.ServerFrame, error) {
 		return readFrame(ctx, c.ws)
-	}, c.handleCall)
+	}, c.handleForward)
 }
 
 func readForwardCalls(ctx context.Context, slots chan struct{}, read func() (*pb.ServerFrame, error), handle func(context.Context, *pb.ForwardCall)) error {

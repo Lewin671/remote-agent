@@ -29,12 +29,16 @@ Sessions started from a client and sessions started in a terminal are the same k
 | `remote-agent events <id> -f` | Follow a session's events |
 | `remote-agent doctor` | Check that the installed CLIs behave as remote-agent expects; run it after upgrading Codex or Claude Code |
 | `remote-agent account pair` | Add another device to the account |
+| `remote-agent account security-init` | Establish the fixed authority on the chosen existing computer |
+| `remote-agent account security-enroll --server URL --code CODE` | Bind a retained computer without replacing its identity |
 
 `remote-agent --help` lists every command.
 
 ## Security model
 
-The relay is treated as untrusted. If your server is compromised, what leaks is metadata, not content.
+The relay is untrusted. Devices pin a fixed authority daemon after comparing pairing symbols locally on both devices. Removal rotates content keys and waits for every retained executor to install its fence automatically; offline computers keep it pending. After completion, old root/session keys and a removed device's private keys cannot authorize new control or decrypt new content.
+
+Retained endpoints, their OS/client code, randomness and local security state must remain trusted and must not be rolled back. Already downloaded content cannot be erased. The authority computer cannot be removed normally; handoff and root-only recovery are not implemented. When it is offline, new remote authorization pauses while the local CLI continues. Legacy history and images are marked unverified and read-only. See the [full security boundary](scope.md#设备加入与移除) and [protocol 9 upgrade steps](self-hosting.md#upgrading-the-device-security-domain-protocol-9).
 
 | Data | Visible to the relay |
 |---|---|

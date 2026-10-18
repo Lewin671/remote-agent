@@ -50,6 +50,9 @@ const (
 	// AuthServiceGetSignupChallengeProcedure is the fully-qualified name of the AuthService's
 	// GetSignupChallenge RPC.
 	AuthServiceGetSignupChallengeProcedure = "/remoteagent.v1.AuthService/GetSignupChallenge"
+	// PairingServicePeekPairingProcedure is the fully-qualified name of the PairingService's
+	// PeekPairing RPC.
+	PairingServicePeekPairingProcedure = "/remoteagent.v1.PairingService/PeekPairing"
 	// PairingServiceCreatePairingProcedure is the fully-qualified name of the PairingService's
 	// CreatePairing RPC.
 	PairingServiceCreatePairingProcedure = "/remoteagent.v1.PairingService/CreatePairing"
@@ -104,6 +107,9 @@ const (
 	// ClientServicePutAccountPrefsProcedure is the fully-qualified name of the ClientService's
 	// PutAccountPrefs RPC.
 	ClientServicePutAccountPrefsProcedure = "/remoteagent.v1.ClientService/PutAccountPrefs"
+	// MachineServicePinSecurityDomainProcedure is the fully-qualified name of the MachineService's
+	// PinSecurityDomain RPC.
+	MachineServicePinSecurityDomainProcedure = "/remoteagent.v1.MachineService/PinSecurityDomain"
 	// MachineServicePutMachineProcedure is the fully-qualified name of the MachineService's PutMachine
 	// RPC.
 	MachineServicePutMachineProcedure = "/remoteagent.v1.MachineService/PutMachine"
@@ -278,6 +284,8 @@ func (UnimplementedAuthServiceHandler) GetSignupChallenge(context.Context, *conn
 
 // PairingServiceClient is a client for the remoteagent.v1.PairingService service.
 type PairingServiceClient interface {
+	// Freeze this response before exposing the joiner ephemeral public key.
+	PeekPairing(context.Context, *connect.Request[v1.PeekPairingRequest]) (*connect.Response[v1.PeekPairingResponse], error)
 	CreatePairing(context.Context, *connect.Request[v1.CreatePairingRequest]) (*connect.Response[v1.CreatePairingResponse], error)
 	JoinPairing(context.Context, *connect.Request[v1.JoinPairingRequest]) (*connect.Response[v1.JoinPairingResponse], error)
 	GetPairing(context.Context, *connect.Request[v1.GetPairingRequest]) (*connect.Response[v1.GetPairingResponse], error)
@@ -297,6 +305,12 @@ func NewPairingServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	pairingServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("PairingService").Methods()
 	return &pairingServiceClient{
+		peekPairing: connect.NewClient[v1.PeekPairingRequest, v1.PeekPairingResponse](
+			httpClient,
+			baseURL+PairingServicePeekPairingProcedure,
+			connect.WithSchema(pairingServiceMethods.ByName("PeekPairing")),
+			connect.WithClientOptions(opts...),
+		),
 		createPairing: connect.NewClient[v1.CreatePairingRequest, v1.CreatePairingResponse](
 			httpClient,
 			baseURL+PairingServiceCreatePairingProcedure,
@@ -338,12 +352,18 @@ func NewPairingServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // pairingServiceClient implements PairingServiceClient.
 type pairingServiceClient struct {
+	peekPairing    *connect.Client[v1.PeekPairingRequest, v1.PeekPairingResponse]
 	createPairing  *connect.Client[v1.CreatePairingRequest, v1.CreatePairingResponse]
 	joinPairing    *connect.Client[v1.JoinPairingRequest, v1.JoinPairingResponse]
 	getPairing     *connect.Client[v1.GetPairingRequest, v1.GetPairingResponse]
 	revealPairing  *connect.Client[v1.RevealPairingRequest, v1.RevealPairingResponse]
 	approvePairing *connect.Client[v1.ApprovePairingRequest, v1.ApprovePairingResponse]
 	cancelPairing  *connect.Client[v1.CancelPairingRequest, v1.CancelPairingResponse]
+}
+
+// PeekPairing calls remoteagent.v1.PairingService.PeekPairing.
+func (c *pairingServiceClient) PeekPairing(ctx context.Context, req *connect.Request[v1.PeekPairingRequest]) (*connect.Response[v1.PeekPairingResponse], error) {
+	return c.peekPairing.CallUnary(ctx, req)
 }
 
 // CreatePairing calls remoteagent.v1.PairingService.CreatePairing.
@@ -378,6 +398,8 @@ func (c *pairingServiceClient) CancelPairing(ctx context.Context, req *connect.R
 
 // PairingServiceHandler is an implementation of the remoteagent.v1.PairingService service.
 type PairingServiceHandler interface {
+	// Freeze this response before exposing the joiner ephemeral public key.
+	PeekPairing(context.Context, *connect.Request[v1.PeekPairingRequest]) (*connect.Response[v1.PeekPairingResponse], error)
 	CreatePairing(context.Context, *connect.Request[v1.CreatePairingRequest]) (*connect.Response[v1.CreatePairingResponse], error)
 	JoinPairing(context.Context, *connect.Request[v1.JoinPairingRequest]) (*connect.Response[v1.JoinPairingResponse], error)
 	GetPairing(context.Context, *connect.Request[v1.GetPairingRequest]) (*connect.Response[v1.GetPairingResponse], error)
@@ -393,6 +415,12 @@ type PairingServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewPairingServiceHandler(svc PairingServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	pairingServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("PairingService").Methods()
+	pairingServicePeekPairingHandler := connect.NewUnaryHandler(
+		PairingServicePeekPairingProcedure,
+		svc.PeekPairing,
+		connect.WithSchema(pairingServiceMethods.ByName("PeekPairing")),
+		connect.WithHandlerOptions(opts...),
+	)
 	pairingServiceCreatePairingHandler := connect.NewUnaryHandler(
 		PairingServiceCreatePairingProcedure,
 		svc.CreatePairing,
@@ -431,6 +459,8 @@ func NewPairingServiceHandler(svc PairingServiceHandler, opts ...connect.Handler
 	)
 	return "/remoteagent.v1.PairingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case PairingServicePeekPairingProcedure:
+			pairingServicePeekPairingHandler.ServeHTTP(w, r)
 		case PairingServiceCreatePairingProcedure:
 			pairingServiceCreatePairingHandler.ServeHTTP(w, r)
 		case PairingServiceJoinPairingProcedure:
@@ -451,6 +481,10 @@ func NewPairingServiceHandler(svc PairingServiceHandler, opts ...connect.Handler
 
 // UnimplementedPairingServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedPairingServiceHandler struct{}
+
+func (UnimplementedPairingServiceHandler) PeekPairing(context.Context, *connect.Request[v1.PeekPairingRequest]) (*connect.Response[v1.PeekPairingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.PairingService.PeekPairing is not implemented"))
+}
 
 func (UnimplementedPairingServiceHandler) CreatePairing(context.Context, *connect.Request[v1.CreatePairingRequest]) (*connect.Response[v1.CreatePairingResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.PairingService.CreatePairing is not implemented"))
@@ -892,6 +926,9 @@ func (UnimplementedClientServiceHandler) PutAccountPrefs(context.Context, *conne
 
 // MachineServiceClient is a client for the remoteagent.v1.MachineService service.
 type MachineServiceClient interface {
+	// One-time transport pin, installed by the authority host. Endpoints keep
+	// their independently SAS-pinned authority; this is only server-side ACL.
+	PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error)
 	PutMachine(context.Context, *connect.Request[v1.PutMachineRequest]) (*connect.Response[v1.PutMachineResponse], error)
 	PutSession(context.Context, *connect.Request[v1.PutSessionRequest]) (*connect.Response[v1.PutSessionResponse], error)
 	// UploadEvents appends events in order. Events the server already has
@@ -917,6 +954,12 @@ func NewMachineServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	machineServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("MachineService").Methods()
 	return &machineServiceClient{
+		pinSecurityDomain: connect.NewClient[v1.PinSecurityDomainRequest, v1.PinSecurityDomainResponse](
+			httpClient,
+			baseURL+MachineServicePinSecurityDomainProcedure,
+			connect.WithSchema(machineServiceMethods.ByName("PinSecurityDomain")),
+			connect.WithClientOptions(opts...),
+		),
 		putMachine: connect.NewClient[v1.PutMachineRequest, v1.PutMachineResponse](
 			httpClient,
 			baseURL+MachineServicePutMachineProcedure,
@@ -958,12 +1001,18 @@ func NewMachineServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // machineServiceClient implements MachineServiceClient.
 type machineServiceClient struct {
-	putMachine       *connect.Client[v1.PutMachineRequest, v1.PutMachineResponse]
-	putSession       *connect.Client[v1.PutSessionRequest, v1.PutSessionResponse]
-	uploadEvents     *connect.Client[v1.UploadEventsRequest, v1.UploadEventsResponse]
-	listSessionHeads *connect.Client[v1.ListSessionHeadsRequest, v1.ListSessionHeadsResponse]
-	notify           *connect.Client[v1.NotifyRequest, v1.NotifyResponse]
-	putImage         *connect.Client[v1.PutImageRequest, v1.PutImageResponse]
+	pinSecurityDomain *connect.Client[v1.PinSecurityDomainRequest, v1.PinSecurityDomainResponse]
+	putMachine        *connect.Client[v1.PutMachineRequest, v1.PutMachineResponse]
+	putSession        *connect.Client[v1.PutSessionRequest, v1.PutSessionResponse]
+	uploadEvents      *connect.Client[v1.UploadEventsRequest, v1.UploadEventsResponse]
+	listSessionHeads  *connect.Client[v1.ListSessionHeadsRequest, v1.ListSessionHeadsResponse]
+	notify            *connect.Client[v1.NotifyRequest, v1.NotifyResponse]
+	putImage          *connect.Client[v1.PutImageRequest, v1.PutImageResponse]
+}
+
+// PinSecurityDomain calls remoteagent.v1.MachineService.PinSecurityDomain.
+func (c *machineServiceClient) PinSecurityDomain(ctx context.Context, req *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error) {
+	return c.pinSecurityDomain.CallUnary(ctx, req)
 }
 
 // PutMachine calls remoteagent.v1.MachineService.PutMachine.
@@ -998,6 +1047,9 @@ func (c *machineServiceClient) PutImage(ctx context.Context, req *connect.Reques
 
 // MachineServiceHandler is an implementation of the remoteagent.v1.MachineService service.
 type MachineServiceHandler interface {
+	// One-time transport pin, installed by the authority host. Endpoints keep
+	// their independently SAS-pinned authority; this is only server-side ACL.
+	PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error)
 	PutMachine(context.Context, *connect.Request[v1.PutMachineRequest]) (*connect.Response[v1.PutMachineResponse], error)
 	PutSession(context.Context, *connect.Request[v1.PutSessionRequest]) (*connect.Response[v1.PutSessionResponse], error)
 	// UploadEvents appends events in order. Events the server already has
@@ -1019,6 +1071,12 @@ type MachineServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	machineServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("MachineService").Methods()
+	machineServicePinSecurityDomainHandler := connect.NewUnaryHandler(
+		MachineServicePinSecurityDomainProcedure,
+		svc.PinSecurityDomain,
+		connect.WithSchema(machineServiceMethods.ByName("PinSecurityDomain")),
+		connect.WithHandlerOptions(opts...),
+	)
 	machineServicePutMachineHandler := connect.NewUnaryHandler(
 		MachineServicePutMachineProcedure,
 		svc.PutMachine,
@@ -1057,6 +1115,8 @@ func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.Handler
 	)
 	return "/remoteagent.v1.MachineService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case MachineServicePinSecurityDomainProcedure:
+			machineServicePinSecurityDomainHandler.ServeHTTP(w, r)
 		case MachineServicePutMachineProcedure:
 			machineServicePutMachineHandler.ServeHTTP(w, r)
 		case MachineServicePutSessionProcedure:
@@ -1077,6 +1137,10 @@ func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.Handler
 
 // UnimplementedMachineServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedMachineServiceHandler struct{}
+
+func (UnimplementedMachineServiceHandler) PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.MachineService.PinSecurityDomain is not implemented"))
+}
 
 func (UnimplementedMachineServiceHandler) PutMachine(context.Context, *connect.Request[v1.PutMachineRequest]) (*connect.Response[v1.PutMachineResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.MachineService.PutMachine is not implemented"))

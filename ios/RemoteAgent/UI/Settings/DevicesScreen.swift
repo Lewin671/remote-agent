@@ -13,7 +13,6 @@ struct DevicesScreen: View {
     @State private var remove = ActionRunner()
     /// The client a held row's menu is renaming or removing.
     @State private var renaming: DeviceView?
-    @State private var removing: DeviceView?
 
     /// Pulling down reads the device list again, while there is a server to ask.
     private func refresh(_ online: Bool) -> (@MainActor @Sendable () async -> Void)? {
@@ -41,19 +40,12 @@ struct DevicesScreen: View {
             guard let id = renaming?.id else { return }
             try await remote.renameDevice(id, name: name.jvmTrim())
         }
-        .confirm(
-            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
-            title: "移除 \(removing.map { clientName($0, id: $0.id) } ?? "")？", text: RemovalText.clientConfirm,
-            confirm: "移除", danger: true
-        ) { [removing] in
-            guard let id = removing?.id else { return }
-            remove.run { try await remote.removeDevice(id) }
-        }
         .onAppear {
             #if DEBUG
-            let other = sortClients(state.devices.values.filter { $0.kind == .client }, me: context.me).first { $0.id != context.me }
-            if model.isDemo, SettingsDemo.state == "renaming" { renaming = other }
-            if model.isDemo, SettingsDemo.state == "removing" { removing = other }
+                let other = sortClients(
+                    state.devices.values.filter { $0.kind == .client }, me: context.me
+                ).first { $0.id != context.me }
+                if model.isDemo, SettingsDemo.state == "renaming" { renaming = other }
             #endif
         }
     }
@@ -77,8 +69,10 @@ struct DevicesScreen: View {
             if clients.isEmpty { ClientRow(client: nil, id: me, me: me, now: now) }
             for c in clients {
                 ClientRow(
-                    client: c, id: c.id, me: me, now: now, onRename: online ? { renaming = c } : nil,
-                    onRemove: online ? { removing = c } : nil)
+                    client: c, id: c.id, me: me, now: now,
+                    onRename: online ? { renaming = c } : nil,
+                    onRemove: online && c.id != me
+                        ? { remove.run { try await context.remote.removeDevice(c.id) } } : nil)
             }
         }
         if !remove.error.isEmpty { GroupBanner(remove.error, tone: .error) }

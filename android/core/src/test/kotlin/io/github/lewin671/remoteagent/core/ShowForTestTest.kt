@@ -10,11 +10,24 @@ import org.junit.Test
 class ShowForTestTest {
     @Test
     fun showsStateAndHistoryWithoutFetching() {
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "2222222222222222"), Api.defaultHttp())
+        val remote =
+            fixtureRemote(
+                Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "2222222222222222"),
+                Api.defaultHttp(),
+            )
         try {
             val m = MachineView("m", online = true, lastSeenMs = 1)
-            val events = listOf(Event.newBuilder().setSeq(1).setAgentMessage(AgentMessage.newBuilder().setText("你好")).build())
-            remote.showForTest(RemoteState(machines = mapOf("m" to m), loaded = true), mapOf("s" to events))
+            val events =
+                listOf(
+                    Event.newBuilder()
+                        .setSeq(1)
+                        .setAgentMessage(AgentMessage.newBuilder().setText("你好"))
+                        .build(),
+                )
+            remote.showForTest(
+                RemoteState(machines = mapOf("m" to m), loaded = true),
+                mapOf("s" to events),
+            )
             assertEquals(m, remote.state.value.machines["m"])
             val flow = remote.events("s")
             Thread.sleep(200)

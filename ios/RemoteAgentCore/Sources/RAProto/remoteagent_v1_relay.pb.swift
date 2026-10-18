@@ -264,6 +264,8 @@ public struct PBRegisterDeviceRequest: Sendable {
 
   public var approvalSignature: Data = Data()
 
+  public var protocolVersion: UInt32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -364,6 +366,8 @@ public struct PBLoginRequest: Sendable {
   /// followed by challenge.
   public var signature: Data = Data()
 
+  public var protocolVersion: UInt32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -378,6 +382,8 @@ public struct PBLoginResponse: Sendable {
   public var token: String = String()
 
   public var expiresMs: Int64 = 0
+
+  public var devicePublicKey: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -444,6 +450,34 @@ public struct PBPairApproval: Sendable {
   public init() {}
 }
 
+public struct PBPeekPairingRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var code: String = String()
+
+  public var protocolVersion: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBPeekPairingResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var pairingID: String = String()
+
+  public var commit: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct PBJoinPairingRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -457,6 +491,11 @@ public struct PBJoinPairingRequest: Sendable {
 
   /// Ed25519 signing identity, generated before comparing the SAS.
   public var devicePublicKey: Data = Data()
+
+  /// Independent long-term X25519 recipient key, bound by the SAS.
+  public var deviceHpkePublicKey: Data = Data()
+
+  public var protocolVersion: UInt32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -495,6 +534,9 @@ public struct PBGetPairingRequest: Sendable {
   /// the joiner can fetch the key again, e.g. after a lost response.
   public var received: Bool = false
 
+  /// Candidate signature over the authority PairContext after reveal.
+  public var candidateSignature: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -527,6 +569,12 @@ public struct PBGetPairingResponse: Sendable {
 
   public var devicePublicKey: Data = Data()
 
+  public var deviceHpkePublicKey: Data = Data()
+
+  public var securityContext: Data = Data()
+
+  public var candidateSignature: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -542,6 +590,10 @@ public struct PBRevealPairingRequest: Sendable {
   public var pairingID: String = String()
 
   public var initiatorPublic: Data = Data()
+
+  /// Signed active authority PairContext. SAS binds its precommitted trust
+  /// descriptor; the late context nonce/head/expiry are signed separately.
+  public var securityContext: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -647,52 +699,66 @@ public struct PBMachine: Sendable {
   fileprivate var _meta: PBEnvelope? = nil
 }
 
-public struct PBRemoteSession: Sendable {
+public struct PBRemoteSession: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var machineID: String = String()
+  public var machineID: String {
+    get {return _storage._machineID}
+    set {_uniqueStorage()._machineID = newValue}
+  }
 
-  public var sessionID: String = String()
+  public var sessionID: String {
+    get {return _storage._sessionID}
+    set {_uniqueStorage()._sessionID = newValue}
+  }
 
   /// SESSION_KEY envelope.
   public var key: PBEnvelope {
-    get {return _key ?? PBEnvelope()}
-    set {_key = newValue}
+    get {return _storage._key ?? PBEnvelope()}
+    set {_uniqueStorage()._key = newValue}
   }
   /// Returns true if `key` has been explicitly set.
-  public var hasKey: Bool {return self._key != nil}
+  public var hasKey: Bool {return _storage._key != nil}
   /// Clears the value of `key`. Subsequent reads from it will return its default value.
-  public mutating func clearKey() {self._key = nil}
+  public mutating func clearKey() {_uniqueStorage()._key = nil}
 
   /// SESSION_META envelope.
   public var meta: PBEnvelope {
-    get {return _meta ?? PBEnvelope()}
-    set {_meta = newValue}
+    get {return _storage._meta ?? PBEnvelope()}
+    set {_uniqueStorage()._meta = newValue}
   }
   /// Returns true if `meta` has been explicitly set.
-  public var hasMeta: Bool {return self._meta != nil}
+  public var hasMeta: Bool {return _storage._meta != nil}
   /// Clears the value of `meta`. Subsequent reads from it will return its default value.
-  public mutating func clearMeta() {self._meta = nil}
+  public mutating func clearMeta() {_uniqueStorage()._meta = nil}
 
   /// Highest event sequence number stored on the server.
-  public var lastSeq: UInt64 = 0
+  public var lastSeq: UInt64 {
+    get {return _storage._lastSeq}
+    set {_uniqueStorage()._lastSeq = newValue}
+  }
 
-  public var updatedMs: Int64 = 0
+  public var updatedMs: Int64 {
+    get {return _storage._updatedMs}
+    set {_uniqueStorage()._updatedMs = newValue}
+  }
 
   /// When the session ended, as its daemon told the server in the clear so
   /// that ended sessions can be listed a page at a time; 0 while it has
   /// not ended. It only places the session in the listing: what a client
   /// shows comes from the sealed metadata.
-  public var endedMs: Int64 = 0
+  public var endedMs: Int64 {
+    get {return _storage._endedMs}
+    set {_uniqueStorage()._endedMs = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _key: PBEnvelope? = nil
-  fileprivate var _meta: PBEnvelope? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// SessionCursor is a place in the listing of ended sessions, which runs
@@ -864,6 +930,10 @@ public struct PBForwardRequest: Sendable {
   /// Clears the value of `command`. Subsequent reads from it will return its default value.
   public mutating func clearCommand() {self._command = nil}
 
+  /// Opaque pinned-authority HPKE Capsule, mutually exclusive with command.
+  /// The relay only routes it to machine_id and does not open it.
+  public var securityRpc: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -885,6 +955,8 @@ public struct PBForwardResponse: Sendable {
   public var hasResult: Bool {return self._result != nil}
   /// Clears the value of `result`. Subsequent reads from it will return its default value.
   public mutating func clearResult() {self._result = nil}
+
+  public var securityRpc: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1323,6 +1395,8 @@ public struct PBForwardCall: Sendable {
 
   public var senderRegistrationSignature: Data = Data()
 
+  public var securityRpc: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1349,6 +1423,8 @@ public struct PBForwardReply: Sendable {
   /// Set when the daemon could not produce a sealed result, e.g. the
   /// envelope did not open. The text never contains content.
   public var error: String = String()
+
+  public var securityRpc: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1426,12 +1502,41 @@ public struct PBSetPushSubscriptionResponse: Sendable {
   public init() {}
 }
 
+public struct PBPinSecurityDomainRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var genesisState: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBPinSecurityDomainResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct PBRemoveDeviceRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   public var deviceID: String = String()
+
+  /// Signed Completion, original DeleteRequest, and canonical State chain.
+  public var securityCompletion: Data = Data()
+
+  public var securityRequest: Data = Data()
+
+  public var securityChain: [Data] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1963,7 +2068,7 @@ extension PBDeviceRegistration: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBRegisterDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RegisterDeviceRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}registration\0\u{1}signature\0\u{3}setup_token\0\u{3}signup_proof\0\u{1}approval\0\u{3}approval_signature\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}registration\0\u{1}signature\0\u{3}setup_token\0\u{3}signup_proof\0\u{1}approval\0\u{3}approval_signature\0\u{3}protocol_version\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1977,6 +2082,7 @@ extension PBRegisterDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
       case 4: try { try decoder.decodeSingularMessageField(value: &self._signupProof) }()
       case 5: try { try decoder.decodeSingularBytesField(value: &self.approval) }()
       case 6: try { try decoder.decodeSingularBytesField(value: &self.approvalSignature) }()
+      case 7: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
       default: break
       }
     }
@@ -2005,6 +2111,9 @@ extension PBRegisterDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
     if !self.approvalSignature.isEmpty {
       try visitor.visitSingularBytesField(value: self.approvalSignature, fieldNumber: 6)
     }
+    if self.protocolVersion != 0 {
+      try visitor.visitSingularUInt32Field(value: self.protocolVersion, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2015,6 +2124,7 @@ extension PBRegisterDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
     if lhs._signupProof != rhs._signupProof {return false}
     if lhs.approval != rhs.approval {return false}
     if lhs.approvalSignature != rhs.approvalSignature {return false}
+    if lhs.protocolVersion != rhs.protocolVersion {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2206,7 +2316,7 @@ extension PBGetChallengeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBLoginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".LoginRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{1}challenge\0\u{1}signature\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{1}challenge\0\u{1}signature\0\u{3}protocol_version\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2217,6 +2327,7 @@ extension PBLoginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       case 1: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
       case 2: try { try decoder.decodeSingularBytesField(value: &self.challenge) }()
       case 3: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
+      case 4: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
       default: break
       }
     }
@@ -2232,6 +2343,9 @@ extension PBLoginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if !self.signature.isEmpty {
       try visitor.visitSingularBytesField(value: self.signature, fieldNumber: 3)
     }
+    if self.protocolVersion != 0 {
+      try visitor.visitSingularUInt32Field(value: self.protocolVersion, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2239,6 +2353,7 @@ extension PBLoginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if lhs.deviceID != rhs.deviceID {return false}
     if lhs.challenge != rhs.challenge {return false}
     if lhs.signature != rhs.signature {return false}
+    if lhs.protocolVersion != rhs.protocolVersion {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2246,7 +2361,7 @@ extension PBLoginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
 extension PBLoginResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".LoginResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0\u{3}expires_ms\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0\u{3}expires_ms\0\u{3}device_public_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2256,6 +2371,7 @@ extension PBLoginResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.token) }()
       case 2: try { try decoder.decodeSingularInt64Field(value: &self.expiresMs) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.devicePublicKey) }()
       default: break
       }
     }
@@ -2268,12 +2384,16 @@ extension PBLoginResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     if self.expiresMs != 0 {
       try visitor.visitSingularInt64Field(value: self.expiresMs, fieldNumber: 2)
     }
+    if !self.devicePublicKey.isEmpty {
+      try visitor.visitSingularBytesField(value: self.devicePublicKey, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBLoginResponse, rhs: PBLoginResponse) -> Bool {
     if lhs.token != rhs.token {return false}
     if lhs.expiresMs != rhs.expiresMs {return false}
+    if lhs.devicePublicKey != rhs.devicePublicKey {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2419,9 +2539,79 @@ extension PBPairApproval: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   }
 }
 
+extension PBPeekPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PeekPairingRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0\u{3}protocol_version\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.code) }()
+      case 2: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.code.isEmpty {
+      try visitor.visitSingularStringField(value: self.code, fieldNumber: 1)
+    }
+    if self.protocolVersion != 0 {
+      try visitor.visitSingularUInt32Field(value: self.protocolVersion, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBPeekPairingRequest, rhs: PBPeekPairingRequest) -> Bool {
+    if lhs.code != rhs.code {return false}
+    if lhs.protocolVersion != rhs.protocolVersion {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBPeekPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PeekPairingResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{1}commit\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.pairingID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.commit) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.pairingID.isEmpty {
+      try visitor.visitSingularStringField(value: self.pairingID, fieldNumber: 1)
+    }
+    if !self.commit.isEmpty {
+      try visitor.visitSingularBytesField(value: self.commit, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBPeekPairingResponse, rhs: PBPeekPairingResponse) -> Bool {
+    if lhs.pairingID != rhs.pairingID {return false}
+    if lhs.commit != rhs.commit {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBJoinPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".JoinPairingRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0\u{3}joiner_public\0\u{3}joiner_kind\0\u{3}device_public_key\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0\u{3}joiner_public\0\u{3}joiner_kind\0\u{3}device_public_key\0\u{3}device_hpke_public_key\0\u{3}protocol_version\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2433,6 +2623,8 @@ extension PBJoinPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       case 2: try { try decoder.decodeSingularBytesField(value: &self.joinerPublic) }()
       case 3: try { try decoder.decodeSingularEnumField(value: &self.joinerKind) }()
       case 4: try { try decoder.decodeSingularBytesField(value: &self.devicePublicKey) }()
+      case 5: try { try decoder.decodeSingularBytesField(value: &self.deviceHpkePublicKey) }()
+      case 6: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
       default: break
       }
     }
@@ -2451,6 +2643,12 @@ extension PBJoinPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if !self.devicePublicKey.isEmpty {
       try visitor.visitSingularBytesField(value: self.devicePublicKey, fieldNumber: 4)
     }
+    if !self.deviceHpkePublicKey.isEmpty {
+      try visitor.visitSingularBytesField(value: self.deviceHpkePublicKey, fieldNumber: 5)
+    }
+    if self.protocolVersion != 0 {
+      try visitor.visitSingularUInt32Field(value: self.protocolVersion, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2459,6 +2657,8 @@ extension PBJoinPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if lhs.joinerPublic != rhs.joinerPublic {return false}
     if lhs.joinerKind != rhs.joinerKind {return false}
     if lhs.devicePublicKey != rhs.devicePublicKey {return false}
+    if lhs.deviceHpkePublicKey != rhs.deviceHpkePublicKey {return false}
+    if lhs.protocolVersion != rhs.protocolVersion {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2506,7 +2706,7 @@ extension PBJoinPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBGetPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetPairingRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{3}candidate_token\0\u{1}received\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{3}candidate_token\0\u{1}received\0\u{3}candidate_signature\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2517,6 +2717,7 @@ extension PBGetPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       case 1: try { try decoder.decodeSingularStringField(value: &self.pairingID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.candidateToken) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.received) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.candidateSignature) }()
       default: break
       }
     }
@@ -2532,6 +2733,9 @@ extension PBGetPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if self.received != false {
       try visitor.visitSingularBoolField(value: self.received, fieldNumber: 3)
     }
+    if !self.candidateSignature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.candidateSignature, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2539,6 +2743,7 @@ extension PBGetPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if lhs.pairingID != rhs.pairingID {return false}
     if lhs.candidateToken != rhs.candidateToken {return false}
     if lhs.received != rhs.received {return false}
+    if lhs.candidateSignature != rhs.candidateSignature {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2546,7 +2751,7 @@ extension PBGetPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBGetPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetPairingResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{1}commit\0\u{3}joiner_public\0\u{3}joiner_kind\0\u{3}initiator_public\0\u{1}payload\0\u{3}device_public_key\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{1}commit\0\u{3}joiner_public\0\u{3}joiner_kind\0\u{3}initiator_public\0\u{1}payload\0\u{3}device_public_key\0\u{3}device_hpke_public_key\0\u{3}security_context\0\u{3}candidate_signature\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2561,6 +2766,9 @@ extension PBGetPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       case 5: try { try decoder.decodeSingularBytesField(value: &self.initiatorPublic) }()
       case 6: try { try decoder.decodeSingularMessageField(value: &self._payload) }()
       case 7: try { try decoder.decodeSingularBytesField(value: &self.devicePublicKey) }()
+      case 8: try { try decoder.decodeSingularBytesField(value: &self.deviceHpkePublicKey) }()
+      case 9: try { try decoder.decodeSingularBytesField(value: &self.securityContext) }()
+      case 10: try { try decoder.decodeSingularBytesField(value: &self.candidateSignature) }()
       default: break
       }
     }
@@ -2592,6 +2800,15 @@ extension PBGetPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if !self.devicePublicKey.isEmpty {
       try visitor.visitSingularBytesField(value: self.devicePublicKey, fieldNumber: 7)
     }
+    if !self.deviceHpkePublicKey.isEmpty {
+      try visitor.visitSingularBytesField(value: self.deviceHpkePublicKey, fieldNumber: 8)
+    }
+    if !self.securityContext.isEmpty {
+      try visitor.visitSingularBytesField(value: self.securityContext, fieldNumber: 9)
+    }
+    if !self.candidateSignature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.candidateSignature, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2603,6 +2820,9 @@ extension PBGetPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if lhs.initiatorPublic != rhs.initiatorPublic {return false}
     if lhs._payload != rhs._payload {return false}
     if lhs.devicePublicKey != rhs.devicePublicKey {return false}
+    if lhs.deviceHpkePublicKey != rhs.deviceHpkePublicKey {return false}
+    if lhs.securityContext != rhs.securityContext {return false}
+    if lhs.candidateSignature != rhs.candidateSignature {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2610,7 +2830,7 @@ extension PBGetPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBRevealPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RevealPairingRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{3}initiator_public\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{3}initiator_public\0\u{3}security_context\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2620,6 +2840,7 @@ extension PBRevealPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.pairingID) }()
       case 2: try { try decoder.decodeSingularBytesField(value: &self.initiatorPublic) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.securityContext) }()
       default: break
       }
     }
@@ -2632,12 +2853,16 @@ extension PBRevealPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     if !self.initiatorPublic.isEmpty {
       try visitor.visitSingularBytesField(value: self.initiatorPublic, fieldNumber: 2)
     }
+    if !self.securityContext.isEmpty {
+      try visitor.visitSingularBytesField(value: self.securityContext, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBRevealPairingRequest, rhs: PBRevealPairingRequest) -> Bool {
     if lhs.pairingID != rhs.pairingID {return false}
     if lhs.initiatorPublic != rhs.initiatorPublic {return false}
+    if lhs.securityContext != rhs.securityContext {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2837,61 +3062,109 @@ extension PBRemoteSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
   public static let protoMessageName: String = _protobuf_package + ".RemoteSession"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}key\0\u{1}meta\0\u{3}last_seq\0\u{3}updated_ms\0\u{3}ended_ms\0")
 
+  fileprivate class _StorageClass {
+    var _machineID: String = String()
+    var _sessionID: String = String()
+    var _key: PBEnvelope? = nil
+    var _meta: PBEnvelope? = nil
+    var _lastSeq: UInt64 = 0
+    var _updatedMs: Int64 = 0
+    var _endedMs: Int64 = 0
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _machineID = source._machineID
+      _sessionID = source._sessionID
+      _key = source._key
+      _meta = source._meta
+      _lastSeq = source._lastSeq
+      _updatedMs = source._updatedMs
+      _endedMs = source._endedMs
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
-      case 3: try { try decoder.decodeSingularMessageField(value: &self._key) }()
-      case 4: try { try decoder.decodeSingularMessageField(value: &self._meta) }()
-      case 5: try { try decoder.decodeSingularUInt64Field(value: &self.lastSeq) }()
-      case 6: try { try decoder.decodeSingularInt64Field(value: &self.updatedMs) }()
-      case 7: try { try decoder.decodeSingularInt64Field(value: &self.endedMs) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._machineID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._sessionID) }()
+        case 3: try { try decoder.decodeSingularMessageField(value: &_storage._key) }()
+        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._meta) }()
+        case 5: try { try decoder.decodeSingularUInt64Field(value: &_storage._lastSeq) }()
+        case 6: try { try decoder.decodeSingularInt64Field(value: &_storage._updatedMs) }()
+        case 7: try { try decoder.decodeSingularInt64Field(value: &_storage._endedMs) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.machineID.isEmpty {
-      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 1)
-    }
-    if !self.sessionID.isEmpty {
-      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 2)
-    }
-    try { if let v = self._key {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-    } }()
-    try { if let v = self._meta {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-    } }()
-    if self.lastSeq != 0 {
-      try visitor.visitSingularUInt64Field(value: self.lastSeq, fieldNumber: 5)
-    }
-    if self.updatedMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.updatedMs, fieldNumber: 6)
-    }
-    if self.endedMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.endedMs, fieldNumber: 7)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._machineID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._machineID, fieldNumber: 1)
+      }
+      if !_storage._sessionID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._sessionID, fieldNumber: 2)
+      }
+      try { if let v = _storage._key {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+      } }()
+      try { if let v = _storage._meta {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      } }()
+      if _storage._lastSeq != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._lastSeq, fieldNumber: 5)
+      }
+      if _storage._updatedMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._updatedMs, fieldNumber: 6)
+      }
+      if _storage._endedMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._endedMs, fieldNumber: 7)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBRemoteSession, rhs: PBRemoteSession) -> Bool {
-    if lhs.machineID != rhs.machineID {return false}
-    if lhs.sessionID != rhs.sessionID {return false}
-    if lhs._key != rhs._key {return false}
-    if lhs._meta != rhs._meta {return false}
-    if lhs.lastSeq != rhs.lastSeq {return false}
-    if lhs.updatedMs != rhs.updatedMs {return false}
-    if lhs.endedMs != rhs.endedMs {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._machineID != rhs_storage._machineID {return false}
+        if _storage._sessionID != rhs_storage._sessionID {return false}
+        if _storage._key != rhs_storage._key {return false}
+        if _storage._meta != rhs_storage._meta {return false}
+        if _storage._lastSeq != rhs_storage._lastSeq {return false}
+        if _storage._updatedMs != rhs_storage._updatedMs {return false}
+        if _storage._endedMs != rhs_storage._endedMs {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3180,7 +3453,7 @@ extension PBGetEventsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ForwardRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}command\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}command\0\u{3}security_rpc\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3190,6 +3463,7 @@ extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._command) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.securityRpc) }()
       default: break
       }
     }
@@ -3206,12 +3480,16 @@ extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try { if let v = self._command {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
     } }()
+    if !self.securityRpc.isEmpty {
+      try visitor.visitSingularBytesField(value: self.securityRpc, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBForwardRequest, rhs: PBForwardRequest) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
     if lhs._command != rhs._command {return false}
+    if lhs.securityRpc != rhs.securityRpc {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3219,7 +3497,7 @@ extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBForwardResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ForwardResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}result\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}result\0\u{3}security_rpc\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3228,6 +3506,7 @@ extension PBForwardResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularMessageField(value: &self._result) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.securityRpc) }()
       default: break
       }
     }
@@ -3241,11 +3520,15 @@ extension PBForwardResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     try { if let v = self._result {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
     } }()
+    if !self.securityRpc.isEmpty {
+      try visitor.visitSingularBytesField(value: self.securityRpc, fieldNumber: 2)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBForwardResponse, rhs: PBForwardResponse) -> Bool {
     if lhs._result != rhs._result {return false}
+    if lhs.securityRpc != rhs.securityRpc {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4020,7 +4303,7 @@ extension PBMachineRemoved: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBForwardCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ForwardCall"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}command\0\u{3}sender_device_id\0\u{3}sender_registration\0\u{3}sender_registration_signature\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}command\0\u{3}sender_device_id\0\u{3}sender_registration\0\u{3}sender_registration_signature\0\u{3}security_rpc\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4033,6 +4316,7 @@ extension PBForwardCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       case 3: try { try decoder.decodeSingularStringField(value: &self.senderDeviceID) }()
       case 4: try { try decoder.decodeSingularBytesField(value: &self.senderRegistration) }()
       case 5: try { try decoder.decodeSingularBytesField(value: &self.senderRegistrationSignature) }()
+      case 6: try { try decoder.decodeSingularBytesField(value: &self.securityRpc) }()
       default: break
       }
     }
@@ -4058,6 +4342,9 @@ extension PBForwardCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if !self.senderRegistrationSignature.isEmpty {
       try visitor.visitSingularBytesField(value: self.senderRegistrationSignature, fieldNumber: 5)
     }
+    if !self.securityRpc.isEmpty {
+      try visitor.visitSingularBytesField(value: self.securityRpc, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4067,6 +4354,7 @@ extension PBForwardCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if lhs.senderDeviceID != rhs.senderDeviceID {return false}
     if lhs.senderRegistration != rhs.senderRegistration {return false}
     if lhs.senderRegistrationSignature != rhs.senderRegistrationSignature {return false}
+    if lhs.securityRpc != rhs.securityRpc {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4074,7 +4362,7 @@ extension PBForwardCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
 extension PBForwardReply: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ForwardReply"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}result\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}result\0\u{1}error\0\u{3}security_rpc\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4085,6 +4373,7 @@ extension PBForwardReply: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.callID) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._result) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.securityRpc) }()
       default: break
       }
     }
@@ -4104,6 +4393,9 @@ extension PBForwardReply: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if !self.error.isEmpty {
       try visitor.visitSingularStringField(value: self.error, fieldNumber: 3)
     }
+    if !self.securityRpc.isEmpty {
+      try visitor.visitSingularBytesField(value: self.securityRpc, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4111,6 +4403,7 @@ extension PBForwardReply: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if lhs.callID != rhs.callID {return false}
     if lhs._result != rhs._result {return false}
     if lhs.error != rhs.error {return false}
+    if lhs.securityRpc != rhs.securityRpc {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4259,9 +4552,58 @@ extension PBSetPushSubscriptionResponse: SwiftProtobuf.Message, SwiftProtobuf._M
   }
 }
 
+extension PBPinSecurityDomainRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PinSecurityDomainRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}genesis_state\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.genesisState) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.genesisState.isEmpty {
+      try visitor.visitSingularBytesField(value: self.genesisState, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBPinSecurityDomainRequest, rhs: PBPinSecurityDomainRequest) -> Bool {
+    if lhs.genesisState != rhs.genesisState {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBPinSecurityDomainResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PinSecurityDomainResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBPinSecurityDomainResponse, rhs: PBPinSecurityDomainResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBRemoveDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RemoveDeviceRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}security_completion\0\u{3}security_request\0\u{3}security_chain\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4270,6 +4612,9 @@ extension PBRemoveDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.securityCompletion) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.securityRequest) }()
+      case 4: try { try decoder.decodeRepeatedBytesField(value: &self.securityChain) }()
       default: break
       }
     }
@@ -4279,11 +4624,23 @@ extension PBRemoveDeviceRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if !self.deviceID.isEmpty {
       try visitor.visitSingularStringField(value: self.deviceID, fieldNumber: 1)
     }
+    if !self.securityCompletion.isEmpty {
+      try visitor.visitSingularBytesField(value: self.securityCompletion, fieldNumber: 2)
+    }
+    if !self.securityRequest.isEmpty {
+      try visitor.visitSingularBytesField(value: self.securityRequest, fieldNumber: 3)
+    }
+    if !self.securityChain.isEmpty {
+      try visitor.visitRepeatedBytesField(value: self.securityChain, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBRemoveDeviceRequest, rhs: PBRemoveDeviceRequest) -> Bool {
     if lhs.deviceID != rhs.deviceID {return false}
+    if lhs.securityCompletion != rhs.securityCompletion {return false}
+    if lhs.securityRequest != rhs.securityRequest {return false}
+    if lhs.securityChain != rhs.securityChain {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

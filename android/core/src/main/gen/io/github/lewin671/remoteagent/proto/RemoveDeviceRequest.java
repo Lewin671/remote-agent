@@ -16,6 +16,9 @@ public  final class RemoveDeviceRequest extends
     RemoveDeviceRequestOrBuilder {
   private RemoveDeviceRequest() {
     deviceId_ = "";
+    securityCompletion_ = com.google.protobuf.ByteString.EMPTY;
+    securityRequest_ = com.google.protobuf.ByteString.EMPTY;
+    securityChain_ = emptyProtobufList();
   }
   public static final int DEVICE_ID_FIELD_NUMBER = 1;
   private java.lang.String deviceId_;
@@ -63,6 +66,144 @@ public  final class RemoveDeviceRequest extends
     checkByteStringIsUtf8(value);
     deviceId_ = value.toStringUtf8();
 
+  }
+
+  public static final int SECURITY_COMPLETION_FIELD_NUMBER = 2;
+  private com.google.protobuf.ByteString securityCompletion_;
+  /**
+   * <pre>
+   * Signed Completion, original DeleteRequest, and canonical State chain.
+   * </pre>
+   *
+   * <code>bytes security_completion = 2 [json_name = "securityCompletion"];</code>
+   * @return The securityCompletion.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSecurityCompletion() {
+    return securityCompletion_;
+  }
+  /**
+   * <pre>
+   * Signed Completion, original DeleteRequest, and canonical State chain.
+   * </pre>
+   *
+   * <code>bytes security_completion = 2 [json_name = "securityCompletion"];</code>
+   * @param value The securityCompletion to set.
+   */
+  private void setSecurityCompletion(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    securityCompletion_ = value;
+  }
+  /**
+   * <pre>
+   * Signed Completion, original DeleteRequest, and canonical State chain.
+   * </pre>
+   *
+   * <code>bytes security_completion = 2 [json_name = "securityCompletion"];</code>
+   */
+  private void clearSecurityCompletion() {
+
+    securityCompletion_ = getDefaultInstance().getSecurityCompletion();
+  }
+
+  public static final int SECURITY_REQUEST_FIELD_NUMBER = 3;
+  private com.google.protobuf.ByteString securityRequest_;
+  /**
+   * <code>bytes security_request = 3 [json_name = "securityRequest"];</code>
+   * @return The securityRequest.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSecurityRequest() {
+    return securityRequest_;
+  }
+  /**
+   * <code>bytes security_request = 3 [json_name = "securityRequest"];</code>
+   * @param value The securityRequest to set.
+   */
+  private void setSecurityRequest(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    securityRequest_ = value;
+  }
+  /**
+   * <code>bytes security_request = 3 [json_name = "securityRequest"];</code>
+   */
+  private void clearSecurityRequest() {
+
+    securityRequest_ = getDefaultInstance().getSecurityRequest();
+  }
+
+  public static final int SECURITY_CHAIN_FIELD_NUMBER = 4;
+  private com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> securityChain_;
+  /**
+   * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+   * @return A list containing the securityChain.
+   */
+  @java.lang.Override
+  public java.util.List<com.google.protobuf.ByteString>
+      getSecurityChainList() {
+    return securityChain_;
+  }
+  /**
+   * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+   * @return The count of securityChain.
+   */
+  @java.lang.Override
+  public int getSecurityChainCount() {
+    return securityChain_.size();
+  }
+  /**
+   * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+   * @param index The index of the element to return.
+   * @return The securityChain at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSecurityChain(int index) {
+    return securityChain_.get(index);
+  }
+  private void ensureSecurityChainIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<com.google.protobuf.ByteString> tmp = securityChain_;
+    if (!tmp.isModifiable()) {
+      securityChain_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+   * @param index The index to set the value at.
+   * @param value The securityChain to set.
+   */
+  private void setSecurityChain(
+      int index, com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureSecurityChainIsMutable();
+    securityChain_.set(index, value);
+  }
+  /**
+   * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+   * @param value The securityChain to add.
+   */
+  private void addSecurityChain(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  ensureSecurityChainIsMutable();
+    securityChain_.add(value);
+  }
+  /**
+   * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+   * @param values The securityChain to add.
+   */
+  private void addAllSecurityChain(
+      java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+    ensureSecurityChainIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, securityChain_);
+  }
+  /**
+   * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+   */
+  private void clearSecurityChain() {
+    securityChain_ = emptyProtobufList();
   }
 
   public static io.github.lewin671.remoteagent.proto.RemoveDeviceRequest parseFrom(
@@ -211,6 +352,143 @@ public  final class RemoveDeviceRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Signed Completion, original DeleteRequest, and canonical State chain.
+     * </pre>
+     *
+     * <code>bytes security_completion = 2 [json_name = "securityCompletion"];</code>
+     * @return The securityCompletion.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSecurityCompletion() {
+      return instance.getSecurityCompletion();
+    }
+    /**
+     * <pre>
+     * Signed Completion, original DeleteRequest, and canonical State chain.
+     * </pre>
+     *
+     * <code>bytes security_completion = 2 [json_name = "securityCompletion"];</code>
+     * @param value The securityCompletion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSecurityCompletion(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSecurityCompletion(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Signed Completion, original DeleteRequest, and canonical State chain.
+     * </pre>
+     *
+     * <code>bytes security_completion = 2 [json_name = "securityCompletion"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSecurityCompletion() {
+      copyOnWrite();
+      instance.clearSecurityCompletion();
+      return this;
+    }
+
+    /**
+     * <code>bytes security_request = 3 [json_name = "securityRequest"];</code>
+     * @return The securityRequest.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSecurityRequest() {
+      return instance.getSecurityRequest();
+    }
+    /**
+     * <code>bytes security_request = 3 [json_name = "securityRequest"];</code>
+     * @param value The securityRequest to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSecurityRequest(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSecurityRequest(value);
+      return this;
+    }
+    /**
+     * <code>bytes security_request = 3 [json_name = "securityRequest"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSecurityRequest() {
+      copyOnWrite();
+      instance.clearSecurityRequest();
+      return this;
+    }
+
+    /**
+     * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+     * @return A list containing the securityChain.
+     */
+    @java.lang.Override
+    public java.util.List<com.google.protobuf.ByteString>
+        getSecurityChainList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getSecurityChainList());
+    }
+    /**
+     * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+     * @return The count of securityChain.
+     */
+    @java.lang.Override
+    public int getSecurityChainCount() {
+      return instance.getSecurityChainCount();
+    }
+    /**
+     * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+     * @param index The index of the element to return.
+     * @return The securityChain at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSecurityChain(int index) {
+      return instance.getSecurityChain(index);
+    }
+    /**
+     * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+     * @param value The securityChain to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSecurityChain(
+        int index, com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSecurityChain(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+     * @param value The securityChain to add.
+     * @return This builder for chaining.
+     */
+    public Builder addSecurityChain(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addSecurityChain(value);
+      return this;
+    }
+    /**
+     * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+     * @param values The securityChain to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllSecurityChain(
+        java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+      copyOnWrite();
+      instance.addAllSecurityChain(values);
+      return this;
+    }
+    /**
+     * <code>repeated bytes security_chain = 4 [json_name = "securityChain"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSecurityChain() {
+      copyOnWrite();
+      instance.clearSecurityChain();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.RemoveDeviceRequest)
   }
   @java.lang.Override
@@ -228,9 +506,13 @@ public  final class RemoveDeviceRequest extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "deviceId_",
+            "securityCompletion_",
+            "securityRequest_",
+            "securityChain_",
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0000\u0001\u0001\u0001\u0000\u0000\u0000\u0001\u0208";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001\u0208\u0002\n" +
+              "\u0003\n\u0004\u001c";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

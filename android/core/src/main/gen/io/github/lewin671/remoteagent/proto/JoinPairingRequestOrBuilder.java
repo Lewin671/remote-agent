@@ -48,4 +48,20 @@ public interface JoinPairingRequestOrBuilder extends
    * @return The devicePublicKey.
    */
   com.google.protobuf.ByteString getDevicePublicKey();
+
+  /**
+   * <pre>
+   * Independent long-term X25519 recipient key, bound by the SAS.
+   * </pre>
+   *
+   * <code>bytes device_hpke_public_key = 5 [json_name = "deviceHpkePublicKey"];</code>
+   * @return The deviceHpkePublicKey.
+   */
+  com.google.protobuf.ByteString getDeviceHpkePublicKey();
+
+  /**
+   * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
+   * @return The protocolVersion.
+   */
+  int getProtocolVersion();
 }

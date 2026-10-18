@@ -33,7 +33,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
-    testImplementation(libs.serialization.json)
+    implementation(libs.serialization.json)
 }
 
 // The integration tests run against the real Go server. Without Go on the
@@ -46,13 +46,22 @@ val buildTestServer by tasks.registering(Exec::class) {
     onlyIf { System.getenv("PATH").orEmpty().split(File.pathSeparator).any { File(it, "go").canExecute() } }
 }
 
+val testSecurityFixture=layout.buildDirectory.file("ra-security-fixture").get().asFile
+val buildTestSecurityFixture by tasks.registering(Exec::class){
+ workingDir=repoRoot
+ commandLine("go","build","-o",testSecurityFixture.absolutePath,"./internal/testutil/securityfixture")
+ onlyIf { System.getenv("PATH").orEmpty().split(File.pathSeparator).any { File(it,"go").canExecute() } }
+}
 tasks.test {
-    dependsOn(buildTestServer)
+    dependsOn(buildTestServer,buildTestSecurityFixture)
+    systemProperty("raSecurityFixture",testSecurityFixture.absolutePath)
     systemProperty("raServer", testServer.absolutePath)
     // The test vectors are shared with Go and TypeScript.
     inputs.file(rootProject.file("../testdata/projection/vectors.json")).withPathSensitivity(PathSensitivity.NONE)
     systemProperty("projectionVectors", rootProject.file("../testdata/projection/vectors.json").absolutePath)
     systemProperty("vectors", rootProject.file("../internal/e2e/testdata/vectors.json").absolutePath)
+    systemProperty("completionVectors",rootProject.file("../internal/deviceauth/testdata/revocation-v2.json").absolutePath)
+    systemProperty("domainVectors", rootProject.file("../internal/deviceauth/testdata/domain-v2.json").absolutePath)
     systemProperty("v2Vectors", rootProject.file("../internal/e2e/testdata/v2-vectors.json").absolutePath)
     systemProperty("kotlinVectors", rootProject.file("../internal/e2e/testdata/kotlin-vectors.json").absolutePath)
     // ./gradlew :core:test -PupdateVectors rewrites kotlin-vectors.json.

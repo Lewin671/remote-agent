@@ -957,9 +957,8 @@ func (s *session) settleExited() bool {
 }
 
 // Info summarizes the session.
-func (s *session) info() *pb.Session {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *session) info() *pb.Session { s.mu.Lock(); defer s.mu.Unlock(); return s.infoLocked() }
+func (s *session) infoLocked() *pb.Session {
 	status := s.status
 	if status == pb.SessionStatus_SESSION_STATUS_IDLE && s.running {
 		status = pb.SessionStatus_SESSION_STATUS_RUNNING

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v44 · 2026-10-18 UTC</title>
+<title>remote-agent 客户端设计稿 v45 · 2026-10-18 UTC</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -918,26 +918,33 @@
   @keyframes icspin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .ic.spin { animation: none; } }
   .sdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; vertical-align: .1em; }
+  .security-specimen .row .v { white-space:nowrap; flex-shrink:0; }
+  .security-specimen .hint { margin:10px 16px 16px; }
+  .security-specimen .big2x .navbar .title { font-size:30px; }
+  .security-specimen .big2x .row { font-size:30px; flex-wrap:wrap; align-items:flex-start; padding-top:12px; padding-bottom:12px; }
+  .security-specimen .big2x .row .v { font-size:26px; flex:0 0 100%; white-space:normal; margin-left:0; text-align:left; }
+  .security-specimen .big2x .hint, .security-specimen .big2x .glabel { font-size:24px; }
 </style>
 </head>
 <body>
+<section class="intro" style="max-width:920px;margin:24px auto;padding:16px"><h2>v45 · 设备安全</h2><p>本版增加一次性绑定管理电脑、可信设备目录与移除进度。普通移除只点击一次，保留设备在后台同步。</p><div class="banner">正在撤销设备 · c3d4，等待 1 台保留电脑自动更新。保留手机不需要逐台确认。</div><p class="muted small">管理电脑离线时暂停新的远程操作。未确认送达的请求显示“尚未确认”；收到完整撤销回执后才显示“已移除”。</p><div class="banner">旧历史未验证，仅供阅读；当前审批和提问由原电脑重新核实。</div><p class="muted small">管理电脑不能普通移除。它永久丢失时，本版没有自动接管或恢复。安全边界见 <a href="../architecture.md">架构说明</a>。</p></section>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="lu-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lu-square-open" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-square-check" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lu-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="lu-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="lu-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lu-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lu-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol><symbol id="lu-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lu-square-pen" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></symbol><symbol id="lu-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol><symbol id="lu-square" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol><symbol id="lu-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lu-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="lu-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="lu-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="lu-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol><symbol id="lu-message-square" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></symbol><symbol id="lu-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="lu-laptop" viewBox="0 0 24 24"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/></symbol><symbol id="lu-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol><symbol id="lu-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lu-corner-down-left" viewBox="0 0 24 24"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></symbol><symbol id="lu-keyboard" viewBox="0 0 24 24"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></symbol><symbol id="lu-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol><symbol id="lu-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/></symbol><symbol id="lu-maximize-2" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/><path d="M9 21H3v-6"/></symbol></svg>
 <div class="wrap">
 
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v44 · 2026-10-18 UTC · 上一版 v43 在 git 历史里（<code>git log -- docs/design/client-v43.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v45 · 2026-10-18 UTC · 上一版 v44 在 git 历史里（<code>git log -- docs/design/client-v44.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v43 的改动</h4><ul><li>批准后网络失败时，「重试」继续同一次批准；短暂断网保留这次配对。</li><li>明确过期、拒绝或取消后才用「换一个」重新配对；离开页面会撤回尚未完成的批准。</li></ul>
+  <h4>相对 v44 的改动</h4><ul><li>首次绑定固定管理电脑，候选设备先在本机确认图案，再由发起方允许。</li><li>删除一次提交，保留电脑后台自动确认；进度区分尚未确认、等待电脑确认、已完成，并提供同次请求重试。</li><li>管理电脑不能普通移除；旧格式历史明确标记未验证，当前审批读取电脑快照。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -2475,11 +2482,8 @@ git status --short gen/</pre>
   <div class="st">
     <div class="st-h">设备 · 保存失败 / 移除</div>
     <div class="banner err">没能保存默认模型：MacBook 不在线<b>重试</b></div>
-    <div class="alert" id="machine-removal" style="position:static;box-shadow:none;border:1px solid var(--line);margin-top:10px">
-      <h5>移除 MacBook？</h5>
-      <p>它的会话记录会从服务器上删除，它要重新加入账户才能再连上。</p>
-      <div class="btns"><div class="btn">取消</div><div class="btn danger">移除</div></div>
-    </div>
+    <div class="grp" id="machine-removal" style="margin-top:10px"><div class="row">移除 MacBook<span class="v">等待电脑确认</span></div></div>
+    <div class="hint">等待保留的工作电脑自动安装安全更新。手机不需要逐台确认。</div>
   </div>
 </div>
 
@@ -3837,12 +3841,12 @@ git status --short gen/</pre>
 </div>
 <div class="manage-hint">修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。</div>
 <div class="grp">
-<div class="row" style="color:var(--red)">移除这个客户端…</div>
+<div class="row" style="color:var(--red)">移除这个客户端</div>
 </div>
-<div class="manage-hint">移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入需要另一台已登记设备批准。</div>
+<div class="manage-hint">直接提交撤销并显示进度；完成后旧密钥不能解密新内容。不会擦除已下载历史。再次加入需核对图案并获得批准。</div>
 </div>
 </div>
-<div class="cap">客户端详情：名称可改，起过名字的可以恢复默认名称，未命名时不显示这一行；上次使用没有记录时写「没有记录」；ID 可核对；移除前确认影响，当前客户端用“退出并删除本机密钥”</div>
+<div class="cap">客户端详情：名称可改，起过名字的可以恢复默认名称，未命名时不显示这一行；上次使用没有记录时写「没有记录」；ID 可核对；点击移除直接提交并显示进度，当前客户端用“退出并删除本机密钥”</div>
 </div>
 <div>
 <div class="phone">
@@ -3861,6 +3865,14 @@ git status --short gen/</pre>
 </div>
 </div>
 <!-- ============================= -->
+<h2 id="device-security">设备安全与首次绑定</h2>
+<div class="note">三端保持相同含义。删除只需一次操作；管理电脑标记清楚并禁用普通删除。名称按真实文本换行，未命名时显示设备 ID 后缀。历史未验证与当前请求读取失败分别显示，不能把失败当作没有待办。</div>
+<div class="screens security-specimen">
+<div><div class="phone"><div class="sb"><span>9:41</span></div><div class="navbar"><span class="title"><b>建立安全绑定</b></span></div><div class="body"><p style="margin:16px">账户和历史仍在。这台设备需要与管理电脑核对一次图案，之后可以继续使用。</p><div class="field code-in">4829 1756</div><div class="big"><div class="btn pri">核对并继续</div></div><div class="hint">已有但损坏的安全状态显示错误，不能自动覆盖。</div></div></div><div class="cap">已有身份首次升级；不清除本机密钥</div></div>
+<div><div class="phone"><div class="sb"><span>9:41</span></div><div class="navbar"><span class="title"><b>设备</b></span></div><div class="body"><div class="glabel">电脑</div><div class="grp"><div class="row">家里的电脑<span class="v">管理电脑</span></div><div class="row">工作电脑<span class="v">离线</span></div></div><div class="glabel">移除进度</div><div class="grp"><div class="row">很久没用的备用浏览器 · c3d4<span class="v">等待电脑确认</span></div></div><div class="hint">等待工作电脑自动更新。保留手机不需逐台确认。</div><div class="grp"><div class="row">未命名客户端 · e5f6<span class="v">尚未确认</span></div><div class="row" style="color:var(--blue)">重试</div></div><div class="hint">没有收到管理电脑的确认；重试同一次请求。</div></div></div><div class="cap">拥挤、长名称、未命名、离线与结果不明</div></div>
+<div><div class="phone"><div class="sb"><span>9:41</span></div><div class="navbar"><span class="title"><b>设备</b></span></div><div class="body"><div class="grp"><div class="row">家里的电脑<span class="v">管理电脑</span></div></div><div class="hint">管理电脑不能普通移除。没有其他客户端。</div><div class="grp"><div class="row">备用浏览器 · c3d4<span class="v">已完成</span></div></div><div class="banner warn">管理电脑离线，新的远程操作暂停。<b>重试</b></div><div class="banner warn">旧格式记录的内容和来源未验证，仅供阅读。当前操作以电脑的已验证快照为准。</div><div class="banner warn">无法核实电脑上的待处理请求，请重试或在电脑终端处理。</div></div></div><div class="cap">空列表、已完成与授权端离线；读取失败明确显示</div></div>
+<div id="security-large-text"><div class="phone big2x"><div class="sb"><span>9:41</span></div><div class="navbar"><span class="title"><b>设备</b></span></div><div class="body"><div class="glabel">移除进度</div><div class="grp"><div class="row">办公室长期运行的工作电脑<span class="v">等待电脑确认</span></div></div><div class="hint">保留电脑重新联网后自动更新。手机不需逐台确认。</div><div class="grp"><div class="row">未命名客户端 · e5f6<span class="v">尚未确认</span></div><div class="row" style="color:var(--blue)">重试</div></div></div></div><div class="cap">200% 文字：状态换到下一行，行高随内容增长</div></div>
+</div>
 <h2 id="settings">设置与配对</h2>
 <div class="screens">
   <div>
@@ -3893,7 +3905,7 @@ git status --short gen/</pre>
       </div>
       <div class="tabbar"><div><i><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg></i>会话</div><div class="on"><i><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg></i>设置</div></div>
     </div>
-    <div class="cap">Android 设置：后台推送问题仅在通知分组下方显示灰色说明，不在顶部显示警告；本机存储一组仅 Android 显示；外观是一行「主题」加紧凑的三选一；版本号里的 commit 只写一次；退出和移除设备都要二次确认</div>
+    <div class="cap">Android 设置：后台推送问题仅在通知分组下方显示灰色说明，不在顶部显示警告；本机存储一组仅 Android 显示；外观是一行「主题」加紧凑的三选一；版本号里的 commit 只写一次；退出保留确认；普通移除一次提交，显示后台进度</div>
   </div>
 
   <div>
@@ -3936,12 +3948,12 @@ git status --short gen/</pre>
       <div class="body">
         <div class="navbar"><span class="title"><b>核对图案</b></span><a href="#pair-entry" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;text-decoration:none">取消</a></div>
         <div class="emoji" style="margin-top:40px;font-size:40px">🦊 🌵 🚲 🎈</div>
-        <p class="muted center-text small" style="margin:0 24px">确认另一台设备上显示的 4 个图案和这里一模一样，然后在那台设备上点「图案一致，允许」。</p>
-        <p class="muted center-text small" style="margin-top:24px"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 等待允许…</p>
+        <p class="muted center-text small" style="margin:0 24px">核对另一台设备的 4 个图案；一致后先在本机确认，再在管理电脑上允许。<div class="big"><div class="btn pri">图案一致，信任并继续</div></div></p>
+        <p class="muted center-text small" style="margin-top:24px"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 请先在本机确认图案</p>
         <div class="pair-wait-actions"><a class="btn" href="#pair-entry" style="text-decoration:none">图案不一致，返回填码</a><div class="hint">返回后停止这次等待；请让另一台设备拒绝旧请求，再生成新的配对码。</div></div>
       </div>
     </div>
-    <div class="cap">新设备等待对方允许；「取消」或「图案不一致，返回填码」回到填码页，保留服务器地址、清空旧码；被拒绝、过期、网络失败见下方状态</div>
+    <div class="cap">新设备先本机确认，再等待对方允许；确认后禁用返回，避免误报取消；「取消」或「图案不一致，返回填码」回到填码页，保留服务器地址、清空旧码；被拒绝、过期、网络失败见下方状态</div>
   </div>
   <div>
     <div class="phone" id="pair-entry">
@@ -3960,8 +3972,8 @@ git status --short gen/</pre>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body" style="display:flex;flex-direction:column;justify-content:center;padding:0 24px;text-align:center">
-        <div style="font-weight:600;font-size:17px">这个浏览器已被移出账户</div>
-        <p class="muted small" style="margin:8px 0 20px">服务器不再接受它的登录：它在另一台设备上被移除了，或者服务器的数据被重置了。电脑上的会话不受影响。</p>
+        <div style="font-weight:600;font-size:17px">暂时无法登录中继</div>
+        <p class="muted small" style="margin:8px 0 20px">尚未获得可信的撤销回执；中继拒绝登录不能单独证明设备已移除。电脑上的会话不受影响。</p>
         <div style="display:flex"><div class="btn pri">重新加入账户</div></div>
         <p class="muted small" style="margin:10px 0 4px">会先删除这个浏览器里的账户密钥，再用配对码加入。</p>
         <div class="small" style="color:var(--blue);font-weight:600;min-height:44px;display:flex;align-items:center;justify-content:center">再试一次</div>
@@ -3973,8 +3985,8 @@ git status --short gen/</pre>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body" style="display:flex;flex-direction:column;justify-content:center;padding:0 24px;text-align:center">
-        <div style="font-weight:600;font-size:17px">这台设备已被移出账户</div>
-        <p class="muted small" style="margin:8px 0 20px">服务器不再接受它的登录：它在另一台设备上被移除了，或者服务器的数据被重置了。电脑上的会话不受影响。</p>
+        <div style="font-weight:600;font-size:17px">暂时无法登录中继</div>
+        <p class="muted small" style="margin:8px 0 20px">尚未获得可信的撤销回执；中继拒绝登录不能单独证明设备已移除。电脑上的会话不受影响。</p>
         <div style="display:flex"><div class="btn pri">重新加入账户</div></div>
         <p class="muted small" style="margin:10px 0 4px">会先删除这台设备上的账户密钥和缓存，再用配对码加入。</p>
         <div class="small" style="color:var(--blue);font-weight:600;min-height:44px;display:flex;align-items:center;justify-content:center">再试一次</div>

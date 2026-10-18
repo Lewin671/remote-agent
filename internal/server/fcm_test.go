@@ -156,7 +156,7 @@ func TestFCMPush(t *testing.T) {
 	m := remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, hs.URL, withToken(ts.login(t, mpriv, mid)))
 	c := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, hs.URL, withToken(ts.login(t, cpriv, cid)))
 	skey := e2e.NewKey()
-	keyEnv, _ := e2e.Seal(keys.Wrap, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
+	keyEnv, _ := e2e.Seal(keys.Wrap, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
 	if _, err := m.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s", Key: keyEnv})); err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestFCMPush(t *testing.T) {
 	}
 
 	notifyKey := e2e.NewKey()
-	content, _ := e2e.SealMessage(notifyKey, &pb.Header{
+	content, _ := e2e.SealMessage(notifyKey, &pb.Header{Version: 2,
 		Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: mid, SessionId: "s", RequestId: "appr-1", Sender: mid,
 	}, &pb.NotifyContent{SessionId: "s", Approval: &pb.NotifyApproval{ApprovalId: "appr-1", Command: "go test ./..."}})
 	notify := func(key string, env *pb.Envelope) error {
@@ -189,9 +189,8 @@ func TestFCMPush(t *testing.T) {
 	if err := proto.Unmarshal(raw, &env); err != nil {
 		t.Fatal(err)
 	}
-	var nc pb.NotifyContent
-	if _, err := e2e.OpenMessage(notifyKey, &env, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, SessionId: "s"}, &nc); err != nil || nc.Approval.Command != "go test ./..." {
-		t.Fatalf("content does not open: %v", err)
+	if !proto.Equal(&env, content) {
+		t.Fatal("FCM changed the opaque authenticated envelope")
 	}
 
 	// The same approval is pushed once; another one right after it is not
@@ -212,7 +211,7 @@ func TestFCMPush(t *testing.T) {
 	}
 
 	// Content for another session is refused.
-	other, _ := e2e.SealMessage(notifyKey, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: mid, SessionId: "t"}, &pb.NotifyContent{})
+	other, _ := e2e.SealMessage(notifyKey, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: mid, SessionId: "t"}, &pb.NotifyContent{})
 	if err := notify("appr-3", other); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("misplaced content: %v", err)
 	}

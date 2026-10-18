@@ -98,4 +98,10 @@ public interface AnswerQuestionRequestOrBuilder extends
    * @return The options at the given index.
    */
   int getOptions(int index);
+
+  /**
+   * <code>uint64 observed_event_seq = 6 [json_name = "observedEventSeq"];</code>
+   * @return The observedEventSeq.
+   */
+  long getObservedEventSeq();
 }

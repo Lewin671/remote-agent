@@ -47,7 +47,7 @@ func TestRevocationClosesClientAndTerminalStreams(t *testing.T) {
 	// Use a second client as administrator.
 	ap, aid, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
 	admin := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, ap, aid)))
-	if _, err := admin.RemoveDevice(ctx, connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: cid})); err != nil {
+	if _, err := admin.RemoveDevice(ctx, connect.NewRequest(ts.removalProof(t, aid, cid))); err != nil {
 		t.Fatal(err)
 	}
 	for _, conn := range []*websocket.Conn{stream.ws, term} {

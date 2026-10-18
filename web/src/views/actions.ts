@@ -8,7 +8,14 @@ import type { ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { agentOf, derive, type Derived } from "../model";
 import { stillUnknown } from "../attempt";
-import { errorText, newSlot, type AnswerState, type CommandKind, type Remote, type RequestSlot } from "../remote";
+import {
+  errorText,
+  newSlot,
+  type AnswerState,
+  type CommandKind,
+  type Remote,
+  type RequestSlot,
+} from "../remote";
 import { approvalTruncated } from "../approval-display";
 import { useRemote } from "../ui";
 
@@ -17,7 +24,16 @@ export function useDerived(remote: Remote, sid: string): Derived {
   const events = remote.events(sid);
   const agent = agentOf(remote.sessions.get(sid));
   // The array grows in place; its length tells a change.
-  return useMemo(() => derive(events, agent), [events, events.length, agent]); // eslint-disable-line react-hooks/exhaustive-deps
+  const historical = useMemo(
+    () => derive(events, agent),
+    [events, events.length, agent],
+  );
+  useEffect(() => {
+    void remote.refreshLiveSnapshot(sid);
+    const timer = setInterval(() => void remote.refreshLiveSnapshot(sid), 5000);
+    return () => clearInterval(timer);
+  }, [remote, sid]);
+  return remote.currentDerived(sid, historical); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /** Runs one kind of command, remembering the slot of the last attempt so
@@ -65,7 +81,21 @@ function useCommand(remote: Remote, sid: string) {
 export function useApproval(remote: Remote, sid: string, a: ApprovalRequested) {
   const c = useCommand(remote, sid);
   const resolve = (allow: boolean, message = "", always = false) =>
-    (isSkeleton(a) || (allow && approvalTruncated(a))) ? Promise.resolve(false) : c.run(`${allow ? "allow" : "deny"}:${always ? "always" : "once"}:${message}`, { case: "resolveApproval", value: { sessionId: sid, approvalId: a.approvalId, allow, message, always } });
+    isSkeleton(a) || (allow && approvalTruncated(a))
+      ? Promise.resolve(false)
+      : c.run(
+          `${allow ? "allow" : "deny"}:${always ? "always" : "once"}:${message}`,
+          {
+            case: "resolveApproval",
+            value: {
+              sessionId: sid,
+              approvalId: a.approvalId,
+              allow,
+              message,
+              always,
+            },
+          },
+        );
   const retry = () => {
     const key = c.retry();
     if (!key) return;
@@ -83,11 +113,20 @@ export function useApproval(remote: Remote, sid: string, a: ApprovalRequested) {
  * so the docked card and the question page are one: moving between them
  * keeps the ticks, the question reached, and a pending answer's request
  * slot, which a retry must reuse. */
-export function useAnswer(remote: Remote, sid: string, questionId: string, terminalOnly = false) {
+export function useAnswer(
+  remote: Remote,
+  sid: string,
+  questionId: string,
+  terminalOnly = false,
+) {
   useRemote(remote);
   const st = remote.answerState(questionId);
   const set = (p: Partial<AnswerState>) => remote.patchAnswer(questionId, p);
-  const answer = async (index: number, options: number[], multi = false): Promise<boolean> => {
+  const answer = async (
+    index: number,
+    options: number[],
+    multi = false,
+  ): Promise<boolean> => {
     if (terminalOnly) return false;
     const key = `${index}:${options.join(",")}`;
     const cur = remote.answerState(questionId);
@@ -100,7 +139,14 @@ export function useAnswer(remote: Remote, sid: string, questionId: string, termi
         sid,
         {
           case: "answerQuestion",
-          value: multi ? { sessionId: sid, questionId, questionIndex: index, options } : { sessionId: sid, questionId, option: options[0], questionIndex: index },
+          value: multi
+            ? { sessionId: sid, questionId, questionIndex: index, options }
+            : {
+                sessionId: sid,
+                questionId,
+                option: options[0],
+                questionIndex: index,
+              },
         },
         slot,
       );
@@ -109,15 +155,24 @@ export function useAnswer(remote: Remote, sid: string, questionId: string, termi
       // Only an unknown outcome keeps the slot for the retry; a retry of
       // one that comes back expired stays unknown (see attempt.ts).
       const still = stillUnknown(e, before);
-      set({ last: { key, slot: still ? slot : newSlot() }, busy: "", unknown: still, error: errorText(e) });
+      set({
+        last: { key, slot: still ? slot : newSlot() },
+        busy: "",
+        unknown: still,
+        error: errorText(e),
+      });
       return false;
     }
   };
   // The question index and options of the pick in flight or last tried.
   const key = st.busy || st.last?.key || "";
   const [i, o] = key ? key.split(":") : ["-1", ""];
-  const chosen = { index: Number(i), options: o ? o.split(",").map(Number) : [] };
-  const setTicked = (f: (t: number[]) => number[]) => set({ ticked: f(remote.answerState(questionId).ticked) });
+  const chosen = {
+    index: Number(i),
+    options: o ? o.split(",").map(Number) : [],
+  };
+  const setTicked = (f: (t: number[]) => number[]) =>
+    set({ ticked: f(remote.answerState(questionId).ticked) });
   return {
     answer,
     busy: st.busy,
@@ -135,7 +190,13 @@ export function useAnswer(remote: Remote, sid: string, questionId: string, termi
 
 export function usePlan(remote: Remote, sid: string, terminalOnly = false) {
   const c = useCommand(remote, sid);
-  const answer = (choice: PlanChoice) => terminalOnly ? Promise.resolve(false) : c.run(String(choice), { case: "answerPlan", value: { sessionId: sid, choice } });
+  const answer = (choice: PlanChoice) =>
+    terminalOnly
+      ? Promise.resolve(false)
+      : c.run(String(choice), {
+          case: "answerPlan",
+          value: { sessionId: sid, choice },
+        });
   const retry = () => {
     const key = c.retry();
     if (key) void answer(Number(key) as PlanChoice);
@@ -145,5 +206,7 @@ export function usePlan(remote: Remote, sid: string, terminalOnly = false) {
 
 /** The deadline of an approval in ms, 0 when it has none. */
 export function deadlineOf(a: ApprovalRequested): number {
-  return a.deadline ? Number(a.deadline.seconds) * 1000 + Math.floor(a.deadline.nanos / 1e6) : 0;
+  return a.deadline
+    ? Number(a.deadline.seconds) * 1000 + Math.floor(a.deadline.nanos / 1e6)
+    : 0;
 }

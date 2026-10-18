@@ -1284,9 +1284,10 @@ type ResolveApprovalRequest struct {
 	// say this, so the daemon answers that prompt itself; when the prompt
 	// has no such option it allows this request only, and ApprovalResolved
 	// tells which happened. Needs MachineCapabilities.approval_always.
-	Always        bool `protobuf:"varint,5,opt,name=always,proto3" json:"always,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Always           bool   `protobuf:"varint,5,opt,name=always,proto3" json:"always,omitempty"`
+	ObservedEventSeq uint64 `protobuf:"varint,6,opt,name=observed_event_seq,json=observedEventSeq,proto3" json:"observed_event_seq,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ResolveApprovalRequest) Reset() {
@@ -1354,6 +1355,13 @@ func (x *ResolveApprovalRequest) GetAlways() bool {
 	return false
 }
 
+func (x *ResolveApprovalRequest) GetObservedEventSeq() uint64 {
+	if x != nil {
+		return x.ObservedEventSeq
+	}
+	return 0
+}
+
 type ResolveApprovalResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -1402,9 +1410,10 @@ type AnswerQuestionRequest struct {
 	QuestionIndex *int32 `protobuf:"varint,4,opt,name=question_index,json=questionIndex,proto3,oneof" json:"question_index,omitempty"`
 	// 1-based option numbers for a multi_select question (Claude Code); when
 	// set, option is ignored.
-	Options       []int32 `protobuf:"varint,5,rep,packed,name=options,proto3" json:"options,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Options          []int32 `protobuf:"varint,5,rep,packed,name=options,proto3" json:"options,omitempty"`
+	ObservedEventSeq uint64  `protobuf:"varint,6,opt,name=observed_event_seq,json=observedEventSeq,proto3" json:"observed_event_seq,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AnswerQuestionRequest) Reset() {
@@ -1470,6 +1479,13 @@ func (x *AnswerQuestionRequest) GetOptions() []int32 {
 		return x.Options
 	}
 	return nil
+}
+
+func (x *AnswerQuestionRequest) GetObservedEventSeq() uint64 {
+	if x != nil {
+		return x.ObservedEventSeq
+	}
+	return 0
 }
 
 type AnswerQuestionResponse struct {
@@ -2266,11 +2282,13 @@ func (*CompactResponse) Descriptor() ([]byte, []int) {
 }
 
 type AnswerPlanRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Choice        PlanChoice             `protobuf:"varint,2,opt,name=choice,proto3,enum=remoteagent.v1.PlanChoice" json:"choice,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	SessionId          string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Choice             PlanChoice             `protobuf:"varint,2,opt,name=choice,proto3,enum=remoteagent.v1.PlanChoice" json:"choice,omitempty"`
+	ObservedEventSeq   uint64                 `protobuf:"varint,3,opt,name=observed_event_seq,json=observedEventSeq,proto3" json:"observed_event_seq,omitempty"`
+	ObservedScreenHash []byte                 `protobuf:"bytes,4,opt,name=observed_screen_hash,json=observedScreenHash,proto3" json:"observed_screen_hash,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *AnswerPlanRequest) Reset() {
@@ -2315,6 +2333,20 @@ func (x *AnswerPlanRequest) GetChoice() PlanChoice {
 		return x.Choice
 	}
 	return PlanChoice_PLAN_CHOICE_UNSPECIFIED
+}
+
+func (x *AnswerPlanRequest) GetObservedEventSeq() uint64 {
+	if x != nil {
+		return x.ObservedEventSeq
+	}
+	return 0
+}
+
+func (x *AnswerPlanRequest) GetObservedScreenHash() []byte {
+	if x != nil {
+		return x.ObservedScreenHash
+	}
+	return nil
 }
 
 type AnswerPlanResponse struct {
@@ -3972,7 +4004,7 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x02 \x01(\tR\trequestId\"\x15\n" +
-	"\x13ResumeInputResponse\"\xa0\x01\n" +
+	"\x13ResumeInputResponse\"\xce\x01\n" +
 	"\x16ResolveApprovalRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1f\n" +
@@ -3980,8 +4012,9 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"approvalId\x12\x14\n" +
 	"\x05allow\x18\x03 \x01(\bR\x05allow\x12\x18\n" +
 	"\amessage\x18\x04 \x01(\tR\amessage\x12\x16\n" +
-	"\x06always\x18\x05 \x01(\bR\x06always\"\x19\n" +
-	"\x17ResolveApprovalResponse\"\xc8\x01\n" +
+	"\x06always\x18\x05 \x01(\bR\x06always\x12,\n" +
+	"\x12observed_event_seq\x18\x06 \x01(\x04R\x10observedEventSeq\"\x19\n" +
+	"\x17ResolveApprovalResponse\"\xf6\x01\n" +
 	"\x15AnswerQuestionRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1f\n" +
@@ -3989,7 +4022,8 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"questionId\x12\x16\n" +
 	"\x06option\x18\x03 \x01(\x05R\x06option\x12*\n" +
 	"\x0equestion_index\x18\x04 \x01(\x05H\x00R\rquestionIndex\x88\x01\x01\x12\x18\n" +
-	"\aoptions\x18\x05 \x03(\x05R\aoptionsB\x11\n" +
+	"\aoptions\x18\x05 \x03(\x05R\aoptions\x12,\n" +
+	"\x12observed_event_seq\x18\x06 \x01(\x04R\x10observedEventSeqB\x11\n" +
 	"\x0f_question_index\"\x18\n" +
 	"\x16AnswerQuestionResponse\"h\n" +
 	"\x12WatchEventsRequest\x12\x1d\n" +
@@ -4037,11 +4071,13 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x0eCompactRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"\x11\n" +
-	"\x0fCompactResponse\"f\n" +
+	"\x0fCompactResponse\"\xc6\x01\n" +
 	"\x11AnswerPlanRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x122\n" +
-	"\x06choice\x18\x02 \x01(\x0e2\x1a.remoteagent.v1.PlanChoiceR\x06choice\"\x14\n" +
+	"\x06choice\x18\x02 \x01(\x0e2\x1a.remoteagent.v1.PlanChoiceR\x06choice\x12,\n" +
+	"\x12observed_event_seq\x18\x03 \x01(\x04R\x10observedEventSeq\x120\n" +
+	"\x14observed_screen_hash\x18\x04 \x01(\fR\x12observedScreenHash\"\x14\n" +
 	"\x12AnswerPlanResponse\",\n" +
 	"\x16ListDirectoriesRequest\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\"m\n" +

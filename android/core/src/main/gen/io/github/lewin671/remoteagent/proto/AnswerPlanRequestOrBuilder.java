@@ -32,4 +32,16 @@ public interface AnswerPlanRequestOrBuilder extends
    * @return The choice.
    */
   io.github.lewin671.remoteagent.proto.PlanChoice getChoice();
+
+  /**
+   * <code>uint64 observed_event_seq = 3 [json_name = "observedEventSeq"];</code>
+   * @return The observedEventSeq.
+   */
+  long getObservedEventSeq();
+
+  /**
+   * <code>bytes observed_screen_hash = 4 [json_name = "observedScreenHash"];</code>
+   * @return The observedScreenHash.
+   */
+  com.google.protobuf.ByteString getObservedScreenHash();
 }

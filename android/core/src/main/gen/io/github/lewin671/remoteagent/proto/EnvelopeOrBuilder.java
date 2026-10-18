@@ -60,4 +60,31 @@ public interface EnvelopeOrBuilder extends
    * @return The signature.
    */
   com.google.protobuf.ByteString getSignature();
+
+  /**
+   * <pre>
+   * Version-2 canonical deviceauth Header; the protobuf Header above is only
+   * a routing projection. Receivers compare every projection field to this.
+   * </pre>
+   *
+   * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
+   * @return The securityHeader.
+   */
+  com.google.protobuf.ByteString getSecurityHeader();
+
+  /**
+   * <pre>
+   * Exact-ciphertext authority authorization and its Ed25519 signature.
+   * </pre>
+   *
+   * <code>bytes authorization = 6 [json_name = "authorization"];</code>
+   * @return The authorization.
+   */
+  com.google.protobuf.ByteString getAuthorization();
+
+  /**
+   * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
+   * @return The authorizationSignature.
+   */
+  com.google.protobuf.ByteString getAuthorizationSignature();
 }

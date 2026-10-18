@@ -1,5 +1,8 @@
-import { afterEach, expect, it, vi } from "vitest";
-import { Remote } from "./remote";
+import { afterAll, afterEach, expect, it, vi } from "vitest";
+import { SyntheticRemote } from "./test/remote-fixture";
+import { removeFixtureBuild } from "./test/security-fixture";
+const fixtureRemotes: SyntheticRemote[] = [];
+afterAll(removeFixtureBuild);
 import { create } from "@bufbuild/protobuf";
 import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
 
@@ -12,50 +15,93 @@ class Socket {
   onerror?: () => void;
   onmessage?: (m: { data: ArrayBuffer }) => void;
   send = vi.fn();
-  constructor(readonly url: string) { Socket.all.push(this); }
-  open() { this.readyState = 1; this.onopen?.(); }
-  close() { this.readyState = 3; queueMicrotask(() => this.onclose?.()); }
+  constructor(readonly url: string) {
+    Socket.all.push(this);
+  }
+  open() {
+    this.readyState = 1;
+    this.onopen?.();
+  }
+  close() {
+    this.readyState = 3;
+    queueMicrotask(() => this.onclose?.());
+  }
   /** The server closes the stream with a status, as when it refuses the hello. */
-  closedBy(code: number) { this.readyState = 3; this.onclose?.({ code }); }
+  closedBy(code: number) {
+    this.readyState = 3;
+    this.onclose?.({ code });
+  }
 }
-afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); Socket.all = []; });
+afterEach(async () => {
+  for (const r of fixtureRemotes.splice(0)) await r.dispose();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  Socket.all = [];
+});
 async function probe() {
-  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-  const device = await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"]) as CryptoKeyPair;
-  class Probe extends Remote { constructor() { super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key }); } }
-  const r = new Probe();
-  r.sessions.set("s", { id: "s", machineId: "m", key, metaRev: 0n, lastSeq: 0n, updatedMs: 0n, endedMs: 0n });
+  const r = await SyntheticRemote.create();
+  fixtureRemotes.push(r);
   return r;
 }
+
 it("does not open a stale main socket when stopped during login", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
   let finish!: () => void;
-  vi.spyOn(r as any, "login").mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
-  r.start(); r.stop(); finish();
-  await Promise.resolve(); await Promise.resolve();
+  vi.spyOn(r as any, "login").mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  r.start();
+  r.stop();
+  finish();
+  await Promise.resolve();
+  await Promise.resolve();
   expect(Socket.all).toHaveLength(0);
-  r.start(); finish(); await Promise.resolve(); await Promise.resolve();
+  r.start();
+  finish();
+  await Promise.resolve();
+  await Promise.resolve();
   expect(Socket.all).toHaveLength(1);
   r.stop();
-});
+}, 15000);
 it("does not start catch-up after a pending refresh completes in background", async () => {
   const r = await probe();
   let finish!: () => void;
-  vi.spyOn(r, "refresh").mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
-  const devices = vi.spyOn(r as any, "loadDevices").mockResolvedValue(undefined);
+  vi.spyOn(r, "refresh").mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const devices = vi
+    .spyOn(r as any, "loadDevices")
+    .mockResolvedValue(undefined);
   const prefs = vi.spyOn(r as any, "loadPrefs").mockResolvedValue(undefined);
   const pending = (r as any).onFrame({ case: "ready", value: {} });
-  r.stop(); finish(); await pending;
-  expect(devices).not.toHaveBeenCalled(); expect(prefs).not.toHaveBeenCalled();
+  r.stop();
+  finish();
+  await pending;
+  expect(devices).not.toHaveBeenCalled();
+  expect(prefs).not.toHaveBeenCalled();
 });
 it("pauses history pagination without marking partial history complete", async () => {
   const r = await probe();
   let finish!: (response: object) => void;
-  const fetch = vi.fn(() => new Promise<object>(resolve => { finish = resolve; }));
+  const fetch = vi.fn(
+    () =>
+      new Promise<object>((resolve) => {
+        finish = resolve;
+      }),
+  );
   (r as any).api = { getEvents: fetch };
-  r.events("s"); r.stop(); finish({ events: [], more: true });
-  await Promise.resolve(); await Promise.resolve();
+  r.events("s");
+  r.stop();
+  finish({ events: [], more: true });
+  await Promise.resolve();
+  await Promise.resolve();
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(r.history("s").loaded).toBe(false);
 });
@@ -63,21 +109,27 @@ it("stops pending terminal opens and bounds queued decryption", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
   r.command = vi.fn(async () => create(CommandResultSchema));
-  const closed = vi.fn(); const frames = vi.fn();
+  const closed = vi.fn();
+  const frames = vi.fn();
   const opening = r.openTerminal("s", frames, closed);
-  const socket = Socket.all[0]; socket.open();
+  const socket = Socket.all[0];
+  socket.open();
   const terminal = await opening;
   // All calls occur before promise jobs execute: these frames must be bounded and discarded.
-  for (let i = 0; i < 513; i++) socket.onmessage?.({ data: new ArrayBuffer(0) });
-  await Promise.resolve(); await Promise.resolve();
-  expect(closed).toHaveBeenCalledTimes(1); expect(frames).not.toHaveBeenCalled();
+  for (let i = 0; i < 513; i++)
+    socket.onmessage?.({ data: new ArrayBuffer(0) });
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(closed).toHaveBeenCalledTimes(1);
+  expect(frames).not.toHaveBeenCalled();
   expect(socket.readyState).toBe(3);
-  terminal.close(); r.stop();
+  terminal.close();
+  r.stop();
 });
 it("closes a terminal socket even while its handshake is pending", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
-  const opening = r.openTerminal("s", vi.fn(), vi.fn()).catch(e => e);
+  const opening = r.openTerminal("s", vi.fn(), vi.fn()).catch((e) => e);
   r.stop();
   expect(await opening).toBeInstanceOf(Error);
   expect(Socket.all[0].readyState).toBe(3);
@@ -88,25 +140,38 @@ it("serializes the main stream and drops a bounded backlog", async () => {
   const r = await probe();
   vi.spyOn(r as any, "login").mockResolvedValue(undefined);
   let release!: () => void;
-  const handler = vi.spyOn(r as any, "onFrame").mockImplementation(() => new Promise<void>((resolve) => { release = resolve; }));
+  const handler = vi.spyOn(r as any, "onFrame").mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+  );
   const { toBinary } = await import("@bufbuild/protobuf");
   const { ServerFrameSchema } = await import("./gen/remoteagent/v1/relay_pb");
-  const frame = toBinary(ServerFrameSchema, create(ServerFrameSchema, { kind: { case: "ready", value: {} } })).buffer as ArrayBuffer;
+  const frame = toBinary(
+    ServerFrameSchema,
+    create(ServerFrameSchema, { kind: { case: "ready", value: {} } }),
+  ).buffer as ArrayBuffer;
   r.start();
   await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
-  const ws = Socket.all[0]; ws.open(); ws.onmessage?.({ data: frame });
+  const ws = Socket.all[0];
+  ws.open();
+  ws.onmessage?.({ data: frame });
   await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
   for (let i = 0; i < 1024; i++) ws.onmessage?.({ data: frame });
   expect(ws.readyState).toBe(3);
   release();
-  await Promise.resolve(); await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
   expect(handler).toHaveBeenCalledTimes(1);
   r.stop();
 });
 
 it("evicts idle histories while preserving mounted and image-confirmation consumers", async () => {
   const r = await probe();
-  (r as any).api = { getEvents: vi.fn(async () => ({ events: [], more: false })) };
+  (r as any).api = {
+    getEvents: vi.fn(async () => ({ events: [], more: false })),
+  };
   const keep = r.retainHistory("s");
   for (let i = 0; i < 12; i++) {
     const id = "idle" + i;
@@ -115,66 +180,106 @@ it("evicts idle histories while preserving mounted and image-confirmation consum
   }
   await vi.waitFor(() => expect((r as any).buffers.size).toBe(9));
   expect((r as any).buffers.has("s")).toBe(true);
-  keep(); keep(); // Releasing twice must not unpin another consumer.
+  keep();
+  keep(); // Releasing twice must not unpin another consumer.
   await vi.waitFor(() => expect((r as any).buffers.size).toBe(8));
   const release = r.retainHistory("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
-  (r as any).outboxes.set("s", [{ sendId: "image", status: "sent", thumbs: [new Blob(["image"])] }]);
+  (r as any).outboxes.set("s", [
+    { sendId: "image", status: "sent", thumbs: [new Blob(["image"])] },
+  ]);
   release();
-  const b = (r as any).buffers.get("s"); b.usedAt = 0;
+  const b = (r as any).buffers.get("s");
+  b.usedAt = 0;
   (r as any).trimHistory();
   expect((r as any).buffers.has("s")).toBe(true);
   r.recorded("s", ["image"]);
   (r as any).trimHistory();
   expect((r as any).buffers.has("s")).toBe(false);
-  clearTimeout((r as any).historyTrim); r.stop();
+  clearTimeout((r as any).historyTrim);
+  r.stop();
 });
 
 it("does not put a late fetch into a reclaimed history", async () => {
   const r = await probe();
   let finish!: (r: object) => void;
-  const api = vi.fn(() => new Promise<object>((resolve) => { finish = resolve; }));
+  const api = vi.fn(
+    () =>
+      new Promise<object>((resolve) => {
+        finish = resolve;
+      }),
+  );
   (r as any).api = { getEvents: api };
   r.events("s");
-  const old = (r as any).buffers.get("s"); old.usedAt = 0;
+  const old = (r as any).buffers.get("s");
+  old.usedAt = 0;
   (r as any).trimHistory();
   finish({ events: [], more: false });
-  await Promise.resolve(); await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
   expect((r as any).buffers.has("s")).toBe(false);
   expect(old.loaded).toBe(false);
-  clearTimeout((r as any).historyTrim); r.stop();
+  clearTimeout((r as any).historyTrim);
+  r.stop();
 });
 
 it("counts terminal output until the renderer has consumed it", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
-  const command = vi.fn(async () => create(CommandResultSchema)); r.command = command;
+  const command = vi.fn(async () => create(CommandResultSchema));
+  r.command = command;
   let consumed!: () => void;
-  const renderer = vi.fn(() => new Promise<void>((resolve) => { consumed = resolve; }));
+  const renderer = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        consumed = resolve;
+      }),
+  );
   const closed = vi.fn();
   const opening = r.openTerminal("s", renderer, closed);
-  const ws = Socket.all[0]; ws.open(); const conn = await opening;
-  const { sealMessage } = await import("./crypto");
+  const ws = Socket.all[0];
+  ws.open();
+  const conn = await opening;
   const { toBinary } = await import("@bufbuild/protobuf");
-  const { EnvelopeSchema, PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
-  const { TerminalFrameSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { EnvelopeSchema, PayloadKind } =
+    await import("./gen/remoteagent/v1/envelope_pb");
+  const { TerminalFrameSchema } =
+    await import("./gen/remoteagent/v1/remote_pb");
   const streamId = (command.mock.calls as any)[0][1].value.streamId;
-  const env = await sealMessage(r.sessions.get("s")!.key, { kind: PayloadKind.TERMINAL_OUTPUT, machineId: "m", sessionId: "s", requestId: streamId, seq: 1n }, TerminalFrameSchema, create(TerminalFrameSchema, { kind: { case: "output", value: new Uint8Array([65]) } }));
+  const env = await r.seal(
+    {
+      kind: PayloadKind.TERMINAL_OUTPUT,
+      machineId: r.machine,
+      sessionId: "s",
+      requestId: streamId,
+      seq: 1n,
+    },
+    TerminalFrameSchema,
+    create(TerminalFrameSchema, {
+      kind: { case: "output", value: new Uint8Array([65]) },
+    }),
+  );
   ws.onmessage?.({ data: toBinary(EnvelopeSchema, env).buffer as ArrayBuffer });
   await vi.waitFor(() => expect(renderer).toHaveBeenCalledTimes(1));
   for (let i = 0; i < 512; i++) ws.onmessage?.({ data: new ArrayBuffer(0) });
   expect(ws.readyState).toBe(3);
   expect(closed).toHaveBeenCalledTimes(1);
-  consumed(); conn.close(); r.stop();
+  consumed();
+  conn.close();
+  r.stop();
 });
 
 it("reclaims failed and canceled image histories without deleting retry thumbnails", async () => {
   const r = await probe();
-  (r as any).api = { getEvents: vi.fn(async () => ({ events: [], more: false })) };
+  (r as any).api = {
+    getEvents: vi.fn(async () => ({ events: [], more: false })),
+  };
   const release = r.retainHistory("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
   const thumb = new Blob(["retry image"]);
-  (r as any).outboxes.set("s", [{ sendId: "failed", status: "failed", thumbs: [thumb] }]);
+  (r as any).outboxes.set("s", [
+    { sendId: "failed", status: "failed", thumbs: [thumb] },
+  ]);
   (r as any).buffers.get("s").usedAt = 0;
   release();
   (r as any).buffers.get("s").usedAt = 0;
@@ -184,8 +289,12 @@ it("reclaims failed and canceled image histories without deleting retry thumbnai
   r.events("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
   const { InputStatus } = await import("./gen/remoteagent/v1/event_pb");
-  (r as any).outboxes.set("s", [{ sendId: "canceled", status: "sent", thumbs: [thumb] }]);
-  const b = (r as any).buffers.get("s"); b.usedAt = 0; b.inputStatuses = new Map([["canceled", InputStatus.CANCELED]]);
+  (r as any).outboxes.set("s", [
+    { sendId: "canceled", status: "sent", thumbs: [thumb] },
+  ]);
+  const b = (r as any).buffers.get("s");
+  b.usedAt = 0;
+  b.inputStatuses = new Map([["canceled", InputStatus.CANCELED]]);
   (r as any).trimHistory();
   expect((r as any).buffers.has("s")).toBe(false);
   expect(r.outbox("s")[0].thumbs![0]).toBe(thumb);
@@ -194,39 +303,71 @@ it("reclaims failed and canceled image histories without deleting retry thumbnai
 
 it("releases a canceled send and its images after a lost command reply", async () => {
   const r = await probe();
-  (r as any).api = { getEvents: vi.fn(async () => ({ events: [], more: false })) };
+  (r as any).api = {
+    getEvents: vi.fn(async () => ({ events: [], more: false })),
+  };
   r.events("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
   const thumb = new Blob(["image"]);
-  const canceled = { sendId: "canceled", status: "failed", unknown: true, thumbs: [thumb] };
+  const canceled = {
+    sendId: "canceled",
+    status: "failed",
+    unknown: true,
+    thumbs: [thumb],
+  };
   const waiting = { sendId: "waiting", status: "failed", thumbs: [thumb] };
   (r as any).outboxes.set("s", [canceled, waiting]);
-  const { sealMessage } = await import("./crypto");
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
-  const { EventSchema, InputStatus } = await import("./gen/remoteagent/v1/event_pb");
+  const { EventSchema, InputStatus } =
+    await import("./gen/remoteagent/v1/event_pb");
   const session = r.sessions.get("s")!;
-  for (const [i, status] of [InputStatus.QUEUED, InputStatus.CANCELED].entries()) {
+  for (const [i, status] of [
+    InputStatus.QUEUED,
+    InputStatus.CANCELED,
+  ].entries()) {
     const seq = BigInt(i + 1);
-    const event = create(EventSchema, { seq, sessionId: "s", kind: { case: "inputState", value: { requestId: "canceled", status } } });
-    const envelope = await sealMessage(session.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq }, EventSchema, event);
+    const event = create(EventSchema, {
+      seq,
+      sessionId: "s",
+      kind: { case: "inputState", value: { requestId: "canceled", status } },
+    });
+    const envelope = await r.seal(
+      { kind: PayloadKind.EVENT, machineId: r.machine, sessionId: "s", seq },
+      EventSchema,
+      event,
+    );
     await (r as any).ingest(session, [{ seq, envelope }]);
-    expect(r.outbox("s")).toEqual(status === InputStatus.QUEUED ? [canceled, waiting] : [waiting]);
+    expect(r.outbox("s")).toEqual(
+      status === InputStatus.QUEUED ? [canceled, waiting] : [waiting],
+    );
   }
   r.stop();
 });
 
 it("keeps the images of a message the session ended before sending, while it can still be put back", async () => {
   const r = await probe();
-  (r as any).api = { getEvents: vi.fn(async () => ({ events: [], more: false })) };
+  (r as any).api = {
+    getEvents: vi.fn(async () => ({ events: [], more: false })),
+  };
   r.events("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
   const thumb = new Blob(["image"]);
-  const ended = { sendId: "ended", status: "sent", imageIds: ["i1"], thumbs: [thumb] };
-  const canceled = { sendId: "canceled", status: "sent", imageIds: ["i2"], thumbs: [thumb] };
+  const ended = {
+    sendId: "ended",
+    status: "sent",
+    imageIds: ["i1"],
+    thumbs: [thumb],
+  };
+  const canceled = {
+    sendId: "canceled",
+    status: "sent",
+    imageIds: ["i2"],
+    thumbs: [thumb],
+  };
   (r as any).outboxes.set("s", [ended, canceled]);
-  const { sealMessage } = await import("./crypto");
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
-  const { EventSchema, InputStatus } = await import("./gen/remoteagent/v1/event_pb");
+  const { EventSchema, InputStatus } =
+    await import("./gen/remoteagent/v1/event_pb");
   const { derive } = await import("./model");
   const session = r.sessions.get("s")!;
   const states = [
@@ -238,8 +379,16 @@ it("keeps the images of a message the session ended before sending, while it can
   ];
   for (const [i, value] of states.entries()) {
     const seq = BigInt(i + 1);
-    const event = create(EventSchema, { seq, sessionId: "s", kind: { case: "inputState", value } });
-    const envelope = await sealMessage(session.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq }, EventSchema, event);
+    const event = create(EventSchema, {
+      seq,
+      sessionId: "s",
+      kind: { case: "inputState", value },
+    });
+    const envelope = await r.seal(
+      { kind: PayloadKind.EVENT, machineId: r.machine, sessionId: "s", seq },
+      EventSchema,
+      event,
+    );
     await (r as any).ingest(session, [{ seq, envelope }]);
   }
   // What the chat still offers for 放回输入框 keeps this device's copies.
@@ -249,23 +398,43 @@ it("keeps the images of a message the session ended before sending, while it can
   r.stop();
 });
 
-async function sealedEvents(r: Remote, n: number) {
-  const { sealMessage } = await import("./crypto");
+async function sealedEvents(r: SyntheticRemote, n: number) {
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
   const { EventSchema } = await import("./gen/remoteagent/v1/event_pb");
   const out = [];
   for (let seq = 1n; seq <= BigInt(n); seq++)
-    out.push({ seq, envelope: await sealMessage(r.sessions.get("s")!.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq }, EventSchema, create(EventSchema, { seq, sessionId: "s", kind: { case: "agentMessage", value: { text: "m" + seq } } })) });
+    out.push({
+      seq,
+      envelope: await (r as SyntheticRemote).seal(
+        { kind: PayloadKind.EVENT, machineId: r.machine, sessionId: "s", seq },
+        EventSchema,
+        create(EventSchema, {
+          seq,
+          sessionId: "s",
+          kind: { case: "agentMessage", value: { text: "m" + seq } },
+        }),
+      ),
+    });
   return out;
 }
 
 it("opens a session from the cached history and downloads only what is new", async () => {
   const r = await probe();
   const all = await sealedEvents(r, 3);
-  const cache = { read: vi.fn(async () => all.slice(0, 2)), append: vi.fn(async () => undefined), drop: vi.fn(async () => undefined), keep: vi.fn(async () => undefined), get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) };
+  const cache = {
+    read: vi.fn(async () => all.slice(0, 2)),
+    append: vi.fn(async () => undefined),
+    drop: vi.fn(async () => undefined),
+    keep: vi.fn(async () => undefined),
+    get: vi.fn(async () => undefined),
+    set: vi.fn(async () => undefined),
+  };
   (r as any).cache = cache;
   r.sessions.get("s")!.lastSeq = 3n;
-  const getEvents = vi.fn(async ({ afterSeq }: { afterSeq: bigint }) => ({ events: all.filter((e) => e.seq > afterSeq), more: false }));
+  const getEvents = vi.fn(async ({ afterSeq }: { afterSeq: bigint }) => ({
+    events: all.filter((e) => e.seq > afterSeq),
+    more: false,
+  }));
   (r as any).api = { getEvents };
   r.events("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
@@ -274,18 +443,31 @@ it("opens a session from the cached history and downloads only what is new", asy
   expect(r.events("s").map((e) => e.seq)).toEqual([1n, 2n, 3n]);
   // Only the downloaded event is written back.
   expect(cache.append).toHaveBeenCalledTimes(1);
-  expect((cache.append.mock.calls as any)[0][1].map((e: { seq: bigint }) => e.seq)).toEqual([3n]);
-  clearTimeout((r as any).historyTrim); r.stop();
+  expect(
+    (cache.append.mock.calls as any)[0][1].map((e: { seq: bigint }) => e.seq),
+  ).toEqual([3n]);
+  clearTimeout((r as any).historyTrim);
+  r.stop();
 });
 
 it("drops a cached history that is not this session's", async () => {
   const r = await probe();
   const all = await sealedEvents(r, 3);
-  const getEvents = vi.fn(async ({ afterSeq }: { afterSeq: bigint }) => ({ events: all.filter((e) => e.seq > afterSeq), more: false }));
+  const getEvents = vi.fn(async ({ afterSeq }: { afterSeq: bigint }) => ({
+    events: all.filter((e) => e.seq > afterSeq),
+    more: false,
+  }));
   (r as any).api = { getEvents };
   // Longer than what the server has.
   r.sessions.get("s")!.lastSeq = 2n;
-  const long = { read: vi.fn(async () => all), append: vi.fn(async () => undefined), drop: vi.fn(async () => undefined), keep: vi.fn(async () => undefined), get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) };
+  const long = {
+    read: vi.fn(async () => all),
+    append: vi.fn(async () => undefined),
+    drop: vi.fn(async () => undefined),
+    keep: vi.fn(async () => undefined),
+    get: vi.fn(async () => undefined),
+    set: vi.fn(async () => undefined),
+  };
   (r as any).cache = long;
   r.events("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
@@ -294,40 +476,70 @@ it("drops a cached history that is not this session's", async () => {
   // Does not open where it is: sealed for another seq.
   (r as any).buffers.delete("s");
   r.sessions.get("s")!.lastSeq = 3n;
-  const moved = { ...long, read: vi.fn(async () => [{ seq: 1n, envelope: all[1].envelope }]), drop: vi.fn(async () => undefined) };
+  const moved = {
+    ...long,
+    read: vi.fn(async () => [{ seq: 1n, envelope: all[1].envelope }]),
+    drop: vi.fn(async () => undefined),
+  };
   (r as any).cache = moved;
   r.events("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
   expect(moved.drop).toHaveBeenCalledWith("s");
   expect(r.history("s").broken).toBe(false);
   expect(r.events("s").map((e) => e.seq)).toEqual([1n, 2n, 3n]);
-  clearTimeout((r as any).historyTrim); r.stop();
+  clearTimeout((r as any).historyTrim);
+  r.stop();
 });
 
 it("starts from what the browser kept: the token, and the last listing", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
   r.sessions.clear();
-  const { sealMessage, seal } = await import("./crypto");
-  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
-  const { SessionSchema } = await import("./gen/remoteagent/v1/local_pb");
-  const { ListMachinesResponseSchema, ListRemoteSessionsResponseSchema } = await import("./gen/remoteagent/v1/relay_pb");
+  const { ListMachinesResponseSchema, ListRemoteSessionsResponseSchema } =
+    await import("./gen/remoteagent/v1/relay_pb");
   const { toBinary } = await import("@bufbuild/protobuf");
-  const key = (r as any).keys.wrap as CryptoKey;
-  const raw = crypto.getRandomValues(new Uint8Array(32));
-  const skey = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
-  const sessions = toBinary(ListRemoteSessionsResponseSchema, create(ListRemoteSessionsResponseSchema, { sessions: [{
-    sessionId: "kept", machineId: "m", lastSeq: 4n,
-    key: await seal(key, { kind: PayloadKind.SESSION_KEY, machineId: "m", sessionId: "kept" }, raw),
-    meta: await sealMessage(skey, { kind: PayloadKind.SESSION_META, machineId: "m", sessionId: "kept", seq: 1n }, SessionSchema, create(SessionSchema, { id: "kept", title: "from last time" })),
-  }] }));
-  const mine = { deviceId: "d", server: "https://ra.example.com" };
+  const keptRow = await r.sessionRow("kept", "from last time");
+  const sessions = toBinary(
+    ListRemoteSessionsResponseSchema,
+    create(ListRemoteSessionsResponseSchema, {
+      sessions: [{ ...keptRow, lastSeq: 4n }],
+    }),
+  );
+  const mine = {
+    deviceId: r.account.deviceId,
+    server: "https://ra.example.com",
+  };
   const kept: Record<string, unknown> = {
-    token: { ...mine, token: "kept-token", expiresMs: Date.now() + 10 * 86_400_000 },
-    machines: { ...mine, bytes: toBinary(ListMachinesResponseSchema, create(ListMachinesResponseSchema, { machines: [{ id: "m", online: true }] })) },
+    token: {
+      ...mine,
+      token: "kept-token",
+      expiresMs: Date.now() + 10 * 86_400_000,
+    },
+    machines: {
+      ...mine,
+      bytes: toBinary(
+        ListMachinesResponseSchema,
+        create(ListMachinesResponseSchema, {
+          machines: [
+            {
+              id: r.machine,
+              online: true,
+              meta: (r as any).trustedMetadata.get("machine:" + r.machine),
+            },
+          ],
+        }),
+      ),
+    },
     sessions: { ...mine, bytes: sessions },
   };
-  (r as any).cache = { read: vi.fn(async () => []), append: vi.fn(), drop: vi.fn(), keep: vi.fn(async () => undefined), get: vi.fn(async (k: string) => kept[k]), set: vi.fn(async () => undefined) };
+  (r as any).cache = {
+    read: vi.fn(async () => []),
+    append: vi.fn(),
+    drop: vi.fn(),
+    keep: vi.fn(async () => undefined),
+    get: vi.fn(async (k: string) => kept[k]),
+    set: vi.fn(async () => undefined),
+  };
   const login = vi.spyOn(r as any, "login").mockResolvedValue(undefined);
   let notified = 0;
   r.subscribe(() => notified++);
@@ -336,7 +548,7 @@ it("starts from what the browser kept: the token, and the last listing", async (
   // Shown before the server has said anything, without logging in.
   expect(login).not.toHaveBeenCalled();
   expect(r.sessions.get("kept")?.info?.title).toBe("from last time");
-  expect(r.machines.get("m")?.online).toBe(false);
+  expect(r.machines.get(r.machine)?.online).toBe(false);
   expect(r.listed).toBe(false);
   expect(r.authHeader()).toBe("Bearer kept-token");
   // A handshake the network dropped keeps the token.
@@ -350,8 +562,16 @@ it("starts from what the browser kept: the token, and the last listing", async (
   r.stop();
   // Another account's leftovers are not used.
   const other = await probe();
-  (other as any).cache = { ...(r as any).cache, get: vi.fn(async (k: string) => ({ ...(kept[k] as object), deviceId: "someone else" })) };
-  const otherLogin = vi.spyOn(other as any, "login").mockResolvedValue(undefined);
+  (other as any).cache = {
+    ...(r as any).cache,
+    get: vi.fn(async (k: string) => ({
+      ...(kept[k] as object),
+      deviceId: "someone else",
+    })),
+  };
+  const otherLogin = vi
+    .spyOn(other as any, "login")
+    .mockResolvedValue(undefined);
   other.sessions.clear();
   other.start();
   await vi.waitFor(() => expect(otherLogin).toHaveBeenCalled());
@@ -367,8 +587,24 @@ it("deduplicates an event after concurrent decryption", async () => {
   r.events("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
   const s = r.sessions.get("s")!;
-  const row = { seq: 1n, envelope: await sealMessage(s.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq: 1n }, EventSchema, create(EventSchema, { sessionId: "s", seq: 1n })) };
-  await Promise.all([(r as any).ingest(s, [row], false), (r as any).ingest(s, [row], false)]);
+  const row = {
+    seq: 1n,
+    envelope: await sealMessage(
+      s.key,
+      {
+        kind: PayloadKind.EVENT,
+        machineId: r.machine,
+        sessionId: "s",
+        seq: 1n,
+      },
+      EventSchema,
+      create(EventSchema, { sessionId: "s", seq: 1n }),
+    ),
+  };
+  await Promise.all([
+    (r as any).ingest(s, [row], false),
+    (r as any).ingest(s, [row], false),
+  ]);
   expect(r.events("s")).toHaveLength(1);
   expect((r as any).buffers.get("s").pending.size).toBe(0);
   r.stop();
@@ -382,17 +618,27 @@ it("commits the valid prefix before a broken event", async () => {
   r.events("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
   const s = r.sessions.get("s")!;
-  const rows = await Promise.all([1n, 2n].map(async seq => ({ seq, envelope: await sealMessage(s.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq }, EventSchema, create(EventSchema, { sessionId: "s", seq: seq === 2n ? 99n : seq })) })));
+  const rows = await Promise.all(
+    [1n, 2n].map(async (seq) => ({
+      seq,
+      envelope: await sealMessage(
+        s.key,
+        { kind: PayloadKind.EVENT, machineId: r.machine, sessionId: "s", seq },
+        EventSchema,
+        create(EventSchema, { sessionId: "s", seq: seq === 2n ? 99n : seq }),
+      ),
+    })),
+  );
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   await (r as any).ingest(s, rows, false);
-  expect(r.events("s").map(e => e.seq)).toEqual([1n]);
+  expect(r.events("s").map((e) => e.seq)).toEqual([1n]);
   expect(r.history("s").broken).toBe(true);
   r.stop();
 });
 
 it("settles a recorded message drained from pending while filling a history gap", async () => {
   const r = await probe();
-  const { sealMessage, PayloadKind } = await import("./crypto");
+  const { PayloadKind } = await import("./crypto");
   const { EventSchema } = await import("./gen/remoteagent/v1/event_pb");
   (r as any).api = { getEvents: async () => ({ events: [], more: false }) };
   r.events("s");
@@ -400,7 +646,23 @@ it("settles a recorded message drained from pending while filling a history gap"
   r.command = () => new Promise(() => undefined);
   const requestId = r.send("s", "message");
   const s = r.sessions.get("s")!;
-  const rows = await Promise.all([1n, 2n, 3n].map(async seq => ({ seq, envelope: await sealMessage(s.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq }, EventSchema, create(EventSchema, { sessionId: "s", seq, kind: seq === 2n ? { case: "userMessage", value: { requestId, text: "message" } } : undefined })) })));
+  const rows = await Promise.all(
+    [1n, 2n, 3n].map(async (seq) => ({
+      seq,
+      envelope: await r.seal(
+        { kind: PayloadKind.EVENT, machineId: r.machine, sessionId: "s", seq },
+        EventSchema,
+        create(EventSchema, {
+          sessionId: "s",
+          seq,
+          kind:
+            seq === 2n
+              ? { case: "userMessage", value: { requestId, text: "message" } }
+              : { case: "agentMessage", value: { text: "synthetic gap" } },
+        }),
+      ),
+    })),
+  );
   await (r as any).ingest(s, rows.slice(1), false);
   expect(r.outbox("s")).toHaveLength(1);
   await (r as any).ingest(s, rows.slice(0, 1), false);

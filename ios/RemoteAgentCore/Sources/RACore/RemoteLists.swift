@@ -45,13 +45,18 @@ extension Remote {
             }
         }
         do {
+            try await refreshTrustedDirectory()
             let mp = machinePushes
             let sp = sessionPushes
             let rp = removedPushes
-            let ms = try await api.client.listMachines(request: .init(), headers: Api.headers(token: token)).value()
+            let ms = try await api.client.listMachines(
+                request: .init(), headers: Api.headers(token: token)
+            ).value()
             var ask = PBListRemoteSessionsRequest()
             ask.limit = UInt32(sessionPage)
-            let ss = try await api.client.listRemoteSessions(request: ask, headers: Api.headers(token: token)).value()
+            let ss = try await api.client.listRemoteSessions(
+                request: ask, headers: Api.headers(token: token)
+            ).value()
             // Putting the lists in place awaits the cache: one at a time.
             await acquire(applying)
             defer { release(applying) }
@@ -63,8 +68,11 @@ extension Remote {
             // device removed while this one was offline.
             let mids = Set(ms.machines.map(\.id))
             let sids = Set(ss.sessions.map(\.sessionID))
-            let end = ss.hasNext ? SessionPlace(endedMs: ss.next.endedMs, sessionId: ss.next.sessionID) : nil
-            for id in Array(machines.keys) where !mids.contains(id) && !pushed(machinePushes, mp, id) {
+            let end =
+                ss.hasNext
+                ? SessionPlace(endedMs: ss.next.endedMs, sessionId: ss.next.sessionID) : nil
+            for id in Array(machines.keys)
+            where !mids.contains(id) && !pushed(machinePushes, mp, id) {
                 await dropMachine(id)
             }
             // A session held here that this page does not have (architecture §8
@@ -74,7 +82,11 @@ extension Remote {
             for v in Array(sessions.values) {
                 if sids.contains(v.id) || pushed(sessionPushes, sp, v.id) { continue }
                 let hasMachine = mids.contains(v.machineId) || machines[v.machineId] != nil
-                if let end, hasMachine, afterPlace(endedMs: v.listedEndedMs, sessionId: v.id, place: end) { continue }
+                if let end, hasMachine,
+                    afterPlace(endedMs: v.listedEndedMs, sessionId: v.id, place: end)
+                {
+                    continue
+                }
                 sessions[v.id] = nil
                 sessionKeys[v.id] = nil
                 listed.remove(v.id)
@@ -194,7 +206,8 @@ extension Remote {
                 if await refresh() { return next != nil }
                 // Asked for again meanwhile: that one is waited for above.
                 if listsInFlight > 0 || firstPage { continue }
-                throw CommandError(CommandError.unavailable, pageError.isEmpty ? "没能读取会话列表" : pageError)
+                throw CommandError(
+                    CommandError.unavailable, pageError.isEmpty ? "没能读取会话列表" : pageError)
             }
             guard let after = next else { return false }
             let epoch = listing
@@ -206,7 +219,9 @@ extension Remote {
             let res: PBListRemoteSessionsResponse
             do {
                 let tok = try await currentToken()
-                res = try await api.client.listRemoteSessions(request: ask, headers: Api.headers(token: tok)).value()
+                res = try await api.client.listRemoteSessions(
+                    request: ask, headers: Api.headers(token: tok)
+                ).value()
             } catch {
                 // The first page was fetched again meanwhile: what failed continued the listing before it.
                 if epoch != listing { continue }
@@ -222,7 +237,9 @@ extension Remote {
                 await putSession(s, save: false, publish: false)
             }
             if epoch != listing { continue }
-            next = res.hasNext ? SessionPlace(endedMs: res.next.endedMs, sessionId: res.next.sessionID) : nil
+            next =
+                res.hasNext
+                ? SessionPlace(endedMs: res.next.endedMs, sessionId: res.next.sessionID) : nil
             pageError = ""
             return next != nil
         }
@@ -232,7 +249,8 @@ extension Remote {
     /// one of a machine removed since the request was made (`removalsThen`),
     /// nor of one the listing of machines does not have.
     private func accepts(_ rs: PBRemoteSession, _ removalsThen: [String: Int]) -> Bool {
-        !pushed(removedPushes, removalsThen, rs.machineID) && (!firstPage || machines[rs.machineID] != nil)
+        !pushed(removedPushes, removalsThen, rs.machineID)
+            && (!firstPage || machines[rs.machineID] != nil)
     }
 
     /// Fetches one session by its ID when it is not held here: one opened
@@ -248,7 +266,9 @@ extension Remote {
             var ask = PBListRemoteSessionsRequest()
             ask.sessionIds = [id]
             let tok = try await self.currentToken()
-            let res = try await self.api.client.listRemoteSessions(request: ask, headers: Api.headers(token: tok)).value()
+            let res = try await self.api.client.listRemoteSessions(
+                request: ask, headers: Api.headers(token: tok)
+            ).value()
             // A session of a machine removed meanwhile, or one the listing of
             // machines no longer has, is as good as gone.
             if let rs = res.sessions.first(where: { $0.sessionID == id }), self.accepts(rs, rp) {
@@ -260,7 +280,11 @@ extension Remote {
         return try await job.value
     }
 
-    func putMachine(_ m: PBMachine, staleOnline: Bool = false, save: Bool = true) async {
+    func putMachine(_ incoming: PBMachine, staleOnline: Bool = false, save: Bool = true) async {
+        guard trustedMembers[incoming.id]?.kind == 1 else { return }
+        var m = incoming
+        m.clearMeta()
+        if let meta = trustedMetadata["machine:" + m.id] { m.meta = meta }
         let old = machines[m.id]
         var view = old ?? MachineView(id: m.id, online: m.online, lastSeenMs: m.lastSeenMs)
         if !staleOnline { view.online = m.online }
@@ -268,8 +292,9 @@ extension Remote {
         var store = old == nil
         if m.hasMeta {
             do {
-                let (h, meta) = try Envelopes.openMessage(
-                    key: keys.meta, envelope: m.meta, want: Place(.machineMeta, machineId: m.id), as: PBMachineMeta.self)
+                let (h, meta) = try await openSecureMessage(
+                    envelope: m.meta, want: Place(.machineMeta, machineId: m.id),
+                    as: PBMachineMeta.self)
                 if h.seq >= view.metaRev {
                     view.meta = meta
                     view.metaRev = h.seq
@@ -279,21 +304,45 @@ extension Remote {
                 report(error)
             }
         }
+        guard trustedMembers[m.id]?.kind == 1, (machines[m.id]?.metaRev ?? 0) <= view.metaRev else {
+            return
+        }
         machines[m.id] = view
         if save && store { await cache?.putMachine(m) }
         publish()
     }
 
-    func putSession(_ rs: PBRemoteSession, save: Bool = true, publish announce: Bool = true) async {
+    func putSession(_ incoming: PBRemoteSession, save: Bool = true, publish announce: Bool = true)
+        async
+    {
+        guard trustedMembers[incoming.machineID]?.kind == 1 else { return }
+        var rs = incoming
+        rs.clearMeta()
+        if let meta = trustedMetadata["session:" + rs.machineID + ":" + rs.sessionID] {
+            rs.meta = meta
+        }
         let sid = rs.sessionID
+        let removal = removedPushes[rs.machineID] ?? 0
         do {
             var view: SessionView
             if let held = sessions[sid] {
                 view = held
             } else {
-                let (h, raw) = try Envelopes.open(key: keys.wrap, envelope: rs.key)
+                let route = try PBHeader(serializedBytes: rs.key.header)
+                let h: PBHeader
+                let raw: Data
+                if route.version == 1 {
+                    (h, raw) = try Envelopes.open(key: keys.wrap, envelope: rs.key)
+                } else {
+                    let opened = try await securitySession().openHistory(rs.key)
+                    h = projection(opened.0)
+                    raw = opened.1
+                }
                 try Envelopes.expect(h, Place(.sessionKey, machineId: rs.machineID, sessionId: sid))
                 if raw.count != keySize { throw OpenError("bad session key") }
+                guard (removedPushes[rs.machineID] ?? 0) == removal,
+                    trustedMembers[rs.machineID]?.kind == 1
+                else { return }
                 sessionKeys[sid] = raw
                 view = SessionView(id: sid, machineId: rs.machineID)
             }
@@ -303,9 +352,10 @@ extension Remote {
             var store = sessions[sid] == nil
             if store { view.listedEndedMs = rs.endedMs }
             if rs.hasMeta {
-                guard let key = sessionKeys[sid] else { throw OpenError("bad session key") }
-                let (h, info) = try Envelopes.openMessage(
-                    key: key, envelope: rs.meta, want: Place(.sessionMeta, machineId: rs.machineID, sessionId: sid),
+                guard sessionKeys[sid] != nil else { throw OpenError("bad session seed") }
+                let (h, info) = try await openSecureMessage(
+                    envelope: rs.meta,
+                    want: Place(.sessionMeta, machineId: rs.machineID, sessionId: sid),
                     as: PBSession.self)
                 if h.seq >= view.metaRev {
                     // The server stores when it ended with the metadata.
@@ -315,8 +365,14 @@ extension Remote {
                     store = true
                 }
             }
+            guard (removedPushes[rs.machineID] ?? 0) == removal,
+                trustedMembers[rs.machineID]?.kind == 1,
+                (sessions[sid]?.metaRev ?? 0) <= view.metaRev
+            else { return }
             sessions[sid] = view
-            if eventFeeds.withLock({ $0[sid]?.followers ?? 0 }) > 0 { Task { await self.loadEvents(sid) } }
+            if eventFeeds.withLock({ $0[sid]?.followers ?? 0 }) > 0 {
+                Task { await self.loadEvents(sid) }
+            }
             if save && store {
                 listed.insert(sid)
                 await cache?.putSession(rs)
@@ -337,125 +393,86 @@ extension Remote {
     func loadPrefs() async {
         prefsRetry?.task.cancel()
         prefsRetry = nil
-        let gen = generation
-        var ask = PBGetAccountPrefsRequest()
-        ask.objectID = projectPrefsID
         do {
-            let o = try await api.client.getAccountPrefs(request: ask, headers: Api.headers(token: token)).value()
-            await putPrefs(o.object)
+            try await refreshTrustedDirectory()
+            try await readTrustedPrefs()
             prefsBackoff = listRetryMs
         } catch {
             report(error)
-            // A connection made since reads them itself.
-            if prefs != nil || !running || gen != generation || prefsRetry != nil { return }
             let wait = prefsBackoff
             prefsBackoff = min(prefsBackoff * 2, 30_000)
             prefsRetry = schedule(wait) { me, id in
                 guard me.prefsRetry?.id == id else { return }
-                // Not this timer's to cancel from loadPrefs while it runs.
                 me.prefsRetry = nil
-                if me.running && me.conn == .online && gen == me.generation && me.prefs == nil { await me.loadPrefs() }
+                if me.running && me.conn == .online { await me.loadPrefs() }
             }
         }
     }
-
-    /// Takes an object from the server when it is not older than what is known here.
-    func putPrefs(_ o: PBAccountPrefsObject, save: Bool = true) async {
-        let opened: PrefsObject
-        do {
-            opened = try prefsCodec.open(o)
-        } catch {
-            report(error)
+    func readTrustedPrefs() async throws {
+        guard let env = trustedMetadata["prefs"] else {
+            if prefs == nil { prefs = .empty }
+            publish()
             return
         }
-        let taken = prefs.map { opened.revision >= $0.revision } ?? true
-        prefs = newerPrefs(have: prefs, got: opened)
-        if save && taken && o.revision > 0, let bytes: Data = try? o.serializedData() {
-            await cache?.putBlob(name: projectPrefsID, data: bytes)
-        }
-        publish()
-    }
-
-    /// Pins, unpins, hides or restores a project for the whole account.
-    /// Returns once the server has it; a conflict is redone on the newer
-    /// object. Needs the connection: offline, changes wait.
-    public func changePrefs(_ op: PrefsOp) async throws {
-        if conn != .online { throw CommandError(CommandError.unavailable, "没有连上服务器，连上后才能修改") }
-        let base = prefs ?? .empty
-        // The object as the server has it after the write, when it said.
-        let stored = OSAllocatedUnfairLock<PBAccountPrefsObject?>(initialState: nil)
-        let api = self.api
-        let result = try await writePrefsOp(
-            codec: prefsCodec, base: base, op: op, opId: newRequestId(), now: clock(),
-            put: { @Sendable expected, env in
-                var req = PBPutAccountPrefsRequest()
-                req.objectID = projectPrefsID
-                req.expectedRevision = expected
-                req.envelope = env
-                let tok = try await self.currentToken()
-                let r = try await api.client.putAccountPrefs(request: req, headers: Api.headers(token: tok)).value()
-                if r.applied {
-                    var written = PBAccountPrefsObject()
-                    written.objectID = projectPrefsID
-                    written.revision = expected + 1
-                    written.envelope = env
-                    let o = r.object.hasEnvelope ? r.object : written
-                    stored.withLock { $0 = o }
-                }
-                return PutResult(applied: r.applied, current: r.object)
-            },
-            get: { @Sendable in
-                var ask = PBGetAccountPrefsRequest()
-                ask.objectID = projectPrefsID
-                let tok = try await self.currentToken()
-                let o = try await api.client.getAccountPrefs(request: ask, headers: Api.headers(token: tok)).value().object
-                stored.withLock { $0 = o }
-                return o
-            })
-        if let o = stored.withLock({ $0 }), o.revision == result.revision {
-            await putPrefs(o)
-        } else {
-            prefs = newerPrefs(have: prefs, got: result)
+        let (h, value) = try await openSecureMessage(
+            envelope: env, want: Place(.accountPrefs, requestId: projectPrefsID),
+            as: PBProjectPrefs.self)
+        if prefs == nil || h.seq >= prefs!.revision {
+            prefs = PrefsObject(revision: h.seq, prefs: value)
             publish()
         }
     }
-
-    /// Reads the device list again, for a page whose times are as of opening it.
+    func putPrefs(_ object: PBAccountPrefsObject, save: Bool = true) async {
+        if save {
+            await loadPrefs()
+            return
+        }
+        guard object.hasEnvelope, !object.envelope.securityHeader.isEmpty else { return }
+        do {
+            let (h, value) = try await openSecureMessage(
+                envelope: object.envelope, want: Place(.accountPrefs, requestId: projectPrefsID),
+                as: PBProjectPrefs.self)
+            if prefs == nil { prefs = PrefsObject(revision: h.seq, prefs: value) }
+        } catch { report(error) }
+    }
+    public func changePrefs(_ op: PrefsOp) async throws {
+        guard conn == .online else { throw CommandError("unavailable", "没有连上服务器，连上后才能修改") }
+        let operation = newRequestId()
+        for _ in 0..<5 {
+            try await refreshTrustedDirectory()
+            try await readTrustedPrefs()
+            let base = prefs ?? .empty
+            let next = applyPrefsOp(base: base.prefs, op: op, opId: operation, now: clock())
+            do {
+                let env = try await securitySession().seal(
+                    purpose: .prefs, request: projectPrefsID, seq: base.revision + 1,
+                    plaintext: next.serializedData())
+                var request = PBPutAccountPrefsRequest()
+                request.objectID = projectPrefsID
+                request.expectedRevision = base.revision
+                request.envelope = env
+                _ = try? await api.client.putAccountPrefs(
+                    request: request, headers: Api.headers(token: try await currentToken())
+                ).value()
+                try await refreshTrustedDirectory()
+                try await readTrustedPrefs()
+                return
+            } catch DeviceSecurity.Failure.conflict { continue }
+        }
+        throw PrefsConflictError()
+    }
     public func refreshDevices() async { await loadDevices() }
-
     func loadDevices() async {
         do {
-            let dp = devicePushes
-            let r = try await api.client.listDevices(request: .init(), headers: Api.headers(token: token)).value()
-            // A device pushed while the list was in flight is as the push left it:
-            // the list may be from before, and nothing would correct it afterwards.
-            let ids = Set(r.devices.map(\.id))
-            devices = devices.filter { ids.contains($0.key) || pushed(devicePushes, dp, $0.key) }
-            for d in r.devices where !pushed(devicePushes, dp, d.id) { putDevice(d) }
+            try await refreshTrustedDirectory()
+            startRemovalPolling()
         } catch {
+            deviceBindings.removeAll()
             report(error)
         }
         publish()
     }
-
-    func putDevice(_ d: PBDevice) {
-        let old = devices[d.id]
-        var view = DeviceView(
-            id: d.id, kind: d.kind, createdMs: d.createdMs, meta: old?.meta, metaRev: old?.metaRev ?? 0,
-            lastSeenMs: d.lastSeenMs)
-        if d.hasMeta && d.metaRevision >= view.metaRev {
-            do {
-                let (_, meta) = try Envelopes.openMessage(
-                    key: keys.deviceMeta, envelope: d.meta, want: Place(.deviceMeta, seq: d.metaRevision, requestId: d.id),
-                    as: PBDeviceMeta.self)
-                view.meta = meta
-                view.metaRev = d.metaRevision
-            } catch {
-                report(error)
-            }
-        }
-        devices[d.id] = view
-    }
+    func putDevice(_ ignored: PBDevice) async { await loadDevices() }
 
     /// Names a client device for the whole account, keeping what else its
     /// metadata says; a conflict is redone on the stored metadata.
@@ -471,35 +488,28 @@ extension Remote {
         }
     }
 
-    private func changeDeviceMeta(_ id: String, _ change: (inout PBDeviceMeta) -> Void) async throws {
-        let missing = CommandError("not_found", "没有这台设备")
-        guard var base = devices[id] else { throw missing }
+    private func changeDeviceMeta(_ id: String, _ change: (inout PBDeviceMeta) -> Void) async throws
+    {
         for _ in 0..<5 {
+            try await refreshTrustedDirectory()
+            guard let base = devices[id] else { throw CommandError("not_found", "没有这台设备") }
             var meta = base.meta ?? PBDeviceMeta()
             change(&meta)
-            var h = PBHeader()
-            h.kind = .deviceMeta
-            h.requestID = id
-            h.seq = base.metaRev + 1
-            h.sender = account.deviceId
-            var req = PBPutDeviceMetaRequest()
-            req.deviceID = id
-            req.expectedRevision = base.metaRev
-            req.meta = try Envelopes.seal(key: keys.deviceMeta, header: h, message: meta)
-            let tok = try await currentToken()
-            let r = try await api.client.putDeviceMeta(request: req, headers: Api.headers(token: tok)).value()
-            if r.hasDevice { putDevice(r.device) }
-            if r.applied && (!r.hasDevice || !r.device.hasMeta) {
-                var named = base
-                named.meta = meta
-                named.metaRev = base.metaRev + 1
-                devices[id] = named
-            }
-            publish()
-            if r.applied { return }
-            guard let now = devices[id] else { throw missing }
-            base = now
+            do {
+                let env = try await securitySession().seal(
+                    purpose: .deviceMeta, request: id, seq: base.metaRev + 1,
+                    plaintext: meta.serializedData())
+                var request = PBPutDeviceMetaRequest()
+                request.deviceID = id
+                request.expectedRevision = base.metaRev
+                request.meta = env
+                _ = try? await api.client.putDeviceMeta(
+                    request: request, headers: Api.headers(token: try await currentToken())
+                ).value()
+                try await refreshTrustedDirectory()
+                return
+            } catch DeviceSecurity.Failure.conflict { continue }
         }
-        throw CommandError("aborted", "设备名称一直在被其他客户端修改，没能保存")
+        throw CommandError("aborted", "设备信息正在变化，请重试")
     }
 }

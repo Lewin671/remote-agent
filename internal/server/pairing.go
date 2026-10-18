@@ -8,9 +8,13 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"math/big"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -52,6 +56,9 @@ type pairing struct {
 	candidate             []byte // hash of the joiner's token
 	joinerPub             []byte
 	devicePub             []byte
+	deviceX               []byte
+	securityContext       []byte
+	candidateSignature    []byte
 	approval, approvalSig []byte
 	payloadHash           [32]byte
 	joinerKind            pb.DeviceKind
@@ -159,7 +166,10 @@ func (ps *pairingService) CreatePairing(ctx context.Context, req *connect.Reques
 }
 
 func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[pb.JoinPairingRequest]) (*connect.Response[pb.JoinPairingResponse], error) {
-	if len(req.Msg.JoinerPublic) != 32 || len(req.Msg.DevicePublicKey) != ed25519.PublicKeySize {
+	if req.Msg.ProtocolVersion != protocol.Version {
+		return nil, protocol.Mismatch("the joining device", req.Msg.ProtocolVersion)
+	}
+	if len(req.Msg.JoinerPublic) != 32 || len(req.Msg.DevicePublicKey) != ed25519.PublicKeySize || len(req.Msg.DeviceHpkePublicKey) != 32 {
 		return nil, invalid("the public key must be 32 bytes")
 	}
 	if req.Msg.JoinerKind != pb.DeviceKind_DEVICE_KIND_MACHINE && req.Msg.JoinerKind != pb.DeviceKind_DEVICE_KIND_CLIENT {
@@ -168,28 +178,9 @@ func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[
 	code := strings.ReplaceAll(strings.TrimSpace(req.Msg.Code), " ", "")
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
-	ps.sweepLocked()
-	// Apply the limit before looking up a code. Otherwise callers that have
-	// exhausted the budget can still test unlimited codes and distinguish
-	// valid ones from the rate-limited invalid responses.
-	now := time.Now()
-	addr := ps.s.clientAddr(req.Peer().Addr, req.Header())
-	for a, ts := range ps.badCodesAddr {
-		if ps.badCodesAddr[a], _ = recent(ts, now, time.Minute, 0); len(ps.badCodesAddr[a]) == 0 {
-			delete(ps.badCodesAddr, a)
-		}
-	}
-	var okAll, okAddr bool
-	ps.badCodes, okAll = recent(ps.badCodes, now, time.Minute, badCodesPerMinute)
-	_, okAddr = recent(ps.badCodesAddr[addr], now, time.Minute, badCodesPerMinuteAddr)
-	if !okAll || !okAddr {
-		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many wrong codes; try again in a minute"))
-	}
-	p := ps.byCode[code]
-	if p == nil {
-		ps.badCodes = append(ps.badCodes, now)
-		ps.badCodesAddr[addr] = append(ps.badCodesAddr[addr], now)
-		return nil, errNoPairing
+	p, err := ps.codeLocked(code, req.Peer().Addr, req.Header())
+	if err != nil {
+		return nil, err
 	}
 	if p.canceled || p.joinerPub != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("another device is already joining with this code"))
@@ -202,6 +193,7 @@ func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[
 	token := randomHex(32)
 	p.candidate = hashToken(token)
 	p.devicePub = bytes.Clone(req.Msg.DevicePublicKey)
+	p.deviceX = bytes.Clone(req.Msg.DeviceHpkePublicKey)
 	p.joinerPub, p.joinerKind = bytes.Clone(req.Msg.JoinerPublic), req.Msg.JoinerKind
 	return connect.NewResponse(&pb.JoinPairingResponse{PairingId: p.id, Commit: p.commit, CandidateToken: token}), nil
 }
@@ -256,7 +248,16 @@ func (ps *pairingService) GetPairing(ctx context.Context, req *connect.Request[p
 		p.canceled = true
 		p.payload = nil
 	}
-	res := &pb.GetPairingResponse{State: p.state(), Commit: p.commit, JoinerPublic: p.joinerPub, JoinerKind: p.joinerKind, InitiatorPublic: p.initPub, DevicePublicKey: p.devicePub}
+	if len(req.Msg.CandidateSignature) > 0 {
+		if initiator || p.canceled || p.delivered || len(p.securityContext) == 0 || len(req.Msg.CandidateSignature) != 64 {
+			return nil, invalid("invalid candidate confirmation")
+		}
+		if len(p.candidateSignature) > 0 && !bytes.Equal(p.candidateSignature, req.Msg.CandidateSignature) {
+			return nil, invalid("candidate confirmation changed")
+		}
+		p.candidateSignature = bytes.Clone(req.Msg.CandidateSignature)
+	}
+	res := &pb.GetPairingResponse{State: p.state(), Commit: p.commit, JoinerPublic: p.joinerPub, JoinerKind: p.joinerKind, InitiatorPublic: p.initPub, DevicePublicKey: p.devicePub, DeviceHpkePublicKey: p.deviceX, SecurityContext: p.securityContext, CandidateSignature: p.candidateSignature}
 	switch {
 	case initiator || p.payload == nil:
 	case req.Msg.Received:
@@ -287,9 +288,18 @@ func (ps *pairingService) RevealPairing(ctx context.Context, req *connect.Reques
 	}
 	// The server checks the commitment too, but the joiner does not rely
 	// on it: it checks the key against the commitment itself.
-	if !bytes.Equal(e2e.PairCommit(req.Msg.InitiatorPublic), p.commit) {
-		return nil, invalid("the key does not match the commitment")
+	var securityContext deviceauth.PairContext
+	if len(req.Msg.SecurityContext) > 8<<10 || json.Unmarshal(req.Msg.SecurityContext, &securityContext) != nil {
+		return nil, invalid("invalid security context")
 	}
+	trust, err := deviceauth.PairTrustDescriptor(securityContext.Pin(), securityContext.Approver)
+	if err != nil || !bytes.Equal(e2e.PairDomainCommit(req.Msg.InitiatorPublic, trust), p.commit) {
+		return nil, invalid("the trust descriptor does not match the commitment")
+	}
+	if len(req.Msg.SecurityContext) == 0 || len(req.Msg.SecurityContext) > 8<<10 {
+		return nil, invalid("missing or oversized security context")
+	}
+	p.securityContext = bytes.Clone(req.Msg.SecurityContext)
 	p.initPub = bytes.Clone(req.Msg.InitiatorPublic)
 	return connect.NewResponse(&pb.RevealPairingResponse{}), nil
 }
@@ -382,4 +392,47 @@ func (ps *pairingService) CancelPairing(ctx context.Context, req *connect.Reques
 func bearerToken(h string) string {
 	t, _ := strings.CutPrefix(h, "Bearer ")
 	return t
+}
+
+func (ps *pairingService) codeLocked(code, peer string, header http.Header) (*pairing, error) {
+	ps.sweepLocked()
+	// Apply the limit before looking up a code. Otherwise callers that have
+	// exhausted the budget can still test unlimited codes and distinguish
+	// valid ones from the rate-limited invalid responses.
+	now := time.Now()
+	addr := ps.s.clientAddr(peer, header)
+	for a, ts := range ps.badCodesAddr {
+		if ps.badCodesAddr[a], _ = recent(ts, now, time.Minute, 0); len(ps.badCodesAddr[a]) == 0 {
+			delete(ps.badCodesAddr, a)
+		}
+	}
+	var okAll, okAddr bool
+	ps.badCodes, okAll = recent(ps.badCodes, now, time.Minute, badCodesPerMinute)
+	_, okAddr = recent(ps.badCodesAddr[addr], now, time.Minute, badCodesPerMinuteAddr)
+	if !okAll || !okAddr {
+		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many wrong codes; try again in a minute"))
+	}
+	p := ps.byCode[code]
+	if p == nil {
+		ps.badCodes = append(ps.badCodes, now)
+		ps.badCodesAddr[addr] = append(ps.badCodesAddr[addr], now)
+		return nil, errNoPairing
+	}
+	return p, nil
+}
+func (ps *pairingService) PeekPairing(ctx context.Context, req *connect.Request[pb.PeekPairingRequest]) (*connect.Response[pb.PeekPairingResponse], error) {
+	if req.Msg.ProtocolVersion != protocol.Version {
+		return nil, protocol.Mismatch("the joining device", req.Msg.ProtocolVersion)
+	}
+	code := strings.ReplaceAll(strings.TrimSpace(req.Msg.Code), " ", "")
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	p, err := ps.codeLocked(code, req.Peer().Addr, req.Header())
+	if err != nil {
+		return nil, err
+	}
+	if p.canceled || p.joinerPub != nil {
+		return nil, errNoPairing
+	}
+	return connect.NewResponse(&pb.PeekPairingResponse{PairingId: p.id, Commit: bytes.Clone(p.commit)}), nil
 }
