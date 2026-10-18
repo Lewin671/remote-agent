@@ -217,7 +217,12 @@ func TestOfflinePinnedGenesisRejectsLegacyMachineFirstClaim(t *testing.T) {
 	if _, err := machine.PinSecurityDomain(ctx, connect.NewRequest(&pb.PinSecurityDomainRequest{GenesisState: trusted})); err != nil {
 		t.Fatal("trusted idempotent pin", err)
 	}
-	if _, err := client.RemoveDevice(ctx, connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: mid, SecurityChain: [][]byte{fake}, SecurityCompletion: []byte(`{}`), SecurityRequest: []byte(`{}`)})); connect.CodeOf(err) != connect.CodePermissionDenied {
+	// Target a non-authority device with a request from the caller so the check reaches completion verification.
+	original, err := json.Marshal(deviceauth.DeleteRequest{Requester: cid, Targets: []deviceauth.Target{{ID: legacy}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.RemoveDevice(ctx, connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: legacy, SecurityChain: [][]byte{fake}, SecurityCompletion: []byte(`{}`), SecurityRequest: original})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("fake-domain cleanup: %v", err)
 	}
 	for _, id := range []string{mid, cid, legacy} {

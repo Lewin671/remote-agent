@@ -284,15 +284,17 @@ COMMIT;
 3. 安装全部新版程序。选定一台可信、通常在线的电脑作为固定管理端，在原账户下运行 `remote-agent account security-init`，保持 daemon 停止，不要在多台电脑重复初始化。运行 `remote-agent account security-genesis --output public-genesis.bin`，通过可信渠道把这个**仅含公开签名状态**的文件交给中继管理员。在中继监听网络前，用 SQLite CLI 将其固定到准确的公开账户 ID（用 `account status` 的 `account-id` 核对）：
 
 ```sql
+.bail on
 BEGIN IMMEDIATE;
+CREATE TEMP TABLE pin_check(n INTEGER CHECK (n = 1));
 UPDATE accounts SET security_genesis=readfile('public-genesis.bin')
  WHERE id='PUBLIC_ACCOUNT_ID' AND security_genesis IS NULL
  AND length(readfile('public-genesis.bin')) > 0;
-SELECT changes(); -- 必须恰好为 1；否则 ROLLBACK 并排查
+INSERT INTO temp.pin_check VALUES (changes());
 COMMIT;
 ```
 
-不能覆盖已有固定值；核实文件来自选定的可信电脑，不能从中继或设备列表取得。所有已有账户完成后才重开中继，再启动管理端 daemon。**跳过离线固定会允许仍有登记的旧机器抢先建立假的中继安全域，并用伪造域的完成证明删除中继数据。** 网络首次固定只适用于没有其他机器的新建账户，不能用于旧账户迁移。
+把它存成文件后用 `sqlite3 remote-agent.db < pin.sql` 执行：除非恰好有一个尚未固定的账户匹配且文件非空，`.bail on` 会在检查处停止，未提交的事务随之回滚。不能覆盖已有固定值；通过可信渠道比对两端 `shasum -a 256 public-genesis.bin` 的结果，核实文件来自选定的可信电脑，不能从中继或设备列表取得。所有已有账户完成后才重开中继，再启动管理端 daemon。**跳过离线固定会允许仍有登记的旧机器抢先建立假的中继安全域，并用伪造域的完成证明删除中继数据。** 网络首次固定只适用于没有其他机器的新建账户，不能用于旧账户迁移。
 4. 管理端运行 `remote-agent account pair`；每台保留电脑用 `remote-agent account security-enroll --server https://relay.example.com --code CODE`，浏览器与 App 选择“建立安全绑定”。两端核对四个图案：候选设备先确认，发起方再允许。首次绑定保留旧 Ed25519 身份和历史，只增加独立交换密钥与安全域固定；之后才启动该电脑的新版 daemon。
 5. 核对所有保留设备的身份、目录和历史，进行一次远程操作与删除测试。未纳入新安全域的旧中继登记不会显示为可信成员；它们不能取得新域授权，但仍应在停服状态下由管理员清除旧登记、token 和推送（下面给出操作范围）。新域内的设备只能用 App/网页的正常删除，不能通过直接删服务端行来假报加密撤销。
 
