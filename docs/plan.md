@@ -21,7 +21,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
 | 定时任务 | daemon、本地 `schedule` 命令、托管会话的 MCP 工具、加密的机器管理指令 | 自动测试，加两个 CLI 上的执行验收 | 客户端完全没做；日历周期（当地时间、时区、夏令时）没做 |
 
-设备安全域、逐对象授权、自动执行隔离与三端状态已实现，正在完成全量回归、升级演练、真实 CLI 端到端及独立代码审查；尚未发布。方案边界以 [scope](scope.md#设备加入与移除) 为准，验收证据记在 [acceptance-notes](acceptance-notes.md)。
+设备安全域、逐对象授权、自动执行隔离与三端状态已实现。协议 9 需要协调手动升级；方案边界以 [scope](scope.md#设备加入与移除) 为准，已验证范围见 [acceptance-notes](acceptance-notes.md)，可安装的正式版本以 Release 记录为准。
 
 ## 下一步
 
