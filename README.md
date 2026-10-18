@@ -23,7 +23,7 @@ English · [简体中文](README.zh-CN.md)
 - **Self-hosted** — your relay, your web client, no third-party account.
 - **On every screen** — Web, Android and iOS (preview): chat, approvals, live terminal, images (push on Android and Web), all your computers in one list.
 
-The Android app holds the account's authority key, every device signs its own traffic, removal rotates keys immediately, and remote control has a 72-hour lease. See the [security model and limits](docs/reference.md#security-model).
+The phone that creates the account is its authority and signs membership states with its device key; every device signs its own traffic, removal rotates keys immediately, and remote control has a 72-hour lease. See the [security model and limits](docs/reference.md#security-model).
 
 ## Try it on the public relay
 

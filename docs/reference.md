@@ -11,10 +11,10 @@ The details behind the [README](../README.md): the components, everyday commands
 | **Daemon** (`remote-agent`) | Each computer with your code — macOS or Linux | Hosts agent sessions in tmux, reads their transcripts, relays approvals through CLI hooks, injects input. The same binary is the command-line interface. |
 | **Relay** (`remote-agent-server`) | A Linux server you control | Authenticates devices, stores and forwards ciphertext, sends push notifications. Cannot read content. |
 | **Web client** | Any static HTTPS host | Installable PWA: conversation view, live terminal, approvals, Web Push. |
-| **Android app** | Android 8.0 or later | Native client with a native terminal and approvals from the notification. |
+| **Android app** | Android 8.0 or later | Native client with a native terminal and approvals from the notification; the current phone member is also the account authority (pairing, removal, lease renewal and recovery). |
 | **iOS app** (preview) | iPhone and iPad, iOS 17 or later | Native SwiftUI client with a native terminal, approvals and images. Not distributed yet — see [Status and limitations](../README.md#status-and-limitations). |
 
-Every device holds the account key; the relay holds none. Devices join an account by scanning a QR code or entering a pairing code, and both sides confirm a short emoji sequence before keys are exchanged.
+The phone that creates the account holds the account root; the relay holds none. Devices added later join through a phone-signed membership and receive content-key grants, not the root. The root is optional legacy material (`account secret`) for protocol 8 history. Devices join by scanning a QR code or entering a pairing code, and both sides confirm a short emoji sequence before keys are exchanged.
 
 ## Commands
 
@@ -35,16 +35,16 @@ Sessions started from a client and sessions started in a terminal are the same k
 
 ## Security model
 
-The relay is untrusted. The Android app holds the account's authority key and signs membership states; every device signs its own envelopes. Adding a device is started and approved only on the phone, after both sides compare four symbols. Removal rotates the content key and the relay revokes the removed device as soon as it receives the new state; if the removed device is a computer, the relay also deletes that computer's hosted machines, sessions, events and images. Retained devices install the new state in the background within 60 seconds. A removed device cannot decrypt new content or authorize new control.
+The relay is untrusted. The current phone member is the authority and signs membership states with its device key; every device signs its own envelopes. Adding a device is started and approved only on the phone, after both sides compare four symbols. Removal rotates the content key and the relay revokes the removed device as soon as it receives the new state; if the removed device is a computer, the relay also deletes that computer's hosted machines, sessions, events and images. Retained devices install the new state in the background within 60 seconds. A removed device cannot decrypt new content; it also cannot authorize new control once the removing executor has installed the new state, at worst when its previous head's 72-hour lease expires if the relay withholds the removal.
 
-Retained endpoints, their OS/client code, randomness and local security state must remain trusted and must not be rolled back. Already downloaded content cannot be erased. The phone cannot be removed normally and there is no second authority. Its membership lease lasts 72 hours: open the app at least that often, otherwise remote control pauses while viewing and the local CLI continue. A recovery code transfers management to a new phone after 48 hours, during which the old phone can veto. The code only signs; the new phone cannot decrypt content from before the recovery. Retained computers keep running and re-publish their current session metadata, keys and current-state snapshots under the new content key, so live sessions reappear; older history stays readable only on devices that already had it. Legacy history and images are marked unverified and read-only. See the [full security boundary](scope.md#设备加入与移除) and [protocol 10 upgrade steps](self-hosting.md#upgrading-to-the-phone-authority-protocol-10).
+Retained endpoints, their OS/client code, randomness and local security state must remain trusted and must not be rolled back. Already downloaded content cannot be erased. The phone cannot be removed normally and there is no second authority. Its membership lease lasts 72 hours: open the app at least that often, otherwise remote control pauses while viewing and the local CLI continue. A recovery code transfers management to a new phone after 48 hours, during which the old phone can veto; the recovery state removes the old phone from membership. The code only signs; the new phone cannot decrypt content from before the recovery. Retained computers keep running and re-publish their current session metadata, keys and current-state snapshots under the new content key, so live sessions reappear; older history stays readable only on devices that already had it. Legacy history and images are marked unverified and read-only. See the [full security boundary](scope.md#设备加入与移除) and [protocol 10 upgrade steps](self-hosting.md#upgrading-to-the-phone-authority-protocol-10).
 
 | Data | Visible to the relay |
 |---|---|
 | Messages, tool calls, terminal output, approval requests, images | No |
 | Project names, paths, git remotes, session titles, machine names | No |
-| Account, device and authority keys, recovery code, content and session keys | No |
-| Device, machine and session IDs, membership, state epochs and lease times, timestamps, ciphertext sizes | Yes — needed for routing and state distribution |
+| Private account/device keys, the recovery code, content and session keys | No |
+| Device, machine and session IDs, public keys, membership, state epochs and lease times, timestamps, ciphertext sizes | Yes — public signed states and routing metadata |
 | Whether and when a session ended | Yes |
 | Your devices' IP addresses | Yes — as to any server |
 

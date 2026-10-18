@@ -108,7 +108,7 @@ runs the daemon in the background, now and at every login (launchd on macOS, sys
 Connect the computer to your relay after the phone has created the account. The phone shows a pairing code:
 
 ```sh
-remote-agent account join --server https://ra.example.com --code 1234 5678
+remote-agent account join --server https://ra.example.com --code "1234 5678"
 ```
 
 - Sessions you start from your phone or the web run through your login shell (loading `.zshrc`, `.profile` and so on), and their environment is computed fresh each time: an nvm upgrade, a newly installed command or a moved `codex`/`claude` applies to the next session without reinstalling the service.
@@ -138,7 +138,7 @@ remote-agent codex      # or: remote-agent claude
 ```
 
 > [!CAUTION]
-> `remote-agent account secret` prints root material for legacy history; it does not include the authority key or the recovery code. Keep it offline; it cannot authorize a new device or recover management. Enroll new devices by pairing in the app, never paste it into an issue or a chat.
+> `remote-agent account secret` prints root material for legacy history; it does not include the device key or the recovery code. Keep it offline; it cannot authorize a new device or recover management. Enroll new devices by pairing in the app, never paste it into an issue or a chat.
 
 ## Upgrading
 
@@ -228,7 +228,7 @@ The last command lists your account, with the number of its devices and sessions
 | The web client cannot reach the relay at all | Its address is missing from `ALLOWED_ORIGINS`, or the relay was not restarted after editing `.env`. |
 | The Android app says the setup token is required | The token does not match `RA_SETUP_TOKEN` in the relay's `.env`. |
 | The relay exits saying the database has the layout of a relay with a single account | Move the database as described in [Upgrading to v0.41.0](#upgrading-to-v0410). |
-| The Android app says the relay has no room for another account | This relay already has its account. Create the account in the Android app, or let the relay hold more accounts (see [Opening the relay to others](#opening-the-relay-to-others)). |
+| The Android app says the relay has no room for another account | This relay already has its account. Join it with a code from the phone, or let the relay hold more accounts (see [Opening the relay to others](#opening-the-relay-to-others)). |
 | A client asks you to update | Its protocol version differs from the daemon's. Upgrade every part to the same release. |
 | No notifications in the Android app | Expected on your own relay; see the limits in the [README](../README.md#status-and-limitations). |
 
@@ -285,20 +285,23 @@ CREATE TABLE security_states (
   epoch INTEGER NOT NULL,
   state BLOB NOT NULL,
   recovery BLOB,
-  recovery_ed BLOB NOT NULL,
   received_ms INTEGER NOT NULL,
   PRIMARY KEY (account_id, epoch)
 );
-CREATE INDEX security_states_recovery ON security_states(recovery_ed);
 CREATE TABLE security_recovery (
   id TEXT PRIMARY KEY,
   account_id TEXT NOT NULL REFERENCES accounts(id),
   request BLOB NOT NULL,
   state BLOB NOT NULL,
-  received_ms INTEGER NOT NULL
+  received_ms INTEGER NOT NULL,
+  completed_ms INTEGER NOT NULL DEFAULT 0,
+  device_id TEXT,
+  token_hash BLOB
 );
 CREATE UNIQUE INDEX security_recovery_account ON security_recovery(account_id);
 ALTER TABLE sessions ADD COLUMN key_content_epoch INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE accounts ADD COLUMN recovery_ed BLOB;
+CREATE INDEX accounts_recovery ON accounts(recovery_ed);
 UPDATE accounts SET security_genesis = NULL;
 UPDATE pairing_admissions SET canceled_ms = CAST(strftime('%s','now') AS INTEGER)*1000
  WHERE used_ms = 0 AND canceled_ms = 0;
@@ -312,22 +315,23 @@ Clearing `security_genesis` discards the protocol 9 pin. Every account on the re
 
 3. Install all new programs. For an existing account, keep the relay stopped and pin offline in step 5. For a fresh relay with no account, start it now; the phone creates the account and pins over the network. It does not accept protocol 9 clients.
 
-4. On the Android phone, update the app and choose to rebuild the security domain and become the authority. It keeps the existing account root and Ed25519 device identity, discards the protocol 9 security state, and generates the authority key, a new recovery code and the genesis state (the phone is the only member). Save the recovery code offline; the app shows it once and does not keep it. The code only signs a recovery statement: a new phone will not decrypt content from before the recovery. Retained computers re-publish their current session metadata, session keys and current-state snapshots under the new content key, so live sessions reappear; older history stays on devices that already had it.
+4. On the Android phone, update the app and choose to rebuild the security domain and become the authority. It keeps the existing account root and Ed25519 device identity, discards the protocol 9 security state, and generates a new recovery code and the genesis state (the phone is the only member); there is no separate authority key, the phone member signs states with its existing device key. Save the recovery code offline; the app shows it once and does not keep it. The code only signs a recovery statement: a new phone will not decrypt content from before the recovery. Retained computers re-publish their current session metadata, session keys and current-state snapshots under the new content key, so live sessions reappear; older history stays on devices that already had it.
 
-5. Pin the genesis. An existing account must be pinned offline before the relay starts: old device tokens are still in the database and could otherwise race the phone to the first pin. A newly created account has no earlier tokens, so the phone may pin over the network. Export the public genesis from the app to `public-genesis.bin`, transfer it over a trusted channel, and run this with the relay stopped:
+5. Pin the genesis. An existing account must be pinned offline before the relay starts: old device tokens are still in the database and could otherwise race the phone to the first pin. A newly created account has no earlier tokens, so the phone may pin over the network. On a relay upgraded from layout 5, network pinning is refused unless the operator explicitly enables it (`-allow-network-pin` / `RA_ALLOW_NETWORK_PIN=1`); while `security_genesis` is NULL, only the first-device bootstrap and `PinSecurityDomain` are allowed. Export the public genesis from the app to `public-genesis.bin`, transfer it over a trusted channel, and run this with the relay stopped:
 
 ```sql
 .bail on
 BEGIN IMMEDIATE;
 CREATE TEMP TABLE pin_check(n INTEGER CHECK (n = 1));
 UPDATE accounts SET security_genesis=readfile('public-genesis.bin')
- WHERE id='PUBLIC_ACCOUNT_ID' AND length(readfile('public-genesis.bin')) > 0;
+ WHERE id='PUBLIC_ACCOUNT_ID' AND security_genesis IS NULL
+ AND length(readfile('public-genesis.bin')) > 0;
 INSERT INTO temp.pin_check VALUES (changes());
 COMMIT;
 ```
 
-Run it as a file, `sqlite3 remote-agent.db < pin.sql`: `.bail on` stops at the check and the open transaction is rolled back unless exactly one account matched a non-empty file. Compare `shasum -a 256 public-genesis.bin` on both ends over the trusted channel and verify the file came from the phone, not from a relay or device listing. Repeat for each existing account, then start the relay if it is still stopped; with network pinning it is already running. Skipping offline pinning makes the first pin depend on the relay; the phone still holds the only signing key, so a malicious relay can refuse or misdirect setup but cannot forge a genesis.
+Run it as a file, `sqlite3 remote-agent.db < pin.sql`: `.bail on` stops at the check and the open transaction is rolled back unless exactly one unpinned account matched a non-empty file. Compare `shasum -a 256 public-genesis.bin` on both ends over the trusted channel and verify the file came from the phone, not from a relay or device listing. On startup the server seeds epoch 1 into `security_states` from the pinned bytes and runs the full genesis validation (state version, one Client member, `AuthorityID` and member Ed key match, non-zero `RecoveryEd`); if it fails, that account refuses all RPCs until the pin is fixed. There is no separate admin step. Repeat for each existing account, then start the relay if it is still stopped; with network pinning it is already running. Skipping offline pinning makes the first pin depend on the relay; the phone still holds the only signing key, so a malicious relay can refuse or misdirect setup but cannot forge a genesis.
 
-6. On each retained computer, run `remote-agent account join --server https://relay.example.com --code CODE` with the code shown by the phone. Existing browsers and apps choose to pair again. Compare all four symbols: confirm on the candidate first, then allow on the phone. Re-pairing keeps the Ed25519 identity and replaces the exchange key; start that computer's new daemon only after joining. Remove the migration backup after verification: restoring it restores old permissions.
+6. On each retained computer, run `remote-agent account join --server https://relay.example.com --code CODE` with the code shown by the phone. This overwrites the old `security` block in `account.json` and ignores any old authority fields. Existing browsers and apps choose to pair again. Compare all four symbols: confirm on the candidate first, then allow on the phone. Re-pairing keeps the Ed25519 identity and replaces the exchange key; start that computer's new daemon only after joining. Remove the migration backup after verification: restoring it restores old permissions.
 
-Old protocol 9 registrations that are not paired again are not members. After the genesis exists, the relay checks every logged-in device against the signed member list and refuses anything else, so a leftover row or bearer token cannot read the account or upload state. Delete those rows offline if you want the device list clean; re-pairing replaces a retained device's row. The protocol 10 authority phone cannot be removed normally: it has no second authority and no immediate handoff. A new phone takes over through the recovery code after 48 hours, during which the old phone can veto. It cannot decrypt content from before the recovery; retained computers keep the history they already hold and re-publish current-state session snapshots under the new key. Open the app at least once every 72 hours to keep remote control; after that, viewing continues but control pauses until the phone renews the lease. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.
+Old protocol 9 registrations that are not paired again are not members. After the genesis exists, the relay checks every logged-in device against the signed member list and refuses anything else, so a leftover row or bearer token cannot read the account or upload state. Delete those rows offline if you want the device list clean; re-pairing replaces a retained device's row. The protocol 10 authority phone cannot be removed normally: it has no second authority and no immediate handoff. Every account on a relay upgraded from layout 5 must be pinned before the relay listens; an account without a protocol 9 phone member must be rebuilt and its data discarded. Put that in the release notes. A new phone takes over through the recovery code after 48 hours, during which the old phone can veto; the recovery state removes the old phone from membership. It cannot decrypt content from before the recovery; retained computers keep the history they already hold and re-publish current-state session snapshots under the new key. Open the app at least once every 72 hours to keep remote control; after that, viewing continues but control pauses until the phone renews the lease. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.

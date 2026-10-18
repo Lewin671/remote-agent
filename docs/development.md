@@ -48,7 +48,7 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 - 账户和配对在 Android App 里：用户路径先由手机建账户和管理端，电脑只执行 `account join`。本地开发和端到端测试用测试夹具或 `internal/remoteclient` 扮演手机管理端；`account init`、`account pair` 不再是用户入口
 - server 前面需要有负责 HTTPS 的反向代理，部署方式见 [docs/architecture.md](architecture.md) 第 1 节
 - 本地调试网页用 `pnpm build && pnpm preview`，在 http://localhost:4173 打开
-- 账户密钥能解开所有会话，只粘贴到自己的设备上
+- 会话内容由内容密钥解开；账户根密钥只用于旧历史和账户签名，同样只留在自己的设备上
 - daemon 发现 `~/.remote-agent/account.json` 后会自动连上 server，不用重启
 - 网页能登录但一直「未连接」时，多半是浏览器的拦截扩展挡住了 WebSocket，见 [docs/browser-notes.md](browser-notes.md)
 
