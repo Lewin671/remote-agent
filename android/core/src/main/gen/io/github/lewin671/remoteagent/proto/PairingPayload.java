@@ -21,6 +21,8 @@ public  final class PairingPayload extends
   private PairingPayload() {
     root_ = com.google.protobuf.ByteString.EMPTY;
     server_ = "";
+    approval_ = com.google.protobuf.ByteString.EMPTY;
+    approvalSignature_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int ROOT_FIELD_NUMBER = 1;
   private com.google.protobuf.ByteString root_;
@@ -95,6 +97,60 @@ public  final class PairingPayload extends
     checkByteStringIsUtf8(value);
     server_ = value.toStringUtf8();
 
+  }
+
+  public static final int APPROVAL_FIELD_NUMBER = 3;
+  private com.google.protobuf.ByteString approval_;
+  /**
+   * <code>bytes approval = 3 [json_name = "approval"];</code>
+   * @return The approval.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getApproval() {
+    return approval_;
+  }
+  /**
+   * <code>bytes approval = 3 [json_name = "approval"];</code>
+   * @param value The approval to set.
+   */
+  private void setApproval(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    approval_ = value;
+  }
+  /**
+   * <code>bytes approval = 3 [json_name = "approval"];</code>
+   */
+  private void clearApproval() {
+
+    approval_ = getDefaultInstance().getApproval();
+  }
+
+  public static final int APPROVAL_SIGNATURE_FIELD_NUMBER = 4;
+  private com.google.protobuf.ByteString approvalSignature_;
+  /**
+   * <code>bytes approval_signature = 4 [json_name = "approvalSignature"];</code>
+   * @return The approvalSignature.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getApprovalSignature() {
+    return approvalSignature_;
+  }
+  /**
+   * <code>bytes approval_signature = 4 [json_name = "approvalSignature"];</code>
+   * @param value The approvalSignature to set.
+   */
+  private void setApprovalSignature(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    approvalSignature_ = value;
+  }
+  /**
+   * <code>bytes approval_signature = 4 [json_name = "approvalSignature"];</code>
+   */
+  private void clearApprovalSignature() {
+
+    approvalSignature_ = getDefaultInstance().getApprovalSignature();
   }
 
   public static io.github.lewin671.remoteagent.proto.PairingPayload parseFrom(
@@ -275,6 +331,62 @@ public  final class PairingPayload extends
       return this;
     }
 
+    /**
+     * <code>bytes approval = 3 [json_name = "approval"];</code>
+     * @return The approval.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getApproval() {
+      return instance.getApproval();
+    }
+    /**
+     * <code>bytes approval = 3 [json_name = "approval"];</code>
+     * @param value The approval to set.
+     * @return This builder for chaining.
+     */
+    public Builder setApproval(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setApproval(value);
+      return this;
+    }
+    /**
+     * <code>bytes approval = 3 [json_name = "approval"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearApproval() {
+      copyOnWrite();
+      instance.clearApproval();
+      return this;
+    }
+
+    /**
+     * <code>bytes approval_signature = 4 [json_name = "approvalSignature"];</code>
+     * @return The approvalSignature.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getApprovalSignature() {
+      return instance.getApprovalSignature();
+    }
+    /**
+     * <code>bytes approval_signature = 4 [json_name = "approvalSignature"];</code>
+     * @param value The approvalSignature to set.
+     * @return This builder for chaining.
+     */
+    public Builder setApprovalSignature(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setApprovalSignature(value);
+      return this;
+    }
+    /**
+     * <code>bytes approval_signature = 4 [json_name = "approvalSignature"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearApprovalSignature() {
+      copyOnWrite();
+      instance.clearApprovalSignature();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.PairingPayload)
   }
   @java.lang.Override
@@ -293,10 +405,12 @@ public  final class PairingPayload extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "root_",
             "server_",
+            "approval_",
+            "approvalSignature_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\n\u0002\u0208" +
-              "";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\n\u0002\u0208" +
+              "\u0003\n\u0004\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

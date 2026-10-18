@@ -70,3 +70,9 @@ export async function derivePair(k: PairKey, otherPublic: Uint8Array, transcript
   const sas = await bits("remote-agent/v1/pair-sas", 4);
   return { sas, key: await bits("remote-agent/v1/pair-key", 32), emoji: [...sas].map((b) => SAS_EMOJI[b]) };
 }
+
+// The inner transcript is the ephemeral exchange; the current pairing also
+// commits to the permanent signing identity that the user will authorize.
+export async function pairIdentityTranscript(id: string, initiator: Uint8Array, joiner: Uint8Array, device: Uint8Array, kind: number): Promise<Uint8Array> {
+  return sha256(concat(utf8("remote-agent/v1/pair-identity\0"), await pairTranscript(id, initiator, joiner, kind), u32(device.length), device));
+}

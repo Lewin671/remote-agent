@@ -49,6 +49,10 @@ message RegisterDeviceRequest {
   string setup_token = 3;
   // Required only to create the account on a relay open to anyone.
   SignupProof signup_proof = 4;
+  // One-use approval signed by a currently enrolled device; required to add
+  // a device to an existing account. Never replaced by root-key possession.
+  bytes approval = 5;
+  bytes approval_signature = 6;
 }
 
 message GetSignupChallengeRequest {}
@@ -117,12 +121,28 @@ message CreatePairingResponse {
   // Eight digits the joiner types or scans.
   string code = 2;
   int64 expires_ms = 3;
+  // Public identity for non-extractable browser signing keys.
+  bytes approver_public_key = 4;
+}
+
+// Exact device identity approved after the users compare the pairing SAS.
+message PairApproval {
+  string account_id = 1;
+  string pairing_id = 2;
+  string approver_device_id = 3;
+  bytes approver_public_key = 4;
+  bytes candidate_device_public_key = 5;
+  DeviceKind candidate_kind = 6;
+  int64 expires_ms = 7;
+  bytes nonce = 8;
 }
 
 message JoinPairingRequest {
   string code = 1;
   bytes joiner_public = 2;
   DeviceKind joiner_kind = 3;
+  // Ed25519 signing identity, generated before comparing the SAS.
+  bytes device_public_key = 4;
 }
 
 message JoinPairingResponse {
@@ -167,6 +187,7 @@ message GetPairingResponse {
   bytes initiator_public = 5;
   // PAIRING envelope, for the joiner once approved.
   Envelope payload = 6;
+  bytes device_public_key = 7;
 }
 
 message RevealPairingRequest {
@@ -179,6 +200,8 @@ message RevealPairingResponse {}
 message ApprovePairingRequest {
   string pairing_id = 1;
   Envelope payload = 2;
+  bytes approval = 3;
+  bytes approval_signature = 4;
 }
 
 message ApprovePairingResponse {}

@@ -24,6 +24,7 @@ func TestRevokedDeviceRegistrationCannotBeReplayed(t *testing.T) {
 		pub, priv, _ := ed25519.GenerateKey(nil)
 		raw, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: pub, Kind: kind})
 		request := &pb.RegisterDeviceRequest{Registration: raw, Signature: ts.keys.SignRegistration(raw)}
+		ts.admitRegistration(t, request)
 		registered, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(request))
 		if err != nil {
 			t.Fatal(err)
@@ -73,13 +74,16 @@ func TestRevocationSurvivesStoreReopen(t *testing.T) {
 	if err := proto.Unmarshal(reg.raw, registration); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.addDevice(context.Background(), ts.acct(), nil, id, registration, reg.raw, reg.sig, nil); err != errDeviceRevoked {
+	if err := st.addDevice(context.Background(), ts.acct(), nil, id, registration, reg.raw, reg.sig, nil, nil); err != errDeviceRevoked {
 		t.Fatalf("persistent revocation lost: %v", err)
 	}
 }
 
 func TestConcurrentRegistrationCannotUndoRemoval(t *testing.T) {
 	ts := newTestServer(t)
+	if _, _, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup"); err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.Background()
 	for range 20 {
 		_, id, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_MACHINE, "setup")
@@ -99,7 +103,7 @@ func TestConcurrentRegistrationCannotUndoRemoval(t *testing.T) {
 		for range 8 {
 			wg.Go(func() {
 				<-start
-				err := ts.srv.store.addDevice(ctx, ts.acct(), nil, id, parsed, reg.raw, reg.sig, nil)
+				err := ts.srv.store.addDevice(ctx, ts.acct(), nil, id, parsed, reg.raw, reg.sig, nil, nil)
 				if err != nil && err != errDeviceRevoked {
 					t.Errorf("register: %v", err)
 				}

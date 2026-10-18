@@ -3,7 +3,7 @@ import qrcode from "qrcode-generator";
 import { useEffect, useRef, useState } from "react";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { initiate, joinByPairing, PairCanceled, parsePairLink, type Initiation } from "../pairing";
-import { errorText, join, type Remote } from "../remote";
+import { errorText, type Remote } from "../remote";
 import { Banner, NavBar, useRemote } from "../ui";
 import { Check, LoaderCircle } from "../icons";
 
@@ -158,14 +158,11 @@ function joinBanner(e: unknown): { kind: "err" | "warn"; text: string; action: s
   return { kind: "err", text, action: "重新开始" };
 }
 
-/** Joins this browser to an account: by pairing code, pairing link, or
- * the account secret. */
+/** Joins this browser with explicit approval from an enrolled device. */
 export function Setup({ onDone }: { onDone: () => void }) {
   const fromLink = location.hash.startsWith("#/pair?") ? parsePairLink(location.hash.slice("#/pair?".length)) : undefined;
   const [code, setCode] = useState(fromLink ? spaced(fromLink.code) : "");
   const [server, setServer] = useState(fromLink?.server ?? defaultServer());
-  const [secret, setSecret] = useState("");
-  const [useSecret, setUseSecret] = useState(false);
   const [emoji, setEmoji] = useState<string[]>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ReturnType<typeof joinBanner>>();
@@ -232,19 +229,6 @@ export function Setup({ onDone }: { onDone: () => void }) {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const paste = async () => {
-    setBusy(true);
-    setError(undefined);
-    try {
-      await join(secret);
-      setSecret("");
-      onDone();
-    } catch (e) {
-      setError({ kind: "err", text: errorText(e), action: "" });
-      setBusy(false);
-    }
-  };
-
   const banner = error && (
     <div className="pad">
       <Banner
@@ -287,8 +271,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
       <div className="large">
         <h3>加入账户</h3>
       </div>
-      {!useSecret ? (
-        <>
+      <>
           <p className="muted small lead">在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。</p>
           <input
             className="field code-in"
@@ -312,27 +295,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
               {busy ? "连接中…" : "加入"}
             </button>
           </div>
-          <button className="link mid" onClick={() => setUseSecret(true)}>
-            改用账户密钥
-          </button>
-        </>
-      ) : (
-        <>
-          <p className="muted small lead">
-            在电脑上运行 <code>remote-agent account secret</code>，把输出的账户密钥粘贴到这里。密钥只保存在这个浏览器里，不会发给服务器。
-          </p>
-          <textarea className="field mono" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="ra1.…" rows={4} autoComplete="off" spellCheck={false} aria-label="账户密钥" />
-          {banner}
-          <div className="big">
-            <button className="btn pri" disabled={busy || !secret.trim()} onClick={() => void paste()}>
-              {busy ? "连接中…" : "加入"}
-            </button>
-          </div>
-          <button className="link mid" onClick={() => setUseSecret(false)}>
-            改用配对码
-          </button>
-        </>
-      )}
+      </>
     </div>
   );
 }

@@ -18,6 +18,8 @@ public  final class RegisterDeviceRequest extends
     registration_ = com.google.protobuf.ByteString.EMPTY;
     signature_ = com.google.protobuf.ByteString.EMPTY;
     setupToken_ = "";
+    approval_ = com.google.protobuf.ByteString.EMPTY;
+    approvalSignature_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int REGISTRATION_FIELD_NUMBER = 1;
@@ -240,6 +242,75 @@ public  final class RegisterDeviceRequest extends
   private void clearSignupProof() {
     signupProof_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int APPROVAL_FIELD_NUMBER = 5;
+  private com.google.protobuf.ByteString approval_;
+  /**
+   * <pre>
+   * One-use approval signed by a currently enrolled device; required to add
+   * a device to an existing account. Never replaced by root-key possession.
+   * </pre>
+   *
+   * <code>bytes approval = 5 [json_name = "approval"];</code>
+   * @return The approval.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getApproval() {
+    return approval_;
+  }
+  /**
+   * <pre>
+   * One-use approval signed by a currently enrolled device; required to add
+   * a device to an existing account. Never replaced by root-key possession.
+   * </pre>
+   *
+   * <code>bytes approval = 5 [json_name = "approval"];</code>
+   * @param value The approval to set.
+   */
+  private void setApproval(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    approval_ = value;
+  }
+  /**
+   * <pre>
+   * One-use approval signed by a currently enrolled device; required to add
+   * a device to an existing account. Never replaced by root-key possession.
+   * </pre>
+   *
+   * <code>bytes approval = 5 [json_name = "approval"];</code>
+   */
+  private void clearApproval() {
+
+    approval_ = getDefaultInstance().getApproval();
+  }
+
+  public static final int APPROVAL_SIGNATURE_FIELD_NUMBER = 6;
+  private com.google.protobuf.ByteString approvalSignature_;
+  /**
+   * <code>bytes approval_signature = 6 [json_name = "approvalSignature"];</code>
+   * @return The approvalSignature.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getApprovalSignature() {
+    return approvalSignature_;
+  }
+  /**
+   * <code>bytes approval_signature = 6 [json_name = "approvalSignature"];</code>
+   * @param value The approvalSignature to set.
+   */
+  private void setApprovalSignature(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    approvalSignature_ = value;
+  }
+  /**
+   * <code>bytes approval_signature = 6 [json_name = "approvalSignature"];</code>
+   */
+  private void clearApprovalSignature() {
+
+    approvalSignature_ = getDefaultInstance().getApprovalSignature();
   }
 
   public static io.github.lewin671.remoteagent.proto.RegisterDeviceRequest parseFrom(
@@ -567,6 +638,77 @@ public  final class RegisterDeviceRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * One-use approval signed by a currently enrolled device; required to add
+     * a device to an existing account. Never replaced by root-key possession.
+     * </pre>
+     *
+     * <code>bytes approval = 5 [json_name = "approval"];</code>
+     * @return The approval.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getApproval() {
+      return instance.getApproval();
+    }
+    /**
+     * <pre>
+     * One-use approval signed by a currently enrolled device; required to add
+     * a device to an existing account. Never replaced by root-key possession.
+     * </pre>
+     *
+     * <code>bytes approval = 5 [json_name = "approval"];</code>
+     * @param value The approval to set.
+     * @return This builder for chaining.
+     */
+    public Builder setApproval(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setApproval(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * One-use approval signed by a currently enrolled device; required to add
+     * a device to an existing account. Never replaced by root-key possession.
+     * </pre>
+     *
+     * <code>bytes approval = 5 [json_name = "approval"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearApproval() {
+      copyOnWrite();
+      instance.clearApproval();
+      return this;
+    }
+
+    /**
+     * <code>bytes approval_signature = 6 [json_name = "approvalSignature"];</code>
+     * @return The approvalSignature.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getApprovalSignature() {
+      return instance.getApprovalSignature();
+    }
+    /**
+     * <code>bytes approval_signature = 6 [json_name = "approvalSignature"];</code>
+     * @param value The approvalSignature to set.
+     * @return This builder for chaining.
+     */
+    public Builder setApprovalSignature(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setApprovalSignature(value);
+      return this;
+    }
+    /**
+     * <code>bytes approval_signature = 6 [json_name = "approvalSignature"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearApprovalSignature() {
+      copyOnWrite();
+      instance.clearApprovalSignature();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.RegisterDeviceRequest)
   }
   @java.lang.Override
@@ -588,10 +730,12 @@ public  final class RegisterDeviceRequest extends
             "signature_",
             "setupToken_",
             "signupProof_",
+            "approval_",
+            "approvalSignature_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
-              "\u0208\u0004\u1009\u0000";
+              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
+              "\u0208\u0004\u1009\u0000\u0005\n\u0006\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

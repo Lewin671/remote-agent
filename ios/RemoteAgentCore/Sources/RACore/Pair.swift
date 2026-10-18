@@ -41,6 +41,11 @@ public struct PairSecrets: Sendable {
 }
 
 public enum Pairing {
+    public static func identityTranscript(pairingId: String, initiatorPublic: Data, joinerPublic: Data, devicePublic: Data, joinerKind: Int) -> Data {
+        var n = UInt32(devicePublic.count).bigEndian
+        return sha256(Data("remote-agent/v1/pair-identity\0".utf8) + transcript(pairingId: pairingId, initiatorPublic: initiatorPublic, joinerPublic: joinerPublic, joinerKind: joinerKind) + withUnsafeBytes(of: &n) { Data($0) } + devicePublic)
+    }
+
     public static func commit(initiatorPublic: Data) -> Data {
         sha256(Data(pairCommitContext.utf8), initiatorPublic)
     }

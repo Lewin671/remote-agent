@@ -246,32 +246,10 @@ final class JoinModel {
     // MARK: Joining with the account secret
 
     func joinWithSecret() {
-        notice = ""
-        let secret: Secret
-        do {
-            secret = try Secret.parse(self.secret)
-        } catch {
-            notice = errorText(error)
-            noticeIsError = true
-            return
-        }
-        step = .working
-        joiningWithSecret = true
-        let calls = calls
-        Task {
-            do {
-                let account = try await calls.withSecret(secret)
-                // Used: the text is not kept in the field or anywhere else.
-                self.secret = ""
-                joiningWithSecret = false
-                await hand(over: account)
-            } catch {
-                joiningWithSecret = false
-                notice = errorText(error)
-                noticeIsError = true
-                step = .secret
-            }
-        }
+        secret = ""
+        step = .form
+        notice = "加入已有账户需要在另一台已加入的设备上批准，请使用配对码。"
+        noticeIsError = true
     }
 
     // MARK: The end

@@ -17,6 +17,7 @@ public  final class JoinPairingRequest extends
   private JoinPairingRequest() {
     code_ = "";
     joinerPublic_ = com.google.protobuf.ByteString.EMPTY;
+    devicePublicKey_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int CODE_FIELD_NUMBER = 1;
   private java.lang.String code_;
@@ -133,6 +134,45 @@ public  final class JoinPairingRequest extends
   private void clearJoinerKind() {
 
     joinerKind_ = 0;
+  }
+
+  public static final int DEVICE_PUBLIC_KEY_FIELD_NUMBER = 4;
+  private com.google.protobuf.ByteString devicePublicKey_;
+  /**
+   * <pre>
+   * Ed25519 signing identity, generated before comparing the SAS.
+   * </pre>
+   *
+   * <code>bytes device_public_key = 4 [json_name = "devicePublicKey"];</code>
+   * @return The devicePublicKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getDevicePublicKey() {
+    return devicePublicKey_;
+  }
+  /**
+   * <pre>
+   * Ed25519 signing identity, generated before comparing the SAS.
+   * </pre>
+   *
+   * <code>bytes device_public_key = 4 [json_name = "devicePublicKey"];</code>
+   * @param value The devicePublicKey to set.
+   */
+  private void setDevicePublicKey(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    devicePublicKey_ = value;
+  }
+  /**
+   * <pre>
+   * Ed25519 signing identity, generated before comparing the SAS.
+   * </pre>
+   *
+   * <code>bytes device_public_key = 4 [json_name = "devicePublicKey"];</code>
+   */
+  private void clearDevicePublicKey() {
+
+    devicePublicKey_ = getDefaultInstance().getDevicePublicKey();
   }
 
   public static io.github.lewin671.remoteagent.proto.JoinPairingRequest parseFrom(
@@ -355,6 +395,46 @@ public  final class JoinPairingRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Ed25519 signing identity, generated before comparing the SAS.
+     * </pre>
+     *
+     * <code>bytes device_public_key = 4 [json_name = "devicePublicKey"];</code>
+     * @return The devicePublicKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getDevicePublicKey() {
+      return instance.getDevicePublicKey();
+    }
+    /**
+     * <pre>
+     * Ed25519 signing identity, generated before comparing the SAS.
+     * </pre>
+     *
+     * <code>bytes device_public_key = 4 [json_name = "devicePublicKey"];</code>
+     * @param value The devicePublicKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDevicePublicKey(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDevicePublicKey(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Ed25519 signing identity, generated before comparing the SAS.
+     * </pre>
+     *
+     * <code>bytes device_public_key = 4 [json_name = "devicePublicKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDevicePublicKey() {
+      copyOnWrite();
+      instance.clearDevicePublicKey();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.JoinPairingRequest)
   }
   @java.lang.Override
@@ -374,10 +454,11 @@ public  final class JoinPairingRequest extends
             "code_",
             "joinerPublic_",
             "joinerKind_",
+            "devicePublicKey_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\n" +
-              "\u0003\f";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\n" +
+              "\u0003\f\u0004\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

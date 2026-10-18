@@ -70,6 +70,19 @@ func PairTranscript(pairingID string, initiatorPublic, joinerPublic []byte, join
 	return h.Sum(nil)
 }
 
+// PairIdentityTranscript binds the approved long-term signing identity as
+// well as the ephemeral exchange. Every current pairing uses this transcript.
+func PairIdentityTranscript(id string, initiator, joiner, device []byte, kind int32) []byte {
+	h := sha256.New()
+	h.Write([]byte("remote-agent/v1/pair-identity\x00"))
+	h.Write(PairTranscript(id, initiator, joiner, kind))
+	var n [4]byte
+	binary.BigEndian.PutUint32(n[:], uint32(len(device)))
+	h.Write(n[:])
+	h.Write(device)
+	return h.Sum(nil)
+}
+
 // PairSecrets are what both sides derive from the exchange.
 type PairSecrets struct {
 	// SAS picks the four emoji, one byte each.

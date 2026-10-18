@@ -62,7 +62,7 @@ class SessionPagingTest {
     }
 
     private suspend fun client(cache: CipherCache? = null, http: okhttp3.OkHttpClient = this.http): Remote {
-        val r = Remote(joinWithRoot(root, server.url, this.http), http, cache)
+        val r = Remote(approvedClient(daemon.account, this.http), http, cache)
         closers += AutoCloseable { r.close() }
         return r
     }
@@ -196,7 +196,7 @@ class SessionPagingTest {
 
     @Test
     fun afterAReconnectASessionOfAMachineThatIsGoneGoes() = runBlocking<Unit> {
-        val other = FakeDaemon.create(root, server.url, http, server.setupToken)
+        val other = FakeDaemon(approvedClient(daemon.account, http, io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_MACHINE), http).also { it.login() }
         closers += other
         other.putMachine("other-mac.local")
         other.putSession("there", live("/Users/me/Code/baz", "另一台上的"))

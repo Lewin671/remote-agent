@@ -68,4 +68,10 @@ public interface GetPairingResponseOrBuilder extends
    * @return The payload.
    */
   io.github.lewin671.remoteagent.proto.Envelope getPayload();
+
+  /**
+   * <code>bytes device_public_key = 7 [json_name = "devicePublicKey"];</code>
+   * @return The devicePublicKey.
+   */
+  com.google.protobuf.ByteString getDevicePublicKey();
 }

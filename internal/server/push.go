@@ -431,12 +431,21 @@ func (c *clientService) RemoveDevice(ctx context.Context, req *connect.Request[p
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only clients remove devices"))
 	}
 	t := c.s.tenantFrom(ctx)
+	c.s.pairing.mu.Lock()
+	defer c.s.pairing.mu.Unlock()
 	machine, err := t.store.removeDevice(ctx, req.Msg.DeviceId)
 	if errors.Is(err, errNoRows) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such device"))
 	}
 	if err != nil {
 		return nil, internal(err)
+	}
+	for _, p := range c.s.pairing.byID {
+		if p.account == t.acct && !p.delivered {
+			p.canceled = true
+			p.payload = nil
+			delete(c.s.pairing.byCode, p.code)
+		}
 	}
 	c.s.revokeStreams(req.Msg.DeviceId)
 	slog.Info("device removed", "device", req.Msg.DeviceId)

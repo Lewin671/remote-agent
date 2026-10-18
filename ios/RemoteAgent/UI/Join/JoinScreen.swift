@@ -42,7 +42,7 @@ struct JoinFlow: View {
                     VStack(alignment: .leading, spacing: 0) {
                         switch model.step {
                         case .form, .scan: JoinForm(model: model)
-                        case .secret: SecretForm(model: model)
+                        case .secret: JoinForm(model: model)
                         case .working: Working(model: model)
                         case .emoji(let emoji): Compare(model: model, emoji: emoji)
                         }
@@ -134,27 +134,9 @@ private struct JoinForm: View {
         Btn("加入", kind: .primary, enabled: model.canJoin, action: model.joinWithCode)
             .padding(.horizontal, 16).padding(.top, 6)
         JoinLink(text: "扫描二维码", action: model.showScanner).padding(.top, 8)
-        JoinLink(text: "改用账户密钥", action: model.showSecret)
     }
 }
 
-private struct SecretForm: View {
-    @Bindable var model: JoinModel
-
-    var body: some View {
-        JoinTitle(text: "用账户密钥加入")
-        JoinText(text: "在电脑上运行 remote-agent account secret，把输出的 ra1. 开头的整串粘贴到这里。")
-        // The field is the only way in: the pasteboard is read when the user
-        // pastes, by the system, and never by the app on its own.
-        InputField("账户密钥", text: $model.secret, placeholder: "ra1.…", look: .mono, lines: 3...6)
-            .privacySensitive()
-            .padding(.horizontal, 16).padding(.bottom, 10)
-        JoinNotice(model: model)
-        Btn("加入", kind: .primary, enabled: model.canJoinWithSecret, action: model.joinWithSecret)
-            .padding(.horizontal, 16).padding(.top, 6)
-        JoinLink(text: "改用配对码", action: model.showForm).padding(.top, 8)
-    }
-}
 
 private struct Working: View {
     let model: JoinModel

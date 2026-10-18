@@ -47,7 +47,6 @@ import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.Secret
 import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.joinByPairing
-import io.github.lewin671.remoteagent.core.joinWithRoot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -56,12 +55,11 @@ import kotlinx.coroutines.withContext
 private sealed interface JoinStep {
     data object Form : JoinStep
     data object Scan : JoinStep
-    data object Secret : JoinStep
     data class Emoji(val emoji: List<String>) : JoinStep
     data object Working : JoinStep
 }
 
-/** First run: join the account with a pairing code, a scanned QR code, or the account secret. */
+/** First run: join the account with a pairing code, a scanned QR code, with explicit approval. */
 /** The server turned this device away: nothing of the account is shown until it joins again. */
 @Composable
 fun RemovedScreen(app: RaApp, remote: Remote) {
@@ -92,7 +90,6 @@ fun JoinScreen(app: RaApp) {
     var code by remember { mutableStateOf("") }
     var server by rememberSaveable { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
     var commit by remember { mutableStateOf<ByteArray?>(null) }
-    var secret by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
     var job by remember { mutableStateOf<Job?>(null) }
     var stopped by remember { mutableStateOf(false) }
@@ -175,31 +172,6 @@ fun JoinScreen(app: RaApp) {
                     IconText(Lucide.LoaderCircle, "正在连接…", p.muted, T.sm, Modifier.padding(horizontal = 16.dp))
                     if (error.isNotEmpty()) Hint(error, Modifier.padding(horizontal = 16.dp))
                 }
-                JoinStep.Secret -> {
-                    JoinTitle("用账户密钥加入")
-                    Text("在电脑上运行 remote-agent account secret，把输出的 ra1. 开头的整串粘贴到这里。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp))
-                    JoinField("账户密钥", secret, { secret = it }, "ra1.…", mono = true, lines = 3)
-                    if (error.isNotEmpty()) Banner(error, Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp), Tone2.ERROR)
-                    Btn("加入", {
-                        error = ""
-                        step = JoinStep.Working
-                        scope.launch {
-                            try {
-                                val sec = Secret.parse(secret)
-                                registering = true
-                                val acct = withContext(Dispatchers.IO) { joinWithRoot(sec.root, sec.server, app.http) }
-                                secret = ""
-                                app.joined(acct)
-                            } catch (e: Exception) {
-                                error = if (registering) "不确定这台手机有没有加入：${errorText(e)}。可以在已有设备的设置里看看客户端列表" else errorText(e)
-                                step = JoinStep.Secret
-                            } finally {
-                                registering = false
-                            }
-                        }
-                    }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), BtnKind.PRIMARY, enabled = secret.isNotBlank())
-                    JoinLink("改用配对码") { error = ""; step = JoinStep.Form }
-                }
                 JoinStep.Form, JoinStep.Scan -> {
                     JoinTitle("加入账户")
                     Text("在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp))
@@ -226,7 +198,6 @@ fun JoinScreen(app: RaApp) {
                         }
                     }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), BtnKind.PRIMARY, enabled = code.count { it.isDigit() } == 8 && server.length > 8)
                     JoinLink("扫描二维码") { error = ""; step = JoinStep.Scan }
-                    JoinLink("改用账户密钥") { error = ""; step = JoinStep.Secret }
                 }
             }
         }

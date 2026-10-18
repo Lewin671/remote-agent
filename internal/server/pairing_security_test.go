@@ -27,7 +27,7 @@ func TestPairingRateLimitDoesNotRevealValidCodes(t *testing.T) {
 	}
 	ts.srv.pairing.mu.Unlock()
 	for _, code := range []string{"invalid-code", created.Msg.Code} {
-		_, err := anon.JoinPairing(context.Background(), connect.NewRequest(&pb.JoinPairingRequest{Code: code, JoinerPublic: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+		_, err := anon.JoinPairing(context.Background(), connect.NewRequest(&pb.JoinPairingRequest{Code: code, JoinerPublic: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 		if connect.CodeOf(err) != connect.CodeResourceExhausted {
 			t.Fatalf("rate-limited lookup leaked validity: %v", err)
 		}
@@ -45,7 +45,7 @@ func TestCanceledPairingCannotReleaseApprovedPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{Code: created.Msg.Code, JoinerPublic: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+	joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{Code: created.Msg.Code, JoinerPublic: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,8 @@ func TestCanceledPairingCannotReleaseApprovedPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: id}, []byte("sealed account secret"))
-	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: id, Payload: env})); err != nil {
+	approval, sig, _ := e2e.NewPairApproval(ts.acct(), id, cp, key.Public(), pb.DeviceKind_DEVICE_KIND_CLIENT, created.Msg.ExpiresMs)
+	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: id, Payload: env, Approval: approval, ApprovalSignature: sig})); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pc.CancelPairing(ctx, connect.NewRequest(&pb.CancelPairingRequest{PairingId: id})); err != nil {

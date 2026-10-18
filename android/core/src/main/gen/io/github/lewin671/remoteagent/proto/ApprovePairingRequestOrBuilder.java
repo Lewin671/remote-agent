@@ -32,4 +32,16 @@ public interface ApprovePairingRequestOrBuilder extends
    * @return The payload.
    */
   io.github.lewin671.remoteagent.proto.Envelope getPayload();
+
+  /**
+   * <code>bytes approval = 3 [json_name = "approval"];</code>
+   * @return The approval.
+   */
+  com.google.protobuf.ByteString getApproval();
+
+  /**
+   * <code>bytes approval_signature = 4 [json_name = "approvalSignature"];</code>
+   * @return The approvalSignature.
+   */
+  com.google.protobuf.ByteString getApprovalSignature();
 }

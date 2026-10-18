@@ -47,4 +47,14 @@ public interface CreatePairingResponseOrBuilder extends
    * @return The expiresMs.
    */
   long getExpiresMs();
+
+  /**
+   * <pre>
+   * Public identity for non-extractable browser signing keys.
+   * </pre>
+   *
+   * <code>bytes approver_public_key = 4 [json_name = "approverPublicKey"];</code>
+   * @return The approverPublicKey.
+   */
+  com.google.protobuf.ByteString getApproverPublicKey();
 }

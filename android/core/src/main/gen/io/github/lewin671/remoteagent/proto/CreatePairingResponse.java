@@ -17,6 +17,7 @@ public  final class CreatePairingResponse extends
   private CreatePairingResponse() {
     pairingId_ = "";
     code_ = "";
+    approverPublicKey_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int PAIRING_ID_FIELD_NUMBER = 1;
   private java.lang.String pairingId_;
@@ -158,6 +159,45 @@ public  final class CreatePairingResponse extends
   private void clearExpiresMs() {
 
     expiresMs_ = 0L;
+  }
+
+  public static final int APPROVER_PUBLIC_KEY_FIELD_NUMBER = 4;
+  private com.google.protobuf.ByteString approverPublicKey_;
+  /**
+   * <pre>
+   * Public identity for non-extractable browser signing keys.
+   * </pre>
+   *
+   * <code>bytes approver_public_key = 4 [json_name = "approverPublicKey"];</code>
+   * @return The approverPublicKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getApproverPublicKey() {
+    return approverPublicKey_;
+  }
+  /**
+   * <pre>
+   * Public identity for non-extractable browser signing keys.
+   * </pre>
+   *
+   * <code>bytes approver_public_key = 4 [json_name = "approverPublicKey"];</code>
+   * @param value The approverPublicKey to set.
+   */
+  private void setApproverPublicKey(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    approverPublicKey_ = value;
+  }
+  /**
+   * <pre>
+   * Public identity for non-extractable browser signing keys.
+   * </pre>
+   *
+   * <code>bytes approver_public_key = 4 [json_name = "approverPublicKey"];</code>
+   */
+  private void clearApproverPublicKey() {
+
+    approverPublicKey_ = getDefaultInstance().getApproverPublicKey();
   }
 
   public static io.github.lewin671.remoteagent.proto.CreatePairingResponse parseFrom(
@@ -403,6 +443,46 @@ public  final class CreatePairingResponse extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Public identity for non-extractable browser signing keys.
+     * </pre>
+     *
+     * <code>bytes approver_public_key = 4 [json_name = "approverPublicKey"];</code>
+     * @return The approverPublicKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getApproverPublicKey() {
+      return instance.getApproverPublicKey();
+    }
+    /**
+     * <pre>
+     * Public identity for non-extractable browser signing keys.
+     * </pre>
+     *
+     * <code>bytes approver_public_key = 4 [json_name = "approverPublicKey"];</code>
+     * @param value The approverPublicKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setApproverPublicKey(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setApproverPublicKey(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Public identity for non-extractable browser signing keys.
+     * </pre>
+     *
+     * <code>bytes approver_public_key = 4 [json_name = "approverPublicKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearApproverPublicKey() {
+      copyOnWrite();
+      instance.clearApproverPublicKey();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CreatePairingResponse)
   }
   @java.lang.Override
@@ -422,10 +502,11 @@ public  final class CreatePairingResponse extends
             "pairingId_",
             "code_",
             "expiresMs_",
+            "approverPublicKey_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0002";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0002\u0004\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

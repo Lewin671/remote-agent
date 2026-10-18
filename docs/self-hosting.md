@@ -141,7 +141,7 @@ remote-agent codex      # or: remote-agent claude
 ```
 
 > [!CAUTION]
-> `remote-agent account secret` prints the key that decrypts every session. Paste it only into your own devices, never into an issue or a chat.
+> `remote-agent account secret` prints the key that decrypts every session. Keep it offline; it cannot authorize a new device. Enroll new devices by pairing, never paste it into an issue or a chat.
 
 ## Upgrading
 
@@ -231,3 +231,32 @@ The last command lists your account, with the number of its devices and sessions
 | `account init` says the relay has no room for another account | This relay already has its account. Join it with `account pair` / `account join`, or let it hold more accounts (see [Opening the relay to others](#opening-the-relay-to-others)). |
 | A client asks you to update | Its protocol version differs from the daemon's. Upgrade every part to the same release. |
 | No notifications in the Android app | Expected on your own relay; see the limits in the [README](../README.md#status-and-limitations). |
+
+
+## Upgrading device enrollment (protocol 8)
+
+Protocol 8 requires database layout 4. Upgrade the relay, daemons, web client and apps together. Already enrolled devices and conversation history remain valid; unfinished pairings must be started again. An account secret can no longer enroll a device, including when every device is lost. Keep at least one enrolled device with its local state.
+
+For an existing layout-3 relay, stop the relay and make a private backup of `data` first. On the relay host, run the following once against `data/remote-agent.db` with SQLite. Check `PRAGMA user_version` is **3** before running it; do not apply this SQL to any other layout.
+
+```sql
+BEGIN IMMEDIATE;
+CREATE TABLE pairing_admissions (
+  pairing_id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES accounts(id),
+  approver_device_id TEXT NOT NULL,
+  candidate_device_id TEXT NOT NULL,
+  candidate_kind INTEGER NOT NULL,
+  approval BLOB NOT NULL,
+  signature BLOB NOT NULL,
+  candidate_token_hash BLOB NOT NULL,
+  expires_ms INTEGER NOT NULL,
+  used_ms INTEGER NOT NULL DEFAULT 0,
+  canceled_ms INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX pairing_admissions_account ON pairing_admissions(account_id, expires_ms);
+PRAGMA user_version = 4;
+COMMIT;
+```
+
+Start the new relay after the transaction, then upgrade the remaining components. Check layout 4, log in with an existing device, and complete a new pairing. Remove the migration backup after verification according to your own retention policy: restoring the entire old database would also restore old device permissions. No account root or private device key is needed for this SQL.

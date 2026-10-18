@@ -3,6 +3,7 @@ package relay
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -99,7 +100,7 @@ func Initiate(ctx context.Context, acct *Account, show func(PairLink), confirm f
 		cancel()
 		return err
 	}
-	tr := e2e.PairTranscript(id, key.Public(), st.JoinerPublic, int32(st.JoinerKind))
+	tr := e2e.PairIdentityTranscript(id, key.Public(), st.JoinerPublic, st.DevicePublicKey, int32(st.JoinerKind))
 	secrets, err := key.Derive(st.JoinerPublic, tr)
 	if err != nil {
 		cancel()
@@ -109,14 +110,24 @@ func Initiate(ctx context.Context, acct *Account, show func(PairLink), confirm f
 		cancel()
 		return errors.New("pairing refused")
 	}
-	env, err := e2e.SealMessage(secrets.Key, &pb.Header{
-		Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: id, Sender: acct.DeviceID,
-	}, &pb.PairingPayload{Root: acct.Root, Server: acct.Server})
+	keys, err := e2e.Derive(acct.Root)
 	if err != nil {
 		cancel()
 		return err
 	}
-	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: id, Payload: env})); err != nil {
+	approval, approvalSig, err := e2e.NewPairApproval(e2e.AccountID(keys.AccountPublicKey()), id, acct.DeviceKey(), st.DevicePublicKey, st.JoinerKind, created.Msg.ExpiresMs)
+	if err != nil {
+		cancel()
+		return err
+	}
+	env, err := e2e.SealMessage(secrets.Key, &pb.Header{
+		Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: id, Sender: acct.DeviceID,
+	}, &pb.PairingPayload{Root: acct.Root, Server: acct.Server, Approval: approval, ApprovalSignature: approvalSig})
+	if err != nil {
+		cancel()
+		return err
+	}
+	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: id, Payload: env, Approval: approval, ApprovalSignature: approvalSig})); err != nil {
 		cancel()
 		return err
 	}
@@ -143,8 +154,12 @@ func JoinByPairing(ctx context.Context, link PairLink, show func(emoji []string)
 	if err != nil {
 		return nil, err
 	}
+	pub, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		return nil, err
+	}
 	joined, err := pc.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{
-		Code: link.Code, JoinerPublic: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_MACHINE,
+		Code: link.Code, JoinerPublic: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_MACHINE, DevicePublicKey: pub,
 	}))
 	if err != nil {
 		return nil, err
@@ -161,7 +176,7 @@ func JoinByPairing(ctx context.Context, link PairLink, show func(emoji []string)
 	if !bytes.Equal(e2e.PairCommit(st.InitiatorPublic), commit) {
 		return nil, errors.New("the existing device's key does not match its commitment; pairing stopped")
 	}
-	tr := e2e.PairTranscript(id, st.InitiatorPublic, key.Public(), int32(pb.DeviceKind_DEVICE_KIND_MACHINE))
+	tr := e2e.PairIdentityTranscript(id, st.InitiatorPublic, key.Public(), pub, int32(pb.DeviceKind_DEVICE_KIND_MACHINE))
 	secrets, err := key.Derive(st.InitiatorPublic, tr)
 	if err != nil {
 		return nil, err
@@ -178,7 +193,20 @@ func JoinByPairing(ctx context.Context, link PairLink, show func(emoji []string)
 	if payload.Server != server {
 		return nil, errors.New("the account belongs to another server")
 	}
-	acct, err := Join(ctx, server, payload.Root, "")
+	keys, err := e2e.Derive(payload.Root)
+	if err != nil {
+		return nil, err
+	}
+	a, err := e2e.VerifyPairApproval(payload.Approval, payload.ApprovalSignature)
+	if err != nil || a.AccountId != e2e.AccountID(keys.AccountPublicKey()) || a.PairingId != id || !bytes.Equal(a.CandidateDevicePublicKey, pub) || a.CandidateKind != pb.DeviceKind_DEVICE_KIND_MACHINE || a.ExpiresMs <= time.Now().UnixMilli() {
+		return nil, e2e.ErrPairApproval
+	}
+	j, err := newJoiner(server, payload.Root)
+	if err != nil {
+		return nil, err
+	}
+	j.pub, j.priv = pub, priv
+	acct, err := j.register(ctx, &pb.RegisterDeviceRequest{Approval: payload.Approval, ApprovalSignature: payload.ApprovalSignature})
 	if err != nil {
 		return nil, err
 	}

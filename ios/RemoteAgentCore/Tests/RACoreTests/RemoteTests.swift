@@ -50,7 +50,7 @@ final class World: @unchecked Sendable {
     }
 
     /// A new client device of the account.
-    func join() async throws -> Account { try await joinWithRoot(root: root, server: server.url, http: http) }
+    func join() async throws -> Account { try await approvedClient(authorizer: daemon.account, http: http) }
 
     func remote(
         _ account: Account, http: HTTP? = nil, cache: (any CipherCache)? = nil, frameQueue: Int = 1024,

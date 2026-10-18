@@ -64,7 +64,7 @@ class RemoteTest {
     private fun agent(t: String) = Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText(t))
 
     private suspend fun client(cache: CipherCache? = null, frameQueue: Int = 1024, historyIdleMs: Long = 60_000, historyIdleCount: Int = 8, linkGraceMs: Long = 10_000): Remote {
-        val acct = joinWithRoot(root, server.url, http)
+        val acct = approvedClient(daemon.account, http)
         val r = Remote(acct, http, cache, frameQueue = frameQueue, historyIdleMs = historyIdleMs, historyIdleCount = historyIdleCount, linkGraceMs = linkGraceMs)
         closers += AutoCloseable { r.close() }
         return r
@@ -83,7 +83,7 @@ class RemoteTest {
 
     @Test
     fun cancelingLoginBeforeAForwardDoesNotFreezeTheAttempt() = runBlocking<Unit> {
-        val acct = joinWithRoot(root, server.url, http)
+        val acct = approvedClient(daemon.account, http)
         val blocked = java.util.concurrent.CountDownLatch(1)
         val gate = java.util.concurrent.CountDownLatch(1)
         val slow = http.newBuilder().addInterceptor { chain ->
@@ -145,7 +145,7 @@ class RemoteTest {
     private fun blockedStreamDrops(frame: ByteArray, copies: Int) = runBlocking<Unit> {
         val blocked = java.util.concurrent.CountDownLatch(1)
         val gate = java.util.concurrent.CountDownLatch(1)
-        val acct = joinWithRoot(root, server.url, http)
+        val acct = approvedClient(daemon.account, http)
         val hole = StreamBlackhole { socket ->
             socket.getOutputStream().let { out ->
                 val ready = io.github.lewin671.remoteagent.proto.ServerFrame.newBuilder()
@@ -404,7 +404,7 @@ class RemoteTest {
             if (chain.request().url.encodedPath.endsWith("/Login")) logins.incrementAndGet()
             chain.proceed(chain.request())
         }.build()
-        val r = Remote(joinWithRoot(root, server.url, http), counting)
+        val r = Remote(approvedClient(daemon.account, http), counting)
         closers += AutoCloseable { r.close() }
         r.start()
         r.awaitState("online") { it.conn == ConnState.ONLINE }
@@ -419,7 +419,7 @@ class RemoteTest {
 
     @Test
     fun aStreamWithoutReadyIsReplacedEvenThoughTheUpgradeSucceeded() = runBlocking<Unit> {
-        val acct = joinWithRoot(root, server.url, http)
+        val acct = approvedClient(daemon.account, http)
         val hole = StreamBlackhole()
         closers += hole
         // Only the stream goes to the fixture; auth and list RPCs use the real server.
@@ -440,7 +440,7 @@ class RemoteTest {
 
     @Test
     fun repeatedNetworkCallbacksDuringLoginLeaveOnlyOneCurrentStream() = runBlocking<Unit> {
-        val acct = joinWithRoot(root, server.url, http)
+        val acct = approvedClient(daemon.account, http)
         val gate = java.util.concurrent.CountDownLatch(1)
         val entered = java.util.concurrent.CountDownLatch(1)
         val challenges = java.util.concurrent.atomic.AtomicInteger()
@@ -470,7 +470,7 @@ class RemoteTest {
 
     @Test
     fun aLoginThatDoesNotReturnTimesOutAndCanRecover() = runBlocking<Unit> {
-        val acct = joinWithRoot(root, server.url, http)
+        val acct = approvedClient(daemon.account, http)
         val blocked = java.util.concurrent.atomic.AtomicBoolean(true)
         val attempts = java.util.concurrent.atomic.AtomicInteger()
         val slow = http.newBuilder().addInterceptor { chain ->
@@ -495,7 +495,7 @@ class RemoteTest {
 
     @Test
     fun networkChangeReplacesAnOnlineStreamAndCatchesUpExactlyOnce() = runBlocking<Unit> {
-        val acct = joinWithRoot(root, server.url, http)
+        val acct = approvedClient(daemon.account, http)
         val streams = java.util.concurrent.atomic.AtomicInteger()
         val observed = http.newBuilder().addInterceptor { chain ->
             if (chain.request().url.encodedPath == "/v1/stream") streams.incrementAndGet()
@@ -558,7 +558,7 @@ class RemoteTest {
             if (chain.request().url.encodedPath.endsWith("/ListDevices")) deviceLists.incrementAndGet()
             chain.proceed(chain.request())
         }.build()
-        val r = Remote(joinWithRoot(root, server.url, http), counting, cache)
+        val r = Remote(approvedClient(daemon.account, http), counting, cache)
         closers += AutoCloseable { r.close() }
         try {
             r.start()
@@ -856,7 +856,7 @@ class RemoteTest {
             if (chain.request().url.encodedPath.endsWith("/GetAccountPrefs") && reads.incrementAndGet() == 1) throw java.io.IOException("connection lost")
             chain.proceed(chain.request())
         }.build()
-        val r = Remote(joinWithRoot(root, server.url, http), flaky)
+        val r = Remote(approvedClient(daemon.account, http), flaky)
         closers += AutoCloseable { r.close() }
         r.start()
         // The stream stays up throughout: nothing but the read itself brings them.
@@ -893,10 +893,10 @@ class RemoteTest {
             }
             res
         }.build()
-        val a = Remote(joinWithRoot(root, server.url, http), slow)
+        val a = Remote(approvedClient(daemon.account, http), slow)
         closers += AutoCloseable { gate.countDown(); a.close() }
         val other = client()
-        val leaving = joinWithRoot(root, server.url, http)
+        val leaving = approvedClient(daemon.account, http)
         a.start()
         other.start()
         a.awaitState("a devices") { it.conn == ConnState.ONLINE && it.devices.containsKey(leaving.deviceId) }
@@ -905,7 +905,7 @@ class RemoteTest {
         val reading = launch { a.refreshDevices() }
         withTimeout(10_000) { held.await() }
         other.removeDevice(leaving.deviceId)
-        val joined = joinWithRoot(root, server.url, http)
+        val joined = approvedClient(daemon.account, http)
         a.awaitState("both pushes") { !it.devices.containsKey(leaving.deviceId) && it.devices.containsKey(joined.deviceId) }
         gate.countDown()
         reading.join()

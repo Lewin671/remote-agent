@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v42 · 2026-10-16</title>
+<title>remote-agent 客户端设计稿 v43 · 2026-10-18</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -927,14 +927,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v42 · 2026-10-16 · 上一版 v41 在 git 历史里（<code>git log -- docs/design/client-v41.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v43 · 2026-10-18 · 上一版 v42 在 git 历史里（<code>git log -- docs/design/client-v42.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v41 的改动</h4><ul><li>Android 已发现新版本或已下载时，更新弹层仍保留「检查更新」。</li><li>补齐再次检查中、找到更新版本、没有更新版本和检查失败四种状态；下载中暂时禁用检查。</li></ul>
+  <h4>相对 v42 的改动</h4><ul><li>新设备加入只提供经有效设备批准的配对，移除裸账户密钥加入入口。</li><li>设备移除说明明确再次加入需要有效设备批准；不承诺内容密钥轮换。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
@@ -3839,7 +3839,7 @@ git status --short gen/</pre>
 <div class="grp">
 <div class="row" style="color:var(--red)">移除这个客户端…</div>
 </div>
-<div class="manage-hint">移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。持有账户密钥的设备仍可重新加入。</div>
+<div class="manage-hint">移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入需要另一台已登记设备批准。</div>
 </div>
 </div>
 <div class="cap">客户端详情：名称可改，起过名字的可以恢复默认名称，未命名时不显示这一行；上次使用没有记录时写「没有记录」；ID 可核对；移除前确认影响，当前客户端用“退出并删除本机密钥”</div>
@@ -3925,7 +3925,6 @@ git status --short gen/</pre>
         <div class="field code-in">4829 1756</div>
         <div class="field"><small>服务器</small><span style="color:var(--fg)">https://ra.remote-agent.top</span></div>
         <div class="big"><div class="btn pri">加入</div></div>
-        <p class="center-text small" style="color:var(--blue);margin-top:14px">改用账户密钥</p>
       </div>
     </div>
     <div class="cap">新设备第一次打开：输码加入；扫码打开时码和服务器已填好</div>
@@ -3953,7 +3952,6 @@ git status --short gen/</pre>
         <div class="field"><small>配对码</small><span class="muted">输入新的 8 位配对码</span></div>
         <div class="field"><small>服务器</small><span style="color:var(--fg)">https://ra.remote-agent.top</span></div>
         <div class="big"><div class="btn" aria-disabled="true" style="color:var(--muted)">加入</div></div>
-        <p class="center-text small" style="color:var(--blue);margin-top:14px">改用账户密钥</p>
       </div>
     </div>
     <div class="cap">返回后的填码页：旧码已清空，服务器保留；未输入新码时「加入」不可用</div>

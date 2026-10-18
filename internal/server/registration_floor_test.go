@@ -28,8 +28,10 @@ func TestRegistrationOlderThanFloorIsRefusedForUnknownDevices(t *testing.T) {
 	if _, err := ts.srv.store.db.Exec(`UPDATE accounts SET registration_floor_ms = ?`, time.Now().Add(-time.Minute).UnixMilli()); err != nil {
 		t.Fatal(err)
 	}
+	ts.rememberKey(knownID, knownPriv)
 	for _, created := range []int64{old, 0} {
 		stale, _, _ := make(created)
+		ts.admitRegistration(t, stale)
 		if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(stale)); connect.CodeOf(err) != connect.CodePermissionDenied {
 			t.Fatalf("registration created at %d passed the floor: %v", created, err)
 		}
@@ -40,6 +42,7 @@ func TestRegistrationOlderThanFloorIsRefusedForUnknownDevices(t *testing.T) {
 	}
 	ts.login(t, knownPriv, knownID)
 	fresh, freshPriv, freshID := make(time.Now().UnixMilli())
+	ts.admitRegistration(t, fresh)
 	if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(fresh)); err != nil {
 		t.Fatalf("fresh registration rejected: %v", err)
 	}

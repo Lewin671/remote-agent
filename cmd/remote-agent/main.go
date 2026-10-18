@@ -45,7 +45,7 @@ Usage:
   remote-agent plan <id> implement|clear|keep
                                            answer "Implement this plan?"
   remote-agent doctor [codex|claude]       check that the installed CLIs work with remote-agent
-  remote-agent account init|join|secret|status
+  remote-agent account init|pair|join|secret|status
                                            connect this machine to a server
 
 Session IDs may be abbreviated to any unique prefix.

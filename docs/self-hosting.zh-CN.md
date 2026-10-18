@@ -141,7 +141,7 @@ remote-agent codex      # 或者：remote-agent claude
 ```
 
 > [!CAUTION]
-> `remote-agent account secret` 打印的是能解开所有会话的密钥。只粘贴到你自己的设备上，不要贴进 issue 或聊天里。
+> `remote-agent account secret` 打印的是能解开所有会话的密钥。只离线保管；它不能授权新设备加入。新增设备请走配对，不要把密钥贴进 issue 或聊天里。
 
 ## 升级
 
@@ -231,3 +231,32 @@ docker compose exec remote-agent-server /remote-agent-server admin -db /data/rem
 | `account init` 提示中继没有空间容纳另一个账户 | 这台中继已经有它的账户了。用 `account pair` / `account join` 加入它，或者让它容纳更多账户（见[向他人开放中继](#向他人开放中继)）。 |
 | 客户端提示需要更新 | 它的协议版本和 daemon 的不一样。把所有部分升级到同一个版本。 |
 | Android App 收不到通知 | 在自己的中继上是预期行为，见 [README](../README.zh-CN.md#现状与限制) 里的限制。 |
+
+
+## 升级设备加入授权（协议 8）
+
+协议 8 要求中继数据库格式 4，中继、daemon、网页和 App 必须协调升级。已有设备和会话历史保留，未完成的配对需重新发起。账户密钥不能再授权新设备，即使所有设备丢失也不能靠它恢复登记；请保留至少一台已登记设备及其本地状态。
+
+格式 3 的现有中继先停服务，给 `data` 做权限受限的备份。在中继机器上用 SQLite 对 `data/remote-agent.db` 执行下面的一次性 SQL。执行前确认 `PRAGMA user_version` 为 **3**，不要对其他格式执行。
+
+```sql
+BEGIN IMMEDIATE;
+CREATE TABLE pairing_admissions (
+  pairing_id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES accounts(id),
+  approver_device_id TEXT NOT NULL,
+  candidate_device_id TEXT NOT NULL,
+  candidate_kind INTEGER NOT NULL,
+  approval BLOB NOT NULL,
+  signature BLOB NOT NULL,
+  candidate_token_hash BLOB NOT NULL,
+  expires_ms INTEGER NOT NULL,
+  used_ms INTEGER NOT NULL DEFAULT 0,
+  canceled_ms INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX pairing_admissions_account ON pairing_admissions(account_id, expires_ms);
+PRAGMA user_version = 4;
+COMMIT;
+```
+
+事务完成后启动新版中继，再升级其他端。核对格式 4、已有设备能登录、新配对能完成。验收后按自己的保留策略删除迁移备份：整库恢复也会恢复旧设备权限。这段 SQL 不需要账户根密钥或设备私钥。

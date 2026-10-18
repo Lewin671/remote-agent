@@ -2234,11 +2234,13 @@ func (x *TerminalResize) GetFit() bool {
 
 // PairingPayload is what an existing device hands a new one.
 type PairingPayload struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Root          []byte                 `protobuf:"bytes,1,opt,name=root,proto3" json:"root,omitempty"`
-	Server        string                 `protobuf:"bytes,2,opt,name=server,proto3" json:"server,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Root              []byte                 `protobuf:"bytes,1,opt,name=root,proto3" json:"root,omitempty"`
+	Server            string                 `protobuf:"bytes,2,opt,name=server,proto3" json:"server,omitempty"`
+	Approval          []byte                 `protobuf:"bytes,3,opt,name=approval,proto3" json:"approval,omitempty"`
+	ApprovalSignature []byte                 `protobuf:"bytes,4,opt,name=approval_signature,json=approvalSignature,proto3" json:"approval_signature,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *PairingPayload) Reset() {
@@ -2283,6 +2285,20 @@ func (x *PairingPayload) GetServer() string {
 		return x.Server
 	}
 	return ""
+}
+
+func (x *PairingPayload) GetApproval() []byte {
+	if x != nil {
+		return x.Approval
+	}
+	return nil
+}
+
+func (x *PairingPayload) GetApprovalSignature() []byte {
+	if x != nil {
+		return x.ApprovalSignature
+	}
+	return nil
 }
 
 // NotifyContent is what a daemon tells the Android app in a push, sealed
@@ -3072,10 +3088,12 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x0eTerminalResize\x12\x12\n" +
 	"\x04cols\x18\x01 \x01(\x05R\x04cols\x12\x12\n" +
 	"\x04rows\x18\x02 \x01(\x05R\x04rows\x12\x10\n" +
-	"\x03fit\x18\x03 \x01(\bR\x03fit\"<\n" +
+	"\x03fit\x18\x03 \x01(\bR\x03fit\"\x87\x01\n" +
 	"\x0ePairingPayload\x12\x12\n" +
 	"\x04root\x18\x01 \x01(\fR\x04root\x12\x16\n" +
-	"\x06server\x18\x02 \x01(\tR\x06server\"\xe3\x01\n" +
+	"\x06server\x18\x02 \x01(\tR\x06server\x12\x1a\n" +
+	"\bapproval\x18\x03 \x01(\fR\bapproval\x12-\n" +
+	"\x12approval_signature\x18\x04 \x01(\fR\x11approvalSignature\"\xe3\x01\n" +
 	"\rNotifyContent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1d\n" +

@@ -128,7 +128,7 @@ fun ClientScreen(id: String) {
                 Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp).heightIn(min = 44.dp).clickable(enabled = state.conn == ConnState.ONLINE) { confirm = true }, contentAlignment = Alignment.CenterStart) {
                     Text("移除这个客户端…", style = T.body, color = p.red)
                 }
-                Text("移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。持有账户密钥的设备仍可重新加入。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
+                Text("移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入需要另一台已登记设备批准。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
                 if (remove.error.isNotEmpty()) Banner(remove.error, Modifier.padding(16.dp), Tone2.ERROR)
             }
         }

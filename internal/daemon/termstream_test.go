@@ -144,7 +144,7 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := remoteclient.Register(ctx, account.Secret())
+	client, err := remoteclient.Register(ctx, account.Secret(), account.DeviceKey())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -231,40 +231,15 @@ final class FakeJoin: @unchecked Sendable {
         #expect(m.noticeIsError && joined.accounts.isEmpty)
     }
 
-    @Test func anAccountSecretIsCheckedUsedAndForgotten() async throws {
+    @Test func anAccountSecretCannotEnrollEvenWhenWellFormed() {
         let m = model()
-        m.showSecret()
-        #expect(!m.canJoinWithSecret)
-        m.secret = "ra1.nonsense"
-        m.joinWithSecret()
-        #expect(m.step == .secret && m.notice == "这不是 remote-agent 的账户密钥" && m.noticeIsError)
-        #expect(fake.secrets.isEmpty)
-
-        let root = Data(repeating: 7, count: 32)
-        m.secret = "  ra1.\(root.base64URL).\(Data("https://ra.example.com".utf8).base64URL)\n"
-        m.joinWithSecret()
-        #expect(m.step == .working && !m.canCancel)
-        await eventually("called") { fake.secrets.count == 1 }
-        #expect(fake.secrets[0].0 == Secret(root: root, server: "https://ra.example.com"))
-        // Cancel does nothing to a registration on its way.
-        m.cancel()
-        #expect(m.step == .working)
-        fake.secrets[0].1.resume(returning: account)
-        await eventually("joined") { joined.accounts.count == 1 }
-        #expect(m.secret.isEmpty)
-    }
-
-    @Test func aSecretTheServerRefusesIsSaidOnItsPageAndLeavingThePageForgetsIt() async {
-        let m = model()
-        m.showSecret()
-        m.secret = "ra1.\(Data(repeating: 7, count: 32).base64URL).\(Data("https://ra.example.com".utf8).base64URL)"
-        m.joinWithSecret()
-        await eventually("called") { fake.secrets.count == 1 }
-        fake.secrets[0].1.resume(throwing: UserError("server 返回了意外的设备 ID"))
-        await eventually("failed") { m.step == .secret }
-        #expect(m.notice == "server 返回了意外的设备 ID" && m.noticeIsError && m.canCancel)
-        m.showForm()
-        #expect(m.secret.isEmpty && m.notice.isEmpty && m.step == .form)
+        for value in ["ra1.nonsense", "ra1.\(Data(repeating: 7, count: 32).base64URL).\(Data("https://ra.example.com".utf8).base64URL)"] {
+            m.secret = value
+            m.joinWithSecret()
+            #expect(m.step == .form && m.noticeIsError && m.secret.isEmpty)
+            #expect(m.notice.contains("另一台已加入的设备上批准"))
+            #expect(fake.secrets.isEmpty && joined.accounts.isEmpty)
+        }
     }
 
     @Test func anAccountTheKeychainDoesNotKeepIsSaid() async {

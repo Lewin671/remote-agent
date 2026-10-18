@@ -1077,6 +1077,10 @@ public struct PBPairingPayload: Sendable {
 
   public var server: String = String()
 
+  public var approval: Data = Data()
+
+  public var approvalSignature: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2979,7 +2983,7 @@ extension PBTerminalResize: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PairingPayload"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}root\0\u{1}server\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}root\0\u{1}server\0\u{1}approval\0\u{3}approval_signature\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2989,6 +2993,8 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularBytesField(value: &self.root) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.server) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.approval) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.approvalSignature) }()
       default: break
       }
     }
@@ -3001,12 +3007,20 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if !self.server.isEmpty {
       try visitor.visitSingularStringField(value: self.server, fieldNumber: 2)
     }
+    if !self.approval.isEmpty {
+      try visitor.visitSingularBytesField(value: self.approval, fieldNumber: 3)
+    }
+    if !self.approvalSignature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.approvalSignature, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBPairingPayload, rhs: PBPairingPayload) -> Bool {
     if lhs.root != rhs.root {return false}
     if lhs.server != rhs.server {return false}
+    if lhs.approval != rhs.approval {return false}
+    if lhs.approvalSignature != rhs.approvalSignature {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

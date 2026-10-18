@@ -71,4 +71,21 @@ public interface RegisterDeviceRequestOrBuilder extends
    * @return The signupProof.
    */
   io.github.lewin671.remoteagent.proto.SignupProof getSignupProof();
+
+  /**
+   * <pre>
+   * One-use approval signed by a currently enrolled device; required to add
+   * a device to an existing account. Never replaced by root-key possession.
+   * </pre>
+   *
+   * <code>bytes approval = 5 [json_name = "approval"];</code>
+   * @return The approval.
+   */
+  com.google.protobuf.ByteString getApproval();
+
+  /**
+   * <code>bytes approval_signature = 6 [json_name = "approvalSignature"];</code>
+   * @return The approvalSignature.
+   */
+  com.google.protobuf.ByteString getApprovalSignature();
 }

@@ -206,7 +206,9 @@ extension ServerTests {
 
         @Test func afterAReconnectASessionOfAMachineThatIsGoneGoes() async throws {
             try await world { w in
-                let other = try await FakeDaemon.create(root: w.root, server: w.server.url, http: w.http, setupToken: w.server.setupToken)
+                let otherAccount = try await approvedClient(authorizer: w.daemon.account, http: w.http, kind: .machine)
+                let other = try FakeDaemon(account: otherAccount, http: w.http)
+                try await other.login()
                 try await other.putMachine("other-mac.local")
                 try await other.putSession("there", live("/Users/me/Code/baz", "另一台上的"))
                 // Ended before everything else: far past the first page, where an ended session would stay.

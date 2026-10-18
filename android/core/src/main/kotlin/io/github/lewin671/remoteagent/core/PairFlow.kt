@@ -87,9 +87,12 @@ class Initiation internal constructor(
     private val remote: Remote,
     private val pairingId: String,
     private val key: PairKey,
+    private val expires: Long,
 ) {
     @Volatile private var stopped = false
     private var secrets: PairSecrets? = null
+    private var candidate: ByteArray? = null
+    private var candidateKind: DeviceKind? = null
 
     /** Waits for a device to ask to join; returns the emoji to compare and its kind. */
     suspend fun joined(): Pair<List<String>, DeviceKind> {
@@ -101,7 +104,9 @@ class Initiation internal constructor(
             RevealPairingRequest.newBuilder().setPairingId(pairingId).setInitiatorPublic(ByteString.copyFrom(key.public)).build(),
             Api.headers(tok),
         ).value()
-        val tr = Pairing.transcript(pairingId, key.public, st.joinerPublic.toByteArray(), st.joinerKindValue)
+        require(st.devicePublicKey.size() == 32 && st.joinerKind in listOf(DeviceKind.DEVICE_KIND_CLIENT, DeviceKind.DEVICE_KIND_MACHINE)) { "无效的候选设备身份" }
+        candidate = st.devicePublicKey.toByteArray(); candidateKind = st.joinerKind
+        val tr = Pairing.identityTranscript(pairingId, key.public, st.joinerPublic.toByteArray(), st.devicePublicKey.toByteArray(), st.joinerKindValue)
         val s = key.derive(st.joinerPublic.toByteArray(), tr)
         secrets = s
         return s.emoji to st.joinerKind
@@ -112,12 +117,13 @@ class Initiation internal constructor(
         val s = secrets ?: throw PairException("还没有设备加入")
         val acct = remote.account
         val tok = remote.currentToken()
+        val (approval, signature) = makePairApproval(acct, pairingId, candidate ?: throw PairException("没有候选设备"), candidateKind ?: throw PairException("没有候选设备"), expires)
         val env = Envelopes.seal(
             s.key,
             Header.newBuilder().setKind(PayloadKind.PAYLOAD_KIND_PAIRING).setRequestId(pairingId).setSender(acct.deviceId).build(),
-            PairingPayload.newBuilder().setRoot(ByteString.copyFrom(acct.root)).setServer(acct.server).build(),
+            PairingPayload.newBuilder().setRoot(ByteString.copyFrom(acct.root)).setServer(acct.server).setApproval(ByteString.copyFrom(approval)).setApprovalSignature(ByteString.copyFrom(signature)).build(),
         )
-        remote.api.pairing.approvePairing(ApprovePairingRequest.newBuilder().setPairingId(pairingId).setPayload(env).build(), Api.headers(tok)).value()
+        remote.api.pairing.approvePairing(ApprovePairingRequest.newBuilder().setPairingId(pairingId).setPayload(env).setApproval(ByteString.copyFrom(approval)).setApprovalSignature(ByteString.copyFrom(signature)).build(), Api.headers(tok)).value()
         // Only the new device confirming it has the key counts as success. A
         // pairing that disappears meanwhile leaves the outcome unknown.
         repeat(120) {
@@ -157,7 +163,7 @@ class Initiation internal constructor(
                 CreatePairingRequest.newBuilder().setCommit(ByteString.copyFrom(commit)).build(),
                 Api.headers(remote.currentToken()),
             ).value()
-            return Initiation(created.code, PairLink(created.code, remote.account.server, commit), remote, created.pairingId, key)
+            return Initiation(created.code, PairLink(created.code, remote.account.server, commit), remote, created.pairingId, key, created.expiresMs)
         }
     }
 }
@@ -176,12 +182,15 @@ suspend fun joinByPairing(
 ): Account {
     val api = Api(link.server, http)
     val key = PairKey()
+    val deviceSeed = randomBytes(32)
+    val devicePublic = SigningKey(deviceSeed).publicKey
     val joined = try {
         api.pairing.joinPairing(
             JoinPairingRequest.newBuilder()
                 .setCode(link.code.filterNot { it.isWhitespace() })
                 .setJoinerPublic(ByteString.copyFrom(key.public))
                 .setJoinerKind(DeviceKind.DEVICE_KIND_CLIENT)
+                .setDevicePublicKey(ByteString.copyFrom(devicePublic))
                 .build(),
             emptyMap(),
         ).value()
@@ -202,7 +211,7 @@ suspend fun joinByPairing(
     if (!Pairing.commit(st.initiatorPublic.toByteArray()).contentEquals(joined.commit.toByteArray())) {
         throw PairException("另一台设备的密钥和它的承诺对不上，已停止配对")
     }
-    val tr = Pairing.transcript(id, st.initiatorPublic.toByteArray(), key.public, DeviceKind.DEVICE_KIND_CLIENT.number)
+    val tr = Pairing.identityTranscript(id, st.initiatorPublic.toByteArray(), key.public, devicePublic, DeviceKind.DEVICE_KIND_CLIENT.number)
     val s = key.derive(st.initiatorPublic.toByteArray(), tr)
     onEmoji(s.emoji)
     val done = poll(stopped, PairingState.PAIRING_STATE_APPROVED, get)
@@ -211,7 +220,7 @@ suspend fun joinByPairing(
     // Canceled while the other device was allowing it: stop before registering.
     if (stopped()) throw PairException("已取消本次加入")
     onRegistering()
-    val acct = joinWithRoot(payload.root.toByteArray(), payload.server, http)
+    val acct = joinWithRoot(payload.root.toByteArray(), payload.server, http, enrollment = Enrollment(deviceSeed, id, payload.approval.toByteArray(), payload.approvalSignature.toByteArray()))
     // Tells the other device it went through. If this is lost, that device
     // reports the outcome as unknown; the join itself stands.
     try {

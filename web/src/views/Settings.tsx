@@ -449,7 +449,7 @@ export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: str
             </button>
           )}
         </div>
-        {!current && <div className="manage-hint">移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。持有账户密钥的设备仍可重新加入。</div>}
+        {!current && <div className="manage-hint">移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入需要另一台已登记设备批准。</div>}
       </div>
       {renaming && (
         <Sheet onClose={() => setRenaming(false)}>
@@ -466,7 +466,7 @@ export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: str
       {removing && (
         <Alert
           title={`移除 ${clientName(d, id)}？`}
-          text="它的登录会失效、推送订阅会删除；电脑上的会话和历史不受影响。它持有账户密钥，仍可以重新加入。"
+          text="它的登录会失效、推送订阅会删除；电脑上的会话和历史不受影响。再次加入需要另一台已登记设备批准。"
           ok="移除"
           danger
           onCancel={() => setRemoving(false)}

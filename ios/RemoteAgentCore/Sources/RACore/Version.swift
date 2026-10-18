@@ -6,4 +6,4 @@ public let envelopeVersion: UInt32 = 1
 /// together; keep it in step with Version in the Go package internal/protocol,
 /// PROTOCOL_VERSION in web/src and in Android's core/Version.kt. It is not
 /// envelopeVersion, which stored data keeps.
-public let protocolVersion: UInt32 = 7
+public let protocolVersion: UInt32 = 8

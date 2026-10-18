@@ -18,6 +18,7 @@ public  final class GetPairingResponse extends
     commit_ = com.google.protobuf.ByteString.EMPTY;
     joinerPublic_ = com.google.protobuf.ByteString.EMPTY;
     initiatorPublic_ = com.google.protobuf.ByteString.EMPTY;
+    devicePublicKey_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int STATE_FIELD_NUMBER = 1;
@@ -251,6 +252,33 @@ public  final class GetPairingResponse extends
   private void clearPayload() {
     payload_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int DEVICE_PUBLIC_KEY_FIELD_NUMBER = 7;
+  private com.google.protobuf.ByteString devicePublicKey_;
+  /**
+   * <code>bytes device_public_key = 7 [json_name = "devicePublicKey"];</code>
+   * @return The devicePublicKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getDevicePublicKey() {
+    return devicePublicKey_;
+  }
+  /**
+   * <code>bytes device_public_key = 7 [json_name = "devicePublicKey"];</code>
+   * @param value The devicePublicKey to set.
+   */
+  private void setDevicePublicKey(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    devicePublicKey_ = value;
+  }
+  /**
+   * <code>bytes device_public_key = 7 [json_name = "devicePublicKey"];</code>
+   */
+  private void clearDevicePublicKey() {
+
+    devicePublicKey_ = getDefaultInstance().getDevicePublicKey();
   }
 
   public static io.github.lewin671.remoteagent.proto.GetPairingResponse parseFrom(
@@ -597,6 +625,34 @@ public  final class GetPairingResponse extends
       return this;
     }
 
+    /**
+     * <code>bytes device_public_key = 7 [json_name = "devicePublicKey"];</code>
+     * @return The devicePublicKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getDevicePublicKey() {
+      return instance.getDevicePublicKey();
+    }
+    /**
+     * <code>bytes device_public_key = 7 [json_name = "devicePublicKey"];</code>
+     * @param value The devicePublicKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDevicePublicKey(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDevicePublicKey(value);
+      return this;
+    }
+    /**
+     * <code>bytes device_public_key = 7 [json_name = "devicePublicKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDevicePublicKey() {
+      copyOnWrite();
+      instance.clearDevicePublicKey();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.GetPairingResponse)
   }
   @java.lang.Override
@@ -620,10 +676,11 @@ public  final class GetPairingResponse extends
             "joinerKind_",
             "initiatorPublic_",
             "payload_",
+            "devicePublicKey_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\f\u0002\n\u0003" +
-              "\n\u0004\f\u0005\n\u0006\u1009\u0000";
+              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\f\u0002\n\u0003" +
+              "\n\u0004\f\u0005\n\u0006\u1009\u0000\u0007\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

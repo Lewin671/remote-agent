@@ -17,7 +17,7 @@
 #       --daemon also runs a daemon of the account, on its own tmux socket.
 #   dev-env.sh secret        prints the account secret (ra1.…), alone, on stdout
 #   dev-env.sh url           prints the server URL
-#   dev-env.sh launch [udid] launches the debug app on a simulator, joining with the secret
+#   dev-env.sh launch [udid] launches the debug app; pair it from an enrolled test device
 #   dev-env.sh pair          `remote-agent account pair`: shows a pairing code for the app
 #                            to join with (-joinServer <url> -joinCode <code>), asks y/N
 #   dev-env.sh join CODE     joins as another computer with the code the app's 添加设备 shows
@@ -98,7 +98,7 @@ start() {
 	token=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
 	echo "ra-ios-dev-$port" >"$dir/tmux-socket"
 
-	RA_SETUP_TOKEN=$token "$bin/remote-agent-server" --listen "127.0.0.1:$port" --db "$dir/server/relay.db" \
+	RA_SETUP_TOKEN=$token "$bin/remote-agent-server" --listen "127.0.0.1:$port" --db "$dir/server/relay.db" --allowed-origins "${RA_DEV_ALLOWED_ORIGINS:-}" \
 		>"$dir/server.log" 2>&1 &
 	echo $! >"$dir/server.pid"
 	i=0
@@ -145,8 +145,8 @@ start() {
 	if [ $daemon = 1 ]; then echo "Daemon:  running, tmux socket $(cat "$dir/tmux-socket")"; fi
 	echo
 	echo "Join from the app (debug build):"
-	echo "  $0 launch                 # launches it on the booted simulator with -joinSecret"
-	echo "  $0 secret                 # the account secret, to paste under 改用账户密钥"
+	echo "  $0 launch                 # launches it on the booted simulator; then use pair"
+	echo "  $0 secret                 # offline test-account backup only; cannot enroll a device"
 	echo "  $0 pair                   # a pairing code; then launch with -joinServer $url -joinCode <code>"
 	echo "Stop:    $0 stop"
 }
@@ -168,8 +168,8 @@ launch)
 	need_started
 	udid=${2:-booted}
 	xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
-	# The secret goes to the app as an argument: on this machine, for an account that lives in a temporary directory.
-	xcrun simctl launch "$udid" "$bundle" -joinSecret "$(agent "$dir/home" account secret 2>/dev/null)"
+	xcrun simctl launch "$udid" "$bundle"
+    echo "Use $0 pair, enter its code in the app, compare the emoji and approve in the terminal."
 	;;
 pair)
 	need_started

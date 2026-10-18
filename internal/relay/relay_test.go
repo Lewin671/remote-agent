@@ -307,7 +307,7 @@ func setupWithHandler(t *testing.T, wrap func(http.Handler) http.Handler, config
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.client, err = remoteclient.Register(ctx, e.acct.Secret())
+	e.client, err = remoteclient.Register(ctx, e.acct.Secret(), e.acct.DeviceKey())
 	if err != nil {
 		t.Fatal(err)
 	}

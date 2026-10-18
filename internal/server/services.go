@@ -89,14 +89,19 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 		}
 		return pl.check(u, growsDevices)
 	}
-	if err := a.s.store.addDevice(ctx, acct, create, id, reg, req.Msg.Registration, req.Msg.Signature, limit); err != nil {
+	approval, err := parseApproval(req.Msg.Approval, req.Msg.ApprovalSignature)
+	if err != nil {
+		undo()
+		return nil, connect.NewError(connect.CodePermissionDenied, err)
+	}
+	if err := a.s.store.addDevice(ctx, acct, create, id, reg, req.Msg.Registration, req.Msg.Signature, limit, approval); err != nil {
 		// No account was made: the signup it was admitted for is not used up.
 		undo()
 		var apiErr *connect.Error
 		switch {
 		case errors.As(err, &apiErr):
 			return nil, err
-		case errors.Is(err, errDeviceRevoked), errors.Is(err, errRegistrationStale), errors.Is(err, errOtherAccount):
+		case errors.Is(err, errDeviceRevoked), errors.Is(err, errRegistrationStale), errors.Is(err, errOtherAccount), errors.Is(err, errAdmissionRequired), errors.Is(err, errSuspended):
 			return nil, connect.NewError(connect.CodePermissionDenied, err)
 		case errors.Is(err, errNoRoom):
 			return nil, connect.NewError(connect.CodeResourceExhausted, err)

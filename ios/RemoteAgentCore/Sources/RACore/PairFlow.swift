@@ -104,16 +104,19 @@ public final class Initiation: Sendable {
     private let remote: Remote
     private let pairingId: String
     private let key: PairKey
+    private let expires: Int64
+    private let candidate = OSAllocatedUnfairLock<(Data, PBDeviceKind)?>(initialState: nil)
     private let sleep: Sleeper
     private let stopped = OSAllocatedUnfairLock(initialState: false)
     private let secrets = OSAllocatedUnfairLock<PairSecrets?>(initialState: nil)
 
-    private init(code: String, link: PairLink, remote: Remote, pairingId: String, key: PairKey, sleep: @escaping Sleeper) {
+    private init(code: String, link: PairLink, remote: Remote, pairingId: String, key: PairKey, expires: Int64, sleep: @escaping Sleeper) {
         self.code = code
         self.link = link
         self.remote = remote
         self.pairingId = pairingId
         self.key = key
+        self.expires = expires
         self.sleep = sleep
     }
 
@@ -128,7 +131,7 @@ public final class Initiation: Sendable {
         ).value()
         return Initiation(
             code: created.code, link: PairLink(code: created.code, server: remote.account.server, commit: commit),
-            remote: remote, pairingId: created.pairingID, key: key, sleep: sleep)
+            remote: remote, pairingId: created.pairingID, key: key, expires: created.expiresMs, sleep: sleep)
     }
 
     private func ask(_ token: String) async throws -> PBGetPairingResponse {
@@ -146,9 +149,11 @@ public final class Initiation: Sendable {
         reveal.pairingID = pairingId
         reveal.initiatorPublic = key.publicKey
         _ = try await remote.api.pairing.revealPairing(request: reveal, headers: Api.headers(token: tok)).value()
-        let tr = Pairing.transcript(
+        guard st.devicePublicKey.count == 32 else { throw PairError("无效的候选设备身份") }
+        candidate.withLock { $0 = (st.devicePublicKey, kind) }
+        let tr = Pairing.identityTranscript(
             pairingId: pairingId, initiatorPublic: key.publicKey, joinerPublic: st.joinerPublic,
-            joinerKind: kind.rawValue)
+            devicePublic: st.devicePublicKey, joinerKind: kind.rawValue)
         let s = try key.derive(otherPublic: st.joinerPublic, transcript: tr)
         secrets.withLock { $0 = s }
         return (s.emoji, kind)
@@ -159,6 +164,8 @@ public final class Initiation: Sendable {
         guard let s = secrets.withLock({ $0 }) else { throw PairError("还没有设备加入") }
         let acct = remote.account
         let tok = try await remote.currentToken()
+        guard let c = candidate.withLock({ $0 }) else { throw PairError("没有候选设备") }
+        let (approval, signature) = try makePairApproval(account: acct, pairingId: pairingId, candidate: c.0, kind: c.1, expires: expires)
         var h = PBHeader()
         h.kind = .pairing
         h.requestID = pairingId
@@ -166,9 +173,11 @@ public final class Initiation: Sendable {
         var payload = PBPairingPayload()
         payload.root = acct.root
         payload.server = acct.server
+        payload.approval = approval; payload.approvalSignature = signature
         var req = PBApprovePairingRequest()
         req.pairingID = pairingId
         req.payload = try Envelopes.seal(key: s.key, header: h, message: payload)
+        req.approval = approval; req.approvalSignature = signature
         _ = try await remote.api.pairing.approvePairing(request: req, headers: Api.headers(token: tok)).value()
         // Only the new device confirming it has the key counts as success. A
         // pairing that disappears meanwhile leaves the outcome unknown.
@@ -217,10 +226,13 @@ public func joinByPairing(
 ) async throws -> Account {
     let api = try Api(server: link.server, http: http)
     let key = try PairKey()
+    let deviceSeed = randomBytes(32)
+    let devicePublic = try SigningKey(seed: deviceSeed).publicKey
     var join = PBJoinPairingRequest()
     join.code = link.code.filter { !$0.isWhitespace }
     join.joinerPublic = key.publicKey
     join.joinerKind = .client
+    join.devicePublicKey = devicePublic
     let joined: PBJoinPairingResponse
     do {
         joined = try await api.pairing.joinPairing(request: join).value()
@@ -244,9 +256,9 @@ public func joinByPairing(
     if Pairing.commit(initiatorPublic: st.initiatorPublic) != joined.commit {
         throw PairError("另一台设备的密钥和它的承诺对不上，已停止配对")
     }
-    let tr = Pairing.transcript(
+    let tr = Pairing.identityTranscript(
         pairingId: id, initiatorPublic: st.initiatorPublic, joinerPublic: key.publicKey,
-        joinerKind: PBDeviceKind.client.rawValue)
+        devicePublic: devicePublic, joinerKind: PBDeviceKind.client.rawValue)
     let s = try key.derive(otherPublic: st.initiatorPublic, transcript: tr)
     onEmoji(s.emoji)
     let done = try await poll(stopped: stopped, want: .approved, sleep: sleep, get: get)
@@ -257,7 +269,7 @@ public func joinByPairing(
     // Canceled while the other device was allowing it: stop before registering.
     if stopped() { throw PairError("已取消本次加入") }
     onRegistering()
-    let acct = try await joinWithRoot(root: payload.root, server: payload.server, http: http)
+    let acct = try await joinWithRoot(root: payload.root, server: payload.server, http: http, enrollment: Enrollment(seed: deviceSeed, pairingId: id, approval: payload.approval, signature: payload.approvalSignature))
     // Tells the other device it went through. If this is lost, that device
     // reports the outcome as unknown; the join itself stands.
     ask.received = true

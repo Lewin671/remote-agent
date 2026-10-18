@@ -286,6 +286,8 @@ message TerminalResize {
 message PairingPayload {
   bytes root = 1;
   string server = 2;
+  bytes approval = 3;
+  bytes approval_signature = 4;
 }
 
 // NotifyContent is what a daemon tells the Android app in a push, sealed

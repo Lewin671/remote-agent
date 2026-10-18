@@ -79,10 +79,12 @@ suspend fun joinWithRoot(
     setupToken: String = "",
     kind: DeviceKind = DeviceKind.DEVICE_KIND_CLIENT,
     now: Long = System.currentTimeMillis(),
+    enrollment: Enrollment? = null,
 ): Account {
     val keys = Keys.derive(root)
-    val seed = randomBytes(32)
+    val seed = enrollment?.seed ?: randomBytes(32)
     val device = SigningKey(seed)
+    if (enrollment != null) verifyPairApproval(enrollment, root, kind, now)
     val reg = DeviceRegistration.newBuilder()
         .setAccountPublicKey(ByteString.copyFrom(keys.account.publicKey))
         .setDevicePublicKey(ByteString.copyFrom(device.publicKey))
@@ -96,6 +98,8 @@ suspend fun joinWithRoot(
             .setRegistration(ByteString.copyFrom(reg))
             .setSignature(ByteString.copyFrom(keys.account.sign(registerMessage(reg))))
             .setSetupToken(setupToken)
+            .setApproval(ByteString.copyFrom(enrollment?.approval ?: byteArrayOf()))
+            .setApprovalSignature(ByteString.copyFrom(enrollment?.signature ?: byteArrayOf()))
             .build(),
         emptyMap(),
     ).value()

@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
@@ -16,6 +17,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"google.golang.org/protobuf/proto"
 )
 
 // Pairing state lives in memory for a few minutes. The server only passes
@@ -39,20 +41,22 @@ const (
 )
 
 type pairing struct {
-	id         string
-	code       string
-	account    string // the initiator's
-	initiator  string // device ID
-	commit     []byte
-	expires    time.Time
-	attempts   int
-	candidate  []byte // hash of the joiner's token
-	joinerPub  []byte
-	joinerKind pb.DeviceKind
-	initPub    []byte
-	payload    *pb.Envelope
-	canceled   bool
-	delivered  bool
+	id                    string
+	code                  string
+	account               string // the initiator's
+	initiator             string // device ID
+	commit                []byte
+	expires               time.Time
+	attempts              int
+	candidate             []byte // hash of the joiner's token
+	joinerPub             []byte
+	devicePub             []byte
+	approval, approvalSig []byte
+	joinerKind            pb.DeviceKind
+	initPub               []byte
+	payload               *pb.Envelope
+	canceled              bool
+	delivered             bool
 }
 
 func (p *pairing) state() pb.PairingState {
@@ -123,6 +127,11 @@ func (ps *pairingService) CreatePairing(ctx context.Context, req *connect.Reques
 	}
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
+	// Serialize the membership check with the normal removal path.
+	d, err = ps.s.authenticate(ctx, bearerToken(req.Header().Get("Authorization")))
+	if err != nil {
+		return nil, err
+	}
 	ps.sweepLocked()
 	mine := 0
 	for _, p := range ps.byID {
@@ -144,11 +153,11 @@ func (ps *pairingService) CreatePairing(ctx context.Context, req *connect.Reques
 	}
 	p := &pairing{id: randomHex(16), code: code, account: d.account, initiator: d.id, commit: req.Msg.Commit, expires: time.Now().Add(pairingTTL)}
 	ps.byID[p.id], ps.byCode[code] = p, p
-	return connect.NewResponse(&pb.CreatePairingResponse{PairingId: p.id, Code: code, ExpiresMs: p.expires.UnixMilli()}), nil
+	return connect.NewResponse(&pb.CreatePairingResponse{PairingId: p.id, Code: code, ExpiresMs: p.expires.UnixMilli(), ApproverPublicKey: bytes.Clone(d.publicKey)}), nil
 }
 
 func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[pb.JoinPairingRequest]) (*connect.Response[pb.JoinPairingResponse], error) {
-	if len(req.Msg.JoinerPublic) != 32 {
+	if len(req.Msg.JoinerPublic) != 32 || len(req.Msg.DevicePublicKey) != ed25519.PublicKeySize {
 		return nil, invalid("the public key must be 32 bytes")
 	}
 	if req.Msg.JoinerKind != pb.DeviceKind_DEVICE_KIND_MACHINE && req.Msg.JoinerKind != pb.DeviceKind_DEVICE_KIND_CLIENT {
@@ -190,6 +199,7 @@ func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[
 	}
 	token := randomHex(32)
 	p.candidate = hashToken(token)
+	p.devicePub = bytes.Clone(req.Msg.DevicePublicKey)
 	p.joinerPub, p.joinerKind = bytes.Clone(req.Msg.JoinerPublic), req.Msg.JoinerKind
 	return connect.NewResponse(&pb.JoinPairingResponse{PairingId: p.id, Commit: p.commit, CandidateToken: token}), nil
 }
@@ -235,10 +245,23 @@ func (ps *pairingService) GetPairing(ctx context.Context, req *connect.Request[p
 	}
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
-	res := &pb.GetPairingResponse{State: p.state(), Commit: p.commit, JoinerPublic: p.joinerPub, JoinerKind: p.joinerKind, InitiatorPublic: p.initPub}
+	actor, actorErr := ps.s.store.device(ctx, p.initiator)
+	account, accountErr := ps.s.store.account(ctx, p.account)
+	if actorErr != nil || actor.account != p.account || accountErr != nil || account.status != accountActive || time.Now().After(p.expires) {
+		if err := ps.s.store.cancelAdmission(ctx, p.id); err != nil && !errors.Is(err, errEnrollmentCommitted) {
+			return nil, internal(err)
+		}
+		p.canceled = true
+		p.payload = nil
+	}
+	res := &pb.GetPairingResponse{State: p.state(), Commit: p.commit, JoinerPublic: p.joinerPub, JoinerKind: p.joinerKind, InitiatorPublic: p.initPub, DevicePublicKey: p.devicePub}
 	switch {
 	case initiator || p.payload == nil:
 	case req.Msg.Received:
+		d, err := ps.s.store.device(ctx, e2e.DeviceID(p.devicePub))
+		if err != nil || d.account != p.account {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("device registration is not complete"))
+		}
 		// The joiner has the key: drop it, and let the initiator know.
 		p.payload, p.delivered = nil, true
 		p.expires = time.Now().Add(pairingDeliveredTTL)
@@ -279,25 +302,64 @@ func (ps *pairingService) ApprovePairing(ctx context.Context, req *connect.Reque
 	}
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
+	if p.payload != nil && !p.canceled && bytes.Equal(p.approval, req.Msg.Approval) && bytes.Equal(p.approvalSig, req.Msg.ApprovalSignature) && proto.Equal(p.payload, req.Msg.Payload) {
+		return connect.NewResponse(&pb.ApprovePairingResponse{}), nil
+	}
 	if p.initPub == nil || p.canceled || p.delivered {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the pairing is not ready"))
 	}
-	p.payload = req.Msg.Payload
+	a, err := parseApproval(req.Msg.Approval, req.Msg.ApprovalSignature)
+	if err != nil || a == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, errAdmissionRequired)
+	}
+	cert := a.info
+	if cert.AccountId != p.account || cert.PairingId != p.id || cert.ApproverDeviceId != p.initiator || !bytes.Equal(cert.CandidateDevicePublicKey, p.devicePub) || cert.CandidateKind != p.joinerKind || cert.ExpiresMs > p.expires.UnixMilli() || cert.ExpiresMs <= nowMs() {
+		return nil, connect.NewError(connect.CodePermissionDenied, errAdmissionRequired)
+	}
+	if err := ps.s.store.approveAdmission(ctx, a, p.candidate); err != nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, err)
+	}
+	p.approval, p.approvalSig = bytes.Clone(a.raw), bytes.Clone(a.signature)
+	p.payload = proto.Clone(req.Msg.Payload).(*pb.Envelope)
 	return connect.NewResponse(&pb.ApprovePairingResponse{}), nil
 }
 
 func (ps *pairingService) CancelPairing(ctx context.Context, req *connect.Request[pb.CancelPairingRequest]) (*connect.Response[pb.CancelPairingResponse], error) {
 	p, _, err := ps.find(ctx, req.Header().Get("Authorization"), req.Msg.PairingId, req.Msg.CandidateToken)
 	if err != nil {
-		return nil, err
+		// A server restart drops only ephemeral pairing state. Persisted
+		// approvals must remain cancelable by the original candidate or approver.
+		if connect.CodeOf(err) != connect.CodeNotFound {
+			return nil, err
+		}
+		var account, approver string
+		var candidateHash []byte
+		if e := ps.s.store.db.QueryRowContext(ctx, `SELECT account_id, approver_device_id, candidate_token_hash FROM pairing_admissions WHERE pairing_id = ? AND expires_ms > ?`, req.Msg.PairingId, nowMs()).Scan(&account, &approver, &candidateHash); e != nil {
+			return nil, errNoPairing
+		}
+		allowed := req.Msg.CandidateToken != "" && len(candidateHash) == 32 && subtle.ConstantTimeCompare(candidateHash, hashToken(req.Msg.CandidateToken)) == 1
+		if !allowed && req.Msg.CandidateToken == "" {
+			d, e := ps.s.authenticate(ctx, bearerToken(req.Header().Get("Authorization")))
+			allowed = e == nil && d.account == account && d.id == approver
+		}
+		if !allowed {
+			return nil, errNoPairing
+		}
+		if e := ps.s.store.cancelAdmission(ctx, req.Msg.PairingId); e != nil {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, e)
+		}
+		return connect.NewResponse(&pb.CancelPairingResponse{}), nil
 	}
 	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	if err := ps.s.store.cancelAdmission(ctx, p.id); err != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
 	p.canceled = true
 	p.payload = nil
 	// Keep it briefly so the other side sees the cancellation.
 	p.expires = time.Now().Add(30 * time.Second)
 	delete(ps.byCode, p.code)
-	ps.mu.Unlock()
 	return connect.NewResponse(&pb.CancelPairingResponse{}), nil
 }
 

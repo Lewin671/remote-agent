@@ -25,10 +25,12 @@ import (
 )
 
 type testServer struct {
-	srv  *Server
-	url  string
-	keys *e2e.Keys
-	auth remoteagentv1connect.AuthServiceClient
+	enrollmentMu   sync.Mutex
+	enrollmentKeys map[string]ed25519.PrivateKey
+	srv            *Server
+	url            string
+	keys           *e2e.Keys
+	auth           remoteagentv1connect.AuthServiceClient
 }
 
 func newTestServer(t *testing.T) *testServer {
@@ -53,13 +55,64 @@ func (ts *testServer) register(t *testing.T, keys *e2e.Keys, kind pb.DeviceKind,
 	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(nil)
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: keys.AccountPublicKey(), DevicePublicKey: pub, Kind: kind})
-	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{
-		Registration: reg, Signature: keys.SignRegistration(reg), SetupToken: token,
-	}))
+	req := &pb.RegisterDeviceRequest{Registration: reg, Signature: keys.SignRegistration(reg), SetupToken: token}
+	ts.admitRegistration(t, req)
+	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(req))
 	if err != nil {
 		return nil, "", err
 	}
+	ts.enrollmentMu.Lock()
+	if ts.enrollmentKeys == nil {
+		ts.enrollmentKeys = map[string]ed25519.PrivateKey{}
+	}
+	ts.enrollmentKeys[res.Msg.DeviceId] = priv
+	ts.enrollmentMu.Unlock()
 	return priv, res.Msg.DeviceId, nil
+}
+
+// Test fixtures explicitly arrange a valid device's signed admission. Tests of
+// anonymous enrollment call RegisterDevice directly, so they cannot inherit it.
+func (ts *testServer) admitRegistration(t *testing.T, req *pb.RegisterDeviceRequest) {
+	t.Helper()
+	var reg pb.DeviceRegistration
+	if proto.Unmarshal(req.Registration, &reg) != nil {
+		t.Fatal("test registration malformed")
+	}
+	acct := e2e.AccountID(reg.AccountPublicKey)
+	ts.enrollmentMu.Lock()
+	defer ts.enrollmentMu.Unlock()
+	for id, priv := range ts.enrollmentKeys {
+		d, err := ts.srv.store.device(context.Background(), id)
+		if err != nil || d.account != acct {
+			continue
+		}
+		state, err := ts.srv.store.account(context.Background(), acct)
+		if err != nil || state.status != accountActive {
+			continue
+		}
+		raw, sig, err := e2e.NewPairApproval(acct, randomHex(16), priv, reg.DevicePublicKey, reg.Kind, time.Now().Add(time.Minute).UnixMilli())
+		if err != nil {
+			t.Fatal(err)
+		}
+		a, err := parseApproval(raw, sig)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := ts.srv.store.approveAdmission(context.Background(), a, hashToken("synthetic-candidate-token")); err != nil {
+			t.Fatal(err)
+		}
+		req.Approval, req.ApprovalSignature = raw, sig
+		return
+	}
+}
+
+func (ts *testServer) rememberKey(id string, priv ed25519.PrivateKey) {
+	ts.enrollmentMu.Lock()
+	defer ts.enrollmentMu.Unlock()
+	if ts.enrollmentKeys == nil {
+		ts.enrollmentKeys = map[string]ed25519.PrivateKey{}
+	}
+	ts.enrollmentKeys[id] = priv
 }
 
 func (ts *testServer) login(t *testing.T, priv ed25519.PrivateKey, id string) string {
@@ -97,7 +150,7 @@ func TestRegistration(t *testing.T) {
 	if _, _, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_MACHINE, "setup"); err != nil {
 		t.Fatal(err)
 	}
-	// Later devices need the account key, not the token.
+	// Later devices require explicit approval by an enrolled device, not a setup token.
 	if _, _, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -391,8 +444,9 @@ func TestPairingLimits(t *testing.T) {
 		t.Fatal(err)
 	}
 	jkey, _ := e2e.NewPairKey()
+	candidate, _, _ := ed25519.GenerateKey(nil)
 	join := func(code string) (*connect.Response[pb.JoinPairingResponse], error) {
-		return anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{Code: code, JoinerPublic: jkey.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+		return anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{Code: code, JoinerPublic: jkey.Public(), DevicePublicKey: candidate, JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 	}
 	joined, err := join(created.Msg.Code)
 	if err != nil {
@@ -415,7 +469,8 @@ func TestPairingLimits(t *testing.T) {
 		t.Fatal(err)
 	}
 	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: joined.Msg.PairingId}, []byte("x"))
-	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: joined.Msg.PairingId, Payload: env})); err != nil {
+	approval, approvalSig, _ := e2e.NewPairApproval(ts.acct(), joined.Msg.PairingId, priv, candidate, pb.DeviceKind_DEVICE_KIND_CLIENT, created.Msg.ExpiresMs)
+	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: joined.Msg.PairingId, Payload: env, Approval: approval, ApprovalSignature: approvalSig})); err != nil {
 		t.Fatal(err)
 	}
 	get := func(received bool) (*connect.Response[pb.GetPairingResponse], error) {
@@ -437,6 +492,13 @@ func TestPairingLimits(t *testing.T) {
 	}
 	if st := initiatorState(); st != pb.PairingState_PAIRING_STATE_APPROVED {
 		t.Fatalf("initiator before confirmation: %v", st)
+	}
+	if _, err := get(true); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("unregistered candidate claimed delivery: %v", err)
+	}
+	raw, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: candidate, Kind: pb.DeviceKind_DEVICE_KIND_CLIENT})
+	if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{Registration: raw, Signature: ts.keys.SignRegistration(raw), Approval: approval, ApprovalSignature: approvalSig})); err != nil {
+		t.Fatal(err)
 	}
 	if res, err := get(true); err != nil || res.Msg.State != pb.PairingState_PAIRING_STATE_DELIVERED {
 		t.Fatalf("confirm: %v %v", res, err)

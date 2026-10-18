@@ -3,15 +3,15 @@
 // emoji, and after the user checks them the existing device sends the
 // root key sealed for the new one.
 
-import { create } from "@bufbuild/protobuf";
+import { create, toBinary } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { relayFetch } from "./transport";
-import { checkServer, importSessionKey, openMessage, sealMessage } from "./crypto";
+import { accountKey, concat, deviceID, newDeviceKey, checkServer, importSessionKey, openMessage, sealMessage } from "./crypto";
 import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
-import { DeviceKind, PairingService, PairingState, type GetPairingResponse } from "./gen/remoteagent/v1/relay_pb";
+import { DeviceKind, PairApprovalSchema, PairingService, PairingState, type GetPairingResponse } from "./gen/remoteagent/v1/relay_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
-import { derivePair, newPairKey, pairCommit, pairTranscript } from "./pair";
+import { derivePair, newPairKey, pairCommit, pairIdentityTranscript } from "./pair";
 import { apiBase, joinWithRoot, type Remote } from "./remote";
 import type { StoredAccount } from "./storage";
 
@@ -102,10 +102,14 @@ export async function initiate(remote: Remote): Promise<Initiation> {
   let stopped = false;
   const poll = poller(() => pc.getPairing({ pairingId: id }), () => stopped);
   let secretsKey: Uint8Array | undefined;
+ let candidatePublic: Uint8Array | undefined;
+ let candidateKind: DeviceKind | undefined;
   const joined = (async () => {
     const st = await poll(PairingState.JOINED);
     await pc.revealPairing({ pairingId: id, initiatorPublic: key.pub });
-    const tr = await pairTranscript(id, key.pub, st.joinerPublic, st.joinerKind);
+    if (st.devicePublicKey.length !== 32 || ![DeviceKind.CLIENT, DeviceKind.MACHINE].includes(st.joinerKind)) throw new Error("无效的候选设备身份");
+ candidatePublic = st.devicePublicKey; candidateKind = st.joinerKind;
+ const tr = await pairIdentityTranscript(id, key.pub, st.joinerPublic, st.devicePublicKey, st.joinerKind);
     const s = await derivePair(key, st.joinerPublic, tr);
     secretsKey = s.key;
     return { emoji: s.emoji, kind: st.joinerKind };
@@ -116,14 +120,17 @@ export async function initiate(remote: Remote): Promise<Initiation> {
     link: `${location.origin}/#/pair?${q}`,
     joined,
     approve: async () => {
-      if (!secretsKey) throw new Error("还没有设备加入");
+      if (!secretsKey || !candidatePublic || candidateKind === undefined) throw new Error("还没有设备加入");
+      if (created.approverPublicKey.length !== 32 || await deviceID(created.approverPublicKey as Uint8Array<ArrayBuffer>) !== acct.deviceId) throw new Error("批准设备的公钥不匹配");
+      const approval = toBinary(PairApprovalSchema, create(PairApprovalSchema, {accountId: await deviceID((await accountKey(acct.root)).publicKey as Uint8Array<ArrayBuffer>), pairingId: id, approverDeviceId: acct.deviceId, approverPublicKey: created.approverPublicKey, candidateDevicePublicKey: candidatePublic, candidateKind, expiresMs: created.expiresMs, nonce: crypto.getRandomValues(new Uint8Array(16))}));
+      const approvalSignature = new Uint8Array(await crypto.subtle.sign("Ed25519", acct.devicePrivate, concat(new TextEncoder().encode("remote-agent/v1/pair-approval\0"), approval)));
       const env = await sealMessage(
         await importSessionKey(secretsKey as Uint8Array<ArrayBuffer>),
         { kind: PayloadKind.PAIRING, requestId: id, sender: acct.deviceId },
         PairingPayloadSchema,
-        create(PairingPayloadSchema, { root: acct.rootRaw, server: acct.server }),
+        create(PairingPayloadSchema, { root: acct.rootRaw, server: acct.server, approval, approvalSignature }),
       );
-      await pc.approvePairing({ pairingId: id, payload: env });
+      await pc.approvePairing({ pairingId: id, payload: env, approval, approvalSignature });
       // Only the new device confirming it has the key counts as success. A pairing
       // that disappears meanwhile leaves the outcome unknown.
       for (let i = 0; i < 120 && !stopped; i++) {
@@ -152,14 +159,16 @@ export async function joinByPairing(link: PairLink, onEmoji: (emoji: string[]) =
   link = { ...link, server: checkServer(link.server) };
   const pc = client(link.server);
   const key = newPairKey();
-  const joined = await pc.joinPairing({ code: link.code.replace(/\s/g, ""), joinerPublic: key.pub, joinerKind: DeviceKind.CLIENT });
+  const device = await newDeviceKey();
+ const devicePublic = new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey));
+ const joined = await pc.joinPairing({ devicePublicKey: devicePublic, code: link.code.replace(/\s/g, ""), joinerPublic: key.pub, joinerKind: DeviceKind.CLIENT });
   const id = joined.pairingId;
   const token = joined.candidateToken;
   if (link.commit && !eq(link.commit, joined.commit)) throw new Error("服务器返回的不是扫码那台设备的信息，已停止配对");
   const poll = poller(() => pc.getPairing({ pairingId: id, candidateToken: token }), stopped);
   const st = await poll(PairingState.REVEALED);
   if (!eq(await pairCommit(st.initiatorPublic), joined.commit)) throw new Error("另一台设备的密钥和它的承诺对不上，已停止配对");
-  const tr = await pairTranscript(id, st.initiatorPublic, key.pub, DeviceKind.CLIENT);
+  const tr = await pairIdentityTranscript(id, st.initiatorPublic, key.pub, devicePublic, DeviceKind.CLIENT);
   const s = await derivePair(key, st.initiatorPublic, tr);
   onEmoji(s.emoji);
   const done = await poll(PairingState.APPROVED);
@@ -175,7 +184,7 @@ export async function joinByPairing(link: PairLink, onEmoji: (emoji: string[]) =
   // undo it; the page then waits for the outcome instead.
   if (stopped()) throw new PairCanceled();
   onRegistering();
-  const acct = await joinWithRoot(msg.root as Uint8Array<ArrayBuffer>, msg.server);
+  const acct = await joinWithRoot(msg.root as Uint8Array<ArrayBuffer>, msg.server, { device, pairingId: id, approval: msg.approval, approvalSignature: msg.approvalSignature });
   // Tells the other device it went through. If this is lost, that device
   // reports the outcome as unknown; the join itself stands.
   await pc.getPairing({ pairingId: id, candidateToken: token, received: true }).catch(() => undefined);

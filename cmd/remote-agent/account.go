@@ -25,8 +25,7 @@ const accountUsage = `Usage:
   remote-agent account pair [--web URL]     add a device: show a QR code and a pairing code
   remote-agent account join --server URL --code CODE
   remote-agent account join LINK            join with a pairing code or link from another device
-  remote-agent account join                 join with the account secret (read from stdin)
-  remote-agent account secret               print the account secret for another device
+  remote-agent account secret               print offline decryption backup material (not enrollment authorization)
   remote-agent account status               show this machine's account
 `
 
@@ -70,7 +69,7 @@ func runAccountInit(args []string) error {
 	}
 	fmt.Printf("Created the account on %s; this machine is %s.\n", a.Server, a.DeviceID)
 	fmt.Println("The running daemon connects within a few seconds.")
-	fmt.Println("To add the web client or another computer, run `remote-agent account secret`.")
+	fmt.Println("To add a client or another computer, run `remote-agent account pair` and approve it on this device.")
 	return nil
 }
 
@@ -110,21 +109,7 @@ func runAccountJoin(args []string) error {
 }
 
 func joinWithSecret(ctx context.Context) error {
-	text, err := readLine("Account secret (from `remote-agent account secret`): ")
-	if err != nil {
-		return err
-	}
-	sec, err := e2e.ParseSecret(text)
-	if err != nil {
-		return err
-	}
-	a, err := relay.Join(ctx, sec.Server, sec.Root, "")
-	if err != nil {
-		return explainJoin(err)
-	}
-	fmt.Printf("Joined the account on %s; this machine is %s.\n", a.Server, a.DeviceID)
-	fmt.Println("The running daemon connects within a few seconds.")
-	return nil
+	return errors.New("an account secret cannot authorize a new device; use account pair on an enrolled device, then account join --server URL --code CODE")
 }
 
 func runAccountPair(args []string) error {

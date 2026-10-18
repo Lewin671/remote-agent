@@ -426,3 +426,12 @@ macOS arm64，本 worktree 的 Go 自动测试，加一轮本 worktree 构建的
 - 反向验证：临时把 `terminalCLI` 改回返回 daemon 的 CLI，上述用例全部失败；恢复后 `go test ./...` 通过。
 - 端到端：在 `PATH=/usr/bin:/bin:/usr/sbin:/sbin` 的 shell 里跑 `remote-agent codex`，终端打印 `remote-agent: codex was not found in the terminal's PATH; install it there or set REMOTE_AGENT_CODEX`，退出码 1，没有会话目录也没有 tmux 会话；PATH 前面放一个假 codex 再 `remote-agent new`，pty-host 的 argv 和画面都是这个假 codex，而不是 daemon 启动时找到的 `~/.local/shims/codex`。
 - 未覆盖：客户端界面上恢复和分叉的报错展示、定时任务的实际派发链路（这几条只有单元测试）；Claude Code（同一段代码，只测了 codex）；Linux。测试 server、daemon、tmux 和临时目录均已清理。
+
+
+## 设备加入批准（协议 8，2026-10-18）
+
+隔离临时账户、独立数据库和 daemon 状态目录、独立 tmux socket；中继和网页使用动态分配的 loopback 端口，未连接日常账户。直接在本机 Chrome 的网页表单填配对码，网页与 Go CLI 的四个图案一致，CLI 明确允许后网页登记成功；数据库只新增相应候选身份，准入记录已消费。随后从网页选择临时目录并启动真实 Codex，会话收到固定验收消息并将固定回复返回网页。此流程由界面操作触发，未向日常会话注入消息。
+
+自动检查包括保留根密钥但更换设备身份的再次登记攻击、候选身份/类型替换、过期、取消、批准方撤销、并发 bootstrap、响应丢失的原样重试、登记回滚以及服务重启后取消持久批准；Go、Web、Android 和 iOS 使用共同的固定合成向量验证批准签名与身份绑定的配对 transcript。
+
+这些结果只证明设备加入门禁及其正常链路，不证明未来密文的密码学撤销。未在 Android/iOS 真机直接完成新流程的界面验收；原生核心通过真实临时 Go server 的集成测试验证。内容密钥世代与不可信中继下的撤销完成条件尚待实现，见 [plan](plan.md#设备撤销的加密边界)。

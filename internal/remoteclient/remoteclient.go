@@ -36,8 +36,9 @@ type Client struct {
 	device     ed25519.PrivateKey
 }
 
-// Register creates a client device for the account in secret and logs in.
-func Register(ctx context.Context, secret e2e.Secret) (*Client, error) {
+// Register enrolls a client using an explicit currently enrolled device key.
+// Used by automated end-to-end drivers; the shared account secret is insufficient.
+func Register(ctx context.Context, secret e2e.Secret, authorizer ed25519.PrivateKey) (*Client, error) {
 	keys, err := e2e.Derive(secret.Root)
 	if err != nil {
 		return nil, err
@@ -55,7 +56,64 @@ func Register(ctx context.Context, secret e2e.Secret) (*Client, error) {
 	}
 	hc := netpolicy.Client(time.Minute)
 	auth := remoteagentv1connect.NewAuthServiceClient(hc, secret.Server)
-	res, err := auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{Registration: reg, Signature: keys.SignRegistration(reg)}))
+	if len(authorizer) != ed25519.PrivateKeySize {
+		return nil, errors.New("an enrolled authorizing device is required")
+	}
+	approverID := e2e.DeviceID(authorizer.Public().(ed25519.PublicKey))
+	challenge, err := auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: approverID}))
+	if err != nil {
+		return nil, err
+	}
+	logged, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{DeviceId: approverID, Challenge: challenge.Msg.Challenge, Signature: e2e.SignLogin(authorizer, challenge.Msg.Challenge)}))
+	if err != nil {
+		return nil, err
+	}
+	pc := remoteagentv1connect.NewPairingServiceClient(hc, secret.Server, connect.WithInterceptors(connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			req.Header().Set("Authorization", "Bearer "+logged.Msg.Token)
+			return next(ctx, req)
+		}
+	})))
+	ephemeral, err := e2e.NewPairKey()
+	if err != nil {
+		return nil, err
+	}
+	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairCommit(ephemeral.Public())}))
+	if err != nil {
+		return nil, err
+	}
+	joinKey, err := e2e.NewPairKey()
+	if err != nil {
+		return nil, err
+	}
+	joined, err := pc.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{Code: created.Msg.Code, JoinerPublic: joinKey.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT, DevicePublicKey: pub}))
+	if err != nil {
+		return nil, err
+	}
+	_, err = pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{PairingId: created.Msg.PairingId, InitiatorPublic: ephemeral.Public()}))
+	if err != nil {
+		return nil, err
+	}
+	approval, signature, err := e2e.NewPairApproval(e2e.AccountID(keys.AccountPublicKey()), created.Msg.PairingId, authorizer, pub, pb.DeviceKind_DEVICE_KIND_CLIENT, created.Msg.ExpiresMs)
+	if err != nil {
+		return nil, err
+	}
+	shared, err := ephemeral.Derive(joinKey.Public(), e2e.PairIdentityTranscript(created.Msg.PairingId, ephemeral.Public(), joinKey.Public(), pub, int32(pb.DeviceKind_DEVICE_KIND_CLIENT)))
+	if err != nil {
+		return nil, err
+	}
+	payload, err := e2e.SealMessage(shared.Key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: created.Msg.PairingId, Sender: approverID}, &pb.PairingPayload{Root: secret.Root, Server: secret.Server, Approval: approval, ApprovalSignature: signature})
+	if err != nil {
+		return nil, err
+	}
+	_, err = pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: created.Msg.PairingId, Payload: payload, Approval: approval, ApprovalSignature: signature}))
+	if err != nil {
+		return nil, err
+	}
+	res, err := auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{Registration: reg, Signature: keys.SignRegistration(reg), Approval: approval, ApprovalSignature: signature}))
+	if err == nil {
+		_, _ = pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: created.Msg.PairingId, CandidateToken: joined.Msg.CandidateToken, Received: true}))
+	}
 	if err != nil {
 		return nil, fmt.Errorf("register: %w", err)
 	}

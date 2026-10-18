@@ -1,3 +1,4 @@
+import { PairApprovalSchema } from "./gen/remoteagent/v1/relay_pb";
 // Remote keeps the page in sync with the server: it logs in, holds the
 // decrypted machines, sessions and events, follows the push stream, and
 // sends sealed commands. Content is only ever decrypted here.
@@ -20,7 +21,6 @@ import {
   open,
   openMessage,
   OpenError,
-  parseSecret,
   REGISTER_CONTEXT,
   sealMessage,
   signEnvelope,
@@ -223,19 +223,20 @@ export interface PrefsState {
   changedAt?: number;
 }
 
-/** Joins the account in secretText with a new browser device. */
-export async function join(secretText: string): Promise<StoredAccount> {
-  const secret = parseSecret(secretText);
-  return joinWithRoot(secret.root, secret.server);
-}
-
 /** Registers this browser as a device of the account with root key root. */
-export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: string): Promise<StoredAccount> {
+export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: string, enrollment?: { device: CryptoKeyPair; pairingId: string; approval: Uint8Array; approvalSignature: Uint8Array }): Promise<StoredAccount> {
   server = checkServer(server);
   const root = await importRoot(rootRaw);
   const acct = await accountKey(root);
-  const device = await newDeviceKey();
+  const device = enrollment?.device ?? await newDeviceKey();
   const pub = new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey));
+  if (enrollment) {
+    const a = fromBinary(PairApprovalSchema, enrollment.approval);
+    const same = (x: Uint8Array, y: Uint8Array) => x.length === y.length && x.every((v, i) => v === y[i]);
+    if (a.accountId !== await deviceID(acct.publicKey as Uint8Array<ArrayBuffer>) || a.pairingId !== enrollment.pairingId || a.candidateKind !== DeviceKind.CLIENT || !same(a.candidateDevicePublicKey, pub) || a.nonce.length !== 16 || a.expiresMs <= BigInt(Date.now()) || a.approverPublicKey.length !== 32 || await deviceID(a.approverPublicKey as Uint8Array<ArrayBuffer>) !== a.approverDeviceId || a.approverDeviceId === await deviceID(pub)) throw new Error("配对批准与这台设备不匹配或已过期");
+    const signer = await crypto.subtle.importKey("raw", a.approverPublicKey as Uint8Array<ArrayBuffer>, "Ed25519", false, ["verify"]);
+    if (!await crypto.subtle.verify("Ed25519", signer, enrollment.approvalSignature as Uint8Array<ArrayBuffer>, concat(new TextEncoder().encode("remote-agent/v1/pair-approval\0"), enrollment.approval))) throw new Error("配对批准签名无效");
+  }
   const reg = toBinary(
     DeviceRegistrationSchema,
     create(DeviceRegistrationSchema, {
@@ -246,7 +247,7 @@ export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: str
     }),
   );
   const auth = createClient(AuthService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(server), useBinaryFormat: true }));
-  const res = await auth.registerDevice({ registration: reg, signature: acct.sign(concat(new TextEncoder().encode(REGISTER_CONTEXT), reg)) });
+  const res = await auth.registerDevice({ registration: reg, signature: acct.sign(concat(new TextEncoder().encode(REGISTER_CONTEXT), reg)), approval: enrollment?.approval, approvalSignature: enrollment?.approvalSignature });
   if (res.deviceId !== (await deviceID(pub))) throw new Error("server 返回了意外的设备 ID");
   const stored: StoredAccount = { server, root, rootRaw: new Uint8Array(rootRaw), devicePrivate: device.privateKey, deviceId: res.deviceId };
   await saveAccount(stored);

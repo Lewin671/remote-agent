@@ -38,6 +38,9 @@ class PairSecrets(val sas: ByteArray, val key: ByteArray) {
 }
 
 object Pairing {
+    fun identityTranscript(id: String, initiator: ByteArray, joiner: ByteArray, device: ByteArray, kind: Int): ByteArray =
+        sha256("remote-agent/v1/pair-identity\u0000".toByteArray(), transcript(id, initiator, joiner, kind), ByteBuffer.allocate(4).putInt(device.size).array(), device)
+
     fun commit(initiatorPublic: ByteArray): ByteArray = sha256(PAIR_COMMIT_CONTEXT.toByteArray(), initiatorPublic)
 
     fun transcript(pairingId: String, initiatorPublic: ByteArray, joinerPublic: ByteArray, joinerKind: Int): ByteArray {

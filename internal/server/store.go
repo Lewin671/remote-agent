@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -41,7 +42,7 @@ func (s *store) tenant(account string) *tstore {
 
 // schemaVersion is PRAGMA user_version of the current layout. The layout
 // of one account per relay, before accounts had IDs, had none.
-const schemaVersion = 3
+const schemaVersion = 4
 
 const schema = `
 CREATE TABLE IF NOT EXISTS accounts (
@@ -78,6 +79,22 @@ CREATE TABLE IF NOT EXISTS revoked_devices (
 	revoked_ms INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS revoked_devices_account ON revoked_devices (account_id);
+-- Public, device-signed, expiring authorizations. No account secret is stored.
+CREATE TABLE IF NOT EXISTS pairing_admissions (
+ pairing_id TEXT PRIMARY KEY,
+ account_id TEXT NOT NULL REFERENCES accounts(id),
+ approver_device_id TEXT NOT NULL,
+ candidate_device_id TEXT NOT NULL,
+ candidate_kind INTEGER NOT NULL,
+ approval BLOB NOT NULL,
+ signature BLOB NOT NULL,
+ candidate_token_hash BLOB NOT NULL,
+ expires_ms INTEGER NOT NULL,
+ used_ms INTEGER NOT NULL DEFAULT 0,
+ canceled_ms INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS pairing_admissions_account ON pairing_admissions(account_id, expires_ms);
+
 CREATE TABLE IF NOT EXISTS tokens (
 	hash BLOB PRIMARY KEY,
 	account_id TEXT NOT NULL,
@@ -246,7 +263,7 @@ func (s *store) setAccountStatus(ctx context.Context, id string, status int) err
 
 // accountTables are the tables holding an account's data, in the order
 // its rows are deleted.
-var accountTables = []string{"events", "images", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
+var accountTables = []string{"pairing_admissions", "events", "images", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
 
 // deleteAccount deletes an account and everything stored for it. Its
 // device keys stay revoked, so that its registrations cannot come back.
@@ -318,7 +335,7 @@ var errNoRoom = errors.New("this relay has no room for another account")
 // first when create is not nil. Registering the same key again is a no-op.
 // limit, if not nil, is checked against the account's usage before a new
 // device is stored.
-func (s *store) addDevice(ctx context.Context, account string, create *newAccount, id string, reg *pb.DeviceRegistration, raw, sig []byte, limit func(accountUsage) error) error {
+func (s *store) addDevice(ctx context.Context, account string, create *newAccount, id string, reg *pb.DeviceRegistration, raw, sig []byte, limit func(accountUsage) error, approval *enrollmentApproval) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -331,9 +348,10 @@ func (s *store) addDevice(ctx context.Context, account string, create *newAccoun
 	if revoked != 0 {
 		return errDeviceRevoked
 	}
+	created := false
 	if create != nil {
 		// Two first devices of one account may race: the one that comes
-		// second finds the account made, and joins it.
+		// second finds the account made and must obtain a device approval.
 		var exists, n int
 		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FILTER (WHERE id = ?), COUNT(*) FROM accounts`, account).Scan(&exists, &n); err != nil {
 			return err
@@ -346,17 +364,34 @@ func (s *store) addDevice(ctx context.Context, account string, create *newAccoun
 				account, create.publicKey, create.plan, nowMs(), nowMs()); err != nil {
 				return err
 			}
+			created = true
 		}
 	}
+	var state int
+	if err := tx.QueryRowContext(ctx, `SELECT status FROM accounts WHERE id = ?`, account).Scan(&state); err != nil {
+		return err
+	}
+	if state != accountActive {
+		return errSuspended
+	}
 	var owner string
-	err = tx.QueryRowContext(ctx, `SELECT account_id FROM devices WHERE id = ?`, id).Scan(&owner)
+	var priorRaw, priorSig []byte
+	err = tx.QueryRowContext(ctx, `SELECT account_id, registration, signature FROM devices WHERE id = ?`, id).Scan(&owner, &priorRaw, &priorSig)
 	switch {
 	case err == nil && owner != account:
 		return errOtherAccount
 	case err == nil:
-		return tx.Commit() // registered before
+		if !bytes.Equal(priorRaw, raw) || !bytes.Equal(priorSig, sig) {
+			return errAdmissionRequired
+		}
+		return tx.Commit() // Exact response-loss retry, before admission consumption.
 	case !errors.Is(err, sql.ErrNoRows):
 		return err
+	}
+	if !created {
+		if err := consumeAdmission(ctx, tx, account, id, reg, approval); err != nil {
+			return err
+		}
 	}
 	var floor int64
 	if err := tx.QueryRowContext(ctx, `SELECT registration_floor_ms FROM accounts WHERE id = ?`, account).Scan(&floor); err != nil {
@@ -827,6 +862,7 @@ func (t *tstore) removeDevice(ctx context.Context, id string) (bool, error) {
 		return false, err
 	}
 	stmts := []string{
+		`UPDATE pairing_admissions SET canceled_ms = 1 WHERE account_id = ?1 AND used_ms = 0`,
 		`DELETE FROM devices WHERE account_id = ?1 AND id = ?2`,
 		`DELETE FROM tokens WHERE account_id = ?1 AND device_id = ?2`,
 		`DELETE FROM push_subs WHERE account_id = ?1 AND device_id = ?2`,

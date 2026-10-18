@@ -188,9 +188,12 @@ func solve(challenge []byte, bits uint) []byte {
 
 func (ts *testServer) signup(t *testing.T, keys *e2e.Keys, kind pb.DeviceKind, proof *pb.SignupProof) error {
 	t.Helper()
-	pub, _, _ := ed25519.GenerateKey(nil)
+	pub, priv, _ := ed25519.GenerateKey(nil)
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: keys.AccountPublicKey(), DevicePublicKey: pub, Kind: kind})
-	_, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{Registration: reg, Signature: keys.SignRegistration(reg), SignupProof: proof}))
+	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{Registration: reg, Signature: keys.SignRegistration(reg), SignupProof: proof}))
+	if err == nil {
+		ts.rememberKey(res.Msg.DeviceId, priv)
+	}
 	return err
 }
 

@@ -38,4 +38,14 @@ public interface JoinPairingRequestOrBuilder extends
    * @return The joinerKind.
    */
   io.github.lewin671.remoteagent.proto.DeviceKind getJoinerKind();
+
+  /**
+   * <pre>
+   * Ed25519 signing identity, generated before comparing the SAS.
+   * </pre>
+   *
+   * <code>bytes device_public_key = 4 [json_name = "devicePublicKey"];</code>
+   * @return The devicePublicKey.
+   */
+  com.google.protobuf.ByteString getDevicePublicKey();
 }
