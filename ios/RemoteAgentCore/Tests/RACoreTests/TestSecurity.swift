@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import RAProto
 import SwiftProtobuf
@@ -5,8 +6,9 @@ import os
 
 @testable import RACore
 
-/// A separate Go process owns synthetic authority keys. Test messages pass
-/// the real protocol and server; no product bypass or real key store is used.
+/// A separate Go process owns the synthetic phone authority's signing chain.
+/// Test messages pass the real protocol and server; no product bypass or real
+/// key store is used.
 final class TestSecurity: @unchecked Sendable {
     private static let registry = OSAllocatedUnfairLock<[String: TestSecurity]>(initialState: [:])
     private static let built: Result<URL, TestFailure> = Result {
@@ -78,6 +80,45 @@ final class TestSecurity: @unchecked Sendable {
         }
         return data
     }
+    static func base64(_ data: Data) -> String { data.base64EncodedString() }
+    /// The fixture's v3 record as the client stores it.
+    static func record(_ data: Data) throws -> DeviceSecurity.Record {
+        guard let o = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+            o["version"] as? Int == 3,
+            let account = o["account"] as? String,
+            let memberID = o["member"] as? String,
+            let xString = o["x"] as? String, let x = Data(base64Encoded: xString),
+            let domainString = o["domain"] as? String, let domain = Data(base64Encoded: domainString),
+            let genesisString = o["genesis"] as? String,
+            let genesis = Data(base64Encoded: genesisString),
+            let stateStrings = o["states"] as? [String],
+            let proofStrings = o["proofs"] as? [Any]
+        else { throw TestFailure("malformed synthetic record") }
+        guard stateStrings.count == proofStrings.count else {
+            throw TestFailure("malformed synthetic chain")
+        }
+        var states: [UInt64: DeviceSecurity.State] = [:]
+        var recovery: [UInt64: DeviceSecurity.RecoveryStatement] = [:]
+        for (i, raw) in stateStrings.enumerated() {
+            guard let b = Data(base64Encoded: raw) else { throw TestFailure("bad state") }
+            let s = try DeviceSecurity.parseState(b)
+            states[s.core.epoch] = s
+            if let proof = proofStrings[i] as? String {
+                guard let pb = Data(base64Encoded: proof) else { throw TestFailure("bad proof") }
+                recovery[s.core.epoch] = try DeviceSecurity.RecoveryStatement.parse(pb)
+            }
+        }
+        let pin = DeviceSecurity.Pin(account: account, domain: domain, genesis: genesis)
+        guard let head = states.values.max(by: { $0.core.epoch < $1.core.epoch }) else {
+            throw TestFailure("empty synthetic chain")
+        }
+        let xKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: x)
+        let present = head.core.member(memberID) != nil
+        let secret = present ? try DeviceSecurity.openGrant(pin, head, recipient: memberID, x: xKey) : nil
+        return try DeviceSecurity.Record(
+            pin: pin, states: states, memberID: memberID, xPrivate: x, member: present,
+            counterEpoch: head.core.contentEpoch, secret: secret, recovery: recovery)
+    }
     func seal(_ account: Account, _ header: PBHeader, _ plain: Data, seed: Data? = nil) throws
         -> PBEnvelope
     {
@@ -105,9 +146,6 @@ final class TestSecurity: @unchecked Sendable {
             ])
         return try (PBHeader(serializedBytes: bytes(reply, "Header")), bytes(reply, "Plain"))
     }
-    func rpc(_ capsule: Data) throws -> Data {
-        try bytes(call("rpc", ["Capsule": capsule.base64EncodedString()]), "Capsule")
-    }
     func store(_ id: String) -> TestSecurityStore? {
         storeLock.lock()
         defer { storeLock.unlock() }
@@ -125,14 +163,17 @@ final class TestSecurity: @unchecked Sendable {
     }
     static func initialize(_ account: Account) throws -> (TestSecurity, Data) {
         let fixture = try TestSecurity()
-        let keys = try Keys.derive(root: account.root)
         let response = try fixture.call(
             "init",
             [
-                "Account": deviceId(publicKey: keys.account.publicKey),
+                "Account": account.accountId.isEmpty
+                    ? deviceId(publicKey: try Keys.derive(root: account.root).account.publicKey)
+                    : account.accountId,
                 "Seed": account.deviceSeed.base64EncodedString(),
             ])
-        try fixture.install(DeviceSecurity.Record.parse(fixture.bytes(response, "Record")))
+        guard let raw = response["Record"] else { throw TestFailure("missing synthetic record") }
+        let data = try JSONSerialization.data(withJSONObject: raw)
+        try fixture.install(record(data))
         registry.withLock { $0[account.server] = fixture }
         return try (fixture, fixture.bytes(response, "Genesis"))
     }
@@ -156,60 +197,27 @@ final class TestSecurity: @unchecked Sendable {
 final class TestSecurityStore: DeviceSecurity.Storage, @unchecked Sendable {
     private let lock = NSLock()
     private var record: DeviceSecurity.Record
-    private var history: [UInt64: DeviceSecurity.Historical] = [:]
-    private var removals: Data?
     init(_ record: DeviceSecurity.Record) { self.record = record }
     func readSecurity() throws -> DeviceSecurity.Record {
         lock.lock()
         defer { lock.unlock() }
-        return record
+        var r = record
+        r.counter = r.blockEnd
+        return r
     }
     func initializeSecurity(_ record: DeviceSecurity.Record) throws {
         throw DeviceSecurity.Failure.conflict
     }
-    func reserveSecurity(expectedState: Data) throws -> DeviceSecurity.Record {
-        lock.lock()
-        defer { lock.unlock() }
-        guard try DeviceSecurity.stateHash(record.state) == expectedState else {
-            throw DeviceSecurity.Failure.stale
-        }
-        guard record.counter < UInt64.max else { throw DeviceSecurity.Failure.capacity }
-        record.counter += 1
-        return record
-    }
-    func advanceSecurity(expectedState: Data, next: DeviceSecurity.State) throws
+    func writeSecurity(expectedHead: Data, _ next: DeviceSecurity.Record) throws
         -> DeviceSecurity.Record
     {
         lock.lock()
         defer { lock.unlock() }
-        guard try DeviceSecurity.stateHash(record.state) == expectedState else {
+        guard try DeviceSecurity.stateHash(record.state) == expectedHead else {
             throw DeviceSecurity.Failure.stale
         }
-        history[record.state.core.epoch] = try DeviceSecurity.Historical(
-            state: record.state, secret: record.secret())
-        record = try record.advanced(next)
+        record = next
         return record
-    }
-    func readSecurityHistory(epoch: UInt64) throws -> DeviceSecurity.Historical? {
-        lock.lock()
-        defer { lock.unlock() }
-        return history[epoch]
-    }
-    func cacheSecurityHistory(_ value: DeviceSecurity.Historical) throws {
-        lock.lock()
-        defer { lock.unlock() }
-        try DeviceSecurity.verifyState(record.pin, value.state)
-        history[value.state.core.epoch] = value
-    }
-    func readRemovalOperations() throws -> Data? {
-        lock.lock()
-        defer { lock.unlock() }
-        return removals
-    }
-    func writeRemovalOperations(_ data: Data) throws {
-        lock.lock()
-        defer { lock.unlock() }
-        removals = data
     }
 }
 

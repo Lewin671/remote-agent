@@ -10,9 +10,9 @@ import Foundation
 import SwiftProtobuf
 
 /// AuthService registers devices and logs them in. Every device has its own
-/// Ed25519 key; a device is registered with a signature by the account key,
-/// which is derived from the account's root key, so only a holder of the
-/// root key can add devices.
+/// Ed25519 key. The first device of an account signs its registration with
+/// the account key; every later device on an existing account needs a
+/// approval signed by the current authority phone instead.
 public protocol PBAuthServiceClientInterface: Sendable {
 
     @available(iOS 13, *)
@@ -180,11 +180,6 @@ public protocol PBClientServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `setPushSubscription`(request: PBSetPushSubscriptionRequest, headers: Connect.Headers) async -> ResponseMessage<PBSetPushSubscriptionResponse>
 
-    /// RemoveDevice unregisters a device and ends its logins; a removed
-    /// machine's sessions are deleted.
-    @available(iOS 13, *)
-    func `removeDevice`(request: PBRemoveDeviceRequest, headers: Connect.Headers) async -> ResponseMessage<PBRemoveDeviceResponse>
-
     /// SetPushTarget registers where this device gets notifications, one
     /// target per type: Web Push and FCM can be set side by side.
     /// SetPushSubscription is the same for Web Push.
@@ -211,6 +206,21 @@ public protocol PBClientServiceClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `putAccountPrefs`(request: PBPutAccountPrefsRequest, headers: Connect.Headers) async -> ResponseMessage<PBPutAccountPrefsResponse>
+
+    /// PinSecurityDomain stores the phone-signed genesis state of a new
+    /// account. Called once, by the new authority phone.
+    @available(iOS 13, *)
+    func `pinSecurityDomain`(request: PBPinSecurityDomainRequest, headers: Connect.Headers) async -> ResponseMessage<PBPinSecurityDomainResponse>
+
+    /// PutSecurityState uploads a contiguous signed state chain segment. The
+    /// first state must continue from the stored head (or be the pinned
+    /// genesis). The server rejects forks, rollbacks and invalid signatures.
+    @available(iOS 13, *)
+    func `putSecurityState`(request: PBPutSecurityStateRequest, headers: Connect.Headers) async -> ResponseMessage<PBPutSecurityStateResponse>
+
+    /// GetSecurityStates returns states after an epoch, up to eight at a time.
+    @available(iOS 13, *)
+    func `getSecurityStates`(request: PBGetSecurityStatesRequest, headers: Connect.Headers) async -> ResponseMessage<PBGetSecurityStatesResponse>
 }
 
 /// Concrete implementation of `PBClientServiceClientInterface`.
@@ -252,11 +262,6 @@ public final class PBClientServiceClient: PBClientServiceClientInterface, Sendab
     }
 
     @available(iOS 13, *)
-    public func `removeDevice`(request: PBRemoveDeviceRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBRemoveDeviceResponse> {
-        return await self.client.unary(path: "/remoteagent.v1.ClientService/RemoveDevice", idempotencyLevel: .unknown, request: request, headers: headers)
-    }
-
-    @available(iOS 13, *)
     public func `setPushTarget`(request: PBSetPushTargetRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBSetPushTargetResponse> {
         return await self.client.unary(path: "/remoteagent.v1.ClientService/SetPushTarget", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -286,6 +291,21 @@ public final class PBClientServiceClient: PBClientServiceClientInterface, Sendab
         return await self.client.unary(path: "/remoteagent.v1.ClientService/PutAccountPrefs", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
+    @available(iOS 13, *)
+    public func `pinSecurityDomain`(request: PBPinSecurityDomainRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBPinSecurityDomainResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.ClientService/PinSecurityDomain", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `putSecurityState`(request: PBPutSecurityStateRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBPutSecurityStateResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.ClientService/PutSecurityState", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getSecurityStates`(request: PBGetSecurityStatesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBGetSecurityStatesResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.ClientService/GetSecurityStates", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
     public enum Metadata {
         public enum Methods {
             public static let listMachines = Connect.MethodSpec(name: "ListMachines", service: "remoteagent.v1.ClientService", type: .unary)
@@ -294,24 +314,21 @@ public final class PBClientServiceClient: PBClientServiceClientInterface, Sendab
             public static let forward = Connect.MethodSpec(name: "Forward", service: "remoteagent.v1.ClientService", type: .unary)
             public static let getPushKey = Connect.MethodSpec(name: "GetPushKey", service: "remoteagent.v1.ClientService", type: .unary)
             public static let setPushSubscription = Connect.MethodSpec(name: "SetPushSubscription", service: "remoteagent.v1.ClientService", type: .unary)
-            public static let removeDevice = Connect.MethodSpec(name: "RemoveDevice", service: "remoteagent.v1.ClientService", type: .unary)
             public static let setPushTarget = Connect.MethodSpec(name: "SetPushTarget", service: "remoteagent.v1.ClientService", type: .unary)
             public static let getImage = Connect.MethodSpec(name: "GetImage", service: "remoteagent.v1.ClientService", type: .unary)
             public static let listDevices = Connect.MethodSpec(name: "ListDevices", service: "remoteagent.v1.ClientService", type: .unary)
             public static let putDeviceMeta = Connect.MethodSpec(name: "PutDeviceMeta", service: "remoteagent.v1.ClientService", type: .unary)
             public static let getAccountPrefs = Connect.MethodSpec(name: "GetAccountPrefs", service: "remoteagent.v1.ClientService", type: .unary)
             public static let putAccountPrefs = Connect.MethodSpec(name: "PutAccountPrefs", service: "remoteagent.v1.ClientService", type: .unary)
+            public static let pinSecurityDomain = Connect.MethodSpec(name: "PinSecurityDomain", service: "remoteagent.v1.ClientService", type: .unary)
+            public static let putSecurityState = Connect.MethodSpec(name: "PutSecurityState", service: "remoteagent.v1.ClientService", type: .unary)
+            public static let getSecurityStates = Connect.MethodSpec(name: "GetSecurityStates", service: "remoteagent.v1.ClientService", type: .unary)
         }
     }
 }
 
 /// MachineService is used by daemons.
 public protocol PBMachineServiceClientInterface: Sendable {
-
-    /// One-time transport pin, installed by the authority host. Endpoints keep
-    /// their independently SAS-pinned authority; this is only server-side ACL.
-    @available(iOS 13, *)
-    func `pinSecurityDomain`(request: PBPinSecurityDomainRequest, headers: Connect.Headers) async -> ResponseMessage<PBPinSecurityDomainResponse>
 
     @available(iOS 13, *)
     func `putMachine`(request: PBPutMachineRequest, headers: Connect.Headers) async -> ResponseMessage<PBPutMachineResponse>
@@ -347,11 +364,6 @@ public final class PBMachineServiceClient: PBMachineServiceClientInterface, Send
     }
 
     @available(iOS 13, *)
-    public func `pinSecurityDomain`(request: PBPinSecurityDomainRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBPinSecurityDomainResponse> {
-        return await self.client.unary(path: "/remoteagent.v1.MachineService/PinSecurityDomain", idempotencyLevel: .unknown, request: request, headers: headers)
-    }
-
-    @available(iOS 13, *)
     public func `putMachine`(request: PBPutMachineRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBPutMachineResponse> {
         return await self.client.unary(path: "/remoteagent.v1.MachineService/PutMachine", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -383,13 +395,59 @@ public final class PBMachineServiceClient: PBMachineServiceClientInterface, Send
 
     public enum Metadata {
         public enum Methods {
-            public static let pinSecurityDomain = Connect.MethodSpec(name: "PinSecurityDomain", service: "remoteagent.v1.MachineService", type: .unary)
             public static let putMachine = Connect.MethodSpec(name: "PutMachine", service: "remoteagent.v1.MachineService", type: .unary)
             public static let putSession = Connect.MethodSpec(name: "PutSession", service: "remoteagent.v1.MachineService", type: .unary)
             public static let uploadEvents = Connect.MethodSpec(name: "UploadEvents", service: "remoteagent.v1.MachineService", type: .unary)
             public static let listSessionHeads = Connect.MethodSpec(name: "ListSessionHeads", service: "remoteagent.v1.MachineService", type: .unary)
             public static let notify = Connect.MethodSpec(name: "Notify", service: "remoteagent.v1.MachineService", type: .unary)
             public static let putImage = Connect.MethodSpec(name: "PutImage", service: "remoteagent.v1.MachineService", type: .unary)
+        }
+    }
+}
+
+/// RecoveryService transfers authority with a recovery code after 48 hours.
+/// It is unauthenticated because the recovering phone has no token yet; the
+/// statement and state signatures are the authorization.
+public protocol PBRecoveryServiceClientInterface: Sendable {
+
+    @available(iOS 13, *)
+    func `getRecoveryContext`(request: PBGetRecoveryContextRequest, headers: Connect.Headers) async -> ResponseMessage<PBGetRecoveryContextResponse>
+
+    @available(iOS 13, *)
+    func `submitRecovery`(request: PBSubmitRecoveryRequest, headers: Connect.Headers) async -> ResponseMessage<PBSubmitRecoveryResponse>
+
+    @available(iOS 13, *)
+    func `completeRecovery`(request: PBCompleteRecoveryRequest, headers: Connect.Headers) async -> ResponseMessage<PBCompleteRecoveryResponse>
+}
+
+/// Concrete implementation of `PBRecoveryServiceClientInterface`.
+public final class PBRecoveryServiceClient: PBRecoveryServiceClientInterface, Sendable {
+    private let client: Connect.ProtocolClientInterface
+
+    public init(client: Connect.ProtocolClientInterface) {
+        self.client = client
+    }
+
+    @available(iOS 13, *)
+    public func `getRecoveryContext`(request: PBGetRecoveryContextRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBGetRecoveryContextResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.RecoveryService/GetRecoveryContext", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `submitRecovery`(request: PBSubmitRecoveryRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBSubmitRecoveryResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.RecoveryService/SubmitRecovery", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `completeRecovery`(request: PBCompleteRecoveryRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBCompleteRecoveryResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.RecoveryService/CompleteRecovery", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    public enum Metadata {
+        public enum Methods {
+            public static let getRecoveryContext = Connect.MethodSpec(name: "GetRecoveryContext", service: "remoteagent.v1.RecoveryService", type: .unary)
+            public static let submitRecovery = Connect.MethodSpec(name: "SubmitRecovery", service: "remoteagent.v1.RecoveryService", type: .unary)
+            public static let completeRecovery = Connect.MethodSpec(name: "CompleteRecovery", service: "remoteagent.v1.RecoveryService", type: .unary)
         }
     }
 }

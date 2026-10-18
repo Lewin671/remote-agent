@@ -1091,16 +1091,19 @@ public struct PBPairingPayload: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var root: Data = Data()
-
   public var server: String = String()
 
   public var approval: Data = Data()
 
   public var approvalSignature: Data = Data()
 
-  /// Complete signed membership state produced by consuming the exact context.
-  public var securityState: Data = Data()
+  /// The signed chain from genesis to the joined state, each with its
+  /// recovery proof when it is a recovery transition.
+  public var securityStates: [PBSecurityState] = []
+
+  /// Public account key. It names the account on registration; the new
+  /// device does not receive the account root.
+  public var accountPublicKey: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3085,7 +3088,7 @@ extension PBTerminalResize: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PairingPayload"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}root\0\u{1}server\0\u{1}approval\0\u{3}approval_signature\0\u{3}security_state\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\u{2}server\0\u{1}approval\0\u{3}approval_signature\0\u{3}security_states\0\u{3}account_public_key\0\u{b}root\0\u{c}\u{1}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3093,20 +3096,17 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularBytesField(value: &self.root) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.server) }()
       case 3: try { try decoder.decodeSingularBytesField(value: &self.approval) }()
       case 4: try { try decoder.decodeSingularBytesField(value: &self.approvalSignature) }()
-      case 5: try { try decoder.decodeSingularBytesField(value: &self.securityState) }()
+      case 5: try { try decoder.decodeRepeatedMessageField(value: &self.securityStates) }()
+      case 6: try { try decoder.decodeSingularBytesField(value: &self.accountPublicKey) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.root.isEmpty {
-      try visitor.visitSingularBytesField(value: self.root, fieldNumber: 1)
-    }
     if !self.server.isEmpty {
       try visitor.visitSingularStringField(value: self.server, fieldNumber: 2)
     }
@@ -3116,18 +3116,21 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if !self.approvalSignature.isEmpty {
       try visitor.visitSingularBytesField(value: self.approvalSignature, fieldNumber: 4)
     }
-    if !self.securityState.isEmpty {
-      try visitor.visitSingularBytesField(value: self.securityState, fieldNumber: 5)
+    if !self.securityStates.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.securityStates, fieldNumber: 5)
+    }
+    if !self.accountPublicKey.isEmpty {
+      try visitor.visitSingularBytesField(value: self.accountPublicKey, fieldNumber: 6)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBPairingPayload, rhs: PBPairingPayload) -> Bool {
-    if lhs.root != rhs.root {return false}
     if lhs.server != rhs.server {return false}
     if lhs.approval != rhs.approval {return false}
     if lhs.approvalSignature != rhs.approvalSignature {return false}
-    if lhs.securityState != rhs.securityState {return false}
+    if lhs.securityStates != rhs.securityStates {return false}
+    if lhs.accountPublicKey != rhs.accountPublicKey {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

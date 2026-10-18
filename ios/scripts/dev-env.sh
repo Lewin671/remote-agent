@@ -169,11 +169,11 @@ launch)
 	udid=${2:-booted}
 	xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
 	xcrun simctl launch "$udid" "$bundle"
-    die "pairing is started in the phone app; this test account has no phone yet (the app is protocol 9 until P4-P6)"
+    die "pairing is started in the phone app; this test account has no phone yet (the Android phone app is protocol 9 until P4)"
 	;;
 pair)
 	need_started
-	die "pairing is started in the phone app; this test account has no phone yet (the app is protocol 9 until P4-P6)"
+	die "pairing is started in the phone app; this test account has no phone yet (the Android phone app is protocol 9 until P4)"
 	;;
 join)
 	need_started

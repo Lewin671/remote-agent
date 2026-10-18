@@ -8,181 +8,313 @@ import Testing
 @Suite struct DeviceSecurityTests {
     typealias S = DeviceSecurity
     let v: [String: Any]
-    init() throws { v = try loadJSON("internal/deviceauth/testdata/domain-v2.json") }
-    func data(_ key: String) throws -> Data {
-        guard let s = v[key] as? String, let b = Data(base64Encoded: s) else {
-            throw S.Failure.invalid
-        }
+    init() throws { v = try loadJSON("internal/deviceauth/testdata/domain-v3.json") }
+    func hex(_ key: String) throws -> Data {
+        guard let s = v[key] as? String, let b = Data(hex: s) else { throw S.Failure.invalid }
         return b
     }
-    func pin() throws -> S.Pin {
-        guard let p = v["Pin"] as? [String: Any] else { throw S.Failure.invalid }
-        func b(_ key: String) throws -> Data {
-            guard let a = p[key] as? [UInt8], a.count == 32 else { throw S.Failure.invalid }
-            return Data(a)
+    func state(_ key: String) throws -> S.State {
+        guard let o = v[key] as? [String: Any], let raw = Data(base64Encoded: o.s("state")) else {
+            throw S.Failure.invalid
         }
-        return S.Pin(
-            account: p["Account"] as! String, domain: try b("Domain"), genesis: try b("Genesis"),
-            authorityID: p["AuthorityID"] as! String, authorityEd: try b("AuthorityEd"),
-            authorityX: try b("AuthorityX"))
+        let s = try S.parseState(raw)
+        let h = try S.stateHash(s)
+        #expect(h.hex == o.s("hash"))
+        return s
     }
-    @Test func canonicalMembershipGrantAndKey() throws {
-        let p = try pin()
-        let genesis = try S.parseState(data("State"))
-        let next = try S.parseState(data("NextState"))
-        try S.verifyState(p, genesis)
-        try S.advance(p, genesis, next)
-        #expect(try S.stateBytes(next) == data("NextState"))
-        let x = try Curve25519.KeyAgreement.PrivateKey(
-            rawRepresentation: Data(hex: v.s("WriterX"))!)
-        #expect(try S.openGrant(p, next, recipient: v.s("RecipientID"), x: x).hex == v.s("Secret"))
-        #expect(throws: (any Error).self) {
-            try S.openGrant(
-                p, next, recipient: v.s("RecipientID"), x: Curve25519.KeyAgreement.PrivateKey())
+    func stmt() throws -> S.RecoveryStatement {
+        guard let raw = Data(base64Encoded: v.s("recovery_statement")) else {
+            throw S.Failure.invalid
         }
-        #expect(throws: S.Failure.self) { try S.advance(p, next, genesis) }
-        var wrong = next
-        wrong.core.authorityEd[0] ^= 1
-        #expect(throws: S.Failure.self) { try S.verifyState(p, wrong) }
+        return try S.RecoveryStatement.parse(raw)
     }
-    @Test func exactCipherAndProjection() throws {
-        let p = try pin()
-        let state = try S.parseState(data("NextState"))
-        let wire = try S.parseWire(data("Wire"))
-        let secret = Data(hex: v.s("Secret"))!
-        let seed = Data(hex: v.s("SessionSeed"))!
-        let (header, plain) = try S.open(p, state, wire, secret: secret, sessionSeed: seed)
-        #expect(plain == (try data("Plain")))
-        #expect(
-            try S.contentKey(secret: secret, sessionSeed: seed, header: header).hex == v.s("Key"))
-        #expect(try S.wireBytes(wire) == data("Wire"))
-        #expect(try S.headerBytes(header) == data("Header"))
-        let env = try S.envelope(wire)
-        #expect(try S.wireBytes(S.fromEnvelope(env)) == data("Wire"))
-        var moved = env
-        var ph = try PBHeader(serializedBytes: moved.header)
-        ph.seq += 1
-        moved.header = try ph.serializedData()
-        #expect(throws: S.Failure.self) { try S.fromEnvelope(moved) }
-        var bad = wire
-        bad.formed.cipher[0] ^= 1
-        #expect(throws: S.Failure.self) { try S.verifyWire(p, state, bad) }
-        bad = wire
-        bad.formed.origin[0] ^= 1
-        #expect(throws: S.Failure.self) { try S.verifyWire(p, state, bad) }
+    func pin() throws -> S.Pin { try S.pin(for: try state("genesis")) }
+    func phoneX() throws -> Curve25519.KeyAgreement.PrivateKey {
+        try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: try hex("phone_x"))
     }
-    @Test func truncationCounterAndUnexportedRoot() throws {
-        let raw = try data("Header")
-        for i in 0..<raw.count {
-            #expect(throws: S.Failure.self) { try S.parseHeader(raw.prefix(i)) }
-        }
-        #expect(throws: S.Failure.self) { try S.parseHeader(raw + Data([0])) }
-        let secret = Data(hex: v.s("Secret"))!
-        let seed = Data(hex: v.s("SessionSeed"))!
-        var h = try S.parseHeader(raw)
-        let first = try S.contentKey(secret: secret, sessionSeed: seed, header: h)
-        h.counter += 1
-        #expect(try S.contentKey(secret: secret, sessionSeed: seed, header: h) != first)
-        let formed = try S.form(
-            secret: secret, sessionSeed: seed, header: h, plaintext: data("Plain"),
-            signingKey: SigningKey(seed: Data(hex: v.s("WriterSeed"))!))
-        #expect(formed.origin.count == 64)
-        #expect(try S.commitment(formed).count == 32)
+    func machineX() throws -> Curve25519.KeyAgreement.PrivateKey {
+        try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: try hex("machine_x"))
     }
-}
 
-extension DeviceSecurityTests {
-    @Test func opensGoNonceBoundHPKERPC() throws {
+    @Test func verifiesTheGoChainAndGrants() throws {
         let p = try pin()
-        let r = v["Reply"] as! [String: Any]
-        let w = v["Waiter"] as! [String: Any]
-        let capsule = S.Capsule(
-            from: r["From"] as! String, to: r["To"] as! String,
-            method: S.Method(rawValue: r["Method"] as! UInt32)!,
-            enc: Data(base64Encoded: r["Enc"] as! String)!,
-            cipher: Data(base64Encoded: r["Cipher"] as! String)!)
-        let waiter = S.Waiter(
-            pin: p, sender: w["Sender"] as! String,
-            method: S.Method(rawValue: w["Method"] as! UInt32)!,
-            nonce: Data(w["Nonce"] as! [UInt8]), requestHash: Data(w["RequestHash"] as! [UInt8]))
-        let x = try Curve25519.KeyAgreement.PrivateKey(
-            rawRepresentation: Data(hex: v.s("WriterX"))!)
-        let reply = try S.reply(waiter, capsule, x: x)
-        let state = try S.parseState(data("NextState"))
-        let wire = try S.parseWire(data("Wire"))
-        _ = try S.attach(wire.formed, jsonReply: reply, pin: p, state: state)
-        #expect(
-            try S.capsuleBytes(S.parseCapsule(S.capsuleBytes(capsule))) == S.capsuleBytes(capsule))
-        var wrong = waiter
-        wrong.nonce[0] ^= 1
-        #expect(throws: S.Failure.self) { try S.reply(wrong, capsule, x: x) }
-        let (request, _) = try S.request(
-            pin: p, sender: v.s("RecipientID"),
-            signingKey: SigningKey(seed: Data(hex: v.s("WriterSeed"))!), method: .authorize,
-            jsonBody: S.authorizationRequest(wire.formed))
-        #expect(request.cipher.count > 16)
-    }
-}
-
-extension DeviceSecurityTests {
-    @Test func verifiesFullGoCompletionAndRejectsWrongRevision() throws {
-        let v = try loadJSON("internal/deviceauth/testdata/revocation-v2.json")
-        let p = v["Pin"] as! [String: Any]
-        func h(_ key: String) -> Data { Data(p[key] as! [UInt8]) }
-        let pin = S.Pin(
-            account: p["Account"] as! String, domain: h("Domain"), genesis: h("Genesis"),
-            authorityID: p["AuthorityID"] as! String, authorityEd: h("AuthorityEd"),
-            authorityX: h("AuthorityX"))
-        let original = try JSONSerialization.data(withJSONObject: v["Original"]!)
-        let complete = try JSONSerialization.data(withJSONObject: v["Completion"]!)
-        let chain = try (v["Chain"] as! [String]).map { try S.parseState(Data(base64Encoded: $0)!) }
-        try S.verifyCompletion(
-            pin: pin, completionJSON: complete, originalJSON: original, chain: chain)
-        var c = v["Completion"] as! [String: Any]
-        var group = c["Group"] as! [String: Any]
-        var receipts = group["Receipts"] as! [[String: Any]]
-        receipts[0]["Revision"] = 1
-        group["Receipts"] = receipts
-        c["Group"] = group
-        let bad = try JSONSerialization.data(withJSONObject: c)
+        let genesis = try state("genesis")
+        let added = try state("added")
+        let renewal = try state("renewal")
+        let recovery = try state("recovery")
+        try S.verifyChain(pin: p, states: [genesis, added, renewal, recovery], proofs: [nil, nil, nil, try stmt()])
+        #expect(try S.stateBytes(added) == {
+            let o = v["added"] as! [String: Any]
+            return Data(base64Encoded: o.s("state"))!
+        }())
+        let phone = try S.openGrant(p, added, recipient: genesis.core.authorityID, x: phoneX())
+        #expect(phone == (try hex("content_secret_2")))
+        let machine = try S.openGrant(p, added, recipient: (try state("added")).core.members[1].id, x: machineX())
+        #expect(machine == (try hex("content_secret_2")))
+        // The old authority phone has no grant in the recovery state.
         #expect(throws: S.Failure.self) {
-            try S.verifyCompletion(
-                pin: pin, completionJSON: bad, originalJSON: original, chain: chain)
+            _ = try S.openGrant(p, recovery, recipient: genesis.core.authorityID, x: phoneX())
+        }
+        #expect(recovery.prevSecret.isEmpty)
+        #expect(recovery.core.contentEpoch == renewal.core.contentEpoch + 1)
+    }
+
+    @Test func rejectsATamperedStateAndPrevSecret() throws {
+        let p = try pin()
+        let genesis = try state("genesis")
+        let added = try state("added")
+        let renewal = try state("renewal")
+        let stmt = try stmt()
+        var bad = added
+        bad.prevSecret[0] ^= 1
+        #expect(throws: S.Failure.self) { try S.verifyTransition(parent: genesis, next: bad) }
+        bad = renewal
+        bad.core.notAfter += 1
+        #expect(throws: S.Failure.self) { try S.verifyTransition(parent: added, next: bad) }
+        bad = renewal
+        bad.signature[0] ^= 1
+        #expect(throws: S.Failure.self) { try S.verifyTransition(parent: added, next: bad) }
+        let recovery = try state("recovery")
+        #expect(throws: S.Failure.self) {
+            try S.verifyTransition(parent: renewal, next: recovery, recovery: nil)
+        }
+        var replay = recovery
+        replay.core.removed = []
+        #expect(throws: S.Failure.self) {
+            try S.verifyTransition(parent: renewal, next: replay, recovery: stmt)
+        }
+        #expect(throws: S.Failure.self) {
+            try S.verifyChain(pin: p, states: [try state("genesis"), recovery], proofs: [nil, nil])
         }
     }
-}
 
-extension DeviceSecurityTests {
-    @Test func matchesGoNotificationRoutingIdentifiers() throws {
-        var header = try S.parseHeader(data("Header"))
-        header.kind = 10
-        header.purpose = .notify
-        header.request = "notify:1:7"
-        #expect(try S.parseHeader(S.headerBytes(header)).request == "notify:1:7")
+    @Test func walksPrevSecretAndStopsAtTheRecoveryBoundary() throws {
+        let p = try pin()
+        let genesis = try state("genesis")
+        let added = try state("added")
+        let renewal = try state("renewal")
+        let recovery = try state("recovery")
+        let machine = added.core.members[1]
+        let machineKey = try S.openGrant(p, recovery, recipient: machine.id, x: machineX())
+        let states: [UInt64: S.State] = [
+            genesis.core.epoch: genesis, added.core.epoch: added,
+            renewal.core.epoch: renewal, recovery.core.epoch: recovery,
+        ]
+        var record = try S.Record(
+            pin: p, states: states, memberID: machine.id,
+            xPrivate: try hex("machine_x"), member: true,
+            counterEpoch: recovery.core.contentEpoch, secret: machineKey,
+            contentKeys: [
+                added.core.contentEpoch: try hex("content_secret_2"),
+                genesis.core.contentEpoch: try hex("content_secret_1"),
+            ],
+            recovery: [recovery.core.epoch: try stmt()])
+        #expect(try record.contentSecret(1) == (try hex("content_secret_1")))
+        #expect(try record.contentSecret(2) == (try hex("content_secret_2")))
+        #expect(try record.contentSecret(3) == machineKey)
+        // The old authority phone was removed by the recovery. It keeps its
+        // own grants from the states it belonged to, but has nothing at the
+        // recovery: the empty PrevSecret is a boundary, not a retry.
+        let oldPhone = genesis.core.authorityID
+        let removed = try S.Record(
+            pin: p, states: states, memberID: oldPhone, xPrivate: try hex("phone_x"),
+            member: false, counterEpoch: 2, secret: try hex("content_secret_2"),
+            recovery: [recovery.core.epoch: try stmt()])
+        #expect(try removed.contentSecret(1) == (try hex("content_secret_1")))
+        #expect(try removed.contentSecret(2) == (try hex("content_secret_2")))
+        #expect(throws: S.Failure.unavailable) { try removed.contentSecret(3) }
+    }
+
+    @Test func rejectsAStateFromTheFutureBeforeInstallingIt() async throws {
+        let p = try pin()
+        let genesis = try state("genesis")
+        var future = try state("added")
+        future.core.issuedAt = 9_999_999_999_999
+        future.core.notAfter = future.core.issuedAt + S.lease
+        let raw = try S.stateBytes(future)
+        let base = try S.Record(
+            pin: p, states: [1: genesis], memberID: genesis.core.authorityID,
+            xPrivate: try hex("phone_x"), member: true, counterEpoch: 1,
+            secret: try hex("content_secret_1"))
+        let client = DeviceSecurityClient(
+            store: MemorySecurityStore(base), memberID: genesis.core.authorityID,
+            signingKey: try SigningKey(seed: try hex("phone_seed")),
+            clock: { 1_700_000_000_001 },
+            fetchStates: { after in
+                var res = PBGetSecurityStatesResponse()
+                res.headEpoch = 2
+                if after < 2 {
+                    var value = PBSecurityState()
+                    value.state = raw
+                    res.states = [value]
+                }
+                return res
+            })
+        await #expect(throws: S.Failure.clock) { try await client.sync() }
+    }
+
+    @Test func deviceMetaIsSelfOnly() throws {
+        let added = try state("added")
+        let phone = added.core.authorityID
+        let machine = added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id
+        var h = S.Header(
+            account: added.core.account, domain: added.core.domain, epoch: added.core.epoch,
+            state: try S.stateHash(added), contentEpoch: added.core.contentEpoch, sender: phone,
+            kind: S.Purpose.deviceMeta.kind, purpose: .deviceMeta, machine: "", session: "",
+            request: phone, seq: 1, deadline: 0, compression: 0, counter: 1)
+        _ = try S.scope(h, added)
+        h.request = machine
+        #expect(throws: S.Failure.self) { _ = try S.scope(h, added) }
+    }
+
+    @Test func countersAreReservedInBlocks() async throws {
+        let p = try pin()
+        let added = try state("added")
+        let phone = added.core.authorityID
+        let machine = added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id
+        let secret = try hex("content_secret_2")
+        let record = try S.Record(
+            pin: p, states: [1: try state("genesis"), 2: added], memberID: phone,
+            xPrivate: try hex("phone_x"), member: true, counterEpoch: added.core.contentEpoch,
+            secret: secret)
+        let store = MemorySecurityStore(record)
+        let client = DeviceSecurityClient(
+            store: store, memberID: phone,
+            signingKey: try SigningKey(seed: try hex("phone_seed")),
+            fetchStates: { _ in throw S.Failure.storage })
+        for expected in UInt64(1)...3 {
+            let env = try await client.seal(
+                purpose: .command, machine: machine, request: "0123456789abcdef",
+                deadline: 1_700_000_200_000, plaintext: Data("go".utf8))
+            let h = try S.parseHeader(env.securityHeader)
+            #expect(h.epoch == added.core.epoch)
+            #expect(h.counter == expected)
+        }
+        #expect(try store.readSecurity().blockEnd == S.counterBlock)
+        // A restart skips the rest of the reserved block.
+        let reopened = DeviceSecurityClient(
+            store: store, memberID: phone,
+            signingKey: try SigningKey(seed: try hex("phone_seed")),
+            fetchStates: { _ in throw S.Failure.storage })
+        let env = try await reopened.seal(
+            purpose: .command, machine: machine, request: "0123456789abcdef",
+            deadline: 1_700_000_200_000, plaintext: Data("go".utf8))
+        #expect(try S.parseHeader(env.securityHeader).counter == S.counterBlock + 1)
+    }
+
+    @Test func controlNeedsTheHeadLeaseAndInstallsANewContentEpoch() async throws {
+        let p = try pin()
+        let genesis = try state("genesis")
+        let added = try state("added")
+        let phone = added.core.authorityID
+        let machine = added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id
+        let secret = try hex("content_secret_2")
+        var h = S.Header(
+            account: added.core.account, domain: added.core.domain, epoch: added.core.epoch,
+            state: try S.stateHash(added), contentEpoch: added.core.contentEpoch, sender: phone,
+            kind: S.Purpose.command.kind, purpose: .command, machine: machine, session: "",
+            request: "0123456789abcdef", seq: 0, deadline: added.core.notAfter,
+            compression: 0, counter: 1)
+        let formed = try S.form(
+            secret: secret, sessionSeed: nil, header: h, plaintext: Data("no".utf8),
+            signingKey: try SigningKey(seed: try hex("phone_seed")))
+        let wire = S.Wire(formed: formed)
+        _ = try S.verifyOrigin(wire, state: added, head: added, live: true, now: added.core.notAfter)
+        #expect(throws: S.Failure.self) {
+            _ = try S.verifyOrigin(
+                wire, state: added, head: added, live: true, now: added.core.notAfter + 1)
+        }
+        // A stale content epoch is refused for control.
+        h.contentEpoch = genesis.core.contentEpoch
+        #expect(throws: S.Failure.self) {
+            _ = try S.verifyOrigin(
+                S.Wire(
+                    formed: try S.form(
+                        secret: secret, sessionSeed: nil, header: h, plaintext: Data("no".utf8),
+                        signingKey: try SigningKey(seed: try hex("phone_seed")))),
+                state: added, head: added, live: true, now: added.core.notAfter)
+        }
+        // Installing a state with a new content epoch resets the counter block.
+        let base = try S.Record(
+            pin: p, states: [1: genesis], memberID: phone, xPrivate: try hex("phone_x"),
+            member: true, counter: 5, blockEnd: 100, counterEpoch: 1,
+            secret: try hex("content_secret_1"))
+        let store = MemorySecurityStore(base)
+        let client = DeviceSecurityClient(
+            store: store, memberID: phone,
+            signingKey: try SigningKey(seed: try hex("phone_seed")),
+            fetchStates: { after in
+                var res = PBGetSecurityStatesResponse()
+                res.headEpoch = 2
+                if after < 2 {
+                    var value = PBSecurityState()
+                    value.state = try S.stateBytes(added)
+                    res.states = [value]
+                }
+                return res
+            })
+        let installed = try await client.sync()
+        #expect(installed.headEpoch == 2)
+        #expect(installed.counterEpoch == 2)
+        #expect(installed.blockEnd == 0)
+        let env = try await client.seal(
+            purpose: .command, machine: machine, request: "0123456789abcdef",
+            deadline: added.core.notAfter, plaintext: Data("go".utf8))
+        let header = try S.parseHeader(env.securityHeader)
+        #expect(header.epoch == 2 && header.contentEpoch == 2 && header.counter == 1)
+    }
+
+    @Test func readsAStoredStateOnlyAsHistory() throws {
+        let added = try state("added")
+        let p = try pin()
+        let genesis = try state("genesis")
+        let wire = try S.Wire(
+            formed: S.Cipher(
+                header: try S.headerBytes(
+                    S.Header(
+                        account: added.core.account, domain: added.core.domain,
+                        epoch: added.core.epoch, state: try S.stateHash(added),
+                        contentEpoch: added.core.contentEpoch,
+                        sender: added.core.authorityID, kind: S.Purpose.event.kind,
+                        purpose: .event,
+                        machine: added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id,
+                        session: "session", request: "", seq: 1, deadline: 0, compression: 0,
+                        counter: 1)),
+                nonce: randomBytes(12), cipher: randomBytes(16), origin: randomBytes(64)))
+        #expect(throws: S.Failure.self) {
+            _ = try S.verifyOrigin(wire, state: added, head: genesis, live: true, now: 0)
+        }
+        #expect(throws: S.Failure.self) {
+            _ = try S.verifyOrigin(wire, state: added, head: nil, live: false, now: 0)
+        }
+        #expect(p.account == added.core.account)
     }
 }
 
-extension DeviceSecurityTests {
-    @Test func legacyBodiesCannotEstablishCurrentInputState() {
-        var fake = PBEvent()
-        fake.seq = 1
-        fake.inputState.requestID = "same-id"
-        fake.inputState.status = .canceled
-        var snapshot = SessionEvents(events: [fake], loaded: true)
-        snapshot.unverifiedLegacy = true
-        #expect(currentState(snapshot).inputs["same-id"] == nil)
-        var owner = PBLiveSnapshot()
-        owner.session.id = "synthetic-session"
-        owner.running = true
-        var current = PBEvent()
-        current.sessionID = owner.session.id
-        current.inputState.requestID = "same-id"
-        current.inputState.status = .queued
-        current.inputState.text = "trusted owner queue"
-        owner.actions = [current]
-        snapshot.live = owner
-        #expect(currentState(snapshot).inputs["same-id"] == .queued)
-        #expect(currentState(snapshot).accepted["same-id"]?.text == "trusted owner queue")
-        #expect(currentState(snapshot).running)
+/// A storage that keeps the whole record, for counter and chain tests.
+final class MemorySecurityStore: DeviceSecurity.Storage, @unchecked Sendable {
+    private let lock = NSLock()
+    private var record: DeviceSecurity.Record
+    init(_ record: DeviceSecurity.Record) { self.record = record }
+    func readSecurity() throws -> DeviceSecurity.Record {
+        lock.lock()
+        defer { lock.unlock() }
+        var r = record
+        r.counter = r.blockEnd
+        return r
+    }
+    func initializeSecurity(_ record: DeviceSecurity.Record) throws {
+        throw DeviceSecurity.Failure.conflict
+    }
+    func writeSecurity(expectedHead: Data, _ next: DeviceSecurity.Record) throws
+        -> DeviceSecurity.Record
+    {
+        lock.lock()
+        defer { lock.unlock() }
+        guard try DeviceSecurity.stateHash(record.state) == expectedHead else {
+            throw DeviceSecurity.Failure.stale
+        }
+        record = next
+        return record
     }
 }

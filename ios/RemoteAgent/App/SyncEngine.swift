@@ -151,10 +151,19 @@ final class LoginKeeper: @unchecked Sendable {
 
 extension Account {
     init(_ stored: VaultAccount) {
-        self.init(server: stored.server, root: stored.root, deviceSeed: stored.deviceSeed, deviceId: stored.deviceId)
+        let accountId =
+            stored.accountId.isEmpty && stored.root.count == 32
+            ? (try? Keys.derive(root: stored.root)).map { RACore.deviceId(publicKey: $0.account.publicKey) }
+                ?? ""
+            : stored.accountId
+        self.init(
+            server: stored.server, root: stored.root, deviceSeed: stored.deviceSeed,
+            deviceId: stored.deviceId, accountId: accountId)
     }
 
     var stored: VaultAccount {
-        VaultAccount(server: server, root: root, deviceSeed: deviceSeed, deviceId: deviceId)
+        VaultAccount(
+            server: server, root: root, deviceSeed: deviceSeed, deviceId: deviceId,
+            accountId: accountId)
     }
 }

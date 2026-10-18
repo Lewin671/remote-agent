@@ -223,8 +223,8 @@ extension ServerTests {
 
         @Test func afterAReconnectASessionOfAMachineThatIsGoneGoes() async throws {
             try await world { w in
-                let otherAccount = try await approvedClient(
-                    authorizer: w.daemon.account, http: w.http, kind: .machine)
+                let otherAccount = try await w.phone.enroll(
+                    seed: randomBytes(32), kind: .machine).0
                 let other = try FakeDaemon(account: otherAccount, http: w.http)
                 try await other.login()
                 try await other.putMachine("other-mac.local")
@@ -248,14 +248,8 @@ extension ServerTests {
                 }
                 r.stop()
                 _ = try await r.awaitState("offline") { $0.conn == .offline }
-                // Another client removes that machine meanwhile.
-                let admin = try await w.client()
-                admin.start()
-                _ = try await admin.awaitState("admin online", ms: 15_000) {
-                    $0.conn == .online && $0.machines[other.id] != nil
-                }
-                await admin.refreshDevices()
-                try await admin.removeDevice(other.id)
+                // The phone removes that machine meanwhile.
+                try await w.phone.remove([other.id])
                 r.start()
                 let id = w.daemon.id
                 let st = try await r.awaitState("the machine gone", ms: 15_000) {

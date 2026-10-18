@@ -3,92 +3,283 @@ import RAProto
 
 @testable import RACore
 
-/// Synthetic identities enroll through actual pinned authority and server.
-func approvedClient(authorizer: Account, http: HTTP, kind: PBDeviceKind = .client) async throws
-    -> Account
-{
-    let security = try TestSecurity.get(authorizer.server)
-    guard let store = security.store(authorizer.deviceId) else {
-        throw TestFailure("synthetic approver store missing")
+/// A synthetic phone authority: the fixture builds and signs the chain, and
+/// the real server stores it. No iOS product code signs membership states.
+final class SyntheticPhone: @unchecked Sendable {
+    let account: Account
+    let accountPublicKey: Data
+    let pin: DeviceSecurity.Pin
+    let server: String
+    let http: HTTP
+    let api: Api
+    let token: String
+    let fixture: TestSecurity
+
+    private init(
+        account: Account, accountPublicKey: Data, pin: DeviceSecurity.Pin, server: String,
+        http: HTTP, api: Api, token: String, fixture: TestSecurity
+    ) {
+        self.account = account
+        self.accountPublicKey = accountPublicKey
+        self.pin = pin
+        self.server = server
+        self.http = http
+        self.api = api
+        self.token = token
+        self.fixture = fixture
     }
-    let old = try store.readSecurity()
-    let descriptor = try DeviceSecurity.pairTrustDescriptor(old.pin, approver: authorizer.deviceId)
-    let api = try Api(server: authorizer.server, http: http)
-    let headers = Api.headers(token: try await login(api: api, account: authorizer))
-    let a = try PairKey()
-    let b = try PairKey()
-    let seed = randomBytes(32)
-    let pub = try SigningKey(seed: seed).publicKey
-    var create = PBCreatePairingRequest()
-    create.commit = try DeviceSecurity.pairDomainCommit(ephemeral: a.publicKey, trust: descriptor)
-    let created = try await api.pairing.createPairing(request: create, headers: headers).value()
-    let enrolled = try security.call(
-        "enroll",
-        [
-            "Approver": authorizer.deviceId, "Pair": created.pairingID,
-            "Seed": seed.base64EncodedString(), "Kind": kind.rawValue,
-        ])
-    let record = try DeviceSecurity.Record.parse(security.bytes(enrolled, "Record"))
-    guard
-        let candidate = record.state.core.members.first(where: { $0.id == deviceId(publicKey: pub) }
-        )
-    else { throw TestFailure("synthetic candidate missing") }
-    let contextJSON = try JSONSerialization.data(withJSONObject: enrolled["PairContext"] as Any)
-    let context = try DeviceSecurity.pairContextFromJSON(DeviceSecurity.safeJSONObject(contextJSON))
-    var join = PBJoinPairingRequest()
-    join.protocolVersion = protocolVersion
-    join.code = created.code
-    join.joinerPublic = b.publicKey
-    join.joinerKind = kind
-    join.devicePublicKey = pub
-    join.deviceHpkePublicKey = candidate.x
-    let joined = try await api.pairing.joinPairing(request: join).value()
-    var reveal = PBRevealPairingRequest()
-    reveal.pairingID = created.pairingID
-    reveal.initiatorPublic = a.publicKey
-    reveal.securityContext = contextJSON
-    _ = try await api.pairing.revealPairing(request: reveal, headers: headers).value()
-    let tr = Pairing.domainTranscript(
-        pairingId: created.pairingID, initiatorPublic: a.publicKey, joinerPublic: b.publicKey,
-        devicePublic: pub, hpkePublic: candidate.x, joinerKind: kind.rawValue, trust: descriptor)
-    let shared = try a.derive(otherPublic: b.publicKey, transcript: tr)
-    guard shared.key == (try b.derive(otherPublic: a.publicKey, transcript: tr)).key else {
-        throw TestFailure("synthetic SAS mismatch")
+
+    /// Creates the account's first device as a client, pins its genesis state,
+    /// and returns the phone authority the tests use.
+    static func create(root: Data, server: String, http: HTTP, setupToken: String) async throws
+        -> SyntheticPhone
+    {
+        let seed = randomBytes(32)
+        let acct = try await joinWithRoot(
+            root: root, server: server, http: http, setupToken: setupToken, kind: .client,
+            deviceSeed: seed)
+        let api = try Api(server: server, http: http)
+        let token = try await login(api: api, account: acct)
+        let (fixture, genesis) = try TestSecurity.initialize(acct)
+        var request = PBPinSecurityDomainRequest()
+        request.genesisState = genesis
+        _ = try await api.client.pinSecurityDomain(
+            request: request, headers: Api.headers(token: token)
+        ).value()
+        guard let record = try fixture.store(acct.deviceId)?.readSecurity() else {
+            throw TestFailure("synthetic phone record missing")
+        }
+        return SyntheticPhone(
+            account: acct, accountPublicKey: try Keys.derive(root: root).account.publicKey,
+            pin: record.pin, server: server, http: http, api: api, token: token, fixture: fixture)
     }
-    var confirm = PBGetPairingRequest()
-    confirm.pairingID = created.pairingID
-    confirm.candidateToken = joined.candidateToken
-    confirm.candidateSignature = try DeviceSecurity.signPairContext(
-        context, signingKey: SigningKey(seed: seed), action: .accept)
-    _ = try await api.pairing.getPairing(request: confirm).value()
-    let (approval, sig) = try makePairApproval(
-        account: authorizer, pairingId: created.pairingID, candidate: pub, kind: kind,
-        expires: created.expiresMs)
-    var payload = PBPairingPayload()
-    payload.root = authorizer.root
-    payload.server = authorizer.server
-    payload.approval = approval
-    payload.approvalSignature = sig
-    payload.securityState = try security.bytes(enrolled, "State")
-    var header = PBHeader()
-    header.kind = .pairing
-    header.requestID = created.pairingID
-    header.sender = authorizer.deviceId
-    var approve = PBApprovePairingRequest()
-    approve.pairingID = created.pairingID
-    approve.payload = try Envelopes.seal(key: shared.key, header: header, message: payload)
-    approve.approval = approval
-    approve.approvalSignature = sig
-    _ = try await api.pairing.approvePairing(request: approve, headers: headers).value()
-    let result = try await joinWithRoot(
-        root: authorizer.root, server: authorizer.server, http: http, kind: kind,
-        enrollment: Enrollment(
-            seed: seed, pairingId: created.pairingID, approval: approval, signature: sig))
-    security.install(record)
-    var received = PBGetPairingRequest()
-    received.pairingID = created.pairingID
-    received.candidateToken = joined.candidateToken
-    received.received = true
-    _ = try await api.pairing.getPairing(request: received).value()
-    return result
+
+    func approve(_ seed: Data, kind: PBDeviceKind, pairingID: String) throws -> (Data, Data) {
+        let candidate = try SigningKey(seed: seed).publicKey
+        return try makePairApproval(
+            account: account, pairingId: pairingID, candidate: candidate, kind: kind,
+            expires: Int64(Date().timeIntervalSince1970 * 1000) + 5 * 60_000)
+    }
+
+    /// Adds a device whose Ed/X private keys are known here, registers it with
+    /// a phone-signed approval, and returns its account and stored record.
+    func enroll(seed: Data, kind: PBDeviceKind) async throws -> (Account, DeviceSecurity.Record) {
+        let reply = try fixture.call(
+            "enroll", ["Seed": seed.base64EncodedString(), "Kind": kind.rawValue])
+        guard let raw = reply["Record"] else { throw TestFailure("missing synthetic record") }
+        let record = try TestSecurity.record(JSONSerialization.data(withJSONObject: raw))
+        try await upload(fixture.bytes(reply, "State"))
+        let pairingID = randomHex(16)
+        let (approval, signature) = try approve(seed, kind: kind, pairingID: pairingID)
+        let acct = try await registerJoined(
+            server: server, http: http, deviceSeed: seed, accountPublicKey: accountPublicKey,
+            kind: kind,
+            enrollment: Enrollment(
+                seed: seed, pairingId: pairingID, approval: approval, signature: signature))
+        fixture.install(record)
+        return (acct, record)
+    }
+
+    /// Adds a device whose keys stay with the joiner (the pairing test), and
+    /// returns the whole chain for the encrypted pairing payload.
+    func enrollExternal(edPublic: Data, xPublic: Data, kind: PBDeviceKind) async throws -> (
+        state: Data, chain: [(state: Data, recovery: Data)]
+    ) {
+        let reply = try fixture.call(
+            "enroll",
+            [
+                "EdPublic": edPublic.base64EncodedString(),
+                "XPublic": xPublic.base64EncodedString(), "Kind": kind.rawValue,
+            ])
+        let state = try fixture.bytes(reply, "State")
+        return (state, try await chain())
+    }
+
+    /// Uploads a state the pairing approved. Doing this before the joiner has
+    /// fetched its payload would cancel the pairing on an honest relay.
+    func commit(_ state: Data) async throws {
+        try await upload(state)
+    }
+
+    func chain() async throws -> [(state: Data, recovery: Data)] {
+        let reply = try fixture.call("chain")
+        guard let states = reply["States"] as? [String],
+            let proofs = reply["Proofs"] as? [Any], states.count == proofs.count
+        else { throw TestFailure("malformed synthetic chain") }
+        var out: [(Data, Data)] = []
+        for (i, raw) in states.enumerated() {
+            guard let state = Data(base64Encoded: raw) else { throw TestFailure("bad state") }
+            let recovery =
+                (proofs[i] as? String).flatMap { Data(base64Encoded: $0) } ?? Data()
+            out.append((state, recovery))
+        }
+        return out
+    }
+
+    func remove(_ targets: [String]) async throws {
+        let reply = try fixture.call("remove", ["Targets": targets])
+        try await upload(fixture.bytes(reply, "State"))
+    }
+
+    private func upload(_ state: Data) async throws {
+        var request = PBPutSecurityStateRequest()
+        var value = PBSecurityState()
+        value.state = state
+        request.states = [value]
+        _ = try await api.client.putSecurityState(
+            request: request, headers: Api.headers(token: token)
+        ).value()
+    }
+}
+
+func randomHex(_ bytes: Int) -> String { randomBytes(bytes).hex }
+
+/// One pairing started by the synthetic phone. The phone side has no QR UI
+/// in these tests; it uses the same server calls the Android app does.
+final class PhonePairing: @unchecked Sendable {
+    let phone: SyntheticPhone
+    let pairingID: String
+    let code: String
+    let link: PairLink
+    private let commit: Data
+    private let trust: Data
+    private let ephemeral: PairKey
+    private let expiresMs: Int64
+    private var revealed: PBGetPairingResponse?
+    private var sent: PBApprovePairingRequest?
+
+    private init(
+        phone: SyntheticPhone, pairingID: String, code: String, commit: Data, trust: Data,
+        ephemeral: PairKey, expiresMs: Int64
+    ) {
+        self.phone = phone
+        self.pairingID = pairingID
+        self.code = code
+        self.commit = commit
+        self.trust = trust
+        self.ephemeral = ephemeral
+        self.expiresMs = expiresMs
+        link = PairLink(code: code, server: phone.server, commit: commit)
+    }
+
+    static func start(_ phone: SyntheticPhone) async throws -> PhonePairing {
+        let key = try PairKey()
+        let trust = try DeviceSecurity.pairTrustDescriptor(
+            phone.pin, approver: phone.account.deviceId)
+        let commit = try DeviceSecurity.pairDomainCommit(ephemeral: key.publicKey, trust: trust)
+        var request = PBCreatePairingRequest()
+        request.commit = commit
+        let created = try await phone.api.pairing.createPairing(
+            request: request, headers: Api.headers(token: phone.token)
+        ).value()
+        return PhonePairing(
+            phone: phone, pairingID: created.pairingID, code: created.code, commit: commit,
+            trust: trust, ephemeral: key, expiresMs: created.expiresMs)
+    }
+
+    /// Waits for a device to join, reveals this phone's ephemeral key and
+    /// trust descriptor, and returns the emoji and the joining device.
+    func reveal(sleep: Sleeper = realSleep) async throws -> (emoji: [String], response: PBGetPairingResponse)
+    {
+        var ask = PBGetPairingRequest()
+        ask.pairingID = pairingID
+        let until = Date().addingTimeInterval(10)
+        var st: PBGetPairingResponse
+        while true {
+            st = try await phone.api.pairing.getPairing(
+                request: ask, headers: Api.headers(token: phone.token)
+            ).value()
+            if st.state == .joined { break }
+            if st.state == .canceled { throw TestFailure("pairing canceled") }
+            if Date() > until { throw TestFailure("pairing did not join") }
+            try await sleep(50)
+        }
+        guard st.devicePublicKey.count == 32, st.deviceHpkePublicKey.count == 32 else {
+            throw TestFailure("bad candidate identity")
+        }
+        var reveal = PBRevealPairingRequest()
+        reveal.pairingID = pairingID
+        reveal.initiatorPublic = ephemeral.publicKey
+        reveal.trust = trust
+        _ = try await phone.api.pairing.revealPairing(
+            request: reveal, headers: Api.headers(token: phone.token)
+        ).value()
+        let transcript = Pairing.domainTranscript(
+            pairingId: pairingID, initiatorPublic: ephemeral.publicKey,
+            joinerPublic: st.joinerPublic, devicePublic: st.devicePublicKey,
+            hpkePublic: st.deviceHpkePublicKey, joinerKind: st.joinerKind.rawValue, trust: trust)
+        let secrets = try ephemeral.derive(otherPublic: st.joinerPublic, transcript: transcript)
+        revealed = st
+        return (secrets.emoji, st)
+    }
+
+    /// Adds the joined candidate to the signed chain and hands over the chain
+    /// in the pairing payload. Safe to call again with the same approval.
+    func approve(sleep: Sleeper = realSleep) async throws {
+        if let sent {
+            _ = try await phone.api.pairing.approvePairing(
+                request: sent, headers: Api.headers(token: phone.token)
+            ).value()
+            _ = try? await waitDelivered(sleep: sleep)
+            return
+        }
+        guard let st = revealed else { throw TestFailure("pairing was not revealed") }
+        let kind = st.joinerKind
+        let added = try await phone.enrollExternal(
+            edPublic: st.devicePublicKey, xPublic: st.deviceHpkePublicKey, kind: kind)
+        let chain = added.chain
+        // The documented phone order: sign the joining state, upload it, then
+        // hand the chain over in the encrypted pairing payload.
+        try await phone.commit(added.state)
+        let transcript = Pairing.domainTranscript(
+            pairingId: pairingID, initiatorPublic: ephemeral.publicKey,
+            joinerPublic: st.joinerPublic, devicePublic: st.devicePublicKey,
+            hpkePublic: st.deviceHpkePublicKey, joinerKind: kind.rawValue, trust: trust)
+        let secrets = try ephemeral.derive(otherPublic: st.joinerPublic, transcript: transcript)
+        let (approval, signature) = try makePairApproval(
+            account: phone.account, pairingId: pairingID, candidate: st.devicePublicKey,
+            kind: kind, expires: expiresMs)
+        var payload = PBPairingPayload()
+        payload.server = phone.server
+        payload.approval = approval
+        payload.approvalSignature = signature
+        payload.accountPublicKey = phone.accountPublicKey
+        payload.securityStates = chain.map {
+            var value = PBSecurityState()
+            value.state = $0.state
+            value.recovery = $0.recovery
+            return value
+        }
+        var header = PBHeader()
+        header.kind = .pairing
+        header.requestID = pairingID
+        header.sender = phone.account.deviceId
+        var request = PBApprovePairingRequest()
+        request.pairingID = pairingID
+        request.payload = try Envelopes.seal(key: secrets.key, header: header, message: payload)
+        request.approval = approval
+        request.approvalSignature = signature
+        sent = request
+        _ = try await phone.api.pairing.approvePairing(
+            request: request, headers: Api.headers(token: phone.token)
+        ).value()
+        _ = try? await waitDelivered(sleep: sleep)
+    }
+
+    /// Waits for the candidate to confirm receipt, as the app's flow does.
+    /// Returns false rather than failing when the acknowledgement was lost.
+    private func waitDelivered(sleep: Sleeper) async throws -> Bool {
+        var ask = PBGetPairingRequest()
+        ask.pairingID = pairingID
+        let until = Date().addingTimeInterval(10)
+        while true {
+            let done = try await phone.api.pairing.getPairing(
+                request: ask, headers: Api.headers(token: phone.token)
+            ).value()
+            if done.state == .delivered { return true }
+            if done.state == .canceled { return false }
+            if Date() > until { return false }
+            try await sleep(50)
+        }
+    }
 }

@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import RACore
 import Testing
@@ -8,28 +9,38 @@ import Testing
 @Suite struct DeviceSecurityVaultTests {
     let vault = Vault(service: "io.github.lewin671.remoteagent.security-tests.\(UUID().uuidString)")
     private func record() throws -> DeviceSecurity.Record {
+        // The protocol-10 genesis vector (internal/deviceauth/testdata/domain-v3.json).
         let state = try DeviceSecurity.parseState(
             Data(
                 base64Encoded:
-                    "AAABtAAAAAIAAAAgMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYREREREREREREREREREREREREREREREREREREREREREQAAACA0OGNjYTk3Zjg5OTNmZmFlYmNhYzk3MjhkN2Y5NGY3MduZX+JRadFByrm7upK6oB+fLh7OffTLKsBRkPN/zB+dEyxEK+AQ+9V+cmAzKKp25x/MwVA6riGTJ9FNnJmT9HKqkl9YtkzHiMuG0FTcFeLsH6OPWyeLGMjiIt4GObCowgAAAAAAAAACAAAAAAAAAAIAAAACAAAAIDI0YWEyYTU1ODllZGNiNTdmZWEwYmUzNTUyZjA2NWRlSAdaWX5yGhVuLgeZ3lzAxTJNxufq8c3UYlCGjsUyFd1Z2SJUc0Ue//5rNtvK79v3sYld5iCEUJp/W1i/AdBkGAAAAAIAAAAgNDhjY2E5N2Y4OTkzZmZhZWJjYWM5NzI4ZDdmOTRmNzGIS4hX9OqhYTxhUE2zTUvq80ZReg4x3jzd1Nm0IB2dCw+qaE7SiGe5f0pqLe5d+M6XTna3AY4/IqHEzyZ4Vw8gAAAAAQAAAAAAAAACAAAAIDI0YWEyYTU1ODllZGNiNTdmZWEwYmUzNTUyZjA2NWRlAAAAIBrcHM12/2sawLI/GOJC5dG2X5aUrJlzeBGrR20R8SAgAAAAMMYznI83qZkHBoN/97w0ZUkeFxrbQ1cJ5SPV1BNBbzfmqLdrN3rRRqZ8dwCZxz8XDgAAACA0OGNjYTk3Zjg5OTNmZmFlYmNhYzk3MjhkN2Y5NGY3MQAAACAcPttHOpm95eDd52A0QRc+Zr01E+MRKmHNLzmJAIRafwAAADCKEDzlhgIBD8aXwIN+K5Nw1qJSdn53sHMvAW0lgFnLXh7YjGTbNnoRdO9gVXtJ6R8AAABAK+MTq6jvnrE7nWP32ALKDtayJL9LP0gth/oOwtLIhu7BAIJZqZtbBj8j8B0h0eDJspThfW0XlzYGvAtQ8bxMCw=="
+                    "AAABPAAAAAMAAAAgMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYFAvSJtM6+UuJeI4qr8ib0xXPPaLAbM69N+g2DKYc77AAAACAxMGJhNjgyYzhhZDEzNTEzOTcxZThiNTY4ODFhYWI4YqCapfR6Z1mAL/lV+NwtKhSlyZ0jvpf4ZBJ/+Tg0VaTwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAABi8/laAAAAAGL31h8AAAAAAEAAAAgMTBiYTY4MmM4YWQxMzUxMzk3MWU4YjU2ODgxYWFiOGLQSrIydCu0qzoTaL1GFeTm0CJKtxoBa6+FIKMyyXeHN6LXoSEACN+Ts6+ET9lrEQhsbMWDxE9laEnxAsj7l+JvAAAAAgAAAAAAAAABAAAAIDEwYmE2ODJjOGFkMTM1MTM5NzFlOGI1Njg4MWFhYjhiAAAAIHRMRaZRB4R3QDZg6KUqLUo5AahTX7O80LboH1kTLWZrAAAAMO7ILr4QzNoBQqXTiAae4H5kx9GvcwZifYB62aIBpgvA7m6d/v64vRi5eJa3iM0ytQAAAAAAAABAvacEuJNHvGNfLI/vWsuwDcyHFMnDinTQOIsUnAPmk4ipgxUOvElPAk3ERQ7oQREkjb58nveXEumNUUTjTYEODg=="
             )!)
-        let c = state.core
         let pin = DeviceSecurity.Pin(
-            account: c.account, domain: c.domain,
-            genesis: Data(base64Encoded: "qpJfWLZMx4jLhtBU3BXi7B+jj1snixjI4iLeBjmwqMI=")!,
-            authorityID: c.authorityID, authorityEd: c.authorityEd, authorityX: c.authorityX)
+            account: "0123456789abcdef0123456789abcdef",
+            domain: Data(
+                hex: "0502f489b4cebe52e25e238aabf226f4c573cf68b01b33af4dfa0d8329873bec")!,
+            genesis: Data(
+                hex: "62eebdbe6f373799fe13c648eeb1d0d076fb9a21d7586c3fc0803be5032278ff")!)
+        let x = try Curve25519.KeyAgreement.PrivateKey(
+            rawRepresentation: Data(
+                hex: "3e29be55fb1a4d8832fa0a317d609a3fe5a74730d321d0e7085b2de2de386ac7")!)
+        let secret = try DeviceSecurity.openGrant(
+            pin, state, recipient: state.core.authorityID, x: x)
         return try DeviceSecurity.Record(
-            pin: pin, state: state, memberID: "48cca97f8993ffaebcac9728d7f94f71",
-            xPrivate: Data(repeating: 0x22, count: 32))
+            pin: pin, states: [1: state], memberID: state.core.authorityID,
+            xPrivate: x.rawRepresentation, member: true, counterEpoch: 1, secret: secret)
     }
-    @Test func counterAndNotifyRepairUseTheProtectedCurrentState() throws {
+    @Test func counterBlockAndNotifyRepairUseTheProtectedCurrentState() throws {
         defer { try? vault.clear() }
         let initial = try record()
         try vault.initializeSecurity(initial)
         let hash = try DeviceSecurity.stateHash(initial.state)
-        #expect(try vault.reserveSecurity(expectedState: hash).counter == 1)
+        var next = initial
+        next.blockEnd = 4096
+        _ = try vault.writeSecurity(expectedHead: hash, next)
         let reopened = Vault(service: vault.service)
-        #expect(try reopened.readSecurity().counter == 1)
+        // A restart skips the rest of the reserved block.
+        #expect(try reopened.readSecurity().counter == 4096)
         try vault.write(.notifyKey, Data([0]))
         _ = try reopened.readSecurity()
         let notifyBytes = try #require(try vault.notifyKey())

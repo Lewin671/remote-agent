@@ -19,9 +19,12 @@ struct VaultAccount: Equatable, Sendable, CustomStringConvertible, CustomDebugSt
     CustomReflectable
 {
     var server: String
+    /// Empty when this device joined by pairing and has no account root.
     var root: Data
     var deviceSeed: Data
     var deviceId: String
+    /// The security domain's account ID. Older entries derive it from root.
+    var accountId: String = ""
 
     var description: String { "VaultAccount(server=\(server), device=\(deviceId))" }
     var debugDescription: String { description }
@@ -83,7 +86,7 @@ struct Vault: Sendable {
     enum Item: String, Sendable, CaseIterable {
         /// Server, device ID, root key and device seed, in one item so that they are written and read together.
         case account
-        case securityState = "security-v2"
+        case securityState = "security-v3"
         /// The notify key (architecture §9), on its own so that a push can be opened without the root key.
         case notifyKey = "notify-key"
         case loginToken = "login-token"
@@ -112,19 +115,21 @@ struct Vault: Sendable {
         guard
             let plist = try? PropertyListSerialization.propertyList(from: blob, format: nil)
                 as? [String: Any],
-            plist["v"] as? Int == 1,
+            let v = plist["v"] as? Int, v == 1 || v == 2,
             let server = plist["server"] as? String, let deviceId = plist["deviceId"] as? String,
             let root = plist["root"] as? Data, let seed = plist["seed"] as? Data
         else { throw VaultError.unreadable }
-        return VaultAccount(server: server, root: root, deviceSeed: seed, deviceId: deviceId)
+        let accountId = plist["accountId"] as? String ?? ""
+        return VaultAccount(
+            server: server, root: root, deviceSeed: seed, deviceId: deviceId, accountId: accountId)
     }
 
     /// Stores the account with its notify key, replacing any before. The
     /// notify key goes first: an account is then never stored without it.
     func save(_ account: VaultAccount, notifyKey: Data) throws {
         let plist: [String: Any] = [
-            "v": 1, "server": account.server, "deviceId": account.deviceId, "root": account.root,
-            "seed": account.deviceSeed,
+            "v": 2, "server": account.server, "deviceId": account.deviceId, "root": account.root,
+            "seed": account.deviceSeed, "accountId": account.accountId,
         ]
         guard
             let blob = try? PropertyListSerialization.data(

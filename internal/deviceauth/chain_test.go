@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // cloneState copies every slice so a test can tamper with one field without
@@ -268,5 +269,101 @@ func TestRecoveryStatementRoundTrip(t *testing.T) {
 	}
 	if _, err := ParseRecoveryStatement(raw); err != nil {
 		t.Fatalf("parse: %v", err)
+	}
+}
+
+func TestAuthorityRotatesRecoveryKeyWithoutRecovery(t *testing.T) {
+	g, _, phoneEd, phoneX, oldRecovery := testGenesis(t)
+	phone, _ := g.Core.Member(g.Core.AuthorityID)
+	_, rotatedRecovery, _ := ed25519.GenerateKey(nil)
+	var rotatedPub [32]byte
+	copy(rotatedPub[:], rotatedRecovery.Public().(ed25519.PublicKey))
+	rotated, err := BuildRenewalRotating(g, bytes.Repeat([]byte{0x33}, 32), rotatedPub, phoneEd, 1_700_000_100_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTransition(g, rotated, nil); err != nil {
+		t.Fatalf("rotation: %v", err)
+	}
+	newPhone, newPhoneEd, _ := testMember(t, 0x66, Client)
+	// The old code cannot sign the next recovery after rotation.
+	rec, stmt, err := BuildRecovery(rotated, newPhone, []Member{newPhone}, bytes.Repeat([]byte{0x44}, 32), newPhoneEd, oldRecovery, [32]byte{1}, 1_700_000_200_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTransition(rotated, rec, &stmt); err == nil {
+		t.Fatal("old recovery key still authorized a recovery after rotation")
+	}
+	// The rotated key can, and installs a fresh recovery key of its own.
+	var nextRecoveryPub [32]byte
+	nextRecoveryPub[0] = 0x22
+	rec, stmt, err = BuildRecovery(rotated, newPhone, []Member{newPhone}, bytes.Repeat([]byte{0x44}, 32), newPhoneEd, rotatedRecovery, nextRecoveryPub, 1_700_000_200_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTransition(rotated, rec, &stmt); err != nil {
+		t.Fatalf("rotated recovery key: %v", err)
+	}
+	_ = phone
+	_ = phoneX
+}
+
+func TestRemovedSetAccumulatesAndCannotBeReadded(t *testing.T) {
+	g, _, phoneEd, _, _ := testGenesis(t)
+	secret := bytes.Repeat([]byte{0x33}, 32)
+	phone, _ := g.Core.Member(g.Core.AuthorityID)
+	a, _, _ := testMember(t, 0x44, Machine)
+	b, _, _ := testMember(t, 0x55, Client)
+	secret2 := bytes.Repeat([]byte{0x44}, 32)
+	added, err := BuildState(g, []Member{phone, a, b}, nil, secret2, mustPrev(t, secret2, secret), phoneEd, 1_700_000_100_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret3 := bytes.Repeat([]byte{0x55}, 32)
+	removedA, err := BuildState(added, []Member{phone, b}, []string{a.ID}, secret3, mustPrev(t, secret3, secret2), phoneEd, 1_700_000_200_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTransition(added, removedA, nil); err != nil {
+		t.Fatal(err)
+	}
+	secret4 := bytes.Repeat([]byte{0x66}, 32)
+	removedBoth, err := BuildState(removedA, []Member{phone}, []string{a.ID, b.ID}, secret4, mustPrev(t, secret4, secret3), phoneEd, 1_700_000_300_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTransition(removedA, removedBoth, nil); err != nil {
+		t.Fatalf("accumulated removals: %v", err)
+	}
+	// Dropping an earlier tombstone is rejected.
+	secret5 := bytes.Repeat([]byte{0x77}, 32)
+	dropped, err := BuildState(removedA, []Member{phone}, []string{b.ID}, secret5, mustPrev(t, secret5, secret3), phoneEd, 1_700_000_300_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTransition(removedA, dropped, nil); err == nil {
+		t.Fatal("dropped tombstone accepted")
+	}
+	// A removed ID cannot return.
+	secret6 := bytes.Repeat([]byte{0x88}, 32)
+	readd, err := BuildState(removedBoth, []Member{phone, a}, []string{a.ID, b.ID}, secret6, mustPrev(t, secret6, secret4), phoneEd, 1_700_000_400_000)
+	if err == nil && VerifyTransition(removedBoth, readd, nil) == nil {
+		t.Fatal("removed device re-added")
+	}
+}
+
+func TestStatesFromTheFutureAreRejected(t *testing.T) {
+	now := uint64(time.Now().UnixMilli())
+	phone, phoneEd, phoneX := testMember(t, 0x11, Client)
+	var rec [32]byte
+	rec[0] = 1
+	secret := bytes.Repeat([]byte{0x22}, 32)
+	genesis, err := BuildGenesis("0123456789abcdef0123456789abcdef", digest("test/domain", []byte("future")), phone, rec, secret, phoneEd, now+10*60*1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin, _ := genesis.Pin()
+	if _, err := InitEndpoint("", pin, []State{genesis}, []*RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX); err == nil {
+		t.Fatal("future genesis accepted")
 	}
 }

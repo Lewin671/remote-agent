@@ -77,7 +77,7 @@ export function Settings({
         <h3>设置</h3>
       </div>
       {push.top}
-      <RemovalStatus remote={remote} />
+      <ClockBanner remote={remote} />
       <div className="glabel with-link">
         电脑
         <button className="link" onClick={() => go("devices")}>
@@ -91,7 +91,6 @@ export function Settings({
           const status = (
             <>
               <Dot tone={m.online ? "idle" : "off"} />
-              {m.id === remote.authorityDeviceId ? "管理电脑 · " : ""}
               {m.online ? "在线" : ago(m.lastSeenMs) || "离线"}
             </>
           );
@@ -462,14 +461,12 @@ export function DevicesPage({
     <div className="page">
       <NavBar onBack={onBack} title={<span className="tname">设备</span>} />
       <div className="body">
-        <RemovalStatus remote={remote} />
         <div className="glabel">电脑 · 运行 CLI</div>
         <div className="grp">
           {machines.map((m) => (
             <button key={m.id} className="row" onClick={() => go("m/" + m.id)}>
               {machineName(m)}
               <span className="v">
-                {m.id === remote.authorityDeviceId ? "管理电脑 · " : ""}
                 {m.online ? (
                   <>
                     <Dot tone="idle" />
@@ -515,7 +512,9 @@ export function DevicesPage({
                     "当前客户端"
                   ) : (
                     <>
-                      {clientUsed(d)}
+                      {d.id === remote.authorityDeviceId
+                        ? "管理手机"
+                        : clientUsed(d)}
                       <ChevronRight />
                     </>
                   )}
@@ -525,7 +524,7 @@ export function DevicesPage({
           )}
         </div>
         <div className="manage-hint">
-          右边是上次使用的时间。很久没用的客户端可以点进去移除，名称也在里面改。
+          右边是上次使用的时间。添加和删除设备在手机 App 上操作，这里只能改本机名称。
         </div>
         <div className="grp">
           <button className="row add" onClick={() => go("add")}>
@@ -538,16 +537,14 @@ export function DevicesPage({
 }
 
 /** A client: its name (sealed; synced to the other clients), its ID to
- * check, and removing it, or leaving on this one. */
+ * check, and leaving on this one. */
 export function ClientPage({
   remote,
   id,
-  go,
   onBack,
 }: {
   remote: Remote;
   id: string;
-  go: (r: string) => void;
   onBack: () => void;
 }) {
   useRemote(remote);
@@ -557,9 +554,9 @@ export function ClientPage({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [removing, setRemoving] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const canEdit = remote.devicesStatus === "ready" && remote.conn === "online";
+  const canEdit =
+    current && remote.devicesStatus === "ready" && remote.conn === "online";
   const save = async (name: string) => {
     setBusy(true);
     setError("");
@@ -577,7 +574,13 @@ export function ClientPage({
       <NavBar
         onBack={onBack}
         title={<span className="tname">{clientName(d, id)}</span>}
-        sub={current ? "当前客户端" : "已配对的客户端"}
+        sub={
+          current
+            ? "当前客户端"
+            : id === remote.authorityDeviceId
+              ? "管理手机"
+              : "已配对的客户端"
+        }
       />
       <div className="body">
         <div className="glabel">客户端</div>
@@ -627,8 +630,9 @@ export function ClientPage({
           </div>
         </div>
         <div className="manage-hint">
-          修改名称同步到其他客户端。
-          {current ? "" : "通知开关要在那台设备上设置，不在这里远程修改。"}
+          {current
+            ? "修改名称同步到其他客户端。添加和删除设备请在手机 App 上操作。"
+            : "名称和通知开关要在那台设备上设置。删除设备请在手机 App 上操作。"}
         </div>
         {error && (
           <div className="gbanner">
@@ -641,35 +645,9 @@ export function ClientPage({
               退出并删除本机密钥
             </button>
           ) : (
-            <button
-              className="row danger"
-              disabled={
-                remote.conn !== "online" ||
-                removing ||
-                remote.devicesStatus !== "ready"
-              }
-              onClick={async () => {
-                setRemoving(true);
-                setError("");
-                try {
-                  await remote.removeDevice(id);
-                  go("devices");
-                } catch (e) {
-                  setError(errorText(e));
-                } finally {
-                  setRemoving(false);
-                }
-              }}
-            >
-              {removing ? "正在提交…" : "移除这个客户端"}
-            </button>
+            <div className="row help">删除设备请在手机 App 上操作。</div>
           )}
         </div>
-        {!current && (
-          <div className="manage-hint">
-            移除会立即停止给它签发新授权并更换内容密钥；保留电脑完成屏障后显示“已移除”。不结束已接受的操作，不删除本机历史。
-          </div>
-        )}
       </div>
       {renaming && (
         <Sheet onClose={() => setRenaming(false)}>
@@ -698,6 +676,16 @@ export function ClientPage({
         </Sheet>
       )}
       {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
+    </div>
+  );
+}
+
+function ClockBanner({ remote }: { remote: Remote }) {
+  useRemote(remote);
+  if (!remote.clockWarning) return null;
+  return (
+    <div className="pad">
+      <Banner kind="warn">{remote.clockWarning}</Banner>
     </div>
   );
 }
@@ -878,7 +866,7 @@ function withDefaults(
 }
 
 /** One machine: usage, CLI versions, new-session defaults per CLI, its
- * projects, and removing it. */
+ * projects. */
 export function MachinePage({
   remote,
   id,
@@ -902,7 +890,6 @@ export function MachinePage({
     text: string;
     next: DaemonSettings;
   }>();
-  const [removing, setRemoving] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const agents = machineAgents(m);
   useEffect(() => {
@@ -1216,36 +1203,7 @@ export function MachinePage({
           </>
         )}
         <div className="grp">
-          <button
-            className="row danger"
-            disabled={
-              remote.conn !== "online" ||
-              removing ||
-              remote.devicesStatus !== "ready" ||
-              id === remote.authorityDeviceId
-            }
-            onClick={async () => {
-              setRemoving(true);
-              setError("");
-              try {
-                await remote.removeDevice(id);
-                go("devices");
-              } catch (e) {
-                setError(errorText(e));
-              } finally {
-                setRemoving(false);
-              }
-            }}
-          >
-            {id === remote.authorityDeviceId
-              ? "管理电脑不能普通移除"
-              : removing
-                ? "正在提交…"
-                : "移除这台电脑"}
-          </button>
-        </div>
-        <div className="manage-hint">
-          移除后它无法取得新授权或新内容密钥。完成前等待其余保留电脑自动更新，不要求手机逐台确认。
+          <div className="row help">删除电脑请在手机 App 上操作。</div>
         </div>
       </div>
       {sheet}
@@ -1514,33 +1472,5 @@ function NameClientDialog({
         </div>
       </form>
     </div>
-  );
-}
-
-function RemovalStatus({ remote }: { remote: Remote }) {
-  return (
-    <>
-      {remote.removals.map((op) => (
-        <div className="gbanner" key={op.request.Operation}>
-          <Banner kind={op.phase === "complete" ? "" : "warn"}>
-            {op.phase === "complete"
-              ? "设备移除已完成"
-              : op.phase === "unconfirmed"
-                ? "移除请求尚未确认，恢复连接后会继续处理"
-                : `正在撤销，等待 ${op.waiting.length} 台保留电脑自动更新`}
-            {op.phase !== "complete" && (
-              <button
-                className="link"
-                onClick={() =>
-                  void remote.retryDeviceRemoval(op.request.Operation)
-                }
-              >
-                重试
-              </button>
-            )}
-          </Banner>
-        </div>
-      ))}
-    </>
   );
 }

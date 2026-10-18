@@ -1,229 +1,24 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import qrcode from "qrcode-generator";
 import { useEffect, useRef, useState } from "react";
-import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import {
-  canRetryPairApproval,
-  initiate,
-  joinByPairing,
-  PairCanceled,
-  parsePairLink,
-  type Initiation,
-} from "../pairing";
-import { errorText, type Remote } from "../remote";
-import { Banner, NavBar, useRemote } from "../ui";
-import { Check, LoaderCircle } from "../icons";
-
-/** A QR code drawn as SVG from the module grid. */
-export function QR({ text }: { text: string }) {
-  const q = qrcode(0, "M");
-  q.addData(text);
-  q.make();
-  const n = q.getModuleCount();
-  let d = "";
-  for (let y = 0; y < n; y++)
-    for (let x = 0; x < n; x++) if (q.isDark(y, x)) d += `M${x} ${y}h1v1h-1z`;
-  return (
-    <svg
-      className="qrsvg"
-      viewBox={`-2 -2 ${n + 4} ${n + 4}`}
-      shapeRendering="crispEdges"
-      role="img"
-      aria-label="配对二维码"
-    >
-      <rect x={-2} y={-2} width={n + 4} height={n + 4} fill="#fff" />
-      <path d={d} fill="#16181c" />
-    </svg>
-  );
-}
+import { joinByPairing, PairCanceled, parsePairLink } from "../pairing";
+import { errorText } from "../remote";
+import { Banner, NavBar } from "../ui";
+import { LoaderCircle } from "../icons";
 
 const spaced = (code: string) => `${code.slice(0, 4)} ${code.slice(4)}`;
 
-const kindName = (k: DeviceKind) =>
-  k === DeviceKind.MACHINE ? "新电脑" : "新设备";
-
-/** Adds a device: shows a QR code and a code, then the emoji to check. */
-export function AddDevicePage({
-  remote,
-  onBack,
-}: {
-  remote: Remote;
-  onBack: () => void;
-}) {
-  const [p, setP] = useState<Initiation>();
-  const [req, setReq] = useState<{ emoji: string[]; kind: DeviceKind }>();
-  const [state, setState] = useState<"waiting" | "sending" | "done">("waiting");
-  const [error, setError] = useState("");
-  const [attempt, setAttempt] = useState(0);
-  useRemote(remote);
-  const [retryApproval, setRetryApproval] = useState(false);
-  const operation = useRef<
-    { active: boolean; started: boolean; pairing?: Initiation } | undefined
-  >(undefined);
-  const online = remote.conn === "online";
-  // Only replacement/account change/unmount owns cancellation. A temporary
-  // connection change must retain the identity the user already approved.
-  useEffect(() => {
-    const op = {
-      active: true,
-      started: false,
-      pairing: undefined as Initiation | undefined,
-    };
-    operation.current = op;
-    setP(undefined);
-    setReq(undefined);
-    setState("waiting");
-    setError("");
-    setRetryApproval(false);
-    return () => {
-      op.active = false;
-      op.pairing?.cancel();
-    };
-  }, [remote, attempt]);
-  useEffect(() => {
-    const op = operation.current;
-    if (!online || !op?.active || op.started) return;
-    op.started = true;
-    initiate(remote).then(
-      (x) => {
-        if (!op.active) return x.cancel();
-        op.pairing = x;
-        setP(x);
-        x.joined.then(
-          (r) => {
-            if (op.active) setReq(r);
-          },
-          (e) => {
-            if (op.active) setError(errorText(e));
-          },
-        );
-      },
-      (e) => {
-        if (op.active) setError(errorText(e));
-      },
-    );
-  }, [remote, attempt, online]);
-  const approve = async () => {
-    const op = operation.current;
-    if (
-      !op?.active ||
-      !op.pairing ||
-      !req ||
-      !online ||
-      state === "sending" ||
-      state === "done"
-    )
-      return;
-    setError("");
-    setRetryApproval(false);
-    setState("sending");
-    try {
-      await op.pairing.approve();
-      if (op.active) setState("done");
-    } catch (e) {
-      if (op.active) {
-        setError(errorText(e));
-        setState("waiting");
-        setRetryApproval(canRetryPairApproval(e));
-      }
-    }
-  };
-  const again = () => setAttempt((a) => a + 1);
-  const who = req ? kindName(req.kind) : "新设备";
-  let banner;
-  if (error) {
-    if (retryApproval)
-      banner = (
-        <Banner
-          kind="warn"
-          action={online ? "重试" : undefined}
-          onAction={() => void approve()}
-        >
-          不确定{who}收到没有，到{who}上看一眼是否已加入
-        </Banner>
-      );
-    else if (/过期/.test(error))
-      banner = (
-        <Banner kind="err" action="换一个" onAction={again}>
-          配对码过期了
-        </Banner>
-      );
-    else
-      banner = (
-        <Banner kind="err" action="重新开始" onAction={again}>
-          {error}
-        </Banner>
-      );
-  } else if (state === "sending")
-    banner = (
-      <Banner>
-        <LoaderCircle /> 正在把密钥交给{who}…
-      </Banner>
-    );
-  else if (state === "done")
-    banner = (
-      <Banner action="完成" onAction={onBack}>
-        <Check /> {who}已加入
-      </Banner>
-    );
+/** Adding a device is done on the phone: this browser can only join one. */
+export function AddDevicePage({ onBack }: { onBack: () => void }) {
   return (
     <div className="page">
       <NavBar onBack={onBack} title="添加设备" />
-      <div className="body pairing">
-        {p && state !== "done" && !(error && !req) && (
-          <>
-            <div className="qr">
-              <QR text={p.link} />
-            </div>
-            <div className="code">{spaced(p.code)}</div>
-            <p className="muted small center-text">
-              用新手机的相机扫码，或在新设备的网页里输入这 8 位数字。5
-              分钟内有效。
-              <br />
-              电脑上运行{" "}
-              <code>
-                remote-agent account join --server {remote.account.server}{" "}
-                --code {p.code}
-              </code>
-            </p>
-          </>
-        )}
-        {!p && !error && (
-          <p className="center-text muted small">
-            <LoaderCircle /> 准备中…
-          </p>
-        )}
-        {req && state !== "done" && !error && (
-          <div className="req">
-            <div className="small">
-              <b>{who}</b> <span className="muted">请求加入</span>
-            </div>
-            <div className="emoji">{req.emoji.join(" ")}</div>
-            <div
-              className="muted small center-text"
-              style={{ marginBottom: 10 }}
-            >
-              和新设备上的 4 个图案一模一样才允许
-            </div>
-            <div className="btns">
-              <button
-                className="btn no"
-                disabled={state === "sending" || !online}
-                onClick={() => (p?.cancel(), again())}
-              >
-                拒绝
-              </button>
-              <button
-                className="btn pri"
-                disabled={state === "sending" || !online}
-                onClick={() => void approve()}
-              >
-                图案一致，允许
-              </button>
-            </div>
-          </div>
-        )}
-        {banner && <div className="pad">{banner}</div>}
+      <div className="body">
+        <div className="grp">
+          <div className="row help">添加和删除设备只在手机 App 上进行。</div>
+        </div>
+        <div className="manage-hint">
+          打开手机上的 Remote Agent，进入「设备」，点「添加设备」，再在新设备上扫码或输入它显示的 8 位配对码。
+        </div>
       </div>
     </div>
   );
@@ -241,6 +36,18 @@ function joinBanner(e: unknown): {
   action: string;
 } {
   const text = errorText(e);
+  if (/security: clock/.test(text))
+    return {
+      kind: "warn",
+      text: "本机时间比手机慢，操作会被拒绝。请校准系统时间和时区后再加入。",
+      action: "重试",
+    };
+  if (e instanceof Error && /security chain is too large/.test(e.message))
+    return {
+      kind: "err",
+      text: "账户的状态链太长，无法加入；请在手机上重建账户。",
+      action: "",
+    };
   if (
     e instanceof ConnectError &&
     [
@@ -395,7 +202,7 @@ export function Setup({
         </div>
         <div className="emoji big">{emoji.join(" ")}</div>
         <p className="muted center-text small">
-          核对另一台设备的 4 个图案；一致后先在本机确认，再在管理电脑上允许。
+          核对另一台设备的 4 个图案；一致后先在本机确认，再在手机上允许。
         </p>
         {comparisonPending && (
           <button
@@ -416,7 +223,7 @@ export function Setup({
           {comparisonPending
             ? "请先在本机确认图案"
             : registering
-              ? "本机已确认，等待管理电脑批准并完成绑定…"
+              ? "本机已确认，等待手机批准并完成绑定…"
               : "等待核对…"}
         </p>
         <div className="pair-wait-actions">
@@ -438,8 +245,8 @@ export function Setup({
       <>
         <p className="muted small lead">
           {existing
-            ? "原设备身份、密钥和历史保留。在管理电脑运行 remote-agent account pair，核对四个图案完成绑定。日常删除不需要重复设置。"
-            : "在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。"}
+            ? "原设备身份、密钥和历史保留。在手机的「设备 › 添加设备」里重新配对，核对四个图案完成绑定。"
+            : "在已加入的手机上打开「设备 › 添加设备」，用它扫这台设备的二维码，或把手机上显示的 8 位配对码填在这里。"}
         </p>
         <input
           className="field code-in"

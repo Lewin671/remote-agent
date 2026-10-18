@@ -56,6 +56,9 @@ func (s *Server) beginStream(parent context.Context, token string) (context.Cont
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	if err := s.authorizeDevice(parent, d, ""); err != nil {
+		return nil, nil, nil, err
+	}
 	if len(s.streams[d.id]) >= maxDeviceStreams {
 		return nil, nil, nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many device streams"))
 	}

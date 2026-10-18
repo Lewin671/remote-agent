@@ -152,7 +152,6 @@ func sortedMachines(_ state: RemoteState) -> [MachineView] {
     }
 }
 
-/// What removing a device does, said before it is done (architecture §13 「移除设备」).
 /// A computer's row, the same wherever computers are listed (设置 and
 /// 设备): its badge, its name, its quota in short under it, and at the
 /// right whether it is online or when it last was. A long press offers its
@@ -169,8 +168,7 @@ struct MachineRow: View {
         GRow(
             machineLabel(state, id: id),
             sub: machineQuotaSummary(asKnown(machine, state: state), now: now),
-            value: id == state.authorityDeviceId
-                ? "管理电脑 · \(status?.text ?? "状态未知")" : status?.text,
+            value: status?.text,
             chevron: true
         ) { nav.open(.machine(id: id)) }
         .lead { IconBadge(Lucide.laptop, color: Theme.blueBg) }
@@ -191,29 +189,28 @@ struct ClientRow: View {
     let id: String
     let me: String
     let now: Int64
+    var authority: String = ""
     var onRename: (() -> Void)?
-    var onRemove: (() -> Void)?
     @Environment(Navigator.self) private var nav
 
     var body: some View {
         let mine = id == me
+        let role = id == authority ? "管理手机" : mine ? "当前客户端" : clientUsed(client, now: now)
         GRow(
             clientName(client, id: id), sub: client.map { clientDetail($0) },
-            value: mine ? "当前客户端" : clientUsed(client, now: now),
+            value: role,
             chevron: true
         ) { nav.open(.client(id: id)) }
         .contextMenu {
             if let onRename { Button("重命名", action: onRename) }
             Button("复制设备 ID") { UIPasteboard.general.string = id }
-            if let onRemove, !mine { Button("移除这个客户端…", role: .destructive, action: onRemove) }
         }
     }
 }
 
-enum RemovalText {
-    static let machineNote = "移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。"
-    static let machineConfirm = "它的会话记录会从服务器上删除，它要重新加入账户才能再连上。"
-    static let clientNote = "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入需要另一台已登记设备批准。"
+enum DeviceNotes {
+    /// This client is a normal member: only the phone app manages the domain.
+    static let phoneOnly = "添加和移除设备只能在手机 App 上进行。电脑、网页和 iOS 只作为普通成员加入账户。"
 }
 
 extension View {

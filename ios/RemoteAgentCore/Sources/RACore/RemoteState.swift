@@ -91,7 +91,6 @@ public struct RemoteState: Equatable, Sendable {
     public var devices: [String: DeviceView] = [:]
     /// The server no longer knows this device: removed from the account, or the server's data is gone.
     public var authorityDeviceId = ""
-    public var removals: [DeviceSecurityClient.Removal] = []
     public var removed = false
     /// Where the next page of ended sessions starts (architecture §8
     /// 「会话列表分页」): `sessions` holds every session that has not ended and
@@ -111,6 +110,9 @@ public struct RemoteState: Equatable, Sendable {
     public var synced = false
     /// The failure behind `error` in its own words, for the details.
     public var errorDetail = ""
+    /// The local clock is more than five minutes behind a signed state; new
+    /// control stays unsent until it is corrected.
+    public var clockWarning = ""
 
     public init() {}
 

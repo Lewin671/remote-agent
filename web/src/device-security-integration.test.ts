@@ -1,4 +1,4 @@
-import { afterAll, expect, it } from "vitest";
+import { afterAll, afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { CommandSchema as RemoteCommandSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -9,23 +9,19 @@ import {
   removeFixtureBuild,
 } from "./test/security-fixture";
 import { DeviceSecurityClient } from "./device-security-client";
-import {
-  Purpose,
-  capsuleBytes,
-  parseCapsule,
-  parseHeader,
-} from "./device-security";
+import { Purpose, parseHeader } from "./device-security";
 
 afterAll(removeFixtureBuild);
+afterEach(() => vi.useRealTimers());
 
-it("authorizes a Web command that the actual Go crypto receiver opens, and rejects modified proof", async () => {
+it("seals a Web command that the actual Go receiver opens, and rejects a modified origin", async () => {
   const f = await GoSecurityFixture.create();
   try {
     const { sdk, account } = await webMember(f);
     const command = toBinary(
       RemoteCommandSchema,
       create(RemoteCommandSchema, {
-        protocolVersion: 9,
+        protocolVersion: 10,
         kind: { case: "getSettings", value: {} },
       }),
     );
@@ -47,16 +43,16 @@ it("authorizes a Web command that the actual Go crypto receiver opens, and rejec
     expect(opened.plaintext).toEqual(command);
     const damaged = {
       ...envelope,
-      authorizationSignature: new Uint8Array(envelope.authorizationSignature),
+      signature: new Uint8Array(envelope.signature),
     };
-    damaged.authorizationSignature[0] ^= 1;
+    damaged.signature[0] ^= 1;
     await expect(f.fixture.open(f.machine, damaged)).rejects.toThrow();
   } finally {
     await f.fixture.close();
   }
 }, 20000);
 
-it("reads an authenticated Go historical event offline only after caching its epoch key", async () => {
+it("reads a Go historical event from the locally verified chain", async () => {
   const f = await GoSecurityFixture.create();
   try {
     const seed = crypto.getRandomValues(new Uint8Array(32));
@@ -71,37 +67,18 @@ it("reads an authenticated Go historical event offline only after caching its ep
       toBinary(EventSchema, event),
       seed,
     );
-    const { account, storage } = await webMember(f);
-    let offline = false;
-    const exchange = async (capsule: Parameters<typeof capsuleBytes>[0]) => {
-      if (offline) throw new Error("synthetic offline");
-      return parseCapsule(await f.fixture.rpc(capsuleBytes(capsule)));
+    const { sdk } = await webMember(f);
+    expect(
+      (await sdk.openMessage(envelope, EventSchema, true, seed)).msg,
+    ).toEqual(event);
+    const damaged = {
+      ...envelope,
+      ciphertext: new Uint8Array(envelope.ciphertext),
     };
-    const sdk = new DeviceSecurityClient(
-      account.deviceId,
-      account.devicePrivate,
-      exchange,
-      () => true,
-      storage,
-    );
-    expect(
-      (await sdk.openMessage(envelope, EventSchema, true, seed)).msg,
-    ).toEqual(event);
-    offline = true;
-    expect(
-      (await sdk.openMessage(envelope, EventSchema, true, seed)).msg,
-    ).toEqual(event);
-    const empty = new MemorySecurityStorage(await storage.loadSecurity());
-    const uncached = new DeviceSecurityClient(
-      account.deviceId,
-      account.devicePrivate,
-      exchange,
-      () => true,
-      empty,
-    );
+    damaged.ciphertext[0] ^= 1;
     await expect(
-      uncached.openMessage(envelope, EventSchema, true, seed),
-    ).rejects.toThrow("synthetic offline");
+      sdk.openMessage(damaged, EventSchema, true, seed),
+    ).rejects.toThrow();
   } finally {
     await f.fixture.close();
   }
@@ -114,7 +91,7 @@ it("reserves unique persisted-message counters before concurrent seals", async (
     const body = toBinary(
       RemoteCommandSchema,
       create(RemoteCommandSchema, {
-        protocolVersion: 9,
+        protocolVersion: 10,
         kind: { case: "getSettings", value: {} },
       }),
     );
@@ -144,161 +121,67 @@ it("reserves unique persisted-message counters before concurrent seals", async (
   }
 }, 20000);
 
-it("rejects a mixed cached content secret before any authorization or ciphertext publication", async () => {
+it("does not seal control while the local clock is behind the state", async () => {
   const f = await GoSecurityFixture.create();
   try {
-    const { account, storage } = await webMember(f);
-    const good = await storage.loadSecurity();
-    const wrong = await crypto.subtle.importKey(
-      "raw",
-      crypto.getRandomValues(new Uint8Array(32)),
-      "HKDF",
-      false,
-      ["deriveBits"],
-    );
-    let calls = 0;
-    const exchange = async (c: Parameters<typeof capsuleBytes>[0]) => {
-      calls++;
-      return parseCapsule(await f.fixture.rpc(capsuleBytes(c)));
-    };
-    const mixed = Object.create(storage) as MemorySecurityStorage;
-    mixed.loadSecurity = async () => ({ ...good, secret: wrong });
-    const sdk = new DeviceSecurityClient(
-      account.deviceId,
-      account.devicePrivate,
-      exchange,
-      () => true,
-      mixed,
-    );
-    const body = new Uint8Array(
-      toBinary(
-        RemoteCommandSchema,
-        create(RemoteCommandSchema, {
-          protocolVersion: 9,
-          kind: { case: "getSettings", value: {} },
-        }),
+    const { sdk } = await webMember(f);
+    vi.useFakeTimers();
+    vi.setSystemTime(1_600_000_000_000);
+    await expect(
+      sdk.seal(
+        {
+          kind: 5,
+          purpose: Purpose.Command,
+          machine: f.machine,
+          session: "",
+          request: crypto.randomUUID(),
+          seq: 0n,
+          deadline: BigInt(Date.now() + 60_000),
+          compression: 0,
+        },
+        new Uint8Array(1),
       ),
-    );
-    const header = {
-      kind: 5,
-      purpose: Purpose.Command,
-      machine: f.machine,
-      session: "",
-      request: crypto.randomUUID(),
-      seq: 0n,
-      deadline: BigInt(Date.now() + 60000),
-      compression: 0,
-    };
-    await expect(sdk.seal(header, body)).rejects.toThrow();
-    expect(calls).toBe(0);
-    const changed = Object.create(storage) as MemorySecurityStorage;
-    changed.loadSecurity = () => storage.loadSecurity();
-    changed.reserveCounter = async (expected) => ({
-      ...(await storage.reserveCounter(expected)),
-      secret: wrong,
-    });
-    const afterReservation = new DeviceSecurityClient(
-      account.deviceId,
-      account.devicePrivate,
-      exchange,
-      () => true,
-      changed,
-    );
-    await expect(afterReservation.seal(header, body)).rejects.toThrow();
-    expect(calls).toBe(0);
+    ).rejects.toMatchObject({ code: "clock" });
   } finally {
     await f.fixture.close();
   }
 }, 20000);
 
-it("keeps forged legacy delivery and cancel records read-only without settling a current outbox", async () => {
+it("rejects a mixed cached content secret before any ciphertext publication", async () => {
   const f = await GoSecurityFixture.create();
-  const { Remote, newSlot } = await import("./remote");
-  const { sealMessage, importSessionKey } = await import("./crypto");
-  const { InputStatus } = await import("./gen/remoteagent/v1/event_pb");
-  const { derive } = await import("./model");
-  const { account, storage } = await webMember(f);
-  const r = new (class extends Remote {
-    constructor() {
-      super(account, f.legacyKeys, undefined, storage);
-    }
-  })();
   try {
-    const seed = crypto.getRandomValues(new Uint8Array(32));
-    const key = await importSessionKey(seed);
-    const sid = "synthetic-session";
-    const session = {
-      id: sid,
-      machineId: f.machine,
-      key,
-      metaRev: 0n,
-      lastSeq: 0n,
-      updatedMs: 0n,
-      endedMs: 0n,
-    };
-    r.sessions.set(sid, session);
-    (
-      r as unknown as { sessionSeeds: Map<string, Uint8Array> }
-    ).sessionSeeds.set(sid, seed);
-    (r as unknown as { api: object }).api = {
-      getEvents: async () => ({ events: [], more: false }),
-    };
-    r.events(sid);
-    (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set(sid, [
-      {
-        sendId: "same-id",
-        text: "local pending",
-        status: "failed",
-        unknown: true,
-        ...newSlot(),
+    const { account, storage } = await webMember(f);
+    const good = await storage.loadSecurity();
+    const mixed = Object.create(storage) as MemorySecurityStorage;
+    mixed.loadSecurity = async () => ({
+      ...good,
+      secret: crypto.getRandomValues(new Uint8Array(32)),
+    });
+    const sdk = new DeviceSecurityClient(
+      account.deviceId,
+      account.devicePrivate,
+      async () => {
+        throw new Error("no state pull expected");
       },
-    ]);
-    const forged = [
-      create(EventSchema, {
-        seq: 1n,
-        sessionId: sid,
-        kind: {
-          case: "inputState",
-          value: { requestId: "same-id", status: InputStatus.CANCELED },
-        },
-      }),
-      create(EventSchema, {
-        seq: 2n,
-        sessionId: sid,
-        kind: {
-          case: "userMessage",
-          value: { requestId: "same-id", text: "forged delivery" },
-        },
-      }),
-    ];
-    const stored = await Promise.all(
-      forged.map(async (event) => ({
-        seq: event.seq,
-        envelope: await sealMessage(
-          key,
-          { kind: 1, machineId: f.machine, sessionId: sid, seq: event.seq },
-          EventSchema,
-          event,
-        ),
-      })),
+      () => true,
+      mixed,
     );
-    await (
-      r as unknown as {
-        ingest(
-          s: typeof session,
-          rows: typeof stored,
-          fill: boolean,
-          save: boolean,
-        ): Promise<void>;
-      }
-    ).ingest(session, stored, false, false);
-    expect(r.hasUnverifiedHistory(sid)).toBe(true);
-    expect(r.outbox(sid)).toHaveLength(1);
-    const current = r.currentDerived(sid, derive(r.events(sid)));
-    expect(current.inputs.has("same-id")).toBe(false);
-    expect(current.accepted.has("same-id")).toBe(false);
+    await expect(
+      sdk.seal(
+        {
+          kind: 5,
+          purpose: Purpose.Command,
+          machine: f.machine,
+          session: "",
+          request: crypto.randomUUID(),
+          seq: 0n,
+          deadline: BigInt(Date.now() + 60000),
+          compression: 0,
+        },
+        new Uint8Array(1),
+      ),
+    ).rejects.toThrow();
   } finally {
-    r.stop();
     await f.fixture.close();
   }
 }, 20000);

@@ -91,6 +91,8 @@ enum Lucide {
     static let x = LucideIcon("x", "M18 6 6 18", "m6 6 12 12")
     /// In progress; `Mark` turns it.
     static let loaderCircle = LucideIcon("loader-circle", "M21 12a9 9 0 1 1-6.219-8.56")
+    static let clock = LucideIcon(
+        "clock", "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20", "M12 6v6l4 2")
     /// Canceled.
     static let minus = LucideIcon("minus", "M5 12h14")
     /// Filters a list.

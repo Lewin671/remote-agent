@@ -55,7 +55,7 @@ public enum Pairing {
             pairingId: pairingId, initiatorPublic: initiatorPublic, joinerPublic: joinerPublic,
             devicePublic: devicePublic, joinerKind: joinerKind)
         return sha256(
-            Data("ra2/pair-domain\0".utf8) + u32be(inner.count) + inner + u32be(hpkePublic.count)
+            Data("ra3/pair-domain\0".utf8) + u32be(inner.count) + inner + u32be(hpkePublic.count)
                 + hpkePublic + u32be(trust.count) + trust)
     }
     public static func identityTranscript(

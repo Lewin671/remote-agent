@@ -3,45 +3,43 @@ import Foundation
 import RAProto
 
 extension Remote {
+    /// Reads the current signed state and the devices the relay lists, then
+    /// keeps only the members the state names. Device metadata is self-signed
+    /// and is the only source of a client's name.
     func refreshTrustedDirectory() async throws {
         directoryVersion += 1
         let version = directoryVersion
-        let catalog = try await securitySession().catalog()
-        let hash = try DeviceSecurity.stateHash(catalog.state)
+        let head = try await securitySession().sync().state
+        clockWarning = ""
+        let hash = try DeviceSecurity.stateHash(head)
         let hints = try await api.client.listDevices(
             request: .init(), headers: Api.headers(token: try await currentToken())
         ).value()
         var members: [String: DeviceSecurity.Member] = [:]
         var metadata: [String: PBEnvelope] = [:]
         var nextDevices: [String: DeviceView] = [:]
+        let token = try await currentToken()
+        var prefsRequest = PBGetAccountPrefsRequest()
+        prefsRequest.objectID = projectPrefsID
+        let prefs = try await api.client.getAccountPrefs(
+            request: prefsRequest, headers: Api.headers(token: token)
+        ).value()
+        if prefs.object.hasEnvelope { metadata["prefs"] = prefs.object.envelope }
         var nextMachines = machines
-        var bindings: [String: (state: Data, commit: Data)] = [:]
-        for wire in catalog.entries {
-            let h = try DeviceSecurity.parseHeader(wire.formed.header)
-            let key: String
-            switch h.purpose {
-            case .machineMeta: key = "machine:" + h.machine
-            case .deviceMeta: key = "device:" + h.request
-            case .sessionMeta: key = "session:" + h.machine + ":" + h.session
-            case .prefs: key = "prefs"
-            default: continue
-            }
-            metadata[key] = try DeviceSecurity.envelope(wire)
-        }
-        for member in catalog.state.core.members {
+        for member in head.core.members {
             members[member.id] = member
             let hint = hints.devices.first(where: { $0.id == member.id })
             var view = DeviceView(
                 id: member.id, kind: PBDeviceKind(rawValue: Int(member.kind))!,
                 createdMs: hint?.createdMs ?? 0, lastSeenMs: hint?.lastSeenMs ?? 0)
-            let env = metadata[(member.kind == 1 ? "machine:" : "device:") + member.id]
-            let binding: Data
-            if let env {
-                binding = try DeviceSecurity.commitment(DeviceSecurity.fromEnvelope(env).formed)
+            if let hint, hint.hasMeta {
+                let env = hint.meta
+                metadata[(member.kind == 1 ? "machine:" : "device:") + member.id] = env
                 if member.kind == 2 {
                     let (h, meta) = try await openSecureMessage(
                         envelope: env, want: Place(.deviceMeta, requestId: member.id),
                         as: PBDeviceMeta.self)
+                    try DeviceSecurity.check(h.seq >= hint.metaRevision, .stale)
                     view.meta = meta
                     view.metaRev = h.seq
                 } else {
@@ -55,15 +53,11 @@ extension Remote {
                     machine.metaRev = h.seq
                     nextMachines[member.id] = machine
                 }
-            } else {
-                binding = try DeviceSecurity.unnamedMemberCommit(catalog.state, member: member)
-                if member.kind == 1 && nextMachines[member.id] == nil {
-                    nextMachines[member.id] = MachineView(
-                        id: member.id, online: false, lastSeenMs: 0)
-                }
+            } else if member.kind == 1 && nextMachines[member.id] == nil {
+                nextMachines[member.id] = MachineView(
+                    id: member.id, online: false, lastSeenMs: 0)
             }
             nextDevices[member.id] = view
-            bindings[member.id] = (hash, binding)
         }
         guard !closed, version == directoryVersion else { return }
         let installed = try await securitySession().identity().1
@@ -80,9 +74,8 @@ extension Remote {
         }
         trustedMembers = members
         trustedMetadata = metadata
-        deviceBindings = bindings
         devices = nextDevices
-        authorityDeviceId = catalog.state.core.authorityID
+        authorityDeviceId = head.core.authorityID
         machines = nextMachines.filter { members[$0.key]?.kind == 1 }
         for session in Array(sessions.values) where members[session.machineId]?.kind != 1 {
             sessions[session.id] = nil
@@ -91,66 +84,10 @@ extension Remote {
         }
         publish()
     }
-    func startRemovalPolling() {
-        guard removalJob == nil, !closed else { return }
-        removalJob = Task { [weak self] in
-            guard let self else { return }
-            while !Task.isCancelled {
-                await self.pollRemovals()
-                if await self.removalPollingFinished() { break }
-                do { try await Task.sleep(for: .seconds(2)) } catch { break }
-            }
-            await self.finishRemovalPolling()
-        }
-    }
-    private func removalPollingFinished() -> Bool {
-        closed || !running || removals.allSatisfy { $0.phase == "complete" && $0.serverCleaned }
-    }
-    private func finishRemovalPolling() { removalJob = nil }
-    private func cleanupRemoval(_ op: DeviceSecurityClient.Removal) async
-        -> DeviceSecurityClient.Removal
-    {
-        guard op.phase == "complete", !op.serverCleaned, let completion = op.completion else {
-            return op
-        }
-        do {
-            for target in op.targets {
-                var request = PBRemoveDeviceRequest()
-                request.deviceID = target
-                request.securityCompletion = completion
-                request.securityRequest = op.request
-                request.securityChain = op.chain
-                do {
-                    _ = try await api.client.removeDevice(
-                        request: request, headers: Api.headers(token: try await currentToken())
-                    ).value()
-                } catch let e as ConnectError { if e.code != .notFound { throw e } }
-            }
-            return try await securitySession().markServerCleaned(op)
-        } catch { return op }
-    }
-    func pollRemovals() async {
-        do {
-            let client = try securitySession()
-            let saved = try await client.removalOperations()
-            var next: [DeviceSecurityClient.Removal] = []
-            for op in saved {
-                if op.phase == "complete" {
-                    next.append(await cleanupRemoval(op))
-                    continue
-                }
-                do { next.append(await cleanupRemoval(try await client.pollRemoval(op))) } catch {
-                    if op.phase == "unconfirmed" {
-                        next.append((try? await client.retryRemoval(op)) ?? op)
-                    } else {
-                        next.append(op)
-                    }
-                }
-            }
-            if !closed {
-                removals = next
-                publish()
-            }
-        } catch { report(error) }
+
+    /// A new head arrives within a minute; an unknown state is fetched at once.
+    func startSecurityPolling() {
+        guard let client = try? securitySession() else { return }
+        Task { await client.startPolling() }
     }
 }

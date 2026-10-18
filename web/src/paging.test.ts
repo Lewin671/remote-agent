@@ -17,13 +17,7 @@ import {
   webMember,
   removeFixtureBuild,
 } from "./test/security-fixture";
-import {
-  parseCapsule,
-  capsuleBytes,
-  commitment,
-  fromEnvelope,
-  stateHash,
-} from "./device-security";
+
 import type { Envelope } from "./gen/remoteagent/v1/envelope_pb";
 // Each test starts a Go security fixture and seals every session through it:
 // about 3 s here and over 5 s on a two-core CI runner, most of it the fixture.
@@ -40,8 +34,8 @@ async function setup() {
   const m1 = await f.fixture.enroll(f.machine, 1),
     m2 = await f.fixture.enroll(f.machine, 1);
   const ids: Record<string, string> = {
-    m1: m1.record.memberID,
-    m2: m2.record.memberID,
+    m1: m1.json.member,
+    m2: m2.json.member,
   };
   const member = await webMember(f);
   const raw = crypto.getRandomValues(new Uint8Array(32));
@@ -50,26 +44,26 @@ async function setup() {
       super(member.account, f.legacyKeys, undefined, member.storage);
     }
   })();
-  const machineMetadata = new Map<string, Envelope>();
-  for (const alias of ["m1", "m2"]) {
-    const id = ids[alias];
-    machineMetadata.set(
-      id,
-      await f.fixture.seal(
-        id,
-        { kind: 4, machineId: id, seq: 1n },
-        toBinary(
-          MachineMetaSchema,
-          create(MachineMetaSchema, { hostname: alias, protocolVersion: 9 }),
-        ),
-      ),
-    );
-  }
   const wrapped = new Map<string, Envelope>();
   const records = new Map<string, { stamp: string; record: RemoteSession }>();
   // The server's side: sessions with the time they ended, 0 while live.
   const server = new Map<string, { machineId: string; endedMs: number }>();
   let machines = ["m1"];
+  // Paging tests need a machine to disappear without the phone: the
+  // signed roster is replaced here only to exercise the listing logic.
+  (r as unknown as { loadDevices(): Promise<void> }).loadDevices = async () => {
+    const state = r as unknown as {
+      trustedMembers: Map<string, unknown>;
+      devicesStatus: string;
+    };
+    state.trustedMembers = new Map([
+      [member.account.deviceId, { id: member.account.deviceId, kind: 2 }],
+      ...machines.map(
+        (alias) => [ids[alias], { id: ids[alias], kind: 1 }] as [string, unknown],
+      ),
+    ]);
+    state.devicesStatus = "ready";
+  };
   const calls: {
     after?: SessionCursor;
     limit?: number;
@@ -131,13 +125,6 @@ async function setup() {
     }),
     listDevices: async () => ({ devices: [] }),
     putDeviceMeta: async () => ({ applied: true }),
-    forward: async (req: { securityRpc: Uint8Array }) => {
-      const capsule = parseCapsule(new Uint8Array(req.securityRpc));
-      if (capsule.method === 2) {
-        for (const id of server.keys()) await remote(id);
-      }
-      return { securityRpc: await f.fixture.rpc(capsuleBytes(capsule)) };
-    },
     listRemoteSessions: async (req: {
       after?: SessionCursor;
       limit?: number;
@@ -186,18 +173,6 @@ async function setup() {
     ids,
     raw,
     setMachines: async (next: string[]) => {
-      for (const alias of machines.filter((old) => !next.includes(old))) {
-        await member.sdk.sync();
-        const local = await member.storage.loadSecurity();
-        const env = machineMetadata.get(ids[alias])!;
-        await member.sdk.remove(
-          ids[alias],
-          await commitment(fromEnvelope(env)),
-          await stateHash(
-            await (await import("./device-security")).parseState(local.state),
-          ),
-        );
-      }
       machines = next;
     },
     fail: () => (failNext = true),

@@ -32,6 +32,7 @@ async function probe(mockLogin = true) {
   const r = new Probe(); remotes.push(r);
   vi.stubGlobal("WebSocket", Socket);
   if (mockLogin) vi.spyOn(r as any, "login").mockResolvedValue(undefined);
+  vi.spyOn(r.security, "sync").mockResolvedValue({} as never);
   vi.spyOn(r, "refresh").mockResolvedValue(undefined);
   vi.spyOn(r as any, "loadDevices").mockResolvedValue(undefined);
   vi.spyOn(r as any, "loadPrefs").mockResolvedValue(undefined);

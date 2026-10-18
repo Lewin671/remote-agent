@@ -10,8 +10,7 @@ struct DevicesScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
-    @State private var remove = ActionRunner()
-    /// The client a held row's menu is renaming or removing.
+    /// The client a held row's menu is renaming.
     @State private var renaming: DeviceView?
 
     /// Pulling down reads the device list again, while there is a server to ask.
@@ -66,17 +65,19 @@ struct DevicesScreen: View {
         GroupLabel("客户端 · 操作会话")
         GroupCard {
             // Before the list is read this client is still here.
-            if clients.isEmpty { ClientRow(client: nil, id: me, me: me, now: now) }
+            if clients.isEmpty {
+                ClientRow(
+                    client: nil, id: me, me: me, now: now,
+                    authority: state.authorityDeviceId)
+            }
             for c in clients {
                 ClientRow(
                     client: c, id: c.id, me: me, now: now,
-                    onRename: online ? { renaming = c } : nil,
-                    onRemove: online && c.id != me
-                        ? { remove.run { try await context.remote.removeDevice(c.id) } } : nil)
+                    authority: state.authorityDeviceId,
+                    onRename: online && c.id == me ? { renaming = c } : nil)
             }
         }
-        if !remove.error.isEmpty { GroupBanner(remove.error, tone: .error) }
-        GroupNote("右边是上次使用的时间。很久没用的客户端可以点进去移除，名称也在里面改。")
+        GroupNote("右边是上次使用的时间。添加和移除设备只能在手机 App 上进行。")
 
         GroupCard {
             GRow("添加电脑或客户端", action: true, icon: Lucide.plus) { nav.open(.addDevice) }

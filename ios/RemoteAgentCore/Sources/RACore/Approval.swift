@@ -25,10 +25,18 @@ func makePairApproval(account: Account, pairingId: String, candidate: Data, kind
 }
 
 func verifyPairApproval(_ enrollment: Enrollment, root: Data, kind: PBDeviceKind, now: Int64) throws {
+    try verifyPairApproval(
+        enrollment, accountId: deviceId(publicKey: try Keys.derive(root: root).account.publicKey),
+        deviceSeed: enrollment.seed, kind: kind, now: now)
+}
+
+func verifyPairApproval(
+    _ enrollment: Enrollment, accountId: String, deviceSeed: Data, kind: PBDeviceKind, now: Int64
+) throws {
     guard enrollment.approval.count <= 1024 else { throw PairError("配对批准无效") }
     let a = try PBPairApproval(serializedBytes: enrollment.approval)
-    let pub = try SigningKey(seed: enrollment.seed).publicKey
-    guard a.accountID == deviceId(publicKey: try Keys.derive(root: root).account.publicKey), a.pairingID == enrollment.pairingId,
+    let pub = try SigningKey(seed: deviceSeed).publicKey
+    guard a.accountID == accountId, a.pairingID == enrollment.pairingId,
           a.candidateDevicePublicKey == pub, a.candidateKind == kind, a.nonce.count == 16, a.expiresMs > now,
           a.approverPublicKey.count == 32, deviceId(publicKey: a.approverPublicKey) == a.approverDeviceID,
           a.approverDeviceID != deviceId(publicKey: pub),

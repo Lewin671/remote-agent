@@ -9,19 +9,28 @@ import os
 /// keeps them in the Keychain and never logs them.
 public struct Account: Sendable, CustomStringConvertible {
     public let server: String
+    /// Protocol 8 and earlier history only. A device that joined by pairing
+    /// does not receive it; an empty value means it has none.
     public let root: Data
     public let deviceSeed: Data
     public let deviceId: String
+    /// The account ID (the security domain's Pin.account). Empty only for
+    /// callers that predate it and can derive it from `root`.
+    public let accountId: String
 
-    public init(server: String, root: Data, deviceSeed: Data, deviceId: String) {
+    public init(
+        server: String, root: Data, deviceSeed: Data, deviceId: String, accountId: String = ""
+    ) {
         self.server = server
         self.root = root
         self.deviceSeed = deviceSeed
         self.deviceId = deviceId
+        self.accountId = accountId
     }
 
     /// Never the keys, so that they cannot reach a log by accident.
     public var description: String { "Account(server=\(server), device=\(deviceId))" }
+    public var hasRoot: Bool { root.count == 32 }
 }
 
 /// The app's one HTTP stack: requests, RPCs and WebSockets share its
@@ -236,10 +245,11 @@ extension ResponseMessage {
 /// Registers a new device of the account with root key `root` and logs nothing secret.
 public func joinWithRoot(
     root: Data, server: String, http: HTTP, setupToken: String = "", kind: PBDeviceKind = .client,
-    now: Int64 = Int64(Date().timeIntervalSince1970 * 1000), enrollment: Enrollment? = nil
+    now: Int64 = Int64(Date().timeIntervalSince1970 * 1000), enrollment: Enrollment? = nil,
+    deviceSeed: Data? = nil
 ) async throws -> Account {
     let keys = try Keys.derive(root: root)
-    let seed = enrollment?.seed ?? randomBytes(32)
+    let seed = deviceSeed ?? enrollment?.seed ?? randomBytes(32)
     let device = try SigningKey(seed: seed)
     if let enrollment { try verifyPairApproval(enrollment, root: root, kind: kind, now: now) }
     var reg = PBDeviceRegistration()
@@ -262,7 +272,42 @@ public func joinWithRoot(
     if res.deviceID != deviceId(publicKey: device.publicKey) {
         throw UserError("server 返回了意外的设备 ID")
     }
-    return Account(server: api.server, root: root, deviceSeed: seed, deviceId: res.deviceID)
+    return Account(
+        server: api.server, root: root, deviceSeed: seed, deviceId: res.deviceID,
+        accountId: deviceId(publicKey: keys.account.publicKey))
+}
+
+/// Registers a device joining an existing account. The phone-signed approval
+/// is the authorization; the account root key is not asked for.
+public func registerJoined(
+    server: String, http: HTTP, deviceSeed: Data, accountPublicKey: Data,
+    kind: PBDeviceKind = .client, enrollment: Enrollment,
+    now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)
+) async throws -> Account {
+    guard accountPublicKey.count == 32 else { throw CryptoError("account public key must be 32 bytes") }
+    let accountId = deviceId(publicKey: accountPublicKey)
+    try verifyPairApproval(
+        enrollment, accountId: accountId, deviceSeed: deviceSeed, kind: kind, now: now)
+    let device = try SigningKey(seed: deviceSeed)
+    var reg = PBDeviceRegistration()
+    reg.accountPublicKey = accountPublicKey
+    reg.devicePublicKey = device.publicKey
+    reg.kind = kind
+    reg.createdMs = now
+    let regBytes: Data = try reg.serializedData()
+    let api = try Api(server: server, http: http)
+    var req = PBRegisterDeviceRequest()
+    req.protocolVersion = protocolVersion
+    req.registration = regBytes
+    req.approval = enrollment.approval
+    req.approvalSignature = enrollment.signature
+    let res = try await api.auth.registerDevice(request: req).value()
+    if res.deviceID != deviceId(publicKey: device.publicKey) {
+        throw UserError("server 返回了意外的设备 ID")
+    }
+    return Account(
+        server: api.server, root: Data(), deviceSeed: deviceSeed, deviceId: res.deviceID,
+        accountId: accountId)
 }
 
 /// Logs in with the device key and returns a bearer token.

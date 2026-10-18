@@ -194,7 +194,7 @@ extension Remote {
                     throw OpenError("malformed content")
                 }
                 if ev.seq != se.seq || ev.sessionID != sid { throw OpenError("事件的位置被改动") }
-                if route.version == 2 { b.verifiedSeqs.insert(se.seq) }
+                if route.version != 1 { b.verifiedSeqs.insert(se.seq) }
                 b.pending[se.seq] = ev
                 opened.append(se)
                 // What is held is the event as opened; its ciphertext may be packed.

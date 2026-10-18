@@ -123,7 +123,7 @@ func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Requ
 		return nil, invalid("invalid security genesis")
 	}
 	state, err := deviceauth.ParseState(raw)
-	if err != nil {
+	if err != nil || state.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
 		return nil, invalid("invalid security genesis")
 	}
 	pin, err := state.Pin()
@@ -196,7 +196,7 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	haveHead := head.Core.Epoch != 0
 	for _, in := range req.Msg.States {
 		s, err := deviceauth.ParseState(in.State)
-		if err != nil {
+		if err != nil || s.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("invalid security state"))
 		}
 		raw := in.State
@@ -304,11 +304,6 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, internal(err)
 	}
-	// A pairing approval uploads the new member state before it hands the
-	// payload over, so accepting a state must not cancel its own pairing.
-	// Every accepted state is signed by the current authority, which cannot
-	// remove itself; the approver therefore remains the authority. A recovery
-	// that replaces the authority is published by the recovery service.
 	for _, id := range removed {
 		c.s.revokeStreams(id)
 		t.hub.drop(id)

@@ -47,6 +47,7 @@ async function probe() {
 it("does not open a stale main socket when stopped during login", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
+  vi.spyOn(r.security, "sync").mockResolvedValue({} as never);
   let finish!: () => void;
   vi.spyOn(r as any, "login").mockImplementation(
     () =>
@@ -54,16 +55,18 @@ it("does not open a stale main socket when stopped during login", async () => {
         finish = resolve;
       }),
   );
+  const settle = async () => {
+    for (let i = 0; i < 50; i++) await Promise.resolve();
+  };
   r.start();
   r.stop();
   finish();
-  await Promise.resolve();
-  await Promise.resolve();
+  await settle();
   expect(Socket.all).toHaveLength(0);
   r.start();
+  await settle();
   finish();
-  await Promise.resolve();
-  await Promise.resolve();
+  await settle();
   expect(Socket.all).toHaveLength(1);
   r.stop();
 }, 15000);
@@ -524,7 +527,7 @@ it("starts from what the browser kept: the token, and the last listing", async (
             {
               id: r.machine,
               online: true,
-              meta: (r as any).trustedMetadata.get("machine:" + r.machine),
+              meta: undefined,
             },
           ],
         }),

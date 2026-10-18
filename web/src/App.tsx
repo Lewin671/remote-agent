@@ -9,6 +9,7 @@ import {
 } from "react";
 import { Remote } from "./remote";
 import { loadAccount, type StoredAccount, watchAccountLogout } from "./storage";
+import { securitySetupStatus } from "./device-security-store";
 import { NavBar, useRemote } from "./ui";
 import { Home, Sidebar, todoList, WideHome, type Go } from "./views/Home";
 import { ProjectPage } from "./views/Project";
@@ -59,10 +60,16 @@ export function App() {
       setSetupError("");
       const account = await loadAccount();
       if (account && !demo) {
-        const { securitySetupStatus } = await import("./device-security-store");
         const status = await securitySetupStatus();
         if (status === "missing") {
           setRetained(account);
+          setRemote(null);
+          return;
+        }
+        if (status === "clock") {
+          setSetupError(
+            "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。",
+          );
           setRemote(null);
           return;
         }
@@ -219,13 +226,13 @@ function Main({ remote }: { remote: Remote }) {
   else if (kind === "q")
     page = <QuotaPage remote={remote} id={arg} go={go} onBack={back} />;
   else if (kind === "c")
-    page = <ClientPage remote={remote} id={arg} go={go} onBack={back} />;
+    page = <ClientPage remote={remote} id={arg} onBack={back} />;
   else if (kind === "m")
     page = <MachinePage remote={remote} id={arg} go={go} onBack={back} />;
   else if (kind === "add")
     page = (
       <Suspense fallback={loading}>
-        <AddDevicePage remote={remote} onBack={back} />
+        <AddDevicePage onBack={back} />
       </Suspense>
     );
   else if (kind.startsWith("pair"))
