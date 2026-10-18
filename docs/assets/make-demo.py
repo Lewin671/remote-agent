@@ -307,7 +307,7 @@ def build(lang, theme, at=None, scale=1.0):
 
     # ---------- capabilities ----------
     chip_y, chip_h, gap = 396, 46, 8
-    need = [max(width(t, 12.5) * 1.08, width(sub, 11.5)) + 24 for t, sub in s["chips"]]
+    need = [max(width(t, 12.5) * 1.1, width(sub, 11.5) * 1.1) + 26 for t, sub in s["chips"]]
     extra = (W - 40 - gap * (len(need) - 1) - sum(need)) / len(need)
     x = 20
     for (t, sub), n in zip(s["chips"], need):

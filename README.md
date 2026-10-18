@@ -27,13 +27,11 @@ English · [简体中文](README.zh-CN.md) · [Try it on the public relay](#try-
 
 ## At a glance
 
-| | |
-|---|---|
-| **Runs** | Codex and Claude Code in their own interactive TUI, inside tmux, on macOS or Linux (arm64, amd64). Several computers per account. |
-| **Clients** | Web PWA on any browser · Android 8.0+ · iPhone and iPad on iOS 17+ (preview, built from source) |
-| **Privacy** | End-to-end encrypted: messages, tool calls, terminal output, images, project names and paths are encrypted on your devices. The relay sees device and session IDs, timestamps, ciphertext sizes and whether a session ended — never content, never a key. |
-| **Hosting** | Your relay on a Linux server (Docker), the web client on any static HTTPS host. No third-party account, no chat platform in between. |
-| **Accounts** | One person per account; one relay can host many accounts that see nothing of each other. |
+- **Runs:** Codex and Claude Code in their own interactive TUI, inside tmux, on macOS or Linux (arm64, amd64). Several computers per account.
+- **Clients:** Web PWA on any browser · Android 8.0+ · iPhone and iPad on iOS 17+ (preview, built from source)
+- **Privacy:** End-to-end encrypted: messages, tool calls, terminal output, images, project names and paths are encrypted on your devices. The relay sees device and session IDs, timestamps, ciphertext sizes and whether a session ended — never content, never a key.
+- **Hosting:** Your relay on a Linux server (Docker), the web client on any static HTTPS host. No third-party account, no chat platform in between.
+- **Accounts:** One person per account; one relay can host many accounts that see nothing of each other.
 
 ## What you can do from a client
 
