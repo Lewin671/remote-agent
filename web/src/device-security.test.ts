@@ -233,6 +233,20 @@ describe("protocol-10 envelope: Go interoperability", () => {
     await expect(verifyWire(pin, s, s, w, false, head + 1n)).resolves.toBeDefined();
   });
 
+  it("rejects control whose head state is from the future", async () => {
+    const { s, w } = await vector();
+    const pin = {
+      account: envelopeVector.account,
+      domain: fromHex(envelopeVector.domain),
+      genesis: new Uint8Array(32).fill(1),
+    };
+    const behind = s.core.issuedAt - BigInt(5 * 60 * 1000) - 1n;
+    await expect(verifyWire(pin, s, s, w, true, behind)).rejects.toMatchObject({
+      code: "clock",
+    });
+    await expect(verifyWire(pin, s, s, w, false, behind)).resolves.toBeDefined();
+  });
+
   it("round-trips a header and keeps every authenticated field", async () => {
     const h = parseHeader(unb64(envelopeVector.header));
     expect(h.purpose).toBe(Purpose.Command);

@@ -20,8 +20,13 @@ export const VERSION = 3;
 export const MAX_STATE = 64 << 10;
 export const MAX_CIPHER = 4 << 20;
 export const MAX_STATES = 4096;
+/** Pairing payload limits: 256 states / 800 KiB of chain material. */
+export const MAX_PAIR_STATES = 256;
+export const MAX_PAIR_CHAIN_BYTES = 800 << 10;
 export const LEASE = 72 * 60 * 60 * 1000;
 export const MAX_LEASE = 7 * 24 * 60 * 60 * 1000;
+/** How far ahead of the local clock a state's IssuedAt may be. */
+export const MAX_CLOCK_SKEW = 5 * 60 * 1000;
 export class SecurityError extends Error {
   constructor(
     readonly code:
@@ -33,7 +38,8 @@ export class SecurityError extends Error {
       | "pending"
       | "capacity"
       | "storage"
-      | "unavailable" = "invalid",
+      | "unavailable"
+      | "clock" = "invalid",
   ) {
     super(`security: ${code}`);
   }
@@ -340,7 +346,8 @@ export async function parseState(b: B): Promise<SecurityState> {
   const signature = r.lp(64);
   r.done();
   const s = { core, grants, prevSecret, signature };
-  await stateHash(s);
+  // ParseState must accept only the canonical encoding, as Go does.
+  requireOK(equal(await stateBytes(s), b));
   return s;
 }
 export async function verifyStateSignature(s: SecurityState): Promise<void> {
@@ -517,25 +524,31 @@ function sameMembers(a: Member[], b: Member[]): boolean {
   );
 }
 function membershipDelta(parent: SecurityState, next: SecurityState): void {
-  const removed: string[] = [];
+  const newlyRemoved: string[] = [];
   let added = 0;
   let rotated = 0;
   for (const m of parent.core.members) {
     const n = next.core.members.find((n) => n.id === m.id);
-    if (!n) removed.push(m.id);
+    if (!n) newlyRemoved.push(m.id);
     else if (!equal(n.ed, m.ed) || n.kind !== m.kind)
       throw new SecurityError();
     else if (!equal(n.x, m.x)) rotated++;
   }
   for (const m of next.core.members)
-    if (!parent.core.members.some((o) => o.id === m.id)) added++;
+    if (!parent.core.members.some((o) => o.id === m.id)) {
+      if (parent.core.removed.includes(m.id)) throw new SecurityError();
+      added++;
+    }
+  // Removed is the accumulated tombstone set, not only this state's
+  // removals; a removed ID can never be re-added.
+  const wantRemoved = [...parent.core.removed, ...newlyRemoved].sort();
   requireOK(
-    removed.join(",") === next.core.removed.join(",") &&
+    wantRemoved.join(",") === next.core.removed.join(",") &&
       added <= 1 &&
       rotated <= 1 &&
-      !(added && removed.length) &&
-      !(rotated && (added || removed.length)) &&
-      !(added === 0 && removed.length === 0 && rotated === 0),
+      !(added && newlyRemoved.length) &&
+      !(rotated && (added || newlyRemoved.length)) &&
+      !(added === 0 && newlyRemoved.length === 0 && rotated === 0),
   );
 }
 function recoveryDelta(parent: SecurityState, next: SecurityState): void {
@@ -585,11 +598,7 @@ export async function verifyTransition(
     recoveryDelta(parent, next);
     return;
   }
-  requireOK(
-    next.core.authorityID === parent.core.authorityID &&
-      equal(next.core.recoveryEd, parent.core.recoveryEd),
-    "untrusted",
-  );
+  requireOK(next.core.authorityID === parent.core.authorityID, "untrusted");
   const oldAuthority = parent.core.members.find(
     (m) => m.id === parent.core.authorityID,
   );
@@ -616,8 +625,13 @@ export async function verifyChain(
   requireOK(states.length > 0 && states.length <= MAX_STATES);
   requireOK(proofs.length === 0 || proofs.length === states.length);
   await verifyGenesis(p, states[0]);
-  for (let i = 1; i < states.length; i++)
-    await verifyTransition(states[i - 1], states[i], proofs[i]);
+  const now = BigInt(Date.now());
+  for (let i = 0; i < states.length; i++) {
+    if (states[i].core.issuedAt > now + BigInt(MAX_CLOCK_SKEW))
+      throw new SecurityError("clock");
+    if (i > 0)
+      await verifyTransition(states[i - 1], states[i], proofs[i]);
+  }
 }
 const suite = () =>
   new CipherSuite({
@@ -993,11 +1007,14 @@ export async function verifyWire(
   const member = await scope(h, s);
   if (live) {
     requireOK(head.core.members.some((m) => m.id === h.sender), "untrusted");
-    if (control(h.purpose))
+    if (control(h.purpose)) {
+      if (head.core.issuedAt > now + BigInt(MAX_CLOCK_SKEW))
+        throw new SecurityError("clock");
       requireOK(
         head.core.notAfter >= now && head.core.contentEpoch === h.contentEpoch,
         "stale",
       );
+    }
   }
   const hh = await hash("", w.header);
   const commit = await commitment(w);
@@ -1163,7 +1180,7 @@ export async function pairDomainCommit(
 ): Promise<B> {
   requireOK(ephemeral.length === 32);
   return hash(
-    "ra2/pair-commit\0",
+    "ra3/pair-commit\0",
     new Writer().lp(ephemeral).lp(trust).bytes(),
   );
 }

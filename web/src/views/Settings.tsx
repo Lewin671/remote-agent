@@ -77,6 +77,7 @@ export function Settings({
         <h3>设置</h3>
       </div>
       {push.top}
+      <ClockBanner remote={remote} />
       <div className="glabel with-link">
         电脑
         <button className="link" onClick={() => go("devices")}>
@@ -675,6 +676,16 @@ export function ClientPage({
         </Sheet>
       )}
       {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
+    </div>
+  );
+}
+
+function ClockBanner({ remote }: { remote: Remote }) {
+  useRemote(remote);
+  if (!remote.clockWarning) return null;
+  return (
+    <div className="pad">
+      <Banner kind="warn">{remote.clockWarning}</Banner>
     </div>
   );
 }

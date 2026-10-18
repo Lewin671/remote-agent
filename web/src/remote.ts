@@ -8,6 +8,7 @@ import {
 } from "./device-security-client";
 import {
   Purpose,
+  SecurityError,
   stateHash,
   type Member,
   type SecurityHeader,
@@ -393,6 +394,8 @@ export class Remote {
   private directoryReadVersion = 0;
   private trustedMembers = new Map<string, Member>();
   authorityDeviceId = "";
+  /** Set when a state is from the future relative to this device's clock. */
+  clockWarning = "";
 
   private sessionSeeds = new Map<string, Uint8Array<ArrayBuffer>>();
   readonly security: DeviceSecurityClient;
@@ -919,8 +922,24 @@ export class Remote {
     if (this.closed) return;
     try {
       await this.security.sync();
+      this.clearClockWarning();
     } catch (e) {
       this.report(e);
+    }
+  }
+
+  private noteClock(e: unknown) {
+    if (e instanceof SecurityError && e.code === "clock") {
+      this.clockWarning =
+        "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。";
+      this.changed();
+    }
+  }
+
+  private clearClockWarning() {
+    if (this.clockWarning) {
+      this.clockWarning = "";
+      this.changed();
     }
   }
 
@@ -1088,7 +1107,9 @@ export class Remote {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.
       await this.security.sync();
+      this.clearClockWarning();
     } catch (e) {
+      this.noteClock(e);
       if (generation === this.generation && !this.closed) this.fail(e);
       return;
     }
@@ -2070,7 +2091,13 @@ export class Remote {
         CommandSchema,
         create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }),
       );
-    } catch {
+    } catch (e) {
+      this.noteClock(e);
+      if (e instanceof SecurityError && e.code === "clock")
+        throw new CommandError(
+          "clock",
+          "本机时间比账户状态慢，请校准时间和时区后再操作；操作尚未发出",
+        );
       throw new CommandError(
         "security_unavailable",
         "无法用当前安全状态签名，操作尚未发出；请重试",
@@ -2470,6 +2497,7 @@ export class Remote {
     const version = ++this.directoryReadVersion;
     try {
       const record = await this.security.sync();
+      this.clearClockWarning();
       const head = record.states[record.states.length - 1];
       const members = new Map(head.core.members.map((m) => [m.id, m]));
       const state = await stateHash(head);
@@ -2566,6 +2594,7 @@ export class Remote {
       this.changed();
       if (describe) await this.describeSelf();
     } catch (e) {
+      this.noteClock(e);
       if (version !== this.directoryReadVersion) return;
       this.devicesStatus = "error";
       this.changed();
@@ -3106,6 +3135,7 @@ export class Remote {
   }
 
   private report(e: unknown) {
+    this.noteClock(e);
     console.warn("remote-agent:", errorText(e));
     this.error = errorText(e);
     this.changed();

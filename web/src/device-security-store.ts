@@ -1,4 +1,5 @@
 import {
+  MAX_CLOCK_SKEW,
   MAX_STATES,
   SecurityError,
   equal,
@@ -197,6 +198,8 @@ export async function extendRecord(
     )
       throw new SecurityError("stale");
     const proof = proofs[i];
+    if (s.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
+      throw new SecurityError("clock");
     await verifyTransition(head, s, proof);
     const member = s.core.members.some((m) => m.id === next.memberID);
     if (member) {
@@ -316,7 +319,11 @@ async function checkStored(r: SecurityRecord): Promise<SecurityRecord> {
   await verifyPin(r.pin, r.states[0]);
   if (r.states[0].core.epoch !== 1n)
     throw new SecurityError("storage");
-  for (let i = 1; i < r.states.length; i++) {
+  const now = BigInt(Date.now());
+  for (let i = 0; i < r.states.length; i++) {
+    if (r.states[i].core.issuedAt > now + BigInt(MAX_CLOCK_SKEW))
+      throw new SecurityError("clock");
+    if (i === 0) continue;
     const prev = r.states[i - 1],
       s = r.states[i];
     if (
@@ -452,14 +459,15 @@ export async function securityPin(): Promise<Pin | undefined> {
 /** Missing state starts an explicit one-time SAS setup. Existing but corrupt
  * state must never be silently replaced or reconstructed from the root. */
 export async function securitySetupStatus(): Promise<
-  "missing" | "ready" | "invalid"
+  "missing" | "ready" | "invalid" | "clock"
 > {
   const databases = await indexedDB.databases();
   if (!databases.some((d) => d.name === DATABASE)) return "missing";
   try {
     await loadSecurity();
     return "ready";
-  } catch {
+  } catch (e) {
+    if (e instanceof SecurityError && e.code === "clock") return "clock";
     return "invalid";
   }
 }

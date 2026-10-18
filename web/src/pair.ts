@@ -381,7 +381,7 @@ export async function pairDomainTranscript(
   );
   return sha256(
     concat(
-      utf8("ra2/pair-domain\0"),
+      utf8("ra3/pair-domain\0"),
       u32(inner.length),
       inner,
       u32(hpke.length),

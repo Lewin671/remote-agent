@@ -6,6 +6,8 @@ import {
   securitySetupStatus,
 } from "./device-security-store";
 import {
+  MAX_PAIR_CHAIN_BYTES,
+  MAX_PAIR_STATES,
   newSecurityKey,
   openGrant,
   pairDomainCommit,
@@ -102,6 +104,22 @@ export function parsePairLink(query: string): PairLink | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** The pairing payload boundary: more than 256 states or 800 KiB of
+ * chain material cannot be paired; the account must be rebuilt. */
+export function checkPairChainSize(
+  states: readonly { state: Uint8Array; recovery: Uint8Array }[],
+): void {
+  if (
+    states.length === 0 ||
+    states.length > MAX_PAIR_STATES ||
+    states.reduce((n, s) => n + s.state.length + s.recovery.length, 0) >
+      MAX_PAIR_CHAIN_BYTES
+  )
+    throw new Error(
+      "security: security chain is too large to pair; rebuild the account",
+    );
 }
 
 type Poll = (want: PairingState) => Promise<GetPairingResponse>;
@@ -206,6 +224,7 @@ export async function joinByPairing(
   let replace = false;
   if (existing) {
     const status = await securitySetupStatus();
+    if (status === "clock") throw new Error("security: clock");
     if (status === "invalid")
       throw new Error("本机安全状态已损坏，不能用重新配对覆盖；请先导出并清空后重试");
     if (status === "ready") {
@@ -261,6 +280,7 @@ export async function joinByPairing(
     ))
   )
     throw new Error("配对批准与这台设备不匹配或已过期");
+  checkPairChainSize(msg.securityStates);
   const { states, proofs } = await parseChain(msg.securityStates);
   await verifyChain(trust.pin, states, proofs);
   const head = states[states.length - 1];

@@ -1,4 +1,4 @@
-import { afterAll, expect, it } from "vitest";
+import { afterAll, afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { CommandSchema as RemoteCommandSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -12,6 +12,7 @@ import { DeviceSecurityClient } from "./device-security-client";
 import { Purpose, parseHeader } from "./device-security";
 
 afterAll(removeFixtureBuild);
+afterEach(() => vi.useRealTimers());
 
 it("seals a Web command that the actual Go receiver opens, and rejects a modified origin", async () => {
   const f = await GoSecurityFixture.create();
@@ -115,6 +116,32 @@ it("reserves unique persisted-message counters before concurrent seals", async (
       parseHeader(new Uint8Array(m.securityHeader)).counter.toString(),
     );
     expect(new Set(counters).size).toBe(messages.length);
+  } finally {
+    await f.fixture.close();
+  }
+}, 20000);
+
+it("does not seal control while the local clock is behind the state", async () => {
+  const f = await GoSecurityFixture.create();
+  try {
+    const { sdk } = await webMember(f);
+    vi.useFakeTimers();
+    vi.setSystemTime(1_600_000_000_000);
+    await expect(
+      sdk.seal(
+        {
+          kind: 5,
+          purpose: Purpose.Command,
+          machine: f.machine,
+          session: "",
+          request: crypto.randomUUID(),
+          seq: 0n,
+          deadline: BigInt(Date.now() + 60_000),
+          compression: 0,
+        },
+        new Uint8Array(1),
+      ),
+    ).rejects.toMatchObject({ code: "clock" });
   } finally {
     await f.fixture.close();
   }

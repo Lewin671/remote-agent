@@ -760,6 +760,17 @@ function Empty({
 }
 
 /** A newer build is downloaded: offered until the page is reloaded. */
+/** The phone's states are from the future: remote control is paused. */
+function ClockWarning({ remote }: { remote: Remote }) {
+  useRemote(remote);
+  if (!remote.clockWarning) return null;
+  return (
+    <div className="pad">
+      <Banner kind="warn">{remote.clockWarning}</Banner>
+    </div>
+  );
+}
+
 function UpdateBanner() {
   if (useUpdate() !== "ready") return null;
   return (
@@ -827,6 +838,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
         </button>
       </div>
       <UpdateBanner />
+      <ClockWarning remote={remote} />
       <ListError remote={remote} />
       {!remote.listed && none ? (
         !remote.listError && (
@@ -892,6 +904,7 @@ export function Sidebar({
       </div>
       <div className="scroll">
         <UpdateBanner />
+        <ClockWarning remote={remote} />
         <ListError remote={remote} />
         {!remote.listed && !remote.listError && remote.sessions.size === 0 && (
           <div className="pad">

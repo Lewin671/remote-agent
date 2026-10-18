@@ -66,6 +66,13 @@ export function App() {
           setRemote(null);
           return;
         }
+        if (status === "clock") {
+          setSetupError(
+            "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。",
+          );
+          setRemote(null);
+          return;
+        }
         if (status === "invalid") {
           setSetupError(
             "本机安全状态无法校验，远程操作已暂停。原密钥和历史已保留，请检查本机存储。",

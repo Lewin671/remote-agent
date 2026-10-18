@@ -1,8 +1,12 @@
 // Displaying the four emoji is not consent: the candidate must confirm them
 // locally before it registers or stores any security state.
-import { create, toBinary } from "@bufbuild/protobuf";
+import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { afterEach, expect, it, vi } from "vitest";
-import { joinByPairing, PairCanceled } from "./pairing";
+import {
+  checkPairChainSize,
+  joinByPairing,
+  PairCanceled,
+} from "./pairing";
 import { newPairKey } from "./pair";
 import {
   pairDomainCommit,
@@ -10,7 +14,9 @@ import {
   type Pin,
 } from "./device-security";
 import {
+  PeekPairingRequestSchema,
   PeekPairingResponseSchema,
+  JoinPairingRequestSchema,
   JoinPairingResponseSchema,
   GetPairingResponseSchema,
   PairingState,
@@ -47,14 +53,25 @@ async function peer(options: { badCommit?: boolean; calls: { registered: number 
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init);
       const path = new URL(request.url).pathname;
-      if (path.endsWith("/PeekPairing"))
+      if (path.endsWith("/PeekPairing")) {
+        const peek = fromBinary(
+          PeekPairingRequestSchema,
+          new Uint8Array(await request.arrayBuffer()),
+        );
+        expect(peek.protocolVersion).toBe(10);
         return reply(
           toBinary(
             PeekPairingResponseSchema,
             create(PeekPairingResponseSchema, { pairingId: id, commit }),
           ),
         );
-      if (path.endsWith("/JoinPairing"))
+      }
+      if (path.endsWith("/JoinPairing")) {
+        const join = fromBinary(
+          JoinPairingRequestSchema,
+          new Uint8Array(await request.arrayBuffer()),
+        );
+        expect(join.protocolVersion).toBe(10);
         return reply(
           toBinary(
             JoinPairingResponseSchema,
@@ -65,6 +82,7 @@ async function peer(options: { badCommit?: boolean; calls: { registered: number 
             }),
           ),
         );
+      }
       if (path.endsWith("/GetPairing"))
         return reply(
           toBinary(
@@ -89,6 +107,20 @@ async function peer(options: { badCommit?: boolean; calls: { registered: number 
     },
   );
 }
+
+it("refuses a pairing chain above the Go limits", () => {
+  const one = { state: new Uint8Array(100), recovery: new Uint8Array() };
+  checkPairChainSize([one]);
+  expect(() =>
+    checkPairChainSize(Array.from({ length: 257 }, () => one)),
+  ).toThrow(/too large to pair/);
+  expect(() =>
+    checkPairChainSize([
+      { state: new Uint8Array(800 << 10), recovery: new Uint8Array(1) },
+    ]),
+  ).toThrow(/too large to pair/);
+  expect(() => checkPairChainSize([])).toThrow(/too large to pair/);
+});
 
 it("does not register or store anything when the local SAS confirmation is absent", async () => {
   const calls = { registered: 0 };

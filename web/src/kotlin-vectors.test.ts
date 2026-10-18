@@ -67,4 +67,5 @@ it("pairs with Kotlin", async () => {
   expect(header, { kind: PayloadKind.PAIRING, requestId: p.pairing_id });
   const payload = fromBinary(PairingPayloadSchema, plaintext);
   want(payload.server).toBe("https://ra.example.com");
+  want(hex(payload.accountPublicKey)).toBe(v.account_public_key);
 });

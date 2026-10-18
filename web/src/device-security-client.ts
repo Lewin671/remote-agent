@@ -8,6 +8,8 @@ import {
   type SecurityRecord,
 } from "./device-security-store";
 import {
+  MAX_CLOCK_SKEW,
+  control,
   equal,
   fromEnvelope,
   openGrant,
@@ -164,6 +166,11 @@ export class DeviceSecurityClient {
           await this.store.reserveCounter(await this.load()),
         );
         const state = r.states[r.states.length - 1];
+        if (
+          control(h.purpose) &&
+          state.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW)
+        )
+          throw new SecurityError("clock");
         const header: SecurityHeader = {
           ...h,
           account: r.pin.account,

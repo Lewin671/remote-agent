@@ -36,6 +36,18 @@ function joinBanner(e: unknown): {
   action: string;
 } {
   const text = errorText(e);
+  if (/security: clock/.test(text))
+    return {
+      kind: "warn",
+      text: "本机时间比手机慢，操作会被拒绝。请校准系统时间和时区后再加入。",
+      action: "重试",
+    };
+  if (e instanceof Error && /security chain is too large/.test(e.message))
+    return {
+      kind: "err",
+      text: "账户的状态链太长，无法加入；请在手机上重建账户。",
+      action: "",
+    };
   if (
     e instanceof ConnectError &&
     [
