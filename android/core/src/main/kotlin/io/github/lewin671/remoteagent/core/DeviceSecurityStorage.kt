@@ -10,16 +10,14 @@ internal object MissingDeviceSecurityStorage : DeviceSecurity.Storage {
 
     override fun reserveSecurity(expectedState: ByteArray): DeviceSecurity.Record = missing()
 
-    override fun advanceSecurity(
+    override fun installSecurity(
         expectedState: ByteArray,
-        next: DeviceSecurity.State,
+        states: List<DeviceSecurity.State>,
+        proofs: List<ByteArray?>,
     ): DeviceSecurity.Record = missing()
 
-    override fun readSecurityHistory(epoch: ULong): DeviceSecurity.Historical? = missing()
+    override fun touchSecurity(expectedState: ByteArray, floor: ULong): DeviceSecurity.Record = missing()
 
-    override fun cacheSecurityHistory(history: DeviceSecurity.Historical) = missing()
-
-    override fun readRemovalOperations(): ByteArray? = missing()
-
-    override fun writeRemovalOperations(data: ByteArray) = missing()
+    override fun cacheSecurityKey(expectedState: ByteArray, epoch: ULong, secret: ByteArray) =
+        missing()
 }

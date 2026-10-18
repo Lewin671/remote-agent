@@ -66,7 +66,7 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
     ) {
         Text("服务器拒绝了这台设备的登录", style = T.h17, color = p.fg, textAlign = TextAlign.Center)
         Text(
-            "可能是设备被移除、服务重置或连接异常。这条消息不能证明安全撤销已经完成，请先重试或在管理电脑核实。",
+            "可能是设备被移除、服务重置或连接异常。这条消息不能证明安全撤销已经完成，请先重试或在管理端手机核实。",
             style = T.sm,
             color = p.muted,
             textAlign = TextAlign.Center,
@@ -115,6 +115,7 @@ fun JoinScreen(app: RaApp) {
     var comparison by remember {
         mutableStateOf<kotlinx.coroutines.CompletableDeferred<Boolean>?>(null)
     }
+    var mode by remember { mutableStateOf("join") }
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
 
@@ -175,6 +176,15 @@ fun JoinScreen(app: RaApp) {
         step = JoinStep.Form
     }
 
+    if (mode == "create") {
+        CreateAccountScreen(app) { mode = "join" }
+        return
+    }
+    if (mode == "recover") {
+        RecoverScreen(app) { mode = "join" }
+        return
+    }
+
     BackHandler(enabled = step != JoinStep.Form) { cancel() }
 
     when (val s = step) {
@@ -227,7 +237,7 @@ fun JoinScreen(app: RaApp) {
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            "核对另一台设备的 4 个图案；一致后先在本机确认，再在管理电脑上允许。",
+                            "核对另一台设备的 4 个图案；一致后先在本机确认，再在管理端手机上允许。",
                             style = T.sm,
                             color = p.muted,
                             textAlign = TextAlign.Center,
@@ -246,7 +256,7 @@ fun JoinScreen(app: RaApp) {
                             )
                         IconText(
                             Lucide.LoaderCircle,
-                            if (comparison != null) "请先在本机确认图案" else "等待管理电脑批准并完成绑定…",
+                            if (comparison != null) "请先在本机确认图案" else "等待管理端手机批准并完成加入…",
                             p.muted,
                             T.sm,
                             Modifier.fillMaxWidth().padding(vertical = 20.dp).wrapContentWidth(),
@@ -277,7 +287,7 @@ fun JoinScreen(app: RaApp) {
                         JoinTitle(if (existing != null) "一次性安全设置" else "加入账户")
                         Text(
                             if (existing != null)
-                                "原设备身份、密钥和历史保留。在管理电脑运行 remote-agent account pair，核对四个图案完成绑定。日常删除不需要重复设置。"
+                                "原设备身份、密钥和历史保留。在管理端手机的设备页点「添加设备」，两边核对四个图案完成加入。"
                             else "在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。",
                             style = T.sm,
                             color = p.muted,
@@ -354,6 +364,9 @@ fun JoinScreen(app: RaApp) {
                             error = ""
                             step = JoinStep.Scan
                         }
+                        JoinLink("换手机？用恢复码找回管理权") { mode = "recover" }
+                        if (existing == null)
+                            JoinLink("还没有账户？在这台手机上创建") { mode = "create" }
                     }
                 }
             }

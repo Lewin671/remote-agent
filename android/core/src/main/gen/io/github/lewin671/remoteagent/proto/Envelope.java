@@ -25,8 +25,6 @@ public  final class Envelope extends
     ciphertext_ = com.google.protobuf.ByteString.EMPTY;
     signature_ = com.google.protobuf.ByteString.EMPTY;
     securityHeader_ = com.google.protobuf.ByteString.EMPTY;
-    authorization_ = com.google.protobuf.ByteString.EMPTY;
-    authorizationSignature_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int HEADER_FIELD_NUMBER = 1;
   private com.google.protobuf.ByteString header_;
@@ -155,16 +153,11 @@ public  final class Envelope extends
   private com.google.protobuf.ByteString signature_;
   /**
    * <pre>
-   * Ed25519 signature by the sending device's key, so that a daemon can
-   * tell which device sent a command even though the server is not
-   * trusted. Clients set it on COMMAND envelopes, where a daemon requires
-   * it; it is empty elsewhere. It signs the bytes as transmitted:
-   * "remote-agent/v1/envelope-signature&#92;x00"
-   * || uint32be(len(header)) || header
-   * || uint32be(len(nonce)) || nonce
-   * || uint32be(len(ciphertext)) || ciphertext
-   * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
-   * header's sender must be the ID of the signing device.
+   * Ed25519 signature by the sending device's key over the origin bytes:
+   * account, domain, state hash, sender, header hash and ciphertext
+   * commitment (see internal/deviceauth originBytes). Every
+   * security-domain envelope sets it, not only commands; a receiver checks
+   * it against the state the header names.
    * </pre>
    *
    * <code>bytes signature = 4 [json_name = "signature"];</code>
@@ -176,16 +169,11 @@ public  final class Envelope extends
   }
   /**
    * <pre>
-   * Ed25519 signature by the sending device's key, so that a daemon can
-   * tell which device sent a command even though the server is not
-   * trusted. Clients set it on COMMAND envelopes, where a daemon requires
-   * it; it is empty elsewhere. It signs the bytes as transmitted:
-   * "remote-agent/v1/envelope-signature&#92;x00"
-   * || uint32be(len(header)) || header
-   * || uint32be(len(nonce)) || nonce
-   * || uint32be(len(ciphertext)) || ciphertext
-   * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
-   * header's sender must be the ID of the signing device.
+   * Ed25519 signature by the sending device's key over the origin bytes:
+   * account, domain, state hash, sender, header hash and ciphertext
+   * commitment (see internal/deviceauth originBytes). Every
+   * security-domain envelope sets it, not only commands; a receiver checks
+   * it against the state the header names.
    * </pre>
    *
    * <code>bytes signature = 4 [json_name = "signature"];</code>
@@ -198,16 +186,11 @@ public  final class Envelope extends
   }
   /**
    * <pre>
-   * Ed25519 signature by the sending device's key, so that a daemon can
-   * tell which device sent a command even though the server is not
-   * trusted. Clients set it on COMMAND envelopes, where a daemon requires
-   * it; it is empty elsewhere. It signs the bytes as transmitted:
-   * "remote-agent/v1/envelope-signature&#92;x00"
-   * || uint32be(len(header)) || header
-   * || uint32be(len(nonce)) || nonce
-   * || uint32be(len(ciphertext)) || ciphertext
-   * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
-   * header's sender must be the ID of the signing device.
+   * Ed25519 signature by the sending device's key over the origin bytes:
+   * account, domain, state hash, sender, header hash and ciphertext
+   * commitment (see internal/deviceauth originBytes). Every
+   * security-domain envelope sets it, not only commands; a receiver checks
+   * it against the state the header names.
    * </pre>
    *
    * <code>bytes signature = 4 [json_name = "signature"];</code>
@@ -221,8 +204,8 @@ public  final class Envelope extends
   private com.google.protobuf.ByteString securityHeader_;
   /**
    * <pre>
-   * Version-2 canonical deviceauth Header; the protobuf Header above is only
-   * a routing projection. Receivers compare every projection field to this.
+   * Canonical deviceauth v3 Header; the protobuf Header above is only a
+   * routing projection. Receivers compare every projection field to this.
    * </pre>
    *
    * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
@@ -234,8 +217,8 @@ public  final class Envelope extends
   }
   /**
    * <pre>
-   * Version-2 canonical deviceauth Header; the protobuf Header above is only
-   * a routing projection. Receivers compare every projection field to this.
+   * Canonical deviceauth v3 Header; the protobuf Header above is only a
+   * routing projection. Receivers compare every projection field to this.
    * </pre>
    *
    * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
@@ -248,8 +231,8 @@ public  final class Envelope extends
   }
   /**
    * <pre>
-   * Version-2 canonical deviceauth Header; the protobuf Header above is only
-   * a routing projection. Receivers compare every projection field to this.
+   * Canonical deviceauth v3 Header; the protobuf Header above is only a
+   * routing projection. Receivers compare every projection field to this.
    * </pre>
    *
    * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
@@ -257,72 +240,6 @@ public  final class Envelope extends
   private void clearSecurityHeader() {
 
     securityHeader_ = getDefaultInstance().getSecurityHeader();
-  }
-
-  public static final int AUTHORIZATION_FIELD_NUMBER = 6;
-  private com.google.protobuf.ByteString authorization_;
-  /**
-   * <pre>
-   * Exact-ciphertext authority authorization and its Ed25519 signature.
-   * </pre>
-   *
-   * <code>bytes authorization = 6 [json_name = "authorization"];</code>
-   * @return The authorization.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getAuthorization() {
-    return authorization_;
-  }
-  /**
-   * <pre>
-   * Exact-ciphertext authority authorization and its Ed25519 signature.
-   * </pre>
-   *
-   * <code>bytes authorization = 6 [json_name = "authorization"];</code>
-   * @param value The authorization to set.
-   */
-  private void setAuthorization(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    authorization_ = value;
-  }
-  /**
-   * <pre>
-   * Exact-ciphertext authority authorization and its Ed25519 signature.
-   * </pre>
-   *
-   * <code>bytes authorization = 6 [json_name = "authorization"];</code>
-   */
-  private void clearAuthorization() {
-
-    authorization_ = getDefaultInstance().getAuthorization();
-  }
-
-  public static final int AUTHORIZATION_SIGNATURE_FIELD_NUMBER = 7;
-  private com.google.protobuf.ByteString authorizationSignature_;
-  /**
-   * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
-   * @return The authorizationSignature.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getAuthorizationSignature() {
-    return authorizationSignature_;
-  }
-  /**
-   * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
-   * @param value The authorizationSignature to set.
-   */
-  private void setAuthorizationSignature(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    authorizationSignature_ = value;
-  }
-  /**
-   * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
-   */
-  private void clearAuthorizationSignature() {
-
-    authorizationSignature_ = getDefaultInstance().getAuthorizationSignature();
   }
 
   public static io.github.lewin671.remoteagent.proto.Envelope parseFrom(
@@ -555,16 +472,11 @@ public  final class Envelope extends
 
     /**
      * <pre>
-     * Ed25519 signature by the sending device's key, so that a daemon can
-     * tell which device sent a command even though the server is not
-     * trusted. Clients set it on COMMAND envelopes, where a daemon requires
-     * it; it is empty elsewhere. It signs the bytes as transmitted:
-     * "remote-agent/v1/envelope-signature&#92;x00"
-     * || uint32be(len(header)) || header
-     * || uint32be(len(nonce)) || nonce
-     * || uint32be(len(ciphertext)) || ciphertext
-     * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
-     * header's sender must be the ID of the signing device.
+     * Ed25519 signature by the sending device's key over the origin bytes:
+     * account, domain, state hash, sender, header hash and ciphertext
+     * commitment (see internal/deviceauth originBytes). Every
+     * security-domain envelope sets it, not only commands; a receiver checks
+     * it against the state the header names.
      * </pre>
      *
      * <code>bytes signature = 4 [json_name = "signature"];</code>
@@ -576,16 +488,11 @@ public  final class Envelope extends
     }
     /**
      * <pre>
-     * Ed25519 signature by the sending device's key, so that a daemon can
-     * tell which device sent a command even though the server is not
-     * trusted. Clients set it on COMMAND envelopes, where a daemon requires
-     * it; it is empty elsewhere. It signs the bytes as transmitted:
-     * "remote-agent/v1/envelope-signature&#92;x00"
-     * || uint32be(len(header)) || header
-     * || uint32be(len(nonce)) || nonce
-     * || uint32be(len(ciphertext)) || ciphertext
-     * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
-     * header's sender must be the ID of the signing device.
+     * Ed25519 signature by the sending device's key over the origin bytes:
+     * account, domain, state hash, sender, header hash and ciphertext
+     * commitment (see internal/deviceauth originBytes). Every
+     * security-domain envelope sets it, not only commands; a receiver checks
+     * it against the state the header names.
      * </pre>
      *
      * <code>bytes signature = 4 [json_name = "signature"];</code>
@@ -599,16 +506,11 @@ public  final class Envelope extends
     }
     /**
      * <pre>
-     * Ed25519 signature by the sending device's key, so that a daemon can
-     * tell which device sent a command even though the server is not
-     * trusted. Clients set it on COMMAND envelopes, where a daemon requires
-     * it; it is empty elsewhere. It signs the bytes as transmitted:
-     * "remote-agent/v1/envelope-signature&#92;x00"
-     * || uint32be(len(header)) || header
-     * || uint32be(len(nonce)) || nonce
-     * || uint32be(len(ciphertext)) || ciphertext
-     * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
-     * header's sender must be the ID of the signing device.
+     * Ed25519 signature by the sending device's key over the origin bytes:
+     * account, domain, state hash, sender, header hash and ciphertext
+     * commitment (see internal/deviceauth originBytes). Every
+     * security-domain envelope sets it, not only commands; a receiver checks
+     * it against the state the header names.
      * </pre>
      *
      * <code>bytes signature = 4 [json_name = "signature"];</code>
@@ -622,8 +524,8 @@ public  final class Envelope extends
 
     /**
      * <pre>
-     * Version-2 canonical deviceauth Header; the protobuf Header above is only
-     * a routing projection. Receivers compare every projection field to this.
+     * Canonical deviceauth v3 Header; the protobuf Header above is only a
+     * routing projection. Receivers compare every projection field to this.
      * </pre>
      *
      * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
@@ -635,8 +537,8 @@ public  final class Envelope extends
     }
     /**
      * <pre>
-     * Version-2 canonical deviceauth Header; the protobuf Header above is only
-     * a routing projection. Receivers compare every projection field to this.
+     * Canonical deviceauth v3 Header; the protobuf Header above is only a
+     * routing projection. Receivers compare every projection field to this.
      * </pre>
      *
      * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
@@ -650,8 +552,8 @@ public  final class Envelope extends
     }
     /**
      * <pre>
-     * Version-2 canonical deviceauth Header; the protobuf Header above is only
-     * a routing projection. Receivers compare every projection field to this.
+     * Canonical deviceauth v3 Header; the protobuf Header above is only a
+     * routing projection. Receivers compare every projection field to this.
      * </pre>
      *
      * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
@@ -660,74 +562,6 @@ public  final class Envelope extends
     public Builder clearSecurityHeader() {
       copyOnWrite();
       instance.clearSecurityHeader();
-      return this;
-    }
-
-    /**
-     * <pre>
-     * Exact-ciphertext authority authorization and its Ed25519 signature.
-     * </pre>
-     *
-     * <code>bytes authorization = 6 [json_name = "authorization"];</code>
-     * @return The authorization.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getAuthorization() {
-      return instance.getAuthorization();
-    }
-    /**
-     * <pre>
-     * Exact-ciphertext authority authorization and its Ed25519 signature.
-     * </pre>
-     *
-     * <code>bytes authorization = 6 [json_name = "authorization"];</code>
-     * @param value The authorization to set.
-     * @return This builder for chaining.
-     */
-    public Builder setAuthorization(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setAuthorization(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Exact-ciphertext authority authorization and its Ed25519 signature.
-     * </pre>
-     *
-     * <code>bytes authorization = 6 [json_name = "authorization"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearAuthorization() {
-      copyOnWrite();
-      instance.clearAuthorization();
-      return this;
-    }
-
-    /**
-     * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
-     * @return The authorizationSignature.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getAuthorizationSignature() {
-      return instance.getAuthorizationSignature();
-    }
-    /**
-     * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
-     * @param value The authorizationSignature to set.
-     * @return This builder for chaining.
-     */
-    public Builder setAuthorizationSignature(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setAuthorizationSignature(value);
-      return this;
-    }
-    /**
-     * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearAuthorizationSignature() {
-      copyOnWrite();
-      instance.clearAuthorizationSignature();
       return this;
     }
 
@@ -752,12 +586,10 @@ public  final class Envelope extends
             "ciphertext_",
             "signature_",
             "securityHeader_",
-            "authorization_",
-            "authorizationSignature_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
-              "\n\u0004\n\u0005\n\u0006\n\u0007\n";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
+              "\n\u0004\n\u0005\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

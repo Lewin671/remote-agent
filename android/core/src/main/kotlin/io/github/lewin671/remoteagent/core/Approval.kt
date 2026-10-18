@@ -11,8 +11,10 @@ class Enrollment(val seed: ByteArray, val pairingId: String, val approval: ByteA
 
 fun makePairApproval(account: Account, pairingId: String, candidate: ByteArray, kind: DeviceKind, expires: Long): Pair<ByteArray, ByteArray> {
     val signer = SigningKey(account.deviceSeed)
+    val acct =
+        account.accountId.ifEmpty { deviceId(Keys.derive(account.root).account.publicKey) }
     val raw = PairApproval.newBuilder()
-        .setAccountId(deviceId(Keys.derive(account.root).account.publicKey))
+        .setAccountId(acct)
         .setPairingId(pairingId).setApproverDeviceId(account.deviceId)
         .setApproverPublicKey(ByteString.copyFrom(signer.publicKey))
         .setCandidateDevicePublicKey(ByteString.copyFrom(candidate)).setCandidateKind(kind)

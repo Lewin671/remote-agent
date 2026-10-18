@@ -44,16 +44,11 @@ public interface EnvelopeOrBuilder extends
 
   /**
    * <pre>
-   * Ed25519 signature by the sending device's key, so that a daemon can
-   * tell which device sent a command even though the server is not
-   * trusted. Clients set it on COMMAND envelopes, where a daemon requires
-   * it; it is empty elsewhere. It signs the bytes as transmitted:
-   * "remote-agent/v1/envelope-signature&#92;x00"
-   * || uint32be(len(header)) || header
-   * || uint32be(len(nonce)) || nonce
-   * || uint32be(len(ciphertext)) || ciphertext
-   * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
-   * header's sender must be the ID of the signing device.
+   * Ed25519 signature by the sending device's key over the origin bytes:
+   * account, domain, state hash, sender, header hash and ciphertext
+   * commitment (see internal/deviceauth originBytes). Every
+   * security-domain envelope sets it, not only commands; a receiver checks
+   * it against the state the header names.
    * </pre>
    *
    * <code>bytes signature = 4 [json_name = "signature"];</code>
@@ -63,28 +58,12 @@ public interface EnvelopeOrBuilder extends
 
   /**
    * <pre>
-   * Version-2 canonical deviceauth Header; the protobuf Header above is only
-   * a routing projection. Receivers compare every projection field to this.
+   * Canonical deviceauth v3 Header; the protobuf Header above is only a
+   * routing projection. Receivers compare every projection field to this.
    * </pre>
    *
    * <code>bytes security_header = 5 [json_name = "securityHeader"];</code>
    * @return The securityHeader.
    */
   com.google.protobuf.ByteString getSecurityHeader();
-
-  /**
-   * <pre>
-   * Exact-ciphertext authority authorization and its Ed25519 signature.
-   * </pre>
-   *
-   * <code>bytes authorization = 6 [json_name = "authorization"];</code>
-   * @return The authorization.
-   */
-  com.google.protobuf.ByteString getAuthorization();
-
-  /**
-   * <code>bytes authorization_signature = 7 [json_name = "authorizationSignature"];</code>
-   * @return The authorizationSignature.
-   */
-  com.google.protobuf.ByteString getAuthorizationSignature();
 }

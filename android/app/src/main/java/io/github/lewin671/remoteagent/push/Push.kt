@@ -106,6 +106,7 @@ object Push {
             val kinds = buildList {
                 if (s.notifyAttention) add(NotifyKind.NOTIFY_KIND_ATTENTION)
                 if (s.notifyTurnEnded) add(NotifyKind.NOTIFY_KIND_TURN_ENDED)
+                add(NotifyKind.NOTIFY_KIND_SECURITY)
             }
             // Turning notifications off must not depend on obtaining a Google token.
             val fcm = if (kinds.isEmpty()) "" else {

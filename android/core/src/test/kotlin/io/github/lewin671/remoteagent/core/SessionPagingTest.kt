@@ -85,7 +85,7 @@ class SessionPagingTest {
         cache: CipherCache? = null,
         http: okhttp3.OkHttpClient = this.http,
     ): Remote {
-        val r = fixtureRemote(approvedClient(daemon.account, this.http), http, cache)
+        val r = fixtureRemote(approvedClient(daemon.phone, this.http), http, cache)
         closers += AutoCloseable { r.close() }
         return r
     }
@@ -269,11 +269,12 @@ class SessionPagingTest {
             val other =
                 FakeDaemon(
                         approvedClient(
-                            daemon.account,
+                            daemon.phone,
                             http,
                             io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_MACHINE,
                         ),
                         http,
+                        daemon.phone,
                     )
                     .also { it.login() }
             closers += other
@@ -310,7 +311,7 @@ class SessionPagingTest {
                 it.conn == ConnState.ONLINE && it.machines[other.id] != null
             }
             admin.refreshDevices()
-            admin.removeDevice(other.id)
+            removeAsAuthority(daemon.phone, other.id, http)
             r.start()
             val st =
                 r.awaitState("the machine gone") {

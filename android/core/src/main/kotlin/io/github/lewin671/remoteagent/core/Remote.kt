@@ -25,7 +25,6 @@ import io.github.lewin671.remoteagent.proto.MachineMeta
 import io.github.lewin671.remoteagent.proto.PayloadKind
 import io.github.lewin671.remoteagent.proto.PeerFrame
 import io.github.lewin671.remoteagent.proto.RemoteSession
-import io.github.lewin671.remoteagent.proto.RemoveDeviceRequest
 import io.github.lewin671.remoteagent.proto.ServerFrame
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionCursor
@@ -61,9 +60,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -179,7 +175,12 @@ data class RemoteState(
      */
     val synced: Boolean = false,
     val authorityDeviceId: String = "",
-    val removals: List<DeviceSecurityClient.Removal> = emptyList(),
+    /** End of the current membership lease, unix ms. */
+    val leaseEndMs: Long = 0,
+    /** This phone is the account's authority. */
+    val authorityPhone: Boolean = false,
+    /** The relay says a recovery waits for this authority phone to veto or accept it. */
+    val recoveryPending: Boolean = false,
     /** The failure behind [error] in its own words, for the details. */
     val errorDetail: String = "",
 ) {
@@ -340,7 +341,7 @@ class Remote(
     private val linkGraceMs: Long = 10_000,
     private val securityStorage: DeviceSecurity.Storage? = null,
 ) {
-    private val keys = Keys.derive(account.root)
+    private val keys: Keys? = if (account.hasRoot) Keys.derive(account.root) else null
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http)
     val security =
@@ -348,29 +349,25 @@ class Remote(
             securityStorage ?: MissingDeviceSecurityStorage,
             account.deviceId,
             device,
-            expectedAccount = deviceId(keys.account.publicKey),
-        ) { capsule ->
-            if (token.isEmpty()) token = signIn()
-            val request =
-                ForwardRequest.newBuilder()
-                    .setMachineId(capsule.to)
-                    .setSecurityRpc(
-                        com.google.protobuf.ByteString.copyFrom(
-                            DeviceSecurityRPC.capsuleBytes(capsule),
-                        ),
-                    )
-                    .build()
-            val result = api.client.forward(request, Api.headers(token)).value()
-            if (result.hasResult()) throw DeviceSecurity.Failure("untrusted")
-            DeviceSecurityRPC.parseCapsule(result.securityRpc.toByteArray())
+            expectedAccount = account.accountId.ifEmpty { null },
+            clock = clock,
+        ) { after ->
+            api.client
+                .getSecurityStates(
+                    io.github.lewin671.remoteagent.proto.GetSecurityStatesRequest.newBuilder()
+                        .setAfterEpoch(after.toLong())
+                        .build(),
+                    Api.headers(currentToken()),
+                )
+                .value()
         }
     private var authorityDeviceId = ""
     private val trustedMembers = HashMap<String, DeviceSecurity.Member>()
     private val trustedMetadata = HashMap<String, Envelope>()
-    private val deviceBindings = HashMap<String, Pair<ByteArray, ByteArray>>()
     private var directoryVersion = 0L
-    private var removals = emptyList<DeviceSecurityClient.Removal>()
-    private var removalJob: Job? = null
+    private var lastHeadEpoch = 0uL
+    private var leaseEnd = 0L
+    private var stateJob: Job? = null
     private val dispatcher = Dispatchers.IO.limitedParallelism(1)
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
@@ -483,6 +480,21 @@ class Remote(
         scope.launch {
             if (running || removed) return@launch
             running = true
+            stateJob =
+                scope.launch {
+                    // The first pull follows the connection; a fresh login is not
+                    // needed before it and would be a second login.
+                    delay(5_000)
+                    while (running) {
+                        try {
+                            syncSecurity()
+                            renewLeaseIfNeeded()
+                        } catch (e: Exception) {
+                            if (e is CancellationException) throw e
+                        }
+                        delay(60_000)
+                    }
+                }
             beginConnect()
         }
     }
@@ -491,6 +503,8 @@ class Remote(
     fun stop() {
         scope.launch {
             running = false
+            stateJob?.cancel()
+            stateJob = null
             generation++
             reconnect?.cancel()
             reconnect = null
@@ -587,7 +601,9 @@ class Remote(
                 synced = synced,
                 errorDetail = errorDetail,
                 authorityDeviceId = authorityDeviceId,
-                removals = removals.toList(),
+                leaseEndMs = leaseEnd,
+                authorityPhone = authorityDeviceId == account.deviceId,
+                recoveryPending = security.recoveryPending,
             )
     }
 
@@ -650,7 +666,9 @@ class Remote(
         try {
             val identity = security.identity()
             trustedMembers.putAll(identity.second.core.members.associateBy { it.id })
-            authorityDeviceId = identity.first.authorityID
+            authorityDeviceId = identity.second.core.authorityID
+            lastHeadEpoch = identity.second.core.epoch
+            leaseEnd = identity.second.core.notAfter.toLong()
             for (m in cache.machines()) {
                 if (m.hasMeta() && !m.meta.securityHeader.isEmpty)
                     trustedMetadata["machine:${m.id}"] = m.meta
@@ -1233,7 +1251,7 @@ class Remote(
             try {
                 val (h, meta) =
                     openSecureMessage(
-                        keys.meta,
+                        keys?.meta ?: ByteArray(0),
                         m.meta,
                         Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
                         MachineMeta::parseFrom,
@@ -1268,18 +1286,20 @@ class Remote(
         publish: Boolean = true,
     ) {
         if (trustedMembers[incoming.machineId]?.kind != 1u) return
-        val builder = incoming.toBuilder().clearMeta()
-        trustedMetadata["session:${incoming.machineId}:${incoming.sessionId}"]?.let {
-            builder.setMeta(it)
-        }
-        val rs = builder.build()
+        // The metadata is opened and its origin checked below; the relay cannot forge it.
+        val rs = incoming
         var view = sessions[rs.sessionId]
         val removals = removedPushes[rs.machineId] ?: 0
         try {
             if (view == null) {
                 val route = Header.parseFrom(rs.key.header)
                 val (h, raw) =
-                    if (route.version == 1) Envelopes.open(keys.wrap, rs.key)
+                    if (route.version == 1)
+                        Envelopes.open(
+                            keys?.wrap
+                                ?: throw OpenException("历史不可读：这台设备没有账户根密钥"),
+                            rs.key,
+                        )
                     else {
                         val (h, raw) = security.openHistory(rs.key)
                         projection(h) to raw
@@ -1389,24 +1409,21 @@ class Remote(
         o: io.github.lewin671.remoteagent.proto.AccountPrefsObject,
         save: Boolean = true,
     ) {
+        if (o.revision == 0L || !o.hasEnvelope() || o.envelope.securityHeader.isEmpty) {
+            prefs = newerPrefs(prefs, PrefsObject.EMPTY)
+            publish()
+            return
+        }
         val opened =
             try {
-                if (save) readTrustedPrefs()
-                else {
-                    if (!o.hasEnvelope() || o.envelope.securityHeader.isEmpty)
-                        throw DeviceSecurity.Failure("untrusted")
-                    val (h, p) =
-                        openSecureMessage(
-                            keys.prefs,
-                            o.envelope,
-                            Place(
-                                PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS,
-                                requestId = PROJECT_PREFS,
-                            ),
-                            io.github.lewin671.remoteagent.proto.ProjectPrefs::parseFrom,
-                        )
-                    PrefsObject(h.seq, p)
-                }
+                val (h, p) =
+                    openSecureMessage(
+                        keys?.prefs ?: ByteArray(0),
+                        o.envelope,
+                        Place(PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS, requestId = PROJECT_PREFS),
+                        io.github.lewin671.remoteagent.proto.ProjectPrefs::parseFrom,
+                    )
+                PrefsObject(h.seq, p)
             } catch (e: Exception) {
                 report(e)
                 return
@@ -1428,16 +1445,22 @@ class Remote(
      * it; a conflict is redone on the newer object. Needs the connection: offline, changes wait.
      */
     private suspend fun readTrustedPrefs(): PrefsObject {
-        val catalog = security.catalog()
-        val wire =
-            catalog.entries.firstOrNull {
-                DeviceSecurity.parseHeader(it.formed.header).purpose == DeviceSecurity.Purpose.PREFS
-            } ?: return PrefsObject.EMPTY
-        val env = DeviceSecurity.envelope(wire)
+        val o =
+            api.client
+                .getAccountPrefs(
+                    io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest.newBuilder()
+                        .setObjectId(PROJECT_PREFS)
+                        .build(),
+                    Api.headers(currentToken()),
+                )
+                .value()
+                .`object`
+        if (o.revision == 0L || !o.hasEnvelope() || o.envelope.securityHeader.isEmpty)
+            return PrefsObject.EMPTY
         val (h, p) =
             openSecureMessage(
-                keys.prefs,
-                env,
+                keys?.prefs ?: ByteArray(0),
+                o.envelope,
                 Place(PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS, requestId = PROJECT_PREFS),
                 io.github.lewin671.remoteagent.proto.ProjectPrefs::parseFrom,
             )
@@ -1492,11 +1515,130 @@ class Remote(
     /** Reads the device list again, for a page whose times are as of opening it. */
     suspend fun refreshDevices() = withContext(dispatcher) { loadDevices() }
 
+    /** Pulls the signed state chain now; unknown states are also fetched while opening. */
+    suspend fun syncSecurity() {
+        val changed =
+            withContext(dispatcher) {
+                val before = security.head().core.epoch
+                val r = security.sync()
+                authorityDeviceId = r.head.core.authorityID
+                lastHeadEpoch = r.head.core.epoch
+                leaseEnd = r.head.core.notAfter.toLong()
+                publish()
+                r.head.core.epoch != before
+            }
+        if (changed && conn == ConnState.ONLINE) withContext(dispatcher) { loadDevices() }
+    }
+
+    /** Uploads states this phone signed, then installs them locally. */
+    suspend fun publishSecurityStates(
+        states: List<DeviceSecurity.State>,
+        proofs: List<ByteArray?> = emptyList(),
+    ) {
+        val req = io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
+        states.forEachIndexed { i, state ->
+            val b =
+                io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
+                    .setState(
+                        com.google.protobuf.ByteString.copyFrom(
+                            DeviceSecurity.stateBytes(state),
+                        ),
+                    )
+            proofs.getOrNull(i)?.let { b.setRecovery(com.google.protobuf.ByteString.copyFrom(it)) }
+            req.addStates(b)
+        }
+        api.client.putSecurityState(req.build(), Api.headers(currentToken())).value()
+        withContext(dispatcher) {
+            security.install(states, proofs)
+            authorityDeviceId = security.head().core.authorityID
+            leaseEnd = security.head().core.notAfter.toLong()
+            publish()
+        }
+    }
+
+    /** Foreground lease renewal, at most once every 12 hours (architecture §9). */
+    fun renewLeaseIfNeeded() = renewLease(force = false)
+
+    /** The user asked to renew now; the same signed state, earlier than the automatic rule. */
+    fun renewLeaseNow() = renewLease(force = true)
+
+    private fun renewLease(force: Boolean) {
+        scope.launch {
+            try {
+                withContext(dispatcher) {
+                    val head = security.head()
+                    if (head.core.authorityID != account.deviceId) return@withContext
+                    if (!force && !Authority.needsRenewal(head, clock())) return@withContext
+                    val secret = security.contentKey(head.core.contentEpoch) ?: return@withContext
+                    publishSecurityStates(
+                        listOf(
+                            Authority.renewal(
+                                head,
+                                secret,
+                                SigningKey(account.deviceSeed),
+                                clock(),
+                            ),
+                        ),
+                    )
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                report(e)
+            }
+        }
+    }
+
+    /** The signed chain from the genesis, for a pairing payload. */
+    fun chain(): List<DeviceSecurity.State> = security.chain()
+
+    fun chainProofs(): Map<ULong, ByteArray> = security.chainProofs()
+
+    /** A pending recovery the authority phone can veto; null when there is none it can see. */
+    suspend fun pendingRecovery(): RecoveryChain? {
+        if (authorityDeviceId != account.deviceId) return null
+        return try {
+            val chain = Recovery.context(account.server, http, security.head().core.recoveryEd)
+            if (chain.phase == io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase.PHASE_UNSPECIFIED)
+                null
+            else chain
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            null
+        }
+    }
+
+    /**
+     * Vetoes a pending recovery by publishing any newer state with a new recovery code. Returns
+     * the code, which the caller must show once and ask the user to save; it is not stored.
+     */
+    suspend fun vetoRecovery(): String {
+        syncSecurity()
+        val head = security.head()
+        if (head.core.authorityID != account.deviceId)
+            throw CommandException("failed_precondition", "只有管理端手机能否决恢复")
+        val secret = security.contentKey(head.core.contentEpoch)
+            ?: throw DeviceSecurity.Failure("unavailable")
+        val (seed, pub) = Authority.newRecovery()
+        publishSecurityStates(
+            listOf(
+                Authority.veto(
+                    head,
+                    pub,
+                    secret,
+                    SigningKey(account.deviceSeed),
+                    clock(),
+                ),
+            ),
+        )
+        return RecoveryCode.encode(seed)
+    }
+
     private suspend fun loadDevices() {
         val version = ++directoryVersion
         try {
-            val catalog = security.catalog()
-            val stateHash = DeviceSecurity.stateHash(catalog.state)
+            val (_, head) = security.identity()
+            val stateHash = DeviceSecurity.stateHash(head)
+            val members = head.core.members.associateBy { it.id }
             val listed =
                 api.client
                     .listDevices(
@@ -1505,24 +1647,22 @@ class Remote(
                         Api.headers(token),
                     )
                     .value()
-            val members = catalog.state.core.members.associateBy { it.id }
+            val machineRows =
+                api.client
+                    .listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(token))
+                    .value()
             val metadata = HashMap<String, Envelope>()
-            for (w in catalog.entries) {
-                val h = DeviceSecurity.parseHeader(w.formed.header)
-                val key =
-                    when (h.purpose) {
-                        DeviceSecurity.Purpose.MACHINE_META -> "machine:${h.machine}"
-                        DeviceSecurity.Purpose.DEVICE_META -> "device:${h.request}"
-                        DeviceSecurity.Purpose.SESSION_META -> "session:${h.machine}:${h.session}"
-                        DeviceSecurity.Purpose.PREFS -> "prefs"
-                        else -> ""
-                    }
-                if (key.isNotEmpty()) metadata[key] = DeviceSecurity.envelope(w)
+            for (d in listed.devicesList) {
+                if (d.hasMeta() && d.meta.securityHeader.size() > 0)
+                    metadata["device:${d.id}"] = d.meta
+            }
+            for (m in machineRows.machinesList) {
+                if (m.hasMeta() && m.meta.securityHeader.size() > 0)
+                    metadata["machine:${m.id}"] = m.meta
             }
             val newDevices = HashMap<String, DeviceView>()
             val newMachines = HashMap(machines)
-            val bindings = HashMap<String, Pair<ByteArray, ByteArray>>()
-            for (m in catalog.state.core.members) {
+            for (m in head.core.members) {
                 val hint = listed.devicesList.firstOrNull { it.id == m.id }
                 var view =
                     DeviceView(
@@ -1532,43 +1672,37 @@ class Remote(
                         lastSeenMs = hint?.lastSeenMs ?: 0L,
                     )
                 val env = metadata[(if (m.kind == 1u) "machine:" else "device:") + m.id]
-                val binding =
-                    if (env != null) {
-                        val w = DeviceSecurity.fromEnvelope(env)
-                        if (m.kind == 2u) {
-                            val (h, meta) =
-                                openSecureMessage(
-                                    keys.deviceMeta,
-                                    env,
-                                    Place(PayloadKind.PAYLOAD_KIND_DEVICE_META, requestId = m.id),
-                                    io.github.lewin671.remoteagent.proto.DeviceMeta::parseFrom,
-                                )
-                            view = view.copy(meta = meta, metaRev = h.seq)
-                        } else {
-                            val (h, meta) =
-                                openSecureMessage(
-                                    keys.meta,
-                                    env,
-                                    Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
-                                    MachineMeta::parseFrom,
-                                )
-                            val old = machines[m.id]
-                            newMachines[m.id] =
-                                if (old == null)
-                                    MachineView(m.id, false, 0L, meta = meta, metaRev = h.seq)
-                                else old.copy(meta = meta, metaRev = h.seq)
-                        }
-                        DeviceSecurity.commitment(w.formed)
+                if (env != null) {
+                    if (m.kind == 2u) {
+                        val (h, meta) =
+                            openSecureMessage(
+                                keys?.deviceMeta ?: ByteArray(0),
+                                env,
+                                Place(PayloadKind.PAYLOAD_KIND_DEVICE_META, requestId = m.id),
+                                io.github.lewin671.remoteagent.proto.DeviceMeta::parseFrom,
+                            )
+                        view = view.copy(meta = meta, metaRev = h.seq)
                     } else {
-                        if (m.kind == 1u && !newMachines.containsKey(m.id))
-                            newMachines[m.id] = MachineView(m.id, false, 0L)
-                        DeviceSecurityRemoval.unnamedCommit(catalog.state, m)
+                        val (h, meta) =
+                            openSecureMessage(
+                                keys?.meta ?: ByteArray(0),
+                                env,
+                                Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
+                                MachineMeta::parseFrom,
+                            )
+                        val old = machines[m.id]
+                        newMachines[m.id] =
+                            if (old == null)
+                                MachineView(m.id, false, 0L, meta = meta, metaRev = h.seq)
+                            else old.copy(meta = meta, metaRev = h.seq)
                     }
+                } else if (m.kind == 1u && !newMachines.containsKey(m.id)) {
+                    newMachines[m.id] = MachineView(m.id, false, 0L)
+                }
                 newDevices[m.id] = view
-                bindings[m.id] = stateHash to binding
             }
             if (version != directoryVersion) return
-            if (!DeviceSecurity.stateHash(security.identity().second).contentEquals(stateHash))
+            if (!DeviceSecurity.stateHash(security.head()).contentEquals(stateHash))
                 throw DeviceSecurity.Failure("stale")
             for ((id, d) in newDevices) if (
                 (devices[id]?.metaRev ?: 0L) > d.metaRev &&
@@ -1583,29 +1717,16 @@ class Remote(
             trustedMembers.putAll(members)
             trustedMetadata.clear()
             trustedMetadata.putAll(metadata)
-            deviceBindings.clear()
-            deviceBindings.putAll(bindings)
             devices.clear()
             devices.putAll(newDevices)
             machines.clear()
             machines.putAll(newMachines.filterKeys { it in members })
-            authorityDeviceId = catalog.state.core.authorityID
+            authorityDeviceId = head.core.authorityID
+            lastHeadEpoch = head.core.epoch
+            leaseEnd = head.core.notAfter.toLong()
             publish()
-            if (removalJob == null)
-                removalJob = scope.launch {
-                    try {
-                        while (running) {
-                            pollRemovals()
-                            if (removals.none { it.phase != "complete" || !it.serverCleaned }) break
-                            delay(2000)
-                        }
-                    } finally {
-                        removalJob = null
-                    }
-                }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            if (version == directoryVersion) deviceBindings.clear()
             report(e)
         }
         publish()
@@ -1613,55 +1734,6 @@ class Remote(
 
     private suspend fun putDevice(d: io.github.lewin671.remoteagent.proto.Device) {
         loadDevices()
-    }
-
-    private suspend fun cleanupRemoval(
-        op: DeviceSecurityClient.Removal,
-    ): DeviceSecurityClient.Removal {
-        if (op.phase != "complete" || op.serverCleaned || op.completion == null) return op
-        return try {
-            for (target in op.request["Targets"]!!.jsonArray) {
-                val request =
-                    io.github.lewin671.remoteagent.proto.RemoveDeviceRequest.newBuilder()
-                        .setDeviceId(target.jsonObject["ID"]!!.jsonPrimitive.content)
-                        .setSecurityCompletion(
-                            com.google.protobuf.ByteString.copyFrom(op.completion),
-                        )
-                        .setSecurityRequest(
-                            com.google.protobuf.ByteString.copyFrom(
-                                op.request.toString().toByteArray(Charsets.UTF_8),
-                            ),
-                        )
-                        .addAllSecurityChain(
-                            op.chain.map { com.google.protobuf.ByteString.copyFrom(it) },
-                        )
-                        .build()
-                try {
-                    api.client.removeDevice(request, Api.headers(currentToken())).value()
-                } catch (e: com.connectrpc.ConnectException) {
-                    if (e.code != com.connectrpc.Code.NOT_FOUND) throw e
-                }
-            }
-            security.markServerCleaned(op)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            op
-        }
-    }
-
-    private suspend fun pollRemovals() {
-        val old = security.removalOperations()
-        removals = old.map { op ->
-            if (op.phase == "complete") cleanupRemoval(op)
-            else
-                try {
-                    cleanupRemoval(security.pollRemoval(op))
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    if (op.phase == "unconfirmed") security.retryRemoval(op) else op
-                }
-        }
-        publish()
     }
 
     /**
@@ -2242,24 +2314,28 @@ class Remote(
 
     private suspend fun authorizeIntent(p: PreparedCommand): Envelope =
         p.sealMutex.withLock {
-            val current = security.sync()
+            val head = security.head()
             val previous = p.authorizedEnvelope
-            if (
-                previous != null &&
-                    DeviceSecurity.parseHeader(previous.securityHeader.toByteArray())
-                        .state
-                        .contentEquals(DeviceSecurity.stateHash(current.state))
-            )
-                return@withLock previous
+            if (previous != null) {
+                val h = DeviceSecurity.parseHeader(previous.securityHeader.toByteArray())
+                // A membership change rotates the content key; the same request
+                // (ID and deadline) is resealed under the current epoch.
+                if (h.contentEpoch == head.core.contentEpoch) return@withLock previous
+            }
             val env =
                 if (p.command != null) {
                     // A retry keeps the exact original observation. The executor's
                     // durable request log settles it before considering a new action.
-                    if (previous == null && isObservedAction(p.command)) {
+                    if (isObservedAction(p.command)) {
                         val fresh = fetchLiveSnapshot(p.sessionId)
                         if (observeAction(p.command, fresh) != p.command)
                             throw CommandException("failed_precondition", "当前请求已变化，请重新核对")
                     }
+                    if (!Authority.leaseValid(head, clock()))
+                        throw CommandException(
+                            "failed_precondition",
+                            "远程控制已暂停：打开手机 App 上续期后再试",
+                        )
                     security.seal(
                         DeviceSecurity.Purpose.COMMAND,
                         p.machineId,
@@ -2282,6 +2358,8 @@ class Remote(
         protocolMismatch(state.value.machines[p.machineId])?.let {
             throw CommandException("failed_precondition", it)
         }
+        if (state.value.machines[p.machineId]?.online == false)
+            throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出")
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
         if (!retryOfUnknown && clock() >= p.deadlineMs)
@@ -2296,6 +2374,9 @@ class Remote(
                 CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后$later")
             else CommandException(code, text)
         var waiting = false
+        // A previous try may have got the command to the daemon: a later
+        // "machine offline" then says nothing about it.
+        var uncertainBefore = retryOfUnknown
         try {
             while (true) {
                 waiting = false
@@ -2319,7 +2400,7 @@ class Remote(
                     val (_, msg) =
                         try {
                             openSecureMessage(
-                                keys.command,
+                                keys?.command ?: ByteArray(0),
                                 res.result,
                                 Place(
                                     PayloadKind.PAYLOAD_KIND_COMMAND_RESULT,
@@ -2364,14 +2445,25 @@ class Remote(
                                 Code.CANCELED,
                                 Code.ABORTED,
                             )
-                    if (unknown) mayHaveRun = true
+                    if (unknown) {
+                        mayHaveRun = true
+                        uncertainBefore = true
+                    }
                     if (unknown && attempt < 3 && clock() + 2000 < p.deadlineMs) {
                         attempt++
                         delay(1000L * attempt)
                         continue
                     }
-                    if (ce.code == Code.UNAVAILABLE && cause == null)
-                        throw notSent(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", "电脑离线了")
+                    // The server said at once that no daemon has the machine: it never
+                    // reached one, so this is a definite "not sent".
+                    if (ce.code == Code.UNAVAILABLE && cause == null) {
+                        if (uncertainBefore)
+                            throw CommandException(
+                                CommandException.UNKNOWN,
+                                "不确定电脑有没有执行：请求可能已经送到，之后电脑离线了",
+                            )
+                        throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出")
+                    }
                     if (unknown || ce.code == Code.UNAVAILABLE) {
                         throw CommandException(
                             CommandException.UNKNOWN,
@@ -2386,7 +2478,10 @@ class Remote(
                 throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求")
             throw e
         } catch (e: Exception) {
-            if (e is CommandException && e.fromDaemon) throw e
+            // A definite answer from the server (the daemon is offline) or the daemon
+            // itself is not made uncertain by a retry that may have run something else.
+            if (e is CommandException && (e.fromDaemon || e.code == CommandException.UNAVAILABLE))
+                throw e
             if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, "未收到可验证的执行结果，请重试同一请求")
             throw e
         }
@@ -2438,30 +2533,33 @@ class Remote(
         return d.await()
     }
 
-    /** Unregisters a device; a machine's sessions go with it. */
+    /**
+     * Removes a device by publishing a newer signed state. The server revokes the device and, for a
+     * machine, deletes its relay copy; other devices drop it on their next 60 s pull.
+     */
     suspend fun removeDevice(deviceId: String) {
-        val binding =
-            withContext(dispatcher) {
-                if (deviceId == authorityDeviceId)
-                    throw CommandException("failed_precondition", "管理电脑不能普通移除")
-                deviceBindings[deviceId]
-            } ?: throw CommandException("failed_precondition", "需要先核实当前设备信息")
-        val op = security.remove(deviceId, binding.second, binding.first)
-        cleanupRemoval(op)
-        withContext(dispatcher) {
-            removals = security.removalOperations()
-            loadDevices()
-            publish()
-        }
-    }
-
-    suspend fun retryDeviceRemoval(operation: String) {
-        val op =
-            security.removalOperations().firstOrNull {
-                it.request["Operation"]?.jsonPrimitive?.content == operation
-            } ?: return
-        security.retryRemoval(op)
-        withContext(dispatcher) { pollRemovals() }
+        syncSecurity()
+        val head = security.head()
+        if (head.core.authorityID != account.deviceId)
+            throw CommandException("failed_precondition", "请在手机 App 上删除设备")
+        if (deviceId == head.core.authorityID)
+            throw CommandException("failed_precondition", "管理端手机不能被普通删除")
+        if (head.core.member(deviceId) == null)
+            throw CommandException("not_found", "没有这台设备")
+        val old =
+            security.contentKey(head.core.contentEpoch)
+                ?: throw DeviceSecurity.Failure("unavailable")
+        val next =
+            Authority.remove(
+                head,
+                listOf(deviceId),
+                old,
+                Authority.newSecret(),
+                SigningKey(account.deviceSeed),
+                clock(),
+            )
+        publishSecurityStates(listOf(next))
+        withContext(dispatcher) { loadDevices() }
     }
 
     /** The bearer token of the current login, for services used outside this class. */
@@ -2771,12 +2869,13 @@ class Remote(
     private fun report(e: Throwable) {
         // Only the error text: never content or keys.
         log("remote-agent: " + errorText(e))
+        if (System.getenv("RA_DEBUG_STACK") != null) e.printStackTrace()
         error = errorText(e)
     }
 
     private fun projection(h: DeviceSecurity.Header): Header =
         Header.newBuilder()
-            .setVersion(2)
+            .setVersion(DeviceSecurity.VERSION)
             .setKindValue(h.kind.toInt())
             .setMachineId(h.machine)
             .setSessionId(h.session)

@@ -17,7 +17,7 @@ public  final class RevealPairingRequest extends
   private RevealPairingRequest() {
     pairingId_ = "";
     initiatorPublic_ = com.google.protobuf.ByteString.EMPTY;
-    securityContext_ = com.google.protobuf.ByteString.EMPTY;
+    trust_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int PAIRING_ID_FIELD_NUMBER = 1;
   private java.lang.String pairingId_;
@@ -94,46 +94,43 @@ public  final class RevealPairingRequest extends
     initiatorPublic_ = getDefaultInstance().getInitiatorPublic();
   }
 
-  public static final int SECURITY_CONTEXT_FIELD_NUMBER = 3;
-  private com.google.protobuf.ByteString securityContext_;
+  public static final int TRUST_FIELD_NUMBER = 3;
+  private com.google.protobuf.ByteString trust_;
   /**
    * <pre>
-   * Signed active authority PairContext. SAS binds its precommitted trust
-   * descriptor; the late context nonce/head/expiry are signed separately.
+   * Public PairTrustDescriptor. The pairing commitment must match it.
    * </pre>
    *
-   * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
-   * @return The securityContext.
+   * <code>bytes trust = 3 [json_name = "trust"];</code>
+   * @return The trust.
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString getSecurityContext() {
-    return securityContext_;
+  public com.google.protobuf.ByteString getTrust() {
+    return trust_;
   }
   /**
    * <pre>
-   * Signed active authority PairContext. SAS binds its precommitted trust
-   * descriptor; the late context nonce/head/expiry are signed separately.
+   * Public PairTrustDescriptor. The pairing commitment must match it.
    * </pre>
    *
-   * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
-   * @param value The securityContext to set.
+   * <code>bytes trust = 3 [json_name = "trust"];</code>
+   * @param value The trust to set.
    */
-  private void setSecurityContext(com.google.protobuf.ByteString value) {
+  private void setTrust(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
   
-    securityContext_ = value;
+    trust_ = value;
   }
   /**
    * <pre>
-   * Signed active authority PairContext. SAS binds its precommitted trust
-   * descriptor; the late context nonce/head/expiry are signed separately.
+   * Public PairTrustDescriptor. The pairing commitment must match it.
    * </pre>
    *
-   * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
+   * <code>bytes trust = 3 [json_name = "trust"];</code>
    */
-  private void clearSecurityContext() {
+  private void clearTrust() {
 
-    securityContext_ = getDefaultInstance().getSecurityContext();
+    trust_ = getDefaultInstance().getTrust();
   }
 
   public static io.github.lewin671.remoteagent.proto.RevealPairingRequest parseFrom(
@@ -312,44 +309,41 @@ public  final class RevealPairingRequest extends
 
     /**
      * <pre>
-     * Signed active authority PairContext. SAS binds its precommitted trust
-     * descriptor; the late context nonce/head/expiry are signed separately.
+     * Public PairTrustDescriptor. The pairing commitment must match it.
      * </pre>
      *
-     * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
-     * @return The securityContext.
+     * <code>bytes trust = 3 [json_name = "trust"];</code>
+     * @return The trust.
      */
     @java.lang.Override
-    public com.google.protobuf.ByteString getSecurityContext() {
-      return instance.getSecurityContext();
+    public com.google.protobuf.ByteString getTrust() {
+      return instance.getTrust();
     }
     /**
      * <pre>
-     * Signed active authority PairContext. SAS binds its precommitted trust
-     * descriptor; the late context nonce/head/expiry are signed separately.
+     * Public PairTrustDescriptor. The pairing commitment must match it.
      * </pre>
      *
-     * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
-     * @param value The securityContext to set.
+     * <code>bytes trust = 3 [json_name = "trust"];</code>
+     * @param value The trust to set.
      * @return This builder for chaining.
      */
-    public Builder setSecurityContext(com.google.protobuf.ByteString value) {
+    public Builder setTrust(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setSecurityContext(value);
+      instance.setTrust(value);
       return this;
     }
     /**
      * <pre>
-     * Signed active authority PairContext. SAS binds its precommitted trust
-     * descriptor; the late context nonce/head/expiry are signed separately.
+     * Public PairTrustDescriptor. The pairing commitment must match it.
      * </pre>
      *
-     * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
+     * <code>bytes trust = 3 [json_name = "trust"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearSecurityContext() {
+    public Builder clearTrust() {
       copyOnWrite();
-      instance.clearSecurityContext();
+      instance.clearTrust();
       return this;
     }
 
@@ -371,7 +365,7 @@ public  final class RevealPairingRequest extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "pairingId_",
             "initiatorPublic_",
-            "securityContext_",
+            "trust_",
           };
           java.lang.String info =
               "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\n" +

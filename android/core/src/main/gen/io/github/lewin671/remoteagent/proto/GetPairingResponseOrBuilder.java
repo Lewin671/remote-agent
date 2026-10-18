@@ -82,14 +82,13 @@ public interface GetPairingResponseOrBuilder extends
   com.google.protobuf.ByteString getDeviceHpkePublicKey();
 
   /**
-   * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
-   * @return The securityContext.
+   * <pre>
+   * The initiator's public PairTrustDescriptor, revealed with its ephemeral
+   * key. It carries account, domain, genesis hash and approver, no secret.
+   * </pre>
+   *
+   * <code>bytes trust = 9 [json_name = "trust"];</code>
+   * @return The trust.
    */
-  com.google.protobuf.ByteString getSecurityContext();
-
-  /**
-   * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
-   * @return The candidateSignature.
-   */
-  com.google.protobuf.ByteString getCandidateSignature();
+  com.google.protobuf.ByteString getTrust();
 }

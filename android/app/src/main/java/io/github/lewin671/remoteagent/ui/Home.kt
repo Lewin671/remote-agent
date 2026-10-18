@@ -134,7 +134,7 @@ fun HomeScreen() {
     val state by remote.state.collectAsState()
     val p = pal
     val t = now()
-    val scope = resolveScope(HomeScopes.remembered(context, remote.account.root, state), state)
+    val scope = resolveScope(HomeScopes.remembered(context, remote.account.localKey, state), state)
     // What is typed stays in memory: saved instance state is plaintext on disk (architecture §15).
     var query by remember(scope) { mutableStateOf("") }
     val filtering = query.isNotBlank()
@@ -252,7 +252,7 @@ fun HomeScreen() {
             state,
             scope,
             t,
-            onPick = { HomeScopes.choose(context, remote.account.root, it) },
+            onPick = { HomeScopes.choose(context, remote.account.localKey, it) },
         ) {
             menu = false
         }

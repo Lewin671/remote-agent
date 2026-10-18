@@ -132,3 +132,30 @@ func TestBuildPairState(t *testing.T) {
 	}
 	_ = phone
 }
+
+// A member added after an earlier removal keeps the cumulative Removed list and is accepted.
+func TestAddAfterRemoveKeepsTheRemovedSet(t *testing.T) {
+	g, _, phoneEd, _, _ := testGenesis(t)
+	phone, _ := g.Core.Member(g.Core.AuthorityID)
+	first, firstEd, _ := testMember(t, 0x51, Machine)
+	added, err := BuildPairState(g, first, first.XPublic[:], bytes.Repeat([]byte{0x33}, 32), bytes.Repeat([]byte{0x55}, 32), phoneEd, 1_700_000_100_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	removed, err := BuildState(added, []Member{phone}, []string{first.ID}, bytes.Repeat([]byte{0x66}, 32), mustPrev(t, bytes.Repeat([]byte{0x66}, 32), bytes.Repeat([]byte{0x55}, 32)), phoneEd, 1_700_000_200_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, _, _ := testMember(t, 0x52, Machine)
+	_ = firstEd
+	readded, err := BuildPairState(removed, second, second.XPublic[:], bytes.Repeat([]byte{0x66}, 32), bytes.Repeat([]byte{0x77}, 32), phoneEd, 1_700_000_300_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyTransition(removed, readded, nil); err != nil {
+		t.Fatalf("add after remove: %v", err)
+	}
+	if got := readded.Core.Removed; len(got) != 1 || got[0] != first.ID {
+		t.Fatalf("removed set %v", got)
+	}
+}

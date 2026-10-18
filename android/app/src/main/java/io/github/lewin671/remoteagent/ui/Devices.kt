@@ -53,7 +53,14 @@ fun DevicesScreen() {
     }
     PageScaffold("设备") {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            RemovalProgress(state)
+            if (state.authorityPhone && state.recoveryPending)
+                Banner(
+                    "有人正在用恢复码申请接管管理权。不是你本人就点了否决。",
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    Tone2.ERROR,
+                    action = "查看",
+                    onAction = { nav.recovery() },
+                )
             GLabel("电脑 · 运行 CLI")
             val ms = state.machines.values.sortedBy { machineLabel(state, it.id) }
             if (ms.isEmpty())
@@ -73,9 +80,7 @@ fun DevicesScreen() {
                                         ) {
                                             if (m.online) Dot(p.green)
                                             ArrowText(
-                                                (if (m.id == state.authorityDeviceId) "管理电脑 · "
-                                                else "") +
-                                                    (if (m.online) "在线"
+                                                (if (m.online) "在线"
                                                     else
                                                         whenText(m.lastSeenMs, t).ifEmpty {
                                                             "不在线"
@@ -116,26 +121,43 @@ fun DevicesScreen() {
                                         modifier = Modifier.padding(top = 2.dp),
                                     )
                                 }
-                                if (c.id == me) Text("当前客户端", style = T.sm, color = p.muted)
+                                if (c.id == state.authorityDeviceId)
+                                    Text("管理端手机", style = T.sm, color = p.muted)
+                                else if (c.id == me) Text("本机", style = T.sm, color = p.muted)
                                 else ArrowText(clientUsed(c, t), p.muted, T.sm)
                             }
                         }
                     },
             )
+            if (state.authorityPhone) {
+                GLabel("远程控制")
+                Hint(
+                    if (state.leaseEndMs > 0)
+                        "有效期至 " + dayText(state.leaseEndMs, t) + "。回到 App 时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"
+                    else "正在读取成员状态…",
+                    Modifier.padding(horizontal = 16.dp),
+                )
+            }
             Text(
-                "右边是上次使用的时间。很久没用的客户端可以点进去移除，名称也在里面改。",
+                "右边是上次使用的时间。名称在每台设备上自己改，管理端手机可以移除其他设备。",
                 style = T.sm,
                 color = p.muted,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
-            Box(
-                Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    .heightIn(min = 44.dp)
-                    .clickable { nav.pair() },
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                IconText(Lucide.Plus, "添加电脑或客户端", p.blue, T.body)
-            }
+            if (state.authorityPhone)
+                Box(
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        .heightIn(min = 44.dp)
+                        .clickable { nav.pair() },
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    IconText(Lucide.Plus, "添加电脑或客户端", p.blue, T.body)
+                }
+            else
+                Hint(
+                    "添加和删除设备要在管理端手机上操作。",
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -156,8 +178,7 @@ fun ClientScreen(id: String) {
     val remove = rememberAction()
     PageScaffold(clientName(d, id), subtitle = if (id == me) "当前客户端" else "已配对的客户端") {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            RemovalProgress(state, id)
-            GLabel("客户端")
+            GLabel(if (id == state.authorityDeviceId) "管理端手机" else "客户端")
             Group(
                 rows =
                     listOfNotNull<@Composable () -> Unit>(
@@ -231,35 +252,46 @@ fun ClientScreen(id: String) {
                 ) {
                     ArrowText("退出并删除本机密钥在设置页", p.muted, T.body)
                 }
-            } else {
-                Box(
-                    Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                        .heightIn(min = 44.dp)
-                        .clickable(
-                            enabled =
-                                state.conn == ConnState.ONLINE &&
-                                    !remove.running &&
-                                    state.removals.none { it.targets.contains(id) },
-                        ) {
-                            remove.run(
-                                {
-                                    remote.removeDevice(id)
-                                    null
-                                },
-                            )
-                        },
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    Text("移除这个客户端", style = T.body, color = p.red)
+            } else if (state.authorityPhone) {
+                if (id == state.authorityDeviceId) {
+                    Text(
+                        "管理端手机不能普通移除；换手机要用恢复码。",
+                        style = T.sm,
+                        color = p.muted,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                } else {
+                    Box(
+                        Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                            .heightIn(min = 44.dp)
+                            .clickable(
+                                enabled = state.conn == ConnState.ONLINE && !remove.running,
+                            ) {
+                                remove.run(
+                                    {
+                                        remote.removeDevice(id)
+                                        null
+                                    },
+                                )
+                            },
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Text("移除这个客户端", style = T.body, color = p.red)
+                    }
+                    Text(
+                        "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入要在管理端手机上批准。",
+                        style = T.sm,
+                        color = p.muted,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
                 }
-                Text(
-                    "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入需要另一台已登记设备批准。",
-                    style = T.sm,
-                    color = p.muted,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
                 if (remove.error.isNotEmpty())
                     Banner(remove.error, Modifier.padding(16.dp), Tone2.ERROR)
+            } else {
+                Hint(
+                    "删除设备要在管理端手机上操作。",
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
             }
         }
     }
@@ -278,46 +310,4 @@ fun ClientScreen(id: String) {
                 },
             )
         }
-}
-
-@Composable
-fun RemovalProgress(
-    state: io.github.lewin671.remoteagent.core.RemoteState,
-    target: String? = null,
-) {
-    val remote = LocalRemote.current
-    for (op in state.removals.filter { target == null || it.targets.contains(target) }) {
-        val retry = rememberAction()
-        val operation = op.operation
-        GLabel(
-            when (op.phase) {
-                "complete" -> "已移除"
-                "pending" -> "正在撤销"
-                else -> "尚未确认"
-            },
-        )
-        if (op.phase == "complete") Hint("已验证全部保留电脑的撤销回执")
-        else {
-            Hint(if (op.phase == "pending") "等待保留电脑自动同步" else "请求尚未获得管理电脑确认")
-            for (id in op.waiting) Hint(machineLabel(state, id))
-            Group(
-                rows =
-                    listOf {
-                        GRow(
-                            "重试",
-                            enabled = !retry.running,
-                            onClick = {
-                                retry.run(
-                                    {
-                                        remote.retryDeviceRemoval(operation)
-                                        null
-                                    },
-                                )
-                            },
-                        )
-                    },
-            )
-        }
-        if (op.error.isNotEmpty()) Hint("暂时无法确认，请重试。尚未显示移除成功。")
-    }
 }

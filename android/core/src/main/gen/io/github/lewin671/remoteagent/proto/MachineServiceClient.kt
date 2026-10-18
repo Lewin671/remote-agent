@@ -16,22 +16,6 @@ import com.connectrpc.StreamType
 public class MachineServiceClient(
   private val client: ProtocolClientInterface,
 ) : MachineServiceClientInterface {
-  /**
-   *  One-time transport pin, installed by the authority host. Endpoints keep
-   *  their independently SAS-pinned authority; this is only server-side ACL.
-   */
-  override suspend fun pinSecurityDomain(request: PinSecurityDomainRequest, headers: Headers): ResponseMessage<PinSecurityDomainResponse> = client.unary(
-    request,
-    headers,
-    MethodSpec(
-    "remoteagent.v1.MachineService/PinSecurityDomain",
-      io.github.lewin671.remoteagent.proto.PinSecurityDomainRequest::class,
-      io.github.lewin671.remoteagent.proto.PinSecurityDomainResponse::class,
-      StreamType.UNARY,
-    ),
-  )
-
-
   override suspend fun putMachine(request: PutMachineRequest, headers: Headers): ResponseMessage<PutMachineResponse> = client.unary(
     request,
     headers,

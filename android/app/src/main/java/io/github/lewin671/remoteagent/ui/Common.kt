@@ -141,6 +141,9 @@ class Nav(
     val client: (String) -> Unit = {},
     /** A folder chosen for a new project, to start its first session in. */
     val newProjectAt: (machine: String, path: String) -> Unit = { _, _ -> },
+    val recovery: () -> Unit = {},
+    val recover: () -> Unit = {},
+    val createAccount: () -> Unit = {},
 )
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }

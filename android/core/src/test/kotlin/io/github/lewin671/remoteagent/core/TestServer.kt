@@ -101,7 +101,12 @@ class TestServer(
     override fun close() {
         stop()
         TestSecurity.remove(url)
-        dbDir.deleteRecursively()
+        if (System.getenv("RA_KEEP_TEST_DIRS") != null) {
+            println("test server dir: ${dbDir.absolutePath}")
+            println(File(dbDir, "server.log").readText().takeLast(4000))
+        } else {
+            dbDir.deleteRecursively()
+        }
     }
 
     companion object {
@@ -113,10 +118,72 @@ class TestServer(
  * A stand-in for the daemon: it uploads a machine, sessions and events the way internal/relay does,
  * answers forwarded commands, and serves terminals.
  */
-class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoCloseable {
-    private val keys = Keys.derive(account.root)
-    private val security
-        get() = TestSecurity.get(account.server)
+class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone: Account) : AutoCloseable {
+    private val store = TestSecurity.get(account.server)!!.stores.getValue(account.deviceId)
+    private val local =
+        DeviceSecurityClient(store, account.deviceId, SigningKey(account.deviceSeed), account.accountId) {
+            after ->
+            val r = store.readSecurity()
+            val b =
+                io.github.lewin671.remoteagent.proto.GetSecurityStatesResponse.newBuilder()
+                    .setHeadEpoch(r.head.core.epoch.toLong())
+            for (state in r.chain.filter { it.core.epoch > after }) {
+                val sb =
+                    io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
+                        .setState(ByteString.copyFrom(DeviceSecurity.stateBytes(state)))
+                r.proofs[state.core.epoch]?.let { sb.setRecovery(ByteString.copyFrom(it)) }
+                b.addStates(sb)
+            }
+            b.build()
+        }
+
+    private fun purposeOf(kind: PayloadKind): DeviceSecurity.Purpose =
+        DeviceSecurity.Purpose.entries.first { it.value == kind.number.toUInt() }
+
+    private fun seal(h: Header, plain: ByteArray, seed: ByteArray? = null): Envelope =
+        local.seal(
+            purposeOf(h.kind),
+            h.machineId,
+            h.sessionId,
+            h.requestId,
+            h.seq.toULong(),
+            h.deadlineMs.toULong(),
+            plain,
+            seed,
+        )
+
+    private fun now() = System.currentTimeMillis()
+
+    private fun open(env: Envelope): Pair<Header, ByteArray> {
+        val r = store.readSecurity()
+        val w = DeviceSecurity.fromEnvelope(env)
+        val canonical = DeviceSecurity.parseHeader(w.formed.header)
+        val s = r.stateAt(canonical.epoch) ?: throw DeviceSecurity.Failure("unknown state")
+        val key = r.contentKey(s.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
+        val seed =
+            if (canonical.purpose.sessionKey) sessionKeys[canonical.session] else null
+        val (h, plain) =
+            DeviceSecurity.open(
+                s,
+                r.head,
+                canonical.purpose.control,
+                maxOf(now().toULong(), r.floor),
+                w,
+                key,
+                seed,
+            )
+        return Header.newBuilder()
+            .setVersion(DeviceSecurity.VERSION)
+            .setKindValue(h.kind.toInt())
+            .setMachineId(h.machine)
+            .setSessionId(h.session)
+            .setRequestId(h.request)
+            .setSeq(h.seq.toLong())
+            .setDeadlineMs(h.deadline.toLong())
+            .setSender(h.sender)
+            .setCompressionValue(h.compression.toInt())
+            .build() to plain
+    }
 
     val id = account.deviceId
     private val api =
@@ -153,7 +220,9 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
         token = login(Api(account.server, http), account)
         if (TestSecurity.find(account.server) == null) {
             val (_, genesis) = TestSecurity.initialize(account)
-            api.pinSecurityDomain(
+            Api(account.server, http)
+                .client
+                .pinSecurityDomain(
                     PinSecurityDomainRequest.newBuilder()
                         .setGenesisState(ByteString.copyFrom(genesis))
                         .build(),
@@ -178,11 +247,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
                 .addAllProjects(projects)
                 .build()
         val env =
-            security.seal(
-                account,
-                header(PayloadKind.PAYLOAD_KIND_MACHINE_META).setSeq(metaRev).build(),
-                meta,
-            )
+            seal(header(PayloadKind.PAYLOAD_KIND_MACHINE_META).setSeq(metaRev).build(), meta.toByteArray())
         api.putMachine(PutMachineRequest.newBuilder().setMeta(env).build(), Api.headers(token))
             .value()
     }
@@ -197,16 +262,11 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
         val rev = (sessionRevs[sid] ?: 0) + 1
         sessionRevs[sid] = rev
         val keyEnv =
-            security.seal(
-                account,
-                header(PayloadKind.PAYLOAD_KIND_SESSION_KEY).setSessionId(sid).setSeq(1).build(),
-                key,
-            )
+            seal(header(PayloadKind.PAYLOAD_KIND_SESSION_KEY).setSessionId(sid).setSeq(1).build(), key)
         val meta =
-            security.seal(
-                account,
+            seal(
                 header(PayloadKind.PAYLOAD_KIND_SESSION_META).setSessionId(sid).setSeq(rev).build(),
-                info.toBuilder().setId(sid).build(),
+                info.toBuilder().setId(sid).build().toByteArray(),
             )
         api.putSession(
                 PutSessionRequest.newBuilder()
@@ -230,13 +290,12 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
         payload: io.github.lewin671.remoteagent.proto.ImagePayload,
     ) {
         val env =
-            security.seal(
-                account,
+            seal(
                 header(PayloadKind.PAYLOAD_KIND_IMAGE)
                     .setSessionId(sid)
                     .setRequestId(imageId)
                     .build(),
-                payload,
+                payload.toByteArray(),
                 sessionKeys.getValue(sid),
             )
         api.putImage(
@@ -265,13 +324,12 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
             StoredEvent.newBuilder()
                 .setSeq(seq)
                 .setEnvelope(
-                    security.seal(
-                        account,
+                    seal(
                         header(PayloadKind.PAYLOAD_KIND_EVENT)
                             .setSessionId(sid)
                             .setSeq(seq)
                             .build(),
-                        ev,
+                        ev.toByteArray(),
                         key,
                     ),
                 )
@@ -314,27 +372,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
                         }
                         if (!f.hasForwardCall()) return
                         val call = f.forwardCall
-                        if (!call.securityRpc.isEmpty) {
-                            val reply = ForwardReply.newBuilder().setCallId(call.callId)
-                            try {
-                                reply.setSecurityRpc(
-                                    ByteString.copyFrom(
-                                        security.rpc(call.securityRpc.toByteArray()),
-                                    ),
-                                )
-                            } catch (_: Exception) {
-                                reply.setError("synthetic authority refused request")
-                            }
-                            webSocket.send(
-                                PeerFrame.newBuilder()
-                                    .setForwardReply(reply)
-                                    .build()
-                                    .toByteArray()
-                                    .toByteString(),
-                            )
-                            return
-                        }
-                        val (h, pt) = security.open(account, call.command)
+                        val (h, pt) = open(call.command)
                         val cmd = Command.parseFrom(pt)
                         if (!cmd.hasGetLiveSnapshot()) commands += h to cmd
                         if (cmd.hasOpenTerminal()) serveTerminal(h, cmd)
@@ -368,13 +406,12 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
                                     .build()
                             } else answer(h, cmd)
                         var env =
-                            security.seal(
-                                account,
+                            seal(
                                 header(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT)
                                     .setSessionId(h.sessionId)
                                     .setRequestId(h.requestId)
                                     .build(),
-                                result,
+                                result.toByteArray(),
                             )
                         if (garbleResults)
                             env =
@@ -417,14 +454,13 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
                 fun send(ws: WebSocket, f: TerminalFrame) {
                     seq++
                     val env =
-                        security.seal(
-                            account,
+                        seal(
                             header(PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT)
                                 .setSessionId(sid)
                                 .setRequestId(stream)
                                 .setSeq(seq)
                                 .build(),
-                            f,
+                            f.toByteArray(),
                             key,
                         )
                     ws.send(env.toByteArray().toByteString())
@@ -461,7 +497,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
 
                 override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
                     val (hh, raw) =
-                        security.open(account, Envelope.parseFrom(bytes.toByteArray()), key)
+                        open(Envelope.parseFrom(bytes.toByteArray()))
                     Envelopes.expect(
                         hh,
                         Place(
@@ -490,15 +526,9 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
             http: OkHttpClient,
             setupToken: String,
         ): FakeDaemon {
-            val acct =
-                joinWithRoot(
-                    root,
-                    server,
-                    http,
-                    setupToken = setupToken,
-                    kind = DeviceKind.DEVICE_KIND_MACHINE,
-                )
-            return FakeDaemon(acct, http).also { it.login() }
+            val phone = newAuthorityAccount(root, server, http, setupToken)
+            val machine = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            return FakeDaemon(machine, http, phone).also { it.login() }
         }
 
         fun defaultResult(c: Command): CommandResult {

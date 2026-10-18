@@ -32,32 +32,41 @@ class Vault(context: Context) : DeviceSecurity.Storage {
     private val dir = context.noBackupFilesDir
     private val accountFile = File(dir, "account-v2.bin")
     private val notifyFile = File(dir, "notify.bin")
-    private val securityFile = File(dir, "security-v2.bin")
+    private val securityFile = File(dir, "security-v3.bin")
 
     fun hasAccount(): Boolean = accountFile.exists()
 
     fun load(): Account? {
         val blob = read(accountFile, ACCOUNT_ALIAS) ?: return null
         return DataInputStream(ByteArrayInputStream(blob)).use { s ->
-            if (s.readInt() != 1) return null
+            val version = s.readInt()
+            if (version !in 1..2) return null
             val server = s.readUTF()
             val deviceId = s.readUTF()
             val root = ByteArray(s.readInt()).also { s.readFully(it) }
             val seed = ByteArray(s.readInt()).also { s.readFully(it) }
-            Account(server, root, seed, deviceId)
+            if (version == 1) Account(server, root, seed, deviceId)
+            else {
+                val accountId = s.readUTF()
+                val publicKey = ByteArray(s.readInt()).also { s.readFully(it) }
+                Account(server, root, seed, deviceId, accountId, publicKey)
+            }
         }
     }
 
     fun save(a: Account, notifyKey: ByteArray) {
         val out = ByteArrayOutputStream()
         DataOutputStream(out).use { s ->
-            s.writeInt(1)
+            s.writeInt(2)
             s.writeUTF(a.server)
             s.writeUTF(a.deviceId)
             s.writeInt(a.root.size)
             s.write(a.root)
             s.writeInt(a.deviceSeed.size)
             s.write(a.deviceSeed)
+            s.writeUTF(a.accountId)
+            s.writeInt(a.accountPublicKey.size)
+            s.write(a.accountPublicKey)
         }
         write(accountFile, ACCOUNT_ALIAS, out.toByteArray(), unlockedOnly = true)
         write(notifyFile, NOTIFY_ALIAS, notifyKey, unlockedOnly = false)
@@ -65,7 +74,7 @@ class Vault(context: Context) : DeviceSecurity.Storage {
 
     private fun <T> securityTransaction(block: () -> T): T =
         synchronized(SECURITY_LOCK) {
-            FileOutputStream(File(dir, "security-v2.lock"), true).channel.use { channel ->
+            FileOutputStream(File(dir, "security-v3.lock"), true).channel.use { channel ->
                 channel.lock().use { block() }
             }
         }
@@ -85,37 +94,55 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         securityTransaction {
             if (securityFile.exists()) throw DeviceSecurity.Failure("conflict")
             write(securityFile, ACCOUNT_ALIAS, record.bytes(), unlockedOnly = true)
-            refreshNotifyUnlocked(record)
+            write(notifyFile, NOTIFY_ALIAS, DeviceSecurity.NotifyRecord.fromRecord(record).bytes(), unlockedOnly = false)
         }
     }
 
     override fun reserveSecurity(expectedState: ByteArray): DeviceSecurity.Record =
         securityTransaction {
             val old = readSecurityUnlocked()
-            if (!DeviceSecurity.stateHash(old.state).contentEquals(expectedState))
+            if (!DeviceSecurity.stateHash(old.head).contentEquals(expectedState))
                 throw DeviceSecurity.Failure("stale")
             val next = old.incremented()
             write(securityFile, ACCOUNT_ALIAS, next.bytes(), unlockedOnly = true)
             next
         }
 
-    override fun advanceSecurity(
+    override fun installSecurity(
         expectedState: ByteArray,
-        next: DeviceSecurity.State,
+        states: List<DeviceSecurity.State>,
+        proofs: List<ByteArray?>,
     ): DeviceSecurity.Record = securityTransaction {
         val old = readSecurityUnlocked()
-        if (!DeviceSecurity.stateHash(old.state).contentEquals(expectedState))
+        if (!DeviceSecurity.stateHash(old.head).contentEquals(expectedState))
             throw DeviceSecurity.Failure("stale")
-        write(
-            historyFile(old.state.core.epoch),
-            ACCOUNT_ALIAS,
-            DeviceSecurity.Historical(old.state, old.secret()).bytes(),
-            unlockedOnly = true,
-        )
-        val record = old.advanced(next)
+        val record = old.installed(states, proofs)
         write(securityFile, ACCOUNT_ALIAS, record.bytes(), unlockedOnly = true)
         refreshNotifyUnlocked(record)
         record
+    }
+
+    override fun touchSecurity(expectedState: ByteArray, floor: ULong): DeviceSecurity.Record =
+        securityTransaction {
+            val old = readSecurityUnlocked()
+            if (!DeviceSecurity.stateHash(old.head).contentEquals(expectedState))
+                throw DeviceSecurity.Failure("stale")
+            val next = old.touched(floor)
+            if (next === old) return@securityTransaction old
+            write(securityFile, ACCOUNT_ALIAS, next.bytes(), unlockedOnly = true)
+            next
+        }
+
+    override fun cacheSecurityKey(expectedState: ByteArray, epoch: ULong, secret: ByteArray) {
+        securityTransaction {
+            val old = readSecurityUnlocked()
+            if (!DeviceSecurity.stateHash(old.head).contentEquals(expectedState))
+                throw DeviceSecurity.Failure("stale")
+            if (epoch > old.head.core.contentEpoch) throw DeviceSecurity.Failure("untrusted")
+            if (old.cachedKeys().containsKey(epoch)) return@securityTransaction
+            val next = old.withKey(epoch, secret)
+            write(securityFile, ACCOUNT_ALIAS, next.bytes(), unlockedOnly = true)
+        }
     }
 
     private fun refreshNotifyUnlocked(record: DeviceSecurity.Record) {
@@ -126,7 +153,7 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         if (
             old != null &&
                 DeviceSecurity.stateHash(old.state)
-                    .contentEquals(DeviceSecurity.stateHash(record.state))
+                    .contentEquals(DeviceSecurity.stateHash(record.head))
         )
             return
         write(
@@ -137,48 +164,35 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         )
     }
 
-    private fun historyFile(epoch: ULong): File {
-        if (epoch !in 1uL..32768uL) throw DeviceSecurity.Failure()
-        return File(File(dir, "security-history-v2").also { it.mkdirs() }, "epoch-$epoch.bin")
-    }
-
-    override fun readSecurityHistory(epoch: ULong): DeviceSecurity.Historical? =
+    /** The identity that submitted a pending recovery, so an app restart can finish it. */
+    fun savePendingRecovery(recoveryId: String, deviceSeed: ByteArray, xPrivate: ByteArray) {
         securityTransaction {
-            val current = readSecurityUnlocked()
-            if (epoch > current.state.core.epoch) throw DeviceSecurity.Failure("untrusted")
-            val data = read(historyFile(epoch), ACCOUNT_ALIAS) ?: return@securityTransaction null
-            val history = DeviceSecurity.Historical.parse(data)
-            if (history.state.core.epoch != epoch) throw DeviceSecurity.Failure("storage")
-            DeviceSecurity.verifyState(current.pin, history.state)
-            history
-        }
-
-    override fun cacheSecurityHistory(history: DeviceSecurity.Historical) {
-        securityTransaction {
-            val current = readSecurityUnlocked()
-            if (history.state.core.epoch > current.state.core.epoch)
-                throw DeviceSecurity.Failure("untrusted")
-            DeviceSecurity.verifyState(current.pin, history.state)
-            write(
-                historyFile(history.state.core.epoch),
-                ACCOUNT_ALIAS,
-                history.bytes(),
-                unlockedOnly = true,
-            )
+            if (deviceSeed.size != 32 || xPrivate.size != 32) throw DeviceSecurity.Failure()
+            val out = ByteArrayOutputStream()
+            DataOutputStream(out).use { s ->
+                s.writeInt(1)
+                s.writeUTF(recoveryId)
+                s.writeInt(deviceSeed.size)
+                s.write(deviceSeed)
+                s.writeInt(xPrivate.size)
+                s.write(xPrivate)
+            }
+            write(File(dir, "recovery-pending.bin"), ACCOUNT_ALIAS, out.toByteArray(), unlockedOnly = true)
         }
     }
 
-    override fun readRemovalOperations(): ByteArray? = securityTransaction {
-        readSecurityUnlocked()
-        read(File(dir, "security-removals-v2.bin"), ACCOUNT_ALIAS)
+    fun loadPendingRecovery(recoveryId: String): Pair<ByteArray, ByteArray>? = securityTransaction {
+        val blob = read(File(dir, "recovery-pending.bin"), ACCOUNT_ALIAS) ?: return@securityTransaction null
+        DataInputStream(ByteArrayInputStream(blob)).use { s ->
+            if (s.readInt() != 1 || s.readUTF() != recoveryId) return@securityTransaction null
+            val seed = ByteArray(s.readInt()).also { s.readFully(it) }
+            val x = ByteArray(s.readInt()).also { s.readFully(it) }
+            if (seed.size != 32 || x.size != 32) null else seed to x
+        }
     }
 
-    override fun writeRemovalOperations(data: ByteArray) {
-        securityTransaction {
-            readSecurityUnlocked()
-            if (data.size > 16 * 1024 * 1024) throw DeviceSecurity.Failure("capacity")
-            write(File(dir, "security-removals-v2.bin"), ACCOUNT_ALIAS, data, unlockedOnly = true)
-        }
+    fun clearPendingRecovery() = securityTransaction {
+        File(dir, "recovery-pending.bin").delete()
     }
 
     private fun syncDirectory(directory: File = dir) {
@@ -195,10 +209,12 @@ class Vault(context: Context) : DeviceSecurity.Storage {
 
     fun clear() = securityTransaction {
         securityFile.delete()
+        File(dir, "security-v2.bin").delete()
         File(dir, "security-removals-v2.bin").delete()
         File(dir, "security-history-v2").deleteRecursively()
         accountFile.delete()
         notifyFile.delete()
+        File(dir, "recovery-pending.bin").delete()
         val ks = keyStore()
         for (a in listOf(ACCOUNT_ALIAS, NOTIFY_ALIAS)) if (ks.containsAlias(a)) ks.deleteEntry(a)
     }

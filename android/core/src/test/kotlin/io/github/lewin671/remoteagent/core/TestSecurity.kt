@@ -9,8 +9,9 @@ import kotlinx.serialization.json.*
 import okhttp3.OkHttpClient
 
 /**
- * Actual Go authority/HPKE/signatures for synthetic cross-language fixtures. The separate process
- * has no account files, keychain, or production access.
+ * Actual Go state chain and envelopes for synthetic cross-language fixtures. The separate process
+ * has no account files, keychain or production access. Its record is the v3 JSON from
+ * internal/testutil/securityfixture.
  */
 class TestSecurity private constructor(private val process: Process) : AutoCloseable {
     private val input = process.outputStream.bufferedWriter()
@@ -37,10 +38,38 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
     fun bytes(reply: JsonObject, key: String) =
         Base64.getDecoder().decode(reply[key]!!.jsonPrimitive.content)
 
-    fun record(member: String): DeviceSecurity.Record =
-        DeviceSecurity.Record.parse(
-            bytes(call("record", "Member" to JsonPrimitive(member)), "Record"),
+    fun record(reply: JsonObject): DeviceSecurity.Record {
+        val o = reply["Record"]!!.jsonObject
+        val states = o["states"]!!.jsonArray.map { Base64.getDecoder().decode(it.jsonPrimitive.content) }
+        val proofs =
+            o["proofs"]!!.jsonArray.map {
+                if (it is JsonNull) null
+                else Base64.getDecoder().decode(it.jsonPrimitive.content)
+            }
+        return DeviceSecurity.Record.fromChain(
+            o["account"]!!.jsonPrimitive.content,
+            Base64.getDecoder().decode(o["domain"]!!.jsonPrimitive.content),
+            Base64.getDecoder().decode(o["genesis"]!!.jsonPrimitive.content),
+            o["member"]!!.jsonPrimitive.content,
+            Base64.getDecoder().decode(o["x"]!!.jsonPrimitive.content),
+            states,
+            proofs,
         )
+    }
+
+    /** Adds a member to the fixture's chain and returns its record and the new state. */
+    fun enroll(seed: ByteArray, kind: DeviceKind): Pair<DeviceSecurity.Record, ByteArray> {
+        val reply =
+            call(
+                "enroll",
+                "Seed" to blob(seed),
+                "Kind" to JsonPrimitive(kind.number),
+            )
+        return record(reply) to bytes(reply, "State")
+    }
+
+    fun record(member: String): DeviceSecurity.Record =
+        record(call("record", "Member" to JsonPrimitive(member)))
 
     fun seal(account: Account, h: Header, plain: ByteArray, seed: ByteArray? = null): Envelope {
         val reply =
@@ -68,9 +97,6 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
         return Header.parseFrom(bytes(reply, "Header")) to bytes(reply, "Plain")
     }
 
-    fun rpc(capsule: ByteArray): ByteArray =
-        bytes(call("rpc", "Capsule" to blob(capsule)), "Capsule")
-
     override fun close() {
         input.close()
         process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
@@ -91,7 +117,8 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
             all.remove(server)?.close()
         }
 
-        fun initialize(account: Account): Pair<TestSecurity, ByteArray> {
+        /** Starts the fixture on the account's authority phone identity. */
+        fun initialize(account: Account, recovery: ByteArray? = null): Pair<TestSecurity, ByteArray> {
             check(!all.containsKey(account.server))
             val bin =
                 File(
@@ -103,15 +130,16 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
                     .redirectError(ProcessBuilder.Redirect.INHERIT)
                     .start()
             val fixture = TestSecurity(process)
-            val key = Keys.derive(account.root)
+            val accountId =
+                account.accountId.ifEmpty { deviceId(Keys.derive(account.root).account.publicKey) }
             val reply =
                 fixture.call(
                     "init",
-                    "Account" to JsonPrimitive(deviceId(key.account.publicKey)),
+                    "Account" to JsonPrimitive(accountId),
                     "Seed" to blob(account.deviceSeed),
+                    "Recovery" to blob(recovery ?: byteArrayOf()),
                 )
-            fixture.stores[account.deviceId] =
-                TestSecurityStore(DeviceSecurity.Record.parse(fixture.bytes(reply, "Record")))
+            fixture.stores[account.deviceId] = TestSecurityStore(fixture.record(reply))
             all[account.server] = fixture
             return fixture to fixture.bytes(reply, "Genesis")
         }
@@ -120,8 +148,6 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
 
 class TestSecurityStore(initial: DeviceSecurity.Record) : DeviceSecurity.Storage {
     private var record = initial
-    private val history = HashMap<ULong, DeviceSecurity.Historical>()
-    private var removals: ByteArray? = null
 
     @Synchronized override fun readSecurity() = record
 
@@ -132,37 +158,37 @@ class TestSecurityStore(initial: DeviceSecurity.Record) : DeviceSecurity.Storage
 
     @Synchronized
     override fun reserveSecurity(expectedState: ByteArray): DeviceSecurity.Record {
-        if (!DeviceSecurity.stateHash(record.state).contentEquals(expectedState))
+        if (!DeviceSecurity.stateHash(record.head).contentEquals(expectedState))
             throw DeviceSecurity.Failure("stale")
         record = record.incremented()
         return record
     }
 
     @Synchronized
-    override fun advanceSecurity(
+    override fun installSecurity(
         expectedState: ByteArray,
-        next: DeviceSecurity.State,
+        states: List<DeviceSecurity.State>,
+        proofs: List<ByteArray?>,
     ): DeviceSecurity.Record {
-        if (!DeviceSecurity.stateHash(record.state).contentEquals(expectedState))
+        if (!DeviceSecurity.stateHash(record.head).contentEquals(expectedState))
             throw DeviceSecurity.Failure("stale")
-        history[record.state.core.epoch] = DeviceSecurity.Historical(record.state, record.secret())
-        record = record.advanced(next)
+        record = record.installed(states, proofs)
         return record
     }
 
-    @Synchronized override fun readSecurityHistory(epoch: ULong) = history[epoch]
-
     @Synchronized
-    override fun cacheSecurityHistory(history: DeviceSecurity.Historical) {
-        DeviceSecurity.verifyState(record.pin, history.state)
-        this.history[history.state.core.epoch] = history
+    override fun touchSecurity(expectedState: ByteArray, floor: ULong): DeviceSecurity.Record {
+        if (!DeviceSecurity.stateHash(record.head).contentEquals(expectedState))
+            throw DeviceSecurity.Failure("stale")
+        record = record.touched(floor)
+        return record
     }
 
-    @Synchronized override fun readRemovalOperations() = removals?.copyOf()
-
     @Synchronized
-    override fun writeRemovalOperations(data: ByteArray) {
-        removals = data.copyOf()
+    override fun cacheSecurityKey(expectedState: ByteArray, epoch: ULong, secret: ByteArray) {
+        if (!DeviceSecurity.stateHash(record.head).contentEquals(expectedState))
+            throw DeviceSecurity.Failure("stale")
+        if (!record.cachedKeys().containsKey(epoch)) record = record.withKey(epoch, secret)
     }
 }
 

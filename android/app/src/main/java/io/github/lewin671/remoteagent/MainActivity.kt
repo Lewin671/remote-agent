@@ -73,7 +73,10 @@ import io.github.lewin671.remoteagent.ui.LocalNav
 import io.github.lewin671.remoteagent.ui.LocalRemote
 import io.github.lewin671.remoteagent.ui.Nav
 import io.github.lewin671.remoteagent.ui.NewProjectScreen
+import io.github.lewin671.remoteagent.ui.CreateAccountScreen
 import io.github.lewin671.remoteagent.ui.PairScreen
+import io.github.lewin671.remoteagent.ui.RecoverScreen
+import io.github.lewin671.remoteagent.ui.RecoveryScreen
 import io.github.lewin671.remoteagent.ui.PickProjectScreen
 import io.github.lewin671.remoteagent.ui.PlanPage
 import io.github.lewin671.remoteagent.ui.ProjectScreen
@@ -88,11 +91,14 @@ import io.github.lewin671.remoteagent.ui.statusIn
 class MainActivity : ComponentActivity() {
     /** A session to open, from a notification. */
     private val openSession = mutableStateOf<Pair<String, String?>?>(null)
+    /** The device page, from a recovery notification. */
+    private val openDevices = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         openSession.value = target(intent)
+        openDevices.value = intent?.getBooleanExtra(Notifier.EXTRA_SECURITY, false) == true
         val app = application as RaApp
         setContent {
             val settings by app.prefs.settings.collectAsState(Settings())
@@ -124,6 +130,8 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         target(intent)?.let { openSession.value = it }
+        if (intent?.getBooleanExtra(Notifier.EXTRA_SECURITY, false) == true)
+            openDevices.value = true
     }
 
     private fun target(i: Intent?): Pair<String, String?>? =
@@ -137,6 +145,12 @@ class MainActivity : ComponentActivity() {
         // does not shrink back under it halfway through the slide.
         val actions = remember(nav) { focus.clearFocus() }
         val target by openSession
+        LaunchedEffect(openDevices.value) {
+            if (openDevices.value) {
+                actions.devices()
+                openDevices.value = false
+            }
+        }
         LaunchedEffect(target) {
             target?.let { (sid, approval) ->
                 actions.session(sid)
@@ -187,6 +201,9 @@ class MainActivity : ComponentActivity() {
                 }
                 page("device/{id}") { DeviceScreen(it.arguments?.getString("id").orEmpty()) }
                 page("pair") { PairScreen() }
+                page("recovery") { RecoveryScreen { nav.popBackStack() } }
+                page("recover") { RecoverScreen(RaApp.instance) { nav.popBackStack() } }
+                page("create") { CreateAccountScreen(RaApp.instance) { nav.popBackStack() } }
                 page("approval/{sid}/{aid}") { ApprovalPage(it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("aid").orEmpty()) }
                 page("plan/{sid}") { PlanPage(it.arguments?.getString("sid").orEmpty()) }
                 page("newproject") { NewProjectScreen() }
@@ -237,6 +254,9 @@ class MainActivity : ComponentActivity() {
             settings = { go("settings") },
             device = { go("device/$it") },
             pair = { go("pair") },
+            recovery = { go("recovery") },
+            recover = { go("recover") },
+            createAccount = { go("create") },
             approval = { sid, aid -> go("approval/$sid/$aid") },
             plan = { go("plan/$it") },
             newProject = { go("newproject") },

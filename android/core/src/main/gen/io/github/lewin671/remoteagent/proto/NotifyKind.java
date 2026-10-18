@@ -31,6 +31,15 @@ public enum NotifyKind
    * <code>NOTIFY_KIND_TURN_ENDED = 2;</code>
    */
   NOTIFY_KIND_TURN_ENDED(2),
+  /**
+   * <pre>
+   * A recovery is pending on the account's authority phone. Generic text
+   * only; the app opens the device page.
+   * </pre>
+   *
+   * <code>NOTIFY_KIND_SECURITY = 3;</code>
+   */
+  NOTIFY_KIND_SECURITY(3),
   UNRECOGNIZED(-1),
   ;
 
@@ -54,6 +63,15 @@ public enum NotifyKind
    * <code>NOTIFY_KIND_TURN_ENDED = 2;</code>
    */
   public static final int NOTIFY_KIND_TURN_ENDED_VALUE = 2;
+  /**
+   * <pre>
+   * A recovery is pending on the account's authority phone. Generic text
+   * only; the app opens the device page.
+   * </pre>
+   *
+   * <code>NOTIFY_KIND_SECURITY = 3;</code>
+   */
+  public static final int NOTIFY_KIND_SECURITY_VALUE = 3;
 
 
   @java.lang.Override
@@ -80,6 +98,7 @@ public enum NotifyKind
       case 0: return NOTIFY_KIND_UNSPECIFIED;
       case 1: return NOTIFY_KIND_ATTENTION;
       case 2: return NOTIFY_KIND_TURN_ENDED;
+      case 3: return NOTIFY_KIND_SECURITY;
       default: return null;
     }
   }

@@ -56,13 +56,19 @@ class RaMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val started = SystemClock.elapsedRealtime()
         val data = message.data
-        val session = data["session"] ?: return
         val kind =
             NotifyKind.forNumber(data["kind"]?.toIntOrNull() ?: 0)
                 ?: NotifyKind.NOTIFY_KIND_UNSPECIFIED
         val app = RaApp.instance
         val settings = runBlocking { app.prefs.settings.first() }
         if (!acceptPush(app.acceptsPush, kind, settings)) return
+        if (kind == NotifyKind.NOTIFY_KIND_SECURITY) {
+            if (ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+                return
+            Notifier.showSecurity(this)
+            return
+        }
+        val session = data["session"] ?: return
         val content = data["content"]?.let { open(session, it) }
         if (data["content"] != null && content == null) return
         // The app is open: it shows the change itself.
@@ -91,6 +97,33 @@ class RaMessagingService : FirebaseMessagingService() {
 
 object Notifier {
     const val EXTRA_APPROVAL = "approval"
+    const val EXTRA_SECURITY = "security"
+
+    /** A recovery request: generic text only, tapping opens the device page. */
+    fun showSecurity(context: Context) {
+        val nm = context.getSystemService(NotificationManager::class.java)
+        val i =
+            Intent(context, MainActivity::class.java)
+                .putExtra(EXTRA_SECURITY, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val pi =
+            PendingIntent.getActivity(
+                context,
+                EXTRA_SECURITY.hashCode(),
+                i,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        val n =
+            NotificationCompat.Builder(context, Push.CHANNEL_ATTENTION)
+                .setSmallIcon(R.drawable.ic_notify)
+                .setContentTitle("remote-agent")
+                .setContentText("有恢复请求，打开设备页查看")
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .build()
+        nm.notify(EXTRA_SECURITY.hashCode(), n)
+    }
 
     private fun openIntent(
         context: Context,

@@ -13,7 +13,7 @@ class ApprovalTest {
         val server = TestServer()
         val http = Api.defaultHttp()
         val owner = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
-        val sponsor = fixtureRemote(owner.account, http)
+        val sponsor = fixtureRemote(owner.phone, http)
         try {
             owner.putMachine("synthetic-manager")
             owner.connect()
@@ -53,7 +53,7 @@ class ApprovalTest {
         val server = TestServer()
         val http = Api.defaultHttp()
         val owner = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
-        val sponsor = fixtureRemote(owner.account, http)
+        val sponsor = fixtureRemote(owner.phone, http)
         try {
             owner.putMachine("synthetic-manager")
             owner.connect()
@@ -78,7 +78,7 @@ class ApprovalTest {
                 assertNotNull(failure)
                 assertTrue(failure!!.message.orEmpty().contains("本机未确认"))
                 assertFalse(persisted)
-                assertEquals(1, sponsor.security.catalog().state.core.members.size)
+                assertEquals(2, sponsor.security.head().core.members.size)
                 pairing.cancelOnServer()
             }
         } finally {

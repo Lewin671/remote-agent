@@ -2,28 +2,30 @@ package io.github.lewin671.remoteagent.core
 
 import com.google.protobuf.MessageLite
 import io.github.lewin671.remoteagent.proto.*
-import java.util.Base64
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.*
 
 /**
  * Foreground member session. Locked notification code receives a Notify child key only, never this
- * storage, signing key or complete content secret.
+ * storage, signing key or complete content secret. Envelopes are sealed and opened locally; only
+ * signed states come from the relay.
  */
 class DeviceSecurityClient(
     private val store: DeviceSecurity.Storage,
     private val memberID: String,
     private val ed: SigningKey,
     private val expectedAccount: String? = null,
-    private val exchange: suspend (DeviceSecurityRPC.Capsule) -> DeviceSecurityRPC.Capsule,
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val fetchStates: suspend (afterEpoch: ULong) -> GetSecurityStatesResponse,
 ) {
     private val syncMutex = Mutex()
     private val historyLock = Any()
-    private val historical = HashMap<ULong, Pair<DeviceSecurity.State, ByteArray>>()
+    private var lastFloorWrite = 0uL
     @Volatile private var closed = false
+    @Volatile var recoveryPending: Boolean = false
+        private set
 
     private fun read(): DeviceSecurity.Record {
         if (closed) throw DeviceSecurity.Failure("storage")
@@ -39,55 +41,72 @@ class DeviceSecurityClient(
 
     fun identity(): Pair<DeviceSecurity.Pin, DeviceSecurity.State> {
         val r = read()
-        return r.pin to r.state
+        return r.pin to r.head
+    }
+
+    fun head(): DeviceSecurity.State = read().head
+
+    fun stateAt(epoch: ULong): DeviceSecurity.State? = read().stateAt(epoch)
+
+    fun chain(): List<DeviceSecurity.State> = read().chain
+
+    fun chainProofs(): Map<ULong, ByteArray> = read().proofs
+
+    /** The content key of an epoch, available from the chain while the device holds it. */
+    fun contentKey(epoch: ULong): ByteArray? {
+        val r = read()
+        val key = r.contentKey(epoch) ?: return null
+        if (!r.cachedKeys().containsKey(epoch) && epoch <= r.head.core.contentEpoch) {
+            runCatching { store.cacheSecurityKey(DeviceSecurity.stateHash(r.head), epoch, key) }
+        }
+        return key
     }
 
     fun close() {
         closed = true
-        synchronized(historyLock) { historical.clear() }
+        synchronized(historyLock) {}
     }
 
-    suspend fun rpc(method: UInt, body: JsonElement): JsonElement {
-        currentCoroutineContext().ensureActive()
-        val r = read()
-        val (q, w) = DeviceSecurityRPC.request(r.pin, memberID, ed, method, body)
-        val reply = exchange(q)
-        currentCoroutineContext().ensureActive()
-        read()
-        return r.openReply(w, reply)
-    }
+    private fun now(r: DeviceSecurity.Record): ULong =
+        maxOf(clock().toULong(), r.floor)
 
+    /** Pulls every state after the local head. The relay cannot make the head go backwards. */
     suspend fun sync(): DeviceSecurity.Record = syncMutex.withLock {
-        repeat(32768) {
+        repeat(DeviceSecurity.MAX_STATES) {
             val r = read()
-            val reply =
-                rpc(3u, buildJsonObject { put("After", r.state.core.epoch.toLong()) }).jsonObject
-            val head = hash(reply["Current"])
-            val states =
-                if (reply["States"] == JsonNull || reply["States"] == null) emptyList()
-                else reply["States"]!!.jsonArray.toList()
-            if (head.contentEquals(DeviceSecurity.stateHash(r.state))) {
-                if (states.isNotEmpty()) throw DeviceSecurity.Failure()
+            val res = fetchStates(r.head.core.epoch)
+            recoveryPending = res.recoveryPending
+            if (res.headEpoch.toULong() < r.head.core.epoch) throw DeviceSecurity.Failure("stale")
+            if (res.statesCount == 0) {
+                if (res.headEpoch.toULong() != r.head.core.epoch)
+                    throw DeviceSecurity.Failure("stale")
                 return@withLock r
             }
-            if (states.isEmpty() || states.size > 2) throw DeviceSecurity.Failure("stale")
-            var current = r
-            for (value in states) {
-                val next = DeviceSecurityRPC.stateFromJSON(value)
-                try {
-                    current = store.advanceSecurity(DeviceSecurity.stateHash(current.state), next)
-                } catch (e: DeviceSecurity.Failure) {
-                    if (e.code == "stale") break
-                    throw e
+            if (res.statesCount > 8) throw DeviceSecurity.Failure("untrusted")
+            val states = res.statesList.map { DeviceSecurity.parseState(it.state.toByteArray()) }
+            val proofs =
+                res.statesList.map {
+                    if (it.recovery.isEmpty) null else it.recovery.toByteArray()
                 }
-            }
+            currentCoroutineContext().ensureActive()
+            store.installSecurity(
+                DeviceSecurity.stateHash(r.head),
+                states,
+                proofs,
+            )
             currentCoroutineContext().ensureActive()
         }
         throw DeviceSecurity.Failure("capacity")
     }
 
-    /** Commit counter first; do not publish C before exact authorization. */
-    suspend fun seal(
+    /** Publishes states that this phone signed (genesis, renewal, membership, veto). */
+    fun install(states: List<DeviceSecurity.State>, proofs: List<ByteArray?> = emptyList()) {
+        val r = read()
+        store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs)
+    }
+
+    /** Commits the counter before the envelope exists; no authorization round trip. */
+    fun seal(
         purpose: DeviceSecurity.Purpose,
         machine: String = "",
         session: String = "",
@@ -97,40 +116,31 @@ class DeviceSecurityClient(
         plain: ByteArray,
         seed: ByteArray? = null,
     ): Envelope {
-        repeat(3) {
-            currentCoroutineContext().ensureActive()
-            val old = read()
-            val r = store.reserveSecurity(DeviceSecurity.stateHash(old.state))
-            val h =
-                DeviceSecurity.Header(
-                    r.pin.account,
-                    r.pin.domain,
-                    r.state.core.epoch,
-                    DeviceSecurity.stateHash(r.state),
-                    r.state.core.contentEpoch,
-                    memberID,
-                    purpose.kind,
-                    purpose,
-                    machine,
-                    session,
-                    request,
-                    seq,
-                    deadline,
-                    0u,
-                    r.counter,
-                )
-            val formed = DeviceSecurity.form(r.secret(), seed, h, plain, ed)
-            try {
-                val reply = rpc(1u, DeviceSecurityRPC.authorizationRequest(formed))
-                return DeviceSecurity.envelope(
-                    DeviceSecurityRPC.attach(formed, reply, r.pin, r.state),
-                )
-            } catch (e: DeviceSecurity.Failure) {
-                if (e.code != "stale") throw e
-                sync()
-            }
-        }
-        throw DeviceSecurity.Failure("stale")
+        val old = read()
+        if (purpose.control && !Authority.leaseValid(old.head, clock()))
+            throw DeviceSecurity.Failure("lease")
+        val r = store.reserveSecurity(DeviceSecurity.stateHash(old.head))
+        val h =
+            DeviceSecurity.Header(
+                r.pin.account,
+                r.pin.domain,
+                r.head.core.epoch,
+                DeviceSecurity.stateHash(r.head),
+                r.head.core.contentEpoch,
+                memberID,
+                purpose.kind,
+                purpose,
+                machine,
+                session,
+                request,
+                seq,
+                deadline,
+                0u,
+                r.counter,
+            )
+        val key = r.contentKey(r.head.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
+        val formed = DeviceSecurity.form(key, seed, h, plain, ed)
+        return DeviceSecurity.envelope(DeviceSecurity.Wire(formed))
     }
 
     suspend fun openCurrent(
@@ -138,9 +148,17 @@ class DeviceSecurityClient(
         seed: ByteArray? = null,
     ): Pair<DeviceSecurity.Header, ByteArray> {
         val w = DeviceSecurity.fromEnvelope(env)
-        val r = sync()
-        val (h, p) = DeviceSecurity.open(r.pin, r.state, w, r.secret(), seed)
-        return h to unpackSecurity(h, p)
+        var r = read()
+        var h = DeviceSecurity.parseHeader(w.formed.header)
+        if (h.epoch > r.head.core.epoch) r = sync()
+        val s =
+            r.stateAt(h.epoch)
+                ?: if (h.epoch == r.head.core.epoch) r.head else throw DeviceSecurity.Failure("stale")
+        val key = r.contentKey(s.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
+        val at = now(r)
+        val (opened, plain) = DeviceSecurity.open(s, r.head, true, at, w, key, seed)
+        if (opened.purpose.control) touchFloor(r, at)
+        return opened to unpackSecurity(opened, plain)
     }
 
     /** Read-only historical provenance; never a live action source. */
@@ -149,45 +167,22 @@ class DeviceSecurityClient(
         seed: ByteArray? = null,
     ): Pair<DeviceSecurity.Header, ByteArray> {
         val w = DeviceSecurity.fromEnvelope(env)
-        val h = DeviceSecurity.parseHeader(w.formed.header)
+        var h = DeviceSecurity.parseHeader(w.formed.header)
         if (h.purpose.control) throw DeviceSecurity.Failure()
         var r = read()
-        if (h.epoch > r.state.core.epoch) r = sync()
-        if (h.epoch == r.state.core.epoch) {
-            val (h, p) = DeviceSecurity.open(r.pin, r.state, w, r.secret(), seed)
-            return h to unpackSecurity(h, p)
-        }
-        if (h.epoch > r.state.core.epoch) throw DeviceSecurity.Failure("stale")
-        val cached =
-            synchronized(historyLock) { historical[h.epoch] }
-                ?: store.readSecurityHistory(h.epoch)?.let { it.state to it.secret }
-        if (cached != null) {
-            val (h, p) = DeviceSecurity.open(r.pin, cached.first, w, cached.second, seed)
-            return h to unpackSecurity(h, p)
-        }
-        val sr = rpc(3u, buildJsonObject { put("After", (h.epoch - 1u).toLong()) }).jsonObject
-        val state =
-            DeviceSecurityRPC.stateFromJSON(
-                sr["States"]!!.jsonArray.firstOrNull() ?: throw DeviceSecurity.Failure("untrusted"),
-            )
-        DeviceSecurity.verifyState(r.pin, state)
-        if (state.core.epoch != h.epoch) throw DeviceSecurity.Failure("untrusted")
-        val kr =
-            rpc(4u, buildJsonObject { put("After", (h.contentEpoch - 1u).toLong()) }).jsonObject
-        val key =
-            kr["Keys"]!!.jsonArray.firstOrNull()?.jsonObject
-                ?: throw DeviceSecurity.Failure("untrusted")
-        if (key["Epoch"]!!.jsonPrimitive.long.toULong() != h.contentEpoch)
-            throw DeviceSecurity.Failure("untrusted")
-        val secret = decode64(key["Secret"]!!.jsonPrimitive.content)
-        if (secret.size != 32) throw DeviceSecurity.Failure("untrusted")
-        store.cacheSecurityHistory(DeviceSecurity.Historical(state, secret))
-        synchronized(historyLock) {
-            if (historical.size >= 64) historical.remove(historical.keys.min())
-            historical[h.epoch] = state to secret
-        }
-        val (openedHeader, plain) = DeviceSecurity.open(r.pin, state, w, secret, seed)
-        return openedHeader to unpackSecurity(openedHeader, plain)
+        if (h.epoch > r.head.core.epoch) r = sync()
+        val s = r.stateAt(h.epoch) ?: throw DeviceSecurity.Failure("stale")
+        val key = r.contentKey(s.core.contentEpoch)
+            ?: throw DeviceSecurity.Failure("unavailable")
+        val (opened, plain) = DeviceSecurity.open(s, s, false, 0uL, w, key, seed)
+        return opened to unpackSecurity(opened, plain)
+    }
+
+    private fun touchFloor(r: DeviceSecurity.Record, at: ULong) {
+        if (at <= r.floor) return
+        if (at - lastFloorWrite < 1000uL) return
+        lastFloorWrite = at
+        runCatching { store.touchSecurity(DeviceSecurity.stateHash(r.head), at) }
     }
 
     suspend fun <T : MessageLite> openMessage(
@@ -206,292 +201,10 @@ class DeviceSecurityClient(
         validateSecurityBody(h, m)
         return h to m
     }
-
-    data class Catalog(val state: DeviceSecurity.State, val entries: List<DeviceSecurity.Wire>)
-
-    suspend fun catalog(): Catalog {
-        val r = sync()
-        val expected = DeviceSecurity.stateHash(r.state)
-        var cursor = byteArrayOf()
-        val entries = ArrayList<DeviceSecurity.Wire>()
-        repeat(4096) {
-            val reply =
-                rpc(
-                        2u,
-                        buildJsonObject {
-                            put("After", Base64.getEncoder().encodeToString(cursor))
-                            put(
-                                "AtState",
-                                JsonArray(expected.map { JsonPrimitive(it.toUByte().toInt()) }),
-                            )
-                        },
-                    )
-                    .jsonObject
-            val state = DeviceSecurityRPC.stateFromJSON(reply["State"]!!)
-            DeviceSecurity.verifyState(r.pin, state)
-            if (!DeviceSecurity.stateHash(state).contentEquals(expected))
-                throw DeviceSecurity.Failure("stale")
-            val rows =
-                if (reply["Entries"] == JsonNull || reply["Entries"] == null) emptyList()
-                else reply["Entries"]!!.jsonArray.toList()
-            for (row in rows) {
-                entries.add(DeviceSecurityRPC.wireFromJSON(row.jsonObject["Wire"]!!))
-                if (entries.size > 4096) throw DeviceSecurity.Failure("capacity")
-            }
-            val next = reply["Next"]
-            if (next == null || next == JsonNull || next.jsonPrimitive.content.isEmpty())
-                return Catalog(state, entries)
-            val after = decode64(next.jsonPrimitive.content)
-            if (compareBytes(after, cursor) <= 0) throw DeviceSecurity.Failure()
-            cursor = after
-        }
-        throw DeviceSecurity.Failure("capacity")
-    }
-
-    data class Removal(
-        val request: JsonObject,
-        val phase: String,
-        val waiting: List<String>,
-        val error: String = "",
-        val completion: ByteArray? = null,
-        val chain: List<ByteArray> = emptyList(),
-        val serverCleaned: Boolean = false,
-    ) {
-        val targets: List<String>
-            get() =
-                request["Targets"]!!.jsonArray.map { it.jsonObject["ID"]!!.jsonPrimitive.content }
-
-        val operation: String
-            get() = request["Operation"]!!.jsonPrimitive.content
-    }
-
-    private val removalMutex = Mutex()
-
-    private fun readRemovals(): List<Removal> {
-        val data = store.readRemovalOperations() ?: return emptyList()
-        try {
-            val array = Json.parseToJsonElement(data.toString(Charsets.UTF_8)).jsonArray
-            if (array.size > 128) throw DeviceSecurity.Failure("storage")
-            val current = read()
-            return array.map {
-                val o = it.jsonObject
-                val request = o["Request"]!!.jsonObject
-                if (
-                    request["Account"]!!.jsonPrimitive.content != current.pin.account ||
-                        request["Requester"]!!.jsonPrimitive.content != memberID ||
-                        !hash(request["Domain"]).contentEquals(current.pin.domain)
-                )
-                    throw DeviceSecurity.Failure("storage")
-                Removal(
-                    request,
-                    o["Phase"]!!.jsonPrimitive.content,
-                    o["Waiting"]!!.jsonArray.map { it.jsonPrimitive.content },
-                    o["Error"]?.jsonPrimitive?.content ?: "",
-                    o["Completion"]
-                        ?.takeIf { it != JsonNull }
-                        ?.jsonPrimitive
-                        ?.content
-                        ?.let { decode64(it) },
-                    o["Chain"]?.jsonArray?.map { decode64(it.jsonPrimitive.content) }
-                        ?: emptyList(),
-                    o["ServerCleaned"]?.jsonPrimitive?.booleanOrNull ?: false,
-                )
-            }
-        } catch (e: DeviceSecurity.Failure) {
-            throw e
-        } catch (_: Exception) {
-            throw DeviceSecurity.Failure("storage")
-        }
-    }
-
-    private suspend fun saveRemoval(op: Removal) = removalMutex.withLock {
-        val operation = op.request["Operation"]!!.jsonPrimitive.content
-        val all =
-            readRemovals()
-                .filterNot { it.request["Operation"]!!.jsonPrimitive.content == operation }
-                .toMutableList()
-        all.add(op)
-        while (all.size > 128) {
-            val old = all.indexOfFirst { it.phase == "complete" && it.serverCleaned }
-            if (old < 0) throw DeviceSecurity.Failure("capacity")
-            all.removeAt(old)
-        }
-        val data =
-            JsonArray(
-                    all.map { r ->
-                        buildJsonObject {
-                            put("Request", r.request)
-                            put("Phase", r.phase)
-                            put("Waiting", JsonArray(r.waiting.map { JsonPrimitive(it) }))
-                            put("Error", r.error)
-                            r.completion?.let {
-                                put("Completion", Base64.getEncoder().encodeToString(it))
-                            }
-                            put(
-                                "Chain",
-                                JsonArray(
-                                    r.chain.map {
-                                        JsonPrimitive(Base64.getEncoder().encodeToString(it))
-                                    },
-                                ),
-                            )
-                            put("ServerCleaned", r.serverCleaned)
-                        }
-                    },
-                )
-                .toString()
-                .toByteArray(Charsets.UTF_8)
-        store.writeRemovalOperations(data)
-    }
-
-    suspend fun removalOperations(): List<Removal> = removalMutex.withLock { readRemovals() }
-
-    suspend fun remove(target: String, commit: ByteArray, expected: ByteArray): Removal {
-        val r = read()
-        val request = DeviceSecurityRemoval.prepare(r.pin, memberID, target, expected, commit, ed)
-        val op = Removal(request, "unconfirmed", emptyList())
-        saveRemoval(op)
-        return retryRemoval(op)
-    }
-
-    suspend fun retryRemoval(op: Removal): Removal {
-        try {
-            val group = rpc(8u, op.request).jsonObject
-            val operations = group["Operations"]!!.jsonArray
-            if (
-                operations.none {
-                    it.jsonObject["Request"]!!.jsonObject["Operation"] == op.request["Operation"]
-                }
-            )
-                throw DeviceSecurity.Failure("untrusted")
-            val pending = op.copy(phase = "pending", waiting = waiting(group), error = "")
-            saveRemoval(pending)
-            return pollRemoval(pending)
-        } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
-            val next = op.copy(error = if (e is DeviceSecurity.Failure) e.code else "offline")
-            saveRemoval(next)
-            return next
-        }
-    }
-
-    private fun waiting(group: JsonObject): List<String> {
-        val receipts =
-            if (group["Receipts"] == null || group["Receipts"] == JsonNull) emptySet()
-            else
-                group["Receipts"]!!
-                    .jsonArray
-                    .map { it.jsonObject["Executor"]!!.jsonPrimitive.content }
-                    .toSet()
-        return group["Required"]!!
-            .jsonArray
-            .map { it.jsonPrimitive.content }
-            .filter { it !in receipts }
-    }
-
-    suspend fun pollRemoval(op: Removal): Removal {
-        if (op.phase == "complete") return op
-        val operation = op.request["Operation"]!!.jsonPrimitive.content
-        val completion =
-            try {
-                rpc(9u, buildJsonObject { put("Operation", operation) })
-            } catch (e: DeviceSecurity.Failure) {
-                if (e.code != "pending") throw e
-                val status =
-                    rpc(
-                            12u,
-                            buildJsonObject {
-                                put("Operation", operation)
-                                put("After", 0)
-                            },
-                        )
-                        .jsonObject["Group"]!!
-                        .jsonObject
-                val next = op.copy(phase = "pending", waiting = waiting(status), error = "")
-                saveRemoval(next)
-                return next
-            }
-        val group = completion.jsonObject["Group"]!!.jsonObject
-        val base = DeviceSecurityRPC.stateFromJSON(group["Base"]!!)
-        val head = DeviceSecurityRPC.stateFromJSON(group["Head"]!!)
-        val chain = ArrayList<DeviceSecurity.State>()
-        var after = base.core.epoch
-        repeat(128) {
-            if (after >= head.core.epoch) return@repeat
-            val reply =
-                rpc(
-                        12u,
-                        buildJsonObject {
-                            put("Operation", operation)
-                            put("After", after.toLong())
-                        },
-                    )
-                    .jsonObject
-            val states = reply["States"]!!.jsonArray
-            if (states.size !in 1..2) throw DeviceSecurity.Failure("untrusted")
-            for (value in states) {
-                val state = DeviceSecurityRPC.stateFromJSON(value)
-                if (state.core.epoch > head.core.epoch) throw DeviceSecurity.Failure("untrusted")
-                chain.add(state)
-                after = state.core.epoch
-            }
-        }
-        DeviceSecurityRemoval.verify(read().pin, completion, op.request, chain)
-        val done =
-            op.copy(
-                phase = "complete",
-                waiting = emptyList(),
-                error = "",
-                completion = completion.toString().toByteArray(Charsets.UTF_8),
-                chain = chain.map { DeviceSecurity.stateBytes(it) },
-            )
-        saveRemoval(done)
-        return done
-    }
-
-    suspend fun markServerCleaned(op: Removal): Removal {
-        val done = op.copy(serverCleaned = true, completion = null, chain = emptyList())
-        saveRemoval(done)
-        return done
-    }
-
-    private fun compareBytes(a: ByteArray, b: ByteArray): Int {
-        for (i in 0 until minOf(a.size, b.size)) {
-            val d = a[i].toUByte().toInt() - b[i].toUByte().toInt()
-            if (d != 0) return d
-        }
-        return a.size - b.size
-    }
-
-    private fun hash(v: JsonElement?): ByteArray {
-        try {
-            val a = v!!.jsonArray
-            if (a.size != 32) throw DeviceSecurity.Failure()
-            return a.map {
-                    val n = it.jsonPrimitive.int
-                    if (n !in 0..255) throw DeviceSecurity.Failure()
-                    n.toByte()
-                }
-                .toByteArray()
-        } catch (_: Exception) {
-            throw DeviceSecurity.Failure()
-        }
-    }
-
-    private fun decode64(s: String): ByteArray {
-        try {
-            if (s.length > DeviceSecurity.MAX_RPC * 2) throw DeviceSecurity.Failure()
-            return Base64.getDecoder().decode(s).also {
-                if (Base64.getEncoder().encodeToString(it) != s) throw DeviceSecurity.Failure()
-            }
-        } catch (_: Exception) {
-            throw DeviceSecurity.Failure()
-        }
-    }
 }
 
 internal fun unpackSecurity(h: DeviceSecurity.Header, p: ByteArray): ByteArray {
-    val limit = if (h.purpose.mutable) 64 shl 10 else 4 shl 20
+    val limit = if (h.purpose.mutable) DeviceSecurity.MAX_MUTABLE else DeviceSecurity.MAX_CIPHER
     return when (h.compression) {
         0u -> {
             if (p.size > limit) throw DeviceSecurity.Failure("capacity")

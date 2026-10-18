@@ -103,6 +103,7 @@ class RaApp : Application() {
                         io.github.lewin671.remoteagent.update.Updater.check(this@RaApp)
                         _remote.value?.let { r ->
                             r.start()
+                            r.renewLeaseIfNeeded()
                             Push.register(this@RaApp, r)
                         }
                     }
@@ -172,9 +173,9 @@ class RaApp : Application() {
                             val ready =
                                 if (acct != null && vault.hasSecurityState()) {
                                     val record = vault.readSecurity()
-                                    if (
-                                        record.memberID != acct.deviceId ||
-                                            record.pin.account !=
+                                    val accountId =
+                                        acct.accountId.ifEmpty {
+                                            if (acct.hasRoot)
                                                 io.github.lewin671.remoteagent.core.deviceId(
                                                     io.github.lewin671.remoteagent.core.Keys.derive(
                                                             acct.root,
@@ -182,6 +183,12 @@ class RaApp : Application() {
                                                         .account
                                                         .publicKey,
                                                 )
+                                            else ""
+                                        }
+                                    if (
+                                        record.memberID != acct.deviceId ||
+                                            (accountId.isNotEmpty() &&
+                                                record.pin.account != accountId)
                                     )
                                         throw io.github.lewin671.remoteagent.core.DeviceSecurity
                                             .Failure("untrusted")
@@ -231,8 +238,34 @@ class RaApp : Application() {
         // Only in the foreground: a process started for a push just shows it.
         if (foreground) {
             r.start()
+            r.renewLeaseIfNeeded()
             Push.register(this@RaApp, r)
         }
+    }
+
+    /** Stores a newly created account and its genesis, then starts syncing. */
+    suspend fun created(acct: Account, record: io.github.lewin671.remoteagent.core.DeviceSecurity.Record) =
+        adopt(acct, record)
+
+    /** Stores a recovered account and the published chain, then starts syncing. */
+    suspend fun recovered(acct: Account, record: io.github.lewin671.remoteagent.core.DeviceSecurity.Record) =
+        adopt(acct, record)
+
+    private suspend fun adopt(
+        acct: Account,
+        record: io.github.lewin671.remoteagent.core.DeviceSecurity.Record,
+    ) = accountLock.withLock {
+        withContext(Dispatchers.IO) {
+            vault.clear()
+            vault.initializeSecurity(record)
+            vault.save(
+                acct,
+                io.github.lewin671.remoteagent.core.DeviceSecurity.NotifyRecord.fromRecord(record)
+                    .bytes(),
+            )
+        }
+        _loaded.value = true
+        use(acct)
     }
 
     suspend fun persistPairing(
@@ -265,7 +298,6 @@ class RaApp : Application() {
 
     /** The server of the account just left, to fill in when joining again. Only in memory. */
     var lastServer = ""
-        private set
 
     /**
      * Forgets the account, the cache and the keys on this device. The keys go first; once they are

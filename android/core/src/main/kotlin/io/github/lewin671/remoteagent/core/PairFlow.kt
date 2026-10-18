@@ -1,7 +1,6 @@
-// Pairing flows, as in internal/relay/pair.go and web/src/pairing.ts: an
-// existing device shows a code, a new one joins with it, both show four
-// emoji, and after the user checks them the existing device sends the root
-// key sealed for the new one.
+// Pairing flows, as in internal/relay/pair.go and web/src/pairing.ts. Only the
+// authority phone initiates and approves; a joiner scans or types the code,
+// both compare four emoji, and the phone signs the new member state.
 package io.github.lewin671.remoteagent.core
 
 import com.connectrpc.Code
@@ -15,20 +14,21 @@ import io.github.lewin671.remoteagent.proto.GetPairingRequest
 import io.github.lewin671.remoteagent.proto.GetPairingResponse
 import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.JoinPairingRequest
+import io.github.lewin671.remoteagent.proto.PairApproval
 import io.github.lewin671.remoteagent.proto.PairingPayload
 import io.github.lewin671.remoteagent.proto.PairingState
 import io.github.lewin671.remoteagent.proto.PayloadKind
 import io.github.lewin671.remoteagent.proto.PeekPairingRequest
 import io.github.lewin671.remoteagent.proto.RevealPairingRequest
+import io.github.lewin671.remoteagent.proto.SecurityState
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.util.Base64
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.*
-import okhttp3.OkHttpClient
 import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
+import okhttp3.OkHttpClient
 
 class PairException(message: String) : Exception(message)
 
@@ -63,7 +63,6 @@ fun canRetryPairApproval(error: Exception): Boolean {
 
 /** What a QR code carries: the code, the initiator's commitment and the server. */
 data class PairLink(val code: String, val server: String, val commit: ByteArray? = null) {
-    /** The link for the web client at [web]; opening it starts joining. */
     fun url(web: String): String {
         val q = buildList {
             add("code=" + enc(code))
@@ -77,12 +76,9 @@ data class PairLink(val code: String, val server: String, val commit: ByteArray?
     companion object {
         private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
-        /** Reads a link made by [url], or by the web client and `remote-agent account pair`. */
         fun parse(raw: String): PairLink? {
             val i = raw.indexOf("#/pair?")
             if (i < 0) return null
-            // QR contents are untrusted: malformed percent escapes must not
-            // escape into the scanner's main-thread callback.
             try {
                 val q =
                     raw.substring(i + 7)
@@ -125,7 +121,7 @@ private suspend fun poll(
     }
 }
 
-/** Adding a device from this one. */
+/** Adding a device from the authority phone. */
 class Initiation
 internal constructor(
     override val code: String,
@@ -137,14 +133,15 @@ internal constructor(
 ) : PairingInitiation {
     @Volatile private var stopped = false
     private var secrets: PairSecrets? = null
-    private var candidate: ByteArray? = null
+    private var candidateSeed: ByteArray? = null
+    private var candidateX: ByteArray? = null
     private var candidateKind: DeviceKind? = null
     private val approvalLock = Mutex()
-    private var strongContext: DeviceSecurityRPC.PairContext? = null
     private var approvalRequest: ApprovePairingRequest? = null
 
-    /** Waits for a device to ask to join; returns the emoji to compare and its kind. */
     override suspend fun joined(): Pair<List<String>, DeviceKind> {
+        if (remote.security.head().core.authorityID != remote.account.deviceId)
+            throw PairException("只有管理端手机能添加设备")
         val tok = remote.currentToken()
         val st =
             poll({ stopped }, PairingState.PAIRING_STATE_JOINED) {
@@ -155,56 +152,26 @@ internal constructor(
                     )
                     .value()
             }
-        val local = remote.security.identity()
-        val descriptor = DeviceSecurityRPC.pairTrustDescriptor(local.first, remote.account.deviceId)
+        val (pin, _) = remote.security.identity()
+        val descriptor =
+            DeviceSecurityRPC.pairTrustDescriptor(pin, remote.account.deviceId)
         val cp = st.devicePublicKey.toByteArray()
         val xp = st.deviceHpkePublicKey.toByteArray()
-        require(cp.size == 32 && xp.size == 32 && st.joinerKindValue in 1..2) { "候选设备需要更新" }
-        val contextJSON =
-            remote.security.rpc(
-                5u,
-                buildJsonObject {
-                    put("ID", pairingId)
-                    put(
-                        "Candidate",
-                        buildJsonObject {
-                            put("ID", deviceId(cp))
-                            put(
-                                "EdPublic",
-                                JsonArray(cp.map { JsonPrimitive(it.toUByte().toInt()) }),
-                            )
-                            put(
-                                "XPublic",
-                                JsonArray(xp.map { JsonPrimitive(it.toUByte().toInt()) }),
-                            )
-                            put("Kind", st.joinerKindValue)
-                        },
-                    )
-                },
-            )
-        val context = DeviceSecurityRPC.pairContextFromJSON(contextJSON)
-        DeviceSecurityRPC.verifyPairContext(context, local.first)
-        require(
-            context.id == pairingId &&
-                context.approver == remote.account.deviceId &&
-                context.candidate.ed.contentEquals(cp) &&
-                context.candidate.x.contentEquals(xp) &&
-                context.candidate.kind == st.joinerKindValue.toUInt(),
-        ) {
-            "配对身份不匹配"
+        require(cp.size == 32 && xp.size == 32 && st.joinerKindValue in 1..2) {
+            "候选设备需要更新"
         }
-        strongContext = context
         remote.api.pairing
             .revealPairing(
                 RevealPairingRequest.newBuilder()
                     .setPairingId(pairingId)
                     .setInitiatorPublic(ByteString.copyFrom(key.public))
-                    .setSecurityContext(ByteString.copyFromUtf8(contextJSON.toString()))
+                    .setTrust(ByteString.copyFrom(descriptor))
                     .build(),
                 Api.headers(tok),
             )
             .value()
-        candidate = cp
+        candidateSeed = cp
+        candidateX = xp
         candidateKind = st.joinerKind
         val tr =
             Pairing.domainTranscript(
@@ -221,7 +188,7 @@ internal constructor(
         return s.emoji to st.joinerKind
     }
 
-    /** Sends the root key; returns when the new device has it. */
+    /** Signs the new member state, uploads it, then hands over the chain; waits for delivery. */
     override suspend fun approve() {
         val s = secrets ?: throw PairException("还没有设备加入")
         val acct = remote.account
@@ -229,54 +196,73 @@ internal constructor(
         val request = approvalLock.withLock {
             approvalRequest
                 ?: run {
-                    val context = strongContext ?: throw PairException("缺少配对安全上下文")
-                    var candidateSig: ByteArray? = null
-                    repeat(300) {
-                        if (candidateSig == null) {
-                            if (stopped) throw PairException("已取消")
-                            val current =
-                                remote.api.pairing
-                                    .getPairing(
-                                        GetPairingRequest.newBuilder()
-                                            .setPairingId(pairingId)
-                                            .build(),
-                                        Api.headers(tok),
-                                    )
-                                    .value()
-                            if (current.candidateSignature.size() == 64)
-                                candidateSig = current.candidateSignature.toByteArray()
-                            else delay(1000)
+                    remote.syncSecurity()
+                    val cp = candidateSeed ?: throw PairException("没有候选设备")
+                    val xp = candidateX ?: throw PairException("没有候选设备")
+                    val kind = candidateKind ?: throw PairException("没有候选设备")
+                    val now = System.currentTimeMillis()
+                    val head = remote.security.head()
+                    if (head.core.authorityID != acct.deviceId)
+                        throw PairException("只有管理端手机能批准")
+                    val old = remote.security.contentKey(head.core.contentEpoch)
+                        ?: throw PairException("缺少当前内容密钥")
+                    val member =
+                        DeviceSecurity.Member(deviceId(cp), cp, xp, kind.number.toUInt())
+                    val existing = head.core.member(member.id)
+                    val next =
+                        if (existing == null)
+                            Authority.pair(
+                                head,
+                                member,
+                                old,
+                                Authority.newSecret(),
+                                SigningKey(acct.deviceSeed),
+                                now,
+                            )
+                        else {
+                            // Re-pairing keeps the Ed25519 identity and replaces X.
+                            if (existing.kind != member.kind || !existing.ed.contentEquals(member.ed))
+                                throw PairException("这台设备的身份与成员记录不一致，不能重新加入")
+                            Authority.rotateX(
+                                head,
+                                member.id,
+                                xp,
+                                old,
+                                Authority.newSecret(),
+                                SigningKey(acct.deviceSeed),
+                                now,
+                            )
                         }
-                    }
-                    val sig = candidateSig ?: throw PairException("新设备未确认安全身份")
-                    val approved =
-                        DeviceSecurityRPC.signPairContext(
-                            context,
-                            SigningKey(acct.deviceSeed),
-                            "approve",
+                    if (acct.accountPublicKey.size != 32)
+                        throw PairException(
+                            "这台手机没有账户公钥，不能给新设备登记；请先用带账户根密钥的设备重新加入",
                         )
-                    val joinedJSON =
-                        remote.security.rpc(
-                            6u,
-                            buildJsonObject {
-                                put("ID", pairingId)
-                                put(
-                                    "ApproverSignature",
-                                    Base64.getEncoder().encodeToString(approved),
-                                )
-                                put("CandidateSignature", Base64.getEncoder().encodeToString(sig))
-                            },
-                        )
-                    val joined = DeviceSecurityRPC.stateFromJSON(joinedJSON)
-                    val joinedBytes = DeviceSecurity.stateBytes(joined)
+                    remote.publishSecurityStates(listOf(next))
+                    val chain = remote.security.chain()
+                    val proofs = remote.security.chainProofs()
                     val (approval, signature) =
-                        makePairApproval(
-                            acct,
-                            pairingId,
-                            candidate ?: throw PairException("没有候选设备"),
-                            candidateKind ?: throw PairException("没有候选设备"),
-                            expires,
-                        )
+                        makePairApproval(acct, pairingId, cp, kind, expires)
+                    val payload =
+                        PairingPayload.newBuilder()
+                            .setServer(acct.server)
+                            .setApproval(ByteString.copyFrom(approval))
+                            .setApprovalSignature(ByteString.copyFrom(signature))
+                            .addAllSecurityStates(
+                                chain.map { state ->
+                                    SecurityState.newBuilder()
+                                        .setState(
+                                            ByteString.copyFrom(DeviceSecurity.stateBytes(state)),
+                                        )
+                                        .apply {
+                                            proofs[state.core.epoch]?.let {
+                                                setRecovery(ByteString.copyFrom(it))
+                                            }
+                                        }
+                                        .build()
+                                },
+                            )
+                            .setAccountPublicKey(ByteString.copyFrom(acct.accountPublicKey))
+                            .build()
                     val env =
                         Envelopes.seal(
                             s.key,
@@ -285,13 +271,7 @@ internal constructor(
                                 .setRequestId(pairingId)
                                 .setSender(acct.deviceId)
                                 .build(),
-                            PairingPayload.newBuilder()
-                                .setRoot(ByteString.copyFrom(acct.root))
-                                .setServer(acct.server)
-                                .setApproval(ByteString.copyFrom(approval))
-                                .setApprovalSignature(ByteString.copyFrom(signature))
-                                .setSecurityState(ByteString.copyFrom(joinedBytes))
-                                .build(),
+                            payload,
                         )
                     ApprovePairingRequest.newBuilder()
                         .setPairingId(pairingId)
@@ -303,8 +283,6 @@ internal constructor(
                     .also { approvalRequest = it }
         }
         remote.api.pairing.approvePairing(request, Api.headers(tok)).value()
-        // Only the new device confirming it has the key counts as success. A
-        // pairing that disappears meanwhile leaves the outcome unknown.
         repeat(120) {
             if (stopped) throw PairException("已取消")
             try {
@@ -320,37 +298,19 @@ internal constructor(
                     throw PairException("另一台设备取消了配对")
             } catch (e: ConnectException) {
                 if (e.code == Code.NOT_FOUND)
-                    throw PairException("配对已过期，不确定新设备有没有拿到账户密钥。请在新设备上确认，必要时重新配对。")
+                    throw PairException("配对已过期，不确定新设备有没有拿到状态链。请在新设备上确认，必要时重新配对。")
             }
             delay(1000)
         }
-        throw PairException("新设备没有来取账户密钥，它可能没有加入成功。请在新设备上确认，必要时重新配对。")
+        throw PairException("新设备没有来取状态链，它可能没有加入成功。请在新设备上确认，必要时重新配对。")
     }
 
     fun cancel() {
         stopped = true
     }
 
-    /** Tells the server; best effort. */
     override suspend fun cancelOnServer() {
         stopped = true
-        try {
-            strongContext?.let { context ->
-                val sig =
-                    DeviceSecurityRPC.signPairContext(
-                        context,
-                        SigningKey(remote.account.deviceSeed),
-                        "cancel",
-                    )
-                remote.security.rpc(
-                    7u,
-                    buildJsonObject {
-                        put("ID", context.id)
-                        put("Signature", Base64.getEncoder().encodeToString(sig))
-                    },
-                )
-            }
-        } catch (_: Exception) {}
         try {
             remote.api.pairing.cancelPairing(
                 CancelPairingRequest.newBuilder().setPairingId(pairingId).build(),
@@ -362,8 +322,10 @@ internal constructor(
     }
 
     companion object {
-        /** Starts adding a device to this device's account. */
+        /** Starts adding a device; only the authority phone may. */
         suspend fun start(remote: Remote): Initiation {
+            if (remote.security.head().core.authorityID != remote.account.deviceId)
+                throw PairException("只有管理端手机能添加设备")
             val key = PairKey()
             val identity = remote.security.identity()
             val commit =
@@ -393,18 +355,14 @@ internal constructor(
 }
 
 /**
- * Joins an account with a code or link from an existing device. [onEmoji] gets the emoji to compare
- * with the other device's.
+ * Joins an account with a code or link from the authority phone. [onEmoji] gets the emoji to
+ * compare with the other device's.
  */
 suspend fun joinByPairing(
     link: PairLink,
     http: OkHttpClient,
     onEmoji: (List<String>) -> Unit,
     stopped: () -> Boolean,
-    /**
-     * Called when registering starts: from here on the join is not canceled, its outcome is
-     * reported.
-     */
     onRegistering: () -> Unit = {},
     persist: suspend (Account, DeviceSecurity.Record) -> Unit = { _, _ ->
         throw DeviceSecurity.Failure("storage")
@@ -417,7 +375,8 @@ suspend fun joinByPairing(
     if (existing != null) login(api, existing)
     val key = PairKey()
     val deviceSeed = existing?.deviceSeed ?: randomBytes(32)
-    val devicePublic = SigningKey(deviceSeed).publicKey
+    val device = SigningKey(deviceSeed)
+    val devicePublic = device.publicKey
     val xPrivate = randomBytes(32)
     val xPublic = X25519PrivateKeyParameters(xPrivate, 0).generatePublicKey().encoded
     val peek =
@@ -465,9 +424,6 @@ suspend fun joinByPairing(
         throw PairException("临时公钥公开后配对承诺发生变化")
     val id = joined.pairingId
     val token = joined.candidateToken
-    if (link.commit != null && !link.commit.contentEquals(joined.commit.toByteArray())) {
-        throw PairException("服务器返回的不是扫码那台设备的信息，已停止配对")
-    }
     val get: suspend () -> GetPairingResponse = {
         api.pairing
             .getPairing(
@@ -477,29 +433,18 @@ suspend fun joinByPairing(
             .value()
     }
     val st = poll(stopped, PairingState.PAIRING_STATE_REVEALED, get)
-    if (st.securityContext.size() > 8192) throw PairException("配对上下文过大")
-    val context =
+    if (st.trust.size() > 8192) throw PairException("配对信任信息过大")
+    val (pin, approver) =
         try {
-            DeviceSecurityRPC.pairContextFromJSON(
-                Json.parseToJsonElement(st.securityContext.toStringUtf8()),
-            )
+            DeviceSecurityRPC.parsePairTrustDescriptor(st.trust.toByteArray())
         } catch (_: Exception) {
-            throw PairException("无效的配对安全上下文")
+            throw PairException("无效的配对信任信息")
         }
-    DeviceSecurityRPC.verifyPairContext(context, context.pin)
     if (
-        context.id != id ||
-            context.candidate.kind != 2u ||
-            !context.candidate.ed.contentEquals(devicePublic) ||
-            !context.candidate.x.contentEquals(xPublic)
-    )
-        throw PairException("配对身份与本机不匹配")
-    val descriptor = DeviceSecurityRPC.pairTrustDescriptor(context.pin, context.approver)
-    if (
-        !DeviceSecurityRPC.pairDomainCommit(st.initiatorPublic.toByteArray(), descriptor)
+        !DeviceSecurityRPC.pairDomainCommit(st.initiatorPublic.toByteArray(), st.trust.toByteArray())
             .contentEquals(peek.commit.toByteArray())
     )
-        throw PairException("管理电脑信任信息与承诺不匹配")
+        throw PairException("管理端信任信息与承诺不匹配")
     val tr =
         Pairing.domainTranscript(
             id,
@@ -508,23 +453,12 @@ suspend fun joinByPairing(
             devicePublic,
             xPublic,
             DeviceKind.DEVICE_KIND_CLIENT.number,
-            descriptor,
+            st.trust.toByteArray(),
         )
     val s = key.derive(st.initiatorPublic.toByteArray(), tr)
     onEmoji(s.emoji)
     if (stopped() || !confirm(s.emoji)) throw PairException("本机未确认图案，已停止安全绑定")
     onRegistering()
-    val candidateSig = DeviceSecurityRPC.signPairContext(context, SigningKey(deviceSeed), "accept")
-    api.pairing
-        .getPairing(
-            GetPairingRequest.newBuilder()
-                .setPairingId(id)
-                .setCandidateToken(token)
-                .setCandidateSignature(ByteString.copyFrom(candidateSig))
-                .build(),
-            emptyMap(),
-        )
-        .value()
     val done = poll(stopped, PairingState.PAIRING_STATE_APPROVED, get)
     val (_, payload) =
         Envelopes.openMessage(
@@ -534,42 +468,75 @@ suspend fun joinByPairing(
             PairingPayload::parseFrom,
         )
     if (payload.server != link.server) throw PairException("账户属于另一个服务器")
-    // Canceled while the other device was allowing it: stop before registering.
     if (stopped()) throw PairException("已取消本次加入")
-
-    val acct =
-        if (existing != null) {
-            if (!payload.root.toByteArray().contentEquals(existing.root))
-                throw PairException("配对属于另一个账户，原密钥已保留")
-            existing
-        } else
-            joinWithRoot(
-                payload.root.toByteArray(),
-                payload.server,
-                http,
-                enrollment =
-                    Enrollment(
-                        deviceSeed,
-                        id,
-                        payload.approval.toByteArray(),
-                        payload.approvalSignature.toByteArray(),
-                    ),
-            )
-    val joinedState = DeviceSecurity.parseState(payload.securityState.toByteArray())
-    DeviceSecurity.verifyState(context.pin, joinedState)
-    if (
-        context.pin.account != deviceId(Keys.derive(acct.root).account.publicKey) ||
-            !joinedState.core.parent.contentEquals(context.expected)
+    val accountPublicKey = payload.accountPublicKey.toByteArray()
+    if (accountPublicKey.size != 32 || deviceId(accountPublicKey) != pin.account)
+        throw PairException("配对载荷缺少账户公钥")
+    val chain = ArrayList<DeviceSecurity.State>()
+    val proofs = ArrayList<ByteArray?>()
+    for (inState in payload.securityStatesList) {
+        val state = DeviceSecurity.parseState(inState.state.toByteArray())
+        chain.add(state)
+        proofs.add(inState.recovery.takeIf { it.size() > 0 }?.toByteArray())
+    }
+    if (chain.isEmpty() || chain.size > DeviceSecurity.MAX_STATES)
+        throw PairException("配对载荷的状态链不完整")
+    if (!DeviceSecurity.pinOf(chain[0]).let {
+            it.account == pin.account &&
+                it.domain.contentEquals(pin.domain) &&
+                it.genesis.contentEquals(pin.genesis)
+        }
     )
-        throw PairException("加入回执与配对上下文不匹配")
+        throw PairException("配对载荷属于另一个安全域")
+    chain.forEachIndexed { i, state ->
+        DeviceSecurity.verifyState(pin, state)
+        if (i > 0) {
+            val proof = proofs[i]?.let { DeviceSecurity.parseRecoveryStatement(it) }
+            DeviceSecurity.verifyTransition(chain[i - 1], state, proof)
+        }
+    }
+    if (chain.last().core.authorityID != approver)
+        throw PairException("配对载荷的管理端不匹配")
     val member =
-        joinedState.core.members.firstOrNull { it.id == acct.deviceId }
+        chain.last().core.member(deviceId(devicePublic))
             ?: throw PairException("加入回执没有本机身份")
-    if (!member.same(context.candidate)) throw PairException("加入回执的本机公钥不匹配")
-    val record = DeviceSecurity.Record(context.pin, joinedState, acct.deviceId, xPrivate)
+    if (
+        !member.ed.contentEquals(devicePublic) ||
+            !member.x.contentEquals(xPublic) ||
+            member.kind != 2u
+    )
+        throw PairException("加入回执的本机公钥不匹配")
+    DeviceSecurity.openGrant(pin, chain.last(), member.id, xPrivate)
+    val approval = PairApproval.parseFrom(payload.approval)
+    if (
+        approval.accountId != pin.account ||
+            approval.pairingId != id ||
+            !approval.candidateDevicePublicKey.toByteArray().contentEquals(devicePublic) ||
+            approval.candidateKind != DeviceKind.DEVICE_KIND_CLIENT ||
+            approval.approverDeviceId != approver ||
+            approval.approverPublicKey.size() != 32 ||
+            !verifyEd25519(
+                approval.approverPublicKey.toByteArray(),
+                "remote-agent/v1/pair-approval\u0000".toByteArray() + payload.approval.toByteArray(),
+                payload.approvalSignature.toByteArray(),
+            )
+    )
+        throw PairException("配对批准与这台设备不匹配或签名无效")
+    val acct =
+        registerDevice(
+            link.server,
+            http,
+            accountPublicKey,
+            deviceSeed,
+            DeviceKind.DEVICE_KIND_CLIENT,
+            approval = payload.approval.toByteArray(),
+            approvalSignature = payload.approvalSignature.toByteArray(),
+            accountId = pin.account,
+            root = existing?.root ?: ByteArray(0),
+            accountKey = accountPublicKey,
+        )
+    val record = DeviceSecurity.Record.fromChain(pin.account, pin.domain, pin.genesis, acct.deviceId, xPrivate, chain.map { DeviceSecurity.stateBytes(it) }, proofs)
     persist(acct, record)
-    // Tells the other device it went through. If this is lost, that device
-    // reports the outcome as unknown; the join itself stands.
     try {
         api.pairing.getPairing(
             GetPairingRequest.newBuilder()
@@ -580,7 +547,7 @@ suspend fun joinByPairing(
             emptyMap(),
         )
     } catch (e: Exception) {
-        // See above.
+        // The join itself stands.
     }
     return acct
 }

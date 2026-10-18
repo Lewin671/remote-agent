@@ -145,7 +145,11 @@ class KotlinVectorsTest {
         val pairingId = "fedcba9876543210fedcba9876543210"
         val tr = Pairing.transcript(pairingId, init.public, join.public, DeviceKind.DEVICE_KIND_CLIENT.number)
         val sec = init.derive(join.public, tr)
-        val payload = PairingPayload.newBuilder().setRoot(ByteString.copyFrom(root)).setServer("https://ra.example.com").build()
+        val payload =
+            PairingPayload.newBuilder()
+                .setServer("https://ra.example.com")
+                .setAccountPublicKey(ByteString.copyFrom(keys.account.publicKey))
+                .build()
         val pairEnv = Envelopes.seal(
             sec.key,
             Header.newBuilder().setKind(PayloadKind.PAYLOAD_KIND_PAIRING).setRequestId(pairingId).setSender("device-k").build(),

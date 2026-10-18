@@ -11,12 +11,6 @@ import com.connectrpc.ResponseMessage
  *  MachineService is used by daemons.
  */
 public interface MachineServiceClientInterface {
-  /**
-   *  One-time transport pin, installed by the authority host. Endpoints keep
-   *  their independently SAS-pinned authority; this is only server-side ACL.
-   */
-  public suspend fun pinSecurityDomain(request: PinSecurityDomainRequest, headers: Headers = emptyMap()): ResponseMessage<PinSecurityDomainResponse>
-
   public suspend fun putMachine(request: PutMachineRequest, headers: Headers = emptyMap()): ResponseMessage<PutMachineResponse>
 
   public suspend fun putSession(request: PutSessionRequest, headers: Headers = emptyMap()): ResponseMessage<PutSessionResponse>

@@ -23,7 +23,7 @@ public interface RegisterDeviceRequestOrBuilder extends
   /**
    * <pre>
    * Ed25519 signature by the account key over "remote-agent/v1/register&#92;x00"
-   * followed by registration.
+   * followed by registration. Required only to create the account.
    * </pre>
    *
    * <code>bytes signature = 2 [json_name = "signature"];</code>

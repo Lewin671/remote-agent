@@ -10,6 +10,8 @@ import io.github.lewin671.remoteagent.proto.NotifyKind
 fun acceptPush(hasAccount: Boolean, kind: NotifyKind, settings: Settings): Boolean = hasAccount && when (kind) {
     NotifyKind.NOTIFY_KIND_ATTENTION -> settings.notifyAttention
     NotifyKind.NOTIFY_KIND_TURN_ENDED -> settings.notifyTurnEnded
+    // A recovery request is a security action; never filtered by the chat switches.
+    NotifyKind.NOTIFY_KIND_SECURITY -> true
     else -> false
 }
 

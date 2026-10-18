@@ -143,6 +143,19 @@ func (rs *recoveryService) GetRecoveryContext(ctx context.Context, req *connect.
 	}
 	r, err := rs.row(ctx, req.Msg)
 	if errors.Is(err, errNoRows) {
+		// A valid recovery key may be looked up before anything is
+		// submitted: the new phone needs the chain to build its statement.
+		if len(req.Msg.RecoveryEd) == 32 {
+			var account string
+			e := rs.s.store.db.QueryRowContext(ctx, `SELECT id FROM accounts WHERE recovery_ed = ?`, req.Msg.RecoveryEd).Scan(&account)
+			if e == nil {
+				chain, e := rs.chain(ctx, account)
+				if e != nil {
+					return nil, internal(e)
+				}
+				return connect.NewResponse(&pb.GetRecoveryContextResponse{AccountId: account, States: chain}), nil
+			}
+		}
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("no recovery is pending for that key"))
 	}
 	if err != nil {

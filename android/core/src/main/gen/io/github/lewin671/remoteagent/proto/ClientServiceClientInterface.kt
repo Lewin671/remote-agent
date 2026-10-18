@@ -33,12 +33,6 @@ public interface ClientServiceClientInterface {
   public suspend fun setPushSubscription(request: SetPushSubscriptionRequest, headers: Headers = emptyMap()): ResponseMessage<SetPushSubscriptionResponse>
 
   /**
-   *  RemoveDevice unregisters a device and ends its logins; a removed
-   *  machine's sessions are deleted.
-   */
-  public suspend fun removeDevice(request: RemoveDeviceRequest, headers: Headers = emptyMap()): ResponseMessage<RemoveDeviceResponse>
-
-  /**
    *  SetPushTarget registers where this device gets notifications, one
    *  target per type: Web Push and FCM can be set side by side.
    *  SetPushSubscription is the same for Web Push.
@@ -68,4 +62,22 @@ public interface ClientServiceClientInterface {
   public suspend fun getAccountPrefs(request: GetAccountPrefsRequest, headers: Headers = emptyMap()): ResponseMessage<GetAccountPrefsResponse>
 
   public suspend fun putAccountPrefs(request: PutAccountPrefsRequest, headers: Headers = emptyMap()): ResponseMessage<PutAccountPrefsResponse>
+
+  /**
+   *  PinSecurityDomain stores the phone-signed genesis state of a new
+   *  account. Called once, by the new authority phone.
+   */
+  public suspend fun pinSecurityDomain(request: PinSecurityDomainRequest, headers: Headers = emptyMap()): ResponseMessage<PinSecurityDomainResponse>
+
+  /**
+   *  PutSecurityState uploads a contiguous signed state chain segment. The
+   *  first state must continue from the stored head (or be the pinned
+   *  genesis). The server rejects forks, rollbacks and invalid signatures.
+   */
+  public suspend fun putSecurityState(request: PutSecurityStateRequest, headers: Headers = emptyMap()): ResponseMessage<PutSecurityStateResponse>
+
+  /**
+   *  GetSecurityStates returns states after an epoch, up to eight at a time.
+   */
+  public suspend fun getSecurityStates(request: GetSecurityStatesRequest, headers: Headers = emptyMap()): ResponseMessage<GetSecurityStatesResponse>
 }

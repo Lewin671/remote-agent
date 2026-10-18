@@ -42,15 +42,4 @@ public interface ForwardRequestOrBuilder extends
    * @return The command.
    */
   io.github.lewin671.remoteagent.proto.Envelope getCommand();
-
-  /**
-   * <pre>
-   * Opaque pinned-authority HPKE Capsule, mutually exclusive with command.
-   * The relay only routes it to machine_id and does not open it.
-   * </pre>
-   *
-   * <code>bytes security_rpc = 3 [json_name = "securityRpc"];</code>
-   * @return The securityRpc.
-   */
-  com.google.protobuf.ByteString getSecurityRpc();
 }

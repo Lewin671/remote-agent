@@ -4,144 +4,154 @@ import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.proto.*
 import okhttp3.OkHttpClient
 
-/** Synthetic fixture identities approve enrollment through the real server. */
+/**
+ * Creates a new account with its authority phone and pins the genesis, as the app does.
+ */
+suspend fun newAuthorityAccount(
+    root: ByteArray,
+    server: String,
+    http: OkHttpClient,
+    setupToken: String,
+    recoverySeed: ByteArray? = null,
+): Account {
+    val phone =
+        joinWithRoot(
+            root,
+            server,
+            http,
+            setupToken = setupToken,
+            kind = DeviceKind.DEVICE_KIND_CLIENT,
+        )
+    val (_, genesis) = TestSecurity.initialize(phone, recoverySeed)
+    val api = Api(phone.server, http)
+    api.client
+        .pinSecurityDomain(
+            PinSecurityDomainRequest.newBuilder()
+                .setGenesisState(ByteString.copyFrom(genesis))
+                .build(),
+            Api.headers(login(api, phone)),
+        )
+        .value()
+    return phone
+}
+
+/**
+ * Adds a member with the Kotlin authority builder, uploads the state, registers the device with
+ * the phone's approval, and keeps the chain for the new device.
+ */
 suspend fun approvedClient(
-    authorizer: Account,
+    authority: Account,
     http: OkHttpClient,
     kind: DeviceKind = DeviceKind.DEVICE_KIND_CLIENT,
+    seed: ByteArray = randomBytes(32),
 ): Account {
-    val security = TestSecurity.get(authorizer.server)
-    val old = security.stores[authorizer.deviceId]!!.readSecurity()
-    val descriptor = DeviceSecurityRPC.pairTrustDescriptor(old.pin, authorizer.deviceId)
-    val api = Api(authorizer.server, http)
-    val headers = Api.headers(login(api, authorizer))
-    val a = PairKey()
-    val b = PairKey()
-    val seed = randomBytes(32)
-    val pub = SigningKey(seed).publicKey
-    val created =
-        api.pairing
-            .createPairing(
-                CreatePairingRequest.newBuilder()
-                    .setCommit(
-                        ByteString.copyFrom(
-                            DeviceSecurityRPC.pairDomainCommit(a.public, descriptor),
-                        ),
-                    )
-                    .build(),
-                headers,
-            )
-            .value()
-    val enrolled =
-        security.call(
-            "enroll",
-            "Approver" to kotlinx.serialization.json.JsonPrimitive(authorizer.deviceId),
-            "Pair" to kotlinx.serialization.json.JsonPrimitive(created.pairingId),
-            "Seed" to TestSecurity.blob(seed),
-            "Kind" to kotlinx.serialization.json.JsonPrimitive(kind.number),
+    val security = TestSecurity.get(authority.server)
+    val phoneStore = security.stores.getValue(authority.deviceId)
+    val phone = phoneStore.readSecurity()
+    val signer = SigningKey(seed)
+    val x = randomBytes(32)
+    val member =
+        Authority.newMember(signer, x, kind.number.toUInt())
+    val old = phone.contentKey(phone.head.core.contentEpoch) ?: error("no content key")
+    val next =
+        Authority.pair(
+            phone.head,
+            member,
+            old,
+            Authority.newSecret(),
+            SigningKey(authority.deviceSeed),
+            System.currentTimeMillis(),
         )
-    val record = DeviceSecurity.Record.parse(security.bytes(enrolled, "Record"))
-    val candidate = record.state.core.members.first { it.id == deviceId(pub) }
-    val joined =
-        api.pairing
-            .joinPairing(
-                JoinPairingRequest.newBuilder()
-                    .setProtocolVersion(PROTOCOL_VERSION)
-                    .setCode(created.code)
-                    .setJoinerPublic(ByteString.copyFrom(b.public))
-                    .setJoinerKind(kind)
-                    .setDevicePublicKey(ByteString.copyFrom(pub))
-                    .setDeviceHpkePublicKey(ByteString.copyFrom(candidate.x))
-                    .build(),
-                emptyMap(),
-            )
-            .value()
-    val contextJSON = enrolled["PairContext"]!!
-    val context = DeviceSecurityRPC.pairContextFromJSON(contextJSON)
-    api.pairing
-        .revealPairing(
-            RevealPairingRequest.newBuilder()
-                .setPairingId(created.pairingId)
-                .setInitiatorPublic(ByteString.copyFrom(a.public))
-                .setSecurityContext(
-                    ByteString.copyFrom(contextJSON.toString().toByteArray(Charsets.UTF_8)),
+    val api = Api(authority.server, http)
+    api.client
+        .putSecurityState(
+            PutSecurityStateRequest.newBuilder()
+                .addStates(
+                    SecurityState.newBuilder()
+                        .setState(ByteString.copyFrom(DeviceSecurity.stateBytes(next)))
+                        .build(),
                 )
                 .build(),
-            headers,
+            Api.headers(login(api, authority)),
         )
         .value()
-    val tr =
-        Pairing.domainTranscript(
-            created.pairingId,
-            a.public,
-            b.public,
-            pub,
-            candidate.x,
-            kind.number,
-            descriptor,
+    for (s in security.stores.values.toList()) {
+        val head = s.readSecurity().head
+        if (next.core.epoch == head.core.epoch + 1uL) {
+            runCatching { s.installSecurity(DeviceSecurity.stateHash(head), listOf(next), listOf(null)) }
+        }
+    }
+    val now = System.currentTimeMillis()
+    val (approval, signature) =
+        makePairApproval(
+            authority,
+            newRequestId(),
+            signer.publicKey,
+            kind,
+            now + 10 * 60_000,
         )
-    val shared = a.derive(b.public, tr)
-    check(shared.key.contentEquals(b.derive(a.public, tr).key))
-    val candidateSig = DeviceSecurityRPC.signPairContext(context, SigningKey(seed), "accept")
-    api.pairing
-        .getPairing(
-            GetPairingRequest.newBuilder()
-                .setPairingId(created.pairingId)
-                .setCandidateToken(joined.candidateToken)
-                .setCandidateSignature(ByteString.copyFrom(candidateSig))
-                .build(),
-            emptyMap(),
-        )
-        .value()
-    val (approval, sig) =
-        makePairApproval(authorizer, created.pairingId, pub, kind, created.expiresMs)
-    val payload =
-        PairingPayload.newBuilder()
-            .setRoot(ByteString.copyFrom(authorizer.root))
-            .setServer(authorizer.server)
-            .setApproval(ByteString.copyFrom(approval))
-            .setApprovalSignature(ByteString.copyFrom(sig))
-            .setSecurityState(ByteString.copyFrom(security.bytes(enrolled, "State")))
-            .build()
-    val env =
-        Envelopes.seal(
-            shared.key,
-            Header.newBuilder()
-                .setKind(PayloadKind.PAYLOAD_KIND_PAIRING)
-                .setRequestId(created.pairingId)
-                .setSender(authorizer.deviceId)
-                .build(),
-            payload,
-        )
-    api.pairing
-        .approvePairing(
-            ApprovePairingRequest.newBuilder()
-                .setPairingId(created.pairingId)
-                .setPayload(env)
-                .setApproval(ByteString.copyFrom(approval))
-                .setApprovalSignature(ByteString.copyFrom(sig))
-                .build(),
-            headers,
-        )
-        .value()
     val result =
-        joinWithRoot(
-            authorizer.root,
-            authorizer.server,
+        registerDevice(
+            authority.server,
             http,
-            kind = kind,
-            enrollment = Enrollment(seed, created.pairingId, approval, sig),
+            authority.accountPublicKey,
+            seed,
+            kind,
+            now,
+            approval = approval,
+            approvalSignature = signature,
+            accountId = authority.accountId,
+            root = if (kind == DeviceKind.DEVICE_KIND_MACHINE) ByteArray(0) else authority.root,
+            accountKey = authority.accountPublicKey,
         )
-    security.stores[result.deviceId] = TestSecurityStore(record)
-    api.pairing
-        .getPairing(
-            GetPairingRequest.newBuilder()
-                .setPairingId(created.pairingId)
-                .setCandidateToken(joined.candidateToken)
-                .setReceived(true)
+    val chain = (phone.chain + next).map { DeviceSecurity.stateBytes(it) }
+    security.stores[result.deviceId] =
+        TestSecurityStore(
+            DeviceSecurity.Record.fromChain(
+                phone.pin.account,
+                phone.pin.domain,
+                phone.pin.genesis,
+                result.deviceId,
+                x,
+                chain,
+                chain.map { null },
+            ),
+        )
+    return result
+}
+
+/** Signs a removal as the authority phone and uploads it, as the device page does. */
+suspend fun removeAsAuthority(phone: Account, target: String, http: OkHttpClient) {
+    val security = TestSecurity.get(phone.server)
+    val store = security.stores.getValue(phone.deviceId)
+    val r = store.readSecurity()
+    val old = r.contentKey(r.head.core.contentEpoch) ?: error("no content key")
+    val next =
+        Authority.remove(
+            r.head,
+            listOf(target),
+            old,
+            Authority.newSecret(),
+            SigningKey(phone.deviceSeed),
+            System.currentTimeMillis(),
+        )
+    val api = Api(phone.server, http)
+    api.client
+        .putSecurityState(
+            PutSecurityStateRequest.newBuilder()
+                .addStates(
+                    SecurityState.newBuilder()
+                        .setState(ByteString.copyFrom(DeviceSecurity.stateBytes(next)))
+                        .build(),
+                )
                 .build(),
-            emptyMap(),
+            Api.headers(login(api, phone)),
         )
         .value()
-    return result
+    for (s in security.stores.values.toList()) {
+        val head = s.readSecurity().head
+        if (next.core.epoch == head.core.epoch + 1uL) {
+            runCatching { s.installSecurity(DeviceSecurity.stateHash(head), listOf(next), listOf(null)) }
+        }
+    }
 }

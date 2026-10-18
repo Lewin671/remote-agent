@@ -9,9 +9,9 @@ import com.connectrpc.ResponseMessage
 
 /**
  *  AuthService registers devices and logs them in. Every device has its own
- *  Ed25519 key; a device is registered with a signature by the account key,
- *  which is derived from the account's root key, so only a holder of the
- *  root key can add devices.
+ *  Ed25519 key. The first device of an account signs its registration with
+ *  the account key; every later device on an existing account needs a
+ *  approval signed by the current authority phone instead.
  */
 public interface AuthServiceClientInterface {
   public suspend fun registerDevice(request: RegisterDeviceRequest, headers: Headers = emptyMap()): ResponseMessage<RegisterDeviceResponse>

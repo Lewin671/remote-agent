@@ -12,13 +12,31 @@ import org.bouncycastle.crypto.hpke.HPKE
 import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 
 /**
- * Trust is SAS-pinned on endpoints, not inferred from a root-signed relay list. Canonical signed
- * objects match internal/deviceauth and the other clients.
+ * Protocol 10: the phone signs a membership chain; every device signs the envelopes it sends.
+ * Canonical bytes, domain-separation labels and rules match internal/deviceauth, and the three
+ * clients are kept in step by the Go vectors.
  */
 object DeviceSecurity {
+    /** State and header binary format version. */
+    const val VERSION = 3
+    private const val VERSION_U = 3u
+
     const val MAX_STATE = 64 shl 10
+    const val MAX_HEADER = 1024
     const val MAX_CIPHER = 4 shl 20
-    const val MAX_RPC = 1 shl 20
+    const val MAX_MUTABLE = 64 shl 10
+    const val MAX_MEMBERS = 128
+    private const val MAX_MEMBERS_U = 128u
+    const val MAX_STATES = 4096
+
+    const val LEASE = 72L * 60 * 60 * 1000
+    const val MAX_LEASE = 7L * 24 * 60 * 60 * 1000
+    const val COUNTER_BLOCK = 4096L
+    const val MAX_LEASE_U = 604_800_000uL
+    const val LEASE_U = 259_200_000uL
+    const val COUNTER_BLOCK_U = 4096uL
+    const val MAX_STATES_U = 4096uL
+    private const val MAX_STATES_UINT = 4096u
 
     class Failure(val code: String = "invalid") : Exception("security: $code")
 
@@ -30,7 +48,7 @@ object DeviceSecurity {
 
     private fun id(s: String) = s.matches(Regex("[0-9a-f]{32}"))
 
-    private fun opaque(s: String) = s.matches(Regex("[A-Za-z0-9_:-]{1,128}"))
+    private fun opaque(s: String) = s.matches(Regex("[A-Za-z0-9_.:-]{1,128}"))
 
     private fun nonzero(b: ByteArray) = check(b.size == 32 && !b.contentEquals(zero))
 
@@ -81,7 +99,7 @@ object DeviceSecurity {
         }
 
         fun str(): String {
-            val bytes = lp(128)
+            val bytes = lp(MAX_STATE)
             val s = bytes.toString(Charsets.UTF_8)
             check(s.toByteArray(Charsets.UTF_8).contentEquals(bytes))
             return s
@@ -99,40 +117,45 @@ object DeviceSecurity {
         val account: String,
         val domain: ByteArray,
         val authorityID: String,
-        val authorityEd: ByteArray,
-        val authorityX: ByteArray,
+        val recoveryEd: ByteArray,
         val parent: ByteArray,
         val epoch: ULong,
         val contentEpoch: ULong,
+        val issuedAt: ULong,
+        val notAfter: ULong,
         val members: List<Member>,
         val removed: List<String>,
-    )
+    ) {
+        fun member(memberId: String): Member? = members.firstOrNull { it.id == memberId }
+    }
 
     data class Grant(val recipient: String, val enc: ByteArray, val cipher: ByteArray)
 
-    data class State(val core: Core, val grants: List<Grant>, val signature: ByteArray)
-
-    data class Pin(
-        val account: String,
-        val domain: ByteArray,
-        val genesis: ByteArray,
-        val authorityID: String,
-        val authorityEd: ByteArray,
-        val authorityX: ByteArray,
+    data class State(
+        val core: Core,
+        val grants: List<Grant>,
+        val prevSecret: ByteArray,
+        val signature: ByteArray,
     )
+
+    /** Immutable trust anchor: the account, the security domain and the genesis hash. */
+    data class Pin(val account: String, val domain: ByteArray, val genesis: ByteArray)
 
     private fun validate(c: Core) {
         check(
             id(c.account) &&
                 id(c.authorityID) &&
                 c.epoch > 0uL &&
-                c.contentEpoch == c.epoch &&
-                c.members.size in 1..128 &&
-                c.removed.size <= 128,
+                c.contentEpoch > 0uL &&
+                c.contentEpoch <= c.epoch &&
+                c.issuedAt > 0uL &&
+                c.notAfter > c.issuedAt &&
+                c.notAfter - c.issuedAt <= MAX_LEASE_U &&
+                c.members.size in 1..MAX_MEMBERS &&
+                c.removed.size <= MAX_MEMBERS,
         )
         nonzero(c.domain)
-        nonzero(c.authorityEd)
-        nonzero(c.authorityX)
+        nonzero(c.recoveryEd)
         check(c.parent.size == 32)
         c.members.forEachIndexed { i, m ->
             check(
@@ -144,15 +167,23 @@ object DeviceSecurity {
             nonzero(m.x)
             if (i > 0) check(c.members[i - 1].id < m.id)
         }
-        val a = c.members.firstOrNull { it.id == c.authorityID } ?: throw Failure()
-        check(
-            a.kind == 1u && !a.ed.contentEquals(c.authorityEd) && !a.x.contentEquals(c.authorityX),
-        )
+        val a = c.member(c.authorityID) ?: throw Failure()
+        check(a.kind == 2u)
         c.removed.forEachIndexed { i, s ->
-            check(id(s) && (i == 0 || c.removed[i - 1] < s) && c.members.none { it.id == s })
+            check(
+                id(s) &&
+                    (i == 0 || c.removed[i - 1] < s) &&
+                    c.member(s) == null &&
+                    s != c.authorityID,
+            )
         }
         if (c.epoch == 1uL)
-            check(c.parent.contentEquals(zero) && c.members.size == 1 && c.removed.isEmpty())
+            check(
+                c.parent.contentEquals(zero) &&
+                    c.members.size == 1 &&
+                    c.removed.isEmpty() &&
+                    c.contentEpoch == 1uL,
+            )
         else nonzero(c.parent)
     }
 
@@ -160,15 +191,16 @@ object DeviceSecurity {
         validate(c)
         val w =
             Writer()
-                .u32(2u)
+                .u32(VERSION_U)
                 .str(c.account)
                 .raw(c.domain)
                 .str(c.authorityID)
-                .raw(c.authorityEd)
-                .raw(c.authorityX)
+                .raw(c.recoveryEd)
                 .raw(c.parent)
                 .u64(c.epoch)
                 .u64(c.contentEpoch)
+                .u64(c.issuedAt)
+                .u64(c.notAfter)
                 .u32(c.members.size.toUInt())
         c.members.forEach { w.str(it.id).raw(it.ed).raw(it.x).u32(it.kind) }
         w.u32(c.removed.size.toUInt())
@@ -179,31 +211,33 @@ object DeviceSecurity {
     fun parseCore(b: ByteArray): Core {
         check(b.size <= MAX_STATE)
         val r = Reader(b)
-        check(r.u32() == 2u)
+        check(r.u32() == VERSION_U)
         val account = r.str()
         val domain = r.raw(32)
         val authorityID = r.str()
-        val ed = r.raw(32)
-        val x = r.raw(32)
+        val recoveryEd = r.raw(32)
         val parent = r.raw(32)
         val epoch = r.u64()
         val contentEpoch = r.u64()
+        val issuedAt = r.u64()
+        val notAfter = r.u64()
         var n = r.u32()
-        check(n <= 128u)
+        check(n <= MAX_MEMBERS_U)
         val members = List(n.toInt()) { Member(r.str(), r.raw(32), r.raw(32), r.u32()) }
         n = r.u32()
-        check(n <= 128u)
+        check(n <= MAX_MEMBERS_U)
         val removed = List(n.toInt()) { r.str() }
         r.done()
         return Core(
                 account,
                 domain,
                 authorityID,
-                ed,
-                x,
+                recoveryEd,
                 parent,
                 epoch,
                 contentEpoch,
+                issuedAt,
+                notAfter,
                 members,
                 removed,
             )
@@ -221,18 +255,40 @@ object DeviceSecurity {
         return w.bytes()
     }
 
+    private fun coreHash(s: State): ByteArray = digest("ra3/core\u0000", coreBytes(s.core))
+
     fun stateHash(s: State): ByteArray =
         digest(
-            "ra2/state\u0000",
-            digest("ra2/core\u0000", coreBytes(s.core)),
-            digest("ra2/grants\u0000", grantBytes(s)),
+            "ra3/state\u0000",
+            coreHash(s),
+            grantBytes(s),
+            Writer().lp(s.prevSecret).bytes(),
         )
+
+    fun signBytes(s: State): ByteArray =
+        Writer()
+            .raw("ra3/state-sig\u0000".toByteArray())
+            .str(s.core.account)
+            .raw(s.core.domain)
+            .raw(s.core.parent)
+            .u64(s.core.epoch)
+            .u64(s.core.contentEpoch)
+            .u64(s.core.issuedAt)
+            .u64(s.core.notAfter)
+            .str(s.core.authorityID)
+            .raw(s.core.recoveryEd)
+            .raw(stateHash(s))
+            .bytes()
 
     fun stateBytes(s: State): ByteArray {
         check(s.signature.size == 64)
-        return Writer().lp(coreBytes(s.core)).raw(grantBytes(s)).lp(s.signature).bytes().also {
-            check(it.size <= MAX_STATE)
-        }
+        return Writer()
+            .lp(coreBytes(s.core))
+            .raw(grantBytes(s))
+            .lp(s.prevSecret)
+            .lp(s.signature)
+            .bytes()
+            .also { check(it.size <= MAX_STATE) }
     }
 
     fun parseState(b: ByteArray): State {
@@ -240,60 +296,140 @@ object DeviceSecurity {
         val r = Reader(b)
         val core = parseCore(r.lp(MAX_STATE))
         val n = r.u32()
-        check(n <= 128u)
+        check(n <= MAX_MEMBERS_U)
         val grants = List(n.toInt()) { Grant(r.str(), r.lp(32), r.lp(48)) }
-        val s = State(core, grants, r.lp(64))
+        val s = State(core, grants, r.lp(MAX_STATE), r.lp(64))
         r.done()
-        stateBytes(s)
+        check(s.signature.size == 64)
+        stateHash(s)
         return s
     }
 
+    /** Anchors account, domain and, at epoch 1, the exact genesis bytes. */
     fun verifyState(p: Pin, s: State) {
-        val c = s.core
         check(
-            c.account == p.account &&
-                c.domain.contentEquals(p.domain) &&
-                c.authorityID == p.authorityID &&
-                c.authorityEd.contentEquals(p.authorityEd) &&
-                c.authorityX.contentEquals(p.authorityX),
+            s.core.account == p.account &&
+                s.core.domain.contentEquals(p.domain),
             "untrusted",
         )
         nonzero(p.genesis)
-        val h = stateHash(s)
-        if (c.epoch == 1uL) check(h.contentEquals(p.genesis), "untrusted")
-        val b =
-            Writer()
-                .raw("ra2/state-sig\u0000".toByteArray())
-                .str(p.account)
-                .raw(p.domain)
-                .u64(c.epoch)
-                .raw(h)
-                .bytes()
-        check(verifyEd25519(p.authorityEd, b, s.signature), "untrusted")
+        if (s.core.epoch == 1uL) check(stateHash(s).contentEquals(p.genesis), "untrusted")
     }
 
-    fun advance(p: Pin, old: State, next: State) {
-        verifyState(p, old)
-        verifyState(p, next)
+    fun verifyGenesis(p: Pin, s: State) {
+        verifyState(p, s)
         check(
-            old.core.epoch != ULong.MAX_VALUE &&
-                next.core.epoch == old.core.epoch + 1u &&
-                next.core.parent.contentEquals(stateHash(old)),
+            s.core.epoch == 1uL &&
+                s.core.members.size == 1 &&
+                s.core.members[0].id == s.core.authorityID,
+            "untrusted",
+        )
+        val a = s.core.members[0]
+        check(
+            a.kind == 2u && verifyEd25519(a.ed, signBytes(s), s.signature),
+            "untrusted",
+        )
+    }
+
+    fun pinOf(s: State): Pin {
+        check(s.core.epoch == 1uL)
+        return Pin(s.core.account, s.core.domain, stateHash(s))
+    }
+
+    /**
+     * Checks one signed transition. A recovery transition also needs the statement signed by the
+     * parent's recovery key; opening the grants and PrevSecret is the installer's job.
+     */
+    fun verifyTransition(parent: State, next: State, recovery: RecoveryStatement? = null) {
+        val ph = stateHash(parent)
+        check(
+            next.core.parent.contentEquals(ph) &&
+                parent.core.epoch != ULong.MAX_VALUE &&
+                next.core.epoch == parent.core.epoch + 1uL &&
+                next.core.account == parent.core.account &&
+                next.core.domain.contentEquals(parent.core.domain),
             "stale",
         )
+        check(next.core.issuedAt >= parent.core.issuedAt)
+        val authority = next.core.member(next.core.authorityID) ?: throw Failure()
+        check(authority.kind == 2u)
+        if (recovery != null) {
+            recovery.verify(parent, next)
+            check(
+                next.core.contentEpoch == parent.core.contentEpoch + 1uL &&
+                    next.prevSecret.isEmpty() &&
+                    next.core.member(parent.core.authorityID) == null &&
+                    next.core.removed.contains(parent.core.authorityID),
+            )
+            check(verifyEd25519(authority.ed, signBytes(next), next.signature), "untrusted")
+            recoveryDelta(parent, next)
+            return
+        }
+        check(
+            next.core.authorityID == parent.core.authorityID &&
+                next.core.recoveryEd.contentEquals(parent.core.recoveryEd),
+        )
+        val oldAuthority = parent.core.member(parent.core.authorityID)
+        check(
+            oldAuthority != null &&
+                verifyEd25519(oldAuthority.ed, signBytes(next), next.signature),
+            "untrusted",
+        )
+        when (next.core.contentEpoch) {
+            parent.core.contentEpoch -> {
+                check(
+                    next.core.removed == parent.core.removed &&
+                        sameMembers(next.core.members, parent.core.members) &&
+                        next.prevSecret.isEmpty(),
+                )
+            }
+            parent.core.contentEpoch + 1uL -> {
+                check(next.prevSecret.isNotEmpty())
+                membershipDelta(parent, next)
+            }
+            else -> throw Failure()
+        }
+    }
+
+    private fun sameMembers(a: List<Member>, b: List<Member>): Boolean =
+        a.size == b.size && a.indices.all { a[it].same(b[it]) }
+
+    private fun membershipDelta(parent: State, next: State) {
         val removed = mutableListOf<String>()
         var added = 0
-        old.core.members.forEach { m ->
-            val n = next.core.members.firstOrNull { it.id == m.id }
-            if (n == null) removed.add(m.id) else check(m.same(n))
+        var rotated = 0
+        parent.core.members.forEach { m ->
+            val n = next.core.member(m.id)
+            if (n == null) removed.add(m.id)
+            else {
+                check(n.ed.contentEquals(m.ed) && n.kind == m.kind)
+                if (!n.x.contentEquals(m.x)) rotated++
+            }
         }
-        next.core.members.forEach { m -> if (old.core.members.none { it.id == m.id }) added++ }
+        next.core.members.forEach { m ->
+            if (parent.core.member(m.id) == null) added++
+        }
+        check((parent.core.removed + removed).sorted() == next.core.removed)
         check(
-            removed == next.core.removed &&
-                added <= 1 &&
+            added <= 1 &&
+                rotated <= 1 &&
                 !(added > 0 && removed.isNotEmpty()) &&
-                (added > 0 || removed.isNotEmpty()),
+                !(rotated > 0 && (added > 0 || removed.isNotEmpty())) &&
+                !(added == 0 && removed.isEmpty() && rotated == 0),
         )
+    }
+
+    private fun recoveryDelta(parent: State, next: State) {
+        val removed = (parent.core.removed + parent.core.authorityID).sorted()
+        check((parent.core.removed + removed).sorted() == next.core.removed)
+        parent.core.members.forEach { m ->
+            if (m.id == parent.core.authorityID) return@forEach
+            check(next.core.member(m.id)?.same(m) == true)
+        }
+        next.core.members.forEach { m ->
+            if (m.id == next.core.authorityID) return@forEach
+            check(parent.core.member(m.id) != null)
+        }
     }
 
     private fun hpke() =
@@ -303,7 +439,7 @@ object DeviceSecurity {
         verifyState(p, s)
         check(xPrivate.size == 32)
         val x = X25519PrivateKeyParameters(xPrivate, 0)
-        val m = s.core.members.firstOrNull { it.id == recipient } ?: throw Failure("untrusted")
+        val m = s.core.member(recipient) ?: throw Failure("untrusted")
         check(m.x.contentEquals(x.generatePublicKey().encoded), "untrusted")
         val g = s.grants.firstOrNull { it.recipient == recipient } ?: throw Failure("untrusted")
         val ctx =
@@ -311,7 +447,7 @@ object DeviceSecurity {
                 .str(p.account)
                 .raw(p.domain)
                 .u64(s.core.contentEpoch)
-                .raw(digest("ra2/core\u0000", coreBytes(s.core)))
+                .raw(coreHash(s))
                 .str(recipient)
                 .bytes()
         val r =
@@ -319,11 +455,62 @@ object DeviceSecurity {
                 .setupBaseR(
                     g.enc,
                     AsymmetricCipherKeyPair(x.generatePublicKey(), x),
-                    "ra2/grant-info\u0000".toByteArray() + ctx,
+                    "ra3/grant-info\u0000".toByteArray() + ctx,
                 )
-        return r.open("ra2/grant-aad\u0000".toByteArray() + ctx, g.cipher).also {
+        return r.open("ra3/grant-aad\u0000".toByteArray() + ctx, g.cipher).also {
             check(it.size == 32, "untrusted")
         }
+    }
+
+    internal fun sealGrant(recipient: Member, c: Core, coreHash: ByteArray, secret: ByteArray): Grant {
+        val ctx =
+            Writer()
+                .str(c.account)
+                .raw(c.domain)
+                .u64(c.contentEpoch)
+                .raw(coreHash)
+                .str(recipient.id)
+                .bytes()
+        val s =
+            hpke()
+                .setupBaseS(
+                    org.bouncycastle.crypto.params.X25519PublicKeyParameters(recipient.x, 0),
+                    "ra3/grant-info\u0000".toByteArray() + ctx,
+                )
+        val cipher = s.seal("ra3/grant-aad\u0000".toByteArray() + ctx, secret)
+        return Grant(recipient.id, s.encapsulation, cipher)
+    }
+
+    fun sealPrevSecret(newSecret: ByteArray, oldSecret: ByteArray): ByteArray {
+        check(newSecret.size == 32 && oldSecret.size == 32)
+        val nonce = randomBytes(12)
+        val c = AESCipher.getInstance("AES/GCM/NoPadding")
+        c.init(
+            AESCipher.ENCRYPT_MODE,
+            SecretKeySpec(newSecret, "AES"),
+            GCMParameterSpec(128, nonce),
+        )
+        c.updateAAD("ra3/prev-secret\u0000".toByteArray())
+        return nonce + c.doFinal(oldSecret)
+    }
+
+    fun openPrevSecret(newSecret: ByteArray, blob: ByteArray): ByteArray {
+        check(newSecret.size == 32 && blob.size == 60)
+        val c = AESCipher.getInstance("AES/GCM/NoPadding")
+        c.init(
+            AESCipher.DECRYPT_MODE,
+            SecretKeySpec(newSecret, "AES"),
+            GCMParameterSpec(128, blob, 0, 12),
+        )
+        c.updateAAD("ra3/prev-secret\u0000".toByteArray())
+        val out =
+            try {
+                c.doFinal(blob, 12, blob.size - 12)
+            } catch (_: Exception) {
+                throw Failure("untrusted")
+            }
+        check(out.size == 32)
+        return out
     }
 
     enum class Purpose(val value: UInt) {
@@ -387,7 +574,8 @@ object DeviceSecurity {
             id(h.account) &&
                 id(h.sender) &&
                 h.epoch > 0uL &&
-                h.contentEpoch == h.epoch &&
+                h.contentEpoch > 0uL &&
+                h.contentEpoch <= h.epoch &&
                 h.counter > 0uL &&
                 h.compression <= 1u &&
                 h.kind == h.purpose.kind &&
@@ -445,7 +633,7 @@ object DeviceSecurity {
     fun headerBytes(h: Header): ByteArray {
         validate(h)
         return Writer()
-            .u32(2u)
+            .u32(VERSION_U)
             .str(h.account)
             .raw(h.domain)
             .u64(h.epoch)
@@ -465,9 +653,9 @@ object DeviceSecurity {
     }
 
     fun parseHeader(b: ByteArray): Header {
-        check(b.size <= 1024)
+        check(b.size <= MAX_HEADER)
         val r = Reader(b)
-        check(r.u32() == 2u)
+        check(r.u32() == VERSION_U)
         val account = r.str()
         val domain = r.raw(32)
         val epoch = r.u64()
@@ -477,20 +665,6 @@ object DeviceSecurity {
         val kind = r.u32()
         val purposeValue = r.u32()
         val purpose = Purpose.entries.firstOrNull { it.value == purposeValue }
-        return finishHeader(r, account, domain, epoch, state, contentEpoch, sender, kind, purpose)
-    }
-
-    private fun finishHeader(
-        r: Reader,
-        account: String,
-        domain: ByteArray,
-        epoch: ULong,
-        state: ByteArray,
-        contentEpoch: ULong,
-        sender: String,
-        kind: UInt,
-        purpose: Purpose?,
-    ): Header {
         val h =
             Header(
                 account,
@@ -524,13 +698,21 @@ object DeviceSecurity {
                 h.state.contentEquals(stateHash(s)),
             "stale",
         )
-        val m = s.core.members.firstOrNull { it.id == h.sender } ?: throw Failure("untrusted")
+        val m = s.core.member(h.sender) ?: throw Failure("untrusted")
         if (h.machine.isNotEmpty())
             check(s.core.members.any { it.id == h.machine && it.kind == 1u }, "untrusted")
-        if (h.purpose == Purpose.DEVICE_META)
-            check(s.core.members.any { it.id == h.request && it.kind == 2u }, "untrusted")
-        else if (h.purpose != Purpose.PREFS && !h.purpose.control)
-            check(m.kind == 1u && m.id == h.machine, "untrusted")
+        when (h.purpose) {
+            Purpose.DEVICE_META -> {
+                check(h.sender == h.request)
+                check(s.core.member(h.request)?.kind == 2u, "untrusted")
+            }
+            Purpose.PREFS -> check(m.kind == 2u, "untrusted")
+            Purpose.COMMAND,
+            Purpose.TERMINAL_INPUT,
+            Purpose.TERMINAL_RESIZE,
+            Purpose.TERMINAL_HISTORY -> check(m.kind == 2u, "untrusted")
+            else -> check(m.kind == 1u && m.id == h.machine, "untrusted")
+        }
         return m
     }
 
@@ -541,20 +723,20 @@ object DeviceSecurity {
         val origin: ByteArray,
     )
 
-    data class Wire(val formed: Formed, val authorization: ByteArray, val authSignature: ByteArray)
+    data class Wire(val formed: Formed)
 
     fun commitment(c: Formed): ByteArray {
-        check(c.header.size <= 1024 && c.nonce.size == 12 && c.cipher.size in 16..MAX_CIPHER)
+        check(c.header.size <= MAX_HEADER && c.nonce.size == 12 && c.cipher.size in 16..MAX_CIPHER)
         parseHeader(c.header)
         return digest(
-            "ra2/ciphertext\u0000",
+            "ra3/ciphertext\u0000",
             Writer().lp(c.header).lp(c.nonce).lp(c.cipher).bytes(),
         )
     }
 
     private fun originBytes(h: Header, hh: ByteArray, commit: ByteArray) =
         Writer()
-            .raw("ra2/cipher-origin\u0000".toByteArray())
+            .raw("ra3/cipher-origin\u0000".toByteArray())
             .str(h.account)
             .raw(h.domain)
             .raw(h.state)
@@ -573,9 +755,11 @@ object DeviceSecurity {
             } else null
         val ctx =
             Writer()
-                .raw("ra2/content-key\u0000".toByteArray())
+                .raw("ra3/content-key\u0000".toByteArray())
                 .str(h.account)
                 .raw(h.domain)
+                .u64(h.epoch)
+                .raw(h.state)
                 .u64(h.contentEpoch)
                 .u32(h.purpose.value)
                 .str(h.sender)
@@ -589,7 +773,7 @@ object DeviceSecurity {
         return hkdf(child, salt, ctx, 32)
     }
 
-    /** The platform vault must reserve h.counter durably BEFORE this call. */
+    /** The caller must reserve h.counter durably BEFORE this call. */
     fun form(
         secret: ByteArray,
         seed: ByteArray?,
@@ -611,63 +795,37 @@ object DeviceSecurity {
         return c.copy(origin = ed.sign(originBytes(h, sha256(hb), commitment(c))))
     }
 
-    data class WriteAuth(
-        val header: Header,
-        val writerKind: UInt,
-        val headerHash: ByteArray,
-        val commit: ByteArray,
-        val nonce: ByteArray,
-    )
-
-    fun parseAuthorization(b: ByteArray): WriteAuth {
-        check(b.size <= 1152)
-        val r = Reader(b)
-        val a = WriteAuth(parseHeader(r.lp(1024)), r.u32(), r.raw(32), r.raw(32), r.raw(32))
-        r.done()
-        check(
-            (a.writerKind == 1u || a.writerKind == 2u) &&
-                a.headerHash.contentEquals(sha256(headerBytes(a.header))),
-        )
-        nonzero(a.commit)
-        nonzero(a.nonce)
-        return a
-    }
-
-    fun verifyWire(p: Pin, s: State, w: Wire): Header {
-        verifyState(p, s)
+    /**
+     * Verifies the origin against the state the header names. For live traffic the sender must also
+     * be in [head]; control needs a valid head lease and the head's content epoch.
+     */
+    fun verifyOrigin(s: State, head: State, live: Boolean, now: ULong, w: Wire): Header {
         val h = parseHeader(w.formed.header)
         val m = scope(h, s)
-        val hh = sha256(w.formed.header)
+        if (live) {
+            check(head.core.member(h.sender) != null, "untrusted")
+            if (h.purpose.control) {
+                check(head.core.notAfter >= now && head.core.contentEpoch == h.contentEpoch, "stale")
+            }
+        }
         val commit = commitment(w.formed)
-        check(verifyEd25519(m.ed, originBytes(h, hh, commit), w.formed.origin), "untrusted")
-        val a = parseAuthorization(w.authorization)
         check(
-            headerBytes(a.header).contentEquals(w.formed.header) &&
-                a.writerKind == m.kind &&
-                a.headerHash.contentEquals(hh) &&
-                a.commit.contentEquals(commit),
-            "untrusted",
-        )
-        check(
-            verifyEd25519(
-                p.authorityEd,
-                "ra2/write-auth\u0000".toByteArray() + w.authorization,
-                w.authSignature,
-            ),
+            verifyEd25519(m.ed, originBytes(h, sha256(w.formed.header), commit), w.formed.origin),
             "untrusted",
         )
         return h
     }
 
-    /** The body decoder must additionally enforce purpose and frame direction. */
     fun open(
-        p: Pin,
         s: State,
+        head: State,
+        live: Boolean,
+        now: ULong,
         w: Wire,
         secret: ByteArray,
         seed: ByteArray?,
     ): Pair<Header, ByteArray> {
-        val h = verifyWire(p, s, w)
+        val h = verifyOrigin(s, head, live, now, w)
         val aes = AESCipher.getInstance("AES/GCM/NoPadding")
         aes.init(
             AESCipher.DECRYPT_MODE,
@@ -680,22 +838,19 @@ object DeviceSecurity {
 
     fun wireBytes(w: Wire): ByteArray {
         commitment(w.formed)
-        parseAuthorization(w.authorization)
-        check(w.formed.origin.size == 64 && w.authSignature.size == 64)
+        check(w.formed.origin.size == 64)
         return Writer()
             .lp(w.formed.header)
             .lp(w.formed.nonce)
             .lp(w.formed.cipher)
             .lp(w.formed.origin)
-            .lp(w.authorization)
-            .lp(w.authSignature)
             .bytes()
     }
 
     fun parseWire(b: ByteArray): Wire {
         check(b.size <= MAX_CIPHER + 4096)
         val r = Reader(b)
-        val w = Wire(Formed(r.lp(1024), r.lp(12), r.lp(MAX_CIPHER), r.lp(64)), r.lp(1152), r.lp(64))
+        val w = Wire(Formed(r.lp(MAX_HEADER), r.lp(12), r.lp(MAX_CIPHER), r.lp(64)))
         r.done()
         wireBytes(w)
         return w
@@ -706,7 +861,7 @@ object DeviceSecurity {
         wireBytes(w)
         val ph =
             PBHeader.newBuilder()
-                .setVersion(2)
+                .setVersion(VERSION)
                 .setKindValue(h.kind.toInt())
                 .setMachineId(h.machine)
                 .setSessionId(h.session)
@@ -722,13 +877,11 @@ object DeviceSecurity {
             .setCiphertext(ByteString.copyFrom(w.formed.cipher))
             .setSignature(ByteString.copyFrom(w.formed.origin))
             .setSecurityHeader(ByteString.copyFrom(w.formed.header))
-            .setAuthorization(ByteString.copyFrom(w.authorization))
-            .setAuthorizationSignature(ByteString.copyFrom(w.authSignature))
             .build()
     }
 
     fun fromEnvelope(e: Envelope): Wire {
-        check(e.header.size() <= 1024)
+        check(e.header.size() <= MAX_HEADER)
         val w =
             Wire(
                 Formed(
@@ -737,13 +890,11 @@ object DeviceSecurity {
                     e.ciphertext.toByteArray(),
                     e.signature.toByteArray(),
                 ),
-                e.authorization.toByteArray(),
-                e.authorizationSignature.toByteArray(),
             )
         val h = parseHeader(w.formed.header)
         val p = PBHeader.parseFrom(e.header)
         check(
-            p.version == 2 &&
+            p.version == VERSION &&
                 p.kindValue == h.kind.toInt() &&
                 p.machineId == h.machine &&
                 p.sessionId == h.session &&
@@ -758,78 +909,319 @@ object DeviceSecurity {
         return w
     }
 
+    data class RecoveryStatement(
+        val account: String,
+        val domain: ByteArray,
+        val parent: ByteArray,
+        val newAuthorityID: String,
+        val newRecoveryEd: ByteArray,
+        val newMember: Member,
+        val issuedAt: ULong,
+        val notAfter: ULong,
+        val stateHash: ByteArray,
+        val nonce: ByteArray,
+        val signature: ByteArray,
+    ) {
+        fun signBytes(): ByteArray {
+            check(
+                id(account) &&
+                    domain.size == 32 &&
+                    !domain.contentEquals(zero) &&
+                    parent.size == 32 &&
+                    !parent.contentEquals(zero) &&
+                    id(newAuthorityID) &&
+                    newAuthorityID == newMember.id &&
+                    newMember.kind == 2u &&
+                    id(newMember.id) &&
+                    deviceId(newMember.ed) == newMember.id &&
+                    newMember.x.size == 32 &&
+                    !newMember.x.contentEquals(zero) &&
+                    newRecoveryEd.size == 32 &&
+                    !newRecoveryEd.contentEquals(zero) &&
+                    issuedAt > 0uL &&
+                    notAfter > issuedAt &&
+                    stateHash.size == 32 &&
+                    !stateHash.contentEquals(zero) &&
+                    nonce.size == 32 &&
+                    !nonce.contentEquals(zero),
+            )
+            return Writer()
+                .raw("ra3/recovery\u0000".toByteArray())
+                .str(account)
+                .raw(domain)
+                .raw(parent)
+                .str(newAuthorityID)
+                .raw(newRecoveryEd)
+                .str(newMember.id)
+                .raw(newMember.ed)
+                .raw(newMember.x)
+                .u32(newMember.kind)
+                .u64(issuedAt)
+                .u64(notAfter)
+                .raw(stateHash)
+                .raw(nonce)
+                .bytes()
+        }
+
+        fun verify(parent: State, next: State) {
+            val b = signBytes()
+            check(signature.size == 64)
+            val nextAuthority = next.core.member(next.core.authorityID)
+            check(
+                nextAuthority != null &&
+                    account == parent.core.account &&
+                    domain.contentEquals(parent.core.domain) &&
+                    this.parent.contentEquals(stateHash(parent)) &&
+                    newAuthorityID == next.core.authorityID &&
+                    newRecoveryEd.contentEquals(next.core.recoveryEd) &&
+                    newMember.same(nextAuthority) &&
+                    issuedAt == next.core.issuedAt &&
+                    notAfter == next.core.notAfter &&
+                    stateHash.contentEquals(stateHash(next)) &&
+                    verifyEd25519(parent.core.recoveryEd, b, signature),
+                "untrusted",
+            )
+        }
+
+        fun marshal(): ByteArray {
+            val body = signBytes()
+            check(signature.size == 64)
+            return Writer().lp(body).lp(signature).bytes()
+        }
+    }
+
+    fun signRecoveryStatement(stmt: RecoveryStatement, oldRecoverySeed: ByteArray): RecoveryStatement {
+        check(oldRecoverySeed.size == 32)
+        return stmt.copy(signature = SigningKey(oldRecoverySeed).sign(stmt.signBytes()))
+    }
+
+    fun parseRecoveryStatement(b: ByteArray): RecoveryStatement {
+        check(b.size <= MAX_STATE)
+        val r = Reader(b)
+        val body = r.lp(MAX_STATE)
+        val sig = r.lp(64)
+        r.done()
+        check(sig.size == 64)
+        val label = "ra3/recovery\u0000".toByteArray()
+        check(body.size >= label.size && body.copyOf(label.size).contentEquals(label))
+        val s = Reader(body.copyOfRange(label.size, body.size))
+        val stmt =
+            RecoveryStatement(
+                s.str(),
+                s.raw(32),
+                s.raw(32),
+                s.str(),
+                s.raw(32),
+                Member(s.str(), s.raw(32), s.raw(32), s.u32()),
+                s.u64(),
+                s.u64(),
+                s.raw(32),
+                s.raw(32),
+                sig,
+            )
+        s.done()
+        check(stmt.signBytes().contentEquals(body), "untrusted")
+        return stmt
+    }
+
     /** Kept only behind the foreground account's unlocked-device key. */
     class Record(
         val pin: Pin,
-        val state: State,
+        val chain: List<State>,
         val memberID: String,
         private val xPrivate: ByteArray,
         val counter: ULong = 0uL,
+        val counterBlockEnd: ULong = COUNTER_BLOCK_U,
+        val floor: ULong = 0uL,
+        private val keys: Map<ULong, ByteArray> = emptyMap(),
+        /** Recovery statements that authorize recovery transitions, by their state epoch. */
+        val proofs: Map<ULong, ByteArray> = emptyMap(),
     ) {
         init {
-            verifyState(pin, state)
+            check(pin.account.isNotEmpty() && pin.domain.size == 32 && pin.genesis.size == 32)
+            check(chain.isNotEmpty() && chain.size <= MAX_STATES)
+            verifyGenesis(pin, chain[0])
+            chain.forEachIndexed { i, s ->
+                verifyState(pin, s)
+                if (i > 0) {
+                    val proof = proofs[s.core.epoch]?.let { parseRecoveryStatement(it) }
+                    verifyTransition(chain[i - 1], s, proof)
+                }
+            }
             check(id(memberID) && xPrivate.size == 32)
-            openGrant(pin, state, memberID, xPrivate)
+            openGrant(pin, chain.last(), memberID, xPrivate)
         }
 
-        override fun toString() = "DeviceSecurity.Record(epoch=${state.core.epoch})"
+        override fun toString() = "DeviceSecurity.Record(epoch=${head.core.epoch})"
 
-        fun secret(): ByteArray = openGrant(pin, state, memberID, xPrivate)
+        val head: State
+            get() = chain.last()
 
-        fun openReply(
-            waiter: DeviceSecurityRPC.Waiter,
-            capsule: DeviceSecurityRPC.Capsule,
-        ): kotlinx.serialization.json.JsonElement {
-            check(
-                waiter.sender == memberID &&
-                    waiter.pin.account == pin.account &&
-                    waiter.pin.domain.contentEquals(pin.domain) &&
-                    waiter.pin.genesis.contentEquals(pin.genesis) &&
-                    waiter.pin.authorityID == pin.authorityID &&
-                    waiter.pin.authorityEd.contentEquals(pin.authorityEd) &&
-                    waiter.pin.authorityX.contentEquals(pin.authorityX),
-                "untrusted",
+        fun stateAt(epoch: ULong): State? = chain.firstOrNull { it.core.epoch == epoch }
+
+        fun secret(): ByteArray = openGrant(pin, head, memberID, xPrivate)
+
+        /** The content key of [epoch], walking PrevSecret from the head; null at a recovery boundary. */
+        fun contentKey(epoch: ULong): ByteArray? {
+            if (epoch == 0uL) return null
+            keys[epoch]?.let {
+                return it
+            }
+            if (epoch > head.core.contentEpoch) return null
+            var cur = head
+            var key = secret()
+            while (cur.core.contentEpoch > epoch) {
+                val prev =
+                    chain.firstOrNull { it.core.epoch == cur.core.epoch - 1uL } ?: return null
+                if (prev.core.contentEpoch == cur.core.contentEpoch) {
+                    cur = prev
+                    continue
+                }
+                if (cur.prevSecret.isEmpty()) return null
+                key = openPrevSecret(key, cur.prevSecret)
+                cur = prev
+            }
+            return if (cur.core.contentEpoch == epoch) key else null
+        }
+
+        fun withKey(epoch: ULong, secret: ByteArray): Record {
+            check(secret.size == 32)
+            return Record(
+                pin,
+                chain,
+                memberID,
+                xPrivate,
+                counter,
+                counterBlockEnd,
+                floor,
+                keys + (epoch to secret),
+                proofs,
             )
-            return DeviceSecurityRPC.reply(waiter, capsule, xPrivate)
         }
+
+        fun cachedKeys(): Map<ULong, ByteArray> = keys
 
         fun incremented(): Record {
             check(counter < ULong.MAX_VALUE, "capacity")
-            return Record(pin, state, memberID, xPrivate, counter + 1u)
+            val next = counter + 1uL
+            val end = if (next >= counterBlockEnd) next + COUNTER_BLOCK_U else counterBlockEnd
+            return Record(pin, chain, memberID, xPrivate, next, end, floor, keys, proofs)
         }
 
-        fun advanced(next: State): Record {
-            advance(pin, state, next)
-            return Record(pin, next, memberID, xPrivate)
+        fun touched(now: ULong): Record =
+            if (now <= floor) this
+            else Record(pin, chain, memberID, xPrivate, counter, counterBlockEnd, now, keys, proofs)
+
+        fun installed(states: List<State>, proofs: List<ByteArray?>): Record {
+            check(states.isNotEmpty() && states.size <= MAX_STATES)
+            val all = chain.toMutableList()
+            val newProofs = HashMap<ULong, ByteArray>()
+            newProofs.putAll(this.proofs)
+            val incoming = proofs.toMutableList()
+            while (incoming.size < states.size) incoming.add(null)
+            states.forEachIndexed { i, next ->
+                verifyState(pin, next)
+                val existing = all.firstOrNull { it.core.epoch == next.core.epoch }
+                if (existing != null) {
+                    check(stateBytes(existing).contentEquals(stateBytes(next)), "stale")
+                    return@forEachIndexed
+                }
+                check(next.core.epoch == all.last().core.epoch + 1uL, "stale")
+                val rawProof = incoming[i]
+                val proof = rawProof?.let { parseRecoveryStatement(it) }
+                verifyTransition(all.last(), next, proof)
+                if (rawProof != null) newProofs[next.core.epoch] = rawProof
+                all.add(next)
+            }
+            check(all.size <= MAX_STATES, "capacity")
+            // The recovered phone has no old content key; a client may read the new one only.
+            val newKeys = keys.filterKeys { it <= all.last().core.contentEpoch }
+            // A content-key change resets the counter; a lease renewal must not reuse
+            // (key, counter) pairs.
+            val rotated = all.last().core.contentEpoch != head.core.contentEpoch
+            return Record(
+                pin,
+                all,
+                memberID,
+                xPrivate,
+                if (rotated) 0uL else counter,
+                if (rotated) COUNTER_BLOCK_U else counterBlockEnd,
+                floor,
+                newKeys,
+                newProofs,
+            )
         }
 
-        fun bytes(): ByteArray =
-            Writer()
-                .u32(2u)
-                .str(pin.account)
-                .raw(pin.domain)
-                .raw(pin.genesis)
-                .str(pin.authorityID)
-                .raw(pin.authorityEd)
-                .raw(pin.authorityX)
-                .lp(stateBytes(state))
-                .str(memberID)
-                .raw(xPrivate)
-                .u64(counter)
-                .bytes()
+        fun bytes(): ByteArray {
+            val w =
+                Writer()
+                    .u32(VERSION_U)
+                    .str(pin.account)
+                    .raw(pin.domain)
+                    .raw(pin.genesis)
+                    .str(memberID)
+                    .raw(xPrivate)
+                    .u64(counter)
+                    .u64(counterBlockEnd)
+                    .u64(floor)
+                    .u32(chain.size.toUInt())
+            chain.forEach { w.lp(stateBytes(it)) }
+            w.u32(keys.size.toUInt())
+            keys.forEach { (epoch, key) -> w.u64(epoch).raw(key) }
+            w.u32(proofs.size.toUInt())
+            proofs.forEach { (epoch, raw) -> w.u64(epoch).lp(raw) }
+            return w.bytes()
+        }
 
         companion object {
             fun parse(b: ByteArray): Record {
-                check(b.size <= MAX_STATE + 512)
+                check(b.size <= MAX_STATES * (MAX_STATE + 4) + 512)
                 val r = Reader(b)
-                check(r.u32() == 2u)
-                val pin = Pin(r.str(), r.raw(32), r.raw(32), r.str(), r.raw(32), r.raw(32))
-                val state = parseState(r.lp(MAX_STATE))
+                check(r.u32() == VERSION_U)
+                val pin = Pin(r.str(), r.raw(32), r.raw(32))
                 val memberID = r.str()
                 val x = r.raw(32)
                 val counter = r.u64()
+                val blockEnd = r.u64()
+                val floor = r.u64()
+                val n = r.u32()
+                check(n in 1u..MAX_STATES_UINT)
+                val chain = List(n.toInt()) { parseState(r.lp(MAX_STATE)) }
+                val kn = r.u32()
+                check(kn <= MAX_STATES_UINT)
+                val keys = HashMap<ULong, ByteArray>()
+                repeat(kn.toInt()) { keys[r.u64()] = r.raw(32) }
+                val pn = r.u32()
+                check(pn <= MAX_STATES_UINT)
+                val proofs = HashMap<ULong, ByteArray>()
+                repeat(pn.toInt()) { proofs[r.u64()] = r.lp(MAX_STATE) }
                 r.done()
-                return Record(pin, state, memberID, x, counter)
+                return Record(pin, chain, memberID, x, counter, blockEnd, floor, keys, proofs)
+            }
+
+            /** A record built from the Go cross-language fixture's JSON. */
+            fun fromChain(
+                account: String,
+                domain: ByteArray,
+                genesis: ByteArray,
+                memberID: String,
+                x: ByteArray,
+                states: List<ByteArray>,
+                proofs: List<ByteArray?>,
+            ): Record {
+                val chain = states.map { parseState(it) }
+                check(chain.size == proofs.size)
+                chain.forEachIndexed { i, s ->
+                    if (i > 0) {
+                        val proof = proofs[i]?.let { parseRecoveryStatement(it) }
+                        verifyTransition(chain[i - 1], s, proof)
+                    }
+                }
+                val proofMap = HashMap<ULong, ByteArray>()
+                chain.forEachIndexed { i, s ->
+                    proofs[i]?.let { proofMap[s.core.epoch] = it }
+                }
+                return Record(Pin(account, domain, genesis), chain, memberID, x, proofs = proofMap)
             }
         }
     }
@@ -839,22 +1231,23 @@ object DeviceSecurity {
 
         fun initializeSecurity(record: Record)
 
+        /** Reserves the next counter value, durably before the caller sends. */
         fun reserveSecurity(expectedState: ByteArray): Record
 
-        fun advanceSecurity(expectedState: ByteArray, next: State): Record
+        fun installSecurity(
+            expectedState: ByteArray,
+            states: List<State>,
+            proofs: List<ByteArray?>,
+        ): Record
 
-        fun readSecurityHistory(epoch: ULong): Historical?
+        fun touchSecurity(expectedState: ByteArray, floor: ULong): Record
 
-        fun cacheSecurityHistory(history: Historical)
-
-        fun readRemovalOperations(): ByteArray?
-
-        fun writeRemovalOperations(data: ByteArray)
+        fun cacheSecurityKey(expectedState: ByteArray, epoch: ULong, secret: ByteArray)
     }
 
     class Historical(val state: State, val secret: ByteArray) {
         init {
-            check(secret.size == 32 && state.core.epoch in 1uL..32768uL)
+            check(secret.size == 32 && state.core.epoch in 1uL..MAX_STATES_U)
         }
 
         override fun toString() = "DeviceSecurity.Historical(epoch=${state.core.epoch})"
@@ -886,7 +1279,7 @@ object DeviceSecurity {
             secret,
             null,
             Writer()
-                .raw("ra2/purpose-key\u0000".toByteArray())
+                .raw("ra3/purpose-key\u0000".toByteArray())
                 .str(account)
                 .raw(domain)
                 .u64(epoch)
@@ -901,9 +1294,11 @@ object DeviceSecurity {
         validate(h)
         val info =
             Writer()
-                .raw("ra2/content-key\u0000".toByteArray())
+                .raw("ra3/content-key\u0000".toByteArray())
                 .str(h.account)
                 .raw(h.domain)
+                .u64(h.epoch)
+                .raw(h.state)
                 .u64(h.contentEpoch)
                 .u32(h.purpose.value)
                 .str(h.sender)
@@ -919,27 +1314,24 @@ object DeviceSecurity {
     class NotifyRecord(val pin: Pin, val state: State, private val child: ByteArray) {
         init {
             verifyState(pin, state)
-            check(child.size == 32)
+            check(state.core.epoch > 0uL && child.size == 32)
         }
 
         override fun toString() = "DeviceSecurity.NotifyRecord(epoch=${state.core.contentEpoch})"
 
         fun bytes(): ByteArray =
             Writer()
-                .u32(2u)
+                .u32(VERSION_U)
                 .str(pin.account)
                 .raw(pin.domain)
                 .raw(pin.genesis)
-                .str(pin.authorityID)
-                .raw(pin.authorityEd)
-                .raw(pin.authorityX)
                 .lp(stateBytes(state))
                 .raw(child)
                 .bytes()
 
         fun open(env: Envelope): io.github.lewin671.remoteagent.proto.NotifyContent {
             val w = fromEnvelope(env)
-            val h = verifyWire(pin, state, w)
+            val h = verifyOrigin(state, state, false, 0uL, w)
             check(h.purpose == Purpose.NOTIFY, "untrusted")
             val aes = AESCipher.getInstance("AES/GCM/NoPadding")
             aes.init(
@@ -958,12 +1350,12 @@ object DeviceSecurity {
             fun fromRecord(r: Record): NotifyRecord =
                 NotifyRecord(
                     r.pin,
-                    r.state,
+                    r.head,
                     purposeKey(
                         r.secret(),
                         r.pin.account,
                         r.pin.domain,
-                        r.state.core.contentEpoch,
+                        r.head.core.contentEpoch,
                         Purpose.NOTIFY,
                     ),
                 )
@@ -971,8 +1363,8 @@ object DeviceSecurity {
             fun parse(b: ByteArray): NotifyRecord {
                 check(b.size <= MAX_STATE + 512)
                 val r = Reader(b)
-                check(r.u32() == 2u)
-                val pin = Pin(r.str(), r.raw(32), r.raw(32), r.str(), r.raw(32), r.raw(32))
+                check(r.u32() == VERSION_U)
+                val pin = Pin(r.str(), r.raw(32), r.raw(32))
                 val state = parseState(r.lp(MAX_STATE))
                 val child = r.raw(32)
                 r.done()

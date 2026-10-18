@@ -304,15 +304,11 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, internal(err)
 	}
-	c.s.pairing.mu.Lock()
-	for _, p := range c.s.pairing.byID {
-		if p.account == t.acct && !p.delivered {
-			p.canceled = true
-			p.payload = nil
-			delete(c.s.pairing.byCode, p.code)
-		}
-	}
-	c.s.pairing.mu.Unlock()
+	// A pairing approval uploads the new member state before it hands the
+	// payload over, so accepting a state must not cancel its own pairing.
+	// Every accepted state is signed by the current authority, which cannot
+	// remove itself; the approver therefore remains the authority. A recovery
+	// that replaces the authority is published by the recovery service.
 	for _, id := range removed {
 		c.s.revokeStreams(id)
 		t.hub.drop(id)

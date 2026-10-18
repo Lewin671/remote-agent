@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
@@ -112,7 +113,7 @@ func (f *fixture) add(ed ed25519.PrivateKey, x []byte, kind deviceauth.Kind) (de
 		return deviceauth.Member{}, err
 	}
 	parent := f.states[len(f.states)-1]
-	s, err := deviceauth.BuildPairState(parent, m, xpub, f.secret, newSecret, f.phoneEd, 1_700_000_000_000)
+	s, err := deviceauth.BuildPairState(parent, m, xpub, f.secret, newSecret, f.phoneEd, nowMs())
 	if err != nil {
 		return deviceauth.Member{}, err
 	}
@@ -157,7 +158,7 @@ func (f *fixture) run(q request) (response, error) {
 		if _, err := rand.Read(f.secret); err != nil {
 			return response{}, err
 		}
-		g, err := deviceauth.BuildGenesis(f.account, f.domain, m, recPub, f.secret, f.phoneEd, 1_700_000_000_000)
+		g, err := deviceauth.BuildGenesis(f.account, f.domain, m, recPub, f.secret, f.phoneEd, nowMs())
 		if err != nil {
 			return response{}, err
 		}
@@ -246,7 +247,7 @@ func (f *fixture) run(q request) (response, error) {
 			return response{}, err
 		}
 		live := header.Purpose.Control()
-		header, plain, err := m.endpoint.Open(wire, q.SessionSeed, live, 1_700_000_500_000)
+		header, plain, err := m.endpoint.Open(wire, q.SessionSeed, live, nowMs())
 		if err != nil {
 			return response{}, err
 		}
@@ -255,6 +256,8 @@ func (f *fixture) run(q request) (response, error) {
 	}
 	return response{}, errors.New("unknown fixture operation")
 }
+
+func nowMs() uint64 { return uint64(time.Now().UnixMilli()) }
 
 func main() {
 	f := &fixture{members: map[string]*member{}}

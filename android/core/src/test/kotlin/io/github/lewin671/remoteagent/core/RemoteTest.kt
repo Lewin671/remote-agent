@@ -54,7 +54,7 @@ class RemoteTest {
     @After
     fun tearDown() {
         closers.forEach { it.close() }
-        daemon.close()
+        if (this::daemon.isInitialized) daemon.close()
         server.close()
     }
 
@@ -78,7 +78,7 @@ class RemoteTest {
         historyIdleCount: Int = 8,
         linkGraceMs: Long = 10_000,
     ): Remote {
-        val acct = approvedClient(daemon.account, http)
+        val acct = approvedClient(daemon.phone, http)
         val r =
             fixtureRemote(
                 acct,
@@ -107,7 +107,7 @@ class RemoteTest {
     @Test
     fun cancelingLoginBeforeAForwardDoesNotFreezeTheAttempt() =
         runBlocking<Unit> {
-            val acct = approvedClient(daemon.account, http)
+            val acct = approvedClient(daemon.phone, http)
             val blocked = java.util.concurrent.CountDownLatch(1)
             val gate = java.util.concurrent.CountDownLatch(1)
             val slow =
@@ -201,7 +201,7 @@ class RemoteTest {
         runBlocking<Unit> {
             val blocked = java.util.concurrent.CountDownLatch(1)
             val gate = java.util.concurrent.CountDownLatch(1)
-            val acct = approvedClient(daemon.account, http)
+            val acct = approvedClient(daemon.phone, http)
             val hole = StreamBlackhole { socket ->
                 socket.getOutputStream().let { out ->
                     val ready =
@@ -267,10 +267,7 @@ class RemoteTest {
                 it.conn == ConnState.ONLINE && it.devices.containsKey(r.account.deviceId)
             }
             other.refreshDevices()
-            other.removeDevice(r.account.deviceId)
-            other.awaitState("revocation completed") {
-                it.removals.any { op -> op.phase == "complete" && op.serverCleaned }
-            }
+            removeAsAuthority(daemon.phone, r.account.deviceId, http)
             val st = r.awaitState("removed") { it.removed }
             assertEquals(ConnState.OFFLINE, st.conn)
             // It stays put rather than reconnecting, also when asked to start.
@@ -461,7 +458,7 @@ class RemoteTest {
                 )
                 fail("expected unavailable")
             } catch (e: CommandException) {
-                assertEquals("authorization_unavailable", e.code)
+                assertEquals(CommandException.UNAVAILABLE, e.code)
             }
         }
 
@@ -558,7 +555,8 @@ class RemoteTest {
     @Test
     fun pairsANewDevice() =
         runBlocking<Unit> {
-            val r = client()
+            val r = fixtureRemote(daemon.phone, http)
+            closers += AutoCloseable { r.close() }
             r.start()
             r.awaitState("online") { it.conn == ConnState.ONLINE }
             val init = Initiation.start(r)
@@ -582,8 +580,9 @@ class RemoteTest {
             init.approve()
             val acct = joining.await()
             assertEquals(emoji, joinerEmoji)
-            assertArrayEquals(root, acct.root)
+            assertFalse(acct.hasRoot)
             assertEquals(server.url, acct.server)
+            assertEquals(daemon.phone.accountId, acct.accountId)
         }
 
     @Test
@@ -599,7 +598,7 @@ class RemoteTest {
                         chain.proceed(chain.request())
                     }
                     .build()
-            val r = fixtureRemote(approvedClient(daemon.account, http), counting)
+            val r = fixtureRemote(approvedClient(daemon.phone, http), counting)
             closers += AutoCloseable { r.close() }
             r.start()
             r.awaitState("online") { it.conn == ConnState.ONLINE }
@@ -615,7 +614,7 @@ class RemoteTest {
     @Test
     fun aStreamWithoutReadyIsReplacedEvenThoughTheUpgradeSucceeded() =
         runBlocking<Unit> {
-            val acct = approvedClient(daemon.account, http)
+            val acct = approvedClient(daemon.phone, http)
             val hole = StreamBlackhole()
             closers += hole
             // Only the stream goes to the fixture; auth and list RPCs use the real server.
@@ -653,7 +652,7 @@ class RemoteTest {
     @Test
     fun repeatedNetworkCallbacksDuringLoginLeaveOnlyOneCurrentStream() =
         runBlocking<Unit> {
-            val acct = approvedClient(daemon.account, http)
+            val acct = approvedClient(daemon.phone, http)
             val gate = java.util.concurrent.CountDownLatch(1)
             val entered = java.util.concurrent.CountDownLatch(1)
             val challenges = java.util.concurrent.atomic.AtomicInteger()
@@ -694,7 +693,7 @@ class RemoteTest {
     @Test
     fun aLoginThatDoesNotReturnTimesOutAndCanRecover() =
         runBlocking<Unit> {
-            val acct = approvedClient(daemon.account, http)
+            val acct = approvedClient(daemon.phone, http)
             val blocked = java.util.concurrent.atomic.AtomicBoolean(true)
             val attempts = java.util.concurrent.atomic.AtomicInteger()
             val slow =
@@ -729,7 +728,7 @@ class RemoteTest {
     @Test
     fun networkChangeReplacesAnOnlineStreamAndCatchesUpExactlyOnce() =
         runBlocking<Unit> {
-            val acct = approvedClient(daemon.account, http)
+            val acct = approvedClient(daemon.phone, http)
             val streams = java.util.concurrent.atomic.AtomicInteger()
             val observed =
                 http
@@ -809,7 +808,7 @@ class RemoteTest {
                         chain.proceed(chain.request())
                     }
                     .build()
-            val r = fixtureRemote(approvedClient(daemon.account, http), counting, cache)
+            val r = fixtureRemote(approvedClient(daemon.phone, http), counting, cache)
             closers += AutoCloseable { r.close() }
             try {
                 r.start()
@@ -926,7 +925,7 @@ class RemoteTest {
             r.forward(first)
             // Pretend the answer was lost: the retry carries the same request ID and deadline.
             a.settle(CommandException(CommandException.UNKNOWN, "lost"))
-            approvedClient(daemon.account, http) // New epoch, original intent/request/deadline.
+            approvedClient(daemon.phone, http) // New epoch, original intent/request/deadline.
             r.forward(a.next { r.prepare(daemon.id, "s1", cmd) })
             val (h1, _) = daemon.commands.poll(5, TimeUnit.SECONDS)!!
             val (h2, _) = daemon.commands.poll(5, TimeUnit.SECONDS)!!
@@ -982,7 +981,7 @@ class RemoteTest {
             // again, and that fails. The command it retries may have run.
             r.awaitState("device metadata") { it.devices.containsKey(r.account.deviceId) }
             r.refreshDevices()
-            r.removeDevice(r.account.deviceId)
+            removeAsAuthority(daemon.phone, r.account.deviceId, http)
             try {
                 r.forward(p, retryOfUnknown = true)
                 fail("expected an error")
@@ -1261,7 +1260,7 @@ class RemoteTest {
                         chain.proceed(chain.request())
                     }
                     .build()
-            val r = fixtureRemote(approvedClient(daemon.account, http), flaky)
+            val r = fixtureRemote(approvedClient(daemon.phone, http), flaky)
             closers += AutoCloseable { r.close() }
             r.start()
             // The stream stays up throughout: nothing but the read itself brings them.
@@ -1312,13 +1311,13 @@ class RemoteTest {
                         res
                     }
                     .build()
-            val a = fixtureRemote(approvedClient(daemon.account, http), slow)
+            val a = fixtureRemote(approvedClient(daemon.phone, http), slow)
             closers += AutoCloseable {
                 gate.countDown()
                 a.close()
             }
             val other = client()
-            val leaving = approvedClient(daemon.account, http)
+            val leaving = approvedClient(daemon.phone, http)
             a.start()
             other.start()
             a.awaitState("a devices") {
@@ -1329,11 +1328,8 @@ class RemoteTest {
             val reading = launch { a.refreshDevices() }
             withTimeout(10_000) { held.await() }
             other.refreshDevices()
-            other.removeDevice(leaving.deviceId)
-            other.awaitState("revocation completed") {
-                it.removals.any { op -> op.phase == "complete" && op.serverCleaned }
-            }
-            val joined = approvedClient(daemon.account, http)
+            removeAsAuthority(daemon.phone, leaving.deviceId, http)
+            val joined = approvedClient(daemon.phone, http)
             a.awaitState("both pushes") {
                 !it.devices.containsKey(leaving.deviceId) && it.devices.containsKey(joined.deviceId)
             }

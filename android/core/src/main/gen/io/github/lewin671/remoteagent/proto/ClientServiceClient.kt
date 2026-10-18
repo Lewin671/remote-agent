@@ -98,22 +98,6 @@ public class ClientServiceClient(
 
 
   /**
-   *  RemoveDevice unregisters a device and ends its logins; a removed
-   *  machine's sessions are deleted.
-   */
-  override suspend fun removeDevice(request: RemoveDeviceRequest, headers: Headers): ResponseMessage<RemoveDeviceResponse> = client.unary(
-    request,
-    headers,
-    MethodSpec(
-    "remoteagent.v1.ClientService/RemoveDevice",
-      io.github.lewin671.remoteagent.proto.RemoveDeviceRequest::class,
-      io.github.lewin671.remoteagent.proto.RemoveDeviceResponse::class,
-      StreamType.UNARY,
-    ),
-  )
-
-
-  /**
    *  SetPushTarget registers where this device gets notifications, one
    *  target per type: Web Push and FCM can be set side by side.
    *  SetPushSubscription is the same for Web Push.
@@ -199,6 +183,54 @@ public class ClientServiceClient(
     "remoteagent.v1.ClientService/PutAccountPrefs",
       io.github.lewin671.remoteagent.proto.PutAccountPrefsRequest::class,
       io.github.lewin671.remoteagent.proto.PutAccountPrefsResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
+   *  PinSecurityDomain stores the phone-signed genesis state of a new
+   *  account. Called once, by the new authority phone.
+   */
+  override suspend fun pinSecurityDomain(request: PinSecurityDomainRequest, headers: Headers): ResponseMessage<PinSecurityDomainResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/PinSecurityDomain",
+      io.github.lewin671.remoteagent.proto.PinSecurityDomainRequest::class,
+      io.github.lewin671.remoteagent.proto.PinSecurityDomainResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
+   *  PutSecurityState uploads a contiguous signed state chain segment. The
+   *  first state must continue from the stored head (or be the pinned
+   *  genesis). The server rejects forks, rollbacks and invalid signatures.
+   */
+  override suspend fun putSecurityState(request: PutSecurityStateRequest, headers: Headers): ResponseMessage<PutSecurityStateResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/PutSecurityState",
+      io.github.lewin671.remoteagent.proto.PutSecurityStateRequest::class,
+      io.github.lewin671.remoteagent.proto.PutSecurityStateResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
+   *  GetSecurityStates returns states after an epoch, up to eight at a time.
+   */
+  override suspend fun getSecurityStates(request: GetSecurityStatesRequest, headers: Headers): ResponseMessage<GetSecurityStatesResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/GetSecurityStates",
+      io.github.lewin671.remoteagent.proto.GetSecurityStatesRequest::class,
+      io.github.lewin671.remoteagent.proto.GetSecurityStatesResponse::class,
       StreamType.UNARY,
     ),
   )

@@ -1,0 +1,286 @@
+package io.github.lewin671.remoteagent.core
+
+import io.github.lewin671.remoteagent.proto.CompleteRecoveryRequest
+import io.github.lewin671.remoteagent.proto.GetRecoveryContextRequest
+import io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse
+import io.github.lewin671.remoteagent.proto.SecurityState
+import io.github.lewin671.remoteagent.proto.SubmitRecoveryRequest
+import okhttp3.OkHttpClient
+
+/**
+ * Recovery codes: a 32-byte Ed25519 seed shown once as Crockford Base32 and a QR code. The key only
+ * signs a recovery statement; it cannot decrypt anything, and the phone does not store it.
+ */
+object RecoveryCode {
+    private const val ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+    fun encode(seed: ByteArray): String {
+        require(seed.size == 32)
+        val out = StringBuilder()
+        var bits = 0
+        var value = 0
+        for (b in seed) {
+            value = (value shl 8) or (b.toInt() and 0xff)
+            bits += 8
+            while (bits >= 5) {
+                bits -= 5
+                out.append(ALPHABET[(value ushr bits) and 31])
+            }
+        }
+        if (bits > 0) out.append(ALPHABET[(value shl (5 - bits)) and 31])
+        return out.chunked(4).joinToString("-")
+    }
+
+    /** Reads what [encode] wrote, accepting lower case, spaces, hyphens and the usual look-alikes. */
+    fun decode(text: String): ByteArray? {
+        var bits = 0
+        var value = 0
+        val out = java.io.ByteArrayOutputStream()
+        for (raw in text.trim().uppercase()) {
+            if (raw == ' ' || raw == '-' || raw == '\n' || raw == '\r') continue
+            val c =
+                when (raw) {
+                    'O' -> '0'
+                    'I', 'L' -> '1'
+                    else -> raw
+                }
+            val v = ALPHABET.indexOf(c)
+            if (v < 0) return null
+            value = (value shl 5) or v
+            bits += 5
+            if (bits >= 8) {
+                bits -= 8
+                out.write((value ushr bits) and 0xff)
+            }
+        }
+        // Any leftover bits must be zero padding, as encode writes them.
+        if (bits >= 5 || (value and ((1 shl bits) - 1)) != 0) return null
+        val seed = out.toByteArray()
+        return if (seed.size == 32) seed else null
+    }
+}
+
+/** A state chain read from the unauthenticated recovery service. */
+data class RecoveryChain(
+    val accountId: String,
+    val pin: DeviceSecurity.Pin,
+    val chain: List<DeviceSecurity.State>,
+    val phase: GetRecoveryContextResponse.Phase,
+    val readyMs: Long,
+    val recoveryId: String,
+    val proofs: Map<ULong, ByteArray> = emptyMap(),
+) {
+    val head: DeviceSecurity.State
+        get() = chain.last()
+
+    companion object {
+        fun parse(
+            accountId: String,
+            states: List<SecurityState>,
+            phase: GetRecoveryContextResponse.Phase,
+            readyMs: Long,
+            recoveryId: String,
+        ): RecoveryChain {
+            if (states.isEmpty()) throw DeviceSecurity.Failure("untrusted")
+            val chain = states.map { DeviceSecurity.parseState(it.state.toByteArray()) }
+            val pin = DeviceSecurity.pinOf(chain[0])
+            val proofs = HashMap<ULong, ByteArray>()
+            chain.forEachIndexed { i, s ->
+                DeviceSecurity.verifyState(pin, s)
+                if (i > 0) {
+                    val raw = states[i].recovery.takeIf { it.size() > 0 }?.toByteArray()
+                    val proof = raw?.let { DeviceSecurity.parseRecoveryStatement(it) }
+                    DeviceSecurity.verifyTransition(chain[i - 1], s, proof)
+                    if (raw != null) proofs[s.core.epoch] = raw
+                }
+            }
+            return RecoveryChain(accountId, pin, chain, phase, readyMs, recoveryId, proofs)
+        }
+    }
+}
+
+/** What a submission produced: shown once, then only the new code remains in the user's hands. */
+data class RecoverySubmission(
+    val recoveryId: String,
+    val readyMs: Long,
+    val newCode: String,
+    val deviceSeed: ByteArray,
+    val deviceId: String,
+    val xPrivate: ByteArray,
+    val accountId: String,
+)
+
+/**
+ * The new phone's side of an authority recovery. It needs an Ed25519 identity of its own (the same
+ * seed it will keep) and the old recovery code; it never receives the old content key.
+ */
+object Recovery {
+    suspend fun context(
+        server: String,
+        http: OkHttpClient,
+        recoveryEd: ByteArray,
+        recoveryId: String = "",
+    ): RecoveryChain {
+        val api = Api(server, http)
+        val res =
+            try {
+                api.recovery
+                    .getRecoveryContext(
+                        GetRecoveryContextRequest.newBuilder()
+                            .setRecoveryEd(
+                                if (recoveryEd.isEmpty()) com.google.protobuf.ByteString.EMPTY
+                                else com.google.protobuf.ByteString.copyFrom(recoveryEd),
+                            )
+                            .setRecoveryId(recoveryId)
+                            .build(),
+                        emptyMap(),
+                    )
+                    .value()
+            } catch (e: com.connectrpc.ConnectException) {
+                if (e.code == com.connectrpc.Code.NOT_FOUND)
+                    throw PairException("恢复码不对，或者没有待处理的恢复")
+                throw e
+            }
+        return RecoveryChain.parse(
+            res.accountId,
+            res.statesList,
+            res.phase,
+            res.readyMs,
+            res.recoveryId,
+        )
+    }
+
+    /**
+     * Builds and submits the recovery state, and generates the new recovery code. The caller must
+     * show [RecoverySubmission.newCode] once; it is not stored.
+     */
+    suspend fun submit(
+        server: String,
+        http: OkHttpClient,
+        oldRecoverySeed: ByteArray,
+        deviceSeed: ByteArray,
+        now: Long = System.currentTimeMillis(),
+    ): RecoverySubmission {
+        if (oldRecoverySeed.size != 32 || deviceSeed.size != 32)
+            throw PairException("恢复码无效")
+        val recoveryEd = SigningKey(oldRecoverySeed).publicKey
+        val chain = context(server, http, recoveryEd)
+        if (chain.phase == GetRecoveryContextResponse.Phase.PHASE_REJECTED)
+            throw PairException("这次恢复已被原手机否决")
+        if (chain.phase == GetRecoveryContextResponse.Phase.PHASE_PUBLISHED)
+            throw PairException("这次恢复已经完成")
+        if (chain.phase != GetRecoveryContextResponse.Phase.PHASE_UNSPECIFIED &&
+            chain.phase != GetRecoveryContextResponse.Phase.PHASE_PENDING &&
+            chain.phase != GetRecoveryContextResponse.Phase.PHASE_READY
+        )
+            throw PairException("恢复状态无法识别")
+
+        val signer = SigningKey(deviceSeed)
+        val (newRecoverySeed, newRecoveryEd) = Authority.newRecovery()
+        val newCode = RecoveryCode.encode(newRecoverySeed)
+        val x = randomBytes(32)
+        val member = Authority.newMember(signer, x, 2u)
+        val old = chain.head
+        val members = old.core.members.filterNot { it.id == old.core.authorityID } + member
+        val secret = Authority.newSecret()
+        val (state, statement) =
+            Authority.recovery(
+                old,
+                member,
+                members,
+                secret,
+                signer,
+                oldRecoverySeed,
+                newRecoveryEd,
+                now,
+            )
+        val api = Api(server, http)
+        val res =
+            try {
+                api.recovery
+                    .submitRecovery(
+                        SubmitRecoveryRequest.newBuilder()
+                            .setStatement(
+                                com.google.protobuf.ByteString.copyFrom(statement.marshal()),
+                            )
+                            .setState(
+                                com.google.protobuf.ByteString.copyFrom(
+                                    DeviceSecurity.stateBytes(state),
+                                ),
+                            )
+                            .build(),
+                        emptyMap(),
+                    )
+                    .value()
+            } catch (e: com.connectrpc.ConnectException) {
+                throw PairException(recoveryWords(e))
+            }
+        return RecoverySubmission(
+            res.recoveryId,
+            res.readyMs,
+            newCode,
+            deviceSeed,
+            member.id,
+            x,
+            chain.accountId,
+        )
+    }
+
+    /** Completes after 48 hours and returns the account to store. */
+    suspend fun complete(
+        server: String,
+        http: OkHttpClient,
+        recoveryId: String,
+        accountId: String,
+        deviceSeed: ByteArray,
+        xPrivate: ByteArray,
+        now: Long = System.currentTimeMillis(),
+    ): Pair<Account, DeviceSecurity.Record> {
+        val signer = SigningKey(deviceSeed)
+        val signature =
+            signer.sign("ra3/recovery-complete\u0000".toByteArray() + recoveryId.toByteArray())
+        val api = Api(server, http)
+        val res =
+            try {
+                api.recovery
+                    .completeRecovery(
+                        CompleteRecoveryRequest.newBuilder()
+                            .setRecoveryId(recoveryId)
+                            .setSignature(com.google.protobuf.ByteString.copyFrom(signature))
+                            .build(),
+                        emptyMap(),
+                    )
+                    .value()
+            } catch (e: com.connectrpc.ConnectException) {
+                throw PairException(recoveryWords(e))
+            }
+        if (res.deviceId != deviceId(signer.publicKey))
+            throw PairException("服务器返回了意外的设备 ID")
+        // The published chain is available by recovery ID; the new phone opens its own grant.
+        val chain = context(server, http, ByteArray(0), recoveryId)
+        val record =
+            DeviceSecurity.Record(
+                chain.pin,
+                chain.chain,
+                res.deviceId,
+                xPrivate,
+                proofs = chain.proofs,
+            )
+        return Account(
+            server,
+            ByteArray(0),
+            deviceSeed,
+            res.deviceId,
+            accountId,
+        ) to record
+    }
+
+    private fun recoveryWords(e: com.connectrpc.ConnectException): String =
+        when (e.code) {
+            com.connectrpc.Code.FAILED_PRECONDITION -> "还不能完成，或者恢复已被否决"
+            com.connectrpc.Code.PERMISSION_DENIED -> "恢复码不对，或者恢复声明已被拒绝"
+            com.connectrpc.Code.RESOURCE_EXHAUSTED -> "试得太频繁了，稍等一分钟再试"
+            com.connectrpc.Code.NOT_FOUND -> "找不到这次恢复，它可能已经完成或被否决"
+            else -> errorText(e)
+        }
+}

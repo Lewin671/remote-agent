@@ -11,12 +11,6 @@ public interface PairingPayloadOrBuilder extends
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
-   * <code>bytes root = 1 [json_name = "root"];</code>
-   * @return The root.
-   */
-  com.google.protobuf.ByteString getRoot();
-
-  /**
    * <code>string server = 2 [json_name = "server"];</code>
    * @return The server.
    */
@@ -42,11 +36,41 @@ public interface PairingPayloadOrBuilder extends
 
   /**
    * <pre>
-   * Complete signed membership state produced by consuming the exact context.
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
    * </pre>
    *
-   * <code>bytes security_state = 5 [json_name = "securityState"];</code>
-   * @return The securityState.
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
    */
-  com.google.protobuf.ByteString getSecurityState();
+  java.util.List<io.github.lewin671.remoteagent.proto.SecurityState>
+      getSecurityStatesList();
+  /**
+   * <pre>
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.SecurityState getSecurityStates(int index);
+  /**
+   * <pre>
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+   */
+  int getSecurityStatesCount();
+
+  /**
+   * <pre>
+   * Public account key. It names the account on registration; the new
+   * device does not receive the account root.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+   * @return The accountPublicKey.
+   */
+  com.google.protobuf.ByteString getAccountPublicKey();
 }

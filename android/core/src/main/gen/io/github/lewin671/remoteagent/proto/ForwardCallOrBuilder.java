@@ -70,10 +70,4 @@ public interface ForwardCallOrBuilder extends
    * @return The senderRegistrationSignature.
    */
   com.google.protobuf.ByteString getSenderRegistrationSignature();
-
-  /**
-   * <code>bytes security_rpc = 6 [json_name = "securityRpc"];</code>
-   * @return The securityRpc.
-   */
-  com.google.protobuf.ByteString getSecurityRpc();
 }

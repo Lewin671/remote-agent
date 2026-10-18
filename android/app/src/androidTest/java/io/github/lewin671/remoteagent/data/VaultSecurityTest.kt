@@ -57,29 +57,28 @@ class VaultSecurityTest {
 
     private fun securityRecord(): io.github.lewin671.remoteagent.core.DeviceSecurity.Record {
         val security = io.github.lewin671.remoteagent.core.DeviceSecurity
-        val state =
-            security.parseState(
-                java.util.Base64.getDecoder()
-                    .decode(
-                        "AAABtAAAAAIAAAAgMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYREREREREREREREREREREREREREREREREREREREREREQAAACA0OGNjYTk3Zjg5OTNmZmFlYmNhYzk3MjhkN2Y5NGY3MduZX+JRadFByrm7upK6oB+fLh7OffTLKsBRkPN/zB+dEyxEK+AQ+9V+cmAzKKp25x/MwVA6riGTJ9FNnJmT9HKqkl9YtkzHiMuG0FTcFeLsH6OPWyeLGMjiIt4GObCowgAAAAAAAAACAAAAAAAAAAIAAAACAAAAIDI0YWEyYTU1ODllZGNiNTdmZWEwYmUzNTUyZjA2NWRlSAdaWX5yGhVuLgeZ3lzAxTJNxufq8c3UYlCGjsUyFd1Z2SJUc0Ue//5rNtvK79v3sYld5iCEUJp/W1i/AdBkGAAAAAIAAAAgNDhjY2E5N2Y4OTkzZmZhZWJjYWM5NzI4ZDdmOTRmNzGIS4hX9OqhYTxhUE2zTUvq80ZReg4x3jzd1Nm0IB2dCw+qaE7SiGe5f0pqLe5d+M6XTna3AY4/IqHEzyZ4Vw8gAAAAAQAAAAAAAAACAAAAIDI0YWEyYTU1ODllZGNiNTdmZWEwYmUzNTUyZjA2NWRlAAAAIBrcHM12/2sawLI/GOJC5dG2X5aUrJlzeBGrR20R8SAgAAAAMMYznI83qZkHBoN/97w0ZUkeFxrbQ1cJ5SPV1BNBbzfmqLdrN3rRRqZ8dwCZxz8XDgAAACA0OGNjYTk3Zjg5OTNmZmFlYmNhYzk3MjhkN2Y5NGY3MQAAACAcPttHOpm95eDd52A0QRc+Zr01E+MRKmHNLzmJAIRafwAAADCKEDzlhgIBD8aXwIN+K5Nw1qJSdn53sHMvAW0lgFnLXh7YjGTbNnoRdO9gVXtJ6R8AAABAK+MTq6jvnrE7nWP32ALKDtayJL9LP0gth/oOwtLIhu7BAIJZqZtbBj8j8B0h0eDJspThfW0XlzYGvAtQ8bxMCw==",
-                    ),
+        val signer = io.github.lewin671.remoteagent.core.SigningKey(account.deviceSeed)
+        val x = ByteArray(32) { 0x22 }
+        val phone =
+            io.github.lewin671.remoteagent.core.Authority.newMember(signer, x, 2u)
+        val genesis =
+            io.github.lewin671.remoteagent.core.Authority.genesis(
+                account.accountId,
+                ByteArray(32) { 0x33 },
+                phone,
+                ByteArray(32) { 0x44 },
+                ByteArray(32) { 0x55 },
+                signer,
+                1_700_000_000_000,
             )
-        val c = state.core
-        val pin =
-            io.github.lewin671.remoteagent.core.DeviceSecurity.Pin(
-                c.account,
-                c.domain,
-                java.util.Base64.getDecoder()
-                    .decode("qpJfWLZMx4jLhtBU3BXi7B+jj1snixjI4iLeBjmwqMI="),
-                c.authorityID,
-                c.authorityEd,
-                c.authorityX,
-            )
-        return io.github.lewin671.remoteagent.core.DeviceSecurity.Record(
-            pin,
-            state,
-            "48cca97f8993ffaebcac9728d7f94f71",
-            ByteArray(32) { 0x22 },
+        return io.github.lewin671.remoteagent.core.DeviceSecurity.Record.fromChain(
+            account.accountId,
+            genesis.core.domain,
+            security.stateHash(genesis),
+            phone.id,
+            x,
+            listOf(security.stateBytes(genesis)),
+            listOf(null),
         )
     }
 
@@ -88,7 +87,7 @@ class VaultSecurityTest {
         val security = io.github.lewin671.remoteagent.core.DeviceSecurity
         val record = securityRecord()
         vault.initializeSecurity(record)
-        val hash = security.stateHash(record.state)
+        val hash = security.stateHash(record.head)
         assertEquals(1uL, vault.reserveSecurity(hash).counter)
         val reopened = Vault(context)
         assertEquals(1uL, reopened.readSecurity().counter)
@@ -107,7 +106,7 @@ class VaultSecurityTest {
     fun existingCorruptStateIsNeverReinitialized() {
         val record = securityRecord()
         vault.initializeSecurity(record)
-        val stored = File(context.noBackupFilesDir, "security-v2.bin")
+        val stored = File(context.noBackupFilesDir, "security-v3.bin")
         stored.writeBytes(byteArrayOf(0))
         assertTrue(runCatching { vault.readSecurity() }.isFailure)
         assertTrue(runCatching { vault.initializeSecurity(record) }.isFailure)

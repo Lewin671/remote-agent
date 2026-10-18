@@ -20,8 +20,7 @@ public  final class GetPairingResponse extends
     initiatorPublic_ = com.google.protobuf.ByteString.EMPTY;
     devicePublicKey_ = com.google.protobuf.ByteString.EMPTY;
     deviceHpkePublicKey_ = com.google.protobuf.ByteString.EMPTY;
-    securityContext_ = com.google.protobuf.ByteString.EMPTY;
-    candidateSignature_ = com.google.protobuf.ByteString.EMPTY;
+    trust_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int STATE_FIELD_NUMBER = 1;
@@ -311,58 +310,46 @@ public  final class GetPairingResponse extends
     deviceHpkePublicKey_ = getDefaultInstance().getDeviceHpkePublicKey();
   }
 
-  public static final int SECURITY_CONTEXT_FIELD_NUMBER = 9;
-  private com.google.protobuf.ByteString securityContext_;
+  public static final int TRUST_FIELD_NUMBER = 9;
+  private com.google.protobuf.ByteString trust_;
   /**
-   * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
-   * @return The securityContext.
+   * <pre>
+   * The initiator's public PairTrustDescriptor, revealed with its ephemeral
+   * key. It carries account, domain, genesis hash and approver, no secret.
+   * </pre>
+   *
+   * <code>bytes trust = 9 [json_name = "trust"];</code>
+   * @return The trust.
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString getSecurityContext() {
-    return securityContext_;
+  public com.google.protobuf.ByteString getTrust() {
+    return trust_;
   }
   /**
-   * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
-   * @param value The securityContext to set.
+   * <pre>
+   * The initiator's public PairTrustDescriptor, revealed with its ephemeral
+   * key. It carries account, domain, genesis hash and approver, no secret.
+   * </pre>
+   *
+   * <code>bytes trust = 9 [json_name = "trust"];</code>
+   * @param value The trust to set.
    */
-  private void setSecurityContext(com.google.protobuf.ByteString value) {
+  private void setTrust(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
   
-    securityContext_ = value;
+    trust_ = value;
   }
   /**
-   * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
+   * <pre>
+   * The initiator's public PairTrustDescriptor, revealed with its ephemeral
+   * key. It carries account, domain, genesis hash and approver, no secret.
+   * </pre>
+   *
+   * <code>bytes trust = 9 [json_name = "trust"];</code>
    */
-  private void clearSecurityContext() {
+  private void clearTrust() {
 
-    securityContext_ = getDefaultInstance().getSecurityContext();
-  }
-
-  public static final int CANDIDATE_SIGNATURE_FIELD_NUMBER = 10;
-  private com.google.protobuf.ByteString candidateSignature_;
-  /**
-   * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
-   * @return The candidateSignature.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getCandidateSignature() {
-    return candidateSignature_;
-  }
-  /**
-   * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
-   * @param value The candidateSignature to set.
-   */
-  private void setCandidateSignature(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    candidateSignature_ = value;
-  }
-  /**
-   * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
-   */
-  private void clearCandidateSignature() {
-
-    candidateSignature_ = getDefaultInstance().getCandidateSignature();
+    trust_ = getDefaultInstance().getTrust();
   }
 
   public static io.github.lewin671.remoteagent.proto.GetPairingResponse parseFrom(
@@ -766,58 +753,45 @@ public  final class GetPairingResponse extends
     }
 
     /**
-     * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
-     * @return The securityContext.
+     * <pre>
+     * The initiator's public PairTrustDescriptor, revealed with its ephemeral
+     * key. It carries account, domain, genesis hash and approver, no secret.
+     * </pre>
+     *
+     * <code>bytes trust = 9 [json_name = "trust"];</code>
+     * @return The trust.
      */
     @java.lang.Override
-    public com.google.protobuf.ByteString getSecurityContext() {
-      return instance.getSecurityContext();
+    public com.google.protobuf.ByteString getTrust() {
+      return instance.getTrust();
     }
     /**
-     * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
-     * @param value The securityContext to set.
+     * <pre>
+     * The initiator's public PairTrustDescriptor, revealed with its ephemeral
+     * key. It carries account, domain, genesis hash and approver, no secret.
+     * </pre>
+     *
+     * <code>bytes trust = 9 [json_name = "trust"];</code>
+     * @param value The trust to set.
      * @return This builder for chaining.
      */
-    public Builder setSecurityContext(com.google.protobuf.ByteString value) {
+    public Builder setTrust(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setSecurityContext(value);
+      instance.setTrust(value);
       return this;
     }
     /**
-     * <code>bytes security_context = 9 [json_name = "securityContext"];</code>
+     * <pre>
+     * The initiator's public PairTrustDescriptor, revealed with its ephemeral
+     * key. It carries account, domain, genesis hash and approver, no secret.
+     * </pre>
+     *
+     * <code>bytes trust = 9 [json_name = "trust"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearSecurityContext() {
+    public Builder clearTrust() {
       copyOnWrite();
-      instance.clearSecurityContext();
-      return this;
-    }
-
-    /**
-     * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
-     * @return The candidateSignature.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getCandidateSignature() {
-      return instance.getCandidateSignature();
-    }
-    /**
-     * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
-     * @param value The candidateSignature to set.
-     * @return This builder for chaining.
-     */
-    public Builder setCandidateSignature(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setCandidateSignature(value);
-      return this;
-    }
-    /**
-     * <code>bytes candidate_signature = 10 [json_name = "candidateSignature"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearCandidateSignature() {
-      copyOnWrite();
-      instance.clearCandidateSignature();
+      instance.clearTrust();
       return this;
     }
 
@@ -846,12 +820,11 @@ public  final class GetPairingResponse extends
             "payload_",
             "devicePublicKey_",
             "deviceHpkePublicKey_",
-            "securityContext_",
-            "candidateSignature_",
+            "trust_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\f\u0002\n\u0003\n\u0004\f" +
-              "\u0005\n\u0006\u1009\u0000\u0007\n\b\n\t\n\n\n";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\f\u0002\n\u0003\n\u0004\f" +
+              "\u0005\n\u0006\u1009\u0000\u0007\n\b\n\t\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -30,12 +30,11 @@ public interface RevealPairingRequestOrBuilder extends
 
   /**
    * <pre>
-   * Signed active authority PairContext. SAS binds its precommitted trust
-   * descriptor; the late context nonce/head/expiry are signed separately.
+   * Public PairTrustDescriptor. The pairing commitment must match it.
    * </pre>
    *
-   * <code>bytes security_context = 3 [json_name = "securityContext"];</code>
-   * @return The securityContext.
+   * <code>bytes trust = 3 [json_name = "trust"];</code>
+   * @return The trust.
    */
-  com.google.protobuf.ByteString getSecurityContext();
+  com.google.protobuf.ByteString getTrust();
 }

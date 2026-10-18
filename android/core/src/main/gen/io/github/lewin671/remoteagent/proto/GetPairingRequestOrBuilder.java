@@ -53,14 +53,4 @@ public interface GetPairingRequestOrBuilder extends
    * @return The received.
    */
   boolean getReceived();
-
-  /**
-   * <pre>
-   * Candidate signature over the authority PairContext after reveal.
-   * </pre>
-   *
-   * <code>bytes candidate_signature = 4 [json_name = "candidateSignature"];</code>
-   * @return The candidateSignature.
-   */
-  com.google.protobuf.ByteString getCandidateSignature();
 }

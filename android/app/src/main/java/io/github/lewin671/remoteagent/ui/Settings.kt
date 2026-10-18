@@ -162,7 +162,6 @@ fun SettingsScreen() {
         ) {
             LargeTitle("设置")
             ConnBanner(state)
-            RemovalProgress(state)
             GLabel("电脑", "全部设备", onAction = { nav.devices() })
             Group(
                 rows =
@@ -194,7 +193,7 @@ fun SettingsScreen() {
                                             ) {
                                                 Dot(if (m.online) p.green else p.gray)
                                                 Text(
-                                                    (if (m.id == state.authorityDeviceId) "管理电脑 · "
+                                                    (if (m.id == state.authorityDeviceId) "管理端手机 · "
                                                     else "") +
                                                         (if (m.online) "在线"
                                                         else
@@ -286,6 +285,32 @@ fun SettingsScreen() {
                             },
                         ),
             )
+            GLabel("管理权")
+            Group(
+                rows =
+                    listOf(
+                        {
+                            GRow(
+                                if (state.authorityPhone) "管理端手机 · 本机" else "管理端手机 · 另一台手机",
+                                if (state.authorityPhone)
+                                    "恢复与续期" + (if (state.leaseEndMs > 0) " · 有效期至 " + io.github.lewin671.remoteagent.core.dayText(state.leaseEndMs, t) else "")
+                                else "添加、删除和恢复在手机 App 上",
+                                onClick = if (state.authorityPhone) ({ nav.recovery() }) else null,
+                                chevron = state.authorityPhone,
+                            )
+                        },
+                        {
+                            if (state.authorityPhone)
+                                GRow("现在续期", "重新签 72 小时", onClick = { remote.renewLeaseNow() })
+                        },
+                    ),
+            )
+            if (state.authorityPhone && state.recoveryPending)
+                Banner(
+                    "有人正在用恢复码申请接管管理权，点上面进入设备页否决。",
+                    Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    Tone2.ERROR,
+                )
             GLabel("本客户端的通知")
             Group(
                 rows =
@@ -535,7 +560,6 @@ fun DeviceScreen(id: String) {
         }
     PageScaffold(machineLabel(state, id), gray = true) {
         if (m == null) {
-            RemovalProgress(state, id)
             PageNote("这台电脑不在当前可信目录中，撤销状态以回执为准")
             return@PageScaffold
         }
@@ -725,8 +749,7 @@ fun DeviceScreen(id: String) {
                         },
                 )
             }
-            RemovalProgress(state, id)
-            if (id == state.authorityDeviceId) Hint("这是管理电脑，普通移除不可用")
+            if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用")
             else
                 Group(
                     rows =
@@ -743,15 +766,17 @@ fun DeviceScreen(id: String) {
                                 },
                                 danger = true,
                                 enabled =
-                                    !remove.running &&
+                                    state.authorityPhone &&
+                                        !remove.running &&
                                         state.conn ==
-                                            io.github.lewin671.remoteagent.core.ConnState.ONLINE &&
-                                        state.removals.none { it.targets.contains(id) },
+                                            io.github.lewin671.remoteagent.core.ConnState.ONLINE,
                             )
                         },
                 )
             Text(
-                "移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。",
+                if (state.authorityPhone)
+                    "移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。"
+                else "删除设备要在管理端手机上操作。",
                 style = T.sm,
                 color = p.muted,
                 modifier = Modifier.padding(horizontal = 16.dp),

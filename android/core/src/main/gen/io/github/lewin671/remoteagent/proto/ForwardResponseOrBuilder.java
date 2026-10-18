@@ -28,10 +28,4 @@ public interface ForwardResponseOrBuilder extends
    * @return The result.
    */
   io.github.lewin671.remoteagent.proto.Envelope getResult();
-
-  /**
-   * <code>bytes security_rpc = 2 [json_name = "securityRpc"];</code>
-   * @return The securityRpc.
-   */
-  com.google.protobuf.ByteString getSecurityRpc();
 }

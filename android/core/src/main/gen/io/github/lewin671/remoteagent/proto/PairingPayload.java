@@ -19,39 +19,12 @@ public  final class PairingPayload extends
     // @@protoc_insertion_point(message_implements:remoteagent.v1.PairingPayload)
     PairingPayloadOrBuilder {
   private PairingPayload() {
-    root_ = com.google.protobuf.ByteString.EMPTY;
     server_ = "";
     approval_ = com.google.protobuf.ByteString.EMPTY;
     approvalSignature_ = com.google.protobuf.ByteString.EMPTY;
-    securityState_ = com.google.protobuf.ByteString.EMPTY;
+    securityStates_ = emptyProtobufList();
+    accountPublicKey_ = com.google.protobuf.ByteString.EMPTY;
   }
-  public static final int ROOT_FIELD_NUMBER = 1;
-  private com.google.protobuf.ByteString root_;
-  /**
-   * <code>bytes root = 1 [json_name = "root"];</code>
-   * @return The root.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getRoot() {
-    return root_;
-  }
-  /**
-   * <code>bytes root = 1 [json_name = "root"];</code>
-   * @param value The root to set.
-   */
-  private void setRoot(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    root_ = value;
-  }
-  /**
-   * <code>bytes root = 1 [json_name = "root"];</code>
-   */
-  private void clearRoot() {
-
-    root_ = getDefaultInstance().getRoot();
-  }
-
   public static final int SERVER_FIELD_NUMBER = 2;
   private java.lang.String server_;
   /**
@@ -116,7 +89,7 @@ public  final class PairingPayload extends
    */
   private void setApproval(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
-  
+
     approval_ = value;
   }
   /**
@@ -143,7 +116,7 @@ public  final class PairingPayload extends
    */
   private void setApprovalSignature(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
-  
+
     approvalSignature_ = value;
   }
   /**
@@ -154,43 +127,198 @@ public  final class PairingPayload extends
     approvalSignature_ = getDefaultInstance().getApprovalSignature();
   }
 
-  public static final int SECURITY_STATE_FIELD_NUMBER = 5;
-  private com.google.protobuf.ByteString securityState_;
+  public static final int SECURITY_STATES_FIELD_NUMBER = 5;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.SecurityState> securityStates_;
   /**
    * <pre>
-   * Complete signed membership state produced by consuming the exact context.
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
    * </pre>
    *
-   * <code>bytes security_state = 5 [json_name = "securityState"];</code>
-   * @return The securityState.
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString getSecurityState() {
-    return securityState_;
+  public java.util.List<io.github.lewin671.remoteagent.proto.SecurityState> getSecurityStatesList() {
+    return securityStates_;
   }
   /**
    * <pre>
-   * Complete signed membership state produced by consuming the exact context.
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
    * </pre>
    *
-   * <code>bytes security_state = 5 [json_name = "securityState"];</code>
-   * @param value The securityState to set.
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
    */
-  private void setSecurityState(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    securityState_ = value;
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.SecurityStateOrBuilder>
+      getSecurityStatesOrBuilderList() {
+    return securityStates_;
   }
   /**
    * <pre>
-   * Complete signed membership state produced by consuming the exact context.
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
    * </pre>
    *
-   * <code>bytes security_state = 5 [json_name = "securityState"];</code>
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
    */
-  private void clearSecurityState() {
+  @java.lang.Override
+  public int getSecurityStatesCount() {
+    return securityStates_.size();
+  }
+  /**
+   * <pre>
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.SecurityState getSecurityStates(int index) {
+    return securityStates_.get(index);
+  }
+  /**
+   * <pre>
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.SecurityStateOrBuilder getSecurityStatesOrBuilder(
+      int index) {
+    return securityStates_.get(index);
+  }
+  private void ensureSecurityStatesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.SecurityState> tmp = securityStates_;
+    if (!tmp.isModifiable()) {
+      securityStates_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
 
-    securityState_ = getDefaultInstance().getSecurityState();
+  /**
+   * <pre>
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSecurityStates(
+      int index, io.github.lewin671.remoteagent.proto.SecurityState value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSecurityStatesIsMutable();
+    securityStates_.set(index, value);
+  }
+  /**
+   * <pre>
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addSecurityStates(io.github.lewin671.remoteagent.proto.SecurityState value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSecurityStatesIsMutable();
+    securityStates_.add(value);
+  }
+  /**
+   * <pre>
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addSecurityStates(
+      int index, io.github.lewin671.remoteagent.proto.SecurityState value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSecurityStatesIsMutable();
+    securityStates_.add(index, value);
+  }
+  /**
+   * <pre>
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+   */
+  private void addAllSecurityStates(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.SecurityState> values) {
+    ensureSecurityStatesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, securityStates_);
+  }
+  /**
+   * <pre>
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+   */
+  private void clearSecurityStates() {
+    securityStates_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * The signed chain from genesis to the joined state, each with its
+   * recovery proof when it is a recovery transition.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+   */
+  private void removeSecurityStates(int index) {
+    ensureSecurityStatesIsMutable();
+    securityStates_.remove(index);
+  }
+
+  public static final int ACCOUNT_PUBLIC_KEY_FIELD_NUMBER = 6;
+  private com.google.protobuf.ByteString accountPublicKey_;
+  /**
+   * <pre>
+   * Public account key. It names the account on registration; the new
+   * device does not receive the account root.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+   * @return The accountPublicKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getAccountPublicKey() {
+    return accountPublicKey_;
+  }
+  /**
+   * <pre>
+   * Public account key. It names the account on registration; the new
+   * device does not receive the account root.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+   * @param value The accountPublicKey to set.
+   */
+  private void setAccountPublicKey(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+
+    accountPublicKey_ = value;
+  }
+  /**
+   * <pre>
+   * Public account key. It names the account on registration; the new
+   * device does not receive the account root.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+   */
+  private void clearAccountPublicKey() {
+
+    accountPublicKey_ = getDefaultInstance().getAccountPublicKey();
   }
 
   public static io.github.lewin671.remoteagent.proto.PairingPayload parseFrom(
@@ -293,34 +421,6 @@ public  final class PairingPayload extends
       super(DEFAULT_INSTANCE);
     }
 
-
-    /**
-     * <code>bytes root = 1 [json_name = "root"];</code>
-     * @return The root.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getRoot() {
-      return instance.getRoot();
-    }
-    /**
-     * <code>bytes root = 1 [json_name = "root"];</code>
-     * @param value The root to set.
-     * @return This builder for chaining.
-     */
-    public Builder setRoot(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setRoot(value);
-      return this;
-    }
-    /**
-     * <code>bytes root = 1 [json_name = "root"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearRoot() {
-      copyOnWrite();
-      instance.clearRoot();
-      return this;
-    }
 
     /**
      * <code>string server = 2 [json_name = "server"];</code>
@@ -429,41 +529,206 @@ public  final class PairingPayload extends
 
     /**
      * <pre>
-     * Complete signed membership state produced by consuming the exact context.
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
      * </pre>
      *
-     * <code>bytes security_state = 5 [json_name = "securityState"];</code>
-     * @return The securityState.
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
      */
     @java.lang.Override
-    public com.google.protobuf.ByteString getSecurityState() {
-      return instance.getSecurityState();
+    public java.util.List<io.github.lewin671.remoteagent.proto.SecurityState> getSecurityStatesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getSecurityStatesList());
     }
     /**
      * <pre>
-     * Complete signed membership state produced by consuming the exact context.
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
      * </pre>
      *
-     * <code>bytes security_state = 5 [json_name = "securityState"];</code>
-     * @param value The securityState to set.
-     * @return This builder for chaining.
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
      */
-    public Builder setSecurityState(com.google.protobuf.ByteString value) {
+    @java.lang.Override
+    public int getSecurityStatesCount() {
+      return instance.getSecurityStatesCount();
+    }/**
+     * <pre>
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.SecurityState getSecurityStates(int index) {
+      return instance.getSecurityStates(index);
+    }
+    /**
+     * <pre>
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+     */
+    public Builder setSecurityStates(
+        int index, io.github.lewin671.remoteagent.proto.SecurityState value) {
       copyOnWrite();
-      instance.setSecurityState(value);
+      instance.setSecurityStates(index, value);
       return this;
     }
     /**
      * <pre>
-     * Complete signed membership state produced by consuming the exact context.
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
      * </pre>
      *
-     * <code>bytes security_state = 5 [json_name = "securityState"];</code>
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+     */
+    public Builder setSecurityStates(
+        int index, io.github.lewin671.remoteagent.proto.SecurityState.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSecurityStates(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+     */
+    public Builder addSecurityStates(io.github.lewin671.remoteagent.proto.SecurityState value) {
+      copyOnWrite();
+      instance.addSecurityStates(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+     */
+    public Builder addSecurityStates(
+        int index, io.github.lewin671.remoteagent.proto.SecurityState value) {
+      copyOnWrite();
+      instance.addSecurityStates(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+     */
+    public Builder addSecurityStates(
+        io.github.lewin671.remoteagent.proto.SecurityState.Builder builderForValue) {
+      copyOnWrite();
+      instance.addSecurityStates(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+     */
+    public Builder addSecurityStates(
+        int index, io.github.lewin671.remoteagent.proto.SecurityState.Builder builderForValue) {
+      copyOnWrite();
+      instance.addSecurityStates(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+     */
+    public Builder addAllSecurityStates(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.SecurityState> values) {
+      copyOnWrite();
+      instance.addAllSecurityStates(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+     */
+    public Builder clearSecurityStates() {
+      copyOnWrite();
+      instance.clearSecurityStates();
+      return this;
+    }
+    /**
+     * <pre>
+     * The signed chain from genesis to the joined state, each with its
+     * recovery proof when it is a recovery transition.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
+     */
+    public Builder removeSecurityStates(int index) {
+      copyOnWrite();
+      instance.removeSecurityStates(index);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Public account key. It names the account on registration; the new
+     * device does not receive the account root.
+     * </pre>
+     *
+     * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+     * @return The accountPublicKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getAccountPublicKey() {
+      return instance.getAccountPublicKey();
+    }
+    /**
+     * <pre>
+     * Public account key. It names the account on registration; the new
+     * device does not receive the account root.
+     * </pre>
+     *
+     * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+     * @param value The accountPublicKey to set.
      * @return This builder for chaining.
      */
-    public Builder clearSecurityState() {
+    public Builder setAccountPublicKey(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.clearSecurityState();
+      instance.setAccountPublicKey(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Public account key. It names the account on registration; the new
+     * device does not receive the account root.
+     * </pre>
+     *
+     * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAccountPublicKey() {
+      copyOnWrite();
+      instance.clearAccountPublicKey();
       return this;
     }
 
@@ -483,15 +748,16 @@ public  final class PairingPayload extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "root_",
             "server_",
             "approval_",
             "approvalSignature_",
-            "securityState_",
+            "securityStates_",
+            io.github.lewin671.remoteagent.proto.SecurityState.class,
+            "accountPublicKey_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\n\u0002\u0208" +
-              "\u0003\n\u0004\n\u0005\n";
+              "\u0000\u0005\u0000\u0000\u0002\u0006\u0005\u0000\u0001\u0000\u0002\u0208\u0003\n" +
+              "\u0004\n\u0005\u001b\u0006\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
