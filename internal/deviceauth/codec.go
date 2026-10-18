@@ -1,5 +1,5 @@
-// Package deviceauth implements the pinned-authority security domain. It never
-// treats an account-root signature or a relay directory as membership evidence.
+// Package deviceauth implements the protocol-10 signed membership chain and
+// the device-signed envelopes that carry account data.
 package deviceauth
 
 import (
@@ -11,25 +11,32 @@ import (
 )
 
 const (
-	Version         = 2
+	// Version is the state/header binary format version.
+	Version = 3
+
 	MaxMembers      = 128
 	MaxStateBytes   = 64 << 10
 	MaxHeaderBytes  = 1024
 	MaxCipherBytes  = 4 << 20
 	MaxMutableBytes = 64 << 10
-	MaxObjects      = 4096
-	MaxCatalogBytes = 16 << 20
-	MaxIDBytes      = 128
+	MaxStates       = 4096
+
+	// Lease is the membership lease; MaxLease is the largest accepted lease.
+	Lease    = 72 * 60 * 60 * 1000
+	MaxLease = 7 * 24 * 60 * 60 * 1000
+
+	// CounterBlock is reserved durably before use.
+	CounterBlock = 4096
 )
 
 var (
-	ErrInvalid   = errors.New("security: invalid authenticated object")
-	ErrUntrusted = errors.New("security: untrusted domain or signature")
-	ErrStale     = errors.New("security: trusted state must be synchronized")
-	ErrConflict  = errors.New("security: object changed; refresh before retrying")
-	ErrPending   = errors.New("security: revocation is pending")
-	ErrStorage   = errors.New("security: local security state unavailable")
-	ErrCapacity  = errors.New("security: capacity exceeded")
+	ErrInvalid     = errors.New("security: invalid authenticated object")
+	ErrUntrusted   = errors.New("security: untrusted domain or signature")
+	ErrStale       = errors.New("security: trusted state must be synchronized")
+	ErrUnknown     = errors.New("security: unknown state")
+	ErrUnavailable = errors.New("security: content is unavailable before the recovery boundary")
+	ErrStorage     = errors.New("security: local security state unavailable")
+	ErrCapacity    = errors.New("security: capacity exceeded")
 )
 
 type Hash [32]byte
@@ -59,8 +66,26 @@ type decoder struct {
 	err error
 }
 
+func (d *decoder) u32() uint32 {
+	if d.err != nil || len(d.b) < 4 {
+		d.err = ErrInvalid
+		return 0
+	}
+	n := binary.BigEndian.Uint32(d.b)
+	d.b = d.b[4:]
+	return n
+}
+func (d *decoder) u64() uint64 {
+	if d.err != nil || len(d.b) < 8 {
+		d.err = ErrInvalid
+		return 0
+	}
+	n := binary.BigEndian.Uint64(d.b)
+	d.b = d.b[8:]
+	return n
+}
 func (d *decoder) raw(n int) []byte {
-	if n < 0 || n > len(d.b) || d.err != nil {
+	if d.err != nil || n < 0 || len(d.b) < n {
 		d.err = ErrInvalid
 		return nil
 	}
@@ -68,42 +93,35 @@ func (d *decoder) raw(n int) []byte {
 	d.b = d.b[n:]
 	return b
 }
-func (d *decoder) u32() uint32 {
-	b := d.raw(4)
-	if b == nil {
-		return 0
-	}
-	return binary.BigEndian.Uint32(b)
-}
-func (d *decoder) u64() uint64 {
-	b := d.raw(8)
-	if b == nil {
-		return 0
-	}
-	return binary.BigEndian.Uint64(b)
-}
 func (d *decoder) lp(max int) []byte {
 	n := d.u32()
-	if uint64(n) > uint64(max) {
+	if d.err != nil || uint64(n) > uint64(max) || int(n) > len(d.b) {
 		d.err = ErrInvalid
 		return nil
 	}
-	return append([]byte(nil), d.raw(int(n))...)
+	return d.raw(int(n))
 }
-func (d *decoder) str() string    { return string(d.lp(MaxIDBytes)) }
-func (d *decoder) hash() (h Hash) { copy(h[:], d.raw(32)); return }
+func (d *decoder) str() string { return string(d.lp(MaxStateBytes)) }
+func (d *decoder) hash() Hash {
+	var h Hash
+	copy(h[:], d.raw(32))
+	return h
+}
 func (d *decoder) done() error {
-	if d.err != nil || len(d.b) != 0 {
+	if d.err != nil {
+		return d.err
+	}
+	if len(d.b) != 0 {
 		return ErrInvalid
 	}
 	return nil
 }
 func validID(s string) bool {
-	if len(s) == 0 || len(s) > MaxIDBytes {
+	if len(s) == 0 || len(s) > 128 {
 		return false
 	}
-	for _, c := range []byte(s) {
-		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_' || c == ':') {
+	for _, c := range s {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c == '-' || c == '_') {
 			return false
 		}
 	}
@@ -113,16 +131,28 @@ func deviceID(s string) bool {
 	if len(s) != 32 {
 		return false
 	}
-	for _, c := range []byte(s) {
+	for _, c := range s {
 		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
 			return false
 		}
 	}
 	return true
 }
-func next(n uint64) (uint64, error) {
-	if n == 0 || n == math.MaxUint64 {
-		return 0, ErrInvalid
+func maxU64(a, b uint64) uint64 {
+	if a > b {
+		return a
 	}
-	return n + 1, nil
+	return b
+}
+func minU64(a, b uint64) uint64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+func addLease(now uint64) uint64 {
+	if now > math.MaxUint64-Lease {
+		return math.MaxUint64
+	}
+	return now + Lease
 }

@@ -6,7 +6,6 @@ import (
 	"crypto/ed25519"
 	"crypto/hpke"
 	"crypto/rand"
-	"encoding/hex"
 	"slices"
 )
 
@@ -34,7 +33,7 @@ func NewMember(ed ed25519.PublicKey, x []byte, kind Kind) (m Member, err error) 
 	m.Kind = kind
 	return m, m.validate()
 }
-func ID(ed []byte) string { h := digest("", ed); return hex.EncodeToString(h[:16]) }
+func ID(ed []byte) string { h := digest("", ed); return h.String()[:32] }
 func (m Member) validate() error {
 	if !deviceID(m.ID) || m.ID != ID(m.EdPublic[:]) || (m.Kind != Machine && m.Kind != Client) || m.XPublic == [32]byte{} {
 		return ErrInvalid
@@ -46,11 +45,12 @@ type Core struct {
 	Account      string
 	Domain       Hash
 	AuthorityID  string
-	AuthorityEd  [32]byte
-	AuthorityX   [32]byte
+	RecoveryEd   [32]byte
 	Parent       Hash
 	Epoch        uint64
 	ContentEpoch uint64
+	IssuedAt     uint64
+	NotAfter     uint64
 	Members      []Member
 	Removed      []string
 }
@@ -71,7 +71,7 @@ func (c Core) Member(id string) (Member, bool) {
 	return c.Members[i], true
 }
 func (c Core) validate() error {
-	if !deviceID(c.Account) || c.Domain == (Hash{}) || !deviceID(c.AuthorityID) || c.AuthorityEd == [32]byte{} || c.AuthorityX == [32]byte{} || c.Epoch == 0 || c.ContentEpoch != c.Epoch || len(c.Members) == 0 || len(c.Members) > MaxMembers || len(c.Removed) > MaxMembers {
+	if !deviceID(c.Account) || c.Domain == (Hash{}) || !deviceID(c.AuthorityID) || c.RecoveryEd == [32]byte{} || c.Epoch == 0 || c.ContentEpoch == 0 || c.ContentEpoch > c.Epoch || c.IssuedAt == 0 || c.NotAfter <= c.IssuedAt || c.NotAfter-c.IssuedAt > MaxLease || len(c.Members) == 0 || len(c.Members) > MaxMembers || len(c.Removed) > MaxMembers {
 		return ErrInvalid
 	}
 	for i, m := range c.Members {
@@ -80,7 +80,7 @@ func (c Core) validate() error {
 		}
 	}
 	a, ok := c.Member(c.AuthorityID)
-	if !ok || a.Kind != Machine || a.EdPublic == c.AuthorityEd || a.XPublic == c.AuthorityX {
+	if !ok || a.Kind != Client {
 		return ErrInvalid
 	}
 	for i, id := range c.Removed {
@@ -90,8 +90,11 @@ func (c Core) validate() error {
 		if _, ok := c.Member(id); ok {
 			return ErrInvalid
 		}
+		if id == c.AuthorityID {
+			return ErrInvalid
+		}
 	}
-	if c.Epoch == 1 && (c.Parent != (Hash{}) || len(c.Members) != 1 || len(c.Removed) != 0) || c.Epoch > 1 && c.Parent == (Hash{}) {
+	if c.Epoch == 1 && (c.Parent != (Hash{}) || len(c.Members) != 1 || len(c.Removed) != 0 || c.ContentEpoch != 1) || c.Epoch > 1 && c.Parent == (Hash{}) {
 		return ErrInvalid
 	}
 	return nil
@@ -105,11 +108,12 @@ func (c Core) MarshalBinary() ([]byte, error) {
 	e.str(c.Account)
 	e.raw(c.Domain[:])
 	e.str(c.AuthorityID)
-	e.raw(c.AuthorityEd[:])
-	e.raw(c.AuthorityX[:])
+	e.raw(c.RecoveryEd[:])
 	e.raw(c.Parent[:])
 	e.u64(c.Epoch)
 	e.u64(c.ContentEpoch)
+	e.u64(c.IssuedAt)
+	e.u64(c.NotAfter)
 	e.u32(uint32(len(c.Members)))
 	for _, m := range c.Members {
 		e.str(m.ID)
@@ -134,11 +138,12 @@ func ParseCore(b []byte) (c Core, err error) {
 	c.Account = d.str()
 	c.Domain = d.hash()
 	c.AuthorityID = d.str()
-	copy(c.AuthorityEd[:], d.raw(32))
-	copy(c.AuthorityX[:], d.raw(32))
+	copy(c.RecoveryEd[:], d.raw(32))
 	c.Parent = d.hash()
 	c.Epoch = d.u64()
 	c.ContentEpoch = d.u64()
+	c.IssuedAt = d.u64()
+	c.NotAfter = d.u64()
 	n := d.u32()
 	if n > MaxMembers {
 		return c, ErrInvalid
@@ -169,17 +174,10 @@ type Grant struct {
 	Cipher    []byte
 }
 type State struct {
-	Core      Core
-	Grants    []Grant
-	Signature []byte
-}
-type Pin struct {
-	Account     string
-	Domain      Hash
-	Genesis     Hash
-	AuthorityID string
-	AuthorityEd [32]byte
-	AuthorityX  [32]byte
+	Core       Core
+	Grants     []Grant
+	PrevSecret []byte
+	Signature  []byte
 }
 
 func (s State) coreHash() (Hash, error) {
@@ -187,7 +185,7 @@ func (s State) coreHash() (Hash, error) {
 	if err != nil {
 		return Hash{}, err
 	}
-	return digest("ra2/core\x00", b), nil
+	return digest("ra3/core\x00", b), nil
 }
 func (s State) grantBytes() ([]byte, error) {
 	if len(s.Grants) != len(s.Core.Members) {
@@ -214,18 +212,25 @@ func (s State) Hash() (Hash, error) {
 	if err != nil {
 		return Hash{}, err
 	}
-	gh := digest("ra2/grants\x00", g)
-	return digest("ra2/state\x00", ch[:], gh[:]), nil
+	p := encoder{}
+	p.lp(s.PrevSecret)
+	return digest("ra3/state\x00", ch[:], g, p.b), nil
 }
 func (s State) signBytes() ([]byte, error) {
 	h, err := s.Hash()
 	if err != nil {
 		return nil, err
 	}
-	e := encoder{b: []byte("ra2/state-sig\x00")}
+	e := encoder{b: []byte("ra3/state-sig\x00")}
 	e.str(s.Core.Account)
 	e.raw(s.Core.Domain[:])
+	e.raw(s.Core.Parent[:])
 	e.u64(s.Core.Epoch)
+	e.u64(s.Core.ContentEpoch)
+	e.u64(s.Core.IssuedAt)
+	e.u64(s.Core.NotAfter)
+	e.str(s.Core.AuthorityID)
+	e.raw(s.Core.RecoveryEd[:])
 	e.raw(h[:])
 	return e.b, nil
 }
@@ -235,12 +240,13 @@ func (s State) MarshalBinary() ([]byte, error) {
 		return nil, err
 	}
 	g, err := s.grantBytes()
-	if err != nil || len(s.Signature) != 64 {
+	if err != nil || len(s.PrevSecret) > MaxStateBytes || len(s.Signature) != 64 {
 		return nil, ErrInvalid
 	}
 	e := encoder{}
 	e.lp(c)
 	e.raw(g)
+	e.lp(s.PrevSecret)
 	e.lp(s.Signature)
 	if len(e.b) > MaxStateBytes {
 		return nil, ErrCapacity
@@ -270,6 +276,7 @@ func ParseState(b []byte) (s State, err error) {
 		g.Cipher = d.lp(48)
 		s.Grants = append(s.Grants, g)
 	}
+	s.PrevSecret = d.lp(MaxStateBytes)
 	s.Signature = d.lp(64)
 	if d.done() != nil || len(s.Signature) != 64 {
 		return s, ErrInvalid
@@ -277,6 +284,13 @@ func ParseState(b []byte) (s State, err error) {
 	_, err = s.Hash()
 	return s, err
 }
+
+type Pin struct {
+	Account string
+	Domain  Hash
+	Genesis Hash
+}
+
 func (s State) Pin() (Pin, error) {
 	if s.Core.Epoch != 1 {
 		return Pin{}, ErrInvalid
@@ -285,21 +299,13 @@ func (s State) Pin() (Pin, error) {
 	if err != nil {
 		return Pin{}, err
 	}
-	return Pin{s.Core.Account, s.Core.Domain, h, s.Core.AuthorityID, s.Core.AuthorityEd, s.Core.AuthorityX}, nil
+	return Pin{s.Core.Account, s.Core.Domain, h}, nil
 }
 func (p Pin) Verify(s State) error {
-	c := s.Core
-	if c.Account != p.Account || c.Domain != p.Domain || c.AuthorityID != p.AuthorityID || c.AuthorityEd != p.AuthorityEd || c.AuthorityX != p.AuthorityX || p.Genesis == (Hash{}) {
+	if s.Core.Account != p.Account || s.Core.Domain != p.Domain || p.Genesis == (Hash{}) {
 		return ErrUntrusted
 	}
-	b, err := s.signBytes()
-	if err != nil {
-		return err
-	}
-	if !ed25519.Verify(p.AuthorityEd[:], b, s.Signature) {
-		return ErrUntrusted
-	}
-	if c.Epoch == 1 {
+	if s.Core.Epoch == 1 {
 		h, _ := s.Hash()
 		if h != p.Genesis {
 			return ErrUntrusted
@@ -307,39 +313,154 @@ func (p Pin) Verify(s State) error {
 	}
 	return nil
 }
-
-// Advance accepts only a contiguous signed transition. A relay cannot replace
-// the pinned authority, insert its directory, skip a link, or choose a fork.
-func (p Pin) Advance(old, s State) error {
-	if p.Verify(old) != nil || p.Verify(s) != nil {
+func (p Pin) VerifyGenesis(s State) error {
+	if p.Verify(s) != nil || s.Core.Epoch != 1 {
 		return ErrUntrusted
 	}
-	h, _ := old.Hash()
-	n, err := next(old.Core.Epoch)
-	if err != nil || s.Core.Epoch != n || s.Core.Parent != h {
+	m, ok := s.Core.Member(s.Core.AuthorityID)
+	if !ok || m.Kind != Client || len(s.Core.Members) != 1 || s.Core.Members[0].ID != m.ID {
+		return ErrUntrusted
+	}
+	b, err := s.signBytes()
+	if err != nil || !ed25519.Verify(m.EdPublic[:], b, s.Signature) {
+		return ErrUntrusted
+	}
+	return nil
+}
+
+// VerifyTransition checks the signed transition from parent to next. A recovery
+// transition also needs a RecoveryStatement signed by the parent's recovery key.
+// It cannot open content grants; Install checks PrevSecret against the opened
+// new secret.
+func VerifyTransition(parent, next State, recovery *RecoveryStatement) error {
+	ph, _ := parent.Hash()
+	if next.Core.Parent != ph || next.Core.Epoch != parent.Core.Epoch+1 || next.Core.Account != parent.Core.Account || next.Core.Domain != parent.Core.Domain {
 		return ErrStale
 	}
-	removed := []string{}
-	added := 0
-	for _, m := range old.Core.Members {
-		if nm, ok := s.Core.Member(m.ID); ok {
-			if nm != m {
+	authority, ok := next.Core.Member(next.Core.AuthorityID)
+	if !ok || authority.Kind != Client {
+		return ErrInvalid
+	}
+	if recovery != nil {
+		if err := recovery.Verify(parent, next); err != nil {
+			return err
+		}
+		if next.Core.ContentEpoch != parent.Core.ContentEpoch+1 || len(next.PrevSecret) != 0 {
+			return ErrInvalid
+		}
+		if _, removed := next.Core.Member(parent.Core.AuthorityID); removed {
+			return ErrInvalid
+		}
+		if !slices.Contains(next.Core.Removed, parent.Core.AuthorityID) {
+			return ErrInvalid
+		}
+	} else {
+		if next.Core.AuthorityID != parent.Core.AuthorityID || next.Core.RecoveryEd != parent.Core.RecoveryEd {
+			return ErrInvalid
+		}
+		oldAuthority, ok := parent.Core.Member(parent.Core.AuthorityID)
+		if !ok || !ed25519.Verify(oldAuthority.EdPublic[:], mustSignBytes(next), next.Signature) {
+			return ErrUntrusted
+		}
+		switch {
+		case next.Core.ContentEpoch == parent.Core.ContentEpoch:
+			if !slices.Equal(next.Core.Removed, parent.Core.Removed) || !sameMembers(next.Core.Members, parent.Core.Members) || len(next.PrevSecret) != 0 {
 				return ErrInvalid
 			}
-		} else {
-			removed = append(removed, m.ID)
+		case next.Core.ContentEpoch == parent.Core.ContentEpoch+1:
+			if len(next.PrevSecret) == 0 {
+				return ErrInvalid
+			}
+			if err := membershipDelta(parent, next); err != nil {
+				return err
+			}
+		default:
+			return ErrInvalid
+		}
+		return nil
+	}
+	b, err := next.signBytes()
+	if err != nil || !ed25519.Verify(authority.EdPublic[:], b, next.Signature) {
+		return ErrUntrusted
+	}
+	if !slices.Contains(next.Core.Removed, parent.Core.AuthorityID) {
+		return ErrInvalid
+	}
+	return recoveryDelta(parent, next)
+}
+func mustSignBytes(s State) []byte {
+	b, err := s.signBytes()
+	if err != nil {
+		panic("security: internal state cannot sign")
+	}
+	return b
+}
+func sameMembers(a, b []Member) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
 		}
 	}
-	for _, m := range s.Core.Members {
-		if _, ok := old.Core.Member(m.ID); !ok {
+	return true
+}
+func recoveryDelta(parent, next State) error {
+	removed := slices.Clone(parent.Core.Removed)
+	removed = append(removed, parent.Core.AuthorityID)
+	slices.Sort(removed)
+	if !slices.Equal(removed, next.Core.Removed) {
+		return ErrInvalid
+	}
+	for _, m := range parent.Core.Members {
+		if m.ID == parent.Core.AuthorityID {
+			continue
+		}
+		nm, ok := next.Core.Member(m.ID)
+		if !ok || nm != m {
+			return ErrInvalid
+		}
+	}
+	for _, m := range next.Core.Members {
+		if m.ID == next.Core.AuthorityID {
+			continue
+		}
+		if _, ok := parent.Core.Member(m.ID); !ok {
+			return ErrInvalid
+		}
+	}
+	return nil
+}
+
+func membershipDelta(parent, next State) error {
+	removed := []string{}
+	added := 0
+	rotated := 0
+	for _, m := range parent.Core.Members {
+		nm, ok := next.Core.Member(m.ID)
+		if !ok {
+			removed = append(removed, m.ID)
+		} else if nm.EdPublic != m.EdPublic || nm.Kind != m.Kind {
+			return ErrInvalid
+		} else if nm.XPublic != m.XPublic {
+			rotated++
+		}
+	}
+	for _, m := range next.Core.Members {
+		if _, ok := parent.Core.Member(m.ID); !ok {
 			added++
 		}
 	}
-	if !slices.Equal(removed, s.Core.Removed) || added > 1 || added > 0 && len(removed) > 0 || added == 0 && len(removed) == 0 {
+	if !slices.Equal(removed, next.Core.Removed) {
+		return ErrInvalid
+	}
+	if added > 1 || rotated > 1 || added > 0 && len(removed) > 0 || rotated > 0 && (added > 0 || len(removed) > 0) || added == 0 && len(removed) == 0 && rotated == 0 {
 		return ErrInvalid
 	}
 	return nil
 }
+
 func grantContext(c Core, ch Hash, id string) []byte {
 	e := encoder{}
 	e.str(c.Account)
@@ -383,20 +504,65 @@ func NewXKey() (private, public []byte, err error) {
 	}
 	return k.Bytes(), k.PublicKey().Bytes(), nil
 }
-func BuildState(c Core, secret []byte, authority ed25519.PrivateKey) (s State, err error) {
-	s.Core = c
-	if len(secret) != 32 || len(authority) != 64 || !bytes.Equal(authority.Public().(ed25519.PublicKey), c.AuthorityEd[:]) {
-		return s, ErrInvalid
+
+func BuildGenesis(account string, domain Hash, member Member, recoveryEd [32]byte, secret []byte, signer ed25519.PrivateKey, now uint64) (State, error) {
+	if member.validate() != nil || member.Kind != Client || len(secret) != 32 || recoveryEd == [32]byte{} || len(signer) != 64 || !bytes.Equal(signer.Public().(ed25519.PublicKey), member.EdPublic[:]) {
+		return State{}, ErrInvalid
 	}
-	ch, err := s.coreHash()
-	if err != nil {
-		return s, err
+	c := Core{Account: account, Domain: domain, AuthorityID: member.ID, RecoveryEd: recoveryEd, Epoch: 1, ContentEpoch: 1, IssuedAt: now, NotAfter: addLease(now), Members: []Member{member}}
+	return build(c, secret, nil, signer)
+}
+
+func BuildState(parent State, members []Member, removed []string, secret, prevSecret []byte, signer ed25519.PrivateKey, now uint64) (State, error) {
+	if len(signer) != 64 || len(secret) != 32 {
+		return State{}, ErrInvalid
 	}
+	ph, _ := parent.Hash()
+	c := parent.Core
+	c.Parent = ph
+	c.Epoch++
+	c.ContentEpoch++
+	c.IssuedAt = maxU64(now, c.IssuedAt)
+	c.NotAfter = addLease(c.IssuedAt)
+	c.Members = slices.Clone(members)
+	slices.SortFunc(c.Members, func(a, b Member) int {
+		if a.ID < b.ID {
+			return -1
+		}
+		if a.ID > b.ID {
+			return 1
+		}
+		return 0
+	})
+	c.Removed = removed
+	if len(prevSecret) > 0 && len(prevSecret) != 60 {
+		return State{}, ErrInvalid
+	}
+	return build(c, secret, prevSecret, signer)
+}
+func BuildRenewal(parent State, secret []byte, signer ed25519.PrivateKey, now uint64) (State, error) {
+	if len(signer) != 64 || len(secret) != 32 {
+		return State{}, ErrInvalid
+	}
+	ph, _ := parent.Hash()
+	c := parent.Core
+	c.Parent = ph
+	c.Epoch++
+	c.IssuedAt = maxU64(now, c.IssuedAt)
+	c.NotAfter = addLease(c.IssuedAt)
+	return build(c, secret, nil, signer)
+}
+func build(c Core, secret, prevSecret []byte, signer ed25519.PrivateKey) (State, error) {
+	s := State{Core: c, PrevSecret: bytes.Clone(prevSecret)}
+	if err := c.validate(); err != nil {
+		return State{}, err
+	}
+	ch, _ := s.coreHash()
 	for _, m := range c.Members {
 		ctx := grantContext(c, ch, m.ID)
-		enc, ct, err := sealHPKE(m.XPublic[:], append([]byte("ra2/grant-info\x00"), ctx...), append([]byte("ra2/grant-aad\x00"), ctx...), secret)
+		enc, ct, err := sealHPKE(m.XPublic[:], append([]byte("ra3/grant-info\x00"), ctx...), append([]byte("ra3/grant-aad\x00"), ctx...), secret)
 		if err != nil {
-			return s, err
+			return State{}, err
 		}
 		g := Grant{Recipient: m.ID, Cipher: ct}
 		copy(g.Enc[:], enc)
@@ -404,9 +570,9 @@ func BuildState(c Core, secret []byte, authority ed25519.PrivateKey) (s State, e
 	}
 	b, err := s.signBytes()
 	if err != nil {
-		return s, err
+		return State{}, err
 	}
-	s.Signature = ed25519.Sign(authority, b)
+	s.Signature = ed25519.Sign(signer, b)
 	return s, nil
 }
 func (p Pin) OpenGrant(s State, id string, private []byte) ([]byte, error) {
@@ -425,7 +591,7 @@ func (p Pin) OpenGrant(s State, id string, private []byte) ([]byte, error) {
 	for _, g := range s.Grants {
 		if g.Recipient == id {
 			ctx := grantContext(s.Core, ch, id)
-			plain, err := openHPKE(private, g.Enc[:], append([]byte("ra2/grant-info\x00"), ctx...), append([]byte("ra2/grant-aad\x00"), ctx...), g.Cipher)
+			plain, err := openHPKE(private, g.Enc[:], append([]byte("ra3/grant-info\x00"), ctx...), append([]byte("ra3/grant-aad\x00"), ctx...), g.Cipher)
 			if err != nil || len(plain) != 32 {
 				return nil, ErrUntrusted
 			}
@@ -433,4 +599,36 @@ func (p Pin) OpenGrant(s State, id string, private []byte) ([]byte, error) {
 		}
 	}
 	return nil, ErrInvalid
+}
+
+func sealPrevSecret(newSecret, oldSecret []byte) ([]byte, error) {
+	if len(newSecret) != 32 || len(oldSecret) != 32 {
+		return nil, ErrInvalid
+	}
+	a, err := gcm(newSecret)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, 12)
+	if _, err = rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	return append(nonce, a.Seal(nil, nonce, oldSecret, []byte("ra3/prev-secret\x00"))...), nil
+}
+func openPrevSecret(newSecret, blob []byte) ([]byte, error) {
+	if len(newSecret) != 32 || len(blob) != 60 {
+		return nil, ErrInvalid
+	}
+	a, err := gcm(newSecret)
+	if err != nil {
+		return nil, err
+	}
+	out, err := a.Open(nil, blob[:12], blob[12:], []byte("ra3/prev-secret\x00"))
+	if err != nil {
+		return nil, ErrUntrusted
+	}
+	if len(out) != 32 {
+		return nil, ErrInvalid
+	}
+	return out, nil
 }
