@@ -96,12 +96,13 @@ const (
 
 // Server is the relay.
 type Server struct {
-	cfg     Config
-	store   *store
-	hub     *hub
-	term    *termHub
-	push    *pusher
-	pairing *pairingService
+	cfg      Config
+	store    *store
+	hub      *hub
+	term     *termHub
+	push     *pusher
+	pairing  *pairingService
+	recovery *recoveryService
 
 	stop     chan struct{}
 	stopOnce sync.Once
@@ -169,7 +170,12 @@ func New(cfg Config) (*Server, error) {
 	s.hub = newHub(s)
 	s.term = newTermHub(s)
 	s.pairing = newPairingService(s)
+	s.recovery = newRecoveryService(s)
 	if s.push, err = newPusher(s); err != nil {
+		st.Close()
+		return nil, err
+	}
+	if err := s.seedSecurityChains(context.Background()); err != nil {
 		st.Close()
 		return nil, err
 	}
@@ -193,6 +199,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(remoteagentv1connect.NewAuthServiceHandler(&authService{s: s}, connect.WithReadMaxBytes(maxAuthRequestBytes)))
 	// Pairing authenticates per call: the joiner has no login yet.
 	mux.Handle(remoteagentv1connect.NewPairingServiceHandler(s.pairing, connect.WithReadMaxBytes(maxPairingRequestBytes)))
+	mux.Handle(remoteagentv1connect.NewRecoveryServiceHandler(s.recovery, connect.WithReadMaxBytes(maxRequestBytes)))
 	mux.Handle(remoteagentv1connect.NewClientServiceHandler(&clientService{s: s}, authed...))
 	mux.Handle(remoteagentv1connect.NewMachineServiceHandler(&machineService{s: s}, authed...))
 	mux.HandleFunc("/v1/stream", s.hub.serve)
@@ -286,6 +293,9 @@ func (s *Server) authInterceptor() connect.UnaryInterceptorFunc {
 			token, _ := strings.CutPrefix(req.Header().Get("Authorization"), "Bearer ")
 			d, err := s.authenticate(ctx, token)
 			if err != nil {
+				return nil, err
+			}
+			if err := s.authorizeDevice(ctx, d, req.Spec().Procedure); err != nil {
 				return nil, err
 			}
 			return next(context.WithValue(ctx, ctxKey{}, d), req)

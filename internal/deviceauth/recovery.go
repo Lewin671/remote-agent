@@ -43,6 +43,64 @@ func (r RecoveryStatement) signBytes() ([]byte, error) {
 	e.raw(r.Nonce[:])
 	return e.b, nil
 }
+func (r RecoveryStatement) MarshalBinary() ([]byte, error) {
+	b, err := r.signBytes()
+	if err != nil || len(r.Signature) != ed25519.SignatureSize {
+		return nil, ErrInvalid
+	}
+	e := encoder{}
+	e.lp(b)
+	e.lp(r.Signature)
+	if len(e.b) > MaxStateBytes {
+		return nil, ErrCapacity
+	}
+	return e.b, nil
+}
+
+func ParseRecoveryStatement(b []byte) (r RecoveryStatement, err error) {
+	if len(b) > MaxStateBytes {
+		return r, ErrInvalid
+	}
+	d := decoder{b: b}
+	body := d.lp(MaxStateBytes)
+	sig := d.lp(ed25519.SignatureSize)
+	if d.done() != nil {
+		return r, ErrInvalid
+	}
+	if len(sig) != ed25519.SignatureSize {
+		return r, ErrInvalid
+	}
+	label := []byte("ra3/recovery\x00")
+	if len(body) < len(label) || !bytes.Equal(body[:len(label)], label) {
+		return r, ErrInvalid
+	}
+	s := decoder{b: body[len(label):]}
+	r.Account = s.str()
+	r.Domain = s.hash()
+	r.Parent = s.hash()
+	r.NewAuthorityID = s.str()
+	copy(r.NewRecoveryEd[:], s.raw(32))
+	r.NewMember.ID = s.str()
+	copy(r.NewMember.EdPublic[:], s.raw(32))
+	copy(r.NewMember.XPublic[:], s.raw(32))
+	r.NewMember.Kind = Kind(s.u32())
+	r.IssuedAt = s.u64()
+	r.NotAfter = s.u64()
+	r.StateHash = s.hash()
+	r.Nonce = s.hash()
+	if s.done() != nil {
+		return r, ErrInvalid
+	}
+	r.Signature = sig
+	// Re-encoding must reproduce the transmitted bytes exactly; anything
+	// else would let a signature cover different content than the fields.
+	again, err := r.signBytes()
+	if err != nil || !bytes.Equal(again, body) {
+		return RecoveryStatement{}, ErrInvalid
+	}
+	return r, nil
+}
+
 func (r *RecoveryStatement) Sign(oldRecovery ed25519.PrivateKey) error {
 	b, err := r.signBytes()
 	if err != nil || len(oldRecovery) != 64 {
@@ -92,7 +150,16 @@ func BuildRecovery(parent State, newMember Member, members []Member, secret []by
 	c.RecoveryEd = newRecoveryEd
 	c.IssuedAt = maxU64(now, c.IssuedAt)
 	c.NotAfter = addLease(c.IssuedAt)
-	c.Members = members
+	c.Members = slices.Clone(members)
+	slices.SortFunc(c.Members, func(a, b Member) int {
+		if a.ID < b.ID {
+			return -1
+		}
+		if a.ID > b.ID {
+			return 1
+		}
+		return 0
+	})
 	c.Removed = removed
 	s, err := build(c, secret, nil, newSigner)
 	if err != nil {

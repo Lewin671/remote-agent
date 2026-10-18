@@ -24,6 +24,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"google.golang.org/protobuf/proto"
 )
@@ -156,7 +157,7 @@ func TestFCMPush(t *testing.T) {
 	m := remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, hs.URL, withToken(ts.login(t, mpriv, mid)))
 	c := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, hs.URL, withToken(ts.login(t, cpriv, cid)))
 	skey := e2e.NewKey()
-	keyEnv, _ := e2e.Seal(keys.Wrap, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
+	keyEnv, _ := e2e.Seal(keys.Wrap, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
 	if _, err := m.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s", Key: keyEnv})); err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +170,7 @@ func TestFCMPush(t *testing.T) {
 	}
 
 	notifyKey := e2e.NewKey()
-	content, _ := e2e.SealMessage(notifyKey, &pb.Header{Version: 2,
+	content, _ := e2e.SealMessage(notifyKey, &pb.Header{Version: deviceauth.Version,
 		Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: mid, SessionId: "s", RequestId: "appr-1", Sender: mid,
 	}, &pb.NotifyContent{SessionId: "s", Approval: &pb.NotifyApproval{ApprovalId: "appr-1", Command: "go test ./..."}})
 	notify := func(key string, env *pb.Envelope) error {
@@ -211,7 +212,7 @@ func TestFCMPush(t *testing.T) {
 	}
 
 	// Content for another session is refused.
-	other, _ := e2e.SealMessage(notifyKey, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: mid, SessionId: "t"}, &pb.NotifyContent{})
+	other, _ := e2e.SealMessage(notifyKey, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: mid, SessionId: "t"}, &pb.NotifyContent{})
 	if err := notify("appr-3", other); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("misplaced content: %v", err)
 	}

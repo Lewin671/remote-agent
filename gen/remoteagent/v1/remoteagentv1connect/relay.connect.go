@@ -29,6 +29,8 @@ const (
 	ClientServiceName = "remoteagent.v1.ClientService"
 	// MachineServiceName is the fully-qualified name of the MachineService service.
 	MachineServiceName = "remoteagent.v1.MachineService"
+	// RecoveryServiceName is the fully-qualified name of the RecoveryService service.
+	RecoveryServiceName = "remoteagent.v1.RecoveryService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -87,9 +89,6 @@ const (
 	// ClientServiceSetPushSubscriptionProcedure is the fully-qualified name of the ClientService's
 	// SetPushSubscription RPC.
 	ClientServiceSetPushSubscriptionProcedure = "/remoteagent.v1.ClientService/SetPushSubscription"
-	// ClientServiceRemoveDeviceProcedure is the fully-qualified name of the ClientService's
-	// RemoveDevice RPC.
-	ClientServiceRemoveDeviceProcedure = "/remoteagent.v1.ClientService/RemoveDevice"
 	// ClientServiceSetPushTargetProcedure is the fully-qualified name of the ClientService's
 	// SetPushTarget RPC.
 	ClientServiceSetPushTargetProcedure = "/remoteagent.v1.ClientService/SetPushTarget"
@@ -107,9 +106,15 @@ const (
 	// ClientServicePutAccountPrefsProcedure is the fully-qualified name of the ClientService's
 	// PutAccountPrefs RPC.
 	ClientServicePutAccountPrefsProcedure = "/remoteagent.v1.ClientService/PutAccountPrefs"
-	// MachineServicePinSecurityDomainProcedure is the fully-qualified name of the MachineService's
+	// ClientServicePinSecurityDomainProcedure is the fully-qualified name of the ClientService's
 	// PinSecurityDomain RPC.
-	MachineServicePinSecurityDomainProcedure = "/remoteagent.v1.MachineService/PinSecurityDomain"
+	ClientServicePinSecurityDomainProcedure = "/remoteagent.v1.ClientService/PinSecurityDomain"
+	// ClientServicePutSecurityStateProcedure is the fully-qualified name of the ClientService's
+	// PutSecurityState RPC.
+	ClientServicePutSecurityStateProcedure = "/remoteagent.v1.ClientService/PutSecurityState"
+	// ClientServiceGetSecurityStatesProcedure is the fully-qualified name of the ClientService's
+	// GetSecurityStates RPC.
+	ClientServiceGetSecurityStatesProcedure = "/remoteagent.v1.ClientService/GetSecurityStates"
 	// MachineServicePutMachineProcedure is the fully-qualified name of the MachineService's PutMachine
 	// RPC.
 	MachineServicePutMachineProcedure = "/remoteagent.v1.MachineService/PutMachine"
@@ -126,6 +131,15 @@ const (
 	MachineServiceNotifyProcedure = "/remoteagent.v1.MachineService/Notify"
 	// MachineServicePutImageProcedure is the fully-qualified name of the MachineService's PutImage RPC.
 	MachineServicePutImageProcedure = "/remoteagent.v1.MachineService/PutImage"
+	// RecoveryServiceGetRecoveryContextProcedure is the fully-qualified name of the RecoveryService's
+	// GetRecoveryContext RPC.
+	RecoveryServiceGetRecoveryContextProcedure = "/remoteagent.v1.RecoveryService/GetRecoveryContext"
+	// RecoveryServiceSubmitRecoveryProcedure is the fully-qualified name of the RecoveryService's
+	// SubmitRecovery RPC.
+	RecoveryServiceSubmitRecoveryProcedure = "/remoteagent.v1.RecoveryService/SubmitRecovery"
+	// RecoveryServiceCompleteRecoveryProcedure is the fully-qualified name of the RecoveryService's
+	// CompleteRecovery RPC.
+	RecoveryServiceCompleteRecoveryProcedure = "/remoteagent.v1.RecoveryService/CompleteRecovery"
 )
 
 // AuthServiceClient is a client for the remoteagent.v1.AuthService service.
@@ -523,9 +537,6 @@ type ClientServiceClient interface {
 	// subscription with the kinds of notifications it wants.
 	GetPushKey(context.Context, *connect.Request[v1.GetPushKeyRequest]) (*connect.Response[v1.GetPushKeyResponse], error)
 	SetPushSubscription(context.Context, *connect.Request[v1.SetPushSubscriptionRequest]) (*connect.Response[v1.SetPushSubscriptionResponse], error)
-	// RemoveDevice unregisters a device and ends its logins; a removed
-	// machine's sessions are deleted.
-	RemoveDevice(context.Context, *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error)
 	// SetPushTarget registers where this device gets notifications, one
 	// target per type: Web Push and FCM can be set side by side.
 	// SetPushSubscription is the same for Web Push.
@@ -541,6 +552,15 @@ type ClientServiceClient interface {
 	// of the expected revision.
 	GetAccountPrefs(context.Context, *connect.Request[v1.GetAccountPrefsRequest]) (*connect.Response[v1.GetAccountPrefsResponse], error)
 	PutAccountPrefs(context.Context, *connect.Request[v1.PutAccountPrefsRequest]) (*connect.Response[v1.PutAccountPrefsResponse], error)
+	// PinSecurityDomain stores the phone-signed genesis state of a new
+	// account. Called once, by the new authority phone.
+	PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error)
+	// PutSecurityState uploads a contiguous signed state chain segment. The
+	// first state must continue from the stored head (or be the pinned
+	// genesis). The server rejects forks, rollbacks and invalid signatures.
+	PutSecurityState(context.Context, *connect.Request[v1.PutSecurityStateRequest]) (*connect.Response[v1.PutSecurityStateResponse], error)
+	// GetSecurityStates returns states after an epoch, up to eight at a time.
+	GetSecurityStates(context.Context, *connect.Request[v1.GetSecurityStatesRequest]) (*connect.Response[v1.GetSecurityStatesResponse], error)
 }
 
 // NewClientServiceClient constructs a client for the remoteagent.v1.ClientService service. By
@@ -590,12 +610,6 @@ func NewClientServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(clientServiceMethods.ByName("SetPushSubscription")),
 			connect.WithClientOptions(opts...),
 		),
-		removeDevice: connect.NewClient[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse](
-			httpClient,
-			baseURL+ClientServiceRemoveDeviceProcedure,
-			connect.WithSchema(clientServiceMethods.ByName("RemoveDevice")),
-			connect.WithClientOptions(opts...),
-		),
 		setPushTarget: connect.NewClient[v1.SetPushTargetRequest, v1.SetPushTargetResponse](
 			httpClient,
 			baseURL+ClientServiceSetPushTargetProcedure,
@@ -632,6 +646,24 @@ func NewClientServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(clientServiceMethods.ByName("PutAccountPrefs")),
 			connect.WithClientOptions(opts...),
 		),
+		pinSecurityDomain: connect.NewClient[v1.PinSecurityDomainRequest, v1.PinSecurityDomainResponse](
+			httpClient,
+			baseURL+ClientServicePinSecurityDomainProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("PinSecurityDomain")),
+			connect.WithClientOptions(opts...),
+		),
+		putSecurityState: connect.NewClient[v1.PutSecurityStateRequest, v1.PutSecurityStateResponse](
+			httpClient,
+			baseURL+ClientServicePutSecurityStateProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("PutSecurityState")),
+			connect.WithClientOptions(opts...),
+		),
+		getSecurityStates: connect.NewClient[v1.GetSecurityStatesRequest, v1.GetSecurityStatesResponse](
+			httpClient,
+			baseURL+ClientServiceGetSecurityStatesProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("GetSecurityStates")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -643,13 +675,15 @@ type clientServiceClient struct {
 	forward             *connect.Client[v1.ForwardRequest, v1.ForwardResponse]
 	getPushKey          *connect.Client[v1.GetPushKeyRequest, v1.GetPushKeyResponse]
 	setPushSubscription *connect.Client[v1.SetPushSubscriptionRequest, v1.SetPushSubscriptionResponse]
-	removeDevice        *connect.Client[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse]
 	setPushTarget       *connect.Client[v1.SetPushTargetRequest, v1.SetPushTargetResponse]
 	getImage            *connect.Client[v1.GetImageRequest, v1.GetImageResponse]
 	listDevices         *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
 	putDeviceMeta       *connect.Client[v1.PutDeviceMetaRequest, v1.PutDeviceMetaResponse]
 	getAccountPrefs     *connect.Client[v1.GetAccountPrefsRequest, v1.GetAccountPrefsResponse]
 	putAccountPrefs     *connect.Client[v1.PutAccountPrefsRequest, v1.PutAccountPrefsResponse]
+	pinSecurityDomain   *connect.Client[v1.PinSecurityDomainRequest, v1.PinSecurityDomainResponse]
+	putSecurityState    *connect.Client[v1.PutSecurityStateRequest, v1.PutSecurityStateResponse]
+	getSecurityStates   *connect.Client[v1.GetSecurityStatesRequest, v1.GetSecurityStatesResponse]
 }
 
 // ListMachines calls remoteagent.v1.ClientService.ListMachines.
@@ -682,11 +716,6 @@ func (c *clientServiceClient) SetPushSubscription(ctx context.Context, req *conn
 	return c.setPushSubscription.CallUnary(ctx, req)
 }
 
-// RemoveDevice calls remoteagent.v1.ClientService.RemoveDevice.
-func (c *clientServiceClient) RemoveDevice(ctx context.Context, req *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error) {
-	return c.removeDevice.CallUnary(ctx, req)
-}
-
 // SetPushTarget calls remoteagent.v1.ClientService.SetPushTarget.
 func (c *clientServiceClient) SetPushTarget(ctx context.Context, req *connect.Request[v1.SetPushTargetRequest]) (*connect.Response[v1.SetPushTargetResponse], error) {
 	return c.setPushTarget.CallUnary(ctx, req)
@@ -717,6 +746,21 @@ func (c *clientServiceClient) PutAccountPrefs(ctx context.Context, req *connect.
 	return c.putAccountPrefs.CallUnary(ctx, req)
 }
 
+// PinSecurityDomain calls remoteagent.v1.ClientService.PinSecurityDomain.
+func (c *clientServiceClient) PinSecurityDomain(ctx context.Context, req *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error) {
+	return c.pinSecurityDomain.CallUnary(ctx, req)
+}
+
+// PutSecurityState calls remoteagent.v1.ClientService.PutSecurityState.
+func (c *clientServiceClient) PutSecurityState(ctx context.Context, req *connect.Request[v1.PutSecurityStateRequest]) (*connect.Response[v1.PutSecurityStateResponse], error) {
+	return c.putSecurityState.CallUnary(ctx, req)
+}
+
+// GetSecurityStates calls remoteagent.v1.ClientService.GetSecurityStates.
+func (c *clientServiceClient) GetSecurityStates(ctx context.Context, req *connect.Request[v1.GetSecurityStatesRequest]) (*connect.Response[v1.GetSecurityStatesResponse], error) {
+	return c.getSecurityStates.CallUnary(ctx, req)
+}
+
 // ClientServiceHandler is an implementation of the remoteagent.v1.ClientService service.
 type ClientServiceHandler interface {
 	ListMachines(context.Context, *connect.Request[v1.ListMachinesRequest]) (*connect.Response[v1.ListMachinesResponse], error)
@@ -730,9 +774,6 @@ type ClientServiceHandler interface {
 	// subscription with the kinds of notifications it wants.
 	GetPushKey(context.Context, *connect.Request[v1.GetPushKeyRequest]) (*connect.Response[v1.GetPushKeyResponse], error)
 	SetPushSubscription(context.Context, *connect.Request[v1.SetPushSubscriptionRequest]) (*connect.Response[v1.SetPushSubscriptionResponse], error)
-	// RemoveDevice unregisters a device and ends its logins; a removed
-	// machine's sessions are deleted.
-	RemoveDevice(context.Context, *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error)
 	// SetPushTarget registers where this device gets notifications, one
 	// target per type: Web Push and FCM can be set side by side.
 	// SetPushSubscription is the same for Web Push.
@@ -748,6 +789,15 @@ type ClientServiceHandler interface {
 	// of the expected revision.
 	GetAccountPrefs(context.Context, *connect.Request[v1.GetAccountPrefsRequest]) (*connect.Response[v1.GetAccountPrefsResponse], error)
 	PutAccountPrefs(context.Context, *connect.Request[v1.PutAccountPrefsRequest]) (*connect.Response[v1.PutAccountPrefsResponse], error)
+	// PinSecurityDomain stores the phone-signed genesis state of a new
+	// account. Called once, by the new authority phone.
+	PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error)
+	// PutSecurityState uploads a contiguous signed state chain segment. The
+	// first state must continue from the stored head (or be the pinned
+	// genesis). The server rejects forks, rollbacks and invalid signatures.
+	PutSecurityState(context.Context, *connect.Request[v1.PutSecurityStateRequest]) (*connect.Response[v1.PutSecurityStateResponse], error)
+	// GetSecurityStates returns states after an epoch, up to eight at a time.
+	GetSecurityStates(context.Context, *connect.Request[v1.GetSecurityStatesRequest]) (*connect.Response[v1.GetSecurityStatesResponse], error)
 }
 
 // NewClientServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -793,12 +843,6 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(clientServiceMethods.ByName("SetPushSubscription")),
 		connect.WithHandlerOptions(opts...),
 	)
-	clientServiceRemoveDeviceHandler := connect.NewUnaryHandler(
-		ClientServiceRemoveDeviceProcedure,
-		svc.RemoveDevice,
-		connect.WithSchema(clientServiceMethods.ByName("RemoveDevice")),
-		connect.WithHandlerOptions(opts...),
-	)
 	clientServiceSetPushTargetHandler := connect.NewUnaryHandler(
 		ClientServiceSetPushTargetProcedure,
 		svc.SetPushTarget,
@@ -835,6 +879,24 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(clientServiceMethods.ByName("PutAccountPrefs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	clientServicePinSecurityDomainHandler := connect.NewUnaryHandler(
+		ClientServicePinSecurityDomainProcedure,
+		svc.PinSecurityDomain,
+		connect.WithSchema(clientServiceMethods.ByName("PinSecurityDomain")),
+		connect.WithHandlerOptions(opts...),
+	)
+	clientServicePutSecurityStateHandler := connect.NewUnaryHandler(
+		ClientServicePutSecurityStateProcedure,
+		svc.PutSecurityState,
+		connect.WithSchema(clientServiceMethods.ByName("PutSecurityState")),
+		connect.WithHandlerOptions(opts...),
+	)
+	clientServiceGetSecurityStatesHandler := connect.NewUnaryHandler(
+		ClientServiceGetSecurityStatesProcedure,
+		svc.GetSecurityStates,
+		connect.WithSchema(clientServiceMethods.ByName("GetSecurityStates")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/remoteagent.v1.ClientService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ClientServiceListMachinesProcedure:
@@ -849,8 +911,6 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 			clientServiceGetPushKeyHandler.ServeHTTP(w, r)
 		case ClientServiceSetPushSubscriptionProcedure:
 			clientServiceSetPushSubscriptionHandler.ServeHTTP(w, r)
-		case ClientServiceRemoveDeviceProcedure:
-			clientServiceRemoveDeviceHandler.ServeHTTP(w, r)
 		case ClientServiceSetPushTargetProcedure:
 			clientServiceSetPushTargetHandler.ServeHTTP(w, r)
 		case ClientServiceGetImageProcedure:
@@ -863,6 +923,12 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 			clientServiceGetAccountPrefsHandler.ServeHTTP(w, r)
 		case ClientServicePutAccountPrefsProcedure:
 			clientServicePutAccountPrefsHandler.ServeHTTP(w, r)
+		case ClientServicePinSecurityDomainProcedure:
+			clientServicePinSecurityDomainHandler.ServeHTTP(w, r)
+		case ClientServicePutSecurityStateProcedure:
+			clientServicePutSecurityStateHandler.ServeHTTP(w, r)
+		case ClientServiceGetSecurityStatesProcedure:
+			clientServiceGetSecurityStatesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -896,10 +962,6 @@ func (UnimplementedClientServiceHandler) SetPushSubscription(context.Context, *c
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.SetPushSubscription is not implemented"))
 }
 
-func (UnimplementedClientServiceHandler) RemoveDevice(context.Context, *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.RemoveDevice is not implemented"))
-}
-
 func (UnimplementedClientServiceHandler) SetPushTarget(context.Context, *connect.Request[v1.SetPushTargetRequest]) (*connect.Response[v1.SetPushTargetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.SetPushTarget is not implemented"))
 }
@@ -924,11 +986,20 @@ func (UnimplementedClientServiceHandler) PutAccountPrefs(context.Context, *conne
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.PutAccountPrefs is not implemented"))
 }
 
+func (UnimplementedClientServiceHandler) PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.PinSecurityDomain is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) PutSecurityState(context.Context, *connect.Request[v1.PutSecurityStateRequest]) (*connect.Response[v1.PutSecurityStateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.PutSecurityState is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) GetSecurityStates(context.Context, *connect.Request[v1.GetSecurityStatesRequest]) (*connect.Response[v1.GetSecurityStatesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.GetSecurityStates is not implemented"))
+}
+
 // MachineServiceClient is a client for the remoteagent.v1.MachineService service.
 type MachineServiceClient interface {
-	// One-time transport pin, installed by the authority host. Endpoints keep
-	// their independently SAS-pinned authority; this is only server-side ACL.
-	PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error)
 	PutMachine(context.Context, *connect.Request[v1.PutMachineRequest]) (*connect.Response[v1.PutMachineResponse], error)
 	PutSession(context.Context, *connect.Request[v1.PutSessionRequest]) (*connect.Response[v1.PutSessionResponse], error)
 	// UploadEvents appends events in order. Events the server already has
@@ -954,12 +1025,6 @@ func NewMachineServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	machineServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("MachineService").Methods()
 	return &machineServiceClient{
-		pinSecurityDomain: connect.NewClient[v1.PinSecurityDomainRequest, v1.PinSecurityDomainResponse](
-			httpClient,
-			baseURL+MachineServicePinSecurityDomainProcedure,
-			connect.WithSchema(machineServiceMethods.ByName("PinSecurityDomain")),
-			connect.WithClientOptions(opts...),
-		),
 		putMachine: connect.NewClient[v1.PutMachineRequest, v1.PutMachineResponse](
 			httpClient,
 			baseURL+MachineServicePutMachineProcedure,
@@ -1001,18 +1066,12 @@ func NewMachineServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // machineServiceClient implements MachineServiceClient.
 type machineServiceClient struct {
-	pinSecurityDomain *connect.Client[v1.PinSecurityDomainRequest, v1.PinSecurityDomainResponse]
-	putMachine        *connect.Client[v1.PutMachineRequest, v1.PutMachineResponse]
-	putSession        *connect.Client[v1.PutSessionRequest, v1.PutSessionResponse]
-	uploadEvents      *connect.Client[v1.UploadEventsRequest, v1.UploadEventsResponse]
-	listSessionHeads  *connect.Client[v1.ListSessionHeadsRequest, v1.ListSessionHeadsResponse]
-	notify            *connect.Client[v1.NotifyRequest, v1.NotifyResponse]
-	putImage          *connect.Client[v1.PutImageRequest, v1.PutImageResponse]
-}
-
-// PinSecurityDomain calls remoteagent.v1.MachineService.PinSecurityDomain.
-func (c *machineServiceClient) PinSecurityDomain(ctx context.Context, req *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error) {
-	return c.pinSecurityDomain.CallUnary(ctx, req)
+	putMachine       *connect.Client[v1.PutMachineRequest, v1.PutMachineResponse]
+	putSession       *connect.Client[v1.PutSessionRequest, v1.PutSessionResponse]
+	uploadEvents     *connect.Client[v1.UploadEventsRequest, v1.UploadEventsResponse]
+	listSessionHeads *connect.Client[v1.ListSessionHeadsRequest, v1.ListSessionHeadsResponse]
+	notify           *connect.Client[v1.NotifyRequest, v1.NotifyResponse]
+	putImage         *connect.Client[v1.PutImageRequest, v1.PutImageResponse]
 }
 
 // PutMachine calls remoteagent.v1.MachineService.PutMachine.
@@ -1047,9 +1106,6 @@ func (c *machineServiceClient) PutImage(ctx context.Context, req *connect.Reques
 
 // MachineServiceHandler is an implementation of the remoteagent.v1.MachineService service.
 type MachineServiceHandler interface {
-	// One-time transport pin, installed by the authority host. Endpoints keep
-	// their independently SAS-pinned authority; this is only server-side ACL.
-	PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error)
 	PutMachine(context.Context, *connect.Request[v1.PutMachineRequest]) (*connect.Response[v1.PutMachineResponse], error)
 	PutSession(context.Context, *connect.Request[v1.PutSessionRequest]) (*connect.Response[v1.PutSessionResponse], error)
 	// UploadEvents appends events in order. Events the server already has
@@ -1071,12 +1127,6 @@ type MachineServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	machineServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("MachineService").Methods()
-	machineServicePinSecurityDomainHandler := connect.NewUnaryHandler(
-		MachineServicePinSecurityDomainProcedure,
-		svc.PinSecurityDomain,
-		connect.WithSchema(machineServiceMethods.ByName("PinSecurityDomain")),
-		connect.WithHandlerOptions(opts...),
-	)
 	machineServicePutMachineHandler := connect.NewUnaryHandler(
 		MachineServicePutMachineProcedure,
 		svc.PutMachine,
@@ -1115,8 +1165,6 @@ func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.Handler
 	)
 	return "/remoteagent.v1.MachineService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case MachineServicePinSecurityDomainProcedure:
-			machineServicePinSecurityDomainHandler.ServeHTTP(w, r)
 		case MachineServicePutMachineProcedure:
 			machineServicePutMachineHandler.ServeHTTP(w, r)
 		case MachineServicePutSessionProcedure:
@@ -1137,10 +1185,6 @@ func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.Handler
 
 // UnimplementedMachineServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedMachineServiceHandler struct{}
-
-func (UnimplementedMachineServiceHandler) PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.MachineService.PinSecurityDomain is not implemented"))
-}
 
 func (UnimplementedMachineServiceHandler) PutMachine(context.Context, *connect.Request[v1.PutMachineRequest]) (*connect.Response[v1.PutMachineResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.MachineService.PutMachine is not implemented"))
@@ -1164,4 +1208,126 @@ func (UnimplementedMachineServiceHandler) Notify(context.Context, *connect.Reque
 
 func (UnimplementedMachineServiceHandler) PutImage(context.Context, *connect.Request[v1.PutImageRequest]) (*connect.Response[v1.PutImageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.MachineService.PutImage is not implemented"))
+}
+
+// RecoveryServiceClient is a client for the remoteagent.v1.RecoveryService service.
+type RecoveryServiceClient interface {
+	GetRecoveryContext(context.Context, *connect.Request[v1.GetRecoveryContextRequest]) (*connect.Response[v1.GetRecoveryContextResponse], error)
+	SubmitRecovery(context.Context, *connect.Request[v1.SubmitRecoveryRequest]) (*connect.Response[v1.SubmitRecoveryResponse], error)
+	CompleteRecovery(context.Context, *connect.Request[v1.CompleteRecoveryRequest]) (*connect.Response[v1.CompleteRecoveryResponse], error)
+}
+
+// NewRecoveryServiceClient constructs a client for the remoteagent.v1.RecoveryService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewRecoveryServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RecoveryServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	recoveryServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("RecoveryService").Methods()
+	return &recoveryServiceClient{
+		getRecoveryContext: connect.NewClient[v1.GetRecoveryContextRequest, v1.GetRecoveryContextResponse](
+			httpClient,
+			baseURL+RecoveryServiceGetRecoveryContextProcedure,
+			connect.WithSchema(recoveryServiceMethods.ByName("GetRecoveryContext")),
+			connect.WithClientOptions(opts...),
+		),
+		submitRecovery: connect.NewClient[v1.SubmitRecoveryRequest, v1.SubmitRecoveryResponse](
+			httpClient,
+			baseURL+RecoveryServiceSubmitRecoveryProcedure,
+			connect.WithSchema(recoveryServiceMethods.ByName("SubmitRecovery")),
+			connect.WithClientOptions(opts...),
+		),
+		completeRecovery: connect.NewClient[v1.CompleteRecoveryRequest, v1.CompleteRecoveryResponse](
+			httpClient,
+			baseURL+RecoveryServiceCompleteRecoveryProcedure,
+			connect.WithSchema(recoveryServiceMethods.ByName("CompleteRecovery")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// recoveryServiceClient implements RecoveryServiceClient.
+type recoveryServiceClient struct {
+	getRecoveryContext *connect.Client[v1.GetRecoveryContextRequest, v1.GetRecoveryContextResponse]
+	submitRecovery     *connect.Client[v1.SubmitRecoveryRequest, v1.SubmitRecoveryResponse]
+	completeRecovery   *connect.Client[v1.CompleteRecoveryRequest, v1.CompleteRecoveryResponse]
+}
+
+// GetRecoveryContext calls remoteagent.v1.RecoveryService.GetRecoveryContext.
+func (c *recoveryServiceClient) GetRecoveryContext(ctx context.Context, req *connect.Request[v1.GetRecoveryContextRequest]) (*connect.Response[v1.GetRecoveryContextResponse], error) {
+	return c.getRecoveryContext.CallUnary(ctx, req)
+}
+
+// SubmitRecovery calls remoteagent.v1.RecoveryService.SubmitRecovery.
+func (c *recoveryServiceClient) SubmitRecovery(ctx context.Context, req *connect.Request[v1.SubmitRecoveryRequest]) (*connect.Response[v1.SubmitRecoveryResponse], error) {
+	return c.submitRecovery.CallUnary(ctx, req)
+}
+
+// CompleteRecovery calls remoteagent.v1.RecoveryService.CompleteRecovery.
+func (c *recoveryServiceClient) CompleteRecovery(ctx context.Context, req *connect.Request[v1.CompleteRecoveryRequest]) (*connect.Response[v1.CompleteRecoveryResponse], error) {
+	return c.completeRecovery.CallUnary(ctx, req)
+}
+
+// RecoveryServiceHandler is an implementation of the remoteagent.v1.RecoveryService service.
+type RecoveryServiceHandler interface {
+	GetRecoveryContext(context.Context, *connect.Request[v1.GetRecoveryContextRequest]) (*connect.Response[v1.GetRecoveryContextResponse], error)
+	SubmitRecovery(context.Context, *connect.Request[v1.SubmitRecoveryRequest]) (*connect.Response[v1.SubmitRecoveryResponse], error)
+	CompleteRecovery(context.Context, *connect.Request[v1.CompleteRecoveryRequest]) (*connect.Response[v1.CompleteRecoveryResponse], error)
+}
+
+// NewRecoveryServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewRecoveryServiceHandler(svc RecoveryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	recoveryServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("RecoveryService").Methods()
+	recoveryServiceGetRecoveryContextHandler := connect.NewUnaryHandler(
+		RecoveryServiceGetRecoveryContextProcedure,
+		svc.GetRecoveryContext,
+		connect.WithSchema(recoveryServiceMethods.ByName("GetRecoveryContext")),
+		connect.WithHandlerOptions(opts...),
+	)
+	recoveryServiceSubmitRecoveryHandler := connect.NewUnaryHandler(
+		RecoveryServiceSubmitRecoveryProcedure,
+		svc.SubmitRecovery,
+		connect.WithSchema(recoveryServiceMethods.ByName("SubmitRecovery")),
+		connect.WithHandlerOptions(opts...),
+	)
+	recoveryServiceCompleteRecoveryHandler := connect.NewUnaryHandler(
+		RecoveryServiceCompleteRecoveryProcedure,
+		svc.CompleteRecovery,
+		connect.WithSchema(recoveryServiceMethods.ByName("CompleteRecovery")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/remoteagent.v1.RecoveryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case RecoveryServiceGetRecoveryContextProcedure:
+			recoveryServiceGetRecoveryContextHandler.ServeHTTP(w, r)
+		case RecoveryServiceSubmitRecoveryProcedure:
+			recoveryServiceSubmitRecoveryHandler.ServeHTTP(w, r)
+		case RecoveryServiceCompleteRecoveryProcedure:
+			recoveryServiceCompleteRecoveryHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedRecoveryServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedRecoveryServiceHandler struct{}
+
+func (UnimplementedRecoveryServiceHandler) GetRecoveryContext(context.Context, *connect.Request[v1.GetRecoveryContextRequest]) (*connect.Response[v1.GetRecoveryContextResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.RecoveryService.GetRecoveryContext is not implemented"))
+}
+
+func (UnimplementedRecoveryServiceHandler) SubmitRecovery(context.Context, *connect.Request[v1.SubmitRecoveryRequest]) (*connect.Response[v1.SubmitRecoveryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.RecoveryService.SubmitRecovery is not implemented"))
+}
+
+func (UnimplementedRecoveryServiceHandler) CompleteRecovery(context.Context, *connect.Request[v1.CompleteRecoveryRequest]) (*connect.Response[v1.CompleteRecoveryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.RecoveryService.CompleteRecovery is not implemented"))
 }

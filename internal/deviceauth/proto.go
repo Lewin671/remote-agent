@@ -26,7 +26,7 @@ func (w Wire) Envelope() (*pb.Envelope, error) {
 	return &pb.Envelope{Header: raw, Nonce: bytes.Clone(w.Nonce), Ciphertext: bytes.Clone(w.Cipher), Signature: bytes.Clone(w.Origin), SecurityHeader: bytes.Clone(w.Header)}, nil
 }
 func FromEnvelope(env *pb.Envelope) (Wire, error) {
-	if env == nil || len(env.Header) > MaxHeaderBytes || len(env.ProtoReflect().GetUnknown()) != 0 || len(env.Authorization) != 0 || len(env.AuthorizationSignature) != 0 {
+	if env == nil || len(env.Header) > MaxHeaderBytes || len(env.ProtoReflect().GetUnknown()) != 0 {
 		return Wire{}, ErrInvalid
 	}
 	w := Wire{Header: bytes.Clone(env.SecurityHeader), Nonce: bytes.Clone(env.Nonce), Cipher: bytes.Clone(env.Ciphertext), Origin: bytes.Clone(env.Signature)}

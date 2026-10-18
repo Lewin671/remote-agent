@@ -173,7 +173,11 @@ func TestKotlinVectors(t *testing.T) {
 	if _, err := OpenMessage(s.Key, penv, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: p.PairingID}, &payload); err != nil {
 		t.Fatal(err)
 	}
-	if hex.EncodeToString(payload.Root) != v.Root || payload.Server != "https://ra.example.com" {
-		t.Errorf("pairing payload server %q", payload.Server)
+	rootKeys, err := Derive(unhex(t, v.Root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(payload.AccountPublicKey) > 0 && !slices.Equal(payload.AccountPublicKey, rootKeys.AccountPublicKey()) || payload.Server != "https://ra.example.com" {
+		t.Errorf("pairing payload account %x, server %q", payload.AccountPublicKey, payload.Server)
 	}
 }

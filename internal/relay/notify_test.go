@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Lewin671/remote-agent/internal/e2e"
 	"strings"
 	"testing"
 
@@ -54,12 +53,7 @@ func TestOwedNotifyCopiesBoundedTail(t *testing.T) {
 }
 
 func TestApprovalNotificationMarksAnyShortenedContent(t *testing.T) {
-	key := make([]byte, 32)
-	keys, err := e2e.Derive(key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	c := &conn{acct: &Account{DeviceID: "machine"}}
 	initializeTestSecurity(t, c)
 	for _, field := range []string{"description", "command", "tool_input", "complete"} {
 		t.Run(field, func(t *testing.T) {
@@ -89,11 +83,7 @@ func TestApprovalNotificationMarksAnyShortenedContent(t *testing.T) {
 }
 
 func TestSkeletonNotificationHasNoApprovalActions(t *testing.T) {
-	keys, err := e2e.Derive(make([]byte, 32))
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	c := &conn{acct: &Account{DeviceID: "machine"}}
 	initializeTestSecurity(t, c)
 	for _, e := range []*pb.Event{
 		{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "private-prefix…#0123456789abcdef" + skeletonNote, Description: skeletonNote}}},
@@ -121,11 +111,7 @@ func TestSkeletonNotificationHasNoApprovalActions(t *testing.T) {
 // A large identity can force fitEvent to shorten the command below the
 // notification's own limit. clip must not erase that earlier truncation.
 func TestApprovalNotificationRetainsFitTruncation(t *testing.T) {
-	keys, err := e2e.Derive(make([]byte, 32))
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	c := &conn{acct: &Account{DeviceID: "machine"}}
 	initializeTestSecurity(t, c)
 	original := &pb.Event{TurnId: strings.Repeat("t", maxEventBytes-512), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "approval", Command: strings.Repeat("c", 4000), Description: "why"}}}
 	fitted := fitEvent(original)
@@ -153,11 +139,7 @@ func TestApprovalNotificationRetainsFitTruncation(t *testing.T) {
 }
 
 func TestApprovalNotificationRecognizesExistingMarkersInEveryField(t *testing.T) {
-	keys, err := e2e.Derive(make([]byte, 32))
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	c := &conn{acct: &Account{DeviceID: "machine"}}
 	initializeTestSecurity(t, c)
 	for _, field := range []string{"description", "command", "tool_input"} {
 		for _, note := range []string{truncatedNote, skeletonNote} {

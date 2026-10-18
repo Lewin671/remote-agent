@@ -7,7 +7,6 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -69,7 +68,7 @@ func TestTermSendKeepsSeqOrderAcrossGoroutines(t *testing.T) {
 	const senders, each = 8, 50
 	key := e2e.NewKey()
 	client, machine, machineID := syntheticTerminalSecurity(t)
-	want := &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_TERMINAL_INPUT, MachineId: machineID, SessionId: "synthetic-session", RequestId: "synthetic-terminal-stream"}
+	want := &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_TERMINAL_INPUT, MachineId: machineID, SessionId: "0123456789abcdef0123456789abcdef", RequestId: "fedcba9876543210fedcba9876543210"}
 	got := make(chan error, 1)
 	hs := wsServer(t, func(ctx context.Context, ws *websocket.Conn) {
 		var last uint64
@@ -89,7 +88,7 @@ func TestTermSendKeepsSeqOrderAcrossGoroutines(t *testing.T) {
 				got <- err
 				return
 			}
-			secureHeader, _, err := machine.OpenCurrent(ctx, wire, key)
+			secureHeader, _, err := machine.Open(wire, key, true, uint64(time.Now().UnixMilli()))
 			h := secureHeader.Projection()
 			if err == nil {
 				err = e2e.Expect(h, want)
@@ -131,69 +130,79 @@ func TestTermSendKeepsSeqOrderAcrossGoroutines(t *testing.T) {
 	}
 }
 
-func syntheticTerminalSecurity(t *testing.T) (*Client, *deviceauth.Remote, string) {
+func syntheticTerminalSecurity(t *testing.T) (*Client, *deviceauth.Endpoint, string) {
 	t.Helper()
-	pub, ed, err := ed25519.GenerateKey(nil)
+	_, phoneEd, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	x, xp, err := deviceauth.NewXKey()
+	_, pxpub, err := deviceauth.NewXKey()
 	if err != nil {
 		t.Fatal(err)
 	}
-	member, err := deviceauth.NewMember(pub, xp, deviceauth.Machine)
+	phone, err := deviceauth.NewMember(phoneEd.Public().(ed25519.PublicKey), pxpub, deviceauth.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
-	keys, err := e2e.Derive(e2e.NewKey())
+	var recPub [32]byte
+	recPub[0] = 1
+	secret := make([]byte, 32)
+	secret[0] = 1
+	var domain deviceauth.Hash
+	domain[0] = 1
+	now := uint64(time.Now().UnixMilli())
+	genesis, err := deviceauth.BuildGenesis("0123456789abcdef0123456789abcdef", domain, phone, recPub, secret, phoneEd, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := t.TempDir()
-	a, err := deviceauth.InitAuthority(filepath.Join(dir, "authority.db"), e2e.AccountID(keys.AccountPublicKey()), member)
+	pin, _ := genesis.Pin()
+	_, med, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { a.Close() })
-	pin, state := a.Snapshot()
-	endpoint, err := deviceauth.InitEndpoint(filepath.Join(dir, "machine.db"), pin, state, member.ID, ed.Seed(), x)
+	mx, mxpub, err := deviceauth.NewXKey()
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { endpoint.Close() })
-	cp, ce, err := ed25519.GenerateKey(nil)
+	mm, err := deviceauth.NewMember(med.Public().(ed25519.PublicKey), mxpub, deviceauth.Machine)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cx, cxp, err := deviceauth.NewXKey()
+	secret2 := make([]byte, 32)
+	secret2[0] = 2
+	withMachine, err := deviceauth.BuildPairState(genesis, mm, mxpub, secret, secret2, phoneEd, now+1000)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cm, err := deviceauth.NewMember(cp, cxp, deviceauth.Client)
+	_, ced, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pair, err := a.BeginPair("synthetic-terminal-pair", member.ID, cm)
+	cx, cxpub, err := deviceauth.NewXKey()
 	if err != nil {
 		t.Fatal(err)
 	}
-	approve, err := deviceauth.SignPair(pair, ed, false)
+	cm, err := deviceauth.NewMember(ced.Public().(ed25519.PublicKey), cxpub, deviceauth.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
-	accept, err := deviceauth.SignPair(pair, ce, true)
+	secret3 := make([]byte, 32)
+	secret3[0] = 3
+	withClient, err := deviceauth.BuildPairState(withMachine, cm, cxpub, secret2, secret3, phoneEd, now+2000)
 	if err != nil {
 		t.Fatal(err)
 	}
-	state, err = a.ApprovePair(pair.ID, approve, accept)
+	states := []deviceauth.State{genesis, withMachine, withClient}
+	proofs := []*deviceauth.RecoveryStatement{nil, nil, nil}
+	machineEndpoint, err := deviceauth.InitEndpoint("", pin, states, proofs, mm.ID, med.Seed(), mx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clientEndpoint, err := deviceauth.InitEndpoint(filepath.Join(dir, "client.db"), pin, state, cm.ID, ce.Seed(), cx)
+	t.Cleanup(func() { machineEndpoint.Close() })
+	clientEndpoint, err := deviceauth.InitEndpoint("", pin, states, proofs, cm.ID, ced.Seed(), cx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { clientEndpoint.Close() })
-	exchange := func(_ context.Context, c deviceauth.Capsule) (deviceauth.Capsule, error) { return a.Handle(c) }
-	return &Client{DeviceID: cm.ID, security: &deviceauth.Remote{Endpoint: clientEndpoint, Exchange: exchange}}, &deviceauth.Remote{Endpoint: endpoint, Exchange: exchange}, member.ID
+	return &Client{DeviceID: cm.ID, endpoint: clientEndpoint}, machineEndpoint, mm.ID
 }

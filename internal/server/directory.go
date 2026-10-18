@@ -210,6 +210,9 @@ func (c *clientService) PutDeviceMeta(ctx context.Context, req *connect.Request[
 	if !validDeviceID(m.DeviceId) {
 		return nil, invalid("malformed device ID")
 	}
+	if m.DeviceId != me.id {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("a device may only write its own metadata"))
+	}
 	if _, err := checkEnvelope(m.Meta, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_DEVICE_META, RequestId: m.DeviceId, Seq: m.ExpectedRevision + 1, Sender: me.id,
 	}); err != nil {

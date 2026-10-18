@@ -79,11 +79,11 @@ until curl -fsS -o /dev/null "http://127.0.0.1:$port/healthz" 2>/dev/null; do
 	sleep 0.1
 done
 # A wrong token is refused, the one install.sh made creates the account.
-if RA_SETUP_TOKEN=wrong REMOTE_AGENT_HOME="$work/state-wrong" "$agent" account init --server "http://127.0.0.1:$port" >/dev/null 2>&1; then
+if RA_SETUP_TOKEN=wrong RA_DEV_AUTHORITY=1 REMOTE_AGENT_HOME="$work/state-wrong" "$agent" account dev-init --server "http://127.0.0.1:$port" >/dev/null 2>&1; then
 	echo "the relay made an account without its setup token" >&2
 	exit 1
 fi
-RA_SETUP_TOKEN=$token REMOTE_AGENT_HOME="$work/state" "$agent" account init --server "http://127.0.0.1:$port"
+RA_SETUP_TOKEN=$token RA_DEV_AUTHORITY=1 REMOTE_AGENT_HOME="$work/state" "$agent" account dev-init --server "http://127.0.0.1:$port"
 REMOTE_AGENT_HOME="$work/state" "$agent" account status
 
 if command -v docker >/dev/null 2>&1; then

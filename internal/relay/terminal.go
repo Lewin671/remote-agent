@@ -69,7 +69,7 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 	var seq uint64
 	send := func(f *pb.TerminalFrame) error {
 		seq++
-		env, err := c.security.sealMessage(ctx, &pb.Header{
+		env, err := c.security.sealMessage(&pb.Header{
 			Kind: pb.PayloadKind_PAYLOAD_KIND_TERMINAL_OUTPUT, MachineId: c.acct.DeviceID, SessionId: sessionID,
 			RequestId: streamID, Seq: seq, Sender: c.acct.DeviceID,
 		}, deviceauth.TerminalOutput, key, f)
@@ -175,35 +175,32 @@ func (c *conn) readTerminal(ctx context.Context, ws *websocket.Conn, t Terminal,
 		if err != nil || h.Machine != c.acct.DeviceID || h.Session != sessionID || h.Request != streamID || h.Seq <= last || !h.Purpose.Control() || h.Purpose == deviceauth.Command {
 			return
 		}
-		if err := c.security.remote.Sync(ctx); err != nil {
-			return
-		}
-		err = c.security.remote.Endpoint.Execute(wire, key, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) error {
+		_, err = c.security.accept(ctx, wire, key, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) ([]byte, error) {
 			plain, err := deviceauth.Unpack(h, plain)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			f := &pb.TerminalFrame{}
 			if proto.Unmarshal(plain, f) != nil {
-				return deviceauth.ErrInvalid
+				return nil, deviceauth.ErrInvalid
 			}
 			switch k := f.Kind.(type) {
 			case *pb.TerminalFrame_Input:
-				return t.Input(k.Input)
+				return nil, t.Input(k.Input)
 			case *pb.TerminalFrame_Resize:
-				return t.Resize(int(k.Resize.Cols), int(k.Resize.Rows), k.Resize.Fit)
+				return nil, t.Resize(int(k.Resize.Cols), int(k.Resize.Rows), k.Resize.Fit)
 			case *pb.TerminalFrame_HistoryRequest:
 				if k.HistoryRequest == nil || len(k.HistoryRequest.RequestId) == 0 || len(k.HistoryRequest.RequestId) > 128 || len(k.HistoryRequest.Cursor) > 128 {
-					return deviceauth.ErrInvalid
+					return nil, deviceauth.ErrInvalid
 				}
 				select {
 				case historyRequests <- k.HistoryRequest:
-					return nil
+					return nil, nil
 				default:
-					return deviceauth.ErrCapacity
+					return nil, deviceauth.ErrCapacity
 				}
 			default:
-				return deviceauth.ErrInvalid
+				return nil, deviceauth.ErrInvalid
 			}
 		})
 		if err == nil {

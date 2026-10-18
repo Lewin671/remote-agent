@@ -76,7 +76,7 @@ func TestRetainedPairingPreservesSigningIdentityAndAccount(t *testing.T) {
 	if err = account.Save(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = EnrollByPairing(context.Background(), PairLink{Code: "12345678", Server: server.URL}, func([]string) bool { t.Error("unverified SAS was shown"); return false })
+	_, err = JoinByPairing(context.Background(), PairLink{Code: "12345678", Server: server.URL}, func([]string) bool { t.Error("unverified SAS was shown"); return false })
 	if err == nil {
 		t.Fatal("changed pairing commitment accepted")
 	}

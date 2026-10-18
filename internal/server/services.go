@@ -70,9 +70,6 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 	if reg.Kind != pb.DeviceKind_DEVICE_KIND_MACHINE && reg.Kind != pb.DeviceKind_DEVICE_KIND_CLIENT {
 		return nil, invalid("unknown device kind")
 	}
-	if !e2e.VerifyRegistration(reg.AccountPublicKey, req.Msg.Registration, req.Msg.Signature) {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("bad account signature"))
-	}
 	acct := e2e.AccountID(reg.AccountPublicKey)
 	var create *newAccount
 	undo := func() {}
@@ -80,6 +77,11 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 	existing, err := a.s.store.account(ctx, acct)
 	switch {
 	case errors.Is(err, errNoRows):
+		// Creating the account is the one registration authorized by the
+		// account root key.
+		if !e2e.VerifyRegistration(reg.AccountPublicKey, req.Msg.Registration, req.Msg.Signature) {
+			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("bad account signature"))
+		}
 		if create, undo, err = a.s.newAccountFor(req); err != nil {
 			return nil, err
 		}
@@ -90,6 +92,8 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 	case existing.status != accountActive:
 		return nil, connect.NewError(connect.CodePermissionDenied, errSuspended)
 	default:
+		// A device joining an existing account is authorized by the
+		// phone-signed approval, never by root-key possession.
 		pl = planOf(existing.plan)
 	}
 	id := e2e.DeviceID(reg.DevicePublicKey)
@@ -104,7 +108,11 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 		undo()
 		return nil, connect.NewError(connect.CodePermissionDenied, err)
 	}
-	if err := a.s.store.addDevice(ctx, acct, create, id, reg, req.Msg.Registration, req.Msg.Signature, limit, approval); err != nil {
+	sig := req.Msg.Signature
+	if sig == nil {
+		sig = []byte{}
+	}
+	if err := a.s.store.addDevice(ctx, acct, create, id, reg, req.Msg.Registration, sig, limit, approval); err != nil {
 		// No account was made: the signup it was admitted for is not used up.
 		undo()
 		var apiErr *connect.Error
@@ -255,20 +263,6 @@ func (c *clientService) GetEvents(ctx context.Context, req *connect.Request[pb.G
 
 func (c *clientService) Forward(ctx context.Context, req *connect.Request[pb.ForwardRequest]) (*connect.Response[pb.ForwardResponse], error) {
 	dev := deviceFrom(ctx)
-	if len(req.Msg.SecurityRpc) > 0 {
-		if req.Msg.Command != nil || len(req.Msg.SecurityRpc) > deviceauth.MaxRPCBytes+512 {
-			return nil, invalid("invalid security RPC")
-		}
-		capsule, err := deviceauth.ParseCapsule(req.Msg.SecurityRpc)
-		if err != nil || capsule.From != dev.id || capsule.To != req.Msg.MachineId {
-			return nil, invalid("security RPC routing mismatch")
-		}
-		res, err := c.s.tenantOf(dev).hub.forward(ctx, req.Msg.MachineId, &pb.ForwardCall{SecurityRpc: req.Msg.SecurityRpc, SenderDeviceId: dev.id})
-		if err != nil {
-			return nil, err
-		}
-		return connect.NewResponse(&pb.ForwardResponse{SecurityRpc: res.SecurityRpc}), nil
-	}
 	// The sender in the sealed header must be the device that is logged
 	// in. The daemon checks the device's signature itself; this catches a
 	// client that claims to be another device early.
@@ -336,10 +330,15 @@ func (m *machineService) PutSession(ctx context.Context, req *connect.Request[pb
 		return nil, invalid("missing session ID")
 	}
 	var key, meta []byte
-	var revision uint64
+	var revision, keyEpoch uint64
 	if req.Msg.Key != nil {
 		if _, err := checkEnvelope(req.Msg.Key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: id, SessionId: sid}); err != nil {
 			return nil, err
+		}
+		if wire, err := deviceauth.FromEnvelope(req.Msg.Key); err == nil {
+			if h, err := deviceauth.ParseHeader(wire.Header); err == nil {
+				keyEpoch = h.ContentEpoch
+			}
 		}
 		key, _ = proto.Marshal(req.Msg.Key)
 	}
@@ -355,7 +354,7 @@ func (m *machineService) PutSession(ctx context.Context, req *connect.Request[pb
 		return nil, invalid("ended_ms must not be negative")
 	}
 	t := m.s.tenantFrom(ctx)
-	rs, err := t.store.putSession(ctx, id, sid, key, meta, revision, req.Msg.EndedMs, t.limit(m.s, growsSessions))
+	rs, err := t.store.putSession(ctx, id, sid, key, keyEpoch, meta, revision, req.Msg.EndedMs, t.limit(m.s, growsSessions))
 	var apiErr *connect.Error
 	switch {
 	case errors.As(err, &apiErr):

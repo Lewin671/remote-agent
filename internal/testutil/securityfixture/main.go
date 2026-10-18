@@ -1,19 +1,20 @@
 // securityfixture is a synthetic stdin/stdout peer used only by cross-language
 // tests. It is not linked into any product binary or release artifact.
+//
+// The v3 fixture exposes a phone-signed state chain. Client implementations
+// use it to check their own parser, chain verification, content-key walk and
+// envelope origin signatures against the Go implementation.
 package main
 
 import (
 	"bufio"
-	"context"
 	"crypto/ed25519"
-	"encoding/binary"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
-	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
@@ -24,163 +25,189 @@ type request struct {
 	Op          string
 	Account     string
 	Member      string
-	Approver    string
-	Pair        string
 	Seed        []byte
+	Recovery    []byte
 	Kind        uint32
 	Header      []byte
 	Plain       []byte
 	SessionSeed []byte
 	Envelope    []byte
-	Capsule     []byte
+	State       []byte
+}
+type record struct {
+	Version int      `json:"version"`
+	Account string   `json:"account"`
+	Domain  []byte   `json:"domain"`
+	Genesis []byte   `json:"genesis"`
+	Member  string   `json:"member"`
+	X       []byte   `json:"x"`
+	States  [][]byte `json:"states"`
+	Proofs  [][]byte `json:"proofs"`
 }
 type response struct {
-	Record      []byte                  `json:",omitempty"`
-	Genesis     []byte                  `json:",omitempty"`
-	State       []byte                  `json:",omitempty"`
-	PairContext *deviceauth.PairContext `json:",omitempty"`
-	Envelope    []byte                  `json:",omitempty"`
-	Header      []byte                  `json:",omitempty"`
-	Plain       []byte                  `json:",omitempty"`
-	Capsule     []byte                  `json:",omitempty"`
-	Error       string                  `json:",omitempty"`
-}
-type member struct {
-	ed     ed25519.PrivateKey
-	x      []byte
-	remote *deviceauth.Remote
+	Record   json.RawMessage `json:",omitempty"`
+	Genesis  []byte          `json:",omitempty"`
+	State    []byte          `json:",omitempty"`
+	Envelope []byte          `json:",omitempty"`
+	Header   []byte          `json:",omitempty"`
+	Plain    []byte          `json:",omitempty"`
+	Error    string          `json:",omitempty"`
 }
 type fixture struct {
-	mu        sync.Mutex
-	dir       string
-	authority *deviceauth.Authority
-	members   map[string]*member
+	mu       sync.Mutex
+	account  string
+	domain   deviceauth.Hash
+	phoneEd  ed25519.PrivateKey
+	recovery ed25519.PrivateKey
+	pin      deviceauth.Pin
+	secret   []byte
+	states   []deviceauth.State
+	proofs   []*deviceauth.RecoveryStatement
+	members  map[string]*member
+}
+type member struct {
+	ed       ed25519.PrivateKey
+	x        []byte
+	endpoint *deviceauth.Endpoint
 }
 
-func field(out []byte, b []byte) []byte {
-	out = binary.BigEndian.AppendUint32(out, uint32(len(b)))
-	return append(out, b...)
-}
-func (f *fixture) record(id string) ([]byte, error) {
+func (f *fixture) recordFor(id string) (*record, error) {
 	m := f.members[id]
 	if m == nil {
 		return nil, errors.New("unknown synthetic member")
 	}
-	if err := m.remote.Sync(context.Background()); err != nil {
-		return nil, err
+	r := &record{Version: 3, Account: f.pin.Account, Domain: f.pin.Domain[:], Genesis: f.pin.Genesis[:], Member: id, X: m.x}
+	for _, s := range f.states {
+		raw, err := s.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		r.States = append(r.States, raw)
 	}
-	pin, state, _ := m.remote.Endpoint.Snapshot()
-	raw, err := state.MarshalBinary()
-	if err != nil {
-		return nil, err
+	for _, p := range f.proofs {
+		if p == nil {
+			r.Proofs = append(r.Proofs, nil)
+			continue
+		}
+		raw, err := p.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		r.Proofs = append(r.Proofs, raw)
 	}
-	out := binary.BigEndian.AppendUint32(nil, 2)
-	out = field(out, []byte(pin.Account))
-	out = append(out, pin.Domain[:]...)
-	out = append(out, pin.Genesis[:]...)
-	out = field(out, []byte(pin.AuthorityID))
-	out = append(out, pin.AuthorityEd[:]...)
-	out = append(out, pin.AuthorityX[:]...)
-	out = field(out, raw)
-	out = field(out, []byte(id))
-	out = append(out, m.x...)
-	out = binary.BigEndian.AppendUint64(out, 0)
-	return out, nil
+	return r, nil
 }
-func (f *fixture) install(ed ed25519.PrivateKey, x []byte, state deviceauth.State) (string, error) {
-	id := deviceauth.ID(ed.Public().(ed25519.PublicKey))
-	pin, _ := f.authority.Snapshot()
-	endpoint, err := deviceauth.InitEndpoint(filepath.Join(f.dir, id+".db"), pin, state, id, ed.Seed(), x)
+
+func (f *fixture) add(ed ed25519.PrivateKey, x []byte, kind deviceauth.Kind) (deviceauth.Member, error) {
+	xpub, err := deviceauth.XPublic(x)
 	if err != nil {
-		return "", err
+		return deviceauth.Member{}, err
 	}
-	f.members[id] = &member{ed: ed, x: x, remote: &deviceauth.Remote{Endpoint: endpoint, Exchange: func(_ context.Context, c deviceauth.Capsule) (deviceauth.Capsule, error) {
-		return f.authority.Handle(c)
-	}}}
-	return id, nil
+	m, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xpub, kind)
+	if err != nil {
+		return deviceauth.Member{}, err
+	}
+	newSecret := make([]byte, 32)
+	if _, err := rand.Read(newSecret); err != nil {
+		return deviceauth.Member{}, err
+	}
+	parent := f.states[len(f.states)-1]
+	s, err := deviceauth.BuildPairState(parent, m, xpub, f.secret, newSecret, f.phoneEd, 1_700_000_000_000)
+	if err != nil {
+		return deviceauth.Member{}, err
+	}
+	f.states = append(f.states, s)
+	f.proofs = append(f.proofs, nil)
+	f.secret = newSecret
+	endpoint, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, m.ID, ed.Seed(), x)
+	if err != nil {
+		return deviceauth.Member{}, err
+	}
+	f.members[m.ID] = &member{ed: ed, x: x, endpoint: endpoint}
+	return m, nil
 }
+
 func (f *fixture) run(q request) (response, error) {
-	ctx := context.Background()
 	switch q.Op {
 	case "init":
-		if f.authority != nil || len(q.Seed) != 32 {
+		if f.phoneEd != nil || len(q.Seed) != 32 {
 			return response{}, errors.New("invalid synthetic genesis")
 		}
-		ed := ed25519.NewKeyFromSeed(q.Seed)
-		x, xp, err := deviceauth.NewXKey()
+		f.account = q.Account
+		f.phoneEd = ed25519.NewKeyFromSeed(q.Seed)
+		x, xpub, err := deviceauth.NewXKey()
 		if err != nil {
 			return response{}, err
 		}
-		m, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xp, deviceauth.Machine)
+		m, err := deviceauth.NewMember(f.phoneEd.Public().(ed25519.PublicKey), xpub, deviceauth.Client)
 		if err != nil {
 			return response{}, err
 		}
-		f.authority, err = deviceauth.InitAuthority(filepath.Join(f.dir, "authority.db"), q.Account, m)
+		if _, err := rand.Read(f.domain[:]); err != nil {
+			return response{}, err
+		}
+		var recPub [32]byte
+		if len(q.Recovery) == 32 {
+			f.recovery = ed25519.NewKeyFromSeed(q.Recovery)
+		} else {
+			_, f.recovery, _ = ed25519.GenerateKey(rand.Reader)
+		}
+		copy(recPub[:], f.recovery.Public().(ed25519.PublicKey))
+		f.secret = make([]byte, 32)
+		if _, err := rand.Read(f.secret); err != nil {
+			return response{}, err
+		}
+		g, err := deviceauth.BuildGenesis(f.account, f.domain, m, recPub, f.secret, f.phoneEd, 1_700_000_000_000)
 		if err != nil {
 			return response{}, err
 		}
-		_, state := f.authority.Snapshot()
-		id, err := f.install(ed, x, state)
+		f.pin, err = g.Pin()
 		if err != nil {
 			return response{}, err
 		}
-		record, err := f.record(id)
-		genesis, _ := state.MarshalBinary()
-		return response{Record: record, Genesis: genesis}, err
+		f.states = []deviceauth.State{g}
+		f.proofs = []*deviceauth.RecoveryStatement{nil}
+		endpoint, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, m.ID, f.phoneEd.Seed(), x)
+		if err != nil {
+			return response{}, err
+		}
+		f.members = map[string]*member{m.ID: {ed: f.phoneEd, x: x, endpoint: endpoint}}
+		r, err := f.recordFor(m.ID)
+		raw, _ := json.Marshal(r)
+		genesis, _ := g.MarshalBinary()
+		return response{Record: raw, Genesis: genesis}, err
 	case "enroll":
-		if f.authority == nil || len(q.Seed) != 32 {
+		if f.phoneEd == nil || len(q.Seed) != 32 {
 			return response{}, errors.New("missing synthetic authority")
 		}
-		authorizer := f.members[q.Approver]
-		if authorizer == nil {
-			return response{}, errors.New("missing synthetic approver")
-		}
 		ed := ed25519.NewKeyFromSeed(q.Seed)
-		x, xp, err := deviceauth.NewXKey()
+		x, _, err := deviceauth.NewXKey()
 		if err != nil {
 			return response{}, err
 		}
-		m, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xp, deviceauth.Kind(q.Kind))
+		kind := deviceauth.Kind(q.Kind)
+		if kind == 0 {
+			kind = deviceauth.Machine
+		}
+		m, err := f.add(ed, x, kind)
 		if err != nil {
 			return response{}, err
 		}
-		pair, err := f.authority.BeginPair(q.Pair, q.Approver, m)
-		if err != nil {
-			return response{}, err
-		}
-		approve, err := deviceauth.SignPair(pair, authorizer.ed, false)
-		if err != nil {
-			return response{}, err
-		}
-		accept, err := deviceauth.SignPair(pair, ed, true)
-		if err != nil {
-			return response{}, err
-		}
-		state, err := f.authority.ApprovePair(pair.ID, approve, accept)
-		if err != nil {
-			return response{}, err
-		}
-		id, err := f.install(ed, x, state)
-		if err != nil {
-			return response{}, err
-		}
-		record, err := f.record(id)
-		raw, _ := state.MarshalBinary()
-		return response{Record: record, State: raw, PairContext: &pair}, err
+		r, err := f.recordFor(m.ID)
+		raw, _ := json.Marshal(r)
+		state := f.states[len(f.states)-1]
+		sraw, _ := state.MarshalBinary()
+		return response{Record: raw, State: sraw}, err
 	case "record":
-		b, err := f.record(q.Member)
-		return response{Record: b}, err
-	case "rpc":
-		capsule, err := deviceauth.ParseCapsule(q.Capsule)
+		r, err := f.recordFor(q.Member)
 		if err != nil {
 			return response{}, err
 		}
-		reply, err := f.authority.Handle(capsule)
-		if err != nil {
-			return response{}, err
-		}
-		raw, err := reply.MarshalBinary()
-		return response{Capsule: raw}, err
+		raw, _ := json.Marshal(r)
+		return response{Record: raw}, nil
+	case "state":
+		sraw, err := f.states[len(f.states)-1].MarshalBinary()
+		return response{State: sraw}, err
 	case "seal":
 		m := f.members[q.Member]
 		if m == nil || len(q.Header) == 0 {
@@ -191,13 +218,7 @@ func (f *fixture) run(q request) (response, error) {
 			return response{}, err
 		}
 		header := deviceauth.Header{Kind: uint32(h.Kind), Purpose: deviceauth.Purpose(h.Kind), Machine: h.MachineId, Session: h.SessionId, Request: h.RequestId, Seq: h.Seq, Deadline: uint64(h.DeadlineMs), Compression: uint32(h.Compression)}
-		var wire deviceauth.Wire
-		var err error
-		if header.Purpose.Mutable() {
-			wire, err = m.remote.SealMutable(ctx, header, q.Plain)
-		} else {
-			wire, err = m.remote.Seal(ctx, header, q.SessionSeed, q.Plain)
-		}
+		wire, err := m.endpoint.Prepare(header, q.SessionSeed, q.Plain)
 		if err != nil {
 			return response{}, err
 		}
@@ -224,12 +245,8 @@ func (f *fixture) run(q request) (response, error) {
 		if err != nil {
 			return response{}, err
 		}
-		var plain []byte
-		if header.Purpose.Control() {
-			header, plain, err = m.remote.OpenCurrent(ctx, wire, q.SessionSeed)
-		} else {
-			header, plain, err = m.remote.OpenHistory(ctx, wire, q.SessionSeed)
-		}
+		live := header.Purpose.Control()
+		header, plain, err := m.endpoint.Open(wire, q.SessionSeed, live, 1_700_000_500_000)
 		if err != nil {
 			return response{}, err
 		}
@@ -238,48 +255,9 @@ func (f *fixture) run(q request) (response, error) {
 	}
 	return response{}, errors.New("unknown fixture operation")
 }
+
 func main() {
-	dir, err := os.MkdirTemp("", "ra-security-fixture-")
-	if err != nil {
-		panic("cannot initialize synthetic fixture")
-	}
-	defer os.RemoveAll(dir)
-	f := &fixture{dir: dir, members: map[string]*member{}}
-	stop := make(chan struct{})
-	stopped := make(chan struct{})
-	go func() {
-		defer close(stopped)
-		ticker := time.NewTicker(500 * time.Millisecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-stop:
-				return
-			case <-ticker.C:
-				f.mu.Lock()
-				if f.authority != nil {
-					_, state := f.authority.Snapshot()
-					for id, m := range f.members {
-						member, ok := state.Core.Member(id)
-						if ok && member.Kind == deviceauth.Machine {
-							_ = m.remote.Sync(context.Background())
-						}
-					}
-				}
-				f.mu.Unlock()
-			}
-		}
-	}()
-	defer func() {
-		close(stop)
-		<-stopped
-		for _, m := range f.members {
-			m.remote.Endpoint.Close()
-		}
-		if f.authority != nil {
-			f.authority.Close()
-		}
-	}()
+	f := &fixture{members: map[string]*member{}}
 	scan := bufio.NewScanner(os.Stdin)
 	scan.Buffer(make([]byte, 4096), 16<<20)
 	out := bufio.NewWriter(os.Stdout)

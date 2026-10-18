@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 )
 
@@ -24,6 +25,7 @@ func parseApproval(raw, signature []byte) (*enrollmentApproval, error) {
 	}
 	a, err := e2e.VerifyPairApproval(raw, signature)
 	if err != nil {
+		println("DEBUG approval", len(raw), len(signature), err.Error())
 		return nil, errAdmissionRequired
 	}
 	return &enrollmentApproval{raw: bytes.Clone(raw), signature: bytes.Clone(signature), info: a}, nil
@@ -40,6 +42,21 @@ func checkApprover(ctx context.Context, tx *sql.Tx, a *pb.PairApproval) error {
 		return err
 	}
 	if state != accountActive || !bytes.Equal(pub, a.ApproverPublicKey) {
+		return errAdmissionRequired
+	}
+	// On an established account only the current authority phone may
+	// authorize a registration. Before the genesis exists, the first device
+	// bootstraps the account.
+	var headRaw []byte
+	err = tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? ORDER BY epoch DESC LIMIT 1`, a.AccountId).Scan(&headRaw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	head, err := deviceauth.ParseState(headRaw)
+	if err != nil || head.Core.AuthorityID != a.ApproverDeviceId {
 		return errAdmissionRequired
 	}
 	return nil
@@ -97,10 +114,22 @@ func consumeAdmission(ctx context.Context, tx *sql.Tx, account, id string, reg *
 	if err != nil {
 		return err
 	}
-	if n != 1 {
+	if n == 1 {
+		return nil
+	}
+	// No stored admission row: a fresh phone-signed approval is the
+	// authorization. Record its one use so it cannot admit another device
+	// (the candidate key is already bound by the signature).
+	var exists int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM pairing_admissions WHERE pairing_id = ?`, p.PairingId).Scan(&exists); err != nil {
+		return err
+	}
+	if exists != 0 {
 		return errAdmissionRequired
 	}
-	return nil
+	_, err = tx.ExecContext(ctx, `INSERT INTO pairing_admissions (pairing_id, account_id, approver_device_id, candidate_device_id, candidate_kind, approval, signature, candidate_token_hash, expires_ms, used_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.PairingId, account, p.ApproverDeviceId, id, int32(reg.Kind), a.raw, a.signature, make([]byte, 32), p.ExpiresMs, nowMs())
+	return err
 }
 
 func (s *store) cancelAdmission(ctx context.Context, pairingID string) error {

@@ -31,7 +31,7 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 	}
 	wire, err := deviceauth.FromEnvelope(call.Command)
 	if err != nil {
-		fail("the command has no valid authority authorization")
+		fail("the command is not a valid security envelope")
 		return
 	}
 	header, err := deviceauth.ParseHeader(wire.Header)
@@ -39,13 +39,9 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		fail("invalid command scope")
 		return
 	}
-	// State synchronization and authority traffic happen OUTSIDE the acceptance
-	// gate. The endpoint re-verifies the exact state once it holds that gate.
-	if err := c.security.remote.Sync(ctx); err != nil {
-		fail("cannot verify current security state")
-		return
-	}
-	result, err := c.security.remote.Endpoint.Accept(wire, nil, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) ([]byte, error) {
+	// An unknown state is fetched outside the acceptance gate and the gate is
+	// retried once; the endpoint re-verifies the exact state inside it.
+	result, err := c.security.accept(ctx, wire, nil, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) ([]byte, error) {
 		cmd := &pb.Command{}
 		plain, err := deviceauth.Unpack(h, plain)
 		if err != nil || proto.Unmarshal(plain, cmd) != nil {
@@ -80,7 +76,7 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		fail("the command was refused or its outcome is unknown; it was not repeated")
 		return
 	}
-	env, err := c.security.seal(ctx, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: header.Session, RequestId: header.Request, Sender: c.acct.DeviceID}, deviceauth.Result, nil, result)
+	env, err := c.security.seal(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: header.Session, RequestId: header.Request, Sender: c.acct.DeviceID}, deviceauth.Result, nil, result)
 	if err != nil {
 		fail("cannot authorize the result")
 		return

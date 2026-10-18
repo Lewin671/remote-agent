@@ -1,7 +1,6 @@
 package server
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
@@ -47,7 +46,8 @@ func TestRevocationClosesClientAndTerminalStreams(t *testing.T) {
 	// Use a second client as administrator.
 	ap, aid, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
 	admin := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, ap, aid)))
-	if _, err := admin.RemoveDevice(ctx, connect.NewRequest(ts.removalProof(t, aid, cid))); err != nil {
+	_ = admin
+	if err := ts.removeViaState(t, cid); err != nil {
 		t.Fatal(err)
 	}
 	for _, conn := range []*websocket.Conn{stream.ws, term} {

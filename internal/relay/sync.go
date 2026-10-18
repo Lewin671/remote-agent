@@ -461,7 +461,7 @@ func metaDigest(server string, key []byte, info *pb.Session, revision uint64) []
 
 func (c *conn) sealEvent(ctx context.Context, key []byte, sessionID string, e *pb.Event) (*pb.Envelope, error) {
 	fitted := fitEvent(slimEvent(e))
-	env, err := c.security.sealMessage(ctx, &pb.Header{
+	env, err := c.security.sealMessage(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: c.acct.DeviceID, SessionId: sessionID,
 		Seq: e.Seq, Sender: c.acct.DeviceID,
 	}, deviceauth.Event, key, fitted)
@@ -489,14 +489,14 @@ func EndedMs(info *pb.Session) int64 {
 // putSession stores a session's key and metadata, and returns the
 // metadata's revision.
 func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session) (uint64, error) {
-	keyEnv, err := c.security.seal(ctx, &pb.Header{
+	keyEnv, err := c.security.seal(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, Seq: 1, MachineId: c.acct.DeviceID, SessionId: id, Sender: c.acct.DeviceID,
 	}, deviceauth.SessionKey, nil, key)
 	if err != nil {
 		return 0, localSyncError("encryption", err)
 	}
 	rev := uint64(1)
-	meta, err := c.security.sealMessage(ctx, &pb.Header{
+	meta, err := c.security.sealMessage(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_META, MachineId: c.acct.DeviceID, SessionId: id,
 		Seq: rev, Sender: c.acct.DeviceID,
 	}, deviceauth.SessionMeta, nil, info)
@@ -577,7 +577,7 @@ func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Ses
 	if routingID == "" {
 		routingID = fmt.Sprintf("notify:%d:%d", kind, e.Seq)
 	}
-	env, err := c.security.sealMessage(ctx, &pb.Header{
+	env, err := c.security.sealMessage(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, SessionId: sessionID,
 		RequestId: routingID, Sender: c.acct.DeviceID,
 	}, deviceauth.Notify, nil, nc)

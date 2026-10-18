@@ -42,7 +42,7 @@ func (s *store) tenant(account string) *tstore {
 
 // schemaVersion is PRAGMA user_version of the current layout. The layout
 // of one account per relay, before accounts had IDs, had none.
-const schemaVersion = 5
+const schemaVersion = 6
 
 const schema = `
 CREATE TABLE IF NOT EXISTS accounts (
@@ -56,7 +56,10 @@ CREATE TABLE IF NOT EXISTS accounts (
 	event_bytes INTEGER NOT NULL DEFAULT 0,
 	-- Registrations signed before this are refused for unknown devices.
 	registration_floor_ms INTEGER NOT NULL DEFAULT 0,
- security_genesis BLOB
+	security_genesis BLOB,
+	-- Recovery public key of the current signed head, kept here so an
+	-- unauthenticated recovery lookup can find the account.
+	recovery_ed BLOB
 );
 -- Device IDs are derived from device keys and unique across accounts: a
 -- device belongs to one account.
@@ -119,6 +122,9 @@ CREATE TABLE IF NOT EXISTS sessions (
 	meta BLOB,
 	meta_revision INTEGER NOT NULL DEFAULT 0,
 	last_seq INTEGER NOT NULL DEFAULT 0,
+	-- Content epoch of the stored SESSION_KEY envelope, so a recovery
+	-- re-publish can replace it and an older epoch cannot.
+	key_content_epoch INTEGER NOT NULL DEFAULT 0,
 	updated_ms INTEGER NOT NULL,
 	-- When the session ended, 0 while it has not: the one thing about a
 	-- session's state the server is told in the clear, to page the listing.
@@ -134,6 +140,29 @@ CREATE TABLE IF NOT EXISTS events (
 	envelope BLOB NOT NULL,
 	PRIMARY KEY (account_id, session_id, seq)
 ) WITHOUT ROWID;
+-- The phone-signed membership chain. The server stores public signed states
+-- only; it validates signatures and membership, never content keys.
+CREATE TABLE IF NOT EXISTS security_states (
+	account_id TEXT NOT NULL,
+	epoch INTEGER NOT NULL,
+	state BLOB NOT NULL,
+	hash BLOB NOT NULL,
+	recovery BLOB,
+	PRIMARY KEY (account_id, epoch)
+);
+-- One pending or completed authority recovery per account.
+CREATE TABLE IF NOT EXISTS security_recovery (
+	account_id TEXT PRIMARY KEY,
+	recovery_id TEXT NOT NULL UNIQUE,
+	statement BLOB NOT NULL,
+	state BLOB NOT NULL,
+	submitted_ms INTEGER NOT NULL,
+	ready_ms INTEGER NOT NULL,
+	completed_ms INTEGER NOT NULL DEFAULT 0,
+	rejected_ms INTEGER NOT NULL DEFAULT 0,
+	device_id TEXT NOT NULL DEFAULT '',
+	token_hash BLOB
+);
 `
 
 var errOldLayout = errors.New("this database has the layout of a relay with a single account; " +
@@ -169,6 +198,9 @@ func openStore(path string) (*store, error) {
 	case version == 3:
 		db.Close()
 		return nil, fmt.Errorf("the database has layout 3; this version requires layout %d; apply the manual upgrade in docs/self-hosting.md#upgrading-device-enrollment-protocol-8 before starting", schemaVersion)
+	case version == 5:
+		db.Close()
+		return nil, fmt.Errorf("the database has layout 5; this version requires layout %d; apply the manual upgrade in docs/self-hosting.md#upgrading-to-protocol-10 before starting", schemaVersion)
 	default:
 		db.Close()
 		return nil, fmt.Errorf("the database has layout %d; this version knows layout %d", version, schemaVersion)
@@ -267,7 +299,7 @@ func (s *store) setAccountStatus(ctx context.Context, id string, status int) err
 
 // accountTables are the tables holding an account's data, in the order
 // its rows are deleted.
-var accountTables = []string{"pairing_admissions", "events", "images", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
+var accountTables = []string{"security_recovery", "security_states", "pairing_admissions", "events", "images", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
 
 // deleteAccount deletes an account and everything stored for it. Its
 // device keys stay revoked, so that its registrations cannot come back.
@@ -385,10 +417,29 @@ func (s *store) addDevice(ctx context.Context, account string, create *newAccoun
 	case err == nil && owner != account:
 		return errOtherAccount
 	case err == nil:
-		if !bytes.Equal(priorRaw, raw) || !bytes.Equal(priorSig, sig) {
-			return errAdmissionRequired
+		if bytes.Equal(priorRaw, raw) && bytes.Equal(priorSig, sig) {
+			return tx.Commit() // Exact response-loss retry, before admission consumption.
 		}
-		return tx.Commit() // Exact response-loss retry, before admission consumption.
+		// Re-pairing an existing device: a fresh phone-signed admission for
+		// this exact device ID and kind replaces the registration and ends
+		// its old logins. Only an exact retry gets in without one.
+		if err := consumeAdmission(ctx, tx, account, id, reg, approval); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM tokens WHERE account_id = ? AND device_id = ?`, account, id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM push_subs WHERE account_id = ? AND device_id = ?`, account, id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM fcm_targets WHERE account_id = ? AND device_id = ?`, account, id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE devices SET public_key = ?, kind = ?, registration = ?, signature = ? WHERE account_id = ? AND id = ?`,
+			reg.DevicePublicKey, int32(reg.Kind), raw, sig, account, id); err != nil {
+			return err
+		}
+		return tx.Commit()
 	case !errors.Is(err, sql.ErrNoRows):
 		return err
 	}
@@ -579,7 +630,7 @@ var errNoMachine = errors.New("the machine has been removed")
 // with it when the session ended, unless a newer revision is stored. It
 // returns the stored session. limit, if not nil, is checked against the
 // account's usage before a new session is created.
-func (t *tstore) putSession(ctx context.Context, machineID, sessionID string, key, meta []byte, revision uint64, endedMs int64, limit func(accountUsage) error) (*pb.RemoteSession, error) {
+func (t *tstore) putSession(ctx context.Context, machineID, sessionID string, key []byte, keyEpoch uint64, meta []byte, revision uint64, endedMs int64, limit func(accountUsage) error) (*pb.RemoteSession, error) {
 	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -612,15 +663,26 @@ func (t *tstore) putSession(ctx context.Context, machineID, sessionID string, ke
 				return nil, err
 			}
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO sessions (account_id, session_id, machine_id, key, meta, meta_revision, updated_ms, ended_ms)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, t.acct, sessionID, machineID, key, meta, revision, nowMs(), endedMs)
+		_, err = tx.ExecContext(ctx, `INSERT INTO sessions (account_id, session_id, machine_id, key, key_content_epoch, meta, meta_revision, updated_ms, ended_ms)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, t.acct, sessionID, machineID, key, keyEpoch, meta, revision, nowMs(), endedMs)
 	case err != nil:
 		return nil, err
 	case owner != machineID:
 		return nil, errOtherMachine
-	case meta != nil:
-		_, err = tx.ExecContext(ctx, `UPDATE sessions SET meta = ?, meta_revision = ?, updated_ms = ?, ended_ms = ?
-			WHERE account_id = ? AND session_id = ? AND meta_revision <= ?`, meta, revision, nowMs(), endedMs, t.acct, sessionID, revision)
+	default:
+		// A recovery re-publish replaces the session key envelope when the
+		// machine sends a newer content epoch; an older epoch never replaces
+		// a newer one.
+		if key != nil {
+			if _, err = tx.ExecContext(ctx, `UPDATE sessions SET key = ?, key_content_epoch = ? WHERE account_id = ? AND session_id = ? AND key_content_epoch < ?`,
+				key, keyEpoch, t.acct, sessionID, keyEpoch); err != nil {
+				return nil, err
+			}
+		}
+		if meta != nil {
+			_, err = tx.ExecContext(ctx, `UPDATE sessions SET meta = ?, meta_revision = ?, updated_ms = ?, ended_ms = ?
+				WHERE account_id = ? AND session_id = ? AND meta_revision <= ?`, meta, revision, nowMs(), endedMs, t.acct, sessionID, revision)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -856,13 +918,23 @@ func (t *tstore) removeDevice(ctx context.Context, id string) (bool, error) {
 		return false, err
 	}
 	defer tx.Rollback()
-	var kind int32
-	if err := tx.QueryRowContext(ctx, `SELECT kind FROM devices WHERE account_id = ? AND id = ?`, t.acct, id).Scan(&kind); err != nil {
+	machine, err := removeDeviceTx(ctx, tx, t.acct, id)
+	if err != nil {
 		return false, err
 	}
-	// Keep a tombstone: the old signed registration remains valid even after
-	// the live device row is deleted, and must never resurrect this key.
-	if _, err := tx.ExecContext(ctx, `INSERT INTO revoked_devices (id, account_id, revoked_ms) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING`, id, t.acct, nowMs()); err != nil {
+	return machine, tx.Commit()
+}
+
+// removeDeviceTx is the removal used both by the old explicit path and when
+// an accepted state drops a member. It keeps a tombstone, ends the device's
+// logins and push targets, and for a machine deletes its sessions, events and
+// images and recomputes the account's event bytes.
+func removeDeviceTx(ctx context.Context, tx *sql.Tx, acct, id string) (bool, error) {
+	var kind int32
+	if err := tx.QueryRowContext(ctx, `SELECT kind FROM devices WHERE account_id = ? AND id = ?`, acct, id).Scan(&kind); err != nil {
+		return false, err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO revoked_devices (id, account_id, revoked_ms) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING`, id, acct, nowMs()); err != nil {
 		return false, err
 	}
 	stmts := []string{
@@ -877,14 +949,12 @@ func (t *tstore) removeDevice(ctx context.Context, id string) (bool, error) {
 		`DELETE FROM machines WHERE account_id = ?1 AND id = ?2`,
 	}
 	for _, q := range stmts {
-		if _, err := tx.ExecContext(ctx, q, t.acct, id); err != nil {
+		if _, err := tx.ExecContext(ctx, q, acct, id); err != nil {
 			return false, err
 		}
 	}
-	// What is left after deleting a machine's sessions, counted again
-	// rather than subtracted, so that the counter cannot drift.
-	if _, err := tx.ExecContext(ctx, `UPDATE accounts SET event_bytes = (SELECT COALESCE(SUM(LENGTH(envelope)), 0) FROM events WHERE account_id = ?1) WHERE id = ?1`, t.acct); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE accounts SET event_bytes = (SELECT COALESCE(SUM(LENGTH(envelope)), 0) FROM events WHERE account_id = ?1) WHERE id = ?1`, acct); err != nil {
 		return false, err
 	}
-	return pb.DeviceKind(kind) == pb.DeviceKind_DEVICE_KIND_MACHINE, tx.Commit()
+	return pb.DeviceKind(kind) == pb.DeviceKind_DEVICE_KIND_MACHINE, nil
 }

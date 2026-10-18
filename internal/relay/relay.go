@@ -17,6 +17,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
@@ -106,7 +107,7 @@ func (r *Relay) Run(ctx context.Context) {
 		acct, err := LoadAccount()
 		if errors.Is(err, ErrNoAccount) {
 			if !logged {
-				slog.Info("relay: no account yet; waiting for `remote-agent account init` or `join`")
+				slog.Info("relay: no account yet; waiting for `remote-agent account join` with a code from the phone")
 				logged = true
 			}
 			sleep(ctx, 5*time.Second)
@@ -145,7 +146,6 @@ type conn struct {
 	security *securitySession
 	r        *Relay
 	acct     *Account
-	keys     *e2e.Keys
 	machine  remoteagentv1connect.MachineServiceClient
 	ws       *websocket.Conn
 	token    string
@@ -155,16 +155,12 @@ type conn struct {
 func (r *Relay) session(ctx context.Context, acct *Account) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	keys, err := e2e.Derive(acct.Root)
-	if err != nil {
-		return err
-	}
 	token, err := login(ctx, acct)
 	if err != nil {
 		return fmt.Errorf("login: %w", err)
 	}
 	hc := httpClient()
-	c := &conn{r: r, acct: acct, keys: keys, token: token,
+	c := &conn{r: r, acct: acct, token: token,
 		machine: remoteagentv1connect.NewMachineServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token), r.limitMachineRPCs()))}
 
 	securityClient := remoteagentv1connect.NewClientServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token)))
@@ -173,18 +169,12 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		return err
 	}
 	defer func() { cancel(); c.security.Close() }()
-	if c.security.authority != nil {
-		states, err := c.security.authority.StatePage(0)
-		if err != nil || len(states) == 0 {
-			return deviceauth.ErrStorage
-		}
-		genesis, err := states[0].MarshalBinary()
-		if err != nil {
-			return err
-		}
-		if _, err := c.machine.PinSecurityDomain(ctx, connect.NewRequest(&pb.PinSecurityDomainRequest{GenesisState: genesis})); err != nil {
-			return fmt.Errorf("pin relay transport domain: %w", err)
-		}
+	c.security.onRecovery = func() {
+		go func() {
+			rctx, rcancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer rcancel()
+			c.republishAfterRecovery(rctx)
+		}()
 	}
 
 	wsURL := "ws" + strings.TrimPrefix(acct.Server, "http") + "/v1/stream"
@@ -208,7 +198,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	}
 	errc := make(chan error, 4)
 	go func() { errc <- c.readLoop(ctx) }()
-	if err := c.security.remote.Sync(ctx); err != nil {
+	if err := c.security.syncOnce(ctx); err != nil {
 		return err
 	}
 	meta := c.r.backend.MachineMeta()
@@ -255,7 +245,7 @@ func login(ctx context.Context, acct *Account) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: 9,
+	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version,
 		DeviceId: acct.DeviceID, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(acct.DeviceKey(), ch.Msg.Challenge),
 	}))
 	if err != nil {
@@ -317,8 +307,31 @@ func revision() uint64 {
 	return lastRev
 }
 
+// republishAfterRecovery re-seals current machine and session metadata under
+// the new content key after a recovery boundary. Old events and images are
+// never re-encrypted: the new phone must not receive old plaintext.
+func (c *conn) republishAfterRecovery(ctx context.Context) {
+	if err := c.putMachine(ctx, c.r.backend.MachineMeta()); err != nil {
+		slog.Warn("relay: republish machine metadata after recovery", "err", err)
+		return
+	}
+	for _, id := range c.r.backend.SessionIDs() {
+		info, err := c.r.backend.SessionInfo(id)
+		if err != nil {
+			continue
+		}
+		key, err := c.sessionKey(id, true)
+		if err != nil {
+			continue
+		}
+		if _, err := c.putSession(ctx, id, key, info); err != nil {
+			slog.Warn("relay: republish session after recovery", "session", id, "err", err)
+		}
+	}
+}
+
 func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {
-	env, err := c.security.sealMessage(ctx, &pb.Header{
+	env, err := c.security.sealMessage(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_MACHINE_META, MachineId: c.acct.DeviceID, Seq: revision(), Sender: c.acct.DeviceID,
 	}, deviceauth.MachineMeta, nil, meta)
 	if err != nil {
@@ -335,7 +348,7 @@ const maxConcurrentCalls = 8
 func (c *conn) readLoop(ctx context.Context) error {
 	return readForwardCalls(ctx, c.r.calls, func() (*pb.ServerFrame, error) {
 		return readFrame(ctx, c.ws)
-	}, c.handleForward)
+	}, c.handleCall)
 }
 
 func readForwardCalls(ctx context.Context, slots chan struct{}, read func() (*pb.ServerFrame, error), handle func(context.Context, *pb.ForwardCall)) error {

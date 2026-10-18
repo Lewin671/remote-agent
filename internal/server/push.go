@@ -425,37 +425,3 @@ func (m *machineService) Notify(ctx context.Context, req *connect.Request[pb.Not
 	}
 	return connect.NewResponse(&pb.NotifyResponse{}), nil
 }
-
-func (c *clientService) RemoveDevice(ctx context.Context, req *connect.Request[pb.RemoveDeviceRequest]) (*connect.Response[pb.RemoveDeviceResponse], error) {
-	if deviceFrom(ctx).kind != pb.DeviceKind_DEVICE_KIND_CLIENT {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only clients remove devices"))
-	}
-	t := c.s.tenantFrom(ctx)
-	if err := t.store.verifyRemoval(ctx, deviceFrom(ctx).id, req.Msg); err != nil {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("a verified security-domain removal completion is required"))
-	}
-	c.s.pairing.mu.Lock()
-	defer c.s.pairing.mu.Unlock()
-	machine, err := t.store.removeDevice(ctx, req.Msg.DeviceId)
-	if errors.Is(err, errNoRows) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such device"))
-	}
-	if err != nil {
-		return nil, internal(err)
-	}
-	for _, p := range c.s.pairing.byID {
-		if p.account == t.acct && !p.delivered {
-			p.canceled = true
-			p.payload = nil
-			delete(c.s.pairing.byCode, p.code)
-		}
-	}
-	c.s.revokeStreams(req.Msg.DeviceId)
-	slog.Info("device removed", "device", req.Msg.DeviceId)
-	t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: req.Msg.DeviceId}}})
-	if machine {
-		t.hub.drop(req.Msg.DeviceId)
-		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineRemoved{MachineRemoved: &pb.MachineRemoved{MachineId: req.Msg.DeviceId}}})
-	}
-	return connect.NewResponse(&pb.RemoveDeviceResponse{}), nil
-}

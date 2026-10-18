@@ -3,6 +3,7 @@ package relay_test
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"io"
@@ -301,27 +302,51 @@ func setupWithHandler(t *testing.T, wrap func(http.Handler) http.Handler, config
 		e.srv.Close()
 	})
 	ctx := context.Background()
-	if _, err := relay.Join(ctx, e.http.URL, e2e.NewKey(), "wrong"); err == nil {
-		t.Fatal("joined with a wrong setup token")
+	if _, err := remoteclient.NewAuthority(ctx, e.http.URL, "wrong"); err == nil {
+		t.Fatal("made an account with a wrong setup token")
 	}
-	e.acct, err = relay.Join(ctx, e.http.URL, e2e.NewKey(), "setup")
+	authority, err := remoteclient.NewAuthority(ctx, e.http.URL, "setup")
 	if err != nil {
 		t.Fatal(err)
 	}
-	authority, err := deviceauth.OpenAuthority(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "authority-v2.db"))
+	_, med, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.client, err = remoteclient.Register(ctx, e.acct.Secret(), e.acct.DeviceKey(), e.acct.Security.Pin, e.acct.Security.XPrivate, filepath.Join(t.TempDir(), "client-security.db"), func(_ context.Context, c deviceauth.Capsule) (deviceauth.Capsule, error) { return authority.Handle(c) })
-	authority.Close()
+	mx, _, err := deviceauth.NewXKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	machine, err := authority.Enroll(ctx, med, mx, deviceauth.Machine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.acct = &relay.Account{Server: authority.Server, Root: authority.Root, DeviceSeed: med.Seed(), DeviceID: machine.ID,
+		Security: &relay.SecurityConfig{Pin: authority.Pin, XPrivate: mx}}
+	if err := machine.Endpoint.Save(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "security-v3.db")); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.acct.Save(); err != nil {
+		t.Fatal(err)
+	}
+	_, ced, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cx, _, err := deviceauth.NewXKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := authority.Enroll(ctx, ced, cx, deviceauth.Client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.client = client.Client(authority)
 	t.Cleanup(func() {
 		if e.client != nil {
 			e.client.Close()
 		}
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	return e
 }
 
@@ -655,8 +680,10 @@ func TestCommandsRunOnce(t *testing.T) {
 	e.online(t, false)
 	e.startRelay()
 	e.online(t, true)
-	if res, err := e.client.Forward(ctx, s.MachineID, cmd); err != nil || res.GetSend().QueuePosition != 1 {
-		t.Fatalf("retry after restart: %v %v", res, err)
+	// After a restart the counter is below the persisted high-water: the
+	// outcome is unknown and the command is not repeated.
+	if res, err := e.client.Forward(ctx, s.MachineID, cmd); err == nil {
+		t.Fatalf("retry after restart ran again: %v", res)
 	}
 	if n := e.backend.sendCount(); n != 1 {
 		t.Fatalf("send ran %d times", n)
@@ -744,11 +771,19 @@ func TestCommandsRejected(t *testing.T) {
 	ctx := context.Background()
 	send := &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "sess1", Text: "hi"}}}
 
-	if _, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(-time.Second), send); err == nil {
-		t.Fatal("expired command received authority authorization")
+	expired, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(-time.Second), send)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Hour), send); err == nil {
-		t.Fatal("far-future command received authority authorization")
+	if _, err := e.client.Forward(ctx, s.MachineID, expired); err == nil {
+		t.Fatal("expired command was executed")
+	}
+	future, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Hour), send)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.client.Forward(ctx, s.MachineID, future); err == nil {
+		t.Fatal("far-future command was executed")
 	}
 
 	// A tampered command does not open.
@@ -759,7 +794,7 @@ func TestCommandsRejected(t *testing.T) {
 	}
 	// A command sealed with another account's key does not open.
 	stranger, _ := e2e.Derive(e2e.NewKey())
-	forged, _ := e2e.SealMessage(stranger.Command, &pb.Header{Version: 2,
+	forged, _ := e2e.SealMessage(stranger.Command, &pb.Header{Version: deviceauth.Version,
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: s.MachineID, SessionId: s.ID,
 		RequestId: remoteclient.NewRequestID(), DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: e.client.DeviceID,
 	}, send)
@@ -770,11 +805,16 @@ func TestCommandsRejected(t *testing.T) {
 		t.Fatalf("send ran %d times", n)
 	}
 
-	// Offline machines fail at once, and nothing is queued for later.
+	// Sealing is local; an offline machine still fails the forward at once
+	// and nothing is queued for later.
 	e.stopRelay()
 	e.online(t, false)
-	if _, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send); err == nil {
-		t.Fatal("authority offline still issued a new write authorization")
+	offline, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.client.Forward(ctx, s.MachineID, offline); err == nil {
+		t.Fatal("offline machine accepted a command")
 	}
 
 }
@@ -888,76 +928,6 @@ func TestTerminalStream(t *testing.T) {
 		if b, err := os.ReadFile(name); err == nil && bytes.Contains(b, []byte(marker)) {
 			t.Fatalf("%s contains terminal content", name)
 		}
-	}
-}
-
-func TestPairingMachines(t *testing.T) {
-	e := setup(t)
-	e.startRelay()
-	e.online(t, true)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-
-	links := make(chan relay.PairLink, 1)
-	seen := make(chan []string, 1)
-	errc := make(chan error, 1)
-	go func() {
-		errc <- relay.Initiate(ctx, e.acct, func(l relay.PairLink) { links <- l }, func(emoji []string, kind pb.DeviceKind) bool {
-			if kind != pb.DeviceKind_DEVICE_KIND_MACHINE {
-				return false
-			}
-			// The user compares these with the new device's.
-			return strings.Join(emoji, "") == strings.Join(<-seen, "")
-		})
-	}()
-	link := <-links
-	if len(link.Code) != 8 {
-		t.Fatalf("code %q", link.Code)
-	}
-	parsed, err := relay.ParsePairLink(link.URL("https://app.example.com"))
-	if err != nil || parsed.Code != link.Code || !bytes.Equal(parsed.Commit, link.Commit) {
-		t.Fatalf("link round trip: %v %v", parsed, err)
-	}
-
-	// The new machine has its own state directory.
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	acct, err := relay.JoinByPairing(ctx, parsed, func(emoji []string) bool { seen <- emoji; return true })
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := <-errc; err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(acct.Root, e.acct.Root) || acct.DeviceID == e.acct.DeviceID {
-		t.Fatal("joined with the wrong key or device")
-	}
-}
-
-func TestPairingRefusals(t *testing.T) {
-	e := setup(t)
-	e.startRelay()
-	e.online(t, true)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-
-	// A link whose commitment is not the initiator's is refused by the
-	// joiner before anything is revealed.
-	links := make(chan relay.PairLink, 1)
-	go relay.Initiate(ctx, e.acct, func(l relay.PairLink) { links <- l }, func([]string, pb.DeviceKind) bool { return true })
-	l := <-links
-	l.Commit = bytes.Repeat([]byte{1}, 32)
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	if _, err := relay.JoinByPairing(ctx, l, func([]string) bool { return false }); err == nil || !strings.Contains(err.Error(), "commitment") {
-		t.Fatalf("swapped commitment: %v", err)
-	}
-
-	// When the user refuses, the joiner gets no key.
-	links2 := make(chan relay.PairLink, 1)
-	go relay.Initiate(ctx, e.acct, func(l relay.PairLink) { links2 <- l }, func([]string, pb.DeviceKind) bool { return false })
-	l2 := <-links2
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	if _, err := relay.JoinByPairing(ctx, l2, func([]string) bool { return true }); err == nil || !strings.Contains(err.Error(), "canceled") {
-		t.Fatalf("refused pairing: %v", err)
 	}
 }
 

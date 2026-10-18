@@ -9,9 +9,9 @@ import "remoteagent/v1/envelope.proto";
 // appears inside envelopes.
 
 // AuthService registers devices and logs them in. Every device has its own
-// Ed25519 key; a device is registered with a signature by the account key,
-// which is derived from the account's root key, so only a holder of the
-// root key can add devices.
+// Ed25519 key. The first device of an account signs its registration with
+// the account key; every later device on an existing account needs a
+// approval signed by the current authority phone instead.
 service AuthService {
   rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
   rpc GetChallenge(GetChallengeRequest) returns (GetChallengeResponse);
@@ -42,7 +42,7 @@ message RegisterDeviceRequest {
   // Serialized DeviceRegistration.
   bytes registration = 1;
   // Ed25519 signature by the account key over "remote-agent/v1/register\x00"
-  // followed by registration.
+  // followed by registration. Required only to create the account.
   bytes signature = 2;
   // Required only to create the account, i.e. for the first device, on a
   // relay that creates accounts with a setup token.
@@ -188,8 +188,6 @@ message GetPairingRequest {
   // the server then drops the key and tells the initiator. Until then
   // the joiner can fetch the key again, e.g. after a lost response.
   bool received = 3;
-  // Candidate signature over the authority PairContext after reveal.
-  bytes candidate_signature = 4;
 }
 
 message GetPairingResponse {
@@ -202,16 +200,16 @@ message GetPairingResponse {
   Envelope payload = 6;
   bytes device_public_key = 7;
   bytes device_hpke_public_key = 8;
-  bytes security_context = 9;
-  bytes candidate_signature = 10;
+  // The initiator's public PairTrustDescriptor, revealed with its ephemeral
+  // key. It carries account, domain, genesis hash and approver, no secret.
+  bytes trust = 9;
 }
 
 message RevealPairingRequest {
   string pairing_id = 1;
   bytes initiator_public = 2;
-  // Signed active authority PairContext. SAS binds its precommitted trust
-  // descriptor; the late context nonce/head/expiry are signed separately.
-  bytes security_context = 3;
+  // Public PairTrustDescriptor. The pairing commitment must match it.
+  bytes trust = 3;
 }
 
 message RevealPairingResponse {}
@@ -245,9 +243,6 @@ service ClientService {
   // subscription with the kinds of notifications it wants.
   rpc GetPushKey(GetPushKeyRequest) returns (GetPushKeyResponse);
   rpc SetPushSubscription(SetPushSubscriptionRequest) returns (SetPushSubscriptionResponse);
-  // RemoveDevice unregisters a device and ends its logins; a removed
-  // machine's sessions are deleted.
-  rpc RemoveDevice(RemoveDeviceRequest) returns (RemoveDeviceResponse);
   // SetPushTarget registers where this device gets notifications, one
   // target per type: Web Push and FCM can be set side by side.
   // SetPushSubscription is the same for Web Push.
@@ -263,6 +258,15 @@ service ClientService {
   // of the expected revision.
   rpc GetAccountPrefs(GetAccountPrefsRequest) returns (GetAccountPrefsResponse);
   rpc PutAccountPrefs(PutAccountPrefsRequest) returns (PutAccountPrefsResponse);
+  // PinSecurityDomain stores the phone-signed genesis state of a new
+  // account. Called once, by the new authority phone.
+  rpc PinSecurityDomain(PinSecurityDomainRequest) returns (PinSecurityDomainResponse);
+  // PutSecurityState uploads a contiguous signed state chain segment. The
+  // first state must continue from the stored head (or be the pinned
+  // genesis). The server rejects forks, rollbacks and invalid signatures.
+  rpc PutSecurityState(PutSecurityStateRequest) returns (PutSecurityStateResponse);
+  // GetSecurityStates returns states after an epoch, up to eight at a time.
+  rpc GetSecurityStates(GetSecurityStatesRequest) returns (GetSecurityStatesResponse);
 }
 
 message Machine {
@@ -347,22 +351,15 @@ message ForwardRequest {
   // COMMAND envelope. Its header's sender must be the calling device, or
   // the server refuses it.
   Envelope command = 2;
-  // Opaque pinned-authority HPKE Capsule, mutually exclusive with command.
-  // The relay only routes it to machine_id and does not open it.
-  bytes security_rpc = 3;
 }
 
 message ForwardResponse {
   // COMMAND_RESULT envelope.
   Envelope result = 1;
-  bytes security_rpc = 2;
 }
 
 // MachineService is used by daemons.
 service MachineService {
-  // One-time transport pin, installed by the authority host. Endpoints keep
-  // their independently SAS-pinned authority; this is only server-side ACL.
-  rpc PinSecurityDomain(PinSecurityDomainRequest) returns (PinSecurityDomainResponse);
   rpc PutMachine(PutMachineRequest) returns (PutMachineResponse);
   rpc PutSession(PutSessionRequest) returns (PutSessionResponse);
   // UploadEvents appends events in order. Events the server already has
@@ -493,7 +490,6 @@ message ForwardCall {
   string sender_device_id = 3;
   bytes sender_registration = 4;
   bytes sender_registration_signature = 5;
-  bytes security_rpc = 6;
 }
 
 message ForwardReply {
@@ -502,7 +498,6 @@ message ForwardReply {
   // Set when the daemon could not produce a sealed result, e.g. the
   // envelope did not open. The text never contains content.
   string error = 3;
-  bytes security_rpc = 4;
 }
 
 // Terminal streams use a WebSocket at /v1/term. Each side first sends a
@@ -528,6 +523,9 @@ enum NotifyKind {
   NOTIFY_KIND_ATTENTION = 1;
   // A turn ended.
   NOTIFY_KIND_TURN_ENDED = 2;
+  // A recovery is pending on the account's authority phone. Generic text
+  // only; the app opens the device page.
+  NOTIFY_KIND_SECURITY = 3;
 }
 
 message SetPushSubscriptionRequest {
@@ -542,15 +540,82 @@ message SetPushSubscriptionResponse {}
 message PinSecurityDomainRequest { bytes genesis_state = 1; }
 message PinSecurityDomainResponse {}
 
-message RemoveDeviceRequest {
-  string device_id = 1;
-  // Signed Completion, original DeleteRequest, and canonical State chain.
-  bytes security_completion = 2;
-  bytes security_request = 3;
-  repeated bytes security_chain = 4;
+// One signed state and, only for a recovery transition, the
+// RecoveryStatement that authorized the new authority member.
+message SecurityState {
+  bytes state = 1;
+  bytes recovery = 2;
 }
 
-message RemoveDeviceResponse {}
+message PutSecurityStateRequest {
+  // Contiguous; the first parent must be the stored head.
+  repeated SecurityState states = 1;
+}
+message PutSecurityStateResponse {
+  uint64 head_epoch = 1;
+  bytes head = 2;
+}
+
+message GetSecurityStatesRequest {
+  uint64 after_epoch = 1;
+  uint32 limit = 2; // the server caps it at 8
+}
+message GetSecurityStatesResponse {
+  repeated SecurityState states = 1;
+  uint64 head_epoch = 2;
+  // Set for the current authority phone while a recovery is pending.
+  bool recovery_pending = 3;
+}
+
+// RecoveryService transfers authority with a recovery code after 48 hours.
+// It is unauthenticated because the recovering phone has no token yet; the
+// statement and state signatures are the authorization.
+service RecoveryService {
+  rpc GetRecoveryContext(GetRecoveryContextRequest) returns (GetRecoveryContextResponse);
+  rpc SubmitRecovery(SubmitRecoveryRequest) returns (SubmitRecoveryResponse);
+  rpc CompleteRecovery(CompleteRecoveryRequest) returns (CompleteRecoveryResponse);
+}
+
+message GetRecoveryContextRequest {
+  // The old recovery public key, or the pending row's stored key.
+  bytes recovery_ed = 1;
+  // Optional: poll after SubmitRecovery.
+  string recovery_id = 2;
+}
+message GetRecoveryContextResponse {
+  enum Phase {
+    PHASE_UNSPECIFIED = 0;
+    PHASE_PENDING = 1;
+    PHASE_READY = 2;
+    PHASE_REJECTED = 3;
+    PHASE_PUBLISHED = 4;
+  }
+  string account_id = 1;
+  repeated SecurityState states = 2; // genesis to current head
+  Phase phase = 3;
+  uint64 ready_ms = 4;
+  string recovery_id = 5;
+}
+
+message SubmitRecoveryRequest {
+  bytes statement = 1; // canonical RecoveryStatement
+  bytes state = 2;     // exact new state bound by statement.StateHash
+}
+message SubmitRecoveryResponse {
+  string recovery_id = 1;
+  uint64 ready_ms = 2;
+}
+
+message CompleteRecoveryRequest {
+  string recovery_id = 1;
+  // By the new authority member Ed over "ra3/recovery-complete\x00" ||
+  // recovery_id.
+  bytes signature = 2;
+}
+message CompleteRecoveryResponse {
+  string device_id = 1;
+  string token = 2;
+}
 
 message NotifyRequest {
   string session_id = 1;

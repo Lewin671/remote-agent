@@ -2267,14 +2267,17 @@ func (x *TerminalResize) GetFit() bool {
 // PairingPayload is what an existing device hands a new one.
 type PairingPayload struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	Root              []byte                 `protobuf:"bytes,1,opt,name=root,proto3" json:"root,omitempty"`
 	Server            string                 `protobuf:"bytes,2,opt,name=server,proto3" json:"server,omitempty"`
 	Approval          []byte                 `protobuf:"bytes,3,opt,name=approval,proto3" json:"approval,omitempty"`
 	ApprovalSignature []byte                 `protobuf:"bytes,4,opt,name=approval_signature,json=approvalSignature,proto3" json:"approval_signature,omitempty"`
-	// Complete signed membership state produced by consuming the exact context.
-	SecurityState []byte `protobuf:"bytes,5,opt,name=security_state,json=securityState,proto3" json:"security_state,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The signed chain from genesis to the joined state, each with its
+	// recovery proof when it is a recovery transition.
+	SecurityStates []*SecurityState `protobuf:"bytes,5,rep,name=security_states,json=securityStates,proto3" json:"security_states,omitempty"`
+	// Public account key. It names the account on registration; the new
+	// device does not receive the account root.
+	AccountPublicKey []byte `protobuf:"bytes,6,opt,name=account_public_key,json=accountPublicKey,proto3" json:"account_public_key,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *PairingPayload) Reset() {
@@ -2307,13 +2310,6 @@ func (*PairingPayload) Descriptor() ([]byte, []int) {
 	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{15}
 }
 
-func (x *PairingPayload) GetRoot() []byte {
-	if x != nil {
-		return x.Root
-	}
-	return nil
-}
-
 func (x *PairingPayload) GetServer() string {
 	if x != nil {
 		return x.Server
@@ -2335,9 +2331,16 @@ func (x *PairingPayload) GetApprovalSignature() []byte {
 	return nil
 }
 
-func (x *PairingPayload) GetSecurityState() []byte {
+func (x *PairingPayload) GetSecurityStates() []*SecurityState {
 	if x != nil {
-		return x.SecurityState
+		return x.SecurityStates
+	}
+	return nil
+}
+
+func (x *PairingPayload) GetAccountPublicKey() []byte {
+	if x != nil {
+		return x.AccountPublicKey
 	}
 	return nil
 }
@@ -3269,13 +3272,13 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x0eTerminalResize\x12\x12\n" +
 	"\x04cols\x18\x01 \x01(\x05R\x04cols\x12\x12\n" +
 	"\x04rows\x18\x02 \x01(\x05R\x04rows\x12\x10\n" +
-	"\x03fit\x18\x03 \x01(\bR\x03fit\"\xae\x01\n" +
-	"\x0ePairingPayload\x12\x12\n" +
-	"\x04root\x18\x01 \x01(\fR\x04root\x12\x16\n" +
+	"\x03fit\x18\x03 \x01(\bR\x03fit\"\xf5\x01\n" +
+	"\x0ePairingPayload\x12\x16\n" +
 	"\x06server\x18\x02 \x01(\tR\x06server\x12\x1a\n" +
 	"\bapproval\x18\x03 \x01(\fR\bapproval\x12-\n" +
-	"\x12approval_signature\x18\x04 \x01(\fR\x11approvalSignature\x12%\n" +
-	"\x0esecurity_state\x18\x05 \x01(\fR\rsecurityState\"\x8d\x02\n" +
+	"\x12approval_signature\x18\x04 \x01(\fR\x11approvalSignature\x12F\n" +
+	"\x0fsecurity_states\x18\x05 \x03(\v2\x1d.remoteagent.v1.SecurityStateR\x0esecurityStates\x12,\n" +
+	"\x12account_public_key\x18\x06 \x01(\fR\x10accountPublicKeyJ\x04\b\x01\x10\x02R\x04root\"\x8d\x02\n" +
 	"\rNotifyContent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1d\n" +
@@ -3456,9 +3459,10 @@ var file_remoteagent_v1_remote_proto_goTypes = []any{
 	(*CompleteImageUploadResponse)(nil),  // 79: remoteagent.v1.CompleteImageUploadResponse
 	(*AbortImageUploadResponse)(nil),     // 80: remoteagent.v1.AbortImageUploadResponse
 	(*ScheduleResponse)(nil),             // 81: remoteagent.v1.ScheduleResponse
-	(NotifyKind)(0),                      // 82: remoteagent.v1.NotifyKind
-	(*Session)(nil),                      // 83: remoteagent.v1.Session
-	(*Event)(nil),                        // 84: remoteagent.v1.Event
+	(*SecurityState)(nil),                // 82: remoteagent.v1.SecurityState
+	(NotifyKind)(0),                      // 83: remoteagent.v1.NotifyKind
+	(*Session)(nil),                      // 84: remoteagent.v1.Session
+	(*Event)(nil),                        // 85: remoteagent.v1.Event
 }
 var file_remoteagent_v1_remote_proto_depIdxs = []int32{
 	8,  // 0: remoteagent.v1.MachineMeta.agents:type_name -> remoteagent.v1.AgentInfo
@@ -3531,23 +3535,24 @@ var file_remoteagent_v1_remote_proto_depIdxs = []int32{
 	16, // 67: remoteagent.v1.TerminalFrame.history_page:type_name -> remoteagent.v1.TerminalHistoryPage
 	17, // 68: remoteagent.v1.TerminalFrame.resize:type_name -> remoteagent.v1.TerminalResize
 	15, // 69: remoteagent.v1.TerminalFrame.history_request:type_name -> remoteagent.v1.TerminalHistoryRequest
-	82, // 70: remoteagent.v1.NotifyContent.kind:type_name -> remoteagent.v1.NotifyKind
-	20, // 71: remoteagent.v1.NotifyContent.approval:type_name -> remoteagent.v1.NotifyApproval
-	30, // 72: remoteagent.v1.ImagePayload.format:type_name -> remoteagent.v1.ImageFormat
-	26, // 73: remoteagent.v1.ProjectPrefs.pinned:type_name -> remoteagent.v1.ProjectPref
-	26, // 74: remoteagent.v1.ProjectPrefs.hidden:type_name -> remoteagent.v1.ProjectPref
-	24, // 75: remoteagent.v1.ProjectPrefs.settings:type_name -> remoteagent.v1.ProjectSettings
-	29, // 76: remoteagent.v1.ProjectSettings.agent:type_name -> remoteagent.v1.Agent
-	25, // 77: remoteagent.v1.ProjectSettings.agents:type_name -> remoteagent.v1.AgentSettings
-	29, // 78: remoteagent.v1.AgentSettings.agent:type_name -> remoteagent.v1.Agent
-	31, // 79: remoteagent.v1.AgentSettings.mode:type_name -> remoteagent.v1.ApprovalMode
-	83, // 80: remoteagent.v1.LiveSnapshot.session:type_name -> remoteagent.v1.Session
-	84, // 81: remoteagent.v1.LiveSnapshot.actions:type_name -> remoteagent.v1.Event
-	82, // [82:82] is the sub-list for method output_type
-	82, // [82:82] is the sub-list for method input_type
-	82, // [82:82] is the sub-list for extension type_name
-	82, // [82:82] is the sub-list for extension extendee
-	0,  // [0:82] is the sub-list for field type_name
+	82, // 70: remoteagent.v1.PairingPayload.security_states:type_name -> remoteagent.v1.SecurityState
+	83, // 71: remoteagent.v1.NotifyContent.kind:type_name -> remoteagent.v1.NotifyKind
+	20, // 72: remoteagent.v1.NotifyContent.approval:type_name -> remoteagent.v1.NotifyApproval
+	30, // 73: remoteagent.v1.ImagePayload.format:type_name -> remoteagent.v1.ImageFormat
+	26, // 74: remoteagent.v1.ProjectPrefs.pinned:type_name -> remoteagent.v1.ProjectPref
+	26, // 75: remoteagent.v1.ProjectPrefs.hidden:type_name -> remoteagent.v1.ProjectPref
+	24, // 76: remoteagent.v1.ProjectPrefs.settings:type_name -> remoteagent.v1.ProjectSettings
+	29, // 77: remoteagent.v1.ProjectSettings.agent:type_name -> remoteagent.v1.Agent
+	25, // 78: remoteagent.v1.ProjectSettings.agents:type_name -> remoteagent.v1.AgentSettings
+	29, // 79: remoteagent.v1.AgentSettings.agent:type_name -> remoteagent.v1.Agent
+	31, // 80: remoteagent.v1.AgentSettings.mode:type_name -> remoteagent.v1.ApprovalMode
+	84, // 81: remoteagent.v1.LiveSnapshot.session:type_name -> remoteagent.v1.Session
+	85, // 82: remoteagent.v1.LiveSnapshot.actions:type_name -> remoteagent.v1.Event
+	83, // [83:83] is the sub-list for method output_type
+	83, // [83:83] is the sub-list for method input_type
+	83, // [83:83] is the sub-list for extension type_name
+	83, // [83:83] is the sub-list for extension extendee
+	0,  // [0:83] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_remote_proto_init() }

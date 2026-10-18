@@ -18,7 +18,9 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
@@ -53,14 +55,14 @@ func (ts *testServer) account(t *testing.T, keys *e2e.Keys) *testAccount {
 
 func (a *testAccount) putSession(t *testing.T, sid string) {
 	t.Helper()
-	key, _ := e2e.Seal(a.keys.Wrap, &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: a.mid, SessionId: sid}, e2e.NewKey())
+	key, _ := e2e.Seal(a.keys.Wrap, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: a.mid, SessionId: sid}, e2e.NewKey())
 	if _, err := a.machine.PutSession(context.Background(), connect.NewRequest(&pb.PutSessionRequest{SessionId: sid, Key: key})); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func (a *testAccount) putPrefs(t *testing.T, expected uint64) error {
-	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: "project-prefs", Seq: expected + 1, Sender: a.cid}, []byte("prefs"))
+	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: "project-prefs", Seq: expected + 1, Sender: a.cid}, []byte("prefs"))
 	_, err := a.client.PutAccountPrefs(context.Background(), connect.NewRequest(&pb.PutAccountPrefsRequest{ObjectId: "project-prefs", ExpectedRevision: expected, Envelope: env}))
 	return err
 }
@@ -78,7 +80,7 @@ func TestAccountsAreIsolated(t *testing.T) {
 	// Both accounts have a session s1; only a's has events and an image.
 	a.putSession(t, "s1")
 	b.putSession(t, "s1")
-	ev, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: a.mid, SessionId: "s1", Seq: 1}, []byte("event"))
+	ev, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: a.mid, SessionId: "s1", Seq: 1}, []byte("event"))
 	if _, err := a.machine.UploadEvents(ctx, connect.NewRequest(&pb.UploadEventsRequest{SessionId: "s1", Events: []*pb.StoredEvent{{Seq: 1, Envelope: ev}}})); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +110,7 @@ func TestAccountsAreIsolated(t *testing.T) {
 	if _, err := b.client.GetImage(ctx, connect.NewRequest(&pb.GetImageRequest{SessionId: "s1", ImageId: img})); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("b reads a's image: %v", err)
 	}
-	if res, err := b.client.ListDevices(ctx, connect.NewRequest(&pb.ListDevicesRequest{})); err != nil || len(res.Msg.Devices) != 2 {
+	if res, err := b.client.ListDevices(ctx, connect.NewRequest(&pb.ListDevicesRequest{})); err != nil || len(res.Msg.Devices) != 3 {
 		t.Fatalf("b's devices: %v %v", res, err)
 	} else {
 		for _, d := range res.Msg.Devices {
@@ -117,20 +119,17 @@ func TestAccountsAreIsolated(t *testing.T) {
 			}
 		}
 	}
-	meta, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_DEVICE_META, RequestId: a.cid, Seq: 1, Sender: b.cid}, []byte("name"))
-	if _, err := b.client.PutDeviceMeta(ctx, connect.NewRequest(&pb.PutDeviceMetaRequest{DeviceId: a.cid, Meta: meta})); connect.CodeOf(err) != connect.CodeNotFound {
+	meta, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_DEVICE_META, RequestId: a.cid, Seq: 1, Sender: b.cid}, []byte("name"))
+	if _, err := b.client.PutDeviceMeta(ctx, connect.NewRequest(&pb.PutDeviceMetaRequest{DeviceId: a.cid, Meta: meta})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("b names a's device: %v", err)
 	}
 	if res, err := b.client.GetAccountPrefs(ctx, connect.NewRequest(&pb.GetAccountPrefsRequest{ObjectId: "project-prefs"})); err != nil || res.Msg.Object.Revision != 0 {
 		t.Fatalf("b reads a's preferences: %v %v", res, err)
 	}
-	if _, err := b.client.RemoveDevice(ctx, connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: a.mid})); err == nil {
-		t.Fatal("b removed a's machine")
-	}
 	if _, err := ts.srv.store.device(ctx, a.mid); err != nil {
 		t.Fatalf("a's machine after b removed it: %v", err)
 	}
-	cmd, _ := e2e.Seal(b.keys.Command, &pb.Header{Version: 2,
+	cmd, _ := e2e.Seal(b.keys.Command, &pb.Header{Version: deviceauth.Version,
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: a.mid, RequestId: "0123456789abcdef0123456789abcdef",
 		DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: b.cid,
 	}, []byte("cmd"))
@@ -190,7 +189,7 @@ func (ts *testServer) signup(t *testing.T, keys *e2e.Keys, kind pb.DeviceKind, p
 	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(nil)
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: keys.AccountPublicKey(), DevicePublicKey: pub, Kind: kind})
-	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: reg, Signature: keys.SignRegistration(reg), SignupProof: proof}))
+	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Signature: keys.SignRegistration(reg), SignupProof: proof}))
 	if err == nil {
 		ts.rememberKey(res.Msg.DeviceId, priv)
 	}
@@ -262,7 +261,7 @@ func TestOpenSignup(t *testing.T) {
 	stolen, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: thief.AccountPublicKey(), DevicePublicKey: takenReg.DevicePublicKey, Kind: machine})
 	again := ts.proof(t)
 	for range signupsPerHour + 1 {
-		_, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: stolen, Signature: thief.SignRegistration(stolen), SignupProof: again}))
+		_, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: stolen, Signature: thief.SignRegistration(stolen), SignupProof: again}))
 		if connect.CodeOf(err) != connect.CodePermissionDenied || !strings.Contains(err.Error(), "another account") {
 			t.Fatalf("another account's device key: %v", err)
 		}
@@ -380,7 +379,7 @@ func TestAdmin(t *testing.T) {
 		t.Fatalf("accounts: %v %v", list, err)
 	}
 	for _, info := range list {
-		if info.ID == ts.acct() && (info.Devices != 2 || info.Machines != 1 || info.Sessions != 1 || info.Plan != "owner") {
+		if info.ID == ts.acct() && (info.Devices != 3 || info.Machines != 1 || info.Sessions != 1 || info.Plan != "owner") {
 			t.Fatalf("a as listed: %+v", info)
 		}
 	}
@@ -538,7 +537,7 @@ func TestAccountGrowthIsBounded(t *testing.T) {
 	}
 	client := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, cp, cid)))
 	put := func(id string, expected uint64) error {
-		env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: 2, Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: id, Seq: expected + 1, Sender: cid}, []byte("prefs"))
+		env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: id, Seq: expected + 1, Sender: cid}, []byte("prefs"))
 		_, err := client.PutAccountPrefs(ctx, connect.NewRequest(&pb.PutAccountPrefsRequest{ObjectId: id, ExpectedRevision: expected, Envelope: env}))
 		return err
 	}

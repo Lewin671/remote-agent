@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
@@ -57,8 +56,7 @@ type pairing struct {
 	joinerPub             []byte
 	devicePub             []byte
 	deviceX               []byte
-	securityContext       []byte
-	candidateSignature    []byte
+	trust                 []byte
 	approval, approvalSig []byte
 	payloadHash           [32]byte
 	joinerKind            pb.DeviceKind
@@ -141,6 +139,9 @@ func (ps *pairingService) CreatePairing(ctx context.Context, req *connect.Reques
 	if err != nil {
 		return nil, err
 	}
+	if err := ps.requireAuthority(ctx, d); err != nil {
+		return nil, err
+	}
 	ps.sweepLocked()
 	mine := 0
 	for _, p := range ps.byID {
@@ -198,6 +199,19 @@ func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(&pb.JoinPairingResponse{PairingId: p.id, Commit: p.commit, CandidateToken: token}), nil
 }
 
+// requireAuthority makes the app's device page the only place that starts or
+// approves a pairing on an honest relay.
+func (ps *pairingService) requireAuthority(ctx context.Context, d *device) error {
+	if d == nil {
+		return errNoPairing
+	}
+	authority, err := ps.s.store.tenant(d.account).authorityDevice(ctx)
+	if err != nil || authority != d.id {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only the current authority phone may manage pairings"))
+	}
+	return nil
+}
+
 func (ps *pairingService) dropLocked(p *pairing) {
 	delete(ps.byID, p.id)
 	delete(ps.byCode, p.code)
@@ -229,6 +243,9 @@ func (ps *pairingService) find(ctx context.Context, header, id, candidate string
 	if d.id != p.initiator {
 		return nil, false, errNoPairing
 	}
+	if err := ps.s.authorizeDevice(ctx, d, ""); err != nil {
+		return nil, false, err
+	}
 	return p, true, nil
 }
 
@@ -248,16 +265,7 @@ func (ps *pairingService) GetPairing(ctx context.Context, req *connect.Request[p
 		p.canceled = true
 		p.payload = nil
 	}
-	if len(req.Msg.CandidateSignature) > 0 {
-		if initiator || p.canceled || p.delivered || len(p.securityContext) == 0 || len(req.Msg.CandidateSignature) != 64 {
-			return nil, invalid("invalid candidate confirmation")
-		}
-		if len(p.candidateSignature) > 0 && !bytes.Equal(p.candidateSignature, req.Msg.CandidateSignature) {
-			return nil, invalid("candidate confirmation changed")
-		}
-		p.candidateSignature = bytes.Clone(req.Msg.CandidateSignature)
-	}
-	res := &pb.GetPairingResponse{State: p.state(), Commit: p.commit, JoinerPublic: p.joinerPub, JoinerKind: p.joinerKind, InitiatorPublic: p.initPub, DevicePublicKey: p.devicePub, DeviceHpkePublicKey: p.deviceX, SecurityContext: p.securityContext, CandidateSignature: p.candidateSignature}
+	res := &pb.GetPairingResponse{State: p.state(), Commit: p.commit, JoinerPublic: p.joinerPub, JoinerKind: p.joinerKind, InitiatorPublic: p.initPub, DevicePublicKey: p.devicePub, DeviceHpkePublicKey: p.deviceX, Trust: p.trust}
 	switch {
 	case initiator || p.payload == nil:
 	case req.Msg.Received:
@@ -286,20 +294,17 @@ func (ps *pairingService) RevealPairing(ctx context.Context, req *connect.Reques
 	if p.canceled || p.delivered || p.joinerPub == nil || p.initPub != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("nothing to reveal to yet"))
 	}
-	// The server checks the commitment too, but the joiner does not rely
-	// on it: it checks the key against the commitment itself.
-	var securityContext deviceauth.PairContext
-	if len(req.Msg.SecurityContext) > 8<<10 || json.Unmarshal(req.Msg.SecurityContext, &securityContext) != nil {
-		return nil, invalid("invalid security context")
+	// The descriptor is public (account, domain, genesis hash, approver).
+	// The server checks it against the commitment; the joiner checks it
+	// again itself before trusting the chain in the payload.
+	if len(req.Msg.Trust) == 0 || len(req.Msg.Trust) > 8<<10 {
+		return nil, invalid("missing or oversized trust descriptor")
 	}
-	trust, err := deviceauth.PairTrustDescriptor(securityContext.Pin(), securityContext.Approver)
-	if err != nil || !bytes.Equal(e2e.PairDomainCommit(req.Msg.InitiatorPublic, trust), p.commit) {
+	pin, approver, err := deviceauth.ParsePairTrustDescriptor(req.Msg.Trust)
+	if err != nil || pin.Account != p.account || approver != p.initiator || !bytes.Equal(e2e.PairDomainCommit(req.Msg.InitiatorPublic, req.Msg.Trust), p.commit) {
 		return nil, invalid("the trust descriptor does not match the commitment")
 	}
-	if len(req.Msg.SecurityContext) == 0 || len(req.Msg.SecurityContext) > 8<<10 {
-		return nil, invalid("missing or oversized security context")
-	}
-	p.securityContext = bytes.Clone(req.Msg.SecurityContext)
+	p.trust = bytes.Clone(req.Msg.Trust)
 	p.initPub = bytes.Clone(req.Msg.InitiatorPublic)
 	return connect.NewResponse(&pb.RevealPairingResponse{}), nil
 }
@@ -324,6 +329,10 @@ func (ps *pairingService) ApprovePairing(ctx context.Context, req *connect.Reque
 	}
 	if p.initPub == nil || p.canceled || p.delivered {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the pairing is not ready"))
+	}
+	approver, err := ps.s.store.device(ctx, p.initiator)
+	if err != nil || ps.requireAuthority(ctx, approver) != nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the current authority phone may approve pairings"))
 	}
 	a, err := parseApproval(req.Msg.Approval, req.Msg.ApprovalSignature)
 	if err != nil || a == nil {

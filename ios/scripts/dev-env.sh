@@ -17,9 +17,9 @@
 #       --daemon also runs a daemon of the account, on its own tmux socket.
 #   dev-env.sh secret        prints the account secret (ra1.…), alone, on stdout
 #   dev-env.sh url           prints the server URL
-#   dev-env.sh launch [udid] launches the debug app; pair it from an enrolled test device
-#   dev-env.sh pair          `remote-agent account pair`: shows a pairing code for the app
-#                            to join with (-joinServer <url> -joinCode <code>), asks y/N
+#   dev-env.sh launch [udid] launches the debug app
+#   dev-env.sh pair          pairing is started in the phone app (protocol 10); the
+#                            command line only joins, so this prints how to do that
 #   dev-env.sh join CODE     joins as another computer with the code the app's 添加设备 shows
 #   dev-env.sh cli ARGS…     runs remote-agent with the daemon's environment (ls, new, send, …)
 #   dev-env.sh status        says what is running
@@ -113,7 +113,7 @@ start() {
 	done
 	echo "$url" >"$dir/url"
 
-	RA_SETUP_TOKEN=$token agent "$dir/home" account init --server "$url" >"$dir/account.log" 2>&1 || {
+	RA_SETUP_TOKEN=$token RA_DEV_AUTHORITY=1 agent "$dir/home" account dev-init --server "$url" >"$dir/account.log" 2>&1 || {
 		cat "$dir/account.log" >&2
 		stop_one server
 		die "the account could not be made"
@@ -169,11 +169,11 @@ launch)
 	udid=${2:-booted}
 	xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
 	xcrun simctl launch "$udid" "$bundle"
-    echo "Use $0 pair, enter its code in the app, compare the emoji and approve in the terminal."
+    die "pairing is started in the phone app; this test account has no phone yet (the app is protocol 9 until P4-P6)"
 	;;
 pair)
 	need_started
-	agent "$dir/home" account pair
+	die "pairing is started in the phone app; this test account has no phone yet (the app is protocol 9 until P4-P6)"
 	;;
 join)
 	need_started

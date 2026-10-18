@@ -2,10 +2,11 @@ package daemon
 
 import (
 	"context"
+	"crypto/ed25519"
 	"fmt"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/codex"
-	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
@@ -140,8 +141,29 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 	defer http.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	account, err := relay.Join(ctx, http.URL, e2e.NewKey(), "history-test")
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	authority, err := remoteclient.NewAuthority(ctx, http.URL, "history-test")
 	if err != nil {
+		t.Fatal(err)
+	}
+	_, med, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mx, _, err := deviceauth.NewXKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	machine, err := authority.Enroll(ctx, med, mx, deviceauth.Machine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	account := &relay.Account{Server: authority.Server, Root: authority.Root, DeviceSeed: med.Seed(), DeviceID: machine.ID,
+		Security: &relay.SecurityConfig{Pin: authority.Pin, XPrivate: mx}}
+	if err := machine.Endpoint.Save(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "security-v3.db")); err != nil {
+		t.Fatal(err)
+	}
+	if err := account.Save(); err != nil {
 		t.Fatal(err)
 	}
 	r := relay.New(historyBackend{d})
@@ -155,10 +177,19 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 		case <-time.After(10 * time.Millisecond):
 		}
 	}
-	client, err := remoteclient.Register(ctx, account.Secret(), account.DeviceKey(), account.Security.Pin, account.Security.XPrivate, filepath.Join(t.TempDir(), "client-security.db"), nil)
+	_, ced, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	cx, _, err := deviceauth.NewXKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	enrolled, err := authority.Enroll(ctx, ced, cx, deviceauth.Client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := enrolled.Client(authority)
 
 	var listed []remoteclient.Session
 	for ctx.Err() == nil {

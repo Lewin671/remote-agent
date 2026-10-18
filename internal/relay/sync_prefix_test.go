@@ -9,7 +9,6 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
-	"github.com/Lewin671/remote-agent/internal/e2e"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -105,12 +104,8 @@ func TestSkeletonUploadAndPrefixFailure(t *testing.T) {
 				m.cause = errors.New("damaged record")
 				b.readErr = m.cause
 			}
-			keys, err := e2e.Derive(make([]byte, 32))
-			if err != nil {
-				t.Fatal(err)
-			}
 			r := New(b)
-			c := &conn{r: r, acct: &Account{DeviceID: "machine"}, keys: keys, machine: m}
+			c := &conn{r: r, acct: &Account{DeviceID: "machine"}, machine: m}
 			initializeTestSecurity(t, c)
 			after, _, skipped, err := c.syncSession(context.Background(), "session", nil, nil)
 			var se *syncError

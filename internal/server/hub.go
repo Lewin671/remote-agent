@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -412,12 +411,7 @@ func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.Forwar
 			return nil, errUnknown("the machine disconnected")
 		case r.Error != "":
 			return nil, connect.NewError(connect.CodeAborted, errors.New("machine: "+strings.TrimSpace(r.Error)))
-		case len(fc.SecurityRpc) > 0:
-			if r.Result != nil || len(r.SecurityRpc) == 0 || len(r.SecurityRpc) > deviceauth.MaxRPCBytes+512 {
-				return nil, errUnknown("the machine sent a malformed security reply")
-			}
-			return r, nil
-		case r.Result == nil || len(r.SecurityRpc) != 0:
+		case r.Result == nil:
 			return nil, errUnknown("the machine sent no result")
 		}
 		if _, err := checkEnvelope(r.Result, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: machineID}); err != nil {

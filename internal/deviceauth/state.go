@@ -337,6 +337,9 @@ func VerifyTransition(parent, next State, recovery *RecoveryStatement) error {
 	if next.Core.Parent != ph || next.Core.Epoch != parent.Core.Epoch+1 || next.Core.Account != parent.Core.Account || next.Core.Domain != parent.Core.Domain {
 		return ErrStale
 	}
+	if next.Core.IssuedAt < parent.Core.IssuedAt {
+		return ErrInvalid
+	}
 	authority, ok := next.Core.Member(next.Core.AuthorityID)
 	if !ok || authority.Kind != Client {
 		return ErrInvalid
@@ -359,7 +362,8 @@ func VerifyTransition(parent, next State, recovery *RecoveryStatement) error {
 			return ErrInvalid
 		}
 		oldAuthority, ok := parent.Core.Member(parent.Core.AuthorityID)
-		if !ok || !ed25519.Verify(oldAuthority.EdPublic[:], mustSignBytes(next), next.Signature) {
+		sigBytes, err := next.signBytes()
+		if !ok || err != nil || !ed25519.Verify(oldAuthority.EdPublic[:], sigBytes, next.Signature) {
 			return ErrUntrusted
 		}
 		switch {
@@ -497,6 +501,16 @@ func openHPKE(priv, enc, info, aad, ct []byte) ([]byte, error) {
 	}
 	return plain, nil
 }
+
+// XPublic derives the public half of an X25519 private key.
+func XPublic(private []byte) ([]byte, error) {
+	k, err := ecdh.X25519().NewPrivateKey(private)
+	if err != nil {
+		return nil, ErrInvalid
+	}
+	return k.PublicKey().Bytes(), nil
+}
+
 func NewXKey() (private, public []byte, err error) {
 	k, err := ecdh.X25519().GenerateKey(rand.Reader)
 	if err != nil {

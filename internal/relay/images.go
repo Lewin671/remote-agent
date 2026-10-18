@@ -54,7 +54,7 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 			b.ImageUploaded(sessionID, imageID, false, 0)
 			return nil
 		}
-		env, err := c.security.sealMessage(ctx, &pb.Header{
+		env, err := c.security.sealMessage(&pb.Header{
 			Kind: pb.PayloadKind_PAYLOAD_KIND_IMAGE, MachineId: c.acct.DeviceID, SessionId: sessionID,
 			RequestId: imageID, Sender: c.acct.DeviceID,
 		}, deviceauth.Image, key, payload)

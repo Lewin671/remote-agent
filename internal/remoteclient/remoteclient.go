@@ -4,12 +4,10 @@
 package remoteclient
 
 import (
-	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/Lewin671/remote-agent/internal/netpolicy"
@@ -29,7 +27,6 @@ import (
 
 // Client is a logged-in client device.
 type Client struct {
-	security *deviceauth.Remote
 	Server   string
 	DeviceID string
 	keys     *e2e.Keys
@@ -38,196 +35,7 @@ type Client struct {
 	// CommandTTL is how long a command stays valid.
 	CommandTTL time.Duration
 	device     ed25519.PrivateKey
-}
-
-// Register enrolls a client using an explicit currently enrolled device key.
-// Used by automated end-to-end drivers; the shared account secret is insufficient.
-func Register(ctx context.Context, secret e2e.Secret, authorizer ed25519.PrivateKey, pin deviceauth.Pin, authorizerX []byte, statePath string, authorizerExchange deviceauth.Exchange) (*Client, error) {
-	keys, err := e2e.Derive(secret.Root)
-	if err != nil {
-		return nil, err
-	}
-	pub, priv, err := ed25519.GenerateKey(nil)
-	if err != nil {
-		return nil, err
-	}
-	reg, err := proto.Marshal(&pb.DeviceRegistration{
-		AccountPublicKey: keys.AccountPublicKey(), DevicePublicKey: pub,
-		Kind: pb.DeviceKind_DEVICE_KIND_CLIENT, CreatedMs: time.Now().UnixMilli(),
-	})
-	if err != nil {
-		return nil, err
-	}
-	hc := netpolicy.Client(time.Minute)
-	auth := remoteagentv1connect.NewAuthServiceClient(hc, secret.Server)
-	if len(authorizer) != ed25519.PrivateKeySize {
-		return nil, errors.New("an enrolled authorizing device is required")
-	}
-	approverID := e2e.DeviceID(authorizer.Public().(ed25519.PublicKey))
-	challenge, err := auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: approverID}))
-	if err != nil {
-		return nil, err
-	}
-	logged, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: 9, DeviceId: approverID, Challenge: challenge.Msg.Challenge, Signature: e2e.SignLogin(authorizer, challenge.Msg.Challenge)}))
-	if err != nil {
-		return nil, err
-	}
-	pc := remoteagentv1connect.NewPairingServiceClient(hc, secret.Server, connect.WithInterceptors(connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			req.Header().Set("Authorization", "Bearer "+logged.Msg.Token)
-			return next(ctx, req)
-		}
-	})))
-	x, xpub, err := deviceauth.NewXKey()
-	if err != nil {
-		return nil, err
-	}
-	member, err := deviceauth.NewMember(pub, xpub, deviceauth.Client)
-	if err != nil {
-		return nil, err
-	}
-	approverAPI := remoteagentv1connect.NewClientServiceClient(hc, secret.Server, connect.WithInterceptors(connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			req.Header().Set("Authorization", "Bearer "+logged.Msg.Token)
-			return next(ctx, req)
-		}
-	})))
-	exchangeAsApprover := func(method deviceauth.Method, body, out any) error {
-		capsule, waiter, err := deviceauth.Request(pin, authorizer, method, body)
-		if err != nil {
-			return err
-		}
-		raw, err := capsule.MarshalBinary()
-		if err != nil {
-			return err
-		}
-		var response deviceauth.Capsule
-		if authorizerExchange != nil {
-			response, err = authorizerExchange(ctx, capsule)
-		} else {
-			var reply *connect.Response[pb.ForwardResponse]
-			reply, err = approverAPI.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: pin.AuthorityID, SecurityRpc: raw}))
-			if err == nil {
-				response, err = deviceauth.ParseCapsule(reply.Msg.SecurityRpc)
-			}
-		}
-		if err != nil {
-			return err
-		}
-		// This automated driver was explicitly given the authorizer's signing key
-		// and pinned authority out of band. Its RPC replies need that member's X key;
-		// the production pairing flow receives this from its own local security store.
-		return waiter.Reply(response, authorizerX, out)
-	}
-	trust, err := deviceauth.PairTrustDescriptor(pin, approverID)
-	if err != nil {
-		return nil, err
-	}
-	ephemeral, err := e2e.NewPairKey()
-	if err != nil {
-		return nil, err
-	}
-	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairDomainCommit(ephemeral.Public(), trust)}))
-	if err != nil {
-		return nil, err
-	}
-	joinKey, err := e2e.NewPairKey()
-	if err != nil {
-		return nil, err
-	}
-	joined, err := pc.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: 9, Code: created.Msg.Code, JoinerPublic: joinKey.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT, DevicePublicKey: pub, DeviceHpkePublicKey: xpub}))
-	if err != nil {
-		return nil, err
-	}
-	var pair deviceauth.PairContext
-	if err := exchangeAsApprover(deviceauth.BeginPair, deviceauth.PairBegin{ID: created.Msg.PairingId, Candidate: member}, &pair); err != nil {
-		return nil, err
-	}
-	if pair.Verify(pin) != nil {
-		return nil, deviceauth.ErrUntrusted
-	}
-	contextBytes, err := json.Marshal(pair)
-	if err != nil {
-		return nil, err
-	}
-	if joined.Msg.PairingId != created.Msg.PairingId || !bytes.Equal(joined.Msg.Commit, e2e.PairDomainCommit(ephemeral.Public(), trust)) {
-		return nil, deviceauth.ErrUntrusted
-	}
-	_, err = pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{PairingId: created.Msg.PairingId, InitiatorPublic: ephemeral.Public(), SecurityContext: contextBytes}))
-	if err != nil {
-		return nil, err
-	}
-	approval, signature, err := e2e.NewPairApproval(e2e.AccountID(keys.AccountPublicKey()), created.Msg.PairingId, authorizer, pub, pb.DeviceKind_DEVICE_KIND_CLIENT, created.Msg.ExpiresMs)
-	if err != nil {
-		return nil, err
-	}
-	shared, err := ephemeral.Derive(joinKey.Public(), e2e.PairDomainTranscript(created.Msg.PairingId, ephemeral.Public(), joinKey.Public(), pub, xpub, int32(pb.DeviceKind_DEVICE_KIND_CLIENT), trust))
-	if err != nil {
-		return nil, err
-	}
-	as, err := deviceauth.SignPair(pair, authorizer, false)
-	if err != nil {
-		return nil, err
-	}
-	cs, err := deviceauth.SignPair(pair, priv, true)
-	if err != nil {
-		return nil, err
-	}
-	var joinedState deviceauth.State
-	if err := exchangeAsApprover(deviceauth.ApprovePair, deviceauth.PairApprove{ID: pair.ID, ApproverSignature: as, CandidateSignature: cs}, &joinedState); err != nil {
-		return nil, err
-	}
-	joinedBytes, err := joinedState.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	payload, err := e2e.SealMessage(shared.Key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: created.Msg.PairingId, Sender: approverID}, &pb.PairingPayload{Root: secret.Root, Server: secret.Server, Approval: approval, ApprovalSignature: signature, SecurityState: joinedBytes})
-	if err != nil {
-		return nil, err
-	}
-	_, err = pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: created.Msg.PairingId, Payload: payload, Approval: approval, ApprovalSignature: signature}))
-	if err != nil {
-		return nil, err
-	}
-	res, err := auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: 9, Registration: reg, Signature: keys.SignRegistration(reg), Approval: approval, ApprovalSignature: signature}))
-
-	if err != nil {
-		return nil, fmt.Errorf("register: %w", err)
-	}
-	id := res.Msg.DeviceId
-	ch, err := auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: id}))
-	if err != nil {
-		return nil, err
-	}
-	lr, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: 9, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(priv, ch.Msg.Challenge)}))
-	if err != nil {
-		return nil, fmt.Errorf("login: %w", err)
-	}
-	c := &Client{Server: secret.Server, DeviceID: id, keys: keys, token: lr.Msg.Token, CommandTTL: time.Minute, device: priv}
-	c.api = remoteagentv1connect.NewClientServiceClient(hc, secret.Server, connect.WithInterceptors(connect.UnaryInterceptorFunc(
-		func(next connect.UnaryFunc) connect.UnaryFunc {
-			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-				req.Header().Set("Authorization", "Bearer "+c.token)
-				return next(ctx, req)
-			}
-		})))
-	endpoint, err := deviceauth.InitEndpoint(statePath, pin, joinedState, id, priv.Seed(), x)
-	if err != nil {
-		return nil, err
-	}
-	c.security = &deviceauth.Remote{Endpoint: endpoint, Exchange: func(ctx context.Context, capsule deviceauth.Capsule) (deviceauth.Capsule, error) {
-		raw, err := capsule.MarshalBinary()
-		if err != nil {
-			return deviceauth.Capsule{}, err
-		}
-		res, err := c.api.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: capsule.To, SecurityRpc: raw}))
-		if err != nil {
-			return deviceauth.Capsule{}, err
-		}
-		return deviceauth.ParseCapsule(res.Msg.SecurityRpc)
-	}}
-	_, _ = pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: created.Msg.PairingId, CandidateToken: joined.Msg.CandidateToken, Received: true}))
-	return c, nil
+	endpoint   *deviceauth.Endpoint
 }
 
 // Token is the bearer token, for tests that talk to the server directly.
@@ -382,7 +190,7 @@ func (c *Client) Seal(machineID, sessionID, requestID string, deadline time.Time
 	if err != nil {
 		return nil, err
 	}
-	wire, err := c.security.Seal(context.Background(), deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: machineID, Session: sessionID, Request: requestID, Deadline: uint64(deadline.UnixMilli())}, nil, plain)
+	wire, err := c.endpoint.Prepare(deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: machineID, Session: sessionID, Request: requestID, Deadline: uint64(deadline.UnixMilli())}, nil, plain)
 	if err != nil {
 		return nil, err
 	}
@@ -584,7 +392,7 @@ func (t *Term) send(ctx context.Context, seq uint64, f *pb.TerminalFrame) error 
 	if err != nil {
 		return err
 	}
-	wire, err := t.c.security.Seal(ctx, deviceauth.Header{Kind: 8, Purpose: purpose, Machine: t.s.MachineID, Session: t.s.ID, Request: t.stream, Seq: seq, Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}, t.s.Key, plain)
+	wire, err := t.c.endpoint.Prepare(deviceauth.Header{Kind: 8, Purpose: purpose, Machine: t.s.MachineID, Session: t.s.ID, Request: t.stream, Seq: seq, Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}, t.s.Key, plain)
 	if err != nil {
 		return err
 	}
@@ -618,18 +426,59 @@ func (c *Client) Image(ctx context.Context, s Session, imageID string) (img *pb.
 	return img, false, nil
 }
 
-func (c *Client) Close() error { return c.security.Endpoint.Close() }
+func (c *Client) Close() error { return c.endpoint.Close() }
+
+// NewClient wraps an existing endpoint and token.
+func NewClient(server, token, deviceID string, endpoint *deviceauth.Endpoint, keys *e2e.Keys) *Client {
+	hc := netpolicy.Client(time.Minute)
+	c := &Client{Server: server, DeviceID: deviceID, token: token, endpoint: endpoint, keys: keys, CommandTTL: time.Minute}
+	c.api = remoteagentv1connect.NewClientServiceClient(hc, server, connect.WithInterceptors(bearerToken(token)))
+	return c
+}
+
+// Sync pulls states after the local head. An unknown state is fetched
+// immediately before an envelope is retried.
+func (c *Client) Sync(ctx context.Context) error {
+	head := c.endpoint.HeadEpoch()
+	res, err := c.api.GetSecurityStates(ctx, connect.NewRequest(&pb.GetSecurityStatesRequest{AfterEpoch: head, Limit: 8}))
+	if err != nil {
+		return err
+	}
+	if len(res.Msg.States) == 0 {
+		return nil
+	}
+	states := make([]deviceauth.State, 0, len(res.Msg.States))
+	proofs := make([]*deviceauth.RecoveryStatement, 0, len(res.Msg.States))
+	for _, in := range res.Msg.States {
+		st, err := deviceauth.ParseState(in.State)
+		if err != nil {
+			return err
+		}
+		var proof *deviceauth.RecoveryStatement
+		if len(in.Recovery) > 0 {
+			p, err := deviceauth.ParseRecoveryStatement(in.Recovery)
+			if err != nil {
+				return err
+			}
+			proof = &p
+		}
+		states = append(states, st)
+		proofs = append(proofs, proof)
+	}
+	return c.endpoint.Install(states, proofs)
+}
+
 func (c *Client) openEnvelope(ctx context.Context, seed []byte, env *pb.Envelope, history bool) (*pb.Header, []byte, error) {
 	wire, err := deviceauth.FromEnvelope(env)
 	if err != nil {
 		return nil, nil, err
 	}
-	var h deviceauth.Header
-	var plain []byte
-	if history {
-		h, plain, err = c.security.OpenHistory(ctx, wire, seed)
-	} else {
-		h, plain, err = c.security.OpenCurrent(ctx, wire, seed)
+	h, plain, err := c.endpoint.Open(wire, seed, false, uint64(time.Now().UnixMilli()))
+	if errors.Is(err, deviceauth.ErrUnknown) {
+		if serr := c.Sync(ctx); serr != nil {
+			return nil, nil, serr
+		}
+		h, plain, err = c.endpoint.Open(wire, seed, false, uint64(time.Now().UnixMilli()))
 	}
 	if err != nil {
 		return nil, nil, err

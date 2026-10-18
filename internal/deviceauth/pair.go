@@ -21,6 +21,38 @@ func PairTrustDescriptor(p Pin, approver string) ([]byte, error) {
 	return e.b, nil
 }
 
+// ParsePairTrustDescriptor reads the public descriptor bound by the pairing
+// commitment and the SAS transcript. It carries no secret.
+func ParsePairTrustDescriptor(b []byte) (Pin, string, error) {
+	var p Pin
+	e := encoder{b: []byte("ra3/pair-trust\x00")}
+	if len(e.b) > len(b) || !bytes.Equal(b[:len(e.b)], e.b) {
+		return p, "", ErrInvalid
+	}
+	d := decoder{b: b[len(e.b):]}
+	p.Account = d.str()
+	p.Domain = d.hash()
+	p.Genesis = d.hash()
+	approver := d.str()
+	if d.done() != nil || !deviceID(p.Account) || p.Domain == (Hash{}) || p.Genesis == (Hash{}) || !deviceID(approver) {
+		return Pin{}, "", ErrInvalid
+	}
+	return p, approver, nil
+}
+
+// BuildMembershipState builds a normal state that changes the member list
+// (add, remove, or X rotation) and seals the previous content key.
+func BuildMembershipState(parent State, members []Member, removed []string, oldSecret, newSecret []byte, signer ed25519.PrivateKey, now uint64) (State, error) {
+	if len(oldSecret) != 32 || len(newSecret) != 32 {
+		return State{}, ErrInvalid
+	}
+	prev, err := sealPrevSecret(newSecret, oldSecret)
+	if err != nil {
+		return State{}, err
+	}
+	return BuildState(parent, members, removed, newSecret, prev, signer, now)
+}
+
 // BuildPairState adds one candidate. The caller (Android) has its own builder;
 // this is the Go test/helper path.
 func BuildPairState(parent State, candidate Member, candidateX []byte, oldSecret, secret []byte, signer ed25519.PrivateKey, now uint64) (State, error) {

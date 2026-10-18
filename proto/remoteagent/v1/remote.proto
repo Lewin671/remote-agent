@@ -286,12 +286,17 @@ message TerminalResize {
 
 // PairingPayload is what an existing device hands a new one.
 message PairingPayload {
-  bytes root = 1;
+  reserved 1;
+  reserved "root";
   string server = 2;
   bytes approval = 3;
   bytes approval_signature = 4;
-  // Complete signed membership state produced by consuming the exact context.
-  bytes security_state = 5;
+  // The signed chain from genesis to the joined state, each with its
+  // recovery proof when it is a recovery transition.
+  repeated SecurityState security_states = 5;
+  // Public account key. It names the account on registration; the new
+  // device does not receive the account root.
+  bytes account_public_key = 6;
 }
 
 // NotifyContent is what a daemon tells the Android app in a push, sealed

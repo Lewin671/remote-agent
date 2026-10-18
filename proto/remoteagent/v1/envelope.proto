@@ -13,23 +13,17 @@ message Envelope {
   bytes nonce = 2;
   // AES-256-GCM ciphertext followed by the 16-byte tag.
   bytes ciphertext = 3;
-  // Ed25519 signature by the sending device's key, so that a daemon can
-  // tell which device sent a command even though the server is not
-  // trusted. Clients set it on COMMAND envelopes, where a daemon requires
-  // it; it is empty elsewhere. It signs the bytes as transmitted:
-  //   "remote-agent/v1/envelope-signature\x00"
-  //   || uint32be(len(header)) || header
-  //   || uint32be(len(nonce)) || nonce
-  //   || uint32be(len(ciphertext)) || ciphertext
-  // (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
-  // header's sender must be the ID of the signing device.
+  // Ed25519 signature by the sending device's key over the origin bytes:
+  // account, domain, state hash, sender, header hash and ciphertext
+  // commitment (see internal/deviceauth originBytes). Every
+  // security-domain envelope sets it, not only commands; a receiver checks
+  // it against the state the header names.
   bytes signature = 4;
-  // Version-2 canonical deviceauth Header; the protobuf Header above is only
-  // a routing projection. Receivers compare every projection field to this.
+  // Canonical deviceauth v3 Header; the protobuf Header above is only a
+  // routing projection. Receivers compare every projection field to this.
   bytes security_header = 5;
-  // Exact-ciphertext authority authorization and its Ed25519 signature.
-  bytes authorization = 6;
-  bytes authorization_signature = 7;
+  reserved 6, 7;
+  reserved "authorization", "authorization_signature";
 }
 
 // PayloadKind says what an envelope holds and which key seals it.
