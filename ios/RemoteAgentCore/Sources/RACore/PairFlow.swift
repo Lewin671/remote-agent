@@ -222,8 +222,20 @@ public func joinByPairing(
     else { throw PairError("配对批准与这台设备不匹配") }
     var chain: [DeviceSecurity.State] = []
     var proofs: [DeviceSecurity.RecoveryStatement?] = []
-    guard !payload.securityStates.isEmpty, payload.securityStates.count <= DeviceSecurity.maxStates
-    else { throw PairError("配对载荷的状态链不完整") }
+    guard !payload.securityStates.isEmpty else { throw PairError("配对载荷的状态链不完整") }
+    guard payload.securityStates.count <= DeviceSecurity.maxPairStates else {
+        throw PairError("安全状态链太长，无法加入账户；请在手机 App 上重建账户")
+    }
+    var chainBytes = 0
+    for value in payload.securityStates {
+        chainBytes += value.state.count + value.recovery.count
+        guard chainBytes <= DeviceSecurity.maxPairBytes else {
+            throw PairError("安全状态链太长，无法加入账户；请在手机 App 上重建账户")
+        }
+        guard value.state.count <= DeviceSecurity.maxState,
+            value.recovery.count <= DeviceSecurity.maxState
+        else { throw PairError("配对载荷的状态链不完整") }
+    }
     for value in payload.securityStates {
         chain.append(try DeviceSecurity.parseState(value.state))
         proofs.append(
@@ -231,6 +243,12 @@ public func joinByPairing(
                 ? nil : try DeviceSecurity.RecoveryStatement.parse(value.recovery))
     }
     try DeviceSecurity.verifyChain(pin: pin, states: chain, proofs: proofs)
+    let nowMs = UInt64(Date().timeIntervalSince1970 * 1000)
+    for state in chain {
+        guard state.core.issuedAt <= nowMs + DeviceSecurity.clockSkewLimit else {
+            throw PairError("手机的安全状态时间比本机快 5 分钟以上，请校准时间后重试")
+        }
+    }
     let head = chain[chain.count - 1]
     let candidate = try DeviceSecurity.member(ed: devicePublic, x: xPublic, kind: .client)
     guard head.core.authorityID == approver, head.core.member(candidate.id) != nil,

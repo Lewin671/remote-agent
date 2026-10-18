@@ -168,6 +168,7 @@ public actor Remote {
         initialState: [:])
     var conn = ConnState.connecting
     var error = ""
+    var clockWarning = ""
     var loaded = false
     var offlineSince: Int64 = 0
     var errorDetail = ""
@@ -528,6 +529,7 @@ public actor Remote {
         s.sessions = sessions
         s.conn = conn
         s.error = error
+        s.clockWarning = clockWarning
         s.loaded = loaded
         s.offlineSinceMs = offlineSince
         s.prefs = prefs
@@ -838,6 +840,9 @@ public actor Remote {
 
     func report(_ e: Error) {
         // Only the error text: never content or keys.
+        if let failure = e as? DeviceSecurity.Failure, failure == .clock {
+            clockWarning = "本机时间比安全状态慢 5 分钟以上，控制已暂停；校准系统时间后重试"
+        }
         log("remote-agent: " + errorText(e))
         error = errorText(e)
     }

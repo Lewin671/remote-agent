@@ -80,6 +80,9 @@ public actor DeviceSecurityClient {
     private func syncLoop() async throws -> DeviceSecurity.Record {
         for _ in 0..<DeviceSecurity.maxStates {
             let r = try read()
+            let localNow = max(clock(), r.floor)
+            try DeviceSecurity.check(
+                r.state.core.issuedAt <= localNow + DeviceSecurity.clockSkewLimit, .clock)
             let res = try await fetchStates(r.headEpoch)
             try DeviceSecurity.check(res.headEpoch >= r.headEpoch, .stale)
             if res.states.isEmpty {
@@ -88,8 +91,11 @@ public actor DeviceSecurityClient {
             }
             var states: [DeviceSecurity.State] = []
             var proofs: [DeviceSecurity.RecoveryStatement?] = []
+            let now = max(clock(), r.floor)
             for value in res.states {
                 let s = try DeviceSecurity.parseState(value.state)
+                try DeviceSecurity.check(
+                    s.core.issuedAt <= now + DeviceSecurity.clockSkewLimit, .clock)
                 let proof: DeviceSecurity.RecoveryStatement? =
                     value.recovery.isEmpty
                     ? nil : try DeviceSecurity.RecoveryStatement.parse(value.recovery)

@@ -39,7 +39,11 @@ extension Remote {
     func authorizePrepared(_ p: PreparedCommand, verifyObservation: Bool = true) async throws
         -> PBEnvelope
     {
-        do { return try await authorizeIntent(p, verifyObservation: verifyObservation) } catch {
+        do {
+            return try await authorizeIntent(p, verifyObservation: verifyObservation)
+        } catch let e as CommandError {
+            throw e
+        } catch {
             if error is CancellationError { throw error }
             throw CommandError("authorization_unavailable", "安全状态尚未核实，操作没有发出；请重试")
         }
@@ -47,6 +51,10 @@ extension Remote {
     private func authorizeIntent(_ p: PreparedCommand, verifyObservation: Bool) async throws
         -> PBEnvelope
     {
+        guard clockWarning.isEmpty else {
+            throw CommandError(
+                "failed_precondition", "本机时间比安全状态慢 5 分钟以上，控制已暂停；请校准系统时间后重试")
+        }
         let client = try securitySession()
         guard let cmd = p.command else {
             _ = try DeviceSecurity.fromEnvelope(p.envelope)

@@ -153,6 +153,21 @@ import Testing
     }
 
     /// The joiner's kind comes from the server, which may send any int32.
+    /// The reviewed Go labels for the pairing domain transcript/commit.
+    @Test func bindsThePairingDomainWithTheProtocol10Labels() throws {
+        let (a, b) = (Data(repeating: 1, count: 32), Data(repeating: 2, count: 32))
+        let device = Data(repeating: 3, count: 32)
+        let hpke = Data(repeating: 4, count: 32)
+        let trust = Data(repeating: 5, count: 17)
+        let transcript = Pairing.domainTranscript(
+            pairingId: "pair-test", initiatorPublic: a, joinerPublic: b, devicePublic: device,
+            hpkePublic: hpke, joinerKind: 2, trust: trust)
+        #expect(transcript.hex == "07413d1f09c11d5ed6b66a63047a31697b33fa87d333f51407abf757f3509072")
+        #expect(
+            try DeviceSecurity.pairDomainCommit(ephemeral: a, trust: trust).hex
+                == "a6306644a67899cfe48699987335847e062ec8614959435e68bb0222c72e619b")
+    }
+
     @Test func aJoinerKindThatIsNoKindStopsThePairingAndNeverTraps() throws {
         for raw in [-1, 0, 3, Int(Int32.min), Int(Int32.max)] {
             var sent = PBGetPairingResponse()

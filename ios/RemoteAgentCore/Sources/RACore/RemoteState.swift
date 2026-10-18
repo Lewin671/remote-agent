@@ -110,6 +110,9 @@ public struct RemoteState: Equatable, Sendable {
     public var synced = false
     /// The failure behind `error` in its own words, for the details.
     public var errorDetail = ""
+    /// The local clock is more than five minutes behind a signed state; new
+    /// control stays unsent until it is corrected.
+    public var clockWarning = ""
 
     public init() {}
 

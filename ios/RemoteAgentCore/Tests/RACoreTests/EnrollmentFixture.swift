@@ -146,7 +146,7 @@ final class PhonePairing: @unchecked Sendable {
     private let ephemeral: PairKey
     private let expiresMs: Int64
     private var revealed: PBGetPairingResponse?
-    private var sent: (request: PBApprovePairingRequest, state: Data)?
+    private var sent: PBApprovePairingRequest?
 
     private init(
         phone: SyntheticPhone, pairingID: String, code: String, commit: Data, trust: Data,
@@ -218,10 +218,9 @@ final class PhonePairing: @unchecked Sendable {
     func approve(sleep: Sleeper = realSleep) async throws {
         if let sent {
             _ = try await phone.api.pairing.approvePairing(
-                request: sent.request, headers: Api.headers(token: phone.token)
+                request: sent, headers: Api.headers(token: phone.token)
             ).value()
             _ = try? await waitDelivered(sleep: sleep)
-            try await phone.commit(sent.state)
             return
         }
         guard let st = revealed else { throw TestFailure("pairing was not revealed") }
@@ -229,6 +228,9 @@ final class PhonePairing: @unchecked Sendable {
         let added = try await phone.enrollExternal(
             edPublic: st.devicePublicKey, xPublic: st.deviceHpkePublicKey, kind: kind)
         let chain = added.chain
+        // The documented phone order: sign the joining state, upload it, then
+        // hand the chain over in the encrypted pairing payload.
+        try await phone.commit(added.state)
         let transcript = Pairing.domainTranscript(
             pairingId: pairingID, initiatorPublic: ephemeral.publicKey,
             joinerPublic: st.joinerPublic, devicePublic: st.devicePublicKey,
@@ -257,13 +259,11 @@ final class PhonePairing: @unchecked Sendable {
         request.payload = try Envelopes.seal(key: secrets.key, header: header, message: payload)
         request.approval = approval
         request.approvalSignature = signature
-        sent = (request, added.state)
+        sent = request
         _ = try await phone.api.pairing.approvePairing(
             request: request, headers: Api.headers(token: phone.token)
         ).value()
         _ = try? await waitDelivered(sleep: sleep)
-        // Only now: a state upload cancels pending pairings on the relay.
-        try await phone.commit(added.state)
     }
 
     /// Waits for the candidate to confirm receipt, as the app's flow does.

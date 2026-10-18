@@ -90,6 +90,16 @@ struct ConnBanner: View {
             } else {
                 bar.accessibilityElement(children: .combine)
             }
+        } else if !state.clockWarning.isEmpty {
+            let bar = HStack(spacing: 6) {
+                Mark(Lucide.clock, color: Theme.orangeInk)
+                Text(state.clockWarning).type(T.meta, Theme.orangeInk)
+                    .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, Theme.Space.page).padding(.vertical, 5)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.soft, ignoresSafeAreaEdges: [])
+            bar.accessibilityElement(children: .combine)
         }
     }
 }

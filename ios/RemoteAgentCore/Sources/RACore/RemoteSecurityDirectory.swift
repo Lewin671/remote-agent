@@ -10,6 +10,7 @@ extension Remote {
         directoryVersion += 1
         let version = directoryVersion
         let head = try await securitySession().sync().state
+        clockWarning = ""
         let hash = try DeviceSecurity.stateHash(head)
         let hints = try await api.client.listDevices(
             request: .init(), headers: Api.headers(token: try await currentToken())

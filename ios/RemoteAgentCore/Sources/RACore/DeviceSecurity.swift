@@ -11,13 +11,20 @@ import SwiftProtobuf
 
 public enum DeviceSecurity {
     public enum Failure: Error, Equatable {
-        case invalid, untrusted, stale, conflict, pending, capacity, storage, unknown, unavailable
+        case invalid, untrusted, stale, conflict, pending, capacity, storage, unknown, unavailable,
+             clock
     }
     public static let maxState = 64 << 10
     public static let maxCipher = 4 << 20
     public static let maxRPC = 1 << 20
     public static let maxMembers = 128
     public static let maxStates = 4096
+    /// A pairing payload carries the whole chain; beyond this the phone must
+    /// rebuild the account rather than hand over a chain no client accepts.
+    public static let maxPairStates = 256
+    public static let maxPairBytes = 800 << 10
+    /// States more than five minutes ahead of this clock are refused.
+    public static let clockSkewLimit: UInt64 = 5 * 60 * 1000
     /// The membership lease and the largest accepted one, in milliseconds.
     public static let lease: UInt64 = 72 * 60 * 60 * 1000
     public static let maxLease: UInt64 = 7 * 24 * 60 * 60 * 1000
@@ -334,7 +341,10 @@ public enum DeviceSecurity {
             try check(n.ed == m.ed && n.kind == m.kind)
             if n.x != m.x { rotated += 1 }
         }
-        for m in next.core.members where parent.core.member(m.id) == nil { added += 1 }
+        for m in next.core.members where parent.core.member(m.id) == nil {
+            try check(!parent.core.removed.contains(m.id))
+            added += 1
+        }
         var expected = parent.core.removed
         expected.append(contentsOf: removed)
         expected.sort()
@@ -381,9 +391,7 @@ public enum DeviceSecurity {
                 .untrusted)
             try recoveryDelta(parent, next)
         } else {
-            try check(
-                next.core.authorityID == parent.core.authorityID
-                    && next.core.recoveryEd == parent.core.recoveryEd)
+            try check(next.core.authorityID == parent.core.authorityID)
             guard let old = parent.core.member(parent.core.authorityID) else {
                 throw Failure.untrusted
             }
@@ -591,7 +599,7 @@ public enum DeviceSecurity {
         var w = Writer()
         w.lp(ephemeral)
         w.lp(trust)
-        return digest("ra2/pair-commit\0", w.data)
+        return digest("ra3/pair-commit\0", w.data)
     }
 
     // MARK: Envelopes

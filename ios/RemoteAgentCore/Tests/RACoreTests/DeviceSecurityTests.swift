@@ -125,6 +125,34 @@ import Testing
         #expect(throws: S.Failure.unavailable) { try removed.contentSecret(3) }
     }
 
+    @Test func rejectsAStateFromTheFutureBeforeInstallingIt() async throws {
+        let p = try pin()
+        let genesis = try state("genesis")
+        var future = try state("added")
+        future.core.issuedAt = 9_999_999_999_999
+        future.core.notAfter = future.core.issuedAt + S.lease
+        let raw = try S.stateBytes(future)
+        let base = try S.Record(
+            pin: p, states: [1: genesis], memberID: genesis.core.authorityID,
+            xPrivate: try hex("phone_x"), member: true, counterEpoch: 1,
+            secret: try hex("content_secret_1"))
+        let client = DeviceSecurityClient(
+            store: MemorySecurityStore(base), memberID: genesis.core.authorityID,
+            signingKey: try SigningKey(seed: try hex("phone_seed")),
+            clock: { 1_700_000_000_001 },
+            fetchStates: { after in
+                var res = PBGetSecurityStatesResponse()
+                res.headEpoch = 2
+                if after < 2 {
+                    var value = PBSecurityState()
+                    value.state = raw
+                    res.states = [value]
+                }
+                return res
+            })
+        await #expect(throws: S.Failure.clock) { try await client.sync() }
+    }
+
     @Test func deviceMetaIsSelfOnly() throws {
         let added = try state("added")
         let phone = added.core.authorityID
