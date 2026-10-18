@@ -3,8 +3,9 @@
 #
 # Usage: deploy/deploy.sh <ssh-host> [dir]
 #
-# The first run creates <dir>/.env with a random RA_SETUP_TOKEN, which
-# `remote-agent account init` asks for. The Caddy site block is not added
+# The first run creates <dir>/.env with a random RA_SETUP_TOKEN, which the
+# phone app asks for when it creates the account; computers join with
+# `remote-agent account join`. The Caddy site block is not added
 # automatically; see docs/architecture.md.
 #
 # Android pushes: if ~/.config/remote-agent/fcm-service-account.json exists

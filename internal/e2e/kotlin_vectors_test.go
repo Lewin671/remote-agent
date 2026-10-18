@@ -177,7 +177,7 @@ func TestKotlinVectors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(payload.AccountPublicKey) > 0 && !slices.Equal(payload.AccountPublicKey, rootKeys.AccountPublicKey()) || payload.Server != "https://ra.example.com" {
+	if !slices.Equal(payload.AccountPublicKey, rootKeys.AccountPublicKey()) || payload.Server != "https://ra.example.com" {
 		t.Errorf("pairing payload account %x, server %q", payload.AccountPublicKey, payload.Server)
 	}
 }

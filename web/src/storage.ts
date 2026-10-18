@@ -4,15 +4,14 @@ import { clearEventCache } from "./eventcache";
 import type { NewConfig } from "./model";
 
 // The account lives in IndexedDB. The device's private key is a
-// non-extractable CryptoKey. The root key is kept as bytes too, since
-// pairing hands it to new devices; a script that could read it could
-// already decrypt everything through the page (docs/architecture.md §9).
+// non-extractable CryptoKey. A device that joined through pairing has no
+// account root; a retained device may still keep it for protocol-8 history.
 
 export interface StoredAccount {
   server: string;
-  root: CryptoKey;
-  // The root key's bytes, so that this browser can pair new devices.
-  rootRaw: Uint8Array<ArrayBuffer>;
+  // Absent for a device that joined by pairing after protocol 10.
+  root?: CryptoKey;
+  rootRaw?: Uint8Array<ArrayBuffer>;
   devicePrivate: CryptoKey;
   deviceId: string;
 }

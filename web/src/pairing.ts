@@ -1,25 +1,26 @@
 import { PROTOCOL_VERSION } from "./protocol";
-import { initializeSecurity } from "./device-security-store";
 import {
-  Method,
-  pairTrustDescriptor,
-  pairDomainCommit,
-  pairContextFromJSON,
-  verifyPairContext,
-  signPairContext,
-  parseState,
-  stateBytes,
-  openGrant,
+  initializeSecurity,
+  parseChain,
+  securityPin,
+  securitySetupStatus,
+} from "./device-security-store";
+import {
+  MAX_PAIR_CHAIN_BYTES,
+  MAX_PAIR_STATES,
   newSecurityKey,
-  type PairContext,
-  type GoPairContext,
+  openGrant,
+  pairDomainCommit,
+  pairTrustDescriptor,
+  parsePairTrustDescriptor,
+  verifyChain,
+  type Pin,
 } from "./device-security";
-// Pairing flows for the web client, as in internal/relay/pair.go: an
-// existing device shows a code, a new one joins with it, both show four
-// emoji, and after the user checks them the existing device sends the
-// root key sealed for the new one.
+// Joining an account for the web client, as in internal/relay/pair.go: only
+// the phone starts and approves a pairing; a browser types or scans its code,
+// both sides show four emoji, and the phone sends the signed state chain.
 
-import { create, toBinary } from "@bufbuild/protobuf";
+import { fromBinary } from "@bufbuild/protobuf";
 import {
   Code,
   ConnectError,
@@ -29,7 +30,6 @@ import {
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { relayFetch } from "./transport";
 import {
-  accountKey,
   concat,
   deviceID,
   signLogin,
@@ -37,9 +37,8 @@ import {
   checkServer,
   importSessionKey,
   openMessage,
-  sealMessage,
 } from "./crypto";
-import { PayloadKind, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
+import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import {
   AuthService,
   DeviceKind,
@@ -50,14 +49,9 @@ import {
 } from "./gen/remoteagent/v1/relay_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
 import { derivePair, newPairKey, pairDomainTranscript } from "./pair";
-import { apiBase, joinWithRoot, type Remote } from "./remote";
+import { apiBase, joinWithApproval } from "./remote";
 import type { StoredAccount } from "./storage";
 
-const b64url = (b: Uint8Array) =>
-  btoa(String.fromCharCode(...b))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
 const fromB64url = (s: string) =>
   Uint8Array.from(
     atob(
@@ -89,25 +83,6 @@ function client(server: string, auth?: () => string) {
   );
 }
 
-/** A retry of the same approval is safe only while the operation still exists.
- * Authentication/transport interruptions do not withdraw the user's consent. */
-export function canRetryPairApproval(error: unknown): boolean {
-  if (
-    error instanceof ConnectError &&
-    [
-      Code.NotFound,
-      Code.PermissionDenied,
-      Code.FailedPrecondition,
-      Code.InvalidArgument,
-      Code.Canceled,
-    ].includes(error.code)
-  )
-    return false;
-  return !/过期|取消|拒绝|无效|不匹配/.test(
-    error instanceof Error ? error.message : String(error),
-  );
-}
-
 export interface PairLink {
   code: string;
   commit?: Uint8Array;
@@ -129,6 +104,22 @@ export function parsePairLink(query: string): PairLink | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** The pairing payload boundary: more than 256 states or 800 KiB of
+ * chain material cannot be paired; the account must be rebuilt. */
+export function checkPairChainSize(
+  states: readonly { state: Uint8Array; recovery: Uint8Array }[],
+): void {
+  if (
+    states.length === 0 ||
+    states.length > MAX_PAIR_STATES ||
+    states.reduce((n, s) => n + s.state.length + s.recovery.length, 0) >
+      MAX_PAIR_CHAIN_BYTES
+  )
+    throw new Error(
+      "security: security chain is too large to pair; rebuild the account",
+    );
 }
 
 type Poll = (want: PairingState) => Promise<GetPairingResponse>;
@@ -163,233 +154,8 @@ function poller(
   };
 }
 
-export interface Initiation {
-  code: string;
-  link: string;
-  /** Resolves when a device asks to join, with the emoji to compare. */
-  joined: Promise<{ emoji: string[]; kind: DeviceKind }>;
-  /** Sends the root key; resolves when the new device has it. */
-  approve(): Promise<void>;
-  cancel(): void;
-}
-
-/** Starts adding a device to this browser's account. */
-export async function initiate(remote: Remote): Promise<Initiation> {
-  const acct = remote.account;
-  const pc = client(acct.server, () => remote.authHeader());
-  const key = newPairKey();
-  const localSecurity = await remote.security.localIdentity();
-  const trust = pairTrustDescriptor(localSecurity.pin, acct.deviceId);
-  const commit = await pairDomainCommit(new Uint8Array(key.pub), trust);
-  const created = await pc.createPairing({ commit });
-  const id = created.pairingId;
-  let stopped = false;
-  const poll = poller(
-    () => pc.getPairing({ pairingId: id }),
-    () => stopped,
-  );
-  let strongContext: PairContext | undefined;
-  let candidateSignature: Uint8Array | undefined;
-  let secretsKey: Uint8Array | undefined;
-  let candidatePublic: Uint8Array | undefined;
-  let candidateKind: DeviceKind | undefined;
-  let approvalRequest:
-    | Promise<{
-        pairingId: string;
-        payload: Envelope;
-        approval: Uint8Array;
-        approvalSignature: Uint8Array;
-      }>
-    | undefined;
-  const joined = (async () => {
-    const st = await poll(PairingState.JOINED);
-    if (st.deviceHpkePublicKey.length !== 32)
-      throw new Error("候选设备需要更新到当前协议");
-    const context = await remote.security.rpc<GoPairContext>(Method.BeginPair, {
-      ID: id,
-      Candidate: {
-        ID: await deviceID(st.devicePublicKey as Uint8Array<ArrayBuffer>),
-        EdPublic: [...st.devicePublicKey],
-        XPublic: [...st.deviceHpkePublicKey],
-        Kind: st.joinerKind,
-      },
-    });
-    strongContext = pairContextFromJSON(context);
-    await verifyPairContext(strongContext, localSecurity.pin);
-    if (
-      strongContext.id !== id ||
-      strongContext.approver !== acct.deviceId ||
-      !eq(strongContext.candidate.ed, st.devicePublicKey) ||
-      !eq(strongContext.candidate.x, st.deviceHpkePublicKey) ||
-      strongContext.candidate.kind !== st.joinerKind
-    )
-      throw new Error("配对安全上下文与候选设备不匹配");
-    await pc.revealPairing({
-      pairingId: id,
-      initiatorPublic: key.pub,
-      securityContext: new TextEncoder().encode(JSON.stringify(context)),
-    });
-    if (
-      st.devicePublicKey.length !== 32 ||
-      ![DeviceKind.CLIENT, DeviceKind.MACHINE].includes(st.joinerKind)
-    )
-      throw new Error("无效的候选设备身份");
-    candidatePublic = st.devicePublicKey;
-    candidateKind = st.joinerKind;
-    const tr = await pairDomainTranscript(
-      id,
-      key.pub,
-      st.joinerPublic,
-      st.devicePublicKey,
-      st.deviceHpkePublicKey,
-      st.joinerKind,
-      trust,
-    );
-    const s = await derivePair(key, st.joinerPublic, tr);
-    secretsKey = s.key;
-    return { emoji: s.emoji, kind: st.joinerKind };
-  })();
-  const q = new URLSearchParams({
-    code: created.code,
-    c: b64url(commit),
-    s: acct.server,
-  });
-  return {
-    code: created.code,
-    link: `${location.origin}/#/pair?${q}`,
-    joined,
-    approve: async () => {
-      if (!approvalRequest) {
-        approvalRequest = (async () => {
-          if (!secretsKey || !candidatePublic || candidateKind === undefined)
-            throw new Error("还没有设备加入");
-          if (!strongContext) throw new Error("缺少可信配对上下文");
-          for (
-            let attempt = 0;
-            !candidateSignature && attempt < 300;
-            attempt++
-          ) {
-            if (stopped) throw new PairCanceled();
-            const current = await pc.getPairing({ pairingId: id });
-            if (current.state === PairingState.CANCELED)
-              throw new PairCanceled();
-            if (current.candidateSignature.length === 64)
-              candidateSignature = current.candidateSignature;
-            else await sleep(1000);
-          }
-          if (!candidateSignature)
-            throw new Error("新设备没有确认自己的安全身份");
-          const approver = await signPairContext(
-            strongContext,
-            acct.devicePrivate,
-            "approve",
-          );
-          const joinedJSON = await remote.security.rpc<
-            Parameters<typeof import("./device-security").stateFromJSON>[0]
-          >(Method.ApprovePair, {
-            ID: id,
-            ApproverSignature: b64bytes(approver),
-            CandidateSignature: b64bytes(candidateSignature),
-          });
-          const joinedState = await (
-            await import("./device-security")
-          ).stateFromJSON(joinedJSON);
-          const joinedBytes = await stateBytes(joinedState);
-          if (
-            created.approverPublicKey.length !== 32 ||
-            (await deviceID(
-              created.approverPublicKey as Uint8Array<ArrayBuffer>,
-            )) !== acct.deviceId
-          )
-            throw new Error("批准设备的公钥不匹配");
-          const approval = toBinary(
-            PairApprovalSchema,
-            create(PairApprovalSchema, {
-              accountId: await deviceID(
-                (await accountKey(acct.root))
-                  .publicKey as Uint8Array<ArrayBuffer>,
-              ),
-              pairingId: id,
-              approverDeviceId: acct.deviceId,
-              approverPublicKey: created.approverPublicKey,
-              candidateDevicePublicKey: candidatePublic,
-              candidateKind,
-              expiresMs: created.expiresMs,
-              nonce: crypto.getRandomValues(new Uint8Array(16)),
-            }),
-          );
-          const approvalSignature = new Uint8Array(
-            await crypto.subtle.sign(
-              "Ed25519",
-              acct.devicePrivate,
-              concat(
-                new TextEncoder().encode("remote-agent/v1/pair-approval\0"),
-                approval,
-              ),
-            ),
-          );
-          const env = await sealMessage(
-            await importSessionKey(secretsKey as Uint8Array<ArrayBuffer>),
-            { kind: PayloadKind.PAIRING, requestId: id, sender: acct.deviceId },
-            PairingPayloadSchema,
-            create(PairingPayloadSchema, {
-              root: acct.rootRaw,
-              server: acct.server,
-              approval,
-              approvalSignature,
-              securityState: joinedBytes,
-            }),
-          );
-          return { pairingId: id, payload: env, approval, approvalSignature };
-        })().catch((e) => {
-          approvalRequest = undefined;
-          throw e;
-        });
-      }
-      await pc.approvePairing(await approvalRequest);
-      // Only the new device confirming it has the key counts as success. A pairing
-      // that disappears meanwhile leaves the outcome unknown.
-      for (let i = 0; i < 120 && !stopped; i++) {
-        try {
-          const res = await pc.getPairing({ pairingId: id });
-          if (res.state === PairingState.DELIVERED) return;
-          if (res.state === PairingState.CANCELED)
-            throw new Error("另一台设备取消了配对");
-        } catch (e) {
-          if (ConnectError.from(e).code === Code.NotFound)
-            throw new Error(
-              "配对已过期，不确定新设备有没有拿到账户密钥。请在新设备上确认，必要时重新配对。",
-            );
-          if (!(e instanceof ConnectError)) throw e;
-        }
-        await sleep(1000);
-      }
-      throw new Error(
-        stopped
-          ? "已取消"
-          : "新设备没有来取账户密钥，它可能没有加入成功。请在新设备上确认，必要时重新配对。",
-      );
-    },
-    cancel: () => {
-      stopped = true;
-      if (strongContext) {
-        const context = strongContext;
-        void signPairContext(context, acct.devicePrivate, "cancel")
-          .then((sig) =>
-            remote.security.rpc(Method.CancelPair, {
-              ID: context.id,
-              Signature: b64bytes(sig),
-            }),
-          )
-          .catch(() => undefined);
-      }
-      pc.cancelPairing({ pairingId: id }).catch(() => undefined);
-    },
-  };
-}
-
-/** Joins an account with a code or link from an existing device. onEmoji
- * gets the emoji to compare with the other device's. */
+/** Joins an account with a code or link from the phone. onEmoji gets the
+ * emoji to compare with the phone's. */
 export async function joinByPairing(
   link: PairLink,
   onEmoji: (emoji: string[]) => void,
@@ -442,32 +208,35 @@ export async function joinByPairing(
     stopped,
   );
   const st = await poll(PairingState.REVEALED);
-  let contextJSON: GoPairContext;
-  try {
-    if (st.securityContext.length > 8192) throw new Error();
-    contextJSON = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(st.securityContext),
-    );
-  } catch {
-    throw new Error("无效的配对安全上下文");
-  }
-  const context = pairContextFromJSON(contextJSON);
-  await verifyPairContext(context, context.pin);
-  if (
-    context.id !== id ||
-    context.candidate.kind !== DeviceKind.CLIENT ||
-    !eq(context.candidate.ed, devicePublic) ||
-    !eq(context.candidate.x, xPublic)
-  )
-    throw new Error("配对上下文与本机身份不匹配");
-  const trust = pairTrustDescriptor(context.pin, context.approver);
+  // The phone's public descriptor binds the immutable genesis anchor and
+  // the approver, never a mutable authority key.
+  const trust = parsePairTrustDescriptor(new Uint8Array(st.trust));
   if (
     !eq(
-      await pairDomainCommit(new Uint8Array(st.initiatorPublic), trust),
+      await pairDomainCommit(
+        new Uint8Array(st.initiatorPublic),
+        new Uint8Array(st.trust),
+      ),
       peek.commit,
     )
   )
-    throw new Error("管理电脑的信任信息与承诺不匹配");
+    throw new Error("手机的信任信息与配对承诺不匹配");
+  let replace = false;
+  if (existing) {
+    const status = await securitySetupStatus();
+    if (status === "clock") throw new Error("security: clock");
+    if (status === "invalid")
+      throw new Error("本机安全状态已损坏，不能用重新配对覆盖；请先导出并清空后重试");
+    if (status === "ready") {
+      const current = await securityPin();
+      if (!current || !pinEqual(current, trust.pin))
+        throw new Error("配对码属于另一个安全域，原密钥已保留");
+      replace = true;
+    }
+  }
+  const descriptor = pairTrustDescriptor(trust.pin, trust.approver);
+  if (!eq(descriptor, new Uint8Array(st.trust)))
+    throw new Error("无效的配对信任信息");
   const tr = await pairDomainTranscript(
     id,
     st.initiatorPublic,
@@ -475,22 +244,12 @@ export async function joinByPairing(
     devicePublic,
     xPublic,
     DeviceKind.CLIENT,
-    trust,
+    st.trust,
   );
   const s = await derivePair(key, st.initiatorPublic, tr);
   onEmoji(s.emoji);
   if (stopped() || !(await confirm(s.emoji))) throw new PairCanceled();
   onRegistering();
-  const candidateSig = await signPairContext(
-    context,
-    device.privateKey,
-    "accept",
-  );
-  await pc.getPairing({
-    pairingId: id,
-    candidateToken: token,
-    candidateSignature: candidateSig,
-  });
   const done = await poll(PairingState.APPROVED);
   const { msg } = await openMessage(
     await importSessionKey(s.key as Uint8Array<ArrayBuffer>),
@@ -499,60 +258,121 @@ export async function joinByPairing(
     PairingPayloadSchema,
   );
   if (msg.server !== link.server) throw new Error("账户属于另一个服务器");
-  // Canceled while the other device allowed it: the key is dropped unused.
+  // Canceled while the phone allowed it: the payload is dropped unused.
   // Past this point this device registers, and a cancel can no longer
   // undo it; the page then waits for the outcome instead.
   if (stopped()) throw new PairCanceled();
-  const rootAccount = await accountKey(
-    await (await import("./crypto")).importRoot(new Uint8Array(msg.root)),
-  );
+  const accountPublicKey = new Uint8Array(msg.accountPublicKey);
   if (
-    (await deviceID(new Uint8Array(rootAccount.publicKey))) !==
-    context.pin.account
+    accountPublicKey.length !== 32 ||
+    (await deviceID(accountPublicKey)) !== trust.pin.account
   )
-    throw new Error("账户与管理电脑的信任信息不匹配");
-  const joinedState = await parseState(new Uint8Array(msg.securityState));
-  if (!eq(joinedState.core.parent, context.expected))
-    throw new Error("加入回执与配对上下文不匹配");
-  const own = joinedState.core.members.find(
-    (m) => m.id === context.candidate.id,
-  );
+    throw new Error("账户与手机的信任信息不匹配");
+  const approval = new Uint8Array(msg.approval);
   if (
-    !own ||
-    !eq(own.ed, devicePublic) ||
-    !eq(own.x, xPublic) ||
-    own.kind !== DeviceKind.CLIENT
+    !(await verifyApproval(
+      approval,
+      msg.approvalSignature,
+      id,
+      trust.approver,
+      trust.pin.account,
+      devicePublic,
+    ))
+  )
+    throw new Error("配对批准与这台设备不匹配或已过期");
+  checkPairChainSize(msg.securityStates);
+  const { states, proofs } = await parseChain(msg.securityStates);
+  await verifyChain(trust.pin, states, proofs);
+  const head = states[states.length - 1];
+  if (head.core.authorityID !== trust.approver)
+    throw new Error("配对回执的批准设备不是当前管理端");
+  const candidateID = await deviceID(devicePublic);
+  const candidate = head.core.members.find((m) => m.id === candidateID);
+  if (
+    !candidate ||
+    !eq(candidate.ed, devicePublic) ||
+    !eq(candidate.x, xPublic) ||
+    candidate.kind !== DeviceKind.CLIENT
   )
     throw new Error("加入回执没有本机的正确身份");
-  await openGrant(context.pin, joinedState, context.candidate.id, x.privateKey);
-  if (existing && !eq(msg.root, existing.rootRaw))
-    throw new Error("配对属于另一个账户，原密钥已保留");
-  const acct =
-    existing ??
-    (await joinWithRoot(msg.root as Uint8Array<ArrayBuffer>, msg.server, {
-      device,
-      pairingId: id,
-      approval: msg.approval,
-      approvalSignature: msg.approvalSignature,
-    }));
+  await openGrant(trust.pin, head, candidate.id, x.privateKey);
+  const acct = await joinWithApproval(accountPublicKey, msg.server, {
+    device,
+    pairingId: id,
+    approval,
+    approvalSignature: new Uint8Array(msg.approvalSignature),
+  }, existing);
   await initializeSecurity(
-    context.pin,
-    joinedState,
-    acct.deviceId,
+    trust.pin,
+    states,
+    proofs,
+    candidate.id,
     x.privateKey,
+    replace,
   );
-  // Tells the other device it went through. If this is lost, that device
-  // reports the outcome as unknown; the join itself stands.
+  // Tells the phone it went through. If this is lost, the phone reports
+  // the outcome as unknown; the join itself stands.
   await pc
     .getPairing({ pairingId: id, candidateToken: token, received: true })
     .catch(() => undefined);
   return acct;
 }
 
-function b64bytes(b: Uint8Array): string {
-  let s = "";
-  for (const c of b) s += String.fromCharCode(c);
-  return btoa(s);
+async function verifyApproval(
+  approval: Uint8Array,
+  signature: Uint8Array,
+  pairingId: string,
+  approver: string,
+  account: string,
+  devicePublic: Uint8Array,
+): Promise<boolean> {
+  try {
+    const a = fromBinaryApproval(approval);
+    if (
+      a.accountId !== account ||
+      a.pairingId !== pairingId ||
+      a.candidateKind !== DeviceKind.CLIENT ||
+      !eq(new Uint8Array(a.candidateDevicePublicKey), devicePublic) ||
+      a.nonce.length !== 16 ||
+      a.expiresMs <= BigInt(Date.now()) ||
+      a.approverPublicKey.length !== 32 ||
+      (await deviceID(new Uint8Array(a.approverPublicKey))) !==
+        a.approverDeviceId ||
+      a.approverDeviceId !== approver ||
+      a.approverDeviceId === (await deviceID(devicePublic))
+    )
+      return false;
+    const signer = await crypto.subtle.importKey(
+      "raw",
+      new Uint8Array(a.approverPublicKey),
+      "Ed25519",
+      false,
+      ["verify"],
+    );
+    return await crypto.subtle.verify(
+      "Ed25519",
+      signer,
+      new Uint8Array(signature),
+      concat(
+        new TextEncoder().encode("remote-agent/v1/pair-approval\0"),
+        approval,
+      ),
+    );
+  } catch {
+    return false;
+  }
+}
+
+function fromBinaryApproval(raw: Uint8Array) {
+  return fromBinary(PairApprovalSchema, raw);
+}
+
+function pinEqual(a: Pin, b: Pin): boolean {
+  return (
+    a.account === b.account &&
+    eq(a.domain, b.domain) &&
+    eq(a.genesis, b.genesis)
+  );
 }
 
 // Public-key recovery for old browser records: the private CryptoKey remains

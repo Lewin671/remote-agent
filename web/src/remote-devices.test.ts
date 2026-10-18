@@ -1,198 +1,102 @@
-// Trusted catalog races against a malicious relay's mutable directory hints.
+// The device directory comes from the signed membership state: a relay's
+// listing can only name members, and sealed metadata is verified on open.
 import { create, toBinary } from "@bufbuild/protobuf";
 import { afterAll, afterEach, expect, it, vi } from "vitest";
-import { Remote } from "./remote";
 import { DeviceMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import { DeviceKind, DeviceSchema } from "./gen/remoteagent/v1/relay_pb";
-import {
-  Purpose,
-  parseCapsule,
-  capsuleBytes,
-  parseHeader,
-  commitment,
-  fromEnvelope,
-} from "./device-security";
-import {
-  GoSecurityFixture,
-  webMember,
-  removeFixtureBuild,
-} from "./test/security-fixture";
+import { Purpose } from "./device-security";
+import type { Envelope } from "./gen/remoteagent/v1/envelope_pb";
+import { SyntheticRemote } from "./test/remote-fixture";
+import { removeFixtureBuild } from "./test/security-fixture";
 
-const close: Array<() => Promise<void>> = [];
+const live: SyntheticRemote[] = [];
 afterEach(async () => {
-  for (const cleanup of close.splice(0)) await cleanup();
+  for (const r of live.splice(0)) await r.dispose();
   vi.restoreAllMocks();
 });
 afterAll(removeFixtureBuild);
-async function setup() {
-  const f = await GoSecurityFixture.create();
-  const member = await webMember(f);
-  const other = await f.fixture.enroll(f.machine);
-  const r = new (class extends Remote {
-    constructor() {
-      super(member.account, f.legacyKeys, undefined, member.storage);
-    }
-  })();
-  let hints = [member.account.deviceId, other.record.memberID];
-  const api = {
+
+async function probe() {
+  const r = await SyntheticRemote.create();
+  live.push(r);
+  return r;
+}
+function directory(
+  r: SyntheticRemote,
+  devices: {
+    id: string;
+    kind?: DeviceKind;
+    meta?: Envelope;
+    revision?: bigint;
+  }[],
+) {
+  (r as unknown as { api: object }).api = {
     listDevices: async () => ({
-      devices: hints.map((id) =>
-        create(DeviceSchema, { id, kind: DeviceKind.CLIENT }),
+      devices: devices.map((d) =>
+        create(DeviceSchema, {
+          id: d.id,
+          kind: d.kind ?? DeviceKind.CLIENT,
+          createdMs: 0n,
+          lastSeenMs: 0n,
+          meta: d.meta,
+          metaRevision: d.revision ?? 0n,
+        }),
       ),
     }),
-    listMachines: async () => ({ machines: [] }),
-    forward: async (req: { securityRpc: Uint8Array }) => ({
-      securityRpc: await f.fixture.rpc(
-        capsuleBytes(parseCapsule(new Uint8Array(req.securityRpc))),
-      ),
-    }),
-    removeDevice: async () => ({}),
-  };
-  (r as unknown as { api: object }).api = api;
-  r.conn = "online";
-  close.push(async () => {
-    r.stop();
-    await f.fixture.close();
-  });
-  const named = async (rev: bigint, name: string) => {
-    await member.sdk.sync();
-    return member.sdk.seal(
-      {
-        kind: 13,
-        purpose: Purpose.DeviceMeta,
-        machine: "",
-        session: "",
-        request: other.record.memberID,
-        seq: rev,
-        deadline: 0n,
-        compression: 0,
-      },
-      toBinary(DeviceMetaSchema, create(DeviceMetaSchema, { name })),
-    );
-  };
-  const remove = async (env: Awaited<ReturnType<typeof named>>) => {
-    await member.sdk.sync();
-    const hash = await member.sdk.localStateHash();
-    return member.sdk.remove(
-      other.record.memberID,
-      await commitment(fromEnvelope(env)),
-      hash,
-    );
-  };
-  return {
-    f,
-    r,
-    member,
-    other,
-    api,
-    named,
-    remove,
-    setHints: (ids: string[]) => {
-      hints = ids;
-    },
   };
 }
 
-it("keeps the newer authenticated name when an older catalog finishes opening later", async () => {
-  const { r, named, other } = await setup();
-  await named(1n, "old name");
-  const original = r.security.openHistory.bind(r.security);
-  let release!: () => void;
-  let started!: () => void;
-  const opening = new Promise<void>((resolve) => {
-    started = resolve;
-  });
-  vi.spyOn(r.security, "openHistory").mockImplementation(async (env, seed) => {
-    const opened = await original(env, seed);
-    if (
-      parseHeader(new Uint8Array(env.securityHeader)).purpose ===
-        Purpose.DeviceMeta &&
-      opened.header.seq === 1n
-    ) {
-      started();
-      await new Promise<void>((resolve) => {
-        release = resolve;
-      });
-    }
-    return opened;
-  });
-  const old = r.loadDevices(false);
-  await opening;
-  await named(2n, "new name");
-  await r.loadDevices(false);
-  release();
-  await old;
-  expect(r.devices.get(other.record.memberID)?.meta?.name).toBe("new name");
-  expect(r.devices.get(other.record.memberID)?.metaRev).toBe(2n);
-}, 20000);
-
-it("does not restore a device excluded from the signed roster when its old metadata finishes opening", async () => {
-  const { r, named, other, remove } = await setup();
-  const envelope = await named(1n, "old name");
-  const original = r.security.openHistory.bind(r.security);
-  let release!: () => void;
-  let started!: () => void;
-  let once = false;
-  const opening = new Promise<void>((resolve) => {
-    started = resolve;
-  });
-  vi.spyOn(r.security, "openHistory").mockImplementation(async (env, seed) => {
-    const opened = await original(env, seed);
-    if (!once && opened.header.purpose === Purpose.DeviceMeta) {
-      once = true;
-      started();
-      await new Promise<void>((resolve) => {
-        release = resolve;
-      });
-    }
-    return opened;
-  });
-  const old = r.loadDevices(false);
-  await opening;
-  await remove(envelope);
-  await r.loadDevices(false);
-  release();
-  await old;
-  expect(r.devices.has(other.record.memberID)).toBe(false);
-}, 20000);
-
-it("uses signed membership despite stale listings and forged device pushes", async () => {
-  const { r, api, other, member } = await setup();
-  await r.loadDevices(false);
-  let answer!: (reply: {
-    devices: ReturnType<typeof create<typeof DeviceSchema>>[];
-  }) => void;
-  let started!: () => void;
-  let first = true;
-  const queried = new Promise<void>((resolve) => {
-    started = resolve;
-  });
-  const original = api.listDevices;
-  api.listDevices = async () => {
-    if (first) {
-      first = false;
-      started();
-      return new Promise((resolve) => {
-        answer = resolve;
-      });
-    }
-    return original();
-  };
-  const stale = r.loadDevices(false);
-  await queried;
+it("ignores a device that is not in the signed member roster", async () => {
+  const r = await probe();
   const rogue = "ffffffffffffffffffffffffffffffff";
+  directory(r, [
+    { id: r.member.account.deviceId },
+    { id: r.machine, kind: DeviceKind.MACHINE },
+    { id: rogue },
+  ]);
+  await r.loadDevices(false);
+  expect(r.devices.has(rogue)).toBe(false);
+  expect(r.devices.has(r.member.account.deviceId)).toBe(true);
+  expect(r.devices.has(r.machine)).toBe(true);
+  // A forged device push cannot add it either: membership is signed.
   await (r as unknown as { onFrame(frame: unknown): Promise<void> }).onFrame({
     case: "deviceUpdated",
     value: {
       device: create(DeviceSchema, { id: rogue, kind: DeviceKind.CLIENT }),
     },
   });
-  await r.loadDevices(false);
-  answer({
-    devices: [create(DeviceSchema, { id: rogue, kind: DeviceKind.CLIENT })],
-  });
-  await stale;
   expect(r.devices.has(rogue)).toBe(false);
-  expect(r.devices.has(other.record.memberID)).toBe(true);
-  expect(r.devices.has(member.account.deviceId)).toBe(true);
+}, 20000);
+
+it("keeps a newer self-authored name and refuses an older listing", async () => {
+  const r = await probe();
+  const self = r.member.account.deviceId;
+  const meta = async (rev: bigint, name: string) =>
+    r.member.sdk.seal(
+      {
+        kind: 13,
+        purpose: Purpose.DeviceMeta,
+        machine: "",
+        session: "",
+        request: self,
+        seq: rev,
+        deadline: 0n,
+        compression: 0,
+      },
+      toBinary(
+        DeviceMetaSchema,
+        create(DeviceMetaSchema, { name, platform: "web" }),
+      ),
+    );
+  const first = await meta(1n, "old name");
+  const second = await meta(2n, "new name");
+  directory(r, [{ id: self, meta: second, revision: 2n }]);
+  await r.loadDevices(false);
+  expect(r.devices.get(self)?.meta?.name).toBe("new name");
+  expect(r.devices.get(self)?.metaRev).toBe(2n);
+  // An older copy must not replace what is already shown.
+  directory(r, [{ id: self, meta: first, revision: 1n }]);
+  await r.loadDevices(false);
+  expect(r.devices.get(self)?.meta?.name).toBe("new name");
+  expect(r.devices.get(self)?.metaRev).toBe(2n);
 }, 20000);

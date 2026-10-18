@@ -182,21 +182,28 @@ it("sends its protocol version with a command, and sends none to a machine of an
   expect(sent).toHaveLength(2);
 });
 
-it("preserves concurrent project edits through authority CAS despite stale relay storage", async () => {
+it("preserves concurrent project edits through server CAS", async () => {
   const a = await probe();
   const b = await a.addClient();
   liveFixtures.push(b);
   const uploads: Envelope[] = [];
+  const stored: {
+    objectId: string;
+    revision: bigint;
+    envelope?: Envelope;
+  } = { objectId: "project-prefs", revision: 0n };
   const api = {
-    getAccountPrefs: async () => ({
-      object: { objectId: "project-prefs", revision: 0n },
-    }),
-    putAccountPrefs: async (req: { envelope: Envelope }) => {
+    getAccountPrefs: async () => ({ object: { ...stored } }),
+    putAccountPrefs: async (req: {
+      expectedRevision: bigint;
+      envelope: Envelope;
+    }) => {
+      if (req.expectedRevision !== stored.revision)
+        return { applied: false, object: { ...stored } };
       uploads.push(req.envelope);
-      return {
-        applied: false,
-        object: { objectId: "project-prefs", revision: 0n },
-      };
+      stored.revision = req.expectedRevision + 1n;
+      stored.envelope = req.envelope;
+      return { applied: true, object: { ...stored } };
     },
   };
   for (const r of [a, b]) {
@@ -624,12 +631,19 @@ it("keeps an unauthenticated command result unknown and retries its slot", async
   expect(ids[1]).toBe(ids[0]);
 });
 
-it("reports an unverifiable authority catalog and allows a fresh read retry", async () => {
+it("reports an unreadable prefs object and allows a fresh read retry", async () => {
   const r = await probe();
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
-  vi.spyOn(r.security, "catalog").mockRejectedValueOnce(
-    new Error("invalid synthetic authority reply"),
-  );
+  let fail = true;
+  (r as unknown as { api: object }).api = {
+    getAccountPrefs: async () => {
+      if (fail) {
+        fail = false;
+        throw new Error("invalid synthetic prefs reply");
+      }
+      return {};
+    },
+  };
   await r.loadPrefs();
   expect(r.prefs.status).toBe("error");
   expect(r.prefs.error).not.toBe("");

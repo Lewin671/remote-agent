@@ -2447,11 +2447,6 @@ export class DemoRemote extends Remote {
     this.changed();
   }
 
-  override async removeDevice(id: string) {
-    this.machines.delete(id);
-    this.changed();
-  }
-
   override async pushKey(): Promise<string> {
     throw new CommandError("unavailable", "服务器没有响应");
   }

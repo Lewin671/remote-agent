@@ -1,58 +1,58 @@
 {
-    "root": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
-    "account_public_key": "5842660e1b40ac001e6958be94dfb6a357e079114061f5150c752843f02a5b4c",
-    "wrap": "8a7b8b85d7212ff9eed51e9c234f8a4c6c53c272dd46dcedff2b2470a161d7fc",
-    "meta": "cf05905ed127658ae7e745cf46ad158d57321cf419e650f9b3e4fd38f2e759bb",
-    "command": "b48bab82af4ee134083c03ddcf18774dcfc52a09fd2da395e17c0f1801905dff",
-    "notify": "96efea566fbf2013052947760903d9277d97103124e84fb367b8e91c4354ab88",
-    "device_id": "39b9c74d4c9c39aa254cca7cbbb45bd7",
-    "envelope": {
-        "key": "3333333333333333333333333333333333333333333333333333333333333333",
-        "header": "080110011a096d616368696e652d6b220973657373696f6e2d6b28f0ffffffffffffffff0132057265712d6b3880f0cc86a63742086465766963652d6b",
-        "nonce": "0c0c0c0c0c0c0c0c0c0c0c0c",
-        "ciphertext": "165f227a60d39a2272320ba84ca90b02e99336194043ca86ef07607d28b3ab3d58",
-        "plaintext": "来自 Kotlin ✓",
-        "seq": "18446744073709551600"
+  "account_public_key": "5842660e1b40ac001e6958be94dfb6a357e079114061f5150c752843f02a5b4c",
+  "command": "b48bab82af4ee134083c03ddcf18774dcfc52a09fd2da395e17c0f1801905dff",
+  "device_id": "39b9c74d4c9c39aa254cca7cbbb45bd7",
+  "envelope": {
+    "ciphertext": "165f227a60d39a2272320ba84ca90b02e99336194043ca86ef07607d28b3ab3d58",
+    "header": "080110011a096d616368696e652d6b220973657373696f6e2d6b28f0ffffffffffffffff0132057265712d6b3880f0cc86a63742086465766963652d6b",
+    "key": "3333333333333333333333333333333333333333333333333333333333333333",
+    "nonce": "0c0c0c0c0c0c0c0c0c0c0c0c",
+    "plaintext": "来自 Kotlin ✓",
+    "seq": "18446744073709551600"
+  },
+  "login_signature": {
+    "challenge": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "device_id": "b14705888f4a68391a09aa5968dd25d1",
+    "device_public_key": "d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+    "device_seed": "4444444444444444444444444444444444444444444444444444444444444444",
+    "signature": "1db132b0372db1bd7f60c28e51a07027828b4a4ae20251df946962a794fd3e25d20be6aff92fb19799b0e2acbb5e4d9c5ce3d3081359789d0a75af1bdf422d0e"
+  },
+  "meta": "cf05905ed127658ae7e745cf46ad158d57321cf419e650f9b3e4fd38f2e759bb",
+  "notify": "96efea566fbf2013052947760903d9277d97103124e84fb367b8e91c4354ab88",
+  "packed": {
+    "ciphertext": "539d6253976e5d433b381fc6eb4a837adb16d134db806933bff60d88ba4e937a96d9e1d66135a6819a1cc0e18ee32edc1264093bf5dab007a9fa2dbde084e950bdf89c43",
+    "header": "080110011a096d616368696e652d6b220973657373696f6e2d6b280542086465766963652d6b4801",
+    "key": "3333333333333333333333333333333333333333333333333333333333333333",
+    "nonce": "0e0e0e0e0e0e0e0e0e0e0e0e",
+    "plaintext": "来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ "
+  },
+  "pairing": {
+    "commit": "65c427ac746f0aaa50155f4083fa2baee3c2d0ef6a95f47680dd7ed0a492f278",
+    "emoji": [
+      "🌸",
+      "🥞",
+      "🌮",
+      "⛈"
+    ],
+    "initiator_private": "6666666666666666666666666666666666666666666666666666666666666666",
+    "initiator_public": "219e4d800da968d2a5fcb009c784f4746c7138edb9ee4844b739e830b05cf424",
+    "joiner_kind": 2,
+    "joiner_private": "7777777777777777777777777777777777777777777777777777777777777777",
+    "joiner_public": "1cf579aba45a10ba1d1ef06d91fca2aa9ed0a1150515653155405d0b18cb9a67",
+    "key": "05f08aebffe46942167ad195a95990d66145292853eb7d502f9e02ece1915afe",
+    "pairing_id": "fedcba9876543210fedcba9876543210",
+    "payload": {
+      "ciphertext": "f129d47e5267a3a08ca848dda187dc7a8d8ce1d3ab1af2feb31c73ff4a58e087b858f2a71100ba6f57da765b9ece81e9332af76e7961772639559102716c66d7f55feb7eda8a2aaf545e",
+      "header": "080110093220666564636261393837363534333231306665646362613938373635343332313042086465766963652d6b",
+      "nonce": "191e6342bed161a8c15dde29"
     },
-    "packed": {
-        "key": "3333333333333333333333333333333333333333333333333333333333333333",
-        "header": "080110011a096d616368696e652d6b220973657373696f6e2d6b280542086465766963652d6b4801",
-        "nonce": "0e0e0e0e0e0e0e0e0e0e0e0e",
-        "ciphertext": "539d6253976e5d433b381fc6eb4a837adb16d134db806933bff60d88ba4e937a96d9e1d66135a6819a1cc0e18ee32edc1264093bf5dab007a9fa2dbde084e950bdf89c43",
-        "plaintext": "来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ "
-    },
-    "register_signature": {
-        "message": "6b6f746c696e20726567697374726174696f6e",
-        "signature": "3840ebe56ff72a53cbfe113fc6cde8e53a3bd0655309b1a3d48b73abb16776335874c73e4a54672108a3f8631c023f8473d6b64defd23d53ec8d64568fbdd90b"
-    },
-    "login_signature": {
-        "device_seed": "4444444444444444444444444444444444444444444444444444444444444444",
-        "device_public_key": "d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
-        "device_id": "b14705888f4a68391a09aa5968dd25d1",
-        "challenge": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-        "signature": "1db132b0372db1bd7f60c28e51a07027828b4a4ae20251df946962a794fd3e25d20be6aff92fb19799b0e2acbb5e4d9c5ce3d3081359789d0a75af1bdf422d0e"
-    },
-    "pairing": {
-        "initiator_private": "6666666666666666666666666666666666666666666666666666666666666666",
-        "joiner_private": "7777777777777777777777777777777777777777777777777777777777777777",
-        "initiator_public": "219e4d800da968d2a5fcb009c784f4746c7138edb9ee4844b739e830b05cf424",
-        "joiner_public": "1cf579aba45a10ba1d1ef06d91fca2aa9ed0a1150515653155405d0b18cb9a67",
-        "pairing_id": "fedcba9876543210fedcba9876543210",
-        "joiner_kind": 2,
-        "commit": "65c427ac746f0aaa50155f4083fa2baee3c2d0ef6a95f47680dd7ed0a492f278",
-        "transcript": "dc329f88891082644847f3eaa18c494287a828c0f00f0ce57c9150e157dd01e1",
-        "sas": "77d2df9d",
-        "key": "05f08aebffe46942167ad195a95990d66145292853eb7d502f9e02ece1915afe",
-        "emoji": [
-            "🌸",
-            "🥞",
-            "🌮",
-            "⛈"
-        ],
-        "payload": {
-            "header": "080110093220666564636261393837363534333231306665646362613938373635343332313042086465766963652d6b",
-            "nonce": "0d0d0d0d0d0d0d0d0d0d0d0d",
-            "ciphertext": "c88282af18fcbe5ad7bc64b1496a70cdd73735bef592e2c9ec7201646c32cae53f7d105d0c03498747335b03169d6937973f61334419b5b90777597c5317a451842e89981c54090fecc8"
-        }
-    }
+    "sas": "77d2df9d",
+    "transcript": "dc329f88891082644847f3eaa18c494287a828c0f00f0ce57c9150e157dd01e1"
+  },
+  "register_signature": {
+    "message": "6b6f746c696e20726567697374726174696f6e",
+    "signature": "3840ebe56ff72a53cbfe113fc6cde8e53a3bd0655309b1a3d48b73abb16776335874c73e4a54672108a3f8631c023f8473d6b64defd23d53ec8d64568fbdd90b"
+  },
+  "root": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+  "wrap": "8a7b8b85d7212ff9eed51e9c234f8a4c6c53c272dd46dcedff2b2470a161d7fc"
 }

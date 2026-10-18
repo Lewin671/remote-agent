@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/envelope.proto.
  */
 export const file_remoteagent_v1_envelope: GenFile = /*@__PURE__*/
-  fileDesc("Ch1yZW1vdGVhZ2VudC92MS9lbnZlbG9wZS5wcm90bxIOcmVtb3RlYWdlbnQudjEioQEKCEVudmVsb3BlEg4KBmhlYWRlchgBIAEoDBINCgVub25jZRgCIAEoDBISCgpjaXBoZXJ0ZXh0GAMgASgMEhEKCXNpZ25hdHVyZRgEIAEoDBIXCg9zZWN1cml0eV9oZWFkZXIYBSABKAwSFQoNYXV0aG9yaXphdGlvbhgGIAEoDBIfChdhdXRob3JpemF0aW9uX3NpZ25hdHVyZRgHIAEoDCLkAQoGSGVhZGVyEg8KB3ZlcnNpb24YASABKA0SKQoEa2luZBgCIAEoDjIbLnJlbW90ZWFnZW50LnYxLlBheWxvYWRLaW5kEhIKCm1hY2hpbmVfaWQYAyABKAkSEgoKc2Vzc2lvbl9pZBgEIAEoCRILCgNzZXEYBSABKAQSEgoKcmVxdWVzdF9pZBgGIAEoCRITCgtkZWFkbGluZV9tcxgHIAEoAxIOCgZzZW5kZXIYCCABKAkSMAoLY29tcHJlc3Npb24YCSABKA4yGy5yZW1vdGVhZ2VudC52MS5Db21wcmVzc2lvbiqmAwoLUGF5bG9hZEtpbmQSHAoYUEFZTE9BRF9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSUEFZTE9BRF9LSU5EX0VWRU5UEAESHQoZUEFZTE9BRF9LSU5EX1NFU1NJT05fTUVUQRACEhwKGFBBWUxPQURfS0lORF9TRVNTSU9OX0tFWRADEh0KGVBBWUxPQURfS0lORF9NQUNISU5FX01FVEEQBBIYChRQQVlMT0FEX0tJTkRfQ09NTUFORBAFEh8KG1BBWUxPQURfS0lORF9DT01NQU5EX1JFU1VMVBAGEiAKHFBBWUxPQURfS0lORF9URVJNSU5BTF9PVVRQVVQQBxIfChtQQVlMT0FEX0tJTkRfVEVSTUlOQUxfSU5QVVQQCBIYChRQQVlMT0FEX0tJTkRfUEFJUklORxAJEhcKE1BBWUxPQURfS0lORF9OT1RJRlkQChIWChJQQVlMT0FEX0tJTkRfSU1BR0UQCxIeChpQQVlMT0FEX0tJTkRfQUNDT1VOVF9QUkVGUxAMEhwKGFBBWUxPQURfS0lORF9ERVZJQ0VfTUVUQRANKjwKC0NvbXByZXNzaW9uEhQKEENPTVBSRVNTSU9OX05PTkUQABIXChNDT01QUkVTU0lPTl9ERUZMQVRFEAFiBnByb3RvMw");
+  fileDesc("Ch1yZW1vdGVhZ2VudC92MS9lbnZlbG9wZS5wcm90bxIOcmVtb3RlYWdlbnQudjEinQEKCEVudmVsb3BlEg4KBmhlYWRlchgBIAEoDBINCgVub25jZRgCIAEoDBISCgpjaXBoZXJ0ZXh0GAMgASgMEhEKCXNpZ25hdHVyZRgEIAEoDBIXCg9zZWN1cml0eV9oZWFkZXIYBSABKAxKBAgGEAdKBAgHEAhSDWF1dGhvcml6YXRpb25SF2F1dGhvcml6YXRpb25fc2lnbmF0dXJlIuQBCgZIZWFkZXISDwoHdmVyc2lvbhgBIAEoDRIpCgRraW5kGAIgASgOMhsucmVtb3RlYWdlbnQudjEuUGF5bG9hZEtpbmQSEgoKbWFjaGluZV9pZBgDIAEoCRISCgpzZXNzaW9uX2lkGAQgASgJEgsKA3NlcRgFIAEoBBISCgpyZXF1ZXN0X2lkGAYgASgJEhMKC2RlYWRsaW5lX21zGAcgASgDEg4KBnNlbmRlchgIIAEoCRIwCgtjb21wcmVzc2lvbhgJIAEoDjIbLnJlbW90ZWFnZW50LnYxLkNvbXByZXNzaW9uKqYDCgtQYXlsb2FkS2luZBIcChhQQVlMT0FEX0tJTkRfVU5TUEVDSUZJRUQQABIWChJQQVlMT0FEX0tJTkRfRVZFTlQQARIdChlQQVlMT0FEX0tJTkRfU0VTU0lPTl9NRVRBEAISHAoYUEFZTE9BRF9LSU5EX1NFU1NJT05fS0VZEAMSHQoZUEFZTE9BRF9LSU5EX01BQ0hJTkVfTUVUQRAEEhgKFFBBWUxPQURfS0lORF9DT01NQU5EEAUSHwobUEFZTE9BRF9LSU5EX0NPTU1BTkRfUkVTVUxUEAYSIAocUEFZTE9BRF9LSU5EX1RFUk1JTkFMX09VVFBVVBAHEh8KG1BBWUxPQURfS0lORF9URVJNSU5BTF9JTlBVVBAIEhgKFFBBWUxPQURfS0lORF9QQUlSSU5HEAkSFwoTUEFZTE9BRF9LSU5EX05PVElGWRAKEhYKElBBWUxPQURfS0lORF9JTUFHRRALEh4KGlBBWUxPQURfS0lORF9BQ0NPVU5UX1BSRUZTEAwSHAoYUEFZTE9BRF9LSU5EX0RFVklDRV9NRVRBEA0qPAoLQ29tcHJlc3Npb24SFAoQQ09NUFJFU1NJT05fTk9ORRAAEhcKE0NPTVBSRVNTSU9OX0RFRkxBVEUQAWIGcHJvdG8z");
 
 /**
  * Envelope is the unit of end-to-end encrypted data. The server stores and
@@ -43,40 +43,23 @@ export type Envelope = Message<"remoteagent.v1.Envelope"> & {
   ciphertext: Uint8Array;
 
   /**
-   * Ed25519 signature by the sending device's key, so that a daemon can
-   * tell which device sent a command even though the server is not
-   * trusted. Clients set it on COMMAND envelopes, where a daemon requires
-   * it; it is empty elsewhere. It signs the bytes as transmitted:
-   *   "remote-agent/v1/envelope-signature\x00"
-   *   || uint32be(len(header)) || header
-   *   || uint32be(len(nonce)) || nonce
-   *   || uint32be(len(ciphertext)) || ciphertext
-   * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
-   * header's sender must be the ID of the signing device.
+   * Ed25519 signature by the sending device's key over the origin bytes:
+   * account, domain, state hash, sender, header hash and ciphertext
+   * commitment (see internal/deviceauth originBytes). Every
+   * security-domain envelope sets it, not only commands; a receiver checks
+   * it against the state the header names.
    *
    * @generated from field: bytes signature = 4;
    */
   signature: Uint8Array;
 
   /**
-   * Version-2 canonical deviceauth Header; the protobuf Header above is only
-   * a routing projection. Receivers compare every projection field to this.
+   * Canonical deviceauth v3 Header; the protobuf Header above is only a
+   * routing projection. Receivers compare every projection field to this.
    *
    * @generated from field: bytes security_header = 5;
    */
   securityHeader: Uint8Array;
-
-  /**
-   * Exact-ciphertext authority authorization and its Ed25519 signature.
-   *
-   * @generated from field: bytes authorization = 6;
-   */
-  authorization: Uint8Array;
-
-  /**
-   * @generated from field: bytes authorization_signature = 7;
-   */
-  authorizationSignature: Uint8Array;
 };
 
 /**

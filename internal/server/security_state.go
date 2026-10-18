@@ -123,7 +123,7 @@ func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Requ
 		return nil, invalid("invalid security genesis")
 	}
 	state, err := deviceauth.ParseState(raw)
-	if err != nil {
+	if err != nil || state.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
 		return nil, invalid("invalid security genesis")
 	}
 	pin, err := state.Pin()
@@ -196,7 +196,7 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	haveHead := head.Core.Epoch != 0
 	for _, in := range req.Msg.States {
 		s, err := deviceauth.ParseState(in.State)
-		if err != nil {
+		if err != nil || s.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("invalid security state"))
 		}
 		raw := in.State
@@ -304,15 +304,6 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, internal(err)
 	}
-	c.s.pairing.mu.Lock()
-	for _, p := range c.s.pairing.byID {
-		if p.account == t.acct && !p.delivered {
-			p.canceled = true
-			p.payload = nil
-			delete(c.s.pairing.byCode, p.code)
-		}
-	}
-	c.s.pairing.mu.Unlock()
 	for _, id := range removed {
 		c.s.revokeStreams(id)
 		t.hub.drop(id)

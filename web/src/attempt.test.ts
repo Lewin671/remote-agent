@@ -83,12 +83,12 @@ it("is settled only by the request that came back", () => {
   expect(a.next("z").slot).toBe(y.slot);
 });
 
-it("never replaces an unknown intent after reauthorization fails locally", () => {
+it("never replaces an unknown intent after security signing fails locally", () => {
   const a = new Attempt<string>();
   const first = a.next("x");
   a.settle(new CommandError("unknown", "relay withheld result"));
   a.next("x");
-  a.settle(new CommandError("authorization_unavailable", "authority offline"));
+  a.settle(new CommandError("security_unavailable", "security state unavailable"));
   expect(a.frozen).toBe(true);
   expect(a.next("y").slot).toBe(first.slot);
   a.settle(
