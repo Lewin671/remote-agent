@@ -23,7 +23,6 @@ struct SettingsScreen: View {
                 VStack(alignment: .leading, spacing: 0) {
                     LargeTitle("设置")
                     ConnectionBar()
-                    RemovalProgress(state: state)
                     Ticking { now in
                         computers(state, now: now)
                         clients(state, now: now)
@@ -89,8 +88,14 @@ struct SettingsScreen: View {
         { $0.id != me }.prefix(3)
         GroupLabel("客户端")
         GroupCard {
-            ClientRow(client: state.devices[me], id: me, me: me, now: now)
-            for c in others { ClientRow(client: c, id: c.id, me: me, now: now) }
+            ClientRow(
+                client: state.devices[me], id: me, me: me, now: now,
+                authority: state.authorityDeviceId)
+            for c in others {
+                ClientRow(
+                    client: c, id: c.id, me: me, now: now,
+                    authority: state.authorityDeviceId)
+            }
             GRow("全部客户端", chevron: true, action: true) { nav.open(.devices) }
         }
     }

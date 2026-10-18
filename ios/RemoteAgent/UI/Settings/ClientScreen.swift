@@ -10,7 +10,6 @@ struct ClientScreen: View {
     @Environment(Navigator.self) private var nav
     @Environment(\.page) private var page
     @State private var save = ActionRunner()
-    @State private var remove = ActionRunner()
     @State private var editing = false
 
     /// Pulling down reads the device list again, while there is a server to ask.
@@ -27,7 +26,6 @@ struct ClientScreen: View {
         let online = state.conn == .online
         let remote = context.remote
         SettingsPage(refresh: refresh(online)) {
-            RemovalProgress(state: state, target: id)
             if d == nil && state.conn == .online && !state.devices.isEmpty {
                 // The list is read and it is not in it.
                 PageNote("这个客户端不在当前可信目录中，撤销状态以回执为准")
@@ -49,9 +47,6 @@ struct ClientScreen: View {
             save.run { try await remote.renameDevice(id, name: "设置页改的名字") }
         }
         .debugSignal("client.reset") { save.run { try await remote.renameDevice(id, name: "") } }
-        .debugSignal("client.remove") {
-            remove.run({ try await remote.removeDevice(id) }, onDone: {})
-        }
         .onAppear {
             #if DEBUG
                 if model.isDemo, SettingsDemo.state == "renaming" { editing = true }
@@ -68,10 +63,10 @@ struct ClientScreen: View {
         GroupLabel("客户端")
         GroupCard {
             GRow(
-                "名称", value: save.running ? "保存中…" : (d?.meta?.name ?? "").or("未命名"), chevron: true,
-                enabled: online && d != nil && !save.running
-            ) { editing = true }
-            if named {
+                "名称", value: save.running ? "保存中…" : (d?.meta?.name ?? "").or("未命名"),
+                chevron: id == me, enabled: online && id == me && d != nil && !save.running
+            ) { if id == me { editing = true } }
+            if named && id == me {
                 GRow(
                     "恢复默认名称", value: defaultClientName(d, id: id), action: true,
                     enabled: online && !save.running
@@ -94,15 +89,7 @@ struct ClientScreen: View {
                 GRow("退出并删除本机密钥在设置页", chevron: true) { nav.open(.settings) }
             }
         } else {
-            GroupCard {
-                GRow(
-                    remove.running ? "正在移除…" : "移除这个客户端", danger: true,
-                    enabled: online && !remove.running
-                        && !state.removals.contains(where: { $0.targets.contains(id) })
-                ) { remove.run { try await context.remote.removeDevice(id) } }
-            }
-            GroupNote(RemovalText.clientNote)
-            if !remove.error.isEmpty { GroupBanner(remove.error, tone: .error) }
+            GroupNote(DeviceNotes.phoneOnly)
         }
     }
 }

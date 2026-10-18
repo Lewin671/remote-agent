@@ -36,7 +36,7 @@ iOS 原生 App 要把 iPhone 和 iPad 上的体验做到原生水平。本文写
 三份实现靠共用的输入对齐，不靠逐行对照：
 
 - **协议**：`proto/` 生成代码；`ios/scripts/check.sh` 重新生成一遍，有差异就失败
-- **加密**：Swift 的测试读 `internal/e2e/testdata/` 下 Go 和 Kotlin 写的向量（`vectors.json`、`v2-vectors.json`、`kotlin-vectors.json`）。同一个 nonce 下封出的信封和 Kotlin 的逐字节相同
+- **加密**：Swift 的测试读 `internal/e2e/testdata/` 下 Go 和 Kotlin 写的向量（`vectors.json`、`v2-vectors.json`、`v3-vectors.json`、`kotlin-vectors.json`），以及 `internal/deviceauth/testdata/domain-v3.json` 里的成员状态链、grant 和 `PrevSecret` 走链。同一个 nonce 下封出的信封和 Kotlin 的逐字节相同
 - **同步**：Swift 的测试构建并启动本仓库的 Go server，登记、登录、分页、补缺口、配对、带签名的指令和拒绝重定向都对着它跑；没有 Go 时这些测试跳过
 - **归约和列表规则**：Android `:core` 的测试用例逐个移植。Kotlin 依赖 JVM 语义的地方（UTF-16 长度、排序的稳定性、`LinkedHashMap` 的顺序）在 Swift 里照着结果做，并各有测试
 - **Markdown**：读 `testdata/markdown/cases.json`，和网页、Android 同一份用例

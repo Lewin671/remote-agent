@@ -13,7 +13,6 @@ struct MachineScreen: View {
     @Environment(Navigator.self) private var nav
     @Environment(\.page) private var page
     @State private var settings: MachineSettingsModel?
-    @State private var remove = ActionRunner()
     @State private var cleaning = false
     @State private var picking: Pick?
 
@@ -50,7 +49,6 @@ struct MachineScreen: View {
         let m = state.machines[id]
         let live = reachable(state)
         SettingsPage(refresh: refresh(live)) {
-            RemovalProgress(state: state, target: id)
             if let m {
                 Ticking { now in details(m, state: state, now: now) }
             } else {
@@ -88,10 +86,6 @@ struct MachineScreen: View {
             let next = approvalTimeoutMinutes[(now + 1) % approvalTimeoutMinutes.count]
             Task { await settings.save(current.with(timeoutMinutes: next)) }
         }
-        .debugSignal("machine.remove") {
-            let remote = context.remote
-            remove.run({ try await remote.removeDevice(id) }, onDone: {})
-        }
 
         .confirm(
             isPresented: $cleaning, title: "清理可回收图片？",
@@ -109,7 +103,6 @@ struct MachineScreen: View {
         let name = machineLabel(state, id: id)
         let mismatch = protocolMismatch(m)
         let status = machineStatus(m, state: state, now: now)
-        if id == state.authorityDeviceId { GroupBanner("这是管理电脑，普通移除不可用") }
         if let mismatch { GroupBanner(mismatch, tone: .warn) }
         if let status, !status.online { GroupBanner(offlineText(m, now: now)) }
 
@@ -164,15 +157,7 @@ struct MachineScreen: View {
             }
         }
 
-        GroupCard {
-            GRow(
-                remove.running ? "正在移除…" : "移除这台机器", danger: true,
-                enabled: !remove.running && state.conn == .online && id != state.authorityDeviceId
-                    && !state.removals.contains(where: { $0.targets.contains(id) })
-            ) { remove.run { try await context.remote.removeDevice(id) } }
-        }
-        GroupNote(RemovalText.machineNote)
-        if !remove.error.isEmpty { GroupBanner(remove.error, tone: .error) }
+        GroupNote(DeviceNotes.phoneOnly)
     }
 
     /// Why a computer is not there. The server only knows the daemon's

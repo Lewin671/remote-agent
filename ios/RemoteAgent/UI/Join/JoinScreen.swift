@@ -1,11 +1,11 @@
 // 加入账户, what a device shows until it has an account (mockup 「设置与
 // 配对」, Android's ui/Join.kt): the pairing code and the server, scanning
 // the other device's QR code, comparing the four pictures, and the account
-// secret as a fallback. The rules are in `JoinModel`; this file draws them.
+// The rules are in `JoinModel`; this file draws them.
 import RACore
 import SwiftUI
 
-/// First run: join the account with a pairing code, a scanned QR code, or the account secret.
+/// First run: join the account with a pairing code or a scanned QR code from the phone app.
 struct JoinScreen: View {
     @Environment(AppModel.self) private var app
     @State private var model: JoinModel?
@@ -46,7 +46,7 @@ struct JoinFlow: View {
                         if model.retainedIdentity {
                             JoinText(
                                 text:
-                                    "原设备身份、密钥和历史保留。在管理电脑运行 remote-agent account pair，核对四个图案完成绑定。日常删除不需要重复设置。 "
+                                    "原设备身份、密钥和历史保留。在手机 App 的「设备」页点「添加设备」，核对四个图案完成绑定。日常使用不需要重复设置。 "
                             )
                         }
                         switch model.step {
@@ -191,7 +191,7 @@ private struct Compare: View {
         .padding(.top, 40).padding(.bottom, 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("4 个图案：" + emoji.joined(separator: "，"))
-        Text("核对另一台设备的 4 个图案；一致后先在本机确认，再在管理电脑上允许。")
+        Text("核对另一台设备的 4 个图案；一致后先在本机确认，再在手机 App 上允许。")
             .type(T.sm, Theme.muted).multilineTextAlignment(.center)
             .frame(maxWidth: .infinity).padding(.horizontal, 24)
         if model.comparisonPending {
@@ -199,7 +199,7 @@ private struct Compare: View {
                 .horizontal, 16
             ).padding(.top, 16)
         }
-        IconText(Lucide.loaderCircle, model.comparisonPending ? "请先在本机确认图案" : "等待管理电脑批准并完成绑定…")
+        IconText(Lucide.loaderCircle, model.comparisonPending ? "请先在本机确认图案" : "等待手机批准并完成绑定…")
             .frame(maxWidth: .infinity).padding(.top, 24)
         if !model.notice.isEmpty {
             // Registering has begun: the join can no longer be left.

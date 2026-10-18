@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sync"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -22,10 +23,17 @@ import (
 )
 
 type request struct {
-	Op          string
-	Account     string
-	Member      string
-	Seed        []byte
+	Op      string
+	Account string
+	Member  string
+	Seed    []byte
+	// X is the member's X25519 private key when the caller already has one.
+	X []byte
+	// EdPublic and XPublic build a member whose private keys stay with the
+	// caller (the pairing joiner); no endpoint or record is kept for it.
+	EdPublic    []byte
+	XPublic     []byte
+	Targets     []string
 	Recovery    []byte
 	Kind        uint32
 	Header      []byte
@@ -48,6 +56,8 @@ type response struct {
 	Record   json.RawMessage `json:",omitempty"`
 	Genesis  []byte          `json:",omitempty"`
 	State    []byte          `json:",omitempty"`
+	States   [][]byte        `json:",omitempty"`
+	Proofs   [][]byte        `json:",omitempty"`
 	Envelope []byte          `json:",omitempty"`
 	Header   []byte          `json:",omitempty"`
 	Plain    []byte          `json:",omitempty"`
@@ -73,7 +83,7 @@ type member struct {
 
 func (f *fixture) recordFor(id string) (*record, error) {
 	m := f.members[id]
-	if m == nil {
+	if m == nil || len(m.x) != 32 {
 		return nil, errors.New("unknown synthetic member")
 	}
 	r := &record{Version: 3, Account: f.pin.Account, Domain: f.pin.Domain[:], Genesis: f.pin.Genesis[:], Member: id, X: m.x}
@@ -98,12 +108,11 @@ func (f *fixture) recordFor(id string) (*record, error) {
 	return r, nil
 }
 
-func (f *fixture) add(ed ed25519.PrivateKey, x []byte, kind deviceauth.Kind) (deviceauth.Member, error) {
-	xpub, err := deviceauth.XPublic(x)
-	if err != nil {
-		return deviceauth.Member{}, err
-	}
-	m, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xpub, kind)
+// add appends one member state. x is the member's X25519 private key when the
+// fixture holds it; without one the member exists in the chain but has no
+// endpoint (a pairing joiner keeps its own keys).
+func (f *fixture) add(ed ed25519.PrivateKey, edPub, xpub, x []byte, kind deviceauth.Kind) (deviceauth.Member, error) {
+	m, err := deviceauth.NewMember(edPub, xpub, kind)
 	if err != nil {
 		return deviceauth.Member{}, err
 	}
@@ -119,12 +128,31 @@ func (f *fixture) add(ed ed25519.PrivateKey, x []byte, kind deviceauth.Kind) (de
 	f.states = append(f.states, s)
 	f.proofs = append(f.proofs, nil)
 	f.secret = newSecret
-	endpoint, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, m.ID, ed.Seed(), x)
-	if err != nil {
+	f.members[m.ID] = &member{ed: ed, x: x}
+	if err := f.refreshEndpoints(); err != nil {
 		return deviceauth.Member{}, err
 	}
-	f.members[m.ID] = &member{ed: ed, x: x, endpoint: endpoint}
 	return m, nil
+}
+
+// refreshEndpoints rebuilds every retained member's endpoint from the full
+// chain, so a state added since it joined is installed before it is used.
+func (f *fixture) refreshEndpoints() error {
+	for id, m := range f.members {
+		if len(m.x) != 32 || len(m.ed) != 64 {
+			continue
+		}
+		current := f.states[len(f.states)-1]
+		if _, ok := current.Core.Member(id); !ok {
+			continue
+		}
+		ep, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, id, m.ed.Seed(), m.x)
+		if err != nil {
+			return err
+		}
+		m.endpoint = ep
+	}
+	return nil
 }
 
 func (f *fixture) run(q request) (response, error) {
@@ -177,19 +205,42 @@ func (f *fixture) run(q request) (response, error) {
 		genesis, _ := g.MarshalBinary()
 		return response{Record: raw, Genesis: genesis}, err
 	case "enroll":
-		if f.phoneEd == nil || len(q.Seed) != 32 {
+		if f.phoneEd == nil {
 			return response{}, errors.New("missing synthetic authority")
-		}
-		ed := ed25519.NewKeyFromSeed(q.Seed)
-		x, _, err := deviceauth.NewXKey()
-		if err != nil {
-			return response{}, err
 		}
 		kind := deviceauth.Kind(q.Kind)
 		if kind == 0 {
 			kind = deviceauth.Machine
 		}
-		m, err := f.add(ed, x, kind)
+		if len(q.EdPublic) == 32 {
+			// The joiner keeps its own Ed/X private keys.
+			if len(q.XPublic) != 32 || len(q.Seed) != 0 {
+				return response{}, errors.New("external member needs EdPublic and XPublic only")
+			}
+			if _, err := f.add(nil, q.EdPublic, q.XPublic, nil, kind); err != nil {
+				return response{}, err
+			}
+			state := f.states[len(f.states)-1]
+			sraw, _ := state.MarshalBinary()
+			return response{State: sraw}, nil
+		}
+		if len(q.Seed) != 32 {
+			return response{}, errors.New("missing member seed")
+		}
+		ed := ed25519.NewKeyFromSeed(q.Seed)
+		x := q.X
+		if len(x) == 0 {
+			var err error
+			x, _, err = deviceauth.NewXKey()
+			if err != nil {
+				return response{}, err
+			}
+		}
+		xpub, err := deviceauth.XPublic(x)
+		if err != nil {
+			return response{}, err
+		}
+		m, err := f.add(ed, ed.Public().(ed25519.PublicKey), xpub, x, kind)
 		if err != nil {
 			return response{}, err
 		}
@@ -198,6 +249,70 @@ func (f *fixture) run(q request) (response, error) {
 		state := f.states[len(f.states)-1]
 		sraw, _ := state.MarshalBinary()
 		return response{Record: raw, State: sraw}, err
+	case "remove":
+		if f.phoneEd == nil || len(q.Targets) == 0 {
+			return response{}, errors.New("missing synthetic authority or targets")
+		}
+		targets := map[string]bool{}
+		for _, id := range q.Targets {
+			targets[id] = true
+		}
+		parent := f.states[len(f.states)-1]
+		var members []deviceauth.Member
+		for _, m := range parent.Core.Members {
+			if targets[m.ID] {
+				if m.ID == parent.Core.AuthorityID {
+					return response{}, errors.New("the authority cannot be removed normally")
+				}
+				continue
+			}
+			members = append(members, m)
+		}
+		if len(members) == len(parent.Core.Members) {
+			return response{}, errors.New("no such member")
+		}
+		removed := append([]string{}, parent.Core.Removed...)
+		for id := range targets {
+			removed = append(removed, id)
+		}
+		slices.Sort(removed)
+		newSecret := make([]byte, 32)
+		if _, err := rand.Read(newSecret); err != nil {
+			return response{}, err
+		}
+		state, err := deviceauth.BuildMembershipState(parent, members, removed, f.secret, newSecret, f.phoneEd, 1_700_000_000_000)
+		if err != nil {
+			return response{}, err
+		}
+		f.states = append(f.states, state)
+		f.proofs = append(f.proofs, nil)
+		f.secret = newSecret
+		if err := f.refreshEndpoints(); err != nil {
+			return response{}, err
+		}
+		raw, err := state.MarshalBinary()
+		return response{State: raw}, err
+	case "chain":
+		r := response{}
+		for _, s := range f.states {
+			raw, err := s.MarshalBinary()
+			if err != nil {
+				return response{}, err
+			}
+			r.States = append(r.States, raw)
+		}
+		for _, p := range f.proofs {
+			if p == nil {
+				r.Proofs = append(r.Proofs, nil)
+				continue
+			}
+			raw, err := p.MarshalBinary()
+			if err != nil {
+				return response{}, err
+			}
+			r.Proofs = append(r.Proofs, raw)
+		}
+		return r, nil
 	case "record":
 		r, err := f.recordFor(q.Member)
 		if err != nil {

@@ -1,8 +1,8 @@
 import Connect
-// Pairing flows, as in internal/relay/pair.go, web/src/pairing.ts and
-// Android's core/PairFlow.kt: an existing device shows a code, a new one
-// joins with it, both show four emoji, and after the user checks them the
-// existing device sends the root key sealed for the new one.
+// Pairing join, as in internal/relay/pair.go, web/src/pairing.ts and
+// Android's core/PairFlow.kt: the phone shows a code, this device joins with
+// it, both show four emoji, and after the user checks them the phone seals
+// the signed state chain (no account root) for this device.
 import CryptoKit
 import Foundation
 import RAProto
@@ -66,7 +66,7 @@ public struct PairLink: Equatable, Sendable {
         return base + "/#/pair?" + q.joined(separator: "&")
     }
 
-    /// Reads a link made by `url`, or by the web client and `remote-agent account pair`.
+    /// Reads a link made by `url`, or by the web client and the phone app.
     /// QR contents are untrusted: anything malformed is no link, never a crash.
     public static func parse(_ raw: String) -> PairLink? {
         guard let at = raw.range(of: "#/pair?") else { return nil }
@@ -115,216 +115,6 @@ func joinerKind(_ st: PBGetPairingResponse) throws -> PBDeviceKind {
     switch st.joinerKind {
     case .machine, .client: return st.joinerKind
     default: throw PairError("服务器返回了意外的设备类型，已停止配对")
-    }
-}
-
-/// Adding a device from this one.
-public final class Initiation: Sendable {
-    public let code: String
-    public let link: PairLink
-    private let remote: Remote
-    private let pairingId: String
-    private let key: PairKey
-    private let approvalRequest = OSAllocatedUnfairLock<Task<PBApprovePairingRequest, Error>?>(
-        initialState: nil)
-    private let strongContext = OSAllocatedUnfairLock<DeviceSecurity.PairContext?>(
-        initialState: nil)
-    private let expires: Int64
-    private let candidate = OSAllocatedUnfairLock<(Data, PBDeviceKind)?>(initialState: nil)
-    private let sleep: Sleeper
-    private let stopped = OSAllocatedUnfairLock(initialState: false)
-    private let secrets = OSAllocatedUnfairLock<PairSecrets?>(initialState: nil)
-
-    private init(
-        code: String, link: PairLink, remote: Remote, pairingId: String, key: PairKey,
-        expires: Int64,
-        sleep: @escaping Sleeper
-    ) {
-        self.code = code
-        self.link = link
-        self.remote = remote
-        self.pairingId = pairingId
-        self.key = key
-        self.expires = expires
-        self.sleep = sleep
-    }
-
-    /// Starts adding a device to this device's account.
-    public static func start(remote: Remote, sleep: @escaping Sleeper = realSleep) async throws
-        -> Initiation
-    {
-        let key = try PairKey()
-        let identity = try await remote.securityIdentity()
-        let commit = try DeviceSecurity.pairDomainCommit(
-            ephemeral: key.publicKey,
-            trust: DeviceSecurity.pairTrustDescriptor(identity.0, approver: remote.account.deviceId)
-        )
-        var req = PBCreatePairingRequest()
-        req.commit = commit
-        let created = try await remote.api.pairing.createPairing(
-            request: req, headers: Api.headers(token: try await remote.currentToken())
-        ).value()
-        return Initiation(
-            code: created.code,
-            link: PairLink(code: created.code, server: remote.account.server, commit: commit),
-            remote: remote, pairingId: created.pairingID, key: key, expires: created.expiresMs,
-            sleep: sleep)
-    }
-
-    private func ask(_ token: String) async throws -> PBGetPairingResponse {
-        var req = PBGetPairingRequest()
-        req.pairingID = pairingId
-        return try await remote.api.pairing.getPairing(
-            request: req, headers: Api.headers(token: token)
-        )
-        .value()
-    }
-
-    /// Waits for a device to ask to join; returns the emoji to compare and its kind.
-    public func joined() async throws -> (emoji: [String], kind: PBDeviceKind) {
-        let tok = try await remote.currentToken()
-        let st = try await poll(stopped: { stopped.withLock { $0 } }, want: .joined, sleep: sleep) {
-            try await ask(tok)
-        }
-        let kind = try joinerKind(st)
-        var reveal = PBRevealPairingRequest()
-        reveal.pairingID = pairingId
-        reveal.initiatorPublic = key.publicKey
-        guard st.deviceHpkePublicKey.count == 32 else { throw PairError("候选设备需要更新") }
-        let identity = try await remote.securityIdentity()
-        let body = try JSONSerialization.data(withJSONObject: [
-            "ID": pairingId,
-            "Candidate": [
-                "ID": deviceId(publicKey: st.devicePublicKey),
-                "EdPublic": [UInt8](st.devicePublicKey),
-                "XPublic": [UInt8](st.deviceHpkePublicKey), "Kind": kind.rawValue,
-            ],
-        ])
-        let raw = try await remote.securityRPC(.beginPair, jsonBody: body)
-        let context = try DeviceSecurity.pairContextFromJSON(DeviceSecurity.safeJSONObject(raw))
-        try DeviceSecurity.verifyPairContext(context, pin: identity.0)
-        guard context.id == pairingId, context.approver == remote.account.deviceId,
-            context.candidate.ed == st.devicePublicKey,
-            context.candidate.x == st.deviceHpkePublicKey,
-            context.candidate.kind == kind.rawValue
-        else { throw PairError("配对身份不匹配") }
-        strongContext.withLock { $0 = context }
-        reveal.securityContext = raw
-
-        _ = try await remote.api.pairing.revealPairing(
-            request: reveal, headers: Api.headers(token: tok)
-        ).value()
-        guard st.devicePublicKey.count == 32 else { throw PairError("无效的候选设备身份") }
-        candidate.withLock { $0 = (st.devicePublicKey, kind) }
-        let tr = Pairing.domainTranscript(
-            pairingId: pairingId, initiatorPublic: key.publicKey, joinerPublic: st.joinerPublic,
-            devicePublic: st.devicePublicKey, hpkePublic: st.deviceHpkePublicKey,
-            joinerKind: kind.rawValue,
-            trust: try DeviceSecurity.pairTrustDescriptor(
-                identity.0, approver: remote.account.deviceId))
-        let s = try key.derive(otherPublic: st.joinerPublic, transcript: tr)
-        secrets.withLock { $0 = s }
-        return (s.emoji, kind)
-    }
-
-    /// Sends the root key; returns when the new device has it.
-    public func approve() async throws {
-        guard let s = secrets.withLock({ $0 }) else { throw PairError("还没有设备加入") }
-        let acct = remote.account
-        let tok = try await remote.currentToken()
-        let task = approvalRequest.withLock { cached in
-            if let cached { return cached }
-            let task = Task<PBApprovePairingRequest, Error> {
-                guard let c = candidate.withLock({ $0 }) else { throw PairError("没有候选设备") }
-                guard let context = self.strongContext.withLock({ $0 }) else {
-                    throw PairError("缺少配对安全上下文")
-                }
-                var candidateSig = Data()
-                for _ in 0..<300 {
-                    if candidateSig.count == 64 { break }
-                    if self.stopped.withLock({ $0 }) { throw PairError("已取消") }
-                    let current = try await self.ask(tok)
-                    candidateSig = current.candidateSignature
-                    if candidateSig.count != 64 { try await self.sleep(1000) }
-                }
-                guard candidateSig.count == 64 else { throw PairError("新设备未确认安全身份") }
-                let approvalSig = try DeviceSecurity.signPairContext(
-                    context, signingKey: SigningKey(seed: acct.deviceSeed), action: .approve)
-                let body = try JSONSerialization.data(withJSONObject: [
-                    "ID": self.pairingId, "ApproverSignature": approvalSig.base64EncodedString(),
-                    "CandidateSignature": candidateSig.base64EncodedString(),
-                ])
-                let joinedJSON = try await self.remote.securityRPC(.approvePair, jsonBody: body)
-                let joinedState = try DeviceSecurity.stateFromJSON(
-                    DeviceSecurity.safeJSONObject(joinedJSON))
-                let (approval, signature) = try makePairApproval(
-                    account: acct, pairingId: self.pairingId, candidate: c.0, kind: c.1,
-                    expires: self.expires
-                )
-                var h = PBHeader()
-                h.kind = .pairing
-                h.requestID = self.pairingId
-                h.sender = acct.deviceId
-                var payload = PBPairingPayload()
-                payload.root = acct.root
-                payload.server = acct.server
-                payload.approval = approval
-                payload.approvalSignature = signature
-                payload.securityState = try DeviceSecurity.stateBytes(joinedState)
-                var req = PBApprovePairingRequest()
-                req.pairingID = self.pairingId
-                req.payload = try Envelopes.seal(key: s.key, header: h, message: payload)
-                req.approval = approval
-                req.approvalSignature = signature
-                return req
-            }
-            cached = task
-            return task
-        }
-        let request = try await task.value
-        _ = try await remote.api.pairing.approvePairing(
-            request: request, headers: Api.headers(token: tok)
-        ).value()
-        // Only the new device confirming it has the key counts as success. A
-        // pairing that disappears meanwhile leaves the outcome unknown.
-        for _ in 0..<120 {
-            if stopped.withLock({ $0 }) { throw PairError("已取消") }
-            do {
-                let res = try await ask(tok)
-                if res.state == .delivered { return }
-                if res.state == .canceled { throw PairError("另一台设备取消了配对") }
-            } catch let e as ConnectError {
-                if e.code == .notFound {
-                    throw PairError("配对已过期，不确定新设备有没有拿到账户密钥。请在新设备上确认，必要时重新配对。")
-                }
-            }
-            try await sleep(1000)
-        }
-        throw PairError("新设备没有来取账户密钥，它可能没有加入成功。请在新设备上确认，必要时重新配对。")
-    }
-
-    public func cancel() {
-        stopped.withLock { $0 = true }
-    }
-
-    /// Tells the server; best effort.
-    public func cancelOnServer() async {
-        cancel()
-        if let context = strongContext.withLock({ $0 }) {
-            if let signature = try? DeviceSecurity.signPairContext(
-                context, signingKey: SigningKey(seed: remote.account.deviceSeed), action: .cancel),
-                let body = try? JSONSerialization.data(withJSONObject: [
-                    "ID": context.id, "Signature": signature.base64EncodedString(),
-                ])
-            {
-                _ = try? await remote.securityRPC(.cancelPair, jsonBody: body)
-            }
-        }
-        var req = PBCancelPairingRequest()
-        req.pairingID = pairingId
-        // The pairing expires by itself.
-        guard let tok = try? await remote.currentToken() else { return }
-        _ = await remote.api.pairing.cancelPairing(request: req, headers: Api.headers(token: tok))
     }
 }
 
@@ -390,62 +180,82 @@ public func joinByPairing(
     ask.candidateToken = token
     let get = { [ask] in try await api.pairing.getPairing(request: ask).value() }
     let st = try await poll(stopped: stopped, want: .revealed, sleep: sleep, get: get)
-    guard st.securityContext.count <= 8192 else { throw PairError("配对上下文过大") }
-    let context = try DeviceSecurity.pairContextFromJSON(
-        DeviceSecurity.safeJSONObject(st.securityContext))
-    try DeviceSecurity.verifyPairContext(context, pin: context.pin)
-    guard context.id == id, context.candidate.kind == 2, context.candidate.ed == devicePublic,
-        context.candidate.x == xPublic
-    else { throw PairError("配对身份与本机不匹配") }
-    let trust = try DeviceSecurity.pairTrustDescriptor(context.pin, approver: context.approver)
+    let (pin, approver) = try DeviceSecurity.parsePairTrustDescriptor(st.trust)
     guard
-        try DeviceSecurity.pairDomainCommit(ephemeral: st.initiatorPublic, trust: trust)
+        try DeviceSecurity.pairDomainCommit(ephemeral: st.initiatorPublic, trust: st.trust)
             == peek.commit
-    else { throw PairError("管理电脑信任信息与承诺不匹配") }
+    else { throw PairError("手机 App 的信任信息与承诺不匹配") }
     let tr = Pairing.domainTranscript(
         pairingId: id, initiatorPublic: st.initiatorPublic, joinerPublic: key.publicKey,
         devicePublic: devicePublic, hpkePublic: xPublic, joinerKind: PBDeviceKind.client.rawValue,
-        trust: trust)
+        trust: st.trust)
     let s = try key.derive(otherPublic: st.initiatorPublic, transcript: tr)
     onEmoji(s.emoji)
-    guard !stopped(), await confirm(s.emoji) else { throw PairError("本机未确认图案，已停止安全绑定") }
+    guard !stopped(), await confirm(s.emoji) else {
+        var cancel = PBCancelPairingRequest()
+        cancel.pairingID = id
+        cancel.candidateToken = token
+        _ = await api.pairing.cancelPairing(request: cancel)
+        throw PairError("本机未确认图案，已停止安全绑定")
+    }
     onRegistering()
-    var confirmationAsk = ask
-    confirmationAsk.candidateSignature = try DeviceSecurity.signPairContext(
-        context, signingKey: SigningKey(seed: deviceSeed), action: .accept)
-    _ = try await api.pairing.getPairing(request: confirmationAsk).value()
     let done = try await poll(stopped: stopped, want: .approved, sleep: sleep, get: get)
     let (_, payload) = try Envelopes.openMessage(
         key: s.key, envelope: done.hasPayload ? done.payload : nil,
         want: Place(.pairing, requestId: id),
         as: PBPairingPayload.self)
     if payload.server != link.server { throw PairError("账户属于另一个服务器") }
-    // Canceled while the other device was allowing it: stop before registering.
+    // Canceled while the other phone was allowing it: stop before registering.
     if stopped() { throw PairError("已取消本次加入") }
-    let acct: Account
-    if let existing {
-        guard existing.root == payload.root else { throw PairError("配对属于另一个账户，原密钥已保留") }
-        acct = existing
-    } else {
-        acct = try await joinWithRoot(
-            root: payload.root, server: payload.server, http: http,
-            enrollment: Enrollment(
-                seed: deviceSeed, pairingId: id, approval: payload.approval,
-                signature: payload.approvalSignature))
+    guard payload.accountPublicKey.count == 32,
+        deviceId(publicKey: payload.accountPublicKey) == pin.account
+    else { throw PairError("配对载荷的账户与本机核对的不一致") }
+    let enrollment = Enrollment(
+        seed: deviceSeed, pairingId: id, approval: payload.approval,
+        signature: payload.approvalSignature)
+    try verifyPairApproval(
+        enrollment, accountId: pin.account, deviceSeed: deviceSeed, kind: .client,
+        now: Int64(Date().timeIntervalSince1970 * 1000))
+    let approval = try PBPairApproval(serializedBytes: payload.approval)
+    guard approval.approverDeviceID == approver,
+        approval.candidateDevicePublicKey == devicePublic
+    else { throw PairError("配对批准与这台设备不匹配") }
+    var chain: [DeviceSecurity.State] = []
+    var proofs: [DeviceSecurity.RecoveryStatement?] = []
+    guard !payload.securityStates.isEmpty, payload.securityStates.count <= DeviceSecurity.maxStates
+    else { throw PairError("配对载荷的状态链不完整") }
+    for value in payload.securityStates {
+        chain.append(try DeviceSecurity.parseState(value.state))
+        proofs.append(
+            value.recovery.isEmpty
+                ? nil : try DeviceSecurity.RecoveryStatement.parse(value.recovery))
     }
-    let joinedState = try DeviceSecurity.parseState(payload.securityState)
-    try DeviceSecurity.verifyState(context.pin, joinedState)
-    let rootKeys = try Keys.derive(root: acct.root)
-    guard context.pin.account == deviceId(publicKey: rootKeys.account.publicKey),
-        joinedState.core.parent == context.expected,
-        joinedState.core.members.first(where: { $0.id == acct.deviceId }) == context.candidate
-    else { throw PairError("加入回执与本机配对上下文不匹配") }
+    try DeviceSecurity.verifyChain(pin: pin, states: chain, proofs: proofs)
+    let head = chain[chain.count - 1]
+    let candidate = try DeviceSecurity.member(ed: devicePublic, x: xPublic, kind: .client)
+    guard head.core.authorityID == approver, head.core.member(candidate.id) != nil,
+        chain.contains(where: { $0.core.member(candidate.id) != nil })
+    else { throw PairError("新状态没有把这台设备加进去") }
+    let secret = try DeviceSecurity.openGrant(pin, head, recipient: candidate.id, x: x)
+    let registered = try await registerJoined(
+        server: payload.server, http: http, deviceSeed: deviceSeed,
+        accountPublicKey: payload.accountPublicKey, kind: .client, enrollment: enrollment)
+    let acct = Account(
+        server: registered.server, root: existing?.root ?? Data(), deviceSeed: deviceSeed,
+        deviceId: registered.deviceId, accountId: pin.account)
+    var states: [UInt64: DeviceSecurity.State] = [:]
+    var proofMap: [UInt64: DeviceSecurity.RecoveryStatement] = [:]
+    for (i, state) in chain.enumerated() {
+        states[state.core.epoch] = state
+        if let proof = proofs[i] { proofMap[state.core.epoch] = proof }
+    }
     let record = try DeviceSecurity.Record(
-        pin: context.pin, state: joinedState, memberID: acct.deviceId, xPrivate: x.rawRepresentation
-    )
+        pin: pin, states: states, memberID: registered.deviceId, xPrivate: x.rawRepresentation,
+        member: true, counterEpoch: head.core.contentEpoch, secret: secret,
+        contentKeys: [head.core.contentEpoch: secret], recovery: proofMap)
     try await persist(acct, record)
-    // Tells the other device it went through. If this is lost, that device
-    // reports the outcome as unknown; the join itself stands.
+    // Tells the phone it went through. If this is lost, the phone reports the
+    // outcome as unknown; the join itself stands.
     ask.received = true
     _ = await api.pairing.getPairing(request: ask)
     return acct

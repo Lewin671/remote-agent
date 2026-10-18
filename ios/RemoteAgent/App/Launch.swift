@@ -28,8 +28,6 @@
 // Joining and adding a device (here)
 //   -joinStep <step>                 the join flow in a fixed state: form, filled, error, cancelled,
 //                                    working, emoji, registering, secret, secretError, scan, scanDenied, scanMissing
-//   -addDeviceStep <step>            with -demo -demoRoute add-device: waiting, starting, compare, compareMachine,
-//                                    sending, done, failed, uncertain
 //
 // Home and projects, with -demo (UI/Home/HomeLaunch.swift)
 //   -homeScope <all|path>            the scope the home page opens on
@@ -93,7 +91,7 @@
 //   app.logout          退出账户, from anywhere
 //   app.open            goes to the route of `defaults write <bundle> debug.route <route>`, as a tap on a row would
 //   name.skip           跳过 of 给这个客户端起个名字, from any page
-//   join.cancel, pair.approve, pair.reject      the join flow and 添加设备
+//   join.cancel         the join flow
 //   removed.retry       再试一次 on the 已被移出账户 notice
 //   home.scope          chooses the scope -homeScopeTarget names
 //   project.start, project.agent                ↑ of the new-session box; the other CLI
@@ -112,8 +110,8 @@
 //   session.select                             选择文字 of the last agent reply
 //   session.stream, session.resolve             sample data: a turn plays into the session; its first approval
 //                       is answered as by another client
-//   client.rename, client.reset, client.remove  a client's page: a fixed new name, 恢复默认名称, 移除
-//   machine.timeout, machine.remove             a computer's page: the next approval timeout, 移除
+//   client.rename, client.reset  a client's page: a fixed new name, 恢复默认名称
+//   machine.timeout             a computer's page: the next approval timeout
 //   check.again         再测一次 of 连接检测
 //   images.clear        清理 of 图片存储
 //   images.add, images.pick, images.original, images.retry, images.remove
@@ -250,24 +248,6 @@ enum LaunchDriver {
         }
     }
 
-    /// Shows the step `-addDeviceStep` names; false when there is none and the pairing should start.
-    static func preview(_ model: AddDeviceModel) -> Bool {
-        guard let step = value("-addDeviceStep") else { return false }
-        let emoji = ["🦊", "🌵", "🍉", "🌙"]
-        let link = PairLink(code: "48291756", server: "https://ra.example.com", commit: Data(repeating: 7, count: 32))
-        switch step {
-        case "compare": model.show(.compare(emoji: emoji, machine: false))
-        case "compareMachine": model.show(.compare(emoji: emoji, machine: true))
-        case "sending": model.show(.sending(emoji: emoji, machine: false))
-        case "done": model.show(.done)
-        case "failed": model.show(.failed("配对已过期或被取消", uncertain: false))
-        case "uncertain":
-            model.show(.failed("新设备没有来取账户密钥，它可能没有加入成功。请在新设备上确认，必要时重新配对。", uncertain: true))
-        case "starting": model.show(.starting)
-        default: model.show(.waiting(code: link.code, link: link))
-        }
-        return true
-    }
 }
 
 /// Darwin notifications as buttons a script can press. Each name has one
@@ -318,7 +298,6 @@ enum LaunchDriver {
     static func orient() {}
     static func stageChanged(_ model: AppModel) async {}
     static func drive(_ join: JoinModel) {}
-    static func preview(_ model: AddDeviceModel) -> Bool { false }
 }
 
 extension View {

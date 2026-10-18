@@ -282,9 +282,7 @@ extension Remote {
 
     func putMachine(_ incoming: PBMachine, staleOnline: Bool = false, save: Bool = true) async {
         guard trustedMembers[incoming.id]?.kind == 1 else { return }
-        var m = incoming
-        m.clearMeta()
-        if let meta = trustedMetadata["machine:" + m.id] { m.meta = meta }
+        let m = incoming
         let old = machines[m.id]
         var view = old ?? MachineView(id: m.id, online: m.online, lastSeenMs: m.lastSeenMs)
         if !staleOnline { view.online = m.online }
@@ -316,11 +314,7 @@ extension Remote {
         async
     {
         guard trustedMembers[incoming.machineID]?.kind == 1 else { return }
-        var rs = incoming
-        rs.clearMeta()
-        if let meta = trustedMetadata["session:" + rs.machineID + ":" + rs.sessionID] {
-            rs.meta = meta
-        }
+        let rs = incoming
         let sid = rs.sessionID
         let removal = removedPushes[rs.machineID] ?? 0
         do {
@@ -332,6 +326,9 @@ extension Remote {
                 let h: PBHeader
                 let raw: Data
                 if route.version == 1 {
+                    guard let keys else {
+                        throw OpenError("这份旧历史需要账户根密钥，本机没有")
+                    }
                     (h, raw) = try Envelopes.open(key: keys.wrap, envelope: rs.key)
                 } else {
                     let opened = try await securitySession().openHistory(rs.key)
@@ -380,6 +377,7 @@ extension Remote {
                 await cache?.keepOwner(rs)
             }
         } catch {
+            report(error)
             report(error)
         }
         if announce { publish() }
@@ -465,18 +463,19 @@ extension Remote {
     func loadDevices() async {
         do {
             try await refreshTrustedDirectory()
-            startRemovalPolling()
         } catch {
-            deviceBindings.removeAll()
             report(error)
         }
         publish()
     }
     func putDevice(_ ignored: PBDevice) async { await loadDevices() }
 
-    /// Names a client device for the whole account, keeping what else its
-    /// metadata says; a conflict is redone on the stored metadata.
+    /// Names this client. Device metadata is self-only in protocol 10, so a
+    /// name for another member can only be set on that member's own device.
     public func renameDevice(_ id: String, name: String) async throws {
+        guard id == account.deviceId else {
+            throw CommandError("failed_precondition", "设备名称只能由该设备自己设置")
+        }
         try await changeDeviceMeta(id) { $0.name = name }
     }
 

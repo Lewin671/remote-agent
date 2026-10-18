@@ -12,8 +12,7 @@ extension ServerTests {
                 try await w.daemon.connect()
                 try await w.daemon.waitReady()
             }) { w in
-                let sponsor = try w.remote(w.daemon.account)
-                let pairing = try await Initiation.start(remote: sponsor)
+                let pairing = try await PhonePairing.start(w.phone)
                 let emoji = Mailbox<[String]>()
                 let joining = Task {
                     try await joinByPairing(
@@ -23,16 +22,17 @@ extension ServerTests {
                         }, confirm: { _ in true })
                 }
                 defer { joining.cancel() }
-                let expected = try await pairing.joined()
+                let expected = try await pairing.reveal()
                 #expect(await emoji.poll(5_000) == expected.emoji)
                 let approving = Task { try await pairing.approve() }
                 defer { approving.cancel() }
                 let account = try await joining.value
                 try await approving.value
+                // The same approved request is accepted again.
                 try await pairing.approve()
-                #expect(
-                    !(try await login(
-                        api: Api(server: w.server.url, http: w.http), account: account)).isEmpty)
+                let login = try await login(
+                    api: Api(server: w.server.url, http: w.http), account: account)
+                #expect(!login.isEmpty)
             }
         }
 
@@ -42,8 +42,9 @@ extension ServerTests {
                 try await w.daemon.connect()
                 try await w.daemon.waitReady()
             }) { w in
-                let sponsor = try w.remote(w.daemon.account)
-                let pairing = try await Initiation.start(remote: sponsor)
+                let before = try DeviceSecurity.parseState(
+                    try await w.phone.chain().last!.state).core.members.count
+                let pairing = try await PhonePairing.start(w.phone)
                 let displayed = Mailbox<[String]>()
                 let persisted = Counter()
                 let joining = Task {
@@ -54,15 +55,13 @@ extension ServerTests {
                         return false
                     } catch { return errorText(error).contains("本机未确认") }
                 }
-                let expected = try await pairing.joined()
+                let expected = try await pairing.reveal()
                 #expect(await displayed.poll(5000) == expected.emoji)
                 #expect(await joining.value)
                 #expect(persisted.value == 0)
-                let raw = try await sponsor.securityRPC(.catalog, jsonBody: Data("{}".utf8))
-                let catalog = try DeviceSecurity.object(DeviceSecurity.safeJSONObject(raw))
-                let state = try DeviceSecurity.stateFromJSON(catalog["State"] as Any)
-                #expect(state.core.members.count == 1)
-                await pairing.cancelOnServer()
+                let chain = try await w.phone.chain()
+                let head = try DeviceSecurity.parseState(chain[chain.count - 1].state)
+                #expect(head.core.members.count == before)
             }
         }
 
@@ -75,8 +74,7 @@ extension ServerTests {
                 try await w.daemon.connect()
                 try await w.daemon.waitReady()
             }) { w in
-                let sponsor = try w.remote(w.daemon.account)
-                let pairing = try await Initiation.start(remote: sponsor)
+                let pairing = try await PhonePairing.start(w.phone)
                 let emoji = Mailbox<[String]>()
                 let faulty = Intercept.http(for: w.server.url) { request in
                     if request.url?.path.hasSuffix("/GetPairing") == true,
@@ -95,15 +93,15 @@ extension ServerTests {
                         }, confirm: { _ in true })
                 }
                 defer { joining.cancel() }
-                let expected = try await pairing.joined()
+                let expected = try await pairing.reveal()
                 #expect(await emoji.poll(5_000) == expected.emoji)
                 let approving = Task { try await pairing.approve() }
                 let account = try await joining.value
                 approving.cancel()
                 _ = try? await approving.value
-                #expect(
-                    !(try await login(
-                        api: Api(server: w.server.url, http: w.http), account: account)).isEmpty)
+                let login = try await login(
+                    api: Api(server: w.server.url, http: w.http), account: account)
+                #expect(!login.isEmpty)
             }
         }
     }

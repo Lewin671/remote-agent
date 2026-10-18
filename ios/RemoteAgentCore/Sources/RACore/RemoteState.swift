@@ -91,7 +91,6 @@ public struct RemoteState: Equatable, Sendable {
     public var devices: [String: DeviceView] = [:]
     /// The server no longer knows this device: removed from the account, or the server's data is gone.
     public var authorityDeviceId = ""
-    public var removals: [DeviceSecurityClient.Removal] = []
     public var removed = false
     /// Where the next page of ended sessions starts (architecture §8
     /// 「会话列表分页」): `sessions` holds every session that has not ended and

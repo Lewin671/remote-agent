@@ -31,7 +31,6 @@ struct JoinCalls: Sendable {
             _ onRegistering: @escaping @Sendable () -> Void,
             _ confirm: @escaping @Sendable ([String]) async -> Bool
         ) async throws -> Account
-    var withSecret: @Sendable (_ secret: Secret) async throws -> Account
 
     static func live(http: HTTP, existing: Account? = nil, vault: Vault = Vault()) -> JoinCalls {
         JoinCalls(
@@ -45,9 +44,6 @@ struct JoinCalls: Sendable {
                             acct.stored,
                             notifyKey: DeviceSecurity.NotifyRecord(record: record).bytes())
                     }, existing: existing, confirm: confirm)
-            },
-            withSecret: { secret in
-                try await joinWithRoot(root: secret.root, server: secret.server, http: http)
             })
     }
 }

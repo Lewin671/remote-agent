@@ -456,7 +456,9 @@ func membershipDelta(parent, next State) error {
 			added++
 		}
 	}
-	if !slices.Equal(removed, next.Core.Removed) {
+	expected := append(slices.Clone(parent.Core.Removed), removed...)
+	slices.Sort(expected)
+	if !slices.Equal(expected, next.Core.Removed) {
 		return ErrInvalid
 	}
 	if added > 1 || rotated > 1 || added > 0 && len(removed) > 0 || rotated > 0 && (added > 0 || len(removed) > 0) || added == 0 && len(removed) == 0 && rotated == 0 {

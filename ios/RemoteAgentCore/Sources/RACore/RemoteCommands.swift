@@ -234,33 +234,6 @@ extension Remote {
         return try await task.value
     }
 
-    /// Removal success is defined by the signed completion, not a server row.
-    public func removeDevice(_ deviceId: String) async throws {
-        guard deviceId != authorityDeviceId else {
-            throw CommandError("failed_precondition", "管理电脑不能普通移除")
-        }
-        guard let binding = deviceBindings[deviceId] else {
-            throw CommandError("failed_precondition", "需要先核实当前设备信息")
-        }
-        let client = try securitySession()
-        _ = try await client.remove(
-            target: deviceId, commit: binding.commit, expected: binding.state)
-        removals = try await client.removalOperations()
-        publish()
-        await loadDevices()
-        startRemovalPolling()
-    }
-    public func retryDeviceRemoval(_ operation: String) async throws {
-        let client = try securitySession()
-        guard
-            let op = try await client.removalOperations().first(where: { $0.operation == operation }
-            )
-        else { return }
-        _ = try await client.retryRemoval(op)
-        await pollRemovals()
-        startRemovalPolling()
-    }
-
     /// The bearer token of the current login, for services used outside this class.
     public func currentToken() async throws -> String {
         if token.isEmpty { token = try await signIn() }

@@ -143,7 +143,7 @@ public actor Remote {
     public nonisolated let state: Feed<RemoteState>
 
     nonisolated let http: HTTP
-    nonisolated let keys: Keys
+    nonisolated let keys: Keys?
     nonisolated let device: SigningKey
     nonisolated let cache: (any CipherCache)?
     nonisolated let log: @Sendable (String) -> Void
@@ -182,11 +182,8 @@ public actor Remote {
     var devices: [String: DeviceView] = [:]
     var trustedMembers: [String: DeviceSecurity.Member] = [:]
     var trustedMetadata: [String: PBEnvelope] = [:]
-    var deviceBindings: [String: (state: Data, commit: Data)] = [:]
     var directoryVersion = 0
     var authorityDeviceId = ""
-    var removals: [DeviceSecurityClient.Removal] = []
-    var removalJob: Task<Void, Never>?
     var liveSnapshots: [String: PBLiveSnapshot] = [:]
     var liveErrors: [String: String] = [:]
     var liveJobs: [String: Task<Void, Never>] = [:]
@@ -340,7 +337,7 @@ public actor Remote {
         self.historyIdleBytes = historyIdleBytes
         self.streamOpenMs = streamOpenMs
         self.linkGraceMs = linkGraceMs
-        keys = try Keys.derive(root: account.root)
+        keys = account.hasRoot ? try? Keys.derive(root: account.root) : nil
         device = try SigningKey(seed: account.deviceSeed)
         api = try Api(server: account.server, http: http)
         state = Feed(RemoteState())
@@ -414,8 +411,6 @@ public actor Remote {
         case .close:
             halt()
             closed = true
-            removalJob?.cancel()
-            removalJob = nil
             for job in liveJobs.values { job.cancel() }
             liveJobs.removeAll()
             liveSnapshots.removeAll()
@@ -464,6 +459,7 @@ public actor Remote {
 
     private func halt() {
         running = false
+        if let deviceSecurity { Task { await deviceSecurity.stopPolling() } }
         generation += 1
         reconnect?.task.cancel()
         reconnect = nil
@@ -537,7 +533,6 @@ public actor Remote {
         s.prefs = prefs
         s.devices = devices
         s.authorityDeviceId = authorityDeviceId
-        s.removals = removals
         s.removed = removed
         s.sessionsNext = next
         s.loadingSessions = pageJob != nil
@@ -616,22 +611,16 @@ public actor Remote {
             let identity = try securityIdentity()
             trustedMembers = Dictionary(
                 uniqueKeysWithValues: identity.1.core.members.map { ($0.id, $0) })
-            authorityDeviceId = identity.0.authorityID
+            authorityDeviceId = identity.1.core.authorityID
         } catch {
             report(error)
             return
         }
         for var m in await cache.machines() {
-            if m.hasMeta && !m.meta.securityHeader.isEmpty {
-                trustedMetadata["machine:" + m.id] = m.meta
-            }
             m.online = false
             await putMachine(m, save: false)
         }
         for s in await cache.sessions() {
-            if s.hasMeta && !s.meta.securityHeader.isEmpty {
-                trustedMetadata["session:" + s.machineID + ":" + s.sessionID] = s.meta
-            }
             listed.insert(s.sessionID)
             await putSession(s, save: false, publish: false)
         }
@@ -789,6 +778,7 @@ public actor Remote {
             }
             Task { await self.loadPrefs() }
             Task { await self.loadDevices() }
+            startSecurityPolling()
         case .accountPrefsUpdated(let u)?:
             if u.object.objectID == projectPrefsID { await putPrefs(u.object) }
         case .deviceUpdated(let u)?:

@@ -195,26 +195,16 @@ public struct PBEnvelope: Sendable {
   /// AES-256-GCM ciphertext followed by the 16-byte tag.
   public var ciphertext: Data = Data()
 
-  /// Ed25519 signature by the sending device's key, so that a daemon can
-  /// tell which device sent a command even though the server is not
-  /// trusted. Clients set it on COMMAND envelopes, where a daemon requires
-  /// it; it is empty elsewhere. It signs the bytes as transmitted:
-  ///   "remote-agent/v1/envelope-signature\x00"
-  ///   || uint32be(len(header)) || header
-  ///   || uint32be(len(nonce)) || nonce
-  ///   || uint32be(len(ciphertext)) || ciphertext
-  /// (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
-  /// header's sender must be the ID of the signing device.
+  /// Ed25519 signature by the sending device's key over the origin bytes:
+  /// account, domain, state hash, sender, header hash and ciphertext
+  /// commitment (see internal/deviceauth originBytes). Every
+  /// security-domain envelope sets it, not only commands; a receiver checks
+  /// it against the state the header names.
   public var signature: Data = Data()
 
-  /// Version-2 canonical deviceauth Header; the protobuf Header above is only
-  /// a routing projection. Receivers compare every projection field to this.
+  /// Canonical deviceauth v3 Header; the protobuf Header above is only a
+  /// routing projection. Receivers compare every projection field to this.
   public var securityHeader: Data = Data()
-
-  /// Exact-ciphertext authority authorization and its Ed25519 signature.
-  public var authorization: Data = Data()
-
-  public var authorizationSignature: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -282,7 +272,7 @@ extension PBCompression: SwiftProtobuf._ProtoNameProviding {
 
 extension PBEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Envelope"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}header\0\u{1}nonce\0\u{1}ciphertext\0\u{1}signature\0\u{3}security_header\0\u{1}authorization\0\u{3}authorization_signature\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}header\0\u{1}nonce\0\u{1}ciphertext\0\u{1}signature\0\u{3}security_header\0\u{b}authorization\0\u{b}authorization_signature\0\u{c}\u{6}\u{1}\u{c}\u{7}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -295,8 +285,6 @@ extension PBEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
       case 3: try { try decoder.decodeSingularBytesField(value: &self.ciphertext) }()
       case 4: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
       case 5: try { try decoder.decodeSingularBytesField(value: &self.securityHeader) }()
-      case 6: try { try decoder.decodeSingularBytesField(value: &self.authorization) }()
-      case 7: try { try decoder.decodeSingularBytesField(value: &self.authorizationSignature) }()
       default: break
       }
     }
@@ -318,12 +306,6 @@ extension PBEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
     if !self.securityHeader.isEmpty {
       try visitor.visitSingularBytesField(value: self.securityHeader, fieldNumber: 5)
     }
-    if !self.authorization.isEmpty {
-      try visitor.visitSingularBytesField(value: self.authorization, fieldNumber: 6)
-    }
-    if !self.authorizationSignature.isEmpty {
-      try visitor.visitSingularBytesField(value: self.authorizationSignature, fieldNumber: 7)
-    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -333,8 +315,6 @@ extension PBEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
     if lhs.ciphertext != rhs.ciphertext {return false}
     if lhs.signature != rhs.signature {return false}
     if lhs.securityHeader != rhs.securityHeader {return false}
-    if lhs.authorization != rhs.authorization {return false}
-    if lhs.authorizationSignature != rhs.authorizationSignature {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

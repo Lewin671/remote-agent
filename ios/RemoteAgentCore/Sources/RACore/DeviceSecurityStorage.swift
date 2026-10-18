@@ -2,112 +2,208 @@ import CryptoKit
 import Foundation
 
 extension DeviceSecurity {
-    /// Stored only with the account's unlocked-device protection. No receiver
-    /// private key or complete content secret is delegated to a locked worker.
+    /// The local security state: the pinned anchor, the signed chain, this
+    /// device's exchange key, the content-key cache, the counter block and the
+    /// time floor. Stored under the account's unlocked-device protection.
     public struct Record: Sendable, CustomStringConvertible, CustomDebugStringConvertible,
         CustomReflectable
     {
         public let pin: Pin
-        public let state: State
+        public var states: [UInt64: State]
+        public var headEpoch: UInt64
         public let memberID: String
         private let xPrivate: Data
+        public var member: Bool
         public var counter: UInt64
-        public var description: String { "DeviceSecurity.Record(epoch=\(state.core.epoch))" }
+        public var blockEnd: UInt64
+        public var counterEpoch: UInt64
+        public var floor: UInt64
+        public var floorSaved: UInt64
+        public var secret: Data?
+        public var contentKeys: [UInt64: Data]
+        public var recovery: [UInt64: RecoveryStatement]
+        public var state: State { states[headEpoch]! }
+        public var description: String { "DeviceSecurity.Record(epoch=\(headEpoch))" }
         public var debugDescription: String { description }
         public var customMirror: Mirror {
-            Mirror(self, children: ["epoch": state.core.epoch, "memberID": memberID])
+            Mirror(self, children: ["epoch": headEpoch, "memberID": memberID])
         }
-        public init(pin: Pin, state: State, memberID: String, xPrivate: Data, counter: UInt64 = 0)
-            throws
-        {
-            try verifyState(pin, state)
-            try check(xPrivate.count == 32 && identifier(memberID))
-            let x = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: xPrivate)
-            _ = try openGrant(pin, state, recipient: memberID, x: x)
+        public init(
+            pin: Pin, states: [UInt64: State], memberID: String, xPrivate: Data, member: Bool,
+            counter: UInt64 = 0, blockEnd: UInt64 = 0, counterEpoch: UInt64 = 0,
+            floor: UInt64 = 0, floorSaved: UInt64 = 0, secret: Data? = nil,
+            contentKeys: [UInt64: Data] = [:], recovery: [UInt64: RecoveryStatement] = [:]
+        ) throws {
+            try check(
+                xPrivate.count == 32 && identifier(memberID) && !states.isEmpty, .invalid)
+            guard let head = states.values.max(by: { $0.core.epoch < $1.core.epoch }),
+                states.count == Int(head.core.epoch)
+            else { throw Failure.invalid }
+            for ep in 1...head.core.epoch {
+                try check(states[ep]?.core.epoch == ep, .storage)
+            }
+            try verifyGenesis(pin, states[1]!)
+            if head.core.epoch > 1 {
+                for ep in 2...head.core.epoch {
+                    try verifyTransition(
+                        parent: states[ep - 1]!, next: states[ep]!, recovery: recovery[ep])
+                }
+            }
+            try check((head.core.member(memberID) != nil) == member, .storage)
+            if member {
+                guard let secret, secret.count == 32 else { throw Failure.storage }
+                let x = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: xPrivate)
+                let opened = try openGrant(pin, head, recipient: memberID, x: x)
+                try check(opened == secret, .storage)
+            } else if let secret {
+                // A removed device keeps the last content key it held so its
+                // own history stays readable; it cannot open the new head.
+                try check(secret.count == 32, .storage)
+            }
+            for (_, key) in contentKeys { try check(key.count == 32, .storage) }
             self.pin = pin
-            self.state = state
+            self.states = states
+            self.headEpoch = head.core.epoch
             self.memberID = memberID
             self.xPrivate = xPrivate
+            self.member = member
             self.counter = counter
+            self.blockEnd = blockEnd
+            self.counterEpoch = counterEpoch
+            self.floor = floor
+            self.floorSaved = floorSaved
+            self.secret = secret
+            self.contentKeys = contentKeys
+            self.recovery = recovery
         }
-        public func secret() throws -> Data {
-            try openGrant(
-                pin, state, recipient: memberID,
-                x: Curve25519.KeyAgreement.PrivateKey(rawRepresentation: xPrivate))
+        public var xKey: Curve25519.KeyAgreement.PrivateKey {
+            get throws { try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: xPrivate) }
         }
-        public func openReply(_ waiter: Waiter, _ capsule: Capsule) throws -> Data {
-            try check(waiter.pin == pin && waiter.sender == memberID, .untrusted)
-            return try reply(
-                waiter, capsule, x: Curve25519.KeyAgreement.PrivateKey(rawRepresentation: xPrivate))
-        }
-        public func advanced(_ next: State) throws -> Record {
-            try advance(pin, state, next)
-            return try Record(pin: pin, state: next, memberID: memberID, xPrivate: xPrivate)
+        /// The content key of `epoch`, from the cache or by walking PrevSecret
+        /// back from the head. Reaching an empty PrevSecret is a recovery
+        /// boundary: older content is unavailable to this device.
+        public func contentSecret(_ epoch: UInt64) throws -> Data {
+            if let k = contentKeys[epoch] { return k }
+            // A retained or removed device can still open its own grants from
+            // the states it belonged to, even after a later content epoch
+            // replaced the key and the head no longer names it.
+            if let own = states.values.first(where: {
+                $0.core.contentEpoch == epoch && $0.core.member(memberID) != nil
+            }), let key = try? openGrant(pin, own, recipient: memberID, x: xKey) {
+                return key
+            }
+            let head = state
+            guard head.core.contentEpoch >= epoch else { throw Failure.stale }
+            var key: Data? = counterEpoch == head.core.contentEpoch ? secret : contentKeys[head.core.contentEpoch]
+            var ep = head.core.epoch
+            while ep >= 1 {
+                guard let s = states[ep] else { throw Failure.storage }
+                if s.core.contentEpoch == epoch {
+                    guard let key else { throw Failure.unavailable }
+                    return key
+                }
+                guard let prev = states[ep - 1] else { throw Failure.storage }
+                if prev.core.contentEpoch != s.core.contentEpoch {
+                    if s.prevSecret.isEmpty || key == nil { throw Failure.unavailable }
+                    guard let current = key else { throw Failure.unavailable }
+                    key = try openPrevSecret(newSecret: current, blob: s.prevSecret)
+                }
+                ep -= 1
+            }
+            throw Failure.unavailable
         }
         public func bytes() throws -> Data {
             var w = Writer()
-            w.u32(2)
+            w.u32(3)
             w.str(pin.account)
             w.raw(pin.domain)
             w.raw(pin.genesis)
-            w.str(pin.authorityID)
-            w.raw(pin.authorityEd)
-            w.raw(pin.authorityX)
-            w.lp(try stateBytes(state))
             w.str(memberID)
             w.raw(xPrivate)
+            w.u32(member ? 1 : 0)
             w.u64(counter)
+            w.u64(blockEnd)
+            w.u64(counterEpoch)
+            w.u64(floor)
+            w.u64(floorSaved)
+            w.lp(secret ?? Data())
+            let ordered = states.values.sorted { $0.core.epoch < $1.core.epoch }
+            w.u32(UInt32(ordered.count))
+            for s in ordered {
+                w.u64(s.core.epoch)
+                w.lp(try stateBytes(s))
+            }
+            let proofs = recovery.sorted { $0.key < $1.key }
+            w.u32(UInt32(proofs.count))
+            for (ep, proof) in proofs {
+                w.u64(ep)
+                w.lp(try proof.bytes())
+            }
+            let keys = contentKeys.sorted { $0.key < $1.key }
+            w.u32(UInt32(keys.count))
+            for (ep, key) in keys {
+                w.u64(ep)
+                w.raw(key)
+            }
             return w.data
         }
         public static func parse(_ b: Data) throws -> Record {
-            try check(b.count <= maxState + 512)
+            try check(b.count <= maxState * maxStates + 4096, .capacity)
             var r = Reader(data: b)
-            try check(r.u32() == 2)
-            let pin = Pin(
-                account: try r.str(), domain: try r.raw(32), genesis: try r.raw(32),
-                authorityID: try r.str(), authorityEd: try r.raw(32), authorityX: try r.raw(32))
-            let state = try parseState(r.lp(maxState))
-            let id = try r.str()
+            try check(r.u32() == 3)
+            let pin = Pin(account: try r.str(), domain: try r.raw(32), genesis: try r.raw(32))
+            let memberID = try r.str()
             let x = try r.raw(32)
-            let counter = try r.u64()
+            let member = try r.u32() != 0
+            _ = try r.u64()
+            let blockEnd = try r.u64()
+            let counterEpoch = try r.u64()
+            let floor = try r.u64()
+            let floorSaved = try r.u64()
+            let secretRaw = try r.lp(maxState)
+            let secret = secretRaw.isEmpty ? nil : secretRaw
+            var states: [UInt64: State] = [:]
+            var n = try r.u32()
+            try check(n <= UInt32(maxStates), .capacity)
+            for _ in 0..<n {
+                let ep = try r.u64()
+                let s = try parseState(r.lp(maxState))
+                try check(s.core.epoch == ep && states[ep] == nil, .invalid)
+                states[ep] = s
+            }
+            var recovery: [UInt64: RecoveryStatement] = [:]
+            n = try r.u32()
+            try check(n <= UInt32(maxStates), .capacity)
+            for _ in 0..<n {
+                let ep = try r.u64()
+                try check(recovery[ep] == nil, .invalid)
+                recovery[ep] = try RecoveryStatement.parse(r.lp(maxState))
+            }
+            var keys: [UInt64: Data] = [:]
+            n = try r.u32()
+            try check(n <= UInt32(maxStates), .capacity)
+            for _ in 0..<n {
+                let ep = try r.u64()
+                let key = try r.raw(32)
+                try check(keys[ep] == nil, .invalid)
+                keys[ep] = key
+            }
             try r.done()
-            return try Record(pin: pin, state: state, memberID: id, xPrivate: x, counter: counter)
+            return try Record(
+                pin: pin, states: states, memberID: memberID, xPrivate: x, member: member,
+                // A restart skips the rest of the last reserved block; those
+                // counter values must never be handed out twice.
+                counter: blockEnd, blockEnd: blockEnd, counterEpoch: counterEpoch,
+                floor: floor, floorSaved: floorSaved, secret: secret, contentKeys: keys,
+                recovery: recovery)
         }
     }
-    public struct Historical: Sendable, CustomStringConvertible {
-        public let state: State
-        public let secret: Data
-        public var description: String { "DeviceSecurity.Historical(epoch=\(state.core.epoch))" }
-        public init(state: State, secret: Data) throws {
-            try check(secret.count == 32 && state.core.epoch > 0 && state.core.epoch <= 32768)
-            self.state = state
-            self.secret = secret
-        }
-        public func bytes() throws -> Data {
-            var w = Writer()
-            w.lp(try stateBytes(state))
-            w.raw(secret)
-            return w.data
-        }
-        public static func parse(_ data: Data) throws -> Historical {
-            try check(data.count <= maxState + 36)
-            var r = Reader(data: data)
-            let state = try parseState(r.lp(maxState))
-            let key = try r.raw(32)
-            try r.done()
-            return try Historical(state: state, secret: key)
-        }
-    }
-    /// Each method is a platform-atomic transaction shared by all foreground
-    /// callers. Missing/corrupt state throws; initialize is never an upsert.
+    /// Each method is one platform-atomic transaction shared by all foreground
+    /// callers. Missing or corrupt state throws; initialize is never an upsert.
     public protocol Storage: Sendable {
         func readSecurity() throws -> Record
         func initializeSecurity(_ record: Record) throws
-        func reserveSecurity(expectedState: Data) throws -> Record
-        func advanceSecurity(expectedState: Data, next: State) throws -> Record
-        func readSecurityHistory(epoch: UInt64) throws -> Historical?
-        func cacheSecurityHistory(_ history: Historical) throws
-        func readRemovalOperations() throws -> Data?
-        func writeRemovalOperations(_ data: Data) throws
+        /// Writes the whole record if the stored head is still `expectedHead`.
+        func writeSecurity(expectedHead: Data, _ record: Record) throws -> Record
     }
 }

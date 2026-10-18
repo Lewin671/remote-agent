@@ -14,6 +14,7 @@ final class World: @unchecked Sendable {
     let server: TestServer
     let http = HTTP()
     let root = randomBytes(32)
+    let phone: SyntheticPhone
     let daemon: FakeDaemon
     private let lock = NSLock()
     private var closers: [@Sendable () -> Void] = []
@@ -21,8 +22,9 @@ final class World: @unchecked Sendable {
     private init() async throws {
         server = try await TestServer()
         do {
-            daemon = try await FakeDaemon.create(
+            phone = try await SyntheticPhone.create(
                 root: root, server: server.url, http: http, setupToken: server.setupToken)
+            daemon = try await FakeDaemon.join(phone: phone, http: http)
         } catch {
             server.close()
             throw error
@@ -54,7 +56,7 @@ final class World: @unchecked Sendable {
 
     /// A new client device of the account.
     func join() async throws -> Account {
-        try await approvedClient(authorizer: daemon.account, http: http)
+        try await phone.enroll(seed: randomBytes(32), kind: .client).0
     }
 
     func remote(
@@ -144,11 +146,7 @@ extension ServerTests {
                 _ = try await other.awaitState("online") {
                     $0.conn == .online && $0.devices[r.account.deviceId] != nil
                 }
-                await other.loadDevices()
-                try await other.removeDevice(r.account.deviceId)
-                _ = try await other.awaitState("revocation completed") {
-                    $0.removals.contains { $0.phase == "complete" && $0.serverCleaned }
-                }
+                try await w.phone.remove([r.account.deviceId])
                 let st = try await r.awaitState("removed") { $0.removed }
                 #expect(st.conn == .offline)
                 // It stays put rather than reconnecting, also when asked to start.
@@ -328,7 +326,9 @@ extension ServerTests {
                     try await r.command("s1", interrupt())
                     Issue.record("expected unavailable")
                 } catch let e as CommandError {
-                    #expect(e.code == "authorization_unavailable")
+                    // Sealing is local now: the envelope was handed to the relay,
+                    // so an offline machine leaves the outcome unknown.
+                    #expect(e.code == CommandError.unknownOutcome)
                 }
             }
         }
@@ -483,24 +483,25 @@ extension ServerTests {
                 let r = try await w.client()
                 r.start()
                 _ = try await r.awaitState("online") { $0.conn == .online }
-                let initiation = try await Initiation.start(remote: r)
+                let pairing = try await PhonePairing.start(w.phone)
                 let link = try #require(
-                    PairLink.parse(initiation.link.url(web: "https://app.example.com")))
-                #expect(link.code == initiation.code)
+                    PairLink.parse(pairing.link.url(web: "https://app.example.com")))
+                #expect(link.code == pairing.code)
                 let joinerEmoji = Mailbox<[String]>()
                 let http = w.http
                 async let joining = joinByPairing(
                     link: link, http: http, onEmoji: { joinerEmoji.put($0) }, stopped: { false },
                     persist: { acct, record in try TestSecurity.get(acct.server).install(record) },
                     confirm: { _ in true })
-                let (emoji, kind) = try await initiation.joined()
-                try await initiation.approve()
+                let (emoji, st) = try await pairing.reveal()
+                #expect(st.joinerKind == .client)
+                try await pairing.approve()
                 let acct = try await joining
-                #expect(kind == .client)
                 #expect(emoji.count == 4)
-                #expect(joinerEmoji.all == [emoji])
-                #expect(acct.root == w.root)
+                #expect(joinerEmoji.all.suffix(1) == [emoji])
+                #expect(acct.root.isEmpty)
                 #expect(acct.server == w.server.url)
+                #expect(acct.accountId == w.phone.pin.account)
                 // The device that joined is the account's: it logs in and lists like any other.
                 let joined = try w.remote(acct)
                 joined.start()
@@ -629,8 +630,7 @@ extension ServerTests {
                 let other = try await w.client()
                 other.start()
                 _ = try await other.awaitState("online") { $0.conn == .online }
-                await other.loadDevices()
-                try await other.removeDevice(acct.deviceId)
+                try await w.phone.remove([acct.deviceId])
                 _ = try await r.awaitState("removed", ms: 20_000) { $0.removed }
                 #expect(kept.all.last == .some(nil))
             }
@@ -970,8 +970,7 @@ extension ServerTests {
                 let p = try r.prepare(machineId: w.daemon.id, sessionId: "s1", interrupt())
                 // The login is refused from here on: the retry is told to log in
                 // again, and that fails. The command it retries may have run.
-                await r.loadDevices()
-                try await r.removeDevice(r.account.deviceId)
+                try await w.phone.remove([r.account.deviceId])
                 do {
                     try await r.forward(p, retryOfUnknown: true)
                     Issue.record("expected an error")
@@ -1203,11 +1202,7 @@ extension ServerTests {
             try await world { w in
                 let reads = Counter()
                 let flaky = Intercept.http(for: w.server.url) { request in
-                    if request.url?.path.hasSuffix("/Forward") == true,
-                        let body = request.httpBody,
-                        let rpc = try? PBForwardRequest(serializedBytes: body),
-                        let capsule = try? DeviceSecurity.parseCapsule(rpc.securityRpc),
-                        capsule.method == .catalog,
+                    if request.url?.path.hasSuffix("/ListDevices") == true,
                         reads.increment() == 1
                     {
                         throw URLError(.networkConnectionLost)
@@ -1278,11 +1273,7 @@ extension ServerTests {
                 hold.set()
                 let reading = Task { await a.refreshDevices() }
                 #expect(await held.wait(10_000))
-                await other.loadDevices()
-                try await other.removeDevice(leaving.deviceId)
-                _ = try await other.awaitState("revocation completed") {
-                    $0.removals.contains { $0.phase == "complete" && $0.serverCleaned }
-                }
+                try await w.phone.remove([leaving.deviceId])
                 let joined = try await w.join()
                 _ = try await a.awaitState("both pushes") {
                     $0.devices[leaving.deviceId] == nil && $0.devices[joined.deviceId] != nil

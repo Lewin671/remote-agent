@@ -194,7 +194,6 @@ actor FakeDaemon {
     nonisolated let id: String
     private let http: HTTP
     private var security: TestSecurity { get throws { try TestSecurity.get(account.server) } }
-    private let keys: Keys
     private let api: PBMachineServiceClient
     private let rpc: Api
     private var token = ""
@@ -229,16 +228,12 @@ actor FakeDaemon {
         self.account = account
         self.http = http
         id = account.deviceId
-        keys = try Keys.derive(root: account.root)
         rpc = try Api(server: account.server, http: http)
         api = PBMachineServiceClient(client: rpc.protocolClient)
     }
 
-    static func create(root: Data, server: String, http: HTTP, setupToken: String) async throws
-        -> FakeDaemon
-    {
-        let acct = try await joinWithRoot(
-            root: root, server: server, http: http, setupToken: setupToken, kind: .machine)
+    static func join(phone: SyntheticPhone, http: HTTP) async throws -> FakeDaemon {
+        let (acct, _) = try await phone.enroll(seed: randomBytes(32), kind: .machine)
         let d = try FakeDaemon(account: acct, http: http)
         try await d.login()
         return d
@@ -246,14 +241,6 @@ actor FakeDaemon {
 
     func login() async throws {
         token = try await RACore.login(api: rpc, account: account)
-        if TestSecurity.find(account.server) == nil {
-            let (_, genesis) = try TestSecurity.initialize(account)
-            var request = PBPinSecurityDomainRequest()
-            request.genesisState = genesis
-            _ = try await api.pinSecurityDomain(
-                request: request, headers: Api.headers(token: token)
-            ).value()
-        }
     }
 
     private func header(_ kind: PBPayloadKind) -> PBHeader {
@@ -366,14 +353,6 @@ actor FakeDaemon {
     }
 
     private func handle(_ call: PBForwardCall, on socket: Socket) async {
-        if !call.securityRpc.isEmpty {
-            guard let raw = try? security.rpc(call.securityRpc) else { return }
-            var reply = PBPeerFrame()
-            reply.forwardReply.callID = call.callID
-            reply.forwardReply.securityRpc = raw
-            if let data = try? reply.serializedData() { socket.send(data) }
-            return
-        }
         guard let (h, pt) = try? security.open(account, call.command),
             let cmd = try? PBCommand(serializedBytes: pt)
         else { return }
