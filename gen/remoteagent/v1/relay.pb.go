@@ -4333,14 +4333,17 @@ func (x *GetRecoveryContextRequest) GetRecoveryId() string {
 }
 
 type GetRecoveryContextResponse struct {
-	state         protoimpl.MessageState           `protogen:"open.v1"`
-	AccountId     string                           `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	States        []*SecurityState                 `protobuf:"bytes,2,rep,name=states,proto3" json:"states,omitempty"` // genesis to current head
-	Phase         GetRecoveryContextResponse_Phase `protobuf:"varint,3,opt,name=phase,proto3,enum=remoteagent.v1.GetRecoveryContextResponse_Phase" json:"phase,omitempty"`
-	ReadyMs       uint64                           `protobuf:"varint,4,opt,name=ready_ms,json=readyMs,proto3" json:"ready_ms,omitempty"`
-	RecoveryId    string                           `protobuf:"bytes,5,opt,name=recovery_id,json=recoveryId,proto3" json:"recovery_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState           `protogen:"open.v1"`
+	AccountId  string                           `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	States     []*SecurityState                 `protobuf:"bytes,2,rep,name=states,proto3" json:"states,omitempty"` // genesis to current head
+	Phase      GetRecoveryContextResponse_Phase `protobuf:"varint,3,opt,name=phase,proto3,enum=remoteagent.v1.GetRecoveryContextResponse_Phase" json:"phase,omitempty"`
+	ReadyMs    uint64                           `protobuf:"varint,4,opt,name=ready_ms,json=readyMs,proto3" json:"ready_ms,omitempty"`
+	RecoveryId string                           `protobuf:"bytes,5,opt,name=recovery_id,json=recoveryId,proto3" json:"recovery_id,omitempty"`
+	// The account's Ed25519 public key. The recovered phone needs it to
+	// register later devices; the root key is never sent.
+	AccountPublicKey []byte `protobuf:"bytes,6,opt,name=account_public_key,json=accountPublicKey,proto3" json:"account_public_key,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetRecoveryContextResponse) Reset() {
@@ -4406,6 +4409,13 @@ func (x *GetRecoveryContextResponse) GetRecoveryId() string {
 		return x.RecoveryId
 	}
 	return ""
+}
+
+func (x *GetRecoveryContextResponse) GetAccountPublicKey() []byte {
+	if x != nil {
+		return x.AccountPublicKey
+	}
+	return nil
 }
 
 type SubmitRecoveryRequest struct {
@@ -4567,11 +4577,13 @@ func (x *CompleteRecoveryRequest) GetSignature() []byte {
 }
 
 type CompleteRecoveryResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	DeviceId      string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
-	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	DeviceId string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	Token    string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	// The account's Ed25519 public key, for pairing after recovery.
+	AccountPublicKey []byte `protobuf:"bytes,3,opt,name=account_public_key,json=accountPublicKey,proto3" json:"account_public_key,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CompleteRecoveryResponse) Reset() {
@@ -4616,6 +4628,13 @@ func (x *CompleteRecoveryResponse) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *CompleteRecoveryResponse) GetAccountPublicKey() []byte {
+	if x != nil {
+		return x.AccountPublicKey
+	}
+	return nil
 }
 
 type NotifyRequest struct {
@@ -6045,7 +6064,7 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\vrecovery_ed\x18\x01 \x01(\fR\n" +
 	"recoveryEd\x12\x1f\n" +
 	"\vrecovery_id\x18\x02 \x01(\tR\n" +
-	"recoveryId\"\xe3\x02\n" +
+	"recoveryId\"\x91\x03\n" +
 	"\x1aGetRecoveryContextResponse\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x125\n" +
@@ -6053,7 +6072,8 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x05phase\x18\x03 \x01(\x0e20.remoteagent.v1.GetRecoveryContextResponse.PhaseR\x05phase\x12\x19\n" +
 	"\bready_ms\x18\x04 \x01(\x04R\areadyMs\x12\x1f\n" +
 	"\vrecovery_id\x18\x05 \x01(\tR\n" +
-	"recoveryId\"k\n" +
+	"recoveryId\x12,\n" +
+	"\x12account_public_key\x18\x06 \x01(\fR\x10accountPublicKey\"k\n" +
 	"\x05Phase\x12\x15\n" +
 	"\x11PHASE_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rPHASE_PENDING\x10\x01\x12\x0f\n" +
@@ -6070,10 +6090,11 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x17CompleteRecoveryRequest\x12\x1f\n" +
 	"\vrecovery_id\x18\x01 \x01(\tR\n" +
 	"recoveryId\x12\x1c\n" +
-	"\tsignature\x18\x02 \x01(\fR\tsignature\"M\n" +
+	"\tsignature\x18\x02 \x01(\fR\tsignature\"{\n" +
 	"\x18CompleteRecoveryResponse\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\"\xb1\x01\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12,\n" +
+	"\x12account_public_key\x18\x03 \x01(\fR\x10accountPublicKey\"\xb1\x01\n" +
 	"\rNotifyRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12.\n" +

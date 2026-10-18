@@ -33,4 +33,14 @@ public interface CompleteRecoveryResponseOrBuilder extends
    */
   com.google.protobuf.ByteString
       getTokenBytes();
+
+  /**
+   * <pre>
+   * The account's Ed25519 public key, for pairing after recovery.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+   * @return The accountPublicKey.
+   */
+  com.google.protobuf.ByteString getAccountPublicKey();
 }

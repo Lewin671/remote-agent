@@ -224,6 +224,9 @@ func TestRecoveryPendingVetoAndComplete(t *testing.T) {
 	if err != nil || got.Msg.Phase != pb.GetRecoveryContextResponse_PHASE_PENDING {
 		t.Fatalf("pending: %v %v", got, err)
 	}
+	if !bytes.Equal(got.Msg.AccountPublicKey, ts.keys.AccountPublicKey()) {
+		t.Fatalf("recovery context account key %x", got.Msg.AccountPublicKey)
+	}
 	// The old phone can veto by publishing any new state.
 	if err := ts.removeViaState(t, mid); err != nil {
 		t.Fatal(err)
@@ -249,10 +252,38 @@ func TestRecoveryPendingVetoAndComplete(t *testing.T) {
 	if _, err := ts.srv.store.db.ExecContext(ctx, `UPDATE security_recovery SET ready_ms = 0 WHERE recovery_id = ?`, sub.Msg.RecoveryId); err != nil {
 		t.Fatal(err)
 	}
+	// An in-flight pairing created by the old authority is cancelled by the recovery.
+	pairClient := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, c.phoneEd, c.phoneID)))
+	pkey, err := e2e.NewPairKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	createdPairing, err := pairClient.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairDomainCommit(pkey.Public(), ts.pairTrust(t, c.phoneID))}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pairingID := createdPairing.Msg.PairingId
+	if _, err := ts.srv.store.db.ExecContext(ctx, `INSERT INTO pairing_admissions (pairing_id, account_id, approver_device_id, candidate_device_id, candidate_kind, approval, signature, candidate_token_hash, expires_ms) VALUES (?, ?, ?, ?, ?, X'01', X'01', zeroblob(32), ?)`,
+		pairingID, ts.acct(), c.phoneID, randomHex(16), int32(pb.DeviceKind_DEVICE_KIND_MACHINE), time.Now().Add(time.Minute).UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
 	label := append([]byte("ra3/recovery-complete\x00"), []byte(sub.Msg.RecoveryId)...)
 	done, err := pc.CompleteRecovery(ctx, connect.NewRequest(&pb.CompleteRecoveryRequest{RecoveryId: sub.Msg.RecoveryId, Signature: ed25519.Sign(newEd, label)}))
 	if err != nil || done.Msg.DeviceId != newMember.ID || done.Msg.Token == "" {
 		t.Fatalf("complete: %v %v", done, err)
+	}
+	if !bytes.Equal(done.Msg.AccountPublicKey, ts.keys.AccountPublicKey()) {
+		t.Fatalf("complete account key %x", done.Msg.AccountPublicKey)
+	}
+	ts.srv.pairing.mu.Lock()
+	pairing := ts.srv.pairing.byID[pairingID]
+	ts.srv.pairing.mu.Unlock()
+	if pairing == nil || !pairing.canceled {
+		t.Fatalf("in-flight pairing survived recovery: %+v", pairing)
+	}
+	var canceled int64
+	if err := ts.srv.store.db.QueryRowContext(ctx, `SELECT canceled_ms FROM pairing_admissions WHERE pairing_id = ?`, pairingID).Scan(&canceled); err != nil || canceled == 0 {
+		t.Fatalf("pairing admission not cancelled: %d %v", canceled, err)
 	}
 	// Idempotent retry issues no second device.
 	again, err := pc.CompleteRecovery(ctx, connect.NewRequest(&pb.CompleteRecoveryRequest{RecoveryId: sub.Msg.RecoveryId, Signature: ed25519.Sign(newEd, label)}))
@@ -472,5 +503,27 @@ func TestRecoveryTombstoneStopsCompletion(t *testing.T) {
 	}
 	if _, err := ts.srv.store.device(context.Background(), c.phoneID); err != nil {
 		t.Fatalf("old authority removed by cross-account recovery: %v", err)
+	}
+}
+
+// The new phone learns the account's public key before it submits anything.
+func TestRecoveryContextExposesAccountPublicKey(t *testing.T) {
+	ts := newTestServer(t)
+	if _, _, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup"); err != nil {
+		t.Fatal(err)
+	}
+	c := ts.authority(t)
+	pc := remoteagentv1connect.NewRecoveryServiceClient(http.DefaultClient, ts.url)
+	res, err := pc.GetRecoveryContext(context.Background(), connect.NewRequest(&pb.GetRecoveryContextRequest{
+		RecoveryEd: c.recovery.Public().(ed25519.PublicKey),
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(res.Msg.AccountPublicKey, ts.keys.AccountPublicKey()) {
+		t.Fatalf("account key %x", res.Msg.AccountPublicKey)
+	}
+	if res.Msg.Phase != pb.GetRecoveryContextResponse_PHASE_UNSPECIFIED {
+		t.Fatalf("phase %v", res.Msg.Phase)
 	}
 }

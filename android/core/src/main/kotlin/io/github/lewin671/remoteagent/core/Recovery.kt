@@ -63,6 +63,7 @@ object RecoveryCode {
 /** A state chain read from the unauthenticated recovery service. */
 data class RecoveryChain(
     val accountId: String,
+    val accountPublicKey: ByteArray,
     val pin: DeviceSecurity.Pin,
     val chain: List<DeviceSecurity.State>,
     val phase: GetRecoveryContextResponse.Phase,
@@ -76,6 +77,7 @@ data class RecoveryChain(
     companion object {
         fun parse(
             accountId: String,
+            accountPublicKey: ByteArray,
             states: List<SecurityState>,
             phase: GetRecoveryContextResponse.Phase,
             readyMs: Long,
@@ -94,7 +96,16 @@ data class RecoveryChain(
                     if (raw != null) proofs[s.core.epoch] = raw
                 }
             }
-            return RecoveryChain(accountId, pin, chain, phase, readyMs, recoveryId, proofs)
+            return RecoveryChain(
+                accountId,
+                accountPublicKey,
+                pin,
+                chain,
+                phase,
+                readyMs,
+                recoveryId,
+                proofs,
+            )
         }
     }
 }
@@ -108,6 +119,7 @@ data class RecoverySubmission(
     val deviceId: String,
     val xPrivate: ByteArray,
     val accountId: String,
+    val accountPublicKey: ByteArray,
 )
 
 /**
@@ -143,6 +155,7 @@ object Recovery {
             }
         return RecoveryChain.parse(
             res.accountId,
+            res.accountPublicKey.toByteArray(),
             res.statesList,
             res.phase,
             res.readyMs,
@@ -223,6 +236,7 @@ object Recovery {
             member.id,
             x,
             chain.accountId,
+            chain.accountPublicKey,
         )
     }
 
@@ -272,6 +286,7 @@ object Recovery {
             deviceSeed,
             res.deviceId,
             accountId,
+            res.accountPublicKey.toByteArray(),
         ) to record
     }
 

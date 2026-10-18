@@ -43,7 +43,7 @@ object DeviceSecurityRPC {
     fun pairDomainCommit(ephemeral: ByteArray, trust: ByteArray): ByteArray {
         check(ephemeral.size == 32 && trust.isNotEmpty())
         return sha256(
-            "ra2/pair-commit\u0000".toByteArray(),
+            "ra3/pair-commit\u0000".toByteArray(),
             DeviceSecurity.Writer().lp(ephemeral).lp(trust).bytes(),
         )
     }

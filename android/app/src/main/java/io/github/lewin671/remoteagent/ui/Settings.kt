@@ -162,6 +162,12 @@ fun SettingsScreen() {
         ) {
             LargeTitle("设置")
             ConnBanner(state)
+            if (state.clockWarning)
+                Banner(
+                    "手机时钟比服务器快，远程控制暂停。请在系统设置里校准时间。",
+                    Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    Tone2.WARN,
+                )
             GLabel("电脑", "全部设备", onAction = { nav.devices() })
             Group(
                 rows =

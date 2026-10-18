@@ -147,13 +147,14 @@ func (rs *recoveryService) GetRecoveryContext(ctx context.Context, req *connect.
 		// submitted: the new phone needs the chain to build its statement.
 		if len(req.Msg.RecoveryEd) == 32 {
 			var account string
-			e := rs.s.store.db.QueryRowContext(ctx, `SELECT id FROM accounts WHERE recovery_ed = ?`, req.Msg.RecoveryEd).Scan(&account)
+			var publicKey []byte
+			e := rs.s.store.db.QueryRowContext(ctx, `SELECT id, public_key FROM accounts WHERE recovery_ed = ?`, req.Msg.RecoveryEd).Scan(&account, &publicKey)
 			if e == nil {
 				chain, e := rs.chain(ctx, account)
 				if e != nil {
 					return nil, internal(e)
 				}
-				return connect.NewResponse(&pb.GetRecoveryContextResponse{AccountId: account, States: chain}), nil
+				return connect.NewResponse(&pb.GetRecoveryContextResponse{AccountId: account, States: chain, AccountPublicKey: publicKey}), nil
 			}
 		}
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("no recovery is pending for that key"))
@@ -161,11 +162,15 @@ func (rs *recoveryService) GetRecoveryContext(ctx context.Context, req *connect.
 	if err != nil {
 		return nil, internal(err)
 	}
+	acct, err := rs.s.store.account(ctx, r.account)
+	if err != nil {
+		return nil, internal(err)
+	}
 	chain, err := rs.chain(ctx, r.account)
 	if err != nil {
 		return nil, internal(err)
 	}
-	res := &pb.GetRecoveryContextResponse{AccountId: r.account, States: chain, ReadyMs: uint64(max(r.ready, 0)), RecoveryId: r.recoveryID}
+	res := &pb.GetRecoveryContextResponse{AccountId: r.account, States: chain, ReadyMs: uint64(max(r.ready, 0)), RecoveryId: r.recoveryID, AccountPublicKey: acct.publicKey}
 	switch {
 	case r.rejected != 0:
 		res.Phase = pb.GetRecoveryContextResponse_PHASE_REJECTED
@@ -292,7 +297,11 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 		if err != nil {
 			return nil, internal(err)
 		}
-		return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.deviceID, Token: token}), nil
+		acct, err := rs.s.store.account(ctx, row.account)
+		if err != nil {
+			return nil, internal(err)
+		}
+		return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.deviceID, Token: token, AccountPublicKey: acct.publicKey}), nil
 	}
 	if nowMs() < row.ready {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery is not ready yet"))
@@ -378,7 +387,24 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 	if n, _ := res.RowsAffected(); n != 1 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery is stale"))
 	}
+	// The old authority is gone: no pairing it created may still complete.
+	if _, err := tx.ExecContext(ctx, `UPDATE pairing_admissions SET canceled_ms = ? WHERE account_id = ? AND used_ms = 0 AND canceled_ms = 0`, nowMs(), row.account); err != nil {
+		return nil, internal(err)
+	}
 	if err := tx.Commit(); err != nil {
+		return nil, internal(err)
+	}
+	rs.s.pairing.mu.Lock()
+	for _, p := range rs.s.pairing.byID {
+		if p.account == row.account && !p.delivered {
+			p.canceled = true
+			p.payload = nil
+			delete(rs.s.pairing.byCode, p.code)
+		}
+	}
+	rs.s.pairing.mu.Unlock()
+	acct, err := rs.s.store.account(ctx, row.account)
+	if err != nil {
 		return nil, internal(err)
 	}
 	for _, old := range head.Core.Members {
@@ -387,7 +413,7 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 			rs.s.hub.account(row.account).drop(old.ID)
 		}
 	}
-	return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.statement.NewAuthorityID, Token: token}), nil
+	return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.statement.NewAuthorityID, Token: token, AccountPublicKey: acct.publicKey}), nil
 }
 
 func checkRecoveryEpoch(epoch uint64) error {

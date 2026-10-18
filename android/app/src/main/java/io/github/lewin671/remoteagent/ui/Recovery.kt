@@ -226,6 +226,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                             deviceId(SigningKey(saved.first).publicKey),
                                             saved.second,
                                             existing.accountId,
+                                            existing.accountPublicKey,
                                         )
                                     } else {
                                         val r =

@@ -29,7 +29,7 @@ public interface GetRecoveryContextResponseOrBuilder extends
    *
    * <code>repeated .remoteagent.v1.SecurityState states = 2 [json_name = "states"];</code>
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.SecurityState> 
+  java.util.List<io.github.lewin671.remoteagent.proto.SecurityState>
       getStatesList();
   /**
    * <pre>
@@ -76,4 +76,15 @@ public interface GetRecoveryContextResponseOrBuilder extends
    */
   com.google.protobuf.ByteString
       getRecoveryIdBytes();
+
+  /**
+   * <pre>
+   * The account's Ed25519 public key. The recovered phone needs it to
+   * register later devices; the root key is never sent.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+   * @return The accountPublicKey.
+   */
+  com.google.protobuf.ByteString getAccountPublicKey();
 }

@@ -53,6 +53,12 @@ fun DevicesScreen() {
     }
     PageScaffold("设备") {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            if (state.clockWarning)
+                Banner(
+                    "手机时钟比服务器快，远程控制暂停。请在系统设置里校准时间。",
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    Tone2.WARN,
+                )
             if (state.authorityPhone && state.recoveryPending)
                 Banner(
                     "有人正在用恢复码申请接管管理权。不是你本人就点了否决。",

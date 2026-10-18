@@ -181,6 +181,8 @@ data class RemoteState(
     val authorityPhone: Boolean = false,
     /** The relay says a recovery waits for this authority phone to veto or accept it. */
     val recoveryPending: Boolean = false,
+    /** This phone's clock is more than five minutes ahead of the server or a state. */
+    val clockWarning: Boolean = false,
     /** The failure behind [error] in its own words, for the details. */
     val errorDetail: String = "",
 ) {
@@ -367,6 +369,7 @@ class Remote(
     private var directoryVersion = 0L
     private var lastHeadEpoch = 0uL
     private var leaseEnd = 0L
+    @Volatile private var serverAhead = false
     private var stateJob: Job? = null
     private val dispatcher = Dispatchers.IO.limitedParallelism(1)
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -604,6 +607,7 @@ class Remote(
                 leaseEndMs = leaseEnd,
                 authorityPhone = authorityDeviceId == account.deviceId,
                 recoveryPending = security.recoveryPending,
+                clockWarning = serverAhead || security.clockSkew,
             )
     }
 
@@ -811,6 +815,10 @@ class Remote(
                         if (f.kindCase == ServerFrame.KindCase.READY) {
                             opening?.cancel()
                             opening = null
+                            serverAhead =
+                                clock() - f.ready.serverTimeMs >
+                                    DeviceSecurity.MAX_CLOCK_SKEW.toLong()
+                            publish()
                         }
                         onFrame(f)
                         if (ws !== socket || gen != generation) break
@@ -1518,6 +1526,18 @@ class Remote(
     /** Pulls the signed state chain now; unknown states are also fetched while opening. */
     suspend fun syncSecurity() {
         val changed =
+            try {
+                syncSecurityOnce()
+            } catch (e: DeviceSecurity.Failure) {
+                if (e.code != "clock") throw e
+                publish()
+                return
+            }
+        if (changed && conn == ConnState.ONLINE) withContext(dispatcher) { loadDevices() }
+    }
+
+    private suspend fun syncSecurityOnce(): Boolean {
+        val changed =
             withContext(dispatcher) {
                 val before = security.head().core.epoch
                 val r = security.sync()
@@ -1527,7 +1547,7 @@ class Remote(
                 publish()
                 r.head.core.epoch != before
             }
-        if (changed && conn == ConnState.ONLINE) withContext(dispatcher) { loadDevices() }
+        return changed
     }
 
     /** Uploads states this phone signed, then installs them locally. */
@@ -1535,6 +1555,7 @@ class Remote(
         states: List<DeviceSecurity.State>,
         proofs: List<ByteArray?> = emptyList(),
     ) {
+        if (serverAhead || security.clockSkew) throw DeviceSecurity.Failure("clock")
         val req = io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
         states.forEachIndexed { i, state ->
             val b =
@@ -2331,6 +2352,11 @@ class Remote(
                         if (observeAction(p.command, fresh) != p.command)
                             throw CommandException("failed_precondition", "当前请求已变化，请重新核对")
                     }
+                    if (serverAhead || security.clockSkew)
+                        throw CommandException(
+                            "failed_precondition",
+                            "手机时钟比服务器快，远程控制暂停；请校准系统时间",
+                        )
                     if (!Authority.leaseValid(head, clock()))
                         throw CommandException(
                             "failed_precondition",

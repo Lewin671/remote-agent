@@ -44,9 +44,11 @@ import org.junit.Assume
 /** A remote-agent-server process on a free local port. */
 class TestServer(
     private val dbDir: File = Files.createTempDirectory("ra-server").toFile(),
-    val port: Int = freePort(),
 ) : AutoCloseable {
-    val url = "http://127.0.0.1:$port"
+    var port: Int = freePort()
+        private set
+    val url: String
+        get() = "http://127.0.0.1:$port"
     val setupToken = "setup-token-for-tests"
     private var proc: Process? = null
 
@@ -57,39 +59,50 @@ class TestServer(
     fun start() {
         val bin = File(System.getProperty("raServer") ?: "")
         Assume.assumeTrue("the Go server was not built", bin.canExecute())
-        val pb =
-            ProcessBuilder(
-                bin.absolutePath,
-                "-listen",
-                "127.0.0.1:$port",
-                "-db",
-                File(dbDir, "ra.db").absolutePath,
-            )
-        pb.environment()["RA_SETUP_TOKEN"] = setupToken
-        pb.redirectErrorStream(true).redirectOutput(File(dbDir, "server.log"))
-        val started = pb.start()
-        proc = started
-        // Ready means this process answers HTTP. A bare TCP connect is not
-        // enough: with no listener yet, a client socket can connect to
-        // itself when the kernel picks the same port for it, and the first
-        // request then fails with "unexpected end of stream".
-        val until = System.currentTimeMillis() + 10_000
-        while (System.currentTimeMillis() < until) {
-            check(started.isAlive) {
-                "server exited: " + File(dbDir, "server.log").readText().take(500)
+        // Another test may take the port between freePort() and the bind.
+        repeat(8) {
+            val log = File(dbDir, "server.log")
+            val pb =
+                ProcessBuilder(
+                    bin.absolutePath,
+                    "-listen",
+                    "127.0.0.1:$port",
+                    "-db",
+                    File(dbDir, "ra.db").absolutePath,
+                )
+            pb.environment()["RA_SETUP_TOKEN"] = setupToken
+            pb.redirectErrorStream(true).redirectOutput(log)
+            val started = pb.start()
+            proc = started
+            // Ready means this process answers HTTP. A bare TCP connect is not
+            // enough: with no listener yet, a client socket can connect to
+            // itself when the kernel picks the same port for it, and the first
+            // request then fails with "unexpected end of stream".
+            val until = System.currentTimeMillis() + 10_000
+            while (System.currentTimeMillis() < until) {
+                if (!started.isAlive) {
+                    val text = log.readText()
+                    if ("address already in use" in text) {
+                        proc = null
+                        port = freePort()
+                        return@repeat
+                    }
+                    error("server exited: " + text.take(500))
+                }
+                try {
+                    val c = java.net.URL("$url/").openConnection() as java.net.HttpURLConnection
+                    c.connectTimeout = 500
+                    c.readTimeout = 500
+                    c.responseCode
+                    c.disconnect()
+                    return
+                } catch (e: Exception) {
+                    Thread.sleep(50)
+                }
             }
-            try {
-                val c = java.net.URL("$url/").openConnection() as java.net.HttpURLConnection
-                c.connectTimeout = 500
-                c.readTimeout = 500
-                c.responseCode
-                c.disconnect()
-                return
-            } catch (e: Exception) {
-                Thread.sleep(50)
-            }
+            error("server did not start")
         }
-        error("server did not start")
+        error("server did not get a free port")
     }
 
     fun stop() {

@@ -50,7 +50,7 @@ object Pairing {
     ): ByteArray {
         val inner = identityTranscript(id, initiator, joiner, device, kind)
         return sha256(
-            "ra2/pair-domain\u0000".toByteArray(),
+            "ra3/pair-domain\u0000".toByteArray(),
             DeviceSecurity.Writer().lp(inner).lp(hpke).lp(trust).bytes(),
         )
     }

@@ -391,4 +391,74 @@ class DeviceSecurityTest {
         reject { DeviceSecurity.verifyOrigin(state, state, true, state.core.notAfter + 1uL, wire) }
     }
 
+
+    @Test
+    fun aVetoRotatesTheRecoveryKeyInANormalState() {
+        val signer = SigningKey(s("phone_seed").unhex())
+        val phone = Authority.newMember(signer, s("phone_x").unhex(), 2u)
+        val g =
+            Authority.genesis(
+                s("account"),
+                s("domain").unhex(),
+                phone,
+                SigningKey(s("recovery_seed").unhex()).publicKey,
+                s("content_secret_1").unhex(),
+                signer,
+                1_700_000_000_000,
+            )
+        val newRecovery = ByteArray(32) { 0x42 }
+        val veto =
+            Authority.veto(
+                g,
+                newRecovery,
+                s("content_secret_1").unhex(),
+                signer,
+                1_700_000_100_000,
+            )
+        DeviceSecurity.verifyTransition(g, veto)
+        assertArrayEquals(newRecovery, veto.core.recoveryEd)
+        assertEquals(g.core.contentEpoch, veto.core.contentEpoch)
+    }
+
+    @Test
+    fun aStateFromTheFutureIsRejected() {
+        val g = genesis()
+        val at = g.core.issuedAt - DeviceSecurity.MAX_CLOCK_SKEW - 1uL
+        assertTrue(DeviceSecurity.tooFarAhead(g, at))
+        assertFalse(DeviceSecurity.tooFarAhead(g, g.core.issuedAt))
+        reject { DeviceSecurity.requireNotFromFuture(g, at) }
+    }
+
+
+    @Test
+    fun removedIDsAccumulateAndCannotBeReadded() {
+        val signer = SigningKey(s("phone_seed").unhex())
+        val phone = Authority.newMember(signer, s("phone_x").unhex(), 2u)
+        val g =
+            Authority.genesis(
+                s("account"),
+                s("domain").unhex(),
+                phone,
+                SigningKey(s("recovery_seed").unhex()).publicKey,
+                s("content_secret_1").unhex(),
+                signer,
+                1_700_000_000_000,
+            )
+        val first = Authority.newMember(SigningKey(s("machine_seed").unhex()), s("machine_x").unhex(), 1u)
+        val added =
+            Authority.pair(g, first, s("content_secret_1").unhex(), s("content_secret_2").unhex(), signer, 1_700_000_100_000)
+        val removed =
+            Authority.remove(added, listOf(first.id), s("content_secret_2").unhex(), s("content_secret_3").unhex(), signer, 1_700_000_200_000)
+        assertEquals(listOf(first.id), removed.core.removed)
+        val second = Authority.newMember(SigningKey(ByteArray(32) { 0x61 }), ByteArray(32) { 0x62 }, 1u)
+        val readded =
+            Authority.pair(removed, second, s("content_secret_3").unhex(), s("content_secret_2").unhex(), signer, 1_700_000_300_000)
+        DeviceSecurity.verifyTransition(removed, readded)
+        assertEquals(listOf(first.id), readded.core.removed)
+        try {
+            Authority.pair(removed, first, s("content_secret_3").unhex(), s("content_secret_2").unhex(), signer, 1_700_000_300_000)
+            fail("a removed ID was re-added")
+        } catch (_: IllegalStateException) {}
+    }
+
 }

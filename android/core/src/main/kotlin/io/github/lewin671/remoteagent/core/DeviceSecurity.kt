@@ -28,9 +28,14 @@ object DeviceSecurity {
     const val MAX_MEMBERS = 128
     private const val MAX_MEMBERS_U = 128u
     const val MAX_STATES = 4096
+    /** Pairing carries at most this many states and this many bytes of chain. */
+    const val MAX_PAIR_STATES = 256
+    const val MAX_PAIR_CHAIN_BYTES = 800 shl 10
 
     const val LEASE = 72L * 60 * 60 * 1000
     const val MAX_LEASE = 7L * 24 * 60 * 60 * 1000
+    /** How far ahead of the local clock a state's IssuedAt may be. */
+    const val MAX_CLOCK_SKEW = 300_000uL
     const val COUNTER_BLOCK = 4096L
     const val MAX_LEASE_U = 604_800_000uL
     const val LEASE_U = 259_200_000uL
@@ -306,6 +311,12 @@ object DeviceSecurity {
     }
 
     /** Anchors account, domain and, at epoch 1, the exact genesis bytes. */
+    fun tooFarAhead(s: State, now: ULong): Boolean = s.core.issuedAt > now + MAX_CLOCK_SKEW
+
+    fun requireNotFromFuture(s: State, now: ULong) {
+        check(!tooFarAhead(s, now), "clock")
+    }
+
     fun verifyState(p: Pin, s: State) {
         check(
             s.core.account == p.account &&
@@ -365,10 +376,9 @@ object DeviceSecurity {
             recoveryDelta(parent, next)
             return
         }
-        check(
-            next.core.authorityID == parent.core.authorityID &&
-                next.core.recoveryEd.contentEquals(parent.core.recoveryEd),
-        )
+        check(next.core.authorityID == parent.core.authorityID)
+        // A normal authority-signed state may rotate RecoveryEd (veto); it
+        // still has to be signed by the parent's authority key below.
         val oldAuthority = parent.core.member(parent.core.authorityID)
         check(
             oldAuthority != null &&
@@ -407,7 +417,10 @@ object DeviceSecurity {
             }
         }
         next.core.members.forEach { m ->
-            if (parent.core.member(m.id) == null) added++
+            if (parent.core.member(m.id) == null) {
+                check(m.id !in parent.core.removed)
+                added++
+            }
         }
         check((parent.core.removed + removed).sorted() == next.core.removed)
         check(
@@ -805,7 +818,9 @@ object DeviceSecurity {
         if (live) {
             check(head.core.member(h.sender) != null, "untrusted")
             if (h.purpose.control) {
-                check(head.core.notAfter >= now && head.core.contentEpoch == h.contentEpoch, "stale")
+                check(head.core.notAfter >= now, "stale")
+                check(!tooFarAhead(head, now), "clock")
+                check(head.core.contentEpoch == h.contentEpoch, "stale")
             }
         }
         val commit = commitment(w.formed)

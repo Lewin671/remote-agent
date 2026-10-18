@@ -36,6 +36,7 @@ class RecoveryTest {
                 assertTrue(submitted.readyMs > System.currentTimeMillis() + 47L * 3600_000)
                 assertNotNull(RecoveryCode.decode(submitted.newCode))
                 assertEquals(before.accountId, submitted.accountId)
+                assertEquals(phone.accountPublicKey.hex(), before.accountPublicKey.hex())
 
                 val pending =
                     Recovery.context(server.url, http, SigningKey(recoverySeed).publicKey)
@@ -43,6 +44,16 @@ class RecoveryTest {
                 assertEquals(submitted.recoveryId, pending.recoveryId)
                 // Until the delay ends the published head is still the old authority's.
                 assertEquals(phone.deviceId, pending.head.core.authorityID)
+                // The new authority has the public key it needs for a later pairing payload.
+                assertEquals(phone.accountId, deviceId(pending.accountPublicKey))
+                val payload =
+                    io.github.lewin671.remoteagent.proto.PairingPayload.newBuilder()
+                        .setServer(server.url)
+                        .setAccountPublicKey(
+                            com.google.protobuf.ByteString.copyFrom(pending.accountPublicKey),
+                        )
+                        .build()
+                assertEquals(phone.accountId, deviceId(payload.accountPublicKey.toByteArray()))
             } finally {
                 server.close()
             }

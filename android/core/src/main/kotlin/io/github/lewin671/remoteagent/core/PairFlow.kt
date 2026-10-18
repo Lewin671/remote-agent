@@ -237,9 +237,16 @@ internal constructor(
                         throw PairException(
                             "这台手机没有账户公钥，不能给新设备登记；请先用带账户根密钥的设备重新加入",
                         )
-                    remote.publishSecurityStates(listOf(next))
-                    val chain = remote.security.chain()
+                    val chain = remote.security.chain() + next
                     val proofs = remote.security.chainProofs()
+                    if (chain.size > DeviceSecurity.MAX_PAIR_STATES)
+                        throw PairException("状态链太大，无法配对；请重建账户")
+                    val rawSize =
+                        chain.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
+                            proofs.values.sumOf { it.size.toLong() }
+                    if (rawSize > DeviceSecurity.MAX_PAIR_CHAIN_BYTES)
+                        throw PairException("状态链太大，无法配对；请重建账户")
+                    remote.publishSecurityStates(listOf(next))
                     val (approval, signature) =
                         makePairApproval(acct, pairingId, cp, kind, expires)
                     val payload =
@@ -326,6 +333,14 @@ internal constructor(
         suspend fun start(remote: Remote): Initiation {
             if (remote.security.head().core.authorityID != remote.account.deviceId)
                 throw PairException("只有管理端手机能添加设备")
+            val current = remote.security.chain()
+            val currentBytes =
+                current.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
+                    remote.security.chainProofs().values.sumOf { it.size.toLong() }
+            if (current.size >= DeviceSecurity.MAX_PAIR_STATES ||
+                currentBytes >= DeviceSecurity.MAX_PAIR_CHAIN_BYTES
+            )
+                throw PairException("状态链太大，无法配对；请重建账户")
             val key = PairKey()
             val identity = remote.security.identity()
             val commit =
@@ -481,6 +496,13 @@ suspend fun joinByPairing(
     }
     if (chain.isEmpty() || chain.size > DeviceSecurity.MAX_STATES)
         throw PairException("配对载荷的状态链不完整")
+    if (chain.size > DeviceSecurity.MAX_PAIR_STATES)
+        throw PairException("状态链太大，无法配对；请重建账户")
+    val chainBytes =
+        chain.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
+            proofs.filterNotNull().sumOf { it.size.toLong() }
+    if (chainBytes > DeviceSecurity.MAX_PAIR_CHAIN_BYTES)
+        throw PairException("状态链太大，无法配对；请重建账户")
     if (!DeviceSecurity.pinOf(chain[0]).let {
             it.account == pin.account &&
                 it.domain.contentEquals(pin.domain) &&

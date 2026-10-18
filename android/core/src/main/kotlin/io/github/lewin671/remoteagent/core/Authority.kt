@@ -106,7 +106,7 @@ object Authority {
         signer: SigningKey,
         now: Long,
     ): DeviceSecurity.State {
-        check(parent.core.member(candidate.id) == null)
+        check(parent.core.member(candidate.id) == null && candidate.id !in parent.core.removed)
         return membership(
             parent,
             sorted(parent.core.members + candidate),
@@ -147,6 +147,7 @@ object Authority {
         now: Long,
     ): DeviceSecurity.State {
         val old = parent.core.member(target) ?: throw DeviceSecurity.Failure()
+        check(target !in parent.core.removed)
         val members =
             parent.core.members.map {
                 if (it.id == target)

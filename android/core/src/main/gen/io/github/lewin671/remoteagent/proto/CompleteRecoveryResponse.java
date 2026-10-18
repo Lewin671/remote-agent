@@ -17,6 +17,7 @@ public  final class CompleteRecoveryResponse extends
   private CompleteRecoveryResponse() {
     deviceId_ = "";
     token_ = "";
+    accountPublicKey_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int DEVICE_ID_FIELD_NUMBER = 1;
   private java.lang.String deviceId_;
@@ -112,6 +113,45 @@ public  final class CompleteRecoveryResponse extends
     checkByteStringIsUtf8(value);
     token_ = value.toStringUtf8();
 
+  }
+
+  public static final int ACCOUNT_PUBLIC_KEY_FIELD_NUMBER = 3;
+  private com.google.protobuf.ByteString accountPublicKey_;
+  /**
+   * <pre>
+   * The account's Ed25519 public key, for pairing after recovery.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+   * @return The accountPublicKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getAccountPublicKey() {
+    return accountPublicKey_;
+  }
+  /**
+   * <pre>
+   * The account's Ed25519 public key, for pairing after recovery.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+   * @param value The accountPublicKey to set.
+   */
+  private void setAccountPublicKey(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+
+    accountPublicKey_ = value;
+  }
+  /**
+   * <pre>
+   * The account's Ed25519 public key, for pairing after recovery.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+   */
+  private void clearAccountPublicKey() {
+
+    accountPublicKey_ = getDefaultInstance().getAccountPublicKey();
   }
 
   public static io.github.lewin671.remoteagent.proto.CompleteRecoveryResponse parseFrom(
@@ -309,6 +349,46 @@ public  final class CompleteRecoveryResponse extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The account's Ed25519 public key, for pairing after recovery.
+     * </pre>
+     *
+     * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+     * @return The accountPublicKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getAccountPublicKey() {
+      return instance.getAccountPublicKey();
+    }
+    /**
+     * <pre>
+     * The account's Ed25519 public key, for pairing after recovery.
+     * </pre>
+     *
+     * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+     * @param value The accountPublicKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAccountPublicKey(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setAccountPublicKey(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The account's Ed25519 public key, for pairing after recovery.
+     * </pre>
+     *
+     * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAccountPublicKey() {
+      copyOnWrite();
+      instance.clearAccountPublicKey();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CompleteRecoveryResponse)
   }
   @java.lang.Override
@@ -327,10 +407,11 @@ public  final class CompleteRecoveryResponse extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "deviceId_",
             "token_",
+            "accountPublicKey_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "";
+              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

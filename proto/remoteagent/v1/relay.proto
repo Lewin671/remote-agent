@@ -595,6 +595,9 @@ message GetRecoveryContextResponse {
   Phase phase = 3;
   uint64 ready_ms = 4;
   string recovery_id = 5;
+  // The account's Ed25519 public key. The recovered phone needs it to
+  // register later devices; the root key is never sent.
+  bytes account_public_key = 6;
 }
 
 message SubmitRecoveryRequest {
@@ -615,6 +618,8 @@ message CompleteRecoveryRequest {
 message CompleteRecoveryResponse {
   string device_id = 1;
   string token = 2;
+  // The account's Ed25519 public key, for pairing after recovery.
+  bytes account_public_key = 3;
 }
 
 message NotifyRequest {

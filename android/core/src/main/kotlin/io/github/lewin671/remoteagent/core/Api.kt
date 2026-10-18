@@ -241,6 +241,7 @@ fun errorText(e: Throwable): String =
             when (e.code) {
                 "unavailable" -> "恢复前的历史不可读：这台设备没有当时的内容密钥"
                 "lease" -> "远程控制已暂停：打开手机 App 续期后再试"
+                "clock" -> "手机时钟比服务器快，成员状态暂不可用；请校准系统时间"
                 else -> e.message ?: "安全状态不可用"
             }
         is CommandException -> e.message ?: e.code

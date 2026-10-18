@@ -1610,6 +1610,10 @@ public struct PBGetRecoveryContextResponse: Sendable {
 
   public var recoveryID: String = String()
 
+  /// The account's Ed25519 public key. The recovered phone needs it to
+  /// register later devices; the root key is never sent.
+  public var accountPublicKey: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum Phase: SwiftProtobuf.Enum, Swift.CaseIterable {
@@ -1715,6 +1719,9 @@ public struct PBCompleteRecoveryResponse: Sendable {
   public var deviceID: String = String()
 
   public var token: String = String()
+
+  /// The account's Ed25519 public key, for pairing after recovery.
+  public var accountPublicKey: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4903,7 +4910,7 @@ extension PBGetRecoveryContextRequest: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 extension PBGetRecoveryContextResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetRecoveryContextResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}account_id\0\u{1}states\0\u{1}phase\0\u{3}ready_ms\0\u{3}recovery_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}account_id\0\u{1}states\0\u{1}phase\0\u{3}ready_ms\0\u{3}recovery_id\0\u{3}account_public_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4916,6 +4923,7 @@ extension PBGetRecoveryContextResponse: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 3: try { try decoder.decodeSingularEnumField(value: &self.phase) }()
       case 4: try { try decoder.decodeSingularUInt64Field(value: &self.readyMs) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.recoveryID) }()
+      case 6: try { try decoder.decodeSingularBytesField(value: &self.accountPublicKey) }()
       default: break
       }
     }
@@ -4937,6 +4945,9 @@ extension PBGetRecoveryContextResponse: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.recoveryID.isEmpty {
       try visitor.visitSingularStringField(value: self.recoveryID, fieldNumber: 5)
     }
+    if !self.accountPublicKey.isEmpty {
+      try visitor.visitSingularBytesField(value: self.accountPublicKey, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4946,6 +4957,7 @@ extension PBGetRecoveryContextResponse: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.phase != rhs.phase {return false}
     if lhs.readyMs != rhs.readyMs {return false}
     if lhs.recoveryID != rhs.recoveryID {return false}
+    if lhs.accountPublicKey != rhs.accountPublicKey {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5062,7 +5074,7 @@ extension PBCompleteRecoveryRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBCompleteRecoveryResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CompleteRecoveryResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{1}token\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{1}token\0\u{3}account_public_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5072,6 +5084,7 @@ extension PBCompleteRecoveryResponse: SwiftProtobuf.Message, SwiftProtobuf._Mess
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.token) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.accountPublicKey) }()
       default: break
       }
     }
@@ -5084,12 +5097,16 @@ extension PBCompleteRecoveryResponse: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if !self.token.isEmpty {
       try visitor.visitSingularStringField(value: self.token, fieldNumber: 2)
     }
+    if !self.accountPublicKey.isEmpty {
+      try visitor.visitSingularBytesField(value: self.accountPublicKey, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCompleteRecoveryResponse, rhs: PBCompleteRecoveryResponse) -> Bool {
     if lhs.deviceID != rhs.deviceID {return false}
     if lhs.token != rhs.token {return false}
+    if lhs.accountPublicKey != rhs.accountPublicKey {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

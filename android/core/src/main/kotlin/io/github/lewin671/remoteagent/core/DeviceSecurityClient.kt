@@ -26,6 +26,9 @@ class DeviceSecurityClient(
     @Volatile private var closed = false
     @Volatile var recoveryPending: Boolean = false
         private set
+    /** A state is issued more than five minutes ahead of this phone's clock. */
+    @Volatile var clockSkew: Boolean = false
+        private set
 
     private fun read(): DeviceSecurity.Record {
         if (closed) throw DeviceSecurity.Failure("storage")
@@ -84,6 +87,14 @@ class DeviceSecurityClient(
             }
             if (res.statesCount > 8) throw DeviceSecurity.Failure("untrusted")
             val states = res.statesList.map { DeviceSecurity.parseState(it.state.toByteArray()) }
+            val at = clock().toULong()
+            for (state in states) {
+                if (DeviceSecurity.tooFarAhead(state, at)) {
+                    clockSkew = true
+                    throw DeviceSecurity.Failure("clock")
+                }
+            }
+            clockSkew = false
             val proofs =
                 res.statesList.map {
                     if (it.recovery.isEmpty) null else it.recovery.toByteArray()
@@ -101,6 +112,13 @@ class DeviceSecurityClient(
 
     /** Publishes states that this phone signed (genesis, renewal, membership, veto). */
     fun install(states: List<DeviceSecurity.State>, proofs: List<ByteArray?> = emptyList()) {
+        val at = clock().toULong()
+        for (state in states) {
+            if (DeviceSecurity.tooFarAhead(state, at)) {
+                clockSkew = true
+                throw DeviceSecurity.Failure("clock")
+            }
+        }
         val r = read()
         store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs)
     }
@@ -156,6 +174,10 @@ class DeviceSecurityClient(
                 ?: if (h.epoch == r.head.core.epoch) r.head else throw DeviceSecurity.Failure("stale")
         val key = r.contentKey(s.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
         val at = now(r)
+        if (DeviceSecurity.tooFarAhead(s, at)) {
+            clockSkew = true
+            throw DeviceSecurity.Failure("clock")
+        }
         val (opened, plain) = DeviceSecurity.open(s, r.head, true, at, w, key, seed)
         if (opened.purpose.control) touchFloor(r, at)
         return opened to unpackSecurity(opened, plain)

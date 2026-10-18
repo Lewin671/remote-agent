@@ -18,6 +18,7 @@ public  final class GetRecoveryContextResponse extends
     accountId_ = "";
     states_ = emptyProtobufList();
     recoveryId_ = "";
+    accountPublicKey_ = com.google.protobuf.ByteString.EMPTY;
   }
   /**
    * Protobuf enum {@code remoteagent.v1.GetRecoveryContextResponse.Phase}
@@ -112,13 +113,13 @@ public  final class GetRecoveryContextResponse extends
             }
           };
 
-    public static com.google.protobuf.Internal.EnumVerifier 
+    public static com.google.protobuf.Internal.EnumVerifier
         internalGetVerifier() {
       return PhaseVerifier.INSTANCE;
     }
 
-    private static final class PhaseVerifier implements 
-         com.google.protobuf.Internal.EnumVerifier { 
+    private static final class PhaseVerifier implements
+         com.google.protobuf.Internal.EnumVerifier {
             static final com.google.protobuf.Internal.EnumVerifier
                 INSTANCE = new PhaseVerifier();
             @java.lang.Override
@@ -204,7 +205,7 @@ public  final class GetRecoveryContextResponse extends
    *
    * <code>repeated .remoteagent.v1.SecurityState states = 2 [json_name = "states"];</code>
    */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.SecurityStateOrBuilder> 
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.SecurityStateOrBuilder>
       getStatesOrBuilderList() {
     return states_;
   }
@@ -382,7 +383,7 @@ public  final class GetRecoveryContextResponse extends
    * @param value The readyMs to set.
    */
   private void setReadyMs(long value) {
-    
+
     readyMs_ = value;
   }
   /**
@@ -439,6 +440,48 @@ public  final class GetRecoveryContextResponse extends
     checkByteStringIsUtf8(value);
     recoveryId_ = value.toStringUtf8();
 
+  }
+
+  public static final int ACCOUNT_PUBLIC_KEY_FIELD_NUMBER = 6;
+  private com.google.protobuf.ByteString accountPublicKey_;
+  /**
+   * <pre>
+   * The account's Ed25519 public key. The recovered phone needs it to
+   * register later devices; the root key is never sent.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+   * @return The accountPublicKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getAccountPublicKey() {
+    return accountPublicKey_;
+  }
+  /**
+   * <pre>
+   * The account's Ed25519 public key. The recovered phone needs it to
+   * register later devices; the root key is never sent.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+   * @param value The accountPublicKey to set.
+   */
+  private void setAccountPublicKey(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+
+    accountPublicKey_ = value;
+  }
+  /**
+   * <pre>
+   * The account's Ed25519 public key. The recovered phone needs it to
+   * register later devices; the root key is never sent.
+   * </pre>
+   *
+   * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+   */
+  private void clearAccountPublicKey() {
+
+    accountPublicKey_ = getDefaultInstance().getAccountPublicKey();
   }
 
   public static io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse parseFrom(
@@ -860,6 +903,49 @@ public  final class GetRecoveryContextResponse extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The account's Ed25519 public key. The recovered phone needs it to
+     * register later devices; the root key is never sent.
+     * </pre>
+     *
+     * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+     * @return The accountPublicKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getAccountPublicKey() {
+      return instance.getAccountPublicKey();
+    }
+    /**
+     * <pre>
+     * The account's Ed25519 public key. The recovered phone needs it to
+     * register later devices; the root key is never sent.
+     * </pre>
+     *
+     * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+     * @param value The accountPublicKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAccountPublicKey(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setAccountPublicKey(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The account's Ed25519 public key. The recovered phone needs it to
+     * register later devices; the root key is never sent.
+     * </pre>
+     *
+     * <code>bytes account_public_key = 6 [json_name = "accountPublicKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAccountPublicKey() {
+      copyOnWrite();
+      instance.clearAccountPublicKey();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.GetRecoveryContextResponse)
   }
   @java.lang.Override
@@ -882,10 +968,11 @@ public  final class GetRecoveryContextResponse extends
             "phase_",
             "readyMs_",
             "recoveryId_",
+            "accountPublicKey_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0208\u0002\u001b" +
-              "\u0003\f\u0004\u0003\u0005\u0208";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u0208\u0002\u001b" +
+              "\u0003\f\u0004\u0003\u0005\u0208\u0006\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
