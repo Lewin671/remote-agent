@@ -119,6 +119,13 @@ func (f *fixture) add(ed ed25519.PrivateKey, x []byte, kind deviceauth.Kind) (de
 	f.states = append(f.states, s)
 	f.proofs = append(f.proofs, nil)
 	f.secret = newSecret
+	// Existing members must see the new head before they can open a frame
+	// sealed against it.
+	for _, other := range f.members {
+		if err := other.endpoint.Install([]deviceauth.State{s}, []*deviceauth.RecoveryStatement{nil}); err != nil {
+			return deviceauth.Member{}, err
+		}
+	}
 	endpoint, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, m.ID, ed.Seed(), x)
 	if err != nil {
 		return deviceauth.Member{}, err

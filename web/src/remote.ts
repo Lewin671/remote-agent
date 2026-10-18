@@ -1,19 +1,13 @@
 import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
 import { type LiveSnapshot } from "./gen/remoteagent/v1/remote_pb";
 import { derive, agentOf, type Derived } from "./model";
-import { unnamedMemberCommit } from "./device-security-removal";
-import { type StoredRemoval } from "./device-security-store";
 import {
   DeviceSecurityClient,
+  validateSecurityBody,
   type SecurityStorage,
 } from "./device-security-client";
 import {
-  capsuleBytes,
-  parseCapsule,
   Purpose,
-  parseHeader,
-  toEnvelope,
-  commitment,
   stateHash,
   type Member,
   type SecurityHeader,
@@ -42,18 +36,14 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { relayFetch } from "./transport";
 import { restorePushPrefs } from "./push";
 import {
-  accountKey,
   checkServer,
   concat,
   deriveKeys,
   deviceID,
-  importRoot,
   importSessionKey,
-  newDeviceKey,
   newRequestID,
   openMessage as openLegacyMessage,
   open as openLegacyEnvelope,
-  REGISTER_CONTEXT,
   signLogin,
   expect,
   type Keys,
@@ -299,66 +289,64 @@ export interface PrefsState {
   changedAt?: number;
 }
 
-/** Registers this browser as a device of the account with root key root. */
-export async function joinWithRoot(
-  rootRaw: Uint8Array<ArrayBuffer>,
+/** Registers this browser as a device of an existing account. The phone's
+ * pairing approval, not the account root, authorizes the registration. */
+export async function joinWithApproval(
+  accountPublicKey: Uint8Array<ArrayBuffer>,
   server: string,
-  enrollment?: {
+  enrollment: {
     device: CryptoKeyPair;
     pairingId: string;
     approval: Uint8Array;
     approvalSignature: Uint8Array;
   },
+  existing?: StoredAccount,
 ): Promise<StoredAccount> {
   server = checkServer(server);
-  const root = await importRoot(rootRaw);
-  const acct = await accountKey(root);
-  const device = enrollment?.device ?? (await newDeviceKey());
+  const account = await deviceID(accountPublicKey);
+  const device = enrollment.device;
   const pub = new Uint8Array(
     await crypto.subtle.exportKey("raw", device.publicKey),
   );
-  if (enrollment) {
-    const a = fromBinary(PairApprovalSchema, enrollment.approval);
-    const same = (x: Uint8Array, y: Uint8Array) =>
-      x.length === y.length && x.every((v, i) => v === y[i]);
-    if (
-      a.accountId !==
-        (await deviceID(acct.publicKey as Uint8Array<ArrayBuffer>)) ||
-      a.pairingId !== enrollment.pairingId ||
-      a.candidateKind !== DeviceKind.CLIENT ||
-      !same(a.candidateDevicePublicKey, pub) ||
-      a.nonce.length !== 16 ||
-      a.expiresMs <= BigInt(Date.now()) ||
-      a.approverPublicKey.length !== 32 ||
-      (await deviceID(a.approverPublicKey as Uint8Array<ArrayBuffer>)) !==
-        a.approverDeviceId ||
-      a.approverDeviceId === (await deviceID(pub))
-    )
-      throw new Error("配对批准与这台设备不匹配或已过期");
-    const signer = await crypto.subtle.importKey(
-      "raw",
-      a.approverPublicKey as Uint8Array<ArrayBuffer>,
+  const a = fromBinary(PairApprovalSchema, enrollment.approval);
+  const same = (x: Uint8Array, y: Uint8Array) =>
+    x.length === y.length && x.every((v, i) => v === y[i]);
+  if (
+    a.accountId !== account ||
+    a.pairingId !== enrollment.pairingId ||
+    a.candidateKind !== DeviceKind.CLIENT ||
+    !same(a.candidateDevicePublicKey, pub) ||
+    a.nonce.length !== 16 ||
+    a.expiresMs <= BigInt(Date.now()) ||
+    a.approverPublicKey.length !== 32 ||
+    (await deviceID(a.approverPublicKey as Uint8Array<ArrayBuffer>)) !==
+      a.approverDeviceId ||
+    a.approverDeviceId === (await deviceID(pub))
+  )
+    throw new Error("配对批准与这台设备不匹配或已过期");
+  const signer = await crypto.subtle.importKey(
+    "raw",
+    a.approverPublicKey as Uint8Array<ArrayBuffer>,
+    "Ed25519",
+    false,
+    ["verify"],
+  );
+  if (
+    !(await crypto.subtle.verify(
       "Ed25519",
-      false,
-      ["verify"],
-    );
-    if (
-      !(await crypto.subtle.verify(
-        "Ed25519",
-        signer,
-        enrollment.approvalSignature as Uint8Array<ArrayBuffer>,
-        concat(
-          new TextEncoder().encode("remote-agent/v1/pair-approval\0"),
-          enrollment.approval,
-        ),
-      ))
-    )
-      throw new Error("配对批准签名无效");
-  }
+      signer,
+      enrollment.approvalSignature as Uint8Array<ArrayBuffer>,
+      concat(
+        new TextEncoder().encode("remote-agent/v1/pair-approval\0"),
+        enrollment.approval,
+      ),
+    ))
+  )
+    throw new Error("配对批准签名无效");
   const reg = toBinary(
     DeviceRegistrationSchema,
     create(DeviceRegistrationSchema, {
-      accountPublicKey: acct.publicKey,
+      accountPublicKey,
       devicePublicKey: pub,
       kind: DeviceKind.CLIENT,
       createdMs: BigInt(Date.now()),
@@ -375,18 +363,15 @@ export async function joinWithRoot(
   const res = await auth.registerDevice({
     protocolVersion: PROTOCOL_VERSION,
     registration: reg,
-    signature: acct.sign(
-      concat(new TextEncoder().encode(REGISTER_CONTEXT), reg),
-    ),
-    approval: enrollment?.approval,
-    approvalSignature: enrollment?.approvalSignature,
+    approval: enrollment.approval,
+    approvalSignature: enrollment.approvalSignature,
   });
   if (res.deviceId !== (await deviceID(pub)))
     throw new Error("server 返回了意外的设备 ID");
   const stored: StoredAccount = {
     server,
-    root,
-    rootRaw: new Uint8Array(rootRaw),
+    root: existing?.root,
+    rootRaw: existing?.rootRaw && new Uint8Array(existing.rootRaw),
     devicePrivate: device.privateKey,
     deviceId: res.deviceId,
   };
@@ -401,21 +386,13 @@ const STREAM_IDLE_MS = 60_000;
 const RPC_TIMEOUT_MS = 45_000;
 
 export class Remote {
-  private expectedAccountID?: Promise<string>;
   private liveSnapshots = new Map<string, LiveSnapshot>();
   private liveErrors = new Map<string, string>();
   private liveJobs = new Map<string, Promise<void>>();
 
   private directoryReadVersion = 0;
   private trustedMembers = new Map<string, Member>();
-  private trustedMetadata = new Map<string, Envelope>();
-  private deviceBindings = new Map<
-    string,
-    { state: Uint8Array<ArrayBuffer>; commit: Uint8Array<ArrayBuffer> }
-  >();
   authorityDeviceId = "";
-  removals: StoredRemoval[] = [];
-  private removalTimer?: ReturnType<typeof setTimeout>;
 
   private sessionSeeds = new Map<string, Uint8Array<ArrayBuffer>>();
   readonly security: DeviceSecurityClient;
@@ -600,6 +577,7 @@ export class Remote {
   private closed = false;
   private generation = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
+  private securityTimer?: ReturnType<typeof setInterval>;
   private openTimer?: ReturnType<typeof setTimeout>;
   private idleTimer?: ReturnType<typeof setTimeout>;
   private terminals = new Map<WebSocket, (reason: string) => void>();
@@ -608,7 +586,7 @@ export class Remote {
 
   protected constructor(
     readonly account: StoredAccount,
-    private legacyKeys: Keys,
+    private legacyKeys: Keys | undefined,
     private cache?: EventCache,
     securityStorage?: SecurityStorage,
   ) {
@@ -629,26 +607,27 @@ export class Remote {
     this.security = new DeviceSecurityClient(
       account.deviceId,
       account.devicePrivate,
-      async (capsule) => {
-        const reply = await this.api.forward({
-          machineId: capsule.to,
-          securityRpc: capsuleBytes(capsule),
+      async (after, limit) => {
+        const reply = await this.api.getSecurityStates({
+          afterEpoch: after,
+          limit,
         });
-        if (reply.result) throw new Error("安全回复格式无效");
-        return parseCapsule(new Uint8Array(reply.securityRpc));
+        return {
+          states: reply.states.map((s) => ({
+            state: s.state,
+            recovery: s.recovery,
+          })),
+          headEpoch: reply.headEpoch,
+        };
       },
       () => !this.closed,
       securityStorage,
-      () =>
-        (this.expectedAccountID ??= accountKey(account.root).then((k) =>
-          deviceID(new Uint8Array(k.publicKey)),
-        )),
     );
   }
 
   private projectHeader(h: SecurityHeader) {
     return create(HeaderSchema, {
-      version: 2,
+      version: 3,
       kind: h.kind,
       machineId: h.machine,
       sessionId: h.session,
@@ -693,7 +672,6 @@ export class Remote {
       : await this.security.openCurrent(env, seed);
     const header = this.projectHeader(out.header);
     expect(header, want);
-    const { validateSecurityBody } = await import("./device-security-client");
     let msg: MessageShape<D>;
     try {
       msg = fromBinary(schema, out.plaintext);
@@ -742,7 +720,11 @@ export class Remote {
   static async load(): Promise<Remote | undefined> {
     const acct = await loadAccount();
     if (!acct) return undefined;
-    const r = new Remote(acct, await deriveKeys(acct.root), eventCache());
+    const r = new Remote(
+      acct,
+      acct.root ? await deriveKeys(acct.root) : undefined,
+      eventCache(),
+    );
     // What the last visit kept is there for the first paint.
     await r.warm();
     return r;
@@ -846,7 +828,7 @@ export class Remote {
         this.trustedMembers = new Map(
           identity.state.core.members.map((m) => [m.id, m]),
         );
-        this.authorityDeviceId = identity.pin.authorityID;
+        this.authorityDeviceId = identity.state.core.authorityID;
         const [token, machines, sessions, prefs, info] = (
           await Promise.all(
             ["token", "machines", "sessions", "prefs", "info"].map((k) =>
@@ -865,19 +847,12 @@ export class Remote {
               ListMachinesResponseSchema,
               machines.bytes as Uint8Array,
             ).machines) {
-              if (m.meta?.securityHeader.length)
-                this.trustedMetadata.set("machine:" + m.id, m.meta);
               await this.putMachine({ ...m, online: false });
             }
             for (const s of fromBinary(
               ListRemoteSessionsResponseSchema,
               sessions.bytes as Uint8Array,
             ).sessions) {
-              if (s.meta?.securityHeader.length)
-                this.trustedMetadata.set(
-                  "session:" + s.machineId + ":" + s.sessionId,
-                  s.meta,
-                );
               await this.putSession(s);
             }
           });
@@ -933,13 +908,27 @@ export class Remote {
     this.closed = false;
     this.begun = true;
     this.trimHistory();
+    clearInterval(this.securityTimer);
+    // Foreground state pull: a lease renewal or removal reaches this page
+    // within a minute, and an unknown state is fetched at once.
+    this.securityTimer = setInterval(() => void this.syncSecurity(), 60_000);
     void this.connect();
+  }
+
+  private async syncSecurity() {
+    if (this.closed) return;
+    try {
+      await this.security.sync();
+    } catch (e) {
+      this.report(e);
+    }
   }
 
   stop() {
     this.closed = true;
+    clearInterval(this.securityTimer);
+    this.securityTimer = undefined;
     clearTimeout(this.historyTrim);
-    clearTimeout(this.removalTimer);
     this.historyTrim = undefined;
     this.generation++;
     clearTimeout(this.retryTimer);
@@ -1091,6 +1080,14 @@ export class Remote {
       // refusing it closes the stream, and the next try logs in.
       if (!this.token || this.tokenExpires < Date.now() + 86_400_000)
         await this.login();
+    } catch (e) {
+      if (generation === this.generation && !this.closed) this.fail(e);
+      return;
+    }
+    try {
+      // A stale head must not receive or open live frames; pull it before
+      // the stream starts. The 60 s loop keeps it fresh afterwards.
+      await this.security.sync();
     } catch (e) {
       if (generation === this.generation && !this.closed) this.fail(e);
       return;
@@ -1517,7 +1514,6 @@ export class Remote {
    * so its online flag is out of date. */
   private async putMachine(m: RemoteMachine, staleOnline = false) {
     if (!this.trustedMembers.has(m.id)) return;
-    m = { ...m, meta: this.trustedMetadata.get("machine:" + m.id) };
     let view = this.machines.get(m.id);
     if (!view) {
       view = {
@@ -1550,12 +1546,6 @@ export class Remote {
 
   private async putSession(rs: RemoteSession) {
     if (this.trustedMembers.get(rs.machineId)?.kind !== 1) return;
-    rs = {
-      ...rs,
-      meta: this.trustedMetadata.get(
-        "session:" + rs.machineId + ":" + rs.sessionId,
-      ),
-    };
     let view = this.sessions.get(rs.sessionId);
     const removals = this.removedPushes.get(rs.machineId) ?? 0;
     try {
@@ -1565,6 +1555,8 @@ export class Remote {
         let header: import("./gen/remoteagent/v1/envelope_pb").Header,
           plaintext: Uint8Array;
         if (route.version === 1) {
+          if (!this.legacyKeys)
+            throw new Error("旧版历史需要账户根密钥，这台设备没有");
           const legacy = await openLegacyEnvelope(this.legacyKeys.wrap, rs.key);
           header = legacy.header;
           plaintext = legacy.plaintext;
@@ -1798,7 +1790,7 @@ export class Remote {
           continue;
         if (fromBinary(HeaderSchema, se.envelope!.header).version === 1)
           b.unverifiedLegacy = true;
-        if (fromBinary(HeaderSchema, se.envelope!.header).version === 2)
+        if (fromBinary(HeaderSchema, se.envelope!.header).version === 3)
           (b.verifiedSeqs ??= new Set()).add(se.seq);
         b.pending.set(se.seq, msg);
         // What is held is the opened event: a packed envelope is smaller than it.
@@ -2080,8 +2072,8 @@ export class Remote {
       );
     } catch {
       throw new CommandError(
-        "authorization_unavailable",
-        "未取得安全授权，操作尚未发出；请重试",
+        "security_unavailable",
+        "无法用当前安全状态签名，操作尚未发出；请重试",
       );
     }
     // Once a try may have reached the daemon, no later failure of this
@@ -2472,39 +2464,27 @@ export class Remote {
 
   // --- devices ---
 
-  /** Lists the account's devices. */
+  /** Lists the account's devices from the signed membership state and the
+   * server's sealed metadata objects. */
   async loadDevices(describe = true) {
     const version = ++this.directoryReadVersion;
     try {
-      const [catalog, listed, online] = await Promise.all([
-        this.security.catalog(),
+      const record = await this.security.sync();
+      const head = record.states[record.states.length - 1];
+      const members = new Map(head.core.members.map((m) => [m.id, m]));
+      const state = await stateHash(head);
+      const [listed, online] = await Promise.all([
         this.api.listDevices({}),
         this.api.listMachines({}),
       ]);
-      const members = new Map(catalog.state.core.members.map((m) => [m.id, m]));
-      const state = await stateHash(catalog.state);
       const metadata = new Map<string, Envelope>();
-      for (const entry of catalog.entries) {
-        const h = parseHeader(entry.wire.header);
-        const key =
-          h.purpose === Purpose.MachineMeta
-            ? "machine:" + h.machine
-            : h.purpose === Purpose.DeviceMeta
-              ? "device:" + h.request
-              : h.purpose === Purpose.SessionMeta
-                ? "session:" + h.machine + ":" + h.session
-                : h.purpose === Purpose.Prefs
-                  ? "prefs"
-                  : "";
-        if (key) metadata.set(key, toEnvelope(entry.wire));
-      }
+      for (const d of listed.devices)
+        if (d.meta?.securityHeader.length) metadata.set("device:" + d.id, d.meta);
+      for (const m of online.machines)
+        if (m.meta?.securityHeader.length) metadata.set("machine:" + m.id, m.meta);
       const nextMachines = new Map(this.machines);
-      const nextDevices = new Map<string, DeviceInfo>(),
-        bindings = new Map<
-          string,
-          { state: Uint8Array<ArrayBuffer>; commit: Uint8Array<ArrayBuffer> }
-        >();
-      for (const m of catalog.state.core.members) {
+      const nextDevices = new Map<string, DeviceInfo>();
+      for (const m of head.core.members) {
         const hint = listed.devices.find((d) => d.id === m.id);
         const d: DeviceInfo = {
           id: m.id,
@@ -2516,10 +2496,7 @@ export class Remote {
         const meta = metadata.get(
           (m.kind === 1 ? "machine:" : "device:") + m.id,
         );
-        let binding: Uint8Array<ArrayBuffer>;
         if (meta) {
-          const w = (await import("./device-security")).fromEnvelope(meta);
-          binding = await commitment(w);
           if (m.kind === 2) {
             const opened = await this.openSecureMessage(
               meta,
@@ -2549,18 +2526,21 @@ export class Remote {
               metaRev: opened.header.seq,
             });
           }
-        } else {
-          binding = await unnamedMemberCommit(catalog.state, m);
-          if (m.kind === 1 && !nextMachines.has(m.id))
-            nextMachines.set(m.id, {
+        } else if (m.kind === 1) {
+          const old = this.machines.get(m.id),
+            status = online.machines.find((x) => x.id === m.id);
+          nextMachines.set(m.id, {
+            ...(old ?? {
               id: m.id,
               online: false,
               lastSeenMs: 0n,
               metaRev: 0n,
-            });
+            }),
+            online: status?.online ?? false,
+            lastSeenMs: status?.lastSeenMs ?? old?.lastSeenMs ?? 0n,
+          });
         }
         nextDevices.set(m.id, d);
-        bindings.set(m.id, { state, commit: binding });
       }
       if (version !== this.directoryReadVersion) return;
       if (!equalBytes(await this.security.localStateHash(), state))
@@ -2574,10 +2554,8 @@ export class Remote {
         if (old.kind === 1 && !members.has(id))
           this.bump(this.removedPushes, id);
       this.trustedMembers = members;
-      this.trustedMetadata = metadata;
-      this.deviceBindings = bindings;
       this.devices = nextDevices;
-      this.authorityDeviceId = catalog.state.core.authorityID;
+      this.authorityDeviceId = head.core.authorityID;
       for (const id of this.machines.keys())
         if (!members.has(id)) {
           this.machines.delete(id);
@@ -2587,67 +2565,11 @@ export class Remote {
       this.devicesStatus = "ready";
       this.changed();
       if (describe) await this.describeSelf();
-      void this.pollRemovals();
     } catch (e) {
       if (version !== this.directoryReadVersion) return;
       this.devicesStatus = "error";
-      this.deviceBindings.clear();
       this.changed();
     }
-  }
-  private async cleanupRemoval(op: StoredRemoval): Promise<StoredRemoval> {
-    if (op.phase !== "complete" || op.serverCleaned || !op.cleanup) return op;
-    try {
-      for (const target of op.request.Targets) {
-        await this.api
-          .removeDevice({
-            deviceId: target.ID,
-            securityCompletion: op.cleanup.completion,
-            securityRequest: op.cleanup.request,
-            securityChain: op.cleanup.chain,
-          })
-          .catch((e) => {
-            if (!(e instanceof ConnectError && e.code === Code.NotFound))
-              throw e;
-          });
-      }
-      return await this.security.markServerCleaned(op);
-    } catch {
-      return op;
-    }
-  }
-  private async pollRemovals() {
-    clearTimeout(this.removalTimer);
-    try {
-      const saved = await this.security.pendingRemovals();
-      const next: StoredRemoval[] = [];
-      for (const op of saved) {
-        if (op.phase === "complete") {
-          next.push(await this.cleanupRemoval(op));
-          continue;
-        }
-        try {
-          next.push(
-            await this.cleanupRemoval(await this.security.pollRemoval(op)),
-          );
-        } catch {
-          if (op.phase === "unconfirmed") {
-            try {
-              next.push(await this.security.retryRemoval(op));
-            } catch {
-              next.push(op);
-            }
-          } else next.push(op);
-        }
-      }
-      this.removals = next;
-      this.changed();
-      if (
-        !this.closed &&
-        next.some((o) => o.phase !== "complete" || !o.serverCleaned)
-      )
-        this.removalTimer = setTimeout(() => void this.pollRemovals(), 2000);
-    } catch {}
   }
 
   // Removals seen per device, so that metadata still opening when its
@@ -2676,8 +2598,11 @@ export class Remote {
     })).catch((e) => this.report(e));
   }
 
-  /** Renames a client; the name is sealed, the server sees none. */
+  /** Renames this client; the name is sealed, the server sees none.
+   * DeviceMeta is self-only in protocol 10. */
   renameDevice(id: string, name: string): Promise<void> {
+    if (id !== this.account.deviceId)
+      throw new Error("只能在手机 App 上管理其他设备");
     return this.changeDeviceMeta(id, (m) => ({
       name: name.trim(),
       platform: m?.platform ?? "",
@@ -2685,7 +2610,7 @@ export class Remote {
     }));
   }
 
-  /** Replaces a device's metadata with change(current). If another client
+  /** Replaces this device's metadata with change(current). If another tab
    * wrote first, the change is made again on what it wrote. */
   private async changeDeviceMeta(
     id: string,
@@ -2693,33 +2618,31 @@ export class Remote {
       m: DeviceMeta | undefined,
     ) => Omit<Partial<DeviceMeta>, "$typeName">,
   ) {
+    if (id !== this.account.deviceId)
+      throw new Error("只能在手机 App 上管理其他设备");
     for (let i = 0; i < 5; i++) {
       await this.loadDevices(false);
       if (this.devicesStatus !== "ready") throw new Error("无法核实设备信息");
       const cur = this.devices.get(id),
         rev = cur?.metaRev ?? 0n;
-      try {
-        const env = await this.sealSecureMessage(
-          {
-            kind: PayloadKind.DEVICE_META,
-            requestId: id,
-            seq: rev + 1n,
-            sender: this.account.deviceId,
-          },
-          DeviceMetaSchema,
-          create(DeviceMetaSchema, change(cur?.meta)),
-        );
-        await this.api
-          .putDeviceMeta({ deviceId: id, expectedRevision: rev, meta: env })
-          .catch(() => undefined);
+      const env = await this.sealSecureMessage(
+        {
+          kind: PayloadKind.DEVICE_META,
+          requestId: id,
+          seq: rev + 1n,
+          sender: this.account.deviceId,
+        },
+        DeviceMetaSchema,
+        create(DeviceMetaSchema, change(cur?.meta)),
+      );
+      const r = await this.api.putDeviceMeta({
+        deviceId: id,
+        expectedRevision: rev,
+        meta: env,
+      });
+      if (r.applied) {
         await this.loadDevices(false);
         return;
-      } catch (e) {
-        if (
-          !(e instanceof (await import("./device-security")).SecurityError) ||
-          e.code !== "conflict"
-        )
-          throw e;
       }
     }
     throw new Error("设备信息正在变化，请重试");
@@ -2730,58 +2653,48 @@ export class Remote {
   protected prefsStore: PrefsStore = {
     get: async () => this.readTrustedPrefs(),
     put: async (expected, next) => {
-      try {
-        const env = await this.sealSecureMessage(
-          {
-            kind: PayloadKind.ACCOUNT_PREFS,
-            requestId: PREFS_OBJECT,
-            seq: expected + 1n,
-            sender: this.account.deviceId,
-          },
-          ProjectPrefsSchema,
-          next,
-        );
-        await this.api
-          .putAccountPrefs({
-            objectId: PREFS_OBJECT,
-            expectedRevision: expected,
-            envelope: env,
-          })
-          .catch(() => undefined);
-        return { applied: true, current: await this.readTrustedPrefs() };
-      } catch (e) {
-        if (
-          e instanceof (await import("./device-security")).SecurityError &&
-          e.code === "conflict"
-        )
-          return { applied: false, current: await this.readTrustedPrefs() };
-        throw e;
-      }
-    },
-  };
-  private async readTrustedPrefs(): Promise<PrefsSnapshot> {
-    const catalog = await this.security.catalog();
-    for (const e of catalog.entries) {
-      const h = parseHeader(e.wire.header);
-      if (h.purpose !== Purpose.Prefs) continue;
-      const { msg } = await this.openSecureMessage(
-        toEnvelope(e.wire),
+      const env = await this.sealSecureMessage(
         {
           kind: PayloadKind.ACCOUNT_PREFS,
           requestId: PREFS_OBJECT,
-          seq: h.seq,
+          seq: expected + 1n,
+          sender: this.account.deviceId,
         },
         ProjectPrefsSchema,
+        next,
       );
-      if (msg.schema !== 1) throw new Error("项目偏好格式不受支持");
-      return { revision: h.seq, prefs: msg };
-    }
-    return { revision: 0n, prefs: emptyPrefs() };
+      const r = await this.api.putAccountPrefs({
+        objectId: PREFS_OBJECT,
+        expectedRevision: expected,
+        envelope: env,
+      });
+      return {
+        applied: r.applied,
+        current: await this.openPrefs(r.object),
+      };
+    },
+  };
+  private async readTrustedPrefs(): Promise<PrefsSnapshot> {
+    const r = await this.api.getAccountPrefs({ objectId: PREFS_OBJECT });
+    return this.openPrefs(r.object);
   }
   private async openPrefs(
-    _o: AccountPrefsObject | undefined,
+    o: AccountPrefsObject | undefined,
   ): Promise<PrefsSnapshot> {
-    return this.readTrustedPrefs();
+    if (!o || !o.envelope || o.revision === 0n)
+      return { revision: 0n, prefs: emptyPrefs() };
+    const { msg, header } = await this.openSecureMessage(
+      o.envelope,
+      {
+        kind: PayloadKind.ACCOUNT_PREFS,
+        requestId: PREFS_OBJECT,
+        seq: o.revision,
+      },
+      ProjectPrefsSchema,
+    );
+    if (msg.schema !== 1 || header.seq !== o.revision)
+      throw new Error("项目偏好格式不受支持");
+    return { revision: o.revision, prefs: msg };
   }
 
   /** Keeps the server's copy, sealed as it came, for the next visit's first paint. */
@@ -3066,39 +2979,6 @@ export class Remote {
     kinds: NotifyKind[],
   ): Promise<void> {
     await this.api.setPushSubscription({ subscriptionJson, kinds });
-  }
-
-  /** Unregisters a device; a machine's sessions go with it. */
-  async removeDevice(deviceId: string): Promise<void> {
-    if (deviceId === this.authorityDeviceId)
-      throw new Error("管理电脑不能通过普通移除操作删除");
-    const binding = this.deviceBindings.get(deviceId);
-    if (!binding || this.devicesStatus !== "ready")
-      throw new Error("需要先核实当前设备信息");
-    const op = await this.security.remove(
-      deviceId,
-      binding.commit,
-      binding.state,
-    );
-    this.removals = [
-      ...this.removals.filter(
-        (o) => o.request.Operation !== op.request.Operation,
-      ),
-      op,
-    ];
-    this.changed();
-    await this.loadDevices(false);
-    void this.pollRemovals();
-  }
-  async retryDeviceRemoval(operation: string) {
-    const op = this.removals.find((o) => o.request.Operation === operation);
-    if (!op) return;
-    const next = await this.security.retryRemoval(op);
-    this.removals = this.removals.map((o) =>
-      o.request.Operation === operation ? next : o,
-    );
-    this.changed();
-    void this.pollRemovals();
   }
 
   private models = new Map<string, Promise<ListModelsResponse>>();

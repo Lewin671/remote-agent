@@ -7,8 +7,7 @@ import {
 import { Code, ConnectError } from "@connectrpc/connect";
 import { Remote } from "../remote";
 import { GoSecurityFixture, webMember } from "./security-fixture";
-import { capsuleBytes, parseCapsule } from "../device-security";
-import { type Header, type Envelope } from "../gen/remoteagent/v1/envelope_pb";
+import { type Header } from "../gen/remoteagent/v1/envelope_pb";
 import { MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
 import { SessionSchema } from "../gen/remoteagent/v1/local_pb";
 import { SessionStatus } from "../gen/remoteagent/v1/event_pb";
@@ -37,23 +36,15 @@ export class SyntheticRemote extends Remote {
       putDeviceMeta: async () => ({ applied: true }),
       putAccountPrefs: async () => ({ applied: true }),
       getAccountPrefs: async () => ({}),
-      removeDevice: async () => ({}),
+      getSecurityStates: async (req: { afterEpoch: bigint; limit: number }) =>
+        world.fixture.fetcher(member.account.deviceId)(req.afterEpoch, req.limit),
     };
     Object.defineProperty(this, "api", {
       configurable: true,
       get: () => ({
         ...this.defaults,
         ...this.custom,
-        forward: async (req: {
-          securityRpc?: Uint8Array;
-          command?: Envelope;
-        }) => {
-          if (req.securityRpc?.length)
-            return {
-              securityRpc: await world.fixture.rpc(
-                capsuleBytes(parseCapsule(new Uint8Array(req.securityRpc))),
-              ),
-            };
+        forward: async (req: unknown) => {
           const forward = this.custom.forward as
             | ((req: unknown) => Promise<unknown>)
             | undefined;
@@ -88,17 +79,6 @@ export class SyntheticRemote extends Remote {
       new Uint8Array(toBinary(schema, msg)),
       seed ?? ([1, 7, 11].includes(h.kind ?? 0) ? this.seed : undefined),
     );
-    if (h.kind === 4)
-      (
-        this as unknown as { trustedMetadata: Map<string, Envelope> }
-      ).trustedMetadata.set("machine:" + this.machine, wire);
-    if (h.kind === 2)
-      (
-        this as unknown as { trustedMetadata: Map<string, Envelope> }
-      ).trustedMetadata.set(
-        "session:" + this.machine + ":" + h.sessionId,
-        wire,
-      );
     return wire;
   }
   async sessionRow(id: string, title = "synthetic session", seed = this.seed) {
@@ -128,14 +108,26 @@ export class SyntheticRemote extends Remote {
     const identity = await member.sdk.localIdentity();
     (r as unknown as { trustedMembers: Map<string, unknown> }).trustedMembers =
       new Map(identity.state.core.members.map((m) => [m.id, m]));
-    await r.seal(
+    const machineMeta = await r.seal(
       { kind: 4, seq: 1n },
       MachineMetaSchema,
       create(MachineMetaSchema, {
         hostname: "synthetic-machine",
-        protocolVersion: 9,
+        protocolVersion: 10,
       }),
     );
+    (r as unknown as { api: object }).api = {
+      listMachines: async () => ({
+        machines: [
+          {
+            id: r.machine,
+            online: true,
+            lastSeenMs: 0n,
+            meta: machineMeta,
+          },
+        ],
+      }),
+    };
     const key = await importSessionKey(seed);
     r.sessions.set("s", {
       id: "s",

@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { relayFetch } from "./transport";
 import { checkServer } from "./crypto";
-import { apiBase, joinWithRoot } from "./remote";
+import { apiBase, joinWithApproval } from "./remote";
 import { joinByPairing, parsePairLink } from "./pairing";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -14,7 +14,9 @@ it("rejects insecure remote relay URLs before pairing or registration sends anyt
     expect(() => apiBase(server)).toThrow();
     expect(parsePairLink(new URLSearchParams({ code: "12345678", s: server }).toString())).toBeUndefined();
     await expect(joinByPairing({ code: "12345678", server }, () => {}, () => false)).rejects.toThrow();
-    await expect(joinWithRoot(new Uint8Array(32), server)).rejects.toThrow();
+    await expect(
+      joinWithApproval(new Uint8Array(32), server, {} as never),
+    ).rejects.toThrow();
   }
   expect(fetch).not.toHaveBeenCalled();
   expect(checkServer("https://relay.example/")).toBe("https://relay.example");

@@ -748,7 +748,7 @@ function Empty({
       ) : (
         <>
           <div className="ed">
-            还没有加电脑。在电脑上运行 remote-agent，再把它加进这个账户
+            还没有加电脑。在手机上打开「设备 › 添加设备」，再用电脑加入
           </div>
           <button className="btn pri" onClick={() => go("add")}>
             添加设备

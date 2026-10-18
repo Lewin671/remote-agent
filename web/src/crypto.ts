@@ -132,8 +132,10 @@ export async function accountKey(root: CryptoKey): Promise<{ publicKey: Uint8Arr
   };
 }
 
-export async function deviceID(publicKey: Uint8Array<ArrayBuffer>): Promise<string> {
-  const sum = new Uint8Array(await crypto.subtle.digest("SHA-256", publicKey));
+export async function deviceID(publicKey: Uint8Array): Promise<string> {
+  const sum = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new Uint8Array(publicKey)),
+  );
   return hex(sum.slice(0, 16));
 }
 
