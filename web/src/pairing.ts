@@ -8,7 +8,7 @@ import { Code, ConnectError, createClient, type Interceptor } from "@connectrpc/
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { relayFetch } from "./transport";
 import { accountKey, concat, deviceID, newDeviceKey, checkServer, importSessionKey, openMessage, sealMessage } from "./crypto";
-import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
+import { PayloadKind, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { DeviceKind, PairApprovalSchema, PairingService, PairingState, type GetPairingResponse } from "./gen/remoteagent/v1/relay_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
 import { derivePair, newPairKey, pairCommit, pairIdentityTranscript } from "./pair";
@@ -104,6 +104,7 @@ export async function initiate(remote: Remote): Promise<Initiation> {
   let secretsKey: Uint8Array | undefined;
  let candidatePublic: Uint8Array | undefined;
  let candidateKind: DeviceKind | undefined;
+  let approvalRequest: Promise<{pairingId: string; payload: Envelope; approval: Uint8Array; approvalSignature: Uint8Array}> | undefined;
   const joined = (async () => {
     const st = await poll(PairingState.JOINED);
     await pc.revealPairing({ pairingId: id, initiatorPublic: key.pub });
@@ -120,17 +121,22 @@ export async function initiate(remote: Remote): Promise<Initiation> {
     link: `${location.origin}/#/pair?${q}`,
     joined,
     approve: async () => {
-      if (!secretsKey || !candidatePublic || candidateKind === undefined) throw new Error("还没有设备加入");
-      if (created.approverPublicKey.length !== 32 || await deviceID(created.approverPublicKey as Uint8Array<ArrayBuffer>) !== acct.deviceId) throw new Error("批准设备的公钥不匹配");
-      const approval = toBinary(PairApprovalSchema, create(PairApprovalSchema, {accountId: await deviceID((await accountKey(acct.root)).publicKey as Uint8Array<ArrayBuffer>), pairingId: id, approverDeviceId: acct.deviceId, approverPublicKey: created.approverPublicKey, candidateDevicePublicKey: candidatePublic, candidateKind, expiresMs: created.expiresMs, nonce: crypto.getRandomValues(new Uint8Array(16))}));
-      const approvalSignature = new Uint8Array(await crypto.subtle.sign("Ed25519", acct.devicePrivate, concat(new TextEncoder().encode("remote-agent/v1/pair-approval\0"), approval)));
-      const env = await sealMessage(
-        await importSessionKey(secretsKey as Uint8Array<ArrayBuffer>),
-        { kind: PayloadKind.PAIRING, requestId: id, sender: acct.deviceId },
-        PairingPayloadSchema,
-        create(PairingPayloadSchema, { root: acct.rootRaw, server: acct.server, approval, approvalSignature }),
-      );
-      await pc.approvePairing({ pairingId: id, payload: env, approval, approvalSignature });
+      if (!approvalRequest) {
+        approvalRequest = (async () => {
+          if (!secretsKey || !candidatePublic || candidateKind === undefined) throw new Error("还没有设备加入");
+          if (created.approverPublicKey.length !== 32 || await deviceID(created.approverPublicKey as Uint8Array<ArrayBuffer>) !== acct.deviceId) throw new Error("批准设备的公钥不匹配");
+          const approval = toBinary(PairApprovalSchema, create(PairApprovalSchema, {accountId: await deviceID((await accountKey(acct.root)).publicKey as Uint8Array<ArrayBuffer>), pairingId: id, approverDeviceId: acct.deviceId, approverPublicKey: created.approverPublicKey, candidateDevicePublicKey: candidatePublic, candidateKind, expiresMs: created.expiresMs, nonce: crypto.getRandomValues(new Uint8Array(16))}));
+          const approvalSignature = new Uint8Array(await crypto.subtle.sign("Ed25519", acct.devicePrivate, concat(new TextEncoder().encode("remote-agent/v1/pair-approval\0"), approval)));
+          const env = await sealMessage(
+            await importSessionKey(secretsKey as Uint8Array<ArrayBuffer>),
+            { kind: PayloadKind.PAIRING, requestId: id, sender: acct.deviceId },
+            PairingPayloadSchema,
+            create(PairingPayloadSchema, { root: acct.rootRaw, server: acct.server, approval, approvalSignature }),
+          );
+          return { pairingId: id, payload: env, approval, approvalSignature };
+        })().catch((e) => { approvalRequest = undefined; throw e; });
+      }
+      await pc.approvePairing(await approvalRequest);
       // Only the new device confirming it has the key counts as success. A pairing
       // that disappears meanwhile leaves the outcome unknown.
       for (let i = 0; i < 120 && !stopped; i++) {

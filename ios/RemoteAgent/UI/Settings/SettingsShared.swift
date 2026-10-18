@@ -201,7 +201,7 @@ enum RemovalText {
     static let machineNote = "移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。"
     static let machineConfirm = "它的会话记录会从服务器上删除，它要重新加入账户才能再连上。"
     static let clientNote = "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入需要另一台已登记设备批准。"
-    static let clientConfirm = "它的登录和推送订阅会被清除，电脑上的会话和历史不受影响。它持有账户密钥时仍可重新加入。"
+    static let clientConfirm = "它的登录和推送订阅会被清除，电脑上的会话和历史不受影响。再次加入需要另一台已登记设备批准。"
 }
 
 extension View {

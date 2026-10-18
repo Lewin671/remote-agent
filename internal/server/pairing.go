@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
@@ -52,6 +53,7 @@ type pairing struct {
 	joinerPub             []byte
 	devicePub             []byte
 	approval, approvalSig []byte
+	payloadHash           [32]byte
 	joinerKind            pb.DeviceKind
 	initPub               []byte
 	payload               *pb.Envelope
@@ -300,9 +302,14 @@ func (ps *pairingService) ApprovePairing(ctx context.Context, req *connect.Reque
 	if _, err := checkEnvelope(req.Msg.Payload, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: p.id}); err != nil {
 		return nil, err
 	}
+	payloadBytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(req.Msg.Payload)
+	if err != nil {
+		return nil, invalid("malformed pairing payload")
+	}
+	payloadHash := sha256.Sum256(payloadBytes)
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
-	if p.payload != nil && !p.canceled && bytes.Equal(p.approval, req.Msg.Approval) && bytes.Equal(p.approvalSig, req.Msg.ApprovalSignature) && proto.Equal(p.payload, req.Msg.Payload) {
+	if (p.payload != nil || p.delivered) && !p.canceled && bytes.Equal(p.approval, req.Msg.Approval) && bytes.Equal(p.approvalSig, req.Msg.ApprovalSignature) && p.payloadHash == payloadHash {
 		return connect.NewResponse(&pb.ApprovePairingResponse{}), nil
 	}
 	if p.initPub == nil || p.canceled || p.delivered {
@@ -320,6 +327,7 @@ func (ps *pairingService) ApprovePairing(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodePermissionDenied, err)
 	}
 	p.approval, p.approvalSig = bytes.Clone(a.raw), bytes.Clone(a.signature)
+	p.payloadHash = payloadHash
 	p.payload = proto.Clone(req.Msg.Payload).(*pb.Envelope)
 	return connect.NewResponse(&pb.ApprovePairingResponse{}), nil
 }

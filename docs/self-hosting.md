@@ -145,6 +145,8 @@ remote-agent codex      # or: remote-agent claude
 
 ## Upgrading
 
+Before restarting a layout-3 relay, apply the [protocol-8 device enrollment database upgrade](#upgrading-device-enrollment-protocol-8). Older single-account databases first need the [v0.41.0 layout conversion](#upgrading-to-v0410), followed by the layout-3 upgrade.
+
 Upgrade every part to the same release, and read the release notes first: before 1.0, a release may require all parts to move together or stored data to be recreated.
 
 ```sh
@@ -224,6 +226,7 @@ The last command lists your account, with the number of its devices and sessions
 
 | Symptom | Likely cause |
 |---|---|
+| Relay startup reports layout 3 / layout 4 | Run the [manual enrollment upgrade](#upgrading-device-enrollment-protocol-8) before restarting. |
 | The web client signs in but stays "not connected" | A content blocker is stopping the WebSocket. Host the web client and relay under the same registrable domain, or allow your relay's domain in the blocker. |
 | The web client cannot reach the relay at all | Its address is missing from `ALLOWED_ORIGINS`, or the relay was not restarted after editing `.env`. |
 | `account init` says a valid setup token is required | The token does not match `RA_SETUP_TOKEN` in the relay's `.env`. |
@@ -231,6 +234,7 @@ The last command lists your account, with the number of its devices and sessions
 | `account init` says the relay has no room for another account | This relay already has its account. Join it with `account pair` / `account join`, or let it hold more accounts (see [Opening the relay to others](#opening-the-relay-to-others)). |
 | A client asks you to update | Its protocol version differs from the daemon's. Upgrade every part to the same release. |
 | No notifications in the Android app | Expected on your own relay; see the limits in the [README](../README.md#status-and-limitations). |
+
 
 
 ## Upgrading device enrollment (protocol 8)

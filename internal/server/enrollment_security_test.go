@@ -3,8 +3,11 @@ package server
 import (
 	"context"
 	"crypto/ed25519"
+	"database/sql"
 	"errors"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -282,5 +285,30 @@ func TestSuspensionCancelsUndeliveredApprovalInsteadOfReleasingPayload(t *testin
 	}
 	if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(req)); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("canceled approval revived on resume: %v", err)
+	}
+}
+
+func TestPriorEnrollmentLayoutNamesTheManualUpgradeWithoutChangingData(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`CREATE TABLE accounts(id TEXT PRIMARY KEY); INSERT INTO accounts VALUES ('synthetic'); PRAGMA user_version = 3;`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := openStore(path); err == nil || !strings.Contains(err.Error(), "docs/self-hosting.md#upgrading-device-enrollment-protocol-8") {
+		t.Fatalf("no actionable upgrade instruction: %v", err)
+	}
+	var version, accounts int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM accounts`).Scan(&accounts); err != nil {
+		t.Fatal(err)
+	}
+	if version != 3 || accounts != 1 {
+		t.Fatalf("opening an old layout modified it: layout=%d accounts=%d", version, accounts)
 	}
 }

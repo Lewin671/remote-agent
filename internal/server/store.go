@@ -165,6 +165,9 @@ func openStore(path string) (*store, error) {
 	case version == 0:
 		db.Close()
 		return nil, errOldLayout
+	case version == 3:
+		db.Close()
+		return nil, fmt.Errorf("the database has layout 3; this version requires layout %d; apply the manual upgrade in docs/self-hosting.md#upgrading-device-enrollment-protocol-8 before starting", schemaVersion)
 	default:
 		db.Close()
 		return nil, fmt.Errorf("the database has layout %d; this version knows layout %d", version, schemaVersion)

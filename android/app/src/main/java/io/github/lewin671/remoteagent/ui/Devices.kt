@@ -138,7 +138,7 @@ fun ClientScreen(id: String) {
     }
     if (confirm) Confirm(
         "移除 ${clientName(d, id)}？",
-        "它的登录和推送订阅会被清除，电脑上的会话和历史不受影响。它持有账户密钥时仍可重新加入。",
+        "它的登录和推送订阅会被清除，电脑上的会话和历史不受影响。再次加入需要另一台已登记设备批准。",
         "移除", danger = true, onDismiss = { confirm = false },
     ) { remove.run({ remote.removeDevice(id); null }) { nav.back() } }
 }

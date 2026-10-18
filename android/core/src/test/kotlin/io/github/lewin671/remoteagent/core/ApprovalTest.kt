@@ -5,8 +5,31 @@ import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
+import kotlinx.coroutines.*
 
 class ApprovalTest {
+    @Test fun approvedPairingCanBeRetriedAfterDelivery() = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        val owner = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
+        val sponsor = Remote(owner.account, http)
+        try {
+            withTimeout(15_000) {
+                val pairing = Initiation.start(sponsor)
+                val shown = CompletableDeferred<List<String>>()
+                val joining = async { joinByPairing(pairing.link, http, { shown.complete(it) }, { false }) }
+                assertEquals(pairing.joined().first, shown.await())
+                val approving = async { pairing.approve() }
+                val account = joining.await()
+                approving.await()
+                pairing.approve() // The same operation, not a fresh approval.
+                assertTrue(login(Api(server.url, http), account).isNotBlank())
+            }
+        } finally {
+            sponsor.close(); owner.close(); server.close()
+        }
+    }
+
     @Test fun verifiesGoApprovalAndCandidateIdentitySas() {
         val v = Json.parseToJsonElement(File(File(System.getProperty("vectors")).parentFile, "pair-approval-vectors.json").readText()).jsonObject
         fun b(k: String) = v[k]!!.jsonPrimitive.content.unhex()

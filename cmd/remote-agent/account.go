@@ -202,7 +202,7 @@ func runAccountSecret() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(os.Stderr, "This secret gives full access to all your sessions. Paste it only into your own devices, then clear it from the clipboard.")
+	fmt.Fprintln(os.Stderr, "This key can decrypt account content but cannot authorize device enrollment. Keep it offline; add devices through account pair.")
 	fmt.Println(a.Secret().String())
 	return nil
 }

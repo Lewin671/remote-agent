@@ -104,6 +104,7 @@ public final class Initiation: Sendable {
     private let remote: Remote
     private let pairingId: String
     private let key: PairKey
+    private let approvalRequest = OSAllocatedUnfairLock<PBApprovePairingRequest?>(initialState: nil)
     private let expires: Int64
     private let candidate = OSAllocatedUnfairLock<(Data, PBDeviceKind)?>(initialState: nil)
     private let sleep: Sleeper
@@ -164,21 +165,26 @@ public final class Initiation: Sendable {
         guard let s = secrets.withLock({ $0 }) else { throw PairError("还没有设备加入") }
         let acct = remote.account
         let tok = try await remote.currentToken()
-        guard let c = candidate.withLock({ $0 }) else { throw PairError("没有候选设备") }
-        let (approval, signature) = try makePairApproval(account: acct, pairingId: pairingId, candidate: c.0, kind: c.1, expires: expires)
-        var h = PBHeader()
-        h.kind = .pairing
-        h.requestID = pairingId
-        h.sender = acct.deviceId
-        var payload = PBPairingPayload()
-        payload.root = acct.root
-        payload.server = acct.server
-        payload.approval = approval; payload.approvalSignature = signature
-        var req = PBApprovePairingRequest()
-        req.pairingID = pairingId
-        req.payload = try Envelopes.seal(key: s.key, header: h, message: payload)
-        req.approval = approval; req.approvalSignature = signature
-        _ = try await remote.api.pairing.approvePairing(request: req, headers: Api.headers(token: tok)).value()
+        let request = try approvalRequest.withLock { cached in
+            if let cached { return cached }
+            guard let c = candidate.withLock({ $0 }) else { throw PairError("没有候选设备") }
+            let (approval, signature) = try makePairApproval(account: acct, pairingId: pairingId, candidate: c.0, kind: c.1, expires: expires)
+            var h = PBHeader()
+            h.kind = .pairing
+            h.requestID = pairingId
+            h.sender = acct.deviceId
+            var payload = PBPairingPayload()
+            payload.root = acct.root
+            payload.server = acct.server
+            payload.approval = approval; payload.approvalSignature = signature
+            var req = PBApprovePairingRequest()
+            req.pairingID = pairingId
+            req.payload = try Envelopes.seal(key: s.key, header: h, message: payload)
+            req.approval = approval; req.approvalSignature = signature
+            cached = req
+            return req
+        }
+        _ = try await remote.api.pairing.approvePairing(request: request, headers: Api.headers(token: tok)).value()
         // Only the new device confirming it has the key counts as success. A
         // pairing that disappears meanwhile leaves the outcome unknown.
         for _ in 0..<120 {

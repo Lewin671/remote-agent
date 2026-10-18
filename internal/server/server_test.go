@@ -509,6 +509,10 @@ func TestPairingLimits(t *testing.T) {
 	if st := initiatorState(); st != pb.PairingState_PAIRING_STATE_DELIVERED {
 		t.Fatalf("initiator after confirmation: %v", st)
 	}
+	// An approval reply may be lost even after the candidate confirmed delivery.
+	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: joined.Msg.PairingId, Payload: env, Approval: approval, ApprovalSignature: approvalSig})); err != nil {
+		t.Fatalf("completed approval retry rejected: %v", err)
+	}
 	// Wrong codes are limited.
 	var last error
 	for i := 0; i < badCodesPerMinute+1; i++ {

@@ -93,6 +93,8 @@ class Initiation internal constructor(
     private var secrets: PairSecrets? = null
     private var candidate: ByteArray? = null
     private var candidateKind: DeviceKind? = null
+    private val approvalLock = Any()
+    private var approvalRequest: ApprovePairingRequest? = null
 
     /** Waits for a device to ask to join; returns the emoji to compare and its kind. */
     suspend fun joined(): Pair<List<String>, DeviceKind> {
@@ -117,13 +119,18 @@ class Initiation internal constructor(
         val s = secrets ?: throw PairException("还没有设备加入")
         val acct = remote.account
         val tok = remote.currentToken()
-        val (approval, signature) = makePairApproval(acct, pairingId, candidate ?: throw PairException("没有候选设备"), candidateKind ?: throw PairException("没有候选设备"), expires)
-        val env = Envelopes.seal(
-            s.key,
-            Header.newBuilder().setKind(PayloadKind.PAYLOAD_KIND_PAIRING).setRequestId(pairingId).setSender(acct.deviceId).build(),
-            PairingPayload.newBuilder().setRoot(ByteString.copyFrom(acct.root)).setServer(acct.server).setApproval(ByteString.copyFrom(approval)).setApprovalSignature(ByteString.copyFrom(signature)).build(),
-        )
-        remote.api.pairing.approvePairing(ApprovePairingRequest.newBuilder().setPairingId(pairingId).setPayload(env).setApproval(ByteString.copyFrom(approval)).setApprovalSignature(ByteString.copyFrom(signature)).build(), Api.headers(tok)).value()
+        val request = synchronized(approvalLock) {
+            approvalRequest ?: run {
+                val (approval, signature) = makePairApproval(acct, pairingId, candidate ?: throw PairException("没有候选设备"), candidateKind ?: throw PairException("没有候选设备"), expires)
+                val env = Envelopes.seal(
+                    s.key,
+                    Header.newBuilder().setKind(PayloadKind.PAYLOAD_KIND_PAIRING).setRequestId(pairingId).setSender(acct.deviceId).build(),
+                    PairingPayload.newBuilder().setRoot(ByteString.copyFrom(acct.root)).setServer(acct.server).setApproval(ByteString.copyFrom(approval)).setApprovalSignature(ByteString.copyFrom(signature)).build(),
+                )
+                ApprovePairingRequest.newBuilder().setPairingId(pairingId).setPayload(env).setApproval(ByteString.copyFrom(approval)).setApprovalSignature(ByteString.copyFrom(signature)).build()
+            }.also { approvalRequest = it }
+        }
+        remote.api.pairing.approvePairing(request, Api.headers(tok)).value()
         // Only the new device confirming it has the key counts as success. A
         // pairing that disappears meanwhile leaves the outcome unknown.
         repeat(120) {
