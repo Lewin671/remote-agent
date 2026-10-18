@@ -33,7 +33,13 @@ func checkApprover(ctx context.Context, tx *sql.Tx, a *pb.PairApproval) error {
 	var pub []byte
 	var state int
 	err := tx.QueryRowContext(ctx, `SELECT d.public_key, a.status FROM devices d JOIN accounts a ON a.id = d.account_id WHERE d.account_id = ? AND d.id = ?`, a.AccountId, a.ApproverDeviceId).Scan(&pub, &state)
-	if err != nil || state != accountActive || !bytes.Equal(pub, a.ApproverPublicKey) {
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errAdmissionRequired
+		}
+		return err
+	}
+	if state != accountActive || !bytes.Equal(pub, a.ApproverPublicKey) {
 		return errAdmissionRequired
 	}
 	return nil

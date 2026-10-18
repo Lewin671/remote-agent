@@ -19,6 +19,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func TestApproverTransactionFailureIsNotAnAuthorizationDenial(t *testing.T) {
+	ts := newTestServer(t)
+	tx, err := ts.srv.store.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkApprover(context.Background(), tx, &pb.PairApproval{}); !errors.Is(err, sql.ErrTxDone) {
+		t.Fatalf("database failure was classified as authorization denial: %v", err)
+	}
+}
+
 // A revoked device is adversarial: it keeps the account root and can make
 // arbitrarily many fresh device identities. Tombstoning its old ID is not enough.
 func TestRemovedDeviceCannotRegisterNewDeviceKey(t *testing.T) {

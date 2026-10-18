@@ -324,7 +324,15 @@ func (ps *pairingService) ApprovePairing(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodePermissionDenied, errAdmissionRequired)
 	}
 	if err := ps.s.store.approveAdmission(ctx, a, p.candidate); err != nil {
-		return nil, connect.NewError(connect.CodePermissionDenied, err)
+		var apiErr *connect.Error
+		switch {
+		case errors.As(err, &apiErr):
+			return nil, err
+		case errors.Is(err, errAdmissionRequired):
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		default:
+			return nil, internal(err)
+		}
 	}
 	p.approval, p.approvalSig = bytes.Clone(a.raw), bytes.Clone(a.signature)
 	p.payloadHash = payloadHash
