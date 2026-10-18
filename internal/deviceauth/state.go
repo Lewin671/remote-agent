@@ -281,8 +281,14 @@ func ParseState(b []byte) (s State, err error) {
 	if d.done() != nil || len(s.Signature) != 64 {
 		return s, ErrInvalid
 	}
-	_, err = s.Hash()
-	return s, err
+	if _, err = s.Hash(); err != nil {
+		return s, err
+	}
+	canonical, err := s.MarshalBinary()
+	if err != nil || !bytes.Equal(canonical, b) {
+		return s, ErrInvalid
+	}
+	return s, nil
 }
 
 type Pin struct {
@@ -358,7 +364,7 @@ func VerifyTransition(parent, next State, recovery *RecoveryStatement) error {
 			return ErrInvalid
 		}
 	} else {
-		if next.Core.AuthorityID != parent.Core.AuthorityID || next.Core.RecoveryEd != parent.Core.RecoveryEd {
+		if next.Core.AuthorityID != parent.Core.AuthorityID {
 			return ErrInvalid
 		}
 		oldAuthority, ok := parent.Core.Member(parent.Core.AuthorityID)
@@ -438,13 +444,13 @@ func recoveryDelta(parent, next State) error {
 }
 
 func membershipDelta(parent, next State) error {
-	removed := []string{}
+	newlyRemoved := []string{}
 	added := 0
 	rotated := 0
 	for _, m := range parent.Core.Members {
 		nm, ok := next.Core.Member(m.ID)
 		if !ok {
-			removed = append(removed, m.ID)
+			newlyRemoved = append(newlyRemoved, m.ID)
 		} else if nm.EdPublic != m.EdPublic || nm.Kind != m.Kind {
 			return ErrInvalid
 		} else if nm.XPublic != m.XPublic {
@@ -453,13 +459,20 @@ func membershipDelta(parent, next State) error {
 	}
 	for _, m := range next.Core.Members {
 		if _, ok := parent.Core.Member(m.ID); !ok {
+			if slices.Contains(parent.Core.Removed, m.ID) {
+				return ErrInvalid // a removed ID can never be re-added
+			}
 			added++
 		}
 	}
-	if !slices.Equal(removed, next.Core.Removed) {
+	// Removed is the accumulated, sorted tombstone set, not just this
+	// transition's removals.
+	wantRemoved := append(slices.Clone(parent.Core.Removed), newlyRemoved...)
+	slices.Sort(wantRemoved)
+	if !slices.Equal(wantRemoved, next.Core.Removed) {
 		return ErrInvalid
 	}
-	if added > 1 || rotated > 1 || added > 0 && len(removed) > 0 || rotated > 0 && (added > 0 || len(removed) > 0) || added == 0 && len(removed) == 0 && rotated == 0 {
+	if added > 1 || rotated > 1 || added > 0 && len(newlyRemoved) > 0 || rotated > 0 && (added > 0 || len(newlyRemoved) > 0) || added == 0 && len(newlyRemoved) == 0 && rotated == 0 {
 		return ErrInvalid
 	}
 	return nil
@@ -555,7 +568,14 @@ func BuildState(parent State, members []Member, removed []string, secret, prevSe
 	return build(c, secret, prevSecret, signer)
 }
 func BuildRenewal(parent State, secret []byte, signer ed25519.PrivateKey, now uint64) (State, error) {
-	if len(signer) != 64 || len(secret) != 32 {
+	return BuildRenewalRotating(parent, secret, parent.Core.RecoveryEd, signer, now)
+}
+
+// BuildRenewalRotating is a normal lease renewal that also installs a new
+// recovery key. Only the current authority can sign it, so the owner can
+// revoke a leaked recovery code without waiting for a recovery.
+func BuildRenewalRotating(parent State, secret []byte, recoveryEd [32]byte, signer ed25519.PrivateKey, now uint64) (State, error) {
+	if len(signer) != 64 || len(secret) != 32 || recoveryEd == [32]byte{} {
 		return State{}, ErrInvalid
 	}
 	ph, _ := parent.Hash()
@@ -564,6 +584,7 @@ func BuildRenewal(parent State, secret []byte, signer ed25519.PrivateKey, now ui
 	c.Epoch++
 	c.IssuedAt = maxU64(now, c.IssuedAt)
 	c.NotAfter = addLease(c.IssuedAt)
+	c.RecoveryEd = recoveryEd
 	return build(c, secret, nil, signer)
 }
 func build(c Core, secret, prevSecret []byte, signer ed25519.PrivateKey) (State, error) {

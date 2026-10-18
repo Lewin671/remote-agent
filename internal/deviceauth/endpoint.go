@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -58,6 +59,19 @@ CREATE TABLE IF NOT EXISTS senders (
 	sender TEXT PRIMARY KEY,
 	high_water INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS accepted (
+	key BLOB PRIMARY KEY,
+	deadline INTEGER NOT NULL,
+	done INTEGER NOT NULL,
+	result BLOB,
+	failed INTEGER NOT NULL,
+	checksum BLOB NOT NULL
+);
+CREATE TABLE IF NOT EXISTS accepted_meta (
+	id INTEGER PRIMARY KEY CHECK (id = 1),
+	root BLOB NOT NULL,
+	cutoff INTEGER NOT NULL
+);
 `
 
 // floorWriteInterval is how often the receive time floor is persisted. Any
@@ -67,31 +81,34 @@ CREATE TABLE IF NOT EXISTS senders (
 const floorWriteInterval = uint64(time.Second / time.Millisecond)
 
 type record struct {
-	Version      int
-	Pin          Pin
-	States       map[uint64]State
-	HeadEpoch    uint64
-	MemberID     string
-	EdSeed       []byte
-	XPrivate     []byte
-	Secret       []byte
-	Member       bool
-	Counter      uint64
-	BlockEnd     uint64
-	CounterEpoch uint64
-	Floor        uint64
-	FloorSaved   uint64
-	ContentKeys  map[uint64][]byte
-	Recovery     map[uint64]RecoveryStatement
-	Accepted     map[string]accepted
-	HighWater    map[string]uint64
+	Version       int
+	Pin           Pin
+	States        map[uint64]State
+	HeadEpoch     uint64
+	MemberID      string
+	EdSeed        []byte
+	XPrivate      []byte
+	Secret        []byte
+	Member        bool
+	Counter       uint64
+	BlockEnd      uint64
+	CounterEpoch  uint64
+	Floor         uint64
+	FloorSaved    uint64
+	ContentKeys   map[uint64][]byte
+	Recovery      map[uint64]RecoveryStatement
+	Accepted      map[string]accepted
+	AcceptedFloor uint64
+	HighWater     map[string]uint64
 }
 
 type accepted struct {
-	Deadline uint64
-	Done     bool
-	Result   []byte
-	Failed   bool
+	Deadline  uint64
+	Done      bool
+	Result    []byte
+	Failed    bool
+	Persisted bool
+	Sum       Hash
 }
 
 type Endpoint struct {
@@ -103,6 +120,219 @@ type Endpoint struct {
 
 func chainHead(r record) State { return r.States[r.HeadEpoch] }
 
+const (
+	maxAccepted      = 8192
+	maxAcceptedBytes = 16 << 20
+)
+
+func acceptedChecksum(key string, a accepted) []byte {
+	e := encoder{}
+	e.lp([]byte(key))
+	e.u64(a.Deadline)
+	if a.Done {
+		e.u32(1)
+	} else {
+		e.u32(0)
+	}
+	e.lp(a.Result)
+	if a.Failed {
+		e.u32(1)
+	} else {
+		e.u32(0)
+	}
+	h := digest("ra3/accepted-entry\x00", e.b)
+	return h[:]
+}
+
+func acceptedRoot(entries map[string]accepted, cutoff uint64) []byte {
+	keys := make([]string, 0, len(entries))
+	for key, a := range entries {
+		if a.Persisted {
+			keys = append(keys, key)
+		}
+	}
+	slices.Sort(keys)
+	e := encoder{}
+	e.u64(cutoff)
+	e.u32(uint32(len(keys)))
+	for _, key := range keys {
+		e.lp([]byte(key))
+		sum := entries[key].Sum
+		e.raw(sum[:])
+	}
+	h := digest("ra3/accepted-log\x00", e.b)
+	return h[:]
+}
+
+func acceptedSize(entries map[string]accepted) int {
+	n := 0
+	for key, a := range entries {
+		n += len(key) + len(a.Result) + 128
+	}
+	return n
+}
+
+func cloneAccepted(in map[string]accepted) map[string]accepted {
+	out := make(map[string]accepted, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+// loadAccepted reads the bounded accepted log and checks its manifest, so a
+// flipped bit cannot silently turn an accepted request into a new one.
+func loadAccepted(db *sql.DB, r *record) error {
+	rows, err := db.Query(`SELECT key, deadline, done, result, failed, checksum FROM accepted`)
+	if err != nil {
+		return ErrStorage
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key, result, sum []byte
+		var deadline int64
+		var done, failed int
+		if err := rows.Scan(&key, &deadline, &done, &result, &failed, &sum); err != nil || len(key) > 1024 || deadline <= 0 || done < 0 || done > 1 || failed < 0 || failed > 1 || len(result) > MaxCipherBytes || len(sum) != 32 {
+			return ErrStorage
+		}
+		a := accepted{Deadline: uint64(deadline), Done: done == 1, Result: result, Failed: failed == 1, Persisted: true}
+		if !bytes.Equal(sum, acceptedChecksum(string(key), a)) {
+			return ErrStorage
+		}
+		copy(a.Sum[:], sum)
+		r.Accepted[string(key)] = a
+		if len(r.Accepted) > maxAccepted || acceptedSize(r.Accepted) > maxAcceptedBytes {
+			return ErrStorage
+		}
+	}
+	if rows.Err() != nil {
+		return ErrStorage
+	}
+	var root []byte
+	var cutoff int64
+	if err := db.QueryRow(`SELECT root, cutoff FROM accepted_meta WHERE id=1`).Scan(&root, &cutoff); err != nil || cutoff < 0 || !bytes.Equal(root, acceptedRoot(r.Accepted, uint64(cutoff))) {
+		return ErrStorage
+	}
+	r.AcceptedFloor = uint64(cutoff)
+	return nil
+}
+
+// persistAccepted writes the changed entry and any pruned entries with the
+// manifest in one transaction.
+func (e *Endpoint) persistAccepted(entries map[string]accepted, changed string, pruned []string, cutoff uint64) error {
+	tx, err := e.db.Begin()
+	if err != nil {
+		return ErrStorage
+	}
+	defer tx.Rollback()
+	for _, key := range pruned {
+		if _, err := tx.Exec(`DELETE FROM accepted WHERE key=?`, []byte(key)); err != nil {
+			return ErrStorage
+		}
+	}
+	a := entries[changed]
+	done, failed := 0, 0
+	if a.Done {
+		done = 1
+	}
+	if a.Failed {
+		failed = 1
+	}
+	if _, err := tx.Exec(`INSERT INTO accepted (key, deadline, done, result, failed, checksum) VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT (key) DO UPDATE SET deadline=excluded.deadline, done=excluded.done, result=excluded.result, failed=excluded.failed, checksum=excluded.checksum`,
+		[]byte(changed), a.Deadline, done, a.Result, failed, acceptedChecksum(changed, a)); err != nil {
+		return ErrStorage
+	}
+	if _, err := tx.Exec(`UPDATE accepted_meta SET root=?, cutoff=? WHERE id=1`, acceptedRoot(entries, cutoff), cutoff); err != nil {
+		return ErrStorage
+	}
+	return tx.Commit()
+}
+
+// startAccepted checks the log before the deadline (S1), prunes expired
+// entries and enforces the caps before the caller runs anything. Commands are
+// persisted before execution; other control frames stay in memory.
+func (e *Endpoint) startAccepted(key string, deadline, now uint64, persist bool) ([]byte, bool, error) {
+	if a, ok := e.data.Accepted[key]; ok {
+		if !a.Done {
+			return nil, false, ErrUnknown
+		}
+		if a.Failed {
+			return nil, false, ErrBackend
+		}
+		return bytes.Clone(a.Result), false, nil
+	}
+	now = maxU64(now, e.data.AcceptedFloor)
+	if deadline <= now {
+		return nil, false, ErrExpired
+	}
+	entries := cloneAccepted(e.data.Accepted)
+	var pruned []string
+	for k, a := range entries {
+		if a.Deadline <= now && (persist || !a.Persisted) {
+			delete(entries, k)
+			if a.Persisted {
+				pruned = append(pruned, k)
+			}
+		}
+	}
+	if len(entries) >= maxAccepted {
+		return nil, false, ErrCapacity
+	}
+	a := accepted{Deadline: deadline, Persisted: persist}
+	copy(a.Sum[:], acceptedChecksum(key, a))
+	entries[key] = a
+	if acceptedSize(entries) > maxAcceptedBytes {
+		return nil, false, ErrCapacity
+	}
+	cutoff := maxU64(e.data.AcceptedFloor, now)
+	if persist {
+		if err := e.persistAccepted(entries, key, pruned, cutoff); err != nil {
+			return nil, false, err
+		}
+	}
+	e.data.Accepted = entries
+	e.data.AcceptedFloor = cutoff
+	return nil, true, nil
+}
+
+func (e *Endpoint) finishAccepted(key string, result []byte, failed bool, persist bool) error {
+	a, ok := e.data.Accepted[key]
+	if !ok || a.Done {
+		return ErrInvalid
+	}
+	entries := cloneAccepted(e.data.Accepted)
+	a.Done = true
+	a.Result = bytes.Clone(result)
+	a.Failed = failed
+	copy(a.Sum[:], acceptedChecksum(key, a))
+	entries[key] = a
+	var pruned []string
+	for acceptedSize(entries) > maxAcceptedBytes {
+		oldest, found := "", false
+		for k, v := range entries {
+			if k == key || !v.Done || (!persist && v.Persisted) {
+				continue
+			}
+			if !found || v.Deadline < entries[oldest].Deadline {
+				oldest, found = k, true
+			}
+		}
+		if !found {
+			return ErrCapacity
+		}
+		delete(entries, oldest)
+		pruned = append(pruned, oldest)
+	}
+	if persist {
+		if err := e.persistAccepted(entries, key, pruned, e.data.AcceptedFloor); err != nil {
+			return err
+		}
+	}
+	e.data.Accepted = entries
+	return nil
+}
+
 func verifyChain(pin Pin, states []State, proofs []*RecoveryStatement) error {
 	if len(states) == 0 || len(states) > MaxStates || len(proofs) != len(states) {
 		return ErrInvalid
@@ -110,9 +340,15 @@ func verifyChain(pin Pin, states []State, proofs []*RecoveryStatement) error {
 	if pin.VerifyGenesis(states[0]) != nil {
 		return ErrUntrusted
 	}
-	for i := 1; i < len(states); i++ {
-		if err := VerifyTransition(states[i-1], states[i], proofs[i]); err != nil {
-			return err
+	now := uint64(time.Now().UnixMilli())
+	for i, s := range states {
+		if s.Core.IssuedAt > now+MaxClockSkew {
+			return ErrStale
+		}
+		if i > 0 {
+			if err := VerifyTransition(states[i-1], s, proofs[i]); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -149,6 +385,9 @@ func createStore(db *sql.DB) error {
 		return err
 	}
 	if _, err := tx.Exec(`INSERT INTO security (id, version, pin_account, pin_domain, pin_genesis, member_id, ed_seed, x_private, counter, block_end, counter_epoch, floor_ms, floor_saved_ms, member) VALUES (1, ?, '', X'', X'', '', X'', X'', 0, 0, 0, 0, 0, 0)`, storageVersion); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`INSERT INTO accepted_meta (id, root, cutoff) VALUES (1, ?, 0)`, acceptedRoot(nil, 0)); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -254,6 +493,21 @@ func (e *Endpoint) persistAll() error {
 			return ErrStorage
 		}
 	}
+	for key, a := range d.Accepted {
+		done, failed := 0, 0
+		if a.Done {
+			done = 1
+		}
+		if a.Failed {
+			failed = 1
+		}
+		if _, err := tx.Exec(`INSERT OR REPLACE INTO accepted (key, deadline, done, result, failed, checksum) VALUES (?, ?, ?, ?, ?, ?)`, []byte(key), a.Deadline, done, a.Result, failed, acceptedChecksum(key, a)); err != nil {
+			return ErrStorage
+		}
+	}
+	if _, err := tx.Exec(`INSERT OR REPLACE INTO accepted_meta (id, root, cutoff) VALUES (1, ?, ?)`, acceptedRoot(d.Accepted, d.AcceptedFloor), d.AcceptedFloor); err != nil {
+		return ErrStorage
+	}
 	if err := tx.Commit(); err != nil {
 		return ErrStorage
 	}
@@ -299,6 +553,10 @@ func OpenEndpoint(path string) (*Endpoint, error) {
 	copy(r.Pin.Domain[:], pinDomain)
 	copy(r.Pin.Genesis[:], pinGenesis)
 	r.Member = member != 0
+	if err := loadAccepted(db, &r); err != nil {
+		db.Close()
+		return nil, err
+	}
 	// Counter values in the last reserved block are never handed out again
 	// after a restart: start at the durable block end, not at the stored
 	// in-use counter.
@@ -407,6 +665,9 @@ func (e *Endpoint) validate() error {
 	for ep := uint64(1); ep <= r.HeadEpoch; ep++ {
 		s, ok := r.States[ep]
 		if !ok {
+			return ErrStorage
+		}
+		if s.Core.IssuedAt > uint64(time.Now().UnixMilli())+MaxClockSkew {
 			return ErrStorage
 		}
 		if ep == 1 {
@@ -523,7 +784,7 @@ func (e *Endpoint) Install(states []State, proofs []*RecoveryStatement) error {
 			}
 			return ErrStale
 		}
-		if s.Core.Epoch != next.HeadEpoch+1 || next.HeadEpoch >= MaxStates {
+		if s.Core.Epoch != next.HeadEpoch+1 || next.HeadEpoch >= MaxStates || s.Core.IssuedAt > uint64(time.Now().UnixMilli())+MaxClockSkew {
 			return ErrStale
 		}
 		prev := next.States[next.HeadEpoch]
@@ -537,18 +798,26 @@ func (e *Endpoint) Install(states []State, proofs []*RecoveryStatement) error {
 				return err
 			}
 			if s.Core.ContentEpoch != prev.Core.ContentEpoch {
+				// A batch can contain two content-epoch changes; compare
+				// against the key of the previous state in the batch, not the
+				// local head at the start of the batch.
 				if proofs[i] == nil {
 					old, err := openPrevSecret(secret, s.PrevSecret)
-					if err != nil || !bytes.Equal(old, d.Secret) {
+					if err != nil || !bytes.Equal(old, next.Secret) {
 						return ErrUntrusted
 					}
 				}
-				next.ContentKeys[prev.Core.ContentEpoch] = bytes.Clone(d.Secret)
+				next.ContentKeys[prev.Core.ContentEpoch] = bytes.Clone(next.Secret)
 				next.Secret = secret
 				next.Counter = 0
 				next.BlockEnd = 0
 				next.CounterEpoch = s.Core.ContentEpoch
 				next.Member = true
+				// Counters restart with the content key. The durable replay
+				// floor and accepted log belong to the old epoch; keeping
+				// them would reject the new epoch's counters.
+				next.HighWater = map[string]uint64{}
+				next.Accepted = map[string]accepted{}
 			} else if next.Secret != nil {
 				next.Secret = secret
 				next.Member = true
@@ -600,6 +869,17 @@ func (e *Endpoint) persistInstall(old, next record) error {
 	if _, err := tx.Exec(`UPDATE security SET secret=?, counter=?, block_end=?, counter_epoch=?, member=? WHERE id=1`,
 		next.Secret, next.Counter, next.BlockEnd, next.CounterEpoch, boolInt(next.Member)); err != nil {
 		return ErrStorage
+	}
+	if next.CounterEpoch != old.CounterEpoch {
+		if _, err := tx.Exec(`DELETE FROM accepted`); err != nil {
+			return ErrStorage
+		}
+		if _, err := tx.Exec(`DELETE FROM senders`); err != nil {
+			return ErrStorage
+		}
+		if _, err := tx.Exec(`UPDATE accepted_meta SET root=?, cutoff=? WHERE id=1`, acceptedRoot(nil, next.AcceptedFloor), next.AcceptedFloor); err != nil {
+			return ErrStorage
+		}
 	}
 	for ep := old.HeadEpoch + 1; ep <= next.HeadEpoch; ep++ {
 		s, ok := next.States[ep]
@@ -771,6 +1051,18 @@ func (e *Endpoint) Prepare(h Header, sessionSeed, plain []byte) (Ciphertext, err
 		return Ciphertext{}, ErrUntrusted
 	}
 	head := chainHead(d)
+	sh, _ := head.Hash()
+	h.Account = d.Pin.Account
+	h.Domain = d.Pin.Domain
+	h.Epoch = head.Core.Epoch
+	h.State = sh
+	h.ContentEpoch = head.Core.ContentEpoch
+	h.Sender = d.MemberID
+	// Check the caller's scope before reserving a block, so a bad header
+	// cannot advance the persisted block past the in-memory value.
+	if h.Scope(head) != nil {
+		return Ciphertext{}, ErrUntrusted
+	}
 	if head.Core.ContentEpoch != d.CounterEpoch {
 		d.Counter, d.BlockEnd, d.CounterEpoch = 0, 0, head.Core.ContentEpoch
 	}
@@ -784,17 +1076,7 @@ func (e *Endpoint) Prepare(h Header, sessionSeed, plain []byte) (Ciphertext, err
 	}
 	counter := d.Counter + 1
 	d.Counter = counter
-	sh, _ := head.Hash()
-	h.Account = d.Pin.Account
-	h.Domain = d.Pin.Domain
-	h.Epoch = head.Core.Epoch
-	h.State = sh
-	h.ContentEpoch = head.Core.ContentEpoch
-	h.Sender = d.MemberID
 	h.Counter = counter
-	if h.Scope(head) != nil {
-		return Ciphertext{}, ErrUntrusted
-	}
 	// Consume the in-memory counter even if sealing fails, so the durable
 	// block reservation stays consistent with what this endpoint hands out.
 	e.data = d
@@ -844,11 +1126,10 @@ func (e *Endpoint) Open(w Wire, sessionSeed []byte, live bool, now uint64) (Head
 	return h, plain, err
 }
 
-// Accept applies a control envelope at most once. Replay protection is a
-// durable per-sender high-water counter reserved a block at a time before
-// the operation runs; the accepted table only reuses a result while the
-// process is up. After a restart a repeated counter is refused (its outcome
-// is unknown) rather than run again.
+// Accept applies a control envelope at most once. The accepted table is
+// checked before the deadline, so an expired retry still learns the recorded
+// result. New command entries are persisted before fn runs; terminal and
+// other non-command frames stay in memory and are pruned by deadline.
 func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header, []byte) ([]byte, error)) ([]byte, error) {
 	e.mu.Lock()
 	h, err := ParseHeader(w.Header)
@@ -859,6 +1140,11 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 	if !h.Purpose.Control() {
 		e.mu.Unlock()
 		return nil, ErrInvalid
+	}
+	key := acceptedKey(h)
+	if result, cached, err := e.lookupAccepted(key); cached || err != nil {
+		e.mu.Unlock()
+		return result, err
 	}
 	now = maxU64(now, e.data.Floor)
 	if h.Deadline <= now || h.Deadline-now > 10*60*1000 {
@@ -876,14 +1162,6 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 		}
 		e.data = d
 	}
-	key := h.Sender + "/" + itoa(uint64(h.Purpose)) + "/" + h.Machine + "/" + h.Session + "/" + h.Request + "/" + itoa(h.Seq)
-	if a, ok := e.data.Accepted[key]; ok && a.Done {
-		e.mu.Unlock()
-		if a.Failed {
-			return nil, errors.New("security: previously accepted operation failed")
-		}
-		return a.Result, nil
-	}
 	if _, ok := e.data.States[h.Epoch]; !ok {
 		e.mu.Unlock()
 		return nil, ErrUnknown
@@ -898,19 +1176,21 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 		return nil, err
 	}
 
+	persist := h.Purpose == Command
 	e.mu.Lock()
-	if a, ok := e.data.Accepted[key]; ok && a.Done {
+	if result, cached, err := e.lookupAccepted(key); cached || err != nil {
 		e.mu.Unlock()
-		if a.Failed {
-			return nil, errors.New("security: previously accepted operation failed")
-		}
-		return a.Result, nil
+		return result, err
 	}
-	if h.Purpose == Command {
+	if persist {
 		if err := e.reserveReplayLocked(&e.data, h.Sender, h.Counter); err != nil {
 			e.mu.Unlock()
 			return nil, err
 		}
+	}
+	if _, _, err := e.startAccepted(key, h.Deadline, now, persist); err != nil {
+		e.mu.Unlock()
+		return nil, err
 	}
 	e.mu.Unlock()
 
@@ -918,13 +1198,29 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	d := e.data
-	d.Accepted[key] = accepted{Deadline: h.Deadline, Done: true, Result: bytes.Clone(out), Failed: callErr != nil}
-	if len(d.Accepted) > 8192 {
-		return nil, ErrCapacity
+	if err := e.finishAccepted(key, out, callErr != nil, persist); err != nil {
+		return nil, err
 	}
-	e.data = d
 	return out, callErr
+}
+
+func acceptedKey(h Header) string {
+	return h.Sender + "/" + itoa(uint64(h.Purpose)) + "/" + itoa(h.ContentEpoch) + "/" + h.Machine + "/" + h.Session + "/" + h.Request + "/" + itoa(h.Seq)
+}
+
+// lookupAccepted must be called with e.mu held.
+func (e *Endpoint) lookupAccepted(key string) ([]byte, bool, error) {
+	a, ok := e.data.Accepted[key]
+	if !ok {
+		return nil, false, nil
+	}
+	if !a.Done {
+		return nil, false, ErrUnknown
+	}
+	if a.Failed {
+		return nil, false, ErrBackend
+	}
+	return bytes.Clone(a.Result), true, nil
 }
 
 // reserveReplayLocked refuses a command whose counter a previous run already

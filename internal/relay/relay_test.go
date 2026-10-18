@@ -680,10 +680,10 @@ func TestCommandsRunOnce(t *testing.T) {
 	e.online(t, false)
 	e.startRelay()
 	e.online(t, true)
-	// After a restart the counter is below the persisted high-water: the
-	// outcome is unknown and the command is not repeated.
-	if res, err := e.client.Forward(ctx, s.MachineID, cmd); err == nil {
-		t.Fatalf("retry after restart ran again: %v", res)
+	// The accepted Command log is durable: the same request returns the
+	// recorded result without running again.
+	if res, err := e.client.Forward(ctx, s.MachineID, cmd); err != nil || res.GetSend().QueuePosition != 1 {
+		t.Fatalf("retry after restart: %v %v", res, err)
 	}
 	if n := e.backend.sendCount(); n != 1 {
 		t.Fatalf("send ran %d times", n)

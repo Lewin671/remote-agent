@@ -156,7 +156,7 @@ var SASEmoji = [256]string{
 // Neither a shared account root nor a relay directory can substitute this pin.
 func PairDomainTranscript(id string, initiator, joiner, device, hpke []byte, kind int32, trustDescriptor []byte) []byte {
 	h := sha256.New()
-	h.Write([]byte("ra2/pair-domain\x00"))
+	h.Write([]byte("ra3/pair-domain\x00"))
 	for _, part := range [][]byte{PairIdentityTranscript(id, initiator, joiner, device, kind), hpke, trustDescriptor} {
 		var n [4]byte
 		binary.BigEndian.PutUint32(n[:], uint32(len(part)))
@@ -168,7 +168,7 @@ func PairDomainTranscript(id string, initiator, joiner, device, hpke []byte, kin
 
 func PairDomainCommit(initiator, trustDescriptor []byte) []byte {
 	h := sha256.New()
-	h.Write([]byte("ra2/pair-commit\x00"))
+	h.Write([]byte("ra3/pair-commit\x00"))
 	for _, part := range [][]byte{initiator, trustDescriptor} {
 		var n [4]byte
 		binary.BigEndian.PutUint32(n[:], uint32(len(part)))

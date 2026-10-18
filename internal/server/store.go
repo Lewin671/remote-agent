@@ -411,8 +411,9 @@ func (s *store) addDevice(ctx context.Context, account string, create *newAccoun
 		return errSuspended
 	}
 	var owner string
-	var priorRaw, priorSig []byte
-	err = tx.QueryRowContext(ctx, `SELECT account_id, registration, signature FROM devices WHERE id = ?`, id).Scan(&owner, &priorRaw, &priorSig)
+	var priorRaw, priorSig, priorPub []byte
+	var priorKind int32
+	err = tx.QueryRowContext(ctx, `SELECT account_id, registration, signature, public_key, kind FROM devices WHERE id = ?`, id).Scan(&owner, &priorRaw, &priorSig, &priorPub, &priorKind)
 	switch {
 	case err == nil && owner != account:
 		return errOtherAccount
@@ -420,11 +421,14 @@ func (s *store) addDevice(ctx context.Context, account string, create *newAccoun
 		if bytes.Equal(priorRaw, raw) && bytes.Equal(priorSig, sig) {
 			return tx.Commit() // Exact response-loss retry, before admission consumption.
 		}
-		// Re-pairing an existing device: a fresh phone-signed admission for
-		// this exact device ID and kind replaces the registration and ends
-		// its old logins. Only an exact retry gets in without one.
-		if err := consumeAdmission(ctx, tx, account, id, reg, approval); err != nil {
-			return err
+		// The phone may register the candidate while preparing the pairing
+		// and the candidate then registers with the same approval. A
+		// replacement for the same device key/kind is that same device, not
+		// a new admission; otherwise require a fresh unused admission.
+		if approval == nil || !bytes.Equal(priorPub, reg.DevicePublicKey) || priorKind != int32(reg.Kind) {
+			if err := consumeAdmission(ctx, tx, account, id, reg, approval); err != nil {
+				return err
+			}
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM tokens WHERE account_id = ? AND device_id = ?`, account, id); err != nil {
 			return err
@@ -930,15 +934,23 @@ func (t *tstore) removeDevice(ctx context.Context, id string) (bool, error) {
 // logins and push targets, and for a machine deletes its sessions, events and
 // images and recomputes the account's event bytes.
 func removeDeviceTx(ctx context.Context, tx *sql.Tx, acct, id string) (bool, error) {
-	var kind int32
-	if err := tx.QueryRowContext(ctx, `SELECT kind FROM devices WHERE account_id = ? AND id = ?`, acct, id).Scan(&kind); err != nil {
-		return false, err
-	}
+	// Tombstone and cancel admissions even when there is no device row: a
+	// half-added member must never register with an old approval.
 	if _, err := tx.ExecContext(ctx, `INSERT INTO revoked_devices (id, account_id, revoked_ms) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING`, id, acct, nowMs()); err != nil {
 		return false, err
 	}
+	if _, err := tx.ExecContext(ctx, `UPDATE pairing_admissions SET canceled_ms = 1 WHERE account_id = ? AND used_ms = 0`, acct); err != nil {
+		return false, err
+	}
+	var kind int32
+	err := tx.QueryRowContext(ctx, `SELECT kind FROM devices WHERE account_id = ? AND id = ?`, acct, id).Scan(&kind)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
 	stmts := []string{
-		`UPDATE pairing_admissions SET canceled_ms = 1 WHERE account_id = ?1 AND used_ms = 0`,
 		`DELETE FROM devices WHERE account_id = ?1 AND id = ?2`,
 		`DELETE FROM tokens WHERE account_id = ?1 AND device_id = ?2`,
 		`DELETE FROM push_subs WHERE account_id = ?1 AND device_id = ?2`,

@@ -184,6 +184,33 @@ func (a *Authority) addMember(ctx context.Context, member deviceauth.Member, xpu
 	return state, nil
 }
 
+// AddMember adds an already registered member to the signed chain.
+func (a *Authority) AddMember(ctx context.Context, member deviceauth.Member, xpub []byte) (deviceauth.State, error) {
+	return a.addMember(ctx, member, xpub)
+}
+
+// RegisterPairMember registers the candidate the phone learned about during
+// pairing. The phone signs the registration approval; no account root is
+// involved.
+func (a *Authority) RegisterPairMember(ctx context.Context, pairingID string, member deviceauth.Member, kind deviceauth.Kind) ([]byte, []byte, error) {
+	pbKind := pb.DeviceKind_DEVICE_KIND_MACHINE
+	if kind == deviceauth.Client {
+		pbKind = pb.DeviceKind_DEVICE_KIND_CLIENT
+	}
+	approval, sig, err := e2e.NewPairApproval(a.Pin.Account, pairingID, a.Ed, member.EdPublic[:], pbKind, time.Now().Add(time.Minute).UnixMilli())
+	if err != nil {
+		return nil, nil, err
+	}
+	reg, err := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: a.AccountPublicKey, DevicePublicKey: member.EdPublic[:], Kind: pbKind, CreatedMs: time.Now().UnixMilli()})
+	if err != nil {
+		return nil, nil, err
+	}
+	if _, err := a.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Approval: approval, ApprovalSignature: sig})); err != nil {
+		return nil, nil, err
+	}
+	return approval, sig, nil
+}
+
 // Client returns a client for an enrolled device.
 func (e *Enrolled) Client(a *Authority) *Client {
 	hc := netpolicy.Client(time.Minute)

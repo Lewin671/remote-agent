@@ -20,6 +20,11 @@ const (
 	MaxCipherBytes  = 4 << 20
 	MaxMutableBytes = 64 << 10
 	MaxStates       = 4096
+	// A pairing payload carries the chain inside one envelope capped at
+	// 1 MiB; above this it is refused explicitly instead of failing as a
+	// generic oversized envelope. No compaction is implemented yet.
+	MaxPairStates     = 256
+	MaxPairChainBytes = 800 << 10
 
 	// Lease is the membership lease; MaxLease is the largest accepted lease.
 	Lease    = 72 * 60 * 60 * 1000
@@ -27,16 +32,24 @@ const (
 
 	// CounterBlock is reserved durably before use.
 	CounterBlock = 4096
+
+	// MaxClockSkew is how far ahead of the local clock a state's IssuedAt
+	// may be. A phone far ahead would otherwise keep a lease alive past the
+	// intended revocation window.
+	MaxClockSkew = 5 * 60 * 1000
 )
 
 var (
-	ErrInvalid     = errors.New("security: invalid authenticated object")
-	ErrUntrusted   = errors.New("security: untrusted domain or signature")
-	ErrStale       = errors.New("security: trusted state must be synchronized")
-	ErrUnknown     = errors.New("security: unknown state")
-	ErrUnavailable = errors.New("security: content is unavailable before the recovery boundary")
-	ErrStorage     = errors.New("security: local security state unavailable")
-	ErrCapacity    = errors.New("security: capacity exceeded")
+	ErrInvalid       = errors.New("security: invalid authenticated object")
+	ErrUntrusted     = errors.New("security: untrusted domain or signature")
+	ErrStale         = errors.New("security: trusted state must be synchronized")
+	ErrUnknown       = errors.New("security: unknown state")
+	ErrUnavailable   = errors.New("security: content is unavailable before the recovery boundary")
+	ErrExpired       = errors.New("security: expired control was not newly accepted")
+	ErrBackend       = errors.New("security: previously accepted operation failed")
+	ErrStorage       = errors.New("security: local security state unavailable")
+	ErrCapacity      = errors.New("security: capacity exceeded")
+	ErrChainTooLarge = errors.New("security: security chain is too large to pair; rebuild the account")
 )
 
 type Hash [32]byte
