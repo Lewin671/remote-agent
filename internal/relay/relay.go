@@ -143,12 +143,13 @@ func sleep(ctx context.Context, d time.Duration) {
 
 // conn is one connected period: the login token, clients and keys.
 type conn struct {
-	security *securitySession
-	r        *Relay
-	acct     *Account
-	machine  remoteagentv1connect.MachineServiceClient
-	ws       *websocket.Conn
-	token    string
+	security  *securitySession
+	r         *Relay
+	acct      *Account
+	machine   remoteagentv1connect.MachineServiceClient
+	publishMu sync.Mutex
+	ws        *websocket.Conn
+	token     string
 }
 
 // session logs in, opens the stream, and serves until an error.
@@ -173,7 +174,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		go func() {
 			rctx, rcancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer rcancel()
-			c.republishAfterRecovery(rctx)
+			c.ensurePublished(rctx)
 		}()
 	}
 
@@ -202,6 +203,9 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		return err
 	}
 	meta := c.r.backend.MachineMeta()
+	if err := c.ensurePublished(ctx); err != nil {
+		return err
+	}
 	if err := c.putMachine(ctx, meta); err != nil {
 		return err
 	}
@@ -309,12 +313,14 @@ func revision() uint64 {
 
 // republishAfterRecovery re-seals current machine and session metadata under
 // the new content key after a recovery boundary. Old events and images are
-// never re-encrypted: the new phone must not receive old plaintext.
-func (c *conn) republishAfterRecovery(ctx context.Context) {
+// never re-encrypted: the new phone must not receive old plaintext. The
+// published content epoch is written last, so a crash before it makes the
+// next sync retry the whole republish.
+func (c *conn) republishAfterRecovery(ctx context.Context) error {
 	if err := c.putMachine(ctx, c.r.backend.MachineMeta()); err != nil {
-		slog.Warn("relay: republish machine metadata after recovery", "err", err)
-		return
+		return err
 	}
+	var firstErr error
 	for _, id := range c.r.backend.SessionIDs() {
 		info, err := c.r.backend.SessionInfo(id)
 		if err != nil {
@@ -326,8 +332,29 @@ func (c *conn) republishAfterRecovery(ctx context.Context) {
 		}
 		if _, err := c.putSession(ctx, id, key, info); err != nil {
 			slog.Warn("relay: republish session after recovery", "session", id, "err", err)
+			if firstErr == nil {
+				firstErr = err
+			}
 		}
 	}
+	if firstErr != nil {
+		return firstErr
+	}
+	_, head, _ := c.security.endpoint.Snapshot()
+	return writePublishedEpoch(head.Core.ContentEpoch)
+}
+
+// ensurePublished compares the durable marker with the current head and
+// republishes after a recovery even if the process crashed before the
+// callback ran.
+func (c *conn) ensurePublished(ctx context.Context) error {
+	c.publishMu.Lock()
+	defer c.publishMu.Unlock()
+	_, head, _ := c.security.endpoint.Snapshot()
+	if got, err := readPublishedEpoch(); err == nil && got == head.Core.ContentEpoch {
+		return nil
+	}
+	return c.republishAfterRecovery(ctx)
 }
 
 func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {

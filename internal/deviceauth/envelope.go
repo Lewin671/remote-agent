@@ -300,7 +300,7 @@ func (c Ciphertext) verifyOrigin(s State, head State, live bool, now uint64) (He
 			return h, Hash{}, ErrUntrusted
 		}
 		if h.Purpose.Control() {
-			if head.Core.NotAfter < now || head.Core.ContentEpoch != h.ContentEpoch {
+			if head.Core.NotAfter < now || head.Core.IssuedAt > now+MaxClockSkew || head.Core.ContentEpoch != h.ContentEpoch {
 				return h, Hash{}, ErrStale
 			}
 		}

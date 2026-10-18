@@ -100,8 +100,9 @@ install_daemon() {
 		say ""
 		say "Next:"
 		say "  remote-agent-service install        run the daemon in the background, now and at login"
-		say "  remote-agent account init --server https://ra.example.com"
-		say "                                      connect to your relay (see the self-hosting guide)"
+		say "  In the phone app: create the account on https://ra.example.com with the setup token,"
+		say "  then run: remote-agent account join --server https://ra.example.com --code CODE"
+		say "                                      (see the self-hosting guide)"
 		say "  remote-agent codex | claude         start a session here"
 	fi
 	case ":$PATH:" in
@@ -147,8 +148,9 @@ install_server() {
 	say "  1. Point your relay domain's DNS record at this machine."
 	say "  2. Set RELAY_DOMAIN and ALLOWED_ORIGINS in $dir/.env"
 	say "  3. cd $dir && docker compose up -d --build"
-	say "  4. On your computer: remote-agent account init --server https://<your relay domain>"
-	say "     It asks for the setup token: grep RA_SETUP_TOKEN $dir/.env"
+	say "  4. In the Android app: create the account on https://<your relay domain> with the setup token:"
+	say "     grep RA_SETUP_TOKEN $dir/.env"
+	say "  5. On your computer: remote-agent account join --server https://<your relay domain> --code CODE"
 }
 
 install_web() {

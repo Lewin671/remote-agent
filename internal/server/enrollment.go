@@ -25,7 +25,6 @@ func parseApproval(raw, signature []byte) (*enrollmentApproval, error) {
 	}
 	a, err := e2e.VerifyPairApproval(raw, signature)
 	if err != nil {
-		println("DEBUG approval", len(raw), len(signature), err.Error())
 		return nil, errAdmissionRequired
 	}
 	return &enrollmentApproval{raw: bytes.Clone(raw), signature: bytes.Clone(signature), info: a}, nil
@@ -85,6 +84,22 @@ func (s *store) approveAdmission(ctx context.Context, a *enrollmentApproval, can
 	}
 	if n >= maxPairings {
 		return errFull("too many device approvals in progress")
+	}
+	var existingAccount, existingCandidate string
+	var existingKind int32
+	var existingApproval, existingSignature []byte
+	err = tx.QueryRowContext(ctx, `SELECT account_id, candidate_device_id, candidate_kind, approval, signature FROM pairing_admissions WHERE pairing_id = ?`, a.info.PairingId).
+		Scan(&existingAccount, &existingCandidate, &existingKind, &existingApproval, &existingSignature)
+	switch {
+	case err == nil:
+		// A fresh phone-signed admission may already have been recorded by
+		// RegisterDevice before ApprovePairing; accept the identical row.
+		if existingAccount == a.info.AccountId && existingCandidate == e2e.DeviceID(a.info.CandidateDevicePublicKey) && existingKind == int32(a.info.CandidateKind) && bytes.Equal(existingApproval, a.raw) && bytes.Equal(existingSignature, a.signature) {
+			return tx.Commit()
+		}
+		return errAdmissionRequired
+	case !errors.Is(err, sql.ErrNoRows):
+		return err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO pairing_admissions (pairing_id, account_id, approver_device_id, candidate_device_id, candidate_kind, approval, signature, expires_ms, candidate_token_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, a.info.PairingId, a.info.AccountId, a.info.ApproverDeviceId, e2e.DeviceID(a.info.CandidateDevicePublicKey), int32(a.info.CandidateKind), a.raw, a.signature, a.info.ExpiresMs, candidateTokenHash)
 	if err != nil {

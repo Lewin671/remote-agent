@@ -126,7 +126,7 @@ func newPusher(s *Server) (*pusher, error) {
 
 func kindBit(k pb.NotifyKind) int {
 	switch k {
-	case pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED:
+	case pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED, pb.NotifyKind_NOTIFY_KIND_SECURITY:
 		return 1 << int(k)
 	default:
 		return 0
@@ -200,6 +200,7 @@ func (p *pusher) setFCM(ctx context.Context, t *tstore, deviceID, token string, 
 var pushText = map[pb.NotifyKind]string{
 	pb.NotifyKind_NOTIFY_KIND_ATTENTION:  "有会话在等你处理",
 	pb.NotifyKind_NOTIFY_KIND_TURN_ENDED: "一轮对话结束了",
+	pb.NotifyKind_NOTIFY_KIND_SECURITY:   "有设备申请接管管理权",
 }
 
 // notify pushes a notification to subscribed clients. content is a
@@ -207,6 +208,16 @@ var pushText = map[pb.NotifyKind]string{
 // notification is sent once per key; without one, once per session and
 // kind within pushCoalesce.
 func (p *pusher) notify(st *tstore, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
+	return p.notifyTo(st, "", sessionID, kind, content, dedupeKey)
+}
+
+// notifyDevice sends to one device only, for account-level notices that must
+// reach the current authority phone rather than every member.
+func (p *pusher) notifyDevice(st *tstore, deviceID, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
+	return p.notifyTo(st, deviceID, sessionID, kind, content, dedupeKey)
+}
+
+func (p *pusher) notifyTo(st *tstore, deviceID, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
 	body, ok := pushText[kind]
 	if !ok {
 		return invalid("unknown notification kind")
@@ -236,7 +247,15 @@ func (p *pusher) notify(st *tstore, sessionID string, kind pb.NotifyKind, conten
 
 	type target struct{ device, sub, token string }
 	var targets []target
-	rows, err := st.db.Query(`SELECT device_id, subscription FROM push_subs WHERE account_id = ? AND kinds & ? != 0 LIMIT ?`, st.acct, kindBit(kind), maxAccountPushDeliveries+1)
+	webQuery := `SELECT device_id, subscription FROM push_subs WHERE account_id = ? AND kinds & ? != 0`
+	webArgs := []any{st.acct, kindBit(kind)}
+	if deviceID != "" {
+		webQuery += ` AND device_id = ?`
+		webArgs = append(webArgs, deviceID)
+	}
+	webQuery += ` LIMIT ?`
+	webArgs = append(webArgs, maxAccountPushDeliveries+1)
+	rows, err := st.db.Query(webQuery, webArgs...)
 	if err != nil {
 		return err
 	}
@@ -254,7 +273,15 @@ func (p *pusher) notify(st *tstore, sessionID string, kind pb.NotifyKind, conten
 		return err
 	}
 	if p.fcm != nil {
-		rows, err := st.db.Query(`SELECT device_id, token FROM fcm_targets WHERE account_id = ? AND kinds & ? != 0 LIMIT ?`, st.acct, kindBit(kind), maxAccountPushDeliveries+1)
+		fcmQuery := `SELECT device_id, token FROM fcm_targets WHERE account_id = ? AND kinds & ? != 0`
+		fcmArgs := []any{st.acct, kindBit(kind)}
+		if deviceID != "" {
+			fcmQuery += ` AND device_id = ?`
+			fcmArgs = append(fcmArgs, deviceID)
+		}
+		fcmQuery += ` LIMIT ?`
+		fcmArgs = append(fcmArgs, maxAccountPushDeliveries+1)
+		rows, err := st.db.Query(fcmQuery, fcmArgs...)
 		if err != nil {
 			return err
 		}

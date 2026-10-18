@@ -16,6 +16,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -103,7 +104,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil {
 		return nil, err
 	}
-	peek, err := pc.PeekPairing(ctx, connect.NewRequest(&pb.PeekPairingRequest{Code: link.Code, ProtocolVersion: 9}))
+	peek, err := pc.PeekPairing(ctx, connect.NewRequest(&pb.PeekPairingRequest{Code: link.Code, ProtocolVersion: protocol.Version}))
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +115,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		return nil, errors.New("the server returned another device's commitment; pairing stopped")
 	}
 	joined, err := pc.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{
-		Code: link.Code, JoinerPublic: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_MACHINE, DevicePublicKey: pub, DeviceHpkePublicKey: xpub,
+		Code: link.Code, JoinerPublic: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_MACHINE, DevicePublicKey: pub, DeviceHpkePublicKey: xpub, ProtocolVersion: protocol.Version,
 	}))
 	if err != nil {
 		return nil, err
@@ -193,7 +194,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	}
 	auth := remoteagentv1connect.NewAuthServiceClient(httpClient(), server)
 	res, err := auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{
-		ProtocolVersion: 9, Registration: reg, Approval: payload.Approval, ApprovalSignature: payload.ApprovalSignature,
+		ProtocolVersion: protocol.Version, Registration: reg, Approval: payload.Approval, ApprovalSignature: payload.ApprovalSignature,
 	}))
 	if err != nil {
 		return nil, fmt.Errorf("register: %w", err)
@@ -223,6 +224,16 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 func verifyPairChain(pin deviceauth.Pin, in []*pb.SecurityState, devicePub, deviceX []byte) ([]deviceauth.State, []*deviceauth.RecoveryStatement, deviceauth.Member, error) {
 	if len(in) == 0 || len(in) > deviceauth.MaxStates {
 		return nil, nil, deviceauth.Member{}, deviceauth.ErrInvalid
+	}
+	if len(in) > deviceauth.MaxPairStates {
+		return nil, nil, deviceauth.Member{}, deviceauth.ErrChainTooLarge
+	}
+	size := 0
+	for _, raw := range in {
+		size += len(raw.State) + len(raw.Recovery)
+	}
+	if size > deviceauth.MaxPairChainBytes {
+		return nil, nil, deviceauth.Member{}, deviceauth.ErrChainTooLarge
 	}
 	states := make([]deviceauth.State, 0, len(in))
 	proofs := make([]*deviceauth.RecoveryStatement, 0, len(in))

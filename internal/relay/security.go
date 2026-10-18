@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -188,7 +191,27 @@ func (c *conn) securitySyncLoop(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("security synchronization: %w", err)
 		}
+		publishCtx, publishCancel := context.WithTimeout(ctx, 60*time.Second)
+		err = c.ensurePublished(publishCtx)
+		publishCancel()
+		if err != nil {
+			return fmt.Errorf("security republish: %w", err)
+		}
 	}
+}
+
+func publishedEpochPath() string { return filepath.Join(paths.Dir(), "security-published") }
+
+func readPublishedEpoch() (uint64, error) {
+	b, err := os.ReadFile(publishedEpochPath())
+	if err != nil {
+		return 0, err
+	}
+	return strconv.ParseUint(strings.TrimSpace(string(b)), 10, 64)
+}
+
+func writePublishedEpoch(epoch uint64) error {
+	return writeFileSync(publishedEpochPath(), []byte(strconv.FormatUint(epoch, 10)))
 }
 
 // headerOfSecurity decodes the sealed header's routing projection.
