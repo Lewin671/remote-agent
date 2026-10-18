@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -525,5 +526,31 @@ func TestRecoveryContextExposesAccountPublicKey(t *testing.T) {
 	}
 	if res.Msg.Phase != pb.GetRecoveryContextResponse_PHASE_UNSPECIFIED {
 		t.Fatalf("phase %v", res.Msg.Phase)
+	}
+}
+
+// TestStateFromTheFutureIsAClockWarning covers the phone clock being ahead:
+// the relay refuses the state and says that the clock, not the account, is
+// wrong.
+func TestStateFromTheFutureIsAClockWarning(t *testing.T) {
+	ts := newTestServer(t)
+	ctx := context.Background()
+	if _, _, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup"); err != nil {
+		t.Fatal(err)
+	}
+	c := ts.authority(t)
+	tok := ts.login(t, c.phoneEd, c.phoneID)
+	api := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(tok))
+	next, err := deviceauth.BuildRenewal(c.states[len(c.states)-1], c.secret, c.phoneEd, uint64(time.Now().Add(10*time.Minute).UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := next.MarshalBinary()
+	_, err = api.PutSecurityState(ctx, connect.NewRequest(&pb.PutSecurityStateRequest{States: []*pb.SecurityState{{State: raw}}}))
+	if err == nil {
+		t.Fatal("a state from the future was accepted")
+	}
+	if !strings.Contains(err.Error(), "from the future") || !strings.Contains(err.Error(), "clock") {
+		t.Fatalf("future state error = %v, want a clock warning", err)
 	}
 }

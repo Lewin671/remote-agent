@@ -136,8 +136,8 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil || !bytes.Equal(e2e.PairDomainCommit(st.InitiatorPublic, st.Trust), commit) {
 		return nil, errors.New("the existing device's trust descriptor does not match its commitment; pairing stopped")
 	}
-	if existing != nil && existing.Security != nil && pin != existing.Security.Pin {
-		return nil, errors.New("the code belongs to a different security domain; existing keys were preserved")
+	if err := checkJoiningAccount(existing, pin); err != nil {
+		return nil, err
 	}
 	tr := e2e.PairDomainTranscript(id, st.InitiatorPublic, key.Public(), pub, xpub, int32(pb.DeviceKind_DEVICE_KIND_MACHINE), st.Trust)
 	secrets, err := key.Derive(st.InitiatorPublic, tr)
@@ -266,6 +266,21 @@ func verifyPairChain(pin deviceauth.Pin, in []*pb.SecurityState, devicePub, devi
 		return nil, nil, deviceauth.Member{}, err
 	}
 	return states, proofs, candidate, nil
+}
+
+// checkJoiningAccount decides whether a pairing may replace an existing
+// local account's security state. A protocol 9 upgrade or a protocol 10
+// recovery changes the domain and genesis of the same account, so only the
+// account identity must match; a code for another account must not replace
+// the keys that are here.
+func checkJoiningAccount(existing *Account, pin deviceauth.Pin) error {
+	if existing == nil || existing.Security == nil {
+		return nil
+	}
+	if pin.Account != existing.Security.Pin.Account {
+		return errors.New("the code belongs to a different account; existing keys were preserved")
+	}
+	return nil
 }
 
 // waitPairing polls until the pairing reaches want.

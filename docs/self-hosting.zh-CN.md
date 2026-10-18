@@ -280,24 +280,25 @@ COMMIT;
 ```sql
 BEGIN IMMEDIATE;
 CREATE TABLE security_states (
-  account_id TEXT NOT NULL REFERENCES accounts(id),
+  account_id TEXT NOT NULL,
   epoch INTEGER NOT NULL,
   state BLOB NOT NULL,
+  hash BLOB NOT NULL,
   recovery BLOB,
-  received_ms INTEGER NOT NULL,
   PRIMARY KEY (account_id, epoch)
 );
 CREATE TABLE security_recovery (
-  id TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL REFERENCES accounts(id),
-  request BLOB NOT NULL,
+  account_id TEXT PRIMARY KEY,
+  recovery_id TEXT NOT NULL UNIQUE,
+  statement BLOB NOT NULL,
   state BLOB NOT NULL,
-  received_ms INTEGER NOT NULL,
+  submitted_ms INTEGER NOT NULL,
+  ready_ms INTEGER NOT NULL,
   completed_ms INTEGER NOT NULL DEFAULT 0,
-  device_id TEXT,
+  rejected_ms INTEGER NOT NULL DEFAULT 0,
+  device_id TEXT NOT NULL DEFAULT '',
   token_hash BLOB
 );
-CREATE UNIQUE INDEX security_recovery_account ON security_recovery(account_id);
 ALTER TABLE sessions ADD COLUMN key_content_epoch INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE accounts ADD COLUMN recovery_ed BLOB;
 CREATE INDEX accounts_recovery ON accounts(recovery_ed);
@@ -316,7 +317,7 @@ COMMIT;
 
 4. 在 Android 手机上更新 App，选择重建安全域并成为管理端。它保留原账户根密钥和 Ed25519 设备身份，丢弃协议 9 的安全状态，生成新恢复码和创世状态（手机是唯一成员）；不再另生成管理端密钥，手机成员用现有设备密钥签状态。恢复码只显示一次、App 不保存，请离线记下。恢复码只签恢复声明：新手机读不到恢复前的内容。保留电脑会用新内容密钥重新发布当前的设备名、账户偏好、会话元数据、会话密钥和当前状态快照，所以还在进行的会话能看到；更早的历史留在原来有密钥的设备上。
 
-5. 钉住创世状态。已有账户要在中继停服时离线固定：旧设备的 token 还在数据库里，否则可能和手机抢第一次固定。新建账户没有更早的 token，可以由手机联网钉住。从格式 5 升级来的中继默认拒绝联网固定，除非管理员显式打开（`-allow-network-pin` / `RA_ALLOW_NETWORK_PIN=1`）；`security_genesis` 为空时只允许第一台设备 bootstrap 和 `PinSecurityDomain`。从 App 导出公开创世状态到 `public-genesis.bin`，通过可信渠道传回，在中继停服时执行：
+5. 钉住创世状态。已有账户要在中继停服时离线固定：旧设备的 token 还在数据库里，否则可能和手机抢第一次固定。新建账户没有更早的 token，可以由手机联网钉住。从格式 5 升级来的中继上，`security_genesis` 为空时账户里任何已登录设备仍可联网固定；没有开关控制这一点，所以必须在中继启动前完成下面的离线固定。从 App 导出公开创世状态到 `public-genesis.bin`，通过可信渠道传回，在中继停服时执行：
 
 ```sql
 .bail on

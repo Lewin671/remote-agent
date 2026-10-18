@@ -343,7 +343,7 @@ func verifyChain(pin Pin, states []State, proofs []*RecoveryStatement) error {
 	now := uint64(time.Now().UnixMilli())
 	for i, s := range states {
 		if s.Core.IssuedAt > now+MaxClockSkew {
-			return ErrStale
+			return ErrClock
 		}
 		if i > 0 {
 			if err := VerifyTransition(states[i-1], s, proofs[i]); err != nil {
@@ -784,7 +784,10 @@ func (e *Endpoint) Install(states []State, proofs []*RecoveryStatement) error {
 			}
 			return ErrStale
 		}
-		if s.Core.Epoch != next.HeadEpoch+1 || next.HeadEpoch >= MaxStates || s.Core.IssuedAt > uint64(time.Now().UnixMilli())+MaxClockSkew {
+		if s.Core.IssuedAt > uint64(time.Now().UnixMilli())+MaxClockSkew {
+			return ErrClock
+		}
+		if s.Core.Epoch != next.HeadEpoch+1 || next.HeadEpoch >= MaxStates {
 			return ErrStale
 		}
 		prev := next.States[next.HeadEpoch]

@@ -281,24 +281,25 @@ COMMIT;
 ```sql
 BEGIN IMMEDIATE;
 CREATE TABLE security_states (
-  account_id TEXT NOT NULL REFERENCES accounts(id),
+  account_id TEXT NOT NULL,
   epoch INTEGER NOT NULL,
   state BLOB NOT NULL,
+  hash BLOB NOT NULL,
   recovery BLOB,
-  received_ms INTEGER NOT NULL,
   PRIMARY KEY (account_id, epoch)
 );
 CREATE TABLE security_recovery (
-  id TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL REFERENCES accounts(id),
-  request BLOB NOT NULL,
+  account_id TEXT PRIMARY KEY,
+  recovery_id TEXT NOT NULL UNIQUE,
+  statement BLOB NOT NULL,
   state BLOB NOT NULL,
-  received_ms INTEGER NOT NULL,
+  submitted_ms INTEGER NOT NULL,
+  ready_ms INTEGER NOT NULL,
   completed_ms INTEGER NOT NULL DEFAULT 0,
-  device_id TEXT,
+  rejected_ms INTEGER NOT NULL DEFAULT 0,
+  device_id TEXT NOT NULL DEFAULT '',
   token_hash BLOB
 );
-CREATE UNIQUE INDEX security_recovery_account ON security_recovery(account_id);
 ALTER TABLE sessions ADD COLUMN key_content_epoch INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE accounts ADD COLUMN recovery_ed BLOB;
 CREATE INDEX accounts_recovery ON accounts(recovery_ed);
@@ -317,7 +318,7 @@ Clearing `security_genesis` discards the protocol 9 pin. Every account on the re
 
 4. On the Android phone, update the app and choose to rebuild the security domain and become the authority. It keeps the existing account root and Ed25519 device identity, discards the protocol 9 security state, and generates a new recovery code and the genesis state (the phone is the only member); there is no separate authority key, the phone member signs states with its existing device key. Save the recovery code offline; the app shows it once and does not keep it. The code only signs a recovery statement: a new phone will not decrypt content from before the recovery. Retained computers re-publish their current session metadata, session keys and current-state snapshots under the new content key, so live sessions reappear; older history stays on devices that already had it.
 
-5. Pin the genesis. An existing account must be pinned offline before the relay starts: old device tokens are still in the database and could otherwise race the phone to the first pin. A newly created account has no earlier tokens, so the phone may pin over the network. On a relay upgraded from layout 5, network pinning is refused unless the operator explicitly enables it (`-allow-network-pin` / `RA_ALLOW_NETWORK_PIN=1`); while `security_genesis` is NULL, only the first-device bootstrap and `PinSecurityDomain` are allowed. Export the public genesis from the app to `public-genesis.bin`, transfer it over a trusted channel, and run this with the relay stopped:
+5. Pin the genesis. An existing account must be pinned offline before the relay starts: old device tokens are still in the database and could otherwise race the phone to the first pin. A newly created account has no earlier tokens, so the phone may pin over the network. On a relay upgraded from layout 5, while `security_genesis` is NULL any logged-in device of the account can still pin over the network; there is no switch for this, so the offline pin below must be done before the relay starts. Export the public genesis from the app to `public-genesis.bin`, transfer it over a trusted channel, and run this with the relay stopped:
 
 ```sql
 .bail on

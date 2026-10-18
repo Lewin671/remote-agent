@@ -43,6 +43,7 @@ var (
 	ErrInvalid       = errors.New("security: invalid authenticated object")
 	ErrUntrusted     = errors.New("security: untrusted domain or signature")
 	ErrStale         = errors.New("security: trusted state must be synchronized")
+	ErrClock         = errors.New("security: state is from the future; check this device's clock")
 	ErrUnknown       = errors.New("security: unknown state")
 	ErrUnavailable   = errors.New("security: content is unavailable before the recovery boundary")
 	ErrExpired       = errors.New("security: expired control was not newly accepted")

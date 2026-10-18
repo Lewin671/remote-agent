@@ -123,8 +123,11 @@ func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Requ
 		return nil, invalid("invalid security genesis")
 	}
 	state, err := deviceauth.ParseState(raw)
-	if err != nil || state.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
+	if err != nil {
 		return nil, invalid("invalid security genesis")
+	}
+	if state.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the security genesis is from the future; check this device's clock"))
 	}
 	pin, err := state.Pin()
 	if err != nil || pin.VerifyGenesis(state) != nil || pin.Account != d.account {
@@ -196,8 +199,11 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	haveHead := head.Core.Epoch != 0
 	for _, in := range req.Msg.States {
 		s, err := deviceauth.ParseState(in.State)
-		if err != nil || s.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
+		if err != nil {
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("invalid security state"))
+		}
+		if s.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
+			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the security state is from the future; check this device's clock"))
 		}
 		raw := in.State
 		var proof *deviceauth.RecoveryStatement
