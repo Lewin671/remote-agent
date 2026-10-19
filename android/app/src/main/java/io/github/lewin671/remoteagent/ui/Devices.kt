@@ -219,7 +219,7 @@ fun ClientScreen(id: String) {
     var editing by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
     val save = rememberAction()
-    val remove = rememberAction()
+    val remove = rememberAction(authority = true)
     PageScaffold(clientName(d, id), subtitle = if (id == me) "当前客户端" else "已配对的客户端") {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             GLabel(if (id == state.authorityDeviceId) "管理端手机" else "客户端")

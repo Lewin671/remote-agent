@@ -44,7 +44,10 @@ class PairingController(
                 mutable.value = PairingUiState.Waiting(pairing.code, pairing.link)
                 val (emoji, kind) = pairing.joined()
                 if (run == generation) mutable.value = PairingUiState.Compare(emoji, kind)
-            } catch (e: CancellationException) { throw e }
+            } catch (e: CancellationException) {
+                if (run == generation) mutable.value = PairingUiState.Failed("已暂停，回到前台后可重试", false, false)
+                throw e
+            }
             catch (e: Exception) {
                 if (run == generation) mutable.value = PairingUiState.Failed(words(e), false, false)
             }
@@ -71,7 +74,10 @@ class PairingController(
             try {
                 pairing.approve()
                 if (run == generation) { current = null; consent = null; mutable.value = PairingUiState.Done }
-            } catch (e: CancellationException) { throw e }
+            } catch (e: CancellationException) {
+                if (run == generation) mutable.value = PairingUiState.Failed("结果尚未确定，回到前台后重试同一次批准", true, true)
+                throw e
+            }
             catch (e: Exception) {
                 if (run == generation) {
                     val uncertain = e !is PairException || e.message.orEmpty().let { "不确定" in it || "可能" in it }

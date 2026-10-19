@@ -1,4 +1,4 @@
-import { fromBinary } from "@bufbuild/protobuf";
+import { create, fromBinary } from "@bufbuild/protobuf";
 import { HeaderSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterAll, afterEach, expect, it, vi } from "vitest";
@@ -778,4 +778,95 @@ it("installs the lease forwarded by the Remote state-page adapter after a head c
       new Uint8Array(),
     ),
   ).resolves.toBeDefined();
+});
+
+it("retries authorized actions with their original observation after completion", async () => {
+  const r = await probe();
+  const { LiveSnapshotSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { EventSchema, ApprovalRequestedSchema, QuestionAskedSchema } =
+    await import("./gen/remoteagent/v1/event_pb");
+  const internal = r as unknown as {
+    liveSnapshots: Map<
+      string,
+      ReturnType<typeof create<typeof LiveSnapshotSchema>>
+    >;
+    refreshLiveSnapshot(sid: string): Promise<void>;
+    security: { sync(): Promise<unknown> };
+    api: object;
+  };
+  const sent: Envelope[] = [];
+  internal.api = {
+    forward: async (req: { command: Envelope }) => {
+      sent.push(req.command);
+      throw new ConnectError("unsigned refusal", Code.Unavailable);
+    },
+  };
+  internal.refreshLiveSnapshot = async () => {};
+  // A normal session row is enough; the live observation below comes from its daemon.
+
+  for (const kind of [
+    "resolveApproval",
+    "answerQuestion",
+    "answerPlan",
+  ] as const) {
+    internal.liveSnapshots.set(
+      "s",
+      create(LiveSnapshotSchema, {
+        actions: [
+          create(EventSchema, {
+            seq: 7n,
+            kind: {
+              case: "approvalRequested",
+              value: create(ApprovalRequestedSchema, { approvalId: "a" }),
+            },
+          }),
+          create(EventSchema, {
+            seq: 8n,
+            kind: {
+              case: "questionAsked",
+              value: create(QuestionAskedSchema, { questionId: "q" }),
+            },
+          }),
+        ],
+        planEventSeq: 9n,
+        planScreenHash: new Uint8Array(32).fill(3),
+      }),
+    );
+    const cmd =
+      kind === "resolveApproval"
+        ? {
+            case: kind,
+            value: { sessionId: "s", approvalId: "a", allow: true },
+          }
+        : kind === "answerQuestion"
+          ? {
+              case: kind,
+              value: { sessionId: "s", questionId: "q", answers: [] },
+            }
+          : { case: kind, value: { sessionId: "s", accept: true } };
+    const slot = newSlot();
+    await expect(r.command("s", cmd, slot)).rejects.toMatchObject({
+      code: "unknown",
+    });
+    const first = await r.world.fixture.open(r.machine, sent.at(-1)!);
+    internal.liveSnapshots.set("s", create(LiveSnapshotSchema));
+    const joined = await r.addClient();
+    liveFixtures.push(joined);
+    await internal.security.sync();
+    // Resealing uses the current security state and the original command, not this empty observation.
+    await expect(r.command("s", cmd, slot)).rejects.toMatchObject({
+      code: "unknown",
+    });
+    const retry = await r.world.fixture.open(r.machine, sent.at(-1)!);
+    expect(retry.header.requestId).toBe(first.header.requestId);
+    expect(retry.header.deadlineMs).toBe(first.header.deadlineMs);
+    expect(retry.plaintext).toEqual(first.plaintext);
+    expect(sent.at(-1)!.securityHeader).not.toEqual(
+      sent.at(-2)!.securityHeader,
+    );
+    // An initial authorization still refuses a completed observation.
+    await expect(r.command("s", cmd, newSlot())).rejects.toThrow(
+      "当前请求已不可操作",
+    );
+  }
 });

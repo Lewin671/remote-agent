@@ -2135,8 +2135,16 @@ export class Remote {
   async command(
     sid: string,
     cmd: CommandKind,
-    slot?: RequestSlot,
+    slot = newSlot(),
   ): Promise<CommandResult> {
+    const authorized = this.authorizedCommands.get(slot);
+    if (authorized)
+      return this.forward(
+        authorized.machineId,
+        authorized.sid,
+        authorized.cmd,
+        slot,
+      );
     const s = this.sessions.get(sid);
     if (!s) throw new Error("未知会话");
     if (
@@ -2221,6 +2229,13 @@ export class Remote {
     return this.forward(machineId, "", cmd, slot);
   }
 
+  // A request slot owns its first authorized plaintext, including its observation.
+  // A retry may use a new content key but must reach the accepted log unchanged.
+  private readonly authorizedCommands = new WeakMap<
+    RequestSlot,
+    { machineId: string; sid: string; cmd: CommandKind }
+  >();
+
   /** Seals cmd, forwards it and returns the opened result. Network
    * failures are retried with the same request ID, which the daemon
    * runs at most once. */
@@ -2230,6 +2245,13 @@ export class Remote {
     cmd: CommandKind,
     slot = newSlot(),
   ): Promise<CommandResult> {
+    const authorized = this.authorizedCommands.get(slot);
+    if (authorized) ({ machineId, sid, cmd } = authorized);
+    else
+      cmd = fromBinary(
+        CommandSchema,
+        toBinary(CommandSchema, create(CommandSchema, { kind: cmd })),
+      ).kind;
     const { requestId, deadline } = slot;
     // A machine of another protocol version would refuse the command, in
     // words that do not say which side to update: say so here, unsent.
@@ -2275,6 +2297,7 @@ export class Remote {
         "无法用当前安全状态签名，操作尚未发出；请重试",
       );
     }
+    this.authorizedCommands.set(slot, { machineId, sid, cmd });
     // Once a try may have reached the daemon, no later failure of this
     // request can say it did not run.
     let mayHaveRun = false;

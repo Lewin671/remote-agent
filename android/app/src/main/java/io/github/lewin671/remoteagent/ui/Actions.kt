@@ -45,8 +45,8 @@ class Action(private val scope: CoroutineScope) {
 }
 
 @Composable
-fun rememberAction(vararg keys: Any?): Action {
-    val scope = rememberCoroutineScope()
+fun rememberAction(vararg keys: Any?, authority: Boolean = false): Action {
+    val scope = if (authority) rememberAuthorityScope() else rememberCoroutineScope()
     return remember(*keys) { Action(scope) }
 }
 

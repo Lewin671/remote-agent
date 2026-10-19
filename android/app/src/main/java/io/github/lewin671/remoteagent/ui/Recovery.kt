@@ -14,7 +14,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,7 +55,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
         return
     }
     val p = pal
-    val scope = rememberCoroutineScope()
+    val scope = rememberAuthorityScope()
     var pending by remember { mutableStateOf<PendingRecoveryInfo?>(null) }
     var loading by remember { mutableStateOf(true) }
     var prepared by remember { mutableStateOf<PreparedRecovery?>(null) }
@@ -175,7 +174,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
 @Composable
 fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
     val p = pal
-    val scope = rememberCoroutineScope()
+    val scope = rememberAuthorityScope()
     var deviceSeed by remember { mutableStateOf(randomBytes(32)) }
     var code by remember { mutableStateOf("") }
     var server by remember { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
@@ -187,7 +186,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
     val t = now()
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
-    LaunchedEffect(Unit) {
+    AuthorityEffect(Unit) {
         val saved = withContext(Dispatchers.IO) { app.vault.loadRecoveryPublication() }
         codeSaved = app.vault.readSecurityOperation()?.codeSaved == true
         if (saved != null) {
@@ -543,7 +542,7 @@ internal fun RecoveryStatus(
 @Composable
 fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
     val p = pal
-    val scope = rememberCoroutineScope()
+    val scope = rememberAuthorityScope()
     var server by remember { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
     var setupToken by remember { mutableStateOf("") }
     var created by remember { mutableStateOf<CreatedAccount?>(null) }
@@ -679,7 +678,7 @@ private fun RecoveryField(
 fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {}) {
     val p = pal
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberAuthorityScope()
     var created by remember { mutableStateOf<CreatedAccount?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -795,7 +794,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
 fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
     val remote = LocalRemote.current
     val p = pal
-    val scope = rememberCoroutineScope()
+    val scope = rememberAuthorityScope()
     var prepared by remember { mutableStateOf<PreparedRecovery?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }

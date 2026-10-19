@@ -385,6 +385,7 @@ class Remote(
     private var stateJob: Job? = null
     private val dispatcher = Dispatchers.IO.limitedParallelism(1)
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    private var authorityJob = SupervisorJob(scope.coroutineContext[Job])
 
     private val _state = MutableStateFlow(RemoteState())
     val state: StateFlow<RemoteState> = _state.asStateFlow()
@@ -496,6 +497,7 @@ class Remote(
         scope.launch {
             if (running || removed) return@launch
             running = true
+            if (!authorityJob.isActive) authorityJob = SupervisorJob(scope.coroutineContext[Job])
             stateJob = scope.launch {
                 // The first pull follows the connection; a fresh login is not
                 // needed before it and would be a second login.
@@ -518,6 +520,7 @@ class Remote(
     fun stop() {
         scope.launch {
             running = false
+            authorityJob.cancel()
             stateJob?.cancel()
             stateJob = null
             generation++
@@ -1777,11 +1780,13 @@ class Remote(
             cert.verify(r.head)
             if (maxOf(clock().toULong(), r.floor) >= cert.notAfter) {
                 cert =
-                    HeadLease.sign(
-                        r.head,
-                        SigningKey(account.deviceSeed),
-                        security.signingTime(clock()),
-                    )
+                    authorityForeground().let {
+                        HeadLease.sign(
+                            r.head,
+                            SigningKey(account.deviceSeed),
+                            security.signingTime(clock()),
+                        )
+                    }
                 req =
                     PutSecurityStateRequest.newBuilder()
                         .setLease(com.google.protobuf.ByteString.copyFrom(cert.bytes()))
@@ -1926,7 +1931,7 @@ class Remote(
         }
     }
 
-    private fun retryCertificate(
+    private suspend fun retryCertificate(
         request: PutSecurityStateRequest,
         target: DeviceSecurity.State,
         floor: ULong,
@@ -1942,11 +1947,13 @@ class Remote(
         // Only this state's authority can renew it. A retiring phone may still
         // finish its exact handoff without attaching an expired certificate.
         return if (target.core.authorityID == account.deviceId)
-            HeadLease.sign(
-                target,
-                SigningKey(account.deviceSeed),
-                maxOf(now, target.core.issuedAt).toLong(),
-            )
+            authorityForeground().let {
+                HeadLease.sign(
+                    target,
+                    SigningKey(account.deviceSeed),
+                    maxOf(now, target.core.issuedAt).toLong(),
+                )
+            }
         else null
     }
 
@@ -2027,11 +2034,13 @@ class Remote(
         val lease =
             certificate
                 ?: if (states.last().core.authorityID == account.deviceId)
-                    HeadLease.sign(
-                        states.last(),
-                        SigningKey(account.deviceSeed),
-                        security.signingTime(clock()),
-                    )
+                    authorityForeground().let {
+                        HeadLease.sign(
+                            states.last(),
+                            SigningKey(account.deviceSeed),
+                            security.signingTime(clock()),
+                        )
+                    }
                 else null
         lease?.let { req.setLease(com.google.protobuf.ByteString.copyFrom(it.bytes())) }
         val pending = storage.readSecurityOperation()
@@ -2050,6 +2059,12 @@ class Remote(
         resumeSecurityOperation()
     }
 
+    /** No authority signature may be made by work canceled on backgrounding. */
+    internal suspend fun authorityForeground() {
+        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+        authorityJob.ensureActive()
+    }
+
     /** Foreground lease renewal, at most once every 12 hours (architecture §9). */
     fun renewLeaseIfNeeded() = renewLease(force = false)
 
@@ -2059,7 +2074,7 @@ class Remote(
     private fun renewLease(force: Boolean) {
         scope.launch {
             try {
-                withContext(dispatcher) {
+                withContext(authorityJob) {
                     resumeSecurityOperation()
                     val head = security.head()
                     if (head.core.authorityID != account.deviceId) return@withContext
@@ -2074,11 +2089,13 @@ class Remote(
                     )
                         return@withContext
                     val lease =
-                        HeadLease.sign(
-                            head,
-                            SigningKey(account.deviceSeed),
-                            security.signingTime(clock()),
-                        )
+                        authorityForeground().let {
+                            HeadLease.sign(
+                                head,
+                                SigningKey(account.deviceSeed),
+                                security.signingTime(clock()),
+                            )
+                        }
                     val request =
                         PutSecurityStateRequest.newBuilder()
                             .setLease(com.google.protobuf.ByteString.copyFrom(lease.bytes()))
@@ -2127,15 +2144,17 @@ class Remote(
                 ?: throw DeviceSecurity.Failure("unavailable")
         publishSecurityStates(
             listOf(
-                Authority.handoff(
-                    head,
-                    incoming,
-                    offer,
-                    old,
-                    Authority.newSecret(),
-                    SigningKey(account.deviceSeed),
-                    security.signingTime(clock()),
-                ),
+                authorityForeground().let {
+                    Authority.handoff(
+                        head,
+                        incoming,
+                        offer,
+                        old,
+                        Authority.newSecret(),
+                        SigningKey(account.deviceSeed),
+                        security.signingTime(clock()),
+                    )
+                },
             ),
         )
     }
@@ -2170,13 +2189,15 @@ class Remote(
                 ?: throw DeviceSecurity.Failure("unavailable")
         val (seed, pub) = Authority.newRecovery()
         val state =
-            Authority.veto(
-                head,
-                pub,
-                secret,
-                SigningKey(account.deviceSeed),
-                security.signingTime(clock()),
-            )
+            authorityForeground().let {
+                Authority.veto(
+                    head,
+                    pub,
+                    secret,
+                    SigningKey(account.deviceSeed),
+                    security.signingTime(clock()),
+                )
+            }
         val (pin, _) = security.identity()
         return PreparedRecovery(RecoveryCode.encode(seed, pin.genesis), state, seed)
     }
@@ -2911,7 +2932,7 @@ class Remote(
                 if (p.command != null) {
                     // A retry keeps the exact original observation. The executor's
                     // durable request log settles it before considering a new action.
-                    if (isObservedAction(p.command)) {
+                    if (previous == null && isObservedAction(p.command)) {
                         val fresh = fetchLiveSnapshot(p.sessionId)
                         if (observeAction(p.command, fresh) != p.command)
                             throw CommandException("failed_precondition", "当前请求已变化，请重新核对")
@@ -2942,7 +2963,7 @@ class Remote(
         protocolMismatch(state.value.machines[p.machineId])?.let {
             throw CommandException("failed_precondition", it)
         }
-        if (state.value.machines[p.machineId]?.online == false)
+        if (!retryOfUnknown && state.value.machines[p.machineId]?.online == false)
             throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出")
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
@@ -2960,7 +2981,6 @@ class Remote(
         var waiting = false
         // A previous try may have got the command to the daemon: a later
         // "machine offline" then says nothing about it.
-        var uncertainBefore = retryOfUnknown
         try {
             while (true) {
                 waiting = false
@@ -3031,23 +3051,14 @@ class Remote(
                             )
                     if (unknown) {
                         mayHaveRun = true
-                        uncertainBefore = true
                     }
                     if (unknown && attempt < 3 && clock() + 2000 < p.deadlineMs) {
                         attempt++
                         delay(1000L * attempt)
                         continue
                     }
-                    // The server said at once that no daemon has the machine: it never
-                    // reached one, so this is a definite "not sent".
-                    if (ce.code == Code.UNAVAILABLE && cause == null) {
-                        if (uncertainBefore)
-                            throw CommandException(
-                                CommandException.UNKNOWN,
-                                "不确定电脑有没有执行：请求可能已经送到，之后电脑离线了",
-                            )
-                        throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出")
-                    }
+                    // An unsigned relay status cannot settle a request once the
+                    // ciphertext may have reached it. Retry the original ID.
                     if (unknown || ce.code == Code.UNAVAILABLE) {
                         throw CommandException(
                             CommandException.UNKNOWN,
@@ -3062,10 +3073,8 @@ class Remote(
                 throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求")
             throw e
         } catch (e: Exception) {
-            // A definite answer from the server (the daemon is offline) or the daemon
-            // itself is not made uncertain by a retry that may have run something else.
-            if (e is CommandException && (e.fromDaemon || e.code == CommandException.UNAVAILABLE))
-                throw e
+            // Only an authenticated daemon answer settles a dispatched request.
+            if (e is CommandException && e.fromDaemon) throw e
             if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, "未收到可验证的执行结果，请重试同一请求")
             throw e
         }
@@ -3134,14 +3143,16 @@ class Remote(
             security.contentKey(head.core.contentEpoch)
                 ?: throw DeviceSecurity.Failure("unavailable")
         val next =
-            Authority.remove(
-                head,
-                listOf(deviceId),
-                old,
-                Authority.newSecret(),
-                SigningKey(account.deviceSeed),
-                security.signingTime(clock()),
-            )
+            authorityForeground().let {
+                Authority.remove(
+                    head,
+                    listOf(deviceId),
+                    old,
+                    Authority.newSecret(),
+                    SigningKey(account.deviceSeed),
+                    security.signingTime(clock()),
+                )
+            }
         publishSecurityStates(listOf(next))
         withContext(dispatcher) { loadDevices() }
     }

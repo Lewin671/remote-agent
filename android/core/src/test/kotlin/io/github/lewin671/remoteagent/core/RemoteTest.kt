@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.proto.*
 import io.github.lewin671.remoteagent.proto.AgentMessage
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.Event
@@ -23,6 +24,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -105,6 +108,240 @@ class RemoteTest {
 
     private suspend fun Remote.awaitEvents(sid: String, n: Int): SessionEvents =
         withTimeout(10_000) { events(sid).first { it.events.size >= n } }
+
+    @Test
+    fun unsignedRelayRefusalsKeepTheOriginalRequest() =
+        runBlocking<Unit> {
+            val refuse = java.util.concurrent.atomic.AtomicBoolean(false)
+            var status = "unavailable"
+            val hostile =
+                http
+                    .newBuilder()
+                    .addInterceptor { chain ->
+                        val res = chain.proceed(chain.request())
+                        if (chain.request().url.encodedPath.endsWith("/Forward") && refuse.get()) {
+                            res.close()
+                            okhttp3.Response.Builder()
+                                .request(chain.request())
+                                .protocol(okhttp3.Protocol.HTTP_1_1)
+                                .code(if (status == "unavailable") 503 else 403)
+                                .message("relay refusal")
+                                .body(
+                                    "{\"code\":\"$status\",\"message\":\"unsigned refusal\"}"
+                                        .toResponseBody("application/json".toMediaType()),
+                                )
+                                .build()
+                        } else res
+                    }
+                    .build()
+            val r = fixtureRemote(approvedClient(daemon.phone, http), hostile)
+            closers += AutoCloseable { r.close() }
+            r.start()
+            r.awaitState("online") {
+                it.conn == ConnState.ONLINE && it.machines[daemon.id]?.online == true
+            }
+            for (code in listOf("unavailable", "permission_denied", "failed_precondition")) {
+                status = code
+                val attempt = Attempt()
+                val cmd =
+                    Command.newBuilder()
+                        .setInterrupt(InterruptRequest.newBuilder().setSessionId("s1"))
+                        .build()
+                val original = attempt.next { r.prepare(daemon.id, "s1", cmd) }
+                refuse.set(true)
+                val error = runCatching { r.forward(original) }.exceptionOrNull()
+                assertTrue(
+                    "unsigned $code settled a possibly executed command: $error",
+                    error is CommandException && error.unknown,
+                )
+                attempt.settle(error)
+                assertSame(original, attempt.next { r.prepare(daemon.id, "s1", cmd) })
+                refuse.set(false)
+                r.forward(original, retryOfUnknown = true)
+                val first = daemon.commands.poll(5, TimeUnit.SECONDS)!!.first
+                val retry = daemon.commands.poll(5, TimeUnit.SECONDS)!!.first
+                assertEquals(first.requestId, retry.requestId)
+                attempt.settle()
+            }
+        }
+
+    @Test
+    fun unknownRetryDoesNotTreatAnOfflineHintAsNonExecution() =
+        runBlocking<Unit> {
+            val r = client()
+            r.start()
+            r.awaitState("online machine") {
+                it.conn == ConnState.ONLINE && it.machines[daemon.id]?.online == true
+            }
+            val attempt = Attempt()
+            val cmd =
+                Command.newBuilder()
+                    .setInterrupt(InterruptRequest.newBuilder().setSessionId("s1"))
+                    .build()
+            val original = attempt.next { r.prepare(daemon.id, "s1", cmd) }
+            r.forward(original)
+            attempt.settle(CommandException(CommandException.UNKNOWN, "lost result"))
+            daemon.disconnect()
+            r.awaitState("offline hint") { it.machines[daemon.id]?.online == false }
+            val error = runCatching { r.forward(original, retryOfUnknown = true) }.exceptionOrNull()
+            assertTrue(
+                "an offline hint cannot settle an earlier execution: $error",
+                error is CommandException && error.unknown,
+            )
+            attempt.settle(error)
+            assertSame(original, attempt.next { r.prepare(daemon.id, "s1", cmd) })
+            daemon.connect()
+            r.awaitState("online again") { it.machines[daemon.id]?.online == true }
+            r.forward(original, retryOfUnknown = true)
+            val first = daemon.commands.poll(5, TimeUnit.SECONDS)!!.first
+            val retry = daemon.commands.poll(5, TimeUnit.SECONDS)!!.first
+            assertEquals(first.requestId, retry.requestId)
+            assertEquals(first.deadlineMs, retry.deadlineMs)
+        }
+
+    @Test
+    fun authorizedActionsResealWithoutReobservingCompletedActions() =
+        runBlocking<Unit> {
+            val r = client()
+            r.start()
+            r.awaitState("session") {
+                it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null
+            }
+            val hash = com.google.protobuf.ByteString.copyFrom(ByteArray(32) { 9 })
+            val actions =
+                listOf(
+                    Command.newBuilder()
+                        .setResolveApproval(
+                            ResolveApprovalRequest.newBuilder()
+                                .setSessionId("s1")
+                                .setApprovalId("a")
+                                .setObservedEventSeq(7),
+                        )
+                        .build(),
+                    Command.newBuilder()
+                        .setAnswerQuestion(
+                            AnswerQuestionRequest.newBuilder()
+                                .setSessionId("s1")
+                                .setQuestionId("q")
+                                .setObservedEventSeq(8),
+                        )
+                        .build(),
+                    Command.newBuilder()
+                        .setAnswerPlan(
+                            AnswerPlanRequest.newBuilder()
+                                .setSessionId("s1")
+                                .setObservedEventSeq(9)
+                                .setObservedScreenHash(hash),
+                        )
+                        .build(),
+                )
+            for (cmd in actions) {
+                var completed = false
+                daemon.liveSnapshot = {
+                    val snapshot =
+                        LiveSnapshot.newBuilder().setSession(Session.newBuilder().setId("s1"))
+                    if (!completed)
+                        snapshot
+                            .addActions(
+                                Event.newBuilder()
+                                    .setSeq(7)
+                                    .setApprovalRequested(
+                                        ApprovalRequested.newBuilder().setApprovalId("a"),
+                                    ),
+                            )
+                            .addActions(
+                                Event.newBuilder()
+                                    .setSeq(8)
+                                    .setQuestionAsked(
+                                        QuestionAsked.newBuilder().setQuestionId("q"),
+                                    ),
+                            )
+                            .setPlanEventSeq(9)
+                            .setPlanScreenHash(hash)
+                    snapshot.build()
+                }
+                daemon.answer = { _, _ ->
+                    completed = true
+                    CommandResult.getDefaultInstance()
+                }
+                val p = r.prepare(daemon.id, "s1", cmd)
+                r.forward(p)
+                assertTrue("first authorization must execute before retry", completed)
+                val original = p.authorizedEnvelope!!
+                approvedClient(daemon.phone, http)
+                r.syncSecurity()
+                r.forward(p, retryOfUnknown = true)
+                assertFalse(original == p.authorizedEnvelope)
+                val received =
+                    mutableListOf<Pair<io.github.lewin671.remoteagent.proto.Header, Command>>()
+                while (true) received += daemon.commands.poll() ?: break
+                val sent = received.filter { it.first.requestId == p.requestId }
+                assertEquals(2, sent.size)
+                assertEquals(sent[0], sent[1])
+            }
+        }
+
+    @Test
+    fun backgroundCancelsRenewalAndRetainsItsPendingOperation() =
+        runBlocking<Unit> {
+            val hold = java.util.concurrent.atomic.AtomicBoolean(false)
+            val entered = java.util.concurrent.CountDownLatch(1)
+            val release = java.util.concurrent.CountDownLatch(1)
+            val published = java.util.concurrent.atomic.AtomicInteger()
+            val slow =
+                http
+                    .newBuilder()
+                    .addInterceptor { chain ->
+                        if (
+                            chain.request().url.encodedPath.endsWith("/GetSecurityStates") &&
+                                hold.compareAndSet(true, false)
+                        ) {
+                            entered.countDown()
+                            check(release.await(10, TimeUnit.SECONDS))
+                        }
+                        if (chain.request().url.encodedPath.endsWith("/PutSecurityState"))
+                            published.incrementAndGet()
+                        chain.proceed(chain.request())
+                    }
+                    .build()
+            val phone = fixtureRemote(daemon.phone, slow)
+            closers += AutoCloseable { phone.close() }
+            phone.start()
+            phone.awaitState("online") { it.conn == ConnState.ONLINE }
+            val storage = TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId)
+            val record = phone.security.record()
+            val req =
+                PutSecurityStateRequest.newBuilder()
+                    .setLease(com.google.protobuf.ByteString.copyFrom(record.lease!!.bytes()))
+                    .build()
+            val pending =
+                SecurityOperation("lease", DeviceSecurity.stateHash(record.head), req.toByteArray())
+            storage.writeSecurityOperation(pending)
+            try {
+                hold.set(true)
+                phone.renewLeaseNow()
+                assertTrue(
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        entered.await(5, TimeUnit.SECONDS)
+                    },
+                )
+                phone.stop()
+                phone.awaitState("background") { it.conn == ConnState.OFFLINE }
+                release.countDown()
+                delay(500)
+                assertEquals("background renewal published", 0, published.get())
+                assertArrayEquals(pending.signed, storage.readSecurityOperation()!!.signed)
+                phone.start()
+                phone.renewLeaseNow()
+                withTimeout(5000) {
+                    while (storage.readSecurityOperation() != null || published.get() == 0) delay(
+                        20,
+                    )
+                }
+            } finally {
+                release.countDown()
+            }
+        }
 
     @Test
     fun deliveredStateOperationOnlyNeedsLocalCleanup() =

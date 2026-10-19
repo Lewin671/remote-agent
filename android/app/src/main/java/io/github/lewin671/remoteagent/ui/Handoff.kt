@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 fun HandoffPreparation() {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
-    val scope = rememberCoroutineScope()
+    val scope = rememberAuthorityScope()
     var prepared by remember { mutableStateOf<Pair<String, ByteArray>?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -70,7 +70,7 @@ fun HandoffPreparation() {
 fun HandoffControls() {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
-    val scope = rememberCoroutineScope()
+    val scope = rememberAuthorityScope()
     var target by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
@@ -120,7 +120,7 @@ fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
     if (id in state.devices) return
-    val scope = rememberCoroutineScope()
+    val scope = rememberAuthorityScope()
     var confirm by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }

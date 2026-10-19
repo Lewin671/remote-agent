@@ -533,7 +533,7 @@ fun DeviceScreen(id: String) {
     val m = state.machines[id]
     val p = pal
     var confirm by remember { mutableStateOf(false) }
-    val remove = rememberAction()
+    val remove = rememberAction(authority = true)
     var settings by remember { mutableStateOf<DaemonSettings?>(null) }
     var imageStorage by remember { mutableStateOf<ImageStorageUsage?>(null) }
     var loadError by remember { mutableStateOf("") }
@@ -1191,13 +1191,13 @@ fun PairScreen(replacesDeviceId: String = "") {
     val nav = LocalNav.current
     val settings by RaApp.instance.prefs.settings.collectAsState(Settings())
     val p = pal
-    val scope = rememberCoroutineScope()
+    val scope = rememberAuthorityScope()
     val model =
         remember(remote, scope) {
             PairingController(scope, RaApp.instance.scope) { Initiation.start(remote, replacesDeviceId) }
         }
     val state by model.state.collectAsState()
-    LaunchedEffect(model) { model.start() }
+    AuthorityStartEffect(model) { model.start() }
     DisposableEffect(model) { onDispose { model.leave() } }
     PageScaffold("添加设备") {
         Column(

@@ -227,6 +227,8 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     @Volatile var garbleResults = false
 
     /** What to answer; the default is an empty success of the right kind. */
+    var liveSnapshot: ((String) -> LiveSnapshot)? = null
+
     var answer: (Header, Command) -> CommandResult = { _, c -> defaultResult(c) }
 
     suspend fun login() {
@@ -422,12 +424,13 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                                     }
                                 CommandResult.newBuilder()
                                     .setLiveSnapshot(
-                                        LiveSnapshot.newBuilder()
+                                        liveSnapshot?.invoke(sid) ?: LiveSnapshot.newBuilder()
                                             .setRunning(d.running)
                                             .setSession(
                                                 info[sid] ?: Session.newBuilder().setId(sid).build()
                                             )
                                             .addAllActions(actions)
+                                            .build()
                                     )
                                     .build()
                             } else answer(h, cmd)

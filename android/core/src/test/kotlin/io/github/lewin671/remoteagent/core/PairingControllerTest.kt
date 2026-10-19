@@ -2,6 +2,11 @@ package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.proto.DeviceKind
 import java.io.IOException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
@@ -19,6 +24,26 @@ class PairingControllerTest {
         override suspend fun joined() = listOf("🐊", "🥯", "🐩", "🦌") to DeviceKind.DEVICE_KIND_CLIENT
         override suspend fun approve() { CompletableDeferred<Unit>().also { approvals += it }.await() }
         override suspend fun cancelOnServer() { cancellations++ }
+    }
+
+    @Test fun backgroundCancellationLeavesApprovalRetryableWithTheSameConsent() = runTest {
+        val foreground = CoroutineScope(coroutineContext + SupervisorJob(coroutineContext[Job]))
+        val pairing = Pairing()
+        var begins = 0
+        val model = PairingController(foreground, backgroundScope) { begins++; pairing }
+        try {
+            model.start(); runCurrent()
+            model.approve(); runCurrent()
+            foreground.coroutineContext.cancelChildren(); runCurrent()
+            val failure = model.state.value as? PairingUiState.Failed
+            assertTrue("canceled approval must offer retry", failure?.canRetry == true && failure.uncertain)
+            model.retry(); runCurrent()
+            assertEquals(1, begins)
+            assertEquals(2, pairing.approvals.size)
+            pairing.approvals[1].complete(Unit); runCurrent()
+            assertEquals(PairingUiState.Done, model.state.value)
+            assertEquals(0, pairing.cancellations)
+        } finally { foreground.cancel() }
     }
 
     @Test fun failureActionRetriesTheSameApprovedPairingWithoutWithdrawal() = runTest {

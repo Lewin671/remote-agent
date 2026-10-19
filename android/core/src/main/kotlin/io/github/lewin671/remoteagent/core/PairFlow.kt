@@ -242,6 +242,7 @@ internal constructor(
                     val existing = head.core.member(member.id)
                     if (existing == null && member.id in head.core.removed)
                         throw PairException("这台设备已被移除，旧身份不能重新加入；请在那台设备上重新加入，以生成新的设备身份")
+                    remote.authorityForeground()
                     val next =
                         if (existing == null)
                             Authority.pair(
