@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -280,5 +282,64 @@ func TestRecoveryRepublishFetchesRevisionFloorsOncePerBatch(t *testing.T) {
 	}
 	if service.lists != 1 {
 		t.Fatalf("downloaded full session heads %d times for one batch", service.lists)
+	}
+}
+
+// A checkpoint failure after the epoch marker was written must still be retried,
+// even when the session metadata has not changed.
+func TestEnsurePublishedRetriesCheckpointWithCurrentMarker(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	backend := batchPublishBackend{dirs: map[string]string{}}
+	for _, id := range backend.SessionIDs() {
+		backend.dirs[id] = t.TempDir()
+	}
+	c := &conn{r: New(backend), acct: &Account{}}
+	initializeTestSecurityKeys(t, c)
+	service := &batchPublishMachine{putsByID: map[string]uint64{}}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewMachineServiceHandler(service)
+	mux.Handle(path, h)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	c.machine = remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, srv.URL)
+	for _, id := range backend.SessionIDs() {
+		if _, err := c.sessionKey(id, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := c.ensurePublished(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	id := backend.SessionIDs()[0]
+	p := filepath.Join(backend.SessionDir(id), "current-checkpoint.pb")
+	if err := os.Remove(p); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(p, 0700); err != nil {
+		t.Fatal(err)
+	}
+	key, err := c.sessionKey(id, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, _ := backend.SessionInfo(id)
+	if _, err := c.putSession(context.Background(), id, key, info, service.putsByID[id]); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.ensurePublished(context.Background()); err == nil {
+		t.Fatal("failed checkpoint marked complete")
+	}
+	if err := os.Remove(p); err != nil {
+		t.Fatal(err)
+	}
+	before := service.lists
+	if err := c.ensurePublished(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if service.lists != before+1 || c.checkpointPending.Load() {
+		t.Fatal("unchanged marker skipped pending checkpoint")
+	}
+	if _, err := os.Stat(p); err != nil {
+		t.Fatal(err)
 	}
 }

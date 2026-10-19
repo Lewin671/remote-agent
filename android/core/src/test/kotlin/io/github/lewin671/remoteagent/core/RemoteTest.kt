@@ -268,6 +268,67 @@ class RemoteTest {
         }
 
     @Test
+    fun expiredLeaseInAnUnpublishedOperationIsRenewedWithoutResigningItsState() =
+        resumeExpiredCertificate(false)
+
+    @Test
+    fun expiredLeaseAfterStateCommitIsRenewedWithoutResigningItsState() =
+        resumeExpiredCertificate(true)
+
+    private fun resumeExpiredCertificate(alreadyCommitted: Boolean) =
+        runBlocking<Unit> {
+            val original = fixtureRemote(daemon.phone, http)
+            closers += AutoCloseable { original.close() }
+            original.start()
+            original.awaitState("online") { it.conn == ConnState.ONLINE }
+            val prepared = original.prepareRecovery()
+            val state = prepared.state
+            val signer = SigningKey(daemon.phone.deviceSeed)
+            val unsigned =
+                HeadLease.sign(state, signer, state.core.issuedAt.toLong())
+                    .copy(notAfter = state.core.issuedAt + 1uL)
+            val expired = unsigned.copy(signature = signer.sign(unsigned.signBytes()))
+            val request =
+                io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
+                    .addStates(
+                        io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
+                            .setState(
+                                com.google.protobuf.ByteString.copyFrom(
+                                    DeviceSecurity.stateBytes(state),
+                                ),
+                            ),
+                    )
+                    .setLease(com.google.protobuf.ByteString.copyFrom(expired.bytes()))
+                    .build()
+            if (alreadyCommitted) {
+                original.api.client
+                    .putSecurityState(
+                        request.toBuilder().clearLease().build(),
+                        Api.headers(original.currentToken()),
+                    )
+                    .value()
+            }
+            val store = TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId)
+            val op = SecurityOperation("state", state.core.parent, request.toByteArray())
+            store.writeSecurityOperation(op)
+            delay(5)
+            assertTrue(expired.notAfter <= System.currentTimeMillis().toULong())
+            original.close()
+            val reopened = fixtureRemote(daemon.phone, http)
+            closers += AutoCloseable { reopened.close() }
+            reopened.resumeSecurityOperation()
+            assertNull(store.readSecurityOperation())
+            assertArrayEquals(
+                DeviceSecurity.stateBytes(state),
+                DeviceSecurity.stateBytes(reopened.security.head()),
+            )
+            val certificate = reopened.security.record().lease!!
+            certificate.valid(state, System.currentTimeMillis().toULong())
+            assertTrue(certificate.notAfter > expired.notAfter)
+            assertEquals(state.core.epoch, reopened.security.head().core.epoch)
+        }
+
+    @Test
     fun independentRenewalLeavesPreparedRecoveryUnchanged() =
         runBlocking<Unit> {
             val r = fixtureRemote(daemon.phone, http)

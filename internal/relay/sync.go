@@ -491,16 +491,21 @@ func EndedMs(info *pb.Session) int64 {
 // putSession stores a session's key and metadata, and returns the
 // metadata's revision.
 func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session, floor uint64) (uint64, error) {
-	checkpoint, err := c.currentCheckpoint(id, info)
-	if err != nil {
-		return 0, localSyncError("checkpoint", err)
+	base := proto.CloneOf(info)
+	base.CurrentCheckpoint = nil
+	checkpoint, checkpointErr := c.currentCheckpoint(id, info)
+	if checkpointErr == nil {
+		var snapshot pb.LiveSnapshot
+		if err := proto.Unmarshal(checkpoint, &snapshot); err != nil {
+			checkpointErr = err
+		} else {
+			info = snapshot.Session
+			info.CurrentCheckpoint = checkpoint
+		}
 	}
-	var snapshot pb.LiveSnapshot
-	if err := proto.Unmarshal(checkpoint, &snapshot); err != nil {
-		return 0, err
+	if checkpointErr != nil {
+		info = base
 	}
-	info = snapshot.Session
-	info.CurrentCheckpoint = checkpoint
 	keyEnv, err := c.security.seal(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, Seq: 1, MachineId: c.acct.DeviceID, SessionId: id, Sender: c.acct.DeviceID,
 	}, deviceauth.SessionKey, nil, key)
@@ -523,15 +528,30 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 		return 0, localSyncError("encryption", err)
 	}
 	request := &pb.PutSessionRequest{SessionId: id, Key: keyEnv, Meta: meta, EndedMs: EndedMs(info)}
-	if err := c.persistCheckpoint(id, request); err != nil {
-		return 0, localSyncError("checkpoint", err)
+	if checkpointErr == nil {
+		checkpointErr = c.persistCheckpoint(id, request)
+		if checkpointErr != nil {
+			// The checkpoint was not made durable. Publish ordinary metadata
+			// without advertising a complete bootstrap, then retry separately.
+			request.Meta, err = c.security.sealMessage(&pb.Header{
+				Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_META, MachineId: c.acct.DeviceID,
+				SessionId: id, Seq: rev, Sender: c.acct.DeviceID,
+			}, deviceauth.SessionMeta, nil, base)
+			if err != nil {
+				return 0, localSyncError("encryption", err)
+			}
+		}
+	}
+	if checkpointErr != nil {
+		c.checkpointPending.Store(true)
+		slog.Warn("relay: current checkpoint pending; normal session sync continues", "session", id, "err", checkpointErr)
 	}
 	_, err = c.machine.PutSession(ctx, connect.NewRequest(request))
 	if err != nil {
 		return 0, rpcSyncError("put_session", err)
 	}
 	slog.Debug("relay: session metadata sent", "session", id)
-	return headerOfSecurity(meta).Seq, nil
+	return headerOfSecurity(request.Meta).Seq, nil
 }
 
 // Limits on what a notification carries, so that it fits FCM's 4 KB.

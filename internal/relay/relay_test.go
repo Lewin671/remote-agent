@@ -1396,3 +1396,63 @@ func TestCheckpointFailureKeepsRelayAndOtherSessionsOnline(t *testing.T) {
 		})
 	}
 }
+
+// A real, legal action can be much larger than a metadata checkpoint.
+type largeActionCheckpointBackend struct {
+	*fakeBackend
+	fixed         atomic.Bool
+	snapshotError bool
+}
+
+func (b *largeActionCheckpointBackend) LiveSnapshot(id string) (*pb.LiveSnapshot, error) {
+	info, err := b.SessionInfo(id)
+	if err != nil {
+		return nil, err
+	}
+	if !b.fixed.Load() && b.snapshotError {
+		return nil, errors.New("synthetic snapshot unavailable")
+	}
+	snapshot := &pb.LiveSnapshot{Session: info}
+	if !b.fixed.Load() {
+		snapshot.Actions = []*pb.Event{{SessionId: id, Seq: 1, Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "large-question", Questions: []*pb.Question{{Header: "pending", Text: strings.Repeat("prompt ", 20000)}}}}}}
+	}
+	return snapshot, nil
+}
+func TestCheckpointFailureDoesNotBlockItsOwnSessionSync(t *testing.T) {
+	for _, failure := range []string{"oversized", "snapshot", "disk"} {
+		t.Run(failure, func(t *testing.T) {
+			e := setup(t)
+			log := e.backend.add(t, "pending-session")
+			appendText(t, log, "pending-session", "first")
+			backend := &largeActionCheckpointBackend{fakeBackend: e.backend, snapshotError: failure == "snapshot"}
+			checkpointPath := filepath.Join(e.backend.SessionDir("pending-session"), "current-checkpoint.pb")
+			if failure == "disk" {
+				backend.fixed.Store(true)
+				if err := os.Mkdir(checkpointPath, 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			e.startRelayBackend(backend)
+			s := e.session(t, "pending-session", 1)
+			if len(s.Info.CurrentCheckpoint) != 0 {
+				t.Fatal("failed checkpoint advertised as complete")
+			}
+			appendText(t, log, "pending-session", "second")
+			e.session(t, "pending-session", 2)
+			_, err := e.client.Do(context.Background(), s, &pb.Command{Kind: &pb.Command_RenameSession{RenameSession: &pb.RenameSessionRequest{SessionId: s.ID, Title: "metadata still syncs"}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			waitFor(t, "same session metadata despite failed checkpoint", func() bool { return e.session(t, "pending-session", 2).Info.Title == "metadata still syncs" })
+			backend.fixed.Store(true)
+			if failure == "disk" {
+				if err := os.Remove(checkpointPath); err != nil {
+					t.Fatal(err)
+				}
+			}
+			e.stopRelay()
+			e.startRelayBackend(backend)
+			waitFor(t, "checkpoint repaired after reconnect", func() bool { return len(e.session(t, "pending-session", 2).Info.CurrentCheckpoint) > 0 })
+		})
+	}
+}

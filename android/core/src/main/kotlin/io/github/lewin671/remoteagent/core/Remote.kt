@@ -1731,7 +1731,10 @@ class Remote(
     private suspend fun resumeSecurityOperationLocked() {
         val storage = securityStorage ?: throw DeviceSecurity.Failure("storage")
         val op = storage.readSecurityOperation() ?: return
-        if (op.kind != "state") return
+        if (op.kind != "state") {
+            reconcileCompletedAdoption(account, security.record(), storage)
+            return
+        }
         val request = PutSecurityStateRequest.parseFrom(op.signed)
         val states = request.statesList.map { DeviceSecurity.parseState(it.state.toByteArray()) }
         val target = states.last()
@@ -1753,34 +1756,48 @@ class Remote(
                 !DeviceSecurity.stateHash(installed).contentEquals(DeviceSecurity.stateHash(target))
             )
                 throw DeviceSecurity.Failure("conflict")
-            // The state transaction can have committed before lease persistence
-            // failed. Retry the exact certificate while it is still valid.
+            // The signed state is immutable. Its independent availability certificate
+            // can be renewed after a lost ack or a long offline interval.
             if (
                 verified.head.core.epoch == target.core.epoch &&
-                    !request.lease.isEmpty &&
-                    verified.lease?.head?.contentEquals(DeviceSecurity.stateHash(target)) != true
-            ) {
-                val certificate = HeadLease.parse(request.lease.toByteArray())
-                if (
+                    target.core.authorityID == account.deviceId &&
                     runCatching {
-                        certificate.valid(target, maxOf(clock().toULong(), verified.floor))
+                        verified.lease?.valid(target, maxOf(clock().toULong(), verified.floor))
+                            ?: throw DeviceSecurity.Failure("lease")
                     }
-                        .isSuccess
-                ) {
-                    api.client.putSecurityState(request, Api.headers(currentToken())).value()
-                    security.install(emptyList(), lease = certificate)
-                }
+                        .isFailure
+            ) {
+                val certificate =
+                    retryCertificate(request, target, verified.floor)
+                        ?: throw DeviceSecurity.Failure("lease")
+                val renewal =
+                    PutSecurityStateRequest.newBuilder()
+                        .setLease(com.google.protobuf.ByteString.copyFrom(certificate.bytes()))
+                        .build()
+                api.client.putSecurityState(renewal, Api.headers(currentToken())).value()
+                security.install(emptyList(), lease = certificate)
             }
         } else {
             if (!DeviceSecurity.stateHash(verified.head).contentEquals(op.parent))
                 throw DeviceSecurity.Failure("conflict")
-            api.client.putSecurityState(request, Api.headers(currentToken())).value()
+            val certificate = retryCertificate(request, target, verified.floor)
+            val retry =
+                request
+                    .toBuilder()
+                    .clearLease()
+                    .apply {
+                        certificate?.let {
+                            setLease(com.google.protobuf.ByteString.copyFrom(it.bytes()))
+                        }
+                    }
+                    .build()
+            api.client.putSecurityState(retry, Api.headers(currentToken())).value()
             security.install(
                 states,
                 request.statesList.map {
                     it.recovery.toByteArray().takeIf { raw -> raw.isNotEmpty() }
                 },
-                request.lease.toByteArray().takeIf { it.isNotEmpty() }?.let { HeadLease.parse(it) },
+                certificate,
             )
         }
         storage.writeSecurityOperation(op.advanced(SecurityOperation.Phase.PUBLISHED))
@@ -1805,6 +1822,30 @@ class Remote(
             leaseEnd = security.record().lease?.notAfter?.toLong() ?: 0L
             publish()
         }
+    }
+
+    private fun retryCertificate(
+        request: PutSecurityStateRequest,
+        target: DeviceSecurity.State,
+        floor: ULong,
+    ): HeadLease? {
+        val now = maxOf(clock().toULong(), floor)
+        val original =
+            request.lease.toByteArray().takeIf { it.isNotEmpty() }?.let { HeadLease.parse(it) }
+        original?.verify(target)
+        if (original != null && now < original.notAfter) {
+            original.valid(target, now)
+            return original
+        }
+        // Only this state's authority can renew it. A retiring phone may still
+        // finish its exact handoff without attaching an expired certificate.
+        return if (target.core.authorityID == account.deviceId)
+            HeadLease.sign(
+                target,
+                SigningKey(account.deviceSeed),
+                maxOf(now, target.core.issuedAt).toLong(),
+            )
+        else null
     }
 
     fun pendingPairingRequest(pairingId: String): ApprovePairingRequest? {

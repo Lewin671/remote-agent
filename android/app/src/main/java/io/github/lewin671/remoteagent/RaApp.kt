@@ -190,6 +190,9 @@ class RaApp : Application() {
                                     )
                                         throw io.github.lewin671.remoteagent.core.DeviceSecurity
                                             .Failure("untrusted")
+                                    io.github.lewin671.remoteagent.core.reconcileCompletedAdoption(
+                                        acct, record, vault
+                                    )
                                     true
                                 } else false
                             acct to ready

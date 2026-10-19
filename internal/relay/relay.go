@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -143,13 +144,14 @@ func sleep(ctx context.Context, d time.Duration) {
 
 // conn is one connected period: the login token, clients and keys.
 type conn struct {
-	security  *securitySession
-	r         *Relay
-	acct      *Account
-	machine   remoteagentv1connect.MachineServiceClient
-	publishMu sync.Mutex
-	ws        *websocket.Conn
-	token     string
+	security          *securitySession
+	r                 *Relay
+	acct              *Account
+	machine           remoteagentv1connect.MachineServiceClient
+	publishMu         sync.Mutex
+	checkpointPending atomic.Bool
+	ws                *websocket.Conn
+	token             string
 }
 
 // session logs in, opens the stream, and serves until an error.
@@ -192,6 +194,9 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	}
 	errc := make(chan error, 4)
 	if err := c.security.syncOnce(ctx); err != nil {
+		if securityAuthenticationLost(err) {
+			return err
+		}
 		// The stream itself is up. Installed states still serve events and
 		// the terminal; remote control pauses until a later sync succeeds.
 		slog.Warn("relay: starting without the newest security state; control remains valid until the local lease expires", "err", err)
@@ -318,7 +323,15 @@ func revision() uint64 {
 // never re-encrypted: the new phone must not receive old plaintext. The
 // published content epoch is written last, so a crash before it makes the
 // next sync retry the whole republish.
-func (c *conn) publishCurrentCheckpoint(ctx context.Context) error {
+func (c *conn) publishCurrentCheckpoint(ctx context.Context) (retErr error) {
+	// A full pass is also the retry of checkpoints that failed during ordinary
+	// session sync. Individual writers only set this flag; they never clear it.
+	c.checkpointPending.Store(false)
+	defer func() {
+		if retErr != nil {
+			c.checkpointPending.Store(true)
+		}
+	}()
 	_, head, _ := c.security.endpoint.Snapshot()
 	startedEpoch := head.Core.ContentEpoch
 	if err := c.putMachine(ctx, c.r.backend.MachineMeta()); err != nil {
@@ -364,6 +377,9 @@ func (c *conn) publishCurrentCheckpoint(ctx context.Context) error {
 	if firstErr != nil {
 		return firstErr
 	}
+	if c.checkpointPending.Load() {
+		return errors.New("current checkpoints remain pending")
+	}
 	return writePublishedEpoch(startedEpoch)
 }
 
@@ -376,7 +392,7 @@ func (c *conn) ensurePublished(ctx context.Context) error {
 	defer c.publishMu.Unlock()
 	marker, err := readPublishedEpoch()
 	_, head, _ := c.security.endpoint.Snapshot()
-	if err == nil && head.Core.ContentEpoch == marker {
+	if err == nil && head.Core.ContentEpoch == marker && !c.checkpointPending.Load() {
 		return nil
 	}
 	return c.publishCurrentCheckpoint(ctx)

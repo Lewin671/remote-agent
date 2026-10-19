@@ -199,6 +199,12 @@ func (s *securitySession) pull(ctx context.Context) (uint64, error) {
 	return 0, deviceauth.ErrCapacity
 }
 
+// Authentication loss invalidates this connection's token and possibly its
+// saved X key. Relay.Run must reload the account and endpoint before logging in.
+func securityAuthenticationLost(err error) bool {
+	return connect.CodeOf(err) == connect.CodeUnauthenticated || connect.CodeOf(err) == connect.CodePermissionDenied
+}
+
 // securitySyncLoop polls every 60 seconds and immediately on an unknown
 // state. It advances the time floor even when no control envelope arrives.
 func (c *conn) securitySyncLoop(ctx context.Context) error {
@@ -218,6 +224,9 @@ func (c *conn) securitySyncLoop(ctx context.Context) error {
 		err := c.security.syncOnce(attempt)
 		cancel()
 		if err != nil {
+			if securityAuthenticationLost(err) {
+				return fmt.Errorf("security synchronization: %w", err)
+			}
 			// Keep events and the terminal running: only remote control
 			// depends on the new state. The next tick tries again.
 			slog.Warn("relay: security synchronization paused remote control; retrying next sync", "err", err)
@@ -227,6 +236,9 @@ func (c *conn) securitySyncLoop(ctx context.Context) error {
 		err = c.ensurePublished(publishCtx)
 		publishCancel()
 		if err != nil {
+			if securityAuthenticationLost(err) {
+				return fmt.Errorf("checkpoint synchronization: %w", err)
+			}
 			slog.Warn("relay: republishing current state failed; retrying next sync", "err", err)
 		}
 	}
