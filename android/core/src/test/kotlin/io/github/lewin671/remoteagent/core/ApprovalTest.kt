@@ -28,6 +28,7 @@ class ApprovalTest {
                             http,
                             { shown.complete(it) },
                             { false },
+                            persistRegistration = {},
                             persistIdentity = {},
                             persist = { acct, record ->
                                 TestSecurity.get(server.url).stores[acct.deviceId] =
@@ -71,6 +72,8 @@ class ApprovalTest {
         val sponsor = fixtureRemote(owner.phone, http)
         val candidateSaved = java.util.concurrent.atomic.AtomicBoolean(false)
         val accountSaved = java.util.concurrent.atomic.AtomicBoolean(false)
+        val intentSaved = java.util.concurrent.atomic.AtomicBoolean(false)
+        val savedIntent = java.util.concurrent.atomic.AtomicReference<ByteArray>()
         val joiningHttp =
             http
                 .newBuilder()
@@ -80,8 +83,15 @@ class ApprovalTest {
                             "candidate keys were published before durable save",
                             candidateSaved.get(),
                         )
-                    if (chain.request().url.encodedPath.endsWith("/RegisterDevice"))
+                    if (chain.request().url.encodedPath.endsWith("/RegisterDevice")) {
                         assertTrue("registration preceded security record save", accountSaved.get())
+                        val body = okio.Buffer()
+                        chain.request().body!!.writeTo(body)
+                        assertArrayEquals(
+                            RegistrationIntent.parse(savedIntent.get()).request.toByteArray(),
+                            body.readByteArray(),
+                        )
+                    }
                     chain.proceed(chain.request())
                 }
                 .build()
@@ -98,8 +108,17 @@ class ApprovalTest {
                         joiningHttp,
                         { shown.complete(it) },
                         { false },
+                        persistRegistration = { intent ->
+                            savedIntent.set(intent.bytes())
+                            RegistrationIntent.parse(intent.bytes())
+                            intentSaved.set(true)
+                        },
                         persistIdentity = { candidateSaved.set(true) },
                         persist = { acct, record ->
+                            assertTrue(
+                                "account saved before registration intent",
+                                intentSaved.get(),
+                            )
                             accountSaved.set(true)
                             TestSecurity.get(acct.server).stores[acct.deviceId] =
                                 TestSecurityStore(record)
@@ -110,6 +129,13 @@ class ApprovalTest {
                 assertEquals(pairing.joined().first, shown.await())
                 val approving = async { pairing.approve() }
                 val account = joining.await()
+                val restored = RegistrationIntent.parse(savedIntent.get())
+                val retried =
+                    restored.resume(joiningHttp) { acct, record ->
+                        TestSecurity.get(acct.server).stores[acct.deviceId] =
+                            TestSecurityStore(record)
+                    }
+                assertEquals(account.deviceId, retried.deviceId)
                 approving.await()
                 pairing.approve() // The same operation, not a fresh approval.
                 assertTrue(login(Api(server.url, http), account).isNotBlank())
@@ -178,6 +204,7 @@ class ApprovalTest {
                             http,
                             { displayed.complete(it) },
                             { false },
+                            persistRegistration = {},
                             persistIdentity = {},
                             persist = { _, _ -> persisted = true },
                         )

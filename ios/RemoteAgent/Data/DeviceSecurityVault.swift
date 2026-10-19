@@ -20,9 +20,29 @@ extension Vault: DeviceSecurity.Storage {
     func initializeSecurity(_ record: DeviceSecurity.Record) throws {
         SecurityVaultLock.lock.lock()
         defer { SecurityVaultLock.lock.unlock() }
-        guard try read(.securityState) == nil else { throw DeviceSecurity.Failure.conflict }
+        _ = try initializeSecurityUnlocked(record)
+    }
+    private func initializeSecurityUnlocked(_ record: DeviceSecurity.Record) throws -> DeviceSecurity.Record {
+        if let existing = try read(.securityState) {
+            let old = try DeviceSecurity.Record.parse(existing)
+            if try old.includesInstallation(record) {
+                try refreshNotifyUnlocked(old); return old
+            }
+            throw DeviceSecurity.Failure.conflict
+        }
         try write(.securityState, record.bytes())
         try refreshNotifyUnlocked(record)
+        return record
+    }
+    /// The receipt check and both installations share logout's storage lock.
+    func saveRegistrationBootstrap(_ account: Account, record: DeviceSecurity.Record) throws {
+        SecurityVaultLock.lock.lock()
+        defer { SecurityVaultLock.lock.unlock() }
+        guard let raw = try readNamed("registration-intent") else { throw DeviceSecurity.Failure.stale }
+        let pending = try JSONDecoder().decode(RegistrationIntent.self, from: raw)
+        guard try pending.matchesBootstrap(account: account, record: record) else { throw DeviceSecurity.Failure.stale }
+        let installed = try initializeSecurityUnlocked(record)
+        try save(account.stored, notifyKey: DeviceSecurity.NotifyRecord(record: installed).bytes())
     }
     private func refreshNotifyUnlocked(_ record: DeviceSecurity.Record) throws {
         if let bytes = try read(.notifyKey),
@@ -46,8 +66,9 @@ extension Vault: DeviceSecurity.Storage {
         guard try DeviceSecurity.stateHash(old.state) == expectedHead else {
             throw DeviceSecurity.Failure.stale
         }
-        try write(.securityState, record.bytes())
-        try refreshNotifyUnlocked(record)
-        return record
+        let next = try record.mergingCommitted(old)
+        try write(.securityState, next.bytes())
+        try refreshNotifyUnlocked(next)
+        return next
     }
 }

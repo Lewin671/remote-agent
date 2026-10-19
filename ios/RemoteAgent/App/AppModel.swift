@@ -282,6 +282,22 @@ final class AppModel {
         let securityReady = parts.securityReady
         let gen = generation
         Task {
+            do {
+                if erase == nil,
+                    let intent = try await Task.detached(operation: { try storage.vault.loadRegistrationIntent() }).value
+                {
+                    _ = try await intent.resume(http: HTTP()) { account, record in
+                        try storage.vault.saveRegistrationBootstrap(account, record: record)
+                    }
+                    try await Task.detached { try storage.vault.clearRegistrationIntent(intent) }.value
+                }
+            } catch {
+                guard gen == generation else { return }
+                loading = false
+                stage = .failed(error.localizedDescription)
+                return
+            }
+            guard gen == generation, !erasing else { return }
             // The Keychain call blocks.
             let result = await Task.detached {
                 Result {

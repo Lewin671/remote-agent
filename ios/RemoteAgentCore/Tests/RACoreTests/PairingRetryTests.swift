@@ -13,7 +13,8 @@ extension ServerTests {
                 try await w.daemon.waitReady()
             }) { w in
                 let pairing = try await PhonePairing.start(w.phone)
-                let candidateSaved = Signal(), accountSaved = Signal()
+                let candidateSaved = Signal(), accountSaved = Signal(), intentSaved = Signal()
+                let receipt = RegistrationReceipt()
                 let joiningHTTP = Intercept.http(for: w.server.url) { request in
                     if request.url?.path.hasSuffix("/JoinPairing") == true { #expect(candidateSaved.isSet) }
                     if request.url?.path.hasSuffix("/RegisterDevice") == true { #expect(accountSaved.isSet) }
@@ -24,8 +25,8 @@ extension ServerTests {
                     try await joinByPairing(
                         link: pairing.link, http: joiningHTTP, onEmoji: { emoji.put($0) },
                         stopped: { false },
-                        persist: { acct, record in accountSaved.set(); try TestSecurity.get(acct.server).install(record)
-                        }, persistIdentity: { _ in candidateSaved.set() }, confirm: { _ in true })
+                        persist: { acct, record in #expect(intentSaved.isSet); accountSaved.set(); try TestSecurity.get(acct.server).install(record)
+                        }, persistRegistration: { intent in try receipt.save(intent); intentSaved.set() }, persistIdentity: { _ in candidateSaved.set() }, confirm: { _ in true })
                 }
                 defer { joining.cancel() }
                 let expected = try await pairing.reveal()
@@ -33,6 +34,11 @@ extension ServerTests {
                 let approving = Task { try await pairing.approve() }
                 defer { approving.cancel() }
                 let account = try await joining.value
+                let saved = try receipt.load()
+                #expect(String(reflecting:saved)=="RegistrationIntent")
+                #expect(Mirror(reflecting:saved).children.isEmpty)
+                let retried = try await saved.resume(http:joiningHTTP) { acct,record in try TestSecurity.get(acct.server).install(record) }
+                #expect(retried.deviceId == account.deviceId)
                 try await approving.value
                 // The same approved request is accepted again.
                 try await pairing.approve()
@@ -57,7 +63,7 @@ extension ServerTests {
                     do {
                         _ = try await joinByPairing(
                             link: pairing.link, http: w.http, onEmoji: { displayed.put($0) },
-                            stopped: { false }, persist: { _, _ in _ = persisted.increment() }, persistIdentity: { _ in })
+                            stopped: { false }, persist: { _, _ in _ = persisted.increment() }, persistRegistration: { _ in }, persistIdentity: { _ in })
                         return false
                     } catch { return errorText(error).contains("本机未确认") }
                 }
@@ -96,7 +102,7 @@ extension ServerTests {
                         link: pairing.link, http: faulty, onEmoji: { emoji.put($0) },
                         stopped: { false },
                         persist: { acct, record in try TestSecurity.get(acct.server).install(record)
-                        }, persistIdentity: { _ in }, confirm: { _ in true })
+                        }, persistRegistration: { _ in }, persistIdentity: { _ in }, confirm: { _ in true })
                 }
                 defer { joining.cancel() }
                 let expected = try await pairing.reveal()
@@ -111,4 +117,10 @@ extension ServerTests {
             }
         }
     }
+}
+
+private final class RegistrationReceipt: @unchecked Sendable {
+    private let lock=NSLock();private var raw=Data()
+    func save(_ intent:RegistrationIntent) throws { let data=try JSONEncoder().encode(intent);lock.withLock{raw=data} }
+    func load() throws -> RegistrationIntent { try JSONDecoder().decode(RegistrationIntent.self,from:lock.withLock{raw}) }
 }

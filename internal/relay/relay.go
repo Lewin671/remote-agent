@@ -105,6 +105,11 @@ func (r *Relay) Run(ctx context.Context) {
 	delay := r.Retry
 	logged := false
 	for ctx.Err() == nil {
+		if err := ResumeRegistration(ctx); err != nil {
+			slog.Error("relay: resume registration", "err", err)
+			sleep(ctx, delay)
+			continue
+		}
 		acct, err := LoadAccount()
 		if errors.Is(err, ErrNoAccount) {
 			if !logged {

@@ -65,14 +65,20 @@ data class HeadLease(
             return l
         }
 
-        fun sign(state: DeviceSecurity.State, signer: SigningKey, now: Long): HeadLease {
+        fun sign(
+            state: DeviceSecurity.State,
+            signer: SigningKey,
+            now: Long,
+            floor: ULong = 0uL,
+        ): HeadLease {
             require(state.core.authorityID == deviceId(signer.publicKey))
+            val issued = maxOf(now.coerceAtLeast(0).toULong(), state.core.issuedAt, floor)
             val l =
                 HeadLease(
                     state.core.domain,
                     DeviceSecurity.stateHash(state),
-                    now.toULong(),
-                    (now + DeviceSecurity.LEASE).toULong(),
+                    issued,
+                    issued + DeviceSecurity.LEASE_U,
                     byteArrayOf(),
                 )
             return l.copy(signature = signer.sign(l.signBytes()))

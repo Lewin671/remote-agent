@@ -310,6 +310,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                                     seed,
                                                     deviceSeed,
                                                     decoded.genesis,
+                                                    floor = app.vault.signingTime().toULong(),
                                                     draft =
                                                         draft?.takeIf {
                                                             DeviceSecurity.parseRecoveryStatement(
@@ -583,6 +584,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                                             url,
                                             app.http,
                                             setupToken.trim(),
+                                            now = app.vault.signingTime(),
                                             draft = app.vault.loadCreationOperation(),
                                             persistDraft = app.vault::saveCreationOperation,
                                         )
@@ -725,6 +727,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                                             existing.server,
                                             app.http,
                                             existing,
+                                            now = app.vault.signingTime(),
                                             draft = app.vault.loadCreationOperation(),
                                             persistDraft = app.vault::saveCreationOperation,
                                         )

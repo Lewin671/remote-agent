@@ -71,6 +71,33 @@ extension DeviceSecurity {
             self.recovery = recovery
             self.lease = lease
         }
+        public func includesInstallation(_ older: Record) throws -> Bool {
+            guard pin == older.pin, memberID == older.memberID, headEpoch >= older.headEpoch,
+                let previous = states[older.headEpoch]
+            else { return false }
+            return try stateHash(previous) == stateHash(older.state)
+                && (headEpoch > older.headEpoch || xPrivate == older.xPrivate)
+        }
+        /// Called under the storage transaction lock using the record read there.
+        public func mergingCommitted(_ old: Record) throws -> Record {
+            try check(pin == old.pin && memberID == old.memberID && xPrivate == old.xPrivate, .stale)
+            guard headEpoch >= old.headEpoch, let previous = states[old.headEpoch] else { throw Failure.stale }
+            try check(stateHash(previous) == stateHash(old.state), .stale)
+            var next = self
+            next.floor = max(floor, old.floor); next.floorSaved = max(floorSaved, old.floorSaved)
+            for (epoch,key) in old.contentKeys {
+                if let existing = next.contentKeys[epoch] { try check(existing == key, .conflict) }
+                next.contentKeys[epoch] = key
+            }
+            let nextHash = try stateHash(state)
+            if let committed = old.lease {
+                if let proposed = lease, proposed.head == committed.head {
+                    try proposed.verify(old.state)
+                    try check(proposed.issuedAt >= committed.issuedAt && proposed.notAfter >= committed.notAfter && (proposed.issuedAt != committed.issuedAt || proposed.notAfter == committed.notAfter), .stale)
+                } else if lease == nil || (headEpoch == old.headEpoch && committed.head == nextHash) { next.lease = committed }
+            }
+            return next
+        }
         public var xKey: Curve25519.KeyAgreement.PrivateKey {
             get throws { try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: xPrivate) }
         }

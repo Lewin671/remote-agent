@@ -72,6 +72,9 @@ it("stops another tab and reloads the joining page after the user forgets the ac
     },
   });
   const remote = DemoRemote.create(new URLSearchParams());
+  vi.spyOn(await import("./remote"), "resumeRegistration").mockResolvedValue(
+    undefined,
+  );
   vi.spyOn(Remote, "load").mockResolvedValue(remote);
   vi.spyOn(remote, "start").mockImplementation(() => undefined);
   const stop = vi.spyOn(remote, "stop");
@@ -90,7 +93,7 @@ it("stops another tab and reloads the joining page after the user forgets the ac
     vi.resetModules();
     const other = await import("./storage");
     await act(async () => other.forgetAccount());
-    expect(deleted).toHaveBeenCalledTimes(2);
+    expect(deleted).toHaveBeenCalledTimes(4);
     expect(stop).toHaveBeenCalled();
     expect(location.hash).toBe("");
     expect(reload).toHaveBeenCalledOnce();
@@ -106,7 +109,11 @@ for (const failure of ["onblocked", "onerror"] as const) {
     vi.stubGlobal("indexedDB", {
       open,
       deleteDatabase: () => {
-        const req = { onblocked: () => undefined, onerror: () => undefined, error: new Error("erase failed") };
+        const req = {
+          onblocked: () => undefined,
+          onerror: () => undefined,
+          error: new Error("erase failed"),
+        };
         queueMicrotask(() => req[failure]());
         return req;
       },

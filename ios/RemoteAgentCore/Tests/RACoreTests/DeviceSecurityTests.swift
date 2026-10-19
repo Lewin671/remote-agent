@@ -40,6 +40,22 @@ import Testing
         var l=S.HeadLease(domain:state.core.domain,head:try S.stateHash(state),issuedAt:state.core.issuedAt,notAfter:state.core.issuedAt+S.lease,signature:Data())
         l.signature=try SigningKey(seed:hex("phone_seed")).sign(l.signBytes());return l
     }
+    @Test func committedLeaseAndKeyCacheSurviveStaleSameHeadWrites() throws {
+        let genesis=try state("genesis"), head=try state("added")
+        let secret=try S.openGrant(pin(),head,recipient:genesis.core.authorityID,x:phoneX())
+        var old=try S.Record(pin:pin(),states:[1:genesis,2:head],memberID:genesis.core.authorityID,xPrivate:hex("phone_x"),member:true,secret:secret)
+        let first=try S.HeadLease.parse(Data(base64Encoded:v.s("lease"))!)
+        let renewed=try S.HeadLease.parse(Data(base64Encoded:v.s("renewed_lease"))!)
+        let bootstrap = try S.Record(pin:pin(),states:[1:genesis],memberID:genesis.core.authorityID,xPrivate:hex("phone_x"),member:true,secret:S.openGrant(pin(),genesis,recipient:genesis.core.authorityID,x:phoneX()))
+        #expect(try old.includesInstallation(bootstrap))
+        #expect(try !bootstrap.includesInstallation(old))
+        old.lease=renewed;old.floor=renewed.notAfter;old.contentKeys[1]=Data(repeating:42,count:32)
+        var stale=old;stale.lease=first;stale.floor=1;stale.contentKeys=[:]
+        #expect(throws:S.Failure.self) { try stale.mergingCommitted(old) }
+        stale.lease=nil
+        let merged=try stale.mergingCommitted(old)
+        #expect(merged.lease==renewed && merged.floor==renewed.notAfter && merged.contentKeys[1]==old.contentKeys[1])
+    }
     @Test func verifiesTheGoChainAndGrants() throws {
         let p = try pin()
         let genesis = try state("genesis")
@@ -414,7 +430,7 @@ final class MemorySecurityStore: DeviceSecurity.Storage, @unchecked Sendable {
         guard try DeviceSecurity.stateHash(record.state) == expectedHead else {
             throw DeviceSecurity.Failure.stale
         }
-        record = next
+        record = try next.mergingCommitted(record)
         return record
     }
 }

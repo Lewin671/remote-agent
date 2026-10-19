@@ -179,7 +179,21 @@ func TestJoinByPairingAgainstRealServer(t *testing.T) {
 	if res.err == nil {
 		t.Fatal("the committed registration's response was not lost")
 	}
-	resumed, err := relay.JoinByPairing(ctx, relay.PairLink{Code: created.Msg.Code, Commit: commit, Server: httpSrv.URL}, func([]string) bool { t.Error("resuming a durable admission must not start another SAS"); return false })
+	// Simulate interruption after the private intent committed but before
+	// account/security installation. Startup must need neither a SAS nor the link.
+	if res.acct != nil {
+		t.Fatal("failed join returned account")
+	}
+	file := filepath.Join(paths.Dir(), "security-v3.db")
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.Remove(file + "-wal")
+	_ = os.Remove(file + "-shm")
+	if err := relay.ResumeRegistration(ctx); err != nil {
+		t.Fatal(err)
+	}
+	resumed, err := relay.LoadAccount()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -284,13 +284,6 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil {
 		return nil, err
 	}
-	endpoint, err := deviceauth.InitEndpoint(securityPath(), pin, states, proofs, candidate.ID, priv.Seed(), x, lease)
-	if err != nil {
-		return nil, err
-	}
-	if err := endpoint.Close(); err != nil {
-		return nil, err
-	}
 	acct.Security = &SecurityConfig{Pin: pin, XPrivate: x}
 	auth := remoteagentv1connect.NewAuthServiceClient(httpClient(), server)
 	request := &pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Approval: payload.Approval, ApprovalSignature: payload.ApprovalSignature}
@@ -298,8 +291,11 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil {
 		return nil, err
 	}
-	admission := pairAdmission{Account: acct, Request: rawRequest, PairingID: id, CandidateToken: token}
+	admission := pairAdmission{Account: acct, Request: rawRequest, PairingID: id, CandidateToken: token, States: states, Proofs: proofs, Lease: lease}
 	if err := savePairAdmission(admission); err != nil {
+		return nil, err
+	}
+	if err := bootstrapAdmission(admission); err != nil {
 		return nil, err
 	}
 	res, err := auth.RegisterDevice(ctx, connect.NewRequest(request))
@@ -449,6 +445,9 @@ func pairingIdentityPath(server, pairingID string) string {
 // The pending slot is write-once until completion, so concurrent joins cannot
 // overwrite each other's long-term private keys before approval.
 func savePairingIdentity(server, pairingID string, raw []byte) error {
+	return saveExclusivePrivate(pairingIdentityPath(server, pairingID), raw)
+}
+func saveExclusivePrivate(path string, raw []byte) error {
 	f, err := os.CreateTemp(paths.Dir(), ".pair-candidate-*")
 	if err != nil {
 		return err
@@ -466,11 +465,11 @@ func savePairingIdentity(server, pairingID string, raw []byte) error {
 	if err = f.Close(); err != nil {
 		return err
 	}
-	if err = linkPrivateFile(name, pairingIdentityPath(server, pairingID)); err != nil {
+	if err = linkPrivateFile(name, path); err != nil {
 		if !errors.Is(err, os.ErrExist) {
 			return err
 		}
-		old, e := os.ReadFile(pairingIdentityPath(server, pairingID))
+		old, e := os.ReadFile(path)
 		if e != nil {
 			return e
 		}

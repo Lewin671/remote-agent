@@ -4,9 +4,7 @@ import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.proto.*
 import okhttp3.OkHttpClient
 
-/**
- * Creates a new account with its authority phone and pins the genesis, as the app does.
- */
+/** Creates a new account with its authority phone and pins the genesis, as the app does. */
 suspend fun newAuthorityAccount(
     root: ByteArray,
     server: String,
@@ -20,6 +18,7 @@ suspend fun newAuthorityAccount(
             server,
             http,
             setupToken = setupToken,
+            beforeRegister = {},
             kind = DeviceKind.DEVICE_KIND_CLIENT,
         )
     val (_, genesis) = TestSecurity.initialize(phone, recoverySeed)
@@ -32,14 +31,21 @@ suspend fun newAuthorityAccount(
             Api.headers(login(api, phone)),
         )
         .value()
-    val record=TestSecurity.get(server).stores.getValue(phone.deviceId).readSecurity()
-    api.client.putSecurityState(PutSecurityStateRequest.newBuilder().setLease(ByteString.copyFrom(record.lease!!.bytes())).build(),Api.headers(login(api,phone))).value()
+    val record = TestSecurity.get(server).stores.getValue(phone.deviceId).readSecurity()
+    api.client
+        .putSecurityState(
+            PutSecurityStateRequest.newBuilder()
+                .setLease(ByteString.copyFrom(record.lease!!.bytes()))
+                .build(),
+            Api.headers(login(api, phone)),
+        )
+        .value()
     return phone
 }
 
 /**
- * Adds a member with the Kotlin authority builder, uploads the state, registers the device with
- * the phone's approval, and keeps the chain for the new device.
+ * Adds a member with the Kotlin authority builder, uploads the state, registers the device with the
+ * phone's approval, and keeps the chain for the new device.
  */
 suspend fun approvedClient(
     authority: Account,
@@ -52,8 +58,7 @@ suspend fun approvedClient(
     val phone = phoneStore.readSecurity()
     val signer = SigningKey(seed)
     val x = randomBytes(32)
-    val member =
-        Authority.newMember(signer, x, kind.number.toUInt())
+    val member = Authority.newMember(signer, x, kind.number.toUInt())
     val old = phone.contentKey(phone.head.core.contentEpoch) ?: error("no content key")
     val next =
         Authority.pair(
@@ -64,7 +69,7 @@ suspend fun approvedClient(
             SigningKey(authority.deviceSeed),
             System.currentTimeMillis(),
         )
-    val lease=HeadLease.sign(next,SigningKey(authority.deviceSeed),next.core.issuedAt.toLong())
+    val lease = HeadLease.sign(next, SigningKey(authority.deviceSeed), next.core.issuedAt.toLong())
     val api = Api(authority.server, http)
     api.client
         .putSecurityState(
@@ -82,7 +87,9 @@ suspend fun approvedClient(
     for (s in security.stores.values.toList()) {
         val head = s.readSecurity().head
         if (next.core.epoch == head.core.epoch + 1uL) {
-            runCatching { s.installSecurity(DeviceSecurity.stateHash(head), listOf(next), listOf(null),lease) }
+            runCatching {
+                s.installSecurity(DeviceSecurity.stateHash(head), listOf(next), listOf(null), lease)
+            }
         }
     }
     val now = System.currentTimeMillis()
@@ -107,19 +114,21 @@ suspend fun approvedClient(
             accountId = authority.accountId,
             root = if (kind == DeviceKind.DEVICE_KIND_MACHINE) ByteArray(0) else authority.root,
             accountKey = authority.accountPublicKey,
+            beforeRegister = {},
         )
     val chain = (phone.chain + next).map { DeviceSecurity.stateBytes(it) }
     security.stores[result.deviceId] =
         TestSecurityStore(
             DeviceSecurity.Record.fromChain(
-                phone.pin.account,
-                phone.pin.domain,
-                phone.pin.genesis,
-                result.deviceId,
-                x,
-                chain,
-                chain.map { null },
-            ).installed(emptyList(),emptyList(),lease),
+                    phone.pin.account,
+                    phone.pin.domain,
+                    phone.pin.genesis,
+                    result.deviceId,
+                    x,
+                    chain,
+                    chain.map { null },
+                )
+                .installed(emptyList(), emptyList(), lease),
         )
     return result
 }
@@ -133,16 +142,14 @@ suspend fun fixtureMember(
 ): Account {
     val security = TestSecurity.get(authority.server)
     val (record, state) = security.enroll(seed, kind)
-    val lease=record.lease!!
+    val lease = record.lease!!
     val api = Api(authority.server, http)
     api.client
         .putSecurityState(
             PutSecurityStateRequest.newBuilder()
                 .setLease(ByteString.copyFrom(lease.bytes()))
                 .addStates(
-                    SecurityState.newBuilder()
-                        .setState(ByteString.copyFrom(state))
-                        .build(),
+                    SecurityState.newBuilder().setState(ByteString.copyFrom(state)).build(),
                 )
                 .build(),
             Api.headers(login(api, authority)),
@@ -170,6 +177,7 @@ suspend fun fixtureMember(
             accountId = authority.accountId,
             root = if (kind == DeviceKind.DEVICE_KIND_MACHINE) ByteArray(0) else authority.root,
             accountKey = authority.accountPublicKey,
+            beforeRegister = {},
         )
     security.stores[result.deviceId] = TestSecurityStore(record)
     // The fixture's chain is the authority's; keep every member's record in step.
@@ -194,7 +202,7 @@ suspend fun removeAsAuthority(phone: Account, target: String, http: OkHttpClient
             SigningKey(phone.deviceSeed),
             System.currentTimeMillis(),
         )
-    val lease=HeadLease.sign(next,SigningKey(phone.deviceSeed),next.core.issuedAt.toLong())
+    val lease = HeadLease.sign(next, SigningKey(phone.deviceSeed), next.core.issuedAt.toLong())
     val api = Api(phone.server, http)
     api.client
         .putSecurityState(
@@ -212,7 +220,9 @@ suspend fun removeAsAuthority(phone: Account, target: String, http: OkHttpClient
     for (s in security.stores.values.toList()) {
         val head = s.readSecurity().head
         if (next.core.epoch == head.core.epoch + 1uL) {
-            runCatching { s.installSecurity(DeviceSecurity.stateHash(head), listOf(next), listOf(null),lease) }
+            runCatching {
+                s.installSecurity(DeviceSecurity.stateHash(head), listOf(next), listOf(null), lease)
+            }
         }
     }
 }

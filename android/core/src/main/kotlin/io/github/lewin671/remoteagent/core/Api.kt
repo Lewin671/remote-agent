@@ -58,7 +58,7 @@ class Api(server: String, http: OkHttpClient) {
         ProtocolClient(
             // Never replay login, registration or pairing bodies at another URL.
             ConnectOkHttpClient(
-                http.newBuilder().followRedirects(false).followSslRedirects(false).build()
+                http.newBuilder().followRedirects(false).followSslRedirects(false).build(),
             ),
             ProtocolClientConfig(
                 host = this.server,
@@ -101,6 +101,8 @@ suspend fun joinWithRoot(
     enrollment: Enrollment? = null,
     seed: ByteArray? = null,
     signupProof: io.github.lewin671.remoteagent.proto.SignupProof? = null,
+    request: RegisterDeviceRequest? = null,
+    beforeRegister: (RegisterDeviceRequest) -> Unit = { throw DeviceSecurity.Failure("storage") },
 ): Account {
     val keys = Keys.derive(root)
     val deviceSeed = enrollment?.seed ?: seed ?: randomBytes(32)
@@ -120,12 +122,14 @@ suspend fun joinWithRoot(
         accountSignature =
             keys.account.sign(
                 registerMessage(
-                    registrationBytes(keys.account.publicKey, device.publicKey, kind, now)
-                )
+                    registrationBytes(keys.account.publicKey, device.publicKey, kind, now),
+                ),
             ),
         accountId = deviceId(keys.account.publicKey),
         root = root.copyOf(),
         accountKey = keys.account.publicKey,
+        request = request,
+        beforeRegister = beforeRegister,
     )
 }
 
@@ -145,25 +149,24 @@ suspend fun registerDevice(
     accountId: String = "",
     root: ByteArray = ByteArray(0),
     accountKey: ByteArray = ByteArray(0),
+    request: RegisterDeviceRequest? = null,
+    beforeRegister: (RegisterDeviceRequest) -> Unit = { throw DeviceSecurity.Failure("storage") },
 ): Account {
     val device = SigningKey(deviceSeed)
     val reg = registrationBytes(accountPublicKey, device.publicKey, kind, now)
-    val res =
-        Api(server, http)
-            .auth
-            .registerDevice(
-                RegisterDeviceRequest.newBuilder()
-                    .setProtocolVersion(PROTOCOL_VERSION)
-                    .setRegistration(ByteString.copyFrom(reg))
-                    .setSignature(ByteString.copyFrom(accountSignature))
-                    .setSetupToken(setupToken)
-                    .setApproval(ByteString.copyFrom(approval ?: byteArrayOf()))
-                    .setApprovalSignature(ByteString.copyFrom(approvalSignature ?: byteArrayOf()))
-                    .apply { signupProof?.let { setSignupProof(it) } }
-                    .build(),
-                emptyMap(),
-            )
-            .value()
+    val exact =
+        request
+            ?: RegisterDeviceRequest.newBuilder()
+                .setProtocolVersion(PROTOCOL_VERSION)
+                .setRegistration(ByteString.copyFrom(reg))
+                .setSignature(ByteString.copyFrom(accountSignature))
+                .setSetupToken(setupToken)
+                .setApproval(ByteString.copyFrom(approval ?: byteArrayOf()))
+                .setApprovalSignature(ByteString.copyFrom(approvalSignature ?: byteArrayOf()))
+                .apply { signupProof?.let { setSignupProof(it) } }
+                .build()
+    beforeRegister(exact)
+    val res = Api(server, http).auth.registerDevice(exact, emptyMap()).value()
     if (res.deviceId != deviceId(device.publicKey))
         throw IllegalStateException("server 返回了意外的设备 ID")
     return Account(server, root, deviceSeed.copyOf(), res.deviceId, accountId, accountKey)
@@ -235,7 +238,8 @@ fun errorText(e: Throwable): String =
         is DeviceSecurity.Failure ->
             when (e.code) {
                 "unavailable" -> "等待所属电脑更新当前状态：这台设备没有当时的内容密钥"
-                "invalid", "untrusted" -> "密文无效：签名、密钥或内容校验失败"
+                "invalid",
+                "untrusted" -> "密文无效：签名、密钥或内容校验失败"
                 "conflict" -> "成员链冲突，安全操作已停止；请核对设备后明确重新加入"
                 "lease" -> "管理端租约已过期，无法保存更改、控制会话或上传新内容；打开管理端 App 续期后重试。历史仍可查看"
                 "clock" -> "手机时钟比服务器快，成员状态暂不可用；请校准系统时间"

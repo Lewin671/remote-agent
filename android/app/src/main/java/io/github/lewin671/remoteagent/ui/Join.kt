@@ -153,6 +153,8 @@ fun JoinScreen(app: RaApp) {
                             persist = { acct, record -> app.persistPairing(acct, record) },
                             loadIdentity = app.vault::loadPairingIdentity,
                             persistIdentity = app.vault::savePairingIdentity,
+                            persistRegistration = app.vault::saveRegistrationIntent,
+                            clearRegistration = { app.vault.clearRegistrationIntent(it) },
                             existing = existing,
                             existingRemoved = existingRemoved,
                             confirm = { emoji ->

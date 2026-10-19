@@ -981,6 +981,7 @@ class RemoteTest {
                     http,
                     { joinerEmoji = it },
                     { false },
+                    persistRegistration = {},
                     persistIdentity = {},
                     persist = { acct, record ->
                         TestSecurity.get(acct.server).stores[acct.deviceId] =

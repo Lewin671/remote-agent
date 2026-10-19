@@ -39,11 +39,10 @@ struct JoinCalls: Sendable {
                     link: link, http: http, onEmoji: onEmoji, stopped: stopped,
                     onRegistering: onRegistering,
                     persist: { acct, record in
-                        try vault.initializeSecurity(record)
-                        try vault.save(
-                            acct.stored,
-                            notifyKey: DeviceSecurity.NotifyRecord(record: record).bytes())
-                    }, loadIdentity: { server, pairingID in
+                        try vault.saveRegistrationBootstrap(acct, record: record)
+                    }, persistRegistration: { intent in
+                        try vault.saveRegistrationIntent(intent)
+                    }, clearRegistration: { try vault.clearRegistrationIntent($0) }, loadIdentity: { server, pairingID in
                         try vault.readNamed(PairingIdentity.storageKey(server: server, pairingID: pairingID)).map { try JSONDecoder().decode(PairingIdentity.self, from: $0) }
                     },
                     persistIdentity: { identity in

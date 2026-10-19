@@ -1776,7 +1776,12 @@ class Remote(
             var cert = HeadLease.parse(req.lease.toByteArray())
             cert.verify(r.head)
             if (maxOf(clock().toULong(), r.floor) >= cert.notAfter) {
-                cert = HeadLease.sign(r.head, SigningKey(account.deviceSeed), clock())
+                cert =
+                    HeadLease.sign(
+                        r.head,
+                        SigningKey(account.deviceSeed),
+                        security.signingTime(clock()),
+                    )
                 req =
                     PutSecurityStateRequest.newBuilder()
                         .setLease(com.google.protobuf.ByteString.copyFrom(cert.bytes()))
@@ -2022,7 +2027,11 @@ class Remote(
         val lease =
             certificate
                 ?: if (states.last().core.authorityID == account.deviceId)
-                    HeadLease.sign(states.last(), SigningKey(account.deviceSeed), clock())
+                    HeadLease.sign(
+                        states.last(),
+                        SigningKey(account.deviceSeed),
+                        security.signingTime(clock()),
+                    )
                 else null
         lease?.let { req.setLease(com.google.protobuf.ByteString.copyFrom(it.bytes())) }
         val pending = storage.readSecurityOperation()
@@ -2064,7 +2073,12 @@ class Remote(
                             )
                     )
                         return@withContext
-                    val lease = HeadLease.sign(head, SigningKey(account.deviceSeed), clock())
+                    val lease =
+                        HeadLease.sign(
+                            head,
+                            SigningKey(account.deviceSeed),
+                            security.signingTime(clock()),
+                        )
                     val request =
                         PutSecurityStateRequest.newBuilder()
                             .setLease(com.google.protobuf.ByteString.copyFrom(lease.bytes()))
@@ -2120,7 +2134,7 @@ class Remote(
                     old,
                     Authority.newSecret(),
                     SigningKey(account.deviceSeed),
-                    clock(),
+                    security.signingTime(clock()),
                 ),
             ),
         )
@@ -2155,7 +2169,14 @@ class Remote(
             security.contentKey(head.core.contentEpoch)
                 ?: throw DeviceSecurity.Failure("unavailable")
         val (seed, pub) = Authority.newRecovery()
-        val state = Authority.veto(head, pub, secret, SigningKey(account.deviceSeed), clock())
+        val state =
+            Authority.veto(
+                head,
+                pub,
+                secret,
+                SigningKey(account.deviceSeed),
+                security.signingTime(clock()),
+            )
         val (pin, _) = security.identity()
         return PreparedRecovery(RecoveryCode.encode(seed, pin.genesis), state, seed)
     }
@@ -3119,7 +3140,7 @@ class Remote(
                 old,
                 Authority.newSecret(),
                 SigningKey(account.deviceSeed),
-                clock(),
+                security.signingTime(clock()),
             )
         publishSecurityStates(listOf(next))
         withContext(dispatcher) { loadDevices() }

@@ -12,6 +12,7 @@
 // without it.
 import Foundation
 import Security
+import RACore
 
 /// The account as it is kept on this device: where the server is, the root
 /// key everything is derived from, and this device's signing seed and ID.
@@ -237,6 +238,25 @@ struct Vault: Sendable {
         guard status == errSecSuccess else { throw VaultError(operation: .save, status: status) }
     }
 
+    func loadRegistrationIntent() throws -> RegistrationIntent? {
+        SecurityVaultLock.lock.lock();defer{SecurityVaultLock.lock.unlock()}
+        return try readNamed("registration-intent").map{try JSONDecoder().decode(RegistrationIntent.self,from:$0)}
+    }
+    func saveRegistrationIntent(_ intent:RegistrationIntent) throws {
+        SecurityVaultLock.lock.lock();defer{SecurityVaultLock.lock.unlock()}
+        let encoder=JSONEncoder();encoder.outputFormatting=[.sortedKeys]
+        try savePairingIdentity("registration-intent",encoder.encode(intent))
+    }
+    func clearRegistrationIntent(_ expected:RegistrationIntent) throws {
+        SecurityVaultLock.lock.lock();defer{SecurityVaultLock.lock.unlock()}
+        let encoder=JSONEncoder();encoder.outputFormatting=[.sortedKeys]
+        if try readNamed("registration-intent")==encoder.encode(expected){try deleteNamed("registration-intent")}
+    }
+    func deleteNamed(_ name: String) throws {
+        var q=query(nil);q[kSecAttrAccount]=name
+        let status=SecItemDelete(q as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw VaultError(operation:.delete,status:status) }
+    }
     func delete(_ item: Item) throws {
         let status = SecItemDelete(query(item) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {

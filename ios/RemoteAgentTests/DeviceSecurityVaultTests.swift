@@ -48,6 +48,27 @@ import Testing
         #expect(try DeviceSecurity.stateHash(repaired.state) == hash)
         #expect(try repaired.bytes() != initial.bytes())
     }
+    @Test func staleSameHeadWritesPreserveTheCommittedTimeFloor() throws {
+        defer { try? vault.clear() }
+        let initial = try record()
+        try vault.initializeSecurity(initial)
+        let hash = try DeviceSecurity.stateHash(initial.state)
+        var newer = initial; newer.floor = 9000; newer.floorSaved = 9000
+        _ = try vault.writeSecurity(expectedHead: hash, newer)
+        var stale = initial; stale.floor = 1000
+        _ = try vault.writeSecurity(expectedHead: hash, stale)
+        #expect(try vault.readSecurity().floor == 9000)
+    }
+    @Test func anErasedRegistrationReceiptCannotRestoreAccountKeys() throws {
+        defer { try? vault.clear() }
+        let stored = try record()
+        let account = Account(server: "https://relay.example.com", root: Data(), deviceSeed: Data(repeating: 2, count: 32), deviceId: stored.memberID, accountId: stored.pin.account)
+        #expect(throws: DeviceSecurity.Failure.self) {
+            try vault.saveRegistrationBootstrap(account, record: stored)
+        }
+        #expect(try vault.load() == nil)
+        #expect(try vault.read(.securityState) == nil)
+    }
     @Test func aCorruptExistingRecordCannotBecomeFreshSetup() throws {
         defer { try? vault.clear() }
         let parts = AppModel.Parts()

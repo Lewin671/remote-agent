@@ -94,6 +94,12 @@ class Vault(context: Context) : DeviceSecurity.Storage {
 
     fun hasSecurityState(): Boolean = securityTransaction { securityFile.exists() }
 
+    /** Setup/recovery screens also honor an existing device time floor. */
+    fun signingTime(wall: Long = System.currentTimeMillis()): Long = securityTransaction {
+        if (securityFile.exists()) readSecurityUnlocked().signingTime(wall)
+        else wall.coerceAtLeast(1)
+    }
+
     private fun readSecurityUnlocked(): DeviceSecurity.Record =
         DeviceSecurity.Record.parse(
             read(securityFile, ACCOUNT_ALIAS) ?: throw DeviceSecurity.Failure("storage"),
@@ -106,8 +112,11 @@ class Vault(context: Context) : DeviceSecurity.Storage {
     override fun initializeSecurity(record: DeviceSecurity.Record) {
         securityTransaction {
             if (securityFile.exists()) {
-                if (readSecurityUnlocked().bytes().contentEquals(record.bytes()))
+                val old = readSecurityUnlocked()
+                if (old.includesInstallation(record)) {
+                    refreshNotifyUnlocked(old)
                     return@securityTransaction
+                }
                 throw DeviceSecurity.Failure("conflict")
             }
             write(securityFile, ACCOUNT_ALIAS, record.bytes(), unlockedOnly = true)
@@ -193,6 +202,8 @@ class Vault(context: Context) : DeviceSecurity.Storage {
             read(File(dir, "security-operation.bin"), ACCOUNT_ALIAS)?.let {
                 SecurityOperation.parse(it)
             }
+        if (existing != null && !operation.preservesProgressOf(existing))
+            throw DeviceSecurity.Failure("stale")
         if (existing?.kind == "creation" && operation.kind == "creation") {
             val old =
                 io.github.lewin671.remoteagent.core.CreatedAccount.readOperationMaterial(
@@ -202,6 +213,24 @@ class Vault(context: Context) : DeviceSecurity.Storage {
                 io.github.lewin671.remoteagent.core.CreatedAccount.readOperationMaterial(
                     operation.local,
                 )
+            next.checkSecurityProgressFrom(old)
+            if (old.registration.isNotEmpty()) {
+                val before =
+                    io.github.lewin671.remoteagent.proto.RegisterDeviceRequest.parseFrom(
+                            old.registration,
+                        )
+                        .toBuilder()
+                        .clearSignupProof()
+                        .build()
+                val after =
+                    io.github.lewin671.remoteagent.proto.RegisterDeviceRequest.parseFrom(
+                            next.registration,
+                        )
+                        .toBuilder()
+                        .clearSignupProof()
+                        .build()
+                if (before != after) throw DeviceSecurity.Failure("conflict")
+            }
             if (
                 old.account.deviceId != next.account.deviceId ||
                     !old.account.deviceSeed.contentEquals(next.account.deviceSeed) ||
@@ -239,7 +268,8 @@ class Vault(context: Context) : DeviceSecurity.Storage {
             if (
                 !old.head.contentEquals(next.head) ||
                     next.issuedAt < old.issuedAt ||
-                    next.notAfter < old.notAfter
+                    next.notAfter < old.notAfter ||
+                    (next.issuedAt == old.issuedAt && next.notAfter != old.notAfter)
             )
                 throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("conflict")
         }
@@ -296,6 +326,30 @@ class Vault(context: Context) : DeviceSecurity.Storage {
                     "另一个配对草稿未完成，请先完成本次配对或明确退出后重试",
                 )
             write(file, ACCOUNT_ALIAS, identity.bytes(), unlockedOnly = true)
+        }
+
+    fun loadRegistrationIntent(): io.github.lewin671.remoteagent.core.RegistrationIntent? =
+        securityTransaction {
+            read(File(dir, "registration-intent.bin"), ACCOUNT_ALIAS)?.let {
+                io.github.lewin671.remoteagent.core.RegistrationIntent.parse(it)
+            }
+        }
+
+    fun saveRegistrationIntent(intent: io.github.lewin671.remoteagent.core.RegistrationIntent) =
+        securityTransaction {
+            val file = File(dir, "registration-intent.bin")
+            val raw = intent.bytes()
+            val old = read(file, ACCOUNT_ALIAS)
+            if (old != null && !old.contentEquals(raw)) throw DeviceSecurity.Failure("pending")
+            if (old == null) write(file, ACCOUNT_ALIAS, raw, unlockedOnly = true)
+        }
+
+    fun clearRegistrationIntent(expected: io.github.lewin671.remoteagent.core.RegistrationIntent) =
+        securityTransaction {
+            val file = File(dir, "registration-intent.bin")
+            val current = read(file, ACCOUNT_ALIAS) ?: return@securityTransaction
+            if (!current.contentEquals(expected.bytes())) return@securityTransaction
+            if (file.exists() && !file.delete()) throw DeviceSecurity.Failure("storage")
         }
 
     fun saveCreationOperation(draft: io.github.lewin671.remoteagent.core.CreatedAccount) {
@@ -372,6 +426,9 @@ class Vault(context: Context) : DeviceSecurity.Storage {
 
     fun clear(preserveSecurityOperation: Boolean = false) = securityTransaction {
         securityFile.delete()
+        File(dir, "registration-intent.bin").let {
+            if (it.exists() && !it.delete()) throw DeviceSecurity.Failure("storage")
+        }
         File(dir, "security-v2.bin").delete()
         File(dir, "security-removals-v2.bin").delete()
         File(dir, "security-history-v2").deleteRecursively()

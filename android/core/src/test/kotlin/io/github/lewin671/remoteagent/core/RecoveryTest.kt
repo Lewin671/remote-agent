@@ -42,20 +42,20 @@ class RecoveryTest {
 
                 // A code for another genesis is refused before anything is
                 // submitted, even if the relay's chain is otherwise valid.
-                val wrong =
-                    runCatching {
-                            Recovery.context(
-                                server.url,
-                                http,
-                                SigningKey(recoverySeed).publicKey,
-                                recoverySeed,
-                                expectedGenesis = ByteArray(10) { 0x7f },
-                            )
-                        }
-                        .exceptionOrNull()
+                val wrong = runCatching {
+                    Recovery.context(
+                        server.url,
+                        http,
+                        SigningKey(recoverySeed).publicKey,
+                        recoverySeed,
+                        expectedGenesis = ByteArray(10) { 0x7f },
+                    )
+                }
+                    .exceptionOrNull()
                 assertTrue(wrong is DeviceSecurity.Failure)
 
                 val newDevice = randomBytes(32)
+                val floor = (System.currentTimeMillis() + 10000).toULong()
                 val submitted =
                     Recovery.submit(
                         server.url,
@@ -63,7 +63,18 @@ class RecoveryTest {
                         recoverySeed,
                         newDevice,
                         before.pin.genesis.copyOf(10),
-                        persist = {},
+                        now = floor.toLong() - 20000,
+                        floor = floor,
+                        persist = { draft ->
+                            assertEquals(
+                                floor,
+                                DeviceSecurity.parseState(draft.state).core.issuedAt,
+                            )
+                            assertEquals(
+                                floor,
+                                DeviceSecurity.parseRecoveryStatement(draft.statement).issuedAt,
+                            )
+                        },
                     )
                 assertTrue(submitted.readyMs > System.currentTimeMillis() + 47L * 3600_000)
                 assertNotNull(RecoveryCode.decode(submitted.newCode))
@@ -87,7 +98,7 @@ class RecoveryTest {
                     io.github.lewin671.remoteagent.proto.PairingPayload.newBuilder()
                         .setServer(server.url)
                         .setAccountPublicKey(
-                            com.google.protobuf.ByteString.copyFrom(pending.accountPublicKey)
+                            com.google.protobuf.ByteString.copyFrom(pending.accountPublicKey),
                         )
                         .build()
                 assertEquals(phone.accountId, deviceId(payload.accountPublicKey.toByteArray()))

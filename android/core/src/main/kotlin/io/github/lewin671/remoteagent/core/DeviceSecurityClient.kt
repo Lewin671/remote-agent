@@ -82,6 +82,9 @@ class DeviceSecurityClient(
         synchronized(historyLock) {}
     }
 
+    /** Signing uses the same persisted clock as publication checks. */
+    fun signingTime(wall: Long): Long = record().signingTime(wall)
+
     private fun now(r: DeviceSecurity.Record): ULong = maxOf(clock().toULong(), r.floor)
 
     /** Pulls every state after the local head. The relay cannot make the head go backwards. */

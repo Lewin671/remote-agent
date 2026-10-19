@@ -21,7 +21,13 @@ class Codex2SignupTest {
                         if (chain.request().url.encodedPath.endsWith("/RegisterDevice")) {
                             val body = Buffer()
                             chain.request().body!!.writeTo(body)
-                            registrations += RegisterDeviceRequest.parseFrom(body.readByteArray())
+                            val exact = RegisterDeviceRequest.parseFrom(body.readByteArray())
+                            assertArrayEquals(
+                                "registration was not durable before network",
+                                draft!!.registration,
+                                exact.toByteArray(),
+                            )
+                            registrations += exact
                         }
                         chain.proceed(chain.request())
                     }
@@ -31,7 +37,9 @@ class Codex2SignupTest {
                     createAccount(
                         server.url,
                         http,
-                        persistDraft = { draft = CreatedAccount.readOperationMaterial(it.operationMaterial()) },
+                        persistDraft = {
+                            draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
+                        },
                     )
                 assertEquals(draft!!.account.deviceId, result.account.deviceId)
                 assertEquals(2, registrations.size)
@@ -49,9 +57,10 @@ class Codex2SignupTest {
         runBlocking<Unit> {
             val server = TestServer(signupMode = "open", signupBits = 29)
             try {
-                val failure =
-                    runCatching { createAccount(server.url, Api.defaultHttp(), persistDraft = {}) }
-                        .exceptionOrNull()
+                val failure = runCatching {
+                    createAccount(server.url, Api.defaultHttp(), persistDraft = {})
+                }
+                    .exceptionOrNull()
                 assertNotNull(failure)
                 assertTrue(
                     "difficulty bound was not enforced: $failure",

@@ -3,6 +3,8 @@ package deviceauth
 import (
 	"bytes"
 	"crypto/ed25519"
+	"database/sql"
+	"errors"
 	"slices"
 )
 
@@ -70,6 +72,7 @@ func BuildLease(head State, signer ed25519.PrivateKey, now uint64) (LeaseCertifi
 	if err != nil {
 		return LeaseCertificate{}, err
 	}
+	now = maxU64(now, head.Core.IssuedAt)
 	l := LeaseCertificate{Domain: head.Core.Domain, Head: h, IssuedAt: now, NotAfter: addLease(now)}
 	b, err := l.signBytes()
 	if err != nil {
@@ -162,17 +165,6 @@ func (e *Endpoint) InstallLease(l LeaseCertificate, now uint64) error {
 	if err := l.Verify(chainHead(e.data)); err != nil {
 		return err
 	}
-	if l.IssuedAt > maxU64(now, e.data.Floor)+MaxClockSkew {
-		return ErrClock
-	}
-	if old := e.data.Lease; old != nil && old.Head == l.Head {
-		if l.IssuedAt < old.IssuedAt || l.NotAfter < old.NotAfter {
-			return ErrStale
-		}
-		if l.IssuedAt == old.IssuedAt && l.NotAfter != old.NotAfter {
-			return ErrUntrusted
-		}
-	}
 	raw, err := l.MarshalBinary()
 	if err != nil {
 		return err
@@ -183,6 +175,29 @@ func (e *Endpoint) InstallLease(l LeaseCertificate, now uint64) error {
 		return ErrStorage
 	}
 	defer tx.Rollback()
+	if err := checkPersistedHead(tx, e.data); err != nil {
+		return err
+	}
+	var current []byte
+	err = tx.QueryRow(`SELECT certificate FROM lease WHERE id=1`).Scan(&current)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return ErrStorage
+	}
+	if len(current) > 0 {
+		committed, err := ParseLease(current)
+		if err != nil {
+			return err
+		}
+		if committed.Head == l.Head && (committed.IssuedAt > l.IssuedAt || committed.NotAfter > l.NotAfter || (committed.IssuedAt == l.IssuedAt && committed.NotAfter != l.NotAfter)) {
+			return ErrStale
+		}
+	}
+	if err := tx.QueryRow(`SELECT MAX(floor_ms,?) FROM security WHERE id=1`, floor).Scan(&floor); err != nil {
+		return ErrStorage
+	}
+	if l.IssuedAt > floor+MaxClockSkew {
+		return ErrClock
+	}
 	if _, err = tx.Exec(`INSERT OR REPLACE INTO lease(id,certificate) VALUES(1,?)`, raw); err != nil {
 		return ErrStorage
 	}

@@ -157,9 +157,6 @@ public actor DeviceSecurityClient {
         let l = try DeviceSecurity.HeadLease.parse(raw)
         try l.verify(r.state)
         try DeviceSecurity.check(l.issuedAt <= max(clock(),r.floor)+DeviceSecurity.clockSkewLimit,.clock)
-        if let old = r.lease, old.head == l.head {
-            try DeviceSecurity.check(l.issuedAt >= old.issuedAt && l.notAfter >= old.notAfter && (l.issuedAt != old.issuedAt || l.notAfter == old.notAfter),.stale)
-        }
         r.lease=l;r.floor=max(clock(),r.floor);r.floorSaved=r.floor
         r = try store.writeSecurity(expectedHead: DeviceSecurity.stateHash(r.state),r)
         keep(r)

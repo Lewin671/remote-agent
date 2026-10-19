@@ -127,3 +127,70 @@ func TestHandoffKeepsHistoryAndRemovesRetiringAuthority(t *testing.T) {
 		t.Fatal("old authority can lease")
 	}
 }
+
+func TestLeaseClockRollbackBindsToStateTime(t *testing.T) {
+	g, _, ed, _, _ := testGenesis(t)
+	l, err := BuildLease(g, ed, g.Core.IssuedAt-1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Verify(g); err != nil {
+		t.Fatal(err)
+	}
+	if l.IssuedAt != g.Core.IssuedAt {
+		t.Fatal("lease predates state")
+	}
+}
+
+func TestIndependentEndpointHandlesCannotRollbackLeaseOrFloor(t *testing.T) {
+	g, pin, ed, x, _ := testGenesis(t)
+	path := filepath.Join(t.TempDir(), "security.db")
+	a, err := InitEndpoint(path, pin, []State{g}, []*RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	b, err := OpenEndpoint(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	newer, _ := BuildLease(g, ed, g.Core.IssuedAt+2000)
+	newer.NotAfter = newer.IssuedAt + 2000
+	body, _ := newer.signBytes()
+	newer.Signature = ed25519.Sign(ed, body)
+	older, _ := BuildLease(g, ed, g.Core.IssuedAt+1000)
+	if err := a.InstallLease(newer, newer.IssuedAt); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.InstallLease(older, newer.IssuedAt); err == nil {
+		t.Fatal("stale handle rolled back committed lease")
+	}
+	b.data.Lease = &older
+	if err := b.persistRecord(false); err != nil {
+		t.Fatal(err)
+	}
+	check, err := OpenEndpoint(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if check.Lease().IssuedAt != newer.IssuedAt {
+		check.Close()
+		t.Fatal("full-record CAS rolled back issuance while extending expiration")
+	}
+	check.Close()
+	if err := a.Touch(newer.NotAfter + 1000); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Touch(newer.NotAfter); err != nil {
+		t.Fatal(err)
+	}
+	c, err := OpenEndpoint(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if c.Floor() != newer.NotAfter+1000 {
+		t.Fatal("stale handle rolled back time floor")
+	}
+}

@@ -38,6 +38,7 @@ fun CreatedAccount.operationMaterial(): ByteArray = operationMaterial { s ->
     s.writeUTF(account.accountId)
     s.blob(account.accountPublicKey)
     s.blob(record.bytes())
+    s.blob(registration)
 }
 
 /**

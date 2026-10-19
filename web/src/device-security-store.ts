@@ -329,8 +329,10 @@ export async function initializeSecurity(
         if (
           publicPinEqual(old.pin, record.pin) &&
           old.memberID === record.memberID &&
-          equal(old.stateHash, record.stateHash) &&
-          equal(old.secret, record.secret)
+          old.states.length >= record.states.length &&
+          record.states.every((s, i) =>
+            equal(s.signature, old.states[i].signature),
+          )
         ) {
           done();
           return;
@@ -345,6 +347,21 @@ export async function initializeSecurity(
           fail(new SecurityError("conflict"));
           return;
         }
+        // Both chains are locally verified; each signature binds its complete state.
+        // Compare the record read in this transaction, never a preflight snapshot.
+        if (
+          old.states.length >= record.states.length ||
+          old.states.some(
+            (s, i) => !equal(s.signature, record.states[i].signature),
+          )
+        ) {
+          fail(new SecurityError("stale"));
+          return;
+        }
+        record.floor = record.floor > old.floor ? record.floor : old.floor;
+        for (const key of old.contentKeys)
+          remember(record.contentKeys, key.epoch, key.secret);
+        if (!record.lease) record.lease = old.lease;
         store.put(record, KEY);
         done();
         return;
@@ -398,17 +415,6 @@ export async function installSecurity(
     : { ...expected, contentKeys: [...expected.contentKeys] };
   if (lease) {
     await verifyLease(lease, next.states[next.states.length - 1]);
-    if (lease.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
-      throw new SecurityError("clock");
-    const old = expected.lease;
-    if (
-      old &&
-      equal(old.head, lease.head) &&
-      (old.issuedAt > lease.issuedAt ||
-        old.notAfter > lease.notAfter ||
-        (old.issuedAt === lease.issuedAt && old.notAfter !== lease.notAfter))
-    )
-      throw new SecurityError("stale");
     next.lease = lease;
   }
   const db = await database(false);
@@ -426,6 +432,28 @@ export async function installSecurity(
           fail(new SecurityError("stale"));
           return;
         }
+        // The earlier snapshot is not a CAS authority for same-head renewals.
+        if (
+          lease &&
+          lease.issuedAt > maxFloor(r.floor) + BigInt(MAX_CLOCK_SKEW)
+        ) {
+          fail(new SecurityError("clock"));
+          return;
+        }
+        const old = r.lease;
+        if (
+          lease &&
+          old &&
+          equal(old.head, lease.head) &&
+          (old.issuedAt > lease.issuedAt ||
+            old.notAfter > lease.notAfter ||
+            (old.issuedAt === lease.issuedAt &&
+              old.notAfter !== lease.notAfter))
+        ) {
+          fail(new SecurityError("stale"));
+          return;
+        }
+        if (!lease) next.lease = r.lease;
         // Preserve concurrent time-floor and key-cache updates at the same head.
         next.floor = next.floor > r.floor ? next.floor : r.floor;
         for (const key of r.contentKeys)

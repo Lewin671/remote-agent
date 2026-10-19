@@ -13,17 +13,6 @@ public struct Enrollment: Sendable {
     }
 }
 
-func makePairApproval(account: Account, pairingId: String, candidate: Data, kind: PBDeviceKind, expires: Int64) throws -> (Data, Data) {
-    let signer = try SigningKey(seed: account.deviceSeed)
-    var a = PBPairApproval()
-    a.accountID = deviceId(publicKey: try Keys.derive(root: account.root).account.publicKey)
-    a.pairingID = pairingId; a.approverDeviceID = account.deviceId
-    a.approverPublicKey = signer.publicKey; a.candidateDevicePublicKey = candidate
-    a.candidateKind = kind; a.expiresMs = expires; a.nonce = randomBytes(16)
-    let raw = try a.serializedData()
-    return (raw, signer.sign(approvalContext + raw))
-}
-
 func verifyPairApproval(_ enrollment: Enrollment, root: Data, kind: PBDeviceKind, now: Int64) throws {
     try verifyPairApproval(
         enrollment, accountId: deviceId(publicKey: try Keys.derive(root: root).account.publicKey),

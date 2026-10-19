@@ -132,6 +132,8 @@ public func joinByPairing(
     persist: @Sendable (Account, DeviceSecurity.Record) async throws -> Void = { _, _ in
         throw DeviceSecurity.Failure.storage
     },
+    persistRegistration: @Sendable (RegistrationIntent) throws -> Void = { _ in throw DeviceSecurity.Failure.storage },
+    clearRegistration: @Sendable (RegistrationIntent) throws -> Void = { _ in },
     loadIdentity: @Sendable (String, String) throws -> PairingIdentity? = { _, _ in nil },
     persistIdentity: @Sendable (PairingIdentity) throws -> Void = { _ in throw DeviceSecurity.Failure.storage },
     existing: Account? = nil,
@@ -275,10 +277,15 @@ public func joinByPairing(
         pin: pin, states: states, memberID: candidate.id, xPrivate: x.rawRepresentation,
         member: true, secret: secret,
         contentKeys: [head.core.contentEpoch: secret], recovery: proofMap, lease: try DeviceSecurity.HeadLease.parse(payload.lease))
-    try await persist(acct, record)
-    let registered = try await registerJoined(
-        server: payload.server, http: http, deviceSeed: deviceSeed,
-        accountPublicKey: payload.accountPublicKey, kind: .client, enrollment: enrollment)
+    var reg = PBDeviceRegistration()
+    reg.accountPublicKey=payload.accountPublicKey;reg.devicePublicKey=try SigningKey(seed:deviceSeed).publicKey
+    reg.kind = .client;reg.createdMs=Int64(Date().timeIntervalSince1970*1000)
+    var request = PBRegisterDeviceRequest();request.protocolVersion=protocolVersion
+    request.registration=try reg.serializedData();request.approval=enrollment.approval;request.approvalSignature=enrollment.signature
+    let intent = try RegistrationIntent(account:acct,record:record,request:request)
+    try persistRegistration(intent)
+    let registered = try await intent.resume(http:http,persist:persist)
+    try clearRegistration(intent)
     try DeviceSecurity.check(registered.deviceId == acct.deviceId, .untrusted)
     // Tells the phone it went through. If this is lost, the phone reports the
     // outcome as unknown; the join itself stands.

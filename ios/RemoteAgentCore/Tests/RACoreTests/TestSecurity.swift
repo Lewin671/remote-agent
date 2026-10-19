@@ -215,7 +215,7 @@ final class TestSecurityStore: DeviceSecurity.Storage, @unchecked Sendable {
         guard try DeviceSecurity.stateHash(record.state) == expectedHead else {
             throw DeviceSecurity.Failure.stale
         }
-        record = next
+        record = try next.mergingCommitted(record)
         return record
     }
 }

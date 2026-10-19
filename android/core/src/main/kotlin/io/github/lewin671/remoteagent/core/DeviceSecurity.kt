@@ -1053,6 +1053,22 @@ object DeviceSecurity {
             lastMember()?.let { openGrant(pin, it, memberID, xPrivate) }
         }
 
+        fun signingTime(wall: Long): Long =
+            maxOf(
+                    maxOf(wall.coerceAtLeast(1).toULong(), floor, head.core.issuedAt),
+                    lease?.issuedAt ?: 0uL,
+                )
+                .toLong()
+
+        fun includesInstallation(other: Record): Boolean =
+            pin.account == other.pin.account &&
+                pin.domain.contentEquals(other.pin.domain) &&
+                pin.genesis.contentEquals(other.pin.genesis) &&
+                memberID == other.memberID &&
+                chain.size >= other.chain.size &&
+                stateHash(chain[other.chain.lastIndex]).contentEquals(stateHash(other.head)) &&
+                (chain.size > other.chain.size || xPrivate.contentEquals(other.xPrivate))
+
         fun leaseExpiration(): Long =
             lease?.takeIf { runCatching { it.verify(head) }.isSuccess }?.notAfter?.toLong() ?: 0L
 

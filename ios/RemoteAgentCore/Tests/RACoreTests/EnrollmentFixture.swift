@@ -288,3 +288,82 @@ final class PhonePairing: @unchecked Sendable {
         }
     }
 }
+
+/// Registers a new device of the account with root key `root` and logs nothing secret.
+func joinWithRoot(
+    root: Data, server: String, http: HTTP, setupToken: String = "", kind: PBDeviceKind = .client,
+    now: Int64 = Int64(Date().timeIntervalSince1970 * 1000), enrollment: Enrollment? = nil,
+    deviceSeed: Data? = nil
+) async throws -> Account {
+    let keys = try Keys.derive(root: root)
+    let seed = deviceSeed ?? enrollment?.seed ?? randomBytes(32)
+    let device = try SigningKey(seed: seed)
+    if let enrollment { try verifyPairApproval(enrollment, root: root, kind: kind, now: now) }
+    var reg = PBDeviceRegistration()
+    reg.accountPublicKey = keys.account.publicKey
+    reg.devicePublicKey = device.publicKey
+    reg.kind = kind
+    reg.createdMs = now
+    let regBytes: Data = try reg.serializedData()
+    let api = try Api(server: server, http: http)
+    var req = PBRegisterDeviceRequest()
+    req.protocolVersion = protocolVersion
+    req.registration = regBytes
+    req.signature = keys.account.sign(registerMessage(regBytes))
+    req.setupToken = setupToken
+    if let enrollment {
+        req.approval = enrollment.approval
+        req.approvalSignature = enrollment.signature
+    }
+    let res = try await api.auth.registerDevice(request: req).value()
+    if res.deviceID != deviceId(publicKey: device.publicKey) {
+        throw UserError("server 返回了意外的设备 ID")
+    }
+    return Account(
+        server: api.server, root: root, deviceSeed: seed, deviceId: res.deviceID,
+        accountId: deviceId(publicKey: keys.account.publicKey))
+}
+
+/// Registers a device joining an existing account. The phone-signed approval
+/// is the authorization; the account root key is not asked for.
+func registerJoined(
+    server: String, http: HTTP, deviceSeed: Data, accountPublicKey: Data,
+    kind: PBDeviceKind = .client, enrollment: Enrollment,
+    now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)
+) async throws -> Account {
+    guard accountPublicKey.count == 32 else { throw CryptoError("account public key must be 32 bytes") }
+    let accountId = deviceId(publicKey: accountPublicKey)
+    try verifyPairApproval(
+        enrollment, accountId: accountId, deviceSeed: deviceSeed, kind: kind, now: now)
+    let device = try SigningKey(seed: deviceSeed)
+    var reg = PBDeviceRegistration()
+    reg.accountPublicKey = accountPublicKey
+    reg.devicePublicKey = device.publicKey
+    reg.kind = kind
+    reg.createdMs = now
+    let regBytes: Data = try reg.serializedData()
+    let api = try Api(server: server, http: http)
+    var req = PBRegisterDeviceRequest()
+    req.protocolVersion = protocolVersion
+    req.registration = regBytes
+    req.approval = enrollment.approval
+    req.approvalSignature = enrollment.signature
+    let res = try await api.auth.registerDevice(request: req).value()
+    if res.deviceID != deviceId(publicKey: device.publicKey) {
+        throw UserError("server 返回了意外的设备 ID")
+    }
+    return Account(
+        server: api.server, root: Data(), deviceSeed: deviceSeed, deviceId: res.deviceID,
+        accountId: accountId)
+}
+
+func makePairApproval(account: Account, pairingId: String, candidate: Data, kind: PBDeviceKind, expires: Int64) throws -> (Data, Data) {
+    let signer = try SigningKey(seed: account.deviceSeed)
+    var a = PBPairApproval()
+    a.accountID = deviceId(publicKey: try Keys.derive(root: account.root).account.publicKey)
+    a.pairingID = pairingId; a.approverDeviceID = account.deviceId
+    a.approverPublicKey = signer.publicKey; a.candidateDevicePublicKey = candidate
+    a.candidateKind = kind; a.expiresMs = expires; a.nonce = randomBytes(16)
+    let raw = try a.serializedData()
+    return (raw, signer.sign(Data("remote-agent/v1/pair-approval\0".utf8) + raw))
+}

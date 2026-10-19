@@ -1,7 +1,7 @@
 import { parseLease } from "./device-security";
 import { PROTOCOL_VERSION } from "./protocol";
 import {
-  initializeSecurity,
+  buildRecord,
   loadPairingIdentity,
   savePairingIdentity,
   clearPairingIdentity,
@@ -321,15 +321,14 @@ export async function joinByPairing(
   )
     throw new Error("加入回执没有本机的正确身份");
   await openGrant(trust.pin, head, candidate.id, x.privateKey);
-  await initializeSecurity(
+  const record = await buildRecord(
     trust.pin,
     states,
     proofs,
     candidate.id,
     x.privateKey,
-    replace,
-    parseLease(new Uint8Array(msg.lease)),
   );
+  record.lease = parseLease(new Uint8Array(msg.lease));
   const acct = await joinWithApproval(
     accountPublicKey,
     msg.server,
@@ -340,6 +339,8 @@ export async function joinByPairing(
       approvalSignature: new Uint8Array(msg.approvalSignature),
     },
     existing,
+    record,
+    replace,
   );
   await clearPairingIdentity(link.server, peek.pairingId);
   // Tells the phone it went through. If this is lost, the phone reports

@@ -252,6 +252,7 @@ object Recovery {
         deviceSeed: ByteArray,
         genesisPrefix: ByteArray,
         now: Long = System.currentTimeMillis(),
+        floor: ULong = 0uL,
         draft: RecoveryPublication? = null,
         persist: (RecoveryPublication) -> Unit = { throw DeviceSecurity.Failure("storage") },
     ): RecoverySubmission {
@@ -296,7 +297,7 @@ object Recovery {
                             signer,
                             oldRecoverySeed,
                             newRecoveryEd,
-                            now,
+                            maxOf(now.coerceAtLeast(1).toULong(), floor).toLong(),
                         )
                     RecoveryPublication(
                         server,

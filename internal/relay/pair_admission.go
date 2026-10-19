@@ -28,6 +28,9 @@ type pairAdmission struct {
 	Request        []byte
 	PairingID      string
 	CandidateToken string
+	States         []deviceauth.State
+	Proofs         []*deviceauth.RecoveryStatement
+	Lease          deviceauth.LeaseCertificate
 }
 
 func pairAdmissionPath(server, id string) string {
@@ -39,7 +42,7 @@ func savePairAdmission(a pairAdmission) error {
 	if err != nil {
 		return err
 	}
-	return writeFileSync(pairAdmissionPath(a.Account.Server, a.PairingID), raw)
+	return saveExclusivePrivate(pairAdmissionPath(a.Account.Server, a.PairingID), raw)
 }
 func clearPairAdmission(a pairAdmission) error {
 	for _, path := range []string{pairingIdentityPath(a.Account.Server, a.PairingID), pairAdmissionPath(a.Account.Server, a.PairingID)} {
@@ -54,6 +57,56 @@ func clearPairAdmission(a pairAdmission) error {
 // local endpoint is the trust anchor; the relay cannot nominate a new account.
 // Refused/expired admissions remain as owned lineage for a fresh authority-
 // signed rejoin, since a prior registration may have committed before revocation.
+
+// ResumeRegistration is called by daemon startup before it loads the account.
+func ResumeRegistration(ctx context.Context) error {
+	files, err := filepath.Glob(filepath.Join(paths.Dir(), "pair-admission-*.json"))
+	if err != nil {
+		return err
+	}
+	for _, path := range files {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		var pending pairAdmission
+		if len(raw) > 16<<20 || json.Unmarshal(raw, &pending) != nil || pending.Account == nil {
+			return deviceauth.ErrInvalid
+		}
+		if _, _, err := resumePairAdmissions(ctx, pending.Account.Server); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func bootstrapAdmission(pending pairAdmission) error {
+	a := pending.Account
+	if a == nil || a.Security == nil || len(pending.States) == 0 {
+		return deviceauth.ErrInvalid
+	}
+	if _, err := os.Stat(securityPath()); err == nil {
+		ep, err := deviceauth.OpenEndpoint(securityPath())
+		if err != nil {
+			return err
+		}
+		pin, head, _ := ep.Snapshot()
+		ep.Close()
+		if pin != a.Security.Pin {
+			return deviceauth.ErrUntrusted
+		}
+		if head.Core.Epoch >= pending.States[len(pending.States)-1].Core.Epoch {
+			return nil
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	ep, err := deviceauth.InitEndpoint(securityPath(), a.Security.Pin, pending.States, pending.Proofs, a.DeviceID, a.DeviceSeed, a.Security.XPrivate, pending.Lease)
+	if err != nil {
+		return err
+	}
+	return ep.Close()
+}
+
 func resumePairAdmissions(ctx context.Context, server string) (*Account, map[string]*Account, error) {
 	owned := map[string]*Account{}
 	files, err := filepath.Glob(filepath.Join(paths.Dir(), "pair-admission-*.json"))
@@ -62,6 +115,22 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 	}
 	if len(files) == 0 {
 		return nil, owned, nil
+	}
+	// This local receipt was written only after SAS and full chain verification.
+	for _, path := range files {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return nil, owned, err
+		}
+		var pending pairAdmission
+		if len(raw) > 16<<20 || json.Unmarshal(raw, &pending) != nil || pending.Account == nil {
+			return nil, owned, deviceauth.ErrInvalid
+		}
+		if pending.Account.Server == server {
+			if err := bootstrapAdmission(pending); err != nil {
+				return nil, owned, err
+			}
+		}
 	}
 	endpoint, err := deviceauth.OpenEndpoint(securityPath())
 	if err != nil {
@@ -76,7 +145,7 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 			return nil, owned, err
 		}
 		var pending pairAdmission
-		if len(raw) > 1<<20 || json.Unmarshal(raw, &pending) != nil || pending.Account == nil {
+		if len(raw) > 16<<20 || json.Unmarshal(raw, &pending) != nil || pending.Account == nil {
 			return nil, owned, deviceauth.ErrInvalid
 		}
 		a := pending.Account

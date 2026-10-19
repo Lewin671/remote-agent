@@ -78,6 +78,7 @@ export function watchAccountLogout(onLogout: () => void): () => void {
 export async function forgetAccount(): Promise<void> {
   // Keep the account reachable for an explicit retry if key erasure is blocked.
   await forgetSecurity();
+  await clearRegistration();
   await run("readwrite", (s) => s.delete(KEY));
   // The account store is shared by same-origin tabs. Notify them as soon
   // as the deletion commits, even if clearing the sealed cache fails.
@@ -160,4 +161,73 @@ export function clearProjectConfig(
   project: string,
 ): void {
   localStorage.removeItem(projectConfigKey(account, project));
+}
+
+/** Private local receipt, written before any account/security installation. */
+export interface RegistrationIntent {
+  account: StoredAccount;
+  request: Uint8Array<ArrayBuffer>;
+  security?: import("./device-security-store").SecurityRecord;
+  replace: boolean;
+}
+export function loadRegistration(): Promise<RegistrationIntent | undefined> {
+  return run("readonly", (s) => s.get("registration"));
+}
+export async function saveRegistration(
+  intent: RegistrationIntent,
+): Promise<void> {
+  const d = await db();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = d.transaction(STORE, "readwrite", { durability: "strict" });
+      const s = tx.objectStore(STORE);
+      const get = s.get("registration");
+      get.onsuccess = () => {
+        const old = get.result as RegistrationIntent | undefined;
+        if (
+          old &&
+          (old.account.server !== intent.account.server ||
+            old.account.deviceId !== intent.account.deviceId ||
+            old.request.length !== intent.request.length ||
+            old.request.some((b, i) => b !== intent.request[i]))
+        ) {
+          tx.abort();
+          return;
+        }
+        if (!old) s.add(intent, "registration");
+      };
+      tx.oncomplete = () => resolve();
+      tx.onabort = tx.onerror = () =>
+        reject(new Error("还有未完成的设备注册，请先重试"));
+    });
+  } finally {
+    d.close();
+  }
+}
+export async function clearRegistration(
+  expected?: RegistrationIntent,
+): Promise<void> {
+  if (!expected) return run("readwrite", (s) => s.delete("registration"));
+  const d = await db();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = d.transaction(STORE, "readwrite", { durability: "strict" });
+      const store = tx.objectStore(STORE);
+      const get = store.get("registration");
+      get.onsuccess = () => {
+        const r = get.result as RegistrationIntent | undefined;
+        if (
+          r &&
+          r.account.deviceId === expected.account.deviceId &&
+          r.request.length === expected.request.length &&
+          r.request.every((b, i) => b === expected.request[i])
+        )
+          store.delete("registration");
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = tx.onabort = () => reject(tx.error);
+    });
+  } finally {
+    d.close();
+  }
 }

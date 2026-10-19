@@ -19,7 +19,10 @@ import {
   type Member,
   type SecurityHeader,
 } from "./device-security";
-import { PairApprovalSchema } from "./gen/remoteagent/v1/relay_pb";
+import {
+  PairApprovalSchema,
+  RegisterDeviceRequestSchema,
+} from "./gen/remoteagent/v1/relay_pb";
 // Remote keeps the page in sync with the server: it logs in, holds the
 // decrypted machines, sessions and events, follows the push stream, and
 // sends sealed commands. Content is only ever decrypted here.
@@ -129,7 +132,14 @@ import {
 import { endedUnsent, machineName, modelLabel, type Outgoing } from "./model";
 import { eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PROTOCOL_VERSION } from "./protocol";
-import { loadAccount, saveAccount, type StoredAccount } from "./storage";
+import {
+  loadAccount,
+  saveAccount,
+  loadRegistration,
+  saveRegistration,
+  clearRegistration,
+  type StoredAccount,
+} from "./storage";
 
 export interface MachineView {
   id: string;
@@ -312,6 +322,8 @@ export async function joinWithApproval(
     approvalSignature: Uint8Array;
   },
   existing?: StoredAccount,
+  security?: import("./device-security-store").SecurityRecord,
+  replace = false,
 ): Promise<StoredAccount> {
   server = checkServer(server);
   const account = await deviceID(accountPublicKey);
@@ -364,14 +376,6 @@ export async function joinWithApproval(
       createdMs: BigInt(Date.now()),
     }),
   );
-  const auth = createClient(
-    AuthService,
-    createConnectTransport({
-      fetch: relayFetch,
-      baseUrl: apiBase(server),
-      useBinaryFormat: true,
-    }),
-  );
   const stored: StoredAccount = {
     server,
     root: existing?.root,
@@ -379,16 +383,17 @@ export async function joinWithApproval(
     devicePrivate: device.privateKey,
     deviceId: await deviceID(pub),
   };
-  await saveAccount(stored);
-  localStorage.setItem("ra-server", server);
-  const res = await auth.registerDevice({
-    protocolVersion: PROTOCOL_VERSION,
-    registration: reg,
-    approval: enrollment.approval,
-    approvalSignature: enrollment.approvalSignature,
-  });
-  if (res.deviceId !== (await deviceID(pub)))
-    throw new Error("server 返回了意外的设备 ID");
+  const request = toBinary(
+    RegisterDeviceRequestSchema,
+    create(RegisterDeviceRequestSchema, {
+      protocolVersion: PROTOCOL_VERSION,
+      registration: reg,
+      approval: enrollment.approval,
+      approvalSignature: enrollment.approvalSignature,
+    }),
+  );
+  await saveRegistration({ account: stored, request, security, replace });
+  await resumeRegistration();
   return stored;
 }
 
@@ -786,6 +791,7 @@ export class Remote {
     );
   }
   static async load(): Promise<Remote | undefined> {
+    await resumeRegistration();
     const acct = await loadAccount();
     if (!acct) return undefined;
     const r = new Remote(
@@ -3509,4 +3515,39 @@ export function errorText(e: unknown): string {
 
 function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
   return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+/** Startup retries the exact signed request, including after a lost response. */
+export async function resumeRegistration(): Promise<void> {
+  const pending = await loadRegistration();
+  if (!pending) return;
+  if (pending.security) {
+    const r = pending.security;
+    const { initializeSecurity } = await import("./device-security-store");
+    await initializeSecurity(
+      r.pin,
+      r.states,
+      r.proofs,
+      r.memberID,
+      r.xPrivate,
+      pending.replace,
+      r.lease,
+    );
+  }
+  await saveAccount(pending.account);
+  localStorage.setItem("ra-server", pending.account.server);
+  const auth = createClient(
+    AuthService,
+    createConnectTransport({
+      fetch: relayFetch,
+      baseUrl: apiBase(pending.account.server),
+      useBinaryFormat: true,
+    }),
+  );
+  const res = await auth.registerDevice(
+    fromBinary(RegisterDeviceRequestSchema, pending.request),
+  );
+  if (res.deviceId !== pending.account.deviceId)
+    throw new Error("server 返回了意外的设备 ID");
+  await clearRegistration(pending);
 }

@@ -232,7 +232,7 @@ internal constructor(
                     val cp = candidateSeed ?: throw PairException("没有候选设备")
                     val xp = candidateX ?: throw PairException("没有候选设备")
                     val kind = candidateKind ?: throw PairException("没有候选设备")
-                    val now = System.currentTimeMillis()
+                    val now = remote.security.signingTime(System.currentTimeMillis())
                     val head = remote.security.head()
                     if (head.core.authorityID != acct.deviceId) throw PairException("只有管理端手机能批准")
                     val old =
@@ -442,6 +442,8 @@ suspend fun joinByPairing(
     persist: suspend (Account, DeviceSecurity.Record) -> Unit = { _, _ ->
         throw DeviceSecurity.Failure("storage")
     },
+    persistRegistration: (RegistrationIntent) -> Unit = { throw DeviceSecurity.Failure("storage") },
+    clearRegistration: (RegistrationIntent) -> Unit = {},
     loadIdentity: (String, String) -> PairingIdentity? = { _, _ -> null },
     persistIdentity: (PairingIdentity) -> Unit = { throw DeviceSecurity.Failure("storage") },
     existing: Account? = null,
@@ -640,23 +642,28 @@ suspend fun joinByPairing(
             chain.map { DeviceSecurity.stateBytes(it) },
             proofs,
         )
-    persist(
-        acct,
-        record.installed(emptyList(), emptyList(), HeadLease.parse(payload.lease.toByteArray())),
-    )
-    val registered =
-        registerDevice(
-            link.server,
-            http,
-            accountPublicKey,
-            deviceSeed,
-            DeviceKind.DEVICE_KIND_CLIENT,
-            approval = payload.approval.toByteArray(),
-            approvalSignature = payload.approvalSignature.toByteArray(),
-            accountId = pin.account,
-            root = existing?.root ?: ByteArray(0),
-            accountKey = accountPublicKey,
-        )
+    val installed =
+        record.installed(emptyList(), emptyList(), HeadLease.parse(payload.lease.toByteArray()))
+    val registration =
+        io.github.lewin671.remoteagent.proto.DeviceRegistration.newBuilder()
+            .setAccountPublicKey(com.google.protobuf.ByteString.copyFrom(accountPublicKey))
+            .setDevicePublicKey(
+                com.google.protobuf.ByteString.copyFrom(SigningKey(deviceSeed).publicKey),
+            )
+            .setKind(DeviceKind.DEVICE_KIND_CLIENT)
+            .setCreatedMs(System.currentTimeMillis())
+            .build()
+    val request =
+        io.github.lewin671.remoteagent.proto.RegisterDeviceRequest.newBuilder()
+            .setProtocolVersion(PROTOCOL_VERSION)
+            .setRegistration(registration.toByteString())
+            .setApproval(payload.approval)
+            .setApprovalSignature(payload.approvalSignature)
+            .build()
+    val intent = RegistrationIntent(acct, installed, request)
+    persistRegistration(intent)
+    val registered = intent.resume(http, persist)
+    clearRegistration(intent)
     check(registered.deviceId == acct.deviceId)
     try {
         api.pairing.getPairing(

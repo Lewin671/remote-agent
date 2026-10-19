@@ -7,7 +7,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Remote } from "./remote";
+import { Remote, resumeRegistration } from "./remote";
 import { loadAccount, type StoredAccount, watchAccountLogout } from "./storage";
 import { securitySetupStatus } from "./device-security-store";
 import { NavBar, useRemote } from "./ui";
@@ -58,6 +58,7 @@ export function App() {
   const load = async () => {
     try {
       setSetupError("");
+      if (!demo) await resumeRegistration();
       const account = await loadAccount();
       if (account && !demo) {
         const status = await securitySetupStatus();

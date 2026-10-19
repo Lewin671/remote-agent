@@ -12,6 +12,7 @@ import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.Keys
 import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.value
 import io.github.lewin671.remoteagent.data.CacheDb
 import io.github.lewin671.remoteagent.data.Prefs
 import io.github.lewin671.remoteagent.data.RoomCache
@@ -167,6 +168,42 @@ class RaApp : Application() {
                 val result =
                     withContext(Dispatchers.IO) {
                         runCatching {
+                            vault.loadCreationOperation()?.let { draft ->
+                                if (draft.registration.isNotEmpty()) {
+                                    val req =
+                                        io.github.lewin671.remoteagent.proto.RegisterDeviceRequest
+                                            .parseFrom(draft.registration)
+                                    try {
+                                        val result =
+                                            Api(draft.account.server, http)
+                                                .auth
+                                                .registerDevice(req, emptyMap())
+                                                .value()
+                                        require(result.deviceId == draft.account.deviceId)
+                                    } catch (e: com.connectrpc.ConnectException) {
+                                        // An interrupted signup may still need its challenge solved
+                                        // in the creation UI.
+                                        if (
+                                            e.code != com.connectrpc.Code.PERMISSION_DENIED &&
+                                                e.code != com.connectrpc.Code.NOT_FOUND
+                                        )
+                                            throw e
+                                    }
+                                }
+                            }
+                            vault.loadRegistrationIntent()?.let { intent ->
+                                intent.resume(http) { acct, record ->
+                                    vault.initializeSecurity(record)
+                                    vault.save(
+                                        acct,
+                                        io.github.lewin671.remoteagent.core.DeviceSecurity
+                                            .NotifyRecord
+                                            .fromRecord(record)
+                                            .bytes(),
+                                    )
+                                }
+                                vault.clearRegistrationIntent(intent)
+                            }
                             val acct = if (vault.hasAccount()) vault.load() else null
                             val ready =
                                 if (acct != null && vault.hasSecurityState()) {

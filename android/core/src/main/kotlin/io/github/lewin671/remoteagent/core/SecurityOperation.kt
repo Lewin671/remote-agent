@@ -36,11 +36,15 @@ class SecurityOperation(
     fun advanced(phase: Phase) =
         SecurityOperation(kind, parent, signed, local, delivery, phase, codeSaved)
 
+    /** Applied to the current operation under the vault's storage lock. */
+    fun preservesProgressOf(old: SecurityOperation): Boolean =
+        phase.ordinal >= old.phase.ordinal && (!old.codeSaved || codeSaved)
+
     /** Only an independent certificate may change while retrying an exact signed state. */
     fun renewsCertificateOf(old: SecurityOperation): Boolean = runCatching {
         require(kind == "state" && old.kind == kind && parent.contentEquals(old.parent))
         require(local.contentEquals(old.local) && delivery.contentEquals(old.delivery))
-        require(phase.ordinal >= old.phase.ordinal && (!old.codeSaved || codeSaved))
+        require(preservesProgressOf(old))
         val before =
             io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.parseFrom(old.signed)
         val after = io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.parseFrom(signed)

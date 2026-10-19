@@ -638,7 +638,7 @@ extension ServerTests {
                 async let joining = joinByPairing(
                     link: link, http: http, onEmoji: { joinerEmoji.put($0) }, stopped: { false },
                     persist: { acct, record in try TestSecurity.get(acct.server).install(record) },
-                    persistIdentity: { _ in }, confirm: { _ in true })
+                    persistRegistration: { _ in }, persistIdentity: { _ in }, confirm: { _ in true })
                 let (emoji, st) = try await pairing.reveal()
                 #expect(st.joinerKind == .client)
                 try await pairing.approve()

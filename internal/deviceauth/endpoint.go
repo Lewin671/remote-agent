@@ -460,6 +460,39 @@ func (e *Endpoint) persistRecord(writeAccepted bool) error {
 		return ErrStorage
 	}
 	defer tx.Rollback()
+	if !writeAccepted {
+		var epoch uint64
+		var hash []byte
+		if err := tx.QueryRow(`SELECT epoch,hash FROM states ORDER BY epoch DESC LIMIT 1`).Scan(&epoch, &hash); err != nil {
+			return ErrStorage
+		}
+		state, ok := d.States[epoch]
+		if !ok {
+			return ErrStale
+		}
+		h, err := state.Hash()
+		if err != nil || !bytes.Equal(h[:], hash) {
+			return ErrStale
+		}
+		if err := tx.QueryRow(`SELECT MAX(floor_ms,?), MAX(floor_saved_ms,?) FROM security WHERE id=1`, d.Floor, d.FloorSaved).Scan(&d.Floor, &d.FloorSaved); err != nil {
+			return ErrStorage
+		}
+		// A newer same-head lease survives a stale full-record write.
+		var raw []byte
+		err = tx.QueryRow(`SELECT certificate FROM lease WHERE id=1`).Scan(&raw)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return ErrStorage
+		}
+		if len(raw) > 0 {
+			l, err := ParseLease(raw)
+			if err != nil {
+				return err
+			}
+			if d.Lease == nil || (d.Lease.Head == l.Head && (l.IssuedAt > d.Lease.IssuedAt || l.NotAfter > d.Lease.NotAfter || (l.IssuedAt == d.Lease.IssuedAt && l.NotAfter != d.Lease.NotAfter))) {
+				d.Lease = &l
+			}
+		}
+	}
 	if _, err := tx.Exec(`UPDATE security SET version=?, pin_account=?, pin_domain=?, pin_genesis=?, member_id=?, ed_seed=?, x_private=?, secret=?, floor_ms=MAX(floor_ms,?), floor_saved_ms=MAX(floor_saved_ms,?), member=? WHERE id=1`,
 		d.Version, d.Pin.Account, d.Pin.Domain[:], d.Pin.Genesis[:], d.MemberID, d.EdSeed, d.XPrivate, d.Secret, d.Floor, d.FloorSaved, boolInt(d.Member)); err != nil {
 		return ErrStorage
@@ -506,6 +539,7 @@ func (e *Endpoint) persistRecord(writeAccepted bool) error {
 		if err := tx.Commit(); err != nil {
 			return ErrStorage
 		}
+		e.data.Floor, e.data.FloorSaved, e.data.Lease = d.Floor, d.FloorSaved, d.Lease
 		return nil
 	}
 	for key, a := range d.Accepted {
@@ -937,6 +971,9 @@ func (e *Endpoint) persistInstall(old, next record) error {
 		return ErrStorage
 	}
 	defer tx.Rollback()
+	if err := checkPersistedHead(tx, old); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(`UPDATE security SET secret=?, member=? WHERE id=1`,
 		next.Secret, boolInt(next.Member)); err != nil {
 		return ErrStorage
@@ -1143,10 +1180,9 @@ func (e *Endpoint) saveFloorLocked(d *record) error {
 		d.FloorSaved = d.Floor
 		return nil
 	}
-	if _, err := e.db.Exec(`UPDATE security SET floor_ms=?, floor_saved_ms=? WHERE id=1`, d.Floor, d.Floor); err != nil {
+	if err := e.db.QueryRow(`UPDATE security SET floor_ms=MAX(floor_ms,?), floor_saved_ms=MAX(floor_saved_ms,?) WHERE id=1 RETURNING floor_ms, floor_saved_ms`, d.Floor, d.Floor).Scan(&d.Floor, &d.FloorSaved); err != nil {
 		return ErrStorage
 	}
-	d.FloorSaved = d.Floor
 	return nil
 }
 
@@ -1351,6 +1387,26 @@ func (e *Endpoint) CheckExtension(states []State) error {
 		if err != nil || states[ep-1].Core.Epoch != ep || a != b {
 			return fmt.Errorf("pairing chain forks local state at epoch %d; manual handling is required", ep)
 		}
+	}
+	return nil
+}
+
+// Read the CAS authority inside the write transaction, including across handles.
+func checkPersistedHead(tx *sql.Tx, expected record) error {
+	var hash []byte
+	if err := tx.QueryRow(`SELECT hash FROM states ORDER BY epoch DESC LIMIT 1`).Scan(&hash); err != nil {
+		return ErrStorage
+	}
+	h, err := chainHead(expected).Hash()
+	if err != nil || !bytes.Equal(hash, h[:]) {
+		return ErrStale
+	}
+	var id string
+	if err := tx.QueryRow(`SELECT member_id FROM security WHERE id=1`).Scan(&id); err != nil {
+		return ErrStorage
+	}
+	if id != expected.MemberID {
+		return ErrStale
 	}
 	return nil
 }

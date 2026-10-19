@@ -27,14 +27,14 @@ object Authority {
 
     fun needsRenewal(lease: HeadLease?, now: Long): Boolean {
         if (lease == null) return true
-        val at = now.toULong()
+        val at = now.coerceAtLeast(1).toULong()
         if (at < lease.issuedAt) return false
         val remaining = if (at >= lease.notAfter) 0uL else lease.notAfter - at
         return remaining < DAY_MS && at - lease.issuedAt >= HALF_DAY_MS
     }
 
     fun leaseValid(record: DeviceSecurity.Record, now: Long): Boolean = runCatching {
-        record.lease?.valid(record.head, maxOf(now.toULong(), record.floor))
+        record.lease?.valid(record.head, maxOf(now.coerceAtLeast(1).toULong(), record.floor))
             ?: throw DeviceSecurity.Failure("lease")
     }
         .isSuccess
@@ -74,7 +74,7 @@ object Authority {
                 ByteArray(32),
                 1uL,
                 1uL,
-                now.toULong(),
+                now.coerceAtLeast(1).toULong(),
                 listOf(member),
                 emptyList(),
             )
@@ -169,7 +169,7 @@ object Authority {
                 parent = DeviceSecurity.stateHash(parent),
                 epoch = parent.core.epoch + 1uL,
             )
-        val issued = maxOf(now.toULong(), core.issuedAt)
+        val issued = maxOf(now.coerceAtLeast(1).toULong(), core.issuedAt)
         return build(
             core.copy(
                 recoveryEd = newRecoveryEd,
@@ -204,7 +204,7 @@ object Authority {
                 contentEpoch = parent.core.contentEpoch + 1uL,
                 authorityID = incoming,
                 recoveryEd = recoveryEd,
-                issuedAt = maxOf(now.toULong(), parent.core.issuedAt),
+                issuedAt = maxOf(now.coerceAtLeast(1).toULong(), parent.core.issuedAt),
                 members = parent.core.members.filterNot { it.id == parent.core.authorityID },
                 removed = (parent.core.removed + parent.core.authorityID).sorted(),
             )
@@ -239,7 +239,7 @@ object Authority {
                 contentEpoch = parent.core.contentEpoch + 1uL,
                 authorityID = newMember.id,
                 recoveryEd = newRecoveryEd,
-                issuedAt = maxOf(now.toULong(), parent.core.issuedAt),
+                issuedAt = maxOf(now.coerceAtLeast(1).toULong(), parent.core.issuedAt),
                 members = sorted(members),
                 removed = (parent.core.removed + parent.core.authorityID).distinct().sorted(),
             )
@@ -275,7 +275,7 @@ object Authority {
                 parent = DeviceSecurity.stateHash(parent),
                 epoch = parent.core.epoch + 1uL,
                 contentEpoch = parent.core.contentEpoch + 1uL,
-                issuedAt = maxOf(now.toULong(), parent.core.issuedAt),
+                issuedAt = maxOf(now.coerceAtLeast(1).toULong(), parent.core.issuedAt),
                 members = sorted(members),
                 removed = removed.sorted(),
             )
@@ -315,7 +315,28 @@ data class CreatedAccount(
     val recoveryCode: String,
     /** The relay needs its exported genesis pinned offline before it will accept this domain. */
     val needsOfflinePin: Boolean = false,
+    val registration: ByteArray = byteArrayOf(),
 ) {
+    /** Validated against the operation read while holding the vault transaction. */
+    fun checkSecurityProgressFrom(old: CreatedAccount) {
+        if (record.floor < old.record.floor) throw DeviceSecurity.Failure("stale")
+        val hash = DeviceSecurity.stateHash(record.head)
+        val certificate = record.lease?.takeIf { it.head.contentEquals(hash) }
+        if (
+            hash.contentEquals(DeviceSecurity.stateHash(old.record.head)) &&
+                old.record.leaseExpiration() != 0L &&
+                certificate == null
+        )
+            throw DeviceSecurity.Failure("stale")
+        old.record
+            .touched(record.floor)
+            .installed(
+                record.chain.drop(old.record.chain.size),
+                record.chain.drop(old.record.chain.size).map { record.proofs[it.core.epoch] },
+                certificate,
+            )
+    }
+
     companion object {
         fun readOperationMaterial(b: ByteArray): CreatedAccount =
             readOperationMaterial(b) { s ->
@@ -326,6 +347,7 @@ data class CreatedAccount(
                 val accountId = s.readUTF()
                 val pub = s.blob()
                 val record = DeviceSecurity.Record.parse(s.blob())
+                val registration = s.blob()
                 require(
                     root.size == 32 &&
                         seed.size == 32 &&
@@ -333,7 +355,12 @@ data class CreatedAccount(
                         record.memberID == id &&
                         record.pin.account == accountId,
                 )
-                CreatedAccount(Account(server, root, seed, id, accountId, pub), record, "")
+                CreatedAccount(
+                    Account(server, root, seed, id, accountId, pub),
+                    record,
+                    "",
+                    registration = registration,
+                )
             }
     }
 }
@@ -397,6 +424,20 @@ suspend fun createAccount(
                     seed = prepared.account.deviceSeed,
                     now = prepared.record.chain.first().core.issuedAt.toLong(),
                     signupProof = proof,
+                    request =
+                        prepared.registration
+                            .takeIf { it.isNotEmpty() }
+                            ?.let {
+                                io.github.lewin671.remoteagent.proto.RegisterDeviceRequest
+                                    .parseFrom(it)
+                                    .toBuilder()
+                                    .apply { proof?.let { setSignupProof(it) } }
+                                    .build()
+                            },
+                    beforeRegister = { request ->
+                        prepared = prepared.copy(registration = request.toByteArray())
+                        persistDraft(prepared)
+                    },
                 )
             try {
                 register()
@@ -441,7 +482,7 @@ suspend fun createAccount(
                 pub,
                 r.contentKey(r.head.core.contentEpoch)!!,
                 SigningKey(prepared.account.deviceSeed),
-                now,
+                maxOf(now.coerceAtLeast(1).toULong(), r.floor, r.lease?.issuedAt ?: 0uL).toLong(),
             )
         prepared =
             prepared.copy(
@@ -465,7 +506,13 @@ suspend fun createAccount(
             )
             .value()
     }
-    val lease = HeadLease.sign(prepared.record.head, SigningKey(prepared.account.deviceSeed), now)
+    val lease =
+        HeadLease.sign(
+            prepared.record.head,
+            SigningKey(prepared.account.deviceSeed),
+            now,
+            prepared.record.floor,
+        )
     prepared = prepared.copy(record = prepared.record.installed(emptyList(), emptyList(), lease))
     persistDraft(prepared)
     api.client
