@@ -293,8 +293,16 @@ func TestApprovalReplyAfterDeadline(t *testing.T) {
 	h := newHarness(t, Config{ApprovalTimeout: time.Minute})
 	h.writeRollout(turnContextLine("user"))
 	out := make(chan []byte, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	// The request's timer still has a minute to run: changing a.deadline
+	// below only changes the reply check. Cancel and join the hook before
+	// the harness removes its files, including on an assertion failure.
+	t.Cleanup(func() {
+		cancel()
+		<-out
+	})
 	go func() {
-		b, _ := h.s.hook(context.Background(), permissionPayload(h))
+		b, _ := h.s.hook(ctx, permissionPayload(h))
 		out <- b
 	}()
 	var id string
