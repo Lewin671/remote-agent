@@ -324,6 +324,7 @@ import Testing
         streams.answer(0)
         await until { t.state == .live }
         #expect(t.state == .live)
+        await until { !streams.sent.isEmpty } // TermConn seals/sends on its asynchronous writer.
         #expect(t.fitted && streams.sent.map(\.resize.fit) == [true])
         t.send(Data("ls".utf8))
         await until { streams.sent.last?.input == Data("ls".utf8) }

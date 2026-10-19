@@ -269,6 +269,39 @@ import Testing
         _ = try await seal()
     }
 
+    @Test(arguments: [false, true])
+    func failedPullPersistsObservedExpiryAndRefreshesSealingCache(nearSavedFloor: Bool) async throws {
+        let genesis = try state("genesis"), head = try state("added")
+        let lease = try S.HeadLease.parse(Data(base64Encoded: v.s("lease"))!)
+        let key = try SigningKey(seed: hex("phone_seed"))
+        let phone = head.core.authorityID
+        let floor = nearSavedFloor ? lease.notAfter - 1 : lease.issuedAt
+        let record = try S.Record(pin: pin(), states: [1: genesis, 2: head], memberID: phone,
+            xPrivate: hex("phone_x"), member: true, floor: floor, floorSaved: floor,
+            secret: hex("content_secret_2"), lease: lease)
+        let store = MemorySecurityStore(record)
+        let clock = PublicationClock(floor)
+        let sdk = DeviceSecurityClient(store: store, memberID: phone, signingKey: key,
+            clock: { clock.now() }, fetchStates: { _ in
+                #expect(try store.readSecurity().floor == lease.notAfter)
+                throw S.Failure.unavailable
+            })
+        _ = try await sdk.identity() // Cache the pre-expiry record.
+        clock.set(lease.notAfter)
+        await #expect(throws: S.Failure.unavailable) { try await sdk.sync() }
+        #expect(try store.readSecurity().floor == lease.notAfter)
+        clock.set(lease.issuedAt)
+        let reopened = DeviceSecurityClient(store: store, memberID: phone, signingKey: key,
+            clock: { clock.now() }, fetchStates: { _ in throw S.Failure.unavailable })
+        for client in [sdk, reopened] {
+            await #expect(throws: S.Failure.lease) {
+                try await client.seal(purpose: .prefs, request: "project-prefs", seq: 1,
+                    plaintext: Data([1]))
+            }
+            await client.close()
+        }
+    }
+
     @Test func expiredLeaseExplainsWhyAChangeCannotBeSaved() {
         let text = errorText(S.Failure.lease)
         #expect(text.contains("无法保存"))

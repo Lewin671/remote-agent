@@ -454,6 +454,9 @@ func NewClient(server, token, deviceID string, endpoint *deviceauth.Endpoint, ke
 // Sync pulls states after the local head. An unknown state is fetched
 // immediately before an envelope is retried.
 func (c *Client) Sync(ctx context.Context) error {
+	if err := c.endpoint.Touch(uint64(time.Now().UnixMilli())); err != nil {
+		return err
+	}
 	head := c.endpoint.HeadEpoch()
 	res, err := c.api.GetSecurityStates(ctx, connect.NewRequest(&pb.GetSecurityStatesRequest{AfterEpoch: head, Limit: 8}))
 	if err != nil {

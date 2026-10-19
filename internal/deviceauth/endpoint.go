@@ -1156,8 +1156,8 @@ func (e *Endpoint) cacheKeyLocked(epoch uint64, key []byte) {
 	_, _ = e.db.Exec(`INSERT OR REPLACE INTO content_keys (content_epoch, secret) VALUES (?, ?)`, epoch, key)
 }
 
-// Touch persists the time floor. Call it at startup and on every successful
-// state synchronization. It writes at most once per second.
+// Touch advances the cached time floor and persists it at most once per second.
+// Call it at startup and before fetching security states, even when the fetch fails.
 func (e *Endpoint) Touch(now uint64) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()

@@ -859,10 +859,15 @@ extension ServerTests {
                 let acct = try await w.join()
                 let proxy = try CountingProxy(to: w.server.port)
                 w.onClose { proxy.close() }
-                // Every batch takes a while to put away, so pushes pile up behind it.
+                // Hold consumption until later pushes fill the one-frame queue.
                 let cache = HookedCache()
+                let hold = Signal(), blocked = Signal(), release = Signal()
+                w.onClose { release.set() }
                 cache.hookPutEvents { sid, events in
-                    await sleepMs(60)
+                    if hold.isSet && !release.isSet {
+                        blocked.set()
+                        await release.wait()
+                    }
                     await cache.inner.putEvents(sessionId: sid, events: events)
                 }
                 let r = try w.remote(
@@ -872,7 +877,15 @@ extension ServerTests {
                     cache: cache, frameQueue: 1)
                 r.start()
                 _ = try await r.awaitEvents("s1", 3)
-                for i in 0..<30 { try await w.daemon.upload("s1", agent("快速的第 \(i) 条")) }
+                try await eventually("initial events to be cached") {
+                    await cache.inner.events(sessionId: "s1").count == 3
+                }
+                hold.set()
+                try await w.daemon.upload("s1", agent("快速的第 0 条"))
+                #expect(await blocked.wait(10_000))
+                for i in 1..<30 { try await w.daemon.upload("s1", agent("快速的第 \(i) 条")) }
+                release.set()
+                try await eventually("overflow to replace the stream") { proxy.streams.value >= 2 }
                 let ev = try await r.awaitEvents("s1", 33, ms: 40_000)
                 #expect(ev.seqs == Array(1...33))
                 // The queue did overflow: the stream was dropped and made again, and history filled the gap.

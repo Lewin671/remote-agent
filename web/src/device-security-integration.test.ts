@@ -342,3 +342,65 @@ it("refreshes its sealing record when another tab installed the head and sync re
     await f.fixture.close();
   }
 }, 20000);
+
+it("persists observed lease expiry before a failed pull and refreshes the sealing cache", async () => {
+  const f = await GoSecurityFixture.create();
+  try {
+    const { account, storage, record } = await webMember(f);
+    const lease = record.lease!;
+    const fetchFailure = new Error("synthetic security pull failure");
+    const atFetch: bigint[] = [];
+    let failPull = false;
+    const sdk = new DeviceSecurityClient(
+      account.deviceId,
+      account.devicePrivate,
+      async () => {
+        if (!failPull)
+          return { states: [], headEpoch: record.states.at(-1)!.core.epoch };
+        atFetch.push((await storage.loadSecurity()).floor);
+        throw fetchFailure;
+      },
+      () => true,
+      storage,
+    );
+    const header = {
+      kind: 12,
+      purpose: Purpose.Prefs,
+      machine: "",
+      session: "",
+      request: "project-prefs",
+      seq: 1n,
+      deadline: 0n,
+      compression: 0,
+    };
+    vi.useFakeTimers();
+    vi.setSystemTime(Number(lease.issuedAt));
+    // Populate the cache with the old floor before the failing sync.
+    await sdk.sync();
+    failPull = true;
+    vi.setSystemTime(Number(lease.notAfter));
+    await expect(sdk.sync()).rejects.toBe(fetchFailure);
+    vi.setSystemTime(Number(lease.issuedAt));
+    const reopened = new DeviceSecurityClient(
+      account.deviceId,
+      account.devicePrivate,
+      async () => {
+        throw fetchFailure;
+      },
+      () => true,
+      storage,
+    );
+    await expect
+      .soft(sdk.seal(header, new Uint8Array([1])))
+      .rejects.toMatchObject({ code: "lease" });
+    await expect
+      .soft(reopened.seal(header, new Uint8Array([1])))
+      .rejects.toMatchObject({ code: "lease" });
+    expect(atFetch).toEqual([lease.notAfter]);
+    expect((await storage.loadSecurity()).floor).toBe(lease.notAfter);
+    expect((await sdk.verifiedRecord()).floor).toBe(lease.notAfter);
+  } finally {
+    vi.useRealTimers();
+    await f.fixture.close();
+  }
+}, 20000);

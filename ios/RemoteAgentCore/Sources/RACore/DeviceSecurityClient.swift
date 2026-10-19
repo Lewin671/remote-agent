@@ -122,7 +122,8 @@ public actor DeviceSecurityClient {
     }
     private func syncLoop() async throws -> DeviceSecurity.Record {
         for _ in 0..<DeviceSecurity.maxStates {
-            let r = try read()
+            // Persist observed expiry even if fetching fails, before another seal can use the cache.
+            let r = try touch(now: clock(), persist: true)
             let localNow = max(clock(), r.floor)
             try DeviceSecurity.check(
                 r.state.core.issuedAt <= localNow + DeviceSecurity.clockSkewLimit, .clock)
@@ -218,17 +219,16 @@ public actor DeviceSecurityClient {
         keep(next)
         return next
     }
-    private func touch(now: UInt64) throws -> DeviceSecurity.Record {
+    private func touch(now: UInt64, persist: Bool = false) throws -> DeviceSecurity.Record {
         var r = try read()
-        let n = max(now, clock())
-        if n <= r.floor { return r }
+        let n = max(r.floor, max(now, clock()))
         r.floor = n
-        if n - r.floorSaved >= 1000 {
+        if n > r.floorSaved && (persist || n - r.floorSaved >= 1000) {
             r.floorSaved = n
             r = try store.writeSecurity(
                 expectedHead: try DeviceSecurity.stateHash(r.state), r)
-            keep(r)
         }
+        keep(r)
         return r
     }
     /// Seals locally with the current content key and a random nonce.

@@ -158,6 +158,10 @@ export class DeviceSecurityClient {
   private async syncLoop(): Promise<SecurityRecord> {
     let r = await this.load();
     for (let pages = 0; pages < 512; pages++) {
+      // A failed pull must not forget an observed lease expiry, including in the sealing cache.
+      await this.store.touchSecurity(BigInt(Date.now()));
+      r = await this.load();
+      this.record = r;
       const head = r.states[r.states.length - 1];
       const reply = await this.fetchStates(head.core.epoch, MAX_PAGE);
       if (reply.headEpoch < head.core.epoch) throw new SecurityError("stale");

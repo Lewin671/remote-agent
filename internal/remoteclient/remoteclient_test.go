@@ -1,14 +1,18 @@
 package remoteclient
 
 import (
+	"connectrpc.com/connect"
 	"context"
 	"crypto/ed25519"
 	"errors"
+	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -206,4 +210,48 @@ func syntheticTerminalSecurity(t *testing.T) (*Client, *deviceauth.Endpoint, str
 	}
 	t.Cleanup(func() { clientEndpoint.Close() })
 	return &Client{DeviceID: cm.ID, endpoint: clientEndpoint}, machineEndpoint, mm.ID
+}
+
+// A failed pull must not erase a local clock observation, even across reopen.
+func TestSyncPersistsObservedTimeBeforeFailedFetch(t *testing.T) {
+	client, _, _ := syntheticTerminalSecurity(t)
+	defer client.endpoint.Close() // Close the file before t.TempDir cleanup, including on Windows.
+	path := filepath.Join(t.TempDir(), "security.db")
+	if err := client.endpoint.Save(path); err != nil {
+		t.Fatal(err)
+	}
+	observed := uint64(time.Now().UnixMilli())
+	var atFetch atomic.Uint64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		stored, err := deviceauth.OpenEndpoint(path)
+		if err != nil {
+			t.Error(err)
+			http.Error(w, "storage", 500)
+			return
+		}
+		atFetch.Store(stored.Floor())
+		stored.Close()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(`{"code":"unavailable","message":"synthetic pull failure"}`))
+	}))
+	defer srv.Close()
+	client.api = remoteagentv1connect.NewClientServiceClient(srv.Client(), srv.URL)
+	if err := client.Sync(context.Background()); connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatalf("Sync = %v", err)
+	}
+	if atFetch.Load() < observed {
+		t.Errorf("fetch began before time was persisted: floor=%d observed=%d", atFetch.Load(), observed)
+	}
+	if client.endpoint.Floor() < observed {
+		t.Error("cached time floor did not advance")
+	}
+	reopened, err := deviceauth.OpenEndpoint(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	if reopened.Floor() < observed {
+		t.Error("observed time was lost across reopen")
+	}
 }
