@@ -131,7 +131,13 @@ fun JoinScreen(app: RaApp) {
     var comparison by remember {
         mutableStateOf<kotlinx.coroutines.CompletableDeferred<Boolean>?>(null)
     }
-    var mode by remember { mutableStateOf("join") }
+    val pendingCreation by app.pendingCreation.collectAsState()
+    var mode by
+        remember(pendingCreation, existing) {
+            mutableStateOf(
+                if (pendingCreation) if (existing == null) "create" else "rebuild" else "join",
+            )
+        }
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
 
@@ -144,28 +150,42 @@ fun JoinScreen(app: RaApp) {
                 val l = link.copy(server = checkedServer(link.server))
                 val acct =
                     withContext(Dispatchers.IO) {
-                        joinByPairing(
-                            l,
-                            app.http,
-                            { emoji -> scope.launch { step = JoinStep.Emoji(emoji) } },
-                            { stopped },
-                            { registering = true },
-                            persist = { acct, record -> app.persistPairing(acct, record) },
-                            loadIdentity = app.vault::loadPairingIdentity,
-                            persistIdentity = app.vault::savePairingIdentity,
-                            persistRegistration = app.vault::saveRegistrationIntent,
-                            clearRegistration = { app.vault.clearRegistrationIntent(it) },
-                            existing = existing,
-                            existingRemoved = existingRemoved,
-                            confirm = { emoji ->
-                                val answer = kotlinx.coroutines.CompletableDeferred<Boolean>()
-                                withContext(Dispatchers.Main) {
-                                    step = JoinStep.Emoji(emoji)
-                                    comparison = answer
+                        val pending = app.vault.loadRegistrationIntent()
+                        if (pending != null) {
+                            if (pending.account.server != l.server)
+                                throw io.github.lewin671.remoteagent.core.PairException(
+                                    "另一个服务器的注册尚未完成，请先重试或退出并重新开始",
+                                )
+                            registering = true
+                            val resumed =
+                                pending.resume(app.http) { account, record ->
+                                    app.persistPairing(account, record)
                                 }
-                                answer.await()
-                            },
-                        )
+                            app.vault.clearRegistrationIntent(pending)
+                            resumed
+                        } else
+                            joinByPairing(
+                                l,
+                                app.http,
+                                { emoji -> scope.launch { step = JoinStep.Emoji(emoji) } },
+                                { stopped },
+                                { registering = true },
+                                persist = { acct, record -> app.persistPairing(acct, record) },
+                                loadIdentity = app.vault::loadPairingIdentity,
+                                persistIdentity = app.vault::savePairingIdentity,
+                                persistRegistration = app.vault::saveRegistrationIntent,
+                                clearRegistration = { app.vault.clearRegistrationIntent(it) },
+                                existing = existing,
+                                existingRemoved = existingRemoved,
+                                confirm = { emoji ->
+                                    val answer = kotlinx.coroutines.CompletableDeferred<Boolean>()
+                                    withContext(Dispatchers.Main) {
+                                        step = JoinStep.Emoji(emoji)
+                                        comparison = answer
+                                    }
+                                    answer.await()
+                                },
+                            )
                     }
                 app.joined(acct)
             } catch (e: Exception) {
@@ -325,6 +345,12 @@ fun JoinScreen(app: RaApp) {
                                 Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp),
                                 Tone2.PLAIN,
                             )
+                        if (error.isNotEmpty())
+                            DiscardSetup(app) {
+                                mode = "join"
+                                error = ""
+                                step = JoinStep.Form
+                            }
                         androidx.compose.foundation.text.BasicTextField(
                             code,
                             { v ->

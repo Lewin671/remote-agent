@@ -3546,8 +3546,15 @@ export async function resumeRegistration(): Promise<void> {
   );
   const res = await auth.registerDevice(
     fromBinary(RegisterDeviceRequestSchema, pending.request),
+    { timeoutMs: 15000 },
   );
   if (res.deviceId !== pending.account.deviceId)
     throw new Error("server 返回了意外的设备 ID");
+  const approval = fromBinary(
+    PairApprovalSchema,
+    fromBinary(RegisterDeviceRequestSchema, pending.request).approval,
+  );
+  const { clearPairingIdentity } = await import("./device-security-store");
+  await clearPairingIdentity(pending.account.server, approval.pairingId);
   await clearRegistration(pending);
 }

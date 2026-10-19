@@ -294,7 +294,7 @@ final class AppModel {
             } catch {
                 guard gen == generation else { return }
                 loading = false
-                stage = .failed(error.localizedDescription)
+                stage = .failed(error.localizedDescription + "。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对。")
                 return
             }
             guard gen == generation, !erasing else { return }

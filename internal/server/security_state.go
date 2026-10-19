@@ -270,6 +270,14 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 		return nil, err
 	}
 
+	// Membership is committed: revoke live access before any fallible follow-up.
+	for _, id := range removed {
+		c.s.revokeStreams(id)
+		t.hub.drop(id)
+		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: id}}})
+		slog.Info("device removed by a security state", "device", id)
+	}
+
 	if len(req.Msg.Lease) > 0 {
 		if err := t.store.putSecurityLease(ctx, req.Msg.Lease); err != nil {
 			return nil, err
@@ -279,12 +287,7 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, internal(err)
 	}
-	for _, id := range removed {
-		c.s.revokeStreams(id)
-		t.hub.drop(id)
-		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: id}}})
-		slog.Info("device removed by a security state", "device", id)
-	}
+
 	return connect.NewResponse(&pb.PutSecurityStateResponse{HeadEpoch: last.epoch, Head: raw}), nil
 }
 

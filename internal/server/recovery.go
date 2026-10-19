@@ -523,6 +523,13 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 	if err := tx.Commit(); err != nil {
 		return nil, internal(err)
 	}
+	for _, old := range head.Core.Members {
+		if _, ok := row.state.Core.Member(old.ID); !ok {
+			rs.s.revokeStreams(old.ID)
+			rs.s.hub.account(row.account).drop(old.ID)
+		}
+	}
+
 	rs.s.pairing.mu.Lock()
 	for _, p := range rs.s.pairing.byID {
 		if p.account == row.account && !p.delivered {
@@ -532,12 +539,7 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 		}
 	}
 	rs.s.pairing.mu.Unlock()
-	for _, old := range head.Core.Members {
-		if _, ok := row.state.Core.Member(old.ID); !ok {
-			rs.s.revokeStreams(old.ID)
-			rs.s.hub.account(row.account).drop(old.ID)
-		}
-	}
+
 	return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.statement.NewAuthorityID, AccountPublicKey: acct.publicKey}), nil
 }
 

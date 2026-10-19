@@ -41,6 +41,19 @@ class UnauthenticatedScreensTest {
     }
 
     @Test
+    fun refusedStartupHasAnExplicitConfirmedStartOverAction() {
+        var retries = 0
+        var discarded = 0
+        show { AccountLoadFailure("批准已过期", { retries++ }, { discarded++ }) }
+        ui.onNodeWithText("重试").performClick()
+        org.junit.Assert.assertEquals(1, retries)
+        ui.onNodeWithText("退出并重新开始").performClick()
+        org.junit.Assert.assertEquals(0, discarded)
+        ui.onNodeWithText("确认退出").performClick()
+        org.junit.Assert.assertEquals(1, discarded)
+    }
+
+    @Test
     fun scannerPermissionScreenNeedsOnlyTheActivityLocals() {
         val app = app()
         show { JoinScreen(app) }

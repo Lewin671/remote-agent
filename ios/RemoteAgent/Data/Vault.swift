@@ -250,7 +250,10 @@ struct Vault: Sendable {
     func clearRegistrationIntent(_ expected:RegistrationIntent) throws {
         SecurityVaultLock.lock.lock();defer{SecurityVaultLock.lock.unlock()}
         let encoder=JSONEncoder();encoder.outputFormatting=[.sortedKeys]
-        if try readNamed("registration-intent")==encoder.encode(expected){try deleteNamed("registration-intent")}
+        if try readNamed("registration-intent")==encoder.encode(expected){
+            try deleteNamed(expected.candidateStorageKey)
+            try deleteNamed("registration-intent")
+        }
     }
     func deleteNamed(_ name: String) throws {
         var q=query(nil);q[kSecAttrAccount]=name

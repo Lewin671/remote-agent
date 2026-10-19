@@ -7,7 +7,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Remote, resumeRegistration } from "./remote";
+import { SetupReset } from "./SetupReset";
+import { Remote, resumeRegistration, errorText } from "./remote";
 import { loadAccount, type StoredAccount, watchAccountLogout } from "./storage";
 import { securitySetupStatus } from "./device-security-store";
 import { NavBar, useRemote } from "./ui";
@@ -84,8 +85,11 @@ export function App() {
       }
       setRetained(undefined);
       setRemote((await loadRemote()) ?? null);
-    } catch {
-      setSetupError("无法读取本机账户或安全状态。原数据已保留，请重试。");
+    } catch (error) {
+      setSetupError(
+        errorText(error) +
+          "。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对或创建。",
+      );
       setRemote(null);
     }
   };
@@ -126,6 +130,7 @@ export function App() {
       <div className="center">
         <p>{setupError}</p>
         <button onClick={() => void load()}>重试</button>
+        <SetupReset onDone={() => void load()} />
       </div>
     );
   if (remote === null)

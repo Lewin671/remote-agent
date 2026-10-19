@@ -105,10 +105,12 @@ func (r *Relay) Run(ctx context.Context) {
 	delay := r.Retry
 	logged := false
 	for ctx.Err() == nil {
-		if err := ResumeRegistration(ctx); err != nil {
-			slog.Error("relay: resume registration", "err", err)
-			sleep(ctx, delay)
-			continue
+		registrationCtx, registrationCancel := context.WithTimeout(ctx, 10*time.Second)
+		registrationErr := ResumeRegistration(registrationCtx)
+		registrationCancel()
+		if err := registrationErr; err != nil {
+			// Pending enrollment must not gate an already installed account.
+			slog.Warn("relay: registration pending; retry or explicitly discard with `remote-agent account discard-registration`", "err", err)
 		}
 		acct, err := LoadAccount()
 		if errors.Is(err, ErrNoAccount) {
@@ -131,6 +133,9 @@ func (r *Relay) Run(ctx context.Context) {
 		}
 		if time.Since(start) > time.Minute {
 			delay = r.Retry
+		}
+		if securityAuthenticationLost(err) || connect.CodeOf(err) == connect.CodeFailedPrecondition {
+			slog.Warn("relay: authorization refused; re-pair with `remote-agent account join` and a new phone code", "err", err)
 		}
 		slog.Warn("relay: disconnected", "err", err, "retry_in", delay)
 		sleep(ctx, delay+time.Duration(rand.Int64N(int64(delay/4+1))))
@@ -198,29 +203,8 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		return errors.New("server did not accept the stream")
 	}
 	errc := make(chan error, 4)
-	if err := c.security.syncOnce(ctx); err != nil {
-		if securityAuthenticationLost(err) {
-			return err
-		}
-		// The stream itself is up. Installed states still serve events and
-		// the terminal; remote control pauses until a later sync succeeds.
-		slog.Warn("relay: starting without the newest security state; control remains valid until the local lease expires", "err", err)
-	}
-	meta := c.r.backend.MachineMeta()
-	if err := c.publishCurrentCheckpoint(ctx); err != nil {
-		slog.Warn("relay: current checkpoint pending; retrying during synchronization", "err", err)
-	}
-	if err := c.putMachine(ctx, meta); err != nil {
-		return err
-	}
-	c.security.afterSync = func() {
-		rctx, rcancel := context.WithTimeout(ctx, 60*time.Second)
-		defer rcancel()
-		if err := c.ensurePublished(rctx); err != nil {
-			slog.Warn("relay: current checkpoint pending; retrying during synchronization", "err", err)
-		}
-	}
-	go func() { errc <- c.readLoop(ctx) }()
+	// Start consuming immediately after Ready, including during slow startup RPCs.
+	go func() { errc <- c.readLoop(ctx); cancel() }()
 	r.mu.Lock()
 	r.connected = true
 	r.mu.Unlock()
@@ -231,6 +215,21 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	}()
 	slog.Info("relay: connected", "server", acct.Server, "machine", acct.DeviceID)
 
+	if err := c.security.syncOnce(ctx); err != nil {
+		if securityAuthenticationLost(err) {
+			return err
+		}
+		// The stream itself is up. Installed states still serve events and
+		// the terminal; remote control pauses until a later sync succeeds.
+		slog.Warn("relay: starting without the newest security state; control remains valid until the local lease expires", "err", err)
+	}
+	meta := c.r.backend.MachineMeta()
+	if err := c.ensurePublished(ctx); err != nil {
+		slog.Warn("relay: current checkpoint pending; retrying during synchronization", "err", err)
+	}
+	if err := c.putMachine(ctx, meta); err != nil {
+		return err
+	}
 	go func() { errc <- c.syncLoop(ctx, meta) }()
 	go func() { errc <- c.securitySyncLoop(ctx) }()
 	go func() {

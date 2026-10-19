@@ -35,6 +35,7 @@ struct RootView: View {
                 VStack(spacing: 0) {
                     Spacer()
                     ErrorRow(why) { model.loadAccount() }
+                    SetupDiscardButton { await model.logout() }
                     Spacer()
                 }
             }
@@ -48,5 +49,20 @@ struct RootView: View {
                 MainView(context: context, start: LaunchDriver.startRoute).id(ObjectIdentifier(context))
             }
         }
+    }
+}
+
+/// Available before sign-in; no account navigation or remote environment is required.
+struct SetupDiscardButton: View {
+    let discard: @MainActor () async -> Void
+    @State private var asking = false
+    var body: some View {
+        Button("退出并重新开始", role: .destructive) { asking = true }
+            .confirmationDialog("退出并删除本机密钥？", isPresented: $asking, titleVisibility: .visible) {
+                Button("确认退出", role: .destructive) { Task { await discard() } }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("本机账户及未完成的注册和安全操作会被清除，需要重新配对。服务器上的会话和档案不会删除；结果未明的操作可能已经成功，请在管理端核实。")
+            }
     }
 }

@@ -221,6 +221,7 @@ class Vault(context: Context) : DeviceSecurity.Storage {
                         )
                         .toBuilder()
                         .clearSignupProof()
+                        .clearSetupToken()
                         .build()
                 val after =
                     io.github.lewin671.remoteagent.proto.RegisterDeviceRequest.parseFrom(
@@ -228,6 +229,7 @@ class Vault(context: Context) : DeviceSecurity.Storage {
                         )
                         .toBuilder()
                         .clearSignupProof()
+                        .clearSetupToken()
                         .build()
                 if (before != after) throw DeviceSecurity.Failure("conflict")
             }
@@ -349,7 +351,14 @@ class Vault(context: Context) : DeviceSecurity.Storage {
             val file = File(dir, "registration-intent.bin")
             val current = read(file, ACCOUNT_ALIAS) ?: return@securityTransaction
             if (!current.contentEquals(expected.bytes())) return@securityTransaction
+            val pair =
+                io.github.lewin671.remoteagent.proto.PairApproval.parseFrom(
+                    expected.request.approval,
+                )
+            val candidate = pairingIdentityFile(expected.account.server, pair.pairingId)
+            if (candidate.exists() && !candidate.delete()) throw DeviceSecurity.Failure("storage")
             if (file.exists() && !file.delete()) throw DeviceSecurity.Failure("storage")
+            syncDirectory()
         }
 
     fun saveCreationOperation(draft: io.github.lewin671.remoteagent.core.CreatedAccount) {

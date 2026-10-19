@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/proto"
 	"io"
@@ -29,7 +30,9 @@ import (
 // TestJoinByPairingAgainstRealServer exercises the Go join path end to end:
 // protocol-10 version checks, state upload before approval (the state must not
 // cancel the pairing), chain verification and registration.
-func TestJoinByPairingAgainstRealServer(t *testing.T) {
+func TestJoinByPairingAgainstRealServer(t *testing.T)               { testJoinRegistration(t, false) }
+func TestRefusedRegistrationCanBeDiscardedAndRepaired(t *testing.T) { testJoinRegistration(t, true) }
+func testJoinRegistration(t *testing.T, refused bool) {
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	srv, err := server.New(server.Config{DBPath: filepath.Join(t.TempDir(), "ra.db"), SetupToken: "setup"})
 	if err != nil {
@@ -65,6 +68,12 @@ func TestJoinByPairingAgainstRealServer(t *testing.T) {
 				}
 				if !durable {
 					t.Error("registration and replacement receipt were published before their durable admission record")
+				}
+				if refused {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusForbidden)
+					_, _ = w.Write([]byte(`{"code":"permission_denied","message":"synthetic expired approval"}`))
+					return
 				}
 				if dropRegistration.CompareAndSwap(true, false) {
 					accepted := httptest.NewRecorder()
@@ -178,6 +187,30 @@ func TestJoinByPairingAgainstRealServer(t *testing.T) {
 	res := <-joined
 	if res.err == nil {
 		t.Fatal("the committed registration's response was not lost")
+	}
+	if refused {
+		if err := relay.ResumeRegistration(ctx); !errors.Is(err, relay.ErrRegistrationRefused) {
+			t.Fatalf("refusal must name its recovery action: %v", err)
+		}
+		if err := relay.DiscardRegistration(); err != nil {
+			t.Fatal(err)
+		}
+		pending, _ := filepath.Glob(filepath.Join(paths.Dir(), "pair-admission-*.json"))
+		if len(pending) != 0 {
+			t.Fatal("discard left a startup retry slot")
+		}
+		owned, _ := filepath.Glob(filepath.Join(paths.Dir(), "pair-owned-*.json"))
+		if len(owned) != 1 {
+			t.Fatal("discard lost signed archive ownership receipt")
+		}
+		if err := relay.ResumeRegistration(ctx); err != nil {
+			t.Fatal(err)
+		}
+		_, err := relay.JoinByPairing(ctx, relay.PairLink{Server: httpSrv.URL, Code: "00000000"}, func([]string) bool { return false })
+		if errors.Is(err, relay.ErrRegistrationRefused) {
+			t.Fatal("new pairing still blocked by refused slot")
+		}
+		return
 	}
 	// Simulate interruption after the private intent committed but before
 	// account/security installation. Startup must need neither a SAS nor the link.

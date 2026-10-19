@@ -1,3 +1,4 @@
+import { SetupReset } from "../SetupReset";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useRef, useState } from "react";
 import { joinByPairing, PairCanceled, parsePairLink } from "../pairing";
@@ -17,7 +18,9 @@ export function AddDevicePage({ onBack }: { onBack: () => void }) {
           <div className="row help">添加和删除设备只在手机 App 上进行。</div>
         </div>
         <div className="manage-hint">
-          打开手机上的 Remote Agent，进入「设备」，点「添加设备」，再在新设备上扫码或输入它显示的 8 位配对码。
+          打开手机上的 Remote
+          Agent，进入「设备」，点「添加设备」，再在新设备上扫码或输入它显示的 8
+          位配对码。
         </div>
       </div>
     </div>
@@ -191,6 +194,7 @@ export function Setup({
       >
         {error.text}
       </Banner>
+      <SetupReset onDone={onDone} />
     </div>
   );
 

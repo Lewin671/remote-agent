@@ -1456,3 +1456,76 @@ func TestCheckpointFailureDoesNotBlockItsOwnSessionSync(t *testing.T) {
 		})
 	}
 }
+
+func TestSlowStartupPublicationKeepsReadingStream(t *testing.T) {
+	entered, release := make(chan struct{}), make(chan struct{})
+	var first atomic.Bool
+	first.Store(true)
+	var streams atomic.Int32
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/v1/stream" {
+				streams.Add(1)
+			}
+			if strings.HasSuffix(r.URL.Path, "/PutMachine") && first.CompareAndSwap(true, false) {
+				response := httptest.NewRecorder()
+				next.ServeHTTP(response, r)
+				close(entered)
+				select {
+				case <-release:
+				case <-r.Context().Done():
+				}
+				for k, vs := range response.Header() {
+					w.Header()[k] = vs
+				}
+				w.WriteHeader(response.Code)
+				_, _ = w.Write(response.Body.Bytes())
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}, func(c *server.Config) { c.PingInterval = 100 * time.Millisecond })
+	defer close(release)
+	r := e.startRelay()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("publication did not start")
+	}
+	time.Sleep(600 * time.Millisecond)
+	if !r.Connected() {
+		t.Fatal("startup publication delayed stream reader/readiness past ping deadline")
+	}
+	machines, err := e.client.Machines(context.Background())
+	if err != nil || len(machines) != 1 || !machines[0].Online {
+		t.Fatalf("server ping deadline expired during blocked publication: %v %v", machines, err)
+	}
+	if streams.Load() != 1 {
+		t.Fatal("slow publication caused reconnect")
+	}
+}
+
+func TestOrdinaryReconnectDoesNotRepublishCheckpoint(t *testing.T) {
+	var puts atomic.Int32
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/PutMachine") {
+				puts.Add(1)
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	e.startRelay()
+	waitFor(t, "first checkpoint", func() bool {
+		_, err := os.Stat(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "security-published"))
+		return err == nil && puts.Load() >= 2
+	})
+	e.stopRelay()
+	puts.Store(0)
+	e.startRelay()
+	waitFor(t, "reconnect machine update", func() bool { return puts.Load() >= 1 })
+	time.Sleep(150 * time.Millisecond)
+	if got := puts.Load(); got != 1 {
+		t.Fatalf("ordinary reconnect republished checkpoint: %d metadata writes", got)
+	}
+}

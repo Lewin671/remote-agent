@@ -129,6 +129,18 @@ final class Harness {
 @Suite struct AppModelTests {
     let h = Harness()
 
+    @Test func failedPendingRegistrationCanBeExplicitlyDiscardedWithoutAnAccount() async throws {
+        defer { h.cleanUp() }
+        try h.vault.savePairingIdentity("registration-intent",Data("synthetic-invalid-receipt".utf8))
+        h.model.setForeground(true)
+        await eventually("failed pending registration") { if case .failed = h.model.stage { return true }; return false }
+        #expect(try h.vault.readNamed("registration-intent") != nil)
+        await h.model.logout()
+        #expect(h.model.stage == .join)
+        #expect(try h.vault.readNamed("registration-intent") == nil)
+        h.model.loadAccount()
+        await eventually("fresh join after discard") { h.model.stage == .join }
+    }
     @Test func withoutAnAccountTheJoinFlowIsShown() async {
         defer { h.cleanUp() }
         #expect(h.model.stage == .loading)

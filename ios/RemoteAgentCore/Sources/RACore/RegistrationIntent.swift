@@ -12,6 +12,14 @@ public struct RegistrationIntent: Codable, Sendable, CustomStringConvertible,
   let accountID: String
   let security: Data
   public let request: Data
+  public var candidateStorageKey: String {
+    get throws {
+      let request = try PBRegisterDeviceRequest(serializedBytes: self.request)
+      let approval = try PBPairApproval(serializedBytes: request.approval)
+      return PairingIdentity.storageKey(server: server, pairingID: approval.pairingID)
+    }
+  }
+  public var targetServer: String { server }
   public var description: String { "RegistrationIntent" }
   public var debugDescription: String { description }
   public var customMirror: Mirror { Mirror(self, children: [:]) }

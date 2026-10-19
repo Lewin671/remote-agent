@@ -19,6 +19,7 @@ import (
 const accountUsage = `Usage:
   remote-agent account join --server URL --code CODE
   remote-agent account join LINK            join with a pairing code or link from the phone
+  remote-agent account discard-registration discard pending enrollment before re-pairing
   remote-agent account secret               print offline decryption backup material
   remote-agent account status               show this machine's account
 `
@@ -31,6 +32,12 @@ func runAccount(args []string) error {
 	switch args[0] {
 	case "join":
 		return runAccountJoin(args[1:])
+	case "discard-registration":
+		if err := relay.DiscardRegistration(); err != nil {
+			return err
+		}
+		fmt.Println("Pending registration discarded. Remove the unfinished candidate on the phone if still listed, then request a new code and run account join. Retained archives and ownership receipts are kept.")
+		return nil
 	case "secret":
 		return runAccountSecret()
 	case "status":

@@ -431,6 +431,8 @@ suspend fun createAccount(
                                 io.github.lewin671.remoteagent.proto.RegisterDeviceRequest
                                     .parseFrom(it)
                                     .toBuilder()
+                                    .setSetupToken(setupToken)
+                                    .clearSignupProof()
                                     .apply { proof?.let { setSignupProof(it) } }
                                     .build()
                             },

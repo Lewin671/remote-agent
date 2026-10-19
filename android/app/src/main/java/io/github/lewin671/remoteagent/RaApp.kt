@@ -66,6 +66,8 @@ class RaApp : Application() {
     private val _loaded = MutableStateFlow(false)
     /** The stored account has been read, or there is none. */
     val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+    private val _pendingCreation = MutableStateFlow(false)
+    val pendingCreation: StateFlow<Boolean> = _pendingCreation.asStateFlow()
     private val _accountError = MutableStateFlow("")
     /** Why the stored account could not be read, e.g. the phone was locked. */
     val accountError: StateFlow<String> = _accountError.asStateFlow()
@@ -152,6 +154,10 @@ class RaApp : Application() {
      * notification. A failure, such as a phone locked again meanwhile, is retried at the next
      * start.
      */
+    fun discardAccount() {
+        scope.launch { logout() }
+    }
+
     fun loadAccount() {
         if (erasePending) {
             if (!erasing) scope.launch { logout() }
@@ -168,28 +174,31 @@ class RaApp : Application() {
                 val result =
                     withContext(Dispatchers.IO) {
                         runCatching {
+                            // A crash after confirmed local adoption is already a success;
+                            // do not gate its cleanup on another network registration probe.
                             vault.loadCreationOperation()?.let { draft ->
-                                if (draft.registration.isNotEmpty()) {
-                                    val req =
-                                        io.github.lewin671.remoteagent.proto.RegisterDeviceRequest
-                                            .parseFrom(draft.registration)
-                                    try {
-                                        val result =
-                                            Api(draft.account.server, http)
-                                                .auth
-                                                .registerDevice(req, emptyMap())
-                                                .value()
-                                        require(result.deviceId == draft.account.deviceId)
-                                    } catch (e: com.connectrpc.ConnectException) {
-                                        // An interrupted signup may still need its challenge solved
-                                        // in the creation UI.
-                                        if (
-                                            e.code != com.connectrpc.Code.PERMISSION_DENIED &&
-                                                e.code != com.connectrpc.Code.NOT_FOUND
-                                        )
-                                            throw e
+                                if (vault.hasAccount() && vault.hasSecurityState()) {
+                                    val installed = vault.readSecurity()
+                                    val adoptedAccount = vault.load()
+                                    if (
+                                        adoptedAccount != null &&
+                                            installed.includesInstallation(draft.record)
+                                    ) {
+                                        io.github.lewin671.remoteagent.core
+                                            .reconcileCompletedAdoption(
+                                                adoptedAccount,
+                                                installed,
+                                                vault,
+                                            )
                                     }
                                 }
+                            }
+                            vault.loadCreationOperation()?.let { draft ->
+                                io.github.lewin671.remoteagent.core.retryCreationRegistration(
+                                    draft,
+                                    http,
+                                    vault::saveCreationOperation,
+                                )
                             }
                             vault.loadRegistrationIntent()?.let { intent ->
                                 intent.resume(http) { acct, record ->
@@ -234,7 +243,8 @@ class RaApp : Application() {
                                     )
                                     true
                                 } else false
-                            acct to ready
+                            _pendingCreation.value = vault.loadCreationOperation() != null
+                            acct to (ready && !_pendingCreation.value)
                         }
                     }
                 loading = false
@@ -253,13 +263,16 @@ class RaApp : Application() {
                     }
                     .onFailure { e ->
                         Log.w(TAG, "stored account does not open: ${e.javaClass.simpleName}")
-                        _accountError.value = "读不出这台手机保存的账户（${e.javaClass.simpleName}）。解锁手机后重试"
+                        _accountError.value =
+                            io.github.lewin671.remoteagent.core.errorText(e) +
+                                "。原请求和密钥已保留，可重试；若批准已过期或被拒绝，请退出并重新配对或创建。"
                     }
             }
         }
     }
 
     private fun use(acct: Account) {
+        _pendingCreation.value = false
         _securitySetup.value = null
         // Drafts and the like are kept per account, and only in memory.
         AccountMemory.use("${acct.server} ${acct.deviceId}")
@@ -385,6 +398,7 @@ class RaApp : Application() {
                         )
                     }
                     erasePending = false
+                    _pendingCreation.value = false
                     _loaded.value = true
                 } catch (e: Exception) {
                     Log.w(TAG, "account erase failed: ${e.javaClass.simpleName}")

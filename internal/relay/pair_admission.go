@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,6 +58,35 @@ func clearPairAdmission(a pairAdmission) error {
 // local endpoint is the trust anchor; the relay cannot nominate a new account.
 // Refused/expired admissions remain as owned lineage for a fresh authority-
 // signed rejoin, since a prior registration may have committed before revocation.
+
+var ErrRegistrationRefused = errors.New("saved registration was refused; run `remote-agent account discard-registration`, remove the unfinished candidate on the phone if still listed, then pair again with a new code")
+
+// Discard only the retry slot. Keep the signed ownership receipt for an
+// authority-approved rejoin to transfer retained archives; never revive its ID.
+func DiscardRegistration() error {
+	files, err := filepath.Glob(filepath.Join(paths.Dir(), "pair-admission-*.json"))
+	if err != nil {
+		return err
+	}
+	for _, path := range files {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		var a pairAdmission
+		if json.Unmarshal(raw, &a) != nil || a.Account == nil {
+			return deviceauth.ErrInvalid
+		}
+		owned := filepath.Join(filepath.Dir(path), strings.Replace(filepath.Base(path), "pair-admission-", "pair-owned-", 1))
+		if err := saveExclusivePrivate(owned, raw); err != nil {
+			return err
+		}
+		if err := clearPairAdmission(a); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // ResumeRegistration is called by daemon startup before it loads the account.
 func ResumeRegistration(ctx context.Context) error {
@@ -113,6 +143,11 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 	if err != nil {
 		return nil, owned, err
 	}
+	receipts, err := filepath.Glob(filepath.Join(paths.Dir(), "pair-owned-*.json"))
+	if err != nil {
+		return nil, owned, err
+	}
+	files = append(files, receipts...)
 	if len(files) == 0 {
 		return nil, owned, nil
 	}
@@ -126,7 +161,7 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 		if len(raw) > 16<<20 || json.Unmarshal(raw, &pending) != nil || pending.Account == nil {
 			return nil, owned, deviceauth.ErrInvalid
 		}
-		if pending.Account.Server == server {
+		if pending.Account.Server == server && (!strings.HasPrefix(filepath.Base(path), "pair-owned-") || func() bool { _, e := os.Stat(securityPath()); return errors.Is(e, os.ErrNotExist) }()) {
 			if err := bootstrapAdmission(pending); err != nil {
 				return nil, owned, err
 			}
@@ -150,6 +185,9 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 		}
 		a := pending.Account
 		if a.Server != server {
+			continue
+		}
+		if strings.HasPrefix(filepath.Base(path), "pair-owned-") && a.Security != nil && a.Security.Pin != pin {
 			continue
 		}
 		if a.Security == nil || a.Security.Pin != pin || len(a.DeviceSeed) != 32 {
@@ -181,12 +219,15 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 			return nil, owned, deviceauth.ErrUntrusted
 		}
 		owned[a.DeviceID] = a
-		if a.DeviceID != currentID {
+		if strings.HasPrefix(filepath.Base(path), "pair-owned-") {
 			continue
+		}
+		if a.DeviceID != currentID {
+			return nil, owned, ErrRegistrationRefused
 		}
 		member, ok := head.Core.Member(a.DeviceID)
 		if !ok {
-			continue
+			return nil, owned, ErrRegistrationRefused
 		}
 		x, err := ecdh.X25519().NewPrivateKey(a.Security.XPrivate)
 		if err != nil || !bytes.Equal(x.PublicKey().Bytes(), member.XPublic[:]) {
@@ -202,7 +243,7 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 			if registrationErr != nil {
 				switch connect.CodeOf(registrationErr) {
 				case connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeFailedPrecondition:
-					continue
+					return nil, owned, fmt.Errorf("%w: %v", ErrRegistrationRefused, registrationErr)
 				default:
 					return nil, owned, registrationErr
 				}

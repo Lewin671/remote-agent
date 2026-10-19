@@ -53,6 +53,128 @@ class Codex2SignupTest {
         }
 
     @Test
+    fun correctedSetupTokenPreservesSignedRegistration() =
+        runBlocking<Unit> {
+            val server = TestServer()
+            var draft: CreatedAccount? = null
+            try {
+                assertTrue(
+                    runCatching {
+                        createAccount(
+                            server.url,
+                            Api.defaultHttp(),
+                            "wrong",
+                            persistDraft = {
+                                draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
+                            },
+                        )
+                    }
+                        .isFailure,
+                )
+                val before = RegisterDeviceRequest.parseFrom(draft!!.registration)
+                val result =
+                    createAccount(
+                        server.url,
+                        Api.defaultHttp(),
+                        server.setupToken,
+                        draft = draft,
+                        persistDraft = {
+                            draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
+                        },
+                    )
+                val after = RegisterDeviceRequest.parseFrom(draft!!.registration)
+                assertEquals(before.registration, after.registration)
+                assertEquals(before.signature, after.signature)
+                assertEquals(server.setupToken, after.setupToken)
+                assertEquals(result.account.deviceId, draft!!.account.deviceId)
+            } finally {
+                server.close()
+            }
+        }
+
+    @Test
+    fun expiredSignupProofIsRefreshedWithoutResigningRegistration() =
+        runBlocking<Unit> {
+            val server = TestServer(signupMode = "open", signupBits = 8)
+            var draft: CreatedAccount? = null
+            try {
+                assertTrue(
+                    runCatching {
+                        createAccount(
+                            server.url,
+                            Api.defaultHttp(),
+                            persistDraft = {
+                                draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
+                                if (
+                                    draft!!.registration.isNotEmpty() &&
+                                        RegisterDeviceRequest.parseFrom(draft!!.registration)
+                                            .hasSignupProof()
+                                )
+                                    throw java.io.IOException(
+                                        "synthetic interruption before registration",
+                                    )
+                            },
+                        )
+                    }
+                        .isFailure,
+                )
+                val before = RegisterDeviceRequest.parseFrom(draft!!.registration)
+                val invalid =
+                    before
+                        .toBuilder()
+                        .setSignupProof(
+                            before.signupProof
+                                .toBuilder()
+                                .setChallenge(
+                                    com.google.protobuf.ByteString.copyFrom(ByteArray(32) { 99 }),
+                                ),
+                        )
+                        .build()
+                draft = draft!!.copy(registration = invalid.toByteArray())
+                createAccount(
+                    server.url,
+                    Api.defaultHttp(),
+                    draft = draft,
+                    persistDraft = {
+                        draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
+                    },
+                )
+                val after = RegisterDeviceRequest.parseFrom(draft!!.registration)
+                assertEquals(before.registration, after.registration)
+                assertEquals(before.signature, after.signature)
+                assertNotEquals(invalid.signupProof, after.signupProof)
+            } finally {
+                server.close()
+            }
+        }
+
+    @Test
+    fun proofRequiredAtStartupReturnsToCreationInsteadOfBlockingAccountLoad() =
+        runBlocking<Unit> {
+            val server = TestServer(signupMode = "open", signupBits = 8)
+            var draft: CreatedAccount? = null
+            try {
+                runCatching {
+                    createAccount(
+                        server.url,
+                        Api.defaultHttp(),
+                        persistDraft = {
+                            draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
+                            if (draft!!.registration.isNotEmpty())
+                                throw java.io.IOException("stopped before proof")
+                        },
+                    )
+                }
+                retryCreationRegistration(draft!!, Api.defaultHttp()) {
+                    draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
+                }
+                assertFalse(RegisterDeviceRequest.parseFrom(draft!!.registration).hasSignupProof())
+            } finally {
+                server.close()
+            }
+        }
+
+    @Test
     fun excessiveProofDifficultyIsRejectedBeforeSolving() =
         runBlocking<Unit> {
             val server = TestServer(signupMode = "open", signupBits = 29)

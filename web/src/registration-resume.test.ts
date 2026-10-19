@@ -1,3 +1,7 @@
+import {
+  savePairingIdentity,
+  loadPairingIdentity,
+} from "./device-security-store";
 import { IDBFactory } from "fake-indexeddb";
 import { afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
@@ -54,6 +58,15 @@ it("persists the exact approved registration before account state and resumes it
       ),
     ),
   );
+  const x = (await crypto.subtle.generateKey("X25519", false, [
+    "deriveBits",
+  ])) as CryptoKeyPair;
+  await savePairingIdentity({
+    server: "https://relay.example.com",
+    pairingId: "synthetic-pair",
+    device,
+    x,
+  });
   let first: Uint8Array | undefined;
   let calls = 0;
   vi.stubGlobal(
@@ -95,4 +108,7 @@ it("persists the exact approved registration before account state and resumes it
   expect(await loadAccount()).toBeDefined();
   expect(await Remote.load()).toBeDefined();
   expect(calls).toBe(2);
+  expect(
+    await loadPairingIdentity("https://relay.example.com", "synthetic-pair"),
+  ).toBeUndefined();
 });

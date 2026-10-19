@@ -1,3 +1,4 @@
+import { loadRegistration, loadAccount } from "./storage";
 import { parseLease } from "./device-security";
 import { PROTOCOL_VERSION } from "./protocol";
 import {
@@ -53,7 +54,7 @@ import {
 } from "./gen/remoteagent/v1/relay_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
 import { derivePair, newPairKey, pairDomainTranscript } from "./pair";
-import { apiBase, joinWithApproval } from "./remote";
+import { apiBase, joinWithApproval, resumeRegistration } from "./remote";
 import type { StoredAccount } from "./storage";
 
 const fromB64url = (s: string) =>
@@ -169,6 +170,14 @@ export async function joinByPairing(
   confirm: (emoji: string[]) => Promise<boolean> = async () => false,
 ): Promise<StoredAccount> {
   link = { ...link, server: checkServer(link.server) };
+  const pending = await loadRegistration();
+  if (pending) {
+    if (pending.account.server !== link.server)
+      throw new Error("另一个服务器的注册尚未完成，请先重试或退出并重新开始");
+    onRegistering();
+    await resumeRegistration();
+    return (await loadAccount())!;
+  }
   const pc = client(link.server);
   const key = newPairKey();
   if (existing && existing.server !== link.server)

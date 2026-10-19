@@ -13,7 +13,7 @@ struct JoinScreen: View {
     var body: some View {
         Group {
             if let model {
-                JoinFlow(model: model)
+                JoinFlow(model: model, discard: { await app.logout() })
             } else {
                 Page { Color.clear }
             }
@@ -35,6 +35,7 @@ struct JoinScreen: View {
 
 struct JoinFlow: View {
     @Bindable var model: JoinModel
+    var discard: (@MainActor () async -> Void)? = nil
 
     var body: some View {
         if model.step == .scan {
@@ -49,6 +50,7 @@ struct JoinFlow: View {
                                     "原设备身份、密钥和历史保留。在手机 App 的「设备」页点「添加设备」，核对四个图案完成绑定。日常使用不需要重复设置。 "
                             )
                         }
+                        if model.noticeIsError, let discard { SetupDiscardButton(discard: discard) }
                         switch model.step {
                         case .form, .scan: JoinForm(model: model)
                         case .secret: JoinForm(model: model)

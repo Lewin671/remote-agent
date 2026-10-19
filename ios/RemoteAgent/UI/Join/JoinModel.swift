@@ -35,6 +35,13 @@ struct JoinCalls: Sendable {
     static func live(http: HTTP, existing: Account? = nil, vault: Vault = Vault()) -> JoinCalls {
         JoinCalls(
             byPairing: { link, onEmoji, stopped, onRegistering, confirm in
+                if let pending = try vault.loadRegistrationIntent() {
+                    guard pending.targetServer == link.server else { throw PairError("另一个服务器的注册尚未完成，请先重试或退出并重新开始") }
+                    onRegistering()
+                    let account = try await pending.resume(http: http) { account,record in try vault.saveRegistrationBootstrap(account,record:record) }
+                    try vault.clearRegistrationIntent(pending)
+                    return account
+                }
                 let joined = try await joinByPairing(
                     link: link, http: http, onEmoji: onEmoji, stopped: stopped,
                     onRegistering: onRegistering,

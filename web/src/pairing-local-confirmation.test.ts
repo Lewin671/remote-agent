@@ -106,6 +106,7 @@ async function peer(options: {
 }
 
 beforeEach(() => {
+  vi.spyOn(accountStore, "loadRegistration").mockResolvedValue(undefined);
   vi.spyOn(securityStore, "loadPairingIdentity").mockResolvedValue(undefined);
   vi.spyOn(securityStore, "savePairingIdentity").mockResolvedValue();
   vi.spyOn(securityStore, "clearPairingIdentity").mockResolvedValue();

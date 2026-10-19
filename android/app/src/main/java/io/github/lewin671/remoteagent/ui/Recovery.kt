@@ -212,6 +212,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
     }
 
     PageScaffold("用恢复码找回管理权", onBack = onBack) {
+        if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         Column(
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
@@ -552,6 +553,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
 
     PageScaffold("创建新账户", onBack = onBack) {
+        if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         Column(
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
@@ -692,6 +694,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
             created = saved.copy(needsOfflinePin = true)
     }
     PageScaffold("重建安全域", onBack = onBack) {
+        if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         Column(
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
