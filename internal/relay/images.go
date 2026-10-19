@@ -46,16 +46,14 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 	if err := c.security.endpoint.CheckLease(uint64(time.Now().UnixMilli())); err != nil {
 		return err
 	}
-	b := c.r.backend
 	for try := 0; ; try++ {
-		u := b.Image(sessionID, imageID)
+		u := c.imageState(sessionID, imageID)
 		if u.Done || u.Failed {
 			return nil
 		}
 		payload := &pb.ImagePayload{}
 		if proto.Unmarshal(u.Payload, payload) != nil {
-			b.ImageUploaded(sessionID, imageID, false, 0)
-			return nil
+			return c.imageUploaded(sessionID, imageID, false, 0)
 		}
 		env, err := c.security.sealMessage(&pb.Header{
 			Kind: pb.PayloadKind_PAYLOAD_KIND_IMAGE, MachineId: c.acct.DeviceID, SessionId: sessionID,
@@ -65,13 +63,11 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 			return err
 		}
 		if err != nil || proto.Size(env) > 1<<20 {
-			b.ImageUploaded(sessionID, imageID, false, 0)
-			return nil
+			return c.imageUploaded(sessionID, imageID, false, 0)
 		}
 		res, err := c.machine.PutImage(ctx, connect.NewRequest(&pb.PutImageRequest{SessionId: sessionID, ImageId: imageID, Image: env}))
 		if err == nil {
-			b.ImageUploaded(sessionID, imageID, true, res.Msg.ExpiresMs)
-			return nil
+			return c.imageUploaded(sessionID, imageID, true, res.Msg.ExpiresMs)
 		}
 		failure := rpcSyncError("upload_image", err)
 		var se *syncError
@@ -83,8 +79,7 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 			// Will not change by trying again: the quota is full, or the
 			// server refuses this copy.
 			slog.Warn("relay: image not stored", "session", sessionID, "image", imageID, "code", connect.CodeOf(err).String())
-			b.ImageUploaded(sessionID, imageID, false, 0)
-			return nil
+			return c.imageUploaded(sessionID, imageID, false, 0)
 		}
 		c.r.mu.Lock()
 		if c.r.imageTries == nil {
@@ -95,8 +90,7 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 		c.r.mu.Unlock()
 		if tries >= maxImageTries {
 			slog.Warn("relay: giving up on image", "session", sessionID, "image", imageID, "code", connect.CodeOf(err).String())
-			b.ImageUploaded(sessionID, imageID, false, 0)
-			return nil
+			return c.imageUploaded(sessionID, imageID, false, 0)
 		}
 		if try >= 2 {
 			return failure
@@ -109,13 +103,35 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 	}
 }
 
+// Image access may also touch the daemon's LRU metadata. Own that mutation
+// through its completion, just like the upload-result index update.
+func (c *conn) imageState(sessionID, imageID string) ImageUpload {
+	var state ImageUpload
+	if err := c.writeDisk(func() error {
+		state = c.r.backend.Image(sessionID, imageID)
+		return nil
+	}); err != nil {
+		return ImageUpload{Failed: true}
+	}
+	return state
+}
+
+// imageUploaded mutates the daemon's cache/index on behalf of this publisher.
+// A canceled publisher must not start another such mutation after shutdown.
+func (c *conn) imageUploaded(sessionID, imageID string, ok bool, expiresMs int64) error {
+	return c.writeDisk(func() error {
+		c.r.backend.ImageUploaded(sessionID, imageID, ok, expiresMs)
+		return nil
+	})
+}
+
 // withImageStates returns e, or a copy whose image refs say which display
 // copies the server does not have after all.
 func (c *conn) withImageStates(sessionID string, e *pb.Event) *pb.Event {
 	refs := agent.EventImages(e)
 	var failed []int
 	for i, ref := range refs {
-		if ref.Sync == pb.ImageSync_IMAGE_SYNC_SYNCED && c.r.backend.Image(sessionID, ref.ImageId).Failed {
+		if ref.Sync == pb.ImageSync_IMAGE_SYNC_SYNCED && c.imageState(sessionID, ref.ImageId).Failed {
 			failed = append(failed, i)
 		}
 	}

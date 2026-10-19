@@ -42,6 +42,8 @@ type Backend interface {
 	OpenTerminal(sessionID string) (Terminal, error)
 	// Image says what to do about an image's display copy before an
 	// event that shows it is uploaded; ImageUploaded records the outcome.
+	// Image may touch LRU metadata. Both callbacks belong to publication's
+	// write lifetime; arbitrary commands and snapshots do not.
 	Image(sessionID, imageID string) ImageUpload
 	ImageUploaded(sessionID, imageID string, ok bool, expiresMs int64)
 }
@@ -69,8 +71,8 @@ type Relay struct {
 	// syncInterval paces idle workers and completed-session checks. Tests can
 	// shorten it without changing the production schedule.
 	syncInterval time.Duration
-	// keyMu makes reading or creating a session's key one step. A sync
-	// left over from the previous connection may still be writing one.
+	// keyMu makes reading or creating a session's key one step across
+	// concurrent uploads and terminal requests.
 	keyMu sync.Mutex
 
 	mu        sync.Mutex
@@ -100,7 +102,8 @@ func (r *Relay) Connected() bool {
 }
 
 // Run connects and reconnects until ctx is done. Without an account it
-// waits for one to be created.
+// waits for one to be created. Return drains admitted publication mutations;
+// canceled readers/command callbacks cannot start new publication writes.
 func (r *Relay) Run(ctx context.Context) {
 	delay := r.Retry
 	logged := false
@@ -155,6 +158,7 @@ func sleep(ctx context.Context, d time.Duration) {
 // conn is one connected period: the login token, clients and keys.
 type conn struct {
 	lifetime          context.Context // stream lifetime, independent of one command deadline
+	writes            connectionWrites
 	security          *securitySession
 	r                 *Relay
 	acct              *Account
@@ -182,7 +186,11 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	if err != nil {
 		return err
 	}
-	defer func() { cancel(); c.security.Close() }()
+	defer func() {
+		cancel()
+		c.writes.close()
+		c.security.Close()
+	}()
 
 	wsURL := "ws" + strings.TrimPrefix(acct.Server, "http") + "/v1/stream"
 	ws, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: httpClient()})
@@ -385,7 +393,7 @@ func (c *conn) publishCurrentCheckpoint(ctx context.Context) (retErr error) {
 	if c.checkpointPending.Load() {
 		return errors.New("current checkpoints remain pending")
 	}
-	return writePublishedEpoch(startedEpoch)
+	return c.writeDisk(func() error { return writePublishedEpoch(startedEpoch) })
 }
 
 // ensurePublished republishes current metadata on the first run and after a
@@ -493,7 +501,7 @@ func (c *conn) sessionKey(id string, onServer bool) ([]byte, error) {
 		return nil, errKeyLost
 	}
 	key := e2e.NewKey()
-	if err := writeFileSync(path, key); err != nil {
+	if err := c.writeDisk(func() error { return writeFileSync(path, key) }); err != nil {
 		return nil, err
 	}
 	return key, nil

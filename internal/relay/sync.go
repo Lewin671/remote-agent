@@ -434,14 +434,16 @@ func (c *conn) sentMeta(id string, key []byte, revision uint64) *pb.Session {
 // session's is written down: it rarely changes again, and ended sessions
 // are nearly all of what a restarted daemon would otherwise send anew.
 func (c *conn) noteSentMeta(id string, key []byte, info *pb.Session, revision uint64) {
-	c.r.mu.Lock()
-	c.r.sentMeta[id] = info
-	c.r.mu.Unlock()
-	if info.Status == pb.SessionStatus_SESSION_STATUS_EXITED {
-		_ = os.WriteFile(c.sentMark(id), metaDigest(c.acct.Server, key, info, revision), 0o600)
-	} else {
-		_ = os.Remove(c.sentMark(id))
-	}
+	path := c.sentMark(id)
+	_ = c.writeDisk(func() error {
+		c.r.mu.Lock()
+		c.r.sentMeta[id] = info
+		c.r.mu.Unlock()
+		if info.Status == pb.SessionStatus_SESSION_STATUS_EXITED {
+			return os.WriteFile(path, metaDigest(c.acct.Server, key, info, revision), 0o600)
+		}
+		return os.Remove(path)
+	})
 }
 
 func (c *conn) sentMark(id string) string {

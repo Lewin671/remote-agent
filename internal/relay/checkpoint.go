@@ -48,12 +48,14 @@ func (c *conn) persistCheckpoint(id string, request *pb.PutSessionRequest) error
 	if dir == "" {
 		return nil
 	}
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return err
-	}
 	raw, err := proto.MarshalOptions{Deterministic: true}.Marshal(request)
 	if err != nil {
 		return err
 	}
-	return writeFileSync(filepath.Join(dir, "current-checkpoint.pb"), raw)
+	return c.writeDisk(func() error {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			return err
+		}
+		return writeFileSync(filepath.Join(dir, "current-checkpoint.pb"), raw)
+	})
 }
