@@ -119,6 +119,9 @@ export class DeviceSecurityClient {
   private async currentRecord(): Promise<SecurityRecord> {
     return this.record ?? (await this.load());
   }
+  async verifiedRecord(): Promise<SecurityRecord> {
+    return this.currentRecord();
+  }
   async localIdentity(): Promise<{
     pin: SecurityRecord["pin"];
     state: SecurityState;

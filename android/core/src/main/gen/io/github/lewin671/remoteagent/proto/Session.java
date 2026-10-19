@@ -33,6 +33,7 @@ public  final class Session extends
     permissionMode_ = "";
     forkedFrom_ = "";
     currentCheckpoint_ = com.google.protobuf.ByteString.EMPTY;
+    machineReplacements_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
@@ -1682,6 +1683,158 @@ public  final class Session extends
   private void clearCurrentCheckpoint() {
 
     currentCheckpoint_ = getDefaultInstance().getCurrentCheckpoint();
+  }
+
+  public static final int MACHINE_REPLACEMENTS_FIELD_NUMBER = 34;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.MachineReplacementProof> machineReplacements_;
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.MachineReplacementProof> getMachineReplacementsList() {
+    return machineReplacements_;
+  }
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.MachineReplacementProofOrBuilder>
+      getMachineReplacementsOrBuilderList() {
+    return machineReplacements_;
+  }
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  @java.lang.Override
+  public int getMachineReplacementsCount() {
+    return machineReplacements_.size();
+  }
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.MachineReplacementProof getMachineReplacements(int index) {
+    return machineReplacements_.get(index);
+  }
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.MachineReplacementProofOrBuilder getMachineReplacementsOrBuilder(
+      int index) {
+    return machineReplacements_.get(index);
+  }
+  private void ensureMachineReplacementsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.MachineReplacementProof> tmp = machineReplacements_;
+    if (!tmp.isModifiable()) {
+      machineReplacements_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineReplacements(
+      int index, io.github.lewin671.remoteagent.proto.MachineReplacementProof value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMachineReplacementsIsMutable();
+    machineReplacements_.set(index, value);
+  }
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addMachineReplacements(io.github.lewin671.remoteagent.proto.MachineReplacementProof value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMachineReplacementsIsMutable();
+    machineReplacements_.add(value);
+  }
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addMachineReplacements(
+      int index, io.github.lewin671.remoteagent.proto.MachineReplacementProof value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMachineReplacementsIsMutable();
+    machineReplacements_.add(index, value);
+  }
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  private void addAllMachineReplacements(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.MachineReplacementProof> values) {
+    ensureMachineReplacementsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, machineReplacements_);
+  }
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  private void clearMachineReplacements() {
+    machineReplacements_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  private void removeMachineReplacements(int index) {
+    ensureMachineReplacementsIsMutable();
+    machineReplacements_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.proto.Session parseFrom(
@@ -3483,6 +3636,168 @@ public  final class Session extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.MachineReplacementProof> getMachineReplacementsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getMachineReplacementsList());
+    }
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    @java.lang.Override
+    public int getMachineReplacementsCount() {
+      return instance.getMachineReplacementsCount();
+    }/**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.MachineReplacementProof getMachineReplacements(int index) {
+      return instance.getMachineReplacements(index);
+    }
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    public Builder setMachineReplacements(
+        int index, io.github.lewin671.remoteagent.proto.MachineReplacementProof value) {
+      copyOnWrite();
+      instance.setMachineReplacements(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    public Builder setMachineReplacements(
+        int index, io.github.lewin671.remoteagent.proto.MachineReplacementProof.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineReplacements(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    public Builder addMachineReplacements(io.github.lewin671.remoteagent.proto.MachineReplacementProof value) {
+      copyOnWrite();
+      instance.addMachineReplacements(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    public Builder addMachineReplacements(
+        int index, io.github.lewin671.remoteagent.proto.MachineReplacementProof value) {
+      copyOnWrite();
+      instance.addMachineReplacements(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    public Builder addMachineReplacements(
+        io.github.lewin671.remoteagent.proto.MachineReplacementProof.Builder builderForValue) {
+      copyOnWrite();
+      instance.addMachineReplacements(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    public Builder addMachineReplacements(
+        int index, io.github.lewin671.remoteagent.proto.MachineReplacementProof.Builder builderForValue) {
+      copyOnWrite();
+      instance.addMachineReplacements(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    public Builder addAllMachineReplacements(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.MachineReplacementProof> values) {
+      copyOnWrite();
+      instance.addAllMachineReplacements(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    public Builder clearMachineReplacements() {
+      copyOnWrite();
+      instance.clearMachineReplacements();
+      return this;
+    }
+    /**
+     * <pre>
+     * Authority-signed archive replacements, oldest first. Historical content
+     * keeps its original signed machine route; control always uses the new ID.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+     */
+    public Builder removeMachineReplacements(int index) {
+      copyOnWrite();
+      instance.removeMachineReplacements(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Session)
   }
   @java.lang.Override
@@ -3533,14 +3848,16 @@ public  final class Session extends
             "forkedFrom_",
             "forkedSeq_",
             "currentCheckpoint_",
+            "machineReplacements_",
+            io.github.lewin671.remoteagent.proto.MachineReplacementProof.class,
           };
           java.lang.String info =
-              "\u0000!\u0000\u0001\u0001!!\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0000\"\u0000\u0001\u0001\"\"\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
               "\u0004\f\u0005\u0208\u0006\u0208\u0007\u0208\b\u1009\u0000\t\u0003\n\u0208\u000b" +
               "\u0208\f\u0004\r\u0004\u000e\u0004\u000f\u0208\u0010\u0208\u0011\u0208\u0012\u0208" +
               "\u0013\u0208\u0014\u0208\u0015\u0002\u0016\u0002\u0017\u0007\u0018\u0208\u0019\f" +
               "\u001a\f\u001b\u0208\u001c\u0007\u001d\u1009\u0001\u001e\u1009\u0002\u001f\u0208" +
-              " \u0003!\n";
+              " \u0003!\n\"\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

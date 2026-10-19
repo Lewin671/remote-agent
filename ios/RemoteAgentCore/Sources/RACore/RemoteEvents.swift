@@ -196,7 +196,7 @@ extension Remote {
                     plain = opened.1
                 }
                 try Envelopes.expect(
-                    h, Place(.event, machineId: s.machineId, sessionId: sid, seq: se.seq))
+                    h, try await historicalPlace(Place(.event, machineId: s.machineId, sessionId: sid, seq: se.seq),header:h,history:history))
                 guard let ev = try? PBEvent(serializedBytes: plain) else {
                     throw OpenError("malformed content")
                 }
@@ -210,7 +210,7 @@ extension Remote {
                 do {
                     try Envelopes.expect(
                         projection(unavailable.header),
-                        Place(.event, machineId: s.machineId, sessionId: sid, seq: se.seq))
+                        try await historicalPlace(Place(.event, machineId: s.machineId, sessionId: sid, seq: se.seq),header:projection(unavailable.header),history:history))
                     if buffers[sid] !== b { return }
                     if se.seq <= UInt64(b.events.count) || b.pending[se.seq] != nil { continue }
                     var slot = PBEvent()

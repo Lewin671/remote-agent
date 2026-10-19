@@ -100,3 +100,29 @@ it("keeps a newer self-authored name and refuses an older listing", async () => 
   expect(r.devices.get(self)?.meta?.name).toBe("new name");
   expect(r.devices.get(self)?.metaRev).toBe(2n);
 }, 20000);
+
+it("retries the directory when a new security head outlives a failed refresh", async () => {
+  const r = await probe();
+  directory(r, [{ id: r.machine, kind: DeviceKind.MACHINE }]);
+  await r.loadDevices(false);
+  expect(r.devices.has(r.machine)).toBe(true);
+  await r.world.fixture.remove([r.machine]);
+  let attempts = 0;
+  (r as unknown as { api: object }).api = {
+    listDevices: async () => {
+      if (++attempts === 1)
+        throw new Error("synthetic transient directory failure");
+      return { devices: [] };
+    },
+  };
+  const poll = () =>
+    (r as unknown as { syncSecurity(): Promise<void> }).syncSecurity();
+  await poll();
+  expect(attempts).toBe(1);
+  await poll();
+  expect(attempts).toBe(2);
+  expect(r.devices.has(r.machine)).toBe(false);
+  expect(r.devicesStatus).toBe("ready");
+  await poll();
+  expect(attempts).toBe(2);
+}, 20000);

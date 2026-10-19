@@ -779,6 +779,19 @@ func (e *Endpoint) Snapshot() (Pin, State, string) {
 	defer e.mu.Unlock()
 	return e.data.Pin, chainHead(e.data), e.data.MemberID
 }
+
+// VerifiedStates returns a detached, ordered copy for historical origin proofs.
+func (e *Endpoint) VerifiedStates() []State {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	out := make([]State, 0, len(e.data.States))
+	states := cloneStates(e.data.States)
+	for epoch := uint64(1); epoch <= e.data.HeadEpoch; epoch++ {
+		out = append(out, states[epoch])
+	}
+	return out
+}
+
 func (e *Endpoint) StateCount() int { e.mu.Lock(); defer e.mu.Unlock(); return len(e.data.States) }
 func (e *Endpoint) Floor() uint64   { e.mu.Lock(); defer e.mu.Unlock(); return e.data.Floor }
 

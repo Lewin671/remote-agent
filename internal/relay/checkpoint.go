@@ -27,7 +27,10 @@ func (c *conn) currentCheckpoint(id string, info *pb.Session) ([]byte, error) {
 	if snapshot.Session == nil || snapshot.Session.Id != id {
 		return nil, fmt.Errorf("invalid current checkpoint")
 	}
+	snapshot.Session = proto.CloneOf(snapshot.Session)
 	snapshot.Session.CurrentCheckpoint = nil
+	// The outer session metadata carries these proofs once.
+	snapshot.Session.MachineReplacements = nil
 	raw, err := proto.MarshalOptions{Deterministic: true}.Marshal(snapshot)
 	if err != nil {
 		return nil, err

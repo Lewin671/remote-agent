@@ -84,7 +84,7 @@ func TestLiveDaemonPhoneAuthority(t *testing.T) {
 	defer nextPhone.Endpoint.Close()
 	// Pairing publishes the new head with a genuine short, separately signed
 	// certificate. Expiry below uses wall time, without changing a product clock.
-	machine := livePairCLI(t, ctx, phone, bin, env, 20*time.Second)
+	machine := livePairCLI(t, ctx, phone, bin, env, 20*time.Second, "")
 	mustLive(t, os.WriteFile(filepath.Join(machineDir, "agent.env"), []byte("CODEX_HOME="+filepath.Join(dir, "codex")+"\nZDOTDIR="+filepath.Join(dir, "shell")+"\n"), 0600))
 	phoneAPI := liveAPI(hs.URL, phone.Token)
 	mustLive(t, client.Sync(ctx))
@@ -381,7 +381,8 @@ func TestLiveDaemonPhoneAuthority(t *testing.T) {
 	}
 	removed := append(append([]string{}, recoveredState.Core.Removed...), machine)
 	slices.Sort(removed)
-	removedState, err := deviceauth.BuildMembershipState(recoveredState, retained, removed, recoverySecret, e2e.NewKey(), recoveredEd, uint64(time.Now().UnixMilli()))
+	removedSecret := e2e.NewKey()
+	removedState, err := deviceauth.BuildMembershipState(recoveredState, retained, removed, recoverySecret, removedSecret, recoveredEd, uint64(time.Now().UnixMilli()))
 	mustLive(t, err)
 	removedLease, err := deviceauth.BuildLease(removedState, recoveredEd, uint64(time.Now().UnixMilli()))
 	mustLive(t, err)
@@ -414,6 +415,64 @@ func TestLiveDaemonPhoneAuthority(t *testing.T) {
 	if e == nil {
 		t.Fatal("removed machine logged in")
 	}
+	oldMachine := machine
+	replacementPhone := &remoteclient.Authority{Server: hs.URL, AccountPublicKey: phone.AccountPublicKey, Ed: recoveredEd, Member: recoveredMember, Pin: phone.Pin, States: append(append([]deviceauth.State{}, states...), removedState), Proofs: append(append([]*deviceauth.RecoveryStatement{}, proofs...), nil), Lease: removedLease, Secret: removedSecret, Token: recoveredToken}
+	machine = livePairCLI(t, ctx, replacementPhone, bin, env, time.Hour, oldMachine)
+	if machine == oldMachine {
+		t.Fatal("rejoin restored revoked identity")
+	}
+	mustLive(t, client.Sync(ctx))
+	mustLive(t, recoveredClient.Sync(ctx))
+	var continued remoteclient.Session
+	liveEventually(t, ctx, "same retained session republished by new identity", func() bool {
+		found := liveFindSession(ctx, client, sid)
+		if found == nil || found.MachineID != machine || found.Info == nil || len(found.Info.MachineReplacements) != 1 {
+			return false
+		}
+		continued = *found
+		return true
+	})
+	// Read pre-rejoin ciphertext with its original signed machine provenance.
+	_, err = client.Events(ctx, continued, 0)
+	mustLive(t, err)
+	rt, err := client.OpenTerminal(ctx, continued)
+	mustLive(t, err)
+	defer rt.Close()
+	mustLive(t, rt.Send(ctx, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("after-rejoin\r")}}))
+	liveTerminalContains(t, ctx, rt, "GOT:after-rejoin")
+	liveEventually(t, ctx, "original CLI session continues syncing after rejoin", func() bool {
+		current := liveFindSession(ctx, client, sid)
+		return current != nil && current.MachineID == machine && current.LastSeq > continued.LastSeq
+	})
+	check, err := local.GetSession(ctx, connect.NewRequest(&pb.GetSessionRequest{SessionId: sid}))
+	mustLive(t, err)
+	if check.Msg.Session.TmuxSession != localInfo.Msg.Session.TmuxSession {
+		t.Fatal("rejoin replaced the native CLI session")
+	}
+	ch, e = auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: oldMachine}))
+	if e == nil {
+		_, e = auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version, DeviceId: oldMachine, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(acct.DeviceKey(), ch.Msg.Challenge)}))
+	}
+	if e == nil {
+		t.Fatal("old identity restored after transfer")
+	}
+	t.Log("PASS remove/rejoin: authority-signed replacement moved retained rows to a fresh identity; original session ID, tmux CLI and historical ciphertext retained; terminal and new events round trip after rejoin; revoked key still refused")
+
+	// Removal and explicit deletion remain separate after the replacement too.
+	latest := replacementPhone.States[len(replacementPhone.States)-1]
+	keep := []deviceauth.Member{}
+	for _, m := range latest.Core.Members {
+		if m.ID != machine {
+			keep = append(keep, m)
+		}
+	}
+	gone := append(append([]string{}, latest.Core.Removed...), machine)
+	slices.Sort(gone)
+	finalState, err := deviceauth.BuildMembershipState(latest, keep, gone, replacementPhone.Secret, e2e.NewKey(), recoveredEd, uint64(time.Now().UnixMilli()))
+	mustLive(t, err)
+	finalLease, err := deviceauth.BuildLease(finalState, recoveredEd, uint64(time.Now().UnixMilli()))
+	mustLive(t, err)
+	livePutState(t, ctx, recoveredAPI, finalState, nil, finalLease)
 	_, err = recoveredAPI.DeleteMachineRecords(ctx, connect.NewRequest(&pb.DeleteMachineRecordsRequest{MachineId: machine}))
 	mustLive(t, err)
 	listed, err = recoveredAPI.ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
@@ -517,7 +576,7 @@ func liveLocal(dir string) remoteagentv1connect.LocalServiceClient {
 	return localclient.New(filepath.Join(dir, "daemon.sock"))
 }
 
-func livePairCLI(t *testing.T, ctx context.Context, phone *remoteclient.Authority, bin string, env []string, duration time.Duration) string {
+func livePairCLI(t *testing.T, ctx context.Context, phone *remoteclient.Authority, bin string, env []string, duration time.Duration, replaces string) string {
 	t.Helper()
 	api := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, phone.Server, connect.WithInterceptors(bearerFor(phone.Token)))
 	key, err := e2e.NewPairKey()
@@ -556,7 +615,12 @@ func livePairCLI(t *testing.T, ctx context.Context, phone *remoteclient.Authorit
 	})
 	candidate, err := deviceauth.NewMember(status.DevicePublicKey, status.DeviceHpkePublicKey, deviceauth.Kind(status.JoinerKind))
 	mustLive(t, err)
-	approval, sig, err := phone.RegisterPairMember(ctx, created.Msg.PairingId, candidate, deviceauth.Kind(status.JoinerKind))
+	approval, sig, err := e2e.NewPairApprovalReplacing(phone.Pin.Account, created.Msg.PairingId, phone.Ed, candidate.EdPublic[:], pb.DeviceKind_DEVICE_KIND_MACHINE, created.Msg.ExpiresMs, replaces)
+	mustLive(t, err)
+	registration, err := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: phone.AccountPublicKey, DevicePublicKey: candidate.EdPublic[:], Kind: pb.DeviceKind_DEVICE_KIND_MACHINE, CreatedMs: time.Now().UnixMilli()})
+	mustLive(t, err)
+	auth := remoteagentv1connect.NewAuthServiceClient(http.DefaultClient, phone.Server)
+	_, err = auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: registration, Approval: approval, ApprovalSignature: sig}))
 	mustLive(t, err)
 	secret := e2e.NewKey()
 	parent := phone.States[len(phone.States)-1]
@@ -582,9 +646,13 @@ func livePairCLI(t *testing.T, ctx context.Context, phone *remoteclient.Authorit
 	secrets, err := key.Derive(status.JoinerPublic, transcript)
 	mustLive(t, err)
 	chain := []*pb.SecurityState{}
-	for _, s := range phone.States {
+	for i, s := range phone.States {
 		raw, _ := s.MarshalBinary()
-		chain = append(chain, &pb.SecurityState{State: raw})
+		entry := &pb.SecurityState{State: raw}
+		if i < len(phone.Proofs) && phone.Proofs[i] != nil {
+			entry.Recovery, _ = phone.Proofs[i].MarshalBinary()
+		}
+		chain = append(chain, entry)
 	}
 	lr, _ = lease.MarshalBinary()
 	payload, err := e2e.SealMessage(secrets.Key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: created.Msg.PairingId, Sender: phone.Member.ID}, &pb.PairingPayload{Server: phone.Server, Approval: approval, ApprovalSignature: sig, SecurityStates: chain, AccountPublicKey: phone.AccountPublicKey, Lease: lr})

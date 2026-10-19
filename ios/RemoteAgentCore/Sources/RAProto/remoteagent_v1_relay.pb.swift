@@ -452,6 +452,9 @@ public struct PBPairApproval: Sendable {
 
   public var nonce: Data = Data()
 
+  /// Authority-approved archive transfer from this revoked machine identity.
+  public var replacesDeviceID: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2713,7 +2716,7 @@ extension PBCreatePairingResponse: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBPairApproval: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PairApproval"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}account_id\0\u{3}pairing_id\0\u{3}approver_device_id\0\u{3}approver_public_key\0\u{3}candidate_device_public_key\0\u{3}candidate_kind\0\u{3}expires_ms\0\u{1}nonce\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}account_id\0\u{3}pairing_id\0\u{3}approver_device_id\0\u{3}approver_public_key\0\u{3}candidate_device_public_key\0\u{3}candidate_kind\0\u{3}expires_ms\0\u{1}nonce\0\u{3}replaces_device_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2729,6 +2732,7 @@ extension PBPairApproval: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       case 6: try { try decoder.decodeSingularEnumField(value: &self.candidateKind) }()
       case 7: try { try decoder.decodeSingularInt64Field(value: &self.expiresMs) }()
       case 8: try { try decoder.decodeSingularBytesField(value: &self.nonce) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.replacesDeviceID) }()
       default: break
       }
     }
@@ -2759,6 +2763,9 @@ extension PBPairApproval: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if !self.nonce.isEmpty {
       try visitor.visitSingularBytesField(value: self.nonce, fieldNumber: 8)
     }
+    if !self.replacesDeviceID.isEmpty {
+      try visitor.visitSingularStringField(value: self.replacesDeviceID, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2771,6 +2778,7 @@ extension PBPairApproval: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if lhs.candidateKind != rhs.candidateKind {return false}
     if lhs.expiresMs != rhs.expiresMs {return false}
     if lhs.nonce != rhs.nonce {return false}
+    if lhs.replacesDeviceID != rhs.replacesDeviceID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

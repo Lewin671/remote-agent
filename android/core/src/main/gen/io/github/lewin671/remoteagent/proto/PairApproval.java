@@ -25,6 +25,7 @@ public  final class PairApproval extends
     approverPublicKey_ = com.google.protobuf.ByteString.EMPTY;
     candidateDevicePublicKey_ = com.google.protobuf.ByteString.EMPTY;
     nonce_ = com.google.protobuf.ByteString.EMPTY;
+    replacesDeviceId_ = "";
   }
   public static final int ACCOUNT_ID_FIELD_NUMBER = 1;
   private java.lang.String accountId_;
@@ -317,6 +318,74 @@ public  final class PairApproval extends
   private void clearNonce() {
 
     nonce_ = getDefaultInstance().getNonce();
+  }
+
+  public static final int REPLACES_DEVICE_ID_FIELD_NUMBER = 9;
+  private java.lang.String replacesDeviceId_;
+  /**
+   * <pre>
+   * Authority-approved archive transfer from this revoked machine identity.
+   * </pre>
+   *
+   * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+   * @return The replacesDeviceId.
+   */
+  @java.lang.Override
+  public java.lang.String getReplacesDeviceId() {
+    return replacesDeviceId_;
+  }
+  /**
+   * <pre>
+   * Authority-approved archive transfer from this revoked machine identity.
+   * </pre>
+   *
+   * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+   * @return The bytes for replacesDeviceId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getReplacesDeviceIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(replacesDeviceId_);
+  }
+  /**
+   * <pre>
+   * Authority-approved archive transfer from this revoked machine identity.
+   * </pre>
+   *
+   * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+   * @param value The replacesDeviceId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setReplacesDeviceId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    replacesDeviceId_ = value;
+  }
+  /**
+   * <pre>
+   * Authority-approved archive transfer from this revoked machine identity.
+   * </pre>
+   *
+   * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+   */
+  private void clearReplacesDeviceId() {
+
+    replacesDeviceId_ = getDefaultInstance().getReplacesDeviceId();
+  }
+  /**
+   * <pre>
+   * Authority-approved archive transfer from this revoked machine identity.
+   * </pre>
+   *
+   * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+   * @param value The bytes for replacesDeviceId to set.
+   */
+  private void setReplacesDeviceIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    replacesDeviceId_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.PairApproval parseFrom(
@@ -725,6 +794,75 @@ public  final class PairApproval extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Authority-approved archive transfer from this revoked machine identity.
+     * </pre>
+     *
+     * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+     * @return The replacesDeviceId.
+     */
+    @java.lang.Override
+    public java.lang.String getReplacesDeviceId() {
+      return instance.getReplacesDeviceId();
+    }
+    /**
+     * <pre>
+     * Authority-approved archive transfer from this revoked machine identity.
+     * </pre>
+     *
+     * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+     * @return The bytes for replacesDeviceId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getReplacesDeviceIdBytes() {
+      return instance.getReplacesDeviceIdBytes();
+    }
+    /**
+     * <pre>
+     * Authority-approved archive transfer from this revoked machine identity.
+     * </pre>
+     *
+     * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+     * @param value The replacesDeviceId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReplacesDeviceId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setReplacesDeviceId(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Authority-approved archive transfer from this revoked machine identity.
+     * </pre>
+     *
+     * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReplacesDeviceId() {
+      copyOnWrite();
+      instance.clearReplacesDeviceId();
+      return this;
+    }
+    /**
+     * <pre>
+     * Authority-approved archive transfer from this revoked machine identity.
+     * </pre>
+     *
+     * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+     * @param value The bytes for replacesDeviceId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReplacesDeviceIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setReplacesDeviceIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.PairApproval)
   }
   @java.lang.Override
@@ -749,10 +887,11 @@ public  final class PairApproval extends
             "candidateKind_",
             "expiresMs_",
             "nonce_",
+            "replacesDeviceId_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
-              "\u0004\n\u0005\n\u0006\f\u0007\u0002\b\n";
+              "\u0000\t\u0000\u0000\u0001\t\t\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0004\n\u0005\n\u0006\f\u0007\u0002\b\n\t\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

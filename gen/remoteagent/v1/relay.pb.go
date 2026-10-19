@@ -1012,8 +1012,10 @@ type PairApproval struct {
 	CandidateKind            DeviceKind             `protobuf:"varint,6,opt,name=candidate_kind,json=candidateKind,proto3,enum=remoteagent.v1.DeviceKind" json:"candidate_kind,omitempty"`
 	ExpiresMs                int64                  `protobuf:"varint,7,opt,name=expires_ms,json=expiresMs,proto3" json:"expires_ms,omitempty"`
 	Nonce                    []byte                 `protobuf:"bytes,8,opt,name=nonce,proto3" json:"nonce,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Authority-approved archive transfer from this revoked machine identity.
+	ReplacesDeviceId string `protobuf:"bytes,9,opt,name=replaces_device_id,json=replacesDeviceId,proto3" json:"replaces_device_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *PairApproval) Reset() {
@@ -1100,6 +1102,13 @@ func (x *PairApproval) GetNonce() []byte {
 		return x.Nonce
 	}
 	return nil
+}
+
+func (x *PairApproval) GetReplacesDeviceId() string {
+	if x != nil {
+		return x.ReplacesDeviceId
+	}
+	return ""
 }
 
 type PeekPairingRequest struct {
@@ -6041,7 +6050,7 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x1d\n" +
 	"\n" +
 	"expires_ms\x18\x03 \x01(\x03R\texpiresMs\x12.\n" +
-	"\x13approver_public_key\x18\x04 \x01(\fR\x11approverPublicKey\"\xe1\x02\n" +
+	"\x13approver_public_key\x18\x04 \x01(\fR\x11approverPublicKey\"\x8f\x03\n" +
 	"\fPairApproval\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1d\n" +
@@ -6053,7 +6062,8 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x0ecandidate_kind\x18\x06 \x01(\x0e2\x1a.remoteagent.v1.DeviceKindR\rcandidateKind\x12\x1d\n" +
 	"\n" +
 	"expires_ms\x18\a \x01(\x03R\texpiresMs\x12\x14\n" +
-	"\x05nonce\x18\b \x01(\fR\x05nonce\"S\n" +
+	"\x05nonce\x18\b \x01(\fR\x05nonce\x12,\n" +
+	"\x12replaces_device_id\x18\t \x01(\tR\x10replacesDeviceId\"S\n" +
 	"\x12PeekPairingRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12)\n" +
 	"\x10protocol_version\x18\x02 \x01(\rR\x0fprotocolVersion\"L\n" +

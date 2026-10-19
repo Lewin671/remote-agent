@@ -770,6 +770,12 @@ fun DeviceScreen(id: String) {
                         },
                 )
             }
+            if (state.authorityPhone && id !in state.devices) {
+                Group(rows = listOf {
+                    GRow("让这台电脑重新加入并接续会话", onClick = { nav.rejoin(id) },
+                        enabled = state.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE)
+                })
+            }
             DeleteMachineRecordsAction(id,state.authorityPhone)
             if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用")
             else
@@ -1180,7 +1186,7 @@ fun webOrigin(server: String, pref: String): String {
 
 /** 添加设备: show a code and QR, compare emoji, then hand over the root key. */
 @Composable
-fun PairScreen() {
+fun PairScreen(replacesDeviceId: String = "") {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val settings by RaApp.instance.prefs.settings.collectAsState(Settings())
@@ -1188,7 +1194,7 @@ fun PairScreen() {
     val scope = rememberCoroutineScope()
     val model =
         remember(remote, scope) {
-            PairingController(scope, RaApp.instance.scope) { Initiation.start(remote) }
+            PairingController(scope, RaApp.instance.scope) { Initiation.start(remote, replacesDeviceId) }
         }
     val state by model.state.collectAsState()
     LaunchedEffect(model) { model.start() }
@@ -1200,6 +1206,12 @@ fun PairScreen() {
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            if (replacesDeviceId.isNotEmpty()) {
+                val current by remote.state.collectAsState()
+                Hint("允许原电脑接续 ${machineLabel(current, replacesDeviceId)} 的保留会话和图片。旧身份仍然撤销；请在原电脑上输入配对码。")
+            } else {
+                Hint("已移除的电脑要接续原会话，请从那台电脑的保留档案进入“重新加入并接续会话”。")
+            }
             when (val step = state) {
                 PairingUiState.Starting -> Skeleton()
                 is PairingUiState.Waiting -> {

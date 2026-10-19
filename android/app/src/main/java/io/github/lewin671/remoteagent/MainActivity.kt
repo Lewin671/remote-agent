@@ -200,7 +200,7 @@ class MainActivity : ComponentActivity() {
                     ProjectScreen(routeValue(it.arguments?.getString("key")), it.arguments?.getString("focus") == "1")
                 }
                 page("device/{id}") { DeviceScreen(it.arguments?.getString("id").orEmpty()) }
-                page("pair") { PairScreen() }
+                page("pair?replace={replace}") { PairScreen(it.arguments?.getString("replace").orEmpty()) }
                 page("recovery") { RecoveryScreen { nav.popBackStack() } }
                 page("recover") { RecoverScreen(RaApp.instance) { nav.popBackStack() } }
                 page("create") { CreateAccountScreen(RaApp.instance) { nav.popBackStack() } }
@@ -254,6 +254,7 @@ class MainActivity : ComponentActivity() {
             settings = { go("settings") },
             device = { go("device/$it") },
             pair = { go("pair") },
+            rejoin = { go("pair?replace=$it") },
             recovery = { go("recovery") },
             recover = { go("recover") },
             createAccount = { go("create") },

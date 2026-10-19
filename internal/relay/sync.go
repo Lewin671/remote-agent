@@ -493,6 +493,7 @@ func EndedMs(info *pb.Session) int64 {
 func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session, floor uint64) (uint64, error) {
 	base := proto.CloneOf(info)
 	base.CurrentCheckpoint = nil
+	base.MachineReplacements = c.acct.Replacements
 	checkpoint, checkpointErr := c.currentCheckpoint(id, info)
 	if checkpointErr == nil {
 		var snapshot pb.LiveSnapshot
@@ -501,7 +502,11 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 		} else {
 			info = snapshot.Session
 			info.CurrentCheckpoint = checkpoint
+			info.MachineReplacements = c.acct.Replacements
 		}
+	}
+	if checkpointErr == nil && proto.Size(info) > deviceauth.MaxMutableBytes {
+		checkpointErr = errors.New("current checkpoint exceeds combined session metadata capacity")
 	}
 	if checkpointErr != nil {
 		info = base

@@ -341,6 +341,7 @@ async function verifyApproval(
       a.accountId !== account ||
       a.pairingId !== pairingId ||
       a.candidateKind !== DeviceKind.CLIENT ||
+      a.replacesDeviceId !== "" ||
       !eq(new Uint8Array(a.candidateDevicePublicKey), devicePublic) ||
       a.nonce.length !== 16 ||
       a.expiresMs <= BigInt(Date.now()) ||

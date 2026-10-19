@@ -154,8 +154,23 @@ func (c *Client) Events(ctx context.Context, s Session, after uint64) ([]*pb.Eve
 // OpenEvent opens one stored event of s.
 func (c *Client) OpenEvent(s Session, se *pb.StoredEvent) (*pb.Event, error) {
 	e := &pb.Event{}
+	source := s.MachineID
+	if c.endpoint != nil && s.Info != nil && len(se.Envelope.SecurityHeader) > 0 {
+		h, err := deviceauth.ParseHeader(se.Envelope.SecurityHeader)
+		if err != nil {
+			return nil, err
+		}
+		if h.Machine != source {
+			pin, _, _ := c.endpoint.Snapshot()
+			origins, err := e2e.MachineReplacementOrigins(pin.Account, source, c.endpoint.VerifiedStates(), s.Info.MachineReplacements)
+			if err != nil || !origins[h.Machine] {
+				return nil, e2e.ErrPlace
+			}
+			source = h.Machine
+		}
+	}
 	if _, err := c.openMessage(context.Background(), s.Key, se.Envelope, &pb.Header{
-		Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: s.MachineID, SessionId: s.ID, Seq: se.Seq,
+		Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: source, SessionId: s.ID, Seq: se.Seq,
 	}, e); err != nil {
 		return nil, fmt.Errorf("event %d: %w", se.Seq, err)
 	}

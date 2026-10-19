@@ -122,6 +122,14 @@ message Session {
   // SESSION_META for the current content epoch. No history prefix is needed.
   // Stored checkpoints do not attest freshness for an actionable command.
   bytes current_checkpoint = 33;
+  // Authority-signed archive replacements, oldest first. Historical content
+  // keeps its original signed machine route; control always uses the new ID.
+  repeated MachineReplacementProof machine_replacements = 34;
+}
+
+message MachineReplacementProof {
+  bytes approval = 1;
+  bytes signature = 2;
 }
 
 message CreateSessionRequest {

@@ -1348,7 +1348,40 @@ class Remote(
                 sessionKeys[rs.sessionId] = raw
                 view = SessionView(rs.sessionId, rs.machineId)
             }
-            if (view.machineId != rs.machineId) throw OpenException("会话记录的机器被改动")
+            if (view.machineId != rs.machineId) {
+                val (_, info) =
+                    openSecureMessage(
+                        sessionKeys[rs.sessionId]!!,
+                        rs.meta,
+                        Place(
+                            PayloadKind.PAYLOAD_KIND_SESSION_META,
+                            machineId = rs.machineId,
+                            sessionId = rs.sessionId,
+                        ),
+                        Session::parseFrom,
+                    )
+                if (
+                    view.machineId !in
+                        machineReplacementOrigins(
+                            security.record(),
+                            rs.machineId,
+                            info.machineReplacementsList,
+                        )
+                )
+                    throw OpenException("会话记录的机器被改动")
+                val (h, seed) = security.openCurrent(rs.key)
+                Envelopes.expect(
+                    projection(h),
+                    Place(
+                        PayloadKind.PAYLOAD_KIND_SESSION_KEY,
+                        machineId = rs.machineId,
+                        sessionId = rs.sessionId,
+                    ),
+                )
+                if (seed.size != KEY_SIZE) throw OpenException("bad session key")
+                sessionKeys[rs.sessionId] = seed
+                view = view.copy(machineId = rs.machineId, metaRev = 0)
+            }
             view =
                 view.copy(
                     lastSeq = umax(view.lastSeq, rs.lastSeq),
@@ -3362,6 +3395,23 @@ class Remote(
             .setCompressionValue(h.compression.toInt())
             .build()
 
+    private fun historicalPlace(want: Place, header: Header, historical: Boolean): Place {
+        if (
+            historical &&
+                want.kind in
+                    setOf(PayloadKind.PAYLOAD_KIND_EVENT, PayloadKind.PAYLOAD_KIND_IMAGE) &&
+                header.machineId != want.machineId &&
+                header.machineId in
+                    machineReplacementOrigins(
+                        security.record(),
+                        want.machineId,
+                        sessions[want.sessionId]?.info?.machineReplacementsList.orEmpty(),
+                    )
+        )
+            return want.copy(machineId = header.machineId)
+        return want
+    }
+
     private suspend fun <T : com.google.protobuf.MessageLite> openSecureMessage(
         legacyKey: ByteArray,
         env: Envelope,
@@ -3375,7 +3425,12 @@ class Remote(
                 route.version == 1
         ) {
             legacySessions.add(want.sessionId)
-            return Envelopes.openMessage(legacyKey, env, want, parse)
+            return Envelopes.openMessage(
+                legacyKey,
+                env,
+                historicalPlace(want, route, !live || want.kind == PayloadKind.PAYLOAD_KIND_IMAGE),
+                parse,
+            )
         }
         val h = DeviceSecurity.parseHeader(env.securityHeader.toByteArray())
         val seed = if (h.purpose.sessionKey) sessionKeys[h.session] else null
@@ -3384,6 +3439,7 @@ class Remote(
                 security.openMessage(
                     env,
                     !live ||
+                        want.kind == PayloadKind.PAYLOAD_KIND_IMAGE ||
                         (want.kind in
                             setOf(
                                 PayloadKind.PAYLOAD_KIND_MACHINE_META,
@@ -3396,11 +3452,21 @@ class Remote(
                     parse,
                 )
             } catch (e: RecoveryHistoryUnavailable) {
-                Envelopes.expect(projection(e.header), want)
+                Envelopes.expect(
+                    projection(e.header),
+                    historicalPlace(
+                        want,
+                        projection(e.header),
+                        !live || want.kind == PayloadKind.PAYLOAD_KIND_IMAGE,
+                    ),
+                )
                 throw e
             }
         val projected = projection(header)
-        Envelopes.expect(projected, want)
+        Envelopes.expect(
+            projected,
+            historicalPlace(want, projected, !live || want.kind == PayloadKind.PAYLOAD_KIND_IMAGE),
+        )
         return projected to m
     }
 

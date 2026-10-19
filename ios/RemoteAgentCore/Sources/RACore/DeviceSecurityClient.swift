@@ -54,6 +54,26 @@ public actor DeviceSecurityClient {
     public func historicalMachines() throws -> Set<String> {
         let r=try read();return Set(r.states.values.flatMap{$0.core.members}.filter{$0.kind==1}.map{$0.id})
     }
+    /// Proven historical routes only, never permission to control a retired device.
+    public func replacementOrigins(target: String, proofs: [PBMachineReplacementProof]) throws -> Set<String> {
+        let r = try read()
+        try DeviceSecurity.check(proofs.count <= DeviceSecurity.maxPairStates, .untrusted)
+        let states = r.states.values.sorted { $0.core.epoch < $1.core.epoch }
+        var cursor = target
+        var origins = Set<String>()
+        for proof in proofs.reversed() {
+            let a = try PBPairApproval(serializedBytes: proof.approval)
+            try DeviceSecurity.check(proof.approval.count <= 1024 && a.accountID == r.pin.account && a.candidateKind == .machine && !a.replacesDeviceID.isEmpty && deviceId(publicKey: a.candidateDevicePublicKey) == cursor && a.nonce.count == 16 && a.pairingID.range(of:"^[0-9a-f]{32}$",options:.regularExpression) != nil && deviceId(publicKey: a.approverPublicKey) == a.approverDeviceID, .untrusted)
+            guard let first = states.first(where: { $0.core.member(cursor) != nil }),
+                let member = first.core.member(cursor), let signer = first.core.member(a.approverDeviceID) else { throw DeviceSecurity.Failure.untrusted }
+            try DeviceSecurity.check(member.kind == 1 && member.ed == a.candidateDevicePublicKey && first.core.authorityID == a.approverDeviceID && signer.ed == a.approverPublicKey && first.core.removed.contains(a.replacesDeviceID) && a.expiresMs > 0 && UInt64(a.expiresMs) + DeviceSecurity.clockSkewLimit >= first.core.issuedAt, .untrusted)
+            try DeviceSecurity.check(states.contains { $0.core.epoch < first.core.epoch && $0.core.member(a.replacesDeviceID)?.kind == 1 }, .untrusted)
+            try DeviceSecurity.check(verifyEd25519(publicKey:a.approverPublicKey,message:Data("remote-agent/v1/pair-approval\0".utf8)+proof.approval,signature:proof.signature),.untrusted)
+            try DeviceSecurity.check(origins.insert(a.replacesDeviceID).inserted,.untrusted)
+            cursor = a.replacesDeviceID
+        }
+        return origins
+    }
     public func headStateHash() throws -> Data { try DeviceSecurity.stateHash(try read().state) }
     public func close() {
         closed = true

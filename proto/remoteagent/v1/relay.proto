@@ -140,6 +140,8 @@ message PairApproval {
   DeviceKind candidate_kind = 6;
   int64 expires_ms = 7;
   bytes nonce = 8;
+  // Authority-approved archive transfer from this revoked machine identity.
+  string replaces_device_id = 9;
 }
 
 message PeekPairingRequest { string code = 1; uint32 protocol_version = 2; }

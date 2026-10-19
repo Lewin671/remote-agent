@@ -319,9 +319,14 @@ extension Remote {
         let removal = removedPushes[rs.machineID] ?? 0
         do {
             var view: SessionView
-            if let held = sessions[sid] {
+            if let held = sessions[sid], held.machineId == rs.machineID {
                 view = held
             } else {
+                if let held = sessions[sid] {
+                    let (_, info) = try await openSecureMessage(envelope:rs.meta,want:Place(.sessionMeta,machineId:rs.machineID,sessionId:sid),as:PBSession.self)
+                    let origins = try await securitySession().replacementOrigins(target:rs.machineID,proofs:info.machineReplacements)
+                    guard origins.contains(held.machineId) else {throw OpenError("会话记录的机器被改动")}
+                }
                 let route = try PBHeader(serializedBytes: rs.key.header)
                 let h: PBHeader
                 let raw: Data

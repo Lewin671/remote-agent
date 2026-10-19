@@ -455,4 +455,33 @@ public interface SessionOrBuilder extends
    * @return The currentCheckpoint.
    */
   com.google.protobuf.ByteString getCurrentCheckpoint();
+
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.MachineReplacementProof>
+      getMachineReplacementsList();
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.MachineReplacementProof getMachineReplacements(int index);
+  /**
+   * <pre>
+   * Authority-signed archive replacements, oldest first. Historical content
+   * keeps its original signed machine route; control always uses the new ID.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
+   */
+  int getMachineReplacementsCount();
 }

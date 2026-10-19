@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -178,6 +179,7 @@ type sessionRevisionMachine struct {
 	remoteagentv1connect.UnimplementedMachineServiceHandler
 	revisions []uint64
 	floor     uint64
+	validate  func(*pb.PutSessionRequest) error
 }
 
 func (m *sessionRevisionMachine) ListSessionHeads(context.Context, *connect.Request[pb.ListSessionHeadsRequest]) (*connect.Response[pb.ListSessionHeadsResponse], error) {
@@ -191,6 +193,11 @@ func (m *sessionRevisionMachine) PutSession(_ context.Context, r *connect.Reques
 	h, err := deviceauth.ParseHeader(r.Msg.Meta.SecurityHeader)
 	if err != nil {
 		return nil, err
+	}
+	if m.validate != nil {
+		if err := m.validate(r.Msg); err != nil {
+			return nil, err
+		}
 	}
 	m.revisions = append(m.revisions, h.Seq)
 	return connect.NewResponse(&pb.PutSessionResponse{}), nil
@@ -341,5 +348,48 @@ func TestEnsurePublishedRetriesCheckpointWithCurrentMarker(t *testing.T) {
 	}
 	if _, err := os.Stat(p); err != nil {
 		t.Fatal(err)
+	}
+}
+
+type checkpointBudgetBackend struct {
+	publishBackend
+	questionBytes int
+}
+
+func (b checkpointBudgetBackend) LiveSnapshot(id string) (*pb.LiveSnapshot, error) {
+	return &pb.LiveSnapshot{Session: &pb.Session{Id: id}, Actions: []*pb.Event{{SessionId: id, Seq: 1, Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "budget", Questions: []*pb.Question{{Text: strings.Repeat("q", b.questionBytes)}}}}}}}, nil
+}
+
+// The encrypted metadata contains both the current snapshot and the signed
+// replacement lineage. A legal snapshot alone need not fit their combined cap.
+func TestCheckpointCombinedMetadataBudgetKeepsOrdinarySyncAvailable(t *testing.T) {
+	for _, size := range []int{5 << 10, 40 << 10} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			c := &conn{r: New(checkpointBudgetBackend{questionBytes: size}), acct: &Account{}}
+			initializeTestSecurityKeys(t, c)
+			for i := 0; i < 64; i++ {
+				c.acct.Replacements = append(c.acct.Replacements, &pb.MachineReplacementProof{Approval: make([]byte, 512), Signature: make([]byte, 64)})
+			}
+			service := &sessionRevisionMachine{validate: func(request *pb.PutSessionRequest) error {
+				wire, err := deviceauth.FromEnvelope(request.Meta)
+				if err != nil {
+					return err
+				}
+				_, _, err = c.security.endpoint.Open(wire, nil, false, uint64(time.Now().UnixMilli()))
+				return err
+			}}
+			mux := http.NewServeMux()
+			path, h := remoteagentv1connect.NewMachineServiceHandler(service)
+			mux.Handle(path, h)
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+			c.machine = remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, srv.URL)
+			if _, err := c.putSession(context.Background(), "budget-session", make([]byte, 32), &pb.Session{Id: "budget-session"}, 0); err != nil {
+				t.Fatalf("checkpoint budget blocked ordinary metadata: %v", err)
+			}
+			if c.checkpointPending.Load() != (size == 40<<10) || len(service.revisions) != 1 {
+				t.Fatal("oversize checkpoint not retained independently of metadata")
+			}
+		})
 	}
 }

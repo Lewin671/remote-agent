@@ -188,3 +188,50 @@ func (s *store) cancelAdmission(ctx context.Context, pairingID string) error {
 	}
 	return tx.Commit()
 }
+
+// transferRevokedMachine runs inside registration, after admission validation.
+// No revoked credential, token or membership is restored. Ciphertexts and event
+// positions remain unchanged; the new daemon republishes its current metadata.
+func transferRevokedMachine(ctx context.Context, tx *sql.Tx, account, old, next string, kind pb.DeviceKind) error {
+	if kind != pb.DeviceKind_DEVICE_KIND_MACHINE || old == next {
+		return errAdmissionRequired
+	}
+	var revoked, registered int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM revoked_devices WHERE account_id = ? AND id = ?`, account, old).Scan(&revoked); err != nil {
+		return err
+	}
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE id = ?`, old).Scan(&registered); err != nil {
+		return err
+	}
+	if revoked != 1 || registered != 0 {
+		return errAdmissionRequired
+	}
+	var raw []byte
+	if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? ORDER BY epoch DESC LIMIT 1`, account).Scan(&raw); err != nil {
+		return errAdmissionRequired
+	}
+	head, err := deviceauth.ParseState(raw)
+	if err != nil {
+		return err
+	}
+	if _, ok := head.Core.Member(old); ok {
+		return errAdmissionRequired
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE machines SET id = ? WHERE account_id = ? AND id = ?`, next, account, old)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return errAdmissionRequired
+	}
+	for _, table := range []string{"sessions", "images"} {
+		if _, err := tx.ExecContext(ctx, `UPDATE `+table+` SET machine_id = ? WHERE account_id = ? AND machine_id = ?`, next, account, old); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -87,7 +87,10 @@ class DeviceSecurityClient(
     /** Pulls every state after the local head. The relay cannot make the head go backwards. */
     suspend fun sync(): DeviceSecurity.Record = syncMutex.withLock {
         repeat(DeviceSecurity.MAX_STATES) {
-            val r = read()
+            // Ordinary phones receive no control envelopes. Persist their local
+            // observed time even for an unchanged head or a failed state pull.
+            val before = read()
+            val r = store.touchSecurity(DeviceSecurity.stateHash(before.head), now(before))
             val res = fetchStates(r.head.core.epoch)
             recoveryPending = res.recoveryPending
             recoveryReadyMs = res.recoveryReadyMs

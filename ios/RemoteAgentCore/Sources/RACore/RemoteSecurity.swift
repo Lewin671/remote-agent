@@ -83,6 +83,14 @@ extension Remote {
         }
         return (r.pin, r.state)
     }
+    func historicalPlace(_ want: Place, header: PBHeader, history: Bool) async throws -> Place {
+        var expected=want
+        if history && [.event,.image].contains(want.kind) && header.machineID != want.machineId {
+            let origins=try await securitySession().replacementOrigins(target:want.machineId,proofs:sessions[want.sessionId]?.info?.machineReplacements ?? [])
+            if origins.contains(header.machineID) {expected.machineId=header.machineID}
+        }
+        return expected
+    }
     func openSecureMessage<M: SwiftProtobuf.Message>(
         envelope: PBEnvelope?, want: Place, as type: M.Type, history: Bool = false
     ) async throws -> (PBHeader, M) {
@@ -93,7 +101,7 @@ extension Remote {
             guard let key = sessionKeys[want.sessionId] else {
                 throw DeviceSecurity.Failure.invalid
             }
-            return try Envelopes.openMessage(key: key, envelope: envelope, want: want, as: type)
+            return try Envelopes.openMessage(key: key, envelope: envelope, want: try await historicalPlace(want,header:PBHeader(serializedBytes:envelope.header),history:true), as: type)
         }
         // Live frames are authorized by the state they name and the sender's
         // current membership; stored history is checked against its own state.
@@ -103,9 +111,9 @@ extension Remote {
         let header = try DeviceSecurity.parseHeader(envelope.securityHeader)
         let sessionSeed = seed.contains(header.purpose) ? sessionKeys[header.session] : nil
         let (h, m) = try await securitySession().openMessage(
-            envelope, as: type, history: history || ([PBPayloadKind.machineMeta,.sessionMeta,.image].contains(want.kind) && trustedMembers[want.machineId] == nil && archiveMachines.contains(want.machineId)), sessionSeed: sessionSeed)
+            envelope, as: type, history: history || want.kind == .image || ([PBPayloadKind.machineMeta,.sessionMeta,.image].contains(want.kind) && trustedMembers[want.machineId] == nil && archiveMachines.contains(want.machineId)), sessionSeed: sessionSeed)
         let projected = projection(h)
-        try Envelopes.expect(projected, want)
+        try Envelopes.expect(projected, try await historicalPlace(want,header:projected,history:history || want.kind == .image))
         return (projected, m)
     }
     func projection(_ h: DeviceSecurity.Header) -> PBHeader {

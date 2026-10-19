@@ -48,6 +48,7 @@ internal fun validJoinApproval(
         approval.pairingId == pairingId &&
         approval.candidateDevicePublicKey.toByteArray().contentEquals(candidate) &&
         approval.candidateKind == DeviceKind.DEVICE_KIND_CLIENT &&
+        approval.replacesDeviceId.isEmpty() &&
         approval.approverDeviceId == approver &&
         approval.approverPublicKey.size() == 32 &&
         approval.nonce.size() == 16 &&
@@ -160,6 +161,7 @@ internal constructor(
     private val pairingId: String,
     private val key: PairKey,
     private val expires: Long,
+    private val replacesDeviceId: String,
 ) : PairingInitiation {
     @Volatile private var stopped = false
     private var secrets: PairSecrets? = null
@@ -197,6 +199,8 @@ internal constructor(
                 Api.headers(tok),
             )
             .value()
+        if (replacesDeviceId.isNotEmpty() && st.joinerKind != DeviceKind.DEVICE_KIND_MACHINE)
+            throw PairException("这份配对只允许原电脑重新加入")
         candidateSeed = cp
         candidateX = xp
         candidateKind = st.joinerKind
@@ -277,7 +281,8 @@ internal constructor(
                     if (rawSize > DeviceSecurity.MAX_PAIR_CHAIN_BYTES)
                         throw PairException("状态链太大，无法配对；请重建账户")
                     val certificate = HeadLease.sign(next, SigningKey(acct.deviceSeed), now)
-                    val (approval, signature) = makePairApproval(acct, pairingId, cp, kind, expires)
+                    val (approval, signature) =
+                        makePairApproval(acct, pairingId, cp, kind, expires, replacesDeviceId)
                     val payload =
                         PairingPayload.newBuilder()
                             .setServer(acct.server)
@@ -372,9 +377,20 @@ internal constructor(
 
     companion object {
         /** Starts adding a device; only the authority phone may. */
-        suspend fun start(remote: Remote): Initiation {
+        suspend fun start(remote: Remote, replacesDeviceId: String = ""): Initiation {
             if (remote.security.head().core.authorityID != remote.account.deviceId)
                 throw PairException("只有管理端手机能添加设备")
+            if (replacesDeviceId.isNotEmpty()) {
+                val head = remote.security.head()
+                if (
+                    head.core.member(replacesDeviceId) != null ||
+                        replacesDeviceId !in head.core.removed ||
+                        remote.security.chain().none {
+                            it.core.member(replacesDeviceId)?.kind == 1u
+                        }
+                )
+                    throw PairException("只能接续同一账户已移除电脑的档案")
+            }
             val current = remote.security.chain()
             val currentBytes =
                 current.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
@@ -407,6 +423,7 @@ internal constructor(
                 created.pairingId,
                 key,
                 created.expiresMs,
+                replacesDeviceId,
             )
         }
     }

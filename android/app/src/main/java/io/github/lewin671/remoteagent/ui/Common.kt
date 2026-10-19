@@ -144,6 +144,7 @@ class Nav(
     val recovery: () -> Unit = {},
     val recover: () -> Unit = {},
     val createAccount: () -> Unit = {},
+    val rejoin: (String) -> Unit = {},
 )
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }

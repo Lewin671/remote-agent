@@ -326,11 +326,32 @@ public struct PBSession: @unchecked Sendable {
     set {_uniqueStorage()._currentCheckpoint = newValue}
   }
 
+  /// Authority-signed archive replacements, oldest first. Historical content
+  /// keeps its original signed machine route; control always uses the new ID.
+  public var machineReplacements: [PBMachineReplacementProof] {
+    get {return _storage._machineReplacements}
+    set {_uniqueStorage()._machineReplacements = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct PBMachineReplacementProof: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var approval: Data = Data()
+
+  public var signature: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 public struct PBCreateSessionRequest: Sendable {
@@ -1490,7 +1511,7 @@ extension PBImageUploadState: SwiftProtobuf._ProtoNameProviding {
 
 extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Session"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}cwd\0\u{3}tmux_session\0\u{1}status\0\u{3}status_detail\0\u{3}codex_session_id\0\u{3}rollout_path\0\u{3}created_at\0\u{3}last_seq\0\u{1}model\0\u{1}effort\0\u{3}pending_approvals\0\u{3}pending_questions\0\u{3}queued_inputs\0\u{1}title\0\u{1}preview\0\u{3}approvals_reviewer\0\u{3}approval_policy\0\u{1}sandbox\0\u{3}collaboration_mode\0\u{3}context_tokens\0\u{3}context_window\0\u{3}plan_open\0\u{3}input_wait\0\u{1}agent\0\u{1}mode\0\u{3}permission_mode\0\u{3}full_access_unavailable\0\u{3}attention_since\0\u{3}ended_at\0\u{3}forked_from\0\u{3}forked_seq\0\u{3}current_checkpoint\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}cwd\0\u{3}tmux_session\0\u{1}status\0\u{3}status_detail\0\u{3}codex_session_id\0\u{3}rollout_path\0\u{3}created_at\0\u{3}last_seq\0\u{1}model\0\u{1}effort\0\u{3}pending_approvals\0\u{3}pending_questions\0\u{3}queued_inputs\0\u{1}title\0\u{1}preview\0\u{3}approvals_reviewer\0\u{3}approval_policy\0\u{1}sandbox\0\u{3}collaboration_mode\0\u{3}context_tokens\0\u{3}context_window\0\u{3}plan_open\0\u{3}input_wait\0\u{1}agent\0\u{1}mode\0\u{3}permission_mode\0\u{3}full_access_unavailable\0\u{3}attention_since\0\u{3}ended_at\0\u{3}forked_from\0\u{3}forked_seq\0\u{3}current_checkpoint\0\u{3}machine_replacements\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -1526,6 +1547,7 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
     var _forkedFrom: String = String()
     var _forkedSeq: UInt64 = 0
     var _currentCheckpoint: Data = Data()
+    var _machineReplacements: [PBMachineReplacementProof] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1569,6 +1591,7 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
       _forkedFrom = source._forkedFrom
       _forkedSeq = source._forkedSeq
       _currentCheckpoint = source._currentCheckpoint
+      _machineReplacements = source._machineReplacements
     }
   }
 
@@ -1620,6 +1643,7 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
         case 31: try { try decoder.decodeSingularStringField(value: &_storage._forkedFrom) }()
         case 32: try { try decoder.decodeSingularUInt64Field(value: &_storage._forkedSeq) }()
         case 33: try { try decoder.decodeSingularBytesField(value: &_storage._currentCheckpoint) }()
+        case 34: try { try decoder.decodeRepeatedMessageField(value: &_storage._machineReplacements) }()
         default: break
         }
       }
@@ -1731,6 +1755,9 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
       if !_storage._currentCheckpoint.isEmpty {
         try visitor.visitSingularBytesField(value: _storage._currentCheckpoint, fieldNumber: 33)
       }
+      if !_storage._machineReplacements.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._machineReplacements, fieldNumber: 34)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1773,10 +1800,46 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
         if _storage._forkedFrom != rhs_storage._forkedFrom {return false}
         if _storage._forkedSeq != rhs_storage._forkedSeq {return false}
         if _storage._currentCheckpoint != rhs_storage._currentCheckpoint {return false}
+        if _storage._machineReplacements != rhs_storage._machineReplacements {return false}
         return true
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBMachineReplacementProof: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MachineReplacementProof"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}approval\0\u{1}signature\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.approval) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.approval.isEmpty {
+      try visitor.visitSingularBytesField(value: self.approval, fieldNumber: 1)
+    }
+    if !self.signature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.signature, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBMachineReplacementProof, rhs: PBMachineReplacementProof) -> Bool {
+    if lhs.approval != rhs.approval {return false}
+    if lhs.signature != rhs.signature {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

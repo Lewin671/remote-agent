@@ -37,7 +37,7 @@ func verifyPairApproval(
     let a = try PBPairApproval(serializedBytes: enrollment.approval)
     let pub = try SigningKey(seed: deviceSeed).publicKey
     guard a.accountID == accountId, a.pairingID == enrollment.pairingId,
-          a.candidateDevicePublicKey == pub, a.candidateKind == kind, a.nonce.count == 16, a.expiresMs > now,
+          a.candidateDevicePublicKey == pub, a.candidateKind == kind, a.replacesDeviceID.isEmpty, a.nonce.count == 16, a.expiresMs > now,
           a.approverPublicKey.count == 32, deviceId(publicKey: a.approverPublicKey) == a.approverDeviceID,
           a.approverDeviceID != deviceId(publicKey: pub),
           verifyEd25519(publicKey: a.approverPublicKey, message: approvalContext + enrollment.approval, signature: enrollment.signature)

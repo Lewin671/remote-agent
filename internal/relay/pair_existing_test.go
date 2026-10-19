@@ -2,6 +2,7 @@ package relay
 
 import (
 	"crypto/ed25519"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"testing"
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
@@ -59,5 +60,34 @@ func TestRemovedDeviceRejoinsWithANewIdentity(t *testing.T) {
 	}
 	if !pub.Equal(priv.Public()) {
 		t.Fatal("the fresh key pair does not match")
+	}
+}
+
+func TestPairingReplacementLineageAfterExplicitArchiveDeletion(t *testing.T) {
+	prior := &Account{Replacements: []*pb.MachineReplacementProof{{Approval: []byte("prior signed replacement")}}}
+	for _, tc := range []struct {
+		name     string
+		removed  bool
+		replaces string
+		want     int
+	}{
+		{"ordinary X rotation", false, "", 1},
+		{"authorized archive replacement", true, "revoked-identity", 2},
+		{"fresh enrollment after record deletion", true, "", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, sig := []byte{1}, []byte{2}
+			got := pairingReplacements(prior, tc.removed, &pb.PairApproval{ReplacesDeviceId: tc.replaces}, raw, sig)
+			if len(got) != tc.want {
+				t.Fatalf("lineage length=%d want %d", len(got), tc.want)
+			}
+			if tc.replaces != "" {
+				raw[0] = 9
+				sig[0] = 9
+				if got[len(got)-1].Approval[0] != 1 || got[len(got)-1].Signature[0] != 2 {
+					t.Fatal("signed proof was not copied")
+				}
+			}
+		})
 	}
 }

@@ -1,3 +1,4 @@
+import { machineReplacementOrigins } from "./machine-replacement";
 import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
 import {
   LiveSnapshotSchema,
@@ -325,6 +326,7 @@ export async function joinWithApproval(
     a.accountId !== account ||
     a.pairingId !== enrollment.pairingId ||
     a.candidateKind !== DeviceKind.CLIENT ||
+    a.replacesDeviceId !== "" ||
     !same(a.candidateDevicePublicKey, pub) ||
     a.nonce.length !== 16 ||
     a.expiresMs <= BigInt(Date.now()) ||
@@ -401,6 +403,8 @@ export class Remote {
   private liveJobs = new Map<string, Promise<void>>();
 
   private directoryReadVersion = 0;
+  private directoryHead?: Uint8Array;
+  private recoveryObjectsPending = false;
   private trustedMembers = new Map<string, Member>();
   private archiveMachines = new Set<string>();
   authorityDeviceId = "";
@@ -652,6 +656,27 @@ export class Remote {
       compression: h.compression,
     });
   }
+  private async historicalPlace(
+    want: Parameters<typeof expect>[1],
+    header: ReturnType<Remote["projectHeader"]>,
+    history: boolean,
+  ) {
+    if (
+      history &&
+      [PayloadKind.EVENT, PayloadKind.IMAGE].includes(want.kind) &&
+      header.machineId !== want.machineId
+    ) {
+      const view = this.sessions.get(want.sessionId ?? "");
+      const origins = await machineReplacementOrigins(
+        await this.security.verifiedRecord(),
+        want.machineId ?? "",
+        view?.info?.machineReplacements ?? [],
+      );
+      if (origins.has(header.machineId))
+        return { ...want, machineId: header.machineId };
+    }
+    return want;
+  }
   private async openSecureMessage<D extends DescMessage>(
     env: Envelope | undefined,
     want: Parameters<typeof expect>[1],
@@ -659,6 +684,7 @@ export class Remote {
     history = false,
   ) {
     if (!env) throw new Error("缺少安全信封");
+    if (want.kind === PayloadKind.IMAGE) history = true;
     if (
       [
         PayloadKind.MACHINE_META,
@@ -688,7 +714,11 @@ export class Remote {
       return openLegacyMessage(
         await importSessionKey(rawSeed),
         env,
-        want,
+        await this.historicalPlace(
+          want,
+          fromBinary(HeaderSchema, env.header),
+          history,
+        ),
         schema,
       );
     }
@@ -699,11 +729,18 @@ export class Remote {
         : await this.security.openCurrent(env, seed);
     } catch (e) {
       if (e instanceof RecoveryHistoryUnavailable)
-        expect(this.projectHeader(e.header), want);
+        expect(
+          this.projectHeader(e.header),
+          await this.historicalPlace(
+            want,
+            this.projectHeader(e.header),
+            history,
+          ),
+        );
       throw e;
     }
     const header = this.projectHeader(out.header);
-    expect(header, want);
+    expect(header, await this.historicalPlace(want, header, history));
     let msg: MessageShape<D>;
     try {
       msg = fromBinary(schema, out.plaintext);
@@ -951,14 +988,16 @@ export class Remote {
   private async syncSecurity() {
     if (this.closed) return;
     try {
-      const before = await this.security
-        .localStateHash()
-        .catch(() => undefined);
       await this.security.sync();
       this.clearClockWarning();
-      if (before && !equalBytes(before, await this.security.localStateHash()))
-        // A new head is the member directory: drop what it no longer names
-        // even when no device/machine removal push arrived.
+      const head = await this.security.localStateHash();
+      if (
+        this.recoveryObjectsPending ||
+        !this.directoryHead ||
+        !equalBytes(this.directoryHead, head)
+      )
+        // Only a successfully applied directory acknowledges this head.
+        // A failed RPC must remain pending after security.sync advances it.
         await this.loadDevices(false);
     } catch (e) {
       this.report(e);
@@ -1662,8 +1701,40 @@ export class Remote {
         };
         this.sessions.set(rs.sessionId, view);
       }
-      if (view.machineId !== rs.machineId)
-        throw new Error("会话记录的机器被改动");
+      if (view.machineId !== rs.machineId) {
+        const { msg } = await this.openSecureMessage(
+          rs.meta,
+          {
+            kind: PayloadKind.SESSION_META,
+            machineId: rs.machineId,
+            sessionId: rs.sessionId,
+          },
+          SessionSchema,
+        );
+        const origins = await machineReplacementOrigins(
+          await this.security.verifiedRecord(),
+          rs.machineId,
+          msg.machineReplacements,
+        );
+        if (!origins.has(view.machineId))
+          throw new Error("会话记录的机器被改动");
+        // Validate the new seed before changing an already displayed route.
+        const opened = await this.security.openCurrent(rs.key!);
+        expect(this.projectHeader(opened.header), {
+          kind: PayloadKind.SESSION_KEY,
+          machineId: rs.machineId,
+          sessionId: rs.sessionId,
+        });
+        if (opened.plaintext.length !== 32) throw new Error("无效的会话种子");
+        this.sessionSeeds.set(rs.sessionId, new Uint8Array(opened.plaintext));
+        view = {
+          ...view,
+          machineId: rs.machineId,
+          metaRev: 0n,
+          key: await importSessionKey(new Uint8Array(opened.plaintext)),
+        };
+        this.sessions.set(rs.sessionId, view);
+      }
       view.lastSeq = maxBig(view.lastSeq, rs.lastSeq);
       view.updatedMs = maxBig(view.updatedMs, rs.updatedMs);
       if (rs.meta) {
@@ -2693,6 +2764,8 @@ export class Remote {
    * server's sealed metadata objects. */
   async loadDevices(describe = true) {
     const version = ++this.directoryReadVersion;
+    this.recoveryObjectsPending = true;
+    let publicationPending = false;
     try {
       const record = await this.security.sync();
       try {
@@ -2700,6 +2773,7 @@ export class Remote {
       } catch (e) {
         // Expired publication stays pending; it must not block stored reads.
         if (!(e instanceof SecurityError) || e.code !== "lease") throw e;
+        publicationPending = true;
       }
       this.clearClockWarning();
       const head = record.states[record.states.length - 1];
@@ -2825,6 +2899,8 @@ export class Remote {
           for (const [sid, s] of this.sessions)
             if (s.machineId === id) this.forget(sid);
         }
+      this.recoveryObjectsPending = publicationPending;
+      this.directoryHead = state;
       this.devicesStatus = "ready";
       this.changed();
       if (describe) await this.describeSelf();

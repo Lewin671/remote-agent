@@ -182,6 +182,13 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil || approval.AccountId != pin.Account || approval.PairingId != id || !bytes.Equal(approval.CandidateDevicePublicKey, pub) || approval.CandidateKind != pb.DeviceKind_DEVICE_KIND_MACHINE || approval.ExpiresMs <= time.Now().UnixMilli() || e2e.DeviceID(approval.ApproverPublicKey) != approver {
 		return nil, e2e.ErrPairApproval
 	}
+	expectedReplacement := ""
+	if existing != nil && localRemoved {
+		expectedReplacement = existing.DeviceID
+	}
+	if approval.ReplacesDeviceId != "" && approval.ReplacesDeviceId != expectedReplacement {
+		return nil, errors.New("the pairing approval does not name this computer's revoked identity; on the authority phone choose the original computer's archive and rejoin it")
+	}
 	states, proofs, candidate, err := verifyPairChain(pin, payload.SecurityStates, pub, xpub)
 	if err != nil {
 		return nil, err
@@ -211,6 +218,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		acct.Root = existing.Root
 		acct.Web = existing.Web
 	}
+	acct.Replacements = pairingReplacements(existing, localRemoved, approval, payload.Approval, payload.ApprovalSignature)
 	reg, err := proto.Marshal(&pb.DeviceRegistration{
 		AccountPublicKey: payload.AccountPublicKey, DevicePublicKey: pub,
 		Kind: pb.DeviceKind_DEVICE_KIND_MACHINE, CreatedMs: time.Now().UnixMilli(),
@@ -247,6 +255,18 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	// the outcome as unknown; the join itself stands.
 	_, _ = pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: id, CandidateToken: token, Received: true}))
 	return acct, nil
+}
+
+// pairingReplacements carries only lineage applicable to the admitted identity.
+func pairingReplacements(existing *Account, removed bool, approval *pb.PairApproval, raw, signature []byte) []*pb.MachineReplacementProof {
+	var proofs []*pb.MachineReplacementProof
+	if existing != nil && (!removed || approval.ReplacesDeviceId != "") {
+		proofs = append(proofs, existing.Replacements...)
+	}
+	if approval.ReplacesDeviceId != "" {
+		proofs = append(proofs, &pb.MachineReplacementProof{Approval: bytes.Clone(raw), Signature: bytes.Clone(signature)})
+	}
+	return proofs
 }
 
 // verifyPairChain checks every state from the pinned genesis and returns the

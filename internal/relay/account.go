@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/paths"
 )
@@ -24,8 +25,9 @@ import (
 // Account is this machine's membership in an account, account.json. It
 // holds the root key and must stay private to the user.
 type Account struct {
-	Security *SecurityConfig `json:"security,omitempty"`
-	Server   string          `json:"server"`
+	Replacements []*pb.MachineReplacementProof `json:"machine_replacements,omitempty"`
+	Security     *SecurityConfig               `json:"security,omitempty"`
+	Server       string                        `json:"server"`
 	// Root is the account root key.
 	Root []byte `json:"root"`
 	// DeviceSeed is the seed of this machine's Ed25519 device key.

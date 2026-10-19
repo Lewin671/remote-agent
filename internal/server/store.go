@@ -489,12 +489,21 @@ func (s *store) addDevice(ctx context.Context, account string, create *newAccoun
 	if reg.CreatedMs < floor {
 		return errRegistrationStale
 	}
+	replaces := ""
+	if approval != nil {
+		replaces = approval.info.ReplacesDeviceId
+	}
+	if replaces != "" {
+		if err := transferRevokedMachine(ctx, tx, account, replaces, id, reg.Kind); err != nil {
+			return err
+		}
+	}
 	if limit != nil {
 		u, err := usageTx(ctx, tx, account)
 		if err != nil {
 			return err
 		}
-		if reg.Kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
+		if reg.Kind == pb.DeviceKind_DEVICE_KIND_MACHINE && replaces == "" {
 			u.machines++
 		}
 		u.devices++
@@ -507,7 +516,7 @@ func (s *store) addDevice(ctx context.Context, account string, create *newAccoun
 		id, account, reg.DevicePublicKey, int32(reg.Kind), raw, sig, nowMs()); err != nil {
 		return err
 	}
-	if reg.Kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
+	if reg.Kind == pb.DeviceKind_DEVICE_KIND_MACHINE && replaces == "" {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO machines (id, account_id) VALUES (?, ?)`, id, account); err != nil {
 			return err
 		}

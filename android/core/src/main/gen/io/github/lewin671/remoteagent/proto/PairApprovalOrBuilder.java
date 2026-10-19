@@ -80,4 +80,24 @@ public interface PairApprovalOrBuilder extends
    * @return The nonce.
    */
   com.google.protobuf.ByteString getNonce();
+
+  /**
+   * <pre>
+   * Authority-approved archive transfer from this revoked machine identity.
+   * </pre>
+   *
+   * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+   * @return The replacesDeviceId.
+   */
+  java.lang.String getReplacesDeviceId();
+  /**
+   * <pre>
+   * Authority-approved archive transfer from this revoked machine identity.
+   * </pre>
+   *
+   * <code>string replaces_device_id = 9 [json_name = "replacesDeviceId"];</code>
+   * @return The bytes for replacesDeviceId.
+   */
+  com.google.protobuf.ByteString
+      getReplacesDeviceIdBytes();
 }
