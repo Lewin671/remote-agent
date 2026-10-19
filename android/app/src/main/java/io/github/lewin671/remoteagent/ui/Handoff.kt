@@ -118,6 +118,8 @@ fun HandoffControls() {
 fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
     if (!authority) return
     val remote = LocalRemote.current
+    val state by remote.state.collectAsState()
+    if (id in state.devices) return
     val scope = rememberCoroutineScope()
     var confirm by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }

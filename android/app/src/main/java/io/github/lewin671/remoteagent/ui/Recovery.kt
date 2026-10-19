@@ -211,7 +211,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
         }
     }
 
-    PageScaffold("用恢复码找回管理权") {
+    PageScaffold("用恢复码找回管理权", onBack = onBack) {
         Column(
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
@@ -406,121 +406,134 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                     if (s.readyMs > 0) "可以生效的时间：" + dayText(s.readyMs, t) else "48 小时后才能完成。",
                     Modifier,
                 )
-                val c = chain
-                if (c == null)
-                    TextAction(
-                        "查看状态",
-                        {
-                            scope.launch {
-                                try {
-                                    chain =
+                RecoveryStatus(
+                    phase = chain?.phase,
+                    busy = busy,
+                    error = error,
+                    onRefresh = {
+                        busy = true
+                        error = ""
+                        scope.launch {
+                            try {
+                                chain =
+                                    withContext(Dispatchers.IO) {
+                                        Recovery.context(
+                                            checkedServer(server),
+                                            app.http,
+                                            ByteArray(0),
+                                            s.deviceSeed,
+                                            recoveryId = s.recoveryId,
+                                            expectedGenesis = s.genesisPrefix,
+                                        )
+                                    }
+                            } catch (e: Exception) {
+                                error = errorText(e)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    onComplete = {
+                        busy = true
+                        error = ""
+                        scope.launch {
+                            try {
+                                val url = checkedServer(server)
+                                app.lastServer = url
+                                completeRecoveryAndAdopt(
+                                    complete = {
                                         withContext(Dispatchers.IO) {
-                                            Recovery.context(
-                                                checkedServer(server),
+                                            Recovery.complete(
+                                                url,
                                                 app.http,
-                                                ByteArray(0),
+                                                s.recoveryId,
+                                                s.accountId,
                                                 s.deviceSeed,
-                                                recoveryId = s.recoveryId,
-                                                expectedGenesis = s.genesisPrefix,
+                                                s.xPrivate,
+                                                s.stateHash,
                                             )
                                         }
-                                } catch (e: Exception) {
-                                    error = errorText(e)
-                                }
+                                    },
+                                    adopt = app::recovered,
+                                )
+                            } catch (e: Exception) {
+                                error = errorText(e)
+                            } finally {
+                                busy = false
                             }
-                        },
-                        alignment = Alignment.CenterStart,
-                    )
-                else
-                    when (c.phase) {
-                        GetRecoveryContextResponse.Phase.PHASE_READY -> Hint("已经可以完成恢复。", Modifier)
-                        GetRecoveryContextResponse.Phase.PHASE_PENDING ->
-                            Hint("还在 48 小时等待期内。", Modifier)
-                        GetRecoveryContextResponse.Phase.PHASE_REJECTED ->
-                            Hint("这次恢复被原手机否决了。", Modifier)
-                        GetRecoveryContextResponse.Phase.PHASE_PUBLISHED ->
-                            Hint("这次恢复已经完成。", Modifier)
-                        else -> {}
-                    }
-                if (error.isNotEmpty())
-                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
-                if (recoveryNextAction(c?.phase) == RecoveryNextAction.COMPLETE) {
-                    Btn(
-                        if (busy) "正在完成…" else "完成恢复",
-                        {
-                            busy = true
-                            error = ""
-                            scope.launch {
-                                try {
-                                    val url = checkedServer(server)
-                                    app.lastServer = url
-                                    completeRecoveryAndAdopt(
-                                        complete = {
-                                            withContext(Dispatchers.IO) {
-                                                Recovery.complete(
-                                                    url,
-                                                    app.http,
-                                                    s.recoveryId,
-                                                    s.accountId,
-                                                    s.deviceSeed,
-                                                    s.xPrivate,
-                                                    s.stateHash,
-                                                )
-                                            }
-                                        },
-                                        adopt = app::recovered,
-                                    )
-                                } catch (e: Exception) {
-                                    error = errorText(e)
-                                } finally {
-                                    busy = false
-                                }
+                        }
+                    },
+                    onRestart = {
+                        busy = true
+                        error = ""
+                        scope.launch {
+                            try {
+                                restartRejectedRecovery(
+                                    chain?.phase,
+                                    clearPending = {
+                                        withContext(Dispatchers.IO) {
+                                            app.vault.clearPendingRecovery()
+                                        }
+                                    },
+                                    resetScreen = {
+                                        submission = null
+                                        code = ""
+                                        codeSaved = false
+                                        chain = null
+                                        error = ""
+                                        deviceSeed = randomBytes(32)
+                                    },
+                                )
+                            } catch (e: Exception) {
+                                error = errorText(e)
+                            } finally {
+                                busy = false
                             }
-                        },
-                        Modifier.fillMaxWidth().padding(top = 10.dp),
-                        BtnKind.PRIMARY,
-                        enabled = !busy,
-                    )
-                    Hint("如果还没到 48 小时，或者原手机否决了，完成会失败并说明原因。", Modifier.padding(top = 8.dp))
-                } else {
-                    Hint("这次申请生成的新恢复码已作废。请使用原手机上的替换恢复码重新申请。", Modifier)
-                    Btn(
-                        if (busy) "正在清除…" else "放弃这次恢复，输入新恢复码",
-                        {
-                            busy = true
-                            error = ""
-                            scope.launch {
-                                try {
-                                    restartRejectedRecovery(
-                                        c?.phase,
-                                        clearPending = {
-                                            withContext(Dispatchers.IO) {
-                                                app.vault.clearPendingRecovery()
-                                            }
-                                        },
-                                        resetScreen = {
-                                            submission = null
-                                            code = ""
-                                            codeSaved = false
-                                            chain = null
-                                            error = ""
-                                            deviceSeed = randomBytes(32)
-                                        },
-                                    )
-                                } catch (e: Exception) {
-                                    error = errorText(e)
-                                } finally {
-                                    busy = false
-                                }
-                            }
-                        },
-                        Modifier.fillMaxWidth().padding(top = 10.dp),
-                        BtnKind.SECONDARY,
-                        enabled = !busy,
-                    )
-                }
+                        }
+                    },
+                )
             }
         }
+    }
+}
+
+/** Status and actions share the same verified recovery phase. */
+@Composable
+internal fun RecoveryStatus(
+    phase: GetRecoveryContextResponse.Phase?,
+    busy: Boolean,
+    error: String,
+    onRefresh: () -> Unit,
+    onComplete: () -> Unit,
+    onRestart: () -> Unit,
+) {
+    TextAction("查看状态", onRefresh, enabled = !busy, alignment = Alignment.CenterStart)
+    when (phase) {
+        GetRecoveryContextResponse.Phase.PHASE_READY -> Hint("已经可以完成恢复。", Modifier)
+        GetRecoveryContextResponse.Phase.PHASE_PENDING -> Hint("还在 48 小时等待期内。", Modifier)
+        GetRecoveryContextResponse.Phase.PHASE_REJECTED -> Hint("这次恢复被原手机否决了。", Modifier)
+        GetRecoveryContextResponse.Phase.PHASE_PUBLISHED -> Hint("这次恢复已经完成。", Modifier)
+        else -> {}
+    }
+    if (error.isNotEmpty()) Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
+    if (recoveryNextAction(phase) == RecoveryNextAction.COMPLETE) {
+        Btn(
+            if (busy) "正在完成…" else "完成恢复",
+            onComplete,
+            Modifier.fillMaxWidth().padding(top = 10.dp),
+            BtnKind.PRIMARY,
+            enabled = !busy,
+        )
+        Hint("如果还没到 48 小时，或者原手机否决了，完成会失败并说明原因。", Modifier.padding(top = 8.dp))
+    } else {
+        Hint("这次申请生成的新恢复码已作废。请使用原手机上的替换恢复码重新申请。", Modifier)
+        Btn(
+            if (busy) "正在清除…" else "放弃这次恢复，输入新恢复码",
+            onRestart,
+            Modifier.fillMaxWidth().padding(top = 10.dp),
+            BtnKind.SECONDARY,
+            enabled = !busy,
+        )
     }
 }
 
@@ -537,7 +550,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
 
-    PageScaffold("创建新账户") {
+    PageScaffold("创建新账户", onBack = onBack) {
         Column(
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
@@ -666,7 +679,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
     var created by remember { mutableStateOf<CreatedAccount?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    PageScaffold("重建安全域") {
+    PageScaffold("重建安全域", onBack = onBack) {
         Column(
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())

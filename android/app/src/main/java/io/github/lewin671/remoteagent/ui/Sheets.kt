@@ -626,13 +626,15 @@ fun PageScaffold(
     subtitle: String? = null,
     gray: Boolean = false,
     action: (@Composable () -> Unit)? = null,
+    onBack: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val nav = LocalNav.current
+    val back = onBack ?: LocalNav.current.back
+    if (onBack != null) androidx.activity.compose.BackHandler(onBack = onBack)
     val p = pal
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides gray) {
         Column(Modifier.fillMaxSize().background(if (gray) p.soft else p.card).imePadding()) {
-            NavBar(title, nav.back, subtitle = subtitle, right = action)
+            NavBar(title, back, subtitle = subtitle, right = action)
             if (gray) Column(Modifier.weight(1f).fillMaxWidth().readableColumn()) { content() }
             else content()
         }

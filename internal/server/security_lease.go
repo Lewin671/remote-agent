@@ -63,11 +63,16 @@ func (c *clientService) DeleteMachineRecords(ctx context.Context, req *connect.R
 		return nil, invalid("machine required")
 	}
 	if err := t.store.deleteMachineRecords(ctx, id); err != nil {
+		if errors.Is(err, errMachineIsMember) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
 		return nil, internal(err)
 	}
 	t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineRemoved{MachineRemoved: &pb.MachineRemoved{MachineId: id}}})
 	return connect.NewResponse(&pb.DeleteMachineRecordsResponse{}), nil
 }
+
+var errMachineIsMember = errors.New("remove the machine before deleting its records")
 
 // deleteMachineRecords deletes a machine's archive: its sessions, their
 // events and its images. Revoking the machine does not do this.
@@ -77,6 +82,28 @@ func (t *tstore) deleteMachineRecords(ctx context.Context, id string) error {
 		return err
 	}
 	defer tx.Rollback()
+	// Membership and deletion share one transaction: a concurrent registration
+	// or signed head update cannot turn this into deletion of a current machine.
+	var registered bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM devices WHERE account_id=? AND id=?)`, t.acct, id).Scan(&registered); err != nil {
+		return err
+	}
+	if registered {
+		return errMachineIsMember
+	}
+	var raw []byte
+	if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id=? ORDER BY epoch DESC LIMIT 1`, t.acct).Scan(&raw); err == nil {
+		head, err := deviceauth.ParseState(raw)
+		if err != nil {
+			return err
+		}
+		if _, member := head.Core.Member(id); member {
+			return errMachineIsMember
+		}
+	} else if !errors.Is(err, errNoRows) {
+		return err
+	}
+
 	for _, q := range []string{
 		`DELETE FROM events WHERE account_id=?1 AND session_id IN(SELECT session_id FROM sessions WHERE account_id=?1 AND machine_id=?2)`,
 		`DELETE FROM images WHERE account_id=?1 AND machine_id=?2`,

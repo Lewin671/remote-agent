@@ -242,16 +242,19 @@ extension ServerTests {
                 ).value()
 
                 let r = try await w.client()
-                r.start()
-                _ = try await r.awaitState("online") {
-                    $0.conn == .online && $0.devices[victim.deviceId] != nil
-                        && $0.sessions["s1"] != nil
-                }
+                // Keep the stream and security polling stopped: this test must
+                // learn the removal from the explicit head fetch alone. A push
+                // refresh could otherwise supersede refreshDevices and make its
+                // immediate assertions race the newer asynchronous refresh.
+                let loaded = await r.refresh()
+                #expect(loaded)
+                #expect(r.current.devices[victim.deviceId] != nil)
+                #expect(r.current.sessions["s1"] != nil)
                 await r.loadPrefs()
                 #expect(r.current.prefs?.revision == 1)
 
-                // The relay withholds the removal push; the new head alone
-                // must drop the member, its sessions and its prefs write.
+                // Without a removal push, the new head alone must drop the
+                // member while retaining its sessions and readable prefs.
                 try await w.phone.remove([victim.deviceId, w.daemon.id])
                 await r.refreshDevices()
                 #expect(r.current.devices[victim.deviceId] == nil)
