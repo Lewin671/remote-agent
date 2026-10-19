@@ -201,7 +201,6 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	}
 
 	var accepted []securityRow
-	var removed []string
 	prev := head
 	haveHead := head.Core.Epoch != 0
 	for _, in := range req.Msg.States {
@@ -256,63 +255,15 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 			return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("security chain is full"))
 		}
 		accepted = append(accepted, securityRow{epoch: s.Core.Epoch, state: s, raw: raw, hash: h, recovery: proof, recRaw: in.Recovery})
-		if haveHead {
-			for _, m := range prev.Core.Members {
-				if _, ok := s.Core.Member(m.ID); !ok {
-					removed = append(removed, m.ID)
-				}
-			}
-		}
+
 		prev, haveHead = s, true
 	}
-	if len(accepted) == 0 {
-		// Everything was already stored; answer with the current head.
-		raw, err := head.MarshalBinary()
-		if err != nil {
-			return nil, internal(err)
-		}
-		return connect.NewResponse(&pb.PutSecurityStateResponse{HeadEpoch: head.Core.Epoch, Head: raw}), nil
+
+	last, removed, err := t.store.commitSecurityStates(ctx, accepted)
+	if err != nil {
+		return nil, err
 	}
 
-	tx, err := t.store.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, internal(err)
-	}
-	defer tx.Rollback()
-	for _, r := range accepted {
-		var rec []byte
-		if r.recRaw != nil {
-			rec = r.recRaw
-		}
-		res, err := tx.ExecContext(ctx, `INSERT INTO security_states (account_id, epoch, state, hash, recovery) VALUES (?, ?, ?, ?, ?) ON CONFLICT (account_id, epoch) DO NOTHING`,
-			t.acct, r.epoch, r.raw, r.hash[:], rec)
-		if err != nil {
-			return nil, internal(err)
-		}
-		if n, _ := res.RowsAffected(); n == 0 {
-			var stored []byte
-			if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? AND epoch = ?`, t.acct, r.epoch).Scan(&stored); err != nil || !bytes.Equal(stored, r.raw) {
-				return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("security chain fork"))
-			}
-		}
-	}
-	last := accepted[len(accepted)-1]
-	if _, err := tx.ExecContext(ctx, `UPDATE accounts SET recovery_ed = ? WHERE id = ?`, last.state.Core.RecoveryEd[:], t.acct); err != nil {
-		return nil, internal(err)
-	}
-	// Any new head makes a pending recovery statement stale: its Parent can
-	// no longer match. This is the veto path.
-	if _, err := tx.ExecContext(ctx, `UPDATE security_recovery SET rejected_ms = ? WHERE account_id = ? AND completed_ms = 0 AND rejected_ms = 0`, nowMs(), t.acct); err != nil {
-		return nil, internal(err)
-	}
-	for _, id := range removed {
-		if _, err := removeDeviceTx(ctx, tx, t.acct, id); err != nil && !errors.Is(err, errNoRows) {
-			return nil, internal(err)
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, internal(err)
-	}
 	raw, err := last.state.MarshalBinary()
 	if err != nil {
 		return nil, internal(err)
@@ -325,6 +276,79 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 		slog.Info("device removed by a security state", "device", id)
 	}
 	return connect.NewResponse(&pb.PutSecurityStateResponse{HeadEpoch: last.epoch, Head: raw}), nil
+}
+
+// commitSecurityStates applies the already validated upload in one transaction.
+func (t *tstore) commitSecurityStates(ctx context.Context, accepted []securityRow) (securityRow, []string, error) {
+	tx, err := t.db.BeginTx(ctx, nil)
+	if err != nil {
+		return securityRow{}, nil, internal(err)
+	}
+	defer tx.Rollback()
+	var last securityRow
+	err = tx.QueryRowContext(ctx, `SELECT epoch,state FROM security_states WHERE account_id=? ORDER BY epoch DESC LIMIT 1`, t.acct).Scan(&last.epoch, &last.raw)
+	if err != nil && !errors.Is(err, errNoRows) {
+		return securityRow{}, nil, internal(err)
+	}
+	if last.epoch > 0 {
+		last.state, err = deviceauth.ParseState(last.raw)
+		if err != nil {
+			return securityRow{}, nil, internal(err)
+		}
+	}
+	advanced := false
+	var removed []string
+	for _, r := range accepted {
+		if r.epoch <= last.epoch {
+			var stored []byte
+			if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id=? AND epoch=?`, t.acct, r.epoch).Scan(&stored); err != nil || !bytes.Equal(stored, r.raw) {
+				return securityRow{}, nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("security chain fork"))
+			}
+			continue
+		}
+		if r.epoch != last.epoch+1 {
+			return securityRow{}, nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("security chain gap"))
+		}
+		if last.epoch > 0 {
+			if err := deviceauth.VerifyTransition(last.state, r.state, r.recovery); err != nil {
+				return securityRow{}, nil, connect.NewError(connect.CodePermissionDenied, errors.New("security transition rejected"))
+			}
+			for _, m := range last.state.Core.Members {
+				if _, ok := r.state.Core.Member(m.ID); !ok {
+					removed = append(removed, m.ID)
+				}
+			}
+		}
+		var rec []byte
+		if r.recRaw != nil {
+			rec = r.recRaw
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO security_states (account_id,epoch,state,hash,recovery) VALUES (?,?,?,?,?)`, t.acct, r.epoch, r.raw, r.hash[:], rec); err != nil {
+			return securityRow{}, nil, internal(err)
+		}
+		last = r
+		advanced = true
+	}
+	// A replay must not rotate the discovery key, veto recovery, remove
+	// registrations, or broadcast deletion events against an unchanged head.
+	if !advanced {
+		return last, nil, nil
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE accounts SET recovery_ed=? WHERE id=?`, last.state.Core.RecoveryEd[:], t.acct); err != nil {
+		return securityRow{}, nil, internal(err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE security_recovery SET rejected_ms=? WHERE account_id=? AND completed_ms=0 AND rejected_ms=0`, nowMs(), t.acct); err != nil {
+		return securityRow{}, nil, internal(err)
+	}
+	for _, id := range removed {
+		if _, err := removeDeviceTx(ctx, tx, t.acct, id); err != nil && !errors.Is(err, errNoRows) {
+			return securityRow{}, nil, internal(err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return securityRow{}, nil, internal(err)
+	}
+	return last, removed, nil
 }
 
 // GetSecurityStates serves the chain to any current member, machine or client.

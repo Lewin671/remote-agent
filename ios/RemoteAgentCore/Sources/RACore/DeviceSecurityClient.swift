@@ -3,6 +3,11 @@ import Foundation
 import RAProto
 import SwiftProtobuf
 
+/// An origin-verified event across a verified recovery key discontinuity.
+public struct RecoveryHistoryUnavailable: Error, Sendable {
+    public let header: DeviceSecurity.Header
+}
+
 /// The client side of the phone-signed security domain. It keeps the local
 /// chain, seals and opens envelopes with the current content key, pulls new
 /// states from the relay.
@@ -200,7 +205,8 @@ public actor DeviceSecurityClient {
             // Control pauses when the lease ends; signing anyway would only
             // produce an envelope the executor refuses.
             let now = max(clock(), r.floor)
-            try DeviceSecurity.check(head.core.issuedAt <= now + DeviceSecurity.clockSkewLimit, .clock)
+            try DeviceSecurity.check(
+                head.core.issuedAt <= now + DeviceSecurity.clockSkewLimit, .clock)
             try DeviceSecurity.check(head.core.notAfter >= now, .lease)
         }
         guard let secret = r.secret else { throw DeviceSecurity.Failure.untrusted }
@@ -215,6 +221,21 @@ public actor DeviceSecurityClient {
             signingKey: signingKey)
         return try DeviceSecurity.envelope(DeviceSecurity.Wire(formed: formed))
     }
+    private func contentKey(
+        _ r: DeviceSecurity.Record, _ h: DeviceSecurity.Header, _ wire: DeviceSecurity.Wire,
+        _ state: DeviceSecurity.State, live: Bool
+    ) throws -> Data {
+        do { return try r.contentSecret(h.contentEpoch) } catch DeviceSecurity.Failure.unavailable {
+            _ = try DeviceSecurity.verifyOrigin(
+                wire, state: state, head: r.state, live: live, now: max(clock(), r.floor))
+            let boundary = r.recovery.keys.contains { epoch in
+                guard epoch > h.epoch, let state = r.states[epoch] else { return false }
+                return state.core.contentEpoch > h.contentEpoch && state.prevSecret.isEmpty
+            }
+            if h.purpose == .event && boundary { throw RecoveryHistoryUnavailable(header: h) }
+            throw DeviceSecurity.Failure.unavailable
+        }
+    }
     public func openCurrent(_ envelope: PBEnvelope, sessionSeed: Data? = nil) async throws -> (
         DeviceSecurity.Header, Data
     ) {
@@ -223,7 +244,7 @@ public actor DeviceSecurityClient {
         var r = try read()
         if r.states[h.epoch] == nil { r = try await sync() }
         guard r.states[h.epoch] != nil else { throw DeviceSecurity.Failure.unknown }
-        let secret = try r.contentSecret(h.contentEpoch)
+        let secret = try contentKey(r, h, wire, r.states[h.epoch]!, live: true)
         if r.contentKeys[h.contentEpoch] == nil {
             r.contentKeys[h.contentEpoch] = secret
             keep(r)
@@ -245,7 +266,7 @@ public actor DeviceSecurityClient {
         var r = try read()
         if h.epoch > r.headEpoch { r = try await sync() }
         guard let s = r.states[h.epoch] else { throw DeviceSecurity.Failure.stale }
-        let key = try r.contentSecret(h.contentEpoch)
+        let key = try contentKey(r, h, w, s, live: false)
         if r.contentKeys[h.contentEpoch] == nil {
             r.contentKeys[h.contentEpoch] = key
             keep(r)

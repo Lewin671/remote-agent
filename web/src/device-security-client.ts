@@ -21,6 +21,7 @@ import {
   formCipher,
   verifyPin,
   verifyStateSignature,
+  verifyWire,
   type Purpose,
   type RecoveryStatement,
   type SecureWire,
@@ -68,6 +69,13 @@ const browserStorage: SecurityStorage = {
   installSecurity,
   touchSecurity,
 };
+/** An authenticated event whose key is absent across a verified recovery boundary.
+ * It carries no plaintext and cannot establish any current action state. */
+export class RecoveryHistoryUnavailable extends SecurityError {
+  constructor(readonly header: SecurityHeader) {
+    super("unavailable");
+  }
+}
 const MAX_PAGE = 8;
 export class DeviceSecurityClient {
   private syncJob?: Promise<SecurityRecord>;
@@ -201,6 +209,37 @@ export class DeviceSecurityClient {
     }
     throw new SecurityError("stale");
   }
+  private async contentKey(
+    r: SecurityRecord,
+    state: SecurityState,
+    wire: SecureWire,
+    h: SecurityHeader,
+    live: boolean,
+  ): Promise<B> {
+    try {
+      return await contentSecretOf(r, h.contentEpoch);
+    } catch (e) {
+      if (!(e instanceof SecurityError) || e.code !== "unavailable") throw e;
+      // Missing keys must never hide an invalid signature, state or route.
+      await verifyWire(
+        r.pin,
+        state,
+        r.states[r.states.length - 1],
+        wire,
+        live,
+        maxBig(BigInt(Date.now()), r.floor),
+      );
+      const boundary = r.states.some(
+        (s, i) =>
+          !!r.proofs[i] &&
+          s.core.epoch > h.epoch &&
+          s.core.contentEpoch > h.contentEpoch &&
+          s.prevSecret.length === 0,
+      );
+      if (h.purpose === 1 && boundary) throw new RecoveryHistoryUnavailable(h);
+      throw e;
+    }
+  }
   async openCurrent(
     env: Envelope,
     seed?: B,
@@ -218,7 +257,7 @@ export class DeviceSecurityClient {
     const state = stateAt(r.states, h.epoch);
     if (!equal(await stateHash(state), h.state))
       throw new SecurityError("stale");
-    const secret = await contentSecretOf(r, h.contentEpoch);
+    const secret = await this.contentKey(r, state, wire, h, true);
     const opened = await openWire(
       r.pin,
       state,
@@ -263,7 +302,7 @@ export class DeviceSecurityClient {
     if (!equal(await stateHash(state), h.state))
       throw new SecurityError("stale");
     const head = r.states[r.states.length - 1];
-    const secret = await contentSecretOf(r, h.contentEpoch);
+    const secret = await this.contentKey(r, state, w, h, false);
     const opened = await openWire(
       r.pin,
       state,

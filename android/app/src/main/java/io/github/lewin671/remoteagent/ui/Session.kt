@@ -161,6 +161,8 @@ fun SessionScreen(sid: String) {
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
         } else {
+            if (events.unavailableCount > 0)
+                Hint("恢复前有 ${events.unavailableCount} 条记录不可读；后续可读记录照常显示。")
             if (events.unverifiedLegacy) Hint("旧格式记录的内容和来源未验证，仅供阅读。当前操作以电脑的已验证快照为准。")
             events.liveError?.let { Hint(it) }
             ChatPane(
@@ -294,7 +296,7 @@ private fun SessionTopBar(
                                 enabled = !forking,
                             ) {
                                 sheet = 1
-                            },
+                            }
                         )
                         add(
                             SheetAction(
@@ -303,13 +305,13 @@ private fun SessionTopBar(
                                 enabled = !forking,
                             ) {
                                 sheet = 2
-                            },
+                            }
                         )
                         pc?.let {
                             add(
                                 SheetAction("上下文：$it%", warn = high, enabled = !forking) {
                                     sheet = 2
-                                },
+                                }
                             )
                         }
                     }
@@ -351,32 +353,30 @@ private fun SessionTopBar(
                                     menu = false
                                     nav.session(sid)
                                 }
-                            },
+                            }
                         )
                     }
                     if (running)
                         add(
                             SheetAction("中断本轮", enabled = !forking) {
-                                act.run(
-                                    {
-                                        remote.command(
-                                            s.id,
-                                            remote.cmd {
-                                                interrupt =
-                                                    InterruptRequest.newBuilder()
-                                                        .setSessionId(s.id)
-                                                        .build()
-                                            },
-                                        )
-                                    },
-                                )
-                            },
+                                act.run({
+                                    remote.command(
+                                        s.id,
+                                        remote.cmd {
+                                            interrupt =
+                                                InterruptRequest.newBuilder()
+                                                    .setSessionId(s.id)
+                                                    .build()
+                                        },
+                                    )
+                                })
+                            }
                         )
                     if (status != Status.EXITED)
                         add(
                             SheetAction("结束会话…", danger = true, enabled = !forking) {
                                 confirmStop = true
-                            },
+                            }
                         )
                 },
             onDismiss = {
@@ -415,16 +415,14 @@ private fun SessionTopBar(
             danger = true,
             onDismiss = { confirmStop = false },
         ) {
-            act.run(
-                {
-                    remote.command(
-                        s.id,
-                        remote.cmd {
-                            stopSession = StopSessionRequest.newBuilder().setSessionId(s.id).build()
-                        },
-                    )
-                },
-            )
+            act.run({
+                remote.command(
+                    s.id,
+                    remote.cmd {
+                        stopSession = StopSessionRequest.newBuilder().setSessionId(s.id).build()
+                    },
+                )
+            })
         }
 }
 
@@ -703,7 +701,7 @@ private fun PendingBubble(
                 .background(p.card)
                 .border(1.dp, p.line, Radii.MD)
                 .clickable { expanded = !expanded }
-                .padding(10.dp),
+                .padding(10.dp)
         ) {
             Text(
                 pending.text.ifEmpty { "（图片）" },
@@ -732,20 +730,18 @@ private fun PendingBubble(
                 TextAction(
                     if (resume.error.isNotEmpty()) "重试发送" else "发送",
                     {
-                        resume.run(
-                            {
-                                remote.command(
-                                    sid,
-                                    remote.cmd {
-                                        resumeInput =
-                                            ResumeInputRequest.newBuilder()
-                                                .setSessionId(sid)
-                                                .setRequestId(pending.id)
-                                                .build()
-                                    },
-                                )
-                            },
-                        )
+                        resume.run({
+                            remote.command(
+                                sid,
+                                remote.cmd {
+                                    resumeInput =
+                                        ResumeInputRequest.newBuilder()
+                                            .setSessionId(sid)
+                                            .setRequestId(pending.id)
+                                            .build()
+                                },
+                            )
+                        })
                     },
                     enabled = online && !resume.running,
                     style = T.metaB,
@@ -900,19 +896,15 @@ private fun Bottom(
                 Btn(
                     if (act.error.isNotEmpty()) "再试一次" else "恢复会话",
                     {
-                        act.run(
-                            {
-                                remote.command(
-                                    s.id,
-                                    remote.cmd {
-                                        resumeSession =
-                                            ResumeSessionRequest.newBuilder()
-                                                .setSessionId(s.id)
-                                                .build()
-                                    },
-                                )
-                            },
-                        )
+                        act.run({
+                            remote.command(
+                                s.id,
+                                remote.cmd {
+                                    resumeSession =
+                                        ResumeSessionRequest.newBuilder().setSessionId(s.id).build()
+                                },
+                            )
+                        })
                     },
                     Modifier.fillMaxWidth(),
                     if (act.error.isNotEmpty()) BtnKind.SECONDARY else BtnKind.PRIMARY,
@@ -973,7 +965,7 @@ private fun EndCard(
             .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 20.dp)
             .clip(Radii.MD)
             .background(p.soft)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Dot(dot ?: p.gray)
@@ -1074,17 +1066,14 @@ internal fun Composer(
         onInterrupt =
             if (running)
                 ({
-                    interruptAction.run(
-                        {
-                            remote.command(
-                                s.id,
-                                remote.cmd {
-                                    interrupt =
-                                        InterruptRequest.newBuilder().setSessionId(s.id).build()
-                                },
-                            )
-                        },
-                    )
+                    interruptAction.run({
+                        remote.command(
+                            s.id,
+                            remote.cmd {
+                                interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build()
+                            },
+                        )
+                    })
                 })
             else null,
         canInterrupt = online && !interruptAction.running,
@@ -1113,7 +1102,7 @@ fun Skeleton() {
                 .fillMaxWidth(w)
                 .height(12.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(p.chip),
+                .background(p.chip)
         )
     }
 }
@@ -1198,8 +1187,7 @@ object Forks {
         prepare: () -> io.github.lewin671.remoteagent.core.PreparedCommand,
         forward:
             suspend (
-                io.github.lewin671.remoteagent.core.PreparedCommand,
-                Boolean,
+                io.github.lewin671.remoteagent.core.PreparedCommand, Boolean,
             ) -> io.github.lewin671.remoteagent.proto.CommandResult?,
     ): String? {
         if (f.running) return null
@@ -1220,8 +1208,8 @@ object Forks {
                         io.github.lewin671.remoteagent.core.CommandException(
                             io.github.lewin671.remoteagent.core.CommandException.UNKNOWN,
                             "不确定电脑有没有执行",
-                        ),
-                    ) ?: e,
+                        )
+                    ) ?: e
                 )
             throw e
         } catch (e: Exception) {

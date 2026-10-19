@@ -111,7 +111,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 			state.ended = isEnded
 			head := heads[id]
 			if state.completed || head == nil && state.onServer || head != nil && state.after > head.LastSeq {
-				head = &pb.SessionHead{LastSeq: state.after, EndedMs: EndedMs(state.meta)}
+				head = &pb.SessionHead{LastSeq: state.after, EndedMs: EndedMs(state.meta), MetaRevision: head.GetMetaRevision()}
 			}
 			go func(id string, head *pb.SessionHead) {
 				after, info, skipped, err := c.syncSession(ctx, id, head, func() {
@@ -227,6 +227,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 		}
 	}
 	defer release()
+	floor := head.GetMetaRevision()
 	put := func() (*pb.Session, error) {
 		info, err := c.r.backend.SessionInfo(id)
 		if err != nil {
@@ -234,11 +235,12 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 		}
 		meta := syncMeta(info)
 		if sent == nil || !proto.Equal(meta, sent) {
-			rev, err := c.putSession(ctx, id, key, meta)
+			rev, err := c.putSession(ctx, id, key, meta, floor)
 			if err != nil {
 				return nil, err
 			}
 			sent = meta
+			floor = rev
 			c.noteSentMeta(id, key, meta, rev)
 		}
 		return info, nil
@@ -488,26 +490,14 @@ func EndedMs(info *pb.Session) int64 {
 
 // putSession stores a session's key and metadata, and returns the
 // metadata's revision.
-func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session) (uint64, error) {
+func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session, floor uint64) (uint64, error) {
 	keyEnv, err := c.security.seal(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, Seq: 1, MachineId: c.acct.DeviceID, SessionId: id, Sender: c.acct.DeviceID,
 	}, deviceauth.SessionKey, nil, key)
 	if err != nil {
 		return 0, localSyncError("encryption", err)
 	}
-	// The relay may retain a higher revision from a previous protocol or
-	// a clock that was ahead. Allocate above its stored head before sealing.
-	heads, err := c.machine.ListSessionHeads(ctx, connect.NewRequest(&pb.ListSessionHeadsRequest{}))
-	if err != nil {
-		return 0, rpcSyncError("list_session_heads", err)
-	}
-	var floor uint64
-	for _, head := range heads.Msg.Sessions {
-		if head.SessionId == id {
-			floor = head.MetaRevision
-			break
-		}
-	}
+	// The caller fetched this object's floor once for its sync batch.
 	if floor == ^uint64(0) {
 		return 0, localSyncError("revision", deviceauth.ErrCapacity)
 	}

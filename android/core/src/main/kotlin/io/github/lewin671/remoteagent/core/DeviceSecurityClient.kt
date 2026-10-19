@@ -7,6 +7,9 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+/** An authenticated event separated from its missing key by a verified recovery. */
+class RecoveryHistoryUnavailable(val header: DeviceSecurity.Header) : Exception("恢复前的记录不可读")
+
 /**
  * Foreground member session. Locked notification code receives a Notify child key only, never this
  * storage, signing key or complete content secret. Envelopes are sealed and opened locally; only
@@ -168,6 +171,31 @@ class DeviceSecurityClient(
         return DeviceSecurity.envelope(DeviceSecurity.Wire(formed))
     }
 
+    private fun openKey(
+        r: DeviceSecurity.Record,
+        s: DeviceSecurity.State,
+        h: DeviceSecurity.Header,
+        w: DeviceSecurity.Wire,
+        live: Boolean,
+    ): ByteArray {
+        r.contentKey(h.contentEpoch)?.let {
+            return it
+        }
+        // Missing keys cannot turn a bad signature, state or route into a skip.
+        DeviceSecurity.verifyOrigin(s, r.head, live, now(r), w)
+        val boundary =
+            r.proofs.keys.any { epoch ->
+                val state = r.stateAt(epoch)
+                epoch > h.epoch &&
+                    state != null &&
+                    state.core.contentEpoch > h.contentEpoch &&
+                    state.prevSecret.isEmpty()
+            }
+        if (h.purpose == DeviceSecurity.Purpose.EVENT && boundary)
+            throw RecoveryHistoryUnavailable(h)
+        throw DeviceSecurity.Failure("unavailable")
+    }
+
     suspend fun openCurrent(
         env: Envelope,
         seed: ByteArray? = null,
@@ -180,7 +208,7 @@ class DeviceSecurityClient(
             r.stateAt(h.epoch)
                 ?: if (h.epoch == r.head.core.epoch) r.head
                 else throw DeviceSecurity.Failure("stale")
-        val key = r.contentKey(s.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
+        val key = openKey(r, s, h, w, true)
         val at = now(r)
         if (DeviceSecurity.tooFarAhead(s, at)) {
             clockSkew = true
@@ -202,7 +230,7 @@ class DeviceSecurityClient(
         var r = read()
         if (h.epoch > r.head.core.epoch) r = sync()
         val s = r.stateAt(h.epoch) ?: throw DeviceSecurity.Failure("stale")
-        val key = r.contentKey(s.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
+        val key = openKey(r, s, h, w, false)
         val (opened, plain) = DeviceSecurity.open(s, s, false, 0uL, w, key, seed)
         return opened to unpackSecurity(opened, plain)
     }

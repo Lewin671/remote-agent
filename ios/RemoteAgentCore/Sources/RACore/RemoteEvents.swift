@@ -112,6 +112,7 @@ extension Remote {
                 b.events = PagedList()
                 b.pending = [:]
                 b.verifiedSeqs.removeAll()
+                b.unavailableSeqs.removeAll()
                 b.verifiedEvents = PagedList()
                 b.unverifiedLegacy = false
                 b.bytes = 0
@@ -187,7 +188,8 @@ extension Remote {
                 } else {
                     let session = try securitySession()
                     let opened =
-                        try await (history
+                        try await
+                        (history
                         ? session.openHistory(se.envelope, sessionSeed: key)
                         : session.openCurrent(se.envelope, sessionSeed: key))
                     h = projection(opened.0)
@@ -204,6 +206,25 @@ extension Remote {
                 opened.append(se)
                 // What is held is the event as opened; its ciphertext may be packed.
                 b.bytes += Int64(plain.count) + 256
+            } catch let unavailable as RecoveryHistoryUnavailable {
+                do {
+                    try Envelopes.expect(
+                        projection(unavailable.header),
+                        Place(.event, machineId: s.machineId, sessionId: sid, seq: se.seq))
+                    if buffers[sid] !== b { return }
+                    if se.seq <= UInt64(b.events.count) || b.pending[se.seq] != nil { continue }
+                    var slot = PBEvent()
+                    slot.seq = se.seq
+                    slot.sessionID = sid
+                    b.pending[se.seq] = slot
+                    b.unavailableSeqs.insert(se.seq)
+                    b.bytes += 256
+                    opened.append(se)
+                } catch {
+                    report(error)
+                    b.error = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
+                    break
+                }
             } catch {
                 report(error)
                 b.error = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
@@ -239,6 +260,7 @@ extension Remote {
         snapshot.liveError = liveErrors[sid]
         snapshot.unverifiedLegacy = b.unverifiedLegacy
         snapshot.verifiedEvents = b.verifiedEvents
+        snapshot.unavailableCount = b.unavailableSeqs.count
         eventFeed(sid).set(snapshot)
     }
 }

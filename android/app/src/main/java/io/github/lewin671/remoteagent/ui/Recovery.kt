@@ -378,20 +378,22 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                         scope.launch {
                             try {
                                 val url = checkedServer(server)
-                                val (acct, record) =
-                                    withContext(Dispatchers.IO) {
-                                        Recovery.complete(
-                                            url,
-                                            app.http,
-                                            s.recoveryId,
-                                            s.accountId,
-                                            s.deviceSeed,
-                                            s.xPrivate,
-                                            s.stateHash,
-                                        )
-                                    }
-                                app.vault.clearPendingRecovery()
-                                app.recovered(acct, record)
+                                completeRecoveryAndAdopt(
+                                    complete = {
+                                        withContext(Dispatchers.IO) {
+                                            Recovery.complete(
+                                                url,
+                                                app.http,
+                                                s.recoveryId,
+                                                s.accountId,
+                                                s.deviceSeed,
+                                                s.xPrivate,
+                                                s.stateHash,
+                                            )
+                                        }
+                                    },
+                                    adopt = app::recovered,
+                                )
                             } catch (e: Exception) {
                                 error = errorText(e)
                             } finally {

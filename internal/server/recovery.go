@@ -57,10 +57,12 @@ func (rs *recoveryService) allow(addr string) bool {
 	rs.mu.Lock()
 	defer rs.mu.Unlock()
 	rs.global, _ = recent(rs.global, now, time.Minute, recoveryGlobal)
-	rs.byAddr[addr], _ = recent(rs.byAddr[addr], now, time.Minute, recoveryPerMinute)
 	for a, ts := range rs.byAddr {
-		if len(ts) == 0 {
+		live, _ := recent(ts, now, time.Minute, recoveryPerMinute)
+		if len(live) == 0 {
 			delete(rs.byAddr, a)
+		} else {
+			rs.byAddr[a] = live
 		}
 	}
 	if len(rs.global) >= recoveryGlobal || len(rs.byAddr[addr]) >= recoveryPerMinute {

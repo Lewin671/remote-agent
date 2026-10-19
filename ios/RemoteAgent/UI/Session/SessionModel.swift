@@ -143,6 +143,7 @@ final class SessionModel {
     private(set) var derived = Derived()
     private(set) var liveError: String?
     private(set) var unverifiedLegacy = false
+    private(set) var unavailableCount = 0
     private(set) var startPrompt: StartPrompt?
     /// A message was sent in the history read so far.
     private(set) var spoke = false
@@ -190,6 +191,7 @@ final class SessionModel {
         params.live = snapshot.live
         liveError = snapshot.liveError
         unverifiedLegacy = snapshot.unverifiedLegacy
+        unavailableCount = snapshot.unavailableCount
         await rebuild()
         if loaded != snapshot.loaded { loaded = snapshot.loaded }
         if error != snapshot.error { error = snapshot.error }

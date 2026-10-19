@@ -324,8 +324,19 @@ func (c *conn) republishAfterRecovery(ctx context.Context) error {
 	if err := c.putMachine(ctx, c.r.backend.MachineMeta()); err != nil {
 		return err
 	}
+	ids := c.r.backend.SessionIDs()
+	floors := map[string]uint64{}
+	if len(ids) > 0 {
+		res, err := c.machine.ListSessionHeads(ctx, connect.NewRequest(&pb.ListSessionHeadsRequest{}))
+		if err != nil {
+			return err
+		}
+		for _, h := range res.Msg.Sessions {
+			floors[h.SessionId] = h.MetaRevision
+		}
+	}
 	var firstErr error
-	for _, id := range c.r.backend.SessionIDs() {
+	for _, id := range ids {
 		info, err := c.r.backend.SessionInfo(id)
 		if err != nil {
 			continue
@@ -334,7 +345,7 @@ func (c *conn) republishAfterRecovery(ctx context.Context) error {
 		if err != nil {
 			continue
 		}
-		if _, err := c.putSession(ctx, id, key, info); err != nil {
+		if _, err := c.putSession(ctx, id, key, info, floors[id]); err != nil {
 			slog.Warn("relay: republish session after recovery", "session", id, "err", err)
 			if firstErr == nil {
 				firstErr = err

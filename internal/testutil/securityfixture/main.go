@@ -293,6 +293,60 @@ func (f *fixture) run(q request) (response, error) {
 		}
 		raw, err := state.MarshalBinary()
 		return response{State: raw}, err
+	case "recover":
+		if f.phoneEd == nil || len(q.Seed) != 32 {
+			return response{}, errors.New("missing synthetic recovery identity")
+		}
+		ed := ed25519.NewKeyFromSeed(q.Seed)
+		x, xpub, err := deviceauth.NewXKey()
+		if err != nil {
+			return response{}, err
+		}
+		candidate, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xpub, deviceauth.Client)
+		if err != nil {
+			return response{}, err
+		}
+		parent := f.states[len(f.states)-1]
+		members := []deviceauth.Member{candidate}
+		for _, m := range parent.Core.Members {
+			if m.ID != parent.Core.AuthorityID {
+				members = append(members, m)
+			}
+		}
+		secret := make([]byte, 32)
+		if _, err := rand.Read(secret); err != nil {
+			return response{}, err
+		}
+		_, nextRecovery, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			return response{}, err
+		}
+		var pub [32]byte
+		copy(pub[:], nextRecovery.Public().(ed25519.PublicKey))
+		state, proof, err := deviceauth.BuildRecovery(parent, candidate, members, secret, ed, f.recovery, pub, nowMs())
+		if err != nil {
+			return response{}, err
+		}
+		f.states = append(f.states, state)
+		f.proofs = append(f.proofs, &proof)
+		f.secret = secret
+		for _, m := range f.members {
+			if m.endpoint != nil {
+				if err := m.endpoint.Install([]deviceauth.State{state}, []*deviceauth.RecoveryStatement{&proof}); err != nil {
+					return response{}, err
+				}
+			}
+		}
+		endpoint, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, candidate.ID, ed.Seed(), x)
+		if err != nil {
+			return response{}, err
+		}
+		f.members[candidate.ID] = &member{ed: ed, x: x, endpoint: endpoint}
+		f.phoneEd = ed
+		f.recovery = nextRecovery
+		record, err := f.recordFor(candidate.ID)
+		raw, _ := json.Marshal(record)
+		return response{Record: raw}, err
 	case "chain":
 		r := response{}
 		for _, s := range f.states {

@@ -235,6 +235,13 @@ export class GoSecurityFixture {
       plaintext: raw(r, "Plain"),
     };
   }
+  async recover(
+    seed = crypto.getRandomValues(new Uint8Array(32)),
+  ): Promise<FixtureRecordJSON> {
+    const reply = await this.call("recover", { Seed: b64(seed) });
+    this.phone = { json: reply.Record as FixtureRecordJSON };
+    return this.phone.json;
+  }
   async record(member: string): Promise<FixtureRecordJSON> {
     return (await this.call("record", { Member: member }))
       .Record as FixtureRecordJSON;

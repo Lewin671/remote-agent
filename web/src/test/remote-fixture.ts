@@ -19,7 +19,7 @@ export class SyntheticRemote extends Remote {
   private custom: Record<string, unknown> = {};
   private readonly defaults: Record<string, unknown>;
   readonly seed: B;
-  private constructor(
+  constructor(
     readonly world: Awaited<ReturnType<typeof GoSecurityFixture.create>>,
     readonly member: Awaited<ReturnType<typeof webMember>>,
     seed: B,
@@ -37,7 +37,10 @@ export class SyntheticRemote extends Remote {
       putAccountPrefs: async () => ({ applied: true }),
       getAccountPrefs: async () => ({}),
       getSecurityStates: async (req: { afterEpoch: bigint; limit: number }) =>
-        world.fixture.fetcher(member.account.deviceId)(req.afterEpoch, req.limit),
+        world.fixture.fetcher(member.account.deviceId)(
+          req.afterEpoch,
+          req.limit,
+        ),
     };
     Object.defineProperty(this, "api", {
       configurable: true,
@@ -46,8 +49,7 @@ export class SyntheticRemote extends Remote {
         ...this.custom,
         forward: async (req: unknown) => {
           const forward = this.custom.forward as
-            | ((req: unknown) => Promise<unknown>)
-            | undefined;
+            ((req: unknown) => Promise<unknown>) | undefined;
           if (forward) return forward(req);
           throw new ConnectError(
             "synthetic endpoint offline",

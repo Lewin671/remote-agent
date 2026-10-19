@@ -337,6 +337,10 @@ struct ChatPane: View {
                     if !chat.ready || (!chat.loaded && rows.isEmpty && chat.startPrompt == nil) {
                         Skeleton(inset: chatMargin)
                     }
+                    if chat.unavailableCount > 0 {
+                        Text("恢复前有 \(chat.unavailableCount) 条记录不可读；后续可读记录照常显示。")
+                            .type(T.sm, Theme.muted).padding(.horizontal,16)
+                    }
                     if chat.unverifiedLegacy {
                         Banner("旧格式记录的内容和来源未验证，仅供阅读。当前操作以电脑的已验证快照为准。", tone: .error).padding(
                             .horizontal, chatMargin)

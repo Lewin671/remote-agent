@@ -279,6 +279,7 @@ public actor Remote {
     final class Buffer {
         var unverifiedLegacy = false
         var verifiedSeqs = Set<UInt64>()
+        var unavailableSeqs = Set<UInt64>()
         var verifiedEvents = PagedList<PBEvent>()
         var events = PagedList<PBEvent>()
         var bytes: Int64 = 0

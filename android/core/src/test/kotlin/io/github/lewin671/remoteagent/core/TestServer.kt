@@ -42,8 +42,11 @@ import okio.ByteString.Companion.toByteString
 import org.junit.Assume
 
 /** A remote-agent-server process on a free local port. */
-class TestServer(private val dbDir: File = Files.createTempDirectory("ra-server").toFile()) :
-    AutoCloseable {
+class TestServer(
+    private val dbDir: File = Files.createTempDirectory("ra-server").toFile(),
+    private val signupMode: String = "token",
+    private val signupBits: Int = 0,
+) : AutoCloseable {
     var port: Int = 0
         private set
 
@@ -70,6 +73,10 @@ class TestServer(private val dbDir: File = Files.createTempDirectory("ra-server"
                     "127.0.0.1:$port",
                     "-db",
                     File(dbDir, "ra.db").absolutePath,
+                    "-signup",
+                    signupMode,
+                    "-signup-bits",
+                    signupBits.toString(),
                 )
             pb.environment()["RA_SETUP_TOKEN"] = setupToken
             pb.redirectErrorStream(true).redirectOutput(log)

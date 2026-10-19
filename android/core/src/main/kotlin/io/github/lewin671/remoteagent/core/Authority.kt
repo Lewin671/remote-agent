@@ -378,14 +378,23 @@ suspend fun createAccount(
             login(api, prepared.account)
         } catch (e: ConnectException) {
             if (e.code != Code.PERMISSION_DENIED && e.code != Code.NOT_FOUND) throw e
-            joinWithRoot(
-                prepared.account.root,
-                server,
-                http,
-                setupToken = setupToken,
-                kind = DeviceKind.DEVICE_KIND_CLIENT,
-                seed = prepared.account.deviceSeed,
-            )
+            suspend fun register(proof: io.github.lewin671.remoteagent.proto.SignupProof? = null) =
+                joinWithRoot(
+                    prepared.account.root,
+                    server,
+                    http,
+                    setupToken = setupToken,
+                    kind = DeviceKind.DEVICE_KIND_CLIENT,
+                    seed = prepared.account.deviceSeed,
+                    now = now,
+                    signupProof = proof,
+                )
+            try {
+                register()
+            } catch (registration: ConnectException) {
+                if (registration.code != Code.FAILED_PRECONDITION) throw registration
+                register(solveSignup(api))
+            }
             login(api, prepared.account)
         }
     api.client

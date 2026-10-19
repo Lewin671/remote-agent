@@ -158,6 +158,7 @@ public struct SessionEvents: Sendable {
     public var live: PBLiveSnapshot?
     public var liveError: String?
     public var unverifiedLegacy = false
+    public var unavailableCount = 0
     public var verifiedEvents = PagedList<PBEvent>()
     public var events: PagedList<PBEvent> = []
     public var loaded = false

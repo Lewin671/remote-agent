@@ -20,11 +20,13 @@ import (
 func main() {
 	addr := flag.String("listen", "127.0.0.1:0", "test loopback listener")
 	db := flag.String("db", "", "isolated test database")
+	signup := flag.String("signup", "token", "test signup mode")
+	bits := flag.Uint("signup-bits", 0, "test proof difficulty")
 	flag.Parse()
 	if *db == "" {
 		panic("test database is required")
 	}
-	s, err := server.New(server.Config{DBPath: *db, SetupToken: os.Getenv("RA_SETUP_TOKEN"), Signup: server.SignupToken, ImageRetention: 30 * 24 * time.Hour, ImageQuota: 1 << 30})
+	s, err := server.New(server.Config{DBPath: *db, SetupToken: os.Getenv("RA_SETUP_TOKEN"), Signup: server.Signup(*signup), SignupBits: *bits, ImageRetention: 30 * 24 * time.Hour, ImageQuota: 1 << 30})
 	if err != nil {
 		panic(err)
 	}

@@ -1003,7 +1003,7 @@ func (e *Endpoint) Touch(now uint64) error {
 	}
 	d.Floor = now
 	if now-d.FloorSaved >= floorWriteInterval {
-		if err := e.saveFloorLocked(d); err != nil {
+		if err := e.saveFloorLocked(&d); err != nil {
 			return err
 		}
 	}
@@ -1011,7 +1011,7 @@ func (e *Endpoint) Touch(now uint64) error {
 	return nil
 }
 
-func (e *Endpoint) saveFloorLocked(d record) error {
+func (e *Endpoint) saveFloorLocked(d *record) error {
 	if e.db == nil {
 		d.FloorSaved = d.Floor
 		return nil
@@ -1136,7 +1136,7 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 		d := e.data
 		d.Floor = now
 		if now-d.FloorSaved >= floorWriteInterval {
-			if err := e.saveFloorLocked(d); err != nil {
+			if err := e.saveFloorLocked(&d); err != nil {
 				e.mu.Unlock()
 				return nil, err
 			}

@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"crypto/ed25519"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -195,11 +196,80 @@ func TestSessionMetadataRevisionsAdvanceForRepublishes(t *testing.T) {
 	defer srv.Close()
 	c.machine = remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, srv.URL)
 	for i := 0; i < 3; i++ {
-		if _, err := c.putSession(context.Background(), "synthetic-session", make([]byte, 32), &pb.Session{Id: "synthetic-session"}); err != nil {
+		if _, err := c.putSession(context.Background(), "synthetic-session", make([]byte, 32), &pb.Session{Id: "synthetic-session"}, service.floor); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if len(service.revisions) != 3 || service.revisions[0] <= service.floor || service.revisions[1] <= service.revisions[0] || service.revisions[2] <= service.revisions[1] {
 		t.Fatalf("non-increasing session metadata revisions: %v", service.revisions)
+	}
+}
+
+type batchPublishBackend struct {
+	publishBackend
+	dirs map[string]string
+}
+
+func (b batchPublishBackend) SessionIDs() []string {
+	return []string{"batch-session-1", "batch-session-2", "batch-session-3"}
+}
+func (b batchPublishBackend) SessionInfo(id string) (*pb.Session, error) {
+	return &pb.Session{Id: id}, nil
+}
+func (b batchPublishBackend) SessionDir(id string) string { return b.dirs[id] }
+
+type batchPublishMachine struct {
+	publishMachine
+	lists    int
+	putsByID map[string]uint64
+}
+
+func (m *batchPublishMachine) ListSessionHeads(context.Context, *connect.Request[pb.ListSessionHeadsRequest]) (*connect.Response[pb.ListSessionHeadsResponse], error) {
+	m.lists++
+	var heads []*pb.SessionHead
+	for id, floor := range m.putsByID {
+		heads = append(heads, &pb.SessionHead{SessionId: id, MetaRevision: floor})
+	}
+	return connect.NewResponse(&pb.ListSessionHeadsResponse{Sessions: heads}), nil
+}
+func (m *batchPublishMachine) PutSession(_ context.Context, r *connect.Request[pb.PutSessionRequest]) (*connect.Response[pb.PutSessionResponse], error) {
+	h, err := deviceauth.ParseHeader(r.Msg.Meta.SecurityHeader)
+	if err != nil {
+		return nil, err
+	}
+	if h.Seq <= m.putsByID[r.Msg.SessionId] {
+		return nil, fmt.Errorf("revision did not exceed batch floor")
+	}
+	m.putsByID[r.Msg.SessionId] = h.Seq
+	return connect.NewResponse(&pb.PutSessionResponse{}), nil
+}
+func TestRecoveryRepublishFetchesRevisionFloorsOncePerBatch(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	backend := batchPublishBackend{dirs: map[string]string{}}
+	for _, id := range backend.SessionIDs() {
+		backend.dirs[id] = t.TempDir()
+	}
+	c := &conn{r: New(backend), acct: &Account{}}
+	initializeTestSecurityKeys(t, c)
+	service := &batchPublishMachine{putsByID: map[string]uint64{}}
+	for _, id := range backend.SessionIDs() {
+		service.putsByID[id] = 1 << 60
+	}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewMachineServiceHandler(service)
+	mux.Handle(path, h)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	c.machine = remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, srv.URL)
+	for _, id := range backend.SessionIDs() {
+		if _, err := c.sessionKey(id, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := c.ensurePublished(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if service.lists != 1 {
+		t.Fatalf("downloaded full session heads %d times for one batch", service.lists)
 	}
 }

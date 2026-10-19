@@ -222,6 +222,7 @@ data class SessionEvents(
     val unverifiedLegacy: Boolean = false,
     val liveError: String? = null,
     val verifiedEvents: List<Event> = events,
+    val unavailableCount: Int = 0,
 )
 
 /** Where envelopes are cached between runs. Only ciphertext is stored. */
@@ -465,6 +466,7 @@ class Remote(
         var events = PagedList.empty<Event>()
         var verifiedEvents = PagedList.empty<Event>()
         val verifiedSeqs = HashSet<Long>()
+        val unavailableSeqs = HashSet<Long>()
         var bytes = 0L
         var usedAt = 0L
         val pending = TreeMap<Long, Event>(java.lang.Long::compareUnsigned)
@@ -2074,6 +2076,7 @@ class Remote(
                 b.events = PagedList.empty()
                 b.pending.clear()
                 b.verifiedSeqs.clear()
+                b.unavailableSeqs.clear()
                 b.verifiedEvents = PagedList.empty()
                 b.bytes = 0
                 b.error = null
@@ -2168,6 +2171,14 @@ class Remote(
                 opened += se
                 // What is held is the event as opened; its ciphertext may be packed.
                 b.bytes += ev.serializedSize + 256L
+            } catch (e: RecoveryHistoryUnavailable) {
+                if (buffers[sid] !== b) return
+                if (ucmp(se.seq, b.events.size.toLong()) <= 0 || b.pending.containsKey(se.seq))
+                    continue
+                b.pending[se.seq] = Event.newBuilder().setSeq(se.seq).setSessionId(sid).build()
+                b.unavailableSeqs.add(se.seq)
+                opened += se
+                b.bytes += 256L
             } catch (e: Exception) {
                 report(e)
                 b.error = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
@@ -2213,6 +2224,7 @@ class Remote(
                 legacySessions.contains(sid),
                 liveErrors[sid],
                 b.verifiedEvents,
+                b.unavailableSeqs.size,
             )
     }
 
@@ -3087,7 +3099,13 @@ class Remote(
         }
         val h = DeviceSecurity.parseHeader(env.securityHeader.toByteArray())
         val seed = if (h.purpose.sessionKey) sessionKeys[h.session] else null
-        val (header, m) = security.openMessage(env, !live, seed, parse)
+        val (header, m) =
+            try {
+                security.openMessage(env, !live, seed, parse)
+            } catch (e: RecoveryHistoryUnavailable) {
+                Envelopes.expect(projection(e.header), want)
+                throw e
+            }
         val projected = projection(header)
         Envelopes.expect(projected, want)
         return projected to m

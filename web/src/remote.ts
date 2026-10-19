@@ -3,6 +3,7 @@ import { type LiveSnapshot } from "./gen/remoteagent/v1/remote_pb";
 import { derive, agentOf, type Derived } from "./model";
 import {
   DeviceSecurityClient,
+  RecoveryHistoryUnavailable,
   validateSecurityBody,
   type SecurityStorage,
 } from "./device-security-client";
@@ -154,6 +155,7 @@ const RETRY_MS = 5000;
 export const SESSION_PAGE = 50;
 
 interface EventBuffer {
+  unavailableSeqs?: Set<bigint>;
   unverifiedLegacy?: boolean;
   verifiedSeqs?: Set<bigint>;
   verifiedEvents?: Event[];
@@ -177,6 +179,7 @@ interface EventBuffer {
 /** How far a session's history got: loading, complete, a fetch that
  * failed, or an event that does not open. */
 export interface History {
+  unavailable?: number;
   loaded: boolean;
   error: string;
   broken: boolean;
@@ -671,9 +674,16 @@ export class Remote {
         schema,
       );
     }
-    const out = history
-      ? await this.security.openHistory(env, seed)
-      : await this.security.openCurrent(env, seed);
+    let out: Awaited<ReturnType<DeviceSecurityClient["openHistory"]>>;
+    try {
+      out = history
+        ? await this.security.openHistory(env, seed)
+        : await this.security.openCurrent(env, seed);
+    } catch (e) {
+      if (e instanceof RecoveryHistoryUnavailable)
+        expect(this.projectHeader(e.header), want);
+      throw e;
+    }
     const header = this.projectHeader(out.header);
     expect(header, want);
     let msg: MessageShape<D>;
@@ -1691,6 +1701,7 @@ export class Remote {
       loaded: b?.loaded ?? false,
       error: b?.error ?? "",
       broken: b?.broken ?? false,
+      unavailable: b?.unavailableSeqs?.size ?? 0,
     };
   }
 
@@ -1828,6 +1839,21 @@ export class Remote {
         b.bytes = (b.bytes ?? 0) + size + 256;
         fresh.push({ seq: se.seq, envelope: se.envelope! });
       } catch (e) {
+        if (e instanceof RecoveryHistoryUnavailable) {
+          if (this.buffers.get(s.id) !== b) return;
+          if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq))
+            continue;
+          // A local empty slot preserves the authenticated sequence cursor;
+          // the unavailable body is never inserted into verifiedEvents.
+          b.pending.set(
+            se.seq,
+            create(EventSchema, { seq: se.seq, sessionId: s.id }),
+          );
+          (b.unavailableSeqs ??= new Set()).add(se.seq);
+          b.bytes = (b.bytes ?? 0) + 256;
+          fresh.push({ seq: se.seq, envelope: se.envelope! });
+          continue;
+        }
         b.broken = true;
         this.report(e);
         break;
@@ -2648,34 +2674,58 @@ export class Remote {
           (m.kind === 1 ? "machine:" : "device:") + m.id,
         );
         if (meta) {
-          if (m.kind === 2) {
-            const opened = await this.openSecureMessage(
-              meta,
-              { kind: PayloadKind.DEVICE_META, requestId: m.id },
-              DeviceMetaSchema,
-            );
-            d.meta = opened.msg;
-            d.metaRev = opened.header.seq;
-          } else {
-            const opened = await this.openSecureMessage(
-              meta,
-              { kind: PayloadKind.MACHINE_META, machineId: m.id },
-              MachineMetaSchema,
-            );
-            const old = this.machines.get(m.id),
-              status = online.machines.find((x) => x.id === m.id);
-            nextMachines.set(m.id, {
-              ...(old ?? {
-                id: m.id,
-                online: false,
-                lastSeenMs: 0n,
-                metaRev: 0n,
-              }),
-              online: status?.online ?? false,
-              lastSeenMs: status?.lastSeenMs ?? old?.lastSeenMs ?? 0n,
-              meta: opened.msg,
-              metaRev: opened.header.seq,
-            });
+          try {
+            if (m.kind === 2) {
+              const opened = await this.openSecureMessage(
+                meta,
+                { kind: PayloadKind.DEVICE_META, requestId: m.id },
+                DeviceMetaSchema,
+              );
+              d.meta = opened.msg;
+              d.metaRev = opened.header.seq;
+            } else {
+              const opened = await this.openSecureMessage(
+                meta,
+                { kind: PayloadKind.MACHINE_META, machineId: m.id },
+                MachineMetaSchema,
+              );
+              const old = this.machines.get(m.id),
+                status = online.machines.find((x) => x.id === m.id);
+              nextMachines.set(m.id, {
+                ...(old ?? {
+                  id: m.id,
+                  online: false,
+                  lastSeenMs: 0n,
+                  metaRev: 0n,
+                }),
+                online: status?.online ?? false,
+                lastSeenMs: status?.lastSeenMs ?? old?.lastSeenMs ?? 0n,
+                meta: opened.msg,
+                metaRev: opened.header.seq,
+              });
+            }
+          } catch (e) {
+            if (!(e instanceof SecurityError) || e.code !== "unavailable")
+              throw e;
+            const known = this.devices.get(m.id);
+            if (known) {
+              d.meta = known.meta;
+              d.metaRev = known.metaRev;
+            }
+            if (m.kind === 1) {
+              const old = this.machines.get(m.id),
+                status = online.machines.find((x) => x.id === m.id);
+              nextMachines.set(m.id, {
+                ...(old ?? {
+                  id: m.id,
+                  metaRev: 0n,
+                  online: false,
+                  lastSeenMs: 0n,
+                }),
+                online: status?.online ?? false,
+                lastSeenMs: status?.lastSeenMs ?? old?.lastSeenMs ?? 0n,
+              });
+            }
           }
         } else if (m.kind === 1) {
           const old = this.machines.get(m.id),

@@ -58,7 +58,7 @@ class Api(server: String, http: OkHttpClient) {
         ProtocolClient(
             // Never replay login, registration or pairing bodies at another URL.
             ConnectOkHttpClient(
-                http.newBuilder().followRedirects(false).followSslRedirects(false).build(),
+                http.newBuilder().followRedirects(false).followSslRedirects(false).build()
             ),
             ProtocolClientConfig(
                 host = this.server,
@@ -100,6 +100,7 @@ suspend fun joinWithRoot(
     now: Long = System.currentTimeMillis(),
     enrollment: Enrollment? = null,
     seed: ByteArray? = null,
+    signupProof: io.github.lewin671.remoteagent.proto.SignupProof? = null,
 ): Account {
     val keys = Keys.derive(root)
     val deviceSeed = enrollment?.seed ?: seed ?: randomBytes(32)
@@ -115,11 +116,12 @@ suspend fun joinWithRoot(
         setupToken,
         enrollment?.approval,
         enrollment?.signature,
+        signupProof = signupProof,
         accountSignature =
             keys.account.sign(
                 registerMessage(
-                    registrationBytes(keys.account.publicKey, device.publicKey, kind, now),
-                ),
+                    registrationBytes(keys.account.publicKey, device.publicKey, kind, now)
+                )
             ),
         accountId = deviceId(keys.account.publicKey),
         root = root.copyOf(),
@@ -164,14 +166,7 @@ suspend fun registerDevice(
             .value()
     if (res.deviceId != deviceId(device.publicKey))
         throw IllegalStateException("server 返回了意外的设备 ID")
-    return Account(
-        server,
-        root,
-        deviceSeed.copyOf(),
-        res.deviceId,
-        accountId,
-        accountKey,
-    )
+    return Account(server, root, deviceSeed.copyOf(), res.deviceId, accountId, accountKey)
 }
 
 private fun registrationBytes(
