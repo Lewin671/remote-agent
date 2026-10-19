@@ -4,7 +4,6 @@
 import CryptoKit
 import Foundation
 
-private let pairCommitContext = "remote-agent/v1/pair-commit\u{0}"
 private let pairTranscriptContext = "remote-agent/v1/pair\u{0}"
 
 private let badPairKey = UserError("配对密钥无效")
@@ -69,10 +68,6 @@ public enum Pairing {
                     pairingId: pairingId, initiatorPublic: initiatorPublic,
                     joinerPublic: joinerPublic,
                     joinerKind: joinerKind) + withUnsafeBytes(of: &n) { Data($0) } + devicePublic)
-    }
-
-    public static func commit(initiatorPublic: Data) -> Data {
-        sha256(Data(pairCommitContext.utf8), initiatorPublic)
     }
 
     public static func transcript(

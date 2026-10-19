@@ -153,6 +153,47 @@ import Testing
         await #expect(throws: S.Failure.clock) { try await client.sync() }
     }
 
+    @Test func verifyChainRefusesFutureStates() throws {
+        let genesis = try state("genesis")
+        var future = genesis
+        future.core.issuedAt = UInt64(Date().timeIntervalSince1970 * 1000) + 10 * 60_000
+        future.core.notAfter = future.core.issuedAt + S.lease
+        future.signature = try SigningKey(seed: try hex("phone_seed")).sign(
+            S.signBytes(future))
+        let p = S.Pin(
+            account: genesis.core.account, domain: genesis.core.domain,
+            genesis: try S.stateHash(future))
+        #expect(throws: S.Failure.clock) {
+            try S.verifyChain(pin: p, states: [future], proofs: [nil])
+        }
+    }
+
+    @Test func liveControlAlsoChecksTheHeadsIssuedAt() throws {
+        let added = try state("added")
+        let secret = try hex("content_secret_2")
+        let signer = try SigningKey(seed: try hex("phone_seed"))
+        let machine = added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id
+        let phone = deviceId(publicKey: signer.publicKey)
+        let header = S.Header(
+            account: added.core.account, domain: added.core.domain, epoch: added.core.epoch,
+            state: try S.stateHash(added), contentEpoch: added.core.contentEpoch,
+            sender: phone,
+            kind: S.Purpose.command.kind, purpose: .command, machine: machine, session: "",
+            request: randomHex(16), seq: 0, deadline: 1, compression: 0, counter: 1)
+        let wire = S.Wire(
+            formed: try S.form(
+                secret: secret, sessionSeed: nil, header: header, plaintext: Data([1]),
+                signingKey: signer))
+        #expect(throws: S.Failure.clock) {
+            _ = try S.open(
+                wire, state: added, head: added, live: true, now: 1_600_000_000_000,
+                secret: secret, sessionSeed: nil)
+        }
+        _ = try S.open(
+            wire, state: added, head: added, live: true, now: added.core.issuedAt,
+            secret: secret, sessionSeed: nil)
+    }
+
     @Test func deviceMetaIsSelfOnly() throws {
         let added = try state("added")
         let phone = added.core.authorityID
@@ -181,6 +222,7 @@ import Testing
         let client = DeviceSecurityClient(
             store: store, memberID: phone,
             signingKey: try SigningKey(seed: try hex("phone_seed")),
+            clock: { added.core.issuedAt },
             fetchStates: { _ in throw S.Failure.storage })
         for expected in UInt64(1)...3 {
             let env = try await client.seal(
@@ -195,6 +237,7 @@ import Testing
         let reopened = DeviceSecurityClient(
             store: store, memberID: phone,
             signingKey: try SigningKey(seed: try hex("phone_seed")),
+            clock: { added.core.issuedAt },
             fetchStates: { _ in throw S.Failure.storage })
         let env = try await reopened.seal(
             purpose: .command, machine: machine, request: "0123456789abcdef",
@@ -243,6 +286,7 @@ import Testing
         let client = DeviceSecurityClient(
             store: store, memberID: phone,
             signingKey: try SigningKey(seed: try hex("phone_seed")),
+            clock: { added.core.issuedAt },
             fetchStates: { after in
                 var res = PBGetSecurityStatesResponse()
                 res.headEpoch = 2

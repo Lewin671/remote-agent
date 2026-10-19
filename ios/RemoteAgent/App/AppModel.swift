@@ -129,9 +129,14 @@ final class AppModel {
         var securityReady: @Sendable (Vault, Account) throws -> Bool = { vault, account in
             guard try vault.read(.securityState) != nil else { return false }
             let record = try vault.readSecurity()
-            let keys = try Keys.derive(root: account.root)
-            guard record.memberID == account.deviceId,
-                record.pin.account == deviceId(publicKey: keys.account.publicKey)
+            // A pairing-joined account has no root; its account ID came in the
+            // pairing payload and is stored beside the device seed.
+            let accountId =
+                account.hasRoot
+                ? deviceId(publicKey: try Keys.derive(root: account.root).account.publicKey)
+                : account.accountId
+            guard record.memberID == account.deviceId, !accountId.isEmpty,
+                record.pin.account == accountId
             else { throw DeviceSecurity.Failure.untrusted }
             return true
         }

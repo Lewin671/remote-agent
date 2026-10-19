@@ -161,6 +161,48 @@ extension ServerTests {
             }
         }
 
+        @Test func aNewHeadDropsRemovedMembersAndSessionsAndTheirPrefs() async throws {
+            try await world { w in
+                let security = try TestSecurity.get(w.server.url)
+                let victim = try await w.join()
+                // A prefs object the victim signed while it was a member.
+                var h = PBHeader()
+                h.kind = .accountPrefs
+                h.requestID = projectPrefsID
+                h.seq = 1
+                var prefs = PBProjectPrefs()
+                prefs.schema = 1
+                let envelope = try security.seal(victim, h, prefs)
+                let api = try Api(server: w.server.url, http: w.http)
+                let token = try await login(api: api, account: victim)
+                var put = PBPutAccountPrefsRequest()
+                put.objectID = projectPrefsID
+                put.expectedRevision = 0
+                put.envelope = envelope
+                _ = try await api.client.putAccountPrefs(
+                    request: put, headers: Api.headers(token: token)
+                ).value()
+
+                let r = try await w.client()
+                r.start()
+                _ = try await r.awaitState("online") {
+                    $0.conn == .online && $0.devices[victim.deviceId] != nil
+                        && $0.sessions["s1"] != nil
+                }
+                await r.loadPrefs()
+                #expect(r.current.prefs?.revision == 1)
+
+                // The relay withholds the removal push; the new head alone
+                // must drop the member, its sessions and its prefs write.
+                try await w.phone.remove([victim.deviceId, w.daemon.id])
+                await r.refreshDevices()
+                #expect(r.current.devices[victim.deviceId] == nil)
+                #expect(r.current.sessions["s1"] == nil)
+                await r.loadPrefs()
+                #expect(r.current.prefs?.revision == 1)
+            }
+        }
+
         @Test func activeHistorySurvivesExpiryAndTheSameFlowReloadsAfterReclamation() async throws {
             try await world { w in
                 let r = try await w.client(cache: MemoryCache(), historyIdleMs: 100)

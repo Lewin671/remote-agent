@@ -146,6 +146,11 @@ class Vault(context: Context) : DeviceSecurity.Storage {
     }
 
     private fun refreshNotifyUnlocked(record: DeviceSecurity.Record) {
+        if (!record.member) {
+            // A removed device must not keep a key for the new content epoch.
+            notifyFile.delete()
+            return
+        }
         val old =
             read(notifyFile, NOTIFY_ALIAS)?.let {
                 runCatching { DeviceSecurity.NotifyRecord.parse(it) }.getOrNull()
@@ -165,29 +170,44 @@ class Vault(context: Context) : DeviceSecurity.Storage {
     }
 
     /** The identity that submitted a pending recovery, so an app restart can finish it. */
-    fun savePendingRecovery(recoveryId: String, deviceSeed: ByteArray, xPrivate: ByteArray) {
+    fun savePendingRecovery(
+        recoveryId: String,
+        deviceSeed: ByteArray,
+        xPrivate: ByteArray,
+        stateHash: ByteArray,
+    ) {
         securityTransaction {
-            if (deviceSeed.size != 32 || xPrivate.size != 32) throw DeviceSecurity.Failure()
+            if (deviceSeed.size != 32 || xPrivate.size != 32 || stateHash.size != 32)
+                throw DeviceSecurity.Failure()
             val out = ByteArrayOutputStream()
             DataOutputStream(out).use { s ->
-                s.writeInt(1)
+                s.writeInt(2)
                 s.writeUTF(recoveryId)
                 s.writeInt(deviceSeed.size)
                 s.write(deviceSeed)
                 s.writeInt(xPrivate.size)
                 s.write(xPrivate)
+                s.write(stateHash)
             }
             write(File(dir, "recovery-pending.bin"), ACCOUNT_ALIAS, out.toByteArray(), unlockedOnly = true)
         }
     }
 
-    fun loadPendingRecovery(recoveryId: String): Pair<ByteArray, ByteArray>? = securityTransaction {
+    data class PendingRecovery(
+        val deviceSeed: ByteArray,
+        val xPrivate: ByteArray,
+        val stateHash: ByteArray,
+    )
+
+    fun loadPendingRecovery(recoveryId: String): PendingRecovery? = securityTransaction {
         val blob = read(File(dir, "recovery-pending.bin"), ACCOUNT_ALIAS) ?: return@securityTransaction null
         DataInputStream(ByteArrayInputStream(blob)).use { s ->
-            if (s.readInt() != 1 || s.readUTF() != recoveryId) return@securityTransaction null
+            if (s.readInt() != 2 || s.readUTF() != recoveryId) return@securityTransaction null
             val seed = ByteArray(s.readInt()).also { s.readFully(it) }
             val x = ByteArray(s.readInt()).also { s.readFully(it) }
-            if (seed.size != 32 || x.size != 32) null else seed to x
+            val hash = ByteArray(32).also { s.readFully(it) }
+            if (seed.size != 32 || x.size != 32) null
+            else PendingRecovery(seed, x, hash)
         }
     }
 

@@ -32,6 +32,34 @@ import okhttp3.OkHttpClient
 
 class PairException(message: String) : Exception(message)
 
+/** The approval binds this account, pairing, candidate, approver and expiry, as Go verifies it. */
+internal fun validJoinApproval(
+    approval: PairApproval,
+    raw: ByteArray,
+    signature: ByteArray,
+    account: String,
+    pairingId: String,
+    approver: String,
+    candidate: ByteArray,
+    now: Long,
+): Boolean =
+    raw.size <= 1024 &&
+        approval.accountId == account &&
+        approval.pairingId == pairingId &&
+        approval.candidateDevicePublicKey.toByteArray().contentEquals(candidate) &&
+        approval.candidateKind == DeviceKind.DEVICE_KIND_CLIENT &&
+        approval.approverDeviceId == approver &&
+        approval.approverPublicKey.size() == 32 &&
+        approval.nonce.size() == 16 &&
+        approval.expiresMs > now &&
+        deviceId(approval.approverPublicKey.toByteArray()) == approval.approverDeviceId &&
+        approval.approverDeviceId != deviceId(candidate) &&
+        verifyEd25519(
+            approval.approverPublicKey.toByteArray(),
+            "remote-agent/v1/pair-approval\u0000".toByteArray() + raw,
+            signature,
+        )
+
 /** A single pairing operation, retained after uncertain approval outcomes. */
 interface PairingInitiation {
     val code: String
@@ -510,8 +538,10 @@ suspend fun joinByPairing(
         }
     )
         throw PairException("配对载荷属于另一个安全域")
+    val now = System.currentTimeMillis()
     chain.forEachIndexed { i, state ->
         DeviceSecurity.verifyState(pin, state)
+        DeviceSecurity.requireNotFromFuture(state, now.toULong())
         if (i > 0) {
             val proof = proofs[i]?.let { DeviceSecurity.parseRecoveryStatement(it) }
             DeviceSecurity.verifyTransition(chain[i - 1], state, proof)
@@ -529,19 +559,20 @@ suspend fun joinByPairing(
     )
         throw PairException("加入回执的本机公钥不匹配")
     DeviceSecurity.openGrant(pin, chain.last(), member.id, xPrivate)
+    if (payload.approval.size() > 1024)
+        throw PairException("配对批准与这台设备不匹配或签名无效")
     val approval = PairApproval.parseFrom(payload.approval)
     if (
-        approval.accountId != pin.account ||
-            approval.pairingId != id ||
-            !approval.candidateDevicePublicKey.toByteArray().contentEquals(devicePublic) ||
-            approval.candidateKind != DeviceKind.DEVICE_KIND_CLIENT ||
-            approval.approverDeviceId != approver ||
-            approval.approverPublicKey.size() != 32 ||
-            !verifyEd25519(
-                approval.approverPublicKey.toByteArray(),
-                "remote-agent/v1/pair-approval\u0000".toByteArray() + payload.approval.toByteArray(),
-                payload.approvalSignature.toByteArray(),
-            )
+        !validJoinApproval(
+            approval,
+            payload.approval.toByteArray(),
+            payload.approvalSignature.toByteArray(),
+            pin.account,
+            id,
+            approver,
+            devicePublic,
+            now,
+        )
     )
         throw PairException("配对批准与这台设备不匹配或签名无效")
     val acct =

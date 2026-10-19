@@ -39,7 +39,6 @@
         "joiner_public": "1cf579aba45a10ba1d1ef06d91fca2aa9ed0a1150515653155405d0b18cb9a67",
         "pairing_id": "fedcba9876543210fedcba9876543210",
         "joiner_kind": 2,
-        "commit": "65c427ac746f0aaa50155f4083fa2baee3c2d0ef6a95f47680dd7ed0a492f278",
         "transcript": "dc329f88891082644847f3eaa18c494287a828c0f00f0ce57c9150e157dd01e1",
         "sas": "77d2df9d",
         "key": "05f08aebffe46942167ad195a95990d66145292853eb7d502f9e02ece1915afe",

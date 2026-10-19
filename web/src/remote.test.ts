@@ -698,3 +698,21 @@ it.each([Code.Unavailable, Code.PermissionDenied, Code.FailedPrecondition])(
     expect(uncertain(error)).toBe(true);
   },
 );
+
+it("drops a removed machine and its sessions when the head moves without a push", async () => {
+  const r = await probe();
+  await r.loadDevices(false);
+  expect(r.devices.get(r.machine)).toBeTruthy();
+  expect(r.sessions.get("s")).toBeTruthy();
+  await r.world.fixture.remove([r.machine]);
+  // The relay withholds every removal push; the 60 s head pull must be enough.
+  (r as unknown as { conn: string }).conn = "online";
+  await (r as unknown as { syncSecurity(): Promise<void> }).syncSecurity();
+  expect(r.devices.get(r.machine)).toBeUndefined();
+  expect(r.sessions.get("s")).toBeUndefined();
+  expect(
+    (r as unknown as { trustedMembers: Map<string, unknown> }).trustedMembers.has(
+      r.machine,
+    ),
+  ).toBe(false);
+});

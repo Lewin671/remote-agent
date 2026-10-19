@@ -82,13 +82,22 @@ data class RecoveryChain(
             phase: GetRecoveryContextResponse.Phase,
             readyMs: Long,
             recoveryId: String,
+            now: Long = System.currentTimeMillis(),
         ): RecoveryChain {
             if (states.isEmpty()) throw DeviceSecurity.Failure("untrusted")
+            if (accountPublicKey.size != 32 || deviceId(accountPublicKey) != accountId)
+                throw DeviceSecurity.Failure("untrusted")
             val chain = states.map { DeviceSecurity.parseState(it.state.toByteArray()) }
+            if (chain.size > DeviceSecurity.MAX_STATES)
+                throw DeviceSecurity.Failure("untrusted")
+            if (chain[0].core.account != accountId)
+                throw DeviceSecurity.Failure("untrusted")
             val pin = DeviceSecurity.pinOf(chain[0])
+            DeviceSecurity.verifyGenesis(pin, chain[0])
             val proofs = HashMap<ULong, ByteArray>()
             chain.forEachIndexed { i, s ->
                 DeviceSecurity.verifyState(pin, s)
+                DeviceSecurity.requireNotFromFuture(s, now.toULong())
                 if (i > 0) {
                     val raw = states[i].recovery.takeIf { it.size() > 0 }?.toByteArray()
                     val proof = raw?.let { DeviceSecurity.parseRecoveryStatement(it) }
@@ -120,6 +129,8 @@ data class RecoverySubmission(
     val xPrivate: ByteArray,
     val accountId: String,
     val accountPublicKey: ByteArray,
+    /** Hash of the recovery state this submission signed; the published head must be it. */
+    val stateHash: ByteArray,
 )
 
 /**
@@ -237,6 +248,7 @@ object Recovery {
             x,
             chain.accountId,
             chain.accountPublicKey,
+            DeviceSecurity.stateHash(state),
         )
     }
 
@@ -248,6 +260,7 @@ object Recovery {
         accountId: String,
         deviceSeed: ByteArray,
         xPrivate: ByteArray,
+        expectedState: ByteArray,
         now: Long = System.currentTimeMillis(),
     ): Pair<Account, DeviceSecurity.Record> {
         val signer = SigningKey(deviceSeed)
@@ -272,6 +285,12 @@ object Recovery {
             throw PairException("服务器返回了意外的设备 ID")
         // The published chain is available by recovery ID; the new phone opens its own grant.
         val chain = context(server, http, ByteArray(0), recoveryId)
+        if (chain.accountId != accountId || chain.phase != GetRecoveryContextResponse.Phase.PHASE_PUBLISHED)
+            throw PairException("服务器发布的恢复链与提交的不一致")
+        if (chain.head.core.authorityID != res.deviceId)
+            throw PairException("恢复链的管理端不是这台设备")
+        if (!DeviceSecurity.stateHash(chain.head).contentEquals(expectedState))
+            throw PairException("服务器发布的恢复状态与提交的不一致")
         val record =
             DeviceSecurity.Record(
                 chain.pin,

@@ -762,14 +762,7 @@ fun DeviceScreen(id: String) {
                         listOf {
                             GRow(
                                 "移除这台机器",
-                                onClick = {
-                                    remove.run(
-                                        {
-                                            remote.removeDevice(id)
-                                            null
-                                        },
-                                    )
-                                },
+                                onClick = { confirm = true },
                                 danger = true,
                                 enabled =
                                     state.authorityPhone &&
@@ -790,6 +783,23 @@ fun DeviceScreen(id: String) {
             if (remove.error.isNotEmpty())
                 Banner(remove.error, Modifier.padding(16.dp), Tone2.ERROR)
             Spacer(Modifier.height(24.dp))
+        }
+    }
+    if (confirm) {
+        val (title, text) = removalDialog(machineLabel(state, id), machine = true)
+        Alert(
+            title,
+            text,
+            "移除",
+            danger = true,
+            onDismiss = { confirm = false },
+        ) {
+            remove.run(
+                {
+                    remote.removeDevice(id)
+                    null
+                },
+            )
         }
     }
     val cur = settings
@@ -1115,6 +1125,33 @@ fun qrBitmap(text: String, size: Int = 512): Bitmap {
             if (m.get(i % size, i / size)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
         }
     return Bitmap.createBitmap(px, size, size, Bitmap.Config.ARGB_8888)
+}
+
+/** A recovery code as the text the user writes down and a QR to photograph. */
+@Composable
+fun RecoveryCodeFigure(code: String) {
+    val p = pal
+    val bmp = remember(code) { qrBitmap(code) }
+    Box(
+        Modifier.padding(vertical = 10.dp)
+            .size(170.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White)
+            .padding(10.dp),
+    ) {
+        Image(
+            bmp.asImageBitmap(),
+            "恢复码二维码",
+            Modifier.fillMaxSize(),
+            filterQuality = FilterQuality.None,
+        )
+    }
+    Text(
+        code,
+        style = T.mono.copy(fontSize = 16.sp),
+        color = p.fg,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+    )
 }
 
 /** The web client's address for the QR code: app.<domain> next to ra.<domain>. */

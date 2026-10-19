@@ -280,10 +280,6 @@ async function sha256(b: Uint8Array): Promise<Uint8Array> {
   );
 }
 
-export function pairCommit(initiatorPublic: Uint8Array): Promise<Uint8Array> {
-  return sha256(concat(utf8("remote-agent/v1/pair-commit\0"), initiatorPublic));
-}
-
 function u32(n: number): Uint8Array {
   const b = new Uint8Array(4);
   new DataView(b.buffer).setUint32(0, n);

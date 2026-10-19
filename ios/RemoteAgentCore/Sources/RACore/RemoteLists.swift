@@ -331,7 +331,7 @@ extension Remote {
                     }
                     (h, raw) = try Envelopes.open(key: keys.wrap, envelope: rs.key)
                 } else {
-                    let opened = try await securitySession().openHistory(rs.key)
+                    let opened = try await securitySession().openCurrent(rs.key)
                     h = projection(opened.0)
                     raw = opened.1
                 }

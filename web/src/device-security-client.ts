@@ -16,6 +16,7 @@ import {
   openWire,
   parseHeader,
   SecurityError,
+  stateAt,
   stateHash,
   toEnvelope,
   formCipher,
@@ -90,17 +91,19 @@ export class DeviceSecurityClient {
     await verifyStateSignature(head);
     if (!equal(await stateHash(head), r.stateHash))
       throw new SecurityError("storage");
-    if (!head.core.members.some((m) => m.id === this.memberID))
-      throw new SecurityError("untrusted");
-    // A stale/mixed secret must never encrypt new content under a newer
-    // state. Compare it with the grant the head carries.
-    const expected = await openGrant(
-      r.pin,
-      head,
-      this.memberID,
-      r.xPrivate,
-    );
-    if (!equal(expected, r.secret)) throw new SecurityError("storage");
+    const inHead = head.core.members.some((m) => m.id === this.memberID);
+    if (inHead !== r.member) throw new SecurityError("storage");
+    if (r.member) {
+      // A stale/mixed secret must never encrypt new content under a newer
+      // state. Compare it with the grant the head carries.
+      const expected = await openGrant(
+        r.pin,
+        head,
+        this.memberID,
+        r.xPrivate,
+      );
+      if (!equal(expected, r.secret)) throw new SecurityError("storage");
+    }
     if (!this.active()) throw new SecurityError("storage");
     return r;
   }
@@ -165,12 +168,15 @@ export class DeviceSecurityClient {
         const r = await this.validateLocalRecord(
           await this.store.reserveCounter(await this.load()),
         );
+        if (!r.member) throw new SecurityError("untrusted");
         const state = r.states[r.states.length - 1];
-        if (
-          control(h.purpose) &&
-          state.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW)
-        )
-          throw new SecurityError("clock");
+        if (control(h.purpose)) {
+          if (state.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
+            throw new SecurityError("clock");
+          // A clock moved back must not revive an expired lease.
+          if (state.core.notAfter < maxBig(BigInt(Date.now()), r.floor))
+            throw new SecurityError("lease");
+        }
         const header: SecurityHeader = {
           ...h,
           account: r.pin.account,
@@ -216,14 +222,18 @@ export class DeviceSecurityClient {
       h = parseHeader(wire.header);
     }
     const head = r.states[r.states.length - 1];
-    if (h.epoch !== head.core.epoch || !equal(h.state, r.stateHash))
+    // A live frame is authorized by the state it names, provided its sender
+    // is still in the current head; it need not name the head itself.
+    const state = stateAt(r.states, h.epoch);
+    if (!equal(await stateHash(state), h.state))
       throw new SecurityError("stale");
+    const secret = await contentSecretOf(r, h.contentEpoch);
     const opened = await openWire(
       r.pin,
-      head,
+      state,
       head,
       wire,
-      r.secret,
+      secret,
       true,
       maxBig(BigInt(Date.now()), r.floor),
       seed,
@@ -369,7 +379,7 @@ export function validateSecurityBody(
     h.purpose === 10 &&
     (m.sessionId !== h.session ||
       m.machineId !== h.machine ||
-      ![1, 2, 3].includes(m.kind as number))
+      ![1, 2].includes(m.kind as number))
   )
     throw new SecurityError();
   if (h.purpose === 12 && m.schema !== 1) throw new SecurityError();

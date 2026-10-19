@@ -19,10 +19,7 @@ import (
 // the whole exchange; the user checks they are the same before the
 // initiator sends the root key, sealed with a key from the same secret.
 
-const (
-	pairCommitContext     = "remote-agent/v1/pair-commit\x00"
-	pairTranscriptContext = "remote-agent/v1/pair\x00"
-)
+const pairTranscriptContext = "remote-agent/v1/pair\x00"
 
 // PairKey is one side's ephemeral key pair.
 type PairKey struct{ priv *ecdh.PrivateKey }
@@ -47,12 +44,6 @@ func pairKeyFrom(b []byte) (*PairKey, error) {
 
 // Public is the public key to send.
 func (k *PairKey) Public() []byte { return k.priv.PublicKey().Bytes() }
-
-// PairCommit is the initiator's commitment to its public key.
-func PairCommit(initiatorPublic []byte) []byte {
-	sum := sha256.Sum256(append([]byte(pairCommitContext), initiatorPublic...))
-	return sum[:]
-}
 
 // PairTranscript binds everything both sides agreed on.
 func PairTranscript(pairingID string, initiatorPublic, joinerPublic []byte, joinerKind int32) []byte {

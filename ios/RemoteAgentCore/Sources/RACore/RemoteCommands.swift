@@ -272,7 +272,7 @@ extension Remote {
             (_, payload) = try await openSecureMessage(
                 envelope: env,
                 want: Place(.image, machineId: s.machineId, sessionId: sid, requestId: imageId),
-                as: PBImagePayload.self)
+                as: PBImagePayload.self, history: true)
         } catch {
             return .corrupt(why: "图片的内容或来源无法核实")
         }

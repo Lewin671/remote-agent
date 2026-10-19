@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,11 +20,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import io.github.lewin671.remoteagent.core.ConnState
+import io.github.lewin671.remoteagent.core.DeviceSecurity
 import io.github.lewin671.remoteagent.core.clientDetail
 import io.github.lewin671.remoteagent.core.clientName
 import io.github.lewin671.remoteagent.core.clientUsed
@@ -34,6 +39,10 @@ import io.github.lewin671.remoteagent.core.shortId
 import io.github.lewin671.remoteagent.core.sortClients
 import io.github.lewin671.remoteagent.core.whenText
 import io.github.lewin671.remoteagent.proto.DeviceKind
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 设备: computers, where the CLIs run, apart from clients, which operate them. A computer's online
@@ -47,6 +56,8 @@ fun DevicesScreen() {
     val p = pal
     val t = now()
     val me = remote.account.deviceId
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     // The times on this page are as of opening it.
     LaunchedEffect(Unit) {
         if (remote.state.value.conn == ConnState.ONLINE) remote.refreshDevices()
@@ -164,6 +175,29 @@ fun DevicesScreen() {
                     "添加和删除设备要在管理端手机上操作。",
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
+            if (state.authorityPhone) {
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    TextAction(
+                        "导出创世状态（中继离线固定用）",
+                        {
+                            scope.launch {
+                                val genesis =
+                                    withContext(Dispatchers.IO) {
+                                        DeviceSecurity.stateBytes(remote.chain().first())
+                                    }
+                                withContext(Dispatchers.Main) {
+                                    shareGenesis(context, genesis)
+                                }
+                            }
+                        },
+                        arrow = true,
+                    )
+                }
+                Hint(
+                    "这是公开的创世状态，不含密钥；只在升级指南要求中继离线固定时使用。",
+                    Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -180,6 +214,7 @@ fun ClientScreen(id: String) {
     val d = state.devices[id]
     val t = now()
     var editing by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf(false) }
     val save = rememberAction()
     val remove = rememberAction()
     PageScaffold(clientName(d, id), subtitle = if (id == me) "当前客户端" else "已配对的客户端") {
@@ -273,12 +308,7 @@ fun ClientScreen(id: String) {
                             .clickable(
                                 enabled = state.conn == ConnState.ONLINE && !remove.running,
                             ) {
-                                remove.run(
-                                    {
-                                        remote.removeDevice(id)
-                                        null
-                                    },
-                                )
+                                confirmRemove = true
                             },
                         contentAlignment = Alignment.CenterStart,
                     ) {
@@ -301,6 +331,23 @@ fun ClientScreen(id: String) {
             }
         }
     }
+    if (confirmRemove) {
+        val (title, text) = removalDialog(clientName(d, id), machine = false)
+        Alert(
+            title,
+            text,
+            "移除",
+            danger = true,
+            onDismiss = { confirmRemove = false },
+        ) {
+            remove.run(
+                {
+                    remote.removeDevice(id)
+                    null
+                },
+            )
+        }
+    }
     if (editing)
         InputAlert(
             "客户端名称",
@@ -316,4 +363,29 @@ fun ClientScreen(id: String) {
                 },
             )
         }
+}
+
+/** The one confirmation before removal: names the device and says what happens to it. */
+internal fun removalDialog(name: String, machine: Boolean): Pair<String, String> =
+    "移除 $name？" to
+        if (machine)
+            "这会删除这台机器在中继上的会话记录并断开连接；它需要重新加入账户才能连接。"
+        else
+            "这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端手机上重新批准。"
+
+/** Shares the public genesis state for the relay's offline pin step. */
+private fun shareGenesis(context: android.content.Context, state: ByteArray) {
+    val dir = File(context.cacheDir, SHARED_DIR).apply { mkdirs() }
+    val file = File(dir, "public-genesis.bin")
+    file.writeBytes(state)
+    val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
+    context.startActivity(
+        Intent.createChooser(
+            Intent(Intent.ACTION_SEND)
+                .setType("application/octet-stream")
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+            "导出创世状态",
+        ),
+    )
 }

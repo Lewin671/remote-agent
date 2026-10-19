@@ -86,8 +86,16 @@ extension Remote {
     }
 
     /// A new head arrives within a minute; an unknown state is fetched at once.
+    /// A moved head also rebuilds the member directory, so a withheld removal
+    /// push cannot leave a removed machine trusted.
     func startSecurityPolling() {
         guard let client = try? securitySession() else { return }
-        Task { await client.startPolling() }
+        let onChange: @Sendable () async -> Void = { [weak self] in
+            guard let self else { return }
+            try? await self.refreshTrustedDirectory()
+        }
+        Task {
+            await client.startPolling(onChange: onChange)
+        }
     }
 }

@@ -800,7 +800,7 @@ public actor Remote {
         case .eventsAppended(let a)?:
             let sid = a.sessionID
             if sessions[sid] != nil && buffers[sid] != nil {
-                await ingest(sid, a.events, fillGaps: true, save: true)
+                await ingest(sid, a.events, fillGaps: true, save: true, history: false)
             } else {
                 if var s = sessions[sid] {
                     for e in a.events { s.lastSeq = max(s.lastSeq, e.seq) }

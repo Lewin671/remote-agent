@@ -645,9 +645,9 @@ export class Remote {
     env: Envelope | undefined,
     want: Parameters<typeof expect>[1],
     schema: D,
+    history = false,
   ) {
     if (!env) throw new Error("缺少安全信封");
-    const history = true;
     const seed = [
       PayloadKind.EVENT,
       PayloadKind.IMAGE,
@@ -921,8 +921,13 @@ export class Remote {
   private async syncSecurity() {
     if (this.closed) return;
     try {
+      const before = await this.security.localStateHash().catch(() => undefined);
       await this.security.sync();
       this.clearClockWarning();
+      if (before && !equalBytes(before, await this.security.localStateHash()))
+        // A new head is the member directory: drop what it no longer names
+        // even when no device/machine removal push arrived.
+        await this.loadDevices(false);
     } catch (e) {
       this.report(e);
     }
@@ -1276,7 +1281,7 @@ export class Remote {
           this.changed();
           break;
         }
-        await this.ingest(s, kind.value.events);
+        await this.ingest(s, kind.value.events, true, false, false);
         break;
       }
     }
@@ -1582,7 +1587,7 @@ export class Remote {
           header = legacy.header;
           plaintext = legacy.plaintext;
         } else {
-          const opened = await this.security.openHistory(rs.key);
+          const opened = await this.security.openCurrent(rs.key);
           header = this.projectHeader(opened.header);
           plaintext = opened.plaintext;
         }
@@ -1706,7 +1711,7 @@ export class Remote {
     const rows = await this.cache.read(s.id).catch((): CachedEvent[] => []);
     if (!rows.length || stale()) return;
     if (BigInt(rows.length) <= s.lastSeq) {
-      await this.ingest(s, rows, false, true);
+      await this.ingest(s, rows, false, true, true);
       if (stale() || !b.broken) return;
       Object.assign(b, {
         events: [],
@@ -1757,7 +1762,7 @@ export class Remote {
             this.buffers.get(sid) !== b
           )
             return;
-          await this.ingest(s, res.events, false);
+          await this.ingest(s, res.events, false, false, true);
           // An event that does not open stops progress; asking for the
           // same page again would not help.
           if (!res.more || b.events.length === before) break;
@@ -1783,6 +1788,7 @@ export class Remote {
     stored: StoredEvent[] | CachedEvent[],
     fillGaps = true,
     cached = false,
+    history = true,
   ) {
     const b = this.buffers.get(s.id);
     if (!b) return;
@@ -1803,6 +1809,7 @@ export class Remote {
             seq: se.seq,
           },
           EventSchema,
+          history,
         );
         if (this.buffers.get(s.id) !== b) return;
         if (msg.seq !== se.seq || msg.sessionId !== s.id)
@@ -2097,6 +2104,11 @@ export class Remote {
         throw new CommandError(
           "clock",
           "本机时间比账户状态慢，请校准时间和时区后再操作；操作尚未发出",
+        );
+      if (e instanceof SecurityError && e.code === "lease")
+        throw new CommandError(
+          "failed_precondition",
+          "远程控制已暂停：请在手机上打开 App 续期后再试",
         );
       throw new CommandError(
         "security_unavailable",
@@ -2962,6 +2974,7 @@ export class Remote {
           requestId: imageId,
         },
         ImagePayloadSchema,
+        true,
       );
       out = matchesFormat(msg.data, msg.format)
         ? {

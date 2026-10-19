@@ -920,7 +920,7 @@ class Remote(
                     }
                     publish()
                 } else {
-                    ingest(sid, f.eventsAppended.eventsList, fillGaps = true, save = true)
+                    ingest(sid, f.eventsAppended.eventsList, fillGaps = true, save = true, live = true)
                 }
             }
             else -> {}
@@ -1309,7 +1309,7 @@ class Remote(
                             rs.key,
                         )
                     else {
-                        val (h, raw) = security.openHistory(rs.key)
+                        val (h, raw) = security.openCurrent(rs.key)
                         projection(h) to raw
                     }
                 Envelopes.expect(
@@ -1907,7 +1907,7 @@ class Remote(
             }
         if (buffers[sid] !== b) return
         if (cached.isNotEmpty()) {
-            ingest(sid, cached, fillGaps = false, save = false)
+            ingest(sid, cached, fillGaps = false, save = false, live = false)
             if (buffers[sid] !== b) return
             // A cached copy that does not open is dropped and the history
             // fetched whole (architecture §10 「后台和内存」): the cache keeps
@@ -1961,7 +1961,7 @@ class Remote(
                             )
                             .value()
                     if (!running || gen != generation || buffers[sid] !== b) return
-                    ingest(sid, res.eventsList, fillGaps = false, save = true)
+                    ingest(sid, res.eventsList, fillGaps = false, save = true, live = false)
                     if (!running || gen != generation || buffers[sid] !== b) return
                     // An event that does not open stops progress; asking for the
                     // same page again would not help.
@@ -1987,6 +1987,7 @@ class Remote(
         stored: List<StoredEvent>,
         fillGaps: Boolean,
         save: Boolean,
+        live: Boolean = false,
     ) {
         val b = buffers[sid] ?: return
         val s = sessions[sid] ?: return
@@ -2006,6 +2007,7 @@ class Remote(
                             seq = se.seq,
                         ),
                         Event::parseFrom,
+                        live,
                     )
                 if (ev.seq != se.seq || ev.sessionId != sid) throw OpenException("事件的位置被改动")
                 if (Header.parseFrom(se.envelope.header).version == 2) b.verifiedSeqs.add(se.seq)
@@ -2660,6 +2662,7 @@ class Remote(
                             requestId = imageId,
                         ),
                         io.github.lewin671.remoteagent.proto.ImagePayload::parseFrom,
+                        live = false,
                     )
                     .second
             } catch (e: OpenException) {
@@ -2917,6 +2920,7 @@ class Remote(
         env: Envelope,
         want: Place,
         parse: (ByteArray) -> T,
+        live: Boolean = true,
     ): Pair<Header, T> {
         val route = Header.parseFrom(env.header)
         if (
@@ -2927,7 +2931,6 @@ class Remote(
             return Envelopes.openMessage(legacyKey, env, want, parse)
         }
         val h = DeviceSecurity.parseHeader(env.securityHeader.toByteArray())
-        val live = false
         val seed = if (h.purpose.sessionKey) sessionKeys[h.session] else null
         val (header, m) = security.openMessage(env, !live, seed, parse)
         val projected = projection(header)

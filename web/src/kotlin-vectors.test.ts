@@ -7,7 +7,7 @@ import v from "../../internal/e2e/testdata/kotlin-vectors.json";
 import { accountKey, concat, deriveRaw, deviceID, expect, fromHex, hex, importRoot, importSessionKey, LOGIN_CONTEXT, open, REGISTER_CONTEXT, utf8 } from "./crypto";
 import { Compression, EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
-import { derivePair, newPairKey, pairCommit, pairTranscript } from "./pair";
+import { derivePair, newPairKey, pairTranscript } from "./pair";
 
 it("derives the same keys as Kotlin", async () => {
   const root = await importRoot(fromHex(v.root));
@@ -55,7 +55,6 @@ it("pairs with Kotlin", async () => {
   const join = newPairKey(fromHex(p.joiner_private));
   want(hex(init.pub)).toBe(p.initiator_public);
   want(hex(join.pub)).toBe(p.joiner_public);
-  want(hex(await pairCommit(init.pub))).toBe(p.commit);
   const tr = await pairTranscript(p.pairing_id, init.pub, join.pub, p.joiner_kind);
   want(hex(tr)).toBe(p.transcript);
   const s = await derivePair(join, init.pub, tr);

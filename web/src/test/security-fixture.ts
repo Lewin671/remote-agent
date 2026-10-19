@@ -271,6 +271,15 @@ export class GoSecurityFixture {
       signingKey: await edKey(seed),
     };
   }
+  /** Removes members as the synthetic authority and returns the new state. */
+  async remove(targets: string[]): Promise<B> {
+    const reply = await this.call("remove", { Targets: targets });
+    return raw(reply, "State");
+  }
+  /** The fixture's chain and record for a still-known member. */
+  async recordAndChain(member: string) {
+    return recordFromJSON(await this.record(member));
+  }
   static async create(machineSeed?: B) {
     const f = new GoSecurityFixture();
     const rootRaw = crypto.getRandomValues(new Uint8Array(32));

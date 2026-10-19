@@ -61,4 +61,23 @@ import Testing
         #expect(throws: DeviceSecurity.Failure.self) { try vault.initializeSecurity(record()) }
         #expect(try vault.read(.securityState) == Data([0]))
     }
+
+    @Test func aPairingJoinedAccountWithoutARootStillOpens() throws {
+        defer { try? vault.clear() }
+        let stored = try record()
+        try vault.initializeSecurity(stored)
+        let account = Account(
+            server: "https://relay.example.com", root: Data(),
+            deviceSeed: Data(repeating: 2, count: 32), deviceId: stored.memberID,
+            accountId: stored.pin.account)
+        // A pairing payload carries the account key, not the root; the next
+        // launch must not try to derive it.
+        #expect(try AppModel.Parts().securityReady(vault, account))
+        let wrong = Account(
+            server: account.server, root: Data(), deviceSeed: account.deviceSeed,
+            deviceId: account.deviceId, accountId: "ffeeddccbbaa99887766554433221100")
+        #expect(throws: DeviceSecurity.Failure.self) {
+            try AppModel.Parts().securityReady(vault, wrong)
+        }
+    }
 }

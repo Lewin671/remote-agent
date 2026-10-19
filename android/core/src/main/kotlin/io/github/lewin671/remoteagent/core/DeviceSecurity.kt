@@ -434,7 +434,7 @@ object DeviceSecurity {
 
     private fun recoveryDelta(parent: State, next: State) {
         val removed = (parent.core.removed + parent.core.authorityID).sorted()
-        check((parent.core.removed + removed).sorted() == next.core.removed)
+        check(removed == next.core.removed)
         parent.core.members.forEach { m ->
             if (m.id == parent.core.authorityID) return@forEach
             check(next.core.member(m.id)?.same(m) == true)
@@ -1064,7 +1064,7 @@ object DeviceSecurity {
                 }
             }
             check(id(memberID) && xPrivate.size == 32)
-            openGrant(pin, chain.last(), memberID, xPrivate)
+            lastMember()?.let { openGrant(pin, it, memberID, xPrivate) }
         }
 
         override fun toString() = "DeviceSecurity.Record(epoch=${head.core.epoch})"
@@ -1072,19 +1072,32 @@ object DeviceSecurity {
         val head: State
             get() = chain.last()
 
+        /** Whether the head still names this device. A removed device keeps its
+         * last content key so its retained history stays readable. */
+        val member: Boolean
+            get() = head.core.member(memberID) != null
+
         fun stateAt(epoch: ULong): State? = chain.firstOrNull { it.core.epoch == epoch }
 
-        fun secret(): ByteArray = openGrant(pin, head, memberID, xPrivate)
+        private fun lastMember(): State? = chain.lastOrNull { it.core.member(memberID) != null }
 
-        /** The content key of [epoch], walking PrevSecret from the head; null at a recovery boundary. */
+        /** The content key of this device's last membership (the head while it is still one). */
+        fun secret(): ByteArray {
+            val own = lastMember() ?: throw Failure("unavailable")
+            return openGrant(pin, own, memberID, xPrivate)
+        }
+
+        /** The content key of [epoch], walking PrevSecret from this device's
+         * last membership; null at a recovery boundary. */
         fun contentKey(epoch: ULong): ByteArray? {
             if (epoch == 0uL) return null
             keys[epoch]?.let {
                 return it
             }
-            if (epoch > head.core.contentEpoch) return null
-            var cur = head
-            var key = secret()
+            val own = lastMember() ?: return null
+            if (epoch > own.core.contentEpoch) return null
+            var cur = own
+            var key = openGrant(pin, own, memberID, xPrivate)
             while (cur.core.contentEpoch > epoch) {
                 val prev =
                     chain.firstOrNull { it.core.epoch == cur.core.epoch - 1uL } ?: return null

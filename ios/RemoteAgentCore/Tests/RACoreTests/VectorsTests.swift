@@ -138,7 +138,6 @@ import Testing
         let joiner = try PairKey(privateKey: p.bytes("joiner_private"))
         #expect(initiator.publicKey.hex == p.s("initiator_public"))
         #expect(joiner.publicKey.hex == p.s("joiner_public"))
-        #expect(Pairing.commit(initiatorPublic: initiator.publicKey).hex == p.s("commit"))
         let tr = Pairing.transcript(
             pairingId: p.s("pairing_id"), initiatorPublic: initiator.publicKey, joinerPublic: joiner.publicKey,
             joinerKind: p["joiner_kind"] as! Int)

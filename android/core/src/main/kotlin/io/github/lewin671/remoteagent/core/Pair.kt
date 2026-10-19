@@ -7,7 +7,6 @@ import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 import org.bouncycastle.crypto.params.X25519PublicKeyParameters
 
-private const val PAIR_COMMIT_CONTEXT = "remote-agent/v1/pair-commit\u0000"
 private const val PAIR_TRANSCRIPT_CONTEXT = "remote-agent/v1/pair\u0000"
 
 /** One side's ephemeral X25519 key pair. */
@@ -68,9 +67,6 @@ object Pairing {
             ByteBuffer.allocate(4).putInt(device.size).array(),
             device,
         )
-
-    fun commit(initiatorPublic: ByteArray): ByteArray =
-        sha256(PAIR_COMMIT_CONTEXT.toByteArray(), initiatorPublic)
 
     fun transcript(
         pairingId: String,

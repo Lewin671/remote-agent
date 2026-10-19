@@ -120,6 +120,59 @@ suspend fun approvedClient(
     return result
 }
 
+/** Adds a member through the Go fixture, so tests can seal with its real endpoint. */
+suspend fun fixtureMember(
+    authority: Account,
+    http: OkHttpClient,
+    kind: DeviceKind = DeviceKind.DEVICE_KIND_CLIENT,
+    seed: ByteArray = randomBytes(32),
+): Account {
+    val security = TestSecurity.get(authority.server)
+    val (record, state) = security.enroll(seed, kind)
+    val api = Api(authority.server, http)
+    api.client
+        .putSecurityState(
+            PutSecurityStateRequest.newBuilder()
+                .addStates(
+                    SecurityState.newBuilder()
+                        .setState(ByteString.copyFrom(state))
+                        .build(),
+                )
+                .build(),
+            Api.headers(login(api, authority)),
+        )
+        .value()
+    val now = System.currentTimeMillis()
+    val (approval, signature) =
+        makePairApproval(
+            authority,
+            newRequestId(),
+            SigningKey(seed).publicKey,
+            kind,
+            now + 10 * 60_000,
+        )
+    val result =
+        registerDevice(
+            authority.server,
+            http,
+            authority.accountPublicKey,
+            seed,
+            kind,
+            now,
+            approval = approval,
+            approvalSignature = signature,
+            accountId = authority.accountId,
+            root = if (kind == DeviceKind.DEVICE_KIND_MACHINE) ByteArray(0) else authority.root,
+            accountKey = authority.accountPublicKey,
+        )
+    security.stores[result.deviceId] = TestSecurityStore(record)
+    // The fixture's chain is the authority's; keep every member's record in step.
+    for (id in security.stores.keys.toList()) {
+        security.stores[id] = TestSecurityStore(security.record(id))
+    }
+    return result
+}
+
 /** Signs a removal as the authority phone and uploads it, as the device page does. */
 suspend fun removeAsAuthority(phone: Account, target: String, http: OkHttpClient) {
     val security = TestSecurity.get(phone.server)

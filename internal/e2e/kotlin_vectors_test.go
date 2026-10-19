@@ -47,7 +47,6 @@ type kotlinVectors struct {
 		JoinerPublic     string   `json:"joiner_public"`
 		PairingID        string   `json:"pairing_id"`
 		JoinerKind       int32    `json:"joiner_kind"`
-		Commit           string   `json:"commit"`
 		Transcript       string   `json:"transcript"`
 		SAS              string   `json:"sas"`
 		Key              string   `json:"key"`
@@ -153,9 +152,6 @@ func TestKotlinVectors(t *testing.T) {
 	}
 	if hex.EncodeToString(ik.Public()) != p.InitiatorPublic || hex.EncodeToString(jk.Public()) != p.JoinerPublic {
 		t.Error("pairing public keys differ")
-	}
-	if hex.EncodeToString(PairCommit(ik.Public())) != p.Commit {
-		t.Error("commit differs")
 	}
 	tr := PairTranscript(p.PairingID, ik.Public(), jk.Public(), p.JoinerKind)
 	if hex.EncodeToString(tr) != p.Transcript {

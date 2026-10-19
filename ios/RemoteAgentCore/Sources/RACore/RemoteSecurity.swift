@@ -43,6 +43,9 @@ extension Remote {
             return try await authorizeIntent(p, verifyObservation: verifyObservation)
         } catch let e as CommandError {
             throw e
+        } catch DeviceSecurity.Failure.lease {
+            throw CommandError(
+                "failed_precondition", "远程控制已暂停：请在手机上打开 App 续期后再试")
         } catch {
             if error is CancellationError { throw error }
             throw CommandError("authorization_unavailable", "安全状态尚未核实，操作没有发出；请重试")
@@ -81,7 +84,7 @@ extension Remote {
         return (r.pin, r.state)
     }
     func openSecureMessage<M: SwiftProtobuf.Message>(
-        envelope: PBEnvelope?, want: Place, as type: M.Type
+        envelope: PBEnvelope?, want: Place, as type: M.Type, history: Bool = false
     ) async throws -> (PBHeader, M) {
         guard let envelope else { throw DeviceSecurity.Failure.invalid }
         // Old images are readable transcript data only. They never establish
@@ -92,15 +95,15 @@ extension Remote {
             }
             return try Envelopes.openMessage(key: key, envelope: envelope, want: want, as: type)
         }
-        // A fixed request/stream and sequence authenticate delayed history.
-        // Historical verification never authorizes an incoming control action.
+        // Live frames are authorized by the state they name and the sender's
+        // current membership; stored history is checked against its own state.
         let seed: [DeviceSecurity.Purpose] = [
             .event, .image, .terminalInput, .terminalOutput, .terminalHistory, .terminalResize,
         ]
         let header = try DeviceSecurity.parseHeader(envelope.securityHeader)
         let sessionSeed = seed.contains(header.purpose) ? sessionKeys[header.session] : nil
         let (h, m) = try await securitySession().openMessage(
-            envelope, as: type, history: true, sessionSeed: sessionSeed)
+            envelope, as: type, history: history, sessionSeed: sessionSeed)
         let projected = projection(h)
         try Envelopes.expect(projected, want)
         return (projected, m)

@@ -135,6 +135,7 @@ class DeviceSecurityClient(
         seed: ByteArray? = null,
     ): Envelope {
         val old = read()
+        if (!old.member) throw DeviceSecurity.Failure("untrusted")
         if (purpose.control && !Authority.leaseValid(old.head, clock()))
             throw DeviceSecurity.Failure("lease")
         val r = store.reserveSecurity(DeviceSecurity.stateHash(old.head))

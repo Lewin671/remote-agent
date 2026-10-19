@@ -71,12 +71,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
         ) {
             if (newCode.isNotEmpty()) {
                 GLabel("新的恢复码 · 只显示这一次")
-                Text(
-                    newCode,
-                    style = T.mono.copy(fontSize = 16.sp),
-                    color = p.fg,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                )
+                RecoveryCodeFigure(newCode)
                 Hint("请抄下来或拍照保存。它只签恢复声明，不能解密内容。原恢复码已作废。", Modifier)
                 Btn(
                     "我已保存",
@@ -222,11 +217,12 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                             existing.recoveryId,
                                             existing.readyMs,
                                             "",
-                                            saved.first,
-                                            deviceId(SigningKey(saved.first).publicKey),
-                                            saved.second,
+                                            saved.deviceSeed,
+                                            deviceId(SigningKey(saved.deviceSeed).publicKey),
+                                            saved.xPrivate,
                                             existing.accountId,
                                             existing.accountPublicKey,
+                                            saved.stateHash,
                                         )
                                     } else {
                                         val r =
@@ -237,6 +233,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                             r.recoveryId,
                                             r.deviceSeed,
                                             r.xPrivate,
+                                            r.stateHash,
                                         )
                                         r
                                     }
@@ -256,12 +253,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
             } else {
                 if (s.newCode.isNotEmpty()) {
                     GLabel("新的恢复码 · 只显示这一次")
-                    Text(
-                        s.newCode,
-                        style = T.mono.copy(fontSize = 16.sp),
-                        color = p.fg,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                    )
+                    RecoveryCodeFigure(s.newCode)
                     Hint(
                         "48 小时后生效；如果原手机否决了这次恢复，它会作废。请现在抄下来或拍照保存。",
                         Modifier,
@@ -327,6 +319,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                             s.accountId,
                                             s.deviceSeed,
                                             s.xPrivate,
+                                            s.stateHash,
                                         )
                                     }
                                 app.vault.clearPendingRecovery()
@@ -410,12 +403,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                 TextAction("返回", { onBack() }, alignment = Alignment.CenterStart)
             } else {
                 GLabel("恢复码 · 只显示这一次")
-                Text(
-                    c.recoveryCode,
-                    style = T.mono.copy(fontSize = 16.sp),
-                    color = p.fg,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                )
+                RecoveryCodeFigure(c.recoveryCode)
                 Hint(
                     "换手机时用它把管理权转过去；它只签恢复声明，不能解密内容。丢失后只能重建账户。",
                     Modifier,

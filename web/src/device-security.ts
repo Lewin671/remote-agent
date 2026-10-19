@@ -39,6 +39,7 @@ export class SecurityError extends Error {
       | "capacity"
       | "storage"
       | "unavailable"
+      | "lease"
       | "clock" = "invalid",
   ) {
     super(`security: ${code}`);

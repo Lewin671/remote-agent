@@ -16,6 +16,9 @@ class ExtraVectorsTest {
         Json.parseToJsonElement(File(System.getProperty("recoveryVectors")).readText()).jsonObject
     private val chain =
         Json.parseToJsonElement(File(System.getProperty("chainVectors")).readText()).jsonObject
+    private val removedRecovery =
+        Json.parseToJsonElement(File(System.getProperty("recoveryRemovedVectors")).readText())
+            .jsonObject
 
     private fun s(o: JsonObject, key: String) = o[key]!!.jsonPrimitive.content
     private fun bytes(o: JsonObject, key: String) = Base64.getDecoder().decode(s(o, key))
@@ -81,5 +84,38 @@ class ExtraVectorsTest {
         )
         val bad = state(chain["bad_replay"]!!.jsonObject)
         reject { DeviceSecurity.verifyTransition(states[0], bad) }
+    }
+
+    @Test
+    fun aRecoveryAfterAPriorRemovalInstallsTheNewAuthority() {
+        val states = removedRecovery["states"]!!.jsonArray.map { state(it.jsonObject) }
+        val rec = state(removedRecovery["recovery"]!!.jsonObject)
+        val pin = DeviceSecurity.pinOf(states[0])
+        states.forEachIndexed { i, s ->
+            DeviceSecurity.verifyState(pin, s)
+            if (i > 0) DeviceSecurity.verifyTransition(states[i - 1], s)
+        }
+        // The parent already carries an accumulated tombstone.
+        assertTrue(states.last().core.removed.isNotEmpty())
+        val statement =
+            DeviceSecurity.parseRecoveryStatement(bytes(removedRecovery, "recovery_statement"))
+        DeviceSecurity.verifyTransition(states.last(), rec, statement)
+        assertTrue(rec.core.removed.containsAll(states.last().core.removed))
+
+        val newSeed = s(removedRecovery, "new_phone_seed").unhex()
+        val newX = s(removedRecovery, "new_phone_x").unhex()
+        val newId = deviceId(SigningKey(newSeed).publicKey)
+        val record =
+            DeviceSecurity.Record.fromChain(
+                pin.account,
+                pin.domain,
+                pin.genesis,
+                newId,
+                newX,
+                (states + rec).map { DeviceSecurity.stateBytes(it) },
+                List(states.size) { null } + bytes(removedRecovery, "recovery_statement"),
+            )
+        assertNotNull(record.contentKey(rec.core.contentEpoch))
+        assertNull(record.contentKey(states.last().core.contentEpoch))
     }
 }

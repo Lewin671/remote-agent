@@ -9,8 +9,6 @@ import {
   parseState,
   stateHash,
   verifyChain,
-  verifyPin,
-  verifyStateSignature,
   verifyTransition,
   type Pin,
   type RecoveryStatement,
@@ -33,6 +31,9 @@ export interface SecurityRecord {
   proofs: (RecoveryStatement | undefined)[];
   stateHash: B;
   memberID: string;
+  // Whether the head still names this device. A removed device keeps the
+  // last secret and cached keys so its retained history stays readable.
+  member: boolean;
   xPrivate: CryptoKey;
   // Raw 32-byte content secrets. A page that could decrypt content can
   // already read these; PrevSecret walking needs the bytes.
@@ -77,6 +78,7 @@ function validRecord(r: SecurityRecord | undefined): asserts r is SecurityRecord
     !(r.stateHash instanceof Uint8Array) ||
     r.stateHash.length !== 32 ||
     typeof r.memberID !== "string" ||
+    typeof r.member !== "boolean" ||
     !(r.secret instanceof Uint8Array) ||
     r.secret.length !== 32 ||
     !Array.isArray(r.contentKeys) ||
@@ -141,19 +143,36 @@ function remember(keys: ContentKey[], epoch: bigint, secret: B): void {
   if (!keys.some((k) => k.epoch === epoch))
     keys.push({ epoch, secret: new Uint8Array(secret) });
 }
-/** Opens the content key for epoch from the head key. A missing PrevSecret
- * is the recovery boundary: pre-recovery content is unavailable. */
+/** Opens the content key for epoch from the last state that named this
+ * device. A missing PrevSecret is the recovery boundary: pre-recovery content
+ * is unavailable. A removed device therefore keeps the key of its last
+ * membership, not the head's. */
 export async function contentSecretOf(
-  r: Pick<SecurityRecord, "states" | "secret" | "contentKeys">,
+  r: Pick<SecurityRecord, "states" | "secret" | "contentKeys"> &
+    Partial<Pick<SecurityRecord, "memberID" | "member">>,
   epoch: bigint,
 ): Promise<B> {
   const head = r.states[r.states.length - 1];
-  if (epoch === head.core.contentEpoch) return new Uint8Array(r.secret);
   const cached = keyCache(r.contentKeys).get(epoch);
   if (cached) return new Uint8Array(cached);
+  const removed = r.member === false;
+  let last: SecurityState | undefined = head;
+  if (removed && r.memberID) {
+    last = undefined;
+    for (let i = r.states.length - 1; i >= 0; i--) {
+      const s = r.states[i];
+      if (s.core.members.some((m) => m.id === r.memberID)) {
+        last = s;
+        break;
+      }
+    }
+  }
+  if (!last) throw new SecurityError("unavailable");
+  if (!removed && epoch === head.core.contentEpoch)
+    return new Uint8Array(r.secret);
   if (epoch > head.core.contentEpoch) throw new SecurityError("stale");
   let key: B | undefined = r.secret;
-  for (let i = r.states.length - 1; i >= 0; i--) {
+  for (let i = r.states.indexOf(last); i >= 0; i--) {
     const s = r.states[i];
     if (s.core.contentEpoch === epoch) {
       if (!key) throw new SecurityError("unavailable");
@@ -227,6 +246,7 @@ export async function extendRecord(
     next.proofs.push(proof);
   }
   const head = next.states[next.states.length - 1];
+  next.member = head.core.members.some((m) => m.id === next.memberID);
   next.stateHash = await stateHash(head);
   next.floor = maxFloor(next.floor);
   return next;
@@ -255,6 +275,7 @@ export async function buildRecord(
     proofs: [...proofs],
     stateHash: await stateHash(head),
     memberID,
+    member: true,
     xPrivate,
     secret,
     contentKeys: [],
@@ -312,28 +333,17 @@ export async function initializeSecurity(
     };
   });
 }
-async function checkStored(r: SecurityRecord): Promise<SecurityRecord> {
+/** The verifier every stored record passes through on load. */
+export async function verifyStoredSecurity(
+  r: SecurityRecord,
+): Promise<SecurityRecord> {
   validRecord(r);
   if (r.states.length !== r.proofs.length)
     throw new SecurityError("storage");
-  await verifyPin(r.pin, r.states[0]);
-  if (r.states[0].core.epoch !== 1n)
-    throw new SecurityError("storage");
-  const now = BigInt(Date.now());
-  for (let i = 0; i < r.states.length; i++) {
-    if (r.states[i].core.issuedAt > now + BigInt(MAX_CLOCK_SKEW))
-      throw new SecurityError("clock");
-    if (i === 0) continue;
-    const prev = r.states[i - 1],
-      s = r.states[i];
-    if (
-      s.core.epoch !== prev.core.epoch + 1n ||
-      !equal(s.core.parent, await stateHash(prev))
-    )
-      throw new SecurityError("storage");
-  }
+  // Every transition, authority signature and recovery proof, not only the
+  // parent links and the head signature.
+  await verifyChain(r.pin, r.states, r.proofs);
   const head = r.states[r.states.length - 1];
-  await verifyStateSignature(head);
   if (!equal(await stateHash(head), r.stateHash))
     throw new SecurityError("storage");
   return r;
@@ -355,7 +365,7 @@ export async function loadSecurity(): Promise<SecurityRecord> {
       };
     },
   );
-  return checkStored(r);
+  return verifyStoredSecurity(r);
 }
 /** Atomic across tabs. The committed counter is consumed BEFORE any encryption. */
 export async function reserveCounter(

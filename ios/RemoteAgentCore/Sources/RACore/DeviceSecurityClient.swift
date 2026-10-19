@@ -54,12 +54,22 @@ public actor DeviceSecurityClient {
         pollJob?.cancel()
         pollJob = nil
     }
-    /// Pulls new states now, then every 60 seconds while foreground.
-    public func startPolling(everyMs: UInt64 = 60_000) {
+    /// Pulls new states now, then every 60 seconds while foreground. A head
+    /// that moved calls `onChange`, so the member directory follows it even
+    /// without a removal push.
+    public func startPolling(
+        everyMs: UInt64 = 60_000, onChange: (@Sendable () async -> Void)? = nil
+    ) {
         guard pollJob == nil, !closed else { return }
         pollJob = Task { [weak self] in
             while !Task.isCancelled {
+                let before = try? await self?.headStateHash()
                 _ = try? await self?.sync()
+                if let onChange, let before, let after = try? await self?.headStateHash(),
+                    after != before
+                {
+                    await onChange()
+                }
                 guard (try? await Task.sleep(nanoseconds: everyMs * 1_000_000)) != nil else {
                     break
                 }
@@ -182,6 +192,13 @@ public actor DeviceSecurityClient {
         var r = try read()
         try DeviceSecurity.check(r.member && r.secret != nil, .untrusted)
         let head = r.state
+        if purpose.control {
+            // Control pauses when the lease ends; signing anyway would only
+            // produce an envelope the executor refuses.
+            let now = max(clock(), r.floor)
+            try DeviceSecurity.check(head.core.issuedAt <= now + DeviceSecurity.clockSkewLimit, .clock)
+            try DeviceSecurity.check(head.core.notAfter >= now, .lease)
+        }
         if head.core.contentEpoch != r.counterEpoch {
             r.counter = 0
             r.blockEnd = 0

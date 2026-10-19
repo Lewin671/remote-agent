@@ -12,7 +12,7 @@ import SwiftProtobuf
 public enum DeviceSecurity {
     public enum Failure: Error, Equatable {
         case invalid, untrusted, stale, conflict, pending, capacity, storage, unknown, unavailable,
-             clock
+             lease, clock
     }
     public static let maxState = 64 << 10
     public static let maxCipher = 4 << 20
@@ -560,8 +560,12 @@ public enum DeviceSecurity {
         try check(!states.isEmpty && states.count == proofs.count && states.count <= maxStates)
         try verifyGenesis(pin, states[0])
         try check(proofs[0] == nil)
-        for i in 1..<states.count {
-            try verifyTransition(parent: states[i - 1], next: states[i], recovery: proofs[i])
+        let now = UInt64(Date().timeIntervalSince1970 * 1000)
+        for i in 0..<states.count {
+            try check(states[i].core.issuedAt <= now + clockSkewLimit, .clock)
+            if i > 0 {
+                try verifyTransition(parent: states[i - 1], next: states[i], recovery: proofs[i])
+            }
         }
     }
 
@@ -827,7 +831,9 @@ public enum DeviceSecurity {
             guard let head else { throw Failure.stale }
             try check(head.core.member(h.sender) != nil, .untrusted)
             if h.purpose.control {
-                try check(head.core.notAfter >= now && head.core.contentEpoch == h.contentEpoch, .stale)
+                try check(
+                    head.core.notAfter >= now && head.core.contentEpoch == h.contentEpoch, .stale)
+                try check(head.core.issuedAt <= now + clockSkewLimit, .clock)
             }
         }
         let commit = try commitment(c)

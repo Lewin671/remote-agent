@@ -176,7 +176,6 @@ type vectors struct {
 		JoinerPublic     string   `json:"joiner_public"`
 		PairingID        string   `json:"pairing_id"`
 		JoinerKind       int32    `json:"joiner_kind"`
-		Commit           string   `json:"commit"`
 		Transcript       string   `json:"transcript"`
 		SAS              string   `json:"sas"`
 		Key              string   `json:"key"`
@@ -219,7 +218,6 @@ func TestVectors(t *testing.T) {
 	pv.InitiatorPrivate, pv.JoinerPrivate = hex.EncodeToString(ip), hex.EncodeToString(jp)
 	pv.InitiatorPublic, pv.JoinerPublic = hex.EncodeToString(ik.Public()), hex.EncodeToString(jk.Public())
 	pv.PairingID, pv.JoinerKind = "0123456789abcdef0123456789abcdef", 2
-	pv.Commit = hex.EncodeToString(PairCommit(ik.Public()))
 	tr := PairTranscript(pv.PairingID, ik.Public(), jk.Public(), pv.JoinerKind)
 	pv.Transcript = hex.EncodeToString(tr)
 	ps, err := ik.Derive(jk.Public(), tr)

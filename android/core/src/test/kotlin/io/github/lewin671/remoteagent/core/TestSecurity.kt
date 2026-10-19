@@ -71,6 +71,16 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
     fun record(member: String): DeviceSecurity.Record =
         record(call("record", "Member" to JsonPrimitive(member)))
 
+    /** Removes members as the fixture's authority and returns the new state. */
+    fun remove(targets: List<String>): ByteArray {
+        val reply =
+            call(
+                "remove",
+                "Targets" to JsonArray(targets.map { JsonPrimitive(it) }),
+            )
+        return bytes(reply, "State")
+    }
+
     fun seal(account: Account, h: Header, plain: ByteArray, seed: ByteArray? = null): Envelope {
         val reply =
             call(

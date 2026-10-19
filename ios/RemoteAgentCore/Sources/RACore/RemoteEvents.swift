@@ -101,7 +101,7 @@ extension Remote {
         let cached = await cache?.events(sessionId: sid) ?? []
         if buffers[sid] !== b { return }
         if !cached.isEmpty {
-            await ingest(sid, cached, fillGaps: false, save: false)
+            await ingest(sid, cached, fillGaps: false, save: false, history: true)
             if buffers[sid] !== b { return }
             // A cached copy that does not open is dropped and the history
             // fetched whole (architecture §10 「后台和内存」): the cache keeps
@@ -152,7 +152,7 @@ extension Remote {
                         request: ask, headers: Api.headers(token: token)
                     ).value()
                     if !running || gen != generation || buffers[sid] !== b { return }
-                    await ingest(sid, res.events, fillGaps: false, save: true)
+                    await ingest(sid, res.events, fillGaps: false, save: true, history: true)
                     // An event that does not open stops progress; asking for the
                     // same page again would not help.
                     if !res.more || b.events.count == before { break }
@@ -168,7 +168,9 @@ extension Remote {
         }
     }
 
-    func ingest(_ sid: String, _ stored: [PBStoredEvent], fillGaps: Bool, save: Bool) async {
+    func ingest(
+        _ sid: String, _ stored: [PBStoredEvent], fillGaps: Bool, save: Bool, history: Bool = true
+    ) async {
         guard let b = buffers[sid], let s = sessions[sid], let key = sessionKeys[sid] else {
             return
         }
@@ -183,8 +185,11 @@ extension Remote {
                     b.unverifiedLegacy = true
                     (h, plain) = try Envelopes.open(key: key, envelope: se.envelope)
                 } else {
-                    let opened = try await securitySession().openHistory(
-                        se.envelope, sessionSeed: key)
+                    let session = try securitySession()
+                    let opened =
+                        try await (history
+                        ? session.openHistory(se.envelope, sessionSeed: key)
+                        : session.openCurrent(se.envelope, sessionSeed: key))
                     h = projection(opened.0)
                     plain = opened.1
                 }
