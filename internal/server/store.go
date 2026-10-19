@@ -365,9 +365,9 @@ func usageTx(ctx context.Context, q querier, acct string) (accountUsage, error) 
 		(SELECT COUNT(*) FROM machines WHERE account_id = ?1),
 		(SELECT COUNT(*) FROM sessions WHERE account_id = ?1),
 		(SELECT event_bytes FROM accounts WHERE id = ?1),
-		(SELECT COALESCE(SUM(bytes), 0) FROM images WHERE account_id = ?1 AND envelope IS NOT NULL),
+		(`+imageUsageSQL+`),
 		(SELECT COUNT(*) FROM revoked_devices WHERE account_id = ?1),
-		(SELECT COUNT(*) FROM account_prefs WHERE account_id = ?1)`, acct).
+		(SELECT COUNT(*) FROM account_prefs WHERE account_id = ?1)`, acct, nowMs()).
 		Scan(&u.devices, &u.machines, &u.sessions, &u.eventBytes, &u.imageBytes, &u.revoked, &u.prefs)
 	return u, err
 }
@@ -845,9 +845,9 @@ func (e *gapError) Error() string {
 
 // appendEvents stores the events that follow the stored ones and skips
 // those already stored. It returns the newly stored events and the new
-// last seq. limit, if not nil, is checked against the account's usage
+// last seq. limit, if not nil, is checked against the account's event bytes
 // with the new events counted.
-func (t *tstore) appendEvents(ctx context.Context, machineID, sessionID string, evs []*pb.StoredEvent, limit func(accountUsage) error) ([]*pb.StoredEvent, *pb.RemoteSession, error) {
+func (t *tstore) appendEvents(ctx context.Context, machineID, sessionID string, evs []*pb.StoredEvent, limit func(int64) error) ([]*pb.StoredEvent, *pb.RemoteSession, error) {
 	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, err
@@ -884,12 +884,13 @@ func (t *tstore) appendEvents(ctx context.Context, machineID, sessionID string, 
 	}
 	if len(added) > 0 {
 		if limit != nil {
-			u, err := usageTx(ctx, tx, t.acct)
-			if err != nil {
+			// Event writes grow only event storage. Do not aggregate images
+			// (or count devices and sessions) on this frequent path.
+			var used int64
+			if err := tx.QueryRowContext(ctx, `SELECT event_bytes FROM accounts WHERE id = ?`, t.acct).Scan(&used); err != nil {
 				return nil, nil, err
 			}
-			u.eventBytes += bytes
-			if err := limit(u); err != nil {
+			if err := limit(used + bytes); err != nil {
 				return nil, nil, err
 			}
 		}

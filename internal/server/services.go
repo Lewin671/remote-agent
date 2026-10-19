@@ -390,7 +390,10 @@ func (m *machineService) UploadEvents(ctx context.Context, req *connect.Request[
 		}
 	}
 	t := m.s.tenantFrom(ctx)
-	added, rs, err := t.store.appendEvents(ctx, id, sid, req.Msg.Events, t.limit(m.s, growsEvents))
+	limit := t.limit(m.s, growsEvents)
+	added, rs, err := t.store.appendEvents(ctx, id, sid, req.Msg.Events, func(bytes int64) error {
+		return limit(accountUsage{eventBytes: bytes})
+	})
 	var gap *gapError
 	var apiErr *connect.Error
 	switch {

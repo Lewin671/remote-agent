@@ -33,7 +33,14 @@ CREATE TABLE IF NOT EXISTS images (
 	PRIMARY KEY (account_id, session_id, image_id)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS images_expiry ON images (expires_ms) WHERE envelope IS NOT NULL;
+-- Added to existing stores by createSchema's idempotent transaction. Keep
+-- envelopes out of this index: usage must not read the image table's blobs.
+CREATE INDEX IF NOT EXISTS images_account_usage ON images (account_id, expires_ms, bytes);
 `
+
+// Envelopes are cleared only after expiry. Count by that same deadline so
+// quota reads use a covering index, including before the hourly sweep runs.
+const imageUsageSQL = `SELECT COALESCE(SUM(bytes), 0) FROM images WHERE account_id = ?1 AND expires_ms > ?2`
 
 // Default image storage limits (architecture §17).
 const (
@@ -73,7 +80,7 @@ func (t *tstore) putImage(ctx context.Context, machineID, sessionID, imageID str
 		return 0, err
 	}
 	var used int64
-	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(SUM(bytes), 0) FROM images WHERE account_id = ? AND envelope IS NOT NULL`, t.acct).Scan(&used); err != nil {
+	if err := tx.QueryRowContext(ctx, imageUsageSQL, t.acct, now).Scan(&used); err != nil {
 		return 0, err
 	}
 	if used+int64(len(env)) > quota {

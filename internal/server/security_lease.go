@@ -62,9 +62,19 @@ func (c *clientService) DeleteMachineRecords(ctx context.Context, req *connect.R
 	if id == "" {
 		return nil, invalid("machine required")
 	}
-	tx, err := t.store.db.BeginTx(ctx, nil)
-	if err != nil {
+	if err := t.store.deleteMachineRecords(ctx, id); err != nil {
 		return nil, internal(err)
+	}
+	t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineRemoved{MachineRemoved: &pb.MachineRemoved{MachineId: id}}})
+	return connect.NewResponse(&pb.DeleteMachineRecordsResponse{}), nil
+}
+
+// deleteMachineRecords deletes a machine's archive: its sessions, their
+// events and its images. Revoking the machine does not do this.
+func (t *tstore) deleteMachineRecords(ctx context.Context, id string) error {
+	tx, err := t.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
 	}
 	defer tx.Rollback()
 	for _, q := range []string{
@@ -72,17 +82,11 @@ func (c *clientService) DeleteMachineRecords(ctx context.Context, req *connect.R
 		`DELETE FROM images WHERE account_id=?1 AND machine_id=?2`,
 		`DELETE FROM sessions WHERE account_id=?1 AND machine_id=?2`,
 		`DELETE FROM machines WHERE account_id=?1 AND id=?2`,
+		`UPDATE accounts SET event_bytes=(SELECT COALESCE(SUM(LENGTH(envelope)),0) FROM events WHERE account_id=?1) WHERE id=?1`,
 	} {
 		if _, err := tx.ExecContext(ctx, q, t.acct, id); err != nil {
-			return nil, internal(err)
+			return err
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE accounts SET event_bytes=(SELECT COALESCE(SUM(LENGTH(envelope)),0) FROM events WHERE account_id=?1) WHERE id=?1`, t.acct); err != nil {
-		return nil, internal(err)
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, internal(err)
-	}
-	t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineRemoved{MachineRemoved: &pb.MachineRemoved{MachineId: id}}})
-	return connect.NewResponse(&pb.DeleteMachineRecordsResponse{}), nil
+	return tx.Commit()
 }
