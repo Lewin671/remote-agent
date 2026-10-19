@@ -21,7 +21,6 @@ import Testing
         let (h, plain) = try DeviceSecurity.open(
             wire, state: state, head: nil, live: false, now: 0, secret: secret, sessionSeed: nil)
         #expect(plain == Data(base64Encoded: v.s("plain"))!)
-        #expect(h.counter == 1)
         #expect(h.purpose == .command)
         let env = try DeviceSecurity.envelope(wire)
         #expect(

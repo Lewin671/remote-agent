@@ -28,8 +28,6 @@ public enum DeviceSecurity {
     /// The membership lease and the largest accepted one, in milliseconds.
     public static let lease: UInt64 = 72 * 60 * 60 * 1000
     public static let maxLease: UInt64 = 7 * 24 * 60 * 60 * 1000
-    /// Counter values handed out before the next block is reserved durably.
-    public static let counterBlock: UInt64 = 4096
     static let zero = Data(repeating: 0, count: 32)
     static func check(_ condition: Bool, _ error: Failure = .invalid) throws {
         if !condition { throw error }
@@ -641,13 +639,12 @@ public enum DeviceSecurity {
         public var seq: UInt64
         public var deadline: UInt64
         public var compression: UInt32
-        public var counter: UInt64
     }
     static func validate(_ h: Header) throws {
         try check(
             identifier(h.account) && identifier(h.sender) && h.epoch > 0
                 && h.contentEpoch > 0 && h.contentEpoch <= h.epoch
-                && h.counter > 0 && h.compression <= 1 && h.kind == h.purpose.kind
+                && h.compression <= 1 && h.kind == h.purpose.kind
                 && (h.machine.isEmpty || identifier(h.machine))
                 && (h.session.isEmpty || validID(h.session))
                 && (h.request.isEmpty || validID(h.request)))
@@ -690,7 +687,6 @@ public enum DeviceSecurity {
         w.u64(h.seq)
         w.u64(h.deadline)
         w.u32(h.compression)
-        w.u64(h.counter)
         return w.data
     }
     public static func parseHeader(_ b: Data) throws -> Header {
@@ -710,8 +706,7 @@ public enum DeviceSecurity {
             contentEpoch: contentEpoch,
             sender: sender, kind: kind, purpose: purpose, machine: try r.str(),
             session: try r.str(),
-            request: try r.str(), seq: try r.u64(), deadline: try r.u64(), compression: try r.u32(),
-            counter: try r.u64())
+            request: try r.str(), seq: try r.u64(), deadline: try r.u64(), compression: try r.u32())
         try r.done()
         try validate(h)
         return h
@@ -792,7 +787,6 @@ public enum DeviceSecurity {
         w.str(h.session)
         w.str(h.request)
         w.u64(h.seq)
-        w.u64(h.counter)
         var purposeInfo = Writer()
         purposeInfo.raw(Data("ra3/purpose-key\0".utf8))
         purposeInfo.str(h.account)

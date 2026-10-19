@@ -144,3 +144,23 @@ func ValidateBody(h Header, p []byte) error {
 	}
 	return nil
 }
+
+// Read-only commands can be retried without an acceptance log or stored results.
+// Everything else, including unknown future command types, stays at-most-once.
+func readOnlyCommand(h Header, plain []byte) bool {
+	p, err := Unpack(h, plain)
+	if err != nil {
+		return false
+	}
+	cmd := &pb.Command{}
+	if proto.Unmarshal(p, cmd) != nil {
+		return false
+	}
+	switch k := cmd.Kind.(type) {
+	case *pb.Command_GetSettings, *pb.Command_ListModels, *pb.Command_ListDirectories, *pb.Command_GetLiveSnapshot, *pb.Command_GetImageUploadStatus:
+		return true
+	case *pb.Command_Schedule:
+		return k.Schedule.GetOperation() == "list" || k.Schedule.GetOperation() == "get"
+	}
+	return false
+}

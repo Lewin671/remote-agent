@@ -86,7 +86,6 @@ extension DeviceSecurity {
             w.str(h.session)
             w.str(h.request)
             w.u64(h.seq)
-            w.u64(h.counter)
             let key = hkdf(secret: child, salt: nil, info: w.data, size: 32)
             let c = wire.formed
             let box = try AES.GCM.SealedBox(

@@ -258,3 +258,68 @@ func TestRecoveryContextNeedsAKeyBoundSignature(t *testing.T) {
 		t.Fatalf("a rotated-out recovery key still read the account: %v", err)
 	}
 }
+
+func TestCompletedRecoveryRetryAfterNextSubmission(t *testing.T) {
+	ts, head, key, _ := recoveryFixture(t)
+	pc := remoteagentv1connect.NewRecoveryServiceClient(http.DefaultClient, ts.url)
+	first := buildRecovery(t, head, key, 0xb1)
+	id := submitRecovery(t, pc, first)
+	completeRecovery(t, ts, pc, id, first)
+	nextKey, _ := newRecoveryKey(t, 0xb1)
+	second := buildRecovery(t, first.state, nextKey, 0xb2)
+	_ = submitRecovery(t, pc, second)
+	label := append([]byte("ra3/recovery-complete\x00"), []byte(id)...)
+	res, err := pc.CompleteRecovery(context.Background(), connect.NewRequest(&pb.CompleteRecoveryRequest{RecoveryId: id, Signature: ed25519.Sign(first.ed, label)}))
+	if err != nil || res.Msg.DeviceId != first.member.ID {
+		t.Fatalf("lost completion response cannot be retried: %v", err)
+	}
+}
+func TestExistingAdmissionRequiresExactUncanceledApproval(t *testing.T) {
+	ts, _, _, _ := recoveryFixture(t)
+	ctx := context.Background()
+	db := ts.srv.store.db
+	a := &enrollmentApproval{info: &pb.PairApproval{PairingId: "round3-admission", ApproverDeviceId: "synthetic-authority"}, raw: []byte("approved"), signature: []byte("signature")}
+	_, err := db.Exec(`INSERT INTO pairing_admissions(pairing_id,account_id,approver_device_id,candidate_device_id,candidate_kind,approval,signature,candidate_token_hash,expires_ms) VALUES(?,?,?,?,?,?,?,?,?)`, a.info.PairingId, ts.acct(), a.info.ApproverDeviceId, "synthetic-candidate", 2, a.raw, a.signature, make([]byte, 32), nowMs()+60000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"different-bytes", "canceled"} {
+		t.Run(mode, func(t *testing.T) {
+			if mode == "different-bytes" {
+				a.raw = []byte("another-approved-value")
+			} else {
+				a.raw = []byte("approved")
+				_, err = db.Exec(`UPDATE pairing_admissions SET canceled_ms=1 WHERE pairing_id=?`, a.info.PairingId)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			tx, err := db.BeginTx(ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer tx.Rollback()
+			if err := requireAdmission(ctx, tx, a, ts.acct(), "synthetic-candidate", pb.DeviceKind_DEVICE_KIND_CLIENT); err == nil {
+				t.Fatal("invalid admission reused")
+			}
+		})
+	}
+}
+
+func TestArchivedRecoveryDoesNotExposeChainToRemovedPhone(t *testing.T) {
+	ts, head, key, _ := recoveryFixture(t)
+	pc := remoteagentv1connect.NewRecoveryServiceClient(http.DefaultClient, ts.url)
+	first := buildRecovery(t, head, key, 0xb1)
+	id := submitRecovery(t, pc, first)
+	completeRecovery(t, ts, pc, id, first)
+	nextKey, _ := newRecoveryKey(t, 0xb1)
+	second := buildRecovery(t, first.state, nextKey, 0xb2)
+	id2 := submitRecovery(t, pc, second)
+	if _, err := getRecoveryContext(t, pc, first.ed, nil, id); err != nil {
+		t.Fatalf("current phone cannot resume archived recovery: %v", err)
+	}
+	completeRecovery(t, ts, pc, id2, second)
+	if _, err := getRecoveryContext(t, pc, first.ed, nil, id); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("removed phone read archived context: %v", err)
+	}
+}

@@ -23,15 +23,18 @@ class DeviceSecurityClient(
     private val syncMutex = Mutex()
     private val historyLock = Any()
     private var lastFloorWrite = 0uL
-    /** The counter block in use; only a new block writes the record. */
-    private var sendRecord: DeviceSecurity.Record? = null
     @Volatile private var closed = false
-    @Volatile var recoveryPending: Boolean = false
+    @Volatile
+    var recoveryPending: Boolean = false
         private set
-    @Volatile var recoveryReadyMs: Long = 0L
+
+    @Volatile
+    var recoveryReadyMs: Long = 0L
         private set
+
     /** A state is issued more than five minutes ahead of this phone's clock. */
-    @Volatile var clockSkew: Boolean = false
+    @Volatile
+    var clockSkew: Boolean = false
         private set
 
     private fun read(): DeviceSecurity.Record {
@@ -71,51 +74,47 @@ class DeviceSecurityClient(
 
     fun close() {
         closed = true
-        sendRecord = null
         synchronized(historyLock) {}
     }
 
-    private fun now(r: DeviceSecurity.Record): ULong =
-        maxOf(clock().toULong(), r.floor)
+    private fun now(r: DeviceSecurity.Record): ULong = maxOf(clock().toULong(), r.floor)
 
     /** Pulls every state after the local head. The relay cannot make the head go backwards. */
-    suspend fun sync(): DeviceSecurity.Record = syncMutex.withLock {
-        repeat(DeviceSecurity.MAX_STATES) {
-            val r = read()
-            val res = fetchStates(r.head.core.epoch)
-            recoveryPending = res.recoveryPending
-            recoveryReadyMs = res.recoveryReadyMs
-            if (res.headEpoch.toULong() < r.head.core.epoch) throw DeviceSecurity.Failure("stale")
-            if (res.statesCount == 0) {
-                if (res.headEpoch.toULong() != r.head.core.epoch)
+    suspend fun sync(): DeviceSecurity.Record =
+        syncMutex.withLock {
+            repeat(DeviceSecurity.MAX_STATES) {
+                val r = read()
+                val res = fetchStates(r.head.core.epoch)
+                recoveryPending = res.recoveryPending
+                recoveryReadyMs = res.recoveryReadyMs
+                if (res.headEpoch.toULong() < r.head.core.epoch)
                     throw DeviceSecurity.Failure("stale")
-                return@withLock r
-            }
-            if (res.statesCount > 8) throw DeviceSecurity.Failure("untrusted")
-            val states = res.statesList.map { DeviceSecurity.parseState(it.state.toByteArray()) }
-            val at = clock().toULong()
-            for (state in states) {
-                if (DeviceSecurity.tooFarAhead(state, at)) {
-                    clockSkew = true
-                    throw DeviceSecurity.Failure("clock")
+                if (res.statesCount == 0) {
+                    if (res.headEpoch.toULong() != r.head.core.epoch)
+                        throw DeviceSecurity.Failure("stale")
+                    return@withLock r
                 }
-            }
-            clockSkew = false
-            val proofs =
-                res.statesList.map {
-                    if (it.recovery.isEmpty) null else it.recovery.toByteArray()
+                if (res.statesCount > 8) throw DeviceSecurity.Failure("untrusted")
+                val states =
+                    res.statesList.map { DeviceSecurity.parseState(it.state.toByteArray()) }
+                val at = clock().toULong()
+                for (state in states) {
+                    if (DeviceSecurity.tooFarAhead(state, at)) {
+                        clockSkew = true
+                        throw DeviceSecurity.Failure("clock")
+                    }
                 }
-            currentCoroutineContext().ensureActive()
-            store.installSecurity(
-                DeviceSecurity.stateHash(r.head),
-                states,
-                proofs,
-            )
-            sendRecord = null
-            currentCoroutineContext().ensureActive()
+                clockSkew = false
+                val proofs =
+                    res.statesList.map {
+                        if (it.recovery.isEmpty) null else it.recovery.toByteArray()
+                    }
+                currentCoroutineContext().ensureActive()
+                store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs)
+                currentCoroutineContext().ensureActive()
+            }
+            throw DeviceSecurity.Failure("capacity")
         }
-        throw DeviceSecurity.Failure("capacity")
-    }
 
     /** Publishes states that this phone signed (genesis, renewal, membership, veto). */
     fun install(states: List<DeviceSecurity.State>, proofs: List<ByteArray?> = emptyList()) {
@@ -128,10 +127,9 @@ class DeviceSecurityClient(
         }
         val r = read()
         store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs)
-        sendRecord = null
     }
 
-    /** Commits the counter before the envelope exists; no authorization round trip. */
+    /** Seals locally with a random nonce; no storage write or authorization round trip. */
     fun seal(
         purpose: DeviceSecurity.Purpose,
         machine: String = "",
@@ -146,7 +144,7 @@ class DeviceSecurityClient(
         if (!old.member) throw DeviceSecurity.Failure("untrusted")
         if (purpose.control && !Authority.leaseValid(old.head, clock()))
             throw DeviceSecurity.Failure("lease")
-        val r = nextCounter(old)
+        val r = old
         val h =
             DeviceSecurity.Header(
                 r.pin.account,
@@ -163,40 +161,11 @@ class DeviceSecurityClient(
                 seq,
                 deadline,
                 0u,
-                r.counter,
             )
-        val key = r.contentKey(r.head.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
+        val key =
+            r.contentKey(r.head.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
         val formed = DeviceSecurity.form(key, seed, h, plain, ed)
         return DeviceSecurity.envelope(DeviceSecurity.Wire(formed))
-    }
-
-    /**
-     * Hands out one counter. A counter block is written durably before any of
-     * its values are used; the in-memory counter then moves on without a
-     * write. A re-sealed retry costs no record rewrite.
-     */
-    private fun nextCounter(old: DeviceSecurity.Record): DeviceSecurity.Record {
-        val cached = sendRecord
-        val base =
-            if (
-                cached != null &&
-                    cached.head.core.epoch == old.head.core.epoch &&
-                    DeviceSecurity.stateHash(cached.head)
-                        .contentEquals(DeviceSecurity.stateHash(old.head))
-            )
-                cached
-            else old
-        val next =
-            if (base.counter >= base.counterBlockEnd) {
-                store
-                    .writeSecurity(
-                        DeviceSecurity.stateHash(old.head),
-                        base.reservingBlock(),
-                    )
-                    .incremented()
-            } else base.incremented()
-        sendRecord = next
-        return next
     }
 
     suspend fun openCurrent(
@@ -209,7 +178,8 @@ class DeviceSecurityClient(
         if (h.epoch > r.head.core.epoch) r = sync()
         val s =
             r.stateAt(h.epoch)
-                ?: if (h.epoch == r.head.core.epoch) r.head else throw DeviceSecurity.Failure("stale")
+                ?: if (h.epoch == r.head.core.epoch) r.head
+                else throw DeviceSecurity.Failure("stale")
         val key = r.contentKey(s.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
         val at = now(r)
         if (DeviceSecurity.tooFarAhead(s, at)) {
@@ -232,8 +202,7 @@ class DeviceSecurityClient(
         var r = read()
         if (h.epoch > r.head.core.epoch) r = sync()
         val s = r.stateAt(h.epoch) ?: throw DeviceSecurity.Failure("stale")
-        val key = r.contentKey(s.core.contentEpoch)
-            ?: throw DeviceSecurity.Failure("unavailable")
+        val key = r.contentKey(s.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
         val (opened, plain) = DeviceSecurity.open(s, s, false, 0uL, w, key, seed)
         return opened to unpackSecurity(opened, plain)
     }

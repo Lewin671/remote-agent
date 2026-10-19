@@ -91,7 +91,7 @@ it("reads a Go historical event from the locally verified chain", async () => {
   }
 }, 20000);
 
-it("reserves unique persisted-message counters before concurrent seals", async () => {
+it("uses independent random nonces for concurrent seals", async () => {
   const f = await GoSecurityFixture.create();
   try {
     const { sdk } = await webMember(f);
@@ -119,10 +119,8 @@ it("reserves unique persisted-message counters before concurrent seals", async (
         ),
       ),
     );
-    const counters = messages.map((m) =>
-      parseHeader(new Uint8Array(m.securityHeader)).counter.toString(),
-    );
-    expect(new Set(counters).size).toBe(messages.length);
+    const nonces = messages.map((m) => Array.from(m.nonce).join(","));
+    expect(new Set(nonces).size).toBe(messages.length);
   } finally {
     await f.fixture.close();
   }
@@ -302,6 +300,44 @@ it("does not seal control after the lease expires", async () => {
         new Uint8Array(1),
       ),
     ).rejects.toMatchObject({ code: "lease" });
+  } finally {
+    await f.fixture.close();
+  }
+}, 20000);
+
+it("refreshes its sealing record when another tab installed the head and sync returns no states", async () => {
+  const f = await GoSecurityFixture.create();
+  try {
+    const { sdk, storage } = await webMember(f);
+    const header = {
+      kind: 12,
+      purpose: Purpose.Prefs,
+      machine: "",
+      session: "",
+      request: "project-prefs",
+      seq: 1n,
+      deadline: 0n,
+      compression: 0,
+    };
+    await f.fixture.enroll(f.phone.json.member, 2);
+    await sdk.sync();
+    await sdk.seal(header, new Uint8Array([1]));
+    const old = await storage.loadSecurity();
+    await f.fixture.enroll(f.phone.json.member, 2);
+    const { states, proofs } = await f.fixture.chain(old.memberID);
+    const newer = states.filter(
+      (s) => s.core.epoch > old.states.at(-1)!.core.epoch,
+    );
+    await storage.installSecurity(
+      old,
+      newer,
+      newer.map((s) => proofs[Number(s.core.epoch - 1n)]),
+    );
+    await sdk.sync();
+    const env = await sdk.seal(header, new Uint8Array([1]));
+    expect(parseHeader(new Uint8Array(env.securityHeader)).epoch).toBe(
+      states.at(-1)!.core.epoch,
+    );
   } finally {
     await f.fixture.close();
   }

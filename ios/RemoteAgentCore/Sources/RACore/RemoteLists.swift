@@ -449,9 +449,10 @@ extension Remote {
                 request.objectID = projectPrefsID
                 request.expectedRevision = base.revision
                 request.envelope = env
-                _ = try? await api.client.putAccountPrefs(
+                let result = try await api.client.putAccountPrefs(
                     request: request, headers: Api.headers(token: try await currentToken())
                 ).value()
+                if !result.applied { continue }
                 try await refreshTrustedDirectory()
                 try await readTrustedPrefs()
                 return
@@ -502,9 +503,10 @@ extension Remote {
                 request.deviceID = id
                 request.expectedRevision = base.metaRev
                 request.meta = env
-                _ = try? await api.client.putDeviceMeta(
+                let result = try await api.client.putDeviceMeta(
                     request: request, headers: Api.headers(token: try await currentToken())
                 ).value()
+                if !result.applied { continue }
                 try await refreshTrustedDirectory()
                 return
             } catch DeviceSecurity.Failure.conflict { continue }

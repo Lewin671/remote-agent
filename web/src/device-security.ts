@@ -240,8 +240,7 @@ export async function coreBytes(c: Core): Promise<B> {
     .u64(c.issuedAt)
     .u64(c.notAfter)
     .u32(c.members.length);
-  for (const m of c.members)
-    w.str(m.id).raw(m.ed).raw(m.x).u32(m.kind);
+  for (const m of c.members) w.str(m.id).raw(m.ed).raw(m.x).u32(m.kind);
   w.u32(c.removed.length);
   for (const r of c.removed) w.str(r);
   return w.bytes();
@@ -300,12 +299,7 @@ async function coreHash(s: SecurityState): Promise<B> {
 export async function stateHash(s: SecurityState): Promise<B> {
   const ch = await coreHash(s);
   const g = grantBytes(s);
-  return hash(
-    "ra3/state\0",
-    ch,
-    g,
-    new Writer().lp(s.prevSecret).bytes(),
-  );
+  return hash("ra3/state\0", ch, g, new Writer().lp(s.prevSecret).bytes());
 }
 async function stateSignBytes(s: SecurityState): Promise<B> {
   const c = s.core;
@@ -450,9 +444,7 @@ export async function recoveryBytes(r: RecoveryStatement): Promise<B> {
   requireOK(b.length <= MAX_STATE);
   return b;
 }
-export async function parseRecoveryStatement(
-  b: B,
-): Promise<RecoveryStatement> {
+export async function parseRecoveryStatement(b: B): Promise<RecoveryStatement> {
   requireOK(b.length <= MAX_STATE);
   const r = new Reader(b);
   const body = r.lp(MAX_STATE);
@@ -531,8 +523,7 @@ function membershipDelta(parent: SecurityState, next: SecurityState): void {
   for (const m of parent.core.members) {
     const n = next.core.members.find((n) => n.id === m.id);
     if (!n) newlyRemoved.push(m.id);
-    else if (!equal(n.ed, m.ed) || n.kind !== m.kind)
-      throw new SecurityError();
+    else if (!equal(n.ed, m.ed) || n.kind !== m.kind) throw new SecurityError();
     else if (!equal(n.x, m.x)) rotated++;
   }
   for (const m of next.core.members)
@@ -559,7 +550,10 @@ function recoveryDelta(parent: SecurityState, next: SecurityState): void {
     if (m.id === parent.core.authorityID) continue;
     const n = next.core.members.find((n) => n.id === m.id);
     requireOK(
-      n !== undefined && equal(n.ed, m.ed) && equal(n.x, m.x) && n.kind === m.kind,
+      n !== undefined &&
+        equal(n.ed, m.ed) &&
+        equal(n.x, m.x) &&
+        n.kind === m.kind,
     );
   }
   for (const m of next.core.members) {
@@ -630,8 +624,7 @@ export async function verifyChain(
   for (let i = 0; i < states.length; i++) {
     if (states[i].core.issuedAt > now + BigInt(MAX_CLOCK_SKEW))
       throw new SecurityError("clock");
-    if (i > 0)
-      await verifyTransition(states[i - 1], states[i], proofs[i]);
+    if (i > 0) await verifyTransition(states[i - 1], states[i], proofs[i]);
   }
 }
 const suite = () =>
@@ -680,12 +673,20 @@ export async function openGrant(
 }
 export async function openPrevSecret(newSecret: B, blob: B): Promise<B> {
   requireOK(newSecret.length === 32 && blob.length === 60);
-  const key = await crypto.subtle.importKey("raw", newSecret, "AES-GCM", false, [
-    "decrypt",
-  ]);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    newSecret,
+    "AES-GCM",
+    false,
+    ["decrypt"],
+  );
   const out = new Uint8Array(
     await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: blob.slice(0, 12), additionalData: utf8("ra3/prev-secret\0") },
+      {
+        name: "AES-GCM",
+        iv: blob.slice(0, 12),
+        additionalData: utf8("ra3/prev-secret\0"),
+      },
       key,
       blob.slice(12),
     ),
@@ -725,7 +726,6 @@ export interface SecurityHeader {
   seq: bigint;
   deadline: bigint;
   compression: number;
-  counter: bigint;
 }
 const mutable = (p: Purpose) =>
   [
@@ -757,7 +757,6 @@ function validateHeader(h: SecurityHeader): void {
       h.epoch > 0n &&
       h.contentEpoch > 0n &&
       h.contentEpoch <= h.epoch &&
-      h.counter > 0n &&
       [0, 1].includes(h.compression),
   );
   nonzero(h.domain);
@@ -821,7 +820,6 @@ export function headerBytes(h: SecurityHeader): B {
     .u64(h.seq)
     .u64(h.deadline)
     .u32(h.compression)
-    .u64(h.counter)
     .bytes();
 }
 export function parseHeader(b: B): SecurityHeader {
@@ -843,7 +841,6 @@ export function parseHeader(b: B): SecurityHeader {
     seq: r.u64(),
     deadline: r.u64(),
     compression: r.u32(),
-    counter: r.u64(),
   };
   r.done();
   validateHeader(h);
@@ -933,7 +930,6 @@ export async function deriveContentKey(
     .str(h.session)
     .str(h.request)
     .u64(h.seq)
-    .u64(h.counter)
     .bytes();
   const root = await crypto.subtle.importKey("raw", secret, "HKDF", false, [
     "deriveBits",
@@ -969,7 +965,7 @@ export async function deriveContentKey(
     ["encrypt", "decrypt"],
   );
 }
-/** counter MUST be reserved in one durable storage transaction before calling. */
+/** Seals locally with an independent random nonce. */
 export async function formCipher(
   secret: B,
   seed: B | undefined,
@@ -1007,7 +1003,10 @@ export async function verifyWire(
   const h = parseHeader(w.header);
   const member = await scope(h, s);
   if (live) {
-    requireOK(head.core.members.some((m) => m.id === h.sender), "untrusted");
+    requireOK(
+      head.core.members.some((m) => m.id === h.sender),
+      "untrusted",
+    );
     if (control(h.purpose)) {
       if (head.core.issuedAt > now + BigInt(MAX_CLOCK_SKEW))
         throw new SecurityError("clock");
@@ -1146,9 +1145,7 @@ export interface PairTrust {
   approver: string;
 }
 export function pairTrustDescriptor(pin: Pin, approver: string): B {
-  requireOK(
-    id(pin.account) && id(approver) && pin.genesis.length === 32,
-  );
+  requireOK(id(pin.account) && id(approver) && pin.genesis.length === 32);
   nonzero(pin.domain);
   nonzero(pin.genesis);
   return new Writer()
@@ -1175,10 +1172,7 @@ export function parsePairTrustDescriptor(b: B): PairTrust {
   nonzero(pin.genesis);
   return { pin, approver };
 }
-export async function pairDomainCommit(
-  ephemeral: B,
-  trust: B,
-): Promise<B> {
+export async function pairDomainCommit(ephemeral: B, trust: B): Promise<B> {
   requireOK(ephemeral.length === 32);
   return hash(
     "ra3/pair-commit\0",

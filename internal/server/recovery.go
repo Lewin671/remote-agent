@@ -137,7 +137,7 @@ func scanRecovery(sc interface{ Scan(...any) error }) (*recoveryRow, error) {
 }
 
 func (rs *recoveryService) rowByID(ctx context.Context, id string) (*recoveryRow, error) {
-	return scanRecovery(rs.s.store.db.QueryRowContext(ctx, `SELECT `+recoveryColumns+` FROM security_recovery WHERE recovery_id = ?`, id))
+	return scanRecovery(rs.s.store.db.QueryRowContext(ctx, `SELECT `+recoveryColumns+` FROM security_recovery WHERE recovery_id = ? UNION ALL SELECT `+recoveryColumns+` FROM security_recovery_completed WHERE recovery_id = ? LIMIT 1`, id, id))
 }
 
 func (rs *recoveryService) headHash(ctx context.Context, account string) (deviceauth.Hash, bool) {
@@ -231,6 +231,15 @@ func (rs *recoveryService) GetRecoveryContext(ctx context.Context, req *connect.
 		acct, err := rs.s.store.account(ctx, row.account)
 		if err != nil {
 			return nil, internal(err)
+		}
+		if row.completed != 0 {
+			head, _, err := rs.s.store.tenant(row.account).securityHead(ctx)
+			if err != nil {
+				return nil, internal(err)
+			}
+			if _, ok := head.Core.Member(row.statement.NewMember.ID); !ok {
+				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the recovered device is no longer a member"))
+			}
 		}
 		r, account, accountKey = row, row.account, acct.publicKey
 	} else {
@@ -375,6 +384,9 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 	}
 	recoveryID := hex.EncodeToString(id)
 	ready := nowMs() + recoveryDelay.Milliseconds()
+	if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO security_recovery_completed (`+recoveryColumns+`) SELECT `+recoveryColumns+` FROM security_recovery WHERE account_id = ? AND completed_ms != 0`, stmt.Account); err != nil {
+		return nil, internal(err)
+	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO security_recovery (account_id, recovery_id, statement, state, new_recovery_ed, submitted_ms, ready_ms) VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (account_id) DO UPDATE SET recovery_id = excluded.recovery_id, statement = excluded.statement, state = excluded.state, new_recovery_ed = excluded.new_recovery_ed, submitted_ms = excluded.submitted_ms, ready_ms = excluded.ready_ms, completed_ms = 0, rejected_ms = 0`,
 		stmt.Account, recoveryID, stmtRaw, stateRaw, stmt.NewRecoveryEd[:], nowMs(), ready); err != nil {

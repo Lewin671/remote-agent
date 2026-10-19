@@ -24,7 +24,11 @@ class RecoveryTest {
                         server.setupToken,
                         recoverySeed,
                     )
-                approvedClient(phone, http, io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_MACHINE)
+                approvedClient(
+                    phone,
+                    http,
+                    io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_MACHINE,
+                )
                 val before =
                     Recovery.context(
                         server.url,
@@ -40,14 +44,15 @@ class RecoveryTest {
                 // submitted, even if the relay's chain is otherwise valid.
                 val wrong =
                     runCatching {
-                        Recovery.context(
-                            server.url,
-                            http,
-                            SigningKey(recoverySeed).publicKey,
-                            recoverySeed,
-                            expectedGenesis = ByteArray(10) { 0x7f },
-                        )
-                    }.exceptionOrNull()
+                            Recovery.context(
+                                server.url,
+                                http,
+                                SigningKey(recoverySeed).publicKey,
+                                recoverySeed,
+                                expectedGenesis = ByteArray(10) { 0x7f },
+                            )
+                        }
+                        .exceptionOrNull()
                 assertTrue(wrong is DeviceSecurity.Failure)
 
                 val newDevice = randomBytes(32)
@@ -58,6 +63,7 @@ class RecoveryTest {
                         recoverySeed,
                         newDevice,
                         before.pin.genesis.copyOf(10),
+                        persist = {},
                     )
                 assertTrue(submitted.readyMs > System.currentTimeMillis() + 47L * 3600_000)
                 assertNotNull(RecoveryCode.decode(submitted.newCode))
@@ -81,7 +87,7 @@ class RecoveryTest {
                     io.github.lewin671.remoteagent.proto.PairingPayload.newBuilder()
                         .setServer(server.url)
                         .setAccountPublicKey(
-                            com.google.protobuf.ByteString.copyFrom(pending.accountPublicKey),
+                            com.google.protobuf.ByteString.copyFrom(pending.accountPublicKey)
                         )
                         .build()
                 assertEquals(phone.accountId, deviceId(payload.accountPublicKey.toByteArray()))

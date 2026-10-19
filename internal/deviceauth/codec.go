@@ -30,9 +30,6 @@ const (
 	Lease    = 72 * 60 * 60 * 1000
 	MaxLease = 7 * 24 * 60 * 60 * 1000
 
-	// CounterBlock is reserved durably before use.
-	CounterBlock = 4096
-
 	// MaxClockSkew is how far ahead of the local clock a state's IssuedAt
 	// may be. A phone far ahead would otherwise keep a lease alive past the
 	// intended revocation window.

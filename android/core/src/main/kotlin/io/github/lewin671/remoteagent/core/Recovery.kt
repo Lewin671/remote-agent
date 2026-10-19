@@ -16,9 +16,9 @@ object RecoveryCode {
     private const val ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
     /**
-     * What a code carries: the seed that signs recovery statements and the
-     * first 10 bytes of its genesis hash. The prefix is how a recovering phone
-     * checks the chain the relay serves it against its own domain (finding B3).
+     * What a code carries: the seed that signs recovery statements and the first 10 bytes of its
+     * genesis hash. The prefix is how a recovering phone checks the chain the relay serves it
+     * against its own domain (finding B3).
      */
     data class Decoded(val seed: ByteArray, val genesis: ByteArray)
 
@@ -40,7 +40,9 @@ object RecoveryCode {
         return out.chunked(4).joinToString("-")
     }
 
-    /** Reads what [encode] wrote, accepting lower case, spaces, hyphens and the usual look-alikes. */
+    /**
+     * Reads what [encode] wrote, accepting lower case, spaces, hyphens and the usual look-alikes.
+     */
     fun decode(text: String): Decoded? {
         var bits = 0
         var value = 0
@@ -50,7 +52,8 @@ object RecoveryCode {
             val c =
                 when (raw) {
                     'O' -> '0'
-                    'I', 'L' -> '1'
+                    'I',
+                    'L' -> '1'
                     else -> raw
                 }
             val v = ALPHABET.indexOf(c)
@@ -99,17 +102,16 @@ data class RecoveryChain(
             if (accountPublicKey.size != 32 || deviceId(accountPublicKey) != accountId)
                 throw DeviceSecurity.Failure("untrusted")
             val chain = states.map { DeviceSecurity.parseState(it.state.toByteArray()) }
-            if (chain.size > DeviceSecurity.MAX_STATES)
-                throw DeviceSecurity.Failure("untrusted")
-            if (chain[0].core.account != accountId)
-                throw DeviceSecurity.Failure("untrusted")
+            if (chain.size > DeviceSecurity.MAX_STATES) throw DeviceSecurity.Failure("untrusted")
+            if (chain[0].core.account != accountId) throw DeviceSecurity.Failure("untrusted")
             val pin = DeviceSecurity.pinOf(chain[0])
             DeviceSecurity.verifyGenesis(pin, chain[0])
             if (expectedGenesis != null) {
                 // The code carries the domain's genesis prefix; a relay cannot
                 // swap in a forged chain for the same account.
-                if (expectedGenesis.size != 10 ||
-                    !pin.genesis.copyOf(10).contentEquals(expectedGenesis)
+                if (
+                    expectedGenesis.size != 10 ||
+                        !pin.genesis.copyOf(10).contentEquals(expectedGenesis)
                 )
                     throw DeviceSecurity.Failure("untrusted")
             }
@@ -142,7 +144,11 @@ data class RecoveryChain(
 data class PendingRecoveryInfo(val readyMs: Long)
 
 /** A veto/rotation state signed locally; its new code is shown before this is published. */
-data class PreparedRecovery(val code: String, val state: DeviceSecurity.State)
+data class PreparedRecovery(
+    val code: String,
+    val state: DeviceSecurity.State,
+    val newRecoverySeed: ByteArray,
+)
 
 /** What a submission produced: shown once, then only the new code remains in the user's hands. */
 data class RecoverySubmission(
@@ -177,20 +183,14 @@ object Recovery {
         val api = Api(server, http)
         val challenge =
             api.recovery
-                .getRecoveryChallenge(
-                    GetRecoveryChallengeRequest.getDefaultInstance(),
-                    emptyMap(),
-                )
+                .getRecoveryChallenge(GetRecoveryChallengeRequest.getDefaultInstance(), emptyMap())
                 .value()
                 .challenge
                 .toByteArray()
         var ed = ByteArray(32)
         recoveryEd.copyInto(ed, 0, 0, minOf(32, recoveryEd.size))
         val signed =
-            "ra3/recovery-context\u0000".toByteArray() +
-                challenge +
-                ed +
-                recoveryId.toByteArray()
+            "ra3/recovery-context\u0000".toByteArray() + challenge + ed + recoveryId.toByteArray()
         val signature = SigningKey(signerSeed).sign(signed)
         val res =
             try {
@@ -199,7 +199,7 @@ object Recovery {
                         GetRecoveryContextRequest.newBuilder()
                             .setRecoveryEd(
                                 if (recoveryEd.isEmpty()) com.google.protobuf.ByteString.EMPTY
-                                else com.google.protobuf.ByteString.copyFrom(recoveryEd),
+                                else com.google.protobuf.ByteString.copyFrom(recoveryEd)
                             )
                             .setRecoveryId(recoveryId)
                             .setChallenge(com.google.protobuf.ByteString.copyFrom(challenge))
@@ -209,8 +209,7 @@ object Recovery {
                     )
                     .value()
             } catch (e: com.connectrpc.ConnectException) {
-                if (e.code == com.connectrpc.Code.NOT_FOUND)
-                    throw PairException("恢复码不对，或者没有待处理的恢复")
+                if (e.code == com.connectrpc.Code.NOT_FOUND) throw PairException("恢复码不对，或者没有待处理的恢复")
                 throw e
             }
         return RecoveryChain.parse(
@@ -235,45 +234,71 @@ object Recovery {
         deviceSeed: ByteArray,
         genesisPrefix: ByteArray,
         now: Long = System.currentTimeMillis(),
+        draft: RecoveryDraft? = null,
+        persist: (RecoveryDraft) -> Unit = { throw DeviceSecurity.Failure("storage") },
     ): RecoverySubmission {
         if (oldRecoverySeed.size != 32 || deviceSeed.size != 32 || genesisPrefix.size != 10)
             throw PairException("恢复码无效")
-        val recoveryEd = SigningKey(oldRecoverySeed).publicKey
-        val chain =
-            context(
-                server,
-                http,
-                recoveryEd,
-                oldRecoverySeed,
-                expectedGenesis = genesisPrefix,
-            )
-        // A completed or vetoed row is no longer pending: the current code may
-        // submit a fresh recovery (B1).
-        if (chain.phase != GetRecoveryContextResponse.Phase.PHASE_UNSPECIFIED &&
-            chain.phase != GetRecoveryContextResponse.Phase.PHASE_PENDING &&
-            chain.phase != GetRecoveryContextResponse.Phase.PHASE_READY
-        )
-            throw PairException("恢复状态无法识别")
+        val prepared =
+            draft
+                ?: run {
+                    val recoveryEd = SigningKey(oldRecoverySeed).publicKey
+                    val chain =
+                        context(
+                            server,
+                            http,
+                            recoveryEd,
+                            oldRecoverySeed,
+                            expectedGenesis = genesisPrefix,
+                        )
+                    // A completed or vetoed row is no longer pending: the current code may
+                    // submit a fresh recovery (B1).
+                    if (
+                        chain.phase != GetRecoveryContextResponse.Phase.PHASE_UNSPECIFIED &&
+                            chain.phase != GetRecoveryContextResponse.Phase.PHASE_PENDING &&
+                            chain.phase != GetRecoveryContextResponse.Phase.PHASE_READY
+                    )
+                        throw PairException("恢复状态无法识别")
 
-        val signer = SigningKey(deviceSeed)
-        val (newRecoverySeed, newRecoveryEd) = Authority.newRecovery()
-        val newCode = RecoveryCode.encode(newRecoverySeed, chain.pin.genesis)
-        val x = randomBytes(32)
-        val member = Authority.newMember(signer, x, 2u)
-        val old = chain.head
-        val members = old.core.members.filterNot { it.id == old.core.authorityID } + member
-        val secret = Authority.newSecret()
-        val (state, statement) =
-            Authority.recovery(
-                old,
-                member,
-                members,
-                secret,
-                signer,
-                oldRecoverySeed,
-                newRecoveryEd,
-                now,
-            )
+                    val signer = SigningKey(deviceSeed)
+                    val (newRecoverySeed, newRecoveryEd) = Authority.newRecovery()
+                    val newCode = RecoveryCode.encode(newRecoverySeed, chain.pin.genesis)
+                    val x = randomBytes(32)
+                    val member = Authority.newMember(signer, x, 2u)
+                    val old = chain.head
+                    val members =
+                        old.core.members.filterNot { it.id == old.core.authorityID } + member
+                    val secret = Authority.newSecret()
+                    val (state, statement) =
+                        Authority.recovery(
+                            old,
+                            member,
+                            members,
+                            secret,
+                            signer,
+                            oldRecoverySeed,
+                            newRecoveryEd,
+                            now,
+                        )
+                    RecoveryDraft(
+                        RecoverySubmission(
+                            "",
+                            0,
+                            newCode,
+                            deviceSeed,
+                            member.id,
+                            x,
+                            chain.accountId,
+                            chain.accountPublicKey,
+                            DeviceSecurity.stateHash(state),
+                            chain.pin.genesis.copyOf(10),
+                        ),
+                        statement.marshal(),
+                        DeviceSecurity.stateBytes(state),
+                    )
+                }
+        require(prepared.submission.genesisPrefix.contentEquals(genesisPrefix))
+        persist(prepared)
         val api = Api(server, http)
         val res =
             try {
@@ -281,13 +306,9 @@ object Recovery {
                     .submitRecovery(
                         SubmitRecoveryRequest.newBuilder()
                             .setStatement(
-                                com.google.protobuf.ByteString.copyFrom(statement.marshal()),
+                                com.google.protobuf.ByteString.copyFrom(prepared.statement)
                             )
-                            .setState(
-                                com.google.protobuf.ByteString.copyFrom(
-                                    DeviceSecurity.stateBytes(state),
-                                ),
-                            )
+                            .setState(com.google.protobuf.ByteString.copyFrom(prepared.state))
                             .build(),
                         emptyMap(),
                     )
@@ -295,18 +316,9 @@ object Recovery {
             } catch (e: com.connectrpc.ConnectException) {
                 throw PairException(recoveryWords(e))
             }
-        return RecoverySubmission(
-            res.recoveryId,
-            res.readyMs,
-            newCode,
-            deviceSeed,
-            member.id,
-            x,
-            chain.accountId,
-            chain.accountPublicKey,
-            DeviceSecurity.stateHash(state),
-            chain.pin.genesis.copyOf(10),
-        )
+        val submitted = prepared.submission.copy(recoveryId = res.recoveryId, readyMs = res.readyMs)
+        persist(RecoveryDraft(submitted, prepared.statement, prepared.state))
+        return submitted
     }
 
     /** Completes after 48 hours and returns the account to store. */
@@ -338,22 +350,16 @@ object Recovery {
             } catch (e: com.connectrpc.ConnectException) {
                 throw PairException(recoveryWords(e))
             }
-        if (res.deviceId != deviceId(signer.publicKey))
-            throw PairException("服务器返回了意外的设备 ID")
+        if (res.deviceId != deviceId(signer.publicKey)) throw PairException("服务器返回了意外的设备 ID")
         // The published chain is available by recovery ID, signed by the new
         // device key; the new phone opens its own grant.
-        val chain =
-            context(
-                server,
-                http,
-                ByteArray(0),
-                deviceSeed,
-                recoveryId = recoveryId,
-            )
-        if (chain.accountId != accountId || chain.phase != GetRecoveryContextResponse.Phase.PHASE_PUBLISHED)
+        val chain = context(server, http, ByteArray(0), deviceSeed, recoveryId = recoveryId)
+        if (
+            chain.accountId != accountId ||
+                chain.phase != GetRecoveryContextResponse.Phase.PHASE_PUBLISHED
+        )
             throw PairException("服务器发布的恢复链与提交的不一致")
-        if (chain.head.core.authorityID != res.deviceId)
-            throw PairException("恢复链的管理端不是这台设备")
+        if (chain.head.core.authorityID != res.deviceId) throw PairException("恢复链的管理端不是这台设备")
         if (!DeviceSecurity.stateHash(chain.head).contentEquals(expectedState))
             throw PairException("服务器发布的恢复状态与提交的不一致")
         val record =

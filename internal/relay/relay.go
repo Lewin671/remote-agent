@@ -202,7 +202,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	if err := c.security.syncOnce(ctx); err != nil {
 		// The stream itself is up. Installed states still serve events and
 		// the terminal; remote control pauses until a later sync succeeds.
-		slog.Warn("relay: starting without the newest security state; remote control is paused", "err", err)
+		slog.Warn("relay: starting without the newest security state; control remains valid until the local lease expires", "err", err)
 	}
 	meta := c.r.backend.MachineMeta()
 	if err := c.ensurePublished(ctx); err != nil {
@@ -319,6 +319,8 @@ func revision() uint64 {
 // published content epoch is written last, so a crash before it makes the
 // next sync retry the whole republish.
 func (c *conn) republishAfterRecovery(ctx context.Context) error {
+	_, head, _ := c.security.endpoint.Snapshot()
+	startedEpoch := head.Core.Epoch
 	if err := c.putMachine(ctx, c.r.backend.MachineMeta()); err != nil {
 		return err
 	}
@@ -342,8 +344,7 @@ func (c *conn) republishAfterRecovery(ctx context.Context) error {
 	if firstErr != nil {
 		return firstErr
 	}
-	_, head, _ := c.security.endpoint.Snapshot()
-	return writePublishedEpoch(head.Core.Epoch)
+	return writePublishedEpoch(startedEpoch)
 }
 
 // ensurePublished republishes current metadata on the first run and after a

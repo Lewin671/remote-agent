@@ -94,7 +94,7 @@ func (c *currentChain) clientEndpoint(t *testing.T) *Endpoint {
 
 func commandBody(t *testing.T) []byte {
 	t.Helper()
-	b, err := proto.Marshal(&pb.Command{Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}})
+	b, err := proto.Marshal(&pb.Command{Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestCommandAcceptedLogSurvivesRestartAndExpiredRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer machine.Close()
-	// The web retries by re-sealing the same request with a new counter.
+	// The web retries by re-sealing the same request with a fresh random nonce.
 	w, err = client.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
@@ -185,13 +185,13 @@ func TestCommandsFromOneDeviceMayArriveOutOfOrder(t *testing.T) {
 	}
 	calls := 0
 	fn := func(Header, []byte) ([]byte, error) { calls++; return []byte("ok"), nil }
-	// Concurrent senders reach the daemon in either order; a later counter
+	// Concurrent senders reach the daemon in either order; a later request
 	// arriving first must not make an earlier one look stale.
 	if _, err := machine.Accept(second, nil, now, fn); err != nil {
-		t.Fatalf("later counter first: %v", err)
+		t.Fatalf("later request first: %v", err)
 	}
 	if _, err := machine.Accept(first, nil, now, fn); err != nil {
-		t.Fatalf("earlier counter second: %v", err)
+		t.Fatalf("earlier request second: %v", err)
 	}
 	if calls != 2 {
 		t.Fatalf("commands ran %d times", calls)
@@ -349,13 +349,9 @@ func TestPrepareScopeFailureDoesNotReserve(t *testing.T) {
 	client := c.clientEndpoint(t)
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	before := client.data.BlockEnd
 	bad := Header{Purpose: Command, Kind: 5, Machine: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Request: "0123456789abcdef", Deadline: now + 60_000}
 	if _, err := client.Prepare(bad, nil, []byte("x")); err == nil {
 		t.Fatal("bad scope accepted")
-	}
-	if client.data.BlockEnd != before {
-		t.Fatalf("block advanced on failed scope: %d -> %d", before, client.data.BlockEnd)
 	}
 	good := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
 	if _, err := client.Prepare(good, nil, []byte("x")); err != nil {
@@ -431,6 +427,9 @@ func TestRecoveryKeepsEveryDerivableContentKey(t *testing.T) {
 	}
 	if err := machineEp.Install([]State{rec}, []*RecoveryStatement{&stmt}); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := machineEp.ContentSecret(1); err != nil {
+		t.Fatalf("content key 1 lost at recovery: %v", err)
 	}
 	if _, err := machineEp.ContentSecret(2); err != nil {
 		t.Fatalf("content key 2 lost at the recovery boundary: %v", err)

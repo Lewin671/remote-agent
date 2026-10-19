@@ -39,10 +39,6 @@ export interface SecurityRecord {
   // already read these; PrevSecret walking needs the bytes.
   secret: B;
   contentKeys: ContentKey[];
-  // The next unreserved counter value. A 4096-value block is written
-  // durably before any of it is handed out; a restart skips the rest.
-  counter: bigint;
-  blockEnd: bigint;
   // Persisted time lower bound, ms.
   floor: bigint;
 }
@@ -69,7 +65,9 @@ function database(initialize: boolean): Promise<IDBDatabase> {
     };
   });
 }
-function validRecord(r: SecurityRecord | undefined): asserts r is SecurityRecord {
+function validRecord(
+  r: SecurityRecord | undefined,
+): asserts r is SecurityRecord {
   if (
     !r ||
     r.version !== 3 ||
@@ -85,12 +83,6 @@ function validRecord(r: SecurityRecord | undefined): asserts r is SecurityRecord
     !(r.secret instanceof Uint8Array) ||
     r.secret.length !== 32 ||
     !Array.isArray(r.contentKeys) ||
-    typeof r.counter !== "bigint" ||
-    r.counter < 0n ||
-    r.counter > 0xffffffffffffffffn ||
-    typeof r.blockEnd !== "bigint" ||
-    r.blockEnd < r.counter ||
-    r.blockEnd > 0xffffffffffffffffn ||
     typeof r.floor !== "bigint" ||
     !(r.xPrivate instanceof CryptoKey) ||
     r.xPrivate.extractable ||
@@ -195,7 +187,7 @@ export async function contentSecretOf(
   throw new SecurityError("unavailable");
 }
 /** The current key follows each lease renewal but changes only with the
- * content epoch; the counter resets only when that key changes. */
+ * content epoch. */
 export async function extendRecord(
   r: SecurityRecord,
   states: SecurityState[],
@@ -211,7 +203,11 @@ export async function extendRecord(
   };
   // Cache every key still derivable from the old chain before a recovery
   // boundary can stop the PrevSecret walk.
-  for (let ep = r.states[r.states.length - 1].core.contentEpoch; ep >= 1n; ep--) {
+  for (
+    let ep = r.states[r.states.length - 1].core.contentEpoch;
+    ep >= 1n;
+    ep--
+  ) {
     try {
       remember(next.contentKeys, ep, await contentSecretOf(next, ep));
     } catch {
@@ -237,22 +233,14 @@ export async function extendRecord(
     await verifyTransition(head, s, proof);
     const member = s.core.members.some((m) => m.id === next.memberID);
     if (member) {
-      const secret = await openGrant(
-        next.pin,
-        s,
-        next.memberID,
-        next.xPrivate,
-      );
+      const secret = await openGrant(next.pin, s, next.memberID, next.xPrivate);
       if (s.core.contentEpoch !== head.core.contentEpoch) {
         remember(next.contentKeys, head.core.contentEpoch, next.secret);
         if (!proof) {
           const old = await openPrevSecret(secret, s.prevSecret);
-          if (!equal(old, next.secret))
-            throw new SecurityError("untrusted");
+          if (!equal(old, next.secret)) throw new SecurityError("untrusted");
         }
         next.secret = secret;
-        next.counter = 0n;
-        next.blockEnd = 0n;
       } else {
         // A renewal may carry a changed grant; Go accepts it, so all clients
         // use the authority-signed grant rather than rejecting it.
@@ -267,9 +255,6 @@ export async function extendRecord(
   next.member = head.core.members.some((m) => m.id === next.memberID);
   next.stateHash = await stateHash(head);
   next.floor = maxFloor(next.floor);
-  // Persist the block high-water, not an in-use value: after a restart no
-  // value from a block already handed out can be reused.
-  next.counter = next.blockEnd;
   return next;
 }
 function maxFloor(floor: bigint): bigint {
@@ -300,8 +285,6 @@ export async function buildRecord(
     xPrivate,
     secret,
     contentKeys: [],
-    counter: 0n,
-    blockEnd: 0n,
     floor: BigInt(Date.now()),
   };
   // Cache every content key still reachable from the head. A device that
@@ -360,8 +343,7 @@ export async function verifyStoredSecurity(
   r: SecurityRecord,
 ): Promise<SecurityRecord> {
   validRecord(r);
-  if (r.states.length !== r.proofs.length)
-    throw new SecurityError("storage");
+  if (r.states.length !== r.proofs.length) throw new SecurityError("storage");
   // Every transition, authority signature and recovery proof, not only the
   // parent links and the head signature.
   await verifyChain(r.pin, r.states, r.proofs);
@@ -389,54 +371,6 @@ export async function loadSecurity(): Promise<SecurityRecord> {
   );
   return verifyStoredSecurity(r);
 }
-const COUNTER_BLOCK = 4096n;
-/** Serializes block allocation across tabs when the browser has Web Locks. */
-function counterLock<T>(fn: () => Promise<T>): Promise<T> {
-  const locks = (globalThis.navigator as Navigator & { locks?: LockManager })
-    ?.locks;
-  return locks ? locks.request("remote-agent-counter", fn) : fn();
-}
-/**
- * Reserves a whole 4096-value block, durably, before any value in it is used.
- * Two tabs get disjoint blocks; a reload skips the rest of the old block. The
- * per-message path never writes the record.
- */
-export async function reserveCounter(
-  expected: SecurityRecord,
-): Promise<SecurityRecord> {
-  return counterLock(async () => {
-    const db = await database(false);
-    return transaction<SecurityRecord>(db, "readwrite", (store, done, fail) => {
-      const get = store.get(KEY);
-      get.onsuccess = () => {
-        try {
-          const r = get.result as SecurityRecord;
-          validRecord(r);
-          if (
-            !publicPinEqual(r.pin, expected.pin) ||
-            r.memberID !== expected.memberID ||
-            !equal(r.stateHash, expected.stateHash)
-          ) {
-            fail(new SecurityError("stale"));
-            return;
-          }
-          if (r.counter > 0xffffffffffffffffn - COUNTER_BLOCK) {
-            fail(new SecurityError("capacity"));
-            return;
-          }
-          const start = r.counter;
-          const end = start + COUNTER_BLOCK;
-          // The durable value is the next free block start; this tab hands
-          // out start+1 .. end from memory.
-          store.put({ ...r, counter: end, blockEnd: end }, KEY);
-          done({ ...r, counter: start, blockEnd: end });
-        } catch (err) {
-          fail(err instanceof Error ? err : new SecurityError("storage"));
-        }
-      };
-    });
-  });
-}
 export async function installSecurity(
   expected: SecurityRecord,
   states: SecurityState[],
@@ -458,6 +392,10 @@ export async function installSecurity(
           fail(new SecurityError("stale"));
           return;
         }
+        // Preserve concurrent time-floor and key-cache updates at the same head.
+        next.floor = next.floor > r.floor ? next.floor : r.floor;
+        for (const key of r.contentKeys)
+          remember(next.contentKeys, key.epoch, key.secret);
         store.put(next, KEY);
         done();
       } catch (err) {

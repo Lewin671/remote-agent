@@ -22,10 +22,10 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
     fun call(op: String, vararg fields: Pair<String, JsonElement>): JsonObject {
         input.write(
             buildJsonObject {
-                put("Op", op)
-                for ((key, value) in fields) put(key, value)
-            }
-                .toString(),
+                    put("Op", op)
+                    for ((key, value) in fields) put(key, value)
+                }
+                .toString()
         )
         input.newLine()
         input.flush()
@@ -40,11 +40,11 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
 
     fun record(reply: JsonObject): DeviceSecurity.Record {
         val o = reply["Record"]!!.jsonObject
-        val states = o["states"]!!.jsonArray.map { Base64.getDecoder().decode(it.jsonPrimitive.content) }
+        val states =
+            o["states"]!!.jsonArray.map { Base64.getDecoder().decode(it.jsonPrimitive.content) }
         val proofs =
             o["proofs"]!!.jsonArray.map {
-                if (it is JsonNull) null
-                else Base64.getDecoder().decode(it.jsonPrimitive.content)
+                if (it is JsonNull) null else Base64.getDecoder().decode(it.jsonPrimitive.content)
             }
         return DeviceSecurity.Record.fromChain(
             o["account"]!!.jsonPrimitive.content,
@@ -59,12 +59,7 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
 
     /** Adds a member to the fixture's chain and returns its record and the new state. */
     fun enroll(seed: ByteArray, kind: DeviceKind): Pair<DeviceSecurity.Record, ByteArray> {
-        val reply =
-            call(
-                "enroll",
-                "Seed" to blob(seed),
-                "Kind" to JsonPrimitive(kind.number),
-            )
+        val reply = call("enroll", "Seed" to blob(seed), "Kind" to JsonPrimitive(kind.number))
         return record(reply) to bytes(reply, "State")
     }
 
@@ -73,11 +68,7 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
 
     /** Removes members as the fixture's authority and returns the new state. */
     fun remove(targets: List<String>): ByteArray {
-        val reply =
-            call(
-                "remove",
-                "Targets" to JsonArray(targets.map { JsonPrimitive(it) }),
-            )
+        val reply = call("remove", "Targets" to JsonArray(targets.map { JsonPrimitive(it) }))
         return bytes(reply, "State")
     }
 
@@ -128,12 +119,15 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
         }
 
         /** Starts the fixture on the account's authority phone identity. */
-        fun initialize(account: Account, recovery: ByteArray? = null): Pair<TestSecurity, ByteArray> {
+        fun initialize(
+            account: Account,
+            recovery: ByteArray? = null,
+        ): Pair<TestSecurity, ByteArray> {
             check(!all.containsKey(account.server))
             val bin =
                 File(
                     System.getProperty("raSecurityFixture")
-                        ?: error("security fixture binary missing"),
+                        ?: error("security fixture binary missing")
                 )
             val process =
                 ProcessBuilder(bin.absolutePath)
@@ -164,17 +158,6 @@ class TestSecurityStore(initial: DeviceSecurity.Record) : DeviceSecurity.Storage
     @Synchronized
     override fun initializeSecurity(record: DeviceSecurity.Record) {
         throw DeviceSecurity.Failure("conflict")
-    }
-
-    @Synchronized
-    override fun writeSecurity(
-        expectedState: ByteArray,
-        record: DeviceSecurity.Record,
-    ): DeviceSecurity.Record {
-        if (!DeviceSecurity.stateHash(this.record.head).contentEquals(expectedState))
-            throw DeviceSecurity.Failure("stale")
-        this.record = record
-        return record
     }
 
     @Synchronized

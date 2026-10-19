@@ -3,7 +3,7 @@ import Foundation
 
 extension DeviceSecurity {
     /// The local security state: the pinned anchor, the signed chain, this
-    /// device's exchange key, the content-key cache, the counter block and the
+    /// device's exchange key, the content-key cache, the
     /// time floor. Stored under the account's unlocked-device protection.
     public struct Record: Sendable, CustomStringConvertible, CustomDebugStringConvertible,
         CustomReflectable
@@ -14,9 +14,6 @@ extension DeviceSecurity {
         public let memberID: String
         private let xPrivate: Data
         public var member: Bool
-        public var counter: UInt64
-        public var blockEnd: UInt64
-        public var counterEpoch: UInt64
         public var floor: UInt64
         public var floorSaved: UInt64
         public var secret: Data?
@@ -30,7 +27,6 @@ extension DeviceSecurity {
         }
         public init(
             pin: Pin, states: [UInt64: State], memberID: String, xPrivate: Data, member: Bool,
-            counter: UInt64 = 0, blockEnd: UInt64 = 0, counterEpoch: UInt64 = 0,
             floor: UInt64 = 0, floorSaved: UInt64 = 0, secret: Data? = nil,
             contentKeys: [UInt64: Data] = [:], recovery: [UInt64: RecoveryStatement] = [:]
         ) throws {
@@ -67,9 +63,6 @@ extension DeviceSecurity {
             self.memberID = memberID
             self.xPrivate = xPrivate
             self.member = member
-            self.counter = counter
-            self.blockEnd = blockEnd
-            self.counterEpoch = counterEpoch
             self.floor = floor
             self.floorSaved = floorSaved
             self.secret = secret
@@ -94,7 +87,7 @@ extension DeviceSecurity {
             }
             let head = state
             guard head.core.contentEpoch >= epoch else { throw Failure.stale }
-            var key: Data? = counterEpoch == head.core.contentEpoch ? secret : contentKeys[head.core.contentEpoch]
+            var key: Data? = member ? secret : contentKeys[head.core.contentEpoch]
             var ep = head.core.epoch
             while ep >= 1 {
                 guard let s = states[ep] else { throw Failure.storage }
@@ -121,9 +114,6 @@ extension DeviceSecurity {
             w.str(memberID)
             w.raw(xPrivate)
             w.u32(member ? 1 : 0)
-            w.u64(counter)
-            w.u64(blockEnd)
-            w.u64(counterEpoch)
             w.u64(floor)
             w.u64(floorSaved)
             w.lp(secret ?? Data())
@@ -155,9 +145,6 @@ extension DeviceSecurity {
             let memberID = try r.str()
             let x = try r.raw(32)
             let member = try r.u32() != 0
-            _ = try r.u64()
-            let blockEnd = try r.u64()
-            let counterEpoch = try r.u64()
             let floor = try r.u64()
             let floorSaved = try r.u64()
             let secretRaw = try r.lp(maxState)
@@ -191,9 +178,6 @@ extension DeviceSecurity {
             try r.done()
             return try Record(
                 pin: pin, states: states, memberID: memberID, xPrivate: x, member: member,
-                // A restart skips the rest of the last reserved block; those
-                // counter values must never be handed out twice.
-                counter: blockEnd, blockEnd: blockEnd, counterEpoch: counterEpoch,
                 floor: floor, floorSaved: floorSaved, secret: secret, contentKeys: keys,
                 recovery: recovery)
         }

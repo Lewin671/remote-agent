@@ -3,7 +3,6 @@ import {
   installSecurity,
   loadSecurity,
   parseChain,
-  reserveCounter,
   touchSecurity,
   type SecurityRecord,
 } from "./device-security-store";
@@ -57,24 +56,22 @@ export interface StatePage {
 export type FetchStates = (after: bigint, limit: number) => Promise<StatePage>;
 /** Foreground client only. A service worker is never given a full content key,
  * member signing key or recipient private key to implement background sync. */
-/** Storage operations preserve atomic counter/head changes and strict
+/** Storage operations preserve atomic head changes and strict
  * durability in production. Explicit in-memory implementations belong to tests. */
 export interface SecurityStorage {
   loadSecurity: typeof loadSecurity;
   installSecurity: typeof installSecurity;
-  reserveCounter: typeof reserveCounter;
   touchSecurity: typeof touchSecurity;
 }
 const browserStorage: SecurityStorage = {
   loadSecurity,
   installSecurity,
-  reserveCounter,
   touchSecurity,
 };
 const MAX_PAGE = 8;
 export class DeviceSecurityClient {
   private syncJob?: Promise<SecurityRecord>;
-  /** The verified record, kept for sealing; a new block re-checks the store. */
+  /** The verified record, kept for sealing; sync refreshes it from storage. */
   private record?: SecurityRecord;
   constructor(
     readonly memberID: string,
@@ -98,12 +95,7 @@ export class DeviceSecurityClient {
     if (r.member) {
       // A stale/mixed secret must never encrypt new content under a newer
       // state. Compare it with the grant the head carries.
-      const expected = await openGrant(
-        r.pin,
-        head,
-        this.memberID,
-        r.xPrivate,
-      );
+      const expected = await openGrant(r.pin, head, this.memberID, r.xPrivate);
       if (!equal(expected, r.secret)) throw new SecurityError("storage");
     }
     if (!this.active()) throw new SecurityError("storage");
@@ -146,13 +138,12 @@ export class DeviceSecurityClient {
     for (let pages = 0; pages < 512; pages++) {
       const head = r.states[r.states.length - 1];
       const reply = await this.fetchStates(head.core.epoch, MAX_PAGE);
-      if (reply.headEpoch < head.core.epoch)
-        throw new SecurityError("stale");
+      if (reply.headEpoch < head.core.epoch) throw new SecurityError("stale");
       if (!reply.states.length) {
-        if (reply.headEpoch > head.core.epoch)
-          throw new SecurityError("stale");
+        if (reply.headEpoch > head.core.epoch) throw new SecurityError("stale");
         await this.store.touchSecurity(BigInt(Date.now()));
-        return r;
+        this.record = await this.load();
+        return this.record;
       }
       const { states, proofs } = await parseChain(reply.states);
       const before = head.core.epoch;
@@ -173,11 +164,6 @@ export class DeviceSecurityClient {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         let r = await this.currentRecord();
-        // A block is reserved durably once; the counter then moves in memory.
-        if (r.counter >= r.blockEnd) r = await this.store.reserveCounter(r);
-        const next = { ...r, counter: r.counter + 1n };
-        this.record = next;
-        r = next;
         if (!r.member) throw new SecurityError("untrusted");
         const state = r.states[r.states.length - 1];
         if (control(h.purpose)) {
@@ -195,7 +181,6 @@ export class DeviceSecurityClient {
           state: r.stateHash,
           contentEpoch: state.core.contentEpoch,
           sender: this.memberID,
-          counter: r.counter,
         };
         const c = await formCipher(
           r.secret,
@@ -207,11 +192,7 @@ export class DeviceSecurityClient {
         return toEnvelope(c);
       } catch (e) {
         // Another tab installed a newer head between load and reservation.
-        if (
-          e instanceof SecurityError &&
-          e.code === "stale" &&
-          attempt < 2
-        ) {
+        if (e instanceof SecurityError && e.code === "stale" && attempt < 2) {
           await this.sync().catch(() => undefined);
           continue;
         }

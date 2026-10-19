@@ -156,15 +156,16 @@ func requireAdmission(ctx context.Context, tx *sql.Tx, a *enrollmentApproval, ac
 	}
 	var approver, candidate string
 	var candidateKind int32
-	err := tx.QueryRowContext(ctx, `SELECT approver_device_id, candidate_device_id, candidate_kind FROM pairing_admissions WHERE pairing_id = ? AND account_id = ? AND expires_ms > ?`, a.info.PairingId, account, nowMs()).
-		Scan(&approver, &candidate, &candidateKind)
+	var raw, signature []byte
+	err := tx.QueryRowContext(ctx, `SELECT approver_device_id, candidate_device_id, candidate_kind, approval, signature FROM pairing_admissions WHERE pairing_id = ? AND account_id = ? AND expires_ms > ? AND canceled_ms = 0`, a.info.PairingId, account, nowMs()).
+		Scan(&approver, &candidate, &candidateKind, &raw, &signature)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errAdmissionRequired
 	}
 	if err != nil {
 		return err
 	}
-	if candidate != id || candidateKind != int32(kind) || approver != a.info.ApproverDeviceId {
+	if candidate != id || candidateKind != int32(kind) || approver != a.info.ApproverDeviceId || !bytes.Equal(raw, a.raw) || !bytes.Equal(signature, a.signature) {
 		return errAdmissionRequired
 	}
 	return nil

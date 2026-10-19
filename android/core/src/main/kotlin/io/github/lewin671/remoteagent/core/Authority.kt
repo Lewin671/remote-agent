@@ -32,7 +32,8 @@ object Authority {
         return remaining < DAY_MS && at - head.core.issuedAt >= HALF_DAY_MS
     }
 
-    fun leaseValid(head: DeviceSecurity.State, now: Long): Boolean = head.core.notAfter >= now.toULong()
+    fun leaseValid(head: DeviceSecurity.State, now: Long): Boolean =
+        head.core.notAfter >= now.toULong()
 
     fun sorted(members: List<DeviceSecurity.Member>): List<DeviceSecurity.Member> =
         members.sortedBy { it.id }
@@ -43,18 +44,9 @@ object Authority {
         return DeviceSecurity.Member(deviceId(ed.publicKey), ed.publicKey, x, kind)
     }
 
-    fun memberWithX(
-        edPublic: ByteArray,
-        xPrivate: ByteArray,
-        kind: UInt,
-    ): DeviceSecurity.Member {
+    fun memberWithX(edPublic: ByteArray, xPrivate: ByteArray, kind: UInt): DeviceSecurity.Member {
         check(edPublic.size == 32 && xPrivate.size == 32)
-        return DeviceSecurity.Member(
-            deviceId(edPublic),
-            edPublic,
-            X25519.publicKey(xPrivate),
-            kind,
-        )
+        return DeviceSecurity.Member(deviceId(edPublic), edPublic, X25519.publicKey(xPrivate), kind)
     }
 
     fun genesis(
@@ -142,7 +134,7 @@ object Authority {
     fun rotateX(
         parent: DeviceSecurity.State,
         target: String,
-        newXPrivate: ByteArray,
+        newXPublic: ByteArray,
         oldSecret: ByteArray,
         newSecret: ByteArray,
         signer: SigningKey,
@@ -152,20 +144,10 @@ object Authority {
         check(target !in parent.core.removed)
         val members =
             parent.core.members.map {
-                if (it.id == target)
-                    it.copy(x = X25519.publicKey(newXPrivate))
-                else it
+                if (it.id == target) it.copy(x = newXPublic.copyOf()) else it
             }
-        check(members.first { it.id == target }.x != old.x)
-        return membership(
-            parent,
-            members,
-            parent.core.removed,
-            oldSecret,
-            newSecret,
-            signer,
-            now,
-        )
+        check(newXPublic.size == 32 && !newXPublic.contentEquals(old.x))
+        return membership(parent, members, parent.core.removed, oldSecret, newSecret, signer, now)
     }
 
     /** A lease renewal: Epoch + 1, same members and content key, no PrevSecret. */
@@ -176,7 +158,11 @@ object Authority {
         now: Long,
     ): DeviceSecurity.State {
         check(secret.size == 32)
-        val core = parent.core.copy(parent = DeviceSecurity.stateHash(parent), epoch = parent.core.epoch + 1uL)
+        val core =
+            parent.core.copy(
+                parent = DeviceSecurity.stateHash(parent),
+                epoch = parent.core.epoch + 1uL,
+            )
         val issued = maxOf(now.toULong(), core.issuedAt)
         return build(
             core.copy(issuedAt = issued, notAfter = renewAfter(issued.toLong()).toULong()),
@@ -195,7 +181,11 @@ object Authority {
         now: Long,
     ): DeviceSecurity.State {
         check(newRecoveryEd.size == 32 && secret.size == 32)
-        val core = parent.core.copy(parent = DeviceSecurity.stateHash(parent), epoch = parent.core.epoch + 1uL)
+        val core =
+            parent.core.copy(
+                parent = DeviceSecurity.stateHash(parent),
+                epoch = parent.core.epoch + 1uL,
+            )
         val issued = maxOf(now.toULong(), core.issuedAt)
         return build(
             core.copy(
@@ -228,7 +218,7 @@ object Authority {
                 deviceId(newSigner.publicKey) == newMember.id &&
                 newRecoveryEd.size == 32 &&
                 secret.size == 32 &&
-                members.none { it.id == parent.core.authorityID },
+                members.none { it.id == parent.core.authorityID }
         )
         val core =
             parent.core.copy(
@@ -302,7 +292,8 @@ object Authority {
 object X25519 {
     fun publicKey(privateKey: ByteArray): ByteArray {
         require(privateKey.size == 32)
-        return org.bouncycastle.crypto.params.X25519PrivateKeyParameters(privateKey.copyOf(), 0)
+        return org.bouncycastle.crypto.params
+            .X25519PrivateKeyParameters(privateKey.copyOf(), 0)
             .generatePublicKey()
             .encoded
     }
@@ -315,7 +306,28 @@ data class CreatedAccount(
     val recoveryCode: String,
     /** The relay needs its exported genesis pinned offline before it will accept this domain. */
     val needsOfflinePin: Boolean = false,
-)
+) {
+    companion object {
+        fun parseDraft(b: ByteArray): CreatedAccount =
+            parseDraft(b) { s ->
+                val server = s.readUTF()
+                val root = s.blob()
+                val seed = s.blob()
+                val id = s.readUTF()
+                val accountId = s.readUTF()
+                val pub = s.blob()
+                val record = DeviceSecurity.Record.parse(s.blob())
+                require(
+                    root.size == 32 &&
+                        seed.size == 32 &&
+                        deviceId(SigningKey(seed).publicKey) == id &&
+                        record.memberID == id &&
+                        record.pin.account == accountId
+                )
+                CreatedAccount(Account(server, root, seed, id, accountId, pub), record, "")
+            }
+    }
+}
 
 /**
  * Creates a new account in the app: the phone generates the root key, its device identity and a
@@ -328,67 +340,122 @@ suspend fun createAccount(
     root: ByteArray = randomBytes(32),
     deviceSeed: ByteArray = randomBytes(32),
     now: Long = System.currentTimeMillis(),
+    draft: CreatedAccount? = null,
+    persistDraft: (CreatedAccount) -> Unit = { throw DeviceSecurity.Failure("storage") },
 ): CreatedAccount {
-    val keys = Keys.derive(root)
-    val accountId = deviceId(keys.account.publicKey)
-    val signer = SigningKey(deviceSeed)
-    val xPrivate = randomBytes(32)
-    val phone = Authority.newMember(signer, xPrivate, 2u)
-    val (recoverySeed, recoveryEd) = Authority.newRecovery()
-    val genesis =
-        Authority.genesis(
-            accountId,
-            randomBytes(32),
-            phone,
-            recoveryEd,
-            Authority.newSecret(),
-            signer,
-            now,
-        )
-    val account =
-        joinWithRoot(
-            root,
-            server,
-            http,
-            setupToken = setupToken,
-            kind = DeviceKind.DEVICE_KIND_CLIENT,
-            seed = deviceSeed,
-        )
+    var prepared =
+        draft
+            ?: run {
+                val keys = Keys.derive(root)
+                val id = deviceId(keys.account.publicKey)
+                val signer = SigningKey(deviceSeed)
+                val x = randomBytes(32)
+                val phone = Authority.newMember(signer, x, 2u)
+                val (seed, pub) = Authority.newRecovery()
+                val g =
+                    Authority.genesis(
+                        id,
+                        randomBytes(32),
+                        phone,
+                        pub,
+                        Authority.newSecret(),
+                        signer,
+                        now,
+                    )
+                val record = DeviceSecurity.Record(DeviceSecurity.pinOf(g), listOf(g), phone.id, x)
+                CreatedAccount(
+                    Account(server, root, deviceSeed, phone.id, id, keys.account.publicKey),
+                    record,
+                    RecoveryCode.encode(seed, record.pin.genesis),
+                )
+            }
+    require(prepared.account.server == server)
+    // Durable local keys and genesis precede every remote side effect.
+    persistDraft(prepared)
     val api = Api(server, http)
+    val token =
+        try {
+            login(api, prepared.account)
+        } catch (e: ConnectException) {
+            if (e.code != Code.PERMISSION_DENIED && e.code != Code.NOT_FOUND) throw e
+            joinWithRoot(
+                prepared.account.root,
+                server,
+                http,
+                setupToken = setupToken,
+                kind = DeviceKind.DEVICE_KIND_CLIENT,
+                seed = prepared.account.deviceSeed,
+            )
+            login(api, prepared.account)
+        }
     api.client
         .pinSecurityDomain(
             io.github.lewin671.remoteagent.proto.PinSecurityDomainRequest.newBuilder()
                 .setGenesisState(
-                    com.google.protobuf.ByteString.copyFrom(DeviceSecurity.stateBytes(genesis)),
+                    com.google.protobuf.ByteString.copyFrom(
+                        DeviceSecurity.stateBytes(prepared.record.chain.first())
+                    )
                 )
                 .build(),
-            Api.headers(login(api, account)),
+            Api.headers(token),
         )
         .value()
-    val record =
-        DeviceSecurity.Record.fromChain(
-            accountId,
-            genesis.core.domain,
-            DeviceSecurity.stateHash(genesis),
-            phone.id,
-            xPrivate,
-            listOf(DeviceSecurity.stateBytes(genesis)),
-            listOf(null),
-        )
-    return CreatedAccount(
-        account,
-        record,
-        RecoveryCode.encode(recoverySeed, DeviceSecurity.pinOf(genesis).genesis),
-    )
+    // A previous response may have been lost after pinning or code rotation.
+    // Re-upload exactly the saved states, then rotate to a code shown now.
+    if (prepared.record.chain.size > 1) {
+        val request = io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
+        prepared.record.chain.drop(1).forEach {
+            request.addStates(
+                io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
+                    .setState(
+                        com.google.protobuf.ByteString.copyFrom(DeviceSecurity.stateBytes(it))
+                    )
+            )
+        }
+        api.client.putSecurityState(request.build(), Api.headers(token)).value()
+    }
+    if (prepared.recoveryCode.isEmpty()) {
+        val (seed, pub) = Authority.newRecovery()
+        val r = prepared.record
+        val next =
+            Authority.veto(
+                r.head,
+                pub,
+                r.contentKey(r.head.core.contentEpoch)!!,
+                SigningKey(prepared.account.deviceSeed),
+                now,
+            )
+        prepared =
+            prepared.copy(
+                record = r.installed(listOf(next), listOf(null)),
+                recoveryCode = RecoveryCode.encode(seed, r.pin.genesis),
+            )
+        persistDraft(prepared)
+        api.client
+            .putSecurityState(
+                io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
+                    .addStates(
+                        io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
+                            .setState(
+                                com.google.protobuf.ByteString.copyFrom(
+                                    DeviceSecurity.stateBytes(next)
+                                )
+                            )
+                    )
+                    .build(),
+                Api.headers(token),
+            )
+            .value()
+    }
+    return prepared
 }
 
 /**
- * Rebuilds the protocol 10 security domain for an existing account upgraded
- * from protocol 9: it keeps the account root and the phone's Ed25519 device
- * identity, starts a fresh domain with the phone as the only member, and
- * tries to pin it. A relay upgraded from layout 5 refuses a network pin and
- * requires the exported genesis offline instead; [CreatedAccount.needsOfflinePin]
- * says that happened, and the local record is still usable for export.
+ * Rebuilds the protocol 10 security domain for an existing account upgraded from protocol 9: it
+ * keeps the account root and the phone's Ed25519 device identity, starts a fresh domain with the
+ * phone as the only member, and tries to pin it. A relay upgraded from layout 5 refuses a network
+ * pin and requires the exported genesis offline instead; [CreatedAccount.needsOfflinePin] says that
+ * happened, and the local record is still usable for export.
  */
 suspend fun rebuildSecurityDomain(
     server: String,
@@ -396,8 +463,7 @@ suspend fun rebuildSecurityDomain(
     stored: Account,
     now: Long = System.currentTimeMillis(),
 ): CreatedAccount {
-    if (!stored.hasRoot)
-        throw PairException("这台手机没有账户根密钥，不能重建安全域；请用管理端手机重新配对")
+    if (!stored.hasRoot) throw PairException("这台手机没有账户根密钥，不能重建安全域；请用管理端手机重新配对")
     val keys = Keys.derive(stored.root)
     val accountId = deviceId(keys.account.publicKey)
     if (stored.accountId.isNotEmpty() && stored.accountId != accountId)
@@ -446,8 +512,8 @@ suspend fun rebuildSecurityDomain(
                     io.github.lewin671.remoteagent.proto.PinSecurityDomainRequest.newBuilder()
                         .setGenesisState(
                             com.google.protobuf.ByteString.copyFrom(
-                                DeviceSecurity.stateBytes(genesis),
-                            ),
+                                DeviceSecurity.stateBytes(genesis)
+                            )
                         )
                         .build(),
                     Api.headers(token),
@@ -462,8 +528,7 @@ suspend fun rebuildSecurityDomain(
             }
         }
     } catch (e: ConnectException) {
-        if (unreachable(e)) offline = true
-        else throw PairException(e.message ?: "连不上服务器")
+        if (unreachable(e)) offline = true else throw PairException(e.message ?: "连不上服务器")
     }
     val record =
         DeviceSecurity.Record.fromChain(

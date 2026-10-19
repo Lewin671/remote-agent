@@ -170,6 +170,17 @@ CREATE TABLE IF NOT EXISTS security_recovery (
 	rejected_ms INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS security_recovery_new_ed ON security_recovery (new_recovery_ed);
+-- Completed operations remain addressable when a later recovery replaces the pending row.
+CREATE TABLE IF NOT EXISTS security_recovery_completed (
+ account_id TEXT NOT NULL,
+ recovery_id TEXT PRIMARY KEY,
+ statement BLOB NOT NULL,
+ state BLOB NOT NULL,
+ submitted_ms INTEGER NOT NULL,
+ ready_ms INTEGER NOT NULL,
+ completed_ms INTEGER NOT NULL,
+ rejected_ms INTEGER NOT NULL
+);
 `
 
 var errOldLayout = errors.New("this database has the layout of a relay with a single account; " +
@@ -306,7 +317,7 @@ func (s *store) setAccountStatus(ctx context.Context, id string, status int) err
 
 // accountTables are the tables holding an account's data, in the order
 // its rows are deleted.
-var accountTables = []string{"security_recovery", "security_states", "pairing_admissions", "events", "images", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
+var accountTables = []string{"security_recovery_completed", "security_recovery", "security_states", "pairing_admissions", "events", "images", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
 
 // deleteAccount deletes an account and everything stored for it. Its
 // device keys stay revoked, so that its registrations cannot come back.

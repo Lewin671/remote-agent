@@ -180,8 +180,8 @@ func TestExpiredLeaseRejectedAfterClockRollback(t *testing.T) {
 
 	// A fresh control envelope, sealed with the current key. Its deadline is
 	// valid against the persisted floor; only the lease is expired.
-	h := Header{Account: g.Core.Account, Domain: g.Core.Domain, Epoch: added.Core.Epoch, State: mustHash(t, added), ContentEpoch: added.Core.ContentEpoch, Purpose: Command, Kind: 5, Sender: phone.ID, Machine: machine.ID, Request: "0123456789abcdef", Deadline: expired + 5*60*1000, Counter: 1}
-	w, err := Seal(secret2, nil, h, bytes.Repeat([]byte{0x01}, 32), phoneEd)
+	h := Header{Account: g.Core.Account, Domain: g.Core.Domain, Epoch: added.Core.Epoch, State: mustHash(t, added), ContentEpoch: added.Core.ContentEpoch, Purpose: Command, Kind: 5, Sender: phone.ID, Machine: machine.ID, Request: "0123456789abcdef", Deadline: expired + 5*60*1000}
+	w, err := Seal(secret2, nil, h, commandBody(t), phoneEd)
 	if err != nil {
 		t.Fatal(err)
 	}

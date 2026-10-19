@@ -15,12 +15,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// The endpoint store is SQLite. The per-envelope path never writes it: a
-// sender reserves a block of counters durably before using any of them, and
-// a receiver reserves a block of accepted counters per sender before
-// accepting any of them. The time floor and any pending reservations are
-// flushed at most once per second (Touch) or with the next reservation, so
-// steady traffic costs no disk write per message.
+// The endpoint stores verified states, content keys, a time floor and the
+// at-most-once acceptance log in SQLite. Sealing does not write storage.
 const storageVersion = 3
 
 const storeSchema = `
@@ -34,9 +30,6 @@ CREATE TABLE IF NOT EXISTS security (
 	ed_seed BLOB NOT NULL,
 	x_private BLOB NOT NULL,
 	secret BLOB,
-	counter INTEGER NOT NULL,
-	block_end INTEGER NOT NULL,
-	counter_epoch INTEGER NOT NULL,
 	floor_ms INTEGER NOT NULL,
 	floor_saved_ms INTEGER NOT NULL,
 	member INTEGER NOT NULL
@@ -84,9 +77,6 @@ type record struct {
 	XPrivate      []byte
 	Secret        []byte
 	Member        bool
-	Counter       uint64
-	BlockEnd      uint64
-	CounterEpoch  uint64
 	Floor         uint64
 	FloorSaved    uint64
 	ContentKeys   map[uint64][]byte
@@ -105,10 +95,11 @@ type accepted struct {
 }
 
 type Endpoint struct {
-	mu   sync.Mutex
-	path string
-	db   *sql.DB
-	data record
+	execution sync.Mutex
+	mu        sync.Mutex
+	path      string
+	db        *sql.DB
+	data      record
 }
 
 func chainHead(r record) State { return r.States[r.HeadEpoch] }
@@ -347,7 +338,7 @@ func createStore(db *sql.DB) error {
 	if _, err := tx.Exec(storeSchema); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`INSERT INTO security (id, version, pin_account, pin_domain, pin_genesis, member_id, ed_seed, x_private, counter, block_end, counter_epoch, floor_ms, floor_saved_ms, member) VALUES (1, ?, '', X'', X'', '', X'', X'', 0, 0, 0, 0, 0, 0)`, storageVersion); err != nil {
+	if _, err := tx.Exec(`INSERT INTO security (id, version, pin_account, pin_domain, pin_genesis, member_id, ed_seed, x_private, floor_ms, floor_saved_ms, member) VALUES (1, ?, '', X'', X'', '', X'', X'', 0, 0, 0)`, storageVersion); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`INSERT INTO accepted_meta (id, cutoff) VALUES (1, 0)`); err != nil {
@@ -375,7 +366,7 @@ func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatem
 			return nil, ErrStorage
 		}
 		// A new endpoint replaces whatever was there: pairing again starts a
-		// new state, and the old counters must never be reused.
+		// new state after the caller checks its chain against the local anchor.
 		for _, suffix := range []string{"", "-wal", "-shm"} {
 			if err := os.Remove(path + suffix); err != nil && !os.IsNotExist(err) {
 				return nil, ErrStorage
@@ -392,7 +383,7 @@ func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatem
 		db.Close()
 		return nil, ErrStorage
 	}
-	r := record{Version: storageVersion, Pin: pin, States: map[uint64]State{}, HeadEpoch: head.Core.Epoch, MemberID: id, EdSeed: bytes.Clone(edSeed), XPrivate: bytes.Clone(xPrivate), Secret: secret, Member: true, CounterEpoch: head.Core.ContentEpoch, ContentKeys: map[uint64][]byte{}, Recovery: map[uint64]RecoveryStatement{}, Accepted: map[string]accepted{}}
+	r := record{Version: storageVersion, Pin: pin, States: map[uint64]State{}, HeadEpoch: head.Core.Epoch, MemberID: id, EdSeed: bytes.Clone(edSeed), XPrivate: bytes.Clone(xPrivate), Secret: secret, Member: true, ContentKeys: map[uint64][]byte{}, Recovery: map[uint64]RecoveryStatement{}, Accepted: map[string]accepted{}}
 	for i, s := range states {
 		r.States[s.Core.Epoch] = s
 		if proofs[i] != nil {
@@ -420,8 +411,8 @@ func (e *Endpoint) persistAll() error {
 		return ErrStorage
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec(`UPDATE security SET version=?, pin_account=?, pin_domain=?, pin_genesis=?, member_id=?, ed_seed=?, x_private=?, secret=?, counter=?, block_end=?, counter_epoch=?, floor_ms=?, floor_saved_ms=?, member=? WHERE id=1`,
-		d.Version, d.Pin.Account, d.Pin.Domain[:], d.Pin.Genesis[:], d.MemberID, d.EdSeed, d.XPrivate, d.Secret, d.Counter, d.BlockEnd, d.CounterEpoch, d.Floor, d.FloorSaved, boolInt(d.Member)); err != nil {
+	if _, err := tx.Exec(`UPDATE security SET version=?, pin_account=?, pin_domain=?, pin_genesis=?, member_id=?, ed_seed=?, x_private=?, secret=?, floor_ms=?, floor_saved_ms=?, member=? WHERE id=1`,
+		d.Version, d.Pin.Account, d.Pin.Domain[:], d.Pin.Genesis[:], d.MemberID, d.EdSeed, d.XPrivate, d.Secret, d.Floor, d.FloorSaved, boolInt(d.Member)); err != nil {
 		return ErrStorage
 	}
 	for ep, s := range d.States {
@@ -494,8 +485,8 @@ func OpenEndpoint(path string) (*Endpoint, error) {
 	r := record{States: map[uint64]State{}, Recovery: map[uint64]RecoveryStatement{}, Accepted: map[string]accepted{}, ContentKeys: map[uint64][]byte{}}
 	var member int
 	var pinDomain, pinGenesis []byte
-	err = db.QueryRow(`SELECT version, pin_account, pin_domain, pin_genesis, member_id, ed_seed, x_private, secret, counter, block_end, counter_epoch, floor_ms, floor_saved_ms, member FROM security WHERE id=1`).
-		Scan(&r.Version, &r.Pin.Account, &pinDomain, &pinGenesis, &r.MemberID, &r.EdSeed, &r.XPrivate, &r.Secret, &r.Counter, &r.BlockEnd, &r.CounterEpoch, &r.Floor, &r.FloorSaved, &member)
+	err = db.QueryRow(`SELECT version, pin_account, pin_domain, pin_genesis, member_id, ed_seed, x_private, secret, floor_ms, floor_saved_ms, member FROM security WHERE id=1`).
+		Scan(&r.Version, &r.Pin.Account, &pinDomain, &pinGenesis, &r.MemberID, &r.EdSeed, &r.XPrivate, &r.Secret, &r.Floor, &r.FloorSaved, &member)
 	if errors.Is(err, sql.ErrNoRows) {
 		db.Close()
 		return nil, ErrStorage
@@ -515,10 +506,6 @@ func OpenEndpoint(path string) (*Endpoint, error) {
 		db.Close()
 		return nil, err
 	}
-	// Counter values in the last reserved block are never handed out again
-	// after a restart: start at the durable block end, not at the stored
-	// in-use counter.
-	r.Counter = r.BlockEnd
 	rows, err := db.Query(`SELECT epoch, state FROM states ORDER BY epoch`)
 	if err != nil {
 		db.Close()
@@ -710,12 +697,14 @@ func (e *Endpoint) HeadEpoch() uint64 { e.mu.Lock(); defer e.mu.Unlock(); return
 func (e *Endpoint) Removed() bool     { e.mu.Lock(); defer e.mu.Unlock(); return !e.data.Member }
 
 // Install appends a contiguous chain segment. proofs[i] is set only when
-// states[i] is a recovery transition. The new head, states, keys and any
-// counter reset are persisted in one transaction before use.
+// states[i] is a recovery transition. The new head, states and keys are
+// persisted in one transaction before use.
 func (e *Endpoint) Install(states []State, proofs []*RecoveryStatement) error {
 	if len(states) == 0 || len(proofs) != len(states) {
 		return ErrInvalid
 	}
+	e.execution.Lock()
+	defer e.execution.Unlock()
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	d := e.data
@@ -724,6 +713,7 @@ func (e *Endpoint) Install(states []State, proofs []*RecoveryStatement) error {
 	next.Recovery = cloneRecovery(d.Recovery)
 	next.ContentKeys = cloneKeys(d.ContentKeys)
 	next.Secret = bytes.Clone(d.Secret)
+	cacheDerivableKeys(&next)
 	for i, s := range states {
 		if s.Core.Epoch <= next.HeadEpoch {
 			if old, ok := next.States[s.Core.Epoch]; ok {
@@ -743,6 +733,9 @@ func (e *Endpoint) Install(states []State, proofs []*RecoveryStatement) error {
 			return ErrStale
 		}
 		prev := next.States[next.HeadEpoch]
+		if proofs[i] != nil {
+			cacheDerivableKeys(&next)
+		}
 		if err := VerifyTransition(prev, s, proofs[i]); err != nil {
 			return err
 		}
@@ -763,9 +756,6 @@ func (e *Endpoint) Install(states []State, proofs []*RecoveryStatement) error {
 					}
 				}
 				next.Secret = secret
-				next.Counter = 0
-				next.BlockEnd = 0
-				next.CounterEpoch = s.Core.ContentEpoch
 				next.Member = true
 			} else if next.Secret != nil {
 				next.Secret = secret
@@ -820,8 +810,8 @@ func (e *Endpoint) persistInstall(old, next record) error {
 		return ErrStorage
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec(`UPDATE security SET secret=?, counter=?, block_end=?, counter_epoch=?, member=? WHERE id=1`,
-		next.Secret, next.Counter, next.BlockEnd, next.CounterEpoch, boolInt(next.Member)); err != nil {
+	if _, err := tx.Exec(`UPDATE security SET secret=?, member=? WHERE id=1`,
+		next.Secret, boolInt(next.Member)); err != nil {
 		return ErrStorage
 	}
 	for ep := old.HeadEpoch + 1; ep <= next.HeadEpoch; ep++ {
@@ -865,18 +855,38 @@ func (e *Endpoint) persistInstall(old, next record) error {
 // device, so each content key the chain lets it read is cached before a
 // recovery boundary can make the PrevSecret walk stop.
 func cacheDerivableKeys(next *record) {
-	for _, s := range next.States {
-		if _, ok := s.Core.Member(next.MemberID); !ok {
-			continue
+	// Walk the old chain, including epochs before this member's first grant.
+	start := next.HeadEpoch
+	for start > 0 {
+		if _, ok := next.States[start].Core.Member(next.MemberID); ok {
+			break
 		}
-		if _, ok := next.ContentKeys[s.Core.ContentEpoch]; ok {
-			continue
+		start--
+	}
+	key := bytes.Clone(next.Secret)
+	for ep := start; ep >= 1; ep-- {
+		state, ok := next.States[ep]
+		if !ok {
+			return
 		}
-		key, err := next.Pin.OpenGrant(s, next.MemberID, next.XPrivate)
-		if err != nil {
-			continue
+		if len(key) != 32 {
+			return
 		}
-		next.ContentKeys[s.Core.ContentEpoch] = bytes.Clone(key)
+		next.ContentKeys[state.Core.ContentEpoch] = bytes.Clone(key)
+		prev, ok := next.States[ep-1]
+		if !ok {
+			return
+		}
+		if prev.Core.ContentEpoch != state.Core.ContentEpoch {
+			if len(state.PrevSecret) == 0 {
+				return
+			}
+			var err error
+			key, err = openPrevSecret(key, state.PrevSecret)
+			if err != nil {
+				return
+			}
+		}
 	}
 }
 
@@ -930,8 +940,17 @@ func (e *Endpoint) contentSecretLocked(epoch uint64) ([]byte, error) {
 	if head.Core.ContentEpoch < epoch {
 		return nil, ErrStale
 	}
+	start := head.Core.Epoch
+	if !d.Member {
+		for start > 0 {
+			if _, ok := d.States[start].Core.Member(d.MemberID); ok {
+				break
+			}
+			start--
+		}
+	}
 	key := bytes.Clone(d.Secret)
-	for ep := head.Core.Epoch; ep >= 1; ep-- {
+	for ep := start; ep >= 1; ep-- {
 		s, ok := d.States[ep]
 		if !ok {
 			return nil, ErrStorage
@@ -1004,7 +1023,7 @@ func (e *Endpoint) saveFloorLocked(d record) error {
 	return nil
 }
 
-// Prepare seals one envelope. Only a new counter block is written to disk.
+// Prepare seals locally with a random nonce and no storage write.
 func (e *Endpoint) Prepare(h Header, sessionSeed, plain []byte) (Ciphertext, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -1020,49 +1039,17 @@ func (e *Endpoint) Prepare(h Header, sessionSeed, plain []byte) (Ciphertext, err
 	h.State = sh
 	h.ContentEpoch = head.Core.ContentEpoch
 	h.Sender = d.MemberID
-	// Check the caller's scope before reserving a block, so a bad header
-	// cannot advance the persisted block past the in-memory value.
+	// Check the caller's scope before sealing, so a bad header
+	// cannot seal for another scope.
 	if h.Scope(head) != nil {
 		return Ciphertext{}, ErrUntrusted
 	}
-	if head.Core.ContentEpoch != d.CounterEpoch {
-		d.Counter, d.BlockEnd, d.CounterEpoch = 0, 0, head.Core.ContentEpoch
-	}
-	if d.Counter >= d.BlockEnd {
-		if d.BlockEnd > ^uint64(0)-CounterBlock {
-			return Ciphertext{}, ErrCapacity
-		}
-		if err := e.reserveSendBlockLocked(&d); err != nil {
-			return Ciphertext{}, err
-		}
-	}
-	counter := d.Counter + 1
-	d.Counter = counter
-	h.Counter = counter
-	// Consume the in-memory counter even if sealing fails, so the durable
-	// block reservation stays consistent with what this endpoint hands out.
-	e.data = d
 	c, err := Seal(d.Secret, sessionSeed, h, plain, ed25519.NewKeyFromSeed(d.EdSeed))
 	if err != nil {
 		return Ciphertext{}, err
 	}
 	e.data = d
 	return c, nil
-}
-
-func (e *Endpoint) reserveSendBlockLocked(d *record) error {
-	next := d.BlockEnd + CounterBlock
-	if e.db != nil {
-		res, err := e.db.Exec(`UPDATE security SET block_end=? WHERE id=1 AND block_end=?`, next, d.BlockEnd)
-		if err != nil {
-			return ErrStorage
-		}
-		if n, _ := res.RowsAffected(); n != 1 {
-			return ErrStorage
-		}
-	}
-	d.BlockEnd = next
-	return nil
 }
 
 // Open opens a live or stored envelope. Live control envelopes additionally
@@ -1098,6 +1085,8 @@ func (e *Endpoint) Open(w Wire, sessionSeed []byte, live bool, now uint64) (Head
 // result. New command entries are persisted before fn runs; terminal and
 // other non-command frames stay in memory and are pruned by deadline.
 func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header, []byte) ([]byte, error)) ([]byte, error) {
+	e.execution.Lock()
+	defer e.execution.Unlock()
 	e.mu.Lock()
 	h, err := ParseHeader(w.Header)
 	if err != nil {
@@ -1111,12 +1100,10 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 	key := acceptedKey(h)
 	e.mu.Unlock()
 
-	// Open verifies the state, live membership, lease and ciphertext. Only a
-	// verified header may reach the accepted log: an attacker forging header
-	// bytes must not learn cached results or whether a request was seen. An
-	// unknown state or an expired lease must not consume the replay entry, so
-	// the caller can fetch the state and try the same envelope again.
-	_, plain, err := e.Open(w, sessionSeed, true, now)
+	// Authenticate and decrypt against the envelope's own state before any
+	// accepted-log lookup. Forged headers cannot probe recorded results.
+	// Current membership and lease checks apply only to a new execution.
+	_, plain, err := e.Open(w, sessionSeed, false, now)
 	if err != nil {
 		return nil, err
 	}
@@ -1129,6 +1116,16 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 	if result, cached, err := e.lookupAccepted(key); cached || err != nil {
 		e.mu.Unlock()
 		return result, err
+	}
+	// Only a new execution requires current membership, epoch and lease.
+	state := e.data.States[h.Epoch]
+	if _, err := w.VerifyOrigin(state, chainHead(e.data), true, maxU64(now, e.data.Floor)); err != nil {
+		e.mu.Unlock()
+		return nil, err
+	}
+	if now+MaxClockSkew < e.data.Floor {
+		e.mu.Unlock()
+		return nil, ErrStale
 	}
 	now = maxU64(now, e.data.Floor)
 	if h.Deadline <= now || h.Deadline-now > 10*60*1000 {
@@ -1145,6 +1142,10 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 			}
 		}
 		e.data = d
+	}
+	if h.Purpose == Command && readOnlyCommand(h, plain) {
+		e.mu.Unlock()
+		return fn(h, plain)
 	}
 	if _, _, err := e.startAccepted(key, h.Deadline, now, persist); err != nil {
 		e.mu.Unlock()
@@ -1196,4 +1197,25 @@ func itoa(n uint64) string {
 		n /= 10
 	}
 	return string(b[i:])
+}
+
+// CheckExtension preserves the complete local chain when a computer re-pairs.
+func (e *Endpoint) CheckExtension(states []State) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if len(states) < int(e.data.HeadEpoch) {
+		return fmt.Errorf("pairing chain rolls back local state; manual handling is required")
+	}
+	for ep := uint64(1); ep <= e.data.HeadEpoch; ep++ {
+		old, ok := e.data.States[ep]
+		if !ok {
+			return ErrStorage
+		}
+		a, _ := old.Hash()
+		b, err := states[ep-1].Hash()
+		if err != nil || states[ep-1].Core.Epoch != ep || a != b {
+			return fmt.Errorf("pairing chain forks local state at epoch %d; manual handling is required", ep)
+		}
+	}
+	return nil
 }

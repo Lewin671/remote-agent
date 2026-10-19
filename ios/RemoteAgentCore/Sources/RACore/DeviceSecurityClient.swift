@@ -5,7 +5,7 @@ import SwiftProtobuf
 
 /// The client side of the phone-signed security domain. It keeps the local
 /// chain, seals and opens envelopes with the current content key, pulls new
-/// states from the relay, and reserves counter blocks before use.
+/// states from the relay.
 public actor DeviceSecurityClient {
     public typealias StateFetch =
         @Sendable (UInt64) async throws -> PBGetSecurityStatesResponse
@@ -157,9 +157,6 @@ public actor DeviceSecurityClient {
                     }
                     if let old = next.secret { next.contentKeys[prev.core.contentEpoch] = old }
                     next.secret = key
-                    next.counter = 0
-                    next.blockEnd = 0
-                    next.counterEpoch = s.core.contentEpoch
                     next.member = true
                 } else if next.secret != nil {
                     next.secret = key
@@ -190,14 +187,13 @@ public actor DeviceSecurityClient {
         }
         return r
     }
-    /// Seals one envelope with the current head and content key. A counter
-    /// block is written durably before any of its values are used.
+    /// Seals locally with the current content key and a random nonce.
     public func seal(
         purpose: DeviceSecurity.Purpose, machine: String = "", session: String = "",
         request: String = "", seq: UInt64 = 0, deadline: UInt64 = 0, plaintext: Data,
         sessionSeed: Data? = nil
     ) async throws -> PBEnvelope {
-        var r = try read()
+        let r = try read()
         try DeviceSecurity.check(r.member && r.secret != nil, .untrusted)
         let head = r.state
         if purpose.control {
@@ -207,29 +203,12 @@ public actor DeviceSecurityClient {
             try DeviceSecurity.check(head.core.issuedAt <= now + DeviceSecurity.clockSkewLimit, .clock)
             try DeviceSecurity.check(head.core.notAfter >= now, .lease)
         }
-        if head.core.contentEpoch != r.counterEpoch {
-            r.counter = 0
-            r.blockEnd = 0
-            r.counterEpoch = head.core.contentEpoch
-        }
-        if r.counter >= r.blockEnd {
-            try DeviceSecurity.check(
-                r.blockEnd <= UInt64.max - DeviceSecurity.counterBlock, .capacity)
-            // Persist the whole block before any value in it is handed out;
-            // the in-memory counter moves on without another write.
-            r.blockEnd += DeviceSecurity.counterBlock
-            r = try store.writeSecurity(
-                expectedHead: try DeviceSecurity.stateHash(head), r)
-        }
-        r.counter += 1
-        keep(r)
         guard let secret = r.secret else { throw DeviceSecurity.Failure.untrusted }
         let h = DeviceSecurity.Header(
             account: r.pin.account, domain: r.pin.domain, epoch: head.core.epoch,
             state: try DeviceSecurity.stateHash(head), contentEpoch: head.core.contentEpoch,
             sender: memberID, kind: purpose.kind, purpose: purpose, machine: machine,
-            session: session, request: request, seq: seq, deadline: deadline, compression: 0,
-            counter: r.counter)
+            session: session, request: request, seq: seq, deadline: deadline, compression: 0)
         _ = try DeviceSecurity.scope(h, head)
         let formed = try DeviceSecurity.form(
             secret: secret, sessionSeed: sessionSeed, header: h, plaintext: plaintext,

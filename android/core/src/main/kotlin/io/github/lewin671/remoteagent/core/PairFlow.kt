@@ -27,8 +27,8 @@ import java.util.Base64
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 import okhttp3.OkHttpClient
+import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 
 class PairException(message: String) : Exception(message)
 
@@ -92,12 +92,15 @@ fun canRetryPairApproval(error: Exception): Boolean {
 /** What a QR code carries: the code, the initiator's commitment and the server. */
 data class PairLink(val code: String, val server: String, val commit: ByteArray? = null) {
     fun url(web: String): String {
-        val q = buildList {
-            add("code=" + enc(code))
-            commit?.let { add("c=" + Base64.getUrlEncoder().withoutPadding().encodeToString(it)) }
-            add("s=" + enc(server))
-        }
-            .joinToString("&")
+        val q =
+            buildList {
+                    add("code=" + enc(code))
+                    commit?.let {
+                        add("c=" + Base64.getUrlEncoder().withoutPadding().encodeToString(it))
+                    }
+                    add("s=" + enc(server))
+                }
+                .joinToString("&")
         return web.trimEnd('/') + "/#/pair?" + q
     }
 
@@ -181,13 +184,10 @@ internal constructor(
                     .value()
             }
         val (pin, _) = remote.security.identity()
-        val descriptor =
-            DeviceSecurityRPC.pairTrustDescriptor(pin, remote.account.deviceId)
+        val descriptor = DeviceSecurityRPC.pairTrustDescriptor(pin, remote.account.deviceId)
         val cp = st.devicePublicKey.toByteArray()
         val xp = st.deviceHpkePublicKey.toByteArray()
-        require(cp.size == 32 && xp.size == 32 && st.joinerKindValue in 1..2) {
-            "候选设备需要更新"
-        }
+        require(cp.size == 32 && xp.size == 32 && st.joinerKindValue in 1..2) { "候选设备需要更新" }
         remote.api.pairing
             .revealPairing(
                 RevealPairingRequest.newBuilder()
@@ -221,104 +221,109 @@ internal constructor(
         val s = secrets ?: throw PairException("还没有设备加入")
         val acct = remote.account
         val tok = remote.currentToken()
-        val request = approvalLock.withLock {
-            approvalRequest
-                ?: run {
-                    remote.syncSecurity()
-                    val cp = candidateSeed ?: throw PairException("没有候选设备")
-                    val xp = candidateX ?: throw PairException("没有候选设备")
-                    val kind = candidateKind ?: throw PairException("没有候选设备")
-                    val now = System.currentTimeMillis()
-                    val head = remote.security.head()
-                    if (head.core.authorityID != acct.deviceId)
-                        throw PairException("只有管理端手机能批准")
-                    val old = remote.security.contentKey(head.core.contentEpoch)
-                        ?: throw PairException("缺少当前内容密钥")
-                    val member =
-                        DeviceSecurity.Member(deviceId(cp), cp, xp, kind.number.toUInt())
-                    val existing = head.core.member(member.id)
-                    if (existing == null && member.id in head.core.removed)
-                        throw PairException("这台设备已被移除，旧身份不能重新加入；请在那台设备上重新加入，以生成新的设备身份")
-                    val next =
-                        if (existing == null)
-                            Authority.pair(
-                                head,
-                                member,
-                                old,
-                                Authority.newSecret(),
-                                SigningKey(acct.deviceSeed),
-                                now,
-                            )
-                        else {
-                            // Re-pairing keeps the Ed25519 identity and replaces X.
-                            if (existing.kind != member.kind || !existing.ed.contentEquals(member.ed))
-                                throw PairException("这台设备的身份与成员记录不一致，不能重新加入")
-                            Authority.rotateX(
-                                head,
-                                member.id,
-                                xp,
-                                old,
-                                Authority.newSecret(),
-                                SigningKey(acct.deviceSeed),
-                                now,
-                            )
-                        }
-                    if (acct.accountPublicKey.size != 32)
-                        throw PairException(
-                            "这台手机没有账户公钥，不能给新设备登记；请先用带账户根密钥的设备重新加入",
-                        )
-                    val chain = remote.security.chain() + next
-                    val proofs = remote.security.chainProofs()
-                    if (chain.size > DeviceSecurity.MAX_PAIR_STATES)
-                        throw PairException("状态链太大，无法配对；请重建账户")
-                    val rawSize =
-                        chain.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
-                            proofs.values.sumOf { it.size.toLong() }
-                    if (rawSize > DeviceSecurity.MAX_PAIR_CHAIN_BYTES)
-                        throw PairException("状态链太大，无法配对；请重建账户")
-                    remote.publishSecurityStates(listOf(next))
-                    val (approval, signature) =
-                        makePairApproval(acct, pairingId, cp, kind, expires)
-                    val payload =
-                        PairingPayload.newBuilder()
-                            .setServer(acct.server)
-                            .setApproval(ByteString.copyFrom(approval))
-                            .setApprovalSignature(ByteString.copyFrom(signature))
-                            .addAllSecurityStates(
-                                chain.map { state ->
-                                    SecurityState.newBuilder()
-                                        .setState(
-                                            ByteString.copyFrom(DeviceSecurity.stateBytes(state)),
-                                        )
-                                        .apply {
-                                            proofs[state.core.epoch]?.let {
-                                                setRecovery(ByteString.copyFrom(it))
-                                            }
+        val request =
+            approvalLock.withLock {
+                approvalRequest
+                    ?: run {
+                            remote.syncSecurity()
+                            val cp = candidateSeed ?: throw PairException("没有候选设备")
+                            val xp = candidateX ?: throw PairException("没有候选设备")
+                            val kind = candidateKind ?: throw PairException("没有候选设备")
+                            val now = System.currentTimeMillis()
+                            val head = remote.security.head()
+                            if (head.core.authorityID != acct.deviceId)
+                                throw PairException("只有管理端手机能批准")
+                            val old =
+                                remote.security.contentKey(head.core.contentEpoch)
+                                    ?: throw PairException("缺少当前内容密钥")
+                            val member =
+                                DeviceSecurity.Member(deviceId(cp), cp, xp, kind.number.toUInt())
+                            val existing = head.core.member(member.id)
+                            if (existing == null && member.id in head.core.removed)
+                                throw PairException("这台设备已被移除，旧身份不能重新加入；请在那台设备上重新加入，以生成新的设备身份")
+                            val next =
+                                if (existing == null)
+                                    Authority.pair(
+                                        head,
+                                        member,
+                                        old,
+                                        Authority.newSecret(),
+                                        SigningKey(acct.deviceSeed),
+                                        now,
+                                    )
+                                else {
+                                    // Re-pairing keeps the Ed25519 identity and replaces X.
+                                    if (
+                                        existing.kind != member.kind ||
+                                            !existing.ed.contentEquals(member.ed)
+                                    )
+                                        throw PairException("这台设备的身份与成员记录不一致，不能重新加入")
+                                    Authority.rotateX(
+                                        head,
+                                        member.id,
+                                        xp,
+                                        old,
+                                        Authority.newSecret(),
+                                        SigningKey(acct.deviceSeed),
+                                        now,
+                                    )
+                                }
+                            if (acct.accountPublicKey.size != 32)
+                                throw PairException("这台手机没有账户公钥，不能给新设备登记；请先用带账户根密钥的设备重新加入")
+                            val chain = remote.security.chain() + next
+                            val proofs = remote.security.chainProofs()
+                            if (chain.size > DeviceSecurity.MAX_PAIR_STATES)
+                                throw PairException("状态链太大，无法配对；请重建账户")
+                            val rawSize =
+                                chain.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
+                                    proofs.values.sumOf { it.size.toLong() }
+                            if (rawSize > DeviceSecurity.MAX_PAIR_CHAIN_BYTES)
+                                throw PairException("状态链太大，无法配对；请重建账户")
+                            remote.publishSecurityStates(listOf(next))
+                            val (approval, signature) =
+                                makePairApproval(acct, pairingId, cp, kind, expires)
+                            val payload =
+                                PairingPayload.newBuilder()
+                                    .setServer(acct.server)
+                                    .setApproval(ByteString.copyFrom(approval))
+                                    .setApprovalSignature(ByteString.copyFrom(signature))
+                                    .addAllSecurityStates(
+                                        chain.map { state ->
+                                            SecurityState.newBuilder()
+                                                .setState(
+                                                    ByteString.copyFrom(
+                                                        DeviceSecurity.stateBytes(state)
+                                                    )
+                                                )
+                                                .apply {
+                                                    proofs[state.core.epoch]?.let {
+                                                        setRecovery(ByteString.copyFrom(it))
+                                                    }
+                                                }
+                                                .build()
                                         }
-                                        .build()
-                                },
-                            )
-                            .setAccountPublicKey(ByteString.copyFrom(acct.accountPublicKey))
-                            .build()
-                    val env =
-                        Envelopes.seal(
-                            s.key,
-                            Header.newBuilder()
-                                .setKind(PayloadKind.PAYLOAD_KIND_PAIRING)
-                                .setRequestId(pairingId)
-                                .setSender(acct.deviceId)
-                                .build(),
-                            payload,
-                        )
-                    ApprovePairingRequest.newBuilder()
-                        .setPairingId(pairingId)
-                        .setPayload(env)
-                        .setApproval(ByteString.copyFrom(approval))
-                        .setApprovalSignature(ByteString.copyFrom(signature))
-                        .build()
-                }
-                    .also { approvalRequest = it }
-        }
+                                    )
+                                    .setAccountPublicKey(ByteString.copyFrom(acct.accountPublicKey))
+                                    .build()
+                            val env =
+                                Envelopes.seal(
+                                    s.key,
+                                    Header.newBuilder()
+                                        .setKind(PayloadKind.PAYLOAD_KIND_PAIRING)
+                                        .setRequestId(pairingId)
+                                        .setSender(acct.deviceId)
+                                        .build(),
+                                    payload,
+                                )
+                            ApprovePairingRequest.newBuilder()
+                                .setPairingId(pairingId)
+                                .setPayload(env)
+                                .setApproval(ByteString.copyFrom(approval))
+                                .setApprovalSignature(ByteString.copyFrom(signature))
+                                .build()
+                        }
+                        .also { approvalRequest = it }
+            }
         remote.api.pairing.approvePairing(request, Api.headers(tok)).value()
         repeat(120) {
             if (stopped) throw PairException("已取消")
@@ -367,8 +372,9 @@ internal constructor(
             val currentBytes =
                 current.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
                     remote.security.chainProofs().values.sumOf { it.size.toLong() }
-            if (current.size >= DeviceSecurity.MAX_PAIR_STATES ||
-                currentBytes >= DeviceSecurity.MAX_PAIR_CHAIN_BYTES
+            if (
+                current.size >= DeviceSecurity.MAX_PAIR_STATES ||
+                    currentBytes >= DeviceSecurity.MAX_PAIR_CHAIN_BYTES
             )
                 throw PairException("状态链太大，无法配对；请重建账户")
             val key = PairKey()
@@ -418,11 +424,11 @@ suspend fun joinByPairing(
 ): Account {
     if (existing != null && existing.server != link.server) throw PairException("安全设置必须使用原账户的服务器")
     val api = Api(link.server, http)
-    if (existing != null) login(api, existing)
+    val removed =
+        if (existing != null) existingIdentityRemoved(api, existing) || existingRemoved else false
     val key = PairKey()
     // A removed device's identity is revoked; it rejoins with a fresh one.
-    val deviceSeed =
-        if (existing != null && !existingRemoved) existing.deviceSeed else randomBytes(32)
+    val deviceSeed = if (existing != null && !removed) existing.deviceSeed else randomBytes(32)
     val device = SigningKey(deviceSeed)
     val devicePublic = device.publicKey
     val xPrivate = randomBytes(32)
@@ -489,7 +495,10 @@ suspend fun joinByPairing(
             throw PairException("无效的配对信任信息")
         }
     if (
-        !DeviceSecurityRPC.pairDomainCommit(st.initiatorPublic.toByteArray(), st.trust.toByteArray())
+        !DeviceSecurityRPC.pairDomainCommit(
+                st.initiatorPublic.toByteArray(),
+                st.trust.toByteArray(),
+            )
             .contentEquals(peek.commit.toByteArray())
     )
         throw PairException("管理端信任信息与承诺不匹配")
@@ -529,14 +538,13 @@ suspend fun joinByPairing(
     }
     if (chain.isEmpty() || chain.size > DeviceSecurity.MAX_STATES)
         throw PairException("配对载荷的状态链不完整")
-    if (chain.size > DeviceSecurity.MAX_PAIR_STATES)
-        throw PairException("状态链太大，无法配对；请重建账户")
+    if (chain.size > DeviceSecurity.MAX_PAIR_STATES) throw PairException("状态链太大，无法配对；请重建账户")
     val chainBytes =
         chain.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
             proofs.filterNotNull().sumOf { it.size.toLong() }
-    if (chainBytes > DeviceSecurity.MAX_PAIR_CHAIN_BYTES)
-        throw PairException("状态链太大，无法配对；请重建账户")
-    if (!DeviceSecurity.pinOf(chain[0]).let {
+    if (chainBytes > DeviceSecurity.MAX_PAIR_CHAIN_BYTES) throw PairException("状态链太大，无法配对；请重建账户")
+    if (
+        !DeviceSecurity.pinOf(chain[0]).let {
             it.account == pin.account &&
                 it.domain.contentEquals(pin.domain) &&
                 it.genesis.contentEquals(pin.genesis)
@@ -552,11 +560,9 @@ suspend fun joinByPairing(
             DeviceSecurity.verifyTransition(chain[i - 1], state, proof)
         }
     }
-    if (chain.last().core.authorityID != approver)
-        throw PairException("配对载荷的管理端不匹配")
+    if (chain.last().core.authorityID != approver) throw PairException("配对载荷的管理端不匹配")
     val member =
-        chain.last().core.member(deviceId(devicePublic))
-            ?: throw PairException("加入回执没有本机身份")
+        chain.last().core.member(deviceId(devicePublic)) ?: throw PairException("加入回执没有本机身份")
     if (
         !member.ed.contentEquals(devicePublic) ||
             !member.x.contentEquals(xPublic) ||
@@ -564,8 +570,7 @@ suspend fun joinByPairing(
     )
         throw PairException("加入回执的本机公钥不匹配")
     DeviceSecurity.openGrant(pin, chain.last(), member.id, xPrivate)
-    if (payload.approval.size() > 1024)
-        throw PairException("配对批准与这台设备不匹配或签名无效")
+    if (payload.approval.size() > 1024) throw PairException("配对批准与这台设备不匹配或签名无效")
     val approval = PairApproval.parseFrom(payload.approval)
     if (
         !validJoinApproval(
@@ -593,7 +598,16 @@ suspend fun joinByPairing(
             root = existing?.root ?: ByteArray(0),
             accountKey = accountPublicKey,
         )
-    val record = DeviceSecurity.Record.fromChain(pin.account, pin.domain, pin.genesis, acct.deviceId, xPrivate, chain.map { DeviceSecurity.stateBytes(it) }, proofs)
+    val record =
+        DeviceSecurity.Record.fromChain(
+            pin.account,
+            pin.domain,
+            pin.genesis,
+            acct.deviceId,
+            xPrivate,
+            chain.map { DeviceSecurity.stateBytes(it) },
+            proofs,
+        )
     persist(acct, record)
     try {
         api.pairing.getPairing(
@@ -609,3 +623,12 @@ suspend fun joinByPairing(
     }
     return acct
 }
+
+/** Only a definitive identity rejection permits replacing the retained signing key. */
+suspend fun existingIdentityRemoved(api: Api, existing: Account): Boolean =
+    try {
+        login(api, existing)
+        false
+    } catch (e: ConnectException) {
+        if (e.code == Code.PERMISSION_DENIED || e.code == Code.NOT_FOUND) true else throw e
+    }

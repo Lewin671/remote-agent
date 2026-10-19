@@ -63,11 +63,10 @@ type Header struct {
 	Seq          uint64
 	Deadline     uint64
 	Compression  uint32
-	Counter      uint64
 }
 
 func (h Header) validate() error {
-	if !deviceID(h.Account) || h.Domain == (Hash{}) || h.Epoch == 0 || h.State == (Hash{}) || h.ContentEpoch == 0 || h.ContentEpoch > h.Epoch || !deviceID(h.Sender) || h.Kind == 0 || h.Kind != h.Purpose.kind() || h.Compression > 1 || h.Counter == 0 || h.Machine != "" && !deviceID(h.Machine) || h.Session != "" && !validID(h.Session) || h.Request != "" && !validID(h.Request) {
+	if !deviceID(h.Account) || h.Domain == (Hash{}) || h.Epoch == 0 || h.State == (Hash{}) || h.ContentEpoch == 0 || h.ContentEpoch > h.Epoch || !deviceID(h.Sender) || h.Kind == 0 || h.Kind != h.Purpose.kind() || h.Compression > 1 || h.Machine != "" && !deviceID(h.Machine) || h.Session != "" && !validID(h.Session) || h.Request != "" && !validID(h.Request) {
 		return ErrInvalid
 	}
 	switch h.Purpose {
@@ -127,7 +126,6 @@ func (h Header) MarshalBinary() ([]byte, error) {
 	e.u64(h.Seq)
 	e.u64(h.Deadline)
 	e.u32(h.Compression)
-	e.u64(h.Counter)
 	return e.b, nil
 }
 func ParseHeader(b []byte) (h Header, err error) {
@@ -152,7 +150,6 @@ func ParseHeader(b []byte) (h Header, err error) {
 	h.Seq = d.u64()
 	h.Deadline = d.u64()
 	h.Compression = d.u32()
-	h.Counter = d.u64()
 	if d.done() != nil {
 		return h, ErrInvalid
 	}
@@ -237,7 +234,6 @@ func DeriveKey(secret, sessionSeed []byte, h Header) ([]byte, error) {
 	e.str(h.Session)
 	e.str(h.Request)
 	e.u64(h.Seq)
-	e.u64(h.Counter)
 	purposeKey, err := DerivePurposeKey(secret, h)
 	if err != nil {
 		return nil, err

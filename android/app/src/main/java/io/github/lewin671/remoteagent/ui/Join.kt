@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -103,13 +104,21 @@ fun JoinScreen(app: RaApp) {
     val p = pal
     val scope = rememberCoroutineScope()
     val existing by app.securitySetup.collectAsState()
-    // The local signed head says this device is no longer a member: rejoining
-    // must not reuse the revoked identity.
-    val existingRemoved =
-        remember(existing) {
-            existing != null &&
-                runCatching { !app.vault.readSecurity().member }.getOrDefault(false)
+    var existingRemoved by remember(existing) { mutableStateOf(false) }
+    LaunchedEffect(existing) {
+        existing?.let { account ->
+            existingRemoved =
+                runCatching {
+                        withContext(Dispatchers.IO) {
+                            io.github.lewin671.remoteagent.core.existingIdentityRemoved(
+                                io.github.lewin671.remoteagent.core.Api(account.server, app.http),
+                                account,
+                            )
+                        }
+                    }
+                    .getOrDefault(false)
         }
+    }
     var step by remember { mutableStateOf<JoinStep>(JoinStep.Form) }
     var code by remember { mutableStateOf("") }
     var server by rememberSaveable { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
@@ -130,38 +139,39 @@ fun JoinScreen(app: RaApp) {
         error = ""
         stopped = false
         step = JoinStep.Working
-        job = scope.launch {
-            try {
-                val l = link.copy(server = checkedServer(link.server))
-                val acct =
-                    withContext(Dispatchers.IO) {
-                        joinByPairing(
-                            l,
-                            app.http,
-                            { emoji -> scope.launch { step = JoinStep.Emoji(emoji) } },
-                            { stopped },
-                            { registering = true },
-                            persist = { acct, record -> app.persistPairing(acct, record) },
-                            existing = existing,
-                            existingRemoved = existingRemoved,
-                            confirm = { emoji ->
-                                val answer = kotlinx.coroutines.CompletableDeferred<Boolean>()
-                                withContext(Dispatchers.Main) {
-                                    step = JoinStep.Emoji(emoji)
-                                    comparison = answer
-                                }
-                                answer.await()
-                            },
-                        )
-                    }
-                app.joined(acct)
-            } catch (e: Exception) {
-                if (registering) error = "不确定这台手机有没有加入：${errorText(e)}。可以在已有设备的设置里看看客户端列表"
-                else if (!stopped) error = errorText(e)
-                registering = false
-                step = JoinStep.Form
+        job =
+            scope.launch {
+                try {
+                    val l = link.copy(server = checkedServer(link.server))
+                    val acct =
+                        withContext(Dispatchers.IO) {
+                            joinByPairing(
+                                l,
+                                app.http,
+                                { emoji -> scope.launch { step = JoinStep.Emoji(emoji) } },
+                                { stopped },
+                                { registering = true },
+                                persist = { acct, record -> app.persistPairing(acct, record) },
+                                existing = existing,
+                                existingRemoved = existingRemoved,
+                                confirm = { emoji ->
+                                    val answer = kotlinx.coroutines.CompletableDeferred<Boolean>()
+                                    withContext(Dispatchers.Main) {
+                                        step = JoinStep.Emoji(emoji)
+                                        comparison = answer
+                                    }
+                                    answer.await()
+                                },
+                            )
+                        }
+                    app.joined(acct)
+                } catch (e: Exception) {
+                    if (registering) error = "不确定这台手机有没有加入：${errorText(e)}。可以在已有设备的设置里看看客户端列表"
+                    else if (!stopped) error = errorText(e)
+                    registering = false
+                    step = JoinStep.Form
+                }
             }
-        }
     }
 
     /**
@@ -225,7 +235,7 @@ fun JoinScreen(app: RaApp) {
                     .background(p.card)
                     .safeDrawingPadding()
                     .imePadding()
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
             ) {
                 when (s) {
                     is JoinStep.Emoji -> {
@@ -298,8 +308,7 @@ fun JoinScreen(app: RaApp) {
                     JoinStep.Scan -> {
                         JoinTitle(if (existing != null) "一次性安全设置" else "加入账户")
                         Text(
-                            if (existingRemoved)
-                                "这台设备的旧身份已被移除，重新加入会生成新的设备身份，旧历史仍可读。请用管理端手机重新配对。"
+                            if (existingRemoved) "这台设备的旧身份已被移除，重新加入会生成新的设备身份，旧历史仍可读。请用管理端手机重新配对。"
                             else if (existing != null)
                                 "原设备身份、密钥和历史保留。在管理端手机的设备页点「添加设备」，两边核对四个图案完成加入。"
                             else "在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。",
@@ -364,7 +373,7 @@ fun JoinScreen(app: RaApp) {
                                             code.filter { it.isDigit() },
                                             checkedServer(server),
                                             commit,
-                                        ),
+                                        )
                                     )
                                 } catch (e: Exception) {
                                     error = errorText(e)
@@ -381,8 +390,7 @@ fun JoinScreen(app: RaApp) {
                         if (existing != null && !existingRemoved)
                             JoinLink("已有账户升级？重建安全域并成为管理端") { mode = "rebuild" }
                         JoinLink("换手机？用恢复码找回管理权") { mode = "recover" }
-                        if (existing == null)
-                            JoinLink("还没有账户？在这台手机上创建") { mode = "create" }
+                        if (existing == null) JoinLink("还没有账户？在这台手机上创建") { mode = "create" }
                     }
                 }
             }

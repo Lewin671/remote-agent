@@ -36,10 +36,8 @@ object DeviceSecurity {
     const val MAX_LEASE = 7L * 24 * 60 * 60 * 1000
     /** How far ahead of the local clock a state's IssuedAt may be. */
     const val MAX_CLOCK_SKEW = 300_000uL
-    const val COUNTER_BLOCK = 4096L
     const val MAX_LEASE_U = 604_800_000uL
     const val LEASE_U = 259_200_000uL
-    const val COUNTER_BLOCK_U = 4096uL
     const val MAX_STATES_U = 4096uL
     private const val MAX_STATES_UINT = 4096u
 
@@ -157,7 +155,7 @@ object DeviceSecurity {
                 c.notAfter > c.issuedAt &&
                 c.notAfter - c.issuedAt <= MAX_LEASE_U &&
                 c.members.size in 1..MAX_MEMBERS &&
-                c.removed.size <= MAX_MEMBERS,
+                c.removed.size <= MAX_MEMBERS
         )
         nonzero(c.domain)
         nonzero(c.recoveryEd)
@@ -167,7 +165,7 @@ object DeviceSecurity {
                 id(m.id) &&
                     m.ed.size == 32 &&
                     deviceId(m.ed) == m.id &&
-                    (m.kind == 1u || m.kind == 2u),
+                    (m.kind == 1u || m.kind == 2u)
             )
             nonzero(m.x)
             if (i > 0) check(c.members[i - 1].id < m.id)
@@ -179,7 +177,7 @@ object DeviceSecurity {
                 id(s) &&
                     (i == 0 || c.removed[i - 1] < s) &&
                     c.member(s) == null &&
-                    s != c.authorityID,
+                    s != c.authorityID
             )
         }
         if (c.epoch == 1uL)
@@ -187,7 +185,7 @@ object DeviceSecurity {
                 c.parent.contentEquals(zero) &&
                     c.members.size == 1 &&
                     c.removed.isEmpty() &&
-                    c.contentEpoch == 1uL,
+                    c.contentEpoch == 1uL
             )
         else nonzero(c.parent)
     }
@@ -263,12 +261,7 @@ object DeviceSecurity {
     private fun coreHash(s: State): ByteArray = digest("ra3/core\u0000", coreBytes(s.core))
 
     fun stateHash(s: State): ByteArray =
-        digest(
-            "ra3/state\u0000",
-            coreHash(s),
-            grantBytes(s),
-            Writer().lp(s.prevSecret).bytes(),
-        )
+        digest("ra3/state\u0000", coreHash(s), grantBytes(s), Writer().lp(s.prevSecret).bytes())
 
     fun signBytes(s: State): ByteArray =
         Writer()
@@ -318,11 +311,7 @@ object DeviceSecurity {
     }
 
     fun verifyState(p: Pin, s: State) {
-        check(
-            s.core.account == p.account &&
-                s.core.domain.contentEquals(p.domain),
-            "untrusted",
-        )
+        check(s.core.account == p.account && s.core.domain.contentEquals(p.domain), "untrusted")
         nonzero(p.genesis)
         if (s.core.epoch == 1uL) check(stateHash(s).contentEquals(p.genesis), "untrusted")
     }
@@ -336,10 +325,7 @@ object DeviceSecurity {
             "untrusted",
         )
         val a = s.core.members[0]
-        check(
-            a.kind == 2u && verifyEd25519(a.ed, signBytes(s), s.signature),
-            "untrusted",
-        )
+        check(a.kind == 2u && verifyEd25519(a.ed, signBytes(s), s.signature), "untrusted")
     }
 
     fun pinOf(s: State): Pin {
@@ -370,7 +356,7 @@ object DeviceSecurity {
                 next.core.contentEpoch == parent.core.contentEpoch + 1uL &&
                     next.prevSecret.isEmpty() &&
                     next.core.member(parent.core.authorityID) == null &&
-                    next.core.removed.contains(parent.core.authorityID),
+                    next.core.removed.contains(parent.core.authorityID)
             )
             check(verifyEd25519(authority.ed, signBytes(next), next.signature), "untrusted")
             recoveryDelta(parent, next)
@@ -381,8 +367,7 @@ object DeviceSecurity {
         // still has to be signed by the parent's authority key below.
         val oldAuthority = parent.core.member(parent.core.authorityID)
         check(
-            oldAuthority != null &&
-                verifyEd25519(oldAuthority.ed, signBytes(next), next.signature),
+            oldAuthority != null && verifyEd25519(oldAuthority.ed, signBytes(next), next.signature),
             "untrusted",
         )
         when (next.core.contentEpoch) {
@@ -390,7 +375,7 @@ object DeviceSecurity {
                 check(
                     next.core.removed == parent.core.removed &&
                         sameMembers(next.core.members, parent.core.members) &&
-                        next.prevSecret.isEmpty(),
+                        next.prevSecret.isEmpty()
                 )
             }
             parent.core.contentEpoch + 1uL -> {
@@ -428,7 +413,7 @@ object DeviceSecurity {
                 rotated <= 1 &&
                 !(added > 0 && removed.isNotEmpty()) &&
                 !(rotated > 0 && (added > 0 || removed.isNotEmpty())) &&
-                !(added == 0 && removed.isEmpty() && rotated == 0),
+                !(added == 0 && removed.isEmpty() && rotated == 0)
         )
     }
 
@@ -475,7 +460,12 @@ object DeviceSecurity {
         }
     }
 
-    internal fun sealGrant(recipient: Member, c: Core, coreHash: ByteArray, secret: ByteArray): Grant {
+    internal fun sealGrant(
+        recipient: Member,
+        c: Core,
+        coreHash: ByteArray,
+        secret: ByteArray,
+    ): Grant {
         val ctx =
             Writer()
                 .str(c.account)
@@ -579,7 +569,6 @@ object DeviceSecurity {
         val seq: ULong,
         val deadline: ULong,
         val compression: UInt,
-        val counter: ULong,
     )
 
     private fun validate(h: Header) {
@@ -589,12 +578,11 @@ object DeviceSecurity {
                 h.epoch > 0uL &&
                 h.contentEpoch > 0uL &&
                 h.contentEpoch <= h.epoch &&
-                h.counter > 0uL &&
                 h.compression <= 1u &&
                 h.kind == h.purpose.kind &&
                 (h.machine.isEmpty() || id(h.machine)) &&
                 (h.session.isEmpty() || opaque(h.session)) &&
-                (h.request.isEmpty() || opaque(h.request)),
+                (h.request.isEmpty() || opaque(h.request))
         )
         nonzero(h.domain)
         nonzero(h.state)
@@ -604,7 +592,7 @@ object DeviceSecurity {
                     h.request == "project-prefs" &&
                         h.machine.isEmpty() &&
                         h.session.isEmpty() &&
-                        h.seq > 0uL,
+                        h.seq > 0uL
                 )
             Purpose.DEVICE_META ->
                 check(id(h.request) && h.machine.isEmpty() && h.session.isEmpty() && h.seq > 0uL)
@@ -613,7 +601,7 @@ object DeviceSecurity {
                     h.machine.isNotEmpty() &&
                         h.session.isEmpty() &&
                         h.request.isEmpty() &&
-                        h.seq > 0uL,
+                        h.seq > 0uL
                 )
             Purpose.SESSION_META,
             Purpose.SESSION_KEY,
@@ -622,7 +610,7 @@ object DeviceSecurity {
                     h.machine.isNotEmpty() &&
                         h.session.isNotEmpty() &&
                         h.request.isEmpty() &&
-                        h.seq > 0uL,
+                        h.seq > 0uL
                 )
             Purpose.COMMAND,
             Purpose.RESULT -> check(h.machine.isNotEmpty() && h.request.length >= 16)
@@ -634,7 +622,7 @@ object DeviceSecurity {
                     h.machine.isNotEmpty() &&
                         h.session.isNotEmpty() &&
                         h.request.length >= 16 &&
-                        h.seq > 0uL,
+                        h.seq > 0uL
                 )
             Purpose.IMAGE,
             Purpose.NOTIFY ->
@@ -661,7 +649,6 @@ object DeviceSecurity {
             .u64(h.seq)
             .u64(h.deadline)
             .u32(h.compression)
-            .u64(h.counter)
             .bytes()
     }
 
@@ -694,7 +681,6 @@ object DeviceSecurity {
                 r.u64(),
                 r.u64(),
                 r.u32(),
-                r.u64(),
             )
         r.done()
         validate(h)
@@ -780,13 +766,12 @@ object DeviceSecurity {
                 .str(h.session)
                 .str(h.request)
                 .u64(h.seq)
-                .u64(h.counter)
                 .bytes()
         val child = purposeKey(secret, h.account, h.domain, h.contentEpoch, h.purpose)
         return hkdf(child, salt, ctx, 32)
     }
 
-    /** The caller must reserve h.counter durably BEFORE this call. */
+    /** Forms a signed envelope using an independent random nonce. */
     fun form(
         secret: ByteArray,
         seed: ByteArray?,
@@ -904,7 +889,7 @@ object DeviceSecurity {
                     e.nonce.toByteArray(),
                     e.ciphertext.toByteArray(),
                     e.signature.toByteArray(),
-                ),
+                )
             )
         val h = parseHeader(w.formed.header)
         val p = PBHeader.parseFrom(e.header)
@@ -958,7 +943,7 @@ object DeviceSecurity {
                     stateHash.size == 32 &&
                     !stateHash.contentEquals(zero) &&
                     nonce.size == 32 &&
-                    !nonce.contentEquals(zero),
+                    !nonce.contentEquals(zero)
             )
             return Writer()
                 .raw("ra3/recovery\u0000".toByteArray())
@@ -1005,7 +990,10 @@ object DeviceSecurity {
         }
     }
 
-    fun signRecoveryStatement(stmt: RecoveryStatement, oldRecoverySeed: ByteArray): RecoveryStatement {
+    fun signRecoveryStatement(
+        stmt: RecoveryStatement,
+        oldRecoverySeed: ByteArray,
+    ): RecoveryStatement {
         check(oldRecoverySeed.size == 32)
         return stmt.copy(signature = SigningKey(oldRecoverySeed).sign(stmt.signBytes()))
     }
@@ -1045,8 +1033,6 @@ object DeviceSecurity {
         val chain: List<State>,
         val memberID: String,
         private val xPrivate: ByteArray,
-        val counter: ULong = 0uL,
-        val counterBlockEnd: ULong = COUNTER_BLOCK_U,
         val floor: ULong = 0uL,
         private val keys: Map<ULong, ByteArray> = emptyMap(),
         /** Recovery statements that authorize recovery transitions, by their state epoch. */
@@ -1072,8 +1058,10 @@ object DeviceSecurity {
         val head: State
             get() = chain.last()
 
-        /** Whether the head still names this device. A removed device keeps its
-         * last content key so its retained history stays readable. */
+        /**
+         * Whether the head still names this device. A removed device keeps its last content key so
+         * its retained history stays readable.
+         */
         val member: Boolean
             get() = head.core.member(memberID) != null
 
@@ -1087,8 +1075,10 @@ object DeviceSecurity {
             return openGrant(pin, own, memberID, xPrivate)
         }
 
-        /** The content key of [epoch], walking PrevSecret from this device's
-         * last membership; null at a recovery boundary. */
+        /**
+         * The content key of [epoch], walking PrevSecret from this device's last membership; null
+         * at a recovery boundary.
+         */
         fun contentKey(epoch: ULong): ByteArray? {
             if (epoch == 0uL) return null
             keys[epoch]?.let {
@@ -1114,43 +1104,13 @@ object DeviceSecurity {
 
         fun withKey(epoch: ULong, secret: ByteArray): Record {
             check(secret.size == 32)
-            return Record(
-                pin,
-                chain,
-                memberID,
-                xPrivate,
-                counter,
-                counterBlockEnd,
-                floor,
-                keys + (epoch to secret),
-                proofs,
-            )
+            return Record(pin, chain, memberID, xPrivate, floor, keys + (epoch to secret), proofs)
         }
 
         fun cachedKeys(): Map<ULong, ByteArray> = keys
 
-        fun incremented(): Record {
-            check(counter < ULong.MAX_VALUE, "capacity")
-            val next = counter + 1uL
-            val end = if (next >= counterBlockEnd) next + COUNTER_BLOCK_U else counterBlockEnd
-            return Record(pin, chain, memberID, xPrivate, next, end, floor, keys, proofs)
-        }
-
-        /** A restart skips the rest of the last reserved block: those counter
-         * values must never be handed out twice. */
-        fun atBlockEnd(): Record =
-            Record(pin, chain, memberID, xPrivate, counterBlockEnd, counterBlockEnd, floor, keys, proofs)
-
-        /** Persists the whole next block before any value in it is used. */
-        fun reservingBlock(): Record {
-            check(counterBlockEnd <= ULong.MAX_VALUE - COUNTER_BLOCK_U, "capacity")
-            val end = counterBlockEnd + COUNTER_BLOCK_U
-            return Record(pin, chain, memberID, xPrivate, counterBlockEnd, end, floor, keys, proofs)
-        }
-
         fun touched(now: ULong): Record =
-            if (now <= floor) this
-            else Record(pin, chain, memberID, xPrivate, counter, counterBlockEnd, now, keys, proofs)
+            if (now <= floor) this else Record(pin, chain, memberID, xPrivate, now, keys, proofs)
 
         fun installed(states: List<State>, proofs: List<ByteArray?>): Record {
             check(states.isNotEmpty() && states.size <= MAX_STATES)
@@ -1201,16 +1161,11 @@ object DeviceSecurity {
             }
             check(all.size <= MAX_STATES, "capacity")
             val finalHead = all.last()
-            val rotated = finalHead.core.contentEpoch != head.core.contentEpoch
-            // A content-key change resets the counter; a lease renewal must
-            // not reuse (key, counter) pairs.
             return Record(
                 pin,
                 all,
                 memberID,
                 xPrivate,
-                if (rotated) 0uL else counter,
-                if (rotated) COUNTER_BLOCK_U else counterBlockEnd,
                 floor,
                 newKeys.filterKeys { it <= finalHead.core.contentEpoch },
                 newProofs,
@@ -1226,8 +1181,6 @@ object DeviceSecurity {
                     .raw(pin.genesis)
                     .str(memberID)
                     .raw(xPrivate)
-                    .u64(counter)
-                    .u64(counterBlockEnd)
                     .u64(floor)
                     .u32(chain.size.toUInt())
             chain.forEach { w.lp(stateBytes(it)) }
@@ -1246,8 +1199,6 @@ object DeviceSecurity {
                 val pin = Pin(r.str(), r.raw(32), r.raw(32))
                 val memberID = r.str()
                 val x = r.raw(32)
-                val counter = r.u64()
-                val blockEnd = r.u64()
                 val floor = r.u64()
                 val n = r.u32()
                 check(n in 1u..MAX_STATES_UINT)
@@ -1261,7 +1212,7 @@ object DeviceSecurity {
                 val proofs = HashMap<ULong, ByteArray>()
                 repeat(pn.toInt()) { proofs[r.u64()] = r.lp(MAX_STATE) }
                 r.done()
-                return Record(pin, chain, memberID, x, counter, blockEnd, floor, keys, proofs)
+                return Record(pin, chain, memberID, x, floor, keys, proofs)
             }
 
             /** A record built from the Go cross-language fixture's JSON. */
@@ -1283,9 +1234,7 @@ object DeviceSecurity {
                     }
                 }
                 val proofMap = HashMap<ULong, ByteArray>()
-                chain.forEachIndexed { i, s ->
-                    proofs[i]?.let { proofMap[s.core.epoch] = it }
-                }
+                chain.forEachIndexed { i, s -> proofs[i]?.let { proofMap[s.core.epoch] = it } }
                 return Record(Pin(account, domain, genesis), chain, memberID, x, proofs = proofMap)
             }
         }
@@ -1296,9 +1245,7 @@ object DeviceSecurity {
 
         fun initializeSecurity(record: Record)
 
-        /** Writes the whole record if the stored head is still expectedState. */
-        fun writeSecurity(expectedState: ByteArray, record: Record): Record
-
+        /** Installs verified transitions atomically on the current stored record. */
         fun installSecurity(
             expectedState: ByteArray,
             states: List<State>,
@@ -1371,7 +1318,6 @@ object DeviceSecurity {
                 .str(h.session)
                 .str(h.request)
                 .u64(h.seq)
-                .u64(h.counter)
                 .bytes()
         return hkdf(child, null, info, 32)
     }

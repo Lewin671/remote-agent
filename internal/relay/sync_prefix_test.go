@@ -60,6 +60,10 @@ func (m *prefixMachine) UploadEvents(_ context.Context, req *connect.Request[pb.
 	m.events = append(m.events, req.Msg.Events...)
 	return connect.NewResponse(&pb.UploadEventsResponse{LastSeq: m.events[len(m.events)-1].Seq}), nil
 }
+func (m *prefixMachine) ListSessionHeads(context.Context, *connect.Request[pb.ListSessionHeadsRequest]) (*connect.Response[pb.ListSessionHeadsResponse], error) {
+	return connect.NewResponse(&pb.ListSessionHeadsResponse{}), nil
+}
+
 func (m *prefixMachine) PutSession(context.Context, *connect.Request[pb.PutSessionRequest]) (*connect.Response[pb.PutSessionResponse], error) {
 	m.puts++
 	if m.fail == "put_session" && m.puts == 2 {

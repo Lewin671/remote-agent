@@ -103,7 +103,7 @@ import Testing
         var record = try S.Record(
             pin: p, states: states, memberID: machine.id,
             xPrivate: try hex("machine_x"), member: true,
-            counterEpoch: recovery.core.contentEpoch, secret: machineKey,
+            secret: machineKey,
             contentKeys: [
                 added.core.contentEpoch: try hex("content_secret_2"),
                 genesis.core.contentEpoch: try hex("content_secret_1"),
@@ -118,7 +118,7 @@ import Testing
         let oldPhone = genesis.core.authorityID
         let removed = try S.Record(
             pin: p, states: states, memberID: oldPhone, xPrivate: try hex("phone_x"),
-            member: false, counterEpoch: 2, secret: try hex("content_secret_2"),
+            member: false, secret: try hex("content_secret_2"),
             recovery: [recovery.core.epoch: try stmt()])
         #expect(try removed.contentSecret(1) == (try hex("content_secret_1")))
         #expect(try removed.contentSecret(2) == (try hex("content_secret_2")))
@@ -134,7 +134,7 @@ import Testing
         let raw = try S.stateBytes(future)
         let base = try S.Record(
             pin: p, states: [1: genesis], memberID: genesis.core.authorityID,
-            xPrivate: try hex("phone_x"), member: true, counterEpoch: 1,
+            xPrivate: try hex("phone_x"), member: true,
             secret: try hex("content_secret_1"))
         let client = DeviceSecurityClient(
             store: MemorySecurityStore(base), memberID: genesis.core.authorityID,
@@ -179,7 +179,7 @@ import Testing
             state: try S.stateHash(added), contentEpoch: added.core.contentEpoch,
             sender: phone,
             kind: S.Purpose.command.kind, purpose: .command, machine: machine, session: "",
-            request: randomHex(16), seq: 0, deadline: 1, compression: 0, counter: 1)
+            request: randomHex(16), seq: 0, deadline: 1, compression: 0)
         let wire = S.Wire(
             formed: try S.form(
                 secret: secret, sessionSeed: nil, header: header, plaintext: Data([1]),
@@ -202,13 +202,13 @@ import Testing
             account: added.core.account, domain: added.core.domain, epoch: added.core.epoch,
             state: try S.stateHash(added), contentEpoch: added.core.contentEpoch, sender: phone,
             kind: S.Purpose.deviceMeta.kind, purpose: .deviceMeta, machine: "", session: "",
-            request: phone, seq: 1, deadline: 0, compression: 0, counter: 1)
+            request: phone, seq: 1, deadline: 0, compression: 0)
         _ = try S.scope(h, added)
         h.request = machine
         #expect(throws: S.Failure.self) { _ = try S.scope(h, added) }
     }
 
-    @Test func countersAreReservedInBlocks() async throws {
+    @Test func sealingUsesIndependentRandomNonces() async throws {
         let p = try pin()
         let added = try state("added")
         let phone = added.core.authorityID
@@ -216,7 +216,7 @@ import Testing
         let secret = try hex("content_secret_2")
         let record = try S.Record(
             pin: p, states: [1: try state("genesis"), 2: added], memberID: phone,
-            xPrivate: try hex("phone_x"), member: true, counterEpoch: added.core.contentEpoch,
+            xPrivate: try hex("phone_x"), member: true,
             secret: secret)
         let store = MemorySecurityStore(record)
         let client = DeviceSecurityClient(
@@ -224,16 +224,16 @@ import Testing
             signingKey: try SigningKey(seed: try hex("phone_seed")),
             clock: { added.core.issuedAt },
             fetchStates: { _ in throw S.Failure.storage })
-        for expected in UInt64(1)...3 {
+        var nonces: Set<Data> = []
+        for _ in 1...3 {
             let env = try await client.seal(
                 purpose: .command, machine: machine, request: "0123456789abcdef",
                 deadline: 1_700_000_200_000, plaintext: Data("go".utf8))
             let h = try S.parseHeader(env.securityHeader)
             #expect(h.epoch == added.core.epoch)
-            #expect(h.counter == expected)
+            #expect(nonces.insert(env.nonce).inserted)
         }
-        #expect(try store.readSecurity().blockEnd == S.counterBlock)
-        // A restart skips the rest of the reserved block.
+        // Reopening also uses a fresh random nonce.
         let reopened = DeviceSecurityClient(
             store: store, memberID: phone,
             signingKey: try SigningKey(seed: try hex("phone_seed")),
@@ -242,7 +242,7 @@ import Testing
         let env = try await reopened.seal(
             purpose: .command, machine: machine, request: "0123456789abcdef",
             deadline: 1_700_000_200_000, plaintext: Data("go".utf8))
-        #expect(try S.parseHeader(env.securityHeader).counter == S.counterBlock + 1)
+        #expect(nonces.insert(env.nonce).inserted)
     }
 
     @Test func controlNeedsTheHeadLeaseAndInstallsANewContentEpoch() async throws {
@@ -257,7 +257,7 @@ import Testing
             state: try S.stateHash(added), contentEpoch: added.core.contentEpoch, sender: phone,
             kind: S.Purpose.command.kind, purpose: .command, machine: machine, session: "",
             request: "0123456789abcdef", seq: 0, deadline: added.core.notAfter,
-            compression: 0, counter: 1)
+            compression: 0)
         let formed = try S.form(
             secret: secret, sessionSeed: nil, header: h, plaintext: Data("no".utf8),
             signingKey: try SigningKey(seed: try hex("phone_seed")))
@@ -277,10 +277,10 @@ import Testing
                         signingKey: try SigningKey(seed: try hex("phone_seed")))),
                 state: added, head: added, live: true, now: added.core.notAfter)
         }
-        // Installing a state with a new content epoch resets the counter block.
+        // Installing a state changes the content key.
         let base = try S.Record(
             pin: p, states: [1: genesis], memberID: phone, xPrivate: try hex("phone_x"),
-            member: true, counter: 5, blockEnd: 100, counterEpoch: 1,
+            member: true,
             secret: try hex("content_secret_1"))
         let store = MemorySecurityStore(base)
         let client = DeviceSecurityClient(
@@ -299,13 +299,11 @@ import Testing
             })
         let installed = try await client.sync()
         #expect(installed.headEpoch == 2)
-        #expect(installed.counterEpoch == 2)
-        #expect(installed.blockEnd == 0)
         let env = try await client.seal(
             purpose: .command, machine: machine, request: "0123456789abcdef",
             deadline: added.core.notAfter, plaintext: Data("go".utf8))
         let header = try S.parseHeader(env.securityHeader)
-        #expect(header.epoch == 2 && header.contentEpoch == 2 && header.counter == 1)
+        #expect(header.epoch == 2 && header.contentEpoch == 2)
     }
 
     @Test func readsAStoredStateOnlyAsHistory() throws {
@@ -322,8 +320,7 @@ import Testing
                         sender: added.core.authorityID, kind: S.Purpose.event.kind,
                         purpose: .event,
                         machine: added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id,
-                        session: "session", request: "", seq: 1, deadline: 0, compression: 0,
-                        counter: 1)),
+                        session: "session", request: "", seq: 1, deadline: 0, compression: 0)),
                 nonce: randomBytes(12), cipher: randomBytes(16), origin: randomBytes(64)))
         #expect(throws: S.Failure.self) {
             _ = try S.verifyOrigin(wire, state: added, head: genesis, live: true, now: 0)
@@ -344,7 +341,6 @@ final class MemorySecurityStore: DeviceSecurity.Storage, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         var r = record
-        r.counter = r.blockEnd
         return r
     }
     func initializeSecurity(_ record: DeviceSecurity.Record) throws {

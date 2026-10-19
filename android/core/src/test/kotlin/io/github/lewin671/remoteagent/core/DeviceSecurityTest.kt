@@ -4,7 +4,6 @@ import java.io.File
 import java.util.Base64
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.*
@@ -18,7 +17,9 @@ class DeviceSecurityTest {
         Json.parseToJsonElement(File(System.getProperty("v3Vectors")).readText()).jsonObject
 
     private fun s(o: JsonObject, key: String) = o[key]!!.jsonPrimitive.content
+
     private fun s(key: String) = s(v, key)
+
     private fun decode(key: String) = Base64.getDecoder().decode(s(key))
 
     private fun state(o: JsonObject): DeviceSecurity.State =
@@ -32,8 +33,11 @@ class DeviceSecurityTest {
     }
 
     private fun genesis() = state(v["genesis"]!!.jsonObject)
+
     private fun added() = state(v["added"]!!.jsonObject)
+
     private fun renewal() = state(v["renewal"]!!.jsonObject)
+
     private fun recovery() = state(v["recovery"]!!.jsonObject)
 
     @Test
@@ -48,7 +52,10 @@ class DeviceSecurityTest {
         DeviceSecurity.verifyTransition(added(), renewal())
         val statement = DeviceSecurity.parseRecoveryStatement(decode("recovery_statement"))
         DeviceSecurity.verifyTransition(renewal(), recovery(), statement)
-        assertEquals(s(v["recovery"]!!.jsonObject, "hash"), DeviceSecurity.stateHash(recovery()).hex())
+        assertEquals(
+            s(v["recovery"]!!.jsonObject, "hash"),
+            DeviceSecurity.stateHash(recovery()).hex(),
+        )
         assertTrue(recovery().prevSecret.isEmpty())
         assertNull(recovery().core.member(g.core.authorityID))
     }
@@ -61,7 +68,10 @@ class DeviceSecurityTest {
         val pin = DeviceSecurity.pinOf(g)
         val secret1 = s("content_secret_1").unhex()
         val secret2 = s("content_secret_2").unhex()
-        assertArrayEquals(secret2, DeviceSecurity.openGrant(pin, a, g.core.authorityID, s("phone_x").unhex()))
+        assertArrayEquals(
+            secret2,
+            DeviceSecurity.openGrant(pin, a, g.core.authorityID, s("phone_x").unhex()),
+        )
         val phone =
             DeviceSecurity.Record.fromChain(
                 pin.account,
@@ -84,8 +94,7 @@ class DeviceSecurityTest {
         val rec = recovery()
         val pin = DeviceSecurity.pinOf(g)
         val statement = DeviceSecurity.parseRecoveryStatement(decode("recovery_statement"))
-        val chain =
-            listOf(g, a, r, rec).map { DeviceSecurity.stateBytes(it) }
+        val chain = listOf(g, a, r, rec).map { DeviceSecurity.stateBytes(it) }
         val proofs = listOf(null, null, null, decode("recovery_statement"))
         // A retained machine can still read what it had before the recovery.
         val machineId = a.core.members.first { it.kind == 1u }.id
@@ -138,10 +147,7 @@ class DeviceSecurityTest {
         val next = record.installed(listOf(rec), listOf(statement))
         assertArrayEquals(s("content_secret_2").unhex(), next.contentKey(2uL))
         assertArrayEquals(s("content_secret_3").unhex(), next.contentKey(3uL))
-        assertArrayEquals(
-            s("content_secret_2").unhex(),
-            next.cachedKeys()[2uL],
-        )
+        assertArrayEquals(s("content_secret_2").unhex(), next.cachedKeys()[2uL])
     }
 
     @Test
@@ -168,7 +174,8 @@ class DeviceSecurityTest {
         assertEquals(1uL, g.core.contentEpoch)
         assertEquals(1_700_000_000_000uL + DeviceSecurity.LEASE_U, g.core.notAfter)
         val issued = 1_700_000_000_000uL
-        val nearing = g.copy(core = g.core.copy(issuedAt = issued, notAfter = issued + 23uL * 3_600_000uL))
+        val nearing =
+            g.copy(core = g.core.copy(issuedAt = issued, notAfter = issued + 23uL * 3_600_000uL))
         assertTrue(Authority.needsRenewal(nearing, (issued + 12uL * 3_600_000uL).toLong()))
 
         val machine = Authority.newMember(SigningKey(machineSeed), s("machine_x").unhex(), 1u)
@@ -202,24 +209,29 @@ class DeviceSecurityTest {
                     Base64.getDecoder().decode(s(env, "nonce")),
                     Base64.getDecoder().decode(s(env, "cipher")),
                     Base64.getDecoder().decode(s(env, "origin")),
-                ),
+                )
             )
         val (h, plain) = DeviceSecurity.open(state, state, false, 0uL, wire, secret, null)
         assertArrayEquals(Base64.getDecoder().decode(s(env, "plain")), plain)
-        assertArrayEquals(Base64.getDecoder().decode(s(env, "header")), DeviceSecurity.headerBytes(h))
-        assertArrayEquals(wire.formed.cipher, DeviceSecurity.parseWire(DeviceSecurity.wireBytes(wire)).formed.cipher)
+        assertArrayEquals(
+            Base64.getDecoder().decode(s(env, "header")),
+            DeviceSecurity.headerBytes(h),
+        )
+        assertArrayEquals(
+            wire.formed.cipher,
+            DeviceSecurity.parseWire(DeviceSecurity.wireBytes(wire)).formed.cipher,
+        )
         val changed =
             DeviceSecurity.Wire(
                 wire.formed.copy(
-                    cipher = wire.formed.cipher.copyOf().also { it[0] = (it[0].toInt() xor 1).toByte() },
-                ),
+                    cipher =
+                        wire.formed.cipher.copyOf().also { it[0] = (it[0].toInt() xor 1).toByte() }
+                )
             )
         reject { DeviceSecurity.verifyOrigin(state, state, false, 0uL, changed) }
         assertFalse(
             DeviceSecurity.contentKey(secret, null, h)
-                .contentEquals(
-                    DeviceSecurity.contentKey(secret, null, h.copy(counter = h.counter + 1uL)),
-                ),
+                .contentEquals(DeviceSecurity.contentKey(secret, null, h.copy(seq = h.seq + 1uL)))
         )
     }
 
@@ -234,7 +246,9 @@ class DeviceSecurityTest {
         val fork =
             DeviceSecurity.parseState(
                 DeviceSecurity.stateBytes(
-                    a.copy(core = a.core.copy(parent = DeviceSecurity.stateHash(g).also { it[0] = 1 }))
+                    a.copy(
+                        core = a.core.copy(parent = DeviceSecurity.stateHash(g).also { it[0] = 1 })
+                    )
                 )
             )
         reject { DeviceSecurity.verifyTransition(g, fork) }
@@ -273,9 +287,11 @@ class DeviceSecurityTest {
                 0uL,
                 0uL,
                 0u,
-                1uL,
             )
-        assertEquals("notify:1:7", DeviceSecurity.parseHeader(DeviceSecurity.headerBytes(h)).request)
+        assertEquals(
+            "notify:1:7",
+            DeviceSecurity.parseHeader(DeviceSecurity.headerBytes(h)).request,
+        )
     }
 
     @Test
@@ -287,8 +303,8 @@ class DeviceSecurityTest {
                     io.github.lewin671.remoteagent.proto.InputState.newBuilder()
                         .setRequestId("same-id")
                         .setStatus(
-                            io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED,
-                        ),
+                            io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED
+                        )
                 )
                 .build()
         val old =
@@ -326,12 +342,9 @@ class DeviceSecurityTest {
                     s("phone_x").unhex(),
                     listOf(DeviceSecurity.stateBytes(g)),
                     listOf(null),
-                ),
+                )
             )
-        repeat(3) {
-            val r = store.readSecurity()
-            store.writeSecurity(DeviceSecurity.stateHash(r.head), r.incremented())
-        }
+
         val lease =
             Authority.renewal(
                 store.readSecurity().head,
@@ -344,11 +357,15 @@ class DeviceSecurityTest {
             listOf(lease),
             listOf(null),
         )
-        assertEquals(3uL, store.readSecurity().counter)
+        assertEquals(2uL, store.readSecurity().head.core.epoch)
         val pair =
             Authority.pair(
                 store.readSecurity().head,
-                Authority.newMember(SigningKey(s("machine_seed").unhex()), s("machine_x").unhex(), 1u),
+                Authority.newMember(
+                    SigningKey(s("machine_seed").unhex()),
+                    s("machine_x").unhex(),
+                    1u,
+                ),
                 s("content_secret_1").unhex(),
                 s("content_secret_2").unhex(),
                 signer,
@@ -359,8 +376,7 @@ class DeviceSecurityTest {
             listOf(pair),
             listOf(null),
         )
-        assertEquals(0uL, store.readSecurity().counter)
-        assertEquals(DeviceSecurity.COUNTER_BLOCK_U, store.readSecurity().counterBlockEnd)
+        assertEquals(2uL, store.readSecurity().head.core.contentEpoch)
     }
 
     @Test
@@ -382,7 +398,7 @@ class DeviceSecurityTest {
             Authority.rotateX(
                 g,
                 phone.id,
-                newX,
+                X25519.publicKey(newX),
                 s("content_secret_1").unhex(),
                 s("content_secret_2").unhex(),
                 signer,
@@ -417,13 +433,12 @@ class DeviceSecurityTest {
                 0uL,
                 state.core.notAfter,
                 0u,
-                1uL,
             )
-        val wire = DeviceSecurity.Wire(DeviceSecurity.form(secret, null, h, byteArrayOf(1, 2, 3), signer))
+        val wire =
+            DeviceSecurity.Wire(DeviceSecurity.form(secret, null, h, byteArrayOf(1, 2, 3), signer))
         DeviceSecurity.verifyOrigin(state, state, true, state.core.notAfter, wire)
         reject { DeviceSecurity.verifyOrigin(state, state, true, state.core.notAfter + 1uL, wire) }
     }
-
 
     @Test
     fun aVetoRotatesTheRecoveryKeyInANormalState() {
@@ -441,13 +456,7 @@ class DeviceSecurityTest {
             )
         val newRecovery = ByteArray(32) { 0x42 }
         val veto =
-            Authority.veto(
-                g,
-                newRecovery,
-                s("content_secret_1").unhex(),
-                signer,
-                1_700_000_100_000,
-            )
+            Authority.veto(g, newRecovery, s("content_secret_1").unhex(), signer, 1_700_000_100_000)
         DeviceSecurity.verifyTransition(g, veto)
         assertArrayEquals(newRecovery, veto.core.recoveryEd)
         assertEquals(g.core.contentEpoch, veto.core.contentEpoch)
@@ -461,7 +470,6 @@ class DeviceSecurityTest {
         assertFalse(DeviceSecurity.tooFarAhead(g, g.core.issuedAt))
         reject { DeviceSecurity.requireNotFromFuture(g, at) }
     }
-
 
     @Test
     fun removedIDsAccumulateAndCannotBeReadded() {
@@ -477,21 +485,50 @@ class DeviceSecurityTest {
                 signer,
                 1_700_000_000_000,
             )
-        val first = Authority.newMember(SigningKey(s("machine_seed").unhex()), s("machine_x").unhex(), 1u)
+        val first =
+            Authority.newMember(SigningKey(s("machine_seed").unhex()), s("machine_x").unhex(), 1u)
         val added =
-            Authority.pair(g, first, s("content_secret_1").unhex(), s("content_secret_2").unhex(), signer, 1_700_000_100_000)
+            Authority.pair(
+                g,
+                first,
+                s("content_secret_1").unhex(),
+                s("content_secret_2").unhex(),
+                signer,
+                1_700_000_100_000,
+            )
         val removed =
-            Authority.remove(added, listOf(first.id), s("content_secret_2").unhex(), s("content_secret_3").unhex(), signer, 1_700_000_200_000)
+            Authority.remove(
+                added,
+                listOf(first.id),
+                s("content_secret_2").unhex(),
+                s("content_secret_3").unhex(),
+                signer,
+                1_700_000_200_000,
+            )
         assertEquals(listOf(first.id), removed.core.removed)
-        val second = Authority.newMember(SigningKey(ByteArray(32) { 0x61 }), ByteArray(32) { 0x62 }, 1u)
+        val second =
+            Authority.newMember(SigningKey(ByteArray(32) { 0x61 }), ByteArray(32) { 0x62 }, 1u)
         val readded =
-            Authority.pair(removed, second, s("content_secret_3").unhex(), s("content_secret_2").unhex(), signer, 1_700_000_300_000)
+            Authority.pair(
+                removed,
+                second,
+                s("content_secret_3").unhex(),
+                s("content_secret_2").unhex(),
+                signer,
+                1_700_000_300_000,
+            )
         DeviceSecurity.verifyTransition(removed, readded)
         assertEquals(listOf(first.id), readded.core.removed)
         try {
-            Authority.pair(removed, first, s("content_secret_3").unhex(), s("content_secret_2").unhex(), signer, 1_700_000_300_000)
+            Authority.pair(
+                removed,
+                first,
+                s("content_secret_3").unhex(),
+                s("content_secret_2").unhex(),
+                signer,
+                1_700_000_300_000,
+            )
             fail("a removed ID was re-added")
         } catch (_: IllegalStateException) {}
     }
-
 }

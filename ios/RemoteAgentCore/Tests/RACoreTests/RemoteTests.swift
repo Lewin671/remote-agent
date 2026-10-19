@@ -1221,6 +1221,28 @@ extension ServerTests {
             }
         }
 
+        @Test func concurrentPreferenceCASReappliesBothOperations() async throws {
+            try await world { w in
+                let gate = PreferenceWriterBarrier()
+                let racing = Intercept.http(for:w.server.url) { request in
+                    if request.url?.path.hasSuffix("/PutAccountPrefs") == true { await gate.arrive() }
+                    return request
+                }
+                let a=try w.remote(try await w.join(),http:racing)
+                let b=try w.remote(try await w.join(),http:racing)
+                a.start();b.start()
+                _=try await a.awaitState("a online"){$0.conn == .online}
+                _=try await b.awaitState("b online"){$0.conn == .online}
+                async let first:Void = a.changePrefs(.pin(path:"/synthetic/a"))
+                async let second:Void = b.changePrefs(.hide(path:"/synthetic/b"))
+                _=try await(first,second)
+                let state=try await a.awaitState("both CAS operations") {
+                    $0.prefs?.pinned.contains("/synthetic/a") == true && $0.prefs?.hidden.contains("/synthetic/b") == true
+                }
+                #expect(state.prefs?.revision == 2)
+            }
+        }
+
         @Test func twoClientsChangingProjectsKeepBothChanges() async throws {
             try await world { w in
                 let a = try await w.client()
@@ -1348,5 +1370,15 @@ extension ServerTests {
                 await #expect(throws: (any Error).self) { try await r.pingServer(timeoutMs: 2_000) }
             }
         }
+    }
+}
+
+private actor PreferenceWriterBarrier {
+    private var count=0
+    private var waiting:CheckedContinuation<Void,Never>?
+    func arrive() async {
+        count += 1
+        if count == 1 { await withCheckedContinuation {waiting=$0} }
+        else if count == 2 {waiting?.resume();waiting=nil}
     }
 }

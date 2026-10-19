@@ -111,3 +111,34 @@ func (a *retainedTestAuth) Login(_ context.Context, r *connect.Request[pb.LoginR
 	}
 	return connect.NewResponse(&pb.LoginResponse{Token: "synthetic-retained-login", ExpiresMs: time.Now().Add(time.Hour).UnixMilli(), DevicePublicKey: a.public}), nil
 }
+
+type removedTestAuth struct{ retainedTestAuth }
+
+func (*removedTestAuth) GetChallenge(context.Context, *connect.Request[pb.GetChallengeRequest]) (*connect.Response[pb.GetChallengeResponse], error) {
+	return nil, connect.NewError(connect.CodePermissionDenied, errors.New("device not found"))
+}
+func TestRemovedPairingChallengesBeforeChoosingIdentity(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	pub, ed, _ := ed25519.GenerateKey(nil)
+	r := &changingPairRelay{candidate: make(chan []byte, 1)}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewPairingServiceHandler(r)
+	mux.Handle(path, h)
+	path, h = remoteagentv1connect.NewAuthServiceHandler(&removedTestAuth{})
+	mux.Handle(path, h)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	a := &Account{Server: srv.URL, Root: e2e.NewKey(), DeviceSeed: ed.Seed(), DeviceID: e2e.DeviceID(pub)}
+	if err := a.Save(); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = JoinByPairing(context.Background(), PairLink{Code: "12345678", Server: srv.URL}, func([]string) bool { return false })
+	select {
+	case got := <-r.candidate:
+		if bytes.Equal(got, pub) {
+			t.Fatal("revoked identity reused without challenge login")
+		}
+	default:
+		t.Fatal("did not rejoin")
+	}
+}

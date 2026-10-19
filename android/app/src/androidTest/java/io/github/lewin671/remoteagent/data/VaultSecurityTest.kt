@@ -45,7 +45,7 @@ class VaultSecurityTest {
         assertTrue(
             KeyStore.getInstance("AndroidKeyStore")
                 .apply { load(null) }
-                .containsAlias("ra-account-unlocked-v2"),
+                .containsAlias("ra-account-unlocked-v2")
         )
         val loaded = vault.load()!!
         assertArrayEquals(account.root, loaded.root)
@@ -59,8 +59,7 @@ class VaultSecurityTest {
         val security = io.github.lewin671.remoteagent.core.DeviceSecurity
         val signer = io.github.lewin671.remoteagent.core.SigningKey(account.deviceSeed)
         val x = ByteArray(32) { 0x22 }
-        val phone =
-            io.github.lewin671.remoteagent.core.Authority.newMember(signer, x, 2u)
+        val phone = io.github.lewin671.remoteagent.core.Authority.newMember(signer, x, 2u)
         val genesis =
             io.github.lewin671.remoteagent.core.Authority.genesis(
                 account.accountId,
@@ -83,26 +82,21 @@ class VaultSecurityTest {
     }
 
     @Test
-    fun counterAndNotificationChildSurviveAReopen() {
+    fun timeFloorAndNotificationChildSurviveAReopen() {
         val security = io.github.lewin671.remoteagent.core.DeviceSecurity
         val record = securityRecord()
         vault.initializeSecurity(record)
         val hash = security.stateHash(record.head)
-        // A block is persisted once; the counter then moves in memory.
-        val block = vault.readSecurity().reservingBlock()
-        vault.writeSecurity(hash, block)
-        val used = block.incremented().incremented()
-        vault.writeSecurity(hash, used)
+        // A concurrent cache update must not lower the persisted time floor.
+        vault.touchSecurity(security.stateHash(record.head), 4096uL)
         val reopened = Vault(context)
-        // A restart skips the rest of the block already handed out.
-        assertEquals(block.counterBlockEnd, reopened.readSecurity().counter)
-        assertEquals(block.counterBlockEnd + 1uL, reopened.readSecurity().incremented().counter)
+        assertEquals(4096uL, reopened.readSecurity().floor)
         // Simulate an old notification-only item, never a root/epoch grant.
         vault.save(account, ByteArray(32) { 3 })
         reopened.readSecurity()
         val notify =
             io.github.lewin671.remoteagent.core.DeviceSecurity.NotifyRecord.parse(
-                vault.notifyKey()!!,
+                vault.notifyKey()!!
             )
         assertArrayEquals(hash, security.stateHash(notify.state))
         assertFalse(notify.bytes().contentEquals(record.bytes()))

@@ -92,17 +92,24 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	}
 	// A protocol 10 security store on this computer makes the pin a trust
 	// anchor; a protocol 9 account has none until it is paired again.
-	localV3 := false
+	// Only an absent file permits bootstrap. A corrupt/unreadable store is
+	// still a trust anchor, even if account metadata no longer names it.
+	_, statErr := os.Stat(securityPath())
+	localV3 := !errors.Is(statErr, os.ErrNotExist)
 	localRemoved := false
-	if existing != nil && existing.Security != nil {
-		// The file existing is the trust anchor, even if it is corrupt: only a
-		// protocol 9 account without a v3 store may accept a rebuilt domain.
-		if _, err := os.Stat(securityPath()); err == nil {
-			localV3 = true
-		}
+	if localV3 {
 		if ep, err := deviceauth.OpenEndpoint(securityPath()); err == nil {
 			localRemoved = ep.Removed()
 			ep.Close()
+		}
+	}
+	if existing != nil {
+		if _, err := login(ctx, existing); err != nil {
+			if connect.CodeOf(err) == connect.CodePermissionDenied || connect.CodeOf(err) == connect.CodeNotFound {
+				localRemoved = true
+			} else {
+				return nil, fmt.Errorf("verify existing identity: %w", err)
+			}
 		}
 	}
 	pub, priv, err := joiningIdentity(existing, localRemoved)
@@ -178,6 +185,16 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	states, proofs, candidate, err := verifyPairChain(pin, payload.SecurityStates, pub, xpub)
 	if err != nil {
 		return nil, err
+	}
+	if localV3 {
+		local, err := deviceauth.OpenEndpoint(securityPath())
+		if err != nil {
+			return nil, errors.New("the local security chain cannot be read; manual handling is required before rejoining")
+		}
+		defer local.Close()
+		if err := local.CheckExtension(states); err != nil {
+			return nil, err
+		}
 	}
 	if candidate.ID != e2e.DeviceID(approval.CandidateDevicePublicKey) {
 		return nil, deviceauth.ErrUntrusted

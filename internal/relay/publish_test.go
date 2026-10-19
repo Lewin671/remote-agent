@@ -23,11 +23,15 @@ func (publishBackend) MachineMeta() *pb.MachineMeta {
 
 type publishMachine struct {
 	remoteagentv1connect.UnimplementedMachineServiceHandler
-	puts int
+	puts  int
+	onPut func()
 }
 
 func (m *publishMachine) PutMachine(context.Context, *connect.Request[pb.PutMachineRequest]) (*connect.Response[pb.PutMachineResponse], error) {
 	m.puts++
+	if m.onPut != nil {
+		m.onPut()
+	}
 	return connect.NewResponse(&pb.PutMachineResponse{}), nil
 }
 
@@ -112,5 +116,90 @@ func TestEnsurePublishedAfterRecoveryMarker(t *testing.T) {
 	}
 	if service.puts != 2 {
 		t.Fatalf("recovery republished twice: %d", service.puts)
+	}
+}
+
+func TestPublishMarkerCapturesStartingHead(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	c := &conn{r: New(publishBackend{}), acct: &Account{}}
+	keys := initializeTestSecurityKeys(t, c)
+	_, head, _ := c.security.endpoint.Snapshot()
+	_, ed, _ := ed25519.GenerateKey(nil)
+	_, xp, _ := deviceauth.NewXKey()
+	member, _ := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xp, deviceauth.Client)
+	secret := make([]byte, 32)
+	secret[0] = 9
+	var rec [32]byte
+	rec[0] = 8
+	next, proof, err := deviceauth.BuildRecovery(head, member, []deviceauth.Member{keys.machine, member}, secret, ed, keys.recovery, rec, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := &publishMachine{onPut: func() {
+		if err := c.security.endpoint.Install([]deviceauth.State{next}, []*deviceauth.RecoveryStatement{&proof}); err != nil {
+			t.Error(err)
+		}
+	}}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewMachineServiceHandler(service)
+	mux.Handle(path, h)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	c.machine = remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, srv.URL)
+	if err := c.ensurePublished(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	marker, err := readPublishedEpoch()
+	if err != nil || marker != head.Core.Epoch {
+		t.Fatalf("marker covered an unrepublished recovery: %d %v", marker, err)
+	}
+	service.onPut = nil
+	if err := c.ensurePublished(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if service.puts != 2 {
+		t.Fatal("skipped recovery republish")
+	}
+}
+
+type sessionRevisionMachine struct {
+	remoteagentv1connect.UnimplementedMachineServiceHandler
+	revisions []uint64
+	floor     uint64
+}
+
+func (m *sessionRevisionMachine) ListSessionHeads(context.Context, *connect.Request[pb.ListSessionHeadsRequest]) (*connect.Response[pb.ListSessionHeadsResponse], error) {
+	floor := m.floor
+	if len(m.revisions) > 0 {
+		floor = m.revisions[len(m.revisions)-1]
+	}
+	return connect.NewResponse(&pb.ListSessionHeadsResponse{Sessions: []*pb.SessionHead{{SessionId: "synthetic-session", MetaRevision: floor}}}), nil
+}
+func (m *sessionRevisionMachine) PutSession(_ context.Context, r *connect.Request[pb.PutSessionRequest]) (*connect.Response[pb.PutSessionResponse], error) {
+	h, err := deviceauth.ParseHeader(r.Msg.Meta.SecurityHeader)
+	if err != nil {
+		return nil, err
+	}
+	m.revisions = append(m.revisions, h.Seq)
+	return connect.NewResponse(&pb.PutSessionResponse{}), nil
+}
+func TestSessionMetadataRevisionsAdvanceForRepublishes(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	c := &conn{r: New(publishBackend{}), acct: &Account{}}
+	initializeTestSecurityKeys(t, c)
+	service := &sessionRevisionMachine{floor: 1 << 60}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewMachineServiceHandler(service)
+	mux.Handle(path, h)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	c.machine = remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, srv.URL)
+	for i := 0; i < 3; i++ {
+		if _, err := c.putSession(context.Background(), "synthetic-session", make([]byte, 32), &pb.Session{Id: "synthetic-session"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(service.revisions) != 3 || service.revisions[0] <= service.floor || service.revisions[1] <= service.revisions[0] || service.revisions[2] <= service.revisions[1] {
+		t.Fatalf("non-increasing session metadata revisions: %v", service.revisions)
 	}
 }

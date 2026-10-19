@@ -9,7 +9,9 @@ extension Remote {
     func refreshTrustedDirectory() async throws {
         directoryVersion += 1
         let version = directoryVersion
-        let head = try await securitySession().sync().state
+        let record = try await securitySession().sync()
+        try await republishRecoveryObjects(record)
+        let head = record.state
         clockWarning = ""
         let hash = try DeviceSecurity.stateHash(head)
         let hints = try await api.client.listDevices(
@@ -35,6 +37,7 @@ extension Remote {
             if let hint, hint.hasMeta {
                 let env = hint.meta
                 metadata[(member.kind == 1 ? "machine:" : "device:") + member.id] = env
+                do {
                 if member.kind == 2 {
                     let (h, meta) = try await openSecureMessage(
                         envelope: env, want: Place(.deviceMeta, requestId: member.id),
@@ -52,6 +55,11 @@ extension Remote {
                     machine.meta = meta
                     machine.metaRev = h.seq
                     nextMachines[member.id] = machine
+                }
+                } catch {
+                    if error is CancellationError { throw error }
+                    if let old=devices[member.id] { view.meta=old.meta;view.metaRev=old.metaRev }
+                    if member.kind == 1 && nextMachines[member.id] == nil {nextMachines[member.id]=MachineView(id:member.id,online:false,lastSeenMs:0)}
                 }
             } else if member.kind == 1 && nextMachines[member.id] == nil {
                 nextMachines[member.id] = MachineView(
@@ -83,6 +91,40 @@ extension Remote {
             listed.remove(session.id)
         }
         publish()
+    }
+
+    /// The stored envelope's epoch is the resumable republish marker. Only a
+    /// retained device that can verify and read it may publish the snapshot.
+    private func republishRecoveryObjects(_ record: DeviceSecurity.Record) async throws {
+        guard let epoch = record.recovery.keys.max(),
+            let boundary = record.states[epoch]?.core.contentEpoch else { return }
+        let security = try securitySession()
+        let headers = Api.headers(token: try await currentToken())
+        for _ in 0..<5 {
+            var get = PBGetAccountPrefsRequest(); get.objectID = projectPrefsID
+            let object = try await api.client.getAccountPrefs(request:get,headers:headers).value().object
+            if !object.hasEnvelope || object.revision == 0 { break }
+            let h = try DeviceSecurity.parseHeader(object.envelope.securityHeader)
+            if h.contentEpoch >= boundary { break }
+            let snapshot: (DeviceSecurity.Header, PBProjectPrefs)
+            do { snapshot = try await security.openMessage(object.envelope, as:PBProjectPrefs.self, history:true) }
+            catch DeviceSecurity.Failure.unavailable { break }
+            try DeviceSecurity.check(snapshot.0.purpose == .prefs && snapshot.0.seq == object.revision && snapshot.0.request == projectPrefsID, .untrusted)
+            var put = PBPutAccountPrefsRequest(); put.objectID=projectPrefsID;put.expectedRevision=object.revision
+            put.envelope = try await security.seal(purpose:.prefs,request:projectPrefsID,seq:object.revision+1,plaintext:snapshot.1.serializedData())
+            if try await api.client.putAccountPrefs(request:put,headers:headers).value().applied { break }
+        }
+        for _ in 0..<5 {
+            let listed = try await api.client.listDevices(request:.init(),headers:headers).value()
+            guard let own=listed.devices.first(where:{$0.id==account.deviceId}),own.hasMeta else { break }
+            let h = try DeviceSecurity.parseHeader(own.meta.securityHeader)
+            if h.contentEpoch >= boundary { break }
+            let snapshot = try await security.openMessage(own.meta,as:PBDeviceMeta.self,history:true)
+            try DeviceSecurity.check(snapshot.0.purpose == .deviceMeta && snapshot.0.sender == account.deviceId && snapshot.0.seq == own.metaRevision,.untrusted)
+            var put = PBPutDeviceMetaRequest();put.deviceID=account.deviceId;put.expectedRevision=own.metaRevision
+            put.meta=try await security.seal(purpose:.deviceMeta,request:account.deviceId,seq:own.metaRevision+1,plaintext:snapshot.1.serializedData())
+            if try await api.client.putDeviceMeta(request:put,headers:headers).value().applied { break }
+        }
     }
 
     /// A new head arrives within a minute; an unknown state is fetched at once.

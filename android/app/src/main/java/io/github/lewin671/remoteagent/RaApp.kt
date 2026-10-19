@@ -113,7 +113,7 @@ class RaApp : Application() {
                         Push.stop()
                         _remote.value?.stop()
                     }
-                },
+                }
             )
         // Without a network at start no callback comes.
         online = getSystemService(ConnectivityManager::class.java).activeNetwork != null
@@ -124,9 +124,7 @@ class RaApp : Application() {
                         online = true
                         _remote.value?.setNetwork(true)
                         _remote.value?.reconnectNow()
-                        scope.launch {
-                            registerPush()
-                        }
+                        scope.launch { registerPush() }
                     }
 
                     // Only when no other network takes over as the default.
@@ -134,7 +132,7 @@ class RaApp : Application() {
                         online = false
                         _remote.value?.setNetwork(false)
                     }
-                },
+                }
             )
     }
 
@@ -178,10 +176,10 @@ class RaApp : Application() {
                                             if (acct.hasRoot)
                                                 io.github.lewin671.remoteagent.core.deviceId(
                                                     io.github.lewin671.remoteagent.core.Keys.derive(
-                                                            acct.root,
+                                                            acct.root
                                                         )
                                                         .account
-                                                        .publicKey,
+                                                        .publicKey
                                                 )
                                             else ""
                                         }
@@ -244,57 +242,69 @@ class RaApp : Application() {
     }
 
     /** Stores a newly created account and its genesis, then starts syncing. */
-    suspend fun created(acct: Account, record: io.github.lewin671.remoteagent.core.DeviceSecurity.Record) =
-        adopt(acct, record)
+    suspend fun created(
+        acct: Account,
+        record: io.github.lewin671.remoteagent.core.DeviceSecurity.Record,
+    ) = adopt(acct, record)
 
     /** Stores a recovered account and the published chain, then starts syncing. */
-    suspend fun recovered(acct: Account, record: io.github.lewin671.remoteagent.core.DeviceSecurity.Record) =
-        adopt(acct, record)
+    suspend fun recovered(
+        acct: Account,
+        record: io.github.lewin671.remoteagent.core.DeviceSecurity.Record,
+    ) = adopt(acct, record)
 
     private suspend fun adopt(
         acct: Account,
         record: io.github.lewin671.remoteagent.core.DeviceSecurity.Record,
-    ) = accountLock.withLock {
-        withContext(Dispatchers.IO) {
-            vault.clear()
-            vault.initializeSecurity(record)
-            vault.save(
-                acct,
-                io.github.lewin671.remoteagent.core.DeviceSecurity.NotifyRecord.fromRecord(record)
-                    .bytes(),
-            )
+    ) =
+        accountLock.withLock {
+            withContext(Dispatchers.IO) {
+                vault.clear(preserveDrafts = true)
+                vault.initializeSecurity(record)
+                vault.save(
+                    acct,
+                    io.github.lewin671.remoteagent.core.DeviceSecurity.NotifyRecord.fromRecord(
+                            record
+                        )
+                        .bytes(),
+                )
+                vault.clearDrafts()
+            }
+            _loaded.value = true
+            use(acct)
         }
-        _loaded.value = true
-        use(acct)
-    }
 
     suspend fun persistPairing(
         acct: Account,
         record: io.github.lewin671.remoteagent.core.DeviceSecurity.Record,
-    ) = accountLock.withLock {
-        withContext(Dispatchers.IO) {
-            vault.initializeSecurity(record)
-            vault.save(
-                acct,
-                io.github.lewin671.remoteagent.core.DeviceSecurity.NotifyRecord.fromRecord(record)
-                    .bytes(),
-            )
+    ) =
+        accountLock.withLock {
+            withContext(Dispatchers.IO) {
+                vault.initializeSecurity(record)
+                vault.save(
+                    acct,
+                    io.github.lewin671.remoteagent.core.DeviceSecurity.NotifyRecord.fromRecord(
+                            record
+                        )
+                        .bytes(),
+                )
+            }
         }
-    }
 
     /** Stores a newly joined account and starts syncing. */
-    suspend fun joined(acct: Account) = accountLock.withLock {
-        withContext(Dispatchers.IO) {
-            vault.save(
-                acct,
-                io.github.lewin671.remoteagent.core.DeviceSecurity.NotifyRecord.fromRecord(
-                        vault.readSecurity(),
-                    )
-                    .bytes(),
-            )
+    suspend fun joined(acct: Account) =
+        accountLock.withLock {
+            withContext(Dispatchers.IO) {
+                vault.save(
+                    acct,
+                    io.github.lewin671.remoteagent.core.DeviceSecurity.NotifyRecord.fromRecord(
+                            vault.readSecurity()
+                        )
+                        .bytes(),
+                )
+            }
+            use(acct)
         }
-        use(acct)
-    }
 
     /** The server of the account just left, to fill in when joining again. Only in memory. */
     var lastServer = ""

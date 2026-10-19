@@ -42,7 +42,7 @@ val testServer = layout.buildDirectory.file("ra-server").get().asFile
 val repoRoot = rootProject.file("..")
 val buildTestServer by tasks.registering(Exec::class) {
     workingDir = repoRoot
-    commandLine("go", "build", "-o", testServer.absolutePath, "./cmd/remote-agent-server")
+    commandLine("go", "build", "-o", testServer.absolutePath, "./internal/testutil/relaytestserver")
     onlyIf { System.getenv("PATH").orEmpty().split(File.pathSeparator).any { File(it, "go").canExecute() } }
 }
 

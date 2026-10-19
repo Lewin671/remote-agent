@@ -52,7 +52,7 @@ import Testing
                 recovery.core.epoch: recovery,
             ],
             memberID: newID, xPrivate: newX.rawRepresentation, member: true,
-            counterEpoch: recovery.core.contentEpoch, secret: secret,
+            secret: secret,
             recovery: [recovery.core.epoch: stmt])
         #expect(try record.contentSecret(recovery.core.contentEpoch) == secret)
         #expect(throws: S.Failure.unavailable) {

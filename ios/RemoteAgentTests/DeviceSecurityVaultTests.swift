@@ -28,19 +28,19 @@ import Testing
             pin, state, recipient: state.core.authorityID, x: x)
         return try DeviceSecurity.Record(
             pin: pin, states: [1: state], memberID: state.core.authorityID,
-            xPrivate: x.rawRepresentation, member: true, counterEpoch: 1, secret: secret)
+            xPrivate: x.rawRepresentation, member: true, secret: secret)
     }
-    @Test func counterBlockAndNotifyRepairUseTheProtectedCurrentState() throws {
+    @Test func timeFloorAndNotifyRepairUseTheProtectedCurrentState() throws {
         defer { try? vault.clear() }
         let initial = try record()
         try vault.initializeSecurity(initial)
         let hash = try DeviceSecurity.stateHash(initial.state)
         var next = initial
-        next.blockEnd = 4096
+        next.floor = 4096
         _ = try vault.writeSecurity(expectedHead: hash, next)
         let reopened = Vault(service: vault.service)
-        // A restart skips the rest of the reserved block.
-        #expect(try reopened.readSecurity().counter == 4096)
+        // The persisted time floor survives a reopen.
+        #expect(try reopened.readSecurity().floor == 4096)
         try vault.write(.notifyKey, Data([0]))
         _ = try reopened.readSecurity()
         let notifyBytes = try #require(try vault.notifyKey())

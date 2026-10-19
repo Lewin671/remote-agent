@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestEndpointInstallCounterAndRecoveryBoundary(t *testing.T) {
+func TestEndpointInstallAndRecoveryBoundary(t *testing.T) {
 	g, pin, phoneEd, phoneX, recovery := testGenesis(t)
 	secret1 := bytes.Repeat([]byte{0x33}, 32)
 	phone, _ := g.Core.Member(g.Core.AuthorityID)
@@ -31,14 +31,18 @@ func TestEndpointInstallCounterAndRecoveryBoundary(t *testing.T) {
 	if got, err := ep.ContentSecret(2); err != nil || !bytes.Equal(got, secret2) {
 		t.Fatalf("content key 2: %v", err)
 	}
-	// Counter blocks are reserved durably before use.
-	before := ep.data.BlockEnd
-	h := Header{Purpose: Command, Kind: 5, Machine: machine.ID, Request: "0123456789abcdef", Deadline: 1_700_000_500_000}
-	if _, err := ep.Prepare(h, nil, bytes.Repeat([]byte{0x01}, 32)); err != nil {
+	// Repeated sealing uses independent random nonces without touching storage.
+	h := Header{Purpose: Command, Kind: 5, Machine: machine.ID, Request: "nonce-test-12345678", Deadline: 1_700_000_200_000}
+	first, err := ep.Prepare(h, nil, []byte("one"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if ep.data.BlockEnd != before+CounterBlock {
-		t.Fatalf("block end = %d, want %d", ep.data.BlockEnd, before+CounterBlock)
+	second, err := ep.Prepare(h, nil, []byte("two"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(first.Nonce, second.Nonce) {
+		t.Fatal("reused nonce")
 	}
 
 	// The machine is retained; the phone is replaced by a new authority phone.
@@ -85,7 +89,7 @@ func TestHistoryVsLiveMembership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := Header{Account: g.Core.Account, Domain: g.Core.Domain, Epoch: added.Core.Epoch, State: mustHash(t, added), ContentEpoch: added.Core.ContentEpoch, Sender: machine.ID, Kind: 3, Purpose: SessionKey, Machine: machine.ID, Session: "0123456789abcdef", Seq: 1, Counter: 1}
+	h := Header{Account: g.Core.Account, Domain: g.Core.Domain, Epoch: added.Core.Epoch, State: mustHash(t, added), ContentEpoch: added.Core.ContentEpoch, Sender: machine.ID, Kind: 3, Purpose: SessionKey, Machine: machine.ID, Session: "0123456789abcdef", Seq: 1}
 	w, err := Seal(secret2, nil, h, bytes.Repeat([]byte{0x01}, 32), machineEd)
 	if err != nil {
 		t.Fatal(err)

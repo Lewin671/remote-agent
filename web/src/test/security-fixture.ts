@@ -17,16 +17,19 @@ import {
   type Header,
   type Envelope,
 } from "../gen/remoteagent/v1/envelope_pb";
-import { concat, deviceID, importRoot, accountKey, deriveKeys } from "../crypto";
+import {
+  concat,
+  deviceID,
+  importRoot,
+  accountKey,
+  deriveKeys,
+} from "../crypto";
 import {
   DeviceSecurityClient,
   type FetchStates,
   type SecurityStorage,
 } from "../device-security-client";
-import {
-  buildRecord,
-  type SecurityRecord,
-} from "../device-security-store";
+import { buildRecord, type SecurityRecord } from "../device-security-store";
 import {
   equal,
   parseRecoveryStatement,
@@ -80,7 +83,11 @@ async function chainFromJSON(r: FixtureRecordJSON): Promise<{
   states: SecurityState[];
   proofs: (RecoveryStatement | undefined)[];
 }> {
-  if (r.version !== 3 || !r.states?.length || r.states.length !== r.proofs.length)
+  if (
+    r.version !== 3 ||
+    !r.states?.length ||
+    r.states.length !== r.proofs.length
+  )
     throw new Error("bad synthetic v3 record");
   const states: SecurityState[] = [];
   const proofs: (RecoveryStatement | undefined)[] = [];
@@ -246,7 +253,9 @@ export class GoSecurityFixture {
         if (states[i].core.epoch <= after) continue;
         out.push({
           state: await stateBytes(states[i]),
-          recovery: proofs[i] ? await recoveryBytes(proofs[i]!) : new Uint8Array(),
+          recovery: proofs[i]
+            ? await recoveryBytes(proofs[i]!)
+            : new Uint8Array(),
         });
       }
       return {
@@ -320,15 +329,6 @@ export class MemorySecurityStorage implements SecurityStorage {
   async loadSecurity() {
     return this.record;
   }
-  async reserveCounter(expected: SecurityRecord) {
-    if (!equal(expected.stateHash, this.record.stateHash))
-      throw new SecurityError("stale");
-    const start = this.record.counter;
-    const end = start + 4096n;
-    if (end > 0xffffffffffffffffn) throw new SecurityError("capacity");
-    this.record = { ...this.record, counter: end, blockEnd: end };
-    return { ...this.record, counter: start, blockEnd: end };
-  }
   async installSecurity(
     expected: SecurityRecord,
     states: SecurityState[],
@@ -340,8 +340,7 @@ export class MemorySecurityStorage implements SecurityStorage {
     this.record = await extendRecord(this.record, states, proofs);
   }
   async touchSecurity(now: bigint) {
-    if (now > this.record.floor)
-      this.record = { ...this.record, floor: now };
+    if (now > this.record.floor) this.record = { ...this.record, floor: now };
   }
 }
 

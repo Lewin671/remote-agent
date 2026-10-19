@@ -42,13 +42,14 @@ import okio.ByteString.Companion.toByteString
 import org.junit.Assume
 
 /** A remote-agent-server process on a free local port. */
-class TestServer(
-    private val dbDir: File = Files.createTempDirectory("ra-server").toFile(),
-) : AutoCloseable {
-    var port: Int = freePort()
+class TestServer(private val dbDir: File = Files.createTempDirectory("ra-server").toFile()) :
+    AutoCloseable {
+    var port: Int = 0
         private set
+
     val url: String
         get() = "http://127.0.0.1:$port"
+
     val setupToken = "setup-token-for-tests"
     private var proc: Process? = null
 
@@ -74,31 +75,18 @@ class TestServer(
             pb.redirectErrorStream(true).redirectOutput(log)
             val started = pb.start()
             proc = started
-            // Ready means this process answers HTTP. A bare TCP connect is not
-            // enough: with no listener yet, a client socket can connect to
-            // itself when the kernel picks the same port for it, and the first
-            // request then fails with "unexpected end of stream".
+            // Only this child's post-bind record establishes readiness. An
+            // HTTP response on a proposed port may belong to another test.
             val until = System.currentTimeMillis() + 10_000
             while (System.currentTimeMillis() < until) {
-                if (!started.isAlive) {
-                    val text = log.readText()
-                    if ("address already in use" in text) {
-                        proc = null
-                        port = freePort()
-                        return@repeat
-                    }
-                    error("server exited: " + text.take(500))
-                }
-                try {
-                    val c = java.net.URL("$url/").openConnection() as java.net.HttpURLConnection
-                    c.connectTimeout = 500
-                    c.readTimeout = 500
-                    c.responseCode
-                    c.disconnect()
+                if (!started.isAlive) error("test relay exited: " + log.readText().takeLast(500))
+                val ready = log.readLines().firstOrNull { it.startsWith("TEST_SERVER_URL=") }
+                if (ready != null) {
+                    port = java.net.URI(ready.substringAfter('=')).port
+                    check(port > 0)
                     return
-                } catch (e: Exception) {
-                    Thread.sleep(50)
                 }
+                Thread.sleep(10)
             }
             error("server did not start")
         }
@@ -131,11 +119,16 @@ class TestServer(
  * A stand-in for the daemon: it uploads a machine, sessions and events the way internal/relay does,
  * answers forwarded commands, and serves terminals.
  */
-class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone: Account) : AutoCloseable {
+class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone: Account) :
+    AutoCloseable {
     private val store = TestSecurity.get(account.server)!!.stores.getValue(account.deviceId)
     private val local =
-        DeviceSecurityClient(store, account.deviceId, SigningKey(account.deviceSeed), account.accountId) {
-            after ->
+        DeviceSecurityClient(
+            store,
+            account.deviceId,
+            SigningKey(account.deviceSeed),
+            account.accountId,
+        ) { after ->
             val r = store.readSecurity()
             val b =
                 io.github.lewin671.remoteagent.proto.GetSecurityStatesResponse.newBuilder()
@@ -173,8 +166,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
         val canonical = DeviceSecurity.parseHeader(w.formed.header)
         val s = r.stateAt(canonical.epoch) ?: throw DeviceSecurity.Failure("unknown state")
         val key = r.contentKey(s.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
-        val seed =
-            if (canonical.purpose.sessionKey) sessionKeys[canonical.session] else null
+        val seed = if (canonical.purpose.sessionKey) sessionKeys[canonical.session] else null
         val (h, plain) =
             DeviceSecurity.open(
                 s,
@@ -208,7 +200,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                     serializationStrategy = LiteProtobufStrategy,
                     networkProtocol = NetworkProtocol.CONNECT,
                 ),
-            ),
+            )
         )
     private var token = ""
     private var ws: WebSocket? = null
@@ -260,7 +252,10 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                 .addAllProjects(projects)
                 .build()
         val env =
-            seal(header(PayloadKind.PAYLOAD_KIND_MACHINE_META).setSeq(metaRev).build(), meta.toByteArray())
+            seal(
+                header(PayloadKind.PAYLOAD_KIND_MACHINE_META).setSeq(metaRev).build(),
+                meta.toByteArray(),
+            )
         api.putMachine(PutMachineRequest.newBuilder().setMeta(env).build(), Api.headers(token))
             .value()
     }
@@ -275,7 +270,10 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
         val rev = (sessionRevs[sid] ?: 0) + 1
         sessionRevs[sid] = rev
         val keyEnv =
-            seal(header(PayloadKind.PAYLOAD_KIND_SESSION_KEY).setSessionId(sid).setSeq(1).build(), key)
+            seal(
+                header(PayloadKind.PAYLOAD_KIND_SESSION_KEY).setSessionId(sid).setSeq(1).build(),
+                key,
+            )
         val meta =
             seal(
                 header(PayloadKind.PAYLOAD_KIND_SESSION_META).setSessionId(sid).setSeq(rev).build(),
@@ -325,29 +323,32 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     /** Appends events to a session, numbering them. */
     suspend fun upload(sid: String, vararg events: Event.Builder) {
         val key = sessionKeys.getValue(sid)
-        val stored = events.map { b ->
-            val seq = (lastSeq[sid] ?: 0) + 1
-            lastSeq[sid] = seq
-            val ev =
-                b.setSeq(seq)
-                    .setSessionId(sid)
-                    .setTime(Timestamp.newBuilder().setSeconds(System.currentTimeMillis() / 1000))
+        val stored =
+            events.map { b ->
+                val seq = (lastSeq[sid] ?: 0) + 1
+                lastSeq[sid] = seq
+                val ev =
+                    b.setSeq(seq)
+                        .setSessionId(sid)
+                        .setTime(
+                            Timestamp.newBuilder().setSeconds(System.currentTimeMillis() / 1000)
+                        )
+                        .build()
+                history.getOrPut(sid) { CopyOnWriteArrayList() }.add(ev)
+                StoredEvent.newBuilder()
+                    .setSeq(seq)
+                    .setEnvelope(
+                        seal(
+                            header(PayloadKind.PAYLOAD_KIND_EVENT)
+                                .setSessionId(sid)
+                                .setSeq(seq)
+                                .build(),
+                            ev.toByteArray(),
+                            key,
+                        )
+                    )
                     .build()
-            history.getOrPut(sid) { CopyOnWriteArrayList() }.add(ev)
-            StoredEvent.newBuilder()
-                .setSeq(seq)
-                .setEnvelope(
-                    seal(
-                        header(PayloadKind.PAYLOAD_KIND_EVENT)
-                            .setSessionId(sid)
-                            .setSeq(seq)
-                            .build(),
-                        ev.toByteArray(),
-                        key,
-                    ),
-                )
-                .build()
-        }
+            }
         api.uploadEvents(
                 UploadEventsRequest.newBuilder().setSessionId(sid).addAllEvents(stored).build(),
                 Api.headers(token),
@@ -373,7 +374,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                                 .setHello(StreamHello.newBuilder().setToken(token))
                                 .build()
                                 .toByteArray()
-                                .toByteString(),
+                                .toByteString()
                         )
                     }
 
@@ -394,27 +395,31 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                                 val sid = cmd.getLiveSnapshot.sessionId
                                 val current = history[sid]?.toList() ?: emptyList()
                                 val d = derive(current)
-                                val actions = current.filter {
-                                    it.hasApprovalRequested() &&
-                                        d.approvals.containsKey(it.approvalRequested.approvalId) ||
-                                        it.hasQuestionAsked() &&
-                                            d.questions.containsKey(it.questionAsked.questionId) ||
-                                        it.hasInputState() &&
-                                            d.inputs[it.inputState.requestId] in
-                                                setOf(
-                                                    InputStatus.INPUT_STATUS_QUEUED,
-                                                    InputStatus.INPUT_STATUS_HELD_BY_CLI,
-                                                )
-                                }
+                                val actions =
+                                    current.filter {
+                                        it.hasApprovalRequested() &&
+                                            d.approvals.containsKey(
+                                                it.approvalRequested.approvalId
+                                            ) ||
+                                            it.hasQuestionAsked() &&
+                                                d.questions.containsKey(
+                                                    it.questionAsked.questionId
+                                                ) ||
+                                            it.hasInputState() &&
+                                                d.inputs[it.inputState.requestId] in
+                                                    setOf(
+                                                        InputStatus.INPUT_STATUS_QUEUED,
+                                                        InputStatus.INPUT_STATUS_HELD_BY_CLI,
+                                                    )
+                                    }
                                 CommandResult.newBuilder()
                                     .setLiveSnapshot(
                                         LiveSnapshot.newBuilder()
                                             .setRunning(d.running)
                                             .setSession(
-                                                info[sid]
-                                                    ?: Session.newBuilder().setId(sid).build(),
+                                                info[sid] ?: Session.newBuilder().setId(sid).build()
                                             )
-                                            .addAllActions(actions),
+                                            .addAllActions(actions)
                                     )
                                     .build()
                             } else answer(h, cmd)
@@ -430,17 +435,17 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                             env =
                                 env.toBuilder()
                                     .setCiphertext(
-                                        ByteString.copyFrom(randomBytes(env.ciphertext.size())),
+                                        ByteString.copyFrom(randomBytes(env.ciphertext.size()))
                                     )
                                     .build()
                         webSocket.send(
                             PeerFrame.newBuilder()
                                 .setForwardReply(
-                                    ForwardReply.newBuilder().setCallId(call.callId).setResult(env),
+                                    ForwardReply.newBuilder().setCallId(call.callId).setResult(env)
                                 )
                                 .build()
                                 .toByteArray()
-                                .toByteString(),
+                                .toByteString()
                         )
                     }
                 },
@@ -487,7 +492,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                             .setStreamId(stream)
                             .build()
                             .toByteArray()
-                            .toByteString(),
+                            .toByteString()
                     )
                     send(
                         webSocket,
@@ -496,7 +501,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                                 io.github.lewin671.remoteagent.proto.TerminalSnapshot.newBuilder()
                                     .setCols(120)
                                     .setRows(40)
-                                    .setData(ByteString.copyFromUtf8("\u001b[Hhello")),
+                                    .setData(ByteString.copyFromUtf8("\u001b[Hhello"))
                             )
                             .build(),
                     )
@@ -509,8 +514,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
-                    val (hh, raw) =
-                        open(Envelope.parseFrom(bytes.toByteArray()))
+                    val (hh, raw) = open(Envelope.parseFrom(bytes.toByteArray()))
                     Envelopes.expect(
                         hh,
                         Place(
@@ -550,17 +554,17 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                 Command.KindCase.SEND ->
                     b.setSend(
                         io.github.lewin671.remoteagent.proto.SendResponse.newBuilder()
-                            .setQueuePosition(1),
+                            .setQueuePosition(1)
                     )
                 Command.KindCase.OPEN_TERMINAL ->
                     b.setOpenTerminal(
                         io.github.lewin671.remoteagent.proto.OpenTerminalResponse
-                            .getDefaultInstance(),
+                            .getDefaultInstance()
                     )
                 Command.KindCase.INTERRUPT ->
                     b.setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptResponse.newBuilder()
-                            .setInterrupted(true),
+                            .setInterrupted(true)
                     )
                 else -> b.setErrorCode("unimplemented").setErrorMessage("fake daemon")
             }

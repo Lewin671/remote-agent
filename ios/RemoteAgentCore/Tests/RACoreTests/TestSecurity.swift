@@ -117,7 +117,7 @@ final class TestSecurity: @unchecked Sendable {
         let secret = present ? try DeviceSecurity.openGrant(pin, head, recipient: memberID, x: xKey) : nil
         return try DeviceSecurity.Record(
             pin: pin, states: states, memberID: memberID, xPrivate: x, member: present,
-            counterEpoch: head.core.contentEpoch, secret: secret, recovery: recovery)
+            secret: secret, recovery: recovery)
     }
     func seal(_ account: Account, _ header: PBHeader, _ plain: Data, seed: Data? = nil) throws
         -> PBEnvelope
@@ -202,7 +202,6 @@ final class TestSecurityStore: DeviceSecurity.Storage, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         var r = record
-        r.counter = r.blockEnd
         return r
     }
     func initializeSecurity(_ record: DeviceSecurity.Record) throws {

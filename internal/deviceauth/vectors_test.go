@@ -226,7 +226,7 @@ func TestGenerateEnvelopeVector(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := Header{Account: added.Core.Account, Domain: added.Core.Domain, Epoch: added.Core.Epoch, State: mustHash(t, added), ContentEpoch: added.Core.ContentEpoch, Sender: phone.ID, Kind: 5, Purpose: Command, Machine: machine.ID, Request: "0123456789abcdef", Deadline: 1_700_000_200_000, Counter: 1}
+	h := Header{Account: added.Core.Account, Domain: added.Core.Domain, Epoch: added.Core.Epoch, State: mustHash(t, added), ContentEpoch: added.Core.ContentEpoch, Sender: phone.ID, Kind: 5, Purpose: Command, Machine: machine.ID, Request: "0123456789abcdef", Deadline: 1_700_000_200_000}
 	plain := []byte("protocol-10 vector")
 	w, err := Seal(secret2, nil, h, plain, phoneEd)
 	if err != nil {

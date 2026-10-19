@@ -53,7 +53,7 @@ class SessionPagingTest {
             .setEndedAt(
                 Timestamp.newBuilder()
                     .setSeconds(at / 1000)
-                    .setNanos((at % 1000).toInt() * 1_000_000),
+                    .setNanos((at % 1000).toInt() * 1_000_000)
             )
             .build()
 
@@ -77,7 +77,7 @@ class SessionPagingTest {
     @After
     fun tearDown() {
         closers.forEach { it.close() }
-        daemon.close()
+        if (this::daemon.isInitialized) daemon.close()
         server.close()
     }
 
@@ -96,7 +96,7 @@ class SessionPagingTest {
         } catch (e: Exception) {
             val st = state.value
             fail(
-                "timed out waiting for $what: ${st.sessions.size} sessions, next ${st.sessionsNext}, ${st.conn}, error ${st.error}",
+                "timed out waiting for $what: ${st.sessions.size} sessions, next ${st.sessionsNext}, ${st.conn}, error ${st.error}"
             )
             throw e
         }
@@ -593,7 +593,7 @@ class SessionPagingTest {
                         Flaky()
                             .apply { down = true }
                             .also { f -> closers += AutoCloseable { f.down = false } }
-                            .http,
+                            .http
                 )
             again.start()
             again.awaitState("the failed listing") {
@@ -670,10 +670,7 @@ class SessionPagingTest {
             online = true,
             lastSeenMs = 0,
             meta =
-                MachineMeta.newBuilder()
-                    .setHostname(name)
-                    .addAllProjects(projects.toList())
-                    .build(),
+                MachineMeta.newBuilder().setHostname(name).addAllProjects(projects.toList()).build(),
         )
 
     private fun view(
@@ -691,7 +688,7 @@ class SessionPagingTest {
                 .setCreatedAt(Timestamp.newBuilder().setSeconds(created / 1000))
                 .setStatus(
                     if (exited) SessionStatus.SESSION_STATUS_EXITED
-                    else SessionStatus.SESSION_STATUS_IDLE,
+                    else SessionStatus.SESSION_STATUS_IDLE
                 )
                 .build(),
             updatedMs = created,
@@ -714,7 +711,7 @@ class SessionPagingTest {
                                 "m1",
                                 "mac",
                                 summary("/code/old", 9, created = 1_000_000, endedAt = 2_000_000),
-                            ),
+                            )
                     ),
                 sessions =
                     listOf(view("a", "m1", "/code/foo", 4_000_000, exited = true)).associateBy {
@@ -733,7 +730,7 @@ class SessionPagingTest {
                                     settings("/code/old", "m1", 7_000_000),
                                     // The machine chosen for it is no longer the account's.
                                     settings("/code/gone", "m9", 8_000_000),
-                                ),
+                                )
                             )
                             .build(),
                     ),
@@ -841,15 +838,15 @@ class SessionPagingTest {
                             io.github.lewin671.remoteagent.proto.ProjectPrefs.newBuilder()
                                 .addPinned(
                                     io.github.lewin671.remoteagent.proto.ProjectPref.newBuilder()
-                                        .setPath("/code/old"),
+                                        .setPath("/code/old")
                                 )
                                 .addHidden(
                                     io.github.lewin671.remoteagent.proto.ProjectPref.newBuilder()
-                                        .setPath("/code/bar"),
+                                        .setPath("/code/bar")
                                 )
                                 .build(),
-                        ),
-                ),
+                        )
+                )
             )
         assertEquals(listOf("/code/old"), arranged.pinned.map { it.key })
         assertEquals(listOf("/code/new", "/code/foo"), arranged.others.map { it.key })

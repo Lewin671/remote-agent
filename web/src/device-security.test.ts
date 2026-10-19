@@ -67,9 +67,7 @@ describe("protocol-10 state chain: Go interoperability", () => {
     const proof = await parseRecoveryStatement(
       unb64(vectors.recovery_statement),
     );
-    expect(b64(await recoveryBytes(proof))).toBe(
-      vectors.recovery_statement,
-    );
+    expect(b64(await recoveryBytes(proof))).toBe(vectors.recovery_statement);
     await verifyTransition(renewal, recovery, proof);
     expect(recovery.prevSecret.length).toBe(0);
     // The recovery statement binds the exact state.
@@ -87,14 +85,9 @@ describe("protocol-10 state chain: Go interoperability", () => {
     const phone = genesis.core.authorityID;
     const secret2 = await openGrant(pin, added, phone, await xKey());
     expect(hex(secret2)).toBe(vectors.content_secret_2);
-    const secret1 = await openPrevSecret(
-      secret2,
-      added.prevSecret,
-    );
+    const secret1 = await openPrevSecret(secret2, added.prevSecret);
     expect(hex(secret1)).toBe(vectors.content_secret_1);
-    await expect(
-      openPrevSecret(secret2, new Uint8Array(60)),
-    ).rejects.toThrow();
+    await expect(openPrevSecret(secret2, new Uint8Array(60))).rejects.toThrow();
     const other = await newSecurityKey();
     await expect(
       openGrant(pin, added, phone, other.privateKey),
@@ -145,11 +138,8 @@ describe("protocol-10 state chain: Go interoperability", () => {
     // so pre-recovery history stays readable.
     expect(next.contentKeys.map((k) => k.epoch)).toContain(2n);
     expect(next.contentKeys.map((k) => k.epoch)).toContain(3n);
-    expect(hex(await contentSecretOf(next, 2n))).toBe(
-      vectors.content_secret_2,
-    );
-    // The persisted counter is a block high-water, never an in-use value.
-    expect(next.counter).toBe(next.blockEnd);
+    expect(hex(await contentSecretOf(next, 2n))).toBe(vectors.content_secret_2);
+    expect(next.floor).toBeGreaterThanOrEqual(record.floor);
   });
 
   it("stops the key walk at the recovery boundary", async () => {
@@ -262,7 +252,9 @@ describe("protocol-10 envelope: Go interoperability", () => {
     await expect(
       verifyWire(pin, s, s, w, true, head + 1n),
     ).rejects.toMatchObject({ code: "stale" });
-    await expect(verifyWire(pin, s, s, w, false, head + 1n)).resolves.toBeDefined();
+    await expect(
+      verifyWire(pin, s, s, w, false, head + 1n),
+    ).resolves.toBeDefined();
   });
 
   it("rejects control whose head state is from the future", async () => {
@@ -276,7 +268,9 @@ describe("protocol-10 envelope: Go interoperability", () => {
     await expect(verifyWire(pin, s, s, w, true, behind)).rejects.toMatchObject({
       code: "clock",
     });
-    await expect(verifyWire(pin, s, s, w, false, behind)).resolves.toBeDefined();
+    await expect(
+      verifyWire(pin, s, s, w, false, behind),
+    ).resolves.toBeDefined();
   });
 
   it("round-trips a header and keeps every authenticated field", async () => {

@@ -105,6 +105,80 @@ class RemoteTest {
         withTimeout(10_000) { events(sid).first { it.events.size >= n } }
 
     @Test
+    fun currentEnvelopesContributeToVerifiedEvents() =
+        runBlocking<Unit> {
+            val r = client()
+            r.start()
+            r.awaitState("online") { it.conn == ConnState.ONLINE }
+            val events = r.awaitEvents("s1", 3)
+            assertEquals(events.events.map { it.seq }, events.verifiedEvents.map { it.seq })
+        }
+
+    @Test
+    fun concurrentPreferenceCASReappliesBothOperations() =
+        runBlocking<Unit> {
+            val barrier = java.util.concurrent.CyclicBarrier(2)
+            val count = java.util.concurrent.atomic.AtomicInteger()
+            val racing =
+                http
+                    .newBuilder()
+                    .addInterceptor { chain ->
+                        if (
+                            chain.request().url.encodedPath.endsWith("/PutAccountPrefs") &&
+                                count.incrementAndGet() <= 2
+                        )
+                            barrier.await(5, TimeUnit.SECONDS)
+                        chain.proceed(chain.request())
+                    }
+                    .build()
+            val a = fixtureRemote(approvedClient(daemon.phone, http), racing)
+            val b = fixtureRemote(approvedClient(daemon.phone, http), racing)
+            closers += AutoCloseable {
+                a.close()
+                b.close()
+            }
+            a.start()
+            b.start()
+            a.awaitState("a online") { it.conn == ConnState.ONLINE }
+            b.awaitState("b online") { it.conn == ConnState.ONLINE }
+            val first = async { a.changePrefs(PrefsOp.Pin("/synthetic/a")) }
+            val second = async { b.changePrefs(PrefsOp.Hide("/synthetic/b")) }
+            first.await()
+            second.await()
+            val st =
+                a.awaitState("both CAS operations") {
+                    it.prefs?.pinned?.contains("/synthetic/a") == true &&
+                        it.prefs.hidden.contains("/synthetic/b")
+                }
+            assertEquals(2L, st.prefs!!.revision)
+        }
+
+    @Test
+    fun preparedRecoveryRebuildsAfterRenewal() =
+        runBlocking<Unit> {
+            val r = fixtureRemote(daemon.phone, http)
+            closers += AutoCloseable { r.close() }
+            r.start()
+            r.awaitState("online") { it.conn == ConnState.ONLINE }
+            val prepared = r.prepareRecovery()
+            val head = r.security.head()
+            val renewed =
+                Authority.renewal(
+                    head,
+                    r.security.contentKey(head.core.contentEpoch)!!,
+                    SigningKey(daemon.phone.deviceSeed),
+                    System.currentTimeMillis(),
+                )
+            r.publishSecurityStates(listOf(renewed))
+            r.publishRecovery(prepared)
+            assertArrayEquals(
+                RecoveryCode.decode(prepared.code)!!.seed.let { SigningKey(it).publicKey },
+                r.security.head().core.recoveryEd,
+            )
+            assertEquals(renewed.core.epoch + 1uL, r.security.head().core.epoch)
+        }
+
+    @Test
     fun cancelingLoginBeforeAForwardDoesNotFreezeTheAttempt() =
         runBlocking<Unit> {
             val acct = approvedClient(daemon.phone, http)
@@ -160,15 +234,16 @@ class RemoteTest {
                 FakeDaemon.defaultResult(c)
             }
             val attempt = Attempt()
-            val prepared = attempt.next {
-                r.prepare(
-                    daemon.id,
-                    "s1",
-                    Command.newBuilder()
-                        .setSend(SendRequest.newBuilder().setSessionId("s1").setText("test"))
-                        .build(),
-                )
-            }
+            val prepared =
+                attempt.next {
+                    r.prepare(
+                        daemon.id,
+                        "s1",
+                        Command.newBuilder()
+                            .setSend(SendRequest.newBuilder().setSessionId("s1").setText("test"))
+                            .build(),
+                    )
+                }
             val sending = launch {
                 try {
                     r.forward(prepared)
@@ -207,7 +282,7 @@ class RemoteTest {
                     val ready =
                         io.github.lewin671.remoteagent.proto.ServerFrame.newBuilder()
                             .setReady(
-                                io.github.lewin671.remoteagent.proto.Ready.getDefaultInstance(),
+                                io.github.lewin671.remoteagent.proto.Ready.getDefaultInstance()
                             )
                             .build()
                             .toByteArray()
@@ -231,7 +306,7 @@ class RemoteTest {
                                 .request()
                                 .newBuilder()
                                 .url(server.url + chain.request().url.encodedPath)
-                                .build(),
+                                .build()
                         )
                     }
                     .build()
@@ -416,7 +491,7 @@ class RemoteTest {
                             SendRequest.newBuilder()
                                 .setSessionId("s1")
                                 .setText("跑一下测试")
-                                .setRequestId("q1"),
+                                .setRequestId("q1")
                         )
                         .build(),
                 )
@@ -435,7 +510,7 @@ class RemoteTest {
                     Command.newBuilder()
                         .setCompact(
                             io.github.lewin671.remoteagent.proto.CompactRequest.newBuilder()
-                                .setSessionId("s1"),
+                                .setSessionId("s1")
                         )
                         .build(),
                 )
@@ -452,7 +527,7 @@ class RemoteTest {
                     Command.newBuilder()
                         .setInterrupt(
                             io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                                .setSessionId("s1"),
+                                .setSessionId("s1")
                         )
                         .build(),
                 )
@@ -480,7 +555,7 @@ class RemoteTest {
                 Command.newBuilder()
                     .setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1"),
+                            .setSessionId("s1")
                     )
                     .build(),
             )
@@ -537,12 +612,12 @@ class RemoteTest {
             conn.send(
                 TerminalFrame.newBuilder()
                     .setInput(com.google.protobuf.ByteString.copyFromUtf8("中文\r"))
-                    .build(),
+                    .build()
             )
             conn.send(
                 TerminalFrame.newBuilder()
                     .setInput(com.google.protobuf.ByteString.copyFromUtf8("\u001b[A"))
-                    .build(),
+                    .build()
             )
             assertEquals("中文\r", daemon.termInput.poll(5, TimeUnit.SECONDS)!!.input.toStringUtf8())
             assertEquals(
@@ -918,7 +993,7 @@ class RemoteTest {
                 Command.newBuilder()
                     .setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1"),
+                            .setSessionId("s1")
                     )
                     .build()
             val first = a.next { r.prepare(daemon.id, "s1", cmd) }
@@ -952,7 +1027,7 @@ class RemoteTest {
                 Command.newBuilder()
                     .setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1"),
+                            .setSessionId("s1")
                     )
                     .build()
             try {
@@ -973,7 +1048,7 @@ class RemoteTest {
                 Command.newBuilder()
                     .setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1"),
+                            .setSessionId("s1")
                     )
                     .build()
             val p = r.prepare(daemon.id, "s1", cmd)
@@ -1004,7 +1079,7 @@ class RemoteTest {
                 Command.newBuilder()
                     .setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1"),
+                            .setSessionId("s1")
                     )
                     .build()
             val first = a.next { r.prepare(daemon.id, "s1", cmd) }
@@ -1107,7 +1182,7 @@ class RemoteTest {
                     .setEnvelope(
                         e.envelope
                             .toBuilder()
-                            .setCiphertext(com.google.protobuf.ByteString.copyFrom(bad)),
+                            .setCiphertext(com.google.protobuf.ByteString.copyFrom(bad))
                     )
                     .build()
             }
@@ -1181,7 +1256,7 @@ class RemoteTest {
             val got = r.image("s1", "00000000000000000000000000000001")
             assertTrue(got is Remote.ImageResult.Loaded)
             assertTrue(
-                (got as Remote.ImageResult.Loaded).payload.data.toByteArray().contentEquals(png),
+                (got as Remote.ImageResult.Loaded).payload.data.toByteArray().contentEquals(png)
             )
             val legacyID = "00000000000000000000000000000003"
             val legacy =
@@ -1189,7 +1264,7 @@ class RemoteTest {
                     daemon.sessionKeys.getValue("s1"),
                     io.github.lewin671.remoteagent.proto.Header.newBuilder()
                         .setKind(
-                            io.github.lewin671.remoteagent.proto.PayloadKind.PAYLOAD_KIND_IMAGE,
+                            io.github.lewin671.remoteagent.proto.PayloadKind.PAYLOAD_KIND_IMAGE
                         )
                         .setMachineId(daemon.id)
                         .setSessionId("s1")
@@ -1203,7 +1278,7 @@ class RemoteTest {
             // What the cache holds is the sealed envelope, not the picture.
             val stored = cache.images.getValue("s1/00000000000000000000000000000001")
             assertFalse(
-                String(stored, Charsets.ISO_8859_1).contains(String(png, Charsets.ISO_8859_1)),
+                String(stored, Charsets.ISO_8859_1).contains(String(png, Charsets.ISO_8859_1))
             )
             assertEquals(
                 Remote.ImageResult.Missing,
@@ -1219,7 +1294,7 @@ class RemoteTest {
                     .build(),
             )
             assertTrue(
-                r.image("s1", "00000000000000000000000000000002") is Remote.ImageResult.Corrupt,
+                r.image("s1", "00000000000000000000000000000002") is Remote.ImageResult.Corrupt
             )
         }
 

@@ -8,6 +8,7 @@ import android.system.Os
 import android.system.OsConstants
 import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.DeviceSecurity
+import io.github.lewin671.remoteagent.core.draftBytes
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -93,34 +94,25 @@ class Vault(context: Context) : DeviceSecurity.Storage {
 
     private fun readSecurityUnlocked(): DeviceSecurity.Record =
         DeviceSecurity.Record.parse(
-            read(securityFile, ACCOUNT_ALIAS) ?: throw DeviceSecurity.Failure("storage"),
+            read(securityFile, ACCOUNT_ALIAS) ?: throw DeviceSecurity.Failure("storage")
         )
 
     override fun readSecurity(): DeviceSecurity.Record = securityTransaction {
-        // A restart skips the rest of the last reserved block; those counter
-        // values must never be handed out twice.
-        readSecurityUnlocked().atBlockEnd().also { refreshNotifyUnlocked(it) }
+        readSecurityUnlocked().also { refreshNotifyUnlocked(it) }
     }
 
     override fun initializeSecurity(record: DeviceSecurity.Record) {
         securityTransaction {
             if (securityFile.exists()) throw DeviceSecurity.Failure("conflict")
             write(securityFile, ACCOUNT_ALIAS, record.bytes(), unlockedOnly = true)
-            write(notifyFile, NOTIFY_ALIAS, DeviceSecurity.NotifyRecord.fromRecord(record).bytes(), unlockedOnly = false)
+            write(
+                notifyFile,
+                NOTIFY_ALIAS,
+                DeviceSecurity.NotifyRecord.fromRecord(record).bytes(),
+                unlockedOnly = false,
+            )
         }
     }
-
-    override fun writeSecurity(
-        expectedState: ByteArray,
-        record: DeviceSecurity.Record,
-    ): DeviceSecurity.Record =
-        securityTransaction {
-            val old = readSecurityUnlocked()
-            if (!DeviceSecurity.stateHash(old.head).contentEquals(expectedState))
-                throw DeviceSecurity.Failure("stale")
-            write(securityFile, ACCOUNT_ALIAS, record.bytes(), unlockedOnly = true)
-            record
-        }
 
     override fun installSecurity(
         expectedState: ByteArray,
@@ -183,51 +175,41 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         )
     }
 
-    /** The identity that submitted a pending recovery, so an app restart can finish it. */
-    fun savePendingRecovery(
-        recoveryId: String,
-        deviceSeed: ByteArray,
-        xPrivate: ByteArray,
-        stateHash: ByteArray,
-    ) {
+    fun saveCreationDraft(draft: io.github.lewin671.remoteagent.core.CreatedAccount) =
         securityTransaction {
-            if (deviceSeed.size != 32 || xPrivate.size != 32 || stateHash.size != 32)
-                throw DeviceSecurity.Failure()
-            val out = ByteArrayOutputStream()
-            DataOutputStream(out).use { s ->
-                s.writeInt(2)
-                s.writeUTF(recoveryId)
-                s.writeInt(deviceSeed.size)
-                s.write(deviceSeed)
-                s.writeInt(xPrivate.size)
-                s.write(xPrivate)
-                s.write(stateHash)
+            write(
+                File(dir, "creation-draft.bin"),
+                ACCOUNT_ALIAS,
+                draft.draftBytes(),
+                unlockedOnly = true,
+            )
+        }
+
+    fun loadCreationDraft(): io.github.lewin671.remoteagent.core.CreatedAccount? =
+        securityTransaction {
+            read(File(dir, "creation-draft.bin"), ACCOUNT_ALIAS)?.let {
+                io.github.lewin671.remoteagent.core.CreatedAccount.parseDraft(it)
             }
-            write(File(dir, "recovery-pending.bin"), ACCOUNT_ALIAS, out.toByteArray(), unlockedOnly = true)
         }
-    }
 
-    data class PendingRecovery(
-        val deviceSeed: ByteArray,
-        val xPrivate: ByteArray,
-        val stateHash: ByteArray,
-    )
-
-    fun loadPendingRecovery(recoveryId: String): PendingRecovery? = securityTransaction {
-        val blob = read(File(dir, "recovery-pending.bin"), ACCOUNT_ALIAS) ?: return@securityTransaction null
-        DataInputStream(ByteArrayInputStream(blob)).use { s ->
-            if (s.readInt() != 2 || s.readUTF() != recoveryId) return@securityTransaction null
-            val seed = ByteArray(s.readInt()).also { s.readFully(it) }
-            val x = ByteArray(s.readInt()).also { s.readFully(it) }
-            val hash = ByteArray(32).also { s.readFully(it) }
-            if (seed.size != 32 || x.size != 32) null
-            else PendingRecovery(seed, x, hash)
+    fun saveRecoveryDraft(draft: io.github.lewin671.remoteagent.core.RecoveryDraft) =
+        securityTransaction {
+            write(
+                File(dir, "recovery-draft.bin"),
+                ACCOUNT_ALIAS,
+                draft.bytes(),
+                unlockedOnly = true,
+            )
         }
-    }
 
-    fun clearPendingRecovery() = securityTransaction {
-        File(dir, "recovery-pending.bin").delete()
-    }
+    fun loadRecoveryDraft(): io.github.lewin671.remoteagent.core.RecoveryDraft? =
+        securityTransaction {
+            read(File(dir, "recovery-draft.bin"), ACCOUNT_ALIAS)?.let {
+                io.github.lewin671.remoteagent.core.RecoveryDraft.parse(it)
+            }
+        }
+
+    fun clearPendingRecovery() = securityTransaction { File(dir, "recovery-draft.bin").delete() }
 
     private fun syncDirectory(directory: File = dir) {
         val parent = Os.open(directory.absolutePath, OsConstants.O_RDONLY, 0)
@@ -241,7 +223,7 @@ class Vault(context: Context) : DeviceSecurity.Storage {
     /** The notify key, for decrypting pushes in the background. */
     fun notifyKey(): ByteArray? = read(notifyFile, NOTIFY_ALIAS)
 
-    fun clear() = securityTransaction {
+    fun clear(preserveDrafts: Boolean = false) = securityTransaction {
         securityFile.delete()
         File(dir, "security-v2.bin").delete()
         File(dir, "security-removals-v2.bin").delete()
@@ -249,8 +231,21 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         accountFile.delete()
         notifyFile.delete()
         File(dir, "recovery-pending.bin").delete()
+        if (!preserveDrafts) {
+            File(dir, "recovery-draft.bin").delete()
+            File(dir, "creation-draft.bin").delete()
+        }
         val ks = keyStore()
-        for (a in listOf(ACCOUNT_ALIAS, NOTIFY_ALIAS)) if (ks.containsAlias(a)) ks.deleteEntry(a)
+        for (a in listOf(ACCOUNT_ALIAS, NOTIFY_ALIAS)) if (
+            (!preserveDrafts || a != ACCOUNT_ALIAS) && ks.containsAlias(a)
+        )
+            ks.deleteEntry(a)
+    }
+
+    fun clearDrafts() = securityTransaction {
+        File(dir, "creation-draft.bin").delete()
+        File(dir, "recovery-draft.bin").delete()
+        syncDirectory()
     }
 
     private fun read(f: File, alias: String): ByteArray? {

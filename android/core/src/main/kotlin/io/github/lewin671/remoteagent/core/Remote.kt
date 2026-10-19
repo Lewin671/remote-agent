@@ -571,12 +571,13 @@ class Remote(
             grace = null
             waited = false
         } else if (!waited && grace == null) {
-            grace = scope.launch {
-                delay(linkGraceMs)
-                grace = null
-                waited = true
-                publish()
-            }
+            grace =
+                scope.launch {
+                    delay(linkGraceMs)
+                    grace = null
+                    waited = true
+                    publish()
+                }
         }
         val link =
             when {
@@ -616,30 +617,31 @@ class Remote(
      * mean what it says. A server restarted between the two calls forgets the challenge; denied a
      * fresh one too, it no longer knows this device, and nothing connects until it joins again.
      */
-    private suspend fun signIn(): String = signingIn.withLock {
-        try {
-            signedIn(loginResponse(api, account))
-        } catch (first: ConnectException) {
-            if (first.code != Code.PERMISSION_DENIED) throw first
+    private suspend fun signIn(): String =
+        signingIn.withLock {
             try {
                 signedIn(loginResponse(api, account))
-            } catch (e: ConnectException) {
-                if (e.code == Code.PERMISSION_DENIED)
-                    withContext(dispatcher) {
-                        removed = true
-                        running = false
-                        generation++
-                        reconnect?.cancel()
-                        reconnect = null
-                        ws?.close(1000, null)
-                        ws = null
-                        conn = ConnState.OFFLINE
-                        publish()
-                    }
-                throw e
+            } catch (first: ConnectException) {
+                if (first.code != Code.PERMISSION_DENIED) throw first
+                try {
+                    signedIn(loginResponse(api, account))
+                } catch (e: ConnectException) {
+                    if (e.code == Code.PERMISSION_DENIED)
+                        withContext(dispatcher) {
+                            removed = true
+                            running = false
+                            generation++
+                            reconnect?.cancel()
+                            reconnect = null
+                            ws?.close(1000, null)
+                            ws = null
+                            conn = ConnState.OFFLINE
+                            publish()
+                        }
+                    throw e
+                }
             }
         }
-    }
 
     private fun signedIn(res: LoginResponse): String {
         tokenExpires = res.expiresMs
@@ -796,16 +798,17 @@ class Remote(
                 },
             )
         ws = socket
-        opening = scope.launch {
-            delay(streamOpenMs)
-            if (ws === socket && gen == generation && conn != ConnState.ONLINE) {
-                ws = null
-                generation++
-                socket.cancel()
-                frames.cancel()
-                fail(Exception("连接超时，正在重连"))
+        opening =
+            scope.launch {
+                delay(streamOpenMs)
+                if (ws === socket && gen == generation && conn != ConnState.ONLINE) {
+                    ws = null
+                    generation++
+                    socket.cancel()
+                    frames.cancel()
+                    fail(Exception("连接超时，正在重连"))
+                }
             }
-        }
         scope.launch {
             try {
                 for (b in frames) {
@@ -855,12 +858,13 @@ class Remote(
         if (!running) return
         val delayMs = retry + (Random.nextDouble() * retry * 0.25).toLong()
         retry = minOf(retry * 2, 30_000)
-        reconnect = scope.launch {
-            delay(delayMs)
-            // Do not cancel this retry job from beginConnect while it runs.
-            reconnect = null
-            beginConnect()
-        }
+        reconnect =
+            scope.launch {
+                delay(delayMs)
+                // Do not cancel this retry job from beginConnect while it runs.
+                reconnect = null
+                beginConnect()
+            }
     }
 
     private suspend fun onFrame(f: ServerFrame) {
@@ -920,7 +924,13 @@ class Remote(
                     }
                     publish()
                 } else {
-                    ingest(sid, f.eventsAppended.eventsList, fillGaps = true, save = true, live = true)
+                    ingest(
+                        sid,
+                        f.eventsAppended.eventsList,
+                        fillGaps = true,
+                        save = true,
+                        live = true,
+                    )
                 }
             }
             else -> {}
@@ -1071,12 +1081,13 @@ class Remote(
     private fun retryListing(run: Int) {
         val wait = listBackoff
         listBackoff = minOf(listBackoff * 2, 30_000)
-        listRetry = scope.launch {
-            delay(wait)
-            // Not this job's to cancel itself from refresh.
-            listRetry = null
-            if (running && conn == ConnState.ONLINE && run == refreshRun) refresh()
-        }
+        listRetry =
+            scope.launch {
+                delay(wait)
+                // Not this job's to cancel itself from refresh.
+                listRetry = null
+                if (running && conn == ConnState.ONLINE && run == refreshRun) refresh()
+            }
     }
 
     private fun pushed(now: Map<String, Int>, then: Map<String, Int>, id: String) =
@@ -1166,7 +1177,7 @@ class Remote(
                                 .setAfter(
                                     SessionCursor.newBuilder()
                                         .setEndedMs(after.endedMs)
-                                        .setSessionId(after.sessionId),
+                                        .setSessionId(after.sessionId)
                                 )
                                 .setLimit(SESSION_PAGE)
                                 .build(),
@@ -1304,8 +1315,7 @@ class Remote(
                 val (h, raw) =
                     if (route.version == 1)
                         Envelopes.open(
-                            keys?.wrap
-                                ?: throw OpenException("历史不可读：这台设备没有账户根密钥"),
+                            keys?.wrap ?: throw OpenException("历史不可读：这台设备没有账户根密钥"),
                             rs.key,
                         )
                     else {
@@ -1402,13 +1412,14 @@ class Remote(
             if (prefs != null || !running || gen != generation || prefsRetry != null) return
             val wait = prefsBackoff
             prefsBackoff = minOf(prefsBackoff * 2, 30_000)
-            prefsRetry = scope.launch {
-                delay(wait)
-                // Not this job's to cancel itself from loadPrefs.
-                prefsRetry = null
-                if (running && conn == ConnState.ONLINE && gen == generation && prefs == null)
-                    loadPrefs()
-            }
+            prefsRetry =
+                scope.launch {
+                    delay(wait)
+                    // Not this job's to cancel itself from loadPrefs.
+                    prefsRetry = null
+                    if (running && conn == ConnState.ONLINE && gen == generation && prefs == null)
+                        loadPrefs()
+                }
         }
     }
 
@@ -1495,7 +1506,7 @@ class Remote(
                         seq = (base.revision + 1).toULong(),
                         plain = next.toByteArray(),
                     )
-                runCatching {
+                val applied =
                     api.client
                         .putAccountPrefs(
                             io.github.lewin671.remoteagent.proto.PutAccountPrefsRequest.newBuilder()
@@ -1506,7 +1517,8 @@ class Remote(
                             Api.headers(currentToken()),
                         )
                         .value()
-                }
+                        .applied
+                if (!applied) return@repeat
                 val current = readTrustedPrefs()
                 withContext(dispatcher) {
                     prefs = current
@@ -1541,6 +1553,7 @@ class Remote(
             withContext(dispatcher) {
                 val before = security.head().core.epoch
                 val r = security.sync()
+                republishRecoveryObjects(r)
                 authorityDeviceId = r.head.core.authorityID
                 lastHeadEpoch = r.head.core.epoch
                 leaseEnd = r.head.core.notAfter.toLong()
@@ -1548,6 +1561,121 @@ class Remote(
                 r.head.core.epoch != before
             }
         return changed
+    }
+
+    /**
+     * Objects owned by clients cross a recovery boundary via CAS, using only snapshots this
+     * retained device can verify and decrypt. Checking the stored content epoch also retries an
+     * interrupted republish after a restart.
+     */
+    private suspend fun republishRecoveryObjects(r: DeviceSecurity.Record) {
+        val boundary =
+            r.proofs.keys.maxOrNull()?.let { r.stateAt(it)?.core?.contentEpoch } ?: return
+        val headers = Api.headers(currentToken())
+        for (attempt in 0 until 5) {
+            val obj =
+                api.client
+                    .getAccountPrefs(
+                        io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest.newBuilder()
+                            .setObjectId(PROJECT_PREFS)
+                            .build(),
+                        headers,
+                    )
+                    .value()
+                    .`object`
+            if (!obj.hasEnvelope() || obj.revision == 0L) break
+            val h = DeviceSecurity.parseHeader(obj.envelope.securityHeader.toByteArray())
+            if (h.contentEpoch >= boundary) break
+            if (
+                h.purpose != DeviceSecurity.Purpose.PREFS ||
+                    h.request != PROJECT_PREFS ||
+                    h.seq != obj.revision.toULong()
+            )
+                throw DeviceSecurity.Failure("untrusted")
+            val snapshot =
+                try {
+                    security
+                        .openMessage(
+                            obj.envelope,
+                            true,
+                            parse = io.github.lewin671.remoteagent.proto.ProjectPrefs::parseFrom,
+                        )
+                        .second
+                } catch (e: DeviceSecurity.Failure) {
+                    if (e.code == "unavailable") break else throw e
+                }
+            val env =
+                security.seal(
+                    DeviceSecurity.Purpose.PREFS,
+                    request = PROJECT_PREFS,
+                    seq = (obj.revision + 1).toULong(),
+                    plain = snapshot.toByteArray(),
+                )
+            val result =
+                api.client
+                    .putAccountPrefs(
+                        io.github.lewin671.remoteagent.proto.PutAccountPrefsRequest.newBuilder()
+                            .setObjectId(PROJECT_PREFS)
+                            .setExpectedRevision(obj.revision)
+                            .setEnvelope(env)
+                            .build(),
+                        headers,
+                    )
+                    .value()
+            if (result.applied) break
+        }
+        for (attempt in 0 until 5) {
+            val own =
+                api.client
+                    .listDevices(
+                        io.github.lewin671.remoteagent.proto.ListDevicesRequest
+                            .getDefaultInstance(),
+                        headers,
+                    )
+                    .value()
+                    .devicesList
+                    .firstOrNull { it.id == account.deviceId } ?: break
+            if (!own.hasMeta()) break
+            val h = DeviceSecurity.parseHeader(own.meta.securityHeader.toByteArray())
+            if (h.contentEpoch >= boundary) break
+            if (
+                h.purpose != DeviceSecurity.Purpose.DEVICE_META ||
+                    h.sender != account.deviceId ||
+                    h.seq != own.metaRevision.toULong()
+            )
+                throw DeviceSecurity.Failure("untrusted")
+            val snapshot =
+                try {
+                    security
+                        .openMessage(
+                            own.meta,
+                            true,
+                            parse = io.github.lewin671.remoteagent.proto.DeviceMeta::parseFrom,
+                        )
+                        .second
+                } catch (e: DeviceSecurity.Failure) {
+                    if (e.code == "unavailable") break else throw e
+                }
+            val env =
+                security.seal(
+                    DeviceSecurity.Purpose.DEVICE_META,
+                    request = account.deviceId,
+                    seq = (own.metaRevision + 1).toULong(),
+                    plain = snapshot.toByteArray(),
+                )
+            val result =
+                api.client
+                    .putDeviceMeta(
+                        io.github.lewin671.remoteagent.proto.PutDeviceMetaRequest.newBuilder()
+                            .setDeviceId(account.deviceId)
+                            .setExpectedRevision(own.metaRevision)
+                            .setMeta(env)
+                            .build(),
+                        headers,
+                    )
+                    .value()
+            if (result.applied) break
+        }
     }
 
     /** Uploads states this phone signed, then installs them locally. */
@@ -1561,9 +1689,7 @@ class Remote(
             val b =
                 io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
                     .setState(
-                        com.google.protobuf.ByteString.copyFrom(
-                            DeviceSecurity.stateBytes(state),
-                        ),
+                        com.google.protobuf.ByteString.copyFrom(DeviceSecurity.stateBytes(state))
                     )
             proofs.getOrNull(i)?.let { b.setRecovery(com.google.protobuf.ByteString.copyFrom(it)) }
             req.addStates(b)
@@ -1593,13 +1719,8 @@ class Remote(
                     val secret = security.contentKey(head.core.contentEpoch) ?: return@withContext
                     publishSecurityStates(
                         listOf(
-                            Authority.renewal(
-                                head,
-                                secret,
-                                SigningKey(account.deviceSeed),
-                                clock(),
-                            ),
-                        ),
+                            Authority.renewal(head, secret, SigningKey(account.deviceSeed), clock())
+                        )
                     )
                 }
             } catch (e: Exception) {
@@ -1615,44 +1736,62 @@ class Remote(
     fun chainProofs(): Map<ULong, ByteArray> = security.chainProofs()
 
     /**
-     * A pending recovery the authority phone can veto. The relay tells the
-     * signed-in authority phone; an unauthenticated lookup no longer does.
+     * A pending recovery the authority phone can veto. The relay tells the signed-in authority
+     * phone; an unauthenticated lookup no longer does.
      */
     suspend fun pendingRecovery(): PendingRecoveryInfo? {
         if (authorityDeviceId != account.deviceId) return null
         syncSecurity()
-        return if (security.recoveryPending) PendingRecoveryInfo(security.recoveryReadyMs)
-        else null
+        return if (security.recoveryPending) PendingRecoveryInfo(security.recoveryReadyMs) else null
     }
 
     /**
-     * Signs a newer state with a fresh recovery key but does not publish it
-     * yet: the user must save the new code first. The state goes out only in
-     * [publishRecovery], so a crash cannot leave the account without a code
-     * the user knows.
+     * Signs a newer state with a fresh recovery key but does not publish it yet: the user must save
+     * the new code first. The state goes out only in [publishRecovery], so a crash cannot leave the
+     * account without a code the user knows.
      */
     suspend fun prepareRecovery(): PreparedRecovery {
         syncSecurity()
         val head = security.head()
         if (head.core.authorityID != account.deviceId)
             throw CommandException("failed_precondition", "只有管理端手机能否决恢复")
-        val secret = security.contentKey(head.core.contentEpoch)
-            ?: throw DeviceSecurity.Failure("unavailable")
+        val secret =
+            security.contentKey(head.core.contentEpoch)
+                ?: throw DeviceSecurity.Failure("unavailable")
         val (seed, pub) = Authority.newRecovery()
-        val state =
-            Authority.veto(
-                head,
-                pub,
-                secret,
-                SigningKey(account.deviceSeed),
-                clock(),
-            )
+        val state = Authority.veto(head, pub, secret, SigningKey(account.deviceSeed), clock())
         val (pin, _) = security.identity()
-        return PreparedRecovery(RecoveryCode.encode(seed, pin.genesis), state)
+        return PreparedRecovery(RecoveryCode.encode(seed, pin.genesis), state, seed)
     }
 
     suspend fun publishRecovery(prepared: PreparedRecovery) {
-        publishSecurityStates(listOf(prepared.state))
+        repeat(5) {
+            syncSecurity()
+            val head = security.head()
+            val state =
+                if (DeviceSecurity.stateHash(head).contentEquals(prepared.state.core.parent))
+                    prepared.state
+                else
+                    Authority.veto(
+                        head,
+                        SigningKey(prepared.newRecoverySeed).publicKey,
+                        security.contentKey(head.core.contentEpoch)
+                            ?: throw DeviceSecurity.Failure("unavailable"),
+                        SigningKey(account.deviceSeed),
+                        clock(),
+                    )
+            try {
+                publishSecurityStates(listOf(state))
+                return
+            } catch (e: com.connectrpc.ConnectException) {
+                if (
+                    e.code != com.connectrpc.Code.ABORTED &&
+                        e.code != com.connectrpc.Code.FAILED_PRECONDITION
+                )
+                    throw e
+            }
+        }
+        throw DeviceSecurity.Failure("stale")
     }
 
     private suspend fun loadDevices() {
@@ -1695,28 +1834,37 @@ class Remote(
                     )
                 val env = metadata[(if (m.kind == 1u) "machine:" else "device:") + m.id]
                 if (env != null) {
-                    if (m.kind == 2u) {
-                        val (h, meta) =
-                            openSecureMessage(
-                                keys?.deviceMeta ?: ByteArray(0),
-                                env,
-                                Place(PayloadKind.PAYLOAD_KIND_DEVICE_META, requestId = m.id),
-                                io.github.lewin671.remoteagent.proto.DeviceMeta::parseFrom,
-                            )
-                        view = view.copy(meta = meta, metaRev = h.seq)
-                    } else {
-                        val (h, meta) =
-                            openSecureMessage(
-                                keys?.meta ?: ByteArray(0),
-                                env,
-                                Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
-                                MachineMeta::parseFrom,
-                            )
-                        val old = machines[m.id]
-                        newMachines[m.id] =
-                            if (old == null)
-                                MachineView(m.id, false, 0L, meta = meta, metaRev = h.seq)
-                            else old.copy(meta = meta, metaRev = h.seq)
+                    try {
+                        if (m.kind == 2u) {
+                            val (h, meta) =
+                                openSecureMessage(
+                                    keys?.deviceMeta ?: ByteArray(0),
+                                    env,
+                                    Place(PayloadKind.PAYLOAD_KIND_DEVICE_META, requestId = m.id),
+                                    io.github.lewin671.remoteagent.proto.DeviceMeta::parseFrom,
+                                )
+                            view = view.copy(meta = meta, metaRev = h.seq)
+                        } else {
+                            val (h, meta) =
+                                openSecureMessage(
+                                    keys?.meta ?: ByteArray(0),
+                                    env,
+                                    Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
+                                    MachineMeta::parseFrom,
+                                )
+                            val old = machines[m.id]
+                            newMachines[m.id] =
+                                if (old == null)
+                                    MachineView(m.id, false, 0L, meta = meta, metaRev = h.seq)
+                                else old.copy(meta = meta, metaRev = h.seq)
+                        }
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        devices[m.id]?.let {
+                            view = view.copy(meta = it.meta, metaRev = it.metaRev)
+                        }
+                        if (m.kind == 1u && !newMachines.containsKey(m.id))
+                            newMachines[m.id] = MachineView(m.id, false, 0L)
                     }
                 } else if (m.kind == 1u && !newMachines.containsKey(m.id)) {
                     newMachines[m.id] = MachineView(m.id, false, 0L)
@@ -1790,7 +1938,7 @@ class Remote(
                         seq = (current.metaRev + 1).toULong(),
                         plain = next.toByteArray(),
                     )
-                runCatching {
+                val applied =
                     api.client
                         .putDeviceMeta(
                             io.github.lewin671.remoteagent.proto.PutDeviceMetaRequest.newBuilder()
@@ -1801,7 +1949,8 @@ class Remote(
                             Api.headers(currentToken()),
                         )
                         .value()
-                }
+                        .applied
+                if (!applied) return@repeat
                 withContext(dispatcher) { loadDevices() }
                 return
             } catch (e: DeviceSecurity.Failure) {
@@ -1841,12 +1990,13 @@ class Remote(
                             if (count > 0) {
                                 scope.launch { loadEvents(sid) }
                                 if (liveJobs[sid] == null)
-                                    liveJobs[sid] = scope.launch {
-                                        while (true) {
-                                            if (running) refreshLiveSnapshot(sid)
-                                            delay(5000)
+                                    liveJobs[sid] =
+                                        scope.launch {
+                                            while (true) {
+                                                if (running) refreshLiveSnapshot(sid)
+                                                delay(5000)
+                                            }
                                         }
-                                    }
                             } else {
                                 liveJobs.remove(sid)?.cancel()
                                 liveSnapshots.remove(sid)
@@ -1859,12 +2009,13 @@ class Remote(
             }
         scope.launch {
             if (historySweep == null)
-                historySweep = scope.launch {
-                    while (true) {
-                        delay(historyIdleMs.coerceAtLeast(1))
-                        trimHistory()
+                historySweep =
+                    scope.launch {
+                        while (true) {
+                            delay(historyIdleMs.coerceAtLeast(1))
+                            trimHistory()
+                        }
                     }
-                }
             buffers[sid]?.usedAt = clock()
             loadEvents(sid)
         }
@@ -2011,7 +2162,8 @@ class Remote(
                         live,
                     )
                 if (ev.seq != se.seq || ev.sessionId != sid) throw OpenException("事件的位置被改动")
-                if (Header.parseFrom(se.envelope.header).version == 2) b.verifiedSeqs.add(se.seq)
+                if (Header.parseFrom(se.envelope.header).version == DeviceSecurity.VERSION)
+                    b.verifiedSeqs.add(se.seq)
                 b.pending[se.seq] = ev
                 opened += se
                 // What is held is the event as opened; its ciphertext may be packed.
@@ -2134,7 +2286,7 @@ class Remote(
                             cmd.answerPlan
                                 .toBuilder()
                                 .setObservedEventSeq(seq)
-                                .setObservedScreenHash(shown.planScreenHash),
+                                .setObservedScreenHash(shown.planScreenHash)
                         )
                         .build()
             } else {
@@ -2150,13 +2302,13 @@ class Remote(
                     if (approval)
                         cmd.toBuilder()
                             .setResolveApproval(
-                                cmd.resolveApproval.toBuilder().setObservedEventSeq(seq),
+                                cmd.resolveApproval.toBuilder().setObservedEventSeq(seq)
                             )
                             .build()
                     else
                         cmd.toBuilder()
                             .setAnswerQuestion(
-                                cmd.answerQuestion.toBuilder().setObservedEventSeq(seq),
+                                cmd.answerQuestion.toBuilder().setObservedEventSeq(seq)
                             )
                             .build()
             }
@@ -2195,7 +2347,7 @@ class Remote(
                     } ?: throw DeviceSecurity.Failure("stale")
                 cmd.toBuilder()
                     .setResolveApproval(
-                        cmd.resolveApproval.toBuilder().setObservedEventSeq(event.seq),
+                        cmd.resolveApproval.toBuilder().setObservedEventSeq(event.seq)
                     )
                     .build()
             }
@@ -2207,7 +2359,7 @@ class Remote(
                     } ?: throw DeviceSecurity.Failure("stale")
                 cmd.toBuilder()
                     .setAnswerQuestion(
-                        cmd.answerQuestion.toBuilder().setObservedEventSeq(event.seq),
+                        cmd.answerQuestion.toBuilder().setObservedEventSeq(event.seq)
                     )
                     .build()
             }
@@ -2219,7 +2371,7 @@ class Remote(
                         cmd.answerPlan
                             .toBuilder()
                             .setObservedEventSeq(fresh.planEventSeq)
-                            .setObservedScreenHash(fresh.planScreenHash),
+                            .setObservedScreenHash(fresh.planScreenHash)
                     )
                     .build()
             }
@@ -2228,7 +2380,7 @@ class Remote(
     }
 
     private suspend fun fetchLiveSnapshot(
-        sid: String,
+        sid: String
     ): io.github.lewin671.remoteagent.proto.LiveSnapshot {
         val session =
             withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
@@ -2240,10 +2392,10 @@ class Remote(
                     Command.newBuilder()
                         .setGetLiveSnapshot(
                             io.github.lewin671.remoteagent.proto.GetLiveSnapshotRequest.newBuilder()
-                                .setSessionId(sid),
+                                .setSessionId(sid)
                         )
                         .build(),
-                ),
+                )
             )
         if (!result.hasLiveSnapshot() || result.liveSnapshot.session.id != sid)
             throw DeviceSecurity.Failure()
@@ -2284,7 +2436,7 @@ class Remote(
                         okhttp3.Request.Builder()
                             .url(api.server.trimEnd('/') + "/healthz")
                             .header("Cache-Control", "no-store")
-                            .build(),
+                            .build()
                     )
             val started = System.nanoTime()
             try {
@@ -2311,7 +2463,7 @@ class Remote(
                     Command.newBuilder()
                         .setGetSettings(
                             io.github.lewin671.remoteagent.proto.GetSettingsRequest
-                                .getDefaultInstance(),
+                                .getDefaultInstance()
                         )
                         .build(),
                 )
@@ -2356,15 +2508,9 @@ class Remote(
                             throw CommandException("failed_precondition", "当前请求已变化，请重新核对")
                     }
                     if (serverAhead || security.clockSkew)
-                        throw CommandException(
-                            "failed_precondition",
-                            "手机时钟比服务器快，远程控制暂停；请校准系统时间",
-                        )
+                        throw CommandException("failed_precondition", "手机时钟比服务器快，远程控制暂停；请校准系统时间")
                     if (!Authority.leaseValid(head, clock()))
-                        throw CommandException(
-                            "failed_precondition",
-                            "远程控制已暂停：打开手机 App 上续期后再试",
-                        )
+                        throw CommandException("failed_precondition", "远程控制已暂停：打开手机 App 上续期后再试")
                     security.seal(
                         DeviceSecurity.Purpose.COMMAND,
                         p.machineId,
@@ -2550,7 +2696,7 @@ class Remote(
                                     machineId,
                                     Command.newBuilder()
                                         .setListModels(
-                                            ListModelsRequest.newBuilder().setAgent(agent),
+                                            ListModelsRequest.newBuilder().setAgent(agent)
                                         )
                                         .build(),
                                 )
@@ -2573,8 +2719,7 @@ class Remote(
             throw CommandException("failed_precondition", "请在手机 App 上删除设备")
         if (deviceId == head.core.authorityID)
             throw CommandException("failed_precondition", "管理端手机不能被普通删除")
-        if (head.core.member(deviceId) == null)
-            throw CommandException("not_found", "没有这台设备")
+        if (head.core.member(deviceId) == null) throw CommandException("not_found", "没有这台设备")
         val old =
             security.contentKey(head.core.contentEpoch)
                 ?: throw DeviceSecurity.Failure("unavailable")
@@ -2690,46 +2835,53 @@ class Remote(
                 format: io.github.lewin671.remoteagent.proto.ImageFormat,
                 total: Long,
                 sha256: ByteArray,
-            ) = run {
-                beginImageUpload =
-                    io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.newBuilder()
-                        .setTransferId(transferId)
-                        .setFormat(format)
-                        .setTotalBytes(total)
-                        .setSha256(com.google.protobuf.ByteString.copyFrom(sha256))
-                        .build()
-            }
-                .beginImageUpload
-                .status
+            ) =
+                run {
+                        beginImageUpload =
+                            io.github.lewin671.remoteagent.proto.BeginImageUploadRequest
+                                .newBuilder()
+                                .setTransferId(transferId)
+                                .setFormat(format)
+                                .setTotalBytes(total)
+                                .setSha256(com.google.protobuf.ByteString.copyFrom(sha256))
+                                .build()
+                    }
+                    .beginImageUpload
+                    .status
 
-            override suspend fun put(transferId: String, offset: Long, data: ByteArray) = run {
-                putImageChunk =
-                    io.github.lewin671.remoteagent.proto.PutImageChunkRequest.newBuilder()
-                        .setTransferId(transferId)
-                        .setOffset(offset)
-                        .setData(com.google.protobuf.ByteString.copyFrom(data))
-                        .build()
-            }
-                .putImageChunk
-                .status
+            override suspend fun put(transferId: String, offset: Long, data: ByteArray) =
+                run {
+                        putImageChunk =
+                            io.github.lewin671.remoteagent.proto.PutImageChunkRequest.newBuilder()
+                                .setTransferId(transferId)
+                                .setOffset(offset)
+                                .setData(com.google.protobuf.ByteString.copyFrom(data))
+                                .build()
+                    }
+                    .putImageChunk
+                    .status
 
-            override suspend fun status(transferId: String) = run {
-                getImageUploadStatus =
-                    io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder()
-                        .setTransferId(transferId)
-                        .build()
-            }
-                .getImageUploadStatus
-                .status
+            override suspend fun status(transferId: String) =
+                run {
+                        getImageUploadStatus =
+                            io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest
+                                .newBuilder()
+                                .setTransferId(transferId)
+                                .build()
+                    }
+                    .getImageUploadStatus
+                    .status
 
-            override suspend fun complete(transferId: String) = run {
-                completeImageUpload =
-                    io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.newBuilder()
-                        .setTransferId(transferId)
-                        .build()
-            }
-                .completeImageUpload
-                .status
+            override suspend fun complete(transferId: String) =
+                run {
+                        completeImageUpload =
+                            io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest
+                                .newBuilder()
+                                .setTransferId(transferId)
+                                .build()
+                    }
+                    .completeImageUpload
+                    .status
         }
 
     // --- terminal ---
@@ -2754,34 +2906,35 @@ class Remote(
         data class QueuedInput(val frame: TerminalFrame, val deadline: Long)
         val outgoing = kotlinx.coroutines.channels.Channel<QueuedInput>(64)
         val queuedBytes = java.util.concurrent.atomic.AtomicLong(0)
-        val reader = scope.launch {
-            try {
-                for (raw in incoming) {
-                    try {
-                        val env = Envelope.parseFrom(raw)
-                        val (h, frame) =
-                            openSecureMessage(
-                                key,
-                                env,
-                                Place(
-                                    PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT,
-                                    machineId = s.machineId,
-                                    sessionId = sid,
-                                    requestId = streamId,
-                                ),
-                                TerminalFrame::parseFrom,
-                            )
-                        if (ucmp(h.seq, last) <= 0) throw OpenException("终端帧顺序不对")
-                        last = h.seq
-                        listener.onFrame(frame)
-                    } finally {
-                        queuedBytes.addAndGet(-raw.size.toLong())
+        val reader =
+            scope.launch {
+                try {
+                    for (raw in incoming) {
+                        try {
+                            val env = Envelope.parseFrom(raw)
+                            val (h, frame) =
+                                openSecureMessage(
+                                    key,
+                                    env,
+                                    Place(
+                                        PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT,
+                                        machineId = s.machineId,
+                                        sessionId = sid,
+                                        requestId = streamId,
+                                    ),
+                                    TerminalFrame::parseFrom,
+                                )
+                            if (ucmp(h.seq, last) <= 0) throw OpenException("终端帧顺序不对")
+                            last = h.seq
+                            listener.onFrame(frame)
+                        } finally {
+                            queuedBytes.addAndGet(-raw.size.toLong())
+                        }
                     }
+                } catch (e: Exception) {
+                    finish(errorText(e))
                 }
-            } catch (e: Exception) {
-                finish(errorText(e))
             }
-        }
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
         val ws =
             streamHttp.newWebSocket(
@@ -2838,7 +2991,7 @@ class Remote(
                     .setOpenTerminal(
                         io.github.lewin671.remoteagent.proto.OpenTerminalRequest.newBuilder()
                             .setSessionId(sid)
-                            .setStreamId(streamId),
+                            .setStreamId(streamId)
                     )
                     .build(),
             )
@@ -2848,33 +3001,34 @@ class Remote(
             throw e
         }
         var seq = 0L
-        val writer = scope.launch {
-            try {
-                for (item in outgoing) {
-                    val frame = item.frame
-                    if (closed.get()) break
-                    seq++
-                    val env =
-                        sealSecureMessage(
-                            key,
-                            Header.newBuilder()
-                                .setKind(PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT)
-                                .setMachineId(s.machineId)
-                                .setSessionId(sid)
-                                .setRequestId(streamId)
-                                .setSeq(seq)
-                                .setDeadlineMs(item.deadline)
-                                .setSender(account.deviceId)
-                                .build(),
-                            frame,
-                        )
-                    if (!closed.get()) ws.send(env.toByteArray().toByteString())
+        val writer =
+            scope.launch {
+                try {
+                    for (item in outgoing) {
+                        val frame = item.frame
+                        if (closed.get()) break
+                        seq++
+                        val env =
+                            sealSecureMessage(
+                                key,
+                                Header.newBuilder()
+                                    .setKind(PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT)
+                                    .setMachineId(s.machineId)
+                                    .setSessionId(sid)
+                                    .setRequestId(streamId)
+                                    .setSeq(seq)
+                                    .setDeadlineMs(item.deadline)
+                                    .setSender(account.deviceId)
+                                    .build(),
+                                frame,
+                            )
+                        if (!closed.get()) ws.send(env.toByteArray().toByteString())
+                    }
+                } catch (e: Exception) {
+                    finish(errorText(e))
+                    ws.cancel()
                 }
-            } catch (e: Exception) {
-                finish(errorText(e))
-                ws.cancel()
             }
-        }
         return TermConn(
             ws,
             sendFrame = { frame ->

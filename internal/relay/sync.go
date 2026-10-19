@@ -495,7 +495,26 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 	if err != nil {
 		return 0, localSyncError("encryption", err)
 	}
-	rev := uint64(1)
+	// The relay may retain a higher revision from a previous protocol or
+	// a clock that was ahead. Allocate above its stored head before sealing.
+	heads, err := c.machine.ListSessionHeads(ctx, connect.NewRequest(&pb.ListSessionHeadsRequest{}))
+	if err != nil {
+		return 0, rpcSyncError("list_session_heads", err)
+	}
+	var floor uint64
+	for _, head := range heads.Msg.Sessions {
+		if head.SessionId == id {
+			floor = head.MetaRevision
+			break
+		}
+	}
+	if floor == ^uint64(0) {
+		return 0, localSyncError("revision", deviceauth.ErrCapacity)
+	}
+	revMu.Lock()
+	lastRev = max(lastRev+1, floor+1, uint64(time.Now().UnixMicro()))
+	rev := lastRev
+	revMu.Unlock()
 	meta, err := c.security.sealMessage(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_META, MachineId: c.acct.DeviceID, SessionId: id,
 		Seq: rev, Sender: c.acct.DeviceID,

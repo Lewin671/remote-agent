@@ -7,6 +7,7 @@ import {
   type SecurityStorage,
 } from "./device-security-client";
 import {
+  parseHeader,
   Purpose,
   SecurityError,
   stateHash,
@@ -921,7 +922,9 @@ export class Remote {
   private async syncSecurity() {
     if (this.closed) return;
     try {
-      const before = await this.security.localStateHash().catch(() => undefined);
+      const before = await this.security
+        .localStateHash()
+        .catch(() => undefined);
       await this.security.sync();
       this.clearClockWarning();
       if (before && !equalBytes(before, await this.security.localStateHash()))
@@ -2501,6 +2504,111 @@ export class Remote {
     };
   }
 
+  private async republishRecoveryObjects(
+    record: import("./device-security-store").SecurityRecord,
+  ) {
+    const boundary = record.states.filter((_, i) => record.proofs[i]).at(-1)
+      ?.core.contentEpoch;
+    if (!boundary) return;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { object: o } = await this.api.getAccountPrefs({
+        objectId: PREFS_OBJECT,
+      });
+      if (
+        !o?.envelope ||
+        o.revision === 0n ||
+        parseHeader(new Uint8Array(o.envelope.securityHeader)).contentEpoch >=
+          boundary
+      )
+        break;
+      let snapshot;
+      try {
+        snapshot = await this.security.openMessage(
+          o.envelope,
+          ProjectPrefsSchema,
+          true,
+        );
+      } catch (e) {
+        if (e instanceof SecurityError && e.code === "unavailable") break;
+        throw e;
+      }
+      if (
+        snapshot.header.purpose !== Purpose.Prefs ||
+        snapshot.header.seq !== o.revision ||
+        snapshot.header.request !== PREFS_OBJECT
+      )
+        throw new SecurityError("untrusted");
+      const envelope = await this.security.seal(
+        {
+          kind: 12,
+          purpose: Purpose.Prefs,
+          machine: "",
+          session: "",
+          request: PREFS_OBJECT,
+          seq: o.revision + 1n,
+          deadline: 0n,
+          compression: 0,
+        },
+        toBinary(ProjectPrefsSchema, snapshot.msg),
+      );
+      if (
+        (
+          await this.api.putAccountPrefs({
+            objectId: PREFS_OBJECT,
+            expectedRevision: o.revision,
+            envelope,
+          })
+        ).applied
+      )
+        break;
+    }
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const own = (await this.api.listDevices({})).devices.find(
+        (d) => d.id === this.account.deviceId,
+      );
+      if (
+        !own?.meta ||
+        parseHeader(new Uint8Array(own.meta.securityHeader)).contentEpoch >=
+          boundary
+      )
+        break;
+      const snapshot = await this.security.openMessage(
+        own.meta,
+        DeviceMetaSchema,
+        true,
+      );
+      if (
+        snapshot.header.purpose !== Purpose.DeviceMeta ||
+        snapshot.header.sender !== own.id ||
+        snapshot.header.seq !== own.metaRevision
+      )
+        throw new SecurityError("untrusted");
+      const meta = await this.security.seal(
+        {
+          kind: 13,
+          purpose: Purpose.DeviceMeta,
+          machine: "",
+          session: "",
+          request: own.id,
+          seq: own.metaRevision + 1n,
+          deadline: 0n,
+          compression: 0,
+        },
+        toBinary(DeviceMetaSchema, snapshot.msg),
+      );
+      if (
+        (
+          await this.api.putDeviceMeta({
+            deviceId: own.id,
+            expectedRevision: own.metaRevision,
+            meta,
+          })
+        ).applied
+      )
+        break;
+    }
+  }
+
   // --- devices ---
 
   /** Lists the account's devices from the signed membership state and the
@@ -2509,6 +2617,7 @@ export class Remote {
     const version = ++this.directoryReadVersion;
     try {
       const record = await this.security.sync();
+      await this.republishRecoveryObjects(record);
       this.clearClockWarning();
       const head = record.states[record.states.length - 1];
       const members = new Map(head.core.members.map((m) => [m.id, m]));
@@ -2519,9 +2628,11 @@ export class Remote {
       ]);
       const metadata = new Map<string, Envelope>();
       for (const d of listed.devices)
-        if (d.meta?.securityHeader.length) metadata.set("device:" + d.id, d.meta);
+        if (d.meta?.securityHeader.length)
+          metadata.set("device:" + d.id, d.meta);
       for (const m of online.machines)
-        if (m.meta?.securityHeader.length) metadata.set("machine:" + m.id, m.meta);
+        if (m.meta?.securityHeader.length)
+          metadata.set("machine:" + m.id, m.meta);
       const nextMachines = new Map(this.machines);
       const nextDevices = new Map<string, DeviceInfo>();
       for (const m of head.core.members) {
