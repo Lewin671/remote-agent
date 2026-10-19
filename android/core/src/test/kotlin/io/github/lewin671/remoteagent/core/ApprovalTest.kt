@@ -18,7 +18,7 @@ class ApprovalTest {
             val restarted = fixtureRemote(owner.phone, http)
             try {
                 withTimeout(15_000) {
-                    val pairing = Initiation.start(sponsor)
+                    val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
                     val shown = CompletableDeferred<List<String>>()
                     val persisted = CompletableDeferred<Unit>()
                     val receipt = CompletableDeferred<Unit>()
@@ -37,6 +37,7 @@ class ApprovalTest {
                                 receipt.await()
                             },
                             confirm = { true },
+                            pollIntervalMs = 10,
                         )
                     }
                     assertEquals(pairing.joined().first, shown.await())
@@ -100,7 +101,7 @@ class ApprovalTest {
             owner.connect()
             owner.waitReady()
             withTimeout(15_000) {
-                val pairing = Initiation.start(sponsor)
+                val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
                 val shown = CompletableDeferred<List<String>>()
                 val joining = async {
                     joinByPairing(
@@ -124,6 +125,7 @@ class ApprovalTest {
                                 TestSecurityStore(record)
                         },
                         confirm = { true },
+                        pollIntervalMs = 10,
                     )
                 }
                 assertEquals(pairing.joined().first, shown.await())
@@ -194,7 +196,7 @@ class ApprovalTest {
             owner.connect()
             owner.waitReady()
             withTimeout(15000) {
-                val pairing = Initiation.start(sponsor)
+                val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
                 val displayed = CompletableDeferred<List<String>>()
                 var persisted = false
                 val joining = async {
@@ -207,6 +209,7 @@ class ApprovalTest {
                             persistRegistration = {},
                             persistIdentity = {},
                             persist = { _, _ -> persisted = true },
+                            pollIntervalMs = 10,
                         )
                     }
                 }

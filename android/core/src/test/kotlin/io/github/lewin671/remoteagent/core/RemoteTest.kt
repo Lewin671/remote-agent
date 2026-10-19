@@ -1208,7 +1208,7 @@ class RemoteTest {
             closers += AutoCloseable { r.close() }
             r.start()
             r.awaitState("online") { it.conn == ConnState.ONLINE }
-            val init = Initiation.start(r)
+            val init = Initiation.start(r, pollIntervalMs = 10)
             val link = PairLink.parse(init.link.url("https://app.example.com"))!!
             assertEquals(init.code, link.code)
             var joinerEmoji = emptyList<String>()
@@ -1225,6 +1225,7 @@ class RemoteTest {
                             TestSecurityStore(record)
                     },
                     confirm = { true },
+                    pollIntervalMs = 10,
                 )
             }
             val (emoji, _) = init.joined()
@@ -1778,11 +1779,27 @@ class RemoteTest {
     @Test
     fun stoppingDuringLoginLeavesTheStreamClosed() =
         runBlocking<Unit> {
-            val r = client()
+            val entered = CompletableDeferred<Unit>()
+            val cancelled = CompletableDeferred<Unit>()
+            val streams = java.util.concurrent.atomic.AtomicInteger()
+            val blocked = http.newBuilder().addInterceptor { chain ->
+                if (chain.request().url.encodedPath.endsWith("/GetChallenge")) {
+                    entered.complete(Unit)
+                    while (!chain.call().isCanceled()) Thread.sleep(1)
+                    cancelled.complete(Unit)
+                    throw java.io.IOException("cancelled")
+                }
+                if (chain.request().url.encodedPath == "/v1/stream") streams.incrementAndGet()
+                chain.proceed(chain.request())
+            }.build()
+            val r = fixtureRemote(approvedClient(daemon.phone, http), blocked)
+            closers += AutoCloseable { r.close() }
             r.start()
+            withTimeout(5_000) { entered.await() }
             r.stop()
-            kotlinx.coroutines.delay(3000)
-            assertTrue(r.state.value.conn != ConnState.ONLINE)
+            withTimeout(5_000) { cancelled.await() }
+            r.awaitState("stopped login") { it.conn == ConnState.OFFLINE }
+            assertEquals(0, streams.get())
         }
 
     @Test

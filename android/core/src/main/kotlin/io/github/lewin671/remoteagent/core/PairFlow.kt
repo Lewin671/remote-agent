@@ -135,6 +135,7 @@ data class PairLink(val code: String, val server: String, val commit: ByteArray?
 private suspend fun poll(
     stopped: () -> Boolean,
     want: PairingState,
+    intervalMs: Long,
     get: suspend () -> GetPairingResponse,
 ): GetPairingResponse {
     while (true) {
@@ -148,7 +149,7 @@ private suspend fun poll(
             }
         if (res.state == PairingState.PAIRING_STATE_CANCELED) throw PairException("另一台设备取消了配对")
         if (res.stateValue >= want.number) return res
-        delay(1000)
+        delay(intervalMs)
     }
 }
 
@@ -162,6 +163,7 @@ internal constructor(
     private val key: PairKey,
     private val expires: Long,
     private val replacesDeviceId: String,
+    private val pollIntervalMs: Long,
 ) : PairingInitiation {
     @Volatile private var stopped = false
     private var secrets: PairSecrets? = null
@@ -176,7 +178,7 @@ internal constructor(
             throw PairException("只有管理端手机能添加设备")
         val tok = remote.currentToken()
         val st =
-            poll({ stopped }, PairingState.PAIRING_STATE_JOINED) {
+            poll({ stopped }, PairingState.PAIRING_STATE_JOINED, pollIntervalMs) {
                 remote.api.pairing
                     .getPairing(
                         GetPairingRequest.newBuilder().setPairingId(pairingId).build(),
@@ -335,7 +337,8 @@ internal constructor(
                     .also { approvalRequest = it }
         }
         remote.api.pairing.approvePairing(request, Api.headers(tok)).value()
-        repeat(120) {
+        // Keep the same two-minute delay budget when tests poll more often.
+        repeat((120_000 / pollIntervalMs).coerceAtLeast(1).toInt()) {
             if (stopped) throw PairException("已取消")
             try {
                 val res =
@@ -355,7 +358,7 @@ internal constructor(
                 if (e.code == Code.NOT_FOUND)
                     throw PairException("配对已过期，不确定新设备有没有拿到状态链。请在新设备上确认，必要时重新配对。")
             }
-            delay(1000)
+            delay(pollIntervalMs)
         }
         throw PairException("新设备没有来取状态链，它可能没有加入成功。请在新设备上确认，必要时重新配对。")
     }
@@ -378,7 +381,12 @@ internal constructor(
 
     companion object {
         /** Starts adding a device; only the authority phone may. */
-        suspend fun start(remote: Remote, replacesDeviceId: String = ""): Initiation {
+        suspend fun start(
+            remote: Remote,
+            replacesDeviceId: String = "",
+            pollIntervalMs: Long = 1000,
+        ): Initiation {
+            require(pollIntervalMs > 0)
             if (remote.security.head().core.authorityID != remote.account.deviceId)
                 throw PairException("只有管理端手机能添加设备")
             if (replacesDeviceId.isNotEmpty()) {
@@ -425,6 +433,7 @@ internal constructor(
                 key,
                 created.expiresMs,
                 replacesDeviceId,
+                pollIntervalMs,
             )
         }
     }
@@ -450,7 +459,9 @@ suspend fun joinByPairing(
     existing: Account? = null,
     existingRemoved: Boolean = false,
     confirm: suspend (List<String>) -> Boolean = { false },
+    pollIntervalMs: Long = 1000,
 ): Account {
+    require(pollIntervalMs > 0)
     if (existing != null && existing.server != link.server) throw PairException("安全设置必须使用原账户的服务器")
     val api = Api(link.server, http)
     val removed =
@@ -525,7 +536,7 @@ suspend fun joinByPairing(
             )
             .value()
     }
-    val st = poll(stopped, PairingState.PAIRING_STATE_REVEALED, get)
+    val st = poll(stopped, PairingState.PAIRING_STATE_REVEALED, pollIntervalMs, get)
     if (st.trust.size() > 8192) throw PairException("配对信任信息过大")
     val (pin, approver) =
         try {
@@ -555,7 +566,7 @@ suspend fun joinByPairing(
     onEmoji(s.emoji)
     if (stopped() || !confirm(s.emoji)) throw PairException("本机未确认图案，已停止安全绑定")
     onRegistering()
-    val done = poll(stopped, PairingState.PAIRING_STATE_APPROVED, get)
+    val done = poll(stopped, PairingState.PAIRING_STATE_APPROVED, pollIntervalMs, get)
     val (_, payload) =
         Envelopes.openMessage(
             s.key,
