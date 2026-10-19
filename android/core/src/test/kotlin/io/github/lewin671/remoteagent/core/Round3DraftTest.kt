@@ -32,16 +32,16 @@ class Round3DraftTest {
                         .build()
                 assertTrue(
                     runCatching {
-                            createAccount(
-                                server.url,
-                                flaky,
-                                server.setupToken,
-                                persistDraft = {
-                                    draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
-                                },
-                            )
-                        }
-                        .isFailure
+                        createAccount(
+                            server.url,
+                            flaky,
+                            server.setupToken,
+                            persistDraft = {
+                                draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
+                            },
+                        )
+                    }
+                        .isFailure,
                 )
                 val first = draft!!
                 assertEquals("", first.recoveryCode)
@@ -51,7 +51,9 @@ class Round3DraftTest {
                         http,
                         server.setupToken,
                         draft = first,
-                        persistDraft = { draft = CreatedAccount.readOperationMaterial(it.operationMaterial()) },
+                        persistDraft = {
+                            draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
+                        },
                     )
                 assertEquals(first.account.deviceId, resumed.account.deviceId)
                 assertArrayEquals(first.account.root, resumed.account.root)
@@ -105,27 +107,29 @@ class Round3DraftTest {
                 val device = randomBytes(32)
                 assertTrue(
                     runCatching {
-                            Recovery.submit(
-                                server.url,
-                                flaky,
-                                recoverySeed,
-                                device,
-                                chain.pin.genesis.copyOf(10),
-                                persist = { saved = RecoveryPublication.parse(it.bytes()) },
-                            )
-                        }
-                        .isFailure
+                        Recovery.submit(
+                            server.url,
+                            flaky,
+                            recoverySeed,
+                            device,
+                            chain.pin.genesis.copyOf(10),
+                            persist = { saved = RecoveryPublication.parse(it.bytes()) },
+                        )
+                    }
+                        .isFailure,
                 )
+                assertEquals(server.url, saved!!.server)
                 val resumed =
-                    Recovery.submit(
-                        server.url,
+                    Recovery.resume(
                         http,
-                        recoverySeed,
-                        device,
-                        chain.pin.genesis.copyOf(10),
-                        draft = saved,
+                        saved!!,
                         persist = { saved = RecoveryPublication.parse(it.bytes()) },
                     )
+                // A fresh process has no in-memory lastServer. The durable operation
+                // restores both a lost response and the already-submitted wait phase.
+                val waiting = RecoveryPublication.parse(saved!!.bytes())
+                assertEquals(server.url, waiting.server)
+                assertEquals(resumed.recoveryId, Recovery.resume(http, waiting) {}.recoveryId)
                 assertArrayEquals(saved!!.submission.deviceSeed, resumed.deviceSeed)
                 assertArrayEquals(saved!!.submission.stateHash, resumed.stateHash)
                 assertEquals(phone.accountId, resumed.accountId)

@@ -193,10 +193,11 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
         if (saved != null) {
             busy = true
             try {
+                server = checkedServer(saved.server)
+                app.lastServer = server
                 submission =
                     withContext(Dispatchers.IO) {
                         Recovery.resume(
-                            checkedServer(server),
                             app.http,
                             saved,
                             app.vault::saveRecoveryPublication,
@@ -335,6 +336,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                             app.vault.saveRecoveryPublication(
                                                 io.github.lewin671.remoteagent.core
                                                     .RecoveryPublication(
+                                                        it.server,
                                                         current,
                                                         it.statement,
                                                         it.state,

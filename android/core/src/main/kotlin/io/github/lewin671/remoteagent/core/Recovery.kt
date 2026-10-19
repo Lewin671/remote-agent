@@ -224,7 +224,6 @@ object Recovery {
     }
 
     suspend fun resume(
-        server: String,
         http: OkHttpClient,
         saved: RecoveryPublication,
         persist: (RecoveryPublication) -> Unit,
@@ -235,10 +234,10 @@ object Recovery {
                 .setStatement(com.google.protobuf.ByteString.copyFrom(saved.statement))
                 .setState(com.google.protobuf.ByteString.copyFrom(saved.state))
                 .build()
-        val response = Api(server, http).recovery.submitRecovery(request, emptyMap()).value()
+        val response = Api(saved.server, http).recovery.submitRecovery(request, emptyMap()).value()
         val submission =
             saved.submission.copy(recoveryId = response.recoveryId, readyMs = response.readyMs)
-        persist(RecoveryPublication(submission, saved.statement, saved.state))
+        persist(RecoveryPublication(saved.server, submission, saved.statement, saved.state))
         return submission
     }
 
@@ -300,6 +299,7 @@ object Recovery {
                             now,
                         )
                     RecoveryPublication(
+                        server,
                         RecoverySubmission(
                             "",
                             0,
@@ -316,6 +316,7 @@ object Recovery {
                         DeviceSecurity.stateBytes(state),
                     )
                 }
+        require(prepared.server == server)
         require(prepared.submission.genesisPrefix.contentEquals(genesisPrefix))
         persist(prepared)
         val api = Api(server, http)
@@ -336,7 +337,7 @@ object Recovery {
                 throw PairException(recoveryWords(e))
             }
         val submitted = prepared.submission.copy(recoveryId = res.recoveryId, readyMs = res.readyMs)
-        persist(RecoveryPublication(submitted, prepared.statement, prepared.state))
+        persist(RecoveryPublication(prepared.server, submitted, prepared.statement, prepared.state))
         return submitted
     }
 

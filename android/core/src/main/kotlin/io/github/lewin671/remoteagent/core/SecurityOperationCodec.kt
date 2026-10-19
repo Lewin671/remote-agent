@@ -45,6 +45,7 @@ fun CreatedAccount.operationMaterial(): ByteArray = operationMaterial { s ->
  * state. The new recovery private key is absent.
  */
 class RecoveryPublication(
+    val server: String,
     val submission: RecoverySubmission,
     val statement: ByteArray,
     val state: ByteArray,
@@ -53,6 +54,7 @@ class RecoveryPublication(
 
     fun bytes(): ByteArray = operationMaterial { s ->
         s.writeInt(1)
+        s.writeUTF(server)
         s.writeUTF(submission.recoveryId)
         s.writeLong(submission.readyMs)
         s.blob(submission.deviceSeed)
@@ -68,6 +70,7 @@ class RecoveryPublication(
     companion object {
         fun parse(b: ByteArray): RecoveryPublication =
             readOperationMaterial(b) { s ->
+                val server = s.readUTF()
                 val id = s.readUTF()
                 val ready = s.readLong()
                 val seed = s.blob()
@@ -82,6 +85,7 @@ class RecoveryPublication(
                 val parsed = DeviceSecurity.parseState(state)
                 require(DeviceSecurity.stateHash(parsed).contentEquals(hash))
                 RecoveryPublication(
+                    server,
                     RecoverySubmission(
                         id,
                         ready,

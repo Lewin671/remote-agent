@@ -751,3 +751,31 @@ it("bootstraps current owner state from a checkpoint without loading a history p
     (r as unknown as { buffers: Map<string, unknown> }).buffers.has("s"),
   ).toBe(false);
 });
+
+it("installs the lease forwarded by the Remote state-page adapter after a head change", async () => {
+  const r = await probe();
+  const other = await r.addClient();
+  await r.world.fixture.remove([other.account.deviceId]);
+  // Use Remote's constructor adapter, not the fixture's direct SDK fetcher.
+  const security = (
+    r as unknown as {
+      security: import("./device-security-client").DeviceSecurityClient;
+    }
+  ).security;
+  await security.sync();
+  await expect(
+    security.seal(
+      {
+        purpose: 5,
+        kind: 5,
+        compression: 0,
+        session: "",
+        seq: 0n,
+        machine: r.machine,
+        request: "adapter-request-123",
+        deadline: BigInt(Date.now() + 60000),
+      },
+      new Uint8Array(),
+    ),
+  ).resolves.toBeDefined();
+});

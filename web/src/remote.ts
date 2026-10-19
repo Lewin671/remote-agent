@@ -631,6 +631,7 @@ export class Remote {
             recovery: s.recovery,
           })),
           headEpoch: reply.headEpoch,
+          lease: reply.lease,
         };
       },
       () => !this.closed,

@@ -170,13 +170,6 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		return err
 	}
 	defer func() { cancel(); c.security.Close() }()
-	c.security.onEpoch = func() {
-		go func() {
-			rctx, rcancel := context.WithTimeout(context.Background(), 60*time.Second)
-			defer rcancel()
-			c.ensurePublished(rctx)
-		}()
-	}
 
 	wsURL := "ws" + strings.TrimPrefix(acct.Server, "http") + "/v1/stream"
 	ws, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: httpClient()})
@@ -198,7 +191,6 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		return errors.New("server did not accept the stream")
 	}
 	errc := make(chan error, 4)
-	go func() { errc <- c.readLoop(ctx) }()
 	if err := c.security.syncOnce(ctx); err != nil {
 		// The stream itself is up. Installed states still serve events and
 		// the terminal; remote control pauses until a later sync succeeds.
@@ -206,11 +198,19 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	}
 	meta := c.r.backend.MachineMeta()
 	if err := c.publishCurrentCheckpoint(ctx); err != nil {
-		return err
+		slog.Warn("relay: current checkpoint pending; retrying during synchronization", "err", err)
 	}
 	if err := c.putMachine(ctx, meta); err != nil {
 		return err
 	}
+	c.security.onEpoch = func() {
+		rctx, rcancel := context.WithTimeout(ctx, 60*time.Second)
+		defer rcancel()
+		if err := c.ensurePublished(rctx); err != nil {
+			slog.Warn("relay: current checkpoint pending; retrying during synchronization", "err", err)
+		}
+	}
+	go func() { errc <- c.readLoop(ctx) }()
 	r.mu.Lock()
 	r.connected = true
 	r.mu.Unlock()
@@ -339,10 +339,16 @@ func (c *conn) publishCurrentCheckpoint(ctx context.Context) error {
 	for _, id := range ids {
 		info, err := c.r.backend.SessionInfo(id)
 		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
 			continue
 		}
 		key, err := c.sessionKey(id, true)
 		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
 			continue
 		}
 		rev, err := c.putSession(ctx, id, key, info, floors[id])

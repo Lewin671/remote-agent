@@ -101,6 +101,7 @@ type Endpoint struct {
 	mu        sync.Mutex
 	path      string
 	db        *sql.DB
+	closed    bool
 	data      record
 }
 
@@ -367,16 +368,49 @@ func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatem
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 			return nil, ErrStorage
 		}
-		// A new endpoint replaces whatever was there: pairing again starts a
-		// new state after the caller checks its chain against the local anchor.
-		for _, suffix := range []string{"", "-wal", "-shm"} {
-			if err := os.Remove(path + suffix); err != nil && !os.IsNotExist(err) {
-				return nil, ErrStorage
+		if _, err := os.Stat(path); err == nil {
+			// Re-pair only on a strict extension of the verified local chain.
+			// A revoked device must join with a new identity. Neither path
+			// erases local execution history or the receive-time floor.
+			existing, err := OpenEndpoint(path)
+			if err != nil {
+				return nil, err
 			}
+			_, oldStillMember := head.Core.Member(existing.data.MemberID)
+			sameIdentity := existing.data.MemberID == id && bytes.Equal(existing.data.EdSeed, edSeed)
+			if existing.data.Pin != pin || (!sameIdentity && oldStillMember) || head.Core.Epoch <= existing.data.HeadEpoch {
+				existing.Close()
+				return nil, ErrUntrusted
+			}
+			if err := existing.CheckExtension(states); err != nil {
+				existing.Close()
+				return nil, err
+			}
+			next, err := InitEndpoint("", pin, states, proofs, id, edSeed, xPrivate, leases...)
+			if err != nil {
+				existing.Close()
+				return nil, err
+			}
+			defer next.Close()
+			next.data.Accepted = existing.data.Accepted
+			next.data.AcceptedFloor = existing.data.AcceptedFloor
+			next.data.Floor, next.data.FloorSaved = existing.data.Floor, existing.data.FloorSaved
+			for epoch, key := range existing.data.ContentKeys {
+				next.data.ContentKeys[epoch] = bytes.Clone(key)
+			}
+			prior := existing.data
+			existing.data = next.data
+			if err := existing.persistRecord(false); err != nil {
+				existing.data = prior
+				existing.Close()
+				return nil, err
+			}
+			return existing, nil
+		} else if !os.IsNotExist(err) {
+			return nil, ErrStorage
 		}
-	} else if path == "" {
-		// in memory
 	}
+
 	db, err := openDB(path)
 	if err != nil {
 		return nil, err
@@ -415,13 +449,18 @@ func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatem
 // persistAll writes the header and every state of a fresh endpoint in one
 // transaction, so a start cut short never leaves a partial chain.
 func (e *Endpoint) persistAll() error {
+	return e.persistRecord(true)
+}
+
+// Re-pair updates verified state without writing the live command log.
+func (e *Endpoint) persistRecord(writeAccepted bool) error {
 	d := e.data
 	tx, err := e.db.Begin()
 	if err != nil {
 		return ErrStorage
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec(`UPDATE security SET version=?, pin_account=?, pin_domain=?, pin_genesis=?, member_id=?, ed_seed=?, x_private=?, secret=?, floor_ms=?, floor_saved_ms=?, member=? WHERE id=1`,
+	if _, err := tx.Exec(`UPDATE security SET version=?, pin_account=?, pin_domain=?, pin_genesis=?, member_id=?, ed_seed=?, x_private=?, secret=?, floor_ms=MAX(floor_ms,?), floor_saved_ms=MAX(floor_saved_ms,?), member=? WHERE id=1`,
 		d.Version, d.Pin.Account, d.Pin.Domain[:], d.Pin.Genesis[:], d.MemberID, d.EdSeed, d.XPrivate, d.Secret, d.Floor, d.FloorSaved, boolInt(d.Member)); err != nil {
 		return ErrStorage
 	}
@@ -461,6 +500,14 @@ func (e *Endpoint) persistAll() error {
 			return ErrStorage
 		}
 	}
+	// Re-pair can overlap the old daemon finishing or pruning commands.
+	// Leave the entire live log and its pruning floor untouched in that case.
+	if !writeAccepted {
+		if err := tx.Commit(); err != nil {
+			return ErrStorage
+		}
+		return nil
+	}
 	for key, a := range d.Accepted {
 		done, failed := 0, 0
 		if a.Done {
@@ -469,11 +516,11 @@ func (e *Endpoint) persistAll() error {
 		if a.Failed {
 			failed = 1
 		}
-		if _, err := tx.Exec(`INSERT OR REPLACE INTO accepted (key, deadline, done, result, failed, checksum) VALUES (?, ?, ?, ?, ?, ?)`, []byte(key), a.Deadline, done, a.Result, failed, acceptedChecksum(key, a)); err != nil {
+		if _, err := tx.Exec(`INSERT OR IGNORE INTO accepted (key, deadline, done, result, failed, checksum) VALUES (?, ?, ?, ?, ?, ?)`, []byte(key), a.Deadline, done, a.Result, failed, acceptedChecksum(key, a)); err != nil {
 			return ErrStorage
 		}
 	}
-	if _, err := tx.Exec(`INSERT OR REPLACE INTO accepted_meta (id, cutoff) VALUES (1, ?)`, d.AcceptedFloor); err != nil {
+	if _, err := tx.Exec(`INSERT INTO accepted_meta (id, cutoff) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET cutoff=MAX(cutoff,excluded.cutoff)`, d.AcceptedFloor); err != nil {
 		return ErrStorage
 	}
 	if err := tx.Commit(); err != nil {
@@ -680,8 +727,13 @@ func (e *Endpoint) validate() error {
 // previous file there. It is used when an in-memory endpoint from a pairing
 // join is committed to disk.
 func (e *Endpoint) Save(path string) error {
+	e.execution.Lock()
+	defer e.execution.Unlock()
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.closed {
+		return ErrStorage
+	}
 	if path == "" {
 		e.path = path
 		return nil
@@ -710,13 +762,16 @@ func (e *Endpoint) Save(path string) error {
 }
 
 func (e *Endpoint) Close() error {
+	e.execution.Lock()
+	defer e.execution.Unlock()
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if e.db == nil {
+	if e.closed {
 		return nil
 	}
 	err := e.db.Close()
-	e.db = nil
+	// Retain the closed handle so concurrent storage users receive SQL errors.
+	e.closed = true
 	return err
 }
 func (e *Endpoint) Snapshot() (Pin, State, string) {
@@ -752,6 +807,9 @@ func (e *Endpoint) Install(states []State, proofs []*RecoveryStatement) error {
 	defer e.execution.Unlock()
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.closed {
+		return ErrStorage
+	}
 	d := e.data
 	next := d
 	next.States = cloneStates(d.States)
@@ -1133,6 +1191,10 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 	e.execution.Lock()
 	defer e.execution.Unlock()
 	e.mu.Lock()
+	if e.closed {
+		e.mu.Unlock()
+		return nil, ErrStorage
+	}
 	h, err := ParseHeader(w.Header)
 	if err != nil {
 		e.mu.Unlock()

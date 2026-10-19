@@ -134,6 +134,31 @@ extension ServerTests {
                 }, body)
         }
 
+        @Test func archivedMachineLoadsAfterRestartFromRelayAndCache() async throws {
+            try await world { w in
+                let account = try await w.join()
+                let cache = MemoryCache()
+                let first = try w.remote(account, cache: cache)
+                first.start()
+                _ = try await first.awaitState("machine before removal") {
+                    $0.machines[w.daemon.id]?.meta?.hostname == "fake-mac.local"
+                }
+                try await w.phone.remove([w.daemon.id])
+                await first.refreshDevices()
+                first.close()
+                for store: (any CipherCache)? in [nil, cache] {
+                    let restarted = try w.remote(account, cache: store)
+                    restarted.start()
+                    let state = try await restarted.awaitState("archived machine after restart") {
+                        $0.machines[w.daemon.id]?.meta?.hostname == "fake-mac.local"
+                            && $0.sessions["s1"] != nil
+                    }
+                    #expect(state.machines[w.daemon.id]?.online == false)
+                    restarted.close()
+                }
+            }
+        }
+
         @Test func aCheckpointBootstrapsWithoutTheHistoricalPrefix() async throws {
             try await world { w in
                 var info=PBSession();info.id="checkpoint";info.title="current state";info.lastSeq=900

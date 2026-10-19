@@ -1353,3 +1353,46 @@ func TestProtocol6CommandsRefused(t *testing.T) {
 		t.Fatal("protocol 6 command reached the CLI backend")
 	}
 }
+
+type failingCheckpointBackend struct {
+	*fakeBackend
+	fixed     atomic.Bool
+	oversized bool
+}
+
+func (b *failingCheckpointBackend) LiveSnapshot(id string) (*pb.LiveSnapshot, error) {
+	info, err := b.SessionInfo(id)
+	if err != nil {
+		return nil, err
+	}
+	if id == "broken" && !b.fixed.Load() {
+		if !b.oversized {
+			return nil, errors.New("snapshot temporarily unavailable")
+		}
+		info.Title = strings.Repeat("x", 49<<10)
+	}
+	return &pb.LiveSnapshot{Session: info}, nil
+}
+func TestCheckpointFailureKeepsRelayAndOtherSessionsOnline(t *testing.T) {
+	for _, oversized := range []bool{false, true} {
+		t.Run(fmt.Sprint(oversized), func(t *testing.T) {
+			e := setup(t)
+			e.backend.add(t, "broken")
+			if err := os.WriteFile(filepath.Join(e.backend.SessionDir("broken"), "relay.key"), e2e.NewKey(), 0600); err != nil {
+				t.Fatal(err)
+			}
+			log := e.backend.add(t, "healthy")
+			appendText(t, log, "healthy", "available")
+			backend := &failingCheckpointBackend{fakeBackend: e.backend, oversized: oversized}
+			r := e.startRelayBackend(backend)
+			waitFor(t, "relay connected despite pending checkpoint", r.Connected)
+			e.session(t, "healthy", 1)
+			_, err := e.client.Do(context.Background(), e.session(t, "healthy", 1), &pb.Command{Kind: &pb.Command_RenameSession{RenameSession: &pb.RenameSessionRequest{SessionId: "healthy", Title: "still controllable"}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			backend.fixed.Store(true)
+			e.session(t, "broken", 0)
+		})
+	}
+}

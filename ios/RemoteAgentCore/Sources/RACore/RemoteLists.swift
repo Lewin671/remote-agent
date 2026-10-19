@@ -281,7 +281,7 @@ extension Remote {
     }
 
     func putMachine(_ incoming: PBMachine, staleOnline: Bool = false, save: Bool = true) async {
-        guard trustedMembers[incoming.id]?.kind == 1 else { return }
+        guard trustedMembers[incoming.id]?.kind == 1 || archiveMachines.contains(incoming.id) else { return }
         let m = incoming
         let old = machines[m.id]
         var view = old ?? MachineView(id: m.id, online: m.online, lastSeenMs: m.lastSeenMs)
