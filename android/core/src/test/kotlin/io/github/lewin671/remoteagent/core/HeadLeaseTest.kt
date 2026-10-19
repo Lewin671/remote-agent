@@ -8,6 +8,14 @@ import org.junit.Test
 
 class HeadLeaseTest {
     @Test
+    fun expiredLeaseExplainsWhyChangesCannotBeSaved() {
+        val text = errorText(DeviceSecurity.Failure("lease"))
+        assertTrue(text.contains("无法保存"))
+        assertTrue(text.contains("续期"))
+        assertTrue(text.contains("历史"))
+    }
+
+    @Test
     fun ordinaryHandoffKeepsTheHistoricalKeyWalk() {
         val v =
             Json.parseToJsonElement(File(System.getProperty("domainVectors")).readText()).jsonObject

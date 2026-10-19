@@ -2695,7 +2695,12 @@ export class Remote {
     const version = ++this.directoryReadVersion;
     try {
       const record = await this.security.sync();
-      await this.republishRecoveryObjects(record);
+      try {
+        await this.republishRecoveryObjects(record);
+      } catch (e) {
+        // Expired publication stays pending; it must not block stored reads.
+        if (!(e instanceof SecurityError) || e.code !== "lease") throw e;
+      }
       this.clearClockWarning();
       const head = record.states[record.states.length - 1];
       const members = new Map(head.core.members.map((m) => [m.id, m]));
@@ -3398,6 +3403,8 @@ export function errorText(e: unknown): string {
   if (e instanceof RecoveryHistoryUnavailable)
     return "历史密钥不可用：恢复前的记录无法解密";
   if (e instanceof SecurityError) {
+    if (e.code === "lease")
+      return "管理端租约已过期，无法保存更改、控制会话或上传新内容；打开管理端 App 续期后重试。历史仍可查看";
     if (e.code === "unavailable")
       return "等待所属电脑更新当前状态：这台设备没有当时的内容密钥";
     if (e.code === "invalid" || e.code === "untrusted")

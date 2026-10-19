@@ -98,10 +98,10 @@ fun DevicesScreen() {
                                             if (m.online) Dot(p.green)
                                             ArrowText(
                                                 (if (m.online) "在线"
-                                                    else
-                                                        whenText(m.lastSeenMs, t).ifEmpty {
-                                                            "不在线"
-                                                        }),
+                                                else
+                                                    whenText(m.lastSeenMs, t).ifEmpty {
+                                                        "不在线"
+                                                    }),
                                                 p.muted,
                                                 T.sm,
                                             )
@@ -150,7 +150,9 @@ fun DevicesScreen() {
                 GLabel("远程控制")
                 Hint(
                     if (state.leaseEndMs > 0)
-                        "有效期至 " + dayText(state.leaseEndMs, t) + "。回到 App 时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"
+                        "有效期至 " +
+                            dayText(state.leaseEndMs, t) +
+                            "。回到 App 时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"
                     else "正在读取成员状态…",
                     Modifier.padding(horizontal = 16.dp),
                 )
@@ -211,6 +213,7 @@ fun ClientScreen(id: String) {
     val state by remote.state.collectAsState()
     val p = pal
     val me = remote.account.deviceId
+    val canRename = clientCanRename(id, me, state.conn)
     val d = state.devices[id]
     val t = now()
     var editing by remember { mutableStateOf(false) }
@@ -227,10 +230,8 @@ fun ClientScreen(id: String) {
                             GRow(
                                 "名称",
                                 (d?.meta?.name?.ifEmpty { null } ?: "未命名"),
-                                onClick =
-                                    if (state.conn == ConnState.ONLINE) ({ editing = true })
-                                    else null,
-                                chevron = true,
+                                onClick = if (canRename) ({ editing = true }) else null,
+                                chevron = canRename,
                             )
                         },
                         d?.meta
@@ -250,7 +251,7 @@ fun ClientScreen(id: String) {
                                             )
                                         },
                                         action = true,
-                                        enabled = state.conn == ConnState.ONLINE,
+                                        enabled = canRename,
                                     )
                                 }
                             },
@@ -279,7 +280,8 @@ fun ClientScreen(id: String) {
                     Tone2.ERROR,
                 )
             Text(
-                "修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。",
+                if (id == me) "修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。"
+                else "名称只能由该客户端自己修改。通知开关也要在该设备上设置。",
                 style = T.sm,
                 color = p.muted,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -348,7 +350,7 @@ fun ClientScreen(id: String) {
             )
         }
     }
-    if (editing)
+    if (editing && canRename)
         InputAlert(
             "客户端名称",
             d?.meta?.name.orEmpty(),
@@ -368,10 +370,8 @@ fun ClientScreen(id: String) {
 /** The one confirmation before removal: names the device and says what happens to it. */
 internal fun removalDialog(name: String, machine: Boolean): Pair<String, String> =
     "移除 $name？" to
-        if (machine)
-            "这会立即断开连接并撤销权限，保留中继上的会话和图片；它需要重新加入账户才能连接。"
-        else
-            "这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端手机上重新批准。"
+        if (machine) "这会立即断开连接并撤销权限，保留中继上的会话和图片；它需要重新加入账户才能连接。"
+        else "这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端手机上重新批准。"
 
 /** Shares the public genesis state for the relay's offline pin step. */
 internal fun shareGenesis(context: android.content.Context, state: ByteArray) {
@@ -389,3 +389,7 @@ internal fun shareGenesis(context: android.content.Context, state: ByteArray) {
         ),
     )
 }
+
+/** Both name actions follow the same client ownership/connection policy. */
+internal fun clientCanRename(id: String, me: String, connection: ConnState): Boolean =
+    id == me && connection == ConnState.ONLINE

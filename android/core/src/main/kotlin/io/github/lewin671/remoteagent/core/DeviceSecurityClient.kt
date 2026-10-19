@@ -157,8 +157,9 @@ class DeviceSecurityClient(
     ): Envelope {
         val old = read()
         if (!old.member) throw DeviceSecurity.Failure("untrusted")
-        if (purpose.control && !Authority.leaseValid(old, clock()))
-            throw DeviceSecurity.Failure("lease")
+        // The old content key must stop producing every kind of new ciphertext.
+        // Historical reads deliberately do not use this publication gate.
+        if (!Authority.leaseValid(old, clock())) throw DeviceSecurity.Failure("lease")
         val r = old
         val h =
             DeviceSecurity.Header(

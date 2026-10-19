@@ -218,14 +218,12 @@ public actor DeviceSecurityClient {
         let r = try read()
         try DeviceSecurity.check(r.member && r.secret != nil, .untrusted)
         let head = r.state
-        if purpose.control {
-            // Control pauses when the lease ends; signing anyway would only
-            // produce an envelope the executor refuses.
-            let now = max(clock(), r.floor)
-            try DeviceSecurity.check(
-                head.core.issuedAt <= now + DeviceSecurity.clockSkewLimit, .clock)
-            guard let lease=r.lease else { throw DeviceSecurity.Failure.lease }; try lease.valid(head,now:now)
-        }
+        // All new ciphertext needs a live lease; historical reads are separate.
+        let now = max(clock(), r.floor)
+        try DeviceSecurity.check(
+            head.core.issuedAt <= now + DeviceSecurity.clockSkewLimit, .clock)
+        guard let lease = r.lease else { throw DeviceSecurity.Failure.lease }
+        try lease.valid(head, now: now)
         guard let secret = r.secret else { throw DeviceSecurity.Failure.untrusted }
         let h = DeviceSecurity.Header(
             account: r.pin.account, domain: r.pin.domain, epoch: head.core.epoch,

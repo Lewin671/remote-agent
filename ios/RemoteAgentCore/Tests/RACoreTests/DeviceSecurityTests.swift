@@ -213,6 +213,53 @@ import Testing
         #expect(throws: S.Failure.self) { _ = try S.scope(h, added) }
     }
 
+    @Test(arguments: [S.Purpose.event, .sessionMeta, .sessionKey, .machineMeta, .command,
+        .result, .terminalOutput, .terminalInput, .notify, .image, .prefs, .deviceMeta,
+        .terminalResize, .terminalHistory])
+    func everyNewPublicationNeedsALiveLease(purpose: S.Purpose) async throws {
+        let genesis = try state("genesis"), head = try state("added")
+        let first = try S.HeadLease.parse(Data(base64Encoded: v["lease"] as! String)!)
+        let renewedRaw = Data(base64Encoded: v["renewed_lease"] as! String)!
+        let clientRole = purpose.control || purpose == .prefs || purpose == .deviceMeta
+        let member = head.core.members.first { $0.kind == (clientRole ? 2 : 1) }!
+        let machine = head.core.members.first { $0.kind == 1 }!.id
+        let key = try SigningKey(seed: hex(clientRole ? "phone_seed" : "machine_seed"))
+        let record = try S.Record(pin: pin(), states: [1: genesis, 2: head], memberID: member.id,
+            xPrivate: hex(clientRole ? "phone_x" : "machine_x"), member: true,
+            secret: hex("content_secret_2"), lease: first)
+        let store = MemorySecurityStore(record)
+        let clock = PublicationClock(first.issuedAt)
+        let sdk = DeviceSecurityClient(store: store, memberID: member.id, signingKey: key,
+            clock: { clock.now() }, fetchStates: { _ in
+                var res = PBGetSecurityStatesResponse(); res.headEpoch = 2; res.lease = renewedRaw
+                return res
+            })
+        let standalone = purpose == .prefs || purpose == .deviceMeta
+        let noSession = standalone || [.machineMeta, .command, .result].contains(purpose)
+        let noRequest = [S.Purpose.event, .sessionMeta, .sessionKey, .machineMeta].contains(purpose)
+        let request = purpose == .prefs ? "project-prefs" : purpose == .deviceMeta ? member.id : noRequest ? "" : "lease-request-123456"
+        let plain = Data([1,2,3]), seed = Data(repeating:7,count:32)
+        func seal() async throws -> PBEnvelope {
+            try await sdk.seal(purpose: purpose, machine: standalone ? "" : machine,
+                session: noSession ? "" : "lease-session", request: request, seq: 1,
+                deadline: purpose.control ? first.notAfter+60000 : 0, plaintext: plain, sessionSeed: seed)
+        }
+        let stored = try await seal()
+        clock.set(first.notAfter)
+        await #expect(throws: S.Failure.lease) { try await seal() }
+        if !purpose.control { #expect(try await sdk.openHistory(stored, sessionSeed: seed).1 == plain) }
+        let renewed = try await sdk.sync()
+        #expect(renewed.states.count == 2)
+        _ = try await seal()
+    }
+
+    @Test func expiredLeaseExplainsWhyAChangeCannotBeSaved() {
+        let text = errorText(S.Failure.lease)
+        #expect(text.contains("无法保存"))
+        #expect(text.contains("续期"))
+        #expect(text.contains("历史"))
+    }
+
     @Test func sealingUsesIndependentRandomNonces() async throws {
         let p = try pin()
         let added = try state("added")
@@ -370,4 +417,12 @@ final class MemorySecurityStore: DeviceSecurity.Storage, @unchecked Sendable {
         record = next
         return record
     }
+}
+
+private final class PublicationClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: UInt64
+    init(_ value: UInt64) { self.value = value }
+    func now() -> UInt64 { lock.withLock { value } }
+    func set(_ value: UInt64) { lock.withLock { self.value = value } }
 }

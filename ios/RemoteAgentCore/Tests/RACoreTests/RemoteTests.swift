@@ -134,6 +134,27 @@ extension ServerTests {
                 }, body)
         }
 
+        @Test func expiredPublicationStillAllowsTheStoredDirectoryToLoad() async throws {
+            try await world { w in
+                let account = try await w.join()
+                let live = try w.remote(account)
+                try await live.renameDevice(account.deviceId, name: "stored client name")
+                let store = try #require(TestSecurity.find(w.server.url)?.store(account.deviceId))
+                let record = try store.readSecurity()
+                let expired = Int64(try #require(record.lease).notAfter)
+                let reader = try Remote(account: account, http: w.http, clock: { expired },
+                    securityStorage: TestSecurityStore(record))
+                defer { reader.close() }
+                try await reader.refreshTrustedDirectory()
+                #expect(reader.current.devices[account.deviceId]?.meta?.name == "stored client name")
+                await #expect(throws: DeviceSecurity.Failure.lease) {
+                    try await reader.renameDevice(account.deviceId, name: "must not save")
+                }
+                try await reader.refreshTrustedDirectory()
+                #expect(reader.current.devices[account.deviceId]?.meta?.name == "stored client name")
+            }
+        }
+
         @Test func archivedMachineLoadsAfterRestartFromRelayAndCache() async throws {
             try await world { w in
                 let account = try await w.join()

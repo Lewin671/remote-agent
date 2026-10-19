@@ -63,7 +63,7 @@ class Codex2RecoveryIngestionTest {
                         "UPDATE security_recovery SET ready_ms=0;",
                     )
                     .start()
-                    .waitFor() == 0
+                    .waitFor() == 0,
             )
             val (account, record) =
                 Recovery.complete(
@@ -76,7 +76,25 @@ class Codex2RecoveryIngestionTest {
                     submitted.stateHash,
                 )
             val stores = TestSecurity.get(server.url).stores
-            stores[account.deviceId] = TestSecurityStore(record)
+            // Publish the recovered head's independent certificate before any
+            // device produces new content, as the foreground authority does.
+            val certificate =
+                HeadLease.sign(
+                    record.head,
+                    SigningKey(account.deviceSeed),
+                    System.currentTimeMillis(),
+                )
+            val authorityApi = Api(server.url, http)
+            authorityApi.client
+                .putSecurityState(
+                    PutSecurityStateRequest.newBuilder()
+                        .setLease(com.google.protobuf.ByteString.copyFrom(certificate.bytes()))
+                        .build(),
+                    Api.headers(login(authorityApi, account)),
+                )
+                .value()
+            stores[account.deviceId] =
+                TestSecurityStore(record.installed(emptyList(), emptyList(), certificate))
             val old = stores.getValue(machine.deviceId).readSecurity()
             val newStates = record.chain.filter { it.core.epoch > old.head.core.epoch }
             stores
@@ -85,6 +103,7 @@ class Codex2RecoveryIngestionTest {
                     DeviceSecurity.stateHash(old.head),
                     newStates,
                     newStates.map { record.proofs[it.core.epoch] },
+                    certificate,
                 )
             d.putMachine("synthetic-machine")
             d.putSession("s", info)
@@ -110,9 +129,10 @@ class Codex2RecoveryIngestionTest {
                         SigningKey(account.deviceSeed),
                         fetchStates = { error("no fetch needed") },
                     )
-                val failure =
-                    runCatching { sdk.openHistory(forged.build(), d.sessionKeys.getValue("s")) }
-                        .exceptionOrNull()
+                val failure = runCatching {
+                    sdk.openHistory(forged.build(), d.sessionKeys.getValue("s"))
+                }
+                    .exceptionOrNull()
                 assertTrue(
                     "invalid origin masked as key unavailability: $failure",
                     failure is DeviceSecurity.Failure && failure.code == "untrusted",

@@ -192,12 +192,11 @@ export class DeviceSecurityClient {
         let r = await this.currentRecord();
         if (!r.member) throw new SecurityError("untrusted");
         const state = r.states[r.states.length - 1];
-        if (control(h.purpose)) {
-          if (state.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
-            throw new SecurityError("clock");
-          // A clock moved back must not revive an expired lease.
-          await validLease(r.lease, state, maxBig(BigInt(Date.now()), r.floor));
-        }
+        if (state.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
+          throw new SecurityError("clock");
+        // Every new ciphertext needs a live head lease. Reading stored
+        // ciphertext uses the separate history path and remains available.
+        await validLease(r.lease, state, maxBig(BigInt(Date.now()), r.floor));
         const header: SecurityHeader = {
           ...h,
           account: r.pin.account,

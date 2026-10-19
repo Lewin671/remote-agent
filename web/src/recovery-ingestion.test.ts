@@ -1,9 +1,10 @@
 import { create, toBinary } from "@bufbuild/protobuf";
-import { afterAll, expect, it } from "vitest";
+import { afterAll, expect, it, vi } from "vitest";
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import {
   DeviceMetaSchema,
   MachineMetaSchema,
+  ProjectPrefsSchema,
 } from "./gen/remoteagent/v1/remote_pb";
 import { SyntheticRemote } from "./test/remote-fixture";
 import {
@@ -55,6 +56,19 @@ async function setup() {
       create(DeviceMetaSchema, { name: "offline-client" }),
     ),
   );
+  const oldPrefs = await retained.sdk.seal(
+    {
+      kind: 12,
+      purpose: 12,
+      machine: "",
+      session: "",
+      request: "project-prefs",
+      seq: 1n,
+      deadline: 0n,
+      compression: 0,
+    },
+    toBinary(ProjectPrefsSchema, create(ProjectPrefsSchema, { schema: 1 })),
+  );
   await world.fixture.recover();
   const member = await webMember(world);
   const r = new SyntheticRemote(world, member, seed);
@@ -104,6 +118,7 @@ async function setup() {
     after,
     oldMachineMeta,
     oldClientMeta,
+    oldPrefs,
     seed,
     event,
     ingest: async (seq: bigint, envelope: Envelope, history = true) =>
@@ -209,6 +224,39 @@ it("retained clients still read the old plaintext when their keys are available"
       value: { text: "before recovery" },
     });
   } finally {
+    await f.r.dispose();
+  }
+}, 20000);
+
+it("keeps directory and stored prefs readable when an expired lease defers recovery republishing", async () => {
+  const f = await setup();
+  const r = new SyntheticRemote(f.world, f.retained, f.seed);
+  const put = vi.fn(async () => ({ applied: true }));
+  try {
+    (r as unknown as { api: object }).api = {
+      getAccountPrefs: async () => ({
+        object: {
+          objectId: "project-prefs",
+          revision: 1n,
+          envelope: f.oldPrefs,
+        },
+      }),
+      putAccountPrefs: put,
+    };
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 73 * 60 * 60 * 1000);
+    await r.loadDevices(false);
+    expect(r.devicesStatus).toBe("ready");
+    expect(r.devices.has(f.retained.account.deviceId)).toBe(true);
+    (r as unknown as { conn: string }).conn = "online";
+    await r.loadPrefs();
+    expect(r.prefs.status).toBe("ready");
+    expect(await r.changePrefs("pin", "/synthetic/expired")).toBe(false);
+    expect(r.prefs.failed?.error).toContain("无法保存");
+    expect(put).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+    r.stop();
     await f.r.dispose();
   }
 }, 20000);

@@ -66,6 +66,9 @@ class RecoveryObjectsTest {
                 TestSecurity.get(server.url).stores[acct.deviceId] = TestSecurityStore(record)
                 val recovered = fixtureRemote(acct, http).also { remotes += it }
                 recovered.start()
+                // RaApp also requests this immediately after recovery adoption.
+                recovered.renewLeaseIfNeeded()
+                withTimeout(10000) { recovered.state.first {it.leaseEndMs>System.currentTimeMillis()} }
                 val before =
                     withTimeout(10000) {
                         recovered.state.first {
@@ -74,6 +77,15 @@ class RecoveryObjectsTest {
                     }
                 assertTrue(before.devices.containsKey(kept.deviceId))
                 assertNull(before.devices.getValue(offline.deviceId).meta)
+                // A retained reader with an expired lease must not be blocked by
+                // the pending maintenance publication of its pre-recovery objects.
+                val old = TestSecurity.get(server.url).stores.getValue(kept.deviceId).readSecurity()
+                val expired = Remote(kept,http,clock={System.currentTimeMillis()+73L*60*60*1000},securityStorage=TestSecurityStore(old)).also {remotes+=it}
+                expired.syncSecurity()
+                expired.refreshDevices()
+                assertEquals("retained-client",expired.state.value.devices.getValue(kept.deviceId).meta!!.name)
+                val failure=runCatching {expired.renameDevice(kept.deviceId,"cannot-publish")}.exceptionOrNull()
+                assertTrue(failure is DeviceSecurity.Failure && failure.code=="lease")
                 r.syncSecurity()
                 recovered.changePrefs(PrefsOp.Hide("/synthetic/new"))
                 val prefs = recovered.state.value.prefs!!

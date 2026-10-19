@@ -10,7 +10,11 @@ extension Remote {
         directoryVersion += 1
         let version = directoryVersion
         let record = try await securitySession().sync()
-        try await republishRecoveryObjects(record)
+        do {
+            try await republishRecoveryObjects(record)
+        } catch DeviceSecurity.Failure.lease {
+            // Leave maintenance pending until renewal; stored reads still work.
+        }
         let head = record.state
         clockWarning = ""
         let hash = try DeviceSecurity.stateHash(head)

@@ -1590,7 +1590,13 @@ class Remote(
                 val before = security.head().core.epoch
                 val r = security.sync()
                 resumeSecurityOperation()
-                republishRecoveryObjects(r)
+                try {
+                    republishRecoveryObjects(r)
+                } catch (e: DeviceSecurity.Failure) {
+                    // This maintenance write stays pending until renewal.
+                    // Reading the directory and stored content still works.
+                    if (e.code != "lease") throw e
+                }
                 authorityDeviceId = r.head.core.authorityID
                 lastHeadEpoch = r.head.core.epoch
                 leaseEnd = r.lease?.notAfter?.toLong() ?: 0L

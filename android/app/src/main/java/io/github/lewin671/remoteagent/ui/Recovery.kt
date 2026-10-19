@@ -176,7 +176,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
 fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
     val p = pal
     val scope = rememberCoroutineScope()
-    val deviceSeed = remember { randomBytes(32) }
+    var deviceSeed by remember { mutableStateOf(randomBytes(32)) }
     var code by remember { mutableStateOf("") }
     var server by remember { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
     var submission by remember { mutableStateOf<RecoverySubmission?>(null) }
@@ -365,7 +365,10 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                     alignment = Alignment.CenterStart,
                 )
             } else {
-                if (s.newCode.isNotEmpty()) {
+                val rejected = recoveryNextAction(chain?.phase) == RecoveryNextAction.RESTART
+                if (rejected) {
+                    Hint("这次恢复已被否决，申请中生成的新恢复码也已作废。", Modifier)
+                } else if (s.newCode.isNotEmpty()) {
                     GLabel("新的恢复码 · 只显示这一次")
                     RecoveryCodeFigure(s.newCode)
                     Hint("48 小时后生效；如果原手机否决了这次恢复，它会作废。请现在抄下来或拍照保存。", Modifier)
@@ -373,7 +376,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                     Hint("这次恢复已提交。若尚未保存新恢复码，完成后请立即在设置中更换恢复码。", Modifier)
                 }
                 val computers = chain?.head?.core?.members?.filter { it.kind == 1u }.orEmpty()
-                if (s.newCode.isNotEmpty() && !codeSaved)
+                if (!rejected && s.newCode.isNotEmpty() && !codeSaved)
                     Btn(
                         "我已离线保存新恢复码",
                         {
@@ -441,43 +444,81 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                     }
                 if (error.isNotEmpty())
                     Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
-                Btn(
-                    if (busy) "正在完成…" else "完成恢复",
-                    {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                val url = checkedServer(server)
-                                app.lastServer = url
-                                completeRecoveryAndAdopt(
-                                    complete = {
-                                        withContext(Dispatchers.IO) {
-                                            Recovery.complete(
-                                                url,
-                                                app.http,
-                                                s.recoveryId,
-                                                s.accountId,
-                                                s.deviceSeed,
-                                                s.xPrivate,
-                                                s.stateHash,
-                                            )
-                                        }
-                                    },
-                                    adopt = app::recovered,
-                                )
-                            } catch (e: Exception) {
-                                error = errorText(e)
-                            } finally {
-                                busy = false
+                if (recoveryNextAction(c?.phase) == RecoveryNextAction.COMPLETE) {
+                    Btn(
+                        if (busy) "正在完成…" else "完成恢复",
+                        {
+                            busy = true
+                            error = ""
+                            scope.launch {
+                                try {
+                                    val url = checkedServer(server)
+                                    app.lastServer = url
+                                    completeRecoveryAndAdopt(
+                                        complete = {
+                                            withContext(Dispatchers.IO) {
+                                                Recovery.complete(
+                                                    url,
+                                                    app.http,
+                                                    s.recoveryId,
+                                                    s.accountId,
+                                                    s.deviceSeed,
+                                                    s.xPrivate,
+                                                    s.stateHash,
+                                                )
+                                            }
+                                        },
+                                        adopt = app::recovered,
+                                    )
+                                } catch (e: Exception) {
+                                    error = errorText(e)
+                                } finally {
+                                    busy = false
+                                }
                             }
-                        }
-                    },
-                    Modifier.fillMaxWidth().padding(top = 10.dp),
-                    BtnKind.PRIMARY,
-                    enabled = !busy,
-                )
-                Hint("如果还没到 48 小时，或者原手机否决了，完成会失败并说明原因。", Modifier.padding(top = 8.dp))
+                        },
+                        Modifier.fillMaxWidth().padding(top = 10.dp),
+                        BtnKind.PRIMARY,
+                        enabled = !busy,
+                    )
+                    Hint("如果还没到 48 小时，或者原手机否决了，完成会失败并说明原因。", Modifier.padding(top = 8.dp))
+                } else {
+                    Hint("这次申请生成的新恢复码已作废。请使用原手机上的替换恢复码重新申请。", Modifier)
+                    Btn(
+                        if (busy) "正在清除…" else "放弃这次恢复，输入新恢复码",
+                        {
+                            busy = true
+                            error = ""
+                            scope.launch {
+                                try {
+                                    restartRejectedRecovery(
+                                        c?.phase,
+                                        clearPending = {
+                                            withContext(Dispatchers.IO) {
+                                                app.vault.clearPendingRecovery()
+                                            }
+                                        },
+                                        resetScreen = {
+                                            submission = null
+                                            code = ""
+                                            codeSaved = false
+                                            chain = null
+                                            error = ""
+                                            deviceSeed = randomBytes(32)
+                                        },
+                                    )
+                                } catch (e: Exception) {
+                                    error = errorText(e)
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        },
+                        Modifier.fillMaxWidth().padding(top = 10.dp),
+                        BtnKind.SECONDARY,
+                        enabled = !busy,
+                    )
+                }
             }
         }
     }
