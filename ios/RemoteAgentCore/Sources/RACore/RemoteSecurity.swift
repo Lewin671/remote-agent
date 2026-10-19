@@ -95,6 +95,7 @@ extension Remote {
         envelope: PBEnvelope?, want: Place, as type: M.Type, history: Bool = false
     ) async throws -> (PBHeader, M) {
         guard let envelope else { throw DeviceSecurity.Failure.invalid }
+        let history = history || [PBPayloadKind.accountPrefs, .deviceMeta, .machineMeta, .sessionMeta, .image].contains(want.kind)
         // Old images are readable transcript data only. They never establish
         // current permissions, directory metadata, or command results.
         if want.kind == .image, try PBHeader(serializedBytes: envelope.header).version == 1 {
@@ -111,9 +112,9 @@ extension Remote {
         let header = try DeviceSecurity.parseHeader(envelope.securityHeader)
         let sessionSeed = seed.contains(header.purpose) ? sessionKeys[header.session] : nil
         let (h, m) = try await securitySession().openMessage(
-            envelope, as: type, history: history || want.kind == .image || ([PBPayloadKind.machineMeta,.sessionMeta,.image].contains(want.kind) && trustedMembers[want.machineId] == nil && archiveMachines.contains(want.machineId)), sessionSeed: sessionSeed)
+            envelope, as: type, history: history, sessionSeed: sessionSeed)
         let projected = projection(h)
-        try Envelopes.expect(projected, try await historicalPlace(want,header:projected,history:history || want.kind == .image))
+        try Envelopes.expect(projected, try await historicalPlace(want,header:projected,history:history))
         return (projected, m)
     }
     func projection(_ h: DeviceSecurity.Header) -> PBHeader {

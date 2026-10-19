@@ -13,13 +13,19 @@ extension ServerTests {
                 try await w.daemon.waitReady()
             }) { w in
                 let pairing = try await PhonePairing.start(w.phone)
+                let candidateSaved = Signal(), accountSaved = Signal()
+                let joiningHTTP = Intercept.http(for: w.server.url) { request in
+                    if request.url?.path.hasSuffix("/JoinPairing") == true { #expect(candidateSaved.isSet) }
+                    if request.url?.path.hasSuffix("/RegisterDevice") == true { #expect(accountSaved.isSet) }
+                    return request
+                }
                 let emoji = Mailbox<[String]>()
                 let joining = Task {
                     try await joinByPairing(
-                        link: pairing.link, http: w.http, onEmoji: { emoji.put($0) },
+                        link: pairing.link, http: joiningHTTP, onEmoji: { emoji.put($0) },
                         stopped: { false },
-                        persist: { acct, record in try TestSecurity.get(acct.server).install(record)
-                        }, confirm: { _ in true })
+                        persist: { acct, record in accountSaved.set(); try TestSecurity.get(acct.server).install(record)
+                        }, persistIdentity: { _ in candidateSaved.set() }, confirm: { _ in true })
                 }
                 defer { joining.cancel() }
                 let expected = try await pairing.reveal()
@@ -51,7 +57,7 @@ extension ServerTests {
                     do {
                         _ = try await joinByPairing(
                             link: pairing.link, http: w.http, onEmoji: { displayed.put($0) },
-                            stopped: { false }, persist: { _, _ in _ = persisted.increment() })
+                            stopped: { false }, persist: { _, _ in _ = persisted.increment() }, persistIdentity: { _ in })
                         return false
                     } catch { return errorText(error).contains("本机未确认") }
                 }
@@ -90,7 +96,7 @@ extension ServerTests {
                         link: pairing.link, http: faulty, onEmoji: { emoji.put($0) },
                         stopped: { false },
                         persist: { acct, record in try TestSecurity.get(acct.server).install(record)
-                        }, confirm: { _ in true })
+                        }, persistIdentity: { _ in }, confirm: { _ in true })
                 }
                 defer { joining.cancel() }
                 let expected = try await pairing.reveal()

@@ -679,6 +679,16 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
     var created by remember { mutableStateOf<CreatedAccount?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(existing) {
+        val saved = withContext(Dispatchers.IO) { app.vault.loadCreationOperation() }
+        if (
+            saved != null &&
+                existing != null &&
+                saved.account.deviceId == existing.deviceId &&
+                saved.account.server == existing.server
+        )
+            created = saved.copy(needsOfflinePin = true)
+    }
     PageScaffold("重建安全域", onBack = onBack) {
         Column(
             Modifier.fillMaxWidth()
@@ -711,7 +721,13 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                             try {
                                 created =
                                     withContext(Dispatchers.IO) {
-                                        rebuildSecurityDomain(existing.server, app.http, existing)
+                                        rebuildSecurityDomain(
+                                            existing.server,
+                                            app.http,
+                                            existing,
+                                            draft = app.vault.loadCreationOperation(),
+                                            persistDraft = app.vault::saveCreationOperation,
+                                        )
                                     }
                             } catch (e: Exception) {
                                 error = errorText(e)
@@ -727,7 +743,8 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                 TextAction("返回", onBack, alignment = Alignment.CenterStart)
             } else {
                 GLabel("新的恢复码 · 只显示这一次")
-                RecoveryCodeFigure(c.recoveryCode)
+                if (c.recoveryCode.isNotEmpty()) RecoveryCodeFigure(c.recoveryCode)
+                else Hint("这是已保存的重建草稿，恢复码不会再次显示。请确认已有离线备份；若未保存，进入后立即更换恢复码。", Modifier)
                 Hint("请抄下来或拍照保存。它只签恢复声明，不能解密内容。", Modifier)
                 if (c.needsOfflinePin)
                     Banner(

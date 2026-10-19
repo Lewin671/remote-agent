@@ -1,12 +1,8 @@
 // Displaying the four emoji is not consent: the candidate must confirm them
 // locally before it registers or stores any security state.
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
-import { afterEach, expect, it, vi } from "vitest";
-import {
-  checkPairChainSize,
-  joinByPairing,
-  PairCanceled,
-} from "./pairing";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { checkPairChainSize, joinByPairing, PairCanceled } from "./pairing";
 import { newPairKey } from "./pair";
 import {
   pairDomainCommit,
@@ -36,13 +32,13 @@ const pin = (): Pin => ({
 });
 const approver = "fedcba9876543210fedcba9876543210";
 
-async function peer(options: { badCommit?: boolean; calls: { registered: number } }) {
+async function peer(options: {
+  badCommit?: boolean;
+  calls: { registered: number; joined?: number };
+}) {
   const initiator = newPairKey();
   const trust = pairTrustDescriptor(pin(), approver);
-  const commit = await pairDomainCommit(
-    new Uint8Array(initiator.pub),
-    trust,
-  );
+  const commit = await pairDomainCommit(new Uint8Array(initiator.pub), trust);
   const id = crypto.randomUUID();
   const reply = (bytes: Uint8Array) =>
     new Response(new Uint8Array(bytes), {
@@ -67,6 +63,7 @@ async function peer(options: { badCommit?: boolean; calls: { registered: number 
         );
       }
       if (path.endsWith("/JoinPairing")) {
+        options.calls.joined = (options.calls.joined ?? 0) + 1;
         const join = fromBinary(
           JoinPairingRequestSchema,
           new Uint8Array(await request.arrayBuffer()),
@@ -108,6 +105,31 @@ async function peer(options: { badCommit?: boolean; calls: { registered: number 
   );
 }
 
+beforeEach(() => {
+  vi.spyOn(securityStore, "loadPairingIdentity").mockResolvedValue(undefined);
+  vi.spyOn(securityStore, "savePairingIdentity").mockResolvedValue();
+  vi.spyOn(securityStore, "clearPairingIdentity").mockResolvedValue();
+});
+it("does not reveal candidate keys when their durable save fails", async () => {
+  const calls = { registered: 0, joined: 0 };
+  await peer({ calls });
+  vi.mocked(securityStore.savePairingIdentity).mockRejectedValue(
+    new Error("candidate storage failed"),
+  );
+  await expect(
+    joinByPairing(
+      { server, code: "12345678" },
+      () => {},
+      () => false,
+      () => {},
+      undefined,
+      async () => false,
+    ),
+  ).rejects.toThrow("candidate storage failed");
+  expect(calls.registered).toBe(0);
+  expect(calls.joined).toBe(0);
+});
+
 it("refuses a pairing chain above the Go limits", () => {
   const one = { state: new Uint8Array(100), recovery: new Uint8Array() };
   checkPairChainSize([one]);
@@ -122,7 +144,7 @@ it("refuses a pairing chain above the Go limits", () => {
   expect(() => checkPairChainSize([])).toThrow(/too large to pair/);
 });
 
-it("does not register or store anything when the local SAS confirmation is absent", async () => {
+it("does not register or store an account or security head without local SAS confirmation", async () => {
   const calls = { registered: 0 };
   await peer({ calls });
   const saved = vi.spyOn(accountStore, "saveAccount").mockResolvedValue();

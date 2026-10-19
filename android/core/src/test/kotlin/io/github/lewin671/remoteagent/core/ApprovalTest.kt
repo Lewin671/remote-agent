@@ -28,6 +28,7 @@ class ApprovalTest {
                             http,
                             { shown.complete(it) },
                             { false },
+                            persistIdentity = {},
                             persist = { acct, record ->
                                 TestSecurity.get(server.url).stores[acct.deviceId] =
                                     TestSecurityStore(record)
@@ -68,6 +69,22 @@ class ApprovalTest {
         val http = Api.defaultHttp()
         val owner = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
         val sponsor = fixtureRemote(owner.phone, http)
+        val candidateSaved = java.util.concurrent.atomic.AtomicBoolean(false)
+        val accountSaved = java.util.concurrent.atomic.AtomicBoolean(false)
+        val joiningHttp =
+            http
+                .newBuilder()
+                .addInterceptor { chain ->
+                    if (chain.request().url.encodedPath.endsWith("/JoinPairing"))
+                        assertTrue(
+                            "candidate keys were published before durable save",
+                            candidateSaved.get(),
+                        )
+                    if (chain.request().url.encodedPath.endsWith("/RegisterDevice"))
+                        assertTrue("registration preceded security record save", accountSaved.get())
+                    chain.proceed(chain.request())
+                }
+                .build()
         try {
             owner.putMachine("synthetic-manager")
             owner.connect()
@@ -78,10 +95,12 @@ class ApprovalTest {
                 val joining = async {
                     joinByPairing(
                         pairing.link,
-                        http,
+                        joiningHttp,
                         { shown.complete(it) },
                         { false },
+                        persistIdentity = { candidateSaved.set(true) },
                         persist = { acct, record ->
+                            accountSaved.set(true)
                             TestSecurity.get(acct.server).stores[acct.deviceId] =
                                 TestSecurityStore(record)
                         },
@@ -159,6 +178,7 @@ class ApprovalTest {
                             http,
                             { displayed.complete(it) },
                             { false },
+                            persistIdentity = {},
                             persist = { _, _ -> persisted = true },
                         )
                     }

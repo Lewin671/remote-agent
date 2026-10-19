@@ -411,7 +411,7 @@ final class AppModel {
         let description = parts.deviceDescription()
         guard me.meta?.platform != "ios" || me.meta?.description_p != description else { return }
         // One try per revision and connection: a failure waits for the next change instead of spinning.
-        let key = "\(me.metaRev)"
+        let key = "\(me.metaRev):\(s.leaseEndMs)"
         guard described != key else { return }
         described = key
         Task {

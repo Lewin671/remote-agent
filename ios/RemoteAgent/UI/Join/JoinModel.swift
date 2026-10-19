@@ -35,7 +35,7 @@ struct JoinCalls: Sendable {
     static func live(http: HTTP, existing: Account? = nil, vault: Vault = Vault()) -> JoinCalls {
         JoinCalls(
             byPairing: { link, onEmoji, stopped, onRegistering, confirm in
-                try await joinByPairing(
+                let joined = try await joinByPairing(
                     link: link, http: http, onEmoji: onEmoji, stopped: stopped,
                     onRegistering: onRegistering,
                     persist: { acct, record in
@@ -43,7 +43,15 @@ struct JoinCalls: Sendable {
                         try vault.save(
                             acct.stored,
                             notifyKey: DeviceSecurity.NotifyRecord(record: record).bytes())
-                    }, existing: existing, confirm: confirm)
+                    }, loadIdentity: { server, pairingID in
+                        try vault.readNamed(PairingIdentity.storageKey(server: server, pairingID: pairingID)).map { try JSONDecoder().decode(PairingIdentity.self, from: $0) }
+                    },
+                    persistIdentity: { identity in
+                        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+                        try vault.savePairingIdentity(PairingIdentity.storageKey(server: identity.server, pairingID: identity.pairingID), encoder.encode(identity))
+                    },
+                    existing: existing, confirm: confirm)
+                return joined
             })
     }
 }

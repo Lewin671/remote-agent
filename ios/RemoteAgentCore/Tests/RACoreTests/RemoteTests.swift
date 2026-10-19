@@ -134,6 +134,49 @@ extension ServerTests {
                 }, body)
         }
 
+        @Test func storedPrefsRemainReadableAndEditableAfterTheirWriterIsRemoved() async throws {
+            try await world { w in
+                let writer = try await w.client()
+                let reader = try await w.client()
+                writer.start()
+                _ = try await writer.awaitState("writer online") { $0.conn == .online }
+                try await writer.changePrefs(.pin(path: "/stored"))
+                try await w.phone.remove([writer.account.deviceId])
+                try await reader.refreshTrustedDirectory()
+                try await reader.readTrustedPrefs()
+                #expect(reader.current.prefs?.pinned == ["/stored"])
+                reader.start()
+                _ = try await reader.awaitState("reader online") { $0.conn == .online }
+                try await reader.changePrefs(.hide(path: "/next"))
+                #expect(reader.current.prefs?.pinned == ["/stored"])
+                _ = try await reader.awaitState("updated stored prefs") { $0.prefs?.hidden.contains("/next") == true }
+            }
+        }
+
+        @Test func pollingRetriesDirectoryFailureEvenWhenAReadAlreadyInstalledTheHead() async throws {
+            try await world { w in
+                let victim = try await w.join()
+                let fail = Signal()
+                let attempts = Counter()
+                let flaky = Intercept.http(for: w.server.url) { request in
+                    if fail.isSet && request.url?.path.hasSuffix("/ListDevices") == true && attempts.increment() == 1 {
+                        throw URLError(.networkConnectionLost)
+                    }
+                    return request
+                }
+                let r = try w.remote(try await w.join(), http: flaky)
+                try await r.refreshTrustedDirectory()
+                #expect(r.current.devices[victim.deviceId] != nil)
+                try await w.phone.remove([victim.deviceId])
+                let client = try await r.securitySession()
+                _ = try await client.sync()
+                fail.set()
+                await r.startSecurityPolling(everyMs: 20)
+                _ = try await r.awaitState("same-head directory retry", ms: 3000) { $0.devices[victim.deviceId] == nil }
+                #expect(attempts.value >= 2)
+            }
+        }
+
         @Test func expiredPublicationStillAllowsTheStoredDirectoryToLoad() async throws {
             try await world { w in
                 let account = try await w.join()
@@ -595,7 +638,7 @@ extension ServerTests {
                 async let joining = joinByPairing(
                     link: link, http: http, onEmoji: { joinerEmoji.put($0) }, stopped: { false },
                     persist: { acct, record in try TestSecurity.get(acct.server).install(record) },
-                    confirm: { _ in true })
+                    persistIdentity: { _ in }, confirm: { _ in true })
                 let (emoji, st) = try await pairing.reveal()
                 #expect(st.joinerKind == .client)
                 try await pairing.approve()

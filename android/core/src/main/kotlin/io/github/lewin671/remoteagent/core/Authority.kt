@@ -466,6 +466,8 @@ suspend fun createAccount(
             .value()
     }
     val lease = HeadLease.sign(prepared.record.head, SigningKey(prepared.account.deviceSeed), now)
+    prepared = prepared.copy(record = prepared.record.installed(emptyList(), emptyList(), lease))
+    persistDraft(prepared)
     api.client
         .putSecurityState(
             io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
@@ -474,7 +476,7 @@ suspend fun createAccount(
             Api.headers(token),
         )
         .value()
-    prepared = prepared.copy(record = prepared.record.installed(emptyList(), emptyList(), lease))
+
     return prepared
 }
 
@@ -490,35 +492,62 @@ suspend fun rebuildSecurityDomain(
     http: OkHttpClient,
     stored: Account,
     now: Long = System.currentTimeMillis(),
+    draft: CreatedAccount? = null,
+    persistDraft: (CreatedAccount) -> Unit = { throw DeviceSecurity.Failure("storage") },
 ): CreatedAccount {
     if (!stored.hasRoot) throw PairException("这台手机没有账户根密钥，不能重建安全域；请用管理端手机重新配对")
     val keys = Keys.derive(stored.root)
     val accountId = deviceId(keys.account.publicKey)
     if (stored.accountId.isNotEmpty() && stored.accountId != accountId)
         throw PairException("这台手机保存的账户与根密钥不一致")
-    val signer = SigningKey(stored.deviceSeed)
-    val xPrivate = randomBytes(32)
-    val phone = Authority.newMember(signer, xPrivate, 2u)
-    val (recoverySeed, recoveryEd) = Authority.newRecovery()
-    val genesis =
-        Authority.genesis(
-            accountId,
-            randomBytes(32),
-            phone,
-            recoveryEd,
-            Authority.newSecret(),
-            signer,
-            now,
-        )
-    val account =
-        Account(
-            server,
-            stored.root.copyOf(),
-            stored.deviceSeed.copyOf(),
-            stored.deviceId,
-            accountId,
-            keys.account.publicKey,
-        )
+    val prepared =
+        draft
+            ?: run {
+                val signer = SigningKey(stored.deviceSeed)
+                val xPrivate = randomBytes(32)
+                val phone = Authority.newMember(signer, xPrivate, 2u)
+                val (recoverySeed, recoveryEd) = Authority.newRecovery()
+                val genesis =
+                    Authority.genesis(
+                        accountId,
+                        randomBytes(32),
+                        phone,
+                        recoveryEd,
+                        Authority.newSecret(),
+                        signer,
+                        now,
+                    )
+                val account =
+                    Account(
+                        server,
+                        stored.root.copyOf(),
+                        stored.deviceSeed.copyOf(),
+                        stored.deviceId,
+                        accountId,
+                        keys.account.publicKey,
+                    )
+                val record =
+                    DeviceSecurity.Record(
+                        DeviceSecurity.pinOf(genesis),
+                        listOf(genesis),
+                        phone.id,
+                        xPrivate,
+                    )
+                CreatedAccount(
+                    account,
+                    record,
+                    RecoveryCode.encode(recoverySeed, record.pin.genesis),
+                )
+            }
+    require(
+        prepared.account.server == server &&
+            prepared.account.deviceId == stored.deviceId &&
+            prepared.account.root.contentEquals(stored.root) &&
+            prepared.account.deviceSeed.contentEquals(stored.deviceSeed),
+    )
+    persistDraft(prepared)
+    val account = prepared.account
+    val genesis = prepared.record.chain.first()
     // The relay may be stopped for the offline pin (as the upgrade guide
     // requires), or it may refuse a network pin for an upgraded account. Both
     // leave a usable local domain that the operator pins offline.
@@ -558,20 +587,5 @@ suspend fun rebuildSecurityDomain(
     } catch (e: ConnectException) {
         if (unreachable(e)) offline = true else throw PairException(e.message ?: "连不上服务器")
     }
-    val record =
-        DeviceSecurity.Record.fromChain(
-            accountId,
-            genesis.core.domain,
-            DeviceSecurity.stateHash(genesis),
-            phone.id,
-            xPrivate,
-            listOf(DeviceSecurity.stateBytes(genesis)),
-            listOf(null),
-        )
-    return CreatedAccount(
-        account,
-        record,
-        RecoveryCode.encode(recoverySeed, DeviceSecurity.pinOf(genesis).genesis),
-        needsOfflinePin = offline,
-    )
+    return prepared.copy(needsOfflinePin = offline)
 }

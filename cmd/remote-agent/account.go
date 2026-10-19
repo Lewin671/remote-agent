@@ -171,7 +171,7 @@ func runAccountStatus() error {
 		return err
 	}
 	fmt.Printf("server:     %s\nkind:       %s\ndevice:     %s\naccount-id: %s\nauthority:  %s\nhead epoch: %d\nlease until: %s\nfile:       %s\n",
-		st.Server, st.Kind, st.DeviceID, st.AccountID, st.Authority, st.HeadEpoch, time.UnixMilli(int64(st.NotAfter)).Format(time.RFC3339), paths.Account())
+		st.Server, st.Kind, st.DeviceID, st.AccountID, st.Authority, st.HeadEpoch, formatLeaseExpiration(st.NotAfter), paths.Account())
 	return nil
 }
 
@@ -190,4 +190,11 @@ func readLine(prompt string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(line), nil
+}
+
+func formatLeaseExpiration(notAfter uint64) string {
+	if notAfter == 0 {
+		return "not installed for this head"
+	}
+	return time.UnixMilli(int64(notAfter)).Format(time.RFC3339)
 }

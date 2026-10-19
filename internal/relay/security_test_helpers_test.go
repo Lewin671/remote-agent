@@ -14,6 +14,7 @@ import (
 // testSecurityKeys is the fixture chain's material a test needs to build a
 // further signed state.
 type testSecurityKeys struct {
+	x        []byte
 	phone    ed25519.PrivateKey
 	recovery ed25519.PrivateKey
 	machine  deviceauth.Member
@@ -88,7 +89,7 @@ func initializeTestSecurityKeys(t *testing.T, c *conn) *testSecurityKeys {
 	c.acct.DeviceSeed = ed.Seed()
 	c.security = &securitySession{endpoint: endpoint, syncNow: make(chan struct{}, 1)}
 	t.Cleanup(func() { endpoint.Close() })
-	return &testSecurityKeys{phone: phoneEd, recovery: rec, machine: machine, secret: secret2, states: states}
+	return &testSecurityKeys{x: x, phone: phoneEd, recovery: rec, machine: machine, secret: secret2, states: states}
 }
 
 func openTestSecureMessage(c *conn, seed []byte, env *pb.Envelope, want *pb.Header, m proto.Message) (*pb.Header, error) {

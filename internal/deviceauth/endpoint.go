@@ -780,6 +780,17 @@ func (e *Endpoint) Snapshot() (Pin, State, string) {
 	return e.data.Pin, chainHead(e.data), e.data.MemberID
 }
 
+// LeaseExpiration reports the certificate installed for this exact head.
+// Expired certificates retain their real expiration for diagnostics.
+func (e *Endpoint) LeaseExpiration() uint64 {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if l := e.data.Lease; l != nil && l.Verify(chainHead(e.data)) == nil {
+		return l.NotAfter
+	}
+	return 0
+}
+
 // VerifiedStates returns a detached, ordered copy for historical origin proofs.
 func (e *Endpoint) VerifiedStates() []State {
 	e.mu.Lock()

@@ -14,6 +14,7 @@ import io.github.lewin671.remoteagent.proto.UserMessage
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -104,6 +105,124 @@ class RemoteTest {
 
     private suspend fun Remote.awaitEvents(sid: String, n: Int): SessionEvents =
         withTimeout(10_000) { events(sid).first { it.events.size >= n } }
+
+    @Test
+    fun deliveredStateOperationOnlyNeedsLocalCleanup() =
+        runBlocking<Unit> {
+            val phone = fixtureRemote(daemon.phone, http)
+            closers += AutoCloseable { phone.close() }
+            val prepared = phone.prepareRecovery()
+            phone.publishRecovery(prepared)
+            val request =
+                io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
+                    .addStates(
+                        io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
+                            .setState(
+                                com.google.protobuf.ByteString.copyFrom(
+                                    DeviceSecurity.stateBytes(prepared.state),
+                                ),
+                            ),
+                    )
+                    .build()
+            val storage = TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId)
+            storage.writeSecurityOperation(
+                SecurityOperation(
+                    "state",
+                    prepared.state.core.parent,
+                    request.toByteArray(),
+                    phase = SecurityOperation.Phase.DELIVERED,
+                ),
+            )
+            val offline =
+                http
+                    .newBuilder()
+                    .addInterceptor {
+                        throw java.io.IOException("completed operation must not be replayed")
+                    }
+                    .build()
+            val resumed = fixtureRemote(daemon.phone, offline)
+            closers += AutoCloseable { resumed.close() }
+            resumed.resumeSecurityOperation()
+            assertNull(storage.readSecurityOperation())
+        }
+
+    @Test
+    fun leaseCertificateIsDurableBeforeItIsPublished() =
+        runBlocking<Unit> {
+            val checked = CompletableDeferred<Boolean>()
+            val flaky =
+                http
+                    .newBuilder()
+                    .addInterceptor { chain ->
+                        if (chain.request().url.encodedPath.endsWith("/PutSecurityState")) {
+                            checked.complete(
+                                TestSecurity.get(server.url)
+                                    .stores
+                                    .getValue(daemon.phone.deviceId)
+                                    .readSecurityOperation()
+                                    ?.kind == "lease",
+                            )
+                        }
+                        chain.proceed(chain.request())
+                    }
+                    .build()
+            val phone = fixtureRemote(daemon.phone, flaky)
+            closers += AutoCloseable { phone.close() }
+            phone.renewLeaseNow()
+            assertTrue(
+                "lease certificate was published before its durable operation",
+                withTimeout(5000) { checked.await() },
+            )
+        }
+
+    @Test
+    fun storedPrefsSurviveRemovalOfTheirWriter() =
+        runBlocking<Unit> {
+            val writer = client()
+            writer.changePrefs(PrefsOp.Pin("/stored"))
+            val admin = fixtureRemote(daemon.phone, http)
+            closers += AutoCloseable { admin.close() }
+            admin.removeDevice(writer.account.deviceId)
+            val reader = client()
+            reader.syncSecurity()
+            reader.changePrefs(PrefsOp.Hide("/next"))
+            assertEquals(listOf("/stored"), reader.state.value.prefs!!.pinned)
+            assertEquals(setOf("/next"), reader.state.value.prefs!!.hidden)
+        }
+
+    @Test
+    fun directoryRetryUsesTheUnappliedHeadEvenIfAnotherReadAlreadyInstalledIt() =
+        runBlocking<Unit> {
+            val victim = approvedClient(daemon.phone, http)
+            val fail = java.util.concurrent.atomic.AtomicBoolean(false)
+            val flaky =
+                http
+                    .newBuilder()
+                    .addInterceptor { chain ->
+                        if (
+                            chain.request().url.encodedPath.endsWith("/ListDevices") &&
+                                fail.compareAndSet(true, false)
+                        )
+                            throw java.io.IOException("temporary directory failure")
+                        chain.proceed(chain.request())
+                    }
+                    .build()
+            val reader = fixtureRemote(approvedClient(daemon.phone, http), flaky)
+            val admin = fixtureRemote(daemon.phone, http)
+            closers += AutoCloseable {
+                reader.close()
+                admin.close()
+            }
+            reader.syncSecurity()
+            reader.refreshDevices()
+            assertTrue(reader.state.value.devices.containsKey(victim.deviceId))
+            admin.removeDevice(victim.deviceId)
+            reader.security.sync() // An unrelated stored read installed the head.
+            fail.set(true)
+            reader.syncSecurity() // Directory fetch fails after that installation.
+            reader.syncSecurity() // Same head must retry and apply the directory.
+            assertFalse(reader.state.value.devices.containsKey(victim.deviceId))
+        }
 
     @Test
     fun aCurrentCheckpointBootstrapsWithoutReadableHistoricalEvents() =
@@ -314,9 +433,35 @@ class RemoteTest {
             delay(5)
             assertTrue(expired.notAfter <= System.currentTimeMillis().toULong())
             original.close()
-            val reopened = fixtureRemote(daemon.phone, http)
+            val savedBeforeUpload = java.util.concurrent.atomic.AtomicBoolean(true)
+            val checking =
+                http
+                    .newBuilder()
+                    .addInterceptor { chain ->
+                        if (chain.request().url.encodedPath.endsWith("/PutSecurityState")) {
+                            val body = okio.Buffer()
+                            chain.request().body!!.writeTo(body)
+                            val sent =
+                                io.github.lewin671.remoteagent.proto.PutSecurityStateRequest
+                                    .parseFrom(body.readByteArray())
+                            if (!sent.lease.isEmpty) {
+                                val saved = store.readSecurityOperation()!!
+                                val durable =
+                                    io.github.lewin671.remoteagent.proto.PutSecurityStateRequest
+                                        .parseFrom(saved.signed)
+                                if (durable.lease != sent.lease) savedBeforeUpload.set(false)
+                            }
+                        }
+                        chain.proceed(chain.request())
+                    }
+                    .build()
+            val reopened = fixtureRemote(daemon.phone, checking)
             closers += AutoCloseable { reopened.close() }
             reopened.resumeSecurityOperation()
+            assertTrue(
+                "replacement certificate was published before being saved",
+                savedBeforeUpload.get(),
+            )
             assertNull(store.readSecurityOperation())
             assertArrayEquals(
                 DeviceSecurity.stateBytes(state),
@@ -836,6 +981,7 @@ class RemoteTest {
                     http,
                     { joinerEmoji = it },
                     { false },
+                    persistIdentity = {},
                     persist = { acct, record ->
                         TestSecurity.get(acct.server).stores[acct.deviceId] =
                             TestSecurityStore(record)

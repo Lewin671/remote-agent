@@ -132,6 +132,8 @@ public func joinByPairing(
     persist: @Sendable (Account, DeviceSecurity.Record) async throws -> Void = { _, _ in
         throw DeviceSecurity.Failure.storage
     },
+    loadIdentity: @Sendable (String, String) throws -> PairingIdentity? = { _, _ in nil },
+    persistIdentity: @Sendable (PairingIdentity) throws -> Void = { _ in throw DeviceSecurity.Failure.storage },
     existing: Account? = nil,
     confirm: @Sendable ([String]) async -> Bool = { _ in false }
 ) async throws -> Account {
@@ -139,10 +141,6 @@ public func joinByPairing(
     let api = try Api(server: link.server, http: http)
     if let existing { _ = try await login(api: api, account: existing) }
     let key = try PairKey()
-    let deviceSeed = existing?.deviceSeed ?? randomBytes(32)
-    let devicePublic = try SigningKey(seed: deviceSeed).publicKey
-    let x = Curve25519.KeyAgreement.PrivateKey()
-    let xPublic = x.publicKey.rawRepresentation
     var peekAsk = PBPeekPairingRequest()
     peekAsk.code = link.code.filter { !$0.isWhitespace }
     peekAsk.protocolVersion = protocolVersion
@@ -150,6 +148,14 @@ public func joinByPairing(
     guard peek.commit.count == 32, !peek.pairingID.isEmpty,
         link.commit == nil || link.commit == peek.commit
     else { throw PairError("配对承诺不匹配") }
+    let identity = try loadIdentity(link.server, peek.pairingID)
+    let deviceSeed = identity?.seed ?? existing?.deviceSeed ?? randomBytes(32)
+    if let identity {
+        try DeviceSecurity.check(identity.server == link.server && identity.pairingID == peek.pairingID && identity.seed.count == 32 && identity.x.count == 32 && (existing == nil || existing!.deviceSeed == identity.seed), .conflict)
+    }
+    let devicePublic = try SigningKey(seed: deviceSeed).publicKey
+    let x = try identity.map { try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: $0.x) } ?? Curve25519.KeyAgreement.PrivateKey()
+    let xPublic = x.publicKey.rawRepresentation
     var join = PBJoinPairingRequest()
     join.protocolVersion = protocolVersion
     join.deviceHpkePublicKey = xPublic
@@ -157,6 +163,7 @@ public func joinByPairing(
     join.joinerPublic = key.publicKey
     join.joinerKind = .client
     join.devicePublicKey = devicePublic
+    try persistIdentity(PairingIdentity(server: link.server, pairingID: peek.pairingID, seed: deviceSeed, x: x.rawRepresentation))
     let joined: PBJoinPairingResponse
     do {
         joined = try await api.pairing.joinPairing(request: join).value()
@@ -255,12 +262,9 @@ public func joinByPairing(
         chain.contains(where: { $0.core.member(candidate.id) != nil })
     else { throw PairError("新状态没有把这台设备加进去") }
     let secret = try DeviceSecurity.openGrant(pin, head, recipient: candidate.id, x: x)
-    let registered = try await registerJoined(
-        server: payload.server, http: http, deviceSeed: deviceSeed,
-        accountPublicKey: payload.accountPublicKey, kind: .client, enrollment: enrollment)
     let acct = Account(
-        server: registered.server, root: existing?.root ?? Data(), deviceSeed: deviceSeed,
-        deviceId: registered.deviceId, accountId: pin.account)
+        server: link.server, root: existing?.root ?? Data(), deviceSeed: deviceSeed,
+        deviceId: candidate.id, accountId: pin.account)
     var states: [UInt64: DeviceSecurity.State] = [:]
     var proofMap: [UInt64: DeviceSecurity.RecoveryStatement] = [:]
     for (i, state) in chain.enumerated() {
@@ -268,10 +272,14 @@ public func joinByPairing(
         if let proof = proofs[i] { proofMap[state.core.epoch] = proof }
     }
     let record = try DeviceSecurity.Record(
-        pin: pin, states: states, memberID: registered.deviceId, xPrivate: x.rawRepresentation,
+        pin: pin, states: states, memberID: candidate.id, xPrivate: x.rawRepresentation,
         member: true, secret: secret,
         contentKeys: [head.core.contentEpoch: secret], recovery: proofMap, lease: try DeviceSecurity.HeadLease.parse(payload.lease))
     try await persist(acct, record)
+    let registered = try await registerJoined(
+        server: payload.server, http: http, deviceSeed: deviceSeed,
+        accountPublicKey: payload.accountPublicKey, kind: .client, enrollment: enrollment)
+    try DeviceSecurity.check(registered.deviceId == acct.deviceId, .untrusted)
     // Tells the phone it went through. If this is lost, the phone reports the
     // outcome as unknown; the join itself stands.
     ask.received = true

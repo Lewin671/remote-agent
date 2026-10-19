@@ -1,10 +1,18 @@
 package relay_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"github.com/Lewin671/remote-agent/internal/paths"
+	"google.golang.org/protobuf/proto"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -28,7 +36,49 @@ func TestJoinByPairingAgainstRealServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer srv.Close()
-	httpSrv := httptest.NewServer(srv.Handler())
+	var dropRegistration atomic.Bool
+	dropRegistration.Store(true)
+	httpSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/RegisterDevice") {
+			raw, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			r.Body = io.NopCloser(bytes.NewReader(raw))
+			var req pb.RegisterDeviceRequest
+			var registration pb.DeviceRegistration
+			_ = proto.Unmarshal(raw, &req)
+			_ = proto.Unmarshal(req.Registration, &registration)
+			if registration.Kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
+				files, _ := filepath.Glob(filepath.Join(paths.Dir(), "pair-admission-*.json"))
+				durable := false
+				for _, file := range files {
+					b, _ := os.ReadFile(file)
+					var admission struct {
+						Request []byte
+						Account *relay.Account
+					}
+					if json.Unmarshal(b, &admission) == nil && bytes.Equal(admission.Request, raw) && admission.Account != nil && admission.Account.DeviceID == e2e.DeviceID(registration.DevicePublicKey) {
+						durable = true
+					}
+				}
+				if !durable {
+					t.Error("registration and replacement receipt were published before their durable admission record")
+				}
+				if dropRegistration.CompareAndSwap(true, false) {
+					accepted := httptest.NewRecorder()
+					srv.Handler().ServeHTTP(accepted, r)
+					if accepted.Code != http.StatusOK {
+						t.Errorf("registration failed before the synthetic lost response: %d", accepted.Code)
+					}
+					http.Error(w, "synthetic lost registration response", http.StatusServiceUnavailable)
+					return
+				}
+			}
+		}
+		srv.Handler().ServeHTTP(w, r)
+	}))
 	defer httpSrv.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -84,7 +134,7 @@ func TestJoinByPairingAgainstRealServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	approval, approvalSig, err := phone.RegisterPairMember(ctx, created.Msg.PairingId, candidate, deviceauth.Kind(st.JoinerKind))
+	approval, approvalSig, err := e2e.NewPairApproval(phone.Pin.Account, created.Msg.PairingId, phone.Ed, candidate.EdPublic[:], st.JoinerKind, time.Now().Add(time.Minute).UnixMilli())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,9 +176,15 @@ func TestJoinByPairingAgainstRealServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	res := <-joined
-	if res.err != nil {
-		t.Fatal(res.err)
+	if res.err == nil {
+		t.Fatal("the committed registration's response was not lost")
 	}
+	resumed, err := relay.JoinByPairing(ctx, relay.PairLink{Code: created.Msg.Code, Commit: commit, Server: httpSrv.URL}, func([]string) bool { t.Error("resuming a durable admission must not start another SAS"); return false })
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.acct = resumed
+
 	if res.acct.DeviceID != candidate.ID || res.acct.Security == nil || res.acct.Security.Pin != phone.Pin {
 		t.Fatalf("joined %+v", res.acct)
 	}

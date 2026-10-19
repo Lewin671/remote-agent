@@ -74,6 +74,11 @@ public actor DeviceSecurityClient {
         }
         return origins
     }
+    public func leaseExpiration() throws -> UInt64 {
+        let r = try read()
+        guard let lease = r.lease else { return 0 }
+        do { try lease.verify(r.state); return lease.notAfter } catch { return 0 }
+    }
     public func headStateHash() throws -> Data { try DeviceSecurity.stateHash(try read().state) }
     public func close() {
         closed = true
@@ -91,13 +96,13 @@ public actor DeviceSecurityClient {
         guard pollJob == nil, !closed else { return }
         pollJob = Task { [weak self] in
             while !Task.isCancelled {
-                let before = try? await self?.headStateHash()
-                _ = try? await self?.sync()
-                if let onChange, let before, let after = try? await self?.headStateHash(),
-                    after != before
-                {
-                    await onChange()
-                }
+                do {
+                    _ = try await self?.sync()
+                    // The consumer acknowledges successful application, not a
+                    // change within this particular pull. Failed/pending work
+                    // must get another opportunity on an unchanged head.
+                    if let onChange { await onChange() }
+                } catch {}
                 guard (try? await Task.sleep(nanoseconds: everyMs * 1_000_000)) != nil else {
                     break
                 }

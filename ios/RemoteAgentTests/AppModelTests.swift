@@ -439,4 +439,20 @@ final class Harness {
             h.engine.calls.filter { $0.hasPrefix("describe") }.count == 2
         }
     }
+    @Test func aLeaseRenewalRetriesAnAutomaticDescriptionWithoutAConnectionOrRevisionChange() async throws {
+        let h = Harness()
+        defer { h.cleanUp() }
+        try await h.ready()
+        h.engine.describeFailure = DeviceSecurity.Failure.lease
+        var s = RemoteState()
+        s.devices[h.account.deviceId] = DeviceView(id: h.account.deviceId, kind: .client, createdMs: 1)
+        s.conn = .online; s.link = .online; s.leaseEndMs = 1
+        await h.engine.remote.showForTest(state: s)
+        await eventually("first description") { h.engine.calls.filter { $0.hasPrefix("describe") }.count == 1 }
+        h.engine.describeFailure = nil
+        s.leaseEndMs = 2
+        await h.engine.remote.showForTest(state: s)
+        await eventually("description after renewal") { h.engine.calls.filter { $0.hasPrefix("describe") }.count == 2 }
+    }
+
 }

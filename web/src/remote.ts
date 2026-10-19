@@ -372,6 +372,15 @@ export async function joinWithApproval(
       useBinaryFormat: true,
     }),
   );
+  const stored: StoredAccount = {
+    server,
+    root: existing?.root,
+    rootRaw: existing?.rootRaw && new Uint8Array(existing.rootRaw),
+    devicePrivate: device.privateKey,
+    deviceId: await deviceID(pub),
+  };
+  await saveAccount(stored);
+  localStorage.setItem("ra-server", server);
   const res = await auth.registerDevice({
     protocolVersion: PROTOCOL_VERSION,
     registration: reg,
@@ -380,15 +389,6 @@ export async function joinWithApproval(
   });
   if (res.deviceId !== (await deviceID(pub)))
     throw new Error("server 返回了意外的设备 ID");
-  const stored: StoredAccount = {
-    server,
-    root: existing?.root,
-    rootRaw: existing?.rootRaw && new Uint8Array(existing.rootRaw),
-    devicePrivate: device.privateKey,
-    deviceId: res.deviceId,
-  };
-  await saveAccount(stored);
-  localStorage.setItem("ra-server", server);
   return stored;
 }
 
@@ -407,6 +407,7 @@ export class Remote {
   private recoveryObjectsPending = false;
   private trustedMembers = new Map<string, Member>();
   private archiveMachines = new Set<string>();
+  private descriptionPending = false;
   authorityDeviceId = "";
   /** Set when a state is from the future relative to this device's clock. */
   clockWarning = "";
@@ -684,16 +685,14 @@ export class Remote {
     history = false,
   ) {
     if (!env) throw new Error("缺少安全信封");
-    if (want.kind === PayloadKind.IMAGE) history = true;
     if (
       [
+        PayloadKind.ACCOUNT_PREFS,
+        PayloadKind.DEVICE_META,
         PayloadKind.MACHINE_META,
         PayloadKind.SESSION_META,
         PayloadKind.IMAGE,
-      ].includes(want.kind) &&
-      want.machineId &&
-      !this.trustedMembers.has(want.machineId) &&
-      this.archiveMachines.has(want.machineId)
+      ].includes(want.kind)
     )
       history = true;
     const seed = [
@@ -999,6 +998,7 @@ export class Remote {
         // Only a successfully applied directory acknowledges this head.
         // A failed RPC must remain pending after security.sync advances it.
         await this.loadDevices(false);
+      if (this.descriptionPending) await this.describeSelf();
     } catch (e) {
       this.report(e);
     }
@@ -1428,8 +1428,12 @@ export class Remote {
       // session held here and not on it is kept only if it belongs to a
       // later page, that is, it ended before the page's last.
       const machines = new Set(
-        [...this.trustedMembers.values()]
-          .filter((m) => m.kind === 1)
+        ms.machines
+          .filter(
+            (m) =>
+              this.trustedMembers.get(m.id)?.kind === 1 ||
+              this.archiveMachines.has(m.id),
+          )
           .map((m) => m.id),
       );
       const sessions = new Set(ss.sessions.map((s) => s.sessionId));
@@ -1665,9 +1669,7 @@ export class Remote {
           header = legacy.header;
           plaintext = legacy.plaintext;
         } else {
-          const opened = this.trustedMembers.has(rs.machineId)
-            ? await this.security.openCurrent(rs.key)
-            : await this.security.openHistory(rs.key);
+          const opened = await this.security.openHistory(rs.key);
           header = this.projectHeader(opened.header);
           plaintext = opened.plaintext;
         }
@@ -1719,7 +1721,7 @@ export class Remote {
         if (!origins.has(view.machineId))
           throw new Error("会话记录的机器被改动");
         // Validate the new seed before changing an already displayed route.
-        const opened = await this.security.openCurrent(rs.key!);
+        const opened = await this.security.openHistory(rs.key!);
         expect(this.projectHeader(opened.header), {
           kind: PayloadKind.SESSION_KEY,
           machineId: rs.machineId,
@@ -2710,6 +2712,7 @@ export class Remote {
         ).applied
       )
         break;
+      if (attempt === 4) throw new Error("恢复对象同时更新，将在下次同步重试");
     }
     for (let attempt = 0; attempt < 5; attempt++) {
       const own = (await this.api.listDevices({})).devices.find(
@@ -2755,6 +2758,7 @@ export class Remote {
         ).applied
       )
         break;
+      if (attempt === 4) throw new Error("恢复对象同时更新，将在下次同步重试");
     }
   }
 
@@ -2930,12 +2934,21 @@ export class Remote {
   /** Says what this browser is, once, so other clients can name it. */
   private async describeSelf() {
     const me = this.devices.get(this.account.deviceId);
-    if (!me || me.meta) return;
-    await this.changeDeviceMeta(this.account.deviceId, (m) => ({
-      name: m?.name ?? "",
-      platform: "web",
-      description: m?.description || describeBrowser(navigator.userAgent),
-    })).catch((e) => this.report(e));
+    if (!me || me.meta) {
+      this.descriptionPending = false;
+      return;
+    }
+    this.descriptionPending = true;
+    try {
+      await this.changeDeviceMeta(this.account.deviceId, (m) => ({
+        name: m?.name ?? "",
+        platform: "web",
+        description: m?.description || describeBrowser(navigator.userAgent),
+      }));
+      this.descriptionPending = false;
+    } catch (e) {
+      this.report(e);
+    }
   }
 
   /** Renames this client; the name is sealed, the server sees none.

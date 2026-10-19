@@ -31,11 +31,11 @@ func securityPath() string { return filepath.Join(paths.Dir(), "security-v3.db")
 
 // role is the signed state's copy of this device's membership.
 type securitySession struct {
-	clock    func() uint64
-	endpoint *deviceauth.Endpoint
-	client   remoteagentv1connect.ClientServiceClient
-	syncNow  chan struct{}
-	onEpoch  func()
+	clock     func() uint64
+	endpoint  *deviceauth.Endpoint
+	client    remoteagentv1connect.ClientServiceClient
+	syncNow   chan struct{}
+	afterSync func()
 }
 
 func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServiceClient) (*securitySession, error) {
@@ -133,12 +133,11 @@ func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []
 // syncOnce pulls states after the local head, verifies and installs them.
 // A changed content epoch retries the durable current checkpoint.
 func (s *securitySession) syncOnce(ctx context.Context) error {
-	_, before, _ := s.endpoint.Snapshot()
 	_, err := s.pull(ctx)
-	_, after, _ := s.endpoint.Snapshot()
-	if err == nil && before.Core.ContentEpoch != after.Core.ContentEpoch && s.onEpoch != nil {
-		s.onEpoch()
+	if err == nil && s.afterSync != nil {
+		s.afterSync()
 	}
+
 	return err
 }
 

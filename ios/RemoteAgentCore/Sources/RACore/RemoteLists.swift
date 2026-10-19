@@ -336,7 +336,7 @@ extension Remote {
                     }
                     (h, raw) = try Envelopes.open(key: keys.wrap, envelope: rs.key)
                 } else {
-                    let opened = trustedMembers[rs.machineID] != nil ? try await securitySession().openCurrent(rs.key) : try await securitySession().openHistory(rs.key)
+                    let opened = try await securitySession().openHistory(rs.key)
                     h = projection(opened.0)
                     raw = opened.1
                 }
@@ -463,6 +463,10 @@ extension Remote {
                     request: request, headers: Api.headers(token: try await currentToken())
                 ).value()
                 if !result.applied { continue }
+                if prefs == nil || prefs!.revision <= base.revision + 1 {
+                    prefs = PrefsObject(revision: base.revision + 1, prefs: next)
+                    publish()
+                }
                 try await refreshTrustedDirectory()
                 try await readTrustedPrefs()
                 return

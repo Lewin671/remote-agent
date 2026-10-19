@@ -326,6 +326,15 @@ export async function initializeSecurity(
     get.onsuccess = () => {
       const old = get.result as SecurityRecord | undefined;
       if (old !== undefined) {
+        if (
+          publicPinEqual(old.pin, record.pin) &&
+          old.memberID === record.memberID &&
+          equal(old.stateHash, record.stateHash) &&
+          equal(old.secret, record.secret)
+        ) {
+          done();
+          return;
+        }
         // A re-pair may replace its own domain only; a corrupt or
         // different record must never be overwritten.
         if (
@@ -503,4 +512,63 @@ export async function parseChain(
     );
   }
   return { states, proofs };
+}
+
+/** Private candidate keys, saved before they can be approved by the phone. */
+export interface PairingIdentity {
+  server: string;
+  pairingId: string;
+  device: CryptoKeyPair;
+  x: CryptoKeyPair;
+}
+export async function loadPairingIdentity(
+  server: string,
+  pairingId: string,
+): Promise<PairingIdentity | undefined> {
+  const db = await database(true);
+  return transaction(db, "readonly", (store, done) => {
+    const req = store.get(
+      "pair-candidate:" + JSON.stringify([server, pairingId]),
+    );
+    req.onsuccess = () => done(req.result);
+  });
+}
+export async function savePairingIdentity(
+  identity: PairingIdentity,
+): Promise<void> {
+  const bytes = await Promise.all(
+    [identity.device.publicKey, identity.x.publicKey].map(
+      async (k) => new Uint8Array(await crypto.subtle.exportKey("raw", k)),
+    ),
+  );
+  const tag = JSON.stringify([
+    identity.server,
+    ...bytes.map((b) => Array.from(b)),
+  ]);
+  const db = await database(true);
+  return transaction(db, "readwrite", (store, done, fail) => {
+    const key =
+      "pair-candidate:" + JSON.stringify([identity.server, identity.pairingId]);
+    const req = store.get(key);
+    req.onsuccess = () => {
+      if (req.result && req.result.tag !== tag) {
+        fail(
+          new Error("另一个配对草稿未完成，请先完成本次配对或明确退出后重试"),
+        );
+        return;
+      }
+      store.put({ ...identity, tag }, key);
+      done();
+    };
+  });
+}
+export async function clearPairingIdentity(
+  server: string,
+  pairingId: string,
+): Promise<void> {
+  const db = await database(true);
+  return transaction(db, "readwrite", (store, done) => {
+    store.delete("pair-candidate:" + JSON.stringify([server, pairingId]));
+    done();
+  });
 }

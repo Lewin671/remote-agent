@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -44,5 +45,13 @@ func TestServerURLRejectsEmbeddedCredentialsAndFragments(t *testing.T) {
 		if _, err := CheckServerURL(raw); err != nil {
 			t.Errorf("rejected %q: %v", raw, err)
 		}
+	}
+}
+
+func TestPrivateWriteReportsDirectoryDurabilityFailure(t *testing.T) {
+	failure := errors.New("directory sync failed")
+	err := writeFileSyncWithDirectorySync(filepath.Join(t.TempDir(), "account.json"), []byte("private"), func(string) error { return failure })
+	if !errors.Is(err, failure) {
+		t.Fatalf("durability failure was acknowledged as success: %v", err)
 	}
 }

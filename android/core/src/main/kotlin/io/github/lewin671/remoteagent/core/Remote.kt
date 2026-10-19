@@ -378,7 +378,8 @@ class Remote(
     private val archiveMachines = HashSet<String>()
     private val trustedMetadata = HashMap<String, Envelope>()
     private var directoryVersion = 0L
-    private var lastHeadEpoch = 0uL
+    private var directoryHead: ByteArray? = null
+    private var recoveryObjectsPending = true
     private var leaseEnd = 0L
     @Volatile private var serverAhead = false
     private var stateJob: Job? = null
@@ -685,8 +686,7 @@ class Remote(
                 security.chain().flatMap { it.core.members }.filter { it.kind == 1u }.map { it.id },
             )
             authorityDeviceId = identity.second.core.authorityID
-            lastHeadEpoch = identity.second.core.epoch
-            leaseEnd = security.record().lease?.notAfter?.toLong() ?: 0L
+            leaseEnd = security.record().leaseExpiration()
             for (m in cache.machines()) {
                 if (m.hasMeta() && !m.meta.securityHeader.isEmpty)
                     trustedMetadata["machine:${m.id}"] = m.meta
@@ -1329,10 +1329,7 @@ class Remote(
                             rs.key,
                         )
                     else {
-                        val (h, raw) =
-                            if (trustedMembers.containsKey(rs.machineId))
-                                security.openCurrent(rs.key)
-                            else security.openHistory(rs.key)
+                        val (h, raw) = security.openHistory(rs.key)
                         projection(h) to raw
                     }
                 Envelopes.expect(
@@ -1369,7 +1366,7 @@ class Remote(
                         )
                 )
                     throw OpenException("会话记录的机器被改动")
-                val (h, seed) = security.openCurrent(rs.key)
+                val (h, seed) = security.openHistory(rs.key)
                 Envelopes.expect(
                     projection(h),
                     Place(
@@ -1614,27 +1611,27 @@ class Remote(
                 publish()
                 return
             }
-        if (changed && conn == ConnState.ONLINE) withContext(dispatcher) { loadDevices() }
+        if (changed || recoveryObjectsPending) withContext(dispatcher) { loadDevices() }
     }
 
     private suspend fun syncSecurityOnce(): Boolean {
         val changed =
             withContext(dispatcher) {
-                val before = security.head().core.epoch
                 val r = security.sync()
                 resumeSecurityOperation()
                 try {
+                    recoveryObjectsPending = true
                     republishRecoveryObjects(r)
+                    recoveryObjectsPending = false
                 } catch (e: DeviceSecurity.Failure) {
                     // This maintenance write stays pending until renewal.
                     // Reading the directory and stored content still works.
                     if (e.code != "lease") throw e
                 }
                 authorityDeviceId = r.head.core.authorityID
-                lastHeadEpoch = r.head.core.epoch
-                leaseEnd = r.lease?.notAfter?.toLong() ?: 0L
+                leaseEnd = r.leaseExpiration()
                 publish()
-                r.head.core.epoch != before
+                directoryHead?.contentEquals(DeviceSecurity.stateHash(r.head)) != true
             }
         return changed
     }
@@ -1648,7 +1645,7 @@ class Remote(
         val boundary =
             r.proofs.keys.maxOrNull()?.let { r.stateAt(it)?.core?.contentEpoch } ?: return
         val headers = Api.headers(currentToken())
-        for (attempt in 0 until 5) {
+        retryRecoveryPublication {
             val obj =
                 api.client
                     .getAccountPrefs(
@@ -1659,9 +1656,9 @@ class Remote(
                     )
                     .value()
                     .`object`
-            if (!obj.hasEnvelope() || obj.revision == 0L) break
+            if (!obj.hasEnvelope() || obj.revision == 0L) return@retryRecoveryPublication true
             val h = DeviceSecurity.parseHeader(obj.envelope.securityHeader.toByteArray())
-            if (h.contentEpoch >= boundary) break
+            if (h.contentEpoch >= boundary) return@retryRecoveryPublication true
             if (
                 h.purpose != DeviceSecurity.Purpose.PREFS ||
                     h.request != PROJECT_PREFS ||
@@ -1678,7 +1675,7 @@ class Remote(
                         )
                         .second
                 } catch (e: DeviceSecurity.Failure) {
-                    if (e.code == "unavailable") break else throw e
+                    if (e.code == "unavailable") return@retryRecoveryPublication true else throw e
                 }
             val env =
                 security.seal(
@@ -1698,9 +1695,9 @@ class Remote(
                         headers,
                     )
                     .value()
-            if (result.applied) break
+            result.applied
         }
-        for (attempt in 0 until 5) {
+        retryRecoveryPublication {
             val own =
                 api.client
                     .listDevices(
@@ -1710,10 +1707,11 @@ class Remote(
                     )
                     .value()
                     .devicesList
-                    .firstOrNull { it.id == account.deviceId } ?: break
-            if (!own.hasMeta()) break
+                    .firstOrNull { it.id == account.deviceId }
+                    ?: return@retryRecoveryPublication true
+            if (!own.hasMeta()) return@retryRecoveryPublication true
             val h = DeviceSecurity.parseHeader(own.meta.securityHeader.toByteArray())
-            if (h.contentEpoch >= boundary) break
+            if (h.contentEpoch >= boundary) return@retryRecoveryPublication true
             if (
                 h.purpose != DeviceSecurity.Purpose.DEVICE_META ||
                     h.sender != account.deviceId ||
@@ -1730,7 +1728,7 @@ class Remote(
                         )
                         .second
                 } catch (e: DeviceSecurity.Failure) {
-                    if (e.code == "unavailable") break else throw e
+                    if (e.code == "unavailable") return@retryRecoveryPublication true else throw e
                 }
             val env =
                 security.seal(
@@ -1750,7 +1748,7 @@ class Remote(
                         headers,
                     )
                     .value()
-            if (result.applied) break
+            result.applied
         }
     }
 
@@ -1763,7 +1761,35 @@ class Remote(
 
     private suspend fun resumeSecurityOperationLocked() {
         val storage = securityStorage ?: throw DeviceSecurity.Failure("storage")
-        val op = storage.readSecurityOperation() ?: return
+        var op = storage.readSecurityOperation() ?: return
+        if (op.kind == "lease") {
+            val r = security.sync()
+            val hash = DeviceSecurity.stateHash(r.head)
+            if (!hash.contentEquals(op.parent)) {
+                // A verified successor makes this old-head certificate obsolete.
+                if (r.chain.none { DeviceSecurity.stateHash(it).contentEquals(op.parent) })
+                    throw DeviceSecurity.Failure("conflict")
+                storage.clearSecurityOperation()
+                return
+            }
+            var req = PutSecurityStateRequest.parseFrom(op.signed)
+            var cert = HeadLease.parse(req.lease.toByteArray())
+            cert.verify(r.head)
+            if (maxOf(clock().toULong(), r.floor) >= cert.notAfter) {
+                cert = HeadLease.sign(r.head, SigningKey(account.deviceSeed), clock())
+                req =
+                    PutSecurityStateRequest.newBuilder()
+                        .setLease(com.google.protobuf.ByteString.copyFrom(cert.bytes()))
+                        .build()
+                storage.writeSecurityOperation(SecurityOperation("lease", hash, req.toByteArray()))
+            }
+            api.client.putSecurityState(req, Api.headers(currentToken())).value()
+            security.install(emptyList(), lease = cert)
+            storage.clearSecurityOperation()
+            leaseEnd = cert.notAfter.toLong()
+            publish()
+            return
+        }
         if (op.kind != "state") {
             reconcileCompletedAdoption(account, security.record(), storage)
             return
@@ -1771,6 +1797,42 @@ class Remote(
         val request = PutSecurityStateRequest.parseFrom(op.signed)
         val states = request.statesList.map { DeviceSecurity.parseState(it.state.toByteArray()) }
         val target = states.last()
+        if (op.phase == SecurityOperation.Phase.DELIVERED) {
+            val installed =
+                security.record().stateAt(target.core.epoch)
+                    ?: throw DeviceSecurity.Failure("conflict")
+            if (
+                !DeviceSecurity.stateHash(installed).contentEquals(DeviceSecurity.stateHash(target))
+            )
+                throw DeviceSecurity.Failure("conflict")
+            storage.clearSecurityOperation()
+            return
+        }
+        fun saveRetryCertificate(certificate: HeadLease?) {
+            val saved =
+                request
+                    .toBuilder()
+                    .clearLease()
+                    .apply {
+                        certificate?.let {
+                            setLease(com.google.protobuf.ByteString.copyFrom(it.bytes()))
+                        }
+                    }
+                    .build()
+            if (saved.lease == request.lease) return
+            val updated =
+                SecurityOperation(
+                    op.kind,
+                    op.parent,
+                    saved.toByteArray(),
+                    op.local,
+                    op.delivery,
+                    op.phase,
+                    op.codeSaved,
+                )
+            storage.writeSecurityOperation(updated)
+            op = updated
+        }
         // sync() validates a strict extension before reconciliation.
         if (
             target.core.authorityID != account.deviceId &&
@@ -1807,6 +1869,7 @@ class Remote(
                     PutSecurityStateRequest.newBuilder()
                         .setLease(com.google.protobuf.ByteString.copyFrom(certificate.bytes()))
                         .build()
+                saveRetryCertificate(certificate)
                 api.client.putSecurityState(renewal, Api.headers(currentToken())).value()
                 security.install(emptyList(), lease = certificate)
             }
@@ -1824,6 +1887,7 @@ class Remote(
                         }
                     }
                     .build()
+            saveRetryCertificate(certificate)
             api.client.putSecurityState(retry, Api.headers(currentToken())).value()
             security.install(
                 states,
@@ -1852,7 +1916,7 @@ class Remote(
         storage.clearSecurityOperation()
         withContext(dispatcher) {
             authorityDeviceId = security.head().core.authorityID
-            leaseEnd = security.record().lease?.notAfter?.toLong() ?: 0L
+            leaseEnd = security.record().leaseExpiration()
             publish()
         }
     }
@@ -1987,6 +2051,7 @@ class Remote(
         scope.launch {
             try {
                 withContext(dispatcher) {
+                    resumeSecurityOperation()
                     val head = security.head()
                     if (head.core.authorityID != account.deviceId) return@withContext
                     if (
@@ -2000,17 +2065,19 @@ class Remote(
                     )
                         return@withContext
                     val lease = HeadLease.sign(head, SigningKey(account.deviceSeed), clock())
-                    api.client
-                        .putSecurityState(
-                            PutSecurityStateRequest.newBuilder()
-                                .setLease(com.google.protobuf.ByteString.copyFrom(lease.bytes()))
-                                .build(),
-                            Api.headers(currentToken()),
-                        )
-                        .value()
-                    security.install(emptyList(), lease = lease)
-                    leaseEnd = lease.notAfter.toLong()
-                    publish()
+                    val request =
+                        PutSecurityStateRequest.newBuilder()
+                            .setLease(com.google.protobuf.ByteString.copyFrom(lease.bytes()))
+                            .build()
+                    val storage = securityStorage ?: throw DeviceSecurity.Failure("storage")
+                    storage.writeSecurityOperation(
+                        SecurityOperation(
+                            "lease",
+                            DeviceSecurity.stateHash(head),
+                            request.toByteArray(),
+                        ),
+                    )
+                    resumeSecurityOperation()
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -2204,8 +2271,8 @@ class Remote(
             machines.clear()
             machines.putAll(newMachines.filterKeys { it in members || it in archiveMachines })
             authorityDeviceId = head.core.authorityID
-            lastHeadEpoch = head.core.epoch
-            leaseEnd = security.record().lease?.notAfter?.toLong() ?: 0L
+            directoryHead = stateHash
+            leaseEnd = security.record().leaseExpiration()
             publish()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -3419,6 +3486,16 @@ class Remote(
         parse: (ByteArray) -> T,
         live: Boolean = true,
     ): Pair<Header, T> {
+        val history =
+            !live ||
+                want.kind in
+                    setOf(
+                        PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS,
+                        PayloadKind.PAYLOAD_KIND_DEVICE_META,
+                        PayloadKind.PAYLOAD_KIND_MACHINE_META,
+                        PayloadKind.PAYLOAD_KIND_SESSION_META,
+                        PayloadKind.PAYLOAD_KIND_IMAGE,
+                    )
         val route = Header.parseFrom(env.header)
         if (
             want.kind in setOf(PayloadKind.PAYLOAD_KIND_EVENT, PayloadKind.PAYLOAD_KIND_IMAGE) &&
@@ -3428,7 +3505,7 @@ class Remote(
             return Envelopes.openMessage(
                 legacyKey,
                 env,
-                historicalPlace(want, route, !live || want.kind == PayloadKind.PAYLOAD_KIND_IMAGE),
+                historicalPlace(want, route, history),
                 parse,
             )
         }
@@ -3438,16 +3515,7 @@ class Remote(
             try {
                 security.openMessage(
                     env,
-                    !live ||
-                        want.kind == PayloadKind.PAYLOAD_KIND_IMAGE ||
-                        (want.kind in
-                            setOf(
-                                PayloadKind.PAYLOAD_KIND_MACHINE_META,
-                                PayloadKind.PAYLOAD_KIND_SESSION_META,
-                                PayloadKind.PAYLOAD_KIND_IMAGE,
-                            ) &&
-                            !trustedMembers.containsKey(want.machineId) &&
-                            want.machineId in archiveMachines),
+                    history,
                     seed,
                     parse,
                 )
@@ -3457,7 +3525,7 @@ class Remote(
                     historicalPlace(
                         want,
                         projection(e.header),
-                        !live || want.kind == PayloadKind.PAYLOAD_KIND_IMAGE,
+                        history,
                     ),
                 )
                 throw e
@@ -3465,7 +3533,7 @@ class Remote(
         val projected = projection(header)
         Envelopes.expect(
             projected,
-            historicalPlace(want, projected, !live || want.kind == PayloadKind.PAYLOAD_KIND_IMAGE),
+            historicalPlace(want, projected, history),
         )
         return projected to m
     }

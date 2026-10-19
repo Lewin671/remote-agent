@@ -223,6 +223,20 @@ struct Vault: Sendable {
         guard status == errSecSuccess else { throw VaultError(operation: .save, status: status) }
     }
 
+    /// A concurrent pairing must never overwrite candidate private keys.
+    func savePairingIdentity(_ name: String, _ data: Data) throws {
+        var add = query(nil)
+        add[kSecAttrAccount] = name
+        add[kSecValueData] = data
+        add[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        let status = SecItemAdd(add as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            guard try readNamed(name) == data else { throw VaultError(operation: .save, status: errSecDuplicateItem) }
+            return
+        }
+        guard status == errSecSuccess else { throw VaultError(operation: .save, status: status) }
+    }
+
     func delete(_ item: Item) throws {
         let status = SecItemDelete(query(item) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {

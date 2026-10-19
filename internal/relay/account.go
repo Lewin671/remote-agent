@@ -110,6 +110,10 @@ func httpClient() *http.Client {
 // writeFileSync writes a file atomically and durably with owner-only
 // permissions.
 func writeFileSync(path string, data []byte) error {
+	return writeFileSyncWithDirectorySync(path, data, syncPrivateDirectory)
+}
+
+func writeFileSyncWithDirectorySync(path string, data []byte, syncDirectory func(string) error) error {
 	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+"-*")
 	if err != nil {
 		return err
@@ -127,12 +131,8 @@ func writeFileSync(path string, data []byte) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, path); err != nil {
+	if err := renamePrivateFile(tmp, path); err != nil {
 		return err
 	}
-	if d, err := os.Open(filepath.Dir(path)); err == nil {
-		_ = d.Sync()
-		d.Close()
-	}
-	return nil
+	return syncDirectory(filepath.Dir(path))
 }

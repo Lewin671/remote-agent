@@ -260,3 +260,35 @@ it("keeps directory and stored prefs readable when an expired lease defers recov
     await f.r.dispose();
   }
 }, 20000);
+
+it("retries exhausted recovery CAS work on the same successfully installed head", async () => {
+  const f = await setup();
+  const r = new SyntheticRemote(f.world, f.retained, f.seed);
+  let object = {
+    objectId: "project-prefs",
+    revision: 1n,
+    envelope: f.oldPrefs,
+  };
+  let calls = 0;
+  try {
+    const local = r as any;
+    local.closed = false;
+    local.api = {
+      getAccountPrefs: async () => ({ object }),
+      putAccountPrefs: async (req: any) => {
+        calls++;
+        if (calls <= 5) return { applied: false };
+        object = { ...object, revision: 2n, envelope: req.envelope };
+        return { applied: true };
+      },
+    };
+    await r.loadDevices(false);
+    expect(calls).toBe(5);
+    await local.syncSecurity();
+    expect(calls).toBe(6);
+    expect(local.recoveryObjectsPending).toBe(false);
+  } finally {
+    r.stop();
+    await f.r.dispose();
+  }
+}, 20000);

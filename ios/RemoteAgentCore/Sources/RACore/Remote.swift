@@ -185,7 +185,10 @@ public actor Remote {
     var trustedMembers: [String: DeviceSecurity.Member] = [:]
     var trustedMetadata: [String: PBEnvelope] = [:]
     var directoryVersion = 0
+    var directoryHead: Data?
+    var recoveryObjectsPending = true
     var authorityDeviceId = ""
+    var leaseEndMs: UInt64 = 0
     var liveSnapshots: [String: PBLiveSnapshot] = [:]
     var liveErrors: [String: String] = [:]
     var liveJobs: [String: Task<Void, Never>] = [:]
@@ -537,6 +540,7 @@ public actor Remote {
         s.prefs = prefs
         s.devices = devices
         s.authorityDeviceId = authorityDeviceId
+        s.leaseEndMs = leaseEndMs
         s.removed = removed
         s.sessionsNext = next
         s.loadingSessions = pageJob != nil
@@ -616,6 +620,7 @@ public actor Remote {
             trustedMembers = Dictionary(
                 uniqueKeysWithValues: identity.1.core.members.map { ($0.id, $0) })
             authorityDeviceId = identity.1.core.authorityID
+            leaseEndMs = try await securitySession().leaseExpiration()
             archiveMachines=try await securitySession().historicalMachines()
         } catch {
             report(error)

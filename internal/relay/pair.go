@@ -3,12 +3,18 @@ package relay
 import (
 	"bytes"
 	"context"
+	"crypto/ecdh"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Lewin671/remote-agent/internal/paths"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -85,6 +91,13 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if existing != nil && existing.Server != server {
 		return nil, errors.New("pairing must use the existing account's server")
 	}
+	resumed, ownedAdmissions, err := resumePairAdmissions(ctx, server)
+	if err != nil {
+		return nil, err
+	}
+	if resumed != nil {
+		return resumed, nil
+	}
 	pc := pairingClient(server, "")
 	key, err := e2e.NewPairKey()
 	if err != nil {
@@ -116,10 +129,6 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil {
 		return nil, err
 	}
-	x, xpub, err := deviceauth.NewXKey()
-	if err != nil {
-		return nil, err
-	}
 	peek, err := pc.PeekPairing(ctx, connect.NewRequest(&pb.PeekPairingRequest{Code: link.Code, ProtocolVersion: protocol.Version}))
 	if err != nil {
 		return nil, err
@@ -129,6 +138,46 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	}
 	if link.Commit != nil && !bytes.Equal(link.Commit, peek.Msg.Commit) {
 		return nil, errors.New("the server returned another device's commitment; pairing stopped")
+	}
+	draft := pairingIdentity{Server: server, Seed: priv.Seed()}
+	if raw, err := os.ReadFile(pairingIdentityPath(server, peek.Msg.PairingId)); err == nil {
+		if len(raw) > 4096 || json.Unmarshal(raw, &draft) != nil || draft.Server != server || len(draft.Seed) != 32 || len(draft.X) != 32 {
+			return nil, errors.New("pending pairing identity is invalid or belongs to another server")
+		}
+		saved := ed25519.NewKeyFromSeed(draft.Seed)
+		if existing != nil && !localRemoved && !bytes.Equal(saved.Public().(ed25519.PublicKey), pub) {
+			return nil, deviceauth.ErrUntrusted
+		}
+		priv = saved
+		pub = saved.Public().(ed25519.PublicKey)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	x, xpub, err := deviceauth.NewXKey()
+	if err != nil {
+		return nil, err
+	}
+	if len(draft.X) == 32 {
+		x = bytes.Clone(draft.X)
+		key, kerr := ecdh.X25519().NewPrivateKey(x)
+		err = kerr
+		if err == nil {
+			xpub = key.PublicKey().Bytes()
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	draft.X = x
+	if err := os.MkdirAll(paths.Dir(), 0700); err != nil {
+		return nil, err
+	}
+	rawIdentity, err := json.Marshal(draft)
+	if err != nil {
+		return nil, err
+	}
+	if err = savePairingIdentity(server, peek.Msg.PairingId, rawIdentity); err != nil {
+		return nil, err
 	}
 	joined, err := pc.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{
 		Code: link.Code, JoinerPublic: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_MACHINE, DevicePublicKey: pub, DeviceHpkePublicKey: xpub, ProtocolVersion: protocol.Version,
@@ -182,12 +231,17 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil || approval.AccountId != pin.Account || approval.PairingId != id || !bytes.Equal(approval.CandidateDevicePublicKey, pub) || approval.CandidateKind != pb.DeviceKind_DEVICE_KIND_MACHINE || approval.ExpiresMs <= time.Now().UnixMilli() || e2e.DeviceID(approval.ApproverPublicKey) != approver {
 		return nil, e2e.ErrPairApproval
 	}
+	replacementOwner := existing
 	expectedReplacement := ""
 	if existing != nil && localRemoved {
 		expectedReplacement = existing.DeviceID
 	}
 	if approval.ReplacesDeviceId != "" && approval.ReplacesDeviceId != expectedReplacement {
-		return nil, errors.New("the pairing approval does not name this computer's revoked identity; on the authority phone choose the original computer's archive and rejoin it")
+		if owned := ownedAdmissions[approval.ReplacesDeviceId]; owned != nil {
+			replacementOwner = owned
+		} else {
+			return nil, errors.New("the pairing approval does not name this computer's revoked identity; on the authority phone choose the original computer's archive and rejoin it")
+		}
 	}
 	states, proofs, candidate, err := verifyPairChain(pin, payload.SecurityStates, pub, xpub)
 	if err != nil {
@@ -218,23 +272,13 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		acct.Root = existing.Root
 		acct.Web = existing.Web
 	}
-	acct.Replacements = pairingReplacements(existing, localRemoved, approval, payload.Approval, payload.ApprovalSignature)
+	acct.Replacements = pairingReplacements(replacementOwner, localRemoved, approval, payload.Approval, payload.ApprovalSignature)
 	reg, err := proto.Marshal(&pb.DeviceRegistration{
 		AccountPublicKey: payload.AccountPublicKey, DevicePublicKey: pub,
 		Kind: pb.DeviceKind_DEVICE_KIND_MACHINE, CreatedMs: time.Now().UnixMilli(),
 	})
 	if err != nil {
 		return nil, err
-	}
-	auth := remoteagentv1connect.NewAuthServiceClient(httpClient(), server)
-	res, err := auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{
-		ProtocolVersion: protocol.Version, Registration: reg, Approval: payload.Approval, ApprovalSignature: payload.ApprovalSignature,
-	}))
-	if err != nil {
-		return nil, fmt.Errorf("register: %w", err)
-	}
-	if res.Msg.DeviceId != candidate.ID {
-		return nil, errors.New("server returned an unexpected device ID")
 	}
 	lease, err := deviceauth.ParseLease(payload.Lease)
 	if err != nil {
@@ -248,7 +292,27 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		return nil, err
 	}
 	acct.Security = &SecurityConfig{Pin: pin, XPrivate: x}
+	auth := remoteagentv1connect.NewAuthServiceClient(httpClient(), server)
+	request := &pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Approval: payload.Approval, ApprovalSignature: payload.ApprovalSignature}
+	rawRequest, err := proto.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	admission := pairAdmission{Account: acct, Request: rawRequest, PairingID: id, CandidateToken: token}
+	if err := savePairAdmission(admission); err != nil {
+		return nil, err
+	}
+	res, err := auth.RegisterDevice(ctx, connect.NewRequest(request))
+	if err != nil {
+		return nil, fmt.Errorf("register: %w", err)
+	}
+	if res.Msg.DeviceId != candidate.ID {
+		return nil, errors.New("server returned an unexpected device ID")
+	}
 	if err := acct.Save(); err != nil {
+		return nil, err
+	}
+	if err := clearPairAdmission(admission); err != nil {
 		return nil, err
 	}
 	// Tells the phone it went through. If this is lost, the phone reports
@@ -369,4 +433,50 @@ func waitPairing(ctx context.Context, pc remoteagentv1connect.PairingServiceClie
 		case <-time.After(pairPoll):
 		}
 	}
+}
+
+type pairingIdentity struct {
+	Server string
+	Seed   []byte
+	X      []byte
+}
+
+func pairingIdentityPath(server, pairingID string) string {
+	key := sha256.Sum256([]byte(server + "\x00" + pairingID))
+	return filepath.Join(paths.Dir(), "pair-candidate-"+hex.EncodeToString(key[:])+".json")
+}
+
+// The pending slot is write-once until completion, so concurrent joins cannot
+// overwrite each other's long-term private keys before approval.
+func savePairingIdentity(server, pairingID string, raw []byte) error {
+	f, err := os.CreateTemp(paths.Dir(), ".pair-candidate-*")
+	if err != nil {
+		return err
+	}
+	name := f.Name()
+	defer os.Remove(name)
+	if _, err = f.Write(raw); err != nil {
+		f.Close()
+		return err
+	}
+	if err = f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+	if err = linkPrivateFile(name, pairingIdentityPath(server, pairingID)); err != nil {
+		if !errors.Is(err, os.ErrExist) {
+			return err
+		}
+		old, e := os.ReadFile(pairingIdentityPath(server, pairingID))
+		if e != nil {
+			return e
+		}
+		if !bytes.Equal(old, raw) {
+			return errors.New("another pairing identity is pending")
+		}
+	}
+	return syncPrivateDirectory(paths.Dir())
 }

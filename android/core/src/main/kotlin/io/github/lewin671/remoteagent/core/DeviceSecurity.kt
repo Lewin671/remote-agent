@@ -1053,6 +1053,9 @@ object DeviceSecurity {
             lastMember()?.let { openGrant(pin, it, memberID, xPrivate) }
         }
 
+        fun leaseExpiration(): Long =
+            lease?.takeIf { runCatching { it.verify(head) }.isSuccess }?.notAfter?.toLong() ?: 0L
+
         override fun toString() = "DeviceSecurity.Record(epoch=${head.core.epoch})"
 
         val head: State

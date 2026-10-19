@@ -6,8 +6,11 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/paths"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -18,7 +21,9 @@ import (
 )
 
 type changingPairRelay struct {
-	candidate chan []byte
+	binding        string
+	requireDurable *testing.T
+	candidate      chan []byte
 	remoteagentv1connect.UnimplementedPairingServiceHandler
 	peeked atomic.Bool
 	joined atomic.Bool
@@ -26,9 +31,24 @@ type changingPairRelay struct {
 
 func (r *changingPairRelay) PeekPairing(_ context.Context, req *connect.Request[pb.PeekPairingRequest]) (*connect.Response[pb.PeekPairingResponse], error) {
 	r.peeked.Store(true)
-	return connect.NewResponse(&pb.PeekPairingResponse{PairingId: "frozen-before-dh-public", Commit: make([]byte, 32)}), nil
+	id := r.binding
+	if id == "" {
+		id = "frozen-before-dh-public"
+	}
+	return connect.NewResponse(&pb.PeekPairingResponse{PairingId: id, Commit: make([]byte, 32)}), nil
 }
 func (r *changingPairRelay) JoinPairing(_ context.Context, req *connect.Request[pb.JoinPairingRequest]) (*connect.Response[pb.JoinPairingResponse], error) {
+	if r.requireDurable != nil {
+		files, err := filepath.Glob(filepath.Join(paths.Dir(), "pair-candidate-*.json"))
+		if err != nil || len(files) != 1 {
+			r.requireDurable.Errorf("candidate public keys preceded durable private keys: %v", err)
+		}
+		if len(files) == 1 {
+			if _, err := os.Stat(files[0]); err != nil {
+				r.requireDurable.Error(err)
+			}
+		}
+	}
 	if r.candidate != nil {
 		r.candidate <- bytes.Clone(req.Msg.DevicePublicKey)
 	}
@@ -140,5 +160,37 @@ func TestRemovedPairingChallengesBeforeChoosingIdentity(t *testing.T) {
 		}
 	default:
 		t.Fatal("did not rejoin")
+	}
+}
+
+func TestCandidateIdentityIsDurableBeforeItCanBeApproved(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	r := &changingPairRelay{requireDurable: t}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewPairingServiceHandler(r)
+	mux.Handle(path, h)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	_, _ = JoinByPairing(context.Background(), PairLink{Code: "12345678", Server: srv.URL}, func([]string) bool { return false })
+}
+
+func TestNewPairingDoesNotReuseAPreviousUnfinishedCandidatesIdentity(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	r := &changingPairRelay{candidate: make(chan []byte, 2), binding: "first-pairing"}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewPairingServiceHandler(r)
+	mux.Handle(path, h)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	join := func() {
+		_, _ = JoinByPairing(context.Background(), PairLink{Code: "12345678", Server: srv.URL}, func([]string) bool { return false })
+	}
+	join()
+	first := <-r.candidate
+	r.binding = "second-pairing"
+	join()
+	second := <-r.candidate
+	if bytes.Equal(first, second) {
+		t.Fatal("a fresh pairing reused the previous candidate; that old candidate may already have been revoked")
 	}
 }

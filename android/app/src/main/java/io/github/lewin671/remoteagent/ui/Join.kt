@@ -139,39 +139,40 @@ fun JoinScreen(app: RaApp) {
         error = ""
         stopped = false
         step = JoinStep.Working
-        job =
-            scope.launch {
-                try {
-                    val l = link.copy(server = checkedServer(link.server))
-                    val acct =
-                        withContext(Dispatchers.IO) {
-                            joinByPairing(
-                                l,
-                                app.http,
-                                { emoji -> scope.launch { step = JoinStep.Emoji(emoji) } },
-                                { stopped },
-                                { registering = true },
-                                persist = { acct, record -> app.persistPairing(acct, record) },
-                                existing = existing,
-                                existingRemoved = existingRemoved,
-                                confirm = { emoji ->
-                                    val answer = kotlinx.coroutines.CompletableDeferred<Boolean>()
-                                    withContext(Dispatchers.Main) {
-                                        step = JoinStep.Emoji(emoji)
-                                        comparison = answer
-                                    }
-                                    answer.await()
-                                },
-                            )
-                        }
-                    app.joined(acct)
-                } catch (e: Exception) {
-                    if (registering) error = "不确定这台手机有没有加入：${errorText(e)}。可以在已有设备的设置里看看客户端列表"
-                    else if (!stopped) error = errorText(e)
-                    registering = false
-                    step = JoinStep.Form
-                }
+        job = scope.launch {
+            try {
+                val l = link.copy(server = checkedServer(link.server))
+                val acct =
+                    withContext(Dispatchers.IO) {
+                        joinByPairing(
+                            l,
+                            app.http,
+                            { emoji -> scope.launch { step = JoinStep.Emoji(emoji) } },
+                            { stopped },
+                            { registering = true },
+                            persist = { acct, record -> app.persistPairing(acct, record) },
+                            loadIdentity = app.vault::loadPairingIdentity,
+                            persistIdentity = app.vault::savePairingIdentity,
+                            existing = existing,
+                            existingRemoved = existingRemoved,
+                            confirm = { emoji ->
+                                val answer = kotlinx.coroutines.CompletableDeferred<Boolean>()
+                                withContext(Dispatchers.Main) {
+                                    step = JoinStep.Emoji(emoji)
+                                    comparison = answer
+                                }
+                                answer.await()
+                            },
+                        )
+                    }
+                app.joined(acct)
+            } catch (e: Exception) {
+                if (registering) error = "不确定这台手机有没有加入：${errorText(e)}。可以在已有设备的设置里看看客户端列表"
+                else if (!stopped) error = errorText(e)
+                registering = false
+                step = JoinStep.Form
             }
+        }
     }
 
     /**
@@ -235,7 +236,7 @@ fun JoinScreen(app: RaApp) {
                     .background(p.card)
                     .safeDrawingPadding()
                     .imePadding()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()),
             ) {
                 when (s) {
                     is JoinStep.Emoji -> {
@@ -373,7 +374,7 @@ fun JoinScreen(app: RaApp) {
                                             code.filter { it.isDigit() },
                                             checkedServer(server),
                                             commit,
-                                        )
+                                        ),
                                     )
                                 } catch (e: Exception) {
                                     error = errorText(e)

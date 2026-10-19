@@ -208,7 +208,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	if err := c.putMachine(ctx, meta); err != nil {
 		return err
 	}
-	c.security.onEpoch = func() {
+	c.security.afterSync = func() {
 		rctx, rcancel := context.WithTimeout(ctx, 60*time.Second)
 		defer rcancel()
 		if err := c.ensurePublished(rctx); err != nil {

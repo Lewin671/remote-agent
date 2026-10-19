@@ -36,7 +36,7 @@ function run<T>(
   return db().then(
     (d) =>
       new Promise<T>((resolve, reject) => {
-        const tx = d.transaction(STORE, mode);
+        const tx = d.transaction(STORE, mode, { durability: "strict" });
         const req = fn(tx.objectStore(STORE));
         tx.oncomplete = () => {
           d.close();

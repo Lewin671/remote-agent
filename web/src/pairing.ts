@@ -2,6 +2,9 @@ import { parseLease } from "./device-security";
 import { PROTOCOL_VERSION } from "./protocol";
 import {
   initializeSecurity,
+  loadPairingIdentity,
+  savePairingIdentity,
+  clearPairingIdentity,
   parseChain,
   securityPin,
   securitySetupStatus,
@@ -170,16 +173,6 @@ export async function joinByPairing(
   const key = newPairKey();
   if (existing && existing.server !== link.server)
     throw new Error("安全设置必须使用原账户的服务器");
-  const device = existing
-    ? await retainedDeviceKey(existing)
-    : await newDeviceKey();
-  const devicePublic = new Uint8Array(
-    await crypto.subtle.exportKey("raw", device.publicKey),
-  );
-  const x = await newSecurityKey();
-  const xPublic = new Uint8Array(
-    await crypto.subtle.exportKey("raw", x.publicKey),
-  );
   const peek = await pc.peekPairing({
     code: link.code.replace(/\s/g, ""),
     protocolVersion: PROTOCOL_VERSION,
@@ -190,6 +183,35 @@ export async function joinByPairing(
     (link.commit && !eq(link.commit, peek.commit))
   )
     throw new Error("配对承诺不匹配，已停止配对");
+  const identity = await loadPairingIdentity(link.server, peek.pairingId);
+  if (
+    identity &&
+    (identity.server !== link.server || identity.pairingId !== peek.pairingId)
+  )
+    throw new Error("另一个配对草稿仍待完成");
+  const device =
+    identity?.device ??
+    (existing ? await retainedDeviceKey(existing) : await newDeviceKey());
+  if (
+    existing &&
+    (await deviceID(
+      new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey)),
+    )) !== existing.deviceId
+  )
+    throw new Error("配对草稿与当前身份冲突");
+  const devicePublic = new Uint8Array(
+    await crypto.subtle.exportKey("raw", device.publicKey),
+  );
+  const x = identity?.x ?? (await newSecurityKey());
+  const xPublic = new Uint8Array(
+    await crypto.subtle.exportKey("raw", x.publicKey),
+  );
+  await savePairingIdentity({
+    server: link.server,
+    pairingId: peek.pairingId,
+    device,
+    x,
+  });
   const joined = await pc.joinPairing({
     protocolVersion: PROTOCOL_VERSION,
     devicePublicKey: devicePublic,
@@ -299,6 +321,15 @@ export async function joinByPairing(
   )
     throw new Error("加入回执没有本机的正确身份");
   await openGrant(trust.pin, head, candidate.id, x.privateKey);
+  await initializeSecurity(
+    trust.pin,
+    states,
+    proofs,
+    candidate.id,
+    x.privateKey,
+    replace,
+    parseLease(new Uint8Array(msg.lease)),
+  );
   const acct = await joinWithApproval(
     accountPublicKey,
     msg.server,
@@ -310,15 +341,7 @@ export async function joinByPairing(
     },
     existing,
   );
-  await initializeSecurity(
-    trust.pin,
-    states,
-    proofs,
-    candidate.id,
-    x.privateKey,
-    replace,
-    parseLease(new Uint8Array(msg.lease)),
-  );
+  await clearPairingIdentity(link.server, peek.pairingId);
   // Tells the phone it went through. If this is lost, the phone reports
   // the outcome as unknown; the join itself stands.
   await pc

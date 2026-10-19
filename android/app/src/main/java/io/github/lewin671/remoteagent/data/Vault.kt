@@ -105,7 +105,11 @@ class Vault(context: Context) : DeviceSecurity.Storage {
 
     override fun initializeSecurity(record: DeviceSecurity.Record) {
         securityTransaction {
-            if (securityFile.exists()) throw DeviceSecurity.Failure("conflict")
+            if (securityFile.exists()) {
+                if (readSecurityUnlocked().bytes().contentEquals(record.bytes()))
+                    return@securityTransaction
+                throw DeviceSecurity.Failure("conflict")
+            }
             write(securityFile, ACCOUNT_ALIAS, record.bytes(), unlockedOnly = true)
             write(
                 notifyFile,
@@ -215,12 +219,37 @@ class Vault(context: Context) : DeviceSecurity.Storage {
             )
                 throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("conflict")
         }
+        if (existing?.kind == "lease" && operation.kind == "lease") {
+            val old =
+                io.github.lewin671.remoteagent.core.HeadLease.parse(
+                    io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.parseFrom(
+                            existing.signed,
+                        )
+                        .lease
+                        .toByteArray(),
+                )
+            val next =
+                io.github.lewin671.remoteagent.core.HeadLease.parse(
+                    io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.parseFrom(
+                            operation.signed,
+                        )
+                        .lease
+                        .toByteArray(),
+                )
+            if (
+                !old.head.contentEquals(next.head) ||
+                    next.issuedAt < old.issuedAt ||
+                    next.notAfter < old.notAfter
+            )
+                throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("conflict")
+        }
         if (
             existing != null &&
                 (existing.kind != operation.kind ||
                     !existing.parent.contentEquals(operation.parent) ||
-                    (existing.kind != "creation" &&
-                        !existing.signed.contentEquals(operation.signed)))
+                    (existing.kind !in setOf("creation", "lease") &&
+                        !existing.signed.contentEquals(operation.signed) &&
+                        !operation.renewsCertificateOf(existing)))
         )
             throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("pending")
         write(
@@ -237,6 +266,37 @@ class Vault(context: Context) : DeviceSecurity.Storage {
             throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("storage")
         syncDirectory()
     }
+
+    private fun pairingIdentityFile(server: String, pairingId: String): File {
+        val digest =
+            java.security.MessageDigest.getInstance("SHA-256")
+                .digest((server + "\u0000" + pairingId).toByteArray())
+        return File(
+            dir,
+            "pair-candidate-" +
+                digest.joinToString("") { "%02x".format(it.toInt() and 255) } +
+                ".bin",
+        )
+    }
+
+    fun loadPairingIdentity(
+        server: String,
+        pairingId: String,
+    ): io.github.lewin671.remoteagent.core.PairingIdentity? =
+        read(pairingIdentityFile(server, pairingId), ACCOUNT_ALIAS)?.let {
+            io.github.lewin671.remoteagent.core.PairingIdentity.parse(it)
+        }
+
+    fun savePairingIdentity(identity: io.github.lewin671.remoteagent.core.PairingIdentity) =
+        securityTransaction {
+            val file = pairingIdentityFile(identity.server, identity.pairingId)
+            val old = read(file, ACCOUNT_ALIAS)
+            if (old != null && !old.contentEquals(identity.bytes()))
+                throw io.github.lewin671.remoteagent.core.PairException(
+                    "另一个配对草稿未完成，请先完成本次配对或明确退出后重试",
+                )
+            write(file, ACCOUNT_ALIAS, identity.bytes(), unlockedOnly = true)
+        }
 
     fun saveCreationOperation(draft: io.github.lewin671.remoteagent.core.CreatedAccount) {
         val raw = draft.operationMaterial()
@@ -315,6 +375,7 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         File(dir, "security-v2.bin").delete()
         File(dir, "security-removals-v2.bin").delete()
         File(dir, "security-history-v2").deleteRecursively()
+        dir.listFiles()?.filter { it.name.startsWith("pair-candidate-") }?.forEach { it.delete() }
         accountFile.delete()
         notifyFile.delete()
         File(dir, "recovery-pending.bin").delete()

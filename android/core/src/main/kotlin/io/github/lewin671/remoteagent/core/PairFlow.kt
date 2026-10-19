@@ -442,6 +442,8 @@ suspend fun joinByPairing(
     persist: suspend (Account, DeviceSecurity.Record) -> Unit = { _, _ ->
         throw DeviceSecurity.Failure("storage")
     },
+    loadIdentity: (String, String) -> PairingIdentity? = { _, _ -> null },
+    persistIdentity: (PairingIdentity) -> Unit = { throw DeviceSecurity.Failure("storage") },
     existing: Account? = null,
     existingRemoved: Boolean = false,
     confirm: suspend (List<String>) -> Boolean = { false },
@@ -452,11 +454,6 @@ suspend fun joinByPairing(
         if (existing != null) existingIdentityRemoved(api, existing) || existingRemoved else false
     val key = PairKey()
     // A removed device's identity is revoked; it rejoins with a fresh one.
-    val deviceSeed = if (existing != null && !removed) existing.deviceSeed else randomBytes(32)
-    val device = SigningKey(deviceSeed)
-    val devicePublic = device.publicKey
-    val xPrivate = randomBytes(32)
-    val xPublic = X25519PrivateKeyParameters(xPrivate, 0).generatePublicKey().encoded
     val peek =
         api.pairing
             .peekPairing(
@@ -473,6 +470,21 @@ suspend fun joinByPairing(
             link.commit != null && !link.commit.contentEquals(peek.commit.toByteArray())
     )
         throw PairException("配对承诺不匹配")
+    val identity = loadIdentity(link.server, peek.pairingId)
+    val deviceSeed =
+        identity?.seed ?: if (existing != null && !removed) existing.deviceSeed else randomBytes(32)
+    if (
+        identity != null &&
+            (identity.server != link.server ||
+                identity.pairingId != peek.pairingId ||
+                (existing != null && !removed && !identity.seed.contentEquals(existing.deviceSeed)))
+    )
+        throw DeviceSecurity.Failure("conflict")
+    val device = SigningKey(deviceSeed)
+    val devicePublic = device.publicKey
+    val xPrivate = identity?.x ?: randomBytes(32)
+    val xPublic = X25519PrivateKeyParameters(xPrivate, 0).generatePublicKey().encoded
+    persistIdentity(PairingIdentity(link.server, peek.pairingId, deviceSeed, xPrivate))
     val joined =
         try {
             api.pairing
@@ -610,17 +622,13 @@ suspend fun joinByPairing(
     )
         throw PairException("配对批准与这台设备不匹配或签名无效")
     val acct =
-        registerDevice(
+        Account(
             link.server,
-            http,
-            accountPublicKey,
+            existing?.root ?: ByteArray(0),
             deviceSeed,
-            DeviceKind.DEVICE_KIND_CLIENT,
-            approval = payload.approval.toByteArray(),
-            approvalSignature = payload.approvalSignature.toByteArray(),
-            accountId = pin.account,
-            root = existing?.root ?: ByteArray(0),
-            accountKey = accountPublicKey,
+            deviceId(devicePublic),
+            pin.account,
+            accountPublicKey,
         )
     val record =
         DeviceSecurity.Record.fromChain(
@@ -636,6 +644,20 @@ suspend fun joinByPairing(
         acct,
         record.installed(emptyList(), emptyList(), HeadLease.parse(payload.lease.toByteArray())),
     )
+    val registered =
+        registerDevice(
+            link.server,
+            http,
+            accountPublicKey,
+            deviceSeed,
+            DeviceKind.DEVICE_KIND_CLIENT,
+            approval = payload.approval.toByteArray(),
+            approvalSignature = payload.approvalSignature.toByteArray(),
+            accountId = pin.account,
+            root = existing?.root ?: ByteArray(0),
+            accountKey = accountPublicKey,
+        )
+    check(registered.deviceId == acct.deviceId)
     try {
         api.pairing.getPairing(
             GetPairingRequest.newBuilder()

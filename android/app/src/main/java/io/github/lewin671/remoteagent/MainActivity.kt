@@ -162,12 +162,9 @@ class MainActivity : ComponentActivity() {
         val devices by remote.state.collectAsState()
         // The phone's own name where the system has one (小米 14), else its model number.
         val phone = remember { android.provider.Settings.Global.getString(contentResolver, android.provider.Settings.Global.DEVICE_NAME)?.trim().orEmpty().ifEmpty { Build.MODEL } }
-        LaunchedEffect(devices.devices[remote.account.deviceId]?.metaRev, devices.conn) {
-            val me = devices.devices[remote.account.deviceId]
-            val description = "Android ${Build.VERSION.RELEASE} · $phone"
-            if (me != null && (me.meta?.platform != "android" || me.meta?.description != description) && devices.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) {
-                runCatching { remote.describeSelf("android", description) }
-            }
+        val description = "Android ${Build.VERSION.RELEASE} · $phone"
+        io.github.lewin671.remoteagent.ui.DeviceDescription(devices, remote.account.deviceId, description) {
+            remote.describeSelf("android", description)
         }
         CompositionLocalProvider(LocalRemote provides remote, LocalNav provides actions) {
             val entry by nav.currentBackStackEntryAsState()

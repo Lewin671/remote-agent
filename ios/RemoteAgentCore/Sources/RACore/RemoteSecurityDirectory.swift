@@ -9,10 +9,13 @@ extension Remote {
     func refreshTrustedDirectory() async throws {
         directoryVersion += 1
         let version = directoryVersion
+        recoveryObjectsPending = true
+        var maintenancePending = false
         let record = try await securitySession().sync()
         do {
             try await republishRecoveryObjects(record)
         } catch DeviceSecurity.Failure.lease {
+            maintenancePending = true
             // Leave maintenance pending until renewal; stored reads still work.
         }
         let head = record.state
@@ -85,7 +88,10 @@ extension Remote {
         for (id,var machine) in nextMachines where members[id] == nil {machine.online=false;nextMachines[id]=machine}
         trustedMembers = members
         trustedMetadata = metadata
+        directoryHead = hash
+        recoveryObjectsPending = maintenancePending
         devices = nextDevices
+        leaseEndMs = try await securitySession().leaseExpiration()
         authorityDeviceId = head.core.authorityID
         machines = nextMachines.filter { members[$0.key]?.kind == 1 || archiveMachines.contains($0.key) }
         for session in Array(sessions.values) where members[session.machineId]?.kind != 1 && !archiveMachines.contains(session.machineId) {
@@ -103,44 +109,54 @@ extension Remote {
             let boundary = record.states[epoch]?.core.contentEpoch else { return }
         let security = try securitySession()
         let headers = Api.headers(token: try await currentToken())
-        for _ in 0..<5 {
+        try await retryRecoveryPublication {
             var get = PBGetAccountPrefsRequest(); get.objectID = projectPrefsID
             let object = try await api.client.getAccountPrefs(request:get,headers:headers).value().object
-            if !object.hasEnvelope || object.revision == 0 { break }
+            if !object.hasEnvelope || object.revision == 0 { return true }
             let h = try DeviceSecurity.parseHeader(object.envelope.securityHeader)
-            if h.contentEpoch >= boundary { break }
+            if h.contentEpoch >= boundary { return true }
             let snapshot: (DeviceSecurity.Header, PBProjectPrefs)
             do { snapshot = try await security.openMessage(object.envelope, as:PBProjectPrefs.self, history:true) }
-            catch DeviceSecurity.Failure.unavailable { break }
+            catch DeviceSecurity.Failure.unavailable { return true }
             try DeviceSecurity.check(snapshot.0.purpose == .prefs && snapshot.0.seq == object.revision && snapshot.0.request == projectPrefsID, .untrusted)
             var put = PBPutAccountPrefsRequest(); put.objectID=projectPrefsID;put.expectedRevision=object.revision
             put.envelope = try await security.seal(purpose:.prefs,request:projectPrefsID,seq:object.revision+1,plaintext:snapshot.1.serializedData())
-            if try await api.client.putAccountPrefs(request:put,headers:headers).value().applied { break }
+            return try await api.client.putAccountPrefs(request:put,headers:headers).value().applied
         }
-        for _ in 0..<5 {
+        try await retryRecoveryPublication {
             let listed = try await api.client.listDevices(request:.init(),headers:headers).value()
-            guard let own=listed.devices.first(where:{$0.id==account.deviceId}),own.hasMeta else { break }
+            guard let own=listed.devices.first(where:{$0.id==account.deviceId}),own.hasMeta else { return true }
             let h = try DeviceSecurity.parseHeader(own.meta.securityHeader)
-            if h.contentEpoch >= boundary { break }
+            if h.contentEpoch >= boundary { return true }
             let snapshot = try await security.openMessage(own.meta,as:PBDeviceMeta.self,history:true)
             try DeviceSecurity.check(snapshot.0.purpose == .deviceMeta && snapshot.0.sender == account.deviceId && snapshot.0.seq == own.metaRevision,.untrusted)
             var put = PBPutDeviceMetaRequest();put.deviceID=account.deviceId;put.expectedRevision=own.metaRevision
             put.meta=try await security.seal(purpose:.deviceMeta,request:account.deviceId,seq:own.metaRevision+1,plaintext:snapshot.1.serializedData())
-            if try await api.client.putDeviceMeta(request:put,headers:headers).value().applied { break }
+            return try await api.client.putDeviceMeta(request:put,headers:headers).value().applied
         }
+    }
+
+    func updateLeaseExpiration(_ expiration: UInt64) {
+        if leaseEndMs != expiration { leaseEndMs = expiration; publish() }
+    }
+    func needsDirectoryRefresh(_ head: Data) -> Bool {
+        directoryHead != head || recoveryObjectsPending
     }
 
     /// A new head arrives within a minute; an unknown state is fetched at once.
     /// A moved head also rebuilds the member directory, so a withheld removal
     /// push cannot leave a removed machine trusted.
-    func startSecurityPolling() {
+    func startSecurityPolling(everyMs: UInt64 = 60_000) {
         guard let client = try? securitySession() else { return }
         let onChange: @Sendable () async -> Void = { [weak self] in
             guard let self else { return }
-            try? await self.refreshTrustedDirectory()
+            guard let client = try? await self.securitySession(),
+                let head = try? await client.headStateHash() else { return }
+            if let expiration = try? await client.leaseExpiration() { await self.updateLeaseExpiration(expiration) }
+            if await self.needsDirectoryRefresh(head) { try? await self.refreshTrustedDirectory() }
         }
         Task {
-            await client.startPolling(onChange: onChange)
+            await client.startPolling(everyMs: everyMs, onChange: onChange)
         }
     }
 }

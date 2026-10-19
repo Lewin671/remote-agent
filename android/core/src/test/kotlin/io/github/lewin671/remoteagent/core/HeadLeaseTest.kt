@@ -8,6 +8,38 @@ import org.junit.Test
 
 class HeadLeaseTest {
     @Test
+    fun diagnosticsReportOnlyACertificateBoundToTheInstalledHead() {
+        val v =
+            Json.parseToJsonElement(File(System.getProperty("domainVectors")).readText()).jsonObject
+        fun raw(name: String) =
+            Base64.getDecoder().decode(v[name]!!.jsonObject["state"]!!.jsonPrimitive.content)
+        val genesis = DeviceSecurity.parseState(raw("genesis"))
+        val added = DeviceSecurity.parseState(raw("added"))
+        val later = DeviceSecurity.parseState(raw("renewal"))
+        val lease = HeadLease.parse(Base64.getDecoder().decode(v["lease"]!!.jsonPrimitive.content))
+        val x =
+            v["phone_x"]!!
+                .jsonPrimitive
+                .content
+                .chunked(2)
+                .map { it.toInt(16).toByte() }
+                .toByteArray()
+        val record =
+            DeviceSecurity.Record(
+                DeviceSecurity.pinOf(genesis),
+                listOf(genesis, added),
+                genesis.core.authorityID,
+                x,
+                lease = lease,
+            )
+        assertEquals(
+            lease.notAfter.toLong(),
+            record.leaseExpiration(),
+        ) // Expired is still a real date.
+        assertEquals(0L, record.installed(listOf(later), listOf(null)).leaseExpiration())
+    }
+
+    @Test
     fun expiredLeaseExplainsWhyChangesCannotBeSaved() {
         val text = errorText(DeviceSecurity.Failure("lease"))
         assertTrue(text.contains("无法保存"))
@@ -61,6 +93,47 @@ class HeadLeaseTest {
                 local = byteArrayOf(1, 2),
                 phase = SecurityOperation.Phase.PUBLISHED,
             )
+        val oldRequest =
+            io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
+                .addStates(
+                    io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
+                        .setState(
+                            com.google.protobuf.ByteString.copyFrom(
+                                DeviceSecurity.stateBytes(state),
+                            ),
+                        ),
+                )
+                .setLease(com.google.protobuf.ByteString.copyFrom(first.bytes()))
+                .build()
+        val oldOp = SecurityOperation("state", state.core.parent, oldRequest.toByteArray())
+        val renewedOp =
+            SecurityOperation(
+                "state",
+                state.core.parent,
+                oldRequest
+                    .toBuilder()
+                    .setLease(com.google.protobuf.ByteString.copyFrom(renewed.bytes()))
+                    .build()
+                    .toByteArray(),
+            )
+        assertTrue(renewedOp.renewsCertificateOf(oldOp))
+        assertFalse(
+            SecurityOperation(
+                    "state",
+                    state.core.parent,
+                    oldRequest.toBuilder().clearStates().build().toByteArray(),
+                )
+                .renewsCertificateOf(oldOp),
+        )
+        assertFalse(
+            SecurityOperation(
+                    "state",
+                    state.core.parent,
+                    renewedOp.signed,
+                    delivery = byteArrayOf(1),
+                )
+                .renewsCertificateOf(oldOp),
+        )
         val reopened = SecurityOperation.parse(op.bytes())
         assertArrayEquals(op.signed, reopened.signed)
         assertArrayEquals(op.local, reopened.local)
