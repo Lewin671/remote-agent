@@ -144,7 +144,10 @@ jobs:
         working-directory: android
         # Nothing is taken from the build cache: :core:test would otherwise
         # pass without running whenever only the Go server changed.
-        run: ./gradlew --no-daemon --no-configuration-cache --no-build-cache --parallel -Dorg.gradle.jvmargs="-Xmx4g -XX:+UseParallelGC -Dfile.encoding=UTF-8" :core:test :terminal:testReleaseUnitTest :app:testReleaseUnitTest :app:lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+        # Compose's test Activity is a debugImplementation dependency, so
+        # Robolectric UI tests use debug. Release lint and the signed R8
+        # build still check the production variant without that Activity.
+        run: ./gradlew --no-daemon --no-configuration-cache --no-build-cache --parallel -Dorg.gradle.jvmargs="-Xmx4g -XX:+UseParallelGC -Dfile.encoding=UTF-8" :core:test :terminal:testReleaseUnitTest :app:testDebugUnitTest :app:lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
       - name: Remove signing material
         if: always()
         run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
