@@ -71,6 +71,10 @@ type Relay struct {
 	// syncInterval paces idle workers and completed-session checks. Tests can
 	// shorten it without changing the production schedule.
 	syncInterval time.Duration
+	// These durations are per relay so integration tests can exercise the
+	// real timeout and retry paths without waiting on production intervals.
+	readyTimeout  time.Duration
+	syncRetryBase time.Duration
 	// keyMu makes reading or creating a session's key one step across
 	// concurrent uploads and terminal requests.
 	keyMu sync.Mutex
@@ -91,7 +95,7 @@ type Relay struct {
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second}
+	return &Relay{backend: backend, calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.
@@ -200,7 +204,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	defer ws.CloseNow()
 	ws.SetReadLimit(4 << 20)
 	c.ws = ws
-	readyCtx, readyCancel := context.WithTimeout(ctx, 15*time.Second)
+	readyCtx, readyCancel := context.WithTimeout(ctx, r.readyTimeout)
 	defer readyCancel()
 	hello, _ := proto.Marshal(&pb.PeerFrame{Kind: &pb.PeerFrame_Hello{Hello: &pb.StreamHello{Token: token}}})
 	if err := ws.Write(readyCtx, websocket.MessageBinary, hello); err != nil {

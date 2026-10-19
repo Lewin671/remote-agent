@@ -41,7 +41,7 @@ func TestSyncRetryBackoffLogsAndRecovery(t *testing.T) {
 	now := time.Now()
 	s := syncRetry{}
 	for i, want := range []time.Duration{time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second, 32 * time.Second, time.Minute, time.Minute} {
-		s.fail("bad-session", "events", now)
+		s.fail("bad-session", "events", now, time.Second)
 		if s.delay != want || !s.next.Equal(now.Add(want)) {
 			t.Fatalf("attempt %d: %+v", i, s)
 		}
@@ -57,7 +57,7 @@ func TestSyncRetryBackoffLogsAndRecovery(t *testing.T) {
 	if s != (syncRetry{}) || !strings.Contains(logs.String(), "session sync recovered") {
 		t.Fatal("successful sync did not reset backoff")
 	}
-	s.fail("bad-session", "metadata", now)
+	s.fail("bad-session", "metadata", now, time.Second)
 	if s.delay != time.Second {
 		t.Fatalf("recovery did not reset delay: %v", s.delay)
 	}
@@ -66,6 +66,9 @@ func TestSyncRetryBackoffLogsAndRecovery(t *testing.T) {
 func TestProductionSyncIntervalIsUnchanged(t *testing.T) {
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	r := New(nil)
+	if r.readyTimeout != 15*time.Second || r.syncRetryBase != time.Second {
+		t.Fatalf("production timing: ready=%v, sync retry=%v", r.readyTimeout, r.syncRetryBase)
+	}
 	if r.syncInterval != 5*time.Second || min(time.Second, r.syncInterval) != time.Second {
 		t.Fatalf("production sync interval = %v; want 5s with a 1s scheduler tick", r.syncInterval)
 	}

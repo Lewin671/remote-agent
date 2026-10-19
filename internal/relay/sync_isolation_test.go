@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/relay"
@@ -38,6 +37,15 @@ func (b *failingSyncBackend) EachEvents(id string, after uint64, fn func(*pb.Eve
 		return nil, errors.New(marker)
 	}
 	return b.Backend.EachEvents(id, after, fn)
+}
+
+func (b *failingSyncBackend) SessionDir(id string) string {
+	// A key-read attempt reaches SessionDir immediately before opening the
+	// deliberately invalid relay.key. No metadata is published past it.
+	if id == "bad" && b.stage == "key" && b.broken.Load() {
+		b.attempts.Add(1)
+	}
+	return b.Backend.SessionDir(id)
 }
 
 func machineRequestSession(r *http.Request) string {
@@ -97,18 +105,16 @@ func TestSessionSyncFailureDoesNotReconnectOrBlockHealthySession(t *testing.T) {
 			backend := &failingSyncBackend{Backend: e.backend, stage: stage}
 			backend.broken.Store(true)
 			logins.Store(0)
-			e.startRelayBackend(backend)
+			e.startRelayBackend(backend, func(r *relay.Relay) {
+				relay.SetSyncRetryBaseForTest(r, testSyncInterval)
+			})
 			s := e.session(t, "healthy", 1)
-			since := time.Now()
 			// Observe three failures, spanning two retry delays, while live events and
 			// forwarded commands continue to work on the original connection.
 			waitFor(t, "independent retries", func() bool {
 				switch stage {
-				case "metadata", "events":
+				case "metadata", "events", "key":
 					return backend.attempts.Load() >= 3
-				case "key":
-					// Key reads are real filesystem errors, so allow the same retry window.
-					return time.Since(since) > 4*time.Second
 				default:
 					return rejected.Load() >= 3
 				}

@@ -6,6 +6,12 @@ import "time"
 // before Run; production relays retain New's five-second interval.
 func SetSyncIntervalForTest(r *Relay, interval time.Duration) { r.syncInterval = interval }
 
+// SetSyncRetryBaseForTest changes retry timing before Run. Backoff and the
+// one-minute cap still follow the production algorithm.
+func SetSyncRetryBaseForTest(r *Relay, base time.Duration) { r.syncRetryBase = base }
+
+func SetReadyTimeoutForTest(r *Relay, timeout time.Duration) { r.readyTimeout = timeout }
+
 // HasOwedNotificationForTest observes the retained outcome, after Notify's
 // response has been processed, rather than racing the server handler's count.
 func HasOwedNotificationForTest(r *Relay, id string) bool { return r.hasOwedNotify(id) }

@@ -43,8 +43,8 @@ type syncRetry struct {
 	logged time.Time
 }
 
-func (s *syncRetry) fail(id, category string, now time.Time) {
-	s.delay = min(max(time.Second, s.delay*2), time.Minute)
+func (s *syncRetry) fail(id, category string, now time.Time, base time.Duration) {
+	s.delay = min(max(base, s.delay*2), time.Minute)
 	s.next = now.Add(s.delay)
 	if s.logged.IsZero() || now.Sub(s.logged) >= time.Minute {
 		slog.Warn("relay: session sync blocked", "session", id, "category", category, "retry_at", s.next.UTC().Format(time.RFC3339))

@@ -439,11 +439,14 @@ func (e *env) startRelay() *relay.Relay {
 	return e.startRelayBackend(e.backend)
 }
 
-func (e *env) startRelayBackend(backend relay.Backend) *relay.Relay {
+func (e *env) startRelayBackend(backend relay.Backend, configure ...func(*relay.Relay)) *relay.Relay {
 	ctx, cancel := context.WithCancel(context.Background())
 	e.stop = cancel
 	e.done = make(chan struct{})
 	r := newTestRelay(backend)
+	for _, f := range configure {
+		f(r)
+	}
 	go func() { defer close(e.done); r.Run(ctx) }()
 	return r
 }
@@ -1050,7 +1053,9 @@ func TestRelayRetriesWhenStreamNeverBecomesReady(t *testing.T) {
 		})
 	})
 	appendText(t, e.backend.add(t, "ready-retry"), "ready-retry", "caught up")
-	e.startRelay()
+	e.startRelayBackend(e.backend, func(r *relay.Relay) {
+		relay.SetReadyTimeoutForTest(r, 500*time.Millisecond)
+	})
 	deadline := time.Now().Add(20 * time.Second)
 	for attempts.Load() < 2 {
 		if time.Now().After(deadline) {

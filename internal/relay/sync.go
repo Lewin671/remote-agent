@@ -91,7 +91,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 			}
 			info, err := c.r.backend.SessionInfo(id)
 			if err != nil {
-				state.failure.fail(id, "metadata", now)
+				state.failure.fail(id, "metadata", now, c.r.syncRetryBase)
 				continue
 			}
 			changed := !state.synced || info.LastSeq > state.after || !proto.Equal(syncMeta(info), state.meta)
@@ -157,7 +157,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 				if failure != nil {
 					category = failure.category
 				}
-				state.failure.fail(result.id, category, time.Now())
+				state.failure.fail(result.id, category, time.Now(), c.r.syncRetryBase)
 				continue
 			}
 			if result.skipped {
@@ -172,7 +172,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 			// schedule an immediate follow-up.
 			latest, err := c.r.backend.SessionInfo(result.id)
 			if err != nil {
-				state.failure.fail(result.id, "metadata", time.Now())
+				state.failure.fail(result.id, "metadata", time.Now(), c.r.syncRetryBase)
 				continue
 			}
 			if latest.LastSeq > state.after || !proto.Equal(syncMeta(latest), state.meta) {
