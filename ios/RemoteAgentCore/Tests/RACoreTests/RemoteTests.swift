@@ -1086,7 +1086,21 @@ extension ServerTests {
                 try await r.forward(first)
                 // Pretend the answer was lost: the retry carries the same request ID and deadline.
                 a.settle(CommandError(CommandError.unknownOutcome, "lost"))
+                let security = try await r.securitySession()
+                await security.stopPolling()
+                await r.startSecurityPolling(everyMs: 20)
+                let oldEpoch = try await r.securityIdentity().1.core.epoch
                 _ = try await w.join()  // Membership advances; retry must reauthorize the same intent.
+                // Keep the real background synchronization path, but observe
+                // its result before retrying. The fake daemon already uses the
+                // new head; an old authorization is silently dropped and would
+                // otherwise wait through the 30-second RPC timeout.
+                try await eventually("advanced membership") {
+                    guard let identity = try? await r.securityIdentity() else { return false }
+                    return identity.1.core.epoch > oldEpoch
+                }
+                let newEpoch = try await r.securityIdentity().1.core.epoch
+                #expect(newEpoch > oldEpoch)
                 try await r.forward(
                     try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) })
                 let (h1, _) = try #require(await w.daemon.commands.poll(5_000))
@@ -1264,11 +1278,38 @@ extension ServerTests {
 
         @Test func stoppingDuringLoginLeavesTheStreamClosed() async throws {
             try await world { w in
-                let r = try await w.client()
+                let acct = try await w.join()
+                let proxy = try CountingProxy(to: w.server.port)
+                let gate = Signal()
+                let entered = Signal()
+                let cancelled = Signal()
+                w.onClose {
+                    gate.set()
+                    proxy.close()
+                }
+                let blocked = Intercept.http(for: proxy.url) { request in
+                    if request.url?.path.hasSuffix("/GetChallenge") == true {
+                        entered.set()
+                        do {
+                            while !gate.isSet { try await Task.sleep(for: .milliseconds(10)) }
+                        } catch {
+                            cancelled.set()
+                            throw error
+                        }
+                    }
+                    return request
+                }
+                let r = try w.remote(
+                    Account(
+                        server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed,
+                        deviceId: acct.deviceId),
+                    http: blocked)
                 r.start()
+                #expect(await entered.wait(5_000))
                 r.stop()
-                await sleepMs(3000)
-                #expect(r.current.conn != .online)
+                #expect(await cancelled.wait(5_000))
+                _ = try await r.awaitState("stopped login") { $0.conn == .offline }
+                #expect(proxy.streams.value == 0)
             }
         }
 

@@ -24,7 +24,7 @@ extension ServerTests {
                 let joining = Task {
                     try await joinByPairing(
                         link: pairing.link, http: joiningHTTP, onEmoji: { emoji.put($0) },
-                        stopped: { false },
+                        stopped: { false }, sleep: { _ in try await realSleep(10) },
                         persist: { acct, record in #expect(intentSaved.isSet); accountSaved.set(); try TestSecurity.get(acct.server).install(record)
                         }, persistRegistration: { intent in try receipt.save(intent); intentSaved.set() }, persistIdentity: { _ in candidateSaved.set() }, confirm: { _ in true })
                 }
@@ -63,7 +63,7 @@ extension ServerTests {
                     do {
                         _ = try await joinByPairing(
                             link: pairing.link, http: w.http, onEmoji: { displayed.put($0) },
-                            stopped: { false }, persist: { _, _ in _ = persisted.increment() }, persistRegistration: { _ in }, persistIdentity: { _ in })
+                            stopped: { false }, sleep: { _ in try await realSleep(10) }, persist: { _, _ in _ = persisted.increment() }, persistRegistration: { _ in }, persistIdentity: { _ in })
                         return false
                     } catch { return errorText(error).contains("本机未确认") }
                 }
@@ -100,7 +100,7 @@ extension ServerTests {
                 let joining = Task {
                     try await joinByPairing(
                         link: pairing.link, http: faulty, onEmoji: { emoji.put($0) },
-                        stopped: { false },
+                        stopped: { false }, sleep: { _ in try await realSleep(10) },
                         persist: { acct, record in try TestSecurity.get(acct.server).install(record)
                         }, persistRegistration: { _ in }, persistIdentity: { _ in }, confirm: { _ in true })
                 }
