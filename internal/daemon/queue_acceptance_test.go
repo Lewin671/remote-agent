@@ -135,6 +135,13 @@ func TestCreateKeepsSessionAfterFirstPromptAccepted(t *testing.T) {
 			if err := os.WriteFile(bin, []byte(script), 0700); err != nil {
 				t.Fatal(err)
 			}
+			// The RPC launch chooses a login shell on macOS even though tmux
+			// below never runs it. This queue-commit test must not wait on the
+			// real directory service; shell selection has its own tests.
+			if err := os.WriteFile(filepath.Join(filepath.Dir(bin), "dscl"), []byte("#!/bin/sh\nprintf 'UserShell: /bin/sh\\n'\n"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))
 			h.d.cfg.Tmux = &tmux.Client{Bin: bin, Socket: "test"}
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel() // no real CLI or background work is needed in this test
