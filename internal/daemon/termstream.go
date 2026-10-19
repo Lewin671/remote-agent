@@ -22,7 +22,8 @@ import (
 // clients ask for when they open it.
 type TermStream struct {
 	d      *Daemon
-	name   string // tmux session
+	owner  *session // shared terminal synchronization across client streams
+	name   string   // tmux session
 	pane   string
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
@@ -52,6 +53,8 @@ func (d *Daemon) OpenTerminal(sessionID string) (*TermStream, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
 	s.mu.Lock()
 	exited, name := s.meta.Exited, s.meta.Tmux
 	s.mu.Unlock()
@@ -76,7 +79,7 @@ func (d *Daemon) OpenTerminal(sessionID string) (*TermStream, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
-	t := &TermStream{d: d, name: name, pane: strings.TrimSpace(pane), cmd: cmd, stdin: stdin, out: make(chan []byte, termQueue), resize: make(chan struct{}, 1), done: make(chan struct{})}
+	t := &TermStream{d: d, owner: s, name: name, pane: strings.TrimSpace(pane), cmd: cmd, stdin: stdin, out: make(chan []byte, termQueue), resize: make(chan struct{}, 1), done: make(chan struct{})}
 	t.ctx, t.cancel = context.WithCancel(context.Background())
 	go t.read(stdout)
 	return t, nil
@@ -212,13 +215,28 @@ func (t *TermStream) Reason() string {
 // Input types bytes into the session like the local keyboard does: they
 // reach the PTY host, which holds them while remote input is injected.
 func (t *TermStream) Input(b []byte) error {
+	return t.inputUsing(b, func(args []string) error {
+		_, err := t.d.cfg.Tmux.Run(args...)
+		return err
+	})
+}
+
+func (t *TermStream) inputUsing(b []byte, run func([]string) error) error {
+	t.owner.ctlMu.Lock()
+	defer t.owner.ctlMu.Unlock()
+	t.owner.mu.Lock()
+	exited := t.owner.meta.Exited
+	t.owner.mu.Unlock()
+	if exited {
+		return errExited
+	}
 	for len(b) > 0 {
 		n := min(len(b), 256)
 		args := []string{"send-keys", "-t", "=" + t.name + ":", "-H"}
 		for _, c := range b[:n] {
 			args = append(args, fmt.Sprintf("%02x", c))
 		}
-		if _, err := t.d.cfg.Tmux.Run(args...); err != nil {
+		if err := run(args); err != nil {
 			return err
 		}
 		b = b[n:]
@@ -229,18 +247,30 @@ func (t *TermStream) Input(b []byte) error {
 // Resize fits the window to a client's screen, or with fit false lets it
 // follow attached terminals again.
 func (t *TermStream) Resize(cols, rows int, fit bool) error {
-	tc := t.d.cfg.Tmux
-	t.mu.Lock()
-	t.fitted = fit
-	t.mu.Unlock()
-	if !fit {
-		_, err := tc.Run("set-option", "-w", "-t", "="+t.name+":", "window-size", "latest")
+	return t.resizeUsing(cols, rows, fit, func(args ...string) error {
+		_, err := t.d.cfg.Tmux.Run(args...)
 		return err
+	})
+}
+
+func (t *TermStream) resizeUsing(cols, rows int, fit bool, run func(...string) error) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	var err error
+	if fit {
+		if cols < 20 || rows < 5 || cols > 500 || rows > 200 {
+			return errors.New("unreasonable terminal size")
+		}
+		if t.ctx != nil && t.ctx.Err() != nil {
+			return t.ctx.Err()
+		}
+		err = run("resize-window", "-t", "="+t.name+":", "-x", strconv.Itoa(cols), "-y", strconv.Itoa(rows))
+	} else {
+		err = run("set-option", "-w", "-t", "="+t.name+":", "window-size", "latest")
 	}
-	if cols < 20 || rows < 5 || cols > 500 || rows > 200 {
-		return errors.New("unreasonable terminal size")
+	if err == nil {
+		t.fitted = fit
 	}
-	_, err := tc.Run("resize-window", "-t", "="+t.name+":", "-x", strconv.Itoa(cols), "-y", strconv.Itoa(rows))
 	return err
 }
 

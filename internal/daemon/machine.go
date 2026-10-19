@@ -156,11 +156,18 @@ func (d *Daemon) updateSettings(st *pb.DaemonSettings) (*pb.DaemonSettings, erro
 			return nil, fmt.Errorf("invalid model %q", c.Model)
 		}
 	}
+	return d.saveSettings(st, writeFileAtomic)
+}
+
+// saveSettings commits the file and its in-memory projection together.
+func (d *Daemon) saveSettings(st *pb.DaemonSettings, write func(string, []byte) error) (*pb.DaemonSettings, error) {
+	d.settingsCommitMu.Lock()
+	defer d.settingsCommitMu.Unlock()
 	b, err := protojson.Marshal(st)
 	if err != nil {
 		return nil, err
 	}
-	if err := writeFileAtomic(settingsPath(), b); err != nil {
+	if err := write(settingsPath(), b); err != nil {
 		return nil, err
 	}
 	d.settingsMu.Lock()

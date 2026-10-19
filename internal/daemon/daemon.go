@@ -140,8 +140,9 @@ type Daemon struct {
 	// sessions' memory of such messages, it does not outlive the daemon.
 	lateRuns map[string]string
 
-	settingsMu sync.Mutex
-	cached     *pb.DaemonSettings
+	settingsCommitMu sync.Mutex // serializes settings file + cache commits, never the security gate
+	settingsMu       sync.Mutex
+	cached           *pb.DaemonSettings
 
 	// resumeMu makes resumes one at a time: two for the same session
 	// would both pass the checks and share its startup files.
@@ -310,10 +311,12 @@ func (d *Daemon) restore() error {
 		if m.Exited && alive {
 			// Marked exited while still running, as when tmux was misread;
 			// stopping or ending kills the tmux session.
+			s.mu.Lock()
 			s.meta.Exited = false
 			if err := s.meta.save(dir); err != nil {
 				slog.Error("save session", "session", m.ID, "err", errClass(err))
 			}
+			s.mu.Unlock()
 			_ = s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 				Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "reattached",
 			}}})
@@ -907,6 +910,13 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 	if err != nil {
 		return nil, err
 	}
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
+	s.ctlMu.Lock()
+	defer s.ctlMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	m := s.meta
 	turnContext := s.context
@@ -999,11 +1009,11 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 	s.sawComposer = false
 	s.done = make(chan struct{})
 	m = s.meta
-	s.mu.Unlock()
-	s.noteShellLaunch()
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", id, "err", errClass(err))
 	}
+	s.mu.Unlock()
+	s.noteShellLaunch()
 	commitErr := s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "resumed",
 	}}})

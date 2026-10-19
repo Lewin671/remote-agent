@@ -46,6 +46,12 @@ func (s *session) drive(op func(t agent.Term, busy bool) error) error {
 	}
 	s.ctlMu.Lock()
 	defer s.ctlMu.Unlock()
+	s.mu.Lock()
+	exited = s.meta.Exited
+	s.mu.Unlock()
+	if exited {
+		return errExited
+	}
 	c, err := s.term.Control()
 	if err != nil {
 		return err
@@ -137,12 +143,15 @@ func (s *session) setModelBy(model, effort string, origin *pb.Origin) error {
 		if busy {
 			return errBusy
 		}
-		return s.ag.SetModel(t, model, effort)
+		if err := s.ag.SetModel(t, model, effort); err != nil {
+			return err
+		}
+		if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: model, Effort: effort}}}, origin)); err != nil {
+			return fmt.Errorf("settings already applied on the computer but could not be recorded: %w", err)
+		}
+		return nil
 	}); err != nil {
 		return err
-	}
-	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: model, Effort: effort}}}, origin)); err != nil {
-		return fmt.Errorf("settings already applied on the computer but could not be recorded: %w", err)
 	}
 	return nil
 }
@@ -156,13 +165,15 @@ func (s *session) setApprovalMode(mode pb.ApprovalMode) error {
 func (s *session) setApprovalModeBy(mode pb.ApprovalMode, origin *pb.Origin) error {
 	// The facts too are read with the terminal held: a model switch that
 	// held it until then changes them.
-	if err := s.drive(func(t agent.Term, busy bool) error { return s.ag.SetMode(t, mode, busy, s.modeFacts()) }); err != nil {
-		return err
-	}
-	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Mode: mode}}}, origin)); err != nil {
-		return fmt.Errorf("settings already applied on the computer but could not be recorded: %w", err)
-	}
-	return nil
+	return s.drive(func(t agent.Term, busy bool) error {
+		if err := s.ag.SetMode(t, mode, busy, s.modeFacts()); err != nil {
+			return err
+		}
+		if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Mode: mode}}}, origin)); err != nil {
+			return fmt.Errorf("settings already applied on the computer but could not be recorded: %w", err)
+		}
+		return nil
+	})
 }
 
 // compact compacts the context while no turn is running. The transcript

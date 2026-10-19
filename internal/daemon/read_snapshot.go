@@ -45,6 +45,10 @@ func (u *uploads) status(ctx context.Context, id, device string) (*pb.ImageUploa
 }
 
 func (d *Daemon) imageStorageSnapshot(ctx context.Context) (*pb.ImageStorageUsage, error) {
+	return d.imageStorageSnapshotUsing(ctx, os.ReadDir, filepath.WalkDir)
+}
+
+func (d *Daemon) imageStorageSnapshotUsing(ctx context.Context, readDir func(string) ([]os.DirEntry, error), walkDir func(string, fs.WalkDirFunc) error) (*pb.ImageStorageUsage, error) {
 	// Capture in-memory protection facts before entering the filesystem worker.
 	pins := d.protectedImageSessions()
 	uploadsDir := d.uploads.dir
@@ -59,7 +63,7 @@ func (d *Daemon) imageStorageSnapshot(ctx context.Context) (*pb.ImageStorageUsag
 			}
 			return sessions[id]
 		}
-		records, err := os.ReadDir(filepath.Join(uploadsDir, "partial"))
+		records, err := readDir(filepath.Join(uploadsDir, "partial"))
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
@@ -71,8 +75,11 @@ func (d *Daemon) imageStorageSnapshot(ctx context.Context) (*pb.ImageStorageUsag
 				continue
 			}
 			b, err := os.ReadFile(filepath.Join(uploadsDir, "partial", e.Name()))
-			if err != nil {
+			if os.IsNotExist(err) {
 				continue
+			}
+			if err != nil {
+				return nil, err
 			}
 			t := &transfer{}
 			if json.Unmarshal(b, t) != nil {
@@ -91,8 +98,11 @@ func (d *Daemon) imageStorageSnapshot(ctx context.Context) (*pb.ImageStorageUsag
 			}
 			path := filepath.Join(uploadsDir, owner, t.ImageID+"."+imageproc.Ext(t.Format))
 			fi, err := os.Stat(path)
-			if err != nil {
+			if os.IsNotExist(err) {
 				continue
+			}
+			if err != nil {
+				return nil, err
 			}
 			known[path] = true
 			if t.Session != "" {
@@ -107,7 +117,7 @@ func (d *Daemon) imageStorageSnapshot(ctx context.Context) (*pb.ImageStorageUsag
 				}
 			}
 		}
-		err = filepath.WalkDir(uploadsDir, func(path string, e fs.DirEntry, err error) error {
+		err = walkDir(uploadsDir, func(path string, e fs.DirEntry, err error) error {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
@@ -121,6 +131,9 @@ func (d *Daemon) imageStorageSnapshot(ctx context.Context) (*pb.ImageStorageUsag
 				return nil
 			}
 			fi, err := e.Info()
+			if os.IsNotExist(err) {
+				return nil
+			}
 			if err != nil {
 				return err
 			}
@@ -140,7 +153,7 @@ func (d *Daemon) imageStorageSnapshot(ctx context.Context) (*pb.ImageStorageUsag
 		if err != nil {
 			return nil, err
 		}
-		entries, err := os.ReadDir(sessionsDir)
+		entries, err := readDir(sessionsDir)
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
@@ -151,13 +164,16 @@ func (d *Daemon) imageStorageSnapshot(ctx context.Context) (*pb.ImageStorageUsag
 			if !entry.IsDir() {
 				continue
 			}
-			files, err := os.ReadDir(filepath.Join(sessionsDir, entry.Name(), "images"))
+			files, err := readDir(filepath.Join(sessionsDir, entry.Name(), "images"))
 			if err != nil && !os.IsNotExist(err) {
 				return nil, err
 			}
 			for _, file := range files {
 				if strings.HasSuffix(file.Name(), ".display") || strings.HasSuffix(file.Name(), ".preview") {
 					fi, err := file.Info()
+					if os.IsNotExist(err) {
+						continue
+					}
 					if err != nil {
 						return nil, err
 					}

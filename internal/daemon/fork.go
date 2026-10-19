@@ -38,10 +38,18 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 }
 
 func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) (*session, error) {
-	d.resumeMu.Lock()
-	defer d.resumeMu.Unlock()
 	src, err := d.exact(id)
 	if err != nil {
+		return nil, err
+	}
+	// Match resume's lock order: the source lifecycle, then startup files.
+	src.lifecycleMu.Lock()
+	defer src.lifecycleMu.Unlock()
+	src.ctlMu.Lock()
+	defer src.ctlMu.Unlock()
+	d.resumeMu.Lock()
+	defer d.resumeMu.Unlock()
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	src.readRollout()

@@ -743,7 +743,7 @@ func (u *uploads) gcLocked(now time.Time) {
 func (u *uploads) room(add int64) error {
 	var used int64
 	err := filepath.WalkDir(u.dir, func(path string, e fs.DirEntry, err error) error {
-		if os.IsNotExist(err) && path == u.dir {
+		if os.IsNotExist(err) {
 			return nil
 		}
 		if err != nil {
@@ -753,12 +753,18 @@ func (u *uploads) room(add int64) error {
 			return nil
 		}
 		fi, err := e.Info()
+		if os.IsNotExist(err) {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
 		used += fi.Size()
 		if filepath.Dir(path) == filepath.Join(u.dir, "partial") && strings.HasSuffix(e.Name(), ".json") {
 			b, err := os.ReadFile(path)
+			if os.IsNotExist(err) {
+				return nil
+			}
 			if err != nil {
 				return err
 			}

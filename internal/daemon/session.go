@@ -64,10 +64,11 @@ type session struct {
 	// images are the session's images and their display copies.
 	images *imageStore
 
-	readMu sync.Mutex // serializes rollout reads
-	ctlMu  sync.Mutex // serializes use of the PTY host: inject, answer, interrupt
-	parser agent.Parser
-	reader *tail.Reader
+	lifecycleMu sync.Mutex // serializes stop/resume/fork/terminal attachment for this session
+	readMu      sync.Mutex // serializes rollout reads
+	ctlMu       sync.Mutex // serializes use of the PTY host: inject, answer, interrupt
+	parser      agent.Parser
+	reader      *tail.Reader
 	// parserReplayPending keeps a failed rollout append from reusing the
 	// parser that already consumed its line. It is rebuilt from the event
 	// log before that line is tried again.
@@ -868,10 +869,10 @@ func (s *session) markExited(detail string) error {
 		}
 		delete(s.approvals, id)
 	}
-	s.mu.Unlock()
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", m.ID, "err", errClass(err))
 	}
+	s.mu.Unlock()
 	// Read the final records before settling the old turn and input. A
 	// failed read or append is retried when restoring or resuming.
 	settled := s.settleExited()
@@ -1062,17 +1063,23 @@ const (
 // empty one goes back to the title from the first message. It works on
 // an exited session too.
 func (s *session) rename(title string) error {
+	return s.renameUsing(title, (*meta).save)
+}
+
+func (s *session) renameUsing(title string, save func(*meta, string) error) error {
 	title = strings.Join(strings.Fields(title), " ")
 	if n := utf8.RuneCountInString(title); n > renameMax {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the title has %d characters; at most %d fit", n, renameMax))
 	}
 	s.mu.Lock()
-	s.meta.Title = title
 	m := s.meta
-	s.mu.Unlock()
-	if err := m.save(s.dir); err != nil {
+	m.Title = title
+	if err := save(&m, s.dir); err != nil {
+		s.mu.Unlock()
 		return fmt.Errorf("save session: %w", err)
 	}
+	s.meta.Title = title
+	s.mu.Unlock()
 	// The relay uploads the session's metadata when the log changes.
 	s.log.Poke()
 	return nil
@@ -1340,6 +1347,13 @@ func (s *session) kill() error {
 }
 
 func (s *session) killContext(ctx context.Context) error {
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
+	s.ctlMu.Lock()
+	defer s.ctlMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	exited := s.meta.Exited
 	s.mu.Unlock()
@@ -1422,11 +1436,11 @@ func (s *session) bindRollout(cliSessionID, path string) {
 	s.parserReplayPath, s.parserReplayOffset = "", 0
 	s.parser = p
 	m := s.meta
-	s.mu.Unlock()
-	s.readMu.Unlock()
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", m.ID, "err", errClass(err))
 	}
+	s.mu.Unlock()
+	s.readMu.Unlock()
 	s.readRollout()
 }
 

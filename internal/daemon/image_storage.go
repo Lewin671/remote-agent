@@ -204,7 +204,7 @@ func (u *uploads) usage(clean bool, pins map[string]bool) (*pb.ImageStorageUsage
 	}
 	// Actual disk bytes include orphan files and all receiving chunks.
 	err = filepath.WalkDir(u.dir, func(path string, e fs.DirEntry, err error) error {
-		if os.IsNotExist(err) && path == u.dir {
+		if os.IsNotExist(err) {
 			return nil
 		}
 		if err != nil {
@@ -212,6 +212,9 @@ func (u *uploads) usage(clean bool, pins map[string]bool) (*pb.ImageStorageUsage
 		}
 		if e.Type().IsRegular() {
 			fi, err := e.Info()
+			if os.IsNotExist(err) {
+				return nil
+			}
 			if err != nil {
 				return err
 			}
@@ -293,6 +296,9 @@ func (d *Daemon) trimImageCache(limit int64) (int64, error) {
 				continue
 			}
 			fi, err := f.Info()
+			if os.IsNotExist(err) {
+				continue
+			}
 			if err != nil {
 				st.mu.Unlock()
 				return 0, err

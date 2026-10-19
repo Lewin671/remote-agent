@@ -357,7 +357,7 @@ func (h *handler) ForkSession(ctx context.Context, req *connect.Request[pb.ForkS
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	fork, err := h.d.fork(s.meta.ID, originOf(ctx))
+	fork, err := h.d.forkContext(ctx, s.meta.ID, originOf(ctx))
 	if err != nil {
 		return nil, rpcErr(err)
 	}
