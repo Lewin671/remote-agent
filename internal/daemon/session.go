@@ -1631,6 +1631,11 @@ func (s *session) resolveBy(id string, allow, always bool, message string, origi
 		s.mu.Unlock()
 		return err
 	}
+	a, ok := s.approvals[id]
+	if origin.GetKind() == pb.OriginKind_ORIGIN_KIND_CLIENT && (!ok || a.claimed) {
+		s.mu.Unlock()
+		return errRemoteAnswerStale
+	}
 	// Native permission prompts expose no stable tool request ID. Screen
 	// text (especially command prefixes or basenames) cannot prove which
 	// request would receive a permanent grant. Leave it pending for the
@@ -1639,7 +1644,6 @@ func (s *session) resolveBy(id string, allow, always bool, message string, origi
 		s.mu.Unlock()
 		return fmt.Errorf("permanent approvals must be answered in the native terminal: %w", agent.ErrUnsupported)
 	}
-	a, ok := s.approvals[id]
 	if !ok || a.claimed {
 		s.mu.Unlock()
 		return fmt.Errorf("approval %s: %w", id, errNotFound)

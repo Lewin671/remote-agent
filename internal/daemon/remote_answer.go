@@ -18,9 +18,10 @@ const (
 	remotePlan
 )
 
-// pendingAnswerSafety is derived only from committed original events, just
-// like the pending questions and approval ordering. Replay rebuilds it before
-// the session accepts commands. It retains only bounded fitted bodies for current actionable requests.
+// pendingAnswerSafety derives prompt bodies and sequences from committed
+// original events. Replay rebuilds it before accepting commands. planPending
+// also covers successful live keys whose PlanAnswered has not been recorded.
+// It retains only bounded fitted bodies for current actionable requests.
 // Callers hold s.mu or are the only goroutine restoring the session.
 type pendingAnswerSafety struct {
 	events    map[uint64]*pb.Event
@@ -28,6 +29,9 @@ type pendingAnswerSafety struct {
 	approvals map[string]relay.AnswerSafety
 	questions map[string]relay.AnswerSafety
 	plan      relay.AnswerSafety
+	// Keys succeeded, but the CLI may still show this prompt. Also restored
+	// from PlanAnswered; a new proposal or a closed plan settles the claim.
+	planPending bool
 }
 
 func (p *pendingAnswerSafety) observe(e *pb.Event) {
@@ -69,15 +73,18 @@ func (p *pendingAnswerSafety) observe(e *pb.Event) {
 		}
 		clear(p.questions)
 	case *pb.Event_PlanProposed:
+		p.planPending = false
 		p.plan = relay.RemoteAnswerSafety(e)
 		p.planSeq = e.Seq
 	case *pb.Event_SessionState:
 		if !k.SessionState.PlanOpen {
 			p.planSeq = 0
-		} else if p.planSeq == 0 {
+			p.planPending = false
+		} else if p.planSeq == 0 && !p.planPending {
 			p.planSeq = e.Seq
 		}
 	case *pb.Event_PlanAnswered:
+		p.planPending = true
 		p.plan = relay.AnswerSafety{}
 		p.planSeq = 0
 	}
@@ -96,8 +103,14 @@ func (s *session) checkRemoteAnswer(kind remoteAnswerKind, id string, allow bool
 	case remoteApproval:
 		view = s.answerSafety.approvals[id]
 	case remoteQuestion:
+		if _, pending := s.answeredBy[id]; pending {
+			return errRemoteAnswerStale
+		}
 		view = s.answerSafety.questions[id]
 	case remotePlan:
+		if s.answerSafety.planPending {
+			return errRemoteAnswerStale
+		}
 		view = s.answerSafety.plan
 	}
 	// Rewritten IDs always carry the skeleton suffix. They are display text,

@@ -195,8 +195,12 @@ func (s *session) answerPlan(choice pb.PlanChoice) error { return s.answerPlanBy
 
 // answerPlanBy is answerPlan on behalf of origin, which is recorded.
 func (s *session) answerPlanBy(choice pb.PlanChoice, origin *pb.Origin) error {
+	return s.answerPlanUsing(choice, origin, func(e *pb.Event) error { return s.emit(e) })
+}
+
+func (s *session) answerPlanUsing(choice pb.PlanChoice, origin *pb.Origin, record func(*pb.Event) error) error {
 	// The adapter checks on the held screen that the plan prompt shows.
-	if err := s.drive(func(t agent.Term, _ bool) error {
+	return s.drive(func(t agent.Term, _ bool) error {
 		s.mu.Lock()
 		err := s.checkRemoteAnswer(remotePlan, "", false, origin)
 		s.mu.Unlock()
@@ -213,14 +217,19 @@ func (s *session) answerPlanBy(choice pb.PlanChoice, origin *pb.Origin) error {
 				return errRemoteAnswerStale
 			}
 		}
-		return s.ag.AnswerPlan(t, choice)
-	}); err != nil {
-		return err
-	}
-	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}, origin)); err != nil {
-		return fmt.Errorf("plan answer already applied on the computer but could not be recorded: %w", err)
-	}
-	return nil
+		if err := s.ag.AnswerPlan(t, choice); err != nil {
+			return err
+		}
+		// Successful keys consume this prompt even if recording fails or a
+		// status poll still sees it. Failed key delivery leaves it retryable.
+		s.mu.Lock()
+		s.answerSafety.planPending = true
+		s.mu.Unlock()
+		if err := record(withOrigin(&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}, origin)); err != nil {
+			return fmt.Errorf("plan answer already applied on the computer but could not be recorded: %w", err)
+		}
+		return nil
+	})
 }
 
 func planScreenHash(styled string) []byte {
