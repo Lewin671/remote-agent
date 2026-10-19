@@ -386,6 +386,10 @@ func (f *slowCaptureTerm) Capture() (string, error) {
 // The hold is checked after the last look at the screen, not before it: a
 // capture that hangs until the hold has lapsed is followed by no write.
 func TestNoEnterAfterTheLastCaptureOutlivesTheHold(t *testing.T) {
+	synctest.Test(t, testNoEnterAfterTheLastCaptureOutlivesTheHold)
+}
+
+func testNoEnterAfterTheLastCaptureOutlivesTheHold(t *testing.T) {
 	h := newHarness(t, Config{})
 	// The second capture is the check right before the text and Enter.
 	h.s.term = &slowCaptureTerm{failingHoldTerm: failingHoldTerm{h.term}, slow: 2, delay: holdFor}

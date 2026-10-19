@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
@@ -13,6 +14,10 @@ import (
 // Current evidence that auto is not on offer wins over having seen it
 // with another model (review verify3 P2).
 func TestAutoSeenWithAnotherModel(t *testing.T) {
+	synctest.Test(t, testAutoSeenWithAnotherModel)
+}
+
+func testAutoSeenWithAnotherModel(t *testing.T) {
 	cat := testCatalog(t)
 	if o := offered(cat, agent.ModeFacts{Seen: []string{"auto"}, Model: "claude-haiku-4-5-20251001"}); o["auto"] {
 		t.Fatal("haiku now, auto seen before")
@@ -32,6 +37,10 @@ func TestAutoSeenWithAnotherModel(t *testing.T) {
 // session would still count as haiku, auto as not on offer, and a running
 // Plan → ask, which then passes auto, as safe.
 func TestModelSwitchedInTerminal(t *testing.T) {
+	synctest.Test(t, testModelSwitchedInTerminal)
+}
+
+func testModelSwitchedInTerminal(t *testing.T) {
 	p := NewParser()
 	p.catalog = testCatalog(t)
 	var ctx *pb.TurnContext
@@ -108,6 +117,10 @@ func TestModelSwitchedInTerminal(t *testing.T) {
 // an alias older settings name, or one from another CLI — gives no answer,
 // and a running turn is not taken from Plan to ask through it.
 func TestAutoOfModels(t *testing.T) {
+	synctest.Test(t, testAutoOfModels)
+}
+
+func testAutoOfModels(t *testing.T) {
 	cat := testCatalog(t)
 	for model, want := range map[string]string{
 		"claude-haiku-4-5-20251001": "off", "claude-3-5-haiku-20241022": "unknown",

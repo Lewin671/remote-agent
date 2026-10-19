@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
@@ -368,6 +369,10 @@ var (
 )
 
 func TestSetMode(t *testing.T) {
+	synctest.Test(t, testSetMode)
+}
+
+func testSetMode(t *testing.T) {
 	a, _ := testAdapter(t)
 	f := &fakeClaude{noBypass: true, noAuto: true}
 	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, false, factsHaiku); err != nil || cycle[f.mode] != "plan" {
@@ -415,6 +420,10 @@ func TestSetMode(t *testing.T) {
 }
 
 func TestSetModel(t *testing.T) {
+	synctest.Test(t, testSetModel)
+}
+
+func testSetModel(t *testing.T) {
 	a, cat := testAdapter(t)
 	f := &fakeClaude{cat: cat, models: menuOf(cat)}
 	f.cursor, f.effort = 4, 1 // on Haiku 5.5, medium
@@ -456,6 +465,10 @@ func TestSetModel(t *testing.T) {
 }
 
 func TestAnswerAndPlan(t *testing.T) {
+	synctest.Test(t, testAnswerAndPlan)
+}
+
+func testAnswerAndPlan(t *testing.T) {
 	a := New("claude", "")
 	q := &pb.QuestionAsked{QuestionId: "t1", Questions: []*pb.Question{{Id: "Which?", Text: "Which?", Options: []*pb.QuestionOption{{Label: "A"}, {Label: "B"}}}}}
 	f := &fakeClaude{question: q.Questions[0]}
@@ -511,6 +524,10 @@ func TestResumeKeepsVariadicValues(t *testing.T) {
 // Only the real confirmation gets its 1: the same words in the
 // conversation, with the menu still up, are not it (review C3).
 func TestSetModelConfirmIsTheDialog(t *testing.T) {
+	synctest.Test(t, testSetModelConfirmIsTheDialog)
+}
+
+func testSetModelConfirmIsTheDialog(t *testing.T) {
 	a, _ := testAdapter(t)
 	f := &fakeClaude{stuck: true, note: "⏺ You asked: Switch model?\n  ❯ 1. Yes, switch to Opus"}
 	if err := a.SetModel(f, "claude-sonnet-5-5", ""); err == nil {
@@ -526,6 +543,10 @@ func TestSetModelConfirmIsTheDialog(t *testing.T) {
 // Ticks the local user made are kept or cleared to match the answer
 // (review C4).
 func TestAnswerMultiSelectReconciles(t *testing.T) {
+	synctest.Test(t, testAnswerMultiSelectReconciles)
+}
+
+func testAnswerMultiSelectReconciles(t *testing.T) {
 	a := New("claude", "")
 	q := &pb.QuestionAsked{QuestionId: "t", Questions: []*pb.Question{{Id: "Which?", Text: "Which?", MultiSelect: true,
 		Options: []*pb.QuestionOption{{Label: "A"}, {Label: "B"}, {Label: "C"}}}}}
@@ -541,6 +562,10 @@ func TestAnswerMultiSelectReconciles(t *testing.T) {
 // A wrapped question is found without an index; none showing is an
 // error, not question zero (review C5).
 func TestAnswerFindsWrappedQuestion(t *testing.T) {
+	synctest.Test(t, testAnswerFindsWrappedQuestion)
+}
+
+func testAnswerFindsWrappedQuestion(t *testing.T) {
 	a := New("claude", "")
 	long := "Which of these fruits would you like to have for breakfast tomorrow morning?"
 	q := &pb.QuestionAsked{QuestionId: "t", Questions: []*pb.Question{
@@ -583,6 +608,10 @@ func TestAnswerPlanWrapped(t *testing.T) {
 // (2.1.293): both are read with the wrapping undone, or the switch, though
 // made, would be reported as failed.
 func TestSetModelWrapped(t *testing.T) {
+	synctest.Test(t, testSetModelWrapped)
+}
+
+func testSetModelWrapped(t *testing.T) {
 	note := "❯ /model\n  ⎿  Set model to Fable 5.1 for this session\n     only with xhigh effort\n" + rule + "\n❯ \n" + rule + "\n"
 	if !confirmed(note, "Fable 5.1", "xhigh") || !confirmed(note, "Fable 5.1", "") {
 		t.Fatal("wrapped confirmation not recognized")
@@ -648,6 +677,10 @@ func TestResumeDoesNotTakeUpALaterBypassDefault(t *testing.T) {
 // presses follow in a second write. With background work showing it is
 // refused.
 func TestSetModeIdleBurst(t *testing.T) {
+	synctest.Test(t, testSetModeIdleBurst)
+}
+
+func testSetModeIdleBurst(t *testing.T) {
 	a, cat := testAdapter(t)
 	bt := func(n int) string { return strings.Repeat(agent.KeyBTab, n) }
 	for _, c := range []struct {
@@ -763,6 +796,10 @@ func TestModels(t *testing.T) {
 // the whole question. The page names the questions, so it passes for the
 // question showing; nothing is pressed there.
 func TestAnswerNotOnReviewPage(t *testing.T) {
+	synctest.Test(t, testAnswerNotOnReviewPage)
+}
+
+func testAnswerNotOnReviewPage(t *testing.T) {
 	a := New("claude", "")
 	q := &pb.QuestionAsked{QuestionId: "t", Questions: []*pb.Question{
 		{Id: "which color?", Text: "which color?", Options: []*pb.QuestionOption{{Label: "Red"}, {Label: "Blue"}}},
@@ -792,6 +829,10 @@ func TestAnswerNotOnReviewPage(t *testing.T) {
 // not pressed into: the label is checked after the move, and the switch
 // fails rather than landing on another model.
 func TestSetModelWrongRowNumber(t *testing.T) {
+	synctest.Test(t, testSetModelWrongRowNumber)
+}
+
+func testSetModelWrongRowNumber(t *testing.T) {
 	a, cat := testAdapter(t)
 	f := &fakeClaude{cat: cat, models: []string{"Default (recommended)", "Opus", "Fable", "Sonnet 5.5", "Haiku ✔"}}
 	f.cursor = 1

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	"github.com/Lewin671/remote-agent/internal/agent"
 )
@@ -138,6 +139,10 @@ func readPlain(t *testing.T, path string) string {
 // far end. Setting low from medium must press ← once (regression: the
 // older code only ever pressed → and timed out).
 func TestSetModelEffortBelowMedium(t *testing.T) {
+	synctest.Test(t, testSetModelEffortBelowMedium)
+}
+
+func testSetModelEffortBelowMedium(t *testing.T) {
 	a, cat := testAdapter(t)
 	f := &fakeClaude{noWrap: true, cat: cat, models: menuOf(cat)}
 	f.cursor, f.effort = 4, 1 // on Haiku 5.5, medium
@@ -153,6 +158,10 @@ func TestSetModelEffortBelowMedium(t *testing.T) {
 // report "cannot find the cursor". The fake terminal draws a "↓" on the
 // cursor row as a version that marks it would.
 func TestSetModelCursorOnMarkedRow(t *testing.T) {
+	synctest.Test(t, testSetModelCursorOnMarkedRow)
+}
+
+func testSetModelCursorOnMarkedRow(t *testing.T) {
 	a, cat := testAdapter(t)
 	f := &fakeClaude{cursorMark: "↓ ", cat: cat, models: menuOf(cat)}
 	f.cursor, f.effort = 4, 1
@@ -169,6 +178,10 @@ func TestSetModelCursorOnMarkedRow(t *testing.T) {
 // cursor has moved (2.1.300 wraps the list at the ends, so the steps are
 // counted exactly).
 func TestSetModelScrollsToRow(t *testing.T) {
+	synctest.Test(t, testSetModelScrollsToRow)
+}
+
+func testSetModelScrollsToRow(t *testing.T) {
 	a, cat := testAdapter(t)
 	f := &fakeClaude{cat: cat, models: menuOf(cat), window: 3}
 	f.cursor, f.effort = 4, 1 // Haiku 5.5, medium
