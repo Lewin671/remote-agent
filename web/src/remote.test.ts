@@ -65,12 +65,21 @@ it("reports a command unknown when a retry finds the machine gone", async () => 
       throw replies.shift();
     },
   };
-  // Between the two tries forward waits a second.
-  const e = await r
-    .machineCommand(r.machine, { case: "listModels", value: {} })
-    .catch((x) => x);
-  expect(e).toBeInstanceOf(CommandError);
-  expect((e as CommandError).code).toBe("unknown");
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    const result = r
+      .machineCommand(r.machine, { case: "listModels", value: {} })
+      .catch((x) => x);
+    await vi.waitFor(() => expect(replies).toHaveLength(1));
+    // Keep the retry delay, but advance its clock after the first response.
+    await vi.advanceTimersByTimeAsync(1000);
+    const e = await result;
+    expect(e).toBeInstanceOf(CommandError);
+    expect((e as CommandError).code).toBe("unknown");
+    expect(replies).toHaveLength(0);
+  } finally {
+    vi.useRealTimers();
+  }
 }, 10_000);
 
 it("keeps a message of unknown outcome on its request when the machine is then offline", async () => {

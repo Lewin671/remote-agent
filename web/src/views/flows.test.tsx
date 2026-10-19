@@ -44,8 +44,19 @@ afterEach(() => {
   localStorage.clear();
 });
 
+// Commands remain asynchronous; only the demo's presentation delay is skipped.
+function createDemo(q: URLSearchParams, pause = async (_ms: number) => undefined): DemoRemote {
+  return DemoRemote.create(q, pause);
+}
+
+function barrier() {
+  let release!: () => void;
+  const wait = new Promise<void>((done) => { release = done; });
+  return { wait, release };
+}
+
 function demo(): DemoRemote {
-  const r = DemoRemote.create(new URLSearchParams());
+  const r = createDemo(new URLSearchParams());
   r.start();
   return r;
 }
@@ -200,7 +211,7 @@ it("keeps saved project settings as sessions change", () => {
 it("shows a failed first listing and lists again", async () => {
   vi.useFakeTimers();
   try {
-    const r = DemoRemote.create(new URLSearchParams("empty=none"));
+    const r = createDemo(new URLSearchParams("empty=none"));
     r.conn = "online";
     let fail = true;
     const empty = { machines: [], sessions: [] };
@@ -1065,15 +1076,19 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   expect(host.textContent).toContain("这个项目还没有会话");
   // Choosing an existing folder on its current machine keeps its settings.
   const foo = "/Users/me/Code/foo";
+  await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
   const before = r.projectPrefs().settings.find((s) => s.path === foo);
   remount(<NewFlow remote={r} go={() => undefined} start="new" onClose={() => undefined} />);
+  // The preservation assertion is about the same machine, regardless of
+  // the machine-name sort order or when the directory listing completes.
+  await click(button("MacBook", document));
   await vi.waitFor(() => expect(button("Code", document)).toBeTruthy());
   await click(button("Code", document));
   await vi.waitFor(() => expect(button("foo", document)).toBeTruthy());
   await click(button("foo", document));
   await vi.waitFor(() => expect(button("用 foo 这个目录", document)).toBeTruthy());
   await click(button("用 foo 这个目录", document));
-  await act(async () => { await new Promise((done) => setTimeout(done, 50)); });
+  await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
   expect(r.projectPrefs().settings.find((s) => s.path === foo)).toEqual(before);
 });
 
@@ -1320,6 +1335,9 @@ describe("pending bubbles in the chat (v8)", () => {
 
   it("lists every queued message with its sender, and cancels one", async () => {
     const r = demo();
+    const cancel = barrier();
+    const command = r.command.bind(r);
+    r.command = async (...args) => { await cancel.wait; return command(...args); };
     const s = r.sessions.get("s-run")!;
     const push = (kind: object) => r.events("s-run").push(create(EventSchema, { seq: BigInt(r.events("s-run").length + 1), kind: kind as never }));
     // One more from another client, whose text this page does not know.
@@ -1332,6 +1350,7 @@ describe("pending bubbles in the chat (v8)", () => {
     expect(entries()[1].textContent).toContain("另一客户端");
     await click(button("取消", entries()[0]));
     expect(entries()[0].textContent).toContain("正在取消…");
+    await act(async () => cancel.release());
     await vi.waitFor(() => expect(entries().length).toBe(1), { timeout: 3000 });
     expect(host.textContent).toContain("取消了一条排队的消息");
   });
@@ -1576,7 +1595,7 @@ describe("project management (v2)", () => {
   });
 
   it("asks before removing from the project's settings too, then leaves the project", async () => {
-    const r = DemoRemote.create(new URLSearchParams("project-settings=1"));
+    const r = createDemo(new URLSearchParams("project-settings=1"));
     r.start();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     const went: string[] = [];
@@ -1589,7 +1608,11 @@ describe("project management (v2)", () => {
   });
 
   it("shows a failed save as not done, and retries the same operation", async () => {
-    const r = DemoRemote.create(new URLSearchParams("prefs=fail"));
+    const retry = barrier();
+    let retrying = false;
+    const r = createDemo(new URLSearchParams("prefs=fail"), async () => {
+      if (retrying) await retry.wait;
+    });
     r.start();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
@@ -1599,13 +1622,15 @@ describe("project management (v2)", () => {
     expect(names(".plist .pi b")[0]).toBe("foo");
     expect(host.querySelectorAll(".plist .fl").length).toBe(2);
     const id = r.prefs.failed!.op.id;
+    retrying = true;
     await click(button("重试"));
     await vi.waitFor(() => expect(r.prefs.pending.size).toBe(1));
+    await act(async () => retry.release());
     await vi.waitFor(() => expect(r.prefs.failed?.op.id).toBe(id), { timeout: 5000 });
   }, 15_000);
 
   it("pauses changes while disconnected and says when they can be made", async () => {
-    const r = DemoRemote.create(new URLSearchParams("conn=reconnecting"));
+    const r = createDemo(new URLSearchParams("conn=reconnecting"));
     r.start();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
@@ -1942,7 +1967,7 @@ describe("an image-only new-session draft (review B8)", () => {
 });
 
 it("loads a picture opened offline once the connection is back (review B11)", async () => {
-  const r = DemoRemote.create(new URLSearchParams("conn=reconnecting"));
+  const r = createDemo(new URLSearchParams("conn=reconnecting"));
   r.start();
   const s = r.sessions.get("s-img-claude")!;
   for (const e of r.events("s-img-claude"))
@@ -2370,7 +2395,8 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   // While it forks the row says so and the others wait; then the fork opens.
   location.hash = "";
   let reply!: Promise<CommandResult>;
-  command.mockImplementationOnce((...args) => (reply = forkCommand(...args)));
+  const forkGate = barrier();
+  command.mockImplementationOnce((...args) => (reply = forkGate.wait.then(() => forkCommand(...args))));
   await click(row());
   expect(command).toHaveBeenLastCalledWith(s.id, { case: "forkSession", value: { sessionId: s.id } }, expect.anything());
   expect(row().textContent).toBe("正在分叉…");
@@ -2378,7 +2404,7 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   // The hash changes synchronously in the command continuation; React
   // commits setMenu(false) separately. Await the reply inside act so the
   // complete UI outcome is committed before either assertion.
-  await act(async () => { await reply; });
+  await act(async () => { forkGate.release(); await reply; });
   expect(location.hash).toMatch(/^#\/s\/s-fork-/);
   expect(host.querySelector(".actsheet")).toBeNull();
 

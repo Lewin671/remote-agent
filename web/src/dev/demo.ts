@@ -1366,8 +1366,10 @@ export class DemoRemote extends Remote {
   }
   private evs = new Map<string, Event[]>();
   private attempts = new Map<string, number>();
+  // UI tests keep the demo behavior but skip simulated network latency.
+  private pause = sleep;
 
-  static create(q: URLSearchParams): DemoRemote {
+  static create(q: URLSearchParams, pause = sleep): DemoRemote {
     const r = new DemoRemote(
       {
         server: "https://ra.example.com",
@@ -1379,6 +1381,7 @@ export class DemoRemote extends Remote {
       {} as Keys,
     );
     r.opts = q;
+    r.pause = pause;
     // Prepared as for real, remembering the file's name so that one named
     // with "fail" can fail its upload.
     const real = r.prepareImage;
@@ -1706,10 +1709,10 @@ export class DemoRemote extends Remote {
     const total = p.bytes.length;
     for (let done = 0; done < total; done += 786432) {
       progress(done, total);
-      await sleep(400);
+      await this.pause(400);
     }
     progress(total, total);
-    await sleep(300);
+    await this.pause(300);
     if (!this.machines.get(machineId)?.online)
       throw new CommandError("unavailable", "电脑不在线，指令没有发出");
     if ((p as { name?: string }).name?.includes("fail"))
@@ -1723,7 +1726,7 @@ export class DemoRemote extends Remote {
   override async getImage(sid: string, imageId: string) {
     const cached = this.cachedImage(sid, imageId);
     if (cached) return cached;
-    await sleep(900);
+    await this.pause(900);
     if (this.conn !== "online")
       throw new CommandError("unavailable", "和服务器断线了");
     if (imageId.startsWith("exp-")) return { kind: "expired" as const };
@@ -1855,7 +1858,7 @@ export class DemoRemote extends Remote {
     kind: CommandKind,
     slot?: RequestSlot,
   ): Promise<CommandResult> {
-    await sleep(700);
+    await this.pause(700);
     const cmd = create(CommandSchema, { kind }).kind;
     const ok = (
       kind: MessageInitShape<typeof CommandResultSchema>["kind"] = {
@@ -1882,7 +1885,7 @@ export class DemoRemote extends Remote {
           },
         });
         void (async () => {
-          await sleep(1500);
+          await this.pause(1500);
           if (text?.includes("终端"))
             return this.push(sid, {
               case: "inputState",
@@ -1895,7 +1898,7 @@ export class DemoRemote extends Remote {
           this.push(sid, { case: "userMessage", value: { text } });
           this.push(sid, { case: "turnStarted", value: {} });
           this.patch(sid, { status: SessionStatus.RUNNING });
-          await sleep(2000);
+          await this.pause(2000);
           this.push(sid, {
             case: "agentMessage",
             value: { text: "收到。这是演示数据里的回复。" },
@@ -1990,21 +1993,21 @@ export class DemoRemote extends Remote {
         });
         return ok();
       case "resumeSession":
-        await sleep(1500);
+        await this.pause(1500);
         if (sid === "s-ended3")
           throw new CommandError(
             "failed_precondition",
             "目录 ~/Code/foo 不存在了",
           );
         this.patch(sid, { status: SessionStatus.STARTING });
-        await sleep(1500);
+        await this.pause(1500);
         this.patch(sid, { status: SessionStatus.IDLE });
         return ok();
       case "renameSession":
         this.patch(sid, { title: cmd.value.title });
         return ok();
       case "forkSession": {
-        await sleep(800);
+        await this.pause(800);
         const src = this.sessions.get(sid)!;
         if (sid === "s-ended3")
           throw new CommandError(
@@ -2083,7 +2086,7 @@ export class DemoRemote extends Remote {
         return ok();
       }
       case "compact":
-        await sleep(1500);
+        await this.pause(1500);
         this.push(sid, { case: "settingsChanged", value: { compacted: true } });
         this.patch(sid, { contextTokens: 14n, contextWindow: 100n });
         return ok();
@@ -2093,7 +2096,7 @@ export class DemoRemote extends Remote {
 
   // 连接检测: ?demo&ping=slow|fail
   override async pingServer(): Promise<number> {
-    await sleep(300);
+    await this.pause(300);
     if (this.opts.get("ping") === "fail") throw new Error("没有回应");
     return this.opts.get("ping") === "slow"
       ? 840 + Math.round(Math.random() * 60)
@@ -2101,7 +2104,7 @@ export class DemoRemote extends Remote {
   }
 
   override async pingMachine(machineId: string): Promise<number> {
-    await sleep(machineId === "vps" ? 1800 : 600);
+    await this.pause(machineId === "vps" ? 1800 : 600);
     if (machineId === "vps") return 2140;
     return 150 + Math.round(Math.random() * 60);
   }
@@ -2110,7 +2113,7 @@ export class DemoRemote extends Remote {
     machineId: string,
     kind: CommandKind,
   ): Promise<CommandResult> {
-    await sleep(500);
+    await this.pause(500);
     const cmd = create(CommandSchema, { kind }).kind;
     const m = this.machines.get(machineId);
     if (!m?.online)
@@ -2252,7 +2255,7 @@ export class DemoRemote extends Remote {
     onFrame: (f: TerminalFrame) => void,
     onClose: (reason: string) => void,
   ): Promise<TermConn> {
-    await sleep(400);
+    await this.pause(400);
     let open = true;
     const popup =
       this.sessions.get(sid)?.info?.status === SessionStatus.BLOCKED;
@@ -2397,7 +2400,7 @@ export class DemoRemote extends Remote {
   }
 
   override async renameDevice(id: string, name: string) {
-    await sleep(500);
+    await this.pause(500);
     const cur = this.metas.get(id);
     const meta = create(DeviceMetaSchema, {
       ...(cur?.meta ?? { platform: "web" }),
@@ -2428,11 +2431,11 @@ export class DemoRemote extends Remote {
 
   protected override prefsStore = {
     get: async () => {
-      await sleep(300);
+      await this.pause(300);
       return this.stored;
     },
     put: async (expected: bigint, next: ProjectPrefs) => {
-      await sleep(700);
+      await this.pause(700);
       if (this.opts.get("prefs") === "fail")
         throw new CommandError("unavailable", "服务器没有响应");
       if (expected !== this.stored.revision)
