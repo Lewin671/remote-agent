@@ -113,8 +113,13 @@ func TestSessionSyncFailureDoesNotReconnectOrBlockHealthySession(t *testing.T) {
 			// forwarded commands continue to work on the original connection.
 			waitFor(t, "independent retries", func() bool {
 				switch stage {
-				case "metadata", "events", "key":
+				case "metadata", "events":
 					return backend.attempts.Load() >= 3
+				case "key":
+					// SessionDir marks entry to a read, before it can fail.
+					// A fourth entry proves three earlier workers returned:
+					// repairing the path cannot turn the third read into a success.
+					return backend.attempts.Load() >= 4
 				default:
 					return rejected.Load() >= 3
 				}
