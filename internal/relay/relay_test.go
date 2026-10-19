@@ -363,6 +363,8 @@ func (e *env) dropStreams() {
 
 func TestManySessionsSyncWithinServerRequestLimit(t *testing.T) {
 	var active, peak atomic.Int32
+	overlap := make(chan struct{})
+	var overlapped sync.Once
 	e := setupWithHandler(t, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/remoteagent.v1.MachineService/") {
@@ -373,10 +375,18 @@ func TestManySessionsSyncWithinServerRequestLimit(t *testing.T) {
 						break
 					}
 				}
-				select {
-				case <-r.Context().Done():
-					return
-				case <-time.After(25 * time.Millisecond):
+				// Hold the first session upload until another RPC reaches the
+				// server. This proves actual overlap without slowing every one
+				// of the 64 sessions' RPCs with a guessed network delay.
+				if strings.HasSuffix(r.URL.Path, "/PutSession") || strings.HasSuffix(r.URL.Path, "/UploadEvents") {
+					if n == 2 {
+						overlapped.Do(func() { close(overlap) })
+					}
+					select {
+					case <-r.Context().Done():
+						return
+					case <-overlap:
+					}
 				}
 			}
 			next.ServeHTTP(w, r)
@@ -399,8 +409,8 @@ func TestManySessionsSyncWithinServerRequestLimit(t *testing.T) {
 		}
 		return true
 	})
-	if n := peak.Load(); n > 2 {
-		t.Fatalf("concurrent machine RPCs = %d; want at most 2", n)
+	if n := peak.Load(); n != 2 {
+		t.Fatalf("concurrent machine RPCs = %d; want exactly 2", n)
 	}
 	// A live session's long-lived watcher must not retain an RPC slot.
 	appendText(t, e.backend.add(t, "new-session"), "new-session", "new")
