@@ -30,7 +30,10 @@ func noise(w, h int, alpha bool) *image.NRGBA {
 
 func encPNG(t *testing.T, img image.Image) []byte {
 	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
+	// These fixtures exercise decoding, resizing and metadata handling, not
+	// PNG's compression search. Keep every pixel and the oversized payload.
+	encoder := png.Encoder{CompressionLevel: png.BestSpeed}
+	if err := encoder.Encode(&buf, img); err != nil {
 		t.Fatal(err)
 	}
 	return buf.Bytes()
