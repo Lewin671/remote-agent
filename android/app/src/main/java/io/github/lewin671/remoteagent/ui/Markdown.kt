@@ -398,8 +398,11 @@ const val FOLD_SHOWN = 12
 
 // Any indent: the CLIs nest code blocks in list items.
 private val fenceRe: Pattern = Pattern.compile("[$WS]*(`{3,}|~{3,})[$WS]*([^$WS`]*)")
-private val listRe: Pattern = Pattern.compile("([$WS]*)([-*+]|[0-9]{1,9}[.)])[$WS]+([^\\n\\r\\u2028\\u2029]*)")
-private val taskRe = Regex("\\[([ xX])\\][$WS]+(.*)", RegexOption.DOT_MATCHES_ALL)
+// A rejected Unicode line separator must not retry every partition of a
+// blank run between the marker and the text. Possessive whitespace keeps
+// the same greedy parse while preventing that quadratic backtracking.
+private val listRe: Pattern = Pattern.compile("([$WS]*)([-*+]|[0-9]{1,9}[.)])[$WS]++([^\\n\\r\\u2028\\u2029]*)")
+private val taskRe = Regex("\\[([ xX])\\][$WS]++(.*)", RegexOption.DOT_MATCHES_ALL)
 private val sepCell = Regex(":?-{3,}:?")
 
 /** A line that ends a fence opened by [n] of [mark]: the same character, at least as many. */
@@ -458,7 +461,7 @@ private fun quoteOf(line: String): String? {
 }
 
 /** A list line's marker and text; null when the line does not start an item. */
-private fun listLine(line: String): Pair<String, String>? {
+internal fun listLine(line: CharSequence): Pair<String, String>? {
     val m = listRe.matcher(line)
     return if (m.matches()) m.group(2).orEmpty() to m.group(3).orEmpty() else null
 }

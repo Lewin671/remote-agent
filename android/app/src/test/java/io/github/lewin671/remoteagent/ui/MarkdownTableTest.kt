@@ -24,6 +24,34 @@ class MarkdownTableTest {
         assertEquals(n - 1, tableCells("|".repeat(n)).size)
     }
 
+    @Test fun listSeparatorReadsGrowLinearly() {
+        class CountedText(private val text: String) : CharSequence {
+            var reads = 0
+            override val length: Int get() = text.length
+            override fun get(index: Int): Char { reads++; return text[index] }
+            override fun subSequence(startIndex: Int, endIndex: Int): CharSequence = text.subSequence(startIndex, endIndex)
+            override fun toString(): String = text
+        }
+        for (suffix in listOf("x\u2028y", "x\u2029y", "item")) {
+            var previous = 0
+            for (n in listOf(1_000, 2_000, 4_000)) {
+                val text = CountedText("- " + " ".repeat(n) + suffix)
+                val result = listLine(text)
+                if (suffix == "item") assertEquals("-" to "item", result) else assertNull(result)
+                // Count actual Java regex character reads, including backtracking.
+                assertTrue(text.reads >= n)
+                assertTrue("${text.reads} reads for ${text.length} chars", text.reads <= text.length * 8 + 20)
+                if (previous > 0) assertTrue(text.reads <= previous * 2 + 20)
+                previous = text.reads
+            }
+        }
+        for (separator in listOf("\u2028", "\u2029")) {
+            val text = "- " + " ".repeat(100_000) + "x${separator}y"
+            assertEquals(listOf(Block.Para(text)), parseMarkdown(text))
+            assertEquals("-" to "item", listLine("- ${separator}item"))
+        }
+    }
+
     @Test(timeout = 5000) fun nestingStopsAtAFixedDepth() {
         fun depth(blocks: List<Block>): Int = 1 + (blocks.maxOfOrNull {
             when (it) {

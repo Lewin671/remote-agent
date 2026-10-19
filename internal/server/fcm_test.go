@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"connectrpc.com/connect"
@@ -317,17 +319,30 @@ func TestFCMRespectsRetryAfter(t *testing.T) {
 		t.Fatalf("retried after %v, before FCM's Retry-After", gap)
 	}
 
-	// A wait that does not fit in the time left ends the retries at once.
-	fake.fail = []int{http.StatusServiceUnavailable, http.StatusServiceUnavailable}
-	fake.retryAfter = "120"
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	before := len(fake.sendTimes)
-	start := time.Now()
-	if err := f.sendRetrying(ctx, "tok", map[string]string{}, time.Minute); err == nil {
-		t.Fatal("expected an error")
-	}
-	if n := len(fake.sendTimes) - before; n != 1 || time.Since(start) > time.Second {
-		t.Fatalf("%d sends in %v; want one and no early retry", n, time.Since(start))
-	}
+	// Use virtual time and an in-memory transport for the immediate-return
+	// property: scheduling a real HTTP request must not spend a 1s allowance.
+	synctest.Test(t, func(t *testing.T) {
+		calls := 0
+		f := &fcm{
+			access: "test-access", expires: time.Now().Add(time.Hour),
+			sendURL: "https://example.com/send", retryBase: time.Millisecond,
+			client: &http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+				calls++
+				return &http.Response{
+					StatusCode: http.StatusServiceUnavailable,
+					Header:     http.Header{"Retry-After": {"120"}},
+					Body:       io.NopCloser(strings.NewReader("unavailable")),
+				}, nil
+			})},
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		start := time.Now()
+		if err := f.sendRetrying(ctx, "tok", map[string]string{}, time.Minute); err == nil {
+			t.Fatal("expected an error")
+		}
+		if calls != 1 || time.Since(start) != 0 || ctx.Err() != nil {
+			t.Fatalf("%d sends, virtual time %v, context %v; want one send without waiting", calls, time.Since(start), ctx.Err())
+		}
+	})
 }

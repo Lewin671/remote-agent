@@ -4,41 +4,49 @@ import { Markdown, mdBlocks, numericColumn, Rich, safeHref, tableCells } from ".
 
 const html = (md: string) => renderToStaticMarkup(<Markdown text={md} />);
 
+// Complexity is checked with operation counts and regex analysis in
+// markdown.complexity.test.ts; these large cases check the rendered result.
 describe("safety", () => {
   it("renders many unclosed link openers without quadratic scans", () => {
-    const started = performance.now();
     for (const text of ["[".repeat(100_000), "[x](".repeat(25_000), "<https://".repeat(12_000)]) {
       const out = renderToStaticMarkup(<Rich text={text} />);
       expect(out).not.toContain("<a ");
     }
-    expect(performance.now() - started).toBeLessThan(1500);
-  }, 2000);
+  });
 
   it("scans unclosed emphasis, strikes and URLs once", () => {
-    const started = performance.now();
-    for (const text of ["_a ".repeat(60_000), "~~a ".repeat(50_000), "*a ".repeat(60_000), "https://a.b/" + "(".repeat(100_000), "https://a.b/" + ")".repeat(100_000), "https://a.b ".repeat(20_000) + ".".repeat(50_000)]) {
-      renderToStaticMarkup(<Rich text={text} />);
+    for (const [text, links, strikes] of [
+      ["_a ".repeat(60_000), 0, 0],
+      ["~~a ".repeat(50_000), 0, 25_000],
+      ["*a ".repeat(60_000), 0, 0],
+      ["https://a.b/" + "(".repeat(100_000), 1, 0],
+      ["https://a.b/" + ")".repeat(100_000), 1, 0],
+      ["https://a.b ".repeat(20_000) + ".".repeat(50_000), 20_000, 0],
+    ] as const) {
+      const out = renderToStaticMarkup(<Rich text={text} />);
+      expect(out.match(/<a /g)?.length ?? 0).toBe(links);
+      expect(out.match(/<s>/g)?.length ?? 0).toBe(strikes);
+      if (!links && !strikes) expect(out).toBe(text);
     }
-    expect(performance.now() - started).toBeLessThan(1500);
-  }, 3000);
+  });
 
   it("reads long hostile lines once", () => {
-    const started = performance.now();
-    mdBlocks("# " + "#".repeat(100_000) + "x");
-    mdBlocks("# " + "# ".repeat(50_000) + "x");
-    mdBlocks("a|b\n" + " ".repeat(100_000) + "x");
-    mdBlocks("a|b\n" + "| ".repeat(50_000) + "x");
-    mdBlocks("- " + " ".repeat(100_000) + "x");
-    numericColumn(["1" + " 1".repeat(50_000) + " x", "1" + " ".repeat(100_000) + "x", "1" + "a ".repeat(50_000)]);
-    expect(performance.now() - started).toBeLessThan(1000);
-  }, 3000);
+    expect(mdBlocks("# " + "#".repeat(100_000) + "x")).toEqual([{ kind: "heading", level: 1, text: "#".repeat(100_000) + "x" }]);
+    expect(mdBlocks("# " + "# ".repeat(50_000) + "x")[0].kind).toBe("heading");
+    expect(mdBlocks("a|b\n" + " ".repeat(100_000) + "x")[0].kind).toBe("text");
+    expect(mdBlocks("a|b\n" + "| ".repeat(50_000) + "x")[0].kind).toBe("text");
+    expect(mdBlocks("- " + " ".repeat(100_000) + "x")[0].kind).toBe("list");
+    for (const [cell, want] of [["1" + " 1".repeat(50_000) + " x", true], ["1" + " ".repeat(100_000) + "x", false], ["1" + "a ".repeat(50_000), false]] as const) {
+      expect(numericColumn([cell])).toBe(want);
+    }
+  });
 
   it("parses long lists without suffix copies or argument-stack overflow", () => {
     const separate = mdBlocks("- x\n\n".repeat(20_000));
     expect(separate[0].kind).toBe("list");
     const indented = mdBlocks("- x\n\n" + "  y\n".repeat(150_000));
     expect(indented[0].kind).toBe("list");
-  }, 2000);
+  });
 
   it("keeps invalid openers as text and finds later valid links", () => {
     const out = renderToStaticMarkup(<Rich text={"[unclosed] text [ok](https://a.b) <https://> [bad](with space)"} />);

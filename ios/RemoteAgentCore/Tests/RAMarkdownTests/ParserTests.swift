@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import RAMarkdown
@@ -154,16 +155,29 @@ import Testing
         #expect(settled > full.count)
     }
 
-    @Test(.timeLimit(.minutes(1))) func aLongReplyIsParsedAgainQuickly() {
+    #if DEBUG
+    @Test func aLongReplyUsesLinearParserWork() {
         let section = "## 标题 `code`\n\n一段**加粗**的文字，带 [链接](https://example.com/a) 和 `行内代码`。\n\n- 一\n- 二\n  - 三\n\n```go\nfunc main() {}\n```\n\n| a | b |\n| --- | ---: |\n| x | 1 ms |\n\n"
-        let text = rep(section, 700)
-        #expect(text.utf8.count > 100_000)
-        let clock = ContinuousClock()
-        var blocks = 0
-        let took = clock.measure { for _ in 0..<10 { blocks = Markdown.parse(text).count } }
-        #expect(blocks == 700 * 5)
-        // A debug build on a Mac reads 100 kB in a few milliseconds; the bound only catches a pass that stopped being linear.
-        #expect(took < .seconds(5), "\(took) for ten parses")
-        print("parse of \(text.utf8.count) bytes: \(took / 10)")
+        // Count real scalar dispatches, whitespace probes and block dispatches,
+        // including recursive parses. This catches repeated line/suffix scans
+        // without measuring how long the scheduler gives this test a CPU.
+        final class Counter: @unchecked Sendable {
+            private let lock = NSLock()
+            private var value = 0
+            func step() { lock.withLock { value += 1 } }
+            var count: Int { lock.withLock { value } }
+        }
+        var previous = 0
+        for n in [175, 350, 700] {
+            let text = rep(section, n)
+            let counter = Counter()
+            let blocks = MarkdownWork.$record.withValue({ counter.step() }) { Markdown.parse(text) }
+            #expect(blocks.count == n * 5)
+            #expect(counter.count > text.unicodeScalars.count)
+            #expect(counter.count < text.utf8.count * 10)
+            if previous > 0 { #expect(counter.count <= previous * 2 + 10) }
+            previous = counter.count
+        }
     }
+    #endif
 }

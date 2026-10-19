@@ -294,11 +294,14 @@ export const FOLD_SHOWN = 12;
 
 // Any indent: the CLIs nest code blocks in list items.
 const fence = /^\s*(`{3,}|~{3,})\s*([^\s`]*)/;
-const heading = /^\s{0,3}(#{1,6})\s+(.*)$/;
+// Do not let the separator whitespace be given back to the text capture.
+// A later Unicode line separator rejects `.*`; without the lookahead,
+// every split of a long blank run would retry that capture (quadratic).
+const heading = /^\s{0,3}(#{1,6})\s+(?!\s)(.*)$/;
 const rule = /^\s{0,3}([-*_])(\s*\1){2,}\s*$/;
-const listLine = /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/;
+const listLine = /^(\s*)([-*+]|\d{1,9}[.)])\s+(?!\s)(.*)$/;
 const quote = /^\s{0,3}>\s?(.*)$/;
-const taskMark = /^\[([ xX])\]\s+(.*)$/s;
+const taskMark = /^\[([ xX])\]\s+(?!\s)(.*)$/s;
 
 const indentOf = (l: string) => l.length - l.trimStart().length;
 

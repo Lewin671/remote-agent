@@ -9,6 +9,7 @@ extension Markdown {
         var line = Scalars()
         var afterReturn = false
         for c in md.unicodeScalars {
+            MarkdownWork.step()
             if c == "\n" && afterReturn {
                 afterReturn = false
                 continue
@@ -236,6 +237,7 @@ func blocks(_ lines: [Scalars], depth: Int) -> [MarkdownBlock] {
     }
     var i = 0
     while i < lines.count {
+        MarkdownWork.step()
         let line = lines[i]
         if line.isBlankLine {
             flush()

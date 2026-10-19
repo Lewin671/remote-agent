@@ -84,10 +84,25 @@ extension String {
     }
 }
 
+// Debug-only operation observer for deterministic complexity tests. TaskLocal
+// keeps concurrent parses isolated; optimized builds contain no observer calls.
+enum MarkdownWork {
+    #if DEBUG
+    @TaskLocal static var record: (@Sendable () -> Void)?
+    #endif
+
+    @inline(__always) static func step() {
+        #if DEBUG
+        record?()
+        #endif
+    }
+}
+
 /// White space as JavaScript's `\s` and `trim()` have it, which is what the
 /// web parser reads by: it includes the full-width space of Chinese text.
 func isSpace(_ c: Unicode.Scalar) -> Bool {
-    switch c.value {
+    MarkdownWork.step()
+    return switch c.value {
     case 0x20, 0x09...0x0D, 0xA0, 0x1680, 0x2000...0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF: true
     default: false
     }
