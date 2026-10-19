@@ -1,6 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.proto.CompleteRecoveryRequest
+import io.github.lewin671.remoteagent.proto.GetRecoveryChallengeRequest
 import io.github.lewin671.remoteagent.proto.GetRecoveryContextRequest
 import io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse
 import io.github.lewin671.remoteagent.proto.SecurityState
@@ -14,12 +15,20 @@ import okhttp3.OkHttpClient
 object RecoveryCode {
     private const val ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
-    fun encode(seed: ByteArray): String {
-        require(seed.size == 32)
+    /**
+     * What a code carries: the seed that signs recovery statements and the
+     * first 10 bytes of its genesis hash. The prefix is how a recovering phone
+     * checks the chain the relay serves it against its own domain (finding B3).
+     */
+    data class Decoded(val seed: ByteArray, val genesis: ByteArray)
+
+    fun encode(seed: ByteArray, genesis: ByteArray): String {
+        require(seed.size == 32 && genesis.size == 32)
+        val payload = genesis.copyOf(10) + seed
         val out = StringBuilder()
         var bits = 0
         var value = 0
-        for (b in seed) {
+        for (b in payload) {
             value = (value shl 8) or (b.toInt() and 0xff)
             bits += 8
             while (bits >= 5) {
@@ -32,7 +41,7 @@ object RecoveryCode {
     }
 
     /** Reads what [encode] wrote, accepting lower case, spaces, hyphens and the usual look-alikes. */
-    fun decode(text: String): ByteArray? {
+    fun decode(text: String): Decoded? {
         var bits = 0
         var value = 0
         val out = java.io.ByteArrayOutputStream()
@@ -55,8 +64,9 @@ object RecoveryCode {
         }
         // Any leftover bits must be zero padding, as encode writes them.
         if (bits >= 5 || (value and ((1 shl bits) - 1)) != 0) return null
-        val seed = out.toByteArray()
-        return if (seed.size == 32) seed else null
+        val payload = out.toByteArray()
+        if (payload.size != 42) return null
+        return Decoded(payload.copyOfRange(10, 42), payload.copyOfRange(0, 10))
     }
 }
 
@@ -82,6 +92,7 @@ data class RecoveryChain(
             phase: GetRecoveryContextResponse.Phase,
             readyMs: Long,
             recoveryId: String,
+            expectedGenesis: ByteArray? = null,
             now: Long = System.currentTimeMillis(),
         ): RecoveryChain {
             if (states.isEmpty()) throw DeviceSecurity.Failure("untrusted")
@@ -94,6 +105,14 @@ data class RecoveryChain(
                 throw DeviceSecurity.Failure("untrusted")
             val pin = DeviceSecurity.pinOf(chain[0])
             DeviceSecurity.verifyGenesis(pin, chain[0])
+            if (expectedGenesis != null) {
+                // The code carries the domain's genesis prefix; a relay cannot
+                // swap in a forged chain for the same account.
+                if (expectedGenesis.size != 10 ||
+                    !pin.genesis.copyOf(10).contentEquals(expectedGenesis)
+                )
+                    throw DeviceSecurity.Failure("untrusted")
+            }
             val proofs = HashMap<ULong, ByteArray>()
             chain.forEachIndexed { i, s ->
                 DeviceSecurity.verifyState(pin, s)
@@ -119,6 +138,12 @@ data class RecoveryChain(
     }
 }
 
+/** A recovery awaiting the authority phone's veto. */
+data class PendingRecoveryInfo(val readyMs: Long)
+
+/** A veto/rotation state signed locally; its new code is shown before this is published. */
+data class PreparedRecovery(val code: String, val state: DeviceSecurity.State)
+
 /** What a submission produced: shown once, then only the new code remains in the user's hands. */
 data class RecoverySubmission(
     val recoveryId: String,
@@ -131,6 +156,8 @@ data class RecoverySubmission(
     val accountPublicKey: ByteArray,
     /** Hash of the recovery state this submission signed; the published head must be it. */
     val stateHash: ByteArray,
+    /** First 10 bytes of the genesis the code was issued under. */
+    val genesisPrefix: ByteArray,
 )
 
 /**
@@ -142,9 +169,29 @@ object Recovery {
         server: String,
         http: OkHttpClient,
         recoveryEd: ByteArray,
+        signerSeed: ByteArray,
         recoveryId: String = "",
+        expectedGenesis: ByteArray? = null,
     ): RecoveryChain {
+        require(signerSeed.size == 32)
         val api = Api(server, http)
+        val challenge =
+            api.recovery
+                .getRecoveryChallenge(
+                    GetRecoveryChallengeRequest.getDefaultInstance(),
+                    emptyMap(),
+                )
+                .value()
+                .challenge
+                .toByteArray()
+        var ed = ByteArray(32)
+        recoveryEd.copyInto(ed, 0, 0, minOf(32, recoveryEd.size))
+        val signed =
+            "ra3/recovery-context\u0000".toByteArray() +
+                challenge +
+                ed +
+                recoveryId.toByteArray()
+        val signature = SigningKey(signerSeed).sign(signed)
         val res =
             try {
                 api.recovery
@@ -155,6 +202,8 @@ object Recovery {
                                 else com.google.protobuf.ByteString.copyFrom(recoveryEd),
                             )
                             .setRecoveryId(recoveryId)
+                            .setChallenge(com.google.protobuf.ByteString.copyFrom(challenge))
+                            .setSignature(com.google.protobuf.ByteString.copyFrom(signature))
                             .build(),
                         emptyMap(),
                     )
@@ -171,6 +220,7 @@ object Recovery {
             res.phase,
             res.readyMs,
             res.recoveryId,
+            expectedGenesis = expectedGenesis,
         )
     }
 
@@ -183,16 +233,22 @@ object Recovery {
         http: OkHttpClient,
         oldRecoverySeed: ByteArray,
         deviceSeed: ByteArray,
+        genesisPrefix: ByteArray,
         now: Long = System.currentTimeMillis(),
     ): RecoverySubmission {
-        if (oldRecoverySeed.size != 32 || deviceSeed.size != 32)
+        if (oldRecoverySeed.size != 32 || deviceSeed.size != 32 || genesisPrefix.size != 10)
             throw PairException("恢复码无效")
         val recoveryEd = SigningKey(oldRecoverySeed).publicKey
-        val chain = context(server, http, recoveryEd)
-        if (chain.phase == GetRecoveryContextResponse.Phase.PHASE_REJECTED)
-            throw PairException("这次恢复已被原手机否决")
-        if (chain.phase == GetRecoveryContextResponse.Phase.PHASE_PUBLISHED)
-            throw PairException("这次恢复已经完成")
+        val chain =
+            context(
+                server,
+                http,
+                recoveryEd,
+                oldRecoverySeed,
+                expectedGenesis = genesisPrefix,
+            )
+        // A completed or vetoed row is no longer pending: the current code may
+        // submit a fresh recovery (B1).
         if (chain.phase != GetRecoveryContextResponse.Phase.PHASE_UNSPECIFIED &&
             chain.phase != GetRecoveryContextResponse.Phase.PHASE_PENDING &&
             chain.phase != GetRecoveryContextResponse.Phase.PHASE_READY
@@ -201,7 +257,7 @@ object Recovery {
 
         val signer = SigningKey(deviceSeed)
         val (newRecoverySeed, newRecoveryEd) = Authority.newRecovery()
-        val newCode = RecoveryCode.encode(newRecoverySeed)
+        val newCode = RecoveryCode.encode(newRecoverySeed, chain.pin.genesis)
         val x = randomBytes(32)
         val member = Authority.newMember(signer, x, 2u)
         val old = chain.head
@@ -249,6 +305,7 @@ object Recovery {
             chain.accountId,
             chain.accountPublicKey,
             DeviceSecurity.stateHash(state),
+            chain.pin.genesis.copyOf(10),
         )
     }
 
@@ -283,8 +340,16 @@ object Recovery {
             }
         if (res.deviceId != deviceId(signer.publicKey))
             throw PairException("服务器返回了意外的设备 ID")
-        // The published chain is available by recovery ID; the new phone opens its own grant.
-        val chain = context(server, http, ByteArray(0), recoveryId)
+        // The published chain is available by recovery ID, signed by the new
+        // device key; the new phone opens its own grant.
+        val chain =
+            context(
+                server,
+                http,
+                ByteArray(0),
+                deviceSeed,
+                recoveryId = recoveryId,
+            )
         if (chain.accountId != accountId || chain.phase != GetRecoveryContextResponse.Phase.PHASE_PUBLISHED)
             throw PairException("服务器发布的恢复链与提交的不一致")
         if (chain.head.core.authorityID != res.deviceId)

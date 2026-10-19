@@ -23,8 +23,12 @@ class DeviceSecurityClient(
     private val syncMutex = Mutex()
     private val historyLock = Any()
     private var lastFloorWrite = 0uL
+    /** The counter block in use; only a new block writes the record. */
+    private var sendRecord: DeviceSecurity.Record? = null
     @Volatile private var closed = false
     @Volatile var recoveryPending: Boolean = false
+        private set
+    @Volatile var recoveryReadyMs: Long = 0L
         private set
     /** A state is issued more than five minutes ahead of this phone's clock. */
     @Volatile var clockSkew: Boolean = false
@@ -67,6 +71,7 @@ class DeviceSecurityClient(
 
     fun close() {
         closed = true
+        sendRecord = null
         synchronized(historyLock) {}
     }
 
@@ -79,6 +84,7 @@ class DeviceSecurityClient(
             val r = read()
             val res = fetchStates(r.head.core.epoch)
             recoveryPending = res.recoveryPending
+            recoveryReadyMs = res.recoveryReadyMs
             if (res.headEpoch.toULong() < r.head.core.epoch) throw DeviceSecurity.Failure("stale")
             if (res.statesCount == 0) {
                 if (res.headEpoch.toULong() != r.head.core.epoch)
@@ -105,6 +111,7 @@ class DeviceSecurityClient(
                 states,
                 proofs,
             )
+            sendRecord = null
             currentCoroutineContext().ensureActive()
         }
         throw DeviceSecurity.Failure("capacity")
@@ -121,6 +128,7 @@ class DeviceSecurityClient(
         }
         val r = read()
         store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs)
+        sendRecord = null
     }
 
     /** Commits the counter before the envelope exists; no authorization round trip. */
@@ -138,7 +146,7 @@ class DeviceSecurityClient(
         if (!old.member) throw DeviceSecurity.Failure("untrusted")
         if (purpose.control && !Authority.leaseValid(old.head, clock()))
             throw DeviceSecurity.Failure("lease")
-        val r = store.reserveSecurity(DeviceSecurity.stateHash(old.head))
+        val r = nextCounter(old)
         val h =
             DeviceSecurity.Header(
                 r.pin.account,
@@ -160,6 +168,35 @@ class DeviceSecurityClient(
         val key = r.contentKey(r.head.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
         val formed = DeviceSecurity.form(key, seed, h, plain, ed)
         return DeviceSecurity.envelope(DeviceSecurity.Wire(formed))
+    }
+
+    /**
+     * Hands out one counter. A counter block is written durably before any of
+     * its values are used; the in-memory counter then moves on without a
+     * write. A re-sealed retry costs no record rewrite.
+     */
+    private fun nextCounter(old: DeviceSecurity.Record): DeviceSecurity.Record {
+        val cached = sendRecord
+        val base =
+            if (
+                cached != null &&
+                    cached.head.core.epoch == old.head.core.epoch &&
+                    DeviceSecurity.stateHash(cached.head)
+                        .contentEquals(DeviceSecurity.stateHash(old.head))
+            )
+                cached
+            else old
+        val next =
+            if (base.counter >= base.counterBlockEnd) {
+                store
+                    .writeSecurity(
+                        DeviceSecurity.stateHash(old.head),
+                        base.reservingBlock(),
+                    )
+                    .incremented()
+            } else base.incremented()
+        sendRecord = next
+        return next
     }
 
     suspend fun openCurrent(

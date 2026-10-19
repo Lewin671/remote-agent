@@ -167,10 +167,13 @@ class TestSecurityStore(initial: DeviceSecurity.Record) : DeviceSecurity.Storage
     }
 
     @Synchronized
-    override fun reserveSecurity(expectedState: ByteArray): DeviceSecurity.Record {
-        if (!DeviceSecurity.stateHash(record.head).contentEquals(expectedState))
+    override fun writeSecurity(
+        expectedState: ByteArray,
+        record: DeviceSecurity.Record,
+    ): DeviceSecurity.Record {
+        if (!DeviceSecurity.stateHash(this.record.head).contentEquals(expectedState))
             throw DeviceSecurity.Failure("stale")
-        record = record.incremented()
+        this.record = record
         return record
     }
 

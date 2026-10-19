@@ -407,8 +407,15 @@ public final class PBMachineServiceClient: PBMachineServiceClientInterface, Send
 
 /// RecoveryService transfers authority with a recovery code after 48 hours.
 /// It is unauthenticated because the recovering phone has no token yet; the
-/// statement and state signatures are the authorization.
+/// statement and state signatures are the authorization. Every lookup must
+/// prove possession of a key already bound to the account: the recovery key
+/// named in the request, or, when polling by recovery_id, the new authority
+/// device key in the pending row.
 public protocol PBRecoveryServiceClientInterface: Sendable {
+
+    /// A short-lived server challenge that GetRecoveryContext signatures cover.
+    @available(iOS 13, *)
+    func `getRecoveryChallenge`(request: PBGetRecoveryChallengeRequest, headers: Connect.Headers) async -> ResponseMessage<PBGetRecoveryChallengeResponse>
 
     @available(iOS 13, *)
     func `getRecoveryContext`(request: PBGetRecoveryContextRequest, headers: Connect.Headers) async -> ResponseMessage<PBGetRecoveryContextResponse>
@@ -429,6 +436,11 @@ public final class PBRecoveryServiceClient: PBRecoveryServiceClientInterface, Se
     }
 
     @available(iOS 13, *)
+    public func `getRecoveryChallenge`(request: PBGetRecoveryChallengeRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBGetRecoveryChallengeResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.RecoveryService/GetRecoveryChallenge", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `getRecoveryContext`(request: PBGetRecoveryContextRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBGetRecoveryContextResponse> {
         return await self.client.unary(path: "/remoteagent.v1.RecoveryService/GetRecoveryContext", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -445,6 +457,7 @@ public final class PBRecoveryServiceClient: PBRecoveryServiceClientInterface, Se
 
     public enum Metadata {
         public enum Methods {
+            public static let getRecoveryChallenge = Connect.MethodSpec(name: "GetRecoveryChallenge", service: "remoteagent.v1.RecoveryService", type: .unary)
             public static let getRecoveryContext = Connect.MethodSpec(name: "GetRecoveryContext", service: "remoteagent.v1.RecoveryService", type: .unary)
             public static let submitRecovery = Connect.MethodSpec(name: "SubmitRecovery", service: "remoteagent.v1.RecoveryService", type: .unary)
             public static let completeRecovery = Connect.MethodSpec(name: "CompleteRecovery", service: "remoteagent.v1.RecoveryService", type: .unary)

@@ -131,6 +131,9 @@ const (
 	MachineServiceNotifyProcedure = "/remoteagent.v1.MachineService/Notify"
 	// MachineServicePutImageProcedure is the fully-qualified name of the MachineService's PutImage RPC.
 	MachineServicePutImageProcedure = "/remoteagent.v1.MachineService/PutImage"
+	// RecoveryServiceGetRecoveryChallengeProcedure is the fully-qualified name of the RecoveryService's
+	// GetRecoveryChallenge RPC.
+	RecoveryServiceGetRecoveryChallengeProcedure = "/remoteagent.v1.RecoveryService/GetRecoveryChallenge"
 	// RecoveryServiceGetRecoveryContextProcedure is the fully-qualified name of the RecoveryService's
 	// GetRecoveryContext RPC.
 	RecoveryServiceGetRecoveryContextProcedure = "/remoteagent.v1.RecoveryService/GetRecoveryContext"
@@ -1212,6 +1215,8 @@ func (UnimplementedMachineServiceHandler) PutImage(context.Context, *connect.Req
 
 // RecoveryServiceClient is a client for the remoteagent.v1.RecoveryService service.
 type RecoveryServiceClient interface {
+	// A short-lived server challenge that GetRecoveryContext signatures cover.
+	GetRecoveryChallenge(context.Context, *connect.Request[v1.GetRecoveryChallengeRequest]) (*connect.Response[v1.GetRecoveryChallengeResponse], error)
 	GetRecoveryContext(context.Context, *connect.Request[v1.GetRecoveryContextRequest]) (*connect.Response[v1.GetRecoveryContextResponse], error)
 	SubmitRecovery(context.Context, *connect.Request[v1.SubmitRecoveryRequest]) (*connect.Response[v1.SubmitRecoveryResponse], error)
 	CompleteRecovery(context.Context, *connect.Request[v1.CompleteRecoveryRequest]) (*connect.Response[v1.CompleteRecoveryResponse], error)
@@ -1228,6 +1233,12 @@ func NewRecoveryServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 	baseURL = strings.TrimRight(baseURL, "/")
 	recoveryServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("RecoveryService").Methods()
 	return &recoveryServiceClient{
+		getRecoveryChallenge: connect.NewClient[v1.GetRecoveryChallengeRequest, v1.GetRecoveryChallengeResponse](
+			httpClient,
+			baseURL+RecoveryServiceGetRecoveryChallengeProcedure,
+			connect.WithSchema(recoveryServiceMethods.ByName("GetRecoveryChallenge")),
+			connect.WithClientOptions(opts...),
+		),
 		getRecoveryContext: connect.NewClient[v1.GetRecoveryContextRequest, v1.GetRecoveryContextResponse](
 			httpClient,
 			baseURL+RecoveryServiceGetRecoveryContextProcedure,
@@ -1251,9 +1262,15 @@ func NewRecoveryServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 
 // recoveryServiceClient implements RecoveryServiceClient.
 type recoveryServiceClient struct {
-	getRecoveryContext *connect.Client[v1.GetRecoveryContextRequest, v1.GetRecoveryContextResponse]
-	submitRecovery     *connect.Client[v1.SubmitRecoveryRequest, v1.SubmitRecoveryResponse]
-	completeRecovery   *connect.Client[v1.CompleteRecoveryRequest, v1.CompleteRecoveryResponse]
+	getRecoveryChallenge *connect.Client[v1.GetRecoveryChallengeRequest, v1.GetRecoveryChallengeResponse]
+	getRecoveryContext   *connect.Client[v1.GetRecoveryContextRequest, v1.GetRecoveryContextResponse]
+	submitRecovery       *connect.Client[v1.SubmitRecoveryRequest, v1.SubmitRecoveryResponse]
+	completeRecovery     *connect.Client[v1.CompleteRecoveryRequest, v1.CompleteRecoveryResponse]
+}
+
+// GetRecoveryChallenge calls remoteagent.v1.RecoveryService.GetRecoveryChallenge.
+func (c *recoveryServiceClient) GetRecoveryChallenge(ctx context.Context, req *connect.Request[v1.GetRecoveryChallengeRequest]) (*connect.Response[v1.GetRecoveryChallengeResponse], error) {
+	return c.getRecoveryChallenge.CallUnary(ctx, req)
 }
 
 // GetRecoveryContext calls remoteagent.v1.RecoveryService.GetRecoveryContext.
@@ -1273,6 +1290,8 @@ func (c *recoveryServiceClient) CompleteRecovery(ctx context.Context, req *conne
 
 // RecoveryServiceHandler is an implementation of the remoteagent.v1.RecoveryService service.
 type RecoveryServiceHandler interface {
+	// A short-lived server challenge that GetRecoveryContext signatures cover.
+	GetRecoveryChallenge(context.Context, *connect.Request[v1.GetRecoveryChallengeRequest]) (*connect.Response[v1.GetRecoveryChallengeResponse], error)
 	GetRecoveryContext(context.Context, *connect.Request[v1.GetRecoveryContextRequest]) (*connect.Response[v1.GetRecoveryContextResponse], error)
 	SubmitRecovery(context.Context, *connect.Request[v1.SubmitRecoveryRequest]) (*connect.Response[v1.SubmitRecoveryResponse], error)
 	CompleteRecovery(context.Context, *connect.Request[v1.CompleteRecoveryRequest]) (*connect.Response[v1.CompleteRecoveryResponse], error)
@@ -1285,6 +1304,12 @@ type RecoveryServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewRecoveryServiceHandler(svc RecoveryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	recoveryServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("RecoveryService").Methods()
+	recoveryServiceGetRecoveryChallengeHandler := connect.NewUnaryHandler(
+		RecoveryServiceGetRecoveryChallengeProcedure,
+		svc.GetRecoveryChallenge,
+		connect.WithSchema(recoveryServiceMethods.ByName("GetRecoveryChallenge")),
+		connect.WithHandlerOptions(opts...),
+	)
 	recoveryServiceGetRecoveryContextHandler := connect.NewUnaryHandler(
 		RecoveryServiceGetRecoveryContextProcedure,
 		svc.GetRecoveryContext,
@@ -1305,6 +1330,8 @@ func NewRecoveryServiceHandler(svc RecoveryServiceHandler, opts ...connect.Handl
 	)
 	return "/remoteagent.v1.RecoveryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case RecoveryServiceGetRecoveryChallengeProcedure:
+			recoveryServiceGetRecoveryChallengeHandler.ServeHTTP(w, r)
 		case RecoveryServiceGetRecoveryContextProcedure:
 			recoveryServiceGetRecoveryContextHandler.ServeHTTP(w, r)
 		case RecoveryServiceSubmitRecoveryProcedure:
@@ -1319,6 +1346,10 @@ func NewRecoveryServiceHandler(svc RecoveryServiceHandler, opts ...connect.Handl
 
 // UnimplementedRecoveryServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedRecoveryServiceHandler struct{}
+
+func (UnimplementedRecoveryServiceHandler) GetRecoveryChallenge(context.Context, *connect.Request[v1.GetRecoveryChallengeRequest]) (*connect.Response[v1.GetRecoveryChallengeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.RecoveryService.GetRecoveryChallenge is not implemented"))
+}
 
 func (UnimplementedRecoveryServiceHandler) GetRecoveryContext(context.Context, *connect.Request[v1.GetRecoveryContextRequest]) (*connect.Response[v1.GetRecoveryContextResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.RecoveryService.GetRecoveryContext is not implemented"))

@@ -32,11 +32,19 @@ public interface GetSecurityStatesResponseOrBuilder extends
 
   /**
    * <pre>
-   * Set for the current authority phone while a recovery is pending.
+   * Set for the current authority phone while a recovery is pending, with
+   * the time it may complete. Only the signed-in authority phone sees this;
+   * the unauthenticated recovery service no longer answers it.
    * </pre>
    *
    * <code>bool recovery_pending = 3 [json_name = "recoveryPending"];</code>
    * @return The recoveryPending.
    */
   boolean getRecoveryPending();
+
+  /**
+   * <code>uint64 recovery_ready_ms = 4 [json_name = "recoveryReadyMs"];</code>
+   * @return The recoveryReadyMs.
+   */
+  long getRecoveryReadyMs();
 }

@@ -374,7 +374,7 @@ internal fun removalDialog(name: String, machine: Boolean): Pair<String, String>
             "这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端手机上重新批准。"
 
 /** Shares the public genesis state for the relay's offline pin step. */
-private fun shareGenesis(context: android.content.Context, state: ByteArray) {
+internal fun shareGenesis(context: android.content.Context, state: ByteArray) {
     val dir = File(context.cacheDir, SHARED_DIR).apply { mkdirs() }
     val file = File(dir, "public-genesis.bin")
     file.writeBytes(state)

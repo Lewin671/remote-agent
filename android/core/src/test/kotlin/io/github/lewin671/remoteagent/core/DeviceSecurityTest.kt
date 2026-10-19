@@ -116,6 +116,35 @@ class DeviceSecurityTest {
     }
 
     @Test
+    fun installingARecoveryCachesTheKeysItCanStillDerive() {
+        val g = genesis()
+        val a = added()
+        val r = renewal()
+        val rec = recovery()
+        val pin = DeviceSecurity.pinOf(g)
+        val statement = decode("recovery_statement")
+        val machineId = a.core.members.first { it.kind == 1u }.id
+        val record =
+            DeviceSecurity.Record.fromChain(
+                pin.account,
+                pin.domain,
+                pin.genesis,
+                machineId,
+                s("machine_x").unhex(),
+                listOf(g, a, r).map { DeviceSecurity.stateBytes(it) },
+                listOf(null, null, null),
+            )
+        // The retained device keeps what it could read before the boundary.
+        val next = record.installed(listOf(rec), listOf(statement))
+        assertArrayEquals(s("content_secret_2").unhex(), next.contentKey(2uL))
+        assertArrayEquals(s("content_secret_3").unhex(), next.contentKey(3uL))
+        assertArrayEquals(
+            s("content_secret_2").unhex(),
+            next.cachedKeys()[2uL],
+        )
+    }
+
+    @Test
     fun buildsGenesisAndMembershipThatTheSameRulesAccept() {
         val domain = s("domain").unhex()
         val phoneSeed = s("phone_seed").unhex()
@@ -214,9 +243,13 @@ class DeviceSecurityTest {
     @Test
     fun recoveryCodeRoundTripsAndIsTypedForgivingly() {
         val seed = ByteArray(32) { (it * 7 + 3).toByte() }
-        val text = RecoveryCode.encode(seed)
-        assertArrayEquals(seed, RecoveryCode.decode(text))
-        assertArrayEquals(seed, RecoveryCode.decode(text.lowercase().replace("-", " ")))
+        val genesis = ByteArray(32) { (it * 11 + 1).toByte() }
+        val text = RecoveryCode.encode(seed, genesis)
+        val decoded = RecoveryCode.decode(text)
+        assertNotNull(decoded)
+        assertArrayEquals(seed, decoded!!.seed)
+        assertArrayEquals(genesis.copyOf(10), decoded.genesis)
+        assertArrayEquals(seed, RecoveryCode.decode(text.lowercase().replace("-", " "))!!.seed)
         assertNull(RecoveryCode.decode("not a recovery code"))
         assertNull(RecoveryCode.decode(text + "Z"))
     }
@@ -297,7 +330,7 @@ class DeviceSecurityTest {
             )
         repeat(3) {
             val r = store.readSecurity()
-            store.reserveSecurity(DeviceSecurity.stateHash(r.head))
+            store.writeSecurity(DeviceSecurity.stateHash(r.head), r.incremented())
         }
         val lease =
             Authority.renewal(

@@ -200,7 +200,9 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	errc := make(chan error, 4)
 	go func() { errc <- c.readLoop(ctx) }()
 	if err := c.security.syncOnce(ctx); err != nil {
-		return err
+		// The stream itself is up. Installed states still serve events and
+		// the terminal; remote control pauses until a later sync succeeds.
+		slog.Warn("relay: starting without the newest security state; remote control is paused", "err", err)
 	}
 	meta := c.r.backend.MachineMeta()
 	if err := c.ensurePublished(ctx); err != nil {
@@ -341,17 +343,18 @@ func (c *conn) republishAfterRecovery(ctx context.Context) error {
 		return firstErr
 	}
 	_, head, _ := c.security.endpoint.Snapshot()
-	return writePublishedEpoch(head.Core.ContentEpoch)
+	return writePublishedEpoch(head.Core.Epoch)
 }
 
-// ensurePublished compares the durable marker with the current head and
-// republishes after a recovery even if the process crashed before the
-// callback ran.
+// ensurePublished republishes current metadata on the first run and after a
+// recovery, even if the process crashed before the callback ran. Ordinary
+// epochs (adding or removing a device, renewing the lease) reuse the server's
+// stored metadata: only a recovery needs every session re-sealed.
 func (c *conn) ensurePublished(ctx context.Context) error {
 	c.publishMu.Lock()
 	defer c.publishMu.Unlock()
-	_, head, _ := c.security.endpoint.Snapshot()
-	if got, err := readPublishedEpoch(); err == nil && got == head.Core.ContentEpoch {
+	marker, err := readPublishedEpoch()
+	if err == nil && c.security.endpoint.LastRecoveryEpoch() <= marker {
 		return nil
 	}
 	return c.republishAfterRecovery(ctx)

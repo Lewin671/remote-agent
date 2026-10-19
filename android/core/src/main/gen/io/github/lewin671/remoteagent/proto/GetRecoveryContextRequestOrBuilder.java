@@ -12,7 +12,7 @@ public interface GetRecoveryContextRequestOrBuilder extends
 
   /**
    * <pre>
-   * The old recovery public key, or the pending row's stored key.
+   * The current recovery public key. Unset when polling by recovery_id.
    * </pre>
    *
    * <code>bytes recovery_ed = 1 [json_name = "recoveryEd"];</code>
@@ -22,7 +22,7 @@ public interface GetRecoveryContextRequestOrBuilder extends
 
   /**
    * <pre>
-   * Optional: poll after SubmitRecovery.
+   * Optional: poll after SubmitRecovery, signed by the new device key.
    * </pre>
    *
    * <code>string recovery_id = 2 [json_name = "recoveryId"];</code>
@@ -31,7 +31,7 @@ public interface GetRecoveryContextRequestOrBuilder extends
   java.lang.String getRecoveryId();
   /**
    * <pre>
-   * Optional: poll after SubmitRecovery.
+   * Optional: poll after SubmitRecovery, signed by the new device key.
    * </pre>
    *
    * <code>string recovery_id = 2 [json_name = "recoveryId"];</code>
@@ -39,4 +39,26 @@ public interface GetRecoveryContextRequestOrBuilder extends
    */
   com.google.protobuf.ByteString
       getRecoveryIdBytes();
+
+  /**
+   * <pre>
+   * From GetRecoveryChallenge.
+   * </pre>
+   *
+   * <code>bytes challenge = 3 [json_name = "challenge"];</code>
+   * @return The challenge.
+   */
+  com.google.protobuf.ByteString getChallenge();
+
+  /**
+   * <pre>
+   * Ed25519 over "ra3/recovery-context&#92;0" followed by the 32-byte challenge,
+   * the 32-byte recovery_ed (zeros when empty), and the recovery_id bytes,
+   * by recovery_ed's private key or by the pending recovery's new device key.
+   * </pre>
+   *
+   * <code>bytes signature = 4 [json_name = "signature"];</code>
+   * @return The signature.
+   */
+  com.google.protobuf.ByteString getSignature();
 }

@@ -29,7 +29,7 @@ public interface GetRecoveryContextResponseOrBuilder extends
    *
    * <code>repeated .remoteagent.v1.SecurityState states = 2 [json_name = "states"];</code>
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.SecurityState>
+  java.util.List<io.github.lewin671.remoteagent.proto.SecurityState> 
       getStatesList();
   /**
    * <pre>

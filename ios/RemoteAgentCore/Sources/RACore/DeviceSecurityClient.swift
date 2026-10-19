@@ -123,6 +123,14 @@ public actor DeviceSecurityClient {
     ) throws -> DeviceSecurity.Record {
         try DeviceSecurity.check(!states.isEmpty && states.count == proofs.count)
         var next = try read()
+        // Cache every key still derivable before a recovery boundary makes
+        // the PrevSecret walk stop; retained devices keep their history.
+        if let head = next.states[next.headEpoch] {
+            for ep in stride(from: head.core.contentEpoch, through: 1, by: -1) {
+                if next.contentKeys[ep] != nil { continue }
+                if let key = try? next.contentSecret(ep) { next.contentKeys[ep] = key }
+            }
+        }
         for (i, s) in states.enumerated() {
             if s.core.epoch <= next.headEpoch {
                 guard let old = next.states[s.core.epoch],

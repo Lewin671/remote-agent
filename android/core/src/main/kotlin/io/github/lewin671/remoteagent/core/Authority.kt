@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import com.connectrpc.Code
+import com.connectrpc.ConnectException
 import io.github.lewin671.remoteagent.proto.DeviceKind
 import okhttp3.OkHttpClient
 
@@ -311,6 +313,8 @@ data class CreatedAccount(
     val account: Account,
     val record: DeviceSecurity.Record,
     val recoveryCode: String,
+    /** The relay needs its exported genesis pinned offline before it will accept this domain. */
+    val needsOfflinePin: Boolean = false,
 )
 
 /**
@@ -371,5 +375,110 @@ suspend fun createAccount(
             listOf(DeviceSecurity.stateBytes(genesis)),
             listOf(null),
         )
-    return CreatedAccount(account, record, RecoveryCode.encode(recoverySeed))
+    return CreatedAccount(
+        account,
+        record,
+        RecoveryCode.encode(recoverySeed, DeviceSecurity.pinOf(genesis).genesis),
+    )
+}
+
+/**
+ * Rebuilds the protocol 10 security domain for an existing account upgraded
+ * from protocol 9: it keeps the account root and the phone's Ed25519 device
+ * identity, starts a fresh domain with the phone as the only member, and
+ * tries to pin it. A relay upgraded from layout 5 refuses a network pin and
+ * requires the exported genesis offline instead; [CreatedAccount.needsOfflinePin]
+ * says that happened, and the local record is still usable for export.
+ */
+suspend fun rebuildSecurityDomain(
+    server: String,
+    http: OkHttpClient,
+    stored: Account,
+    now: Long = System.currentTimeMillis(),
+): CreatedAccount {
+    if (!stored.hasRoot)
+        throw PairException("这台手机没有账户根密钥，不能重建安全域；请用管理端手机重新配对")
+    val keys = Keys.derive(stored.root)
+    val accountId = deviceId(keys.account.publicKey)
+    if (stored.accountId.isNotEmpty() && stored.accountId != accountId)
+        throw PairException("这台手机保存的账户与根密钥不一致")
+    val signer = SigningKey(stored.deviceSeed)
+    val xPrivate = randomBytes(32)
+    val phone = Authority.newMember(signer, xPrivate, 2u)
+    val (recoverySeed, recoveryEd) = Authority.newRecovery()
+    val genesis =
+        Authority.genesis(
+            accountId,
+            randomBytes(32),
+            phone,
+            recoveryEd,
+            Authority.newSecret(),
+            signer,
+            now,
+        )
+    val account =
+        Account(
+            server,
+            stored.root.copyOf(),
+            stored.deviceSeed.copyOf(),
+            stored.deviceId,
+            accountId,
+            keys.account.publicKey,
+        )
+    // The relay may be stopped for the offline pin (as the upgrade guide
+    // requires), or it may refuse a network pin for an upgraded account. Both
+    // leave a usable local domain that the operator pins offline.
+    var offline = false
+    fun unreachable(e: ConnectException): Boolean {
+        val cause = e.exception
+        return e.code in setOf(Code.UNAVAILABLE, Code.DEADLINE_EXCEEDED, Code.CANCELED) ||
+            cause is java.net.ConnectException ||
+            cause is java.net.UnknownHostException ||
+            cause is java.net.SocketTimeoutException ||
+            cause is java.net.NoRouteToHostException
+    }
+    try {
+        val api = Api(server, http)
+        val token = login(api, account)
+        try {
+            api.client
+                .pinSecurityDomain(
+                    io.github.lewin671.remoteagent.proto.PinSecurityDomainRequest.newBuilder()
+                        .setGenesisState(
+                            com.google.protobuf.ByteString.copyFrom(
+                                DeviceSecurity.stateBytes(genesis),
+                            ),
+                        )
+                        .build(),
+                    Api.headers(token),
+                )
+                .value()
+        } catch (e: ConnectException) {
+            when {
+                e.code == Code.FAILED_PRECONDITION && "offline" in e.message.orEmpty() ->
+                    offline = true
+                unreachable(e) -> offline = true
+                else -> throw PairException(e.message ?: "安全域固定失败")
+            }
+        }
+    } catch (e: ConnectException) {
+        if (unreachable(e)) offline = true
+        else throw PairException(e.message ?: "连不上服务器")
+    }
+    val record =
+        DeviceSecurity.Record.fromChain(
+            accountId,
+            genesis.core.domain,
+            DeviceSecurity.stateHash(genesis),
+            phone.id,
+            xPrivate,
+            listOf(DeviceSecurity.stateBytes(genesis)),
+            listOf(null),
+        )
+    return CreatedAccount(
+        account,
+        record,
+        RecoveryCode.encode(recoverySeed, DeviceSecurity.pinOf(genesis).genesis),
+        needsOfflinePin = offline,
+    )
 }

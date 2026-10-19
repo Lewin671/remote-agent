@@ -2,7 +2,11 @@ import { describe, it, expect } from "vitest";
 import vectors from "../../internal/deviceauth/testdata/domain-v3.json";
 import envelopeVector from "../../internal/e2e/testdata/v3-vectors.json";
 import { concat, fromHex, hex } from "./crypto";
-import { contentSecretOf } from "./device-security-store";
+import {
+  buildRecord,
+  contentSecretOf,
+  extendRecord,
+} from "./device-security-store";
 import {
   b64,
   fromEnvelope,
@@ -38,12 +42,12 @@ const pin = {
   genesis: fromHex(ph),
 };
 async function xKey(): Promise<CryptoKey> {
+  return xFromHex(vectors.phone_x);
+}
+async function xFromHex(h: string): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     "pkcs8",
-    concat(
-      fromHex("302e020100300506032b656e04220420"),
-      fromHex(vectors.phone_x),
-    ),
+    concat(fromHex("302e020100300506032b656e04220420"), fromHex(h)),
     "X25519",
     false,
     ["deriveBits"],
@@ -118,6 +122,34 @@ describe("protocol-10 state chain: Go interoperability", () => {
       mutate(s);
       await expect(verifyTransition(genesis, s)).rejects.toThrow();
     }
+  });
+
+  it("caches the keys it can derive before a recovery boundary", async () => {
+    const genesis = await state(vectors.genesis);
+    const added = await state(vectors.added);
+    const renewal = await state(vectors.renewal);
+    const recovery = await state(vectors.recovery);
+    const machine = added.core.members.find((m) => m.kind === 1)!;
+    const record = await buildRecord(
+      pin,
+      [genesis, added, renewal],
+      [undefined, undefined, undefined],
+      machine.id,
+      await xFromHex(vectors.machine_x),
+    );
+    const proof = await parseRecoveryStatement(
+      unb64(vectors.recovery_statement),
+    );
+    const next = await extendRecord(record, [recovery], [proof]);
+    // The retained device keeps the keys it could read before the boundary,
+    // so pre-recovery history stays readable.
+    expect(next.contentKeys.map((k) => k.epoch)).toContain(2n);
+    expect(next.contentKeys.map((k) => k.epoch)).toContain(3n);
+    expect(hex(await contentSecretOf(next, 2n))).toBe(
+      vectors.content_secret_2,
+    );
+    // The persisted counter is a block high-water, never an in-use value.
+    expect(next.counter).toBe(next.blockEnd);
   });
 
   it("stops the key walk at the recovery boundary", async () => {

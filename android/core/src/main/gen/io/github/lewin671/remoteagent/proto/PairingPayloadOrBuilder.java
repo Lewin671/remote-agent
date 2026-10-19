@@ -42,7 +42,7 @@ public interface PairingPayloadOrBuilder extends
    *
    * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.SecurityState>
+  java.util.List<io.github.lewin671.remoteagent.proto.SecurityState> 
       getSecurityStatesList();
   /**
    * <pre>

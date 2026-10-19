@@ -121,13 +121,13 @@ remote-agent account join --server https://ra.example.com --code "1234 5678"
 
 ## 4. Your phone and other devices
 
-Install the Android APK from the [latest release](https://github.com/Lewin671/remote-agent/releases/latest) first. In the app, create the account on this relay (it asks for the setup token) and save the recovery code it shows once. The phone is the account's manager: only it can add or remove devices, renew the lease and recover the account.
+Install the Android APK from the [latest release](https://github.com/Lewin671/remote-agent/releases/latest) first. In the app, create the account on this relay (it asks for the setup token) and save the recovery code it shows once (the whole text, including its genesis-hash prefix). The phone is the account's manager: only it can add or remove devices, renew the lease and recover the account.
 
 - **Computer:** run `remote-agent account join --server https://ra.example.com --code <code from the phone>`; the running daemon connects within a few seconds. Compare the four symbols on both screens: confirm on the computer first, then allow on the phone.
 - **Web:** open `https://app.example.com`, choose the join flow, and enter the code or scan the phone's QR code. Confirm the same four symbols in the browser, then allow on the phone. In the browser's menu, install the page as an app to get a home-screen icon and Web Push notifications.
 - **iOS:** join the same way; it is a normal client and cannot manage the account.
 - **Another device later:** open the phone's device page and choose add device. The QR code and code come from the phone, not from a computer.
-- **Removal:** only from the phone's device page. Browsers and computers show a prompt to use the phone.
+- **Removal:** only from the phone's device page. Browsers and computers show a prompt to use the phone. A removed computer that joins again gets a fresh device identity; its old key stays revoked.
 - **Lease:** open the app at least once every 72 hours. After the lease expires, remote control pauses; chat, history and the terminal view keep working until the phone renews it.
 
 Now start a session and it appears on every device:
@@ -293,16 +293,20 @@ CREATE TABLE security_recovery (
   recovery_id TEXT NOT NULL UNIQUE,
   statement BLOB NOT NULL,
   state BLOB NOT NULL,
+  new_recovery_ed BLOB NOT NULL,
   submitted_ms INTEGER NOT NULL,
   ready_ms INTEGER NOT NULL,
   completed_ms INTEGER NOT NULL DEFAULT 0,
-  rejected_ms INTEGER NOT NULL DEFAULT 0,
-  device_id TEXT NOT NULL DEFAULT '',
-  token_hash BLOB
+  rejected_ms INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX security_recovery_new_ed ON security_recovery(new_recovery_ed);
 ALTER TABLE sessions ADD COLUMN key_content_epoch INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE accounts ADD COLUMN recovery_ed BLOB;
 CREATE INDEX accounts_recovery ON accounts(recovery_ed);
+-- Mark every account that predates the phone authority. They must pin their
+-- genesis offline (step 5) instead of over the network.
+ALTER TABLE accounts ADD COLUMN offline_pin INTEGER NOT NULL DEFAULT 0;
+UPDATE accounts SET offline_pin = 1;
 UPDATE accounts SET security_genesis = NULL;
 UPDATE pairing_admissions SET canceled_ms = CAST(strftime('%s','now') AS INTEGER)*1000
  WHERE used_ms = 0 AND canceled_ms = 0;
@@ -316,9 +320,9 @@ Clearing `security_genesis` discards the protocol 9 pin. Every account on the re
 
 3. Install all new programs. For an existing account, keep the relay stopped and pin offline in step 5. For a fresh relay with no account, start it now; the phone creates the account and pins over the network. It does not accept protocol 9 clients.
 
-4. On the Android phone, update the app and choose to rebuild the security domain and become the authority. It keeps the existing account root and Ed25519 device identity, discards the protocol 9 security state, and generates a new recovery code and the genesis state (the phone is the only member); there is no separate authority key, the phone member signs states with its existing device key. Save the recovery code offline; the app shows it once and does not keep it. The code only signs a recovery statement: a new phone will not decrypt content from before the recovery. Retained computers re-publish their current session metadata, session keys and current-state snapshots under the new content key, so live sessions reappear; older history stays on devices that already had it.
+4. On the Android phone, update the app. It sees the existing account without a protocol 10 security state and offers **rebuild the security domain and become the authority**. Keep the account root and the phone's Ed25519 device identity; discard the protocol 9 security state; generate a new recovery code and the genesis state (the phone is the only member). There is no separate authority key: the phone member signs states with its existing device key. The app shows the new recovery code once and does not keep it — save it offline before continuing. If the account was upgraded from layout 5, the relay refuses the network pin and the app tells you to pin offline in step 5; the genesis is still built locally and can be exported. Protocol 9 accounts written by older app versions lack the account public key in their local account file; the app derives it from the retained root once and rewrites the file. The recovery code only signs a recovery statement: a new phone will not decrypt content from before the recovery. Retained computers re-publish their current session metadata, session keys and current-state snapshots under the new content key, so live sessions reappear; older history stays on devices that already had it.
 
-5. Pin the genesis. An existing account must be pinned offline before the relay starts: old device tokens are still in the database and could otherwise race the phone to the first pin. A newly created account has no earlier tokens, so the phone may pin over the network. On a relay upgraded from layout 5, while `security_genesis` is NULL any logged-in device of the account can still pin over the network; there is no switch for this, so the offline pin below must be done before the relay starts. On the Android phone, open **设备** (Devices) and tap **导出创世状态（中继离线固定用）** (Export genesis for the relay's offline pin), then share the resulting `public-genesis.bin` to the computer that holds the relay. It is the public genesis state and contains no keys. Transfer it over a trusted channel, and run this with the relay stopped:
+5. Pin the genesis. An existing account must be pinned offline before the relay starts: old device tokens are still in the database and could otherwise race the phone to the first pin. A newly created account has no earlier tokens, so the phone may pin over the network. On a relay upgraded from layout 5, every pre-existing account is marked `offline_pin = 1` by the migration and the relay refuses `PinSecurityDomain` over the network for it, so the offline pin below must be done before the relay starts. There is no switch: a fresh account (created after the upgrade) is not marked and may pin over the network. On the Android phone, open **设备** (Devices) and tap **导出创世状态（中继离线固定用）** (Export genesis for the relay's offline pin), then share the resulting `public-genesis.bin` to the computer that holds the relay. It is the public genesis state and contains no keys. Transfer it over a trusted channel, and run this with the relay stopped:
 
 ```sql
 .bail on
@@ -335,4 +339,4 @@ Run it as a file, `sqlite3 remote-agent.db < pin.sql`: `.bail on` stops at the c
 
 6. On each retained computer, run `remote-agent account join --server https://relay.example.com --code CODE` with the code shown by the phone. This overwrites the old `security` block in `account.json` and ignores any old authority fields. Existing browsers and apps choose to pair again. Compare all four symbols: confirm on the candidate first, then allow on the phone. Re-pairing keeps the Ed25519 identity and replaces the exchange key; start that computer's new daemon only after joining. Remove the migration backup after verification: restoring it restores old permissions.
 
-Old protocol 9 registrations that are not paired again are not members. After the genesis exists, the relay checks every logged-in device against the signed member list and refuses anything else, so a leftover row or bearer token cannot read the account or upload state. Delete those rows offline if you want the device list clean; re-pairing replaces a retained device's row. The protocol 10 authority phone cannot be removed normally: it has no second authority and no immediate handoff. Every account on a relay upgraded from layout 5 must be pinned before the relay listens; an account without a protocol 9 phone member must be rebuilt and its data discarded. Put that in the release notes. A new phone takes over through the recovery code after 48 hours, during which the old phone can veto; the recovery state removes the old phone from membership. It cannot decrypt content from before the recovery; retained computers keep the history they already hold and re-publish current-state session snapshots under the new key. Open the app at least once every 72 hours to keep remote control; after that, viewing continues but control pauses until the phone renews the lease. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.
+Old protocol 9 registrations that are not paired again are not members. After the genesis exists, the relay checks every logged-in device against the signed member list and refuses anything else, so a leftover row or bearer token cannot read the account or upload state. Delete those rows offline if you want the device list clean; re-pairing replaces a retained device's row. The protocol 10 authority phone cannot be removed normally: it has no second authority and no immediate handoff. Every account on a relay upgraded from layout 5 must be pinned before the relay listens; an account without a protocol 9 phone member must be rebuilt and its data discarded. Put that in the release notes. A new phone takes over through the recovery code after 48 hours, during which the old phone can veto; the recovery state removes the old phone from membership, and the new phone holds a new code with which it can recover again later. The code carries the first 10 bytes of the pinned genesis hash, so a relay holding the code still cannot substitute a forged chain. It cannot decrypt content from before the recovery; retained computers keep the history they already hold and re-publish current-state session snapshots under the new key. Open the app at least once every 72 hours to keep remote control; after that, viewing continues but control pauses until the phone renews the lease. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.

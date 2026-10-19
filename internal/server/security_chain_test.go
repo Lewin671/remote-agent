@@ -134,14 +134,14 @@ func TestRecoveryPendingCanBeReplacedForANewPhone(t *testing.T) {
 		}
 		return res.Msg.RecoveryId
 	}
-	firstState, firstStmt, _, _ := build()
+	firstState, firstStmt, firstEd, _ := build()
 	first := submit(firstState, firstStmt)
 	secondState, secondStmt, secondEd, secondMember := build()
 	second := submit(secondState, secondStmt)
 	if first == second {
 		t.Fatal("a different new phone reused the pending recovery ID")
 	}
-	if _, err := pc.GetRecoveryContext(ctx, connect.NewRequest(&pb.GetRecoveryContextRequest{RecoveryId: first})); err == nil {
+	if _, err := getRecoveryContext(t, pc, firstEd, nil, first); err == nil {
 		t.Fatal("replaced recovery still exists")
 	}
 	if _, err := ts.srv.store.db.ExecContext(ctx, `UPDATE security_recovery SET ready_ms = 0 WHERE recovery_id = ?`, second); err != nil {
@@ -221,7 +221,7 @@ func TestRecoveryPendingVetoAndComplete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := pc.GetRecoveryContext(ctx, connect.NewRequest(&pb.GetRecoveryContextRequest{RecoveryId: sub.Msg.RecoveryId}))
+	got, err := getRecoveryContext(t, pc, newEd, nil, sub.Msg.RecoveryId)
 	if err != nil || got.Msg.Phase != pb.GetRecoveryContextResponse_PHASE_PENDING {
 		t.Fatalf("pending: %v %v", got, err)
 	}
@@ -232,7 +232,7 @@ func TestRecoveryPendingVetoAndComplete(t *testing.T) {
 	if err := ts.removeViaState(t, mid); err != nil {
 		t.Fatal(err)
 	}
-	got, err = pc.GetRecoveryContext(ctx, connect.NewRequest(&pb.GetRecoveryContextRequest{RecoveryId: sub.Msg.RecoveryId}))
+	got, err = getRecoveryContext(t, pc, newEd, nil, sub.Msg.RecoveryId)
 	if err != nil || got.Msg.Phase != pb.GetRecoveryContextResponse_PHASE_REJECTED {
 		t.Fatalf("veto: %v %v", got, err)
 	}
@@ -270,7 +270,7 @@ func TestRecoveryPendingVetoAndComplete(t *testing.T) {
 	}
 	label := append([]byte("ra3/recovery-complete\x00"), []byte(sub.Msg.RecoveryId)...)
 	done, err := pc.CompleteRecovery(ctx, connect.NewRequest(&pb.CompleteRecoveryRequest{RecoveryId: sub.Msg.RecoveryId, Signature: ed25519.Sign(newEd, label)}))
-	if err != nil || done.Msg.DeviceId != newMember.ID || done.Msg.Token == "" {
+	if err != nil || done.Msg.DeviceId != newMember.ID {
 		t.Fatalf("complete: %v %v", done, err)
 	}
 	if !bytes.Equal(done.Msg.AccountPublicKey, ts.keys.AccountPublicKey()) {
@@ -299,8 +299,8 @@ func TestRecoveryPendingVetoAndComplete(t *testing.T) {
 	if _, err := ts.srv.store.device(ctx, c.phoneID); !errors.Is(err, errNoRows) {
 		t.Fatalf("old authority still registered: %v", err)
 	}
-	// The new phone can read the chain and has the new recovery key.
-	api := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(done.Msg.Token))
+	// The new phone logs in with the normal challenge and can read the chain.
+	api := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, newEd, newMember.ID)))
 	if _, err := api.GetSecurityStates(ctx, connect.NewRequest(&pb.GetSecurityStatesRequest{})); err != nil {
 		t.Fatalf("new phone: %v", err)
 	}
@@ -515,9 +515,7 @@ func TestRecoveryContextExposesAccountPublicKey(t *testing.T) {
 	}
 	c := ts.authority(t)
 	pc := remoteagentv1connect.NewRecoveryServiceClient(http.DefaultClient, ts.url)
-	res, err := pc.GetRecoveryContext(context.Background(), connect.NewRequest(&pb.GetRecoveryContextRequest{
-		RecoveryEd: c.recovery.Public().(ed25519.PublicKey),
-	}))
+	res, err := getRecoveryContext(t, pc, c.recovery, c.recovery.Public().(ed25519.PublicKey), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -553,4 +551,20 @@ func TestStateFromTheFutureIsAClockWarning(t *testing.T) {
 	if !strings.Contains(err.Error(), "from the future") || !strings.Contains(err.Error(), "clock") {
 		t.Fatalf("future state error = %v, want a clock warning", err)
 	}
+}
+
+// getRecoveryContext asks with a fresh server challenge signed by ed. When
+// recoveryID is empty the lookup is by edPub, the recovery key.
+func getRecoveryContext(t *testing.T, pc remoteagentv1connect.RecoveryServiceClient, ed ed25519.PrivateKey, edPub []byte, recoveryID string) (*connect.Response[pb.GetRecoveryContextResponse], error) {
+	t.Helper()
+	ch, err := pc.GetRecoveryChallenge(context.Background(), connect.NewRequest(&pb.GetRecoveryChallengeRequest{}))
+	if err != nil {
+		t.Fatalf("recovery challenge: %v", err)
+	}
+	req := &pb.GetRecoveryContextRequest{RecoveryId: recoveryID, Challenge: ch.Msg.Challenge}
+	if recoveryID == "" {
+		req.RecoveryEd = edPub
+	}
+	req.Signature = ed25519.Sign(ed, recoveryContextBytes(ch.Msg.Challenge, req.RecoveryEd, recoveryID))
+	return pc.GetRecoveryContext(context.Background(), connect.NewRequest(req))
 }

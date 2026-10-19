@@ -144,13 +144,20 @@ func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Requ
 	}
 	defer tx.Rollback()
 	var current []byte
-	if err := tx.QueryRowContext(ctx, `SELECT security_genesis FROM accounts WHERE id = ?`, t.acct).Scan(&current); err != nil {
+	var offline int
+	if err := tx.QueryRowContext(ctx, `SELECT security_genesis, offline_pin FROM accounts WHERE id = ?`, t.acct).Scan(&current, &offline); err != nil {
 		return nil, internal(err)
 	}
 	if len(current) > 0 {
 		if !bytes.Equal(current, raw) {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("another security domain is pinned; manual setup is required"))
 		}
+	} else if offline != 0 {
+		// Protocol 10 upgraded this account from layout 5. Old device tokens
+		// may still exist, so letting any signed-in device pin over the
+		// network would let one race the phone; the operator pins the
+		// exported genesis while the relay is stopped instead.
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("this account was upgraded from protocol 9: export the genesis and pin it on the relay offline, with the relay stopped"))
 	} else if _, err := tx.ExecContext(ctx, `UPDATE accounts SET security_genesis = ?, recovery_ed = ? WHERE id = ?`, raw, state.Core.RecoveryEd[:], t.acct); err != nil {
 		return nil, internal(err)
 	}
@@ -336,12 +343,15 @@ func (c *clientService) GetSecurityStates(ctx context.Context, req *connect.Requ
 	for _, r := range rows {
 		out.States = append(out.States, &pb.SecurityState{State: r.raw, Recovery: r.recRaw})
 	}
-	// The authority phone sees a pending recovery even without a push.
+	// The authority phone sees a pending recovery even without a push. The
+	// unauthenticated recovery service no longer tells it: only a key bound
+	// to the account may ask, and the phone does not keep the recovery key.
 	if d := deviceFrom(ctx); d != nil {
 		if h, _, err := t.store.securityHead(ctx); err == nil && h.Core.AuthorityID == d.id {
-			var pending int
-			if err := t.store.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM security_recovery WHERE account_id = ? AND completed_ms = 0 AND rejected_ms = 0`, t.acct).Scan(&pending); err == nil && pending > 0 {
+			var pending, ready int64
+			if err := t.store.db.QueryRowContext(ctx, `SELECT COUNT(*), COALESCE(MAX(ready_ms), 0) FROM security_recovery WHERE account_id = ? AND completed_ms = 0 AND rejected_ms = 0`, t.acct).Scan(&pending, &ready); err == nil && pending > 0 {
 				out.RecoveryPending = true
+				out.RecoveryReadyMs = uint64(max(ready, 0))
 			}
 		}
 	}
@@ -413,7 +423,7 @@ func (s *Server) seedSecurityChains(ctx context.Context) error {
 			continue
 		}
 		pin, err := st.Pin()
-		if err != nil || pin.VerifyGenesis(st) != nil {
+		if err != nil || pin.VerifyGenesis(st) != nil || st.Core.Account != e.acct {
 			slog.Error("pinned security genesis is invalid", "account", e.acct)
 			continue
 		}

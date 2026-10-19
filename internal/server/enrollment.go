@@ -147,6 +147,29 @@ func consumeAdmission(ctx context.Context, tx *sql.Tx, account, id string, reg *
 	return err
 }
 
+// requireAdmission checks that an existing device row may be replaced with
+// the same key and kind: the approval names a stored admission for exactly
+// this candidate, and its approver is still the current authority phone.
+func requireAdmission(ctx context.Context, tx *sql.Tx, a *enrollmentApproval, account, id string, kind pb.DeviceKind) error {
+	if a == nil {
+		return errAdmissionRequired
+	}
+	var approver, candidate string
+	var candidateKind int32
+	err := tx.QueryRowContext(ctx, `SELECT approver_device_id, candidate_device_id, candidate_kind FROM pairing_admissions WHERE pairing_id = ? AND account_id = ? AND expires_ms > ?`, a.info.PairingId, account, nowMs()).
+		Scan(&approver, &candidate, &candidateKind)
+	if errors.Is(err, sql.ErrNoRows) {
+		return errAdmissionRequired
+	}
+	if err != nil {
+		return err
+	}
+	if candidate != id || candidateKind != int32(kind) || approver != a.info.ApproverDeviceId {
+		return errAdmissionRequired
+	}
+	return nil
+}
+
 func (s *store) cancelAdmission(ctx context.Context, pairingID string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

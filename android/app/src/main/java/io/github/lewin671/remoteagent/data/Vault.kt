@@ -45,8 +45,14 @@ class Vault(context: Context) : DeviceSecurity.Storage {
             val deviceId = s.readUTF()
             val root = ByteArray(s.readInt()).also { s.readFully(it) }
             val seed = ByteArray(s.readInt()).also { s.readFully(it) }
-            if (version == 1) Account(server, root, seed, deviceId)
-            else {
+            if (version == 1) {
+                // Protocol 9 wrote no account public key. Derive it from the
+                // root once and immediately rewrite the file as version 2,
+                // which is the only format read after that.
+                val a = Account(server, root, seed, deviceId)
+                write(accountFile, ACCOUNT_ALIAS, accountBytes(a), unlockedOnly = true)
+                a
+            } else {
                 val accountId = s.readUTF()
                 val publicKey = ByteArray(s.readInt()).also { s.readFully(it) }
                 Account(server, root, seed, deviceId, accountId, publicKey)
@@ -55,6 +61,11 @@ class Vault(context: Context) : DeviceSecurity.Storage {
     }
 
     fun save(a: Account, notifyKey: ByteArray) {
+        write(accountFile, ACCOUNT_ALIAS, accountBytes(a), unlockedOnly = true)
+        write(notifyFile, NOTIFY_ALIAS, notifyKey, unlockedOnly = false)
+    }
+
+    private fun accountBytes(a: Account): ByteArray {
         val out = ByteArrayOutputStream()
         DataOutputStream(out).use { s ->
             s.writeInt(2)
@@ -68,8 +79,7 @@ class Vault(context: Context) : DeviceSecurity.Storage {
             s.writeInt(a.accountPublicKey.size)
             s.write(a.accountPublicKey)
         }
-        write(accountFile, ACCOUNT_ALIAS, out.toByteArray(), unlockedOnly = true)
-        write(notifyFile, NOTIFY_ALIAS, notifyKey, unlockedOnly = false)
+        return out.toByteArray()
     }
 
     private fun <T> securityTransaction(block: () -> T): T =
@@ -87,7 +97,9 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         )
 
     override fun readSecurity(): DeviceSecurity.Record = securityTransaction {
-        readSecurityUnlocked().also { refreshNotifyUnlocked(it) }
+        // A restart skips the rest of the last reserved block; those counter
+        // values must never be handed out twice.
+        readSecurityUnlocked().atBlockEnd().also { refreshNotifyUnlocked(it) }
     }
 
     override fun initializeSecurity(record: DeviceSecurity.Record) {
@@ -98,14 +110,16 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         }
     }
 
-    override fun reserveSecurity(expectedState: ByteArray): DeviceSecurity.Record =
+    override fun writeSecurity(
+        expectedState: ByteArray,
+        record: DeviceSecurity.Record,
+    ): DeviceSecurity.Record =
         securityTransaction {
             val old = readSecurityUnlocked()
             if (!DeviceSecurity.stateHash(old.head).contentEquals(expectedState))
                 throw DeviceSecurity.Failure("stale")
-            val next = old.incremented()
-            write(securityFile, ACCOUNT_ALIAS, next.bytes(), unlockedOnly = true)
-            next
+            write(securityFile, ACCOUNT_ALIAS, record.bytes(), unlockedOnly = true)
+            record
         }
 
     override fun installSecurity(

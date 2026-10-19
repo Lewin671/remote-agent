@@ -8,7 +8,7 @@ internal object MissingDeviceSecurityStorage : DeviceSecurity.Storage {
 
     override fun initializeSecurity(record: DeviceSecurity.Record) = missing()
 
-    override fun reserveSecurity(expectedState: ByteArray): DeviceSecurity.Record = missing()
+    override fun writeSecurity(expectedState: ByteArray, record: DeviceSecurity.Record): DeviceSecurity.Record = missing()
 
     override fun installSecurity(
         expectedState: ByteArray,

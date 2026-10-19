@@ -10,9 +10,17 @@ import com.connectrpc.ResponseMessage
 /**
  *  RecoveryService transfers authority with a recovery code after 48 hours.
  *  It is unauthenticated because the recovering phone has no token yet; the
- *  statement and state signatures are the authorization.
+ *  statement and state signatures are the authorization. Every lookup must
+ *  prove possession of a key already bound to the account: the recovery key
+ *  named in the request, or, when polling by recovery_id, the new authority
+ *  device key in the pending row.
  */
 public interface RecoveryServiceClientInterface {
+  /**
+   *  A short-lived server challenge that GetRecoveryContext signatures cover.
+   */
+  public suspend fun getRecoveryChallenge(request: GetRecoveryChallengeRequest, headers: Headers = emptyMap()): ResponseMessage<GetRecoveryChallengeResponse>
+
   public suspend fun getRecoveryContext(request: GetRecoveryContextRequest, headers: Headers = emptyMap()): ResponseMessage<GetRecoveryContextResponse>
 
   public suspend fun submitRecovery(request: SubmitRecoveryRequest, headers: Headers = emptyMap()): ResponseMessage<SubmitRecoveryResponse>

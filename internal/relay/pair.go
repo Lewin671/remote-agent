@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -89,16 +90,24 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil {
 		return nil, err
 	}
-	var pub ed25519.PublicKey
-	var priv ed25519.PrivateKey
-	if existing != nil {
-		priv = existing.DeviceKey()
-		pub = priv.Public().(ed25519.PublicKey)
-	} else {
-		pub, priv, err = ed25519.GenerateKey(nil)
-		if err != nil {
-			return nil, err
+	// A protocol 10 security store on this computer makes the pin a trust
+	// anchor; a protocol 9 account has none until it is paired again.
+	localV3 := false
+	localRemoved := false
+	if existing != nil && existing.Security != nil {
+		// The file existing is the trust anchor, even if it is corrupt: only a
+		// protocol 9 account without a v3 store may accept a rebuilt domain.
+		if _, err := os.Stat(securityPath()); err == nil {
+			localV3 = true
 		}
+		if ep, err := deviceauth.OpenEndpoint(securityPath()); err == nil {
+			localRemoved = ep.Removed()
+			ep.Close()
+		}
+	}
+	pub, priv, err := joiningIdentity(existing, localRemoved)
+	if err != nil {
+		return nil, err
 	}
 	x, xpub, err := deviceauth.NewXKey()
 	if err != nil {
@@ -136,7 +145,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil || !bytes.Equal(e2e.PairDomainCommit(st.InitiatorPublic, st.Trust), commit) {
 		return nil, errors.New("the existing device's trust descriptor does not match its commitment; pairing stopped")
 	}
-	if err := checkJoiningAccount(existing, pin); err != nil {
+	if err := checkJoiningAccount(existing, pin, localV3); err != nil {
 		return nil, err
 	}
 	tr := e2e.PairDomainTranscript(id, st.InitiatorPublic, key.Public(), pub, xpub, int32(pb.DeviceKind_DEVICE_KIND_MACHINE), st.Trust)
@@ -268,17 +277,31 @@ func verifyPairChain(pin deviceauth.Pin, in []*pb.SecurityState, devicePub, devi
 	return states, proofs, candidate, nil
 }
 
+// joiningIdentity reuses an existing device's Ed25519 key unless its signed
+// head says it is no longer a member: a removed device rejoins as a new one.
+func joiningIdentity(existing *Account, removed bool) (ed25519.PublicKey, ed25519.PrivateKey, error) {
+	if existing != nil && !removed {
+		priv := existing.DeviceKey()
+		return priv.Public().(ed25519.PublicKey), priv, nil
+	}
+	return ed25519.GenerateKey(nil)
+}
+
 // checkJoiningAccount decides whether a pairing may replace an existing
-// local account's security state. A protocol 9 upgrade or a protocol 10
-// recovery changes the domain and genesis of the same account, so only the
-// account identity must match; a code for another account must not replace
-// the keys that are here.
-func checkJoiningAccount(existing *Account, pin deviceauth.Pin) error {
+// local account's security state. With a protocol 10 store the pin (account,
+// domain and genesis) is a trust anchor and must match exactly; otherwise a
+// relay could reply with a forged genesis for the same account. Only a
+// protocol 9 account has no such anchor yet: its upgrade rebuilds the domain,
+// so just the account identity has to match.
+func checkJoiningAccount(existing *Account, pin deviceauth.Pin, localV3 bool) error {
 	if existing == nil || existing.Security == nil {
 		return nil
 	}
 	if pin.Account != existing.Security.Pin.Account {
 		return errors.New("the code belongs to a different account; existing keys were preserved")
+	}
+	if localV3 && pin != existing.Security.Pin {
+		return errors.New("the code is for another security domain; the relay cannot replace this computer's pinned domain")
 	}
 	return nil
 }

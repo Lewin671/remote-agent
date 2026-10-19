@@ -49,6 +49,42 @@ class ApprovalTest {
     }
 
     @Test
+    fun aRotatedRecoveryCodeIsPublishedOnlyAfterTheUserConfirms() = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        val owner = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
+        val sponsor = fixtureRemote(owner.phone, http)
+        try {
+            owner.putMachine("synthetic-manager")
+            owner.connect()
+            owner.waitReady()
+            withTimeout(15_000) {
+                val before = sponsor.security.head()
+                val prepared = sponsor.prepareRecovery()
+                assertNotNull(RecoveryCode.decode(prepared.code))
+                // Nothing is published before the user confirms the new code.
+                assertEquals(before.core.epoch, sponsor.security.head().core.epoch)
+                assertTrue(
+                    before.core.recoveryEd.contentEquals(
+                        sponsor.security.head().core.recoveryEd,
+                    ),
+                )
+                sponsor.publishRecovery(prepared)
+                assertEquals(before.core.epoch + 1uL, sponsor.security.head().core.epoch)
+                assertFalse(
+                    before.core.recoveryEd.contentEquals(
+                        sponsor.security.head().core.recoveryEd,
+                    ),
+                )
+            }
+        } finally {
+            sponsor.close()
+            owner.close()
+            server.close()
+        }
+    }
+
+    @Test
     fun candidateDoesNotSignOrPersistWithoutLocalSasConfirmation() = runBlocking {
         val server = TestServer()
         val http = Api.defaultHttp()

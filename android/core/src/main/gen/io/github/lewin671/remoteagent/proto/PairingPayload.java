@@ -89,7 +89,7 @@ public  final class PairingPayload extends
    */
   private void setApproval(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
-
+  
     approval_ = value;
   }
   /**
@@ -116,7 +116,7 @@ public  final class PairingPayload extends
    */
   private void setApprovalSignature(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
-
+  
     approvalSignature_ = value;
   }
   /**
@@ -149,7 +149,7 @@ public  final class PairingPayload extends
    *
    * <code>repeated .remoteagent.v1.SecurityState security_states = 5 [json_name = "securityStates"];</code>
    */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.SecurityStateOrBuilder>
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.SecurityStateOrBuilder> 
       getSecurityStatesOrBuilderList() {
     return securityStates_;
   }
@@ -305,7 +305,7 @@ public  final class PairingPayload extends
    */
   private void setAccountPublicKey(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
-
+  
     accountPublicKey_ = value;
   }
   /**

@@ -27,7 +27,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.RaApp
+import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.CreatedAccount
+import io.github.lewin671.remoteagent.core.PendingRecoveryInfo
+import io.github.lewin671.remoteagent.core.PreparedRecovery
+import io.github.lewin671.remoteagent.core.DeviceSecurity
 import io.github.lewin671.remoteagent.core.Recovery
 import io.github.lewin671.remoteagent.core.RecoveryChain
 import io.github.lewin671.remoteagent.core.RecoveryCode
@@ -35,6 +39,7 @@ import io.github.lewin671.remoteagent.core.RecoverySubmission
 import io.github.lewin671.remoteagent.core.Secret
 import io.github.lewin671.remoteagent.core.SigningKey
 import io.github.lewin671.remoteagent.core.createAccount
+import io.github.lewin671.remoteagent.core.rebuildSecurityDomain
 import io.github.lewin671.remoteagent.core.dayText
 import io.github.lewin671.remoteagent.core.deviceId
 import io.github.lewin671.remoteagent.core.errorText
@@ -44,22 +49,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** 管理端 · 恢复: a pending recovery can be vetoed here, which shows a new recovery code once. */
+/** 管理端 · 恢复: a pending recovery can be vetoed here. The new code is shown
+ * and saved first; the rotated state is published only after the user confirms. */
 @Composable
 fun RecoveryScreen(onBack: () -> Unit = {}) {
     val remote = LocalRemote.current
     val p = pal
     val scope = rememberCoroutineScope()
-    var chain by remember { mutableStateOf<RecoveryChain?>(null) }
+    var pending by remember { mutableStateOf<PendingRecoveryInfo?>(null) }
     var loading by remember { mutableStateOf(true) }
-    var newCode by remember { mutableStateOf("") }
+    var prepared by remember { mutableStateOf<PreparedRecovery?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     val t = now()
 
     LaunchedEffect(Unit) {
         loading = true
-        chain = remote.pendingRecovery()
+        pending = runCatching { remote.pendingRecovery() }.getOrNull()
         loading = false
     }
     PageScaffold("恢复管理权") {
@@ -69,79 +75,96 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                 .imePadding()
                 .padding(horizontal = 16.dp),
         ) {
-            if (newCode.isNotEmpty()) {
+            val pv = prepared
+            if (pv != null) {
                 GLabel("新的恢复码 · 只显示这一次")
-                RecoveryCodeFigure(newCode)
-                Hint("请抄下来或拍照保存。它只签恢复声明，不能解密内容。原恢复码已作废。", Modifier)
+                RecoveryCodeFigure(pv.code)
+                Hint(
+                    "先抄下来或拍照保存，再点下面的按钮。发布后原恢复码才作废；保存好之前不会发布。",
+                    Modifier,
+                )
+                if (error.isNotEmpty())
+                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
                 Btn(
-                    "我已保存",
-                    { newCode = ""; onBack() },
+                    if (busy) "正在发布…" else "我已保存，发布否决",
+                    {
+                        busy = true
+                        error = ""
+                        scope.launch {
+                            try {
+                                remote.publishRecovery(pv)
+                                prepared = null
+                                pending = null
+                                onBack()
+                            } catch (e: Exception) {
+                                error = errorText(e)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
                     Modifier.fillMaxWidth().padding(top = 12.dp),
                     BtnKind.PRIMARY,
+                    enabled = !busy,
+                )
+                Btn(
+                    "先不发布",
+                    { prepared = null; error = "" },
+                    Modifier.fillMaxWidth().padding(top = 6.dp),
+                    BtnKind.SECONDARY,
+                    enabled = !busy,
                 )
             } else if (loading) {
                 Hint("正在读取…", Modifier.padding(vertical = 16.dp))
             } else {
-                val c = chain
+                val c = pending
                 if (c == null) {
                     Hint(
                         "现在没有等待处理的恢复。换手机时，在新手机上输入恢复码提交；提交后 48 小时内可以在这里否决。",
                         Modifier.padding(vertical = 12.dp),
                     )
                 } else {
-                    when (c.phase) {
-                        GetRecoveryContextResponse.Phase.PHASE_PENDING,
-                        GetRecoveryContextResponse.Phase.PHASE_READY -> {
-                            Banner(
-                                "有人正在用恢复码申请接管管理权",
-                                Modifier.padding(bottom = 10.dp),
-                                Tone2.ERROR,
-                            )
-                            GLabel("何时可以生效")
-                            Hint(
-                                if (c.readyMs > 0)
-                                    dayText(c.readyMs, t) + "。不是你本人就现在否决；否决后这次恢复和它的新恢复码都作废。"
-                                else "48 小时后。",
-                                Modifier,
-                            )
-                            if (error.isNotEmpty())
-                                Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
-                            Btns {
-                                Btn(
-                                    if (busy) "正在否决…" else "否决这次恢复",
-                                    {
-                                        busy = true
-                                        error = ""
-                                        scope.launch {
-                                            try {
-                                                val code = remote.vetoRecovery()
-                                                newCode = code
-                                                chain = null
-                                            } catch (e: Exception) {
-                                                error = errorText(e)
-                                            } finally {
-                                                busy = false
-                                            }
-                                        }
-                                    },
-                                    Modifier.weight(1f),
-                                    BtnKind.NEGATIVE,
-                                    enabled = !busy,
-                                )
-                                Btn(
-                                    "返回",
-                                    onBack,
-                                    Modifier.weight(1f),
-                                    BtnKind.SECONDARY,
-                                    enabled = !busy,
-                                )
-                            }
-                        }
-                        GetRecoveryContextResponse.Phase.PHASE_REJECTED ->
-                            Hint("这次恢复已被否决。", Modifier.padding(vertical = 12.dp))
-                        GetRecoveryContextResponse.Phase.PHASE_PUBLISHED ->
-                            Hint("这次恢复已经完成，管理权已经转走。", Modifier.padding(vertical = 12.dp))
-                        else -> Hint("恢复状态无法识别，请稍后再看。", Modifier.padding(vertical = 12.dp))
+                    Banner(
+                        "有人正在用恢复码申请接管管理权",
+                        Modifier.padding(bottom = 10.dp),
+                        Tone2.ERROR,
+                    )
+                    GLabel("何时可以生效")
+                    Hint(
+                        if (c.readyMs > 0)
+                            dayText(c.readyMs, t) + "。不是你本人就现在否决；否决后这次恢复和它的新恢复码都作废。"
+                        else "48 小时后。",
+                        Modifier,
+                    )
+                    if (error.isNotEmpty())
+                        Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
+                    Btns {
+                        Btn(
+                            if (busy) "正在准备…" else "否决这次恢复",
+                            {
+                                busy = true
+                                error = ""
+                                scope.launch {
+                                    try {
+                                        prepared = remote.prepareRecovery()
+                                    } catch (e: Exception) {
+                                        error = errorText(e)
+                                    } finally {
+                                        busy = false
+                                    }
+                                }
+                            },
+                            Modifier.weight(1f),
+                            BtnKind.NEGATIVE,
+                            enabled = !busy,
+                        )
+                        Btn(
+                            "返回",
+                            onBack,
+                            Modifier.weight(1f),
+                            BtnKind.SECONDARY,
+                            enabled = !busy,
+                        )
                     }
                 }
                 if (error.isNotEmpty())
@@ -193,13 +216,20 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                         error = ""
                         scope.launch {
                             try {
-                                val seed = RecoveryCode.decode(code)
+                                val decoded = RecoveryCode.decode(code)
                                     ?: throw IllegalArgumentException("恢复码不对")
+                                val seed = decoded.seed
                                 val url = checkedServer(server)
                                 val recoveryEd = SigningKey(seed).publicKey
                                 val existing =
                                     withContext(Dispatchers.IO) {
-                                        Recovery.context(url, app.http, recoveryEd)
+                                        Recovery.context(
+                                            url,
+                                            app.http,
+                                            recoveryEd,
+                                            seed,
+                                            expectedGenesis = decoded.genesis,
+                                        )
                                     }
                                 submission =
                                     if (
@@ -223,11 +253,18 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                             existing.accountId,
                                             existing.accountPublicKey,
                                             saved.stateHash,
+                                            existing.pin.genesis.copyOf(10),
                                         )
                                     } else {
                                         val r =
                                             withContext(Dispatchers.IO) {
-                                                Recovery.submit(url, app.http, seed, deviceSeed)
+                                                Recovery.submit(
+                                                    url,
+                                                    app.http,
+                                                    seed,
+                                                    deviceSeed,
+                                                    decoded.genesis,
+                                                )
                                             }
                                         app.vault.savePendingRecovery(
                                             r.recoveryId,
@@ -279,7 +316,9 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                                 checkedServer(server),
                                                 app.http,
                                                 ByteArray(0),
-                                                s.recoveryId,
+                                                s.deviceSeed,
+                                                recoveryId = s.recoveryId,
+                                                expectedGenesis = s.genesisPrefix,
                                             )
                                         }
                                 } catch (e: Exception) {
@@ -463,4 +502,196 @@ private fun RecoveryField(
             }
         },
     )
+}
+
+/** 已有账户升级到协议 10: rebuild the domain locally and show the recovery code
+ * before the account is adopted. An upgraded relay pins offline instead. */
+@Composable
+fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {}) {
+    val p = pal
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    var created by remember { mutableStateOf<CreatedAccount?>(null) }
+    var error by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    PageScaffold("重建安全域") {
+        Column(
+            Modifier.fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(horizontal = 16.dp),
+        ) {
+            val c = created
+            if (c == null) {
+                Text(
+                    "保留这台手机的账户根密钥和设备身份，丢弃协议 9 的安全状态，生成协议 10 的创世状态并让这台手机成为管理端。协议 9 的历史要用旧版本读。",
+                    style = T.sm,
+                    color = p.muted,
+                    modifier = Modifier.padding(vertical = 10.dp),
+                )
+                if (existing == null || !existing.hasRoot)
+                    Hint("这台手机没有账户根密钥，不能成为管理端。请用当初创建账户的手机操作，或在新手机上用恢复码找回。", Modifier)
+                if (error.isNotEmpty())
+                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
+                Btn(
+                    if (busy) "正在重建…" else "重建安全域并成为管理端",
+                    {
+                        if (existing == null) {
+                            error = "没有可升级的账户"
+                            return@Btn
+                        }
+                        busy = true
+                        error = ""
+                        scope.launch {
+                            try {
+                                created =
+                                    withContext(Dispatchers.IO) {
+                                        rebuildSecurityDomain(
+                                            existing.server,
+                                            app.http,
+                                            existing,
+                                        )
+                                    }
+                            } catch (e: Exception) {
+                                error = errorText(e)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    BtnKind.PRIMARY,
+                    enabled = !busy && existing != null && existing.hasRoot,
+                )
+                TextAction("返回", onBack, alignment = Alignment.CenterStart)
+            } else {
+                GLabel("新的恢复码 · 只显示这一次")
+                RecoveryCodeFigure(c.recoveryCode)
+                Hint("请抄下来或拍照保存。它只签恢复声明，不能解密内容。", Modifier)
+                if (c.needsOfflinePin)
+                    Banner(
+                        "中继还没有固定这个安全域（从旧版本升级，或中继正停着）。先导出公开的创世状态，在中继停服时固定（docs/self-hosting 第 4–5 步），再启动中继。",
+                        Modifier.padding(top = 10.dp),
+                        Tone2.WARN,
+                    )
+                if (c.needsOfflinePin)
+                    TextAction(
+                        "导出创世状态（中继离线固定用）",
+                        {
+                            shareGenesis(
+                                ctx,
+                                DeviceSecurity.stateBytes(c.record.chain.first()),
+                            )
+                        },
+                        alignment = Alignment.CenterStart,
+                    )
+                if (error.isNotEmpty())
+                    Banner(error, Modifier.padding(top = 8.dp), Tone2.ERROR)
+                Btn(
+                    if (busy) "正在保存…" else "我已保存，开始使用",
+                    {
+                        busy = true
+                        error = ""
+                        scope.launch {
+                            try {
+                                app.created(c.account, c.record)
+                            } catch (e: Exception) {
+                                error = errorText(e)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    Modifier.fillMaxWidth().padding(top = 12.dp),
+                    BtnKind.PRIMARY,
+                    enabled = !busy,
+                )
+                TextAction("返回", onBack, alignment = Alignment.CenterStart)
+            }
+        }
+    }
+}
+
+/** 更换恢复码: rotate on suspected leak, with the same save-before-publish order. */
+@Composable
+fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
+    val remote = LocalRemote.current
+    val p = pal
+    val scope = rememberCoroutineScope()
+    var prepared by remember { mutableStateOf<PreparedRecovery?>(null) }
+    var error by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    PageScaffold("更换恢复码") {
+        Column(
+            Modifier.fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(horizontal = 16.dp),
+        ) {
+            val pv = prepared
+            if (pv == null) {
+                Text(
+                    "怀疑恢复码泄露时可以换一个。旧码立即作废，新码只显示一次；保存好之前不会发布。",
+                    style = T.sm,
+                    color = p.muted,
+                    modifier = Modifier.padding(vertical = 10.dp),
+                )
+                if (error.isNotEmpty())
+                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
+                Btn(
+                    if (busy) "正在生成…" else "生成新的恢复码",
+                    {
+                        busy = true
+                        error = ""
+                        scope.launch {
+                            try {
+                                prepared = remote.prepareRecovery()
+                            } catch (e: Exception) {
+                                error = errorText(e)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    BtnKind.PRIMARY,
+                    enabled = !busy,
+                )
+                TextAction("返回", onBack, alignment = Alignment.CenterStart)
+            } else {
+                GLabel("新的恢复码 · 只显示这一次")
+                RecoveryCodeFigure(pv.code)
+                Hint("先抄下来或拍照保存，再发布。发布成功后旧码立即作废。", Modifier)
+                if (error.isNotEmpty())
+                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
+                Btn(
+                    if (busy) "正在发布…" else "我已保存，发布新码",
+                    {
+                        busy = true
+                        error = ""
+                        scope.launch {
+                            try {
+                                remote.publishRecovery(pv)
+                                onBack()
+                            } catch (e: Exception) {
+                                error = errorText(e)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    Modifier.fillMaxWidth().padding(top = 12.dp),
+                    BtnKind.PRIMARY,
+                    enabled = !busy,
+                )
+                Btn(
+                    "先不发布",
+                    { prepared = null },
+                    Modifier.fillMaxWidth().padding(top = 6.dp),
+                    BtnKind.SECONDARY,
+                    enabled = !busy,
+                )
+            }
+        }
+    }
 }

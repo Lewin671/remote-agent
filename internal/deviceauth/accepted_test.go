@@ -3,6 +3,7 @@ package deviceauth
 import (
 	"bytes"
 	"crypto/ed25519"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -165,7 +166,136 @@ func TestTwoEpochChangesInOneInstall(t *testing.T) {
 	}
 }
 
-func TestReplayHighWaterResetsWithContentEpoch(t *testing.T) {
+func TestCommandsFromOneDeviceMayArriveOutOfOrder(t *testing.T) {
+	c := newCurrentChain(t)
+	machine := c.machineEndpoint(t, "")
+	client := c.clientEndpoint(t)
+	defer machine.Close()
+	defer client.Close()
+	now := uint64(time.Now().UnixMilli())
+	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
+	first, err := client.Prepare(h, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.Request = "fedcba9876543210"
+	second, err := client.Prepare(h, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	fn := func(Header, []byte) ([]byte, error) { calls++; return []byte("ok"), nil }
+	// Concurrent senders reach the daemon in either order; a later counter
+	// arriving first must not make an earlier one look stale.
+	if _, err := machine.Accept(second, nil, now, fn); err != nil {
+		t.Fatalf("later counter first: %v", err)
+	}
+	if _, err := machine.Accept(first, nil, now, fn); err != nil {
+		t.Fatalf("earlier counter second: %v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("commands ran %d times", calls)
+	}
+}
+
+func TestAcceptedRequestSurvivesAContentEpochChange(t *testing.T) {
+	c := newCurrentChain(t)
+	machine := c.machineEndpoint(t, "")
+	client := c.clientEndpoint(t)
+	defer machine.Close()
+	defer client.Close()
+	now := uint64(time.Now().UnixMilli())
+	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 600_000}
+	w, err := client.Prepare(h, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	fn := func(Header, []byte) ([]byte, error) { calls++; return []byte("ok"), nil }
+	if _, err := machine.Accept(w, nil, now, fn); err != nil {
+		t.Fatal(err)
+	}
+	extra, _, _ := testMember(t, 0x88, Machine)
+	secret4 := bytes.Repeat([]byte{0x99}, 32)
+	phone, _ := c.genesis.Core.Member(c.genesis.Core.AuthorityID)
+	next, err := BuildState(c.withClient, []Member{c.machine, c.client, extra, phone}, nil, secret4, mustPrev(t, secret4, bytes.Repeat([]byte{0x77}, 32)), c.phoneEd, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := machine.Install([]State{next}, []*RecoveryStatement{nil}); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.Install([]State{next}, []*RecoveryStatement{nil}); err != nil {
+		t.Fatal(err)
+	}
+	// The web retries with the same request ID after the key change: the
+	// command must not run a second time.
+	w, err = client.Prepare(h, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out, err := machine.Accept(w, nil, now, fn); err != nil || string(out) != "ok" || calls != 1 {
+		t.Fatalf("re-sealed retry after epoch change: %q %v calls=%d", out, err, calls)
+	}
+	// A different request in the new epoch still runs.
+	h.Request = "fedcba9876543210"
+	w, err = client.Prepare(h, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := machine.Accept(w, nil, now, fn); err != nil || calls != 2 {
+		t.Fatalf("first command of the new content epoch: %v calls=%d", err, calls)
+	}
+}
+
+func TestAcceptedLogFullDoesNotEvictLiveEntries(t *testing.T) {
+	c := newCurrentChain(t)
+	machine := c.machineEndpoint(t, "")
+	client := c.clientEndpoint(t)
+	defer machine.Close()
+	defer client.Close()
+	now := uint64(time.Now().UnixMilli())
+	filler := bytes.Repeat([]byte{0x5a}, maxAcceptedBytes-300)
+	machine.data.Accepted["filler"] = accepted{Deadline: now + 600_000, Done: true, Result: filler, Persisted: true}
+	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
+	w, err := client.Prepare(h, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := bytes.Repeat([]byte{0x6b}, 400)
+	if _, err := machine.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { return result, nil }); err != ErrCapacity {
+		t.Fatalf("finish over the byte cap: %v", err)
+	}
+	if _, ok := machine.data.Accepted["filler"]; !ok {
+		t.Fatal("an unexpired accepted entry was evicted")
+	}
+}
+
+func TestClockBehindTheFloorPausesControl(t *testing.T) {
+	c := newCurrentChain(t)
+	machine := c.machineEndpoint(t, "")
+	client := c.clientEndpoint(t)
+	defer machine.Close()
+	defer client.Close()
+	now := uint64(time.Now().UnixMilli())
+	if err := machine.Touch(now + 10*60*1000); err != nil {
+		t.Fatal(err)
+	}
+	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 24*60*60*1000}
+	w, err := client.Prepare(h, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	if _, err := machine.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { called = true; return nil, nil }); !errors.Is(err, ErrStale) {
+		t.Fatalf("control with a clock behind the floor: %v", err)
+	}
+	if called {
+		t.Fatal("a command ran while the clock was behind the floor")
+	}
+}
+
+func TestAuthenticatedOnlyLookupDoesNotAnswerForgedRequests(t *testing.T) {
 	c := newCurrentChain(t)
 	machine := c.machineEndpoint(t, "")
 	client := c.clientEndpoint(t)
@@ -177,33 +307,16 @@ func TestReplayHighWaterResetsWithContentEpoch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fn := func(Header, []byte) ([]byte, error) { return []byte("ok"), nil }
-	if _, err := machine.Accept(w, nil, now, fn); err != nil {
+	if _, err := machine.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { return []byte("secret-result"), nil }); err != nil {
 		t.Fatal(err)
 	}
-	extra, _, _ := testMember(t, 0x88, Machine)
-	secret4 := bytes.Repeat([]byte{0x99}, 32)
-	phone, _ := c.genesis.Core.Member(c.genesis.Core.AuthorityID)
-	next, err := BuildState(c.withClient, []Member{c.machine, c.client, extra, phone}, nil, secret4, mustPrev(t, secret4, bytes.Repeat([]byte{0x77}, 32)), c.phoneEd, uint64(time.Now().UnixMilli()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := VerifyTransition(c.withClient, next, nil); err != nil {
-		t.Fatalf("transition: %v", err)
-	}
-	if err := machine.Install([]State{next}, []*RecoveryStatement{nil}); err != nil {
-		t.Fatal(err)
-	}
-	if err := client.Install([]State{next}, []*RecoveryStatement{nil}); err != nil {
-		t.Fatal(err)
-	}
-	h.Request = "fedcba9876543210"
-	w, err = client.Prepare(h, nil, commandBody(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := machine.Accept(w, nil, now, fn); err != nil {
-		t.Fatalf("first command of the new content epoch: %v", err)
+	// The header still names the accepted request, but the ciphertext is not
+	// authentic. It must not learn the recorded result.
+	forged := w
+	forged.Cipher = bytes.Clone(w.Cipher)
+	forged.Cipher[0] ^= 1
+	if out, err := machine.Accept(forged, nil, now, func(Header, []byte) ([]byte, error) { return nil, nil }); err == nil || string(out) == "secret-result" {
+		t.Fatalf("forged request got a cached answer: %q %v", out, err)
 	}
 }
 
@@ -262,5 +375,67 @@ func TestNonCanonicalStateRejected(t *testing.T) {
 	core, _ := c.genesis.Core.MarshalBinary()
 	if _, err := ParseCore(append(core, 0)); err == nil {
 		t.Fatal("trailing core bytes accepted")
+	}
+}
+
+// TestARe recovery keeps every derivable content key: before a recovery
+// boundary stops the PrevSecret walk, the retained device caches what it can
+// still open.
+func TestRecoveryKeepsEveryDerivableContentKey(t *testing.T) {
+	now := uint64(time.Now().UnixMilli())
+	phone, phoneEd, _ := testMember(t, 0x21, Client)
+	_, recKey, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var recPub [32]byte
+	copy(recPub[:], recKey.Public().(ed25519.PublicKey))
+	secret1 := bytes.Repeat([]byte{0x31}, 32)
+	genesis, err := BuildGenesis("0123456789abcdef0123456789abcdef", digest("test/domain", []byte("keys")), phone, recPub, secret1, phoneEd, now-4000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin, _ := genesis.Pin()
+	machine, machineEd, machineX := testMember(t, 0x41, Machine)
+	secret2 := bytes.Repeat([]byte{0x32}, 32)
+	machineXPub, err := XPublic(machineX)
+	if err != nil {
+		t.Fatal(err)
+	}
+	added, err := BuildPairState(genesis, machine, machineXPub, secret1, secret2, phoneEd, now-3000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, _, _ := testMember(t, 0x51, Client)
+	secret3 := bytes.Repeat([]byte{0x33}, 32)
+	withClient, err := BuildState(added, []Member{phone, machine, client}, nil, secret3, mustPrev(t, secret3, secret2), phoneEd, now-2000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	machineEp, err := InitEndpoint("", pin, []State{genesis, added, withClient}, []*RecoveryStatement{nil, nil, nil}, machine.ID, machineEd.Seed(), machineX)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer machineEp.Close()
+	// Simulate a running device that has not asked for the older keys yet.
+	machineEp.data.ContentKeys = map[uint64][]byte{withClient.Core.ContentEpoch: secret3}
+
+	newPhone, newPhoneEd, _ := testMember(t, 0x61, Client)
+	secret4 := bytes.Repeat([]byte{0x34}, 32)
+	_, newRecKey, _ := testMember(t, 0x71, Client)
+	var newRecovery [32]byte
+	copy(newRecovery[:], newRecKey.Public().(ed25519.PublicKey))
+	rec, stmt, err := BuildRecovery(withClient, newPhone, []Member{machine, client, newPhone}, secret4, newPhoneEd, recKey, newRecovery, now-1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := machineEp.Install([]State{rec}, []*RecoveryStatement{&stmt}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := machineEp.ContentSecret(2); err != nil {
+		t.Fatalf("content key 2 lost at the recovery boundary: %v", err)
+	}
+	if _, err := machineEp.ContentSecret(3); err != nil {
+		t.Fatalf("content key 3 lost at the recovery boundary: %v", err)
 	}
 }

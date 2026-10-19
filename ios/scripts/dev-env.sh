@@ -89,7 +89,7 @@ start() {
 	command -v go >/dev/null 2>&1 || die "go is not installed"
 	mkdir -p "$bin" "$dir/server" "$dir/home"
 	chmod 700 "$dir"
-	(cd "$repo" && go build -o "$bin/remote-agent-server" ./cmd/remote-agent-server && go build -o "$bin/remote-agent" ./cmd/remote-agent) \
+	(cd "$repo" && go build -o "$bin/remote-agent-server" ./cmd/remote-agent-server && go build -tags dev -o "$bin/remote-agent" ./cmd/remote-agent) \
 		|| die "the build failed"
 	if [ -z "$port" ]; then
 		port=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')

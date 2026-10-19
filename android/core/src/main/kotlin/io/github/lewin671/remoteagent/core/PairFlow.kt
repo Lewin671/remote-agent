@@ -237,6 +237,8 @@ internal constructor(
                     val member =
                         DeviceSecurity.Member(deviceId(cp), cp, xp, kind.number.toUInt())
                     val existing = head.core.member(member.id)
+                    if (existing == null && member.id in head.core.removed)
+                        throw PairException("这台设备已被移除，旧身份不能重新加入；请在那台设备上重新加入，以生成新的设备身份")
                     val next =
                         if (existing == null)
                             Authority.pair(
@@ -411,13 +413,16 @@ suspend fun joinByPairing(
         throw DeviceSecurity.Failure("storage")
     },
     existing: Account? = null,
+    existingRemoved: Boolean = false,
     confirm: suspend (List<String>) -> Boolean = { false },
 ): Account {
     if (existing != null && existing.server != link.server) throw PairException("安全设置必须使用原账户的服务器")
     val api = Api(link.server, http)
     if (existing != null) login(api, existing)
     val key = PairKey()
-    val deviceSeed = existing?.deviceSeed ?: randomBytes(32)
+    // A removed device's identity is revoked; it rejoins with a fresh one.
+    val deviceSeed =
+        if (existing != null && !existingRemoved) existing.deviceSeed else randomBytes(32)
     val device = SigningKey(deviceSeed)
     val devicePublic = device.publicKey
     val xPrivate = randomBytes(32)

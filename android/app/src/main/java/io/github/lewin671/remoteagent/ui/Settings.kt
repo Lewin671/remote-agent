@@ -142,6 +142,7 @@ fun SettingsScreen() {
     val update by Updater.state.collectAsState()
     var storage by remember { mutableStateOf(false) }
     var licenses by remember { mutableStateOf(false) }
+    var rotating by remember { mutableStateOf(false) }
     val t = now()
     if (licenses) {
         androidx.activity.compose.BackHandler { licenses = false }
@@ -151,6 +152,11 @@ fun SettingsScreen() {
     if (storage) {
         androidx.activity.compose.BackHandler { storage = false }
         PhoneImageStoragePage { storage = false }
+        return
+    }
+    if (rotating) {
+        androidx.activity.compose.BackHandler { rotating = false }
+        RotateRecoveryScreen { rotating = false }
         return
     }
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
@@ -308,6 +314,15 @@ fun SettingsScreen() {
                         {
                             if (state.authorityPhone)
                                 GRow("现在续期", "重新签 72 小时", onClick = { remote.renewLeaseNow() })
+                        },
+                        {
+                            if (state.authorityPhone)
+                                GRow(
+                                    "更换恢复码",
+                                    "旧码立即作废",
+                                    onClick = { rotating = true },
+                                    chevron = true,
+                                )
                         },
                     ),
             )

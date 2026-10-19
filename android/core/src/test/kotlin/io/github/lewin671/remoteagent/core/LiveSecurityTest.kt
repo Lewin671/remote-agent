@@ -134,7 +134,7 @@ class LiveSecurityTest {
                 GetRecoveryContextResponse.Phase.PHASE_UNSPECIFIED,
                 0,
                 "",
-                now,
+                now = now,
             )
             fail("future-dated recovery chain accepted")
         } catch (e: DeviceSecurity.Failure) {
@@ -149,7 +149,7 @@ class LiveSecurityTest {
                 GetRecoveryContextResponse.Phase.PHASE_UNSPECIFIED,
                 0,
                 "",
-                now,
+                now = now,
             )
             fail("a chain for another account was accepted")
         } catch (e: DeviceSecurity.Failure) {

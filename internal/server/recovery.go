@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"sync"
@@ -22,6 +25,10 @@ import (
 // signing any newer state.
 const recoveryDelay = 48 * time.Hour
 
+// recoveryChallengeTTL bounds how long a GetRecoveryContext signature stays
+// valid.
+const recoveryChallengeTTL = 5 * time.Minute
+
 // recoveryRate bounds unauthenticated recovery lookups per address.
 const (
 	recoveryPerMinute = 120
@@ -31,13 +38,18 @@ const (
 type recoveryService struct {
 	s *Server
 
-	mu     sync.Mutex
-	byAddr map[string][]time.Time
-	global []time.Time
+	mu          sync.Mutex
+	byAddr      map[string][]time.Time
+	global      []time.Time
+	challengeHi []byte
 }
 
 func newRecoveryService(s *Server) *recoveryService {
-	return &recoveryService{s: s, byAddr: map[string][]time.Time{}}
+	hi := make([]byte, 32)
+	if _, err := rand.Read(hi); err != nil {
+		panic("security: no recovery challenge key: " + err.Error())
+	}
+	return &recoveryService{s: s, byAddr: map[string][]time.Time{}, challengeHi: hi}
 }
 
 func (rs *recoveryService) allow(addr string) bool {
@@ -59,6 +71,39 @@ func (rs *recoveryService) allow(addr string) bool {
 	return true
 }
 
+func (rs *recoveryService) challenge(now int64) []byte {
+	b := make([]byte, 32)
+	binary.BigEndian.PutUint64(b[:8], uint64(now+recoveryChallengeTTL.Milliseconds()))
+	m := hmac.New(sha256.New, rs.challengeHi)
+	m.Write([]byte("ra3/recovery-challenge\x00"))
+	m.Write(b[:8])
+	copy(b[8:], m.Sum(nil)[:24])
+	return b
+}
+
+func (rs *recoveryService) checkChallenge(c []byte, now int64) bool {
+	if len(c) != 32 {
+		return false
+	}
+	exp := int64(binary.BigEndian.Uint64(c[:8]))
+	if exp < now || exp > now+recoveryChallengeTTL.Milliseconds() {
+		return false
+	}
+	m := hmac.New(sha256.New, rs.challengeHi)
+	m.Write([]byte("ra3/recovery-challenge\x00"))
+	m.Write(c[:8])
+	return hmac.Equal(c[8:], m.Sum(nil)[:24])
+}
+
+// recoveryContextBytes is what GetRecoveryContext's caller signs.
+func recoveryContextBytes(challenge, recoveryEd []byte, recoveryID string) []byte {
+	b := append([]byte("ra3/recovery-context\x00"), challenge...)
+	var ed [32]byte
+	copy(ed[:], recoveryEd)
+	b = append(b, ed[:]...)
+	return append(b, recoveryID...)
+}
+
 type recoveryRow struct {
 	account    string
 	recoveryID string
@@ -68,13 +113,14 @@ type recoveryRow struct {
 	ready      int64
 	completed  int64
 	rejected   int64
-	deviceID   string
 }
+
+const recoveryColumns = `account_id, recovery_id, statement, state, submitted_ms, ready_ms, completed_ms, rejected_ms`
 
 func scanRecovery(sc interface{ Scan(...any) error }) (*recoveryRow, error) {
 	var stmtRaw, stateRaw []byte
 	r := &recoveryRow{}
-	err := sc.Scan(&r.account, &r.recoveryID, &stmtRaw, &stateRaw, &r.submitted, &r.ready, &r.completed, &r.rejected, &r.deviceID)
+	err := sc.Scan(&r.account, &r.recoveryID, &stmtRaw, &stateRaw, &r.submitted, &r.ready, &r.completed, &r.rejected)
 	if err != nil {
 		return nil, err
 	}
@@ -90,34 +136,50 @@ func scanRecovery(sc interface{ Scan(...any) error }) (*recoveryRow, error) {
 	return r, nil
 }
 
-func (rs *recoveryService) row(ctx context.Context, req *pb.GetRecoveryContextRequest) (*recoveryRow, error) {
-	if id := req.GetRecoveryId(); id != "" {
-		return scanRecovery(rs.s.store.db.QueryRowContext(ctx, `SELECT account_id, recovery_id, statement, state, submitted_ms, ready_ms, completed_ms, rejected_ms, device_id FROM security_recovery WHERE recovery_id = ?`, id))
+func (rs *recoveryService) rowByID(ctx context.Context, id string) (*recoveryRow, error) {
+	return scanRecovery(rs.s.store.db.QueryRowContext(ctx, `SELECT `+recoveryColumns+` FROM security_recovery WHERE recovery_id = ?`, id))
+}
+
+func (rs *recoveryService) headHash(ctx context.Context, account string) (deviceauth.Hash, bool) {
+	var raw []byte
+	if err := rs.s.store.db.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? ORDER BY epoch DESC LIMIT 1`, account).Scan(&raw); err != nil {
+		return deviceauth.Hash{}, false
 	}
-	if len(req.GetRecoveryEd()) != 32 {
-		return nil, errNoRows
-	}
-	var account string
-	err := rs.s.store.db.QueryRowContext(ctx, `SELECT id FROM accounts WHERE recovery_ed = ?`, req.GetRecoveryEd()).Scan(&account)
+	head, err := deviceauth.ParseState(raw)
 	if err != nil {
-		// The new key is only in a pending statement until the head changes.
-		rows, qerr := rs.s.store.db.QueryContext(ctx, `SELECT account_id, recovery_id, statement, state, submitted_ms, ready_ms, completed_ms, rejected_ms, device_id FROM security_recovery WHERE completed_ms = 0 AND rejected_ms = 0`)
-		if qerr != nil {
-			return nil, qerr
-		}
-		defer rows.Close()
-		for rows.Next() {
-			r, e := scanRecovery(rows)
-			if e != nil {
-				return nil, e
-			}
-			if bytes.Equal(r.statement.NewRecoveryEd[:], req.GetRecoveryEd()) {
-				return r, nil
-			}
-		}
+		return deviceauth.Hash{}, false
+	}
+	h, err := head.Hash()
+	if err != nil {
+		return deviceauth.Hash{}, false
+	}
+	return h, true
+}
+
+// pendingByAccount returns the row a recovery-key holder may act on: a row
+// that is neither completed nor rejected and whose statement still names the
+// current head as its parent. A veto or a completed recovery therefore leaves
+// no pending row, and a new code may submit again.
+func (rs *recoveryService) pendingByAccount(ctx context.Context, account string) (*recoveryRow, error) {
+	head, ok := rs.headHash(ctx, account)
+	if !ok {
 		return nil, errNoRows
 	}
-	return scanRecovery(rs.s.store.db.QueryRowContext(ctx, `SELECT account_id, recovery_id, statement, state, submitted_ms, ready_ms, completed_ms, rejected_ms, device_id FROM security_recovery WHERE account_id = ?`, account))
+	r, err := scanRecovery(rs.s.store.db.QueryRowContext(ctx, `SELECT `+recoveryColumns+` FROM security_recovery WHERE account_id = ? AND completed_ms = 0 AND rejected_ms = 0`, account))
+	if err != nil {
+		return nil, err
+	}
+	if r.statement.Parent != head {
+		return nil, errNoRows
+	}
+	return r, nil
+}
+
+func (rs *recoveryService) accountByRecoveryKey(ctx context.Context, ed []byte) (string, []byte, error) {
+	var account string
+	var publicKey []byte
+	err := rs.s.store.db.QueryRowContext(ctx, `SELECT id, public_key FROM accounts WHERE recovery_ed = ? LIMIT 1`, ed).Scan(&account, &publicKey)
+	return account, publicKey, err
 }
 
 func (rs *recoveryService) chain(ctx context.Context, account string) ([]*pb.SecurityState, error) {
@@ -137,51 +199,112 @@ func (rs *recoveryService) chain(ctx context.Context, account string) ([]*pb.Sec
 	return out, rows.Err()
 }
 
+func (rs *recoveryService) GetRecoveryChallenge(ctx context.Context, req *connect.Request[pb.GetRecoveryChallengeRequest]) (*connect.Response[pb.GetRecoveryChallengeResponse], error) {
+	if !rs.allow(rs.s.clientAddr(req.Peer().Addr, req.Header())) {
+		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many recovery lookups; try again in a minute"))
+	}
+	return connect.NewResponse(&pb.GetRecoveryChallengeResponse{Challenge: rs.challenge(nowMs())}), nil
+}
+
 func (rs *recoveryService) GetRecoveryContext(ctx context.Context, req *connect.Request[pb.GetRecoveryContextRequest]) (*connect.Response[pb.GetRecoveryContextResponse], error) {
 	if !rs.allow(rs.s.clientAddr(req.Peer().Addr, req.Header())) {
 		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many recovery lookups; try again in a minute"))
 	}
-	r, err := rs.row(ctx, req.Msg)
-	if errors.Is(err, errNoRows) {
-		// A valid recovery key may be looked up before anything is
-		// submitted: the new phone needs the chain to build its statement.
-		if len(req.Msg.RecoveryEd) == 32 {
-			var account string
-			var publicKey []byte
-			e := rs.s.store.db.QueryRowContext(ctx, `SELECT id, public_key FROM accounts WHERE recovery_ed = ?`, req.Msg.RecoveryEd).Scan(&account, &publicKey)
-			if e == nil {
-				chain, e := rs.chain(ctx, account)
-				if e != nil {
-					return nil, internal(e)
-				}
-				return connect.NewResponse(&pb.GetRecoveryContextResponse{AccountId: account, States: chain, AccountPublicKey: publicKey}), nil
-			}
+	if !rs.checkChallenge(req.Msg.Challenge, nowMs()) {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("fetch a fresh recovery challenge and sign it"))
+	}
+	var r *recoveryRow
+	var account string
+	var accountKey []byte
+	if id := req.Msg.GetRecoveryId(); id != "" {
+		row, err := rs.rowByID(ctx, id)
+		if errors.Is(err, errNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("no recovery is pending for that key"))
 		}
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("no recovery is pending for that key"))
+		if err != nil {
+			return nil, internal(err)
+		}
+		key := row.statement.NewMember.EdPublic[:]
+		if len(req.Msg.Signature) != ed25519.SignatureSize || !ed25519.Verify(key, recoveryContextBytes(req.Msg.Challenge, nil, id), req.Msg.Signature) {
+			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("bad recovery context signature"))
+		}
+		acct, err := rs.s.store.account(ctx, row.account)
+		if err != nil {
+			return nil, internal(err)
+		}
+		r, account, accountKey = row, row.account, acct.publicKey
+	} else {
+		ed := req.Msg.GetRecoveryEd()
+		if len(ed) != ed25519.PublicKeySize {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("no recovery is pending for that key"))
+		}
+		if len(req.Msg.Signature) != ed25519.SignatureSize || !ed25519.Verify(ed, recoveryContextBytes(req.Msg.Challenge, ed, ""), req.Msg.Signature) {
+			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("bad recovery context signature"))
+		}
+		acctID, publicKey, err := rs.accountByRecoveryKey(ctx, ed)
+		switch {
+		case err == nil:
+			account, accountKey = acctID, publicKey
+			pending, perr := rs.pendingByAccount(ctx, acctID)
+			if perr == nil {
+				r = pending
+			} else if !errors.Is(perr, errNoRows) {
+				return nil, internal(perr)
+			}
+		case errors.Is(err, errNoRows):
+			// The new recovery key only exists in a pending statement until
+			// the head changes; a retry after losing the response finds it
+			// by that key, still only when its parent is the current head.
+			pending, perr := rs.pendingByNewKey(ctx, ed)
+			if perr == nil {
+				acct, aerr := rs.s.store.account(ctx, pending.account)
+				if aerr != nil {
+					return nil, internal(aerr)
+				}
+				r, account, accountKey = pending, pending.account, acct.publicKey
+			} else if !errors.Is(perr, errNoRows) {
+				return nil, internal(perr)
+			} else {
+				return nil, connect.NewError(connect.CodeNotFound, errors.New("no recovery is pending for that key"))
+			}
+		default:
+			return nil, internal(err)
+		}
 	}
+	chain, err := rs.chain(ctx, account)
 	if err != nil {
 		return nil, internal(err)
 	}
-	acct, err := rs.s.store.account(ctx, r.account)
-	if err != nil {
-		return nil, internal(err)
-	}
-	chain, err := rs.chain(ctx, r.account)
-	if err != nil {
-		return nil, internal(err)
-	}
-	res := &pb.GetRecoveryContextResponse{AccountId: r.account, States: chain, ReadyMs: uint64(max(r.ready, 0)), RecoveryId: r.recoveryID, AccountPublicKey: acct.publicKey}
-	switch {
-	case r.rejected != 0:
-		res.Phase = pb.GetRecoveryContextResponse_PHASE_REJECTED
-	case r.completed != 0:
-		res.Phase = pb.GetRecoveryContextResponse_PHASE_PUBLISHED
-	case nowMs() < r.ready:
-		res.Phase = pb.GetRecoveryContextResponse_PHASE_PENDING
-	default:
-		res.Phase = pb.GetRecoveryContextResponse_PHASE_READY
+	res := &pb.GetRecoveryContextResponse{AccountId: account, States: chain, AccountPublicKey: accountKey}
+	if r != nil {
+		res.ReadyMs = uint64(max(r.ready, 0))
+		res.RecoveryId = r.recoveryID
+		switch {
+		case r.rejected != 0:
+			res.Phase = pb.GetRecoveryContextResponse_PHASE_REJECTED
+		case r.completed != 0:
+			res.Phase = pb.GetRecoveryContextResponse_PHASE_PUBLISHED
+		case nowMs() < r.ready:
+			res.Phase = pb.GetRecoveryContextResponse_PHASE_PENDING
+		default:
+			res.Phase = pb.GetRecoveryContextResponse_PHASE_READY
+		}
 	}
 	return connect.NewResponse(res), nil
+}
+
+// pendingByNewKey finds a row by the recovery key it would install, without
+// scanning pending rows: the key is indexed.
+func (rs *recoveryService) pendingByNewKey(ctx context.Context, ed []byte) (*recoveryRow, error) {
+	r, err := scanRecovery(rs.s.store.db.QueryRowContext(ctx, `SELECT `+recoveryColumns+` FROM security_recovery WHERE new_recovery_ed = ? AND completed_ms = 0 AND rejected_ms = 0`, ed))
+	if err != nil {
+		return nil, err
+	}
+	head, ok := rs.headHash(ctx, r.account)
+	if !ok || r.statement.Parent != head {
+		return nil, errNoRows
+	}
+	return r, nil
 }
 
 func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Request[pb.SubmitRecoveryRequest]) (*connect.Response[pb.SubmitRecoveryResponse], error) {
@@ -216,6 +339,16 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 		return nil, internal(err)
 	}
 	defer tx.Rollback()
+	existing, err := scanRecovery(tx.QueryRowContext(ctx, `SELECT `+recoveryColumns+` FROM security_recovery WHERE account_id = ?`, stmt.Account))
+	if err != nil && !errors.Is(err, errNoRows) {
+		return nil, internal(err)
+	}
+	// An exact retry is answered before checking the head: after completion
+	// its parent is the previous head, but the caller must still learn the
+	// same recovery ID. A vetoed row is not revived this way.
+	if err == nil && existing.rejected == 0 && bytes.Equal(reqStatementRaw(existing.statement), stmtRaw) && bytes.Equal(reqStateRaw(existing.state), stateRaw) {
+		return connect.NewResponse(&pb.SubmitRecoveryResponse{RecoveryId: existing.recoveryID, ReadyMs: uint64(max(existing.ready, 0))}), nil
+	}
 	var headRaw []byte
 	if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? ORDER BY epoch DESC LIMIT 1`, stmt.Account).Scan(&headRaw); errors.Is(err, errNoRows) {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the account has no security domain"))
@@ -232,30 +365,19 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 	if err := checkRecoveryEpoch(state.Core.Epoch); err != nil {
 		return nil, err
 	}
-	existing, err := scanRecovery(tx.QueryRowContext(ctx, `SELECT account_id, recovery_id, statement, state, submitted_ms, ready_ms, completed_ms, rejected_ms, device_id FROM security_recovery WHERE account_id = ?`, stmt.Account))
-	if err == nil {
-		switch {
-		case existing.completed != 0:
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("authority recovery already completed"))
-		case existing.statement.Parent == stmt.Parent && bytes.Equal(reqStatementRaw(existing.statement), stmtRaw) && bytes.Equal(reqStateRaw(existing.state), stateRaw):
-			// An exact retry keeps the original 48-hour clock.
-			return connect.NewResponse(&pb.SubmitRecoveryResponse{RecoveryId: existing.recoveryID, ReadyMs: uint64(max(existing.ready, 0))}), nil
-		default:
-			// The same parent with a different new phone (S12), or a pending
-			// row for a parent the head has already moved past: replace it.
-		}
-	} else if !errors.Is(err, errNoRows) {
-		return nil, internal(err)
-	}
+	// A completed or rejected row may be overwritten: a second recovery with
+	// the phone's current code is a new request. A rejected statement whose
+	// parent is no longer the head fails VerifyTransition above and cannot be
+	// revived.
 	id := make([]byte, 16)
 	if _, err := rand.Read(id); err != nil {
 		return nil, internal(err)
 	}
 	recoveryID := hex.EncodeToString(id)
 	ready := nowMs() + recoveryDelay.Milliseconds()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO security_recovery (account_id, recovery_id, statement, state, submitted_ms, ready_ms) VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (account_id) DO UPDATE SET recovery_id = excluded.recovery_id, statement = excluded.statement, state = excluded.state, submitted_ms = excluded.submitted_ms, ready_ms = excluded.ready_ms, completed_ms = 0, rejected_ms = 0, device_id = '', token_hash = NULL`,
-		stmt.Account, recoveryID, stmtRaw, stateRaw, nowMs(), ready); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO security_recovery (account_id, recovery_id, statement, state, new_recovery_ed, submitted_ms, ready_ms) VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT (account_id) DO UPDATE SET recovery_id = excluded.recovery_id, statement = excluded.statement, state = excluded.state, new_recovery_ed = excluded.new_recovery_ed, submitted_ms = excluded.submitted_ms, ready_ms = excluded.ready_ms, completed_ms = 0, rejected_ms = 0`,
+		stmt.Account, recoveryID, stmtRaw, stateRaw, stmt.NewRecoveryEd[:], nowMs(), ready); err != nil {
 		return nil, internal(err)
 	}
 	authority := head.Core.AuthorityID
@@ -278,7 +400,7 @@ func (rs *recoveryService) CompleteRecovery(ctx context.Context, req *connect.Re
 }
 
 func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Request[pb.CompleteRecoveryRequest]) (*connect.Response[pb.CompleteRecoveryResponse], error) {
-	row, err := scanRecovery(rs.s.store.db.QueryRowContext(ctx, `SELECT account_id, recovery_id, statement, state, submitted_ms, ready_ms, completed_ms, rejected_ms, device_id FROM security_recovery WHERE recovery_id = ?`, req.Msg.RecoveryId))
+	row, err := rs.rowByID(ctx, req.Msg.RecoveryId)
 	if errors.Is(err, errNoRows) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such recovery"))
 	}
@@ -289,19 +411,17 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 	if len(req.Msg.Signature) != ed25519.SignatureSize || !ed25519.Verify(row.statement.NewMember.EdPublic[:], label, req.Msg.Signature) {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("bad recovery signature"))
 	}
+	acct, err := rs.s.store.account(ctx, row.account)
+	if err != nil {
+		return nil, internal(err)
+	}
 	if row.rejected != 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery was vetoed"))
 	}
 	if row.completed != 0 {
-		token, err := rs.issueToken(ctx, row.account, row.statement.NewAuthorityID)
-		if err != nil {
-			return nil, internal(err)
-		}
-		acct, err := rs.s.store.account(ctx, row.account)
-		if err != nil {
-			return nil, internal(err)
-		}
-		return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.deviceID, Token: token, AccountPublicKey: acct.publicKey}), nil
+		// The device is already registered. Never mint a token from this
+		// replayable signature; the phone logs in with a fresh challenge.
+		return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.statement.NewAuthorityID, AccountPublicKey: acct.publicKey}), nil
 	}
 	if nowMs() < row.ready {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery is not ready yet"))
@@ -374,13 +494,8 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 	if err := registerRecoveredDevice(ctx, tx, row.account, row.statement.NewMember); err != nil {
 		return nil, internal(err)
 	}
-	token := newToken()
-	expires := time.Now().Add(rs.s.cfg.TokenTTL).UnixMilli()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO tokens (hash, account_id, device_id, expires_ms) VALUES (?, ?, ?, ?)`, hashToken(token), row.account, row.statement.NewAuthorityID, expires); err != nil {
-		return nil, internal(err)
-	}
-	res, err = tx.ExecContext(ctx, `UPDATE security_recovery SET completed_ms = ?, device_id = ?, token_hash = ? WHERE recovery_id = ? AND completed_ms = 0 AND rejected_ms = 0`,
-		nowMs(), row.statement.NewAuthorityID, hashToken(token), req.Msg.RecoveryId)
+	res, err = tx.ExecContext(ctx, `UPDATE security_recovery SET completed_ms = ? WHERE recovery_id = ? AND completed_ms = 0 AND rejected_ms = 0`,
+		nowMs(), req.Msg.RecoveryId)
 	if err != nil {
 		return nil, internal(err)
 	}
@@ -403,17 +518,13 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 		}
 	}
 	rs.s.pairing.mu.Unlock()
-	acct, err := rs.s.store.account(ctx, row.account)
-	if err != nil {
-		return nil, internal(err)
-	}
 	for _, old := range head.Core.Members {
 		if _, ok := row.state.Core.Member(old.ID); !ok {
 			rs.s.revokeStreams(old.ID)
 			rs.s.hub.account(row.account).drop(old.ID)
 		}
 	}
-	return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.statement.NewAuthorityID, Token: token, AccountPublicKey: acct.publicKey}), nil
+	return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.statement.NewAuthorityID, AccountPublicKey: acct.publicKey}), nil
 }
 
 func checkRecoveryEpoch(epoch uint64) error {
@@ -463,15 +574,4 @@ func registerRecoveredDevice(ctx context.Context, tx *sql.Tx, account string, m 
 	default:
 		return err
 	}
-}
-
-// issueToken gives a completed recovery another bearer token for the device.
-func (rs *recoveryService) issueToken(ctx context.Context, account, deviceID string) (string, error) {
-	token := newToken()
-	expires := time.Now().Add(rs.s.cfg.TokenTTL).UnixMilli()
-	t := rs.s.store.tenant(account)
-	if err := t.addToken(ctx, hashToken(token), deviceID, expires); err != nil {
-		return "", err
-	}
-	return token, nil
 }

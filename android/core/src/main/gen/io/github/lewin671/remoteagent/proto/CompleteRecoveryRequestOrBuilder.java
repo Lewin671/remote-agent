@@ -24,8 +24,9 @@ public interface CompleteRecoveryRequestOrBuilder extends
 
   /**
    * <pre>
-   * By the new authority member Ed over "ra3/recovery-complete&#92;x00" ||
-   * recovery_id.
+   * By the new authority member Ed over "ra3/recovery-complete&#92;0" ||
+   * recovery_id. A retry after completion is answered without a token; the
+   * device logs in with the normal challenge.
    * </pre>
    *
    * <code>bytes signature = 2 [json_name = "signature"];</code>

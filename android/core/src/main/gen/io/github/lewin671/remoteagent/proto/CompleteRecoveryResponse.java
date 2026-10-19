@@ -16,7 +16,6 @@ public  final class CompleteRecoveryResponse extends
     CompleteRecoveryResponseOrBuilder {
   private CompleteRecoveryResponse() {
     deviceId_ = "";
-    token_ = "";
     accountPublicKey_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int DEVICE_ID_FIELD_NUMBER = 1;
@@ -67,62 +66,14 @@ public  final class CompleteRecoveryResponse extends
 
   }
 
-  public static final int TOKEN_FIELD_NUMBER = 2;
-  private java.lang.String token_;
-  /**
-   * <code>string token = 2 [json_name = "token"];</code>
-   * @return The token.
-   */
-  @java.lang.Override
-  public java.lang.String getToken() {
-    return token_;
-  }
-  /**
-   * <code>string token = 2 [json_name = "token"];</code>
-   * @return The bytes for token.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getTokenBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(token_);
-  }
-  /**
-   * <code>string token = 2 [json_name = "token"];</code>
-   * @param value The token to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setToken(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    token_ = value;
-  }
-  /**
-   * <code>string token = 2 [json_name = "token"];</code>
-   */
-  private void clearToken() {
-
-    token_ = getDefaultInstance().getToken();
-  }
-  /**
-   * <code>string token = 2 [json_name = "token"];</code>
-   * @param value The bytes for token to set.
-   */
-  private void setTokenBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    token_ = value.toStringUtf8();
-
-  }
-
-  public static final int ACCOUNT_PUBLIC_KEY_FIELD_NUMBER = 3;
+  public static final int ACCOUNT_PUBLIC_KEY_FIELD_NUMBER = 2;
   private com.google.protobuf.ByteString accountPublicKey_;
   /**
    * <pre>
    * The account's Ed25519 public key, for pairing after recovery.
    * </pre>
    *
-   * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+   * <code>bytes account_public_key = 2 [json_name = "accountPublicKey"];</code>
    * @return The accountPublicKey.
    */
   @java.lang.Override
@@ -134,12 +85,12 @@ public  final class CompleteRecoveryResponse extends
    * The account's Ed25519 public key, for pairing after recovery.
    * </pre>
    *
-   * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+   * <code>bytes account_public_key = 2 [json_name = "accountPublicKey"];</code>
    * @param value The accountPublicKey to set.
    */
   private void setAccountPublicKey(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
-
+  
     accountPublicKey_ = value;
   }
   /**
@@ -147,7 +98,7 @@ public  final class CompleteRecoveryResponse extends
    * The account's Ed25519 public key, for pairing after recovery.
    * </pre>
    *
-   * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+   * <code>bytes account_public_key = 2 [json_name = "accountPublicKey"];</code>
    */
   private void clearAccountPublicKey() {
 
@@ -301,60 +252,11 @@ public  final class CompleteRecoveryResponse extends
     }
 
     /**
-     * <code>string token = 2 [json_name = "token"];</code>
-     * @return The token.
-     */
-    @java.lang.Override
-    public java.lang.String getToken() {
-      return instance.getToken();
-    }
-    /**
-     * <code>string token = 2 [json_name = "token"];</code>
-     * @return The bytes for token.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getTokenBytes() {
-      return instance.getTokenBytes();
-    }
-    /**
-     * <code>string token = 2 [json_name = "token"];</code>
-     * @param value The token to set.
-     * @return This builder for chaining.
-     */
-    public Builder setToken(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setToken(value);
-      return this;
-    }
-    /**
-     * <code>string token = 2 [json_name = "token"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearToken() {
-      copyOnWrite();
-      instance.clearToken();
-      return this;
-    }
-    /**
-     * <code>string token = 2 [json_name = "token"];</code>
-     * @param value The bytes for token to set.
-     * @return This builder for chaining.
-     */
-    public Builder setTokenBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setTokenBytes(value);
-      return this;
-    }
-
-    /**
      * <pre>
      * The account's Ed25519 public key, for pairing after recovery.
      * </pre>
      *
-     * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+     * <code>bytes account_public_key = 2 [json_name = "accountPublicKey"];</code>
      * @return The accountPublicKey.
      */
     @java.lang.Override
@@ -366,7 +268,7 @@ public  final class CompleteRecoveryResponse extends
      * The account's Ed25519 public key, for pairing after recovery.
      * </pre>
      *
-     * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+     * <code>bytes account_public_key = 2 [json_name = "accountPublicKey"];</code>
      * @param value The accountPublicKey to set.
      * @return This builder for chaining.
      */
@@ -380,7 +282,7 @@ public  final class CompleteRecoveryResponse extends
      * The account's Ed25519 public key, for pairing after recovery.
      * </pre>
      *
-     * <code>bytes account_public_key = 3 [json_name = "accountPublicKey"];</code>
+     * <code>bytes account_public_key = 2 [json_name = "accountPublicKey"];</code>
      * @return This builder for chaining.
      */
     public Builder clearAccountPublicKey() {
@@ -406,12 +308,11 @@ public  final class CompleteRecoveryResponse extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "deviceId_",
-            "token_",
             "accountPublicKey_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\n";
+              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\n" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

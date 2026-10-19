@@ -39,7 +39,10 @@ export interface SecurityRecord {
   // already read these; PrevSecret walking needs the bytes.
   secret: B;
   contentKeys: ContentKey[];
+  // The next unreserved counter value. A 4096-value block is written
+  // durably before any of it is handed out; a restart skips the rest.
   counter: bigint;
+  blockEnd: bigint;
   // Persisted time lower bound, ms.
   floor: bigint;
 }
@@ -85,6 +88,9 @@ function validRecord(r: SecurityRecord | undefined): asserts r is SecurityRecord
     typeof r.counter !== "bigint" ||
     r.counter < 0n ||
     r.counter > 0xffffffffffffffffn ||
+    typeof r.blockEnd !== "bigint" ||
+    r.blockEnd < r.counter ||
+    r.blockEnd > 0xffffffffffffffffn ||
     typeof r.floor !== "bigint" ||
     !(r.xPrivate instanceof CryptoKey) ||
     r.xPrivate.extractable ||
@@ -203,6 +209,15 @@ export async function extendRecord(
     contentKeys: r.contentKeys.map((k) => ({ ...k })),
     secret: new Uint8Array(r.secret),
   };
+  // Cache every key still derivable from the old chain before a recovery
+  // boundary can stop the PrevSecret walk.
+  for (let ep = r.states[r.states.length - 1].core.contentEpoch; ep >= 1n; ep--) {
+    try {
+      remember(next.contentKeys, ep, await contentSecretOf(next, ep));
+    } catch {
+      break;
+    }
+  }
   for (let i = 0; i < states.length; i++) {
     const s = states[i];
     const head = next.states[next.states.length - 1];
@@ -237,10 +252,13 @@ export async function extendRecord(
         }
         next.secret = secret;
         next.counter = 0n;
+        next.blockEnd = 0n;
       } else {
-        if (!equal(secret, next.secret))
-          throw new SecurityError("untrusted");
+        // A renewal may carry a changed grant; Go accepts it, so all clients
+        // use the authority-signed grant rather than rejecting it.
+        next.secret = secret;
       }
+      remember(next.contentKeys, s.core.contentEpoch, secret);
     }
     next.states.push(s);
     next.proofs.push(proof);
@@ -249,6 +267,9 @@ export async function extendRecord(
   next.member = head.core.members.some((m) => m.id === next.memberID);
   next.stateHash = await stateHash(head);
   next.floor = maxFloor(next.floor);
+  // Persist the block high-water, not an in-use value: after a restart no
+  // value from a block already handed out can be reused.
+  next.counter = next.blockEnd;
   return next;
 }
 function maxFloor(floor: bigint): bigint {
@@ -280,6 +301,7 @@ export async function buildRecord(
     secret,
     contentKeys: [],
     counter: 0n,
+    blockEnd: 0n,
     floor: BigInt(Date.now()),
   };
   // Cache every content key still reachable from the head. A device that
@@ -367,36 +389,52 @@ export async function loadSecurity(): Promise<SecurityRecord> {
   );
   return verifyStoredSecurity(r);
 }
-/** Atomic across tabs. The committed counter is consumed BEFORE any encryption. */
+const COUNTER_BLOCK = 4096n;
+/** Serializes block allocation across tabs when the browser has Web Locks. */
+function counterLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = (globalThis.navigator as Navigator & { locks?: LockManager })
+    ?.locks;
+  return locks ? locks.request("remote-agent-counter", fn) : fn();
+}
+/**
+ * Reserves a whole 4096-value block, durably, before any value in it is used.
+ * Two tabs get disjoint blocks; a reload skips the rest of the old block. The
+ * per-message path never writes the record.
+ */
 export async function reserveCounter(
   expected: SecurityRecord,
 ): Promise<SecurityRecord> {
-  const db = await database(false);
-  return transaction<SecurityRecord>(db, "readwrite", (store, done, fail) => {
-    const get = store.get(KEY);
-    get.onsuccess = () => {
-      try {
-        const r = get.result as SecurityRecord;
-        validRecord(r);
-        if (
-          !publicPinEqual(r.pin, expected.pin) ||
-          r.memberID !== expected.memberID ||
-          !equal(r.stateHash, expected.stateHash)
-        ) {
-          fail(new SecurityError("stale"));
-          return;
+  return counterLock(async () => {
+    const db = await database(false);
+    return transaction<SecurityRecord>(db, "readwrite", (store, done, fail) => {
+      const get = store.get(KEY);
+      get.onsuccess = () => {
+        try {
+          const r = get.result as SecurityRecord;
+          validRecord(r);
+          if (
+            !publicPinEqual(r.pin, expected.pin) ||
+            r.memberID !== expected.memberID ||
+            !equal(r.stateHash, expected.stateHash)
+          ) {
+            fail(new SecurityError("stale"));
+            return;
+          }
+          if (r.counter > 0xffffffffffffffffn - COUNTER_BLOCK) {
+            fail(new SecurityError("capacity"));
+            return;
+          }
+          const start = r.counter;
+          const end = start + COUNTER_BLOCK;
+          // The durable value is the next free block start; this tab hands
+          // out start+1 .. end from memory.
+          store.put({ ...r, counter: end, blockEnd: end }, KEY);
+          done({ ...r, counter: start, blockEnd: end });
+        } catch (err) {
+          fail(err instanceof Error ? err : new SecurityError("storage"));
         }
-        if (r.counter === 0xffffffffffffffffn) {
-          fail(new SecurityError("capacity"));
-          return;
-        }
-        const next = { ...r, counter: r.counter + 1n };
-        store.put(next, KEY);
-        done(next);
-      } catch (err) {
-        fail(err instanceof Error ? err : new SecurityError("storage"));
-      }
-    };
+      };
+    });
   });
 }
 export async function installSecurity(

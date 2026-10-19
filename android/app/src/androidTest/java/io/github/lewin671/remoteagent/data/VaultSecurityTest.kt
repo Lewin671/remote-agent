@@ -88,9 +88,15 @@ class VaultSecurityTest {
         val record = securityRecord()
         vault.initializeSecurity(record)
         val hash = security.stateHash(record.head)
-        assertEquals(1uL, vault.reserveSecurity(hash).counter)
+        // A block is persisted once; the counter then moves in memory.
+        val block = vault.readSecurity().reservingBlock()
+        vault.writeSecurity(hash, block)
+        val used = block.incremented().incremented()
+        vault.writeSecurity(hash, used)
         val reopened = Vault(context)
-        assertEquals(1uL, reopened.readSecurity().counter)
+        // A restart skips the rest of the block already handed out.
+        assertEquals(block.counterBlockEnd, reopened.readSecurity().counter)
+        assertEquals(block.counterBlockEnd + 1uL, reopened.readSecurity().incremented().counter)
         // Simulate an old notification-only item, never a root/epoch grant.
         vault.save(account, ByteArray(32) { 3 })
         reopened.readSecurity()

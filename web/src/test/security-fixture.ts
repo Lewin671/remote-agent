@@ -323,10 +323,11 @@ export class MemorySecurityStorage implements SecurityStorage {
   async reserveCounter(expected: SecurityRecord) {
     if (!equal(expected.stateHash, this.record.stateHash))
       throw new SecurityError("stale");
-    if (this.record.counter === 0xffffffffffffffffn)
-      throw new SecurityError("capacity");
-    this.record = { ...this.record, counter: this.record.counter + 1n };
-    return this.record;
+    const start = this.record.counter;
+    const end = start + 4096n;
+    if (end > 0xffffffffffffffffn) throw new SecurityError("capacity");
+    this.record = { ...this.record, counter: end, blockEnd: end };
+    return { ...this.record, counter: start, blockEnd: end };
   }
   async installSecurity(
     expected: SecurityRecord,

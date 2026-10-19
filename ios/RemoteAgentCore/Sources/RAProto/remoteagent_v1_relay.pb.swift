@@ -1570,8 +1570,35 @@ public struct PBGetSecurityStatesResponse: Sendable {
 
   public var headEpoch: UInt64 = 0
 
-  /// Set for the current authority phone while a recovery is pending.
+  /// Set for the current authority phone while a recovery is pending, with
+  /// the time it may complete. Only the signed-in authority phone sees this;
+  /// the unauthenticated recovery service no longer answers it.
   public var recoveryPending: Bool = false
+
+  public var recoveryReadyMs: UInt64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBGetRecoveryChallengeRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBGetRecoveryChallengeResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// 32 bytes: the first 8 are the expiry time, the rest a server MAC.
+  public var challenge: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1583,11 +1610,19 @@ public struct PBGetRecoveryContextRequest: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  /// The old recovery public key, or the pending row's stored key.
+  /// The current recovery public key. Unset when polling by recovery_id.
   public var recoveryEd: Data = Data()
 
-  /// Optional: poll after SubmitRecovery.
+  /// Optional: poll after SubmitRecovery, signed by the new device key.
   public var recoveryID: String = String()
+
+  /// From GetRecoveryChallenge.
+  public var challenge: Data = Data()
+
+  /// Ed25519 over "ra3/recovery-context\0" followed by the 32-byte challenge,
+  /// the 32-byte recovery_ed (zeros when empty), and the recovery_id bytes,
+  /// by recovery_ed's private key or by the pending recovery's new device key.
+  public var signature: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1702,8 +1737,9 @@ public struct PBCompleteRecoveryRequest: Sendable {
 
   public var recoveryID: String = String()
 
-  /// By the new authority member Ed over "ra3/recovery-complete\x00" ||
-  /// recovery_id.
+  /// By the new authority member Ed over "ra3/recovery-complete\0" ||
+  /// recovery_id. A retry after completion is answered without a token; the
+  /// device logs in with the normal challenge.
   public var signature: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1717,8 +1753,6 @@ public struct PBCompleteRecoveryResponse: Sendable {
   // methods supported on all messages.
 
   public var deviceID: String = String()
-
-  public var token: String = String()
 
   /// The account's Ed25519 public key, for pairing after recovery.
   public var accountPublicKey: Data = Data()
@@ -4835,7 +4869,7 @@ extension PBGetSecurityStatesRequest: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBGetSecurityStatesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetSecurityStatesResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}states\0\u{3}head_epoch\0\u{3}recovery_pending\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}states\0\u{3}head_epoch\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4846,6 +4880,7 @@ extension PBGetSecurityStatesResponse: SwiftProtobuf.Message, SwiftProtobuf._Mes
       case 1: try { try decoder.decodeRepeatedMessageField(value: &self.states) }()
       case 2: try { try decoder.decodeSingularUInt64Field(value: &self.headEpoch) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.recoveryPending) }()
+      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.recoveryReadyMs) }()
       default: break
       }
     }
@@ -4861,6 +4896,9 @@ extension PBGetSecurityStatesResponse: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if self.recoveryPending != false {
       try visitor.visitSingularBoolField(value: self.recoveryPending, fieldNumber: 3)
     }
+    if self.recoveryReadyMs != 0 {
+      try visitor.visitSingularUInt64Field(value: self.recoveryReadyMs, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4868,6 +4906,56 @@ extension PBGetSecurityStatesResponse: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if lhs.states != rhs.states {return false}
     if lhs.headEpoch != rhs.headEpoch {return false}
     if lhs.recoveryPending != rhs.recoveryPending {return false}
+    if lhs.recoveryReadyMs != rhs.recoveryReadyMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBGetRecoveryChallengeRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetRecoveryChallengeRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBGetRecoveryChallengeRequest, rhs: PBGetRecoveryChallengeRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBGetRecoveryChallengeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetRecoveryChallengeResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}challenge\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.challenge) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.challenge.isEmpty {
+      try visitor.visitSingularBytesField(value: self.challenge, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBGetRecoveryChallengeResponse, rhs: PBGetRecoveryChallengeResponse) -> Bool {
+    if lhs.challenge != rhs.challenge {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4875,7 +4963,7 @@ extension PBGetSecurityStatesResponse: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 extension PBGetRecoveryContextRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetRecoveryContextRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}recovery_ed\0\u{3}recovery_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}recovery_ed\0\u{3}recovery_id\0\u{1}challenge\0\u{1}signature\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4885,6 +4973,8 @@ extension PBGetRecoveryContextRequest: SwiftProtobuf.Message, SwiftProtobuf._Mes
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularBytesField(value: &self.recoveryEd) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.recoveryID) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.challenge) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
       default: break
       }
     }
@@ -4897,12 +4987,20 @@ extension PBGetRecoveryContextRequest: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if !self.recoveryID.isEmpty {
       try visitor.visitSingularStringField(value: self.recoveryID, fieldNumber: 2)
     }
+    if !self.challenge.isEmpty {
+      try visitor.visitSingularBytesField(value: self.challenge, fieldNumber: 3)
+    }
+    if !self.signature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.signature, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBGetRecoveryContextRequest, rhs: PBGetRecoveryContextRequest) -> Bool {
     if lhs.recoveryEd != rhs.recoveryEd {return false}
     if lhs.recoveryID != rhs.recoveryID {return false}
+    if lhs.challenge != rhs.challenge {return false}
+    if lhs.signature != rhs.signature {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5074,7 +5172,7 @@ extension PBCompleteRecoveryRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBCompleteRecoveryResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CompleteRecoveryResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{1}token\0\u{3}account_public_key\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}account_public_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5083,8 +5181,7 @@ extension PBCompleteRecoveryResponse: SwiftProtobuf.Message, SwiftProtobuf._Mess
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.token) }()
-      case 3: try { try decoder.decodeSingularBytesField(value: &self.accountPublicKey) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.accountPublicKey) }()
       default: break
       }
     }
@@ -5094,18 +5191,14 @@ extension PBCompleteRecoveryResponse: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if !self.deviceID.isEmpty {
       try visitor.visitSingularStringField(value: self.deviceID, fieldNumber: 1)
     }
-    if !self.token.isEmpty {
-      try visitor.visitSingularStringField(value: self.token, fieldNumber: 2)
-    }
     if !self.accountPublicKey.isEmpty {
-      try visitor.visitSingularBytesField(value: self.accountPublicKey, fieldNumber: 3)
+      try visitor.visitSingularBytesField(value: self.accountPublicKey, fieldNumber: 2)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCompleteRecoveryResponse, rhs: PBCompleteRecoveryResponse) -> Bool {
     if lhs.deviceID != rhs.deviceID {return false}
-    if lhs.token != rhs.token {return false}
     if lhs.accountPublicKey != rhs.accountPublicKey {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true

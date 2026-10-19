@@ -59,8 +59,13 @@ CREATE TABLE IF NOT EXISTS accounts (
 	security_genesis BLOB,
 	-- Recovery public key of the current signed head, kept here so an
 	-- unauthenticated recovery lookup can find the account.
-	recovery_ed BLOB
+	recovery_ed BLOB,
+	-- Set by the protocol 10 database upgrade: the account predates the
+	-- phone authority, so its genesis must be pinned offline instead of
+	-- over the network.
+	offline_pin INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS accounts_recovery ON accounts (recovery_ed);
 -- Device IDs are derived from device keys and unique across accounts: a
 -- device belongs to one account.
 CREATE TABLE IF NOT EXISTS devices (
@@ -150,19 +155,21 @@ CREATE TABLE IF NOT EXISTS security_states (
 	recovery BLOB,
 	PRIMARY KEY (account_id, epoch)
 );
--- One pending or completed authority recovery per account.
+-- One pending, rejected or completed authority recovery per account.
 CREATE TABLE IF NOT EXISTS security_recovery (
 	account_id TEXT PRIMARY KEY,
 	recovery_id TEXT NOT NULL UNIQUE,
 	statement BLOB NOT NULL,
 	state BLOB NOT NULL,
+	-- The recovery key the statement installs, indexed so a phone holding it
+	-- can find its pending row without scanning every account.
+	new_recovery_ed BLOB NOT NULL,
 	submitted_ms INTEGER NOT NULL,
 	ready_ms INTEGER NOT NULL,
 	completed_ms INTEGER NOT NULL DEFAULT 0,
-	rejected_ms INTEGER NOT NULL DEFAULT 0,
-	device_id TEXT NOT NULL DEFAULT '',
-	token_hash BLOB
+	rejected_ms INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS security_recovery_new_ed ON security_recovery (new_recovery_ed);
 `
 
 var errOldLayout = errors.New("this database has the layout of a relay with a single account; " +
@@ -427,6 +434,17 @@ func (s *store) addDevice(ctx context.Context, account string, create *newAccoun
 		// a new admission; otherwise require a fresh unused admission.
 		if approval == nil || !bytes.Equal(priorPub, reg.DevicePublicKey) || priorKind != int32(reg.Kind) {
 			if err := consumeAdmission(ctx, tx, account, id, reg, approval); err != nil {
+				return err
+			}
+		} else {
+			// Replacing an existing row still needs the current authority's
+			// approval and the stored admission it names. Without this a
+			// recovery-code holder could wipe another device's tokens and
+			// push targets by re-registering its public key.
+			if err := checkApprover(ctx, tx, approval.info); err != nil {
+				return err
+			}
+			if err := requireAdmission(ctx, tx, approval, account, id, reg.Kind); err != nil {
 				return err
 			}
 		}

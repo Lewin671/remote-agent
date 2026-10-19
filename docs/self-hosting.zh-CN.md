@@ -121,13 +121,13 @@ remote-agent account join --server https://ra.example.com --code "1234 5678"
 
 ## 4. 手机和其他设备
 
-先从[最新 Release](https://github.com/Lewin671/remote-agent/releases/latest) 安装 Android APK。在 App 里在这个中继上建账户（会要求输入 setup token），并保存只显示一次的恢复码。手机是这个账户的管理端：只有它能添加和删除设备、续租约和恢复账户。
+先从[最新 Release](https://github.com/Lewin671/remote-agent/releases/latest) 安装 Android APK。在 App 里在这个中继上建账户（会要求输入 setup token），并保存只显示一次的恢复码（整段文字，包括创世哈希前缀）。手机是这个账户的管理端：只有它能添加和删除设备、续租约和恢复账户。
 
 - **电脑：** 运行 `remote-agent account join --server https://ra.example.com --code <手机上的配对码>`；运行中的 daemon 会在几秒内连上。两边核对四个图案：候选设备先确认，手机再允许。
 - **网页：** 打开 `https://app.example.com`，选择加入流程，输入配对码或扫手机上的二维码。在浏览器里核对同样的四个图案，再在手机上允许。在浏览器菜单里把页面安装成应用，就有主屏幕图标和 Web Push 通知。
 - **iOS：** 用同样的方式加入；它只是普通客户端，不能管理账户。
 - **以后再加设备：** 打开手机的设备页，点添加设备。二维码和配对码都来自手机，不再从电脑上发起。
-- **删除：** 只能在手机的设备页操作；网页和电脑只提示去手机上删除。
+- **删除：** 只能在手机的设备页操作；网页和电脑只提示去手机上删除。被移除的电脑再次加入时会得到新的设备身份，旧密钥保持吊销。
 - **租约：** 至少每 72 小时打开一次 App。租约过期后远程控制暂停，聊天、历史和终端查看继续可用，手机续期后恢复。
 
 现在启动一个会话，它会出现在所有设备上：
@@ -292,16 +292,20 @@ CREATE TABLE security_recovery (
   recovery_id TEXT NOT NULL UNIQUE,
   statement BLOB NOT NULL,
   state BLOB NOT NULL,
+  new_recovery_ed BLOB NOT NULL,
   submitted_ms INTEGER NOT NULL,
   ready_ms INTEGER NOT NULL,
   completed_ms INTEGER NOT NULL DEFAULT 0,
-  rejected_ms INTEGER NOT NULL DEFAULT 0,
-  device_id TEXT NOT NULL DEFAULT '',
-  token_hash BLOB
+  rejected_ms INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX security_recovery_new_ed ON security_recovery(new_recovery_ed);
 ALTER TABLE sessions ADD COLUMN key_content_epoch INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE accounts ADD COLUMN recovery_ed BLOB;
 CREATE INDEX accounts_recovery ON accounts(recovery_ed);
+-- 标记协议 10 之前就存在的账户：它们必须在第 5 步离线固定创世状态，
+-- 不能联网固定。
+ALTER TABLE accounts ADD COLUMN offline_pin INTEGER NOT NULL DEFAULT 0;
+UPDATE accounts SET offline_pin = 1;
 UPDATE accounts SET security_genesis = NULL;
 UPDATE pairing_admissions SET canceled_ms = CAST(strftime('%s','now') AS INTEGER)*1000
  WHERE used_ms = 0 AND canceled_ms = 0;
@@ -315,9 +319,9 @@ COMMIT;
 
 3. 安装全部新版程序。已有账户先不要启动中继，在第 5 步离线固定。全新的、还没有账户的中继可以现在启动，由手机建账户并联网固定。它不再接受协议 9 客户端。
 
-4. 在 Android 手机上更新 App，选择重建安全域并成为管理端。它保留原账户根密钥和 Ed25519 设备身份，丢弃协议 9 的安全状态，生成新恢复码和创世状态（手机是唯一成员）；不再另生成管理端密钥，手机成员用现有设备密钥签状态。恢复码只显示一次、App 不保存，请离线记下。恢复码只签恢复声明：新手机读不到恢复前的内容。保留电脑会用新内容密钥重新发布当前的设备名、账户偏好、会话元数据、会话密钥和当前状态快照，所以还在进行的会话能看到；更早的历史留在原来有密钥的设备上。
+4. 在 Android 手机上更新 App。它发现已有账户没有协议 10 的安全状态，会提供**重建安全域并成为管理端**：保留账户根密钥和手机的 Ed25519 设备身份，丢弃协议 9 的安全状态，生成新的恢复码和创世状态（手机是唯一成员）；不再另生成管理端密钥，手机成员用现有设备密钥签状态。App 只显示一次新恢复码、自己不保存，继续前先离线记下。如果账户是从格式 5 升级来的，中继会拒绝联网固定，App 会提示在第 5 步离线固定；创世状态已经在本地生成，可以导出。旧版 App 写的协议 9 账户文件没有账户公钥，App 会用保留的根密钥推导一次并改写成新格式。恢复码只签恢复声明：新手机读不到恢复前的内容。保留电脑会用新内容密钥重新发布当前的设备名、账户偏好、会话元数据、会话密钥和当前状态快照，所以还在进行的会话能看到；更早的历史留在原来有密钥的设备上。
 
-5. 钉住创世状态。已有账户要在中继停服时离线固定：旧设备的 token 还在数据库里，否则可能和手机抢第一次固定。新建账户没有更早的 token，可以由手机联网钉住。从格式 5 升级来的中继上，`security_genesis` 为空时账户里任何已登录设备仍可联网固定；没有开关控制这一点，所以必须在中继启动前完成下面的离线固定。在 Android App 里打开**设备**页，点**导出创世状态（中继离线固定用）**，把生成的 `public-genesis.bin` 分享到运行中继的电脑。它是公开的创世状态，不含密钥。通过可信渠道传回，在中继停服时执行：
+5. 钉住创世状态。已有账户要在中继停服时离线固定：旧设备的 token 还在数据库里，否则可能和手机抢第一次固定。新建账户没有更早的 token，可以由手机联网钉住。从格式 5 升级来的中继上，迁移会把每个原有账户标成 `offline_pin = 1`，中继对它们拒绝联网 `PinSecurityDomain`，所以必须在中继启动前完成下面的离线固定。没有开关：升级后新建的账户不带这个标记，可以联网固定。在 Android App 里打开**设备**页，点**导出创世状态（中继离线固定用）**，把生成的 `public-genesis.bin` 分享到运行中继的电脑。它是公开的创世状态，不含密钥。通过可信渠道传回，在中继停服时执行：
 
 ```sql
 .bail on
@@ -334,4 +338,4 @@ COMMIT;
 
 6. 每台保留电脑用手机上的配对码运行 `remote-agent account join --server https://relay.example.com --code CODE`；它会覆盖 `account.json` 里旧的 `security` 块并忽略旧管理端字段。已有的浏览器和 App 选择重新配对。两端核对四个图案：候选设备先确认，手机再允许。重新配对保留 Ed25519 身份、换新的交换密钥；加入后才启动这台电脑的新 daemon。验收后删除迁移备份：恢复它会恢复旧权限。
 
-没有重新配对的旧协议 9 登记不是成员。创世状态建立后，中继在每次鉴权时按签名成员表核对，残留的设备行或 bearer token 既读不到账户也不能上传状态。要清理设备列表可以离线删掉这些行；保留设备重新配对时会替换原来的行。协议 10 的管理端手机不能普通移除，也没有第二管理端或即时转交；从格式 5 升级来的中继上，每个账户都要在中继监听前固定；没有协议 9 手机成员的账户只能重建并丢弃数据，这一条要写进发布说明。新手机用恢复码在 48 小时后接管，期间旧手机可以否决，恢复状态把旧手机移出成员表；它读不到恢复前的内容，保留电脑保有自己已经拿到的历史，并会用新密钥重新发布当前状态会话快照。至少每 72 小时打开一次 App 才能保持远程控制；过期后查看继续，控制暂停到手机续期。备份包含解密材料与权限状态，应限制访问；验收后按自己的策略处理。旧历史显示未验证，当前审批以电脑的新鲜快照为准。
+没有重新配对的旧协议 9 登记不是成员。创世状态建立后，中继在每次鉴权时按签名成员表核对，残留的设备行或 bearer token 既读不到账户也不能上传状态。要清理设备列表可以离线删掉这些行；保留设备重新配对时会替换原来的行。协议 10 的管理端手机不能普通移除，也没有第二管理端或即时转交；从格式 5 升级来的中继上，每个账户都要在中继监听前固定；没有协议 9 手机成员的账户只能重建并丢弃数据，这一条要写进发布说明。新手机用恢复码在 48 小时后接管，期间旧手机可以否决，恢复状态把旧手机移出成员表，新手机持有新的恢复码，以后可以再次恢复；恢复码带钉住的创世状态哈希前 10 字节，拿着恢复码的中继也换不进伪造的链；它读不到恢复前的内容，保留电脑保有自己已经拿到的历史，并会用新密钥重新发布当前状态会话快照。至少每 72 小时打开一次 App 才能保持远程控制；过期后查看继续，控制暂停到手机续期。备份包含解密材料与权限状态，应限制访问；验收后按自己的策略处理。旧历史显示未验证，当前审批以电脑的新鲜快照为准。

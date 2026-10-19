@@ -103,6 +103,13 @@ fun JoinScreen(app: RaApp) {
     val p = pal
     val scope = rememberCoroutineScope()
     val existing by app.securitySetup.collectAsState()
+    // The local signed head says this device is no longer a member: rejoining
+    // must not reuse the revoked identity.
+    val existingRemoved =
+        remember(existing) {
+            existing != null &&
+                runCatching { !app.vault.readSecurity().member }.getOrDefault(false)
+        }
     var step by remember { mutableStateOf<JoinStep>(JoinStep.Form) }
     var code by remember { mutableStateOf("") }
     var server by rememberSaveable { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
@@ -136,6 +143,7 @@ fun JoinScreen(app: RaApp) {
                             { registering = true },
                             persist = { acct, record -> app.persistPairing(acct, record) },
                             existing = existing,
+                            existingRemoved = existingRemoved,
                             confirm = { emoji ->
                                 val answer = kotlinx.coroutines.CompletableDeferred<Boolean>()
                                 withContext(Dispatchers.Main) {
@@ -182,6 +190,10 @@ fun JoinScreen(app: RaApp) {
     }
     if (mode == "recover") {
         RecoverScreen(app) { mode = "join" }
+        return
+    }
+    if (mode == "rebuild") {
+        RebuildSecurityScreen(app, existing) { mode = "join" }
         return
     }
 
@@ -286,7 +298,9 @@ fun JoinScreen(app: RaApp) {
                     JoinStep.Scan -> {
                         JoinTitle(if (existing != null) "一次性安全设置" else "加入账户")
                         Text(
-                            if (existing != null)
+                            if (existingRemoved)
+                                "这台设备的旧身份已被移除，重新加入会生成新的设备身份，旧历史仍可读。请用管理端手机重新配对。"
+                            else if (existing != null)
                                 "原设备身份、密钥和历史保留。在管理端手机的设备页点「添加设备」，两边核对四个图案完成加入。"
                             else "在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。",
                             style = T.sm,
@@ -364,6 +378,8 @@ fun JoinScreen(app: RaApp) {
                             error = ""
                             step = JoinStep.Scan
                         }
+                        if (existing != null && !existingRemoved)
+                            JoinLink("已有账户升级？重建安全域并成为管理端") { mode = "rebuild" }
                         JoinLink("换手机？用恢复码找回管理权") { mode = "recover" }
                         if (existing == null)
                             JoinLink("还没有账户？在这台手机上创建") { mode = "create" }

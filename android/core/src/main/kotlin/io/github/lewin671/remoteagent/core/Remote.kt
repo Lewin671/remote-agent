@@ -1614,25 +1614,24 @@ class Remote(
 
     fun chainProofs(): Map<ULong, ByteArray> = security.chainProofs()
 
-    /** A pending recovery the authority phone can veto; null when there is none it can see. */
-    suspend fun pendingRecovery(): RecoveryChain? {
+    /**
+     * A pending recovery the authority phone can veto. The relay tells the
+     * signed-in authority phone; an unauthenticated lookup no longer does.
+     */
+    suspend fun pendingRecovery(): PendingRecoveryInfo? {
         if (authorityDeviceId != account.deviceId) return null
-        return try {
-            val chain = Recovery.context(account.server, http, security.head().core.recoveryEd)
-            if (chain.phase == io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase.PHASE_UNSPECIFIED)
-                null
-            else chain
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            null
-        }
+        syncSecurity()
+        return if (security.recoveryPending) PendingRecoveryInfo(security.recoveryReadyMs)
+        else null
     }
 
     /**
-     * Vetoes a pending recovery by publishing any newer state with a new recovery code. Returns
-     * the code, which the caller must show once and ask the user to save; it is not stored.
+     * Signs a newer state with a fresh recovery key but does not publish it
+     * yet: the user must save the new code first. The state goes out only in
+     * [publishRecovery], so a crash cannot leave the account without a code
+     * the user knows.
      */
-    suspend fun vetoRecovery(): String {
+    suspend fun prepareRecovery(): PreparedRecovery {
         syncSecurity()
         val head = security.head()
         if (head.core.authorityID != account.deviceId)
@@ -1640,18 +1639,20 @@ class Remote(
         val secret = security.contentKey(head.core.contentEpoch)
             ?: throw DeviceSecurity.Failure("unavailable")
         val (seed, pub) = Authority.newRecovery()
-        publishSecurityStates(
-            listOf(
-                Authority.veto(
-                    head,
-                    pub,
-                    secret,
-                    SigningKey(account.deviceSeed),
-                    clock(),
-                ),
-            ),
-        )
-        return RecoveryCode.encode(seed)
+        val state =
+            Authority.veto(
+                head,
+                pub,
+                secret,
+                SigningKey(account.deviceSeed),
+                clock(),
+            )
+        val (pin, _) = security.identity()
+        return PreparedRecovery(RecoveryCode.encode(seed, pin.genesis), state)
+    }
+
+    suspend fun publishRecovery(prepared: PreparedRecovery) {
+        publishSecurityStates(listOf(prepared.state))
     }
 
     private suspend fun loadDevices() {

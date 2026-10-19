@@ -66,6 +66,10 @@ install server srv
 grep -qx '# mine' "$work/srv/compose.yaml"
 [ "$(sed -n 's/^RA_SETUP_TOKEN=//p' "$work/srv/.env")" = "$token" ]
 
+# dev-init is a test-only command that release binaries do not contain.
+mkdir -p "$work/dev"
+(cd "$ROOT" && go build -tags dev -o "$work/dev/remote-agent" ./cmd/remote-agent)
+devagent="$work/dev/remote-agent"
 port=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
 RA_SETUP_TOKEN=$token "$work/srv/remote-agent-server" --listen "127.0.0.1:$port" --db "$work/relay.db" >"$work/relay.log" 2>&1 &
 relay=$!
@@ -79,11 +83,11 @@ until curl -fsS -o /dev/null "http://127.0.0.1:$port/healthz" 2>/dev/null; do
 	sleep 0.1
 done
 # A wrong token is refused, the one install.sh made creates the account.
-if RA_SETUP_TOKEN=wrong RA_DEV_AUTHORITY=1 REMOTE_AGENT_HOME="$work/state-wrong" "$agent" account dev-init --server "http://127.0.0.1:$port" >/dev/null 2>&1; then
+if RA_SETUP_TOKEN=wrong RA_DEV_AUTHORITY=1 REMOTE_AGENT_HOME="$work/state-wrong" "$devagent" account dev-init --server "http://127.0.0.1:$port" >/dev/null 2>&1; then
 	echo "the relay made an account without its setup token" >&2
 	exit 1
 fi
-RA_SETUP_TOKEN=$token RA_DEV_AUTHORITY=1 REMOTE_AGENT_HOME="$work/state" "$agent" account dev-init --server "http://127.0.0.1:$port"
+RA_SETUP_TOKEN=$token RA_DEV_AUTHORITY=1 REMOTE_AGENT_HOME="$work/state" "$devagent" account dev-init --server "http://127.0.0.1:$port"
 REMOTE_AGENT_HOME="$work/state" "$agent" account status
 
 if command -v docker >/dev/null 2>&1; then

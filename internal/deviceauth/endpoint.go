@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -55,10 +54,6 @@ CREATE TABLE IF NOT EXISTS content_keys (
 	content_epoch INTEGER PRIMARY KEY,
 	secret BLOB NOT NULL
 );
-CREATE TABLE IF NOT EXISTS senders (
-	sender TEXT PRIMARY KEY,
-	high_water INTEGER NOT NULL
-);
 CREATE TABLE IF NOT EXISTS accepted (
 	key BLOB PRIMARY KEY,
 	deadline INTEGER NOT NULL,
@@ -69,7 +64,6 @@ CREATE TABLE IF NOT EXISTS accepted (
 );
 CREATE TABLE IF NOT EXISTS accepted_meta (
 	id INTEGER PRIMARY KEY CHECK (id = 1),
-	root BLOB NOT NULL,
 	cutoff INTEGER NOT NULL
 );
 `
@@ -99,7 +93,6 @@ type record struct {
 	Recovery      map[uint64]RecoveryStatement
 	Accepted      map[string]accepted
 	AcceptedFloor uint64
-	HighWater     map[string]uint64
 }
 
 type accepted struct {
@@ -141,26 +134,6 @@ func acceptedChecksum(key string, a accepted) []byte {
 		e.u32(0)
 	}
 	h := digest("ra3/accepted-entry\x00", e.b)
-	return h[:]
-}
-
-func acceptedRoot(entries map[string]accepted, cutoff uint64) []byte {
-	keys := make([]string, 0, len(entries))
-	for key, a := range entries {
-		if a.Persisted {
-			keys = append(keys, key)
-		}
-	}
-	slices.Sort(keys)
-	e := encoder{}
-	e.u64(cutoff)
-	e.u32(uint32(len(keys)))
-	for _, key := range keys {
-		e.lp([]byte(key))
-		sum := entries[key].Sum
-		e.raw(sum[:])
-	}
-	h := digest("ra3/accepted-log\x00", e.b)
 	return h[:]
 }
 
@@ -208,17 +181,18 @@ func loadAccepted(db *sql.DB, r *record) error {
 	if rows.Err() != nil {
 		return ErrStorage
 	}
-	var root []byte
+	// Each entry carries its own checksum; the meta row only holds the
+	// pruning lower bound, so a command never rewrites the whole log.
 	var cutoff int64
-	if err := db.QueryRow(`SELECT root, cutoff FROM accepted_meta WHERE id=1`).Scan(&root, &cutoff); err != nil || cutoff < 0 || !bytes.Equal(root, acceptedRoot(r.Accepted, uint64(cutoff))) {
+	if err := db.QueryRow(`SELECT cutoff FROM accepted_meta WHERE id=1`).Scan(&cutoff); err != nil || cutoff < 0 {
 		return ErrStorage
 	}
 	r.AcceptedFloor = uint64(cutoff)
 	return nil
 }
 
-// persistAccepted writes the changed entry and any pruned entries with the
-// manifest in one transaction.
+// persistAccepted writes the changed entry, any pruned entries and the
+// cutoff in one transaction.
 func (e *Endpoint) persistAccepted(entries map[string]accepted, changed string, pruned []string, cutoff uint64) error {
 	tx, err := e.db.Begin()
 	if err != nil {
@@ -243,7 +217,7 @@ func (e *Endpoint) persistAccepted(entries map[string]accepted, changed string, 
 		[]byte(changed), a.Deadline, done, a.Result, failed, acceptedChecksum(changed, a)); err != nil {
 		return ErrStorage
 	}
-	if _, err := tx.Exec(`UPDATE accepted_meta SET root=?, cutoff=? WHERE id=1`, acceptedRoot(entries, cutoff), cutoff); err != nil {
+	if _, err := tx.Exec(`UPDATE accepted_meta SET cutoff=? WHERE id=1`, cutoff); err != nil {
 		return ErrStorage
 	}
 	return tx.Commit()
@@ -307,25 +281,14 @@ func (e *Endpoint) finishAccepted(key string, result []byte, failed bool, persis
 	a.Failed = failed
 	copy(a.Sum[:], acceptedChecksum(key, a))
 	entries[key] = a
-	var pruned []string
-	for acceptedSize(entries) > maxAcceptedBytes {
-		oldest, found := "", false
-		for k, v := range entries {
-			if k == key || !v.Done || (!persist && v.Persisted) {
-				continue
-			}
-			if !found || v.Deadline < entries[oldest].Deadline {
-				oldest, found = k, true
-			}
-		}
-		if !found {
-			return ErrCapacity
-		}
-		delete(entries, oldest)
-		pruned = append(pruned, oldest)
+	if acceptedSize(entries) > maxAcceptedBytes {
+		// Never drop an unexpired entry: that would make its request
+		// acceptable a second time. The caller reports the outcome as
+		// unknown instead, and the entry expires by deadline.
+		return ErrCapacity
 	}
 	if persist {
-		if err := e.persistAccepted(entries, key, pruned, e.data.AcceptedFloor); err != nil {
+		if err := e.persistAccepted(entries, key, nil, e.data.AcceptedFloor); err != nil {
 			return err
 		}
 	}
@@ -387,7 +350,7 @@ func createStore(db *sql.DB) error {
 	if _, err := tx.Exec(`INSERT INTO security (id, version, pin_account, pin_domain, pin_genesis, member_id, ed_seed, x_private, counter, block_end, counter_epoch, floor_ms, floor_saved_ms, member) VALUES (1, ?, '', X'', X'', '', X'', X'', 0, 0, 0, 0, 0, 0)`, storageVersion); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`INSERT INTO accepted_meta (id, root, cutoff) VALUES (1, ?, 0)`, acceptedRoot(nil, 0)); err != nil {
+	if _, err := tx.Exec(`INSERT INTO accepted_meta (id, cutoff) VALUES (1, 0)`); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -429,7 +392,7 @@ func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatem
 		db.Close()
 		return nil, ErrStorage
 	}
-	r := record{Version: storageVersion, Pin: pin, States: map[uint64]State{}, HeadEpoch: head.Core.Epoch, MemberID: id, EdSeed: bytes.Clone(edSeed), XPrivate: bytes.Clone(xPrivate), Secret: secret, Member: true, CounterEpoch: head.Core.ContentEpoch, ContentKeys: map[uint64][]byte{}, Recovery: map[uint64]RecoveryStatement{}, Accepted: map[string]accepted{}, HighWater: map[string]uint64{}}
+	r := record{Version: storageVersion, Pin: pin, States: map[uint64]State{}, HeadEpoch: head.Core.Epoch, MemberID: id, EdSeed: bytes.Clone(edSeed), XPrivate: bytes.Clone(xPrivate), Secret: secret, Member: true, CounterEpoch: head.Core.ContentEpoch, ContentKeys: map[uint64][]byte{}, Recovery: map[uint64]RecoveryStatement{}, Accepted: map[string]accepted{}}
 	for i, s := range states {
 		r.States[s.Core.Epoch] = s
 		if proofs[i] != nil {
@@ -488,11 +451,6 @@ func (e *Endpoint) persistAll() error {
 			return ErrStorage
 		}
 	}
-	for sender, hw := range d.HighWater {
-		if _, err := tx.Exec(`INSERT OR REPLACE INTO senders (sender, high_water) VALUES (?, ?)`, sender, hw); err != nil {
-			return ErrStorage
-		}
-	}
 	for key, a := range d.Accepted {
 		done, failed := 0, 0
 		if a.Done {
@@ -505,7 +463,7 @@ func (e *Endpoint) persistAll() error {
 			return ErrStorage
 		}
 	}
-	if _, err := tx.Exec(`INSERT OR REPLACE INTO accepted_meta (id, root, cutoff) VALUES (1, ?, ?)`, acceptedRoot(d.Accepted, d.AcceptedFloor), d.AcceptedFloor); err != nil {
+	if _, err := tx.Exec(`INSERT OR REPLACE INTO accepted_meta (id, cutoff) VALUES (1, ?)`, d.AcceptedFloor); err != nil {
 		return ErrStorage
 	}
 	if err := tx.Commit(); err != nil {
@@ -533,7 +491,7 @@ func OpenEndpoint(path string) (*Endpoint, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := record{States: map[uint64]State{}, Recovery: map[uint64]RecoveryStatement{}, Accepted: map[string]accepted{}, ContentKeys: map[uint64][]byte{}, HighWater: map[string]uint64{}}
+	r := record{States: map[uint64]State{}, Recovery: map[uint64]RecoveryStatement{}, Accepted: map[string]accepted{}, ContentKeys: map[uint64][]byte{}}
 	var member int
 	var pinDomain, pinGenesis []byte
 	err = db.QueryRow(`SELECT version, pin_account, pin_domain, pin_genesis, member_id, ed_seed, x_private, secret, counter, block_end, counter_epoch, floor_ms, floor_saved_ms, member FROM security WHERE id=1`).
@@ -629,22 +587,6 @@ func OpenEndpoint(path string) (*Endpoint, error) {
 		r.ContentKeys[ep] = key
 	}
 	rows.Close()
-	rows, err = db.Query(`SELECT sender, high_water FROM senders`)
-	if err != nil {
-		db.Close()
-		return nil, ErrStorage
-	}
-	for rows.Next() {
-		var sender string
-		var hw uint64
-		if err := rows.Scan(&sender, &hw); err != nil {
-			rows.Close()
-			db.Close()
-			return nil, ErrStorage
-		}
-		r.HighWater[sender] = hw
-	}
-	rows.Close()
 	e := &Endpoint{path: path, db: db, data: r}
 	if err := e.validate(); err != nil {
 		db.Close()
@@ -665,9 +607,6 @@ func (e *Endpoint) validate() error {
 	for ep := uint64(1); ep <= r.HeadEpoch; ep++ {
 		s, ok := r.States[ep]
 		if !ok {
-			return ErrStorage
-		}
-		if s.Core.IssuedAt > uint64(time.Now().UnixMilli())+MaxClockSkew {
 			return ErrStorage
 		}
 		if ep == 1 {
@@ -753,7 +692,20 @@ func (e *Endpoint) Snapshot() (Pin, State, string) {
 	defer e.mu.Unlock()
 	return e.data.Pin, chainHead(e.data), e.data.MemberID
 }
-func (e *Endpoint) StateCount() int   { e.mu.Lock(); defer e.mu.Unlock(); return len(e.data.States) }
+func (e *Endpoint) StateCount() int { e.mu.Lock(); defer e.mu.Unlock(); return len(e.data.States) }
+func (e *Endpoint) Floor() uint64   { e.mu.Lock(); defer e.mu.Unlock(); return e.data.Floor }
+
+// LastRecoveryEpoch is the newest state installed through a recovery
+// statement, or 0 when the chain has none.
+func (e *Endpoint) LastRecoveryEpoch() uint64 {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	var last uint64
+	for epoch := range e.data.Recovery {
+		last = max(last, epoch)
+	}
+	return last
+}
 func (e *Endpoint) HeadEpoch() uint64 { e.mu.Lock(); defer e.mu.Unlock(); return e.data.HeadEpoch }
 func (e *Endpoint) Removed() bool     { e.mu.Lock(); defer e.mu.Unlock(); return !e.data.Member }
 
@@ -810,17 +762,11 @@ func (e *Endpoint) Install(states []State, proofs []*RecoveryStatement) error {
 						return ErrUntrusted
 					}
 				}
-				next.ContentKeys[prev.Core.ContentEpoch] = bytes.Clone(next.Secret)
 				next.Secret = secret
 				next.Counter = 0
 				next.BlockEnd = 0
 				next.CounterEpoch = s.Core.ContentEpoch
 				next.Member = true
-				// Counters restart with the content key. The durable replay
-				// floor and accepted log belong to the old epoch; keeping
-				// them would reject the new epoch's counters.
-				next.HighWater = map[string]uint64{}
-				next.Accepted = map[string]accepted{}
 			} else if next.Secret != nil {
 				next.Secret = secret
 				next.Member = true
@@ -834,6 +780,11 @@ func (e *Endpoint) Install(states []State, proofs []*RecoveryStatement) error {
 		}
 		next.HeadEpoch = s.Core.Epoch
 	}
+	// Cache every content key that is still derivable, before this state is
+	// used. Doing it at install time, in the same transaction, means a later
+	// recovery boundary cannot make pre-recovery history unreadable on a
+	// device that already had it.
+	cacheDerivableKeys(&next)
 	if err := e.persistInstall(d, next); err != nil {
 		return err
 	}
@@ -873,17 +824,6 @@ func (e *Endpoint) persistInstall(old, next record) error {
 		next.Secret, next.Counter, next.BlockEnd, next.CounterEpoch, boolInt(next.Member)); err != nil {
 		return ErrStorage
 	}
-	if next.CounterEpoch != old.CounterEpoch {
-		if _, err := tx.Exec(`DELETE FROM accepted`); err != nil {
-			return ErrStorage
-		}
-		if _, err := tx.Exec(`DELETE FROM senders`); err != nil {
-			return ErrStorage
-		}
-		if _, err := tx.Exec(`UPDATE accepted_meta SET root=?, cutoff=? WHERE id=1`, acceptedRoot(nil, next.AcceptedFloor), next.AcceptedFloor); err != nil {
-			return ErrStorage
-		}
-	}
 	for ep := old.HeadEpoch + 1; ep <= next.HeadEpoch; ep++ {
 		s, ok := next.States[ep]
 		if !ok {
@@ -919,6 +859,25 @@ func (e *Endpoint) persistInstall(old, next record) error {
 		}
 	}
 	return tx.Commit()
+}
+
+// cacheDerivableKeys opens the grant of every state that still names this
+// device, so each content key the chain lets it read is cached before a
+// recovery boundary can make the PrevSecret walk stop.
+func cacheDerivableKeys(next *record) {
+	for _, s := range next.States {
+		if _, ok := s.Core.Member(next.MemberID); !ok {
+			continue
+		}
+		if _, ok := next.ContentKeys[s.Core.ContentEpoch]; ok {
+			continue
+		}
+		key, err := next.Pin.OpenGrant(s, next.MemberID, next.XPrivate)
+		if err != nil {
+			continue
+		}
+		next.ContentKeys[s.Core.ContentEpoch] = bytes.Clone(key)
+	}
 }
 
 func (e *Endpoint) cacheChainKeys() error {
@@ -1120,6 +1079,11 @@ func (e *Endpoint) Open(w Wire, sessionSeed []byte, live bool, now uint64) (Head
 	if !ok {
 		return h, nil, ErrUnknown
 	}
+	// A clock rolled back behind the persisted floor pauses remote control
+	// until it catches up; viewing history and events keep working.
+	if live && h.Purpose.Control() && now+MaxClockSkew < e.data.Floor {
+		return h, nil, ErrStale
+	}
 	head := chainHead(e.data)
 	secret, err := e.contentSecretLocked(h.ContentEpoch)
 	if err != nil {
@@ -1145,6 +1109,23 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 		return nil, ErrInvalid
 	}
 	key := acceptedKey(h)
+	e.mu.Unlock()
+
+	// Open verifies the state, live membership, lease and ciphertext. Only a
+	// verified header may reach the accepted log: an attacker forging header
+	// bytes must not learn cached results or whether a request was seen. An
+	// unknown state or an expired lease must not consume the replay entry, so
+	// the caller can fetch the state and try the same envelope again.
+	_, plain, err := e.Open(w, sessionSeed, true, now)
+	if err != nil {
+		return nil, err
+	}
+
+	persist := h.Purpose == Command
+	e.mu.Lock()
+	// The accepted log follows the verified envelope and precedes the
+	// deadline: an executed request still reports its recorded result after
+	// the deadline, while a forged header never reaches this lookup.
 	if result, cached, err := e.lookupAccepted(key); cached || err != nil {
 		e.mu.Unlock()
 		return result, err
@@ -1165,32 +1146,6 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 		}
 		e.data = d
 	}
-	if _, ok := e.data.States[h.Epoch]; !ok {
-		e.mu.Unlock()
-		return nil, ErrUnknown
-	}
-	e.mu.Unlock()
-
-	// Open verifies the state, live membership, lease and ciphertext. An
-	// unknown state or an expired lease must not consume the replay counter,
-	// so the caller can fetch the state and try the same envelope again.
-	_, plain, err := e.Open(w, sessionSeed, true, now)
-	if err != nil {
-		return nil, err
-	}
-
-	persist := h.Purpose == Command
-	e.mu.Lock()
-	if result, cached, err := e.lookupAccepted(key); cached || err != nil {
-		e.mu.Unlock()
-		return result, err
-	}
-	if persist {
-		if err := e.reserveReplayLocked(&e.data, h.Sender, h.Counter); err != nil {
-			e.mu.Unlock()
-			return nil, err
-		}
-	}
 	if _, _, err := e.startAccepted(key, h.Deadline, now, persist); err != nil {
 		e.mu.Unlock()
 		return nil, err
@@ -1207,8 +1162,11 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 	return out, callErr
 }
 
+// acceptedKey names one logical request. The content epoch is deliberately
+// absent: after a key change a retry with the same request ID is the same
+// action and must not run twice.
 func acceptedKey(h Header) string {
-	return h.Sender + "/" + itoa(uint64(h.Purpose)) + "/" + itoa(h.ContentEpoch) + "/" + h.Machine + "/" + h.Session + "/" + h.Request + "/" + itoa(h.Seq)
+	return h.Sender + "/" + itoa(uint64(h.Purpose)) + "/" + h.Machine + "/" + h.Session + "/" + h.Request + "/" + itoa(h.Seq)
 }
 
 // lookupAccepted must be called with e.mu held.
@@ -1224,27 +1182,6 @@ func (e *Endpoint) lookupAccepted(key string) ([]byte, bool, error) {
 		return nil, false, ErrBackend
 	}
 	return bytes.Clone(a.Result), true, nil
-}
-
-// reserveReplayLocked refuses a command whose counter a previous run already
-// executed and persists the new exact high-water before the command runs. A
-// crash therefore cannot make an executed command acceptable again. Commands
-// are user actions, not per-message traffic; terminal frames are scoped to a
-// stream ID and handled by the in-memory accepted table instead.
-func (e *Endpoint) reserveReplayLocked(d *record, sender string, counter uint64) error {
-	if counter == 0 {
-		return ErrInvalid
-	}
-	if counter <= d.HighWater[sender] {
-		return ErrStale
-	}
-	if e.db != nil {
-		if _, err := e.db.Exec(`INSERT INTO senders (sender, high_water) VALUES (?, ?) ON CONFLICT (sender) DO UPDATE SET high_water=excluded.high_water`, sender, counter); err != nil {
-			return ErrStorage
-		}
-	}
-	d.HighWater[sender] = counter
-	return nil
 }
 
 func itoa(n uint64) string {

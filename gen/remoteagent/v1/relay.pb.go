@@ -299,7 +299,7 @@ func (x GetRecoveryContextResponse_Phase) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GetRecoveryContextResponse_Phase.Descriptor instead.
 func (GetRecoveryContextResponse_Phase) EnumDescriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{70, 0}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{72, 0}
 }
 
 // DeviceRegistration is signed by the account key.
@@ -4221,8 +4221,11 @@ type GetSecurityStatesResponse struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	States    []*SecurityState       `protobuf:"bytes,1,rep,name=states,proto3" json:"states,omitempty"`
 	HeadEpoch uint64                 `protobuf:"varint,2,opt,name=head_epoch,json=headEpoch,proto3" json:"head_epoch,omitempty"`
-	// Set for the current authority phone while a recovery is pending.
-	RecoveryPending bool `protobuf:"varint,3,opt,name=recovery_pending,json=recoveryPending,proto3" json:"recovery_pending,omitempty"`
+	// Set for the current authority phone while a recovery is pending, with
+	// the time it may complete. Only the signed-in authority phone sees this;
+	// the unauthenticated recovery service no longer answers it.
+	RecoveryPending bool   `protobuf:"varint,3,opt,name=recovery_pending,json=recoveryPending,proto3" json:"recovery_pending,omitempty"`
+	RecoveryReadyMs uint64 `protobuf:"varint,4,opt,name=recovery_ready_ms,json=recoveryReadyMs,proto3" json:"recovery_ready_ms,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -4278,19 +4281,113 @@ func (x *GetSecurityStatesResponse) GetRecoveryPending() bool {
 	return false
 }
 
+func (x *GetSecurityStatesResponse) GetRecoveryReadyMs() uint64 {
+	if x != nil {
+		return x.RecoveryReadyMs
+	}
+	return 0
+}
+
+type GetRecoveryChallengeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRecoveryChallengeRequest) Reset() {
+	*x = GetRecoveryChallengeRequest{}
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRecoveryChallengeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRecoveryChallengeRequest) ProtoMessage() {}
+
+func (x *GetRecoveryChallengeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRecoveryChallengeRequest.ProtoReflect.Descriptor instead.
+func (*GetRecoveryChallengeRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{69}
+}
+
+type GetRecoveryChallengeResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 32 bytes: the first 8 are the expiry time, the rest a server MAC.
+	Challenge     []byte `protobuf:"bytes,1,opt,name=challenge,proto3" json:"challenge,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRecoveryChallengeResponse) Reset() {
+	*x = GetRecoveryChallengeResponse{}
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRecoveryChallengeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRecoveryChallengeResponse) ProtoMessage() {}
+
+func (x *GetRecoveryChallengeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRecoveryChallengeResponse.ProtoReflect.Descriptor instead.
+func (*GetRecoveryChallengeResponse) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *GetRecoveryChallengeResponse) GetChallenge() []byte {
+	if x != nil {
+		return x.Challenge
+	}
+	return nil
+}
+
 type GetRecoveryContextRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The old recovery public key, or the pending row's stored key.
+	// The current recovery public key. Unset when polling by recovery_id.
 	RecoveryEd []byte `protobuf:"bytes,1,opt,name=recovery_ed,json=recoveryEd,proto3" json:"recovery_ed,omitempty"`
-	// Optional: poll after SubmitRecovery.
-	RecoveryId    string `protobuf:"bytes,2,opt,name=recovery_id,json=recoveryId,proto3" json:"recovery_id,omitempty"`
+	// Optional: poll after SubmitRecovery, signed by the new device key.
+	RecoveryId string `protobuf:"bytes,2,opt,name=recovery_id,json=recoveryId,proto3" json:"recovery_id,omitempty"`
+	// From GetRecoveryChallenge.
+	Challenge []byte `protobuf:"bytes,3,opt,name=challenge,proto3" json:"challenge,omitempty"`
+	// Ed25519 over "ra3/recovery-context\0" followed by the 32-byte challenge,
+	// the 32-byte recovery_ed (zeros when empty), and the recovery_id bytes,
+	// by recovery_ed's private key or by the pending recovery's new device key.
+	Signature     []byte `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetRecoveryContextRequest) Reset() {
 	*x = GetRecoveryContextRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[69]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4302,7 +4399,7 @@ func (x *GetRecoveryContextRequest) String() string {
 func (*GetRecoveryContextRequest) ProtoMessage() {}
 
 func (x *GetRecoveryContextRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[69]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4315,7 +4412,7 @@ func (x *GetRecoveryContextRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRecoveryContextRequest.ProtoReflect.Descriptor instead.
 func (*GetRecoveryContextRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{69}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *GetRecoveryContextRequest) GetRecoveryEd() []byte {
@@ -4330,6 +4427,20 @@ func (x *GetRecoveryContextRequest) GetRecoveryId() string {
 		return x.RecoveryId
 	}
 	return ""
+}
+
+func (x *GetRecoveryContextRequest) GetChallenge() []byte {
+	if x != nil {
+		return x.Challenge
+	}
+	return nil
+}
+
+func (x *GetRecoveryContextRequest) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
 }
 
 type GetRecoveryContextResponse struct {
@@ -4348,7 +4459,7 @@ type GetRecoveryContextResponse struct {
 
 func (x *GetRecoveryContextResponse) Reset() {
 	*x = GetRecoveryContextResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[70]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4360,7 +4471,7 @@ func (x *GetRecoveryContextResponse) String() string {
 func (*GetRecoveryContextResponse) ProtoMessage() {}
 
 func (x *GetRecoveryContextResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[70]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4373,7 +4484,7 @@ func (x *GetRecoveryContextResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRecoveryContextResponse.ProtoReflect.Descriptor instead.
 func (*GetRecoveryContextResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{70}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *GetRecoveryContextResponse) GetAccountId() string {
@@ -4428,7 +4539,7 @@ type SubmitRecoveryRequest struct {
 
 func (x *SubmitRecoveryRequest) Reset() {
 	*x = SubmitRecoveryRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[71]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4440,7 +4551,7 @@ func (x *SubmitRecoveryRequest) String() string {
 func (*SubmitRecoveryRequest) ProtoMessage() {}
 
 func (x *SubmitRecoveryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[71]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4453,7 +4564,7 @@ func (x *SubmitRecoveryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitRecoveryRequest.ProtoReflect.Descriptor instead.
 func (*SubmitRecoveryRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{71}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *SubmitRecoveryRequest) GetStatement() []byte {
@@ -4480,7 +4591,7 @@ type SubmitRecoveryResponse struct {
 
 func (x *SubmitRecoveryResponse) Reset() {
 	*x = SubmitRecoveryResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[72]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4492,7 +4603,7 @@ func (x *SubmitRecoveryResponse) String() string {
 func (*SubmitRecoveryResponse) ProtoMessage() {}
 
 func (x *SubmitRecoveryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[72]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4505,7 +4616,7 @@ func (x *SubmitRecoveryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitRecoveryResponse.ProtoReflect.Descriptor instead.
 func (*SubmitRecoveryResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{72}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *SubmitRecoveryResponse) GetRecoveryId() string {
@@ -4525,8 +4636,9 @@ func (x *SubmitRecoveryResponse) GetReadyMs() uint64 {
 type CompleteRecoveryRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	RecoveryId string                 `protobuf:"bytes,1,opt,name=recovery_id,json=recoveryId,proto3" json:"recovery_id,omitempty"`
-	// By the new authority member Ed over "ra3/recovery-complete\x00" ||
-	// recovery_id.
+	// By the new authority member Ed over "ra3/recovery-complete\0" ||
+	// recovery_id. A retry after completion is answered without a token; the
+	// device logs in with the normal challenge.
 	Signature     []byte `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4534,7 +4646,7 @@ type CompleteRecoveryRequest struct {
 
 func (x *CompleteRecoveryRequest) Reset() {
 	*x = CompleteRecoveryRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[73]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4546,7 +4658,7 @@ func (x *CompleteRecoveryRequest) String() string {
 func (*CompleteRecoveryRequest) ProtoMessage() {}
 
 func (x *CompleteRecoveryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[73]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4559,7 +4671,7 @@ func (x *CompleteRecoveryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompleteRecoveryRequest.ProtoReflect.Descriptor instead.
 func (*CompleteRecoveryRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{73}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *CompleteRecoveryRequest) GetRecoveryId() string {
@@ -4579,16 +4691,15 @@ func (x *CompleteRecoveryRequest) GetSignature() []byte {
 type CompleteRecoveryResponse struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	DeviceId string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
-	Token    string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
 	// The account's Ed25519 public key, for pairing after recovery.
-	AccountPublicKey []byte `protobuf:"bytes,3,opt,name=account_public_key,json=accountPublicKey,proto3" json:"account_public_key,omitempty"`
+	AccountPublicKey []byte `protobuf:"bytes,2,opt,name=account_public_key,json=accountPublicKey,proto3" json:"account_public_key,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CompleteRecoveryResponse) Reset() {
 	*x = CompleteRecoveryResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[74]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4600,7 +4711,7 @@ func (x *CompleteRecoveryResponse) String() string {
 func (*CompleteRecoveryResponse) ProtoMessage() {}
 
 func (x *CompleteRecoveryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[74]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4613,19 +4724,12 @@ func (x *CompleteRecoveryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompleteRecoveryResponse.ProtoReflect.Descriptor instead.
 func (*CompleteRecoveryResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{74}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *CompleteRecoveryResponse) GetDeviceId() string {
 	if x != nil {
 		return x.DeviceId
-	}
-	return ""
-}
-
-func (x *CompleteRecoveryResponse) GetToken() string {
-	if x != nil {
-		return x.Token
 	}
 	return ""
 }
@@ -4653,7 +4757,7 @@ type NotifyRequest struct {
 
 func (x *NotifyRequest) Reset() {
 	*x = NotifyRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[75]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4665,7 +4769,7 @@ func (x *NotifyRequest) String() string {
 func (*NotifyRequest) ProtoMessage() {}
 
 func (x *NotifyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[75]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4678,7 +4782,7 @@ func (x *NotifyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotifyRequest.ProtoReflect.Descriptor instead.
 func (*NotifyRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{75}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *NotifyRequest) GetSessionId() string {
@@ -4722,7 +4826,7 @@ type SetPushTargetRequest struct {
 
 func (x *SetPushTargetRequest) Reset() {
 	*x = SetPushTargetRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[76]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4734,7 +4838,7 @@ func (x *SetPushTargetRequest) String() string {
 func (*SetPushTargetRequest) ProtoMessage() {}
 
 func (x *SetPushTargetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[76]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4747,7 +4851,7 @@ func (x *SetPushTargetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPushTargetRequest.ProtoReflect.Descriptor instead.
 func (*SetPushTargetRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{76}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *SetPushTargetRequest) GetType() PushType {
@@ -4782,7 +4886,7 @@ type SetPushTargetResponse struct {
 
 func (x *SetPushTargetResponse) Reset() {
 	*x = SetPushTargetResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[77]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4794,7 +4898,7 @@ func (x *SetPushTargetResponse) String() string {
 func (*SetPushTargetResponse) ProtoMessage() {}
 
 func (x *SetPushTargetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[77]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4807,7 +4911,7 @@ func (x *SetPushTargetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPushTargetResponse.ProtoReflect.Descriptor instead.
 func (*SetPushTargetResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{77}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *SetPushTargetResponse) GetEnabled() bool {
@@ -4825,7 +4929,7 @@ type NotifyResponse struct {
 
 func (x *NotifyResponse) Reset() {
 	*x = NotifyResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[78]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4837,7 +4941,7 @@ func (x *NotifyResponse) String() string {
 func (*NotifyResponse) ProtoMessage() {}
 
 func (x *NotifyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[78]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4850,7 +4954,7 @@ func (x *NotifyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotifyResponse.ProtoReflect.Descriptor instead.
 func (*NotifyResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{78}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{80}
 }
 
 type GetImageRequest struct {
@@ -4863,7 +4967,7 @@ type GetImageRequest struct {
 
 func (x *GetImageRequest) Reset() {
 	*x = GetImageRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[79]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4875,7 +4979,7 @@ func (x *GetImageRequest) String() string {
 func (*GetImageRequest) ProtoMessage() {}
 
 func (x *GetImageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[79]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4888,7 +4992,7 @@ func (x *GetImageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetImageRequest.ProtoReflect.Descriptor instead.
 func (*GetImageRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{79}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *GetImageRequest) GetSessionId() string {
@@ -4920,7 +5024,7 @@ type GetImageResponse struct {
 
 func (x *GetImageResponse) Reset() {
 	*x = GetImageResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[80]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4932,7 +5036,7 @@ func (x *GetImageResponse) String() string {
 func (*GetImageResponse) ProtoMessage() {}
 
 func (x *GetImageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[80]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4945,7 +5049,7 @@ func (x *GetImageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetImageResponse.ProtoReflect.Descriptor instead.
 func (*GetImageResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{80}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *GetImageResponse) GetImage() *Envelope {
@@ -4981,7 +5085,7 @@ type PutImageRequest struct {
 
 func (x *PutImageRequest) Reset() {
 	*x = PutImageRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[81]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4993,7 +5097,7 @@ func (x *PutImageRequest) String() string {
 func (*PutImageRequest) ProtoMessage() {}
 
 func (x *PutImageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[81]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5006,7 +5110,7 @@ func (x *PutImageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutImageRequest.ProtoReflect.Descriptor instead.
 func (*PutImageRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{81}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *PutImageRequest) GetSessionId() string {
@@ -5040,7 +5144,7 @@ type PutImageResponse struct {
 
 func (x *PutImageResponse) Reset() {
 	*x = PutImageResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[82]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5052,7 +5156,7 @@ func (x *PutImageResponse) String() string {
 func (*PutImageResponse) ProtoMessage() {}
 
 func (x *PutImageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[82]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5065,7 +5169,7 @@ func (x *PutImageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutImageResponse.ProtoReflect.Descriptor instead.
 func (*PutImageResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{82}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *PutImageResponse) GetExpiresMs() int64 {
@@ -5095,7 +5199,7 @@ type Device struct {
 
 func (x *Device) Reset() {
 	*x = Device{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[83]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5107,7 +5211,7 @@ func (x *Device) String() string {
 func (*Device) ProtoMessage() {}
 
 func (x *Device) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[83]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5120,7 +5224,7 @@ func (x *Device) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Device.ProtoReflect.Descriptor instead.
 func (*Device) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{83}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *Device) GetId() string {
@@ -5173,7 +5277,7 @@ type ListDevicesRequest struct {
 
 func (x *ListDevicesRequest) Reset() {
 	*x = ListDevicesRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[84]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5185,7 +5289,7 @@ func (x *ListDevicesRequest) String() string {
 func (*ListDevicesRequest) ProtoMessage() {}
 
 func (x *ListDevicesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[84]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5198,7 +5302,7 @@ func (x *ListDevicesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDevicesRequest.ProtoReflect.Descriptor instead.
 func (*ListDevicesRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{84}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{86}
 }
 
 type ListDevicesResponse struct {
@@ -5212,7 +5316,7 @@ type ListDevicesResponse struct {
 
 func (x *ListDevicesResponse) Reset() {
 	*x = ListDevicesResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[85]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5224,7 +5328,7 @@ func (x *ListDevicesResponse) String() string {
 func (*ListDevicesResponse) ProtoMessage() {}
 
 func (x *ListDevicesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[85]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5237,7 +5341,7 @@ func (x *ListDevicesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDevicesResponse.ProtoReflect.Descriptor instead.
 func (*ListDevicesResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{85}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *ListDevicesResponse) GetDevices() []*Device {
@@ -5268,7 +5372,7 @@ type PutDeviceMetaRequest struct {
 
 func (x *PutDeviceMetaRequest) Reset() {
 	*x = PutDeviceMetaRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[86]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5280,7 +5384,7 @@ func (x *PutDeviceMetaRequest) String() string {
 func (*PutDeviceMetaRequest) ProtoMessage() {}
 
 func (x *PutDeviceMetaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[86]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5293,7 +5397,7 @@ func (x *PutDeviceMetaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutDeviceMetaRequest.ProtoReflect.Descriptor instead.
 func (*PutDeviceMetaRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{86}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *PutDeviceMetaRequest) GetDeviceId() string {
@@ -5330,7 +5434,7 @@ type PutDeviceMetaResponse struct {
 
 func (x *PutDeviceMetaResponse) Reset() {
 	*x = PutDeviceMetaResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[87]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5342,7 +5446,7 @@ func (x *PutDeviceMetaResponse) String() string {
 func (*PutDeviceMetaResponse) ProtoMessage() {}
 
 func (x *PutDeviceMetaResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[87]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5355,7 +5459,7 @@ func (x *PutDeviceMetaResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutDeviceMetaResponse.ProtoReflect.Descriptor instead.
 func (*PutDeviceMetaResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{87}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *PutDeviceMetaResponse) GetApplied() bool {
@@ -5389,7 +5493,7 @@ type AccountPrefsObject struct {
 
 func (x *AccountPrefsObject) Reset() {
 	*x = AccountPrefsObject{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[88]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5401,7 +5505,7 @@ func (x *AccountPrefsObject) String() string {
 func (*AccountPrefsObject) ProtoMessage() {}
 
 func (x *AccountPrefsObject) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[88]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5414,7 +5518,7 @@ func (x *AccountPrefsObject) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountPrefsObject.ProtoReflect.Descriptor instead.
 func (*AccountPrefsObject) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{88}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *AccountPrefsObject) GetObjectId() string {
@@ -5454,7 +5558,7 @@ type GetAccountPrefsRequest struct {
 
 func (x *GetAccountPrefsRequest) Reset() {
 	*x = GetAccountPrefsRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[89]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5466,7 +5570,7 @@ func (x *GetAccountPrefsRequest) String() string {
 func (*GetAccountPrefsRequest) ProtoMessage() {}
 
 func (x *GetAccountPrefsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[89]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5479,7 +5583,7 @@ func (x *GetAccountPrefsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountPrefsRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountPrefsRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{89}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *GetAccountPrefsRequest) GetObjectId() string {
@@ -5498,7 +5602,7 @@ type GetAccountPrefsResponse struct {
 
 func (x *GetAccountPrefsResponse) Reset() {
 	*x = GetAccountPrefsResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[90]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5510,7 +5614,7 @@ func (x *GetAccountPrefsResponse) String() string {
 func (*GetAccountPrefsResponse) ProtoMessage() {}
 
 func (x *GetAccountPrefsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[90]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5523,7 +5627,7 @@ func (x *GetAccountPrefsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountPrefsResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountPrefsResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{90}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *GetAccountPrefsResponse) GetObject() *AccountPrefsObject {
@@ -5546,7 +5650,7 @@ type PutAccountPrefsRequest struct {
 
 func (x *PutAccountPrefsRequest) Reset() {
 	*x = PutAccountPrefsRequest{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[91]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5558,7 +5662,7 @@ func (x *PutAccountPrefsRequest) String() string {
 func (*PutAccountPrefsRequest) ProtoMessage() {}
 
 func (x *PutAccountPrefsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[91]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5571,7 +5675,7 @@ func (x *PutAccountPrefsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutAccountPrefsRequest.ProtoReflect.Descriptor instead.
 func (*PutAccountPrefsRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{91}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *PutAccountPrefsRequest) GetObjectId() string {
@@ -5609,7 +5713,7 @@ type PutAccountPrefsResponse struct {
 
 func (x *PutAccountPrefsResponse) Reset() {
 	*x = PutAccountPrefsResponse{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[92]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5621,7 +5725,7 @@ func (x *PutAccountPrefsResponse) String() string {
 func (*PutAccountPrefsResponse) ProtoMessage() {}
 
 func (x *PutAccountPrefsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[92]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5634,7 +5738,7 @@ func (x *PutAccountPrefsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutAccountPrefsResponse.ProtoReflect.Descriptor instead.
 func (*PutAccountPrefsResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{92}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *PutAccountPrefsResponse) GetApplied() bool {
@@ -5661,7 +5765,7 @@ type AccountPrefsUpdated struct {
 
 func (x *AccountPrefsUpdated) Reset() {
 	*x = AccountPrefsUpdated{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[93]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5673,7 +5777,7 @@ func (x *AccountPrefsUpdated) String() string {
 func (*AccountPrefsUpdated) ProtoMessage() {}
 
 func (x *AccountPrefsUpdated) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[93]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5686,7 +5790,7 @@ func (x *AccountPrefsUpdated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountPrefsUpdated.ProtoReflect.Descriptor instead.
 func (*AccountPrefsUpdated) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{93}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *AccountPrefsUpdated) GetObject() *AccountPrefsObject {
@@ -5707,7 +5811,7 @@ type DeviceUpdated struct {
 
 func (x *DeviceUpdated) Reset() {
 	*x = DeviceUpdated{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[94]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5719,7 +5823,7 @@ func (x *DeviceUpdated) String() string {
 func (*DeviceUpdated) ProtoMessage() {}
 
 func (x *DeviceUpdated) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[94]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5732,7 +5836,7 @@ func (x *DeviceUpdated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeviceUpdated.ProtoReflect.Descriptor instead.
 func (*DeviceUpdated) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{94}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *DeviceUpdated) GetDevice() *Device {
@@ -5752,7 +5856,7 @@ type DeviceRemoved struct {
 
 func (x *DeviceRemoved) Reset() {
 	*x = DeviceRemoved{}
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[95]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5764,7 +5868,7 @@ func (x *DeviceRemoved) String() string {
 func (*DeviceRemoved) ProtoMessage() {}
 
 func (x *DeviceRemoved) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_relay_proto_msgTypes[95]
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5777,7 +5881,7 @@ func (x *DeviceRemoved) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeviceRemoved.ProtoReflect.Descriptor instead.
 func (*DeviceRemoved) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{95}
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *DeviceRemoved) GetDeviceId() string {
@@ -6054,17 +6158,23 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x18GetSecurityStatesRequest\x12\x1f\n" +
 	"\vafter_epoch\x18\x01 \x01(\x04R\n" +
 	"afterEpoch\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\rR\x05limit\"\x9c\x01\n" +
+	"\x05limit\x18\x02 \x01(\rR\x05limit\"\xc8\x01\n" +
 	"\x19GetSecurityStatesResponse\x125\n" +
 	"\x06states\x18\x01 \x03(\v2\x1d.remoteagent.v1.SecurityStateR\x06states\x12\x1d\n" +
 	"\n" +
 	"head_epoch\x18\x02 \x01(\x04R\theadEpoch\x12)\n" +
-	"\x10recovery_pending\x18\x03 \x01(\bR\x0frecoveryPending\"]\n" +
+	"\x10recovery_pending\x18\x03 \x01(\bR\x0frecoveryPending\x12*\n" +
+	"\x11recovery_ready_ms\x18\x04 \x01(\x04R\x0frecoveryReadyMs\"\x1d\n" +
+	"\x1bGetRecoveryChallengeRequest\"<\n" +
+	"\x1cGetRecoveryChallengeResponse\x12\x1c\n" +
+	"\tchallenge\x18\x01 \x01(\fR\tchallenge\"\x99\x01\n" +
 	"\x19GetRecoveryContextRequest\x12\x1f\n" +
 	"\vrecovery_ed\x18\x01 \x01(\fR\n" +
 	"recoveryEd\x12\x1f\n" +
 	"\vrecovery_id\x18\x02 \x01(\tR\n" +
-	"recoveryId\"\x91\x03\n" +
+	"recoveryId\x12\x1c\n" +
+	"\tchallenge\x18\x03 \x01(\fR\tchallenge\x12\x1c\n" +
+	"\tsignature\x18\x04 \x01(\fR\tsignature\"\x91\x03\n" +
 	"\x1aGetRecoveryContextResponse\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x125\n" +
@@ -6090,11 +6200,10 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x17CompleteRecoveryRequest\x12\x1f\n" +
 	"\vrecovery_id\x18\x01 \x01(\tR\n" +
 	"recoveryId\x12\x1c\n" +
-	"\tsignature\x18\x02 \x01(\fR\tsignature\"{\n" +
+	"\tsignature\x18\x02 \x01(\fR\tsignature\"e\n" +
 	"\x18CompleteRecoveryResponse\x12\x1b\n" +
-	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\x12,\n" +
-	"\x12account_public_key\x18\x03 \x01(\fR\x10accountPublicKey\"\xb1\x01\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12,\n" +
+	"\x12account_public_key\x18\x02 \x01(\fR\x10accountPublicKey\"\xb1\x01\n" +
 	"\rNotifyRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12.\n" +
@@ -6231,8 +6340,9 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\fUploadEvents\x12#.remoteagent.v1.UploadEventsRequest\x1a$.remoteagent.v1.UploadEventsResponse\x12e\n" +
 	"\x10ListSessionHeads\x12'.remoteagent.v1.ListSessionHeadsRequest\x1a(.remoteagent.v1.ListSessionHeadsResponse\x12G\n" +
 	"\x06Notify\x12\x1d.remoteagent.v1.NotifyRequest\x1a\x1e.remoteagent.v1.NotifyResponse\x12M\n" +
-	"\bPutImage\x12\x1f.remoteagent.v1.PutImageRequest\x1a .remoteagent.v1.PutImageResponse2\xc6\x02\n" +
-	"\x0fRecoveryService\x12k\n" +
+	"\bPutImage\x12\x1f.remoteagent.v1.PutImageRequest\x1a .remoteagent.v1.PutImageResponse2\xb9\x03\n" +
+	"\x0fRecoveryService\x12q\n" +
+	"\x14GetRecoveryChallenge\x12+.remoteagent.v1.GetRecoveryChallengeRequest\x1a,.remoteagent.v1.GetRecoveryChallengeResponse\x12k\n" +
 	"\x12GetRecoveryContext\x12).remoteagent.v1.GetRecoveryContextRequest\x1a*.remoteagent.v1.GetRecoveryContextResponse\x12_\n" +
 	"\x0eSubmitRecovery\x12%.remoteagent.v1.SubmitRecoveryRequest\x1a&.remoteagent.v1.SubmitRecoveryResponse\x12e\n" +
 	"\x10CompleteRecovery\x12'.remoteagent.v1.CompleteRecoveryRequest\x1a(.remoteagent.v1.CompleteRecoveryResponseB\xbc\x01\n" +
@@ -6252,7 +6362,7 @@ func file_remoteagent_v1_relay_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_v1_relay_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_remoteagent_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 96)
+var file_remoteagent_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 98)
 var file_remoteagent_v1_relay_proto_goTypes = []any{
 	(DeviceKind)(0),                       // 0: remoteagent.v1.DeviceKind
 	(PairingState)(0),                     // 1: remoteagent.v1.PairingState
@@ -6328,34 +6438,36 @@ var file_remoteagent_v1_relay_proto_goTypes = []any{
 	(*PutSecurityStateResponse)(nil),      // 71: remoteagent.v1.PutSecurityStateResponse
 	(*GetSecurityStatesRequest)(nil),      // 72: remoteagent.v1.GetSecurityStatesRequest
 	(*GetSecurityStatesResponse)(nil),     // 73: remoteagent.v1.GetSecurityStatesResponse
-	(*GetRecoveryContextRequest)(nil),     // 74: remoteagent.v1.GetRecoveryContextRequest
-	(*GetRecoveryContextResponse)(nil),    // 75: remoteagent.v1.GetRecoveryContextResponse
-	(*SubmitRecoveryRequest)(nil),         // 76: remoteagent.v1.SubmitRecoveryRequest
-	(*SubmitRecoveryResponse)(nil),        // 77: remoteagent.v1.SubmitRecoveryResponse
-	(*CompleteRecoveryRequest)(nil),       // 78: remoteagent.v1.CompleteRecoveryRequest
-	(*CompleteRecoveryResponse)(nil),      // 79: remoteagent.v1.CompleteRecoveryResponse
-	(*NotifyRequest)(nil),                 // 80: remoteagent.v1.NotifyRequest
-	(*SetPushTargetRequest)(nil),          // 81: remoteagent.v1.SetPushTargetRequest
-	(*SetPushTargetResponse)(nil),         // 82: remoteagent.v1.SetPushTargetResponse
-	(*NotifyResponse)(nil),                // 83: remoteagent.v1.NotifyResponse
-	(*GetImageRequest)(nil),               // 84: remoteagent.v1.GetImageRequest
-	(*GetImageResponse)(nil),              // 85: remoteagent.v1.GetImageResponse
-	(*PutImageRequest)(nil),               // 86: remoteagent.v1.PutImageRequest
-	(*PutImageResponse)(nil),              // 87: remoteagent.v1.PutImageResponse
-	(*Device)(nil),                        // 88: remoteagent.v1.Device
-	(*ListDevicesRequest)(nil),            // 89: remoteagent.v1.ListDevicesRequest
-	(*ListDevicesResponse)(nil),           // 90: remoteagent.v1.ListDevicesResponse
-	(*PutDeviceMetaRequest)(nil),          // 91: remoteagent.v1.PutDeviceMetaRequest
-	(*PutDeviceMetaResponse)(nil),         // 92: remoteagent.v1.PutDeviceMetaResponse
-	(*AccountPrefsObject)(nil),            // 93: remoteagent.v1.AccountPrefsObject
-	(*GetAccountPrefsRequest)(nil),        // 94: remoteagent.v1.GetAccountPrefsRequest
-	(*GetAccountPrefsResponse)(nil),       // 95: remoteagent.v1.GetAccountPrefsResponse
-	(*PutAccountPrefsRequest)(nil),        // 96: remoteagent.v1.PutAccountPrefsRequest
-	(*PutAccountPrefsResponse)(nil),       // 97: remoteagent.v1.PutAccountPrefsResponse
-	(*AccountPrefsUpdated)(nil),           // 98: remoteagent.v1.AccountPrefsUpdated
-	(*DeviceUpdated)(nil),                 // 99: remoteagent.v1.DeviceUpdated
-	(*DeviceRemoved)(nil),                 // 100: remoteagent.v1.DeviceRemoved
-	(*Envelope)(nil),                      // 101: remoteagent.v1.Envelope
+	(*GetRecoveryChallengeRequest)(nil),   // 74: remoteagent.v1.GetRecoveryChallengeRequest
+	(*GetRecoveryChallengeResponse)(nil),  // 75: remoteagent.v1.GetRecoveryChallengeResponse
+	(*GetRecoveryContextRequest)(nil),     // 76: remoteagent.v1.GetRecoveryContextRequest
+	(*GetRecoveryContextResponse)(nil),    // 77: remoteagent.v1.GetRecoveryContextResponse
+	(*SubmitRecoveryRequest)(nil),         // 78: remoteagent.v1.SubmitRecoveryRequest
+	(*SubmitRecoveryResponse)(nil),        // 79: remoteagent.v1.SubmitRecoveryResponse
+	(*CompleteRecoveryRequest)(nil),       // 80: remoteagent.v1.CompleteRecoveryRequest
+	(*CompleteRecoveryResponse)(nil),      // 81: remoteagent.v1.CompleteRecoveryResponse
+	(*NotifyRequest)(nil),                 // 82: remoteagent.v1.NotifyRequest
+	(*SetPushTargetRequest)(nil),          // 83: remoteagent.v1.SetPushTargetRequest
+	(*SetPushTargetResponse)(nil),         // 84: remoteagent.v1.SetPushTargetResponse
+	(*NotifyResponse)(nil),                // 85: remoteagent.v1.NotifyResponse
+	(*GetImageRequest)(nil),               // 86: remoteagent.v1.GetImageRequest
+	(*GetImageResponse)(nil),              // 87: remoteagent.v1.GetImageResponse
+	(*PutImageRequest)(nil),               // 88: remoteagent.v1.PutImageRequest
+	(*PutImageResponse)(nil),              // 89: remoteagent.v1.PutImageResponse
+	(*Device)(nil),                        // 90: remoteagent.v1.Device
+	(*ListDevicesRequest)(nil),            // 91: remoteagent.v1.ListDevicesRequest
+	(*ListDevicesResponse)(nil),           // 92: remoteagent.v1.ListDevicesResponse
+	(*PutDeviceMetaRequest)(nil),          // 93: remoteagent.v1.PutDeviceMetaRequest
+	(*PutDeviceMetaResponse)(nil),         // 94: remoteagent.v1.PutDeviceMetaResponse
+	(*AccountPrefsObject)(nil),            // 95: remoteagent.v1.AccountPrefsObject
+	(*GetAccountPrefsRequest)(nil),        // 96: remoteagent.v1.GetAccountPrefsRequest
+	(*GetAccountPrefsResponse)(nil),       // 97: remoteagent.v1.GetAccountPrefsResponse
+	(*PutAccountPrefsRequest)(nil),        // 98: remoteagent.v1.PutAccountPrefsRequest
+	(*PutAccountPrefsResponse)(nil),       // 99: remoteagent.v1.PutAccountPrefsResponse
+	(*AccountPrefsUpdated)(nil),           // 100: remoteagent.v1.AccountPrefsUpdated
+	(*DeviceUpdated)(nil),                 // 101: remoteagent.v1.DeviceUpdated
+	(*DeviceRemoved)(nil),                 // 102: remoteagent.v1.DeviceRemoved
+	(*Envelope)(nil),                      // 103: remoteagent.v1.Envelope
 }
 var file_remoteagent_v1_relay_proto_depIdxs = []int32{
 	0,   // 0: remoteagent.v1.DeviceRegistration.kind:type_name -> remoteagent.v1.DeviceKind
@@ -6364,22 +6476,22 @@ var file_remoteagent_v1_relay_proto_depIdxs = []int32{
 	0,   // 3: remoteagent.v1.JoinPairingRequest.joiner_kind:type_name -> remoteagent.v1.DeviceKind
 	1,   // 4: remoteagent.v1.GetPairingResponse.state:type_name -> remoteagent.v1.PairingState
 	0,   // 5: remoteagent.v1.GetPairingResponse.joiner_kind:type_name -> remoteagent.v1.DeviceKind
-	101, // 6: remoteagent.v1.GetPairingResponse.payload:type_name -> remoteagent.v1.Envelope
-	101, // 7: remoteagent.v1.ApprovePairingRequest.payload:type_name -> remoteagent.v1.Envelope
-	101, // 8: remoteagent.v1.Machine.meta:type_name -> remoteagent.v1.Envelope
-	101, // 9: remoteagent.v1.RemoteSession.key:type_name -> remoteagent.v1.Envelope
-	101, // 10: remoteagent.v1.RemoteSession.meta:type_name -> remoteagent.v1.Envelope
-	101, // 11: remoteagent.v1.StoredEvent.envelope:type_name -> remoteagent.v1.Envelope
+	103, // 6: remoteagent.v1.GetPairingResponse.payload:type_name -> remoteagent.v1.Envelope
+	103, // 7: remoteagent.v1.ApprovePairingRequest.payload:type_name -> remoteagent.v1.Envelope
+	103, // 8: remoteagent.v1.Machine.meta:type_name -> remoteagent.v1.Envelope
+	103, // 9: remoteagent.v1.RemoteSession.key:type_name -> remoteagent.v1.Envelope
+	103, // 10: remoteagent.v1.RemoteSession.meta:type_name -> remoteagent.v1.Envelope
+	103, // 11: remoteagent.v1.StoredEvent.envelope:type_name -> remoteagent.v1.Envelope
 	30,  // 12: remoteagent.v1.ListMachinesResponse.machines:type_name -> remoteagent.v1.Machine
 	32,  // 13: remoteagent.v1.ListRemoteSessionsRequest.after:type_name -> remoteagent.v1.SessionCursor
 	31,  // 14: remoteagent.v1.ListRemoteSessionsResponse.sessions:type_name -> remoteagent.v1.RemoteSession
 	32,  // 15: remoteagent.v1.ListRemoteSessionsResponse.next:type_name -> remoteagent.v1.SessionCursor
 	33,  // 16: remoteagent.v1.GetEventsResponse.events:type_name -> remoteagent.v1.StoredEvent
-	101, // 17: remoteagent.v1.ForwardRequest.command:type_name -> remoteagent.v1.Envelope
-	101, // 18: remoteagent.v1.ForwardResponse.result:type_name -> remoteagent.v1.Envelope
-	101, // 19: remoteagent.v1.PutMachineRequest.meta:type_name -> remoteagent.v1.Envelope
-	101, // 20: remoteagent.v1.PutSessionRequest.key:type_name -> remoteagent.v1.Envelope
-	101, // 21: remoteagent.v1.PutSessionRequest.meta:type_name -> remoteagent.v1.Envelope
+	103, // 17: remoteagent.v1.ForwardRequest.command:type_name -> remoteagent.v1.Envelope
+	103, // 18: remoteagent.v1.ForwardResponse.result:type_name -> remoteagent.v1.Envelope
+	103, // 19: remoteagent.v1.PutMachineRequest.meta:type_name -> remoteagent.v1.Envelope
+	103, // 20: remoteagent.v1.PutSessionRequest.key:type_name -> remoteagent.v1.Envelope
+	103, // 21: remoteagent.v1.PutSessionRequest.meta:type_name -> remoteagent.v1.Envelope
 	33,  // 22: remoteagent.v1.UploadEventsRequest.events:type_name -> remoteagent.v1.StoredEvent
 	49,  // 23: remoteagent.v1.ListSessionHeadsResponse.sessions:type_name -> remoteagent.v1.SessionHead
 	51,  // 24: remoteagent.v1.PeerFrame.hello:type_name -> remoteagent.v1.StreamHello
@@ -6390,37 +6502,37 @@ var file_remoteagent_v1_relay_proto_depIdxs = []int32{
 	57,  // 29: remoteagent.v1.ServerFrame.session_updated:type_name -> remoteagent.v1.SessionUpdated
 	58,  // 30: remoteagent.v1.ServerFrame.machine_updated:type_name -> remoteagent.v1.MachineUpdated
 	59,  // 31: remoteagent.v1.ServerFrame.machine_removed:type_name -> remoteagent.v1.MachineRemoved
-	98,  // 32: remoteagent.v1.ServerFrame.account_prefs_updated:type_name -> remoteagent.v1.AccountPrefsUpdated
-	99,  // 33: remoteagent.v1.ServerFrame.device_updated:type_name -> remoteagent.v1.DeviceUpdated
-	100, // 34: remoteagent.v1.ServerFrame.device_removed:type_name -> remoteagent.v1.DeviceRemoved
+	100, // 32: remoteagent.v1.ServerFrame.account_prefs_updated:type_name -> remoteagent.v1.AccountPrefsUpdated
+	101, // 33: remoteagent.v1.ServerFrame.device_updated:type_name -> remoteagent.v1.DeviceUpdated
+	102, // 34: remoteagent.v1.ServerFrame.device_removed:type_name -> remoteagent.v1.DeviceRemoved
 	60,  // 35: remoteagent.v1.ServerFrame.forward_call:type_name -> remoteagent.v1.ForwardCall
 	33,  // 36: remoteagent.v1.EventsAppended.events:type_name -> remoteagent.v1.StoredEvent
 	31,  // 37: remoteagent.v1.SessionUpdated.session:type_name -> remoteagent.v1.RemoteSession
 	30,  // 38: remoteagent.v1.MachineUpdated.machine:type_name -> remoteagent.v1.Machine
-	101, // 39: remoteagent.v1.ForwardCall.command:type_name -> remoteagent.v1.Envelope
-	101, // 40: remoteagent.v1.ForwardReply.result:type_name -> remoteagent.v1.Envelope
+	103, // 39: remoteagent.v1.ForwardCall.command:type_name -> remoteagent.v1.Envelope
+	103, // 40: remoteagent.v1.ForwardReply.result:type_name -> remoteagent.v1.Envelope
 	2,   // 41: remoteagent.v1.SetPushSubscriptionRequest.kinds:type_name -> remoteagent.v1.NotifyKind
 	69,  // 42: remoteagent.v1.PutSecurityStateRequest.states:type_name -> remoteagent.v1.SecurityState
 	69,  // 43: remoteagent.v1.GetSecurityStatesResponse.states:type_name -> remoteagent.v1.SecurityState
 	69,  // 44: remoteagent.v1.GetRecoveryContextResponse.states:type_name -> remoteagent.v1.SecurityState
 	4,   // 45: remoteagent.v1.GetRecoveryContextResponse.phase:type_name -> remoteagent.v1.GetRecoveryContextResponse.Phase
 	2,   // 46: remoteagent.v1.NotifyRequest.kind:type_name -> remoteagent.v1.NotifyKind
-	101, // 47: remoteagent.v1.NotifyRequest.content:type_name -> remoteagent.v1.Envelope
+	103, // 47: remoteagent.v1.NotifyRequest.content:type_name -> remoteagent.v1.Envelope
 	3,   // 48: remoteagent.v1.SetPushTargetRequest.type:type_name -> remoteagent.v1.PushType
 	2,   // 49: remoteagent.v1.SetPushTargetRequest.kinds:type_name -> remoteagent.v1.NotifyKind
-	101, // 50: remoteagent.v1.GetImageResponse.image:type_name -> remoteagent.v1.Envelope
-	101, // 51: remoteagent.v1.PutImageRequest.image:type_name -> remoteagent.v1.Envelope
+	103, // 50: remoteagent.v1.GetImageResponse.image:type_name -> remoteagent.v1.Envelope
+	103, // 51: remoteagent.v1.PutImageRequest.image:type_name -> remoteagent.v1.Envelope
 	0,   // 52: remoteagent.v1.Device.kind:type_name -> remoteagent.v1.DeviceKind
-	101, // 53: remoteagent.v1.Device.meta:type_name -> remoteagent.v1.Envelope
-	88,  // 54: remoteagent.v1.ListDevicesResponse.devices:type_name -> remoteagent.v1.Device
-	101, // 55: remoteagent.v1.PutDeviceMetaRequest.meta:type_name -> remoteagent.v1.Envelope
-	88,  // 56: remoteagent.v1.PutDeviceMetaResponse.device:type_name -> remoteagent.v1.Device
-	101, // 57: remoteagent.v1.AccountPrefsObject.envelope:type_name -> remoteagent.v1.Envelope
-	93,  // 58: remoteagent.v1.GetAccountPrefsResponse.object:type_name -> remoteagent.v1.AccountPrefsObject
-	101, // 59: remoteagent.v1.PutAccountPrefsRequest.envelope:type_name -> remoteagent.v1.Envelope
-	93,  // 60: remoteagent.v1.PutAccountPrefsResponse.object:type_name -> remoteagent.v1.AccountPrefsObject
-	93,  // 61: remoteagent.v1.AccountPrefsUpdated.object:type_name -> remoteagent.v1.AccountPrefsObject
-	88,  // 62: remoteagent.v1.DeviceUpdated.device:type_name -> remoteagent.v1.Device
+	103, // 53: remoteagent.v1.Device.meta:type_name -> remoteagent.v1.Envelope
+	90,  // 54: remoteagent.v1.ListDevicesResponse.devices:type_name -> remoteagent.v1.Device
+	103, // 55: remoteagent.v1.PutDeviceMetaRequest.meta:type_name -> remoteagent.v1.Envelope
+	90,  // 56: remoteagent.v1.PutDeviceMetaResponse.device:type_name -> remoteagent.v1.Device
+	103, // 57: remoteagent.v1.AccountPrefsObject.envelope:type_name -> remoteagent.v1.Envelope
+	95,  // 58: remoteagent.v1.GetAccountPrefsResponse.object:type_name -> remoteagent.v1.AccountPrefsObject
+	103, // 59: remoteagent.v1.PutAccountPrefsRequest.envelope:type_name -> remoteagent.v1.Envelope
+	95,  // 60: remoteagent.v1.PutAccountPrefsResponse.object:type_name -> remoteagent.v1.AccountPrefsObject
+	95,  // 61: remoteagent.v1.AccountPrefsUpdated.object:type_name -> remoteagent.v1.AccountPrefsObject
+	90,  // 62: remoteagent.v1.DeviceUpdated.device:type_name -> remoteagent.v1.Device
 	6,   // 63: remoteagent.v1.AuthService.RegisterDevice:input_type -> remoteagent.v1.RegisterDeviceRequest
 	11,  // 64: remoteagent.v1.AuthService.GetChallenge:input_type -> remoteagent.v1.GetChallengeRequest
 	13,  // 65: remoteagent.v1.AuthService.Login:input_type -> remoteagent.v1.LoginRequest
@@ -6438,12 +6550,12 @@ var file_remoteagent_v1_relay_proto_depIdxs = []int32{
 	40,  // 77: remoteagent.v1.ClientService.Forward:input_type -> remoteagent.v1.ForwardRequest
 	63,  // 78: remoteagent.v1.ClientService.GetPushKey:input_type -> remoteagent.v1.GetPushKeyRequest
 	65,  // 79: remoteagent.v1.ClientService.SetPushSubscription:input_type -> remoteagent.v1.SetPushSubscriptionRequest
-	81,  // 80: remoteagent.v1.ClientService.SetPushTarget:input_type -> remoteagent.v1.SetPushTargetRequest
-	84,  // 81: remoteagent.v1.ClientService.GetImage:input_type -> remoteagent.v1.GetImageRequest
-	89,  // 82: remoteagent.v1.ClientService.ListDevices:input_type -> remoteagent.v1.ListDevicesRequest
-	91,  // 83: remoteagent.v1.ClientService.PutDeviceMeta:input_type -> remoteagent.v1.PutDeviceMetaRequest
-	94,  // 84: remoteagent.v1.ClientService.GetAccountPrefs:input_type -> remoteagent.v1.GetAccountPrefsRequest
-	96,  // 85: remoteagent.v1.ClientService.PutAccountPrefs:input_type -> remoteagent.v1.PutAccountPrefsRequest
+	83,  // 80: remoteagent.v1.ClientService.SetPushTarget:input_type -> remoteagent.v1.SetPushTargetRequest
+	86,  // 81: remoteagent.v1.ClientService.GetImage:input_type -> remoteagent.v1.GetImageRequest
+	91,  // 82: remoteagent.v1.ClientService.ListDevices:input_type -> remoteagent.v1.ListDevicesRequest
+	93,  // 83: remoteagent.v1.ClientService.PutDeviceMeta:input_type -> remoteagent.v1.PutDeviceMetaRequest
+	96,  // 84: remoteagent.v1.ClientService.GetAccountPrefs:input_type -> remoteagent.v1.GetAccountPrefsRequest
+	98,  // 85: remoteagent.v1.ClientService.PutAccountPrefs:input_type -> remoteagent.v1.PutAccountPrefsRequest
 	67,  // 86: remoteagent.v1.ClientService.PinSecurityDomain:input_type -> remoteagent.v1.PinSecurityDomainRequest
 	70,  // 87: remoteagent.v1.ClientService.PutSecurityState:input_type -> remoteagent.v1.PutSecurityStateRequest
 	72,  // 88: remoteagent.v1.ClientService.GetSecurityStates:input_type -> remoteagent.v1.GetSecurityStatesRequest
@@ -6451,48 +6563,50 @@ var file_remoteagent_v1_relay_proto_depIdxs = []int32{
 	44,  // 90: remoteagent.v1.MachineService.PutSession:input_type -> remoteagent.v1.PutSessionRequest
 	46,  // 91: remoteagent.v1.MachineService.UploadEvents:input_type -> remoteagent.v1.UploadEventsRequest
 	48,  // 92: remoteagent.v1.MachineService.ListSessionHeads:input_type -> remoteagent.v1.ListSessionHeadsRequest
-	80,  // 93: remoteagent.v1.MachineService.Notify:input_type -> remoteagent.v1.NotifyRequest
-	86,  // 94: remoteagent.v1.MachineService.PutImage:input_type -> remoteagent.v1.PutImageRequest
-	74,  // 95: remoteagent.v1.RecoveryService.GetRecoveryContext:input_type -> remoteagent.v1.GetRecoveryContextRequest
-	76,  // 96: remoteagent.v1.RecoveryService.SubmitRecovery:input_type -> remoteagent.v1.SubmitRecoveryRequest
-	78,  // 97: remoteagent.v1.RecoveryService.CompleteRecovery:input_type -> remoteagent.v1.CompleteRecoveryRequest
-	10,  // 98: remoteagent.v1.AuthService.RegisterDevice:output_type -> remoteagent.v1.RegisterDeviceResponse
-	12,  // 99: remoteagent.v1.AuthService.GetChallenge:output_type -> remoteagent.v1.GetChallengeResponse
-	14,  // 100: remoteagent.v1.AuthService.Login:output_type -> remoteagent.v1.LoginResponse
-	8,   // 101: remoteagent.v1.AuthService.GetSignupChallenge:output_type -> remoteagent.v1.GetSignupChallengeResponse
-	19,  // 102: remoteagent.v1.PairingService.PeekPairing:output_type -> remoteagent.v1.PeekPairingResponse
-	16,  // 103: remoteagent.v1.PairingService.CreatePairing:output_type -> remoteagent.v1.CreatePairingResponse
-	21,  // 104: remoteagent.v1.PairingService.JoinPairing:output_type -> remoteagent.v1.JoinPairingResponse
-	23,  // 105: remoteagent.v1.PairingService.GetPairing:output_type -> remoteagent.v1.GetPairingResponse
-	25,  // 106: remoteagent.v1.PairingService.RevealPairing:output_type -> remoteagent.v1.RevealPairingResponse
-	27,  // 107: remoteagent.v1.PairingService.ApprovePairing:output_type -> remoteagent.v1.ApprovePairingResponse
-	29,  // 108: remoteagent.v1.PairingService.CancelPairing:output_type -> remoteagent.v1.CancelPairingResponse
-	35,  // 109: remoteagent.v1.ClientService.ListMachines:output_type -> remoteagent.v1.ListMachinesResponse
-	37,  // 110: remoteagent.v1.ClientService.ListRemoteSessions:output_type -> remoteagent.v1.ListRemoteSessionsResponse
-	39,  // 111: remoteagent.v1.ClientService.GetEvents:output_type -> remoteagent.v1.GetEventsResponse
-	41,  // 112: remoteagent.v1.ClientService.Forward:output_type -> remoteagent.v1.ForwardResponse
-	64,  // 113: remoteagent.v1.ClientService.GetPushKey:output_type -> remoteagent.v1.GetPushKeyResponse
-	66,  // 114: remoteagent.v1.ClientService.SetPushSubscription:output_type -> remoteagent.v1.SetPushSubscriptionResponse
-	82,  // 115: remoteagent.v1.ClientService.SetPushTarget:output_type -> remoteagent.v1.SetPushTargetResponse
-	85,  // 116: remoteagent.v1.ClientService.GetImage:output_type -> remoteagent.v1.GetImageResponse
-	90,  // 117: remoteagent.v1.ClientService.ListDevices:output_type -> remoteagent.v1.ListDevicesResponse
-	92,  // 118: remoteagent.v1.ClientService.PutDeviceMeta:output_type -> remoteagent.v1.PutDeviceMetaResponse
-	95,  // 119: remoteagent.v1.ClientService.GetAccountPrefs:output_type -> remoteagent.v1.GetAccountPrefsResponse
-	97,  // 120: remoteagent.v1.ClientService.PutAccountPrefs:output_type -> remoteagent.v1.PutAccountPrefsResponse
-	68,  // 121: remoteagent.v1.ClientService.PinSecurityDomain:output_type -> remoteagent.v1.PinSecurityDomainResponse
-	71,  // 122: remoteagent.v1.ClientService.PutSecurityState:output_type -> remoteagent.v1.PutSecurityStateResponse
-	73,  // 123: remoteagent.v1.ClientService.GetSecurityStates:output_type -> remoteagent.v1.GetSecurityStatesResponse
-	43,  // 124: remoteagent.v1.MachineService.PutMachine:output_type -> remoteagent.v1.PutMachineResponse
-	45,  // 125: remoteagent.v1.MachineService.PutSession:output_type -> remoteagent.v1.PutSessionResponse
-	47,  // 126: remoteagent.v1.MachineService.UploadEvents:output_type -> remoteagent.v1.UploadEventsResponse
-	50,  // 127: remoteagent.v1.MachineService.ListSessionHeads:output_type -> remoteagent.v1.ListSessionHeadsResponse
-	83,  // 128: remoteagent.v1.MachineService.Notify:output_type -> remoteagent.v1.NotifyResponse
-	87,  // 129: remoteagent.v1.MachineService.PutImage:output_type -> remoteagent.v1.PutImageResponse
-	75,  // 130: remoteagent.v1.RecoveryService.GetRecoveryContext:output_type -> remoteagent.v1.GetRecoveryContextResponse
-	77,  // 131: remoteagent.v1.RecoveryService.SubmitRecovery:output_type -> remoteagent.v1.SubmitRecoveryResponse
-	79,  // 132: remoteagent.v1.RecoveryService.CompleteRecovery:output_type -> remoteagent.v1.CompleteRecoveryResponse
-	98,  // [98:133] is the sub-list for method output_type
-	63,  // [63:98] is the sub-list for method input_type
+	82,  // 93: remoteagent.v1.MachineService.Notify:input_type -> remoteagent.v1.NotifyRequest
+	88,  // 94: remoteagent.v1.MachineService.PutImage:input_type -> remoteagent.v1.PutImageRequest
+	74,  // 95: remoteagent.v1.RecoveryService.GetRecoveryChallenge:input_type -> remoteagent.v1.GetRecoveryChallengeRequest
+	76,  // 96: remoteagent.v1.RecoveryService.GetRecoveryContext:input_type -> remoteagent.v1.GetRecoveryContextRequest
+	78,  // 97: remoteagent.v1.RecoveryService.SubmitRecovery:input_type -> remoteagent.v1.SubmitRecoveryRequest
+	80,  // 98: remoteagent.v1.RecoveryService.CompleteRecovery:input_type -> remoteagent.v1.CompleteRecoveryRequest
+	10,  // 99: remoteagent.v1.AuthService.RegisterDevice:output_type -> remoteagent.v1.RegisterDeviceResponse
+	12,  // 100: remoteagent.v1.AuthService.GetChallenge:output_type -> remoteagent.v1.GetChallengeResponse
+	14,  // 101: remoteagent.v1.AuthService.Login:output_type -> remoteagent.v1.LoginResponse
+	8,   // 102: remoteagent.v1.AuthService.GetSignupChallenge:output_type -> remoteagent.v1.GetSignupChallengeResponse
+	19,  // 103: remoteagent.v1.PairingService.PeekPairing:output_type -> remoteagent.v1.PeekPairingResponse
+	16,  // 104: remoteagent.v1.PairingService.CreatePairing:output_type -> remoteagent.v1.CreatePairingResponse
+	21,  // 105: remoteagent.v1.PairingService.JoinPairing:output_type -> remoteagent.v1.JoinPairingResponse
+	23,  // 106: remoteagent.v1.PairingService.GetPairing:output_type -> remoteagent.v1.GetPairingResponse
+	25,  // 107: remoteagent.v1.PairingService.RevealPairing:output_type -> remoteagent.v1.RevealPairingResponse
+	27,  // 108: remoteagent.v1.PairingService.ApprovePairing:output_type -> remoteagent.v1.ApprovePairingResponse
+	29,  // 109: remoteagent.v1.PairingService.CancelPairing:output_type -> remoteagent.v1.CancelPairingResponse
+	35,  // 110: remoteagent.v1.ClientService.ListMachines:output_type -> remoteagent.v1.ListMachinesResponse
+	37,  // 111: remoteagent.v1.ClientService.ListRemoteSessions:output_type -> remoteagent.v1.ListRemoteSessionsResponse
+	39,  // 112: remoteagent.v1.ClientService.GetEvents:output_type -> remoteagent.v1.GetEventsResponse
+	41,  // 113: remoteagent.v1.ClientService.Forward:output_type -> remoteagent.v1.ForwardResponse
+	64,  // 114: remoteagent.v1.ClientService.GetPushKey:output_type -> remoteagent.v1.GetPushKeyResponse
+	66,  // 115: remoteagent.v1.ClientService.SetPushSubscription:output_type -> remoteagent.v1.SetPushSubscriptionResponse
+	84,  // 116: remoteagent.v1.ClientService.SetPushTarget:output_type -> remoteagent.v1.SetPushTargetResponse
+	87,  // 117: remoteagent.v1.ClientService.GetImage:output_type -> remoteagent.v1.GetImageResponse
+	92,  // 118: remoteagent.v1.ClientService.ListDevices:output_type -> remoteagent.v1.ListDevicesResponse
+	94,  // 119: remoteagent.v1.ClientService.PutDeviceMeta:output_type -> remoteagent.v1.PutDeviceMetaResponse
+	97,  // 120: remoteagent.v1.ClientService.GetAccountPrefs:output_type -> remoteagent.v1.GetAccountPrefsResponse
+	99,  // 121: remoteagent.v1.ClientService.PutAccountPrefs:output_type -> remoteagent.v1.PutAccountPrefsResponse
+	68,  // 122: remoteagent.v1.ClientService.PinSecurityDomain:output_type -> remoteagent.v1.PinSecurityDomainResponse
+	71,  // 123: remoteagent.v1.ClientService.PutSecurityState:output_type -> remoteagent.v1.PutSecurityStateResponse
+	73,  // 124: remoteagent.v1.ClientService.GetSecurityStates:output_type -> remoteagent.v1.GetSecurityStatesResponse
+	43,  // 125: remoteagent.v1.MachineService.PutMachine:output_type -> remoteagent.v1.PutMachineResponse
+	45,  // 126: remoteagent.v1.MachineService.PutSession:output_type -> remoteagent.v1.PutSessionResponse
+	47,  // 127: remoteagent.v1.MachineService.UploadEvents:output_type -> remoteagent.v1.UploadEventsResponse
+	50,  // 128: remoteagent.v1.MachineService.ListSessionHeads:output_type -> remoteagent.v1.ListSessionHeadsResponse
+	85,  // 129: remoteagent.v1.MachineService.Notify:output_type -> remoteagent.v1.NotifyResponse
+	89,  // 130: remoteagent.v1.MachineService.PutImage:output_type -> remoteagent.v1.PutImageResponse
+	75,  // 131: remoteagent.v1.RecoveryService.GetRecoveryChallenge:output_type -> remoteagent.v1.GetRecoveryChallengeResponse
+	77,  // 132: remoteagent.v1.RecoveryService.GetRecoveryContext:output_type -> remoteagent.v1.GetRecoveryContextResponse
+	79,  // 133: remoteagent.v1.RecoveryService.SubmitRecovery:output_type -> remoteagent.v1.SubmitRecoveryResponse
+	81,  // 134: remoteagent.v1.RecoveryService.CompleteRecovery:output_type -> remoteagent.v1.CompleteRecoveryResponse
+	99,  // [99:135] is the sub-list for method output_type
+	63,  // [63:99] is the sub-list for method input_type
 	63,  // [63:63] is the sub-list for extension type_name
 	63,  // [63:63] is the sub-list for extension extendee
 	0,   // [0:63] is the sub-list for field type_name
@@ -6526,7 +6640,7 @@ func file_remoteagent_v1_relay_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_relay_proto_rawDesc), len(file_remoteagent_v1_relay_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   96,
+			NumMessages:   98,
 			NumExtensions: 0,
 			NumServices:   5,
 		},

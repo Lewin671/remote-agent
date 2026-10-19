@@ -26,20 +26,51 @@ class RecoveryTest {
                     )
                 approvedClient(phone, http, io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_MACHINE)
                 val before =
-                    Recovery.context(server.url, http, SigningKey(recoverySeed).publicKey)
+                    Recovery.context(
+                        server.url,
+                        http,
+                        SigningKey(recoverySeed).publicKey,
+                        recoverySeed,
+                    )
                 assertEquals(GetRecoveryContextResponse.Phase.PHASE_UNSPECIFIED, before.phase)
                 assertEquals(2, before.chain.size)
                 assertEquals(before.pin.account, phone.accountId)
 
+                // A code for another genesis is refused before anything is
+                // submitted, even if the relay's chain is otherwise valid.
+                val wrong =
+                    runCatching {
+                        Recovery.context(
+                            server.url,
+                            http,
+                            SigningKey(recoverySeed).publicKey,
+                            recoverySeed,
+                            expectedGenesis = ByteArray(10) { 0x7f },
+                        )
+                    }.exceptionOrNull()
+                assertTrue(wrong is DeviceSecurity.Failure)
+
                 val newDevice = randomBytes(32)
-                val submitted = Recovery.submit(server.url, http, recoverySeed, newDevice)
+                val submitted =
+                    Recovery.submit(
+                        server.url,
+                        http,
+                        recoverySeed,
+                        newDevice,
+                        before.pin.genesis.copyOf(10),
+                    )
                 assertTrue(submitted.readyMs > System.currentTimeMillis() + 47L * 3600_000)
                 assertNotNull(RecoveryCode.decode(submitted.newCode))
                 assertEquals(before.accountId, submitted.accountId)
                 assertEquals(phone.accountPublicKey.hex(), before.accountPublicKey.hex())
 
                 val pending =
-                    Recovery.context(server.url, http, SigningKey(recoverySeed).publicKey)
+                    Recovery.context(
+                        server.url,
+                        http,
+                        SigningKey(recoverySeed).publicKey,
+                        recoverySeed,
+                    )
                 assertEquals(GetRecoveryContextResponse.Phase.PHASE_PENDING, pending.phase)
                 assertEquals(submitted.recoveryId, pending.recoveryId)
                 // Until the delay ends the published head is still the old authority's.

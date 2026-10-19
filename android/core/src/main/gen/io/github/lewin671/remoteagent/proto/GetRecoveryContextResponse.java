@@ -113,13 +113,13 @@ public  final class GetRecoveryContextResponse extends
             }
           };
 
-    public static com.google.protobuf.Internal.EnumVerifier
+    public static com.google.protobuf.Internal.EnumVerifier 
         internalGetVerifier() {
       return PhaseVerifier.INSTANCE;
     }
 
-    private static final class PhaseVerifier implements
-         com.google.protobuf.Internal.EnumVerifier {
+    private static final class PhaseVerifier implements 
+         com.google.protobuf.Internal.EnumVerifier { 
             static final com.google.protobuf.Internal.EnumVerifier
                 INSTANCE = new PhaseVerifier();
             @java.lang.Override
@@ -205,7 +205,7 @@ public  final class GetRecoveryContextResponse extends
    *
    * <code>repeated .remoteagent.v1.SecurityState states = 2 [json_name = "states"];</code>
    */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.SecurityStateOrBuilder>
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.SecurityStateOrBuilder> 
       getStatesOrBuilderList() {
     return states_;
   }
@@ -383,7 +383,7 @@ public  final class GetRecoveryContextResponse extends
    * @param value The readyMs to set.
    */
   private void setReadyMs(long value) {
-
+    
     readyMs_ = value;
   }
   /**
@@ -468,7 +468,7 @@ public  final class GetRecoveryContextResponse extends
    */
   private void setAccountPublicKey(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
-
+  
     accountPublicKey_ = value;
   }
   /**

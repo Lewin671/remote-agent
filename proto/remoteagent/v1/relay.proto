@@ -563,24 +563,44 @@ message GetSecurityStatesRequest {
 message GetSecurityStatesResponse {
   repeated SecurityState states = 1;
   uint64 head_epoch = 2;
-  // Set for the current authority phone while a recovery is pending.
+  // Set for the current authority phone while a recovery is pending, with
+  // the time it may complete. Only the signed-in authority phone sees this;
+  // the unauthenticated recovery service no longer answers it.
   bool recovery_pending = 3;
+  uint64 recovery_ready_ms = 4;
 }
 
 // RecoveryService transfers authority with a recovery code after 48 hours.
 // It is unauthenticated because the recovering phone has no token yet; the
-// statement and state signatures are the authorization.
+// statement and state signatures are the authorization. Every lookup must
+// prove possession of a key already bound to the account: the recovery key
+// named in the request, or, when polling by recovery_id, the new authority
+// device key in the pending row.
 service RecoveryService {
+  // A short-lived server challenge that GetRecoveryContext signatures cover.
+  rpc GetRecoveryChallenge(GetRecoveryChallengeRequest) returns (GetRecoveryChallengeResponse);
   rpc GetRecoveryContext(GetRecoveryContextRequest) returns (GetRecoveryContextResponse);
   rpc SubmitRecovery(SubmitRecoveryRequest) returns (SubmitRecoveryResponse);
   rpc CompleteRecovery(CompleteRecoveryRequest) returns (CompleteRecoveryResponse);
 }
 
+message GetRecoveryChallengeRequest {}
+message GetRecoveryChallengeResponse {
+  // 32 bytes: the first 8 are the expiry time, the rest a server MAC.
+  bytes challenge = 1;
+}
+
 message GetRecoveryContextRequest {
-  // The old recovery public key, or the pending row's stored key.
+  // The current recovery public key. Unset when polling by recovery_id.
   bytes recovery_ed = 1;
-  // Optional: poll after SubmitRecovery.
+  // Optional: poll after SubmitRecovery, signed by the new device key.
   string recovery_id = 2;
+  // From GetRecoveryChallenge.
+  bytes challenge = 3;
+  // Ed25519 over "ra3/recovery-context\0" followed by the 32-byte challenge,
+  // the 32-byte recovery_ed (zeros when empty), and the recovery_id bytes,
+  // by recovery_ed's private key or by the pending recovery's new device key.
+  bytes signature = 4;
 }
 message GetRecoveryContextResponse {
   enum Phase {
@@ -611,15 +631,15 @@ message SubmitRecoveryResponse {
 
 message CompleteRecoveryRequest {
   string recovery_id = 1;
-  // By the new authority member Ed over "ra3/recovery-complete\x00" ||
-  // recovery_id.
+  // By the new authority member Ed over "ra3/recovery-complete\0" ||
+  // recovery_id. A retry after completion is answered without a token; the
+  // device logs in with the normal challenge.
   bytes signature = 2;
 }
 message CompleteRecoveryResponse {
   string device_id = 1;
-  string token = 2;
   // The account's Ed25519 public key, for pairing after recovery.
-  bytes account_public_key = 3;
+  bytes account_public_key = 2;
 }
 
 message NotifyRequest {

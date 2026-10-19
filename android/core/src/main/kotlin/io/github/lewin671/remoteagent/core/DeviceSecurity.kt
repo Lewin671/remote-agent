@@ -1136,6 +1136,18 @@ object DeviceSecurity {
             return Record(pin, chain, memberID, xPrivate, next, end, floor, keys, proofs)
         }
 
+        /** A restart skips the rest of the last reserved block: those counter
+         * values must never be handed out twice. */
+        fun atBlockEnd(): Record =
+            Record(pin, chain, memberID, xPrivate, counterBlockEnd, counterBlockEnd, floor, keys, proofs)
+
+        /** Persists the whole next block before any value in it is used. */
+        fun reservingBlock(): Record {
+            check(counterBlockEnd <= ULong.MAX_VALUE - COUNTER_BLOCK_U, "capacity")
+            val end = counterBlockEnd + COUNTER_BLOCK_U
+            return Record(pin, chain, memberID, xPrivate, counterBlockEnd, end, floor, keys, proofs)
+        }
+
         fun touched(now: ULong): Record =
             if (now <= floor) this
             else Record(pin, chain, memberID, xPrivate, counter, counterBlockEnd, now, keys, proofs)
@@ -1147,6 +1159,14 @@ object DeviceSecurity {
             newProofs.putAll(this.proofs)
             val incoming = proofs.toMutableList()
             while (incoming.size < states.size) incoming.add(null)
+            // Cache every key still derivable from this chain before a
+            // recovery boundary can stop the PrevSecret walk. Retained
+            // devices keep their pre-recovery history this way.
+            val newKeys = HashMap(keys)
+            for (ep in 1uL..head.core.contentEpoch) {
+                contentKey(ep)?.let { newKeys.putIfAbsent(ep, it) }
+            }
+            var secret = lastMember()?.let { secret() }
             states.forEachIndexed { i, next ->
                 verifyState(pin, next)
                 val existing = all.firstOrNull { it.core.epoch == next.core.epoch }
@@ -1159,14 +1179,31 @@ object DeviceSecurity {
                 val proof = rawProof?.let { parseRecoveryStatement(it) }
                 verifyTransition(all.last(), next, proof)
                 if (rawProof != null) newProofs[next.core.epoch] = rawProof
+                val prev = all.last()
+                if (next.core.member(memberID) != null) {
+                    val key = openGrant(pin, next, memberID, xPrivate)
+                    if (next.core.contentEpoch != prev.core.contentEpoch) {
+                        // A renewal may carry a changed grant (accepted, as Go
+                        // does); a content-epoch change must open the previous
+                        // key unless a recovery proves it has none.
+                        if (proof == null) {
+                            val old = openPrevSecret(key, next.prevSecret)
+                            check(secret != null && old.contentEquals(secret), "untrusted")
+                        }
+                        if (secret != null) newKeys[prev.core.contentEpoch] = secret
+                        secret = key
+                    } else {
+                        secret = key
+                    }
+                    newKeys[next.core.contentEpoch] = key
+                }
                 all.add(next)
             }
             check(all.size <= MAX_STATES, "capacity")
-            // The recovered phone has no old content key; a client may read the new one only.
-            val newKeys = keys.filterKeys { it <= all.last().core.contentEpoch }
-            // A content-key change resets the counter; a lease renewal must not reuse
-            // (key, counter) pairs.
-            val rotated = all.last().core.contentEpoch != head.core.contentEpoch
+            val finalHead = all.last()
+            val rotated = finalHead.core.contentEpoch != head.core.contentEpoch
+            // A content-key change resets the counter; a lease renewal must
+            // not reuse (key, counter) pairs.
             return Record(
                 pin,
                 all,
@@ -1175,7 +1212,7 @@ object DeviceSecurity {
                 if (rotated) 0uL else counter,
                 if (rotated) COUNTER_BLOCK_U else counterBlockEnd,
                 floor,
-                newKeys,
+                newKeys.filterKeys { it <= finalHead.core.contentEpoch },
                 newProofs,
             )
         }
@@ -1259,8 +1296,8 @@ object DeviceSecurity {
 
         fun initializeSecurity(record: Record)
 
-        /** Reserves the next counter value, durably before the caller sends. */
-        fun reserveSecurity(expectedState: ByteArray): Record
+        /** Writes the whole record if the stored head is still expectedState. */
+        fun writeSecurity(expectedState: ByteArray, record: Record): Record
 
         fun installSecurity(
             expectedState: ByteArray,

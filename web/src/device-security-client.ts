@@ -74,6 +74,8 @@ const browserStorage: SecurityStorage = {
 const MAX_PAGE = 8;
 export class DeviceSecurityClient {
   private syncJob?: Promise<SecurityRecord>;
+  /** The verified record, kept for sealing; a new block re-checks the store. */
+  private record?: SecurityRecord;
   constructor(
     readonly memberID: string,
     private readonly ed: CryptoKey,
@@ -109,6 +111,10 @@ export class DeviceSecurityClient {
   }
   private async load(): Promise<SecurityRecord> {
     return this.validateLocalRecord(await this.store.loadSecurity());
+  }
+  /** The verified record kept for sealing, or the stored one on first use. */
+  private async currentRecord(): Promise<SecurityRecord> {
+    return this.record ?? (await this.load());
   }
   async localIdentity(): Promise<{
     pin: SecurityRecord["pin"];
@@ -152,6 +158,7 @@ export class DeviceSecurityClient {
       const before = head.core.epoch;
       await this.store.installSecurity(r, states, proofs);
       r = await this.load();
+      this.record = r;
       if (r.states[r.states.length - 1].core.epoch <= before)
         throw new SecurityError("stale");
     }
@@ -165,9 +172,12 @@ export class DeviceSecurityClient {
   ): Promise<Envelope> {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const r = await this.validateLocalRecord(
-          await this.store.reserveCounter(await this.load()),
-        );
+        let r = await this.currentRecord();
+        // A block is reserved durably once; the counter then moves in memory.
+        if (r.counter >= r.blockEnd) r = await this.store.reserveCounter(r);
+        const next = { ...r, counter: r.counter + 1n };
+        this.record = next;
+        r = next;
         if (!r.member) throw new SecurityError("untrusted");
         const state = r.states[r.states.length - 1];
         if (control(h.purpose)) {

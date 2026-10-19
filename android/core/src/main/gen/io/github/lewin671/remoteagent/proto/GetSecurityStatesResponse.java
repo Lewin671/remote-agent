@@ -144,7 +144,9 @@ public  final class GetSecurityStatesResponse extends
   private boolean recoveryPending_;
   /**
    * <pre>
-   * Set for the current authority phone while a recovery is pending.
+   * Set for the current authority phone while a recovery is pending, with
+   * the time it may complete. Only the signed-in authority phone sees this;
+   * the unauthenticated recovery service no longer answers it.
    * </pre>
    *
    * <code>bool recovery_pending = 3 [json_name = "recoveryPending"];</code>
@@ -156,7 +158,9 @@ public  final class GetSecurityStatesResponse extends
   }
   /**
    * <pre>
-   * Set for the current authority phone while a recovery is pending.
+   * Set for the current authority phone while a recovery is pending, with
+   * the time it may complete. Only the signed-in authority phone sees this;
+   * the unauthenticated recovery service no longer answers it.
    * </pre>
    *
    * <code>bool recovery_pending = 3 [json_name = "recoveryPending"];</code>
@@ -168,7 +172,9 @@ public  final class GetSecurityStatesResponse extends
   }
   /**
    * <pre>
-   * Set for the current authority phone while a recovery is pending.
+   * Set for the current authority phone while a recovery is pending, with
+   * the time it may complete. Only the signed-in authority phone sees this;
+   * the unauthenticated recovery service no longer answers it.
    * </pre>
    *
    * <code>bool recovery_pending = 3 [json_name = "recoveryPending"];</code>
@@ -176,6 +182,32 @@ public  final class GetSecurityStatesResponse extends
   private void clearRecoveryPending() {
 
     recoveryPending_ = false;
+  }
+
+  public static final int RECOVERY_READY_MS_FIELD_NUMBER = 4;
+  private long recoveryReadyMs_;
+  /**
+   * <code>uint64 recovery_ready_ms = 4 [json_name = "recoveryReadyMs"];</code>
+   * @return The recoveryReadyMs.
+   */
+  @java.lang.Override
+  public long getRecoveryReadyMs() {
+    return recoveryReadyMs_;
+  }
+  /**
+   * <code>uint64 recovery_ready_ms = 4 [json_name = "recoveryReadyMs"];</code>
+   * @param value The recoveryReadyMs to set.
+   */
+  private void setRecoveryReadyMs(long value) {
+    
+    recoveryReadyMs_ = value;
+  }
+  /**
+   * <code>uint64 recovery_ready_ms = 4 [json_name = "recoveryReadyMs"];</code>
+   */
+  private void clearRecoveryReadyMs() {
+
+    recoveryReadyMs_ = 0L;
   }
 
   public static io.github.lewin671.remoteagent.proto.GetSecurityStatesResponse parseFrom(
@@ -407,7 +439,9 @@ public  final class GetSecurityStatesResponse extends
 
     /**
      * <pre>
-     * Set for the current authority phone while a recovery is pending.
+     * Set for the current authority phone while a recovery is pending, with
+     * the time it may complete. Only the signed-in authority phone sees this;
+     * the unauthenticated recovery service no longer answers it.
      * </pre>
      *
      * <code>bool recovery_pending = 3 [json_name = "recoveryPending"];</code>
@@ -419,7 +453,9 @@ public  final class GetSecurityStatesResponse extends
     }
     /**
      * <pre>
-     * Set for the current authority phone while a recovery is pending.
+     * Set for the current authority phone while a recovery is pending, with
+     * the time it may complete. Only the signed-in authority phone sees this;
+     * the unauthenticated recovery service no longer answers it.
      * </pre>
      *
      * <code>bool recovery_pending = 3 [json_name = "recoveryPending"];</code>
@@ -433,7 +469,9 @@ public  final class GetSecurityStatesResponse extends
     }
     /**
      * <pre>
-     * Set for the current authority phone while a recovery is pending.
+     * Set for the current authority phone while a recovery is pending, with
+     * the time it may complete. Only the signed-in authority phone sees this;
+     * the unauthenticated recovery service no longer answers it.
      * </pre>
      *
      * <code>bool recovery_pending = 3 [json_name = "recoveryPending"];</code>
@@ -442,6 +480,34 @@ public  final class GetSecurityStatesResponse extends
     public Builder clearRecoveryPending() {
       copyOnWrite();
       instance.clearRecoveryPending();
+      return this;
+    }
+
+    /**
+     * <code>uint64 recovery_ready_ms = 4 [json_name = "recoveryReadyMs"];</code>
+     * @return The recoveryReadyMs.
+     */
+    @java.lang.Override
+    public long getRecoveryReadyMs() {
+      return instance.getRecoveryReadyMs();
+    }
+    /**
+     * <code>uint64 recovery_ready_ms = 4 [json_name = "recoveryReadyMs"];</code>
+     * @param value The recoveryReadyMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRecoveryReadyMs(long value) {
+      copyOnWrite();
+      instance.setRecoveryReadyMs(value);
+      return this;
+    }
+    /**
+     * <code>uint64 recovery_ready_ms = 4 [json_name = "recoveryReadyMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRecoveryReadyMs() {
+      copyOnWrite();
+      instance.clearRecoveryReadyMs();
       return this;
     }
 
@@ -465,10 +531,11 @@ public  final class GetSecurityStatesResponse extends
             io.github.lewin671.remoteagent.proto.SecurityState.class,
             "headEpoch_",
             "recoveryPending_",
+            "recoveryReadyMs_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0001\u0000\u0001\u001b\u0002\u0003" +
-              "\u0003\u0007";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001\u001b\u0002\u0003" +
+              "\u0003\u0007\u0004\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

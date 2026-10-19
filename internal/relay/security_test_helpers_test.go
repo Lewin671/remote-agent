@@ -11,9 +11,23 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// testSecurityKeys is the fixture chain's material a test needs to build a
+// further signed state.
+type testSecurityKeys struct {
+	phone    ed25519.PrivateKey
+	recovery ed25519.PrivateKey
+	machine  deviceauth.Member
+	secret   []byte
+	states   []deviceauth.State
+}
+
 // initializeTestSecurity gives the test conn a local v3 chain with a phone
-// authority and this machine as a member, so sealing needs no relay.
+// authority and this machine as a member.
 func initializeTestSecurity(t *testing.T, c *conn) {
+	initializeTestSecurityKeys(t, c)
+}
+
+func initializeTestSecurityKeys(t *testing.T, c *conn) *testSecurityKeys {
 	t.Helper()
 	_, phoneEd, err := ed25519.GenerateKey(nil)
 	if err != nil {
@@ -39,14 +53,18 @@ func initializeTestSecurity(t *testing.T, c *conn) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var rec [32]byte
-	rec[0] = 1
+	_, rec, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var recPub [32]byte
+	copy(recPub[:], rec.Public().(ed25519.PublicKey))
 	secret1 := make([]byte, 32)
 	secret1[0] = 1
 	var domain deviceauth.Hash
 	domain[0] = 1
 	now := uint64(time.Now().UnixMilli())
-	genesis, err := deviceauth.BuildGenesis("0123456789abcdef0123456789abcdef", domain, phone, rec, secret1, phoneEd, now)
+	genesis, err := deviceauth.BuildGenesis("0123456789abcdef0123456789abcdef", domain, phone, recPub, secret1, phoneEd, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,6 +87,7 @@ func initializeTestSecurity(t *testing.T, c *conn) {
 	c.acct.DeviceSeed = ed.Seed()
 	c.security = &securitySession{endpoint: endpoint, syncNow: make(chan struct{}, 1)}
 	t.Cleanup(func() { endpoint.Close() })
+	return &testSecurityKeys{phone: phoneEd, recovery: rec, machine: machine, secret: secret2, states: states}
 }
 
 func openTestSecureMessage(c *conn, seed []byte, env *pb.Envelope, want *pb.Header, m proto.Message) (*pb.Header, error) {

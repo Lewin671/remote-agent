@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -48,6 +49,9 @@ func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServic
 	if pin != acct.Security.Pin || id != acct.DeviceID {
 		endpoint.Close()
 		return nil, deviceauth.ErrUntrusted
+	}
+	if floor := endpoint.Floor(); floor > uint64(time.Now().UnixMilli())+deviceauth.MaxClockSkew {
+		slog.Warn("relay: this computer's clock is behind the last seen time; remote control stays paused until it catches up", "behind_ms", floor-uint64(time.Now().UnixMilli()))
 	}
 	return &securitySession{endpoint: endpoint, client: client, syncNow: make(chan struct{}, 1)}, nil
 }
@@ -129,45 +133,60 @@ func (s *securitySession) syncOnce(ctx context.Context) error {
 func (s *securitySession) pull(ctx context.Context) (uint64, bool, error) {
 	before := s.endpoint.HeadEpoch()
 	_, beforeState, _ := s.endpoint.Snapshot()
-	res, err := s.client.GetSecurityStates(ctx, connect.NewRequest(&pb.GetSecurityStatesRequest{AfterEpoch: before, Limit: 8}))
-	if err != nil {
-		return 0, false, err
-	}
-	if err := s.endpoint.Touch(uint64(time.Now().UnixMilli())); err != nil {
-		return 0, false, err
-	}
-	if len(res.Msg.States) == 0 {
-		return before, false, nil
-	}
-	states := make([]deviceauth.State, 0, len(res.Msg.States))
-	proofs := make([]*deviceauth.RecoveryStatement, 0, len(res.Msg.States))
 	recovered := false
-	for _, in := range res.Msg.States {
-		st, err := deviceauth.ParseState(in.State)
+	prevAuthority := beforeState.Core.AuthorityID
+	after := before
+	// The server pages at eight states. Without a loop a device more than
+	// eight behind catches up one minute at a time; pull until caught up.
+	for {
+		res, err := s.client.GetSecurityStates(ctx, connect.NewRequest(&pb.GetSecurityStatesRequest{AfterEpoch: after, Limit: 8}))
 		if err != nil {
 			return 0, false, err
 		}
-		var proof *deviceauth.RecoveryStatement
-		if len(in.Recovery) > 0 {
-			p, err := deviceauth.ParseRecoveryStatement(in.Recovery)
+		if err := s.endpoint.Touch(uint64(time.Now().UnixMilli())); err != nil {
+			return 0, false, err
+		}
+		if len(res.Msg.States) == 0 {
+			_, head, _ := s.endpoint.Snapshot()
+			return head.Core.Epoch, recovered, nil
+		}
+		states := make([]deviceauth.State, 0, len(res.Msg.States))
+		proofs := make([]*deviceauth.RecoveryStatement, 0, len(res.Msg.States))
+		for _, in := range res.Msg.States {
+			st, err := deviceauth.ParseState(in.State)
 			if err != nil {
 				return 0, false, err
 			}
-			proof = &p
+			var proof *deviceauth.RecoveryStatement
+			if len(in.Recovery) > 0 {
+				p, err := deviceauth.ParseRecoveryStatement(in.Recovery)
+				if err != nil {
+					return 0, false, err
+				}
+				proof = &p
+				recovered = true
+			}
+			states = append(states, st)
+			proofs = append(proofs, proof)
+		}
+		if err := s.endpoint.Install(states, proofs); err != nil {
+			return 0, false, err
+		}
+		_, head, _ := s.endpoint.Snapshot()
+		if head.Core.Epoch > beforeState.Core.Epoch && head.Core.AuthorityID != prevAuthority {
 			recovered = true
 		}
-		states = append(states, st)
-		proofs = append(proofs, proof)
+		prevAuthority = head.Core.AuthorityID
+		if head.Core.Epoch <= after {
+			// A full page that added nothing would repeat forever.
+			return head.Core.Epoch, recovered, nil
+		}
+		after = head.Core.Epoch
+		_ = s.endpoint.Touch(uint64(time.Now().UnixMilli()))
+		if len(res.Msg.States) < 8 {
+			return head.Core.Epoch, recovered, nil
+		}
 	}
-	if err := s.endpoint.Install(states, proofs); err != nil {
-		return 0, false, err
-	}
-	_, head, _ := s.endpoint.Snapshot()
-	if head.Core.Epoch > beforeState.Core.Epoch && head.Core.AuthorityID != beforeState.Core.AuthorityID {
-		recovered = true
-	}
-	_ = s.endpoint.Touch(uint64(time.Now().UnixMilli()))
-	return head.Core.Epoch, recovered, nil
 }
 
 // securitySyncLoop polls every 60 seconds and immediately on an unknown
@@ -189,13 +208,16 @@ func (c *conn) securitySyncLoop(ctx context.Context) error {
 		err := c.security.syncOnce(attempt)
 		cancel()
 		if err != nil {
-			return fmt.Errorf("security synchronization: %w", err)
+			// Keep events and the terminal running: only remote control
+			// depends on the new state. The next tick tries again.
+			slog.Warn("relay: security synchronization paused remote control; retrying next sync", "err", err)
+			continue
 		}
 		publishCtx, publishCancel := context.WithTimeout(ctx, 60*time.Second)
 		err = c.ensurePublished(publishCtx)
 		publishCancel()
 		if err != nil {
-			return fmt.Errorf("security republish: %w", err)
+			slog.Warn("relay: republishing current state failed; retrying next sync", "err", err)
 		}
 	}
 }

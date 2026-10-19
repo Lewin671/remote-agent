@@ -13,11 +13,29 @@ import com.connectrpc.StreamType
 /**
  *  RecoveryService transfers authority with a recovery code after 48 hours.
  *  It is unauthenticated because the recovering phone has no token yet; the
- *  statement and state signatures are the authorization.
+ *  statement and state signatures are the authorization. Every lookup must
+ *  prove possession of a key already bound to the account: the recovery key
+ *  named in the request, or, when polling by recovery_id, the new authority
+ *  device key in the pending row.
  */
 public class RecoveryServiceClient(
   private val client: ProtocolClientInterface,
 ) : RecoveryServiceClientInterface {
+  /**
+   *  A short-lived server challenge that GetRecoveryContext signatures cover.
+   */
+  override suspend fun getRecoveryChallenge(request: GetRecoveryChallengeRequest, headers: Headers): ResponseMessage<GetRecoveryChallengeResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.RecoveryService/GetRecoveryChallenge",
+      io.github.lewin671.remoteagent.proto.GetRecoveryChallengeRequest::class,
+      io.github.lewin671.remoteagent.proto.GetRecoveryChallengeResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
   override suspend fun getRecoveryContext(request: GetRecoveryContextRequest, headers: Headers): ResponseMessage<GetRecoveryContextResponse> = client.unary(
     request,
     headers,
