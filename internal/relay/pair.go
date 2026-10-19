@@ -228,7 +228,11 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if res.Msg.DeviceId != candidate.ID {
 		return nil, errors.New("server returned an unexpected device ID")
 	}
-	endpoint, err := deviceauth.InitEndpoint(securityPath(), pin, states, proofs, candidate.ID, priv.Seed(), x)
+	lease, err := deviceauth.ParseLease(payload.Lease)
+	if err != nil {
+		return nil, err
+	}
+	endpoint, err := deviceauth.InitEndpoint(securityPath(), pin, states, proofs, candidate.ID, priv.Seed(), x, lease)
 	if err != nil {
 		return nil, err
 	}

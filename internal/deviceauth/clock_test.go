@@ -24,12 +24,12 @@ func TestFutureStateIsAClockError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ep, err := InitEndpoint("", pin, []State{g}, []*RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX)
+	ep, err := initTestEndpoint("", pin, []State{g}, []*RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ep.Close()
-	future, err := BuildRenewal(g, secret, phoneEd, now+10*60*1000)
+	future, err := rotateForTest(g, secret, phoneEd, now+10*60*1000)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,3 +1,4 @@
+import { parseLease } from "./device-security";
 import { PROTOCOL_VERSION } from "./protocol";
 import {
   initializeSecurity,
@@ -226,7 +227,9 @@ export async function joinByPairing(
     const status = await securitySetupStatus();
     if (status === "clock") throw new Error("security: clock");
     if (status === "invalid")
-      throw new Error("本机安全状态已损坏，不能用重新配对覆盖；请先导出并清空后重试");
+      throw new Error(
+        "本机安全状态已损坏，不能用重新配对覆盖；请先导出并清空后重试",
+      );
     if (status === "ready") {
       const current = await securityPin();
       if (!current || !pinEqual(current, trust.pin))
@@ -296,12 +299,17 @@ export async function joinByPairing(
   )
     throw new Error("加入回执没有本机的正确身份");
   await openGrant(trust.pin, head, candidate.id, x.privateKey);
-  const acct = await joinWithApproval(accountPublicKey, msg.server, {
-    device,
-    pairingId: id,
-    approval,
-    approvalSignature: new Uint8Array(msg.approvalSignature),
-  }, existing);
+  const acct = await joinWithApproval(
+    accountPublicKey,
+    msg.server,
+    {
+      device,
+      pairingId: id,
+      approval,
+      approvalSignature: new Uint8Array(msg.approvalSignature),
+    },
+    existing,
+  );
   await initializeSecurity(
     trust.pin,
     states,
@@ -309,6 +317,7 @@ export async function joinByPairing(
     candidate.id,
     x.privateKey,
     replace,
+    parseLease(new Uint8Array(msg.lease)),
   );
   // Tells the phone it went through. If this is lost, the phone reports
   // the outcome as unknown; the join itself stands.

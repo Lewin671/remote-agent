@@ -18,7 +18,7 @@ func TestEndpointInstallAndRecoveryBoundary(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	ep, err := InitEndpoint(filepath.Join(dir, "security.json"), pin, []State{g}, []*RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX)
+	ep, err := initTestEndpoint(filepath.Join(dir, "security.json"), pin, []State{g}, []*RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestEndpointInstallAndRecoveryBoundary(t *testing.T) {
 	}
 
 	// A new phone joins at the recovery state; it has no pre-recovery cache.
-	np, err := InitEndpoint(filepath.Join(dir, "new.json"), pin, []State{g, added, rec}, []*RecoveryStatement{nil, nil, &stmt}, newPhone.ID, newPhoneEd.Seed(), newPhoneX)
+	np, err := initTestEndpoint(filepath.Join(dir, "new.json"), pin, []State{g, added, rec}, []*RecoveryStatement{nil, nil, &stmt}, newPhone.ID, newPhoneEd.Seed(), newPhoneX)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestHistoryVsLiveMembership(t *testing.T) {
 	if _, _, err := w.Open(secret2, nil, added, added, false, 0); err != nil {
 		t.Fatalf("stored history: %v", err)
 	}
-	if _, _, err := w.Open(secret2, nil, added, removed, true, added.Core.NotAfter); err == nil {
+	if _, _, err := w.Open(secret2, nil, added, removed, true, (added.Core.IssuedAt + Lease)); err == nil {
 		t.Fatal("removed machine's live envelope was accepted")
 	}
 }

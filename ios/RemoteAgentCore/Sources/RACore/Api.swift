@@ -426,6 +426,15 @@ private func ownText(_ e: Error) -> String {
 
 /// Short text for an error, without content.
 public func errorText(_ e: Error) -> String {
+    if e is RecoveryHistoryUnavailable {return "历史密钥不可用：恢复前的记录无法解密"}
+    if let f=e as? DeviceSecurity.Failure {
+        switch f {
+        case .unavailable:return "等待所属电脑更新当前状态：这台设备没有当时的内容密钥"
+        case .invalid,.untrusted:return "密文无效：签名、密钥或内容校验失败"
+        case .conflict:return "成员链冲突，安全操作已停止；请核对设备后明确重新加入"
+        default:break
+        }
+    }
     if let c = e as? CommandError { return c.message }
     if let ce = e as? ConnectError {
         // A request that never reached the server carries the network failure

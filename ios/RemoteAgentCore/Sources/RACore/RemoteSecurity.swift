@@ -45,7 +45,7 @@ extension Remote {
             throw e
         } catch DeviceSecurity.Failure.lease {
             throw CommandError(
-                "failed_precondition", "远程控制已暂停：请在手机上打开 App 续期后再试")
+                "failed_precondition", "管理端租约已过期，控制和新内容上传已暂停；打开管理端 App 续期")
         } catch {
             if error is CancellationError { throw error }
             throw CommandError("authorization_unavailable", "安全状态尚未核实，操作没有发出；请重试")
@@ -103,7 +103,7 @@ extension Remote {
         let header = try DeviceSecurity.parseHeader(envelope.securityHeader)
         let sessionSeed = seed.contains(header.purpose) ? sessionKeys[header.session] : nil
         let (h, m) = try await securitySession().openMessage(
-            envelope, as: type, history: history, sessionSeed: sessionSeed)
+            envelope, as: type, history: history || ([PBPayloadKind.machineMeta,.sessionMeta,.image].contains(want.kind) && trustedMembers[want.machineId] == nil && archiveMachines.contains(want.machineId)), sessionSeed: sessionSeed)
         let projected = projection(h)
         try Envelopes.expect(projected, want)
         return (projected, m)

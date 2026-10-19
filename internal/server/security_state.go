@@ -174,7 +174,7 @@ func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Requ
 // PutSecurityState accepts a contiguous signed segment, validates every
 // transition, stores it atomically and revokes removed devices.
 func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Request[pb.PutSecurityStateRequest]) (*connect.Response[pb.PutSecurityStateResponse], error) {
-	if len(req.Msg.States) == 0 || len(req.Msg.States) > maxSecurityStates {
+	if (len(req.Msg.States) == 0 && len(req.Msg.Lease) == 0) || len(req.Msg.States) > maxSecurityStates {
 		return nil, invalid("at most %d states per upload", maxSecurityStates)
 	}
 	var size int
@@ -259,11 +259,22 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 		prev, haveHead = s, true
 	}
 
+	if len(req.Msg.Lease) > 0 {
+		l, err := deviceauth.ParseLease(req.Msg.Lease)
+		if err != nil || l.Valid(prev, uint64(nowMs())) != nil {
+			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("invalid head lease"))
+		}
+	}
 	last, removed, err := t.store.commitSecurityStates(ctx, accepted)
 	if err != nil {
 		return nil, err
 	}
 
+	if len(req.Msg.Lease) > 0 {
+		if err := t.store.putSecurityLease(ctx, req.Msg.Lease); err != nil {
+			return nil, err
+		}
+	}
 	raw, err := last.state.MarshalBinary()
 	if err != nil {
 		return nil, internal(err)
@@ -272,7 +283,6 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 		c.s.revokeStreams(id)
 		t.hub.drop(id)
 		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: id}}})
-		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineRemoved{MachineRemoved: &pb.MachineRemoved{MachineId: id}}})
 		slog.Info("device removed by a security state", "device", id)
 	}
 	return connect.NewResponse(&pb.PutSecurityStateResponse{HeadEpoch: last.epoch, Head: raw}), nil
@@ -364,6 +374,23 @@ func (c *clientService) GetSecurityStates(ctx context.Context, req *connect.Requ
 		return nil, internal(err)
 	}
 	out := &pb.GetSecurityStatesResponse{HeadEpoch: head}
+	var lease []byte
+	if err := t.store.db.QueryRowContext(ctx, `SELECT certificate FROM security_leases WHERE account_id=?`, t.acct).Scan(&lease); err != nil && !errors.Is(err, errNoRows) {
+		return nil, internal(err)
+	}
+	if len(lease) > 0 {
+		l, err := deviceauth.ParseLease(lease)
+		if err != nil {
+			return nil, internal(err)
+		}
+		current, _, err := t.store.securityHead(ctx)
+		if err != nil {
+			return nil, internal(err)
+		}
+		if l.Verify(current) == nil {
+			out.Lease = lease
+		}
+	}
 	for _, r := range rows {
 		out.States = append(out.States, &pb.SecurityState{State: r.raw, Recovery: r.recRaw})
 	}

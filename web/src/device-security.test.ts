@@ -1,3 +1,9 @@
+import {
+  parseLease,
+  validLease,
+  verifyLease,
+  leaseSignBytes,
+} from "./device-security";
 import { describe, it, expect } from "vitest";
 import vectors from "../../internal/deviceauth/testdata/domain-v3.json";
 import envelopeVector from "../../internal/e2e/testdata/v3-vectors.json";
@@ -54,6 +60,49 @@ async function xFromHex(h: string): Promise<CryptoKey> {
   );
 }
 
+describe("ordinary authority handoff", () => {
+  it("accepts a retiring-authority signature and preserves the historical key walk", async () => {
+    const parent = await state(vectors.handoff_parent),
+      next = await state(vectors.handoff);
+    await verifyTransition(parent, next);
+    await verifyLease(parseLease(unb64(vectors.handoff_lease)), next);
+    expect(
+      next.core.members.some((m) => m.id === parent.core.authorityID),
+    ).toBe(false);
+    const secret = await openGrant(
+      pin,
+      next,
+      next.core.authorityID,
+      await xFromHex(vectors.handoff_x),
+    );
+    expect(await openPrevSecret(secret, next.prevSecret)).toEqual(
+      new Uint8Array(32).fill(0xaa),
+    );
+  });
+});
+describe("independent signed leases", () => {
+  it("renews the same head without changing membership and enforces the 72 hour bound", async () => {
+    const head = await state(vectors.added),
+      first = parseLease(unb64(vectors.lease)),
+      renewed = parseLease(unb64(vectors.renewed_lease));
+    await expect(
+      validLease(first, await state(vectors.handoff), first.issuedAt),
+    ).rejects.toMatchObject({ code: "lease" });
+    await verifyLease(first, head);
+    await verifyLease(renewed, head);
+    expect(first.head).toEqual(renewed.head);
+    expect(renewed.issuedAt).toBeGreaterThan(first.issuedAt);
+    await expect(validLease(first, head, first.notAfter)).rejects.toMatchObject(
+      { code: "lease" },
+    );
+    expect(() =>
+      leaseSignBytes({
+        ...first,
+        notAfter: first.issuedAt + BigInt(72 * 60 * 60 * 1000) + 1n,
+      }),
+    ).toThrow();
+  });
+});
 describe("protocol-10 state chain: Go interoperability", () => {
   it("verifies genesis, lease renewal and the recovery transition", async () => {
     const genesis = await state(vectors.genesis);
@@ -248,10 +297,14 @@ describe("protocol-10 envelope: Go interoperability", () => {
       domain: fromHex(envelopeVector.domain),
       genesis: new Uint8Array(32).fill(1),
     };
-    const head = s.core.notAfter;
+    const head = s.core.issuedAt + BigInt(72 * 60 * 60 * 1000);
     await expect(
-      verifyWire(pin, s, s, w, true, head + 1n),
-    ).rejects.toMatchObject({ code: "stale" });
+      validLease(
+        parseLease(unb64(vectors.lease)),
+        await state(vectors.added),
+        head + 1n,
+      ),
+    ).rejects.toMatchObject({ code: "lease" });
     await expect(
       verifyWire(pin, s, s, w, false, head + 1n),
     ).resolves.toBeDefined();

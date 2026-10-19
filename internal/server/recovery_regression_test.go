@@ -37,7 +37,7 @@ func recoveryFixture(t *testing.T) (*testServer, deviceauth.State, ed25519.Priva
 	}
 	c := ts.authority(t)
 	key, pub := newRecoveryKey(t, 0xa1)
-	rotated, err := deviceauth.BuildRenewalRotating(c.states[len(c.states)-1], c.secret, pub, c.phoneEd, uint64(time.Now().UnixMilli()))
+	rotated, err := deviceauth.BuildRecoveryKeyRotation(c.states[len(c.states)-1], c.secret, pub, c.phoneEd, uint64(time.Now().UnixMilli()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestRecoveryAfterVetoNeedsNoOldCode(t *testing.T) {
 	// The old phone vetoes with a fresh code (K3) and the pending statement
 	// is rejected.
 	vetoKey, vetoPub := newRecoveryKey(t, 0xc2)
-	veto, err := deviceauth.BuildRenewalRotating(head, c.secret, vetoPub, c.phoneEd, uint64(time.Now().UnixMilli()))
+	veto, err := deviceauth.BuildRecoveryKeyRotation(head, c.secret, vetoPub, c.phoneEd, uint64(time.Now().UnixMilli()))
 	if err != nil {
 		t.Fatal(err)
 	}

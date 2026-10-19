@@ -9,6 +9,60 @@ import org.junit.Test
 
 class ApprovalTest {
     @Test
+    fun approvalSurvivesAuthorityRestartUntilCandidateReceipt() =
+        runBlocking<Unit> {
+            val server = TestServer()
+            val http = Api.defaultHttp()
+            val owner = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
+            val sponsor = fixtureRemote(owner.phone, http)
+            val restarted = fixtureRemote(owner.phone, http)
+            try {
+                withTimeout(15_000) {
+                    val pairing = Initiation.start(sponsor)
+                    val shown = CompletableDeferred<List<String>>()
+                    val persisted = CompletableDeferred<Unit>()
+                    val receipt = CompletableDeferred<Unit>()
+                    val joining = async {
+                        joinByPairing(
+                            pairing.link,
+                            http,
+                            { shown.complete(it) },
+                            { false },
+                            persist = { acct, record ->
+                                TestSecurity.get(server.url).stores[acct.deviceId] =
+                                    TestSecurityStore(record)
+                                persisted.complete(Unit)
+                                receipt.await()
+                            },
+                            confirm = { true },
+                        )
+                    }
+                    assertEquals(pairing.joined().first, shown.await())
+                    val approving = async { pairing.approve() }
+                    persisted.await()
+                    val storage = TestSecurity.get(server.url).stores.getValue(owner.phone.deviceId)
+                    val pending = storage.readSecurityOperation()!!
+                    val signed = pending.signed.copyOf()
+                    val epoch = sponsor.security.head().core.epoch
+                    approving.cancelAndJoin() // the authority's approval screen/process disappears
+                    restarted.resumeSecurityOperation()
+                    assertArrayEquals(signed, storage.readSecurityOperation()!!.signed)
+                    assertEquals(epoch, restarted.security.head().core.epoch)
+                    receipt.complete(Unit)
+                    joining.await()
+                    restarted.resumeSecurityOperation()
+                    assertNull(storage.readSecurityOperation())
+                    assertEquals(epoch, restarted.security.head().core.epoch)
+                }
+            } finally {
+                sponsor.close()
+                restarted.close()
+                owner.close()
+                server.close()
+            }
+        }
+
+    @Test
     fun approvedPairingCanBeRetriedAfterDelivery() = runBlocking {
         val server = TestServer()
         val http = Api.defaultHttp()

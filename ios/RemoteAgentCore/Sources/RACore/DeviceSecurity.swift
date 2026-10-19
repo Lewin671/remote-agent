@@ -27,7 +27,7 @@ public enum DeviceSecurity {
     public static let clockSkewLimit: UInt64 = 5 * 60 * 1000
     /// The membership lease and the largest accepted one, in milliseconds.
     public static let lease: UInt64 = 72 * 60 * 60 * 1000
-    public static let maxLease: UInt64 = 7 * 24 * 60 * 60 * 1000
+    public static let maxLease: UInt64 = lease
     static let zero = Data(repeating: 0, count: 32)
     static func check(_ condition: Bool, _ error: Failure = .invalid) throws {
         if !condition { throw error }
@@ -133,7 +133,6 @@ public enum DeviceSecurity {
         public var epoch: UInt64
         public var contentEpoch: UInt64
         public var issuedAt: UInt64
-        public var notAfter: UInt64
         public var members: [Member]
         public var removed: [String]
         public func member(_ id: String) -> Member? { members.first { $0.id == id } }
@@ -141,7 +140,7 @@ public enum DeviceSecurity {
             try check(
                 identifier(account) && identifier(authorityID) && recoveryEd.count == 32
                     && recoveryEd != zero && epoch > 0 && contentEpoch > 0 && contentEpoch <= epoch
-                    && issuedAt > 0 && notAfter > issuedAt && notAfter - issuedAt <= maxLease
+                    && issuedAt > 0
                     && (1...maxMembers).contains(members.count) && removed.count <= maxMembers)
             try nonzero(domain)
             try check(parent.count == 32)
@@ -188,7 +187,7 @@ public enum DeviceSecurity {
         w.u64(c.epoch)
         w.u64(c.contentEpoch)
         w.u64(c.issuedAt)
-        w.u64(c.notAfter)
+
         w.u32(UInt32(c.members.count))
         for m in c.members {
             w.str(m.id)
@@ -207,7 +206,7 @@ public enum DeviceSecurity {
         var c = Core(
             account: try r.str(), domain: try r.raw(32), authorityID: try r.str(),
             recoveryEd: try r.raw(32), parent: try r.raw(32), epoch: try r.u64(),
-            contentEpoch: try r.u64(), issuedAt: try r.u64(), notAfter: try r.u64(),
+            contentEpoch: try r.u64(), issuedAt: try r.u64(),
             members: [], removed: [])
         var n = try r.u32()
         try check(n <= maxMembers)
@@ -252,7 +251,7 @@ public enum DeviceSecurity {
         w.u64(s.core.epoch)
         w.u64(s.core.contentEpoch)
         w.u64(s.core.issuedAt)
-        w.u64(s.core.notAfter)
+
         w.str(s.core.authorityID)
         w.raw(s.core.recoveryEd)
         w.raw(h)
@@ -389,17 +388,21 @@ public enum DeviceSecurity {
                 .untrusted)
             try recoveryDelta(parent, next)
         } else {
-            try check(next.core.authorityID == parent.core.authorityID)
             guard let old = parent.core.member(parent.core.authorityID) else {
                 throw Failure.untrusted
             }
             try check(
                 verifyEd25519(publicKey: old.ed, message: signBytes(next), signature: next.signature),
                 .untrusted)
-            if next.core.contentEpoch == parent.core.contentEpoch {
+            if next.core.authorityID != parent.core.authorityID {
+            try check(parent.core.member(next.core.authorityID)?.kind == 2 && next.core.member(parent.core.authorityID) == nil && next.core.recoveryEd != parent.core.recoveryEd && next.core.contentEpoch == parent.core.contentEpoch+1 && next.prevSecret.count == 60)
+            try recoveryDelta(parent,next)
+            return
+        }
+        if next.core.contentEpoch == parent.core.contentEpoch {
                 try check(
                     next.core.removed == parent.core.removed
-                        && sameMembers(next.core.members, parent.core.members)
+                        && next.core.recoveryEd != parent.core.recoveryEd && sameMembers(next.core.members, parent.core.members)
                         && next.prevSecret.isEmpty)
             } else if next.core.contentEpoch == parent.core.contentEpoch + 1 {
                 try check(!next.prevSecret.isEmpty)
@@ -418,7 +421,6 @@ public enum DeviceSecurity {
         public var newRecoveryEd: Data
         public var newMember: Member
         public var issuedAt: UInt64
-        public var notAfter: UInt64
         public var stateHash: Data
         public var nonce: Data
         public var signature: Data
@@ -426,8 +428,8 @@ public enum DeviceSecurity {
             try check(
                 identifier(account) && identifier(newAuthorityID) && newAuthorityID == newMember.id
                     && newMember.kind == Kind.client.rawValue && newRecoveryEd.count == 32
-                    && newRecoveryEd != zero && issuedAt > 0 && notAfter > issuedAt
-                    && notAfter - issuedAt <= maxLease && stateHash.count == 32
+                    && newRecoveryEd != zero && issuedAt > 0
+                    && stateHash.count == 32
                     && nonce.count == 32 && nonce != zero && parent.count == 32 && parent != zero)
             try nonzero(domain)
             try newMember.validate()
@@ -443,7 +445,7 @@ public enum DeviceSecurity {
             w.raw(newMember.x)
             w.u32(newMember.kind)
             w.u64(issuedAt)
-            w.u64(notAfter)
+
             w.raw(stateHash)
             w.raw(nonce)
             return w.data
@@ -474,7 +476,7 @@ public enum DeviceSecurity {
                 newAuthorityID: try q.str(), newRecoveryEd: try q.raw(32),
                 newMember: Member(
                     id: try q.str(), ed: try q.raw(32), x: try q.raw(32), kind: try q.u32()),
-                issuedAt: try q.u64(), notAfter: try q.u64(), stateHash: try q.raw(32),
+                issuedAt: try q.u64(), stateHash: try q.raw(32),
                 nonce: try q.raw(32), signature: sig)
             try q.done()
             // Re-encoding must reproduce the transmitted bytes exactly.
@@ -490,7 +492,7 @@ public enum DeviceSecurity {
                     && self.parent == DeviceSecurity.stateHash(parent)
                     && newAuthorityID == next.core.authorityID
                     && newRecoveryEd == next.core.recoveryEd && newMember == authority
-                    && issuedAt == next.core.issuedAt && notAfter == next.core.notAfter
+                    && issuedAt == next.core.issuedAt
                     && stateHash == DeviceSecurity.stateHash(next), .untrusted)
             try check(
                 verifyEd25519(
@@ -826,7 +828,7 @@ public enum DeviceSecurity {
             try check(head.core.member(h.sender) != nil, .untrusted)
             if h.purpose.control {
                 try check(
-                    head.core.notAfter >= now && head.core.contentEpoch == h.contentEpoch, .stale)
+                    head.core.contentEpoch == h.contentEpoch, .stale)
                 try check(head.core.issuedAt <= now + clockSkewLimit, .clock)
             }
         }

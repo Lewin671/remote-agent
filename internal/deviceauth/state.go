@@ -50,9 +50,9 @@ type Core struct {
 	Epoch        uint64
 	ContentEpoch uint64
 	IssuedAt     uint64
-	NotAfter     uint64
-	Members      []Member
-	Removed      []string
+
+	Members []Member
+	Removed []string
 }
 
 func (c Core) Member(id string) (Member, bool) {
@@ -71,7 +71,7 @@ func (c Core) Member(id string) (Member, bool) {
 	return c.Members[i], true
 }
 func (c Core) validate() error {
-	if !deviceID(c.Account) || c.Domain == (Hash{}) || !deviceID(c.AuthorityID) || c.RecoveryEd == [32]byte{} || c.Epoch == 0 || c.ContentEpoch == 0 || c.ContentEpoch > c.Epoch || c.IssuedAt == 0 || c.NotAfter <= c.IssuedAt || c.NotAfter-c.IssuedAt > MaxLease || len(c.Members) == 0 || len(c.Members) > MaxMembers || len(c.Removed) > MaxMembers {
+	if !deviceID(c.Account) || c.Domain == (Hash{}) || !deviceID(c.AuthorityID) || c.RecoveryEd == [32]byte{} || c.Epoch == 0 || c.ContentEpoch == 0 || c.ContentEpoch > c.Epoch || c.IssuedAt == 0 || len(c.Members) == 0 || len(c.Members) > MaxMembers || len(c.Removed) > MaxMembers {
 		return ErrInvalid
 	}
 	for i, m := range c.Members {
@@ -113,7 +113,7 @@ func (c Core) MarshalBinary() ([]byte, error) {
 	e.u64(c.Epoch)
 	e.u64(c.ContentEpoch)
 	e.u64(c.IssuedAt)
-	e.u64(c.NotAfter)
+
 	e.u32(uint32(len(c.Members)))
 	for _, m := range c.Members {
 		e.str(m.ID)
@@ -143,7 +143,7 @@ func ParseCore(b []byte) (c Core, err error) {
 	c.Epoch = d.u64()
 	c.ContentEpoch = d.u64()
 	c.IssuedAt = d.u64()
-	c.NotAfter = d.u64()
+
 	n := d.u32()
 	if n > MaxMembers {
 		return c, ErrInvalid
@@ -228,7 +228,7 @@ func (s State) signBytes() ([]byte, error) {
 	e.u64(s.Core.Epoch)
 	e.u64(s.Core.ContentEpoch)
 	e.u64(s.Core.IssuedAt)
-	e.u64(s.Core.NotAfter)
+
 	e.str(s.Core.AuthorityID)
 	e.raw(s.Core.RecoveryEd[:])
 	e.raw(h[:])
@@ -365,7 +365,15 @@ func VerifyTransition(parent, next State, recovery *RecoveryStatement) error {
 		}
 	} else {
 		if next.Core.AuthorityID != parent.Core.AuthorityID {
-			return ErrInvalid
+			if next.Core.ContentEpoch != parent.Core.ContentEpoch+1 || len(next.PrevSecret) == 0 || next.Core.RecoveryEd == parent.Core.RecoveryEd {
+				return ErrInvalid
+			}
+			if _, retained := next.Core.Member(parent.Core.AuthorityID); retained {
+				return ErrInvalid
+			}
+			if err := handoffDelta(parent, next); err != nil {
+				return err
+			}
 		}
 		oldAuthority, ok := parent.Core.Member(parent.Core.AuthorityID)
 		sigBytes, err := next.signBytes()
@@ -374,14 +382,14 @@ func VerifyTransition(parent, next State, recovery *RecoveryStatement) error {
 		}
 		switch {
 		case next.Core.ContentEpoch == parent.Core.ContentEpoch:
-			if !slices.Equal(next.Core.Removed, parent.Core.Removed) || !sameMembers(next.Core.Members, parent.Core.Members) || len(next.PrevSecret) != 0 {
+			if next.Core.RecoveryEd == parent.Core.RecoveryEd || !slices.Equal(next.Core.Removed, parent.Core.Removed) || !sameMembers(next.Core.Members, parent.Core.Members) || len(next.PrevSecret) != 0 {
 				return ErrInvalid
 			}
 		case next.Core.ContentEpoch == parent.Core.ContentEpoch+1:
 			if len(next.PrevSecret) == 0 {
 				return ErrInvalid
 			}
-			if err := membershipDelta(parent, next); err != nil {
+			if err := membershipDelta(parent, next); err != nil && next.Core.AuthorityID == parent.Core.AuthorityID {
 				return err
 			}
 		default:
@@ -536,7 +544,7 @@ func BuildGenesis(account string, domain Hash, member Member, recoveryEd [32]byt
 	if member.validate() != nil || member.Kind != Client || len(secret) != 32 || recoveryEd == [32]byte{} || len(signer) != 64 || !bytes.Equal(signer.Public().(ed25519.PublicKey), member.EdPublic[:]) {
 		return State{}, ErrInvalid
 	}
-	c := Core{Account: account, Domain: domain, AuthorityID: member.ID, RecoveryEd: recoveryEd, Epoch: 1, ContentEpoch: 1, IssuedAt: now, NotAfter: addLease(now), Members: []Member{member}}
+	c := Core{Account: account, Domain: domain, AuthorityID: member.ID, RecoveryEd: recoveryEd, Epoch: 1, ContentEpoch: 1, IssuedAt: now, Members: []Member{member}}
 	return build(c, secret, nil, signer)
 }
 
@@ -550,7 +558,7 @@ func BuildState(parent State, members []Member, removed []string, secret, prevSe
 	c.Epoch++
 	c.ContentEpoch++
 	c.IssuedAt = maxU64(now, c.IssuedAt)
-	c.NotAfter = addLease(c.IssuedAt)
+
 	c.Members = slices.Clone(members)
 	slices.SortFunc(c.Members, func(a, b Member) int {
 		if a.ID < b.ID {
@@ -567,15 +575,10 @@ func BuildState(parent State, members []Member, removed []string, secret, prevSe
 	}
 	return build(c, secret, prevSecret, signer)
 }
-func BuildRenewal(parent State, secret []byte, signer ed25519.PrivateKey, now uint64) (State, error) {
-	return BuildRenewalRotating(parent, secret, parent.Core.RecoveryEd, signer, now)
-}
 
-// BuildRenewalRotating is a normal lease renewal that also installs a new
-// recovery key. Only the current authority can sign it, so the owner can
-// revoke a leaked recovery code without waiting for a recovery.
-func BuildRenewalRotating(parent State, secret []byte, recoveryEd [32]byte, signer ed25519.PrivateKey, now uint64) (State, error) {
-	if len(signer) != 64 || len(secret) != 32 || recoveryEd == [32]byte{} {
+// BuildRecoveryKeyRotation changes only the emergency authority credential.
+func BuildRecoveryKeyRotation(parent State, secret []byte, recoveryEd [32]byte, signer ed25519.PrivateKey, now uint64) (State, error) {
+	if len(signer) != 64 || len(secret) != 32 || recoveryEd == [32]byte{} || recoveryEd == parent.Core.RecoveryEd {
 		return State{}, ErrInvalid
 	}
 	ph, _ := parent.Hash()
@@ -583,7 +586,6 @@ func BuildRenewalRotating(parent State, secret []byte, recoveryEd [32]byte, sign
 	c.Parent = ph
 	c.Epoch++
 	c.IssuedAt = maxU64(now, c.IssuedAt)
-	c.NotAfter = addLease(c.IssuedAt)
 	c.RecoveryEd = recoveryEd
 	return build(c, secret, nil, signer)
 }

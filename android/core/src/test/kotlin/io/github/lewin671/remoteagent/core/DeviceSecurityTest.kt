@@ -172,10 +172,11 @@ class DeviceSecurityTest {
         DeviceSecurity.verifyGenesis(pin, g)
         assertEquals(phone.id, g.core.authorityID)
         assertEquals(1uL, g.core.contentEpoch)
-        assertEquals(1_700_000_000_000uL + DeviceSecurity.LEASE_U, g.core.notAfter)
+        val lease=HeadLease.sign(g,signer,1_700_000_000_000)
+        assertEquals(1_700_000_000_000uL + DeviceSecurity.LEASE_U, lease.notAfter)
         val issued = 1_700_000_000_000uL
         val nearing =
-            g.copy(core = g.core.copy(issuedAt = issued, notAfter = issued + 23uL * 3_600_000uL))
+            lease.copy(issuedAt = issued, notAfter = issued + 23uL * 3_600_000uL)
         assertTrue(Authority.needsRenewal(nearing, (issued + 12uL * 3_600_000uL).toLong()))
 
         val machine = Authority.newMember(SigningKey(machineSeed), s("machine_x").unhex(), 1u)
@@ -346,18 +347,18 @@ class DeviceSecurityTest {
             )
 
         val lease =
-            Authority.renewal(
+            HeadLease.sign(
                 store.readSecurity().head,
-                s("content_secret_1").unhex(),
                 signer,
                 1_700_000_100_000,
             )
         store.installSecurity(
             DeviceSecurity.stateHash(store.readSecurity().head),
-            listOf(lease),
-            listOf(null),
+            emptyList(),
+            emptyList(),
+            lease,
         )
-        assertEquals(2uL, store.readSecurity().head.core.epoch)
+        assertEquals(1uL, store.readSecurity().head.core.epoch)
         val pair =
             Authority.pair(
                 store.readSecurity().head,
@@ -431,13 +432,13 @@ class DeviceSecurityTest {
                 "",
                 "0123456789abcdef",
                 0uL,
-                state.core.notAfter,
+                (state.core.issuedAt+DeviceSecurity.LEASE_U),
                 0u,
             )
         val wire =
             DeviceSecurity.Wire(DeviceSecurity.form(secret, null, h, byteArrayOf(1, 2, 3), signer))
-        DeviceSecurity.verifyOrigin(state, state, true, state.core.notAfter, wire)
-        reject { DeviceSecurity.verifyOrigin(state, state, true, state.core.notAfter + 1uL, wire) }
+        DeviceSecurity.verifyOrigin(state, state, true, (state.core.issuedAt+DeviceSecurity.LEASE_U), wire)
+        reject { HeadLease.parse(decode("lease")).valid(state,state.core.issuedAt+DeviceSecurity.LEASE_U+1uL) }
     }
 
     @Test

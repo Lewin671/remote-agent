@@ -2276,6 +2276,7 @@ type PairingPayload struct {
 	// Public account key. It names the account on registration; the new
 	// device does not receive the account root.
 	AccountPublicKey []byte `protobuf:"bytes,6,opt,name=account_public_key,json=accountPublicKey,proto3" json:"account_public_key,omitempty"`
+	Lease            []byte `protobuf:"bytes,7,opt,name=lease,proto3" json:"lease,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -2341,6 +2342,13 @@ func (x *PairingPayload) GetSecurityStates() []*SecurityState {
 func (x *PairingPayload) GetAccountPublicKey() []byte {
 	if x != nil {
 		return x.AccountPublicKey
+	}
+	return nil
+}
+
+func (x *PairingPayload) GetLease() []byte {
+	if x != nil {
+		return x.Lease
 	}
 	return nil
 }
@@ -2622,9 +2630,12 @@ type DeviceMeta struct {
 	// "web", "android", ...
 	Platform string `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform,omitempty"`
 	// What the device says it runs on, e.g. "Chrome 140 on macOS".
-	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	// Android replacement phone's self-signed offer. Set only after the user
+	// confirms the corresponding emergency code has been saved offline.
+	HandoffRecoveryEd []byte `protobuf:"bytes,4,opt,name=handoff_recovery_ed,json=handoffRecoveryEd,proto3" json:"handoff_recovery_ed,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *DeviceMeta) Reset() {
@@ -2676,6 +2687,13 @@ func (x *DeviceMeta) GetDescription() string {
 		return x.Description
 	}
 	return ""
+}
+
+func (x *DeviceMeta) GetHandoffRecoveryEd() []byte {
+	if x != nil {
+		return x.HandoffRecoveryEd
+	}
+	return nil
 }
 
 // ProjectPrefs is the content of the ACCOUNT_PREFS object "project-prefs":
@@ -3272,13 +3290,14 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x0eTerminalResize\x12\x12\n" +
 	"\x04cols\x18\x01 \x01(\x05R\x04cols\x12\x12\n" +
 	"\x04rows\x18\x02 \x01(\x05R\x04rows\x12\x10\n" +
-	"\x03fit\x18\x03 \x01(\bR\x03fit\"\xf5\x01\n" +
+	"\x03fit\x18\x03 \x01(\bR\x03fit\"\x8b\x02\n" +
 	"\x0ePairingPayload\x12\x16\n" +
 	"\x06server\x18\x02 \x01(\tR\x06server\x12\x1a\n" +
 	"\bapproval\x18\x03 \x01(\fR\bapproval\x12-\n" +
 	"\x12approval_signature\x18\x04 \x01(\fR\x11approvalSignature\x12F\n" +
 	"\x0fsecurity_states\x18\x05 \x03(\v2\x1d.remoteagent.v1.SecurityStateR\x0esecurityStates\x12,\n" +
-	"\x12account_public_key\x18\x06 \x01(\fR\x10accountPublicKeyJ\x04\b\x01\x10\x02R\x04root\"\x8d\x02\n" +
+	"\x12account_public_key\x18\x06 \x01(\fR\x10accountPublicKey\x12\x14\n" +
+	"\x05lease\x18\a \x01(\fR\x05leaseJ\x04\b\x01\x10\x02R\x04root\"\x8d\x02\n" +
 	"\rNotifyContent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1d\n" +
@@ -3304,12 +3323,13 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2\x1b.remoteagent.v1.ImageFormatR\x06format\x12\x14\n" +
 	"\x05width\x18\x02 \x01(\x05R\x05width\x12\x16\n" +
 	"\x06height\x18\x03 \x01(\x05R\x06height\x12\x12\n" +
-	"\x04data\x18\x04 \x01(\fR\x04data\"^\n" +
+	"\x04data\x18\x04 \x01(\fR\x04data\"\x8e\x01\n" +
 	"\n" +
 	"DeviceMeta\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\bplatform\x18\x02 \x01(\tR\bplatform\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xec\x01\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12.\n" +
+	"\x13handoff_recovery_ed\x18\x04 \x01(\fR\x11handoffRecoveryEd\"\xec\x01\n" +
 	"\fProjectPrefs\x12\x16\n" +
 	"\x06schema\x18\x01 \x01(\x05R\x06schema\x123\n" +
 	"\x06pinned\x18\x02 \x03(\v2\x1b.remoteagent.v1.ProjectPrefR\x06pinned\x123\n" +

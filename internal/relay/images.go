@@ -43,6 +43,9 @@ func (c *conn) uploadImages(ctx context.Context, key []byte, sessionID string, e
 }
 
 func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID string) error {
+	if err := c.security.endpoint.CheckLease(uint64(time.Now().UnixMilli())); err != nil {
+		return err
+	}
 	b := c.r.backend
 	for try := 0; ; try++ {
 		u := b.Image(sessionID, imageID)
@@ -58,6 +61,9 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 			Kind: pb.PayloadKind_PAYLOAD_KIND_IMAGE, MachineId: c.acct.DeviceID, SessionId: sessionID,
 			RequestId: imageID, Sender: c.acct.DeviceID,
 		}, deviceauth.Image, key, payload)
+		if errors.Is(err, deviceauth.ErrStale) || errors.Is(err, deviceauth.ErrClock) {
+			return err
+		}
 		if err != nil || proto.Size(env) > 1<<20 {
 			b.ImageUploaded(sessionID, imageID, false, 0)
 			return nil

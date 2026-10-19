@@ -14,9 +14,9 @@ class RemovalConfirmationTest {
     }
 
     @Test
-    fun aComputerRemovalSaysItsSessionsAreDeleted() {
+    fun aComputerRemovalSaysItsArchiveIsRetained() {
         val (title, text) = removalDialog("工作站", machine = true)
         assertTrue(title.contains("工作站"))
-        assertTrue(text.contains("会话记录"))
+        assertTrue(text.contains("保留中继上的会话和图片"))
     }
 }

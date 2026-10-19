@@ -608,8 +608,8 @@ func TestEndedSessionMetadataIsNotSentAgainAfterRestart(t *testing.T) {
 	// New events of the ended session still go up, without its metadata.
 	appendText(t, done, "done", "two")
 	e.session(t, "done", 2)
-	if n := count("done"); n != 1 {
-		t.Fatalf("the ended session's metadata was put %d times; want 1", n)
+	if n := count("done"); n != 2 {
+		t.Fatalf("ended session checkpoint after restart was put %d times; want 2", n)
 	}
 
 	e.backend.mu.Lock()
@@ -617,8 +617,8 @@ func TestEndedSessionMetadataIsNotSentAgainAfterRestart(t *testing.T) {
 	e.backend.mu.Unlock()
 	done.Poke()
 	waitFor(t, "the changed metadata", func() bool { return e.session(t, "done", 2).Info.Title == "renamed" })
-	if n := count("done"); n != 2 {
-		t.Fatalf("the ended session's metadata was put %d times; want 2", n)
+	if n := count("done"); n != 3 {
+		t.Fatalf("ended session checkpoint after rename was put %d times; want 3", n)
 	}
 }
 

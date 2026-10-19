@@ -76,7 +76,8 @@ func initializeTestSecurityKeys(t *testing.T, c *conn) *testSecurityKeys {
 	}
 	pin, _ := genesis.Pin()
 	states := []deviceauth.State{genesis, withMachine}
-	endpoint, err := deviceauth.InitEndpoint("", pin, states, []*deviceauth.RecoveryStatement{nil, nil}, machine.ID, ed.Seed(), x)
+	lease, _ := deviceauth.BuildLease(withMachine, phoneEd, withMachine.Core.IssuedAt)
+	endpoint, err := deviceauth.InitEndpoint("", pin, states, []*deviceauth.RecoveryStatement{nil, nil}, machine.ID, ed.Seed(), x, lease)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -444,8 +444,18 @@ func (c *Client) Sync(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	installLease := func() error {
+		if len(res.Msg.Lease) == 0 {
+			return nil
+		}
+		l, err := deviceauth.ParseLease(res.Msg.Lease)
+		if err != nil {
+			return err
+		}
+		return c.endpoint.InstallLease(l, uint64(time.Now().UnixMilli()))
+	}
 	if len(res.Msg.States) == 0 {
-		return nil
+		return installLease()
 	}
 	states := make([]deviceauth.State, 0, len(res.Msg.States))
 	proofs := make([]*deviceauth.RecoveryStatement, 0, len(res.Msg.States))
@@ -465,7 +475,13 @@ func (c *Client) Sync(ctx context.Context) error {
 		states = append(states, st)
 		proofs = append(proofs, proof)
 	}
-	return c.endpoint.Install(states, proofs)
+	if err := c.endpoint.Install(states, proofs); err != nil {
+		return err
+	}
+	if res.Msg.HeadEpoch > c.endpoint.HeadEpoch() {
+		return c.Sync(ctx)
+	}
+	return installLease()
 }
 
 func (c *Client) openEnvelope(ctx context.Context, seed []byte, env *pb.Envelope, history bool) (*pb.Header, []byte, error) {

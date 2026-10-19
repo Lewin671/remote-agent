@@ -181,6 +181,7 @@ public actor Remote {
     var waited = false
     var prefs: PrefsObject?
     var devices: [String: DeviceView] = [:]
+    var archiveMachines: Set<String> = []
     var trustedMembers: [String: DeviceSecurity.Member] = [:]
     var trustedMetadata: [String: PBEnvelope] = [:]
     var directoryVersion = 0
@@ -615,6 +616,7 @@ public actor Remote {
             trustedMembers = Dictionary(
                 uniqueKeysWithValues: identity.1.core.members.map { ($0.id, $0) })
             authorityDeviceId = identity.1.core.authorityID
+            archiveMachines=try await securitySession().historicalMachines()
         } catch {
             report(error)
             return
@@ -788,8 +790,10 @@ public actor Remote {
             bump(&devicePushes, u.device.id)
             await putDevice(u.device)
             publish()
-        case .deviceRemoved?, .machineRemoved?:
+        case .deviceRemoved?:
             await loadDevices()
+        case .machineRemoved?:
+            _ = await refresh()
         case .machineUpdated(let u)?:
             bump(&machinePushes, u.machine.id)
             do { try await refreshTrustedDirectory() } catch { report(error) }

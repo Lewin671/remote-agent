@@ -16,6 +16,7 @@ public  final class PutSecurityStateRequest extends
     PutSecurityStateRequestOrBuilder {
   private PutSecurityStateRequest() {
     states_ = emptyProtobufList();
+    lease_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int STATES_FIELD_NUMBER = 1;
   private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.SecurityState> states_;
@@ -156,6 +157,45 @@ public  final class PutSecurityStateRequest extends
   private void removeStates(int index) {
     ensureStatesIsMutable();
     states_.remove(index);
+  }
+
+  public static final int LEASE_FIELD_NUMBER = 2;
+  private com.google.protobuf.ByteString lease_;
+  /**
+   * <pre>
+   * independent canonical signed head lease
+   * </pre>
+   *
+   * <code>bytes lease = 2 [json_name = "lease"];</code>
+   * @return The lease.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getLease() {
+    return lease_;
+  }
+  /**
+   * <pre>
+   * independent canonical signed head lease
+   * </pre>
+   *
+   * <code>bytes lease = 2 [json_name = "lease"];</code>
+   * @param value The lease to set.
+   */
+  private void setLease(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    lease_ = value;
+  }
+  /**
+   * <pre>
+   * independent canonical signed head lease
+   * </pre>
+   *
+   * <code>bytes lease = 2 [json_name = "lease"];</code>
+   */
+  private void clearLease() {
+
+    lease_ = getDefaultInstance().getLease();
   }
 
   public static io.github.lewin671.remoteagent.proto.PutSecurityStateRequest parseFrom(
@@ -405,6 +445,46 @@ public  final class PutSecurityStateRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * independent canonical signed head lease
+     * </pre>
+     *
+     * <code>bytes lease = 2 [json_name = "lease"];</code>
+     * @return The lease.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getLease() {
+      return instance.getLease();
+    }
+    /**
+     * <pre>
+     * independent canonical signed head lease
+     * </pre>
+     *
+     * <code>bytes lease = 2 [json_name = "lease"];</code>
+     * @param value The lease to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLease(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setLease(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * independent canonical signed head lease
+     * </pre>
+     *
+     * <code>bytes lease = 2 [json_name = "lease"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLease() {
+      copyOnWrite();
+      instance.clearLease();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.PutSecurityStateRequest)
   }
   @java.lang.Override
@@ -423,9 +503,11 @@ public  final class PutSecurityStateRequest extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "states_",
             io.github.lewin671.remoteagent.proto.SecurityState.class,
+            "lease_",
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0000\u0001\u0001\u0001\u0000\u0001\u0000\u0001\u001b";
+              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0001\u0000\u0001\u001b\u0002\n" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

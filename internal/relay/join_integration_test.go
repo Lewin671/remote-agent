@@ -116,7 +116,8 @@ func TestJoinByPairingAgainstRealServer(t *testing.T) {
 		}
 		chain = append(chain, &pb.SecurityState{State: raw, Recovery: proof})
 	}
-	payload := &pb.PairingPayload{Server: httpSrv.URL, Approval: approval, ApprovalSignature: approvalSig, SecurityStates: chain, AccountPublicKey: phone.AccountPublicKey}
+	lr, _ := phone.Lease.MarshalBinary()
+	payload := &pb.PairingPayload{Lease: lr, Server: httpSrv.URL, Approval: approval, ApprovalSignature: approvalSig, SecurityStates: chain, AccountPublicKey: phone.AccountPublicKey}
 	env, err := e2e.SealMessage(secrets.Key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: created.Msg.PairingId, Sender: phone.Member.ID}, payload)
 	if err != nil {
 		t.Fatal(err)

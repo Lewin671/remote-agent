@@ -140,6 +140,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
             val b =
                 io.github.lewin671.remoteagent.proto.GetSecurityStatesResponse.newBuilder()
                     .setHeadEpoch(r.head.core.epoch.toLong())
+                    .setLease(ByteString.copyFrom(r.lease?.bytes() ?: byteArrayOf()))
             for (state in r.chain.filter { it.core.epoch > after }) {
                 val sb =
                     io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()

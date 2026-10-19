@@ -44,10 +44,11 @@ func TestGenesisRenewalAddAndRemove(t *testing.T) {
 	secret := bytes.Repeat([]byte{0x33}, 32)
 	phone, _ := g.Core.Member(g.Core.AuthorityID)
 
-	renewed, err := BuildRenewal(g, secret, phoneEd, 1_700_000_100_000)
-	if err != nil || VerifyTransition(g, renewed, nil) != nil {
-		t.Fatalf("renewal: %v", err)
+	lease, err := BuildLease(g, phoneEd, 1_700_000_100_000)
+	if err != nil || lease.Verify(g) != nil {
+		t.Fatalf("lease: %v", err)
 	}
+	renewed := g
 
 	machine, machineEd, machineX := testMember(t, 0x44, Machine)
 	added, err := BuildState(renewed, []Member{phone, machine}, nil, bytes.Repeat([]byte{0x55}, 32), mustPrev(t, bytes.Repeat([]byte{0x55}, 32), secret), phoneEd, 1_700_000_200_000)

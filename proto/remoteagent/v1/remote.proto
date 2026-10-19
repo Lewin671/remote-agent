@@ -297,6 +297,7 @@ message PairingPayload {
   // Public account key. It names the account on registration; the new
   // device does not receive the account root.
   bytes account_public_key = 6;
+  bytes lease = 7;
 }
 
 // NotifyContent is what a daemon tells the Android app in a push, sealed
@@ -351,6 +352,9 @@ message DeviceMeta {
   string platform = 2;
   // What the device says it runs on, e.g. "Chrome 140 on macOS".
   string description = 3;
+  // Android replacement phone's self-signed offer. Set only after the user
+  // confirms the corresponding emergency code has been saved offline.
+  bytes handoff_recovery_ed = 4;
 }
 
 // ProjectPrefs is the content of the ACCOUNT_PREFS object "project-prefs":

@@ -257,7 +257,7 @@ extension Remote {
         var snapshot = SessionEvents(
             events: b.events, loaded: b.loaded, error: b.error, fetchError: b.fetchError)
         snapshot.live = liveSnapshots[sid]
-        snapshot.liveError = liveErrors[sid]
+        snapshot.liveError = liveErrors[sid] ?? (sessions[sid]?.checkpointStatus == "waiting" ? "等待所属电脑更新当前状态" : nil)
         snapshot.unverifiedLegacy = b.unverifiedLegacy
         snapshot.verifiedEvents = b.verifiedEvents
         snapshot.unavailableCount = b.unavailableSeqs.count

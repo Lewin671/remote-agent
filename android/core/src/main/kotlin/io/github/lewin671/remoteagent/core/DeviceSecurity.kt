@@ -33,10 +33,10 @@ object DeviceSecurity {
     const val MAX_PAIR_CHAIN_BYTES = 800 shl 10
 
     const val LEASE = 72L * 60 * 60 * 1000
-    const val MAX_LEASE = 7L * 24 * 60 * 60 * 1000
+    const val MAX_LEASE = LEASE
     /** How far ahead of the local clock a state's IssuedAt may be. */
     const val MAX_CLOCK_SKEW = 300_000uL
-    const val MAX_LEASE_U = 604_800_000uL
+    const val MAX_LEASE_U = 259_200_000uL
     const val LEASE_U = 259_200_000uL
     const val MAX_STATES_U = 4096uL
     private const val MAX_STATES_UINT = 4096u
@@ -125,7 +125,6 @@ object DeviceSecurity {
         val epoch: ULong,
         val contentEpoch: ULong,
         val issuedAt: ULong,
-        val notAfter: ULong,
         val members: List<Member>,
         val removed: List<String>,
     ) {
@@ -152,10 +151,8 @@ object DeviceSecurity {
                 c.contentEpoch > 0uL &&
                 c.contentEpoch <= c.epoch &&
                 c.issuedAt > 0uL &&
-                c.notAfter > c.issuedAt &&
-                c.notAfter - c.issuedAt <= MAX_LEASE_U &&
                 c.members.size in 1..MAX_MEMBERS &&
-                c.removed.size <= MAX_MEMBERS
+                c.removed.size <= MAX_MEMBERS,
         )
         nonzero(c.domain)
         nonzero(c.recoveryEd)
@@ -165,7 +162,7 @@ object DeviceSecurity {
                 id(m.id) &&
                     m.ed.size == 32 &&
                     deviceId(m.ed) == m.id &&
-                    (m.kind == 1u || m.kind == 2u)
+                    (m.kind == 1u || m.kind == 2u),
             )
             nonzero(m.x)
             if (i > 0) check(c.members[i - 1].id < m.id)
@@ -177,7 +174,7 @@ object DeviceSecurity {
                 id(s) &&
                     (i == 0 || c.removed[i - 1] < s) &&
                     c.member(s) == null &&
-                    s != c.authorityID
+                    s != c.authorityID,
             )
         }
         if (c.epoch == 1uL)
@@ -185,7 +182,7 @@ object DeviceSecurity {
                 c.parent.contentEquals(zero) &&
                     c.members.size == 1 &&
                     c.removed.isEmpty() &&
-                    c.contentEpoch == 1uL
+                    c.contentEpoch == 1uL,
             )
         else nonzero(c.parent)
     }
@@ -203,7 +200,6 @@ object DeviceSecurity {
                 .u64(c.epoch)
                 .u64(c.contentEpoch)
                 .u64(c.issuedAt)
-                .u64(c.notAfter)
                 .u32(c.members.size.toUInt())
         c.members.forEach { w.str(it.id).raw(it.ed).raw(it.x).u32(it.kind) }
         w.u32(c.removed.size.toUInt())
@@ -223,7 +219,7 @@ object DeviceSecurity {
         val epoch = r.u64()
         val contentEpoch = r.u64()
         val issuedAt = r.u64()
-        val notAfter = r.u64()
+
         var n = r.u32()
         check(n <= MAX_MEMBERS_U)
         val members = List(n.toInt()) { Member(r.str(), r.raw(32), r.raw(32), r.u32()) }
@@ -240,7 +236,6 @@ object DeviceSecurity {
                 epoch,
                 contentEpoch,
                 issuedAt,
-                notAfter,
                 members,
                 removed,
             )
@@ -272,7 +267,6 @@ object DeviceSecurity {
             .u64(s.core.epoch)
             .u64(s.core.contentEpoch)
             .u64(s.core.issuedAt)
-            .u64(s.core.notAfter)
             .str(s.core.authorityID)
             .raw(s.core.recoveryEd)
             .raw(stateHash(s))
@@ -356,13 +350,12 @@ object DeviceSecurity {
                 next.core.contentEpoch == parent.core.contentEpoch + 1uL &&
                     next.prevSecret.isEmpty() &&
                     next.core.member(parent.core.authorityID) == null &&
-                    next.core.removed.contains(parent.core.authorityID)
+                    next.core.removed.contains(parent.core.authorityID),
             )
             check(verifyEd25519(authority.ed, signBytes(next), next.signature), "untrusted")
             recoveryDelta(parent, next)
             return
         }
-        check(next.core.authorityID == parent.core.authorityID)
         // A normal authority-signed state may rotate RecoveryEd (veto); it
         // still has to be signed by the parent's authority key below.
         val oldAuthority = parent.core.member(parent.core.authorityID)
@@ -370,12 +363,24 @@ object DeviceSecurity {
             oldAuthority != null && verifyEd25519(oldAuthority.ed, signBytes(next), next.signature),
             "untrusted",
         )
+        if (next.core.authorityID != parent.core.authorityID) {
+            check(
+                parent.core.member(next.core.authorityID)?.kind == 2u &&
+                    next.core.member(parent.core.authorityID) == null &&
+                    !next.core.recoveryEd.contentEquals(parent.core.recoveryEd) &&
+                    next.core.contentEpoch == parent.core.contentEpoch + 1uL &&
+                    next.prevSecret.size == 60,
+            )
+            recoveryDelta(parent, next)
+            return
+        }
         when (next.core.contentEpoch) {
             parent.core.contentEpoch -> {
                 check(
                     next.core.removed == parent.core.removed &&
+                        !next.core.recoveryEd.contentEquals(parent.core.recoveryEd) &&
                         sameMembers(next.core.members, parent.core.members) &&
-                        next.prevSecret.isEmpty()
+                        next.prevSecret.isEmpty(),
                 )
             }
             parent.core.contentEpoch + 1uL -> {
@@ -413,7 +418,7 @@ object DeviceSecurity {
                 rotated <= 1 &&
                 !(added > 0 && removed.isNotEmpty()) &&
                 !(rotated > 0 && (added > 0 || removed.isNotEmpty())) &&
-                !(added == 0 && removed.isEmpty() && rotated == 0)
+                !(added == 0 && removed.isEmpty() && rotated == 0),
         )
     }
 
@@ -582,7 +587,7 @@ object DeviceSecurity {
                 h.kind == h.purpose.kind &&
                 (h.machine.isEmpty() || id(h.machine)) &&
                 (h.session.isEmpty() || opaque(h.session)) &&
-                (h.request.isEmpty() || opaque(h.request))
+                (h.request.isEmpty() || opaque(h.request)),
         )
         nonzero(h.domain)
         nonzero(h.state)
@@ -592,7 +597,7 @@ object DeviceSecurity {
                     h.request == "project-prefs" &&
                         h.machine.isEmpty() &&
                         h.session.isEmpty() &&
-                        h.seq > 0uL
+                        h.seq > 0uL,
                 )
             Purpose.DEVICE_META ->
                 check(id(h.request) && h.machine.isEmpty() && h.session.isEmpty() && h.seq > 0uL)
@@ -601,7 +606,7 @@ object DeviceSecurity {
                     h.machine.isNotEmpty() &&
                         h.session.isEmpty() &&
                         h.request.isEmpty() &&
-                        h.seq > 0uL
+                        h.seq > 0uL,
                 )
             Purpose.SESSION_META,
             Purpose.SESSION_KEY,
@@ -610,7 +615,7 @@ object DeviceSecurity {
                     h.machine.isNotEmpty() &&
                         h.session.isNotEmpty() &&
                         h.request.isEmpty() &&
-                        h.seq > 0uL
+                        h.seq > 0uL,
                 )
             Purpose.COMMAND,
             Purpose.RESULT -> check(h.machine.isNotEmpty() && h.request.length >= 16)
@@ -622,7 +627,7 @@ object DeviceSecurity {
                     h.machine.isNotEmpty() &&
                         h.session.isNotEmpty() &&
                         h.request.length >= 16 &&
-                        h.seq > 0uL
+                        h.seq > 0uL,
                 )
             Purpose.IMAGE,
             Purpose.NOTIFY ->
@@ -803,7 +808,6 @@ object DeviceSecurity {
         if (live) {
             check(head.core.member(h.sender) != null, "untrusted")
             if (h.purpose.control) {
-                check(head.core.notAfter >= now, "stale")
                 check(!tooFarAhead(head, now), "clock")
                 check(head.core.contentEpoch == h.contentEpoch, "stale")
             }
@@ -889,7 +893,7 @@ object DeviceSecurity {
                     e.nonce.toByteArray(),
                     e.ciphertext.toByteArray(),
                     e.signature.toByteArray(),
-                )
+                ),
             )
         val h = parseHeader(w.formed.header)
         val p = PBHeader.parseFrom(e.header)
@@ -917,7 +921,6 @@ object DeviceSecurity {
         val newRecoveryEd: ByteArray,
         val newMember: Member,
         val issuedAt: ULong,
-        val notAfter: ULong,
         val stateHash: ByteArray,
         val nonce: ByteArray,
         val signature: ByteArray,
@@ -939,11 +942,10 @@ object DeviceSecurity {
                     newRecoveryEd.size == 32 &&
                     !newRecoveryEd.contentEquals(zero) &&
                     issuedAt > 0uL &&
-                    notAfter > issuedAt &&
                     stateHash.size == 32 &&
                     !stateHash.contentEquals(zero) &&
                     nonce.size == 32 &&
-                    !nonce.contentEquals(zero)
+                    !nonce.contentEquals(zero),
             )
             return Writer()
                 .raw("ra3/recovery\u0000".toByteArray())
@@ -957,7 +959,6 @@ object DeviceSecurity {
                 .raw(newMember.x)
                 .u32(newMember.kind)
                 .u64(issuedAt)
-                .u64(notAfter)
                 .raw(stateHash)
                 .raw(nonce)
                 .bytes()
@@ -976,7 +977,6 @@ object DeviceSecurity {
                     newRecoveryEd.contentEquals(next.core.recoveryEd) &&
                     newMember.same(nextAuthority) &&
                     issuedAt == next.core.issuedAt &&
-                    notAfter == next.core.notAfter &&
                     stateHash.contentEquals(stateHash(next)) &&
                     verifyEd25519(parent.core.recoveryEd, b, signature),
                 "untrusted",
@@ -1017,7 +1017,6 @@ object DeviceSecurity {
                 s.raw(32),
                 Member(s.str(), s.raw(32), s.raw(32), s.u32()),
                 s.u64(),
-                s.u64(),
                 s.raw(32),
                 s.raw(32),
                 sig,
@@ -1037,6 +1036,7 @@ object DeviceSecurity {
         private val keys: Map<ULong, ByteArray> = emptyMap(),
         /** Recovery statements that authorize recovery transitions, by their state epoch. */
         val proofs: Map<ULong, ByteArray> = emptyMap(),
+        val lease: HeadLease? = null,
     ) {
         init {
             check(pin.account.isNotEmpty() && pin.domain.size == 32 && pin.genesis.size == 32)
@@ -1104,16 +1104,30 @@ object DeviceSecurity {
 
         fun withKey(epoch: ULong, secret: ByteArray): Record {
             check(secret.size == 32)
-            return Record(pin, chain, memberID, xPrivate, floor, keys + (epoch to secret), proofs)
+            return Record(
+                pin,
+                chain,
+                memberID,
+                xPrivate,
+                floor,
+                keys + (epoch to secret),
+                proofs,
+                lease,
+            )
         }
 
         fun cachedKeys(): Map<ULong, ByteArray> = keys
 
         fun touched(now: ULong): Record =
-            if (now <= floor) this else Record(pin, chain, memberID, xPrivate, now, keys, proofs)
+            if (now <= floor) this
+            else Record(pin, chain, memberID, xPrivate, now, keys, proofs, lease)
 
-        fun installed(states: List<State>, proofs: List<ByteArray?>): Record {
-            check(states.isNotEmpty() && states.size <= MAX_STATES)
+        fun installed(
+            states: List<State>,
+            proofs: List<ByteArray?>,
+            certificate: HeadLease? = null,
+        ): Record {
+            check(states.size <= MAX_STATES)
             val all = chain.toMutableList()
             val newProofs = HashMap<ULong, ByteArray>()
             newProofs.putAll(this.proofs)
@@ -1161,6 +1175,23 @@ object DeviceSecurity {
             }
             check(all.size <= MAX_STATES, "capacity")
             val finalHead = all.last()
+            certificate?.let {
+                it.verify(finalHead)
+                check(
+                    it.issuedAt <=
+                        maxOf(System.currentTimeMillis().toULong(), floor) + MAX_CLOCK_SKEW,
+                    "clock",
+                )
+                lease?.let { old ->
+                    if (old.head.contentEquals(it.head))
+                        check(
+                            it.issuedAt >= old.issuedAt &&
+                                it.notAfter >= old.notAfter &&
+                                (it.issuedAt != old.issuedAt || it.notAfter == old.notAfter),
+                            "stale",
+                        )
+                }
+            }
             return Record(
                 pin,
                 all,
@@ -1169,6 +1200,7 @@ object DeviceSecurity {
                 floor,
                 newKeys.filterKeys { it <= finalHead.core.contentEpoch },
                 newProofs,
+                certificate ?: lease,
             )
         }
 
@@ -1188,6 +1220,7 @@ object DeviceSecurity {
             keys.forEach { (epoch, key) -> w.u64(epoch).raw(key) }
             w.u32(proofs.size.toUInt())
             proofs.forEach { (epoch, raw) -> w.u64(epoch).lp(raw) }
+            w.lp(lease?.bytes() ?: byteArrayOf())
             return w.bytes()
         }
 
@@ -1211,8 +1244,9 @@ object DeviceSecurity {
                 check(pn <= MAX_STATES_UINT)
                 val proofs = HashMap<ULong, ByteArray>()
                 repeat(pn.toInt()) { proofs[r.u64()] = r.lp(MAX_STATE) }
+                val certificate = r.lp(256).takeIf { it.isNotEmpty() }?.let { HeadLease.parse(it) }
                 r.done()
-                return Record(pin, chain, memberID, x, floor, keys, proofs)
+                return Record(pin, chain, memberID, x, floor, keys, proofs, certificate)
             }
 
             /** A record built from the Go cross-language fixture's JSON. */
@@ -1241,6 +1275,16 @@ object DeviceSecurity {
     }
 
     interface Storage {
+        fun readSecurityOperation(): SecurityOperation? = null
+
+        fun writeSecurityOperation(operation: SecurityOperation) {
+            throw Failure("storage")
+        }
+
+        fun clearSecurityOperation() {
+            throw Failure("storage")
+        }
+
         fun readSecurity(): Record
 
         fun initializeSecurity(record: Record)
@@ -1250,6 +1294,7 @@ object DeviceSecurity {
             expectedState: ByteArray,
             states: List<State>,
             proofs: List<ByteArray?>,
+            lease: HeadLease? = null,
         ): Record
 
         fun touchSecurity(expectedState: ByteArray, floor: ULong): Record

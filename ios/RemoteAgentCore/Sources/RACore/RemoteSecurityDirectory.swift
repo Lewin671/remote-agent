@@ -77,15 +77,14 @@ extension Remote {
                 throw DeviceSecurity.Failure.stale
             }
         }
-        for old in Array(trustedMembers.values) where old.kind == 1 && members[old.id] == nil {
-            await dropMachine(old.id)
-        }
+        archiveMachines=Set(record.states.values.flatMap{$0.core.members}.filter{$0.kind==1}.map{$0.id})
+        for (id,var machine) in nextMachines where members[id] == nil {machine.online=false;nextMachines[id]=machine}
         trustedMembers = members
         trustedMetadata = metadata
         devices = nextDevices
         authorityDeviceId = head.core.authorityID
-        machines = nextMachines.filter { members[$0.key]?.kind == 1 }
-        for session in Array(sessions.values) where members[session.machineId]?.kind != 1 {
+        machines = nextMachines.filter { members[$0.key]?.kind == 1 || archiveMachines.contains($0.key) }
+        for session in Array(sessions.values) where members[session.machineId]?.kind != 1 && !archiveMachines.contains(session.machineId) {
             sessions[session.id] = nil
             sessionKeys[session.id] = nil
             listed.remove(session.id)

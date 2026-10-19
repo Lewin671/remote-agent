@@ -2,6 +2,7 @@ package deviceauth
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -11,6 +12,13 @@ import (
 )
 
 type vectors struct {
+	HandoffParent vectorState `json:"handoff_parent"`
+	Handoff       vectorState `json:"handoff"`
+	HandoffLease  string      `json:"handoff_lease"`
+	HandoffX      string      `json:"handoff_x"`
+
+	Lease             string      `json:"lease"`
+	RenewedLease      string      `json:"renewed_lease"`
 	Account           string      `json:"account"`
 	Domain            string      `json:"domain"`
 	PhoneSeed         string      `json:"phone_seed"`
@@ -43,14 +51,17 @@ func buildVectors(t *testing.T) vectors {
 	if err != nil {
 		t.Fatal(err)
 	}
-	renewed, err := BuildRenewal(added, secret2, phoneEd, 1_700_000_200_000)
+	rotationKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0xa1}, 32))
+	var rotationPub [32]byte
+	copy(rotationPub[:], rotationKey.Public().(ed25519.PublicKey))
+	renewed, err := BuildRecoveryKeyRotation(added, secret2, rotationPub, phoneEd, 1_700_000_200_000)
 	if err != nil {
 		t.Fatal(err)
 	}
 	newPhone, newPhoneEd, newPhoneX := testMember(t, 0x77, Client)
 	var newRecoveryPub [32]byte
 	newRecoveryPub[0] = 0x88
-	rec, stmt, err := BuildRecovery(renewed, newPhone, []Member{machine, newPhone}, bytes.Repeat([]byte{0x99}, 32), newPhoneEd, recovery, newRecoveryPub, 1_700_000_300_000)
+	rec, stmt, err := BuildRecovery(renewed, newPhone, []Member{machine, newPhone}, bytes.Repeat([]byte{0x99}, 32), newPhoneEd, rotationKey, newRecoveryPub, 1_700_000_300_000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +80,21 @@ func buildVectors(t *testing.T) vectors {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return vectors{
+	l, _ := BuildLease(added, phoneEd, added.Core.IssuedAt)
+	lr, _ := l.MarshalBinary()
+	l2, _ := BuildLease(added, phoneEd, added.Core.IssuedAt+Lease/2)
+	l2r, _ := l2.MarshalBinary()
+	handoffParent, err := BuildPairState(added, newPhone, newPhone.XPublic[:], secret2, bytes.Repeat([]byte{0xaa}, 32), phoneEd, 1_700_000_250_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handoff, err := BuildHandoff(handoffParent, newPhone.ID, newRecoveryPub, bytes.Repeat([]byte{0xaa}, 32), bytes.Repeat([]byte{0xbb}, 32), phoneEd, 1_700_000_260_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hl, _ := BuildLease(handoff, newPhoneEd, handoff.Core.IssuedAt)
+	hlr, _ := hl.MarshalBinary()
+	return vectors{HandoffParent: b(handoffParent), Handoff: b(handoff), HandoffLease: base64.StdEncoding.EncodeToString(hlr), HandoffX: hex.EncodeToString(newPhoneX), Lease: base64.StdEncoding.EncodeToString(lr), RenewedLease: base64.StdEncoding.EncodeToString(l2r),
 		Account: g.Core.Account, Domain: hex.EncodeToString(g.Core.Domain[:]),
 		PhoneSeed: hex.EncodeToString(phoneEd.Seed()), PhoneX: hex.EncodeToString(phoneX),
 		MachineSeed: hex.EncodeToString(machineEd.Seed()), MachineX: hex.EncodeToString(machineX),
@@ -113,7 +138,6 @@ func parseStmt(raw []byte) (RecoveryStatement, error) {
 	copy(r.NewMember.XPublic[:], dd.raw(32))
 	r.NewMember.Kind = Kind(dd.u32())
 	r.IssuedAt = dd.u64()
-	r.NotAfter = dd.u64()
 	r.StateHash = dd.hash()
 	r.Nonce = dd.hash()
 	if dd.done() != nil {

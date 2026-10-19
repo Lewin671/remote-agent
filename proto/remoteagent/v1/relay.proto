@@ -267,6 +267,7 @@ service ClientService {
   rpc PutSecurityState(PutSecurityStateRequest) returns (PutSecurityStateResponse);
   // GetSecurityStates returns states after an epoch, up to eight at a time.
   rpc GetSecurityStates(GetSecurityStatesRequest) returns (GetSecurityStatesResponse);
+  rpc DeleteMachineRecords(DeleteMachineRecordsRequest) returns (DeleteMachineRecordsResponse);
 }
 
 message Machine {
@@ -550,6 +551,7 @@ message SecurityState {
 message PutSecurityStateRequest {
   // Contiguous; the first parent must be the stored head.
   repeated SecurityState states = 1;
+  bytes lease = 2; // independent canonical signed head lease
 }
 message PutSecurityStateResponse {
   uint64 head_epoch = 1;
@@ -568,6 +570,7 @@ message GetSecurityStatesResponse {
   // the unauthenticated recovery service no longer answers it.
   bool recovery_pending = 3;
   uint64 recovery_ready_ms = 4;
+  bytes lease = 5;
 }
 
 // RecoveryService transfers authority with a recovery code after 48 hours.
@@ -796,3 +799,7 @@ message DeviceUpdated {
 message DeviceRemoved {
   string device_id = 1;
 }
+
+// Only the current authority may explicitly delete a computer archive.
+message DeleteMachineRecordsRequest { string machine_id = 1; }
+message DeleteMachineRecordsResponse {}

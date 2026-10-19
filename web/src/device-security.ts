@@ -24,7 +24,7 @@ export const MAX_STATES = 4096;
 export const MAX_PAIR_STATES = 256;
 export const MAX_PAIR_CHAIN_BYTES = 800 << 10;
 export const LEASE = 72 * 60 * 60 * 1000;
-export const MAX_LEASE = 7 * 24 * 60 * 60 * 1000;
+export const MAX_LEASE = LEASE;
 /** How far ahead of the local clock a state's IssuedAt may be. */
 export const MAX_CLOCK_SKEW = 5 * 60 * 1000;
 export class SecurityError extends Error {
@@ -154,7 +154,7 @@ export interface Core {
   epoch: bigint;
   contentEpoch: bigint;
   issuedAt: bigint;
-  notAfter: bigint;
+
   members: Member[];
   removed: string[];
 }
@@ -191,8 +191,6 @@ async function validateCore(c: Core): Promise<void> {
       c.contentEpoch > 0n &&
       c.contentEpoch <= c.epoch &&
       c.issuedAt > 0n &&
-      c.notAfter > c.issuedAt &&
-      c.notAfter - c.issuedAt <= BigInt(MAX_LEASE) &&
       c.members.length > 0 &&
       c.members.length <= 128 &&
       c.removed.length <= 128,
@@ -238,7 +236,7 @@ export async function coreBytes(c: Core): Promise<B> {
     .u64(c.epoch)
     .u64(c.contentEpoch)
     .u64(c.issuedAt)
-    .u64(c.notAfter)
+
     .u32(c.members.length);
   for (const m of c.members) w.str(m.id).raw(m.ed).raw(m.x).u32(m.kind);
   w.u32(c.removed.length);
@@ -258,7 +256,7 @@ export async function parseCore(b: B): Promise<Core> {
     epoch: r.u64(),
     contentEpoch: r.u64(),
     issuedAt: r.u64(),
-    notAfter: r.u64(),
+
     members: [],
     removed: [],
   };
@@ -311,7 +309,7 @@ async function stateSignBytes(s: SecurityState): Promise<B> {
     .u64(c.epoch)
     .u64(c.contentEpoch)
     .u64(c.issuedAt)
-    .u64(c.notAfter)
+
     .str(c.authorityID)
     .raw(c.recoveryEd)
     .raw(await stateHash(s))
@@ -395,7 +393,7 @@ export interface RecoveryStatement {
   newRecoveryEd: B;
   newMember: Member;
   issuedAt: bigint;
-  notAfter: bigint;
+
   stateHash: B;
   nonce: B;
   signature: B;
@@ -410,7 +408,6 @@ async function recoverySignBytes(r: RecoveryStatement): Promise<B> {
       r.newRecoveryEd.length === 32 &&
       !equal(r.newRecoveryEd, ZERO) &&
       r.issuedAt > 0n &&
-      r.notAfter > r.issuedAt &&
       r.stateHash.length === 32 &&
       r.nonce.length === 32,
   );
@@ -430,7 +427,7 @@ async function recoverySignBytes(r: RecoveryStatement): Promise<B> {
     .raw(m.x)
     .u32(m.kind)
     .u64(r.issuedAt)
-    .u64(r.notAfter)
+
     .raw(r.stateHash)
     .raw(r.nonce)
     .bytes();
@@ -469,7 +466,7 @@ export async function parseRecoveryStatement(b: B): Promise<RecoveryStatement> {
       kind: d.u32() as 1 | 2,
     },
     issuedAt: d.u64(),
-    notAfter: d.u64(),
+
     stateHash: d.raw(32),
     nonce: d.raw(32),
     signature,
@@ -498,7 +495,6 @@ export async function verifyRecovery(
       m.kind === r.newMember.kind &&
       r.newMember.id === m.id &&
       r.issuedAt === next.core.issuedAt &&
-      r.notAfter === next.core.notAfter &&
       equal(r.stateHash, nextHash),
     "untrusted",
   );
@@ -593,15 +589,26 @@ export async function verifyTransition(
     recoveryDelta(parent, next);
     return;
   }
-  requireOK(next.core.authorityID === parent.core.authorityID, "untrusted");
   const oldAuthority = parent.core.members.find(
     (m) => m.id === parent.core.authorityID,
   );
   requireOK(oldAuthority !== undefined);
   await verify(oldAuthority.ed, next.signature, await stateSignBytes(next));
+  if (next.core.authorityID !== parent.core.authorityID) {
+    requireOK(
+      parent.core.members.some((m) => m.id === next.core.authorityID) &&
+        !next.core.members.some((m) => m.id === parent.core.authorityID) &&
+        !equal(next.core.recoveryEd, parent.core.recoveryEd) &&
+        next.core.contentEpoch === parent.core.contentEpoch + 1n &&
+        next.prevSecret.length === 60,
+    );
+    recoveryDelta(parent, next);
+    return;
+  }
   if (next.core.contentEpoch === parent.core.contentEpoch) {
     requireOK(
-      next.core.removed.join(",") === parent.core.removed.join(",") &&
+      !equal(next.core.recoveryEd, parent.core.recoveryEd) &&
+        next.core.removed.join(",") === parent.core.removed.join(",") &&
         sameMembers(next.core.members, parent.core.members) &&
         next.prevSecret.length === 0,
     );
@@ -654,7 +661,8 @@ export async function openGrant(
   xPrivate: CryptoKey,
 ): Promise<B> {
   await verifyPin(p, s);
-  await verifyStateSignature(s);
+  // The caller verifies the chain first. A handoff state is signed by the
+  // retiring authority in its parent, so it has no standalone self-signature.
   const m = s.core.members.find((m) => m.id === recipient);
   requireOK(m, "untrusted");
   const g = s.grants.find((g) => g.recipient === recipient);
@@ -999,7 +1007,7 @@ export async function verifyWire(
   now: bigint,
 ): Promise<SecurityHeader> {
   await verifyPin(p, s);
-  await verifyStateSignature(s);
+  // s belongs to the already verified chain (handoff is signed by its parent).
   const h = parseHeader(w.header);
   const member = await scope(h, s);
   if (live) {
@@ -1010,10 +1018,7 @@ export async function verifyWire(
     if (control(h.purpose)) {
       if (head.core.issuedAt > now + BigInt(MAX_CLOCK_SKEW))
         throw new SecurityError("clock");
-      requireOK(
-        head.core.notAfter >= now && head.core.contentEpoch === h.contentEpoch,
-        "stale",
-      );
+      requireOK(head.core.contentEpoch === h.contentEpoch, "stale");
     }
   }
   const hh = await hash("", w.header);
@@ -1185,4 +1190,77 @@ export async function verifyPublicSignature(
   message: B,
 ): Promise<void> {
   return verify(pub, signature, message);
+}
+
+/** Independent head lease; never a member-chain transition. */
+export interface LeaseCertificate {
+  domain: B;
+  head: B;
+  issuedAt: bigint;
+  notAfter: bigint;
+  signature: B;
+}
+export function leaseSignBytes(l: LeaseCertificate): B {
+  nonzero(l.domain);
+  nonzero(l.head);
+  requireOK(
+    l.issuedAt > 0n &&
+      l.notAfter > l.issuedAt &&
+      l.notAfter - l.issuedAt <= BigInt(LEASE),
+  );
+  return new Writer()
+    .raw(utf8("ra3/lease\0"))
+    .raw(l.domain)
+    .raw(l.head)
+    .u64(l.issuedAt)
+    .u64(l.notAfter)
+    .bytes();
+}
+export function leaseBytes(l: LeaseCertificate): B {
+  requireOK(l.signature.length === 64);
+  return new Writer().lp(leaseSignBytes(l)).lp(l.signature).bytes();
+}
+export function parseLease(b: B): LeaseCertificate {
+  requireOK(b.length <= 256);
+  const r = new Reader(b),
+    body = r.lp(128),
+    signature = r.lp(64);
+  r.done();
+  const d = new Reader(body);
+  requireOK(equal(d.raw(10), utf8("ra3/lease\0")));
+  const l = {
+    domain: d.raw(32),
+    head: d.raw(32),
+    issuedAt: d.u64(),
+    notAfter: d.u64(),
+    signature,
+  };
+  d.done();
+  requireOK(equal(leaseBytes(l), b));
+  return l;
+}
+export async function verifyLease(
+  l: LeaseCertificate,
+  head: SecurityState,
+): Promise<void> {
+  requireOK(
+    equal(l.domain, head.core.domain) &&
+      equal(l.head, await stateHash(head)) &&
+      l.issuedAt >= head.core.issuedAt,
+    "untrusted",
+  );
+  const m = head.core.members.find((m) => m.id === head.core.authorityID);
+  requireOK(m?.kind === 2, "untrusted");
+  await verify(m.ed, l.signature, leaseSignBytes(l));
+}
+export async function validLease(
+  l: LeaseCertificate | undefined,
+  head: SecurityState,
+  now: bigint,
+): Promise<void> {
+  requireOK(l, "lease");
+  requireOK(equal(l.head, await stateHash(head)), "lease");
+  await verifyLease(l, head);
+  requireOK(l.issuedAt <= now + BigInt(MAX_CLOCK_SKEW), "clock");
+  requireOK(now < l.notAfter, "lease");
 }

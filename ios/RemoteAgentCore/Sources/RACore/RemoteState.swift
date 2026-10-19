@@ -32,6 +32,8 @@ public struct MachineView: Equatable, Sendable, Identifiable {
 public struct SessionView: Equatable, Sendable, Identifiable {
     public var id: String
     public var machineId: String
+    public var checkpoint: PBLiveSnapshot?
+    public var checkpointStatus: String = "waiting"
     public var info: PBSession?
     public var metaRev: UInt64
     public var lastSeq: UInt64
@@ -49,6 +51,7 @@ public struct SessionView: Equatable, Sendable, Identifiable {
         self.id = id
         self.machineId = machineId
         self.info = info
+        self.checkpoint = nil
         self.metaRev = metaRev
         self.lastSeq = lastSeq
         self.updatedMs = updatedMs

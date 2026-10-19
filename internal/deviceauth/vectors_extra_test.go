@@ -132,17 +132,17 @@ func buildChainVector(t *testing.T) chainVector {
 	machine, _, _ := testMember(t, 0x44, Machine)
 	secret2 := bytes.Repeat([]byte{0x44}, 32)
 	added := mustBuildCurrent(t, g, []Member{phone, machine}, nil, secret2, secret1, phoneEd, 1_700_000_100_000)
-	renew1 := mustRenew(t, added, secret2, phoneEd, 1_700_000_150_000)
+	renew1 := mustRotate(t, added, secret2, phoneEd, 1_700_000_150_000)
 	client, _, _ := testMember(t, 0x55, Client)
 	secret3 := bytes.Repeat([]byte{0x55}, 32)
 	withClient := mustBuildCurrent(t, renew1, []Member{phone, machine, client}, nil, secret3, secret2, phoneEd, 1_700_000_200_000)
-	renew2 := mustRenew(t, withClient, secret3, phoneEd, 1_700_000_250_000)
+	renew2 := mustRotate(t, withClient, secret3, phoneEd, 1_700_000_250_000)
 	secret4 := bytes.Repeat([]byte{0x66}, 32)
 	removed := mustBuildCurrent(t, renew2, []Member{phone, client}, []string{machine.ID}, secret4, secret3, phoneEd, 1_700_000_300_000)
-	renew3 := mustRenew(t, removed, secret4, phoneEd, 1_700_000_350_000)
+	renew3 := mustRotate(t, removed, secret4, phoneEd, 1_700_000_350_000)
 	var newRecovery [32]byte
 	newRecovery[0] = 0x91
-	rotated, err := BuildRenewalRotating(renew3, secret4, newRecovery, phoneEd, 1_700_000_400_000)
+	rotated, err := BuildRecoveryKeyRotation(renew3, secret4, newRecovery, phoneEd, 1_700_000_400_000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,9 +161,9 @@ func buildChainVector(t *testing.T) chainVector {
 	return out
 }
 
-func mustRenew(t *testing.T, parent State, secret []byte, signer ed25519.PrivateKey, now uint64) State {
+func mustRotate(t *testing.T, parent State, secret []byte, signer ed25519.PrivateKey, now uint64) State {
 	t.Helper()
-	s, err := BuildRenewal(parent, secret, signer, now)
+	s, err := rotateForTest(parent, secret, signer, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestRecoveryVector(t *testing.T) {
 	newSeed := mustHex(t, v.NewPhoneSeed)
 	newX := mustHex(t, v.NewPhoneX)
 	newID := ID(ed25519.NewKeyFromSeed(newSeed).Public().(ed25519.PublicKey))
-	ep, err := InitEndpoint("", pin, []State{genesis, parent, rec}, []*RecoveryStatement{nil, nil, &stmt}, newID, newSeed, newX)
+	ep, err := initTestEndpoint("", pin, []State{genesis, parent, rec}, []*RecoveryStatement{nil, nil, &stmt}, newID, newSeed, newX)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +300,7 @@ func TestRecoveryWithRemovedParentVector(t *testing.T) {
 	newID := ID(ed25519.NewKeyFromSeed(newSeed).Public().(ed25519.PublicKey))
 	chain := append(append([]State{}, states...), rec)
 	chainProofs := append(append([]*RecoveryStatement{}, proofs...), &stmt)
-	ep, err := InitEndpoint("", pin, chain, chainProofs, newID, newSeed, newX)
+	ep, err := initTestEndpoint("", pin, chain, chainProofs, newID, newSeed, newX)
 	if err != nil {
 		t.Fatal(err)
 	}

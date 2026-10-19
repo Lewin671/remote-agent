@@ -134,6 +134,18 @@ extension ServerTests {
                 }, body)
         }
 
+        @Test func aCheckpointBootstrapsWithoutTheHistoricalPrefix() async throws {
+            try await world { w in
+                var info=PBSession();info.id="checkpoint";info.title="current state";info.lastSeq=900
+                var cp=PBLiveSnapshot();cp.session=info;cp.running=true
+                info.currentCheckpoint=try cp.serializedData()
+                try await w.daemon.putSession("checkpoint",info)
+                let r=try await w.client();r.start()
+                let state=try await r.awaitState("current checkpoint"){$0.sessions["checkpoint"]?.checkpointStatus=="ready"}
+                #expect(state.sessions["checkpoint"]?.checkpoint?.session.lastSeq==900)
+                #expect(state.sessions["checkpoint"]?.checkpoint?.running==true)
+            }
+        }
         @Test func aRemovedClientLearnsItAndStopsConnecting() async throws {
             try await world { w in
                 let r = try await w.client()
@@ -161,7 +173,7 @@ extension ServerTests {
             }
         }
 
-        @Test func aNewHeadDropsRemovedMembersAndSessionsAndTheirPrefs() async throws {
+        @Test func aNewHeadRevokesMembersAndRetainsTheirSessionArchive() async throws {
             try await world { w in
                 let security = try TestSecurity.get(w.server.url)
                 let victim = try await w.join()
@@ -197,7 +209,7 @@ extension ServerTests {
                 try await w.phone.remove([victim.deviceId, w.daemon.id])
                 await r.refreshDevices()
                 #expect(r.current.devices[victim.deviceId] == nil)
-                #expect(r.current.sessions["s1"] == nil)
+                #expect(r.current.sessions["s1"] != nil)
                 await r.loadPrefs()
                 #expect(r.current.prefs?.revision == 1)
             }

@@ -40,7 +40,7 @@ func TestOverlappingStateUploadDoesNotRewindRecoveryKeyOrVetoPending(t *testing.
 		t.Run(fmt.Sprint(advanceAgain), func(t *testing.T) {
 			ts, parent, _, c := recoveryFixture(t)
 			key4, pub4 := newRecoveryKey(t, 0xd1)
-			fourth, err := deviceauth.BuildRenewalRotating(parent, c.secret, pub4, c.phoneEd, uint64(time.Now().UnixMilli()))
+			fourth, err := deviceauth.BuildRecoveryKeyRotation(parent, c.secret, pub4, c.phoneEd, uint64(time.Now().UnixMilli()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +53,7 @@ func TestOverlappingStateUploadDoesNotRewindRecoveryKeyOrVetoPending(t *testing.
 			current, key := fourth, key4
 			if advanceAgain {
 				key5, pub5 := newRecoveryKey(t, 0xd2)
-				current, err = deviceauth.BuildRenewalRotating(fourth, c.secret, pub5, c.phoneEd, uint64(time.Now().UnixMilli()))
+				current, err = deviceauth.BuildRecoveryKeyRotation(fourth, c.secret, pub5, c.phoneEd, uint64(time.Now().UnixMilli()))
 				if err != nil {
 					t.Fatal(err)
 				}

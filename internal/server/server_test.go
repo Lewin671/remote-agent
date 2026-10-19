@@ -643,14 +643,25 @@ func TestPushAndRemoveDevice(t *testing.T) {
 		t.Fatal("dropped subscription kept")
 	}
 
-	// Removing the machine through a signed state deletes its sessions and
-	// ends its logins.
+	// Revocation ends logins while retaining the encrypted archive.
 	if err := ts.removeViaState(t, mid); err != nil {
 		t.Fatal(err)
 	}
 	ss, _ := c.ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
+	if len(ss.Msg.Sessions) == 0 {
+		t.Fatal("revocation erased sessions")
+	}
+	if _, err := c.DeleteMachineRecords(ctx, connect.NewRequest(&pb.DeleteMachineRecordsRequest{MachineId: mid})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("ordinary client deleted archive: %v", err)
+	}
+	phone := ts.authority(t)
+	admin := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, phone.phoneEd, phone.phoneID)))
+	if _, err := admin.DeleteMachineRecords(ctx, connect.NewRequest(&pb.DeleteMachineRecordsRequest{MachineId: mid})); err != nil {
+		t.Fatal(err)
+	}
+	ss, _ = c.ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
 	if len(ss.Msg.Sessions) != 0 {
-		t.Fatalf("sessions left: %v", ss.Msg.Sessions)
+		t.Fatal("explicit deletion kept sessions")
 	}
 	if _, err := m.ListSessionHeads(ctx, connect.NewRequest(&pb.ListSessionHeadsRequest{})); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("removed machine still logged in: %v", err)

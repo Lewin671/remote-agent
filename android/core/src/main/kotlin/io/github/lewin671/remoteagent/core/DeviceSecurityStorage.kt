@@ -12,6 +12,7 @@ internal object MissingDeviceSecurityStorage : DeviceSecurity.Storage {
         expectedState: ByteArray,
         states: List<DeviceSecurity.State>,
         proofs: List<ByteArray?>,
+        lease: HeadLease?,
     ): DeviceSecurity.Record = missing()
 
     override fun touchSecurity(expectedState: ByteArray, floor: ULong): DeviceSecurity.Record =

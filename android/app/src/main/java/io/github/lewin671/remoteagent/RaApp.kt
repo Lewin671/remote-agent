@@ -259,7 +259,7 @@ class RaApp : Application() {
     ) =
         accountLock.withLock {
             withContext(Dispatchers.IO) {
-                vault.clear(preserveDrafts = true)
+                vault.clear(preserveSecurityOperation = true)
                 vault.initializeSecurity(record)
                 vault.save(
                     acct,
@@ -268,7 +268,7 @@ class RaApp : Application() {
                         )
                         .bytes(),
                 )
-                vault.clearDrafts()
+                vault.clearPendingSecurityOperation()
             }
             _loaded.value = true
             use(acct)

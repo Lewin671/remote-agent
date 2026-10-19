@@ -8,6 +8,9 @@ import {
 } from "./device-security-store";
 import {
   MAX_CLOCK_SKEW,
+  parseLease,
+  validLease,
+  verifyChain,
   control,
   equal,
   fromEnvelope,
@@ -20,7 +23,6 @@ import {
   toEnvelope,
   formCipher,
   verifyPin,
-  verifyStateSignature,
   verifyWire,
   type Purpose,
   type RecoveryStatement,
@@ -52,6 +54,7 @@ export type NewSecurityHeader = Pick<
 export interface StatePage {
   states: { state: Uint8Array; recovery: Uint8Array }[];
   headEpoch: bigint;
+  lease?: Uint8Array;
 }
 /** Reads the server's signed state chain after an epoch. */
 export type FetchStates = (after: bigint, limit: number) => Promise<StatePage>;
@@ -95,7 +98,7 @@ export class DeviceSecurityClient {
     if (r.memberID !== this.memberID) throw new SecurityError("untrusted");
     const head = r.states[r.states.length - 1];
     await verifyPin(r.pin, head);
-    await verifyStateSignature(head);
+    await verifyChain(r.pin, r.states, r.proofs);
     if (!equal(await stateHash(head), r.stateHash))
       throw new SecurityError("storage");
     const inHead = head.core.members.some((m) => m.id === this.memberID);
@@ -128,6 +131,14 @@ export class DeviceSecurityClient {
       floor: r.floor,
     };
   }
+  async historicalMachines(): Promise<Set<string>> {
+    const r = await this.load();
+    return new Set(
+      r.states.flatMap((s) =>
+        s.core.members.filter((m) => m.kind === 1).map((m) => m.id),
+      ),
+    );
+  }
   async localStateHash(): Promise<B> {
     return (await this.load()).stateHash;
   }
@@ -149,6 +160,13 @@ export class DeviceSecurityClient {
       if (reply.headEpoch < head.core.epoch) throw new SecurityError("stale");
       if (!reply.states.length) {
         if (reply.headEpoch > head.core.epoch) throw new SecurityError("stale");
+        if (reply.lease?.length)
+          await this.store.installSecurity(
+            r,
+            [],
+            [],
+            parseLease(new Uint8Array(reply.lease)),
+          );
         await this.store.touchSecurity(BigInt(Date.now()));
         this.record = await this.load();
         return this.record;
@@ -178,8 +196,7 @@ export class DeviceSecurityClient {
           if (state.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
             throw new SecurityError("clock");
           // A clock moved back must not revive an expired lease.
-          if (state.core.notAfter < maxBig(BigInt(Date.now()), r.floor))
-            throw new SecurityError("lease");
+          await validLease(r.lease, state, maxBig(BigInt(Date.now()), r.floor));
         }
         const header: SecurityHeader = {
           ...h,
@@ -257,6 +274,8 @@ export class DeviceSecurityClient {
     const state = stateAt(r.states, h.epoch);
     if (!equal(await stateHash(state), h.state))
       throw new SecurityError("stale");
+    if (control(h.purpose))
+      await validLease(r.lease, head, maxBig(BigInt(Date.now()), r.floor));
     const secret = await this.contentKey(r, state, wire, h, true);
     const opened = await openWire(
       r.pin,

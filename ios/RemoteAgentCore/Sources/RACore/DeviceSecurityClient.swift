@@ -51,6 +51,9 @@ public actor DeviceSecurityClient {
         let r = try read()
         return (r.pin, r.state)
     }
+    public func historicalMachines() throws -> Set<String> {
+        let r=try read();return Set(r.states.values.flatMap{$0.core.members}.filter{$0.kind==1}.map{$0.id})
+    }
     public func headStateHash() throws -> Data { try DeviceSecurity.stateHash(try read().state) }
     public func close() {
         closed = true
@@ -102,6 +105,7 @@ public actor DeviceSecurityClient {
             try DeviceSecurity.check(res.headEpoch >= r.headEpoch, .stale)
             if res.states.isEmpty {
                 try DeviceSecurity.check(res.headEpoch == r.headEpoch, .stale)
+                try acceptLease(res.lease)
                 return try touch(now: clock())
             }
             var states: [DeviceSecurity.State] = []
@@ -118,9 +122,22 @@ public actor DeviceSecurityClient {
                 proofs.append(proof)
             }
             let next = try install(states, proofs)
-            if next.headEpoch >= res.headEpoch { return try touch(now: clock()) }
+            if next.headEpoch >= res.headEpoch { try acceptLease(res.lease); return try touch(now: clock()) }
         }
         throw DeviceSecurity.Failure.capacity
+    }
+    private func acceptLease(_ raw:Data) throws {
+        if raw.isEmpty { return }
+        var r = try read()
+        let l = try DeviceSecurity.HeadLease.parse(raw)
+        try l.verify(r.state)
+        try DeviceSecurity.check(l.issuedAt <= max(clock(),r.floor)+DeviceSecurity.clockSkewLimit,.clock)
+        if let old = r.lease, old.head == l.head {
+            try DeviceSecurity.check(l.issuedAt >= old.issuedAt && l.notAfter >= old.notAfter && (l.issuedAt != old.issuedAt || l.notAfter == old.notAfter),.stale)
+        }
+        r.lease=l;r.floor=max(clock(),r.floor);r.floorSaved=r.floor
+        r = try store.writeSecurity(expectedHead: DeviceSecurity.stateHash(r.state),r)
+        keep(r)
     }
     /// Appends a contiguous chain segment and persists it before use.
     private func install(
@@ -207,7 +224,7 @@ public actor DeviceSecurityClient {
             let now = max(clock(), r.floor)
             try DeviceSecurity.check(
                 head.core.issuedAt <= now + DeviceSecurity.clockSkewLimit, .clock)
-            try DeviceSecurity.check(head.core.notAfter >= now, .lease)
+            guard let lease=r.lease else { throw DeviceSecurity.Failure.lease }; try lease.valid(head,now:now)
         }
         guard let secret = r.secret else { throw DeviceSecurity.Failure.untrusted }
         let h = DeviceSecurity.Header(
@@ -244,6 +261,7 @@ public actor DeviceSecurityClient {
         var r = try read()
         if r.states[h.epoch] == nil { r = try await sync() }
         guard r.states[h.epoch] != nil else { throw DeviceSecurity.Failure.unknown }
+        if h.purpose.control {guard let lease=r.lease else {throw DeviceSecurity.Failure.lease};try lease.valid(r.state,now:max(clock(),r.floor))}
         let secret = try contentKey(r, h, wire, r.states[h.epoch]!, live: true)
         if r.contentKeys[h.contentEpoch] == nil {
             r.contentKeys[h.contentEpoch] = secret

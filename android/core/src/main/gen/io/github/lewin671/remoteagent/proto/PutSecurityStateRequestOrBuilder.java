@@ -35,4 +35,14 @@ public interface PutSecurityStateRequestOrBuilder extends
    * <code>repeated .remoteagent.v1.SecurityState states = 1 [json_name = "states"];</code>
    */
   int getStatesCount();
+
+  /**
+   * <pre>
+   * independent canonical signed head lease
+   * </pre>
+   *
+   * <code>bytes lease = 2 [json_name = "lease"];</code>
+   * @return The lease.
+   */
+  com.google.protobuf.ByteString getLease();
 }

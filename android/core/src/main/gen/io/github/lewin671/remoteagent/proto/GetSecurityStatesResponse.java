@@ -16,6 +16,7 @@ public  final class GetSecurityStatesResponse extends
     GetSecurityStatesResponseOrBuilder {
   private GetSecurityStatesResponse() {
     states_ = emptyProtobufList();
+    lease_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int STATES_FIELD_NUMBER = 1;
   private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.SecurityState> states_;
@@ -208,6 +209,33 @@ public  final class GetSecurityStatesResponse extends
   private void clearRecoveryReadyMs() {
 
     recoveryReadyMs_ = 0L;
+  }
+
+  public static final int LEASE_FIELD_NUMBER = 5;
+  private com.google.protobuf.ByteString lease_;
+  /**
+   * <code>bytes lease = 5 [json_name = "lease"];</code>
+   * @return The lease.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getLease() {
+    return lease_;
+  }
+  /**
+   * <code>bytes lease = 5 [json_name = "lease"];</code>
+   * @param value The lease to set.
+   */
+  private void setLease(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    lease_ = value;
+  }
+  /**
+   * <code>bytes lease = 5 [json_name = "lease"];</code>
+   */
+  private void clearLease() {
+
+    lease_ = getDefaultInstance().getLease();
   }
 
   public static io.github.lewin671.remoteagent.proto.GetSecurityStatesResponse parseFrom(
@@ -511,6 +539,34 @@ public  final class GetSecurityStatesResponse extends
       return this;
     }
 
+    /**
+     * <code>bytes lease = 5 [json_name = "lease"];</code>
+     * @return The lease.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getLease() {
+      return instance.getLease();
+    }
+    /**
+     * <code>bytes lease = 5 [json_name = "lease"];</code>
+     * @param value The lease to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLease(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setLease(value);
+      return this;
+    }
+    /**
+     * <code>bytes lease = 5 [json_name = "lease"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLease() {
+      copyOnWrite();
+      instance.clearLease();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.GetSecurityStatesResponse)
   }
   @java.lang.Override
@@ -532,10 +588,11 @@ public  final class GetSecurityStatesResponse extends
             "headEpoch_",
             "recoveryPending_",
             "recoveryReadyMs_",
+            "lease_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001\u001b\u0002\u0003" +
-              "\u0003\u0007\u0004\u0003";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u001b\u0002\u0003" +
+              "\u0003\u0007\u0004\u0003\u0005\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

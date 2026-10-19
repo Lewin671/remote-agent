@@ -443,4 +443,16 @@ public interface SessionOrBuilder extends
    * @return The forkedSeq.
    */
   long getForkedSeq();
+
+  /**
+   * <pre>
+   * Durable current owner checkpoint (serialized LiveSnapshot), encrypted in
+   * SESSION_META for the current content epoch. No history prefix is needed.
+   * Stored checkpoints do not attest freshness for an actionable command.
+   * </pre>
+   *
+   * <code>bytes current_checkpoint = 33 [json_name = "currentCheckpoint"];</code>
+   * @return The currentCheckpoint.
+   */
+  com.google.protobuf.ByteString getCurrentCheckpoint();
 }

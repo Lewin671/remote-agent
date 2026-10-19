@@ -9,7 +9,7 @@ import java.io.DataOutputStream
  * Drafts are wrapped with the foreground account key. Recovery-code seeds and text never enter
  * these bytes.
  */
-internal fun draftBytes(write: (DataOutputStream) -> Unit): ByteArray =
+internal fun operationMaterial(write: (DataOutputStream) -> Unit): ByteArray =
     ByteArrayOutputStream().also { out -> DataOutputStream(out).use(write) }.toByteArray()
 
 internal fun DataOutputStream.blob(b: ByteArray) {
@@ -23,13 +23,13 @@ internal fun DataInputStream.blob(): ByteArray {
     return ByteArray(n).also { readFully(it) }
 }
 
-internal fun <T> parseDraft(b: ByteArray, read: (DataInputStream) -> T): T =
+internal fun <T> readOperationMaterial(b: ByteArray, read: (DataInputStream) -> T): T =
     DataInputStream(ByteArrayInputStream(b)).use { input ->
         require(input.readInt() == 1)
         read(input).also { require(input.available() == 0) }
     }
 
-fun CreatedAccount.draftBytes(): ByteArray = draftBytes { s ->
+fun CreatedAccount.operationMaterial(): ByteArray = operationMaterial { s ->
     s.writeInt(1)
     s.writeUTF(account.server)
     s.blob(account.root)
@@ -44,14 +44,14 @@ fun CreatedAccount.draftBytes(): ByteArray = draftBytes { s ->
  * Exact signed submission, saved before SubmitRecovery, including its own identity and expected
  * state. The new recovery private key is absent.
  */
-class RecoveryDraft(
+class RecoveryPublication(
     val submission: RecoverySubmission,
     val statement: ByteArray,
     val state: ByteArray,
 ) {
-    override fun toString() = "RecoveryDraft"
+    override fun toString() = "RecoveryPublication"
 
-    fun bytes(): ByteArray = draftBytes { s ->
+    fun bytes(): ByteArray = operationMaterial { s ->
         s.writeInt(1)
         s.writeUTF(submission.recoveryId)
         s.writeLong(submission.readyMs)
@@ -66,8 +66,8 @@ class RecoveryDraft(
     }
 
     companion object {
-        fun parse(b: ByteArray): RecoveryDraft =
-            parseDraft(b) { s ->
+        fun parse(b: ByteArray): RecoveryPublication =
+            readOperationMaterial(b) { s ->
                 val id = s.readUTF()
                 val ready = s.readLong()
                 val seed = s.blob()
@@ -81,7 +81,7 @@ class RecoveryDraft(
                 require(seed.size == 32 && x.size == 32 && hash.size == 32 && genesis.size == 10)
                 val parsed = DeviceSecurity.parseState(state)
                 require(DeviceSecurity.stateHash(parsed).contentEquals(hash))
-                RecoveryDraft(
+                RecoveryPublication(
                     RecoverySubmission(
                         id,
                         ready,

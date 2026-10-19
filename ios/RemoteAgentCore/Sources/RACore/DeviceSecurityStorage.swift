@@ -18,6 +18,7 @@ extension DeviceSecurity {
         public var floorSaved: UInt64
         public var secret: Data?
         public var contentKeys: [UInt64: Data]
+        public var lease: HeadLease?
         public var recovery: [UInt64: RecoveryStatement]
         public var state: State { states[headEpoch]! }
         public var description: String { "DeviceSecurity.Record(epoch=\(headEpoch))" }
@@ -28,7 +29,7 @@ extension DeviceSecurity {
         public init(
             pin: Pin, states: [UInt64: State], memberID: String, xPrivate: Data, member: Bool,
             floor: UInt64 = 0, floorSaved: UInt64 = 0, secret: Data? = nil,
-            contentKeys: [UInt64: Data] = [:], recovery: [UInt64: RecoveryStatement] = [:]
+            contentKeys: [UInt64: Data] = [:], recovery: [UInt64: RecoveryStatement] = [:], lease: HeadLease? = nil
         ) throws {
             try check(
                 xPrivate.count == 32 && identifier(memberID) && !states.isEmpty, .invalid)
@@ -68,6 +69,7 @@ extension DeviceSecurity {
             self.secret = secret
             self.contentKeys = contentKeys
             self.recovery = recovery
+            self.lease = lease
         }
         public var xKey: Curve25519.KeyAgreement.PrivateKey {
             get throws { try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: xPrivate) }
@@ -135,6 +137,7 @@ extension DeviceSecurity {
                 w.u64(ep)
                 w.raw(key)
             }
+            w.lp(try lease?.bytes() ?? Data())
             return w.data
         }
         public static func parse(_ b: Data) throws -> Record {
@@ -175,11 +178,13 @@ extension DeviceSecurity {
                 try check(keys[ep] == nil, .invalid)
                 keys[ep] = key
             }
+            let leaseRaw = try r.lp(256)
+            let lease = leaseRaw.isEmpty ? nil : try HeadLease.parse(leaseRaw)
             try r.done()
             return try Record(
                 pin: pin, states: states, memberID: memberID, xPrivate: x, member: member,
                 floor: floor, floorSaved: floorSaved, secret: secret, contentKeys: keys,
-                recovery: recovery)
+                recovery: recovery, lease: lease)
         }
     }
     /// Each method is one platform-atomic transaction shared by all foreground

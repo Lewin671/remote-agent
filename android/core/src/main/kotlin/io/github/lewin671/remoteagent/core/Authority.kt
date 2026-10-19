@@ -25,18 +25,24 @@ object Authority {
     private val DAY_MS = 24uL * 60uL * 60uL * 1000uL
     private val HALF_DAY_MS = 12uL * 60uL * 60uL * 1000uL
 
-    fun needsRenewal(head: DeviceSecurity.State, now: Long): Boolean {
+    fun needsRenewal(lease: HeadLease?, now: Long): Boolean {
+        if (lease == null) return true
         val at = now.toULong()
-        if (at < head.core.issuedAt) return false
-        val remaining = if (at >= head.core.notAfter) 0uL else head.core.notAfter - at
-        return remaining < DAY_MS && at - head.core.issuedAt >= HALF_DAY_MS
+        if (at < lease.issuedAt) return false
+        val remaining = if (at >= lease.notAfter) 0uL else lease.notAfter - at
+        return remaining < DAY_MS && at - lease.issuedAt >= HALF_DAY_MS
     }
 
-    fun leaseValid(head: DeviceSecurity.State, now: Long): Boolean =
-        head.core.notAfter >= now.toULong()
+    fun leaseValid(record: DeviceSecurity.Record, now: Long): Boolean = runCatching {
+        record.lease?.valid(record.head, maxOf(now.toULong(), record.floor))
+            ?: throw DeviceSecurity.Failure("lease")
+    }
+        .isSuccess
 
     fun sorted(members: List<DeviceSecurity.Member>): List<DeviceSecurity.Member> =
-        members.sortedBy { it.id }
+        members.sortedBy {
+            it.id
+        }
 
     fun newMember(ed: SigningKey, xPrivate: ByteArray, kind: UInt): DeviceSecurity.Member {
         check(xPrivate.size == 32)
@@ -69,7 +75,6 @@ object Authority {
                 1uL,
                 1uL,
                 now.toULong(),
-                renewAfter(now).toULong(),
                 listOf(member),
                 emptyList(),
             )
@@ -150,28 +155,6 @@ object Authority {
         return membership(parent, members, parent.core.removed, oldSecret, newSecret, signer, now)
     }
 
-    /** A lease renewal: Epoch + 1, same members and content key, no PrevSecret. */
-    fun renewal(
-        parent: DeviceSecurity.State,
-        secret: ByteArray,
-        signer: SigningKey,
-        now: Long,
-    ): DeviceSecurity.State {
-        check(secret.size == 32)
-        val core =
-            parent.core.copy(
-                parent = DeviceSecurity.stateHash(parent),
-                epoch = parent.core.epoch + 1uL,
-            )
-        val issued = maxOf(now.toULong(), core.issuedAt)
-        return build(
-            core.copy(issuedAt = issued, notAfter = renewAfter(issued.toLong()).toULong()),
-            secret,
-            ByteArray(0),
-            signer,
-        )
-    }
-
     /** A veto: any new state, with a new recovery key the user saves. */
     fun veto(
         parent: DeviceSecurity.State,
@@ -191,12 +174,41 @@ object Authority {
             core.copy(
                 recoveryEd = newRecoveryEd,
                 issuedAt = issued,
-                notAfter = renewAfter(issued.toLong()).toULong(),
             ),
             secret,
             ByteArray(0),
             signer,
         )
+    }
+
+    /** Normal phone replacement keeps the backward key walk. */
+    fun handoff(
+        parent: DeviceSecurity.State,
+        incoming: String,
+        recoveryEd: ByteArray,
+        oldSecret: ByteArray,
+        newSecret: ByteArray,
+        signer: SigningKey,
+        now: Long,
+    ): DeviceSecurity.State {
+        check(
+            incoming != parent.core.authorityID &&
+                parent.core.member(incoming)?.kind == 2u &&
+                recoveryEd.size == 32 &&
+                !recoveryEd.contentEquals(parent.core.recoveryEd),
+        )
+        val core =
+            parent.core.copy(
+                parent = DeviceSecurity.stateHash(parent),
+                epoch = parent.core.epoch + 1uL,
+                contentEpoch = parent.core.contentEpoch + 1uL,
+                authorityID = incoming,
+                recoveryEd = recoveryEd,
+                issuedAt = maxOf(now.toULong(), parent.core.issuedAt),
+                members = parent.core.members.filterNot { it.id == parent.core.authorityID },
+                removed = (parent.core.removed + parent.core.authorityID).sorted(),
+            )
+        return build(core, newSecret, DeviceSecurity.sealPrevSecret(newSecret, oldSecret), signer)
     }
 
     /**
@@ -218,7 +230,7 @@ object Authority {
                 deviceId(newSigner.publicKey) == newMember.id &&
                 newRecoveryEd.size == 32 &&
                 secret.size == 32 &&
-                members.none { it.id == parent.core.authorityID }
+                members.none { it.id == parent.core.authorityID },
         )
         val core =
             parent.core.copy(
@@ -228,7 +240,6 @@ object Authority {
                 authorityID = newMember.id,
                 recoveryEd = newRecoveryEd,
                 issuedAt = maxOf(now.toULong(), parent.core.issuedAt),
-                notAfter = renewAfter(maxOf(now, parent.core.issuedAt.toLong())).toULong(),
                 members = sorted(members),
                 removed = (parent.core.removed + parent.core.authorityID).distinct().sorted(),
             )
@@ -242,7 +253,6 @@ object Authority {
                 newRecoveryEd,
                 newMember,
                 core.issuedAt,
-                core.notAfter,
                 DeviceSecurity.stateHash(state),
                 randomBytes(32),
                 ByteArray(0),
@@ -266,14 +276,13 @@ object Authority {
                 epoch = parent.core.epoch + 1uL,
                 contentEpoch = parent.core.contentEpoch + 1uL,
                 issuedAt = maxOf(now.toULong(), parent.core.issuedAt),
-                notAfter = renewAfter(maxOf(now, parent.core.issuedAt.toLong())).toULong(),
                 members = sorted(members),
                 removed = removed.sorted(),
             )
         return build(core, secret, prevSecret, signer)
     }
 
-    private fun build(
+    internal fun build(
         core: DeviceSecurity.Core,
         secret: ByteArray,
         prevSecret: ByteArray,
@@ -308,8 +317,8 @@ data class CreatedAccount(
     val needsOfflinePin: Boolean = false,
 ) {
     companion object {
-        fun parseDraft(b: ByteArray): CreatedAccount =
-            parseDraft(b) { s ->
+        fun readOperationMaterial(b: ByteArray): CreatedAccount =
+            readOperationMaterial(b) { s ->
                 val server = s.readUTF()
                 val root = s.blob()
                 val seed = s.blob()
@@ -322,7 +331,7 @@ data class CreatedAccount(
                         seed.size == 32 &&
                         deviceId(SigningKey(seed).publicKey) == id &&
                         record.memberID == id &&
-                        record.pin.account == accountId
+                        record.pin.account == accountId,
                 )
                 CreatedAccount(Account(server, root, seed, id, accountId, pub), record, "")
             }
@@ -386,7 +395,7 @@ suspend fun createAccount(
                     setupToken = setupToken,
                     kind = DeviceKind.DEVICE_KIND_CLIENT,
                     seed = prepared.account.deviceSeed,
-                    now = now,
+                    now = prepared.record.chain.first().core.issuedAt.toLong(),
                     signupProof = proof,
                 )
             try {
@@ -402,8 +411,8 @@ suspend fun createAccount(
             io.github.lewin671.remoteagent.proto.PinSecurityDomainRequest.newBuilder()
                 .setGenesisState(
                     com.google.protobuf.ByteString.copyFrom(
-                        DeviceSecurity.stateBytes(prepared.record.chain.first())
-                    )
+                        DeviceSecurity.stateBytes(prepared.record.chain.first()),
+                    ),
                 )
                 .build(),
             Api.headers(token),
@@ -417,8 +426,8 @@ suspend fun createAccount(
             request.addStates(
                 io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
                     .setState(
-                        com.google.protobuf.ByteString.copyFrom(DeviceSecurity.stateBytes(it))
-                    )
+                        com.google.protobuf.ByteString.copyFrom(DeviceSecurity.stateBytes(it)),
+                    ),
             )
         }
         api.client.putSecurityState(request.build(), Api.headers(token)).value()
@@ -447,15 +456,25 @@ suspend fun createAccount(
                         io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
                             .setState(
                                 com.google.protobuf.ByteString.copyFrom(
-                                    DeviceSecurity.stateBytes(next)
-                                )
-                            )
+                                    DeviceSecurity.stateBytes(next),
+                                ),
+                            ),
                     )
                     .build(),
                 Api.headers(token),
             )
             .value()
     }
+    val lease = HeadLease.sign(prepared.record.head, SigningKey(prepared.account.deviceSeed), now)
+    api.client
+        .putSecurityState(
+            io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
+                .setLease(com.google.protobuf.ByteString.copyFrom(lease.bytes()))
+                .build(),
+            Api.headers(token),
+        )
+        .value()
+    prepared = prepared.copy(record = prepared.record.installed(emptyList(), emptyList(), lease))
     return prepared
 }
 
@@ -521,8 +540,8 @@ suspend fun rebuildSecurityDomain(
                     io.github.lewin671.remoteagent.proto.PinSecurityDomainRequest.newBuilder()
                         .setGenesisState(
                             com.google.protobuf.ByteString.copyFrom(
-                                DeviceSecurity.stateBytes(genesis)
-                            )
+                                DeviceSecurity.stateBytes(genesis),
+                            ),
                         )
                         .build(),
                     Api.headers(token),

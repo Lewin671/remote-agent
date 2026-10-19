@@ -31,10 +31,11 @@ func securityPath() string { return filepath.Join(paths.Dir(), "security-v3.db")
 
 // role is the signed state's copy of this device's membership.
 type securitySession struct {
-	endpoint   *deviceauth.Endpoint
-	client     remoteagentv1connect.ClientServiceClient
-	syncNow    chan struct{}
-	onRecovery func()
+	clock    func() uint64
+	endpoint *deviceauth.Endpoint
+	client   remoteagentv1connect.ClientServiceClient
+	syncNow  chan struct{}
+	onEpoch  func()
 }
 
 func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServiceClient) (*securitySession, error) {
@@ -66,9 +67,19 @@ func securityHeader(h *pb.Header, purpose deviceauth.Purpose) deviceauth.Header 
 	return deviceauth.Header{Kind: uint32(h.Kind), Purpose: purpose, Machine: h.MachineId, Session: h.SessionId, Request: h.RequestId, Seq: h.Seq, Deadline: uint64(h.DeadlineMs), Compression: uint32(h.Compression)}
 }
 
+func (s *securitySession) now() uint64 {
+	if s.clock != nil {
+		return s.clock()
+	}
+	return uint64(time.Now().UnixMilli())
+}
+
 // seal is local: the signed head and the content grant are already here, so
 // there is no authority round trip.
 func (s *securitySession) seal(h *pb.Header, purpose deviceauth.Purpose, seed, plain []byte) (*pb.Envelope, error) {
+	if err := s.endpoint.CheckLease(s.now()); err != nil {
+		return nil, err
+	}
 	wire, err := s.endpoint.Prepare(securityHeader(h, purpose), seed, plain)
 	if err != nil {
 		return nil, err
@@ -120,73 +131,72 @@ func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []
 }
 
 // syncOnce pulls states after the local head, verifies and installs them.
-// It reports whether a recovery boundary was installed, so the caller can
-// re-publish current metadata under the new content key.
+// A changed content epoch retries the durable current checkpoint.
 func (s *securitySession) syncOnce(ctx context.Context) error {
-	_, recovered, err := s.pull(ctx)
-	if err == nil && recovered && s.onRecovery != nil {
-		s.onRecovery()
+	_, before, _ := s.endpoint.Snapshot()
+	_, err := s.pull(ctx)
+	_, after, _ := s.endpoint.Snapshot()
+	if err == nil && before.Core.ContentEpoch != after.Core.ContentEpoch && s.onEpoch != nil {
+		s.onEpoch()
 	}
 	return err
 }
 
-func (s *securitySession) pull(ctx context.Context) (uint64, bool, error) {
-	before := s.endpoint.HeadEpoch()
-	_, beforeState, _ := s.endpoint.Snapshot()
-	recovered := false
-	prevAuthority := beforeState.Core.AuthorityID
-	after := before
-	// The server pages at eight states. Without a loop a device more than
-	// eight behind catches up one minute at a time; pull until caught up.
-	for {
+func (s *securitySession) pull(ctx context.Context) (uint64, error) {
+	for page := 0; page < deviceauth.MaxStates; page++ {
+		after := s.endpoint.HeadEpoch()
+		now := s.now()
+		if err := s.endpoint.Touch(now); err != nil {
+			return 0, err
+		}
 		res, err := s.client.GetSecurityStates(ctx, connect.NewRequest(&pb.GetSecurityStatesRequest{AfterEpoch: after, Limit: 8}))
 		if err != nil {
-			return 0, false, err
+			return 0, err
 		}
-		if err := s.endpoint.Touch(uint64(time.Now().UnixMilli())); err != nil {
-			return 0, false, err
-		}
-		if len(res.Msg.States) == 0 {
-			_, head, _ := s.endpoint.Snapshot()
-			return head.Core.Epoch, recovered, nil
+		if res.Msg.HeadEpoch < after {
+			return 0, deviceauth.ErrStale
 		}
 		states := make([]deviceauth.State, 0, len(res.Msg.States))
 		proofs := make([]*deviceauth.RecoveryStatement, 0, len(res.Msg.States))
 		for _, in := range res.Msg.States {
 			st, err := deviceauth.ParseState(in.State)
 			if err != nil {
-				return 0, false, err
+				return 0, err
 			}
 			var proof *deviceauth.RecoveryStatement
 			if len(in.Recovery) > 0 {
 				p, err := deviceauth.ParseRecoveryStatement(in.Recovery)
 				if err != nil {
-					return 0, false, err
+					return 0, err
 				}
 				proof = &p
-				recovered = true
 			}
 			states = append(states, st)
 			proofs = append(proofs, proof)
 		}
-		if err := s.endpoint.Install(states, proofs); err != nil {
-			return 0, false, err
+		if len(states) > 0 {
+			if err := s.endpoint.Install(states, proofs); err != nil {
+				return 0, err
+			}
 		}
-		_, head, _ := s.endpoint.Snapshot()
-		if head.Core.Epoch > beforeState.Core.Epoch && head.Core.AuthorityID != prevAuthority {
-			recovered = true
+		head := s.endpoint.HeadEpoch()
+		if head >= res.Msg.HeadEpoch {
+			if len(res.Msg.Lease) > 0 {
+				l, err := deviceauth.ParseLease(res.Msg.Lease)
+				if err != nil {
+					return 0, err
+				}
+				if err := s.endpoint.InstallLease(l, now); err != nil {
+					return 0, err
+				}
+			}
+			return head, nil
 		}
-		prevAuthority = head.Core.AuthorityID
-		if head.Core.Epoch <= after {
-			// A full page that added nothing would repeat forever.
-			return head.Core.Epoch, recovered, nil
-		}
-		after = head.Core.Epoch
-		_ = s.endpoint.Touch(uint64(time.Now().UnixMilli()))
-		if len(res.Msg.States) < 8 {
-			return head.Core.Epoch, recovered, nil
+		if head <= after {
+			return 0, deviceauth.ErrStale
 		}
 	}
+	return 0, deviceauth.ErrCapacity
 }
 
 // securitySyncLoop polls every 60 seconds and immediately on an unknown

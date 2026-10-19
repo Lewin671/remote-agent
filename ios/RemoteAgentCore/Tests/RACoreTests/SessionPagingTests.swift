@@ -221,7 +221,7 @@ extension ServerTests {
             }
         }
 
-        @Test func afterAReconnectASessionOfAMachineThatIsGoneGoes() async throws {
+        @Test func afterExplicitArchiveDeletionAComputerAndItsSessionsGo() async throws {
             try await world { w in
                 let otherAccount = try await w.phone.enroll(
                     seed: randomBytes(32), kind: .machine).0
@@ -250,6 +250,8 @@ extension ServerTests {
                 _ = try await r.awaitState("offline") { $0.conn == .offline }
                 // The phone removes that machine meanwhile.
                 try await w.phone.remove([other.id])
+                var deletion=PBDeleteMachineRecordsRequest();deletion.machineID=other.id
+                _ = try await w.phone.api.client.deleteMachineRecords(request:deletion,headers:Api.headers(token:w.phone.token)).value()
                 r.start()
                 let id = w.daemon.id
                 let st = try await r.awaitState("the machine gone", ms: 15_000) {

@@ -235,7 +235,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 		}
 		meta := syncMeta(info)
 		if sent == nil || !proto.Equal(meta, sent) {
-			rev, err := c.putSession(ctx, id, key, meta, floor)
+			rev, err := c.putSession(ctx, id, key, info, floor)
 			if err != nil {
 				return nil, err
 			}
@@ -491,6 +491,16 @@ func EndedMs(info *pb.Session) int64 {
 // putSession stores a session's key and metadata, and returns the
 // metadata's revision.
 func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session, floor uint64) (uint64, error) {
+	checkpoint, err := c.currentCheckpoint(id, info)
+	if err != nil {
+		return 0, localSyncError("checkpoint", err)
+	}
+	var snapshot pb.LiveSnapshot
+	if err := proto.Unmarshal(checkpoint, &snapshot); err != nil {
+		return 0, err
+	}
+	info = snapshot.Session
+	info.CurrentCheckpoint = checkpoint
 	keyEnv, err := c.security.seal(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, Seq: 1, MachineId: c.acct.DeviceID, SessionId: id, Sender: c.acct.DeviceID,
 	}, deviceauth.SessionKey, nil, key)
@@ -512,7 +522,11 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 	if err != nil {
 		return 0, localSyncError("encryption", err)
 	}
-	_, err = c.machine.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: id, Key: keyEnv, Meta: meta, EndedMs: EndedMs(info)}))
+	request := &pb.PutSessionRequest{SessionId: id, Key: keyEnv, Meta: meta, EndedMs: EndedMs(info)}
+	if err := c.persistCheckpoint(id, request); err != nil {
+		return 0, localSyncError("checkpoint", err)
+	}
+	_, err = c.machine.PutSession(ctx, connect.NewRequest(request))
 	if err != nil {
 		return 0, rpcSyncError("put_session", err)
 	}

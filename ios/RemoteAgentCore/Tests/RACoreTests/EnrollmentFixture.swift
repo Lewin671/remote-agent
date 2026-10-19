@@ -49,6 +49,8 @@ final class SyntheticPhone: @unchecked Sendable {
         guard let record = try fixture.store(acct.deviceId)?.readSecurity() else {
             throw TestFailure("synthetic phone record missing")
         }
+        var leaseRequest=PBPutSecurityStateRequest();leaseRequest.lease=try record.lease!.bytes()
+        _ = try await api.client.putSecurityState(request:leaseRequest,headers:Api.headers(token:token)).value()
         return SyntheticPhone(
             account: acct, accountPublicKey: try Keys.derive(root: root).account.publicKey,
             pin: record.pin, server: server, http: http, api: api, token: token, fixture: fixture)
@@ -126,6 +128,8 @@ final class SyntheticPhone: @unchecked Sendable {
         var value = PBSecurityState()
         value.state = state
         request.states = [value]
+        let chainReply=try fixture.call("chain")
+        request.lease = try fixture.bytes(chainReply,"Lease")
         _ = try await api.client.putSecurityState(
             request: request, headers: Api.headers(token: token)
         ).value()
@@ -244,6 +248,7 @@ final class PhonePairing: @unchecked Sendable {
         payload.approval = approval
         payload.approvalSignature = signature
         payload.accountPublicKey = phone.accountPublicKey
+        payload.lease = try phone.fixture.bytes(phone.fixture.call("chain"),"Lease")
         payload.securityStates = chain.map {
             var value = PBSecurityState()
             value.state = $0.state

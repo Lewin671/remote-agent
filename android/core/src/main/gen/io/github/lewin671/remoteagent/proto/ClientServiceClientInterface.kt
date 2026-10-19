@@ -80,4 +80,6 @@ public interface ClientServiceClientInterface {
    *  GetSecurityStates returns states after an epoch, up to eight at a time.
    */
   public suspend fun getSecurityStates(request: GetSecurityStatesRequest, headers: Headers = emptyMap()): ResponseMessage<GetSecurityStatesResponse>
+
+  public suspend fun deleteMachineRecords(request: DeleteMachineRecordsRequest, headers: Headers = emptyMap()): ResponseMessage<DeleteMachineRecordsResponse>
 }

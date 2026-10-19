@@ -47,4 +47,10 @@ public interface GetSecurityStatesResponseOrBuilder extends
    * @return The recoveryReadyMs.
    */
   long getRecoveryReadyMs();
+
+  /**
+   * <code>bytes lease = 5 [json_name = "lease"];</code>
+   * @return The lease.
+   */
+  com.google.protobuf.ByteString getLease();
 }

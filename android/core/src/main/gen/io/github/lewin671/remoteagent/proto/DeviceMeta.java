@@ -24,6 +24,7 @@ public  final class DeviceMeta extends
     name_ = "";
     platform_ = "";
     description_ = "";
+    handoffRecoveryEd_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int NAME_FIELD_NUMBER = 1;
   private java.lang.String name_;
@@ -227,6 +228,48 @@ public  final class DeviceMeta extends
     checkByteStringIsUtf8(value);
     description_ = value.toStringUtf8();
 
+  }
+
+  public static final int HANDOFF_RECOVERY_ED_FIELD_NUMBER = 4;
+  private com.google.protobuf.ByteString handoffRecoveryEd_;
+  /**
+   * <pre>
+   * Android replacement phone's self-signed offer. Set only after the user
+   * confirms the corresponding emergency code has been saved offline.
+   * </pre>
+   *
+   * <code>bytes handoff_recovery_ed = 4 [json_name = "handoffRecoveryEd"];</code>
+   * @return The handoffRecoveryEd.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getHandoffRecoveryEd() {
+    return handoffRecoveryEd_;
+  }
+  /**
+   * <pre>
+   * Android replacement phone's self-signed offer. Set only after the user
+   * confirms the corresponding emergency code has been saved offline.
+   * </pre>
+   *
+   * <code>bytes handoff_recovery_ed = 4 [json_name = "handoffRecoveryEd"];</code>
+   * @param value The handoffRecoveryEd to set.
+   */
+  private void setHandoffRecoveryEd(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    handoffRecoveryEd_ = value;
+  }
+  /**
+   * <pre>
+   * Android replacement phone's self-signed offer. Set only after the user
+   * confirms the corresponding emergency code has been saved offline.
+   * </pre>
+   *
+   * <code>bytes handoff_recovery_ed = 4 [json_name = "handoffRecoveryEd"];</code>
+   */
+  private void clearHandoffRecoveryEd() {
+
+    handoffRecoveryEd_ = getDefaultInstance().getHandoffRecoveryEd();
   }
 
   public static io.github.lewin671.remoteagent.proto.DeviceMeta parseFrom(
@@ -539,6 +582,49 @@ public  final class DeviceMeta extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Android replacement phone's self-signed offer. Set only after the user
+     * confirms the corresponding emergency code has been saved offline.
+     * </pre>
+     *
+     * <code>bytes handoff_recovery_ed = 4 [json_name = "handoffRecoveryEd"];</code>
+     * @return The handoffRecoveryEd.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getHandoffRecoveryEd() {
+      return instance.getHandoffRecoveryEd();
+    }
+    /**
+     * <pre>
+     * Android replacement phone's self-signed offer. Set only after the user
+     * confirms the corresponding emergency code has been saved offline.
+     * </pre>
+     *
+     * <code>bytes handoff_recovery_ed = 4 [json_name = "handoffRecoveryEd"];</code>
+     * @param value The handoffRecoveryEd to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHandoffRecoveryEd(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setHandoffRecoveryEd(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Android replacement phone's self-signed offer. Set only after the user
+     * confirms the corresponding emergency code has been saved offline.
+     * </pre>
+     *
+     * <code>bytes handoff_recovery_ed = 4 [json_name = "handoffRecoveryEd"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHandoffRecoveryEd() {
+      copyOnWrite();
+      instance.clearHandoffRecoveryEd();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.DeviceMeta)
   }
   @java.lang.Override
@@ -558,10 +644,11 @@ public  final class DeviceMeta extends
             "name_",
             "platform_",
             "description_",
+            "handoffRecoveryEd_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

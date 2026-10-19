@@ -1527,6 +1527,9 @@ public struct PBPutSecurityStateRequest: Sendable {
   /// Contiguous; the first parent must be the stored head.
   public var states: [PBSecurityState] = []
 
+  /// independent canonical signed head lease
+  public var lease: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1576,6 +1579,8 @@ public struct PBGetSecurityStatesResponse: Sendable {
   public var recoveryPending: Bool = false
 
   public var recoveryReadyMs: UInt64 = 0
+
+  public var lease: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2204,6 +2209,29 @@ public struct PBDeviceRemoved: Sendable {
   // methods supported on all messages.
 
   public var deviceID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Only the current authority may explicitly delete a computer archive.
+public struct PBDeleteMachineRecordsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var machineID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBDeleteMachineRecordsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4769,7 +4797,7 @@ extension PBSecurityState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
 
 extension PBPutSecurityStateRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PutSecurityStateRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}states\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}states\0\u{1}lease\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4778,6 +4806,7 @@ extension PBPutSecurityStateRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeRepeatedMessageField(value: &self.states) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.lease) }()
       default: break
       }
     }
@@ -4787,11 +4816,15 @@ extension PBPutSecurityStateRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if !self.states.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.states, fieldNumber: 1)
     }
+    if !self.lease.isEmpty {
+      try visitor.visitSingularBytesField(value: self.lease, fieldNumber: 2)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBPutSecurityStateRequest, rhs: PBPutSecurityStateRequest) -> Bool {
     if lhs.states != rhs.states {return false}
+    if lhs.lease != rhs.lease {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4869,7 +4902,7 @@ extension PBGetSecurityStatesRequest: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBGetSecurityStatesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetSecurityStatesResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}states\0\u{3}head_epoch\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}states\0\u{3}head_epoch\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{1}lease\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4881,6 +4914,7 @@ extension PBGetSecurityStatesResponse: SwiftProtobuf.Message, SwiftProtobuf._Mes
       case 2: try { try decoder.decodeSingularUInt64Field(value: &self.headEpoch) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.recoveryPending) }()
       case 4: try { try decoder.decodeSingularUInt64Field(value: &self.recoveryReadyMs) }()
+      case 5: try { try decoder.decodeSingularBytesField(value: &self.lease) }()
       default: break
       }
     }
@@ -4899,6 +4933,9 @@ extension PBGetSecurityStatesResponse: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if self.recoveryReadyMs != 0 {
       try visitor.visitSingularUInt64Field(value: self.recoveryReadyMs, fieldNumber: 4)
     }
+    if !self.lease.isEmpty {
+      try visitor.visitSingularBytesField(value: self.lease, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4907,6 +4944,7 @@ extension PBGetSecurityStatesResponse: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if lhs.headEpoch != rhs.headEpoch {return false}
     if lhs.recoveryPending != rhs.recoveryPending {return false}
     if lhs.recoveryReadyMs != rhs.recoveryReadyMs {return false}
+    if lhs.lease != rhs.lease {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5981,6 +6019,55 @@ extension PBDeviceRemoved: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
 
   public static func ==(lhs: PBDeviceRemoved, rhs: PBDeviceRemoved) -> Bool {
     if lhs.deviceID != rhs.deviceID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBDeleteMachineRecordsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteMachineRecordsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBDeleteMachineRecordsRequest, rhs: PBDeleteMachineRecordsRequest) -> Bool {
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBDeleteMachineRecordsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteMachineRecordsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBDeleteMachineRecordsResponse, rhs: PBDeleteMachineRecordsResponse) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

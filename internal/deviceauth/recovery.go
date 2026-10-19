@@ -17,14 +17,14 @@ type RecoveryStatement struct {
 	NewRecoveryEd  [32]byte
 	NewMember      Member
 	IssuedAt       uint64
-	NotAfter       uint64
-	StateHash      Hash
-	Nonce          Hash
-	Signature      []byte
+
+	StateHash Hash
+	Nonce     Hash
+	Signature []byte
 }
 
 func (r RecoveryStatement) signBytes() ([]byte, error) {
-	if !deviceID(r.Account) || r.Domain == (Hash{}) || r.Parent == (Hash{}) || !deviceID(r.NewAuthorityID) || r.NewAuthorityID != r.NewMember.ID || r.NewMember.Kind != Client || r.NewMember.validate() != nil || r.NewRecoveryEd == [32]byte{} || r.IssuedAt == 0 || r.NotAfter <= r.IssuedAt || r.StateHash == (Hash{}) || r.Nonce == (Hash{}) {
+	if !deviceID(r.Account) || r.Domain == (Hash{}) || r.Parent == (Hash{}) || !deviceID(r.NewAuthorityID) || r.NewAuthorityID != r.NewMember.ID || r.NewMember.Kind != Client || r.NewMember.validate() != nil || r.NewRecoveryEd == [32]byte{} || r.IssuedAt == 0 || r.StateHash == (Hash{}) || r.Nonce == (Hash{}) {
 		return nil, ErrInvalid
 	}
 	e := encoder{b: []byte("ra3/recovery\x00")}
@@ -38,7 +38,7 @@ func (r RecoveryStatement) signBytes() ([]byte, error) {
 	e.raw(r.NewMember.XPublic[:])
 	e.u32(uint32(r.NewMember.Kind))
 	e.u64(r.IssuedAt)
-	e.u64(r.NotAfter)
+
 	e.raw(r.StateHash[:])
 	e.raw(r.Nonce[:])
 	return e.b, nil
@@ -85,7 +85,7 @@ func ParseRecoveryStatement(b []byte) (r RecoveryStatement, err error) {
 	copy(r.NewMember.XPublic[:], s.raw(32))
 	r.NewMember.Kind = Kind(s.u32())
 	r.IssuedAt = s.u64()
-	r.NotAfter = s.u64()
+
 	r.StateHash = s.hash()
 	r.Nonce = s.hash()
 	if s.done() != nil {
@@ -116,7 +116,7 @@ func (r RecoveryStatement) Verify(parent, next State) error {
 	}
 	ph, _ := parent.Hash()
 	nh, _ := next.Hash()
-	if r.Account != parent.Core.Account || r.Domain != parent.Core.Domain || r.Parent != ph || r.NewAuthorityID != next.Core.AuthorityID || r.NewRecoveryEd != next.Core.RecoveryEd || r.NewMember != memberOf(next, next.Core.AuthorityID) || r.IssuedAt != next.Core.IssuedAt || r.NotAfter != next.Core.NotAfter || r.StateHash != nh {
+	if r.Account != parent.Core.Account || r.Domain != parent.Core.Domain || r.Parent != ph || r.NewAuthorityID != next.Core.AuthorityID || r.NewRecoveryEd != next.Core.RecoveryEd || r.NewMember != memberOf(next, next.Core.AuthorityID) || r.IssuedAt != next.Core.IssuedAt || r.StateHash != nh {
 		return ErrUntrusted
 	}
 	if !ed25519.Verify(parent.Core.RecoveryEd[:], b, r.Signature) {
@@ -149,7 +149,7 @@ func BuildRecovery(parent State, newMember Member, members []Member, secret []by
 	c.AuthorityID = newMember.ID
 	c.RecoveryEd = newRecoveryEd
 	c.IssuedAt = maxU64(now, c.IssuedAt)
-	c.NotAfter = addLease(c.IssuedAt)
+
 	c.Members = slices.Clone(members)
 	slices.SortFunc(c.Members, func(a, b Member) int {
 		if a.ID < b.ID {
@@ -170,7 +170,7 @@ func BuildRecovery(parent State, newMember Member, members []Member, secret []by
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return State{}, st, err
 	}
-	st = RecoveryStatement{Account: c.Account, Domain: c.Domain, Parent: ph, NewAuthorityID: newMember.ID, NewRecoveryEd: newRecoveryEd, NewMember: newMember, IssuedAt: c.IssuedAt, NotAfter: c.NotAfter, StateHash: h, Nonce: nonce}
+	st = RecoveryStatement{Account: c.Account, Domain: c.Domain, Parent: ph, NewAuthorityID: newMember.ID, NewRecoveryEd: newRecoveryEd, NewMember: newMember, IssuedAt: c.IssuedAt, StateHash: h, Nonce: nonce}
 	if err := st.Sign(oldRecovery); err != nil {
 		return State{}, st, err
 	}

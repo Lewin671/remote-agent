@@ -13,17 +13,17 @@ import Testing
         let state = try DeviceSecurity.parseState(
             Data(
                 base64Encoded:
-                    "AAABPAAAAAMAAAAgMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYFAvSJtM6+UuJeI4qr8ib0xXPPaLAbM69N+g2DKYc77AAAACAxMGJhNjgyYzhhZDEzNTEzOTcxZThiNTY4ODFhYWI4YqCapfR6Z1mAL/lV+NwtKhSlyZ0jvpf4ZBJ/+Tg0VaTwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAABi8/laAAAAAGL31h8AAAAAAEAAAAgMTBiYTY4MmM4YWQxMzUxMzk3MWU4YjU2ODgxYWFiOGLQSrIydCu0qzoTaL1GFeTm0CJKtxoBa6+FIKMyyXeHN6LXoSEACN+Ts6+ET9lrEQhsbMWDxE9laEnxAsj7l+JvAAAAAgAAAAAAAAABAAAAIDEwYmE2ODJjOGFkMTM1MTM5NzFlOGI1Njg4MWFhYjhiAAAAIHRMRaZRB4R3QDZg6KUqLUo5AahTX7O80LboH1kTLWZrAAAAMO7ILr4QzNoBQqXTiAae4H5kx9GvcwZifYB62aIBpgvA7m6d/v64vRi5eJa3iM0ytQAAAAAAAABAvacEuJNHvGNfLI/vWsuwDcyHFMnDinTQOIsUnAPmk4ipgxUOvElPAk3ERQ7oQREkjb58nveXEumNUUTjTYEODg=="
+                    "AAABNAAAAAMAAAAgMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYFAvSJtM6+UuJeI4qr8ib0xXPPaLAbM69N+g2DKYc77AAAACAxMGJhNjgyYzhhZDEzNTEzOTcxZThiNTY4ODFhYWI4YqCapfR6Z1mAL/lV+NwtKhSlyZ0jvpf4ZBJ/+Tg0VaTwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAABi8/laAAAAAABAAAAIDEwYmE2ODJjOGFkMTM1MTM5NzFlOGI1Njg4MWFhYjhi0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzcMy1pMEx1AAEdimAVZF13nwrO9ybDBSzGI+pbT8c5JDQAAAAIAAAAAAAAAAQAAACAxMGJhNjgyYzhhZDEzNTEzOTcxZThiNTY4ODFhYWI4YgAAACD0tG7uoaqb8Zw8ZNseegb3LyVgCArL5O0QbCq+aBxaQQAAADA2DpES664liUfvMhj8qTr5bSydcmStTCgB502c9+TqfXeZjA5jV01FHa0L5i/mWmoAAAAAAAAAQFf1kKriAgtRH7OT8xnd6BiXDqO5OPTH6tMYZFsIEMZA2wL+qiBSxL24T8DFjzF0hSNwtNRuWgDX3iwRdn1tIw0="
             )!)
         let pin = DeviceSecurity.Pin(
             account: "0123456789abcdef0123456789abcdef",
             domain: Data(
                 hex: "0502f489b4cebe52e25e238aabf226f4c573cf68b01b33af4dfa0d8329873bec")!,
             genesis: Data(
-                hex: "62eebdbe6f373799fe13c648eeb1d0d076fb9a21d7586c3fc0803be5032278ff")!)
+                hex: "52fb306d06ee6fe8fa2e3165ad3a10650fdd46288a35dbd38d0f7a37bf69437f")!)
         let x = try Curve25519.KeyAgreement.PrivateKey(
             rawRepresentation: Data(
-                hex: "3e29be55fb1a4d8832fa0a317d609a3fe5a74730d321d0e7085b2de2de386ac7")!)
+                hex: "7268259908c56878cd0168407c6940971ddc77b6905e89bb2be57325683ecadd")!)
         let secret = try DeviceSecurity.openGrant(
             pin, state, recipient: state.core.authorityID, x: x)
         return try DeviceSecurity.Record(

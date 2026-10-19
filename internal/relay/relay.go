@@ -170,7 +170,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		return err
 	}
 	defer func() { cancel(); c.security.Close() }()
-	c.security.onRecovery = func() {
+	c.security.onEpoch = func() {
 		go func() {
 			rctx, rcancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer rcancel()
@@ -205,7 +205,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		slog.Warn("relay: starting without the newest security state; control remains valid until the local lease expires", "err", err)
 	}
 	meta := c.r.backend.MachineMeta()
-	if err := c.ensurePublished(ctx); err != nil {
+	if err := c.publishCurrentCheckpoint(ctx); err != nil {
 		return err
 	}
 	if err := c.putMachine(ctx, meta); err != nil {
@@ -313,14 +313,14 @@ func revision() uint64 {
 	return lastRev
 }
 
-// republishAfterRecovery re-seals current machine and session metadata under
+// publishCurrentCheckpoint re-seals current machine and session metadata under
 // the new content key after a recovery boundary. Old events and images are
 // never re-encrypted: the new phone must not receive old plaintext. The
 // published content epoch is written last, so a crash before it makes the
 // next sync retry the whole republish.
-func (c *conn) republishAfterRecovery(ctx context.Context) error {
+func (c *conn) publishCurrentCheckpoint(ctx context.Context) error {
 	_, head, _ := c.security.endpoint.Snapshot()
-	startedEpoch := head.Core.Epoch
+	startedEpoch := head.Core.ContentEpoch
 	if err := c.putMachine(ctx, c.r.backend.MachineMeta()); err != nil {
 		return err
 	}
@@ -345,11 +345,14 @@ func (c *conn) republishAfterRecovery(ctx context.Context) error {
 		if err != nil {
 			continue
 		}
-		if _, err := c.putSession(ctx, id, key, info, floors[id]); err != nil {
+		rev, err := c.putSession(ctx, id, key, info, floors[id])
+		if err != nil {
 			slog.Warn("relay: republish session after recovery", "session", id, "err", err)
 			if firstErr == nil {
 				firstErr = err
 			}
+		} else {
+			c.noteSentMeta(id, key, syncMeta(info), rev)
 		}
 	}
 	if firstErr != nil {
@@ -366,10 +369,11 @@ func (c *conn) ensurePublished(ctx context.Context) error {
 	c.publishMu.Lock()
 	defer c.publishMu.Unlock()
 	marker, err := readPublishedEpoch()
-	if err == nil && c.security.endpoint.LastRecoveryEpoch() <= marker {
+	_, head, _ := c.security.endpoint.Snapshot()
+	if err == nil && head.Core.ContentEpoch == marker {
 		return nil
 	}
-	return c.republishAfterRecovery(ctx)
+	return c.publishCurrentCheckpoint(ctx)
 }
 
 func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {

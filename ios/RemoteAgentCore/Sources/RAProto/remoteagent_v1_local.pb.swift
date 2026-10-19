@@ -318,6 +318,14 @@ public struct PBSession: @unchecked Sendable {
     set {_uniqueStorage()._forkedSeq = newValue}
   }
 
+  /// Durable current owner checkpoint (serialized LiveSnapshot), encrypted in
+  /// SESSION_META for the current content epoch. No history prefix is needed.
+  /// Stored checkpoints do not attest freshness for an actionable command.
+  public var currentCheckpoint: Data {
+    get {return _storage._currentCheckpoint}
+    set {_uniqueStorage()._currentCheckpoint = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1482,7 +1490,7 @@ extension PBImageUploadState: SwiftProtobuf._ProtoNameProviding {
 
 extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Session"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}cwd\0\u{3}tmux_session\0\u{1}status\0\u{3}status_detail\0\u{3}codex_session_id\0\u{3}rollout_path\0\u{3}created_at\0\u{3}last_seq\0\u{1}model\0\u{1}effort\0\u{3}pending_approvals\0\u{3}pending_questions\0\u{3}queued_inputs\0\u{1}title\0\u{1}preview\0\u{3}approvals_reviewer\0\u{3}approval_policy\0\u{1}sandbox\0\u{3}collaboration_mode\0\u{3}context_tokens\0\u{3}context_window\0\u{3}plan_open\0\u{3}input_wait\0\u{1}agent\0\u{1}mode\0\u{3}permission_mode\0\u{3}full_access_unavailable\0\u{3}attention_since\0\u{3}ended_at\0\u{3}forked_from\0\u{3}forked_seq\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}cwd\0\u{3}tmux_session\0\u{1}status\0\u{3}status_detail\0\u{3}codex_session_id\0\u{3}rollout_path\0\u{3}created_at\0\u{3}last_seq\0\u{1}model\0\u{1}effort\0\u{3}pending_approvals\0\u{3}pending_questions\0\u{3}queued_inputs\0\u{1}title\0\u{1}preview\0\u{3}approvals_reviewer\0\u{3}approval_policy\0\u{1}sandbox\0\u{3}collaboration_mode\0\u{3}context_tokens\0\u{3}context_window\0\u{3}plan_open\0\u{3}input_wait\0\u{1}agent\0\u{1}mode\0\u{3}permission_mode\0\u{3}full_access_unavailable\0\u{3}attention_since\0\u{3}ended_at\0\u{3}forked_from\0\u{3}forked_seq\0\u{3}current_checkpoint\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -1517,6 +1525,7 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
     var _endedAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
     var _forkedFrom: String = String()
     var _forkedSeq: UInt64 = 0
+    var _currentCheckpoint: Data = Data()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1559,6 +1568,7 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
       _endedAt = source._endedAt
       _forkedFrom = source._forkedFrom
       _forkedSeq = source._forkedSeq
+      _currentCheckpoint = source._currentCheckpoint
     }
   }
 
@@ -1609,6 +1619,7 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
         case 30: try { try decoder.decodeSingularMessageField(value: &_storage._endedAt) }()
         case 31: try { try decoder.decodeSingularStringField(value: &_storage._forkedFrom) }()
         case 32: try { try decoder.decodeSingularUInt64Field(value: &_storage._forkedSeq) }()
+        case 33: try { try decoder.decodeSingularBytesField(value: &_storage._currentCheckpoint) }()
         default: break
         }
       }
@@ -1717,6 +1728,9 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
       if _storage._forkedSeq != 0 {
         try visitor.visitSingularUInt64Field(value: _storage._forkedSeq, fieldNumber: 32)
       }
+      if !_storage._currentCheckpoint.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._currentCheckpoint, fieldNumber: 33)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1758,6 +1772,7 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
         if _storage._endedAt != rhs_storage._endedAt {return false}
         if _storage._forkedFrom != rhs_storage._forkedFrom {return false}
         if _storage._forkedSeq != rhs_storage._forkedSeq {return false}
+        if _storage._currentCheckpoint != rhs_storage._currentCheckpoint {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -235,4 +235,16 @@ public class ClientServiceClient(
     ),
   )
 
+
+  override suspend fun deleteMachineRecords(request: DeleteMachineRecordsRequest, headers: Headers): ResponseMessage<DeleteMachineRecordsResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/DeleteMachineRecords",
+      io.github.lewin671.remoteagent.proto.DeleteMachineRecordsRequest::class,
+      io.github.lewin671.remoteagent.proto.DeleteMachineRecordsResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
 }

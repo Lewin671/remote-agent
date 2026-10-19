@@ -1,5 +1,7 @@
 import {
   MAX_CLOCK_SKEW,
+  verifyLease,
+  type LeaseCertificate,
   MAX_STATES,
   SecurityError,
   equal,
@@ -25,6 +27,7 @@ export interface ContentKey {
 }
 export interface SecurityRecord {
   version: 3;
+  lease?: LeaseCertificate;
   pin: Pin;
   // Verified chain from the pinned genesis to the head.
   states: SecurityState[];
@@ -186,8 +189,7 @@ export async function contentSecretOf(
   }
   throw new SecurityError("unavailable");
 }
-/** The current key follows each lease renewal but changes only with the
- * content epoch. */
+/** Only signed membership changes grow the chain; leases are stored separately. */
 export async function extendRecord(
   r: SecurityRecord,
   states: SecurityState[],
@@ -242,8 +244,8 @@ export async function extendRecord(
         }
         next.secret = secret;
       } else {
-        // A renewal may carry a changed grant; Go accepts it, so all clients
-        // use the authority-signed grant rather than rejecting it.
+        // Recovery-key-only changes keep the content epoch; use the
+        // grant authenticated by the already verified membership chain.
         next.secret = secret;
       }
       remember(next.contentKeys, s.core.contentEpoch, secret);
@@ -310,8 +312,13 @@ export async function initializeSecurity(
   memberID: string,
   xPrivate: CryptoKey,
   replace = false,
+  lease?: LeaseCertificate,
 ): Promise<void> {
   const record = await buildRecord(pin, states, proofs, memberID, xPrivate);
+  if (lease) {
+    await verifyLease(lease, states[states.length - 1]);
+    record.lease = lease;
+  }
   validRecord(record);
   const db = await database(true);
   await transaction<void>(db, "readwrite", (store, done, fail) => {
@@ -375,8 +382,26 @@ export async function installSecurity(
   expected: SecurityRecord,
   states: SecurityState[],
   proofs: (RecoveryStatement | undefined)[],
+  lease?: LeaseCertificate,
 ): Promise<void> {
-  const next = await extendRecord(expected, states, proofs);
+  const next = states.length
+    ? await extendRecord(expected, states, proofs)
+    : { ...expected, contentKeys: [...expected.contentKeys] };
+  if (lease) {
+    await verifyLease(lease, next.states[next.states.length - 1]);
+    if (lease.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
+      throw new SecurityError("clock");
+    const old = expected.lease;
+    if (
+      old &&
+      equal(old.head, lease.head) &&
+      (old.issuedAt > lease.issuedAt ||
+        old.notAfter > lease.notAfter ||
+        (old.issuedAt === lease.issuedAt && old.notAfter !== lease.notAfter))
+    )
+      throw new SecurityError("stale");
+    next.lease = lease;
+  }
   const db = await database(false);
   await transaction<void>(db, "readwrite", (store, done, fail) => {
     const get = store.get(KEY);

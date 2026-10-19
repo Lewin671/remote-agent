@@ -118,6 +118,10 @@ message Session {
   // Seq of the session's SessionForked event: the events before it are
   // copies of the source's. 0 if it was not forked.
   uint64 forked_seq = 32;
+  // Durable current owner checkpoint (serialized LiveSnapshot), encrypted in
+  // SESSION_META for the current content epoch. No history prefix is needed.
+  // Stored checkpoints do not attest freshness for an actionable command.
+  bytes current_checkpoint = 33;
 }
 
 message CreateSessionRequest {

@@ -36,6 +36,10 @@ import Testing
         try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: try hex("machine_x"))
     }
 
+    private func signedLease(_ state:S.State) throws -> S.HeadLease {
+        var l=S.HeadLease(domain:state.core.domain,head:try S.stateHash(state),issuedAt:state.core.issuedAt,notAfter:state.core.issuedAt+S.lease,signature:Data())
+        l.signature=try SigningKey(seed:hex("phone_seed")).sign(l.signBytes());return l
+    }
     @Test func verifiesTheGoChainAndGrants() throws {
         let p = try pin()
         let genesis = try state("genesis")
@@ -69,7 +73,7 @@ import Testing
         bad.prevSecret[0] ^= 1
         #expect(throws: S.Failure.self) { try S.verifyTransition(parent: genesis, next: bad) }
         bad = renewal
-        bad.core.notAfter += 1
+        bad.core.issuedAt += 1
         #expect(throws: S.Failure.self) { try S.verifyTransition(parent: added, next: bad) }
         bad = renewal
         bad.signature[0] ^= 1
@@ -130,7 +134,7 @@ import Testing
         let genesis = try state("genesis")
         var future = try state("added")
         future.core.issuedAt = 9_999_999_999_999
-        future.core.notAfter = future.core.issuedAt + S.lease
+
         let raw = try S.stateBytes(future)
         let base = try S.Record(
             pin: p, states: [1: genesis], memberID: genesis.core.authorityID,
@@ -143,6 +147,7 @@ import Testing
             fetchStates: { after in
                 var res = PBGetSecurityStatesResponse()
                 res.headEpoch = 2
+                res.lease = Data()
                 if after < 2 {
                     var value = PBSecurityState()
                     value.state = raw
@@ -157,7 +162,7 @@ import Testing
         let genesis = try state("genesis")
         var future = genesis
         future.core.issuedAt = UInt64(Date().timeIntervalSince1970 * 1000) + 10 * 60_000
-        future.core.notAfter = future.core.issuedAt + S.lease
+
         future.signature = try SigningKey(seed: try hex("phone_seed")).sign(
             S.signBytes(future))
         let p = S.Pin(
@@ -256,16 +261,15 @@ import Testing
             account: added.core.account, domain: added.core.domain, epoch: added.core.epoch,
             state: try S.stateHash(added), contentEpoch: added.core.contentEpoch, sender: phone,
             kind: S.Purpose.command.kind, purpose: .command, machine: machine, session: "",
-            request: "0123456789abcdef", seq: 0, deadline: added.core.notAfter,
+            request: "0123456789abcdef", seq: 0, deadline: (added.core.issuedAt + S.lease),
             compression: 0)
         let formed = try S.form(
             secret: secret, sessionSeed: nil, header: h, plaintext: Data("no".utf8),
             signingKey: try SigningKey(seed: try hex("phone_seed")))
         let wire = S.Wire(formed: formed)
-        _ = try S.verifyOrigin(wire, state: added, head: added, live: true, now: added.core.notAfter)
+        _ = try S.verifyOrigin(wire, state: added, head: added, live: true, now: (added.core.issuedAt + S.lease))
         #expect(throws: S.Failure.self) {
-            _ = try S.verifyOrigin(
-                wire, state: added, head: added, live: true, now: added.core.notAfter + 1)
+            try signedLease(added).valid(added,now: added.core.issuedAt+S.lease+1)
         }
         // A stale content epoch is refused for control.
         h.contentEpoch = genesis.core.contentEpoch
@@ -275,7 +279,7 @@ import Testing
                     formed: try S.form(
                         secret: secret, sessionSeed: nil, header: h, plaintext: Data("no".utf8),
                         signingKey: try SigningKey(seed: try hex("phone_seed")))),
-                state: added, head: added, live: true, now: added.core.notAfter)
+                state: added, head: added, live: true, now: (added.core.issuedAt + S.lease))
         }
         // Installing a state changes the content key.
         let base = try S.Record(
@@ -283,6 +287,7 @@ import Testing
             member: true,
             secret: try hex("content_secret_1"))
         let store = MemorySecurityStore(base)
+        let leaseRaw = try signedLease(added).bytes()
         let client = DeviceSecurityClient(
             store: store, memberID: phone,
             signingKey: try SigningKey(seed: try hex("phone_seed")),
@@ -290,6 +295,7 @@ import Testing
             fetchStates: { after in
                 var res = PBGetSecurityStatesResponse()
                 res.headEpoch = 2
+                res.lease = leaseRaw
                 if after < 2 {
                     var value = PBSecurityState()
                     value.state = try S.stateBytes(added)
@@ -301,7 +307,7 @@ import Testing
         #expect(installed.headEpoch == 2)
         let env = try await client.seal(
             purpose: .command, machine: machine, request: "0123456789abcdef",
-            deadline: added.core.notAfter, plaintext: Data("go".utf8))
+            deadline: (added.core.issuedAt + S.lease), plaintext: Data("go".utf8))
         let header = try S.parseHeader(env.securityHeader)
         #expect(header.epoch == 2 && header.contentEpoch == 2)
     }
@@ -336,7 +342,14 @@ import Testing
 final class MemorySecurityStore: DeviceSecurity.Storage, @unchecked Sendable {
     private let lock = NSLock()
     private var record: DeviceSecurity.Record
-    init(_ record: DeviceSecurity.Record) { self.record = record }
+    init(_ record: DeviceSecurity.Record) {
+        var r=record
+        if r.lease == nil, let signer=try? SigningKey(seed:Data(repeating:0x11,count:32)), deviceId(publicKey:signer.publicKey)==r.state.core.authorityID {
+            var l=DeviceSecurity.HeadLease(domain:r.state.core.domain,head:try! DeviceSecurity.stateHash(r.state),issuedAt:r.state.core.issuedAt,notAfter:r.state.core.issuedAt+DeviceSecurity.lease,signature:Data())
+            l.signature=try! signer.sign(l.signBytes());r.lease=l
+        }
+        self.record=r
+    }
     func readSecurity() throws -> DeviceSecurity.Record {
         lock.lock()
         defer { lock.unlock() }

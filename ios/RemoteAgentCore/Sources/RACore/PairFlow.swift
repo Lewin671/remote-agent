@@ -270,7 +270,7 @@ public func joinByPairing(
     let record = try DeviceSecurity.Record(
         pin: pin, states: states, memberID: registered.deviceId, xPrivate: x.rawRepresentation,
         member: true, secret: secret,
-        contentKeys: [head.core.contentEpoch: secret], recovery: proofMap)
+        contentKeys: [head.core.contentEpoch: secret], recovery: proofMap, lease: try DeviceSecurity.HeadLease.parse(payload.lease))
     try await persist(acct, record)
     // Tells the phone it went through. If this is lost, the phone reports the
     // outcome as unknown; the join itself stands.

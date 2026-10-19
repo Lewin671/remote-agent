@@ -117,7 +117,7 @@ final class TestSecurity: @unchecked Sendable {
         let secret = present ? try DeviceSecurity.openGrant(pin, head, recipient: memberID, x: xKey) : nil
         return try DeviceSecurity.Record(
             pin: pin, states: states, memberID: memberID, xPrivate: x, member: present,
-            secret: secret, recovery: recovery)
+            secret: secret, recovery: recovery, lease: try DeviceSecurity.HeadLease.parse(Data(base64Encoded:o["lease"] as! String)!))
     }
     func seal(_ account: Account, _ header: PBHeader, _ plain: Data, seed: Data? = nil) throws
         -> PBEnvelope

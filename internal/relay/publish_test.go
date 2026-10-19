@@ -17,7 +17,8 @@ import (
 
 type publishBackend struct{ Backend }
 
-func (publishBackend) SessionIDs() []string { return nil }
+func (publishBackend) SessionIDs() []string     { return nil }
+func (publishBackend) SessionDir(string) string { return "" }
 func (publishBackend) MachineMeta() *pb.MachineMeta {
 	return &pb.MachineMeta{Hostname: "publish-test"}
 }
@@ -70,15 +71,15 @@ func TestEnsurePublishedAfterRecoveryMarker(t *testing.T) {
 	if service.puts != 1 {
 		t.Fatalf("unchanged marker republished: %d", service.puts)
 	}
-	// A normal epoch without a recovery does not need a full republish.
+	// Every content epoch must have its own current checkpoint.
 	if err := writePublishedEpoch(head.Core.Epoch - 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.ensurePublished(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if service.puts != 1 {
-		t.Fatalf("an ordinary epoch change republished: %d", service.puts)
+	if service.puts != 2 {
+		t.Fatalf("content epoch did not republish: %d", service.puts)
 	}
 
 	// Install a recovery transition; now the marker must trigger a republish.
@@ -105,17 +106,21 @@ func TestEnsurePublishedAfterRecoveryMarker(t *testing.T) {
 	if err := c.security.endpoint.Install([]deviceauth.State{state}, []*deviceauth.RecoveryStatement{&stmt}); err != nil {
 		t.Fatal(err)
 	}
+	lease, _ := deviceauth.BuildLease(state, newEd, state.Core.IssuedAt)
+	if err := c.security.endpoint.InstallLease(lease, uint64(time.Now().UnixMilli())); err != nil {
+		t.Fatal(err)
+	}
 	if err := c.ensurePublished(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if service.puts != 2 {
+	if service.puts != 3 {
 		t.Fatalf("recovery did not republish: %d", service.puts)
 	}
 	// The marker now covers the recovery, so the next check is quiet.
 	if err := c.ensurePublished(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if service.puts != 2 {
+	if service.puts != 3 {
 		t.Fatalf("recovery republished twice: %d", service.puts)
 	}
 }
@@ -155,6 +160,10 @@ func TestPublishMarkerCapturesStartingHead(t *testing.T) {
 		t.Fatalf("marker covered an unrepublished recovery: %d %v", marker, err)
 	}
 	service.onPut = nil
+	lease, _ := deviceauth.BuildLease(next, ed, next.Core.IssuedAt)
+	if err := c.security.endpoint.InstallLease(lease, uint64(time.Now().UnixMilli())); err != nil {
+		t.Fatal(err)
+	}
 	if err := c.ensurePublished(context.Background()); err != nil {
 		t.Fatal(err)
 	}

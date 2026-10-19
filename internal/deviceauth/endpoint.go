@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS security (
 	floor_saved_ms INTEGER NOT NULL,
 	member INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS lease (id INTEGER PRIMARY KEY CHECK(id=1), certificate BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS states (
 	epoch INTEGER PRIMARY KEY,
 	state BLOB NOT NULL,
@@ -68,6 +69,7 @@ CREATE TABLE IF NOT EXISTS accepted_meta (
 const floorWriteInterval = uint64(time.Second / time.Millisecond)
 
 type record struct {
+	Lease         *LeaseCertificate
 	Version       int
 	Pin           Pin
 	States        map[uint64]State
@@ -349,7 +351,7 @@ func createStore(db *sql.DB) error {
 
 // InitEndpoint verifies a chain from the pinned genesis and stores the local
 // device state. An empty path keeps it in memory.
-func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatement, id string, edSeed, xPrivate []byte) (*Endpoint, error) {
+func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatement, id string, edSeed, xPrivate []byte, leases ...LeaseCertificate) (*Endpoint, error) {
 	if len(edSeed) != 32 || ID(ed25519.NewKeyFromSeed(edSeed).Public().(ed25519.PublicKey)) != id || len(xPrivate) != 32 {
 		return nil, ErrInvalid
 	}
@@ -390,6 +392,14 @@ func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatem
 			r.Recovery[s.Core.Epoch] = *proofs[i]
 		}
 	}
+	if len(leases) > 0 {
+		l := leases[0]
+		if err := l.Verify(head); err != nil {
+			db.Close()
+			return nil, err
+		}
+		r.Lease = &l
+	}
 	e := &Endpoint{path: path, db: db, data: r}
 	if err := e.cacheChainKeys(); err != nil {
 		db.Close()
@@ -414,6 +424,15 @@ func (e *Endpoint) persistAll() error {
 	if _, err := tx.Exec(`UPDATE security SET version=?, pin_account=?, pin_domain=?, pin_genesis=?, member_id=?, ed_seed=?, x_private=?, secret=?, floor_ms=?, floor_saved_ms=?, member=? WHERE id=1`,
 		d.Version, d.Pin.Account, d.Pin.Domain[:], d.Pin.Genesis[:], d.MemberID, d.EdSeed, d.XPrivate, d.Secret, d.Floor, d.FloorSaved, boolInt(d.Member)); err != nil {
 		return ErrStorage
+	}
+	if d.Lease != nil {
+		raw, err := d.Lease.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`INSERT OR REPLACE INTO lease(id,certificate) VALUES(1,?)`, raw); err != nil {
+			return ErrStorage
+		}
 	}
 	for ep, s := range d.States {
 		raw, err := s.MarshalBinary()
@@ -574,6 +593,32 @@ func OpenEndpoint(path string) (*Endpoint, error) {
 		r.ContentKeys[ep] = key
 	}
 	rows.Close()
+	var leaseRaw []byte
+	if err := db.QueryRow(`SELECT certificate FROM lease WHERE id=1`).Scan(&leaseRaw); err == nil {
+		l, err := ParseLease(leaseRaw)
+		if err != nil {
+			db.Close()
+			return nil, ErrStorage
+		}
+		// A lease for an older installed head remains on disk until replacement.
+		// Verify it against the exact state it binds, never treat it as current.
+		found := false
+		for _, st := range r.States {
+			h, _ := st.Hash()
+			if h == l.Head && l.Verify(st) == nil {
+				found = true
+				break
+			}
+		}
+		if !found {
+			db.Close()
+			return nil, ErrStorage
+		}
+		r.Lease = &l
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		db.Close()
+		return nil, ErrStorage
+	}
 	e := &Endpoint{path: path, db: db, data: r}
 	if err := e.validate(); err != nil {
 		db.Close()
@@ -1068,7 +1113,7 @@ func (e *Endpoint) Open(w Wire, sessionSeed []byte, live bool, now uint64) (Head
 	}
 	// A clock rolled back behind the persisted floor pauses remote control
 	// until it catches up; viewing history and events keep working.
-	if live && h.Purpose.Control() && now+MaxClockSkew < e.data.Floor {
+	if live && h.Purpose.Control() && (now+MaxClockSkew < e.data.Floor || leaseValid(e.data, maxU64(now, e.data.Floor)) != nil) {
 		return h, nil, ErrStale
 	}
 	head := chainHead(e.data)
@@ -1119,6 +1164,10 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 	}
 	// Only a new execution requires current membership, epoch and lease.
 	state := e.data.States[h.Epoch]
+	if err := leaseValid(e.data, maxU64(now, e.data.Floor)); err != nil {
+		e.mu.Unlock()
+		return nil, err
+	}
 	if _, err := w.VerifyOrigin(state, chainHead(e.data), true, maxU64(now, e.data.Floor)); err != nil {
 		e.mu.Unlock()
 		return nil, err

@@ -120,8 +120,9 @@ it("signs every command it forwards with the device key, naming itself the sende
 
 it("sends its protocol version with a command, and sends none to a machine of another version", async () => {
   const { create } = await import("@bufbuild/protobuf");
-  const { CommandSchema, MachineMetaSchema } =
-    await import("./gen/remoteagent/v1/remote_pb");
+  const { CommandSchema, MachineMetaSchema } = await import(
+    "./gen/remoteagent/v1/remote_pb"
+  );
   const { PROTOCOL_VERSION } = await import("./protocol");
   const r = await probe();
   const sent: Envelope[] = [];
@@ -319,8 +320,9 @@ it("uploads an image in chunks and resumes from what the machine has after a los
   let lost = true;
   r.machineCommand = async (_m: string, cmd: CommandKind) => {
     const { create } = await import("@bufbuild/protobuf");
-    const { CommandResultSchema } =
-      await import("./gen/remoteagent/v1/remote_pb");
+    const { CommandResultSchema } = await import(
+      "./gen/remoteagent/v1/remote_pb"
+    );
     const status = (extra = {}) => ({
       status: {
         transferId: "t",
@@ -560,6 +562,7 @@ it("restores, for the next visit's first paint, the model lists and settings the
   const identity = await (await probe()).security.localIdentity();
   const first = Kept.open();
   vi.spyOn(first.security, "localIdentity").mockResolvedValue(identity);
+  vi.spyOn(first.security, "historicalMachines").mockResolvedValue(new Set());
   (first as unknown as { seed(): void }).seed(); // the demo's machines, online
   expect(first.cachedModels("mac", Agent.CODEX)).toBeUndefined();
   const models = await first.listModels("mac", Agent.CODEX);
@@ -569,6 +572,7 @@ it("restores, for the next visit's first paint, the model lists and settings the
   // The next visit knows them before any machine answers.
   const next = Kept.open();
   vi.spyOn(next.security, "localIdentity").mockResolvedValue(identity);
+  vi.spyOn(next.security, "historicalMachines").mockResolvedValue(new Set());
   await next.warmed();
   expect(
     next.cachedModels("mac", Agent.CODEX)?.models.map((m) => m.displayName),
@@ -591,8 +595,9 @@ it("keeps an unauthenticated command result unknown and retries its slot", async
   const { Attempt } = await import("./attempt");
   const { sealMessage, PayloadKind } = await import("./crypto");
   const { create } = await import("@bufbuild/protobuf");
-  const { CommandResultSchema } =
-    await import("./gen/remoteagent/v1/remote_pb");
+  const { CommandResultSchema } = await import(
+    "./gen/remoteagent/v1/remote_pb"
+  );
   const r = await probe();
   const ids: string[] = [];
   (r as unknown as { api: object }).api = {
@@ -699,7 +704,7 @@ it.each([Code.Unavailable, Code.PermissionDenied, Code.FailedPrecondition])(
   },
 );
 
-it("drops a removed machine and its sessions when the head moves without a push", async () => {
+it("revokes a removed machine and retains its archive when the head moves without a push", async () => {
   const r = await probe();
   await r.loadDevices(false);
   expect(r.devices.get(r.machine)).toBeTruthy();
@@ -709,10 +714,40 @@ it("drops a removed machine and its sessions when the head moves without a push"
   (r as unknown as { conn: string }).conn = "online";
   await (r as unknown as { syncSecurity(): Promise<void> }).syncSecurity();
   expect(r.devices.get(r.machine)).toBeUndefined();
-  expect(r.sessions.get("s")).toBeUndefined();
+  expect(r.sessions.get("s")).toBeTruthy();
+  expect(r.machines.get(r.machine)?.online).toBe(false);
   expect(
-    (r as unknown as { trustedMembers: Map<string, unknown> }).trustedMembers.has(
-      r.machine,
-    ),
+    (
+      r as unknown as { trustedMembers: Map<string, unknown> }
+    ).trustedMembers.has(r.machine),
+  ).toBe(false);
+});
+
+it("bootstraps current owner state from a checkpoint without loading a history prefix", async () => {
+  const { create, toBinary } = await import("@bufbuild/protobuf");
+  const { SessionSchema } = await import("./gen/remoteagent/v1/local_pb");
+  const { LiveSnapshotSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const r = await probe();
+  const info = create(SessionSchema, {
+    id: "s",
+    lastSeq: 900n,
+    title: "current state",
+  });
+  const snapshot = create(LiveSnapshotSchema, { session: info, running: true });
+  info.currentCheckpoint = toBinary(LiveSnapshotSchema, snapshot);
+  const row = await r.sessionRow("s");
+  row.meta = await r.seal(
+    { kind: 2, sessionId: "s", seq: 2n },
+    SessionSchema,
+    info,
+  );
+  await (
+    r as unknown as { putSession(row: unknown): Promise<void> }
+  ).putSession(row);
+  expect(r.sessions.get("s")?.checkpoint?.running).toBe(true);
+  expect(r.sessions.get("s")?.checkpoint?.session?.lastSeq).toBe(900n);
+  expect(r.sessions.get("s")?.checkpointStatus).toBe("ready");
+  expect(
+    (r as unknown as { buffers: Map<string, unknown> }).buffers.has("s"),
   ).toBe(false);
 });

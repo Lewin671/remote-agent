@@ -199,7 +199,7 @@ object Recovery {
                         GetRecoveryContextRequest.newBuilder()
                             .setRecoveryEd(
                                 if (recoveryEd.isEmpty()) com.google.protobuf.ByteString.EMPTY
-                                else com.google.protobuf.ByteString.copyFrom(recoveryEd)
+                                else com.google.protobuf.ByteString.copyFrom(recoveryEd),
                             )
                             .setRecoveryId(recoveryId)
                             .setChallenge(com.google.protobuf.ByteString.copyFrom(challenge))
@@ -223,6 +223,25 @@ object Recovery {
         )
     }
 
+    suspend fun resume(
+        server: String,
+        http: OkHttpClient,
+        saved: RecoveryPublication,
+        persist: (RecoveryPublication) -> Unit,
+    ): RecoverySubmission {
+        if (saved.submission.recoveryId.isNotEmpty()) return saved.submission
+        val request =
+            SubmitRecoveryRequest.newBuilder()
+                .setStatement(com.google.protobuf.ByteString.copyFrom(saved.statement))
+                .setState(com.google.protobuf.ByteString.copyFrom(saved.state))
+                .build()
+        val response = Api(server, http).recovery.submitRecovery(request, emptyMap()).value()
+        val submission =
+            saved.submission.copy(recoveryId = response.recoveryId, readyMs = response.readyMs)
+        persist(RecoveryPublication(submission, saved.statement, saved.state))
+        return submission
+    }
+
     /**
      * Builds and submits the recovery state, and generates the new recovery code. The caller must
      * show [RecoverySubmission.newCode] once; it is not stored.
@@ -234,8 +253,8 @@ object Recovery {
         deviceSeed: ByteArray,
         genesisPrefix: ByteArray,
         now: Long = System.currentTimeMillis(),
-        draft: RecoveryDraft? = null,
-        persist: (RecoveryDraft) -> Unit = { throw DeviceSecurity.Failure("storage") },
+        draft: RecoveryPublication? = null,
+        persist: (RecoveryPublication) -> Unit = { throw DeviceSecurity.Failure("storage") },
     ): RecoverySubmission {
         if (oldRecoverySeed.size != 32 || deviceSeed.size != 32 || genesisPrefix.size != 10)
             throw PairException("恢复码无效")
@@ -280,7 +299,7 @@ object Recovery {
                             newRecoveryEd,
                             now,
                         )
-                    RecoveryDraft(
+                    RecoveryPublication(
                         RecoverySubmission(
                             "",
                             0,
@@ -306,7 +325,7 @@ object Recovery {
                     .submitRecovery(
                         SubmitRecoveryRequest.newBuilder()
                             .setStatement(
-                                com.google.protobuf.ByteString.copyFrom(prepared.statement)
+                                com.google.protobuf.ByteString.copyFrom(prepared.statement),
                             )
                             .setState(com.google.protobuf.ByteString.copyFrom(prepared.state))
                             .build(),
@@ -317,7 +336,7 @@ object Recovery {
                 throw PairException(recoveryWords(e))
             }
         val submitted = prepared.submission.copy(recoveryId = res.recoveryId, readyMs = res.readyMs)
-        persist(RecoveryDraft(submitted, prepared.statement, prepared.state))
+        persist(RecoveryPublication(submitted, prepared.statement, prepared.state))
         return submitted
     }
 

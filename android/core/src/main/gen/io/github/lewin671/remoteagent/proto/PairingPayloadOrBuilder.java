@@ -73,4 +73,10 @@ public interface PairingPayloadOrBuilder extends
    * @return The accountPublicKey.
    */
   com.google.protobuf.ByteString getAccountPublicKey();
+
+  /**
+   * <code>bytes lease = 7 [json_name = "lease"];</code>
+   * @return The lease.
+   */
+  com.google.protobuf.ByteString getLease();
 }

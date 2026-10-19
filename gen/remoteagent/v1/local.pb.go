@@ -189,9 +189,13 @@ type Session struct {
 	ForkedFrom string `protobuf:"bytes,31,opt,name=forked_from,json=forkedFrom,proto3" json:"forked_from,omitempty"`
 	// Seq of the session's SessionForked event: the events before it are
 	// copies of the source's. 0 if it was not forked.
-	ForkedSeq     uint64 `protobuf:"varint,32,opt,name=forked_seq,json=forkedSeq,proto3" json:"forked_seq,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ForkedSeq uint64 `protobuf:"varint,32,opt,name=forked_seq,json=forkedSeq,proto3" json:"forked_seq,omitempty"`
+	// Durable current owner checkpoint (serialized LiveSnapshot), encrypted in
+	// SESSION_META for the current content epoch. No history prefix is needed.
+	// Stored checkpoints do not attest freshness for an actionable command.
+	CurrentCheckpoint []byte `protobuf:"bytes,33,opt,name=current_checkpoint,json=currentCheckpoint,proto3" json:"current_checkpoint,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Session) Reset() {
@@ -446,6 +450,13 @@ func (x *Session) GetForkedSeq() uint64 {
 		return x.ForkedSeq
 	}
 	return 0
+}
+
+func (x *Session) GetCurrentCheckpoint() []byte {
+	if x != nil {
+		return x.CurrentCheckpoint
+	}
+	return nil
 }
 
 type CreateSessionRequest struct {
@@ -3909,7 +3920,8 @@ var File_remoteagent_v1_local_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
-	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\xd1\t\n" +
+	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\x80\n" +
+	"\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03cwd\x18\x02 \x01(\tR\x03cwd\x12!\n" +
@@ -3947,7 +3959,8 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\vforked_from\x18\x1f \x01(\tR\n" +
 	"forkedFrom\x12\x1d\n" +
 	"\n" +
-	"forked_seq\x18  \x01(\x04R\tforkedSeq\"\xa8\x03\n" +
+	"forked_seq\x18  \x01(\x04R\tforkedSeq\x12-\n" +
+	"\x12current_checkpoint\x18! \x01(\fR\x11currentCheckpoint\"\xa8\x03\n" +
 	"\x14CreateSessionRequest\x12\x10\n" +
 	"\x03cwd\x18\x01 \x01(\tR\x03cwd\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\x12?\n" +

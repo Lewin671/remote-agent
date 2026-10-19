@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS events (
 ) WITHOUT ROWID;
 -- The phone-signed membership chain. The server stores public signed states
 -- only; it validates signatures and membership, never content keys.
+CREATE TABLE IF NOT EXISTS security_leases (account_id TEXT PRIMARY KEY, certificate BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS security_states (
 	account_id TEXT NOT NULL,
 	epoch INTEGER NOT NULL,
@@ -317,7 +318,7 @@ func (s *store) setAccountStatus(ctx context.Context, id string, status int) err
 
 // accountTables are the tables holding an account's data, in the order
 // its rows are deleted.
-var accountTables = []string{"security_recovery_completed", "security_recovery", "security_states", "pairing_admissions", "events", "images", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
+var accountTables = []string{"security_leases", "security_recovery_completed", "security_recovery", "security_states", "pairing_admissions", "events", "images", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
 
 // deleteAccount deletes an account and everything stored for it. Its
 // device keys stay revoked, so that its registrations cannot come back.
@@ -984,10 +985,6 @@ func removeDeviceTx(ctx context.Context, tx *sql.Tx, acct, id string) (bool, err
 		`DELETE FROM tokens WHERE account_id = ?1 AND device_id = ?2`,
 		`DELETE FROM push_subs WHERE account_id = ?1 AND device_id = ?2`,
 		`DELETE FROM fcm_targets WHERE account_id = ?1 AND device_id = ?2`,
-		`DELETE FROM events WHERE account_id = ?1 AND session_id IN (SELECT session_id FROM sessions WHERE account_id = ?1 AND machine_id = ?2)`,
-		`DELETE FROM images WHERE account_id = ?1 AND machine_id = ?2`,
-		`DELETE FROM sessions WHERE account_id = ?1 AND machine_id = ?2`,
-		`DELETE FROM machines WHERE account_id = ?1 AND id = ?2`,
 	}
 	for _, q := range stmts {
 		if _, err := tx.ExecContext(ctx, q, acct, id); err != nil {

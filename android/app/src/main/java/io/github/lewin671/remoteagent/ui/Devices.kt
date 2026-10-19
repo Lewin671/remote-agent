@@ -296,7 +296,7 @@ fun ClientScreen(id: String) {
             } else if (state.authorityPhone) {
                 if (id == state.authorityDeviceId) {
                     Text(
-                        "管理端手机不能普通移除；换手机要用恢复码。",
+                        "管理端手机不能普通移除；旧手机在线时可在“恢复与交接”里交接。",
                         style = T.sm,
                         color = p.muted,
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -369,7 +369,7 @@ fun ClientScreen(id: String) {
 internal fun removalDialog(name: String, machine: Boolean): Pair<String, String> =
     "移除 $name？" to
         if (machine)
-            "这会删除这台机器在中继上的会话记录并断开连接；它需要重新加入账户才能连接。"
+            "这会立即断开连接并撤销权限，保留中继上的会话和图片；它需要重新加入账户才能连接。"
         else
             "这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端手机上重新批准。"
 

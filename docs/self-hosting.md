@@ -128,7 +128,7 @@ Install the Android APK from the [latest release](https://github.com/Lewin671/re
 - **iOS:** join the same way; it is a normal client and cannot manage the account.
 - **Another device later:** open the phone's device page and choose add device. The QR code and code come from the phone, not from a computer.
 - **Removal:** only from the phone's device page. Browsers and computers show a prompt to use the phone. A removed computer that joins again gets a fresh device identity; its old key stays revoked.
-- **Lease:** open the app at least once every 72 hours. After the lease expires, remote control pauses; chat, history and the terminal view keep working until the phone renews it.
+- **Lease:** open the app at least once every 72 hours. After the lease expires, remote control pauses; stored history stays viewable while new content uploads pause until the phone renews it.
 
 Now start a session and it appears on every device:
 
@@ -142,7 +142,7 @@ remote-agent codex      # or: remote-agent claude
 
 ## Upgrading
 
-Before restarting a layout-3 relay, apply the [protocol-8 device enrollment database upgrade](#upgrading-device-enrollment-protocol-8) and then the [phone authority upgrade](#upgrading-to-the-phone-authority-protocol-10). Older single-account databases first need the [v0.41.0 layout conversion](#upgrading-to-v0410), followed by the layout-3 upgrade.
+For protocol 10, use the [clean setup below](#upgrading-to-the-phone-authority-protocol-10) by default. Only the advanced account-preservation route needs the layout conversions: layout 3 first applies the [protocol-8 database step](#upgrading-device-enrollment-protocol-8), then the phone-authority steps. Older single-account databases first need the [v0.41.0 conversion](#upgrading-to-v0410).
 
 Upgrade every part to the same release, and read the release notes first: before 1.0, a release may require all parts to move together or stored data to be recreated.
 
@@ -265,6 +265,15 @@ This is only the intermediate layout 3→4 step. Continue with the 4→5 and 5�
 
 ## Upgrading to the phone authority (protocol 10)
 
+The default upgrade is a **clean protocol-10 setup**. Back up the relay and each device privately, including local transcripts. Stop all old executors and clients. Create a fresh relay database/account/security domain with the new Android app; save and confirm the emergency recovery code. Explicitly reset old local account bindings, then pair each retained computer, browser and app again. Never reset an established protocol-10 pin as a routine re-join. Restore local sessions from your private backup only in an isolated copy first; current checkpoints are republished by their owning computers, while old remote ciphertext/history is available only through backups or the old version. This is coordinated downtime and new bindings, not an automatic migration.
+
+A recovery code does not directly decrypt stored ciphertext, but successful recovery gives control of retained computers. A malicious relay holding it can bypass the 48-hour delay. Normal phone replacement uses approval and handoff on the old phone, preserving reachable history. Expired leases pause controls and new content uploads; local CLIs continue and stored history remains viewable. Removing a device retains its relay archive; deleting computer records is separate and explicit.
+
+### Advanced: preserve the existing relay account
+
+The following preservation route is for operators who need the existing account. Rehearse it on private database and state copies before applying it. It does not import protocol-9 content keys.
+
+
 This version requires relay layout 6 and daemon storage generation 3. Stop every old daemon and client before upgrading: components of different protocol versions refuse each other, and a malicious relay could otherwise keep talking to old executors. The Android phone that will manage the account must already be a member before the upgrade; pair it with the current protocol 9 release first. Protocol 10 cannot enroll a phone that was never a member, so an account without such a phone has to be rebuilt and its old data discarded. Do not print account secrets, export private keys, or give local state to the relay.
 
 1. Stop the relay and make a private backup. Check `PRAGMA user_version`. Work through the steps in order until the layout is 6: layout 3 applies the 3→4 SQL above, layout 4 the 4→5 SQL below, and layout 5 the 5→6 SQL. Never apply a step twice.
@@ -280,6 +289,7 @@ COMMIT;
 
 ```sql
 BEGIN IMMEDIATE;
+CREATE TABLE security_leases (account_id TEXT PRIMARY KEY, certificate BLOB NOT NULL);
 CREATE TABLE security_states (
   account_id TEXT NOT NULL,
   epoch INTEGER NOT NULL,
@@ -339,4 +349,4 @@ Run it as a file, `sqlite3 remote-agent.db < pin.sql`: `.bail on` stops at the c
 
 6. On each retained computer, run `remote-agent account join --server https://relay.example.com --code CODE` with the code shown by the phone. This overwrites the old `security` block in `account.json` and ignores any old authority fields. Existing browsers and apps choose to pair again. Compare all four symbols: confirm on the candidate first, then allow on the phone. Re-pairing keeps the Ed25519 identity and replaces the exchange key; start that computer's new daemon only after joining. Remove the migration backup after verification: restoring it restores old permissions.
 
-Old protocol 9 registrations that are not paired again are not members. After the genesis exists, the relay checks every logged-in device against the signed member list and refuses anything else, so a leftover row or bearer token cannot read the account or upload state. Delete those rows offline if you want the device list clean; re-pairing replaces a retained device's row. The protocol 10 authority phone cannot be removed normally: it has no second authority and no immediate handoff. Every account on a relay upgraded from layout 5 must be pinned before the relay listens; an account without a protocol 9 phone member must be rebuilt and its data discarded. Put that in the release notes. A new phone takes over through the recovery code after 48 hours, during which the old phone can veto; the recovery state removes the old phone from membership, and the new phone holds a new code with which it can recover again later. The code carries the first 10 bytes of the pinned genesis hash, so a relay holding the code still cannot substitute a forged chain. It cannot decrypt content from before the recovery; retained computers keep the history they already hold and re-publish current-state session snapshots under the new key. Open the app at least once every 72 hours to keep remote control; after that, viewing continues but control pauses until the phone renews the lease. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.
+Old protocol 9 registrations that are not paired again are not members. After the genesis exists, the relay checks every logged-in device against the signed member list and refuses anything else, so a leftover row or bearer token cannot read the account or upload state. Delete those rows offline if you want the device list clean; re-pairing replaces a retained device's row. The protocol 10 authority phone cannot be removed normally: it has one authority; an available old phone can approve immediate handoff. Every account on a relay upgraded from layout 5 must be pinned before the relay listens; an account without a protocol 9 phone member must be rebuilt and its data discarded. Put that in the release notes. A new phone takes over through the recovery code after 48 hours, during which the old phone can veto; the recovery state removes the old phone from membership, and the new phone holds a new code with which it can recover again later. The code carries the first 10 bytes of the pinned genesis hash, so a relay holding the code still cannot substitute a forged chain. It cannot decrypt content from before the recovery; retained computers keep the history they already hold and re-publish current-state session snapshots under the new key. Open the app at least once every 72 hours to keep remote control; after that, stored history remains viewable but controls and new uploads pause until the phone renews the lease. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.

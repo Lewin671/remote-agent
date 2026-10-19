@@ -1,5 +1,8 @@
 import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
-import { type LiveSnapshot } from "./gen/remoteagent/v1/remote_pb";
+import {
+  LiveSnapshotSchema,
+  type LiveSnapshot,
+} from "./gen/remoteagent/v1/remote_pb";
 import { derive, agentOf, type Derived } from "./model";
 import {
   DeviceSecurityClient,
@@ -140,6 +143,8 @@ export interface SessionView {
   machineId: string;
   key: CryptoKey;
   info?: Session;
+  checkpoint?: LiveSnapshot;
+  checkpointStatus?: "ready" | "waiting" | "invalid";
   metaRev: bigint;
   lastSeq: bigint;
   updatedMs: bigint;
@@ -397,6 +402,7 @@ export class Remote {
 
   private directoryReadVersion = 0;
   private trustedMembers = new Map<string, Member>();
+  private archiveMachines = new Set<string>();
   authorityDeviceId = "";
   /** Set when a state is from the future relative to this device's clock. */
   clockWarning = "";
@@ -652,6 +658,17 @@ export class Remote {
     history = false,
   ) {
     if (!env) throw new Error("缺少安全信封");
+    if (
+      [
+        PayloadKind.MACHINE_META,
+        PayloadKind.SESSION_META,
+        PayloadKind.IMAGE,
+      ].includes(want.kind) &&
+      want.machineId &&
+      !this.trustedMembers.has(want.machineId) &&
+      this.archiveMachines.has(want.machineId)
+    )
+      history = true;
     const seed = [
       PayloadKind.EVENT,
       PayloadKind.IMAGE,
@@ -843,6 +860,7 @@ export class Remote {
           identity.state.core.members.map((m) => [m.id, m]),
         );
         this.authorityDeviceId = identity.state.core.authorityID;
+        this.archiveMachines = await this.security.historicalMachines();
         const [token, machines, sessions, prefs, info] = (
           await Promise.all(
             ["token", "machines", "sessions", "prefs", "info"].map((k) =>
@@ -1264,8 +1282,10 @@ export class Remote {
         }
         break;
       case "deviceRemoved":
-      case "machineRemoved":
         void this.loadDevices(false);
+        break;
+      case "machineRemoved":
+        void this.refresh();
         break;
       case "machineUpdated":
         if (kind.value.machine) {
@@ -1552,7 +1572,8 @@ export class Remote {
   /** Stores a machine. staleOnline: a push arrived after m was fetched,
    * so its online flag is out of date. */
   private async putMachine(m: RemoteMachine, staleOnline = false) {
-    if (!this.trustedMembers.has(m.id)) return;
+    if (!this.trustedMembers.has(m.id) && !this.archiveMachines.has(m.id))
+      return;
     let view = this.machines.get(m.id);
     if (!view) {
       view = {
@@ -1584,7 +1605,11 @@ export class Remote {
   }
 
   private async putSession(rs: RemoteSession) {
-    if (this.trustedMembers.get(rs.machineId)?.kind !== 1) return;
+    if (
+      !this.archiveMachines.has(rs.machineId) &&
+      this.trustedMembers.get(rs.machineId)?.kind !== 1
+    )
+      return;
     let view = this.sessions.get(rs.sessionId);
     const removals = this.removedPushes.get(rs.machineId) ?? 0;
     try {
@@ -1600,7 +1625,9 @@ export class Remote {
           header = legacy.header;
           plaintext = legacy.plaintext;
         } else {
-          const opened = await this.security.openCurrent(rs.key);
+          const opened = this.trustedMembers.has(rs.machineId)
+            ? await this.security.openCurrent(rs.key)
+            : await this.security.openHistory(rs.key);
           header = this.projectHeader(opened.header);
           plaintext = opened.plaintext;
         }
@@ -1617,7 +1644,8 @@ export class Remote {
         // The machine may have been removed while the key was opened.
         if (
           (this.removedPushes.get(rs.machineId) ?? 0) !== removals ||
-          this.trustedMembers.get(rs.machineId)?.kind !== 1
+          (!this.archiveMachines.has(rs.machineId) &&
+            this.trustedMembers.get(rs.machineId)?.kind !== 1)
         ) {
           this.sessionSeeds.delete(rs.sessionId);
           return;
@@ -1649,11 +1677,25 @@ export class Remote {
         );
         if (
           (this.removedPushes.get(rs.machineId) ?? 0) !== removals ||
-          this.trustedMembers.get(rs.machineId)?.kind !== 1
+          (!this.archiveMachines.has(rs.machineId) &&
+            this.trustedMembers.get(rs.machineId)?.kind !== 1)
         )
           return;
         if (header.seq >= view.metaRev) {
           view.info = msg;
+          if (msg.currentCheckpoint.length) {
+            const cp = fromBinary(LiveSnapshotSchema, msg.currentCheckpoint);
+            if (
+              cp.session?.id !== rs.sessionId ||
+              cp.session.lastSeq > msg.lastSeq ||
+              cp.actions.some(
+                (e) => e.sessionId !== rs.sessionId || e.seq > msg.lastSeq,
+              )
+            )
+              throw new Error("密文无效：当前状态 checkpoint 不匹配");
+            view.checkpoint = cp;
+            view.checkpointStatus = "ready";
+          } else view.checkpointStatus = "waiting";
           view.metaRev = header.seq;
           // The server stores when the session ended with the metadata,
           // so its place in the listing goes with the revision taken.
@@ -1951,7 +1993,11 @@ export class Remote {
       questions: new Map(),
       plan: undefined,
     } as Derived;
-    if (!live) return out;
+    if (!live) {
+      const checkpoint = this.sessions.get(sid)?.checkpoint;
+      if (checkpoint) out.running = checkpoint.running;
+      return out;
+    }
     const observed = derive(live.actions, agentOf(this.sessions.get(sid)));
     out.running = live.running;
     out.inputs = new Map(d.inputs);
@@ -1990,7 +2036,12 @@ export class Remote {
     return out;
   }
   liveSnapshotError(sid: string): string | undefined {
-    return this.liveErrors.get(sid);
+    return (
+      this.liveErrors.get(sid) ??
+      (this.sessions.get(sid)?.checkpointStatus === "waiting"
+        ? "等待所属电脑更新当前状态"
+        : undefined)
+    );
   }
   unverifiedEvent(sid: string, seq: bigint): boolean {
     const b = this.buffers.get(sid);
@@ -2137,7 +2188,7 @@ export class Remote {
       if (e instanceof SecurityError && e.code === "lease")
         throw new CommandError(
           "failed_precondition",
-          "远程控制已暂停：请在手机上打开 App 续期后再试",
+          "管理端租约已过期，控制和新内容上传已暂停；打开管理端 App 续期",
         );
       throw new CommandError(
         "security_unavailable",
@@ -2750,15 +2801,20 @@ export class Remote {
         if ((this.devices.get(id)?.metaRev ?? 0n) > d.metaRev)
           throw new Error("设备目录响应已过时");
       }
+      this.archiveMachines = new Set(
+        record.states.flatMap((s) =>
+          s.core.members.filter((m) => m.kind === 1).map((m) => m.id),
+        ),
+      );
+      for (const [id, m] of this.machines)
+        if (this.archiveMachines.has(id) && !members.has(id))
+          nextMachines.set(id, { ...m, online: false });
       this.machines = nextMachines;
-      for (const [id, old] of this.trustedMembers)
-        if (old.kind === 1 && !members.has(id))
-          this.bump(this.removedPushes, id);
       this.trustedMembers = members;
       this.devices = nextDevices;
       this.authorityDeviceId = head.core.authorityID;
       for (const id of this.machines.keys())
-        if (!members.has(id)) {
+        if (!members.has(id) && !this.archiveMachines.has(id)) {
           this.machines.delete(id);
           for (const [sid, s] of this.sessions)
             if (s.machineId === id) this.forget(sid);
@@ -3338,6 +3394,16 @@ function maxBig(a: bigint, ...rest: bigint[]): bigint {
 }
 
 export function errorText(e: unknown): string {
+  if (e instanceof RecoveryHistoryUnavailable)
+    return "历史密钥不可用：恢复前的记录无法解密";
+  if (e instanceof SecurityError) {
+    if (e.code === "unavailable")
+      return "等待所属电脑更新当前状态：这台设备没有当时的内容密钥";
+    if (e.code === "invalid" || e.code === "untrusted")
+      return "密文无效：签名、密钥或内容校验失败";
+    if (e.code === "conflict")
+      return "成员链冲突，安全操作已停止；请核对设备后明确重新加入";
+  }
   if (e instanceof CommandError) return e.message;
   if (e instanceof ConnectError) return e.rawMessage || e.message;
   if (e instanceof Error) return e.message;

@@ -61,7 +61,7 @@ func TestRecordedResultAfterLeaseExpires(t *testing.T) {
 	if _, err = m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { return []byte("done"), nil }); err != nil {
 		t.Fatal(err)
 	}
-	if out, err := m.Accept(w, nil, c.withClient.Core.NotAfter+1, func(Header, []byte) ([]byte, error) { t.Fatal("ran twice"); return nil, nil }); err != nil || string(out) != "done" {
+	if out, err := m.Accept(w, nil, (c.withClient.Core.IssuedAt+Lease)+1, func(Header, []byte) ([]byte, error) { t.Fatal("ran twice"); return nil, nil }); err != nil || string(out) != "done" {
 		t.Fatalf("recorded retry: %q %v", out, err)
 	}
 }

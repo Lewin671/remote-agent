@@ -31,7 +31,7 @@ class Codex2SignupTest {
                     createAccount(
                         server.url,
                         http,
-                        persistDraft = { draft = CreatedAccount.parseDraft(it.draftBytes()) },
+                        persistDraft = { draft = CreatedAccount.readOperationMaterial(it.operationMaterial()) },
                     )
                 assertEquals(draft!!.account.deviceId, result.account.deviceId)
                 assertEquals(2, registrations.size)

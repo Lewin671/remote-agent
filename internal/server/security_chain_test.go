@@ -355,7 +355,7 @@ func TestAuthorityRotationUpdatesServerRecoveryKey(t *testing.T) {
 	c := ts.authority(t)
 	var newRecovery [32]byte
 	newRecovery[0] = 0x42
-	rotated, err := deviceauth.BuildRenewalRotating(c.states[len(c.states)-1], c.secret, newRecovery, c.phoneEd, uint64(time.Now().UnixMilli()))
+	rotated, err := deviceauth.BuildRecoveryKeyRotation(c.states[len(c.states)-1], c.secret, newRecovery, c.phoneEd, uint64(time.Now().UnixMilli()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,7 +378,7 @@ func TestStateFromTheFutureRejected(t *testing.T) {
 	}
 	c := ts.authority(t)
 	future := uint64(time.Now().Add(10 * time.Minute).UnixMilli())
-	state, err := deviceauth.BuildRenewal(c.states[len(c.states)-1], c.secret, c.phoneEd, future)
+	state, err := deviceauth.BuildRecoveryKeyRotation(c.states[len(c.states)-1], c.secret, [32]byte{0x91}, c.phoneEd, future)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -539,7 +539,7 @@ func TestStateFromTheFutureIsAClockWarning(t *testing.T) {
 	c := ts.authority(t)
 	tok := ts.login(t, c.phoneEd, c.phoneID)
 	api := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(tok))
-	next, err := deviceauth.BuildRenewal(c.states[len(c.states)-1], c.secret, c.phoneEd, uint64(time.Now().Add(10*time.Minute).UnixMilli()))
+	next, err := deviceauth.BuildRecoveryKeyRotation(c.states[len(c.states)-1], c.secret, [32]byte{0x91}, c.phoneEd, uint64(time.Now().Add(10*time.Minute).UnixMilli()))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -100,7 +100,7 @@ func TestRecoverySignedByWrongKeyRejected(t *testing.T) {
 func TestRenewalCannotChangeMembersOrPrevSecret(t *testing.T) {
 	g, _, phoneEd, _, _ := testGenesis(t)
 	secret := bytes.Repeat([]byte{0x33}, 32)
-	base, err := BuildRenewal(g, secret, phoneEd, 1_700_000_100_000)
+	base, err := rotateForTest(g, secret, phoneEd, 1_700_000_100_000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestRenewalCannotChangeMembersOrPrevSecret(t *testing.T) {
 	// A renewal may not move IssuedAt backwards.
 	bc := base.Core
 	bc.IssuedAt = g.Core.IssuedAt - 1
-	bc.NotAfter = bc.IssuedAt + Lease
+
 	back, err := build(bc, secret, nil, phoneEd)
 	if err != nil {
 		t.Fatal(err)
@@ -158,14 +158,14 @@ func TestExpiredLeaseRejectedAfterClockRollback(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "security.db")
-	ep, err := InitEndpoint(path, pin, []State{g}, []*RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX)
+	ep, err := initTestEndpoint(path, pin, []State{g}, []*RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := ep.Install([]State{added}, []*RecoveryStatement{nil}); err != nil {
 		t.Fatal(err)
 	}
-	expired := added.Core.NotAfter + 1000
+	expired := (added.Core.IssuedAt + Lease) + 1000
 	if err := ep.Touch(expired); err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +186,7 @@ func TestExpiredLeaseRejectedAfterClockRollback(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The wall clock is below the persisted floor, which must not save it.
-	if _, err := ep.Accept(w, nil, added.Core.NotAfter-1000, func(Header, []byte) ([]byte, error) {
+	if _, err := ep.Accept(w, nil, (added.Core.IssuedAt+Lease)-1000, func(Header, []byte) ([]byte, error) {
 		t.Fatal("an expired control envelope was executed")
 		return nil, nil
 	}); err != ErrStale {
@@ -217,7 +217,6 @@ func TestTamperingAnySignedStateFieldRejected(t *testing.T) {
 		"epoch":         func(s *State) { s.Core.Epoch++ },
 		"content epoch": func(s *State) { s.Core.ContentEpoch++ },
 		"issued at":     func(s *State) { s.Core.IssuedAt-- },
-		"not after":     func(s *State) { s.Core.NotAfter++ },
 		"member key":    func(s *State) { s.Core.Members[0].XPublic[0] ^= 1 },
 		"member kind":   func(s *State) { s.Core.Members[0].Kind = Machine },
 		"removed":       func(s *State) { s.Core.Removed = []string{machine.ID} },
@@ -278,7 +277,7 @@ func TestAuthorityRotatesRecoveryKeyWithoutRecovery(t *testing.T) {
 	_, rotatedRecovery, _ := ed25519.GenerateKey(nil)
 	var rotatedPub [32]byte
 	copy(rotatedPub[:], rotatedRecovery.Public().(ed25519.PublicKey))
-	rotated, err := BuildRenewalRotating(g, bytes.Repeat([]byte{0x33}, 32), rotatedPub, phoneEd, 1_700_000_100_000)
+	rotated, err := BuildRecoveryKeyRotation(g, bytes.Repeat([]byte{0x33}, 32), rotatedPub, phoneEd, 1_700_000_100_000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +362,7 @@ func TestStatesFromTheFutureAreRejected(t *testing.T) {
 		t.Fatal(err)
 	}
 	pin, _ := genesis.Pin()
-	if _, err := InitEndpoint("", pin, []State{genesis}, []*RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX); err == nil {
+	if _, err := initTestEndpoint("", pin, []State{genesis}, []*RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX); err == nil {
 		t.Fatal("future genesis accepted")
 	}
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +50,11 @@ import kotlinx.coroutines.withContext
 @Composable
 fun RecoveryScreen(onBack: () -> Unit = {}) {
     val remote = LocalRemote.current
+    val authority by remote.state.collectAsState()
+    if (!authority.authorityPhone) {
+        HandoffPreparation()
+        return
+    }
     val p = pal
     val scope = rememberCoroutineScope()
     var pending by remember { mutableStateOf<PendingRecoveryInfo?>(null) }
@@ -63,13 +69,20 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
         pending = runCatching { remote.pendingRecovery() }.getOrNull()
         loading = false
     }
-    PageScaffold("恢复管理权") {
+    PageScaffold("恢复与交接") {
         Column(
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
         ) {
+            HandoffControls()
+            val waiting = authority.machines.values.filter { it.meta == null }.map { it.id.take(8) }
+            if (waiting.isNotEmpty())
+                Hint(
+                    "等待这些保留电脑发布当前状态：" + waiting.joinToString("、") + "。旧历史密钥不可用时不会反复修复。",
+                    Modifier.padding(vertical = 8.dp),
+                )
             val pv = prepared
             if (pv != null) {
                 GLabel("新的恢复码 · 只显示这一次")
@@ -115,7 +128,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                 val c = pending
                 if (c == null) {
                     Hint(
-                        "现在没有等待处理的恢复。换手机时，在新手机上输入恢复码提交；提交后 48 小时内可以在这里否决。",
+                        "现在没有等待处理的紧急恢复。手机丢失时才使用恢复码；旧手机在线时走上面的正常交接。",
                         Modifier.padding(vertical = 12.dp),
                     )
                 } else {
@@ -167,24 +180,47 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
     var code by remember { mutableStateOf("") }
     var server by remember { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
     var submission by remember { mutableStateOf<RecoverySubmission?>(null) }
+    var codeSaved by remember { mutableStateOf(false) }
     var chain by remember { mutableStateOf<RecoveryChain?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     val t = now()
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
+    LaunchedEffect(Unit) {
+        val saved = withContext(Dispatchers.IO) { app.vault.loadRecoveryPublication() }
+        codeSaved = app.vault.readSecurityOperation()?.codeSaved == true
+        if (saved != null) {
+            busy = true
+            try {
+                submission =
+                    withContext(Dispatchers.IO) {
+                        Recovery.resume(
+                            checkedServer(server),
+                            app.http,
+                            saved,
+                            app.vault::saveRecoveryPublication,
+                        )
+                    }
+            } catch (e: Exception) {
+                error = errorText(e)
+            } finally {
+                busy = false
+            }
+        }
+    }
 
     PageScaffold("用恢复码找回管理权") {
         Column(
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
         ) {
             val s = submission
             if (s == null) {
                 Text(
-                    "输入初始化时保存的恢复码。提交后要等 48 小时，原手机会收到通知；期间它一旦续期或否决，这次恢复就作废。",
+                    "输入初始化时保存的恢复码。提交后要等 48 小时，原手机打开 App 可看到请求（推送可能不到达）；期间它可以显式否决；普通续期不会使恢复作废。",
                     style = T.sm,
                     color = p.muted,
                     modifier = Modifier.padding(vertical = 10.dp),
@@ -204,9 +240,10 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                         ?: throw IllegalArgumentException("恢复码不对")
                                 val seed = decoded.seed
                                 val url = checkedServer(server)
+                                app.lastServer = url
                                 val recoveryEd = SigningKey(seed).publicKey
                                 val draft =
-                                    app.vault.loadRecoveryDraft()?.takeIf {
+                                    app.vault.loadRecoveryPublication()?.takeIf {
                                         it.submission.genesisPrefix.contentEquals(decoded.genesis)
                                     }
                                 val existing =
@@ -240,10 +277,15 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                                 GetRecoveryContextResponse.Phase.PHASE_PUBLISHED
                                     ) {
                                         val saved =
-                                            app.vault.loadRecoveryDraft()?.submission?.takeIf {
-                                                it.accountId == existing.accountId &&
-                                                    it.genesisPrefix.contentEquals(decoded.genesis)
-                                            }
+                                            app.vault
+                                                .loadRecoveryPublication()
+                                                ?.submission
+                                                ?.takeIf {
+                                                    it.accountId == existing.accountId &&
+                                                        it.genesisPrefix.contentEquals(
+                                                            decoded.genesis,
+                                                        )
+                                                }
                                         if (saved == null)
                                             throw IllegalStateException("这次恢复已提交；请在保存了恢复身份的那台手机上完成")
                                         RecoverySubmission(
@@ -270,16 +312,16 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                                     draft =
                                                         draft?.takeIf {
                                                             DeviceSecurity.parseRecoveryStatement(
-                                                                    it.statement
+                                                                    it.statement,
                                                                 )
                                                                 .parent
                                                                 .contentEquals(
                                                                     DeviceSecurity.stateHash(
-                                                                        existing.head
-                                                                    )
+                                                                        existing.head,
+                                                                    ),
                                                                 )
                                                         },
-                                                    persist = app.vault::saveRecoveryDraft,
+                                                    persist = app.vault::saveRecoveryPublication,
                                                 )
                                             }
                                         r
@@ -290,12 +332,13 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                             it.submission.stateHash.contentEquals(current.stateHash)
                                         }
                                         ?.let {
-                                            app.vault.saveRecoveryDraft(
-                                                io.github.lewin671.remoteagent.core.RecoveryDraft(
-                                                    current,
-                                                    it.statement,
-                                                    it.state,
-                                                )
+                                            app.vault.saveRecoveryPublication(
+                                                io.github.lewin671.remoteagent.core
+                                                    .RecoveryPublication(
+                                                        current,
+                                                        it.statement,
+                                                        it.state,
+                                                    ),
                                             )
                                         }
                                 }
@@ -327,6 +370,32 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                 } else {
                     Hint("这次恢复已提交。若尚未保存新恢复码，完成后请立即在设置中更换恢复码。", Modifier)
                 }
+                val computers = chain?.head?.core?.members?.filter { it.kind == 1u }.orEmpty()
+                if (s.newCode.isNotEmpty() && !codeSaved)
+                    Btn(
+                        "我已离线保存新恢复码",
+                        {
+                            app.vault.confirmRecoveryCodeSaved()
+                            codeSaved = true
+                        },
+                        Modifier.fillMaxWidth().padding(top = 8.dp),
+                        BtnKind.SECONDARY,
+                    )
+                GLabel("恢复码保存状态")
+                Hint(
+                    if (codeSaved) "已确认离线保存新恢复码"
+                    else if (s.newCode.isNotEmpty()) "新码仍显示在本页，请离线保存"
+                    else "尚未确认保存；本机没有恢复码私钥，完成后立即换码",
+                    Modifier,
+                )
+                GLabel("等待电脑恢复当前会话")
+                Hint(
+                    if (computers.isEmpty()) "完成后等待保留电脑上线并发布当前状态"
+                    else
+                        computers.joinToString("、") { it.id.take(8) } +
+                            "；完成恢复后需这些电脑重新发布 checkpoint",
+                    Modifier,
+                )
                 GLabel("等待")
                 Hint(
                     if (s.readyMs > 0) "可以生效的时间：" + dayText(s.readyMs, t) else "48 小时后才能完成。",
@@ -378,6 +447,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                         scope.launch {
                             try {
                                 val url = checkedServer(server)
+                                app.lastServer = url
                                 completeRecoveryAndAdopt(
                                     complete = {
                                         withContext(Dispatchers.IO) {
@@ -429,7 +499,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
         ) {
             val c = created
             if (c == null) {
@@ -450,14 +520,15 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                         scope.launch {
                             try {
                                 val url = checkedServer(server)
+                                app.lastServer = url
                                 created =
                                     withContext(Dispatchers.IO) {
                                         createAccount(
                                             url,
                                             app.http,
                                             setupToken.trim(),
-                                            draft = app.vault.loadCreationDraft(),
-                                            persistDraft = app.vault::saveCreationDraft,
+                                            draft = app.vault.loadCreationOperation(),
+                                            persistDraft = app.vault::saveCreationOperation,
                                         )
                                     }
                                 app.lastServer = url
@@ -557,7 +628,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
         ) {
             val c = created
             if (c == null) {
@@ -654,7 +725,7 @@ fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
         ) {
             val pv = prepared
             if (pv == null) {

@@ -221,6 +221,9 @@ public protocol PBClientServiceClientInterface: Sendable {
     /// GetSecurityStates returns states after an epoch, up to eight at a time.
     @available(iOS 13, *)
     func `getSecurityStates`(request: PBGetSecurityStatesRequest, headers: Connect.Headers) async -> ResponseMessage<PBGetSecurityStatesResponse>
+
+    @available(iOS 13, *)
+    func `deleteMachineRecords`(request: PBDeleteMachineRecordsRequest, headers: Connect.Headers) async -> ResponseMessage<PBDeleteMachineRecordsResponse>
 }
 
 /// Concrete implementation of `PBClientServiceClientInterface`.
@@ -306,6 +309,11 @@ public final class PBClientServiceClient: PBClientServiceClientInterface, Sendab
         return await self.client.unary(path: "/remoteagent.v1.ClientService/GetSecurityStates", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
+    @available(iOS 13, *)
+    public func `deleteMachineRecords`(request: PBDeleteMachineRecordsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBDeleteMachineRecordsResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.ClientService/DeleteMachineRecords", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
     public enum Metadata {
         public enum Methods {
             public static let listMachines = Connect.MethodSpec(name: "ListMachines", service: "remoteagent.v1.ClientService", type: .unary)
@@ -323,6 +331,7 @@ public final class PBClientServiceClient: PBClientServiceClientInterface, Sendab
             public static let pinSecurityDomain = Connect.MethodSpec(name: "PinSecurityDomain", service: "remoteagent.v1.ClientService", type: .unary)
             public static let putSecurityState = Connect.MethodSpec(name: "PutSecurityState", service: "remoteagent.v1.ClientService", type: .unary)
             public static let getSecurityStates = Connect.MethodSpec(name: "GetSecurityStates", service: "remoteagent.v1.ClientService", type: .unary)
+            public static let deleteMachineRecords = Connect.MethodSpec(name: "DeleteMachineRecords", service: "remoteagent.v1.ClientService", type: .unary)
         }
     }
 }

@@ -41,6 +41,6 @@ func AccountStatusInfo(a *Account) (AccountStatus, error) {
 	}
 	return AccountStatus{
 		Server: a.Server, DeviceID: id, AccountID: pin.Account, Kind: kind,
-		Authority: head.Core.AuthorityID, HeadEpoch: head.Core.Epoch, NotAfter: head.Core.NotAfter,
+		Authority: head.Core.AuthorityID, HeadEpoch: head.Core.Epoch, NotAfter: 0,
 	}, nil
 }

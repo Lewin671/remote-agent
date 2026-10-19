@@ -8,7 +8,9 @@ import android.system.Os
 import android.system.OsConstants
 import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.DeviceSecurity
-import io.github.lewin671.remoteagent.core.draftBytes
+import io.github.lewin671.remoteagent.core.HeadLease
+import io.github.lewin671.remoteagent.core.SecurityOperation
+import io.github.lewin671.remoteagent.core.operationMaterial
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -94,7 +96,7 @@ class Vault(context: Context) : DeviceSecurity.Storage {
 
     private fun readSecurityUnlocked(): DeviceSecurity.Record =
         DeviceSecurity.Record.parse(
-            read(securityFile, ACCOUNT_ALIAS) ?: throw DeviceSecurity.Failure("storage")
+            read(securityFile, ACCOUNT_ALIAS) ?: throw DeviceSecurity.Failure("storage"),
         )
 
     override fun readSecurity(): DeviceSecurity.Record = securityTransaction {
@@ -118,11 +120,12 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         expectedState: ByteArray,
         states: List<DeviceSecurity.State>,
         proofs: List<ByteArray?>,
+        lease: HeadLease?,
     ): DeviceSecurity.Record = securityTransaction {
         val old = readSecurityUnlocked()
         if (!DeviceSecurity.stateHash(old.head).contentEquals(expectedState))
             throw DeviceSecurity.Failure("stale")
-        val record = old.installed(states, proofs)
+        val record = old.installed(states, proofs, lease)
         write(securityFile, ACCOUNT_ALIAS, record.bytes(), unlockedOnly = true)
         refreshNotifyUnlocked(record)
         record
@@ -175,41 +178,126 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         )
     }
 
-    fun saveCreationDraft(draft: io.github.lewin671.remoteagent.core.CreatedAccount) =
-        securityTransaction {
-            write(
-                File(dir, "creation-draft.bin"),
-                ACCOUNT_ALIAS,
-                draft.draftBytes(),
-                unlockedOnly = true,
-            )
+    override fun readSecurityOperation(): SecurityOperation? = securityTransaction {
+        read(File(dir, "security-operation.bin"), ACCOUNT_ALIAS)?.let {
+            SecurityOperation.parse(it)
         }
+    }
 
-    fun loadCreationDraft(): io.github.lewin671.remoteagent.core.CreatedAccount? =
-        securityTransaction {
-            read(File(dir, "creation-draft.bin"), ACCOUNT_ALIAS)?.let {
-                io.github.lewin671.remoteagent.core.CreatedAccount.parseDraft(it)
+    override fun writeSecurityOperation(operation: SecurityOperation) = securityTransaction {
+        val existing =
+            read(File(dir, "security-operation.bin"), ACCOUNT_ALIAS)?.let {
+                SecurityOperation.parse(it)
             }
-        }
-
-    fun saveRecoveryDraft(draft: io.github.lewin671.remoteagent.core.RecoveryDraft) =
-        securityTransaction {
-            write(
-                File(dir, "recovery-draft.bin"),
-                ACCOUNT_ALIAS,
-                draft.bytes(),
-                unlockedOnly = true,
+        if (existing?.kind == "creation" && operation.kind == "creation") {
+            val old =
+                io.github.lewin671.remoteagent.core.CreatedAccount.readOperationMaterial(
+                    existing.local,
+                )
+            val next =
+                io.github.lewin671.remoteagent.core.CreatedAccount.readOperationMaterial(
+                    operation.local,
+                )
+            if (
+                old.account.deviceId != next.account.deviceId ||
+                    !old.account.deviceSeed.contentEquals(next.account.deviceSeed) ||
+                    old.record.chain.size > next.record.chain.size ||
+                    old.record.chain.indices.any {
+                        !io.github.lewin671.remoteagent.core.DeviceSecurity.stateBytes(
+                                old.record.chain[it],
+                            )
+                            .contentEquals(
+                                io.github.lewin671.remoteagent.core.DeviceSecurity.stateBytes(
+                                    next.record.chain[it],
+                                ),
+                            )
+                    }
             )
+                throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("conflict")
         }
+        if (
+            existing != null &&
+                (existing.kind != operation.kind ||
+                    !existing.parent.contentEquals(operation.parent) ||
+                    (existing.kind != "creation" &&
+                        !existing.signed.contentEquals(operation.signed)))
+        )
+            throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("pending")
+        write(
+            File(dir, "security-operation.bin"),
+            ACCOUNT_ALIAS,
+            operation.bytes(),
+            unlockedOnly = true,
+        )
+    }
 
-    fun loadRecoveryDraft(): io.github.lewin671.remoteagent.core.RecoveryDraft? =
-        securityTransaction {
-            read(File(dir, "recovery-draft.bin"), ACCOUNT_ALIAS)?.let {
-                io.github.lewin671.remoteagent.core.RecoveryDraft.parse(it)
+    override fun clearSecurityOperation() = securityTransaction {
+        val f = File(dir, "security-operation.bin")
+        if (f.exists() && !f.delete())
+            throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("storage")
+        syncDirectory()
+    }
+
+    fun saveCreationOperation(draft: io.github.lewin671.remoteagent.core.CreatedAccount) {
+        val raw = draft.operationMaterial()
+        // One account operation may append an already-persisted code rotation.
+        writeSecurityOperation(
+            SecurityOperation(
+                "creation",
+                byteArrayOf(),
+                io.github.lewin671.remoteagent.core.DeviceSecurity.stateBytes(draft.record.head),
+                local = raw,
+                phase = SecurityOperation.Phase.PREPARED,
+            ),
+        )
+    }
+
+    fun loadCreationOperation(): io.github.lewin671.remoteagent.core.CreatedAccount? =
+        readSecurityOperation()
+            ?.takeIf { it.kind == "creation" }
+            ?.let {
+                io.github.lewin671.remoteagent.core.CreatedAccount.readOperationMaterial(it.local)
             }
-        }
 
-    fun clearPendingRecovery() = securityTransaction { File(dir, "recovery-draft.bin").delete() }
+    fun saveRecoveryPublication(draft: io.github.lewin671.remoteagent.core.RecoveryPublication) {
+        val raw = draft.bytes()
+        val existing = readSecurityOperation()
+        writeSecurityOperation(
+            SecurityOperation(
+                "recovery",
+                io.github.lewin671.remoteagent.core.DeviceSecurity.parseState(draft.state)
+                    .core
+                    .parent,
+                io.github.lewin671.remoteagent.proto.SubmitRecoveryRequest.newBuilder()
+                    .setStatement(com.google.protobuf.ByteString.copyFrom(draft.statement))
+                    .setState(com.google.protobuf.ByteString.copyFrom(draft.state))
+                    .build()
+                    .toByteArray(),
+                raw,
+                phase =
+                    if (draft.submission.recoveryId.isEmpty()) SecurityOperation.Phase.PREPARED
+                    else SecurityOperation.Phase.PUBLISHED,
+                codeSaved = existing?.codeSaved ?: false,
+            ),
+        )
+    }
+
+    fun loadRecoveryPublication(): io.github.lewin671.remoteagent.core.RecoveryPublication? =
+        readSecurityOperation()
+            ?.takeIf { it.kind == "recovery" }
+            ?.let { io.github.lewin671.remoteagent.core.RecoveryPublication.parse(it.local) }
+
+    fun confirmRecoveryCodeSaved() {
+        val op =
+            readSecurityOperation()
+                ?: throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("storage")
+        require(op.kind == "recovery")
+        writeSecurityOperation(
+            SecurityOperation(op.kind, op.parent, op.signed, op.local, op.delivery, op.phase, true),
+        )
+    }
+
+    fun clearPendingRecovery() = clearSecurityOperation()
 
     private fun syncDirectory(directory: File = dir) {
         val parent = Os.open(directory.absolutePath, OsConstants.O_RDONLY, 0)
@@ -220,10 +308,9 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         }
     }
 
-    /** The notify key, for decrypting pushes in the background. */
     fun notifyKey(): ByteArray? = read(notifyFile, NOTIFY_ALIAS)
 
-    fun clear(preserveDrafts: Boolean = false) = securityTransaction {
+    fun clear(preserveSecurityOperation: Boolean = false) = securityTransaction {
         securityFile.delete()
         File(dir, "security-v2.bin").delete()
         File(dir, "security-removals-v2.bin").delete()
@@ -231,20 +318,18 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         accountFile.delete()
         notifyFile.delete()
         File(dir, "recovery-pending.bin").delete()
-        if (!preserveDrafts) {
-            File(dir, "recovery-draft.bin").delete()
-            File(dir, "creation-draft.bin").delete()
+        if (!preserveSecurityOperation) {
+            File(dir, "security-operation.bin").delete()
         }
         val ks = keyStore()
         for (a in listOf(ACCOUNT_ALIAS, NOTIFY_ALIAS)) if (
-            (!preserveDrafts || a != ACCOUNT_ALIAS) && ks.containsAlias(a)
+            (!preserveSecurityOperation || a != ACCOUNT_ALIAS) && ks.containsAlias(a)
         )
             ks.deleteEntry(a)
     }
 
-    fun clearDrafts() = securityTransaction {
-        File(dir, "creation-draft.bin").delete()
-        File(dir, "recovery-draft.bin").delete()
+    fun clearPendingSecurityOperation() = securityTransaction {
+        File(dir, "security-operation.bin").delete()
         syncDirectory()
     }
 

@@ -115,6 +115,9 @@ const (
 	// ClientServiceGetSecurityStatesProcedure is the fully-qualified name of the ClientService's
 	// GetSecurityStates RPC.
 	ClientServiceGetSecurityStatesProcedure = "/remoteagent.v1.ClientService/GetSecurityStates"
+	// ClientServiceDeleteMachineRecordsProcedure is the fully-qualified name of the ClientService's
+	// DeleteMachineRecords RPC.
+	ClientServiceDeleteMachineRecordsProcedure = "/remoteagent.v1.ClientService/DeleteMachineRecords"
 	// MachineServicePutMachineProcedure is the fully-qualified name of the MachineService's PutMachine
 	// RPC.
 	MachineServicePutMachineProcedure = "/remoteagent.v1.MachineService/PutMachine"
@@ -564,6 +567,7 @@ type ClientServiceClient interface {
 	PutSecurityState(context.Context, *connect.Request[v1.PutSecurityStateRequest]) (*connect.Response[v1.PutSecurityStateResponse], error)
 	// GetSecurityStates returns states after an epoch, up to eight at a time.
 	GetSecurityStates(context.Context, *connect.Request[v1.GetSecurityStatesRequest]) (*connect.Response[v1.GetSecurityStatesResponse], error)
+	DeleteMachineRecords(context.Context, *connect.Request[v1.DeleteMachineRecordsRequest]) (*connect.Response[v1.DeleteMachineRecordsResponse], error)
 }
 
 // NewClientServiceClient constructs a client for the remoteagent.v1.ClientService service. By
@@ -667,26 +671,33 @@ func NewClientServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(clientServiceMethods.ByName("GetSecurityStates")),
 			connect.WithClientOptions(opts...),
 		),
+		deleteMachineRecords: connect.NewClient[v1.DeleteMachineRecordsRequest, v1.DeleteMachineRecordsResponse](
+			httpClient,
+			baseURL+ClientServiceDeleteMachineRecordsProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("DeleteMachineRecords")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // clientServiceClient implements ClientServiceClient.
 type clientServiceClient struct {
-	listMachines        *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
-	listRemoteSessions  *connect.Client[v1.ListRemoteSessionsRequest, v1.ListRemoteSessionsResponse]
-	getEvents           *connect.Client[v1.GetEventsRequest, v1.GetEventsResponse]
-	forward             *connect.Client[v1.ForwardRequest, v1.ForwardResponse]
-	getPushKey          *connect.Client[v1.GetPushKeyRequest, v1.GetPushKeyResponse]
-	setPushSubscription *connect.Client[v1.SetPushSubscriptionRequest, v1.SetPushSubscriptionResponse]
-	setPushTarget       *connect.Client[v1.SetPushTargetRequest, v1.SetPushTargetResponse]
-	getImage            *connect.Client[v1.GetImageRequest, v1.GetImageResponse]
-	listDevices         *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
-	putDeviceMeta       *connect.Client[v1.PutDeviceMetaRequest, v1.PutDeviceMetaResponse]
-	getAccountPrefs     *connect.Client[v1.GetAccountPrefsRequest, v1.GetAccountPrefsResponse]
-	putAccountPrefs     *connect.Client[v1.PutAccountPrefsRequest, v1.PutAccountPrefsResponse]
-	pinSecurityDomain   *connect.Client[v1.PinSecurityDomainRequest, v1.PinSecurityDomainResponse]
-	putSecurityState    *connect.Client[v1.PutSecurityStateRequest, v1.PutSecurityStateResponse]
-	getSecurityStates   *connect.Client[v1.GetSecurityStatesRequest, v1.GetSecurityStatesResponse]
+	listMachines         *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
+	listRemoteSessions   *connect.Client[v1.ListRemoteSessionsRequest, v1.ListRemoteSessionsResponse]
+	getEvents            *connect.Client[v1.GetEventsRequest, v1.GetEventsResponse]
+	forward              *connect.Client[v1.ForwardRequest, v1.ForwardResponse]
+	getPushKey           *connect.Client[v1.GetPushKeyRequest, v1.GetPushKeyResponse]
+	setPushSubscription  *connect.Client[v1.SetPushSubscriptionRequest, v1.SetPushSubscriptionResponse]
+	setPushTarget        *connect.Client[v1.SetPushTargetRequest, v1.SetPushTargetResponse]
+	getImage             *connect.Client[v1.GetImageRequest, v1.GetImageResponse]
+	listDevices          *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
+	putDeviceMeta        *connect.Client[v1.PutDeviceMetaRequest, v1.PutDeviceMetaResponse]
+	getAccountPrefs      *connect.Client[v1.GetAccountPrefsRequest, v1.GetAccountPrefsResponse]
+	putAccountPrefs      *connect.Client[v1.PutAccountPrefsRequest, v1.PutAccountPrefsResponse]
+	pinSecurityDomain    *connect.Client[v1.PinSecurityDomainRequest, v1.PinSecurityDomainResponse]
+	putSecurityState     *connect.Client[v1.PutSecurityStateRequest, v1.PutSecurityStateResponse]
+	getSecurityStates    *connect.Client[v1.GetSecurityStatesRequest, v1.GetSecurityStatesResponse]
+	deleteMachineRecords *connect.Client[v1.DeleteMachineRecordsRequest, v1.DeleteMachineRecordsResponse]
 }
 
 // ListMachines calls remoteagent.v1.ClientService.ListMachines.
@@ -764,6 +775,11 @@ func (c *clientServiceClient) GetSecurityStates(ctx context.Context, req *connec
 	return c.getSecurityStates.CallUnary(ctx, req)
 }
 
+// DeleteMachineRecords calls remoteagent.v1.ClientService.DeleteMachineRecords.
+func (c *clientServiceClient) DeleteMachineRecords(ctx context.Context, req *connect.Request[v1.DeleteMachineRecordsRequest]) (*connect.Response[v1.DeleteMachineRecordsResponse], error) {
+	return c.deleteMachineRecords.CallUnary(ctx, req)
+}
+
 // ClientServiceHandler is an implementation of the remoteagent.v1.ClientService service.
 type ClientServiceHandler interface {
 	ListMachines(context.Context, *connect.Request[v1.ListMachinesRequest]) (*connect.Response[v1.ListMachinesResponse], error)
@@ -801,6 +817,7 @@ type ClientServiceHandler interface {
 	PutSecurityState(context.Context, *connect.Request[v1.PutSecurityStateRequest]) (*connect.Response[v1.PutSecurityStateResponse], error)
 	// GetSecurityStates returns states after an epoch, up to eight at a time.
 	GetSecurityStates(context.Context, *connect.Request[v1.GetSecurityStatesRequest]) (*connect.Response[v1.GetSecurityStatesResponse], error)
+	DeleteMachineRecords(context.Context, *connect.Request[v1.DeleteMachineRecordsRequest]) (*connect.Response[v1.DeleteMachineRecordsResponse], error)
 }
 
 // NewClientServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -900,6 +917,12 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(clientServiceMethods.ByName("GetSecurityStates")),
 		connect.WithHandlerOptions(opts...),
 	)
+	clientServiceDeleteMachineRecordsHandler := connect.NewUnaryHandler(
+		ClientServiceDeleteMachineRecordsProcedure,
+		svc.DeleteMachineRecords,
+		connect.WithSchema(clientServiceMethods.ByName("DeleteMachineRecords")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/remoteagent.v1.ClientService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ClientServiceListMachinesProcedure:
@@ -932,6 +955,8 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 			clientServicePutSecurityStateHandler.ServeHTTP(w, r)
 		case ClientServiceGetSecurityStatesProcedure:
 			clientServiceGetSecurityStatesHandler.ServeHTTP(w, r)
+		case ClientServiceDeleteMachineRecordsProcedure:
+			clientServiceDeleteMachineRecordsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -999,6 +1024,10 @@ func (UnimplementedClientServiceHandler) PutSecurityState(context.Context, *conn
 
 func (UnimplementedClientServiceHandler) GetSecurityStates(context.Context, *connect.Request[v1.GetSecurityStatesRequest]) (*connect.Response[v1.GetSecurityStatesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.GetSecurityStates is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) DeleteMachineRecords(context.Context, *connect.Request[v1.DeleteMachineRecordsRequest]) (*connect.Response[v1.DeleteMachineRecordsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.DeleteMachineRecords is not implemented"))
 }
 
 // MachineServiceClient is a client for the remoteagent.v1.MachineService service.

@@ -54,7 +54,7 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
             Base64.getDecoder().decode(o["x"]!!.jsonPrimitive.content),
             states,
             proofs,
-        )
+        ).installed(emptyList(),emptyList(),HeadLease.parse(Base64.getDecoder().decode(o["lease"]!!.jsonPrimitive.content)))
     }
 
     /** Adds a member to the fixture's chain and returns its record and the new state. */
@@ -151,7 +151,11 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
 }
 
 class TestSecurityStore(initial: DeviceSecurity.Record) : DeviceSecurity.Storage {
-    private var record = initial
+    private var operation:SecurityOperation?=null
+    override fun readSecurityOperation()=operation
+    override fun writeSecurityOperation(operation:SecurityOperation){this.operation=operation}
+    override fun clearSecurityOperation(){operation=null}
+    private var record = initial.let{r -> if(r.lease==null && r.head.core.authorityID==deviceId(SigningKey(ByteArray(32){0x11}).publicKey)) r.installed(emptyList(),emptyList(),HeadLease.sign(r.head,SigningKey(ByteArray(32){0x11}),r.head.core.issuedAt.toLong())) else r }
 
     @Synchronized override fun readSecurity() = record
 
@@ -165,10 +169,11 @@ class TestSecurityStore(initial: DeviceSecurity.Record) : DeviceSecurity.Storage
         expectedState: ByteArray,
         states: List<DeviceSecurity.State>,
         proofs: List<ByteArray?>,
+        lease: HeadLease?,
     ): DeviceSecurity.Record {
         if (!DeviceSecurity.stateHash(record.head).contentEquals(expectedState))
             throw DeviceSecurity.Failure("stale")
-        record = record.installed(states, proofs)
+        record = record.installed(states, proofs,lease)
         return record
     }
 

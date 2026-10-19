@@ -26,6 +26,7 @@ import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -105,6 +106,39 @@ class RemoteTest {
         withTimeout(10_000) { events(sid).first { it.events.size >= n } }
 
     @Test
+    fun aCurrentCheckpointBootstrapsWithoutReadableHistoricalEvents() =
+        runBlocking<Unit> {
+            val info =
+                Session.newBuilder()
+                    .setId("checkpoint")
+                    .setTitle("current state")
+                    .setLastSeq(900)
+                    .build()
+            val snapshot =
+                io.github.lewin671.remoteagent.proto.LiveSnapshot.newBuilder()
+                    .setSession(info)
+                    .setRunning(true)
+                    .build()
+            daemon.putSession(
+                "checkpoint",
+                info
+                    .toBuilder()
+                    .setCurrentCheckpoint(
+                        com.google.protobuf.ByteString.copyFrom(snapshot.toByteArray()),
+                    )
+                    .build(),
+            )
+            val r = client()
+            r.start()
+            val state =
+                r.awaitState("current checkpoint") {
+                    it.sessions["checkpoint"]?.checkpointStatus == "ready"
+                }
+            assertEquals(900L, state.sessions["checkpoint"]!!.checkpoint!!.session.lastSeq)
+            assertTrue(state.sessions["checkpoint"]!!.checkpoint!!.running)
+        }
+
+    @Test
     fun currentEnvelopesContributeToVerifiedEvents() =
         runBlocking<Unit> {
             val r = client()
@@ -154,7 +188,87 @@ class RemoteTest {
         }
 
     @Test
-    fun preparedRecoveryRebuildsAfterRenewal() =
+    fun ordinaryPhoneHandoffUsesTheSavedOfferAndKeepsHistory() =
+        runBlocking<Unit> {
+            val incoming = approvedClient(daemon.phone, http)
+            val old = fixtureRemote(daemon.phone, http)
+            val next = fixtureRemote(incoming, http)
+            closers += AutoCloseable { old.close() }
+            closers += AutoCloseable { next.close() }
+            old.start()
+            next.start()
+            old.awaitState("old phone ready") {
+                it.conn == ConnState.ONLINE && it.devices[incoming.deviceId] != null
+            }
+            next.awaitState("new phone ready") {
+                it.conn == ConnState.ONLINE && it.devices[incoming.deviceId] != null
+            }
+            val (code, pub) = next.prepareHandoffCode()
+            assertArrayEquals(pub, SigningKey(RecoveryCode.decode(code)!!.seed).publicKey)
+            // This call is triggered only by the UI's explicit offline-backup confirmation.
+            next.offerHandoff(pub)
+            old.refreshDevices()
+            val epoch = old.security.head().core.contentEpoch
+            val historical = old.security.contentKey(epoch)!!
+            old.handoffAuthority(incoming.deviceId)
+            next.syncSecurity()
+            next.renewLeaseNow()
+            next.awaitState("new authority") {
+                it.authorityPhone && it.leaseEndMs > System.currentTimeMillis()
+            }
+            val head = next.security.head()
+            assertNull(head.core.member(daemon.phone.deviceId))
+            assertArrayEquals(pub, head.core.recoveryEd)
+            assertEquals(60, head.prevSecret.size)
+            assertArrayEquals(historical, next.security.contentKey(epoch))
+            assertEquals(epoch + 1uL, head.core.contentEpoch)
+        }
+
+    @Test
+    fun lostSecurityPublicationReplyResumesWithoutACompetingSuccessor() =
+        runBlocking<Unit> {
+            val victim = approvedClient(daemon.phone, http)
+            val drop = java.util.concurrent.atomic.AtomicBoolean(false)
+            val flaky =
+                http
+                    .newBuilder()
+                    .retryOnConnectionFailure(false)
+                    .addInterceptor { chain ->
+                        val response = chain.proceed(chain.request())
+                        if (
+                            chain.request().url.encodedPath.endsWith("/PutSecurityState") &&
+                                response.isSuccessful &&
+                                drop.compareAndSet(true, false)
+                        ) {
+                            response.close()
+                            throw java.io.IOException("synthetic lost acknowledgement")
+                        }
+                        response
+                    }
+                    .build()
+            val r = fixtureRemote(daemon.phone, flaky)
+            closers += AutoCloseable { r.close() }
+            r.start()
+            r.awaitState("online") { it.conn == ConnState.ONLINE }
+            val parent = r.security.head().core.epoch
+            drop.set(true)
+            runCatching { r.removeDevice(victim.deviceId) }
+            val store = TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId)
+            assertTrue(store.readSecurityOperation() != null)
+            val exact = store.readSecurityOperation()!!.signed.copyOf()
+            r.resumeSecurityOperation()
+            assertNull(store.readSecurityOperation())
+            assertEquals(parent + 1uL, r.security.head().core.epoch)
+            val request =
+                io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.parseFrom(exact)
+            assertArrayEquals(
+                request.statesList.last().state.toByteArray(),
+                DeviceSecurity.stateBytes(r.security.head()),
+            )
+        }
+
+    @Test
+    fun independentRenewalLeavesPreparedRecoveryUnchanged() =
         runBlocking<Unit> {
             val r = fixtureRemote(daemon.phone, http)
             closers += AutoCloseable { r.close() }
@@ -163,19 +277,26 @@ class RemoteTest {
             val prepared = r.prepareRecovery()
             val head = r.security.head()
             val renewed =
-                Authority.renewal(
+                HeadLease.sign(
                     head,
-                    r.security.contentKey(head.core.contentEpoch)!!,
                     SigningKey(daemon.phone.deviceSeed),
                     System.currentTimeMillis(),
                 )
-            r.publishSecurityStates(listOf(renewed))
+            r.api.client
+                .putSecurityState(
+                    io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
+                        .setLease(com.google.protobuf.ByteString.copyFrom(renewed.bytes()))
+                        .build(),
+                    Api.headers(r.currentToken()),
+                )
+                .value()
+            r.security.install(emptyList(), lease = renewed)
             r.publishRecovery(prepared)
             assertArrayEquals(
                 RecoveryCode.decode(prepared.code)!!.seed.let { SigningKey(it).publicKey },
                 r.security.head().core.recoveryEd,
             )
-            assertEquals(renewed.core.epoch + 1uL, r.security.head().core.epoch)
+            assertEquals(head.core.epoch + 1uL, r.security.head().core.epoch)
         }
 
     @Test
@@ -234,16 +355,15 @@ class RemoteTest {
                 FakeDaemon.defaultResult(c)
             }
             val attempt = Attempt()
-            val prepared =
-                attempt.next {
-                    r.prepare(
-                        daemon.id,
-                        "s1",
-                        Command.newBuilder()
-                            .setSend(SendRequest.newBuilder().setSessionId("s1").setText("test"))
-                            .build(),
-                    )
-                }
+            val prepared = attempt.next {
+                r.prepare(
+                    daemon.id,
+                    "s1",
+                    Command.newBuilder()
+                        .setSend(SendRequest.newBuilder().setSessionId("s1").setText("test"))
+                        .build(),
+                )
+            }
             val sending = launch {
                 try {
                     r.forward(prepared)
@@ -282,7 +402,7 @@ class RemoteTest {
                     val ready =
                         io.github.lewin671.remoteagent.proto.ServerFrame.newBuilder()
                             .setReady(
-                                io.github.lewin671.remoteagent.proto.Ready.getDefaultInstance()
+                                io.github.lewin671.remoteagent.proto.Ready.getDefaultInstance(),
                             )
                             .build()
                             .toByteArray()
@@ -306,12 +426,23 @@ class RemoteTest {
                                 .request()
                                 .newBuilder()
                                 .url(server.url + chain.request().url.encodedPath)
-                                .build()
+                                .build(),
                         )
                     }
                     .build()
             val r =
-                fixtureRemote(Account(hole.url, acct.root, acct.deviceSeed, acct.deviceId), routed)
+                Remote(
+                    Account(
+                        hole.url,
+                        acct.root,
+                        acct.deviceSeed,
+                        acct.deviceId,
+                        acct.accountId,
+                        acct.accountPublicKey,
+                    ),
+                    routed,
+                    securityStorage = TestSecurity.get(server.url).stores.getValue(acct.deviceId),
+                )
             closers += AutoCloseable { r.close() }
             try {
                 r.start()
@@ -491,7 +622,7 @@ class RemoteTest {
                             SendRequest.newBuilder()
                                 .setSessionId("s1")
                                 .setText("跑一下测试")
-                                .setRequestId("q1")
+                                .setRequestId("q1"),
                         )
                         .build(),
                 )
@@ -510,7 +641,7 @@ class RemoteTest {
                     Command.newBuilder()
                         .setCompact(
                             io.github.lewin671.remoteagent.proto.CompactRequest.newBuilder()
-                                .setSessionId("s1")
+                                .setSessionId("s1"),
                         )
                         .build(),
                 )
@@ -527,7 +658,7 @@ class RemoteTest {
                     Command.newBuilder()
                         .setInterrupt(
                             io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                                .setSessionId("s1")
+                                .setSessionId("s1"),
                         )
                         .build(),
                 )
@@ -555,7 +686,7 @@ class RemoteTest {
                 Command.newBuilder()
                     .setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1")
+                            .setSessionId("s1"),
                     )
                     .build(),
             )
@@ -612,12 +743,12 @@ class RemoteTest {
             conn.send(
                 TerminalFrame.newBuilder()
                     .setInput(com.google.protobuf.ByteString.copyFromUtf8("中文\r"))
-                    .build()
+                    .build(),
             )
             conn.send(
                 TerminalFrame.newBuilder()
                     .setInput(com.google.protobuf.ByteString.copyFromUtf8("\u001b[A"))
-                    .build()
+                    .build(),
             )
             assertEquals("中文\r", daemon.termInput.poll(5, TimeUnit.SECONDS)!!.input.toStringUtf8())
             assertEquals(
@@ -993,7 +1124,7 @@ class RemoteTest {
                 Command.newBuilder()
                     .setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1")
+                            .setSessionId("s1"),
                     )
                     .build()
             val first = a.next { r.prepare(daemon.id, "s1", cmd) }
@@ -1027,7 +1158,7 @@ class RemoteTest {
                 Command.newBuilder()
                     .setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1")
+                            .setSessionId("s1"),
                     )
                     .build()
             try {
@@ -1048,7 +1179,7 @@ class RemoteTest {
                 Command.newBuilder()
                     .setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1")
+                            .setSessionId("s1"),
                     )
                     .build()
             val p = r.prepare(daemon.id, "s1", cmd)
@@ -1079,7 +1210,7 @@ class RemoteTest {
                 Command.newBuilder()
                     .setInterrupt(
                         io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1")
+                            .setSessionId("s1"),
                     )
                     .build()
             val first = a.next { r.prepare(daemon.id, "s1", cmd) }
@@ -1182,7 +1313,7 @@ class RemoteTest {
                     .setEnvelope(
                         e.envelope
                             .toBuilder()
-                            .setCiphertext(com.google.protobuf.ByteString.copyFrom(bad))
+                            .setCiphertext(com.google.protobuf.ByteString.copyFrom(bad)),
                     )
                     .build()
             }
@@ -1256,7 +1387,7 @@ class RemoteTest {
             val got = r.image("s1", "00000000000000000000000000000001")
             assertTrue(got is Remote.ImageResult.Loaded)
             assertTrue(
-                (got as Remote.ImageResult.Loaded).payload.data.toByteArray().contentEquals(png)
+                (got as Remote.ImageResult.Loaded).payload.data.toByteArray().contentEquals(png),
             )
             val legacyID = "00000000000000000000000000000003"
             val legacy =
@@ -1264,7 +1395,7 @@ class RemoteTest {
                     daemon.sessionKeys.getValue("s1"),
                     io.github.lewin671.remoteagent.proto.Header.newBuilder()
                         .setKind(
-                            io.github.lewin671.remoteagent.proto.PayloadKind.PAYLOAD_KIND_IMAGE
+                            io.github.lewin671.remoteagent.proto.PayloadKind.PAYLOAD_KIND_IMAGE,
                         )
                         .setMachineId(daemon.id)
                         .setSessionId("s1")
@@ -1278,7 +1409,7 @@ class RemoteTest {
             // What the cache holds is the sealed envelope, not the picture.
             val stored = cache.images.getValue("s1/00000000000000000000000000000001")
             assertFalse(
-                String(stored, Charsets.ISO_8859_1).contains(String(png, Charsets.ISO_8859_1))
+                String(stored, Charsets.ISO_8859_1).contains(String(png, Charsets.ISO_8859_1)),
             )
             assertEquals(
                 Remote.ImageResult.Missing,
@@ -1294,7 +1425,7 @@ class RemoteTest {
                     .build(),
             )
             assertTrue(
-                r.image("s1", "00000000000000000000000000000002") is Remote.ImageResult.Corrupt
+                r.image("s1", "00000000000000000000000000000002") is Remote.ImageResult.Corrupt,
             )
         }
 

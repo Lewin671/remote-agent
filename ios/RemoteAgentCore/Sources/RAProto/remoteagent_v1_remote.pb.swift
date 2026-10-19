@@ -1105,6 +1105,8 @@ public struct PBPairingPayload: Sendable {
   /// device does not receive the account root.
   public var accountPublicKey: Data = Data()
 
+  public var lease: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1216,6 +1218,10 @@ public struct PBDeviceMeta: Sendable {
 
   /// What the device says it runs on, e.g. "Chrome 140 on macOS".
   public var description_p: String = String()
+
+  /// Android replacement phone's self-signed offer. Set only after the user
+  /// confirms the corresponding emergency code has been saved offline.
+  public var handoffRecoveryEd: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3088,7 +3094,7 @@ extension PBTerminalResize: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PairingPayload"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\u{2}server\0\u{1}approval\0\u{3}approval_signature\0\u{3}security_states\0\u{3}account_public_key\0\u{b}root\0\u{c}\u{1}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\u{2}server\0\u{1}approval\0\u{3}approval_signature\0\u{3}security_states\0\u{3}account_public_key\0\u{1}lease\0\u{b}root\0\u{c}\u{1}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3101,6 +3107,7 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       case 4: try { try decoder.decodeSingularBytesField(value: &self.approvalSignature) }()
       case 5: try { try decoder.decodeRepeatedMessageField(value: &self.securityStates) }()
       case 6: try { try decoder.decodeSingularBytesField(value: &self.accountPublicKey) }()
+      case 7: try { try decoder.decodeSingularBytesField(value: &self.lease) }()
       default: break
       }
     }
@@ -3122,6 +3129,9 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if !self.accountPublicKey.isEmpty {
       try visitor.visitSingularBytesField(value: self.accountPublicKey, fieldNumber: 6)
     }
+    if !self.lease.isEmpty {
+      try visitor.visitSingularBytesField(value: self.lease, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3131,6 +3141,7 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if lhs.approvalSignature != rhs.approvalSignature {return false}
     if lhs.securityStates != rhs.securityStates {return false}
     if lhs.accountPublicKey != rhs.accountPublicKey {return false}
+    if lhs.lease != rhs.lease {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3307,7 +3318,7 @@ extension PBImagePayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
 extension PBDeviceMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DeviceMeta"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}platform\0\u{1}description\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}platform\0\u{1}description\0\u{3}handoff_recovery_ed\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3318,6 +3329,7 @@ extension PBDeviceMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
       case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.platform) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.handoffRecoveryEd) }()
       default: break
       }
     }
@@ -3333,6 +3345,9 @@ extension PBDeviceMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     if !self.description_p.isEmpty {
       try visitor.visitSingularStringField(value: self.description_p, fieldNumber: 3)
     }
+    if !self.handoffRecoveryEd.isEmpty {
+      try visitor.visitSingularBytesField(value: self.handoffRecoveryEd, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3340,6 +3355,7 @@ extension PBDeviceMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     if lhs.name != rhs.name {return false}
     if lhs.platform != rhs.platform {return false}
     if lhs.description_p != rhs.description_p {return false}
+    if lhs.handoffRecoveryEd != rhs.handoffRecoveryEd {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

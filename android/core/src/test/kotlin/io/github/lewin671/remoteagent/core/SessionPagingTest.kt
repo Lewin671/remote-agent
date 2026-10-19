@@ -264,7 +264,7 @@ class SessionPagingTest {
         }
 
     @Test
-    fun afterAReconnectASessionOfAMachineThatIsGoneGoes() =
+    fun afterExplicitArchiveDeletionAComputerAndItsSessionsGo() =
         runBlocking<Unit> {
             val other =
                 FakeDaemon(
@@ -312,6 +312,8 @@ class SessionPagingTest {
             }
             admin.refreshDevices()
             removeAsAuthority(daemon.phone, other.id, http)
+            val api=Api(server.url,http)
+            api.client.deleteMachineRecords(io.github.lewin671.remoteagent.proto.DeleteMachineRecordsRequest.newBuilder().setMachineId(other.id).build(),Api.headers(login(api,daemon.phone))).value()
             r.start()
             val st =
                 r.awaitState("the machine gone") {

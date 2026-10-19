@@ -194,12 +194,13 @@ func syntheticTerminalSecurity(t *testing.T) (*Client, *deviceauth.Endpoint, str
 	}
 	states := []deviceauth.State{genesis, withMachine, withClient}
 	proofs := []*deviceauth.RecoveryStatement{nil, nil, nil}
-	machineEndpoint, err := deviceauth.InitEndpoint("", pin, states, proofs, mm.ID, med.Seed(), mx)
+	lease, _ := deviceauth.BuildLease(withClient, phoneEd, withClient.Core.IssuedAt)
+	machineEndpoint, err := deviceauth.InitEndpoint("", pin, states, proofs, mm.ID, med.Seed(), mx, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { machineEndpoint.Close() })
-	clientEndpoint, err := deviceauth.InitEndpoint("", pin, states, proofs, cm.ID, ced.Seed(), cx)
+	clientEndpoint, err := deviceauth.InitEndpoint("", pin, states, proofs, cm.ID, ced.Seed(), cx, lease)
 	if err != nil {
 		t.Fatal(err)
 	}

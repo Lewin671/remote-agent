@@ -32,6 +32,7 @@ public  final class Session extends
     inputWait_ = "";
     permissionMode_ = "";
     forkedFrom_ = "";
+    currentCheckpoint_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
@@ -1636,6 +1637,51 @@ public  final class Session extends
   private void clearForkedSeq() {
 
     forkedSeq_ = 0L;
+  }
+
+  public static final int CURRENT_CHECKPOINT_FIELD_NUMBER = 33;
+  private com.google.protobuf.ByteString currentCheckpoint_;
+  /**
+   * <pre>
+   * Durable current owner checkpoint (serialized LiveSnapshot), encrypted in
+   * SESSION_META for the current content epoch. No history prefix is needed.
+   * Stored checkpoints do not attest freshness for an actionable command.
+   * </pre>
+   *
+   * <code>bytes current_checkpoint = 33 [json_name = "currentCheckpoint"];</code>
+   * @return The currentCheckpoint.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getCurrentCheckpoint() {
+    return currentCheckpoint_;
+  }
+  /**
+   * <pre>
+   * Durable current owner checkpoint (serialized LiveSnapshot), encrypted in
+   * SESSION_META for the current content epoch. No history prefix is needed.
+   * Stored checkpoints do not attest freshness for an actionable command.
+   * </pre>
+   *
+   * <code>bytes current_checkpoint = 33 [json_name = "currentCheckpoint"];</code>
+   * @param value The currentCheckpoint to set.
+   */
+  private void setCurrentCheckpoint(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    currentCheckpoint_ = value;
+  }
+  /**
+   * <pre>
+   * Durable current owner checkpoint (serialized LiveSnapshot), encrypted in
+   * SESSION_META for the current content epoch. No history prefix is needed.
+   * Stored checkpoints do not attest freshness for an actionable command.
+   * </pre>
+   *
+   * <code>bytes current_checkpoint = 33 [json_name = "currentCheckpoint"];</code>
+   */
+  private void clearCurrentCheckpoint() {
+
+    currentCheckpoint_ = getDefaultInstance().getCurrentCheckpoint();
   }
 
   public static io.github.lewin671.remoteagent.proto.Session parseFrom(
@@ -3391,6 +3437,52 @@ public  final class Session extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Durable current owner checkpoint (serialized LiveSnapshot), encrypted in
+     * SESSION_META for the current content epoch. No history prefix is needed.
+     * Stored checkpoints do not attest freshness for an actionable command.
+     * </pre>
+     *
+     * <code>bytes current_checkpoint = 33 [json_name = "currentCheckpoint"];</code>
+     * @return The currentCheckpoint.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getCurrentCheckpoint() {
+      return instance.getCurrentCheckpoint();
+    }
+    /**
+     * <pre>
+     * Durable current owner checkpoint (serialized LiveSnapshot), encrypted in
+     * SESSION_META for the current content epoch. No history prefix is needed.
+     * Stored checkpoints do not attest freshness for an actionable command.
+     * </pre>
+     *
+     * <code>bytes current_checkpoint = 33 [json_name = "currentCheckpoint"];</code>
+     * @param value The currentCheckpoint to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCurrentCheckpoint(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setCurrentCheckpoint(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Durable current owner checkpoint (serialized LiveSnapshot), encrypted in
+     * SESSION_META for the current content epoch. No history prefix is needed.
+     * Stored checkpoints do not attest freshness for an actionable command.
+     * </pre>
+     *
+     * <code>bytes current_checkpoint = 33 [json_name = "currentCheckpoint"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCurrentCheckpoint() {
+      copyOnWrite();
+      instance.clearCurrentCheckpoint();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Session)
   }
   @java.lang.Override
@@ -3440,14 +3532,15 @@ public  final class Session extends
             "endedAt_",
             "forkedFrom_",
             "forkedSeq_",
+            "currentCheckpoint_",
           };
           java.lang.String info =
-              "\u0000 \u0000\u0001\u0001  \u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0000!\u0000\u0001\u0001!!\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
               "\u0004\f\u0005\u0208\u0006\u0208\u0007\u0208\b\u1009\u0000\t\u0003\n\u0208\u000b" +
               "\u0208\f\u0004\r\u0004\u000e\u0004\u000f\u0208\u0010\u0208\u0011\u0208\u0012\u0208" +
               "\u0013\u0208\u0014\u0208\u0015\u0002\u0016\u0002\u0017\u0007\u0018\u0208\u0019\f" +
               "\u001a\f\u001b\u0208\u001c\u0007\u001d\u1009\u0001\u001e\u1009\u0002\u001f\u0208" +
-              " \u0003";
+              " \u0003!\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

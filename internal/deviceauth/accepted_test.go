@@ -67,7 +67,7 @@ func (c *currentChain) proofs() []*RecoveryStatement {
 
 func (c *currentChain) machineEndpoint(t *testing.T, path string) *Endpoint {
 	t.Helper()
-	ep, err := InitEndpoint(path, c.pin, c.states(), c.proofs(), c.machine.ID, c.machineEd.Seed(), c.machineX)
+	ep, err := initTestEndpoint(path, c.pin, c.states(), c.proofs(), c.machine.ID, c.machineEd.Seed(), c.machineX)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func (c *currentChain) machineEndpoint(t *testing.T, path string) *Endpoint {
 
 func (c *currentChain) phoneEndpoint(t *testing.T) *Endpoint {
 	t.Helper()
-	ep, err := InitEndpoint("", c.pin, []State{c.genesis}, []*RecoveryStatement{nil}, c.genesis.Core.AuthorityID, c.phoneEd.Seed(), c.phoneX)
+	ep, err := initTestEndpoint("", c.pin, []State{c.genesis}, []*RecoveryStatement{nil}, c.genesis.Core.AuthorityID, c.phoneEd.Seed(), c.phoneX)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func (c *currentChain) phoneEndpoint(t *testing.T) *Endpoint {
 
 func (c *currentChain) clientEndpoint(t *testing.T) *Endpoint {
 	t.Helper()
-	ep, err := InitEndpoint("", c.pin, c.states(), c.proofs(), c.client.ID, c.clientEd.Seed(), c.clientX)
+	ep, err := initTestEndpoint("", c.pin, c.states(), c.proofs(), c.client.ID, c.clientEd.Seed(), c.clientX)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,6 +236,11 @@ func TestAcceptedRequestSurvivesAContentEpochChange(t *testing.T) {
 	}
 	if out, err := machine.Accept(w, nil, now, fn); err != nil || string(out) != "ok" || calls != 1 {
 		t.Fatalf("re-sealed retry after epoch change: %q %v calls=%d", out, err, calls)
+	}
+	// A new epoch requires its own independently signed head lease.
+	lease, _ := BuildLease(next, c.phoneEd, next.Core.IssuedAt)
+	if err := machine.InstallLease(lease, now); err != nil {
+		t.Fatal(err)
 	}
 	// A different request in the new epoch still runs.
 	h.Request = "fedcba9876543210"
@@ -408,7 +413,7 @@ func TestRecoveryKeepsEveryDerivableContentKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	machineEp, err := InitEndpoint("", pin, []State{genesis, added, withClient}, []*RecoveryStatement{nil, nil, nil}, machine.ID, machineEd.Seed(), machineX)
+	machineEp, err := initTestEndpoint("", pin, []State{genesis, added, withClient}, []*RecoveryStatement{nil, nil, nil}, machine.ID, machineEd.Seed(), machineX)
 	if err != nil {
 		t.Fatal(err)
 	}

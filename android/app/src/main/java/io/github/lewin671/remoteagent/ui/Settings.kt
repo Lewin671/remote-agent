@@ -306,9 +306,9 @@ fun SettingsScreen() {
                                 if (state.authorityPhone) "管理端手机 · 本机" else "管理端手机 · 另一台手机",
                                 if (state.authorityPhone)
                                     "恢复与续期" + (if (state.leaseEndMs > 0) " · 有效期至 " + io.github.lewin671.remoteagent.core.dayText(state.leaseEndMs, t) else "")
-                                else "添加、删除和恢复在手机 App 上",
-                                onClick = if (state.authorityPhone) ({ nav.recovery() }) else null,
-                                chevron = state.authorityPhone,
+                                else "换手机：在本机准备交接",
+                                onClick = { nav.recovery() },
+                                chevron = true,
                             )
                         },
                         {
@@ -770,6 +770,7 @@ fun DeviceScreen(id: String) {
                         },
                 )
             }
+            DeleteMachineRecordsAction(id,state.authorityPhone)
             if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用")
             else
                 Group(
@@ -789,7 +790,7 @@ fun DeviceScreen(id: String) {
                 )
             Text(
                 if (state.authorityPhone)
-                    "移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。"
+                    "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"
                 else "删除设备要在管理端手机上操作。",
                 style = T.sm,
                 color = p.muted,

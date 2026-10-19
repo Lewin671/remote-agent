@@ -44,6 +44,7 @@ type request struct {
 	State       []byte
 }
 type record struct {
+	Lease   []byte   `json:"lease"`
 	Version int      `json:"version"`
 	Account string   `json:"account"`
 	Domain  []byte   `json:"domain"`
@@ -54,6 +55,7 @@ type record struct {
 	Proofs  [][]byte `json:"proofs"`
 }
 type response struct {
+	Lease    []byte          `json:",omitempty"`
 	Record   json.RawMessage `json:",omitempty"`
 	Genesis  []byte          `json:",omitempty"`
 	State    []byte          `json:",omitempty"`
@@ -106,6 +108,8 @@ func (f *fixture) recordFor(id string) (*record, error) {
 		}
 		r.Proofs = append(r.Proofs, raw)
 	}
+	l, _ := deviceauth.BuildLease(f.states[len(f.states)-1], f.phoneEd, f.states[len(f.states)-1].Core.IssuedAt)
+	r.Lease, _ = l.MarshalBinary()
 	return r, nil
 }
 
@@ -147,7 +151,8 @@ func (f *fixture) refreshEndpoints() error {
 		if _, ok := current.Core.Member(id); !ok {
 			continue
 		}
-		ep, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, id, m.ed.Seed(), m.x)
+		l, _ := deviceauth.BuildLease(current, f.phoneEd, current.Core.IssuedAt)
+		ep, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, id, m.ed.Seed(), m.x, l)
 		if err != nil {
 			return err
 		}
@@ -196,7 +201,8 @@ func (f *fixture) run(q request) (response, error) {
 		}
 		f.states = []deviceauth.State{g}
 		f.proofs = []*deviceauth.RecoveryStatement{nil}
-		endpoint, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, m.ID, f.phoneEd.Seed(), x)
+		l, _ := deviceauth.BuildLease(f.states[len(f.states)-1], f.phoneEd, f.states[len(f.states)-1].Core.IssuedAt)
+		endpoint, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, m.ID, f.phoneEd.Seed(), x, l)
 		if err != nil {
 			return response{}, err
 		}
@@ -337,18 +343,26 @@ func (f *fixture) run(q request) (response, error) {
 				}
 			}
 		}
-		endpoint, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, candidate.ID, ed.Seed(), x)
+		l, _ := deviceauth.BuildLease(state, ed, state.Core.IssuedAt)
+		endpoint, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, candidate.ID, ed.Seed(), x, l)
 		if err != nil {
 			return response{}, err
 		}
 		f.members[candidate.ID] = &member{ed: ed, x: x, endpoint: endpoint}
 		f.phoneEd = ed
+		for _, m := range f.members {
+			if m.endpoint != nil {
+				_ = m.endpoint.InstallLease(l, nowMs())
+			}
+		}
 		f.recovery = nextRecovery
 		record, err := f.recordFor(candidate.ID)
 		raw, _ := json.Marshal(record)
 		return response{Record: raw}, err
 	case "chain":
-		r := response{}
+		l, _ := deviceauth.BuildLease(f.states[len(f.states)-1], f.phoneEd, f.states[len(f.states)-1].Core.IssuedAt)
+		lr, _ := l.MarshalBinary()
+		r := response{Lease: lr}
 		for _, s := range f.states {
 			raw, err := s.MarshalBinary()
 			if err != nil {

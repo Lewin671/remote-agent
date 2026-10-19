@@ -113,7 +113,7 @@ final class TestServer: @unchecked Sendable {
         let p = Process()
         p.executableURL = bin
         p.arguments = [
-            "-listen", "127.0.0.1:\(port)", "-db", dbDir.appendingPathComponent("ra.db").path,
+            "-min-free-bytes", "0", "-listen", "127.0.0.1:\(port)", "-db", dbDir.appendingPathComponent("ra.db").path,
         ]
         var env = ProcessInfo.processInfo.environment
         env["RA_SETUP_TOKEN"] = setupToken

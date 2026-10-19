@@ -34,6 +34,7 @@ type Authority struct {
 	Pin              deviceauth.Pin
 	States           []deviceauth.State
 	Proofs           []*deviceauth.RecoveryStatement
+	Lease            deviceauth.LeaseCertificate
 	Secret           []byte
 	Token            string
 
@@ -114,11 +115,19 @@ func NewAuthority(ctx context.Context, server, setupToken string) (*Authority, e
 	if _, err := api.PinSecurityDomain(ctx, connect.NewRequest(&pb.PinSecurityDomainRequest{GenesisState: raw})); err != nil {
 		return nil, err
 	}
+	lease, err := deviceauth.BuildLease(genesis, phoneEd, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		return nil, err
+	}
+	lr, _ := lease.MarshalBinary()
+	if _, err := api.PutSecurityState(ctx, connect.NewRequest(&pb.PutSecurityStateRequest{Lease: lr})); err != nil {
+		return nil, err
+	}
 	return &Authority{
 		Server: server, Root: root, AccountPublicKey: keys.AccountPublicKey(),
 		Ed: phoneEd, X: phoneX, Member: phone, Recovery: recovery, Pin: pin,
 		States: []deviceauth.State{genesis}, Proofs: []*deviceauth.RecoveryStatement{nil},
-		Secret: secret, Token: token, api: api, auth: auth,
+		Lease: lease, Secret: secret, Token: token, api: api, auth: auth,
 	}, nil
 }
 
@@ -157,7 +166,7 @@ func (a *Authority) Enroll(ctx context.Context, ed ed25519.PrivateKey, x []byte,
 	if err != nil {
 		return nil, err
 	}
-	endpoint, err := deviceauth.InitEndpoint("", a.Pin, a.States, a.Proofs, member.ID, ed.Seed(), x)
+	endpoint, err := deviceauth.InitEndpoint("", a.Pin, a.States, a.Proofs, member.ID, ed.Seed(), x, a.Lease)
 	if err != nil {
 		return nil, err
 	}
@@ -175,12 +184,18 @@ func (a *Authority) addMember(ctx context.Context, member deviceauth.Member, xpu
 		return deviceauth.State{}, err
 	}
 	raw, _ := state.MarshalBinary()
-	if _, err := a.api.PutSecurityState(ctx, connect.NewRequest(&pb.PutSecurityStateRequest{States: []*pb.SecurityState{{State: raw}}})); err != nil {
+	lease, err := deviceauth.BuildLease(state, a.Ed, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		return deviceauth.State{}, err
+	}
+	lr, _ := lease.MarshalBinary()
+	if _, err := a.api.PutSecurityState(ctx, connect.NewRequest(&pb.PutSecurityStateRequest{States: []*pb.SecurityState{{State: raw}}, Lease: lr})); err != nil {
 		return deviceauth.State{}, err
 	}
 	a.States = append(a.States, state)
 	a.Proofs = append(a.Proofs, nil)
 	a.Secret = newSecret
+	a.Lease = lease
 	return state, nil
 }
 

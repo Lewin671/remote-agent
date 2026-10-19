@@ -302,7 +302,7 @@ extension Remote {
                 report(error)
             }
         }
-        guard trustedMembers[m.id]?.kind == 1, (machines[m.id]?.metaRev ?? 0) <= view.metaRev else {
+        guard (trustedMembers[m.id]?.kind == 1 || archiveMachines.contains(m.id)), (machines[m.id]?.metaRev ?? 0) <= view.metaRev else {
             return
         }
         machines[m.id] = view
@@ -313,7 +313,7 @@ extension Remote {
     func putSession(_ incoming: PBRemoteSession, save: Bool = true, publish announce: Bool = true)
         async
     {
-        guard trustedMembers[incoming.machineID]?.kind == 1 else { return }
+        guard trustedMembers[incoming.machineID]?.kind == 1 || archiveMachines.contains(incoming.machineID) else { return }
         let rs = incoming
         let sid = rs.sessionID
         let removal = removedPushes[rs.machineID] ?? 0
@@ -331,14 +331,14 @@ extension Remote {
                     }
                     (h, raw) = try Envelopes.open(key: keys.wrap, envelope: rs.key)
                 } else {
-                    let opened = try await securitySession().openCurrent(rs.key)
+                    let opened = trustedMembers[rs.machineID] != nil ? try await securitySession().openCurrent(rs.key) : try await securitySession().openHistory(rs.key)
                     h = projection(opened.0)
                     raw = opened.1
                 }
                 try Envelopes.expect(h, Place(.sessionKey, machineId: rs.machineID, sessionId: sid))
                 if raw.count != keySize { throw OpenError("bad session key") }
                 guard (removedPushes[rs.machineID] ?? 0) == removal,
-                    trustedMembers[rs.machineID]?.kind == 1
+                    (trustedMembers[rs.machineID]?.kind == 1 || archiveMachines.contains(rs.machineID))
                 else { return }
                 sessionKeys[sid] = raw
                 view = SessionView(id: sid, machineId: rs.machineID)
@@ -357,13 +357,18 @@ extension Remote {
                 if h.seq >= view.metaRev {
                     // The server stores when it ended with the metadata.
                     view.info = info
+                    if !info.currentCheckpoint.isEmpty {
+                        let cp=try PBLiveSnapshot(serializedBytes:info.currentCheckpoint)
+                        guard cp.session.id == sid, cp.session.lastSeq <= info.lastSeq, cp.actions.allSatisfy({$0.sessionID==sid && $0.seq<=info.lastSeq}) else {throw DeviceSecurity.Failure.invalid}
+                        view.checkpoint=cp;view.checkpointStatus="ready"
+                    } else {view.checkpointStatus="waiting"}
                     view.metaRev = h.seq
                     view.listedEndedMs = rs.endedMs
                     store = true
                 }
             }
             guard (removedPushes[rs.machineID] ?? 0) == removal,
-                trustedMembers[rs.machineID]?.kind == 1,
+                (trustedMembers[rs.machineID]?.kind == 1 || archiveMachines.contains(rs.machineID)),
                 (sessions[sid]?.metaRev ?? 0) <= view.metaRev
             else { return }
             sessions[sid] = view

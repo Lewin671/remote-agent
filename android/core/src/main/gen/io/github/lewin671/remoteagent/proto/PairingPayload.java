@@ -24,6 +24,7 @@ public  final class PairingPayload extends
     approvalSignature_ = com.google.protobuf.ByteString.EMPTY;
     securityStates_ = emptyProtobufList();
     accountPublicKey_ = com.google.protobuf.ByteString.EMPTY;
+    lease_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int SERVER_FIELD_NUMBER = 2;
   private java.lang.String server_;
@@ -319,6 +320,33 @@ public  final class PairingPayload extends
   private void clearAccountPublicKey() {
 
     accountPublicKey_ = getDefaultInstance().getAccountPublicKey();
+  }
+
+  public static final int LEASE_FIELD_NUMBER = 7;
+  private com.google.protobuf.ByteString lease_;
+  /**
+   * <code>bytes lease = 7 [json_name = "lease"];</code>
+   * @return The lease.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getLease() {
+    return lease_;
+  }
+  /**
+   * <code>bytes lease = 7 [json_name = "lease"];</code>
+   * @param value The lease to set.
+   */
+  private void setLease(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    lease_ = value;
+  }
+  /**
+   * <code>bytes lease = 7 [json_name = "lease"];</code>
+   */
+  private void clearLease() {
+
+    lease_ = getDefaultInstance().getLease();
   }
 
   public static io.github.lewin671.remoteagent.proto.PairingPayload parseFrom(
@@ -732,6 +760,34 @@ public  final class PairingPayload extends
       return this;
     }
 
+    /**
+     * <code>bytes lease = 7 [json_name = "lease"];</code>
+     * @return The lease.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getLease() {
+      return instance.getLease();
+    }
+    /**
+     * <code>bytes lease = 7 [json_name = "lease"];</code>
+     * @param value The lease to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLease(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setLease(value);
+      return this;
+    }
+    /**
+     * <code>bytes lease = 7 [json_name = "lease"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLease() {
+      copyOnWrite();
+      instance.clearLease();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.PairingPayload)
   }
   @java.lang.Override
@@ -754,10 +810,11 @@ public  final class PairingPayload extends
             "securityStates_",
             io.github.lewin671.remoteagent.proto.SecurityState.class,
             "accountPublicKey_",
+            "lease_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0002\u0006\u0005\u0000\u0001\u0000\u0002\u0208\u0003\n" +
-              "\u0004\n\u0005\u001b\u0006\n";
+              "\u0000\u0006\u0000\u0000\u0002\u0007\u0006\u0000\u0001\u0000\u0002\u0208\u0003\n" +
+              "\u0004\n\u0005\u001b\u0006\n\u0007\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

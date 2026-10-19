@@ -28,7 +28,7 @@ const (
 
 	// Lease is the membership lease; MaxLease is the largest accepted lease.
 	Lease    = 72 * 60 * 60 * 1000
-	MaxLease = 7 * 24 * 60 * 60 * 1000
+	MaxLease = Lease
 
 	// MaxClockSkew is how far ahead of the local clock a state's IssuedAt
 	// may be. A phone far ahead would otherwise keep a lease alive past the

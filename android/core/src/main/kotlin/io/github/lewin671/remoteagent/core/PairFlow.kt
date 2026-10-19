@@ -92,15 +92,14 @@ fun canRetryPairApproval(error: Exception): Boolean {
 /** What a QR code carries: the code, the initiator's commitment and the server. */
 data class PairLink(val code: String, val server: String, val commit: ByteArray? = null) {
     fun url(web: String): String {
-        val q =
-            buildList {
-                    add("code=" + enc(code))
-                    commit?.let {
-                        add("c=" + Base64.getUrlEncoder().withoutPadding().encodeToString(it))
-                    }
-                    add("s=" + enc(server))
-                }
-                .joinToString("&")
+        val q = buildList {
+            add("code=" + enc(code))
+            commit?.let {
+                add("c=" + Base64.getUrlEncoder().withoutPadding().encodeToString(it))
+            }
+            add("s=" + enc(server))
+        }
+            .joinToString("&")
         return web.trimEnd('/') + "/#/pair?" + q
     }
 
@@ -221,109 +220,114 @@ internal constructor(
         val s = secrets ?: throw PairException("还没有设备加入")
         val acct = remote.account
         val tok = remote.currentToken()
-        val request =
-            approvalLock.withLock {
-                approvalRequest
-                    ?: run {
-                            remote.syncSecurity()
-                            val cp = candidateSeed ?: throw PairException("没有候选设备")
-                            val xp = candidateX ?: throw PairException("没有候选设备")
-                            val kind = candidateKind ?: throw PairException("没有候选设备")
-                            val now = System.currentTimeMillis()
-                            val head = remote.security.head()
-                            if (head.core.authorityID != acct.deviceId)
-                                throw PairException("只有管理端手机能批准")
-                            val old =
-                                remote.security.contentKey(head.core.contentEpoch)
-                                    ?: throw PairException("缺少当前内容密钥")
-                            val member =
-                                DeviceSecurity.Member(deviceId(cp), cp, xp, kind.number.toUInt())
-                            val existing = head.core.member(member.id)
-                            if (existing == null && member.id in head.core.removed)
-                                throw PairException("这台设备已被移除，旧身份不能重新加入；请在那台设备上重新加入，以生成新的设备身份")
-                            val next =
-                                if (existing == null)
-                                    Authority.pair(
-                                        head,
-                                        member,
-                                        old,
-                                        Authority.newSecret(),
-                                        SigningKey(acct.deviceSeed),
-                                        now,
-                                    )
-                                else {
-                                    // Re-pairing keeps the Ed25519 identity and replaces X.
-                                    if (
-                                        existing.kind != member.kind ||
-                                            !existing.ed.contentEquals(member.ed)
-                                    )
-                                        throw PairException("这台设备的身份与成员记录不一致，不能重新加入")
-                                    Authority.rotateX(
-                                        head,
-                                        member.id,
-                                        xp,
-                                        old,
-                                        Authority.newSecret(),
-                                        SigningKey(acct.deviceSeed),
-                                        now,
-                                    )
-                                }
-                            if (acct.accountPublicKey.size != 32)
-                                throw PairException("这台手机没有账户公钥，不能给新设备登记；请先用带账户根密钥的设备重新加入")
-                            val chain = remote.security.chain() + next
-                            val proofs = remote.security.chainProofs()
-                            if (chain.size > DeviceSecurity.MAX_PAIR_STATES)
-                                throw PairException("状态链太大，无法配对；请重建账户")
-                            val rawSize =
-                                chain.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
-                                    proofs.values.sumOf { it.size.toLong() }
-                            if (rawSize > DeviceSecurity.MAX_PAIR_CHAIN_BYTES)
-                                throw PairException("状态链太大，无法配对；请重建账户")
-                            remote.publishSecurityStates(listOf(next))
-                            val (approval, signature) =
-                                makePairApproval(acct, pairingId, cp, kind, expires)
-                            val payload =
-                                PairingPayload.newBuilder()
-                                    .setServer(acct.server)
-                                    .setApproval(ByteString.copyFrom(approval))
-                                    .setApprovalSignature(ByteString.copyFrom(signature))
-                                    .addAllSecurityStates(
-                                        chain.map { state ->
-                                            SecurityState.newBuilder()
-                                                .setState(
-                                                    ByteString.copyFrom(
-                                                        DeviceSecurity.stateBytes(state)
-                                                    )
-                                                )
-                                                .apply {
-                                                    proofs[state.core.epoch]?.let {
-                                                        setRecovery(ByteString.copyFrom(it))
-                                                    }
-                                                }
-                                                .build()
-                                        }
-                                    )
-                                    .setAccountPublicKey(ByteString.copyFrom(acct.accountPublicKey))
-                                    .build()
-                            val env =
-                                Envelopes.seal(
-                                    s.key,
-                                    Header.newBuilder()
-                                        .setKind(PayloadKind.PAYLOAD_KIND_PAIRING)
-                                        .setRequestId(pairingId)
-                                        .setSender(acct.deviceId)
-                                        .build(),
-                                    payload,
-                                )
-                            ApprovePairingRequest.newBuilder()
-                                .setPairingId(pairingId)
-                                .setPayload(env)
-                                .setApproval(ByteString.copyFrom(approval))
-                                .setApprovalSignature(ByteString.copyFrom(signature))
-                                .build()
+        val request = approvalLock.withLock {
+            approvalRequest
+                ?: remote.pendingPairingRequest(pairingId)
+                ?: run {
+                    remote.syncSecurity()
+                    val cp = candidateSeed ?: throw PairException("没有候选设备")
+                    val xp = candidateX ?: throw PairException("没有候选设备")
+                    val kind = candidateKind ?: throw PairException("没有候选设备")
+                    val now = System.currentTimeMillis()
+                    val head = remote.security.head()
+                    if (head.core.authorityID != acct.deviceId) throw PairException("只有管理端手机能批准")
+                    val old =
+                        remote.security.contentKey(head.core.contentEpoch)
+                            ?: throw PairException("缺少当前内容密钥")
+                    val member = DeviceSecurity.Member(deviceId(cp), cp, xp, kind.number.toUInt())
+                    val existing = head.core.member(member.id)
+                    if (existing == null && member.id in head.core.removed)
+                        throw PairException("这台设备已被移除，旧身份不能重新加入；请在那台设备上重新加入，以生成新的设备身份")
+                    val next =
+                        if (existing == null)
+                            Authority.pair(
+                                head,
+                                member,
+                                old,
+                                Authority.newSecret(),
+                                SigningKey(acct.deviceSeed),
+                                now,
+                            )
+                        else {
+                            // Re-pairing keeps the Ed25519 identity and replaces X.
+                            if (
+                                existing.kind != member.kind ||
+                                    !existing.ed.contentEquals(member.ed)
+                            )
+                                throw PairException("这台设备的身份与成员记录不一致，不能重新加入")
+                            Authority.rotateX(
+                                head,
+                                member.id,
+                                xp,
+                                old,
+                                Authority.newSecret(),
+                                SigningKey(acct.deviceSeed),
+                                now,
+                            )
                         }
-                        .also { approvalRequest = it }
-            }
+                    if (acct.accountPublicKey.size != 32)
+                        throw PairException("这台手机没有账户公钥，不能给新设备登记；请先用带账户根密钥的设备重新加入")
+                    val chain = remote.security.chain() + next
+                    val proofs = remote.security.chainProofs()
+                    if (chain.size > DeviceSecurity.MAX_PAIR_STATES)
+                        throw PairException("状态链太大，无法配对；请重建账户")
+                    val rawSize =
+                        chain.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
+                            proofs.values.sumOf { it.size.toLong() }
+                    if (rawSize > DeviceSecurity.MAX_PAIR_CHAIN_BYTES)
+                        throw PairException("状态链太大，无法配对；请重建账户")
+                    val certificate = HeadLease.sign(next, SigningKey(acct.deviceSeed), now)
+                    val (approval, signature) = makePairApproval(acct, pairingId, cp, kind, expires)
+                    val payload =
+                        PairingPayload.newBuilder()
+                            .setServer(acct.server)
+                            .setApproval(ByteString.copyFrom(approval))
+                            .setApprovalSignature(ByteString.copyFrom(signature))
+                            .addAllSecurityStates(
+                                chain.map { state ->
+                                    SecurityState.newBuilder()
+                                        .setState(
+                                            ByteString.copyFrom(
+                                                DeviceSecurity.stateBytes(state),
+                                            ),
+                                        )
+                                        .apply {
+                                            proofs[state.core.epoch]?.let {
+                                                setRecovery(ByteString.copyFrom(it))
+                                            }
+                                        }
+                                        .build()
+                                },
+                            )
+                            .setAccountPublicKey(ByteString.copyFrom(acct.accountPublicKey))
+                            .setLease(ByteString.copyFrom(certificate.bytes()))
+                            .build()
+                    val env =
+                        Envelopes.seal(
+                            s.key,
+                            Header.newBuilder()
+                                .setKind(PayloadKind.PAYLOAD_KIND_PAIRING)
+                                .setRequestId(pairingId)
+                                .setSender(acct.deviceId)
+                                .build(),
+                            payload,
+                        )
+                    ApprovePairingRequest.newBuilder()
+                        .setPairingId(pairingId)
+                        .setPayload(env)
+                        .setApproval(ByteString.copyFrom(approval))
+                        .setApprovalSignature(ByteString.copyFrom(signature))
+                        .build()
+                        .also {
+                            remote.publishSecurityStates(
+                                listOf(next),
+                                delivery = it.toByteArray(),
+                                certificate = certificate,
+                            )
+                        }
+                }
+                    .also { approvalRequest = it }
+        }
         remote.api.pairing.approvePairing(request, Api.headers(tok)).value()
         repeat(120) {
             if (stopped) throw PairException("已取消")
@@ -335,7 +339,10 @@ internal constructor(
                             Api.headers(tok),
                         )
                         .value()
-                if (res.state == PairingState.PAIRING_STATE_DELIVERED) return
+                if (res.state == PairingState.PAIRING_STATE_DELIVERED) {
+                    remote.finishPairingOperation(pairingId)
+                    return
+                }
                 if (res.state == PairingState.PAIRING_STATE_CANCELED)
                     throw PairException("另一台设备取消了配对")
             } catch (e: ConnectException) {
@@ -608,7 +615,10 @@ suspend fun joinByPairing(
             chain.map { DeviceSecurity.stateBytes(it) },
             proofs,
         )
-    persist(acct, record)
+    persist(
+        acct,
+        record.installed(emptyList(), emptyList(), HeadLease.parse(payload.lease.toByteArray())),
+    )
     try {
         api.pairing.getPairing(
             GetPairingRequest.newBuilder()

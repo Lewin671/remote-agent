@@ -225,14 +225,23 @@ func TestImages(t *testing.T) {
 		t.Fatal("expired image came back")
 	}
 
-	// Removing the machine removes its images.
+	// Revocation retains images; explicit archive deletion removes them.
 	if err := ts.removeViaState(t, mid); err != nil {
 		t.Fatal(err)
 	}
 	var n int
 	_ = ts.srv.store.db.QueryRow(`SELECT COUNT(*) FROM images`).Scan(&n)
+	if n == 0 {
+		t.Fatal("revocation erased images")
+	}
+	phone := ts.authority(t)
+	admin := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, phone.phoneEd, phone.phoneID)))
+	if _, err := admin.DeleteMachineRecords(ctx, connect.NewRequest(&pb.DeleteMachineRecordsRequest{MachineId: mid})); err != nil {
+		t.Fatal(err)
+	}
+	_ = ts.srv.store.db.QueryRow(`SELECT COUNT(*) FROM images`).Scan(&n)
 	if n != 0 {
-		t.Fatalf("%d images left", n)
+		t.Fatal("explicit archive deletion kept images")
 	}
 }
 

@@ -32,12 +32,15 @@ import {
 import { buildRecord, type SecurityRecord } from "../device-security-store";
 import {
   equal,
+  parseLease,
   parseRecoveryStatement,
   parseState,
   recoveryBytes,
   stateBytes,
   SecurityError,
   type RecoveryStatement,
+  type LeaseCertificate,
+  verifyLease,
   type SecurityState,
 } from "../device-security";
 import type { StoredAccount } from "../storage";
@@ -71,6 +74,7 @@ export function removeFixtureBuild() {
 
 interface FixtureRecordJSON {
   version: number;
+  lease:string;
   account: string;
   domain: string;
   genesis: string;
@@ -143,6 +147,7 @@ export async function recordFromJSON(r: FixtureRecordJSON): Promise<{
     r.member,
     await xKey(raw64(r.x)),
   );
+  record.lease=parseLease(raw64(r.lease));
   return { record, states, proofs };
 }
 
@@ -254,7 +259,8 @@ export class GoSecurityFixture {
   }
   fetcher(member: string): FetchStates {
     return async (after, limit) => {
-      const { states, proofs } = await this.chain(member);
+      const json=await this.record(member);
+      const { states, proofs } = await chainFromJSON(json);
       const out: { state: Uint8Array; recovery: Uint8Array }[] = [];
       for (let i = 0; i < states.length && out.length < limit; i++) {
         if (states[i].core.epoch <= after) continue;
@@ -268,6 +274,7 @@ export class GoSecurityFixture {
       return {
         states: out,
         headEpoch: states[states.length - 1].core.epoch,
+        lease: raw64(json.lease),
       };
     };
   }
@@ -340,11 +347,13 @@ export class MemorySecurityStorage implements SecurityStorage {
     expected: SecurityRecord,
     states: SecurityState[],
     proofs: (RecoveryStatement | undefined)[],
+    lease?:LeaseCertificate,
   ) {
     if (!equal(expected.stateHash, this.record.stateHash))
       throw new SecurityError("stale");
     const { extendRecord } = await import("../device-security-store");
     this.record = await extendRecord(this.record, states, proofs);
+    if(lease){await verifyLease(lease,this.record.states[this.record.states.length-1]);this.record.lease=lease;}
   }
   async touchSecurity(now: bigint) {
     if (now > this.record.floor) this.record = { ...this.record, floor: now };

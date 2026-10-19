@@ -57,6 +57,8 @@ class DeviceSecurityClient(
         return r.pin to r.head
     }
 
+    fun record(): DeviceSecurity.Record = read()
+
     fun head(): DeviceSecurity.State = read().head
 
     fun stateAt(epoch: ULong): DeviceSecurity.State? = read().stateAt(epoch)
@@ -83,44 +85,54 @@ class DeviceSecurityClient(
     private fun now(r: DeviceSecurity.Record): ULong = maxOf(clock().toULong(), r.floor)
 
     /** Pulls every state after the local head. The relay cannot make the head go backwards. */
-    suspend fun sync(): DeviceSecurity.Record =
-        syncMutex.withLock {
-            repeat(DeviceSecurity.MAX_STATES) {
-                val r = read()
-                val res = fetchStates(r.head.core.epoch)
-                recoveryPending = res.recoveryPending
-                recoveryReadyMs = res.recoveryReadyMs
-                if (res.headEpoch.toULong() < r.head.core.epoch)
+    suspend fun sync(): DeviceSecurity.Record = syncMutex.withLock {
+        repeat(DeviceSecurity.MAX_STATES) {
+            val r = read()
+            val res = fetchStates(r.head.core.epoch)
+            recoveryPending = res.recoveryPending
+            recoveryReadyMs = res.recoveryReadyMs
+            if (res.headEpoch.toULong() < r.head.core.epoch) throw DeviceSecurity.Failure("stale")
+            if (res.statesCount == 0) {
+                if (res.headEpoch.toULong() != r.head.core.epoch)
                     throw DeviceSecurity.Failure("stale")
-                if (res.statesCount == 0) {
-                    if (res.headEpoch.toULong() != r.head.core.epoch)
-                        throw DeviceSecurity.Failure("stale")
-                    return@withLock r
-                }
-                if (res.statesCount > 8) throw DeviceSecurity.Failure("untrusted")
-                val states =
-                    res.statesList.map { DeviceSecurity.parseState(it.state.toByteArray()) }
-                val at = clock().toULong()
-                for (state in states) {
-                    if (DeviceSecurity.tooFarAhead(state, at)) {
-                        clockSkew = true
-                        throw DeviceSecurity.Failure("clock")
-                    }
-                }
-                clockSkew = false
-                val proofs =
-                    res.statesList.map {
-                        if (it.recovery.isEmpty) null else it.recovery.toByteArray()
-                    }
-                currentCoroutineContext().ensureActive()
-                store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs)
-                currentCoroutineContext().ensureActive()
+                val cert =
+                    res.lease.toByteArray().takeIf { it.isNotEmpty() }?.let { HeadLease.parse(it) }
+                return@withLock if (cert != null)
+                    store.installSecurity(
+                        DeviceSecurity.stateHash(r.head),
+                        emptyList(),
+                        emptyList(),
+                        cert,
+                    )
+                else r
             }
-            throw DeviceSecurity.Failure("capacity")
+            if (res.statesCount > 8) throw DeviceSecurity.Failure("untrusted")
+            val states = res.statesList.map { DeviceSecurity.parseState(it.state.toByteArray()) }
+            val at = clock().toULong()
+            for (state in states) {
+                if (DeviceSecurity.tooFarAhead(state, at)) {
+                    clockSkew = true
+                    throw DeviceSecurity.Failure("clock")
+                }
+            }
+            clockSkew = false
+            val proofs =
+                res.statesList.map {
+                    if (it.recovery.isEmpty) null else it.recovery.toByteArray()
+                }
+            currentCoroutineContext().ensureActive()
+            store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs)
+            currentCoroutineContext().ensureActive()
         }
+        throw DeviceSecurity.Failure("capacity")
+    }
 
     /** Publishes states that this phone signed (genesis, renewal, membership, veto). */
-    fun install(states: List<DeviceSecurity.State>, proofs: List<ByteArray?> = emptyList()) {
+    fun install(
+        states: List<DeviceSecurity.State>,
+        proofs: List<ByteArray?> = emptyList(),
+        lease: HeadLease? = null,
+    ) {
         val at = clock().toULong()
         for (state in states) {
             if (DeviceSecurity.tooFarAhead(state, at)) {
@@ -129,7 +141,7 @@ class DeviceSecurityClient(
             }
         }
         val r = read()
-        store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs)
+        store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs, lease)
     }
 
     /** Seals locally with a random nonce; no storage write or authorization round trip. */
@@ -145,7 +157,7 @@ class DeviceSecurityClient(
     ): Envelope {
         val old = read()
         if (!old.member) throw DeviceSecurity.Failure("untrusted")
-        if (purpose.control && !Authority.leaseValid(old.head, clock()))
+        if (purpose.control && !Authority.leaseValid(old, clock()))
             throw DeviceSecurity.Failure("lease")
         val r = old
         val h =
@@ -204,6 +216,8 @@ class DeviceSecurityClient(
         var r = read()
         var h = DeviceSecurity.parseHeader(w.formed.header)
         if (h.epoch > r.head.core.epoch) r = sync()
+        if (h.purpose.control && !Authority.leaseValid(r, clock()))
+            throw DeviceSecurity.Failure("lease")
         val s =
             r.stateAt(h.epoch)
                 ?: if (h.epoch == r.head.core.epoch) r.head

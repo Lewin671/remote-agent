@@ -32,6 +32,8 @@ suspend fun newAuthorityAccount(
             Api.headers(login(api, phone)),
         )
         .value()
+    val record=TestSecurity.get(server).stores.getValue(phone.deviceId).readSecurity()
+    api.client.putSecurityState(PutSecurityStateRequest.newBuilder().setLease(ByteString.copyFrom(record.lease!!.bytes())).build(),Api.headers(login(api,phone))).value()
     return phone
 }
 
@@ -62,10 +64,12 @@ suspend fun approvedClient(
             SigningKey(authority.deviceSeed),
             System.currentTimeMillis(),
         )
+    val lease=HeadLease.sign(next,SigningKey(authority.deviceSeed),next.core.issuedAt.toLong())
     val api = Api(authority.server, http)
     api.client
         .putSecurityState(
             PutSecurityStateRequest.newBuilder()
+                .setLease(ByteString.copyFrom(lease.bytes()))
                 .addStates(
                     SecurityState.newBuilder()
                         .setState(ByteString.copyFrom(DeviceSecurity.stateBytes(next)))
@@ -78,7 +82,7 @@ suspend fun approvedClient(
     for (s in security.stores.values.toList()) {
         val head = s.readSecurity().head
         if (next.core.epoch == head.core.epoch + 1uL) {
-            runCatching { s.installSecurity(DeviceSecurity.stateHash(head), listOf(next), listOf(null)) }
+            runCatching { s.installSecurity(DeviceSecurity.stateHash(head), listOf(next), listOf(null),lease) }
         }
     }
     val now = System.currentTimeMillis()
@@ -115,7 +119,7 @@ suspend fun approvedClient(
                 x,
                 chain,
                 chain.map { null },
-            ),
+            ).installed(emptyList(),emptyList(),lease),
         )
     return result
 }
@@ -129,10 +133,12 @@ suspend fun fixtureMember(
 ): Account {
     val security = TestSecurity.get(authority.server)
     val (record, state) = security.enroll(seed, kind)
+    val lease=record.lease!!
     val api = Api(authority.server, http)
     api.client
         .putSecurityState(
             PutSecurityStateRequest.newBuilder()
+                .setLease(ByteString.copyFrom(lease.bytes()))
                 .addStates(
                     SecurityState.newBuilder()
                         .setState(ByteString.copyFrom(state))
@@ -188,10 +194,12 @@ suspend fun removeAsAuthority(phone: Account, target: String, http: OkHttpClient
             SigningKey(phone.deviceSeed),
             System.currentTimeMillis(),
         )
+    val lease=HeadLease.sign(next,SigningKey(phone.deviceSeed),next.core.issuedAt.toLong())
     val api = Api(phone.server, http)
     api.client
         .putSecurityState(
             PutSecurityStateRequest.newBuilder()
+                .setLease(ByteString.copyFrom(lease.bytes()))
                 .addStates(
                     SecurityState.newBuilder()
                         .setState(ByteString.copyFrom(DeviceSecurity.stateBytes(next)))
@@ -204,7 +212,7 @@ suspend fun removeAsAuthority(phone: Account, target: String, http: OkHttpClient
     for (s in security.stores.values.toList()) {
         val head = s.readSecurity().head
         if (next.core.epoch == head.core.epoch + 1uL) {
-            runCatching { s.installSecurity(DeviceSecurity.stateHash(head), listOf(next), listOf(null)) }
+            runCatching { s.installSecurity(DeviceSecurity.stateHash(head), listOf(next), listOf(null),lease) }
         }
     }
 }

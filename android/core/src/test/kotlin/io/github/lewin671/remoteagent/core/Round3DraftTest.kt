@@ -37,7 +37,7 @@ class Round3DraftTest {
                                 flaky,
                                 server.setupToken,
                                 persistDraft = {
-                                    draft = CreatedAccount.parseDraft(it.draftBytes())
+                                    draft = CreatedAccount.readOperationMaterial(it.operationMaterial())
                                 },
                             )
                         }
@@ -51,7 +51,7 @@ class Round3DraftTest {
                         http,
                         server.setupToken,
                         draft = first,
-                        persistDraft = { draft = CreatedAccount.parseDraft(it.draftBytes()) },
+                        persistDraft = { draft = CreatedAccount.readOperationMaterial(it.operationMaterial()) },
                     )
                 assertEquals(first.account.deviceId, resumed.account.deviceId)
                 assertArrayEquals(first.account.root, resumed.account.root)
@@ -67,7 +67,7 @@ class Round3DraftTest {
             val server = TestServer()
             val http = Api.defaultHttp()
             val recoverySeed = ByteArray(32) { 0x31 }
-            var saved: RecoveryDraft? = null
+            var saved: RecoveryPublication? = null
             var dropped = false
             try {
                 val phone =
@@ -111,7 +111,7 @@ class Round3DraftTest {
                                 recoverySeed,
                                 device,
                                 chain.pin.genesis.copyOf(10),
-                                persist = { saved = RecoveryDraft.parse(it.bytes()) },
+                                persist = { saved = RecoveryPublication.parse(it.bytes()) },
                             )
                         }
                         .isFailure
@@ -124,7 +124,7 @@ class Round3DraftTest {
                         device,
                         chain.pin.genesis.copyOf(10),
                         draft = saved,
-                        persist = { saved = RecoveryDraft.parse(it.bytes()) },
+                        persist = { saved = RecoveryPublication.parse(it.bytes()) },
                     )
                 assertArrayEquals(saved!!.submission.deviceSeed, resumed.deviceSeed)
                 assertArrayEquals(saved!!.submission.stateHash, resumed.stateHash)
