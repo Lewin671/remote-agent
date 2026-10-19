@@ -11,10 +11,11 @@ import (
 // that a CLI updated while the daemon runs is noticed without running the
 // CLI on every question.
 type BinVersion struct {
-	mu      sync.Mutex
-	read    bool
-	id      binID
-	version string
+	mu         sync.Mutex
+	read       bool
+	id         binID
+	version    string
+	generation uint64
 }
 
 // binID identifies an installed executable: where its name leads, the
@@ -54,10 +55,23 @@ func (c *BinVersion) Get(bin string, read func() string) string {
 	if bin == "" {
 		return ""
 	}
+	id := identify(bin) // filesystem access must not own the cache mutex
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	if id := identify(bin); !c.read || !id.equal(c.id) {
-		c.version, c.id, c.read = read(), id, true
+	if c.read && id.equal(c.id) {
+		v := c.version
+		c.mu.Unlock()
+		return v
 	}
-	return c.version
+	generation := c.generation
+	c.mu.Unlock()
+	version := read() // the CLI/filesystem may wait on user interaction
+	c.mu.Lock()
+	if c.generation == generation {
+		c.version, c.id, c.read = version, id, true
+		c.generation++
+	} else if id.equal(c.id) {
+		version = c.version
+	}
+	c.mu.Unlock()
+	return version
 }

@@ -63,10 +63,7 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 			}
 			callCtx := agent.WithOrigin(ctx, origin)
 			cancel := func() {}
-			switch cmd.Kind.(type) {
-			case *pb.Command_StopSession, *pb.Command_ResumeSession:
-				callCtx, cancel = context.WithDeadline(callCtx, time.UnixMilli(int64(h.Deadline)))
-			}
+			callCtx, cancel = context.WithDeadline(callCtx, time.UnixMilli(int64(h.Deadline)))
 			defer cancel()
 			res = c.execute(callCtx, h.Session, cmd)
 		}

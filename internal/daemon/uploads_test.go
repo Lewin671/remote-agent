@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"image/color"
 	"os"
@@ -109,7 +110,7 @@ func TestUploadChecks(t *testing.T) {
 	if _, err := u.complete(tid, "d"); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("decode: %v", err)
 	}
-	if _, err := u.status(tid, "d"); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := u.status(context.Background(), tid, "d"); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatal("failed transfer kept")
 	}
 	for _, req := range []*pb.BeginImageUploadRequest{
@@ -125,7 +126,7 @@ func TestUploadChecks(t *testing.T) {
 	good := testPNG(t, 10, 10, color.RGBA{1, 2, 3, 255})
 	beginUpload(t, u, good, "d")
 	u.gc(time.Now().Add(2 * time.Hour))
-	if _, err := u.status(tid, "d"); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := u.status(context.Background(), tid, "d"); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatal("stale transfer kept")
 	}
 	beginUpload(t, u, good, "d")
@@ -420,7 +421,7 @@ func TestExitedUploadRecordCleanedWithoutImageFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 	u.gc(time.Now())
-	if _, err := u.status(tid, "d"); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := u.status(context.Background(), tid, "d"); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("exited record left: %v", err)
 	}
 }

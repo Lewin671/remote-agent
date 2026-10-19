@@ -56,7 +56,11 @@ func (c *conn) openTerminal(ctx context.Context, sessionID, streamID string) err
 		ws.CloseNow()
 		return err
 	}
-	go c.serveTerminal(ctx, ws, t, key, sessionID, streamID)
+	lifetime := c.lifetime
+	if lifetime == nil {
+		lifetime = ctx
+	}
+	go c.serveTerminal(lifetime, ws, t, key, sessionID, streamID)
 	return nil
 }
 

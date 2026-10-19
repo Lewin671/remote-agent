@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestInstallWaitsForExecution(t *testing.T) {
+func TestInstallDoesNotWaitForAcceptedBackendIO(t *testing.T) {
 	c := newCurrentChain(t)
 	machine := c.machineEndpoint(t, "")
 	defer machine.Close()
@@ -31,16 +31,16 @@ func TestInstallWaitsForExecution(t *testing.T) {
 	go func() { installed <- machine.Install([]State{next}, []*RecoveryStatement{nil}) }()
 	select {
 	case err := <-installed:
+		if err != nil {
+			close(release)
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
 		close(release)
-		<-finished
-		t.Fatalf("installation crossed running callback: %v", err)
-	case <-time.After(50 * time.Millisecond):
+		t.Fatal("Install waited for backend I/O")
 	}
 	close(release)
 	if err := <-finished; err != nil {
-		t.Fatal(err)
-	}
-	if err := <-installed; err != nil {
 		t.Fatal(err)
 	}
 	if _, err := machine.Accept(w, nil, now+1, func(Header, []byte) ([]byte, error) { t.Fatal("removed sender executed"); return nil, nil }); err != nil {

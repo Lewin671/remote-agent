@@ -305,7 +305,14 @@ fun SettingsScreen() {
                             GRow(
                                 if (state.authorityPhone) "管理端手机 · 本机" else "管理端手机 · 另一台手机",
                                 if (state.authorityPhone)
-                                    "恢复与续期" + (if (state.leaseEndMs > 0) " · 有效期至 " + io.github.lewin671.remoteagent.core.dayText(state.leaseEndMs, t) else "")
+                                    "恢复与续期" +
+                                        (if (state.leaseEndMs > 0)
+                                            " · 有效期至 " +
+                                                io.github.lewin671.remoteagent.core.dayText(
+                                                    state.leaseEndMs,
+                                                    t,
+                                                )
+                                        else "")
                                 else "换手机：在本机准备交接",
                                 onClick = { nav.recovery() },
                                 chevron = true,
@@ -531,6 +538,7 @@ fun DeviceScreen(id: String) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val m = state.machines[id]
+    val member = id in state.devices
     val p = pal
     var confirm by remember { mutableStateOf(false) }
     val remove = rememberAction(authority = true)
@@ -539,8 +547,8 @@ fun DeviceScreen(id: String) {
     var loadError by remember { mutableStateOf("") }
     val save = rememberAction()
     var attempt by remember { mutableStateOf(0) }
-    LaunchedEffect(id, m?.online, attempt) {
-        if (m?.online != true) return@LaunchedEffect
+    LaunchedEffect(id, member, m?.online, attempt) {
+        if (!member || m?.online != true) return@LaunchedEffect
         try {
             val reply =
                 remote
@@ -585,7 +593,12 @@ fun DeviceScreen(id: String) {
             return@PageScaffold
         }
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            if (!m.online)
+            if (!member)
+                Banner(
+                    "已移除 · 保留的会话档案",
+                    Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+                )
+            else if (!m.online)
                 Banner(
                     "不在线 · 最后在线 ${whenText(m.lastSeenMs)}",
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
@@ -771,43 +784,53 @@ fun DeviceScreen(id: String) {
                 )
             }
             if (state.authorityPhone && id !in state.devices) {
-                Group(rows = listOf {
-                    GRow("让这台电脑重新加入并接续会话", onClick = { nav.rejoin(id) },
-                        enabled = state.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE)
-                })
-            }
-            DeleteMachineRecordsAction(id,state.authorityPhone)
-            if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用")
-            else
                 Group(
                     rows =
                         listOf {
                             GRow(
-                                "移除这台机器",
-                                onClick = { confirm = true },
-                                danger = true,
+                                "让这台电脑重新加入并接续会话",
+                                onClick = { nav.rejoin(id) },
                                 enabled =
-                                    state.authorityPhone &&
-                                        !remove.running &&
-                                        state.conn ==
-                                            io.github.lewin671.remoteagent.core.ConnState.ONLINE,
+                                    state.conn ==
+                                        io.github.lewin671.remoteagent.core.ConnState.ONLINE,
                             )
                         },
                 )
-            Text(
-                if (state.authorityPhone)
-                    "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"
-                else "删除设备要在管理端手机上操作。",
-                style = T.sm,
-                color = p.muted,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
+            }
+            DeleteMachineRecordsAction(id, state.authorityPhone)
+            if (member) {
+                if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用")
+                else
+                    Group(
+                        rows =
+                            listOf {
+                                GRow(
+                                    "移除这台机器",
+                                    onClick = { confirm = true },
+                                    danger = true,
+                                    enabled =
+                                        state.authorityPhone &&
+                                            !remove.running &&
+                                            state.conn ==
+                                                io.github.lewin671.remoteagent.core.ConnState
+                                                    .ONLINE,
+                                )
+                            },
+                    )
+                Text(
+                    if (state.authorityPhone) "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"
+                    else "删除设备要在管理端手机上操作。",
+                    style = T.sm,
+                    color = p.muted,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
             if (remove.error.isNotEmpty())
                 Banner(remove.error, Modifier.padding(16.dp), Tone2.ERROR)
             Spacer(Modifier.height(24.dp))
         }
     }
-    if (confirm) {
+    if (confirm && member) {
         val (title, text) = removalDialog(machineLabel(state, id), machine = true)
         Alert(
             title,
@@ -1194,7 +1217,9 @@ fun PairScreen(replacesDeviceId: String = "") {
     val scope = rememberAuthorityScope()
     val model =
         remember(remote, scope) {
-            PairingController(scope, RaApp.instance.scope) { Initiation.start(remote, replacesDeviceId) }
+            PairingController(scope, RaApp.instance.scope) {
+                Initiation.start(remote, replacesDeviceId)
+            }
         }
     val state by model.state.collectAsState()
     AuthorityStartEffect(model) { model.start() }
@@ -1208,7 +1233,9 @@ fun PairScreen(replacesDeviceId: String = "") {
         ) {
             if (replacesDeviceId.isNotEmpty()) {
                 val current by remote.state.collectAsState()
-                Hint("允许原电脑接续 ${machineLabel(current, replacesDeviceId)} 的保留会话和图片。旧身份仍然撤销；请在原电脑上输入配对码。")
+                Hint(
+                    "允许原电脑接续 ${machineLabel(current, replacesDeviceId)} 的保留会话和图片。旧身份仍然撤销；请在原电脑上输入配对码。",
+                )
             } else {
                 Hint("已移除的电脑要接续原会话，请从那台电脑的保留档案进入“重新加入并接续会话”。")
             }

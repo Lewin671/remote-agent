@@ -25,6 +25,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/claude"
 	"github.com/Lewin671/remote-agent/internal/codex"
+	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/protocol"
@@ -436,6 +437,10 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 // session runs with and whose CLI it must find. pathFrom names the PATH
 // that CLI is looked up in, for the error that says where it was missing.
 func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaShell, terminal bool, pathFrom string) (*session, error) {
+	return d.createByContext(context.Background(), req, origin, viaShell, terminal, pathFrom)
+}
+
+func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionRequest, origin *pb.Origin, viaShell, terminal bool, pathFrom string) (*session, error) {
 	cwd := req.Cwd
 	if cwd == "" {
 		return nil, errors.New("cwd is required")
@@ -443,7 +448,10 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaSh
 	if !filepath.IsAbs(cwd) {
 		return nil, errors.New("cwd must be an absolute path")
 	}
-	if st, err := os.Stat(cwd); err != nil || !st.IsDir() {
+	if st, err := contextio.Stat(ctx, cwd); err != nil || !st.IsDir() {
+		if err != nil {
+			return nil, fmt.Errorf("inspect working directory: %w", err)
+		}
 		return nil, fmt.Errorf("cwd %s is not a directory", cwd)
 	}
 	ag, err := d.knownAgent(req.Agent)
@@ -463,7 +471,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaSh
 	if ag.Bin() == "" {
 		return nil, fmt.Errorf("%s is not installed on this machine", ag.Name())
 	}
-	args, err := d.sessionArgs(ag, req)
+	args, err := d.sessionArgsContext(ctx, ag, req)
 	if err != nil {
 		return nil, err
 	}
@@ -936,7 +944,10 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 	if !s.settleExited() {
 		return nil, errUnsettled
 	}
-	if st, err := os.Stat(m.Cwd); err != nil || !st.IsDir() {
+	if st, err := contextio.Stat(ctx, m.Cwd); err != nil || !st.IsDir() {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		return nil, fmt.Errorf("directory %s is gone", m.Cwd)
 	}
 	if s.ag.Bin() == "" {

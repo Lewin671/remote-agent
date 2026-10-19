@@ -18,7 +18,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -85,24 +84,26 @@ class MainActivity : ComponentActivity() {
             val settings by app.prefs.settings.collectAsState(Settings())
             RaTheme(settings.theme) {
                 Surface(Modifier.fillMaxSize(), color = pal.card) {
-                    val loaded by app.loaded.collectAsState()
-                    val remote by app.remote.collectAsState()
-                    val accountError by app.accountError.collectAsState()
-                    val r = remote
-                    when {
-                        !loaded && accountError.isNotEmpty() ->
-                            io.github.lewin671.remoteagent.ui.AccountLoadFailure(
-                                accountError,
-                                { app.loadAccount() },
-                                { app.discardAccount() },
-                            )
-                        !loaded ->
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
-                            }
-                        r == null -> JoinScreen(app)
-                        r.state.collectAsState().value.removed -> RemovedScreen(app, r)
-                        else -> Main(r)
+                    io.github.lewin671.remoteagent.ui.AppSafeArea {
+                        val loaded by app.loaded.collectAsState()
+                        val remote by app.remote.collectAsState()
+                        val accountError by app.accountError.collectAsState()
+                        val r = remote
+                        when {
+                            !loaded && accountError.isNotEmpty() ->
+                                io.github.lewin671.remoteagent.ui.AccountLoadFailure(
+                                    accountError,
+                                    { app.loadAccount() },
+                                    { app.discardAccount() },
+                                )
+                            !loaded ->
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
+                            r == null -> JoinScreen(app)
+                            r.state.collectAsState().value.removed -> RemovedScreen(app, r)
+                            else -> Main(r)
+                        }
                     }
                 }
             }
@@ -197,7 +198,7 @@ class MainActivity : ComponentActivity() {
             NavHost(
                 nav,
                 "home",
-                Modifier.fillMaxSize().safeDrawingPadding(),
+                Modifier.fillMaxSize(),
                 enterTransition = { pageEnter(initialState, targetState) },
                 exitTransition = { pageExit(initialState, targetState) },
                 popEnterTransition = { pagePopEnter(initialState, targetState) },

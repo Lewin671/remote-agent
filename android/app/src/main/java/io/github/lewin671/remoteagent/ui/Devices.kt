@@ -213,14 +213,21 @@ fun ClientScreen(id: String) {
     val state by remote.state.collectAsState()
     val p = pal
     val me = remote.account.deviceId
-    val canRename = clientCanRename(id, me, state.conn)
+    val canRename = id in state.devices && clientCanRename(id, me, state.conn)
     val d = state.devices[id]
     val t = now()
     var editing by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
     val save = rememberAction()
     val remove = rememberAction(authority = true)
-    PageScaffold(clientName(d, id), subtitle = if (id == me) "当前客户端" else "已配对的客户端") {
+    PageScaffold(
+        clientName(d, id),
+        subtitle = if (d == null) "已移除" else if (id == me) "当前客户端" else "已配对的客户端",
+    ) {
+        if (d == null) {
+            PageNote("这个客户端已不在当前成员列表中")
+            return@PageScaffold
+        }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             GLabel(if (id == state.authorityDeviceId) "管理端手机" else "客户端")
             Group(
@@ -333,7 +340,7 @@ fun ClientScreen(id: String) {
             }
         }
     }
-    if (confirmRemove) {
+    if (confirmRemove && d != null) {
         val (title, text) = removalDialog(clientName(d, id), machine = false)
         Alert(
             title,

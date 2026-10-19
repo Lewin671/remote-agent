@@ -41,6 +41,50 @@ class ArchiveDeletionTest {
     }
 
     @Test
+    fun removedArchiveExplainsItsStatusAndNeverOffersOrdinaryRemoval() {
+        remote.showForTest(archive)
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
+                    DeviceScreen(id)
+                }
+            }
+        }
+        ui.onNodeWithText("已移除 · 保留的会话档案").assertExists()
+        ui.onNodeWithText("移除这台机器").assertDoesNotExist()
+        ui.onNodeWithText("移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。").assertDoesNotExist()
+        ui.onNodeWithText("让这台电脑重新加入并接续会话").assertExists()
+        ui.onNodeWithText("删除这台电脑的记录").assertExists()
+        ui.runOnIdle { remote.showForTest(current) }
+        ui.onNodeWithText("已移除 · 保留的会话档案").assertDoesNotExist()
+        ui.onNodeWithText("移除这台机器").assertExists()
+        ui.onNodeWithText("删除这台电脑的记录").assertDoesNotExist()
+    }
+
+    @Test
+    fun removedClientDetailDoesNotOfferOrdinaryRemoval() {
+        remote.showForTest(archive)
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
+                    ClientScreen(id)
+                }
+            }
+        }
+        ui.onNodeWithText("这个客户端已不在当前成员列表中").assertExists()
+        ui.onNodeWithText("移除这个客户端").assertDoesNotExist()
+        ui.runOnIdle {
+            remote.showForTest(
+                archive.copy(
+                    devices = mapOf(id to DeviceView(id, DeviceKind.DEVICE_KIND_CLIENT, 0)),
+                ),
+            )
+        }
+        ui.onNodeWithText("这个客户端已不在当前成员列表中").assertDoesNotExist()
+        ui.onNodeWithText("移除这个客户端").assertExists()
+    }
+
+    @Test
     fun deletionIsOnlyOfferedForAnArchiveOfARemovedComputerToTheAuthority() {
         remote.showForTest(current)
         ui.setContent {

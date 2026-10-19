@@ -3,13 +3,17 @@ package io.github.lewin671.remoteagent.ui
 import android.app.Application
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.data.ThemeMode
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,6 +42,50 @@ class UnauthenticatedScreensTest {
                 Surface(Modifier.fillMaxSize(), color = pal.card) { content() }
             }
         }
+    }
+
+    private fun assertSetupHeaderBelowSystemBar(
+        title: String,
+        screen: @androidx.compose.runtime.Composable () -> Unit,
+    ) {
+        show { AppSafeArea(WindowInsets(top = 48.dp, bottom = 24.dp)) { screen() } }
+        val header = ui.onNodeWithText(title).getUnclippedBoundsInRoot()
+        assertTrue("$title overlaps the status bar: $header", header.top >= 48.dp)
+        val back = ui.onNodeWithContentDescription("返回").getUnclippedBoundsInRoot()
+        assertTrue("back target overlaps the status bar: $back", back.top >= 48.dp)
+    }
+
+    @Test
+    fun activityInsetsAreConsumedExactlyOnceForNestedPages() {
+        val app = app()
+        val insets = WindowInsets(top = 48.dp, bottom = 24.dp)
+        show {
+            AppSafeArea(insets) {
+                androidx.compose.foundation.layout.Box(Modifier.windowInsetsPadding(insets)) {
+                    CreateAccountScreen(app) {}
+                }
+            }
+        }
+        val top = ui.onNodeWithText("创建新账户").getUnclippedBoundsInRoot().top
+        assertTrue("nested page applied system insets twice: $top", top >= 48.dp && top < 96.dp)
+    }
+
+    @Test
+    fun creationHeaderRespectsActivityInsets() {
+        val app = app()
+        assertSetupHeaderBelowSystemBar("创建新账户") { CreateAccountScreen(app) {} }
+    }
+
+    @Test
+    fun recoveryHeaderRespectsActivityInsets() {
+        val app = app()
+        assertSetupHeaderBelowSystemBar("用恢复码找回管理权") { RecoverScreen(app) {} }
+    }
+
+    @Test
+    fun rebuildHeaderRespectsActivityInsets() {
+        val app = app()
+        assertSetupHeaderBelowSystemBar("重建安全域") { RebuildSecurityScreen(app, null) {} }
     }
 
     @Test

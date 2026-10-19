@@ -154,6 +154,7 @@ func sleep(ctx context.Context, d time.Duration) {
 
 // conn is one connected period: the login token, clients and keys.
 type conn struct {
+	lifetime          context.Context // stream lifetime, independent of one command deadline
 	security          *securitySession
 	r                 *Relay
 	acct              *Account
@@ -173,7 +174,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		return fmt.Errorf("login: %w", err)
 	}
 	hc := httpClient()
-	c := &conn{r: r, acct: acct, token: token,
+	c := &conn{r: r, acct: acct, token: token, lifetime: ctx,
 		machine: remoteagentv1connect.NewMachineServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token), r.limitMachineRPCs()))}
 
 	securityClient := remoteagentv1connect.NewClientServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token)))

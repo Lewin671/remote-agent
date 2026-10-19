@@ -9,9 +9,11 @@ import (
 	"time"
 )
 
-func TestCloseWaitsForAcceptAndSerializesWithInstall(t *testing.T) {
+func TestCloseDoesNotWaitForAcceptedIOAndRetainsUnknownOutcome(t *testing.T) {
 	c := newCurrentChain(t)
-	m := c.machineEndpoint(t, filepath.Join(t.TempDir(), "endpoint.db"))
+	path := filepath.Join(t.TempDir(), "endpoint.db")
+	m := c.machineEndpoint(t, path)
+	defer m.Close()
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
@@ -20,40 +22,39 @@ func TestCloseWaitsForAcceptAndSerializesWithInstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	entered, release := make(chan struct{}), make(chan struct{})
-	finished, closed, installed := make(chan error, 1), make(chan error, 1), make(chan error, 1)
+	finished := make(chan error, 1)
 	go func() {
 		_, err := m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { close(entered); <-release; return []byte("done"), nil })
 		finished <- err
 	}()
 	<-entered
+	closed := make(chan error, 1)
 	go func() { closed <- m.Close() }()
 	select {
 	case err := <-closed:
-		close(release)
-		<-finished
-		t.Fatalf("Close crossed running callback: %v", err)
-	case <-time.After(50 * time.Millisecond):
-	}
-	go func() { installed <- m.Install(c.states(), c.proofs()) }()
-	close(release)
-	for _, ch := range []chan error{finished, closed, installed} {
-		select {
-		case err := <-ch:
-			if err != nil && !errors.Is(err, ErrStorage) {
-				t.Fatal(err)
-			}
-		case <-time.After(3 * time.Second):
-			t.Fatal("execution/close/install deadlock")
+		if err != nil {
+			close(release)
+			t.Fatal(err)
 		}
+	case <-time.After(time.Second):
+		close(release)
+		t.Fatal("Close waited for backend I/O")
 	}
-	reopened, err := OpenEndpoint(m.path)
+	if err := m.Install(c.states(), c.proofs()); !errors.Is(err, ErrStorage) {
+		close(release)
+		t.Fatalf("Install after Close = %v", err)
+	}
+	close(release)
+	if err := <-finished; !errors.Is(err, ErrUnknown) {
+		t.Fatalf("late result = %v", err)
+	}
+	reopened, err := OpenEndpoint(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	out, err := reopened.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { t.Fatal("executed twice"); return nil, nil })
-	if err != nil || string(out) != "done" {
-		t.Fatalf("lost completed result %q %v", out, err)
+	if _, err := reopened.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { t.Fatal("executed twice"); return nil, nil }); !errors.Is(err, ErrUnknown) {
+		t.Fatalf("unfinished accepted request = %v", err)
 	}
 }
 

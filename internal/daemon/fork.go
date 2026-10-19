@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/tmux"
@@ -32,6 +34,10 @@ var (
 // records: Codex's fork only refers to its source's rollout, and Claude
 // Code writes a fork's transcript with its first message.
 func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
+	return d.forkContext(context.Background(), id, origin)
+}
+
+func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) (*session, error) {
 	d.resumeMu.Lock()
 	defer d.resumeMu.Unlock()
 	src, err := d.exact(id)
@@ -43,7 +49,7 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	// has recorded past it is the fork's to read.
 	src.readMu.Lock()
 	src.mu.Lock()
-	m, ctx := src.meta, src.context
+	m, turnContext := src.meta, src.context
 	busy := !m.Exited && (src.running || src.status != pb.SessionStatus_SESSION_STATUS_IDLE ||
 		len(src.approvals) > 0 || len(src.questions) > 0 || src.planOpen)
 	title := src.title
@@ -63,10 +69,16 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	if m.CodexSessionID == "" || m.RolloutPath == "" || offset == 0 {
 		return nil, errForkEmpty
 	}
-	if _, err := os.Stat(m.RolloutPath); err != nil {
+	if _, err := contextio.Stat(ctx, m.RolloutPath); err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		return nil, errForkEmpty
 	}
-	if st, err := os.Stat(m.Cwd); err != nil || !st.IsDir() {
+	if st, err := contextio.Stat(ctx, m.Cwd); err != nil || !st.IsDir() {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		return nil, fmt.Errorf("directory %s is gone", m.Cwd)
 	}
 	if src.ag.Bin() == "" {
@@ -87,7 +99,7 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	}
 	launch := &agent.Launch{
 		Dir: dir, Cwd: m.Cwd, Args: m.Args, ForkOf: m.CodexSessionID, Transcript: m.RolloutPath, ForkOffset: offset,
-		Context: ctx, FullAccess: !m.NoFullAccess, Exe: d.cfg.Exe, RemoteSession: nid,
+		Context: turnContext, FullAccess: !m.NoFullAccess, Exe: d.cfg.Exe, RemoteSession: nid,
 	}
 	cliArgs, err := src.ag.Argv(launch)
 	if err != nil {

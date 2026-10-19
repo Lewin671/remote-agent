@@ -16,6 +16,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"google.golang.org/protobuf/proto"
@@ -84,7 +85,7 @@ func appendRun(runs []schedule.Run, run schedule.Run) []schedule.Run {
 func (h *handler) Schedule(ctx context.Context, req *connect.Request[pb.ScheduleRequest]) (*connect.Response[pb.ScheduleResponse], error) {
 	origin := originOf(ctx)
 	scope := req.Header().Get(schedule.MCPScopeHeader)
-	b, err := h.d.scheduleCommandScoped(req.Msg, origin, scope)
+	b, err := h.d.scheduleCommandScopedContext(ctx, req.Msg, origin, scope)
 	if err != nil {
 		return nil, rpcErr(err)
 	}
@@ -96,6 +97,10 @@ func (d *Daemon) scheduleCommand(q *pb.ScheduleRequest, origin *pb.Origin) ([]by
 }
 
 func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin, scope string) ([]byte, error) {
+	return d.scheduleCommandScopedContext(context.Background(), q, origin, scope)
+}
+
+func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.ScheduleRequest, origin *pb.Origin, scope string) ([]byte, error) {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	if d.tasks == nil {
@@ -171,7 +176,7 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 		if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT {
 			t.Source = "client"
 		}
-		if err := d.prepareSchedule(t, now); err != nil {
+		if err := d.prepareSchedule(ctx, t, now); err != nil {
 			return nil, err
 		}
 		d.tasks[t.ID] = t
@@ -227,7 +232,7 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 				return nil, err
 			}
 		}
-		if err := d.prepareSchedule(t, now); err != nil {
+		if err := d.prepareSchedule(ctx, t, now); err != nil {
 			d.tasks[t.ID] = prev
 			return nil, err
 		}
@@ -259,7 +264,7 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 		} else if t.NextRunAt != nil {
 			t.Status = "scheduled"
 		} else if t.Spec.Trigger.Type == "after_turn" && prev.Reason != "completed_while_paused" {
-			if err := d.prepareSchedule(t, now); err != nil {
+			if err := d.prepareSchedule(ctx, t, now); err != nil {
 				d.tasks[t.ID] = prev
 				return nil, err
 			}
@@ -333,7 +338,7 @@ func scheduleMode(name string) (pb.ApprovalMode, error) {
 	return 0, errors.New("mode must be ask, auto, full or plan")
 }
 
-func (d *Daemon) prepareSchedule(t *schedule.Task, now time.Time) error {
+func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time.Time) error {
 	spec := &t.Spec
 	tr := &spec.Trigger
 	target := &spec.Target
@@ -415,7 +420,10 @@ func (d *Daemon) prepareSchedule(t *schedule.Task, now time.Time) error {
 		if !filepath.IsAbs(target.Cwd) {
 			return errors.New("new_session needs an absolute cwd or a creating session")
 		}
-		if st, err := os.Stat(target.Cwd); err != nil || !st.IsDir() {
+		if st, err := contextio.Stat(ctx, target.Cwd); err != nil || !st.IsDir() {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			return errors.New("new_session cwd is not a directory")
 		}
 		if target.Agent == "" {
@@ -436,7 +444,7 @@ func (d *Daemon) prepareSchedule(t *schedule.Task, now time.Time) error {
 		if err != nil {
 			return err
 		}
-		if _, err = d.sessionArgs(ag, &pb.CreateSessionRequest{Model: target.Model, Effort: target.Effort, Mode: mode}); err != nil {
+		if _, err = d.sessionArgsContext(ctx, ag, &pb.CreateSessionRequest{Model: target.Model, Effort: target.Effort, Mode: mode}); err != nil {
 			return err
 		}
 	default:

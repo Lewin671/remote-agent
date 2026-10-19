@@ -1245,11 +1245,17 @@ func (e *Endpoint) Open(w Wire, sessionSeed []byte, live bool, now uint64) (Head
 
 // Accept applies a control envelope at most once. The accepted table is
 // checked before the deadline, so an expired retry still learns the recorded
-// result. New command entries are persisted before fn runs; terminal and
+// result. The gate covers admission and result recording, never fn or user I/O.
+// New command entries are persisted before fn runs; terminal and
 // other non-command frames stay in memory and are pruned by deadline.
 func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header, []byte) ([]byte, error)) ([]byte, error) {
 	e.execution.Lock()
-	defer e.execution.Unlock()
+	gateHeld := true
+	defer func() {
+		if gateHeld {
+			e.execution.Unlock()
+		}
+	}()
 	e.mu.Lock()
 	if e.closed {
 		e.mu.Unlock()
@@ -1316,6 +1322,8 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 	}
 	if h.Purpose == Command && readOnlyCommand(h, plain) {
 		e.mu.Unlock()
+		gateHeld = false
+		e.execution.Unlock()
 		return fn(h, plain)
 	}
 	if _, _, err := e.startAccepted(key, h.Deadline, now, persist); err != nil {
@@ -1324,10 +1332,22 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 	}
 	e.mu.Unlock()
 
+	// The durable accepted entry is the authorization/linearization point.
+	// Already-admitted work uses its backend's synchronization; revocation
+	// prevents new admission, without waiting on filesystem/CLI/user I/O.
+	gateHeld = false
+	e.execution.Unlock()
 	out, callErr := fn(h, plain)
 
+	e.execution.Lock()
+	gateHeld = true
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.closed {
+		// Close must not wait for a callback. Keep its durable in-progress
+		// entry unknown, so a reconnect/retry cannot execute it again.
+		return nil, ErrUnknown
+	}
 	if err := e.finishAccepted(key, out, callErr != nil, persist); err != nil {
 		return nil, err
 	}

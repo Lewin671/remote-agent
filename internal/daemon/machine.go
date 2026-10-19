@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,6 +13,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/codex"
+	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -31,7 +33,9 @@ func (d *Daemon) listModels(k pb.Agent) (*pb.ListModelsResponse, error) {
 // --- directories ---
 
 // listDirectories lists the folders in a directory, hidden ones left out.
-func listDirectories(path string) (*pb.ListDirectoriesResponse, error) {
+func listDirectories(ctx context.Context, path string, readDir func(string) ([]os.DirEntry, error)) (*pb.ListDirectoriesResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, contextio.Timeout)
+	defer cancel()
 	home, _ := os.UserHomeDir()
 	switch {
 	case path == "" || path == "~":
@@ -43,7 +47,10 @@ func listDirectories(path string) (*pb.ListDirectoriesResponse, error) {
 		return nil, errors.New("path must be absolute")
 	}
 	path = filepath.Clean(path)
-	entries, err := os.ReadDir(path)
+	if readDir == nil {
+		readDir = os.ReadDir
+	}
+	entries, err := contextio.Read(ctx, func() ([]os.DirEntry, error) { return readDir(path) })
 	if err != nil {
 		return nil, fmt.Errorf("list %s: %w", path, err)
 	}
@@ -57,7 +64,10 @@ func listDirectories(path string) (*pb.ListDirectoriesResponse, error) {
 		}
 		isDir := e.IsDir()
 		if e.Type()&os.ModeSymlink != 0 {
-			st, err := os.Stat(filepath.Join(path, e.Name()))
+			st, err := contextio.Stat(ctx, filepath.Join(path, e.Name()))
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 			isDir = err == nil && st.IsDir()
 		}
 		if isDir {
@@ -77,23 +87,43 @@ func settingsPath() string { return filepath.Join(paths.Dir(), "settings.json") 
 
 // settings returns the daemon settings, defaults filled in.
 func (d *Daemon) settings() *pb.DaemonSettings {
-	d.settingsMu.Lock()
-	defer d.settingsMu.Unlock()
-	if d.cached == nil {
-		st := &pb.DaemonSettings{}
-		if b, err := os.ReadFile(settingsPath()); err == nil {
-			_ = protojson.Unmarshal(b, st)
-		}
-		d.cached = st
+	st, _ := d.settingsContext(context.Background())
+	if st == nil {
+		st = &pb.DaemonSettings{ApprovalTimeoutSeconds: int32(d.cfg.ApprovalTimeout / time.Second), ImageUploadQuotaBytes: maxUploadStorage}
 	}
+	return st
+}
+
+func (d *Daemon) settingsContext(ctx context.Context) (*pb.DaemonSettings, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	d.settingsMu.Lock()
 	st := proto.CloneOf(d.cached)
+	d.settingsMu.Unlock()
+	if st == nil {
+		b, err := contextio.ReadFile(ctx, settingsPath())
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, err
+		}
+		loaded := &pb.DaemonSettings{}
+		if err == nil {
+			_ = protojson.Unmarshal(b, loaded)
+		}
+		d.settingsMu.Lock()
+		if d.cached == nil {
+			d.cached = loaded
+		}
+		st = proto.CloneOf(d.cached)
+		d.settingsMu.Unlock()
+	}
 	if st.ApprovalTimeoutSeconds == 0 {
 		st.ApprovalTimeoutSeconds = int32(d.cfg.ApprovalTimeout / time.Second)
 	}
 	if st.ImageUploadQuotaBytes == 0 {
 		st.ImageUploadQuotaBytes = maxUploadStorage
 	}
-	return st
+	return st, nil
 }
 
 // maxApprovalTimeout keeps the timeout below the hook's own, after which
@@ -169,7 +199,15 @@ func (d *Daemon) defaultMode(ag agent.Adapter, cwd string) (pb.ApprovalMode, pb.
 	if def != pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
 		return def, pb.DefaultModeSource_DEFAULT_MODE_SOURCE_DAEMON_SETTINGS, false
 	}
-	m, known, varies := ag.DefaultMode(cwd)
+	type observation struct {
+		mode          pb.ApprovalMode
+		known, varies bool
+	}
+	got, err := contextio.Read(context.Background(), func() (observation, error) { m, k, v := ag.DefaultMode(cwd); return observation{m, k, v}, nil })
+	if err != nil {
+		return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED, pb.DefaultModeSource_DEFAULT_MODE_SOURCE_UNSPECIFIED, true
+	}
+	m, known, varies := got.mode, got.known, got.varies
 	if !known {
 		return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED, pb.DefaultModeSource_DEFAULT_MODE_SOURCE_UNSPECIFIED, varies
 	}
@@ -177,7 +215,14 @@ func (d *Daemon) defaultMode(ag agent.Adapter, cwd string) (pb.ApprovalMode, pb.
 }
 
 func (d *Daemon) sessionArgs(ag agent.Adapter, req *pb.CreateSessionRequest) ([]string, error) {
-	st := d.settings()
+	return d.sessionArgsContext(context.Background(), ag, req)
+}
+
+func (d *Daemon) sessionArgsContext(ctx context.Context, ag agent.Adapter, req *pb.CreateSessionRequest) ([]string, error) {
+	st, err := d.settingsContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	model, effort, mode := req.Model, req.Effort, req.Mode
 	def := &pb.AgentDefaults{Model: st.DefaultModel, Effort: st.DefaultEffort, Mode: st.DefaultMode}
 	if ag.Kind() == pb.Agent_AGENT_CLAUDE {
@@ -195,5 +240,5 @@ func (d *Daemon) sessionArgs(ag agent.Adapter, req *pb.CreateSessionRequest) ([]
 	if mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
 		mode = def.Mode
 	}
-	return ag.Options(req.Args, model, effort, mode)
+	return contextio.Read(ctx, func() ([]string, error) { return ag.Options(req.Args, model, effort, mode) })
 }

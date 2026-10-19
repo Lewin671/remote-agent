@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -61,7 +60,7 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
     val scope = rememberCoroutineScope()
     var leaving by remember { mutableStateOf(false) }
     Column(
-        Modifier.fillMaxSize().background(p.card).safeDrawingPadding().padding(horizontal = 24.dp),
+        Modifier.fillMaxSize().background(p.card).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -256,7 +255,6 @@ fun JoinScreen(app: RaApp) {
             Column(
                 Modifier.fillMaxSize()
                     .background(p.card)
-                    .safeDrawingPadding()
                     .imePadding()
                     .verticalScroll(rememberScrollState()),
             ) {

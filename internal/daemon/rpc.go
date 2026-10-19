@@ -5,22 +5,29 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"os"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/contextio"
 )
 
 type handler struct {
 	remoteagentv1connect.UnimplementedLocalServiceHandler
-	d *Daemon
+	d       *Daemon
+	readDir func(string) ([]os.DirEntry, error)
 }
 
 func rpcErr(err error) error {
 	switch {
 	case err == nil:
 		return nil
+	case errors.Is(err, context.DeadlineExceeded):
+		return connect.NewError(connect.CodeDeadlineExceeded, err)
+	case errors.Is(err, context.Canceled):
+		return connect.NewError(connect.CodeCanceled, err)
 	case errors.Is(err, errNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, errRemoteAnswerTruncated), errors.Is(err, errExited), errors.Is(err, errExpired), errors.Is(err, errNotAnswering), errors.Is(err, errWriting), errors.Is(err, errRunning), errors.Is(err, errUnsettled),
@@ -42,7 +49,10 @@ func (h *handler) CreateSession(ctx context.Context, req *connect.Request[pb.Cre
 	// user's login shell so that its environment is the machine's own,
 	// computed at that moment.
 	terminal := len(req.Msg.Env) > 0
-	s, err := h.d.createBy(req.Msg, originOf(ctx), !terminal, terminal, "the terminal's PATH")
+	s, err := h.d.createByContext(ctx, req.Msg, originOf(ctx), !terminal, terminal, "the terminal's PATH")
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return nil, rpcErr(err)
+	}
 	if err != nil && queueAccepted(err) {
 		// The error names the live session and its accepted first request.
 		// Do not misclassify a recording failure as invalid creation input.
@@ -236,7 +246,10 @@ func (h *handler) SetModel(ctx context.Context, req *connect.Request[pb.SetModel
 }
 
 func (h *handler) ListModels(ctx context.Context, req *connect.Request[pb.ListModelsRequest]) (*connect.Response[pb.ListModelsResponse], error) {
-	res, err := h.d.listModels(req.Msg.Agent)
+	res, err := contextio.Read(ctx, func() (*pb.ListModelsResponse, error) { return h.d.listModels(req.Msg.Agent) })
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return nil, rpcErr(err)
+	}
 	if errors.Is(err, agent.ErrUnsupported) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -291,7 +304,10 @@ func (h *handler) AnswerPlan(ctx context.Context, req *connect.Request[pb.Answer
 }
 
 func (h *handler) ListDirectories(ctx context.Context, req *connect.Request[pb.ListDirectoriesRequest]) (*connect.Response[pb.ListDirectoriesResponse], error) {
-	res, err := listDirectories(req.Msg.Path)
+	res, err := listDirectories(ctx, req.Msg.Path, h.readDir)
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return nil, rpcErr(err)
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -299,11 +315,15 @@ func (h *handler) ListDirectories(ctx context.Context, req *connect.Request[pb.L
 }
 
 func (h *handler) GetSettings(ctx context.Context, req *connect.Request[pb.GetSettingsRequest]) (*connect.Response[pb.GetSettingsResponse], error) {
-	usage, err := h.d.imageStorage(false)
+	settings, err := h.d.settingsContext(ctx)
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	return connect.NewResponse(&pb.GetSettingsResponse{Settings: h.d.settings(), ImageStorage: usage}), nil
+	usage, err := h.d.imageStorageSnapshot(ctx)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.GetSettingsResponse{Settings: settings, ImageStorage: usage}), nil
 }
 
 func (h *handler) UpdateSettings(ctx context.Context, req *connect.Request[pb.UpdateSettingsRequest]) (*connect.Response[pb.UpdateSettingsResponse], error) {
@@ -373,8 +393,11 @@ func (h *handler) GetImageUploadStatus(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, err
 	}
-	st, err := h.d.uploads.status(req.Msg.TransferId, owner)
+	st, err := h.d.uploads.status(ctx, req.Msg.TransferId, owner)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, rpcErr(err)
+		}
 		return nil, uploadErr(err)
 	}
 	return connect.NewResponse(&pb.GetImageUploadStatusResponse{Status: st}), nil

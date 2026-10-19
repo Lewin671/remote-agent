@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -234,14 +235,14 @@ func TestListModelsAndDirectories(t *testing.T) {
 		os.Mkdir(filepath.Join(root, n), 0o700)
 	}
 	os.WriteFile(filepath.Join(root, "file"), nil, 0o600)
-	dirs, err := listDirectories(root)
+	dirs, err := listDirectories(context.Background(), root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Join(dirs.Dirs, ",") != "Alpha,zeta" || dirs.Parent != filepath.Dir(root) {
 		t.Fatalf("dirs %v", dirs)
 	}
-	if _, err := listDirectories("relative/path"); err == nil {
+	if _, err := listDirectories(context.Background(), "relative/path", nil); err == nil {
 		t.Fatal("accepted a relative path")
 	}
 }

@@ -295,19 +295,6 @@ func (u *uploads) put(req *pb.PutImageChunkRequest, device string) (*pb.ImageUpl
 	return t.status(), nil
 }
 
-func (u *uploads) status(id, device string) (*pb.ImageUploadStatus, error) {
-	u.mu.Lock()
-	defer u.mu.Unlock()
-	t, err := u.load(id)
-	if err != nil {
-		return nil, err
-	}
-	if err := u.owned(t, device); err != nil {
-		return nil, err
-	}
-	return t.status(), nil
-}
-
 func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 	pins := u.protectedSessions()
 	u.mu.Lock()
