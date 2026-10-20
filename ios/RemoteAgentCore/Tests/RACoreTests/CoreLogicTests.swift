@@ -358,3 +358,15 @@ import Testing
         await #expect(throws: CommandError.self) { try await remote.command("s", PBCommand()) }
     }
 }
+
+@Suite struct LoginDenialTests {
+    @Test func translatesOnlyLoginDenialAndKeepsOfflineSeparate() {
+        let denied = ConnectError(code: .permissionDenied, message: "login failed")
+        #expect(loginDenied(denied))
+        #expect(errorText(denied) == "服务器不认识这台设备（可能已被移除，或服务已重建）")
+        #expect(!loginDenied(URLError(.notConnectedToInternet)))
+        #expect(!loginDenied(ConnectError(code: .unavailable, message: nil)))
+        #expect(!loginDenied(ConnectError(code: .notFound, message: nil)))
+        #expect(errorText(ConnectError(code: .permissionDenied, message: "operation denied")) == "operation denied")
+    }
+}

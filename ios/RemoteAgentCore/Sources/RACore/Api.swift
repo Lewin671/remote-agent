@@ -377,6 +377,8 @@ public func errorText(_ e: Error) -> String {
         if let t = networkText(ce.exception) { return t }
         switch ce.code {
         case .unavailable: return "连不上服务器" + (ce.message.map { "：\($0)" } ?? "")
+        case .permissionDenied where ce.message == "login failed":
+            return "服务器不认识这台设备（可能已被移除，或服务已重建）"
         case .unauthenticated: return "登录失效：" + (ce.message ?? "")
         default: return ce.message ?? ce.code.name
         }
@@ -411,4 +413,9 @@ func neverSent(_ e: Error?) -> Bool {
     case .unresolved?, .refused?: return true
     default: return false
     }
+}
+
+/// Call only for a login attempt: transport failures never establish identity rejection.
+public func loginDenied(_ error: Error) -> Bool {
+    (error as? ConnectError)?.code == .permissionDenied
 }

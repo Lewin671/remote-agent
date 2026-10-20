@@ -17,7 +17,9 @@ struct JoinScreen: View {
     }
     var body: some View {
         Group {
-            if let setup {
+            if app.retainedIdentityDenied {
+                RetainedIdentityDeniedScreen()
+            } else if let setup {
                 AuthoritySetupScreen(flow: setup, back: { self.setup = nil })
             } else if selection == nil && app.securitySetup == nil {
                 Page {
@@ -48,8 +50,9 @@ struct JoinScreen: View {
                     bootstrap: app.authorityBootstrap, server: app.lastServer, status: pending)
                 return
             }
+            if app.joinDirectly { selection = "join" }
             #if DEBUG
-                if LaunchDriver.joinStep != nil { selection = "join" }
+                if LaunchDriver.joinStep != nil || LaunchDriver.joinRequested { selection = "join" }
             #endif
             let app = app
             let made = JoinModel(

@@ -40,7 +40,7 @@ struct RootView: View {
                 }
             }
         case .join:
-            JoinScreen()
+            JoinScreen().id(model.joinGeneration)
         case .ready:
             if model.removed {
                 RemovedScreen()
@@ -55,14 +55,30 @@ struct RootView: View {
 /// Available before sign-in; no account navigation or remote environment is required.
 struct SetupDiscardButton: View {
     let discard: @MainActor () async -> Void
+    @Environment(AppModel.self) private var model
     @State private var asking = false
+    @State private var advice = ""
+    @State private var error = ""
     var body: some View {
-        Button("退出并重新开始", role: .destructive) { asking = true }
+        if !error.isEmpty { Banner(error, tone: .error) }
+        Button("退出并重新开始", role: .destructive) {
+            do {
+                if let warning = try model.rejoinAdvice() { advice = warning; asking = true }
+                else { Task { await discard() } }
+            } catch { self.error = errorText(error) }
+        }
             .confirmationDialog("退出并删除本机密钥？", isPresented: $asking, titleVisibility: .visible) {
-                Button("确认退出", role: .destructive) { Task { await discard() } }
+                Button("确认退出", role: .destructive) {
+                    Task {
+                        do {
+                            guard try model.rejoinAdvice() == advice else { throw UserError("安全操作状态已变化，请重新选择退出。") }
+                            await discard()
+                        } catch { self.error = errorText(error) }
+                    }
+                }
                 Button("取消", role: .cancel) {}
             } message: {
-                Text("安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。")
+                Text(advice)
             }
     }
 }

@@ -1,3 +1,4 @@
+import Connect
 import Foundation
 import RACore
 import RAProto
@@ -74,6 +75,9 @@ final class Harness {
         deviceId: "00112233445566778899aabbccddeeff")
     private(set) var engines: [FakeEngine] = []
     var cleared = 0
+    var securityReady = true
+    var identityCheck: @Sendable (Account) async throws -> Void = { _ in }
+
     /// What the erase of a logout does instead of erasing, when set: called off the main actor.
     var erase: (@Sendable (AccountStorage) throws -> Void)?
     lazy var model: AppModel = {
@@ -85,7 +89,8 @@ final class Harness {
         parts.saveJoined = { vault, account in
             try vault.save(account.stored, notifyKey: Data(repeating: 0, count: 32))
         }
-        parts.securityReady = { _, _ in true }  // This lifecycle suite uses a mock engine; protocol setup has separate tests.
+        parts.securityReady = { [securityReady] _, _ in securityReady }  // This lifecycle suite uses a mock engine; protocol setup has separate tests.
+        parts.checkRetainedIdentity = identityCheck
         parts.makeEngine = { [unowned self] account, _, _ in
             let engine = try FakeEngine(account: account)
             self.engines.append(engine)
@@ -467,4 +472,89 @@ final class Harness {
         await eventually("description after renewal") { h.engine.calls.filter { $0.hasPrefix("describe") }.count == 2 }
     }
 
+}
+
+@MainActor @Suite struct RetainedIdentityTests {
+    @Test func logoutClearsSetupAndCanLoadAgain() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        h.securityReady = false
+        try h.store()
+        h.model.setForeground(true)
+        await eventually("retained setup") { h.model.stage == .join }
+        #expect(h.model.securitySetup != nil)
+        let generation = h.model.joinGeneration
+        await h.model.logout()
+        #expect(h.model.securitySetup == nil)
+        #expect(!h.model.retainedIdentityDenied)
+        #expect(h.model.authorityBootstrapPending == nil)
+        #expect(h.model.joinGeneration != generation)
+        #expect(!h.model.joinDirectly)
+        h.model.loadAccount()
+        await eventually("fresh join") { h.model.stage == .join }
+        #expect(h.model.securitySetup == nil)
+        #expect(try !h.vault.hasAccount())
+    }
+
+    @Test func onlyDeniedLoginShowsTheRecoveryScreen() async throws {
+        for denied in [true, false] {
+            let h = Harness(); defer { h.cleanUp() }
+            h.securityReady = false
+            h.identityCheck = { _ in
+                if denied { throw ConnectError(code: .permissionDenied, message: "login failed") }
+                throw URLError(.notConnectedToInternet)
+            }
+            try h.store()
+            h.model.setForeground(true)
+            await eventually("checked") { h.model.stage == .join }
+            #expect(h.model.retainedIdentityDenied == denied)
+            #expect(h.model.securitySetup != nil)
+            #expect(try h.vault.hasAccount())
+            await h.model.logout(pairing: true)
+            #expect(h.model.securitySetup == nil && !h.model.retainedIdentityDenied)
+            #expect(h.model.joinDirectly)
+            #expect(h.model.lastServer == h.account.server)
+        }
+    }
+
+    @Test func logoutClearsPendingBootstrapAndDoesNotResumeIt() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        h.model.bootstrapGate.set(active: true, protectedDataAvailable: true)
+        _ = try await h.model.authorityBootstrap.prepareCreation(server: "https://relay.example.com")
+        h.model.setForeground(true)
+        await eventually("bootstrap") { h.model.authorityBootstrapPending != nil }
+        #expect(try h.model.rejoinAdvice()?.contains("未完成的安全操作") == true)
+        await h.model.logout()
+        #expect(h.model.authorityBootstrapPending == nil)
+        #expect(h.model.securitySetup == nil)
+        h.model.loadAccount()
+        await eventually("fresh join") { h.model.stage == .join }
+        #expect(h.model.authorityBootstrapPending == nil)
+        #expect(try h.vault.readOperation() == nil)
+    }
+
+    @Test func unreadableSecurityRequiresConfirmationButDoesNotTrapTheUser() throws {
+        let h = Harness(); defer { h.cleanUp() }
+        try h.vault.write(.securityState, Data([0]))
+        #expect(try h.model.rejoinAdvice()?.contains("没能读取") == true)
+        #expect(try h.model.rejoinAdvice()?.contains("电脑上的会话不受影响") == true)
+    }
+
+    @Test func lateLoginCannotRestoreDiscardedIdentity() async throws {
+        let h = Harness(); defer { h.cleanUp() }
+        let started = OSAllocatedUnfairLock(initialState: false)
+        let finish = OSAllocatedUnfairLock(initialState: false)
+        h.securityReady = false
+        h.identityCheck = { _ in
+            started.withLock { $0 = true }
+            while !finish.withLock({ $0 }) { try await Task.sleep(for: .milliseconds(5)) }
+            throw ConnectError(code: .permissionDenied, message: "login failed")
+        }
+        try h.store(); h.model.setForeground(true)
+        await eventually("login started") { started.withLock { $0 } }
+        await h.model.logout()
+        finish.withLock { $0 = true }
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(h.model.securitySetup == nil && !h.model.retainedIdentityDenied)
+        #expect(h.model.stage == .join)
+    }
 }

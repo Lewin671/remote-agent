@@ -140,6 +140,10 @@ final class AppModel {
             else { throw DeviceSecurity.Failure.untrusted }
             return true
         }
+        /// A quiet login before offering to reuse an identity without security state.
+        var checkRetainedIdentity: @Sendable (Account) async throws -> Void = { account in
+            _ = try await login(api: Api(server: account.server, http: AppModel.http), account: account)
+        }
         /// The pause between two copies of the engine's state to the main actor: a frame.
         var frame: Sleeper = realSleep
         /// What this client says it runs on, as Android's "Android 16 · Pixel 9".
@@ -183,6 +187,10 @@ final class AppModel {
     /// The server of the account just left, to fill in when joining again. Only in memory.
     private(set) var lastServer = ""
     private(set) var securitySetup: Account?
+    private(set) var retainedIdentityDenied = false
+    /// Recreates JoinScreen's local flow after an account is discarded.
+    private(set) var joinGeneration = 0
+    private(set) var joinDirectly = false
     var joiningCalls: JoinCalls {
         .live(http: Self.http, existing: securitySetup, vault: parts.storage.vault)
     }
@@ -374,6 +382,14 @@ final class AppModel {
                 } else {
                     securitySetup = Account(stored)
                     lastServer = stored.server
+                    // Only an explicit login denial means the identity cannot be reused.
+                    // Offline and other failures leave the existing setup flow available.
+                    do { try await parts.checkRetainedIdentity(Account(stored)) }
+                    catch {
+                        guard gen == generation else { return }
+                        retainedIdentityDenied = loginDenied(error)
+                    }
+                    guard gen == generation else { return }
                     stage = .join
                 }
             case .success((nil, _)):
@@ -389,6 +405,8 @@ final class AppModel {
 
     private func use(_ account: Account) async {
         securitySetup = nil
+        retainedIdentityDenied = false
+        joinDirectly = false
         generation += 1
         let gen = generation
         let root = parts.storage.cacheRoot
@@ -526,12 +544,38 @@ final class AppModel {
         engine?.retryLogin()
     }
 
+    /// Confirmation is needed only for management keys or unfinished work.
+    func rejoinAdvice() throws -> String? {
+        let vault = parts.storage.vault
+        do {
+            let pending = try vault.readOperation() != nil || vault.loadRegistrationIntent() != nil
+                || vault.loadPairDeliveryReceipt() != nil
+            let record = try vault.read(.securityState).map { _ in try vault.readSecurity() }
+            let admin = state.authorityDeviceId == (account ?? securitySetup)?.deviceId
+                || record.map { $0.memberID == $0.state.core.authorityID } == true
+            if pending || admin {
+                return AuthorityAccess.exitAdvice(authority: admin, unresolved: pending)
+                    + "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。"
+            }
+            return nil
+        } catch {
+            // An unreadable vault is not proof that there is no management key
+            // or unfinished work. Keep an explicit, warned way to erase it.
+            return "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。"
+        }
+    }
+
     /// Forgets the account, the cache and the keys on this device, then
     /// shows the join flow with the server filled in. When something does
     /// not let go that is what is said, and 重试 erases again
     /// (`loadAccount`). Until the erase has ended no account is read: the
     /// one being removed would be found and put back in use.
-    func logout() async {
+    func logout(pairing: Bool = false) async {
+        if let leaving = account ?? securitySetup { lastServer = leaving.server }
+        securitySetup = nil
+        retainedIdentityDenied = false
+        joinDirectly = pairing
+        joinGeneration += 1
         recoveryRotationRequired = false
         authorityHandoffComplete = false
         bootstrapGate.set(active: false, protectedDataAvailable: false)

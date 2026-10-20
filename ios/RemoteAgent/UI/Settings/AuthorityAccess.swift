@@ -13,7 +13,7 @@ struct AuthorityAccess {
     var addHint: String { "要添加电脑或客户端，在管理端（\(name)）上打开「设置 › 添加设备」。" }
     var emptyHint: String { "还没有电脑。在管理端（\(name)）上打开「设置 › 添加设备」，把电脑加进来。" }
     static func exitAdvice(authority: Bool, unresolved: Bool) -> String {
-        if unresolved { return "安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。" }
+        if unresolved { return "还有未完成的安全操作。请先重试或在管理端核实结果；退出后，这台手机将无法继续原操作。" }
         if authority { return "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。" }
         return "退出会删除本机密钥，需要重新配对。"
     }

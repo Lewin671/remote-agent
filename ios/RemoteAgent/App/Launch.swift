@@ -90,6 +90,7 @@
 //
 //   app.logout          退出账户, from anywhere
 //   app.open            goes to the route of `defaults write <bundle> debug.route <route>`, as a tap on a row would
+//   join.rejoin         用配对码重新加入 on the rejected retained-identity screen
 //   join.cancel         the join flow
 //   removed.retry       再试一次 on the 已被移出账户 notice
 //   home.scope          chooses the scope -homeScopeTarget names
@@ -145,6 +146,7 @@ enum LaunchDriver {
 
     static let demo: DemoSet? = args.contains("-demo") ? DemoSet(rawValue: value("-demo") ?? "") ?? .everyday : nil
     static let joinStep = value("-joinStep")
+    static var joinRequested: Bool { code != nil }
     static let startRoute: Route? = (value("-demoRoute") ?? value("-route")).flatMap(Route.init(path:))
     private static var secret = value("-joinSecret")
     private static var code = value("-joinCode")
