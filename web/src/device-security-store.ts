@@ -21,6 +21,14 @@ type B = Uint8Array<ArrayBuffer>;
 const DATABASE = "remote-agent-security-v3";
 const STORE = "security";
 const KEY = "current";
+const REVISION = "record-revision";
+// Only records bearing a revision written atomically with them are reusable.
+// An absent marker is a cache miss, never an authority to trust stored data.
+let verified: { revision: string; record: Promise<SecurityRecord> } | undefined;
+function putRecord(store: IDBObjectStore, record: SecurityRecord): void {
+  store.put(record, KEY);
+  store.put(crypto.randomUUID(), REVISION);
+}
 export interface ContentKey {
   epoch: bigint;
   secret: B;
@@ -362,11 +370,11 @@ export async function initializeSecurity(
         for (const key of old.contentKeys)
           remember(record.contentKeys, key.epoch, key.secret);
         if (!record.lease) record.lease = old.lease;
-        store.put(record, KEY);
+        putRecord(store, record);
         done();
         return;
       }
-      store.add(record, KEY);
+      putRecord(store, record);
       done();
     };
   });
@@ -386,23 +394,45 @@ export async function verifyStoredSecurity(
   return r;
 }
 export async function loadSecurity(): Promise<SecurityRecord> {
-  const db = await database(false);
-  const r = await transaction<SecurityRecord>(
-    db,
-    "readonly",
-    (store, done, fail) => {
+  const db = await database(false).catch((e) => {
+    verified = undefined;
+    throw e;
+  });
+  // Read the marker and (on a miss) the record in one snapshot. Every writer
+  // updates both in a single transaction, including floor/lease-only writes.
+  // This works across tabs without relying on timely BroadcastChannel delivery.
+  const snapshot = await transaction<{
+    revision?: string;
+    record?: SecurityRecord;
+    cached?: Promise<SecurityRecord>;
+  }>(db, "readonly", (store, done) => {
+    const revision = store.get(REVISION);
+    revision.onsuccess = () => {
+      const tag = typeof revision.result === "string" ? revision.result : undefined;
+      if (tag && verified?.revision === tag) {
+        done({ cached: verified.record });
+        return;
+      }
       const get = store.get(KEY);
-      get.onsuccess = () => {
-        try {
-          validRecord(get.result);
-          done(get.result);
-        } catch {
-          fail(new SecurityError("storage"));
-        }
-      };
-    },
-  );
-  return verifyStoredSecurity(r);
+      get.onsuccess = () => done({ revision: tag, record: get.result });
+    };
+  });
+  if (snapshot.cached) {
+    const r = await snapshot.cached;
+    // Time is not cached: a clock rollback still fails closed.
+    if (r.states.at(-1)!.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
+      throw new SecurityError("clock");
+    return r;
+  }
+  const record = verifyStoredSecurity(snapshot.record!);
+  const entry = snapshot.revision ? { revision: snapshot.revision, record } : undefined;
+  verified = entry;
+  try {
+    return await record;
+  } catch (e) {
+    if (verified === entry) verified = undefined;
+    throw e;
+  }
 }
 export async function installSecurity(
   expected: SecurityRecord,
@@ -458,7 +488,7 @@ export async function installSecurity(
         next.floor = next.floor > r.floor ? next.floor : r.floor;
         for (const key of r.contentKeys)
           remember(next.contentKeys, key.epoch, key.secret);
-        store.put(next, KEY);
+        putRecord(store, next);
         done();
       } catch (err) {
         fail(err instanceof Error ? err : new SecurityError("storage"));
@@ -475,7 +505,7 @@ export async function touchSecurity(now: bigint): Promise<void> {
       try {
         const r = get.result as SecurityRecord;
         validRecord(r);
-        if (now > r.floor) store.put({ ...r, floor: now }, KEY);
+        if (now > r.floor) putRecord(store, { ...r, floor: now });
         done();
       } catch (err) {
         fail(err instanceof Error ? err : new SecurityError("storage"));
@@ -491,6 +521,7 @@ function deleteDatabase(name: string): Promise<void> {
   });
 }
 export async function forgetSecurity(): Promise<void> {
+  verified = undefined;
   await deleteDatabase(DATABASE);
   // Protocol 9's database is not migrated; drop its keys on an explicit
   // logout too, so an upgrade does not leave them behind.

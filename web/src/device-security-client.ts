@@ -63,6 +63,8 @@ export type FetchStates = (after: bigint, limit: number) => Promise<StatePage>;
 /** Storage operations preserve atomic head changes and strict
  * durability in production. Explicit in-memory implementations belong to tests. */
 export interface SecurityStorage {
+  // Reusing an object means its complete stored snapshot is unchanged.
+  // Writers must return a new snapshot, including lease/floor-only updates.
   loadSecurity: typeof loadSecurity;
   installSecurity: typeof installSecurity;
   touchSecurity: typeof touchSecurity;
@@ -82,8 +84,8 @@ export class RecoveryHistoryUnavailable extends SecurityError {
 const MAX_PAGE = 8;
 export class DeviceSecurityClient {
   private syncJob?: Promise<SecurityRecord>;
-  /** The verified record, kept for sealing; sync refreshes it from storage. */
-  private record?: SecurityRecord;
+  private validated = new WeakMap<SecurityRecord, Promise<SecurityRecord>>();
+  private contentKeys = new WeakMap<SecurityRecord, Map<bigint, Promise<B>>>();
   constructor(
     readonly memberID: string,
     private readonly ed: CryptoKey,
@@ -113,11 +115,23 @@ export class DeviceSecurityClient {
     return r;
   }
   private async load(): Promise<SecurityRecord> {
-    return this.validateLocalRecord(await this.store.loadSecurity());
+    if (!this.active()) throw new SecurityError("storage");
+    const record = await this.store.loadSecurity();
+    let job = this.validated.get(record);
+    if (!job) {
+      job = this.validateLocalRecord(record);
+      this.validated.set(record, job);
+      job.catch(() => this.validated.delete(record));
+    }
+    const result = await job;
+    if (result.states.at(-1)!.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
+      throw new SecurityError("clock");
+    if (!this.active()) throw new SecurityError("storage");
+    return result;
   }
-  /** The verified record kept for sealing, or the stored one on first use. */
+  /** Even sealing checks the stored revision, so another tab cannot leave a stale head cached. */
   private async currentRecord(): Promise<SecurityRecord> {
-    return this.record ?? (await this.load());
+    return this.load();
   }
   async verifiedRecord(): Promise<SecurityRecord> {
     return this.currentRecord();
@@ -161,7 +175,6 @@ export class DeviceSecurityClient {
       // A failed pull must not forget an observed lease expiry, including in the sealing cache.
       await this.store.touchSecurity(BigInt(Date.now()));
       r = await this.load();
-      this.record = r;
       const head = r.states[r.states.length - 1];
       const reply = await this.fetchStates(head.core.epoch, MAX_PAGE);
       if (reply.headEpoch < head.core.epoch) throw new SecurityError("stale");
@@ -175,14 +188,12 @@ export class DeviceSecurityClient {
             parseLease(new Uint8Array(reply.lease)),
           );
         await this.store.touchSecurity(BigInt(Date.now()));
-        this.record = await this.load();
-        return this.record;
+        return this.load();
       }
       const { states, proofs } = await parseChain(reply.states);
       const before = head.core.epoch;
       await this.store.installSecurity(r, states, proofs);
       r = await this.load();
-      this.record = r;
       if (r.states[r.states.length - 1].core.epoch <= before)
         throw new SecurityError("stale");
     }
@@ -240,7 +251,15 @@ export class DeviceSecurityClient {
     live: boolean,
   ): Promise<B> {
     try {
-      return await contentSecretOf(r, h.contentEpoch);
+      let keys = this.contentKeys.get(r);
+      if (!keys) this.contentKeys.set(r, (keys = new Map()));
+      let key = keys.get(h.contentEpoch);
+      if (!key) {
+        key = contentSecretOf(r, h.contentEpoch);
+        keys.set(h.contentEpoch, key);
+        key.catch(() => keys!.delete(h.contentEpoch));
+      }
+      return await key;
     } catch (e) {
       if (!(e instanceof SecurityError) || e.code !== "unavailable") throw e;
       // Missing keys must never hide an invalid signature, state or route.

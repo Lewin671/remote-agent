@@ -352,7 +352,7 @@ export class MemorySecurityStorage implements SecurityStorage {
     if (!equal(expected.stateHash, this.record.stateHash))
       throw new SecurityError("stale");
     const { extendRecord } = await import("../device-security-store");
-    this.record = await extendRecord(this.record, states, proofs);
+    this.record = { ...await extendRecord(this.record, states, proofs) };
     if(lease){await verifyLease(lease,this.record.states[this.record.states.length-1]);this.record.lease=lease;}
   }
   async touchSecurity(now: bigint) {
