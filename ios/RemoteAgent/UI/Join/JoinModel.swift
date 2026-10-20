@@ -35,6 +35,17 @@ struct JoinCalls: Sendable {
     static func live(http: HTTP, existing: Account? = nil, vault: Vault = Vault()) -> JoinCalls {
         JoinCalls(
             byPairing: { link, onEmoji, stopped, onRegistering, confirm in
+                if let delivery = try vault.loadPairDeliveryReceipt() {
+                    guard delivery.intent.targetServer == link.server else { throw PairError("另一个服务器的配对收件尚未完成") }
+                    onRegistering()
+                    let account = try await delivery.resume(http: http) { account, record in
+                        // The registration receipt remains until this retry succeeds.
+                        try vault.saveRegistrationBootstrap(account, record: record)
+                    }
+                    try vault.clearPairDeliveryReceipt()
+                    try vault.clearRegistrationIntent(delivery.intent)
+                    return account
+                }
                 if let pending = try vault.loadRegistrationIntent() {
                     guard pending.targetServer == link.server else { throw PairError("另一个服务器的注册尚未完成，请先重试或退出并重新开始") }
                     onRegistering()
@@ -55,6 +66,11 @@ struct JoinCalls: Sendable {
                     persistIdentity: { identity in
                         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
                         try vault.savePairingIdentity(PairingIdentity.storageKey(server: identity.server, pairingID: identity.pairingID), encoder.encode(identity))
+                    },
+                    persistDelivery: { try vault.savePairDeliveryReceipt($0) },
+                    clearDelivery: {
+                        try vault.clearPairDeliveryReceipt()
+                        if let pending = try vault.loadRegistrationIntent() { try vault.clearRegistrationIntent(pending) }
                     },
                     existing: existing, confirm: confirm)
                 return joined

@@ -250,10 +250,24 @@ struct Vault: Sendable {
     func clearRegistrationIntent(_ expected:RegistrationIntent) throws {
         SecurityVaultLock.lock.lock();defer{SecurityVaultLock.lock.unlock()}
         let encoder=JSONEncoder();encoder.outputFormatting=[.sortedKeys]
+        if try readNamed("pair-delivery") != nil { return }
         if try readNamed("registration-intent")==encoder.encode(expected){
             try deleteNamed(expected.candidateStorageKey)
             try deleteNamed("registration-intent")
         }
+    }
+    func loadPairDeliveryReceipt() throws -> PairDeliveryReceipt? {
+        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
+        return try readNamed("pair-delivery").map { try JSONDecoder().decode(PairDeliveryReceipt.self, from: $0) }
+    }
+    func savePairDeliveryReceipt(_ receipt: PairDeliveryReceipt) throws {
+        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        try savePairingIdentity("pair-delivery", encoder.encode(receipt))
+    }
+    func clearPairDeliveryReceipt() throws {
+        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
+        try deleteNamed("pair-delivery")
     }
     func deleteNamed(_ name: String) throws {
         var q=query(nil);q[kSecAttrAccount]=name

@@ -72,5 +72,38 @@ import UIKit
         #expect(throws: DeviceSecurity.Failure.self) { try model.bootstrapGate.check(next) }
         model.scenePhase(.background)
     }
+    @Test func rePairingPreservesEdPinHistoryAndFloorWhileReplacingXAndSavingThePublicProfile() throws {
+        defer { try? vault.clear() }
+        let root = Authority.newSecret(), seed = Authority.newSecret(), oldX = Authority.newSecret()
+        let signer = try SigningKey(seed: seed), keys = try Keys.derive(root: root)
+        let member = try Authority.newMember(signer: signer, xPrivate: oldX, kind: .client)
+        let recovery = try Authority.newRecovery(), secret = Authority.newSecret()
+        let genesis = try Authority().genesis(account: deviceId(publicKey: keys.account.publicKey), domain: Authority.newSecret(),
+            member: member, recoveryEd: recovery.publicKey, secret: secret, signer: signer, now: 1000)
+        let pin = try DeviceSecurity.pin(for: genesis)
+        let old = try DeviceSecurity.Record(pin: pin, states: [1: genesis], memberID: member.id,
+            xPrivate: oldX, member: true, floor: 5000, floorSaved: 5000, secret: secret)
+        try vault.initializeSecurity(old)
+        let newX = Authority.newSecret(), newSecret = Authority.newSecret()
+        let replacement = try Authority.memberWithX(edPublic: signer.publicKey, xPrivate: newX, kind: .client)
+        let next = try Authority().rotateX(parent: genesis, target: member.id, newXPublic: replacement.x,
+            oldSecret: secret, newSecret: newSecret, signer: signer, now: 6000)
+        let updated = try DeviceSecurity.Record(pin: pin, states: [1: genesis, 2: next], memberID: member.id,
+            xPrivate: newX, member: true, secret: newSecret)
+        let account = Account(server: "https://relay.example.com", root: Data(), deviceSeed: seed,
+            deviceId: member.id, accountId: pin.account)
+        var registration = PBDeviceRegistration(); registration.accountPublicKey = keys.account.publicKey
+        registration.devicePublicKey = signer.publicKey; registration.kind = .client
+        var request = PBRegisterDeviceRequest(); request.registration = try registration.serializedData()
+        let intent = try RegistrationIntent(account: account, record: updated, request: request)
+        try vault.saveRegistrationIntent(intent)
+        try vault.saveRegistrationBootstrap(account, record: updated)
+        let installed = try vault.readSecurity()
+        #expect(installed.pin == pin && installed.memberID == old.memberID)
+        #expect(try installed.xKey.rawRepresentation == newX)
+        #expect(installed.floor >= old.floor && installed.floorSaved >= old.floorSaved)
+        #expect(try installed.contentSecret(1) == secret)
+        #expect(try vault.accountPublicProfile(pin: pin)?.publicKey == keys.account.publicKey)
+    }
 
 }

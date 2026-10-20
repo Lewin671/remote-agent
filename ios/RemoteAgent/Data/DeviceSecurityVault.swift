@@ -43,7 +43,26 @@ extension Vault: DeviceSecurity.Storage {
         guard try pending.matchesBootstrap(account: account, record: record) else { throw DeviceSecurity.Failure.stale }
         // The public key remains after the registration receipt is cleared.
         try saveAccountPublicProfileUnlocked(pending.publicProfile, pin: record.pin)
-        let installed = try initializeSecurityUnlocked(record)
+        let installed: DeviceSecurity.Record
+        if let raw = try read(.securityState) {
+            let old = try DeviceSecurity.Record.parse(raw)
+            if try old.includesInstallation(record) { installed = old }
+            else {
+                // Re-pairing preserves Ed/pin and installs the fresh X only on a
+                // strictly extended, verified chain authorized by this receipt.
+                guard old.memberID == record.memberID, old.pin == record.pin,
+                    record.headEpoch > old.headEpoch, let ancestor = record.states[old.headEpoch],
+                    try DeviceSecurity.stateHash(ancestor) == DeviceSecurity.stateHash(old.state) else {
+                    throw DeviceSecurity.Failure.conflict
+                }
+                var next = record
+                next.floor = max(old.floor, record.floor); next.floorSaved = max(old.floorSaved, record.floorSaved)
+                next.contentKeys.merge(old.contentKeys) { current, _ in current }
+                try write(.securityState, next.bytes())
+                installed = next
+            }
+        } else { installed = try initializeSecurityUnlocked(record) }
+        try refreshNotifyUnlocked(installed)
         try save(account.stored, notifyKey: DeviceSecurity.NotifyRecord(record: installed).bytes())
     }
     private func refreshNotifyUnlocked(_ record: DeviceSecurity.Record) throws {

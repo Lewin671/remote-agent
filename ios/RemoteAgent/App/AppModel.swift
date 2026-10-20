@@ -326,6 +326,13 @@ final class AppModel {
                     stage = .join
                     return
                 }
+                if erase == nil, let delivery = try storage.vault.loadPairDeliveryReceipt() {
+                    _ = try await delivery.resume(http: Self.http) { account, record in
+                        try storage.vault.saveRegistrationBootstrap(account, record: record)
+                    }
+                    try storage.vault.clearPairDeliveryReceipt()
+                    try storage.vault.clearRegistrationIntent(delivery.intent)
+                }
                 if erase == nil,
                     let intent = try await Task.detached(operation: { try storage.vault.loadRegistrationIntent() }).value
                 {

@@ -136,6 +136,8 @@ public func joinByPairing(
     clearRegistration: @Sendable (RegistrationIntent) throws -> Void = { _ in },
     loadIdentity: @Sendable (String, String) throws -> PairingIdentity? = { _, _ in nil },
     persistIdentity: @Sendable (PairingIdentity) throws -> Void = { _ in throw DeviceSecurity.Failure.storage },
+    persistDelivery: @Sendable (PairDeliveryReceipt) throws -> Void = { _ in },
+    clearDelivery: @Sendable () throws -> Void = {},
     existing: Account? = nil,
     confirm: @Sendable ([String]) async -> Bool = { _ in false }
 ) async throws -> Account {
@@ -284,12 +286,15 @@ public func joinByPairing(
     request.registration=try reg.serializedData();request.approval=enrollment.approval;request.approvalSignature=enrollment.signature
     let intent = try RegistrationIntent(account:acct,record:record,request:request)
     try persistRegistration(intent)
+    try persistDelivery(PairDeliveryReceipt(intent: intent, candidateToken: token, pairingID: id))
     let registered = try await intent.resume(http:http,persist:persist)
     try clearRegistration(intent)
     try DeviceSecurity.check(registered.deviceId == acct.deviceId, .untrusted)
     // Tells the phone it went through. If this is lost, the phone reports the
     // outcome as unknown; the join itself stands.
     ask.received = true
-    _ = await api.pairing.getPairing(request: ask)
+    if let result = try? await api.pairing.getPairing(request: ask).value(), result.state == .delivered {
+        try clearDelivery()
+    }
     return acct
 }
