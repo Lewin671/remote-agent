@@ -13,16 +13,16 @@ it("tells a release mismatch apart from a wrong code", () => {
 it("an expired-or-canceled pairing does not accuse the other device of refusing", () => {
   expect(joinBanner(new Error("配对已过期或被取消"))).toEqual({
     kind: "err",
-    text: "这次配对已失效，请在管理端手机上重新生成配对码",
+    text: "这次配对已失效，请在管理端重新生成配对码",
     action: "重填",
   });
-  expect(joinBanner(new Error("管理端手机取消了配对")).text).toBe("对方拒绝了这次加入");
+  expect(joinBanner(new Error("管理端取消了配对")).text).toBe("对方拒绝了这次加入");
 });
 
 it("tells a browser to type the code the phone shows, never to scan", () => {
-  expect(joinLead).toBe("在管理端手机上打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。");
+  expect(joinLead).toBe("在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。");
   for (const lead of [joinLead, joinExistingLead]) {
-    expect(lead).toContain("在管理端手机上打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里");
+    expect(lead).toContain("在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里");
     expect(lead).toContain("8 位配对码");
     expect(lead).not.toMatch(/扫|二维码/);
   }

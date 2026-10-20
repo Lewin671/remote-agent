@@ -109,7 +109,7 @@ export class AuthorityLifecycle {
   }
 }
 
-export const BROWSER_AUTHORITY_NOTICE = "此浏览器是唯一管理端；清理网站数据或更换浏览器会丢失管理密钥。恢复码须离线保存，建议日常由原生端管理。";
+export const BROWSER_AUTHORITY_NOTICE = "此浏览器将是唯一管理端。清理网站数据或换浏览器会丢失管理密钥；恢复码必须离线保存。日常建议用 App 管理。";
 /** Expose the actual browser result to batch C; persistence cannot prevent
  * explicit site-data deletion and is never reported as a guarantee. */
 export async function requestAuthorityPersistence(): Promise<boolean> {

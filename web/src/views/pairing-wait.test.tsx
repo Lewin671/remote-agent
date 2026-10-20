@@ -90,7 +90,7 @@ it("cannot give up once this device began to register, and reports the outcome",
   const { done } = await start();
   act(() => calls[0].register());
   expect(give().disabled).toBe(true);
-  expect(host.textContent).toContain("本机已确认，等待管理端手机批准并完成绑定");
+  expect(host.textContent).toContain("本机已确认，等待管理端批准并完成绑定");
   await act(async () => calls[0].release(true));
   expect(done).toHaveBeenCalled();
 });

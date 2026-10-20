@@ -1,3 +1,4 @@
+import { authorityStartup } from "./authority-setup";
 import { usePageVisible } from "./ui";
 import {
   lazy,
@@ -30,6 +31,7 @@ import { MessageSquare, Settings as SettingsIcon } from "./icons";
 const Setup = lazy(() =>
   import("./views/Pairing").then((m) => ({ default: m.Setup })),
 );
+const AccountEntry = lazy(() => import("./views/AuthoritySetup").then(m => ({ default: m.AccountEntry })));
 const loading = <div className="center muted">加载中…</div>;
 
 // ?demo in development shows made-up machines and sessions in every state
@@ -55,7 +57,11 @@ export function App() {
   const load = async () => {
     try {
       setSetupError("");
-      if (!demo) await resumeRegistration();
+      if (!demo) {
+        const startup = await authorityStartup();
+        if (startup.kind === "create" || startup.kind === "recovery") { setRemote(null); return; }
+        await resumeRegistration();
+      }
       const account = await loadAccount();
       if (account && !demo) {
         const status = await securitySetupStatus();
@@ -132,7 +138,7 @@ export function App() {
   if (remote === null)
     return (
       <Suspense fallback={loading}>
-        <Setup existing={retained} onDone={() => void load()} />
+        {retained ? <Setup existing={retained} onDone={() => void load()} /> : <AccountEntry onDone={() => void load()} />}
       </Suspense>
     );
   return <Main remote={remote} />;

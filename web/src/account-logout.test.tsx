@@ -7,6 +7,7 @@ import { Remote } from "./remote";
 import { DemoRemote } from "./dev/demo";
 import { forgetAccount } from "./storage";
 
+vi.mock("./authority-setup", () => ({ authorityStartup: vi.fn(async () => ({ kind: "empty" })) }));
 vi.mock("./eventcache", () => ({
   clearEventCache: vi.fn(async () => undefined),
 }));
