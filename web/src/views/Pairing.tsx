@@ -33,7 +33,7 @@ const defaultServer = () =>
   "";
 
 /** A joining error, as the banner the new device shows. */
-function joinBanner(e: unknown): {
+export function joinBanner(e: unknown): {
   kind: "err" | "warn";
   text: string;
   action: string;
@@ -50,6 +50,17 @@ function joinBanner(e: unknown): {
       kind: "err",
       text: "账户的状态链太长，无法加入；请在手机上重建账户。",
       action: "",
+    };
+  // The relay or the device that made the code is of another release.
+  if (
+    e instanceof ConnectError &&
+    e.code === Code.FailedPrecondition &&
+    /protocol version/.test(e.rawMessage)
+  )
+    return {
+      kind: "err",
+      text: "这个网页和服务器或发起配对的设备版本不同，请刷新页面更新后再试",
+      action: "重填",
     };
   if (
     e instanceof ConnectError &&
