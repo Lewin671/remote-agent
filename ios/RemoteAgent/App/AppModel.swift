@@ -170,6 +170,9 @@ final class AppModel {
     /// The app is in front. Screens that tick or hold a terminal follow it:
     /// timers pause in the background and terminals are closed there.
     private(set) var foreground = false
+    @ObservationIgnored let bootstrapGate = AuthorityGate()
+    @ObservationIgnored private var authoritySceneActive = false
+    @ObservationIgnored private var protectionObservers: [NSObjectProtocol] = []
     /// The server of the account just left, to fill in when joining again. Only in memory.
     private(set) var lastServer = ""
     private(set) var securitySetup: Account?
@@ -217,6 +220,25 @@ final class AppModel {
     init(settings: SettingsStore, parts: Parts = Parts()) {
         self.settings = settings
         self.parts = parts
+        installAuthorityProtection(bootstrapGate)
+    }
+
+    private func installAuthorityProtection(_ gate: AuthorityGate) {
+        for name in [UIApplication.willResignActiveNotification, UIApplication.protectedDataWillBecomeUnavailableNotification] {
+            protectionObservers.append(NotificationCenter.default.addObserver(
+                forName: name, object: nil, queue: nil
+            ) { _ in gate.set(active: false, protectedDataAvailable: false) })
+        }
+        protectionObservers.append(NotificationCenter.default.addObserver(
+            forName: UIApplication.protectedDataDidBecomeAvailableNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updateAuthorityAvailability() }
+        })
+    }
+    private func updateAuthorityAvailability() {
+        let available = UIApplication.shared.isProtectedDataAvailable
+        bootstrapGate.set(active: authoritySceneActive && !erasing, protectedDataAvailable: available)
+        context?.remote.setAuthorityAvailability(active: authoritySceneActive && !erasing, protectedDataAvailable: available)
     }
 
     // MARK: Lifecycle
@@ -225,6 +247,8 @@ final class AppModel {
     /// sheet over the app) still counts as in front: only the background
     /// closes the connections.
     func scenePhase(_ phase: ScenePhase) {
+        authoritySceneActive = phase == .active
+        updateAuthorityAvailability()
         setForeground(phase != .background)
     }
 
@@ -263,6 +287,7 @@ final class AppModel {
             engine?.reconnectNow()
         }
     }
+
 
     // MARK: The account
 
@@ -369,6 +394,8 @@ final class AppModel {
         described = nil
         state = made.remote.state.value
         context = AccountContext(account: account, remote: made.remote)
+        installAuthorityProtection(made.remote.authorityGate)
+        updateAuthorityAvailability()
         // The account's own view of the store: what is still writing when the account is erased writes nothing.
         ImageCenter.install(remote: made.remote, files: parts.storage.pending.scoped())
         stage = .ready
@@ -462,6 +489,7 @@ final class AppModel {
     /// (`loadAccount`). Until the erase has ended no account is read: the
     /// one being removed would be found and put back in use.
     func logout() async {
+        bootstrapGate.set(active: false, protectedDataAvailable: false)
         if let account { lastServer = account.server }
         generation += 1
         follower?.cancel()
@@ -503,6 +531,7 @@ final class AppModel {
         AccountDefaults.clear(parts.defaults)
         switch result {
         case .success:
+            updateAuthorityAvailability()
             stage = .join
         case .failure(let error):
             log.error(

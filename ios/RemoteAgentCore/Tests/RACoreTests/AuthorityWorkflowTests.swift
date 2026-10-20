@@ -84,3 +84,7 @@ final class AuthorityTestVault: AuthorityStorage, @unchecked Sendable {
         }
     }
 }
+
+private func enabledGate() -> AuthorityGate {
+    let gate = AuthorityGate(); gate.set(active: true, protectedDataAvailable: true); return gate
+}

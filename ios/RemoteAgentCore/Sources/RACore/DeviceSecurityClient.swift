@@ -235,7 +235,7 @@ public actor DeviceSecurityClient {
     public func seal(
         purpose: DeviceSecurity.Purpose, machine: String = "", session: String = "",
         request: String = "", seq: UInt64 = 0, deadline: UInt64 = 0, plaintext: Data,
-        sessionSeed: Data? = nil
+        sessionSeed: Data? = nil, authorityGate: AuthorityGate? = nil, authorityTicket: UInt64 = 0
     ) async throws -> PBEnvelope {
         let r = try read()
         try DeviceSecurity.check(r.member && r.secret != nil, .untrusted)
@@ -253,9 +253,9 @@ public actor DeviceSecurityClient {
             sender: memberID, kind: purpose.kind, purpose: purpose, machine: machine,
             session: session, request: request, seq: seq, deadline: deadline, compression: 0)
         _ = try DeviceSecurity.scope(h, head)
-        let formed = try DeviceSecurity.form(
-            secret: secret, sessionSeed: sessionSeed, header: h, plaintext: plaintext,
-            signingKey: signingKey)
+        let make = { try DeviceSecurity.form(
+            secret: secret, sessionSeed: sessionSeed, header: h, plaintext: plaintext, signingKey: self.signingKey) }
+        let formed = try authorityGate.map { try $0.withPermit(authorityTicket, make) } ?? make()
         return try DeviceSecurity.envelope(DeviceSecurity.Wire(formed: formed))
     }
     private func contentKey(

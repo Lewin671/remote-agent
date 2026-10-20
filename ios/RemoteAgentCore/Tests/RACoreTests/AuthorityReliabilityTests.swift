@@ -19,4 +19,17 @@ import Testing
         }
         #expect(wins.value == 1 && signed.value == 1)
     }
+    @Test func gateCancelsWorkSynchronouslyAndGenerationNeverComesBack() throws {
+        let gate = AuthorityGate(), canceled = Signal()
+        gate.set(active: true, protectedDataAvailable: true)
+        let ticket = try gate.ticket()
+        _ = try gate.track(ticket) { canceled.set() }
+        gate.set(active: false, protectedDataAvailable: true)
+        #expect(canceled.isSet)
+        gate.set(active: true, protectedDataAvailable: true)
+        #expect(throws: DeviceSecurity.Failure.self) { try gate.check(ticket) }
+        let fresh = try gate.ticket()
+        gate.set(active: true, protectedDataAvailable: false)
+        #expect(throws: DeviceSecurity.Failure.self) { try gate.check(fresh) }
+    }
 }

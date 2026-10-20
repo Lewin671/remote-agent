@@ -311,6 +311,7 @@ public actor Remote {
     ///   - clock: the time in milliseconds since 1970.
     ///   - sleep: how every wait here passes, so that tests need not wait.
     ///   - jitter: a number in 0..<1 that spreads reconnects apart.
+    public nonisolated let authorityGate = AuthorityGate()
     let securityStorage: (any DeviceSecurity.Storage)?
     var deviceSecurity: DeviceSecurityClient?
     public init(
@@ -377,7 +378,10 @@ public actor Remote {
     public nonisolated func setNetwork(_ available: Bool) { ops.yield(.setNetwork(available)) }
 
     /// Ends this Remote for good.
-    public nonisolated func close() { ops.yield(.close) }
+    public nonisolated func close() {
+        authorityGate.set(active: false, protectedDataAvailable: false)
+        ops.yield(.close)
+    }
 
     /// Reconnects now instead of waiting for the backoff, e.g. after the network came back.
     public nonisolated func reconnectNow() { ops.yield(.reconnectNow) }

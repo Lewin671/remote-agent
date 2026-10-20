@@ -90,3 +90,49 @@ public protocol AuthorityStorage: DeviceSecurity.Storage {
     func adoptOperation(_ expected: SecurityOperation, account: Account, record: DeviceSecurity.Record,
                         profile: AccountPublicProfile) throws
 }
+
+/// Synchronous revocation prevents actor reentrancy/queued lifecycle messages from
+/// allowing a signature after the scene became inactive or protected data locked.
+public final class AuthorityGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var generation: UInt64 = 0
+    private var allowed = false
+    private var jobs: [UUID: @Sendable () -> Void] = [:]
+    public init() {}
+    public func set(active: Bool, protectedDataAvailable: Bool) {
+        lock.lock()
+        generation &+= 1; allowed = active && protectedDataAvailable
+        let cancel = Array(jobs.values); jobs.removeAll()
+        lock.unlock()
+        cancel.forEach { $0() }
+    }
+    public func ticket() throws -> UInt64 {
+        lock.lock(); defer { lock.unlock() }
+        try DeviceSecurity.check(allowed, .untrusted)
+        return generation
+    }
+    public func check(_ ticket: UInt64) throws {
+        try withPermit(ticket) {}
+    }
+    public func withPermit<T>(_ ticket: UInt64, _ body: () throws -> T) throws -> T {
+        lock.lock(); defer { lock.unlock() }
+        try Task.checkCancellation()
+        try DeviceSecurity.check(allowed && generation == ticket, .untrusted)
+        return try body()
+    }
+    func launch<T: Sendable>(_ ticket: UInt64, _ body: @escaping @Sendable () async throws -> T) throws -> (UUID, Task<T, Error>) {
+        lock.lock(); defer { lock.unlock() }
+        try Task.checkCancellation()
+        try DeviceSecurity.check(allowed && generation == ticket, .untrusted)
+        let id = UUID()
+        let task = Task { try self.check(ticket); return try await body() }
+        jobs[id] = { task.cancel() }
+        return (id, task)
+    }
+    public func track(_ ticket: UInt64, cancel: @escaping @Sendable () -> Void) throws -> UUID {
+        lock.lock(); defer { lock.unlock() }
+        try DeviceSecurity.check(allowed && generation == ticket, .untrusted)
+        let id = UUID(); jobs[id] = cancel; return id
+    }
+    public func untrack(_ id: UUID) { lock.lock(); jobs[id] = nil; lock.unlock() }
+}
