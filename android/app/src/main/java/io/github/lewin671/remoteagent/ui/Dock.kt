@@ -34,7 +34,10 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,8 +71,9 @@ sealed interface DockItem {
     }
 
     data class Plan(val text: String) : DockItem {
+        // A new plan is a new item, which opens again.
         override val id
-            get() = "plan"
+            get() = "plan:" + text.hashCode()
     }
 
     data class Popup(val title: String) : DockItem {
@@ -78,7 +82,7 @@ sealed interface DockItem {
     }
 }
 
-/** The dock's one line: type, a summary, 处理 (client-v7). */
+/** The dock's one line when folded: type, a summary, 处理 (client-v7). */
 fun dockSummary(item: DockItem, agent: String): Pair<String, String> =
     when (item) {
         is DockItem.Approval ->
@@ -96,23 +100,71 @@ fun dockSummary(item: DockItem, agent: String): Pair<String, String> =
     }
 
 /**
- * What waits for the user, docked above the message box. It is one line until opened; open, its
- * body scrolls within 240 dp while the actions stay put, and the chat keyboard goes away. [more]
- * others wait behind it.
+ * The dock's one line, folded or open: the type, then the summary while folded, or while open the
+ * item's own [meta], how many more wait and the time left ([left]). The body never repeats it.
+ */
+fun dockHeadLine(
+    item: DockItem,
+    agent: String,
+    open: Boolean,
+    more: Int,
+    meta: String = "",
+    left: String = "",
+    openLabel: String? = null,
+): Pair<String, String> {
+    val (label, brief) = dockSummary(item, agent)
+    val rest =
+        if (open) listOf(meta, if (more > 0) "还有 $more 项" else "", left)
+        else listOf(brief, if (more > 0) "还有 $more 项" else "")
+    return (if (open) openLabel ?: label else label) to
+        rest.filter { it.isNotEmpty() }.joinToString(" · ")
+}
+
+/**
+ * Which waiting items the user folded, by session and item, for as long as the app runs: an item
+ * opens by itself, stays folded once folded, and the next item opens again.
+ */
+object DockFolds {
+    private val folded = mutableStateMapOf<String, Boolean>()
+
+    fun isOpen(sid: String, itemId: String): Boolean = folded["$sid/$itemId"] != true
+
+    fun set(sid: String, itemId: String, open: Boolean) {
+        if (open) folded.remove("$sid/$itemId") else folded["$sid/$itemId"] = true
+    }
+
+    fun clear() = folded.clear()
+}
+
+/**
+ * How tall an open dock's body and actions may grow: about 60% of the session's visible content
+ * area, never less than 240 dp. The session provides it.
+ */
+val LocalDockMax = androidx.compose.runtime.compositionLocalOf { 240.dp }
+
+/**
+ * What waits for the user, docked above the message box. It opens by itself; open, its one head line
+ * carries the type and the meta, and the body scrolls within [LocalDockMax] while the actions stay
+ * put. Folded by the user, it stays one line until the next item. [more] others wait behind it.
  */
 @Composable
 fun PendingDock(
+    sid: String,
     item: DockItem,
     agent: String,
     more: Int,
+    meta: String = "",
+    left: String = "",
+    openLabel: String? = null,
+    headExtra: (@Composable () -> Unit)? = null,
     body: @Composable ColumnScope.(close: () -> Unit) -> Unit,
     actions: @Composable ColumnScope.() -> Unit,
 ) {
     val p = pal
-    var open by rememberSaveable(item.id) { mutableStateOf(false) }
+    val open = DockFolds.isOpen(sid, item.id)
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
-    val (label, brief) = dockSummary(item, agent)
+    val (label, rest) = dockHeadLine(item, agent, open, more, meta, left, openLabel)
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp).topLine(p.line)) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(
@@ -123,58 +175,38 @@ fun PendingDock(
                     keyboard?.hide()
                     focus.clearFocus()
                 }
-                open = !open
+                DockFolds.set(sid, item.id, !open)
             },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Dot(p.orangeInk, 7)
-            Text(label, style = T.sm, color = p.fg2, maxLines = 1)
+            // One text, so a long type keeps its place first and the rest gives way.
             Text(
-                brief + if (more > 0) " · 还有 $more 项" else "",
+                buildAnnotatedString {
+                    withStyle(SpanStyle(color = p.fg2)) { append(label) }
+                    if (rest.isNotEmpty())
+                        withStyle(SpanStyle(color = p.muted)) { append("  $rest") }
+                },
                 style = T.sm,
-                color = p.muted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
+            if (open) headExtra?.invoke()
             ArrowText(if (open) "收起" else "处理", p.blue, T.sm, down = !open, up = open)
         }
         if (open) {
-            Column(Modifier.heightIn(max = 240.dp)) {
+            Column(Modifier.heightIn(max = LocalDockMax.current)) {
                 Column(
                     Modifier.weight(1f, fill = false)
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 4.dp, bottom = 6.dp),
+                        .padding(bottom = 6.dp),
                 ) {
-                    body { open = false }
+                    body { DockFolds.set(sid, item.id, false) }
                 }
                 Column(Modifier.padding(top = 4.dp, bottom = 10.dp)) { actions() }
             }
-        }
-    }
-}
-
-/** The first line of an open dock item: its type and, at the right, a note or a link. */
-@Composable
-fun DockHead(
-    title: String,
-    right: String = "",
-    rightLink: (() -> Unit)? = null,
-    extra: (@Composable () -> Unit)? = null,
-) {
-    val p = pal
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(title, style = T.smB, color = p.fg2, modifier = Modifier.weight(1f))
-        extra?.invoke()
-        if (right.isNotEmpty()) {
-            if (rightLink != null)
-                Box(Modifier.clickable(onClick = rightLink)) { ArrowText(right, p.blue, T.smB) }
-            else Text(right, style = T.sm, color = p.muted)
         }
     }
 }
@@ -220,21 +252,18 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int, onDetail: () -
     val agent = agentName(s.agent())
     var reasonOpen by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     PendingDock(
+        s.id,
         DockItem.Approval(a),
         agent,
         more,
+        left = if (a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟" else "",
+        openLabel = approvalHead(a),
         body = {
-            DockHead(
-                approvalHead(a),
-                if (a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟，超时拒绝"
-                else "",
-            )
             if (a.description.isNotEmpty())
                 Text(
                     approvalDisplay(a.description),
                     style = T.sm,
                     color = p.fg2,
-                    modifier = Modifier.padding(top = 4.dp),
                 )
             val body = approvalBody(a)
             if (body.isNotEmpty()) {
@@ -600,24 +629,14 @@ fun QuestionBody(
     }
     // part 0: everything; 1: the scrolling body; 2: the fixed actions.
     if (part != 2) {
-        val progress =
-            listOfNotNull(
-                    if (qs.size > 1) "第 ${index + 1} 题，共 ${qs.size} 题" else null,
-                    if (cur.multiSelect) "可多选" else null,
-                )
-                .joinToString(" · ")
+        val progress = questionProgress(q)
+        // In the dock the head line carries the progress.
         if (full)
             Text(
                 progress,
                 style = T.meta,
                 color = p.muted,
                 modifier = Modifier.padding(top = 12.dp),
-            )
-        else
-            DockHead(
-                "${agentName(s.agent())} 在问你",
-                progress,
-                extra = if (qs.size > 1) ({ Steps(qs.size, index) }) else null,
             )
         Text(
             cur.text,
@@ -627,7 +646,7 @@ fun QuestionBody(
             overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier.padding(
-                    top = if (full) 8.dp else 6.dp,
+                    top = if (full) 8.dp else 0.dp,
                     bottom = if (full) 12.dp else 6.dp,
                 ),
         )
@@ -724,6 +743,18 @@ fun QuestionBody(
     }
 }
 
+/** Where the user is in [q]: 第 2 题，共 3 题, and 可多选 when the current one is. */
+fun questionProgress(q: QuestionAsked): String {
+    val qs = q.questionsList
+    val index = QuestionPicks.index[q.questionId] ?: 0
+    val cur = qs.getOrNull(index) ?: qs.lastOrNull() ?: return ""
+    return listOfNotNull(
+            if (qs.size > 1) "第 ${minOf(index, qs.size - 1) + 1} 题，共 ${qs.size} 题" else null,
+            if (cur.multiSelect) "可多选" else null,
+        )
+        .joinToString(" · ")
+}
+
 /** 第 1 题 of several, as short bars. */
 @Composable
 fun Steps(n: Int, at: Int) {
@@ -745,10 +776,17 @@ fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> 
     val nav = LocalNav.current
     // One submission for both halves, which the dock lays out apart.
     val act = rememberAction()
+    val qs = q.questionsList
     PendingDock(
+        s.id,
         DockItem.Question(q),
         agentName(s.agent()),
         more,
+        meta = if (isSkeleton(q)) "" else questionProgress(q),
+        headExtra =
+            if (qs.size > 1 && !isSkeleton(q))
+                ({ Steps(qs.size, minOf(QuestionPicks.index[q.questionId] ?: 0, qs.size - 1)) })
+            else null,
         body = {
             QuestionBody(
                 s,
@@ -832,31 +870,47 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
     }
     val p = pal
     PendingDock(
+        s.id,
         DockItem.Plan(text),
         agentName(s.agent()),
         more,
         body = {
-            DockHead("计划待批准", "展开全文", rightLink = onFull)
+            // The whole plan, scrolling with the dock; 展开全文 still opens it as a page.
             Text(
                 text
                     .lines()
                     .map { io.github.lewin671.remoteagent.core.plain(it) }
                     .filter { it.isNotBlank() }
-                    .take(4)
                     .joinToString("\n"),
                 style = ts(13.sp, lineHeight = 1.6f),
                 color = p.fg,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
                 modifier =
-                    Modifier.padding(vertical = 8.dp)
+                    Modifier.padding(bottom = 4.dp)
                         .fillMaxWidth()
                         .clip(Radii.XS)
                         .background(p.soft)
                         .padding(horizontal = 10.dp, vertical = 7.dp),
             )
-            if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
-                Text("批准后使用询问模式", style = T.meta, color = p.muted)
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
+                        "批准后使用询问模式"
+                    else "",
+                    style = T.meta,
+                    color = p.muted,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(
+                    Modifier.heightIn(min = 44.dp).clickable(onClick = onFull),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    ArrowText("展开全文", p.blue, T.smB)
+                }
+            }
         },
     ) {
         PlanButtons(s, full = false, terminalOnly = isSkeleton(text))
@@ -974,17 +1028,18 @@ fun PlanButtons(
 fun PopupDock(s: SessionView, title: String, more: Int, onTerminal: () -> Unit) {
     val p = pal
     PendingDock(
+        s.id,
         DockItem.Popup(title),
         agentName(s.agent()),
         more,
+        meta = "${agentName(s.agent())} 在等你",
         body = {
-            DockHead("终端里有弹窗", "${agentName(s.agent())} 在等你")
             if (title.isNotEmpty())
                 Text(
                     title,
                     style = ts(15.sp, FontWeight.Medium),
                     color = p.fg,
-                    modifier = Modifier.padding(vertical = 6.dp),
+                    modifier = Modifier.padding(bottom = 6.dp),
                 )
             val hint = io.github.lewin671.remoteagent.core.popupHint(s.agent(), title)
             if (hint.isNotEmpty()) Text(hint, style = T.sm, color = p.orangeInk)

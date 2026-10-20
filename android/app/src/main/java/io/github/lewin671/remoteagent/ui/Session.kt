@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -535,8 +536,12 @@ private fun ChatPane(
         if (follow) seen = items.size
     }
     LaunchedEffect(atBottom) { if (atBottom) seen = items.size }
+    // The dock may take about 60% of what the session shows, not less than 240 dp.
+    var shownHeight by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val dockMax = with(density) { maxOf(240.dp, (shownHeight * 0.6f).toDp()) }
 
-    Column(modifier) {
+    Column(modifier.onSizeChanged { shownHeight = it.height }) {
         Box(Modifier.weight(1f)) {
             val chatCtx =
                 ChatContext(
@@ -639,15 +644,17 @@ private fun ChatPane(
                 }
             }
         }
-        Bottom(
-            state,
-            s,
-            status,
-            d,
-            onTerminal,
-            onDetail = { aid -> nav.approval(s.id, aid) },
-            onPlan = { nav.plan(s.id) },
-        )
+        androidx.compose.runtime.CompositionLocalProvider(LocalDockMax provides dockMax) {
+            Bottom(
+                state,
+                s,
+                status,
+                d,
+                onTerminal,
+                onDetail = { aid -> nav.approval(s.id, aid) },
+                onPlan = { nav.plan(s.id) },
+            )
+        }
     }
 }
 

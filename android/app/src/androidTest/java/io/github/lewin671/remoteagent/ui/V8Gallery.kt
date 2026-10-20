@@ -90,7 +90,7 @@ class V8Gallery {
     private val foo = "$home/Code/foo"
     private var dark by mutableStateOf(false)
 
-    @After fun close() { remote.close() }
+    @After fun close() { remote.close(); DockFolds.clear() }
 
     private fun ts(ms: Long) = Timestamp.newBuilder().setSeconds(ms / 1000).build()
     private fun at(h: Int, m: Int): Long = java.time.LocalDate.now().atTime(h, m).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -140,11 +140,13 @@ class V8Gallery {
 
     /** Shows [content] full screen with [state] and [history], then saves it light and dark as [name]. */
     private fun shoot(name: String, state: RemoteState, history: Map<String, List<Event>> = emptyMap(), then: (() -> Unit)? = null, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-        remote.showForTest(state, history, mapOf(
+        // Online means reached and synced, or the screens take the state for stale (RemoteState.unlinked).
+        val shown = if (state.conn == ConnState.ONLINE) state.copy(link = io.github.lewin671.remoteagent.core.Link.ONLINE, synced = true) else state
+        remote.showForTest(shown, history, mapOf(
             ("mac" to Agent.AGENT_CODEX) to codexModels,
             ("vps" to Agent.AGENT_CODEX) to codexModels,
             ("imac" to Agent.AGENT_CODEX) to codexModels,
-        ))
+        ), history.mapValues { (sid, list) -> liveOf(state.sessions[sid], list) })
         ui.setContent {
             RaTheme(if (dark) DarkPalette else LightPalette) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
@@ -156,6 +158,19 @@ class V8Gallery {
         save("$name-light")
         dark = true
         save("$name-dark")
+    }
+
+    /** What the computer would report as waiting now: the pending approvals and questions, and an open plan. */
+    private fun liveOf(s: SessionView?, list: List<Event>): io.github.lewin671.remoteagent.proto.LiveSnapshot {
+        val d = io.github.lewin671.remoteagent.core.derive(list, s?.info?.agent ?: Agent.AGENT_CODEX)
+        val b = io.github.lewin671.remoteagent.proto.LiveSnapshot.newBuilder().setRunning(d.running)
+        s?.info?.let { b.setSession(it) }
+        list.filter { (it.hasApprovalRequested() && it.approvalRequested.approvalId in d.approvals) || (it.hasQuestionAsked() && it.questionAsked.questionId in d.questions) }
+            .forEach { b.addActions(it) }
+        val plan = list.lastOrNull { it.hasPlanProposed() }
+        if (s?.info?.planOpen == true && plan != null)
+            b.setPlanEventSeq(plan.seq).setPlanScreen(plan.planProposed.text).setPlanScreenHash(com.google.protobuf.ByteString.copyFrom(ByteArray(32)))
+        return b.build()
     }
 
     private fun save(name: String) {
@@ -288,11 +303,29 @@ class V8Gallery {
     )
 
     @Test fun sessionApproval() {
-        shoot("12-session-approval", sessionState(apiSession), mapOf("api" to apiHistory)) { SessionScreen("api") }
+        shoot("12-session-approval", sessionState(apiSession), mapOf("api" to apiHistory), then = { ui.onNodeWithText("收起").performClick() }) { SessionScreen("api") }
     }
 
     @Test fun sessionApprovalOpen() {
-        shoot("13-session-approval-open", sessionState(apiSession), mapOf("api" to apiHistory), then = { ui.onNodeWithText("处理").performClick() }) { SessionScreen("api") }
+        shoot("13-session-approval-open", sessionState(apiSession), mapOf("api" to apiHistory), ) { SessionScreen("api") }
+    }
+
+    /** A command of [n] lines, some long enough to wrap. */
+    private fun longCommand(n: Int) = (1..n).joinToString("\n") { i ->
+        if (i % 7 == 0) "  --label migration-step-$i --description \"把第 $i 步的旧数据迁移到新的表结构，并保留回滚所需的快照\" \\"
+        else "psql \"\$DATABASE_URL\" -c 'UPDATE orders SET state = ''done'' WHERE id = $i;' \\"
+    }
+    private val longDesc = "迁移全部订单数据到新表结构。这条命令会逐条更新订单状态，执行时间可能较长；如果中途失败，需要用快照回滚后再重新执行。请确认数据库连接指向测试环境而不是生产环境。"
+
+    @Test fun sessionApprovalLong() {
+        val ev = events(turn(), user("迁移订单表"), approval("L1", longCommand(40), longDesc), approval("L2", "ls", "看看目录"))
+        shoot("13-session-approval-long", sessionState(session("long", "vps", foo, "迁移订单表", approvals = 2)), mapOf("long" to ev)) { SessionScreen("long") }
+    }
+
+    @Test fun sessionPlanLong() {
+        val plan = (1..30).joinToString("\n") { "$it. 第 $it 步：把 `inventory` 模块里和库存扣减相关的第 $it 段逻辑迁到新服务，并补上对应的测试" }
+        val ev = events(turn(), user("先出个方案"), agent("方案如下。"), Event.newBuilder().setPlanProposed(PlanProposed.newBuilder().setText(plan)))
+        shoot("16-session-plan-long", sessionState(session("planlong", "imac", "$home/Code/shop", "拆分订单服务", plan = true, mode = ApprovalMode.APPROVAL_MODE_PLAN, agent = Agent.AGENT_CLAUDE)), mapOf("planlong" to ev)) { SessionScreen("planlong") }
     }
 
     @Test fun approvalPage() {
@@ -300,13 +333,13 @@ class V8Gallery {
     }
 
     @Test fun sessionQuestion() {
-        shoot("15-session-question", sessionState(session("dep", "imac", "$home/Code/bar", "升级依赖", questions = 1)), mapOf("dep" to depEvents), then = { ui.onNodeWithText("处理").performClick() }) { SessionScreen("dep") }
+        shoot("15-session-question", sessionState(session("dep", "imac", "$home/Code/bar", "升级依赖", questions = 1)), mapOf("dep" to depEvents), ) { SessionScreen("dep") }
     }
 
     @Test fun sessionPlan() {
         val ev = events(turn(), user("先出个方案，把订单服务里的库存逻辑拆出去"), call("读取 14 个文件", ToolKind.TOOL_KIND_OTHER, item = "Read"), agent("方案如下，批准后开始改。"),
             Event.newBuilder().setPlanProposed(PlanProposed.newBuilder().setText("1. 新建 `inventory` 包，迁移库存扣减和回滚\n2. 订单服务改为调用接口，保留旧实现做开关\n3. 补充集成测试，覆盖并发扣减\n4. 灰度开关上线")))
-        shoot("16-session-plan", sessionState(session("plan", "imac", "$home/Code/shop", "拆分订单服务", plan = true, mode = ApprovalMode.APPROVAL_MODE_PLAN)), mapOf("plan" to ev), then = { ui.onNodeWithText("处理").performClick() }) { SessionScreen("plan") }
+        shoot("16-session-plan", sessionState(session("plan", "imac", "$home/Code/shop", "拆分订单服务", plan = true, mode = ApprovalMode.APPROVAL_MODE_PLAN)), mapOf("plan" to ev), ) { SessionScreen("plan") }
     }
 
     @Test fun sessionEnded() {

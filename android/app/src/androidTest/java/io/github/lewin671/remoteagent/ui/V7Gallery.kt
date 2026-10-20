@@ -79,7 +79,7 @@ class V7Gallery {
     private val foo = "$home/Code/foo"
     private var dark by mutableStateOf(false)
 
-    @After fun close() { remote.close() }
+    @After fun close() { remote.close(); DockFolds.clear() }
 
     private fun ts(ms: Long) = Timestamp.newBuilder().setSeconds(ms / 1000).build()
     private fun at(h: Int, m: Int): Long = java.time.LocalDate.now().atTime(h, m).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -247,11 +247,11 @@ class V7Gallery {
     )
 
     @Test fun sessionApproval() {
-        shoot("12-session-approval", sessionState(apiSession), mapOf("api" to apiHistory)) { SessionScreen("api") }
+        shoot("12-session-approval", sessionState(apiSession), mapOf("api" to apiHistory), then = { ui.onNodeWithText("收起").performClick() }) { SessionScreen("api") }
     }
 
     @Test fun sessionApprovalOpen() {
-        shoot("13-session-approval-open", sessionState(apiSession), mapOf("api" to apiHistory), then = { ui.onNodeWithText("处理").performClick() }) { SessionScreen("api") }
+        shoot("13-session-approval-open", sessionState(apiSession), mapOf("api" to apiHistory), ) { SessionScreen("api") }
     }
 
     @Test fun approvalPage() {
@@ -259,13 +259,13 @@ class V7Gallery {
     }
 
     @Test fun sessionQuestion() {
-        shoot("15-session-question", sessionState(session("dep", "imac", "$home/Code/bar", "升级依赖", questions = 1)), mapOf("dep" to depEvents), then = { ui.onNodeWithText("处理").performClick() }) { SessionScreen("dep") }
+        shoot("15-session-question", sessionState(session("dep", "imac", "$home/Code/bar", "升级依赖", questions = 1)), mapOf("dep" to depEvents), ) { SessionScreen("dep") }
     }
 
     @Test fun sessionPlan() {
         val ev = events(turn(), user("先出个方案，把订单服务里的库存逻辑拆出去"), call("读取 14 个文件", ToolKind.TOOL_KIND_OTHER, item = "Read"), agent("方案如下，批准后开始改。"),
             Event.newBuilder().setPlanProposed(PlanProposed.newBuilder().setText("1. 新建 `inventory` 包，迁移库存扣减和回滚\n2. 订单服务改为调用接口，保留旧实现做开关\n3. 补充集成测试，覆盖并发扣减\n4. 灰度开关上线")))
-        shoot("16-session-plan", sessionState(session("plan", "imac", "$home/Code/shop", "拆分订单服务", plan = true, mode = ApprovalMode.APPROVAL_MODE_PLAN)), mapOf("plan" to ev), then = { ui.onNodeWithText("处理").performClick() }) { SessionScreen("plan") }
+        shoot("16-session-plan", sessionState(session("plan", "imac", "$home/Code/shop", "拆分订单服务", plan = true, mode = ApprovalMode.APPROVAL_MODE_PLAN)), mapOf("plan" to ev), ) { SessionScreen("plan") }
     }
 
     @Test fun sessionEnded() {

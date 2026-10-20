@@ -163,6 +163,7 @@ object AccountMemory {
         ViewerImages.clear()
         Resolves.clear()
         QuestionPicks.clear()
+        DockFolds.clear()
     }
 }
 

@@ -2398,6 +2398,7 @@ class Remote(
         state: RemoteState,
         events: Map<String, List<Event>> = emptyMap(),
         modelLists: Map<Pair<String, Agent>, ListModelsResponse> = emptyMap(),
+        live: Map<String, io.github.lewin671.remoteagent.proto.LiveSnapshot> = emptyMap(),
     ) {
         check(!running) { "showForTest on a started Remote" }
         _state.value = state
@@ -2405,7 +2406,7 @@ class Remote(
             CompletableDeferred(response)
         for ((sid, list) in events) eventFlows
             .getOrPut(sid) { MutableStateFlow(SessionEvents()) }
-            .value = SessionEvents(list, loaded = true)
+            .value = SessionEvents(list, loaded = true, live = live[sid])
     }
 
     // --- events ---
