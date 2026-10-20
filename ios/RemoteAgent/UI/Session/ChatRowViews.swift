@@ -77,7 +77,7 @@ struct ChatRowView: View, Equatable {
         case .user(let m):
             ChatBubble(
                 m.text.jvmIsBlank && !m.images.isEmpty ? nil : m.text,
-                caption: m.from ?? (m.local ? "在终端里输入" : nil)
+                caption: m.from
             ) {
                 if !m.images.isEmpty {
                     ChatImageRow(m.images) { actions.image(m.seq, $0) }.padding(.bottom, 4)
@@ -86,7 +86,7 @@ struct ChatRowView: View, Equatable {
             .messageMenu(m.text, actions: actions)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(m.text.isEmpty ? "图片" : m.text)
-            .accessibilityValue(m.from ?? (m.local ? "在终端里输入" : "你发的消息"))
+            .accessibilityValue(m.from ?? "你发的消息")
         case .agent(let m):
             // The row's own menu answers the long press (复制, and 选择文字 for a part of it), not the text's.
             MarkdownView(blocks: row.blocks, bleed: chatMargin, selectable: false)

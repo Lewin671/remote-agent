@@ -68,7 +68,7 @@ func pendingLabel(
 
 /// What follows the label: who sent it when it was not this client, else its place in the queue.
 func pendingSuffix(_ p: PendingInput, origin: String?, index: Int) -> String {
-    if let origin, origin != "本客户端" { return " · \(origin)" }
+    if let origin { return " · \(origin)" }
     return index > 0 && p.mode == .queue ? " · 第 \(index) 条" : ""
 }
 

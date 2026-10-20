@@ -126,7 +126,7 @@ extension Ref<LiveAnnouncer> {
 
     @Test func aWaitingMessageNamesAnotherSenderOrItsPlace() {
         #expect(pendingSuffix(pending(mode: .queue), origin: nil, index: 2) == " · 第 2 条")
-        #expect(pendingSuffix(pending(mode: .queue), origin: "本客户端", index: 2) == " · 第 2 条")
+        #expect(pendingSuffix(pending(mode: .queue), origin: nil, index: 2) == " · 第 2 条")
         #expect(pendingSuffix(pending(mode: .queue), origin: "我的 iPad", index: 2) == " · 我的 iPad")
         #expect(pendingSuffix(pending(), origin: nil, index: 1).isEmpty)
     }

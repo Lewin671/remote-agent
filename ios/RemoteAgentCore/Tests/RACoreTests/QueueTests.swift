@@ -44,10 +44,15 @@ import Testing
         let named = DeviceView(id: "cccc92de", kind: .client, createdMs: 0, meta: .with { $0.name = "我的手机" })
         var state = RemoteState()
         state.devices = [phone.id: phone, named.id: named]
-        #expect(originLabel(o(.client, "me"), state: state, me: "me", machine: "MacBook") == "本客户端")
+        // This client's own doings are not labelled.
+        #expect(originLabel(o(.client, "me"), state: state, me: "me", machine: "MacBook") == nil)
         #expect(originLabel(o(.client, "aaaab71c"), state: state, me: "me", machine: "MacBook") == "Android · b71c")
         #expect(originLabel(o(.client, "cccc92de"), state: state, me: "me", machine: "MacBook") == "我的手机")
-        #expect(originLabel(o(.client, "gone9999"), state: state, me: "me", machine: "MacBook") == "客户端 · 9999")
+        // Removed: no part of its ID is shown.
+        #expect(originLabel(o(.client, "gone9999"), state: state, me: "me", machine: "MacBook") == "已移除的设备")
+        #expect(originLabel(o(.client, ""), state: state, me: "me", machine: "MacBook") == "另一客户端")
+        // Before the device list is read nothing is known of who it was.
+        #expect(originLabel(o(.client, "gone9999"), state: RemoteState(), me: "me", machine: "MacBook") == "另一客户端")
         let zone = Mk.utc
         func at(_ y: Int, _ m: Int, _ d: Int, _ h: Int, _ min: Int) -> Int64 { Mk.at(y, m, d, h, min, zone: zone) }
         let now = at(2026, 10, 3, 12, 0)
@@ -78,7 +83,8 @@ import Testing
         #expect(clientUsed(nil, now: now, zone: zone) == "已配对")
         func c(_ id: String, _ created: Int64, _ seen: Int64) -> DeviceView { device(id, created: created, seen: seen, chrome) }
         #expect(sortClients([c("old", 1, 0), c("me", 2, 5), c("new", 3, 0), c("recent", 1, 9), c("stale", 1, 4)], me: "me").map(\.id) == ["me", "recent", "stale", "new", "old"])
-        #expect(originLabel(o(.local), state: state, me: "me", machine: "MacBook") == "MacBook 本地终端")
+        #expect(originLabel(o(.local), state: state, me: "me", machine: "MacBook") == "MacBook 终端")
+        #expect(originLabel(o(.local), state: state, me: "me", machine: "") == "终端")
         #expect(originLabel(nil, state: state, me: "me", machine: "MacBook") == nil)
     }
 

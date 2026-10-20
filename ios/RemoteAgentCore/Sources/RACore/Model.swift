@@ -430,19 +430,29 @@ public func sortClients(_ clients: some Sequence<DeviceView>, me: String) -> [De
 public func shortId(_ id: String) -> String { id.jvmTakeLast(4) }
 
 /// Who an event says caused it (Event.origin), for display, or nil when
-/// the event does not say. Only a signed client is named, and only by the
-/// account's device list; anything unsure is "另一客户端", never a guess.
+/// the event does not say or this client did it: what was done here is
+/// not labelled. Only a signed client is named, and only by the account's
+/// device list; one the list no longer has was removed, and anything
+/// unsure is "另一客户端", never a guess. Typing on the computer is
+/// "<machine> 终端", as is a message the client tells was typed there
+/// (`typedHere`).
 public func originLabel(_ o: PBOrigin?, state: RemoteState, me: String, machine: String) -> String? {
     guard let o else { return nil }
     switch o.kind {
     case .client:
-        if o.deviceID == me { return "本客户端" }
-        if o.deviceID.isEmpty { return "另一客户端" }
+        if o.deviceID == me { return nil }
+        // Before the device list is read nothing is known of who it was.
+        if o.deviceID.isEmpty || state.devices.isEmpty { return "另一客户端" }
         if let d = state.devices[o.deviceID] { return clientName(d, id: o.deviceID) }
-        return "客户端 · \(shortId(o.deviceID))"
-    case .local: return "\(machine) 本地终端"
+        return "已移除的设备"
+    case .local: return terminalLabel(machine)
     default: return nil
     }
+}
+
+/// Who typed a message in the computer's terminal: 「MacBook 终端」.
+public func terminalLabel(_ machine: String) -> String {
+    machine.isEmpty ? "终端" : "\(machine) 终端"
 }
 
 extension PBEvent {

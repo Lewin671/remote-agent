@@ -133,7 +133,11 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
             else { return nil }
             return m.from
         }
-        #expect(await from(params) == "客户端 · 1234")
+        // Before the device list is read nothing is known of who it was.
+        #expect(await from(params) == "另一客户端")
+        // A device the list does not have was removed: no part of its ID is shown.
+        params.devices = ["bbbb000000005678": DeviceView(id: "bbbb000000005678", kind: .client, createdMs: 0)]
+        #expect(await from(params) == "已移除的设备")
         // The device list arrives: the same history reads differently, so the rows are built again.
         params.devices = [
             "aaaa000000001234": DeviceView(
@@ -141,8 +145,9 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
                 meta: .with { $0.name = "我的 iPad" })
         ]
         #expect(await from(params) == "我的 iPad")
+        // What this client sent is not labelled.
         params.me = "aaaa000000001234"
-        #expect(await from(params) == "本客户端")
+        #expect(await from(params) == nil)
     }
 
     @Test func aNewSessionsFirstMessageIsShownUntilTheHistoryHasIt() async {

@@ -54,7 +54,7 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
     case turnEnd(TurnEnd)
     case fork(Fork)
 
-    /// `from`: who sent it, when the daemon says (v2): a client's name, 本客户端, or the computer's terminal.
+    /// `from`: who sent it when it was not this client: another client's name, or the computer's terminal.
     public struct User: Equatable, Sendable {
         public var key: String
         public var text: String
@@ -459,11 +459,6 @@ public func buildChat(
             out.append(.tool(.init(key: k, call: t, seq: callEvent.seq)))
         }
     }
-    /// Who did it, unless it was this client.
-    func other(_ o: PBOrigin?) -> String? {
-        guard let by = who(o), by != "本客户端" else { return nil }
-        return by
-    }
     for e in events {
         let k = "e\(e.seq)"
         if isSkeleton(e) {
@@ -494,7 +489,7 @@ public func buildChat(
                 .user(
                     .init(
                         key: k, text: imageText(m.text, refs: m.images), local: d.typedLocally.contains(e.seq), time: eventTime(e),
-                        from: who(e.originOrNil), images: m.images, seq: e.seq)))
+                        from: sender(e, d: d, machine: machine, who: who), images: m.images, seq: e.seq)))
         case .agentMessage(let m):
             if !m.text.jvmIsBlank {
                 flush()
@@ -517,7 +512,7 @@ public func buildChat(
             flush()
             let ok = r.decision == .allow || r.decision == .allowAlways
             let what = shortenPaths(a.command.ifEmpty(a.toolName.ifEmpty(a.description_p)), cwd: cwd, home: home)
-            let by = other(d.resolvedBy[a.approvalID])
+            let by = who(d.resolvedBy[a.approvalID])
             out.append(
                 .note(
                     .init(
@@ -526,7 +521,7 @@ public func buildChat(
         case .questionAnswered(let q):
             flush()
             let answers = q.answers.flatMap(\.answers)
-            let by = other(e.originOrNil)
+            let by = who(e.originOrNil)
             out.append(
                 .note(
                     .init(
@@ -554,7 +549,7 @@ public func buildChat(
             if turnTokens > 0 { parts.append(turnTokens >= 1000 ? "\((turnTokens + 500) / 1000)k tokens" : "\(turnTokens) tokens") }
             if !parts.isEmpty { out.append(.turnEnd(.init(key: k, text: parts.joined(separator: " · ")))) }
         case .settingsChanged(let c):
-            let by = other(e.originOrNil)
+            let by = who(e.originOrNil)
             let text: String?
             if c.compacted {
                 if let usage = d.compactions[e.seq], let before = usage.before, let after = usage.after {
@@ -587,6 +582,13 @@ public func buildChat(
     }
     flush()
     return out
+}
+
+/// Who sent a message, said only when it was not this client: the
+/// daemon's word, else the computer's terminal when the client tells it
+/// was typed there.
+func sender(_ e: PBEvent, d: Derived, machine: String, who: (PBOrigin?) -> String?) -> String? {
+    who(e.originOrNil) ?? (d.typedLocally.contains(e.seq) ? terminalLabel(machine) : nil)
 }
 
 /// 12 秒, 4 分 12 秒, 1 小时 3 分: how long a turn took.
@@ -642,7 +644,7 @@ public struct ChatProjection: Sendable {
                         .user(
                             .init(
                                 key: key, text: imageText(m.text, refs: m.images), local: d.typedLocally.contains(e.seq),
-                                time: eventTime(e), from: who(e.originOrNil), images: m.images, seq: e.seq)))
+                                time: eventTime(e), from: sender(e, d: d, machine: machine, who: who), images: m.images, seq: e.seq)))
                 case .agentMessage(let m): if !m.text.jvmIsBlank { items.append(.agent(.init(key: key, text: m.text))) }
                 case .reasoning(let r): if !r.text.jvmIsBlank { items.append(.thought(.init(key: key, text: r.text))) }
                 default: break

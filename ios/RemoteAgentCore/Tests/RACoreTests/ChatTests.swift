@@ -245,6 +245,27 @@ import Testing
 
     // --- not in Android's tests ---
 
+    @Test func aMessageSaysWhoSentItOnlyWhenItWasNotThisClient() {
+        let me = PBOrigin.with { $0.kind = .client; $0.deviceID = "me" }
+        let typed = PBOrigin.with { $0.kind = .local }
+        let events = [
+            Mk.ev(1, .userMessage(.with { $0.text = "从这里发的" }), origin: me),
+            Mk.ev(2, .userMessage(.with { $0.text = "在电脑上敲的" }), origin: typed),
+            // No origin and nothing sent from a client before it: the client tells it was typed on the computer.
+            Mk.ev(3, .userMessage(.with { $0.text = "也是在电脑上敲的" })),
+        ]
+        var state = RemoteState()
+        state.devices = ["me": DeviceView(id: "me", kind: .client, createdMs: 0)]
+        let items = buildChat(
+            events, d: derive(events), machine: "MacBook",
+            who: { originLabel($0, state: state, me: "me", machine: "MacBook") })
+        let from = items.map { item -> String? in
+            guard case .user(let m) = item else { return "?" }
+            return m.from
+        }
+        #expect(from == [nil, "MacBook 终端", "MacBook 终端"])
+    }
+
     @Test func theWordsOfARowFollowWhoDidWhat() {
         let other = PBOrigin.with { $0.kind = .client; $0.deviceID = "d2" }
         let me = PBOrigin.with { $0.kind = .client; $0.deviceID = "me" }
@@ -261,14 +282,14 @@ import Testing
         ]
         let items = buildChat(
             events, d: derive(events), machine: "MacBook", cwd: "/Users/me/Code/foo", now: Mk.at(2026, 10, 4, 9, 0), zone: Mk.shanghai,
-            who: { o in o.map { $0.deviceID == "me" ? "本客户端" : "Chrome · a8f2" } })
+            who: { o in o.flatMap { $0.deviceID == "me" ? nil : "Chrome · a8f2" } })
         #expect(
             items == [
                 .note(.init(key: "e1", text: "rm -rf build", icon: .check, tone: 1, meta: "已允许 · `rm` 开头的命令以后不再问 · Chrome · a8f2")),
                 .note(.init(key: "e3", text: "已回答：甲、乙", icon: .check, tone: 1)),
                 .note(.init(key: "e4", text: "Chrome · a8f2 将模型切到 sonnet · high")),
                 .note(.init(key: "e5", text: "审批模式切到了 完全放行")),
-                .turnEnd(.init(key: "e6", text: "已中断（本客户端） · 1 小时 2 分")),
+                .turnEnd(.init(key: "e6", text: "已中断 · 1 小时 2 分")),
                 .generated(.init(key: "e8", seq: 8, prompt: "a cat", images: [.with { $0.imageID = "g" }])),
                 .turnEnd(.init(key: "e9", text: "10月3日 18:44 结束")),
             ])
