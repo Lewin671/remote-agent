@@ -3,6 +3,7 @@ import Foundation
 extension Remote {
     public nonisolated func setAuthorityAvailability(active: Bool, protectedDataAvailable: Bool) {
         authorityGate.set(active: active, protectedDataAvailable: protectedDataAvailable)
+        if active && protectedDataAvailable { Task { await self.authorityForegroundTick() } }
     }
     public func authorityCoordinator() throws -> AuthorityCoordinator {
         if let management { return management }
@@ -23,5 +24,19 @@ extension Remote {
     public func deleteMachineRecords(_ id: String) async throws {
         try await authorityCoordinator().deleteMachineRecords(id)
         _ = await refresh()
+    }
+    public func renewLeaseNow() async throws {
+        try await authorityCoordinator().renewLeaseNow()
+        try await refreshTrustedDirectory()
+    }
+    func authorityForegroundTick() async {
+        guard (try? authorityGate.ticket()) != nil, !closed else { return }
+        do {
+            let coordinator = try authorityCoordinator()
+            try await coordinator.renewLeaseIfNeeded()
+            if let client = deviceSecurity {
+                updateLeaseExpiration(try await client.leaseExpiration())
+            }
+        } catch { /* pending evidence stays available to the foreground security flow */ }
     }
 }

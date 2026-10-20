@@ -259,6 +259,45 @@ extension AuthorityWorkflowTests {
         }
     }
 
+    @Test func stateAckLossBeyond72HoursRenewsOnlyIndependentLeaseAndClockRollbackUsesFloor() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let vault = AuthorityTestVault(), gate = enabledGate()
+        let past = Int64(Date().timeIntervalSince1970 * 1000) - 4 * 24 * 60 * 60 * 1000
+        let old = AuthorityBootstrap(storage: vault, gate: gate, clock: { past })
+        _ = try await old.prepareCreation(server: server.url)
+        try await old.confirmRecoveryCodeSaved()
+        let bootstrap = AuthorityBootstrap(storage: vault, gate: gate)
+        let account = try await bootstrap.continueCreation(setupToken: server.setupToken)
+        try await bootstrap.finishCreation()
+        let r = try vault.readSecurity(), signer = try SigningKey(seed: account.deviceSeed)
+        let recovery = try Authority.newRecovery()
+        let target = try Authority().veto(parent: r.state, newRecoveryEd: recovery.publicKey, secret: r.secret!, signer: signer, now: past)
+        var req = PBPutSecurityStateRequest(); var state = PBSecurityState(); state.state = try DeviceSecurity.stateBytes(target)
+        req.states = [state]; req.lease = try DeviceSecurity.HeadLease.sign(target, signer: signer, now: past).bytes()
+        let original = try req.serializedData()
+        _ = try vault.prepareOperation(expectedHead: DeviceSecurity.stateHash(r.state)) { _ in
+            SecurityOperation(kind: .state, parent: target.core.parent, signed: original)
+        }
+        let cut = Signal()
+        let http = Intercept.http(for: server.url, answered: { ask in
+            if ask.url?.path.hasSuffix("/PutSecurityState") == true, !cut.isSet {
+                cut.set(); gate.set(active: false, protectedDataAvailable: false)
+            }
+        }) { $0 }
+        let authority = try coordinator(account, vault, http: http, gate: gate)
+        do { try await authority.resumeSecurityOperation(); Issue.record("ack should be lost") } catch {}
+        let pending = try vault.readOperation().unwrap()
+        #expect(try PBPutSecurityStateRequest(serializedBytes: pending.signed).states == req.states)
+        #expect(pending.signed != original)
+        gate.set(active: true, protectedDataAvailable: true)
+        let restarted = try coordinator(account, vault, gate: gate, clock: { 1 })
+        try await restarted.resumeSecurityOperation()
+        #expect(try vault.readOperation() == nil)
+        #expect(try DeviceSecurity.stateHash(vault.readSecurity().state) == DeviceSecurity.stateHash(target))
+        let installed = try vault.readSecurity()
+        #expect(installed.lease!.issuedAt >= r.floor)
+        #expect(installed.lease!.issuedAt >= target.core.issuedAt)
+    }
 
     @Test func competingVerifiedParentStopsOriginalStateWithoutResigning() async throws {
         let server = try await ManagementRelay(); defer { server.close() }
@@ -461,4 +500,25 @@ extension AuthorityWorkflowTests {
 }
 
 extension AuthorityWorkflowTests {
+    @Test func sameHeadRenewalAtIdenticalMillisecondReusesTheCommittedCertificate() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (account, vault, _) = try await createAuthority(server)
+        let committed = try vault.readSecurity().lease.unwrap()
+        let authority = try coordinator(account, vault, clock: { Int64(committed.issuedAt) })
+        try await authority.renewLeaseNow()
+        #expect(try vault.readOperation() == nil)
+        #expect(try vault.readSecurity().lease?.bytes() == committed.bytes())
+        let r = try vault.readSecurity()
+        var req = PBPutSecurityStateRequest()
+        req.lease = try DeviceSecurity.HeadLease.sign(r.state, signer: SigningKey(seed: account.deviceSeed),
+            now: Int64(committed.issuedAt) - 1).bytes()
+        // An obsolete independent lease receipt reconciles to a newer committed
+        // certificate rather than signing a same-time competing certificate.
+        _ = try vault.prepareOperation(expectedHead: committed.head) { _ in
+            SecurityOperation(kind: .lease, parent: committed.head, signed: try req.serializedData())
+        }
+        try await authority.resumeSecurityOperation()
+        #expect(try vault.readOperation() == nil)
+        #expect(try vault.readSecurity().lease?.bytes() == committed.bytes())
+    }
 }

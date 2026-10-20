@@ -385,7 +385,10 @@ public actor Remote {
     }
 
     /// Reconnects now instead of waiting for the backoff, e.g. after the network came back.
-    public nonisolated func reconnectNow() { ops.yield(.reconnectNow) }
+    public nonisolated func reconnectNow() {
+        ops.yield(.reconnectNow)
+        Task { await self.authorityForegroundTick() }
+    }
 
     /// Tries the login again after the server turned this device away.
     public nonisolated func retryLogin() {
