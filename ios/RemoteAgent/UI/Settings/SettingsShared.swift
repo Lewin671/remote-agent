@@ -186,9 +186,15 @@ struct MachineRow: View {
     }
 }
 
+/// What a client is, drawn as a computer's row draws its laptop: a browser, a tablet or a phone.
+func clientIcon(_ d: DeviceView?) -> LucideIcon {
+    if d?.meta?.platform == "web" { return Lucide.globe }
+    return (d?.meta?.description_p ?? "").contains("iPad") ? Lucide.tablet : Lucide.smartphone
+}
+
 /// A client's row, the same wherever clients are listed (设置 and 设备): its
-/// name, what it runs on under it, and at the right 当前客户端 or when it
-/// was last used. A long press copies its ID, and renames or removes it
+/// badge, its name, what it runs on under it, and at the right 当前客户端 or
+/// when it was last used. A long press copies its ID, and renames or removes it
 /// where the list offers that.
 struct ClientRow: View {
     let client: DeviceView?
@@ -209,6 +215,7 @@ struct ClientRow: View {
             value: role,
             chevron: true
         ) { nav.open(.client(id: id)) }
+        .lead { IconBadge(clientIcon(client), color: Theme.blueBg) }
         .contextMenu {
             if let onRename { Button("重命名", action: onRename) }
             Button("复制设备 ID") { UIPasteboard.general.string = id }

@@ -121,6 +121,13 @@ enum Lucide {
         "laptop",
         "M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z",
         "M20.054 15.987H3.946")
+    /// A client: a browser, a phone, a tablet. Lucide's rects of 14 by 20 at 5,2 and 16 by 20 at 4,2 with corners of 2.
+    static let globe = LucideIcon(
+        "globe", SVGPath.circle(cx: 12, cy: 12, r: 10), "M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20", "M2 12h20")
+    static let smartphone = LucideIcon(
+        "smartphone", "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z", "M12 18h.01")
+    static let tablet = LucideIcon(
+        "tablet", "M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z", "M12 18h.01")
     /// The terminal's remaining arrow keys and its return key.
     static let arrowLeft = LucideIcon("arrow-left", "m12 19-7-7 7-7", "M19 12H5")
     static let arrowRight = LucideIcon("arrow-right", "M5 12h14", "m12 5 7 7-7 7")
@@ -137,7 +144,7 @@ enum Lucide {
     static let all: [LucideIcon] = [
         chevronRight, chevronLeft, chevronDown, chevronUp, ellipsis, plus, squarePen, arrowUp, square, copy, box,
         boxChecked, arrowDown, check, x, loaderCircle, minus, search, messageSquare, settings, wifiOff, cloudOff,
-        laptop, arrowLeft, arrowRight, cornerDownLeft, keyboard, maximize2,
+        laptop, globe, smartphone, tablet, arrowLeft, arrowRight, cornerDownLeft, keyboard, maximize2,
     ]
 }
 

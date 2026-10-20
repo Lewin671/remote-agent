@@ -552,3 +552,16 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         #expect(model.cache == 77 && !model.clearing)
     }
 }
+
+@Suite struct ClientIconTests {
+    @Test func aClientIsDrawnAsWhatItIs() {
+        func client(_ platform: String, _ description: String) -> DeviceView {
+            DeviceView(id: "c", kind: .client, createdMs: 0, meta: .with { $0.platform = platform; $0.description_p = description })
+        }
+        #expect(clientIcon(client("web", "Safari on iOS")) == Lucide.globe)
+        #expect(clientIcon(client("ios", "iOS 27.0 · iPad")) == Lucide.tablet)
+        #expect(clientIcon(client("ios", "iOS 27.0 · iPhone")) == Lucide.smartphone)
+        #expect(clientIcon(client("android", "Android 16 · Pixel 9")) == Lucide.smartphone)
+        #expect(clientIcon(nil) == Lucide.smartphone)
+    }
+}
