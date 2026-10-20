@@ -1156,7 +1156,8 @@ function Row({
         remote={remote}
       />
     );
-  if (it.kind === "turn") return <div className="sep">{duration(it.ms)}</div>;
+  if (it.kind === "turn")
+    return <div className="sep">本轮用时 {duration(it.ms)}</div>;
   const e = it.event;
   if (isSkeleton(e))
     return <div className="record muted">{skeletonMessage}</div>;

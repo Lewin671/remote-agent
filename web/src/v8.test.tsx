@@ -130,13 +130,13 @@ it("shows waiting approval only on its matching running tool", () => {
   const codex = { ...base, title: "go test ./...", input: "", inputDigest: "" };
   d.approvals.set("other", create(ApprovalRequestedSchema, { approvalId: "other", command: "go build ./..." }));
   mount(<ActiveTool tool={codex} d={d} remote={r} />);
-  expect(host.querySelector(".tool .muted")?.textContent).toMatch(/^0:1[0-9]$/);
+  expect(host.querySelector(".tool .muted")?.textContent).toMatch(/^已运行 0:1[0-9]$/);
   d.approvals.set("codex", create(ApprovalRequestedSchema, { approvalId: "codex", command: codex.title }));
   act(() => root!.render(<ActiveTool tool={codex} d={d} remote={r} />));
   expect(host.querySelector(".tool .muted")?.textContent).toBe("等待审批");
   d.approvals.delete("codex");
   act(() => root!.render(<ActiveTool tool={{ ...codex, title: "命令", input: "go test ./..." }} d={d} remote={r} />));
-  expect(host.querySelector(".tool .muted")?.textContent).toMatch(/^0:1[0-9]$/);
+  expect(host.querySelector(".tool .muted")?.textContent).toMatch(/^已运行 0:1[0-9]$/);
   d.approvals.set("codex-input", create(ApprovalRequestedSchema, { approvalId: "codex-input", command: "go test ./..." }));
   act(() => root!.render(<ActiveTool tool={{ ...codex, title: "命令", input: "go test ./..." }} d={d} remote={r} />));
   expect(host.querySelector(".tool .muted")?.textContent).toBe("等待审批");
@@ -144,7 +144,7 @@ it("shows waiting approval only on its matching running tool", () => {
   const claude = { ...base, title: "npm test", input: '{"command":"npm test"}', inputDigest: "digest-one" };
   d.approvals.set("wrong-digest", create(ApprovalRequestedSchema, { approvalId: "wrong-digest", command: "npm test", inputDigest: "digest-two" }));
   act(() => root!.render(<ActiveTool tool={claude} d={d} remote={r} />));
-  expect(host.querySelector(".tool .muted")?.textContent).toMatch(/^0:1[0-9]$/);
+  expect(host.querySelector(".tool .muted")?.textContent).toMatch(/^已运行 0:1[0-9]$/);
   d.approvals.set("claude", create(ApprovalRequestedSchema, { approvalId: "claude", inputDigest: "digest-one" }));
   act(() => root!.render(<ActiveTool tool={claude} d={d} remote={r} />));
   expect(host.querySelector(".tool .muted")?.textContent).toBe("等待审批");

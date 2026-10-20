@@ -2266,7 +2266,15 @@ describe("the client-v7 conversation", () => {
     const tool = host.querySelector(".tool.single .spin")!.closest(".tool")!;
     expect(tool.querySelector("pre")).toBeNull();
     expect(tool.textContent).toContain("go test");
+    // The time says what it is.
+    expect(tool.querySelector(".muted")!.textContent).toMatch(/^已运行 \d+:\d\d$/);
     expect(host.querySelector(".compose-status")).toBeNull();
+  });
+
+  it("says how long a turn took between turns", () => {
+    const r = demo();
+    mount(<SessionPage remote={r} session={r.sessions.get("s-ctx")!} onBack={() => undefined} wide={false} />);
+    expect([...host.querySelectorAll(".sep:not(.fork)")].map((x) => x.textContent)).toContain("本轮用时 4 分 12 秒");
   });
 
   it("shows full access in the navbar and the other settings behind ⋯", async () => {

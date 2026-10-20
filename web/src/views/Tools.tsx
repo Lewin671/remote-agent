@@ -29,7 +29,9 @@ export function ActiveTool({ tool, d, unsettled, remote }: { tool: RunningTool; 
   const online = remote.conn === "online";
   const now = useNow(1000, online && !unsettled && tool.since > 0);
   const c = toolClock(tool.since, now, online ? undefined : remote.lostAt ?? now);
-  const status = !online ? `${c ? clock(c.ms) + " · " : ""}等待同步` : unsettled ? "后台运行" : awaitingApproval(tool, d.approvals.values()) ? "等待审批" : c ? clock(c.ms) : "";
+  // Says what the time is: how long it has been running.
+  const ran = c ? `已运行 ${clock(c.ms)}` : "";
+  const status = !online ? `${ran ? ran + " · " : ""}等待同步` : unsettled ? "后台运行" : awaitingApproval(tool, d.approvals.values()) ? "等待审批" : ran;
   return <div className="tool single"><span className={online && !unsettled ? "sp" : "sp faint"} role="img" aria-label={!online ? "等待同步" : unsettled ? "后台运行" : "运行中"}><LoaderCircle /></span><code>{commandOf(tool)}</code><span className="muted">{status}</span></div>;
 }
 export function ToolRow({ t, short, decision, by, resultText }: { t: ToolCall; short: Short; decision?: ApprovalDecision; by?: string; resultText?: string }) {
