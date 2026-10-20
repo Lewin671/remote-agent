@@ -175,6 +175,69 @@ struct AuthorityWorkflowTests {
         #expect(try vault.readSecurity().lease != nil)
     }
 
+    @Test func pairingDeliveryRemovalAndPlatformIndependentHandoff() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        var step = "create"
+        do {
+        let (account, vault, _) = try await createAuthority(server)
+        let authority = try coordinator(account, vault)
+        step = "start"
+        let initiation = try await authority.startPairing()
+        #expect(PairLink.parse(initiation.link.url(web: "https://example.com")) == initiation.link)
+        let joinedVault = AuthorityTestVault(), candidateConfirmed = Signal()
+        let receipt = AuthorityRegistrationReceipt()
+        let joining = Task {
+            try await joinByPairing(link: initiation.link, http: HTTP(), onEmoji: { _ in }, stopped: { false }, sleep: { _ in try await realSleep(10) },
+                persist: { account, record in
+                    try joinedVault.initializeSecurity(record)
+                    try joinedVault.savePublicProfile(receipt.load().publicProfile)
+                    joinedVault.lock.withLock { joinedVault.account = account }
+                }, persistRegistration: { try receipt.save($0) }, persistIdentity: { _ in },
+                confirm: { _ in candidateConfirmed.set(); return true })
+        }
+        defer { joining.cancel() }
+        var candidate: PairCandidate?
+        for _ in 0..<500 {
+            candidate = try await authority.pairingCandidate(initiation)
+            if candidate != nil { break }; try await realSleep(10)
+        }
+        step = "candidate"
+        let incoming = try candidate.unwrap()
+        for _ in 0..<500 { if candidateConfirmed.isSet { break }; try await realSleep(10) }
+        #expect(candidateConfirmed.isSet)
+        step = "approve"
+        try await authority.approvePairing(incoming, sasConfirmed: true)
+        step = "join"
+        let joined = try await joining.value
+        // Exact durable delivery stays until DELIVERED, including if the joiner finished meanwhile.
+        step = "receipt"
+        try await authority.resumeSecurityOperation()
+        #expect(try vault.readOperation() == nil)
+        let newAuthority = try coordinator(joined, joinedVault)
+        step = "prepare handoff"
+        let code = try await newAuthority.prepareHandoffCode()
+        do { try await newAuthority.offerHandoff(code, codeSaved: false); Issue.record("offer without backup") } catch {}
+        step = "offer"
+        try await newAuthority.offerHandoff(code, codeSaved: true)
+        let remote = try Remote(account: account, http: HTTP(), securityStorage: vault)
+        step = "targets"
+        let targets = try await remote.handoffCandidates()
+        #expect(targets.contains { $0.id == joined.deviceId }) // missing platform is accepted
+        let prior = try vault.readSecurity()
+        let other = try Authority.newMember(signer: SigningKey(seed: randomBytes(32)), xPrivate: randomBytes(32), kind: .machine)
+        var fake = RAProto.PBDeviceMeta(); fake.platform = "android"; fake.handoffRecoveryEd = randomBytes(32)
+        #expect(try await authority.handoffCandidates([DeviceView(id: other.id, kind: .machine, createdMs: 0, meta: fake)]).isEmpty)
+        step = "handoff"
+        try await authority.handoffAuthority(incoming: joined.deviceId, offer: code.publicKey, verifiedHead: DeviceSecurity.stateHash(prior.state))
+        #expect(try !vault.readSecurity().member)
+        step = "new lease"
+        try await newAuthority.renewLeaseIfNeeded()
+        let adopted = try joinedVault.readSecurity()
+        #expect(adopted.state.core.authorityID == joined.deviceId)
+        #expect(adopted.lease?.head == (try DeviceSecurity.stateHash(adopted.state)))
+        #expect(try DeviceSecurity.openPrevSecret(newSecret: adopted.secret!, blob: adopted.state.prevSecret) == prior.secret)
+        } catch { throw TestFailure("pair workflow at \(step): \(error)") }
+    }
 
     @Test func expiredDeliveryHasExplicitRemovalExit() async throws {
         let server = try await ManagementRelay(); defer { server.close() }
@@ -199,6 +262,13 @@ struct AuthorityWorkflowTests {
         #expect(try vault.readSecurity().state.core.removed.contains(member.id))
     }
 
+}
+
+private final class AuthorityRegistrationReceipt: @unchecked Sendable {
+    let lock = NSLock()
+    var receipt: RegistrationIntent?
+    func save(_ receipt: RegistrationIntent) throws { lock.withLock { self.receipt = receipt } }
+    func load() throws -> RegistrationIntent { try lock.withLock { try receipt.unwrap() } }
 }
 
 /// Per-test relay/database. Advancing the recovery deadline is an explicit test

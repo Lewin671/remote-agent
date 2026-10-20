@@ -502,7 +502,7 @@ extension Remote {
         }
     }
 
-    private func changeDeviceMeta(_ id: String, _ change: (inout PBDeviceMeta) -> Void) async throws
+    func changeDeviceMeta(_ id: String, _ change: (inout PBDeviceMeta) -> Void) async throws
     {
         for _ in 0..<5 {
             try await refreshTrustedDirectory()

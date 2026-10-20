@@ -29,11 +29,26 @@ extension Remote {
         try await authorityCoordinator().renewLeaseNow()
         try await refreshTrustedDirectory()
     }
+    public func handoffCandidates() async throws -> [DeviceView] {
+        try await refreshTrustedDirectory()
+        return try await authorityCoordinator().handoffCandidates(Array(devices.values))
+    }
+    public func handoffAuthority(incoming: String) async throws {
+        try await refreshTrustedDirectory()
+        let r = try securityIdentity()
+        guard r.1.core.member(incoming)?.kind == 2, let offer = devices[incoming]?.meta?.handoffRecoveryEd,
+            offer.count == 32, directoryHead == (try DeviceSecurity.stateHash(r.1)) else { throw DeviceSecurity.Failure.untrusted }
+        try await authorityCoordinator().handoffAuthority(incoming: incoming, offer: offer, verifiedHead: DeviceSecurity.stateHash(r.1))
+    }
     func authorityForegroundTick() async {
         guard (try? authorityGate.ticket()) != nil, !closed else { return }
         do {
             let coordinator = try authorityCoordinator()
-            try await coordinator.renewLeaseIfNeeded()
+            if let pending = try await coordinator.pendingOperation(), pending.kind == .handoffOffer {
+                try await coordinator.resumeHandoffOffer()
+            } else {
+                try await coordinator.renewLeaseIfNeeded()
+            }
             if let client = deviceSecurity {
                 updateLeaseExpiration(try await client.leaseExpiration())
             }
