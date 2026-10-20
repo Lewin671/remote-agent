@@ -1287,6 +1287,36 @@ class RemoteTest {
         }
 
     @Test
+    fun pairingRejectsAuthorityIdentityBeforePublishingState() = runBlocking<Unit> {
+        val writes = java.util.concurrent.atomic.AtomicInteger()
+        val measured = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath.endsWith("/PutSecurityState") ||
+                chain.request().url.encodedPath.endsWith("/ApprovePairing")) writes.incrementAndGet()
+            chain.proceed(chain.request())
+        }.build()
+        val r = fixtureRemote(daemon.phone, measured)
+        closers += AutoCloseable { r.close() }
+        val before = r.security.head()
+        val init = Initiation.start(r, pollIntervalMs = 10)
+        val api = Api(server.url, http)
+        api.pairing.joinPairing(
+            JoinPairingRequest.newBuilder()
+                .setCode(init.code).setProtocolVersion(PROTOCOL_VERSION)
+                .setJoinerKind(DeviceKind.DEVICE_KIND_CLIENT)
+                .setDevicePublicKey(com.google.protobuf.ByteString.copyFrom(SigningKey(daemon.phone.deviceSeed).publicKey))
+                .setDeviceHpkePublicKey(com.google.protobuf.ByteString.copyFrom(PairKey().public))
+                .setJoinerPublic(com.google.protobuf.ByteString.copyFrom(PairKey().public)).build(),
+            emptyMap(),
+        ).value()
+        init.joined()
+        val failure = runCatching { init.approve() }.exceptionOrNull()
+        assertTrue(failure is PairException)
+        assertEquals(0, writes.get())
+        assertNull(TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId).readSecurityOperation())
+        assertArrayEquals(DeviceSecurity.stateHash(before), DeviceSecurity.stateHash(r.security.head()))
+    }
+
+    @Test
     fun comingBackReusesTheLogin() =
         runBlocking<Unit> {
             val logins = java.util.concurrent.atomic.AtomicInteger()

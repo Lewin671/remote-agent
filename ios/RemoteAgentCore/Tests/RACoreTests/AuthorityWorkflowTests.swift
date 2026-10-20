@@ -324,6 +324,26 @@ struct AuthorityWorkflowTests {
         #expect(lost.isSet)
     }
 
+    @Test func pairingRejectsAuthorityIdentityBeforePreparingOrPublishingState() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (account, vault, _) = try await createAuthority(server)
+        let c = try coordinator(account, vault)
+        let before = try vault.readSecurity()
+        let initiation = try await c.startPairing()
+        let api = try Api(server: server.url, http: HTTP())
+        var request = PBJoinPairingRequest()
+        request.code = initiation.link.code; request.protocolVersion = protocolVersion
+        request.joinerKind = .client; request.devicePublicKey = try SigningKey(seed: account.deviceSeed).publicKey
+        request.deviceHpkePublicKey = try PairKey().publicKey; request.joinerPublic = try PairKey().publicKey
+        _ = try await api.pairing.joinPairing(request: request).value()
+        let candidate = try await c.pairingCandidate(initiation).unwrap()
+        let writes = vault.committedReceipts.count
+        do { try await c.approvePairing(candidate, sasConfirmed: true); Issue.record("approved the authority as candidate") } catch {}
+        #expect(vault.committedReceipts.count == writes) // no signed state ever enters the pending slot
+        #expect(try vault.readOperation() == nil)
+        #expect(try DeviceSecurity.stateHash(vault.readSecurity().state) == DeviceSecurity.stateHash(before.state))
+    }
+
     @Test func expiredDeliveryHasExplicitRemovalExit() async throws {
         let server = try await ManagementRelay(); defer { server.close() }
         let (account, vault, _) = try await createAuthority(server)

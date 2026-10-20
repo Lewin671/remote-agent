@@ -253,6 +253,7 @@ export class AuthorityClient {
     if (!equal(r.stateHash, op.parent)) throw new SecurityError("conflict");
     const head = r.states.at(-1)!, draft = op.local, key = this.account.devicePrivate, now = signingTime(r);
     if (draft.pair) {
+      if (draft.pair.candidate.id === r.memberID) throw new SecurityError("untrusted");
       if (draft.pair.expires <= maxTime(r)) throw new Error("配对草稿已过期，尚未发布，可明确放弃后重新开始");
       check();
       const status = await this.pairing.getPairing({ pairingId: draft.pair.pairingId });
@@ -457,6 +458,7 @@ export class AuthorityClient {
   }
   async approvePairing(pair: PairingDelivery) {
     return this.lifecycle.run(async (check) => {
+      if (pair.candidate.id === this.account.deviceId) throw new SecurityError("untrusted");
       const old = await readSecurityOperation<StateDraft>();
       if (old?.kind === "state" && old.local.pair?.pairingId === pair.pairingId) {
         await this.resume(check);

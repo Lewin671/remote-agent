@@ -82,7 +82,7 @@ extension AuthorityCoordinator {
         return PairCandidate(emoji: secrets.emoji, kind: kind, member: member, initiation: initiation, secrets: secrets)
     }
     public func approvePairing(_ candidate: PairCandidate, sasConfirmed: Bool) async throws {
-        try DeviceSecurity.check(sasConfirmed, .untrusted)
+        try DeviceSecurity.check(sasConfirmed && candidate.member.id != account.deviceId, .untrusted)
         let t = try begin(); defer { busy = false }
         if let op = try storage.readOperation() {
             let delivery = try PBApprovePairingRequest(serializedBytes: op.delivery)

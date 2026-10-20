@@ -182,6 +182,23 @@ async function pairCandidate(c: Awaited<ReturnType<typeof clients>>, kind = Devi
   const { msg } = await openMessage(await importSessionKey(new Uint8Array(secrets.key)), approved.payload, { kind: PayloadKind.PAIRING, requestId: joined.pairingId }, PairingPayloadSchema);
   return { initiation, api, joined, device, x, msg, ed };
 }
+it("rejects a pairing candidate using the authority Ed key before any state signature", async () => {
+  const { account } = await createAccount(), c = await clients(account);
+  const r = await loadSecurity(), own = r.states.at(-1)!.core.members.find((m) => m.id === account.deviceId)!;
+  const initiation = await AuthorityPairing.start(c.authority, c.pairing, "https://app.example.com");
+  const api = createClient(PairingService, createConnectTransport({ baseUrl: server.url, useBinaryFormat: true }));
+  const ephemeral = newPairKey(), x = await newSecurityKey();
+  await api.joinPairing({ code: initiation.code, protocolVersion: PROTOCOL_VERSION, joinerKind: DeviceKind.CLIENT,
+    joinerPublic: ephemeral.pub, devicePublicKey: own.ed,
+    deviceHpkePublicKey: new Uint8Array(await crypto.subtle.exportKey("raw", x.publicKey)) });
+  await initiation.joined();
+  const sign = vi.spyOn(crypto.subtle, "sign"), put = vi.spyOn(c.api, "putSecurityState");
+  await expect(initiation.approve(true)).rejects.toThrow();
+  expect(sign).not.toHaveBeenCalled();
+  expect(put).not.toHaveBeenCalled();
+  expect(await readSecurityOperation()).toBeUndefined();
+  expect((await loadSecurity()).stateHash).toEqual(r.stateHash);
+});
 async function enrolledClient() {
   const { account } = await createAccount(), c = await clients(account);
   const candidate = await pairCandidate(c);

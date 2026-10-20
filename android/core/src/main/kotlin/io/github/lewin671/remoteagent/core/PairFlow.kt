@@ -275,6 +275,9 @@ internal constructor(
     private suspend fun approveOnce() {
         val s = secrets ?: throw PairException("还没有设备加入")
         val acct = remote.account
+        val cp = candidateSeed ?: throw PairException("没有候选设备")
+        if (deviceId(cp) == acct.deviceId)
+            throw PairException("候选设备不能使用管理端身份")
         val tok = remote.currentToken()
         val request = approvalLock.withLock {
             approvalRequest
@@ -288,7 +291,6 @@ internal constructor(
                         if (e.code !in setOf(Code.NOT_FOUND, Code.CANCELED, Code.FAILED_PRECONDITION)) throw e
                         throw PairException("同步成员状态失败，可能有已失效的配对。请在设备列表检查并移除未完成配对的设备，再重新开始。")
                     }
-                    val cp = candidateSeed ?: throw PairException("没有候选设备")
                     val xp = candidateX ?: throw PairException("没有候选设备")
                     val kind = candidateKind ?: throw PairException("没有候选设备")
                     val now = remote.security.signingTime(System.currentTimeMillis())
