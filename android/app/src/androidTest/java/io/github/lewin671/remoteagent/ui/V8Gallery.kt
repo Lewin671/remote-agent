@@ -165,12 +165,16 @@ class V8Gallery {
         save("$name-dark")
     }
 
-    /** What the computer would report as waiting now: the pending approvals and questions, and an open plan. */
+    /** What the computer would report as waiting now: the pending approvals, questions and inputs, and an open plan. */
     private fun liveOf(s: SessionView?, list: List<Event>): io.github.lewin671.remoteagent.proto.LiveSnapshot {
         val d = io.github.lewin671.remoteagent.core.derive(list, s?.info?.agent ?: Agent.AGENT_CODEX)
         val b = io.github.lewin671.remoteagent.proto.LiveSnapshot.newBuilder().setRunning(d.running)
         s?.info?.let { b.setSession(it) }
-        list.filter { (it.hasApprovalRequested() && it.approvalRequested.approvalId in d.approvals) || (it.hasQuestionAsked() && it.questionAsked.questionId in d.questions) }
+        list.filter {
+            (it.hasApprovalRequested() && it.approvalRequested.approvalId in d.approvals) ||
+                (it.hasQuestionAsked() && it.questionAsked.questionId in d.questions) ||
+                (it.hasInputState() && d.inputs[it.inputState.requestId] in setOf(InputStatus.INPUT_STATUS_QUEUED, InputStatus.INPUT_STATUS_HELD_BY_CLI))
+        }
             .forEach { b.addActions(it) }
         val plan = list.lastOrNull { it.hasPlanProposed() }
         if (s?.info?.planOpen == true && plan != null)
@@ -296,7 +300,7 @@ class V8Gallery {
     }
 
     @Test fun sessionMenu() {
-        shoot("11-session-menu", sessionState(session("run", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_IDLE, context = 87_000)), mapOf("run" to runEvents.dropLast(1)),
+        shoot("11-session-menu", sessionState(session("run", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_IDLE, context = 87_000)).copy(prefs = prefs(foo)), mapOf("run" to runEvents.dropLast(1)),
             then = {
                 ui.onNodeWithContentDescription("更多").performClick()
                 ui.onNodeWithText("项目设置").assertIsDisplayed()
@@ -400,6 +404,8 @@ class V8Gallery {
             Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("s1").setStatus(InputStatus.INPUT_STATUS_HELD_BY_CLI)),
             Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("q1").setStatus(InputStatus.INPUT_STATUS_QUEUED).setPaused(true)))
         shoot("20-pending-bubbles", sessionState(session("pending", "mac", foo, "检查所有界面", SessionStatus.SESSION_STATUS_RUNNING, agent = Agent.AGENT_CLAUDE)), mapOf("pending" to ev)) { SessionScreen("pending") }
+        ui.onNodeWithText("已暂停").assertIsDisplayed()
+        ui.onNodeWithText("插入这一轮").assertIsDisplayed()
     }
 
     @Test fun pendingMany() {
@@ -408,6 +414,7 @@ class V8Gallery {
                 .setMode(SendMode.SEND_MODE_QUEUE).setText("第 $n 条：检查不同项目的待发消息"))
         }.toTypedArray())
         shoot("20-pending-many", sessionState(session("many", "mac", foo, "多个待发消息", SessionStatus.SESSION_STATUS_RUNNING)), mapOf("many" to ev)) { SessionScreen("many") }
+        ui.onNodeWithText("还有 2 条排队 展开").assertIsDisplayed()
     }
 
     @Test fun modeSheet() {
