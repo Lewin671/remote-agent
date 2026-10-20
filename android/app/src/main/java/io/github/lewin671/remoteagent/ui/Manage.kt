@@ -262,8 +262,8 @@ fun ManageProjectsScreen() {
         val pinned = isPinned(state, pr.key)
         ActionSheet(
             info = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(pr.name, style = T.metaB, color = p.muted)
+                Column(horizontalAlignment = Alignment.Start) {
+                    Text(pr.name, style = T.bodyB, color = p.fg)
                     Text(shortPath(pr.key), style = T.mono, color = p.fg2)
                 }
             },

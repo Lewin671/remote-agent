@@ -437,11 +437,11 @@ private fun Grab() {
 /** A bottom sheet: card, top corners 20, grab handle, 16 dp sides (design-system §6). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Sheet(onClose: () -> Unit, scroll: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     val p = pal
     ModalBottomSheet(
         onDismissRequest = onClose,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { canDismiss || it != androidx.compose.material3.SheetValue.Hidden }),
         containerColor = p.card,
         shape = RoundedCornerShape(topStart = Radii.lg, topEnd = Radii.lg),
         dragHandle = { Grab() },
@@ -533,45 +533,39 @@ class SheetAction(
     val noteError: Boolean = false,
     val busy: Boolean = false,
     val keepOpen: Boolean = false,
+    val value: String? = null,
     val onClick: () -> Unit,
 )
 
-/** The more menu: a card of actions above a separate 取消, from the bottom. */
+/** The more menu uses the same scrollable, left-aligned sheet as project selection. */
 @Composable
 fun ActionSheet(info: (@Composable () -> Unit)?, actions: List<SheetAction>, onDismiss: () -> Unit) {
-    val p = pal
-    // Leaving while a choice is running would drop its answer.
     val busy = actions.any { it.busy }
-    val dismiss = { if (!busy) onDismiss() }
-    Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, null) { dismiss() }) {
-            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(start = 8.dp, end = 8.dp, bottom = 20.dp)) {
-                Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.card)) {
-                    if (info != null) Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) { info() }
-                    actions.forEachIndexed { i, a ->
-                        if (i > 0 || info != null) HorizontalDivider(color = p.line, thickness = 1.dp)
-                        val on = a.enabled && !a.busy
-                        Column(
-                            Modifier.fillMaxWidth().heightIn(min = 50.dp)
-                                // A tap on a greyed row stays on it rather than falling through to close the sheet.
-                                .then(if (on) Modifier.tap { if (!a.keepOpen) onDismiss(); a.onClick() } else Modifier.semantics { disabled() }.clickable(remember { MutableInteractionSource() }, null) {})
-                                .then(if (a.note.isNotEmpty()) Modifier.padding(horizontal = 14.dp, vertical = 6.dp) else Modifier),
-                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
-                        ) {
-                            if (a.busy) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Mark(Lucide.LoaderCircle, p.muted, 14.dp)
-                                Text(a.text, style = ts(17.sp), color = p.muted)
-                            } else Text(a.text, style = ts(17.sp), color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.blue, modifier = Modifier.alpha(if (a.enabled) 1f else .4f))
-                            if (a.note.isNotEmpty()) Text(a.note, style = T.meta, color = if (a.noteError) p.red else p.muted, textAlign = TextAlign.Center)
-                        }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                Box(Modifier.fillMaxWidth().clip(Radii.MD).background(p.card).heightIn(min = 50.dp).tap { dismiss() }, contentAlignment = Alignment.Center) {
-                    Text("取消", style = ts(17.sp, FontWeight.SemiBold), color = p.blue)
-                }
+    Sheet(onClose = { if (!busy) onDismiss() }, canDismiss = !busy) {
+        if (info != null) Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.CenterStart) { info() }
+        actions.forEach { a -> ActionSheetRow(a) { if (!a.keepOpen) onDismiss(); a.onClick() } }
+    }
+}
+
+@Composable
+internal fun ActionSheetRow(a: SheetAction, onClick: () -> Unit) {
+    val p = pal
+    val on = a.enabled && !a.busy
+    Column(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).bottomLine(p.line)
+            .clickable(enabled = on, onClick = onClick).padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.Start,
+    ) {
+        Row(Modifier.fillMaxWidth().alpha(if (a.enabled) 1f else .4f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (a.busy) Mark(Lucide.LoaderCircle, p.muted, 14.dp)
+            Text(a.text, style = T.body, color = if (a.danger) p.red else p.fg, modifier = Modifier.weight(1f))
+            if (a.value != null) {
+                Text(a.value, style = T.sm, color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.muted,
+                    textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(2f, fill = false))
+                Arrow(p.faint, T.body)
             }
         }
+        if (a.note.isNotEmpty()) Text(a.note, style = T.meta, color = if (a.noteError) p.red else p.muted, modifier = Modifier.padding(top = 4.dp))
     }
 }
 

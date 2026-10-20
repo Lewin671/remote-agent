@@ -205,14 +205,13 @@ private fun SessionTopBar(
     val remote = LocalRemote.current
     var menu by remember { mutableStateOf(false) }
     var confirmStop by remember { mutableStateOf(false) }
-    var projectSettings by remember { mutableStateOf(false) }
     var rename by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model
     val act = rememberAction()
-    val live = status != Status.EXITED && status != Status.OFFLINE
     // The title is kept on the computer: an ended session can be renamed too, but only while the
     // computer is reachable.
     val canRename = state.conn == ConnState.ONLINE && machineOf(state, s)?.online == true
+    val live = status != Status.EXITED && canRename
     // A fork starts at once, in the menu: its row shows the progress, and a failure under it. It is
     // kept
     // for the account: one whose outcome is unknown is still that fork after the menu or the page
@@ -273,14 +272,14 @@ private fun SessionTopBar(
     if (menu)
         ActionSheet(
             info = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(horizontalAlignment = Alignment.Start) {
                     Text(
                         "${agentName(s.agent())} · ${projectName(projectKey(s))} · ${machineLabel(state, s.machineId)}",
-                        style = T.meta,
-                        color = p.muted,
+                        style = T.bodyB,
+                        color = p.fg,
                     )
                     Text(
-                        "${shortPath(s.info?.cwd.orEmpty())} · 会话 ${s.id.take(16)}",
+                        shortPath(s.info?.cwd.orEmpty()),
                         style = T.meta,
                         color = p.muted,
                         fontFamily = MonoFamily,
@@ -292,7 +291,8 @@ private fun SessionTopBar(
                     if (live) {
                         add(
                             SheetAction(
-                                "审批模式：${mode?.text ?: "未知"}",
+                                "审批模式",
+                                value = mode?.text ?: "跟随 CLI 设置",
                                 danger = mode?.mode == Mode.FULL,
                                 enabled = !forking,
                             ) {
@@ -301,8 +301,8 @@ private fun SessionTopBar(
                         )
                         add(
                             SheetAction(
-                                if (model.isEmpty()) "会话设置"
-                                else "模型：$model" + if (effort.isNotEmpty()) " · $effort" else "",
+                                if (model.isEmpty()) "会话设置" else "模型",
+                                value = model + if (effort.isNotEmpty()) " · $effort" else "",
                                 enabled = !forking,
                             ) {
                                 sheet = 2
@@ -310,13 +310,12 @@ private fun SessionTopBar(
                         )
                         pc?.let {
                             add(
-                                SheetAction("上下文：$it%", warn = high, enabled = !forking) {
+                                SheetAction("上下文", value = "$it%", warn = high, enabled = !forking) {
                                     sheet = 2
                                 }
                             )
                         }
                     }
-                    add(SheetAction("项目设置", enabled = !forking) { projectSettings = true })
                     if (canRename) {
                         add(SheetAction("重命名", enabled = !forking) { rename = true })
                         add(
@@ -357,9 +356,9 @@ private fun SessionTopBar(
                             }
                         )
                     }
-                    if (running)
+                    if (running && canRename)
                         add(
-                            SheetAction("中断本轮", enabled = !forking) {
+                            SheetAction("中断本轮", danger = true, enabled = !forking) {
                                 act.run({
                                     remote.command(
                                         s.id,
@@ -373,7 +372,7 @@ private fun SessionTopBar(
                                 })
                             }
                         )
-                    if (status != Status.EXITED)
+                    if (status != Status.EXITED && canRename)
                         add(
                             SheetAction("结束会话…", danger = true, enabled = !forking) {
                                 confirmStop = true
@@ -385,22 +384,6 @@ private fun SessionTopBar(
                 Forks.dismissError(fork)
             },
         )
-    // On the session's own CLI: its set is the one this page is about.
-    if (projectSettings)
-        projectConfig(state, projectKey(s))?.let { initial ->
-            NewSettingsSheet(
-                state,
-                projectKey(s),
-                projectName(projectKey(s)),
-                initial.machineId,
-                s.agent(),
-                onDone = {
-                    if (it != null) PrefsChanges.run(remote, it)
-                    projectSettings = false
-                },
-                onClose = { projectSettings = false },
-            )
-        }
     if (rename) RenameDialog(s, onClose = { rename = false })
     when (sheet) {
         1 -> ModeSheet(s, onClose = { sheet = 0 })

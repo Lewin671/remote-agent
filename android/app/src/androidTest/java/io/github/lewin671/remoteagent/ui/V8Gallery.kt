@@ -408,7 +408,7 @@ class V8Gallery {
     @Test fun modeSheet() {
         shoot("21-mode-sheet", sessionState(session("run", "mac", foo, "修复登录超时", mode = ApprovalMode.APPROVAL_MODE_AUTO)), mapOf("run" to runEvents.dropLast(1)), then = {
             ui.onNodeWithContentDescription("更多").performClick()
-            ui.onNodeWithText("审批模式：自动").performClick()
+            ui.onNodeWithText("审批模式").performClick()
         }) { SessionScreen("run") }
     }
 
