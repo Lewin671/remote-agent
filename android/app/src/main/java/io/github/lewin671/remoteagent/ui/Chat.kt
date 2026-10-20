@@ -375,7 +375,7 @@ fun buildChat(
                 flush()
                 val t = e.turnEnded
                 val parts = mutableListOf<String>()
-                if (t.outcome == TurnOutcome.TURN_OUTCOME_ABORTED) parts += "已中断" + (who(e.originOrNull())?.let { "（$it）" } ?: "")
+                if (t.outcome == TurnOutcome.TURN_OUTCOME_ABORTED) parts += "已中断" + (who(e.originOrNull())?.takeIf { it != "本客户端" }?.let { "（$it）" } ?: "")
                 if (t.durationMs > 0) parts += "本轮用时 ${duration(t.durationMs)}"
                 if (turnTokens > 0) parts += if (turnTokens >= 1000) "${(turnTokens + 500) / 1000}k tokens" else "$turnTokens tokens"
                 if (parts.isNotEmpty()) out += ChatItem.TurnEnd(k, parts.joinToString(" · "))
@@ -659,7 +659,7 @@ private fun BackgroundRow(t: ToolCall, cwd: String, home: String, decision: Stri
     val p = pal
     val title = toolTitle(t, cwd, home).lines().first()
     val generic = (t.title.isEmpty() || t.title == "ToolCall" || t.title == "CommandExecution") && (t.itemType == "ToolCall" || t.itemType == "CommandExecution")
-    ToolLine(Lucide.LoaderCircle, p.blue, if (generic) "后台运行" else title, meta = if (generic) "" else "后台运行")
+    ToolLine(Lucide.LoaderCircle, p.blue, if (generic) "后台运行" else title, meta = listOf(if (generic) "" else "后台运行", decision).filter { it.isNotEmpty() }.joinToString(" · "))
 }
 
 /** Ordinary messages append without rebuilding old rows. State-changing events use the full builder. */
