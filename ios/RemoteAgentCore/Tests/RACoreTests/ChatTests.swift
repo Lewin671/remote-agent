@@ -93,7 +93,7 @@ import Testing
         #expect(folded.calls.count == 2)
         #expect(said.text == "done")
         #expect(note.text == "上下文已压缩 · 86% → 14%")
-        #expect(end.text == "4 分 12 秒 · 100 tokens")
+        #expect(end.text == "本轮用时 4 分 12 秒 · 100 tokens")
     }
 
     // Ported from "approval records" in web/src/model.test.ts.
@@ -294,7 +294,7 @@ import Testing
                 .note(.init(key: "e3", text: "已回答：甲、乙", icon: .check, tone: 1)),
                 .note(.init(key: "e4", text: "Chrome · a8f2 将模型切到 sonnet · high")),
                 .note(.init(key: "e5", text: "审批模式切到了 完全放行")),
-                .turnEnd(.init(key: "e6", text: "已中断 · 1 小时 2 分")),
+                .turnEnd(.init(key: "e6", text: "已中断 · 本轮用时 1 小时 2 分")),
                 .generated(.init(key: "e8", seq: 8, prompt: "a cat", images: [.with { $0.imageID = "g" }])),
                 .turnEnd(.init(key: "e9", text: "10月3日 18:44 结束")),
             ])

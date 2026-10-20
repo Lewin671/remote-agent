@@ -24,9 +24,10 @@ public func toolState(_ t: RunningTool, unfinished: Bool, d: Derived, frozenAt: 
     return .running
 }
 
-/// A timer reading: 2:12 in the chat; a dash while nothing runs for sure; nothing when the start is unknown.
+/// A timer reading: 已运行 2:12 in the chat; a dash while nothing runs for sure; nothing when the start is unknown.
 public func toolTimer(_ t: RunningTool, state: ToolState, now: Int64, frozenAt: Int64) -> String {
     if state == .unconfirmed || state == .approval { return "—" }
     guard let ms = toolElapsed(t, now: now, frozenAt: frozenAt) else { return "" }
-    return clock(ms)
+    // Says what the time is: how long it has been running.
+    return "已运行 " + clock(ms)
 }

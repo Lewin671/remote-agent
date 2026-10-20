@@ -175,7 +175,7 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
                     .turnEnded(.with { $0.durationMs = 2_000 }),
                 ]), loaded: true, fetchError: "没能读取历史：超时"))
         #expect(!model.derived.running)
-        #expect(model.rows.last?.item == .turnEnd(.init(key: "e4", text: "2 秒")))
+        #expect(model.rows.last?.item == .turnEnd(.init(key: "e4", text: "本轮用时 2 秒")))
         #expect(model.fetchError == "没能读取历史：超时")
     }
 }

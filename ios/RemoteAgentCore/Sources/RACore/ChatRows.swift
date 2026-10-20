@@ -557,7 +557,7 @@ public func buildChat(
             flush()
             var parts = [String]()
             if t.outcome == .aborted { parts.append("已中断" + (who(e.originOrNil).map { "（\($0)）" } ?? "")) }
-            if t.durationMs > 0 { parts.append(duration(t.durationMs)) }
+            if t.durationMs > 0 { parts.append("本轮用时 " + duration(t.durationMs)) }
             if turnTokens > 0 { parts.append(turnTokens >= 1000 ? "\((turnTokens + 500) / 1000)k tokens" : "\(turnTokens) tokens") }
             if !parts.isEmpty { out.append(.turnEnd(.init(key: k, text: parts.joined(separator: " · ")))) }
         case .settingsChanged(let c):

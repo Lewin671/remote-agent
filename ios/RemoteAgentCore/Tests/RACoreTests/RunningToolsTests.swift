@@ -81,8 +81,8 @@ import Testing
         let tool = RunningTool(title: "go test", callId: "a", since: 1_000)
         #expect(toolState(tool, unfinished: true, d: d, frozenAt: 5_000) == .unconfirmed)
         #expect(toolState(tool, unfinished: false, d: d, frozenAt: 5_000) == .sync)
-        #expect(toolTimer(tool, state: .running, now: 133_000, frozenAt: 0) == "2:12")
-        #expect(toolTimer(tool, state: .sync, now: 133_000, frozenAt: 61_000) == "1:00")
+        #expect(toolTimer(tool, state: .running, now: 133_000, frozenAt: 0) == "已运行 2:12")
+        #expect(toolTimer(tool, state: .sync, now: 133_000, frozenAt: 61_000) == "已运行 1:00")
         #expect(toolTimer(RunningTool(title: "x", callId: "", since: 0), state: .running, now: 9, frozenAt: 0) == "")
         #expect(ToolState.unconfirmed.text == "状态待确认")
     }
