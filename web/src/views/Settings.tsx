@@ -118,8 +118,9 @@ export function Settings({
           );
         })}
         {machines.length === 0 && <div className="row help">还没有电脑。</div>}
+        {remote.isAuthority && <ManagementEntry remote={remote} go={go} />}
       </div>
-      <ManagementEntry remote={remote} go={go} />
+      {!remote.isAuthority && <ManagementEntry remote={remote} go={go} />}
       <div className="glabel">客户端</div>
       <div className="grp">
         <button className="row" onClick={() => go("c/" + me)}>
@@ -460,8 +461,9 @@ export function DevicesPage({
           {machines.length === 0 && (
             <div className="row help">还没有电脑。</div>
           )}
+          {remote.isAuthority && <ManagementEntry remote={remote} go={go} />}
         </div>
-        <ManagementEntry remote={remote} go={go} />
+        {!remote.isAuthority && <ManagementEntry remote={remote} go={go} />}
         <div className="glabel">客户端 · 操作会话</div>
         <div className="grp">
           {remote.devicesStatus === "error" && (

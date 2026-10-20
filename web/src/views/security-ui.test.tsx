@@ -47,6 +47,11 @@ it.each(["authority", "member", "machine"])(
         "要添加电脑或客户端，在管理端（Android · Pixel 9）上打开「设置 › 添加设备」。",
       );
     if (role === "authority") {
+      const add = button("添加设备");
+      const group = add.closest(".grp")!;
+      expect(group.lastElementChild).toBe(add);
+      expect(add.classList.contains("add")).toBe(true);
+      expect(add.querySelector("svg")).toBeTruthy();
       await click("添加设备");
       expect(go).toHaveBeenCalledWith("settings/add-device");
     }

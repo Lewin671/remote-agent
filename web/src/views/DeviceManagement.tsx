@@ -1,3 +1,4 @@
+import { Plus } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useRef, useState } from "react";
 import qrcode from "qrcode-generator";
@@ -21,11 +22,10 @@ export function ManagementEntry({
   go: (r: string) => void;
 }) {
   return remote.isAuthority ? (
-    <div className="grp">
-      <button className="row act" onClick={() => go("settings/add-device")}>
-        添加设备
-      </button>
-    </div>
+    <button className="row add" onClick={() => go("settings/add-device")}>
+      <Plus />
+      添加设备
+    </button>
   ) : (
     <div className="manage-hint">
       要添加电脑或客户端，在管理端（{authorityName(remote)}）上打开「设置 ›
