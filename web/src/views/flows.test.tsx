@@ -235,6 +235,23 @@ it("keeps saved project settings as sessions change", () => {
   expect(line()).toMatch(/^Codex \/ Codex · /);
 });
 
+it("leaves an unknown approval mode unsaid in the navbar and follows the CLI in a new session", async () => {
+  const r = demo();
+  // s-run's CLI has not said its mode.
+  mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
+  expect(host.querySelector(".navbar .title > span")!.textContent).toBe("运行中");
+  act(() => root!.unmount());
+  host.remove();
+  // Neither the project nor the machine says how a new Codex session starts.
+  for (const a of r.machines.get("mac")!.meta!.agents) a.defaultModeSource = 0;
+  savedSet(r, "/Users/me/Code/foo")!.mode = ApprovalMode.UNSPECIFIED;
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Codex · 跟随 CLI 设置/));
+  await fromMenu("新会话设置");
+  expect(setting("审批")).toBe("跟随 CLI 设置");
+  expect(document.body.textContent).not.toContain("未读到");
+});
+
 it("shows a failed first listing and lists again", async () => {
   vi.useFakeTimers();
   try {

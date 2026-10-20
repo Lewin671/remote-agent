@@ -367,21 +367,20 @@ export function SessionPage({
       ))}
     </div>
   );
-  // A starting CLI has not reported its mode yet.
-  const starting = session.info?.status === SessionStatus.STARTING;
+  // The mode follows the status only once it is known: a starting CLI has
+  // not reported it, and one nobody could read is left unsaid.
+  const known = modeOf(session);
+  const modeTail = !ended && known && (
+    <>
+      {" "}
+      · <span className={known.text === "完全放行" ? "red" : ""}>{known.text}</span>
+    </>
+  );
   const sub = (
     <>
       <Dot tone={st.tone} />
       {st.text}
-      {!ended && !(starting && !modeOf(session)) && (
-        <>
-          {" "}
-          ·{" "}
-          <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>
-            {modeOf(session)?.text || "审批：CLI 配置（未读到）"}
-          </span>
-        </>
-      )}
+      {modeTail}
     </>
   );
   // The session's settings live in the ⋯ menu; a high context shows as
@@ -461,17 +460,7 @@ export function SessionPage({
         <b>{title}</b>
         <span className="muted">
           {st.text}
-          {!ended && !(starting && !modeOf(session)) && (
-            <>
-              {" "}
-              ·{" "}
-              <span
-                className={modeOf(session)?.text === "完全放行" ? "red" : ""}
-              >
-                {modeOf(session)?.text || "审批：CLI 配置（未读到）"}
-              </span>
-            </>
-          )}
+          {modeTail}
         </span>
         {seg}
         <button

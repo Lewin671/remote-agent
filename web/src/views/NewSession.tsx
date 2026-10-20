@@ -157,10 +157,11 @@ function setOf(c: NewConfig): AgentSet {
 }
 
 /** The mode a start with cfg will run in: the one chosen, else the CLI's
- * effective default the machine reports. */
+ * effective default the machine reports, or that it follows the CLI's
+ * own settings when nobody could read them. */
 function modeTextOf(cfg: NewConfig, m: MachineLike | undefined): string {
   const dm = defaultModeOf(m, cfg.agent);
-  return cfg.mode ? modeName(cfg.mode) : dm.known && dm.mode ? modeName(dm.mode) : "审批：CLI 配置（未读到）";
+  return cfg.mode ? modeName(cfg.mode) : dm.known && dm.mode ? modeName(dm.mode) : "跟随 CLI 设置";
 }
 
 /** What the user chose on this page and the stored settings do not say
