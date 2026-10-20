@@ -165,36 +165,6 @@ class MainActivity : ComponentActivity() {
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
             val tabs = route == "home" || route == "settings"
-            // Asked once for this client's name, after joining and when it has none yet,
-            // on the home and settings pages rather than over a session being read.
-            val me = devices.devices[remote.account.deviceId]
-            val asked = remember { getSharedPreferences("client-name", MODE_PRIVATE) }
-            var naming by remember { mutableStateOf(!asked.contains(remote.account.deviceId)) }
-            if (
-                naming &&
-                    tabs &&
-                    me != null &&
-                    me.meta?.name.isNullOrEmpty() &&
-                    devices.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE
-            ) {
-                val scope = rememberCoroutineScope()
-                val done = {
-                    asked.edit().putBoolean(remote.account.deviceId, true).apply()
-                    naming = false
-                }
-                io.github.lewin671.remoteagent.ui.InputAlert(
-                    "给这个客户端起个名字",
-                    phone.take(40),
-                    "如：我的手机",
-                    "保存",
-                    onDismiss = done,
-                    dismiss = "跳过",
-                    text = "其他客户端的设备列表里靠它认出这一个，以后可以在「设置 › 设备」里改",
-                ) { name ->
-                    if (name.isNotBlank())
-                        scope.launch { runCatching { remote.renameDevice(me.id, name.trim()) } }
-                }
-            }
             NavHost(
                 nav,
                 "home",

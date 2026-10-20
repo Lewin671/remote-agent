@@ -1373,32 +1373,28 @@ fun cancelOutcome(status: InputStatus?, canceledHere: Boolean): CancelOutcome =
 
 // --- devices and where actions came from ---
 
-/**
- * What kind of client, from what it says it runs on: Chrome, Safari, Android; a browser that says
- * nothing is 浏览器.
- */
-fun platformLabel(meta: io.github.lewin671.remoteagent.proto.DeviceMeta?): String {
-    val first = meta?.description.orEmpty().trim().split(Regex("\\s+")).first()
-    if (first.isNotEmpty() && !first[0].isDigit()) return first
+/** The account name, or a readable platform name disambiguated across all clients. */
+fun clientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList()): String =
+    d?.meta?.name.orEmpty().trim().ifEmpty { defaultClientName(d, id, clients) }
+
+internal fun clientBaseName(d: DeviceView?): String {
+    val meta = d?.meta
+    val description = meta?.description.orEmpty().trim()
+    val model = description.substringAfter(" · ", "").trim()
     return when (meta?.platform) {
-        "android" -> "Android"
-        "ios" -> "iOS"
-        "web" -> "浏览器"
+        "web" -> description.replace(" on ", " · ").ifEmpty { "浏览器" }
+        "android" -> "Android" + if (model.isNotEmpty()) " · $model" else ""
+        "ios" -> model.ifEmpty { "iOS" }
         else -> "客户端"
     }
 }
 
-/**
- * A client's name: the one given in its sealed metadata, else its kind and the end of its ID
- * (Chrome · a8f2).
- */
-fun clientName(d: DeviceView?, id: String): String {
-    return d?.meta?.name.orEmpty().trim().ifEmpty { defaultClientName(d, id) }
+/** Compare default names even for clients whose users have already supplied a name. */
+fun defaultClientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList()): String {
+    val base = clientBaseName(d)
+    val duplicate = clients.any { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != id && clientBaseName(it) == base }
+    return base + if (duplicate) " · ${shortId(id)}" else ""
 }
-
-/** The name a client has until the user gives it one, and again once they take theirs back. */
-fun defaultClientName(d: DeviceView?, id: String): String =
-    "${platformLabel(d?.meta)} · ${shortId(id)}"
 
 /**
  * What a client is, under its name in the list: an app or a browser, and what it says it runs on.
@@ -1492,7 +1488,7 @@ fun originLabel(
                 o.deviceId == me -> "本客户端"
                 o.deviceId.isEmpty() -> "另一端"
                 else ->
-                    state.devices[o.deviceId]?.let { clientName(it, o.deviceId) }
+                    state.devices[o.deviceId]?.let { clientName(it, o.deviceId, state.devices.values) }
                         ?: "已移除的设备"
             }
         io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL -> "$machine 终端"

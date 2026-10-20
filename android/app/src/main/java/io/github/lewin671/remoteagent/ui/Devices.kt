@@ -130,7 +130,7 @@ fun DevicesScreen() {
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(clientName(c, c.id), style = T.body, color = p.fg)
+                                    Text(clientName(c, c.id, state.devices.values), style = T.body, color = p.fg)
                                     Text(
                                         clientDetail(c),
                                         style = T.sm,
@@ -221,7 +221,7 @@ fun ClientScreen(id: String) {
     val save = rememberAction()
     val remove = rememberAction(authority = true)
     PageScaffold(
-        clientName(d, id),
+        clientName(d, id, state.devices.values),
         subtitle = if (d == null) "已移除" else if (id == me) "当前客户端" else "已配对的客户端",
     ) {
         if (d == null) {
@@ -248,7 +248,7 @@ fun ClientScreen(id: String) {
                                 {
                                     GRow(
                                         "恢复默认名称",
-                                        defaultClientName(d, id),
+                                        defaultClientName(d, id, state.devices.values),
                                         onClick = {
                                             save.run(
                                                 {
@@ -341,7 +341,7 @@ fun ClientScreen(id: String) {
         }
     }
     if (confirmRemove && d != null) {
-        val (title, text) = removalDialog(clientName(d, id), machine = false)
+        val (title, text) = removalDialog(clientName(d, id, state.devices.values), machine = false)
         Alert(
             title,
             text,
@@ -361,7 +361,7 @@ fun ClientScreen(id: String) {
         InputAlert(
             "客户端名称",
             d?.meta?.name.orEmpty(),
-            defaultClientName(d, id),
+            defaultClientName(d, id, state.devices.values),
             "保存",
             onDismiss = { editing = false },
         ) { name ->

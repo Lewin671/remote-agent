@@ -83,7 +83,7 @@ fun HandoffControls() {
     GLabel("正常换手机")
     Hint("在新手机加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。", Modifier)
     for (d in candidates) Btn(
-        "交接给 " + clientName(d, d.id),
+        "交接给 " + clientName(d, d.id, state.devices.values),
         { target = d.id },
         Modifier.fillMaxWidth().padding(top = 8.dp),
         BtnKind.SECONDARY,

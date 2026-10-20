@@ -193,6 +193,7 @@ fun SettingsScreen() {
                                 io.github.lewin671.remoteagent.core.clientName(
                                     state.devices[me],
                                     me,
+                                    state.devices.values,
                                 ),
                                 "当前",
                                 onClick = { nav.client(me) },
@@ -202,7 +203,7 @@ fun SettingsScreen() {
                         others.map { c ->
                             @Composable {
                                 GRow(
-                                    io.github.lewin671.remoteagent.core.clientName(c, c.id),
+                                    io.github.lewin671.remoteagent.core.clientName(c, c.id, state.devices.values),
                                     "已配对",
                                     onClick = { nav.client(c.id) },
                                     chevron = true,
