@@ -229,55 +229,9 @@ fun SettingsScreen() {
                         ),
             )
             GLabel("账户安全")
-            Group(
-                rows =
-                    listOf(
-                        {
-                            GRow(
-                                if (state.isAuthority) "管理端 · 本机" else "管理端（${state.authorityName}）",
-                                if (state.isAuthority)
-                                    "恢复与续期" +
-                                        (if (state.leaseEndMs > 0)
-                                            " · 有效期至 " +
-                                                io.github.lewin671.remoteagent.core.dayText(
-                                                    state.leaseEndMs,
-                                                    t,
-                                                )
-                                        else "")
-                                else "接管管理权：在本机准备交接",
-                                onClick = { nav.recovery() },
-                                chevron = true,
-                            )
-                        },
-                        {
-                            if (state.isAuthority)
-                                GRow("现在续期", "重新签 72 小时", onClick = { remote.renewLeaseNow() })
-                            else
-                                GRow(
-                                    state.renewalAdvice,
-                                    if (state.leaseEndMs > 0) "有效期至 " + io.github.lewin671.remoteagent.core.dayText(state.leaseEndMs, t)
-                                    else "正在读取成员状态…",
-                                )
-                        },
-                        {
-                            if (state.isAuthority)
-                                GRow(
-                                    "更换恢复码",
-                                    "旧码立即作废",
-                                    onClick = { rotating = true },
-                                    chevron = true,
-                                )
-                        },
-                    ),
-            )
+            Group(rows = listOf({ GRow("账户安全", if (state.isAuthority) "本机是管理端" else state.authorityName, onClick = { nav.recovery() }, chevron = true) }))
             if (state.isAuthority && state.recoveryPending)
-                Banner(
-                    "有人正在用恢复码申请接管管理权。不是你本人就查看并否决。",
-                    Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    Tone2.ERROR,
-                    action = "查看",
-                    onAction = { nav.recovery() },
-                )
+                Banner("恢复申请待处理 · 可生效时间：${io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t)}", Modifier.padding(horizontal = 16.dp, vertical = 6.dp), Tone2.WARN, action = "处理", onAction = { nav.recovery() })
             GLabel("本客户端的通知")
             Group(
                 rows =
@@ -1222,6 +1176,7 @@ fun RecoveryCodeFigure(code: String) {
         color = p.fg,
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
     )
+    Hint("请离线保存恢复码。任何拿到它的人都能申请接管管理权；不要发送给别人。")
 }
 
 /** The web client's address for the QR code: app.<domain> next to ra.<domain>. */
@@ -1250,6 +1205,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Hint("电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。")
             if (replacesDeviceId.isNotEmpty()) {
                 val current by remote.state.collectAsState()
                 Hint(
@@ -1293,7 +1249,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         color = p.fg,
                     )
                     Text(
-                        "在新设备上扫这个二维码，或输入这 8 位配对码。5 分钟内有效。",
+                        "有效期至 " + io.github.lewin671.remoteagent.core.securityTime(step.expiresMs, timeOnly = true),
                         style = T.sm,
                         color = p.muted,
                         textAlign = TextAlign.Center,
@@ -1345,7 +1301,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         )
                         Text(
                             if (sending) "请在新设备上核对这 4 个图案，并点确认。确认后才能加入；可以离开本页等待。"
-                            else "和新设备上的 4 个图案一模一样才允许",
+                            else "核对新设备上的 4 个图案。先在新设备确认，再在这里允许。",
                             style = T.sm,
                             color = p.muted,
                             textAlign = TextAlign.Center,
@@ -1364,7 +1320,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                                 bg = p.card,
                             )
                             Btn(
-                                if (sending) "等新设备确认图案…" else "图案一致，允许",
+                                if (sending) "等新设备确认图案…" else "允许加入",
                                 model::approve,
                                 Modifier.weight(1f),
                                 BtnKind.PRIMARY,

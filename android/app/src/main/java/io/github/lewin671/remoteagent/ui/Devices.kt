@@ -151,7 +151,7 @@ fun DevicesScreen() {
                 Hint(
                     if (state.leaseEndMs > 0)
                         "有效期至 " +
-                            dayText(state.leaseEndMs, t) +
+                            io.github.lewin671.remoteagent.core.securityTime(state.leaseEndMs, t) +
                             "。建议每天打开本客户端；符合续期条件时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"
                     else "正在读取成员状态…",
                     Modifier.padding(horizontal = 16.dp),
@@ -305,7 +305,7 @@ fun ClientScreen(id: String) {
             } else if (state.isAuthority) {
                 if (id == state.authorityDeviceId) {
                     Text(
-                        "管理端不能普通移除；当前管理端在线时可在“恢复与交接”里交接。",
+                        "管理端不能直接移除，请先交接管理权。",
                         style = T.sm,
                         color = p.muted,
                         modifier = Modifier.padding(horizontal = 16.dp),

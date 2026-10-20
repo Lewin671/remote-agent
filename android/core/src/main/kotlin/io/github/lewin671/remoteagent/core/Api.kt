@@ -260,7 +260,7 @@ fun errorText(e: Throwable, state: RemoteState? = null): String =
                 "invalid",
                 "untrusted" -> "密文无效：签名、密钥或内容校验失败"
                 "conflict" -> "成员链冲突，安全操作已停止；请核对设备后明确重新加入"
-                "lease" -> "管理端租约已过期，无法保存更改、控制会话或上传新内容；${state?.renewalAdvice ?: "请在当前管理端续期"}后重试。历史仍可查看"
+                "lease" -> "远程控制有效期已过，无法保存更改、控制会话或上传新内容；${state?.renewalAdvice ?: "请在当前管理端续期"}后重试。历史仍可查看"
                 "clock" -> "手机时钟比服务器快，成员状态暂不可用；请校准系统时间"
                 else -> e.message ?: "安全状态不可用"
             }

@@ -43,16 +43,16 @@ class AuthorityBackupTest {
                         DeviceMeta.newBuilder().setHandoffRecoveryEd(ByteString.copyFrom(it)).build())))
                 }
         }
-        ui.onNodeWithText("我已离线保存，通知当前管理端").assertDoesNotExist()
+        ui.onNodeWithText("我已保存，通知管理端").assertDoesNotExist()
         ui.onNodeWithText("生成新的恢复码").performClick()
         ui.runOnIdle { assertEquals(0, attempts) }
         ui.onNodeWithContentDescription("恢复码二维码").assertExists()
-        ui.onNodeWithText("我已离线保存，通知当前管理端").performClick()
+        ui.onNodeWithText("我已保存，通知管理端").performScrollTo().performClick()
         ui.onNodeWithText("save failed").assertExists()
         ui.onNodeWithContentDescription("恢复码二维码").assertExists()
-        ui.onNodeWithText("恢复码已确认保存。等待当前管理端批准；可以关闭后重新打开此页查看。").assertDoesNotExist()
-        ui.onNodeWithText("我已离线保存，通知当前管理端").performClick()
-        ui.onNodeWithText("恢复码已确认保存。等待当前管理端批准；可以关闭后重新打开此页查看。").assertExists()
+        ui.onNodeWithText("恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。").assertDoesNotExist()
+        ui.onNodeWithText("我已保存，通知管理端").performScrollTo().performClick()
+        ui.onNodeWithText("恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。").assertExists()
         ui.runOnIdle { assertEquals(2, attempts) }
     }
 
@@ -71,14 +71,14 @@ class AuthorityBackupTest {
                     if (attempts == 1) throw IllegalStateException("save failed")
                 }, { backs++ })
         }
-        ui.onNodeWithText("我已保存，发布新码").assertDoesNotExist()
+        ui.onNodeWithText("我已保存，发布换码").assertDoesNotExist()
         ui.onNodeWithText("生成新的恢复码").performClick()
         ui.runOnIdle { assertEquals(0, attempts) }
-        ui.onNodeWithText("我已保存，发布新码").performClick()
+        ui.onNodeWithText("我已保存，发布换码").performScrollTo().performClick()
         ui.onNodeWithText("save failed").assertExists()
         ui.onNodeWithContentDescription("恢复码二维码").assertExists()
         ui.runOnIdle { assertEquals(0, backs) }
-        ui.onNodeWithText("我已保存，发布新码").performClick()
+        ui.onNodeWithText("我已保存，发布换码").performScrollTo().performClick()
         ui.runOnIdle { assertEquals(1, backs) }
     }
 }

@@ -213,14 +213,11 @@ export function PairCodePage({
         onBack={onBack}
       />
       <div className="body security-body">
+        <p className="hint">电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。</p>
         {done ? (
           <Banner kind="">设备已加入</Banner>
         ) : !pair ? (
           <>
-            <p className="hint">
-              生成配对码后，让新设备扫码或输入配对码。电脑运行{" "}
-              <code>remote-agent join CODE --daemon</code>。
-            </p>
             {replaces && (
               <p className="hint">
                 只允许这台电脑以新身份接回原档案，保留原会话和历史。
@@ -254,8 +251,7 @@ export function PairCodePage({
               {pair.code.slice(0, 4)} {pair.code.slice(4)}
             </div>
             <p className="hint center-text">
-              有效期至 {futureTime(pair.expires, Date.now(), "time")} ·
-              一次只能加入一台设备
+              有效期至 {futureTime(pair.expires, Date.now(), "time")}
             </p>
             {emoji ? (
               <>

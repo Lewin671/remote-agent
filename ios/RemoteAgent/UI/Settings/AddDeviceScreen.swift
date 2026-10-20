@@ -86,8 +86,7 @@ struct AddDeviceScreen: View {
         SettingsPage {
             if !access.isAuthority { GroupNote(access.addHint) }
             else {
-                GroupLabel(replacing.isEmpty ? "添加设备" : "从原档案重新加入")
-                GroupNote("电脑：在电脑上运行 remote-agent account join，输入下面的配对码。客户端：扫描二维码或输入配对码。")
+                GroupNote("电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。")
                 #if DEBUG
                 if app.isDemo { AuthorityDemoPairCode(server: "https://relay.example.com") }
                 #endif
@@ -103,9 +102,9 @@ struct AddDeviceScreen: View {
                     Text(candidate.emoji.joined(separator: " "))
                         .font(.system(size: 36)).minimumScaleFactor(0.5).lineLimit(1)
                         .frame(maxWidth: .infinity).padding(16)
-                    GroupNote("核对新设备上的 4 个图案。先在新设备确认，一致后再在这里允许。")
+                    GroupNote("核对新设备上的 4 个图案。先在新设备确认，再在这里允许。")
                     if !flow.approved {
-                        Btn("图案一致，允许加入", kind: .primary, enabled: !flow.busy) {
+                        Btn("允许加入", kind: .primary, enabled: !flow.busy) {
                             perform { await flow.approve($0) }
                         }.padding(.horizontal, 16)
                         Btn("不允许", kind: .negative, enabled: !flow.busy) { cancel() }
@@ -114,8 +113,8 @@ struct AddDeviceScreen: View {
                 } else if let initiation = flow.initiation {
                     VStack(spacing: 12) {
                         QRCodeView(text: initiation.link.url(web: webOrigin(server: context.account.server, preferred: "")), label: "添加设备的配对二维码")
-                        Text(initiation.link.code).type(T.code22, Theme.fg).textSelection(.enabled)
-                        Text("配对码有效期至 " + securityDate(UInt64(max(initiation.expiresMs, 0))))
+                        Text(String(initiation.link.code.prefix(4)) + " " + String(initiation.link.code.suffix(4))).type(T.code22, Theme.fg).textSelection(.enabled)
+                        Text("有效期至 " + securityTime(UInt64(max(initiation.expiresMs, 0)), timeOnly: true))
                             .type(T.meta, Theme.muted)
                         Btn("复制配对码") { UIPasteboard.general.string = initiation.link.code }
                         Btn("取消配对", enabled: !flow.busy) { cancel() }
@@ -163,9 +162,4 @@ struct AddDeviceScreen: View {
             flow.initiation = nil; flow.candidate = nil
         }
     }
-}
-
-func securityDate(_ ms: UInt64) -> String {
-    guard ms > 0 else { return "尚未读取" }
-    return Date(timeIntervalSince1970: Double(ms) / 1000).formatted(date: .abbreviated, time: .shortened)
 }

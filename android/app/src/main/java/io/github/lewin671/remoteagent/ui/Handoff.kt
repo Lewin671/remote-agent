@@ -33,7 +33,7 @@ internal fun HandoffPreparationContent(
     PageScaffold("接管管理权") {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
-                "先在当前管理端（${state.authorityName}）批准本机加入。保存下面的新恢复码后，再请当前管理端在“恢复与交接”里批准交接。当前管理端会退出账户，不需要等待 48 小时。",
+                "先保存新的恢复码，再请当前管理端批准交接。当前管理端会被移除，不需要等待 48 小时。",
                 style = T.sm,
                 color = pal.muted,
             )
@@ -41,7 +41,7 @@ internal fun HandoffPreparationContent(
             if (value != null) {
                 RecoveryCodeFigure(value.first)
                 Btn(
-                    "我已离线保存，通知当前管理端",
+                    "我已保存，通知管理端",
                     {
                         busy = true
                         error = ""
@@ -64,7 +64,7 @@ internal fun HandoffPreparationContent(
                 val offered =
                     state.devices[self]?.meta?.handoffRecoveryEd?.size() == 32
                 if (offered)
-                    Hint("恢复码已确认保存。等待当前管理端批准；可以关闭后重新打开此页查看。", Modifier.padding(vertical = 12.dp))
+                    Hint("恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。", Modifier.padding(vertical = 12.dp))
                 Btn(
                     if (offered) "重新生成恢复码" else "生成新的恢复码",
                     {

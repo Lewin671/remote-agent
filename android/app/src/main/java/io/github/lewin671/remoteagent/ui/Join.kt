@@ -134,7 +134,7 @@ fun JoinScreen(app: RaApp) {
     var mode by
         remember(pendingCreation, existing) {
             mutableStateOf(
-                if (pendingCreation) if (existing == null) "create" else "rebuild" else "join",
+                if (pendingCreation) if (existing == null) "create" else "rebuild" else if (existing != null) "join" else "entry",
             )
         }
 
@@ -216,12 +216,25 @@ fun JoinScreen(app: RaApp) {
         step = JoinStep.Form
     }
 
+    if (mode == "entry") {
+        Column(Modifier.fillMaxSize().background(p.soft).verticalScroll(rememberScrollState())) {
+            LargeTitle("加入账户")
+            Group(rows = listOf(
+                { GRow("新建账户", onClick = { mode = "create" }, chevron = true) },
+                { GRow("加入已有账户", onClick = { mode = "join" }, chevron = true) },
+                { GRow("用恢复码找回管理权", onClick = { mode = "recover" }, chevron = true) },
+            ))
+        }
+        return
+    }
+    BackHandler(enabled = existing == null && mode == "join" && step == JoinStep.Form) { mode = "entry" }
+
     if (mode == "create") {
-        CreateAccountScreen(app) { mode = "join" }
+        CreateAccountScreen(app) { mode = if (existing == null) "entry" else "join" }
         return
     }
     if (mode == "recover") {
-        RecoverScreen(app) { mode = "join" }
+        RecoverScreen(app) { mode = if (existing == null) "entry" else "join" }
         return
     }
     if (mode == "rebuild") {
@@ -416,8 +429,8 @@ fun JoinScreen(app: RaApp) {
                         }
                         if (existing != null && !existingRemoved)
                             JoinLink("已有账户升级？重建安全域并成为管理端") { mode = "rebuild" }
-                        JoinLink("用恢复码找回管理权") { mode = "recover" }
-                        if (existing == null) JoinLink("新建账户") { mode = "create" }
+                        if (existing != null) JoinLink("用恢复码找回管理权") { mode = "recover" }
+                        else JoinLink("返回") { mode = "entry" }
                     }
                 }
             }

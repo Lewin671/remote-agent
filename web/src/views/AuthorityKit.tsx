@@ -20,7 +20,7 @@ export function CodeBackup({
       <pre className="recovery-code" aria-label="新的恢复码">
         {code}
       </pre>
-      <p className="hint">恢复码必须离线保存。不要把它发给别人。</p>
+      <p className="hint">请离线保存恢复码。任何拿到它的人都能申请接管管理权；不要发送给别人。</p>
       <label className="backup-check">
         <input
           type="checkbox"

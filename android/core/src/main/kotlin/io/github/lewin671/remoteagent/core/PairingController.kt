@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 
 sealed interface PairingUiState {
     data object Starting : PairingUiState
-    data class Waiting(val code: String, val link: PairLink) : PairingUiState
+    data class Waiting(val code: String, val link: PairLink, val expiresMs: Long) : PairingUiState
     data class Compare(val emoji: List<String>, val kind: DeviceKind) : PairingUiState
     data class Sending(val emoji: List<String>, val kind: DeviceKind) : PairingUiState
     data object Done : PairingUiState
@@ -46,7 +46,7 @@ class PairingController(
                 val pairing = begin()
                 if (run != generation) { operationScope.launch { pairing.cancelOnServer() }; return@launch }
                 current = pairing
-                mutable.value = PairingUiState.Waiting(pairing.code, pairing.link)
+                mutable.value = PairingUiState.Waiting(pairing.code, pairing.link, pairing.expiresMs)
                 val (emoji, kind) = pairing.joined()
                 if (run == generation) mutable.value = PairingUiState.Compare(emoji, kind)
             } catch (e: CancellationException) {

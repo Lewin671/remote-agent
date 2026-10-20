@@ -111,7 +111,7 @@ struct AuthoritySetupScreen: View {
     @ViewBuilder private var recoveryProgress: some View {
         if let recovery = flow.recovery {
             GroupLabel("恢复申请")
-            GroupNote("可生效时间：" + securityDate(recovery.readyMs))
+            GroupNote("可生效时间：" + securityTime(recovery.readyMs))
             if recovery.phase == .rejected {
                 GroupBanner("恢复申请已被否决。旧恢复码已经作废。", tone: .warn)
                 Btn("核实否决并放弃原申请", enabled: !flow.busy) {

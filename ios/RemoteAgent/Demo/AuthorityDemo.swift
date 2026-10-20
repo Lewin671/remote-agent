@@ -33,7 +33,7 @@ struct AuthorityDemoCode: View {
     @State private var saved = false
     var body: some View {
         RecoveryCodeFigure(code: AuthorityDemo.code, saved: $saved)
-        Btn(handoff ? "通知当前管理端" : "发布新恢复码", kind: .primary, enabled: saved) {}
+        Btn(handoff ? "我已保存，通知管理端" : "我已保存，发布换码", kind: .primary, enabled: saved) {}
             .padding(.horizontal, 16)
     }
 }
@@ -44,8 +44,8 @@ struct AuthorityDemoPairCode: View {
         VStack(spacing: 12) {
             QRCodeView(text: PairLink(code: "12345678", server: server, commit: Data(repeating: 5, count: 32))
                 .url(web: "https://app.example.com"), label: "添加设备的配对二维码")
-            Text("12345678").type(T.code22, Theme.fg)
-            Text("配对码有效期至 " + securityDate(UInt64(nowMs() + 5 * 60_000))).type(T.meta, Theme.muted)
+            Text("1234 5678").type(T.code22, Theme.fg)
+            Text("有效期至 " + securityTime(UInt64(nowMs() + 5 * 60_000), timeOnly: true)).type(T.meta, Theme.muted)
             Btn("复制配对码") {}
             Btn("取消配对") {}
         }.padding(16)

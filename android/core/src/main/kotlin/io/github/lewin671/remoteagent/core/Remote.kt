@@ -192,6 +192,7 @@ data class RemoteState(
     val isAuthority: Boolean = false,
     /** The relay says a recovery waits for the current authority to veto or accept it. */
     val recoveryPending: Boolean = false,
+    val recoveryReadyMs: Long = 0,
     /** This phone's clock is more than five minutes ahead of the server or a state. */
     val clockWarning: Boolean = false,
     /** The failure behind [error] in its own words, for the details. */
@@ -202,7 +203,7 @@ data class RemoteState(
         get() = clientName(devices[authorityDeviceId], authorityDeviceId, devices.values)
 
     val renewalAdvice: String
-        get() = if (isAuthority) "现在续期" else "请打开 $authorityName 续期"
+        get() = if (isAuthority) "现在续期" else "请打开${authorityName}续期"
 
     /**
      * Nothing here is known to still hold: the server is out of reach, or has not been reached yet.
@@ -640,6 +641,7 @@ class Remote(
                 leaseEndMs = leaseEnd,
                 isAuthority = authorityDeviceId == account.deviceId,
                 recoveryPending = security.recoveryPending,
+                recoveryReadyMs = security.recoveryReadyMs,
                 clockWarning = serverAhead || security.clockSkew,
             )
     }

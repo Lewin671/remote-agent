@@ -49,123 +49,81 @@ import kotlinx.coroutines.withContext
 @Composable
 fun RecoveryScreen(onBack: () -> Unit = {}) {
     val remote = LocalRemote.current
-    val authority by remote.state.collectAsState()
-    if (!authority.isAuthority) {
-        HandoffPreparation()
-        return
-    }
-    val p = pal
+    val state by remote.state.collectAsState()
     val scope = rememberAuthorityScope()
-    var pending by remember { mutableStateOf<PendingRecoveryInfo?>(null) }
-    var loading by remember { mutableStateOf(true) }
-    var prepared by remember { mutableStateOf<PreparedRecovery?>(null) }
+    var page by remember { mutableStateOf("overview") }
+    var pending by remember { mutableStateOf<io.github.lewin671.remoteagent.core.SecurityOperation?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    val t = now()
-
-    LaunchedEffect(Unit) {
-        loading = true
-        pending = runCatching { remote.pendingRecovery() }.getOrNull()
-        loading = false
+    suspend fun read() {
+        try { pending = withContext(Dispatchers.IO) { RaApp.instance.vault.readSecurityOperation() }; error = "" }
+        catch (e: Exception) { error = errorText(e, state) }
     }
-    PageScaffold("恢复与交接") {
-        Column(
-            Modifier.fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .padding(horizontal = 16.dp),
-        ) {
-            HandoffControls()
-            val waiting = authority.machines.values.filter { it.meta == null }.map { it.id.take(8) }
-            if (waiting.isNotEmpty())
-                Hint(
-                    "等待这些保留电脑发布当前状态：" + waiting.joinToString("、") + "。旧历史密钥不可用时不会反复修复。",
-                    Modifier.padding(vertical = 8.dp),
-                )
-            val pv = prepared
-            if (pv != null) {
-                GLabel("新的恢复码 · 只显示这一次")
-                RecoveryCodeFigure(pv.code)
-                Hint("先抄下来或拍照保存，再点下面的按钮。发布后原恢复码才作废；保存好之前不会发布。", Modifier)
-                if (error.isNotEmpty())
-                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
-                Btn(
-                    if (busy) "正在发布…" else "我已保存，发布否决",
-                    {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                remote.publishRecovery(pv)
-                                prepared = null
-                                pending = null
-                                onBack()
-                            } catch (e: Exception) {
-                                error = errorText(e, remote.state.value)
-                            } finally {
-                                busy = false
+    LaunchedEffect(state.leaseEndMs, state.authorityDeviceId) { read() }
+    if (page != "overview") androidx.activity.compose.BackHandler { page = "overview" }
+    when (page) {
+        "recovery" -> RotateRecoveryScreen { page = "overview" }
+        "handoff" -> if (!state.isAuthority) HandoffPreparation() else PageScaffold("交接管理权") {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) { HandoffControls() }
+        }
+        "pending" -> PageScaffold("未完成的安全操作") {
+            Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                Hint("安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。")
+                Btn("继续原操作", {
+                    busy = true
+                    scope.launch {
+                        try {
+                            remote.resumeSecurityOperation()
+                            pending?.delivery?.takeIf { it.isNotEmpty() }?.let {
+                                remote.finishPairingOperation(io.github.lewin671.remoteagent.proto.ApprovePairingRequest.parseFrom(it).pairingId)
                             }
-                        }
-                    },
-                    Modifier.fillMaxWidth().padding(top = 12.dp),
-                    BtnKind.PRIMARY,
-                    enabled = !busy,
-                )
-                Btn(
-                    "先不发布",
-                    {
-                        prepared = null
-                        error = ""
-                    },
-                    Modifier.fillMaxWidth().padding(top = 6.dp),
-                    BtnKind.SECONDARY,
-                    enabled = !busy,
-                )
-            } else if (loading) {
-                Hint("正在读取…", Modifier.padding(vertical = 16.dp))
-            } else {
-                val c = pending
-                if (c == null) {
-                    Hint(
-                        "现在没有等待处理的紧急恢复。管理端丢失时才使用恢复码；当前管理端在线时走上面的正常交接。",
-                        Modifier.padding(vertical = 12.dp),
-                    )
-                } else {
-                    Banner("有人正在用恢复码申请接管管理权", Modifier.padding(bottom = 10.dp), Tone2.ERROR)
-                    GLabel("何时可以生效")
-                    Hint(
-                        if (c.readyMs > 0) dayText(c.readyMs, t) + "。不是你本人就现在否决；否决后这次恢复和它的新恢复码都作废。"
-                        else "48 小时后。",
-                        Modifier,
-                    )
-                    if (error.isNotEmpty())
-                        Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
-                    Btns {
-                        Btn(
-                            if (busy) "正在准备…" else "否决这次恢复",
-                            {
-                                busy = true
-                                error = ""
-                                scope.launch {
-                                    try {
-                                        prepared = remote.prepareRecovery()
-                                    } catch (e: Exception) {
-                                        error = errorText(e, remote.state.value)
-                                    } finally {
-                                        busy = false
-                                    }
-                                }
-                            },
-                            Modifier.weight(1f),
-                            BtnKind.NEGATIVE,
-                            enabled = !busy,
-                        )
-                        Btn("返回", onBack, Modifier.weight(1f), BtnKind.SECONDARY, enabled = !busy)
+                            read()
+                            if (pending == null) page = "overview"
+                        } catch (e: Exception) { error = errorText(e, state) }
+                        finally { busy = false }
                     }
-                }
-                if (error.isNotEmpty())
-                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
+                }, enabled = !busy)
+                if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
             }
+        }
+        else -> AccountSecurityContent(state, pending != null, { page = "pending" }, { page = "recovery" }, { page = "handoff" }, {
+            scope.launch { remote.renewLeaseNow(); read() }
+        }, error = error)
+    }
+}
+
+@Composable
+internal fun AccountSecurityContent(
+    state: io.github.lewin671.remoteagent.core.RemoteState,
+    pending: Boolean = false,
+    onPending: () -> Unit = {},
+    onRecovery: () -> Unit = {},
+    onHandoff: () -> Unit = {},
+    onRenew: () -> Unit = {},
+    error: String = "",
+) {
+    val t = now()
+    val self = LocalRemote.current.account.deviceId
+    PageScaffold("账户安全") {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 16.dp)) {
+            if (state.recoveryPending) Banner(
+                "有人正在用恢复码申请接管管理权，${io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t)} 后生效。不是你本人就现在否决。",
+                Modifier.padding(horizontal = 16.dp, vertical = 6.dp), Tone2.WARN,
+                action = if (state.isAuthority) "否决" else null, onAction = onRecovery,
+            )
+            if (error.isNotEmpty()) Banner(error, Modifier.padding(16.dp), Tone2.ERROR)
+            if (pending) Group(rows = listOf({ GRow("未完成的安全操作", chevron = true, onClick = onPending) }))
+            Group(rows = listOf<@Composable () -> Unit>(
+                { GRow("当前管理端", if (state.isAuthority) "本机" else state.authorityName) },
+                { GRow("远程控制有效期", io.github.lewin671.remoteagent.core.securityTime(state.leaseEndMs, t)) },
+            ) + if (state.isAuthority) listOf<@Composable () -> Unit>({ GRow("现在续期", action = true, onClick = onRenew) }) else emptyList())
+            Hint("回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            if (!state.isAuthority) Hint("请打开${state.authorityName}续期。", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            if (state.isAuthority) Group(rows = listOf(
+                { GRow("恢复码", chevron = true, onClick = onRecovery) },
+                { GRow("交接管理权", chevron = true, onClick = onHandoff) },
+            )) else if (state.devices.values.any { it.id == self && it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT })
+                Group(rows = listOf({ GRow("接管管理权", chevron = true, onClick = onHandoff) }))
         }
     }
 }
@@ -408,7 +366,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                 )
                 GLabel("等待")
                 Hint(
-                    if (s.readyMs > 0) "可以生效的时间：" + dayText(s.readyMs, t) else "48 小时后才能完成。",
+                    if (s.readyMs > 0) "可以生效的时间：" + io.github.lewin671.remoteagent.core.securityTime(s.readyMs, t) else "48 小时后才能完成。",
                     Modifier,
                 )
                 RecoveryStatus(
@@ -555,7 +513,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
 
-    PageScaffold("创建新账户", onBack = onBack) {
+    PageScaffold("新建账户", onBack = onBack) {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         Column(
             Modifier.fillMaxWidth()
@@ -813,7 +771,7 @@ internal fun RotateRecoveryContent(
     var prepared by remember { mutableStateOf<PreparedRecovery?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    PageScaffold("更换恢复码") {
+    PageScaffold("恢复码") {
         Column(
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
@@ -823,7 +781,7 @@ internal fun RotateRecoveryContent(
             val pv = prepared
             if (pv == null) {
                 Text(
-                    "怀疑恢复码泄露时可以换一个。旧码立即作废，新码只显示一次；保存好之前不会发布。",
+                    "更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。",
                     style = T.sm,
                     color = p.muted,
                     modifier = Modifier.padding(vertical = 10.dp),
@@ -857,7 +815,7 @@ internal fun RotateRecoveryContent(
                 if (error.isNotEmpty())
                     Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
                 Btn(
-                    if (busy) "正在发布…" else "我已保存，发布新码",
+                    if (busy) "正在发布…" else "我已保存，发布换码",
                     {
                         busy = true
                         error = ""

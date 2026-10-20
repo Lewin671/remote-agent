@@ -26,7 +26,7 @@ async function mount(node: React.ReactNode) {
   await act(async () => root.render(node));
 }
 const button = (label: string) =>
-  [...host.querySelectorAll("button")].find((b) => b.textContent === label)!;
+  [...host.querySelectorAll("button")].find((b) => b.textContent?.replace(/›/g, "").trim() === label)!;
 async function click(label: string) {
   await act(async () => button(label).click());
 }
@@ -78,7 +78,7 @@ it.each(["authority", "member", "machine"])(
       root.render(<SecurityPage remote={r} onBack={() => {}} />),
     );
     expect(!!button("现在续期")).toBe(role === "authority");
-    expect(!!button("更换恢复码")).toBe(role === "authority");
+    expect(!!button("恢复码")).toBe(role === "authority");
     expect(!!button("接管管理权")).toBe(role === "member");
   },
 );
@@ -93,7 +93,8 @@ it.each(["authority", "member"])(
         role === "authority" ? "publishRecovery" : "offerHandoff",
       )
       .mockRejectedValue(new Error("storage failed"));
-    await click(role === "authority" ? "更换恢复码" : "接管管理权");
+    await click(role === "authority" ? "恢复码" : "接管管理权");
+    await click("生成新的恢复码");
     const label =
       role === "authority" ? "我已保存，发布换码" : "我已保存，通知管理端";
     expect(button(label).disabled).toBe(true);
@@ -160,8 +161,22 @@ it("gives authority-specific exit advice before erasing keys", async () => {
 it("does not report renewal when an unfinished code draft prevents it", async () => {
   const r = demo("role=authority");
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
-  await click("更换恢复码");
+  await click("恢复码");
+  await click("生成新的恢复码");
+  await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click());
   await click("现在续期");
   expect(host.textContent).toContain("请先完成当前安全操作，再续期");
-  expect(host.textContent).not.toContain("租约已续期");
+  expect(host.textContent).not.toContain("远程控制已续期");
+});
+it.each(["authority", "member", "machine"])("keeps the security overview ordered and hides absent pending operations: %s", async role => {
+  const r = demo(`role=${role}&recovery=pending`);
+  await mount(<SecurityPage remote={r} onBack={() => {}} />);
+  const text = host.textContent!;
+  expect(text.indexOf("有人正在用恢复码")).toBeLessThan(text.indexOf("当前管理端"));
+  expect(text.indexOf("当前管理端")).toBeLessThan(text.indexOf("远程控制有效期"));
+  expect(text).not.toContain("未完成的安全操作");
+  expect(text).not.toContain("租约");
+  expect(!!button("否决")).toBe(role === "authority");
+  expect(!!button("恢复码")).toBe(role === "authority");
+  expect(!!button("接管管理权")).toBe(role === "member");
 });

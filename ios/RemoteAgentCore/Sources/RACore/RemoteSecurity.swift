@@ -51,9 +51,9 @@ extension Remote {
         } catch DeviceSecurity.Failure.lease {
             let renewal = authorityDeviceId == account.deviceId
                 ? "请在「设置 › 账户安全」点「现在续期」"
-                : "请打开 \(clientName(devices[authorityDeviceId], id: authorityDeviceId, among: devices)) 续期"
+                : "请打开\(clientName(devices[authorityDeviceId], id: authorityDeviceId, among: devices))续期"
             throw CommandError(
-                "failed_precondition", "管理端租约已过期，控制和新内容上传已暂停；" + renewal)
+                "failed_precondition", "远程控制有效期已过，控制和新内容上传已暂停；" + renewal)
         } catch {
             if error is CancellationError { throw error }
             throw CommandError("authorization_unavailable", "安全状态尚未核实，操作没有发出；请重试")

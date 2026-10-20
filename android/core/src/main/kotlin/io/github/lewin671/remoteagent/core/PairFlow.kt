@@ -64,6 +64,7 @@ internal fun validJoinApproval(
 /** A single pairing operation, retained after uncertain approval outcomes. */
 interface PairingInitiation {
     val code: String
+    val expiresMs: Long
     val link: PairLink
 
     suspend fun joined(): Pair<List<String>, DeviceKind>
@@ -161,7 +162,7 @@ internal constructor(
     private val remote: Remote,
     private val pairingId: String,
     private val key: PairKey,
-    private val expires: Long,
+    override val expiresMs: Long,
     private val replacesDeviceId: String,
     private val pollIntervalMs: Long,
 ) : PairingInitiation {
@@ -341,7 +342,7 @@ internal constructor(
                         throw PairException("状态链太大，无法配对；请重建账户")
                     val certificate = HeadLease.sign(next, SigningKey(acct.deviceSeed), now)
                     val (approval, signature) =
-                        makePairApproval(acct, pairingId, cp, kind, expires, replacesDeviceId)
+                        makePairApproval(acct, pairingId, cp, kind, expiresMs, replacesDeviceId)
                     val payload =
                         PairingPayload.newBuilder()
                             .setServer(acct.server)
@@ -393,7 +394,7 @@ internal constructor(
                     .also { approvalRequest = it }
         }
         remote.api.pairing.approvePairing(request, Api.headers(tok)).value()
-        while (System.currentTimeMillis() < expires) {
+        while (System.currentTimeMillis() < expiresMs) {
             if (stopped) throw ClosedPairing()
             try {
                 val res =

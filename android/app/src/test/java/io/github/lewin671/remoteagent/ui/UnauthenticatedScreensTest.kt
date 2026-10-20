@@ -66,14 +66,14 @@ class UnauthenticatedScreensTest {
                 }
             }
         }
-        val top = ui.onNodeWithText("创建新账户").getUnclippedBoundsInRoot().top
+        val top = ui.onNodeWithText("新建账户").getUnclippedBoundsInRoot().top
         assertTrue("nested page applied system insets twice: $top", top >= 48.dp && top < 96.dp)
     }
 
     @Test
     fun creationHeaderRespectsActivityInsets() {
         val app = app()
-        assertSetupHeaderBelowSystemBar("创建新账户") { CreateAccountScreen(app) {} }
+        assertSetupHeaderBelowSystemBar("新建账户") { CreateAccountScreen(app) {} }
     }
 
     @Test
@@ -105,6 +105,7 @@ class UnauthenticatedScreensTest {
     fun scannerPermissionScreenNeedsOnlyTheActivityLocals() {
         val app = app()
         show { JoinScreen(app) }
+        ui.onNodeWithText("加入已有账户").performClick()
         ui.onNodeWithText("扫描二维码").performScrollTo().performClick()
         ui.onNodeWithText("需要相机权限才能扫码；也可以返回手动输入配对码。").assertExists()
         ui.onNodeWithText("取消").performClick()
@@ -143,7 +144,8 @@ class UnauthenticatedScreensTest {
     fun joinSaysWhereTheCodeComesFrom() {
         val app = app()
         show { JoinScreen(app) }
-        // The managing phone shows the code and the QR; this device scans or types it, not the reverse.
+        ui.onNodeWithText("加入已有账户").performClick()
+        // The authority client shows the code and the QR; this device scans or types it, not the reverse.
         ui.onNodeWithText("在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。").assertExists()
     }
 
@@ -152,7 +154,7 @@ class UnauthenticatedScreensTest {
         val app = app()
         show { JoinScreen(app) }
         ui.onNodeWithText("新建账户").performScrollTo().performClick()
-        ui.onNodeWithText("创建新账户").assertIsDisplayed()
+        ui.onNodeWithContentDescription("返回").assertIsDisplayed()
         ui.onNodeWithContentDescription("返回").performClick()
         ui.onNodeWithText("新建账户").assertExists()
     }

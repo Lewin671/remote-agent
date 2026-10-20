@@ -89,12 +89,11 @@ struct SettingsScreen: View {
     @ViewBuilder private func computers(_ state: RemoteState, now: Int64) -> some View {
         let machines = sortedMachines(state)
         GroupLabel("电脑", action: "全部设备") { nav.open(.devices) }
-        if !machines.isEmpty {
-            GroupCard {
-                for m in machines { MachineRow(machine: m, state: state, now: now) }
-            }
+        GroupCard {
+            for m in machines { MachineRow(machine: m, state: state, now: now) }
+            if AuthorityAccess(state: state, me: context.me).isAuthority { AddDeviceEntry(grouped: false) }
         }
-        AddDeviceEntry()
+        if !AuthorityAccess(state: state, me: context.me).isAuthority { AddDeviceEntry() }
     }
 
     /// This client and the first few others, drawn and ordered as 设备 lists them.

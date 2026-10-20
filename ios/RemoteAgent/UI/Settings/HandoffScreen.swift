@@ -41,7 +41,7 @@ struct HandoffScreen: View {
             } else if access.isAuthority { loadCandidates() }
         }
         .confirm(isPresented: $confirming, title: "交接管理权？",
-            text: "确认接任设备已经保存新的恢复码。交接后本机会被移除，\(target.map { clientName($0, id: $0.id, among: app.state.devices) } ?? "接任设备")成为唯一管理端。接任设备完成续期前，控制可能短暂停顿。",
+            text: "确认接任设备（\(target.map { clientName($0, id: $0.id, among: app.state.devices) } ?? "接任设备")）已经保存新的恢复码。交接后本机会被移除，接任设备成为唯一管理端。",
             confirm: "确认交接", danger: true) {
                 action.run {
                     guard let target else { return }
@@ -64,21 +64,21 @@ struct HandoffScreen: View {
                 }
                 GRow("刷新接任设备", action: true, enabled: !action.running) { loadCandidates() }
             }
-            if candidates.isEmpty { GroupNote("等待接任设备生成并保存恢复码。") }
+            if candidates.isEmpty { GroupNote("等待接任设备生成并保存恢复码") }
             if handedOff { GroupBanner("已交接管理权，本机已移除。") }
         }
     }
     private var incoming: some View {
         Group {
             GroupLabel("接管管理权")
-            GroupNote("先在当前管理端批准这台设备加入。保存下面的新恢复码后，再请当前管理端在「交接管理权」里批准交接。当前管理端会退出账户，不需要等待 48 小时。")
+            GroupNote("先保存新的恢复码，再请当前管理端批准交接。当前管理端会被移除，不需要等待 48 小时。")
             GroupNote(iosAuthorityNotice)
             #if DEBUG
             if app.isDemo { AuthorityDemoCode(handoff: true) }
             #endif
             if let prepared = draft.prepared {
                 RecoveryCodeFigure(code: prepared.code, saved: $draft.saved)
-                Btn("通知当前管理端", kind: .primary, enabled: draft.canPublish && !action.running) {
+                Btn("我已保存，通知管理端", kind: .primary, enabled: draft.canPublish && !action.running) {
                     action.run {
                         guard draft.saved else { throw UserError("请先离线保存恢复码。") }
                         let c = try await context.remote.authorityCoordinator()
@@ -90,9 +90,9 @@ struct HandoffScreen: View {
                 }.padding(.horizontal, 16)
             } else if !app.isDemo {
                 if draft.offered || app.state.devices[context.me]?.meta?.handoffRecoveryEd.count == 32 {
-                    GroupBanner("恢复码已确认保存。等待当前管理端批准；可以关闭后重新打开此页查看。")
+                    GroupBanner("恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。")
                 }
-                Btn("生成新的恢复码", kind: .primary, enabled: !action.running) {
+                Btn(draft.offered || app.state.devices[context.me]?.meta?.handoffRecoveryEd.count == 32 ? "重新生成恢复码" : "生成新的恢复码", kind: .primary, enabled: !action.running) {
                     action.run {
                         let c = try await context.remote.authorityCoordinator()
                         draft.prepared = try await c.prepareHandoffCode(); draft.saved = false

@@ -20,13 +20,18 @@ struct AuthorityAccess {
 }
 
 struct AddDeviceEntry: View {
+    var grouped = true
     @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     var body: some View {
         let access = AuthorityAccess(state: app.state, me: context.me)
         if access.isAuthority {
-            GroupCard { GRow("添加设备", chevron: true, action: true) { nav.open(.addDevice()) } }
+            if grouped { GroupCard { row } } else { row }
         } else { GroupNote(access.addHint) }
     }
+    private var row: some View {
+        GRow("添加设备", action: true, icon: Lucide.plus) { nav.open(.addDevice()) }
+    }
+
 }

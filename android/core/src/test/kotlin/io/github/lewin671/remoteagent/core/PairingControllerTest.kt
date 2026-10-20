@@ -17,6 +17,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class PairingControllerTest {
     private class Pairing : PairingInitiation {
+        override val expiresMs = 1_800_000_000_000L
         override val code = "12345678"
         override val link = PairLink(code, "https://relay.example.com")
         val approvals = mutableListOf<CompletableDeferred<Unit>>()

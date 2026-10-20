@@ -2476,7 +2476,7 @@ export class Remote {
       if (e instanceof SecurityError && e.code === "lease")
         throw new CommandError(
           "failed_precondition",
-          "管理端租约已过期，控制和新内容上传已暂停；请在当前管理端续期",
+          "远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期",
         );
       throw new CommandError(
         "security_unavailable",
@@ -3750,7 +3750,7 @@ export function errorText(e: unknown): string {
     return "历史密钥不可用：恢复前的记录无法解密";
   if (e instanceof SecurityError) {
     if (e.code === "lease")
-      return "管理端租约已过期，无法保存更改、控制会话或上传新内容；请在当前管理端续期后重试。历史仍可查看";
+      return "远程控制有效期已过，无法保存更改、控制会话或上传新内容；请在当前管理端续期后重试。历史仍可查看";
     if (e.code === "unavailable")
       return "等待所属电脑更新当前状态：这台设备没有当时的内容密钥";
     if (e.code === "invalid" || e.code === "untrusted")
