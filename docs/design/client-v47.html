@@ -415,34 +415,36 @@
   .alert .field { margin: 12px 0 8px; text-align: left; color: var(--fg); white-space: nowrap; overflow: hidden; }
   .alert .field .picked { background: color-mix(in srgb, var(--blue) 28%, transparent); }
   .alert .field .caret { display: inline-block; width: 2px; height: 18px; margin-left: 1px; background: var(--blue); vertical-align: -3px; }
-  .actsheet { position: absolute; left: 8px; right: 8px; bottom: 20px; }
-  .actsheet .grp2 { background: var(--card); border-radius: var(--r-md); overflow: hidden; margin-top: 8px; }
-  .actsheet .ai2 { min-height: 50px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: var(--blue); border-top: 1px solid var(--line); }
-  .actsheet .ai2:first-child { border: none; }
-  .actsheet .ai2.red { color: var(--red); }
-  .actsheet .ai2.two { flex-direction: column; gap: 1px; padding: 6px 14px; }
-  .actsheet .ai2.two small { font-size: 12px; color: var(--muted); }
-  .actsheet .ai2.two small.err { color: var(--red); }
-  .actsheet .ai2.dis > span, .actsheet .ai2.dis:not(.two) { opacity: .4; }
-  .actsheet .ai2.busy { color: var(--muted); gap: 6px; }
+  /* ⋯ 菜单：和选项目弹层一样的左对齐列表弹层 */
+  .sheet.menu { padding-bottom: 20px; }
+  .menu-info { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; overflow-wrap: anywhere; }
+  .menu-info b { display: block; font-size: 15px; font-weight: 600; color: var(--fg); }
+  .menu-info .mono { color: var(--fg2); }
+  .mlist .mi { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; border-bottom: 1px solid var(--line); }
+  .mlist .mi:last-child { border: none; }
+  .mlist .mi .mt { flex: 1; min-width: 0; padding: 8px 0; }
+  .mlist .mi .mt small { display: block; font-size: 12px; color: var(--muted); }
+  .mlist .mi .mt small.err { color: var(--red); }
+  .mlist .mi .mv { margin-left: auto; color: var(--fg2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mlist .mi .mv.red { color: var(--red); }
+  .mlist .mi .mv.warn { color: var(--orange-ink); }
+  .mlist .mi .chev { color: var(--faint); font-size: 16px; flex: none; margin-left: -4px; }
+  .mlist .mi.danger { color: var(--red); }
+  .mlist .mi.dis { color: var(--muted); }
+  .mlist .mi.busy { color: var(--muted); }
   .sep.fork > span { min-width: 0; display: flex; gap: 4px; white-space: nowrap; }
   .sep.fork a { color: var(--blue); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .actsheet .info { padding: 10px 14px; font-size: 12px; color: var(--muted); text-align: center; }
-  .actsheet .info .mono { color: var(--fg2); }
 
   /* 设置 */
   .gray { background: var(--soft); }
   .grp { background: var(--card); border-radius: var(--r-md); margin: 0 16px 12px; overflow: hidden; }
   .row { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 44px; font-size: 15px; }
   .row + .row { border-top: 1px solid var(--line); }
+  /* 设置里的设备行：图标、名字（电脑有额度时第二行写额度）、行尾是状态 */
   .row.machine-summary { padding-top: 10px; padding-bottom: 10px; }
-  .machine-summary .ico { flex-shrink: 0; }
-  .machine-summary .machine-info { flex: 1; min-width: 0; }
-  .machine-summary .machine-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; overflow-wrap: anywhere; }
-  .machine-summary .machine-status, .machine-summary .machine-quota { font-size: 13px; color: var(--muted); }
-  .machine-summary .machine-status { display: inline-flex; align-items: center; gap: 5px; }
-  .machine-summary .machine-quota { margin-top: 2px; overflow-wrap: anywhere; }
-  .machine-summary .machine-chevron { flex-shrink: 0; color: var(--muted); }
+  .row .row-name { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+  .row .row-name small { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .row .row-name + .v { flex: none; }
   .pair-wait-actions { padding: 24px 16px 16px; }
   .pair-wait-actions .btn { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; }
 
@@ -807,7 +809,6 @@
   .cm-plus { width:44px; height:44px; display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--muted); cursor:pointer; }
   .navbar .more { position:relative; }
   .more.context-high::after { content:""; width:5px; height:5px; border-radius:50%; background:var(--orange); position:absolute; right:6px; top:8px; }
-  .actsheet .ai2.warn { color:var(--orange-ink, var(--orange)); }
   .pick { margin-left:auto; display:flex; gap:2px; padding:2px; background:var(--chip, var(--soft)); border-radius:var(--r-sm); }
   .pick span { min-width:56px; min-height:32px; padding:0 10px; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:13px; color:var(--muted); }
   .pick span.on { background:var(--card); color:var(--fg); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.12); }
@@ -946,7 +947,7 @@
 </section>
 
 <section class="intro" style="max-width:920px;margin:24px auto;padding:16px"><h2>v46 · 设备安全</h2><p>唯一管理端是 Android 手机。成员状态、独立租约和安全操作各有持久记录，普通信封本地签名。</p><div class="banner">管理端租约已过期：控制和新内容上传已暂停，打开管理端 App 续期。</div><p>移除立即吊销权限，保留会话档案；删除这台电脑的记录另行确认。正常换手机用已配对新手机的恢复码保存确认和旧手机批准交接，丢失手机才使用 48 小时紧急恢复。</p><div class="banner">历史密钥不可用 · 等待所属电脑更新当前状态 · 密文无效，分别显示。</div></section>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="lu-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lu-square-open" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-square-check" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lu-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="lu-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="lu-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lu-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lu-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol><symbol id="lu-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lu-square-pen" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></symbol><symbol id="lu-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol><symbol id="lu-square" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol><symbol id="lu-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lu-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="lu-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="lu-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="lu-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol><symbol id="lu-message-square" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></symbol><symbol id="lu-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="lu-laptop" viewBox="0 0 24 24"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/></symbol><symbol id="lu-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol><symbol id="lu-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lu-corner-down-left" viewBox="0 0 24 24"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></symbol><symbol id="lu-keyboard" viewBox="0 0 24 24"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></symbol><symbol id="lu-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol><symbol id="lu-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/></symbol><symbol id="lu-maximize-2" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/><path d="M9 21H3v-6"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="lu-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lu-square-open" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-square-check" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lu-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="lu-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="lu-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lu-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lu-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol><symbol id="lu-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lu-square-pen" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></symbol><symbol id="lu-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol><symbol id="lu-square" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol><symbol id="lu-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lu-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="lu-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="lu-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="lu-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol><symbol id="lu-message-square" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></symbol><symbol id="lu-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="lu-laptop" viewBox="0 0 24 24"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/></symbol><symbol id="lu-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol><symbol id="lu-smartphone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></symbol><symbol id="lu-tablet" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></symbol><symbol id="lu-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol><symbol id="lu-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lu-corner-down-left" viewBox="0 0 24 24"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></symbol><symbol id="lu-keyboard" viewBox="0 0 24 24"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></symbol><symbol id="lu-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol><symbol id="lu-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/></symbol><symbol id="lu-maximize-2" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/><path d="M9 21H3v-6"/></symbol></svg>
 <div class="wrap">
 
 <div class="top">
@@ -959,7 +960,7 @@
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v46 的改动</h4><ul><li>停靠区：进会话时要你处理的事默认展开，「收起」后按事项记住，新的一项又默认展开；展开后只有一行头部，内容区最高约占会话内容区的 60%（至少 240），计划正文不再单独限高。</li><li>审批先给命令再给说明；停靠区里的命令不单独限高；首页审批卡的命令最多 6 整行，多出来的「还有 N 行 · 展开」就地展开。</li><li>宽屏审批和计划的按钮行最宽 480，靠左。</li><li>网页、iOS 和 Android 上不是管理端的手机没有添加设备的入口，设置、设备页和空状态改成一句说明；加入页的说明按实际流程写，网页只说输入配对码；配对说明里称呼对方一律写「管理端手机」。</li></ul>
+  <h4>相对 v46 的改动</h4><ul><li>停靠区：进会话时要你处理的事默认展开，「收起」后按事项记住，新的一项又默认展开；展开后只有一行头部，内容区最高约占会话内容区的 60%（至少 240），计划正文不再单独限高。</li><li>审批先给命令再给说明；停靠区里的命令不单独限高；首页审批卡的命令最多 6 整行，多出来的「还有 N 行 · 展开」就地展开。</li><li>宽屏审批和计划的按钮行最宽 480，靠左。</li><li>网页、iOS 和 Android 上不是管理端的手机没有添加设备的入口，设置、设备页和空状态改成一句说明；加入页的说明按实际流程写，网页只说输入配对码；配对说明里称呼对方一律写「管理端手机」。</li><li>读不到审批模式时导航栏第二行只写状态；新建的摘要和项目设置写「跟随 CLI 设置」。</li><li>消息来源：本客户端发的不标；电脑终端里输入的写「&lt;机器名&gt; 终端」；其他客户端写名字，已移除的写「已移除的设备」，不写设备号。</li><li>没起名的客户端叫「平台 · 型号或系统」（Chrome · macOS、Android · Pixel 9、iPhone），重名时才加短 ID；去掉首次打开的起名弹窗。</li><li>待发气泡的说明只用「插入这一轮」「这一轮结束后发」「等 &lt;CLI&gt; 就绪后发出」「已暂停」等几种，「第 N 条」只在排着不止一条时写；发送失败分「没发出去」（红）和「可能没发出去」（橙）两类。</li><li>⋯ 菜单改成和选项目一样的左对齐列表弹层，模型、上下文是「名称 …… 值 ›」的行，中断和结束是红字行，没有「取消」卡片，顶部不再写会话 ID。</li><li>运行中的工具写「已运行 4:15」，两轮之间写「本轮用时 4 分 12 秒」。</li><li>宽屏用鼠标时终端不显示按键栏；宽屏侧栏的需要处理和进行中不截断；项目行和「全部项目」的计数写「N 个待处理 · M 个进行中」；设置里客户端行有图标，电脑行的状态总在行尾、额度是第二行；输入框占位的快捷键按平台写，触屏不写。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
@@ -1059,7 +1060,7 @@ git status --short gen/</span></pre>
       </div>
       <div class="tabbar"><div class="on"><i><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg></i>会话</div><div><i><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg></i>设置</div></div>
       <div class="dim"></div>
-      <div class="sheet"><div class="grab"></div><div class="ns-head"><b>看哪个项目</b><span>取消</span></div><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>4 个进行中</small></div><span class="ck"></span></div><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="ck"></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div><div class="pi act">管理项目<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div></div></div>
+      <div class="sheet"><div class="grab"></div><div class="ns-head"><b>看哪个项目</b><span>取消</span></div><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>1 个待处理 · 4 个进行中</small></div><span class="ck"></span></div><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 1 个待处理 · 3 个进行中</small></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="ck"></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div><div class="pi act">管理项目<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div></div></div>
     </div>
     <div class="cap">点标题换范围：第一行是全部项目（只有一个项目时没有这一行），然后是和别处一样的项目列表（见<a href="#projects">项目管理</a>），当前范围打勾；超过 8 个项目时顶部有搜索。「新项目…」选机器和目录，「管理项目」进项目管理</div>
   </div>
@@ -1136,7 +1137,7 @@ git status --short gen/</span></pre>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="sysline">9:41 · ~/Code/foo</div>
-        <div class="me pending"><div><span class="clamp">给登录接口加限流</span></div><small><span class="pt">已送达电脑 · 等 Claude Code 就绪后发出</span><b>取消</b></small></div>
+        <div class="me pending"><div><span class="clamp">给登录接口加限流</span></div><small><span class="pt">等 Claude Code 就绪后发出</span><b>取消</b></small></div>
         <div class="sysline">正在 MacBook 上启动 Claude Code…</div>
       </div>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
@@ -1154,7 +1155,7 @@ git status --short gen/</span></pre>
         <div class="grab"></div>
         <div class="ns-head"><b>新会话 · 选项目</b><span>取消</span></div>
         <div class="plist">
-          <div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div>
+          <div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 1 个待处理 · 3 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div>
         </div>
       </div>
     </div>
@@ -1250,8 +1251,8 @@ git status --short gen/</span></pre>
           <p>我改成复用连接池并加上 <code>2s</code> 超时。</p>
         </div>
         <div class="tool"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>编辑 2 个文件  +18 −7</code></div>
-        <div class="tool"><span class="sp"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span><code>go test ./auth/...</code><span class="muted">12s</span></div>
-      <div class="me pending"><div><span class="clamp">顺便看下 lint 有没有报错</span></div><small><span class="pt">排队 · 这一轮结束后发</span><b>取消</b></small></div></div>
+        <div class="tool"><span class="sp"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span><code>go test ./auth/...</code><span class="muted">已运行 0:12</span></div>
+      <div class="me pending"><div><span class="clamp">顺便看下 lint 有没有报错</span></div><small><span class="pt">这一轮结束后发</span><b>取消</b></small></div></div>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 stop" aria-label="中断这一轮"></span></div></div>
     </div>
     <div class="cap">运行中：导航栏只写标题和状态，CLI、项目和机器在 ⋯ 里；连续完成的工具调用折成一行；输入框空着时发送位是 ■ 中断；排队的消息留在对话末尾</div>
@@ -1651,7 +1652,7 @@ git status --short gen/</pre>
 <span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span>
 <code>读取 auth/login.go</code>
 </div>
-<div class="ai">正在补充限流测试。</div><div class="me pending"><div><span class="clamp">补一个限流的集成测试</span></div><small><span class="pt">排队 · 这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">最后汇总改动，不要提交</span></div><small><span class="pt">排队 · 这一轮结束后发 · 第 2 条</span><b>取消</b></small></div>
+<div class="ai">正在补充限流测试。</div><div class="me pending"><div><span class="clamp">补一个限流的集成测试</span></div><small><span class="pt">这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">最后汇总改动，不要提交</span></div><small><span class="pt">这一轮结束后发 · 第 2 条</span><b>取消</b></small></div>
 </div>
 <div class="compose-card">
 <div class="draft typed">顺便检查 Redis 连接池</div>
@@ -1692,7 +1693,7 @@ git status --short gen/</pre>
 <span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span>
 <code>读取 orders/inventory.go</code>
 </div>
-<div class="ai">我在拆分库存接口。</div><div class="me pending"><div><span class="clamp">并发扣减也要覆盖</span></div><small><span class="pt">插入这一轮 · 等当前工具结束后并入</span><b>取消</b></small></div>
+<div class="ai">我在拆分库存接口。</div><div class="me pending"><div><span class="clamp">并发扣减也要覆盖</span></div><small><span class="pt">插入这一轮</span><b>取消</b></small></div>
 </div>
 <div class="compose-card">
 <div class="draft typed">库存回滚也保留测试</div>
@@ -1821,7 +1822,7 @@ git status --short gen/</pre>
 <span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span>
 <span class="title">
 <b>
-<span class="tname">修复登录超时</span></b><span>运行中 · 自动</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在补充限流测试。</div><div class="me pending"><div><span class="clamp">检查 Redis 连接池是否会在超时后泄漏连接，补一个回归测试。</span></div><small><span class="pt">排队 · 这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending canceling"><div><span class="clamp">更新 README 的配置说明。</span></div><small><span class="pt">正在取消…</span></small></div><div class="me pending fail"><div><span class="clamp">最后汇总改动，不要提交。</span></div><small><span class="pt">取消没成功，仍在排队</span><b>重试</b></small></div></div><div class="toast">上一条已送入终端，不能取消</div><div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 stop" aria-label="中断这一轮"></span></div></div></div><div class="cap">还没送到 Agent 的消息（插入这一轮或排队）：按顺序留在对话末尾，写明等什么；每条就地取消，显示取消中和失败；送进终端后变成普通消息。不另开队列页，不提供重新排序</div>
+<span class="tname">修复登录超时</span></b><span>运行中 · 自动</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在补充限流测试。</div><div class="me pending"><div><span class="clamp">检查 Redis 连接池是否会在超时后泄漏连接，补一个回归测试。</span></div><small><span class="pt">这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending canceling"><div><span class="clamp">更新 README 的配置说明。</span></div><small><span class="pt">正在取消…</span></small></div><div class="me pending fail"><div><span class="clamp">最后汇总改动，不要提交。</span></div><small><span class="pt">取消没成功，仍在排队</span><b>重试</b></small></div></div><div class="toast">上一条已送入终端，不能取消</div><div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 stop" aria-label="中断这一轮"></span></div></div></div><div class="cap">还没送到 Agent 的消息（插入这一轮或排队）：按顺序留在对话末尾，写明等什么；每条就地取消，显示取消中和失败；送进终端后变成普通消息。不另开队列页，不提供重新排序</div>
 </div>
 <div>
 <div class="phone">
@@ -1915,7 +1916,7 @@ git status --short gen/</pre>
       <div class="pad" style="padding:6px 16px 4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
-        <div class="tool"><span class="sp"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span><code>go test ./auth/...</code><span class="muted">12s</span></div>
+        <div class="tool"><span class="sp"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span><code>go test ./auth/...</code><span class="muted">已运行 0:12</span></div>
       </div>
       <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><span class="compose-menu" aria-disabled="true"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 off"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
     </div>
@@ -1927,18 +1928,17 @@ git status --short gen/</pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body"></div>
       <div class="dim"></div>
-      <div class="actsheet">
-        <div class="grp2">
-          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">1cad005ddc4b02a4</span></div>
-          <div class="ai2">审批模式：询问</div>
-          <div class="ai2">模型：GPT-6-Astra · medium</div>
-          <div class="ai2">上下文：23%</div>
-          <div class="ai2">重命名</div>
-          <div class="ai2 two dis"><span>分叉会话</span><small>这一轮结束后可用</small></div>
-          <div class="ai2">中断本轮</div>
-          <div class="ai2 red">结束会话…</div>
+      <div class="sheet menu"><div class="grab"></div>
+        <div class="mlist">
+          <div class="menu-info"><b>Codex · foo · MacBook</b><span class="mono">~/Code/foo</span></div>
+          <div class="mi">审批模式<span class="mv">询问</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">模型<span class="mv">GPT-6-Astra · medium</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">上下文<span class="mv">23%</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">重命名</div>
+          <div class="mi dis"><div class="mt">分叉会话<small>这一轮结束后可用</small></div></div>
+          <div class="mi danger">中断本轮</div>
+          <div class="mi danger">结束会话…</div>
         </div>
-        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
       </div>
     </div>
     <div class="cap">⋯ 菜单：顶部写 CLI、项目、机器和目录，接着是本会话的审批模式、模型和上下文（完全放行红字，上下文高时橙字），点开是对应的设置；「重命名」改会话标题；「分叉会话」另开一个带着这场对话的会话，运行中置灰（见 <a href="#fork">分叉会话</a>）；中断只停这一轮，会话还在；结束会关掉 Codex，要二次确认</div>
@@ -2231,27 +2231,27 @@ git status --short gen/</pre>
   </div>
 
   <div class="st">
-    <div class="st-h">消息 · 没能确认送达 / 无法确认收到</div>
-    <div class="me fail"><div>顺便补一个测试</div><small>没能确认送达：连接超时<b>重试</b><b>移除此提示</b></small></div>
-    <div class="me warn"><div>把 lint 也跑一下</div><small>已送到终端，但没能确认 Codex 收到，不会自动重发</small></div>
+    <div class="st-h">消息 · 没发出去 / 可能没发出去</div>
+    <div class="me fail"><div>顺便补一个测试</div><small>没发出去：电脑不在线<b>重试</b><b>移除此提示</b></small></div><div class="me warn"><div>顺便补一个测试</div><small>可能没发出去：连接超时<b>重试</b><b>移除此提示</b></small></div>
+    <div class="me warn"><div>把 lint 也跑一下</div><small>可能没发出去：已送到终端但没确认</small></div>
     <div class="st-c">会话在消息送入终端前结束时显示“未发送：会话已结束”，不显示成用户主动取消。第一种可能其实已经送到：重试用同一条消息，电脑收到过就不会再写一遍。第二种不给「重试」，去终端看一眼再决定</div>
   </div>
 
   <div class="st">
     <div class="st-h">队列 · 在对话里</div>
-    <div class="body chat" style="padding:0"><div class="me pending"><div><span class="clamp">补一个回归测试</span></div><small><span class="pt">排队 · 这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">最后汇总改动</span></div><small><span class="pt">排队 · 这一轮结束后发 · 第 2 条</span><b>取消</b></small></div></div>
+    <div class="body chat" style="padding:0"><div class="me pending"><div><span class="clamp">补一个回归测试</span></div><small><span class="pt">这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">最后汇总改动</span></div><small><span class="pt">这一轮结束后发 · 第 2 条</span><b>取消</b></small></div></div>
     <div class="st-c">排队的消息按顺序留在对话末尾，显示全文；来源不是本客户端时写明来源。取消中、取消失败和已送入终端见「输入区与消息队列」</div>
   </div>
 
   <div class="st">
     <div class="st-h">待发 · 长消息</div>
-    <div class="body chat" style="padding:0"><div class="me pending"><div><span class="clamp">检查一下 ~/Code/ai-bot/remote-agent.worktrees/experimental-playground/internal/daemon/inject.go 里排队和注入的逻辑，重点看运行中收到的消息是 steer 还是 queue，中断以后还没写入的消息会不会被自动发出去，再对照 codex-notes 和 claude-code-notes 里的实测补充测试</span></div><small><span class="pt">排队 · 这一轮结束后发 · Alex 的 Android Pixel 9 Pro XL · b71c</span><b>取消</b></small></div></div>
+    <div class="body chat" style="padding:0"><div class="me pending"><div><span class="clamp">检查一下 ~/Code/ai-bot/remote-agent.worktrees/experimental-playground/internal/daemon/inject.go 里排队和注入的逻辑，重点看运行中收到的消息是 steer 还是 queue，中断以后还没写入的消息会不会被自动发出去，再对照 codex-notes 和 claude-code-notes 里的实测补充测试</span></div><small><span class="pt">这一轮结束后发 · Alex 的 Android Pixel 9 Pro XL</span><b>取消</b></small></div></div>
     <div class="st-c">待发气泡最多显示 4 行，点气泡看全文；长路径在任意位置换行，不撑出屏幕。说明只占一行，放不下时省略说明，「取消」「发送」始终完整</div>
   </div>
 
   <div class="st">
     <div class="st-h">待发 · 排队很多</div>
-    <div class="body chat" style="padding:0"><div class="me pending"><div><span class="clamp">补一个限流的集成测试</span></div><small><span class="pt">排队 · 这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">顺便更新 README 的配置说明</span></div><small><span class="pt">排队 · 第 2 条</span><b>取消</b></small></div><div class="pending-more">还有 4 条排队<b>展开</b></div></div>
+    <div class="body chat" style="padding:0"><div class="me pending"><div><span class="clamp">补一个限流的集成测试</span></div><small><span class="pt">这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">顺便更新 README 的配置说明</span></div><small><span class="pt">这一轮结束后发 · 第 2 条</span><b>取消</b></small></div><div class="pending-more">还有 4 条排队<b>展开</b></div></div>
     <div class="st-c">排队超过 3 条时只显示最前面 2 条，其余收成一行，点「展开」就地展开；取消其中一条，其余顺序不变</div>
   </div>
 
@@ -2265,13 +2265,13 @@ git status --short gen/</pre>
     <div class="st-h">主页 · 进行中很多</div>
     <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span></div><div class="mc">foo · Codex</div></div></div><div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span></div><div class="mc">foo · Claude Code</div></div></div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>升级依赖</b><span>8:05</span></div><div class="pv"><span class="stw run">运行中</span></div><div class="mc">bar · Codex</div></div></div><div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>发布秋季文章</b><span>昨天</span></div><div class="pv"><span class="stw idle">空闲</span></div><div class="mc">blog · Codex</div></div></div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>拆分订单服务</b><span>昨天</span></div><div class="pv"><span class="stw run">运行中</span></div><div class="mc">shop · Claude Code</div></div></div>
     <div class="todo-more" style="margin:4px 0 0">还有 7 个进行中<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
-    <div class="st-c">进行中最多列 5 个，其余点「还有 N 个」就地展开，排序不变；已结束的先列 30 个，滚到底再加载 30 个</div>
+    <div class="st-c">手机主页进行中最多列 5 个，其余点「还有 N 个」就地展开，排序不变；宽屏侧栏的需要处理和进行中不截断，整列一起滚动。已结束的先列 30 个，滚到底再加载 30 个</div>
   </div>
 
   <div class="st">
     <div class="st-h">选项目 · 项目很多</div>
     <div class="field" style="margin:0 0 8px"><svg class="ic" aria-hidden="true"><use href="#lu-search"/></svg> 搜索项目名或路径</div>
-    <div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div>
+    <div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 1 个待处理 · 3 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div>
     <div class="st-c">项目超过 8 个时顶部出现搜索，按项目名和路径匹配。匹配在本机完成，路径不离开客户端</div>
   </div>
 
@@ -2294,7 +2294,7 @@ git status --short gen/</pre>
   <div class="st">
     <div class="st-h">中断后 · 排队的消息</div>
     <div class="sysline">已中断本轮</div>
-    <div class="body chat" style="padding:0"><div class="me pending"><div><span class="clamp">测试过了就提交</span></div><small><span class="pt">已暂停 · 中断前排着的</span><b>发送</b><b>取消</b></small></div></div>
+    <div class="body chat" style="padding:0"><div class="me pending"><div><span class="clamp">测试过了就提交</span></div><small><span class="pt">已暂停</span><b>发送</b><b>取消</b></small></div></div>
     <div class="st-c">中断后排着的消息不自动发出，等你决定发送或取消；插入这一轮但还没被 CLI 收下的，同样暂停</div>
   </div>
 
@@ -2406,7 +2406,7 @@ git status --short gen/</pre>
 
   <div class="st">
     <div class="st-h">新建 · 创建中 / 失败</div>
-    <div class="me pending"><div><span class="clamp">给登录接口加限流</span></div><small><span class="pt">已送达电脑 · 等 Codex 就绪后发出</span><b>取消</b></small></div><div class="sysline">正在 MacBook 上启动…</div>
+    <div class="me pending"><div><span class="clamp">给登录接口加限流</span></div><small><span class="pt">等 Codex 就绪后发出</span><b>取消</b></small></div><div class="sysline">正在 MacBook 上启动…</div>
     <div class="banner err" style="margin-top:8px">启动失败：tmux 没有安装<b>重试</b></div>
     <div class="st-c">启动中第一句话可以取消；失败时输入的内容保留</div>
   </div>
@@ -2415,7 +2415,7 @@ git status --short gen/</pre>
     <div class="st-h">新建 · 项目默认完全放行 / 模式未知</div>
     <a class="proj-cfg" href="#project-settings"><em>Codex · <span class="red">完全放行</span> · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a>
     <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
-    <div class="st-c">项目设置为完全放行时直接新建，不再二次确认，设置摘要按钮里只把「完全放行」标红，输入框不加提示。沿用 CLI 配置且读不出模式时，摘要写「审批：CLI 配置（未读到）」，照常新建。</div>
+    <div class="st-c">项目设置为完全放行时直接新建，不再二次确认，设置摘要按钮里只把「完全放行」标红，输入框不加提示。沿用 CLI 配置且读不出模式时，摘要写「跟随 CLI 设置」，照常新建；会话里读不到模式时，导航栏第二行只写状态。</div>
   </div>
   <div class="st">
     <div class="st-h">主页 · 加载中 / 空账户</div>
@@ -2514,8 +2514,8 @@ git status --short gen/</pre>
       <div class="body chat">
         <div class="me"><div>跑一遍库存集成测试</div></div>
         <div class="ai">测试需要启动数据库，可能要等一会儿。</div>
-        <div class="tool"><span class="sp"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span><code>go test ./internal/inventory/... -count=1</code><span class="muted">2:12</span></div>
-        <div class="me pending"><div><span class="clamp">测试过了就提交</span></div><small><span class="pt">排队 · 这一轮结束后发</span><b>取消</b></small></div>
+        <div class="tool"><span class="sp"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span><code>go test ./internal/inventory/... -count=1</code><span class="muted">已运行 2:12</span></div>
+        <div class="me pending"><div><span class="clamp">测试过了就提交</span></div><small><span class="pt">这一轮结束后发</span><b>取消</b></small></div>
       </div>
       <div class="compose-card"><div class="draft">消息…</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 stop" aria-label="中断这一轮"></span></div></div>
     </div>
@@ -2530,7 +2530,7 @@ git status --short gen/</pre>
         <div class="me"><div>并行检查测试和构建</div></div>
         <div class="tool grp"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><b>运行了 3 条命令</b><span class="muted"><i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span></div>
         <div class="tool"><span class="x"><svg class="ic" aria-hidden="true"><use href="#lu-x"/></svg></span><code>pnpm lint</code><span class="exit">退出码 1</span></div>
-        <div class="tool"><span class="sp"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span><code>go test ./...</code><span class="muted">3:08</span></div>
+        <div class="tool"><span class="sp"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span><code>go test ./...</code><span class="muted">已运行 3:08</span></div>
       </div>
       <div class="compose-card"><div class="draft">消息…</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 stop" aria-label="中断这一轮"></span></div></div>
     </div>
@@ -2748,7 +2748,7 @@ git status --short gen/</pre>
   </div>
   <div class="st">
     <div class="st-h">发图 · 没能发送</div>
-    <div class="me fail"><span class="pics"><i class="pic port ui"></i><i class="pic land web"></i></span><div>这两个页面底部的按钮都点不到</div><small>没能发送：Claude Code 没认出第 2 张图<b>重试</b><b>放回输入框</b></small></div>
+    <div class="me fail"><span class="pics"><i class="pic port ui"></i><i class="pic land web"></i></span><div>这两个页面底部的按钮都点不到</div><small>没发出去：Claude Code 没认出第 2 张图<b>重试</b><b>放回输入框</b></small></div>
     <div class="st-c">CLI 没把图片变成 <code>[Image #N]</code> 时整条不发，电脑的输入框恢复原样；放回输入框后图和文字都还在</div>
   </div>
   <div class="st">
@@ -2758,7 +2758,7 @@ git status --short gen/</pre>
   </div>
   <div class="st">
     <div class="st-h">发图 · 排队</div>
-    <div class="body chat" style="padding:0"><div class="me pending"><span class="pics"><i class="pic port ui"></i><i class="pic land web"></i></span><div><span class="clamp">按截图把设置页重做一遍</span></div><small><span class="pt">排队 · 这一轮结束后发</span><b>取消</b></small></div></div>
+    <div class="body chat" style="padding:0"><div class="me pending"><span class="pics"><i class="pic port ui"></i><i class="pic land web"></i></span><div><span class="clamp">按截图把设置页重做一遍</span></div><small><span class="pt">这一轮结束后发</span><b>取消</b></small></div></div>
     <div class="st-c">带图的消息和文字消息一样排队；图已经在电脑上，排队期间不重传。待发气泡里显示缩略图</div>
   </div>
   <div class="st">
@@ -3197,13 +3197,12 @@ git status --short gen/</pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body"></div>
       <div class="dim"></div>
-      <div class="actsheet">
-        <div class="grp2">
-          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">8f02c91be7714d3a</span></div>
-          <div class="ai2">重命名</div>
-          <div class="ai2">分叉会话</div>
+      <div class="sheet menu"><div class="grab"></div>
+        <div class="mlist">
+          <div class="menu-info"><b>Codex · foo · MacBook</b><span class="mono">~/Code/foo</span></div>
+          <div class="mi">重命名</div>
+          <div class="mi">分叉会话</div>
         </div>
-        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
       </div>
     </div>
     <div class="cap">已结束的会话：⋯ 菜单只剩「重命名」和「分叉会话」。电脑离线或和服务器断线时这两项都不显示</div>
@@ -3220,17 +3219,16 @@ git status --short gen/</pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body"></div>
       <div class="dim"></div>
-      <div class="actsheet">
-        <div class="grp2">
-          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">1cad005ddc4b02a4</span></div>
-          <div class="ai2">审批模式：询问</div>
-          <div class="ai2">模型：GPT-6-Astra · medium</div>
-          <div class="ai2">上下文：23%</div>
-          <div class="ai2">重命名</div>
-          <div class="ai2">分叉会话</div>
-          <div class="ai2 red">结束会话…</div>
+      <div class="sheet menu"><div class="grab"></div>
+        <div class="mlist">
+          <div class="menu-info"><b>Codex · foo · MacBook</b><span class="mono">~/Code/foo</span></div>
+          <div class="mi">审批模式<span class="mv">询问</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">模型<span class="mv">GPT-6-Astra · medium</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">上下文<span class="mv">23%</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">重命名</div>
+          <div class="mi">分叉会话</div>
+          <div class="mi danger">结束会话…</div>
         </div>
-        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
       </div>
     </div>
     <div class="cap">空闲的会话：「分叉会话」在「重命名」下面。点一下就开始，不弹确认</div>
@@ -3241,17 +3239,16 @@ git status --short gen/</pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body"></div>
       <div class="dim"></div>
-      <div class="actsheet">
-        <div class="grp2">
-          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">1cad005ddc4b02a4</span></div>
-          <div class="ai2 dis">审批模式：询问</div>
-          <div class="ai2 dis">模型：GPT-6-Astra · medium</div>
-          <div class="ai2 dis">上下文：23%</div>
-          <div class="ai2 dis">重命名</div>
-          <div class="ai2 busy"><span class="sp"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span>正在分叉…</div>
-          <div class="ai2 red dis">结束会话…</div>
+      <div class="sheet menu"><div class="grab"></div>
+        <div class="mlist">
+          <div class="menu-info"><b>Codex · foo · MacBook</b><span class="mono">~/Code/foo</span></div>
+          <div class="mi dis">审批模式<span class="mv">询问</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi dis">模型<span class="mv">GPT-6-Astra · medium</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi dis">上下文<span class="mv">23%</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi dis">重命名</div>
+          <div class="mi busy"><span class="sp"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span>正在分叉…</div>
+          <div class="mi danger dis">结束会话…</div>
         </div>
-        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
       </div>
     </div>
     <div class="cap">点了以后菜单不关：这一行变成「正在分叉…」，其余各行置灰；电脑上的新会话起好后菜单关闭，直接进新会话</div>
@@ -3278,18 +3275,17 @@ git status --short gen/</pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body"></div>
       <div class="dim"></div>
-      <div class="actsheet">
-        <div class="grp2">
-          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">1cad005ddc4b02a4</span></div>
-          <div class="ai2">审批模式：询问</div>
-          <div class="ai2">模型：GPT-6-Astra · medium</div>
-          <div class="ai2">上下文：23%</div>
-          <div class="ai2">重命名</div>
-          <div class="ai2 two dis"><span>分叉会话</span><small>这一轮结束后可用</small></div>
-          <div class="ai2">中断本轮</div>
-          <div class="ai2 red">结束会话…</div>
+      <div class="sheet menu"><div class="grab"></div>
+        <div class="mlist">
+          <div class="menu-info"><b>Codex · foo · MacBook</b><span class="mono">~/Code/foo</span></div>
+          <div class="mi">审批模式<span class="mv">询问</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">模型<span class="mv">GPT-6-Astra · medium</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">上下文<span class="mv">23%</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">重命名</div>
+          <div class="mi dis"><div class="mt">分叉会话<small>这一轮结束后可用</small></div></div>
+          <div class="mi danger">中断本轮</div>
+          <div class="mi danger">结束会话…</div>
         </div>
-        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
       </div>
     </div>
     <div class="cap">还不能分叉时这一行置灰，下面写什么时候可以：运行中、等审批或等回答写「这一轮结束后可用」，计划待批准和终端弹窗写「处理完等待事项后可用」，启动中写「启动完成后可用」，还没发过消息写「发过消息后可用」</div>
@@ -3300,17 +3296,16 @@ git status --short gen/</pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body"></div>
       <div class="dim"></div>
-      <div class="actsheet">
-        <div class="grp2">
-          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">1cad005ddc4b02a4</span></div>
-          <div class="ai2">审批模式：询问</div>
-          <div class="ai2">模型：GPT-6-Astra · medium</div>
-          <div class="ai2">上下文：23%</div>
-          <div class="ai2">重命名</div>
-          <div class="ai2 two"><span>分叉会话</span><small class="err">没能分叉：MacBook 没有回应</small></div>
-          <div class="ai2 red">结束会话…</div>
+      <div class="sheet menu"><div class="grab"></div>
+        <div class="mlist">
+          <div class="menu-info"><b>Codex · foo · MacBook</b><span class="mono">~/Code/foo</span></div>
+          <div class="mi">审批模式<span class="mv">询问</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">模型<span class="mv">GPT-6-Astra · medium</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">上下文<span class="mv">23%</span><svg class="ic chev" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi">重命名</div>
+          <div class="mi"><div class="mt">分叉会话<small class="err">没能分叉：MacBook 没有回应</small></div></div>
+          <div class="mi danger">结束会话…</div>
         </div>
-        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
       </div>
     </div>
     <div class="cap">没成功：菜单不关，这一行下面用红字写原因，可以再点一次；其余各行恢复可点</div>
@@ -3428,7 +3423,7 @@ git status --short gen/</pre>
       <div class="body chat">
         <div class="tool"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>编辑 9 个文件  +412 −288</code></div>
         <div class="ai">支付回调和退款流程都已迁移到新接口，测试全部通过。</div>
-        <div class="sep">4 分 12 秒 · 96k tokens</div>
+        <div class="sep">本轮用时 4 分 12 秒</div>
         <div class="me"><div>继续把对账逻辑也迁过去</div></div>
       </div>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
@@ -3557,13 +3552,13 @@ git status --short gen/</pre>
 </div>
 
 <h2 id="projects">项目管理</h2>
-<div class="note" style="margin:0 0 20px">项目在三个地方列出：主页和宽屏侧栏的范围菜单、新建会话时的选项目、项目管理。三处是同一个列表：先「常用」后「其他」（只有一组时不写分组标题），其他按进行中优先、再按最近新建排序；每行是项目头像、名字，第二行写路径和进行中的数量，没有进行中而它的电脑都不在线时写「电脑不在线」；超过 8 个项目时顶部有搜索；最后一行是「＋ 新项目…」。不同的只有行尾：范围菜单是当前范围的勾，选项目是 ›，项目管理是 ⋯。对一个项目能做的事只有两件，设为常用（或取消）和移除，在项目管理的 ⋯ 和项目设置里是同样的两项。项目仍按绝对路径识别，不引入重命名、合并、移动目录或批量删历史。</div>
+<div class="note" style="margin:0 0 20px">项目在三个地方列出：主页和宽屏侧栏的范围菜单、新建会话时的选项目、项目管理。三处是同一个列表：先「常用」后「其他」（只有一组时不写分组标题），其他按进行中优先、再按最近新建排序；每行是项目头像、名字，第二行写路径和会话数，和主页同一口径：「1 个待处理 · 3 个进行中」，为 0 的部分不写，都为 0 时只写路径，这时它的电脑都不在线就写「电脑不在线」；「全部项目」一行同样计数；超过 8 个项目时顶部有搜索；最后一行是「＋ 新项目…」。不同的只有行尾：范围菜单是当前范围的勾，选项目是 ›，项目管理是 ⋯。对一个项目能做的事只有两件，设为常用（或取消）和移除，在项目管理的 ⋯ 和项目设置里是同样的两项。项目仍按绝对路径识别，不引入重命名、合并、移动目录或批量删历史。</div>
 <div class="screens">
 <div>
 <div class="phone">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
 <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">项目管理</span></b><span></span></span><span class="more"></span></div>
-<div class="body pad"><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div>
+<div class="body pad"><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 1 个待处理 · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div>
 </div>
 <div class="cap">项目管理：从范围菜单底部的「管理项目」进来。点项目名，主页的范围换成它并回到主页；⋯ 管理这个项目；「＋ 新项目…」选机器和目录，选好后留在这一页，项目出现在「其他」里</div>
 </div>
@@ -3571,7 +3566,7 @@ git status --short gen/</pre>
 <div class="phone">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
 <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">项目管理</span></b><span></span></span><span class="more"></span></div>
-<div class="body pad"><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div><div class="dim"></div><div class="actsheet"><div class="grp2"><div class="info"><b>billing</b><br><span class="mono">~/Code/billing</span></div><div class="ai2">设为常用</div><div class="ai2 red">移除项目…</div></div><div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div></div>
+<div class="body pad"><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 1 个待处理 · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div><div class="dim"></div><div class="sheet menu"><div class="grab"></div><div class="mlist"><div class="menu-info"><b>billing</b><span class="mono">~/Code/billing</span></div><div class="mi">设为常用</div><div class="mi danger">移除项目…</div></div></div>
 </div>
 <div class="cap">⋯ 菜单：常用项目这里是「取消常用」。断线时两项都按禁用显示，第一项下面写「连上服务器后才能修改」</div>
 </div>
@@ -3579,7 +3574,7 @@ git status --short gen/</pre>
 <div class="phone">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
 <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">项目管理</span></b><span></span></span><span class="more"></span></div>
-<div class="body pad"><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div><div class="dim"></div><div class="alert"><h5>移除 billing？</h5><p>只从项目列表里移除，会话、历史和电脑上的目录都不动。以后要用，再用「新项目」添加这个目录。</p><div class="btns"><div class="btn">取消</div><div class="btn danger">移除</div></div></div>
+<div class="body pad"><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 1 个待处理 · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div><div class="dim"></div><div class="alert"><h5>移除 billing？</h5><p>只从项目列表里移除，会话、历史和电脑上的目录都不动。以后要用，再用「新项目」添加这个目录。</p><div class="btns"><div class="btn">取消</div><div class="btn danger">移除</div></div></div>
 </div>
 <div class="cap">移除先确认，确认后就是移除：没有撤销，也没有「已移除的项目」页面。它的会话和历史都还在，进行中的会话和待处理的卡片照常出现在「全部项目」里；以后要用，用「新项目」再选这个目录，它回到列表里</div>
 </div>
@@ -3602,7 +3597,7 @@ git status --short gen/</pre>
   <div class="st"><div class="st-h">项目列表 · 其他端更改</div><div class="banner">项目列表已在另一客户端更新</div><div class="st-c">保留当前正在看的会话和输入草稿；管理页按最新结果显示，不跳回主页。</div></div>
 </div>
 <h2 id="devices">多机器与多客户端</h2>
-<div class="note" style="margin:0 0 20px">每个会话固定属于一台电脑和一种 CLI，手机、多个浏览器和本地终端操作同一会话。每个客户端显示自己的连接状态；模型、模式、上下文、队列和处理结果同步，项目偏好跨端同步；草稿、视图、阅读位置各端独立。没有会话独占或编辑锁，也不提供无依据的在线查看人数。</div>
+<div class="note" style="margin:0 0 20px">每个会话固定属于一台电脑和一种 CLI，手机、多个浏览器和电脑终端操作同一会话。每个客户端显示自己的连接状态；模型、模式、上下文、队列和处理结果同步，项目偏好跨端同步；草稿、视图、阅读位置各端独立。没有会话独占或编辑锁，也不提供无依据的在线查看人数。</div>
 <div class="screens">
 <div>
 <div class="phone">
@@ -3642,21 +3637,21 @@ git status --short gen/</pre>
 </div>
 <div class="glabel">客户端 · 操作会话</div>
 <div class="grp">
-<div class="row client"><span class="client-info">Chrome · a8f2<small>浏览器 · Chrome on macOS</small></span><span class="v">当前客户端</span>
+<div class="row client"><span class="client-info">Chrome · macOS · a8f2<small>浏览器 · Chrome on macOS</small></span><span class="v">当前客户端</span>
 </div>
 <div class="row client"><span class="client-info">我的手机<small>App · Android 16 · Pixel 9</small></span><span class="v">刚刚使用<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
 </div>
-<div class="row client"><span class="client-info">Chrome · 04a9<small>浏览器 · Chrome on macOS</small></span><span class="v">昨天使用<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
+<div class="row client"><span class="client-info">Chrome · macOS · 04a9<small>浏览器 · Chrome on macOS</small></span><span class="v">昨天使用<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
 </div>
-<div class="row client"><span class="client-info">Safari · d941<small>浏览器 · Safari on iOS</small></span><span class="v">8月3日使用<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
+<div class="row client"><span class="client-info">Safari · iOS<small>浏览器 · Safari on iOS</small></span><span class="v">8月3日使用<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
 </div>
-<div class="row client"><span class="client-info">客户端 · 92de<small>种类未知</small></span><span class="v">2025年12月1日添加<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
+<div class="row client"><span class="client-info">客户端<small>种类未知</small></span><span class="v">2025年12月1日添加<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
 </div>
 </div>
 <div class="manage-hint">右边是上次使用的时间。这里只能改本机名称。要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。</div>
 </div>
 </div>
-<div class="cap">设备分组：电脑是执行位置，客户端是控制入口。客户端第二行写种类和系统，右边写上次使用的时间，按它从近到远排；还没有使用记录的写添加日期，排在最后。上次使用不表示现在正在查看。这是网页的设备页：网页和 iOS 不能添加或移除设备，底下只有一句说明；Android 管理端手机在这里是「＋ 添加设备」（和设置里同名），点进去移除</div>
+<div class="cap">设备分组：电脑是执行位置，客户端是控制入口。没起名的客户端叫「平台 · 型号或系统」（Chrome · macOS、Android · Pixel 9、iPhone），只有两个默认名相同时才在后面加短 ID 区分。客户端第二行写种类和系统，右边写上次使用的时间，按它从近到远排；还没有使用记录的写添加日期，排在最后。上次使用不表示现在正在查看。这是网页的设备页：网页和 iOS 不能添加或移除设备，底下只有一句说明；Android 管理端手机在这里是「＋ 添加设备」（和设置里同名），点进去移除</div>
 </div>
 <div>
 <div class="phone">
@@ -3680,16 +3675,15 @@ git status --short gen/</pre>
 <div class="body chat">
 <div class="me">
 <div>把库存回滚的测试补上</div>
-<small>本客户端 · Chrome</small>
 </div>
 <div class="me">
 <div>不要修改公开接口</div>
-<small>Android · b71c</small>
+<small>Android · Pixel 9</small>
 </div>
 <div class="me">
 <div>先整理一下实现方案</div>
-<small>VPS-dev 本地终端</small></div><div class="me pending"><div><span class="clamp">补充库存回滚测试</span></div><small><span class="pt">排队 · 本客户端</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">最后检查 README</span></div><small><span class="pt">排队 · Android · b71c</span><b>取消</b></small></div>
-<div class="sysline">另一客户端将模式切到 <b>计划</b>
+<small>VPS-dev 终端</small></div><div class="me pending"><div><span class="clamp">补充库存回滚测试</span></div><small><span class="pt">这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">最后检查 README</span></div><small><span class="pt">这一轮结束后发 · 第 2 条 · Android · Pixel 9</span><b>取消</b></small></div>
+<div class="sysline">Safari · iOS 将模式切到 <b>计划</b>
 </div>
 <div class="record">
 <span style="color:var(--green)"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span>
@@ -3707,7 +3701,7 @@ git status --short gen/</pre>
 </div>
 </div>
 </div>
-<div class="cap">同一会话：消息按电脑接受的顺序排列；来源可识别才写具体客户端，否则写另一客户端，不猜名称</div>
+<div class="cap">同一会话：消息按电脑接受的顺序排列。本客户端发的不标来源（账户里有多个客户端也一样）；电脑终端里输入的写「VPS-dev 终端」；其他客户端写它的名字，已移除的写「已移除的设备」，不写设备号；来源没记录时不写，不猜名称</div>
 </div>
 <div>
 <div class="phone">
@@ -3724,7 +3718,7 @@ git status --short gen/</pre>
 <span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span>
 <span class="title">
 <b>
-<span class="tname">重构订单模块</span></b><span>运行中 · 询问</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在拆分库存接口。</div><div class="me pending"><div><span class="clamp">补充库存回滚测试。</span></div><small><span class="pt">排队 · 本客户端</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">最后检查 README。</span></div><small><span class="pt">排队 · Android · b71c</span><b>取消</b></small></div></div><div class="toast">上一条已在另一客户端取消</div><div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 stop" aria-label="中断这一轮"></span></div></div></div><div class="cap">多端排队：各端看到同一组待发气泡，按 daemon 接受的顺序排列并写明来源；任一端都能取消，取消和送达状态同步，未发送的草稿只属于各自客户端</div>
+<span class="tname">重构订单模块</span></b><span>运行中 · 询问</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在拆分库存接口。</div><div class="me pending"><div><span class="clamp">补充库存回滚测试。</span></div><small><span class="pt">这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">最后检查 README。</span></div><small><span class="pt">这一轮结束后发 · 第 2 条 · Android · Pixel 9</span><b>取消</b></small></div></div><div class="toast">上一条已在另一客户端取消</div><div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 stop" aria-label="中断这一轮"></span></div></div></div><div class="cap">多端排队：各端看到同一组待发气泡，按 daemon 接受的顺序排列并写明来源；任一端都能取消，取消和送达状态同步，未发送的草稿只属于各自客户端</div>
 </div>
 <div>
 <div class="phone">
@@ -3834,7 +3828,7 @@ git status --short gen/</pre>
 <div class="grp">
 <div class="row">名称<span class="v">我的手机<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
 </div>
-<div class="row" style="color:var(--blue)">恢复默认名称<span class="v">Android · b71c</span>
+<div class="row" style="color:var(--blue)">恢复默认名称<span class="v">Android · Pixel 9</span>
 </div>
 <div class="row">运行在<span class="v">Android 16 · Pixel 9</span>
 </div>
@@ -3853,21 +3847,6 @@ git status --short gen/</pre>
 </div>
 </div>
 <div class="cap">客户端详情：名称可改，起过名字的可以恢复默认名称，未命名时不显示这一行；上次使用没有记录时写「没有记录」；ID 可核对；点击移除直接提交并显示进度，当前客户端用“退出并删除本机密钥”</div>
-</div>
-<div>
-<div class="phone">
-<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body"></div>
-<div class="dim"></div>
-<div class="alert rename">
-<h5>给这个客户端起个名字</h5>
-<div class="field"><span class="picked">Pixel 9</span></div>
-<p>其他客户端的设备列表里靠它认出这一个，以后可以在「设置 › 设备」里改</p>
-<div class="btns"><div class="btn">跳过</div><div class="btn pri">保存</div></div>
-</div>
-<div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i style="flex:5"></i></div></div>
-</div>
-<div class="cap">给客户端起名：加入后第一次打开时问一次，还没有名字的已有客户端也问一次；跳过后不再问。App 里预填手机自己的名称并全选，浏览器里输入框是空的，占位文字是「如：公司电脑的 Chrome」</div>
 </div>
 </div>
 <!-- ============================= -->
@@ -3889,11 +3868,11 @@ git status --short gen/</pre>
         <div class="glabel">电脑 <a href="#devices" style="float:right">全部设备<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a></div>
         <div class="grp">
 
-          <div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><div class="machine-info"><div class="machine-name">MacBook<span class="machine-status"><span class="dot idle"></span>在线</span></div><div class="machine-quota">Codex · 7 天已用 34%</div></div><span class="machine-chevron"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+          <div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><span class="row-name">MacBook<small>Codex · 7 天已用 34%</small></span><span class="v"><span class="dot idle"></span>在线<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
           <div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span>iMac<span class="v"><span class="dot off"></span>2 小时前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
           <div class="row" style="color:var(--blue)"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 添加设备</div>
         </div>
-        <div class="glabel">客户端</div><div class="grp"><div class="row">Android · b71c<span class="v">当前</span></div><div class="row">Chrome · a8f2<span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row"><a href="#devices">全部客户端<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a></div></div><div class="glabel">本客户端的通知</div>
+        <div class="glabel">客户端</div><div class="grp"><div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-smartphone"/></svg></span><span class="row-name">Android · Pixel 9</span><span class="v">当前</span></div><div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-globe"/></svg></span><span class="row-name">Chrome · macOS</span><span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row"><a href="#devices">全部客户端<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a></div></div><div class="glabel">本客户端的通知</div>
         <div class="grp">
           <div class="row">等我处理时<span class="sw"></span></div>
           <div class="row">一轮结束时<span class="sw off"></span></div>
@@ -4056,7 +4035,7 @@ git status --short gen/</pre>
     <div class="dm">
       <div class="start">
         <h3>在 <span class="proj-pick"><span class="av xs c1">f</span>foo<i><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span> 里开始一个任务</h3>
-        <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
+        <div class="compose-card"><div class="draft">描述任务，⌘↵ 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
         <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
       </div>
     </div>
@@ -4158,7 +4137,7 @@ git status --short gen/</pre>
     <div class="dm">
       <div class="start">
         <h3>开始一个任务</h3>
-        <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
+        <div class="compose-card"><div class="draft">描述任务，⌘↵ 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
         <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
       </div>
     </div>
@@ -4183,12 +4162,12 @@ git status --short gen/</pre>
         <div class="old"><span>给登录接口加限流</span><span>6:42</span></div>
       </div>
       <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
-      <div class="pop"><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>4 个进行中</small></div><span class="ck"></span></div><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="ck"></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div><div class="pi act">管理项目<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div></div></div>
+      <div class="pop"><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>1 个待处理 · 4 个进行中</small></div><span class="ck"></span></div><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 1 个待处理 · 3 个进行中</small></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="ck"></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div><div class="pi act">管理项目<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div></div></div>
     </div>
     <div class="dm">
       <div class="start">
         <h3>开始一个任务</h3>
-        <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
+        <div class="compose-card"><div class="draft">描述任务，⌘↵ 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
         <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
       </div>
     </div>
@@ -4196,7 +4175,7 @@ git status --short gen/</pre>
 </div>
 <div class="cap" style="width:auto;text-align:left">点侧栏标题打开范围菜单，内容和手机的弹层一样；选中后菜单关闭，侧栏换成那个范围；主区域是新建时跟着换成这个项目，正在看会话或设置时不动。正在看的会话不在新范围里时，仍留在进行中的最上面高亮，直到切走</div>
 <h3 id="launch-states" style="font-size:15px;margin:32px 0 12px;color:var(--fg2)">新建输入框下的设置摘要 · 各种长度</h3>
-<div class="screens" style="gap:16px"><div class="st" style="width:640px;max-width:100%"><div class="st-h">只有一台机器</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · Opus</em></a></div><div class="st-c">账户里只有一台机器时不写机器名：新建不用选它，离线时由提示条说明。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">多台机器 · 名字长</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · </em><em class="mach">workstationM1-Pro-office-2024</em><em> · Opus</em></a></div><div class="st-c">放不下时只省略机器名，模型留在末尾。</div></div><div class="st" style="width:380px;max-width:100%"><div class="st-h">窗口很窄</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · </em><em class="mach">workstationM1-Pro</em><em> · claude-opus-5-5-preview-20261001</em></a></div><div class="st-c">机器名缩到 3 个字以后，才从末尾省略；完全放行始终在最前面。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">只装了一个 CLI · 模式未读到</div><div class="launch" style="margin:0"><a class="proj-cfg" href="#project-settings"><em>Codex · 审批：CLI 配置（未读到） · GPT-6-Astra</em></a></div><div class="st-c">没有 CLI 切换时摘要以 CLI 名开头，仍靠右。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">设置还在读取</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · 读取设置…</em></a></div><div class="st-c">内容短时摘要随内容收窄，靠右。</div></div></div>
+<div class="screens" style="gap:16px"><div class="st" style="width:640px;max-width:100%"><div class="st-h">只有一台机器</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · Opus</em></a></div><div class="st-c">账户里只有一台机器时不写机器名：新建不用选它，离线时由提示条说明。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">多台机器 · 名字长</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · </em><em class="mach">workstationM1-Pro-office-2024</em><em> · Opus</em></a></div><div class="st-c">放不下时只省略机器名，模型留在末尾。</div></div><div class="st" style="width:380px;max-width:100%"><div class="st-h">窗口很窄</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · </em><em class="mach">workstationM1-Pro</em><em> · claude-opus-5-5-preview-20261001</em></a></div><div class="st-c">机器名缩到 3 个字以后，才从末尾省略；完全放行始终在最前面。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">只装了一个 CLI · 读不到模式</div><div class="launch" style="margin:0"><a class="proj-cfg" href="#project-settings"><em>Codex · 跟随 CLI 设置 · GPT-6-Astra</em></a></div><div class="st-c">没有 CLI 切换时摘要以 CLI 名开头，仍靠右。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">设置还在读取</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · 读取设置…</em></a></div><div class="st-c">内容短时摘要随内容收窄，靠右。</div></div></div>
 
 
 <div class="desk" style="margin-top:32px">
@@ -4212,7 +4191,7 @@ git status --short gen/</pre>
     </div>
     <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
   </div>
-  <div class="dm"><div class="wpage"><h3 style="margin:0;font-size:22px">项目管理</h3><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div></div>
+  <div class="dm"><div class="wpage"><h3 style="margin:0;font-size:22px">项目管理</h3><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 1 个待处理 · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div></div>
 </div></div>
 <div class="cap" style="width:auto;text-align:left">宽屏项目管理：沿用侧栏，主区域里是和手机同一个项目列表，⋯ 打开同样的两项；移除后仍能从进行中和通知进入原会话。侧栏底部的连接状态可以点，打开<a href="#conncheck">连接检测</a>。</div>
 <div class="desk" style="margin-top:32px">
@@ -4228,7 +4207,7 @@ git status --short gen/</pre>
     </div>
     <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
   </div>
-  <div class="dm gray" style="background:var(--soft);overflow:auto"><div style="max-width:672px;margin:0 auto;padding-top:12px"><div class="large"><h3>设置</h3></div><div class="glabel">电脑</div><div class="grp"><div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><div class="machine-info"><div class="machine-name">MacBook<span class="machine-status"><span class="dot idle"></span>在线</span></div><div class="machine-quota">Codex · 7 天已用 34%</div></div><span class="machine-chevron"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="manage-hint">要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。</div><div class="glabel">客户端</div><div class="grp"><div class="row">Chrome · 8a5f<span class="v">当前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">Pixel 9<span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">外观</div><div class="grp"><div class="row">主题<div class="pick"><span class="on">自动</span><span>亮色</span><span>暗色</span></div></div></div><div class="glabel">版本</div><div class="grp"><div class="row">remote-agent<span class="v">示例版本</span></div></div></div></div>
+  <div class="dm gray" style="background:var(--soft);overflow:auto"><div style="max-width:672px;margin:0 auto;padding-top:12px"><div class="large"><h3>设置</h3></div><div class="glabel">电脑</div><div class="grp"><div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><span class="row-name">MacBook<small>Codex · 7 天已用 34%</small></span><span class="v"><span class="dot idle"></span>在线<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="manage-hint">要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。</div><div class="glabel">客户端</div><div class="grp"><div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-globe"/></svg></span><span class="row-name">Chrome · macOS</span><span class="v">当前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-smartphone"/></svg></span><span class="row-name">Pixel 9</span><span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">外观</div><div class="grp"><div class="row">主题<div class="pick"><span class="on">自动</span><span>亮色</span><span>暗色</span></div></div></div><div class="glabel">版本</div><div class="grp"><div class="row">remote-agent<span class="v">示例版本</span></div></div></div></div>
 </div></div>
 <div class="cap" style="width:auto;text-align:left">宽屏设置：设置、电脑详情和额度页的内容限制在约 640 宽的居中一列，不随窗口拉满；Android 在平板和横屏上同样处理。网页没有「添加设备」，电脑一组下面只有一句说明。</div>
 <div class="note">
@@ -4400,9 +4379,8 @@ git status --short gen/</pre>
   网页请刷新；旧 MCP 进程需在对应会话内重载。
 
   <span class="d">Worked for 36m 38s • 21:09</span><span class="tpill"><i></i>有新输出<svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span></div>
-  <div class="keys"><div class="keyrow"><span>Esc</span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-corner-down-left"/></svg></span></div><div class="keyrow"><span>Tab</span><span>Ctrl+C</span><span><svg class="ic" aria-hidden="true"><use href="#lu-keyboard"/></svg> 键盘</span></div></div>
 </div>
-<div class="cap" style="width:900px;text-align:left">宽屏相同：工具条不再有居中的「历史」，回看时整块终端区域可滚，胶囊固定在右下角。桌面上滚轮、触控板回看，选中文字可复制</div>
+<div class="cap" style="width:900px;text-align:left">宽屏相同：工具条不再有居中的「历史」，回看时整块终端区域可滚，胶囊固定在右下角。桌面上滚轮、触控板回看，选中文字可复制。用鼠标或触控板（精确指针）时不显示底部的按键栏，直接用键盘；触屏的宽屏照旧显示</div>
 
 <h3 style="margin:32px 0 12px">比屏幕宽的终端</h3>
 <div class="screens">
