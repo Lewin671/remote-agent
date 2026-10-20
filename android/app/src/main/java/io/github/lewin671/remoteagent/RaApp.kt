@@ -129,6 +129,7 @@ class RaApp : Application() {
                         foreground = false
                         Push.stop()
                         _remote.value?.stop()
+                        vault.clearSecurityCache()
                     }
                 },
             )
@@ -276,6 +277,7 @@ class RaApp : Application() {
                         _loaded.value = true
                     }
                     .onFailure { e ->
+                        vault.clearSecurityCache()
                         Log.w(TAG, "stored account does not open: ${e.javaClass.simpleName}")
                         _accountError.value =
                             io.github.lewin671.remoteagent.core.errorText(e) +

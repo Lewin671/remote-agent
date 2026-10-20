@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.data
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
@@ -37,10 +38,24 @@ class Vault internal constructor(
     private val onSecurityParse: (() -> Unit)?,
 ) : DeviceSecurity.Storage {
     constructor(context: Context) : this(context, null, null)
+    private val keyguard = context.getSystemService(KeyguardManager::class.java)
     private val dir = context.noBackupFilesDir
     private val accountFile = File(dir, "account-v2.bin")
     private val notifyFile = File(dir, "notify.bin")
     private val securityFile = File(dir, "security-v3.bin")
+
+    // Access only under SECURITY_LOCK. Cache only ciphertext that was decrypted and fully parsed.
+    private var securityCiphertext: ByteArray? = null
+    private var securityRecord: DeviceSecurity.Record? = null
+    private var notifyCiphertext: ByteArray? = null
+    private var notifyRecord: DeviceSecurity.Record? = null
+
+    override fun clearSecurityCache() = synchronized(SECURITY_LOCK) {
+        securityCiphertext = null
+        securityRecord = null
+        notifyCiphertext = null
+        notifyRecord = null
+    }
 
     fun hasAccount(): Boolean = accountFile.exists()
 
@@ -68,7 +83,7 @@ class Vault internal constructor(
         }
     }
 
-    fun save(a: Account, notifyKey: ByteArray) {
+    fun save(a: Account, notifyKey: ByteArray) = securityTransaction {
         write(accountFile, ACCOUNT_ALIAS, accountBytes(a), unlockedOnly = true)
         write(notifyFile, NOTIFY_ALIAS, notifyKey, unlockedOnly = false)
     }
@@ -106,10 +121,26 @@ class Vault internal constructor(
     }
 
     private fun readSecurityUnlocked(): DeviceSecurity.Record {
-        onSecurityParse?.invoke()
-        return DeviceSecurity.Record.parse(
-            read(securityFile, ACCOUNT_ALIAS) ?: throw DeviceSecurity.Failure("storage"),
-        )
+        try {
+            val data = securityFile.takeIf { it.exists() }?.readBytes()
+                ?: throw DeviceSecurity.Failure("storage")
+            // A cache hit must not bypass the Keystore's unlocked-device policy.
+            if (Build.VERSION.SDK_INT >= 28 && keyguard.isDeviceLocked) clearSecurityCache()
+            if (securityCiphertext?.contentEquals(data) == true) return securityRecord!!
+            clearSecurityCache()
+            val plain = decrypt(securityFile, ACCOUNT_ALIAS, data)
+                ?: throw DeviceSecurity.Failure("storage")
+            onSecurityParse?.invoke()
+            val record = DeviceSecurity.Record.parse(plain)
+            if (record.member) {
+                securityCiphertext = data
+                securityRecord = record
+            }
+            return record
+        } catch (e: Exception) {
+            clearSecurityCache()
+            throw e
+        }
     }
 
     override fun readSecurity(): DeviceSecurity.Record = securityTransaction {
@@ -177,25 +208,35 @@ class Vault internal constructor(
     private fun refreshNotifyUnlocked(record: DeviceSecurity.Record) {
         if (!record.member) {
             // A removed device must not keep a key for the new content epoch.
-            notifyFile.delete()
+            clearSecurityCache()
+            if (notifyFile.exists() && !notifyFile.delete()) throw DeviceSecurity.Failure("storage")
             return
         }
+        val data = notifyFile.takeIf { it.exists() }?.readBytes()
+        if (notifyRecord === record && data != null && notifyCiphertext?.contentEquals(data) == true)
+            return
+        notifyCiphertext = null
+        notifyRecord = null
         val old =
-            read(notifyFile, NOTIFY_ALIAS)?.let {
+            data?.let { decrypt(notifyFile, NOTIFY_ALIAS, it) }?.let {
                 runCatching { DeviceSecurity.NotifyRecord.parse(it) }.getOrNull()
             }
         if (
             old != null &&
                 DeviceSecurity.stateHash(old.state)
                     .contentEquals(DeviceSecurity.stateHash(record.head))
-        )
+        ) {
+            notifyCiphertext = data
+            notifyRecord = record
             return
+        }
         write(
             notifyFile,
             NOTIFY_ALIAS,
             DeviceSecurity.NotifyRecord.fromRecord(record).bytes(),
             unlockedOnly = false,
         )
+        // Confirm the persisted notify item on the next read before remembering its ciphertext.
     }
 
     override fun readSecurityOperation(): SecurityOperation? = securityTransaction {
@@ -441,6 +482,7 @@ class Vault internal constructor(
     fun notifyKey(): ByteArray? = read(notifyFile, NOTIFY_ALIAS)
 
     fun clear(preserveSecurityOperation: Boolean = false) = securityTransaction {
+        clearSecurityCache()
         securityFile.delete()
         File(dir, "registration-intent.bin").let {
             if (it.exists() && !it.delete()) throw DeviceSecurity.Failure("storage")
@@ -469,8 +511,11 @@ class Vault internal constructor(
 
     private fun read(f: File, alias: String): ByteArray? {
         if (!f.exists()) return null
+        return decrypt(f, alias, f.readBytes())
+    }
+
+    private fun decrypt(f: File, alias: String, data: ByteArray): ByteArray? {
         val key = keyStore().getKey(alias, null) as? SecretKey ?: return null
-        val data = f.readBytes()
         val c = Cipher.getInstance("AES/GCM/NoPadding")
         c.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, data, 0, 12))
         onDecrypt?.invoke(f.name)
@@ -478,6 +523,12 @@ class Vault internal constructor(
     }
 
     private fun write(f: File, alias: String, plain: ByteArray, unlockedOnly: Boolean) {
+        // Invalidate before attempting a write, including failures after rename/fsync.
+        if (f == securityFile) clearSecurityCache()
+        if (f == notifyFile) {
+            notifyCiphertext = null
+            notifyRecord = null
+        }
         val key = keyStore().getKey(alias, null) as? SecretKey ?: newKey(alias, unlockedOnly)
         val c = Cipher.getInstance("AES/GCM/NoPadding")
         c.init(Cipher.ENCRYPT_MODE, key)

@@ -1294,6 +1294,9 @@ object DeviceSecurity {
     }
 
     interface Storage {
+        /** Releases verified records and derived secrets retained only for foreground reads. */
+        fun clearSecurityCache() {}
+
         fun readSecurityOperation(): SecurityOperation? = null
 
         fun writeSecurityOperation(operation: SecurityOperation) {

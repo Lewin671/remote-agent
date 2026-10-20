@@ -518,6 +518,7 @@ class Remote(
 
     /** Disconnects, e.g. when the app goes to the background. */
     fun stop() {
+        security.clearCache()
         scope.launch {
             running = false
             authorityJob.cancel()
@@ -565,6 +566,7 @@ class Remote(
 
     /** Ends this Remote for good. */
     fun close() {
+        security.close()
         stop()
         scope.launch { scope.cancel() }
     }

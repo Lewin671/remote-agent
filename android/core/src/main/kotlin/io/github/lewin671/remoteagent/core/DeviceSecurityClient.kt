@@ -25,6 +25,10 @@ class DeviceSecurityClient(
 ) {
     private val syncMutex = Mutex()
     private val historyLock = Any()
+    // Record identity covers the pin, whole chain/proofs, recipient, private key and stored keys.
+    // A newly read or installed record never shares these memoized grant/PrevSecret results.
+    private var keyRecord: DeviceSecurity.Record? = null
+    private val contentKeys = HashMap<ULong, ByteArray>()
     private var lastFloorWrite = 0uL
     @Volatile private var closed = false
     @Volatile
@@ -40,16 +44,45 @@ class DeviceSecurityClient(
     var clockSkew: Boolean = false
         private set
 
-    private fun read(): DeviceSecurity.Record {
+    private fun read(): DeviceSecurity.Record = synchronized(historyLock) {
         if (closed) throw DeviceSecurity.Failure("storage")
-        return store.readSecurity().also {
-            if (
-                it.memberID != memberID ||
-                    deviceId(ed.publicKey) != memberID ||
-                    expectedAccount != null && it.pin.account != expectedAccount
-            )
-                throw DeviceSecurity.Failure("untrusted")
+        try {
+            store.readSecurity().also {
+                if (
+                    it.memberID != memberID ||
+                        deviceId(ed.publicKey) != memberID ||
+                        expectedAccount != null && it.pin.account != expectedAccount
+                )
+                    throw DeviceSecurity.Failure("untrusted")
+                if (keyRecord !== it) {
+                    contentKeys.clear()
+                    keyRecord = null
+                }
+            }
+        } catch (e: Exception) {
+            clearCache()
+            throw e
         }
+    }
+
+    private fun contentKey(r: DeviceSecurity.Record, epoch: ULong): ByteArray? =
+        synchronized(historyLock) {
+            if (closed) throw DeviceSecurity.Failure("storage")
+            if (keyRecord !== r) {
+                contentKeys.clear()
+                keyRecord = if (r.member) r else null
+            }
+            contentKeys[epoch]?.let { return@synchronized it.copyOf() }
+            val key = r.contentKey(epoch) ?: return@synchronized null
+            if (r.member) contentKeys[epoch] = key.copyOf()
+            key.copyOf()
+        }
+
+    /** Also used when the foreground session stops, without closing it permanently. */
+    fun clearCache() = synchronized(historyLock) {
+        contentKeys.clear()
+        keyRecord = null
+        store.clearSecurityCache()
     }
 
     fun identity(): Pair<DeviceSecurity.Pin, DeviceSecurity.State> {
@@ -70,16 +103,16 @@ class DeviceSecurityClient(
     /** The content key of an epoch, available from the chain while the device holds it. */
     fun contentKey(epoch: ULong): ByteArray? {
         val r = read()
-        val key = r.contentKey(epoch) ?: return null
+        val key = contentKey(r, epoch) ?: return null
         if (!r.cachedKeys().containsKey(epoch) && epoch <= r.head.core.contentEpoch) {
             runCatching { store.cacheSecurityKey(DeviceSecurity.stateHash(r.head), epoch, key) }
         }
         return key
     }
 
-    fun close() {
+    fun close() = synchronized(historyLock) {
         closed = true
-        synchronized(historyLock) {}
+        clearCache()
     }
 
     /** Signing uses the same persisted clock as publication checks. */
@@ -185,7 +218,7 @@ class DeviceSecurityClient(
                 0u,
             )
         val key =
-            r.contentKey(r.head.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
+            contentKey(r, r.head.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
         val formed = DeviceSecurity.form(key, seed, h, plain, ed)
         return DeviceSecurity.envelope(DeviceSecurity.Wire(formed))
     }
@@ -197,7 +230,7 @@ class DeviceSecurityClient(
         w: DeviceSecurity.Wire,
         live: Boolean,
     ): ByteArray {
-        r.contentKey(h.contentEpoch)?.let {
+        contentKey(r, h.contentEpoch)?.let {
             return it
         }
         // Missing keys cannot turn a bad signature, state or route into a skip.
