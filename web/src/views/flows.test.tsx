@@ -338,8 +338,9 @@ it("never sends one project's unknown start from another project's box", async (
   expect(sent[2]).toEqual(sent[0]);
 });
 
-it("offers the full command of an approval that arrived while the dock was collapsed", () => {
-  const r = demo();
+it("shows an approval's whole command before its description in the dock", () => {
+  const r = createDemo(new URLSearchParams("longcmd=1"));
+  r.start();
   const s = r.sessions.get("s-appr")!;
   const dock = (collapsed: boolean) => (
     <Dock
@@ -354,10 +355,45 @@ it("offers the full command of an approval that arrived while the dock was colla
       onTerminal={() => undefined}
     />
   );
-  // The five-line command mounts while the user is typing.
+  // The forty-line command mounts while the user is typing.
   mount(dock(true));
   act(() => root!.render(dock(false)));
-  expect(button("展开全文")).toBeTruthy();
+  const scroll = host.querySelector(".pending-scroll")!;
+  const cmd = scroll.querySelector("pre.cmd")!;
+  expect(cmd.textContent!.split("\n")).toHaveLength(40);
+  expect(cmd.nextElementSibling?.classList.contains("desc")).toBe(true);
+  // Nothing of it is cut away behind a page: it scrolls with the rest.
+  expect(button("展开全文")).toBeUndefined();
+});
+
+it("puts a card's command first, six whole lines of it, and opens the rest in place", async () => {
+  const r = createDemo(new URLSearchParams("longcmd=1"));
+  r.start();
+  mount(<Home remote={r} go={() => undefined} />);
+  const card = () => host.querySelector(".todo")!;
+  const cmd = card().querySelector("pre.card-cmd")!;
+  expect(cmd.textContent).toContain("set -euo pipefail");
+  // Head, then the command, then the description, then the buttons.
+  const order = [...card().children].map((e) => e.className || e.tagName);
+  expect(order.indexOf("card-cmd")).toBeLessThan(order.indexOf("desc"));
+  expect(order.indexOf("desc")).toBeLessThan(order.indexOf("btns decide"));
+  // No layout here: the count is the command's own 40 lines.
+  const more = button(/^还有 34 行 · 展开/, card())!;
+  expect(more).toBeTruthy();
+  expect(cmd.classList.contains("open")).toBe(false);
+  await click(more);
+  expect(cmd.classList.contains("open")).toBe(true);
+  await click(button(/^收起/, card()));
+  expect(cmd.classList.contains("open")).toBe(false);
+});
+
+it("offers no 展开 under a card's command of six lines or fewer", () => {
+  const r = demo();
+  mount(<Home remote={r} go={() => undefined} />);
+  // s-appr's first approval runs five lines.
+  const card = host.querySelector(".todo")!;
+  expect(card.querySelector("pre.card-cmd")!.textContent).toContain("rm -rf gen/remoteagent");
+  expect(card.querySelector(".cmd-more")).toBeNull();
 });
 
 function ClaudeAsk({ r }: { r: DemoRemote }) {
@@ -529,7 +565,7 @@ it("gives the next question call on the page fresh options", async () => {
 
 it("keeps the message being typed when a page opens and closes", async () => {
   const r = demo();
-  const s = r.sessions.get("s-appr")!;
+  const s = r.sessions.get("s-plan")!;
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   const input = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!;
   await act(async () => {
@@ -538,9 +574,10 @@ it("keeps the message being typed when a page opens and closes", async () => {
     input().dispatchEvent(new Event("input", { bubbles: true }));
   });
   expect(input().value).toBe("顺便看下 lint");
-  // The docked approval is open: to its page, then back.
+  // The docked plan is open: to its page, then back.
   await click(button("展开全文"));
-  expect(host.textContent).toContain("审批详情");
+  expect(host.querySelector(".navbar")!.textContent).toContain("计划");
+  expect(button("清空上下文后执行")).toBeTruthy();
   await click(host.querySelector<HTMLButtonElement>(".navbar .back")!);
   expect(input().value).toBe("顺便看下 lint");
 });

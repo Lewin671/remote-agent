@@ -49,7 +49,7 @@ import {
 } from "../ui";
 import { deadlineOf, useDerived } from "./actions";
 import { approvalDisplay } from "../approval-display";
-import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
+import { ApprovalActions, approvalText, approvalTitle, CardCommand } from "./Dock";
 import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
 import { ConnCheck, connWord } from "./ConnCheck";
 import {
@@ -201,10 +201,10 @@ function TodoCard({
       </div>
       {a && (
         <>
+          <CardCommand text={approvalText(a)} />
           {a.description && (
             <div className="desc">{approvalDisplay(a.description)}</div>
           )}
-          <pre>{approvalText(a)}</pre>
           {/* Keyed by approval: the next one must not inherit this one's locked buttons. */}
           <ApprovalActions
             key={a.approvalId}

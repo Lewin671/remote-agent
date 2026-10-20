@@ -55,3 +55,9 @@ it("keeps the tray's thumbnails square on a wide page", () => {
   const local = getComputedStyle(document.querySelector(".local")!);
   expect([local.width, local.height]).toEqual(["105px", "140px"]);
 });
+
+it("keeps an approval's or a plan's buttons to 480 on a wide window", () => {
+  document.body.innerHTML = `<div class="dock"><div class="btns decide"><button class="btn no">不允许</button><button class="btn pri">允许</button></div></div>`;
+  expect(innerWidth).toBeGreaterThanOrEqual(900);
+  expect(getComputedStyle(document.querySelector(".btns.decide")!).maxWidth).toBe("480px");
+});

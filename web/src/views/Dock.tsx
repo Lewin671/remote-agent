@@ -24,33 +24,53 @@ export function approvalText(a: ApprovalRequested): string {
   return approvalDisplay(a.command || a.toolInputJson || a.toolName);
 }
 
-/** A <pre> cut to its max height, with 展开全文 when it overflows. */
-function Cut({ text, onMore, className = "" }: { text: string; onMore?: () => void; className?: string }) {
-  const ref = useRef<HTMLPreElement>(null);
-  const [cut, setCut] = useState(false);
+/** Lines a card's command shows before 还有 N 行 · 展开. */
+export const CARD_LINES = 6;
+
+/** A command on a card: its first CARD_LINES lines, whole lines only and
+ * without a scroll of its own, then 还有 N 行 · 展开, which shows all of it
+ * in place. N counts the lines as they wrap on screen. */
+export function CardCommand({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  const [lines, setLines] = useState(() => text.split("\n").length);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // More lines than the block shows is cut however it lays out; the
-    // measurement catches long lines that wrap. A block mounted hidden
-    // (the dock collapsed while typing) measures nothing, so measure again
-    // whenever its size changes, as when it is shown.
-    const measure = () => setCut(text.split("\n").length > 4 || el.scrollHeight > el.clientHeight + 2);
+    // Laid out, the text's full height says how many lines it wraps to;
+    // without layout (or before it) the text's own lines are the count.
+    const measure = () => {
+      const line = parseFloat(getComputedStyle(el).lineHeight);
+      const shown = line > 0 && el.scrollHeight > 0 ? Math.round(el.scrollHeight / line) : 0;
+      setLines(Math.max(shown, text.split("\n").length));
+    };
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, [text]);
+  const more = lines - CARD_LINES;
   return (
-    <div className={"cutbox " + className}>
-      <pre ref={ref}>{text}</pre>
-      {cut && onMore && (
-        <button className="cutmore" onClick={onMore}>
-          展开全文
+    <>
+      {/* The lines are clipped inside the padding, so no part line shows. */}
+      <pre className={"card-cmd" + (open ? " open" : "")}>
+        <span ref={ref}>{text}</span>
+      </pre>
+      {(more > 0 || open) && (
+        <button className="link cmd-more" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? (
+            <>
+              收起 <Exp up />
+            </>
+          ) : (
+            <>
+              还有 {more} 行 · 展开 <Exp />
+            </>
+          )}
         </button>
       )}
-    </div>
+    </>
   );
 }
 
@@ -108,7 +128,7 @@ export function ApprovalActions({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         />
-        <div className="btns">
+        <div className="btns decide">
           <button className="btn" onClick={() => open(false)}>取消</button>
           <button className="btn no" disabled={locked} onClick={() => void ap.resolve(false, reason.trim())}>不允许</button>
         </div>
@@ -116,7 +136,7 @@ export function ApprovalActions({
       </>
     );
   const buttons = (
-    <div className="btns">
+    <div className="btns decide">
       <button className="btn no" disabled={locked} onClick={() => open(true)}>
         不允许
       </button>
@@ -220,7 +240,6 @@ function ApprovalDock({
   a,
   agent,
   frame,
-  onDetail,
   onReasonOpen,
   reasoning,
 }: {
@@ -229,7 +248,6 @@ function ApprovalDock({
   a: ApprovalRequested;
   agent: Agent;
   frame: Frame;
-  onDetail: () => void;
   onReasonOpen: (open: boolean) => void;
   reasoning: boolean;
 }) {
@@ -253,8 +271,8 @@ function ApprovalDock({
       )}
       body={
         <>
+          <pre className="cmd">{approvalText(a)}</pre>
           {a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
-          <Cut text={approvalText(a)} onMore={onDetail} />
         </>
       }
       actions={<ApprovalActions remote={remote} sid={sid} a={a} agent={agent} shared={ap} onReasonOpen={onReasonOpen} />}
@@ -410,7 +428,7 @@ export function PlanButtons({ remote, sid, full, shared, terminalOnly = false }:
   if (terminalOnly) return <div className="muted">{skeletonMessage}</div>;
   return (
     <>
-      <div className="btns">
+      <div className="btns decide">
         <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.KEEP_PLANNING)}>
           {b === String(PlanChoice.KEEP_PLANNING) ? "提交中…" : "继续规划"}
         </button>
@@ -419,7 +437,7 @@ export function PlanButtons({ remote, sid, full, shared, terminalOnly = false }:
         </button>
       </div>
       {full && agentOf(remote.sessions.get(sid)) !== Agent.CLAUDE && (
-        <div className="btns" style={{ marginTop: 8 }}>
+        <div className="btns decide" style={{ marginTop: 8 }}>
           <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.CLEAR_AND_IMPLEMENT)}>
             {b === String(PlanChoice.CLEAR_AND_IMPLEMENT) ? "提交中…" : "清空上下文后执行"}
           </button>
@@ -596,7 +614,6 @@ export function Dock({
           frame={frame}
           reasoning={reasoning}
           onReasonOpen={setReasoning}
-          onDetail={() => onDetail(item.approval.approvalId)}
         />
       );
       break;
@@ -651,8 +668,8 @@ export function ApprovalPage({ remote, sid, a, agent, title, onBack }: { remote:
       <div className="body detail">
         {/* A command speaks for itself; other requests name the tool. */}
         {!a.command && <div className="h-kind">{approvalTitle(a)}</div>}
-        {a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
         <pre className="cmd">{approvalText(a)}</pre>
+        {a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
       </div>
       <div className={"dock" + (reasoning ? " reasoning" : "")}>
         <ApprovalActions remote={remote} sid={sid} a={a} agent={agent} onReasonOpen={setReasoning} />

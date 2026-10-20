@@ -142,8 +142,15 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .todo .t .link { font-size: 13px; white-space: nowrap; min-height: 44px; margin: -11px 0; }
 .todo .m { font-size: 12px; color: var(--muted); }
 /* Two lines at most; the whole request is one tap away in the session. */
-.todo .desc { font-size: 13px; color: var(--fg2); margin-top: 6px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-.todo pre { background: var(--card); border: 1px solid var(--line); color: var(--fg2); border-radius: var(--r-xs); padding: 7px 10px; font: 12px/1.5 var(--mono); margin: 8px 0; white-space: pre-wrap; max-height: 56px; overflow-y: auto; }
+.todo .desc { font-size: 13px; color: var(--fg2); margin-top: 8px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+/* The command first, six whole lines at most and no scroll of its own:
+   还有 N 行 · 展开 shows the rest in place. */
+.todo pre.card-cmd { background: var(--card); border: 1px solid var(--line); color: var(--fg2); border-radius: var(--r-xs); padding: 7px 10px; font: 12px/18px var(--mono); margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.todo pre.card-cmd > span { display: block; max-height: calc(6 * 18px); overflow: hidden; }
+.todo pre.card-cmd.open > span { max-height: none; }
+.todo .cmd-more { font-size: 13px; min-height: 44px; margin: -6px 0 -10px; }
+.todo > .btns { margin-top: 8px; }
+.todo .field.reason { margin: 8px 0 0; }
 .todo .btns .btn { background: var(--card); }
 .todo .btns .btn.pri { background: var(--blue-bg); }
 .todo .field { background: var(--card); }
@@ -346,12 +353,8 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .pending.reasoning .pending-content { max-height: none; }
 .pending.reasoning .pending-scroll { max-height: var(--content-max, 240px); }
 .dock .desc { font-size: 13px; color: var(--fg2); margin-top: 4px; }
-.cutbox { position: relative; }
-.cutbox pre, pre.cmd { background: var(--soft); color: var(--fg2); border-radius: var(--r-xs); padding: 8px 10px; font: 12px/1.5 var(--mono); margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.cutbox pre { max-height: 78px; overflow: hidden; }
-/* 44×44 to tap, drawn as a label in the code block's corner. */
-.cutmore { position: absolute; right: 0; bottom: 0; font-weight: var(--w6); font-size: 12px; color: var(--blue); min-width: 44px; min-height: 44px; padding: 20px 6px 4px 24px;
-  display: flex; align-items: flex-end; border-radius: 0 0 var(--r-xs) 0; background: linear-gradient(to right, transparent, var(--soft) 18px); }
+pre.cmd { background: var(--soft); color: var(--fg2); border-radius: var(--r-xs); padding: 8px 10px; font: 12px/1.5 var(--mono); margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dock pre.cmd { margin: 4px 0 0; }
 .dock .q { font-size: 15px; font-weight: var(--w6); margin: 6px 0; }
 .dock .q.light { font-weight: var(--w5); }
 .dock .plan-body { background: var(--soft); border-radius: var(--r-xs); padding: 7px 10px; font-size: 13px; margin: 4px 0 8px; line-height: 1.6; overflow-wrap: anywhere; }
@@ -379,6 +382,9 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .ans.on { border-color: var(--blue); background: var(--blue-soft); }
 .ans .ck { color: var(--blue); font-weight: var(--w7); }
 .btns { display: flex; gap: 8px; }
+/* On a wide window an approval's or a plan's buttons keep to a row of
+   480 at the left, not stretched across the column. */
+@media (min-width: 900px) { .btns.decide { max-width: 480px; } }
 .btn { flex: 1; text-align: center; border-radius: var(--r-sm); padding: 10px; font-weight: var(--w6); font-size: 15px; background: var(--chip); min-height: 44px; }
 .btn.pri { background: var(--blue-bg); color: var(--on-solid); }
 .btn.no { color: var(--red); }

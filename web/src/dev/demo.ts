@@ -14,6 +14,7 @@
 //   ?demo&queue-all=1#/s/s-multi           queue, held, paused, other device
 //   ?demo&cancel=failed&queue-all=1#/s/s-multi  cancel retry
 //   ?demo&deny=1                          inline optional denial reason
+//   ?demo&longcmd=1#/s/s-appr               an approval of a 40-line command with a long description
 
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
@@ -1355,6 +1356,19 @@ const historyLine = (n: number) => {
   }
 };
 
+/** A migration script of 40 lines, some of them long enough to wrap. */
+const longCommand = [
+  "set -euo pipefail",
+  ...Array.from({ length: 36 }, (_, i) =>
+    i % 6 === 5
+      ? `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER TABLE orders_${i} ADD COLUMN IF NOT EXISTS inventory_reserved_at timestamptz"`
+      : `echo "step ${i + 1}: migrating shard ${i}" && ./bin/migrate --shard ${i} --dry-run=false`,
+  ),
+  "./bin/check-consistency --all",
+  "echo done",
+  "git status --short",
+].join("\n");
+
 export class DemoRemote extends Remote {
   // These views are locally authored samples, with no relay or account data.
   override currentDerived(_sid: string, d: import("../model").Derived) {
@@ -1593,6 +1607,12 @@ export class DemoRemote extends Remote {
         }),
       );
     }
+    if (this.opts.has("longcmd"))
+      for (const e of this.evs.get("s-appr") ?? [])
+        if (e.kind.case === "approvalRequested" && e.kind.value.approvalId === "a1") {
+          e.kind.value.command = longCommand;
+          e.kind.value.description = e.kind.value.description.repeat(3);
+        }
     if (this.opts.has("many"))
       for (let i = 0; i < 16; i++) {
         const id = `s-extra-${i}`;
