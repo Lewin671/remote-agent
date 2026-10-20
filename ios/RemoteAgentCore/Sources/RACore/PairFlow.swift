@@ -182,7 +182,7 @@ public func joinByPairing(
     let id = joined.pairingID
     let token = joined.candidateToken
     if let commit = link.commit, commit != joined.commit {
-        throw PairError("服务器返回的不是扫码那台设备的信息，已停止配对")
+        throw PairError("服务器返回的不是发起配对那台设备的信息，已停止配对")
     }
     var ask = PBGetPairingRequest()
     ask.pairingID = id
