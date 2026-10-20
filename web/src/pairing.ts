@@ -424,22 +424,7 @@ function pinEqual(a: Pin, b: Pin): boolean {
 async function retainedDeviceKey(
   account: StoredAccount,
 ): Promise<CryptoKeyPair> {
-  const api = createClient(
-    AuthService,
-    createConnectTransport({
-      fetch: relayFetch,
-      baseUrl: apiBase(account.server),
-      useBinaryFormat: true,
-      defaultTimeoutMs: 15000,
-    }),
-  );
-  const challenge = await api.getChallenge({ deviceId: account.deviceId });
-  const reply = await api.login({
-    protocolVersion: PROTOCOL_VERSION,
-    deviceId: account.deviceId,
-    challenge: challenge.challenge,
-    signature: await signLogin(account.devicePrivate, challenge.challenge),
-  });
+  const reply = await loginRetained(account);
   const publicBytes = new Uint8Array(reply.devicePublicKey);
   if (
     publicBytes.length !== 32 ||
@@ -462,4 +447,29 @@ async function retainedDeviceKey(
   if (!(await crypto.subtle.verify("Ed25519", publicKey, signature, probe)))
     throw new Error("原设备公钥与本机签名密钥不匹配");
   return { privateKey: account.devicePrivate, publicKey };
+}
+
+/** A quiet challenge/login; never stores the token or changes the retained key. */
+async function loginRetained(account: StoredAccount) {
+  const api = createClient(
+    AuthService,
+    createConnectTransport({
+      fetch: relayFetch,
+      baseUrl: apiBase(account.server),
+      useBinaryFormat: true,
+      defaultTimeoutMs: 15000,
+    }),
+  );
+  const challenge = await api.getChallenge({ deviceId: account.deviceId });
+  return api.login({
+    protocolVersion: PROTOCOL_VERSION,
+    deviceId: account.deviceId,
+    challenge: challenge.challenge,
+    signature: await signLogin(account.devicePrivate, challenge.challenge),
+  });
+}
+
+export async function retainedIdentityDenied(account: StoredAccount): Promise<boolean> {
+  try { await loginRetained(account); return false; }
+  catch (e) { return e instanceof ConnectError && e.code === Code.PermissionDenied; }
 }

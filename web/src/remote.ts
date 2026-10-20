@@ -3800,7 +3800,11 @@ export function errorText(e: unknown): string {
       return "成员链冲突，安全操作已停止；请核对设备后明确重新加入";
   }
   if (e instanceof CommandError) return e.message;
-  if (e instanceof ConnectError) return e.rawMessage || e.message;
+  if (e instanceof ConnectError) {
+    if (e.code === Code.PermissionDenied && e.rawMessage === "login failed")
+      return "服务器不认识这台设备（可能已被移除，或服务已重建）";
+    return e.rawMessage || e.message;
+  }
   if (e instanceof Error) return e.message;
   return String(e);
 }

@@ -1,3 +1,4 @@
+import { RetainedIdentityDeniedScreen } from "./Rejoin";
 import { authorityStartup } from "./authority-setup";
 import { usePageVisible } from "./ui";
 import {
@@ -53,10 +54,16 @@ export function App() {
   const visible = usePageVisible();
   const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
   const [retained, setRetained] = useState<StoredAccount>();
+  const [denied, setDenied] = useState(false);
+  const loadGeneration = useRef(0);
   const [setupError, setSetupError] = useState("");
   const current = useRef(remote);
   current.current = remote;
   const load = async () => {
+    const generation = ++loadGeneration.current;
+    const active = () => generation === loadGeneration.current;
+    setRetained(undefined);
+    setDenied(false);
     try {
       setSetupError("");
       if (!demo) {
@@ -68,6 +75,10 @@ export function App() {
       if (account && !demo) {
         const status = await securitySetupStatus();
         if (status === "missing") {
+          const { retainedIdentityDenied } = await import("./pairing");
+          const denied = await retainedIdentityDenied(account);
+          if (!active()) return;
+          setDenied(denied);
           setRetained(account);
           setRemote(null);
           return;
@@ -87,9 +98,12 @@ export function App() {
           return;
         }
       }
+      const loaded = await loadRemote();
+      if (!active()) return;
       setRetained(undefined);
-      setRemote((await loadRemote()) ?? null);
+      setRemote(loaded ?? null);
     } catch (error) {
+      if (!active()) return;
       setSetupError(
         errorText(error) +
           "。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对或创建。",
@@ -137,6 +151,8 @@ export function App() {
         <SetupReset onDone={() => void load()} />
       </div>
     );
+  if (remote === null && denied && retained)
+    return <RetainedIdentityDeniedScreen server={retained.server} onDone={() => void load()} />;
   if (remote === null)
     return (
       <Suspense fallback={loading}>

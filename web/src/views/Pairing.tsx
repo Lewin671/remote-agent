@@ -27,6 +27,8 @@ export function joinBanner(e: unknown): {
   action: string;
 } {
   const text = errorText(e);
+  if (e instanceof ConnectError && e.code === Code.PermissionDenied && e.rawMessage === "login failed")
+    return { kind: "err", text, action: "重新开始" };
   if (/security: clock/.test(text))
     return {
       kind: "warn",

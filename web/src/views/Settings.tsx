@@ -22,6 +22,7 @@ import { machineQuotaViews, quotaSummary } from "../quota";
 import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
 import { DeviceActions, ManagementEntry } from "./DeviceManagement";
+import { RejoinButton } from "../Rejoin";
 import { LeaveAlert, RecoveryNotice, SecurityGroup } from "./Security";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { applyUpdate, checkUpdate, useUpdate } from "../update";
@@ -380,7 +381,6 @@ export function QuotaPage({
 /** The server turned this browser away: nothing of the account is shown
  * until it joins again. */
 export function RemovedScreen({ remote }: { remote: Remote }) {
-  const [leaving, setLeaving] = useState(false);
   const [result, setResult] = useState("");
   return (
     <div className="center">
@@ -389,14 +389,9 @@ export function RemovedScreen({ remote }: { remote: Remote }) {
         <p className="muted small">
           {remote.removalVerified
             ? "已通过账户签名状态核实本机被移除。电脑上的会话不受影响；重新加入需要管理端提供配对码。"
-            : "尚未获得可信的设备撤销回执。可能是连接、凭据或中继数据发生变化；电脑上的会话不受影响。"}
+            : "可能是设备被移除、服务重置或连接出了问题。请先再试一次；仍无法登录时，请在管理端查看这台设备是否还在账户里。电脑上的会话不受影响。"}
         </p>
-        <button
-          className="btn pri"
-          onClick={() => setLeaving(true)}
-        >
-          重新加入账户
-        </button>
+        <RejoinButton server={remote.account.server}>重新加入账户</RejoinButton>
         <p className="muted small">
           会先删除这个浏览器里的账户密钥，再用配对码加入。
         </p>
@@ -405,7 +400,6 @@ export function RemovedScreen({ remote }: { remote: Remote }) {
           catch (e) { setResult(errorText(e)); }
         }}>核实并继续安全操作</button>
         {result && <Banner>{result}</Banner>}
-        {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
         <button className="link mid" onClick={() => remote.retryLogin()}>
           再试一次
         </button>
