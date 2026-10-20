@@ -38,7 +38,6 @@ public actor DeviceSecurityClient {
     }
     private func read() throws -> DeviceSecurity.Record {
         try DeviceSecurity.check(!closed, .storage)
-        if let current { return current }
         let r = try store.readSecurity()
         try DeviceSecurity.check(
             r.memberID == memberID && deviceId(publicKey: signingKey.publicKey) == memberID,
@@ -152,7 +151,7 @@ public actor DeviceSecurityClient {
         }
         throw DeviceSecurity.Failure.capacity
     }
-    private func acceptLease(_ raw:Data) throws {
+    func acceptLease(_ raw:Data) throws {
         if raw.isEmpty { return }
         var r = try read()
         let l = try DeviceSecurity.HeadLease.parse(raw)
@@ -163,7 +162,7 @@ public actor DeviceSecurityClient {
         keep(r)
     }
     /// Appends a contiguous chain segment and persists it before use.
-    private func install(
+    func install(
         _ states: [DeviceSecurity.State], _ proofs: [DeviceSecurity.RecoveryStatement?]
     ) throws -> DeviceSecurity.Record {
         try DeviceSecurity.check(!states.isEmpty && states.count == proofs.count)
@@ -213,6 +212,7 @@ public actor DeviceSecurityClient {
             next.states[s.core.epoch] = s
             if let proof = proofs[i] { next.recovery[s.core.epoch] = proof }
             next.headEpoch = s.core.epoch
+            next.lease = nil
         }
         let expected = try DeviceSecurity.stateHash(try read().state)
         next = try store.writeSecurity(expectedHead: expected, next)
@@ -230,6 +230,14 @@ public actor DeviceSecurityClient {
         }
         keep(r)
         return r
+    }
+    public func record() throws -> DeviceSecurity.Record { try read() }
+    public func installPublication(_ request: PBPutSecurityStateRequest) throws {
+        if !request.states.isEmpty {
+            _ = try install(request.states.map { try DeviceSecurity.parseState($0.state) },
+                request.states.map { $0.recovery.isEmpty ? nil : try DeviceSecurity.RecoveryStatement.parse($0.recovery) })
+        }
+        try acceptLease(request.lease)
     }
     /// Seals locally with the current content key and a random nonce.
     public func seal(

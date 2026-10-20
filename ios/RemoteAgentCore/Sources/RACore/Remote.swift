@@ -312,6 +312,7 @@ public actor Remote {
     ///   - sleep: how every wait here passes, so that tests need not wait.
     ///   - jitter: a number in 0..<1 that spreads reconnects apart.
     public nonisolated let authorityGate = AuthorityGate()
+    var management: AuthorityCoordinator?
     let securityStorage: (any DeviceSecurity.Storage)?
     var deviceSecurity: DeviceSecurityClient?
     public init(

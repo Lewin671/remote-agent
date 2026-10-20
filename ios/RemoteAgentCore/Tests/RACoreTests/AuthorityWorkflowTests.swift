@@ -88,6 +88,18 @@ final class AuthorityTestVault: AuthorityStorage, @unchecked Sendable {
 private func enabledGate() -> AuthorityGate {
     let gate = AuthorityGate(); gate.set(active: true, protectedDataAvailable: true); return gate
 }
+private func coordinator(_ account: Account, _ vault: AuthorityTestVault, http: HTTP = HTTP(),
+                         gate: AuthorityGate = enabledGate(), clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) throws -> AuthorityCoordinator {
+    let api = try Api(server: account.server, http: http)
+    let security = DeviceSecurityClient(store: vault, memberID: account.deviceId, signingKey: try SigningKey(seed: account.deviceSeed),
+        clock: { UInt64(max(clock(), 1)) }, fetchStates: { after in
+            let token = try await login(api: api, account: account)
+            var request = PBGetSecurityStatesRequest(); request.afterEpoch = after; request.limit = 8
+            return try await api.client.getSecurityStates(request: request, headers: Api.headers(token: token)).value()
+        })
+    return AuthorityCoordinator(account: account, api: api, storage: vault, security: security, gate: gate, clock: clock,
+        token: { try await login(api: api, account: account) })
+}
 private func createAuthority(_ server: ManagementRelay, vault: AuthorityTestVault = AuthorityTestVault(), http: HTTP = HTTP()) async throws
     -> (Account, AuthorityTestVault, String) {
     let bootstrap = AuthorityBootstrap(storage: vault, gate: enabledGate(), http: http)
@@ -226,6 +238,25 @@ extension AuthorityWorkflowTests {
     }
 
 
+    @Test func competingVerifiedParentStopsOriginalStateWithoutResigning() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (account, vault, _) = try await createAuthority(server)
+        let r = try vault.readSecurity(), signer = try SigningKey(seed: account.deviceSeed)
+        let a = try Authority().veto(parent: r.state, newRecoveryEd: randomBytes(32), secret: r.secret!, signer: signer, now: Int64(r.floor))
+        let b = try Authority().veto(parent: r.state, newRecoveryEd: randomBytes(32), secret: r.secret!, signer: signer, now: Int64(r.floor))
+        var first = PBPutSecurityStateRequest(); var item = PBSecurityState(); item.state = try DeviceSecurity.stateBytes(a); first.states = [item]
+        let receipt = try vault.prepareOperation(expectedHead: DeviceSecurity.stateHash(r.state)) { _ in
+            SecurityOperation(kind: .state, parent: a.core.parent, signed: try first.serializedData())
+        }
+        let api = try Api(server: server.url, http: HTTP()), token = try await login(api: api, account: account)
+        var competing = PBPutSecurityStateRequest(); item.state = try DeviceSecurity.stateBytes(b); competing.states = [item]
+        competing.lease = try DeviceSecurity.HeadLease.sign(b, signer: signer, now: Int64(r.floor)).bytes()
+        _ = try await api.client.putSecurityState(request: competing, headers: Api.headers(token: token)).value()
+        let authority = try coordinator(account, vault)
+        do { try await authority.resumeSecurityOperation(); Issue.record("competing successor accepted") } catch {}
+        #expect(try vault.readOperation() == receipt)
+        #expect(try DeviceSecurity.stateHash(vault.readSecurity().state) == DeviceSecurity.stateHash(b))
+    }
 }
 
 extension AuthorityWorkflowTests {

@@ -90,11 +90,17 @@ extension DeviceSecurity {
                 next.contentKeys[epoch] = key
             }
             let nextHash = try stateHash(state)
-            if let committed = old.lease {
-                if let proposed = lease, proposed.head == committed.head {
-                    try proposed.verify(old.state)
-                    try check(proposed.issuedAt >= committed.issuedAt && proposed.notAfter >= committed.notAfter && (proposed.issuedAt != committed.issuedAt || proposed.notAfter == committed.notAfter), .stale)
-                } else if lease == nil || (headEpoch == old.headEpoch && committed.head == nextHash) { next.lease = committed }
+            // A head change invalidates its predecessor's independent lease.
+            // Never carry that certificate into a same-head CAS, where validating
+            // it against the new authority would prevent takeover renewal.
+            if next.lease?.head != nextHash { next.lease = nil }
+            if let proposed = next.lease { try proposed.verify(state) }
+            if let committed = old.lease, committed.head == nextHash {
+                try committed.verify(state)
+                if let proposed = next.lease {
+                    try check(proposed.issuedAt >= committed.issuedAt && proposed.notAfter >= committed.notAfter
+                        && (proposed.issuedAt != committed.issuedAt || proposed.notAfter == committed.notAfter), .stale)
+                } else { next.lease = committed }
             }
             return next
         }
