@@ -234,7 +234,7 @@ export async function joinByPairing(
   const id = joined.pairingId;
   const token = joined.candidateToken;
   if (link.commit && !eq(link.commit, joined.commit))
-    throw new Error("服务器返回的不是扫码那台设备的信息，已停止配对");
+    throw new Error("服务器返回的不是发起配对那台设备的信息，已停止配对");
   const poll = poller(
     () => pc.getPairing({ pairingId: id, candidateToken: token }),
     stopped,

@@ -8,6 +8,13 @@ import { LoaderCircle } from "../icons";
 
 const spaced = (code: string) => `${code.slice(0, 4)} ${code.slice(4)}`;
 
+/** How this browser joins: the phone that has joined shows a code, and it
+ * is typed in here. A browser cannot scan, so the QR code goes unmentioned.
+ * The path is the Android app's; the wording matches the other clients'. */
+export const joinLead = "在已加入的手机 App 里打开「设置 › 添加设备」，把显示的 8 位配对码填在这里。";
+export const joinExistingLead =
+  "原设备身份、密钥和历史保留。在手机 App 里打开「设置 › 添加设备」，把显示的 8 位配对码填在这里，再核对四个图案完成绑定。";
+
 const defaultServer = () =>
   localStorage.getItem("ra-server") ||
   import.meta.env.VITE_DEFAULT_SERVER ||
@@ -243,8 +250,8 @@ export function Setup({
       <>
         <p className="muted small lead">
           {existing
-            ? "原设备身份、密钥和历史保留。在手机的「设备 › 添加设备」里重新配对，核对四个图案完成绑定。"
-            : "在已加入的手机上打开「设备 › 添加设备」，用它扫这台设备的二维码，或把手机上显示的 8 位配对码填在这里。"}
+            ? joinExistingLead
+            : joinLead}
         </p>
         <input
           className="field code-in"

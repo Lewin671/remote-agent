@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it } from "vitest";
-import { joinBanner } from "./Pairing";
+import { joinBanner, joinExistingLead, joinLead } from "./Pairing";
 
 it("tells a release mismatch apart from a wrong code", () => {
   const mismatch = new ConnectError("the joining device speaks protocol version 9 and this remote-agent version 10; update both to the same release", Code.FailedPrecondition);
@@ -17,4 +17,12 @@ it("an expired-or-canceled pairing does not accuse the other device of refusing"
     action: "重填",
   });
   expect(joinBanner(new Error("另一台设备取消了配对")).text).toBe("对方拒绝了这次加入");
+});
+
+it("tells a browser to type the code the phone shows, never to scan", () => {
+  for (const lead of [joinLead, joinExistingLead]) {
+    expect(lead).toContain("手机 App 里打开「设置 › 添加设备」");
+    expect(lead).toContain("8 位配对码");
+    expect(lead).not.toMatch(/扫|二维码/);
+  }
 });
