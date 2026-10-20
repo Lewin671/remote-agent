@@ -82,6 +82,15 @@ class RunningToolsTest {
     }
 
     @Test
+    fun elapsedTimeNamesItsPurposeAndFreezesWhileDisconnected() {
+        val tool = io.github.lewin671.remoteagent.core.RunningTool("test", "c", 1_000)
+        assertEquals("已运行 4:15", toolTimer(tool, ToolState.RUNNING, 256_000, 0))
+        assertEquals("已运行 4:15 · 等待同步", toolTimer(tool, ToolState.SYNC, 999_000, 256_000))
+        assertEquals("", toolTimer(io.github.lewin671.remoteagent.core.RunningTool("test", "c", 0), ToolState.RUNNING, 256_000, 0))
+        assertEquals("—", toolTimer(tool, ToolState.UNCONFIRMED, 999_000, 0))
+    }
+
+    @Test
     fun aMatchingCodexApprovalReplacesTheRunningTimer() {
         val events = listOf(turn, start(2, "exec", "a", "go test ./..."),
             ev(3, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("p").setCommand("go test ./..."))))

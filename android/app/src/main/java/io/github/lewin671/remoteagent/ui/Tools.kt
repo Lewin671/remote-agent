@@ -87,11 +87,11 @@ fun toolState(t: RunningTool, unfinished: Boolean, d: Derived, frozenAt: Long): 
     else -> ToolState.RUNNING
 }
 
-/** A timer reading: 2 分 12 秒 in the chat; "上次 2:12" once it is frozen; nothing when the start is unknown. */
+/** Name the elapsed time and freeze it at disconnection; omit unknown start times. */
 fun toolTimer(t: RunningTool, state: ToolState, now: Long, frozenAt: Long): String {
     if (state == ToolState.UNCONFIRMED || state == ToolState.APPROVAL) return "—"
     val ms = toolElapsed(t, now, frozenAt) ?: return ""
-    return clock(ms)
+    return "已运行 ${clock(ms)}" + if (state == ToolState.SYNC) " · 等待同步" else ""
 }
 
 /** A tool that started and has no result yet, where it started. */
@@ -110,5 +110,5 @@ fun RunningToolRow(item: ChatItem.Running, cwd: String, home: String) {
     }
     val timer = toolTimer(tool, state, t, ctx.frozenAt)
     ToolLine(Lucide.LoaderCircle, p.blue, title, Modifier.padding(horizontal = 14.dp),
-        meta = if (state == ToolState.SYNC) "等待同步" else if (item.unfinished) "后台运行" else if (state == ToolState.APPROVAL) state.text else timer)
+        meta = if (state == ToolState.SYNC) timer.ifEmpty { "等待同步" } else if (item.unfinished) "后台运行" else if (state == ToolState.APPROVAL) state.text else timer)
 }
