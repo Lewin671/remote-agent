@@ -2,7 +2,7 @@
 
 import { create, toBinary } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { afterEach, afterAll, expect, it, vi } from "vitest";
+import { afterEach, afterAll, beforeAll, expect, it, vi } from "vitest";
 import { SessionSchema } from "./gen/remoteagent/v1/local_pb";
 import { SessionStatus } from "./gen/remoteagent/v1/event_pb";
 import { MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -15,35 +15,46 @@ import { Remote, SESSION_PAGE } from "./remote";
 import {
   GoSecurityFixture,
   webMember,
+  MemorySecurityStorage,
   removeFixtureBuild,
 } from "./test/security-fixture";
 
 import type { Envelope } from "./gen/remoteagent/v1/envelope_pb";
-// Each test starts a Go security fixture and seals every session through it:
-// about 3 s here and over 5 s on a two-core CI runner, most of it the fixture.
-vi.setConfig({ testTimeout: 20_000 });
-const opened: GoSecurityFixture[] = [];
-afterEach(async () => {
-  for (const f of opened.splice(0)) await f.close();
+// Keep real signed envelopes and independent clients, but exercise page
+// boundaries with three rows instead of sealing hundreds of redundant rows.
+const PAGE = 3;
+const MANY = 2 * PAGE + 2;
+const SOME = PAGE + 2;
+let world: Awaited<ReturnType<typeof GoSecurityFixture.create>>;
+let member: Awaited<ReturnType<typeof webMember>>;
+let ids: Record<string, string>;
+const raw = new Uint8Array(32).fill(7);
+const remotes: Remote[] = [];
+beforeAll(async () => {
+  world = await GoSecurityFixture.create();
+  const m1 = await world.fixture.enroll(world.machine, 1);
+  const m2 = await world.fixture.enroll(world.machine, 1);
+  ids = { m1: m1.json.member, m2: m2.json.member };
+  member = await webMember(world);
 });
-afterAll(removeFixtureBuild);
+afterEach(() => {
+  for (const r of remotes.splice(0)) r.stop();
+  vi.useRealTimers();
+});
+afterAll(async () => { await world?.fixture.close(); removeFixtureBuild(); });
 
-async function setup() {
-  const f = await GoSecurityFixture.create();
-  opened.push(f.fixture);
-  const m1 = await f.fixture.enroll(f.machine, 1),
-    m2 = await f.fixture.enroll(f.machine, 1);
-  const ids: Record<string, string> = {
-    m1: m1.json.member,
-    m2: m2.json.member,
-  };
-  const member = await webMember(f);
-  const raw = crypto.getRandomValues(new Uint8Array(32));
+async function setup(pageSize: number | null = PAGE) {
+  const f = world;
+  // Retry windows and signed lease times are logical state, not a CPU budget.
+  vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+  vi.setSystemTime(Number(member.record.floor));
   const r = new (class extends Remote {
     constructor() {
-      super(member.account, f.legacyKeys, undefined, member.storage);
+      super(member.account, f.legacyKeys, undefined,
+        new MemorySecurityStorage(structuredClone(member.record)), undefined, pageSize ?? undefined);
     }
   })();
+  remotes.push(r);
   const wrapped = new Map<string, Envelope>();
   const records = new Map<string, { stamp: string; record: RemoteSession }>();
   // The server's side: sessions with the time they ended, 0 while live.
@@ -185,16 +196,16 @@ const ended = (n: number) => `e${String(n).padStart(3, "0")}`;
 it("fetches live sessions and the latest ended ones first, then pages on demand", async () => {
   const { r, server, calls } = await setup();
   server.set("live", { machineId: "m1", endedMs: 0 });
-  for (let i = 1; i <= 120; i++)
+  for (let i = 1; i <= MANY; i++)
     server.set(ended(i), { machineId: "m1", endedMs: 1000 + i });
   await r.refresh();
   expect(r.listed).toBe(true);
-  expect(r.sessions.size).toBe(1 + SESSION_PAGE);
+  expect(r.sessions.size).toBe(1 + PAGE);
   expect(r.sessions.has("live")).toBe(true);
-  expect(r.sessions.has(ended(120))).toBe(true);
-  expect(r.sessions.has(ended(70))).toBe(false);
+  expect(r.sessions.has(ended(MANY))).toBe(true);
+  expect(r.sessions.has(ended(MANY - PAGE))).toBe(false);
   expect(r.moreSessions).toBe(true);
-  expect(r.sessions.get(ended(120))!.endedMs).toBe(1120n);
+  expect(r.sessions.get(ended(MANY))!.endedMs).toBe(BigInt(1000 + MANY));
 
   // Two askers share one page.
   const [a, b] = await Promise.all([
@@ -203,28 +214,28 @@ it("fetches live sessions and the latest ended ones first, then pages on demand"
   ]);
   expect([a, b]).toEqual([true, true]);
   expect(calls.filter((c) => c.after).length).toBe(1);
-  expect(r.sessions.size).toBe(1 + 2 * SESSION_PAGE);
+  expect(r.sessions.size).toBe(1 + 2 * PAGE);
   expect(r.loadingSessions).toBe(false);
 
   await r.loadAllSessions();
-  expect(r.sessions.size).toBe(121);
+  expect(r.sessions.size).toBe(1 + MANY);
   expect(r.moreSessions).toBe(false);
   expect(await r.loadMoreSessions()).toBe(false);
-}, 15000);
+});
 
 it("asks for a session outside the pages by its ID, and notes one that does not exist", async () => {
   const { r, server, calls } = await setup();
-  for (let i = 1; i <= 80; i++)
+  for (let i = 1; i <= SOME; i++)
     server.set(ended(i), { machineId: "m1", endedMs: 1000 + i });
   await r.refresh();
-  expect(r.sessions.has(ended(3))).toBe(false);
-  await r.ensureSession(ended(3));
-  expect(r.sessions.get(ended(3))?.info?.title).toBe(ended(3));
+  expect(r.sessions.has(ended(1))).toBe(false);
+  await r.ensureSession(ended(1));
+  expect(r.sessions.get(ended(1))?.info?.title).toBe(ended(1));
   await r.ensureSession("nope");
   expect(r.missing.has("nope")).toBe(true);
   // Neither is asked for twice.
   const n = calls.length;
-  await r.ensureSession(ended(3));
+  await r.ensureSession(ended(1));
   await r.ensureSession("nope");
   expect(calls.length).toBe(n);
 });
@@ -233,7 +244,7 @@ it("keeps what belongs to later pages when the first page is fetched again", asy
   const { r, server, setMachines } = await setup();
   server.set("live", { machineId: "m1", endedMs: 0 });
   server.set("other", { machineId: "m2", endedMs: 0 });
-  for (let i = 1; i <= 120; i++)
+  for (let i = 1; i <= MANY; i++)
     server.set(ended(i), {
       machineId: i === 2 ? "m2" : "m1",
       endedMs: 1000 + i,
@@ -241,27 +252,27 @@ it("keeps what belongs to later pages when the first page is fetched again", asy
   await setMachines(["m1", "m2"]);
   await r.refresh();
   await r.loadAllSessions();
-  expect(r.sessions.size).toBe(122);
+  expect(r.sessions.size).toBe(2 + MANY);
 
   // Meanwhile: a recent session and a live one are gone from the server,
   // as is a machine with a session far down the listing.
-  server.delete(ended(119));
+  server.delete(ended(MANY - 1));
   server.delete("live");
   server.delete("other");
   server.delete(ended(2));
   await setMachines(["m1"]);
   await r.refresh();
-  expect(r.sessions.has(ended(119))).toBe(false); // within the first page, and not on it
+  expect(r.sessions.has(ended(MANY - 1))).toBe(false); // within the first page, and not on it
   expect(r.sessions.has("live")).toBe(false); // live sessions are all on the first page
   expect(r.sessions.has(ended(2))).toBe(false); // its machine is gone
   expect(r.sessions.has(ended(1))).toBe(true); // belongs to a later page
-  expect(r.sessions.has(ended(120))).toBe(true);
+  expect(r.sessions.has(ended(MANY))).toBe(true);
   expect(r.moreSessions).toBe(true);
 });
 
 it("does not ask again at once for a page that failed", async () => {
   const { r, server, calls, fail } = await setup();
-  for (let i = 1; i <= 80; i++)
+  for (let i = 1; i <= SOME; i++)
     server.set(ended(i), { machineId: "m1", endedMs: 1000 + i });
   await r.refresh();
   fail();
@@ -365,20 +376,20 @@ it("lists a project added but not started in yet, from its settings", () => {
 
 it("fetches what comes before a session held past the pages", async () => {
   const { r, server } = await setup();
-  for (let i = 1; i <= 120; i++)
+  for (let i = 1; i <= MANY; i++)
     server.set(ended(i), { machineId: "m1", endedMs: 1000 + i });
   await r.refresh();
   // Fetched by its ID, it lies beyond the first page: sessions not here yet come before it.
   await r.ensureSession(ended(5));
   expect(r.pastPages(r.sessions.get(ended(5))!)).toBe(true);
-  expect(r.pastPages(r.sessions.get(ended(100))!)).toBe(false);
+  expect(r.pastPages(r.sessions.get(ended(MANY - 1))!)).toBe(false);
   await r.loadAllSessions();
   expect(r.pastPages(r.sessions.get(ended(5))!)).toBe(false);
 });
 
 it("does not bring back the sessions of a machine removed while a page was on its way", async () => {
   const { r, server, before, ids } = await setup();
-  for (let i = 1; i <= 80; i++)
+  for (let i = 1; i <= SOME; i++)
     server.set(ended(i), { machineId: "m1", endedMs: 1000 + i });
   await r.refresh();
   const removed = () => {
@@ -411,7 +422,7 @@ it("does not ask again at once for a session whose lookup failed", async () => {
 it("drops a page that was on its way when the listing started over", async () => {
   const { r, server, before, setMachines } = await setup();
   server.set(ended(200), { machineId: "m1", endedMs: 5000 });
-  for (let i = 1; i <= 80; i++)
+  for (let i = 1; i <= SOME; i++)
     server.set(ended(i), { machineId: "m2", endedMs: 1000 + i });
   await setMachines(["m1", "m2"]);
   await r.refresh();
@@ -419,7 +430,7 @@ it("drops a page that was on its way when the listing started over", async () =>
   let again: Promise<void> | undefined;
   before(async () => {
     await setMachines(["m1"]);
-    for (let i = 1; i <= 80; i++) server.delete(ended(i));
+    for (let i = 1; i <= SOME; i++) server.delete(ended(i));
     again = r.refresh();
   });
   await r.loadMoreSessions();
@@ -462,7 +473,7 @@ it("gives up on a session whose record does not open, rather than asking for it 
 it("does not take a session that was being opened when its machine turned out to be gone", async () => {
   const { r, server, setMachines, raw } = await setup();
   server.set(ended(200), { machineId: "m1", endedMs: 5000 });
-  for (let i = 1; i <= 80; i++)
+  for (let i = 1; i <= SOME; i++)
     server.set(ended(i), { machineId: "m2", endedMs: 1000 + i });
   await setMachines(["m1", "m2"]);
   await r.refresh();
@@ -485,7 +496,7 @@ it("does not take a session that was being opened when its machine turned out to
       ) {
         switched = true;
         await setMachines(["m1"]);
-        for (let i = 1; i <= 80; i++) server.delete(ended(i));
+        for (let i = 1; i <= SOME; i++) server.delete(ended(i));
         again = r.refresh();
         await again;
       }
@@ -498,4 +509,11 @@ it("does not take a session that was being opened when its machine turned out to
   }
   expect(again).toBeDefined();
   expect([...r.sessions.keys()]).toEqual([ended(200)]);
+});
+
+it("keeps the default session listing page at 50 rows", async () => {
+  const { r, calls } = await setup(null);
+  await r.refresh();
+  expect(SESSION_PAGE).toBe(50);
+  expect(calls[0]?.limit).toBe(50);
 });

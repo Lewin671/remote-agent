@@ -623,6 +623,7 @@ export class Remote {
     private cache?: EventCache,
     securityStorage?: SecurityStorage,
     protected readonly historyPageSize = 500,
+    protected readonly sessionPageSize = SESSION_PAGE,
   ) {
     const auth: Interceptor = (next) => (req) => {
       req.header.set("Authorization", "Bearer " + this.token);
@@ -1460,7 +1461,7 @@ export class Remote {
       if (this.devicesStatus !== "ready") throw new Error("无法核实当前成员");
       const [ms, ss] = await Promise.all([
         this.api.listMachines({}),
-        this.api.listRemoteSessions({ limit: SESSION_PAGE }),
+        this.api.listRemoteSessions({ limit: this.sessionPageSize }),
       ]);
       if (listing !== this.listing) return;
       // Forget what the server no longer has, e.g. a machine another
@@ -1563,7 +1564,7 @@ export class Remote {
         const rp = new Map(this.removedPushes);
         const res = await this.api.listRemoteSessions({
           after,
-          limit: SESSION_PAGE,
+          limit: this.sessionPageSize,
         });
         // The listing was started over meanwhile: this page continued the
         // one before, which may have held sessions that are gone since,
