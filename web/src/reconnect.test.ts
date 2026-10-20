@@ -155,3 +155,30 @@ it("bounds terminal opening and cancels it without waiting for socket callbacks"
   r.stop(); expect(await stopped).toBeInstanceOf(Error); expect(Socket.all[2].closed).toBe(true);
   expect(close).toHaveBeenCalledTimes(3);
 });
+
+it("opens the live stream while the admin's lease renewal is still waiting", async () => {
+  // Browsers (and Node 24) have Web Locks; renewal then runs, but it must not
+  // hold the connection: a slow round trip or an unfinished operation would
+  // otherwise keep the stream from ever starting.
+  vi.stubGlobal("navigator", { ...globalThis.navigator, locks: { request: vi.fn() } });
+  const r = await probe();
+  vi.spyOn(r.security, "sync").mockResolvedValue({ member: true, states: [{ core: { authorityID: "d" } }] } as never);
+  const renew = vi.spyOn(r.authority, "renewLeaseIfNeeded").mockReturnValue(new Promise(() => {}));
+  r.start(); await flush();
+  expect(renew).toHaveBeenCalledTimes(1);
+  expect(Socket.all).toHaveLength(1);
+  Socket.all[0].frame("ready"); await flush();
+  expect(r.conn).toBe("online");
+});
+
+it("does not take the authority lock on a device that is not the admin", async () => {
+  const request = vi.fn();
+  vi.stubGlobal("navigator", { ...globalThis.navigator, locks: { request } });
+  const r = await probe();
+  const renew = vi.spyOn(r.authority, "renewLeaseIfNeeded");
+  r.start(); await flush();
+  Socket.all[0].frame("ready"); await flush();
+  expect(r.conn).toBe("online");
+  expect(renew).not.toHaveBeenCalled();
+  expect(request).not.toHaveBeenCalled();
+});

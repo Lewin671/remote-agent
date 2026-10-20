@@ -1115,23 +1115,38 @@ export class Remote {
     void this.connect();
   }
 
+  private maintaining?: Promise<void>;
+  /** Renews the lease and continues an unfinished management operation in
+   * the background: neither the live stream nor the state pull waits for
+   * the authority lock or its round trips. Only the admin, or a device with
+   * an operation of its own (a handoff offer, a recovery), has anything to
+   * do; the others skip it without taking the lock. */
+  private maintainAuthority() {
+    if (typeof navigator === "undefined" || !navigator.locks || this.maintaining) return;
+    this.maintaining = (async () => {
+      try {
+        if (!this.isAuthority && !(await readSecurityOperation())) return;
+        await this.authority.renewLeaseIfNeeded();
+        this.authorityError = "";
+        const record = await this.security.verifiedRecord();
+        this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
+      } catch (e) {
+        // An unresolved management operation does not stop history sync or
+        // the connection. Control still checks the verified head lease.
+        this.authorityError = errorText(e);
+      } finally {
+        this.maintaining = undefined;
+        if (!this.closed) this.changed();
+      }
+    })();
+  }
+
   async syncSecurity() {
     if (this.closed) return;
     try {
-      let record = await this.security.sync();
+      const record = await this.security.sync();
       this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
-      if (typeof navigator !== "undefined" && navigator.locks) {
-        try {
-          await this.authority.renewLeaseIfNeeded();
-          this.authorityError = "";
-        } catch (e) {
-          // An unresolved management operation does not stop history sync or
-          // the connection. Control still checks the verified head lease.
-          this.authorityError = errorText(e);
-        }
-        record = await this.security.verifiedRecord();
-        this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
-      }
+      this.maintainAuthority();
       this.changed();
       if (record.member === false) {
         this.removalVerified = true;
@@ -1343,20 +1358,9 @@ export class Remote {
     try {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.
-      let record = await this.security.sync();
+      const record = await this.security.sync();
       this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
-      if (typeof navigator !== "undefined" && navigator.locks) {
-        try {
-          await this.authority.renewLeaseIfNeeded();
-          this.authorityError = "";
-        } catch (e) {
-          // An unresolved management operation does not stop history sync or
-          // the connection. Control still checks the verified head lease.
-          this.authorityError = errorText(e);
-        }
-        record = await this.security.verifiedRecord();
-        this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
-      }
+      this.maintainAuthority();
       this.changed();
       if (record.member === false) {
         this.removalVerified = true;
