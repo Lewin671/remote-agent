@@ -326,12 +326,28 @@ public struct ScopeRow: Equatable, Sendable, Identifiable {
     }
 }
 
+/// How many of some sessions wait for the user and how many run, counted
+/// as the home page's 需要处理 and 进行中 are: 「2 个待处理 · 3 个进行中」,
+/// a part that is 0 left out, "" when both are.
+public func sessionCounts(_ state: RemoteState, _ sessions: some Sequence<SessionView>) -> String {
+    var waiting = 0
+    var live = 0
+    for s in sessions {
+        if needsAttention(s, machine: state.machines[s.machineId]) {
+            waiting += 1
+        } else if !exited(s) {
+            live += 1
+        }
+    }
+    return [waiting > 0 ? "\(waiting) 个待处理" : "", live > 0 ? "\(live) 个进行中" : ""].filter { !$0.isEmpty }.joined(separator: " · ")
+}
+
 /// What a project's row says under its name, the same wherever projects are listed (client-v34):
-/// the path, then how many sessions run there, or that none of its computers is online.
+/// the path, then how many sessions wait and run there, or that none of its computers is online.
 public func projectDetail(_ state: RemoteState, _ pr: Project) -> String {
-    let live = pr.sessions.filter { !exited($0) }.count
+    let counts = sessionCounts(state, pr.sessions)
     let offline = !pr.machineIds.isEmpty && !pr.machineIds.contains { state.machines[$0]?.online == true }
-    return shortPath(pr.key) + (live > 0 ? " · \(live) 个进行中" : offline ? " · 电脑不在线" : "")
+    return shortPath(pr.key) + (!counts.isEmpty ? " · \(counts)" : offline ? " · 电脑不在线" : "")
 }
 
 /// The scope menu: 全部项目 when there is more than one project to choose
@@ -342,8 +358,8 @@ public func scopeRows(_ state: RemoteState, current: HomeScope, search: String =
     let q = search.jvmTrim()
     var rows = [ScopeRow]()
     if listed.count > 1 && q.isEmpty {
-        let live = state.sessions.values.filter { !exited($0) }.count
-        rows.append(ScopeRow(scope: .all, name: "全部项目", detail: live > 0 ? "\(live) 个进行中" : "\(listed.count) 个项目", current: current == .all))
+        let counts = sessionCounts(state, state.sessions.values)
+        rows.append(ScopeRow(scope: .all, name: "全部项目", detail: counts.ifEmpty("\(listed.count) 个项目"), current: current == .all))
     }
     for pr in listed {
         if !q.isEmpty && !pr.name.jvmContainsIgnoringCase(q) && !pr.key.jvmContainsIgnoringCase(q) { continue }

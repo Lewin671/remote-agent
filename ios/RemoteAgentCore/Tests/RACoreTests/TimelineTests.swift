@@ -340,6 +340,18 @@ import Testing
 
     // --- not in Android's tests ---
 
+    @Test func projectsCountWaitingAndRunningSessionsAsTheHomeDoes() {
+        let st = state(
+            session("1", "/Users/me/Code/foo", approvals: 1), session("2", "/Users/me/Code/foo"),
+            session("3", "/Users/me/Code/billing", approvals: 2), session("4", "/Users/me/Code/blog", ended: now - 1000))
+        let rows = scopeRows(st, current: .all)
+        #expect(rows.map(\.detail) == ["2 个待处理 · 1 个进行中", "~/Code/billing · 1 个待处理", "~/Code/foo · 1 个待处理 · 1 个进行中", "~/Code/blog"])
+        #expect(sessionCounts(st, []) == "")
+        // With nothing waiting or running, 全部项目 says how many projects there are.
+        let quiet = state(session("1", "/a", ended: now - 1000), session("2", "/b", ended: now - 1000))
+        #expect(scopeRows(quiet, current: .all).first?.detail == "2 个项目")
+    }
+
     @Test func daysAreTheZonesNotTheDevices() {
         // 23:30 UTC on the 3rd is already the 4th in Shanghai, and still the 3rd in New York.
         let ms = Mk.instant("2026-10-03T23:30:00Z")
