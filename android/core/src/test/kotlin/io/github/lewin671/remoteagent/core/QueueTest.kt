@@ -59,7 +59,7 @@ class OriginTest {
         assertEquals("本客户端", originLabel(o(k, "me"), state, "me", "MacBook"))
         assertEquals("Android · b71c", originLabel(o(k, "aaaab71c"), state, "me", "MacBook"))
         assertEquals("我的手机", originLabel(o(k, "cccc92de"), state, "me", "MacBook"))
-        assertEquals("客户端 · 9999", originLabel(o(k, "gone9999"), state, "me", "MacBook"))
+        assertEquals("已移除的设备", originLabel(o(k, "gone9999"), state, "me", "MacBook"))
         val meta = { name: String, platform: String, description: String -> io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder().setName(name).setPlatform(platform).setDescription(description).build() }
         val zone = java.time.ZoneId.of("UTC")
         val at = { y: Int, m: Int, d: Int, h: Int, min: Int -> java.time.LocalDateTime.of(y, m, d, h, min).atZone(zone).toInstant().toEpochMilli() }
@@ -87,7 +87,7 @@ class OriginTest {
         val c = { id: String, created: Long, seen: Long -> browser.copy(id = id, createdMs = created, lastSeenMs = seen) }
         assertEquals(listOf("me", "recent", "stale", "new", "old"),
             sortClients(listOf(c("old", 1, 0), c("me", 2, 5), c("new", 3, 0), c("recent", 1, 9), c("stale", 1, 4)), "me").map { it.id })
-        assertEquals("MacBook 本地终端", originLabel(o(io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL), state, "me", "MacBook"))
+        assertEquals("MacBook 终端", originLabel(o(io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL), state, "me", "MacBook"))
         assertEquals(null, originLabel(null, state, "me", "MacBook"))
     }
 }

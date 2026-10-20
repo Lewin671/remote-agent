@@ -31,6 +31,6 @@ class ApprovedBackgroundTest {
         )
         val tool = buildChat(events, derive(events, Agent.AGENT_CLAUDE), "M").filterIsInstance<ChatItem.Tool>().single()
         assertTrue(tool.background)
-        assertEquals("已允许", tool.decision)
+        assertEquals("已允许 · 另一端", tool.decision)
     }
 }

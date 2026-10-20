@@ -1476,7 +1476,7 @@ fun shortId(id: String): String = id.takeLast(4)
 
 /**
  * Who an event says caused it (Event.origin), for display, or null when the event does not say.
- * Only a signed client is named, and only by the account's device list; anything unsure is "另一客户端",
+ * Only a signed client is named, and only by the account's device list; anything unsure is "另一端",
  * never a guess.
  */
 fun originLabel(
@@ -1490,12 +1490,12 @@ fun originLabel(
         io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_CLIENT ->
             when {
                 o.deviceId == me -> "本客户端"
-                o.deviceId.isEmpty() -> "另一客户端"
+                o.deviceId.isEmpty() -> "另一端"
                 else ->
                     state.devices[o.deviceId]?.let { clientName(it, o.deviceId) }
-                        ?: "客户端 · ${shortId(o.deviceId)}"
+                        ?: "已移除的设备"
             }
-        io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL -> "$machine 本地终端"
+        io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL -> "$machine 终端"
         io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_SYSTEM -> null
         else -> null
     }

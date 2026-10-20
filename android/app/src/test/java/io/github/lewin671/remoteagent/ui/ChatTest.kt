@@ -141,13 +141,13 @@ class ChatTest {
         assertEquals(
             listOf(
                 // B has no call it can surely be tied to, and C and D two each.
-                "record rm y 已拒绝",
-                "record npm test 已允许",
-                "record npm test 已允许",
+                "record rm y 已拒绝 · 另一端",
+                "record npm test 已允许 · 另一端",
+                "record npm test 已允许 · 另一端",
                 "tool Read a.go",
                 "tool rm y",
                 // A's call carries A's result, and A's own line goes.
-                "tool mkdir x 已允许",
+                "tool mkdir x 已允许 · 另一端",
                 "tools",
             ),
             got,
@@ -168,7 +168,7 @@ class ChatTest {
             call("b", "1", "db"),
             call("ls", "2", "c7b68ac37f364473e922936708e7f43c293dd07b295171566c07ff5fe024fab9"),
         )
-        assertEquals(listOf("record ls 已允许", "tool b 已允许", "tool ls"), got)
+        assertEquals(listOf("record ls 已允许 · 另一端", "tool b 已允许 · 另一端", "tool ls"), got)
     }
 
     @Test
@@ -178,7 +178,7 @@ class ChatTest {
             resolved("A", ApprovalDecision.APPROVAL_DECISION_ALLOW),
             Event.newBuilder().setToolCall(ToolCall.newBuilder().setTitle("mkdir x").setKind(ToolKind.TOOL_KIND_COMMAND).setStatus("completed")),
         )
-        assertEquals(listOf("record mkdir x 已允许", "tool mkdir x"), got)
+        assertEquals(listOf("record mkdir x 已允许 · 另一端", "tool mkdir x"), got)
     }
 
     @Test

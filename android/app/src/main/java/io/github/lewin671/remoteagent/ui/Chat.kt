@@ -79,7 +79,7 @@ fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localId
 sealed interface ChatItem {
     val key: String
 
-    /** [from]: who sent it, when the daemon says (v2): a client's name, 本客户端, or the computer's terminal. */
+    /** [from]: who sent it, when the daemon says (v2): another client's name, or the computer's terminal. */
     data class User(
         override val key: String,
         val text: String,
@@ -113,7 +113,7 @@ sealed interface ChatItem {
     /** Two or more completed tool calls in a row, folded into one line. */
     data class Tools(override val key: String, val calls: List<ToolCall>, val callSeqs: List<Long> = emptyList()) : ChatItem
     /** A line of its own: a centred note, or with [icon] a record like a tool row, [meta] at its right. */
-    data class Note(override val key: String, val text: String, val icon: ImageVector? = null, val tone: Int = 0, val meta: String = "") : ChatItem
+    data class Note(override val key: String, val text: String, val icon: ImageVector? = null, val tone: Int = 0, val meta: String = "", val emphasis: String = "") : ChatItem
     data class Plan(override val key: String, val text: String) : ChatItem
 
     /** A message the session ended before writing; [text] is known when sent from here. */
@@ -183,6 +183,26 @@ private fun recorded(d: ApprovalDecision) =
 private fun decisionLine(d: ApprovalDecision, message: String) = decisionText(d) + if (message.isNotEmpty()) " · " +
     (if (d == ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS) io.github.lewin671.remoteagent.core.approvalAlwaysText(message) else message) else ""
 
+internal fun noteText(item: ChatItem.Note) = androidx.compose.ui.text.buildAnnotatedString {
+    val split = if (item.emphasis.isNotEmpty() && item.text.endsWith(item.emphasis)) item.text.length - item.emphasis.length else item.text.length
+    append(item.text.take(split))
+    if (split < item.text.length) {
+        pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = platformWeight(FontWeight.SemiBold)))
+        append(item.text.substring(split))
+        pop()
+    }
+}
+
+internal fun messageSource(source: String?, local: Boolean, machine: String): String? = when {
+    source == "本客户端" -> null
+    source != null -> source
+    local -> "$machine 终端"
+    else -> null
+}
+
+private fun decisionSource(source: String?): String =
+    if (source == "本客户端") "" else " · ${source ?: "另一端"}"
+
 /** Decisions to show on their tool calls (by the call's seq), and the approvals they came from. */
 class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged: Set<String>)
 
@@ -196,11 +216,11 @@ class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged
  * Codex gives no digest, so its approvals keep their
  * own line; so do parallel or repeated calls that cannot be told apart.
  */
-fun approvalDecisions(events: List<Event>, d: Derived): ApprovalDecisions {
+fun approvalDecisions(events: List<Event>, d: Derived, who: ((io.github.lewin671.remoteagent.proto.Origin?) -> String?)? = null): ApprovalDecisions {
     val ids = io.github.lewin671.remoteagent.core.approvalCallIDs(events, d)
     val onCall = ids.mapValues { (_, id) ->
         val (decision, message) = d.resolved.getValue(id)
-        decisionLine(decision, message) to (decision != ApprovalDecision.APPROVAL_DECISION_DENY && decision != ApprovalDecision.APPROVAL_DECISION_TIMEOUT)
+        (decisionLine(decision, message) + if (who != null) decisionSource(who(d.resolvedBy[id])) else "") to (decision != ApprovalDecision.APPROVAL_DECISION_DENY && decision != ApprovalDecision.APPROVAL_DECISION_TIMEOUT)
     }
     val merged = ids.values.toSet()
     return ApprovalDecisions(onCall, merged)
@@ -225,7 +245,7 @@ fun buildChat(
     val run = mutableListOf<ToolCall>()
     val runSeqs = mutableListOf<Long>()
     var runKey = ""
-    val decisions = approvalDecisions(events, d)
+    val decisions = approvalDecisions(events, d, who)
     var turnTokens = 0L
     var lastTotal = 0L
     fun flushRun() {
@@ -304,7 +324,7 @@ fun buildChat(
             Event.KindCase.USER_MESSAGE -> {
                 flush()
                 val imgs = e.userMessage.imagesList
-                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, imgs), e.seq in d.typedLocally, eventTime(e), who(e.originOrNull()), imgs, e.seq)
+                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, imgs), e.seq in d.typedLocally, eventTime(e), messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), imgs, e.seq)
             }
             Event.KindCase.AGENT_MESSAGE -> if (e.agentMessage.text.isNotBlank()) {
                 flush()
@@ -327,14 +347,14 @@ fun buildChat(
                 flush()
                 val ok = r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW || r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS
                 val what = shortenPaths(a.command.ifEmpty { a.toolName.ifEmpty { a.description } }, cwd, home)
-                val by = who(d.resolvedBy[a.approvalId])?.takeIf { it != "本客户端" }
-                out += ChatItem.Note(k, what, if (ok) Lucide.Check else Lucide.X, if (ok) 1 else 2, decisionLine(r.first, r.second) + (by?.let { " · $it" } ?: ""))
+                val by = decisionSource(who(d.resolvedBy[a.approvalId]))
+                out += ChatItem.Note(k, what, if (ok) Lucide.Check else Lucide.X, if (ok) 1 else 2, decisionLine(r.first, r.second) + by)
             }
             Event.KindCase.QUESTION_ANSWERED -> {
                 flush()
                 val answers = e.questionAnswered.answersList.flatMap { it.answersList }
-                val by = who(e.originOrNull())?.takeIf { it != "本客户端" }
-                out += ChatItem.Note(k, (if (answers.isEmpty()) "已回答提问" else "已回答：" + answers.joinToString("、")) + (by?.let { " · $it" } ?: ""), Lucide.Check, 1)
+                val by = decisionSource(who(e.originOrNull()))
+                out += ChatItem.Note(k, (if (answers.isEmpty()) "已回答提问" else "已回答：" + answers.joinToString("、")) + by, Lucide.Check, 1)
             }
             Event.KindCase.IMAGE_GENERATED -> if (e.imageGenerated.imagesCount > 0) {
                 flush()
@@ -372,7 +392,7 @@ fun buildChat(
                         val usage = d.compactions[e.seq]
                         if (usage?.before != null && usage.after != null) text = "上下文已压缩 · ${usage.before}% → ${usage.after}%"
                     }
-                    out += ChatItem.Note(k, text)
+                    out += ChatItem.Note(k, text, emphasis = if (!c.compacted && c.model.isEmpty()) modeOf(c.mode)?.text.orEmpty() else "")
                 }
             }
             Event.KindCase.TURN_CONTEXT -> d.terminalChanges[e.seq]?.let {
@@ -509,7 +529,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
     when (item) {
         is ChatItem.User -> MeBubble(
             item.text.takeIf { it.isNotBlank() || item.images.isEmpty() },
-            caption = item.from ?: if (item.local) "在终端里输入" else null,
+            caption = item.from,
             top = if (item.images.isNotEmpty()) ({ ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp)) }) else null,
         )
         is ChatItem.Agent -> Markdown(item.text, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), bleed = 14.dp)
@@ -567,7 +587,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.Generated -> GeneratedCard(item) { i -> chat?.onImage?.invoke(item.seq, i) }
         is ChatItem.Note ->
             if (item.icon != null) ToolLine(item.icon, p.muted, item.text, Modifier.padding(horizontal = 14.dp), meta = item.meta, metaColor = if (item.tone == 2) p.red else p.muted)
-            else Text(item.text, style = T.meta, color = p.muted, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp))
+            else Text(noteText(item), style = T.meta, color = p.muted, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp))
         is ChatItem.Plan -> Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().clip(Radii.MD).background(p.soft).padding(12.dp)) {
             Text("计划", style = T.smB, color = p.fg2)
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
@@ -654,7 +674,7 @@ class ChatProjection {
             val added = tail.mapNotNull { e ->
                 val key = "e${e.seq}"
                 when (e.kindCase) {
-                    Event.KindCase.USER_MESSAGE -> ChatItem.User(key, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, e.userMessage.imagesList), e.seq in d.typedLocally, eventTime(e), who(e.originOrNull()), e.userMessage.imagesList, e.seq)
+                    Event.KindCase.USER_MESSAGE -> ChatItem.User(key, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, e.userMessage.imagesList), e.seq in d.typedLocally, eventTime(e), messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), e.userMessage.imagesList, e.seq)
                     Event.KindCase.AGENT_MESSAGE -> e.agentMessage.text.takeIf { it.isNotBlank() }?.let { ChatItem.Agent(key, it) }
                     Event.KindCase.REASONING -> e.reasoning.text.takeIf { it.isNotBlank() }?.let { ChatItem.Thought(key, it) }
                     else -> null
