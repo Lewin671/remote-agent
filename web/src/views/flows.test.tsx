@@ -3072,3 +3072,21 @@ describe("client names", () => {
     expect(document.body.textContent).not.toContain("起个名字");
   });
 });
+
+describe("devices in settings", () => {
+  it("draws clients with an icon as computers are, and ends every computer's row with its status", async () => {
+    const r = demo();
+    await vi.waitFor(() => expect(r.devicesStatus).toBe("ready"));
+    const { Settings } = await import("./Settings");
+    mount(<Settings remote={r} go={() => undefined} />);
+    const rows = [...host.querySelectorAll<HTMLButtonElement>(".grp .row")].filter((x) => x.querySelector(".ico"));
+    const named = (name: string) => rows.find((x) => x.querySelector(".row-name")?.firstChild?.textContent === name)!;
+    // MacBook has a quota: on a second line, with 在线 still at the end.
+    const mac = named("MacBook");
+    expect(mac.querySelector(".row-name small")!.textContent).toContain("Codex");
+    expect(mac.querySelector(".row-name")!.textContent).not.toContain("在线");
+    expect(mac.querySelector(".v")!.textContent).toBe("在线");
+    expect(named("Chrome · macOS").querySelector(".ico svg")).toBeTruthy();
+    expect(named("Android · Pixel 9").querySelector(".ico svg")).toBeTruthy();
+  });
+});

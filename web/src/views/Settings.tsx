@@ -45,7 +45,7 @@ import {
   type DeviceInfo,
 } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import { Check, ChevronRight, Laptop, LoaderCircle } from "../icons";
+import { Check, ChevronRight, Globe, Laptop, LoaderCircle, Smartphone, Tablet } from "../icons";
 
 import { ConnCheck, connWord } from "./ConnCheck";
 
@@ -93,32 +93,21 @@ export function Settings({
               {m.online ? "在线" : ago(m.lastSeenMs) || "离线"}
             </>
           );
-          // The quota, when there is one, gets a line of its own under the
-          // name; otherwise the status sits at the row's end.
-          return quota ? (
+          // The status always ends the row; a quota, when there is one, is
+          // a second line under the name.
+          return (
             <button
               key={m.id}
-              className="row machine-summary"
+              className={"row" + (quota ? " machine-summary" : "")}
               onClick={() => go("m/" + m.id)}
             >
-              <span className="ico" style={{ background: "#5b8def" }}>
+              <span className="ico">
                 <Laptop />
               </span>
-              <span className="machine-info">
-                <span className="machine-name">
-                  {machineName(m)}
-                  <span className="machine-status">{status}</span>
-                </span>
-                <span className="machine-quota">{quota}</span>
+              <span className="row-name">
+                {machineName(m)}
+                {quota && <small>{quota}</small>}
               </span>
-              <ChevronRight className="machine-chevron" />
-            </button>
-          ) : (
-            <button key={m.id} className="row" onClick={() => go("m/" + m.id)}>
-              <span className="ico" style={{ background: "#5b8def" }}>
-                <Laptop />
-              </span>
-              {machineName(m)}
               <span className="v">
                 {status}
                 <ChevronRight />
@@ -133,7 +122,8 @@ export function Settings({
       <div className="glabel">客户端</div>
       <div className="grp">
         <button className="row" onClick={() => go("c/" + me)}>
-          {clientName(remote.devices.get(me), remote.devices, me)}
+          <ClientIcon d={remote.devices.get(me)} />
+          <span className="row-name">{clientName(remote.devices.get(me), remote.devices, me)}</span>
           <span className="v">
             当前
             <ChevronRight />
@@ -141,7 +131,8 @@ export function Settings({
         </button>
         {others.slice(0, 3).map((d) => (
           <button key={d.id} className="row" onClick={() => go("c/" + d.id)}>
-            {clientName(d, remote.devices)}
+            <ClientIcon d={d} />
+            <span className="row-name">{clientName(d, remote.devices)}</span>
             <span className="v">
               已配对
               <ChevronRight />
@@ -527,6 +518,18 @@ export function DevicesPage({
         </div>
       </div>
     </div>
+  );
+}
+
+/** What a client is, drawn as a computer's row draws its laptop: a
+ * browser, a tablet or a phone. */
+function ClientIcon({ d }: { d?: Pick<DeviceInfo, "meta"> }) {
+  const meta = d?.meta;
+  const Icon = meta?.platform === "web" ? Globe : /iPad/.test(meta?.description ?? "") ? Tablet : Smartphone;
+  return (
+    <span className="ico">
+      <Icon />
+    </span>
   );
 }
 

@@ -564,7 +564,11 @@ pre.cmd { background: var(--soft); color: var(--fg2); border-radius: var(--r-xs)
 .row { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 44px; font-size: 15px; width: 100%; }
 .row + .row { border-top: 1px solid var(--line); }
 .row .v { margin-left: auto; color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; overflow: hidden; }
-.row .ico { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; flex: none; }
+.row .ico { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; background: #5b8def; font-size: 16px; flex: none; }
+/* A device's name, and a second line under it (a computer's quota). */
+.row .row-name { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: left; overflow-wrap: anywhere; }
+.row .row-name small { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.row .row-name + .v { flex: none; }
 .row.col { display: block; padding: 10px 14px; }
 .row > .nw { white-space: nowrap; flex: none; }
 .row.col .line { display: flex; }
@@ -829,11 +833,6 @@ input.field { margin: 0; }
 .list .mi.dis b, .list .mi:disabled b { color: var(--muted); }
 
 .row.machine-summary { padding-top: 10px; padding-bottom: 10px; }
-.machine-summary .machine-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.machine-summary .machine-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; overflow-wrap: anywhere; }
-.machine-summary .machine-status { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
-.machine-summary .machine-quota { font-size: 13px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
-.machine-summary .machine-chevron { flex-shrink: 0; color: var(--faint); }
 .row.quota.warn .v { color: var(--orange-ink); } .row.quota.warn .bar i { background: var(--orange); }
 .row.quota.full .v { color: var(--red); } .row.quota.full .bar i { background: var(--red-bg); }
 .row.quota.stale .bar i { background: var(--gray); }

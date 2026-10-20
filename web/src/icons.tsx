@@ -16,6 +16,7 @@ import {
   ChevronUp as LChevronUp,
   CornerDownLeft as LCornerDownLeft,
   Ellipsis as LEllipsis,
+  Globe as LGlobe,
   Keyboard as LKeyboard,
   Laptop as LLaptop,
   CloudOff as LCloudOff,
@@ -26,8 +27,10 @@ import {
   Plus as LPlus,
   Search as LSearch,
   Settings as LSettings,
+  Smartphone as LSmartphone,
   Square as LSquare,
   SquarePen as LSquarePen,
+  Tablet as LTablet,
   X as LX,
   type LucideIcon,
   type LucideProps,
@@ -86,6 +89,10 @@ export const MessageSquare = icon(LMessageSquare);
 export const Settings = icon(LSettings);
 /** A computer. */
 export const Laptop = icon(LLaptop);
+/** A client: a browser, a phone, a tablet. */
+export const Globe = icon(LGlobe);
+export const Smartphone = icon(LSmartphone);
+export const Tablet = icon(LTablet);
 /** The terminal's remaining arrow keys and its return key. */
 export const ArrowLeft = icon(LArrowLeft);
 export const ArrowRight = icon(LArrowRight);
