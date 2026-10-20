@@ -1,3 +1,4 @@
+import { authorityName } from "./DeviceManagement";
 // The home page: a timeline of sessions within a scope (one project, or
 // all of them), its wide-screen form as the sidebar, and the list rows
 // they share (client-v27).
@@ -748,7 +749,7 @@ function Empty({
         </div>
       ) : (
         <div className="ed">
-          还没有电脑。在管理端手机上打开「设置 › 添加设备」，把电脑加进来。
+          {remote.isAuthority ? <>电脑运行 CLI，客户端操作会话。<button className="btn pri" onClick={() => { location.hash = "/settings/add-device"; }}>添加设备</button></> : <>还没有电脑。在管理端（{authorityName(remote)}）上打开「设置 › 添加设备」，把电脑加进来。</>}
         </div>
       )}
     </div>
@@ -835,6 +836,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
       </div>
       <UpdateBanner />
       <ClockWarning remote={remote} />
+
       <ListError remote={remote} />
       {!remote.listed && none ? (
         !remote.listError && (
@@ -901,6 +903,7 @@ export function Sidebar({
       <div className="scroll">
         <UpdateBanner />
         <ClockWarning remote={remote} />
+
         <ListError remote={remote} />
         {!remote.listed && !remote.listError && remote.sessions.size === 0 && (
           <div className="pad">

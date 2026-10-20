@@ -1,6 +1,8 @@
 // Development only: a Remote with made-up machines and sessions in every
 // state docs/design/client-v8.html draws, and no server. Opened with ?demo
 // on the dev server; builds leave this file out. Options:
+//   ?demo&role=authority|member|machine&recovery=pending&pair=compare  management screens
+//   ?demo&security=fail | archive=1 | public=missing  failure and archive screens
 //   ?demo&conn=connecting|reconnecting|nonetwork|noserver|fail|removed   the server link's states
 //   ?demo&term=history                       paged terminal history
 //   ?demo&term=closed                        terminals that drop at once
@@ -1414,6 +1416,7 @@ export class DemoRemote extends Remote {
       return Object.assign(p, { name: (f as File).name ?? "" });
     };
     r.seed();
+    r.seedAuthority();
     if (q.has("tables"))
       r.evs.set("s-run", [
         create(EventSchema, {
@@ -1478,6 +1481,46 @@ export class DemoRemote extends Remote {
   }
 
   private opts = new URLSearchParams();
+
+  private removedDemoDevices = new Set<string>();
+  private seedAuthority() {
+    this.authorityDeviceId = this.opts.get("role") === "authority" ? ME : ANDROID;
+    this.security.recoveryPending = this.opts.get("recovery") === "pending";
+    this.security.recoveryReadyMs = BigInt(Date.now() + 47 * 60 * min);
+    this.security.recoveryStatusStale = false;
+    const hash = new Uint8Array(32);
+    const record = { stateHash: hash, lease: { head: hash, notAfter: BigInt(Date.now() + 48 * 60 * min) } };
+    this.security.verifiedRecord = async () => record as Awaited<ReturnType<typeof this.security.verifiedRecord>>;
+    let pending: import("../security-operation").SecurityOperation | undefined;
+    const work = async () => { await this.pause(200); if (this.opts.get("security") === "fail") throw new Error("没能保存安全操作，请重试"); };
+    this.authority.pending = async () => pending;
+    this.authority.hasAccountPublicProfile = async () => this.opts.get("public") !== "missing";
+    this.authority.needsRecoveryCodeRotation = async () => this.opts.has("rotation");
+    this.authority.renewLeaseNow = async () => { await work(); record.lease.notAfter = BigInt(Date.now() + 72 * 60 * min); };
+    const prepare = async (kind: "offer" | "state") => {
+      await work(); pending = { id: "demo", revision: 0, kind, phase: "PREPARED", codeSaved: false, parent: hash, server: this.account.server, memberID: ME, local: { action: "recovery" } };
+      return { code: "RA3 DEMO-ONLY-OFFLINE-BACKUP EXAMPLE-NOT-A-RECOVERY-CODE", storagePersisted: true };
+    };
+    this.authority.prepareRecovery = () => prepare("state");
+    this.authority.prepareHandoffCode = () => prepare("offer");
+    this.authority.publishRecovery = async () => { await work(); pending = undefined; this.security.recoveryPending = false; this.changed(); };
+    this.authority.offerHandoff = async () => { await work(); pending = undefined; this.metas.get(ME)!.meta.handoffRecoveryEd = new Uint8Array(32); await this.loadDevices(); };
+    this.authority.discardUnpublishedCode = async () => { await work(); pending = undefined; };
+    this.authority.resumeSecurityOperation = async () => { await work(); };
+    this.handoffCandidates = async () => [{ id: ANDROID, recoveryEd: hash }];
+    this.handoffAuthority = async (id) => { await work(); this.authorityDeviceId = id; this.removedDemoDevices.add(ME); await this.loadDevices(); };
+    this.removeDevice = async id => { await work(); this.removedDemoDevices.add(id); await this.loadDevices(); };
+    this.deleteMachineRecords = async id => { await work(); this.machines.delete(id); this.changed(); };
+    Object.defineProperty(this, "startPairing", { value: async (_web: string, _replaces: string) => {
+      await work(); let compared = false;
+      return { code: "12345678", expires: BigInt(Date.now() + 5 * min), url: "https://app.example.com/#/pair?code=12345678",
+        joined: async () => this.opts.get("pair") === "compare" ? { emoji: ["🌲", "🍋", "🚲", "🐳"], kind: DeviceKind.CLIENT } : undefined,
+        approve: async (confirmed: boolean) => { if (!confirmed) throw new Error("请先确认图案"); await work(); compared = true; },
+        finishPairingOperation: async () => { if (compared) await work(); }, cancel: async () => {},
+      } as unknown as import("../authority-pairing").AuthorityPairing;
+    } });
+    if (this.opts.has("archive")) this.removedDemoDevices.add("mini");
+  }
 
   private seed() {
     const empty = this.opts.get("empty");
@@ -2419,6 +2462,8 @@ export class DemoRemote extends Remote {
             : BigInt(Date.now() - (id === ME ? 0 : 86_400_000)),
       });
     }
+    for (const id of this.removedDemoDevices) this.devices.delete(id);
+    if (this.opts.get("role") === "machine" && this.devices.get(ME)) this.devices.get(ME)!.kind = DeviceKind.MACHINE;
     this.devicesStatus = "ready";
     this.changed();
   }

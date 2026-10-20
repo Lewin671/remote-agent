@@ -3052,8 +3052,8 @@ it("puts a daemon-rejected image message back with its text, original option and
   expect(uploads).toBe(3);
 });
 
-describe("adding devices, which only the Android phone does", () => {
-  const hint = "要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。";
+describe("adding devices on the current authority", () => {
+  const hint = "要添加电脑或客户端，在管理端（Android · Pixel 9）上打开「设置 › 添加设备」。";
 
   it("says where to add a device in settings, with no 添加设备 to tap", async () => {
     const r = demo();
@@ -3077,7 +3077,7 @@ describe("adding devices, which only the Android phone does", () => {
     r.start();
     const go = vi.fn();
     mount(<Home remote={r} go={go} />);
-    expect(host.textContent).toContain("还没有电脑。在管理端手机上打开「设置 › 添加设备」，把电脑加进来。");
+    expect(host.textContent).toContain("还没有电脑。在管理端（Android · Pixel 9）上打开「设置 › 添加设备」，把电脑加进来。");
     expect(button(/添加设备/)).toBeUndefined();
     expect(go).not.toHaveBeenCalledWith("add");
   });

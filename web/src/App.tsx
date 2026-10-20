@@ -25,6 +25,7 @@ import {
   RemovedScreen,
   Settings,
 } from "./views/Settings";
+import { PairCodePage } from "./views/DeviceManagement";
 import { MessageSquare, Settings as SettingsIcon } from "./icons";
 
 // Joining and pairing bring the QR code and curve code; fetched when used.
@@ -233,6 +234,7 @@ function Main({ remote }: { remote: Remote }) {
       <div className="center muted">账户安全管理界面准备中</div>
     </div>
   );
+  else if (kind === "settings" && arg.startsWith("add-device")) page = <PairCodePage remote={remote} replaces={arg.split("/")[1]} onBack={back} />;
   else if (kind === "settings") page = <Settings remote={remote} go={go} />;
   else if (kind === "devices")
     page = <DevicesPage remote={remote} go={go} onBack={back} />;

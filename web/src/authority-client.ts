@@ -46,6 +46,9 @@ export class AuthorityClient {
   ) { this.lifecycle = lifecycle; }
   async isAuthority() { return isAuthority(await this.security.verifiedRecord()); }
   pending() { return readSecurityOperation(); }
+  async hasAccountPublicProfile() {
+    return !!await loadAccountPublicProfile(this.account.server, (await this.security.verifiedRecord()).pin);
+  }
   async needsRecoveryCodeRotation() {
     return needsRecoveryCodeRotation(this.account.server, (await this.security.verifiedRecord()).pin);
   }

@@ -21,6 +21,7 @@ import {
 import { machineQuotaViews, quotaSummary } from "../quota";
 import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
+import { DeviceActions, ManagementEntry } from "./DeviceManagement";
 import { forgetAccount } from "../storage";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { applyUpdate, checkUpdate, useUpdate } from "../update";
@@ -76,6 +77,7 @@ export function Settings({
         <h3>设置</h3>
       </div>
       {push.top}
+
       <ClockBanner remote={remote} />
       <div className="glabel with-link">
         电脑
@@ -117,8 +119,7 @@ export function Settings({
         })}
         {machines.length === 0 && <div className="row help">还没有电脑。</div>}
       </div>
-      {/* Only the Android phone adds devices (protocol 10): this says where. */}
-      <div className="manage-hint">要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。</div>
+      <ManagementEntry remote={remote} go={go} />
       <div className="glabel">客户端</div>
       <div className="grp">
         <button className="row" onClick={() => go("c/" + me)}>
@@ -146,6 +147,7 @@ export function Settings({
           </button>
         )}
       </div>
+
       {push.group}
       <div className="glabel">外观</div>
       <div className="grp">
@@ -473,6 +475,7 @@ export function DevicesPage({
             <div className="row help">还没有电脑。</div>
           )}
         </div>
+        <ManagementEntry remote={remote} go={go} />
         <div className="glabel">客户端 · 操作会话</div>
         <div className="grp">
           {remote.devicesStatus === "error" && (
@@ -503,7 +506,7 @@ export function DevicesPage({
                   ) : (
                     <>
                       {d.id === remote.authorityDeviceId
-                        ? "管理端手机"
+                        ? "管理端"
                         : clientUsed(d)}
                       <ChevronRight />
                     </>
@@ -514,7 +517,7 @@ export function DevicesPage({
           )}
         </div>
         <div className="manage-hint">
-          右边是上次使用的时间。这里只能改本机名称。要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。
+          右边是上次使用的时间。名称只能在那台设备上修改。
         </div>
       </div>
     </div>
@@ -575,7 +578,7 @@ export function ClientPage({
           current
             ? "当前客户端"
             : id === remote.authorityDeviceId
-              ? "管理端手机"
+              ? "管理端"
               : "已配对的客户端"
         }
       />
@@ -628,8 +631,8 @@ export function ClientPage({
         </div>
         <div className="manage-hint">
           {current
-            ? "修改名称同步到其他客户端。添加和删除设备请在管理端手机上操作。"
-            : "名称和通知开关要在那台设备上设置。删除设备请在管理端手机上操作。"}
+            ? "修改名称同步到其他客户端。"
+            : "名称和通知开关要在那台设备上设置。"}
         </div>
         {error && (
           <div className="gbanner">
@@ -642,7 +645,7 @@ export function ClientPage({
               退出并删除本机密钥
             </button>
           ) : (
-            <div className="row help">删除设备请在管理端手机上操作。</div>
+            <DeviceActions remote={remote} id={id} onRemoved={onBack} />
           )}
         </div>
       </div>
@@ -1200,7 +1203,7 @@ export function MachinePage({
           </>
         )}
         <div className="grp">
-          <div className="row help">删除电脑请在管理端手机上操作。</div>
+          <DeviceActions remote={remote} id={id} machine go={go} onRemoved={onBack} />
         </div>
       </div>
       {sheet}
