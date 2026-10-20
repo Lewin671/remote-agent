@@ -363,7 +363,7 @@ public func errorText(_ e: Error) -> String {
     if e is RecoveryHistoryUnavailable {return "历史密钥不可用：恢复前的记录无法解密"}
     if let f=e as? DeviceSecurity.Failure {
         switch f {
-        case .lease:return "管理端租约已过期，无法保存更改、控制会话或上传新内容；打开管理端 App 续期后重试。历史仍可查看"
+        case .lease:return "管理端租约已过期，无法保存更改、控制会话或上传新内容；在「设置 › 账户安全」查看管理端并续期后重试。历史仍可查看"
         case .unavailable:return "等待所属电脑更新当前状态：这台设备没有当时的内容密钥"
         case .invalid,.untrusted:return "密文无效：签名、密钥或内容校验失败"
         case .conflict:return "成员链冲突，安全操作已停止；请核对设备后明确重新加入"

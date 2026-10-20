@@ -103,7 +103,7 @@ private func poll(
         } catch let e as ConnectError where e.code == .notFound {
             throw PairError("配对已过期或被取消")
         }
-        if res.state == .canceled { throw PairError("管理端手机取消了配对") }
+        if res.state == .canceled { throw PairError("管理端取消了配对") }
         if res.state.rawValue >= want.rawValue { return res }
         try await sleep(1000)
     }
@@ -195,7 +195,7 @@ public func joinByPairing(
     guard
         try DeviceSecurity.pairDomainCommit(ephemeral: st.initiatorPublic, trust: st.trust)
             == peek.commit
-    else { throw PairError("管理端手机的信任信息与承诺不匹配") }
+    else { throw PairError("管理端的信任信息与承诺不匹配") }
     let tr = Pairing.domainTranscript(
         pairingId: id, initiatorPublic: st.initiatorPublic, joinerPublic: key.publicKey,
         devicePublic: devicePublic, hpkePublic: xPublic, joinerKind: PBDeviceKind.client.rawValue,
@@ -235,13 +235,13 @@ public func joinByPairing(
     var proofs: [DeviceSecurity.RecoveryStatement?] = []
     guard !payload.securityStates.isEmpty else { throw PairError("配对载荷的状态链不完整") }
     guard payload.securityStates.count <= DeviceSecurity.maxPairStates else {
-        throw PairError("安全状态链太长，无法加入账户；请在管理端手机上重建账户")
+        throw PairError("安全状态链太长，无法加入账户；请在管理端重建账户")
     }
     var chainBytes = 0
     for value in payload.securityStates {
         chainBytes += value.state.count + value.recovery.count
         guard chainBytes <= DeviceSecurity.maxPairBytes else {
-            throw PairError("安全状态链太长，无法加入账户；请在管理端手机上重建账户")
+            throw PairError("安全状态链太长，无法加入账户；请在管理端重建账户")
         }
         guard value.state.count <= DeviceSecurity.maxState,
             value.recovery.count <= DeviceSecurity.maxState

@@ -297,7 +297,7 @@ final class JoinModel {
         if attempt.registering {
             // Whatever the page says now, this is what is known of the device.
             if current { self.attempt = nil }
-            notice = "不确定\(thisDeviceWord)有没有加入：\(errorText(error))。可以在管理端手机的设置里看看客户端列表"
+            notice = "不确定\(thisDeviceWord)有没有加入：\(errorText(error))。可以在管理端的设置里看看客户端列表"
             noticeIsError = true
             if current { step = .form }
             return
@@ -326,7 +326,7 @@ final class JoinModel {
         }
         self.attempt = nil
         typeCode("")
-        notice = "已取消本次加入。旧请求可能还占着配对码：请在管理端手机上拒绝它，再生成新的配对码"
+        notice = "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码"
         noticeIsError = false
         step = .form
     }
@@ -336,7 +336,7 @@ final class JoinModel {
     func joinWithSecret() {
         secret = ""
         step = .form
-        notice = "加入已有账户需要在管理端手机上批准，请使用配对码。"
+        notice = "加入已有账户需要在管理端批准，请使用配对码。"
         noticeIsError = true
     }
 
