@@ -562,10 +562,17 @@ struct ChatPane: View {
                     let hide = { typing = false }
                     let store = context.sessionStore
                     let key = dockFoldKey(session: session.id, first)
-                    // Open until the user folds it; folded, it stays so (`SessionStore.dockFolded`).
+                    // Open until the user folds it, or folded when it came with a draft in the box (`SessionStore.dockOpen`).
+                    let sid = session.id
+                    let remote = context.remote
                     let open = Binding(
-                        get: { !store.dockFolded.contains(key) && !SessionDebug.shows("fold") },
-                        set: { store.setDockFolded(key, !$0) })
+                        get: {
+                            store.dockOpen(key) {
+                                !store.draft(sid).jvmTrim().isEmpty
+                                    || !ImageCenter.of(remote).draft(ImageCenter.sessionKey(sid)).images.isEmpty
+                            } && !SessionDebug.shows("fold")
+                        },
+                        set: { store.setDockOpen(key, $0) })
                     Group {
                         switch first {
                         case .approval(let a):

@@ -470,4 +470,18 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         let note = outgoingNote(state: o.state, error: o.error, input: nil, failure: nil, agent: .codex, hasImages: true)
         #expect(note.actions == [.retry, .remove])
     }
+
+    @Test func aDockedItemThatComesWithADraftStartsFolded() {
+        let store = SessionStore()
+        // Asked once, when the item is first shown: typing later does not fold an open one.
+        #expect(store.dockOpen("s|a1", drafting: { false }))
+        #expect(store.dockOpen("s|a1", drafting: { true }))
+        // A new item while a draft is in the box comes folded, and opens when tapped.
+        #expect(!store.dockOpen("s|a2", drafting: { true }))
+        #expect(!store.dockOpen("s|a2", drafting: { false }))
+        store.setDockOpen("s|a2", true)
+        #expect(store.dockOpen("s|a2", drafting: { true }))
+        store.setDockOpen("s|a1", false)
+        #expect(!store.dockOpen("s|a1", drafting: { false }))
+    }
 }

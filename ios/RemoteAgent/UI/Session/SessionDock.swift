@@ -38,8 +38,8 @@ extension EnvironmentValues {
 /// (`note`, and how many more wait), and the body under it scrolls within
 /// about 60% of the chat pane, at least 240, while the actions stay put.
 /// Whether it is open is the caller's, kept by the item's ID
-/// (`SessionStore.dockFolded`), so a folded item stays folded and the next
-/// one opens.
+/// (`SessionStore.dockOpen`), so a folded item stays folded and the next
+/// one opens, unless it comes while the message box holds a draft.
 struct PendingDock<Content: View, Actions: View>: View {
     private let item: DockItem
     private let agent: String

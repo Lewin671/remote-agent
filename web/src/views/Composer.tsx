@@ -37,7 +37,6 @@ export function Composer({
   session,
   d,
   wide,
-  onFocus,
   onSend,
   onInterrupt,
   draft,
@@ -53,7 +52,6 @@ export function Composer({
   session: SessionView;
   d: Derived;
   wide: boolean;
-  onFocus: (typing: boolean) => void;
   onSend: (text: string, mode: SendMode) => void;
   onInterrupt: () => void;
   draft: string;
@@ -111,8 +109,6 @@ export function Composer({
         rows={1}
         placeholder={placeholder}
         onChange={(e) => setText(e.target.value)}
-        onFocus={() => onFocus(true)}
-        onBlur={() => onFocus(false)}
         onKeyDown={(e) => {
           // Enter is a new line; ⌘/Ctrl+Enter sends, but never while an
           // input method is still composing.

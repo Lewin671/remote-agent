@@ -32,6 +32,17 @@ class DockTest {
         assertTrue(DockFolds.isOpen("s1", approval.id))
     }
 
+    @Test fun anItemThatComesWithADraftStartsFolded() {
+        // Asked once, when the item is first shown: typing later does not fold an open one.
+        assertTrue(DockFolds.isOpen("s1", approval.id) { false })
+        assertTrue(DockFolds.isOpen("s1", approval.id) { true })
+        // A new item while a draft is in the box comes folded, and opens when tapped.
+        assertFalse(DockFolds.isOpen("s1", "a:A2") { true })
+        assertFalse(DockFolds.isOpen("s1", "a:A2") { false })
+        DockFolds.set("s1", "a:A2", true)
+        assertTrue(DockFolds.isOpen("s1", "a:A2") { true })
+    }
+
     @Test fun aNewPlanIsANewItem() {
         assertNotEquals(DockItem.Plan("1. a").id, DockItem.Plan("1. b").id)
         assertEquals(DockItem.Plan("1. a").id, DockItem.Plan("1. a").id)

@@ -126,7 +126,7 @@ it("gives an open dock about 60% of the chat column, 240 at the least, within it
   expect(dockContentMax(Infinity, 0)).toBeUndefined();
 });
 
-function AskDock({ r, collapsed }: { r: DemoRemote; collapsed: boolean }) {
+function AskDock({ r, room, drafting = false }: { r: DemoRemote; room?: number; drafting?: boolean }) {
   const s = r.sessions.get("s-ask")!;
   const d = derive(r.events("s-ask"));
   return (
@@ -135,7 +135,8 @@ function AskDock({ r, collapsed }: { r: DemoRemote; collapsed: boolean }) {
       sid="s-ask"
       items={dockItems(s, d, r.machines.get(s.machineId))}
       agent={Agent.CODEX}
-      collapsed={collapsed}
+      drafting={drafting}
+      room={room}
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -144,15 +145,33 @@ function AskDock({ r, collapsed }: { r: DemoRemote; collapsed: boolean }) {
   );
 }
 
+it("starts an item as one line only when it comes while a draft is in the input", async () => {
+  // Focus alone (a computer keeps it after sending) leaves a new item open.
+  const r = demo();
+  mount(<AskDock r={r} />);
+  expect(host.querySelector(".pending.open")).toBeTruthy();
+  // Typing afterwards does not fold the open one.
+  act(() => root!.render(<AskDock r={r} drafting />));
+  expect(host.querySelector(".pending.open")).toBeTruthy();
+  // With a draft in the input a new item comes as one line, and opens on a tap.
+  const r2 = demo();
+  act(() => root!.render(<AskDock r={r2} drafting />));
+  expect(host.querySelector(".pending:not(.open)")).toBeTruthy();
+  await click(host.querySelector<HTMLButtonElement>(".pending-sum")!);
+  expect(host.querySelector(".pending.open")).toBeTruthy();
+  act(() => root!.render(<AskDock r={r2} drafting />));
+  expect(host.querySelector(".pending.open")).toBeTruthy();
+});
+
 it("keeps a question's progress across collapsing the dock", async () => {
   const r = demo();
-  mount(<AskDock r={r} collapsed={false} />);
+  mount(<AskDock r={r} />);
   await click(button(/^只升小版本/));
   await vi.waitFor(() => expect(host.textContent).toContain("第 2 题，共 2 题"), { timeout: 3000 });
-  // The keyboard comes up, then goes away again.
-  act(() => root!.render(<AskDock r={r} collapsed />));
+  // The keyboard comes up and leaves no room, then goes away again.
+  act(() => root!.render(<AskDock r={r} room={100} />));
   expect(host.querySelector(".pending:not(.open)")).toBeTruthy();
-  act(() => root!.render(<AskDock r={r} collapsed={false} />));
+  act(() => root!.render(<AskDock r={r} />));
   expect(host.textContent).toContain("第 2 题，共 2 题");
   expect(host.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
 });
@@ -166,7 +185,7 @@ it("moves to the next question when a retried answer goes through", async () => 
     if (cmd?.case === "answerQuestion" && calls++ === 0) throw new CommandError("unknown", "连接超时");
     return real(sid, cmd, slot);
   };
-  mount(<AskDock r={r} collapsed={false} />);
+  mount(<AskDock r={r} />);
   await click(button(/^只升小版本/));
   await vi.waitFor(() => expect(button("重试")).toBeTruthy(), { timeout: 3000 });
   await click(button("重试"));
@@ -183,7 +202,7 @@ it("keeps the dock's buttons out of its scrolling content", () => {
       sid="s-appr"
       items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
       agent={Agent.CODEX}
-      collapsed={false}
+      drafting={false}
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -260,7 +279,7 @@ it("answers a multi-select question with every ticked option", async () => {
       sid="s-claude"
       items={dockItems(s, derive(r.events("s-claude")), r.machines.get(s.machineId))}
       agent={Agent.CLAUDE}
-      collapsed={false}
+      drafting={false}
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -342,22 +361,23 @@ it("shows an approval's whole command before its description in the dock", () =>
   const r = createDemo(new URLSearchParams("longcmd=1"));
   r.start();
   const s = r.sessions.get("s-appr")!;
-  const dock = (collapsed: boolean) => (
+  const dock = (room: number) => (
     <Dock
       remote={r}
       sid="s-appr"
       items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
       agent={Agent.CODEX}
-      collapsed={collapsed}
+      drafting={false}
+      room={room}
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
       onTerminal={() => undefined}
     />
   );
-  // The forty-line command mounts while the user is typing.
-  mount(dock(true));
-  act(() => root!.render(dock(false)));
+  // The forty-line command mounts while the keyboard leaves no room.
+  mount(dock(100));
+  act(() => root!.render(dock(Infinity)));
   const scroll = host.querySelector(".pending-scroll")!;
   const cmd = scroll.querySelector("pre.cmd")!;
   expect(cmd.textContent!.split("\n")).toHaveLength(40);
@@ -404,7 +424,7 @@ function ClaudeAsk({ r }: { r: DemoRemote }) {
       sid="s-claude"
       items={dockItems(s, derive(r.events("s-claude")), r.machines.get(s.machineId))}
       agent={Agent.CLAUDE}
-      collapsed={false}
+      drafting={false}
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -470,7 +490,7 @@ it("shows a dock with no room to open as one line that opens its page", async ()
       sid="s-appr"
       items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
       agent={Agent.CODEX}
-      collapsed={false}
+      drafting={false}
       room={room}
       onExpand={() => opened.push("expand")}
       onDetail={(id) => opened.push("detail:" + id)}
@@ -494,10 +514,10 @@ it("keeps a question's progress between its page and the dock", async () => {
   mount(<QuestionPage remote={r} sid="s-ask" q={q} agent={Agent.CODEX} title="升级依赖" onBack={() => undefined} onTerminal={() => undefined} />);
   await click(button(/^只升小版本/));
   await vi.waitFor(() => expect(host.textContent).toContain("第 2 题，共 2 题"), { timeout: 3000 });
-  act(() => root!.render(<AskDock r={r} collapsed={false} />));
+  act(() => root!.render(<AskDock r={r} />));
   expect(host.textContent).toContain("第 2 题，共 2 题");
   // The one-line form names the question now being asked.
-  act(() => root!.render(<AskDock r={r} collapsed />));
+  act(() => root!.render(<AskDock r={r} room={100} />));
   expect(host.querySelector(".pending:not(.open)")!.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
 });
 
@@ -1155,7 +1175,7 @@ it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit"
       sid="s-popup"
       items={[{ kind: "popup", id: "popup", title: "trust folder" }]}
       agent={agent}
-      collapsed={false}
+      drafting={false}
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -2190,7 +2210,7 @@ describe("the client-v7 conversation", () => {
     const items = dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId));
     act(() =>
       root!.render(
-        <Dock remote={r} sid="s-appr" items={items.slice(1)} agent={Agent.CODEX} collapsed={false} onExpand={() => undefined} onDetail={() => undefined} onPlan={() => undefined} onTerminal={() => undefined} />,
+        <Dock remote={r} sid="s-appr" items={items.slice(1)} agent={Agent.CODEX} drafting={false} onExpand={() => undefined} onDetail={() => undefined} onPlan={() => undefined} onTerminal={() => undefined} />,
       ),
     );
     expect(dock().classList.contains("open")).toBe(true);

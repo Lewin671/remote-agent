@@ -216,7 +216,6 @@ export function SessionPage({
   const [page, setPage] = useState<
     "" | "plan" | "question" | { approval: string }
   >("");
-  const [typing, setTyping] = useState(false);
   const [toast, setToast] = useState("");
   const setToastRef = useRef(setToast);
   const composer = useRef<HTMLTextAreaElement>(null);
@@ -517,13 +516,10 @@ export function SessionPage({
           sid={sid}
           items={items}
           agent={agent}
-          collapsed={typing}
+          drafting={!!(remote.drafts.get(sid) ?? "").trim() || tray.items.length > 0}
           room={room}
           height={colHeight}
-          onExpand={() => {
-            composer.current?.blur();
-            setTyping(false);
-          }}
+          onExpand={() => composer.current?.blur()}
           onDetail={(id) => setPage({ approval: id })}
           onPlan={() => setPage("plan")}
           onQuestion={() => setPage("question")}
@@ -549,7 +545,6 @@ export function SessionPage({
             session={session}
             d={d}
             wide={wide}
-            onFocus={(v) => setTyping(v)}
             onSend={(text, mode) => {
               remote.send(
                 sid,

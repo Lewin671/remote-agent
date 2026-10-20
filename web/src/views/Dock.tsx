@@ -543,14 +543,16 @@ function dockKey(sid: string, item: DockItem): string {
  * keeps that item to one line (remembered by its ID while the page is
  * loaded); the next item comes open again. It opens up to room pixels (what
  * the input and a little chat leave); with no room for that it stays one
- * line that opens as a page. It stays one line while the user types,
- * unless a reason is being written. */
+ * line that opens as a page. An item that comes while the input holds a
+ * draft (drafting: text or images not sent) starts as one line, so as not
+ * to push the message aside; the input merely having focus does not count,
+ * as on a computer it keeps it after every message. */
 export function Dock({
   remote,
   sid,
   items,
   agent,
-  collapsed,
+  drafting,
   room = Infinity,
   height = 0,
   onExpand,
@@ -563,7 +565,7 @@ export function Dock({
   sid: string;
   items: DockItem[];
   agent: Agent;
-  collapsed: boolean;
+  drafting: boolean;
   room?: number;
   // The chat column's height, which the open content takes a share of.
   height?: number;
@@ -578,9 +580,13 @@ export function Dock({
   const item = items[0];
   if (!item) return null;
   const key = dockKey(sid, item);
+  if (!remote.dockSeen.has(key)) {
+    remote.dockSeen.add(key);
+    if (drafting) remote.dockClosed.add(key);
+  }
   const open = !remote.dockClosed.has(key);
   // Typing a reason keeps it open whatever the room or the keyboard.
-  const shown = open && (reasoning || (!collapsed && room >= DOCK_MIN_ROOM));
+  const shown = open && (reasoning || room >= DOCK_MIN_ROOM);
   const page = () => {
     if (item.kind === "approval") onDetail(item.approval.approvalId);
     else if (item.kind === "plan") onPlan();

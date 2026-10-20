@@ -122,20 +122,36 @@ fun dockHeadLine(
 }
 
 /**
- * Which waiting items the user folded, by session and item, for as long as the app runs: an item
- * opens by itself, stays folded once folded, and the next item opens again.
+ * Which waiting items the user folded or opened, by session and item, for as long as the app runs:
+ * an item opens by itself, stays folded once folded, and the next item opens again. One that comes
+ * while the message box holds a draft (text or images not sent) starts folded, so as not to push the
+ * message aside; the box merely having focus does not count. [drafting] is asked once, when the
+ * item is first shown.
  */
 object DockFolds {
-    private val folded = mutableStateMapOf<String, Boolean>()
+    private val chosen = mutableStateMapOf<String, Boolean>()
+    // Whether an item came while a draft was in the box, decided when it was first shown.
+    private val cameWhileDrafting = HashMap<String, Boolean>()
 
-    fun isOpen(sid: String, itemId: String): Boolean = folded["$sid/$itemId"] != true
-
-    fun set(sid: String, itemId: String, open: Boolean) {
-        if (open) folded.remove("$sid/$itemId") else folded["$sid/$itemId"] = true
+    fun isOpen(sid: String, itemId: String, drafting: () -> Boolean = { false }): Boolean {
+        val key = "$sid/$itemId"
+        chosen[key]?.let { return it }
+        return !cameWhileDrafting.getOrPut(key, drafting)
     }
 
-    fun clear() = folded.clear()
+    fun set(sid: String, itemId: String, open: Boolean) {
+        chosen["$sid/$itemId"] = open
+    }
+
+    fun clear() {
+        chosen.clear()
+        cameWhileDrafting.clear()
+    }
 }
+
+/** Whether a session's message box holds a draft: text or images not sent. */
+fun hasDraft(sid: String): Boolean =
+    Outbox.draft(sid).value.isNotBlank() || ImageDrafts.forSession(sid).images.isNotEmpty()
 
 /**
  * How tall an open dock's body and actions may grow: about 60% of the session's visible content
@@ -144,9 +160,10 @@ object DockFolds {
 val LocalDockMax = androidx.compose.runtime.compositionLocalOf { 240.dp }
 
 /**
- * What waits for the user, docked above the message box. It opens by itself; open, its one head line
- * carries the type and the meta, and the body scrolls within [LocalDockMax] while the actions stay
- * put. Folded by the user, it stays one line until the next item. [more] others wait behind it.
+ * What waits for the user, docked above the message box. It opens by itself, unless it comes while
+ * the box holds a draft ([DockFolds]); open, its one head line carries the type and the meta, and
+ * the body scrolls within [LocalDockMax] while the actions stay put. Folded by the user, it stays
+ * one line until the next item. [more] others wait behind it.
  */
 @Composable
 fun PendingDock(
@@ -162,7 +179,7 @@ fun PendingDock(
     actions: @Composable ColumnScope.() -> Unit,
 ) {
     val p = pal
-    val open = DockFolds.isOpen(sid, item.id)
+    val open = DockFolds.isOpen(sid, item.id) { hasDraft(sid) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val (label, rest) = dockHeadLine(item, agent, open, more, meta, left, openLabel)

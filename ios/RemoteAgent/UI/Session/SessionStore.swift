@@ -410,12 +410,27 @@ final class SessionStore {
 
     // MARK: The dock
 
-    /// The docked items the user folded, by `dockFoldKey`: one stays folded wherever its session is
-    /// opened again, and an item not here opens (docs/design-system.md §6 「等待事项（停靠区）」).
-    private(set) var dockFolded: Set<String> = []
+    /// The docked items the user folded (false) or opened (true), by `dockFoldKey`: one stays so
+    /// wherever its session is opened again (docs/design-system.md §6 「等待事项（停靠区）」).
+    private var dockChosen: [String: Bool] = [:]
+    /// Whether an item came while the message box held a draft, decided when it was first shown.
+    /// Not observed: it is written while the dock is drawn, and never changes after.
+    @ObservationIgnored private var dockCameWhileDrafting: [String: Bool] = [:]
 
-    func setDockFolded(_ key: String, _ folded: Bool) {
-        if folded { dockFolded.insert(key) } else { dockFolded.remove(key) }
+    /// Whether a docked item is open: as the user left it, or else open, unless it came while the
+    /// message box held a draft (text or images not sent), so as not to push the message aside.
+    /// The box merely having focus does not count. `drafting` is asked once, when the item is first
+    /// shown.
+    func dockOpen(_ key: String, drafting: () -> Bool) -> Bool {
+        if let chosen = dockChosen[key] { return chosen }
+        if let came = dockCameWhileDrafting[key] { return !came }
+        let came = drafting()
+        dockCameWhileDrafting[key] = came
+        return !came
+    }
+
+    func setDockOpen(_ key: String, _ open: Bool) {
+        dockChosen[key] = open
     }
 
     // MARK: Questions
