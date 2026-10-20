@@ -213,7 +213,7 @@ struct RecoveryCodeScreen: View {
         }
         .navBar("恢复码")
         .task { draft = context.memory.value { RecoveryCodeDraft() } }
-        .confirm(isPresented: $confirm, title: "我已保存，发布换码？", text: "旧恢复码立即作废，正在等待的恢复申请会被否决。", confirm: "发布") {
+        .confirm(isPresented: $confirm, title: "发布新恢复码？", text: "旧恢复码立即作废，正在等待的恢复申请会被否决。", confirm: "发布") {
             action.run {
                 guard let prepared = draft.prepared, draft.saved else { throw UserError("请先离线保存恢复码。") }
                 let c = try await context.remote.authorityCoordinator()

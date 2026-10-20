@@ -62,7 +62,7 @@ struct SetupDiscardButton: View {
                 Button("确认退出", role: .destructive) { Task { await discard() } }
                 Button("取消", role: .cancel) {}
             } message: {
-                Text("安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。本机若是唯一管理端，建议先交接；没有恢复码备份将丢失管理权。")
+                Text("安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。")
             }
     }
 }
