@@ -48,6 +48,7 @@ struct PendingDock<Content: View, Actions: View>: View {
     private let note: DockNote
     @Binding private var open: Bool
     private let onOpen: () -> Void
+    private let extra: AnyView?
     private let content: Content
     private let actions: Actions
     @State private var bodyHeight: CGFloat = 0
@@ -58,9 +59,11 @@ struct PendingDock<Content: View, Actions: View>: View {
     @Environment(\.verticalSizeClass) private var vertical
     @Environment(\.dynamicTypeSize) private var typeSize
 
+    /// `extra`, a link of the open item's own (the plan's 展开全文), goes in its line before 收起.
     init(
         _ item: DockItem, agent: String, more: Int, title: String? = nil, note: DockNote = DockNote(), open: Binding<Bool>,
-        onOpen: @escaping () -> Void, @ViewBuilder content: () -> Content, @ViewBuilder actions: () -> Actions
+        onOpen: @escaping () -> Void, extra: AnyView? = nil, @ViewBuilder content: () -> Content,
+        @ViewBuilder actions: () -> Actions
     ) {
         self.item = item
         self.agent = agent
@@ -69,6 +72,7 @@ struct PendingDock<Content: View, Actions: View>: View {
         self.note = note
         _open = open
         self.onOpen = onOpen
+        self.extra = extra
         self.content = content()
         self.actions = actions()
     }
@@ -100,12 +104,12 @@ struct PendingDock<Content: View, Actions: View>: View {
     /// type, what follows it and the toggle do not fit side by side, as with large text on a narrow
     /// screen, the type takes a line of its own (two if it must) and the rest goes under it, the
     /// toggle at the right (design-system §6 「长内容、大量内容与大字号」).
-    private func head(_ summary: (label: String, brief: String)) -> some View {
+    private func head(_ summary: (label: String, brief: String), withToggle: Bool = true) -> some View {
         let dot = Dot(Theme.orange, size: 7)
         // Open, the summary is not there to say what the type leaves out: `title` says it whole.
         let label = Text(open ? title ?? summary.label : summary.label).type(T.sm, Theme.fg2)
         let rest = rest(summary.brief)
-        let toggle = ArrowText(open ? "收起" : "处理", style: T.sm, direction: open ? .up : .down).fixedSize()
+        let toggle = Group { if withToggle { toggleText } }
         return ViewThatFits(in: .horizontal) {
             HStack(spacing: 6) {
                 dot
@@ -143,20 +147,46 @@ struct PendingDock<Content: View, Actions: View>: View {
         return max(least, chatHeight * 0.6)
     }
 
+    private var toggleText: some View {
+        ArrowText(open ? "收起" : "处理", style: T.sm, direction: open ? .up : .down).fixedSize()
+    }
+
+    private func toggle() {
+        if !open { onOpen() }
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { open.toggle() }
+    }
+
     var body: some View {
         let summary = dockSummary(item, agent: agent)
         VStack(spacing: 0) {
-            Button {
-                if !open { onOpen() }
-                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { open.toggle() }
-            } label: {
-                head(summary)
-                    .frame(minHeight: Theme.minHit)
-                    .contentShape(Rectangle())
+            if open, let extra {
+                // A link of its own sits between the line and 收起, so the line is two buttons around it.
+                HStack(spacing: 12) {
+                    Button(action: toggle) {
+                        head(summary, withToggle: false)
+                            .frame(minHeight: Theme.minHit)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressStyle())
+                    .accessibilityElement(children: .combine)
+                    .accessibilityHint("收起")
+                    extra
+                    Button(action: toggle) {
+                        toggleText.frame(minHeight: Theme.minHit).contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressStyle())
+                    .accessibilityHidden(true)
+                }
+            } else {
+                Button(action: toggle) {
+                    head(summary)
+                        .frame(minHeight: Theme.minHit)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle())
+                .accessibilityElement(children: .combine)
+                .accessibilityHint(open ? "收起" : "处理")
             }
-            .buttonStyle(PressStyle())
-            .accessibilityElement(children: .combine)
-            .accessibilityHint(open ? "收起" : "处理")
             if open {
                 VStack(spacing: 0) {
                     ScrollView {
@@ -620,22 +650,23 @@ struct PlanDock: View {
     }
 
     private var dock: some View {
-        PendingDock(.plan(text: text), agent: agentName(session.agent), more: more, open: $open, onOpen: onOpen) {
+        PendingDock(
+            .plan(text: text), agent: agentName(session.agent), more: more, open: $open, onOpen: onOpen,
+            // In the open line before 收起, as on the web (design-system §6).
+            extra: AnyView(TextAction("展开全文", style: T.sm, alignment: .trailing, arrow: true, action: onFull))
+        ) {
             // The whole plan, scrolling with the dock's body; 展开全文 is the page that draws it as written.
             Text(planPreview(text, lines: .max)).type(T.sm.with(lineHeight: 1.6), Theme.fg)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10).padding(.vertical, 7)
                 .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous))
                 .padding(.top, 4).padding(.bottom, 4)
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                if session.agent == .claude {
-                    Text("批准后使用询问模式").type(T.meta, Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
-                }
-                TextAction("展开全文", alignment: .trailing, arrow: true, action: onFull)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
         } actions: {
             PlanButtons(session: session, full: false, terminalOnly: isSkeleton(text))
+            // Claude Code leaves plan mode for manual approval of edits.
+            if session.agent == .claude {
+                Text("批准后使用询问模式").type(T.meta, Theme.muted).padding(.top, 7)
+            }
         }
     }
 }

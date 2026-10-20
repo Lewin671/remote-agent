@@ -256,6 +256,51 @@ class LayoutTest {
         DockFolds.clear()
     }
 
+    @Test fun aPlanOpensItsPageFromItsHeadLine() {
+        DockFolds.clear()
+        var full = 0
+        // What the computer says is pending: its terminal's box, and the plan event it names.
+        val markdown = "# 计划：在 run-P 目录创建 5 个 beta 前缀文件\n\n## Context\n\n用户要求用前缀 beta 创建 5 个文本文件。\n\n## 步骤\n\n" +
+            (1..30).joinToString("\n") { "${it}. 第 $it 步" }
+        val events = listOf(
+            io.github.lewin671.remoteagent.proto.Event.newBuilder().setSessionId("s").setSeq(1)
+                .setPlanProposed(io.github.lewin671.remoteagent.proto.PlanProposed.newBuilder().setText(markdown)).build(),
+        )
+        val live = io.github.lewin671.remoteagent.proto.LiveSnapshot.newBuilder()
+            .setSession(Session.newBuilder().setId("s").setPlanOpen(true)).setPlanEventSeq(1)
+            .setPlanScreenHash(com.google.protobuf.ByteString.copyFrom(ByteArray(32)))
+            .setPlanScreen("⎿ /plan to preview\n──────\nReady to code?\nHere is Claude's plan:\n──────\n" + markdown)
+            .build()
+        val plan = io.github.lewin671.remoteagent.core.currentActions(
+            io.github.lewin671.remoteagent.core.derive(events), live, events).plan!!.text
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
+                    Column(Modifier.testTag("frame").width(360.dp).height(640.dp).background(pal.card)) {
+                        Spacer(Modifier.weight(1f))
+                        PlanDock(session(), plan, 0) { full++ }
+                    }
+                }
+            }
+        }
+        // The plan's own Markdown, not the terminal's box.
+        ui.onNodeWithText("计划：在 run-P 目录创建 5 个 beta 前缀文件", substring = true).assertIsDisplayed()
+        ui.onNodeWithText("Ready to code?", substring = true).assertDoesNotExist()
+        screenshot("plan-dock-head")
+        // The texts themselves: the head line merges them into one button.
+        val link = ui.onNodeWithText("展开全文", useUnmergedTree = true).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val fold = ui.onNodeWithText("收起", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val label = ui.onNodeWithText("计划待批准", substring = true, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        // One line: the type, then 展开全文, then 收起; not at the end of the scrolling plan.
+        assertTrue("same line", kotlin.math.abs(link.center.y - fold.center.y) < 2f && kotlin.math.abs(link.center.y - label.center.y) < 2f)
+        assertTrue("before 收起", link.right <= fold.left)
+        ui.onNodeWithText("展开全文", substring = true).performClick()
+        ui.runOnIdle { assertEquals(1, full) }
+        // Still open: the link went to the page, it did not fold the dock.
+        ui.onNodeWithText("收起", substring = true).assertIsDisplayed()
+        DockFolds.clear()
+    }
+
     @Test fun aCardCutsACommandAtWholeLinesAndOpensItInPlace() {
         var dark by mutableStateOf(false)
         ui.setContent {

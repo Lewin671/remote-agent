@@ -883,8 +883,19 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
         DockItem.Plan(text),
         agentName(s.agent()),
         more,
+        // In the open line before 收起, as on the web (design-system §6).
+        headExtra = {
+            Box(
+                Modifier.heightIn(min = 44.dp)
+                    .clickable(role = Role.Button, onClick = onFull)
+                    .padding(end = 6.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                ArrowText("展开全文", p.blue, T.sm)
+            }
+        },
         body = {
-            // The whole plan, scrolling with the dock; 展开全文 still opens it as a page.
+            // The whole plan, scrolling with the dock; 展开全文 in its line opens it as a page.
             Text(
                 text
                     .lines()
@@ -900,29 +911,17 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
                         .background(p.soft)
                         .padding(horizontal = 10.dp, vertical = 7.dp),
             )
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
-                        "批准后使用询问模式"
-                    else "",
-                    style = T.meta,
-                    color = p.muted,
-                    modifier = Modifier.weight(1f),
-                )
-                Box(
-                    Modifier.heightIn(min = 44.dp).clickable(onClick = onFull),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
-                    ArrowText("展开全文", p.blue, T.smB)
-                }
-            }
         },
     ) {
         PlanButtons(s, full = false, terminalOnly = isSkeleton(text))
+        // Claude Code leaves plan mode for manual approval of edits.
+        if (!isSkeleton(text) && s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
+            Text(
+                "批准后使用询问模式",
+                style = T.meta,
+                color = p.muted,
+                modifier = Modifier.padding(top = 7.dp),
+            )
     }
 }
 
