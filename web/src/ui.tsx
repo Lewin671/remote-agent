@@ -218,6 +218,22 @@ export function NavBar({ onBack, title, sub, right, className = "" }: { onBack?:
   );
 }
 
+function fineQuery(): MediaQueryList | undefined {
+  return typeof matchMedia === "function" ? matchMedia("(pointer: fine)") : undefined;
+}
+
+function subscribeFine(notify: () => void) {
+  const q = fineQuery();
+  q?.addEventListener?.("change", notify);
+  return () => q?.removeEventListener?.("change", notify);
+}
+
+/** Whether the main pointer is a mouse or trackpad, not a finger: such a
+ * device has a keyboard of its own. */
+export function usePointerFine(): boolean {
+  return useSyncExternalStore(subscribeFine, () => !!fineQuery()?.matches);
+}
+
 /** Background pages stop live connections; visibility restoration takes a fresh snapshot. */
 export function usePageVisible() {
   return useSyncExternalStore(

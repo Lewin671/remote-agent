@@ -1,7 +1,7 @@
 import { TerminalHistory } from "../terminal-history";
 import { wheelAxis } from "../wheel";
 import { BackToLive, TerminalReader, TERM_FONT } from "./TerminalHistory";
-import { usePageVisible, useRemote } from "../ui";
+import { usePageVisible, usePointerFine, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -47,6 +47,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   useRemote(remote);
   const online = remote.conn === "online";
   const visible = usePageVisible();
+  const fine = usePointerFine();
   const box = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   // Scrolls the live screen sideways when it is wider than the pane even at the smallest size.
@@ -402,7 +403,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           </div>
         )}
       </div>
-      {!compact && (
+      {/* A wide window with a mouse has a keyboard: the bar is for touch. */}
+      {!compact && !(wide && fine) && (
         <div className={"keys" + (live ? "" : " off")}>
           <div className="keyrow">
             {keys.map(([label, seq, name]) => (
