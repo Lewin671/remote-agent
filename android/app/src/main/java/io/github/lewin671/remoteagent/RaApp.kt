@@ -129,7 +129,8 @@ class RaApp : Application() {
                         foreground = false
                         Push.stop()
                         _remote.value?.stop()
-                        vault.clearSecurityCache()
+                        // Clearing waits for an in-flight security read; keep it off the main thread.
+                        scope.launch(Dispatchers.IO) { vault.clearSecurityCache() }
                     }
                 },
             )

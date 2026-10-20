@@ -520,8 +520,9 @@ class Remote(
 
     /** Disconnects, e.g. when the app goes to the background. */
     fun stop() {
-        security.clearCache()
         scope.launch {
+            // Off the caller's (main) thread: clearing waits for any read holding the locks.
+            security.clearCache()
             running = false
             authorityJob.cancel()
             stateJob?.cancel()
