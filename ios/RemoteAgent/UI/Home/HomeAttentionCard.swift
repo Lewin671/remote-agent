@@ -84,18 +84,19 @@ struct HomeAttentionCard: View {
             .accessibilityHint(t.action)
             .accessibilityAddTraits(.isButton)
             if status == .approval, let approval {
-                if !approval.description_p.isEmpty {
-                    Text(approvalDisplay(approval.description_p)).type(T.sm, Theme.fg2).padding(
-                        .top, 6)
-                }
-                // 允许 is never offered next to nothing: a tool that is not a shell command shows its input.
+                // What it would run comes first (design-system §6 「审批」). 允许 is never offered next to
+                // nothing: a tool that is not a shell command shows its input. Six whole lines, and the
+                // rest opens in place: nothing scrolls inside a card.
                 let what = approvalBody(approval)
                 if !what.isEmpty {
-                    Code(what, maxLines: 3, background: Theme.card, border: true).padding(
-                        .vertical, 8)
+                    ClampedCode(what, lines: 6, background: Theme.card, border: true).padding(.top, 8)
+                }
+                if !approval.description_p.isEmpty {
+                    Text(approvalDisplay(approval.description_p)).type(T.sm, Theme.fg2).lineLimit(2)
+                        .padding(.top, 6)
                 }
                 ApprovalButtons(session: session, approval: approval, onCard: true)
-                    .padding(.top, what.isEmpty ? 8 : 0)
+                    .padding(.top, 8)
             }
         }
         .padding(.horizontal, 13).padding(.vertical, 11)

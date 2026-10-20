@@ -571,8 +571,7 @@ struct ChatPane: View {
                         case .approval(let a):
                             ApprovalDock(
                                 session: session, approval: a, more: more, open: open,
-                                startReason: SessionDebug.shows("reason"), onOpen: hide
-                            ) { nav.open(.approval(session: session.id, approval: a.approvalID)) }
+                                startReason: SessionDebug.shows("reason"), onOpen: hide)
                         case .question(let q):
                             QuestionDock(
                                 session: session, question: q, more: more, open: open, onOpen: hide,

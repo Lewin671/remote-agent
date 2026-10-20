@@ -496,6 +496,14 @@ enum Demo {
         return s
     }
 
+    /// A command of some thirty lines, a few of them longer than a phone is wide.
+    private static let rollout = (["kubectl --context prod-cn-east-2 -n settlement rollout restart deployment/reconciliation-worker && \\", "set -euo pipefail"]
+        + (1...12).flatMap { i in
+            ["kubectl --context prod-cn-east-2 -n settlement rollout status deployment/reconciliation-worker-shard-\(i) --timeout=300s",
+             "echo \"shard \(i) ready\""]
+        }
+        + ["curl -fsS https://grafana.example.com/api/health", "echo done"]).joined(separator: "\n")
+
     private static func crowdedEvents(_ now: Int64) -> [String: [PBEvent]] {
         var long: [PBEvent.OneOf_Kind] = []
         for i in 0..<40 {
@@ -509,7 +517,7 @@ enum Demo {
         }
         long += [
             turn, user("部署到生产前再确认一遍"),
-            approval("A1", "kubectl --context prod-cn-east-2 -n settlement rollout restart deployment/reconciliation-worker", "重启生产环境的对账 worker，使新的幂等键生效", now: now),
+            approval("A1", rollout, "重启生产环境的对账 worker，使新的幂等键生效；重启前先确认迁移已经跑完、旧版本的 worker 已经排空，重启后观察十分钟的错误率和对账延迟，超过阈值就回滚到上一个版本", now: now),
             approval("A2", "psql \"$DATABASE_URL\" -c 'ALTER TABLE settlements ADD COLUMN idempotency_key text'", "给结算表加幂等键列", now: now),
             approval("A3", "git push origin HEAD:release/2026-10", "推送发布分支", now: now),
             question("Q1", [

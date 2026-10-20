@@ -73,11 +73,16 @@ import UIKit
     }
 
     /// The size the dock takes in a window `width` wide: wider than that, something does not fit.
-    private func fitted(_ view: some View, width: CGFloat) async throws -> CGSize {
+    /// `settle`: for a view that measures itself and then changes, the size a third of a second on.
+    private func fitted(_ view: some View, width: CGFloat, settle: Bool = false) async throws -> CGSize {
         let measured = Measured()
         let root = view.onGeometryChange(for: CGSize.self) { $0.size } action: { measured.size = $0 }
             .frame(maxHeight: .infinity, alignment: .top)
-        try await show(root, width: width) { measured.size != nil }
+        var ticks = 0
+        try await show(root, width: width) {
+            ticks += 1
+            return measured.size != nil && (!settle || ticks > 30)
+        }
         return try #require(measured.size)
     }
 
@@ -97,6 +102,22 @@ import UIKit
         // The summary gives way; the line does not grow past the 44 pt it is to the finger.
         #expect(took.width <= 390.5 && took.height < 50)
         #expect(try await fitted(dock(more: 0, size: .large, brief: ""), width: 390).height < 50)
+    }
+
+    @Test func aCardsCommandKeepsSixWholeLinesAndSaysHowManyMore() async throws {
+        #expect(linesPast(6, whole: 14 + 10 * 18 - 4, one: 14 + 14, two: 14 + 32) == 4)
+        #expect(linesPast(6, whole: 14 + 14, one: 14 + 14, two: 14 + 32) == 0)
+        #expect(linesPast(6, whole: 100, one: 20, two: 20) == 0)
+        let long = (1...10).map { "echo \($0)" }.joined(separator: "\n")
+        let short = (1...4).map { "echo \($0)" }.joined(separator: "\n")
+        let clamped = try await fitted(ClampedCode(long, lines: 6), width: 320, settle: true)
+        let whole = try await fitted(Code(long).fixedSize(horizontal: false, vertical: true), width: 320)
+        let six = try await fitted(Code((1...6).map { "echo \($0)" }.joined(separator: "\n")).fixedSize(horizontal: false, vertical: true), width: 320)
+        // Six lines and the line that opens the rest: shorter than all ten, taller than six alone.
+        #expect(clamped.height < whole.height && clamped.height > six.height)
+        // What fits has nothing under it.
+        let fits = try await fitted(ClampedCode(short, lines: 6), width: 320, settle: true)
+        #expect(abs(fits.height - (try await fitted(Code(short).fixedSize(horizontal: false, vertical: true), width: 320)).height) < 0.5)
     }
 
     @Test func anOpenItemSaysItsTypeOnceOnOneLine() async throws {

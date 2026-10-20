@@ -224,6 +224,9 @@ struct DockFoot: View {
 
 // MARK: Approvals
 
+/// The widest an approval's or a plan's actions get: on a tablet they keep to the left, not the whole width.
+let actionsWidth: CGFloat = 480
+
 /// How long an approval still waits: muted, and orange only in its last minute (design-system §1).
 struct ApprovalDeadline: Equatable {
     var text: String
@@ -244,8 +247,6 @@ struct ApprovalDock: View {
     @Binding var open: Bool
     var startReason = false
     let onOpen: () -> Void
-    let onDetail: () -> Void
-    @Environment(\.onSoft) private var onSoft
 
     var body: some View {
         if isSkeleton(approval) { Text(skeletonMessage).type(T.sm, Theme.muted) } else { dock(approval) }
@@ -265,28 +266,13 @@ struct ApprovalDock: View {
         }
     }
 
+    /// What it would run first, whole: it scrolls with the body. Then what the agent says it is for.
     @ViewBuilder private func content(_ a: PBApprovalRequested) -> some View {
-            if !a.description_p.isEmpty {
-                Text(approvalDisplay(a.description_p)).type(T.sm, Theme.fg2)
-            }
-            let text = approvalBody(a)
-            if !text.isEmpty {
-                let cut = text.jvmLines().count > 4 || text.count > 200
-                Code(text, maxLines: 4)
-                    .overlay(alignment: .bottomTrailing) {
-                        if cut {
-                            Button(action: onDetail) {
-                                Text("展开全文").type(T.metaB, Theme.blue)
-                                    .padding(.leading, 12).padding(.trailing, 6).padding(.bottom, 4)
-                                    .background(onSoft ? Theme.card : Theme.soft)
-                                    // 44 pt to the finger, drawn over the code's corner.
-                                    .padding(.top, 20).padding(.leading, 20).contentShape(Rectangle())
-                            }
-                            .buttonStyle(PressStyle())
-                        }
-                    }
-                    .padding(.vertical, 8)
-            }
+        let text = approvalBody(a)
+        if !text.isEmpty { Code(text).padding(.top, 2).padding(.bottom, 8) }
+        if !a.description_p.isEmpty {
+            Text(approvalDisplay(a.description_p)).type(T.sm, Theme.fg2).padding(.bottom, 4)
+        }
     }
 }
 
@@ -382,6 +368,9 @@ struct ApprovalButtons: View {
                 }
             }
         }
+        // On a wide screen the row does not stretch past 480 (design-system §6 「审批」).
+        .frame(maxWidth: actionsWidth, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .debugSignal("session.allow") { resolve(true) }
         .debugSignal("session.deny") { resolve(false, message: SessionDebug.text.jvmTrim()) }
     }
@@ -675,7 +664,13 @@ struct PlanButtons: View {
     }
 
     var body: some View {
-        if terminalOnly { Text(skeletonMessage).type(T.sm, Theme.muted) } else { choices }
+        if terminalOnly {
+            Text(skeletonMessage).type(T.sm, Theme.muted)
+        } else {
+            VStack(alignment: .leading, spacing: 0) { choices }
+                .frame(maxWidth: actionsWidth, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     @ViewBuilder private var choices: some View {

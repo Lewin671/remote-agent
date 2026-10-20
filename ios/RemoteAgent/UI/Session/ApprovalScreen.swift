@@ -2,8 +2,8 @@ import RACore
 import RAProto
 import SwiftUI
 
-/// 审批详情: an approval on a page of its own, as opened from a notification
-/// or from 展开全文 in the dock, with the whole of what it asks for and a
+/// 审批详情: an approval on a page of its own, as opened from a link, with
+/// the whole of what it asks for, before what it is for, and a
 /// reason box that stays above the keyboard (Android's ApprovalPage).
 ///
 /// The page shows what the daemon's events say: once anyone has answered
@@ -37,10 +37,11 @@ struct ApprovalScreen: View {
                                 if !a.toolName.isEmpty && a.command.isEmpty {
                                     Text(approvalHead(a)).type(T.smB, Theme.fg2).padding(.bottom, 4)
                                 }
-                                if !a.description_p.isEmpty {
-                                    Text(approvalDisplay(a.description_p)).type(T.sm, Theme.fg2).padding(.bottom, 6)
-                                }
+                                // What it would run first, then what it is for (design-system §6 「审批」).
                                 Code(approvalBody(a)).textSelection(.enabled)
+                                if !a.description_p.isEmpty {
+                                    Text(approvalDisplay(a.description_p)).type(T.sm, Theme.fg2).padding(.top, 8)
+                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 12)

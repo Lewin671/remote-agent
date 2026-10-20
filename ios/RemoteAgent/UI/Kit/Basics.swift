@@ -367,6 +367,61 @@ struct Code: View {
     }
 }
 
+/// How many lines of a block `whole` tall lie past the first `lines`, where the same block is `one` tall
+/// with one line and `two` with two.
+func linesPast(_ lines: Int, whole: CGFloat, one: CGFloat, two: CGFloat) -> Int {
+    let step = two - one
+    guard step > 0, whole > one else { return 0 }
+    return max(0, Int(((whole - one) / step).rounded()) + 1 - lines)
+}
+
+/// A code block held to whole lines, `lines` of them as laid out, for a card where nothing scrolls
+/// inside: under it 「还有 N 行 · 展开」 shows the rest in place, and 「收起」 holds it again. How many
+/// lines it takes is only known once laid out: one long command is one line to count and many to draw.
+struct ClampedCode: View {
+    private let text: String
+    private let lines: Int
+    private let background: Color?
+    private let border: Bool
+    @State private var open = false
+    @State private var shown: CGFloat = 0
+    @State private var whole: CGFloat = 0
+    @State private var one: CGFloat = 0
+    @State private var two: CGFloat = 0
+
+    init(_ text: String, lines: Int, background: Color? = nil, border: Bool = false) {
+        self.text = text
+        self.lines = lines
+        self.background = background
+        self.border = border
+    }
+
+    var body: some View {
+        let more = whole > shown + 0.5 ? linesPast(lines, whole: whole, one: one, two: two) : 0
+        VStack(alignment: .leading, spacing: 0) {
+            Code(text, maxLines: open ? nil : lines, background: background, border: border)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if !open { shown = $0 } }
+                .background {
+                    // The whole text, one line and two, at the same width, measured and not drawn.
+                    ZStack {
+                        Code(text, background: background, border: border).fixedSize(horizontal: false, vertical: true)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { whole = $0 }
+                        Code("x").fixedSize(horizontal: false, vertical: true)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { one = $0 }
+                        Code("x\nx").fixedSize(horizontal: false, vertical: true)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { two = $0 }
+                    }
+                    .hidden()
+                    .accessibilityHidden(true)
+                }
+            if open || more > 0 {
+                TextAction(open ? "收起" : "还有 \(more) 行 · 展开", style: T.sm) { open.toggle() }
+                    .padding(.vertical, -6)
+            }
+        }
+    }
+}
+
 /// The app's mark, the one on its icon: a terminal prompt and its cursor,
 /// in the coordinates of the icon's 512 master drawing
 /// (scripts/gen-icons.swift).
