@@ -45,6 +45,28 @@ class LayoutTest {
         }
     }
 
+    @Test fun pendingPlanUpdatesWhenOnlyTheContiguousHistoryBackfills() {
+        val screen = "终端中的计划预览"
+        val markdown = "# 计划正文\n\n- 验证历史回填"
+        val live = LiveSnapshot.newBuilder().setSession(Session.newBuilder().setId("plan").setPlanOpen(true))
+            .setPlanEventSeq(2).setPlanScreen(screen).setPlanScreenHash(com.google.protobuf.ByteString.copyFrom(ByteArray(32))).build()
+        val tail = listOf(Event.newBuilder().setSeq(9).setSessionId("plan").build())
+        var snapshot by mutableStateOf(SessionEvents(events = tail, stateEvents = emptyList(), live = live, historyPartial = true))
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) { Text(rememberDerived(snapshot, Agent.AGENT_CODEX).plan?.text.orEmpty()) }
+        }
+        ui.onNodeWithText(screen).assertIsDisplayed()
+        ui.runOnIdle {
+            snapshot = snapshot.copy(stateEvents = listOf(
+                Event.newBuilder().setSeq(1).setSessionId("plan").build(),
+                Event.newBuilder().setSeq(2).setSessionId("plan").setPlanProposed(PlanProposed.newBuilder().setText(markdown)).build(),
+            ))
+        }
+        ui.onNodeWithText(markdown).assertIsDisplayed()
+        ui.onNodeWithText(screen).assertDoesNotExist()
+        assertEquals(tail, snapshot.events)
+    }
+
     @Test fun aKnownUpdateKeepsItsStepAndOffersALightweightCheck() {
         showUpdate(UpdateState.Available(newer))
         ui.onNodeWithText("新版本 0.36.2").assertIsDisplayed()

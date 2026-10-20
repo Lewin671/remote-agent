@@ -159,6 +159,41 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         #expect(recorded.startPrompt == nil)
     }
 
+    @MainActor @Test func aBackfilledPlanReplacesTheScreenWithTheSameLiveSnapshot() async {
+        let model = SessionModel()
+        let screen = "终端中的计划预览"
+        let markdown = "# 计划正文\n\n- 验证历史回填"
+        let list = events([reply("准备计划"), .planProposed(.with { $0.text = markdown }), reply("等待批准")])
+        let live = PBLiveSnapshot.with {
+            $0.session.id = "s"
+            $0.session.planOpen = true
+            $0.planEventSeq = 2
+            $0.planScreen = screen
+            $0.planScreenHash = Data(repeating: 1, count: 32)
+        }
+        var snapshot = SessionEvents(events: PagedList(Array(list.prefix(1))))
+        snapshot.live = live
+        await model.show(snapshot)
+        #expect(model.derived.plan?.text == screen)
+        // No refresh of the live snapshot, and the full history is not done.
+        snapshot.events = PagedList(Array(list.prefix(2)))
+        await model.show(snapshot)
+        #expect(!model.loaded)
+        #expect(model.derived.plan?.text == markdown)
+        snapshot.events = PagedList(list)
+        snapshot.loaded = true
+        await model.show(snapshot)
+        #expect(model.loaded && model.derived.plan?.text == markdown)
+        // Unverified legacy history cannot provide the plan body.
+        snapshot.unverifiedLegacy = true
+        snapshot.verifiedEvents = PagedList(Array(list.prefix(1)))
+        await model.show(snapshot)
+        #expect(model.derived.plan?.text == screen)
+        snapshot.verifiedEvents = PagedList(list)
+        await model.show(snapshot)
+        #expect(model.derived.plan?.text == markdown)
+    }
+
     @MainActor @Test func theModelPublishesRowsAndStateFromASnapshot() async {
         let model = SessionModel()
         #expect(!model.ready)

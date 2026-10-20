@@ -1,5 +1,6 @@
 import { IDBFactory } from "fake-indexeddb";
 import { vi } from "vitest";
+import type { Event } from "../gen/remoteagent/v1/event_pb";
 import vectors from "../../../internal/deviceauth/testdata/domain-v3.json";
 import { concat, fromHex } from "../crypto";
 import { parseLease, parseRecoveryStatement, parseState, unb64 } from "../device-security";
@@ -60,7 +61,7 @@ export async function rawSecurity<T>(mode: IDBTransactionMode, op: (s: IDBObject
   });
 }
 
-export async function storedEvent(f: Awaited<ReturnType<typeof storedSecurity>>, seq = 1n, session = "synthetic-session") {
+export async function storedEvent(f: Awaited<ReturnType<typeof storedSecurity>>, seq = 1n, session = "synthetic-session", kind?: Event["kind"]) {
   const { formCipher, stateHash, toEnvelope } = await import("../device-security");
   const { create, toBinary } = await import("@bufbuild/protobuf");
   const { EventSchema } = await import("../gen/remoteagent/v1/event_pb");
@@ -73,7 +74,7 @@ export async function storedEvent(f: Awaited<ReturnType<typeof storedSecurity>>,
     kind: 1, purpose: 1, machine, session, seq,
     request: "", deadline: 0n, compression: 0,
   }, new Uint8Array(toBinary(EventSchema, create(EventSchema, {
-    sessionId: session, seq, kind: { case: "agentMessage", value: { text: "synthetic event " + seq } },
+    sessionId: session, seq, kind: kind ?? { case: "agentMessage", value: { text: "synthetic event " + seq } },
   }))), f.machineEd));
   return { envelope, seed };
 }

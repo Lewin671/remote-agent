@@ -48,6 +48,21 @@ class LivePlanTest {
         assertEquals(screen, currentActions(derive(history()), live()).plan?.text)
     }
 
+    @Test fun backfillReplacesTheScreenWithoutChangingTheLiveSnapshotOrVisibleTail() {
+        val live = live()
+        val tail = listOf(Event.newBuilder().setSeq(9).setSessionId("s").build())
+        for (legacy in listOf(false, true)) {
+            val partial = SessionEvents(events = tail, stateEvents = emptyList(),
+                verifiedEvents = emptyList(), unverifiedLegacy = legacy, live = live, historyPartial = true)
+            assertEquals(screen, currentState(partial).plan?.text)
+            val filled = partial.copy(stateEvents = history(), verifiedEvents = history())
+            assertEquals(tail, filled.events)
+            assertEquals(markdown, currentState(filled).plan?.text)
+            // A legacy body at the right sequence is never used as verified text.
+            if (legacy) assertEquals(screen, currentState(filled.copy(verifiedEvents = history().take(1))).plan?.text)
+        }
+    }
+
     @Test fun onlyTheSnapshotSaysAPlanIsPending() {
         assertNull(currentActions(derive(history()), live(open = false), history()).plan)
         assertNull(currentActions(derive(history()), null, history()).plan)

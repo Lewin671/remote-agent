@@ -1,4 +1,8 @@
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import { create } from "@bufbuild/protobuf";
+import { EventSchema } from "./gen/remoteagent/v1/event_pb";
+import { LiveSnapshotSchema } from "./gen/remoteagent/v1/remote_pb";
+import { derive } from "./model";
 import { importSessionKey } from "./crypto";
 import { Remote } from "./remote";
 import { securityFixture, storedEvent, storedSecurity } from "./test/stored-security-fixture";
@@ -130,4 +134,47 @@ it("rejects a moved or corrupt tail event using the normal historical verifier",
   await until(r, () => r.loaded(SID));
   expect(r.events(SID).map(e => e.seq)).toEqual([1n, 2n]);
   expect(r.events(SID).some(e => e.seq === 4n)).toBe(false);
+});
+
+it("replaces the live plan screen as its named event backfills, before the visible tail changes", async () => {
+  const count = 2 * PAGE + 2;
+  const r = await probe(count);
+  const screen = "终端中的计划预览";
+  const markdown = "# 计划正文\n\n- 验证历史回填";
+  const plan = await storedEvent(fixture, 2n, SID, create(EventSchema, { kind: { case: "planProposed", value: { text: markdown } } }).kind);
+  const all = rows.slice(0, count).map(e => e.seq === 2n ? { seq: 2n, envelope: plan.envelope } : e);
+  const live = create(LiveSnapshotSchema, {
+    session: { id: SID, planOpen: true }, planEventSeq: 2n,
+    planScreenHash: new Uint8Array(32).fill(1), planScreen: screen,
+  });
+  (r as any).liveSnapshots.set(SID, live);
+  const first = deferred(), firstAsked = deferred(), second = deferred(), secondAsked = deferred();
+  (r as any).api = { getEvents: async ({ afterSeq, limit }: { afterSeq: bigint; limit: number }) => {
+    if (afterSeq === 0n) { firstAsked.resolve(); await first.promise; }
+    if (afterSeq === BigInt(PAGE)) { secondAsked.resolve(); await second.promise; }
+    const rest = all.filter(e => e.seq > afterSeq);
+    return { events: rest.slice(0, limit), more: rest.length > limit };
+  } };
+  const captions: (string | undefined)[] = [];
+  const off = r.subscribe(() => captions.push(r.currentDerived(SID, derive(r.events(SID))).plan?.text));
+  try {
+    r.events(SID);
+    await firstAsked.promise;
+    const tail = r.events(SID).map(e => e.seq);
+    expect(r.currentDerived(SID, derive(r.events(SID))).plan?.text).toBe(screen);
+    first.resolve();
+    await secondAsked.promise;
+    // The same live snapshot and latest page remain on screen: a prefix
+    // notification alone must replace the plan's terminal fallback.
+    expect(r.events(SID).map(e => e.seq)).toEqual(tail);
+    expect(r.loaded(SID)).toBe(false);
+    expect(r.currentDerived(SID, derive(r.events(SID))).plan?.text).toBe(markdown);
+    expect(captions).toContain(screen);
+    expect(captions).toContain(markdown);
+    const completed = until(r, () => r.loaded(SID));
+    second.resolve();
+    await completed;
+    expect(r.currentDerived(SID, derive(r.events(SID))).plan?.text).toBe(markdown);
+    expect((r as any).liveSnapshots.get(SID)).toBe(live);
+  } finally { first.resolve(); second.resolve(); off(); }
 });
