@@ -1,10 +1,9 @@
-import { afterAll, afterEach, expect, it, vi } from "vitest";
-import { storedSecurity, rawSecurity } from "./test/stored-security-fixture";
-import { clearLoginToken, forgetSecurity, initializeSecurity, installSecurity, loadLoginToken, loadSecurity, saveLoginToken } from "./device-security-store";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import { securityFixture, storedSecurity, rawSecurity } from "./test/stored-security-fixture";
+import { clearLoginToken, contentSecretOf, forgetSecurity, initializeSecurity, installSecurity, loadLoginToken, loadSecurity, saveLoginToken } from "./device-security-store";
 import { forgetAccount, saveAccount } from "./storage";
 
-import { GoSecurityFixture, webMember, removeFixtureBuild } from "./test/security-fixture";
-afterAll(removeFixtureBuild);
+beforeAll(securityFixture);
 
 const server = "https://relay.example.com";
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -62,19 +61,17 @@ it("clears credentials on rejection, reset/discard and explicit logout", async (
 });
 
 it("erases credentials atomically with an authenticated device removal while retaining historical keys", async () => {
-  const world = await GoSecurityFixture.create();
-  try {
-    vi.stubGlobal("indexedDB", new (await import("fake-indexeddb")).IDBFactory());
-    const member = await webMember(world);
-    const r = member.record;
-    await initializeSecurity(r.pin, r.states, r.proofs, r.memberID, r.xPrivate, false, r.lease);
-    await saveLoginToken(server, r.memberID, { token: "removed-token", expiresMs: Date.now() + 10 * 86_400_000 });
-    await world.fixture.remove([r.memberID]);
-    const { states, proofs } = await world.fixture.chain(world.machine);
-    await installSecurity(await loadSecurity(), states.slice(r.states.length), proofs.slice(r.states.length));
-    expect((await loadSecurity()).member).toBe(false);
-    expect(await rawSecurity("readonly", s => s.get("login-token"))).toBeUndefined();
-    expect(await loadLoginToken(server, r.memberID)).toBeUndefined();
-    await expect(saveLoginToken(server, r.memberID, { token: "late", expiresMs: Date.now() + 10 * 86_400_000 })).rejects.toThrow();
-  } finally { await world.fixture.close(); }
-}, 20_000);
+  const f = await storedSecurity();
+  await saveLoginToken(server, f.memberID, { token: "removed-token", expiresMs: Date.now() + 10 * 86_400_000 });
+  const retained = await contentSecretOf(await loadSecurity(), 2n);
+  vi.setSystemTime(f.removal.now);
+  // The Go-generated recovery statement removes this member. Install it via
+  // the real transaction path; neither membership nor verification is mocked.
+  await installSecurity(await loadSecurity(), f.removal.states, f.removal.proofs);
+  const removed = await loadSecurity();
+  expect(removed.member).toBe(false);
+  expect(await rawSecurity("readonly", s => s.get("login-token"))).toBeUndefined();
+  expect(await loadLoginToken(server, f.memberID)).toBeUndefined();
+  expect(await contentSecretOf(removed, 2n)).toEqual(retained);
+  await expect(saveLoginToken(server, f.memberID, { token: "late", expiresMs: Date.now() + 10 * 86_400_000 })).rejects.toThrow();
+});

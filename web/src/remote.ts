@@ -622,6 +622,7 @@ export class Remote {
     private legacyKeys: Keys | undefined,
     private cache?: EventCache,
     securityStorage?: SecurityStorage,
+    protected readonly historyPageSize = 500,
   ) {
     const auth: Interceptor = (next) => (req) => {
       req.header.set("Authorization", "Bearer " + this.token);
@@ -1915,12 +1916,12 @@ export class Remote {
       if (!b.restored && this.cache) await this.restore(s, b);
       // lastSeq is a routing hint, not authenticated event content. Every
       // returned envelope still passes the normal historical checks.
-      if (!b.tailRequested && s.lastSeq > BigInt(b.events.length) + 500n) {
+      if (!b.tailRequested && s.lastSeq > BigInt(b.events.length + this.historyPageSize)) {
         b.tailRequested = true;
         const tail = await this.api.getEvents({
           sessionId: sid,
-          afterSeq: s.lastSeq - 500n,
-          limit: 500,
+          afterSeq: s.lastSeq - BigInt(this.historyPageSize),
+          limit: this.historyPageSize,
         });
         if (this.closed || generation !== this.generation || this.buffers.get(sid) !== b)
           return;
@@ -1943,7 +1944,7 @@ export class Remote {
           const res = await this.api.getEvents({
             sessionId: sid,
             afterSeq: BigInt(before),
-            limit: 500,
+            limit: this.historyPageSize,
           });
           if (
             this.closed ||

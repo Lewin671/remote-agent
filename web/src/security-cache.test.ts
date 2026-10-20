@@ -1,11 +1,10 @@
 import { IDBObjectStore } from "fake-indexeddb";
-import { afterAll, afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import * as security from "./device-security";
 import * as store from "./device-security-store";
 import { DeviceSecurityClient } from "./device-security-client";
-import { storedSecurity, rawSecurity, storedEvent } from "./test/stored-security-fixture";
-import { GoSecurityFixture, webMember, removeFixtureBuild } from "./test/security-fixture";
-afterAll(removeFixtureBuild);
+import { securityFixture, storedSecurity, rawSecurity, storedEvent } from "./test/stored-security-fixture";
+beforeAll(securityFixture);
 import vectors from "../../internal/deviceauth/testdata/domain-v3.json";
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -74,21 +73,15 @@ it("reuses client validation and content keys per exact verified record, without
 });
 
 it("refreshes a cached client's membership and keys after another tab installs removal", async () => {
-  const world = await GoSecurityFixture.create();
-  try {
-    vi.stubGlobal("indexedDB", new (await import("fake-indexeddb")).IDBFactory());
-    const member = await webMember(world);
-    const r = member.record;
-    await store.initializeSecurity(r.pin, r.states, r.proofs, r.memberID, r.xPrivate, false, r.lease);
-    const sdk = new DeviceSecurityClient(r.memberID, member.account.devicePrivate, async () => { throw new Error("no network"); });
-    expect((await sdk.verifiedRecord()).member).toBe(true);
-    await world.fixture.remove([r.memberID]);
-    const { states, proofs } = await world.fixture.chain(world.machine);
-    const count = r.states.length;
-    // This is the production install path, running through a separate connection.
-    await store.installSecurity(await store.loadSecurity(), states.slice(count), proofs.slice(count));
-    expect((await sdk.verifiedRecord()).member).toBe(false);
-    await expect(sdk.seal({ kind: 12, purpose: 12, machine: "", session: "", request: "prefs",
-      seq: 1n, deadline: 0n, compression: 0 }, new Uint8Array())).rejects.toMatchObject({ code: "untrusted" });
-  } finally { await world.fixture.close(); }
-}, 20_000);
+  const f = await storedSecurity();
+  const sdk = new DeviceSecurityClient(f.memberID, f.ed, async () => { throw new Error("no network"); });
+  const { envelope, seed } = await storedEvent(f);
+  expect((await sdk.verifiedRecord()).member).toBe(true);
+  const original = await sdk.openHistory(envelope, seed);
+  vi.setSystemTime(f.removal.now);
+  await store.installSecurity(await store.loadSecurity(), f.removal.states, f.removal.proofs);
+  expect((await sdk.verifiedRecord()).member).toBe(false);
+  expect(await sdk.openHistory(envelope, seed)).toEqual(original);
+  await expect(sdk.seal({ kind: 12, purpose: 12, machine: "", session: "", request: "prefs",
+    seq: 1n, deadline: 0n, compression: 0 }, new Uint8Array())).rejects.toMatchObject({ code: "untrusted" });
+});

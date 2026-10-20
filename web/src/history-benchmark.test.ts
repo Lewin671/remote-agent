@@ -1,17 +1,21 @@
 // Reproducible Node/fake-indexeddb microbenchmark. No relay/network latency.
-// Run alone: pnpm test src/history-benchmark.test.ts --no-file-parallelism
+// Benchmark explicitly: RA_HISTORY_BENCHMARK=1 pnpm test src/history-benchmark.test.ts --no-file-parallelism
 import { IDBObjectStore } from "fake-indexeddb";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { DeviceSecurityClient } from "./device-security-client";
 import * as security from "./device-security";
 import * as storage from "./device-security-store";
 import { storedSecurity, storedEvent, rawSecurity } from "./test/stored-security-fixture";
 
+const count = process.env.RA_HISTORY_BENCHMARK ? 300 : 8;
+let f: Awaited<ReturnType<typeof storedSecurity>>;
+const events: Awaited<ReturnType<typeof storedEvent>>[] = [];
+beforeAll(async () => {
+  f = await storedSecurity();
+  for (let seq = 1n; seq <= BigInt(count); seq++) events.push(await storedEvent(f, seq));
+});
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
-it("measures opening 300 signed events with and without record reuse", async () => {
-  const f = await storedSecurity();
-  const events: Awaited<ReturnType<typeof storedEvent>>[] = [];
-  for (let seq = 1n; seq <= 300n; seq++) events.push(await storedEvent(f, seq));
+it("keeps record reads and verification constant across distinct signed events", async () => {
   const reads = vi.spyOn(IDBObjectStore.prototype, "get");
   const chain = vi.spyOn(security, "verifyChain");
   const grant = vi.spyOn(security, "openGrant");
@@ -34,12 +38,12 @@ it("measures opening 300 signed events with and without record reuse", async () 
   };
   const before = await measure(false);
   const after = await measure(true);
-  console.log(JSON.stringify({ events: events.length, before, after }));
-  expect(before.recordReads).toBe(300);
-  expect(before.chainVerifications).toBe(600);
+  if (process.env.RA_HISTORY_BENCHMARK) console.log(JSON.stringify({ events: events.length, before, after }));
+  expect(before.recordReads).toBe(count);
+  expect(before.chainVerifications).toBe(2 * count);
   expect(after.recordReads).toBe(1);
-  expect(after.revisionReads).toBe(300);
+  expect(after.revisionReads).toBe(count);
   expect(after.chainVerifications).toBe(2);
   expect(after.grantOpens).toBe(1);
   expect(after.epochKeyLookups).toBe(1);
-}, 60_000);
+}, process.env.RA_HISTORY_BENCHMARK ? 60_000 : undefined);
