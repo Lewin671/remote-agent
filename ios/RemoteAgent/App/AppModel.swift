@@ -170,6 +170,7 @@ final class AppModel {
     /// The app is in front. Screens that tick or hold a terminal follow it:
     /// timers pause in the background and terminals are closed there.
     private(set) var foreground = false
+    var recoveryRotationRequired = false
     private(set) var authorityBootstrapPending: AuthorityBootstrapStatus?
     @ObservationIgnored let bootstrapGate = AuthorityGate()
     @ObservationIgnored private var authoritySceneActive = false
@@ -514,6 +515,7 @@ final class AppModel {
     /// (`loadAccount`). Until the erase has ended no account is read: the
     /// one being removed would be found and put back in use.
     func logout() async {
+        recoveryRotationRequired = false
         bootstrapGate.set(active: false, protectedDataAvailable: false)
         authorityBootstrapPending = nil
         if let account { lastServer = account.server }

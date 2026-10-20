@@ -14,6 +14,7 @@ struct SettingsScreen: View {
     @Environment(Navigator.self) private var nav
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var leaving = false
+    @State private var exitText = ""
     @State private var images: ImageStorageModel?
 
     var body: some View {
@@ -27,6 +28,7 @@ struct SettingsScreen: View {
                         computers(state, now: now)
                         clients(state, now: now)
                     }
+                    AccountSecurityGroup()
                     GroupLabel("本客户端的通知")
                     NotificationsNote()
                     GroupLabel("本机存储")
@@ -45,7 +47,18 @@ struct SettingsScreen: View {
                         GRow("版本", value: AppInfo.versionLine)
                         GRow("开源许可", chevron: true) { nav.open(.licenses) }
                         // It asks first, as every row that ends in an ellipsis does (design-system §8).
-                        GRow("退出并删除本机密钥…", danger: true) { leaving = true }
+                        GRow("退出并删除本机密钥…", danger: true) {
+                            Task {
+                                do {
+                                    let c = try await context.remote.authorityCoordinator()
+                                    let pending = try await c.pendingOperation()
+                                    exitText = AuthorityAccess.exitAdvice(authority: AuthorityAccess(state: state, me: context.me).isAuthority, unresolved: pending != nil)
+                                } catch {
+                                    exitText = AuthorityAccess.exitAdvice(authority: true, unresolved: true)
+                                }
+                                leaving = true
+                            }
+                        }
                     }
                     Color.clear.frame(height: 24)
                 }
@@ -54,7 +67,7 @@ struct SettingsScreen: View {
         }
         .confirm(
             isPresented: $leaving, title: "退出并删除本机密钥？",
-            text: "这台设备会退出账户，重新使用时需要配对加入。电脑上的会话继续运行，其他设备不受影响。", confirm: "退出", danger: true
+            text: exitText, confirm: "退出", danger: true
         ) {
             Task { await model.logout() }
         }

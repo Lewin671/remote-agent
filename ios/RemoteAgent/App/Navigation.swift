@@ -45,6 +45,7 @@ enum Route: Hashable, Sendable {
     /// 设备: computers and clients.
     case devices
     case addDevice(replacing: String = "")
+    case accountSecurity, recoveryCode, handoff
     /// A computer's details and settings.
     case machine(id: String)
     /// A client's details.
@@ -77,6 +78,9 @@ enum Route: Hashable, Sendable {
         case .plan(let sid): "plan/\(sid)"
         case .question(let sid, let qid): "question/\(sid)/\(qid)"
         case .image(let sid, let seq, let index): "image/\(sid)/\(seq)/\(index)"
+        case .accountSecurity: "account-security"
+        case .recoveryCode: "recovery-code"
+        case .handoff: "handoff"
         case .devices: "devices"
         case .addDevice(let id): id.isEmpty ? "add-device" : "add-device/" + id
         case .machine(let id): "machine/\(id)"
@@ -122,6 +126,9 @@ enum Route: Hashable, Sendable {
             let p = rest.split(separator: "/").map(String.init)
             guard p.count == 3, let seq = UInt64(p[1]), let index = Int(p[2]) else { return nil }
             self = .image(session: p[0], seq: seq, index: index)
+        case ("account-security", true): self = .accountSecurity
+        case ("recovery-code", true): self = .recoveryCode
+        case ("handoff", true): self = .handoff
         case ("devices", true): self = .devices
         case ("add-device", _): self = .addDevice(replacing: rest)
         case ("machine", false): self = .machine(id: rest)
@@ -222,6 +229,9 @@ extension Route {
         case .plan(let sid): PlanScreen(session: sid)
         case .question(let sid, let qid): QuestionScreen(session: sid, question: qid)
         case .image(let sid, let seq, let index): ImageViewerScreen(session: sid, seq: seq, index: index)
+        case .accountSecurity: AccountSecurityScreen()
+        case .recoveryCode: RecoveryCodeScreen()
+        case .handoff: HandoffScreen()
         case .devices: DevicesScreen()
         case .addDevice(let id): AddDeviceScreen(replacing: id)
         case .machine(let id): MachineScreen(id: id)

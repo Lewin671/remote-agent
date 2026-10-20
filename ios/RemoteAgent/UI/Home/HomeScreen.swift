@@ -36,6 +36,7 @@ struct HomeScreen: View {
                 }
                 .readableColumn()
                 ConnectionBar()
+                RecoveryPendingEntry()
                 // What is typed and opened belongs to the scope: another scope starts over, at the top.
                 HomeTimeline(state: state, scope: scope).id(scope)
             }
