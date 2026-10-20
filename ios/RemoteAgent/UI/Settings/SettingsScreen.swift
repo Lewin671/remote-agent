@@ -52,7 +52,7 @@ struct SettingsScreen: View {
                                 do {
                                     let c = try await context.remote.authorityCoordinator()
                                     let pending = try await c.pendingOperation()
-                                    exitText = AuthorityAccess.exitAdvice(authority: AuthorityAccess(state: state, me: context.me).isAuthority, unresolved: pending != nil)
+                                    exitText = AuthorityAccess.exitAdvice(authority: try await c.isAuthority(), unresolved: pending != nil)
                                 } catch {
                                     exitText = AuthorityAccess.exitAdvice(authority: true, unresolved: true)
                                 }

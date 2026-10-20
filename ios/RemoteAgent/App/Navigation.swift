@@ -45,7 +45,7 @@ enum Route: Hashable, Sendable {
     /// 设备: computers and clients.
     case devices
     case addDevice(replacing: String = "")
-    case accountSecurity, recoveryCode, handoff
+    case accountSecurity, recoveryCode, handoff, rePair
     /// A computer's details and settings.
     case machine(id: String)
     /// A client's details.
@@ -81,6 +81,7 @@ enum Route: Hashable, Sendable {
         case .accountSecurity: "account-security"
         case .recoveryCode: "recovery-code"
         case .handoff: "handoff"
+        case .rePair: "re-pair"
         case .devices: "devices"
         case .addDevice(let id): id.isEmpty ? "add-device" : "add-device/" + id
         case .machine(let id): "machine/\(id)"
@@ -129,6 +130,7 @@ enum Route: Hashable, Sendable {
         case ("account-security", true): self = .accountSecurity
         case ("recovery-code", true): self = .recoveryCode
         case ("handoff", true): self = .handoff
+        case ("re-pair", true): self = .rePair
         case ("devices", true): self = .devices
         case ("add-device", _): self = .addDevice(replacing: rest)
         case ("machine", false): self = .machine(id: rest)
@@ -232,6 +234,7 @@ extension Route {
         case .accountSecurity: AccountSecurityScreen()
         case .recoveryCode: RecoveryCodeScreen()
         case .handoff: HandoffScreen()
+        case .rePair: RePairScreen()
         case .devices: DevicesScreen()
         case .addDevice(let id): AddDeviceScreen(replacing: id)
         case .machine(let id): MachineScreen(id: id)

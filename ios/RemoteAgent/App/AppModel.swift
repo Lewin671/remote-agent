@@ -171,6 +171,7 @@ final class AppModel {
     /// timers pause in the background and terminals are closed there.
     private(set) var foreground = false
     var recoveryRotationRequired = false
+    var authorityHandoffComplete = false
     private(set) var authorityBootstrapPending: AuthorityBootstrapStatus?
     @ObservationIgnored let bootstrapGate = AuthorityGate()
     @ObservationIgnored private var authoritySceneActive = false
@@ -184,6 +185,9 @@ final class AppModel {
     private(set) var securitySetup: Account?
     var joiningCalls: JoinCalls {
         .live(http: Self.http, existing: securitySetup, vault: parts.storage.vault)
+    }
+    func rePairingCalls(for account: Account) -> JoinCalls {
+        .live(http: Self.http, existing: account, vault: parts.storage.vault)
     }
     /// Sample data is shown and nothing is stored or sent (`-demo`, debug builds).
     private(set) var isDemo = false
@@ -502,6 +506,18 @@ final class AppModel {
         let vault = parts.storage.vault
         let saveJoined = parts.saveJoined
         try await Task.detached { try saveJoined(vault, account) }.value
+        if context != nil {
+            // Re-pairing retains identity and history but replaces the active X key.
+            generation += 1
+            follower?.cancel(); follower = nil
+            closeTerminals(); engine?.close(); engine = nil
+            if let remote { ImageCenter.remove(remote) }
+            context?.prefsChanges.close(); context = nil
+            let oldCache = cache; cache = nil
+            logins?.close(); logins = nil
+            try? oldCache?.close()
+            stage = .loading
+        }
         await use(account)
     }
 
@@ -517,6 +533,7 @@ final class AppModel {
     /// one being removed would be found and put back in use.
     func logout() async {
         recoveryRotationRequired = false
+        authorityHandoffComplete = false
         bootstrapGate.set(active: false, protectedDataAvailable: false)
         authorityBootstrapPending = nil
         if let account { lastServer = account.server }

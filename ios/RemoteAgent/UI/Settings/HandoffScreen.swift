@@ -13,6 +13,7 @@ final class HandoffDraft {
 struct HandoffScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
+    @Environment(Navigator.self) private var nav
     @State private var draft = HandoffDraft()
     @State private var action = ActionRunner()
     @State private var candidates: [DeviceView] = []
@@ -33,7 +34,7 @@ struct HandoffScreen: View {
         .navBar(access.isAuthority ? "交接管理权" : "接管管理权")
         .task {
             draft = context.memory.value { HandoffDraft() }
-            if !app.isDemo && access.isAuthority { loadCandidates() }
+if !app.isDemo && access.isAuthority { loadCandidates() }
         }
         .confirm(isPresented: $confirming, title: "交接管理权？",
             text: "确认接任设备已经保存新的恢复码。交接后本机会被移除，\(target.map { clientName($0, id: $0.id, among: app.state.devices) } ?? "接任设备")成为唯一管理端。接任设备完成续期前，控制可能短暂停顿。",
@@ -44,6 +45,7 @@ struct HandoffScreen: View {
                     let c = try await context.remote.authorityCoordinator()
                     guard try await c.pendingOperation() == nil else { throw UserError("交接结果尚未核实，请继续原操作。") }
                     handedOff = true
+                    app.authorityHandoffComplete = true
                 }
             }
     }
@@ -92,6 +94,7 @@ struct HandoffScreen: View {
             }
             GroupLabel("补齐账户公钥资料")
             GroupNote("如果接任准备提示缺少账户公钥，请重新配对一次；也可输入当前恢复码，只补齐公钥资料，不发起恢复申请。")
+            GroupCard { GRow("重新配对并保留身份", chevron: true) { nav.open(.rePair) } }
             InputField("当前恢复码", text: $publicCode, placeholder: "恢复码", look: .mono, lines: 2...6)
                 .padding(.horizontal, 16).privacySensitive()
             TextAction("补齐资料", enabled: !publicCode.isEmpty && !action.running) {
@@ -104,6 +107,7 @@ struct HandoffScreen: View {
         }
     }
     private func loadCandidates() {
+        guard !app.isDemo else { return }
         action.run { candidates = try await context.remote.handoffCandidates() }
     }
 }

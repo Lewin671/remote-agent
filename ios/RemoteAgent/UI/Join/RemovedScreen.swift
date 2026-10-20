@@ -14,8 +14,8 @@ struct RemovedScreen: View {
             ScrollView {
                 VStack(spacing: 16) {
                     EmptyState(
-                        "服务器拒绝了这台设备的登录",
-                        text: "可能是设备被移除、服务重置或连接异常。这条消息不能证明安全撤销已经完成，请先重试或在当前管理端核实。",
+                        model.authorityHandoffComplete ? "已交接管理权" : "服务器拒绝了这台设备的登录",
+                        text: model.authorityHandoffComplete ? "本机已移除，接任设备成为唯一管理端。要再次加入，请重新配对。" : "可能是设备被移除、服务重置或连接异常。这条消息不能证明安全撤销已经完成，请先重试或在当前管理端核实。",
                         action: "重新加入账户", onAction: { leaving = true },
                         note: "会先删除这台设备上的账户密钥和缓存，再用配对码加入。",
                         link: "再试一次", onLink: { model.retryLogin() })
@@ -44,7 +44,7 @@ struct RemovedScreen: View {
             } catch { pending = true }
         }
         .confirm(isPresented: $leaving, title: "退出并删除本机密钥？",
-            text: AuthorityAccess.exitAdvice(authority: model.state.authorityDeviceId == model.account?.deviceId, unresolved: pending),
+            text: AuthorityAccess.exitAdvice(authority: !model.authorityHandoffComplete && model.state.authorityDeviceId == model.account?.deviceId, unresolved: pending),
             confirm: "退出", danger: true) { Task { await model.logout() } }
         .debugSignal("removed.retry") { model.retryLogin() }
     }
