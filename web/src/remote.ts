@@ -2648,7 +2648,7 @@ export class Remote {
       this.patchOut(sid, o.sendId, {
         status: "failed",
         error: missingImages
-          ? "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留"
+          ? "图片不在电脑上"
           : errorText(e),
         missingImages,
         unknown: still,

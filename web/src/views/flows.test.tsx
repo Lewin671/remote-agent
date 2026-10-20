@@ -1234,7 +1234,7 @@ describe("a message the session ended before sending", () => {
 
   it("says it was not sent, and can go back into the input after resuming", async () => {
     setup(false);
-    expect(host.textContent).toContain("会话结束，没有发出");
+    expect(host.querySelector(".me.fail small")!.textContent).toBe("没发出去：会话已结束放回输入框");
     expect(host.textContent).not.toContain("取消了一条排队的消息");
     expect(host.querySelector(".queued")).toBeNull();
     await click(button("放回输入框"));
@@ -1243,7 +1243,7 @@ describe("a message the session ended before sending", () => {
 
   it("waits as the draft while the session is still ended", async () => {
     const r = setup(true);
-    expect(host.textContent).toContain("会话结束，没有发出");
+    expect(host.textContent).toContain("没发出去：会话已结束");
     expect(host.querySelector(".queued")).toBeNull();
     await click(button("放回输入框"));
     // No input while ended: the text waits as the draft for after resuming.
@@ -1742,12 +1742,33 @@ describe("who did what (v2)", () => {
     const r = demo();
     const s = r.sessions.get("s-msg")!;
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-    expect(host.textContent).toContain("没能发送：Codex 没认出图片");
-    expect(host.textContent).toContain("终端里可能留着这条消息的一部分");
+    // Surely not sent: red, with a retry. Maybe sent: orange, to the terminal.
+    expect(host.querySelector(".me.fail")!.textContent).toContain("没发出去：Codex 没认出图片");
+    const maybe = [...host.querySelectorAll(".me.warn small")].map((x) => x.textContent);
+    expect(maybe.some((t) => t?.startsWith("可能没发出去："))).toBe(true);
+    expect(host.textContent).not.toMatch(/没能发送|不会自动重发|终端里可能留着/);
     const failed = [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("Codex 没认出图片"))!;
     await click(button("重试", failed));
     expect(r.outbox("s-msg").at(-1)?.text).toBe("这两个页面底部的按钮都点不到");
   });
+});
+
+describe("a send that failed", () => {
+  for (const [unknown, cls, words] of [
+    [false, ".me.fail", "没发出去：电脑不在线"],
+    [true, ".me.warn", "可能没发出去：连接超时"],
+  ] as const)
+    it(`says ${words.split("：")[0]} with what is known`, () => {
+      const r = demo();
+      (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [
+        { sendId: "m1", requestId: "x", deadline: 0, text: "顺便补一个测试", status: "failed", error: words.split("：")[1], unknown },
+      ]);
+      mount(<SessionPage remote={r} session={r.sessions.get("s-idle")!} onBack={() => undefined} wide={false} />);
+      const bubble = [...host.querySelectorAll(cls)].find((x) => x.textContent?.includes("顺便补一个测试"))!;
+      expect(bubble.querySelector("small")!.textContent).toMatch(new RegExp("^" + words));
+      expect(button("重试", bubble)).toBeTruthy();
+      expect(button("移除此提示", bubble)).toBeTruthy();
+    });
 });
 
 describe("pictures in a session (v2)", () => {
@@ -1936,16 +1957,17 @@ describe("the first message of a session started here (review B5, B9)", () => {
       s.info = { ...s.info!, status: SessionStatus.STARTING };
       r.touch();
     });
-    expect(host.textContent).toContain("已送达电脑 · 等 Codex 就绪后发出");
+    expect(host.querySelector(".pending-meta > span")!.textContent).toBe("等 Codex 就绪后发出");
     expect(host.textContent).not.toContain("插入这一轮");
     expect(host.textContent!.split("给登录接口加限流").length - 1).toBe(1);
   });
 
   it("shows its real state, not 已送达 after another client canceled it", () => {
     const { push } = setup();
-    expect(host.textContent).toContain("插入这一轮 · 等输入框就绪");
+    // The only one waiting: not numbered.
+    expect(host.querySelector(".pending-meta > span")!.textContent).toBe("插入这一轮");
     push({ case: "inputState", value: { requestId: "p1", status: InputStatus.CANCELED } });
-    expect(host.textContent).not.toContain("插入这一轮 · 等输入框就绪");
+    expect(host.textContent).not.toContain("插入这一轮");
     expect(host.textContent).toContain("取消了一条排队的消息");
   });
 

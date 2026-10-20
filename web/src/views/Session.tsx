@@ -1058,13 +1058,16 @@ function Pending({
   agent: Agent;
   onRestore: (text: string, from?: string) => void;
 }) {
+  // Either it surely did not go, or it may have: the computer may have
+  // taken it before the answer was lost.
   if (phase === "failed")
     return (
-      <div className="me fail">
+      <div className={"me " + (o.unknown ? "warn" : "fail")}>
         <LocalThumbs blobs={o.thumbs} />
         {o.text && <div>{o.text}</div>}
         <small>
-          没能确认送达：{o.error}
+          {o.unknown ? "可能没发出去：" : "没发出去："}
+          {o.error}
           {!o.unknown && !!o.imageIds?.length && (
             <button
               onClick={() => {
@@ -1321,17 +1324,17 @@ function Row({
         const text = textOf.get(k.value.requestId);
         const images = d.accepted.get(k.value.requestId)?.imageIds.length ?? 0;
         return text !== undefined && (text || images) ? (
-          <div className="me warn unsent">
+          <div className="me fail unsent">
             <div>{text || `${images} 张图片`}</div>
             <small>
-              会话结束，没有发出
+              没发出去：会话已结束
               <button onClick={() => onRestore(text, k.value.requestId)}>
                 放回输入框
               </button>
             </small>
           </div>
         ) : (
-          <div className="sysline warn">有一条消息会话结束，没有发出</div>
+          <div className="sysline fail">有一条消息没发出去：会话已结束</div>
         );
       }
       if (k.value.status === InputStatus.CANCELED)
@@ -1351,7 +1354,7 @@ function Row({
             <div className="me warn">
               <div>{text || "一条消息"}</div>
               <small>
-                没能发送：{why}。终端里可能留着这条消息的一部分，不会自动重发
+                可能没发出去：{why}
                 {onTerminal && <button onClick={onTerminal}>去终端</button>}
               </small>
             </div>
@@ -1364,7 +1367,7 @@ function Row({
               <div>{text || "一条消息"}</div>
             )}
             <small>
-              没能发送：{why}
+              没发出去：{why}
               {mine && (text || images.length > 0) && (
                 <button
                   disabled={remote.replaced.has(k.value.requestId)}
@@ -1387,7 +1390,7 @@ function Row({
         );
       }
       const text = textOf.get(k.value.requestId);
-      const note = `已送到终端，但没能确认 ${agentName(agent)} 收到，不会自动重发`;
+      const note = "可能没发出去：已送到终端但没确认";
       return text ? (
         <div className="me warn">
           <div>{text}</div>

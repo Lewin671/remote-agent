@@ -319,6 +319,7 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .sysline { text-align: center; font-size: 12px; color: var(--muted); margin: 10px 0; }
 .sysline b { font-weight: var(--w6); color: var(--fg2); }
 .sysline.warn { color: var(--orange-ink); }
+.sysline.fail { color: var(--red); }
 .record { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding: 4px 0; }
 .record code { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg2); }
 .newmsg { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); background: var(--card); color: var(--blue); font-size: 13px; font-weight: var(--w6);

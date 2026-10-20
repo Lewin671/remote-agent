@@ -49,8 +49,12 @@ it("shows pending bubbles in place and folds more than three", () => {
   expect(host.textContent).toContain("还有 2 条排队");
   act(() => host.querySelector<HTMLButtonElement>(".todo-more")!.click());
   expect(host.querySelectorAll(".pending-bubble")).toHaveLength(4);
-  expect(host.textContent).toContain("已暂停");
-  expect(host.textContent).toContain("等当前工具结束后并入");
+  const notes = [...host.querySelectorAll(".pending-meta > span")].map((x) => x.textContent);
+  // Few words for what each waits for, numbered while more than one waits.
+  expect(notes.some((n) => n?.startsWith("这一轮结束后发 · 第 "))).toBe(true);
+  expect(notes).toContain("已暂停");
+  expect(notes).toContain("插入这一轮");
+  expect(notes.join("\n")).not.toMatch(/排队 ·|等当前工具结束后并入|中断前排着的/);
   expect(host.textContent).toContain("Android");
 });
 
