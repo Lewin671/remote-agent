@@ -90,7 +90,12 @@ class V8Gallery {
     private val foo = "$home/Code/foo"
     private var dark by mutableStateOf(false)
 
-    @After fun close() { remote.close(); DockFolds.clear() }
+    @After fun close() {
+        remote.close()
+        DockFolds.clear()
+        // The terminal shot picks the terminal view, which every later session would open in.
+        InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("session-view", 0).edit().clear().commit()
+    }
 
     private fun ts(ms: Long) = Timestamp.newBuilder().setSeconds(ms / 1000).build()
     private fun at(h: Int, m: Int): Long = java.time.LocalDate.now().atTime(h, m).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -326,6 +331,18 @@ class V8Gallery {
         val plan = (1..30).joinToString("\n") { "$it. 第 $it 步：把 `inventory` 模块里和库存扣减相关的第 $it 段逻辑迁到新服务，并补上对应的测试" }
         val ev = events(turn(), user("先出个方案"), agent("方案如下。"), Event.newBuilder().setPlanProposed(PlanProposed.newBuilder().setText(plan)))
         shoot("16-session-plan-long", sessionState(session("planlong", "imac", "$home/Code/shop", "拆分订单服务", plan = true, mode = ApprovalMode.APPROVAL_MODE_PLAN, agent = Agent.AGENT_CLAUDE)), mapOf("planlong" to ev)) { SessionScreen("planlong") }
+    }
+
+    @Test fun homeApprovalLong() {
+        val st = homeState(true)
+        val ev = events(turn(), user("迁移订单表"), approval("A1", longCommand(20), longDesc))
+        shoot("01-home-approval-long", st, mapOf("api" to ev, "dep" to depEvents)) { HomeScreen() }
+    }
+
+    @Test fun homeApprovalLongOpen() {
+        val st = homeState(true)
+        val ev = events(turn(), user("迁移订单表"), approval("A1", longCommand(20), longDesc))
+        shoot("01-home-approval-long-open", st, mapOf("api" to ev, "dep" to depEvents), then = { ui.onNodeWithText("展开", substring = true).performClick() }) { HomeScreen() }
     }
 
     @Test fun approvalPage() {

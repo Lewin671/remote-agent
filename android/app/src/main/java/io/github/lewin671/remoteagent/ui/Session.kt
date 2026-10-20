@@ -651,7 +651,6 @@ private fun ChatPane(
                 status,
                 d,
                 onTerminal,
-                onDetail = { aid -> nav.approval(s.id, aid) },
                 onPlan = { nav.plan(s.id) },
             )
         }
@@ -880,7 +879,6 @@ private fun Bottom(
     status: Status,
     d: io.github.lewin671.remoteagent.core.Derived,
     onTerminal: () -> Unit,
-    onDetail: (String) -> Unit,
     onPlan: () -> Unit,
 ) {
     val p = pal
@@ -947,7 +945,7 @@ private fun Bottom(
     if (first != null) {
         when (first) {
             is DockItem.Approval ->
-                ApprovalDock(s, first.a, dockItems.size - 1) { onDetail(first.a.approvalId) }
+                ApprovalDock(s, first.a, dockItems.size - 1)
             is DockItem.Question -> QuestionDock(s, first.q, dockItems.size - 1, onTerminal)
             is DockItem.Plan -> PlanDock(s, first.text, dockItems.size - 1, onPlan)
             is DockItem.Popup -> PopupDock(s, first.title, dockItems.size - 1, onTerminal)

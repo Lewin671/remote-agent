@@ -546,14 +546,14 @@ fun ApprovalPage(sid: String, aid: String) {
                     color = p.fg2,
                     modifier = Modifier.padding(bottom = 4.dp),
                 )
+            Code(approvalBody(a))
             if (a.description.isNotEmpty())
                 Text(
                     approvalDisplay(a.description),
                     style = T.sm,
                     color = p.fg2,
-                    modifier = Modifier.padding(bottom = 6.dp),
+                    modifier = Modifier.padding(top = 8.dp),
                 )
-            Code(approvalBody(a))
         }
         Column(
             Modifier.fillMaxWidth()

@@ -223,6 +223,84 @@ class LayoutTest {
         ui.onNodeWithText("机器").assertIsDisplayed()
         ui.onNodeWithText("审批").performScrollTo().assertIsDisplayed()
     }
+    private fun approval(lines: Int) = ApprovalRequested.newBuilder().setApprovalId("A$lines")
+        .setCommand((1..lines).joinToString("\n") { "echo step-$it" }).setDescription("说明文字".repeat(30)).build()
+
+    @Test fun aWaitingItemOpensWithOneHeadLineAndFoldsByItsId() {
+        DockFolds.clear()
+        val a = approval(40)
+        ui.setContent {
+            val base = LocalDensity.current
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 1.3f)) {
+                    Column(Modifier.testTag("frame").width(320.dp).height(640.dp).background(pal.card)) {
+                        Spacer(Modifier.weight(1f))
+                        CompositionLocalProvider(LocalDockMax provides 384.dp) { ApprovalDock(session(), a, 1) }
+                    }
+                }
+            }
+        }
+        // Open by itself: one head line, the command before the description, the buttons in view.
+        ui.onNodeWithText("收起", substring = true).assertIsDisplayed()
+        ui.onAllNodesWithText("请求执行", substring = true).assertCountEquals(1)
+        ui.onNodeWithText("允许").assertIsDisplayed()
+        val command = ui.onNodeWithText("echo step-1", substring = true).fetchSemanticsNode().positionInRoot
+        val description = ui.onNodeWithText("说明文字", substring = true).fetchSemanticsNode().positionInRoot
+        assertTrue("command before description", command.y < description.y)
+        // The body scrolls inside about 60%; the last line of the command is reachable.
+        ui.onNodeWithText("说明文字", substring = true).performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("收起", substring = true).performClick()
+        ui.onNodeWithText("处理", substring = true).assertIsDisplayed()
+        ui.onNodeWithText("允许").assertDoesNotExist()
+        ui.runOnIdle { assertTrue(!DockFolds.isOpen("s", DockItem.Approval(a).id)) }
+        DockFolds.clear()
+    }
+
+    @Test fun aCardCutsACommandAtWholeLinesAndOpensItInPlace() {
+        var dark by mutableStateOf(false)
+        ui.setContent {
+            RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
+                Column(Modifier.testTag("frame").width(320.dp).background(pal.soft).padding(12.dp)) {
+                    CommandPreview((1..20).joinToString("\n") { "echo step-$it" }, "k")
+                }
+            }
+        }
+        ui.onNodeWithText("还有 14 行 · 展开", substring = true).assertIsDisplayed()
+        screenshot("card-command-cut-light")
+        ui.runOnIdle { dark = true }
+        screenshot("card-command-cut-dark")
+        ui.onNodeWithText("还有 14 行 · 展开", substring = true).performClick()
+        ui.onNodeWithText("收起", substring = true).assertIsDisplayed()
+        ui.onNodeWithText("收起", substring = true).performClick()
+        ui.onNodeWithText("还有 14 行 · 展开", substring = true).assertIsDisplayed()
+    }
+
+    @Test fun aShortCommandHasNoMoreLine() {
+        ui.setContent { RaTheme(ThemeMode.LIGHT) { Column(Modifier.width(320.dp)) { CommandPreview("go test ./...", "k2") } } }
+        ui.onNodeWithText("go test ./...").assertIsDisplayed()
+        ui.onNodeWithText("展开", substring = true).assertDoesNotExist()
+    }
+
+    @Test fun approvalButtonsKeepTo480OnATablet() {
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
+                    Column(Modifier.testTag("frame").requiredWidth(1000.dp).background(pal.card)) {
+                        ApprovalButtons(session(), approval(1), compact = false)
+                        PlanButtons(session(), full = true)
+                    }
+                }
+            }
+        }
+        val frame = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
+        with(ui.density) {
+            for (label in listOf("允许", "批准执行")) {
+                val b = ui.onNodeWithText(label).fetchSemanticsNode().boundsInRoot
+                assertTrue("$label ${(b.right - frame.left).toDp()}", (b.right - frame.left).toDp() <= 481.dp)
+            }
+        }
+    }
+
     @Test fun wideSettingsKeepAReadableColumnAndACompactThemePicker() {
         ui.setContent {
             RaTheme(ThemeMode.DARK) {

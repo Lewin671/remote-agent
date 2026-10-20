@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -242,7 +243,7 @@ fun DockFoot(
 }
 
 @Composable
-fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int, onDetail: () -> Unit) {
+fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int) {
     if (isSkeleton(a)) {
         Text(skeletonMessage, style = T.sm, color = pal.muted)
         return
@@ -259,30 +260,15 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int, onDetail: () -
         left = if (a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟" else "",
         openLabel = approvalHead(a),
         body = {
+            // What would run comes first, whole, scrolling with the dock; then why.
+            val body = approvalBody(a)
+            if (body.isNotEmpty()) Code(body, Modifier.padding(bottom = 8.dp))
             if (a.description.isNotEmpty())
                 Text(
                     approvalDisplay(a.description),
                     style = T.sm,
                     color = p.fg2,
                 )
-            val body = approvalBody(a)
-            if (body.isNotEmpty()) {
-                val cut = body.lines().size > 4 || body.length > 200
-                Box(Modifier.padding(vertical = 8.dp)) {
-                    Code(body, maxLines = 4)
-                    if (cut)
-                        Text(
-                            "展开全文",
-                            style = T.metaB,
-                            color = p.blue,
-                            modifier =
-                                Modifier.align(Alignment.BottomEnd)
-                                    .background(p.code)
-                                    .padding(start = 12.dp, end = 6.dp, bottom = 4.dp)
-                                    .clickable(onClick = onDetail),
-                        )
-                }
-            }
         },
     ) {
         ApprovalButtons(
@@ -409,8 +395,8 @@ fun ApprovalButtons(
         if (act.running || (act.error.isEmpty() && !stuck))
             Text(if (act.running) "正在送到电脑…" else "已提交，等待电脑确认", style = T.meta, color = p.muted)
     } else if (opened || reasonOpen) {
-        ReasonField(reason, { reason = it }, "拒绝理由（可选）")
-        Btns {
+        ReasonField(reason, { reason = it }, "拒绝理由（可选）", Modifier.widthIn(max = ActionRowMax))
+        Btns(Modifier.widthIn(max = ActionRowMax)) {
             Btn(
                 "取消",
                 {
@@ -423,7 +409,7 @@ fun ApprovalButtons(
             Btn("不允许", { resolve(false, reason.trim()) }, Modifier.weight(1f), BtnKind.NEGATIVE)
         }
     } else {
-        Btns {
+        Btns(Modifier.widthIn(max = ActionRowMax)) {
             Btn(
                 "不允许",
                 {
@@ -440,7 +426,7 @@ fun ApprovalButtons(
             TextAction(
                 "允许，这类请求以后不再问",
                 { resolve(true, always = true) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.widthIn(max = ActionRowMax).fillMaxWidth(),
                 style = T.smB,
                 alignment = Alignment.Center,
             )
@@ -465,6 +451,12 @@ fun ApprovalButtons(
         )
     }
 }
+
+/**
+ * How wide the buttons of an approval or a plan grow: on a tablet they keep to the left instead of
+ * stretching across the screen; a phone is narrower anyway.
+ */
+val ActionRowMax = 480.dp
 
 /** A text box on a soft field, for a reason or another short answer. */
 @Composable
@@ -976,7 +968,7 @@ fun PlanButtons(
         }
     if (!offer.choices) {
         Banner(offer.note, Modifier.padding(bottom = 8.dp), Tone2.ERROR)
-        Btns {
+        Btns(Modifier.widthIn(max = ActionRowMax)) {
             if (offer.abandon)
                 Btn(
                     "放弃",
@@ -999,7 +991,7 @@ fun PlanButtons(
         }
         return
     }
-    Btns {
+    Btns(Modifier.widthIn(max = ActionRowMax)) {
         Btn(
             "继续规划…",
             { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) },

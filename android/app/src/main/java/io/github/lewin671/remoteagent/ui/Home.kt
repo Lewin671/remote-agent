@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -731,14 +733,19 @@ private fun AttentionCard(state: RemoteState, s: SessionView, t: Long, scope: Ho
                     },
                     style = T.metaB,
                     color = p.orangeInk,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
+            // Both share the line, so at a large font neither is squeezed to a character a line.
             Text(
                 if (st == Status.APPROVAL && a != null && a.hasDeadline())
                     "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟，超时拒绝"
                 else whenText(s.updatedMs, t),
                 style = T.meta,
                 color = p.muted,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f, fill = false),
             )
         }
         Row(
@@ -775,31 +782,21 @@ private fun AttentionCard(state: RemoteState, s: SessionView, t: Long, scope: Ho
                 overflow = TextOverflow.Ellipsis,
             )
         if (st == Status.APPROVAL && a != null) {
+            // What would run comes first, then why. 允许 is never offered next to nothing: a tool
+            // that is not a shell command shows its input.
+            val what = approvalBody(a)
+            if (what.isNotEmpty())
+                CommandPreview(what, a.approvalId, Modifier.padding(top = 8.dp))
             if (a.description.isNotEmpty())
                 Text(
                     approvalDisplay(a.description),
                     style = T.sm,
                     color = p.fg2,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 6.dp),
                 )
-            // 允许 is never offered next to nothing: a tool that is not a shell command shows its
-            // input.
-            val what = approvalBody(a)
-            if (what.isNotEmpty())
-                Text(
-                    what,
-                    style = T.mono,
-                    color = p.fg2,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier =
-                        Modifier.padding(vertical = 8.dp)
-                            .fillMaxWidth()
-                            .clip(Radii.XS)
-                            .background(p.card)
-                            .border(1.dp, p.line, Radii.XS)
-                            .padding(horizontal = 10.dp, vertical = 7.dp),
-                )
+            Spacer(Modifier.height(8.dp))
             if (state.conn == ConnState.ONLINE && state.machines[s.machineId]?.online == true) {
                 ApprovalButtons(s, a, compact = true, onCard = true)
             }
@@ -812,6 +809,58 @@ private fun AttentionCard(state: RemoteState, s: SessionView, t: Long, scope: Ho
                 modifier = Modifier.padding(top = 6.dp),
             )
         }
+    }
+}
+
+/** The line under a cut command: how many lines are hidden. */
+fun moreLinesLabel(hidden: Int): String = "还有 $hidden 行 · 展开"
+
+/**
+ * A command on a card: at most [lines] whole lines, never half of one, and no scrolling of its
+ * own; below a cut one, 还有 N 行 · 展开 opens it in place, and 收起 cuts it again.
+ */
+@Composable
+fun CommandPreview(text: String, key: String, modifier: Modifier = Modifier, lines: Int = 6) {
+    val p = pal
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var open by rememberSaveable(key) { mutableStateOf(false) }
+    var layout by
+        remember(text) { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+    val total = layout?.lineCount ?: 0
+    val cut = total > lines
+    // The text is laid out whole; the box shows its first lines, ending where a line ends.
+    val shown =
+        if (cut && !open) with(density) { layout!!.getLineBottom(lines - 1).toDp() } else null
+    Column(modifier.fillMaxWidth()) {
+        Box(
+            Modifier.fillMaxWidth()
+                .clip(Radii.XS)
+                .background(p.card)
+                .border(1.dp, p.line, Radii.XS)
+                .padding(horizontal = 10.dp, vertical = 7.dp),
+        ) {
+            Box(
+                Modifier.fillMaxWidth()
+                    .then(if (shown != null) Modifier.height(shown) else Modifier)
+                    .clipToBounds(),
+            ) {
+                Text(
+                    text,
+                    style = T.mono,
+                    color = p.fg2,
+                    onTextLayout = { layout = it },
+                    modifier = Modifier.wrapContentHeight(Alignment.Top, unbounded = true),
+                )
+            }
+        }
+        if (cut)
+            Box(
+                Modifier.heightIn(min = 44.dp).clickable(role = Role.Button) { open = !open },
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                if (open) ArrowText("收起", p.blue, T.smB, up = true)
+                else ArrowText(moreLinesLabel(total - lines), p.blue, T.smB, down = true)
+            }
     }
 }
 
