@@ -28,8 +28,10 @@ class RecoveryObjectsTest {
                 r.start()
                 o.start()
                 withTimeout(10000) {
-                    r.state.first { it.conn == ConnState.ONLINE }
-                    o.state.first { it.conn == ConnState.ONLINE }
+                    // A Ready stream precedes the signed directory. Renaming needs the
+                    // device row, not merely an authenticated connection.
+                    r.state.first { it.conn == ConnState.ONLINE && it.devices.containsKey(kept.deviceId) }
+                    o.state.first { it.conn == ConnState.ONLINE && it.devices.containsKey(offline.deviceId) }
                 }
                 r.renameDevice(kept.deviceId, "retained-client")
                 o.renameDevice(offline.deviceId, "offline-client")

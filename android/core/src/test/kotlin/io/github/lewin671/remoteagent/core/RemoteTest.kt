@@ -1430,12 +1430,16 @@ class RemoteTest {
         runBlocking<Unit> {
             val acct = approvedClient(daemon.phone, http)
             val streams = java.util.concurrent.atomic.AtomicInteger()
+            val replacement = CompletableDeferred<Unit>()
+            val release = java.util.concurrent.CountDownLatch(1)
             val observed =
                 http
                     .newBuilder()
                     .addInterceptor { chain ->
-                        if (chain.request().url.encodedPath == "/v1/stream")
-                            streams.incrementAndGet()
+                        if (chain.request().url.encodedPath == "/v1/stream" && streams.incrementAndGet() == 2) {
+                            replacement.complete(Unit)
+                            check(release.await(10, TimeUnit.SECONDS))
+                        }
                         chain.proceed(chain.request())
                     }
                     .build()
@@ -1443,9 +1447,16 @@ class RemoteTest {
             closers += AutoCloseable { r.close() }
             r.start()
             r.awaitEvents("s1", 3)
-            r.reconnectNow()
-            r.awaitState("network replacement") { it.conn == ConnState.CONNECTING }
-            daemon.upload("s1", agent("during replacement"))
+            try {
+                r.reconnectNow()
+                // StateFlow may conflate a fast CONNECTING -> ONLINE transition. Hold the
+                // replacement upgrade so the upload is known to happen while disconnected.
+                withTimeout(10_000) { replacement.await() }
+                assertEquals(ConnState.CONNECTING, r.state.value.conn)
+                daemon.upload("s1", agent("during replacement"))
+            } finally {
+                release.countDown()
+            }
             val events = r.awaitEvents("s1", 4).events
             assertEquals(listOf(1L, 2L, 3L, 4L), events.map { it.seq })
             r.awaitState("online again") { it.conn == ConnState.ONLINE }
