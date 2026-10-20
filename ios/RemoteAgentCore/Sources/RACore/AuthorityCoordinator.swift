@@ -75,7 +75,7 @@ public actor AuthorityCoordinator {
     func resume(_ t: UInt64) async throws {
         guard var op = try storage.readOperation() else { return }
         try gate.check(t)
-        guard op.kind == .state || op.kind == .lease else {
+        guard op.kind == .state || op.kind == .lease || op.kind == .deleteRecords else {
             throw CommandError("pending", "请继续账户创建、恢复或接任草稿")
         }
         if op.phase == .delivered {
@@ -101,6 +101,15 @@ public actor AuthorityCoordinator {
         _ = try await rpc(t) { [security] in try await security.sync() }
         var r = try storage.readSecurity()
         let hash = try DeviceSecurity.stateHash(r.state)
+        if op.kind == .deleteRecords {
+            _ = try authority(t, head: op.parent)
+            let request = try PBDeleteMachineRecordsRequest(serializedBytes: op.signed)
+            try DeviceSecurity.check(r.state.core.member(request.machineID) == nil, .untrusted)
+            let headers = Api.headers(token: try await rpc(t, token))
+            try await rpc(t) { [api] in _ = try await api.client.deleteMachineRecords(request: request, headers: headers).value() }
+            op = try advance(op, to: .delivered)
+            try storage.replaceOperation(expected: op, next: nil); return
+        }
         var request = try PBPutSecurityStateRequest(serializedBytes: op.signed)
         let target: DeviceSecurity.State
         if op.kind == .lease {
@@ -201,5 +210,41 @@ public actor AuthorityCoordinator {
                 return SecurityOperation(kind: .state, parent: hash, signed: try request.serializedData(), delivery: delivery)
             }
         }
+    }
+    public func removeDevice(_ id: String, abandonPairDelivery: Bool = false) async throws {
+        let t = try begin(); defer { busy = false }
+        if abandonPairDelivery, let op = try storage.readOperation(), !op.delivery.isEmpty {
+            let delivery = try PBApprovePairingRequest(serializedBytes: op.delivery)
+            let approval = try PBPairApproval(serializedBytes: delivery.approval)
+            try DeviceSecurity.check(deviceId(publicKey: approval.candidateDevicePublicKey) == id, .untrusted)
+            _ = try await rpc(t) { [security] in try await security.sync() }
+            let r = try authority(t)
+            let req = try PBPutSecurityStateRequest(serializedBytes: op.signed)
+            let target = try DeviceSecurity.parseState(req.states.last!.state)
+            try DeviceSecurity.check(r.states[target.core.epoch].map { try DeviceSecurity.stateHash($0) } == DeviceSecurity.stateHash(target), .conflict)
+            // Explicit owner action, after verifying the exact approved state.
+            try storage.replaceOperation(expected: op, next: nil)
+        } else { try await resume(t) }
+        _ = try await rpc(t) { [security] in try await security.sync() }
+        let r = try authority(t)
+        try prepareState(t, r: r) { r in
+            (try Authority().remove(parent: r.state, targets: [id], oldSecret: r.secret!, newSecret: Authority.newSecret(),
+                signer: SigningKey(seed: account.deviceSeed), now: Int64(clamping: now(r))), Data(), nil)
+        }
+        try await resume(t)
+    }
+    public func deleteMachineRecords(_ id: String) async throws {
+        let t = try begin(); defer { busy = false }
+        try await resume(t)
+        _ = try await rpc(t) { [security] in try await security.sync() }
+        let r = try authority(t)
+        try DeviceSecurity.check(r.state.core.member(id) == nil && r.state.core.removed.contains(id)
+            && r.states.values.contains { $0.core.member(id)?.kind == 1 }, .untrusted)
+        var request = PBDeleteMachineRecordsRequest(); request.machineID = id
+        let bytes = try request.serializedData()
+        _ = try storage.prepareOperation(expectedHead: DeviceSecurity.stateHash(r.state)) { committed in
+            try gate.withPermit(t) { SecurityOperation(kind: .deleteRecords, parent: try DeviceSecurity.stateHash(r.state), signed: bytes) }
+        }
+        try await resume(t)
     }
 }

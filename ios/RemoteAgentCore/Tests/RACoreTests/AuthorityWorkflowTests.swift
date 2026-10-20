@@ -176,6 +176,28 @@ struct AuthorityWorkflowTests {
     }
 
 
+    @Test func expiredDeliveryHasExplicitRemovalExit() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (account, vault, _) = try await createAuthority(server)
+        let c = try coordinator(account, vault)
+        // An approved member with a deliberately unavailable delivery slot.
+        let r = try vault.readSecurity(), signer = try SigningKey(seed: account.deviceSeed)
+        let member = try Authority.newMember(signer: SigningKey(seed: randomBytes(32)), xPrivate: randomBytes(32), kind: .client)
+        let state = try Authority().pair(parent: r.state, candidate: member, oldSecret: r.secret!, newSecret: randomBytes(32), signer: signer, now: Int64(r.floor))
+        var approval = PBPairApproval(); approval.candidateDevicePublicKey = member.ed
+        var delivery = PBApprovePairingRequest(); delivery.pairingID = String(repeating: "a", count: 32); delivery.approval = try approval.serializedData()
+        var req = PBPutSecurityStateRequest(); var value = PBSecurityState(); value.state = try DeviceSecurity.stateBytes(state)
+        req.states = [value]; req.lease = try DeviceSecurity.HeadLease.sign(state, signer: signer, now: Int64(r.floor)).bytes()
+        _ = try vault.prepareOperation(expectedHead: DeviceSecurity.stateHash(r.state)) { _ in
+            SecurityOperation(kind: .state, parent: state.core.parent, signed: try req.serializedData(), delivery: try delivery.serializedData())
+        }
+        do { try await c.resumeSecurityOperation(); Issue.record("missing pair slot accepted") } catch {}
+        #expect(try vault.readOperation()?.phase == .published)
+        #expect(try vault.readSecurity().state.core.member(member.id) != nil)
+        try await c.removeDevice(member.id, abandonPairDelivery: true)
+        #expect(try vault.readOperation() == nil)
+        #expect(try vault.readSecurity().state.core.removed.contains(member.id))
+    }
 
 }
 
@@ -266,6 +288,140 @@ extension AuthorityWorkflowTests {
 /// the installed Codex login and makes one model request. All relay/daemon/tmux
 /// state and working files belong to this temporary fixture.
 extension AuthorityWorkflowTests {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["RA_TEST_REAL_CODEX"] == "1"))
+    func realDaemonCliRoundTripAndRemovedMachineArchiveRejoin() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (account, vault, _) = try await createAuthority(server)
+        let remote = try Remote(account: account, http: HTTP(), securityStorage: vault)
+        defer { remote.close() }
+        remote.authorityGate.set(active: true, protectedDataAvailable: true)
+        let authority = try await remote.authorityCoordinator()
+        let cli = try ManagementCLI(directory: server.directory)
+        defer { cli.close() }
+        func pair(replaces: String = "") async throws -> String {
+            let start = try await authority.startPairing(replacesDeviceID: replaces)
+            let process = try cli.launch(["account", "join", "--server", server.url, "--code", start.link.code], input: "y\n")
+            var candidate: PairCandidate?
+            for _ in 0..<1000 {
+                candidate = try await authority.pairingCandidate(start)
+                if candidate != nil { break }; try await realSleep(10)
+            }
+            let value = try candidate.unwrap()
+            #expect(value.kind == .machine)
+            // The native CLI reads the fixture's explicit local SAS confirmation.
+            try await realSleep(100)
+            try await authority.approvePairing(value, sasConfirmed: true)
+            try await cli.wait(process)
+            try await authority.resumeSecurityOperation()
+            return value.member.id
+        }
+        let machine = try await pair()
+        try cli.startDaemon()
+        remote.start()
+        for _ in 0..<1000 {
+            _ = await remote.refresh()
+            if remote.state.value.machines[machine]?.online == true { break }; try await realSleep(10)
+        }
+        try #require(remote.state.value.machines[machine]?.online == true)
+        var create = PBCreateSessionRequest(); create.cwd = cli.work.path; create.agent = .codex
+        create.prompt = "Reply exactly RA_AUTHORITY_ROUNDTRIP_OK. Do not run tools or change files."
+        var command = PBCommand(); command.createSession = create
+        let result = try await remote.machineCommand(machine, command)
+        let sid = result.createSession.session.id
+        #expect(!sid.isEmpty)
+        let feed = remote.events(sid)
+        let follow = Task { for await _ in feed.updates() { if Task.isCancelled { break } } }
+        defer { follow.cancel() }
+        var answered = false
+        for _ in 0..<1200 {
+            remote.retryEvents(sid)
+            if feed.value.events.contains(where: { $0.agentMessage.text.contains("RA_AUTHORITY_ROUNDTRIP_OK") }) { answered = true; break }
+            try await realSleep(100)
+        }
+        #expect(answered, "real Codex response must return through daemon and relay to Swift Remote")
+        let seq = remote.state.value.sessions[sid]?.lastSeq ?? 0
+        try await authority.removeDevice(machine)
+        let api = try Api(server: server.url, http: HTTP()), tok = try await remote.currentToken()
+        var get = PBListRemoteSessionsRequest(); get.sessionIds = [sid]
+        let archive = try await api.client.listRemoteSessions(request: get, headers: Api.headers(token: tok)).value()
+        #expect(archive.sessions.contains { $0.sessionID == sid })
+        cli.stopDaemon()
+        let replacement = try await pair(replaces: machine)
+        #expect(replacement != machine)
+        try cli.startDaemon()
+        var retained = false
+        for _ in 0..<1000 {
+            _ = await remote.refresh()
+            if remote.state.value.sessions[sid]?.machineId == replacement { retained = true; break }
+            try await realSleep(25)
+        }
+        #expect(retained)
+        #expect((remote.state.value.sessions[sid]?.lastSeq ?? 0) >= seq)
+        try await authority.removeDevice(replacement)
+        try await authority.deleteMachineRecords(replacement)
+        let deleted = try await api.client.listRemoteSessions(request: get, headers: Api.headers(token: tok)).value()
+        #expect(!deleted.sessions.contains { $0.sessionID == sid })
+    }
+}
+
+private final class ManagementCLI {
+    let directory: URL
+    let work: URL
+    let home: URL
+    let binary: URL
+    let tmux = "ra-management-" + UUID().uuidString
+    var children: [Process] = []
+    var daemon: Process?
+    init(directory: URL) throws {
+        self.directory = directory; work = directory.appendingPathComponent("work")
+        home = URL(fileURLWithPath: "/tmp/ra-m-" + String(UUID().uuidString.prefix(8)))
+        try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
+        binary = directory.appendingPathComponent("remote-agent")
+        let build = Process(); build.executableURL = URL(fileURLWithPath: try GoServer.go.unwrap())
+        build.currentDirectoryURL = repoRoot; build.arguments = ["build", "-o", binary.path, "./cmd/remote-agent"]
+        build.standardOutput = FileHandle.nullDevice; build.standardError = FileHandle.nullDevice
+        try build.run(); build.waitUntilExit()
+        guard build.terminationStatus == 0 else { throw TestFailure("could not build native management CLI") }
+    }
+    func launch(_ arguments: [String], input: String = "") throws -> Process {
+        let p = Process(); p.executableURL = binary; p.arguments = arguments; p.currentDirectoryURL = work
+        var env = ProcessInfo.processInfo.environment; env["REMOTE_AGENT_HOME"] = home.path; env["REMOTE_AGENT_TMUX_SOCKET"] = tmux
+        p.environment = env
+        let log = directory.appendingPathComponent("cli-\(children.count).log")
+        FileManager.default.createFile(atPath: log.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: log)
+        p.standardOutput = handle; p.standardError = handle
+        let pipe = Pipe(); p.standardInput = pipe
+        try p.run(); children.append(p)
+        try pipe.fileHandleForWriting.write(contentsOf: Data(input.utf8)); try pipe.fileHandleForWriting.close()
+        return p
+    }
+    func wait(_ p: Process) async throws {
+        for _ in 0..<3000 {
+            if !p.isRunning { guard p.terminationStatus == 0 else { throw TestFailure("native CLI failed; inspect isolated test log") }; return }
+            try await realSleep(10)
+        }
+        throw TestFailure("native CLI timed out")
+    }
+    func startDaemon() throws { daemon = try launch(["daemon", "--codex", try executable("codex")]) }
+    func stopDaemon() { if let daemon, daemon.isRunning { daemon.terminate(); daemon.waitUntilExit() }; daemon = nil }
+    func executable(_ name: String) throws -> String {
+        for root in (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":") {
+            let candidate = String(root) + "/" + name
+            if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
+        }
+        throw TestFailure("missing native executable")
+    }
+    func close() {
+        stopDaemon()
+        try? FileManager.default.removeItem(at: home)
+        for p in children where p.isRunning { p.terminate() }
+        if let path = try? executable("tmux") {
+            let p = Process(); p.executableURL = URL(fileURLWithPath: path); p.arguments = ["-L", tmux, "kill-server"]
+            p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
+            try? p.run(); p.waitUntilExit()
+        }
+    }
 }
 
 extension AuthorityWorkflowTests {

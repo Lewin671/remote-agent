@@ -16,4 +16,12 @@ extension Remote {
         management = coordinator; return coordinator
     }
     public func isAuthority() throws -> Bool { try securityIdentity().1.core.authorityID == account.deviceId }
+    public func removeDevice(_ id: String, abandonPairDelivery: Bool = false) async throws {
+        try await authorityCoordinator().removeDevice(id, abandonPairDelivery: abandonPairDelivery)
+        try await refreshTrustedDirectory()
+    }
+    public func deleteMachineRecords(_ id: String) async throws {
+        try await authorityCoordinator().deleteMachineRecords(id)
+        _ = await refresh()
+    }
 }
