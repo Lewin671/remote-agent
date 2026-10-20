@@ -255,7 +255,9 @@ export class AuthoritySetup {
             now: authoritySigningTime(parent, BigInt(Date.now()), local?.floor, local?.lease),
           });
           check();
-          await claimSecurityOperation(op, local?.stateHash);
+          // Recovery creates a new identity. The slot CAS still binds the old
+          // installed identity/head that the context was verified against.
+          await claimSecurityOperation(op, local?.stateHash, local?.memberID);
           check();
           await this.signEmergencyDraft(op, decoded.seed, check);
           // Return code even on submit failure via separate resume API: there

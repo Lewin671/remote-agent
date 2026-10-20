@@ -354,6 +354,28 @@ it("submits exact emergency recovery, rejects early completion, observes unchang
   const newClient = await clients((await loadAccount())!); await newClient.authority.renewLeaseIfNeeded();
   expect((await loadSecurity()).lease!.head).toEqual(adopted.stateHash);
 });
+it("recovers with an existing browser security record while binding the original verified head", async () => {
+  const { account, code } = await createAccount();
+  const prior = await loadSecurity();
+  const recovery = new AuthoritySetup(lifecycle());
+  const fresh = await recovery.prepareEmergencyRecovery(server.url, code);
+  expect(fresh.code).toBeTruthy();
+  const pending = await readSecurityOperation();
+  expect(pending!.memberID).not.toBe(account.deviceId);
+  expect(pending!.parent).toEqual(prior.stateHash);
+  expect((await loadSecurity()).memberID).toBe(account.deviceId);
+  await recovery.confirmRecoveryCodeSaved(); const status = await recovery.submitRecovery();
+  await server.ready(status.recoveryId);
+  await recovery.completeRecovery();
+  const adopted = await loadSecurity();
+  expect(adopted.memberID).toBe(pending!.memberID);
+  expect(adopted.pin).toEqual(prior.pin);
+  expect(isAuthority(adopted)).toBe(true);
+  expect(await readSecurityOperation()).toBeUndefined();
+  const resumed = await clients((await loadAccount())!);
+  await resumed.authority.renewLeaseIfNeeded();
+  expect((await loadSecurity()).lease!.head).toEqual(adopted.stateHash);
+});
 it("keeps a vetoed recovery until an explicit discard and permits a new request with the current code", async () => {
   const { account, code } = await createAccount(); const c = await clients(account);
   const recoveryDB = new IDBFactory(); vi.stubGlobal("indexedDB", recoveryDB);

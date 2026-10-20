@@ -34,10 +34,10 @@ export async function readSecurityOperation<L = unknown>(): Promise<SecurityOper
     throw new SecurityError("storage");
   return op;
 }
-export async function claimSecurityOperation<L>(op: SecurityOperation<L>, expectedHead?: B): Promise<void> {
+export async function claimSecurityOperation<L>(op: SecurityOperation<L>, expectedHead?: B, expectedMemberID = op.memberID): Promise<void> {
   await updateSecurityEntry<SecurityOperation<L>>("pending", (old, record) => {
     if (old) throw new Error("还有未完成的安全操作，请先继续处理");
-    if (expectedHead && (!record || record.memberID !== op.memberID || !equal(record.stateHash, expectedHead)))
+    if (expectedHead && (!record || record.memberID !== expectedMemberID || !equal(record.stateHash, expectedHead)))
       throw new SecurityError("stale");
     return op;
   });
