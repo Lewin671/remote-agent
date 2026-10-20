@@ -13,7 +13,7 @@ extension Vault: DeviceSecurity.Storage {
         try refreshNotifyUnlocked(record)
         return record
     }
-    private func readSecurityUnlocked() throws -> DeviceSecurity.Record {
+    func readSecurityUnlocked() throws -> DeviceSecurity.Record {
         guard let data = try read(.securityState) else { throw DeviceSecurity.Failure.storage }
         return try DeviceSecurity.Record.parse(data)
     }
@@ -22,7 +22,7 @@ extension Vault: DeviceSecurity.Storage {
         defer { SecurityVaultLock.lock.unlock() }
         _ = try initializeSecurityUnlocked(record)
     }
-    private func initializeSecurityUnlocked(_ record: DeviceSecurity.Record) throws -> DeviceSecurity.Record {
+    func initializeSecurityUnlocked(_ record: DeviceSecurity.Record) throws -> DeviceSecurity.Record {
         if let existing = try read(.securityState) {
             let old = try DeviceSecurity.Record.parse(existing)
             if try old.includesInstallation(record) {
@@ -84,7 +84,7 @@ extension Vault {
         defer { SecurityVaultLock.lock.unlock() }
         try saveAccountPublicProfileUnlocked(profile, pin: pin)
     }
-    private func saveAccountPublicProfileUnlocked(_ profile: AccountPublicProfile, pin: DeviceSecurity.Pin) throws {
+    func saveAccountPublicProfileUnlocked(_ profile: AccountPublicProfile, pin: DeviceSecurity.Pin) throws {
         guard profile.pin == pin else { throw DeviceSecurity.Failure.untrusted }
         // Revalidate even if received from a different bootstrap path.
         let checked = try AccountPublicProfile(publicKey: profile.publicKey, pin: pin)
@@ -98,5 +98,52 @@ extension Vault {
         let profile = try AccountPublicProfile.parse(raw)
         guard profile.pin == pin else { throw DeviceSecurity.Failure.untrusted }
         return profile
+    }
+}
+
+// Independent Keychain item; existing account/security encodings are unchanged.
+extension Vault: AuthorityStorage {
+    func existingSecurity() throws -> DeviceSecurity.Record? {
+        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
+        return try read(.securityState).map { try DeviceSecurity.Record.parse($0) }
+    }
+    func readOperation() throws -> SecurityOperation? {
+        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
+        return try operationUnlocked()
+    }
+    private func operationUnlocked() throws -> SecurityOperation? {
+        try readNamed("authority-operation").map { try JSONDecoder().decode(SecurityOperation.self, from: $0) }
+    }
+    func prepareOperation(expectedHead: Data?, _ build: (DeviceSecurity.Record?) throws -> SecurityOperation) throws -> SecurityOperation {
+        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
+        guard try readNamed("registration-intent") == nil else { throw DeviceSecurity.Failure.conflict }
+        guard try operationUnlocked() == nil else { throw DeviceSecurity.Failure.conflict }
+        let committed = try read(.securityState).map { try DeviceSecurity.Record.parse($0) }
+        if let expectedHead {
+            guard let committed, try DeviceSecurity.stateHash(committed.state) == expectedHead else { throw DeviceSecurity.Failure.stale }
+        }
+        let operation = try build(committed)
+        try writeNamed("authority-operation", operation.bytes())
+        return operation
+    }
+    func replaceOperation(expected: SecurityOperation, next: SecurityOperation?) throws {
+        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
+        guard try operationUnlocked() == expected else { throw DeviceSecurity.Failure.stale }
+        if let next {
+            try next.validateProgress(from: expected)
+            try writeNamed("authority-operation", next.bytes())
+        } else { try deleteNamed("authority-operation") }
+    }
+    func savePublicProfile(_ profile: AccountPublicProfile) throws {
+        try saveAccountPublicProfile(profile, pin: profile.pin)
+    }
+    func publicProfile(pin: DeviceSecurity.Pin) throws -> AccountPublicProfile? { try accountPublicProfile(pin: pin) }
+    func adoptOperation(_ expected: SecurityOperation, account: Account, record: DeviceSecurity.Record,
+                        profile: AccountPublicProfile) throws {
+        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
+        guard try operationUnlocked() == expected else { throw DeviceSecurity.Failure.stale }
+        try saveAccountPublicProfileUnlocked(profile, pin: record.pin)
+        let installed = try initializeSecurityUnlocked(record)
+        try save(account.stored, notifyKey: DeviceSecurity.NotifyRecord(record: installed).bytes())
     }
 }
