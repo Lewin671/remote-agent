@@ -288,7 +288,7 @@ public func joinByPairing(
     try persistRegistration(intent)
     let delivery = PairDeliveryReceipt(intent: intent, candidateToken: token, pairingID: id)
     try persistDelivery(delivery)
-    let registered = try await intent.resume(http: http, persist: persist)
+    let registered = try await intent.register(http: http, persist: persist)
     try DeviceSecurity.check(registered.deviceId == acct.deviceId, .untrusted)
     Task { await delivery.acknowledge(http: http) }
     // Success no longer depends on a best-effort receipt. Clear both private

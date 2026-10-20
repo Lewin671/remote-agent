@@ -50,8 +50,21 @@ public struct RegistrationIntent: Codable, Sendable, CustomStringConvertible,
       && deviceID == account.deviceId && accountID == account.accountId
       && security == record.bytes()
   }
+  /// The live pairing must consume its approval and replace the registration
+  /// even when a re-pairing retains an identity that can already log in.
+  public func register(
+    http: HTTP, persist: @Sendable (Account, DeviceSecurity.Record) async throws -> Void
+  ) async throws -> Account {
+    try await complete(http: http, persist: persist, loginFirst: false)
+  }
+  /// Only restart recovery may treat a successful login as completed registration.
   public func resume(
     http: HTTP, persist: @Sendable (Account, DeviceSecurity.Record) async throws -> Void
+  ) async throws -> Account {
+    try await complete(http: http, persist: persist, loginFirst: true)
+  }
+  private func complete(
+    http: HTTP, persist: @Sendable (Account, DeviceSecurity.Record) async throws -> Void, loginFirst: Bool
   ) async throws -> Account {
     let account = Account(
       server: server, root: root, deviceSeed: seed, deviceId: deviceID, accountId: accountID)
@@ -63,13 +76,14 @@ public struct RegistrationIntent: Codable, Sendable, CustomStringConvertible,
     let api = try Api(server: server, http: http)
     // A lost registration/receipt response must not replay an expired admission
     // or replace a newer security snapshot after a subsequent handoff.
-    let registered: Bool
-    do {
-      _ = try await login(api: api, account: account)
-      registered = true
-    } catch let error as ConnectError where [.permissionDenied, .notFound, .unauthenticated].contains(error.code) {
-      // Only a definite authentication refusal permits the original registration.
-      registered = false
+    var registered = false
+    if loginFirst {
+      do {
+        _ = try await login(api: api, account: account)
+        registered = true
+      } catch let error as ConnectError where [.permissionDenied, .notFound, .unauthenticated].contains(error.code) {
+        // Only a definite authentication refusal permits the original registration.
+      }
     }
     // Registration may already exist during a re-pairing whose fresh X was
     // not installed before interruption. The vault merges this bootstrap

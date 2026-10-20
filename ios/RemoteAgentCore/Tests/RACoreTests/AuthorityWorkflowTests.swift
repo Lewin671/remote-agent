@@ -324,6 +324,50 @@ struct AuthorityWorkflowTests {
         #expect(lost.isSet)
     }
 
+    @Test func rePairingRegistersAgainAndRevokesThePreviousLogin() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (account, vault, _) = try await createAuthority(server)
+        let authority = try coordinator(account, vault)
+        let registrations = Counter()
+        let http = Intercept.http(for: server.url) { request in
+            if request.url?.path.hasSuffix("/RegisterDevice") == true { registrations.increment() }
+            return request
+        }
+        func pair(existing: Account? = nil) async throws -> Account {
+            let initiation = try await authority.startPairing(), confirmed = Signal()
+            let joining = Task {
+                try await joinByPairing(link: initiation.link, http: http, onEmoji: { _ in }, stopped: { false },
+                    sleep: { _ in try await realSleep(10) }, persist: { _, _ in },
+                    persistRegistration: { _ in }, persistIdentity: { _ in }, existing: existing,
+                    confirm: { _ in confirmed.set(); return true })
+            }
+            defer { joining.cancel() }
+            var candidate: PairCandidate?
+            for _ in 0..<500 {
+                candidate = try await authority.pairingCandidate(initiation)
+                if candidate != nil { break }; try await realSleep(10)
+            }
+            for _ in 0..<500 { if confirmed.isSet { break }; try await realSleep(10) }
+            try #require(confirmed.isSet)
+            try await authority.approvePairing(candidate.unwrap(), sasConfirmed: true)
+            let joined = try await joining.value
+            try await authority.finishPairingOperation(pairingID: initiation.pairingID)
+            return joined
+        }
+        let original = try await pair()
+        let api = try Api(server: server.url, http: HTTP())
+        let oldToken = try await login(api: api, account: original)
+        let pairedAgain = try await pair(existing: original)
+        #expect(pairedAgain.deviceId == original.deviceId)
+        #expect(pairedAgain.deviceSeed == original.deviceSeed)
+        #expect(registrations.value == 2)
+        var revoked = false
+        do { _ = try await api.client.listDevices(request: .init(), headers: Api.headers(token: oldToken)).value() }
+        catch { revoked = true }
+        #expect(revoked)
+        #expect(try await !login(api: api, account: pairedAgain).isEmpty)
+    }
+
     @Test func pairingRejectsAuthorityIdentityBeforePreparingOrPublishingState() async throws {
         let server = try await ManagementRelay(); defer { server.close() }
         let (account, vault, _) = try await createAuthority(server)
