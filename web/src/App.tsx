@@ -31,9 +31,6 @@ import { MessageSquare, Settings as SettingsIcon } from "./icons";
 const Setup = lazy(() =>
   import("./views/Pairing").then((m) => ({ default: m.Setup })),
 );
-const AddDevicePage = lazy(() =>
-  import("./views/Pairing").then((m) => ({ default: m.AddDevicePage })),
-);
 const loading = <div className="center muted">加载中…</div>;
 
 // ?demo in development shows made-up machines and sessions in every state
@@ -143,7 +140,7 @@ export function App() {
 }
 
 /** Routes live in the hash: #/, #/p/<project>, #/s/<session>, #/settings,
- * #/m/<machine>, #/add. */
+ * #/m/<machine>. */
 function useRoute(): [string, Go] {
   const read = () => location.hash.replace(/^#\/?/, "");
   const [route, setRoute] = useState(read);
@@ -235,12 +232,6 @@ function Main({ remote }: { remote: Remote }) {
     page = <ClientPage remote={remote} id={arg} onBack={back} />;
   else if (kind === "m")
     page = <MachinePage remote={remote} id={arg} go={go} onBack={back} />;
-  else if (kind === "add")
-    page = (
-      <Suspense fallback={loading}>
-        <AddDevicePage onBack={back} />
-      </Suspense>
-    );
   else if (kind.startsWith("pair"))
     page = (
       <div className="center muted">

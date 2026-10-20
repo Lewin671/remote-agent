@@ -46,7 +46,7 @@ import {
   type DeviceInfo,
 } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import { Check, ChevronRight, Laptop, LoaderCircle, Plus } from "../icons";
+import { Check, ChevronRight, Laptop, LoaderCircle } from "../icons";
 
 import { ConnCheck, connWord } from "./ConnCheck";
 
@@ -127,10 +127,10 @@ export function Settings({
             </button>
           );
         })}
-        <button className="row add" onClick={() => go("add")}>
-          <Plus /> 添加设备
-        </button>
+        {machines.length === 0 && <div className="row help">还没有电脑。</div>}
       </div>
+      {/* Only the Android phone adds devices (protocol 10): this says where. */}
+      <div className="manage-hint">要添加电脑或客户端，在手机 App 的「设置 › 添加设备」里操作。</div>
       <div className="glabel">客户端</div>
       <div className="grp">
         <button className="row" onClick={() => go("c/" + me)}>
@@ -524,12 +524,7 @@ export function DevicesPage({
           )}
         </div>
         <div className="manage-hint">
-          右边是上次使用的时间。添加和删除设备在手机 App 上操作，这里只能改本机名称。
-        </div>
-        <div className="grp">
-          <button className="row add" onClick={() => go("add")}>
-            <Plus /> 添加电脑或客户端
-          </button>
+          右边是上次使用的时间。这里只能改本机名称。要添加电脑或客户端，在手机 App 的「设置 › 添加设备」里操作。
         </div>
       </div>
     </div>

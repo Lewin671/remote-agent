@@ -2946,3 +2946,34 @@ it("puts a daemon-rejected image message back with its text, original option and
   expect(r.outbox("s-idle")).toEqual([]);
   expect(uploads).toBe(3);
 });
+
+describe("adding devices, which only the Android phone does", () => {
+  const hint = "要添加电脑或客户端，在手机 App 的「设置 › 添加设备」里操作。";
+
+  it("says where to add a device in settings, with no 添加设备 to tap", async () => {
+    const r = demo();
+    const go = vi.fn();
+    const { Settings } = await import("./Settings");
+    mount(<Settings remote={r} go={go} />);
+    expect(button(/添加设备|添加电脑或客户端/)).toBeUndefined();
+    expect(host.textContent).toContain(hint);
+  });
+
+  it("says the same on the devices page", async () => {
+    const r = demo();
+    const { DevicesPage } = await import("./Settings");
+    mount(<DevicesPage remote={r} go={() => undefined} onBack={() => undefined} />);
+    expect(button(/添加设备|添加电脑或客户端/)).toBeUndefined();
+    expect(host.textContent).toContain(hint);
+  });
+
+  it("tells an account with no computer where to add one, without a button", () => {
+    const r = createDemo(new URLSearchParams("empty=none"));
+    r.start();
+    const go = vi.fn();
+    mount(<Home remote={r} go={go} />);
+    expect(host.textContent).toContain("还没有电脑。在手机 App 的「设置 › 添加设备」里把电脑加进来。");
+    expect(button(/添加设备/)).toBeUndefined();
+    expect(go).not.toHaveBeenCalledWith("add");
+  });
+});

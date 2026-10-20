@@ -722,11 +722,9 @@ function Popover({
 /** What an account with no sessions shows, by what machines it has. */
 function Empty({
   remote,
-  go,
   onStart,
 }: {
   remote: Remote;
-  go: Go;
   onStart: () => void;
 }) {
   const machines = [...remote.machines.values()];
@@ -746,14 +744,9 @@ function Empty({
           没有在线的电脑。在电脑上运行 <code>remote-agent daemon</code>
         </div>
       ) : (
-        <>
-          <div className="ed">
-            还没有加电脑。在手机上打开「设备 › 添加设备」，再用电脑加入
-          </div>
-          <button className="btn pri" onClick={() => go("add")}>
-            添加设备
-          </button>
-        </>
+        <div className="ed">
+          还没有电脑。在手机 App 的「设置 › 添加设备」里把电脑加进来。
+        </div>
       )}
     </div>
   );
@@ -847,7 +840,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
           </div>
         )
       ) : none ? (
-        <Empty remote={remote} go={go} onStart={() => setPicking(true)} />
+        <Empty remote={remote} onStart={() => setPicking(true)} />
       ) : (
         <>
           <div className="pad">
@@ -983,7 +976,7 @@ export function WideHome({
             <Skeleton />
           )
         ) : !pkey ? (
-          <Empty remote={remote} go={go} onStart={() => setPicking("new")} />
+          <Empty remote={remote} onStart={() => setPicking("new")} />
         ) : (
           <>
             <RemovedNotice remote={remote} pkey={pkey} />

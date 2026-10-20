@@ -3,29 +3,10 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useRef, useState } from "react";
 import { joinByPairing, PairCanceled, parsePairLink } from "../pairing";
 import { errorText } from "../remote";
-import { Banner, NavBar } from "../ui";
+import { Banner } from "../ui";
 import { LoaderCircle } from "../icons";
 
 const spaced = (code: string) => `${code.slice(0, 4)} ${code.slice(4)}`;
-
-/** Adding a device is done on the phone: this browser can only join one. */
-export function AddDevicePage({ onBack }: { onBack: () => void }) {
-  return (
-    <div className="page">
-      <NavBar onBack={onBack} title="添加设备" />
-      <div className="body">
-        <div className="grp">
-          <div className="row help">添加和删除设备只在手机 App 上进行。</div>
-        </div>
-        <div className="manage-hint">
-          打开手机上的 Remote
-          Agent，进入「设备」，点「添加设备」，再在新设备上扫码或输入它显示的 8
-          位配对码。
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const defaultServer = () =>
   localStorage.getItem("ra-server") ||
