@@ -7,7 +7,7 @@ import { Agent, ApprovalDecision, ApprovalMode, ApprovalRequestedSchema, EventSc
 import { alwaysText, decisionText, derive, phaseOf, queuedIds } from "./model";
 import { DemoRemote, ANDROID, ME } from "./dev/demo";
 import { ApprovalActions } from "./views/Dock";
-import { Home } from "./views/Home";
+import { Home, Sidebar } from "./views/Home";
 import { SessionPage } from "./views/Session";
 import { useNewSession } from "./views/NewSession";
 import { switchMachine } from "./model";
@@ -167,6 +167,13 @@ it("caps home running and other projects at five", () => {
   mount(<Home remote={r} go={() => undefined} />);
   expect(host.textContent).toMatch(/还有 \d+ 个进行中/);
   expect(host.textContent).toContain("全部项目");
+});
+
+it("lists every running session in the wide sidebar, which scrolls as one column", () => {
+  const r = demo("many=1");
+  mount(<Sidebar remote={r} go={() => undefined} />);
+  expect(host.textContent).not.toMatch(/还有 \d+ (个进行中|项待处理)/);
+  expect(host.querySelector(".scroll")!.textContent).toContain("项目 7 的会话");
 });
 
 it("uses another machine only for this start when a project's saved machine is offline", () => {

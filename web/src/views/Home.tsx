@@ -377,8 +377,10 @@ function Timeline({
     !ended.slice(0, shown).includes(sel)
   )
     live.unshift(sel);
+  // A phone's home keeps them short; the wide sidebar lists them all and
+  // scrolls as one column.
   const cut = <T,>(list: T[], max: number, all: boolean) =>
-    all || q || (sel && list.indexOf(sel as T) >= max)
+    all || wide || q || (sel && list.indexOf(sel as T) >= max)
       ? list
       : list.slice(0, max);
   const todoShown = cut(todo, 3, allTodo);
