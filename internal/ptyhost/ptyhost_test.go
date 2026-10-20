@@ -475,9 +475,14 @@ func TestPtyhostRunHelper(t *testing.T) {
 	var script string
 	var stdout io.Writer = io.Discard
 	switch mode {
-	case "failed-stdout":
+	case "failed-stdout", "failed-stdout-hup":
 		stdout = failingWriter{marker: marker}
 		script = "dd if=/dev/zero bs=65536 count=128 2>/dev/null; printf complete > " + shellQuote(complete) + "; sleep 1"
+		if mode == "failed-stdout-hup" {
+			// Signal the child directly in this case: bulk PTY throughput
+			// must not race the host's deliberately short shutdown grace.
+			script = "trap " + shellQuote(script+"; exit 0") + ` HUP; printf ready > "$PTYHOST_TEST_GRANDCHILD"; while :; do sleep 0.01; done`
+		}
 	case "blocked-input":
 		// Acknowledge the first byte before blocking further reads, so the
 		// parent can synchronize on actual PTY I/O rather than client state.
@@ -487,7 +492,9 @@ func TestPtyhostRunHelper(t *testing.T) {
 		script = "trap '' HUP TERM; sh -c " + shellQuote(grandchildScript) + " & wait"
 	case "prompt-hup":
 		stdout = failingWriter{marker: marker}
-		script = `trap 'dd if=/dev/zero bs=65536 count=128 2>/dev/null; printf hup > "$PTYHOST_TEST_COMPLETE"; exit 23' HUP; trap 'printf term > "$PTYHOST_TEST_TERM"; exit 99' TERM; printf ready > "$PTYHOST_TEST_GRANDCHILD"; while :; do sleep 0.01; done`
+		// Keep this handler prompt even on a busy machine. Large writes
+		// during HUP are covered by TestRunDrainsOutputAfterStdoutFails.
+		script = `trap 'printf hup; printf hup > "$PTYHOST_TEST_COMPLETE"; exit 23' HUP; trap 'printf term > "$PTYHOST_TEST_TERM"; exit 99' TERM; printf ready; printf ready > "$PTYHOST_TEST_GRANDCHILD"; while :; do sleep 0.01; done`
 	default:
 		t.Fatalf("unknown helper mode %q", mode)
 	}
@@ -510,21 +517,33 @@ func shellQuote(s string) string {
 }
 
 func TestRunDrainsOutputAfterStdoutFails(t *testing.T) {
-	h := startRunHelper(t, "failed-stdout")
-	if err := waitForFile(h.marker, 5*time.Second); err != nil {
-		t.Fatal(err)
-	}
-	if err := h.wait(8 * time.Second); err != nil {
-		t.Fatal(err)
-	}
-	if code := h.exitCode(t); code != 0 {
-		t.Fatalf("child exit code %d, want 0", code)
-	}
-	if b, err := os.ReadFile(h.marker); err != nil || string(b) != "failed" {
-		t.Fatalf("failing stdout marker = %q, err = %v", b, err)
-	}
-	if b, err := os.ReadFile(h.complete); err != nil || string(b) != "complete" {
-		t.Fatalf("child completion marker = %q, err = %v", b, err)
+	for _, mode := range []string{"failed-stdout", "failed-stdout-hup"} {
+		t.Run(mode, func(t *testing.T) {
+			h := startRunHelper(t, mode)
+			if mode == "failed-stdout-hup" {
+				if err := waitForFile(h.grandchild, 5*time.Second); err != nil {
+					t.Fatal(err)
+				}
+				if err := syscall.Kill(h.childPID, syscall.SIGHUP); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := waitForFile(h.marker, 5*time.Second); err != nil {
+				t.Fatal(err)
+			}
+			if err := h.wait(8 * time.Second); err != nil {
+				t.Fatal(err)
+			}
+			if code := h.exitCode(t); code != 0 {
+				t.Fatalf("child exit code %d, want 0", code)
+			}
+			if b, err := os.ReadFile(h.marker); err != nil || string(b) != "failed" {
+				t.Fatalf("failing stdout marker = %q, err = %v", b, err)
+			}
+			if b, err := os.ReadFile(h.complete); err != nil || string(b) != "complete" {
+				t.Fatalf("child completion marker = %q, err = %v", b, err)
+			}
+		})
 	}
 }
 
@@ -565,6 +584,9 @@ func TestRunSignalEscalatesToWholeProcessGroup(t *testing.T) {
 func TestRunDoesNotEscalatePromptSIGHUPExit(t *testing.T) {
 	h := startRunHelper(t, "prompt-hup")
 	if err := waitForFile(h.grandchild, 5*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if err := waitForFile(h.marker, 5*time.Second); err != nil {
 		t.Fatal(err)
 	}
 	started := time.Now()
