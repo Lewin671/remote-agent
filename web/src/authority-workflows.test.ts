@@ -1,15 +1,26 @@
 import { IDBFactory } from "fake-indexeddb";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import { createClient } from "@connectrpc/connect";
+import { createConnectTransport } from "@connectrpc/connect-web";
 import { AuthorityServer } from "./test/authority-server";
 import { AuthoritySetup, authorityServices, authorityStartup } from "./authority-setup";
 import { AuthorityLifecycle, readSecurityOperation, isAuthority, operation, claimSecurityOperation } from "./security-operation";
 import { AuthorityClient } from "./authority-client";
+import { AuthorityPairing } from "./authority-pairing";
 import { loadAccount, type StoredAccount } from "./storage";
 import * as securityStore from "./device-security-store";
 import * as accountStore from "./storage";
 import { loadSecurity, securitySetupStatus } from "./device-security-store";
 import { DeviceSecurityClient } from "./device-security-client";
-import { signLogin } from "./crypto";
+import { signLogin, deviceID, newDeviceKey, openMessage, importSessionKey } from "./crypto";
+import { newSecurityKey, pairDomainCommit, Purpose, parseLease } from "./device-security";
+import { derivePair, newPairKey, pairDomainTranscript } from "./pair";
+import { create, toBinary } from "@bufbuild/protobuf";
+import { Authority } from "./authority";
+import { PairingService, DeviceKind, DeviceRegistrationSchema, MachineService } from "./gen/remoteagent/v1/relay_pb";
+import { SessionSchema } from "./gen/remoteagent/v1/local_pb";
+import { MachineMetaSchema, PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
+import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import { PROTOCOL_VERSION } from "./protocol";
 import { RecoveryCode } from "./recovery";
 
@@ -48,13 +59,14 @@ async function clients(account: StoredAccount) {
   const { challenge } = await services.auth.getChallenge({ deviceId: account.deviceId });
   const { token } = await services.auth.login({ deviceId: account.deviceId, challenge, signature: await signLogin(account.devicePrivate, challenge), protocolVersion: PROTOCOL_VERSION });
   const api = services.client(token);
+  const pairing = createClient(PairingService, createConnectTransport({ baseUrl: account.server, useBinaryFormat: true, interceptors: [(next) => (req) => { req.header.set("Authorization", "Bearer " + token); return next(req); }] }));
   const security = new DeviceSecurityClient(account.deviceId, account.devicePrivate, (afterEpoch, limit) => api.getSecurityStates({ afterEpoch, limit }), () => true, {
     loadSecurity: () => securityStore.loadSecurity(),
     installSecurity: (...args) => securityStore.installSecurity(...args),
     touchSecurity: (...args) => securityStore.touchSecurity(...args),
   });
-  const authority = new AuthorityClient(account, security, api, lifecycle());
-  return { api, security, authority, token };
+  const authority = new AuthorityClient(account, security, api, pairing, lifecycle());
+  return { api, pairing, security, authority, token };
 }
 function dropAck(path: string) {
   const fetch = globalThis.fetch;
@@ -93,6 +105,34 @@ it("creates on an open relay with real PoW while retaining its signed registrati
   expect(isAuthority(await loadSecurity())).toBe(true);
   expect((await loadSecurity()).lease).toBeDefined();
 });
+async function pairCandidate(c: Awaited<ReturnType<typeof clients>>, kind = DeviceKind.CLIENT, replacesDeviceId = "", loseApprovalAck = false) {
+  const initiation = await AuthorityPairing.start(c.authority, c.pairing, "https://app.example.com", replacesDeviceId);
+  expect(initiation.code).toMatch(/^\d{8}$/);
+  const link = new URL(initiation.url); expect(link.hash).toContain("c=");
+  const api = createClient(PairingService, createConnectTransport({ baseUrl: server.url, useBinaryFormat: true }));
+  const device = await newDeviceKey(), x = await newSecurityKey(), key = newPairKey();
+  const ed = new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey));
+  const xp = new Uint8Array(await crypto.subtle.exportKey("raw", x.publicKey));
+  const joined = await api.joinPairing({ code: initiation.code, joinerPublic: key.pub, joinerKind: kind, devicePublicKey: ed, deviceHpkePublicKey: xp, protocolVersion: PROTOCOL_VERSION });
+  const sas = await initiation.joined(); expect(sas!.emoji).toHaveLength(4);
+  const status = await api.getPairing({ pairingId: joined.pairingId, candidateToken: joined.candidateToken });
+  expect(await pairDomainCommit(new Uint8Array(status.initiatorPublic), new Uint8Array(status.trust))).toEqual(new URLSearchParams(link.hash.split("?")[1]).has("c") ? joined.commit : null);
+  const secrets = await derivePair(key, status.initiatorPublic, await pairDomainTranscript(joined.pairingId, status.initiatorPublic, key.pub, ed, xp, kind, status.trust));
+  expect(secrets.emoji).toEqual(sas!.emoji);
+  await expect(initiation.approve(false)).rejects.toThrow();
+  if (loseApprovalAck) {
+    const ack = dropAck("ApprovePairing");
+    await expect(initiation.approve(true)).rejects.toThrow(); ack.mockRestore();
+    const saved = await readSecurityOperation();
+    await initiation.approve(true);
+    expect((await readSecurityOperation())!.delivery).toEqual(saved!.delivery);
+  } else await initiation.approve(true);
+  const pending = await readSecurityOperation(); expect(pending!.phase).toBe("PUBLISHED");
+  expect(pending!.delivery).toBeDefined();
+  const approved = await api.getPairing({ pairingId: joined.pairingId, candidateToken: joined.candidateToken });
+  const { msg } = await openMessage(await importSessionKey(new Uint8Array(secrets.key)), approved.payload, { kind: PayloadKind.PAIRING, requestId: joined.pairingId }, PairingPayloadSchema);
+  return { initiation, api, joined, device, x, msg, ed };
+}
 it("keeps lease signing monotonic after a wall-clock rollback and refuses ordinary members", async () => {
   const { account } = await createAccount(), c = await clients(account);
   const old = (await loadSecurity()).lease!;
@@ -147,6 +187,52 @@ it.each(["before", "after"] as const)("recovers creation after every durable wri
     }
   } finally { for (const spy of spies) spy.mockRestore(); }
 }, 60000);
+
+it("separates machine revocation, archive rejoin with retained sessions, and permanent archive deletion", async () => {
+  const { account } = await createAccount(), c = await clients(account);
+  const enroll = async (candidate: Awaited<ReturnType<typeof pairCandidate>>) => {
+    const auth = authorityServices(server.url).auth, id = await deviceID(candidate.ed);
+    await auth.registerDevice({ protocolVersion: PROTOCOL_VERSION,
+      registration: toBinary(DeviceRegistrationSchema, create(DeviceRegistrationSchema, { accountPublicKey: candidate.msg.accountPublicKey, devicePublicKey: candidate.ed, kind: DeviceKind.MACHINE, createdMs: BigInt(Date.now()) })),
+      approval: candidate.msg.approval, approvalSignature: candidate.msg.approvalSignature });
+    await candidate.api.getPairing({ pairingId: candidate.joined.pairingId, candidateToken: candidate.joined.candidateToken, received: true });
+    await candidate.initiation.finishPairingOperation();
+    const challenge = await auth.getChallenge({ deviceId: id });
+    const { token } = await auth.login({ deviceId: id, challenge: challenge.challenge, signature: await signLogin(candidate.device.privateKey, challenge.challenge), protocolVersion: PROTOCOL_VERSION });
+    const machine = createClient(MachineService, createConnectTransport({ baseUrl: server.url, useBinaryFormat: true,
+      interceptors: [(next) => (req) => { req.header.set("Authorization", "Bearer " + token); return next(req); }] }));
+    return { id, machine };
+  };
+  const candidate = await pairCandidate(c, DeviceKind.MACHINE), first = await enroll(candidate);
+  const { buildRecord, parseChain } = await import("./device-security-store");
+  const chain = await parseChain(candidate.msg.securityStates), admin = await loadSecurity();
+  const record = await buildRecord(admin.pin, chain.states, chain.proofs, first.id, candidate.x.privateKey);
+  record.lease = parseLease(new Uint8Array(candidate.msg.lease));
+  const { MemorySecurityStorage } = await import("./test/security-fixture");
+  const security = new DeviceSecurityClient(first.id, candidate.device.privateKey, async () => { throw new Error("no machine pull required"); }, () => true, new MemorySecurityStorage(record));
+  const meta = await security.seal({ kind: 4, purpose: Purpose.MachineMeta, machine: first.id, session: "", request: "", seq: 1n, deadline: 0n, compression: 0 },
+    toBinary(MachineMetaSchema, create(MachineMetaSchema, { hostname: "fixture-computer", protocolVersion: PROTOCOL_VERSION })));
+  await first.machine.putMachine({ meta });
+  const sessionId = "retained-session", seed = Authority.newSecret();
+  const sessionMeta = await security.seal({ kind: 2, purpose: Purpose.SessionMeta, machine: first.id, session: sessionId, request: "", seq: 1n, deadline: 0n, compression: 0 },
+    toBinary(SessionSchema, create(SessionSchema, { id: sessionId })), seed);
+  const sessionKey = await security.seal({ kind: 3, purpose: Purpose.SessionKey, machine: first.id, session: sessionId, request: "", seq: 1n, deadline: 0n, compression: 0 }, seed);
+  await first.machine.putSession({ sessionId, meta: sessionMeta, key: sessionKey });
+  await expect(c.authority.deleteMachineRecords(first.id)).rejects.toThrow();
+  await c.authority.removeDevice(first.id);
+  expect((await c.api.listMachines({})).machines.some((m) => m.id === first.id)).toBe(true);
+  await expect(first.machine.putMachine({ meta })).rejects.toThrow();
+  const replacement = await pairCandidate(c, DeviceKind.MACHINE, first.id), second = await enroll(replacement);
+  expect(second.id).not.toBe(first.id);
+  const sessions = (await c.api.listRemoteSessions({})).sessions;
+  expect(sessions.find((s) => s.sessionId === sessionId)?.machineId).toBe(second.id);
+  expect(sessions.find((s) => s.sessionId === sessionId)?.meta).toEqual(sessionMeta);
+  await c.authority.removeDevice(second.id);
+  expect((await c.api.listRemoteSessions({})).sessions.some((s) => s.sessionId === sessionId)).toBe(true);
+  await c.authority.deleteMachineRecords(second.id);
+  expect((await c.api.listRemoteSessions({})).sessions.some((s) => s.sessionId === sessionId)).toBe(false);
+  expect(await readSecurityOperation()).toBeUndefined();
+});
 
 it("retains a surviving pin after partial storage loss and refuses initialization or a new operation", async () => {
   const { account } = await createAccount(), record = await loadSecurity();

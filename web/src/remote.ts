@@ -1,5 +1,6 @@
 import { readSecurityOperation } from "./security-operation";
 import { AuthorityClient } from "./authority-client";
+import { AuthorityPairing } from "./authority-pairing";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
 import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
@@ -86,7 +87,7 @@ import {
   type ListModelsResponse,
   type Session,
 } from "./gen/remoteagent/v1/local_pb";
-import { AuthService, ClientService, DeviceKind, DeviceRegistrationSchema, ListMachinesResponseSchema, ListRemoteSessionsResponseSchema, NotifyKind, PeerFrameSchema, ServerFrameSchema, TermHelloSchema, type AccountPrefsObject, AccountPrefsObjectSchema, type Device, type Machine as RemoteMachine, type RemoteSession, type SessionCursor, type StoredEvent } from "./gen/remoteagent/v1/relay_pb";
+import { AuthService, ClientService, PairingService, DeviceKind, DeviceRegistrationSchema, ListMachinesResponseSchema, ListRemoteSessionsResponseSchema, NotifyKind, PeerFrameSchema, ServerFrameSchema, TermHelloSchema, type AccountPrefsObject, AccountPrefsObjectSchema, type Device, type Machine as RemoteMachine, type RemoteSession, type SessionCursor, type StoredEvent } from "./gen/remoteagent/v1/relay_pb";
 import {
   CommandResultSchema,
   CommandSchema,
@@ -686,8 +687,14 @@ export class Remote {
       () => !this.closed,
       securityStorage,
     );
-    this.authority = new AuthorityClient(account, this.security, this.api);
+    const pairing = createClient(PairingService, createConnectTransport({
+      fetch: relayFetch, baseUrl: apiBase(account.server), useBinaryFormat: true,
+      defaultTimeoutMs: RPC_TIMEOUT_MS, interceptors: [auth],
+    }));
+    this.authority = new AuthorityClient(account, this.security, this.api, pairing);
+    this.startPairing = (web, replacesDeviceId = "") => AuthorityPairing.start(this.authority, pairing, web, replacesDeviceId);
   }
+  readonly startPairing: (web: string, replacesDeviceId?: string) => Promise<AuthorityPairing>;
   async removeDevice(id: string) { await this.authority.removeDevice(id); await this.loadDevices(false); }
   async deleteMachineRecords(id: string) { await this.authority.deleteMachineRecords(id); await this.refresh(); }
 

@@ -1,17 +1,30 @@
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
-import { type Client } from "@connectrpc/connect";
+import { Code, ConnectError, type Client } from "@connectrpc/connect";
 import { Authority, authoritySigningTime } from "./authority";
+import { deviceID, importSessionKey, sealMessage } from "./crypto";
 import { DeviceSecurityClient } from "./device-security-client";
 import { installSecurity, type SecurityRecord } from "./device-security-store";
-import { equal, leaseBytes, parseLease, parseState, SecurityError, signLease, stateBytes, stateHash, verifyLease } from "./device-security";
+import { equal, leaseBytes, parseLease, parseState, recoveryBytes, SecurityError, signLease, stateBytes, stateHash, verifyLease, type Member } from "./device-security";
+import { makePairApproval } from "./pair-approval";
+import { checkPairChainSize } from "./pairing";
 import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, isAuthority, operation, readSecurityOperation, saveSecurityOperation, type SecurityOperation, needsRecoveryCodeRotation } from "./security-operation";
-import { type StoredAccount } from "./storage";
-import { ClientService, PutSecurityStateRequestSchema, DeleteMachineRecordsRequestSchema } from "./gen/remoteagent/v1/relay_pb";
+import { loadAccountPublicProfile, type StoredAccount } from "./storage";
+import { ApprovePairingRequestSchema, ClientService, PairingService, PairingState, PutSecurityStateRequestSchema, DeviceKind, PairApprovalSchema, DeleteMachineRecordsRequestSchema } from "./gen/remoteagent/v1/relay_pb";
+import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
+import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 
 type B = Uint8Array<ArrayBuffer>;
+export interface PairingDelivery {
+  pairingId: string;
+  candidate: Member;
+  key: B;
+  expires: bigint;
+  replacesDeviceId: string;
+}
 interface StateDraft {
-  action: "remove";
+  action: "remove" | "pair";
   target?: string;
+  pair?: PairingDelivery;
 }
 export class AuthorityClient {
   readonly lifecycle: AuthorityLifecycle;
@@ -19,6 +32,7 @@ export class AuthorityClient {
     readonly account: StoredAccount,
     readonly security: DeviceSecurityClient,
     private readonly api: Client<typeof ClientService>,
+    private readonly pairing: Client<typeof PairingService>,
     lifecycle = new AuthorityLifecycle(),
   ) { this.lifecycle = lifecycle; }
   async isAuthority() { return isAuthority(await this.security.verifiedRecord()); }
@@ -140,6 +154,30 @@ export class AuthorityClient {
     }
     op = await saveSecurityOperation(op, { ...op, phase: "PUBLISHED" });
     check();
+    if (op.delivery) {
+      const delivery = fromBinary(ApprovePairingRequestSchema, op.delivery);
+      try {
+        check();
+        await this.pairing.approvePairing(delivery);
+        check();
+        const status = await this.pairing.getPairing({ pairingId: delivery.pairingId });
+        check();
+        if (status.state !== PairingState.DELIVERED) {
+          if (status.state === PairingState.CANCELED) throw new Error("配对已取消，请明确移除未完成候选后重新开始");
+          return;
+        }
+      } catch (e) {
+        if (!(e instanceof ConnectError) || ![Code.NotFound, Code.FailedPrecondition, Code.Canceled].includes(e.code)) throw e;
+        // A closed ephemeral pairing can have a committed registration and a
+        // lost receipt. Membership alone never counts as candidate delivery.
+        const devices = await this.api.listDevices({});
+        check();
+        const approval = fromBinary(PairApprovalSchema, delivery.approval);
+        const candidate = await deviceID(approval.candidateDevicePublicKey);
+        if (!devices.devices.some((d) => d.id === candidate))
+          throw new Error("配对交付已失效，请明确移除未完成候选后重新开始");
+      }
+    }
     op = await saveSecurityOperation(op, { ...op, phase: "DELIVERED" });
     check();
     await clearSecurityOperation(op);
@@ -148,15 +186,45 @@ export class AuthorityClient {
     const r = await this.authority(check);
     if (!equal(r.stateHash, op.parent)) throw new SecurityError("conflict");
     const head = r.states.at(-1)!, draft = op.local, key = this.account.devicePrivate, now = signingTime(r);
+    if (draft.pair) {
+      if (draft.pair.expires <= maxTime(r)) throw new Error("配对草稿已过期，尚未发布，可明确放弃后重新开始");
+      check();
+      const status = await this.pairing.getPairing({ pairingId: draft.pair.pairingId });
+      check();
+      if (status.state !== PairingState.REVEALED || status.joinerKind !== draft.pair.candidate.kind ||
+          !equal(status.devicePublicKey, draft.pair.candidate.ed) || !equal(status.deviceHpkePublicKey, draft.pair.candidate.x))
+        throw new Error("配对草稿已取消或候选改变，尚未发布，可明确放弃后重新开始");
+    }
     check();
-    const next = await Authority.remove(head, [draft.target!], r.secret, Authority.newSecret(), key, now, { beforeSign: check });
+    let next;
+    if (draft.action === "remove") next = await Authority.remove(head, [draft.target!], r.secret, Authority.newSecret(), key, now, { beforeSign: check });
+    else {
+      const member = draft.pair!.candidate;
+      const old = head.core.members.find((m) => m.id === member.id);
+      if (old && (old.kind !== member.kind || !equal(old.ed, member.ed))) throw new SecurityError("conflict");
+      next = old ? await Authority.rotateX(head, member.id, member.x, r.secret, Authority.newSecret(), key, now, { beforeSign: check })
+        : await Authority.pair(head, member, r.secret, Authority.newSecret(), key, now, { beforeSign: check });
+    }
     check();
     const lease = next.core.authorityID === r.memberID ? await signLease(next, key, now, 0n, check) : undefined;
     check();
+    let delivery: B | undefined;
+    if (draft.pair) {
+      const pair = draft.pair;
+      const profile = await loadAccountPublicProfile(this.account.server, r.pin);
+      if (!profile) throw new Error("缺少账户公钥，请重新配对或用恢复码补齐");
+      const approval = await makePairApproval(head, key, pair.pairingId, pair.candidate.ed, pair.candidate.kind as DeviceKind.CLIENT | DeviceKind.MACHINE, pair.expires, pair.replacesDeviceId, undefined, check);
+      check();
+      const states = await Promise.all([...r.states, next].map(async (s, i) => ({ state: await stateBytes(s), recovery: r.proofs[i] ? await recoveryBytes(r.proofs[i]!) : new Uint8Array() })));
+      checkPairChainSize(states);
+      const payload = await sealMessage(await importSessionKey(pair.key), { kind: PayloadKind.PAIRING, requestId: pair.pairingId, sender: r.memberID }, PairingPayloadSchema,
+        create(PairingPayloadSchema, { server: this.account.server, ...approval, approvalSignature: approval.signature, securityStates: states, accountPublicKey: profile.accountPublicKey, lease: leaseBytes(lease!) }));
+      delivery = toBinary(ApprovePairingRequestSchema, create(ApprovePairingRequestSchema, { pairingId: pair.pairingId, payload, approval: approval.approval, approvalSignature: approval.signature }));
+    }
     check();
     const signed = toBinary(PutSecurityStateRequestSchema, create(PutSecurityStateRequestSchema, { states: [{ state: await stateBytes(next) }], lease: lease ? leaseBytes(lease) : undefined }));
     check();
-    const saved = await saveSecurityOperation(op, { ...op, signed }, r.stateHash);
+    const saved = await saveSecurityOperation(op, { ...op, signed, delivery }, r.stateHash);
     check();
     return saved;
   }
@@ -178,7 +246,16 @@ export class AuthorityClient {
   }
   async removeDevice(id: string) {
     return this.lifecycle.run(async (check) => {
-      await this.resume(check);
+      const pending = await readSecurityOperation<StateDraft>();
+      if (pending?.delivery && pending.local.pair?.candidate.id === id) {
+        const r = await this.authority(check);
+        const request = fromBinary(PutSecurityStateRequestSchema, pending.signed!);
+        const target = await parseState(new Uint8Array(request.states.at(-1)!.state));
+        if (!await contains(r, await stateHash(target))) throw new SecurityError("conflict");
+        // This explicit removal ends delivery, then signs a child of the
+        // verified current head. It never signs a competing parent.
+        await clearSecurityOperation(pending);
+      } else await this.resume(check);
       if (await readSecurityOperation()) throw new Error("请先完成当前安全操作");
       const r = await this.authority(check);
       if (id === r.memberID) throw new Error("管理端不能被普通删除，请先交接");
@@ -206,6 +283,25 @@ export class AuthorityClient {
       this.bound(op);
       check();
       await clearSecurityOperation(op);
+    });
+  }
+  async hasMachineArchive(id: string) {
+    return (await this.api.listMachines({})).machines.some((m) => m.id === id);
+  }
+  async approvePairing(pair: PairingDelivery) {
+    return this.lifecycle.run(async (check) => {
+      const old = await readSecurityOperation<StateDraft>();
+      if (old?.kind === "state" && old.local.pair?.pairingId === pair.pairingId) {
+        await this.resume(check);
+        return;
+      }
+      await this.resume(check);
+      if (await readSecurityOperation()) throw new Error("另一次安全操作尚未完成");
+      const r = await this.authority(check);
+      if (pair.expires <= maxTime(r)) throw new Error("配对已过期");
+      await this.claim("state", { action: "pair", pair } satisfies StateDraft, r);
+      check();
+      await this.resume(check);
     });
   }
 }
