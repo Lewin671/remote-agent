@@ -23,16 +23,16 @@
 - **自己部署**：自己的中继、自己的网页，不需要第三方账户。
 - **哪个屏幕都能用**：网页、Android 和 iOS（预览）；聊天、审批、实时终端、图片（推送仅 Android 和网页），多台电脑一个列表。
 
-建账户的那台手机是账户的管理端，用设备密钥签成员状态；每台设备自己签名，删除时立即轮换密钥，远程控制受 72 小时租约约束。见[安全模型与限制](docs/reference.zh-CN.md#安全模型)。
+建账户的客户端（网页、Android 或 iOS）是账户的唯一管理端，用设备密钥签成员状态；每台设备自己签名，删除时立即轮换密钥，远程控制受 72 小时租约约束。见[安全模型与限制](docs/reference.zh-CN.md#安全模型)。
 
 ## 在公共中继上试用
 
-先安装 Android App 并在 App 里建账户，保存只显示一次的恢复码。然后在装有 tmux 3.2+、已登录 `codex` 或 `claude` 的 macOS 或 Linux 上：
+先在网页、Android App 或 iOS App（预览）里建账户，离线保存只显示一次的恢复码。然后在装有 tmux 3.2+、已登录 `codex` 或 `claude` 的 macOS 或 Linux 上：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
 remote-agent-service install                                     # 在后台运行 daemon
-remote-agent account join --server https://ra.remote-agent.top --code <App 显示的配对码>
+remote-agent account join --server https://ra.remote-agent.top --code <管理端显示的配对码>
 remote-agent codex                                               # 或：remote-agent claude
 ```
 
@@ -65,11 +65,11 @@ npx wrangler pages deploy remote-agent-web --project-name <你的项目名>
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
 remote-agent-service install                                # 让 daemon 在后台运行
-remote-agent account join --server https://ra.example.com --code <App 显示的配对码>
+remote-agent account join --server https://ra.example.com --code <管理端显示的配对码>
 remote-agent codex                                          # 或：remote-agent claude
 ```
 
-先在 Android App 里建账户（会要求输入中继的 setup token），再用它显示的配对码把这台电脑加进去；刚才启动的会话就已经在里面了。
+先在客户端（网页、Android 或 iOS 预览版）里建账户（会要求输入中继的 setup token），再在管理端的「设置 › 添加设备」里取配对码，把这台电脑加进去；刚才启动的会话就已经在里面了。
 
 ## 现状与限制
 

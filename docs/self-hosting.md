@@ -52,7 +52,7 @@ RA_SIGNUP=open          # anyone may create an account, with a proof of work
 RA_MAX_ACCOUNTS=100     # at most this many accounts on the relay
 ```
 
-then `docker compose up -d` (with the `compose.yaml` of v0.41.0 or later, which passes these settings to the relay). With open signup, creating an account in the Android app needs no setup token: the phone spends a second or so on a proof of work, and the relay creates only a few accounts an hour for each address. Such accounts are on a trial plan, with room for 8 devices, 2 computers, 200 sessions and 256 MB of events; accounts made with the setup token have room for 32 devices and 16 computers. The relay checks its free disk space every minute; while it is below 2 GB, no account can add devices, sessions, events, images or settings until there is room again.
+then `docker compose up -d` (with the `compose.yaml` of v0.41.0 or later, which passes these settings to the relay). With open signup, creating an account in any client needs no setup token: the client completes a proof of work, and the relay creates only a few accounts an hour for each address. Such accounts are on a trial plan, with room for 8 devices, 2 computers, 200 sessions and 256 MB of events; accounts made with the setup token have room for 32 devices and 16 computers. The relay checks its free disk space every minute; while it is below 2 GB, no account can add devices, sessions, events, images or settings until there is room again.
 
 The relay counts addresses as Caddy reports them, which the bundled `compose.yaml` arranges with `RA_TRUSTED_PROXIES`. Behind a proxy of your own, set `RA_TRUSTED_PROXIES` to the proxy's address range, or every account looks as if it comes from the proxy.
 
@@ -105,7 +105,7 @@ remote-agent-service install
 
 runs the daemon in the background, now and at every login (launchd on macOS, systemd user service on Linux). `remote-agent-service status | log | restart | stop | uninstall` manage it. Restarting the daemon does not interrupt sessions running in tmux.
 
-Connect the computer to your relay after the phone has created the account. The phone shows a pairing code:
+Connect the computer to your relay after a client has created the account. The authority shows a pairing code:
 
 ```sh
 remote-agent account join --server https://ra.example.com --code "1234 5678"
@@ -119,16 +119,17 @@ remote-agent account join --server https://ra.example.com --code "1234 5678"
 - `~/.remote-agent/account.json` holds this computer's keys. Keep it private; losing every device and the recovery code means the relay's data cannot be decrypted.
 - The first time Codex starts in a directory it asks whether to trust it; answer in the terminal.
 
-## 4. Your phone and other devices
+## 4. Your clients and computers
 
-Install the Android APK from the [latest release](https://github.com/Lewin671/remote-agent/releases/latest) first. In the app, create the account on this relay (it asks for the setup token) and save the recovery code it shows once (the whole text, including its genesis-hash prefix). The phone is the account's manager: only it can add or remove devices, renew the lease and recover the account.
+Create the account on this relay in the web client, Android app or iOS app (preview). Enter the setup token (or leave it empty for open signup), then save and confirm the recovery code offline. This client becomes the sole authority: it adds and removes devices, renews the lease and manages recovery.
 
-- **Computer:** run `remote-agent account join --server https://ra.example.com --code <code from the phone>`; the running daemon connects within a few seconds. Compare the four symbols on both screens: confirm on the computer first, then allow on the phone.
-- **Web:** open `https://app.example.com`, choose the join flow, and enter the code or scan the phone's QR code. Confirm the same four symbols in the browser, then allow on the phone. In the browser's menu, install the page as an app to get a home-screen icon and Web Push notifications.
-- **iOS:** join the same way; it is a normal client and cannot manage the account.
-- **Another device later:** open the phone's device page and choose add device. The QR code and code come from the phone, not from a computer.
-- **Removal:** only from the phone's device page. Browsers and computers show a prompt to use the phone. A removed computer that joins again gets a fresh device identity; its old key stays revoked.
-- **Lease:** open the app at least once every 72 hours. After the lease expires, remote control pauses; stored history stays viewable while new content uploads pause until the phone renews it.
+- **Computer:** on the authority open **Settings › Add device**, then run `remote-agent account join --server https://ra.example.com --code <pairing code>` on the computer. Compare the four symbols: confirm on the computer first, then allow on the authority.
+- **Web:** open `https://app.example.com`, choose **Join an existing account**, and type the authority's eight-digit code. Confirm the symbols in the browser first, then allow on the authority. Install the page as an app for a home-screen icon and Web Push.
+- **Android / iOS:** join by scanning the authority's QR code or entering its code. Both apps can also create an account or accept a handoff. iOS has no background security notifications; open it daily.
+- **Another device later:** open **Settings › Add device** on the current authority. The authority displays the code and QR; the new device reads them.
+- **Removal:** use the current authority's device page. A removed computer keeps its relay archive; choose **Rejoin and continue sessions** from that archive to reconnect it with a fresh identity. Deleting its records is a separate confirmed action.
+- **Lease and recovery:** open the authority daily and check the actual expiry time in **Account security**. The maximum lease is 72 hours; expiry pauses control and new uploads while local CLIs and stored history remain available. Handoff removes the current authority. Emergency recovery waits 48 hours on an honest relay and can be vetoed by the current authority.
+- **Web authority:** clearing site data or changing browsers loses management keys. Save the recovery code offline; a persistent-storage request is not a backup. A native app is recommended for daily management. Web Push does not guarantee delivery.
 
 Now start a session and it appears on every device:
 
@@ -138,11 +139,13 @@ remote-agent codex      # or: remote-agent claude
 ```
 
 > [!CAUTION]
-> `remote-agent account secret` prints root material for legacy history; it does not include the device key or the recovery code. Keep it offline; it cannot authorize a new device or recover management. Enroll new devices by pairing in the app, never paste it into an issue or a chat.
+> `remote-agent account secret` prints root material for legacy history; it does not include the device key or the recovery code. Keep it offline; it cannot authorize a new device or recover management. Enroll new devices by pairing on the authority, never paste it into an issue or a chat.
 
 ## Upgrading
 
-For protocol 10, use the [clean setup below](#upgrading-to-the-phone-authority-protocol-10) by default. Only the advanced account-preservation route needs the layout conversions: layout 3 first applies the [protocol-8 database step](#upgrading-device-enrollment-protocol-8), then the phone-authority steps. Older single-account databases first need the [v0.41.0 conversion](#upgrading-to-v0410).
+Existing protocol-10 accounts do not need rebuilding for management on any client. Keep the established genesis and device identities; an older member missing the account public key can pair again before handoff or use its new recovery code to retrieve only the public profile.
+
+For the old protocol 9→10 upgrade, use the [clean setup below](#upgrading-to-the-phone-authority-protocol-10) by default. Only the advanced account-preservation route needs the layout conversions: layout 3 first applies the [protocol-8 database step](#upgrading-device-enrollment-protocol-8), then the phone-authority steps. Older single-account databases first need the [v0.41.0 conversion](#upgrading-to-v0410).
 
 Upgrade every part to the same release, and read the release notes first: before 1.0, a release may require all parts to move together or stored data to be recreated.
 
@@ -265,9 +268,9 @@ This is only the intermediate layout 3→4 step. Continue with the 4→5 and 5�
 
 ## Upgrading to the phone authority (protocol 10)
 
-The default upgrade is a **clean protocol-10 setup**. Back up the relay and each device privately, including local transcripts. Stop all old executors and clients. Create a fresh relay database/account/security domain with the new Android app; save and confirm the emergency recovery code. Explicitly reset old local account bindings, then pair each retained computer, browser and app again. Never reset an established protocol-10 pin as a routine re-join. Restore local sessions from your private backup only in an isolated copy first; current checkpoints are republished by their owning computers, while old remote ciphertext/history is available only through backups or the old version. This is coordinated downtime and new bindings, not an automatic migration.
+This section applies only to the old protocol 9→10 upgrade. Its rebuild and offline-genesis-export screens are still Android-only; Web and iOS do not add this legacy upgrade flow. Existing protocol-10 accounts must not follow it. The default legacy upgrade is a **clean protocol-10 setup**. Back up the relay and each device privately, including local transcripts. Stop all old executors and clients. Create a fresh relay database/account/security domain with the new Android app; save and confirm the emergency recovery code. Explicitly reset old local account bindings, then pair each retained computer, browser and app again. Never reset an established protocol-10 pin as a routine re-join. Restore local sessions from your private backup only in an isolated copy first; current checkpoints are republished by their owning computers, while old remote ciphertext/history is available only through backups or the old version. This is coordinated downtime and new bindings, not an automatic migration.
 
-A recovery code does not directly decrypt stored ciphertext, but successful recovery gives control of retained computers. A malicious relay holding it can bypass the 48-hour delay. Normal phone replacement uses approval and handoff on the old phone, preserving reachable history. Expired leases pause controls and new content uploads; local CLIs continue and stored history remains viewable. Removing a device retains its relay archive; deleting computer records is separate and explicit.
+A recovery code does not directly decrypt stored ciphertext, but successful recovery gives control of retained computers. A malicious relay holding it can bypass the 48-hour delay. Normal management transfer uses approval and handoff on the current authority, preserving reachable history. Expired leases pause controls and new content uploads; local CLIs continue and stored history remains viewable. Removing a device retains its relay archive; deleting computer records is separate and explicit.
 
 ### Advanced: preserve the existing relay account
 
@@ -349,4 +352,4 @@ Run it as a file, `sqlite3 remote-agent.db < pin.sql`: `.bail on` stops at the c
 
 6. On each retained computer, run `remote-agent account join --server https://relay.example.com --code CODE` with the code shown by the phone. This overwrites the old `security` block in `account.json` and ignores any old authority fields. Existing browsers and apps choose to pair again. Compare all four symbols: confirm on the candidate first, then allow on the phone. Re-pairing keeps the Ed25519 identity and replaces the exchange key; start that computer's new daemon only after joining. Remove the migration backup after verification: restoring it restores old permissions.
 
-Old protocol 9 registrations that are not paired again are not members. After the genesis exists, the relay checks every logged-in device against the signed member list and refuses anything else, so a leftover row or bearer token cannot read the account or upload state. Delete those rows offline if you want the device list clean; re-pairing replaces a retained device's row. The protocol 10 authority phone cannot be removed normally: it has one authority; an available old phone can approve immediate handoff. Every account on a relay upgraded from layout 5 must be pinned before the relay listens; an account without a protocol 9 phone member must be rebuilt and its data discarded. Put that in the release notes. A new phone takes over through the recovery code after 48 hours, during which the old phone can veto; the recovery state removes the old phone from membership, and the new phone holds a new code with which it can recover again later. The code carries the first 10 bytes of the pinned genesis hash, so a relay holding the code still cannot substitute a forged chain. It cannot decrypt content from before the recovery; retained computers keep the history they already hold and re-publish current-state session snapshots under the new key. Open the app at least once every 72 hours to keep remote control; after that, stored history remains viewable but controls and new uploads pause until the phone renews the lease. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.
+Old protocol 9 registrations that are not paired again are not members. After the genesis exists, the relay checks every logged-in device against the signed member list and refuses anything else, so a leftover row or bearer token cannot read the account or upload state. Delete those rows offline if you want the device list clean; re-pairing replaces a retained device's row. The protocol 10 authority phone cannot be removed normally: it has one authority; an available old phone can approve immediate handoff. Every account on a relay upgraded from layout 5 must be pinned before the relay listens; an account without a protocol 9 phone member must be rebuilt and its data discarded. Put that in the release notes. A new phone takes over through the recovery code after 48 hours, during which the old phone can veto; the recovery state removes the old phone from membership, and the new phone holds a new code with which it can recover again later. The code carries the first 10 bytes of the pinned genesis hash, so a relay holding the code still cannot substitute a forged chain. It cannot decrypt content from before the recovery; retained computers keep the history they already hold and re-publish current-state session snapshots under the new key. Open the authority daily and check its actual lease expiry to keep remote control; after that, stored history remains viewable but controls and new uploads pause until the phone renews the lease. Backups contain decryption material and authorization state, so restrict access and apply your retention policy after acceptance. Legacy history is displayed as unverified; current approvals use fresh executor snapshots.

@@ -23,16 +23,16 @@ English · [简体中文](README.zh-CN.md)
 - **Self-hosted** — your relay, your web client, no third-party account.
 - **On every screen** — Web, Android and iOS (preview): chat, approvals, live terminal, images (push on Android and Web), all your computers in one list.
 
-The phone that creates the account is its authority and signs membership states with its device key; every device signs its own traffic, removal rotates keys immediately, and remote control has a 72-hour lease. See the [security model and limits](docs/reference.md#security-model).
+The client that creates the account is its sole authority (Web, Android or iOS) and signs membership states with its device key; every device signs its own traffic, removal rotates keys immediately, and remote control has a 72-hour lease. See the [security model and limits](docs/reference.md#security-model).
 
 ## Try it on the public relay
 
-Install the Android app and create the account there first; save the recovery code it shows once. Then, on macOS or Linux with tmux 3.2+ and a signed-in `codex` or `claude`:
+Create an account in the web client, Android app or iOS app (preview); save the recovery code it shows once offline. Then, on macOS or Linux with tmux 3.2+ and a signed-in `codex` or `claude`:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
 remote-agent-service install                                     # run the daemon in the background
-remote-agent account join --server https://ra.remote-agent.top --code <code from the app>
+remote-agent account join --server https://ra.remote-agent.top --code <code from the authority>
 remote-agent codex                                               # or: remote-agent claude
 ```
 
@@ -65,11 +65,11 @@ npx wrangler pages deploy remote-agent-web --project-name <your-project>
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
 remote-agent-service install                                # run the daemon in the background
-remote-agent account join --server https://ra.example.com --code <code from the app>
+remote-agent account join --server https://ra.example.com --code <code from the authority>
 remote-agent codex                                          # or: remote-agent claude
 ```
 
-Create the account in the Android app (it asks for the relay's setup token) and use the code it shows to join this computer; the session you just started is already there.
+Create the account in a client (Web, Android or iOS preview; it asks for the relay's setup token) and use **Settings › Add device** on that authority to join this computer; the session you just started is already there.
 
 ## Status and limitations
 

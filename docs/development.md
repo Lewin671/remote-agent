@@ -41,11 +41,11 @@ remote-agent events <id> -f    # 持续查看事件
 ```sh
 deploy/deploy.sh root@your-vps           # 部署 server，第一次会生成 setup token
 scripts/ship.sh [vX.Y.Z]                # 我们自己的部署：按顺序上线 server、网页和本机 daemon
-remote-agent account join --server https://ra.example.com --code 12345678   # 在新电脑上加入（手机 App 显示配对码）
+remote-agent account join --server https://ra.example.com --code 12345678   # 在新电脑上加入（管理端显示配对码）
 cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cloudflare Pages（先 npx wrangler login）
 ```
 
-- 账户和配对在 Android App 里：用户路径先由手机建账户和管理端，电脑只执行 `account join`。本地开发和端到端测试用测试夹具或 `internal/remoteclient` 扮演手机管理端；`account init`、`account pair` 不再是用户入口
+- 账户和配对可在网页、Android 或 iOS 客户端里操作：用户先建账户成为唯一管理端，电脑只执行 `account join`。本地端到端产品验收从 `ios/scripts/dev-env.sh start --no-account` 开始，用真实客户端建账户和批准配对；测试夹具或 `internal/remoteclient` 只用于自动回归，不能代替产品链路验收；`account init`、`account pair` 不再是用户入口
 - server 前面需要有负责 HTTPS 的反向代理，部署方式见 [docs/architecture.md](architecture.md) 第 1 节
 - 本地调试网页用 `pnpm build && pnpm preview`，在 http://localhost:4173 打开
 - 会话内容由内容密钥解开；账户根密钥只用于旧历史和账户签名，同样只留在自己的设备上
