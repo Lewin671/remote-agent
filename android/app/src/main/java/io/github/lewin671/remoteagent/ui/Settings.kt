@@ -1266,7 +1266,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         color = p.fg,
                     )
                     Text(
-                        "在新设备上扫码，或输入这 8 位配对码。5 分钟内有效。",
+                        "在新设备上扫这个二维码，或输入这 8 位配对码。5 分钟内有效。",
                         style = T.sm,
                         color = p.muted,
                         textAlign = TextAlign.Center,

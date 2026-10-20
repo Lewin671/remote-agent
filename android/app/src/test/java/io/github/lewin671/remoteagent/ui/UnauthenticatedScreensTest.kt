@@ -140,6 +140,14 @@ class UnauthenticatedScreensTest {
     }
 
     @Test
+    fun joinSaysWhereTheCodeComesFrom() {
+        val app = app()
+        show { JoinScreen(app) }
+        // The managing phone shows the code and the QR; this device scans or types it, not the reverse.
+        ui.onNodeWithText("在管理端手机上打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。").assertExists()
+    }
+
+    @Test
     fun createAccountFromFreshJoinRendersAndReturns() {
         val app = app()
         show { JoinScreen(app) }

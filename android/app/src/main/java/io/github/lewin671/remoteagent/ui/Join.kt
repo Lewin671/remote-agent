@@ -188,7 +188,7 @@ fun JoinScreen(app: RaApp) {
                     }
                 app.joined(acct)
             } catch (e: Exception) {
-                if (registering) error = "不确定这台手机有没有加入：${errorText(e)}。可以在已有设备的设置里看看客户端列表"
+                if (registering) error = "不确定这台手机有没有加入：${errorText(e)}。可以在管理端手机的设置里看看客户端列表"
                 else if (!stopped) error = errorText(e)
                 registering = false
                 step = JoinStep.Form
@@ -212,7 +212,7 @@ fun JoinScreen(app: RaApp) {
         job?.cancel()
         code = ""
         commit = null
-        error = "已取消本次加入。旧请求可能还占着配对码：请在已有设备上拒绝它，再生成新码"
+        error = "已取消本次加入。旧请求可能还占着配对码：请在管理端手机上拒绝它，再生成新的配对码"
         step = JoinStep.Form
     }
 
@@ -280,7 +280,7 @@ fun JoinScreen(app: RaApp) {
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            "核对另一台设备的 4 个图案；一致后先在本机确认，再在管理端手机上允许。",
+                            "核对管理端手机上的 4 个图案；一致后先在本机确认，再在管理端手机上允许。",
                             style = T.sm,
                             color = p.muted,
                             textAlign = TextAlign.Center,
@@ -310,7 +310,7 @@ fun JoinScreen(app: RaApp) {
                             Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         )
                         Hint(
-                            "返回后停止这次等待；请让另一台设备拒绝旧请求，再生成新的配对码。",
+                            "返回后停止这次等待；请在管理端手机上拒绝旧请求，再生成新的配对码。",
                             Modifier.padding(horizontal = 16.dp),
                         )
                     }
@@ -331,8 +331,8 @@ fun JoinScreen(app: RaApp) {
                         Text(
                             if (existingRemoved) "这台设备的旧身份已被移除，重新加入会生成新的设备身份，旧历史仍可读。请用管理端手机重新配对。"
                             else if (existing != null)
-                                "原设备身份、密钥和历史保留。在管理端手机的设备页点「添加设备」，两边核对四个图案完成加入。"
-                            else "在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。",
+                                "原设备身份、密钥和历史保留。在管理端手机上打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。"
+                            else "在管理端手机上打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。",
                             style = T.sm,
                             color = p.muted,
                             modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp),

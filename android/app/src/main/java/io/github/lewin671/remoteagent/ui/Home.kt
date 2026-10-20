@@ -523,7 +523,7 @@ private fun EmptyAccount(state: RemoteState) {
         when {
             state.machines.isEmpty() -> {
                 Text(
-                    "这个账户还没有电脑。在电脑上运行 remote-agent account join 加入。",
+                    "这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 remote-agent account join。",
                     style = T.sm,
                     color = p.muted,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
