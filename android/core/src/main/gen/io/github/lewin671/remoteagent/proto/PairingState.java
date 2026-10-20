@@ -41,7 +41,7 @@ public enum PairingState
   PAIRING_STATE_REVEALED(3),
   /**
    * <pre>
-   * The initiator sent the sealed root key.
+   * The initiator sent the sealed admission payload.
    * </pre>
    *
    * <code>PAIRING_STATE_APPROVED = 4;</code>
@@ -53,7 +53,7 @@ public enum PairingState
   PAIRING_STATE_CANCELED(5),
   /**
    * <pre>
-   * The joiner confirmed it has the sealed root key. Only this tells the
+   * The joiner confirmed it received the admission payload and joined. Only this tells the
    * initiator that pairing went through; the pairing is kept a minute to
    * say so.
    * </pre>
@@ -94,7 +94,7 @@ public enum PairingState
   public static final int PAIRING_STATE_REVEALED_VALUE = 3;
   /**
    * <pre>
-   * The initiator sent the sealed root key.
+   * The initiator sent the sealed admission payload.
    * </pre>
    *
    * <code>PAIRING_STATE_APPROVED = 4;</code>
@@ -106,7 +106,7 @@ public enum PairingState
   public static final int PAIRING_STATE_CANCELED_VALUE = 5;
   /**
    * <pre>
-   * The joiner confirmed it has the sealed root key. Only this tells the
+   * The joiner confirmed it received the admission payload and joined. Only this tells the
    * initiator that pairing went through; the pairing is kept a minute to
    * say so.
    * </pre>

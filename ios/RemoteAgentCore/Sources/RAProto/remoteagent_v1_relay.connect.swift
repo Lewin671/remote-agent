@@ -12,7 +12,7 @@ import SwiftProtobuf
 /// AuthService registers devices and logs them in. Every device has its own
 /// Ed25519 key. The first device of an account signs its registration with
 /// the account key; every later device on an existing account needs a
-/// approval signed by the current authority phone instead.
+/// approval signed by the current authority client instead.
 public protocol PBAuthServiceClientInterface: Sendable {
 
     @available(iOS 13, *)
@@ -69,10 +69,11 @@ public final class PBAuthServiceClient: PBAuthServiceClientInterface, Sendable {
     }
 }
 
-/// PairingService moves the root key from an existing device (the
-/// initiator) to a new one (the joiner) without the server learning it; see
-/// internal/e2e/pair.go. The initiator is logged in; the joiner is not and
-/// uses the candidate token it gets when joining.
+/// PairingService delivers admission and content-key material from the current
+/// authority client (the initiator) to a new device (the joiner) without the
+/// server learning it; see internal/e2e/pair.go. The account root is not sent.
+/// The initiator is logged in; the joiner uses the candidate token it gets
+/// when joining.
 public protocol PBPairingServiceClientInterface: Sendable {
 
     /// Freeze this response before exposing the joiner ephemeral public key.
@@ -207,8 +208,8 @@ public protocol PBClientServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `putAccountPrefs`(request: PBPutAccountPrefsRequest, headers: Connect.Headers) async -> ResponseMessage<PBPutAccountPrefsResponse>
 
-    /// PinSecurityDomain stores the phone-signed genesis state of a new
-    /// account. Called once, by the new authority phone.
+    /// PinSecurityDomain stores the authority-signed genesis state of a new
+    /// account. Called once, by the new authority client.
     @available(iOS 13, *)
     func `pinSecurityDomain`(request: PBPinSecurityDomainRequest, headers: Connect.Headers) async -> ResponseMessage<PBPinSecurityDomainResponse>
 
@@ -415,7 +416,7 @@ public final class PBMachineServiceClient: PBMachineServiceClientInterface, Send
 }
 
 /// RecoveryService transfers authority with a recovery code after 48 hours.
-/// It is unauthenticated because the recovering phone has no token yet; the
+/// It is unauthenticated because the recovering client has no token yet; the
 /// statement and state signatures are the authorization. Every lookup must
 /// prove possession of a key already bound to the account: the recovery key
 /// named in the request, or, when polling by recovery_id, the new authority

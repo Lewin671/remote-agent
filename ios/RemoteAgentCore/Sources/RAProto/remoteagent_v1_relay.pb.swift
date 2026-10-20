@@ -76,11 +76,11 @@ public enum PBPairingState: SwiftProtobuf.Enum, Swift.CaseIterable {
   /// Both keys are known; the user compares the emoji.
   case revealed // = 3
 
-  /// The initiator sent the sealed root key.
+  /// The initiator sent the sealed admission payload.
   case approved // = 4
   case canceled // = 5
 
-  /// The joiner confirmed it has the sealed root key. Only this tells the
+  /// The joiner confirmed it received the admission payload and joined. Only this tells the
   /// initiator that pairing went through; the pairing is kept a minute to
   /// say so.
   case delivered // = 6
@@ -139,7 +139,7 @@ public enum PBNotifyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   /// A turn ended.
   case turnEnded // = 2
 
-  /// A recovery is pending on the account's authority phone. Generic text
+  /// A recovery is pending on the account's authority client. Generic text
   /// only; the app opens the device page.
   case security // = 3
   case UNRECOGNIZED(Int)
@@ -539,9 +539,9 @@ public struct PBGetPairingRequest: Sendable {
   /// The joiner's token; the initiator uses its login instead.
   public var candidateToken: String = String()
 
-  /// Set by the joiner once it has the sealed root key and has joined:
-  /// the server then drops the key and tells the initiator. Until then
-  /// the joiner can fetch the key again, e.g. after a lost response.
+  /// Set by the joiner once it has opened the admission payload and joined:
+  /// the server then drops the payload and tells the initiator. Until then
+  /// the joiner can fetch the payload again, e.g. after a lost response.
   public var received: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1576,8 +1576,8 @@ public struct PBGetSecurityStatesResponse: Sendable {
 
   public var headEpoch: UInt64 = 0
 
-  /// Set for the current authority phone while a recovery is pending, with
-  /// the time it may complete. Only the signed-in authority phone sees this;
+  /// Set for the current authority client while a recovery is pending, with
+  /// the time it may complete. Only the signed-in authority client sees this;
   /// the unauthenticated recovery service no longer answers it.
   public var recoveryPending: Bool = false
 
@@ -1653,7 +1653,7 @@ public struct PBGetRecoveryContextResponse: Sendable {
 
   public var recoveryID: String = String()
 
-  /// The account's Ed25519 public key. The recovered phone needs it to
+  /// The account's Ed25519 public key. The recovered client needs it to
   /// register later devices; the root key is never sent.
   public var accountPublicKey: Data = Data()
 

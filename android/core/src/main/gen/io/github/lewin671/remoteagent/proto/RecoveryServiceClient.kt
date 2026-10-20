@@ -12,7 +12,7 @@ import com.connectrpc.StreamType
 
 /**
  *  RecoveryService transfers authority with a recovery code after 48 hours.
- *  It is unauthenticated because the recovering phone has no token yet; the
+ *  It is unauthenticated because the recovering client has no token yet; the
  *  statement and state signatures are the authorization. Every lookup must
  *  prove possession of a key already bound to the account: the recovery key
  *  named in the request, or, when polling by recovery_id, the new authority

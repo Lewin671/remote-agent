@@ -1219,7 +1219,7 @@ public struct PBDeviceMeta: Sendable {
   /// What the device says it runs on, e.g. "Chrome 140 on macOS".
   public var description_p: String = String()
 
-  /// Android replacement phone's self-signed offer. Set only after the user
+  /// Successor client's self-signed offer. Set only after the user
   /// confirms the corresponding emergency code has been saved offline.
   public var handoffRecoveryEd: Data = Data()
 

@@ -544,9 +544,9 @@ export type GetPairingRequest = Message<"remoteagent.v1.GetPairingRequest"> & {
   candidateToken: string;
 
   /**
-   * Set by the joiner once it has the sealed root key and has joined:
-   * the server then drops the key and tells the initiator. Until then
-   * the joiner can fetch the key again, e.g. after a lost response.
+   * Set by the joiner once it has opened the admission payload and joined:
+   * the server then drops the payload and tells the initiator. Until then
+   * the joiner can fetch the payload again, e.g. after a lost response.
    *
    * @generated from field: bool received = 3;
    */
@@ -1826,8 +1826,8 @@ export type GetSecurityStatesResponse = Message<"remoteagent.v1.GetSecurityState
   headEpoch: bigint;
 
   /**
-   * Set for the current authority phone while a recovery is pending, with
-   * the time it may complete. Only the signed-in authority phone sees this;
+   * Set for the current authority client while a recovery is pending, with
+   * the time it may complete. Only the signed-in authority client sees this;
    * the unauthenticated recovery service no longer answers it.
    *
    * @generated from field: bool recovery_pending = 3;
@@ -1958,7 +1958,7 @@ export type GetRecoveryContextResponse = Message<"remoteagent.v1.GetRecoveryCont
   recoveryId: string;
 
   /**
-   * The account's Ed25519 public key. The recovered phone needs it to
+   * The account's Ed25519 public key. The recovered client needs it to
    * register later devices; the root key is never sent.
    *
    * @generated from field: bytes account_public_key = 6;
@@ -2742,7 +2742,7 @@ export enum PairingState {
   REVEALED = 3,
 
   /**
-   * The initiator sent the sealed root key.
+   * The initiator sent the sealed admission payload.
    *
    * @generated from enum value: PAIRING_STATE_APPROVED = 4;
    */
@@ -2754,7 +2754,7 @@ export enum PairingState {
   CANCELED = 5,
 
   /**
-   * The joiner confirmed it has the sealed root key. Only this tells the
+   * The joiner confirmed it received the admission payload and joined. Only this tells the
    * initiator that pairing went through; the pairing is kept a minute to
    * say so.
    *
@@ -2793,7 +2793,7 @@ export enum NotifyKind {
   TURN_ENDED = 2,
 
   /**
-   * A recovery is pending on the account's authority phone. Generic text
+   * A recovery is pending on the account's authority client. Generic text
    * only; the app opens the device page.
    *
    * @generated from enum value: NOTIFY_KIND_SECURITY = 3;
@@ -2841,7 +2841,7 @@ export const PushTypeSchema: GenEnum<PushType> = /*@__PURE__*/
  * AuthService registers devices and logs them in. Every device has its own
  * Ed25519 key. The first device of an account signs its registration with
  * the account key; every later device on an existing account needs a
- * approval signed by the current authority phone instead.
+ * approval signed by the current authority client instead.
  *
  * @generated from service remoteagent.v1.AuthService
  */
@@ -2886,10 +2886,11 @@ export const AuthService: GenService<{
   serviceDesc(file_remoteagent_v1_relay, 0);
 
 /**
- * PairingService moves the root key from an existing device (the
- * initiator) to a new one (the joiner) without the server learning it; see
- * internal/e2e/pair.go. The initiator is logged in; the joiner is not and
- * uses the candidate token it gets when joining.
+ * PairingService delivers admission and content-key material from the current
+ * authority client (the initiator) to a new device (the joiner) without the
+ * server learning it; see internal/e2e/pair.go. The account root is not sent.
+ * The initiator is logged in; the joiner uses the candidate token it gets
+ * when joining.
  *
  * @generated from service remoteagent.v1.PairingService
  */
@@ -3079,8 +3080,8 @@ export const ClientService: GenService<{
     output: typeof PutAccountPrefsResponseSchema;
   },
   /**
-   * PinSecurityDomain stores the phone-signed genesis state of a new
-   * account. Called once, by the new authority phone.
+   * PinSecurityDomain stores the authority-signed genesis state of a new
+   * account. Called once, by the new authority client.
    *
    * @generated from rpc remoteagent.v1.ClientService.PinSecurityDomain
    */
@@ -3190,7 +3191,7 @@ export const MachineService: GenService<{
 
 /**
  * RecoveryService transfers authority with a recovery code after 48 hours.
- * It is unauthenticated because the recovering phone has no token yet; the
+ * It is unauthenticated because the recovering client has no token yet; the
  * statement and state signatures are the authorization. Every lookup must
  * prove possession of a key already bound to the account: the recovery key
  * named in the request, or, when polling by recovery_id, the new authority

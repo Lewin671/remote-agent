@@ -145,8 +145,8 @@ public  final class GetSecurityStatesResponse extends
   private boolean recoveryPending_;
   /**
    * <pre>
-   * Set for the current authority phone while a recovery is pending, with
-   * the time it may complete. Only the signed-in authority phone sees this;
+   * Set for the current authority client while a recovery is pending, with
+   * the time it may complete. Only the signed-in authority client sees this;
    * the unauthenticated recovery service no longer answers it.
    * </pre>
    *
@@ -159,8 +159,8 @@ public  final class GetSecurityStatesResponse extends
   }
   /**
    * <pre>
-   * Set for the current authority phone while a recovery is pending, with
-   * the time it may complete. Only the signed-in authority phone sees this;
+   * Set for the current authority client while a recovery is pending, with
+   * the time it may complete. Only the signed-in authority client sees this;
    * the unauthenticated recovery service no longer answers it.
    * </pre>
    *
@@ -173,8 +173,8 @@ public  final class GetSecurityStatesResponse extends
   }
   /**
    * <pre>
-   * Set for the current authority phone while a recovery is pending, with
-   * the time it may complete. Only the signed-in authority phone sees this;
+   * Set for the current authority client while a recovery is pending, with
+   * the time it may complete. Only the signed-in authority client sees this;
    * the unauthenticated recovery service no longer answers it.
    * </pre>
    *
@@ -467,8 +467,8 @@ public  final class GetSecurityStatesResponse extends
 
     /**
      * <pre>
-     * Set for the current authority phone while a recovery is pending, with
-     * the time it may complete. Only the signed-in authority phone sees this;
+     * Set for the current authority client while a recovery is pending, with
+     * the time it may complete. Only the signed-in authority client sees this;
      * the unauthenticated recovery service no longer answers it.
      * </pre>
      *
@@ -481,8 +481,8 @@ public  final class GetSecurityStatesResponse extends
     }
     /**
      * <pre>
-     * Set for the current authority phone while a recovery is pending, with
-     * the time it may complete. Only the signed-in authority phone sees this;
+     * Set for the current authority client while a recovery is pending, with
+     * the time it may complete. Only the signed-in authority client sees this;
      * the unauthenticated recovery service no longer answers it.
      * </pre>
      *
@@ -497,8 +497,8 @@ public  final class GetSecurityStatesResponse extends
     }
     /**
      * <pre>
-     * Set for the current authority phone while a recovery is pending, with
-     * the time it may complete. Only the signed-in authority phone sees this;
+     * Set for the current authority client while a recovery is pending, with
+     * the time it may complete. Only the signed-in authority client sees this;
      * the unauthenticated recovery service no longer answers it.
      * </pre>
      *

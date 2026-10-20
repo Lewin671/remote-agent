@@ -72,7 +72,7 @@ public interface DeviceMetaOrBuilder extends
 
   /**
    * <pre>
-   * Android replacement phone's self-signed offer. Set only after the user
+   * Successor client's self-signed offer. Set only after the user
    * confirms the corresponding emergency code has been saved offline.
    * </pre>
    *

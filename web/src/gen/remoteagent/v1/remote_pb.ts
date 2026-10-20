@@ -1210,7 +1210,7 @@ export type DeviceMeta = Message<"remoteagent.v1.DeviceMeta"> & {
   description: string;
 
   /**
-   * Android replacement phone's self-signed offer. Set only after the user
+   * Successor client's self-signed offer. Set only after the user
    * confirms the corresponding emergency code has been saved offline.
    *
    * @generated from field: bytes handoff_recovery_ed = 4;

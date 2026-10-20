@@ -33,7 +33,7 @@ public enum NotifyKind
   NOTIFY_KIND_TURN_ENDED(2),
   /**
    * <pre>
-   * A recovery is pending on the account's authority phone. Generic text
+   * A recovery is pending on the account's authority client. Generic text
    * only; the app opens the device page.
    * </pre>
    *
@@ -65,7 +65,7 @@ public enum NotifyKind
   public static final int NOTIFY_KIND_TURN_ENDED_VALUE = 2;
   /**
    * <pre>
-   * A recovery is pending on the account's authority phone. Generic text
+   * A recovery is pending on the account's authority client. Generic text
    * only; the app opens the device page.
    * </pre>
    *

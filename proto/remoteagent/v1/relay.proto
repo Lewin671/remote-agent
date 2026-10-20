@@ -11,7 +11,7 @@ import "remoteagent/v1/envelope.proto";
 // AuthService registers devices and logs them in. Every device has its own
 // Ed25519 key. The first device of an account signs its registration with
 // the account key; every later device on an existing account needs a
-// approval signed by the current authority phone instead.
+// approval signed by the current authority client instead.
 service AuthService {
   rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
   rpc GetChallenge(GetChallengeRequest) returns (GetChallengeResponse);
@@ -101,10 +101,11 @@ message LoginResponse {
   bytes device_public_key = 3;
 }
 
-// PairingService moves the root key from an existing device (the
-// initiator) to a new one (the joiner) without the server learning it; see
-// internal/e2e/pair.go. The initiator is logged in; the joiner is not and
-// uses the candidate token it gets when joining.
+// PairingService delivers admission and content-key material from the current
+// authority client (the initiator) to a new device (the joiner) without the
+// server learning it; see internal/e2e/pair.go. The account root is not sent.
+// The initiator is logged in; the joiner uses the candidate token it gets
+// when joining.
 service PairingService {
   // Freeze this response before exposing the joiner ephemeral public key.
   rpc PeekPairing(PeekPairingRequest) returns (PeekPairingResponse);
@@ -173,10 +174,10 @@ enum PairingState {
   PAIRING_STATE_JOINED = 2;
   // Both keys are known; the user compares the emoji.
   PAIRING_STATE_REVEALED = 3;
-  // The initiator sent the sealed root key.
+  // The initiator sent the sealed admission payload.
   PAIRING_STATE_APPROVED = 4;
   PAIRING_STATE_CANCELED = 5;
-  // The joiner confirmed it has the sealed root key. Only this tells the
+  // The joiner confirmed it received the admission payload and joined. Only this tells the
   // initiator that pairing went through; the pairing is kept a minute to
   // say so.
   PAIRING_STATE_DELIVERED = 6;
@@ -186,9 +187,9 @@ message GetPairingRequest {
   string pairing_id = 1;
   // The joiner's token; the initiator uses its login instead.
   string candidate_token = 2;
-  // Set by the joiner once it has the sealed root key and has joined:
-  // the server then drops the key and tells the initiator. Until then
-  // the joiner can fetch the key again, e.g. after a lost response.
+  // Set by the joiner once it has opened the admission payload and joined:
+  // the server then drops the payload and tells the initiator. Until then
+  // the joiner can fetch the payload again, e.g. after a lost response.
   bool received = 3;
 }
 
@@ -260,8 +261,8 @@ service ClientService {
   // of the expected revision.
   rpc GetAccountPrefs(GetAccountPrefsRequest) returns (GetAccountPrefsResponse);
   rpc PutAccountPrefs(PutAccountPrefsRequest) returns (PutAccountPrefsResponse);
-  // PinSecurityDomain stores the phone-signed genesis state of a new
-  // account. Called once, by the new authority phone.
+  // PinSecurityDomain stores the authority-signed genesis state of a new
+  // account. Called once, by the new authority client.
   rpc PinSecurityDomain(PinSecurityDomainRequest) returns (PinSecurityDomainResponse);
   // PutSecurityState uploads a contiguous signed state chain segment. The
   // first state must continue from the stored head (or be the pinned
@@ -526,7 +527,7 @@ enum NotifyKind {
   NOTIFY_KIND_ATTENTION = 1;
   // A turn ended.
   NOTIFY_KIND_TURN_ENDED = 2;
-  // A recovery is pending on the account's authority phone. Generic text
+  // A recovery is pending on the account's authority client. Generic text
   // only; the app opens the device page.
   NOTIFY_KIND_SECURITY = 3;
 }
@@ -567,8 +568,8 @@ message GetSecurityStatesRequest {
 message GetSecurityStatesResponse {
   repeated SecurityState states = 1;
   uint64 head_epoch = 2;
-  // Set for the current authority phone while a recovery is pending, with
-  // the time it may complete. Only the signed-in authority phone sees this;
+  // Set for the current authority client while a recovery is pending, with
+  // the time it may complete. Only the signed-in authority client sees this;
   // the unauthenticated recovery service no longer answers it.
   bool recovery_pending = 3;
   uint64 recovery_ready_ms = 4;
@@ -576,7 +577,7 @@ message GetSecurityStatesResponse {
 }
 
 // RecoveryService transfers authority with a recovery code after 48 hours.
-// It is unauthenticated because the recovering phone has no token yet; the
+// It is unauthenticated because the recovering client has no token yet; the
 // statement and state signatures are the authorization. Every lookup must
 // prove possession of a key already bound to the account: the recovery key
 // named in the request, or, when polling by recovery_id, the new authority
@@ -620,7 +621,7 @@ message GetRecoveryContextResponse {
   Phase phase = 3;
   uint64 ready_ms = 4;
   string recovery_id = 5;
-  // The account's Ed25519 public key. The recovered phone needs it to
+  // The account's Ed25519 public key. The recovered client needs it to
   // register later devices; the root key is never sent.
   bytes account_public_key = 6;
 }

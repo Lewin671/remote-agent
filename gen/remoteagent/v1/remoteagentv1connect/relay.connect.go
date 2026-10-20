@@ -558,8 +558,8 @@ type ClientServiceClient interface {
 	// of the expected revision.
 	GetAccountPrefs(context.Context, *connect.Request[v1.GetAccountPrefsRequest]) (*connect.Response[v1.GetAccountPrefsResponse], error)
 	PutAccountPrefs(context.Context, *connect.Request[v1.PutAccountPrefsRequest]) (*connect.Response[v1.PutAccountPrefsResponse], error)
-	// PinSecurityDomain stores the phone-signed genesis state of a new
-	// account. Called once, by the new authority phone.
+	// PinSecurityDomain stores the authority-signed genesis state of a new
+	// account. Called once, by the new authority client.
 	PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error)
 	// PutSecurityState uploads a contiguous signed state chain segment. The
 	// first state must continue from the stored head (or be the pinned
@@ -808,8 +808,8 @@ type ClientServiceHandler interface {
 	// of the expected revision.
 	GetAccountPrefs(context.Context, *connect.Request[v1.GetAccountPrefsRequest]) (*connect.Response[v1.GetAccountPrefsResponse], error)
 	PutAccountPrefs(context.Context, *connect.Request[v1.PutAccountPrefsRequest]) (*connect.Response[v1.PutAccountPrefsResponse], error)
-	// PinSecurityDomain stores the phone-signed genesis state of a new
-	// account. Called once, by the new authority phone.
+	// PinSecurityDomain stores the authority-signed genesis state of a new
+	// account. Called once, by the new authority client.
 	PinSecurityDomain(context.Context, *connect.Request[v1.PinSecurityDomainRequest]) (*connect.Response[v1.PinSecurityDomainResponse], error)
 	// PutSecurityState uploads a contiguous signed state chain segment. The
 	// first state must continue from the stored head (or be the pinned

@@ -2631,7 +2631,7 @@ type DeviceMeta struct {
 	Platform string `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform,omitempty"`
 	// What the device says it runs on, e.g. "Chrome 140 on macOS".
 	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	// Android replacement phone's self-signed offer. Set only after the user
+	// Successor client's self-signed offer. Set only after the user
 	// confirms the corresponding emergency code has been saved offline.
 	HandoffRecoveryEd []byte `protobuf:"bytes,4,opt,name=handoff_recovery_ed,json=handoffRecoveryEd,proto3" json:"handoff_recovery_ed,omitempty"`
 	unknownFields     protoimpl.UnknownFields

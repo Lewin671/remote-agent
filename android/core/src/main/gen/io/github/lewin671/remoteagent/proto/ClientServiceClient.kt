@@ -189,8 +189,8 @@ public class ClientServiceClient(
 
 
   /**
-   *  PinSecurityDomain stores the phone-signed genesis state of a new
-   *  account. Called once, by the new authority phone.
+   *  PinSecurityDomain stores the authority-signed genesis state of a new
+   *  account. Called once, by the new authority client.
    */
   override suspend fun pinSecurityDomain(request: PinSecurityDomainRequest, headers: Headers): ResponseMessage<PinSecurityDomainResponse> = client.unary(
     request,

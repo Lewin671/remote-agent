@@ -14,7 +14,7 @@ import com.connectrpc.StreamType
  *  AuthService registers devices and logs them in. Every device has its own
  *  Ed25519 key. The first device of an account signs its registration with
  *  the account key; every later device on an existing account needs a
- *  approval signed by the current authority phone instead.
+ *  approval signed by the current authority client instead.
  */
 public class AuthServiceClient(
   private val client: ProtocolClientInterface,

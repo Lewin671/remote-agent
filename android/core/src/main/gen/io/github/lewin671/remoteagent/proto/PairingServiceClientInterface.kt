@@ -8,10 +8,11 @@ import com.connectrpc.Headers
 import com.connectrpc.ResponseMessage
 
 /**
- *  PairingService moves the root key from an existing device (the
- *  initiator) to a new one (the joiner) without the server learning it; see
- *  internal/e2e/pair.go. The initiator is logged in; the joiner is not and
- *  uses the candidate token it gets when joining.
+ *  PairingService delivers admission and content-key material from the current
+ *  authority client (the initiator) to a new device (the joiner) without the
+ *  server learning it; see internal/e2e/pair.go. The account root is not sent.
+ *  The initiator is logged in; the joiner uses the candidate token it gets
+ *  when joining.
  */
 public interface PairingServiceClientInterface {
   /**

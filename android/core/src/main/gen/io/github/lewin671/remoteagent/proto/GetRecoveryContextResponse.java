@@ -446,7 +446,7 @@ public  final class GetRecoveryContextResponse extends
   private com.google.protobuf.ByteString accountPublicKey_;
   /**
    * <pre>
-   * The account's Ed25519 public key. The recovered phone needs it to
+   * The account's Ed25519 public key. The recovered client needs it to
    * register later devices; the root key is never sent.
    * </pre>
    *
@@ -459,7 +459,7 @@ public  final class GetRecoveryContextResponse extends
   }
   /**
    * <pre>
-   * The account's Ed25519 public key. The recovered phone needs it to
+   * The account's Ed25519 public key. The recovered client needs it to
    * register later devices; the root key is never sent.
    * </pre>
    *
@@ -473,7 +473,7 @@ public  final class GetRecoveryContextResponse extends
   }
   /**
    * <pre>
-   * The account's Ed25519 public key. The recovered phone needs it to
+   * The account's Ed25519 public key. The recovered client needs it to
    * register later devices; the root key is never sent.
    * </pre>
    *
@@ -905,7 +905,7 @@ public  final class GetRecoveryContextResponse extends
 
     /**
      * <pre>
-     * The account's Ed25519 public key. The recovered phone needs it to
+     * The account's Ed25519 public key. The recovered client needs it to
      * register later devices; the root key is never sent.
      * </pre>
      *
@@ -918,7 +918,7 @@ public  final class GetRecoveryContextResponse extends
     }
     /**
      * <pre>
-     * The account's Ed25519 public key. The recovered phone needs it to
+     * The account's Ed25519 public key. The recovered client needs it to
      * register later devices; the root key is never sent.
      * </pre>
      *
@@ -933,7 +933,7 @@ public  final class GetRecoveryContextResponse extends
     }
     /**
      * <pre>
-     * The account's Ed25519 public key. The recovered phone needs it to
+     * The account's Ed25519 public key. The recovered client needs it to
      * register later devices; the root key is never sent.
      * </pre>
      *

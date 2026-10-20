@@ -82,10 +82,10 @@ const (
 	PairingState_PAIRING_STATE_JOINED PairingState = 2
 	// Both keys are known; the user compares the emoji.
 	PairingState_PAIRING_STATE_REVEALED PairingState = 3
-	// The initiator sent the sealed root key.
+	// The initiator sent the sealed admission payload.
 	PairingState_PAIRING_STATE_APPROVED PairingState = 4
 	PairingState_PAIRING_STATE_CANCELED PairingState = 5
-	// The joiner confirmed it has the sealed root key. Only this tells the
+	// The joiner confirmed it received the admission payload and joined. Only this tells the
 	// initiator that pairing went through; the pairing is kept a minute to
 	// say so.
 	PairingState_PAIRING_STATE_DELIVERED PairingState = 6
@@ -148,7 +148,7 @@ const (
 	NotifyKind_NOTIFY_KIND_ATTENTION NotifyKind = 1
 	// A turn ended.
 	NotifyKind_NOTIFY_KIND_TURN_ENDED NotifyKind = 2
-	// A recovery is pending on the account's authority phone. Generic text
+	// A recovery is pending on the account's authority client. Generic text
 	// only; the app opens the device page.
 	NotifyKind_NOTIFY_KIND_SECURITY NotifyKind = 3
 )
@@ -1367,9 +1367,9 @@ type GetPairingRequest struct {
 	PairingId string                 `protobuf:"bytes,1,opt,name=pairing_id,json=pairingId,proto3" json:"pairing_id,omitempty"`
 	// The joiner's token; the initiator uses its login instead.
 	CandidateToken string `protobuf:"bytes,2,opt,name=candidate_token,json=candidateToken,proto3" json:"candidate_token,omitempty"`
-	// Set by the joiner once it has the sealed root key and has joined:
-	// the server then drops the key and tells the initiator. Until then
-	// the joiner can fetch the key again, e.g. after a lost response.
+	// Set by the joiner once it has opened the admission payload and joined:
+	// the server then drops the payload and tells the initiator. Until then
+	// the joiner can fetch the payload again, e.g. after a lost response.
 	Received      bool `protobuf:"varint,3,opt,name=received,proto3" json:"received,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4238,8 +4238,8 @@ type GetSecurityStatesResponse struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	States    []*SecurityState       `protobuf:"bytes,1,rep,name=states,proto3" json:"states,omitempty"`
 	HeadEpoch uint64                 `protobuf:"varint,2,opt,name=head_epoch,json=headEpoch,proto3" json:"head_epoch,omitempty"`
-	// Set for the current authority phone while a recovery is pending, with
-	// the time it may complete. Only the signed-in authority phone sees this;
+	// Set for the current authority client while a recovery is pending, with
+	// the time it may complete. Only the signed-in authority client sees this;
 	// the unauthenticated recovery service no longer answers it.
 	RecoveryPending bool   `protobuf:"varint,3,opt,name=recovery_pending,json=recoveryPending,proto3" json:"recovery_pending,omitempty"`
 	RecoveryReadyMs uint64 `protobuf:"varint,4,opt,name=recovery_ready_ms,json=recoveryReadyMs,proto3" json:"recovery_ready_ms,omitempty"`
@@ -4475,7 +4475,7 @@ type GetRecoveryContextResponse struct {
 	Phase      GetRecoveryContextResponse_Phase `protobuf:"varint,3,opt,name=phase,proto3,enum=remoteagent.v1.GetRecoveryContextResponse_Phase" json:"phase,omitempty"`
 	ReadyMs    uint64                           `protobuf:"varint,4,opt,name=ready_ms,json=readyMs,proto3" json:"ready_ms,omitempty"`
 	RecoveryId string                           `protobuf:"bytes,5,opt,name=recovery_id,json=recoveryId,proto3" json:"recovery_id,omitempty"`
-	// The account's Ed25519 public key. The recovered phone needs it to
+	// The account's Ed25519 public key. The recovered client needs it to
 	// register later devices; the root key is never sent.
 	AccountPublicKey []byte `protobuf:"bytes,6,opt,name=account_public_key,json=accountPublicKey,proto3" json:"account_public_key,omitempty"`
 	unknownFields    protoimpl.UnknownFields

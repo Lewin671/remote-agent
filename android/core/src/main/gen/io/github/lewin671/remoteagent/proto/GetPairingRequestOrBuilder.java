@@ -44,9 +44,9 @@ public interface GetPairingRequestOrBuilder extends
 
   /**
    * <pre>
-   * Set by the joiner once it has the sealed root key and has joined:
-   * the server then drops the key and tells the initiator. Until then
-   * the joiner can fetch the key again, e.g. after a lost response.
+   * Set by the joiner once it has opened the admission payload and joined:
+   * the server then drops the payload and tells the initiator. Until then
+   * the joiner can fetch the payload again, e.g. after a lost response.
    * </pre>
    *
    * <code>bool received = 3 [json_name = "received"];</code>

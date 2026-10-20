@@ -64,8 +64,8 @@ public interface ClientServiceClientInterface {
   public suspend fun putAccountPrefs(request: PutAccountPrefsRequest, headers: Headers = emptyMap()): ResponseMessage<PutAccountPrefsResponse>
 
   /**
-   *  PinSecurityDomain stores the phone-signed genesis state of a new
-   *  account. Called once, by the new authority phone.
+   *  PinSecurityDomain stores the authority-signed genesis state of a new
+   *  account. Called once, by the new authority client.
    */
   public suspend fun pinSecurityDomain(request: PinSecurityDomainRequest, headers: Headers = emptyMap()): ResponseMessage<PinSecurityDomainResponse>
 

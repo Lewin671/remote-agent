@@ -352,7 +352,7 @@ message DeviceMeta {
   string platform = 2;
   // What the device says it runs on, e.g. "Chrome 140 on macOS".
   string description = 3;
-  // Android replacement phone's self-signed offer. Set only after the user
+  // Successor client's self-signed offer. Set only after the user
   // confirms the corresponding emergency code has been saved offline.
   bytes handoff_recovery_ed = 4;
 }
