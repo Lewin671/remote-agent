@@ -178,6 +178,7 @@ export function AccountEntry({
         </>
       ) : (
         <>
+          <p className="hint">若此浏览器已有成员身份，完成恢复时会自动移除旧身份并轮换内容密钥；中断后请继续原恢复。</p>
           {!pending && (
             <>
               <p className="hint">

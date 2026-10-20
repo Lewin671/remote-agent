@@ -200,7 +200,7 @@ it("rejects a pairing candidate using the authority Ed key before any state sign
   expect((await loadSecurity()).stateHash).toEqual(r.stateHash);
 });
 async function enrolledClient() {
-  const { account } = await createAccount(), c = await clients(account);
+  const { account, code } = await createAccount(), c = await clients(account);
   const candidate = await pairCandidate(c);
   const admin = await loadSecurity();
   const chain = await securityStore.parseChain(candidate.msg.securityStates);
@@ -215,7 +215,7 @@ async function enrolledClient() {
   vi.stubGlobal("indexedDB", local);
   await candidate.initiation.finishPairingOperation();
   vi.stubGlobal("indexedDB", incomingDB);
-  return { c, target, incoming, incomingDB };
+  return { c, target, incoming, incomingDB, code };
 }
 it("signs a confirmed handoff offer against the current head after an unrelated transition", async () => {
   const { c, target, incoming, incomingDB } = await enrolledClient();
@@ -393,6 +393,53 @@ it("recovers with an existing browser security record while binding the original
   await resumed.authority.renewLeaseIfNeeded();
   expect((await loadSecurity()).lease!.head).toEqual(adopted.stateHash);
 });
+it.each(["none", "before-publish", "lost-ack", "after-account-save"] as const)(
+  "retires the replaced browser member as a resumable recovery step (%s)", async (fault) => {
+    const { incoming, code } = await enrolledClient();
+    const old = await loadSecurity();
+    const recovery = new AuthoritySetup(lifecycle());
+    await recovery.prepareEmergencyRecovery(server.url, code);
+    await recovery.confirmRecoveryCodeSaved();
+    const status = await recovery.submitRecovery(); await server.ready(status.recoveryId);
+    const fetch = globalThis.fetch, saveAccount = accountStore.saveAccount;
+    let retirement: Uint8Array | undefined;
+    const publish = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (!url.endsWith("/PutSecurityState")) return fetch(input, init);
+      const body = new Uint8Array(await new Request(input, init).arrayBuffer());
+      const state = fromBinary(PutSecurityStateRequestSchema, body).states[0]?.state;
+      if (state) {
+        if (retirement) expect(state).toEqual(retirement); else retirement = new Uint8Array(state);
+        expect((await readSecurityOperation())!.kind).toBe("recovery");
+        if (fault === "before-publish") throw new Error("injected retirement publication failure");
+      }
+      const response = await fetch(input, init);
+      if (state && fault === "lost-ack") throw new Error("injected lost retirement acknowledgement");
+      return response;
+    });
+    const accountSave = vi.spyOn(accountStore, "saveAccount").mockImplementation(async (account) => {
+      await saveAccount(account);
+      if (fault === "after-account-save") throw new Error("injected interruption after identity adoption");
+    });
+    if (fault === "none") await recovery.completeRecovery();
+    else {
+      await expect(recovery.completeRecovery()).rejects.toThrow("injected");
+      expect((await readSecurityOperation())!.kind).toBe("recovery");
+    }
+    publish.mockRestore(); accountSave.mockRestore();
+    if (fault !== "none") await new AuthoritySetup(lifecycle()).completeRecovery();
+    const adopted = await loadSecurity(), head = adopted.states.at(-1)!;
+    expect(head.core.members.some((m) => m.id === incoming.deviceId)).toBe(false);
+    expect(head.core.removed).toContain(incoming.deviceId);
+    expect(isAuthority(adopted)).toBe(true);
+    expect(adopted.states).toHaveLength(old.states.length + 2);
+    expect(retirement).toBeDefined();
+    expect(await stateBytes(head)).toEqual(retirement);
+    expect(await readSecurityOperation()).toBeUndefined();
+    const c = await clients((await loadAccount())!);
+    expect((await c.api.listDevices({})).devices.some((d) => d.id === incoming.deviceId)).toBe(false);
+  },
+);
 it("keeps a vetoed recovery until an explicit discard and permits a new request with the current code", async () => {
   const { account, code } = await createAccount(); const c = await clients(account);
   const recoveryDB = new IDBFactory(); vi.stubGlobal("indexedDB", recoveryDB);

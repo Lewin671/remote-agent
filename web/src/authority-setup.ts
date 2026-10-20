@@ -7,14 +7,14 @@ import { Authority, authoritySigningTime } from "./authority";
 import { acceptRecoveryPublicProfile } from "./account-public";
 import { accountKey, checkServer, concat, deviceID, importRoot, newDeviceKey, signLogin, utf8, REGISTER_CONTEXT } from "./crypto";
 import { buildRecord, initializeSecurity, loadSecurity, parseChain, securitySetupStatus, type SecurityRecord } from "./device-security-store";
-import { equal, leaseBytes, newSecurityKey, pinOf, recoveryBytes, SecurityError, signLease, stateBytes, stateHash, type Pin, type RecoveryStatement, type SecurityState, type Member } from "./device-security";
+import { equal, leaseBytes, parseLease, parseState, verifyLease, newSecurityKey, pinOf, recoveryBytes, SecurityError, signLease, stateBytes, stateHash, type Pin, type RecoveryStatement, type SecurityState, type Member } from "./device-security";
 import { RecoveryCode } from "./recovery";
 import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, operation, readSecurityOperation, saveSecurityOperation, type SecurityOperation, requestAuthorityPersistence, markRecoveryCodeRotation } from "./security-operation";
 import { loadAccount, loadRegistration, saveAccount, saveAccountPublicProfile, type StoredAccount } from "./storage";
 import { apiBase } from "./remote";
 import { relayFetch } from "./transport";
 import { PROTOCOL_VERSION } from "./protocol";
-import { AuthService, ClientService, RecoveryService, DeviceKind, DeviceRegistrationSchema, RegisterDeviceRequestSchema, SubmitRecoveryRequestSchema, CompleteRecoveryRequestSchema, GetRecoveryContextResponse_Phase as RecoveryPhase, type SignupProof, type GetRecoveryContextResponse } from "./gen/remoteagent/v1/relay_pb";
+import { AuthService, ClientService, RecoveryService, DeviceKind, DeviceRegistrationSchema, RegisterDeviceRequestSchema, SubmitRecoveryRequestSchema, CompleteRecoveryRequestSchema, PutSecurityStateRequestSchema, GetRecoveryContextResponse_Phase as RecoveryPhase, type SignupProof, type GetRecoveryContextResponse } from "./gen/remoteagent/v1/relay_pb";
 
 type B = Uint8Array<ArrayBuffer>;
 interface CreationDraft {
@@ -41,6 +41,8 @@ interface RecoveryDraft {
   recoveryId: string;
   readyMs: bigint;
   completeRequest?: B;
+  retiringMemberID?: string;
+  retirementRequest?: B;
 }
 interface UnsignedRecoveryDraft extends Omit<RecoveryDraft, "target" | "proof"> {
   member: Member;
@@ -253,6 +255,8 @@ export class AuthoritySetup {
             states: chain.states, proofs: chain.proofs, recoveryId: "", readyMs: 0n,
             member, recoveryEd: fresh.publicKey, secret: Authority.newSecret(),
             now: authoritySigningTime(parent, BigInt(Date.now()), local?.floor, local?.lease),
+            retiringMemberID: local && local.memberID !== parent.core.authorityID &&
+              parent.core.members.some((m) => m.id === local.memberID) ? local.memberID : undefined,
           });
           check();
           // Recovery creates a new identity. The slot CAS still binds the old
@@ -280,7 +284,8 @@ export class AuthoritySetup {
     check();
     const completed: SecurityOperation<RecoveryDraft> = { ...op, signed,
       local: { account: l.account, accountPublicKey: l.accountPublicKey, x: l.x, pin: l.pin,
-        states: l.states, proofs: l.proofs, target, proof, recoveryId: "", readyMs: 0n } };
+        states: l.states, proofs: l.proofs, target, proof, recoveryId: "", readyMs: 0n,
+        retiringMemberID: l.retiringMemberID } };
     await saveSecurityOperation<unknown>(op, completed);
     check();
   }
@@ -358,9 +363,66 @@ export class AuthoritySetup {
       const response = await this.services(op.server).recovery.completeRecovery(fromBinary(CompleteRecoveryRequestSchema, op.local.completeRequest!));
       check();
       if (response.deviceId !== l.account.deviceId || !equal(response.accountPublicKey, l.accountPublicKey)) throw new SecurityError("untrusted");
-      const published = await this.recoveryContext(op, check);
+      let published = await this.recoveryContext(op, check);
       const targetHash = await stateHash(l.target);
-      if (published.phase !== RecoveryPhase.PUBLISHED || !equal(await stateHash(published.states.at(-1)!), targetHash)) throw new SecurityError("conflict");
+      const accepted = published.states.find((s) => s.core.epoch === l.target.core.epoch);
+      if (published.phase !== RecoveryPhase.PUBLISHED || !accepted || !equal(await stateHash(accepted), targetHash)) throw new SecurityError("conflict");
+      if (l.retiringMemberID) {
+        // Go requires the recovery transition to retain every non-authority
+        // member. Retire this browser's replaced identity with an ordinary
+        // successor only after verifying the new authority's published state.
+        if (!op.local.retirementRequest) {
+          const r = await buildRecord(l.pin, published.states, published.proofs, l.account.deviceId, l.x.privateKey);
+          check();
+          const head = r.states.at(-1)!;
+          if (head.core.authorityID !== l.account.deviceId) throw new SecurityError("untrusted");
+          const next = await Authority.remove(head, [l.retiringMemberID], r.secret, Authority.newSecret(),
+            l.account.devicePrivate, authoritySigningTime(head, BigInt(Date.now()), r.floor), { beforeSign: check });
+          check();
+          const certificate = await signLease(next, l.account.devicePrivate, authoritySigningTime(next, BigInt(Date.now()), r.floor), 0n, check);
+          check();
+          const request = toBinary(PutSecurityStateRequestSchema, create(PutSecurityStateRequestSchema,
+            { states: [{ state: await stateBytes(next) }], lease: leaseBytes(certificate) }));
+          check();
+          op = await saveSecurityOperation(op, { ...op, local: { ...op.local, retirementRequest: request } });
+          check();
+        }
+        let request = fromBinary(PutSecurityStateRequestSchema, op.local.retirementRequest!);
+        if (request.states.length !== 1 || request.states[0].recovery.length) throw new SecurityError("storage");
+        const retirement = await parseState(new Uint8Array(request.states[0].state));
+        check();
+        const retirementHash = await stateHash(retirement);
+        let installed = published.states.find((s) => s.core.epoch === retirement.core.epoch);
+        if (installed && !equal(await stateHash(installed), retirementHash)) throw new SecurityError("conflict");
+        if (!installed) {
+          if (!equal(await stateHash(published.states.at(-1)!), retirement.core.parent)) throw new SecurityError("conflict");
+          const prior = parseLease(new Uint8Array(request.lease));
+          await verifyLease(prior, retirement);
+          check();
+          if (BigInt(Date.now()) >= prior.notAfter) {
+            // Renew only the independent certificate; never sign a competing
+            // removal after an uncertain write or a long interruption.
+            const fresh = await signLease(retirement, l.account.devicePrivate,
+              authoritySigningTime(retirement, BigInt(Date.now()), prior.issuedAt), 0n, check);
+            check();
+            request = create(PutSecurityStateRequestSchema, { ...request, lease: leaseBytes(fresh) });
+            op = await saveSecurityOperation(op, { ...op, local: { ...op.local,
+              retirementRequest: toBinary(PutSecurityStateRequestSchema, request) } });
+            check();
+          }
+          const services = this.services(op.server);
+          const token = await login(services.auth, l.account, check);
+          check();
+          await services.client(token).putSecurityState(request);
+          check();
+          published = await this.recoveryContext(op, check);
+          installed = published.states.find((s) => s.core.epoch === retirement.core.epoch);
+        }
+        if (!installed || !equal(await stateHash(installed), retirementHash) ||
+            installed.core.members.some((m) => m.id === l.retiringMemberID) || !installed.core.removed.includes(l.retiringMemberID))
+          throw new SecurityError("conflict");
+        check();
+      }
       await saveAccountPublicProfile(op.server, l.pin, l.accountPublicKey);
       check();
       // A prior member's verified prefix may be extended by this recovery.

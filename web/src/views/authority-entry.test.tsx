@@ -119,6 +119,8 @@ it("queries a recovery draft on restart and permits completing it without claimi
     confirmRecoveryCodeSaved: vi.fn(),
   } as unknown as AuthoritySetup;
   await mount(setup);
+  expect(host.textContent).toContain("完成恢复时会自动移除旧身份并轮换内容密钥");
+  expect(host.textContent).toContain("中断后请继续原恢复");
   await click("提交或查询原恢复");
   await click("完成恢复");
   expect(setup.completeRecovery).toHaveBeenCalledOnce();
