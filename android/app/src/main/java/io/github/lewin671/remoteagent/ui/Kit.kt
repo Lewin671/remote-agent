@@ -368,8 +368,8 @@ fun GRow(
         Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
             .alpha(if (enabled) 1f else .6f).padding(horizontal = 14.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                lead?.invoke()
-                Text(text, style = T.body, color = ink, maxLines = 1, modifier = Modifier.weight(1f))
+                if (lead != null) { lead(); Spacer(Modifier.width(10.dp)) }
+                Text(text, style = T.body, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 trailing?.invoke()
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End)) {

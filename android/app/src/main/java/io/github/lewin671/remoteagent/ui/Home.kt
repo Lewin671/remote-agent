@@ -139,6 +139,7 @@ fun HomeScreen() {
     // What is typed stays in memory: saved instance state is plaintext on disk (architecture §15).
     var query by remember(scope) { mutableStateOf("") }
     val filtering = query.isNotBlank()
+    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
     val tl = remember(state, scope, query) { homeTimeline(state, scope, query) }
     var showAll by remember(scope) { mutableStateOf(false) }
     var showRunning by remember(scope) { mutableStateOf(false) }
@@ -178,7 +179,7 @@ fun HomeScreen() {
         }
         if (tl.attention.isNotEmpty()) {
             item { Label("需要处理", tl.attention.size) }
-            val shown = if (showAll || filtering) tl.attention else tl.attention.take(ATTENTION_MAX)
+            val shown = if (showAll || filtering || wide) tl.attention else tl.attention.take(ATTENTION_MAX)
             items(shown, key = { "a" + it.id }) { s -> AttentionCard(state, s, t, scope) }
             if (shown.size < tl.attention.size)
                 item {
@@ -195,7 +196,7 @@ fun HomeScreen() {
         }
         if (tl.running.isNotEmpty()) {
             item { Label("进行中", tl.running.size) }
-            val shown = if (showRunning || filtering) tl.running else tl.running.take(RUNNING_MAX)
+            val shown = if (showRunning || filtering || wide) tl.running else tl.running.take(RUNNING_MAX)
             items(shown, key = { "r" + it.id }) { s ->
                 SessionRow(state, s, t, tl.meta, last = s == shown.last())
             }

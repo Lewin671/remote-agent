@@ -167,7 +167,7 @@ fun ProjectRow(state: RemoteState, pr: Project, onClick: () -> Unit, clickLabel:
             Avatar(pr.key, 22)
             Column(Modifier.weight(1f)) {
                 Text(pr.name, style = T.bodyB, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(projectDetail(state, pr), style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(projectDetail(pr), style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 when (change) {
                     PrefsChanges.State.Saving -> IconText(Lucide.LoaderCircle, "正在同步…", p.muted, T.meta)
                     is PrefsChanges.State.Failed -> Row(verticalAlignment = Alignment.CenterVertically) {

@@ -323,6 +323,26 @@ class TimelineTest {
     }
 
     @Test
+    fun projectCountsSplitWaitingFromRunningLikeTheHome() {
+        val st = state(
+            session("a1", "/work/foo", approvals = 1), session("a2", "/work/foo", approvals = 2),
+            *Array(4) { session("r$it", "/work/foo") },
+            session("ended", "/work/empty", ended = now - 1000),
+        )
+        val expected = "2 个待处理 · 4 个进行中"
+        assertEquals(expected, activityCounts(st.sessions.values))
+        assertEquals("/work/foo · $expected", scopeRows(st, HomeScope.All).single { it.name == "foo" }.detail)
+        assertEquals(expected, scopeRows(st, HomeScope.All).first().detail)
+        assertEquals("/work/empty", scopeRows(st, HomeScope.All).single { it.name == "empty" }.detail)
+        // Pending work does not disappear just because its computer is offline.
+        val offline = st.copy(machines = st.machines.mapValues { (_, m) -> MachineView(m.id, false, m.lastSeenMs, m.meta) })
+        assertEquals(expected, scopeRows(offline, HomeScope.All).first().detail)
+        val idle = state(session("x", "/work/foo", ended = now), session("y", "/work/empty", ended = now))
+        assertEquals("2 个项目", scopeRows(idle, HomeScope.All).first().detail)
+        assertEquals("1 个待处理", activityCounts(listOf(session("a", "/work/foo", approvals = 1))))
+    }
+
+    @Test
     fun theScopeMenuListsEveryProjectFirstThenPinnedThenTheOthers() {
         val st = state(
             session("1", "/Users/me/Code/foo"), session("2", "/Users/me/Code/foo", created = now - 100),

@@ -121,6 +121,12 @@ private fun Ico(icon: ImageVector, bg: Color) {
     }
 }
 
+internal fun clientIcon(meta: io.github.lewin671.remoteagent.proto.DeviceMeta?): ImageVector = when {
+    meta?.platform == "web" -> Lucide.Globe
+    meta?.description?.contains("iPad") == true -> Lucide.Tablet
+    else -> Lucide.Smartphone
+}
+
 /**
  * 设置 (client-v7): computers, clients, notifications, this phone's storage, appearance and the
  * account, on a grey page.
@@ -196,6 +202,7 @@ fun SettingsScreen() {
                                     state.devices.values,
                                 ),
                                 "当前",
+                                lead = { Ico(clientIcon(state.devices[me]?.meta), p.blueBg) },
                                 onClick = { nav.client(me) },
                             )
                         },
@@ -205,6 +212,7 @@ fun SettingsScreen() {
                                 GRow(
                                     io.github.lewin671.remoteagent.core.clientName(c, c.id, state.devices.values),
                                     "已配对",
+                                    lead = { Ico(clientIcon(c.meta), p.blueBg) },
                                     onClick = { nav.client(c.id) },
                                     chevron = true,
                                 )
@@ -403,33 +411,13 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
                     ) {
                         Ico(Lucide.Laptop, p.blueBg)
                         Column(Modifier.weight(1f)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    machineLabel(state, m.id),
-                                    style = T.body,
-                                    color = p.fg,
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                ) {
-                                    Dot(if (m.online) p.green else p.gray)
-                                    Text(
-                                        (if (m.id == state.authorityDeviceId) "管理端手机 · "
-                                        else "") +
-                                            (if (m.online) "在线"
-                                            else
-                                                whenText(m.lastSeenMs, t).ifEmpty {
-                                                    "不在线"
-                                                }),
-                                        style = T.sm,
-                                        color = p.muted,
-                                    )
-                                }
-                            }
+                            Text(
+                                machineLabel(state, m.id),
+                                style = T.body,
+                                color = p.fg,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
                             val q =
                                 io.github.lewin671.remoteagent.core
                                     .quotaGroups(m, t)
@@ -448,6 +436,18 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
                                     color = p.muted,
                                     modifier = Modifier.padding(top = 2.dp),
                                 )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            Dot(if (m.online) p.green else p.gray)
+                            Text(
+                                if (m.online) "在线" else whenText(m.lastSeenMs, t).ifEmpty { "不在线" },
+                                style = T.sm,
+                                color = p.muted,
+                                maxLines = 1,
+                            )
                         }
                         Arrow(p.muted, T.body)
                     }

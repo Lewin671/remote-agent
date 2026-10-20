@@ -381,4 +381,56 @@ class LayoutTest {
         }
         ui.onNodeWithText("自动").assertIsSelected()
     }
+    @Test fun machineStatusStaysAtTheTrailingEdgeWithQuotasAndLargeFont() {
+        val now = 1_800_000_000_000L
+        val name = "A very long workstation name that must leave room for status"
+        var dark by mutableStateOf(false)
+        var online by mutableStateOf(true)
+        val meta = MachineMeta.newBuilder().setHostname(name)
+            .addQuotas(AgentQuota.newBuilder().setAgent(Agent.AGENT_CODEX).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now)
+                .addWindows(QuotaWindow.newBuilder().setWindowMinutes(300).setUsedPercent(62.0))).build()
+        ui.setContent {
+            val density = LocalDensity.current
+            RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(density.density, 2f)) {
+                    Column(Modifier.width(320.dp).testTag("frame")) {
+                        MachinesGroup(RemoteState(machines = mapOf(machineId to MachineView(machineId, online, now - 7_200_000, meta))), now)
+                    }
+                }
+            }
+        }
+        for (theme in listOf(false, true)) {
+            ui.runOnIdle { dark = theme }
+            for (connected in listOf(true, false)) {
+                ui.runOnIdle { online = connected }
+                val status = ui.onNodeWithText(if (connected) "在线" else "2 小时前", useUnmergedTree = true).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+                val title = ui.onNodeWithText(name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+                val frame = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
+                assertTrue("status overlaps title", status.left >= title.right)
+                assertTrue("status outside row", status.right <= frame.right)
+                assertTrue("status should stay at row end", status.right > frame.left + frame.width * .65f)
+            }
+        }
+    }
+
+    @Test fun tabletHomeListsEveryWaitingAndRunningSession() {
+        val sessions = (1..10).map { n ->
+            SessionView("wide$n", machineId, Session.newBuilder().setId("wide$n").setCwd(key)
+                .setTitle(if (n <= 4) "Waiting $n" else "Running $n")
+                .setPendingApprovals(if (n <= 4) 1 else 0).setStatus(SessionStatus.SESSION_STATUS_RUNNING).build())
+        }
+        remote.showForTest(RemoteState(loaded = true, sessions = sessions.associateBy { it.id }, machines = state.machines))
+        ui.setContent {
+            val config = android.content.res.Configuration(androidx.compose.ui.platform.LocalConfiguration.current).apply { screenWidthDp = 1000 }
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, androidx.compose.ui.platform.LocalConfiguration provides config) {
+                    HomeScreen()
+                }
+            }
+        }
+        ui.onNodeWithText("Waiting 4").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("Running 10").performScrollTo().assertIsDisplayed()
+        ui.onAllNodes(hasText("还有", substring = true)).assertCountEquals(0)
+    }
+
 }

@@ -268,15 +268,19 @@ fun filterTail(count: Int, query: String): String =
 /** A row of 看哪个项目. */
 data class ScopeRow(val scope: HomeScope, val name: String, val detail: String, val current: Boolean)
 
-/**
- * What a project's row says under its name, the same wherever projects are listed (client-v34):
- * the path, then how many sessions run there, or that none of its computers is online.
- */
-fun projectDetail(state: RemoteState, pr: Project): String {
-    val live = pr.sessions.count { !exited(it) }
-    val offline = pr.machineIds.isNotEmpty() && pr.machineIds.none { state.machines[it]?.online == true }
-    return shortPath(pr.key) + if (live > 0) " · $live 个进行中" else if (offline) " · 电脑不在线" else ""
+/** Counts use the same waiting/running split as the home, including offline computers. */
+fun activityCounts(sessions: Collection<SessionView>): String {
+    val waiting = sessions.count(::needsAttention)
+    val running = sessions.count { !exited(it) && !needsAttention(it) }
+    return listOfNotNull(
+        if (waiting > 0) "$waiting 个待处理" else null,
+        if (running > 0) "$running 个进行中" else null,
+    ).joinToString(" · ")
 }
+
+/** The same path and activity counts wherever a project is listed. */
+fun projectDetail(pr: Project): String =
+    shortPath(pr.key) + activityCounts(pr.sessions).let { if (it.isEmpty()) "" else " · $it" }
 
 /**
  * The scope menu: 全部项目 when there is more than one project to choose
@@ -288,12 +292,12 @@ fun scopeRows(state: RemoteState, current: HomeScope, search: String = ""): List
     val q = search.trim()
     return buildList {
         if (listed.size > 1 && q.isEmpty()) {
-            val live = state.sessions.values.count { !exited(it) }
-            add(ScopeRow(HomeScope.All, "全部项目", if (live > 0) "$live 个进行中" else "${listed.size} 个项目", current == HomeScope.All))
+            val counts = activityCounts(state.sessions.values)
+            add(ScopeRow(HomeScope.All, "全部项目", counts.ifEmpty { "${listed.size} 个项目" }, current == HomeScope.All))
         }
         for (pr in listed) {
             if (q.isNotEmpty() && !pr.name.contains(q, ignoreCase = true) && !pr.key.contains(q, ignoreCase = true)) continue
-            add(ScopeRow(HomeScope.Of(pr.key), pr.name, projectDetail(state, pr), current == HomeScope.Of(pr.key)))
+            add(ScopeRow(HomeScope.Of(pr.key), pr.name, projectDetail(pr), current == HomeScope.Of(pr.key)))
         }
     }
 }

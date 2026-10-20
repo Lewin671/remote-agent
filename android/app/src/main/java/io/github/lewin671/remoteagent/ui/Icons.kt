@@ -125,6 +125,11 @@ object Lucide {
         "M20.054 15.987H3.946",
     )
 
+    /** Client devices: Lucide globe, smartphone and tablet. */
+    val Globe = lucide("globe", circle(12, 12, 10), "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20", "M2 12h20")
+    val Smartphone = lucide("smartphone", "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z", "M12 18h.01")
+    val Tablet = lucide("tablet", "M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z", "M12 18h.01")
+
     /** The terminal's remaining arrow keys and its return key. */
     val ArrowLeft = lucide("arrow-left", "m12 19-7-7 7-7", "M19 12H5")
     val ArrowRight = lucide("arrow-right", "M5 12h14", "m12 5 7 7-7 7")
