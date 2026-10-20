@@ -15,6 +15,7 @@ export async function makePairApproval(
   expires: bigint,
   replacesDeviceId = "",
   nonce = crypto.getRandomValues(new Uint8Array(16)),
+  beforeSign?: () => void,
 ): Promise<{ approval: B; signature: B }> {
   const authority = head.core.members.find((m) => m.id === head.core.authorityID);
   if (!authority || authority.kind !== 2 || !id(head.core.account) ||
@@ -32,6 +33,7 @@ export async function makePairApproval(
   }));
   if (approval.length > 1024) throw new SecurityError("capacity");
   const message = concat(utf8("remote-agent/v1/pair-approval\0"), approval);
+  beforeSign?.();
   const signature = new Uint8Array(await crypto.subtle.sign("Ed25519", signer, message));
   await verifyPublicSignature(authority.ed, signature, message);
   return { approval, signature };

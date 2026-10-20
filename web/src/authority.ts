@@ -9,8 +9,9 @@ import {
 } from "./device-security";
 
 type B = Uint8Array<ArrayBuffer>;
-/** Test-only deterministic inputs. Production callers omit this argument. */
+/** Optional foreground guard; deterministic random inputs are for tests. */
 export interface AuthorityRandomness {
+  beforeSign?: () => void;
   grantEkm?: (member: Member) => B;
   prevNonce?: B;
   recoveryNonce?: B;
@@ -31,7 +32,9 @@ async function build(core: Core, secret: B, prevSecret: B, signer: CryptoKey, ra
   for (const member of core.members)
     grants.push(await sealGrant(member, core, ch, secret, random?.grantEkm?.(member)));
   const state: SecurityState = { core, grants, prevSecret, signature: new Uint8Array() };
-  state.signature = new Uint8Array(await crypto.subtle.sign("Ed25519", signer, await stateSignBytes(state)));
+  const message = await stateSignBytes(state);
+  random?.beforeSign?.();
+  state.signature = new Uint8Array(await crypto.subtle.sign("Ed25519", signer, message));
   await stateBytes(state); // Capacity and canonical encoding before returning any result.
   return state;
 }
@@ -79,7 +82,7 @@ async function recovery(parent: SecurityState, newMember: Member, members: Membe
   check(newMember.kind === 2 && !members.some((m) => m.id === parent.core.authorityID));
   const core = { ...await successor(parent, now), contentEpoch: parent.core.contentEpoch + 1n, authorityID: newMember.id, recoveryEd: newRecoveryEd, members: sorted(members), removed: [...new Set([...parent.core.removed, parent.core.authorityID])].sort() };
   const state = await build(core, secret, new Uint8Array(), newSigner, random);
-  const statement = await signRecoveryStatement({ account: core.account, domain: core.domain, parent: core.parent, newAuthorityID: newMember.id, newRecoveryEd, newMember, issuedAt: core.issuedAt, stateHash: await stateHash(state), nonce: random?.recoveryNonce ?? crypto.getRandomValues(new Uint8Array(32)), signature: new Uint8Array() }, oldRecoverySeed);
+  const statement = await signRecoveryStatement({ account: core.account, domain: core.domain, parent: core.parent, newAuthorityID: newMember.id, newRecoveryEd, newMember, issuedAt: core.issuedAt, stateHash: await stateHash(state), nonce: random?.recoveryNonce ?? crypto.getRandomValues(new Uint8Array(32)), signature: new Uint8Array() }, oldRecoverySeed, random?.beforeSign);
   await verifyTransition(parent, state, statement);
   return { state, statement };
 }

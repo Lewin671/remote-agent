@@ -686,12 +686,14 @@ export async function sealPrevSecret(
 }
 
 /** The recovery seed stays in memory; callers must never persist it. */
-export async function signRecoveryStatement(r: RecoveryStatement, seed: B): Promise<RecoveryStatement> {
+export async function signRecoveryStatement(r: RecoveryStatement, seed: B, beforeSign?: () => void): Promise<RecoveryStatement> {
   requireOK(seed.length === 32);
   const key = await crypto.subtle.importKey("pkcs8", concat(
     new Uint8Array([0x30,0x2e,0x02,0x01,0x00,0x30,0x05,0x06,0x03,0x2b,0x65,0x70,0x04,0x22,0x04,0x20]), seed,
   ), "Ed25519", false, ["sign"]);
-  return { ...r, signature: await sign(key, await recoverySignBytes(r)) };
+  const message = await recoverySignBytes(r);
+  beforeSign?.();
+  return { ...r, signature: await sign(key, message) };
 }
 function grantContext(c: Core, ch: B, recipient: string): B {
   return new Writer()
@@ -1028,6 +1030,7 @@ export async function formCipher(
   h: SecurityHeader,
   plaintext: B,
   ed: CryptoKey,
+  beforeSign?: () => void,
 ): Promise<FormedCipher> {
   requireOK(plaintext.length <= MAX_CIPHER - 16);
   const header = headerBytes(h);
@@ -1040,10 +1043,9 @@ export async function formCipher(
     ),
   );
   const c = { header, nonce, cipher, origin: new Uint8Array() };
-  c.origin = await sign(
-    ed,
-    originBytes(h, await hash("", header), await commitment(c)),
-  );
+  const message = originBytes(h, await hash("", header), await commitment(c));
+  beforeSign?.();
+  c.origin = await sign(ed, message);
   return c;
 }
 export async function verifyWire(
@@ -1306,6 +1308,7 @@ export async function signLease(
   signer: CryptoKey,
   now: bigint,
   floor = 0n,
+  beforeSign?: () => void,
 ): Promise<LeaseCertificate> {
   const issuedAt = [0n, now, head.core.issuedAt, floor].reduce((a, b) => a > b ? a : b);
   const lease: LeaseCertificate = {
@@ -1315,6 +1318,7 @@ export async function signLease(
     notAfter: issuedAt + BigInt(LEASE),
     signature: new Uint8Array(),
   };
+  beforeSign?.();
   lease.signature = await sign(signer, leaseSignBytes(lease));
   await verifyLease(lease, head);
   return lease;

@@ -27,8 +27,17 @@ const REVISION = "record-revision";
 let verified: { revision: string; record: Promise<SecurityRecord> } | undefined;
 function putRecord(store: IDBObjectStore, record: SecurityRecord): void {
   store.put(record, KEY);
+  store.put(record.pin, "pinned-identity");
   store.put(crypto.randomUUID(), REVISION);
   if (!record.member) store.delete(LOGIN_TOKEN);
+}
+function putFirstRecord(store: IDBObjectStore, record: SecurityRecord, done: () => void, fail: (error: Error) => void) {
+  const retained = store.get("pinned-identity");
+  retained.onsuccess = () => {
+    if (retained.result !== undefined) { fail(new SecurityError("storage")); return; }
+    putRecord(store, record);
+    done();
+  };
 }
 export interface ContentKey {
   epoch: bigint;
@@ -375,8 +384,7 @@ export async function initializeSecurity(
         done();
         return;
       }
-      putRecord(store, record);
-      done();
+      putFirstRecord(store, record, () => done(), fail);
     };
   });
 }
@@ -406,12 +414,17 @@ export async function loadSecurity(): Promise<SecurityRecord> {
     revision?: string;
     record?: SecurityRecord;
     cached?: Promise<SecurityRecord>;
-  }>(db, "readonly", (store, done) => {
+  }>(db, "readonly", (store, done, fail) => {
     const revision = store.get(REVISION);
     revision.onsuccess = () => {
       const tag = typeof revision.result === "string" ? revision.result : undefined;
       if (tag && verified?.revision === tag) {
-        done({ cached: verified.record });
+        const cached = verified.record;
+        const presence = store.count(KEY);
+        presence.onsuccess = () => {
+          if (presence.result !== 1) { fail(new SecurityError("storage")); return; }
+          done({ cached });
+        };
         return;
       }
       const get = store.get(KEY);
@@ -543,6 +556,18 @@ export async function securitySetupStatus(): Promise<
 > {
   const databases = await indexedDB.databases();
   if (!databases.some((d) => d.name === DATABASE)) return "missing";
+  const db = await database(false);
+  const hasState = await transaction<boolean>(db, "readonly", (store, done) => {
+    const current = store.get(KEY);
+    current.onsuccess = () => {
+      if (current.result !== undefined) { done(true); return; }
+      const pin = store.get("pinned-identity");
+      pin.onsuccess = () => done(pin.result !== undefined);
+    };
+  });
+  // A draft-only database has never installed an identity. Once pinned,
+  // loss of the current record remains invalid and must not clear the pin.
+  if (!hasState) return "missing";
   try {
     await loadSecurity();
     return "ready";
@@ -715,4 +740,43 @@ export async function loadLoginToken(server: string, memberID: string, now = Dat
     await clearLoginToken(server, memberID);
     return undefined;
   }
+}
+
+/** Independent authority entries share the security transaction boundary. Never
+ * perform crypto or network I/O inside the synchronous transaction callback. */
+export async function securityEntry<T>(key: string): Promise<T | undefined> {
+  if (!(await indexedDB.databases()).some((d) => d.name === DATABASE)) return undefined;
+  const db = await database(true);
+  return transaction(db, "readonly", (store, done) => {
+    const get = store.get("authority:" + key);
+    get.onsuccess = () => done(get.result);
+  });
+}
+export async function updateSecurityEntry<T>(
+  key: string,
+  update: (old: T | undefined, current: SecurityRecord | undefined) => T | undefined,
+): Promise<void> {
+  const db = await database(true);
+  return transaction(db, "readwrite", (store, done, fail) => {
+    const current = store.get(KEY);
+    current.onsuccess = () => {
+      const get = store.get("authority:" + key);
+      get.onsuccess = () => {
+        const apply = () => {
+          try {
+            const next = update(get.result, current.result);
+            if (next === undefined) store.delete("authority:" + key);
+            else store.put(next, "authority:" + key);
+            done();
+          } catch (err) { fail(err instanceof Error ? err : new SecurityError("storage")); }
+        };
+        if (key !== "pending" || current.result !== undefined) { apply(); return; }
+        const retained = store.get("pinned-identity");
+        retained.onsuccess = () => {
+          if (retained.result !== undefined) { fail(new SecurityError("storage")); return; }
+          apply();
+        };
+      };
+    };
+  });
 }

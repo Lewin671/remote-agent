@@ -204,6 +204,7 @@ export class DeviceSecurityClient {
     h: NewSecurityHeader,
     plaintext: B,
     sessionSeed?: B,
+    beforeSign?: () => void,
   ): Promise<Envelope> {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -230,6 +231,7 @@ export class DeviceSecurityClient {
           header,
           plaintext,
           this.ed,
+          beforeSign,
         );
         return toEnvelope(c);
       } catch (e) {
