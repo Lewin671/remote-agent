@@ -152,7 +152,7 @@ private struct AuthorityVector: Codable {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: go)
     process.currentDirectoryURL = repoRoot
-    process.arguments = ["run", "./ios/testdata/authority-oracle", "verify"]
+    process.arguments = ["run", "./testdata/authority-oracle", "ios", "verify"]
     let input = Pipe()
     let output = Pipe()
     process.standardInput = input

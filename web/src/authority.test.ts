@@ -21,7 +21,7 @@ const xp = (b: number): B => new Uint8Array(x25519.getPublicKey(fill(32, b)));
 const now = 1700000000000n;
 const random = { grantEkm: () => fill(32, 0x71), prevNonce: fill(12, 0x72), recoveryNonce: fill(32, 0x73) };
 const cwd = fileURLToPath(new URL("..", import.meta.url));
-const go = (...args: string[]) => execFileSync("go", ["run", "./src/testdata/authority/go", ...args], { cwd, encoding: "utf8", timeout: 60000 });
+const go = (...args: string[]) => execFileSync("go", ["run", "../testdata/authority-oracle", "web", ...args], { cwd, encoding: "utf8", timeout: 60000 });
 function edKey(b: number) {
   return crypto.subtle.importKey("pkcs8", concat(fromHex("302e020100300506032b657004220420"), fill(32, b)), "Ed25519", false, ["sign"]);
 }
@@ -62,7 +62,7 @@ it("matches regenerated Go bytes for every state, lease, recovery statement and 
   expect(output).toEqual(vectors);
 });
 it("Go verifies WebCrypto signatures and opens all TS grants and previous secrets", () => {
-  const invoke = (v: typeof vectors) => execFileSync("go", ["run", "./src/testdata/authority/go", "verify"], { cwd, input: JSON.stringify(v), encoding: "utf8", stdio: "pipe", timeout: 60000 });
+  const invoke = (v: typeof vectors) => execFileSync("go", ["run", "../testdata/authority-oracle", "web", "verify"], { cwd, input: JSON.stringify(v), encoding: "utf8", stdio: "pipe", timeout: 60000 });
   expect(invoke(output)).toContain("verified:");
   const bad = structuredClone(output);
   const lease = unb64(bad.Lease); lease[lease.length - 1] ^= 1; bad.Lease = b64(lease);
