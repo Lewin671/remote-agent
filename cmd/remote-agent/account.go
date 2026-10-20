@@ -75,7 +75,7 @@ func runAccountJoin(args []string) error {
 	}
 	fmt.Println("Waiting for the phone…")
 	a, err := relay.JoinByPairing(ctx, link, func(emoji []string) bool {
-		fmt.Printf("\nCheck that the phone shows the same four pictures:\n\n    %s\n\n", strings.Join(emoji, "  "))
+		fmt.Print(joinPictures(emoji))
 		answer, _ := readVisibleLine("Do all four match? Trust this phone [y/N]: ")
 		return strings.EqualFold(strings.TrimSpace(answer), "y")
 	})
@@ -85,6 +85,14 @@ func runAccountJoin(args []string) error {
 	fmt.Printf("Joined the account on %s; this machine is %s.\n", a.Server, a.DeviceID)
 	fmt.Println("The running daemon connects within a few seconds.")
 	return nil
+}
+
+// joinPictures asks to compare the four pictures, and says the order: the
+// phone waits for this computer's answer, so it is given here first (the
+// web's join page says the same).
+func joinPictures(emoji []string) string {
+	return fmt.Sprintf("\nCheck that the admin phone shows the same four pictures:\n\n    %s\n\n"+
+		"If they match, confirm here first, then allow it on the admin phone (图案一致，允许).\n\n", strings.Join(emoji, "  "))
 }
 
 // runAccountDevInit is the test-only account creator used by the isolated

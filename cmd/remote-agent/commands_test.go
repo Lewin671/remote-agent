@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -37,5 +38,16 @@ func TestLoadEnvFileReadsAndDeletes(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("the environment file is still there: %v", err)
+	}
+}
+
+func TestJoinPicturesSaysToConfirmHereBeforeThePhone(t *testing.T) {
+	got := joinPictures([]string{"🐶", "🍎", "🚗", "🌙"})
+	if !strings.Contains(got, "🐶  🍎  🚗  🌙") {
+		t.Fatalf("the pictures are missing: %q", got)
+	}
+	here, phone := strings.Index(got, "confirm here first"), strings.Index(got, "then allow it on the admin phone")
+	if here < 0 || phone < here {
+		t.Fatalf("the order is not said: %q", got)
 	}
 }
