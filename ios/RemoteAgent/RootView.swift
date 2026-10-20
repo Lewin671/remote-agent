@@ -46,7 +46,7 @@ struct RootView: View {
                 RemovedScreen()
             } else if let context = model.context {
                 // A new account is a new stack: nothing of the one before stays on it.
-                MainView(context: context, start: LaunchDriver.startRoute).id(ObjectIdentifier(context))
+                MainView(context: context, start: model.recoveryRotationRequired ? .recoveryCode : LaunchDriver.startRoute).id(ObjectIdentifier(context))
             }
         }
     }
@@ -62,7 +62,7 @@ struct SetupDiscardButton: View {
                 Button("确认退出", role: .destructive) { Task { await discard() } }
                 Button("取消", role: .cancel) {}
             } message: {
-                Text("本机账户及未完成的注册和安全操作会被清除，需要重新配对。服务器上的会话和档案不会删除；结果未明的操作可能已经成功，请在管理端核实。")
+                Text("安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。本机若是唯一管理端，建议先交接；没有恢复码备份将丢失管理权。")
             }
     }
 }

@@ -5,21 +5,52 @@
 import RACore
 import SwiftUI
 
-/// First run: join the account with a pairing code or a scanned QR code from the phone app.
+/// First run: create, join, or recover an account.
 struct JoinScreen: View {
     @Environment(AppModel.self) private var app
     @State private var model: JoinModel?
+    @State private var selection: String?
+    @State private var setup: AuthoritySetupModel?
 
+    private func begin(_ mode: AuthoritySetupModel.Mode) {
+        setup = AuthoritySetupModel(mode: mode, bootstrap: app.authorityBootstrap, server: app.lastServer)
+    }
     var body: some View {
         Group {
-            if let model {
+            if let setup {
+                AuthoritySetupScreen(flow: setup, back: { self.setup = nil })
+            } else if selection == nil && app.securitySetup == nil {
+                Page {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            LargeTitle("加入账户")
+                            Btn("新建账户", kind: .primary) { begin(.create) }
+                            Btn("加入已有账户") { selection = "join" }
+                            Btn("用恢复码找回管理权") { begin(.recover) }
+                        }.padding(16).frame(maxWidth: 480).frame(maxWidth: .infinity)
+                    }
+                }
+            } else if let model {
                 JoinFlow(model: model, discard: { await app.logout() })
+                    .safeAreaInset(edge: .bottom) {
+                        if model.step == .form && !model.retainedIdentity {
+                            TextAction("返回", alignment: .center) { selection = nil }
+                        }
+                    }
             } else {
                 Page { Color.clear }
             }
         }
         .task {
             guard model == nil else { return }
+            if let pending = app.authorityBootstrapPending {
+                setup = AuthoritySetupModel(mode: pending.kind == .creation ? .create : .recover,
+                    bootstrap: app.authorityBootstrap, server: app.lastServer, status: pending)
+                return
+            }
+            #if DEBUG
+                if LaunchDriver.joinStep != nil { selection = "join" }
+            #endif
             let app = app
             let made = JoinModel(
                 lastServer: app.lastServer, calls: app.joiningCalls,
@@ -47,7 +78,7 @@ struct JoinFlow: View {
                         if model.retainedIdentity {
                             JoinText(
                                 text:
-                                    "原设备身份、密钥和历史保留。在管理端手机上打开「设置 › 添加设备」，扫码或填配对码后核对四个图案完成绑定。日常使用不需要重复设置。"
+                                    "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，扫码或填配对码后核对四个图案完成绑定。日常使用不需要重复设置。"
                             )
                         }
                         if model.noticeIsError, let discard { SetupDiscardButton(discard: discard) }
@@ -120,7 +151,7 @@ private struct JoinForm: View {
 
     var body: some View {
         JoinTitle(text: model.retainedIdentity ? "一次性安全设置" : "加入账户")
-        JoinText(text: "在管理端手机上打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。")
+        JoinText(text: "在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。")
         JoinNotice(model: model)
         InputField(
             text: $typed, placeholder: "输入 8 位配对码", look: .code, keyboard: .numberPad,
@@ -193,7 +224,7 @@ private struct Compare: View {
         .padding(.top, 40).padding(.bottom, 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("4 个图案：" + emoji.joined(separator: "，"))
-        Text("核对管理端手机上的 4 个图案；一致后先在本机确认，再在管理端手机上允许。")
+        Text("核对管理端的 4 个图案；一致后先在这里确认，再在管理端上允许。")
             .type(T.sm, Theme.muted).multilineTextAlignment(.center)
             .frame(maxWidth: .infinity).padding(.horizontal, 24)
         if model.comparisonPending {
@@ -201,7 +232,7 @@ private struct Compare: View {
                 .horizontal, 16
             ).padding(.top, 16)
         }
-        IconText(Lucide.loaderCircle, model.comparisonPending ? "请先在本机确认图案" : "等待管理端手机批准并完成绑定…")
+        IconText(Lucide.loaderCircle, model.comparisonPending ? "请先在本机确认图案" : "等待管理端批准并完成绑定…")
             .frame(maxWidth: .infinity).padding(.top, 24)
         if !model.notice.isEmpty {
             // Registering has begun: the join can no longer be left.
@@ -209,7 +240,7 @@ private struct Compare: View {
         }
         VStack(spacing: 0) {
             Btn("图案不一致，返回填码", action: model.cancel).disabled(!model.canCancel)
-            Hint("返回后停止这次等待；请在管理端手机上拒绝旧请求，再生成新的配对码。")
+            Hint("返回后停止这次等待；请在管理端拒绝旧请求，再生成新的配对码。")
         }
         .padding(.init(top: 24, leading: 16, bottom: 16, trailing: 16))
     }

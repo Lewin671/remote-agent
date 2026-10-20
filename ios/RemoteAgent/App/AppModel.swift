@@ -295,7 +295,8 @@ final class AppModel {
     }
 
     /// C calls this after the bootstrap receipt was explicitly completed.
-    func reloadAfterAuthorityBootstrap() {
+    func reloadAfterAuthorityBootstrap(rotationRequired: Bool = false) {
+        recoveryRotationRequired = rotationRequired
         authorityBootstrapPending = nil
         loadAccount()
     }
