@@ -2170,7 +2170,7 @@ describe("the client-v7 conversation", () => {
     expect(dock().classList.contains("open")).toBe(true);
     expect(button("允许", dock())).toBeTruthy();
     expect(dock().querySelectorAll(".pending-label")).toHaveLength(1);
-    expect(dock().querySelector(".pending-brief")!.textContent).toContain("还有 1 项");
+    expect(dock().querySelector(".pending-brief")!.textContent).toMatch(/^还有 1 项 · 剩 \d+ 分钟$/);
     expect(dock().querySelector(".pending-brief")!.textContent).not.toContain("rm -rf");
     await click(dock().querySelector<HTMLButtonElement>(".pending-sum")!);
     expect(dock().classList.contains("open")).toBe(false);
@@ -2195,6 +2195,8 @@ describe("the client-v7 conversation", () => {
     );
     expect(dock().classList.contains("open")).toBe(true);
     expect(dock().textContent).toContain("/etc/hosts");
+    // The last one too says only the time left.
+    expect(dock().querySelector(".pending-brief")!.textContent).toMatch(/^剩 \d+ 分钟$/);
   });
 
   it("shows a running tool as one line without details or a tool peek", async () => {

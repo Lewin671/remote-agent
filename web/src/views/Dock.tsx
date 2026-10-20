@@ -267,7 +267,8 @@ function ApprovalDock({
       reasoning={reasoning}
       meta={metaOf(
         frame.more > 0 && `还有 ${frame.more} 项`,
-        left && left + (frame.more === 0 && left !== "已超时" ? "，超时拒绝" : ""),
+        // The head says the time; what happens at its end is the approval card's to say.
+        left,
       )}
       body={
         <>
