@@ -16,13 +16,13 @@ beforeAll(() => {
 });
 
 const open = (cls = "") =>
-  (document.body.innerHTML = `<div class="dockwrap" style="--content-max: 60px"><div class="dock pending open ${cls}"><button class="pending-sum">…</button><div class="pending-content"><div class="pending-scroll">…</div><div class="pending-actions"><textarea class="field reason"></textarea><div class="btns"><button class="btn no">发送理由并拒绝</button></div></div></div></div></div>`);
+  (document.body.innerHTML = `<div class="dockwrap" style="--content-max: 60px"><div class="dock pending open ${cls}"><div class="pending-head"><button class="pending-sum">…</button></div><div class="pending-content"><div class="pending-scroll">…</div><div class="pending-actions"><textarea class="field reason"></textarea><div class="btns"><button class="btn no">发送理由并拒绝</button></div></div></div></div></div>`);
 
 it("scrolls an open dock's content, never its actions, within the room it has", () => {
   open();
   const content = getComputedStyle(document.querySelector(".pending-content")!);
-  // 240 at most, and never more than the room Dock measured.
-  expect(content.maxHeight).toBe("min(240px, 60px)");
+  // What Dock measured: a share of the chat column within the room it has.
+  expect(content.maxHeight).toBe("60px");
   const scroll = getComputedStyle(document.querySelector(".pending-scroll")!);
   expect(scroll.overflowY).toBe("auto");
   expect(scroll.flexShrink).toBe("1");

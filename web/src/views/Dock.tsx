@@ -140,14 +140,18 @@ export function ApprovalActions({
  * how many more items wait behind it. */
 type Frame = { open: boolean; onToggle: () => void; more: number };
 
-/** A waiting item: one line (type, summary, 处理) that opens in place into
- * its content, which scrolls, over its actions, which stay in view. */
+/** A waiting item: one line that opens in place into its content, which
+ * scrolls, over its actions, which stay in view. Closed, the line is
+ * type · summary · 处理; open, it is the only head: type, then what to know
+ * about it (还有 N 项, time left), then 收起. `extra` sits before 收起 while
+ * open, as the plan's 展开全文. */
 function Pending({
   frame,
   label,
   brief,
+  meta,
+  extra,
   busy,
-  head,
   body,
   actions,
   reasoning,
@@ -155,20 +159,27 @@ function Pending({
   frame: Frame;
   label: string;
   brief: string;
+  meta?: ReactNode;
+  extra?: ReactNode;
   busy?: boolean;
-  head: ReactNode;
   body: ReactNode;
   actions: ReactNode;
   reasoning?: boolean;
 }) {
   const { open, more } = frame;
+  const info = open ? meta : [brief, more > 0 ? `还有 ${more} 项` : ""].filter(Boolean).join(" · ");
+  const keep = (e: { preventDefault(): void }) => e.preventDefault();
   return (
     <div className={"dock pending" + (open ? " open" : "") + (busy ? " submitting" : "") + (reasoning ? " reasoning" : "")}>
-      <button className="pending-sum" aria-expanded={open} onMouseDown={(e) => e.preventDefault()} onClick={frame.onToggle}>
-        <span className="pending-dot" />
-        <span className="pending-label">{label}</span>
-        <span className="pending-brief">{[brief, more > 0 ? `还有 ${more} 项` : ""].filter(Boolean).join(" · ")}</span>
-        <span className="pending-action">
+      <div className="pending-head">
+        <button className="pending-sum" aria-expanded={open} onMouseDown={keep} onClick={frame.onToggle}>
+          <span className="pending-dot" />
+          <span className="pending-label">{label}</span>
+          <span className="pending-brief">{info}</span>
+        </button>
+        {open && extra}
+        {/* The same toggle as the line; the line is the one read aloud. */}
+        <button className="pending-action" tabIndex={-1} aria-hidden onMouseDown={keep} onClick={frame.onToggle}>
           {busy ? (
             "等待确认"
           ) : open ? (
@@ -180,19 +191,27 @@ function Pending({
               处理 <Exp />
             </>
           )}
-        </span>
-      </button>
+        </button>
+      </div>
       {open && (
         <div className="pending-content">
-          <div className="pending-scroll">
-            <div className="h">{head}</div>
-            {body}
-          </div>
+          <div className="pending-scroll">{body}</div>
           <div className="pending-actions">{actions}</div>
         </div>
       )}
     </div>
   );
+}
+
+/** Parts of a head's meta, joined by 「 · 」. */
+function metaOf(...parts: ReactNode[]): ReactNode {
+  const shown = parts.filter((p) => p !== "" && p !== false && p != null);
+  return shown.map((p, i) => (
+    <span key={i}>
+      {i > 0 && " · "}
+      {p}
+    </span>
+  ));
 }
 
 function ApprovalDock({
@@ -228,16 +247,10 @@ function ApprovalDock({
       brief={a.command ? approvalDisplay(a.command).replace(/\s+/g, " ") : ""}
       busy={!!ap.busy}
       reasoning={reasoning}
-      head={
-        <>
-          <b>{title}</b>
-          <span className="muted">
-            {frame.more > 0 && `还有 ${frame.more} 项 · `}
-            {left}
-            {left && frame.more === 0 && left !== "已超时" && "，超时拒绝"}
-          </span>
-        </>
-      }
+      meta={metaOf(
+        frame.more > 0 && `还有 ${frame.more} 项`,
+        left && left + (frame.more === 0 && left !== "已超时" ? "，超时拒绝" : ""),
+      )}
       body={
         <>
           {a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
@@ -377,12 +390,7 @@ function QuestionDock({ remote, sid, q, agent, frame, onTerminal }: { remote: Re
       label={p.label}
       brief={p.text}
       busy={p.busy}
-      head={
-        <>
-          <b>{p.label}</b>
-          {p.steps}
-        </>
-      }
+      meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`, p.steps)}
       body={
         <>
           <div className="q">{p.text}</div>
@@ -435,18 +443,13 @@ function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: s
       label="计划待批准"
       brief=""
       busy={!!state.busy}
-      head={
-        <>
-          <b>计划待批准</b>
-          <span>
-            {frame.more > 0 && <span className="muted">还有 {frame.more} 项 · </span>}
-            {plan && (
-              <button className="link" onClick={onFull}>
-                展开全文<ChevronRight />
-              </button>
-            )}
-          </span>
-        </>
+      meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`)}
+      extra={
+        plan && (
+          <button className="link pending-full" onClick={onFull}>
+            展开全文<ChevronRight />
+          </button>
+        )
       }
       body={<div className="plan-body">{plan ? <Markdown text={plan.text} /> : <span className="muted">计划的内容还没读到，可以去终端看</span>}</div>}
       actions={
@@ -470,15 +473,7 @@ function PopupDock({ title, agent, frame, onTerminal }: { title: string; agent: 
       frame={frame}
       label="终端里有弹窗"
       brief={title}
-      head={
-        <>
-          <b>终端里有弹窗</b>
-          <span className="muted">
-            {frame.more > 0 && `还有 ${frame.more} 项 · `}
-            {agentName(agent)} 在等你
-          </span>
-        </>
-      }
+      meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`, `${agentName(agent)} 在等你`)}
       body={
         title && (
           <>
@@ -509,11 +504,28 @@ function PopupDock({ title, agent, frame, onTerminal }: { title: string; agent: 
  * some of its content and its actions. With less it opens as a page. */
 export const DOCK_MIN_ROOM = 200;
 
-/** The first waiting item, docked above the input as one line (client-v7
- * 停靠区). 处理 opens it in place, up to room pixels (what the input
- * and a little chat leave) and 240 at most; with no room for that it
- * opens as a page. It
- * stays one line while the user types, unless a reason is being written. */
+/** What an open dock's content may take: about 60% of the chat column's
+ * height, 240 at the least, and never more than the room under its line. */
+export function dockContentMax(room: number, height: number): number | undefined {
+  if (!Number.isFinite(room)) return undefined;
+  return Math.max(0, Math.min(room - 44, Math.max(240, Math.round(height * 0.6))));
+}
+
+/** Which docked item a 收起 was for: the item, and for those whose ID a
+ * session reuses (its plan, its popup) what they say, so that a new one
+ * opens again. */
+function dockKey(sid: string, item: DockItem): string {
+  const what = item.kind === "plan" ? (item.plan?.text ?? "") : item.kind === "popup" ? item.title : "";
+  return `${sid}|${item.id}|${what}`;
+}
+
+/** The first waiting item, docked above the input (client-v7 停靠区). It
+ * comes open: what waits for the user is what they came to see. 收起
+ * keeps that item to one line (remembered by its ID while the page is
+ * loaded); the next item comes open again. It opens up to room pixels (what
+ * the input and a little chat leave); with no room for that it stays one
+ * line that opens as a page. It stays one line while the user types,
+ * unless a reason is being written. */
 export function Dock({
   remote,
   sid,
@@ -521,31 +533,33 @@ export function Dock({
   agent,
   collapsed,
   room = Infinity,
+  height = 0,
   onExpand,
   onDetail,
   onPlan,
   onQuestion,
   onTerminal,
-  defaultOpen = false,
 }: {
   remote: Remote;
   sid: string;
   items: DockItem[];
   agent: Agent;
   collapsed: boolean;
-  // Opened already, as when the user came here to answer it.
-  defaultOpen?: boolean;
   room?: number;
+  // The chat column's height, which the open content takes a share of.
+  height?: number;
   onExpand: () => void;
   onDetail: (approvalId: string) => void;
   onPlan: () => void;
   onQuestion?: () => void;
   onTerminal: () => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [, redraw] = useState(0);
   const [reasoning, setReasoning] = useState(false);
   const item = items[0];
   if (!item) return null;
+  const key = dockKey(sid, item);
+  const open = !remote.dockClosed.has(key);
   // Typing a reason keeps it open whatever the room or the keyboard.
   const shown = open && (reasoning || (!collapsed && room >= DOCK_MIN_ROOM));
   const page = () => {
@@ -558,14 +572,17 @@ export function Dock({
     open: shown,
     more: items.length - 1,
     onToggle: () => {
-      if (shown) return setOpen(false);
-      if (room < DOCK_MIN_ROOM) return page();
-      onExpand();
-      setOpen(true);
+      if (shown) remote.dockClosed.add(key);
+      else if (room < DOCK_MIN_ROOM) return page();
+      else {
+        remote.dockClosed.delete(key);
+        onExpand();
+      }
+      redraw((n) => n + 1);
     },
   };
-  // The content gets what is left of the room under the line.
-  const style = { "--content-max": Number.isFinite(room) ? `${Math.max(0, room - 44)}px` : "none" } as CSSProperties;
+  const max = dockContentMax(room, height);
+  const style = (max === undefined ? {} : { "--content-max": `${max}px` }) as CSSProperties;
   let card;
   switch (item.kind) {
     case "approval":

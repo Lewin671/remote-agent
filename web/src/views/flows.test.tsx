@@ -15,7 +15,7 @@ import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
-import { Dock, PlanPage, QuestionPage } from "./Dock";
+import { Dock, dockContentMax, PlanPage, QuestionPage } from "./Dock";
 import { Home, Sidebar, todoList, WideHome } from "./Home";
 import { ALL, saveScope } from "../scope";
 import { loadProjectConfig } from "../storage";
@@ -116,6 +116,16 @@ it("lets the home card handle one approval after another", async () => {
   expect(button("不允许", card())?.disabled).toBe(false);
 });
 
+it("gives an open dock about 60% of the chat column, 240 at the least, within its room", () => {
+  // A phone: 700 high, of which the dock may take 470 under its line.
+  expect(dockContentMax(470, 700)).toBe(420);
+  // A short window: still 240, if the room allows it.
+  expect(dockContentMax(300, 320)).toBe(240);
+  expect(dockContentMax(220, 320)).toBe(176);
+  // Not measured yet: the stylesheet's 240.
+  expect(dockContentMax(Infinity, 0)).toBeUndefined();
+});
+
 function AskDock({ r, collapsed }: { r: DemoRemote; collapsed: boolean }) {
   const s = r.sessions.get("s-ask")!;
   const d = derive(r.events("s-ask"));
@@ -126,7 +136,6 @@ function AskDock({ r, collapsed }: { r: DemoRemote; collapsed: boolean }) {
       items={dockItems(s, d, r.machines.get(s.machineId))}
       agent={Agent.CODEX}
       collapsed={collapsed}
-      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -175,7 +184,6 @@ it("keeps the dock's buttons out of its scrolling content", () => {
       items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
       agent={Agent.CODEX}
       collapsed={false}
-      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -253,7 +261,6 @@ it("answers a multi-select question with every ticked option", async () => {
       items={dockItems(s, derive(r.events("s-claude")), r.machines.get(s.machineId))}
       agent={Agent.CLAUDE}
       collapsed={false}
-      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -341,7 +348,6 @@ it("offers the full command of an approval that arrived while the dock was colla
       items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
       agent={Agent.CODEX}
       collapsed={collapsed}
-      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -363,7 +369,6 @@ function ClaudeAsk({ r }: { r: DemoRemote }) {
       items={dockItems(s, derive(r.events("s-claude")), r.machines.get(s.machineId))}
       agent={Agent.CLAUDE}
       collapsed={false}
-      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -430,7 +435,6 @@ it("shows a dock with no room to open as one line that opens its page", async ()
       items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
       agent={Agent.CODEX}
       collapsed={false}
-      defaultOpen
       room={room}
       onExpand={() => opened.push("expand")}
       onDetail={(id) => opened.push("detail:" + id)}
@@ -534,8 +538,7 @@ it("keeps the message being typed when a page opens and closes", async () => {
     input().dispatchEvent(new Event("input", { bubbles: true }));
   });
   expect(input().value).toBe("顺便看下 lint");
-  // Open the docked approval, then its page, then come back.
-  await click(host.querySelector<HTMLButtonElement>(".pending-sum")!);
+  // The docked approval is open: to its page, then back.
   await click(button("展开全文"));
   expect(host.textContent).toContain("审批详情");
   await click(host.querySelector<HTMLButtonElement>(".navbar .back")!);
@@ -1116,7 +1119,6 @@ it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit"
       items={[{ kind: "popup", id: "popup", title: "trust folder" }]}
       agent={agent}
       collapsed={false}
-      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -2122,18 +2124,40 @@ it("keeps the wide home default project across background uploads before a draft
 });
 
 describe("the client-v7 conversation", () => {
-  it("docks a waiting item as one line that 处理 opens in place and 收起 closes", async () => {
+  it("docks a waiting item open, keeps it to one line after 收起, and opens the next one", async () => {
     const r = demo();
-    mount(<SessionPage remote={r} session={r.sessions.get("s-appr")!} onBack={() => undefined} wide={false} />);
+    const page = () => <SessionPage remote={r} session={r.sessions.get("s-appr")!} onBack={() => undefined} wide={false} />;
+    mount(page());
     const dock = () => host.querySelector(".dock.pending")!;
-    expect(dock().classList.contains("open")).toBe(false);
-    expect(dock().textContent).toContain("请求执行");
-    expect(button("允许", dock())).toBeUndefined();
-    await click(dock().querySelector<HTMLButtonElement>(".pending-sum")!);
+    // What waits for the user is open on arrival, under one head line.
     expect(dock().classList.contains("open")).toBe(true);
     expect(button("允许", dock())).toBeTruthy();
+    expect(dock().querySelectorAll(".pending-label")).toHaveLength(1);
+    expect(dock().querySelector(".pending-brief")!.textContent).toContain("还有 1 项");
+    expect(dock().querySelector(".pending-brief")!.textContent).not.toContain("rm -rf");
     await click(dock().querySelector<HTMLButtonElement>(".pending-sum")!);
     expect(dock().classList.contains("open")).toBe(false);
+    expect(button("允许", dock())).toBeUndefined();
+    // Closed, the line says what it is again.
+    expect(dock().querySelector(".pending-brief")!.textContent).toContain("rm -rf");
+    // It stays closed when the session is opened again.
+    act(() => root!.render(<div />));
+    act(() => root!.render(page()));
+    expect(dock().classList.contains("open")).toBe(false);
+    await click(dock().querySelector<HTMLButtonElement>(".pending-sum")!);
+    expect(dock().classList.contains("open")).toBe(true);
+    await click(dock().querySelector<HTMLButtonElement>(".pending-sum")!);
+    expect(dock().classList.contains("open")).toBe(false);
+    // The next item comes open.
+    const s = r.sessions.get("s-appr")!;
+    const items = dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId));
+    act(() =>
+      root!.render(
+        <Dock remote={r} sid="s-appr" items={items.slice(1)} agent={Agent.CODEX} collapsed={false} onExpand={() => undefined} onDetail={() => undefined} onPlan={() => undefined} onTerminal={() => undefined} />,
+      ),
+    );
+    expect(dock().classList.contains("open")).toBe(true);
+    expect(dock().textContent).toContain("/etc/hosts");
   });
 
   it("shows a running tool as one line without details or a tool peek", async () => {

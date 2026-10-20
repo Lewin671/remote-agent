@@ -493,6 +493,9 @@ export class Remote {
   // project path, just like the image trays. Sent messages leave the draft.
   drafts = new Map<string, string>();
   approvalReasons = new Map<string, string>();
+  // Docked items the user closed with 收起 (Dock's keys): they stay one
+  // line, while a new item comes open.
+  dockClosed = new Set<string>();
   // The account's devices, machines and clients (ListDevices); names of
   // clients are sealed in their metadata.
   devices = new Map<string, DeviceInfo>();

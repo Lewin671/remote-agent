@@ -519,6 +519,7 @@ export function SessionPage({
           agent={agent}
           collapsed={typing}
           room={room}
+          height={colHeight}
           onExpand={() => {
             composer.current?.blur();
             setTyping(false);

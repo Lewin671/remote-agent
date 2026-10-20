@@ -321,29 +321,30 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .toast { margin: 0 12px 6px; background: var(--soft); color: var(--red); border-radius: var(--r-sm); padding: 7px 11px; font-size: 13px; cursor: pointer; flex: none; }
 
 /* The dock (client-v7 停靠区): one line above the input, over a hairline,
-   with no card or colored frame. 处理 opens it in place: the content
-   scrolls, the actions stay, and the whole is at most 240 high and within
-   the room the chat column leaves it (--content-max, set by Dock). */
+   with no card or colored frame. Open, that line is its only head; the
+   content scrolls, the actions stay, and the whole is about 60% of the chat
+   column high, 240 at the least, within the room the column leaves it
+   (--content-max, set by Dock). */
 .dock { flex: none; margin: 0 14px; background: var(--card); border-top: 1px solid var(--line); display: flex; flex-direction: column; }
 .dock > * { flex: none; }
 .dock:not(.pending) { padding: 8px 0 16px; }
 .dockwrap { display: contents; }
-.pending-sum { display: flex; align-items: center; gap: 6px; min-height: 44px; font-size: 13px; width: 100%; text-align: left; }
+.pending-head { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; }
+.pending-sum { display: flex; align-items: center; gap: 6px; min-height: 44px; font-size: 13px; flex: 1; min-width: 0; text-align: left; }
 .pending-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--orange-ink); flex: none; vertical-align: .1em; }
 .pending-label { color: var(--fg2); white-space: nowrap; }
 .pending-brief { color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; min-width: 0; }
-.pending-action { color: var(--blue); white-space: nowrap; margin-left: auto; }
+.pending-brief .steps { display: inline-flex; vertical-align: middle; }
+.pending-action { color: var(--blue); white-space: nowrap; min-height: 44px; font-size: 13px; flex: none; }
+.pending-full { font-size: 13px; white-space: nowrap; min-height: 44px; flex: none; }
 .pending.submitting .pending-action { color: var(--muted); }
-.pending-content { display: flex; flex-direction: column; max-height: min(240px, var(--content-max, 240px)); min-height: 0; }
-.pending-scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; padding: 4px 0 6px; }
+.pending-content { display: flex; flex-direction: column; max-height: var(--content-max, 240px); min-height: 0; }
+.pending-scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; padding: 0 0 6px; }
 .pending-actions { flex: none; padding: 4px 0 10px; }
 /* Typing a reason, the field and its button stay above the keyboard
    whatever the room; the content above gives way first. */
 .pending.reasoning .pending-content { max-height: none; }
 .pending.reasoning .pending-scroll { max-height: var(--content-max, 240px); }
-.dock .h { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
-.dock .h b { color: var(--fg2); }
-.dock .h > span { white-space: nowrap; }
 .dock .desc { font-size: 13px; color: var(--fg2); margin-top: 4px; }
 .cutbox { position: relative; }
 .cutbox pre, pre.cmd { background: var(--soft); color: var(--fg2); border-radius: var(--r-xs); padding: 8px 10px; font: 12px/1.5 var(--mono); margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -353,15 +354,14 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
   display: flex; align-items: flex-end; border-radius: 0 0 var(--r-xs) 0; background: linear-gradient(to right, transparent, var(--soft) 18px); }
 .dock .q { font-size: 15px; font-weight: var(--w6); margin: 6px 0; }
 .dock .q.light { font-weight: var(--w5); }
-.dock .plan-body { background: var(--soft); border-radius: var(--r-xs); padding: 7px 10px; font-size: 13px; margin: 8px 0; line-height: 1.6; max-height: 88px; overflow: hidden; }
+.dock .plan-body { background: var(--soft); border-radius: var(--r-xs); padding: 7px 10px; font-size: 13px; margin: 4px 0 8px; line-height: 1.6; overflow-wrap: anywhere; }
 .dock .plan-body p, .dock .plan-body ol, .dock .plan-body ul { margin: 0; }
 .dock .plan-body ol, .dock .plan-body ul { padding-left: 18px; }
 .dock .plan-body code { background: var(--chip); padding: 0 3px; border-radius: 4px; }
 .dock .btns { margin-top: 6px; }
 .dock .foot { font-size: 12px; color: var(--muted); margin-top: 7px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 /* Small text links with a 44 high target. */
-.dock .foot .link, .dock .h .link { font-size: 12px; min-height: 44px; padding: 0 0 0 8px; }
-.dock .h .link { margin: -12px 0; }
+.dock .foot .link { font-size: 12px; min-height: 44px; padding: 0 0 0 8px; }
 .dock .banner { margin-top: 8px; }
 .dock .field.reason { margin: 0 0 8px; }
 /* The question page: the question and options scroll, the buttons and
