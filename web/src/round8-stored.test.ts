@@ -1,5 +1,5 @@
 import { create, toBinary } from "@bufbuild/protobuf";
-import { afterAll, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import {
   ProjectPrefsSchema,
   MachineMetaSchema,
@@ -7,8 +7,6 @@ import {
 } from "./gen/remoteagent/v1/remote_pb";
 import { SyntheticRemote } from "./test/remote-fixture";
 import { SecurityError } from "./device-security";
-import { removeFixtureBuild } from "./test/security-fixture";
-afterAll(removeFixtureBuild);
 it("reads stored prefs from a removed writer and rejects tampered provenance", async () => {
   const r = await SyntheticRemote.create();
   try {

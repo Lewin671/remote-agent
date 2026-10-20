@@ -16,7 +16,6 @@ import {
   GoSecurityFixture,
   webMember,
   MemorySecurityStorage,
-  removeFixtureBuild,
 } from "./test/security-fixture";
 
 import type { Envelope } from "./gen/remoteagent/v1/envelope_pb";
@@ -41,7 +40,7 @@ afterEach(() => {
   for (const r of remotes.splice(0)) r.stop();
   vi.useRealTimers();
 });
-afterAll(async () => { await world?.fixture.close(); removeFixtureBuild(); });
+afterAll(async () => { await world?.fixture.close(); });
 
 async function setup(pageSize: number | null = PAGE) {
   const f = world;

@@ -1,8 +1,6 @@
-import { afterAll, afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { SyntheticRemote } from "./test/remote-fixture";
-import { removeFixtureBuild } from "./test/security-fixture";
 const fixtureRemotes: SyntheticRemote[] = [];
-afterAll(removeFixtureBuild);
 import { create } from "@bufbuild/protobuf";
 import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
 

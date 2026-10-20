@@ -1,4 +1,4 @@
-import { afterAll, afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { CommandSchema as RemoteCommandSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -7,7 +7,6 @@ import {
   GoSecurityFixture,
   MemorySecurityStorage,
   webMember,
-  removeFixtureBuild,
   recordFromJSON,
 } from "./test/security-fixture";
 import { DeviceSecurityClient } from "./device-security-client";
@@ -18,7 +17,6 @@ import {
 } from "./device-security-store";
 import { Purpose, parseHeader } from "./device-security";
 
-afterAll(removeFixtureBuild);
 afterEach(() => vi.useRealTimers());
 
 it("seals a Web command that the actual Go receiver opens, and rejects a modified origin", async () => {

@@ -1,20 +1,18 @@
 // The device directory comes from the signed membership state: a relay's
 // listing can only name members, and sealed metadata is verified on open.
 import { create, toBinary } from "@bufbuild/protobuf";
-import { afterAll, afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { DeviceMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import { DeviceKind, DeviceSchema } from "./gen/remoteagent/v1/relay_pb";
 import { Purpose } from "./device-security";
 import type { Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { SyntheticRemote } from "./test/remote-fixture";
-import { removeFixtureBuild } from "./test/security-fixture";
 
 const live: SyntheticRemote[] = [];
 afterEach(async () => {
   for (const r of live.splice(0)) await r.dispose();
   vi.restoreAllMocks();
 });
-afterAll(removeFixtureBuild);
 
 async function probe() {
   const r = await SyntheticRemote.create();

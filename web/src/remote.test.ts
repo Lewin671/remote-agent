@@ -1,9 +1,8 @@
 import { create, fromBinary } from "@bufbuild/protobuf";
 import { HeaderSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { afterAll, afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { SyntheticRemote } from "./test/remote-fixture";
-import { removeFixtureBuild } from "./test/security-fixture";
 const liveFixtures: SyntheticRemote[] = [];
 async function probe() {
   const r = await SyntheticRemote.create();
@@ -14,7 +13,6 @@ afterEach(async () => {
   for (const r of liveFixtures.splice(0)) await r.dispose();
   vi.restoreAllMocks();
 });
-afterAll(removeFixtureBuild);
 import {
   CommandError,
   COMMAND_TTL_MS,

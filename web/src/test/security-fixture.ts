@@ -1,15 +1,11 @@
+import { inject } from "vitest";
 /// <reference types="node" />
 // Actual Go protocol and state chain for synthetic Web SDK integration tests.
 // This module is imported only by tests, never by the application.
 import {
-  execFileSync,
   spawn,
   type ChildProcessWithoutNullStreams,
 } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { fromBinary, toBinary, create } from "@bufbuild/protobuf";
 import {
   EnvelopeSchema,
@@ -50,28 +46,6 @@ type Reply = Record<string, unknown>;
 const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
 const raw = (r: Reply, key: string): B =>
   new Uint8Array(Buffer.from((r[key] as string | undefined) ?? "", "base64"));
-let binary: string | undefined;
-let buildDirectory: string | undefined;
-function fixtureBinary(): string {
-  if (binary) return binary;
-  buildDirectory = mkdtempSync(join(tmpdir(), "ra-web-security-"));
-  binary = join(buildDirectory, "fixture");
-  execFileSync(
-    "go",
-    ["build", "-o", binary, "./internal/testutil/securityfixture"],
-    {
-      cwd: resolve(fileURLToPath(new URL("../../..", import.meta.url))),
-      stdio: "pipe",
-    },
-  );
-  return binary!;
-}
-export function removeFixtureBuild() {
-  if (buildDirectory) rmSync(buildDirectory, { recursive: true, force: true });
-  binary = undefined;
-  buildDirectory = undefined;
-}
-
 interface FixtureRecordJSON {
   version: number;
   lease:string;
@@ -164,7 +138,7 @@ export class GoSecurityFixture {
   root!: CryptoKey;
   legacyKeys!: Awaited<ReturnType<typeof deriveKeys>>;
   private constructor() {
-    this.process = spawn(fixtureBinary(), [], { stdio: "pipe" });
+    this.process = spawn(inject("securityFixtureBinary"), [], { stdio: "pipe" });
     this.process.stdout.setEncoding("utf8");
     this.process.stdout.on("data", (chunk: string) => {
       this.buffer += chunk;

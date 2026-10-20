@@ -1,5 +1,5 @@
 import { create, toBinary } from "@bufbuild/protobuf";
-import { afterAll, expect, it, vi } from "vitest";
+import { expect, it, vi } from "vitest";
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import {
   DeviceMetaSchema,
@@ -10,12 +10,10 @@ import { SyntheticRemote } from "./test/remote-fixture";
 import {
   GoSecurityFixture,
   webMember,
-  removeFixtureBuild,
 } from "./test/security-fixture";
 import { importSessionKey } from "./crypto";
 import type { Envelope } from "./gen/remoteagent/v1/envelope_pb";
 
-afterAll(removeFixtureBuild);
 async function setup() {
   const world = await GoSecurityFixture.create();
   const seed = crypto.getRandomValues(new Uint8Array(32));
