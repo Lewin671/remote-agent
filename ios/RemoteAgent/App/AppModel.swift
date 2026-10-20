@@ -384,12 +384,12 @@ final class AppModel {
                     lastServer = stored.server
                     // Only an explicit login denial means the identity cannot be reused.
                     // Offline and other failures leave the existing setup flow available.
-                    do { try await parts.checkRetainedIdentity(Account(stored)) }
-                    catch {
-                        guard gen == generation else { return }
-                        retainedIdentityDenied = loginDenied(error)
+                    let check = parts.checkRetainedIdentity
+                    let denied = await probeRetainedIdentity {
+                        try await check(Account(stored))
                     }
                     guard gen == generation else { return }
+                    retainedIdentityDenied = denied
                     stage = .join
                 }
             case .success((nil, _)):

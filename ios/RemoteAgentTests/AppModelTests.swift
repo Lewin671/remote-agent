@@ -516,6 +516,25 @@ final class Harness {
         }
     }
 
+    @Test func aTransientDenialOrTimeoutKeepsTheRetainedFlow() async throws {
+        for timeout in [false, true] {
+            let h = Harness(); defer { h.cleanUp() }
+            let calls = OSAllocatedUnfairLock(initialState: 0)
+            h.securityReady = false
+            h.identityCheck = { _ in
+                let n = calls.withLock { $0 += 1; return $0 }
+                if timeout { throw URLError(.timedOut) }
+                if n == 1 { throw ConnectError(code: .permissionDenied, message: "login failed") }
+            }
+            try h.store(); h.model.setForeground(true)
+            await eventually("retained form after probe") { h.model.stage == .join }
+            #expect(!h.model.retainedIdentityDenied)
+            #expect(h.model.securitySetup != nil)
+            #expect(try h.vault.hasAccount())
+            #expect(calls.withLock { $0 } == (timeout ? 1 : 2))
+        }
+    }
+
     @Test func logoutClearsPendingBootstrapAndDoesNotResumeIt() async throws {
         let h = Harness(); defer { h.cleanUp() }
         h.model.bootstrapGate.set(active: true, protectedDataAvailable: true)

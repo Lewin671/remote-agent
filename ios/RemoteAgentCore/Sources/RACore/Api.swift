@@ -419,3 +419,27 @@ func neverSent(_ e: Error?) -> Bool {
 public func loginDenied(_ error: Error) -> Bool {
     (error as? ConnectError)?.code == .permissionDenied
 }
+
+/// Startup only: both challenge/login attempts share one short deadline.
+/// A lost challenge after a relay restart is indistinguishable from a denied
+/// identity until a fresh challenge/login is denied too. Cancellation and
+/// transport failures leave the retained setup available.
+public func probeRetainedIdentity(
+    timeoutMs: Int64 = 5_000,
+    attempt: @escaping @Sendable () async throws -> Void
+) async -> Bool {
+    do {
+        return try await withTimeout(timeoutMs, sleep: realSleep) {
+            do {
+                do { try await attempt() }
+                catch where loginDenied(error) {
+                    try Task.checkCancellation()
+                    try await attempt()
+                }
+                return false
+            } catch {
+                return !Task.isCancelled && loginDenied(error)
+            }
+        }
+    } catch { return false }
+}
