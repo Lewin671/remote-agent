@@ -62,8 +62,7 @@ export function restorePushPrefs(remote: Remote): Promise<void> {
     if (!pushSupported() || Notification.permission !== "granted") return;
     // As saved when its turn comes, not when the connection opened.
     const prefs = pushPrefs();
-    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : [])];
-    if (!kinds.length) return;
+    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY];
     const current = () => !remote.removed && remote.conn === "online";
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
@@ -82,12 +81,12 @@ export function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
   return inTurn(async () => {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
-    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : [])];
+    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY];
     if (kinds.length === 0) {
       await remote.setPushSubscription("", []);
       await sub?.unsubscribe();
     } else {
-      if ((await Notification.requestPermission()) !== "granted") throw new Error("浏览器没有允许通知");
+      if (Notification.permission !== "granted" && (await Notification.requestPermission()) !== "granted") throw new Error("浏览器没有允许通知");
       if (!sub) {
         const key = await remote.pushKey();
         sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
@@ -96,4 +95,15 @@ export function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
     }
     localStorage.setItem(KEY, JSON.stringify(prefs));
   });
+}
+
+/** A foreground signal carries no private material; always pull the signed
+ * chain and recovery hints, including when both session switches are off. */
+export function watchSecurityPush(sync: () => void): () => void {
+  if (!("serviceWorker" in navigator)) return () => undefined;
+  const onMessage = (event: MessageEvent) => {
+    if (event.data?.type === "security") sync();
+  };
+  navigator.serviceWorker.addEventListener("message", onMessage);
+  return () => navigator.serviceWorker.removeEventListener("message", onMessage);
 }

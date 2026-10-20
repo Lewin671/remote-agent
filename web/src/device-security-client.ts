@@ -55,6 +55,8 @@ export interface StatePage {
   states: { state: Uint8Array; recovery: Uint8Array }[];
   headEpoch: bigint;
   lease?: Uint8Array;
+  recoveryPending?: boolean;
+  recoveryReadyMs?: bigint;
 }
 /** Reads the server's signed state chain after an epoch. */
 export type FetchStates = (after: bigint, limit: number) => Promise<StatePage>;
@@ -83,6 +85,9 @@ export class RecoveryHistoryUnavailable extends SecurityError {
 }
 const MAX_PAGE = 8;
 export class DeviceSecurityClient {
+  recoveryPending = false;
+  recoveryReadyMs = 0n;
+  recoveryStatusStale = true;
   private syncJob?: Promise<SecurityRecord>;
   private validated = new WeakMap<SecurityRecord, Promise<SecurityRecord>>();
   private contentKeys = new WeakMap<SecurityRecord, Map<bigint, Promise<B>>>();
@@ -165,6 +170,9 @@ export class DeviceSecurityClient {
     this.syncJob = job;
     try {
       return await job;
+    } catch (e) {
+      this.recoveryStatusStale = true;
+      throw e;
     } finally {
       if (this.syncJob === job) this.syncJob = undefined;
     }
@@ -177,6 +185,9 @@ export class DeviceSecurityClient {
       r = await this.load();
       const head = r.states[r.states.length - 1];
       const reply = await this.fetchStates(head.core.epoch, MAX_PAGE);
+      this.recoveryPending = reply.recoveryPending ?? false;
+      this.recoveryReadyMs = reply.recoveryReadyMs ?? 0n;
+      this.recoveryStatusStale = false;
       if (reply.headEpoch < head.core.epoch) throw new SecurityError("stale");
       if (!reply.states.length) {
         if (reply.headEpoch > head.core.epoch) throw new SecurityError("stale");

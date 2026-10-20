@@ -124,6 +124,10 @@ it("replays an accepted state after a lost ack, preserves unchanged-head recover
   const states = next.states.length;
   await c.authority.renewLeaseNow();
   expect((await loadSecurity()).states).toHaveLength(states);
+  expect(c.security.recoveryStatusStale).toBe(false);
+  const fetch = vi.spyOn(c.api, "getSecurityStates").mockRejectedValueOnce(new Error("offline"));
+  await expect(c.security.sync()).rejects.toThrow();
+  expect(c.security.recoveryStatusStale).toBe(true); fetch.mockRestore();
 });
 
 async function pairCandidate(c: Awaited<ReturnType<typeof clients>>, kind = DeviceKind.CLIENT, replacesDeviceId = "", loseApprovalAck = false) {
@@ -220,6 +224,7 @@ it("submits exact emergency recovery, rejects early completion, observes unchang
   expect(status.phase).toBe(1); expect((await readSecurityOperation())!.signed).toEqual(pending!.signed);
   await expect(recovery.completeRecovery()).rejects.toThrow("48");
   vi.stubGlobal("indexedDB", oldDB); await c.security.sync();
+  expect(c.security.recoveryPending).toBe(true); expect(c.security.recoveryReadyMs).toBe(status.readyMs);
   await c.authority.renewLeaseNow(); // Renewal cannot veto.
   vi.stubGlobal("indexedDB", recoveredDB);
   expect((await recovery.resumeRecovery()).phase).toBe(1);

@@ -83,3 +83,28 @@ it("fetches the files side by side, and once for checks asked together", async (
   expect(sw.asked.filter((p) => p === "/")).toHaveLength(1);
   expect(sw.asked.filter((p) => p.startsWith("/assets/"))).toHaveLength(4);
 });
+
+it("signals foreground security sync with no visible notification and routes background security clicks", async () => {
+  const handlers: Record<string, (event: any) => void> = {};
+  const postMessage = vi.fn(), navigate = vi.fn(), focus = vi.fn();
+  const window = { visibilityState: "visible", focused: true, postMessage, navigate, focus };
+  const showNotification = vi.fn(), openWindow = vi.fn();
+  const self = {
+    addEventListener: (kind: string, work: (event: any) => void) => { handlers[kind] = work; },
+    clients: { matchAll: async () => [window], openWindow },
+    registration: { showNotification }, location: { origin: "https://app.example.com" },
+  };
+  new Function("self", "caches", "fetch", source)(self, {}, vi.fn());
+  let work!: Promise<void>;
+  const push = { data: { json: () => ({ tag: "/NOTIFY_KIND_SECURITY", body: "security" }) }, waitUntil: (p: Promise<void>) => { work = p; } };
+  handlers.push(push); await work;
+  expect(postMessage).toHaveBeenCalledWith({ type: "security" });
+  expect(showNotification).not.toHaveBeenCalled();
+  window.focused = false;
+  handlers.push(push); await work;
+  expect(showNotification.mock.calls[0][1].data).toEqual({ session: "", security: true });
+  handlers.notificationclick({ notification: { data: showNotification.mock.calls[0][1].data, close: vi.fn() }, waitUntil: (p: Promise<void>) => { work = p; } });
+  await work;
+  expect(navigate).toHaveBeenCalledWith("/#/settings/security");
+  expect(openWindow).not.toHaveBeenCalled();
+});

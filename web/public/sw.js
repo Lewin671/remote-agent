@@ -154,6 +154,8 @@ self.addEventListener("push", (e) => {
     (async () => {
       // Someone is looking at the app already.
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const security = typeof d.tag === "string" && d.tag.endsWith("/NOTIFY_KIND_SECURITY");
+      if (security) for (const w of windows) w.postMessage({ type: "security" });
       if (windows.some((w) => w.visibilityState === "visible" && w.focused)) return;
       await self.registration.showNotification(d.title || "remote-agent", {
         body: d.body || "",
@@ -161,7 +163,7 @@ self.addEventListener("push", (e) => {
         renotify: true,
         icon: "/icon-192.png",
         badge: "/icon-192.png",
-        data: { session: d.session || "" },
+        data: { session: d.session || "", security },
       });
     })(),
   );
@@ -170,14 +172,15 @@ self.addEventListener("push", (e) => {
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const session = e.notification.data && e.notification.data.session;
-  const url = "/" + (session ? "#/s/" + session : "");
+  const security = e.notification.data?.security === true;
+  const url = security ? "/#/settings/security" : "/" + (session ? "#/s/" + session : "");
   e.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const w of windows) {
         if ("focus" in w) {
           await w.focus();
-          if (session && "navigate" in w) await w.navigate(url);
+          if ((security || session) && "navigate" in w) await w.navigate(url);
           return;
         }
       }

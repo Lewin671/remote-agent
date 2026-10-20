@@ -222,6 +222,11 @@ function Main({ remote }: { remote: Remote }) {
     );
   else if (kind === "projects")
     page = <ManagePage remote={remote} go={go} onBack={back} wide={wide} />;
+  else if (kind === "settings" && arg === "security") page = (
+    <div className="page" data-route="account-security"><NavBar title="账户安全" onBack={back} />
+      <div className="center muted">账户安全管理界面准备中</div>
+    </div>
+  );
   else if (kind === "settings") page = <Settings remote={remote} go={go} />;
   else if (kind === "devices")
     page = <DevicesPage remote={remote} go={go} onBack={back} />;

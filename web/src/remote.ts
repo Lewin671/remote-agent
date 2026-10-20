@@ -49,7 +49,7 @@ import {
 } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { relayFetch } from "./transport";
-import { restorePushPrefs } from "./push";
+import { restorePushPrefs, watchSecurityPush } from "./push";
 import {
   checkServer,
   concat,
@@ -461,6 +461,10 @@ export class Remote {
   readonly security: DeviceSecurityClient;
   readonly authority: AuthorityClient;
   get isAuthority() { return this.authorityDeviceId === this.account.deviceId; }
+  get recoveryPending() { return this.security.recoveryPending; }
+  get recoveryReadyMs() { return this.security.recoveryReadyMs; }
+  get recoveryStatusStale() { return this.security.recoveryStatusStale; }
+  private unwatchSecurityPush?: () => void;
   /** Development fixture hooks; the real client never enables these. */
   demoFlag(_name: string): boolean {
     return false;
@@ -702,6 +706,8 @@ export class Remote {
           })),
           headEpoch: reply.headEpoch,
           lease: reply.lease,
+          recoveryPending: reply.recoveryPending,
+          recoveryReadyMs: reply.recoveryReadyMs,
         };
       },
       () => !this.closed,
@@ -1064,6 +1070,8 @@ export class Remote {
       return;
     this.closed = false;
     this.authority.lifecycle.resume();
+    this.unwatchSecurityPush?.();
+    this.unwatchSecurityPush = watchSecurityPush(() => void this.syncSecurity());
     this.begun = true;
     this.trimHistory();
     clearInterval(this.securityTimer);
@@ -1132,6 +1140,8 @@ export class Remote {
   stop() {
     this.closed = true;
     this.authority.lifecycle.pause();
+    this.unwatchSecurityPush?.();
+    this.unwatchSecurityPush = undefined;
     clearInterval(this.securityTimer);
     this.securityTimer = undefined;
     clearTimeout(this.historyTrim);
