@@ -114,8 +114,9 @@ def scan(paths):
 
 TARGETS = ("darwin-arm64", "darwin-amd64", "linux-arm64", "linux-amd64")
 # What a build adds to the files of web/public: the page, its headers, the
-# notices, and scripts and styles named with the hash of their content.
-WEB_BUILT = {"index.html", "_headers", "licenses/THIRD_PARTY_NOTICES.txt"}
+# not-found page, the notices, and scripts and styles named with the hash of
+# their content.
+WEB_BUILT = {"index.html", "_headers", "404.html", "licenses/THIRD_PARTY_NOTICES.txt"}
 WEB_ASSET = re.compile(r"assets/[\w.-]+-[\w-]{8}\.(js|css)")
 
 

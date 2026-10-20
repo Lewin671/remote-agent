@@ -26,7 +26,18 @@ function csp(): Plugin {
     transformIndexHtml(html) {
       return html.replace("<head>", `<head>\n    <meta http-equiv="Content-Security-Policy" content="${policy.join("; ")}">`);
     },
-    generateBundle() {
+    generateBundle(_, bundle) {
+      // Only the files this build made are kept for good. A name it did
+      // not make must not be: a host may answer it with something else
+      // (Cloudflare Pages answers a missing path with the page itself while
+      // a release is spreading), and a browser holding that for a year
+      // never loads the page again.
+      const hashed = Object.keys(bundle)
+        .filter((name) => name.startsWith("assets/"))
+        .sort()
+        .flatMap((name) => [`/${name}`, "  Cache-Control: public, max-age=31536000, immutable"]);
+      // Cloudflare Pages reads at most 100 rules and drops the rest.
+      if (hashed.length / 2 > 90) this.error(`${hashed.length / 2} built assets: too many header rules for Cloudflare Pages`);
       const headers = [
         "/*",
         `  Content-Security-Policy: ${[...policy, "frame-ancestors 'none'"].join("; ")}`,
@@ -36,13 +47,20 @@ function csp(): Plugin {
         "  Strict-Transport-Security: max-age=31536000",
         // Built assets carry a content hash in their name: never asked for
         // again. Fonts keep their names, so they are only kept for a while.
-        "/assets/*",
-        "  Cache-Control: public, max-age=31536000, immutable",
+        ...hashed,
         "/fonts/*",
         "  Cache-Control: public, max-age=2592000",
         "",
       ].join("\n");
       this.emitFile({ type: "asset", fileName: "_headers", source: headers });
+      // Every route is in the fragment of "/", so any other path is simply
+      // not there. With a 404.html, Cloudflare Pages says so instead of
+      // answering every missing path with the page.
+      this.emitFile({
+        type: "asset",
+        fileName: "404.html",
+        source: '<!doctype html>\n<meta charset="utf-8">\n<title>Not found</title>\n<p>Not found. <a href="/">Open remote-agent</a></p>\n',
+      });
     },
   };
 }
