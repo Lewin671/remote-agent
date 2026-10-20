@@ -124,6 +124,8 @@ export function originLabel(o: Origin | undefined, ctx: OriginContext): string |
   switch (o.kind) {
     case OriginKind.CLIENT: {
       if (o.deviceId === ctx.me) return "本客户端";
+      // A loaded account directory includes this client; empty means unread.
+      if (!o.deviceId || ctx.devices.size === 0) return "另一客户端";
       const d = ctx.devices.get(o.deviceId);
       return d ? clientName(d, ctx.devices) : "已移除的设备";
     }

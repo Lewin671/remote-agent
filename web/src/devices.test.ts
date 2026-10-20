@@ -98,6 +98,14 @@ describe("where an action came from", () => {
     expect(originLabel(origin(OriginKind.CLIENT, "eeee0000eeee0000eeee0000eeee5a5a"), ctx)).toBe("已移除的设备");
   });
 
+  it("waits for the directory before calling a device removed", () => {
+    const unknown = origin(OriginKind.CLIENT, "gone9999");
+    expect(originLabel(unknown, { ...ctx, devices: new Map() })).toBe("另一客户端");
+    expect(originLabel(unknown, ctx)).toBe("已移除的设备");
+    expect(originLabel(origin(OriginKind.CLIENT), ctx)).toBe("另一客户端");
+    expect(originLabel(origin(OriginKind.CLIENT, ctx.me), { ...ctx, devices: new Map() })).toBe("本客户端");
+  });
+
   it("says the computer's terminal, and nothing for the CLI itself", () => {
     expect(originLabel(origin(OriginKind.LOCAL), ctx)).toBe("VPS-dev 终端");
     expect(originLabel(origin(OriginKind.SYSTEM), ctx)).toBe("");

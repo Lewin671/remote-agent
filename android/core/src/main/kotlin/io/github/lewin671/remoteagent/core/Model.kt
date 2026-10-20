@@ -1486,7 +1486,8 @@ fun originLabel(
         io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_CLIENT ->
             when {
                 o.deviceId == me -> "本客户端"
-                o.deviceId.isEmpty() -> "另一端"
+                // A loaded account directory includes this client.
+                o.deviceId.isEmpty() || state.devices.isEmpty() -> "另一客户端"
                 else ->
                     state.devices[o.deviceId]?.let { clientName(it, o.deviceId, state.devices.values) }
                         ?: "已移除的设备"

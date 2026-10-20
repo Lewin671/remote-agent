@@ -60,6 +60,9 @@ class OriginTest {
         assertEquals("Android", originLabel(o(k, "aaaab71c"), state, "me", "MacBook"))
         assertEquals("我的手机", originLabel(o(k, "cccc92de"), state, "me", "MacBook"))
         assertEquals("已移除的设备", originLabel(o(k, "gone9999"), state, "me", "MacBook"))
+        assertEquals("另一客户端", originLabel(o(k, "gone9999"), RemoteState(), "me", "MacBook"))
+        assertEquals("另一客户端", originLabel(o(k), state, "me", "MacBook"))
+        assertEquals("本客户端", originLabel(o(k, "me"), RemoteState(), "me", "MacBook"))
         val meta = { name: String, platform: String, description: String -> io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder().setName(name).setPlatform(platform).setDescription(description).build() }
         val zone = java.time.ZoneId.of("UTC")
         val at = { y: Int, m: Int, d: Int, h: Int, min: Int -> java.time.LocalDateTime.of(y, m, d, h, min).atZone(zone).toInstant().toEpochMilli() }
