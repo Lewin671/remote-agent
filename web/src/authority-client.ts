@@ -78,12 +78,17 @@ export class AuthorityClient {
     if (op.kind === "offer") {
       if (!op.codeSaved) return;
       const local = op.local as { recoveryEd: B };
-      const r = await this.security.verifiedRecord();
+      const r = await this.security.sync();
+      check();
       if (isAuthority(r) && equal(r.states.at(-1)!.core.recoveryEd, local.recoveryEd)) {
         await clearSecurityOperation(op);
         return;
       }
-      if (!r.member || !equal(r.stateHash, op.parent)) throw new SecurityError("conflict");
+      if (!r.member) throw new SecurityError("untrusted");
+      // Self-signed metadata is built against the current verified head, not
+      // the head at code generation. An earlier offer may already have been
+      // consumed; retain a different draft without republishing it as authority.
+      if (isAuthority(r)) return;
       check();
       const published = await this.writeOffer(local.recoveryEd, check, async (signed) => {
         op = await saveSecurityOperation(op!, { ...op!, signed });
@@ -292,13 +297,34 @@ export class AuthorityClient {
   async renewLeaseIfNeeded() { return this.renewLease(false); }
   private async renewLease(force: boolean) {
     return this.lifecycle.run(async (check) => {
-      await this.resume(check);
-      if (await readSecurityOperation()) return;
+      const before = await readSecurityOperation();
+      if (before?.kind !== "delete-records") await this.resume(check);
+      let pending = await readSecurityOperation();
+      if (pending && pending.kind !== "offer" && pending.kind !== "delete-records") return;
       const r = await this.security.sync();
       check();
       if (!isAuthority(r)) return;
       const current = r.lease && equal(r.lease.head, r.stateHash) ? r.lease : undefined;
-      if (!force && !Authority.needsRenewal(current, maxTime(r))) return;
+      if (!force && !pending?.retry && !Authority.needsRenewal(current, maxTime(r))) return;
+      if (pending) {
+        this.bound(pending);
+        let cert = pending.retry ? parseLease(new Uint8Array(fromBinary(PutSecurityStateRequestSchema, pending.retry).lease)) : undefined;
+        if (cert && equal(cert.head, r.stateHash)) await verifyLease(cert, r.states.at(-1)!);
+        if (!cert || !equal(cert.head, r.stateHash) || maxTime(r) >= cert.notAfter || (current && current.issuedAt > cert.issuedAt))
+          cert = await signLease(r.states.at(-1)!, this.account.devicePrivate, signingTime(r), 0n, check);
+        check();
+        const request = create(PutSecurityStateRequestSchema, { lease: leaseBytes(cert) });
+        // Preserve the offer/deletion bytes and phase. Only this independent
+        // certificate can change after expiry or a verified head extension.
+        pending = await saveSecurityOperation(pending, { ...pending, retry: toBinary(PutSecurityStateRequestSchema, request) }, r.stateHash);
+        check();
+        await this.api.putSecurityState(request);
+        check();
+        await installSecurity(r, [], [], cert);
+        check();
+        await saveSecurityOperation(pending, { ...pending, retry: undefined });
+        return;
+      }
       await this.claim("lease", {}, r);
       check();
       await this.resume(check);
@@ -376,27 +402,16 @@ export class AuthorityClient {
       await this.resume(check);
     });
   }
-  /** Restart loses code display. Only an unpublished rotation/offer can be
-   * explicitly abandoned; creation/recovery use their original drafts. */
+  /** A metadata offer can be explicitly abandoned even if its write result is
+   * uncertain; the UI explains that its public key may already be published.
+   * Signed member states and creation/recovery never use this shortcut. */
   async discardUnpublishedCode() {
     return this.lifecycle.run(async (check) => {
       const op = await readSecurityOperation<StateDraft>();
       if (!op) return;
       this.bound(op);
-      // Confirming a backup is local only. An unsigned offer may become stale
-      // while the authority changes membership, and still needs an explicit exit.
-      if (op.signed || (op.codeSaved && op.kind !== "offer") || op.phase !== "PREPARED" || !(op.kind === "offer" || (op.kind === "state" && op.local.action === "recovery"))) throw new SecurityError("conflict");
-      check();
-      await clearSecurityOperation(op);
-    });
-  }
-  /** A draft with no persisted signature cannot have caused a remote state
-   * mutation. Explicit exit is safe even after expiry or a parent conflict. */
-  async discardRejectedOffer() {
-    return this.lifecycle.run(async (check) => {
-      const op = await readSecurityOperation<{ rejected?: boolean }>();
-      if (!op || op.kind !== "offer" || !op.local.rejected || op.phase !== "PREPARED") throw new SecurityError("conflict");
-      this.bound(op);
+      if (op.phase !== "PREPARED" || !(op.kind === "offer" ||
+          (op.kind === "state" && op.local.action === "recovery" && !op.signed && !op.codeSaved))) throw new SecurityError("conflict");
       check();
       await clearSecurityOperation(op);
     });

@@ -59,9 +59,12 @@ it("offers an explicit exit for a confirmed handoff backup whose offer was never
   const discard = vi.spyOn(r.authority, "discardUnpublishedCode").mockImplementation(async () => { pending = undefined; });
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
   await click("未完成的安全操作");
-  await click("放弃未发布的恢复码");
+  await click("放弃此接任准备");
+  expect(discard).not.toHaveBeenCalled();
+  expect(host.textContent).toContain("公钥可能已经发布");
+  await click("放弃");
   expect(discard).toHaveBeenCalledOnce();
-  expect(button("放弃未发布的恢复码")).toBeUndefined();
+  expect(button("放弃此接任准备")).toBeUndefined();
 });
 
 it("ignores a security read paused by hiding the page and refreshes when it becomes visible", async () => {
@@ -242,4 +245,18 @@ it.each(["authority", "member", "machine"])("keeps the security overview ordered
   expect(!!button("否决")).toBe(role === "authority");
   expect(!!button("恢复码")).toBe(role === "authority");
   expect(!!button("接管管理权")).toBe(role === "member");
+});
+it("lets a confirmed uncertain handoff offer be abandoned with a public-key warning", async () => {
+  const r = demo("role=member");
+  const pending = operations.operation("offer", r.account.server, r.account.deviceId, new Uint8Array(32), {});
+  pending.codeSaved = true; pending.signed = new Uint8Array([1]);
+  vi.spyOn(r.authority, "pending").mockResolvedValue(pending);
+  const discard = vi.spyOn(r.authority, "discardUnpublishedCode").mockResolvedValue();
+  await mount(<SecurityPage remote={r} onBack={() => {}} />);
+  await click("未完成的安全操作");
+  await click("放弃此接任准备");
+  expect(discard).not.toHaveBeenCalled();
+  expect(host.textContent).toContain("公钥可能已经发布");
+  await click("放弃");
+  expect(discard).toHaveBeenCalledOnce();
 });

@@ -79,7 +79,7 @@ function dropAck(path: string) {
     return response;
   });
 }
-it("allows explicit exit from a confirmed unsigned offer but retains signed offers and confirmed rotations", async () => {
+it("allows explicit exit from unsigned and uncertain signed offers but retains delivered offers and confirmed rotations", async () => {
   const { account } = await createAccount();
   const c = await clients(account), record = await loadSecurity();
   let op = operation("offer", account.server, account.deviceId, record.stateHash, { recoveryEd: new Uint8Array(32).fill(7) });
@@ -89,8 +89,13 @@ it("allows explicit exit from a confirmed unsigned offer but retains signed offe
   expect(await readSecurityOperation()).toBeUndefined();
   await claimSecurityOperation(op, record.stateHash);
   op = await saveSecurityOperation(op, { ...op, signed: new Uint8Array([1]) });
+  await c.authority.discardUnpublishedCode();
+  expect(await readSecurityOperation()).toBeUndefined();
+  await claimSecurityOperation(op, record.stateHash);
+  op = await saveSecurityOperation(op, { ...op, phase: "DELIVERED" });
   await expect(c.authority.discardUnpublishedCode()).rejects.toThrow();
   expect((await readSecurityOperation())!.signed).toEqual(new Uint8Array([1]));
+  expect((await readSecurityOperation())!.phase).toBe("DELIVERED");
   await securityStore.updateSecurityEntry("pending", () => undefined);
   const rotation = operation("state", account.server, account.deviceId, record.stateHash, { action: "recovery" });
   await claimSecurityOperation(rotation, record.stateHash);
@@ -177,6 +182,81 @@ async function pairCandidate(c: Awaited<ReturnType<typeof clients>>, kind = Devi
   const { msg } = await openMessage(await importSessionKey(new Uint8Array(secrets.key)), approved.payload, { kind: PayloadKind.PAIRING, requestId: joined.pairingId }, PairingPayloadSchema);
   return { initiation, api, joined, device, x, msg, ed };
 }
+async function enrolledClient() {
+  const { account } = await createAccount(), c = await clients(account);
+  const candidate = await pairCandidate(c);
+  const admin = await loadSecurity();
+  const chain = await securityStore.parseChain(candidate.msg.securityStates);
+  const id = await deviceID(candidate.ed);
+  const record = await securityStore.buildRecord(admin.pin, chain.states, chain.proofs, id, candidate.x.privateKey);
+  record.lease = parseLease(new Uint8Array(candidate.msg.lease));
+  const incomingDB = new IDBFactory(); vi.stubGlobal("indexedDB", incomingDB);
+  const incoming = await joinWithApproval(new Uint8Array(candidate.msg.accountPublicKey), server.url,
+    { device: candidate.device, pairingId: candidate.joined.pairingId, approval: candidate.msg.approval, approvalSignature: candidate.msg.approvalSignature }, undefined, record);
+  await candidate.api.getPairing({ pairingId: candidate.joined.pairingId, candidateToken: candidate.joined.candidateToken, received: true });
+  const target = await clients(incoming);
+  vi.stubGlobal("indexedDB", local);
+  await candidate.initiation.finishPairingOperation();
+  vi.stubGlobal("indexedDB", incomingDB);
+  return { c, target, incoming, incomingDB };
+}
+it("signs a confirmed handoff offer against the current head after an unrelated transition", async () => {
+  const { c, target, incoming, incomingDB } = await enrolledClient();
+  vi.stubGlobal("document", { visibilityState: "visible" });
+  class OfferRemote extends Remote { constructor(a: StoredAccount) { super(a, undefined); } }
+  const remote = new OfferRemote(incoming);
+  (remote as unknown as { token: string }).token = target.token;
+  try {
+    await remote.authority.prepareHandoffCode();
+    vi.stubGlobal("indexedDB", local);
+    await c.authority.prepareRecovery(); await c.authority.publishRecovery();
+    const head = (await loadSecurity()).stateHash;
+    vi.stubGlobal("indexedDB", incomingDB);
+    await target.security.sync(); // normal foreground sync has installed the new head
+    await remote.authority.offerHandoff();
+    expect(await readSecurityOperation()).toBeUndefined();
+    expect((await loadSecurity()).stateHash).toEqual(head);
+    expect((await target.api.listDevices({})).devices.find((d) => d.id === incoming.deviceId)!.metaRevision).toBeGreaterThan(0n);
+  } finally { remote.stop(); }
+});
+it("allows explicit abandonment of a confirmed offer whose publication is uncertain", async () => {
+  const { target, incoming } = await enrolledClient();
+  const authority = new AuthorityClient(incoming, target.security, target.api, target.pairing, async (key, _check, persist) => {
+    await persist(key); throw new Error("lost metadata response");
+  }, lifecycle());
+  await authority.prepareHandoffCode();
+  await expect(authority.offerHandoff()).rejects.toThrow("lost metadata response");
+  expect((await readSecurityOperation())!.codeSaved).toBe(true);
+  expect((await readSecurityOperation())!.signed).toBeDefined();
+  await authority.discardUnpublishedCode();
+  expect(await readSecurityOperation()).toBeUndefined();
+});
+it("renews a new authority head while preserving an unrelated handoff offer", async () => {
+  const { c, target, incomingDB } = await enrolledClient();
+  const a = await Authority.newRecovery();
+  const r = await loadSecurity();
+  const pending = operation("offer", server.url, r.memberID, r.stateHash, { recoveryEd: (await Authority.newRecovery()).publicKey });
+  pending.codeSaved = true;
+  await claimSecurityOperation(pending, r.stateHash);
+  vi.stubGlobal("indexedDB", local);
+  await c.authority.handoffAuthority(r.memberID, [{ id: r.memberID, recoveryEd: a.publicKey }]); a.seed.fill(0);
+  vi.stubGlobal("indexedDB", incomingDB);
+  await target.security.sync();
+  const put = target.api.putSecurityState.bind(target.api);
+  const lost = vi.spyOn(target.api, "putSecurityState").mockImplementationOnce(async (request) => {
+    await put(request); throw new Error("lost independent lease response");
+  });
+  await expect(target.authority.renewLeaseIfNeeded()).rejects.toThrow("lost independent lease response");
+  const retry = (await readSecurityOperation())!.retry!;
+  expect(retry).toBeDefined(); lost.mockRestore();
+  await target.authority.renewLeaseIfNeeded();
+  const adopted = await loadSecurity();
+  expect(leaseBytes(adopted.lease!)).toEqual(fromBinary(PutSecurityStateRequestSchema, retry).lease);
+  expect(isAuthority(adopted)).toBe(true);
+  expect(adopted.lease!.head).toEqual(adopted.stateHash);
+  expect((await readSecurityOperation())!.id).toBe(pending.id);
+  expect((await readSecurityOperation())!.local).toEqual(pending.local);
+});
 it("initiates real pairing and retains delivery until candidate registration/receipt, then hands off to a platform-neutral Client", async () => {
   const { account } = await createAccount();
   const c = await clients(account), candidate = await pairCandidate(c, DeviceKind.CLIENT, "", true);

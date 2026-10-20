@@ -124,6 +124,7 @@ export function SecurityPage({
   const [profileCode, setProfileCode] = useState("");
   const [profileReady, setProfileReady] = useState(true);
   const [takingOver, setTakingOver] = useState(false);
+  const [abandonOffer, setAbandonOffer] = useState(false);
   const refresh = async () => {
     const r = await remote.security.verifiedRecord();
     setLease(
@@ -187,6 +188,12 @@ export function SecurityPage({
     remote.devices.get(remote.account.deviceId)?.kind === DeviceKind.CLIENT;
   return (
     <div className="page gray" data-route="account-security">
+      {abandonOffer && <Alert title="放弃此接任准备？"
+        text="公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。"
+        ok="放弃" danger onCancel={() => setAbandonOffer(false)} onOk={() => {
+          setAbandonOffer(false);
+          void run(async () => { await remote.authority.discardUnpublishedCode(); setCode(""); setSaved(false); });
+        }} />}
       <NavBar title={page === "overview" ? "账户安全" : page === "recovery" ? "恢复码" : page === "pending" ? "未完成的安全操作" : remote.isAuthority ? "交接管理权" : "接管管理权"} onBack={page === "overview" ? onBack : () => setPage("overview")} />
       <div className="body security-body">
         {remote.recoveryPending && (
@@ -226,7 +233,8 @@ export function SecurityPage({
               onClick={() =>
                 void run(async () => {
                   await remote.authority.renewLeaseNow();
-                  if (await remote.authority.pending())
+                  const pending = await remote.authority.pending();
+                  if (pending && (pending.kind === "state" || pending.kind === "lease"))
                     throw new Error("请先完成当前安全操作，再续期");
                   setMessage("远程控制已续期");
                 })
@@ -257,34 +265,22 @@ export function SecurityPage({
             >
               核实并继续
             </button>
-            {draft && !pending.signed && (!pending.codeSaved || pending.kind === "offer") && (
+            {draft && pending.phase === "PREPARED" &&
+              (pending.kind === "offer" || (!pending.signed && !pending.codeSaved)) && (
               <button
                 className="row act"
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
+                    if (pending.kind === "offer") { setAbandonOffer(true); return; }
                     await remote.authority.discardUnpublishedCode();
                     setCode(""); setSaved(false);
                   })
                 }
               >
-                放弃未发布的恢复码
+                {pending.kind === "offer" ? "放弃此接任准备" : "放弃未发布的恢复码"}
               </button>
             )}
-            {pending.kind === "offer" &&
-              (pending.local as { rejected?: boolean }).rejected && (
-                <button
-                  className="row act"
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      await remote.authority.discardRejectedOffer();
-                    })
-                  }
-                >
-                  放弃被拒绝的交接申请
-                </button>
-              )}
             {pending.kind === "state" && !pending.signed && !draft && (
               <button
                 className="row act"
