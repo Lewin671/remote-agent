@@ -48,6 +48,55 @@ extension ServerTests {
             }
         }
 
+        @Test func coldStartWithLostReceiptUsesLoginWithoutReplayingExpiredRegistration() async throws {
+            try await World.run(setUp: { w in
+                try await w.daemon.putMachine("synthetic-manager")
+                try await w.daemon.connect()
+                try await w.daemon.waitReady()
+            }) { w in
+                let pairing = try await PhonePairing.start(w.phone)
+                let emoji = Mailbox<[String]>(), receipts = Mailbox<PairDeliveryReceipt>()
+                let deliveryCleared = Signal(), intentCleared = Signal()
+                let faulty = Intercept.http(for: w.server.url) { request in
+                    if request.url?.path.hasSuffix("/GetPairing") == true,
+                       let body = request.httpBody, try PBGetPairingRequest(serializedBytes: body).received {
+                        throw URLError(.networkConnectionLost)
+                    }
+                    return request
+                }
+                let joining = Task {
+                    try await joinByPairing(link: pairing.link, http: faulty, onEmoji: { emoji.put($0) },
+                        stopped: { false }, sleep: { _ in try await realSleep(10) },
+                        persist: { acct, record in try TestSecurity.get(acct.server).install(record) },
+                        persistRegistration: { _ in }, clearRegistration: { _ in intentCleared.set() }, persistIdentity: { _ in },
+                        persistDelivery: { receipts.put($0) }, clearDelivery: { deliveryCleared.set() }, confirm: { _ in true })
+                }
+                defer { joining.cancel() }
+                let expected = try await pairing.reveal()
+                #expect(await emoji.poll(5_000) == expected.emoji)
+                let approving = Task { try await pairing.approve() }
+                defer { approving.cancel() }
+                let account = try await joining.value
+                #expect(deliveryCleared.isSet && intentCleared.isSet)
+                let receipt = try #require(await receipts.poll(5_000))
+                let replayed = Counter(), bootstrapped = Counter()
+                let restartedHTTP = Intercept.http(for: w.server.url) { request in
+                    if request.url?.path.hasSuffix("/RegisterDevice") == true {
+                        replayed.increment()
+                        throw URLError(.badServerResponse) // expired admission must never be replayed
+                    }
+                    if request.url?.path.hasSuffix("/GetPairing") == true {
+                        throw URLError(.resourceUnavailable) // old pairing slot is gone
+                    }
+                    return request
+                }
+                let resumed = try await receipt.resume(http: restartedHTTP) { _, _ in bootstrapped.increment() }
+                #expect(resumed.deviceId == account.deviceId)
+                #expect(replayed.value == 0)
+                #expect(bootstrapped.value == 1) // idempotent install also repairs an interrupted re-pairing
+            }
+        }
+
         @Test func candidateDoesNotSignOrPersistWithoutLocalSasConfirmation() async throws {
             try await World.run(setUp: { w in
                 try await w.daemon.putMachine("synthetic-manager")

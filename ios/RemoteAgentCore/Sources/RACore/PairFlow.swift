@@ -286,15 +286,14 @@ public func joinByPairing(
     request.registration=try reg.serializedData();request.approval=enrollment.approval;request.approvalSignature=enrollment.signature
     let intent = try RegistrationIntent(account:acct,record:record,request:request)
     try persistRegistration(intent)
-    try persistDelivery(PairDeliveryReceipt(intent: intent, candidateToken: token, pairingID: id))
-    let registered = try await intent.resume(http:http,persist:persist)
-    try clearRegistration(intent)
+    let delivery = PairDeliveryReceipt(intent: intent, candidateToken: token, pairingID: id)
+    try persistDelivery(delivery)
+    let registered = try await intent.resume(http: http, persist: persist)
     try DeviceSecurity.check(registered.deviceId == acct.deviceId, .untrusted)
-    // Tells the phone it went through. If this is lost, the phone reports the
-    // outcome as unknown; the join itself stands.
-    ask.received = true
-    if let result = try? await api.pairing.getPairing(request: ask).value(), result.state == .delivered {
-        try clearDelivery()
-    }
+    Task { await delivery.acknowledge(http: http) }
+    // Success no longer depends on a best-effort receipt. Clear both private
+    // retry items even when that request is lost or the pairing has expired.
+    try clearDelivery()
+    try clearRegistration(intent)
     return acct
 }

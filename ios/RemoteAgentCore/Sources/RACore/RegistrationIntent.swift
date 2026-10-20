@@ -1,3 +1,4 @@
+import Connect
 import Foundation
 import RAProto
 
@@ -59,8 +60,23 @@ public struct RegistrationIntent: Codable, Sendable, CustomStringConvertible,
       record.memberID == deviceID && record.pin.account == accountID
         && deviceId(publicKey: SigningKey(seed: seed).publicKey) == deviceID, .storage)
     _ = try publicProfile
+    let api = try Api(server: server, http: http)
+    // A lost registration/receipt response must not replay an expired admission
+    // or replace a newer security snapshot after a subsequent handoff.
+    let registered: Bool
+    do {
+      _ = try await login(api: api, account: account)
+      registered = true
+    } catch let error as ConnectError where [.permissionDenied, .notFound, .unauthenticated].contains(error.code) {
+      // Only a definite authentication refusal permits the original registration.
+      registered = false
+    }
+    // Registration may already exist during a re-pairing whose fresh X was
+    // not installed before interruption. The vault merges this bootstrap
+    // idempotently and preserves any newer verified chain and time floor.
     try await persist(account, record)
-    let res = try await Api(server: server, http: http).auth.registerDevice(
+    if registered { return account }
+    let res = try await api.auth.registerDevice(
       request: PBRegisterDeviceRequest(serializedBytes: request)
     ).value()
     try DeviceSecurity.check(res.deviceID == deviceID, .untrusted)

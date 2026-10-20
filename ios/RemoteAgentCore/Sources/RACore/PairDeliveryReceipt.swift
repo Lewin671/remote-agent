@@ -2,7 +2,7 @@ import Foundation
 import RAProto
 
 /// Independent private item; the existing RegistrationIntent format is unchanged.
-/// Survives death between registration and the candidate's received acknowledgement.
+/// Survives death while installing the approved bootstrap or registering it.
 public struct PairDeliveryReceipt: Codable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let intent: RegistrationIntent
     let candidateToken: String
@@ -15,9 +15,13 @@ public struct PairDeliveryReceipt: Codable, Sendable, CustomStringConvertible, C
     }
     public func resume(http: HTTP, persist: @Sendable (Account, DeviceSecurity.Record) async throws -> Void) async throws -> Account {
         let account = try await intent.resume(http: http, persist: persist)
-        var request = PBGetPairingRequest(); request.pairingID = pairingID; request.candidateToken = candidateToken; request.received = true
-        let result = try await Api(server: intent.targetServer, http: http).pairing.getPairing(request: request).value()
-        try DeviceSecurity.check(result.state == .delivered, .untrusted)
+        Task { await acknowledge(http: http) }
         return account
+    }
+    /// Delivery is advisory once the device can authenticate. In particular a
+    /// missing/canceled/expired pairing cannot invalidate that device identity.
+    func acknowledge(http: HTTP) async {
+        var request = PBGetPairingRequest(); request.pairingID = pairingID; request.candidateToken = candidateToken; request.received = true
+        _ = try? await Api(server: intent.targetServer, http: http).pairing.getPairing(request: request).value()
     }
 }
