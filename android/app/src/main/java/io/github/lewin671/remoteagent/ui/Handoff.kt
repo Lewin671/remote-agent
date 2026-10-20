@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.clientName
 import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.proto.DeviceKind
 import kotlinx.coroutines.launch
 
 /** The new phone only offers its public recovery key after explicit backup confirmation. */
@@ -77,7 +78,7 @@ fun HandoffControls() {
     val candidates =
         state.devices.values.filter {
             it.id != remote.account.deviceId &&
-                it.meta?.platform == "android" &&
+                it.kind == DeviceKind.DEVICE_KIND_CLIENT &&
                 it.meta?.handoffRecoveryEd?.size() == 32
         }
     GLabel("正常换手机")

@@ -521,7 +521,7 @@ internal fun EmptyAccount(state: RemoteState) {
     ) {
         Text("还没有会话", style = T.h17, color = p.fg)
         when {
-            state.machines.isEmpty() && state.authorityPhone -> {
+            state.machines.isEmpty() && state.isAuthority -> {
                 Text(
                     "这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 remote-agent account join。",
                     style = T.sm,

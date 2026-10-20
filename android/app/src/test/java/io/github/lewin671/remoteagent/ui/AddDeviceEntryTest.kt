@@ -54,7 +54,7 @@ class AddDeviceEntryTest {
 
     @Test
     fun settingsOffersAddingOnlyOnTheAdminPhone() {
-        show(withMachine.copy(authorityPhone = true)) { Column { MachinesGroup(it, 0) } }
+        show(withMachine.copy(isAuthority = true)) { Column { MachinesGroup(it, 0) } }
         ui.onNodeWithText("添加设备").performClick()
         assertEquals(1, paired)
         ui.onNodeWithText(ADD_DEVICE_HINT).assertDoesNotExist()
@@ -76,7 +76,7 @@ class AddDeviceEntryTest {
 
     @Test
     fun homeEmptyStateKeepsItsButtonOnlyOnTheAdminPhone() {
-        show(empty.copy(authorityPhone = true)) { EmptyAccount(it) }
+        show(empty.copy(isAuthority = true)) { EmptyAccount(it) }
         ui.onNodeWithText("添加设备").performClick()
         assertEquals(1, paired)
         ui.onNodeWithText(NO_MACHINES_HINT).assertDoesNotExist()
@@ -91,7 +91,7 @@ class AddDeviceEntryTest {
 
     @Test
     fun devicesPageNamesItsEntryAsSettingsDoes() {
-        show(withMachine.copy(authorityPhone = true)) { DevicesScreen() }
+        show(withMachine.copy(isAuthority = true)) { DevicesScreen() }
         ui.onNodeWithText("添加电脑或客户端").assertDoesNotExist()
         ui.onNodeWithText("添加设备").performScrollTo().performClick()
         assertEquals(1, paired)

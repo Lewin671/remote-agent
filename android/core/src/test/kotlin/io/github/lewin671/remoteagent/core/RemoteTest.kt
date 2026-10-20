@@ -619,7 +619,7 @@ class RemoteTest {
             next.syncSecurity()
             next.renewLeaseNow()
             next.awaitState("new authority") {
-                it.authorityPhone && it.leaseEndMs > System.currentTimeMillis()
+                it.isAuthority && it.leaseEndMs > System.currentTimeMillis()
             }
             val head = next.security.head()
             assertNull(head.core.member(daemon.phone.deviceId))

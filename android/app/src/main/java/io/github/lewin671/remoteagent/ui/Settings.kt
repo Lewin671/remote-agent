@@ -235,8 +235,8 @@ fun SettingsScreen() {
                     listOf(
                         {
                             GRow(
-                                if (state.authorityPhone) "管理端手机 · 本机" else "管理端手机 · 另一台手机",
-                                if (state.authorityPhone)
+                                if (state.isAuthority) "管理端手机 · 本机" else "管理端手机 · 另一台手机",
+                                if (state.isAuthority)
                                     "恢复与续期" +
                                         (if (state.leaseEndMs > 0)
                                             " · 有效期至 " +
@@ -251,11 +251,11 @@ fun SettingsScreen() {
                             )
                         },
                         {
-                            if (state.authorityPhone)
+                            if (state.isAuthority)
                                 GRow("现在续期", "重新签 72 小时", onClick = { remote.renewLeaseNow() })
                         },
                         {
-                            if (state.authorityPhone)
+                            if (state.isAuthority)
                                 GRow(
                                     "更换恢复码",
                                     "旧码立即作废",
@@ -265,7 +265,7 @@ fun SettingsScreen() {
                         },
                     ),
             )
-            if (state.authorityPhone && state.recoveryPending)
+            if (state.isAuthority && state.recoveryPending)
                 Banner(
                     "有人正在用恢复码申请接管管理权，点上面进入设备页否决。",
                     Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -453,7 +453,7 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
                     }
                 }
             }
-    if (state.authorityPhone)
+    if (state.isAuthority)
         Group(
             rows =
                 machineRows +
@@ -804,7 +804,7 @@ fun DeviceScreen(id: String) {
                         },
                 )
             }
-            if (state.authorityPhone && id !in state.devices) {
+            if (state.isAuthority && id !in state.devices) {
                 Group(
                     rows =
                         listOf {
@@ -818,7 +818,7 @@ fun DeviceScreen(id: String) {
                         },
                 )
             }
-            DeleteMachineRecordsAction(id, state.authorityPhone)
+            DeleteMachineRecordsAction(id, state.isAuthority)
             if (member) {
                 if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用")
                 else
@@ -830,7 +830,7 @@ fun DeviceScreen(id: String) {
                                     onClick = { confirm = true },
                                     danger = true,
                                     enabled =
-                                        state.authorityPhone &&
+                                        state.isAuthority &&
                                             !remove.running &&
                                             state.conn ==
                                                 io.github.lewin671.remoteagent.core.ConnState
@@ -839,7 +839,7 @@ fun DeviceScreen(id: String) {
                             },
                     )
                 Text(
-                    if (state.authorityPhone) "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"
+                    if (state.isAuthority) "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"
                     else "删除设备要在管理端手机上操作。",
                     style = T.sm,
                     color = p.muted,

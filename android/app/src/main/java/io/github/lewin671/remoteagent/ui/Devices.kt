@@ -70,7 +70,7 @@ fun DevicesScreen() {
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     Tone2.WARN,
                 )
-            if (state.authorityPhone && state.recoveryPending)
+            if (state.isAuthority && state.recoveryPending)
                 Banner(
                     "有人正在用恢复码申请接管管理权。不是你本人就点了否决。",
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -146,7 +146,7 @@ fun DevicesScreen() {
                         }
                     },
             )
-            if (state.authorityPhone) {
+            if (state.isAuthority) {
                 GLabel("远程控制")
                 Hint(
                     if (state.leaseEndMs > 0)
@@ -163,7 +163,7 @@ fun DevicesScreen() {
                 color = p.muted,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
-            if (state.authorityPhone)
+            if (state.isAuthority)
                 Box(
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         .heightIn(min = 44.dp)
@@ -177,7 +177,7 @@ fun DevicesScreen() {
                     ADD_DEVICE_HINT,
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-            if (state.authorityPhone) {
+            if (state.isAuthority) {
                 Box(Modifier.padding(horizontal = 16.dp)) {
                     TextAction(
                         "导出创世状态（中继离线固定用）",
@@ -302,7 +302,7 @@ fun ClientScreen(id: String) {
                 ) {
                     ArrowText("退出并删除本机密钥在设置页", p.muted, T.body)
                 }
-            } else if (state.authorityPhone) {
+            } else if (state.isAuthority) {
                 if (id == state.authorityDeviceId) {
                     Text(
                         "管理端手机不能普通移除；旧手机在线时可在“恢复与交接”里交接。",

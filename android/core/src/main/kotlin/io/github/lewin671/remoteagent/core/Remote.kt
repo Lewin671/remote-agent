@@ -188,8 +188,8 @@ data class RemoteState(
     val authorityDeviceId: String = "",
     /** End of the current membership lease, unix ms. */
     val leaseEndMs: Long = 0,
-    /** This phone is the account's authority. */
-    val authorityPhone: Boolean = false,
+    /** This device ID is the authority ID in the verified head. */
+    val isAuthority: Boolean = false,
     /** The relay says a recovery waits for this authority phone to veto or accept it. */
     val recoveryPending: Boolean = false,
     /** This phone's clock is more than five minutes ahead of the server or a state. */
@@ -631,7 +631,7 @@ class Remote(
                 errorDetail = errorDetail,
                 authorityDeviceId = authorityDeviceId,
                 leaseEndMs = leaseEnd,
-                authorityPhone = authorityDeviceId == account.deviceId,
+                isAuthority = authorityDeviceId == account.deviceId,
                 recoveryPending = security.recoveryPending,
                 clockWarning = serverAhead || security.clockSkew,
             )

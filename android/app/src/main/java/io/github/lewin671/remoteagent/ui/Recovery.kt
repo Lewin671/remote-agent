@@ -50,7 +50,7 @@ import kotlinx.coroutines.withContext
 fun RecoveryScreen(onBack: () -> Unit = {}) {
     val remote = LocalRemote.current
     val authority by remote.state.collectAsState()
-    if (!authority.authorityPhone) {
+    if (!authority.isAuthority) {
         HandoffPreparation()
         return
     }

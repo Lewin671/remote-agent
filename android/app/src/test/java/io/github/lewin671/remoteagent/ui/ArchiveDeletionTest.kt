@@ -30,7 +30,7 @@ class ArchiveDeletionTest {
             machines = mapOf(id to MachineView(id, false, 0, null)),
             conn = ConnState.OFFLINE,
             loaded = true,
-            authorityPhone = true,
+            isAuthority = true,
         )
     private val current =
         archive.copy(devices = mapOf(id to DeviceView(id, DeviceKind.DEVICE_KIND_MACHINE, 0)))
@@ -97,7 +97,7 @@ class ArchiveDeletionTest {
         ui.onNodeWithText("删除这台电脑的记录").assertDoesNotExist()
         ui.runOnIdle { remote.showForTest(archive) }
         ui.onNodeWithText("删除这台电脑的记录").performScrollTo().assertIsDisplayed()
-        ui.runOnIdle { remote.showForTest(archive.copy(authorityPhone = false)) }
+        ui.runOnIdle { remote.showForTest(archive.copy(isAuthority = false)) }
         ui.onNodeWithText("删除这台电脑的记录").assertDoesNotExist()
         ui.runOnIdle { remote.showForTest(current) }
         ui.onNodeWithText("删除这台电脑的记录").assertDoesNotExist()
