@@ -852,7 +852,8 @@ public actor Remote {
     }
 
     /// What the computer would say waits in a session whose history is `list`: its pending approvals and
-    /// questions, and its plan while the session says one is open. Sample data has no computer to ask.
+    /// questions, the messages still in its queue, and its plan while the session says one is open.
+    /// Sample data has no computer to ask.
     static func liveForTest(_ list: [PBEvent], planOpen: Bool) -> PBLiveSnapshot {
         let d = derive(list)
         var snapshot = PBLiveSnapshot()
@@ -861,6 +862,7 @@ public actor Remote {
             switch event.kind {
             case .approvalRequested(let a)?: return d.approvals[a.approvalID] != nil
             case .questionAsked(let q)?: return d.questions[q.questionID] != nil
+            case .inputState(let st)?: return d.inputs[st.requestID] == .queued || d.inputs[st.requestID] == .heldByCli
             default: return false
             }
         }

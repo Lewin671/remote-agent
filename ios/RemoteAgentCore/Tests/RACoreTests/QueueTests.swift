@@ -16,6 +16,15 @@ import Testing
         #expect(queued(d) == ["b", "c"])
     }
 
+    @Test func sampleDataStandsInForTheComputersQueue() {
+        let list = [
+            Mk.ev(1, Mk.inputState("a", .queued)), Mk.ev(2, Mk.inputState("b", .queued)), Mk.ev(3, Mk.inputState("b", .submitted)),
+        ]
+        let d = currentActions(derive(list), live: Remote.liveForTest(list, planOpen: false))
+        #expect(queued(d) == ["a"])
+        #expect(d.inputs["b"] == .submitted)
+    }
+
     @Test func theDaemonsReasonComesFirst() {
         let s = Mk.session { $0.inputWait = "draft"; $0.agent = .codex }
         #expect(queueWhy(s, status: .running).short == "终端里有草稿")
