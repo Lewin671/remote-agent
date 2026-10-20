@@ -56,7 +56,7 @@ class LoginReuseTest {
                     assertEquals(0, unauthorized.get())
                 } finally { cold.close() }
                 // A syntactically valid but unknown bearer is explicitly rejected with WS 1008.
-                store.saved = LoginToken("unknown-credential", System.currentTimeMillis() + 60000)
+                store.saved = LoginToken("unknown-credential", System.currentTimeMillis() + 2 * 86_400_000L)
                 val refused = fixtureRemote(account, counted, tokenStorage = store)
                 try {
                     refused.start()
