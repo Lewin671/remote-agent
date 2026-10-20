@@ -1718,15 +1718,16 @@ describe("project management (v2)", () => {
 });
 
 describe("who did what (v2)", () => {
-  it("names the client, or the terminal", () => {
+  it("names another client or the computer's terminal, never this client", () => {
     const r = demo();
     const s = r.sessions.get("s-multi")!;
     return (async () => {
       await vi.waitFor(() => expect(r.devicesStatus).toBe("ready"));
       mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
       const notes = [...host.querySelectorAll(".me small")].map((x) => x.textContent);
-      expect(notes).toEqual(["本客户端 · Chrome", "Android · b71c", "VPS-dev 本地终端"]);
-      expect(host.textContent).toContain("客户端 · 92de将模式切到 计划");
+      // The first message is this client's own: it carries no name.
+      expect(notes).toEqual(["Android · b71c", "VPS-dev 终端"]);
+      expect(host.textContent).toContain("客户端 · 92de 将模式切到 计划");
       expect(host.querySelector(".record")?.textContent).toContain("已允许 · Android · b71c");
       await click(button(/还有 2 条排队/));
       const entries = [...host.querySelectorAll(".pending-bubble")].map((x) => x.textContent);

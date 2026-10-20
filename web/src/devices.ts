@@ -100,32 +100,36 @@ export interface OriginContext {
   machine: string; // the session's computer, by name
 }
 
-/** Who did something, in words; "" for the CLI or daemon itself, and
- * undefined when the daemon recorded no origin (a message it could not
- * tell the sender of), for the caller's own fallback. */
+/** Who did something, in words (design-system §8 来源): "本客户端" for
+ * this one, which the chat leaves unsaid; a client by its name, one
+ * removed since as 已移除的设备; the computer's terminal by the computer;
+ * "" for the CLI or daemon itself, and undefined when the daemon recorded
+ * no origin (a message it could not tell the sender of), for the caller's
+ * own fallback. */
 export function originLabel(o: Origin | undefined, ctx: OriginContext): string | undefined {
   if (!o || o.kind === OriginKind.UNSPECIFIED) return undefined;
   switch (o.kind) {
     case OriginKind.CLIENT: {
       if (o.deviceId === ctx.me) return "本客户端";
       const d = ctx.devices.get(o.deviceId);
-      // A device removed since keeps only its short ID.
-      return d ? clientName(d) : `客户端 · ${shortId(o.deviceId)}`;
+      return d ? clientName(d) : "已移除的设备";
     }
     case OriginKind.LOCAL:
-      return `${ctx.machine} 本地终端`;
+      return terminalLabel(ctx.machine);
     case OriginKind.SYSTEM:
       return "";
   }
   return undefined;
 }
 
+/** Input typed in the computer's own terminal: 「MacBook 终端」. */
+export function terminalLabel(machine: string): string {
+  return `${machine} 终端`;
+}
+
 /** Who settled something shown on this page as waiting (an approval, a
  * question, a plan) when it was not this client: "另一端" unless the
- * daemon named a device, "终端" for the computer. */
+ * daemon said who. */
 export function elsewhereLabel(o: Origin | undefined, ctx: OriginContext): string {
-  const l = originLabel(o, ctx);
-  if (l === undefined) return "另一端";
-  if (o?.kind === OriginKind.LOCAL) return "终端";
-  return l;
+  return originLabel(o, ctx) ?? "另一端";
 }

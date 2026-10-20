@@ -87,10 +87,9 @@ import { Attempt } from "../attempt";
 import {
   elsewhereLabel,
   originLabel,
-  platformLabel,
+  terminalLabel,
   type OriginContext,
 } from "../devices";
-import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { Composer, promptIdOf } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
@@ -799,11 +798,6 @@ function ChatBody({
   ]);
   const who: Who = {
     ctx: { me: remote.account.deviceId, devices: remote.devices, machine },
-    // Name this client on its own messages only when there are others.
-    many:
-      [...remote.devices.values()].filter((x) => x.kind === DeviceKind.CLIENT)
-        .length > 1,
-    self: platformLabel(remote.devices.get(remote.account.deviceId)?.meta),
   };
   const promptId = promptIdOf(remote, sid, d);
   if (promptId && prompt) textOf.set(promptId, prompt);
@@ -1164,16 +1158,15 @@ function Row({
   const k = e.kind;
   switch (k.case) {
     case "userMessage": {
+      // This client's own messages carry no name.
       const label = originLabel(e.origin, who.ctx);
       const from =
         label === undefined
           ? d.typedLocally.has(e.seq)
-            ? `${machine} 终端`
+            ? terminalLabel(machine)
             : ""
           : label === "本客户端"
-            ? who.many
-              ? `本客户端 · ${who.self}`
-              : ""
+            ? ""
             : label;
       const images = k.value.images;
       const segs = splitPlaceholders(k.value.text, images);
@@ -1241,7 +1234,7 @@ function Row({
         <div className="sysline">
           已中断
           {otherThanMe(e.origin, who)
-            ? ` · ${originLabel(e.origin, who.ctx) || "另一客户端"}`
+            ? ` · ${originLabel(e.origin, who.ctx)}`
             : ""}
         </div>
       );
@@ -1427,7 +1420,7 @@ function Row({
       return (
         <div className="sysline">
           {otherThanMe(e.origin, who)
-            ? `${originLabel(e.origin, who.ctx) || "另一客户端"}将模式切到 `
+            ? `${originLabel(e.origin, who.ctx)} 将模式切到 `
             : "模式切换到 "}
           <b>{modeName(c.mode)}</b>
         </div>
@@ -1514,8 +1507,6 @@ function Row({
 /** How the chat names who did what (devices.ts). */
 interface Who {
   ctx: OriginContext;
-  many: boolean; // the account has other clients
-  self: string; // this client's kind, e.g. Chrome
 }
 
 /** Whether an origin is someone other than this client. */

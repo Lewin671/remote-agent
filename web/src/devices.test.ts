@@ -71,12 +71,12 @@ describe("where an action came from", () => {
     expect(originLabel(origin(OriginKind.CLIENT, ctx.me), ctx)).toBe("本客户端");
   });
 
-  it("keeps a removed device to its short ID", () => {
-    expect(originLabel(origin(OriginKind.CLIENT, "eeee0000eeee0000eeee0000eeee5a5a"), ctx)).toBe("客户端 · 5a5a");
+  it("calls a removed device so, without its ID", () => {
+    expect(originLabel(origin(OriginKind.CLIENT, "eeee0000eeee0000eeee0000eeee5a5a"), ctx)).toBe("已移除的设备");
   });
 
   it("says the computer's terminal, and nothing for the CLI itself", () => {
-    expect(originLabel(origin(OriginKind.LOCAL), ctx)).toBe("VPS-dev 本地终端");
+    expect(originLabel(origin(OriginKind.LOCAL), ctx)).toBe("VPS-dev 终端");
     expect(originLabel(origin(OriginKind.SYSTEM), ctx)).toBe("");
   });
 
@@ -87,7 +87,8 @@ describe("where an action came from", () => {
 
   it("falls back to 另一端 for something settled elsewhere", () => {
     expect(elsewhereLabel(undefined, ctx)).toBe("另一端");
-    expect(elsewhereLabel(origin(OriginKind.LOCAL), ctx)).toBe("终端");
+    expect(elsewhereLabel(origin(OriginKind.LOCAL), ctx)).toBe("VPS-dev 终端");
+    expect(elsewhereLabel(origin(OriginKind.CLIENT, "eeee0000eeee0000eeee0000eeee5a5a"), ctx)).toBe("已移除的设备");
     expect(elsewhereLabel(origin(OriginKind.CLIENT, "bbbb0000bbbb0000bbbb0000bbbbb71c"), ctx)).toBe("Android · b71c");
   });
 });
