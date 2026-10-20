@@ -10,7 +10,47 @@ import UIKit
 @Suite struct AuthorityVaultTests {
     let vault = Vault(service: "io.github.lewin671.remoteagent.authority-test.\(UUID().uuidString)")
 
+    @Test func independentPendingItemIsUnlockedLocalAndCasPreservesMonotonicProgress() async throws {
+        defer { try? vault.clear() }
+        let gate = AuthorityGate(); gate.set(active: true, protectedDataAvailable: true)
+        let bootstrap = AuthorityBootstrap(storage: vault, gate: gate)
+        let code = try await bootstrap.prepareCreation(server: "https://relay.example.com")
+        let pending = try #require(try vault.readOperation())
+        #expect(pending.kind == .creation && !pending.codeSaved)
+        #expect(try vault.load() == nil)
+        #expect(try vault.read(.securityState) == nil)
+        let attributes: [CFString: Any] = [kSecClass: kSecClassGenericPassword,
+            kSecAttrService: vault.service, kSecAttrAccount: "authority-operation",
+            kSecReturnAttributes: true, kSecAttrSynchronizable: false]
+        var out: CFTypeRef?
+        #expect(SecItemCopyMatching(attributes as CFDictionary, &out) == errSecSuccess)
+        let actual = try #require(out as? [CFString: Any])
+        #expect(actual[kSecAttrAccessible] as? String == kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
+        #expect(actual[kSecAttrSynchronizable] as? Bool == false)
+        let bytes = try #require(try vault.readNamed("authority-operation"))
+        #expect(!bytes.contains(Data(code.utf8)))
+        #expect(!bytes.contains(RecoveryCode.decode(code)!.seed))
+        try await bootstrap.confirmRecoveryCodeSaved()
+        let advanced = try #require(try vault.readOperation())
+        #expect(advanced.codeSaved)
+        #expect(throws: DeviceSecurity.Failure.self) { try vault.replaceOperation(expected: pending, next: nil) }
+        #expect(throws: DeviceSecurity.Failure.self) { try vault.replaceOperation(expected: advanced, next: pending) }
+        try vault.replaceOperation(expected: advanced, next: nil)
+        #expect(try vault.readOperation() == nil)
+    }
 
+    @Test func erasedPendingCannotRestoreAccountAndCorruptionDoesNotCreateANewDraft() async throws {
+        defer { try? vault.clear() }
+        let gate = AuthorityGate(); gate.set(active: true, protectedDataAvailable: true)
+        let bootstrap = AuthorityBootstrap(storage: vault, gate: gate)
+        _ = try await bootstrap.prepareCreation(server: "https://relay.example.com")
+        let expected = try #require(try vault.readOperation())
+        try vault.clear()
+        #expect(throws: DeviceSecurity.Failure.self) { try vault.replaceOperation(expected: expected, next: expected) }
+        try vault.writeNamed("authority-operation", Data([0]))
+        do { _ = try await bootstrap.prepareCreation(server: "https://relay.example.com"); Issue.record("overwrote corrupt receipt") } catch {}
+        #expect(try vault.readNamed("authority-operation") == Data([0]))
+    }
 
     @MainActor @Test func inactiveAndProtectedDataLossRevokeSigningWithoutDroppingInactiveStreamPolicy() throws {
         defer { try? vault.clear() }

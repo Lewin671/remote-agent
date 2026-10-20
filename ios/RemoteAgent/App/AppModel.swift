@@ -170,9 +170,14 @@ final class AppModel {
     /// The app is in front. Screens that tick or hold a terminal follow it:
     /// timers pause in the background and terminals are closed there.
     private(set) var foreground = false
+    private(set) var authorityBootstrapPending: AuthorityBootstrapStatus?
     @ObservationIgnored let bootstrapGate = AuthorityGate()
     @ObservationIgnored private var authoritySceneActive = false
     @ObservationIgnored private var protectionObservers: [NSObjectProtocol] = []
+    var authorityBootstrap: AuthorityBootstrap {
+        AuthorityBootstrap(storage: parts.storage.vault, gate: bootstrapGate, http: Self.http)
+    }
+
     /// The server of the account just left, to fill in when joining again. Only in memory.
     private(set) var lastServer = ""
     private(set) var securitySetup: Account?
@@ -288,6 +293,11 @@ final class AppModel {
         }
     }
 
+    /// C calls this after the bootstrap receipt was explicitly completed.
+    func reloadAfterAuthorityBootstrap() {
+        authorityBootstrapPending = nil
+        loadAccount()
+    }
 
     // MARK: The account
 
@@ -308,6 +318,14 @@ final class AppModel {
         let gen = generation
         Task {
             do {
+                if erase == nil, let pending = try await authorityBootstrap.status(),
+                    pending.kind == .creation || pending.kind == .recovery {
+                    guard gen == generation else { return }
+                    authorityBootstrapPending = pending
+                    loading = false
+                    stage = .join
+                    return
+                }
                 if erase == nil,
                     let intent = try await Task.detached(operation: { try storage.vault.loadRegistrationIntent() }).value
                 {
@@ -490,6 +508,7 @@ final class AppModel {
     /// one being removed would be found and put back in use.
     func logout() async {
         bootstrapGate.set(active: false, protectedDataAvailable: false)
+        authorityBootstrapPending = nil
         if let account { lastServer = account.server }
         generation += 1
         follower?.cancel()
