@@ -15,7 +15,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Only the admin phone can add a device: any other phone gets the words web and iOS show, never a dead 添加设备. */
+/** Only the authority can add devices; other clients show its directory name. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class AddDeviceEntryTest {
@@ -29,7 +29,12 @@ class AddDeviceEntryTest {
     private var paired = 0
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, { paired++ }, { _, _ -> }, {}, {}, {})
     // Offline: the devices page refreshes from the server when online, which this test has none of.
-    private val empty = RemoteState(conn = ConnState.OFFLINE, loaded = true)
+    private val authority = DeviceView(
+        "3333333333333333", io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT, 0,
+        io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder().setName("Desk Browser").setPlatform("web").build(),
+    )
+    private val empty = RemoteState(conn = ConnState.OFFLINE, loaded = true,
+        authorityDeviceId = authority.id, devices = mapOf(authority.id to authority))
     private val withMachine = empty.copy(machines = mapOf(machine to MachineView(machine, true, 0)))
 
     @After
@@ -48,45 +53,57 @@ class AddDeviceEntryTest {
 
     @Test
     fun theWordsAreTheOnesWebAndIosUse() {
-        assertEquals("要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。", ADD_DEVICE_HINT)
-        assertEquals("还没有电脑。在管理端手机上打开「设置 › 添加设备」，把电脑加进来。", NO_MACHINES_HINT)
+        assertEquals("要添加电脑或客户端，在管理端（Desk Browser）上打开「设置 › 添加设备」。", addDeviceHint(empty))
+        assertEquals("还没有电脑。在管理端（Desk Browser）上打开「设置 › 添加设备」，把电脑加进来。", noMachinesHint(empty))
     }
 
     @Test
-    fun settingsOffersAddingOnlyOnTheAdminPhone() {
+    fun settingsOffersAddingOnlyOnTheAuthority() {
         show(withMachine.copy(isAuthority = true)) { Column { MachinesGroup(it, 0) } }
         ui.onNodeWithText("添加设备").performClick()
         assertEquals(1, paired)
-        ui.onNodeWithText(ADD_DEVICE_HINT).assertDoesNotExist()
+        ui.onNodeWithText(addDeviceHint(empty)).assertDoesNotExist()
     }
 
     @Test
-    fun settingsOnAnotherPhoneSaysWhereToAdd() {
+    fun settingsOnAnotherClientSaysWhereToAdd() {
         show(withMachine) { Column { MachinesGroup(it, 0) } }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
-        ui.onNodeWithText(ADD_DEVICE_HINT).assertExists()
+        ui.onNodeWithText(addDeviceHint(empty)).assertExists()
     }
 
     @Test
-    fun settingsOnAnotherPhoneWithNoComputerSaysSo() {
+    fun settingsOnAnotherClientWithNoComputerSaysSo() {
         show(empty) { Column { MachinesGroup(it, 0) } }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
-        ui.onNodeWithText(NO_MACHINES_HINT).assertExists()
+        ui.onNodeWithText(noMachinesHint(empty)).assertExists()
     }
 
     @Test
-    fun homeEmptyStateKeepsItsButtonOnlyOnTheAdminPhone() {
+    fun homeEmptyStateKeepsItsButtonOnlyOnTheAuthority() {
         show(empty.copy(isAuthority = true)) { EmptyAccount(it) }
         ui.onNodeWithText("添加设备").performClick()
         assertEquals(1, paired)
-        ui.onNodeWithText(NO_MACHINES_HINT).assertDoesNotExist()
+        ui.onNodeWithText(noMachinesHint(empty)).assertDoesNotExist()
     }
 
     @Test
-    fun homeEmptyStateOnAnotherPhoneSaysWhereToAdd() {
+    fun homeEmptyStateOnAnotherClientSaysWhereToAdd() {
         show(empty) { EmptyAccount(it) }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
-        ui.onNodeWithText(NO_MACHINES_HINT).assertExists()
+        ui.onNodeWithText(noMachinesHint(empty)).assertExists()
+    }
+
+    @Test
+    fun machineMetadataCannotGrantManagementEntries() {
+        val machineClient = DeviceView(remote.account.deviceId,
+            io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_MACHINE, 0,
+            io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder().setPlatform("android").build())
+        show(empty.copy(devices = empty.devices + (machineClient.id to machineClient))) {
+            Column { MachinesGroup(it, 0) }
+        }
+        ui.onNodeWithText("添加设备").assertDoesNotExist()
+        ui.onNodeWithText(noMachinesHint(empty)).assertExists()
     }
 
     @Test
@@ -95,13 +112,13 @@ class AddDeviceEntryTest {
         ui.onNodeWithText("添加电脑或客户端").assertDoesNotExist()
         ui.onNodeWithText("添加设备").performScrollTo().performClick()
         assertEquals(1, paired)
-        ui.onNodeWithText(ADD_DEVICE_HINT).assertDoesNotExist()
+        ui.onNodeWithText(addDeviceHint(empty)).assertDoesNotExist()
     }
 
     @Test
-    fun devicesPageOnAnotherPhoneSaysWhereToAdd() {
+    fun devicesPageOnAnotherClientSaysWhereToAdd() {
         show(withMachine) { DevicesScreen() }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
-        ui.onNodeWithText(ADD_DEVICE_HINT).performScrollTo().assertExists()
+        ui.onNodeWithText(addDeviceHint(empty)).performScrollTo().assertExists()
     }
 }

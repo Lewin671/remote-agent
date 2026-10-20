@@ -136,7 +136,7 @@ class UnauthenticatedScreensTest {
     fun joinRendersWithoutSignedInNavigation() {
         val app = app()
         show { JoinScreen(app) }
-        ui.onNodeWithText("还没有账户？在这台手机上创建").assertExists()
+        ui.onNodeWithText("新建账户").assertExists()
     }
 
     @Test
@@ -144,27 +144,27 @@ class UnauthenticatedScreensTest {
         val app = app()
         show { JoinScreen(app) }
         // The managing phone shows the code and the QR; this device scans or types it, not the reverse.
-        ui.onNodeWithText("在管理端手机上打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。").assertExists()
+        ui.onNodeWithText("在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。").assertExists()
     }
 
     @Test
     fun createAccountFromFreshJoinRendersAndReturns() {
         val app = app()
         show { JoinScreen(app) }
-        ui.onNodeWithText("还没有账户？在这台手机上创建").performScrollTo().performClick()
+        ui.onNodeWithText("新建账户").performScrollTo().performClick()
         ui.onNodeWithText("创建新账户").assertIsDisplayed()
         ui.onNodeWithContentDescription("返回").performClick()
-        ui.onNodeWithText("还没有账户？在这台手机上创建").assertExists()
+        ui.onNodeWithText("新建账户").assertExists()
     }
 
     @Test
     fun recoverFromFreshJoinRendersAndReturns() {
         val app = app()
         show { JoinScreen(app) }
-        ui.onNodeWithText("换手机？用恢复码找回管理权").performScrollTo().performClick()
+        ui.onNodeWithText("用恢复码找回管理权").performScrollTo().performClick()
         ui.onNodeWithText("用恢复码找回管理权").assertIsDisplayed()
         ui.onNodeWithContentDescription("返回").performClick()
-        ui.onNodeWithText("换手机？用恢复码找回管理权").assertExists()
+        ui.onNodeWithText("用恢复码找回管理权").assertExists()
     }
 
     @Test

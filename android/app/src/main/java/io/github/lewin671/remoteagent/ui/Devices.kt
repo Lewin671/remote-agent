@@ -139,7 +139,7 @@ fun DevicesScreen() {
                                     )
                                 }
                                 if (c.id == state.authorityDeviceId)
-                                    Text("管理端手机", style = T.sm, color = p.muted)
+                                    Text("管理端", style = T.sm, color = p.muted)
                                 else if (c.id == me) Text("本机", style = T.sm, color = p.muted)
                                 else ArrowText(clientUsed(c, t), p.muted, T.sm)
                             }
@@ -152,13 +152,13 @@ fun DevicesScreen() {
                     if (state.leaseEndMs > 0)
                         "有效期至 " +
                             dayText(state.leaseEndMs, t) +
-                            "。回到 App 时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"
+                            "。建议每天打开本客户端；符合续期条件时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"
                     else "正在读取成员状态…",
                     Modifier.padding(horizontal = 16.dp),
                 )
             }
             Text(
-                "右边是上次使用的时间。名称在每台设备上自己改，管理端手机可以移除其他设备。",
+                "右边是上次使用的时间。名称在每台设备上自己改，管理端可以移除其他设备。",
                 style = T.sm,
                 color = p.muted,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -174,7 +174,7 @@ fun DevicesScreen() {
                 }
             else
                 Hint(
-                    ADD_DEVICE_HINT,
+                    addDeviceHint(state),
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             if (state.isAuthority) {
@@ -229,7 +229,7 @@ fun ClientScreen(id: String) {
             return@PageScaffold
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            GLabel(if (id == state.authorityDeviceId) "管理端手机" else "客户端")
+            GLabel(if (id == state.authorityDeviceId) "管理端" else "客户端")
             Group(
                 rows =
                     listOfNotNull<@Composable () -> Unit>(
@@ -305,7 +305,7 @@ fun ClientScreen(id: String) {
             } else if (state.isAuthority) {
                 if (id == state.authorityDeviceId) {
                     Text(
-                        "管理端手机不能普通移除；旧手机在线时可在“恢复与交接”里交接。",
+                        "管理端不能普通移除；当前管理端在线时可在“恢复与交接”里交接。",
                         style = T.sm,
                         color = p.muted,
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -324,7 +324,7 @@ fun ClientScreen(id: String) {
                         Text("移除这个客户端", style = T.body, color = p.red)
                     }
                     Text(
-                        "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入要在管理端手机上批准。",
+                        "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入要在管理端上批准。",
                         style = T.sm,
                         color = p.muted,
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -334,7 +334,7 @@ fun ClientScreen(id: String) {
                     Banner(remove.error, Modifier.padding(16.dp), Tone2.ERROR)
             } else {
                 Hint(
-                    "删除设备要在管理端手机上操作。",
+                    "请在管理端（${state.authorityName}）上移除设备。",
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
@@ -378,7 +378,7 @@ fun ClientScreen(id: String) {
 internal fun removalDialog(name: String, machine: Boolean): Pair<String, String> =
     "移除 $name？" to
         if (machine) "这会立即断开连接并撤销权限，保留中继上的会话和图片；它需要重新加入账户才能连接。"
-        else "这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端手机上重新批准。"
+        else "这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端上重新批准。"
 
 /** Shares the public genesis state for the relay's offline pin step. */
 internal fun shareGenesis(context: android.content.Context, state: ByteArray) {

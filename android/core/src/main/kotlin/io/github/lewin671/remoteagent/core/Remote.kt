@@ -190,13 +190,20 @@ data class RemoteState(
     val leaseEndMs: Long = 0,
     /** This device ID is the authority ID in the verified head. */
     val isAuthority: Boolean = false,
-    /** The relay says a recovery waits for this authority phone to veto or accept it. */
+    /** The relay says a recovery waits for the current authority to veto or accept it. */
     val recoveryPending: Boolean = false,
     /** This phone's clock is more than five minutes ahead of the server or a state. */
     val clockWarning: Boolean = false,
     /** The failure behind [error] in its own words, for the details. */
     val errorDetail: String = "",
 ) {
+    /** Display metadata never determines authority; the ID comes from the verified head. */
+    val authorityName: String
+        get() = clientName(devices[authorityDeviceId], authorityDeviceId, devices.values)
+
+    val renewalAdvice: String
+        get() = if (isAuthority) "现在续期" else "请打开 $authorityName 续期"
+
     /**
      * Nothing here is known to still hold: the server is out of reach, or has not been reached yet.
      * A connection lost a moment ago does not count.
@@ -868,7 +875,7 @@ class Remote(
 
     private fun fail(e: Throwable) {
         conn = ConnState.OFFLINE
-        error = errorText(e)
+        error = errorText(e, state.value)
         errorDetail = detailText(e)
         unresolved = unresolvedHost(e)
         publish()
@@ -1084,7 +1091,7 @@ class Remote(
                 report(e)
                 // What is held stays as it was, with the cursor it had.
                 if (run == refreshRun) {
-                    pageError = errorText(e)
+                    pageError = errorText(e, state.value)
                     retryListing(run)
                 }
                 publish()
@@ -1209,8 +1216,8 @@ class Remote(
                     // The first page was fetched again meanwhile: what failed continued the listing
                     // before it.
                     if (epoch != listing) continue
-                    log("remote-agent: " + errorText(e))
-                    pageError = errorText(e)
+                    log("remote-agent: " + errorText(e, state.value))
+                    pageError = errorText(e, state.value)
                     throw e
                 }
             // The first page was fetched again meanwhile: this page continued the
@@ -2126,7 +2133,7 @@ class Remote(
         }
     }
 
-    /** New phone shows its code before publishing this signed, public-only offer. */
+    /** Successor client shows its code before publishing this signed, public-only offer. */
     fun prepareHandoffCode(): Pair<String, ByteArray> {
         val (seed, pub) = Authority.newRecovery()
         return RecoveryCode.encode(seed, security.identity().first.genesis) to pub
@@ -2147,7 +2154,7 @@ class Remote(
         val offer =
             devices[incoming]?.meta?.handoffRecoveryEd?.toByteArray()
                 ?: throw DeviceSecurity.Failure("pending")
-        if (offer.size != 32) throw CommandException("failed_precondition", "请先在新手机生成并保存恢复码")
+        if (offer.size != 32) throw CommandException("failed_precondition", "请先在接任设备生成并保存恢复码")
         val old =
             security.contentKey(head.core.contentEpoch)
                 ?: throw DeviceSecurity.Failure("unavailable")
@@ -2174,7 +2181,7 @@ class Remote(
     fun chainProofs(): Map<ULong, ByteArray> = security.chainProofs()
 
     /**
-     * A pending recovery the authority phone can veto. The relay tells the signed-in authority
+     * A pending recovery the authority client can veto. The relay tells the signed-in authority
      * phone; an unauthenticated lookup no longer does.
      */
     suspend fun pendingRecovery(): PendingRecoveryInfo? {
@@ -2192,7 +2199,7 @@ class Remote(
         syncSecurity()
         val head = security.head()
         if (head.core.authorityID != account.deviceId)
-            throw CommandException("failed_precondition", "只有管理端手机能否决恢复")
+            throw CommandException("failed_precondition", "只有管理端能否决恢复")
         val secret =
             security.contentKey(head.core.contentEpoch)
                 ?: throw DeviceSecurity.Failure("unavailable")
@@ -2580,7 +2587,7 @@ class Remote(
         } catch (e: Exception) {
             if (!active()) return
             report(e)
-            b.fetchError = "没能读取历史：" + errorText(e)
+            b.fetchError = "没能读取历史：" + errorText(e, state.value)
         } finally {
             b.fetching = false
             if (b.refetch && running && gen != generation) scope.launch { fetchEvents(sid) }
@@ -2980,7 +2987,7 @@ class Remote(
                     if (serverAhead || security.clockSkew)
                         throw CommandException("failed_precondition", "手机时钟比服务器快，远程控制暂停；请校准系统时间")
                     if (!Authority.leaseValid(security.record(), clock()))
-                        throw CommandException("failed_precondition", "远程控制已暂停：在管理端手机上续期后再试")
+                        throw CommandException("failed_precondition", "远程控制已暂停：${state.value.renewalAdvice}后再试")
                     security.seal(
                         DeviceSecurity.Purpose.COMMAND,
                         p.machineId,
@@ -3105,7 +3112,7 @@ class Remote(
                         throw CommandException(
                             CommandException.UNKNOWN,
                             if (ce.code == Code.UNAVAILABLE) "不确定电脑有没有执行：连接中途断了"
-                            else "不确定电脑有没有执行：${errorText(ce)}",
+                            else "不确定电脑有没有执行：${errorText(ce, state.value)}",
                         )
                     }
                     throw CommandException(CommandException.UNKNOWN, "中继未提供可验证的执行结果，请重试同一请求")
@@ -3134,7 +3141,7 @@ class Remote(
             if (!mayHaveRun) throw e
             throw CommandException(
                 CommandException.UNKNOWN,
-                "不确定电脑有没有执行：请求可能已经送到，之后登录失败（${errorText(e)}）",
+                "不确定电脑有没有执行：请求可能已经送到，之后登录失败（${errorText(e, state.value)}）",
             )
         }
 
@@ -3178,9 +3185,9 @@ class Remote(
         syncSecurity()
         val head = security.head()
         if (head.core.authorityID != account.deviceId)
-            throw CommandException("failed_precondition", "请在管理端手机上删除设备")
+            throw CommandException("failed_precondition", "请在管理端上删除设备")
         if (deviceId == head.core.authorityID)
-            throw CommandException("failed_precondition", "管理端手机不能被普通删除")
+            throw CommandException("failed_precondition", "管理端不能被普通删除")
         if (head.core.member(deviceId) == null) return
         val old =
             security.contentKey(head.core.contentEpoch)
@@ -3403,7 +3410,7 @@ class Remote(
                     }
                 }
             } catch (e: Exception) {
-                finish(errorText(e))
+                finish(errorText(e, state.value))
             }
         }
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
@@ -3453,7 +3460,7 @@ class Remote(
                         response: Response?,
                     ) {
                         opened.completeExceptionally(Exception("连不上终端"))
-                        finish("终端连接断开：" + errorText(t))
+                        finish("终端连接断开：" + errorText(t, state.value))
                     }
                 },
             )
@@ -3498,7 +3505,7 @@ class Remote(
                     if (!closed.get()) ws.send(env.toByteArray().toByteString())
                 }
             } catch (e: Exception) {
-                finish(errorText(e))
+                finish(errorText(e, state.value))
                 ws.cancel()
             }
         }
@@ -3525,9 +3532,9 @@ class Remote(
 
     private fun report(e: Throwable) {
         // Only the error text: never content or keys.
-        log("remote-agent: " + errorText(e))
+        log("remote-agent: " + errorText(e, state.value))
         if (System.getenv("RA_DEBUG_STACK") != null) e.printStackTrace()
-        error = errorText(e)
+        error = errorText(e, state.value)
     }
 
     private fun projection(h: DeviceSecurity.Header): Header =

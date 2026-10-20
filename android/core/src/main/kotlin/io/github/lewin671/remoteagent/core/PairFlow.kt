@@ -1,5 +1,5 @@
 // Pairing flows, as in internal/relay/pair.go and web/src/pairing.ts. Only the
-// authority phone initiates and approves; a joiner scans or types the code,
+// authority client initiates and approves; a joiner scans or types the code,
 // both compare four emoji, and the phone signs the new member state.
 package io.github.lewin671.remoteagent.core
 
@@ -153,7 +153,7 @@ private suspend fun poll(
     }
 }
 
-/** Adding a device from the authority phone. */
+/** Adding a device from the authority client. */
 class Initiation
 internal constructor(
     override val code: String,
@@ -175,7 +175,7 @@ internal constructor(
 
     override suspend fun joined(): Pair<List<String>, DeviceKind> {
         if (remote.security.head().core.authorityID != remote.account.deviceId)
-            throw PairException("只有管理端手机能添加设备")
+            throw PairException("只有管理端能添加设备")
         val tok = remote.currentToken()
         val st =
             poll({ stopped }, PairingState.PAIRING_STATE_JOINED, pollIntervalMs) {
@@ -292,7 +292,7 @@ internal constructor(
                     val kind = candidateKind ?: throw PairException("没有候选设备")
                     val now = remote.security.signingTime(System.currentTimeMillis())
                     val head = remote.security.head()
-                    if (head.core.authorityID != acct.deviceId) throw PairException("只有管理端手机能批准")
+                    if (head.core.authorityID != acct.deviceId) throw PairException("只有管理端能批准")
                     val old =
                         remote.security.contentKey(head.core.contentEpoch)
                             ?: throw PairException("缺少当前内容密钥")
@@ -435,7 +435,7 @@ internal constructor(
     }
 
     companion object {
-        /** Starts adding a device; only the authority phone may. */
+        /** Starts adding a device; only the authority client may. */
         suspend fun start(
             remote: Remote,
             replacesDeviceId: String = "",
@@ -443,7 +443,7 @@ internal constructor(
         ): Initiation {
             require(pollIntervalMs > 0)
             if (remote.security.head().core.authorityID != remote.account.deviceId)
-                throw PairException("只有管理端手机能添加设备")
+                throw PairException("只有管理端能添加设备")
             if (replacesDeviceId.isNotEmpty()) {
                 val head = remote.security.head()
                 if (
@@ -495,7 +495,7 @@ internal constructor(
 }
 
 /**
- * Joins an account with a code or link from the authority phone. [onEmoji] gets the emoji to
+ * Joins an account with a code or link from the authority client. [onEmoji] gets the emoji to
  * compare with the other device's.
  */
 suspend fun joinByPairing(

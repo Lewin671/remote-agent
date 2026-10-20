@@ -66,7 +66,7 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
     ) {
         Text("服务器拒绝了这台设备的登录", style = T.h17, color = p.fg, textAlign = TextAlign.Center)
         Text(
-            "可能是设备被移除、服务重置或连接异常。这条消息不能证明安全撤销已经完成，请先重试或在管理端手机核实。",
+            "可能是设备被移除、服务重置或连接异常。这条消息不能证明安全撤销已经完成，请先重试或在管理端核实。",
             style = T.sm,
             color = p.muted,
             textAlign = TextAlign.Center,
@@ -188,7 +188,7 @@ fun JoinScreen(app: RaApp) {
                     }
                 app.joined(acct)
             } catch (e: Exception) {
-                if (registering) error = "不确定这台手机有没有加入：${errorText(e)}。可以在管理端手机的设置里看看客户端列表"
+                if (registering) error = "不确定这台手机有没有加入：${errorText(e)}。可以在管理端的设置里看看客户端列表"
                 else if (!stopped) error = errorText(e)
                 registering = false
                 step = JoinStep.Form
@@ -212,7 +212,7 @@ fun JoinScreen(app: RaApp) {
         job?.cancel()
         code = ""
         commit = null
-        error = "已取消本次加入。旧请求可能还占着配对码：请在管理端手机上拒绝它，再生成新的配对码"
+        error = "已取消本次加入。旧请求可能还占着配对码：请在管理端上拒绝它，再生成新的配对码"
         step = JoinStep.Form
     }
 
@@ -280,7 +280,7 @@ fun JoinScreen(app: RaApp) {
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            "核对管理端手机上的 4 个图案；一致后先在本机确认，再在管理端手机上允许。",
+                            "核对管理端上的 4 个图案；一致后先在本机确认，再在管理端上允许。",
                             style = T.sm,
                             color = p.muted,
                             textAlign = TextAlign.Center,
@@ -299,7 +299,7 @@ fun JoinScreen(app: RaApp) {
                             )
                         IconText(
                             Lucide.LoaderCircle,
-                            if (comparison != null) "请先在本机确认图案" else "等待管理端手机批准并完成加入…",
+                            if (comparison != null) "请先在本机确认图案" else "等待管理端批准并完成加入…",
                             p.muted,
                             T.sm,
                             Modifier.fillMaxWidth().padding(vertical = 20.dp).wrapContentWidth(),
@@ -310,12 +310,12 @@ fun JoinScreen(app: RaApp) {
                             Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         )
                         Hint(
-                            "返回后停止这次等待；请在管理端手机上拒绝旧请求，再生成新的配对码。",
+                            "返回后停止这次等待；请在管理端上拒绝旧请求，再生成新的配对码。",
                             Modifier.padding(horizontal = 16.dp),
                         )
                     }
                     JoinStep.Working -> {
-                        JoinTitle(if (existing != null) "一次性安全设置" else "加入账户")
+                        JoinTitle(if (existing != null) "一次性安全设置" else "加入已有账户")
                         IconText(
                             Lucide.LoaderCircle,
                             "正在连接…",
@@ -327,12 +327,12 @@ fun JoinScreen(app: RaApp) {
                     }
                     JoinStep.Form,
                     JoinStep.Scan -> {
-                        JoinTitle(if (existing != null) "一次性安全设置" else "加入账户")
+                        JoinTitle(if (existing != null) "一次性安全设置" else "加入已有账户")
                         Text(
-                            if (existingRemoved) "这台设备的旧身份已被移除，重新加入会生成新的设备身份，旧历史仍可读。请用管理端手机重新配对。"
+                            if (existingRemoved) "这台设备的旧身份已被移除，重新加入会生成新的设备身份，旧历史仍可读。请用管理端重新配对。"
                             else if (existing != null)
-                                "原设备身份、密钥和历史保留。在管理端手机上打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。"
-                            else "在管理端手机上打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。",
+                                "原设备身份、密钥和历史保留。在管理端上打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。"
+                            else "在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。",
                             style = T.sm,
                             color = p.muted,
                             modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp),
@@ -416,8 +416,8 @@ fun JoinScreen(app: RaApp) {
                         }
                         if (existing != null && !existingRemoved)
                             JoinLink("已有账户升级？重建安全域并成为管理端") { mode = "rebuild" }
-                        JoinLink("换手机？用恢复码找回管理权") { mode = "recover" }
-                        if (existing == null) JoinLink("还没有账户？在这台手机上创建") { mode = "create" }
+                        JoinLink("用恢复码找回管理权") { mode = "recover" }
+                        if (existing == null) JoinLink("新建账户") { mode = "create" }
                     }
                 }
             }

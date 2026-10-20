@@ -531,10 +531,10 @@ internal fun EmptyAccount(state: RemoteState) {
                 )
                 Btn("添加设备", { nav.pair() }, Modifier.fillMaxWidth(), BtnKind.PRIMARY)
             }
-            // Only the admin phone can add one: any other phone says where, as web and iOS do.
+            // Only the authority can add one; other clients name the current authority.
             state.machines.isEmpty() ->
                 Text(
-                    NO_MACHINES_HINT,
+                    noMachinesHint(state),
                     style = T.sm,
                     color = p.muted,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,

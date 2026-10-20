@@ -78,7 +78,7 @@ class HandoffTest {
         )
         ui.onNodeWithText("交接给 Machine").assertDoesNotExist()
         ui.onNodeWithText("交接给 Unknown").assertDoesNotExist()
-        ui.onNodeWithText("等待新手机生成并保存恢复码").assertExists()
+        ui.onNodeWithText("等待接任设备生成并保存恢复码").assertExists()
     }
 
     @Test
@@ -93,6 +93,6 @@ class HandoffTest {
         for (name in listOf("Self", "Missing", "Short", "Long", "NoMeta")) {
             ui.onNodeWithText("交接给 $name").assertDoesNotExist()
         }
-        ui.onNodeWithText("等待新手机生成并保存恢复码").assertExists()
+        ui.onNodeWithText("等待接任设备生成并保存恢复码").assertExists()
     }
 }

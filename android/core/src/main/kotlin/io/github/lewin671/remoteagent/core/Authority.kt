@@ -117,7 +117,7 @@ object Authority {
         )
     }
 
-    /** Removes members; the authority phone cannot remove itself. */
+    /** Removes members; the authority client cannot remove itself. */
     fun remove(
         parent: DeviceSecurity.State,
         targets: List<String>,
@@ -544,7 +544,7 @@ suspend fun rebuildSecurityDomain(
     draft: CreatedAccount? = null,
     persistDraft: (CreatedAccount) -> Unit = { throw DeviceSecurity.Failure("storage") },
 ): CreatedAccount {
-    if (!stored.hasRoot) throw PairException("这台手机没有账户根密钥，不能重建安全域；请用管理端手机重新配对")
+    if (!stored.hasRoot) throw PairException("这台手机没有账户根密钥，不能重建安全域；请用管理端重新配对")
     val keys = Keys.derive(stored.root)
     val accountId = deviceId(keys.account.publicKey)
     if (stored.accountId.isNotEmpty() && stored.accountId != accountId)

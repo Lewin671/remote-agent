@@ -51,7 +51,7 @@ class RecoveryStatusTest {
         ui.onNodeWithText("恢复尚不能完成").assertIsDisplayed()
         next = Phase.PHASE_REJECTED
         ui.onNodeWithText("查看状态").performClick()
-        ui.onNodeWithText("这次恢复被原手机否决了。").assertIsDisplayed()
+        ui.onNodeWithText("这次恢复被原管理端否决了。").assertIsDisplayed()
         ui.onNodeWithText("完成恢复").assertDoesNotExist()
         ui.onNodeWithText("放弃这次恢复，输入新恢复码").performClick()
         ui.runOnIdle {

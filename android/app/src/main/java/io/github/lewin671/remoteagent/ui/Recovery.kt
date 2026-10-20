@@ -101,7 +101,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                                 pending = null
                                 onBack()
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = errorText(e, remote.state.value)
                             } finally {
                                 busy = false
                             }
@@ -127,7 +127,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                 val c = pending
                 if (c == null) {
                     Hint(
-                        "现在没有等待处理的紧急恢复。手机丢失时才使用恢复码；旧手机在线时走上面的正常交接。",
+                        "现在没有等待处理的紧急恢复。管理端丢失时才使用恢复码；当前管理端在线时走上面的正常交接。",
                         Modifier.padding(vertical = 12.dp),
                     )
                 } else {
@@ -150,7 +150,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                                     try {
                                         prepared = remote.prepareRecovery()
                                     } catch (e: Exception) {
-                                        error = errorText(e)
+                                        error = errorText(e, remote.state.value)
                                     } finally {
                                         busy = false
                                     }
@@ -170,7 +170,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
     }
 }
 
-/** 换手机: the new phone submits the old recovery code and shows the new one once. */
+/** 紧急恢复: the recovering client submits the old recovery code and shows the new one once. */
 @Composable
 fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
     val p = pal
@@ -221,7 +221,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
             val s = submission
             if (s == null) {
                 Text(
-                    "输入初始化时保存的恢复码。提交后要等 48 小时，原手机打开 App 可看到请求（推送可能不到达）；期间它可以显式否决；普通续期不会使恢复作废。",
+                    "输入初始化时保存的恢复码。提交后要等 48 小时，原管理端打开客户端可看到请求（推送可能不到达）；期间它可以显式否决；普通续期不会使恢复作废。",
                     style = T.sm,
                     color = p.muted,
                     modifier = Modifier.padding(vertical = 10.dp),
@@ -372,7 +372,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                 } else if (s.newCode.isNotEmpty()) {
                     GLabel("新的恢复码 · 只显示这一次")
                     RecoveryCodeFigure(s.newCode)
-                    Hint("48 小时后生效；如果原手机否决了这次恢复，它会作废。请现在抄下来或拍照保存。", Modifier)
+                    Hint("48 小时后生效；如果原管理端否决了这次恢复，它会作废。请现在抄下来或拍照保存。", Modifier)
                 } else {
                     Hint("这次恢复已提交。若尚未保存新恢复码，完成后请立即在设置中更换恢复码。", Modifier)
                 }
@@ -512,7 +512,7 @@ internal fun RecoveryStatus(
     when (phase) {
         GetRecoveryContextResponse.Phase.PHASE_READY -> Hint("已经可以完成恢复。", Modifier)
         GetRecoveryContextResponse.Phase.PHASE_PENDING -> Hint("还在 48 小时等待期内。", Modifier)
-        GetRecoveryContextResponse.Phase.PHASE_REJECTED -> Hint("这次恢复被原手机否决了。", Modifier)
+        GetRecoveryContextResponse.Phase.PHASE_REJECTED -> Hint("这次恢复被原管理端否决了。", Modifier)
         GetRecoveryContextResponse.Phase.PHASE_PUBLISHED -> Hint("这次恢复已经完成。", Modifier)
         else -> {}
     }
@@ -525,9 +525,9 @@ internal fun RecoveryStatus(
             BtnKind.PRIMARY,
             enabled = !busy,
         )
-        Hint("如果还没到 48 小时，或者原手机否决了，完成会失败并说明原因。", Modifier.padding(top = 8.dp))
+        Hint("如果还没到 48 小时，或者原管理端否决了，完成会失败并说明原因。", Modifier.padding(top = 8.dp))
     } else {
-        Hint("这次申请生成的新恢复码已作废。请使用原手机上的替换恢复码重新申请。", Modifier)
+        Hint("这次申请生成的新恢复码已作废。请使用原管理端上的替换恢复码重新申请。", Modifier)
         Btn(
             if (busy) "正在清除…" else "放弃这次恢复，输入新恢复码",
             onRestart,
@@ -606,7 +606,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
             } else {
                 GLabel("恢复码 · 只显示这一次")
                 RecoveryCodeFigure(c.recoveryCode)
-                Hint("换手机时用它把管理权转过去；它只签恢复声明，不能解密内容。丢失后只能重建账户。", Modifier)
+                Hint("管理端丢失时用它找回管理权；它只签恢复声明，不能解密内容。管理密钥和恢复码都丢失后只能重建账户。", Modifier)
                 if (error.isNotEmpty())
                     Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
                 Btn(
@@ -709,7 +709,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
                 if (existing == null || !existing.hasRoot)
-                    Hint("这台手机没有账户根密钥，不能成为管理端。请用当初创建账户的手机操作，或在新手机上用恢复码找回。", Modifier)
+                    Hint("这台手机没有账户根密钥，不能成为管理端。请用保留账户根密钥的设备操作，或在接任设备上用恢复码找回。", Modifier)
                 if (error.isNotEmpty())
                     Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
                 Btn(
@@ -824,7 +824,7 @@ fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
                             try {
                                 prepared = remote.prepareRecovery()
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = errorText(e, remote.state.value)
                             } finally {
                                 busy = false
                             }
@@ -851,7 +851,7 @@ fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
                                 remote.publishRecovery(pv)
                                 onBack()
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = errorText(e, remote.state.value)
                             } finally {
                                 busy = false
                             }

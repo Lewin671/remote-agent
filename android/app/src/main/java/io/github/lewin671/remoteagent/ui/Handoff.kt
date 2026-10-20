@@ -10,7 +10,7 @@ import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.proto.DeviceKind
 import kotlinx.coroutines.launch
 
-/** The new phone only offers its public recovery key after explicit backup confirmation. */
+/** The successor client only offers its public recovery key after explicit backup confirmation. */
 @Composable
 fun HandoffPreparation() {
     val remote = LocalRemote.current
@@ -22,7 +22,7 @@ fun HandoffPreparation() {
     PageScaffold("接管管理权") {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
-                "先在旧手机批准这台手机加入。保存下面的新恢复码后，再请旧手机在“恢复与交接”里批准交接。旧手机会退出账户，不需要等待 48 小时。",
+                "先在当前管理端批准本机加入。保存下面的新恢复码后，再请当前管理端在“恢复与交接”里批准交接。当前管理端会退出账户，不需要等待 48 小时。",
                 style = T.sm,
                 color = pal.muted,
             )
@@ -30,7 +30,7 @@ fun HandoffPreparation() {
             if (value != null) {
                 RecoveryCodeFigure(value.first)
                 Btn(
-                    "我已离线保存，通知旧手机",
+                    "我已离线保存，通知当前管理端",
                     {
                         busy = true
                         scope.launch {
@@ -38,7 +38,7 @@ fun HandoffPreparation() {
                                 remote.offerHandoff(value.second)
                                 prepared = null
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = errorText(e, remote.state.value)
                             } finally {
                                 busy = false
                             }
@@ -52,7 +52,7 @@ fun HandoffPreparation() {
                 val offered =
                     state.devices[remote.account.deviceId]?.meta?.handoffRecoveryEd?.size() == 32
                 if (offered)
-                    Hint("恢复码已确认保存。等待旧手机批准；可以关闭后重新打开此页查看。", Modifier.padding(vertical = 12.dp))
+                    Hint("恢复码已确认保存。等待当前管理端批准；可以关闭后重新打开此页查看。", Modifier.padding(vertical = 12.dp))
                 Btn(
                     if (offered) "重新生成恢复码" else "生成新的恢复码",
                     { prepared = remote.prepareHandoffCode() },
@@ -66,7 +66,7 @@ fun HandoffPreparation() {
     }
 }
 
-/** The old phone authenticates the new phone through ordinary pairing first. */
+/** The current authority authenticates the successor client through ordinary pairing first. */
 @Composable
 fun HandoffControls() {
     val remote = LocalRemote.current
@@ -81,8 +81,8 @@ fun HandoffControls() {
                 it.kind == DeviceKind.DEVICE_KIND_CLIENT &&
                 it.meta?.handoffRecoveryEd?.size() == 32
         }
-    GLabel("正常换手机")
-    Hint("在新手机加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。", Modifier)
+    GLabel("交接管理权")
+    Hint("在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。", Modifier)
     for (d in candidates) Btn(
         "交接给 " + clientName(d, d.id, state.devices.values),
         { target = d.id },
@@ -90,12 +90,12 @@ fun HandoffControls() {
         BtnKind.SECONDARY,
         enabled = !busy,
     )
-    if (candidates.isEmpty()) Hint("等待新手机生成并保存恢复码", Modifier.padding(vertical = 8.dp))
+    if (candidates.isEmpty()) Hint("等待接任设备生成并保存恢复码", Modifier.padding(vertical = 8.dp))
     if (error.isNotEmpty()) Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
     target?.let { id ->
         Alert(
             "交接管理权",
-            "确认新手机已经保存新的恢复码。交接后这台手机会被移除，新手机成为唯一管理端。",
+            "确认接任设备（${clientName(state.devices[id], id, state.devices.values)}）已经保存新的恢复码。交接后本机会被移除，接任设备成为唯一管理端。",
             "确认交接",
             danger = true,
             onDismiss = { target = null },
@@ -106,7 +106,7 @@ fun HandoffControls() {
                 try {
                     remote.handoffAuthority(id)
                 } catch (e: Exception) {
-                    error = errorText(e)
+                    error = errorText(e, remote.state.value)
                 } finally {
                     busy = false
                 }
@@ -148,7 +148,7 @@ fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
                 try {
                     remote.deleteMachineRecords(id)
                 } catch (e: Exception) {
-                    error = errorText(e)
+                    error = errorText(e, remote.state.value)
                 } finally {
                     busy = false
                 }

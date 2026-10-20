@@ -229,13 +229,13 @@ fun SettingsScreen() {
                             },
                         ),
             )
-            GLabel("管理权")
+            GLabel("账户安全")
             Group(
                 rows =
                     listOf(
                         {
                             GRow(
-                                if (state.isAuthority) "管理端手机 · 本机" else "管理端手机 · 另一台手机",
+                                if (state.isAuthority) "管理端 · 本机" else "管理端（${state.authorityName}）",
                                 if (state.isAuthority)
                                     "恢复与续期" +
                                         (if (state.leaseEndMs > 0)
@@ -245,7 +245,7 @@ fun SettingsScreen() {
                                                     t,
                                                 )
                                         else "")
-                                else "换手机：在本机准备交接",
+                                else "接管管理权：在本机准备交接",
                                 onClick = { nav.recovery() },
                                 chevron = true,
                             )
@@ -253,6 +253,12 @@ fun SettingsScreen() {
                         {
                             if (state.isAuthority)
                                 GRow("现在续期", "重新签 72 小时", onClick = { remote.renewLeaseNow() })
+                            else
+                                GRow(
+                                    state.renewalAdvice,
+                                    if (state.leaseEndMs > 0) "有效期至 " + io.github.lewin671.remoteagent.core.dayText(state.leaseEndMs, t)
+                                    else "正在读取成员状态…",
+                                )
                         },
                         {
                             if (state.isAuthority)
@@ -267,9 +273,11 @@ fun SettingsScreen() {
             )
             if (state.isAuthority && state.recoveryPending)
                 Banner(
-                    "有人正在用恢复码申请接管管理权，点上面进入设备页否决。",
+                    "有人正在用恢复码申请接管管理权。不是你本人就查看并否决。",
                     Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                     Tone2.ERROR,
+                    action = "查看",
+                    onAction = { nav.recovery() },
                 )
             GLabel("本客户端的通知")
             Group(
@@ -389,8 +397,7 @@ fun SettingsScreen() {
 }
 
 /**
- * Settings' 电脑 group. Only the admin phone adds devices, so only it gets the 添加设备 row; any other
- * phone says where instead, as web and iOS do.
+ * Settings' 电脑 group. Only the authority gets the 添加设备 row; other clients name it.
  */
 @Composable
 internal fun MachinesGroup(state: RemoteState, t: Long) {
@@ -471,7 +478,7 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
     else {
         if (machineRows.isNotEmpty()) Group(rows = machineRows)
         Hint(
-            if (machineRows.isEmpty()) NO_MACHINES_HINT else ADD_DEVICE_HINT,
+            if (machineRows.isEmpty()) noMachinesHint(state) else addDeviceHint(state),
             Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp),
         )
     }
@@ -582,7 +589,7 @@ fun DeviceScreen(id: String) {
             if (reply.hasImageStorage()) imageStorage = reply.imageStorage
             loadError = ""
         } catch (e: Exception) {
-            loadError = errorText(e)
+            loadError = errorText(e, remote.state.value)
         }
     }
     var pickModel by remember { mutableStateOf<Agent?>(null) }
@@ -840,7 +847,7 @@ fun DeviceScreen(id: String) {
                     )
                 Text(
                     if (state.isAuthority) "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"
-                    else "删除设备要在管理端手机上操作。",
+                    else "请在管理端（${state.authorityName}）上移除设备。",
                     style = T.sm,
                     color = p.muted,
                     modifier = Modifier.padding(horizontal = 16.dp),
@@ -1000,7 +1007,7 @@ private fun DefaultModelSheet(
         try {
             models = remote.listModels(machineId, agent, fresh = true)
         } catch (e: Exception) {
-            error = errorText(e)
+            error = errorText(e, remote.state.value)
         }
     }
     val d =
@@ -1490,11 +1497,11 @@ private fun MachineImageStorage(
  * drafts.
  */
 /** Fonts bundled in the app, each with its SIL OFL 1.1 text from res/raw. */
-/** Where devices are added, on a phone that is not the admin one: the same words as web and iOS. */
-const val ADD_DEVICE_HINT = "要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。"
+/** Where devices are added; shared wording with web and iOS. */
+fun addDeviceHint(state: RemoteState) = "要添加电脑或客户端，在管理端（${state.authorityName}）上打开「设置 › 添加设备」。"
 
-/** An account with no computer, seen from a phone that cannot add one. */
-const val NO_MACHINES_HINT = "还没有电脑。在管理端手机上打开「设置 › 添加设备」，把电脑加进来。"
+/** An account with no computer, seen from a client that cannot add one. */
+fun noMachinesHint(state: RemoteState) = "还没有电脑。在管理端（${state.authorityName}）上打开「设置 › 添加设备」，把电脑加进来。"
 
 private val bundledFonts =
     listOf(
