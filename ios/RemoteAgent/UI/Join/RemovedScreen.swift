@@ -5,7 +5,7 @@ import SwiftUI
 struct RemovedScreen: View {
     @Environment(AppModel.self) private var model
     @State private var leaving = false
-    @State private var pending = true
+    @State private var pending = false
     @State private var verified = false
     @State private var advice = ""
     @State private var action = ActionRunner()
