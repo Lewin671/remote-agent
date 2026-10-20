@@ -15,8 +15,12 @@ fi
 secrets=$(gh secret list --json name)
 printf '%s' "$secrets" | python3 -c 'import json,sys; names={s["name"] for s in json.load(sys.stdin)}; missing={"ANDROID_SIGNING", "ANDROID_GOOGLE_SERVICES", "RA_PUBLIC_DENY"}-names; sys.exit("Configure GitHub release secrets first: " + ", ".join(sorted(missing))) if missing else None'
 git fetch origin
+# Rebase only when main has moved: rebasing onto an ancestor would flatten the
+# branch's merge commits and replay them as conflicts.
 # Rebase conflicts stop here for the agent to report, never resolve automatically.
-git rebase origin/main
+if ! git merge-base --is-ancestor origin/main HEAD; then
+    git rebase origin/main
+fi
 result=$(python3 scripts/release.py prepare "$kind")
 if [ "$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["eligible"])')" = False ]; then
     printf '%s\n' "$result"
