@@ -205,6 +205,34 @@ func terminalAvailable(_ status: Status) -> Bool {
 
 // MARK: The menu
 
+/// A setting at the top of a session's ⋯ menu, read 「名称 …… 值 ›」: a tap
+/// opens where it is changed.
+struct MenuSetting: Equatable, Sendable {
+    enum Opens: Equatable, Sendable { case mode, model }
+
+    var text: String
+    var value: String
+    /// The value in red: full access.
+    var danger = false
+    /// The value in orange: a context nearly full.
+    var warn = false
+    var opens: Opens
+}
+
+/// The settings a live session's menu starts with: its mode when it is
+/// known, its model (会话设置 while the CLI has not said which), and how full
+/// its context is when that is known.
+func menuSettings(mode: ModeLabel?, model: String, effort: String, percent: Int?) -> [MenuSetting] {
+    var out = [MenuSetting]()
+    if let mode { out.append(MenuSetting(text: "审批模式", value: mode.text, danger: mode.mode == .full, opens: .mode)) }
+    out.append(
+        model.isEmpty
+            ? MenuSetting(text: "会话设置", value: "", opens: .model)
+            : MenuSetting(text: "模型", value: model + (effort.isEmpty ? "" : " · \(effort)"), opens: .model))
+    if let percent { out.append(MenuSetting(text: "上下文", value: "\(percent)%", warn: percent > 80, opens: .model)) }
+    return out
+}
+
 /// 分叉会话 in a session's menu: what the row says, and what a tap does.
 struct ForkAction: Equatable, Sendable {
     enum Tap: Equatable, Sendable { case fork, abandon }

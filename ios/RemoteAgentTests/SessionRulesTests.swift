@@ -193,6 +193,18 @@ extension Ref<LiveAnnouncer> {
         #expect(!slashWarning(""))
     }
 
+    @Test func theMenuStartsWithTheSettingsAsNameAndValue() {
+        let full = ModeLabel(text: "完全放行", mode: .full)
+        #expect(menuSettings(mode: full, model: "GPT-6", effort: "high", percent: 86) == [
+            MenuSetting(text: "审批模式", value: "完全放行", danger: true, opens: .mode),
+            MenuSetting(text: "模型", value: "GPT-6 · high", opens: .model),
+            MenuSetting(text: "上下文", value: "86%", warn: true, opens: .model),
+        ])
+        // A mode that could not be read has no row, a model not reported yet is 会话设置, an unknown context is left out.
+        #expect(menuSettings(mode: nil, model: "", effort: "", percent: nil) == [MenuSetting(text: "会话设置", value: "", opens: .model)])
+        #expect(menuSettings(mode: ModeLabel(text: "询问", mode: .ask), model: "opus", effort: "", percent: 12).map(\.value) == ["询问", "opus", "12%"])
+    }
+
     @Test func theBarsSecondLineIsTheStateThenTheMode() {
         let ask = ModeLabel(text: "询问", mode: .ask)
         let full = ModeLabel(text: "完全放行", mode: .full)

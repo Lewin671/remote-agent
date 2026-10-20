@@ -52,9 +52,9 @@ struct ManageProjectsScreen: View {
         .navBar("项目管理")
         .actionMenu(isPresented: $menuShown, actions: menu.map { actions(state, $0, blocked: blocked) } ?? []) {
             if let pr = menu {
-                VStack(spacing: 0) {
-                    Text(pr.name).type(T.metaB, Theme.muted)
-                    Text(shortPath(pr.key)).type(T.mono, Theme.fg2).multilineTextAlignment(.center)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pr.name).type(T.bodyB, Theme.fg)
+                    Text(shortPath(pr.key)).type(T.mono, Theme.fg2)
                 }
             }
         }

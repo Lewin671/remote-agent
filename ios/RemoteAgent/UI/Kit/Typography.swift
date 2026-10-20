@@ -42,8 +42,6 @@ enum T {
     static let h22 = TypeStyle(size: 22, weight: .bold, lineHeight: 1.3, tracking: -0.3, relativeTo: .title2)
     /// Sheet and dialog titles, a full-page question, a reply's first and second level headings.
     static let h17 = TypeStyle(size: 17, weight: .semibold, lineHeight: 1.35, relativeTo: .headline)
-    /// A choice of an action menu: 17, not bold.
-    static let action17 = TypeStyle(size: 17, relativeTo: .body)
     /// Text, a list's main line, fields.
     static let body = TypeStyle(size: 15, relativeTo: .subheadline)
     /// Buttons, a row's title that has a description under it.

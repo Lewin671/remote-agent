@@ -721,8 +721,9 @@
             .actionMenu(
                 isPresented: $shown,
                 actions: [
-                    SheetAction("审批模式 · 询问") {},
-                    SheetAction("会话设置", note: "上下文 86%") {},
+                    SheetAction("审批模式", value: "完全放行", danger: true) {},
+                    SheetAction("模型", value: "gpt-6-astra · high") {},
+                    SheetAction("上下文", value: "86%", warn: true) {},
                     SheetAction("重命名") {},
                     SheetAction("分叉会话", enabled: false, note: "这一轮结束后可以分叉") {},
                     SheetAction("正在中断…", busy: true) {},
@@ -732,9 +733,9 @@
                     ) {},
                 ]
             ) {
-                VStack(spacing: 2) {
-                    Text("Codex · remote-agent · MacBook").type(T.sm, Theme.fg2)
-                    Text("~/Code/remote-agent").type(T.mono, Theme.muted)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Codex · remote-agent · MacBook").type(T.bodyB, Theme.fg)
+                    Text("~/Code/remote-agent").type(T.mono, Theme.fg2)
                 }
             }
         }

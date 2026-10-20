@@ -4,10 +4,11 @@
 //
 // The bar's first line is the title alone; the second is the session's
 // state and its approval mode, red only for full access. Everything else
-// about the session (CLI, project, computer, folder, ID) heads the ⋯ menu,
-// whose choices are the mode, the model and the context, then 重命名,
-// 分叉会话, 中断本轮 and 结束会话…. A choice that cannot be made now is not
-// hidden: it is greyed, with when it can be under it.
+// about the session (CLI, project, computer, folder) heads the ⋯ menu, a
+// list whose rows are the mode, the model and the context (「名称 …… 值 ›」),
+// then 项目设置, 重命名, 分叉会话, and in red 中断本轮 and 结束会话…. A
+// choice that cannot be made now is not hidden: it is greyed, with when it
+// can be under it.
 import RACore
 import RAProto
 import SwiftUI
@@ -182,12 +183,11 @@ private struct SessionPage: View {
         .toolbarBackground(term ? .visible : .automatic, for: .navigationBar)
         .toolbarColorScheme(term ? .dark : nil, for: .navigationBar)
         .actionMenu(isPresented: $menu, actions: actions(status: status, running: running, live: live, mode: mode, percent: percent)) {
-            VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("\(agentName(s.agent)) · \(projectName(projectKey(s))) · \(machineLabel(state, id: s.machineId))")
-                    .type(T.meta, Theme.muted)
-                Text("\(shortPath(s.info?.cwd ?? "")) · 会话 \(s.id.prefix(16))").type(T.mono, Theme.muted)
+                    .type(T.bodyB, Theme.fg)
+                Text(shortPath(s.info?.cwd ?? "")).type(T.mono, Theme.fg2)
             }
-            .multilineTextAlignment(.center)
         }
         .onChange(of: menu) { _, shown in if !shown { context.sessionStore.dismissForkError(sid) } }
         .kitSheet(item: $sheet) { which in
@@ -263,14 +263,11 @@ private struct SessionPage: View {
         let effort = s.info?.effort ?? ""
         var list: [SheetAction] = []
         if live {
-            list.append(SheetAction("审批模式：\(mode?.text ?? "未知")", danger: mode?.mode == .full, enabled: !forking) {
-                afterMenu { sheet = .mode }
-            })
-            list.append(SheetAction(name.isEmpty ? "会话设置" : "模型：\(name)" + (effort.isEmpty ? "" : " · \(effort)"), enabled: !forking) {
-                afterMenu { sheet = .model }
-            })
-            if let percent {
-                list.append(SheetAction("上下文：\(percent)%", warn: percent > 80, enabled: !forking) { afterMenu { sheet = .model } })
+            // A mode that could not be read has no row: there is nothing to say of it.
+            for row in menuSettings(mode: mode, model: name, effort: effort, percent: percent) {
+                list.append(SheetAction(row.text, value: row.value, danger: row.danger, warn: row.warn, enabled: !forking) {
+                    afterMenu { sheet = row.opens == .mode ? .mode : .model }
+                })
             }
         }
         list.append(SheetAction("项目设置", enabled: !forking && projectConfig(state, key: projectKey(s)) != nil) {

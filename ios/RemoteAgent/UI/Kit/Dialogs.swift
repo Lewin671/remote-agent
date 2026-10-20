@@ -97,15 +97,19 @@ struct DialogCard<Content: View>: View {
     }
 }
 
-/// One choice of an action menu.
+/// One row of a ⋯ menu.
 ///
-/// Not `enabled`: greyed and not tappable. `note`: a small line under it,
-/// why it is not available or (`noteError`) how it failed. `busy`: it is
-/// running, shown with a spinner; the other choices are then given not
-/// enabled and the menu stays until it ends. `keepOpen`: tapping it leaves
-/// the menu open.
+/// `value`: what a setting is now; the row then reads 「名称 …… 值 ›」 and
+/// opens where it is changed, and `danger` (完全放行) or `warn` (a nearly
+/// full context) colour the value. Without one, `danger` makes the row red
+/// (中断本轮, 结束会话…). Not `enabled`: greyed and not tappable. `note`: a
+/// small line under it, why it is not available or (`noteError`) how it
+/// failed. `busy`: it is running, shown with a spinner; the other choices are
+/// then given not enabled and the menu stays until it ends. `keepOpen`:
+/// tapping it leaves the menu open.
 struct SheetAction {
     var text: String
+    var value: String?
     var danger = false
     var warn = false
     var enabled = true
@@ -115,8 +119,9 @@ struct SheetAction {
     var keepOpen = false
     var action: () -> Void
 
-    init(_ text: String, danger: Bool = false, warn: Bool = false, enabled: Bool = true, note: String = "", noteError: Bool = false, busy: Bool = false, keepOpen: Bool = false, action: @escaping () -> Void) {
+    init(_ text: String, value: String? = nil, danger: Bool = false, warn: Bool = false, enabled: Bool = true, note: String = "", noteError: Bool = false, busy: Bool = false, keepOpen: Bool = false, action: @escaping () -> Void) {
         self.text = text
+        self.value = value
         self.danger = danger
         self.warn = warn
         self.enabled = enabled
@@ -128,68 +133,90 @@ struct SheetAction {
     }
 }
 
+/// A ⋯ menu, drawn as the kit's sheets are (选项目 and the rest): a card from
+/// the bottom with a grabber, what it is about at the top, and one
+/// left-aligned row per choice (design-system §6 弹层与对话框). A tap
+/// outside or a pull down closes it, unless a choice is running.
 private struct ActionMenu<Info: View>: View {
     let actions: [SheetAction]
     let hasInfo: Bool
     let info: Info
     let dismiss: () -> Void
+    @State private var pull: CGFloat = 0
+
+    private func row(_ a: SheetAction, last: Bool) -> some View {
+        let ink = a.value == nil && a.danger ? Theme.red : a.value == nil && a.warn ? Theme.orangeInk : Theme.fg
+        return Button {
+            if a.danger && a.value == nil { Haptics.destructive() }
+            if !a.keepOpen { dismiss() }
+            a.action()
+        } label: {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 1) {
+                    if a.busy {
+                        IconText(Lucide.loaderCircle, a.text, color: Theme.muted, style: T.body)
+                    } else {
+                        Text(a.text).type(T.body, ink).opacity(a.enabled ? 1 : 0.4)
+                    }
+                    if !a.note.isEmpty {
+                        Text(a.note).type(T.meta, a.noteError ? Theme.red : Theme.muted)
+                    }
+                }
+                .padding(.vertical, 8)
+                // The name keeps its room; a long value (a model) is what gives way.
+                .layoutPriority(1)
+                Spacer(minLength: 0)
+                if let value = a.value {
+                    HStack(spacing: 4) {
+                        Text(value).type(T.body, a.danger ? Theme.red : a.warn ? Theme.orangeInk : Theme.fg2).lineLimit(1)
+                        Arrow(Theme.faint, style: T.body)
+                    }
+                    .opacity(a.enabled ? 1 : 0.4)
+                }
+            }
+            .padding(.horizontal, 2)
+            .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+            .bottomLine(last ? .clear : Theme.line)
+        }
+        .buttonStyle(RowPressStyle())
+        .disabled(!a.enabled || a.busy)
+    }
 
     var body: some View {
         // Leaving while a choice is running would drop its answer.
         let busy = actions.contains { $0.busy }
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-        let menu = VStack(spacing: 8) {
-            VStack(spacing: 0) {
-                if hasInfo {
-                    info.frame(maxWidth: .infinity).padding(.horizontal, 14).padding(.vertical, 10)
-                }
-                ForEach(actions.indices, id: \.self) { i in
-                    let a = actions[i]
-                    if i > 0 || hasInfo { Rectangle().fill(Theme.line).frame(height: 1).accessibilityHidden(true) }
-                    Button {
-                        if a.danger { Haptics.destructive() }
-                        if !a.keepOpen { dismiss() }
-                        a.action()
-                    } label: {
-                        VStack(spacing: 1) {
-                            if a.busy {
-                                IconText(Lucide.loaderCircle, a.text, color: Theme.muted, style: T.action17)
-                            } else {
-                                Text(a.text).type(T.action17, a.danger ? Theme.red : a.warn ? Theme.orangeInk : Theme.blue)
-                                    .multilineTextAlignment(.center)
-                                    .opacity(a.enabled ? 1 : 0.4)
-                            }
-                            if !a.note.isEmpty {
-                                Text(a.note).type(T.meta, a.noteError ? Theme.red : Theme.muted).multilineTextAlignment(.center)
-                            }
-                        }
-                        .padding(.horizontal, 14).padding(.vertical, 6)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                    }
-                    .buttonStyle(RowPressStyle())
-                    .disabled(!a.enabled || a.busy)
-                }
+        let shape = UnevenRoundedRectangle(topLeadingRadius: Theme.Radius.lg, topTrailingRadius: Theme.Radius.lg, style: .continuous)
+        let menu = VStack(alignment: .leading, spacing: 0) {
+            if hasInfo {
+                info.frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 6)
             }
-            .background(Theme.card)
-            .clipShape(shape)
-            Button {
-                if !busy { dismiss() }
-            } label: {
-                Text("取消").type(T.action17.with(weight: .semibold), Theme.blue)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .background(Theme.card, in: shape)
-                    .contentShape(Rectangle())
+            ForEach(actions.indices, id: \.self) { i in
+                row(actions[i], last: i == actions.count - 1)
             }
-            .buttonStyle(PressStyle())
-            .disabled(busy)
         }
-        .frame(maxWidth: 480)
-        // The top too: a menu taller than a phone on its side scrolls, and does not start at the screen's edge.
-        .padding(8)
-        ViewThatFits(in: .vertical) {
-            menu
-            ScrollView { menu }.scrollBounceBehavior(.basedOnSize)
+        .padding(.init(top: 26, leading: 16, bottom: 16, trailing: 16))
+        VStack(spacing: 0) {
+            ViewThatFits(in: .vertical) {
+                menu
+                ScrollView { menu }.scrollBounceBehavior(.basedOnSize)
+            }
         }
+        .frame(maxWidth: 640)
+        .background {
+            shape.fill(Theme.card).ignoresSafeArea(edges: .bottom)
+        }
+        .overlay(alignment: .top) {
+            Capsule().fill(Theme.track).frame(width: 36, height: 5).padding(.top, 6).accessibilityHidden(true)
+        }
+        // Not to the top edge: the scrim above it is what closes it.
+        .padding(.top, 48)
+        .offset(y: max(0, pull))
+        .gesture(
+            DragGesture()
+                .onChanged { pull = busy ? 0 : $0.translation.height }
+                .onEnded { end in
+                    if !busy && end.translation.height > 80 { dismiss() } else { withAnimation(.easeOut(duration: 0.15)) { pull = 0 } }
+                })
     }
 }
 
@@ -369,7 +396,7 @@ extension View {
         modifier(OverlayCover(isPresented: isPresented, alignment: alignment, canDismiss: canDismiss, overlay: content))
     }
 
-    /// The more menu: a card of actions above a separate 取消, from the bottom; `info` is what stands at its top.
+    /// A ⋯ menu: a sheet of left-aligned rows from the bottom; `info` is what stands at its top.
     func actionMenu<Info: View>(isPresented: Binding<Bool>, actions: [SheetAction], @ViewBuilder info: @escaping () -> Info) -> some View {
         modifier(OverlayCover(isPresented: isPresented, alignment: .bottom, canDismiss: { !actions.contains { $0.busy } }) {
             ActionMenu(actions: actions, hasInfo: Info.self != EmptyView.self, info: info()) { isPresented.wrappedValue = false }
