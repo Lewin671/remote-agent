@@ -1726,13 +1726,14 @@ describe("who did what (v2)", () => {
       mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
       const notes = [...host.querySelectorAll(".me small")].map((x) => x.textContent);
       // The first message is this client's own: it carries no name.
-      expect(notes).toEqual(["Android · b71c", "VPS-dev 终端"]);
-      expect(host.textContent).toContain("客户端 · 92de 将模式切到 计划");
-      expect(host.querySelector(".record")?.textContent).toContain("已允许 · Android · b71c");
+      expect(notes).toEqual(["Android · Pixel 9", "VPS-dev 终端"]);
+      // A client that says nothing of itself, with no ID in its name.
+      expect(host.textContent).toContain("客户端 将模式切到 计划");
+      expect(host.querySelector(".record")?.textContent).toContain("已允许 · Android · Pixel 9");
       await click(button(/还有 2 条排队/));
       const entries = [...host.querySelectorAll(".pending-bubble")].map((x) => x.textContent);
       expect(entries[0]).toContain("补充库存回滚测试。");
-      expect(entries[1]).toContain("Android · b71c");
+      expect(entries[1]).toContain("Android · Pixel 9");
       expect(entries[1]).toContain("最后检查 README。");
     })();
   });
@@ -3015,5 +3016,17 @@ describe("adding devices, which only the Android phone does", () => {
     expect(host.textContent).toContain("还没有电脑。在管理端手机上打开「设置 › 添加设备」，把电脑加进来。");
     expect(button(/添加设备/)).toBeUndefined();
     expect(go).not.toHaveBeenCalledWith("add");
+  });
+});
+
+describe("client names", () => {
+  it("calls an unnamed client by what it runs on and asks for no name", async () => {
+    const r = demo();
+    await vi.waitFor(() => expect(r.devicesStatus).toBe("ready"));
+    const { DevicesPage } = await import("./Settings");
+    mount(<DevicesPage remote={r} go={() => undefined} onBack={() => undefined} />);
+    const names = [...host.querySelectorAll(".row.client .client-info")].map((x) => x.firstChild?.textContent);
+    expect(names).toEqual(["Chrome · macOS", "Android · Pixel 9", "客户端"]);
+    expect(document.body.textContent).not.toContain("起个名字");
   });
 });

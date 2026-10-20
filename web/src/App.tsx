@@ -20,7 +20,6 @@ import {
   ClientPage,
   DevicesPage,
   MachinePage,
-  NameClientPrompt,
   QuotaPage,
   RemovedScreen,
   Settings,
@@ -245,10 +244,6 @@ function Main({ remote }: { remote: Remote }) {
       <Home remote={remote} go={go} />
     );
 
-  // Asked on the home and settings pages, not over a session being read.
-  const naming = (kind === "" || kind === "settings") && (
-    <NameClientPrompt remote={remote} />
-  );
   if (wide)
     return (
       <div className="desk">
@@ -259,7 +254,6 @@ function Main({ remote }: { remote: Remote }) {
           project={kind === "p" ? arg : undefined}
         />
         <main className="dm">{page}</main>
-        {naming}
       </div>
     );
   const tabs = kind === "" || kind === "settings";
@@ -267,7 +261,6 @@ function Main({ remote }: { remote: Remote }) {
   return (
     <div className={"phone" + (kind === "settings" ? " gray" : "")}>
       {page}
-      {naming}
       {tabs && (
         <nav className="tabbar">
           <button className={kind === "" ? "on" : ""} onClick={() => go("")}>

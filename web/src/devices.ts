@@ -23,27 +23,40 @@ export function shortId(id: string): string {
   return id.slice(-4);
 }
 
-/** What kind of client, from what it says it runs on: Chrome, Safari,
- * Android; a browser that says nothing is 浏览器. */
-export function platformLabel(meta?: Pick<DeviceMeta, "platform" | "description">): string {
-  const first = meta?.description.trim().split(/\s+/)[0] ?? "";
-  if (first && !/^\d/.test(first)) return first;
-  if (meta?.platform === "android") return "Android";
-  if (meta?.platform === "ios") return "iOS";
-  if (meta?.platform === "web") return "浏览器";
+/** What a client runs on, as its default name says it (design-system §8
+ * 设备的名字): a browser and its system (Chrome · macOS), an Android
+ * phone and its model (Android · Pixel 9), an iPhone or iPad. Read from
+ * what each client puts in its metadata: "Chrome on macOS",
+ * "Android 16 · Pixel 9", "iOS 26.0 · iPhone". */
+export function platformName(meta?: Pick<DeviceMeta, "platform" | "description">): string {
+  const desc = meta?.description.trim() ?? "";
+  // What follows the system's version: the phone's model, or iPhone/iPad.
+  const model = desc.split(" · ").slice(1).join(" · ").trim();
+  switch (meta?.platform) {
+    case "web": {
+      const [browser, os] = desc.split(" on ").map((x) => x.trim());
+      return browser ? [browser, os].filter(Boolean).join(" · ") : "浏览器";
+    }
+    case "android":
+      return model ? `Android · ${model}` : "Android";
+    case "ios":
+      return model || "iOS";
+  }
   return "客户端";
 }
 
-/** A client's name: the one the user gave it, else its kind and short ID
- * (Android · b71c). */
-export function clientName(d: Pick<DeviceInfo, "id" | "meta"> | undefined, id = d?.id ?? ""): string {
-  return d?.meta?.name.trim() || defaultClientName(d, id);
+/** A client's name: the one the user gave it, else its default name. */
+export function clientName(d: Pick<DeviceInfo, "id" | "meta"> | undefined, devices: ReadonlyMap<string, Pick<DeviceInfo, "id" | "kind" | "meta">>, id = d?.id ?? ""): string {
+  return d?.meta?.name.trim() || defaultClientName(d, devices, id);
 }
 
 /** The name a client has until the user gives it one, and again once they
- * take theirs back. */
-export function defaultClientName(d: Pick<DeviceInfo, "id" | "meta"> | undefined, id = d?.id ?? ""): string {
-  return `${platformLabel(d?.meta)} · ${shortId(id)}`;
+ * take theirs back: what it runs on, and its short ID only when another
+ * client of the account would have the same one. */
+export function defaultClientName(d: Pick<DeviceInfo, "id" | "meta"> | undefined, devices: ReadonlyMap<string, Pick<DeviceInfo, "id" | "kind" | "meta">>, id = d?.id ?? ""): string {
+  const base = platformName(d?.meta);
+  const twin = [...devices.values()].some((x) => x.id !== id && x.kind === DeviceKind.CLIENT && platformName(x.meta) === base);
+  return twin ? `${base} · ${shortId(id)}` : base;
 }
 
 /** What a client is, under its name in the list: an app or a browser, and
@@ -112,7 +125,7 @@ export function originLabel(o: Origin | undefined, ctx: OriginContext): string |
     case OriginKind.CLIENT: {
       if (o.deviceId === ctx.me) return "本客户端";
       const d = ctx.devices.get(o.deviceId);
-      return d ? clientName(d) : "已移除的设备";
+      return d ? clientName(d, ctx.devices) : "已移除的设备";
     }
     case OriginKind.LOCAL:
       return terminalLabel(ctx.machine);

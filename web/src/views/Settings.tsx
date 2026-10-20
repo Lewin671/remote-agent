@@ -30,7 +30,6 @@ import {
   Dot,
   NavBar,
   Sheet,
-  useEscape,
   useNow,
   useRemote,
 } from "../ui";
@@ -134,7 +133,7 @@ export function Settings({
       <div className="glabel">客户端</div>
       <div className="grp">
         <button className="row" onClick={() => go("c/" + me)}>
-          {clientName(remote.devices.get(me), me)}
+          {clientName(remote.devices.get(me), remote.devices, me)}
           <span className="v">
             当前
             <ChevronRight />
@@ -142,7 +141,7 @@ export function Settings({
         </button>
         {others.slice(0, 3).map((d) => (
           <button key={d.id} className="row" onClick={() => go("c/" + d.id)}>
-            {clientName(d)}
+            {clientName(d, remote.devices)}
             <span className="v">
               已配对
               <ChevronRight />
@@ -504,7 +503,7 @@ export function DevicesPage({
                 onClick={() => go("c/" + d.id)}
               >
                 <span className="client-info">
-                  {clientName(d, d.id)}
+                  {clientName(d, remote.devices, d.id)}
                   <small>{clientDetail(d)}</small>
                 </span>
                 <span className="v">
@@ -568,7 +567,7 @@ export function ClientPage({
     <div className="page">
       <NavBar
         onBack={onBack}
-        title={<span className="tname">{clientName(d, id)}</span>}
+        title={<span className="tname">{clientName(d, remote.devices, id)}</span>}
         sub={
           current
             ? "当前客户端"
@@ -601,7 +600,7 @@ export function ClientPage({
               onClick={() => void save("")}
             >
               恢复默认名称
-              <span className="v">{defaultClientName(d, id)}</span>
+              <span className="v">{defaultClientName(d, remote.devices, id)}</span>
             </button>
           )}
           {d?.meta?.description && (
@@ -651,7 +650,7 @@ export function ClientPage({
             className="field"
             autoFocus
             value={name}
-            placeholder={defaultClientName(d, id)}
+            placeholder={defaultClientName(d, remote.devices, id)}
             maxLength={40}
             onChange={(e) => setName(e.target.value)}
             aria-label="客户端名称"
@@ -1373,99 +1372,5 @@ function ImageStorageSettings({
         />
       )}
     </>
-  );
-}
-
-const nameAskedKey = (id: string) => "ra-name-asked/" + id;
-
-/** Asks once for this client's name, after joining and for a client that
- * has none yet, so that the other clients' lists can tell it apart. */
-export function NameClientPrompt({ remote }: { remote: Remote }) {
-  useRemote(remote);
-  const me = remote.account.deviceId;
-  const d = remote.devices.get(me);
-  const [asked, setAsked] = useState(
-    () => localStorage.getItem(nameAskedKey(me)) !== null,
-  );
-  if (
-    asked ||
-    !d ||
-    d.meta?.name ||
-    remote.devicesStatus !== "ready" ||
-    remote.conn !== "online"
-  )
-    return null;
-  const done = () => {
-    localStorage.setItem(nameAskedKey(me), "1");
-    setAsked(true);
-  };
-  return <NameClientDialog remote={remote} onDone={done} />;
-}
-
-function NameClientDialog({
-  remote,
-  onDone: done,
-}: {
-  remote: Remote;
-  onDone: () => void;
-}) {
-  const me = remote.account.deviceId;
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  useEscape(done);
-  const save = async () => {
-    if (!name.trim()) return done();
-    setBusy(true);
-    setError("");
-    try {
-      await remote.renameDevice(me, name);
-      done();
-    } catch (e) {
-      setError(errorText(e));
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="overlay">
-      <div className="dim" />
-      <form
-        className="alert rename"
-        role="dialog"
-        aria-modal="true"
-        aria-label="给这个客户端起个名字"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!busy) void save();
-        }}
-      >
-        <h5>给这个客户端起个名字</h5>
-        <input
-          className="field"
-          autoFocus
-          aria-label="客户端名称"
-          value={name}
-          placeholder="如：公司电脑的 Chrome"
-          maxLength={40}
-          enterKeyHint="done"
-          onChange={(e) => setName(e.target.value)}
-        />
-        {error ? (
-          <p className="red">没能保存：{error}</p>
-        ) : (
-          <p>
-            其他客户端的设备列表里靠它认出这一个，以后可以在「设置 › 设备」里改
-          </p>
-        )}
-        <div className="btns">
-          <button type="button" className="btn" disabled={busy} onClick={done}>
-            跳过
-          </button>
-          <button type="submit" className="btn pri" disabled={busy}>
-            保存
-          </button>
-        </div>
-      </form>
-    </div>
   );
 }
