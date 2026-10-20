@@ -9,7 +9,7 @@ import {
 import { clientName } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { errorText, type Remote } from "../remote";
-import { Alert, Banner, NavBar, useRemote, useNow } from "../ui";
+import { Alert, Banner, NavBar, useRemote, useNow, usePageVisible } from "../ui";
 import { CodeBackup, PersistenceResult } from "./AuthorityKit";
 import { forgetAccount } from "../storage";
 import type { HandoffOffer } from "../authority-client";
@@ -106,10 +106,12 @@ export function SecurityPage({
   onBack: () => void;
 }) {
   useRemote(remote);
+  const visible = usePageVisible();
   const [page, setPage] = useState<"overview" | "recovery" | "handoff" | "pending">("overview");
   const now = useNow(30_000);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [readError, setReadError] = useState("");
   const [code, setCode] = useState(""),
     [saved, setSaved] = useState(false);
   const [persisted, setPersisted] = useState<boolean>();
@@ -141,9 +143,19 @@ export function SecurityPage({
     if (remote.isAuthority) setOffers(await remote.handoffCandidates());
   };
   useEffect(() => {
-    void refresh().catch((e) => setError(errorText(e)));
+    if (!visible) return;
+    let current = true;
+    // App resumes the transport in its parent effect. Read after those
+    // effects, and ignore a read invalidated when the page goes away.
+    void Promise.resolve().then(() => current ? refresh() : undefined).then(() => {
+      if (current) setReadError("");
+    }).catch((e) => {
+      if (current && !document.hidden) setReadError(errorText(e));
+    });
+    return () => { current = false; };
   }, [
     remote,
+    visible,
     remote.isAuthority,
     remote.recoveryPending,
     remote.authorityError,
@@ -448,7 +460,7 @@ export function SecurityPage({
           </>
         )}
         {message && <Banner kind="">{message}</Banner>}
-        {error && <Banner kind="err">{error}</Banner>}
+        {(error || readError) && <Banner kind="err">{error || readError}</Banner>}
       </div>
       {target && (
         <Alert

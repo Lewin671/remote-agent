@@ -63,6 +63,41 @@ it("offers an explicit exit for a confirmed handoff backup whose offer was never
   expect(discard).toHaveBeenCalledOnce();
   expect(button("放弃未发布的恢复码")).toBeUndefined();
 });
+
+it("ignores a security read paused by hiding the page and refreshes when it becomes visible", async () => {
+  let hidden = false;
+  vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
+  const r = demo("role=authority");
+  let reject!: (e: Error) => void;
+  const read = vi.spyOn(r.security, "verifiedRecord").mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  await mount(<SecurityPage remote={r} onBack={() => {}} />);
+  await act(async () => {
+    hidden = true;
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await act(async () => reject(new Error("security: storage")));
+  expect(host.textContent).not.toContain("security: storage");
+  expect(read).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    hidden = false;
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(read.mock.calls.length).toBeGreaterThan(1);
+  expect(host.textContent).not.toContain("security: storage");
+  expect(host.textContent).not.toContain("正在读取…");
+});
+
+it("clears a passive read error after a successful foreground refresh", async () => {
+  let hidden = false;
+  vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
+  const r = demo("role=member");
+  vi.spyOn(r.security, "verifiedRecord").mockRejectedValueOnce(new Error("injected read failure"));
+  await mount(<SecurityPage remote={r} onBack={() => {}} />);
+  expect(host.textContent).toContain("injected read failure");
+  await act(async () => { hidden = true; document.dispatchEvent(new Event("visibilitychange")); });
+  await act(async () => { hidden = false; document.dispatchEvent(new Event("visibilitychange")); });
+  expect(host.textContent).not.toContain("injected read failure");
+});
 it.each(["authority", "member", "machine"])(
   "shows management entries by verified role: %s",
   async (role) => {
