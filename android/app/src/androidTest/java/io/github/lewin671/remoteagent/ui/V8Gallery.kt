@@ -297,7 +297,12 @@ class V8Gallery {
 
     @Test fun sessionMenu() {
         shoot("11-session-menu", sessionState(session("run", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_IDLE, context = 87_000)), mapOf("run" to runEvents.dropLast(1)),
-            then = { ui.onNodeWithContentDescription("更多").performClick() }) { SessionScreen("run") }
+            then = {
+                ui.onNodeWithContentDescription("更多").performClick()
+                ui.onNodeWithText("项目设置").assertIsDisplayed()
+            }) { SessionScreen("run") }
+        ui.onNodeWithText("项目设置").performClick()
+        ui.onNodeWithText("完成").assertIsDisplayed()
     }
 
     private val apiSession = session("api", "vps", foo, "重构 API 层", approvals = 1)

@@ -467,12 +467,11 @@ public func failureText(reason: String, agent: PBAgent) -> String {
     switch reason {
     case "image_not_recognized": return "\(agentName(agent)) 没认出图片"
     case "input_changed": return "无法确认终端输入框的内容"
-    case "timeout": return "等待超时"
-    case "restarted": return "电脑上的 remote-agent 重启了"
+    case "timeout": return "等终端就绪超时"
+    case "restarted": return "电脑上的 remote-agent 写入时重启了"
     case "write_failed": return "写入终端失败"
     case "exited": return "会话已结束"
-    case "": return "原因未知"
-    default: return reason
+    default: return "没有写进终端"
     }
 }
 

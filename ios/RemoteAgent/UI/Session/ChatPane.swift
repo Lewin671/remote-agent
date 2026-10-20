@@ -648,12 +648,12 @@ private struct PendingBubble: View {
                 .accessibilityHint(expanded ? "收起" : "展开全文")
                 HStack(spacing: 6) {
                     // The note gives way; what can be done stays.
-                    Text(label + pendingSuffix(pending, origin: origin, index: index, of: count))
+                    Text(label + pendingSuffix(pending, origin: origin, index: index, of: count, cancel: cancel))
                         .type(T.meta, cancelFailed ? Theme.red : Theme.muted).lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     if pending.paused && !canceling {
                         TextAction(
-                            resume.error.isEmpty ? "发送" : "重试发送", style: T.metaB,
+                            resume.error.isEmpty ? "发送" : "重试", style: T.metaB,
                             enabled: online && !resume.running, alignment: .center
                         ) {
                             SessionHaptics.tap()

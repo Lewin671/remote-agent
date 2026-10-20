@@ -67,11 +67,11 @@ func pendingLabel(
     return "插入这一轮"
 }
 
-/// What follows the label: who sent it when it was not this client, else
-/// its place in the queue while more than one waits (`count`).
-func pendingSuffix(_ p: PendingInput, origin: String?, index: Int, of count: Int) -> String {
-    if let origin { return " · \(origin)" }
-    return count > 1 && index > 0 && p.mode == .queue ? " · 第 \(index) 条" : ""
+/// Its place while more than one waits, followed by the sender when it was
+/// another client. Paused, held and canceling messages do not show a place.
+func pendingSuffix(_ p: PendingInput, origin: String?, index: Int, of count: Int, cancel: SessionStore.CancelState? = nil) -> String {
+    let position = count > 1 && index > 0 && !p.paused && !p.held && cancel == nil ? " · 第 \(index) 条" : ""
+    return position + (origin.map { " · " + $0 } ?? "")
 }
 
 /// The queued messages to show: more than three fold to the first two until opened.

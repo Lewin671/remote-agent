@@ -568,9 +568,9 @@ public func buildChat(
                     text = "上下文已压缩 · \(before)% → \(after)%"
                 } else { text = "上下文已压缩" }
             } else if !c.model.isEmpty {
-                text = (by.map { "\($0) 将模型切到 " } ?? "已切换到 ") + c.model + (c.effort.isEmpty ? "" : " · \(c.effort)")
+                text = (by.map { "\($0) 将模型切到 " } ?? "切换到 ") + c.model + (c.effort.isEmpty ? "" : " · \(c.effort)")
             } else {
-                text = modeOf(c.mode).map { (by.map { "\($0) 将模式切到 " } ?? "审批模式切到了 ") + $0.text }
+                text = modeOf(c.mode).map { (by.map { "\($0) 将模式切到 " } ?? "模式切换到 ") + $0.text }
             }
             if let text {
                 flush()

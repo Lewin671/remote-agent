@@ -206,7 +206,7 @@ private fun SessionTopBar(
     var menu by remember { mutableStateOf(false) }
     var confirmStop by remember { mutableStateOf(false) }
     var rename by remember { mutableStateOf(false) }
-    var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model
+    var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model, 3 project settings
     val act = rememberAction()
     // The title is kept on the computer: an ended session can be renamed too, but only while the
     // computer is reachable.
@@ -289,11 +289,11 @@ private fun SessionTopBar(
             actions =
                 buildList {
                     if (live) {
-                        add(
+                        if (mode != null) add(
                             SheetAction(
                                 "审批模式",
-                                value = mode?.text ?: "跟随 CLI 设置",
-                                danger = mode?.mode == Mode.FULL,
+                                value = mode.text,
+                                danger = mode.mode == Mode.FULL,
                                 enabled = !forking,
                             ) {
                                 sheet = 1
@@ -316,6 +316,9 @@ private fun SessionTopBar(
                             )
                         }
                     }
+                    add(SheetAction("项目设置", enabled = !forking && projectConfig(state, projectKey(s)) != null) {
+                        sheet = 3
+                    })
                     if (canRename) {
                         add(SheetAction("重命名", enabled = !forking) { rename = true })
                         add(
@@ -388,6 +391,13 @@ private fun SessionTopBar(
     when (sheet) {
         1 -> ModeSheet(s, onClose = { sheet = 0 })
         2 -> ModelSheet(state, s, running, onClose = { sheet = 0 })
+        3 -> projectConfig(state, projectKey(s))?.let { initial ->
+            val key = projectKey(s)
+            NewSettingsSheet(state, key, projectName(key), initial.machineId, s.agent(), onDone = { op ->
+                if (op != null) PrefsChanges.run(remote, op)
+                sheet = 0
+            }, onClose = { sheet = 0 })
+        }
     }
     if (act.error.isNotEmpty())
         Text(act.error, Modifier.padding(horizontal = 16.dp), color = p.red, style = T.meta)
@@ -696,7 +706,7 @@ private fun PendingBubble(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                pendingInputCaption(label, index, total, origin),
+                pendingInputCaption(label, index, total, origin, !pending.paused && !pending.held && cancel == null),
                 style = T.meta,
                 color = if (cancel is Cancels.State.Failed) p.red else p.muted,
                 maxLines = 1,
@@ -705,7 +715,7 @@ private fun PendingBubble(
             )
             if (pending.paused && cancel != Cancels.State.Canceling)
                 TextAction(
-                    if (resume.error.isNotEmpty()) "重试发送" else "发送",
+                    if (resume.error.isNotEmpty()) "重试" else "发送",
                     {
                         resume.run({
                             remote.command(

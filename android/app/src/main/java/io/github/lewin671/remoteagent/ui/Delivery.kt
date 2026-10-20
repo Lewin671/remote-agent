@@ -42,6 +42,6 @@ internal fun pendingInputLabel(
     else -> "插入这一轮"
 }
 
-internal fun pendingInputCaption(label: String, index: Int, total: Int, origin: String?): String =
-    label + (if (total > 1) " · 第 $index 条" else "") +
+internal fun pendingInputCaption(label: String, index: Int, total: Int, origin: String?, showPosition: Boolean = true): String =
+    label + (if (total > 1 && showPosition) " · 第 $index 条" else "") +
         (if (origin != null && origin != "本客户端") " · $origin" else "")

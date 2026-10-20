@@ -916,7 +916,7 @@ describe("a CLI's effective default mode (Go 0f6ad8d)", () => {
   it("names the mode a start will really use", () => {
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：完全放行（项目设置可能不同）");
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(codexAuto, Agent.CODEX), Agent.CODEX)).toBe("默认：自动");
-    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(unread, Agent.CODEX), Agent.CODEX)).toBe("默认模式（不确定，可能是完全放行）");
+    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(unread, Agent.CODEX), Agent.CODEX)).toBe("跟随 CLI 设置");
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(acceptEdits, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：Claude Code 自己的模式");
     expect(modeLabel(ApprovalMode.ASK, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("询问");
   });

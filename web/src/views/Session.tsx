@@ -1418,7 +1418,9 @@ function Row({
       if (c.model)
         return (
           <div className="sysline">
-            切换到 <b>{nameModel(c.model)}</b>
+            {otherThanMe(e.origin, who)
+              ? `${originLabel(e.origin, who.ctx)} 将模型切到 `
+              : "切换到 "}<b>{nameModel(c.model)}</b>
             {c.effort && ` · ${c.effort}`}
           </div>
         );

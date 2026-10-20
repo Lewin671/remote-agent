@@ -1742,6 +1742,23 @@ describe("who did what (v2)", () => {
     })();
   });
 
+  it("names another client on model changes and leaves this client unnamed", async () => {
+    const r = demo();
+    await vi.waitFor(() => expect(r.devicesStatus).toBe("ready"));
+    const s = r.sessions.get("s-idle")!;
+    const events = r.events(s.id);
+    for (const [deviceId, model] of [[ANDROID, "other-model"], [r.account.deviceId, "my-model"]]) {
+      events.push(create(EventSchema, {
+        seq: BigInt(events.length + 1), origin: { kind: OriginKind.CLIENT, deviceId },
+        kind: { case: "settingsChanged", value: { model } },
+      }));
+    }
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    const notes = [...host.querySelectorAll(".sysline")].map((x) => x.textContent);
+    expect(notes).toContain("Android · Pixel 9 将模型切到 other-model");
+    expect(notes).toContain("切换到 my-model");
+  });
+
   it("offers a retry for a message that failed before Enter, and the terminal when it may be half written", async () => {
     const r = demo();
     const s = r.sessions.get("s-msg")!;

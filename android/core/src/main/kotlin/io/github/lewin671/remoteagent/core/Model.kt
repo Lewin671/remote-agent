@@ -1266,12 +1266,11 @@ fun failureText(reason: String, agent: Agent): String =
     when (reason) {
         "image_not_recognized" -> "${agentName(agent)} 没认出图片"
         "input_changed" -> "无法确认终端输入框的内容"
-        "timeout" -> "等待超时"
-        "restarted" -> "电脑上的 remote-agent 重启了"
+        "timeout" -> "等终端就绪超时"
+        "restarted" -> "电脑上的 remote-agent 写入时重启了"
         "write_failed" -> "写入终端失败"
         "exited" -> "会话已结束"
-        "" -> "原因未知"
-        else -> reason
+        else -> "没有写进终端"
     }
 
 /** Messages the daemon accepted and has not written yet, in the order it accepted them. */

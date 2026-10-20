@@ -58,6 +58,15 @@ it("shows pending bubbles in place and folds more than three", () => {
   expect(host.textContent).toContain("Android");
 });
 
+it("calls a message held by the CLI an insertion even when it was queued", () => {
+  const r = demo(); const s = r.sessions.get("s-multi")!;
+  const d = derive([
+    event(1, { case: "inputState", value: { requestId: "held", status: InputStatus.HELD_BY_CLI, text: "one", mode: SendMode.QUEUE } }),
+  ]);
+  mount(<PendingBubbles remote={r} session={s} d={d} />);
+  expect(host.querySelector(".pending-meta > span")?.textContent).toBe("插入这一轮");
+});
+
 it("sends a queue request with its mode and retains it across retry", async () => {
   const r = demo(); const sent: CommandKind[] = [];
   r.command = async (_sid, kind) => { sent.push(kind); throw new Error("offline"); };

@@ -19,6 +19,7 @@ class DeliveryTest {
         assertEquals("正在取消…", label(cancel = Cancels.State.Canceling))
         assertEquals("正在发送…", label(resuming = true))
         assertEquals("发送没成功，仍已暂停", label(failed = true))
+        assertEquals("已暂停", pendingInputCaption("已暂停", 1, 2, "本客户端", false))
         assertEquals("已暂停", pendingInputCaption("已暂停", 1, 1, "本客户端"))
         assertEquals("插入这一轮 · 第 2 条 · Android · Pixel 9", pendingInputCaption("插入这一轮", 2, 4, "Android · Pixel 9"))
     }
@@ -28,6 +29,9 @@ class DeliveryTest {
         assertEquals(SendFeedback("没发出去：会话已结束", false), feedback(InputStatus.INPUT_STATUS_FAILED, "exited"))
         assertEquals(SendFeedback("没发出去：Codex 没认出图片", false), feedback(InputStatus.INPUT_STATUS_FAILED, "image_not_recognized"))
         assertEquals(SendFeedback("可能没发出去：无法确认终端输入框的内容", true), feedback(InputStatus.INPUT_STATUS_NEEDS_TERMINAL, "input_changed"))
+        assertEquals("没发出去：等终端就绪超时", feedback(InputStatus.INPUT_STATUS_FAILED, "timeout").text)
+        assertEquals("没发出去：电脑上的 remote-agent 写入时重启了", feedback(InputStatus.INPUT_STATUS_FAILED, "restarted").text)
+        assertEquals("没发出去：没有写进终端", feedback(InputStatus.INPUT_STATUS_FAILED, "").text)
         assertEquals(SendFeedback("可能没发出去：已送到终端但没确认", true), feedback(InputStatus.INPUT_STATUS_UNCONFIRMED))
     }
 

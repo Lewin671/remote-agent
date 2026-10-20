@@ -24,10 +24,10 @@ import Testing
         d.inputs["start"] = .canceled
         #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude) == nil)
         d.inputs["start"] = .failed
-        d.failures["start"] = "CLI 没认出图片"
+        d.failures["start"] = "image_not_recognized"
         let failed = try #require(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude))
         #expect(failed.failed && !failed.warning)
-        #expect(failed.caption == "没发出去：CLI 没认出图片")
+        #expect(failed.caption == "没发出去：Claude Code 没认出图片")
         d.inputs["start"] = .unconfirmed
         let unsure = try #require(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude))
         #expect(unsure.warning && !unsure.failed)
@@ -293,7 +293,7 @@ import Testing
                 .note(.init(key: "e1", text: "rm -rf build", icon: .check, tone: 1, meta: "已允许 · `rm` 开头的命令以后不再问 · Chrome · a8f2")),
                 .note(.init(key: "e3", text: "已回答：甲、乙", icon: .check, tone: 1)),
                 .note(.init(key: "e4", text: "Chrome · a8f2 将模型切到 sonnet · high")),
-                .note(.init(key: "e5", text: "审批模式切到了 完全放行")),
+                .note(.init(key: "e5", text: "模式切换到 完全放行")),
                 .turnEnd(.init(key: "e6", text: "已中断 · 本轮用时 1 小时 2 分")),
                 .generated(.init(key: "e8", seq: 8, prompt: "a cat", images: [.with { $0.imageID = "g" }])),
                 .turnEnd(.init(key: "e9", text: "10月3日 18:44 结束")),

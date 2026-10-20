@@ -126,8 +126,11 @@ extension Ref<LiveAnnouncer> {
 
     @Test func aWaitingMessageNamesAnotherSenderOrItsPlace() {
         #expect(pendingSuffix(pending(mode: .queue), origin: nil, index: 2, of: 2) == " · 第 2 条")
-        #expect(pendingSuffix(pending(mode: .queue), origin: "我的 iPad", index: 2, of: 2) == " · 我的 iPad")
-        #expect(pendingSuffix(pending(), origin: nil, index: 1, of: 2).isEmpty)
+        #expect(pendingSuffix(pending(mode: .queue), origin: "我的 iPad", index: 2, of: 2) == " · 第 2 条 · 我的 iPad")
+        #expect(pendingSuffix(pending(), origin: nil, index: 1, of: 2) == " · 第 1 条")
+        #expect(pendingSuffix(pending(), origin: nil, index: 1, of: 2, cancel: .canceling).isEmpty)
+        #expect(pendingSuffix(pending(paused: true), origin: "iPad", index: 1, of: 2) == " · iPad")
+        #expect(pendingSuffix(pending(held: true), origin: nil, index: 1, of: 2).isEmpty)
         // Its place is said only while more than one waits.
         #expect(pendingSuffix(pending(mode: .queue), origin: nil, index: 1, of: 1).isEmpty)
     }
@@ -149,6 +152,9 @@ extension Ref<LiveAnnouncer> {
         #expect(note(.failed) == OutgoingNote(caption: "没发出去：原因", tone: .error, failed: true, actions: [.retry, .remove]))
         #expect(note(.sent, .failed, failure: "input_changed") == OutgoingNote(
             caption: "没发出去：无法确认终端输入框的内容", tone: .error, failed: true, actions: [.putBack]))
+        #expect(note(.sent, .failed, failure: "timeout").caption == "没发出去：等终端就绪超时")
+        #expect(note(.sent, .failed, failure: "restarted").caption == "没发出去：电脑上的 remote-agent 写入时重启了")
+        #expect(note(.sent, .failed, failure: "").caption == "没发出去：没有写进终端")
         // May not have gone: orange, with what could be done before.
         #expect(note(.unknown) == OutgoingNote(caption: "可能没发出去：原因", tone: .warn, failed: true, actions: [.retry, .remove]))
         // The error's own 「不确定电脑有没有执行」 is said by 「可能没发出去」 already.

@@ -869,7 +869,7 @@ export function modeLabel(
 ): string {
   if (chosen) return modeName(chosen);
   const base = !d.known
-    ? "默认模式（不确定，可能是完全放行）"
+    ? "跟随 CLI 设置"
     : d.mode
       ? `默认：${modeName(d.mode)}`
       : `默认：${agentName(agent)} 自己的模式`;

@@ -385,8 +385,8 @@ fun buildChat(
                 val by = who(e.originOrNull())?.takeIf { it != "本客户端" }
                 var text = when {
                     c.compacted -> "上下文已压缩"
-                    c.model.isNotEmpty() -> (by?.let { "$it 将模型切到 " } ?: "已切换到 ") + c.model + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
-                    else -> modeOf(c.mode)?.let { (by?.let { b -> "$b 将模式切到 " } ?: "审批模式切到了 ") + it.text }
+                    c.model.isNotEmpty() -> (by?.let { "$it 将模型切到 " } ?: "切换到 ") + c.model + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
+                    else -> modeOf(c.mode)?.let { (by?.let { b -> "$b 将模式切到 " } ?: "模式切换到 ") + it.text }
                 }
                 if (text != null) {
                     flush()

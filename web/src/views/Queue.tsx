@@ -69,7 +69,7 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
       const mode = a?.mode ?? o?.mode;
       const message = a?.text || o?.text || (id === promptIdOf(remote, sid, d) ? remote.prompts.get(sid) : undefined) || ((a?.imageIds.length ?? o?.imageIds?.length ?? 0) ? `${a?.imageIds.length ?? o?.imageIds?.length} 张图片` : "另一客户端的消息");
       // A few words for what it waits for (design-system §6 输入框).
-      const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : resume?.state === "failed" ? "发送没成功，仍已暂停" : resume?.state === "sending" ? "正在发送…" : paused ? "已暂停" : mode === SendMode.QUEUE ? "这一轮结束后发" : starting ? `等 ${agentName(agentOf(session))} 就绪后发出` : "插入这一轮";
+      const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : resume?.state === "failed" ? "发送没成功，仍已暂停" : resume?.state === "sending" ? "正在发送…" : paused ? "已暂停" : held ? "插入这一轮" : mode === SendMode.QUEUE ? "这一轮结束后发" : starting ? `等 ${agentName(agentOf(session))} 就绪后发出` : "插入这一轮";
       return <div className="pending-bubble me" key={id}>
         <LocalThumbs blobs={o?.thumbs} />
         <button className={"pending-text" + (expanded.has(id) ? " expanded" : "")} onClick={() => setExpanded((old) => new Set(old.has(id) ? [...old].filter((x) => x !== id) : [...old, id]))}>{message}</button>
