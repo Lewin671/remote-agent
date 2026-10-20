@@ -1,4 +1,5 @@
 import { readSecurityOperation } from "./security-operation";
+import { AuthorityClient } from "./authority-client";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
 import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
@@ -85,25 +86,7 @@ import {
   type ListModelsResponse,
   type Session,
 } from "./gen/remoteagent/v1/local_pb";
-import {
-  AuthService,
-  ClientService,
-  DeviceKind,
-  DeviceRegistrationSchema,
-  ListMachinesResponseSchema,
-  ListRemoteSessionsResponseSchema,
-  NotifyKind,
-  PeerFrameSchema,
-  ServerFrameSchema,
-  TermHelloSchema,
-  type AccountPrefsObject,
-  AccountPrefsObjectSchema,
-  type Device,
-  type Machine as RemoteMachine,
-  type RemoteSession,
-  type SessionCursor,
-  type StoredEvent,
-} from "./gen/remoteagent/v1/relay_pb";
+import { AuthService, ClientService, DeviceKind, DeviceRegistrationSchema, ListMachinesResponseSchema, ListRemoteSessionsResponseSchema, NotifyKind, PeerFrameSchema, ServerFrameSchema, TermHelloSchema, type AccountPrefsObject, AccountPrefsObjectSchema, type Device, type Machine as RemoteMachine, type RemoteSession, type SessionCursor, type StoredEvent } from "./gen/remoteagent/v1/relay_pb";
 import {
   CommandResultSchema,
   CommandSchema,
@@ -451,9 +434,12 @@ export class Remote {
   authorityDeviceId = "";
   /** Set when a state is from the future relative to this device's clock. */
   clockWarning = "";
+  authorityError = "";
 
   private sessionSeeds = new Map<string, Uint8Array<ArrayBuffer>>();
   readonly security: DeviceSecurityClient;
+  readonly authority: AuthorityClient;
+  get isAuthority() { return this.authorityDeviceId === this.account.deviceId; }
   /** Development fixture hooks; the real client never enables these. */
   demoFlag(_name: string): boolean {
     return false;
@@ -700,6 +686,7 @@ export class Remote {
       () => !this.closed,
       securityStorage,
     );
+    this.authority = new AuthorityClient(account, this.security, this.api);
   }
 
   private projectHeader(h: SecurityHeader) {
@@ -1036,6 +1023,7 @@ export class Remote {
     )
       return;
     this.closed = false;
+    this.authority.lifecycle.resume();
     this.begun = true;
     this.trimHistory();
     clearInterval(this.securityTimer);
@@ -1045,10 +1033,24 @@ export class Remote {
     void this.connect();
   }
 
-  private async syncSecurity() {
+  async syncSecurity() {
     if (this.closed) return;
     try {
-      const record = await this.security.sync();
+      let record = await this.security.sync();
+      this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
+      if (typeof navigator !== "undefined" && navigator.locks) {
+        try {
+          await this.authority.renewLeaseIfNeeded();
+          this.authorityError = "";
+        } catch (e) {
+          // An unresolved management operation does not stop history sync or
+          // the connection. Control still checks the verified head lease.
+          this.authorityError = errorText(e);
+        }
+        record = await this.security.verifiedRecord();
+        this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
+      }
+      this.changed();
       if (record.member === false) {
         this.discardToken();
         await this.tokenWrites;
@@ -1089,6 +1091,7 @@ export class Remote {
 
   stop() {
     this.closed = true;
+    this.authority.lifecycle.pause();
     clearInterval(this.securityTimer);
     this.securityTimer = undefined;
     clearTimeout(this.historyTrim);
@@ -1254,7 +1257,21 @@ export class Remote {
     try {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.
-      const record = await this.security.sync();
+      let record = await this.security.sync();
+      this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
+      if (typeof navigator !== "undefined" && navigator.locks) {
+        try {
+          await this.authority.renewLeaseIfNeeded();
+          this.authorityError = "";
+        } catch (e) {
+          // An unresolved management operation does not stop history sync or
+          // the connection. Control still checks the verified head lease.
+          this.authorityError = errorText(e);
+        }
+        record = await this.security.verifiedRecord();
+        this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
+      }
+      this.changed();
       if (record.member === false) {
         this.discardToken();
         await this.tokenWrites;
@@ -3110,6 +3127,7 @@ export class Remote {
       description: m?.description ?? "",
     }));
   }
+
 
   /** Replaces this device's metadata with change(current). If another tab
    * wrote first, the change is made again on what it wrote. */

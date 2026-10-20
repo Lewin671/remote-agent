@@ -1,12 +1,16 @@
 import { IDBFactory } from "fake-indexeddb";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { AuthorityServer } from "./test/authority-server";
-import { AuthoritySetup, authorityStartup } from "./authority-setup";
+import { AuthoritySetup, authorityServices, authorityStartup } from "./authority-setup";
 import { AuthorityLifecycle, readSecurityOperation, isAuthority, operation, claimSecurityOperation } from "./security-operation";
-import { loadAccount } from "./storage";
+import { AuthorityClient } from "./authority-client";
+import { loadAccount, type StoredAccount } from "./storage";
 import * as securityStore from "./device-security-store";
 import * as accountStore from "./storage";
 import { loadSecurity, securitySetupStatus } from "./device-security-store";
+import { DeviceSecurityClient } from "./device-security-client";
+import { signLogin } from "./crypto";
+import { PROTOCOL_VERSION } from "./protocol";
 import { RecoveryCode } from "./recovery";
 
 let built: ReturnType<typeof AuthorityServer.build>;
@@ -38,6 +42,19 @@ async function createAccount(token = "test-setup") {
   await setup.continueCreation(token);
   await setup.confirmCreationCodeSaved();
   return { account: (await loadAccount())!, code: prepared.code! };
+}
+async function clients(account: StoredAccount) {
+  const services = authorityServices(account.server);
+  const { challenge } = await services.auth.getChallenge({ deviceId: account.deviceId });
+  const { token } = await services.auth.login({ deviceId: account.deviceId, challenge, signature: await signLogin(account.devicePrivate, challenge), protocolVersion: PROTOCOL_VERSION });
+  const api = services.client(token);
+  const security = new DeviceSecurityClient(account.deviceId, account.devicePrivate, (afterEpoch, limit) => api.getSecurityStates({ afterEpoch, limit }), () => true, {
+    loadSecurity: () => securityStore.loadSecurity(),
+    installSecurity: (...args) => securityStore.installSecurity(...args),
+    touchSecurity: (...args) => securityStore.touchSecurity(...args),
+  });
+  const authority = new AuthorityClient(account, security, api, lifecycle());
+  return { api, security, authority, token };
 }
 function dropAck(path: string) {
   const fetch = globalThis.fetch;
@@ -75,6 +92,13 @@ it("creates on an open relay with real PoW while retaining its signed registrati
   await createAccount("");
   expect(isAuthority(await loadSecurity())).toBe(true);
   expect((await loadSecurity()).lease).toBeDefined();
+});
+it("keeps lease signing monotonic after a wall-clock rollback and refuses ordinary members", async () => {
+  const { account } = await createAccount(), c = await clients(account);
+  const old = (await loadSecurity()).lease!;
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() - 60000);
+  await c.authority.renewLeaseNow(); clock.mockRestore();
+  expect((await loadSecurity()).lease!.issuedAt).toBeGreaterThanOrEqual(old.issuedAt);
 });
 it.each(["before", "after"] as const)("recovers creation after every durable write and RPC (%s)", async (side) => {
   // Discover the boundaries on the real flow, then crash once at every one.

@@ -45,7 +45,7 @@ async function probe() {
 it("does not open a stale main socket when stopped during login", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
-  vi.spyOn(r.security, "sync").mockResolvedValue({} as never);
+  vi.spyOn(r.security, "sync").mockResolvedValue(await r.security.verifiedRecord());
   let finish!: () => void;
   vi.spyOn(r as any, "login").mockImplementation(
     () =>
