@@ -1,5 +1,7 @@
 import CryptoKit
 import Foundation
+import RAProto
+import Security
 import RACore
 import Testing
 
@@ -101,4 +103,68 @@ import Testing
             try AppModel.Parts().securityReady(vault, wrong)
         }
     }
+    @Test func publicProfileSurvivesPairingReceiptAndUsesUnlockedLocalKeychainProtection() throws {
+        defer { try? vault.clear() }
+        let root = Data(repeating: 31, count: 32)
+        let pub = try Keys.derive(root: root).account.publicKey
+        let signer = try SigningKey(seed: Data(repeating: 1, count: 32))
+        let seed = Data(repeating: 2, count: 32), x = Data(repeating: 12, count: 32)
+        let incoming = try Authority.newMember(signer: SigningKey(seed: seed), xPrivate: x, kind: .client)
+        let a = Authority()
+        let g = try a.genesis(account: deviceId(publicKey: pub), domain: Data(repeating: 50, count: 32),
+            member: Authority.newMember(signer: signer, xPrivate: Data(repeating: 11, count: 32), kind: .client),
+            recoveryEd: signer.publicKey, secret: Data(repeating: 40, count: 32), signer: signer, now: 1000)
+        let secret = Data(repeating: 41, count: 32)
+        let next = try a.pair(parent: g, candidate: incoming, oldSecret: Data(repeating: 40, count: 32), newSecret: secret, signer: signer, now: 1001)
+        let pin = try DeviceSecurity.pin(for: g)
+        let record = try DeviceSecurity.Record(pin: pin, states: [1: g, 2: next], memberID: incoming.id,
+            xPrivate: x, member: true, secret: secret)
+        let account = Account(server: "https://relay.example.com", root: Data(), deviceSeed: seed, deviceId: incoming.id, accountId: pin.account)
+        var registration = PBDeviceRegistration()
+        registration.accountPublicKey = pub; registration.devicePublicKey = incoming.ed; registration.kind = .client
+        var request = PBRegisterDeviceRequest()
+        request.registration = try registration.serializedData()
+        let approval = try makePairApproval(accountID: pin.account, pairingID: "0123456789abcdef0123456789abcdef",
+            signer: signer, candidate: incoming.ed, kind: .client, expires: 300000)
+        request.approval = approval.approval; request.approvalSignature = approval.signature
+        let intent = try RegistrationIntent(account: account, record: record, request: request)
+        try vault.saveRegistrationIntent(intent)
+        try vault.saveRegistrationBootstrap(account, record: record)
+        try vault.clearRegistrationIntent(intent)
+        #expect(try vault.loadRegistrationIntent() == nil)
+        let profile = try #require(try Vault(service: vault.service).accountPublicProfile(pin: pin))
+        #expect(profile.publicKey == pub)
+        let query: [CFString: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: vault.service,
+            kSecAttrAccount: profile.storageKey, kSecAttrSynchronizable: false, kSecReturnAttributes: true]
+        var out: CFTypeRef?
+        #expect(SecItemCopyMatching(query as CFDictionary, &out) == errSecSuccess)
+        let attrs = try #require(out as? [CFString: Any])
+        #expect(attrs[kSecAttrAccessible] as? String == kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
+        #expect((attrs[kSecAttrSynchronizable] as? NSNumber)?.boolValue != true)
+        try vault.clear()
+        #expect(try vault.accountPublicProfile(pin: pin) == nil)
+    }
+
+    @Test func creationAndRecoveryProfilesPersistSeparatelyAndRejectWrongBinding() throws {
+        defer { try? vault.clear() }
+        let root = Data(repeating: 31, count: 32)
+        let pub = try Keys.derive(root: root).account.publicKey
+        let signer = try SigningKey(seed: Data(repeating: 1, count: 32))
+        let g = try Authority().genesis(account: deviceId(publicKey: pub), domain: Data(repeating: 50, count: 32),
+            member: Authority.newMember(signer: signer, xPrivate: Data(repeating: 11, count: 32), kind: .client),
+            recoveryEd: signer.publicKey, secret: Data(repeating: 40, count: 32), signer: signer, now: 1000)
+        let created = try AccountPublicProfile.created(root: root, genesis: g)
+        try vault.saveAccountPublicProfile(created, pin: created.pin)
+        let recovered = try AccountPublicProfile.recovery(publicKey: pub, states: [g], proofs: [nil], genesisPrefix: created.pin.genesis.prefix(10))
+        try vault.saveAccountPublicProfile(recovered, pin: created.pin)
+        #expect(try vault.accountPublicProfile(pin: created.pin) == created)
+        #expect(try vault.read(.account) == nil)
+        #expect(try vault.read(.securityState) == nil)
+        var wrong = created.pin; wrong.domain = Data(repeating: 51, count: 32)
+        #expect(throws: (any Error).self) { try vault.saveAccountPublicProfile(created, pin: wrong) }
+        #expect(throws: (any Error).self) { try vault.accountPublicProfile(pin: wrong) }
+        try vault.writeNamed(created.storageKey, Data([0]))
+        #expect(throws: (any Error).self) { try vault.accountPublicProfile(pin: created.pin) }
+    }
+
 }

@@ -32,3 +32,28 @@ func verifyPairApproval(
           verifyEd25519(publicKey: a.approverPublicKey, message: approvalContext + enrollment.approval, signature: enrollment.signature)
     else { throw PairError("配对批准与这台设备不匹配、已过期或签名无效") }
 }
+
+/// The caller supplies the verified current authority after SAS confirmation.
+/// The returned bytes must be persisted unchanged before delivery/retry.
+public func makePairApproval(
+    accountID: String, pairingID: String, signer: SigningKey, candidate: Data,
+    kind: PBDeviceKind, expires: Int64, replacesDeviceID: String = "", nonce: Data = randomBytes(16)
+) throws -> (approval: Data, signature: Data) {
+    try DeviceSecurity.check(DeviceSecurity.identifier(accountID) && DeviceSecurity.identifier(pairingID)
+        && candidate.count == 32 && signer.publicKey != candidate && nonce.count == 16 && expires > 0
+        && (kind == .client || kind == .machine)
+        && (replacesDeviceID.isEmpty || (kind == .machine && DeviceSecurity.identifier(replacesDeviceID)
+            && replacesDeviceID != deviceId(publicKey: candidate))))
+    var a = PBPairApproval()
+    a.accountID = accountID
+    a.pairingID = pairingID
+    a.approverDeviceID = deviceId(publicKey: signer.publicKey)
+    a.approverPublicKey = signer.publicKey
+    a.candidateDevicePublicKey = candidate
+    a.candidateKind = kind
+    a.expiresMs = expires
+    a.nonce = nonce
+    a.replacesDeviceID = replacesDeviceID
+    let raw = try a.serializedData()
+    return (raw, signer.sign(approvalContext + raw))
+}

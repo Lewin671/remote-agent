@@ -450,6 +450,11 @@ public enum DeviceSecurity {
             w.raw(nonce)
             return w.data
         }
+        public func signed(recoverySeed: Data) throws -> RecoveryStatement {
+            var result = self
+            result.signature = try SigningKey(seed: recoverySeed).sign(signBytes())
+            return result
+        }
         public func bytes() throws -> Data {
             let body = try signBytes()
             try check(signature.count == 64)
@@ -532,9 +537,27 @@ public enum DeviceSecurity {
         try check(key.count == 32, .untrusted)
         return key
     }
-    public static func sealPrevSecret(newSecret: Data, oldSecret: Data) throws -> Data {
-        try check(newSecret.count == 32 && oldSecret.count == 32)
-        let nonce = randomBytes(12)
+    /// Seals exactly one epoch secret to a member with RFC 9180 base-mode HPKE.
+    public static func sealGrant(recipient: Member, core: Core, coreHash: Data, secret: Data) throws -> Grant {
+        try sealGrant(recipient: recipient, core: core, coreHash: coreHash, secret: secret,
+                      key: Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipient.x))
+    }
+    // Generic only so tests can supply a fixed ephemeral-key generator while
+    // exercising the same CryptoKit HPKE sender and the same context encoding.
+    static func sealGrant<K: HPKEDiffieHellmanPublicKey>(
+        recipient: Member, core: Core, coreHash: Data, secret: Data, key: K
+    ) throws -> Grant {
+        try recipient.validate()
+        try check(secret.count == 32 && coreHash == digest("ra3/core\0", coreBytes(core))
+                  && core.member(recipient.id) == recipient)
+        let ctx = grantContext(core, coreHash, recipient.id)
+        var sender = try HPKE.Sender(recipientKey: key, ciphersuite: suite,
+                                     info: Data("ra3/grant-info\0".utf8) + ctx)
+        return Grant(recipient: recipient.id, enc: sender.encapsulatedKey,
+                     cipher: try sender.seal(secret, authenticating: Data("ra3/grant-aad\0".utf8) + ctx))
+    }
+    public static func sealPrevSecret(newSecret: Data, oldSecret: Data, nonce: Data = randomBytes(12)) throws -> Data {
+        try check(newSecret.count == 32 && oldSecret.count == 32 && nonce.count == 12)
         let box = try AES.GCM.seal(
             oldSecret, using: SymmetricKey(data: newSecret), nonce: AES.GCM.Nonce(data: nonce),
             authenticating: Data("ra3/prev-secret\0".utf8))

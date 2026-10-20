@@ -19,6 +19,16 @@ public struct RegistrationIntent: Codable, Sendable, CustomStringConvertible,
       return PairingIdentity.storageKey(server: server, pairingID: approval.pairingID)
     }
   }
+  /// Derived from the existing exact request: no receipt-format change.
+  public var publicProfile: AccountPublicProfile {
+    get throws {
+      let request = try PBRegisterDeviceRequest(serializedBytes: self.request)
+      let registration = try PBDeviceRegistration(serializedBytes: request.registration)
+      let record = try DeviceSecurity.Record.parse(security)
+      try DeviceSecurity.check(record.pin.account == accountID, .untrusted)
+      return try AccountPublicProfile(publicKey: registration.accountPublicKey, pin: record.pin)
+    }
+  }
   public var targetServer: String { server }
   public var description: String { "RegistrationIntent" }
   public var debugDescription: String { description }
@@ -48,6 +58,7 @@ public struct RegistrationIntent: Codable, Sendable, CustomStringConvertible,
     try DeviceSecurity.check(
       record.memberID == deviceID && record.pin.account == accountID
         && deviceId(publicKey: SigningKey(seed: seed).publicKey) == deviceID, .storage)
+    _ = try publicProfile
     try await persist(account, record)
     let res = try await Api(server: server, http: http).auth.registerDevice(
       request: PBRegisterDeviceRequest(serializedBytes: request)

@@ -41,6 +41,8 @@ extension Vault: DeviceSecurity.Storage {
         guard let raw = try readNamed("registration-intent") else { throw DeviceSecurity.Failure.stale }
         let pending = try JSONDecoder().decode(RegistrationIntent.self, from: raw)
         guard try pending.matchesBootstrap(account: account, record: record) else { throw DeviceSecurity.Failure.stale }
+        // The public key remains after the registration receipt is cleared.
+        try saveAccountPublicProfileUnlocked(pending.publicProfile, pin: record.pin)
         let installed = try initializeSecurityUnlocked(record)
         try save(account.stored, notifyKey: DeviceSecurity.NotifyRecord(record: installed).bytes())
     }
@@ -70,5 +72,31 @@ extension Vault: DeviceSecurity.Storage {
         try write(.securityState, next.bytes())
         try refreshNotifyUnlocked(next)
         return next
+    }
+}
+
+
+extension Vault {
+    /// Shared by creation, pairing bootstrap and recovery/context adoption.
+    /// Save before installing an account; a Keychain refusal aborts adoption.
+    func saveAccountPublicProfile(_ profile: AccountPublicProfile, pin: DeviceSecurity.Pin) throws {
+        SecurityVaultLock.lock.lock()
+        defer { SecurityVaultLock.lock.unlock() }
+        try saveAccountPublicProfileUnlocked(profile, pin: pin)
+    }
+    private func saveAccountPublicProfileUnlocked(_ profile: AccountPublicProfile, pin: DeviceSecurity.Pin) throws {
+        guard profile.pin == pin else { throw DeviceSecurity.Failure.untrusted }
+        // Revalidate even if received from a different bootstrap path.
+        let checked = try AccountPublicProfile(publicKey: profile.publicKey, pin: pin)
+        try savePairingIdentity(checked.storageKey, checked.bytes())
+    }
+    func accountPublicProfile(pin: DeviceSecurity.Pin) throws -> AccountPublicProfile? {
+        SecurityVaultLock.lock.lock()
+        defer { SecurityVaultLock.lock.unlock() }
+        let key = "account-public-" + pin.account + "-" + pin.genesis.hex
+        guard let raw = try readNamed(key) else { return nil }
+        let profile = try AccountPublicProfile.parse(raw)
+        guard profile.pin == pin else { throw DeviceSecurity.Failure.untrusted }
+        return profile
     }
 }

@@ -7,6 +7,16 @@ extension DeviceSecurity {
     public var issuedAt: UInt64
     public var notAfter: UInt64
     public var signature: Data
+    public static func sign(_ state: State, signer: SigningKey, now: Int64, floor: UInt64 = 0) throws -> HeadLease {
+      try check(state.core.member(state.core.authorityID)?.kind == Kind.client.rawValue
+                && state.core.authorityID == deviceId(publicKey: signer.publicKey), .untrusted)
+      let issued = max(UInt64(max(now, 0)), state.core.issuedAt, floor)
+      try check(issued <= UInt64.max - lease)
+      var result = HeadLease(domain: state.core.domain, head: try stateHash(state),
+                             issuedAt: issued, notAfter: issued + lease, signature: Data())
+      result.signature = signer.sign(try result.signBytes())
+      return result
+    }
     public func signBytes() throws -> Data {
       try nonzero(domain)
       try nonzero(head)
