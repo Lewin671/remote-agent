@@ -236,6 +236,7 @@ class RemoteTest {
                 "an offline hint cannot settle an earlier execution: $error",
                 error is CommandException && error.unknown,
             )
+            assertEquals("不确定电脑有没有执行：连接中途断了", error?.message)
             attempt.settle(error)
             assertSame(original, attempt.next { r.prepare(daemon.id, "s1", cmd) })
             daemon.connect()

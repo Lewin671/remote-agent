@@ -120,9 +120,9 @@ extension Remote {
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
         var mayHaveRun = retryOfUnknown
-        func notSent(_ code: String, _ text: String, _ later: String) -> CommandError {
+        func notSent(_ code: String, _ text: String) -> CommandError {
             mayHaveRun
-                ? CommandError(CommandError.unknownOutcome, unknownOutcomePrefix + "请求可能已经送到，之后\(later)")
+                ? CommandError(CommandError.unknownOutcome, unknownOutcomePrefix + "连接中途断了")
                 : CommandError(code, text)
         }
         var req = PBForwardRequest()
@@ -164,7 +164,7 @@ extension Remote {
                 }
                 return msg
             } catch let ce as ConnectError {
-                if neverSent(ce.exception) { throw notSent("network", "网络不通，指令没有发出", "网络断了") }
+                if neverSent(ce.exception) { throw notSent("network", "网络不通，指令没有发出") }
                 if ce.code == .unauthenticated && attempt < 3 {
                     attempt += 1
                     token = try await relogin(mayHaveRun)
@@ -181,7 +181,7 @@ extension Remote {
                     continue
                 }
                 if ce.code == .unavailable && ce.exception == nil {
-                    throw notSent(CommandError.unavailable, "电脑不在线，指令没有发出", "电脑离线了")
+                    throw notSent(CommandError.unavailable, "电脑不在线，指令没有发出")
                 }
                 if unknown || ce.code == .unavailable {
                     throw CommandError(CommandError.unknownOutcome, unknownOutcomePrefix + errorText(ce))

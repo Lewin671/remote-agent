@@ -484,7 +484,7 @@ enum SessionSamples {
             out("f1", "修掉它", .sent), out("f2", "然后重新跑 CI", .sent), out("f3", "跑完告诉我", .sent),
             out("s1", "这条还在路上", .sending),
             out("s2", "这条没送到电脑", .failed, error: "电脑不在线，指令没有发出"),
-            out("s3", "这条不确定送没送到", .unknown, error: "不确定电脑有没有执行：请求可能已经送到，之后网络断了"),
+            out("s3", "这条不确定送没送到", .unknown, error: "不确定电脑有没有执行：连接中途断了"),
         ])
         store.debugShow("sample-ended", [out("u1", "再把采样率调到 100%", .sent)])
         store.rememberPrompt("sample-start", "给这个仓库加一个 Makefile，包含 build、test 和 lint 三个目标")

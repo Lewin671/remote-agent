@@ -84,6 +84,7 @@ it("reports a command unknown when a retry finds the machine gone", async () => 
     const e = await result;
     expect(e).toBeInstanceOf(CommandError);
     expect((e as CommandError).code).toBe("unknown");
+    expect((e as CommandError).message).toBe("连接中途断了");
     expect(replies).toHaveLength(0);
   } finally {
     globalThis.setTimeout = clockTimeout;

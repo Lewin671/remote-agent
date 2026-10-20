@@ -2477,7 +2477,7 @@ export class Remote {
         }
         if (ce.code === Code.Unavailable)
           throw mayHaveRun
-            ? new CommandError("unknown", "电脑断开了，不确定指令是否已经执行")
+            ? new CommandError("unknown", "连接中途断了")
             : new CommandError("unavailable", "电脑不在线，指令没有发出");
         if (unknown) throw new CommandError("unknown", "连接超时");
         if (mayHaveRun)

@@ -152,7 +152,7 @@ extension Ref<LiveAnnouncer> {
         // May not have gone: orange, with what could be done before.
         #expect(note(.unknown) == OutgoingNote(caption: "可能没发出去：原因", tone: .warn, failed: true, actions: [.retry, .remove]))
         // The error's own 「不确定电脑有没有执行」 is said by 「可能没发出去」 already.
-        #expect(note(.unknown, error: "不确定电脑有没有执行：请求可能已经送到，之后网络断了").caption == "可能没发出去：请求可能已经送到，之后网络断了")
+        #expect(note(.unknown, error: "不确定电脑有没有执行：连接中途断了").caption == "可能没发出去：连接中途断了")
         #expect(note(.sent, .needsTerminal, failure: "write_failed") == OutgoingNote(
             caption: "可能没发出去：写入终端失败", tone: .warn, failed: true, actions: [.terminal, .putBack]))
         #expect(note(.sent, .unconfirmed) == OutgoingNote(

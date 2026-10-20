@@ -3014,9 +3014,9 @@ class Remote(
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
         var mayHaveRun = retryOfUnknown
-        fun notSent(code: String, text: String, later: String) =
+        fun notSent(code: String, text: String) =
             if (mayHaveRun)
-                CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后$later")
+                CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：连接中途断了")
             else CommandException(code, text)
         var waiting = false
         // A previous try may have got the command to the daemon: a later
@@ -3073,7 +3073,7 @@ class Remote(
                     if (
                         cause is java.net.UnknownHostException || cause is java.net.ConnectException
                     ) {
-                        throw notSent("network", "网络不通，指令没有发出", "网络断了")
+                        throw notSent("network", "网络不通，指令没有发出")
                     }
                     if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
                         attempt++
@@ -3104,7 +3104,8 @@ class Remote(
                     if (unknown || ce.code == Code.UNAVAILABLE) {
                         throw CommandException(
                             CommandException.UNKNOWN,
-                            "不确定电脑有没有执行：${errorText(ce)}",
+                            if (ce.code == Code.UNAVAILABLE) "不确定电脑有没有执行：连接中途断了"
+                            else "不确定电脑有没有执行：${errorText(ce)}",
                         )
                     }
                     throw CommandException(CommandException.UNKNOWN, "中继未提供可验证的执行结果，请重试同一请求")
@@ -3116,7 +3117,7 @@ class Remote(
             throw e
         } catch (e: Exception) {
             // Only an authenticated daemon answer settles a dispatched request.
-            if (e is CommandException && e.fromDaemon) throw e
+            if (e is CommandException && (e.fromDaemon || e.unknown)) throw e
             if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, "未收到可验证的执行结果，请重试同一请求")
             throw e
         }

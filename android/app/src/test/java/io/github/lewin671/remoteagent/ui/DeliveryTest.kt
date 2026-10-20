@@ -40,6 +40,7 @@ class DeliveryTest {
         val definite = Outgoing("d", "hello")
         definite.deliver { throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出") }
         assertEquals(SendFeedback("没发出去：电脑不在线", false), deliveryFailure(definite.error, definite.state == Outgoing.State.UNKNOWN))
+        assertEquals("可能没发出去：连接中途断了", deliveryFailure("不确定电脑有没有执行：连接中途断了", true).text)
         assertEquals("可能没发出去：回复验证失败", deliveryFailure("电脑的回复打不开，不确定指令有没有执行", true).text)
     }
 }

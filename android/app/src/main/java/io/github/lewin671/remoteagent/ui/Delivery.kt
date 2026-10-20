@@ -13,6 +13,7 @@ internal fun deliveryFailure(reason: String, uncertain: Boolean): SendFeedback =
 
 private fun shortSendReason(reason: String): String = when {
     reason.contains("回复打不开") || reason.contains("可验证的执行结果") -> "回复验证失败"
+    reason.contains("连接中途断了") -> "连接中途断了"
     reason.contains("不确定电脑有没有执行") || reason.contains("停止等待回复") -> "结果未知"
     reason.contains("图片不在电脑上") -> "图片不在电脑上"
     reason.contains("电脑不在线") -> "电脑不在线"
