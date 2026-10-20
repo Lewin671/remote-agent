@@ -381,8 +381,12 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                     Btn(
                         "我已离线保存新恢复码",
                         {
-                            app.vault.confirmRecoveryCodeSaved()
-                            codeSaved = true
+                            try {
+                                app.vault.confirmRecoveryCodeSaved()
+                                codeSaved = true
+                            } catch (e: Exception) {
+                                error = errorText(e)
+                            }
                         },
                         Modifier.fillMaxWidth().padding(top = 8.dp),
                         BtnKind.SECONDARY,
@@ -793,6 +797,17 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
 @Composable
 fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
     val remote = LocalRemote.current
+    val state by remote.state.collectAsState()
+    RotateRecoveryContent(state, remote::prepareRecovery, remote::publishRecovery, onBack)
+}
+
+@Composable
+internal fun RotateRecoveryContent(
+    state: io.github.lewin671.remoteagent.core.RemoteState,
+    prepareCode: suspend () -> PreparedRecovery,
+    publishCode: suspend (PreparedRecovery) -> Unit,
+    onBack: () -> Unit,
+) {
     val p = pal
     val scope = rememberAuthorityScope()
     var prepared by remember { mutableStateOf<PreparedRecovery?>(null) }
@@ -822,9 +837,9 @@ fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
                         error = ""
                         scope.launch {
                             try {
-                                prepared = remote.prepareRecovery()
+                                prepared = prepareCode()
                             } catch (e: Exception) {
-                                error = errorText(e, remote.state.value)
+                                error = errorText(e, state)
                             } finally {
                                 busy = false
                             }
@@ -848,10 +863,10 @@ fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
                         error = ""
                         scope.launch {
                             try {
-                                remote.publishRecovery(pv)
+                                publishCode(pv)
                                 onBack()
                             } catch (e: Exception) {
-                                error = errorText(e, remote.state.value)
+                                error = errorText(e, state)
                             } finally {
                                 busy = false
                             }

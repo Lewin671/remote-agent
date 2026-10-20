@@ -99,6 +99,11 @@ class ArchiveDeletionTest {
         ui.onNodeWithText("删除这台电脑的记录").performScrollTo().assertIsDisplayed()
         ui.runOnIdle { remote.showForTest(archive.copy(isAuthority = false)) }
         ui.onNodeWithText("删除这台电脑的记录").assertDoesNotExist()
+        ui.onNodeWithText("让这台电脑重新加入并接续会话").assertDoesNotExist()
+        ui.onNodeWithText("档案重接和删除记录，请在管理端（客户端）上操作。").assertExists()
+        ui.runOnIdle { remote.showForTest(current.copy(isAuthority = false)) }
+        ui.onNodeWithText("移除这台机器").assertDoesNotExist()
+        ui.onNodeWithText("请在管理端（客户端）上移除设备。").assertExists()
         ui.runOnIdle { remote.showForTest(current) }
         ui.onNodeWithText("删除这台电脑的记录").assertDoesNotExist()
     }

@@ -141,7 +141,6 @@ fun SettingsScreen() {
     val push by Push.status.collectAsState()
     val p = pal
     val scope = rememberCoroutineScope()
-    var logout by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
     var updating by remember { mutableStateOf(false) }
     val update by Updater.state.collectAsState()
@@ -376,7 +375,13 @@ fun SettingsScreen() {
                                 )
                         },
                         { GRow("开源许可", onClick = { licenses = true }, chevron = true) },
-                        { GRow("退出并删除本机密钥", onClick = { logout = true }, danger = true) },
+                        {
+                            AccountExitAction(
+                                state,
+                                readPending = { withContext(Dispatchers.IO) { app.vault.readSecurityOperation() != null } },
+                                exit = { app.logout() },
+                            )
+                        },
                     ),
             )
             Spacer(Modifier.height(24.dp))
@@ -384,16 +389,6 @@ fun SettingsScreen() {
     }
     if (checking) ConnCheckSheet(state) { checking = false }
     if (updating) UpdateSheet { updating = false }
-    if (logout)
-        Confirm(
-            "退出并删除本机密钥？",
-            "这台设备会退出账户，重新使用时需要配对加入。电脑上的会话继续运行，其他设备不受影响。",
-            "退出",
-            danger = true,
-            onDismiss = { logout = false },
-        ) {
-            scope.launch { app.logout() }
-        }
 }
 
 /**
@@ -826,9 +821,11 @@ fun DeviceScreen(id: String) {
                 )
             }
             DeleteMachineRecordsAction(id, state.isAuthority)
+            if (!member && !state.isAuthority)
+                Hint("档案重接和删除记录，请在管理端（${state.authorityName}）上操作。", Modifier.padding(horizontal = 16.dp))
             if (member) {
                 if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用")
-                else
+                else if (state.isAuthority)
                     Group(
                         rows =
                             listOf {

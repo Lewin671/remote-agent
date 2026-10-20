@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.clientName
 import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.proto.DeviceKind
@@ -15,6 +16,16 @@ import kotlinx.coroutines.launch
 fun HandoffPreparation() {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
+    HandoffPreparationContent(state, remote.account.deviceId, remote::prepareHandoffCode, remote::offerHandoff)
+}
+
+@Composable
+internal fun HandoffPreparationContent(
+    state: RemoteState,
+    self: String,
+    prepareCode: () -> Pair<String, ByteArray>,
+    publishOffer: suspend (ByteArray) -> Unit,
+) {
     val scope = rememberAuthorityScope()
     var prepared by remember { mutableStateOf<Pair<String, ByteArray>?>(null) }
     var error by remember { mutableStateOf("") }
@@ -22,7 +33,7 @@ fun HandoffPreparation() {
     PageScaffold("接管管理权") {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
-                "先在当前管理端批准本机加入。保存下面的新恢复码后，再请当前管理端在“恢复与交接”里批准交接。当前管理端会退出账户，不需要等待 48 小时。",
+                "先在当前管理端（${state.authorityName}）批准本机加入。保存下面的新恢复码后，再请当前管理端在“恢复与交接”里批准交接。当前管理端会退出账户，不需要等待 48 小时。",
                 style = T.sm,
                 color = pal.muted,
             )
@@ -33,12 +44,13 @@ fun HandoffPreparation() {
                     "我已离线保存，通知当前管理端",
                     {
                         busy = true
+                        error = ""
                         scope.launch {
                             try {
-                                remote.offerHandoff(value.second)
+                                publishOffer(value.second)
                                 prepared = null
                             } catch (e: Exception) {
-                                error = errorText(e, remote.state.value)
+                                error = errorText(e, state)
                             } finally {
                                 busy = false
                             }
@@ -50,12 +62,19 @@ fun HandoffPreparation() {
                 )
             } else {
                 val offered =
-                    state.devices[remote.account.deviceId]?.meta?.handoffRecoveryEd?.size() == 32
+                    state.devices[self]?.meta?.handoffRecoveryEd?.size() == 32
                 if (offered)
                     Hint("恢复码已确认保存。等待当前管理端批准；可以关闭后重新打开此页查看。", Modifier.padding(vertical = 12.dp))
                 Btn(
                     if (offered) "重新生成恢复码" else "生成新的恢复码",
-                    { prepared = remote.prepareHandoffCode() },
+                    {
+                        error = ""
+                        try {
+                            prepared = prepareCode()
+                        } catch (e: Exception) {
+                            error = errorText(e, state)
+                        }
+                    },
                     Modifier.fillMaxWidth().padding(top = 12.dp),
                     BtnKind.SECONDARY,
                     enabled = !busy,
