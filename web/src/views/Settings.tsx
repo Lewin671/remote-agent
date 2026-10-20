@@ -385,9 +385,11 @@ export function RemovedScreen({ remote }: { remote: Remote }) {
   return (
     <div className="center">
       <div className="gone">
-        <div className="et">暂时无法登录中继</div>
+        <div className="et">{remote.removalVerified ? "本机已被移出账户" : "暂时无法登录中继"}</div>
         <p className="muted small">
-          尚未获得可信的设备撤销回执。可能是连接、凭据或中继数据发生变化；电脑上的会话不受影响。
+          {remote.removalVerified
+            ? "已通过账户签名状态核实本机被移除。电脑上的会话不受影响；重新加入需要管理端提供配对码。"
+            : "尚未获得可信的设备撤销回执。可能是连接、凭据或中继数据发生变化；电脑上的会话不受影响。"}
         </p>
         <button
           className="btn pri"
@@ -399,7 +401,7 @@ export function RemovedScreen({ remote }: { remote: Remote }) {
           会先删除这个浏览器里的账户密钥，再用配对码加入。
         </p>
         <button className="link mid" onClick={async () => {
-          try { await remote.authority.resumeSecurityOperation(); setResult(await remote.authority.pending() ? "原操作尚未完成，请继续核实。" : "原安全操作已核实完成，可以重新加入账户。"); }
+          try { await remote.resumeSecurityOperation(); setResult(await remote.authority.pending() ? "原操作尚未完成，请继续核实。" : "原安全操作已核实完成，可以重新加入账户。"); }
           catch (e) { setResult(errorText(e)); }
         }}>核实并继续安全操作</button>
         {result && <Banner>{result}</Banner>}

@@ -199,6 +199,21 @@ it("initiates real pairing and retains delivery until candidate registration/rec
   await c.authority.handoffAuthority(candidateId, candidates);
   const retired = await loadSecurity();
   expect(retired.member).toBe(false); expect(retired.states.at(-1)!.prevSecret.length).toBeGreaterThan(0);
+  // The stream/login can stop as soon as the handoff revokes the old token.
+  // Reconcile the exact installed handoff in the foreground without logging
+  // that device in again or accepting a denial as proof of removal.
+  const retiredRemote = new OfferRemote(account);
+  retiredRemote.stop();
+  const login = vi.spyOn(globalThis, "fetch");
+  await retiredRemote.resumeSecurityOperation();
+  expect(retiredRemote.removalVerified).toBe(true);
+  expect(retiredRemote.removed).toBe(true);
+  expect(login).not.toHaveBeenCalled();
+  await expect(retiredRemote.authority.lifecycle.run(async () => {})).rejects.toThrow("页面已暂停");
+  vi.stubGlobal("document", { visibilityState: "hidden" });
+  await expect(retiredRemote.resumeSecurityOperation()).rejects.toThrow("页面已暂停");
+  vi.stubGlobal("document", { visibilityState: "visible" });
+  login.mockRestore();
   vi.stubGlobal("indexedDB", incomingDB);
   await target.security.sync();
   await target.authority.renewLeaseIfNeeded();

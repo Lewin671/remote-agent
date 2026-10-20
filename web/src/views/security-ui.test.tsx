@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
-import { Settings, DevicesPage } from "./Settings";
+import { Settings, DevicesPage, RemovedScreen } from "./Settings";
 import {
   DeviceActions,
   LeaveAlert,
@@ -35,6 +35,21 @@ function demo(q: string) {
   r.start();
   return r;
 }
+
+it("distinguishes verified removal from a refused login and uses stopped-transport reconciliation", async () => {
+  const r = demo("role=member");
+  const resume = vi.spyOn(r, "resumeSecurityOperation").mockResolvedValue();
+  vi.spyOn(r.authority, "pending").mockResolvedValue(undefined);
+  await mount(<RemovedScreen remote={r} />);
+  expect(host.textContent).toContain("尚未获得可信的设备撤销回执");
+  r.removalVerified = true;
+  await act(async () => root.render(<RemovedScreen remote={r} />));
+  expect(host.textContent).toContain("已通过账户签名状态核实本机被移除");
+  expect(host.textContent).not.toContain("尚未获得可信的设备撤销回执");
+  await click("核实并继续安全操作");
+  expect(resume).toHaveBeenCalledOnce();
+  expect(host.textContent).toContain("原安全操作已核实完成");
+});
 it.each(["authority", "member", "machine"])(
   "shows management entries by verified role: %s",
   async (role) => {

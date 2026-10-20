@@ -480,6 +480,7 @@ export class Remote {
   /** The server no longer knows this device: removed from the account,
    * or the server's data is gone. Nothing connects until it joins again. */
   removed = false;
+  removalVerified = false;
   failures = 0;
   connError = "";
   // The browser's word on whether this device has a network at all; it
@@ -656,6 +657,7 @@ export class Remote {
   private ws?: WebSocket;
   private retry = 1000;
   private closed = false;
+  private reconcilingSecurity = 0;
   private generation = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
   private securityTimer?: ReturnType<typeof setInterval>;
@@ -710,7 +712,7 @@ export class Remote {
           recoveryReadyMs: reply.recoveryReadyMs,
         };
       },
-      () => !this.closed,
+      () => !this.closed || this.reconcilingSecurity > 0,
       securityStorage,
     );
     const pairing = createClient(PairingService, createConnectTransport({
@@ -728,7 +730,39 @@ export class Remote {
       d.meta?.handoffRecoveryEd.length === 32 ? [{ id: d.id, recoveryEd: new Uint8Array(d.meta.handoffRecoveryEd) }] : []));
   }
   async handoffAuthority(incoming: string) {
-    await this.authority.handoffAuthority(incoming, await this.handoffCandidates());
+    try {
+      await this.authority.handoffAuthority(incoming, await this.handoffCandidates());
+    } finally {
+      await this.checkLocalRemoval();
+    }
+  }
+  private async checkLocalRemoval() {
+    // A refused login alone proves nothing. Only the pinned, verified chain
+    // can distinguish removal from a server that lost its credentials.
+    this.reconcilingSecurity++;
+    try {
+      if (!(await this.security.verifiedRecord()).member) {
+        this.removalVerified = true;
+        this.removed = true;
+        this.stop();
+      }
+    } catch { /* Keep the unverified notice and all completion material. */ }
+    finally { this.reconcilingSecurity--; }
+  }
+  async resumeSecurityOperation() {
+    // A handoff may stop the transport before its outcome is reconciled.
+    // Explicit foreground reconciliation must still use the original lock,
+    // request and visibility checks, without restarting that transport.
+    const stopped = this.closed;
+    if (stopped) this.authority.lifecycle.resume();
+    this.reconcilingSecurity++;
+    try {
+      await this.authority.resumeSecurityOperation();
+      await this.checkLocalRemoval();
+    } finally {
+      this.reconcilingSecurity--;
+      if (stopped || this.closed) this.authority.lifecycle.pause();
+    }
   }
   async removeDevice(id: string) { await this.authority.removeDevice(id); await this.loadDevices(false); }
   async deleteMachineRecords(id: string) { await this.authority.deleteMachineRecords(id); await this.refresh(); }
@@ -1100,6 +1134,7 @@ export class Remote {
       }
       this.changed();
       if (record.member === false) {
+        this.removalVerified = true;
         this.discardToken();
         await this.tokenWrites;
         this.removed = true;
@@ -1272,6 +1307,7 @@ export class Remote {
         await this.tokenWrites;
         this.removed = true;
         this.stop();
+        await this.checkLocalRemoval();
         throw e;
       }
     }
@@ -1323,6 +1359,7 @@ export class Remote {
       }
       this.changed();
       if (record.member === false) {
+        this.removalVerified = true;
         this.discardToken();
         await this.tokenWrites;
         this.removed = true;
