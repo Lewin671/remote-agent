@@ -357,6 +357,8 @@ import Testing
         let models = PBListModelsResponse.with { $0.models = [.with { $0.slug = "gpt-6-astra"; $0.displayName = "GPT-6-Astra"; $0.defaultEffort = "medium" }] }
         let text = projectSummary(RemoteState(), NewConfig(machineId: "mac", cwd: "/work/app", model: "gpt-6-astra", mode: .ask), models: models)
         #expect(text.hasSuffix("询问 · GPT-6-Astra"), "\(text)")
+        // A machine that could not read its CLI's mode: the start follows the CLI's own settings.
+        #expect(projectSummary(RemoteState(), NewConfig(machineId: "mac", cwd: "/work/app", model: "gpt-6-astra"), models: models) == "Codex · 跟随 CLI 设置 · GPT-6-Astra")
     }
 
     @Test func summaryNamesTheMachineOnlyAmongSeveralAndCutsALongName() {
@@ -396,6 +398,9 @@ import Testing
         // The daemon could not read it: it could be full access.
         let old = machine(.with { $0.agent = .codex })
         #expect(launchMode(chosen: nil, default: defaultModeOf(old, agent: .codex)) == .send(.unspecified))
+        // Said as what the start does, never as something that failed to be read.
+        #expect(modeLabel(chosen: nil, default: defaultModeOf(old, agent: .codex), agent: .codex) == "跟随 CLI 设置")
+        #expect(effectiveModeText(chosen: nil, default: defaultModeOf(old, agent: .codex)) == "跟随 CLI 设置")
         // A mode outside the four (accept edits) is known and not full access.
         let edits = machine(info(.claude, .unspecified, .cliConfig))
         #expect(launchMode(chosen: nil, default: defaultModeOf(edits, agent: .claude)) == .send(.unspecified))

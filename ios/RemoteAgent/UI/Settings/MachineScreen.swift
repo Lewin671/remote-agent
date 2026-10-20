@@ -314,9 +314,11 @@ struct MachineScreen: View {
                         desc: mode.map {
                             modeHelp($0).replacingOccurrences(of: "CLI", with: agentName(agent))
                         }
-                            ?? "不指定时实际用："
-                            + modeLabel(chosen: nil, default: effective, agent: agent)
-                            .removingPrefix("默认："),
+                            ?? (effective.known
+                                ? "不指定时实际用："
+                                    + modeLabel(chosen: nil, default: effective, agent: agent)
+                                    .removingPrefix("默认：")
+                                : unknownModeText),
                         checked: mode == current
                             || (mode == nil && !defaultModeChoices.contains(current)),
                         last: i == defaultModeChoices.count - 1

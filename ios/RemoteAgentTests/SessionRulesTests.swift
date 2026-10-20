@@ -198,7 +198,9 @@ extension Ref<LiveAnnouncer> {
         #expect(sessionSubtitle(status: .exited, mode: full).text == "已结束")
         #expect(sessionSubtitle(status: .starting, mode: nil).text == "启动中")
         #expect(sessionSubtitle(status: .starting, mode: ask).text == "启动中 · 询问")
-        #expect(sessionSubtitle(status: .idle, mode: nil).text == "空闲 · 审批：CLI 配置（未读到）")
+        // A mode that could not be read is not written at all.
+        #expect(sessionSubtitle(status: .idle, mode: nil) == SessionSubtitle(status: "空闲", mode: "", danger: false))
+        #expect(sessionSubtitle(status: .running, mode: nil).text == "运行中")
         #expect(sessionSubtitle(status: .idle, mode: ModeLabel(text: "acceptEdits", mode: nil)).text == "空闲 · acceptEdits")
         #expect(sessionSubtitle(status: .unlinked, mode: ask).text == "未连接 · 询问")
     }

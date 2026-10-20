@@ -259,13 +259,16 @@ public func defaultModeOf(_ m: MachineView?, agent: PBAgent) -> DefaultMode {
     return DefaultMode(mode: known ? info.flatMap { modeOf($0.defaultMode) } : nil, known: known, varies: info?.defaultModeVaries == true)
 }
 
+/// A mode the machine could not read: the start leaves it to the CLI's own settings.
+public let unknownModeText = "跟随 CLI 设置"
+
 /// The mode a start uses: chosen, or the CLI's effective default on that machine.
 public func modeLabel(chosen: Mode?, default d: DefaultMode, agent: PBAgent) -> String {
     let text: String
     if let chosen {
         text = chosen.text
     } else if !d.known {
-        text = "CLI 配置（未读到）"
+        text = unknownModeText
     } else if let m = d.mode {
         text = "默认：\(m.text)"
     } else {
@@ -363,7 +366,7 @@ public func projectSummary(_ state: RemoteState, _ c: NewConfig, models: PBListM
 
 public func effectiveModeText(chosen: Mode?, default d: DefaultMode) -> String {
     if let chosen { return chosen.text }
-    if !d.known { return "审批：CLI 配置（未读到）" }
+    if !d.known { return unknownModeText }
     return d.mode?.text ?? "CLI 自己的模式"
 }
 

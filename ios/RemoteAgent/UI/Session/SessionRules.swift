@@ -167,8 +167,8 @@ let slashWarningText = "以 / 开头的内容会作为普通消息发给模型�
 
 /// The second line of a session's navigation bar: its state, then its
 /// approval mode, which alone is red when it is full access. A session
-/// that ended only says so, and a CLI that is still starting has not
-/// reported a mode yet.
+/// that ended only says so, and a mode that is not known (a CLI still
+/// starting, or one whose mode could not be read) is left out.
 struct SessionSubtitle: Equatable, Sendable {
     var status: String
     /// "" when no mode is written.
@@ -179,10 +179,10 @@ struct SessionSubtitle: Equatable, Sendable {
 }
 
 func sessionSubtitle(status: Status, mode: ModeLabel?) -> SessionSubtitle {
-    if status == .exited || (status == .starting && mode == nil) {
+    guard status != .exited, let mode else {
         return SessionSubtitle(status: status.text, mode: "", danger: false)
     }
-    return SessionSubtitle(status: status.text, mode: mode?.text ?? "审批：CLI 配置（未读到）", danger: mode?.mode == .full)
+    return SessionSubtitle(status: status.text, mode: mode.text, danger: mode.mode == .full)
 }
 
 // MARK: The view
