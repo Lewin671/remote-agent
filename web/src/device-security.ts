@@ -1,6 +1,4 @@
-// Protocol-10 device security. The web client is an ordinary member: it
-// verifies the phone-signed membership chain from the pinned genesis, seals
-// and opens envelopes with its own device keys, and never acts as authority.
+// Protocol-10 device security. Authority is a Client role, independent of platform.
 import {
   Aes256Gcm,
   CipherSuite,
@@ -299,7 +297,7 @@ export async function stateHash(s: SecurityState): Promise<B> {
   const g = grantBytes(s);
   return hash("ra3/state\0", ch, g, new Writer().lp(s.prevSecret).bytes());
 }
-async function stateSignBytes(s: SecurityState): Promise<B> {
+export async function stateSignBytes(s: SecurityState): Promise<B> {
   const c = s.core;
   return new Writer()
     .raw(utf8("ra3/state-sig\0"))
@@ -398,7 +396,7 @@ export interface RecoveryStatement {
   nonce: B;
   signature: B;
 }
-async function recoverySignBytes(r: RecoveryStatement): Promise<B> {
+export async function recoverySignBytes(r: RecoveryStatement): Promise<B> {
   const m = r.newMember;
   requireOK(
     id(r.account) &&
@@ -413,7 +411,8 @@ async function recoverySignBytes(r: RecoveryStatement): Promise<B> {
   );
   validateMember(m);
   requireOK(m.id === (await deviceID(m.ed)));
-  requireOK(!equal(r.domain, ZERO) && !equal(r.parent, ZERO));
+  nonzero(r.domain);
+  nonzero(r.parent);
   requireOK(!equal(r.stateHash, ZERO) && !equal(r.nonce, ZERO));
   return new Writer()
     .raw(utf8("ra3/recovery\0"))
@@ -644,6 +643,55 @@ export async function newSecurityKey(): Promise<CryptoKeyPair> {
   return crypto.subtle.generateKey({ name: "X25519" }, false, [
     "deriveBits",
   ]) as Promise<CryptoKeyPair>;
+}
+/** Optional randomness is for reproducible cross-language tests only. */
+export async function sealGrant(
+  recipient: Member,
+  c: Core,
+  ch: B,
+  secret: B,
+  ekm?: B,
+): Promise<Grant> {
+  validateMember(recipient);
+  hash32(ch);
+  requireOK(secret.length === 32);
+  const hpke = suite();
+  const publicKey = await hpke.kem.importKey("raw", new Uint8Array(recipient.x).buffer, true);
+  const ctx = grantContext(c, ch, recipient.id);
+  const sender = await hpke.createSenderContext({
+    recipientPublicKey: publicKey,
+    info: concat(utf8("ra3/grant-info\0"), ctx),
+    ...(ekm ? { ekm } : {}),
+  });
+  return {
+    recipient: recipient.id,
+    enc: new Uint8Array(sender.enc),
+    cipher: new Uint8Array(await sender.seal(secret, concat(utf8("ra3/grant-aad\0"), ctx))),
+  };
+}
+
+export async function sealPrevSecret(
+  newSecret: B,
+  oldSecret: B,
+  nonce = crypto.getRandomValues(new Uint8Array(12)),
+): Promise<B> {
+  requireOK(newSecret.length === 32 && oldSecret.length === 32 && nonce.length === 12);
+  const key = await crypto.subtle.importKey("raw", newSecret, "AES-GCM", false, ["encrypt"]);
+  const cipher = new Uint8Array(await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: nonce, additionalData: utf8("ra3/prev-secret\0") },
+    key,
+    oldSecret,
+  ));
+  return concat(nonce, cipher);
+}
+
+/** The recovery seed stays in memory; callers must never persist it. */
+export async function signRecoveryStatement(r: RecoveryStatement, seed: B): Promise<RecoveryStatement> {
+  requireOK(seed.length === 32);
+  const key = await crypto.subtle.importKey("pkcs8", concat(
+    new Uint8Array([0x30,0x2e,0x02,0x01,0x00,0x30,0x05,0x06,0x03,0x2b,0x65,0x70,0x04,0x22,0x04,0x20]), seed,
+  ), "Ed25519", false, ["sign"]);
+  return { ...r, signature: await sign(key, await recoverySignBytes(r)) };
 }
 function grantContext(c: Core, ch: B, recipient: string): B {
   return new Writer()
@@ -1253,6 +1301,25 @@ export async function verifyLease(
   requireOK(m?.kind === 2, "untrusted");
   await verify(m.ed, l.signature, leaseSignBytes(l));
 }
+export async function signLease(
+  head: SecurityState,
+  signer: CryptoKey,
+  now: bigint,
+  floor = 0n,
+): Promise<LeaseCertificate> {
+  const issuedAt = [0n, now, head.core.issuedAt, floor].reduce((a, b) => a > b ? a : b);
+  const lease: LeaseCertificate = {
+    domain: head.core.domain,
+    head: await stateHash(head),
+    issuedAt,
+    notAfter: issuedAt + BigInt(LEASE),
+    signature: new Uint8Array(),
+  };
+  lease.signature = await sign(signer, leaseSignBytes(lease));
+  await verifyLease(lease, head);
+  return lease;
+}
+export const HeadLease = { sign: signLease };
 export async function validLease(
   l: LeaseCertificate | undefined,
   head: SecurityState,

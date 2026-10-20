@@ -137,6 +137,7 @@ import { PROTOCOL_VERSION } from "./protocol";
 import {
   loadAccount,
   saveAccount,
+  saveAccountPublicProfile,
   loadRegistration,
   saveRegistration,
   clearRegistration,
@@ -3661,6 +3662,12 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
 export async function resumeRegistration(): Promise<void> {
   const pending = await loadRegistration();
   if (!pending) return;
+  const request = fromBinary(RegisterDeviceRequestSchema, pending.request);
+  if (pending.security) {
+    const registration = fromBinary(DeviceRegistrationSchema, request.registration);
+    await saveAccountPublicProfile(pending.account.server, pending.security.pin,
+      new Uint8Array(registration.accountPublicKey));
+  }
   if (pending.security) {
     const r = pending.security;
     const { initializeSecurity } = await import("./device-security-store");
@@ -3685,7 +3692,7 @@ export async function resumeRegistration(): Promise<void> {
     }),
   );
   const res = await auth.registerDevice(
-    fromBinary(RegisterDeviceRequestSchema, pending.request),
+    request,
     { timeoutMs: 15000 },
   );
   if (res.deviceId !== pending.account.deviceId)

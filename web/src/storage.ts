@@ -2,6 +2,8 @@ import { forgetSecurity } from "./device-security-store";
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import { clearEventCache } from "./eventcache";
 import type { NewConfig } from "./model";
+import { checkServer, deviceID, hex } from "./crypto";
+import { equal, SecurityError, type Pin } from "./device-security";
 
 // The account lives in IndexedDB. The device's private key is a
 // non-extractable CryptoKey. A device that joined through pairing has no
@@ -58,6 +60,59 @@ export function saveAccount(a: StoredAccount): Promise<void> {
   return run("readwrite", (s) => s.put(a, KEY));
 }
 
+/** Public material only, separate from the unchanged account/security records.
+ * All creation, pairing and recovery intake uses this ID check before saving. */
+export interface AccountPublicProfile {
+  server: string;
+  pin: Pin;
+  accountPublicKey: Uint8Array<ArrayBuffer>;
+}
+function publicProfileKey(server: string, pin: Pin): string {
+  if (!/^[0-9a-f]{32}$/.test(pin.account) || pin.domain.length !== 32 ||
+      pin.genesis.length !== 32 || !pin.domain.some(Boolean) || !pin.genesis.some(Boolean))
+    throw new SecurityError("untrusted");
+  return "account-public/" + JSON.stringify([checkServer(server), pin.account, hex(pin.domain), hex(pin.genesis)]);
+}
+export async function saveAccountPublicProfile(server: string, pin: Pin, accountPublicKey: Uint8Array<ArrayBuffer>): Promise<void> {
+  // Copy before awaiting, so a caller cannot change the verified bytes.
+  const profile: AccountPublicProfile = {
+    server: checkServer(server),
+    pin: { account: pin.account, domain: new Uint8Array(pin.domain), genesis: new Uint8Array(pin.genesis) },
+    accountPublicKey: new Uint8Array(accountPublicKey),
+  };
+  const key = publicProfileKey(profile.server, profile.pin);
+  if (profile.accountPublicKey.length !== 32 || await deviceID(profile.accountPublicKey) !== profile.pin.account)
+    throw new SecurityError("untrusted");
+  const d = await db();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = d.transaction(STORE, "readwrite", { durability: "strict" });
+      const store = tx.objectStore(STORE);
+      const get = store.get(key);
+      get.onsuccess = () => {
+        const old = get.result as AccountPublicProfile | undefined;
+        if (old && (!(old.accountPublicKey instanceof Uint8Array) || !equal(old.accountPublicKey, profile.accountPublicKey))) {
+          tx.abort();
+          return;
+        }
+        store.put(profile, key);
+      };
+      tx.oncomplete = () => resolve();
+      tx.onabort = tx.onerror = () => reject(new SecurityError("storage"));
+    });
+  } finally { d.close(); }
+}
+export async function loadAccountPublicProfile(server: string, pin: Pin): Promise<AccountPublicProfile | undefined> {
+  const profile = await run<AccountPublicProfile | undefined>("readonly", (s) => s.get(publicProfileKey(server, pin)));
+  if (!profile) return;
+  if (profile.server !== checkServer(server) || profile.pin?.account !== pin.account ||
+      !(profile.pin.domain instanceof Uint8Array) || !equal(profile.pin.domain, pin.domain) ||
+      !(profile.pin.genesis instanceof Uint8Array) || !equal(profile.pin.genesis, pin.genesis) ||
+      !(profile.accountPublicKey instanceof Uint8Array) || profile.accountPublicKey.length !== 32 ||
+      await deviceID(profile.accountPublicKey) !== pin.account) throw new SecurityError("storage");
+  return profile;
+}
+
 let logoutChannel: BroadcastChannel | undefined;
 
 /** Stops every open copy of this browser account after an explicit logout.
@@ -79,6 +134,16 @@ export async function forgetAccount(): Promise<void> {
   // Keep the account reachable for an explicit retry if key erasure is blocked.
   await forgetSecurity();
   await clearRegistration();
+  await run("readwrite", (s) => {
+    const cursor = s.openCursor();
+    cursor.onsuccess = () => {
+      const entry = cursor.result;
+      if (!entry) return;
+      if (typeof entry.key === "string" && entry.key.startsWith("account-public/")) entry.delete();
+      entry.continue();
+    };
+    return cursor;
+  });
   await run("readwrite", (s) => s.delete(KEY));
   // The account store is shared by same-origin tabs. Notify them as soon
   // as the deletion commits, even if clearing the sealed cache fails.

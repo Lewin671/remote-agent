@@ -56,6 +56,11 @@ it("stops another tab and reloads the joining page after the user forgets the ac
       const tx = {
         oncomplete: () => undefined,
         objectStore: () => ({
+          openCursor: () => {
+            const req = { result: null, onsuccess: () => undefined };
+            queueMicrotask(() => { req.onsuccess(); tx.oncomplete(); });
+            return req;
+          },
           delete: () => {
             deleted();
             queueMicrotask(() => tx.oncomplete());
