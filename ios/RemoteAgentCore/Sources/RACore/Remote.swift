@@ -834,7 +834,8 @@ public actor Remote {
     public func showForTest(
         state shown: RemoteState,
         events: [String: [PBEvent]] = [:],
-        modelLists: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = []
+        modelLists: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = [],
+        live: Bool = false
     ) {
         precondition(!running, "showForTest on a started Remote")
         state.set(shown)
@@ -844,8 +845,31 @@ public actor Remote {
                 task: Task<PBListModelsResponse, Error> { response }, done: true)
         }
         for (sid, list) in events {
-            eventFeed(sid).set(SessionEvents(events: PagedList(list), loaded: true))
+            var shownEvents = SessionEvents(events: PagedList(list), loaded: true)
+            if live { shownEvents.live = Self.liveForTest(list, planOpen: shown.sessions[sid]?.info?.planOpen == true) }
+            eventFeed(sid).set(shownEvents)
         }
+    }
+
+    /// What the computer would say waits in a session whose history is `list`: its pending approvals and
+    /// questions, and its plan while the session says one is open. Sample data has no computer to ask.
+    static func liveForTest(_ list: [PBEvent], planOpen: Bool) -> PBLiveSnapshot {
+        let d = derive(list)
+        var snapshot = PBLiveSnapshot()
+        snapshot.running = d.running
+        snapshot.actions = list.filter { event in
+            switch event.kind {
+            case .approvalRequested(let a)?: return d.approvals[a.approvalID] != nil
+            case .questionAsked(let q)?: return d.questions[q.questionID] != nil
+            default: return false
+            }
+        }
+        if planOpen, let plan = d.plan {
+            snapshot.planEventSeq = list.last { if case .planProposed? = $0.kind { true } else { false } }?.seq ?? 1
+            snapshot.planScreenHash = Data(count: 32)
+            snapshot.planScreen = plan.text
+        }
+        return snapshot
     }
 
     func report(_ e: Error) {

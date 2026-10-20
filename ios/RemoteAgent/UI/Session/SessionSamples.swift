@@ -90,7 +90,7 @@ enum SessionSamples {
                 $0.name = "我的 iPad"
                 $0.platform = "ios"
             }, metaRev: 1, lastSeenMs: now - 60_000)
-        await remote.showForTest(state: state, events: events(now), modelLists: modelLists)
+        await remote.showForTest(state: state, events: events(now), modelLists: modelLists, live: true)
         local(store)
     }
 

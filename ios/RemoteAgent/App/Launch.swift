@@ -184,7 +184,7 @@ enum LaunchDriver {
             let events = Demo.events(demo)
             // The first frame has the data; the feed is followed once the Remote shows it too.
             model.showDemo(account: Demo.account, remote: remote, initial: shown) {
-                await remote.showForTest(state: shown, events: events, modelLists: Demo.models)
+                await remote.showForTest(state: shown, events: events, modelLists: Demo.models, live: true)
             }
         }
         DebugSignals.on("app.logout") { Task { await model.logout() } }
