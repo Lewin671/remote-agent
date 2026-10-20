@@ -146,8 +146,8 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 /* The command first, six whole lines at most and no scroll of its own:
    还有 N 行 · 展开 shows the rest in place. */
 .todo pre.card-cmd { background: var(--card); border: 1px solid var(--line); color: var(--fg2); border-radius: var(--r-xs); padding: 7px 10px; font: 12px/18px var(--mono); margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.todo pre.card-cmd > span { display: block; max-height: calc(6 * 18px); overflow: hidden; }
-.todo pre.card-cmd.open > span { max-height: none; }
+.todo pre.card-cmd > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6; max-height: calc(6 * 18px); overflow: hidden; }
+.todo pre.card-cmd.open > span { display: block; -webkit-line-clamp: none; line-clamp: none; max-height: none; }
 .todo .cmd-more { font-size: 13px; min-height: 44px; margin: -6px 0 -10px; }
 .todo > .btns { margin-top: 8px; }
 .todo .field.reason { margin: 8px 0 0; }

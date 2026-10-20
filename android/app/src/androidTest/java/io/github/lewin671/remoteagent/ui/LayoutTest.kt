@@ -266,6 +266,12 @@ class LayoutTest {
             }
         }
         ui.onNodeWithText("还有 14 行 · 展开", substring = true).assertIsDisplayed()
+        // Six whole lines, the last ending in …, so the cut shows.
+        val cut = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        ui.onNodeWithText("echo step-1", substring = true)
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(cut) }
+        assertEquals(6, cut.single().lineCount)
+        assertTrue("last line ellipsized", cut.single().isLineEllipsized(5))
         screenshot("card-command-cut-light")
         ui.runOnIdle { dark = true }
         screenshot("card-command-cut-dark")

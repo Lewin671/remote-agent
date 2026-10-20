@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -37,10 +36,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -826,41 +825,46 @@ fun moreLinesLabel(hidden: Int): String = "还有 $hidden 行 · 展开"
 
 /**
  * A command on a card: at most [lines] whole lines, never half of one, and no scrolling of its
- * own; below a cut one, 还有 N 行 · 展开 opens it in place, and 收起 cuts it again.
+ * own; a cut one ends its last line with …, and below it 还有 N 行 · 展开 opens it in place, and
+ * 收起 cuts it again. N counts the lines as they wrap on screen.
  */
 @Composable
 fun CommandPreview(text: String, key: String, modifier: Modifier = Modifier, lines: Int = 6) {
     val p = pal
-    val density = androidx.compose.ui.platform.LocalDensity.current
     var open by rememberSaveable(key) { mutableStateOf(false) }
-    var layout by
-        remember(text) { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
-    val total = layout?.lineCount ?: 0
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    var width by remember { mutableStateOf(0) }
+    // All of it laid out at the width it is drawn at, for the count of its lines.
+    val total =
+        remember(text, width, measurer) {
+            if (width <= 0) 0
+            else
+                measurer
+                    .measure(
+                        text,
+                        T.mono,
+                        constraints = androidx.compose.ui.unit.Constraints(maxWidth = width),
+                    )
+                    .lineCount
+        }
     val cut = total > lines
-    // The text is laid out whole; the box shows its first lines, ending where a line ends.
-    val shown =
-        if (cut && !open) with(density) { layout!!.getLineBottom(lines - 1).toDp() } else null
     Column(modifier.fillMaxWidth()) {
         Box(
             Modifier.fillMaxWidth()
                 .clip(Radii.XS)
                 .background(p.card)
                 .border(1.dp, p.line, Radii.XS)
-                .padding(horizontal = 10.dp, vertical = 7.dp),
+                .padding(horizontal = 10.dp, vertical = 7.dp)
+                .onSizeChanged { width = it.width },
         ) {
-            Box(
-                Modifier.fillMaxWidth()
-                    .then(if (shown != null) Modifier.height(shown) else Modifier)
-                    .clipToBounds(),
-            ) {
-                Text(
-                    text,
-                    style = T.mono,
-                    color = p.fg2,
-                    onTextLayout = { layout = it },
-                    modifier = Modifier.wrapContentHeight(Alignment.Top, unbounded = true),
-                )
-            }
+            Text(
+                text,
+                style = T.mono,
+                color = p.fg2,
+                maxLines = if (open) Int.MAX_VALUE else lines,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         if (cut)
             Box(

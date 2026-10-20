@@ -28,8 +28,9 @@ export function approvalText(a: ApprovalRequested): string {
 export const CARD_LINES = 6;
 
 /** A command on a card: its first CARD_LINES lines, whole lines only and
- * without a scroll of its own, then 还有 N 行 · 展开, which shows all of it
- * in place. N counts the lines as they wrap on screen. */
+ * without a scroll of its own, the last ending in … when cut, then 还有 N
+ * 行 · 展开, which shows all of it in place. N counts the lines as they
+ * wrap on screen. */
 export function CardCommand({ text }: { text: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
