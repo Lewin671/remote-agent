@@ -31,7 +31,12 @@ import javax.crypto.spec.GCMParameterSpec
  * lacks the unlocked-device Keystore policy; the foreground-only account loading rule is the
  * protection there.
  */
-class Vault(context: Context) : DeviceSecurity.Storage {
+class Vault internal constructor(
+    context: Context,
+    private val onDecrypt: ((String) -> Unit)?,
+    private val onSecurityParse: (() -> Unit)?,
+) : DeviceSecurity.Storage {
+    constructor(context: Context) : this(context, null, null)
     private val dir = context.noBackupFilesDir
     private val accountFile = File(dir, "account-v2.bin")
     private val notifyFile = File(dir, "notify.bin")
@@ -100,10 +105,12 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         else wall.coerceAtLeast(1)
     }
 
-    private fun readSecurityUnlocked(): DeviceSecurity.Record =
-        DeviceSecurity.Record.parse(
+    private fun readSecurityUnlocked(): DeviceSecurity.Record {
+        onSecurityParse?.invoke()
+        return DeviceSecurity.Record.parse(
             read(securityFile, ACCOUNT_ALIAS) ?: throw DeviceSecurity.Failure("storage"),
         )
+    }
 
     override fun readSecurity(): DeviceSecurity.Record = securityTransaction {
         readSecurityUnlocked().also { refreshNotifyUnlocked(it) }
@@ -466,6 +473,7 @@ class Vault(context: Context) : DeviceSecurity.Storage {
         val data = f.readBytes()
         val c = Cipher.getInstance("AES/GCM/NoPadding")
         c.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, data, 0, 12))
+        onDecrypt?.invoke(f.name)
         return c.doFinal(data, 12, data.size - 12)
     }
 
