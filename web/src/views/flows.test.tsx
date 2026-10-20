@@ -1642,16 +1642,20 @@ describe("project management (v2)", () => {
     const r = demo();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     const { ProjectPicker } = await import("./NewSession");
-    const seen = () => [...host.querySelectorAll(".plist .fl, .plist .pi b, .plist .pi small, .plist .pi.add")].map((e) => e.textContent).filter((t) => t !== "全部项目" && !/^\d+ 个进行中$/.test(t ?? ""));
+    const seen = () => [...host.querySelectorAll(".plist .fl, .plist .pi b, .plist .pi small, .plist .pi.add")].map((e) => e.textContent).filter((t) => t !== "全部项目" && !/^(\d+ 个待处理|\d+ 个进行中)( · \d+ 个进行中)?$/.test(t ?? ""));
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
     const managed = seen();
-    expect(managed.slice(0, 3)).toEqual(["常用", "foo", "~/Code/foo · 6 个进行中"]);
+    // Counted as the home's sections are: waiting, then running.
+    expect(managed.slice(0, 3)).toEqual(["常用", "foo", "~/Code/foo · 2 个待处理 · 4 个进行中"]);
     expect(managed[managed.length - 1]).toBe(" 新项目…");
     act(() => root!.render(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />));
     expect(seen()).toEqual(managed);
     act(() => root!.render(<Home remote={r} go={() => undefined} />));
     await click(host.querySelector<HTMLButtonElement>(".large .scope")!);
     expect(seen()).toEqual(managed);
+    // 全部项目 counts the same way, over every project.
+    const all = [...host.querySelectorAll(".plist .pi")].find((x) => x.querySelector("b")?.textContent === "全部项目")!;
+    expect(all.querySelector("small")!.textContent).toMatch(/^\d+ 个待处理 · \d+ 个进行中$/);
   });
 
   it("keeps a removed project out of the new-session picker and asks to add it again first", async () => {

@@ -8,7 +8,7 @@
 import { useState, type ReactNode } from "react";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { isHidden, isPinned, groupProjects } from "../prefs";
-import { exited, projectName, projects, shortPath, type Project } from "../model";
+import { exited, needsAttention, projectName, projects, shortPath, type Project } from "../model";
 import type { Remote, SessionView } from "../remote";
 import { ActionSheet, Alert, Avatar, Banner, fromHere, NavBar, useNow, useRemote } from "../ui";
 import type { Go } from "./NewSession";
@@ -54,12 +54,26 @@ export function PrefsBanner({ remote, quiet }: { remote: Remote; quiet?: boolean
   return null;
 }
 
+/** How many of some sessions wait for the user and how many are running,
+ * counted as the home's 需要处理 and 进行中 are: 「2 个待处理 · 3 个进行中」,
+ * a part that is 0 left out, "" when both are. */
+export function sessionCounts(remote: Remote, sessions: Iterable<SessionView>): string {
+  let todo = 0;
+  let live = 0;
+  for (const s of sessions) {
+    if (needsAttention(s, remote.machines.get(s.machineId))) todo++;
+    else if (!exited(s)) live++;
+  }
+  return [todo && `${todo} 个待处理`, live && `${live} 个进行中`].filter(Boolean).join(" · ");
+}
+
 /** A project's second line, the same wherever it is listed: its folder,
- * then how many sessions are live, or that no computer of it is online. */
+ * then how many sessions wait and run, or that no computer of it is
+ * online. */
 export function projectSub(remote: Remote, p: P): string {
-  const live = p.sessions.filter((s) => !exited(s)).length;
+  const counts = sessionCounts(remote, p.sessions);
   const offline = p.machines.length > 0 && p.machines.every((id) => !remote.machines.get(id)?.online);
-  return shortPath(p.key) + (live ? ` · ${live} 个进行中` : offline ? " · 电脑不在线" : "");
+  return shortPath(p.key) + (counts ? ` · ${counts}` : offline ? " · 电脑不在线" : "");
 }
 
 /** One project in a list. The whole row is one button, with `end` at its

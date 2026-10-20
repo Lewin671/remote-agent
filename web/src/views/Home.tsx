@@ -57,6 +57,7 @@ import {
   ProjectItem,
   ProjectList,
   RemovedNotice,
+  sessionCounts,
   useProjectGroups,
 } from "./Projects";
 import { applyUpdate, useUpdate } from "../update";
@@ -651,7 +652,7 @@ function ScopeMenu({
   onNew: () => void;
   onManage: () => void;
 }) {
-  const live = [...remote.sessions.values()].filter((s) => !exited(s)).length;
+  const counts = sessionCounts(remote, remote.sessions.values());
   const body = (
     <ProjectList
       remote={remote}
@@ -667,7 +668,7 @@ function ScopeMenu({
             <div className="av sm all">全</div>
             <div>
               <b>全部项目</b>
-              <small>{live ? `${live} 个进行中` : `${count} 个项目`}</small>
+              <small>{counts || `${count} 个项目`}</small>
             </div>
             <span className="ck">{scope === ALL && <Check />}</span>
           </button>
