@@ -115,10 +115,10 @@ private fun JoinContent(app: RaApp) {
             existingRemoved =
                 runCatching {
                         withContext(Dispatchers.IO) {
-                            io.github.lewin671.remoteagent.core.existingIdentityRemoved(
-                                io.github.lewin671.remoteagent.core.Api(account.server, app.http),
-                                account,
-                            )
+                            val api = io.github.lewin671.remoteagent.core.Api(account.server, app.http)
+                            io.github.lewin671.remoteagent.core.probeRetainedIdentity {
+                                io.github.lewin671.remoteagent.core.login(api, account)
+                            }
                         }
                     }
                     .getOrDefault(false)

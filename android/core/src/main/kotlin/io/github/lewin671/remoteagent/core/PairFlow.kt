@@ -25,6 +25,7 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 import java.util.Base64
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
@@ -758,3 +759,22 @@ suspend fun existingIdentityRemoved(api: Api, existing: Account): Boolean =
     } catch (e: ConnectException) {
         if (loginDenied(e)) true else throw e
     }
+
+/** Startup only: a fresh challenge/login retries one denial within one total deadline. */
+suspend fun probeRetainedIdentity(attempt: suspend () -> Unit): Boolean =
+    kotlinx.coroutines.withTimeoutOrNull(5_000L) {
+        try {
+            try {
+                attempt()
+            } catch (e: ConnectException) {
+                if (!loginDenied(e)) throw e
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                attempt()
+            }
+            false
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            loginDenied(e)
+        }
+    } ?: false
