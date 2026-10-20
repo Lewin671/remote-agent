@@ -72,7 +72,13 @@ extension AuthorityCoordinator {
         try DeviceSecurity.check(op.codeSaved && op.signed.count == 32, .untrusted)
         for _ in 0..<5 {
             let r = try await rpc(t) { [security] in try await security.sync() }
-            try DeviceSecurity.check(r.member && r.memberID == account.deviceId && DeviceSecurity.stateHash(r.state) == op.parent, .stale)
+            try DeviceSecurity.check(r.member && r.memberID == account.deviceId, .stale)
+            if r.state.core.authorityID == account.deviceId && r.state.core.recoveryEd == op.signed {
+                try storage.replaceOperation(expected: op, next: nil)
+                try await renewLease(t, force: false)
+                return
+            }
+            try DeviceSecurity.check(DeviceSecurity.stateHash(r.state) == op.parent, .stale)
             let headers = Api.headers(token: try await rpc(t, token))
             let rows = try await rpc(t) { [api] in try await api.client.listDevices(request: .init(), headers: headers).value() }
             guard let own = rows.devices.first(where: { $0.id == account.deviceId }) else { throw DeviceSecurity.Failure.untrusted }

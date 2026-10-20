@@ -45,10 +45,11 @@ extension Remote {
         do {
             let coordinator = try authorityCoordinator()
             if let pending = try await coordinator.pendingOperation(), pending.kind == .handoffOffer {
-                try await coordinator.resumeHandoffOffer()
-            } else {
-                try await coordinator.renewLeaseIfNeeded()
+                // A stale/unrelated offer remains available for explicit
+                // abandonment, but cannot block the current head's lease.
+                try? await coordinator.resumeHandoffOffer()
             }
+            try await coordinator.renewLeaseIfNeeded()
             if let client = deviceSecurity {
                 updateLeaseExpiration(try await client.leaseExpiration())
             }

@@ -251,13 +251,48 @@ public actor AuthorityCoordinator {
     public func renewLeaseIfNeeded() async throws { try await renewLease(force: false) }
     func renewLease(force: Bool) async throws {
         let t = try begin(); defer { busy = false }
-        try await resume(t)
-        guard try storage.readOperation() == nil else { return }
+        try await renewLease(t, force: force)
+    }
+    func renewLease(_ t: UInt64, force: Bool) async throws {
+        let pending = try storage.readOperation()
+        if pending?.kind == .state || pending?.kind == .lease { try await resume(t) }
         _ = try await rpc(t) { [security] in try await security.sync() }
         guard try isAuthority() else { return }
         let r = try authority(t)
+        var pendingNow = try storage.readOperation()
+        if let op = pendingNow, op.kind == .handoffOffer, op.signed == r.state.core.recoveryEd {
+            try storage.replaceOperation(expected: op, next: nil); pendingNow = nil
+        }
+        if let op = pendingNow {
+            // Creation/recovery belong to the bootstrap coordinator. A state
+            // publication must finish first; metadata/record deletion must not
+            // prevent this authority from issuing an independent certificate.
+            guard op.kind == .handoffOffer || op.kind == .deleteRecords else { return }
+        }
         let lease = r.lease.flatMap { $0.head == (try? DeviceSecurity.stateHash(r.state)) ? $0 : nil }
-        guard force || Authority.needsRenewal(lease, now: Int64(clamping: now(r))) else { return }
+        guard force || !(pendingNow?.certificate.isEmpty ?? true)
+            || Authority.needsRenewal(lease, now: Int64(clamping: now(r))) else { return }
+        if var op = pendingNow {
+            let prior = op.certificate.isEmpty ? nil : try DeviceSecurity.HeadLease.parse(op.certificate)
+            let hash = try DeviceSecurity.stateHash(r.state)
+            let cert: DeviceSecurity.HeadLease
+            if let prior, prior.head == hash, (try? prior.valid(r.state, now: now(r))) != nil,
+               prior.issuedAt >= (lease?.issuedAt ?? 0) { cert = prior }
+            else {
+                cert = try gate.withPermit(t) {
+                    try DeviceSecurity.HeadLease.sign(r.state, signer: SigningKey(seed: account.deviceSeed), now: Int64(clamping: now(r)))
+                }
+            }
+            var next = op; next.certificate = try cert.bytes()
+            try storage.replaceOperation(expected: op, next: next); op = next
+            var request = PBPutSecurityStateRequest(); request.lease = try cert.bytes()
+            try await send(request, t)
+            try await security.installPublication(request)
+            try gate.check(t)
+            next = op; next.certificate = Data()
+            try storage.replaceOperation(expected: op, next: next)
+            return
+        }
         _ = try storage.prepareOperation(expectedHead: DeviceSecurity.stateHash(r.state)) { committed in
             let r = try committed.unwrap()
             return try gate.withPermit(t) {

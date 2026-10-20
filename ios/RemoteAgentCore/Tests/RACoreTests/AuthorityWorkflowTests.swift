@@ -215,7 +215,7 @@ struct AuthorityWorkflowTests {
         #expect(try vault.readSecurity().lease != nil)
     }
 
-    @Test func pairingDeliveryRemovalAndPlatformIndependentHandoff() async throws {
+    @Test(arguments: [false, true]) func pairingDeliveryRemovalAndPlatformIndependentHandoff(lostOfferAck: Bool) async throws {
         let server = try await ManagementRelay(); defer { server.close() }
         var step = "create"
         do {
@@ -253,12 +253,21 @@ struct AuthorityWorkflowTests {
         step = "receipt"
         try await authority.resumeSecurityOperation()
         #expect(try vault.readOperation() == nil)
-        let newAuthority = try coordinator(joined, joinedVault)
+        let offerGate = enabledGate()
+        let offerHTTP = Intercept.http(for: server.url, answered: { req in
+            if lostOfferAck && req.url?.path.hasSuffix("/PutDeviceMeta") == true {
+                offerGate.set(active: false, protectedDataAvailable: true)
+            }
+        }) { $0 }
+        let newAuthority = try coordinator(joined, joinedVault, http: offerHTTP, gate: offerGate)
         step = "prepare handoff"
         let code = try await newAuthority.prepareHandoffCode()
         do { try await newAuthority.offerHandoff(code, codeSaved: false); Issue.record("offer without backup") } catch {}
         step = "offer"
-        try await newAuthority.offerHandoff(code, codeSaved: true)
+        do {
+            try await newAuthority.offerHandoff(code, codeSaved: true)
+            #expect(!lostOfferAck)
+        } catch { if !lostOfferAck { throw error } }
         let remote = try Remote(account: account, http: HTTP(), securityStorage: vault)
         step = "targets"
         let targets = try await remote.handoffCandidates()
@@ -271,12 +280,48 @@ struct AuthorityWorkflowTests {
         try await authority.handoffAuthority(incoming: joined.deviceId, offer: code.publicKey, verifiedHead: DeviceSecurity.stateHash(prior.state))
         #expect(try !vault.readSecurity().member)
         step = "new lease"
-        try await newAuthority.renewLeaseIfNeeded()
+        offerGate.set(active: true, protectedDataAvailable: true)
+        if lostOfferAck {
+            // Server consumed the offer while this client was suspended. No
+            // lease or operation acknowledgement has reached it yet.
+            try await newAuthority.resumeHandoffOffer()
+            #expect(try joinedVault.readOperation() == nil)
+        } else { try await newAuthority.renewLeaseIfNeeded() }
         let adopted = try joinedVault.readSecurity()
         #expect(adopted.state.core.authorityID == joined.deviceId)
         #expect(adopted.lease?.head == (try DeviceSecurity.stateHash(adopted.state)))
         #expect(try DeviceSecurity.openPrevSecret(newSecret: adopted.secret!, blob: adopted.state.prevSecret) == prior.secret)
         } catch { throw TestFailure("pair workflow at \(step): \(error)") }
+    }
+
+    @Test func unrelatedOfferDoesNotBlockDurableLeaseRenewal() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (account, vault, _) = try await createAuthority(server)
+        let before = try vault.readSecurity()
+        let c = try coordinator(account, vault)
+        let code = try await c.prepareRecovery()
+        try await c.publishRecovery(code, codeSaved: true)
+        let record = try vault.readSecurity()
+        let offer = SecurityOperation(kind: .handoffOffer, parent: try DeviceSecurity.stateHash(before.state), signed: randomBytes(32))
+        _ = try vault.prepareOperation(expectedHead: DeviceSecurity.stateHash(record.state)) { _ in offer }
+        let lost = Signal(), gate = enabledGate()
+        let http = Intercept.http(for: server.url, answered: { req in
+            if req.url?.path.hasSuffix("/PutSecurityState") == true {
+                lost.set(); gate.set(active: false, protectedDataAvailable: true)
+            }
+        }) { $0 }
+        let renew = try coordinator(account, vault, http: http, gate: gate, clock: { Int64(clamping: record.lease!.issuedAt + 1000) })
+        do { try await renew.renewLeaseNow(); Issue.record("ignored suspension after lease commit") } catch {}
+        let saved = try vault.readOperation().unwrap().certificate
+        #expect(!saved.isEmpty)
+        let restart = try coordinator(account, vault)
+        try await restart.renewLeaseIfNeeded()
+        #expect(try vault.readSecurity().lease!.bytes() == saved)
+        #expect(try vault.readOperation()!.certificate.isEmpty)
+        #expect(try vault.readOperation()?.id == offer.id)
+        #expect(try vault.readOperation()?.signed == offer.signed)
+        #expect(try vault.readSecurity().lease!.issuedAt > record.lease!.issuedAt)
+        #expect(lost.isSet)
     }
 
     @Test func expiredDeliveryHasExplicitRemovalExit() async throws {

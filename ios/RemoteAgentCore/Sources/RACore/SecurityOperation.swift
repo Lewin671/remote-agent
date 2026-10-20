@@ -36,15 +36,30 @@ public struct SecurityOperation: Codable, Equatable, Sendable, CustomStringConve
             && (old.completion.isEmpty || completion == old.completion)
             && (!old.codeSaved || codeSaved) && (old.result.isEmpty || result == old.result), .stale)
         if certificate != old.certificate {
-            try DeviceSecurity.check(kind == .creation || kind == .recovery, .untrusted)
-            let material = try AuthorityMaterial.parse(local)
-            let target = try kind == .creation ? DeviceSecurity.Record.parse(material.chain).state
-                : DeviceSecurity.parseState(PBSubmitRecoveryRequest(serializedBytes: signed).state)
-            let next = try DeviceSecurity.HeadLease.parse(certificate); try next.verify(target)
-            if !old.certificate.isEmpty {
-                let prior = try DeviceSecurity.HeadLease.parse(old.certificate); try prior.verify(target)
-                try DeviceSecurity.check(next.issuedAt >= prior.issuedAt && next.notAfter >= prior.notAfter
-                    && (next.issuedAt != prior.issuedAt || next.notAfter == prior.notAfter), .stale)
+            if kind == .handoffOffer || kind == .deleteRecords {
+                // An independent renewal shares the receipt without replacing
+                // its exact metadata/deletion request or advancing its phase.
+                if !certificate.isEmpty {
+                    let next = try DeviceSecurity.HeadLease.parse(certificate)
+                    if !old.certificate.isEmpty {
+                        let prior = try DeviceSecurity.HeadLease.parse(old.certificate)
+                        if next.head == prior.head {
+                            try DeviceSecurity.check(next.issuedAt >= prior.issuedAt && next.notAfter >= prior.notAfter
+                                && (next.issuedAt != prior.issuedAt || next.notAfter == prior.notAfter), .stale)
+                        }
+                    }
+                }
+            } else {
+                try DeviceSecurity.check(kind == .creation || kind == .recovery, .untrusted)
+                let material = try AuthorityMaterial.parse(local)
+                let target = try kind == .creation ? DeviceSecurity.Record.parse(material.chain).state
+                    : DeviceSecurity.parseState(PBSubmitRecoveryRequest(serializedBytes: signed).state)
+                let next = try DeviceSecurity.HeadLease.parse(certificate); try next.verify(target)
+                if !old.certificate.isEmpty {
+                    let prior = try DeviceSecurity.HeadLease.parse(old.certificate); try prior.verify(target)
+                    try DeviceSecurity.check(next.issuedAt >= prior.issuedAt && next.notAfter >= prior.notAfter
+                        && (next.issuedAt != prior.issuedAt || next.notAfter == prior.notAfter), .stale)
+                }
             }
         }
         if signed == old.signed { return }
