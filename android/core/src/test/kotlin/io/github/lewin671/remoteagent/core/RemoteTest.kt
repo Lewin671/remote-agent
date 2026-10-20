@@ -110,6 +110,54 @@ class RemoteTest {
         withTimeout(10_000) { events(sid).first { it.events.size >= n } }
 
     @Test
+    fun refreshSharesTheMachineListAndFetchesIndependentListsConcurrently() = runBlocking<Unit> {
+        val machines = java.util.concurrent.atomic.AtomicInteger()
+        val devices = java.util.concurrent.atomic.AtomicInteger()
+        val sessions = java.util.concurrent.atomic.AtomicInteger()
+        val both = java.util.concurrent.CountDownLatch(2)
+        val measured = http.newBuilder().addInterceptor { chain ->
+            val path = chain.request().url.encodedPath
+            when {
+                path.endsWith("/ListMachines") -> machines.incrementAndGet()
+                path.endsWith("/ListDevices") -> devices.incrementAndGet()
+                path.endsWith("/ListRemoteSessions") -> sessions.incrementAndGet()
+            }
+            if (path.endsWith("/ListMachines") || path.endsWith("/ListRemoteSessions")) {
+                both.countDown()
+                check(both.await(5, TimeUnit.SECONDS)) { "independent list RPCs did not overlap" }
+            }
+            chain.proceed(chain.request())
+        }.build()
+        val r = fixtureRemote(approvedClient(daemon.phone, http), measured)
+        closers += AutoCloseable { r.close() }
+        r.currentToken()
+        assertTrue(r.refresh())
+        assertEquals(1, machines.get())
+        assertEquals(1, devices.get())
+        assertEquals(1, sessions.get())
+        assertTrue(r.state.value.machines.containsKey(daemon.id))
+        assertTrue(r.state.value.sessions.containsKey("s1"))
+    }
+
+    @Test
+    fun aFailedConcurrentListIsReportedWithoutDiscardingLoadedSessions() = runBlocking<Unit> {
+        val refuse = java.util.concurrent.atomic.AtomicBoolean(false)
+        val measured = http.newBuilder().addInterceptor { chain ->
+            if (refuse.get() && chain.request().url.encodedPath.endsWith("/ListRemoteSessions"))
+                throw java.io.IOException("synthetic list failure")
+            chain.proceed(chain.request())
+        }.build()
+        val r = fixtureRemote(approvedClient(daemon.phone, http), measured)
+        closers += AutoCloseable { r.close() }
+        r.currentToken()
+        assertTrue(r.refresh())
+        refuse.set(true)
+        assertFalse(r.refresh())
+        assertTrue(r.state.value.sessions.containsKey("s1"))
+        assertTrue(r.state.value.sessionsError.isNotEmpty())
+    }
+
+    @Test
     fun unsignedRelayRefusalsKeepTheOriginalRequest() =
         runBlocking<Unit> {
             val refuse = java.util.concurrent.atomic.AtomicBoolean(false)

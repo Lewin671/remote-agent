@@ -19,6 +19,7 @@ import io.github.lewin671.remoteagent.proto.GetEventsRequest
 import io.github.lewin671.remoteagent.proto.GetPairingRequest
 import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.ListMachinesRequest
+import io.github.lewin671.remoteagent.proto.ListMachinesResponse
 import io.github.lewin671.remoteagent.proto.ListModelsRequest
 import io.github.lewin671.remoteagent.proto.ListModelsResponse
 import io.github.lewin671.remoteagent.proto.ListRemoteSessionsRequest
@@ -55,6 +56,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -991,18 +993,24 @@ class Remote(
                 val mp = HashMap(machinePushes)
                 val sp = HashMap(sessionPushes)
                 val rp = HashMap(removedPushes)
-                loadDevices()
-                val ms =
-                    api.client
-                        .listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(token))
-                        .value()
-                val ss =
-                    api.client
-                        .listRemoteSessions(
-                            ListRemoteSessionsRequest.newBuilder().setLimit(SESSION_PAGE).build(),
-                            Api.headers(token),
-                        )
-                        .value()
+                // Fetch independent lists concurrently; all directory/cache mutations remain serial.
+                val (ms, ss) = coroutineScope {
+                    val machineRows = async {
+                        api.client
+                            .listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(token))
+                            .value()
+                    }
+                    val sessionRows = async {
+                        api.client
+                            .listRemoteSessions(
+                                ListRemoteSessionsRequest.newBuilder().setLimit(SESSION_PAGE).build(),
+                                Api.headers(token),
+                            )
+                            .value()
+                    }
+                    machineRows.await() to sessionRows.await()
+                }
+                loadDevices(ms)
                 // Putting the lists in place suspends on the cache: one at a time.
                 applying.withLock {
                     // Asked for again since: that answer is the newer one, and this one would undo
@@ -2215,7 +2223,7 @@ class Remote(
         publishSecurityStates(listOf(prepared.state))
     }
 
-    private suspend fun loadDevices() {
+    private suspend fun loadDevices(listedMachines: ListMachinesResponse? = null) {
         val version = ++directoryVersion
         try {
             val (_, head) = security.identity()
@@ -2230,7 +2238,7 @@ class Remote(
                     )
                     .value()
             val machineRows =
-                api.client
+                listedMachines ?: api.client
                     .listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(token))
                     .value()
             val metadata = HashMap<String, Envelope>()
