@@ -48,6 +48,18 @@ extension AuthorityBootstrap {
         return try await context(api: api, recoveryEd: SigningKey(seed: decoded.seed).publicKey,
             signerSeed: decoded.seed, genesisPrefix: decoded.genesis, ticket: t)
     }
+    /// This path queries only challenge/context. It does not submit recovery or persist the seed.
+    public func completeAccountPublicProfile(server: String, code: String) async throws {
+        let t = try begin(); defer { busy = false }
+        guard let decoded = RecoveryCode.decode(code) else { throw PairError("恢复码无效") }
+        let api = try Api(server: server, http: http)
+        let chain = try await context(api: api, recoveryEd: SigningKey(seed: decoded.seed).publicKey,
+            signerSeed: decoded.seed, genesisPrefix: decoded.genesis, ticket: t)
+        let local = try storage.readSecurity()
+        try DeviceSecurity.check(local.pin == chain.profile.pin && chain.states.count >= local.states.count
+            && DeviceSecurity.stateHash(chain.states[Int(local.headEpoch) - 1]) == DeviceSecurity.stateHash(local.state), .conflict)
+        try storage.savePublicProfile(chain.profile)
+    }
     /// Persist the exact signed recovery, device/X keys and new public recovery key;
     /// neither the old nor new recovery seed is persisted. Submit can be resumed.
     public func prepareEmergencyRecovery(server: String, code: String) async throws -> String {
