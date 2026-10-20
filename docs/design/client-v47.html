@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v46 · 2026-10-18 UTC</title>
+<title>remote-agent 客户端设计稿 v47 · 2026-10-19 UTC</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -220,10 +220,9 @@
   .dock .h { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
   .dock .h b { color: var(--orange-ink); }
   .dock .desc { font-size: 13px; color: var(--fg2); margin-top: 4px; }
-  .dock pre { background: var(--soft); color: var(--fg2); border-radius: var(--r-xs); padding: 8px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; margin: 8px 0; white-space: pre-wrap; max-height: 78px; overflow: hidden; position: relative; }
-  .dock pre.cut::after { content: "展开全文"; position: absolute; right: 6px; bottom: 4px; font: 600 12px -apple-system, "PingFang SC", sans-serif; color: var(--blue); background: var(--soft); padding-left: 12px; }
+  .dock pre { background: var(--soft); color: var(--fg2); border-radius: var(--r-xs); padding: 8px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; margin: 8px 0; white-space: pre-wrap; position: relative; }
   .dock .q { font-size: 15px; font-weight: 600; margin: 6px 0; }
-  .dock .plan-body { background: var(--soft); border-radius: var(--r-xs); padding: 7px 10px; font-size: 13px; margin: 8px 0; line-height: 1.6; max-height: 88px; overflow: hidden; }
+  .dock .plan-body { background: var(--soft); border-radius: var(--r-xs); padding: 7px 10px; font-size: 13px; margin: 8px 0; line-height: 1.6; }
   .dock .foot { font-size: 12px; color: var(--muted); margin-top: 7px; display: flex; justify-content: space-between; gap: 8px; }
   .dock .foot b { color: var(--blue); font-weight: 600; }
   .dock .foot b.danger { color: var(--red); }
@@ -664,7 +663,6 @@
   .wide-project-tools .chip { min-height:44px; }
   .side .label a { min-height:44px; display:inline-flex; align-items:center; }
   .phone .seg div { min-height:44px; display:flex; justify-content:center; align-items:center; }
-  .todo pre { overflow-y:auto; }
   .note { overflow-x:auto; }
   @media(max-width:700px) { .wrap { padding:24px 12px 60px; } .top { align-items:flex-start; flex-direction:column; } .screens { justify-content:center; gap:24px; } .desk { min-width:0; overflow-x:auto; } .dg { min-width:1000px; } .stgrid { grid-template-columns:minmax(0,1fr); } }
 
@@ -831,8 +829,20 @@
   .seg.dark { background:none; border-color:#30363d; }
   .seg.dark div.on { background:none; box-shadow:inset 0 -2px #e6edf3; }
   .phone[style*="background:#0d1117"] { --fg:#e8eaed; --fg2:#c9ced4; --muted:#a0a7af; --card:#0d1117; --line:#2a2d32; }
-  .pending-content { display:flex; flex-direction:column; max-height:240px; overflow:visible; padding:0; }
-  .pending-scroll { min-height:0; overflow-y:auto; padding:4px 0 6px; }
+  /* 展开后的内容区约占会话内容区高度的 60%，至少 240；超出时内容区自己滚动，按钮固定 */
+  .pending-content { display:flex; flex-direction:column; max-height:300px; overflow:visible; padding:0; }
+  .pending-scroll { min-height:0; overflow-y:auto; padding:0 0 6px; }
+  .pending-brief .steps { display:inline-flex; vertical-align:middle; }
+  .pending-full { color:var(--blue); white-space:nowrap; margin-left:auto; }
+  .pending-full + .pending-action { margin-left:8px; }
+  /* 首页审批卡：命令在说明前面，最多 6 整行，不在卡片里嵌套滚动 */
+  .todo pre.card-cmd { margin:8px 0 0; line-height:18px; max-height:none; overflow:visible; }
+  .todo .desc { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+  .todo pre.card-cmd > span { display:block; max-height:calc(6 * 18px); overflow:hidden; }
+  .todo .cmd-more { display:flex; align-items:center; gap:4px; min-height:32px; font-size:13px; color:var(--blue); }
+  .todo .cmd-more + .desc, .todo pre.card-cmd + .desc { margin-top:4px; }
+  /* 宽屏：审批和计划的按钮行最宽 480，靠左 */
+  .dm .dock .btns, .dm .pending-actions .btns { max-width:480px; }
   .pending-actions { flex:none; padding:4px 0 10px; }
   .pending.submitting .pending-action { color:var(--muted); }
   .pending.submitting .ans { pointer-events:none; }
@@ -942,14 +952,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v46 · 2026-10-18 UTC · 上一版 v45 在 git 历史里（<code>git log -- docs/design/client-v45.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v47 · 2026-10-19 UTC · 上一版 v46 在 git 历史里（<code>git log -- docs/design/client-v46.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v45 的改动</h4><ul><li>Android 手机作为唯一管理端，独立租约和持久安全操作。</li><li>吊销保留档案，删除电脑记录另行确认。</li><li>增加正常手机交接和可重启继续的紧急恢复页，当前 checkpoint 不依赖历史前缀。</li></ul>
+  <h4>相对 v46 的改动</h4><ul><li>停靠区：进会话时要你处理的事默认展开，「收起」后按事项记住，新的一项又默认展开；展开后只有一行头部，内容区最高约占会话内容区的 60%（至少 240），计划正文不再单独限高。</li><li>审批先给命令再给说明；停靠区里的命令不单独限高；首页审批卡的命令最多 6 整行，多出来的「还有 N 行 · 展开」就地展开。</li><li>宽屏审批和计划的按钮行最宽 480，靠左。</li><li>网页和 iOS 没有添加设备页和入口，设置、设备页和空状态改成一句说明；加入页的说明按实际流程写，网页只说输入配对码。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
@@ -970,8 +980,15 @@
           <div class="k"><span><i class="sdot"></i> 请求执行</span><span>剩 8 分钟，超时拒绝</span></div>
           <div class="t"><span>重构 API 层</span><a>查看会话<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a></div>
           <div class="m">foo · VPS-dev</div>
-          <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
-          <pre>go test ./... -count=1</pre>
+          <pre class="card-cmd"><span>rm -rf gen/remoteagent &amp;&amp; \
+buf generate --template buf.gen.yaml &amp;&amp; \
+go build ./... &amp;&amp; \
+go test ./internal/... -count=1 \
+  -run 'Test(Pair|Session|Terminal)' &amp;&amp; \
+go vet ./... &amp;&amp; \
+git status --short gen/</span></pre>
+          <div class="cmd-more">还有 4 行 · 展开<svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></div>
+          <div class="desc">跑一遍全部测试，确认拆包没有破坏行为。先清掉旧的生成文件再用 buf 重新生成，编译通过后只跑配对、会话和终端三组测试</div>
           <div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div></div>
         </div>
         <div class="todo">
@@ -983,7 +1000,7 @@
       </div>
       <div class="tabbar"><div class="on"><i><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg></i>会话<span class="n">4</span></div><div><i><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg></i>设置</div></div>
     </div>
-    <div class="cap">主页（全部项目）：先处理再看进行中。命令可滚动看全文，审批仍直接在卡片上处理；提问、计划、弹窗点进会话</div>
+    <div class="cap">主页（全部项目）：先处理再看进行中。审批卡先给命令再给说明：命令最多 6 整行，不在卡片里滚动，多出来的点「还有 N 行 · 展开」就地看全文（再点「收起」）；说明最多 2 行。审批直接在卡片上处理；提问、计划、弹窗点进会话</div>
   </div>
 
   <div>
@@ -1251,14 +1268,13 @@
         <div class="record"><span style="color:var(--green)"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>mkdir -p internal/handler</code><span class="muted">已允许</span></div>
         <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
+      <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief"><span class="when-closed">go test ./... -count=1</span><span class="when-open">剩 8 分钟，超时拒绝</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><pre>go test ./... -count=1</pre>
         <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
-        <pre>go test ./... -count=1</pre>
         </div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div></div>
       </div></div></details>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
     </div>
-    <div class="cap">审批以一行入口停靠在输入框上方，展开后处理；处理后在聊天里留一行「已允许 / 已拒绝」</div>
+    <div class="cap">进会话时，要你处理的事停靠在输入框上方并默认展开：只有一行头部「● 类型　还有 N 项 · 剩 X 分钟　收起」，下面先是命令、再是说明，命令不单独限高，跟着内容区滚动，按钮固定在下面。点「收起」后这一项保持一行（按事项记住），换成新的一项又默认展开。处理后在聊天里留一行「已允许 / 已拒绝」</div>
   </div>
 
   <div>
@@ -1268,7 +1284,7 @@
       <div class="body chat">
         <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div><pre>go test ./... -count=1</pre></div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div></div></div></div></details>
+      <details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief"><span class="when-closed">go test ./... -count=1</span><span class="when-open">剩 8 分钟，超时拒绝</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><pre>go test ./... -count=1</pre></div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div></div></div></div></details>
       <div class="compose-card slim"><div class="draft typed">顺便看下 lint 有没有报错</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
@@ -1280,19 +1296,19 @@
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b>审批详情</b><span>重构 API 层 · 剩 7 分钟</span></span><span class="more"></span></div>
       <div class="body" style="padding:0 14px">
-        <div class="desc small" style="color:var(--fg2);margin-bottom:6px">清理旧的生成文件后重新生成 protobuf 代码</div>
         <pre style="background:var(--soft);color:var(--fg2);border-radius:var(--r-xs);padding:8px 10px;font:12px/1.5 ui-monospace,Menlo,monospace;margin:0;white-space:pre-wrap;height:150px;overflow:auto">rm -rf gen/remoteagent &amp;&amp; \
 buf generate --template buf.gen.yaml &amp;&amp; \
 go build ./... &amp;&amp; \
 go test ./internal/... -count=1 -run 'Test(Pair|Session|Terminal)' &amp;&amp; \
 git status --short gen/</pre>
+        <div class="desc small" style="color:var(--fg2);margin-top:6px">清理旧的生成文件后重新生成 protobuf 代码</div>
       </div>
       <div class="dock">
         <div class="appr"><div class="deny-in"><div class="field">别删 gen，直接 buf generate 覆盖就行</div><div class="btns"><div class="btn">取消</div><div class="btn no">不允许</div></div></div></div>
       </div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
-    <div class="cap">长命令点「展开全文」进整页，命令可以滚动；点「不允许」后，输入框和确认按钮贴在键盘上方，不会被收起</div>
+    <div class="cap">会话内容区太矮、停靠区展开不下时，点那一行进整页：命令在前、说明在后，命令可以滚动；点「不允许」后，输入框和确认按钮贴在键盘上方，不会被收起</div>
   </div>
 
   <div>
@@ -1306,8 +1322,7 @@ git status --short gen/</pre>
         <div class="ai">有 12 个依赖可以升级，其中 <code>pgx</code> 是 v4 → v5 的大版本。</div>
         <div class="me pending"><div><span class="clamp">升级完跑一遍全部测试</span></div><small><span class="pt">等你回答后插入</span><b>取消</b></small></div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="steps"><i class="done"></i><i></i> <span class="muted">第 1 题，共 2 题</span></span></div>
-        <div class="q">大版本也一起升吗？</div>
+      <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">Codex 在问你</span><span class="pending-brief"><span class="when-closed">大版本也一起升吗？</span><span class="when-open"><span class="steps"><i class="done"></i><i></i> <span class="muted">第 1 题，共 2 题</span></span></span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="q">大版本也一起升吗？</div>
         <div class="ans"><div>只升小版本<small>改动小，go build 大概率直接通过</small></div><span class="tag">推荐</span></div>
         <div class="ans"><div>包括 pgx v5<small>要改连接池和事务相关的调用</small></div></div>
         </div><div class="pending-actions"><div class="foot"><span>都不合适？</span><b>其他回答：去终端<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></b></div>
@@ -1328,13 +1343,12 @@ git status --short gen/</pre>
         <div class="tool"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>读取 14 个文件</code></div>
         <div class="ai">方案如下，批准后开始改。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">计划待批准</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>计划待批准</b><span style="color:var(--blue);font-weight:600">展开全文<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
-        <div class="plan-body">1. 新建 <code>inventory</code> 包，迁移库存扣减和回滚<br>2. 订单服务改为调用接口，保留旧实现做开关<br>3. 补充集成测试，覆盖并发扣减…</div>
+      <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">计划待批准</span><span class="pending-brief"><span class="when-closed"></span><span class="when-open"></span></span><span class="when-open pending-full">展开全文<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="plan-body">1. 新建 <code>inventory</code> 包，迁移库存扣减和回滚<br>2. 订单服务改为调用接口，保留旧实现做开关<br>3. 补充集成测试，覆盖并发扣减…</div>
         </div><div class="pending-actions"><div class="btns"><div class="btn">继续规划…</div><div class="btn pri">批准执行</div></div>
       </div></div></details>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
     </div>
-    <div class="cap">计划：同样停靠；全文页里还有「清空上下文后执行」。Codex 批准后按 CLI 实际模式显示；Claude Code 批准后进入询问模式，不提供清空上下文后执行</div>
+    <div class="cap">计划：同样默认展开，计划正文不单独限高，跟着内容区滚动；头部的「展开全文」进整页，全文页里还有「清空上下文后执行」。Codex 批准后按 CLI 实际模式显示；Claude Code 批准后进入询问模式，不提供清空上下文后执行</div>
   </div>
 
   <div>
@@ -1346,8 +1360,7 @@ git status --short gen/</pre>
         <div class="sysline">11:25 · ~/Code/billing</div>
         <div class="me pending"><div><span class="clamp">先读一下 README</span></div><small><span class="pt">等弹窗处理后发送</span><b>取消</b></small></div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">终端里有弹窗</span><span class="pending-brief">Trust this folder?</span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>终端里有弹窗</b><span class="muted">Codex 在等你</span></div>
-        <div class="q" style="font-weight:500">Trust this folder?</div>
+      <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">终端里有弹窗</span><span class="pending-brief"><span class="when-closed">Trust this folder?</span><span class="when-open">Codex 在等你</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="q" style="font-weight:500">Trust this folder?</div>
         </div><div class="pending-actions"><div class="btns"><div class="btn pri">去终端处理</div></div>
       </div></div></details>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
@@ -1961,8 +1974,9 @@ git status --short gen/</pre>
   <h4>停靠区</h4>
   <ul>
     <li>同时有多项时，按上表顺序只停靠最前面的一项，右上角写「还有 1 项」，处理完自动换下一项</li>
-    <li>展开后内容最多 240px，正文内部滚动，操作按钮固定在下方；展开处理时收起聊天键盘，普通草稿保留；长命令、计划和问题可以进入全文页，全文页的提交按钮固定在底部</li>
-    <li>停靠区默认一行：类型 + 摘要 + 「处理」；点开后显示正文和操作，键盘弹出时仍保留入口</li>
+    <li>进会话时默认展开；点「收起」后这一项是一行：类型 + 摘要 + 「处理」，按事项记住，换成新的一项又默认展开；键盘弹出时只留这一行入口</li>
+    <li>展开后只有一行头部「● 类型　元信息　收起」，摘要只在收起时显示；内容区最高约占会话内容区的 60%（至少 240），超出时内容区自己滚动，操作按钮固定在下方；展开处理时收起聊天键盘，普通草稿保留</li>
+    <li>审批先给命令再给说明，命令和计划正文都不单独限高；计划可以从头部的「展开全文」进全文页，内容区放不下时点那一行进整页，整页的提交按钮固定在底部</li>
     <li>在停靠区里写不允许的说明时不收起：卡片只留输入框和按钮，贴在键盘上方，聊天区让出高度</li>
   </ul>
   <h4>会话标题</h4>
@@ -2286,8 +2300,7 @@ git status --short gen/</pre>
 
   <div class="st">
     <div class="st-h">审批 · 提交中 / 失败</div>
-    <details class="dock pending submitting" open><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action">等待确认</span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 7 分钟</span></div>
-      <pre>go test ./... -count=1</pre>
+    <details class="dock pending submitting" open><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief"><span class="when-closed">go test ./... -count=1</span><span class="when-open">剩 7 分钟</span></span><span class="pending-action">等待确认</span></summary><div class="pending-content"><div class="pending-scroll"><pre>go test ./... -count=1</pre>
       </div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no dis">不允许</div><div class="btn pri dis">允许中…</div></div></div>
     </div></div></details>
     <div class="banner err" style="margin-top:8px">没送到电脑<b>重试</b></div>
@@ -2304,9 +2317,8 @@ git status --short gen/</pre>
 
   <div class="st">
     <div class="st-h">审批 · 不允许并说明</div>
-    <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">请求权限 · apply_patch</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求权限 · apply_patch</b><span class="muted">剩 6 分钟</span></div>
+    <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">请求权限 · apply_patch</span><span class="pending-brief"><span class="when-closed"></span><span class="when-open">剩 6 分钟</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><pre>{"path": "/etc/hosts", "patch": "@@ -1,3 +1,4 @@\n 127.0.0.1 localhost\n+127.0.0.1 api.local"}</pre>
       <div class="desc">修改工作区外的文件</div>
-      <pre class="cut">{"path": "/etc/hosts", "patch": "@@ -1,3 +1,4 @@\n 127.0.0.1 localhost\n+127.0.0.1 api.local"}</pre>
       </div><div class="pending-actions"><div class="appr"><div class="deny-in"><div class="field">改 /etc/hosts 不行，用 .env 配置</div><div class="btns"><div class="btn">取消</div><div class="btn no">不允许</div></div></div></div>
     </div></div></details>
     <div class="st-c">点「不允许」就地展开输入框，写一句告诉它该怎么做，也可以不写直接确认；只拒这一步，Codex 拿到说明后接着做。不是命令的请求显示工具名和参数</div>
@@ -2323,8 +2335,7 @@ git status --short gen/</pre>
 
   <div class="st">
     <div class="st-h">提问 · 选中后提交中</div>
-    <details class="dock pending submitting" open><summary><span class="pending-dot"></span><span class="pending-label">Codex 在问你</span><span class="pending-brief">要顺便更新 go.mod 的 Go 版本吗？</span><span class="pending-action">等待确认</span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="muted">第 2 题，共 2 题</span></div>
-      <div class="q">要顺便更新 go.mod 的 Go 版本吗？</div>
+    <details class="dock pending submitting" open><summary><span class="pending-dot"></span><span class="pending-label">Codex 在问你</span><span class="pending-brief"><span class="when-closed">要顺便更新 go.mod 的 Go 版本吗？</span><span class="when-open">第 2 题，共 2 题</span></span><span class="pending-action">等待确认</span></summary><div class="pending-content"><div class="pending-scroll"><div class="q">要顺便更新 go.mod 的 Go 版本吗？</div>
       <div class="ans on"><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><div>更新到 1.27<small>提交中…</small></div></div>
       <div class="ans"><div>保持不变</div></div>
     </div></div></details>
@@ -2333,8 +2344,7 @@ git status --short gen/</pre>
 
   <div class="st">
     <div class="st-h">停靠区 · 多项排队</div>
-    <details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief">make migrate · 还有 1 项</span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">还有 1 项 · 剩 8 分钟</span></div>
-      <pre>make migrate</pre>
+    <details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief"><span class="when-closed">make migrate · 还有 1 项</span><span class="when-open">还有 1 项 · 剩 8 分钟</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><pre>make migrate</pre>
       </div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div></div>
     </div></div></details>
   </div>
@@ -2415,7 +2425,7 @@ git status --short gen/</pre>
       <div class="muted small" style="margin:4px 0 10px">MacBook 在线，可以直接开始</div>
       <div class="btns"><div class="btn pri">开始第一个会话</div></div>
     </div>
-    <div class="st-c">没有在线电脑时改写：在电脑上运行 <code>remote-agent daemon</code>；还没加电脑时给「添加设备」</div>
+    <div class="st-c">没有在线电脑时改写：在电脑上运行 <code>remote-agent daemon</code>；还没加电脑时，网页和 iOS 只写一句「还没有电脑。在手机 App 的「设置 › 添加设备」里把电脑加进来。」，不放按钮；Android 手机给「添加设备」按钮</div>
   </div>
 
   <div class="st">
@@ -2464,8 +2474,7 @@ git status --short gen/</pre>
 
   <div class="st">
     <div class="st-h">提问 · 回答没送到</div>
-    <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="muted">第 1 题，共 2 题</span></div>
-      <div class="q">大版本也一起升吗？</div>
+    <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">Codex 在问你</span><span class="pending-brief"><span class="when-closed">大版本也一起升吗？</span><span class="when-open">第 1 题，共 2 题</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="q">大版本也一起升吗？</div>
       <div class="ans on"><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><div>只升小版本<small style="color:var(--red)">没能提交，终端里的问题可能已经变了</small></div></div>
       </div><div class="pending-actions"><div class="foot"><span></span><b>重试</b></div>
     </div></div></details>
@@ -2901,11 +2910,7 @@ git status --short gen/</pre>
 </div>
 <div class="ai">接下来想优先覆盖哪些异常情况？</div>
 </div>
-<details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">Claude Code 在问你</span><span class="pending-brief">哪些场景需要测试？</span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h">
-<b>Claude Code 在问你</b>
-<span class="muted">可多选</span>
-</div>
-<div class="q">哪些场景需要测试？</div>
+<details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">Claude Code 在问你</span><span class="pending-brief"><span class="when-closed">哪些场景需要测试？</span><span class="when-open">可多选</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="q">哪些场景需要测试？</div>
 <div class="answers-scroll">
 <div class="ans on">
 <span class="box"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span>
@@ -3024,11 +3029,7 @@ git status --short gen/</pre>
 </div>
 <div class="ai">方案已经整理好，批准后开始改。</div>
 </div>
-<details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">计划待批准</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h">
-<b>计划待批准</b>
-<span style="color:var(--blue)">展开全文<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
-</div>
-<div class="plan-body">1. 抽出库存接口<br>2. 迁移扣减与回滚<br>3. 补充并发测试</div>
+<details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">计划待批准</span><span class="pending-brief"><span class="when-closed"></span><span class="when-open"></span></span><span class="when-open pending-full">展开全文<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="plan-body">1. 抽出库存接口<br>2. 迁移扣减与回滚<br>3. 补充并发测试</div>
 </div><div class="pending-actions"><div class="btns">
 <div class="btn">继续规划</div>
 <div class="btn pri">批准执行</div>
@@ -3652,13 +3653,10 @@ git status --short gen/</pre>
 <div class="row client"><span class="client-info">客户端 · 92de<small>种类未知</small></span><span class="v">2025年12月1日添加<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
 </div>
 </div>
-<div class="manage-hint">右边是上次使用的时间。很久没用的客户端可以点进去移除，名称也在里面改。</div>
-<div class="grp">
-<div class="row" style="color:var(--blue)"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 添加电脑或客户端</div>
+<div class="manage-hint">右边是上次使用的时间。这里只能改本机名称。要添加电脑或客户端，在手机 App 的「设置 › 添加设备」里操作。</div>
 </div>
 </div>
-</div>
-<div class="cap">设备分组：电脑是执行位置，客户端是控制入口。客户端第二行写种类和系统，右边写上次使用的时间，按它从近到远排；还没有使用记录的写添加日期，排在最后。上次使用不表示现在正在查看</div>
+<div class="cap">设备分组：电脑是执行位置，客户端是控制入口。客户端第二行写种类和系统，右边写上次使用的时间，按它从近到远排；还没有使用记录的写添加日期，排在最后。上次使用不表示现在正在查看。这是网页的设备页：网页和 iOS 不能添加或移除设备，底下只有一句说明；Android 管理端手机在这里是「＋ 添加电脑或客户端」，点进去移除</div>
 </div>
 <div>
 <div class="phone">
@@ -3933,7 +3931,7 @@ git status --short gen/</pre>
         </div>
       </div>
     </div>
-    <div class="cap">已有设备：扫码或输码，核对图案。5 分钟内有效</div>
+    <div class="cap">添加设备（只有 Android 手机有，从「设置 › 添加设备」进来）：显示二维码和 8 位配对码，新设备扫码（Android、iOS）或输码（网页），再核对图案。5 分钟内有效。网页和 iOS 没有这一页，也没有通往它的入口</div>
   </div>
 
   <div>
@@ -3941,13 +3939,13 @@ git status --short gen/</pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
         <div class="large" style="padding-top:24px"><h3>加入账户</h3></div>
-        <p class="muted small" style="margin:6px 16px 16px">在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。</p>
+        <p class="muted small" style="margin:6px 16px 16px">在已加入的手机 App 里打开「设置 › 添加设备」，把显示的 8 位配对码填在这里。</p>
         <div class="field code-in">4829 1756</div>
         <div class="field"><small>服务器</small><span style="color:var(--fg)">https://ra.remote-agent.top</span></div>
         <div class="big"><div class="btn pri">加入</div></div>
       </div>
     </div>
-    <div class="cap">新设备第一次打开：输码加入；扫码打开时码和服务器已填好</div>
+    <div class="cap">新设备第一次打开（网页）：网页不能扫码，说明只说输入配对码。Android 和 iOS 的这一句是「在已加入的手机 App 里打开「设置 › 添加设备」，扫显示的二维码，或把 8 位配对码填在这里。」，扫码后码和服务器已填好</div>
   </div>
 
   <div>
@@ -4105,9 +4103,8 @@ git status --short gen/</pre>
             <div class="record"><span style="color:var(--green)"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>mkdir -p internal/handler</code><span class="muted">已允许</span></div>
             <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
           </div>
-          <details class="dock pending"><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
+          <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief"><span class="when-closed">go test ./... -count=1</span><span class="when-open">剩 8 分钟，超时拒绝</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><pre>go test ./... -count=1</pre>
             <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
-            <pre>go test ./... -count=1</pre>
             </div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div></div>
           </div></div></details>
           <div class="compose-card"><div class="draft">消息 · ⌘↵ 发送</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
@@ -4231,15 +4228,16 @@ git status --short gen/</pre>
     </div>
     <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
   </div>
-  <div class="dm gray" style="background:var(--soft);overflow:auto"><div style="max-width:672px;margin:0 auto;padding-top:12px"><div class="large"><h3>设置</h3></div><div class="glabel">电脑</div><div class="grp"><div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><div class="machine-info"><div class="machine-name">MacBook<span class="machine-status"><span class="dot idle"></span>在线</span></div><div class="machine-quota">Codex · 7 天已用 34%</div></div><span class="machine-chevron"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row" style="color:var(--blue)"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 添加设备</div></div><div class="glabel">客户端</div><div class="grp"><div class="row">Chrome · 8a5f<span class="v">当前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">Pixel 9<span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">外观</div><div class="grp"><div class="row">主题<div class="pick"><span class="on">自动</span><span>亮色</span><span>暗色</span></div></div></div><div class="glabel">版本</div><div class="grp"><div class="row">remote-agent<span class="v">示例版本</span></div></div></div></div>
+  <div class="dm gray" style="background:var(--soft);overflow:auto"><div style="max-width:672px;margin:0 auto;padding-top:12px"><div class="large"><h3>设置</h3></div><div class="glabel">电脑</div><div class="grp"><div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><div class="machine-info"><div class="machine-name">MacBook<span class="machine-status"><span class="dot idle"></span>在线</span></div><div class="machine-quota">Codex · 7 天已用 34%</div></div><span class="machine-chevron"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="manage-hint">要添加电脑或客户端，在手机 App 的「设置 › 添加设备」里操作。</div><div class="glabel">客户端</div><div class="grp"><div class="row">Chrome · 8a5f<span class="v">当前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">Pixel 9<span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">外观</div><div class="grp"><div class="row">主题<div class="pick"><span class="on">自动</span><span>亮色</span><span>暗色</span></div></div></div><div class="glabel">版本</div><div class="grp"><div class="row">remote-agent<span class="v">示例版本</span></div></div></div></div>
 </div></div>
-<div class="cap" style="width:auto;text-align:left">宽屏设置：设置、电脑详情和额度页的内容限制在约 640 宽的居中一列，不随窗口拉满；Android 在平板和横屏上同样处理。</div>
+<div class="cap" style="width:auto;text-align:left">宽屏设置：设置、电脑详情和额度页的内容限制在约 640 宽的居中一列，不随窗口拉满；Android 在平板和横屏上同样处理。网页没有「添加设备」，电脑一组下面只有一句说明。</div>
 <div class="note">
   <h4>宽屏说明</h4>
   <ul>
     <li>侧栏和主区域各自滚动；侧栏的范围标题、筛选框固定在顶部，「⚙︎ 设置」和连接状态固定在底部</li>
     <li>范围记在这台设备上，手机和宽屏共用同一个值；宽屏上打开某个项目（如从电脑详情的项目列表点进来）会把范围换成它</li>
     <li>正在看的会话即使状态变了（比如从等待审批变成运行中、已结束），也继续留在侧栏里高亮，直到切走</li>
+    <li>审批和计划的按钮行最宽 480，靠左，不随主区域拉满（Android、iOS 的平板宽度同样处理）</li>
     <li>窗口宽 900 以上用宽屏布局；主区域宽度不到 840（窗口约 1120）时只有聊天和终端两个视图，「并排」不出现；记住的是并排时临时显示聊天，拉宽后恢复</li>
   </ul>
 </div>

@@ -361,7 +361,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 项目在范围菜单、新建时的选项目和项目管理三处是同一个列表：同样的分组和排序、同样的两行（名字；路径加进行中的数量，没有进行中而它的电脑都不在线时写「电脑不在线」）、同样的「新项目…」，只有行尾不同。两端各由一个共用的组件画，免得三处各自演变。
 
-主页和范围菜单见 [client-v38 · 主页](design/client-v46.html#home)，项目管理的布局与具体交互见 [client-v38 · 项目管理](design/client-v46.html#projects)。目标机器离线时由用户选这次用的机器，不改项目设置，也不在输入中途自动更换机器或 CLI。在新建输入框旁切换 CLI 保留草稿，改用项目设置里这个 CLI 的那一套。
+主页和范围菜单见 [client-v38 · 主页](design/client-v47.html#home)，项目管理的布局与具体交互见 [client-v38 · 项目管理](design/client-v47.html#projects)。目标机器离线时由用户选这次用的机器，不改项目设置，也不在输入中途自动更换机器或 CLI。在新建输入框旁切换 CLI 保留草稿，改用项目设置里这个 CLI 的那一套。
 
 ## 9. 账户、设备和密钥
 
@@ -462,7 +462,7 @@ open 模式下带对 setup token 的照样建 owner 账户。工作量证明挡�
 
 ### 断线时显示什么
 
-从客户端到电脑要经过三段：本机网络、服务器、电脑。客户端只报离自己最近的那一段故障，并且只在连接提示条一处说；更远的一段此刻无从得知，不沿用断线前的说法。界面见 [client-v38 · 断线](design/client-v46.html#link)。
+从客户端到电脑要经过三段：本机网络、服务器、电脑。客户端只报离自己最近的那一段故障，并且只在连接提示条一处说；更远的一段此刻无从得知，不沿用断线前的说法。界面见 [client-v38 · 断线](design/client-v47.html#link)。
 
 | 判断 | 结论 | 没结束的会话 |
 |---|---|---|
@@ -665,7 +665,7 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 
 ### 账户额度
 
-设备页提供额度详情，按这台机器上安装的 CLI 分组，显示 CLI 登录账户的用量；它与会话上下文占用、累计 token、remote-agent 的图片存储配额分别展示。不同 CLI 不相加，不按模型或会话切分账户额度；不同机器也不凭套餐名推断为同一个账户。界面见 [client-v38 · 账户额度](design/client-v46.html#quota)。
+设备页提供额度详情，按这台机器上安装的 CLI 分组，显示 CLI 登录账户的用量；它与会话上下文占用、累计 token、remote-agent 的图片存储配额分别展示。不同 CLI 不相加，不按模型或会话切分账户额度；不同机器也不凭套餐名推断为同一个账户。界面见 [client-v38 · 账户额度](design/client-v47.html#quota)。
 
 Codex 继续用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数据从哪读)）。Claude Code 的 transcript 没有账户额度，额度只在状态栏命令的输入里（[claude-code-notes §2](claude-code-notes.md#2-transcript)）。
 
