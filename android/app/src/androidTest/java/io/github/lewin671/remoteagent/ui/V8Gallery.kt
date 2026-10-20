@@ -457,15 +457,18 @@ class V8Gallery {
     }
 
     @Test fun accountSecurityAuthority() {
-        shoot("50-security-authority", accountState().copy(isAuthority = true, authorityDeviceId = remote.account.deviceId, leaseEndMs = now + 48 * 3600_000)) { AccountSecurityContent(remote.state.value) }
+        val state = accountState().copy(isAuthority = true, authorityDeviceId = remote.account.deviceId, leaseEndMs = now + 48 * 3600_000)
+        shoot("50-security-authority", state) { AccountSecurityContent(state) }
     }
 
     @Test fun accountSecurityMember() {
-        shoot("51-security-member", accountState().copy(authorityDeviceId = "b71c00000000b71c", leaseEndMs = now + 48 * 3600_000)) { AccountSecurityContent(remote.state.value) }
+        val state = accountState().copy(authorityDeviceId = "b71c00000000b71c", leaseEndMs = now + 48 * 3600_000)
+        shoot("51-security-member", state) { AccountSecurityContent(state) }
     }
 
     @Test fun accountSecurityPending() {
-        shoot("52-security-pending", accountState().copy(isAuthority = true, authorityDeviceId = remote.account.deviceId, leaseEndMs = now + 48 * 3600_000, recoveryPending = true, recoveryReadyMs = now + 24 * 3600_000)) { AccountSecurityContent(remote.state.value, pending = true) }
+        val state = accountState().copy(isAuthority = true, authorityDeviceId = remote.account.deviceId, leaseEndMs = now + 48 * 3600_000, recoveryPending = true, recoveryReadyMs = now + 24 * 3600_000)
+        shoot("52-security-pending", state) { AccountSecurityContent(state, pending = true) }
     }
 
     @Test fun devices() {
