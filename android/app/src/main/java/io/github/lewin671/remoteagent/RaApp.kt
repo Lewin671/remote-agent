@@ -10,6 +10,8 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.Api
+import io.github.lewin671.remoteagent.core.Initiation
+import io.github.lewin671.remoteagent.core.PairingController
 import io.github.lewin671.remoteagent.core.Keys
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.value
@@ -40,6 +42,18 @@ import okhttp3.OkHttpClient
  */
 class RaApp : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    // Pairing approval outlives its page and foreground stream. The Remote still
+    // gates authority signatures; waiting for an already signed delivery does not.
+    private var pairingScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val pairings = mutableMapOf<Pair<Remote, String>, PairingController>()
+
+    fun pairing(remote: Remote, replacesDeviceId: String): PairingController =
+        pairings.getOrPut(remote to replacesDeviceId) {
+            PairingController(pairingScope) {
+                Initiation.start(remote, replacesDeviceId)
+            }
+        }
 
     // What BuildConfig would hold, read from the manifest and resources:
     // see the note on buildConfig in app/build.gradle.kts.
@@ -380,6 +394,9 @@ class RaApp : Application() {
                 // to the foreground meanwhile must not find the account, start
                 // it and register it for push again.
                 _remote.value = null
+                pairingScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+                pairings.clear()
+                pairingScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
                 Push.close()
                 pendingStore.invalidate()
                 AccountMemory.clear()

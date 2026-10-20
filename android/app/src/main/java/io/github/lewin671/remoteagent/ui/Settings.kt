@@ -50,9 +50,7 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.Initiation
 import io.github.lewin671.remoteagent.core.Mode
-import io.github.lewin671.remoteagent.core.PairingController
 import io.github.lewin671.remoteagent.core.PairingUiState
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.errorText
@@ -1214,15 +1212,9 @@ fun PairScreen(replacesDeviceId: String = "") {
     val nav = LocalNav.current
     val settings by RaApp.instance.prefs.settings.collectAsState(Settings())
     val p = pal
-    val scope = rememberAuthorityScope()
-    val model =
-        remember(remote, scope) {
-            PairingController(scope, RaApp.instance.scope) {
-                Initiation.start(remote, replacesDeviceId)
-            }
-        }
+    val model = remember(remote, replacesDeviceId) { RaApp.instance.pairing(remote, replacesDeviceId) }
     val state by model.state.collectAsState()
-    AuthorityStartEffect(model) { model.start() }
+    AuthorityStartEffect(model) { model.enter() }
     DisposableEffect(model) { onDispose { model.leave() } }
     PageScaffold("添加设备") {
         Column(
@@ -1325,7 +1317,8 @@ fun PairScreen(replacesDeviceId: String = "") {
                             modifier = Modifier.padding(top = 10.dp, bottom = 12.dp),
                         )
                         Text(
-                            "和新设备上的 4 个图案一模一样才允许",
+                            if (sending) "请在新设备上核对这 4 个图案，并点确认。确认后才能加入；可以离开本页等待。"
+                            else "和新设备上的 4 个图案一模一样才允许",
                             style = T.sm,
                             color = p.muted,
                             textAlign = TextAlign.Center,
@@ -1344,7 +1337,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                                 bg = p.card,
                             )
                             Btn(
-                                if (sending) "正在交给新设备…" else "图案一致，允许",
+                                if (sending) "等新设备确认图案…" else "图案一致，允许",
                                 model::approve,
                                 Modifier.weight(1f),
                                 BtnKind.PRIMARY,
@@ -1366,7 +1359,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         step.message,
                         Modifier.padding(top = 14.dp),
                         if (step.uncertain) Tone2.PLAIN else Tone2.ERROR,
-                        action = if (step.canRetry) "重试" else "换一个",
+                        action = if (step.canRetry) "重试" else "重新开始",
                         onAction = model::retry,
                     )
             }

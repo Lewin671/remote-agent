@@ -87,7 +87,7 @@ fun canRetryPairApproval(error: Exception): Boolean {
     )
         return false
     val words = error.message.orEmpty()
-    return listOf("过期", "取消", "拒绝", "无效", "不匹配").none { it in words }
+    return listOf("过期", "取消", "拒绝", "无效", "失效", "不匹配").none { it in words }
 }
 
 /** What a QR code carries: the code, the initiator's commitment and the server. */
@@ -221,8 +221,57 @@ internal constructor(
         return s.emoji to st.joinerKind
     }
 
-    /** Signs the new member state, uploads it, then hands over the chain; waits for delivery. */
+    /** A missing pairing does not prove failed registration: the receipt may be lost.
+     * Resolve that separately before presenting a definite result to the user. */
     override suspend fun approve() {
+        try {
+            approveOnce()
+        } catch (e: ConnectException) {
+            if (e.code == Code.FAILED_PRECONDITION) {
+                val status = try {
+                    remote.api.pairing.getPairing(
+                        GetPairingRequest.newBuilder().setPairingId(pairingId).build(),
+                        Api.headers(remote.currentToken()),
+                    ).value()
+                } catch (statusError: ConnectException) {
+                    if (statusError.code != Code.NOT_FOUND) throw statusError
+                    resolveClosedPairing()
+                    return
+                }
+                if (status.state != PairingState.PAIRING_STATE_CANCELED) throw e
+            } else if (e.code !in setOf(Code.NOT_FOUND, Code.CANCELED)) throw e
+            resolveClosedPairing()
+        } catch (e: ClosedPairing) {
+            resolveClosedPairing()
+        }
+    }
+
+    private class ClosedPairing : Exception()
+
+    private suspend fun resolveClosedPairing() {
+        val candidate = candidateSeed?.let { deviceId(it) }
+        val registered = try {
+            remote.api.client.listDevices(
+                io.github.lewin671.remoteagent.proto.ListDevicesRequest.getDefaultInstance(),
+                Api.headers(remote.currentToken()),
+            ).value().devicesList.any { it.id == candidate }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            throw PairException("这次配对已失效，暂时无法核实新设备是否已加入。请在新设备或设备列表确认后重新开始。")
+        }
+        if (registered) {
+            // Install and verify the published chain before clearing its durable intent.
+            // syncSecurity() would also replay the now-missing pairing.
+            remote.security.sync()
+            remote.finishPairingOperation(pairingId)
+            return
+        }
+        throw PairException("这次配对已失效，新设备未加入。请先在设备列表移除未完成配对的设备，再重新开始。")
+    }
+
+    /** Signs in foreground, uploads once, then waits without further signing. */
+    private suspend fun approveOnce() {
         val s = secrets ?: throw PairException("还没有设备加入")
         val acct = remote.account
         val tok = remote.currentToken()
@@ -230,7 +279,14 @@ internal constructor(
             approvalRequest
                 ?: remote.pendingPairingRequest(pairingId)
                 ?: run {
-                    remote.syncSecurity()
+                    try {
+                        remote.syncSecurity()
+                    } catch (e: ConnectException) {
+                        // This can be replay of a previous pairing's durable intent;
+                        // it says nothing about the current candidate's registration.
+                        if (e.code !in setOf(Code.NOT_FOUND, Code.CANCELED, Code.FAILED_PRECONDITION)) throw e
+                        throw PairException("同步成员状态失败，可能有已失效的配对。请在设备列表检查并移除未完成配对的设备，再重新开始。")
+                    }
                     val cp = candidateSeed ?: throw PairException("没有候选设备")
                     val xp = candidateX ?: throw PairException("没有候选设备")
                     val kind = candidateKind ?: throw PairException("没有候选设备")
@@ -337,9 +393,8 @@ internal constructor(
                     .also { approvalRequest = it }
         }
         remote.api.pairing.approvePairing(request, Api.headers(tok)).value()
-        // Keep the same two-minute delay budget when tests poll more often.
-        repeat((120_000 / pollIntervalMs).coerceAtLeast(1).toInt()) {
-            if (stopped) throw PairException("已取消")
+        while (System.currentTimeMillis() < expires) {
+            if (stopped) throw ClosedPairing()
             try {
                 val res =
                     remote.api.pairing
@@ -353,14 +408,14 @@ internal constructor(
                     return
                 }
                 if (res.state == PairingState.PAIRING_STATE_CANCELED)
-                    throw PairException("另一台设备取消了配对")
+                    throw ClosedPairing()
             } catch (e: ConnectException) {
-                if (e.code == Code.NOT_FOUND)
-                    throw PairException("配对已过期，不确定新设备有没有拿到状态链。请在新设备上确认，必要时重新配对。")
+                if (e.code in setOf(Code.NOT_FOUND, Code.CANCELED)) throw e
+                if (e.code !in setOf(Code.UNAVAILABLE, Code.DEADLINE_EXCEEDED, Code.UNKNOWN)) throw e
             }
             delay(pollIntervalMs)
         }
-        throw PairException("新设备没有来取状态链，它可能没有加入成功。请在新设备上确认，必要时重新配对。")
+        resolveClosedPairing()
     }
 
     fun cancel() {

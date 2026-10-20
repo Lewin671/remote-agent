@@ -17,12 +17,12 @@ sealed interface PairingUiState {
     data class Failed(val message: String, val uncertain: Boolean, val canRetry: Boolean) : PairingUiState
 }
 
-/** A view owns this on its UI dispatcher. Network failures retain the exact
- * initiation/consent. Only start (explicit replacement) or leave withdraws it.
- * cleanupScope must outlive the view so disposing it can still cancel on server. */
+/** Retained by the account on its UI dispatcher. Once consent is given, page
+ * disposal must not withdraw a possibly published admission. Approval and delivery
+ * use the account scope; Initiation guards every authority signature in foreground. */
 class PairingController(
     private val scope: CoroutineScope,
-    private val cleanupScope: CoroutineScope = scope,
+    private val operationScope: CoroutineScope = scope,
     private val begin: suspend () -> PairingInitiation,
 ) {
     private val mutable = MutableStateFlow<PairingUiState>(PairingUiState.Starting)
@@ -30,6 +30,11 @@ class PairingController(
     private var generation = 0
     private var current: PairingInitiation? = null
     private var consent: Pair<List<String>, DeviceKind>? = null
+
+    /** Reopening a page keeps an in-flight approval and its eventual outcome. */
+    fun enter() {
+        if (current == null && mutable.value == PairingUiState.Starting) start()
+    }
 
     fun start() {
         val run = ++generation
@@ -39,7 +44,7 @@ class PairingController(
             try {
                 withdrawing?.join()
                 val pairing = begin()
-                if (run != generation) { cleanupScope.launch { pairing.cancelOnServer() }; return@launch }
+                if (run != generation) { operationScope.launch { pairing.cancelOnServer() }; return@launch }
                 current = pairing
                 mutable.value = PairingUiState.Waiting(pairing.code, pairing.link)
                 val (emoji, kind) = pairing.joined()
@@ -70,7 +75,7 @@ class PairingController(
         val (emoji, kind) = consent ?: return
         val run = generation
         mutable.value = PairingUiState.Sending(emoji, kind)
-        scope.launch {
+        operationScope.launch {
             try {
                 pairing.approve()
                 if (run == generation) { current = null; consent = null; mutable.value = PairingUiState.Done }
@@ -80,21 +85,29 @@ class PairingController(
             }
             catch (e: Exception) {
                 if (run == generation) {
-                    val uncertain = e !is PairException || e.message.orEmpty().let { "不确定" in it || "可能" in it }
-                    val message = if (e is PairException) words(e) else "不确定新设备收到没有，到新设备上看一眼是否已加入：" + words(e)
-                    mutable.value = PairingUiState.Failed(message, uncertain, canRetryPairApproval(e))
+                    val uncertain = e !is PairException || e.message.orEmpty().let { "不确定" in it || "可能" in it || "无法核实" in it }
+                    val retryable = canRetryPairApproval(e)
+                    val message = if (e is PairException) words(e)
+                        else if (retryable) "暂时无法确认新设备是否已加入，请检查网络后重试同一次批准，或在新设备上查看结果"
+                        else "服务器未接受这次批准，请在新设备核对是否已加入，再重新开始"
+                    mutable.value = PairingUiState.Failed(message, uncertain, retryable)
                 }
             }
         }
     }
 
-    fun leave() { generation++; withdraw() }
+    fun leave() {
+        if (consent != null) return
+        generation++
+        withdraw()
+        mutable.value = PairingUiState.Starting
+    }
 
     private fun withdraw(): Job? {
         val old = current
         current = null; consent = null
-        return old?.let { cleanupScope.launch { it.cancelOnServer() } }
+        return old?.let { operationScope.launch { it.cancelOnServer() } }
     }
 
-    private fun words(e: Exception) = if (e is PairException) e.message.orEmpty() else errorText(e)
+    private fun words(e: Exception) = if (e is PairException) e.message.orEmpty() else "配对暂时无法完成，请检查网络后重新开始"
 }
