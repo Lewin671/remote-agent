@@ -358,10 +358,13 @@ class Remote(
     private val linkGraceMs: Long = 10_000,
     private val securityStorage: DeviceSecurity.Storage? = null,
     tokenStorage: LoginTokenStore? = null,
+    private val dispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+    private val socketFactory: WebSocket.Factory? = null,
+    rpcTransport: com.connectrpc.http.HTTPClientInterface? = null,
 ) {
     private val keys: Keys? = if (account.hasRoot) Keys.derive(account.root) else null
     private val device = SigningKey(account.deviceSeed)
-    val api = Api(account.server, http, ::rejectToken)
+    val api = Api(account.server, http, ::rejectToken, rpcTransport)
     val security =
         DeviceSecurityClient(
             securityStorage ?: MissingDeviceSecurityStorage,
@@ -389,7 +392,6 @@ class Remote(
     private var leaseEnd = 0L
     @Volatile private var serverAhead = false
     private var stateJob: Job? = null
-    private val dispatcher = Dispatchers.IO.limitedParallelism(1)
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var authorityJob = SupervisorJob(scope.coroutineContext[Job])
 
@@ -766,7 +768,7 @@ class Remote(
         val refused = java.util.concurrent.atomic.AtomicBoolean(false)
         val broken = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
         val socket =
-            streamHttp.newWebSocket(
+            (socketFactory ?: streamHttp).newWebSocket(
                 Request.Builder().url(url).build(),
                 object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -3404,7 +3406,7 @@ class Remote(
         }
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
         val ws =
-            streamHttp.newWebSocket(
+            (socketFactory ?: streamHttp).newWebSocket(
                 Request.Builder().url(url).build(),
                 object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {

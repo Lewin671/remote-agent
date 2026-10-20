@@ -1,114 +1,76 @@
 package io.github.lewin671.remoteagent.core
 
-import io.github.lewin671.remoteagent.proto.*
-import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.ResponseBody.Companion.toResponseBody
+import kotlinx.coroutines.test.*
 import org.junit.Assert.*
+import org.junit.BeforeClass
+import kotlin.time.Duration.Companion.seconds
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class LoginReuseTest {
-    @Test fun coldStartSkipsLoginAndRpcRejectionDiscardsAndReconnects() = runBlocking {
-        TestServer().use { server ->
-            val http = Api.defaultHttp()
-            FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken).use { daemon ->
-                daemon.putMachine("test-machine")
-                daemon.putSession("session", Session.newBuilder().setTitle("Test").build())
-                daemon.upload("session", Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText("Hello")))
-                val account = approvedClient(daemon.phone, http)
-                val store = MemoryTokens()
-                val logins = AtomicInteger()
-                val unauthorized = AtomicInteger()
-                var reject = false
-                val counted = http.newBuilder().addInterceptor { chain ->
-                    val path = chain.request().url.encodedPath
-                    if (path.endsWith("GetChallenge") || path.endsWith("/Login")) logins.incrementAndGet()
-                    if (path.endsWith("GetEvents")) {
-                        if (chain.request().header("Authorization").isNullOrEmpty()) unauthorized.incrementAndGet()
-                        if (reject) {
-                            reject = false
-                            return@addInterceptor okhttp3.Response.Builder().request(chain.request())
-                                .protocol(okhttp3.Protocol.HTTP_1_1).code(401).message("Unauthorized")
-                                .body("{\"code\":\"unauthenticated\"}".toResponseBody("application/json".toMediaType())).build()
-                        }
-                    }
-                    chain.proceed(chain.request())
-                }.build()
-                suspend fun online(r: Remote) = withTimeout(15000) { r.state.first { it.loaded && it.conn == ConnState.ONLINE } }
-                val first = fixtureRemote(account, counted, tokenStorage = store)
-                first.start()
-                online(first)
-                assertEquals(2, logins.get())
-                val original = store.saved!!.value
-                first.close()
-                val cold = fixtureRemote(account, counted, tokenStorage = store)
-                try {
-                    cold.start()
-                    online(cold)
-                    assertEquals(2, logins.get())
-                    reject = true
-                    withTimeout(15000) { cold.events("session").first { it.loaded && it.events.size == 1 } }
-                    assertEquals(4, logins.get())
-                    assertNotEquals(original, store.saved!!.value)
-                    assertEquals(0, unauthorized.get())
-                } finally { cold.close() }
-                // A syntactically valid but unknown bearer is explicitly rejected with WS 1008.
-                store.saved = LoginToken("unknown-credential", System.currentTimeMillis() + 2 * 86_400_000L)
-                val refused = fixtureRemote(account, counted, tokenStorage = store)
-                try {
-                    refused.start()
-                    online(refused)
-                    assertEquals(6, logins.get())
-                    assertNotEquals("unknown-credential", store.saved!!.value)
-                } finally { refused.close() }
-            }
-        }
-    }
-    @Test fun openingCachedSessionDuringLoginWaitsInsteadOfSendingAnAnonymousRpc() = runBlocking {
-        TestServer().use { server ->
-            val http = Api.defaultHttp()
-            FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken).use { daemon ->
-                daemon.putMachine("test-machine")
-                daemon.putSession("session", Session.newBuilder().setTitle("Test").build())
-                daemon.upload("session", Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText("Hello")))
-                val account = approvedClient(daemon.phone, http)
-                val cache = MemoryCache()
-                val warm = fixtureRemote(account, http, cache)
-                warm.start()
-                withTimeout(15000) { warm.state.first { it.loaded } }
-                warm.close()
-                val release = java.util.concurrent.CountDownLatch(1)
-                val historyCalls = AtomicInteger()
-                val anonymous = AtomicInteger()
-                val delayed = http.newBuilder().addInterceptor { chain ->
-                    if (chain.request().url.encodedPath.endsWith("GetChallenge"))
-                        check(release.await(15, java.util.concurrent.TimeUnit.SECONDS))
-                    if (chain.request().url.encodedPath.endsWith("GetEvents")) {
-                        historyCalls.incrementAndGet()
-                        if (chain.request().header("Authorization").isNullOrEmpty()) anonymous.incrementAndGet()
-                    }
-                    chain.proceed(chain.request())
-                }.build()
-                val r = fixtureRemote(account, delayed, cache)
-                try {
-                    r.start()
-                    withTimeout(10000) { r.state.first { it.sessions.containsKey("session") } }
-                    val events = r.events("session")
-                    kotlinx.coroutines.delay(100)
-                    assertEquals(0, historyCalls.get())
-                    release.countDown()
-                    withTimeout(15000) { events.first { it.loaded && it.events.size == 1 } }
-                    assertEquals(0, anonymous.get())
-                    assertTrue(historyCalls.get() >= 1)
-                } finally {
-                    release.countDown()
-                    r.close()
-                }
-            }
-        }
+    companion object {
+        private lateinit var fixture: ColdOpenFixture
+        @JvmStatic @BeforeClass fun signOnce() { fixture = ColdOpenFixture(historySize = 0) }
     }
 
+    @Test fun coldStartSkipsLoginAndRpcRejectionDiscardsAndReconnects() = runTest(timeout = 5.seconds) {
+        val peer = ColdOpenPeer(fixture, this)
+        val store = MemoryTokens()
+        suspend fun online(r: Remote) = withTimeout(15000) { r.state.first { it.loaded && it.conn == ConnState.ONLINE } }
+        val first = peer.remote(tokens = store)
+        try { first.start(); online(first) } finally { first.close(); runCurrent() }
+        assertEquals(2, peer.calls.count { it == "Login" || it == "GetChallenge" })
+        val original = store.saved!!.value
+        val cold = peer.remote(tokens = store)
+        try {
+            cold.start()
+            online(cold)
+            assertEquals(2, peer.calls.count { it == "Login" || it == "GetChallenge" })
+            peer.rejectNextHistory = true
+            withTimeout(15000) { cold.events("short").first { it.loaded && it.events.size == 2 } }
+            assertEquals(4, peer.calls.count { it == "Login" || it == "GetChallenge" })
+            assertNotEquals(original, store.saved!!.value)
+            assertEquals(0, peer.anonymous)
+        } finally { cold.close(); runCurrent() }
+        store.saved = LoginToken("unknown-credential", fixture.now + 2 * LOGIN_REFRESH_MARGIN_MS)
+        val refused = peer.remote(tokens = store)
+        try {
+            refused.start()
+            online(refused) // The real Remote's reconnect backoff runs on virtual time.
+            assertEquals(1, peer.refused)
+            assertEquals(6, peer.calls.count { it == "Login" || it == "GetChallenge" })
+            assertNotEquals("unknown-credential", store.saved!!.value)
+        } finally { refused.close(); runCurrent() }
+    }
+
+    @Test fun openingCachedSessionDuringLoginWaitsInsteadOfSendingAnAnonymousRpc() = runTest(timeout = 5.seconds) {
+        val peer = ColdOpenPeer(fixture, this)
+        val cache = MemoryCache()
+        val warm = peer.remote(cache)
+        try {
+            warm.start()
+            withTimeout(15000) { warm.state.first { it.loaded } }
+        } finally { warm.close(); runCurrent() }
+        peer.calls.clear()
+        val reached = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        peer.before = { name, _ ->
+            if (name == "GetChallenge") { reached.complete(Unit); release.await() }
+        }
+        val r = peer.remote(cache, MemoryTokens())
+        try {
+            r.start()
+            reached.await()
+            assertTrue(r.state.value.sessions.containsKey("short"))
+            val events = r.events("short")
+            runCurrent() // Execute every runnable action while login is held, without sleeping.
+            assertFalse(peer.calls.contains("GetEvents"))
+            release.complete(Unit)
+            withTimeout(15000) { events.first { it.loaded && it.events.size == 2 } }
+            assertEquals(0, peer.anonymous)
+            assertTrue(peer.calls.contains("GetEvents"))
+        } finally { r.close(); runCurrent() }
+    }
 }

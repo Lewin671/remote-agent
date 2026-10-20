@@ -4,8 +4,9 @@ import io.github.lewin671.remoteagent.proto.LoginResponse
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
+import kotlin.time.Duration.Companion.seconds
 import org.junit.Test
 
 internal class MemoryTokens : LoginTokenStore {
@@ -20,7 +21,7 @@ internal class MemoryTokens : LoginTokenStore {
 class LoginTokensTest {
     private val account = Account("https://example.com", ByteArray(32), ByteArray(32), "phone")
 
-    @Test fun coldStartsAndConcurrentRpcsReuseOneCredentialUntilItsRefreshBoundary() = runBlocking {
+    @Test fun coldStartsAndConcurrentRpcsReuseOneCredentialUntilItsRefreshBoundary() = runTest(timeout = 5.seconds) {
         val store = MemoryTokens()
         var now = 100L
         var calls = 0
@@ -42,7 +43,7 @@ class LoginTokensTest {
         assertEquals(2, store.reads)
     }
 
-    @Test fun storedAndInMemoryTokensHonorTheExactOneDayMargin() = runBlocking {
+    @Test fun storedAndInMemoryTokensHonorTheExactOneDayMargin() = runTest(timeout = 5.seconds) {
         for (remaining in listOf(86_400_000L - 1, 86_400_000L, 86_400_000L + 1)) {
             val store = MemoryTokens().apply { saved = LoginToken("stored", 100 + remaining) }
             var now = 100L
@@ -62,7 +63,7 @@ class LoginTokensTest {
         }
     }
 
-    @Test fun refusalDiscardsPersistenceAndLateRefusalCannotDiscardANewerLogin() = runBlocking {
+    @Test fun refusalDiscardsPersistenceAndLateRefusalCannotDiscardANewerLogin() = runTest(timeout = 5.seconds) {
         val store = MemoryTokens().apply { saved = LoginToken("rejected", 100 + LOGIN_REFRESH_MARGIN_MS) }
         val tokens = LoginTokens(account, store, { 100 }) {
             LoginResponse.newBuilder().setToken("fresh").setExpiresMs(300 + LOGIN_REFRESH_MARGIN_MS).build()
@@ -77,7 +78,7 @@ class LoginTokensTest {
         assertNull(store.saved)
     }
 
-    @Test fun expiredPersistenceIsDeletedBeforeANetworkFailureAndNoTokenIsLoggedByToString() = runBlocking {
+    @Test fun expiredPersistenceIsDeletedBeforeANetworkFailureAndNoTokenIsLoggedByToString() = runTest(timeout = 5.seconds) {
         val store = MemoryTokens().apply { saved = LoginToken("secret", 100 + LOGIN_REFRESH_MARGIN_MS - 1) }
         val tokens = LoginTokens(account, store, { 100 }) { error("offline") }
         assertTrue(runCatching { tokens.current() }.isFailure)
