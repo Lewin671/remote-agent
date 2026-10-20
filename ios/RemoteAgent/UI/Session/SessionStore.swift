@@ -408,6 +408,16 @@ final class SessionStore {
         f.error = ""
     }
 
+    // MARK: The dock
+
+    /// The docked items the user folded, by `dockFoldKey`: one stays folded wherever its session is
+    /// opened again, and an item not here opens (docs/design-system.md §6 「等待事项（停靠区）」).
+    private(set) var dockFolded: Set<String> = []
+
+    func setDockFolded(_ key: String, _ folded: Bool) {
+        if folded { dockFolded.insert(key) } else { dockFolded.remove(key) }
+    }
+
     // MARK: Questions
 
     @ObservationIgnored private var answers: [String: Answer] = [:]

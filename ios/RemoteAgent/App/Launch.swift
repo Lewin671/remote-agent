@@ -52,7 +52,7 @@
 //                                    sample-claude, sample-old, sample-long, sample-wait, sample-many, sample-ask,
 //                                    sample-ended; and the sets' own (run, ask, …)
 //   -sessionShow <what>              a session with something showing: menu, mode, confirmFull, model, rename,
-//                                    project, stop, dock, reason
+//                                    project, stop, fold, reason
 //   -sessionPerf                     print what each pass over the events cost, and the frames while session.stream plays
 //   defaults write <bundle> debug.sessionText <text>   the text the signals that type use
 //

@@ -52,12 +52,14 @@ import UIKit
         #expect(planFolds((1...7).map { "\($0). 步骤" }.joined(separator: "\n"), lines: 6))
     }
 
-    private func dock(more: Int, size: DynamicTypeSize, brief: String) -> some View {
+    private func dock(more: Int, size: DynamicTypeSize, brief: String, open: Bool = false, note: String = "") -> some View {
         let question = PBQuestionAsked.with {
             $0.questionID = "Q"
             $0.questions = [.with { $0.text = brief }]
         }
-        return PendingDock(.question(question), agent: "Claude Code", more: more, onOpen: {}) {
+        return PendingDock(
+            .question(question), agent: "Claude Code", more: more, note: DockNote(text: note), open: .constant(open), onOpen: {}
+        ) {
             EmptyView()
         } actions: {
             EmptyView()
@@ -95,5 +97,18 @@ import UIKit
         // The summary gives way; the line does not grow past the 44 pt it is to the finger.
         #expect(took.width <= 390.5 && took.height < 50)
         #expect(try await fitted(dock(more: 0, size: .large, brief: ""), width: 390).height < 50)
+    }
+
+    @Test func anOpenItemSaysItsTypeOnceOnOneLine() async throws {
+        // Open, the line holds the type, how many more wait and the note, and 收起: the summary is not repeated under it.
+        let open = dock(more: 3, size: .large, brief: "换成哪一种缓存？", open: true, note: "第 1 题，共 2 题 · 可多选")
+        let took = try await fitted(open, width: 390)
+        // As tall as an open item with nothing after its type: the line did not wrap.
+        let bare = try await fitted(dock(more: 0, size: .large, brief: "", open: true), width: 390)
+        #expect(took.width <= 390.5 && abs(took.height - bare.height) < 0.5)
+        for size in [DynamicTypeSize.accessibility1, .accessibility5] {
+            let large = dock(more: 12, size: size, brief: "", open: true, note: "第 1 题，共 2 题 · 可多选")
+            #expect(try await fitted(large, width: 320).width <= 320.5, "\(size): 收起 is pushed off the screen")
+        }
     }
 }

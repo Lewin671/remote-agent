@@ -53,6 +53,16 @@ import Testing
         #expect(longQuestion(.with { $0.text = String(repeating: "😀", count: 61) }))
         #expect(longQuestion(.with { $0.options = (0..<5).map { i in .with { $0.label = "\(i)" } } }))
     }
+
+    @Test func aFoldedItemIsRememberedByItsIdAndANewOneIsNot() {
+        let a1 = DockItem.approval(.with { $0.approvalID = "a1" })
+        #expect(dockFoldKey(session: "s1", a1) == dockFoldKey(session: "s1", .approval(.with { $0.approvalID = "a1"; $0.command = "ls" })))
+        #expect(dockFoldKey(session: "s1", a1) != dockFoldKey(session: "s1", .approval(.with { $0.approvalID = "a2" })))
+        #expect(dockFoldKey(session: "s1", a1) != dockFoldKey(session: "s2", a1))
+        // A session has one plan at a time: the next plan is told apart by what it says.
+        #expect(dockFoldKey(session: "s1", .plan(text: "1. a")) != dockFoldKey(session: "s1", .plan(text: "1. b")))
+        #expect(dockFoldKey(session: "s1", .popup(title: "trust")) != dockFoldKey(session: "s1", .popup(title: "update")))
+    }
 }
 
 /// Android's app AccountCacheTest.

@@ -280,6 +280,7 @@ struct ChatPane: View {
     @State private var selecting: SelectedText?
     @State private var announcer = LiveAnnouncer()
     @State private var announced = false
+    @State private var paneHeight: CGFloat = 0
     @FocusState private var typing: Bool
 
     private static let end = "chat-end"
@@ -449,6 +450,9 @@ struct ChatPane: View {
         } action: {
             keyboard.inset = $0
         }
+        // What the chat shows of itself, above the keyboard: an open dock item takes up to about 60% of it.
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { paneHeight = $0 }
+        .environment(\.chatHeight, paneHeight)
         .environment(open)
         .environment(
             \.chatActions,
@@ -556,32 +560,31 @@ struct ChatPane: View {
                 if let first = dock.first {
                     let more = dock.count - 1
                     let hide = { typing = false }
+                    let store = context.sessionStore
+                    let key = dockFoldKey(session: session.id, first)
+                    // Open until the user folds it; folded, it stays so (`SessionStore.dockFolded`).
+                    let open = Binding(
+                        get: { !store.dockFolded.contains(key) && !SessionDebug.shows("fold") },
+                        set: { store.setDockFolded(key, !$0) })
                     Group {
                         switch first {
                         case .approval(let a):
                             ApprovalDock(
-                                session: session, approval: a, more: more,
-                                startOpen: SessionDebug.shows("dock")
-                                    || SessionDebug.shows("reason"),
+                                session: session, approval: a, more: more, open: open,
                                 startReason: SessionDebug.shows("reason"), onOpen: hide
                             ) { nav.open(.approval(session: session.id, approval: a.approvalID)) }
                         case .question(let q):
                             QuestionDock(
-                                session: session, question: q, more: more,
-                                startOpen: SessionDebug.shows("dock"), onOpen: hide,
+                                session: session, question: q, more: more, open: open, onOpen: hide,
                                 onTerminal: onTerminal
                             ) { nav.open(.question(session: session.id, question: q.questionID)) }
                         case .plan(let text):
-                            PlanDock(
-                                session: session, text: text, more: more,
-                                startOpen: SessionDebug.shows("dock"), onOpen: hide
-                            ) {
+                            PlanDock(session: session, text: text, more: more, open: open, onOpen: hide) {
                                 nav.open(.plan(session: session.id))
                             }
                         case .popup(let title):
                             PopupDock(
-                                session: session, title: title, more: more,
-                                startOpen: SessionDebug.shows("dock"), onOpen: hide,
+                                session: session, title: title, more: more, open: open, onOpen: hide,
                                 onTerminal: onTerminal)
                         }
                     }

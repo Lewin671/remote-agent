@@ -12,8 +12,8 @@
 //                                              sample-wait, sample-many, sample-ask, sample-ended)
 //   -sessionPerf          print what each pass over the events cost, and the frames while session.stream plays
 //   -sessionShow <what>   open a session with something showing: menu, mode, confirmFull,
-//                         model, rename, project (项目设置), stop, dock (the docked item
-//                         open), reason (the reason box of an approval)
+//                         model, rename, project (项目设置), stop, fold (the docked item
+//                         folded), reason (the reason box of an approval)
 //
 // Signals (see App/Launch.swift): session.stream plays a turn into the
 // session on screen, a reply and tool calls arriving as they would;

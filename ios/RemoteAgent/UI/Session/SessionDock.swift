@@ -21,51 +21,90 @@ enum SessionHaptics {
     static func decide() { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
 }
 
-/// One line until opened; open, its body scrolls within a limit while the
-/// actions stay put, and the chat's keyboard goes away. `more` others wait behind it.
+/// What an open dock item says after its type, in place of the summary: how long it still waits, how
+/// far through several questions. `urgent` turns it orange (an approval's last minute, design-system §1).
+struct DockNote: Equatable {
+    var text = ""
+    var urgent = false
+}
+
+extension EnvironmentValues {
+    /// How tall the chat pane is that the dock sits in: an open item's body takes up to about 60% of it.
+    @Entry var chatHeight: CGFloat = 0
+}
+
+/// Open from the start, until the user folds it: one line then, 「● 类型 ·
+/// 摘要 · 处理」. Open, the line keeps only the type and what is said of it
+/// (`note`, and how many more wait), and the body under it scrolls within
+/// about 60% of the chat pane, at least 240, while the actions stay put.
+/// Whether it is open is the caller's, kept by the item's ID
+/// (`SessionStore.dockFolded`), so a folded item stays folded and the next
+/// one opens.
 struct PendingDock<Content: View, Actions: View>: View {
     private let item: DockItem
     private let agent: String
     private let more: Int
+    private let title: String?
+    private let note: DockNote
+    @Binding private var open: Bool
     private let onOpen: () -> Void
     private let content: Content
     private let actions: Actions
-    @State private var open: Bool
     @State private var bodyHeight: CGFloat = 0
-    /// The room for an open item's body and actions; it grows with the text size.
-    @ScaledMetric(relativeTo: .footnote) private var limit: CGFloat = 240
+    /// The least room for an open item's body; it grows with the text size.
+    @ScaledMetric(relativeTo: .footnote) private var least: CGFloat = 240
+    @Environment(\.chatHeight) private var chatHeight
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.verticalSizeClass) private var vertical
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     init(
-        _ item: DockItem, agent: String, more: Int, startOpen: Bool = false, onOpen: @escaping () -> Void,
-        @ViewBuilder content: () -> Content, @ViewBuilder actions: () -> Actions
+        _ item: DockItem, agent: String, more: Int, title: String? = nil, note: DockNote = DockNote(), open: Binding<Bool>,
+        onOpen: @escaping () -> Void, @ViewBuilder content: () -> Content, @ViewBuilder actions: () -> Actions
     ) {
         self.item = item
         self.agent = agent
         self.more = more
+        self.title = title
+        self.note = note
+        _open = open
         self.onOpen = onOpen
         self.content = content()
         self.actions = actions()
-        _open = State(initialValue: startOpen)
     }
 
-    /// 「● 类型 · 摘要 · 处理」 on one line. Where the type, the count of
-    /// those waiting behind it and 处理 do not fit side by side, as with
-    /// large text on a narrow screen, the type takes a line of its own
-    /// (two if it must) and the rest goes under it, 处理 at the right
-    /// (design-system §6 「长内容、大量内容与大字号」).
-    private func head(_ summary: (label: String, brief: String)) -> some View {
-        let dot = Dot(Theme.orange, size: 7)
-        let label = Text(summary.label).type(T.sm, Theme.fg2)
-        // The summary gives way, down to nothing: it asks for no width of its own. That more wait behind it is always said.
-        let rest = HStack(spacing: 0) {
-            Text(summary.brief).type(T.sm, Theme.muted).lineLimit(1).frame(idealWidth: 0)
-            if more > 0 {
-                Text((summary.brief.isEmpty ? "" : " · ") + "还有 \(more) 项").type(T.sm, Theme.muted).lineLimit(1).fixedSize()
+    /// What follows the type: folded, the summary and how many more wait; open, how many more wait and
+    /// the note. It gives way, down to nothing: it asks for no width of its own. That more wait behind
+    /// it is always said.
+    @ViewBuilder private func rest(_ brief: String) -> some View {
+        Group {
+            if open {
+                let count = more > 0 ? "还有 \(more) 项" : ""
+                let gap = !count.isEmpty && !note.text.isEmpty ? " · " : ""
+                (Text(count + gap).foregroundColor(Theme.muted)
+                    + Text(note.text).foregroundColor(note.urgent ? Theme.orangeInk : Theme.muted))
+                    .type(T.sm).lineLimit(1).frame(idealWidth: 0)
+            } else {
+                HStack(spacing: 0) {
+                    Text(brief).type(T.sm, Theme.muted).lineLimit(1).frame(idealWidth: 0)
+                    if more > 0 {
+                        Text((brief.isEmpty ? "" : " · ") + "还有 \(more) 项").type(T.sm, Theme.muted).lineLimit(1).fixedSize()
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// One line: 「● 类型 · 摘要 · 处理」 folded, 「● 类型　还有 N 项 · 剩 X 分钟　收起」 open. Where the
+    /// type, what follows it and the toggle do not fit side by side, as with large text on a narrow
+    /// screen, the type takes a line of its own (two if it must) and the rest goes under it, the
+    /// toggle at the right (design-system §6 「长内容、大量内容与大字号」).
+    private func head(_ summary: (label: String, brief: String)) -> some View {
+        let dot = Dot(Theme.orange, size: 7)
+        // Open, the summary is not there to say what the type leaves out: `title` says it whole.
+        let label = Text(open ? title ?? summary.label : summary.label).type(T.sm, Theme.fg2)
+        let rest = rest(summary.brief)
         let toggle = ArrowText(open ? "收起" : "处理", style: T.sm, direction: open ? .up : .down).fixedSize()
         return ViewThatFits(in: .horizontal) {
             HStack(spacing: 6) {
@@ -94,6 +133,16 @@ struct PendingDock<Content: View, Actions: View>: View {
         }
     }
 
+    /// The most an open item's body takes. On a phone on its side there is little height: the body
+    /// keeps a few lines and scrolls, so that the actions and the message box under them stay on the
+    /// screen. At the accessibility text sizes the actions stack and grow, and the line above the body
+    /// is several: the body keeps about a third, or the line and the actions would leave the screen.
+    private var room: CGFloat {
+        if vertical == .compact { return 96 }
+        if typeSize.isAccessibilitySize { return max(160, chatHeight * 0.35) }
+        return max(least, chatHeight * 0.6)
+    }
+
     var body: some View {
         let summary = dockSummary(item, agent: agent)
         VStack(spacing: 0) {
@@ -113,15 +162,12 @@ struct PendingDock<Content: View, Actions: View>: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) { content }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.top, 4).padding(.bottom, 6)
+                            .padding(.bottom, 6)
                             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bodyHeight = $0 }
                     }
                     .scrollBounceBehavior(.basedOnSize)
-                    // As tall as what it holds, up to the limit: past it the body scrolls and the actions stay.
-                    // At the largest text sizes the limit stops growing: the chat keeps some of the screen.
-                    // On a phone on its side there is little height: the body keeps a few lines and scrolls, so
-                    // that the actions and the message box under them stay on the screen.
-                    .frame(height: min(max(bodyHeight, 1), vertical == .compact ? 96 : min(limit, 380)))
+                    // As tall as what it holds, up to the room: past it the body scrolls and the actions stay.
+                    .frame(height: min(max(bodyHeight, 1), room))
                     VStack(alignment: .leading, spacing: 0) { actions }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 4).padding(.bottom, 10)
@@ -131,63 +177,6 @@ struct PendingDock<Content: View, Actions: View>: View {
         }
         .padding(.horizontal, chatMargin)
         .topLine()
-    }
-}
-
-/// The first line of an open dock item: its type and, at the right, a note or a link.
-struct DockHead<Extra: View>: View {
-    private let title: String
-    private let right: String
-    private let rightColor: Color
-    private let onRight: (() -> Void)?
-    private let extra: Extra
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    init(_ title: String, right: String = "", rightColor: Color = Theme.muted, onRight: (() -> Void)? = nil, @ViewBuilder extra: () -> Extra) {
-        self.title = title
-        self.right = right
-        self.rightColor = rightColor
-        self.onRight = onRight
-        self.extra = extra()
-    }
-
-    @ViewBuilder private var note: some View {
-        if !right.isEmpty {
-            if let onRight {
-                Button(action: onRight) {
-                    ArrowText(right, style: T.smB).padding(.vertical, 12).contentShape(Rectangle()).padding(.vertical, -12)
-                }
-                .buttonStyle(PressStyle())
-            } else {
-                Text(right).type(T.sm, rightColor).multilineTextAlignment(.trailing)
-            }
-        }
-    }
-
-    var body: some View {
-        let head = Text(title).type(T.smB, Theme.fg2).accessibilityAddTraits(.isHeader)
-        // Side by side; at a large text size the note goes under the title, at the right (design-system §6).
-        if typeSize.isAccessibilitySize {
-            VStack(alignment: .trailing, spacing: 2) {
-                HStack(spacing: 8) {
-                    head.frame(maxWidth: .infinity, alignment: .leading)
-                    extra
-                }
-                note
-            }
-        } else {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                head.frame(maxWidth: .infinity, alignment: .leading)
-                extra
-                note
-            }
-        }
-    }
-}
-
-extension DockHead where Extra == EmptyView {
-    init(_ title: String, right: String = "", rightColor: Color = Theme.muted, onRight: (() -> Void)? = nil) {
-        self.init(title, right: right, rightColor: rightColor, onRight: onRight) { EmptyView() }
     }
 }
 
@@ -252,7 +241,7 @@ struct ApprovalDock: View {
     let session: SessionView
     let approval: PBApprovalRequested
     let more: Int
-    var startOpen = false
+    @Binding var open: Bool
     var startReason = false
     let onOpen: () -> Void
     let onDetail: () -> Void
@@ -263,15 +252,22 @@ struct ApprovalDock: View {
     }
 
     private func dock(_ a: PBApprovalRequested) -> some View {
-        PendingDock(.approval(a), agent: agentName(session.agent), more: more, startOpen: startOpen, onOpen: onOpen) {
-            Ticking(every: 15) { now in
-                let left = ApprovalDeadline(a, now: now)
-                DockHead(
-                    approvalHead(a), right: left.map { $0.text + "，超时拒绝" } ?? "",
-                    rightColor: left?.last == true ? Theme.orangeInk : Theme.muted)
+        Ticking(every: 15) { now in
+            let left = ApprovalDeadline(a, now: now)
+            PendingDock(
+                .approval(a), agent: agentName(session.agent), more: more, title: approvalHead(a),
+                note: DockNote(text: left?.text ?? "", urgent: left?.last == true), open: $open, onOpen: onOpen
+            ) {
+                content(a)
+            } actions: {
+                ApprovalButtons(session: session, approval: a, startReason: startReason)
             }
+        }
+    }
+
+    @ViewBuilder private func content(_ a: PBApprovalRequested) -> some View {
             if !a.description_p.isEmpty {
-                Text(approvalDisplay(a.description_p)).type(T.sm, Theme.fg2).padding(.top, 4)
+                Text(approvalDisplay(a.description_p)).type(T.sm, Theme.fg2)
             }
             let text = approvalBody(a)
             if !text.isEmpty {
@@ -291,9 +287,6 @@ struct ApprovalDock: View {
                     }
                     .padding(.vertical, 8)
             }
-        } actions: {
-            ApprovalButtons(session: session, approval: a, startReason: startReason)
-        }
     }
 }
 
@@ -477,17 +470,15 @@ struct QuestionBody: View {
         let count = question.questions.count
         let key = "\(qid)#\(index)"
         let answer = store.answer(qid, index)
-        let progress = [count > 1 ? "第 \(index + 1) 题，共 \(count) 题" : "", cur.multiSelect ? "可多选" : ""]
-            .filter { !$0.isEmpty }.joined(separator: " · ")
+        let progress = questionProgress(count: count, at: index, multi: cur.multiSelect)
         if full {
             if !progress.isEmpty { Text(progress).type(T.meta, Theme.muted).padding(.top, 12) }
-        } else {
-            DockHead("\(agentName(session.agent)) 在问你", right: progress) {
-                if count > 1 { QuestionSteps(count: count, at: index) }
-            }
+        } else if count > 1 {
+            // The dock's line says which of them it is; the steps show it.
+            QuestionSteps(count: count, at: index).padding(.top, 4)
         }
         Text(cur.text).type(full ? T.h17 : T.bodyB, Theme.fg).lineLimit(full ? nil : 4)
-            .padding(.top, full ? 8 : 6).padding(.bottom, full ? 12 : 6)
+            .padding(.top, full ? 8 : 4).padding(.bottom, full ? 12 : 6)
             .accessibilityAddTraits(.isHeader)
         if !full && longQuestion(cur) {
             Button(action: onLong) {
@@ -598,19 +589,31 @@ struct QuestionDock: View {
     let session: SessionView
     let question: PBQuestionAsked
     let more: Int
-    var startOpen = false
+    @Binding var open: Bool
     let onOpen: () -> Void
     let onTerminal: () -> Void
     let onLong: () -> Void
+    @Environment(AccountContext.self) private var context
     @State private var act = ActionRunner()
 
     var body: some View {
-        PendingDock(.question(question), agent: agentName(session.agent), more: more, startOpen: startOpen, onOpen: onOpen) {
+        let qs = question.questions
+        let index = min(context.sessionStore.questionIndex[question.questionID] ?? 0, max(qs.count - 1, 0))
+        let progress = questionProgress(count: qs.count, at: index, multi: qs.isEmpty ? false : qs[index].multiSelect)
+        PendingDock(
+            .question(question), agent: agentName(session.agent), more: more, note: DockNote(text: progress), open: $open,
+            onOpen: onOpen
+        ) {
             QuestionBody(session: session, question: question, part: .content, full: false, act: act, onLong: onLong)
         } actions: {
             QuestionBody(session: session, question: question, part: .actions, full: false, act: act, onTerminal: onTerminal)
         }
     }
+}
+
+/// 第 1 题，共 3 题 · 可多选: where the user is among several questions, and whether this one takes several answers.
+func questionProgress(count: Int, at index: Int, multi: Bool) -> String {
+    [count > 1 ? "第 \(index + 1) 题，共 \(count) 题" : "", multi ? "可多选" : ""].filter { !$0.isEmpty }.joined(separator: " · ")
 }
 
 // MARK: Plans
@@ -619,7 +622,7 @@ struct PlanDock: View {
     let session: SessionView
     let text: String
     let more: Int
-    var startOpen = false
+    @Binding var open: Bool
     let onOpen: () -> Void
     let onFull: () -> Void
 
@@ -628,14 +631,20 @@ struct PlanDock: View {
     }
 
     private var dock: some View {
-        PendingDock(.plan(text: text), agent: agentName(session.agent), more: more, startOpen: startOpen, onOpen: onOpen) {
-            DockHead("计划待批准", right: "展开全文", onRight: onFull)
-            Text(planPreview(text, lines: 4)).type(T.sm.with(lineHeight: 1.6), Theme.fg).lineLimit(4)
+        PendingDock(.plan(text: text), agent: agentName(session.agent), more: more, open: $open, onOpen: onOpen) {
+            // The whole plan, scrolling with the dock's body; 展开全文 is the page that draws it as written.
+            Text(planPreview(text, lines: .max)).type(T.sm.with(lineHeight: 1.6), Theme.fg)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10).padding(.vertical, 7)
                 .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous))
-                .padding(.vertical, 8)
-            if session.agent == .claude { Text("批准后使用询问模式").type(T.meta, Theme.muted) }
+                .padding(.top, 4).padding(.bottom, 4)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if session.agent == .claude {
+                    Text("批准后使用询问模式").type(T.meta, Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
+                }
+                TextAction("展开全文", alignment: .trailing, arrow: true, action: onFull)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
         } actions: {
             PlanButtons(session: session, full: false, terminalOnly: isSkeleton(text))
         }
@@ -689,15 +698,16 @@ struct PopupDock: View {
     let session: SessionView
     let title: String
     let more: Int
-    var startOpen = false
+    @Binding var open: Bool
     let onOpen: () -> Void
     let onTerminal: () -> Void
 
     var body: some View {
         let agent = agentName(session.agent)
-        PendingDock(.popup(title: title), agent: agent, more: more, startOpen: startOpen, onOpen: onOpen) {
-            DockHead("终端里有弹窗", right: "\(agent) 在等你")
-            if !title.isEmpty { Text(title).type(T.body.with(weight: .medium), Theme.fg).padding(.vertical, 6) }
+        PendingDock(
+            .popup(title: title), agent: agent, more: more, note: DockNote(text: "\(agent) 在等你"), open: $open, onOpen: onOpen
+        ) {
+            if !title.isEmpty { Text(title).type(T.body.with(weight: .medium), Theme.fg).padding(.bottom, 6) }
             let hint = popupHint(agent: session.agent, detail: title)
             if !hint.isEmpty { Text(hint).type(T.sm, Theme.orangeInk) }
         } actions: {

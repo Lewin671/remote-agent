@@ -19,6 +19,15 @@ public enum DockItem: Equatable, Sendable, Identifiable {
     }
 }
 
+/// What the dock remembers an item by when it is folded. A session has one plan at a time, so a plan
+/// is told from the one before it by its text: a new plan opens again.
+public func dockFoldKey(session: String, _ item: DockItem) -> String {
+    switch item {
+    case .plan(let text): return session + "/plan:" + text
+    default: return session + "/" + item.id
+    }
+}
+
 /// The dock's one line: type, a summary, 处理 (client-v7).
 public func dockSummary(_ item: DockItem, agent: String) -> (label: String, brief: String) {
     switch item {
