@@ -112,6 +112,46 @@ private func createAuthority(_ server: ManagementRelay, vault: AuthorityTestVaul
 
 @Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing))
 struct AuthorityWorkflowTests {
+    @Test func creationRotationVetoHintsAndContextOnlyProfileRepair() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (account, vault, originalCode) = try await createAuthority(server)
+        let coordinator = try coordinator(account, vault)
+        #expect(try await coordinator.isAuthority())
+        #expect(try vault.readSecurity().lease != nil)
+        let recoveryVault = AuthorityTestVault()
+        let recovery = AuthorityBootstrap(storage: recoveryVault, gate: enabledGate())
+        let newCode = try await recovery.prepareEmergencyRecovery(server: server.url, code: originalCode)
+        let receipt = try recoveryVault.readOperation().unwrap()
+        // Neither credential seed/text is in the only persistent receipt.
+        #expect(!receipt.local.contains(RecoveryCode.decode(originalCode)!.seed))
+        #expect(!receipt.local.contains(RecoveryCode.decode(newCode)!.seed))
+        let status = try await recovery.submitRecovery()
+        #expect(status.readyMs >= UInt64(Date().timeIntervalSince1970 * 1000) + 47 * 60 * 60 * 1000)
+        do { _ = try await recovery.completeRecovery(); Issue.record("completed before 48 hours") } catch {}
+        let api = try Api(server: server.url, http: HTTP())
+        let security = DeviceSecurityClient(store: vault, memberID: account.deviceId, signingKey: try SigningKey(seed: account.deviceSeed), fetchStates: { after in
+            var req = PBGetSecurityStatesRequest(); req.afterEpoch = after
+            return try await api.client.getSecurityStates(request: req, headers: Api.headers(token: login(api: api, account: account))).value()
+        })
+        _ = try await security.sync()
+        #expect(await security.recoveryPending)
+        #expect(await security.recoveryReadyMs == status.readyMs)
+        let prepared = try await coordinator.prepareRecovery()
+        do { try await coordinator.publishRecovery(prepared, codeSaved: false); Issue.record("rotation without backup") } catch {}
+        #expect(try vault.readOperation() == nil)
+        try await coordinator.publishRecovery(prepared, codeSaved: true)
+        let chain = try await recovery.resumeRecovery()
+        #expect(chain.phase == .rejected)
+        try await recovery.discardRejectedRecovery()
+        #expect(try recoveryVault.readOperation() == nil)
+        let bootstrap = AuthorityBootstrap(storage: vault, gate: enabledGate())
+        vault.lock.withLock { vault.profile = nil }
+        try await bootstrap.completeAccountPublicProfile(server: server.url, code: prepared.code)
+        #expect(try vault.publicProfile(pin: vault.readSecurity().pin) != nil)
+        #expect(try vault.readSecurity().headEpoch == 2)
+        _ = try await security.sync()
+        #expect(await !security.recoveryPending)
+    }
 
     @Test func restartsCreationAtEveryStorageBoundaryWithoutCompetingGenesis() async throws {
         for after in [false, true] {

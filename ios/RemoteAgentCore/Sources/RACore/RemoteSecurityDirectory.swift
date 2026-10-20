@@ -153,6 +153,7 @@ extension Remote {
             guard let client = try? await self.securitySession(),
                 let head = try? await client.headStateHash() else { return }
             await self.authorityForegroundTick()
+            await self.updateRecoveryStatus()
             if let expiration = try? await client.leaseExpiration() { await self.updateLeaseExpiration(expiration) }
             if await self.needsDirectoryRefresh(head) { try? await self.refreshTrustedDirectory() }
         }

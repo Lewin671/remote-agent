@@ -32,6 +32,32 @@ import Testing
         gate.set(active: true, protectedDataAvailable: false)
         #expect(throws: DeviceSecurity.Failure.self) { try gate.check(fresh) }
     }
+    @Test func recoveryHintsUpdateOnSameHeadAndFailedPullIsStale() async throws {
+        let store = AuthorityTestVault(), gate = AuthorityGate()
+        gate.set(active: true, protectedDataAvailable: true)
+        let bootstrap = AuthorityBootstrap(storage: store, gate: gate)
+        _ = try await bootstrap.prepareCreation(server: "https://relay.example.com")
+        let material = try AuthorityMaterial.parse(store.readOperation()!.local)
+        let record = try DeviceSecurity.Record.parse(material.chain)
+        try store.initializeSecurity(record)
+        let count = Counter()
+        let client = DeviceSecurityClient(store: store, memberID: record.memberID,
+            signingKey: try SigningKey(seed: material.seed), fetchStates: { _ in
+                let n = count.increment()
+                if n == 3 { throw URLError(.notConnectedToInternet) }
+                var reply = PBGetSecurityStatesResponse(); reply.headEpoch = 1
+                reply.recoveryPending = n == 1; reply.recoveryReadyMs = n == 1 ? 1234 : 0
+                return reply
+            })
+        _ = try await client.sync()
+        #expect(await client.recoveryPending)
+        #expect(await client.recoveryReadyMs == 1234)
+        _ = try await client.sync()
+        #expect(await !client.recoveryPending)
+        do { _ = try await client.sync(); Issue.record("pull should fail") } catch {}
+        #expect(await client.recoveryStatusStale)
+        #expect(await !client.recoveryPending)
+    }
     @Test func autoRenewalHonorsBothIntervalsAndMissingCurrentHeadLease() throws {
         let now: UInt64 = 1_000_000
         let l = DeviceSecurity.HeadLease(domain: Data(repeating: 1, count: 32), head: Data(repeating: 2, count: 32),

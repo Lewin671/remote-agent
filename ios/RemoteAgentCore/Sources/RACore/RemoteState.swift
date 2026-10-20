@@ -94,6 +94,9 @@ public struct RemoteState: Equatable, Sendable {
     public var devices: [String: DeviceView] = [:]
     /// The server no longer knows this device: removed from the account, or the server's data is gone.
     public var authorityDeviceId = ""
+    public var recoveryPending = false
+    public var recoveryReadyMs: UInt64 = 0
+    public var recoveryStatusStale = true
     public var leaseEndMs: UInt64 = 0
     public var removed = false
     /// Where the next page of ended sessions starts (architecture §8

@@ -54,4 +54,11 @@ extension Remote {
             }
         } catch { /* pending evidence stays available to the foreground security flow */ }
     }
+    func updateRecoveryStatus() async {
+        guard let client = deviceSecurity else { return }
+        recoveryPending = await client.recoveryPending
+        recoveryReadyMs = await client.recoveryReadyMs
+        recoveryStatusStale = await client.recoveryStatusStale
+        publish()
+    }
 }

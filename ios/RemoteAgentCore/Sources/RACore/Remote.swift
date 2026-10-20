@@ -313,6 +313,9 @@ public actor Remote {
     ///   - jitter: a number in 0..<1 that spreads reconnects apart.
     public nonisolated let authorityGate = AuthorityGate()
     var management: AuthorityCoordinator?
+    var recoveryPending = false
+    var recoveryReadyMs: UInt64 = 0
+    var recoveryStatusStale = true
     let securityStorage: (any DeviceSecurity.Storage)?
     var deviceSecurity: DeviceSecurityClient?
     public init(
@@ -549,6 +552,9 @@ public actor Remote {
         s.devices = devices
         s.authorityDeviceId = authorityDeviceId
         s.leaseEndMs = leaseEndMs
+        s.recoveryPending = recoveryPending
+        s.recoveryReadyMs = recoveryReadyMs
+        s.recoveryStatusStale = recoveryStatusStale
         s.removed = removed
         s.sessionsNext = next
         s.loadingSessions = pageJob != nil

@@ -19,13 +19,18 @@ extension Remote {
             clock: { [clock] in UInt64(bitPattern: clock()) },
             fetchStates: { [weak self] after in
                 guard let self else { throw DeviceSecurity.Failure.storage }
-                let token = try await self.currentToken()
                 var request = PBGetSecurityStatesRequest()
                 request.afterEpoch = after
                 request.limit = 8
-                return try await api.client.getSecurityStates(
-                    request: request, headers: Api.headers(token: token)
-                ).value()
+                do {
+                    let token = try await self.currentToken()
+                    let result = try await api.client.getSecurityStates(request: request, headers: Api.headers(token: token)).value()
+                    await self.receivedRecoveryStatus(result)
+                    return result
+                } catch {
+                    await self.markRecoveryStatusStale()
+                    throw error
+                }
             })
         deviceSecurity = client
         return client
@@ -130,4 +135,14 @@ extension Remote {
         out.compression = PBCompression(rawValue: Int(h.compression))!
         return out
     }
+}
+
+extension Remote {
+    func receivedRecoveryStatus(_ response: PBGetSecurityStatesResponse) {
+        recoveryPending = response.recoveryPending
+        recoveryReadyMs = response.recoveryReadyMs
+        recoveryStatusStale = false
+        publish()
+    }
+    func markRecoveryStatusStale() { recoveryStatusStale = true; publish() }
 }

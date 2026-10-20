@@ -23,6 +23,9 @@ public actor DeviceSecurityClient {
     private var syncJob: Task<DeviceSecurity.Record, Error>?
     private var pollJob: Task<Void, Never>?
     private var closed = false
+    public private(set) var recoveryPending = false
+    public private(set) var recoveryReadyMs: UInt64 = 0
+    public private(set) var recoveryStatusStale = true
     public init(
         store: any DeviceSecurity.Storage, memberID: String, signingKey: SigningKey,
         clock: @escaping @Sendable () -> UInt64 = {
@@ -126,7 +129,12 @@ public actor DeviceSecurityClient {
             let localNow = max(clock(), r.floor)
             try DeviceSecurity.check(
                 r.state.core.issuedAt <= localNow + DeviceSecurity.clockSkewLimit, .clock)
-            let res = try await fetchStates(r.headEpoch)
+            let res: PBGetSecurityStatesResponse
+            do { res = try await fetchStates(r.headEpoch) }
+            catch { recoveryStatusStale = true; throw error }
+            recoveryPending = res.recoveryPending
+            recoveryReadyMs = res.recoveryReadyMs
+            recoveryStatusStale = false
             try DeviceSecurity.check(res.headEpoch >= r.headEpoch, .stale)
             if res.states.isEmpty {
                 try DeviceSecurity.check(res.headEpoch == r.headEpoch, .stale)
