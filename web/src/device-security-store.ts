@@ -28,6 +28,7 @@ let verified: { revision: string; record: Promise<SecurityRecord> } | undefined;
 function putRecord(store: IDBObjectStore, record: SecurityRecord): void {
   store.put(record, KEY);
   store.put(crypto.randomUUID(), REVISION);
+  if (!record.member) store.delete(LOGIN_TOKEN);
 }
 export interface ContentKey {
   epoch: bigint;
@@ -630,4 +631,88 @@ export async function clearPairingIdentity(
     store.delete("pair-candidate:" + JSON.stringify([server, pairingId]));
     done();
   });
+}
+
+/** Login credentials share the security database's explicit erasure lifetime.
+ * The wrapping key is non-extractable, like the device private keys; only
+ * ciphertext is stored for the bearer token. No service worker receives it. */
+export interface LoginToken { token: string; expiresMs: number }
+interface StoredLoginToken {
+  binding: string;
+  key: CryptoKey;
+  iv: B;
+  ciphertext: ArrayBuffer;
+}
+const LOGIN_TOKEN = "login-token";
+function tokenBinding(server: string, r: SecurityRecord): string {
+  return JSON.stringify([server, r.memberID, r.pin.account,
+    Array.from(r.pin.domain), Array.from(r.pin.genesis)]);
+}
+export async function saveLoginToken(server: string, memberID: string, token: LoginToken): Promise<void> {
+  const r = await loadSecurity();
+  if (!r.member || r.memberID !== memberID) throw new SecurityError("untrusted");
+  const binding = tokenBinding(server, r);
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv, additionalData: new TextEncoder().encode(binding) }, key,
+    new TextEncoder().encode(JSON.stringify(token)),
+  );
+  const db = await database(false);
+  await transaction<void>(db, "readwrite", (store, done, fail) => {
+    const get = store.get(KEY);
+    get.onsuccess = () => {
+      try {
+        validRecord(get.result);
+        if (!get.result.member || tokenBinding(server, get.result) !== binding)
+          throw new SecurityError("untrusted");
+        store.put({ binding, key, iv, ciphertext } satisfies StoredLoginToken, LOGIN_TOKEN);
+        done();
+      } catch { fail(new SecurityError("storage")); }
+    };
+  });
+}
+export async function clearLoginToken(server: string, memberID: string): Promise<void> {
+  const db = await database(false);
+  await transaction<void>(db, "readwrite", (store, done) => {
+    const get = store.get(LOGIN_TOKEN);
+    get.onsuccess = () => {
+      const stored = get.result as StoredLoginToken | undefined;
+      if (stored) {
+        try {
+          const [origin, member] = JSON.parse(stored.binding);
+          if (origin === server && member === memberID) store.delete(LOGIN_TOKEN);
+        } catch { store.delete(LOGIN_TOKEN); }
+      }
+      done();
+    };
+  });
+}
+export async function loadLoginToken(server: string, memberID: string, now = Date.now()): Promise<LoginToken | undefined> {
+  const r = await loadSecurity();
+  if (r.memberID !== memberID) return undefined;
+  if (!r.member) {
+    await clearLoginToken(server, memberID);
+    return undefined;
+  }
+  const db = await database(false);
+  const stored = await transaction<StoredLoginToken | undefined>(db, "readonly", (store, done) => {
+    const get = store.get(LOGIN_TOKEN);
+    get.onsuccess = () => done(get.result);
+  });
+  if (!stored || stored.binding !== tokenBinding(server, r)) return undefined;
+  try {
+    if (!(stored.key instanceof CryptoKey) || stored.key.extractable) throw new SecurityError("storage");
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: stored.iv, additionalData: new TextEncoder().encode(stored.binding) },
+      stored.key, stored.ciphertext,
+    );
+    const token: LoginToken = JSON.parse(new TextDecoder().decode(plain));
+    if (typeof token.token !== "string" || !token.token || !Number.isFinite(token.expiresMs) || token.expiresMs < Math.max(now, Number(r.floor)) + 86_400_000)
+      throw new SecurityError("storage");
+    return token;
+  } catch {
+    await clearLoginToken(server, memberID);
+    return undefined;
+  }
 }

@@ -59,15 +59,18 @@ it("does not open a stale main socket when stopped during login", async () => {
     for (let i = 0; i < 50; i++) await Promise.resolve();
   };
   r.start();
+  await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
   r.stop();
   finish();
   await settle();
   expect(Socket.all).toHaveLength(0);
+  finish = undefined as never;
   r.start();
+  await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
+  await vi.waitFor(() => expect((r as any).conn).toBe("connecting"));
   await settle();
   finish();
-  await settle();
-  expect(Socket.all).toHaveLength(1);
+  await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
   r.stop();
 }, 15000);
 it("does not start catch-up after a pending refresh completes in background", async () => {
@@ -512,6 +515,12 @@ it("starts from what the browser kept: the token, and the last listing", async (
     deviceId: r.account.deviceId,
     server: "https://ra.example.com",
   };
+  vi.spyOn(await import("./device-security-store"), "loadLoginToken").mockImplementation(
+    async (_server, member) => member === r.account.deviceId
+      ? { token: "kept-token", expiresMs: Date.now() + 10 * 86_400_000 }
+      : undefined,
+  );
+  const clearToken = vi.spyOn(await import("./device-security-store"), "clearLoginToken").mockResolvedValue(undefined);
   const kept: Record<string, unknown> = {
     token: {
       ...mine,
@@ -562,6 +571,9 @@ it("starts from what the browser kept: the token, and the last listing", async (
   // The server turning the token away is followed by a login.
   Socket.all[1].closedBy(1008);
   expect(r.authHeader()).toBe("Bearer ");
+  await (r as any).tokenWrites;
+  expect(clearToken).toHaveBeenCalledOnce();
+  expect((r as any).cache.set).toHaveBeenCalledWith("token", undefined);
   r.stop();
   // Another account's leftovers are not used.
   const other = await probe();

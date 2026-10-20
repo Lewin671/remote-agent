@@ -1,3 +1,4 @@
+import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
 import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
 import {
@@ -594,6 +595,12 @@ export class Remote {
   private token = "";
   private tokenExpires = 0;
   private loggingIn?: Promise<void>;
+  private tokenWrites: Promise<void> = Promise.resolve();
+  private discardToken() {
+    this.token = "";
+    this.tokenExpires = 0;
+    this.tokenWrites = this.tokenWrites.then(() => clearLoginToken(this.account.server, this.account.deviceId)).catch(() => undefined);
+  }
   private api: Client<typeof ClientService>;
   private ws?: WebSocket;
   private retry = 1000;
@@ -615,7 +622,11 @@ export class Remote {
   ) {
     const auth: Interceptor = (next) => (req) => {
       req.header.set("Authorization", "Bearer " + this.token);
-      return next(req);
+      return next(req).catch((e: unknown) => {
+        if (e instanceof ConnectError && e.code === Code.Unauthenticated)
+          this.discardToken();
+        throw e;
+      });
     };
     this.api = createClient(
       ClientService,
@@ -888,6 +899,13 @@ export class Remote {
 
   private warm(): Promise<void> {
     return (this.warming ??= (async () => {
+      // The former cache item is deleted, never imported or migrated.
+      this.keepValue("token", undefined);
+      try {
+        const token = await loadLoginToken(this.account.server, this.account.deviceId);
+        if (token && !this.closed && !this.token)
+          [this.token, this.tokenExpires] = [token.token, token.expiresMs];
+      } catch { /* Missing local state means a normal login. */ }
       if (!this.cache) return;
       const mine = (v: unknown): Record<string, unknown> | undefined => {
         const o = v as Record<string, unknown> | undefined;
@@ -904,18 +922,13 @@ export class Remote {
         );
         this.authorityDeviceId = identity.state.core.authorityID;
         this.archiveMachines = await this.security.historicalMachines();
-        const [token, machines, sessions, prefs, info] = (
+        const [machines, sessions, prefs, info] = (
           await Promise.all(
-            ["token", "machines", "sessions", "prefs", "info"].map((k) =>
+            ["machines", "sessions", "prefs", "info"].map((k) =>
               this.cache!.get(k),
             ),
           )
         ).map(mine);
-        if (token && !this.token)
-          [this.token, this.tokenExpires] = [
-            String(token.token),
-            Number(token.expiresMs),
-          ];
         if (machines && sessions && !this.listed)
           await this.quietly(async () => {
             for (const m of fromBinary(
@@ -993,7 +1006,14 @@ export class Remote {
   private async syncSecurity() {
     if (this.closed) return;
     try {
-      await this.security.sync();
+      const record = await this.security.sync();
+      if (record.member === false) {
+        this.discardToken();
+        await this.tokenWrites;
+        this.removed = true;
+        this.stop();
+        return;
+      }
       this.clearClockWarning();
       const head = await this.security.localStateHash();
       if (
@@ -1138,12 +1158,14 @@ export class Remote {
           challenge: ch.challenge,
           signature: sig,
         });
+        if (this.closed) return;
         this.token = res.token;
         this.tokenExpires = Number(res.expiresMs);
-        this.keepValue("token", {
-          token: res.token,
-          expiresMs: Number(res.expiresMs),
-        });
+        this.tokenWrites = this.tokenWrites.then(() => saveLoginToken(
+          this.account.server, this.account.deviceId,
+          { token: res.token, expiresMs: Number(res.expiresMs) },
+        )).catch(() => undefined);
+        await this.tokenWrites;
         return;
       } catch (e) {
         if (!(e instanceof ConnectError) || e.code !== Code.PermissionDenied)
@@ -1151,7 +1173,8 @@ export class Remote {
         // A server restarted between the two calls forgets the challenge;
         // denied a fresh one too, it no longer knows this device.
         if (again) continue;
-        this.keepValue("token", undefined);
+        this.discardToken();
+        await this.tokenWrites;
         this.removed = true;
         this.stop();
         throw e;
@@ -1171,16 +1194,17 @@ export class Remote {
     const generation = ++this.generation;
     this.conn = "connecting";
     this.changed();
-    if (this.cache) {
-      await this.warm();
-      if (this.closed || generation !== this.generation) return;
-    }
+    await this.warm();
+    if (this.closed || generation !== this.generation) return;
     try {
       // A token kept from an earlier visit saves the two login calls. One
       // about to expire is not worth a refused connection; the server
       // refusing it closes the stream, and the next try logs in.
-      if (!this.token || this.tokenExpires < Date.now() + 86_400_000)
+      if (!this.token || this.tokenExpires < Date.now() + 86_400_000) {
+        this.discardToken();
+        await this.tokenWrites;
         await this.login();
+      }
     } catch (e) {
       if (generation === this.generation && !this.closed) this.fail(e);
       return;
@@ -1188,7 +1212,14 @@ export class Remote {
     try {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.
-      await this.security.sync();
+      const record = await this.security.sync();
+      if (record.member === false) {
+        this.discardToken();
+        await this.tokenWrites;
+        this.removed = true;
+        this.stop();
+        return;
+      }
       this.clearClockWarning();
     } catch (e) {
       this.noteClock(e);
@@ -1207,7 +1238,7 @@ export class Remote {
       this.generation++;
       clearTimeout(this.openTimer);
       clearTimeout(this.idleTimer);
-      if (code === 1008) this.token = "";
+      if (code === 1008) this.discardToken();
       ws.close();
       for (const close of this.terminals.values())
         close("与 server 的连接断开");
