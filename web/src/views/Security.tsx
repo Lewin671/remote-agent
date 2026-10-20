@@ -245,7 +245,7 @@ export function SecurityPage({
             >
               核实并继续
             </button>
-            {draft && !pending.signed && !pending.codeSaved && (
+            {draft && !pending.signed && (!pending.codeSaved || pending.kind === "offer") && (
               <button
                 className="row act"
                 disabled={busy}

@@ -383,7 +383,9 @@ export class AuthorityClient {
       const op = await readSecurityOperation<StateDraft>();
       if (!op) return;
       this.bound(op);
-      if (op.signed || op.codeSaved || op.phase !== "PREPARED" || !(op.kind === "offer" || (op.kind === "state" && op.local.action === "recovery"))) throw new SecurityError("conflict");
+      // Confirming a backup is local only. An unsigned offer may become stale
+      // while the authority changes membership, and still needs an explicit exit.
+      if (op.signed || (op.codeSaved && op.kind !== "offer") || op.phase !== "PREPARED" || !(op.kind === "offer" || (op.kind === "state" && op.local.action === "recovery"))) throw new SecurityError("conflict");
       check();
       await clearSecurityOperation(op);
     });

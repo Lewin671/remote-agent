@@ -79,6 +79,25 @@ function dropAck(path: string) {
     return response;
   });
 }
+it("allows explicit exit from a confirmed unsigned offer but retains signed offers and confirmed rotations", async () => {
+  const { account } = await createAccount();
+  const c = await clients(account), record = await loadSecurity();
+  let op = operation("offer", account.server, account.deviceId, record.stateHash, { recoveryEd: new Uint8Array(32).fill(7) });
+  await claimSecurityOperation(op, record.stateHash);
+  op = await saveSecurityOperation(op, { ...op, codeSaved: true });
+  await c.authority.discardUnpublishedCode();
+  expect(await readSecurityOperation()).toBeUndefined();
+  await claimSecurityOperation(op, record.stateHash);
+  op = await saveSecurityOperation(op, { ...op, signed: new Uint8Array([1]) });
+  await expect(c.authority.discardUnpublishedCode()).rejects.toThrow();
+  expect((await readSecurityOperation())!.signed).toEqual(new Uint8Array([1]));
+  await securityStore.updateSecurityEntry("pending", () => undefined);
+  const rotation = operation("state", account.server, account.deviceId, record.stateHash, { action: "recovery" });
+  await claimSecurityOperation(rotation, record.stateHash);
+  await saveSecurityOperation(rotation, { ...rotation, codeSaved: true });
+  await expect(c.authority.discardUnpublishedCode()).rejects.toThrow();
+  expect((await readSecurityOperation())!.codeSaved).toBe(true);
+});
 it("continues the exact creation draft after registration and pin acknowledgements are lost; token can be corrected", async () => {
   expect(await securitySetupStatus()).toBe("missing");
   const { code } = await setup.prepareCreation(server.url);

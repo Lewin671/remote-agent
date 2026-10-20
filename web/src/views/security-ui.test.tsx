@@ -50,6 +50,19 @@ it("distinguishes verified removal from a refused login and uses stopped-transpo
   expect(resume).toHaveBeenCalledOnce();
   expect(host.textContent).toContain("原安全操作已核实完成");
 });
+
+it("offers an explicit exit for a confirmed handoff backup whose offer was never signed", async () => {
+  const r = demo("role=member");
+  const op = { ...operations.operation("offer", r.account.server, r.account.deviceId, new Uint8Array(32), {}), codeSaved: true };
+  vi.spyOn(r.authority, "pending").mockImplementation(async () => pending);
+  let pending: typeof op | undefined = op;
+  const discard = vi.spyOn(r.authority, "discardUnpublishedCode").mockImplementation(async () => { pending = undefined; });
+  await mount(<SecurityPage remote={r} onBack={() => {}} />);
+  await click("未完成的安全操作");
+  await click("放弃未发布的恢复码");
+  expect(discard).toHaveBeenCalledOnce();
+  expect(button("放弃未发布的恢复码")).toBeUndefined();
+});
 it.each(["authority", "member", "machine"])(
   "shows management entries by verified role: %s",
   async (role) => {
