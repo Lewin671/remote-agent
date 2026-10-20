@@ -47,8 +47,8 @@ function nativeWork(run: () => unknown, patterns: Set<RegExp>): number {
 
 async function work(session: Session, run: () => unknown): Promise<number> {
   // takePreciseCoverage resets counters: discard activity between measurements.
-  // One continuously enabled profiler retains detailed blocks for hot functions
-  // without repeatedly deoptimizing the entire worker at each input size.
+  // The complexity project disables optimizing JIT tiers: optimized/inlined
+  // helpers can disappear from V8 invocation counts even in precise coverage.
   await session.post("Profiler.takePreciseCoverage");
   const native = nativeWork(run, new Set());
   const { result } = await session.post("Profiler.takePreciseCoverage");
@@ -104,6 +104,28 @@ describe("linear parser work", { concurrent: false }, () => {
   afterAll(async () => {
     try { await session.post("Profiler.stopPreciseCoverage"); }
     finally { session.disconnect(); }
+  });
+
+  it("counts every hot helper invocation and loop iteration", async () => {
+    // Calibrate the profiler itself. Optimizing JIT tiers can inline step and
+    // stop reporting its calls, making work ratios depend on compiler timing.
+    function step(i: number) { return i + 1; }
+    function loop(n: number) {
+      let sum = 0;
+      for (let i = 0; i < n; i++) sum += step(i);
+      return sum;
+    }
+    const n = 100_000;
+    loop(n);
+    await session.post("Profiler.takePreciseCoverage");
+    expect(loop(n)).toBe(n * (n + 1) / 2);
+    const { result } = await session.post("Profiler.takePreciseCoverage");
+    const script = result.find((s) => s.url.endsWith("/markdown.complexity.test.ts"));
+    const helper = script?.functions.find((fn) => fn.functionName === "step");
+    const caller = script?.functions.find((fn) => fn.functionName === "loop");
+    expect(helper?.ranges[0].count).toBe(n);
+    expect(caller?.isBlockCoverage).toBe(true);
+    expect(caller?.ranges.some((range) => range.count === n)).toBe(true);
   });
 
   it.each(cases)("$name grows linearly as hostile inputs grow fourfold", async ({ name, input, parse }) => {
