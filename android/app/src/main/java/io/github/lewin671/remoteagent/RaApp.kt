@@ -85,7 +85,7 @@ class RaApp : Application() {
     private val _accountError = MutableStateFlow("")
     /** Why the stored account could not be read, e.g. the phone was locked. */
     val accountError: StateFlow<String> = _accountError.asStateFlow()
-    private var foreground = false
+    @Volatile private var foreground = false
     private var loading = false
     @Volatile private var erasePending = false
     private var erasing = false
@@ -299,6 +299,10 @@ class RaApp : Application() {
                 http,
                 RoomCache(db.dao(), imageEnvelopes),
                 securityStorage = vault,
+                tokenStorage = object : io.github.lewin671.remoteagent.core.LoginTokenStore by vault {
+                    override fun loadLoginToken(account: Account) =
+                        if (foreground) vault.loadLoginToken(account) else null
+                },
                 log = { Log.i(TAG, it) },
             )
         io.github.lewin671.remoteagent.ui.ViewerImages.use(r)

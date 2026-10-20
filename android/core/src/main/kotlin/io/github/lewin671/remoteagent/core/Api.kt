@@ -50,7 +50,7 @@ class Account(
 }
 
 /** The server's services over the Connect protocol with binary protobuf. */
-class Api(server: String, http: OkHttpClient) {
+class Api(server: String, http: OkHttpClient, onUnauthenticated: ((String) -> Unit)? = null) {
     // 10.0.2.2 is the emulator's host loopback. Release Android network
     // policy still blocks all cleartext; no remote HTTP origin is accepted.
     val server = Secret.checkServer(server, allowPlainHttp = true)
@@ -58,7 +58,15 @@ class Api(server: String, http: OkHttpClient) {
         ProtocolClient(
             // Never replay login, registration or pairing bodies at another URL.
             ConnectOkHttpClient(
-                http.newBuilder().followRedirects(false).followSslRedirects(false).build(),
+                http.newBuilder().followRedirects(false).followSslRedirects(false)
+                    .apply { interceptors().add(0, okhttp3.Interceptor { chain ->
+                        val response = chain.proceed(chain.request())
+                        if (response.code == 401) {
+                            chain.request().header("Authorization")?.removePrefix("Bearer ")
+                                ?.takeIf { it.isNotEmpty() }?.let { onUnauthenticated?.invoke(it) }
+                        }
+                        response
+                    }) }.build(),
             ),
             ProtocolClientConfig(
                 host = this.server,

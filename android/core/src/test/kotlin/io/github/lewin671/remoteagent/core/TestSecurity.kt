@@ -205,6 +205,7 @@ fun fixtureRemote(
     historyIdleBytes: Long = 16L * 1024 * 1024,
     streamOpenMs: Long = 15000,
     linkGraceMs: Long = 10000,
+    tokenStorage: LoginTokenStore? = null,
 ): Remote =
     Remote(
         account,
@@ -219,4 +220,5 @@ fun fixtureRemote(
         streamOpenMs,
         linkGraceMs,
         TestSecurity.find(account.server)?.stores?.get(account.deviceId),
+        tokenStorage,
     )

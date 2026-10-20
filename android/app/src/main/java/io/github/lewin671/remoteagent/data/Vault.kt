@@ -36,12 +36,13 @@ class Vault internal constructor(
     context: Context,
     private val onDecrypt: ((String) -> Unit)?,
     private val onSecurityParse: (() -> Unit)?,
-) : DeviceSecurity.Storage {
+) : DeviceSecurity.Storage, io.github.lewin671.remoteagent.core.LoginTokenStore {
     constructor(context: Context) : this(context, null, null)
     private val keyguard = context.getSystemService(KeyguardManager::class.java)
     private val dir = context.noBackupFilesDir
     private val accountFile = File(dir, "account-v2.bin")
     private val notifyFile = File(dir, "notify.bin")
+    private val tokenFile = File(dir, "login-token.bin")
     private val securityFile = File(dir, "security-v3.bin")
 
     // Access only under SECURITY_LOCK. Cache only ciphertext that was decrypted and fully parsed.
@@ -84,8 +85,67 @@ class Vault internal constructor(
     }
 
     fun save(a: Account, notifyKey: ByteArray) = securityTransaction {
+        deleteLoginToken()
         write(accountFile, ACCOUNT_ALIAS, accountBytes(a), unlockedOnly = true)
         write(notifyFile, NOTIFY_ALIAS, notifyKey, unlockedOnly = false)
+    }
+
+    override fun loadLoginToken(account: Account): io.github.lewin671.remoteagent.core.LoginToken? =
+        securityTransaction {
+            if (!ownsAccount(account)) return@securityTransaction null
+            if (securityFile.exists() && !readSecurityUnlocked().member) {
+                deleteLoginToken()
+                return@securityTransaction null
+            }
+            try {
+                val raw = read(tokenFile, ACCOUNT_ALIAS) ?: return@securityTransaction null
+                DataInputStream(ByteArrayInputStream(raw)).use { s ->
+                    if (s.readUTF() != account.server || s.readUTF() != account.accountId ||
+                        s.readUTF() != account.deviceId) {
+                        deleteLoginToken()
+                        return@securityTransaction null
+                    }
+                    io.github.lewin671.remoteagent.core.LoginToken(s.readUTF(), s.readLong())
+                }
+            } catch (e: Exception) {
+                // A bad optional credential never prevents signing in normally.
+                deleteLoginToken()
+                null
+            }
+        }
+
+    override fun saveLoginToken(account: Account, token: io.github.lewin671.remoteagent.core.LoginToken) =
+        securityTransaction {
+            // A login finishing after logout/reset must not recreate account credential.
+            if (!ownsAccount(account)) return@securityTransaction
+            if (securityFile.exists() && !readSecurityUnlocked().member) {
+                deleteLoginToken()
+                return@securityTransaction
+            }
+            val out = ByteArrayOutputStream()
+            DataOutputStream(out).use { s ->
+                s.writeUTF(account.server)
+                s.writeUTF(account.accountId)
+                s.writeUTF(account.deviceId)
+                s.writeUTF(token.value)
+                s.writeLong(token.expiresMs)
+            }
+            write(tokenFile, ACCOUNT_ALIAS, out.toByteArray(), unlockedOnly = true)
+        }
+
+    override fun clearLoginToken(account: Account) = securityTransaction {
+        if (ownsAccount(account)) deleteLoginToken()
+    }
+
+    private fun ownsAccount(a: Account): Boolean {
+        val current = load() ?: return false
+        return current.server == a.server && current.accountId == a.accountId &&
+            current.deviceId == a.deviceId && current.deviceSeed.contentEquals(a.deviceSeed)
+    }
+
+    private fun deleteLoginToken() {
+        if (tokenFile.exists() && !tokenFile.delete()) throw DeviceSecurity.Failure("storage")
+        syncDirectory()
     }
 
     private fun accountBytes(a: Account): ByteArray {
@@ -209,6 +269,7 @@ class Vault internal constructor(
         if (!record.member) {
             // A removed device must not keep a key for the new content epoch.
             clearSecurityCache()
+            deleteLoginToken()
             if (notifyFile.exists() && !notifyFile.delete()) throw DeviceSecurity.Failure("storage")
             return
         }
@@ -483,6 +544,7 @@ class Vault internal constructor(
 
     fun clear(preserveSecurityOperation: Boolean = false) = securityTransaction {
         clearSecurityCache()
+        deleteLoginToken()
         securityFile.delete()
         File(dir, "registration-intent.bin").let {
             if (it.exists() && !it.delete()) throw DeviceSecurity.Failure("storage")

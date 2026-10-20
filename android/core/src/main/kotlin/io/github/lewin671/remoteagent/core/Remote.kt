@@ -354,10 +354,11 @@ class Remote(
      */
     private val linkGraceMs: Long = 10_000,
     private val securityStorage: DeviceSecurity.Storage? = null,
+    tokenStorage: LoginTokenStore? = null,
 ) {
     private val keys: Keys? = if (account.hasRoot) Keys.derive(account.root) else null
     private val device = SigningKey(account.deviceSeed)
-    val api = Api(account.server, http)
+    val api = Api(account.server, http, ::rejectToken)
     val security =
         DeviceSecurityClient(
             securityStorage ?: MissingDeviceSecurityStorage,
@@ -425,8 +426,8 @@ class Remote(
     // And per device, registered, changed or removed: the same for the list of devices.
     private val devicePushes = HashMap<String, Int>()
 
-    @Volatile private var token = ""
-    @Volatile private var tokenExpires = 0L
+    private val loginTokenStore = tokenStorage
+    private val loginTokens = LoginTokens(account, tokenStorage, clock, ::signIn)
     // The stream pings so that a link that died silently, as when a phone
     // changes networks, is noticed and replaced. Requests share its pool.
     private val streamHttp =
@@ -636,16 +637,17 @@ class Remote(
      * mean what it says. A server restarted between the two calls forgets the challenge; denied a
      * fresh one too, it no longer knows this device, and nothing connects until it joins again.
      */
-    private suspend fun signIn(): String = signingIn.withLock {
+    private suspend fun signIn(): LoginResponse = signingIn.withLock {
         try {
-            signedIn(loginResponse(api, account))
+            loginResponse(api, account)
         } catch (first: ConnectException) {
             if (first.code != Code.PERMISSION_DENIED) throw first
             try {
-                signedIn(loginResponse(api, account))
+                loginResponse(api, account)
             } catch (e: ConnectException) {
                 if (e.code == Code.PERMISSION_DENIED)
                     withContext(dispatcher) {
+                        loginTokenStore?.clearLoginToken(account)
                         removed = true
                         running = false
                         generation++
@@ -659,11 +661,6 @@ class Remote(
                 throw e
             }
         }
-    }
-
-    private fun signedIn(res: LoginResponse): String {
-        tokenExpires = res.expiresMs
-        return res.token
     }
 
     /** Tries the login again after the server turned this device away. */
@@ -741,13 +738,8 @@ class Remote(
         publish()
         restored()
         if (!running || gen != generation) return
-        try {
-            // A token kept from the last connection saves the two login calls
-            // each time the app comes back. One about to expire is not worth a
-            // refused connection; the server refusing it closes the stream,
-            // and the next try logs in.
-            if (token.isEmpty() || tokenExpires < clock() + 86_400_000)
-                token = withTimeout(streamOpenMs) { signIn() }
+        val token = try {
+            withTimeout(streamOpenMs) { currentToken() }
         } catch (e: Exception) {
             if (e is CancellationException && e !is TimeoutCancellationException) throw e
             if (running && gen == generation) fail(e)
@@ -804,6 +796,7 @@ class Remote(
                     }
 
                     override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                        if (code == POLICY_VIOLATION) refused.set(true)
                         frames.close()
                     }
 
@@ -861,7 +854,7 @@ class Remote(
                     opening?.cancel()
                     opening = null
                     // Only an explicit refusal invalidates the token.
-                    if (refused.get()) token = ""
+                    if (refused.get()) loginTokens.discard(token)
                     fail(broken.get() ?: Exception("与 server 的连接断开"))
                 }
             }
@@ -998,14 +991,14 @@ class Remote(
                 val (ms, ss) = coroutineScope {
                     val machineRows = async {
                         api.client
-                            .listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(token))
+                            .listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(currentToken()))
                             .value()
                     }
                     val sessionRows = async {
                         api.client
                             .listRemoteSessions(
                                 ListRemoteSessionsRequest.newBuilder().setLimit(SESSION_PAGE).build(),
-                                Api.headers(token),
+                                Api.headers(currentToken()),
                             )
                             .value()
                     }
@@ -1481,7 +1474,7 @@ class Remote(
                         io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest.newBuilder()
                             .setObjectId(PROJECT_PREFS)
                             .build(),
-                        Api.headers(token),
+                        Api.headers(currentToken()),
                     )
                     .value()
             putPrefs(o.`object`)
@@ -2235,12 +2228,12 @@ class Remote(
                     .listDevices(
                         io.github.lewin671.remoteagent.proto.ListDevicesRequest
                             .getDefaultInstance(),
-                        Api.headers(token),
+                        Api.headers(currentToken()),
                     )
                     .value()
             val machineRows =
                 listedMachines ?: api.client
-                    .listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(token))
+                    .listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(currentToken()))
                     .value()
             val metadata = HashMap<String, Envelope>()
             for (d in listed.devicesList) {
@@ -2540,7 +2533,7 @@ class Remote(
                                     .setAfterSeq(before.toLong())
                                     .setLimit(500)
                                     .build(),
-                                Api.headers(token),
+                                Api.headers(currentToken()),
                             )
                             .value()
                     if (!running || gen != generation || buffers[sid] !== b) return
@@ -2995,8 +2988,9 @@ class Remote(
         try {
             while (true) {
                 waiting = false
+                var sentToken: String? = null
                 try {
-                    if (token.isEmpty()) token = relogin(mayHaveRun)
+                    sentToken = currentToken()
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     val authorized = authorize(p)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
@@ -3009,7 +3003,7 @@ class Remote(
                                     .setMachineId(p.machineId)
                                     .setCommand(authorized)
                                     .build(),
-                                Api.headers(token),
+                                Api.headers(sentToken),
                             )
                             .value()
                     val (_, msg) =
@@ -3047,7 +3041,8 @@ class Remote(
                     }
                     if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
                         attempt++
-                        token = relogin(mayHaveRun)
+                        loginTokens.discard(sentToken)
+                        relogin(mayHaveRun)
                         continue
                     }
                     // ABORTED: the daemon could not seal a result, as on the web.
@@ -3097,7 +3092,7 @@ class Remote(
      */
     private suspend fun relogin(mayHaveRun: Boolean): String =
         try {
-            signIn()
+            currentToken()
         } catch (e: Exception) {
             if (!mayHaveRun) throw e
             throw CommandException(
@@ -3181,9 +3176,12 @@ class Remote(
     }
 
     /** The bearer token of the current login, for services used outside this class. */
-    suspend fun currentToken(): String {
-        if (token.isEmpty()) token = signIn()
-        return token
+    suspend fun currentToken(): String = loginTokens.current()
+
+    private fun rejectToken(rejected: String) {
+        scope.launch {
+            if (loginTokens.discard(rejected) && running) beginConnect()
+        }
     }
 
     // --- images ---
@@ -3402,12 +3400,15 @@ class Remote(
                     }
 
                     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                        if (code == POLICY_VIOLATION) rejectToken(tok)
                         webSocket.close(1000, null)
                         finish("终端连接断开")
                     }
 
-                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) =
+                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                        if (code == POLICY_VIOLATION) rejectToken(tok)
                         finish("终端连接断开")
+                    }
 
                     override fun onFailure(
                         webSocket: WebSocket,
