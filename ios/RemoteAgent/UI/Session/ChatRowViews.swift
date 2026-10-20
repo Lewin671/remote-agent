@@ -281,20 +281,16 @@ struct ChatBubble<Top: View>: View {
                 }
             }
             if caption != nil || !links.isEmpty {
-                HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    if let captionIcon { Mark(captionIcon, color: captionColor).padding(.trailing, 4) }
-                    if let caption {
-                        Text(caption).type(T.meta, captionColor).multilineTextAlignment(.trailing)
+                // The note and its actions on one line when they fit, else the actions under it:
+                // a long note at a large text size is not squeezed into a column beside them.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        note
+                        actions
                     }
-                    ForEach(links) { link in
-                        Button(action: link.action) {
-                            Text(link.label).type(T.metaB, Theme.blue).lineLimit(1).fixedSize()
-                                // 44 pt to the finger without pushing the rows apart.
-                                .padding(.leading, 6).padding(.vertical, 14)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(PressStyle())
-                        .padding(.vertical, -14)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        note
+                        HStack(spacing: 0) { actions }
                     }
                 }
                 .padding(.top, 2)
@@ -302,6 +298,30 @@ struct ChatBubble<Top: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
         .padding(.horizontal, padded ? chatMargin : 0).padding(.vertical, 8)
+    }
+}
+
+extension ChatBubble {
+    @ViewBuilder fileprivate var note: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            if let captionIcon { Mark(captionIcon, color: captionColor).padding(.trailing, 4) }
+            if let caption {
+                Text(caption).type(T.meta, captionColor).multilineTextAlignment(.trailing)
+            }
+        }
+    }
+
+    @ViewBuilder fileprivate var actions: some View {
+        ForEach(links) { link in
+            Button(action: link.action) {
+                Text(link.label).type(T.metaB, Theme.blue).lineLimit(1).fixedSize()
+                    // 44 pt to the finger without pushing the rows apart.
+                    .padding(.leading, 6).padding(.vertical, 14)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PressStyle())
+            .padding(.vertical, -14)
+        }
     }
 }
 
