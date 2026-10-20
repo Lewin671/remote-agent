@@ -193,6 +193,19 @@ export class AuthoritySetup {
     await clearSecurityOperation(op);
   }
   /** Uses a recovery code for public-profile lookup only. No submit call. */
+  async completeAccountPublicProfile(server: string, code: string) {
+    return this.lifecycle.run(async (check) => {
+      const local = await loadSecurity();
+      const decoded = RecoveryCode.decode(code);
+      if (!decoded) throw new Error("恢复码无效");
+      try {
+        const { ed25519 } = await import("@noble/curves/ed25519.js");
+        const pub = new Uint8Array(ed25519.getPublicKey(decoded.seed));
+        const context = await this.context(server, pub, (b) => Promise.resolve(new Uint8Array(ed25519.sign(b, decoded.seed))), "", decoded.genesis, check, local);
+        return context.pin;
+      } finally { decoded.seed.fill(0); }
+    });
+  }
   private async context(server: string, publicKey: B, sign: (b: B) => Promise<B>, recoveryId: string, prefix: B, check: () => void, local?: SecurityRecord) {
     const api = this.services(server).recovery;
     check();

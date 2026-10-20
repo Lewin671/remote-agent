@@ -200,6 +200,10 @@ it("initiates real pairing and retains delivery until candidate registration/rec
   await target.authority.renewLeaseIfNeeded();
   expect(isAuthority(await loadSecurity())).toBe(true);
   expect(equal((await loadSecurity()).lease!.head, (await loadSecurity()).stateHash)).toBe(true);
+  // Public material can be recovered with challenge/context only.
+  const submit = vi.spyOn(globalThis, "fetch");
+  await setup.completeAccountPublicProfile(server.url, code.code);
+  expect(submit.mock.calls.some(([input]) => String(input instanceof Request ? input.url : input).endsWith("/SubmitRecovery"))).toBe(false);
 });
 it("submits exact emergency recovery, rejects early completion, observes unchanged-head hints, and adopts after debug advancement of 48h", async () => {
   const { account, code } = await createAccount();
