@@ -262,6 +262,29 @@ struct AuthorityWorkflowTests {
         #expect(try vault.readSecurity().state.core.removed.contains(member.id))
     }
 
+    @Test func actorReentrancyAndLockDuringRpcCannotSignAnotherSuccessor() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (account, vault, _) = try await createAuthority(server)
+        let gate = enabledGate(), entered = Signal(), release = Signal()
+        let blocked = Intercept.http(for: server.url) { request in
+            if request.url?.path.hasSuffix("/GetSecurityStates") == true {
+                entered.set()
+                while !release.isSet { try Task.checkCancellation(); try await realSleep(5) }
+            }
+            return request
+        }
+        let c = try coordinator(account, vault, http: blocked, gate: gate)
+        let work = Task { try await c.renewLeaseNow() }
+        defer { work.cancel(); release.set() }
+        for _ in 0..<500 { if entered.isSet { break }; try await realSleep(10) }
+        do { _ = try await c.prepareRecovery(); Issue.record("actor reentry permitted") } catch {}
+        gate.set(active: false, protectedDataAvailable: false); release.set()
+        do { try await work.value; Issue.record("signed after locking") } catch {}
+        #expect(try vault.readOperation() == nil)
+        #expect(try vault.readSecurity().headEpoch == 1)
+        gate.set(active: true, protectedDataAvailable: true)
+        try await c.renewLeaseNow()
+    }
 }
 
 private final class AuthorityRegistrationReceipt: @unchecked Sendable {
@@ -297,6 +320,13 @@ final class ManagementRelay: @unchecked Sendable {
         }
         close(); throw TestFailure("management relay did not start")
     }
+    func advanceRecoveryDeadline() throws {
+        let sql = Process(); sql.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
+        sql.arguments = [directory.appendingPathComponent("ra.db").path, "UPDATE security_recovery SET ready_ms = 1 WHERE completed_ms = 0;"]
+        sql.standardOutput = FileHandle.nullDevice; sql.standardError = FileHandle.nullDevice
+        try sql.run(); sql.waitUntilExit()
+        if sql.terminationStatus != 0 { throw TestFailure("could not advance fixture deadline") }
+    }
     func close() {
         if process.isRunning {
             process.terminate()
@@ -308,6 +338,30 @@ final class ManagementRelay: @unchecked Sendable {
 }
 
 extension AuthorityWorkflowTests {
+    @Test func emergencyRecoveryCompletesAfterDebugDeadlineAndRestartsWithoutEitherSeed() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (_, oldVault, code) = try await createAuthority(server)
+        let vault = AuthorityTestVault(), gate = enabledGate()
+        let workflow = AuthorityBootstrap(storage: vault, gate: gate)
+        let newCode = try await workflow.prepareEmergencyRecovery(server: server.url, code: code)
+        try await workflow.confirmRecoveryCodeSaved()
+        let status = try await workflow.submitRecovery()
+        #expect(status.readyMs > UInt64(Date().timeIntervalSince1970 * 1000))
+        do { _ = try await workflow.completeRecovery(); Issue.record("accepted early completion") } catch {}
+        try server.advanceRecoveryDeadline()
+        let restart = AuthorityBootstrap(storage: vault, gate: gate)
+        let account = try await restart.completeRecovery()
+        let before = try oldVault.readSecurity(), recovered = try vault.readSecurity()
+        #expect(recovered.headEpoch == 2 && recovered.state.prevSecret.isEmpty)
+        #expect(recovered.state.core.removed.contains(before.memberID))
+        #expect(recovered.lease?.head == (try DeviceSecurity.stateHash(recovered.state)))
+        #expect(recovered.state.core.recoveryEd == (try SigningKey(seed: RecoveryCode.decode(newCode)!.seed).publicKey))
+        #expect(throws: DeviceSecurity.Failure.self) { _ = try recovered.contentSecret(1) }
+        try await restart.finishRecovery()
+        #expect(try vault.readOperation() == nil)
+        let authority = try coordinator(account, vault)
+        _ = try await authority.startPairing()
+    }
 
     @Test func openSignupUsesPowAndCorrectedTokenKeepsExactRegistration() async throws {
         for mode in ["token", "open"] {
@@ -391,6 +445,62 @@ extension AuthorityWorkflowTests {
 }
 
 extension AuthorityWorkflowTests {
+    @Test func recoveryRestartsAtEveryPrivateStorageBoundary() async throws {
+        for after in [false, true] {
+            for crash in 1...13 {
+                let server = try await ManagementRelay(); defer { server.close() }
+                let (_, _, code) = try await createAuthority(server)
+                let vault = AuthorityTestVault(), gate = enabledGate()
+                vault.inject(crash, after: after)
+                let original = AuthorityBootstrap(storage: vault, gate: gate)
+                do {
+                    _ = try await original.prepareEmergencyRecovery(server: server.url, code: code)
+                    try await original.confirmRecoveryCodeSaved()
+                    _ = try await original.submitRecovery()
+                    try server.advanceRecoveryDeadline()
+                    _ = try await original.completeRecovery()
+                    try await original.finishRecovery()
+                } catch {}
+                vault.inject(nil)
+                let restarted = AuthorityBootstrap(storage: vault, gate: gate)
+                if try vault.readOperation() == nil && vault.account == nil {
+                    _ = try await restarted.prepareEmergencyRecovery(server: server.url, code: code)
+                }
+                if let pending = try vault.readOperation() {
+                    let signed = pending.signed
+                    _ = try await restarted.submitRecovery()
+                    try server.advanceRecoveryDeadline()
+                    _ = try await restarted.completeRecovery()
+                    try await restarted.finishRecovery(acknowledgeMissingCodeBackup: true)
+                    #expect(vault.committedReceipts.filter { $0.kind == .recovery }.allSatisfy { $0.signed == signed })
+                }
+                #expect(try vault.readSecurity().headEpoch == 2)
+                #expect(try vault.readOperation() == nil)
+            }
+        }
+    }
+    @Test func statePublicationRestartsAtEveryStorageBoundaryWithoutNewStateBytes() async throws {
+        for after in [false, true] {
+            for crash in 1...11 {
+                let server = try await ManagementRelay(); defer { server.close() }
+                let (account, vault, _) = try await createAuthority(server)
+                let authority = try coordinator(account, vault)
+                let prepared = try await authority.prepareRecovery()
+                vault.lock.withLock { vault.committedReceipts = [] }
+                vault.inject(crash, after: after)
+                do { try await authority.publishRecovery(prepared, codeSaved: true) } catch {}
+                let pending = try vault.readOperation()
+                vault.inject(nil)
+                let resumed = try coordinator(account, vault)
+                if pending != nil { try await resumed.resumeSecurityOperation() }
+                else if try vault.readSecurity().headEpoch == 1 { try await resumed.publishRecovery(prepared, codeSaved: true) }
+                #expect(try vault.readSecurity().headEpoch == 2)
+                #expect(try vault.readOperation() == nil)
+                let writes = vault.committedReceipts.filter { $0.kind == .state }
+                #expect(Set(try writes.map { try PBPutSecurityStateRequest(serializedBytes: $0.signed).states[0].state }).count == 1)
+            }
+        }
+    }
 }
 
 /// Opt-in real native CLI acceptance. Kept out of routine tests because it uses
@@ -566,7 +676,67 @@ extension AuthorityWorkflowTests {
         }
     }
 
+    @Test func recoverySubmitAndCompleteAckLossRetryExactSignedBytes() async throws {
+        for path in ["/SubmitRecovery", "/CompleteRecovery"] {
+            for after in [false, true] {
+                let server = try await ManagementRelay(); defer { server.close() }
+                let (_, _, code) = try await createAuthority(server)
+                let vault = AuthorityTestVault(), gate = enabledGate(), cut = Signal()
+                let http = Intercept.http(for: server.url, answered: { request in
+                    if after && request.url?.path.hasSuffix(path) == true && !cut.isSet {
+                        cut.set(); gate.set(active: false, protectedDataAvailable: false)
+                    }
+                }) { request in
+                    if !after && request.url?.path.hasSuffix(path) == true && !cut.isSet {
+                        cut.set(); gate.set(active: false, protectedDataAvailable: false)
+                        throw URLError(.networkConnectionLost)
+                    }
+                    return request
+                }
+                let bootstrap = AuthorityBootstrap(storage: vault, gate: gate, http: http)
+                _ = try await bootstrap.prepareEmergencyRecovery(server: server.url, code: code)
+                try await bootstrap.confirmRecoveryCodeSaved()
+                let initial = try vault.readOperation().unwrap()
+                do {
+                    _ = try await bootstrap.submitRecovery()
+                    try server.advanceRecoveryDeadline()
+                    _ = try await bootstrap.completeRecovery()
+                    Issue.record("missing injected recovery failure")
+                } catch {}
+                #expect(cut.isSet)
+                gate.set(active: true, protectedDataAvailable: true)
+                let restart = AuthorityBootstrap(storage: vault, gate: gate)
+                _ = try await restart.submitRecovery()
+                try server.advanceRecoveryDeadline()
+                _ = try await restart.completeRecovery()
+                try await restart.finishRecovery()
+                #expect(vault.committedReceipts.allSatisfy { $0.signed == initial.signed })
+                #expect(Set(vault.committedReceipts.map(\.completion).filter { !$0.isEmpty }).count == 1)
+            }
+        }
+    }
 
+    @Test func lostSubmitAckThenVetoRequiresExplicitDefinitiveExit() async throws {
+        let server = try await ManagementRelay(); defer { server.close() }
+        let (account, oldVault, code) = try await createAuthority(server)
+        let vault = AuthorityTestVault(), gate = enabledGate()
+        let http = Intercept.http(for: server.url, answered: { request in
+            if request.url?.path.hasSuffix("/SubmitRecovery") == true { gate.set(active: false, protectedDataAvailable: false) }
+        }) { $0 }
+        let bootstrap = AuthorityBootstrap(storage: vault, gate: gate, http: http)
+        _ = try await bootstrap.prepareEmergencyRecovery(server: server.url, code: code)
+        do { _ = try await bootstrap.submitRecovery(); Issue.record("ack should be lost") } catch {}
+        #expect(try vault.readOperation()?.result.isEmpty == true)
+        let manager = try coordinator(account, oldVault), replacement = try await manager.prepareRecovery()
+        try await manager.publishRecovery(replacement, codeSaved: true)
+        gate.set(active: true, protectedDataAvailable: true)
+        let restart = AuthorityBootstrap(storage: vault, gate: gate)
+        do { try await restart.discardRejectedRecovery(); Issue.record("must require explicit exit") } catch {}
+        #expect(try vault.readOperation() != nil)
+        try await restart.discardRejectedRecovery(confirmedAfterDefinitiveRejection: true)
+        #expect(try vault.readOperation() == nil)
+        _ = try await restart.prepareEmergencyRecovery(server: server.url, code: replacement.code)
+    }
 }
 
 extension AuthorityWorkflowTests {

@@ -210,6 +210,7 @@ public final class Api: Sendable {
     public let http: HTTP
     public let auth: PBAuthServiceClient
     public let client: PBClientServiceClient
+    public let recovery: PBRecoveryServiceClient
     public let pairing: PBPairingServiceClient
     let protocolClient: ProtocolClient
 
@@ -224,6 +225,7 @@ public final class Api: Sendable {
         auth = PBAuthServiceClient(client: protocolClient)
         client = PBClientServiceClient(client: protocolClient)
         pairing = PBPairingServiceClient(client: protocolClient)
+        recovery = PBRecoveryServiceClient(client: protocolClient)
     }
 
     public static func headers(token: String) -> Headers {

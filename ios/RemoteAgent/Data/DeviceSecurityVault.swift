@@ -162,7 +162,22 @@ extension Vault: AuthorityStorage {
         SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
         guard try operationUnlocked() == expected else { throw DeviceSecurity.Failure.stale }
         try saveAccountPublicProfileUnlocked(profile, pin: record.pin)
-        let installed = try initializeSecurityUnlocked(record)
+        let installed: DeviceSecurity.Record
+        if expected.kind == .recovery, let raw = try read(.securityState) {
+            let old = try DeviceSecurity.Record.parse(raw)
+            guard old.pin == record.pin, let ancestor = record.states[old.headEpoch],
+                try DeviceSecurity.stateHash(ancestor) == DeviceSecurity.stateHash(old.state) else {
+                throw DeviceSecurity.Failure.conflict
+            }
+            if old.memberID == record.memberID, try old.includesInstallation(record) {
+                installed = old
+            } else {
+                var next = record
+                next.floor = max(old.floor, record.floor); next.floorSaved = max(old.floorSaved, record.floorSaved)
+                try write(.securityState, next.bytes())
+                installed = next
+            }
+        } else { installed = try initializeSecurityUnlocked(record) }
         try save(account.stored, notifyKey: DeviceSecurity.NotifyRecord(record: installed).bytes())
     }
 }

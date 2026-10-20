@@ -12,6 +12,30 @@ public struct PreparedRecovery: Sendable, CustomStringConvertible, CustomDebugSt
 }
 
 extension AuthorityCoordinator {
+    public func prepareRecovery() async throws -> PreparedRecovery {
+        let t = try begin(); defer { busy = false }
+        try await resume(t)
+        _ = try await rpc(t) { [security] in try await security.sync() }
+        let r = try authority(t)
+        return try gate.withPermit(t) {
+            let recovery = try Authority.newRecovery()
+            return try PreparedRecovery(code: RecoveryCode.encode(seed: recovery.seed, genesis: r.pin.genesis),
+                publicKey: recovery.publicKey, parent: DeviceSecurity.stateHash(r.state))
+        }
+    }
+    /// Also the explicit veto path. Confirmation precedes any signed successor.
+    public func publishRecovery(_ prepared: PreparedRecovery, codeSaved: Bool) async throws {
+        try DeviceSecurity.check(codeSaved, .untrusted)
+        let t = try begin(); defer { busy = false }
+        try await resume(t)
+        _ = try await rpc(t) { [security] in try await security.sync() }
+        let r = try authority(t, head: prepared.parent)
+        try prepareState(t, r: r) { r in
+            (try Authority().veto(parent: r.state, newRecoveryEd: prepared.publicKey, secret: r.secret!,
+                signer: SigningKey(seed: account.deviceSeed), now: Int64(clamping: now(r))), Data(), nil)
+        }
+        try await resume(t)
+    }
     public func prepareHandoffCode() throws -> PreparedRecovery {
         let t = try gate.ticket()
         let r = try storage.readSecurity()
