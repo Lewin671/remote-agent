@@ -112,6 +112,7 @@ struct AccountSecurityScreen: View {
                         let delivery = try PBApprovePairingRequest(serializedBytes: pending.delivery)
                         let approval = try PBPairApproval(serializedBytes: delivery.approval)
                         try await context.remote.removeDevice(deviceId(publicKey: approval.candidateDevicePublicKey), abandonPairDelivery: true)
+                        context.memory.value { AuthorityPairingSessions() }.discard(pairingID: delivery.pairingID)
                     }
                     await read()
                 }

@@ -1,5 +1,6 @@
 import Observation
 import RACore
+import RAProto
 import SwiftUI
 import UIKit
 
@@ -12,6 +13,12 @@ final class AuthorityPairingModel {
     var error = ""
     var busy = false
 
+    static func ownsDelivery(_ operation: SecurityOperation?, pairingID: String) -> Bool {
+        guard let operation, operation.kind == .state, !operation.delivery.isEmpty,
+            let delivery = try? PBApprovePairingRequest(serializedBytes: operation.delivery)
+        else { return false }
+        return delivery.pairingID == pairingID
+    }
     func start(_ coordinator: AuthorityCoordinator, replacing: String) async {
         guard !busy else { return }
         busy = true; error = ""
@@ -45,7 +52,7 @@ final class AuthorityPairingModel {
             delivered = try await coordinator.pendingOperation() == nil
         } catch {
             // A signed approval may already be published. Continue that receipt.
-            approved = (try? await coordinator.pendingOperation()) != nil
+            approved = Self.ownsDelivery(try? await coordinator.pendingOperation(), pairingID: initiation?.pairingID ?? "")
             self.error = errorText(error)
         }
     }
@@ -54,6 +61,12 @@ final class AuthorityPairingModel {
 @MainActor
 final class AuthorityPairingSessions {
     private var flows: [String: AuthorityPairingModel] = [:]
+    func discard(pairingID: String) {
+        for flow in flows.values where flow.initiation?.pairingID == pairingID {
+            flow.initiation = nil; flow.candidate = nil; flow.approved = false; flow.delivered = false
+            flow.error = "配对已放弃，可以重新生成配对码。"
+        }
+    }
     func flow(replacing: String) -> AuthorityPairingModel {
         if let flow = flows[replacing] { return flow }
         let flow = AuthorityPairingModel(); flows[replacing] = flow; return flow
