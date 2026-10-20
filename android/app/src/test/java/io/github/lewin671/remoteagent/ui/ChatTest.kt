@@ -35,10 +35,10 @@ class ChatTest {
         d.failures["start"] = "image_not_recognized"
         val failed = pendingStartPrompt("first", emptyList(), d, setOf("later-local"))!!
         assertTrue(failed.warning)
-        assertEquals("没能发送：Codex 没认出图片", failed.caption)
+        assertEquals("没发出去：Codex 没认出图片", failed.caption)
         d.inputs["start"] = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_NEEDS_TERMINAL
         d.failures["start"] = "input_changed"
-        assertEquals("请到终端确认：无法确认终端输入框的内容", pendingStartPrompt("first", emptyList(), d, setOf("later-local"))!!.caption)
+        assertEquals("可能没发出去：无法确认终端输入框的内容", pendingStartPrompt("first", emptyList(), d, setOf("later-local"))!!.caption)
         d.inputs["start"] = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_UNCONFIRMED
         assertTrue(pendingStartPrompt("first", emptyList(), d, setOf("later-local"))!!.warning)
         assertEquals(null, pendingStartPrompt(null, emptyList(), d, emptySet()))

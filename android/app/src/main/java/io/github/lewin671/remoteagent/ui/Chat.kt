@@ -54,7 +54,7 @@ import io.github.lewin671.remoteagent.proto.ToolCall
 import io.github.lewin671.remoteagent.proto.ToolKind
 import io.github.lewin671.remoteagent.proto.TurnOutcome
 
-data class StartPrompt(val text: String, val caption: String, val warning: Boolean = false)
+data class StartPrompt(val text: String, val caption: String, val warning: Boolean = false, val uncertain: Boolean = false)
 
 /** A new session's acknowledged prompt until history records it; never resend it here. */
 fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localIds: Set<String>, agent: io.github.lewin671.remoteagent.proto.Agent = io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX): StartPrompt? {
@@ -62,12 +62,14 @@ fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localId
     val first = d.inputs.keys.firstOrNull { it !in localIds }
     val status = first?.let { d.inputs[it] }
     val reason = first?.let { d.failures[it] }.orEmpty()
-    val error = if (reason.isEmpty()) "" else io.github.lewin671.remoteagent.core.failureText(reason, agent)
     return when (status) {
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED -> null
-        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_FAILED -> StartPrompt(prompt, "没能发送" + if (error.isEmpty()) "" else "：$error", true)
-        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_NEEDS_TERMINAL -> StartPrompt(prompt, "请到终端确认" + if (error.isEmpty()) "" else "：$error", true)
-        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_UNCONFIRMED -> StartPrompt(prompt, "已送到终端，但没能确认 CLI 收到，不会自动重发", true)
+        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_FAILED,
+        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_NEEDS_TERMINAL,
+        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_UNCONFIRMED -> {
+            val feedback = inputFeedback(status, reason, agent)
+            StartPrompt(prompt, feedback.text, warning = true, uncertain = feedback.uncertain)
+        }
         // Still waiting: the pending bubble shows it, with what it waits for and a way to cancel.
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_QUEUED,
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_HELD_BY_CLI -> null
@@ -605,7 +607,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             if (open || cut || planFolds(item.text, 6)) Box(Modifier.padding(top = 4.dp).clickable { open = !open }) { ArrowText(if (open) "收起" else "展开全文", p.blue, T.smB, down = !open, up = open) }
         }
         is ChatItem.Unsent -> MeBubble(
-            item.text ?: "一条排队的消息", caption = "会话结束，没有发出", captionColor = p.orangeInk,
+            item.text ?: "一条排队的消息", caption = "没发出去：会话已结束", captionColor = p.red, failed = true,
             links = if (item.text != null && onPutBack != null) listOf("放回输入框" to { onPutBack(item.requestId, item.text) }) else emptyList(),
         )
         is ChatItem.TurnEnd -> SepLine(item.text)

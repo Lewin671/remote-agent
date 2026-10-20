@@ -561,7 +561,8 @@ private fun ChatPane(
                             MeBubble(
                                 startPrompt.text,
                                 caption = startPrompt.caption,
-                                captionColor = if (startPrompt.warning) p.orangeInk else p.muted,
+                                captionColor = if (!startPrompt.warning) p.muted else if (startPrompt.uncertain) p.orangeInk else p.red,
+                                failed = startPrompt.warning && !startPrompt.uncertain,
                             )
                         }
                     items(items, key = { it.key }) {
@@ -593,6 +594,7 @@ private fun ChatPane(
                             s.id,
                             visiblePending[i],
                             i + 1,
+                            pendingInputs.size,
                             state,
                             remote,
                             if (status == Status.STARTING) agentName(s.agent()) else null,
@@ -661,6 +663,7 @@ private fun PendingBubble(
     sid: String,
     pending: io.github.lewin671.remoteagent.core.PendingInput,
     index: Int,
+    total: Int,
     state: RemoteState,
     remote: io.github.lewin671.remoteagent.core.Remote,
     starting: String?,
@@ -677,19 +680,7 @@ private fun PendingBubble(
     val cancel = Cancels.states[pending.id]
     val resume = rememberAction()
     val online = state.conn == ConnState.ONLINE
-    val label =
-        when {
-            cancel == Cancels.State.Canceling -> "正在取消…"
-            cancel is Cancels.State.Failed -> "取消没成功，仍在排队"
-            resume.running -> "正在发送…"
-            resume.error.isNotEmpty() -> "发送没成功，仍已暂停"
-            pending.paused -> "已暂停 · 中断前排着的"
-            pending.held -> "插入这一轮 · 等当前工具结束后并入"
-            pending.mode == SendMode.SEND_MODE_QUEUE -> "排队 · 这一轮结束后发"
-            // No turn to insert into yet: the CLI is still coming up.
-            starting != null -> "已送达电脑 · 等 $starting 就绪后发出"
-            else -> "插入这一轮 · 等输入框就绪"
-        }
+    val label = pendingInputLabel(pending, starting, cancel, resume.running, resume.error.isNotEmpty())
     val origin =
         io.github.lewin671.remoteagent.core.originLabel(
             pending.origin,
@@ -722,10 +713,7 @@ private fun PendingBubble(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                label +
-                    if (origin != null && origin != "本客户端") " · $origin"
-                    else if (index > 0 && pending.mode == SendMode.SEND_MODE_QUEUE) " · 第 $index 条"
-                    else "",
+                pendingInputCaption(label, index, total, origin),
                 style = T.meta,
                 color = if (cancel is Cancels.State.Failed) p.red else p.muted,
                 maxLines = 1,
@@ -776,10 +764,11 @@ private fun OutgoingView(
     val agent =
         remote.state.value.sessions[sid]?.agent()
             ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX
-    val failed =
-        input == InputStatus.INPUT_STATUS_FAILED ||
-            input == InputStatus.INPUT_STATUS_NEEDS_TERMINAL ||
-            (input == null && o.state != Outgoing.State.SENDING && o.state != Outgoing.State.SENT)
+    val feedback = when (input) {
+        InputStatus.INPUT_STATUS_FAILED, InputStatus.INPUT_STATUS_NEEDS_TERMINAL, InputStatus.INPUT_STATUS_UNCONFIRMED -> inputFeedback(input, failure.orEmpty(), agent)
+        else -> deliveryFailure(o.error, o.state == Outgoing.State.UNKNOWN)
+    }
+    val failed = input == InputStatus.INPUT_STATUS_FAILED || (input == null && o.state == Outgoing.State.FAILED)
     val links = mutableListOf<Pair<String, () -> Unit>>()
     var sending = false
     val (caption, color) =
@@ -792,22 +781,12 @@ private fun OutgoingView(
                             putBack(remote, sid, o)
                             Unit
                         }
-                "没能发送：" +
-                    io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) +
-                    "。电脑的输入框已恢复原样" to p.red
+                feedback.text to p.red
             }
             // Not submitted, and part of it may still be in the input box.
             input == InputStatus.INPUT_STATUS_NEEDS_TERMINAL -> {
                 links += "去终端" to onTerminal
-                links +=
-                    "放回输入框" to
-                        {
-                            putBack(remote, sid, o)
-                            Unit
-                        }
-                "没能发送：" +
-                    io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) +
-                    "。电脑的输入框里可能还留着一部分，不会自动重发" to p.red
+                feedback.text to p.orangeInk
             }
             input == InputStatus.INPUT_STATUS_UNCONFIRMED -> {
                 // Its images are kept until then; the user decides when to let go.
@@ -817,11 +796,11 @@ private fun OutgoingView(
                             Outbox.remove(sid, o)
                             o.images.forEach { it.release() }
                         }
-                "已送到终端，但没能确认 ${agentName(agent)} 收到，不会自动重发" to p.orangeInk
+                feedback.text to p.orangeInk
             }
             o.state == Outgoing.State.SENDING -> {
                 sending = true
-                "发送中…" to p.muted
+                "正在发送…" to p.muted
             }
             o.state == Outgoing.State.SENT -> "已送达电脑" to p.muted
             else -> {
@@ -840,7 +819,7 @@ private fun OutgoingView(
                             Outbox.remove(sid, o)
                             o.images.forEach { it.release() }
                         }
-                (if (o.state == Outgoing.State.UNKNOWN) "没能确认送达：" else "没能送达：") + o.error to p.red
+                feedback.text to if (feedback.uncertain) p.orangeInk else p.red
             }
         }
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
