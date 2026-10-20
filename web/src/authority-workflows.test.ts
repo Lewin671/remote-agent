@@ -4,7 +4,7 @@ import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { AuthorityServer } from "./test/authority-server";
 import { AuthoritySetup, authorityServices, authorityStartup } from "./authority-setup";
-import { AuthorityLifecycle, readSecurityOperation, isAuthority, operation, claimSecurityOperation } from "./security-operation";
+import { AuthorityLifecycle, readSecurityOperation, isAuthority, operation, claimSecurityOperation, saveSecurityOperation } from "./security-operation";
 import { AuthorityClient, handoffCandidates } from "./authority-client";
 import { AuthorityPairing } from "./authority-pairing";
 import { loadAccount, type StoredAccount } from "./storage";
@@ -13,11 +13,11 @@ import * as accountStore from "./storage";
 import { loadSecurity, securitySetupStatus } from "./device-security-store";
 import { DeviceSecurityClient } from "./device-security-client";
 import { signLogin, deviceID, newDeviceKey, openMessage, importSessionKey } from "./crypto";
-import { newSecurityKey, pairDomainCommit, equal, Purpose, parseLease } from "./device-security";
+import { newSecurityKey, pairDomainCommit, equal, stateBytes, stateHash, leaseBytes, signLease, Purpose, parseLease } from "./device-security";
 import { derivePair, newPairKey, pairDomainTranscript } from "./pair";
-import { create, toBinary } from "@bufbuild/protobuf";
+import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { Authority } from "./authority";
-import { PairingService, DeviceKind, DeviceRegistrationSchema, MachineService } from "./gen/remoteagent/v1/relay_pb";
+import { PairingService, DeviceKind, PutSecurityStateRequestSchema, DeviceRegistrationSchema, MachineService } from "./gen/remoteagent/v1/relay_pb";
 import { SessionSchema } from "./gen/remoteagent/v1/local_pb";
 import { MachineMetaSchema, PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
 import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
@@ -106,6 +106,26 @@ it("creates on an open relay with real PoW while retaining its signed registrati
   expect(isAuthority(await loadSecurity())).toBe(true);
   expect((await loadSecurity()).lease).toBeDefined();
 });
+it("replays an accepted state after a lost ack, preserves unchanged-head recovery hints and renews without growing the chain", async () => {
+  const { account } = await createAccount();
+  const c = await clients(account);
+  const old = await loadSecurity();
+  const prepared = await c.authority.prepareRecovery();
+  expect(prepared.code).toBeTruthy();
+  const ack = dropAck("PutSecurityState");
+  await expect(c.authority.publishRecovery()).rejects.toThrow(); ack.mockRestore();
+  const pending = await readSecurityOperation();
+  expect(pending!.signed).toBeDefined();
+  await c.authority.resumeSecurityOperation();
+  expect(await readSecurityOperation()).toBeUndefined();
+  const next = await loadSecurity();
+  expect(next.states).toHaveLength(old.states.length + 1);
+  expect(next.states.at(-1)!.core.contentEpoch).toBe(old.states.at(-1)!.core.contentEpoch);
+  const states = next.states.length;
+  await c.authority.renewLeaseNow();
+  expect((await loadSecurity()).states).toHaveLength(states);
+});
+
 async function pairCandidate(c: Awaited<ReturnType<typeof clients>>, kind = DeviceKind.CLIENT, replacesDeviceId = "", loseApprovalAck = false) {
   const initiation = await AuthorityPairing.start(c.authority, c.pairing, "https://app.example.com", replacesDeviceId);
   expect(initiation.code).toMatch(/^\d{8}$/);
@@ -181,6 +201,43 @@ it("initiates real pairing and retains delivery until candidate registration/rec
   expect(isAuthority(await loadSecurity())).toBe(true);
   expect(equal((await loadSecurity()).lease!.head, (await loadSecurity()).stateHash)).toBe(true);
 });
+it("replays immutable state bytes after more than 72h, refreshing only its independent lease", async () => {
+  // Prepare a genesis from the past, then publish its first lease at real
+  // server time. The pending successor below models an offline old request.
+  const realNow = Date.now();
+  const clock = vi.spyOn(Date, "now").mockReturnValue(realNow - 74 * 3600000);
+  await setup.prepareCreation(server.url); clock.mockRestore();
+  await setup.continueCreation("test-setup"); await setup.confirmCreationCodeSaved();
+  const account = (await loadAccount())!, c = await clients(account), r = await loadSecurity();
+  const oldTime = BigInt(realNow - 73 * 3600000), fresh = await Authority.newRecovery();
+  const target = await Authority.veto(r.states[0], fresh.publicKey, r.secret, account.devicePrivate, oldTime);
+  fresh.seed.fill(0);
+  const oldLease = await signLease(target, account.devicePrivate, oldTime);
+  const bytes = toBinary(PutSecurityStateRequestSchema, create(PutSecurityStateRequestSchema, { states: [{ state: await stateBytes(target) }], lease: leaseBytes(oldLease) }));
+  let pending = operation("state", server.url, account.deviceId, r.stateHash, { action: "recovery" });
+  await claimSecurityOperation(pending, r.stateHash);
+  pending = await saveSecurityOperation(pending, { ...pending, signed: bytes, codeSaved: true });
+  const calls = vi.spyOn(c.api, "putSecurityState");
+  await c.authority.resumeSecurityOperation();
+  const request = calls.mock.calls[0][0];
+  expect(request.states?.[0]?.state).toEqual(fromBinary(PutSecurityStateRequestSchema, bytes).states[0].state);
+  expect(request.lease).not.toEqual(leaseBytes(oldLease));
+  expect((await loadSecurity()).stateHash).toEqual(await stateHash(target));
+});
+it("stops when another verified successor changed the parent and does not sign a replacement", async () => {
+  const { account } = await createAccount(), c = await clients(account);
+  await c.authority.prepareRecovery();
+  const pending = await readSecurityOperation();
+  const record = await loadSecurity(), key = await Authority.newRecovery();
+  const other = await Authority.veto(record.states.at(-1)!, key.publicKey, record.secret, account.devicePrivate, BigInt(Date.now()));
+  key.seed.fill(0);
+  await c.api.putSecurityState({ states: [{ state: await stateBytes(other) }], lease: leaseBytes(await signLease(other, account.devicePrivate, BigInt(Date.now()))) });
+  const calls = vi.spyOn(c.api, "putSecurityState");
+  await expect(c.authority.publishRecovery()).rejects.toThrow("conflict");
+  expect(calls).not.toHaveBeenCalled();
+  expect((await readSecurityOperation())!.parent).toEqual(pending!.parent);
+  expect((await readSecurityOperation())!.signed).toBeUndefined();
+});
 it("keeps lease signing monotonic after a wall-clock rollback and refuses ordinary members", async () => {
   const { account } = await createAccount(), c = await clients(account);
   const old = (await loadSecurity()).lease!;
@@ -236,6 +293,48 @@ it.each(["before", "after"] as const)("recovers creation after every durable wri
   } finally { for (const spy of spies) spy.mockRestore(); }
 }, 60000);
 
+it.each(["before", "after"] as const)("keeps a single successor across every state-publication write and RPC (%s)", async (side) => {
+  let events = 0, failure = -1, fired = false, monitor = false;
+  const step = async <T>(work: () => Promise<T>): Promise<T> => {
+    if (!monitor) return work();
+    const at = events++;
+    if (at === failure && side === "before") { fired = true; throw new Error("injected crash"); }
+    const result = await work();
+    if (at === failure && side === "after") { fired = true; throw new Error("injected crash"); }
+    return result;
+  };
+  const update = securityStore.updateSecurityEntry, install = securityStore.installSecurity, touch = securityStore.touchSecurity;
+  const fetch = globalThis.fetch;
+  const spies = [
+    vi.spyOn(securityStore, "updateSecurityEntry").mockImplementation((...args) => step(() => update(...args))),
+    vi.spyOn(securityStore, "installSecurity").mockImplementation((...args) => step(() => install(...args))),
+    vi.spyOn(securityStore, "touchSecurity").mockImplementation((...args) => step(() => touch(...args))),
+    vi.spyOn(globalThis, "fetch").mockImplementation((...args) => step(() => fetch(...args))),
+  ];
+  let count = 1;
+  try {
+    for (let index = -1; index < count; index++) {
+      monitor = false; await server.close(); server = await AuthorityServer.start(built.binary);
+      vi.stubGlobal("indexedDB", new IDBFactory()); setup = new AuthoritySetup(lifecycle());
+      const { account } = await createAccount(), c = await clients(account);
+      await c.authority.prepareRecovery();
+      events = 0; failure = index; fired = false; monitor = true;
+      try { await c.authority.publishRecovery(); } catch { /* Restart. */ }
+      monitor = false;
+      if (index === -1) count = events; else expect(fired).toBe(true);
+      const pending = await readSecurityOperation(); const signed = pending?.signed;
+      if (pending) {
+        if (!pending.codeSaved) await c.authority.publishRecovery(); else await c.authority.resumeSecurityOperation();
+        if (signed) {
+          const state = fromBinary(PutSecurityStateRequestSchema, signed).states[0].state;
+          expect(await stateBytes((await loadSecurity()).states.at(-1)!)).toEqual(state);
+        }
+      }
+      expect(await readSecurityOperation()).toBeUndefined(); expect((await loadSecurity()).states).toHaveLength(2);
+    }
+  } finally { for (const spy of spies) spy.mockRestore(); }
+}, 60000);
+
 it("retains canceled delivery until explicit candidate removal, and refuses Machine handoff even with an offer", async () => {
   const { account } = await createAccount(), c = await clients(account);
   const candidate = await pairCandidate(c, DeviceKind.MACHINE), id = await deviceID(candidate.ed);
@@ -249,6 +348,29 @@ it("retains canceled delivery until explicit candidate removal, and refuses Mach
   expect(r.states).toHaveLength(3); expect(r.states.at(-1)!.core.removed).toContain(id);
   await expect(AuthorityPairing.start(c.authority, c.pairing, "https://app.example.com", id)).rejects.toThrow("档案已删除");
 });
+it("rechecks the foreground generation immediately before signing and after storing the exact request", async () => {
+  const { account } = await createAccount(), c = await clients(account);
+  await c.authority.prepareRecovery();
+  const encrypt = crypto.subtle.encrypt.bind(crypto.subtle);
+  const hold = vi.spyOn(crypto.subtle, "encrypt").mockImplementation(async (...args) => {
+    const bytes = await encrypt(...args); c.authority.lifecycle.pause(); return bytes;
+  });
+  const sign = vi.spyOn(crypto.subtle, "sign"); const put = vi.spyOn(c.api, "putSecurityState");
+  await expect(c.authority.publishRecovery()).rejects.toThrow("暂停");
+  expect(sign.mock.calls.filter(([algorithm]) => algorithm === "Ed25519")).toHaveLength(0); expect(put).not.toHaveBeenCalled(); hold.mockRestore();
+  c.authority.lifecycle.resume();
+  const update = securityStore.updateSecurityEntry;
+  const stored = vi.spyOn(securityStore, "updateSecurityEntry").mockImplementation(async (...args) => {
+    await update(...args);
+    if ((await readSecurityOperation())?.signed) c.authority.lifecycle.pause();
+  });
+  await expect(c.authority.resumeSecurityOperation()).rejects.toThrow("暂停");
+  const pending = await readSecurityOperation(); expect(pending!.signed).toBeDefined();
+  expect(put).not.toHaveBeenCalled(); stored.mockRestore();
+  c.authority.lifecycle.resume(); await c.authority.resumeSecurityOperation();
+  expect(await stateBytes((await loadSecurity()).states.at(-1)!)).toEqual(fromBinary(PutSecurityStateRequestSchema, pending!.signed!).states[0].state);
+});
+
 it("separates machine revocation, archive rejoin with retained sessions, and permanent archive deletion", async () => {
   const { account } = await createAccount(), c = await clients(account);
   const enroll = async (candidate: Awaited<ReturnType<typeof pairCandidate>>) => {

@@ -8,7 +8,7 @@ import { equal, leaseBytes, parseLease, parseState, recoveryBytes, SecurityError
 import { makePairApproval } from "./pair-approval";
 import { checkPairChainSize } from "./pairing";
 import { RecoveryCode } from "./recovery";
-import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, isAuthority, operation, readSecurityOperation, saveSecurityOperation, type SecurityOperation, requestAuthorityPersistence, needsRecoveryCodeRotation } from "./security-operation";
+import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, isAuthority, operation, readSecurityOperation, saveSecurityOperation, type SecurityOperation, requestAuthorityPersistence, markRecoveryCodeRotation, needsRecoveryCodeRotation } from "./security-operation";
 import { loadAccountPublicProfile, type StoredAccount } from "./storage";
 import { ApprovePairingRequestSchema, ClientService, PairingService, PairingState, PutSecurityStateRequestSchema, DeviceKind, PairApprovalSchema, DeleteMachineRecordsRequestSchema } from "./gen/remoteagent/v1/relay_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -23,7 +23,7 @@ export interface PairingDelivery {
   replacesDeviceId: string;
 }
 interface StateDraft {
-  action: "remove" | "pair" | "handoff";
+  action: "remove" | "recovery" | "handoff" | "pair";
   target?: string;
   recoveryEd?: B;
   pair?: PairingDelivery;
@@ -111,6 +111,7 @@ export class AuthorityClient {
       return;
     }
     if (op.kind === "state" && !op.signed) {
+      if ((op.local as StateDraft).action === "recovery" && !op.codeSaved) return;
       op = await this.signDraft(op as SecurityOperation<StateDraft>, check);
     }
     // A handoff can revoke our token before its ack arrives. Never infer
@@ -167,6 +168,10 @@ export class AuthorityClient {
     if (!installed && !equal(r.stateHash, op.parent)) throw new SecurityError("conflict");
     if (op.phase === "DELIVERED") {
       if (!installed) throw new SecurityError("conflict");
+      if ((op.local as StateDraft).action === "recovery" && op.codeSaved) {
+        await markRecoveryCodeRotation(op.server, r.pin, false);
+        check();
+      }
       await clearSecurityOperation(op);
       return;
     }
@@ -226,6 +231,10 @@ export class AuthorityClient {
     }
     op = await saveSecurityOperation(op, { ...op, phase: "DELIVERED" });
     check();
+    if ((op.local as StateDraft).action === "recovery" && op.codeSaved) {
+      await markRecoveryCodeRotation(op.server, r.pin, false);
+      check();
+    }
     await clearSecurityOperation(op);
   }
   private async signDraft(op: SecurityOperation<StateDraft>, check: () => void): Promise<SecurityOperation<StateDraft>> {
@@ -244,6 +253,7 @@ export class AuthorityClient {
     check();
     let next;
     if (draft.action === "remove") next = await Authority.remove(head, [draft.target!], r.secret, Authority.newSecret(), key, now, { beforeSign: check });
+    else if (draft.action === "recovery") next = await Authority.veto(head, draft.recoveryEd!, r.secret, key, now, { beforeSign: check });
     else if (draft.action === "handoff") next = await Authority.handoff(head, draft.target!, draft.recoveryEd!, r.secret, Authority.newSecret(), key, now, { beforeSign: check });
     else {
       const member = draft.pair!.candidate;
@@ -323,6 +333,17 @@ export class AuthorityClient {
       await this.resume(check);
     });
   }
+  async prepareRecovery() {
+    return this.lifecycle.run(async (check) => {
+      await this.resume(check);
+      const r = await this.authority(check), recovery = await Authority.newRecovery();
+      try {
+        await this.claim("state", { action: "recovery", recoveryEd: recovery.publicKey } satisfies StateDraft, r);
+        check();
+        return { code: RecoveryCode.encode(recovery.seed, r.pin.genesis) };
+      } finally { recovery.seed.fill(0); }
+    });
+  }
   async prepareHandoffCode() {
     return this.lifecycle.run(async (check) => {
       if (await readSecurityOperation()) throw new Error("请先完成当前安全操作");
@@ -340,11 +361,12 @@ export class AuthorityClient {
     });
   }
   /** UI calls only after explicit offline-save confirmation. Same API vetoes. */
+  async publishRecovery() { return this.confirmCode("state"); }
   async offerHandoff() { return this.confirmCode("offer"); }
-  private async confirmCode(kind: "offer") {
+  private async confirmCode(kind: "state" | "offer") {
     return this.lifecycle.run(async (check) => {
       const op = await readSecurityOperation<StateDraft>();
-      if (!op || op.kind !== kind) throw new SecurityError("conflict");
+      if (!op || op.kind !== kind || (kind === "state" && op.local.action !== "recovery")) throw new SecurityError("conflict");
       this.bound(op);
       await saveSecurityOperation(op, { ...op, codeSaved: true });
       check();
@@ -358,7 +380,7 @@ export class AuthorityClient {
       const op = await readSecurityOperation<StateDraft>();
       if (!op) return;
       this.bound(op);
-      if (op.signed || op.codeSaved || op.phase !== "PREPARED" || op.kind !== "offer") throw new SecurityError("conflict");
+      if (op.signed || op.codeSaved || op.phase !== "PREPARED" || !(op.kind === "offer" || (op.kind === "state" && op.local.action === "recovery"))) throw new SecurityError("conflict");
       check();
       await clearSecurityOperation(op);
     });
