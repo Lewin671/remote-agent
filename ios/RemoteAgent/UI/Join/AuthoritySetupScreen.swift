@@ -134,7 +134,7 @@ struct AuthoritySetupScreen: View {
                 }
             }.padding(16)
         if !flow.error.isEmpty {
-            TextAction("核实原申请是否已被否决", enabled: !flow.busy) { Task { await discardRejected() } }
+            TextAction("核实并放弃", enabled: !flow.busy) { Task { await discardRejected() } }
                 .padding(.horizontal, 16)
         }
     }
