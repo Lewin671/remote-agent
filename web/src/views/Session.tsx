@@ -885,6 +885,9 @@ function ChatBody({
         {shortPath(cwd)}
       </div>
       {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
+      {hist.backfilling && !hist.error && !hist.broken && (
+        <div className="sysline">正在加载更早的记录…</div>
+      )}
     </>
   );
   const footer = (

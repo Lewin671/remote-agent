@@ -178,6 +178,8 @@ interface EventBuffer {
   verifiedEvents?: Event[];
   verifiedDerived?: { count: number; agent: Agent; value: Derived };
   events: Event[]; // contiguous from seq 1
+  recent?: Event[]; // a contiguous suffix, shown alone until backfill joins it
+  tailRequested?: boolean;
   pending: Map<bigint, Event>; // arrived ahead of a gap
   fetching: boolean;
   refetch: boolean;
@@ -196,6 +198,7 @@ interface EventBuffer {
 /** How far a session's history got: loading, complete, a fetch that
  * failed, or an event that does not open. */
 export interface History {
+  backfilling?: boolean;
   unavailable?: number;
   loaded: boolean;
   error: string;
@@ -1821,7 +1824,7 @@ export class Remote {
 
   // --- events ---
 
-  /** Events of a session, contiguous from seq 1. Loads them on first use. */
+  /** A continuous history segment; the latest page is shown while older pages load. */
   events(sid: string): Event[] {
     const b = this.buffers.get(sid);
     if (b) b.usedAt = Date.now();
@@ -1841,7 +1844,7 @@ export class Remote {
       void this.fetchEvents(sid);
       return [];
     }
-    return b.events;
+    return b.recent ?? b.events;
   }
 
   loaded(sid: string): boolean {
@@ -1851,6 +1854,7 @@ export class Remote {
   history(sid: string): History {
     const b = this.buffers.get(sid);
     return {
+      backfilling: !!b?.recent,
       loaded: b?.loaded ?? false,
       error: b?.error ?? "",
       broken: b?.broken ?? false,
@@ -1906,8 +1910,24 @@ export class Remote {
     }
     b.fetching = true;
     const generation = this.generation;
+    let tailThrough: bigint | undefined;
     try {
       if (!b.restored && this.cache) await this.restore(s, b);
+      // lastSeq is a routing hint, not authenticated event content. Every
+      // returned envelope still passes the normal historical checks.
+      if (!b.tailRequested && s.lastSeq > BigInt(b.events.length) + 500n) {
+        b.tailRequested = true;
+        const tail = await this.api.getEvents({
+          sessionId: sid,
+          afterSeq: s.lastSeq - 500n,
+          limit: 500,
+        });
+        if (this.closed || generation !== this.generation || this.buffers.get(sid) !== b)
+          return;
+        await this.ingest(s, tail.events, false, false, true);
+        if (!tail.more && tail.events.length && !b.broken)
+          tailThrough = tail.events.at(-1)!.seq;
+      }
       do {
         b.refetch = false;
         for (;;) {
@@ -1917,6 +1937,8 @@ export class Remote {
             this.buffers.get(sid) !== b
           )
             return;
+          if (tailThrough !== undefined && BigInt(b.events.length) >= tailThrough &&
+              s.lastSeq <= BigInt(b.events.length) && !b.pending.size) break;
           const before = b.events.length;
           const res = await this.api.getEvents({
             sessionId: sid,
@@ -1932,7 +1954,15 @@ export class Remote {
           await this.ingest(s, res.events, false, false, true);
           // An event that does not open stops progress; asking for the
           // same page again would not help.
-          if (!res.more || b.events.length === before) break;
+          if (b.broken) break;
+          if (b.events.length === before && b.pending.size)
+            throw new Error("历史记录存在缺口，请重试");
+          if (!res.more) {
+            if (b.pending.size) throw new Error("历史记录存在缺口，请重试");
+            break;
+          }
+          if (b.events.length === before)
+            throw new Error("历史记录未能继续加载，请重试");
         }
       } while (b.refetch);
       b.loaded = true;
@@ -2034,6 +2064,16 @@ export class Remote {
       b.events.push(event);
       b.pending.delete(next);
     }
+    if (b.tailRequested && b.pending.size && !b.broken) {
+      // Show only one contiguous suffix. Never run the timeline reducer over
+      // a prefix concatenated with events beyond an unfilled gap.
+      let last = 0n;
+      for (const seq of b.pending.keys()) if (seq > last) last = seq;
+      let first = last;
+      while (b.pending.has(first - 1n)) first--;
+      b.recent = [];
+      for (let seq = first; seq <= last; seq++) b.recent.push(b.pending.get(seq)!);
+    } else b.recent = undefined;
     s.lastSeq = maxBig(s.lastSeq, BigInt(b.events.length));
     this.recorded(
       s.id,
