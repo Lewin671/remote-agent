@@ -196,7 +196,8 @@ final class SessionStore {
                 o.state = unknown ? .unknown : .failed
                 o.missingImages = !unknown && ce?.fromDaemon == true && ce?.code == "not_found" && !o.imageIds.isEmpty &&
                     ce?.message.contains("is not on this machine; upload it again") == true
-                o.error = o.missingImages ? "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留" : errorText(error)
+                // Put back, the text and the images stay and the images go up again.
+                o.error = o.missingImages ? "图片不在电脑上" : errorText(error)
             }
             delivering.remove(o.requestId)
         }

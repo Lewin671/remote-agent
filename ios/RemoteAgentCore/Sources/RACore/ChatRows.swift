@@ -5,30 +5,42 @@ import Foundation
 import RAProto
 
 /// A new session's first message as its page shows it before the history has it.
+/// `warning`: it may not have gone (orange); `failed`: it did not (red).
 public struct StartPrompt: Equatable, Sendable {
     public var text: String
     public var caption: String
     public var warning: Bool
+    public var failed: Bool
 
-    public init(text: String, caption: String, warning: Bool = false) {
+    public init(text: String, caption: String, warning: Bool = false, failed: Bool = false) {
         self.text = text
         self.caption = caption
         self.warning = warning
+        self.failed = failed
     }
 }
 
+/// What stands under a message that did not go: 「没发出去：<原因>」.
+public func notSentText(_ why: String) -> String { "没发出去：\(why)" }
+
+/// What stands under a message that may not have gone: 「可能没发出去：<原因>」.
+public func maybeNotSentText(_ why: String) -> String { "可能没发出去：\(why)" }
+
+/// Why a message written to the terminal may not have gone: the CLI did not say it took it.
+public let unconfirmedText = "已送到终端但没确认"
+
 /// A new session's acknowledged prompt until history records it; never resend it here.
-public func pendingStartPrompt(_ prompt: String?, events: some Sequence<PBEvent>, d: Derived, localIds: Set<String>) -> StartPrompt? {
+public func pendingStartPrompt(_ prompt: String?, events: some Sequence<PBEvent>, d: Derived, localIds: Set<String>, agent: PBAgent) -> StartPrompt? {
     guard let prompt, !prompt.isEmpty, !events.contains(where: { if case .userMessage = $0.kind { return true } else { return false } })
     else { return nil }
     let first = d.inputs.keys.first { !localIds.contains($0) }
     let status = first.flatMap { d.inputs[$0] }
-    let error = first.flatMap { d.failures[$0] } ?? ""
+    let why = failureText(reason: first.flatMap { d.failures[$0] } ?? "", agent: agent)
     switch status {
     case .canceled: return nil
-    case .failed: return StartPrompt(text: prompt, caption: "没能发送" + (error.isEmpty ? "" : "：\(error)"), warning: true)
-    case .needsTerminal: return StartPrompt(text: prompt, caption: "请到终端确认" + (error.isEmpty ? "" : "：\(error)"), warning: true)
-    case .unconfirmed: return StartPrompt(text: prompt, caption: "已送到终端，但没能确认 CLI 收到，不会自动重发", warning: true)
+    case .failed: return StartPrompt(text: prompt, caption: notSentText(why), failed: true)
+    case .needsTerminal: return StartPrompt(text: prompt, caption: maybeNotSentText(why), warning: true)
+    case .unconfirmed: return StartPrompt(text: prompt, caption: maybeNotSentText(unconfirmedText), warning: true)
     // Still waiting: the pending bubble shows it, with what it waits for and a way to cancel.
     case .queued, .heldByCli: return nil
     default: return StartPrompt(text: prompt, caption: "已送达电脑")

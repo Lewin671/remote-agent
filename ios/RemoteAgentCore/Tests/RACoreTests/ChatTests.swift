@@ -12,25 +12,30 @@ import Testing
 
     @Test func retainsAcknowledgedStartUntilHistoryArrivesAndShowsFailuresHonestly() throws {
         var d = Derived()
-        #expect(pendingStartPrompt("first", events: [], d: d, localIds: [])?.text == "first")
+        #expect(pendingStartPrompt("first", events: [], d: d, localIds: [], agent: .claude)?.text == "first")
         d.inputs["later-local"] = .failed
         d.inputs["start"] = .queued
         // Waiting: the pending bubble shows it, not a second copy here.
-        #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"]) == nil)
+        #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude) == nil)
         d.inputs["start"] = .submitted
-        #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"])?.caption == "已送达电脑")
+        #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude)?.caption == "已送达电脑")
         let recorded = [PBEvent.with { $0.userMessage = .with { $0.text = "first" } }]
-        #expect(pendingStartPrompt("first", events: recorded, d: d, localIds: ["later-local"]) == nil)
+        #expect(pendingStartPrompt("first", events: recorded, d: d, localIds: ["later-local"], agent: .claude) == nil)
         d.inputs["start"] = .canceled
-        #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"]) == nil)
+        #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude) == nil)
         d.inputs["start"] = .failed
         d.failures["start"] = "CLI 没认出图片"
-        let failed = try #require(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"]))
-        #expect(failed.warning)
-        #expect(failed.caption == "没能发送：CLI 没认出图片")
+        let failed = try #require(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude))
+        #expect(failed.failed && !failed.warning)
+        #expect(failed.caption == "没发出去：CLI 没认出图片")
         d.inputs["start"] = .unconfirmed
-        #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"])?.warning == true)
-        #expect(pendingStartPrompt(nil, events: [], d: d, localIds: []) == nil)
+        let unsure = try #require(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude))
+        #expect(unsure.warning && !unsure.failed)
+        #expect(unsure.caption == "可能没发出去：已送到终端但没确认")
+        d.inputs["start"] = .needsTerminal
+        d.failures["start"] = "write_failed"
+        #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude)?.caption == "可能没发出去：写入终端失败")
+        #expect(pendingStartPrompt(nil, events: [], d: d, localIds: [], agent: .claude) == nil)
     }
 
     @Test func marksWhereAForkLeavesItsSource() throws {

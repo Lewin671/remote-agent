@@ -131,7 +131,7 @@ actor ChatBuilder {
         }
         return ChatSnapshot(
             derived: d, rows: rows,
-            startPrompt: pendingStartPrompt(p.prompt, events: events, d: d, localIds: local),
+            startPrompt: pendingStartPrompt(p.prompt, events: events, d: d, localIds: local, agent: p.agent),
             // The title is the screen's to look at; this is the other half of the rule.
             spoke: sentMessage(SessionView(id: "", machineId: ""), events: events))
     }

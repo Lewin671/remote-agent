@@ -112,12 +112,12 @@ extension Ref<LiveAnnouncer> {
         func label(_ p: PendingInput, cancel: SessionStore.CancelState? = nil, resuming: Bool = false, failed: Bool = false, starting: String? = nil) -> String {
             pendingLabel(p, cancel: cancel, resuming: resuming, resumeFailed: failed, starting: starting)
         }
-        #expect(label(pending()) == "插入这一轮 · 等输入框就绪")
-        #expect(label(pending(mode: .queue)) == "排队 · 这一轮结束后发")
-        #expect(label(pending(held: true)) == "插入这一轮 · 等当前工具结束后并入")
-        #expect(label(pending(mode: .queue, paused: true)) == "已暂停 · 中断前排着的")
-        #expect(label(pending(), starting: "Codex") == "已送达电脑 · 等 Codex 就绪后发出")
-        #expect(label(pending(mode: .queue), starting: "Codex") == "排队 · 这一轮结束后发")
+        #expect(label(pending()) == "插入这一轮")
+        #expect(label(pending(mode: .queue)) == "这一轮结束后发")
+        #expect(label(pending(held: true)) == "插入这一轮")
+        #expect(label(pending(mode: .queue, paused: true)) == "已暂停")
+        #expect(label(pending(), starting: "Codex") == "等 Codex 就绪后发出")
+        #expect(label(pending(mode: .queue), starting: "Codex") == "这一轮结束后发")
         #expect(label(pending(paused: true), resuming: true) == "正在发送…")
         #expect(label(pending(paused: true), failed: true) == "发送没成功，仍已暂停")
         #expect(label(pending(paused: true), cancel: .canceling, resuming: true) == "正在取消…")
@@ -125,10 +125,11 @@ extension Ref<LiveAnnouncer> {
     }
 
     @Test func aWaitingMessageNamesAnotherSenderOrItsPlace() {
-        #expect(pendingSuffix(pending(mode: .queue), origin: nil, index: 2) == " · 第 2 条")
-        #expect(pendingSuffix(pending(mode: .queue), origin: nil, index: 2) == " · 第 2 条")
-        #expect(pendingSuffix(pending(mode: .queue), origin: "我的 iPad", index: 2) == " · 我的 iPad")
-        #expect(pendingSuffix(pending(), origin: nil, index: 1).isEmpty)
+        #expect(pendingSuffix(pending(mode: .queue), origin: nil, index: 2, of: 2) == " · 第 2 条")
+        #expect(pendingSuffix(pending(mode: .queue), origin: "我的 iPad", index: 2, of: 2) == " · 我的 iPad")
+        #expect(pendingSuffix(pending(), origin: nil, index: 1, of: 2).isEmpty)
+        // Its place is said only while more than one waits.
+        #expect(pendingSuffix(pending(mode: .queue), origin: nil, index: 1, of: 1).isEmpty)
     }
 
     @Test func moreThanThreeWaitingMessagesFoldToTwo() {
@@ -144,15 +145,18 @@ extension Ref<LiveAnnouncer> {
         }
         #expect(note(.sending) == OutgoingNote(caption: "发送中…", sending: true))
         #expect(note(.sent) == OutgoingNote(caption: "已送达电脑"))
-        #expect(note(.failed) == OutgoingNote(caption: "没能送达：原因", tone: .error, failed: true, actions: [.retry, .remove]))
-        #expect(note(.unknown) == OutgoingNote(caption: "没能确认送达：原因", tone: .error, failed: true, actions: [.retry, .remove]))
+        // Did not go: red, with a short reason.
+        #expect(note(.failed) == OutgoingNote(caption: "没发出去：原因", tone: .error, failed: true, actions: [.retry, .remove]))
         #expect(note(.sent, .failed, failure: "input_changed") == OutgoingNote(
-            caption: "没能发送：无法确认终端输入框的内容。电脑的输入框已恢复原样", tone: .error, failed: true, actions: [.putBack]))
+            caption: "没发出去：无法确认终端输入框的内容", tone: .error, failed: true, actions: [.putBack]))
+        // May not have gone: orange, with what could be done before.
+        #expect(note(.unknown) == OutgoingNote(caption: "可能没发出去：原因", tone: .warn, failed: true, actions: [.retry, .remove]))
+        // The error's own 「不确定电脑有没有执行」 is said by 「可能没发出去」 already.
+        #expect(note(.unknown, error: "不确定电脑有没有执行：请求可能已经送到，之后网络断了").caption == "可能没发出去：请求可能已经送到，之后网络断了")
         #expect(note(.sent, .needsTerminal, failure: "write_failed") == OutgoingNote(
-            caption: "没能发送：写入终端失败。电脑的输入框里可能还留着一部分，不会自动重发", tone: .error, failed: true,
-            actions: [.terminal, .putBack]))
+            caption: "可能没发出去：写入终端失败", tone: .warn, failed: true, actions: [.terminal, .putBack]))
         #expect(note(.sent, .unconfirmed) == OutgoingNote(
-            caption: "已送到终端，但没能确认 Claude Code 收到，不会自动重发", tone: .warn, actions: [.remove]))
+            caption: "可能没发出去：已送到终端但没确认", tone: .warn, actions: [.remove]))
         // The daemon has it queued and this client's own try was unsure: it did arrive, and nothing is drawn as failed.
         #expect(!note(.unknown, .queued).failed)
     }

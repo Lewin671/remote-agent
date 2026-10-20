@@ -450,6 +450,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         #expect(o.state == .failed && o.missingImages && o.canPutBack)
         let note = outgoingNote(state: o.state, error: o.error, input: nil, failure: nil, agent: .codex, hasImages: true, missingImages: o.missingImages)
         #expect(note.actions == [.putBack, .remove])
+        #expect(note.caption == "没发出去：图片不在电脑上")
         #expect(o.text == "看图" && o.images[0] === image && o.original)
     }
 

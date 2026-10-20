@@ -354,7 +354,7 @@ struct ChatPane: View {
                     if let start = chat.startPrompt {
                         ChatBubble(
                             start.text, caption: start.caption,
-                            captionColor: start.warning ? Theme.orangeInk : Theme.muted)
+                            captionColor: start.failed ? Theme.red : start.warning ? Theme.orangeInk : Theme.muted)
                     }
                     ForEach(rows) { row in
                         ChatRowView(row: row, env: env).equatable().id(row.id)
@@ -372,7 +372,7 @@ struct ChatPane: View {
                     // bubble is told apart from the other, or the list keeps the one it had.
                     ForEach(Array(visible.enumerated()), id: \.element.id) { i, p in
                         PendingBubble(
-                            session: session, pending: p, index: i + 1,
+                            session: session, pending: p, index: i + 1, count: pending.count,
                             starting: status == .starting ? agentName(session.agent) : nil
                         )
                         .id("pending-" + p.id)
@@ -611,6 +611,8 @@ private struct PendingBubble: View {
     let session: SessionView
     let pending: PendingInput
     let index: Int
+    /// How many messages wait, this one among them.
+    let count: Int
     let starting: String?
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
@@ -646,7 +648,7 @@ private struct PendingBubble: View {
                 .accessibilityHint(expanded ? "收起" : "展开全文")
                 HStack(spacing: 6) {
                     // The note gives way; what can be done stays.
-                    Text(label + pendingSuffix(pending, origin: origin, index: index))
+                    Text(label + pendingSuffix(pending, origin: origin, index: index, of: count))
                         .type(T.meta, cancelFailed ? Theme.red : Theme.muted).lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     if pending.paused && !canceling {

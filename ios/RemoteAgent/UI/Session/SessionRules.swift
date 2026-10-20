@@ -50,7 +50,8 @@ struct ChatScroll: Equatable, Sendable {
 
 // MARK: Messages waiting in the daemon's queue
 
-/// What stands under a message the model has not received yet.
+/// What stands under a message the model has not received yet: what it
+/// waits for, in a few words, or how taking it back stands.
 func pendingLabel(
     _ p: PendingInput, cancel: SessionStore.CancelState?, resuming: Bool, resumeFailed: Bool, starting: String?
 ) -> String {
@@ -58,18 +59,19 @@ func pendingLabel(
     if case .failed = cancel { return "取消没成功，仍在排队" }
     if resuming { return "正在发送…" }
     if resumeFailed { return "发送没成功，仍已暂停" }
-    if p.paused { return "已暂停 · 中断前排着的" }
-    if p.held { return "插入这一轮 · 等当前工具结束后并入" }
-    if p.mode == .queue { return "排队 · 这一轮结束后发" }
+    if p.paused { return "已暂停" }
+    if p.held { return "插入这一轮" }
+    if p.mode == .queue { return "这一轮结束后发" }
     // No turn to insert into yet: the CLI is still coming up.
-    if let starting { return "已送达电脑 · 等 \(starting) 就绪后发出" }
-    return "插入这一轮 · 等输入框就绪"
+    if let starting { return "等 \(starting) 就绪后发出" }
+    return "插入这一轮"
 }
 
-/// What follows the label: who sent it when it was not this client, else its place in the queue.
-func pendingSuffix(_ p: PendingInput, origin: String?, index: Int) -> String {
+/// What follows the label: who sent it when it was not this client, else
+/// its place in the queue while more than one waits (`count`).
+func pendingSuffix(_ p: PendingInput, origin: String?, index: Int, of count: Int) -> String {
     if let origin { return " · \(origin)" }
-    return index > 0 && p.mode == .queue ? " · 第 \(index) 条" : ""
+    return count > 1 && index > 0 && p.mode == .queue ? " · 第 \(index) 条" : ""
 }
 
 /// The queued messages to show: more than three fold to the first two until opened.
@@ -104,7 +106,9 @@ struct OutgoingNote: Equatable, Sendable {
     var actions: [OutgoingAction] = []
 }
 
-/// `input`: what the daemon's events say of the message, nil while they say nothing yet.
+/// `input`: what the daemon's events say of the message, nil while they say
+/// nothing yet. A message that did not go says so in red, one that may not
+/// have gone in orange, each with a short reason.
 func outgoingNote(
     state: Outgoing.State, error: String, input: PBInputStatus?, failure: String?, agent: PBAgent, hasImages: Bool = false, missingImages: Bool = false
 ) -> OutgoingNote {
@@ -113,16 +117,15 @@ func outgoingNote(
     case .failed:
         // Nothing was submitted and the terminal is as it was.
         return OutgoingNote(
-            caption: "没能发送：" + failureText(reason: failure ?? "", agent: agent) + "。电脑的输入框已恢复原样", tone: .error,
+            caption: notSentText(failureText(reason: failure ?? "", agent: agent)), tone: .error,
             failed: failed, actions: [.putBack])
     case .needsTerminal:
-        // Not submitted, and part of it may still be in the input box.
+        // Not submitted, but part of it may still be in the terminal's input box.
         return OutgoingNote(
-            caption: "没能发送：" + failureText(reason: failure ?? "", agent: agent) + "。电脑的输入框里可能还留着一部分，不会自动重发",
-            tone: .error, failed: failed, actions: [.terminal, .putBack])
+            caption: maybeNotSentText(failureText(reason: failure ?? "", agent: agent)),
+            tone: .warn, failed: failed, actions: [.terminal, .putBack])
     case .unconfirmed:
-        return OutgoingNote(
-            caption: "已送到终端，但没能确认 \(agentName(agent)) 收到，不会自动重发", tone: .warn, failed: failed, actions: [.remove])
+        return OutgoingNote(caption: maybeNotSentText(unconfirmedText), tone: .warn, failed: failed, actions: [.remove])
     default:
         break
     }
@@ -130,8 +133,13 @@ func outgoingNote(
     case .sending: return OutgoingNote(caption: "发送中…", sending: true, failed: failed)
     case .sent: return OutgoingNote(caption: "已送达电脑", failed: failed)
     // The same request again: the daemon runs a request ID at most once.
-    case .unknown: return OutgoingNote(caption: "没能确认送达：" + error, tone: .error, failed: failed, actions: [.retry, .remove])
-    case .failed: return OutgoingNote(caption: "没能送达：" + error, tone: .error, failed: failed, actions: (hasImages ? [.putBack] : []) + (missingImages ? [] : [.retry]) + [.remove])
+    // 「可能没发出去」 already says that it is not known whether the computer ran it.
+    case .unknown:
+        return OutgoingNote(
+            caption: maybeNotSentText(
+                error.hasPrefix(unknownOutcomePrefix) ? String(error.dropFirst(unknownOutcomePrefix.count)) : error), tone: .warn, failed: failed,
+            actions: [.retry, .remove])
+    case .failed: return OutgoingNote(caption: notSentText(error), tone: .error, failed: failed, actions: (hasImages ? [.putBack] : []) + (missingImages ? [] : [.retry]) + [.remove])
     }
 }
 

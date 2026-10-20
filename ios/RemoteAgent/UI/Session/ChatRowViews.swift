@@ -156,7 +156,7 @@ struct ChatRowView: View, Equatable {
             PlanCard(key: p.key, text: p.text)
         case .unsent(let u):
             ChatBubble(
-                u.text ?? "一条排队的消息", caption: "会话结束，没有发出", captionColor: Theme.orangeInk,
+                u.text ?? "一条排队的消息", caption: notSentText("会话已结束"), captionColor: Theme.red,
                 links: u.text.map { text in [ChatLink("放回输入框") { actions.putBack(u.requestId, text) }] } ?? [])
         case .turnEnd(let t):
             ChatSepLine(t.text)
