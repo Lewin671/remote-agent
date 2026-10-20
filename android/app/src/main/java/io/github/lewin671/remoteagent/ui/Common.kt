@@ -397,12 +397,9 @@ fun rememberDerived(
     events: io.github.lewin671.remoteagent.core.SessionEvents,
     agent: io.github.lewin671.remoteagent.proto.Agent,
 ): io.github.lewin671.remoteagent.core.Derived {
-    val history =
-        rememberDerived(
-            if (events.unverifiedLegacy) events.verifiedEvents else events.stateEvents,
-            agent,
-        )
-    return remember(history, events.live) {
-        io.github.lewin671.remoteagent.core.currentActions(history, events.live)
+    val readable = if (events.unverifiedLegacy) events.verifiedEvents else events.stateEvents
+    val history = rememberDerived(readable, agent)
+    return remember(history, events.live, readable.size) {
+        io.github.lewin671.remoteagent.core.currentActions(history, events.live, readable)
     }
 }

@@ -20,10 +20,8 @@ private final class CardEvents {
 
     func follow(_ remote: Remote, _ sid: String, agent: PBAgent) async {
         for await snapshot in remote.events(sid).updates() {
-            derived = currentActions(
-                projection.update(
-                    snapshot.unverifiedLegacy ? snapshot.verifiedEvents : snapshot.events,
-                    agent: agent), live: snapshot.live)
+            let events = snapshot.unverifiedLegacy ? snapshot.verifiedEvents : snapshot.events
+            derived = currentActions(projection.update(events, agent: agent), live: snapshot.live, events: events)
             // The feed keeps the latest for a reader that is behind; a frame passes between two.
             if (try? await Task.sleep(nanoseconds: 16_000_000)) == nil { return }
         }

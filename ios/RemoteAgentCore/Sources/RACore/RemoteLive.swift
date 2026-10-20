@@ -43,9 +43,39 @@ func observedCommand(_ command: PBCommand, snapshot: PBLiveSnapshot?) throws -> 
     return result
 }
 
+/// What a plan the live snapshot says is pending reads as: the plan event it
+/// names (`planEventSeq`), the clean Markdown the CLI proposed, when `events`
+/// (the readable, verified history, each event bound to its place in the
+/// session) hold it. Only without it does the terminal's text stand in, box
+/// lines and all. Whether a plan is pending, and what an answer is bound to
+/// (the event's seq and the screen's hash), stay the snapshot's alone.
+public func livePlanText(_ live: PBLiveSnapshot, events: some RandomAccessCollection<PBEvent>) -> String {
+    let seq = live.planEventSeq
+    guard seq > 0 else { return live.planScreen }
+    // A whole history holds event n at n - 1; otherwise look for it.
+    var event: PBEvent?
+    if seq <= UInt64(events.count) {
+        let e = events[events.index(events.startIndex, offsetBy: Int(seq) - 1)]
+        if e.seq == seq { event = e }
+    }
+    if event == nil { event = events.last { $0.seq == seq } }
+    guard case .planProposed(let plan)? = event?.kind,
+        !plan.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isSkeleton(plan.text)
+    else { return live.planScreen }
+    return plan.text
+}
+
 /// Event histories are for reading. Only an owner response to a fresh request
-/// supplies current decisions; missing freshness is visible to the caller.
+/// supplies current decisions; missing freshness is visible to the caller. A
+/// pending plan's text is read from the history event the response names
+/// (`livePlanText`).
 public func currentActions(_ history: Derived, live: PBLiveSnapshot?) -> Derived {
+    currentActions(history, live: live, events: [PBEvent]())
+}
+
+public func currentActions(
+    _ history: Derived, live: PBLiveSnapshot?, events: some RandomAccessCollection<PBEvent>
+) -> Derived {
     var result = history
     result.approvals = OrderedMap()
     result.questions = OrderedMap()
@@ -74,7 +104,7 @@ public func currentActions(_ history: Derived, live: PBLiveSnapshot?) -> Derived
     }
     if live.planEventSeq > 0 && live.planScreenHash.count == 32 {
         var plan = PBPlanProposed()
-        plan.text = live.planScreen
+        plan.text = livePlanText(live, events: events)
         result.plan = plan
     }
     return result
@@ -124,7 +154,6 @@ extension Remote {
 }
 
 public func currentState(_ snapshot: SessionEvents, agent: PBAgent = .codex) -> Derived {
-    currentActions(
-        derive(snapshot.unverifiedLegacy ? snapshot.verifiedEvents : snapshot.events, agent: agent),
-        live: snapshot.live)
+    let events = snapshot.unverifiedLegacy ? snapshot.verifiedEvents : snapshot.events
+    return currentActions(derive(events, agent: agent), live: snapshot.live, events: events)
 }

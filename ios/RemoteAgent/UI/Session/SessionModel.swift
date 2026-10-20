@@ -86,7 +86,8 @@ actor ChatBuilder {
     func build(
         _ events: PagedList<PBEvent>, _ p: ChatParams, stateEvents: PagedList<PBEvent>? = nil
     ) -> ChatSnapshot {
-        let d = currentActions(reduce.update(stateEvents ?? events, agent: p.agent), live: p.live)
+        let readable = stateEvents ?? events
+        let d = currentActions(reduce.update(readable, agent: p.agent), live: p.live, events: readable)
         let local = Set(p.texts.keys)
         // The daemon queues a new session's first message under an ID of its own.
         let initialId = p.prompt == nil ? nil : d.inputs.keys.first { !local.contains($0) }

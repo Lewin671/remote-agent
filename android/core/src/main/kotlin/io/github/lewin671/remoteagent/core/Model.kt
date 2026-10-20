@@ -1565,10 +1565,32 @@ fun approvalCallIDs(events: List<Event>, d: Derived): Map<Long, String> {
 }
 
 /**
- * Current pending actions come only from an authenticated owner reply, never from replayable
- * historical events. Other history remains read-only data.
+ * What a plan the live snapshot says is pending reads as: the plan event it names (planEventSeq),
+ * the clean Markdown the CLI proposed, when [events] (the readable, verified history, each event
+ * bound to its place in the session) hold it. Only without it does the terminal's text stand in,
+ * box lines and all. Whether a plan is pending, and what an answer is bound to (the event's seq
+ * and the screen's hash), stay the snapshot's alone.
  */
-fun currentActions(d: Derived, live: io.github.lewin671.remoteagent.proto.LiveSnapshot?): Derived {
+fun livePlanText(live: io.github.lewin671.remoteagent.proto.LiveSnapshot, events: List<Event>): String {
+    val seq = live.planEventSeq
+    // A whole history holds event n at n - 1; otherwise look for it.
+    val e =
+        events.getOrNull((seq - 1).toInt())?.takeIf { it.seq == seq }
+            ?: events.lastOrNull { it.seq == seq }
+    val text = if (e != null && e.hasPlanProposed()) e.planProposed.text else ""
+    return if (seq > 0 && text.isNotBlank() && !isSkeleton(text)) text else live.planScreen
+}
+
+/**
+ * Current pending actions come only from an authenticated owner reply, never from replayable
+ * historical events. Other history remains read-only data; a pending plan's text is read from the
+ * history event the reply names ([livePlanText]).
+ */
+fun currentActions(
+    d: Derived,
+    live: io.github.lewin671.remoteagent.proto.LiveSnapshot?,
+    events: List<Event> = emptyList(),
+): Derived {
     val approvals = LinkedHashMap<String, ApprovalRequested>()
     val questions = LinkedHashMap<String, QuestionAsked>()
     live?.actionsList?.forEach { e ->
@@ -1584,7 +1606,7 @@ fun currentActions(d: Derived, live: io.github.lewin671.remoteagent.proto.LiveSn
                 live.planEventSeq != 0L &&
                 live.planScreenHash.size() == 32
         )
-            PlanProposed.newBuilder().setText(live.planScreen).build()
+            PlanProposed.newBuilder().setText(livePlanText(live, events)).build()
         else null
     val inputs = LinkedHashMap(d.inputs)
     val details = LinkedHashMap(d.inputDetails)
@@ -1630,7 +1652,6 @@ fun currentActions(d: Derived, live: io.github.lewin671.remoteagent.proto.LiveSn
 
 /** Legacy bodies remain transcript data; only verified bodies establish state. */
 fun currentState(snapshot: SessionEvents, agent: Agent = Agent.AGENT_CODEX): Derived =
-    currentActions(
-        derive(if (snapshot.unverifiedLegacy) snapshot.verifiedEvents else snapshot.stateEvents, agent),
-        snapshot.live,
-    )
+    (if (snapshot.unverifiedLegacy) snapshot.verifiedEvents else snapshot.stateEvents).let {
+        currentActions(derive(it, agent), snapshot.live, it)
+    }

@@ -6,6 +6,7 @@ import {
   type LiveSnapshot,
 } from "./gen/remoteagent/v1/remote_pb";
 import { derive, agentOf, type Derived } from "./model";
+import { isSkeleton } from "./skeleton";
 import {
   DeviceSecurityClient,
   RecoveryHistoryUnavailable,
@@ -405,6 +406,34 @@ export async function joinWithApproval(
 const OPEN_TIMEOUT_MS = 15_000;
 const STREAM_IDLE_MS = 60_000;
 const RPC_TIMEOUT_MS = 45_000;
+
+/** What a plan the live snapshot says is pending reads as: the plan event
+ * it names (planEventSeq), the clean Markdown the CLI proposed, when this
+ * device holds that event readable (readable: opened and verified at that
+ * place of the session's history, which binds it, so no other event can
+ * stand in for it). Only without it does the terminal's text stand in, box
+ * lines and all. Whether a plan is pending, and what an answer is bound to
+ * (the event's seq and the screen's hash), stay the snapshot's alone. */
+export function livePlanText(
+  live: LiveSnapshot,
+  events: readonly Event[],
+  readable: (seq: bigint) => boolean,
+): string {
+  const seq = live.planEventSeq;
+  // A whole history holds event n at n - 1; otherwise look for it.
+  let e = seq > 0n && seq <= BigInt(events.length) ? events[Number(seq) - 1] : undefined;
+  if (e?.seq !== seq)
+    for (let i = events.length - 1; i >= 0 && !(e?.seq === seq); i--) e = events[i];
+  if (
+    e?.seq === seq &&
+    e.kind.case === "planProposed" &&
+    readable(seq) &&
+    e.kind.value.text.trim() &&
+    !isSkeleton(e.kind.value)
+  )
+    return e.kind.value.text;
+  return live.planScreen;
+}
 
 export class Remote {
   private liveSnapshots = new Map<string, LiveSnapshot>();
@@ -2190,8 +2219,17 @@ export class Remote {
       live.planEventSeq > 0n &&
       live.planScreenHash.length === 32 &&
       live.session?.planOpen
-    )
-      out.plan = create(PlanProposedSchema, { text: live.planScreen });
+    ) {
+      const b = this.buffers.get(sid);
+      out.plan = create(PlanProposedSchema, {
+        text: livePlanText(
+          live,
+          b?.events ?? [],
+          (seq) =>
+            !this.unverifiedEvent(sid, seq) && !b?.unavailableSeqs?.has(seq),
+        ),
+      });
+    }
     return out;
   }
   liveSnapshotError(sid: string): string | undefined {
