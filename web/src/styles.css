@@ -986,3 +986,8 @@ input.field { margin: 0; }
 .authority-setup > :is(p, .banner, .btn, .backup-check, .recovery-code) { margin-left: 16px; margin-right: 16px; }
 .security-body > .btn, .authority-setup > .btn { align-self: stretch; margin-top: 12px; margin-bottom: 12px; }
 .authority-setup { height: 100%; min-height: 0; overflow-y: auto; }
+
+/* First-run choices share settings' grouped rows and secondary text. */
+.account-entry { background: var(--soft); }
+.account-entry .large { margin-bottom: 16px; }
+.account-entry .entry-row { padding-top: 12px; padding-bottom: 12px; }

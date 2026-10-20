@@ -27,7 +27,7 @@ async function mount(setup = {} as AuthoritySetup) {
 }
 const done = vi.fn();
 const button = (label: string) =>
-  [...host.querySelectorAll("button")].find((b) => b.textContent === label)!;
+  [...host.querySelectorAll("button")].find((b) => (b.getAttribute("aria-label") ?? b.textContent) === label)!;
 async function click(label: string) {
   await act(async () => button(label).click());
 }
@@ -47,6 +47,10 @@ it("has three unauthenticated entries and keeps pairing direction", async () => 
   await mount();
   for (const label of ["新建账户", "加入已有账户", "用恢复码找回管理权"])
     expect(button(label)).toBeTruthy();
+  const rows = [...host.querySelectorAll(".grp .entry-row")];
+  expect(rows.map(row => row.querySelector("small")?.textContent)).toEqual([
+    "这台设备成为管理端", "用管理端给的配对码加入", "管理端丢失时使用",
+  ]);
   await click("加入已有账户");
   expect(host.textContent).toContain(
     "在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。",

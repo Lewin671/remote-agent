@@ -1,3 +1,4 @@
+import { ChevronRight } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useState } from "react";
 import {
@@ -80,19 +81,22 @@ export function AccountEntry({
     );
   if (!mode)
     return (
-      <div className="setup authority-setup">
+      <div className="setup authority-setup account-entry">
         <div className="large">
           <h3>remote-agent</h3>
         </div>
         <div className="grp">
-          <button className="row act" onClick={() => setMode("create")}>
-            新建账户
+          <button className="row entry-row" aria-label="新建账户" onClick={() => setMode("create")}>
+            <span className="row-name">新建账户<small>这台设备成为管理端</small></span>
+            <span className="v"><ChevronRight /></span>
           </button>
-          <button className="row act" onClick={() => setMode("join")}>
-            加入已有账户
+          <button className="row entry-row" aria-label="加入已有账户" onClick={() => setMode("join")}>
+            <span className="row-name">加入已有账户<small>用管理端给的配对码加入</small></span>
+            <span className="v"><ChevronRight /></span>
           </button>
-          <button className="row act" onClick={() => setMode("recovery")}>
-            用恢复码找回管理权
+          <button className="row entry-row" aria-label="用恢复码找回管理权" onClick={() => setMode("recovery")}>
+            <span className="row-name">用恢复码找回管理权<small>管理端丢失时使用</small></span>
+            <span className="v"><ChevronRight /></span>
           </button>
         </div>
         {error && <Banner kind="err">{error}</Banner>}
