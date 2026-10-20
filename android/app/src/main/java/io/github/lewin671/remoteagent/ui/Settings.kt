@@ -443,7 +443,7 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
                         ) {
                             Dot(if (m.online) p.green else p.gray)
                             Text(
-                                if (m.online) "在线" else whenText(m.lastSeenMs, t).ifEmpty { "不在线" },
+                                if (m.online) "在线" else io.github.lewin671.remoteagent.core.ago(m.lastSeenMs, t).ifEmpty { "离线" },
                                 style = T.sm,
                                 color = p.muted,
                                 maxLines = 1,

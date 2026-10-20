@@ -382,7 +382,8 @@ class LayoutTest {
         ui.onNodeWithText("自动").assertIsSelected()
     }
     @Test fun machineStatusStaysAtTheTrailingEdgeWithQuotasAndLargeFont() {
-        val now = 1_800_000_000_000L
+        // Keep both readings today in every simulator timezone.
+        val now = java.time.LocalDate.now().atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         val name = "A very long workstation name that must leave room for status"
         var dark by mutableStateOf(false)
         var online by mutableStateOf(true)

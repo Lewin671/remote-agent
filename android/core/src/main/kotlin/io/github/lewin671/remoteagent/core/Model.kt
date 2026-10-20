@@ -510,6 +510,15 @@ fun whenText(
     return "${then.monthValue}月${then.dayOfMonth}日"
 }
 
+/** Elapsed hours today, as a machine's last-seen time is shown on the web. */
+fun ago(ms: Long, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): String {
+    val elapsed = now - ms
+    if (ms > 0 && elapsed >= 3_600_000 && elapsed < 86_400_000 &&
+        Instant.ofEpochMilli(ms).atZone(zone).toLocalDate() == Instant.ofEpochMilli(now).atZone(zone).toLocalDate())
+        return "${elapsed / 3_600_000} 小时前"
+    return whenText(ms, now, zone)
+}
+
 fun hhmm(ms: Long, zone: ZoneId = ZoneId.systemDefault()): String {
     val t = ZonedDateTime.ofInstant(Instant.ofEpochMilli(ms), zone)
     return "${t.hour}:${"%02d".format(t.minute)}"

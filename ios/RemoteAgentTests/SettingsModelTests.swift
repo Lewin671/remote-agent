@@ -328,7 +328,7 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         #expect(machineStatus(on, state: state, now: now)?.text == "在线")
         #expect(machineStatus(off, state: state, now: now)?.text == "5 分钟前")
         #expect(machineStatus(off, state: state, now: now)?.online == false)
-        #expect(machineStatus(never, state: state, now: now)?.text == "不在线")
+        #expect(machineStatus(never, state: state, now: now)?.text == "离线")
         // Not connected: the cache's word on a computer is not repeated (architecture §9).
         state.link = .noServer
         state.conn = .offline

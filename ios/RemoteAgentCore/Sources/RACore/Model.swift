@@ -217,6 +217,16 @@ public func whenText(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .curren
     return "\(then.month)月\(then.day)日"
 }
 
+/// Elapsed hours today, as a machine's last-seen time is shown on the web.
+public func ago(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
+    let elapsed = now - ms
+    if ms > 0 && elapsed >= 3_600_000 && elapsed < 86_400_000
+        && LocalDay(ms: ms, zone: zone).sameDay(LocalDay(ms: now, zone: zone)) {
+        return "\(elapsed / 3_600_000) 小时前"
+    }
+    return whenText(ms, now: now, zone: zone)
+}
+
 public func hhmm(_ ms: Int64, zone: TimeZone = .current) -> String { LocalDay(ms: ms, zone: zone).hhmm }
 
 /// 9月27日 9:12, or the time alone for a moment of today.

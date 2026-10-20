@@ -116,7 +116,7 @@ func machineStatus(_ m: MachineView, state: RemoteState, now: Int64) -> (
 )? {
     if state.unlinked { return nil }
     if m.online { return ("在线", true) }
-    return (whenText(m.lastSeenMs, now: now).or("不在线"), false)
+    return (ago(m.lastSeenMs, now: now).or("离线"), false)
 }
 
 /// The computer as far as it is known from here: while this client is not

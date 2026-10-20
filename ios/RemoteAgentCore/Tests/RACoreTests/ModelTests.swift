@@ -226,6 +226,9 @@ import Testing
         #expect(machineAgents(MachineView(id: "m", online: true, lastSeenMs: 0, meta: both)) == [.codex, .claude])
         let zone = Mk.shanghai
         let now = Mk.at(2026, 9, 29, 14, 0)
+        #expect(ago(now - 2 * 3600_000, now: now, zone: zone) == "2 小时前")
+        #expect(ago(now - 24 * 3600_000, now: now, zone: zone) == "昨天")
+        #expect(ago(0, now: now, zone: zone).isEmpty)
         #expect(whenText(now - 10_000, now: now, zone: zone) == "刚刚")
         #expect(whenText(now - 180_000, now: now, zone: zone) == "3 分钟前")
         #expect(whenText(now - (4 * 3600 + 55 * 60) * 1000, now: now, zone: zone) == "9:05")
