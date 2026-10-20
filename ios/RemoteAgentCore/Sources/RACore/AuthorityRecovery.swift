@@ -134,11 +134,17 @@ extension AuthorityCoordinator {
         }
         try await resume(t)
     }
-    /// A definitively rejected/obsolete offer can be explicitly abandoned. State
-    /// publications and uncertain recovery/creation can never use this shortcut.
-    public func discardHandoffOffer() throws {
+    /// Public-only offers can be explicitly abandoned after acknowledging any
+    /// uncertain publication. Signed member states and recovery/creation cannot
+    /// use this shortcut.
+    public func discardHandoffOffer(acknowledgePublishedKey: Bool = false) throws {
+        let t = try begin(); defer { busy = false }
         if let op = try storage.readOperation() {
             try DeviceSecurity.check(op.kind == .handoffOffer, .untrusted)
+            if !op.result.isEmpty && !acknowledgePublishedKey {
+                throw PairError("接任公钥可能已经发布；放弃只清除本机准备，不会撤回公钥。请保留恢复码并明确确认后再放弃。")
+            }
+            try gate.check(t)
             try storage.replaceOperation(expected: op, next: nil)
         }
     }

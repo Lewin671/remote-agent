@@ -111,7 +111,7 @@ struct AccountSecurityScreen: View {
                     }
                 }.padding(16)
                 if pending.kind == .handoffOffer {
-                    TextAction("放弃此接任准备", color: Theme.red) { abandon = true }.padding(.horizontal, 16)
+                    TextAction("放弃此接任准备", color: Theme.red) { abandon = true }.disabled(action.running).padding(.horizontal, 16)
                 } else if !pending.delivery.isEmpty {
                     TextAction("移除未收件候选…", color: Theme.red) { abandon = true }.padding(.horizontal, 16)
                 }
@@ -130,11 +130,13 @@ struct AccountSecurityScreen: View {
         }
         .task { await read() }
         .confirm(isPresented: $abandon, title: "放弃此安全操作？",
-            text: "接任准备可以重新生成。已批准但未收件的候选会被明确移除，需要重新配对。", confirm: "放弃", danger: true) {
+            text: pending?.kind == .handoffOffer
+                ? "接任公钥可能已经发布；放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期，请保留已保存的恢复码。"
+                : "已批准但未收件的候选会被明确移除，需要重新配对。", confirm: "放弃", danger: true) {
                 action.run {
                     guard let pending else { return }
                     let c = try await context.remote.authorityCoordinator()
-                    if pending.kind == .handoffOffer { try await c.discardHandoffOffer() }
+                    if pending.kind == .handoffOffer { try await c.discardHandoffOffer(acknowledgePublishedKey: true) }
                     else {
                         let delivery = try PBApprovePairingRequest(serializedBytes: pending.delivery)
                         let approval = try PBPairApproval(serializedBytes: delivery.approval)
