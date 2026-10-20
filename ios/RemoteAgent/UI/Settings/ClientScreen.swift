@@ -89,7 +89,7 @@ struct ClientScreen: View {
                 GRow("退出并删除本机密钥在设置页", chevron: true) { nav.open(.settings) }
             }
         } else {
-            GroupNote(DeviceNotes.phoneOnly)
+            DeviceManagementActions(id: id, machine: false)
         }
     }
 }

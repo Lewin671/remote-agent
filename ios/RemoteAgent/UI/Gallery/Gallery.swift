@@ -367,7 +367,7 @@
                 GRow("VPS-dev", value: "2 小时前在线", chevron: true, onTap: {})
                     .lead { IconBadge(Lucide.laptop, color: Theme.gray) }
             }
-            GroupNote(addDeviceHint).padding(.top, 8)
+            GroupNote(AuthorityAccess(state: Demo.state(.everyday), me: Demo.me).addHint).padding(.top, 8)
             GroupLabel("通知")
             GroupCard {
                 ToggleRow("需要你处理时", isOn: $attention)

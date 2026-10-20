@@ -44,6 +44,7 @@ enum Route: Hashable, Sendable {
     case image(session: String, seq: UInt64, index: Int)
     /// 设备: computers and clients.
     case devices
+    case addDevice(replacing: String = "")
     /// A computer's details and settings.
     case machine(id: String)
     /// A client's details.
@@ -77,6 +78,7 @@ enum Route: Hashable, Sendable {
         case .question(let sid, let qid): "question/\(sid)/\(qid)"
         case .image(let sid, let seq, let index): "image/\(sid)/\(seq)/\(index)"
         case .devices: "devices"
+        case .addDevice(let id): id.isEmpty ? "add-device" : "add-device/" + id
         case .machine(let id): "machine/\(id)"
         case .client(let id): "client/\(id)"
         case .quota(let machine): "quota/\(machine)"
@@ -121,6 +123,7 @@ enum Route: Hashable, Sendable {
             guard p.count == 3, let seq = UInt64(p[1]), let index = Int(p[2]) else { return nil }
             self = .image(session: p[0], seq: seq, index: index)
         case ("devices", true): self = .devices
+        case ("add-device", _): self = .addDevice(replacing: rest)
         case ("machine", false): self = .machine(id: rest)
         case ("client", false): self = .client(id: rest)
         case ("quota", false): self = .quota(machine: rest)
@@ -220,6 +223,7 @@ extension Route {
         case .question(let sid, let qid): QuestionScreen(session: sid, question: qid)
         case .image(let sid, let seq, let index): ImageViewerScreen(session: sid, seq: seq, index: index)
         case .devices: DevicesScreen()
+        case .addDevice(let id): AddDeviceScreen(replacing: id)
         case .machine(let id): MachineScreen(id: id)
         case .client(let id): ClientScreen(id: id)
         case .quota(let machine): QuotaScreen(machine: machine)

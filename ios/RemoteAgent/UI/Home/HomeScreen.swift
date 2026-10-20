@@ -97,6 +97,7 @@ private struct HomeScopeTitle: View {
 
 /// The timeline of one scope, with what is typed in its filter and how much of it is opened.
 private struct HomeTimeline: View {
+    @Environment(AccountContext.self) private var context
     let state: RemoteState
     let scope: HomeScope
     @Environment(Navigator.self) private var nav
@@ -173,7 +174,9 @@ private struct HomeTimeline: View {
         case .scope:
             emptyNote("这个项目还没有会话", "点右上角的新建按钮开始一个")
         case .account(.noMachines):
-            emptyNote("还没有会话", noMachinesHint)
+            let access = AuthorityAccess(state: state, me: context.me)
+            emptyNote("还没有会话", access.isAuthority ? "这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 remote-agent account join。" : access.emptyHint,
+                action: access.isAuthority ? "添加设备" : nil) { nav.open(.addDevice()) }
         case .account(.noneOnline):
             emptyNote("还没有会话", "没有在线的电脑。在电脑上运行 remote-agent daemon。")
         case .account(.ready(let machine)):

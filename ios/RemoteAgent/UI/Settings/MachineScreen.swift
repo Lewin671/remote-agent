@@ -157,7 +157,7 @@ struct MachineScreen: View {
             }
         }
 
-        GroupNote(DeviceNotes.phoneOnly)
+        DeviceManagementActions(id: id, machine: true)
     }
 
     /// Why a computer is not there. The server only knows the daemon's

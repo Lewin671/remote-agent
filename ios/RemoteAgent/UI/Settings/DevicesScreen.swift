@@ -76,6 +76,7 @@ struct DevicesScreen: View {
                     onRename: online && c.id == me ? { renaming = c } : nil)
             }
         }
-        GroupNote("右边是上次使用的时间。" + addDeviceHint)
+        GroupNote("右边是上次使用的时间。")
+        AddDeviceEntry()
     }
 }

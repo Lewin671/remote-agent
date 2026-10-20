@@ -81,8 +81,7 @@ struct SettingsScreen: View {
                 for m in machines { MachineRow(machine: m, state: state, now: now) }
             }
         }
-        // Only the phone app adds devices (architecture §9 「配对」): this one says where.
-        GroupNote(machines.isEmpty ? noMachinesHint : addDeviceHint).padding(.top, machines.isEmpty ? 0 : 8)
+        AddDeviceEntry()
     }
 
     /// This client and the first few others, drawn and ordered as 设备 lists them.
