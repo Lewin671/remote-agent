@@ -63,10 +63,10 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
     if (page != "overview") androidx.activity.compose.BackHandler { page = "overview" }
     when (page) {
         "recovery" -> RotateRecoveryScreen { page = "overview" }
-        "handoff" -> if (!state.isAuthority) HandoffPreparation() else PageScaffold("交接管理权") {
+        "handoff" -> if (!state.isAuthority) HandoffPreparation { page = "overview" } else PageScaffold("交接管理权", onBack = { page = "overview" }) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) { HandoffControls() }
         }
-        "pending" -> PageScaffold("未完成的安全操作") {
+        "pending" -> PageScaffold("未完成的安全操作", onBack = { page = "overview" }) {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
                 Hint("安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。")
                 Btn("继续原操作", {
@@ -104,7 +104,7 @@ internal fun AccountSecurityContent(
 ) {
     val t = now()
     val self = LocalRemote.current.account.deviceId
-    PageScaffold("账户安全") {
+    PageScaffold("账户安全", gray = true) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 16.dp)) {
             if (state.recoveryPending) Banner(
                 "有人正在用恢复码申请接管管理权，${io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t)} 后生效。不是你本人就现在否决。",
@@ -771,7 +771,7 @@ internal fun RotateRecoveryContent(
     var prepared by remember { mutableStateOf<PreparedRecovery?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    PageScaffold("恢复码") {
+    PageScaffold("恢复码", onBack = onBack) {
         Column(
             Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())

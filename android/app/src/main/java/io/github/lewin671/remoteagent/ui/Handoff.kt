@@ -13,10 +13,10 @@ import kotlinx.coroutines.launch
 
 /** The successor client only offers its public recovery key after explicit backup confirmation. */
 @Composable
-fun HandoffPreparation() {
+fun HandoffPreparation(onBack: (() -> Unit)? = null) {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
-    HandoffPreparationContent(state, remote.account.deviceId, remote::prepareHandoffCode, remote::offerHandoff)
+    HandoffPreparationContent(state, remote.account.deviceId, remote::prepareHandoffCode, onBack = onBack, publishOffer = remote::offerHandoff)
 }
 
 @Composable
@@ -24,13 +24,14 @@ internal fun HandoffPreparationContent(
     state: RemoteState,
     self: String,
     prepareCode: () -> Pair<String, ByteArray>,
+    onBack: (() -> Unit)? = null,
     publishOffer: suspend (ByteArray) -> Unit,
 ) {
     val scope = rememberAuthorityScope()
     var prepared by remember { mutableStateOf<Pair<String, ByteArray>?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    PageScaffold("接管管理权") {
+    PageScaffold("接管管理权", onBack = onBack) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
                 "先保存新的恢复码，再请当前管理端批准交接。当前管理端会被移除，不需要等待 48 小时。",
