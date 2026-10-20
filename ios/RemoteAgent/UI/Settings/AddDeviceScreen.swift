@@ -28,6 +28,7 @@ final class AuthorityPairingModel {
         defer { busy = false }
         do {
             if approved {
+                try await coordinator.resumeSecurityOperation()
                 try await coordinator.finishPairingOperation(pairingID: initiation.pairingID)
                 delivered = try await coordinator.pendingOperation() == nil
             } else if candidate == nil { candidate = try await coordinator.pairingCandidate(initiation) }
@@ -50,10 +51,20 @@ final class AuthorityPairingModel {
     }
 }
 
+@MainActor
+final class AuthorityPairingSessions {
+    private var flows: [String: AuthorityPairingModel] = [:]
+    func flow(replacing: String) -> AuthorityPairingModel {
+        if let flow = flows[replacing] { return flow }
+        let flow = AuthorityPairingModel(); flows[replacing] = flow; return flow
+    }
+}
+
 struct AddDeviceScreen: View {
     var replacing = ""
     @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
+    @Environment(Navigator.self) private var nav
     @State private var flow = AuthorityPairingModel()
     @State private var action = ActionRunner()
 
@@ -70,7 +81,8 @@ struct AddDeviceScreen: View {
                 if flow.delivered {
                     GroupBanner("设备已加入。", tone: .plain)
                     Btn("添加另一台设备", kind: .primary, enabled: !flow.busy) {
-                        perform { await flow.start($0, replacing: "") }
+                        if replacing.isEmpty { perform { await flow.start($0, replacing: "") } }
+                        else { nav.open(.addDevice()) }
                     }.padding(16)
                 }
                 else if let candidate = flow.candidate {
@@ -119,7 +131,7 @@ struct AddDeviceScreen: View {
         .navBar("添加设备")
         .task {
             // Same in-memory SAS context when returning from another page.
-            flow = context.memory.value { AuthorityPairingModel() }
+            flow = context.memory.value { AuthorityPairingSessions() }.flow(replacing: replacing)
             guard !app.isDemo else { return }
             while !Task.isCancelled {
                 if let c = try? await context.remote.authorityCoordinator() { await flow.poll(c) }
