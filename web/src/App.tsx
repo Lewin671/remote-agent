@@ -25,7 +25,7 @@ import {
   RemovedScreen,
   Settings,
 } from "./views/Settings";
-import { PairCodePage } from "./views/DeviceManagement";
+import { PairCodePage, SecurityPage } from "./views/Security";
 import { MessageSquare, Settings as SettingsIcon } from "./icons";
 
 // Joining and pairing bring the QR code and curve code; fetched when used.
@@ -42,6 +42,7 @@ const demo =
 
 async function loadRemote(): Promise<Remote | undefined> {
   if (import.meta.env.DEV && demo) {
+    if (new URLSearchParams(location.search).has("entry")) return undefined;
     const { DemoRemote } = await import("./dev/demo");
     return DemoRemote.create(new URLSearchParams(location.search));
   }
@@ -229,11 +230,8 @@ function Main({ remote }: { remote: Remote }) {
     );
   else if (kind === "projects")
     page = <ManagePage remote={remote} go={go} onBack={back} wide={wide} />;
-  else if (kind === "settings" && arg === "security") page = (
-    <div className="page" data-route="account-security"><NavBar title="账户安全" onBack={back} />
-      <div className="center muted">账户安全管理界面准备中</div>
-    </div>
-  );
+  else if (kind === "settings" && arg === "rejoin") page = <Suspense fallback={loading}><Setup existing={remote.account} onDone={() => location.reload()} /></Suspense>;
+  else if (kind === "settings" && arg === "security") page = <SecurityPage remote={remote} onBack={back} />;
   else if (kind === "settings" && arg.startsWith("add-device")) page = <PairCodePage remote={remote} replaces={arg.split("/")[1]} onBack={back} />;
   else if (kind === "settings") page = <Settings remote={remote} go={go} />;
   else if (kind === "devices")
@@ -269,7 +267,7 @@ function Main({ remote }: { remote: Remote }) {
         <main className="dm">{page}</main>
       </div>
     );
-  const tabs = kind === "" || kind === "settings";
+  const tabs = kind === "" || kind === "settings" && !arg;
   const todo = todoList(remote).length;
   return (
     <div className={"phone" + (kind === "settings" ? " gray" : "")}>

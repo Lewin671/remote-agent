@@ -1511,7 +1511,7 @@ export class DemoRemote extends Remote {
     this.handoffAuthority = async (id) => { await work(); this.authorityDeviceId = id; this.removedDemoDevices.add(ME); await this.loadDevices(); };
     this.removeDevice = async id => { await work(); this.removedDemoDevices.add(id); await this.loadDevices(); };
     this.deleteMachineRecords = async id => { await work(); this.machines.delete(id); this.changed(); };
-    Object.defineProperty(this, "startPairing", { value: async (_web: string, _replaces: string) => {
+    Object.defineProperty(this, "startPairing", { configurable: true, value: async (_web: string, _replaces: string) => {
       await work(); let compared = false;
       return { code: "12345678", expires: BigInt(Date.now() + 5 * min), url: "https://app.example.com/#/pair?code=12345678",
         joined: async () => this.opts.get("pair") === "compare" ? { emoji: ["🌲", "🍋", "🚲", "🐳"], kind: DeviceKind.CLIENT } : undefined,

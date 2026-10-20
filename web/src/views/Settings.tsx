@@ -22,7 +22,7 @@ import { machineQuotaViews, quotaSummary } from "../quota";
 import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
 import { DeviceActions, ManagementEntry } from "./DeviceManagement";
-import { forgetAccount } from "../storage";
+import { LeaveAlert, RecoveryNotice, SecurityGroup } from "./Security";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { applyUpdate, checkUpdate, useUpdate } from "../update";
 import {
@@ -77,7 +77,7 @@ export function Settings({
         <h3>设置</h3>
       </div>
       {push.top}
-
+      <RecoveryNotice remote={remote} go={go} />
       <ClockBanner remote={remote} />
       <div className="glabel with-link">
         电脑
@@ -147,7 +147,7 @@ export function Settings({
           </button>
         )}
       </div>
-
+      <SecurityGroup remote={remote} go={go} />
       {push.group}
       <div className="glabel">外观</div>
       <div className="grp">
@@ -379,6 +379,8 @@ export function QuotaPage({
 /** The server turned this browser away: nothing of the account is shown
  * until it joins again. */
 export function RemovedScreen({ remote }: { remote: Remote }) {
+  const [leaving, setLeaving] = useState(false);
+  const [result, setResult] = useState("");
   return (
     <div className="center">
       <div className="gone">
@@ -388,40 +390,24 @@ export function RemovedScreen({ remote }: { remote: Remote }) {
         </p>
         <button
           className="btn pri"
-          onClick={async () => {
-            await forgetAccount();
-            location.hash = "";
-            location.reload();
-          }}
+          onClick={() => setLeaving(true)}
         >
           重新加入账户
         </button>
         <p className="muted small">
           会先删除这个浏览器里的账户密钥，再用配对码加入。
         </p>
+        <button className="link mid" onClick={async () => {
+          try { await remote.authority.resumeSecurityOperation(); setResult(await remote.authority.pending() ? "原操作尚未完成，请继续核实。" : "原安全操作已核实完成，可以重新加入账户。"); }
+          catch (e) { setResult(errorText(e)); }
+        }}>核实并继续安全操作</button>
+        {result && <Banner>{result}</Banner>}
+        {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
         <button className="link mid" onClick={() => remote.retryLogin()}>
           再试一次
         </button>
       </div>
     </div>
-  );
-}
-
-/** Leaving the account on this browser: its keys go, nothing else. */
-function LeaveAlert({ onCancel }: { onCancel: () => void }) {
-  return (
-    <Alert
-      title="退出这个浏览器？"
-      text="这个浏览器里的账户密钥会被删除，要重新配对才能再用。电脑上的会话不受影响。"
-      ok="退出"
-      danger
-      onCancel={onCancel}
-      onOk={async () => {
-        await forgetAccount();
-        location.hash = "";
-        location.reload();
-      }}
-    />
   );
 }
 
@@ -720,6 +706,11 @@ function usePush(remote: Remote) {
   const [error, setError] = useState("");
   const [help, setHelp] = useState(false);
   const [last, setLast] = useState<PushPrefs>();
+  const [securitySubscribed, setSecuritySubscribed] = useState(false);
+  useEffect(() => {
+    if (pushState() !== "ok") return;
+    void navigator.serviceWorker.getRegistration().then(reg => reg?.pushManager.getSubscription()).then(sub => setSecuritySubscribed(!!sub)).catch(() => {});
+  }, []);
   const st = pushState();
   const change = async (next: PushPrefs) => {
     setBusy(true);
@@ -728,6 +719,7 @@ function usePush(remote: Remote) {
     try {
       await setPushPrefs(remote, next);
       setPrefs(next);
+      setSecuritySubscribed(true);
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -768,7 +760,7 @@ function usePush(remote: Remote) {
   else if (!prefs.attention && !prefs.turns)
     warn = (
       <div className="gwarn">
-        <span>推送没开，审批来了不会提醒你</span>
+        <span>会话提醒没开，审批来了不会提醒你</span>
         <button
           disabled={busy}
           onClick={() => void change({ attention: true, turns: prefs.turns })}
@@ -799,6 +791,10 @@ function usePush(remote: Remote) {
       <div className="glabel">本客户端的通知</div>
       <div className="grp">
         <div className="row">
+          安全通知
+          <span className="v">{!usable ? "无法接收" : securitySubscribed ? "已开启" : <button className="link" disabled={busy} onClick={() => void change(prefs)}>开启安全通知</button>}</span>
+        </div>
+        <div className="row">
           等我处理时
           <Switch
             label="等我处理时"
@@ -817,6 +813,7 @@ function usePush(remote: Remote) {
           />
         </div>
       </div>
+      <div className="manage-hint">安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。</div>
     </>
   );
   return { top, group };

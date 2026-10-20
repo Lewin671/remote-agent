@@ -1,4 +1,4 @@
-import { authorityName } from "./DeviceManagement";
+import { authorityName, RecoveryNotice } from "./Security";
 // The home page: a timeline of sessions within a scope (one project, or
 // all of them), its wide-screen form as the sidebar, and the list rows
 // they share (client-v27).
@@ -836,7 +836,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
       </div>
       <UpdateBanner />
       <ClockWarning remote={remote} />
-
+      <RecoveryNotice remote={remote} go={go} />
       <ListError remote={remote} />
       {!remote.listed && none ? (
         !remote.listError && (
@@ -903,7 +903,7 @@ export function Sidebar({
       <div className="scroll">
         <UpdateBanner />
         <ClockWarning remote={remote} />
-
+      <RecoveryNotice remote={remote} go={go} />
         <ListError remote={remote} />
         {!remote.listed && !remote.listError && remote.sessions.size === 0 && (
           <div className="pad">

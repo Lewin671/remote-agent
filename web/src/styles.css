@@ -981,3 +981,8 @@ input.field { margin: 0; }
 .backup-check { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 12px 0; font-size: 13px; }
 .security-qr { display: block; width: 216px; height: 216px; margin: 16px auto; background: white; padding: 8px; border-radius: 10px; }
 .pair-code { text-align: center; font: 36px var(--mono); letter-spacing: 4px; margin: 16px 0; }
+
+.security-body > :is(p, .banner, .btn, .backup-check, .recovery-code),
+.authority-setup > :is(p, .banner, .btn, .backup-check, .recovery-code) { margin-left: 16px; margin-right: 16px; }
+.security-body > .btn, .authority-setup > .btn { align-self: stretch; margin-top: 12px; margin-bottom: 12px; }
+.authority-setup { height: 100%; min-height: 0; overflow-y: auto; }
