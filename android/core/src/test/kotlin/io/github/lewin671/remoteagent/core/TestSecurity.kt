@@ -118,7 +118,7 @@ class TestSecurity private constructor(private val process: Process) : AutoClose
             all.remove(server)?.close()
         }
 
-        /** Starts the fixture on the account's authority phone identity. */
+        /** Starts the fixture on the account's authority client identity. */
         fun initialize(
             account: Account,
             recovery: ByteArray? = null,

@@ -71,7 +71,7 @@ import Testing
         #expect(phone == (try hex("content_secret_2")))
         let machine = try S.openGrant(p, added, recipient: (try state("added")).core.members[1].id, x: machineX())
         #expect(machine == (try hex("content_secret_2")))
-        // The old authority phone has no grant in the recovery state.
+        // The old authority client has no grant in the recovery state.
         #expect(throws: S.Failure.self) {
             _ = try S.openGrant(p, recovery, recipient: genesis.core.authorityID, x: phoneX())
         }
@@ -132,7 +132,7 @@ import Testing
         #expect(try record.contentSecret(1) == (try hex("content_secret_1")))
         #expect(try record.contentSecret(2) == (try hex("content_secret_2")))
         #expect(try record.contentSecret(3) == machineKey)
-        // The old authority phone was removed by the recovery. It keeps its
+        // The old authority client was removed by the recovery. It keeps its
         // own grants from the states it belonged to, but has nothing at the
         // recovery: the empty PrevSecret is a boundary, not a retry.
         let oldPhone = genesis.core.authorityID

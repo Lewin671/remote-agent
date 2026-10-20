@@ -561,7 +561,7 @@ server 首次启动时生成 VAPID 密钥对，存在数据库里。客户端订
   - 网页每次连接成功后按本机保存的推送偏好重新登记订阅，包括设备被移除后重新配对的情况；只在浏览器已有通知许可时恢复，不再次请求许可。
 - **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。没有可用的 GMS 时静默降级为 App 内查看，不做 UnifiedPush
 - **Web Push 出站限制**：订阅端点必须使用公网 HTTPS 的 443 端口；每次连接解析 DNS，拒绝非公网地址并直接连接核验过的 IP，防止 DNS rebinding。请求不用环境代理，也不跟随重定向；失败日志不写可能含订阅凭据的 URL。
-- **账户安全通知**：恢复码提交后的 48 小时等待期内，server 直接给管理端手机发一条通用推送（`NOTIFY_KIND_SECURITY`），不含内容，点开进设备页；手机不在线或关了推送时，下次打开 App 也能看到待处理的恢复。它不属于上面两类会话通知，但和它们共用容量与去重上限
+- **账户安全通知**：恢复码提交后的 48 小时等待期内，server 直接给管理端发一条通用推送（`NOTIFY_KIND_SECURITY`），不含内容，点开进账户安全页；Android 与网页支持，iOS 暂无后台提醒。客户端离线或关了推送时，下次打开仍能在首页和设置看到待处理的恢复。它不属于上面两类会话通知，但和它们共用容量与去重上限
 - **Android**：推送走 FCM，内容是 daemon 加密的密文，通知里可以直接审批，见 [android-client.md](android-client.md)
 - **iOS**：原生 App 还没有推送，只能打开 App 查看；要用 APNs，做不做未定，见 [ios-client.md](ios-client.md#还不能做的)
 

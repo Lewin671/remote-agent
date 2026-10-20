@@ -319,7 +319,7 @@ func TestDeviceDirectory(t *testing.T) {
 	cs := ts.stream(t, ts.login(t, cpriv2, cid2))
 
 	list, err := client.ListDevices(ctx, connect.NewRequest(&pb.ListDevicesRequest{}))
-	// Three real devices plus the fixture's synthetic authority phone.
+	// Three real devices plus the fixture's synthetic authority client.
 	if err != nil || len(list.Msg.Devices) != 4 || list.Msg.CurrentDeviceId != cid {
 		t.Fatalf("list: %v %v", list, err)
 	}

@@ -130,7 +130,7 @@ func memberOf(s State, id string) Member {
 }
 
 // BuildRecovery builds the recovery state and its statement. The new state
-// removes the old authority phone and never re-adds it.
+// removes the old authority client and never re-adds it.
 func BuildRecovery(parent State, newMember Member, members []Member, secret []byte, newSigner ed25519.PrivateKey, oldRecovery ed25519.PrivateKey, newRecoveryEd [32]byte, now uint64) (State, RecoveryStatement, error) {
 	var st RecoveryStatement
 	if newMember.validate() != nil || newMember.Kind != Client || len(newSigner) != 64 || !bytes.Equal(newSigner.Public().(ed25519.PublicKey), newMember.EdPublic[:]) || newRecoveryEd == [32]byte{} || len(secret) != 32 {

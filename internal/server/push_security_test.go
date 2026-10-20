@@ -11,7 +11,7 @@ import (
 )
 
 // The recovery notice is generic text and must reach only the current
-// authority phone, not every member.
+// authority client, not every member.
 func TestSecurityPushOnlyToAuthority(t *testing.T) {
 	ts := newTestServer(t)
 	_, otherID, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")

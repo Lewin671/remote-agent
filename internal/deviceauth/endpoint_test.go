@@ -45,7 +45,7 @@ func TestEndpointInstallAndRecoveryBoundary(t *testing.T) {
 		t.Fatal("reused nonce")
 	}
 
-	// The machine is retained; the phone is replaced by a new authority phone.
+	// The machine is retained; the phone is replaced by a new authority client.
 	newPhone, newPhoneEd, newPhoneX := testMember(t, 0x77, Client)
 	var newRecoveryPub [32]byte
 	newRecoveryPub[0] = 0x88

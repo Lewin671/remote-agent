@@ -4,7 +4,7 @@ import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.proto.*
 import okhttp3.OkHttpClient
 
-/** Creates a new account with its authority phone and pins the genesis, as the app does. */
+/** Creates a new account with its authority client and pins the genesis, as the app does. */
 suspend fun newAuthorityAccount(
     root: ByteArray,
     server: String,
@@ -187,7 +187,7 @@ suspend fun fixtureMember(
     return result
 }
 
-/** Signs a removal as the authority phone and uploads it, as the device page does. */
+/** Signs a removal as the authority client and uploads it, as the device page does. */
 suspend fun removeAsAuthority(phone: Account, target: String, http: OkHttpClient) {
     val security = TestSecurity.get(phone.server)
     val store = security.stores.getValue(phone.deviceId)

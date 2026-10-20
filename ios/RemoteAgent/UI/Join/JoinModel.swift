@@ -312,7 +312,7 @@ final class JoinModel {
     /// itself, the one-off pairing key goes with the attempt. The server is
     /// kept and the old code cleared. This device leaving does not withdraw
     /// the request on the server, which may still hold the code: the notice
-    /// says to reject it on the admin phone. Once registering has begun
+    /// says to reject it on the authority client. Once registering has begun
     /// the join goes on and its outcome is shown instead.
     func cancel() {
         guard let attempt else {
