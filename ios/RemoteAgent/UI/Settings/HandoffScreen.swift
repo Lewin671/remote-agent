@@ -34,7 +34,11 @@ struct HandoffScreen: View {
         .navBar(access.isAuthority ? "交接管理权" : "接管管理权")
         .task {
             draft = context.memory.value { HandoffDraft() }
-if !app.isDemo && access.isAuthority { loadCandidates() }
+            if app.isDemo {
+                #if DEBUG
+                candidates = app.state.devices.values.filter { $0.id != context.me && $0.kind == .client && $0.meta?.handoffRecoveryEd.count == 32 }
+                #endif
+            } else if access.isAuthority { loadCandidates() }
         }
         .confirm(isPresented: $confirming, title: "交接管理权？",
             text: "确认接任设备已经保存新的恢复码。交接后本机会被移除，\(target.map { clientName($0, id: $0.id, among: app.state.devices) } ?? "接任设备")成为唯一管理端。接任设备完成续期前，控制可能短暂停顿。",
@@ -69,6 +73,9 @@ if !app.isDemo && access.isAuthority { loadCandidates() }
             GroupLabel("接管管理权")
             GroupNote("先在当前管理端批准这台设备加入。保存下面的新恢复码后，再请当前管理端在「交接管理权」里批准交接。当前管理端会退出账户，不需要等待 48 小时。")
             GroupNote(iosAuthorityNotice)
+            #if DEBUG
+            if app.isDemo { AuthorityDemoCode(handoff: true) }
+            #endif
             if let prepared = draft.prepared {
                 RecoveryCodeFigure(code: prepared.code, saved: $draft.saved)
                 Btn("通知当前管理端", kind: .primary, enabled: draft.canPublish && !action.running) {
@@ -81,7 +88,7 @@ if !app.isDemo && access.isAuthority { loadCandidates() }
                         await context.remote.refreshDevices()
                     }
                 }.padding(.horizontal, 16)
-            } else {
+            } else if !app.isDemo {
                 if draft.offered || app.state.devices[context.me]?.meta?.handoffRecoveryEd.count == 32 {
                     GroupBanner("恢复码已确认保存。等待当前管理端批准；可以关闭后重新打开此页查看。")
                 }

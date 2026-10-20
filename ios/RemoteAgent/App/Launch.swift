@@ -166,6 +166,7 @@ enum LaunchDriver {
         } else if let demo {
             let remote = Demo.remote()
             var state = Demo.state(demo)
+            AuthorityDemo.apply(&state)
             if args.contains("-demoRemoved") { state.removed = true }
             switch value("-demoLink") {
             case "waiting": (state.conn, state.link) = (.connecting, .waiting)

@@ -34,6 +34,9 @@ struct AccountSecurityGroup: View {
             GroupBanner("恢复码尚未确认备份，请立即更换并离线保存。", tone: .warn, action: "换码") { nav.open(.recoveryCode) }
         }
         RecoveryPendingEntry()
+        if access.isAuthority && app.state.leaseEndMs == 0 && app.state.devices[context.me]?.meta?.handoffRecoveryEd.count == 32 {
+            GroupBanner("正在完成接管，等待当前管理权的租约。")
+        }
         GroupCard {
             GRow("当前管理端", value: access.isAuthority ? "本机" : access.name)
             GRow("租约到期时间", value: securityDate(app.state.leaseEndMs))
@@ -160,11 +163,14 @@ struct RecoveryCodeScreen: View {
                 RecoveryPendingEntry()
                 GroupLabel("恢复码")
                 GroupNote("更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。")
+                #if DEBUG
+                if app.isDemo { AuthorityDemoCode(handoff: false) }
+                #endif
                 if let prepared = draft.prepared {
                     RecoveryCodeFigure(code: prepared.code, saved: $draft.saved)
                     Btn("发布新恢复码", kind: .primary, enabled: draft.canPublish && !action.running) { confirm = true }
                         .padding(.horizontal, 16)
-                } else {
+                } else if !app.isDemo {
                     Btn("生成新的恢复码", kind: .primary, enabled: !action.running) {
                         action.run {
                             let c = try await context.remote.authorityCoordinator()

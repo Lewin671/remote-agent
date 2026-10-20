@@ -64,6 +64,9 @@ struct AddDeviceScreen: View {
             else {
                 GroupLabel(replacing.isEmpty ? "添加设备" : "从原档案重新加入")
                 GroupNote("电脑：在电脑上运行 remote-agent account join，输入下面的配对码。客户端：扫描二维码或输入配对码。")
+                #if DEBUG
+                if app.isDemo { AuthorityDemoPairCode(server: "https://relay.example.com") }
+                #endif
                 if flow.delivered {
                     GroupBanner("设备已加入。", tone: .plain)
                     Btn("添加另一台设备", kind: .primary, enabled: !flow.busy) {
@@ -92,7 +95,7 @@ struct AddDeviceScreen: View {
                         Btn("复制配对码") { UIPasteboard.general.string = initiation.link.code }
                         Btn("取消配对", enabled: !flow.busy) { cancel() }
                     }.padding(16)
-                } else {
+                } else if !app.isDemo {
                     Btn("生成配对码", kind: .primary, enabled: !flow.busy) {
                         perform { await flow.start($0, replacing: replacing) }
                     }.padding(16)
