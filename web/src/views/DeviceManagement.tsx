@@ -1,3 +1,4 @@
+import { futureTime } from "../model";
 import { useEffect, useRef, useState } from "react";
 import qrcode from "qrcode-generator";
 import type { AuthorityPairing } from "../authority-pairing";
@@ -253,7 +254,7 @@ export function PairCodePage({
               {pair.code.slice(0, 4)} {pair.code.slice(4)}
             </div>
             <p className="hint center-text">
-              有效期至 {new Date(Number(pair.expires)).toLocaleTimeString()} ·
+              有效期至 {futureTime(pair.expires, Date.now(), "time")} ·
               一次只能加入一台设备
             </p>
             {emoji ? (

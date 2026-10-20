@@ -1,3 +1,4 @@
+import { futureTime } from "../model";
 import { useEffect, useState } from "react";
 import {
   AuthoritySetup,
@@ -218,7 +219,7 @@ export function AccountEntry({
                 <Banner kind={status.phase === Phase.REJECTED ? "err" : "warn"}>
                   {status.phase === Phase.REJECTED
                     ? "恢复已被否决，可以重新申请。"
-                    : `恢复申请待处理。可生效时间：${new Date(Number(status.readyMs)).toLocaleString()}`}
+                    : `恢复申请待处理。可生效时间：${futureTime(status.readyMs)}`}
                 </Banner>
               )}
               {error.includes("签名尚未保存") && (

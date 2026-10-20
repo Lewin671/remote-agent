@@ -1,3 +1,4 @@
+import { futureTime } from "../model";
 import { useEffect, useState } from "react";
 import {
   BROWSER_AUTHORITY_NOTICE,
@@ -39,7 +40,7 @@ export function RecoveryNotice({
       >
         恢复申请待处理
         {remote.recoveryReadyMs > 0n
-          ? ` · 可生效时间：${new Date(Number(remote.recoveryReadyMs)).toLocaleString()}`
+          ? ` · 可生效时间：${futureTime(remote.recoveryReadyMs)}`
           : ""}
       </Banner>
     </div>
@@ -60,7 +61,7 @@ export function SecurityGroup({
     const r = await remote.security.verifiedRecord();
     setExpiry(
       r.lease && equal(r.lease.head, r.stateHash)
-        ? new Date(Number(r.lease.notAfter)).toLocaleString()
+        ? futureTime(r.lease.notAfter)
         : "尚未取得当前状态的有效租约",
     );
   };
@@ -171,7 +172,7 @@ export function SecurityPage({
     const r = await remote.security.verifiedRecord();
     setLease(
       r.lease && equal(r.lease.head, r.stateHash)
-        ? new Date(Number(r.lease.notAfter)).toLocaleString()
+        ? futureTime(r.lease.notAfter)
         : "尚未取得当前状态的有效租约",
     );
     setTakingOver(
@@ -226,7 +227,7 @@ export function SecurityPage({
           <Banner kind="warn">
             有人正在用恢复码申请接管管理权。可生效时间：
             {remote.recoveryReadyMs > 0n
-              ? new Date(Number(remote.recoveryReadyMs)).toLocaleString()
+              ? futureTime(remote.recoveryReadyMs)
               : "48 小时后"}
             。不是你本人就现在否决。
           </Banner>

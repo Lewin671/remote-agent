@@ -483,6 +483,23 @@ export function dayTime(ms: number, now = Date.now()): string {
   return `${d.getMonth() + 1}月${d.getDate()}日 ${hhmm(ms)}`;
 }
 
+/** A future local time in Chinese, independent of the browser's locale.
+ * Compare calendar dates so midnight, month/year changes and DST stay correct.
+ * Pairing expiry uses only the zero-padded 24-hour clock. */
+export function futureTime(ms: number | bigint, now = Date.now(), format: "date-time" | "time" = "date-time"): string {
+  const time = Number(ms);
+  const clock = hhmm(time).padStart(5, "0");
+  if (format === "time") return clock;
+  const date = new Date(time);
+  const today = new Date(now);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const label = date.toDateString() === today.toDateString() ? "今天"
+    : date.toDateString() === tomorrow.toDateString() ? "明天"
+    : `${date.getMonth() + 1}月${date.getDate()}日`;
+  return `${label} ${clock}`;
+}
+
 /** Minutes left before a deadline, as the dock writes it. */
 export function minutesLeft(deadlineMs: number, now = Date.now()): string {
   const left = deadlineMs - now;
