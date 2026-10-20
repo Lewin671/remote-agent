@@ -74,11 +74,15 @@ struct SettingsScreen: View {
     // MARK: Groups
 
     @ViewBuilder private func computers(_ state: RemoteState, now: Int64) -> some View {
+        let machines = sortedMachines(state)
         GroupLabel("电脑", action: "全部设备") { nav.open(.devices) }
-        GroupCard {
-            for m in sortedMachines(state) { MachineRow(machine: m, state: state, now: now) }
-            GRow("添加设备", action: true, icon: Lucide.plus) { nav.open(.addDevice) }
+        if !machines.isEmpty {
+            GroupCard {
+                for m in machines { MachineRow(machine: m, state: state, now: now) }
+            }
         }
+        // Only the phone app adds devices (architecture §9 「配对」): this one says where.
+        GroupNote(machines.isEmpty ? noMachinesHint : addDeviceHint).padding(.top, machines.isEmpty ? 0 : 8)
     }
 
     /// This client and the first few others, drawn and ordered as 设备 lists them.

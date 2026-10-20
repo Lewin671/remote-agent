@@ -366,8 +366,8 @@
                     .valueLead { Dot(Theme.green) }
                 GRow("VPS-dev", value: "2 小时前在线", chevron: true, onTap: {})
                     .lead { IconBadge(Lucide.laptop, color: Theme.gray) }
-                GRow("添加设备", action: true, icon: Lucide.plus, onTap: {})
             }
+            GroupNote(addDeviceHint).padding(.top, 8)
             GroupLabel("通知")
             GroupCard {
                 ToggleRow("需要你处理时", isOn: $attention)

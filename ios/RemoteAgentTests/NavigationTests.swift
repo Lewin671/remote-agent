@@ -11,7 +11,7 @@ import Testing
         .newProjectAt(machine: "m1", path: "/srv/www/site"), .pickProject, .manageProjects,
         .approval(session: "s", approval: "A1"), .plan(session: "s"), .question(session: "s", question: "toolu_01/x"),
         .image(session: "s", seq: 18_446_744_073_709_551_615, index: 2), .devices, .machine(id: "m1"), .client(id: "c1"),
-        .addDevice, .quota(machine: "m1"), .notifications, .connectionCheck, .imageStorage, .licenses,
+        .quota(machine: "m1"), .notifications, .connectionCheck, .imageStorage, .licenses,
     ]
 
     @Test(arguments: routes)

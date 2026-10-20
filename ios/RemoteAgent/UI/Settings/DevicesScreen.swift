@@ -9,7 +9,6 @@ import UIKit
 struct DevicesScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
-    @Environment(Navigator.self) private var nav
     /// The client a held row's menu is renaming.
     @State private var renaming: DeviceView?
 
@@ -77,10 +76,6 @@ struct DevicesScreen: View {
                     onRename: online && c.id == me ? { renaming = c } : nil)
             }
         }
-        GroupNote("右边是上次使用的时间。添加和移除设备只能在手机 App 上进行。")
-
-        GroupCard {
-            GRow("添加电脑或客户端", action: true, icon: Lucide.plus) { nav.open(.addDevice) }
-        }
+        GroupNote("右边是上次使用的时间。" + addDeviceHint)
     }
 }

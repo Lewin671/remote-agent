@@ -34,7 +34,7 @@ public enum HomeEmpty: Equatable, Sendable {
 
 /// What an account without sessions is told to do next.
 public enum AccountEmpty: Equatable, Sendable {
-    /// No computer has joined: 添加设备.
+    /// No computer has joined: the phone app adds one.
     case noMachines
     /// Computers joined, none is online.
     case noneOnline

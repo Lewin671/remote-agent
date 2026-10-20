@@ -48,8 +48,6 @@ enum Route: Hashable, Sendable {
     case machine(id: String)
     /// A client's details.
     case client(id: String)
-    /// 添加设备: showing a code for a new device to join with.
-    case addDevice
     /// A computer's account quotas.
     case quota(machine: String)
     /// 本客户端的通知.
@@ -81,7 +79,6 @@ enum Route: Hashable, Sendable {
         case .devices: "devices"
         case .machine(let id): "machine/\(id)"
         case .client(let id): "client/\(id)"
-        case .addDevice: "add-device"
         case .quota(let machine): "quota/\(machine)"
         case .notifications: "notifications"
         case .connectionCheck: "connection"
@@ -126,7 +123,6 @@ enum Route: Hashable, Sendable {
         case ("devices", true): self = .devices
         case ("machine", false): self = .machine(id: rest)
         case ("client", false): self = .client(id: rest)
-        case ("add-device", true): self = .addDevice
         case ("quota", false): self = .quota(machine: rest)
         case ("notifications", true): self = .notifications
         case ("connection", true): self = .connectionCheck
@@ -226,7 +222,6 @@ extension Route {
         case .devices: DevicesScreen()
         case .machine(let id): MachineScreen(id: id)
         case .client(let id): ClientScreen(id: id)
-        case .addDevice: AddDeviceScreen()
         case .quota(let machine): QuotaScreen(machine: machine)
         case .notifications: NotificationsScreen()
         case .connectionCheck: ConnectionCheckScreen()

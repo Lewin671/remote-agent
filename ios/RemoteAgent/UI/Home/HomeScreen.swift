@@ -173,7 +173,7 @@ private struct HomeTimeline: View {
         case .scope:
             emptyNote("这个项目还没有会话", "点右上角的新建按钮开始一个")
         case .account(.noMachines):
-            emptyNote("还没有会话", "这个账户还没有电脑。在电脑上运行 remote-agent account join 加入。", action: "添加设备") { nav.open(.addDevice) }
+            emptyNote("还没有会话", noMachinesHint)
         case .account(.noneOnline):
             emptyNote("还没有会话", "没有在线的电脑。在电脑上运行 remote-agent daemon。")
         case .account(.ready(let machine)):
