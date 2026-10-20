@@ -74,6 +74,8 @@ export function joinBanner(e: unknown): {
     return { kind: "err", text: "配对码不对，或者已经用过了", action: "重填" };
   if (e instanceof ConnectError && e.code === Code.ResourceExhausted)
     return { kind: "err", text: "试得太多了，等一分钟再试", action: "重填" };
+  if (/过期.*取消|取消.*过期/.test(text))
+    return { kind: "err", text: "这次配对已失效，请在手机上重新生成配对码", action: "重填" };
   if (/取消/.test(text))
     return { kind: "err", text: "对方拒绝了这次加入", action: "重新开始" };
   if (/过期/.test(text))
