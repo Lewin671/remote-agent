@@ -1,62 +1,63 @@
 import { Session } from "node:inspector/promises";
 import { analyse } from "scslre";
-import { expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { inlineSpans, mdBlocks, numericColumn, tableCells } from "./markdown";
 
-// Count executed JS blocks in the actual parser, including loop iterations,
-// without adding counters to the shipped code. Also charge native regex scans
-// and copies: V8 coverage alone would miss repeated indexOf/slice suffix scans.
-// These are work units, never milliseconds. Native regex backtracking is checked
-// separately below, since it is invisible to JS execution counters.
-async function work(run: () => unknown, patterns: Set<RegExp>): Promise<number> {
-  const session = new Session();
-  session.connect();
+// Charge native scans/copies as well as V8 JS execution blocks. Plain wrappers
+// avoid recording every call/argument in Vitest mock histories. Only synchronous
+// parser execution is intercepted; restore builtins before inspector/assertions.
+function nativeWork(run: () => unknown, patterns: Set<RegExp>): number {
   let native = 0;
   const exec = RegExp.prototype.exec;
   const indexOf = String.prototype.indexOf;
   const slice = String.prototype.slice;
   const arraySlice = Array.prototype.slice;
-  const spies: { mockRestore(): void }[] = [];
   try {
-    await session.post("Profiler.enable");
-    await session.post("Profiler.startPreciseCoverage", { callCount: true, detailed: true });
-    spies.push(vi.spyOn(RegExp.prototype, "exec").mockImplementation(function (this: RegExp, input: string) {
+    RegExp.prototype.exec = function (input: string) {
       const start = this.global || this.sticky ? this.lastIndex : 0;
       const match = exec.call(this, input);
       native += Math.max(0, (match ? match.index + match[0].length : input.length) - start) + 1;
       if (input.length > 64) patterns.add(this);
       return match;
-    }));
-    spies.push(vi.spyOn(String.prototype, "indexOf").mockImplementation(function (this: string, search: string, from?: number) {
+    };
+    String.prototype.indexOf = function (search: string, from?: number) {
       const result = indexOf.call(this, search, from);
       native += Math.max(0, (result < 0 ? this.length : result + search.length) - Math.max(0, from ?? 0)) + 1;
       return result;
-    }));
-    spies.push(vi.spyOn(String.prototype, "slice").mockImplementation(function (this: string, start?: number, end?: number) {
+    };
+    String.prototype.slice = function (start?: number, end?: number) {
       const result = slice.call(this, start, end);
       native += result.length;
       return result;
-    }));
-    spies.push(vi.spyOn(Array.prototype, "slice").mockImplementation(function (this: unknown[], start?: number, end?: number) {
+    };
+    Array.prototype.slice = function (start?: number, end?: number) {
       const result = arraySlice.call(this, start, end);
       native += result.length;
       return result;
-    }));
+    };
     run();
-    // Stop intercepting builtins before the inspector/runner uses them.
-    for (const spy of spies) spy.mockRestore();
-    const { result } = await session.post("Profiler.takePreciseCoverage");
-    const parser = result.filter((script) => script.url.endsWith("/markdown.tsx"));
-    expect(parser).toHaveLength(1);
-    const blocks = parser.flatMap((script) => script.functions.flatMap((fn) => fn.ranges));
-    const executed = blocks.reduce((sum, range) => sum + range.count, 0);
-    expect(executed).toBeGreaterThan(0);
-    return executed + native;
+    return native;
   } finally {
-    for (const spy of spies) spy.mockRestore();
-    await session.post("Profiler.stopPreciseCoverage");
-    session.disconnect();
+    RegExp.prototype.exec = exec;
+    String.prototype.indexOf = indexOf;
+    String.prototype.slice = slice;
+    Array.prototype.slice = arraySlice;
   }
+}
+
+async function work(session: Session, run: () => unknown): Promise<number> {
+  // takePreciseCoverage resets counters: discard activity between measurements.
+  // One continuously enabled profiler retains detailed blocks for hot functions
+  // without repeatedly deoptimizing the entire worker at each input size.
+  await session.post("Profiler.takePreciseCoverage");
+  const native = nativeWork(run, new Set());
+  const { result } = await session.post("Profiler.takePreciseCoverage");
+  const parser = result.filter((script) => script.url.endsWith("/markdown.tsx"));
+  expect(parser).toHaveLength(1);
+  const blocks = parser.flatMap((script) => script.functions.flatMap((fn) => fn.ranges));
+  const executed = blocks.reduce((sum, range) => sum + range.count, 0);
+  expect(executed).toBeGreaterThan(0);
+  return executed + native;
 }
 
 const inlineCases: Record<string, (n: number) => string> = {
@@ -86,40 +87,55 @@ const blockCases: Record<string, (n: number) => string> = {
   "hostile list": (n) => "- " + " ".repeat(n) + "x\u2029y",
 };
 
-it("keeps parser work linear as hostile inputs grow fourfold", async () => {
-  const patterns = new Set<RegExp>();
-  const cases = [
+const cases = [
     ...Object.entries(inlineCases).map(([name, input]) => ({ name, input, parse: inlineSpans })),
     ...Object.entries(blockCases).map(([name, input]) => ({ name, input, parse: mdBlocks })),
     ...["1 1", "1   x", "1a "].map((unit) => ({ name: `quantity ${unit}`, input: (n: number) => unit.repeat(n), parse: (s: string) => numericColumn([s]) })),
     { name: "table cells", input: (n: number) => "| x `a|b` ".repeat(n), parse: tableCells },
   ];
-  for (const { name, input, parse } of cases) {
+
+describe("linear parser work", { concurrent: false }, () => {
+  const session = new Session();
+  beforeAll(async () => {
+    session.connect();
+    await session.post("Profiler.enable");
+    await session.post("Profiler.startPreciseCoverage", { callCount: true, detailed: true });
+  });
+  afterAll(async () => {
+    try { await session.post("Profiler.stopPreciseCoverage"); }
+    finally { session.disconnect(); }
+  });
+
+  it.each(cases)("$name grows linearly as hostile inputs grow fourfold", async ({ name, input, parse }) => {
     let previous = 0;
     const counts = [];
     for (const n of [256, 1024, 4096]) {
       const text = input(n);
-      const count = await work(() => parse(text), patterns);
-      // A quadratic rescan grows 16x here. Allow a small constant overhead
-      // around 4x, and cap total deterministic work per input code unit too.
+      const count = await work(session, () => parse(text));
+      // A quadratic rescan grows 16x, versus the allowed 4.5x including
+      // constant overhead. Keep the independent per-code-unit bound too.
       expect(count, `${name}, n=${n}`).toBeLessThan(200 * text.length + 1000);
       if (previous) expect(count, `${name}, n=${n}`).toBeLessThanOrEqual(previous * 4.5);
       previous = count;
       counts.push(count);
     }
     if (process.env.RA_MD_WORK_REPORT) console.info(name, counts);
-  }
-  // JS counters cannot see work inside RegExp.exec. Analyse the actual
-  // patterns exercised above, not copies of the patterns in the test.
-  // scslre detects single-character polynomial/exponential backtracking;
-  // it supplements the dynamic counts, rather than proving every regex safe.
+  });
+});
+
+it("analyses every regex exercised by the full hostile-input matrix", () => {
+  // Independent collection makes this test valid on its own (including -t),
+  // without depending on ordering or state left by the work-count cases.
+  // It runs outside the coverage suite, so scslre is not deoptimized/profiled.
+  const patterns = new Set<RegExp>();
+  for (const { input, parse } of cases)
+    for (const n of [256, 1024, 4096]) nativeWork(() => parse(input(n)), patterns);
   const unique = new Map([...patterns].map((re) => [re.toString(), re]));
   expect(unique.size).toBeGreaterThanOrEqual(10);
-  for (const [source, re] of unique) {
-    expect(analyse(re).reports, source).toEqual([]);
-  }
-// This is the runner's deadlock watchdog, not a performance assertion.
-}, 30_000);
+  // Native regex backtracking is invisible to the JS counters. Analyse the
+  // actual patterns, never copies, retaining the original scslre guarantee.
+  for (const [source, re] of unique) expect(analyse(re).reports, source).toEqual([]);
+});
 
 it("detects the former overlapping-whitespace patterns without timing them", () => {
   for (const re of [/^\s{0,3}(#{1,6})\s+(.*)$/, /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/]) {
