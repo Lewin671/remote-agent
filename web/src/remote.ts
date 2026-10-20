@@ -1,3 +1,4 @@
+import { readSecurityOperation } from "./security-operation";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
 import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
@@ -3660,6 +3661,9 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
 
 /** Startup retries the exact signed request, including after a lost response. */
 export async function resumeRegistration(): Promise<void> {
+  const authority = await readSecurityOperation();
+  if (authority?.kind === "create") throw new Error("账户创建草稿已保留，请继续原创建流程和恢复码确认");
+  if (authority?.kind === "recovery") throw new Error("紧急恢复草稿已保留，请继续查询、等待或完成原恢复");
   const pending = await loadRegistration();
   if (!pending) return;
   const request = fromBinary(RegisterDeviceRequestSchema, pending.request);
