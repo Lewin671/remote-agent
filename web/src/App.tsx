@@ -234,7 +234,7 @@ function Main({ remote }: { remote: Remote }) {
   else if (kind.startsWith("pair"))
     page = (
       <div className="center muted">
-        这个浏览器已经加入了账户。要让另一台设备加入，在它上面打开这个链接。
+        这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。
       </div>
     );
   else

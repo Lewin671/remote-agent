@@ -147,7 +147,7 @@ private suspend fun poll(
                 if (e.code == Code.NOT_FOUND) throw PairException("配对已过期或被取消")
                 throw e
             }
-        if (res.state == PairingState.PAIRING_STATE_CANCELED) throw PairException("另一台设备取消了配对")
+        if (res.state == PairingState.PAIRING_STATE_CANCELED) throw PairException("配对已取消")
         if (res.stateValue >= want.number) return res
         delay(intervalMs)
     }

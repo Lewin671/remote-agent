@@ -17,7 +17,7 @@ private fun shortSendReason(reason: String): String = when {
     reason.contains("不确定电脑有没有执行") || reason.contains("停止等待回复") -> "结果未知"
     reason.contains("图片不在电脑上") -> "图片不在电脑上"
     reason.contains("电脑不在线") -> "电脑不在线"
-    else -> reason.substringBefore("，不会自动重发").substringBefore("。电脑的输入框").trim().ifEmpty { "原因未知" }
+    else -> reason.trim().ifEmpty { "原因未知" }
 }
 
 internal fun inputFeedback(status: InputStatus, reason: String, agent: Agent): SendFeedback =
