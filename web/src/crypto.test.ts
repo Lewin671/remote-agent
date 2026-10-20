@@ -1,6 +1,7 @@
+import * as inflation from "./inflate";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { ed25519 } from "@noble/curves/ed25519.js";
-import { describe, expect as want, it } from "vitest";
+import { describe, expect as want, it, vi } from "vitest";
 import vectors from "../../internal/e2e/testdata/vectors.json";
 import { Compression, EnvelopeSchema, HeaderSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import {
@@ -16,6 +17,7 @@ import {
   open,
   OpenError,
   PACK_MIN,
+  MAX_UNPACKED,
   parseSecret,
   REGISTER_CONTEXT,
   seal,
@@ -98,18 +100,48 @@ describe("matches the Go implementation", () => {
     await want(open(key, await sealed(Compression.DEFLATE, utf8("not deflate at all, surely")))).rejects.toThrow(OpenError);
   });
 
-  it("refuses a payload that unpacks past the limit", async () => {
+  it("uses the production unpacking limit and surfaces decoder rejection", async () => {
     const raw = crypto.getRandomValues(new Uint8Array(32));
     const key = await importSessionKey(raw);
-    // 65 MiB of zeros deflate to a few kilobytes.
     const { deflateSync } = await import("fflate");
-    const bomb = deflateSync(new Uint8Array(65 << 20));
-    want(bomb.length).toBeLessThan(1 << 20);
-    const header = toBinary(HeaderSchema, create(HeaderSchema, { version: 1, kind: PayloadKind.EVENT, compression: Compression.DEFLATE }));
-    const nonce = new Uint8Array(12);
-    const k = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt"]);
-    const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, additionalData: header }, k, bomb as Uint8Array<ArrayBuffer>);
-    await want(open(key, create(EnvelopeSchema, { header, nonce, ciphertext: new Uint8Array(ct) }))).rejects.toThrow(OpenError);
+    // The decoder's exact boundary is tested below using small real streams.
+    // Here check the actual open() wiring and error translation, without
+    // allocating, compressing and inflating 65 MiB to cross a fixed policy.
+    want(MAX_UNPACKED).toBe(64 << 20);
+    const bomb = deflateSync(new Uint8Array(33));
+    const unpack = inflation.inflateBounded;
+    const decoder = vi.spyOn(inflation, "inflateBounded").mockImplementationOnce((packed, limit) => {
+      want(limit).toBe(MAX_UNPACKED);
+      return unpack(packed, 32);
+    });
+    try {
+      const header = toBinary(HeaderSchema, create(HeaderSchema, { version: 1, kind: PayloadKind.EVENT, compression: Compression.DEFLATE }));
+      const nonce = new Uint8Array(12);
+      const k = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt"]);
+      const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, additionalData: header }, k, bomb as Uint8Array<ArrayBuffer>);
+      await want(open(key, create(EnvelopeSchema, { header, nonce, ciphertext: new Uint8Array(ct) }))).rejects.toThrow(OpenError);
+      want(decoder).toHaveBeenCalledExactlyOnceWith(bomb, MAX_UNPACKED);
+    } finally { decoder.mockRestore(); }
+  });
+
+  it("accepts the exact decoded byte limit and rejects the next byte", async () => {
+    const { deflateSync } = await import("fflate");
+    for (const limit of [0, 1, 32]) {
+      const exact = new Uint8Array(limit).fill(7);
+      want(inflation.inflateBounded(deflateSync(exact), limit)).toEqual(exact);
+      want(() => inflation.inflateBounded(deflateSync(new Uint8Array(limit + 1)), limit)).toThrow(RangeError);
+    }
+  });
+
+  it("counts decoded bytes across multiple compressed input slices", async () => {
+    const { deflateSync } = await import("fflate");
+    // Incompressible data crosses several 16 KiB input slices. Unlike the
+    // all-zero boundary cases, this catches resetting the count per callback.
+    const plain = crypto.getRandomValues(new Uint8Array(64 << 10));
+    const packed = deflateSync(plain);
+    want(packed.length).toBeGreaterThan(3 * (16 << 10));
+    want(inflation.inflateBounded(packed, plain.length)).toEqual(plain);
+    want(() => inflation.inflateBounded(packed, plain.length - 1)).toThrow(RangeError);
   });
 
   it("parses the secret", () => {

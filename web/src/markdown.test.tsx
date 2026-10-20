@@ -14,14 +14,17 @@ describe("safety", () => {
     }
   });
 
-  it("scans unclosed emphasis, strikes and URLs once", () => {
+  it("renders unclosed emphasis, strikes and URLs correctly", () => {
+    // Rendering correctness needs representative token counts, not 45,000
+    // React nodes. The parser's growing-input work counts remain covered by
+    // markdown.complexity.test.ts, independently of CPU speed and scheduling.
     for (const [text, links, strikes] of [
-      ["_a ".repeat(60_000), 0, 0],
-      ["~~a ".repeat(50_000), 0, 25_000],
-      ["*a ".repeat(60_000), 0, 0],
-      ["https://a.b/" + "(".repeat(100_000), 1, 0],
-      ["https://a.b/" + ")".repeat(100_000), 1, 0],
-      ["https://a.b ".repeat(20_000) + ".".repeat(50_000), 20_000, 0],
+      ["_a ".repeat(128), 0, 0],
+      ["~~a ".repeat(128), 0, 64],
+      ["*a ".repeat(128), 0, 0],
+      ["https://a.b/" + "(".repeat(1024), 1, 0],
+      ["https://a.b/" + ")".repeat(1024), 1, 0],
+      ["https://a.b ".repeat(128) + ".".repeat(1024), 128, 0],
     ] as const) {
       const out = renderToStaticMarkup(<Rich text={text} />);
       expect(out.match(/<a /g)?.length ?? 0).toBe(links);

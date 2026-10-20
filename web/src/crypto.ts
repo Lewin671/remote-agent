@@ -1,9 +1,10 @@
+import { inflateBounded } from "./inflate";
 // End-to-end encryption, matching internal/e2e in Go: HKDF-SHA256 key
 // derivation from the account root key, AES-256-GCM envelopes whose
 // serialized header is the additional data, and Ed25519 signatures.
 // internal/e2e/testdata/vectors.json keeps the two implementations in step.
 
-import { deflateSync, Inflate } from "fflate";
+import { deflateSync } from "fflate";
 import { create, fromBinary, toBinary, type DescMessage, type MessageShape } from "@bufbuild/protobuf";
 import { Compression, EnvelopeSchema, HeaderSchema, PayloadKind, type Envelope, type Header } from "./gen/remoteagent/v1/envelope_pb";
 
@@ -189,22 +190,6 @@ export const MAX_UNPACKED = 64 << 20;
  * payloads are read before the devices have compared protocol versions. */
 const packs = (kind: PayloadKind | undefined) => kind !== PayloadKind.SESSION_KEY && kind !== PayloadKind.IMAGE && kind !== PayloadKind.PAIRING;
 
-/** Inflates raw DEFLATE, up to limit bytes out. The input goes in by
- * slices, so that what a slice can expand to (at most 1032 times its
- * size) is all that is held past the limit. */
-function unpack(packed: Uint8Array, limit: number): Uint8Array {
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  const inflate = new Inflate((chunk) => {
-    size += chunk.length;
-    if (size > limit) throw new OpenError("payload is too large");
-    chunks.push(chunk);
-  });
-  const slice = 16 << 10;
-  for (let at = 0; at < packed.length || at === 0; at += slice) inflate.push(packed.subarray(at, at + slice), at + slice >= packed.length);
-  return concat(...chunks);
-}
-
 /** Seals plaintext; the header is serialized once and authenticated as
  * sent. A payload that deflates smaller is sealed packed, which the
  * header says. */
@@ -248,7 +233,7 @@ export async function open(key: CryptoKey, env: Envelope | undefined): Promise<{
   if (header.compression === Compression.NONE) return { header, plaintext: new Uint8Array(pt) };
   if (header.compression !== Compression.DEFLATE) throw new OpenError("unknown compression");
   try {
-    return { header, plaintext: unpack(new Uint8Array(pt), MAX_UNPACKED) };
+    return { header, plaintext: inflateBounded(new Uint8Array(pt), MAX_UNPACKED) };
   } catch {
     throw new OpenError("payload does not unpack");
   }
