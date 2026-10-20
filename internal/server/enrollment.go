@@ -43,7 +43,7 @@ func checkApprover(ctx context.Context, tx *sql.Tx, a *pb.PairApproval) error {
 	if state != accountActive || !bytes.Equal(pub, a.ApproverPublicKey) {
 		return errAdmissionRequired
 	}
-	// On an established account only the current authority phone may
+	// On an established account only the current authority client may
 	// authorize a registration. Before the genesis exists, the first device
 	// bootstraps the account.
 	var headRaw []byte
@@ -92,7 +92,7 @@ func (s *store) approveAdmission(ctx context.Context, a *enrollmentApproval, can
 		Scan(&existingAccount, &existingCandidate, &existingKind, &existingApproval, &existingSignature)
 	switch {
 	case err == nil:
-		// A fresh phone-signed admission may already have been recorded by
+		// A fresh authority-signed admission may already have been recorded by
 		// RegisterDevice before ApprovePairing; accept the identical row.
 		if existingAccount == a.info.AccountId && existingCandidate == e2e.DeviceID(a.info.CandidateDevicePublicKey) && existingKind == int32(a.info.CandidateKind) && bytes.Equal(existingApproval, a.raw) && bytes.Equal(existingSignature, a.signature) {
 			return tx.Commit()
@@ -132,7 +132,7 @@ func consumeAdmission(ctx context.Context, tx *sql.Tx, account, id string, reg *
 	if n == 1 {
 		return nil
 	}
-	// No stored admission row: a fresh phone-signed approval is the
+	// No stored admission row: a fresh authority-signed approval is the
 	// authorization. Record its one use so it cannot admit another device
 	// (the candidate key is already bound by the signature).
 	var exists int
@@ -149,7 +149,7 @@ func consumeAdmission(ctx context.Context, tx *sql.Tx, account, id string, reg *
 
 // requireAdmission checks that an existing device row may be replaced with
 // the same key and kind: the approval names a stored admission for exactly
-// this candidate, and its approver is still the current authority phone.
+// this candidate, and its approver is still the current authority client.
 func requireAdmission(ctx context.Context, tx *sql.Tx, a *enrollmentApproval, account, id string, kind pb.DeviceKind) error {
 	if a == nil {
 		return errAdmissionRequired

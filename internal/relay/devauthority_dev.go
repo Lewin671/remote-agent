@@ -10,7 +10,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 )
 
-// DevInit creates a development account with a synthetic phone authority and
+// DevInit creates a development account with a synthetic client authority and
 // enrolls this machine as its first computer. It exists only for the isolated
 // development environment and the distribution smoke test, and only in
 // binaries built with the dev build tag; release binaries do not contain it.

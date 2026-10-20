@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 	-- unauthenticated recovery lookup can find the account.
 	recovery_ed BLOB,
 	-- Set by the protocol 10 database upgrade: the account predates the
-	-- phone authority, so its genesis must be pinned offline instead of
+	-- client authority, so its genesis must be pinned offline instead of
 	-- over the network.
 	offline_pin INTEGER NOT NULL DEFAULT 0
 );
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS events (
 	envelope BLOB NOT NULL,
 	PRIMARY KEY (account_id, session_id, seq)
 ) WITHOUT ROWID;
--- The phone-signed membership chain. The server stores public signed states
+-- The authority-signed membership chain. The server stores public signed states
 -- only; it validates signatures and membership, never content keys.
 CREATE TABLE IF NOT EXISTS security_leases (account_id TEXT PRIMARY KEY, certificate BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS security_states (

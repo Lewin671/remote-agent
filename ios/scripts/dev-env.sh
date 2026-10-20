@@ -2,7 +2,7 @@
 # A throwaway relay on this machine for working on the clients, with an
 # account already made on it, and optionally a daemon so that the app has
 # a computer to list. Or, as protocol 10 has it, a relay without an account:
-# the Android phone app (the admin phone) makes it with the setup token and
+# any authority client (Android, iOS or web) makes it with the setup token and
 # shows a pairing code under 设置 › 添加设备, and this computer joins with it.
 #
 # Everything it makes is under one directory (RA_DEV_DIR, by default
@@ -17,15 +17,15 @@
 #       builds, starts the relay on 127.0.0.1 (a free port unless given),
 #       makes the account, and prints the server URL and how to join it.
 #       --daemon also runs a daemon of the account, on its own tmux socket.
-#       --no-account makes none: the Android phone app makes it with the
+#       --no-account makes none: any authority client makes it with the
 #       setup token (`token`), then this computer joins (`join CODE --daemon`).
 #   dev-env.sh secret        prints the account secret (ra1.…), alone, on stdout
 #   dev-env.sh url           prints the server URL
-#   dev-env.sh token         prints the relay's setup token, for making the account in the Android app
+#   dev-env.sh token         prints the relay's setup token, for making the account in the authority client
 #   dev-env.sh launch [udid] launches the debug app
-#   dev-env.sh pair          says how pairing goes: it is started on the Android admin phone
+#   dev-env.sh pair          says how pairing goes: it is started on any authority client
 #   dev-env.sh join CODE [--daemon]
-#       joins with the code the Android app's 设置 › 添加设备 shows: as this
+#       joins with the code the authority client's 设置 › 添加设备 shows: as this
 #       computer when `start --no-account` made none, else as another one;
 #       --daemon then runs its daemon, on a tmux socket of its own
 #   dev-env.sh cli ARGS…     runs remote-agent with the daemon's environment (ls, new, send, …)
@@ -130,11 +130,11 @@ start() {
 	fi
 	url=http://127.0.0.1:$port
 	token=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
-	# Kept for the Android app, which makes the account with it.
+	# Kept for the authority client, which makes the account with it.
 	(umask 077 && echo "$token" >"$dir/setup-token")
 	echo "ra-ios-dev-$port" >"$dir/tmux-socket"
 
-	# A few accounts, so the phone can make its own beside the one made here.
+	# A few accounts, so an authority client can make its own beside the one made here.
 	RA_SETUP_TOKEN=$token "$bin/remote-agent-server" --listen "127.0.0.1:$port" --db "$dir/server/relay.db" --max-accounts 10 --allowed-origins "${RA_DEV_ALLOWED_ORIGINS:-}" \
 		>"$dir/server.log" 2>&1 &
 	echo $! >"$dir/server.pid"
@@ -169,16 +169,16 @@ start() {
 	fi
 	if [ $daemon = 1 ]; then echo "Daemon:  running, tmux socket $(cat "$dir/tmux-socket")"; fi
 	echo
-	echo "Pairing starts on the Android admin phone (protocol 10):"
+	echo "Pairing starts on any authority client (protocol 10):"
 	if [ $account = 0 ]; then
-		echo "  1. in the Android debug app, make the account on $url with the setup token above"
+		echo "  1. in any authority client, make the account on $url with the setup token above"
 		echo "     (an emulator reaches this machine as 10.0.2.2: adb reverse tcp:$port tcp:$port keeps 127.0.0.1)"
 		echo "  2. 设置 › 添加设备 there shows a pairing code"
 		echo "  3. $0 join CODE --daemon   # this computer joins and its daemon runs"
 	else
-		echo "  this account was made here, so it has no admin phone and cannot pair; for that, start with --no-account"
+		echo "  this account was made here, so it has no usable authority client and cannot pair; for that, start with --no-account"
 	fi
-	echo "  the iOS app joins with a code from the admin phone: $0 launch, then -joinServer $url -joinCode CODE"
+	echo "  the iOS app joins with a code from the authority client: $0 launch, then -joinServer $url -joinCode CODE"
 	echo "Stop:    $0 stop"
 }
 
@@ -204,12 +204,12 @@ launch)
 	udid=${2:-booted}
 	xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1 || true
 	xcrun simctl launch "$udid" "$bundle"
-	echo "The app joins with a pairing code from the Android admin phone (设置 › 添加设备):" >&2
+	echo "The app joins with a pairing code from any authority client (设置 › 添加设备):" >&2
 	echo "  xcrun simctl launch $udid $bundle -joinServer $(cat "$dir/url") -joinCode CODE" >&2
 	;;
 pair)
 	need_started
-	die "pairing is started on the Android admin phone (protocol 10): make the account there with \`$0 token\` (start --no-account), open 设置 › 添加设备 for a code, then: $0 join CODE --daemon"
+	die "pairing is started on any authority client (protocol 10): make the account there with \`$0 token\` (start --no-account), open 设置 › 添加设备 for a code, then: $0 join CODE --daemon"
 	;;
 join)
 	need_started

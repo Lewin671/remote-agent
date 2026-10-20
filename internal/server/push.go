@@ -212,7 +212,7 @@ func (p *pusher) notify(st *tstore, sessionID string, kind pb.NotifyKind, conten
 }
 
 // notifyDevice sends to one device only, for account-level notices that must
-// reach the current authority phone rather than every member.
+// reach the current authority client rather than every member.
 func (p *pusher) notifyDevice(st *tstore, deviceID, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
 	return p.notifyTo(st, deviceID, sessionID, kind, content, dedupeKey)
 }

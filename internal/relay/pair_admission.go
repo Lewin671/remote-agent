@@ -59,7 +59,7 @@ func clearPairAdmission(a pairAdmission) error {
 // Refused/expired admissions remain as owned lineage for a fresh authority-
 // signed rejoin, since a prior registration may have committed before revocation.
 
-var ErrRegistrationRefused = errors.New("saved registration was refused; run `remote-agent account discard-registration`, remove the unfinished candidate on the phone if still listed, then pair again with a new code")
+var ErrRegistrationRefused = errors.New("saved registration was refused; run `remote-agent account discard-registration`, remove the unfinished candidate on the authority client if still listed, then pair again with a new code")
 
 // Discard only the retry slot. Keep the signed ownership receipt for an
 // authority-approved rejoin to transfer retained archives; never revive its ID.

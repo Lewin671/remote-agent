@@ -21,7 +21,7 @@ import (
 )
 
 // recoveryDelay is how long a submitted recovery must wait before it may
-// replace the authority. The old phone can veto during that window by
+// replace the authority. The previous authority client can veto during that window by
 // signing any newer state.
 const recoveryDelay = 48 * time.Hour
 
@@ -377,7 +377,7 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 		return nil, err
 	}
 	// A completed or rejected row may be overwritten: a second recovery with
-	// the phone's current code is a new request. A rejected statement whose
+	// the authority client's current code is a new request. A rejected statement whose
 	// parent is no longer the head fails VerifyTransition above and cannot be
 	// revived.
 	id := make([]byte, 16)
@@ -399,7 +399,7 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 		return nil, internal(err)
 	}
 	// Generic text only; the push never signs anything. The current
-	// authority phone is the only recipient.
+	// authority client is the only recipient.
 	_ = rs.s.push.notifyDevice(t, authority, "", pb.NotifyKind_NOTIFY_KIND_SECURITY, nil, "security/"+recoveryID)
 	return connect.NewResponse(&pb.SubmitRecoveryResponse{RecoveryId: recoveryID, ReadyMs: uint64(ready)}), nil
 }
@@ -434,7 +434,7 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 	}
 	if row.completed != 0 {
 		// The device is already registered. Never mint a token from this
-		// replayable signature; the phone logs in with a fresh challenge.
+		// replayable signature; the authority client logs in with a fresh challenge.
 		return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.statement.NewAuthorityID, AccountPublicKey: acct.publicKey}), nil
 	}
 	if nowMs() < row.ready {

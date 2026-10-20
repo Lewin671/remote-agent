@@ -93,7 +93,7 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 		return nil, connect.NewError(connect.CodePermissionDenied, errSuspended)
 	default:
 		// A device joining an existing account is authorized by the
-		// phone-signed approval, never by root-key possession.
+		// authority-signed approval, never by root-key possession.
 		pl = planOf(existing.plan)
 	}
 	id := e2e.DeviceID(reg.DevicePublicKey)

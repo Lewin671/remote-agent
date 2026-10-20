@@ -18,7 +18,7 @@ import (
 
 const accountUsage = `Usage:
   remote-agent account join --server URL --code CODE
-  remote-agent account join LINK            join with a pairing code or link from the phone
+  remote-agent account join LINK            join with a pairing code or link from the authority client
   remote-agent account discard-registration discard pending enrollment before re-pairing
   remote-agent account secret               print offline decryption backup material
   remote-agent account status               show this machine's account
@@ -36,7 +36,7 @@ func runAccount(args []string) error {
 		if err := relay.DiscardRegistration(); err != nil {
 			return err
 		}
-		fmt.Println("Pending registration discarded. Remove the unfinished candidate on the phone if still listed, then request a new code and run account join. Retained archives and ownership receipts are kept.")
+		fmt.Println("Pending registration discarded. Remove the unfinished candidate on the authority client if still listed, then request a new code and run account join. Retained archives and ownership receipts are kept.")
 		return nil
 	case "secret":
 		return runAccountSecret()
@@ -53,7 +53,7 @@ func runAccount(args []string) error {
 func runAccountJoin(args []string) error {
 	fs := flag.NewFlagSet("account join", flag.ExitOnError)
 	server := fs.String("server", "", "server URL, with --code")
-	code := fs.String("code", "", "pairing code shown by the phone")
+	code := fs.String("code", "", "pairing code shown by the authority client")
 	fs.Parse(args)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -71,12 +71,12 @@ func runAccountJoin(args []string) error {
 		}
 		link = l
 	default:
-		return errors.New("add a device in the phone app, then run `account join --server URL --code CODE`")
+		return errors.New("add a device in the authority client, then run `account join --server URL --code CODE`")
 	}
-	fmt.Println("Waiting for the phone…")
+	fmt.Println("Waiting for the authority client…")
 	a, err := relay.JoinByPairing(ctx, link, func(emoji []string) bool {
 		fmt.Print(joinPictures(emoji))
-		answer, _ := readVisibleLine("Do all four match? Trust this phone [y/N]: ")
+		answer, _ := readVisibleLine("Do all four match? Trust this authority client [y/N]: ")
 		return strings.EqualFold(strings.TrimSpace(answer), "y")
 	})
 	if err != nil {
@@ -88,11 +88,11 @@ func runAccountJoin(args []string) error {
 }
 
 // joinPictures asks to compare the four pictures, and says the order: the
-// phone waits for this computer's answer, so it is given here first (the
+// authority client waits for this computer's answer, so it is given here first (the
 // web's join page says the same).
 func joinPictures(emoji []string) string {
-	return fmt.Sprintf("\nCheck that the admin phone shows the same four pictures:\n\n    %s\n\n"+
-		"If they match, confirm here first, then allow it on the admin phone (图案一致，允许).\n\n", strings.Join(emoji, "  "))
+	return fmt.Sprintf("\nCheck that the authority client shows the same four pictures:\n\n    %s\n\n"+
+		"If they match, confirm here first, then allow it on the authority client (图案一致，允许).\n\n", strings.Join(emoji, "  "))
 }
 
 // runAccountDevInit is the test-only account creator used by the isolated
@@ -171,7 +171,7 @@ func runAccountSecret() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(os.Stderr, "This key can decrypt account content but cannot authorize device enrollment. Keep it offline; add devices in the phone app.")
+	fmt.Fprintln(os.Stderr, "This key can decrypt account content but cannot authorize device enrollment. Keep it offline; add devices in the authority client.")
 	fmt.Println(secret.String())
 	return nil
 }

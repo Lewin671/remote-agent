@@ -39,7 +39,7 @@ type securitySession struct {
 
 func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServiceClient) (*securitySession, error) {
 	if acct.Security == nil {
-		return nil, errors.New("remote security is not initialized; run `remote-agent account join` with a code from the phone")
+		return nil, errors.New("remote security is not initialized; run `remote-agent account join` with a code from the authority client")
 	}
 	endpoint, err := deviceauth.OpenEndpoint(securityPath())
 	if err != nil {

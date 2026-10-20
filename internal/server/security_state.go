@@ -12,7 +12,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 )
 
-// The server stores the phone-signed membership chain and enforces it on
+// The server stores the authority-signed membership chain and enforces it on
 // every authenticated call. It validates signatures and membership; it never
 // sees a content key and cannot open an envelope.
 
@@ -111,7 +111,7 @@ func (t *tstore) securityMember(ctx context.Context, id string) (bool, error) {
 	return ok, nil
 }
 
-// pinSecurityDomain is called by the new authority phone while it creates
+// pinSecurityDomain is called by the new authority client while it creates
 // the account. It verifies the genesis fully and stores the exact bytes.
 func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Request[pb.PinSecurityDomainRequest]) (*connect.Response[pb.PinSecurityDomainResponse], error) {
 	d, err := clientFrom(ctx)
@@ -135,7 +135,7 @@ func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Requ
 	}
 	m, ok := state.Core.Member(state.Core.AuthorityID)
 	if !ok || state.Core.AuthorityID != d.id || m.Kind != deviceauth.Client || len(state.Core.Members) != 1 || !bytes.Equal(m.EdPublic[:], d.publicKey) || state.Core.RecoveryEd == [32]byte{} {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the new authority phone installs its genesis"))
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the new authority client installs its genesis"))
 	}
 	t := c.s.tenantFrom(ctx)
 	tx, err := t.store.db.BeginTx(ctx, nil)
@@ -155,7 +155,7 @@ func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Requ
 	} else if offline != 0 {
 		// Protocol 10 upgraded this account from layout 5. Old device tokens
 		// may still exist, so letting any signed-in device pin over the
-		// network would let one race the phone; the operator pins the
+		// network would let one race the authority client; the operator pins the
 		// exported genesis while the relay is stopped instead.
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("this account was upgraded from protocol 9: export the genesis and pin it on the relay offline, with the relay stopped"))
 	} else if _, err := tx.ExecContext(ctx, `UPDATE accounts SET security_genesis = ?, recovery_ed = ? WHERE id = ?`, raw, state.Core.RecoveryEd[:], t.acct); err != nil {
@@ -397,9 +397,9 @@ func (c *clientService) GetSecurityStates(ctx context.Context, req *connect.Requ
 	for _, r := range rows {
 		out.States = append(out.States, &pb.SecurityState{State: r.raw, Recovery: r.recRaw})
 	}
-	// The authority phone sees a pending recovery even without a push. The
+	// The authority client sees a pending recovery even without a push. The
 	// unauthenticated recovery service no longer tells it: only a key bound
-	// to the account may ask, and the phone does not keep the recovery key.
+	// to the account may ask, and the authority client does not keep the recovery key.
 	if d := deviceFrom(ctx); d != nil {
 		if h, _, err := t.store.securityHead(ctx); err == nil && h.Core.AuthorityID == d.id {
 			var pending, ready int64
@@ -434,7 +434,7 @@ func (s *Server) authorizeDevice(ctx context.Context, d *device, procedure strin
 	return nil
 }
 
-// authorityDevice returns the current authority phone ID.
+// authorityDevice returns the current authority client ID.
 func (t *tstore) authorityDevice(ctx context.Context) (string, error) {
 	head, _, err := t.securityHead(ctx)
 	if err != nil {

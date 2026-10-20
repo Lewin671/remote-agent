@@ -27,7 +27,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Joining an account from the command line. Only the phone initiates and
+// Joining an account from the command line. Only the authority client initiates and
 // approves; a computer only scans or types a code and compares four emoji.
 
 const (
@@ -76,7 +76,7 @@ func pairingClient(server, token string) remoteagentv1connect.PairingServiceClie
 	return remoteagentv1connect.NewPairingServiceClient(httpClient(), server, opts...)
 }
 
-// JoinByPairing joins an account through a code shown by the phone. On a
+// JoinByPairing joins an account through a code shown by the authority client. On a
 // machine that already has an account it re-binds that account: the Ed25519
 // identity and any retained root are kept and the X25519 key is replaced.
 func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []string) bool) (*Account, error) {
@@ -240,7 +240,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		if owned := ownedAdmissions[approval.ReplacesDeviceId]; owned != nil {
 			replacementOwner = owned
 		} else {
-			return nil, errors.New("the pairing approval does not name this computer's revoked identity; on the authority phone choose the original computer's archive and rejoin it")
+			return nil, errors.New("the pairing approval does not name this computer's revoked identity; on the authority client choose the original computer's archive and rejoin it")
 		}
 	}
 	states, proofs, candidate, err := verifyPairChain(pin, payload.SecurityStates, pub, xpub)
@@ -311,7 +311,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err := clearPairAdmission(admission); err != nil {
 		return nil, err
 	}
-	// Tells the phone it went through. If this is lost, the phone reports
+	// Tells the authority client it went through. If this is lost, the authority client reports
 	// the outcome as unknown; the join itself stands.
 	_, _ = pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: id, CandidateToken: token, Received: true}))
 	return acct, nil

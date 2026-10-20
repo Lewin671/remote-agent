@@ -207,7 +207,7 @@ func (ps *pairingService) requireAuthority(ctx context.Context, d *device) error
 	}
 	authority, err := ps.s.store.tenant(d.account).authorityDevice(ctx)
 	if err != nil || authority != d.id {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only the current authority phone may manage pairings"))
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only the current authority client may manage pairings"))
 	}
 	return nil
 }
@@ -332,7 +332,7 @@ func (ps *pairingService) ApprovePairing(ctx context.Context, req *connect.Reque
 	}
 	approver, err := ps.s.store.device(ctx, p.initiator)
 	if err != nil || ps.requireAuthority(ctx, approver) != nil {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the current authority phone may approve pairings"))
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the current authority client may approve pairings"))
 	}
 	a, err := parseApproval(req.Msg.Approval, req.Msg.ApprovalSignature)
 	if err != nil || a == nil {

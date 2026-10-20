@@ -41,13 +41,13 @@ func TestLoadEnvFileReadsAndDeletes(t *testing.T) {
 	}
 }
 
-func TestJoinPicturesSaysToConfirmHereBeforeThePhone(t *testing.T) {
+func TestJoinPicturesSaysToConfirmHereBeforeTheAuthority(t *testing.T) {
 	got := joinPictures([]string{"🐶", "🍎", "🚗", "🌙"})
 	if !strings.Contains(got, "🐶  🍎  🚗  🌙") {
 		t.Fatalf("the pictures are missing: %q", got)
 	}
-	here, phone := strings.Index(got, "confirm here first"), strings.Index(got, "then allow it on the admin phone")
-	if here < 0 || phone < here {
+	here, authority := strings.Index(got, "confirm here first"), strings.Index(got, "then allow it on the authority client")
+	if here < 0 || authority < here {
 		t.Fatalf("the order is not said: %q", got)
 	}
 }
