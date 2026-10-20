@@ -102,7 +102,7 @@ private struct Finder: View {
             RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                 .strokeBorder(.white.opacity(0.9), lineWidth: 3)
                 .frame(width: 240, height: 240)
-            Text("把另一台设备上的配对二维码放进框里")
+            Text("把手机 App 上的配对二维码放进框里")
                 .type(T.sm, .white).multilineTextAlignment(.center)
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .background(.black.opacity(0.45), in: Capsule())
