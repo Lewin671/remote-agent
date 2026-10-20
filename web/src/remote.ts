@@ -688,6 +688,8 @@ export class Remote {
     );
     this.authority = new AuthorityClient(account, this.security, this.api);
   }
+  async removeDevice(id: string) { await this.authority.removeDevice(id); await this.loadDevices(false); }
+  async deleteMachineRecords(id: string) { await this.authority.deleteMachineRecords(id); await this.refresh(); }
 
   private projectHeader(h: SecurityHeader) {
     return create(HeaderSchema, {
