@@ -479,7 +479,9 @@ func TestPtyhostRunHelper(t *testing.T) {
 		stdout = failingWriter{marker: marker}
 		script = "dd if=/dev/zero bs=65536 count=128 2>/dev/null; printf complete > " + shellQuote(complete) + "; sleep 1"
 	case "blocked-input":
-		script = `stty raw -echo; printf ready > "$PTYHOST_TEST_GRANDCHILD"; while [ ! -f "$PTYHOST_TEST_COMPLETE" ]; do sleep 0.01; done; cat > "$PTYHOST_TEST_TERM"`
+		// Acknowledge the first byte before blocking further reads, so the
+		// parent can synchronize on actual PTY I/O rather than client state.
+		script = `stty raw -echo; printf ready > "$PTYHOST_TEST_GRANDCHILD"; dd bs=1 count=1 > "$PTYHOST_TEST_TERM" 2>/dev/null; printf started > "$PTYHOST_TEST_MARKER"; while [ ! -f "$PTYHOST_TEST_COMPLETE" ]; do sleep 0.01; done; cat >> "$PTYHOST_TEST_TERM"`
 	case "ignore-signals":
 		grandchildScript := "trap '' HUP TERM; printf '%s' \"$$\" > " + shellQuote(grandchild) + "; while :; do sleep 1; done"
 		script = "trap '' HUP TERM; sh -c " + shellQuote(grandchildScript) + " & wait"
@@ -637,21 +639,18 @@ func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 	}
 	result := make(chan error, 1)
 	go func() { result <- c.Write(bytes.Repeat([]byte("x"), 1<<20)) }()
-	// Conn.do holds its mutex from before the request is encoded until its
-	// response arrives. Seeing it held proves the write request has left the
-	// client. The remaining assumption is that the server reads that
-	// already-sent request and enters the PTY write before the one-second
-	// lease lapses; the socket is local and the lease leaves a full second
-	// against the two-second write deadline for it.
-	sent := time.Now().Add(5 * time.Second)
-	for c.mu.TryLock() {
-		c.mu.Unlock()
-		if time.Now().After(sent) {
-			t.Fatal("the remote write did not start")
-		}
-		time.Sleep(time.Millisecond)
+	// The child reads exactly one byte and acknowledges it before it stops
+	// reading. This proves the paste reached the PTY before local input is
+	// queued; holding Conn.mu alone would not even prove JSON was encoded.
+	if err := waitForFile(h.marker, 5*time.Second); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := h.stdin.Write([]byte("LOCAL")); err != nil {
+	// A timed-out large PTY write does not guarantee that a small write
+	// will also block: the terminal may still accept a few bytes. Queue
+	// more local input than fits in its buffers so the next hold really
+	// must wait for a blocked local flush, on Linux as well as macOS.
+	local := bytes.Repeat([]byte("LOCAL"), (1<<20)/len("LOCAL")+1)
+	if _, err := h.stdin.Write(local); err != nil {
 		t.Fatal(err)
 	}
 	// Status must keep answering while the write is blocked, and the lease
@@ -709,8 +708,8 @@ func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 	case <-time.After(remoteWriteTimeout + 2*time.Second):
 		t.Fatal("blocked paste did not return a bounded failure")
 	}
-	// The timed-out paste left the PTY full. The lease ended on its own, so
-	// local input is now flushing and blocks there; a new hold must not
+	// The lease ended on its own, so the large local input is now flushing
+	// and blocks until the child reads again; a new hold must not
 	// overtake those keys.
 	if _, err := observer.Hold(time.Second); err == nil || !strings.Contains(err.Error(), "deadline") {
 		t.Fatalf("hold overtook blocked local input: %v", err)
@@ -727,8 +726,8 @@ func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 	deadline = time.Now().Add(10 * time.Second)
 	for {
 		b, _ := os.ReadFile(h.term)
-		if bytes.HasSuffix(b, []byte("LOCAL")) {
-			prefix := bytes.TrimSuffix(b, []byte("LOCAL"))
+		if bytes.HasSuffix(b, local) {
+			prefix := bytes.TrimSuffix(b, local)
 			if len(prefix) == 0 || len(prefix) >= 1<<20 || bytes.Count(prefix, []byte("x")) != len(prefix) {
 				t.Fatalf("unexpected partial paste before local input: %d bytes", len(prefix))
 			}
@@ -742,10 +741,11 @@ func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 	if err := c.Write([]byte("REMOTE")); err != nil {
 		t.Fatal(err)
 	}
+	want := append(local, []byte("REMOTE")...)
 	deadline = time.Now().Add(10 * time.Second)
 	for {
 		b, _ := os.ReadFile(h.term)
-		if bytes.HasSuffix(b, []byte("LOCALREMOTE")) {
+		if bytes.HasSuffix(b, want) {
 			break
 		}
 		if time.Now().After(deadline) {
