@@ -174,7 +174,7 @@ fun DevicesScreen() {
                 }
             else
                 Hint(
-                    "添加和删除设备要在管理端手机上操作。",
+                    ADD_DEVICE_HINT,
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             if (state.authorityPhone) {

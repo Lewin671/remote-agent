@@ -511,7 +511,7 @@ private fun EmptyScope() {
 }
 
 @Composable
-private fun EmptyAccount(state: RemoteState) {
+internal fun EmptyAccount(state: RemoteState) {
     val p = pal
     val nav = LocalNav.current
     val online = state.machines.values.filter { it.online }
@@ -521,7 +521,7 @@ private fun EmptyAccount(state: RemoteState) {
     ) {
         Text("还没有会话", style = T.h17, color = p.fg)
         when {
-            state.machines.isEmpty() -> {
+            state.machines.isEmpty() && state.authorityPhone -> {
                 Text(
                     "这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 remote-agent account join。",
                     style = T.sm,
@@ -531,6 +531,15 @@ private fun EmptyAccount(state: RemoteState) {
                 )
                 Btn("添加设备", { nav.pair() }, Modifier.fillMaxWidth(), BtnKind.PRIMARY)
             }
+            // Only the admin phone can add one: any other phone says where, as web and iOS do.
+            state.machines.isEmpty() ->
+                Text(
+                    NO_MACHINES_HINT,
+                    style = T.sm,
+                    color = p.muted,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             online.isEmpty() ->
                 Text(
                     "没有在线的电脑。在电脑上运行 remote-agent daemon。",

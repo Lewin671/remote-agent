@@ -959,7 +959,7 @@
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v46 的改动</h4><ul><li>停靠区：进会话时要你处理的事默认展开，「收起」后按事项记住，新的一项又默认展开；展开后只有一行头部，内容区最高约占会话内容区的 60%（至少 240），计划正文不再单独限高。</li><li>审批先给命令再给说明；停靠区里的命令不单独限高；首页审批卡的命令最多 6 整行，多出来的「还有 N 行 · 展开」就地展开。</li><li>宽屏审批和计划的按钮行最宽 480，靠左。</li><li>网页和 iOS 没有添加设备页和入口，设置、设备页和空状态改成一句说明；加入页的说明按实际流程写，网页只说输入配对码；配对说明里称呼对方一律写「管理端手机」。</li></ul>
+  <h4>相对 v46 的改动</h4><ul><li>停靠区：进会话时要你处理的事默认展开，「收起」后按事项记住，新的一项又默认展开；展开后只有一行头部，内容区最高约占会话内容区的 60%（至少 240），计划正文不再单独限高。</li><li>审批先给命令再给说明；停靠区里的命令不单独限高；首页审批卡的命令最多 6 整行，多出来的「还有 N 行 · 展开」就地展开。</li><li>宽屏审批和计划的按钮行最宽 480，靠左。</li><li>网页、iOS 和 Android 上不是管理端的手机没有添加设备的入口，设置、设备页和空状态改成一句说明；加入页的说明按实际流程写，网页只说输入配对码；配对说明里称呼对方一律写「管理端手机」。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
@@ -2425,7 +2425,7 @@ git status --short gen/</pre>
       <div class="muted small" style="margin:4px 0 10px">MacBook 在线，可以直接开始</div>
       <div class="btns"><div class="btn pri">开始第一个会话</div></div>
     </div>
-    <div class="st-c">没有在线电脑时改写：在电脑上运行 <code>remote-agent daemon</code>；还没加电脑时，网页和 iOS 只写一句「还没有电脑。在管理端手机上打开「设置 › 添加设备」，把电脑加进来。」，不放按钮；Android 手机给「添加设备」按钮</div>
+    <div class="st-c">没有在线电脑时改写：在电脑上运行 <code>remote-agent daemon</code>；还没加电脑时，网页和 iOS 只写一句「还没有电脑。在管理端手机上打开「设置 › 添加设备」，把电脑加进来。」，不放按钮；Android 管理端手机给「添加设备」按钮，Android 上不是管理端的手机也只写这一句</div>
   </div>
 
   <div class="st">

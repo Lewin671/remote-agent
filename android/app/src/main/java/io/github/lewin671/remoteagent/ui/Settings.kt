@@ -52,6 +52,7 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.PairingUiState
+import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.machineAgents
@@ -172,83 +173,7 @@ fun SettingsScreen() {
                     Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                     Tone2.WARN,
                 )
-            GLabel("电脑", "全部设备", onAction = { nav.devices() })
-            Group(
-                rows =
-                    state.machines.values
-                        .sortedBy { machineLabel(state, it.id) }
-                        .map { m ->
-                            @Composable {
-                                Row(
-                                    Modifier.fillMaxWidth()
-                                        .clickable { nav.device(m.id) }
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    Ico(Lucide.Laptop, p.blueBg)
-                                    Column(Modifier.weight(1f)) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            Text(
-                                                machineLabel(state, m.id),
-                                                style = T.body,
-                                                color = p.fg,
-                                            )
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                            ) {
-                                                Dot(if (m.online) p.green else p.gray)
-                                                Text(
-                                                    (if (m.id == state.authorityDeviceId) "管理端手机 · "
-                                                    else "") +
-                                                        (if (m.online) "在线"
-                                                        else
-                                                            whenText(m.lastSeenMs, t).ifEmpty {
-                                                                "不在线"
-                                                            }),
-                                                    style = T.sm,
-                                                    color = p.muted,
-                                                )
-                                            }
-                                        }
-                                        val q =
-                                            io.github.lewin671.remoteagent.core
-                                                .quotaGroups(m, t)
-                                                .firstOrNull()
-                                                ?.let { g ->
-                                                    g.rows
-                                                        .lastOrNull { it.percent != null }
-                                                        ?.let {
-                                                            "${agentName(g.agent)} · ${it.label}${it.used}"
-                                                        }
-                                                }
-                                        if (q != null)
-                                            Text(
-                                                q,
-                                                style = T.sm,
-                                                color = p.muted,
-                                                modifier = Modifier.padding(top = 2.dp),
-                                            )
-                                    }
-                                    Arrow(p.muted, T.body)
-                                }
-                            }
-                        } +
-                        listOf(
-                            @Composable {
-                                GRow(
-                                    "添加设备",
-                                    onClick = { nav.pair() },
-                                    action = true,
-                                    icon = Lucide.Plus,
-                                )
-                            },
-                        ),
-            )
+            MachinesGroup(state, t)
             GLabel("客户端")
             val me = remote.account.deviceId
             val others =
@@ -452,6 +377,103 @@ fun SettingsScreen() {
         ) {
             scope.launch { app.logout() }
         }
+}
+
+/**
+ * Settings' 电脑 group. Only the admin phone adds devices, so only it gets the 添加设备 row; any other
+ * phone says where instead, as web and iOS do.
+ */
+@Composable
+internal fun MachinesGroup(state: RemoteState, t: Long) {
+    val nav = LocalNav.current
+    val p = pal
+    GLabel("电脑", "全部设备", onAction = { nav.devices() })
+    val machineRows =
+        state.machines.values
+            .sortedBy { machineLabel(state, it.id) }
+            .map { m ->
+                @Composable {
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .clickable { nav.device(m.id) }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Ico(Lucide.Laptop, p.blueBg)
+                        Column(Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    machineLabel(state, m.id),
+                                    style = T.body,
+                                    color = p.fg,
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                ) {
+                                    Dot(if (m.online) p.green else p.gray)
+                                    Text(
+                                        (if (m.id == state.authorityDeviceId) "管理端手机 · "
+                                        else "") +
+                                            (if (m.online) "在线"
+                                            else
+                                                whenText(m.lastSeenMs, t).ifEmpty {
+                                                    "不在线"
+                                                }),
+                                        style = T.sm,
+                                        color = p.muted,
+                                    )
+                                }
+                            }
+                            val q =
+                                io.github.lewin671.remoteagent.core
+                                    .quotaGroups(m, t)
+                                    .firstOrNull()
+                                    ?.let { g ->
+                                        g.rows
+                                            .lastOrNull { it.percent != null }
+                                            ?.let {
+                                                "${agentName(g.agent)} · ${it.label}${it.used}"
+                                            }
+                                    }
+                            if (q != null)
+                                Text(
+                                    q,
+                                    style = T.sm,
+                                    color = p.muted,
+                                    modifier = Modifier.padding(top = 2.dp),
+                                )
+                        }
+                        Arrow(p.muted, T.body)
+                    }
+                }
+            }
+    if (state.authorityPhone)
+        Group(
+            rows =
+                machineRows +
+                    listOf(
+                        @Composable {
+                            GRow(
+                                "添加设备",
+                                onClick = { nav.pair() },
+                                action = true,
+                                icon = Lucide.Plus,
+                            )
+                        },
+                    ),
+        )
+    else {
+        if (machineRows.isNotEmpty()) Group(rows = machineRows)
+        Hint(
+            if (machineRows.isEmpty()) NO_MACHINES_HINT else ADD_DEVICE_HINT,
+            Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp),
+        )
+    }
 }
 
 /**
@@ -1467,6 +1489,12 @@ private fun MachineImageStorage(
  * drafts.
  */
 /** Fonts bundled in the app, each with its SIL OFL 1.1 text from res/raw. */
+/** Where devices are added, on a phone that is not the admin one: the same words as web and iOS. */
+const val ADD_DEVICE_HINT = "要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。"
+
+/** An account with no computer, seen from a phone that cannot add one. */
+const val NO_MACHINES_HINT = "还没有电脑。在管理端手机上打开「设置 › 添加设备」，把电脑加进来。"
+
 private val bundledFonts =
     listOf(
         Triple("Inter", "界面中的西文和数字", io.github.lewin671.remoteagent.R.raw.ofl_inter),
