@@ -64,7 +64,7 @@ function startOf(remote: Remote, key: string): Start {
   if (!start) all.set(key, (start = new Start()));
   return start;
 }
-import { Avatar, Banner, Dot, fromHere, Sheet } from "../ui";
+import { Avatar, Banner, Dot, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
 import { isHidden } from "../prefs";
 import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
 import { useAutoGrow } from "./Composer";
@@ -519,10 +519,11 @@ export function NewBox({
     await ns.create(prompt.trim());
   };
   const status = ns.busy ? `正在 ${machineName(ns.machine)} 上启动…` : "";
+  const keys = sendKeys(usePointerFine());
   const placeholder = {
     box: "描述任务…",
     prompt: "描述任务…",
-    start: "描述任务，⌘/Ctrl+Enter 开始",
+    start: keys ? `描述任务，${keys} 开始` : "描述任务…",
   }[variant];
   const tray = ns.tray;
   tray.onAdd = () => {

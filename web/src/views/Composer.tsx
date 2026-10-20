@@ -5,7 +5,7 @@ import type { Tray } from "../attach";
 import type { Derived } from "../model";
 import { SendMode } from "../gen/remoteagent/v1/event_pb";
 import type { Remote, SessionView } from "../remote";
-import { Alert } from "../ui";
+import { Alert, sendKeys, usePointerFine } from "../ui";
 import { ArrowUp, Square } from "../icons";
 
 /** The draft grows to about six lines, then scrolls inside. */
@@ -36,7 +36,6 @@ export function Composer({
   remote,
   session,
   d,
-  wide,
   onSend,
   onInterrupt,
   draft,
@@ -51,7 +50,6 @@ export function Composer({
   remote: Remote;
   session: SessionView;
   d: Derived;
-  wide: boolean;
   onSend: (text: string, mode: SendMode) => void;
   onInterrupt: () => void;
   draft: string;
@@ -71,6 +69,7 @@ export function Composer({
     setTextState(v);
     onDraft(v);
   };
+  const fine = usePointerFine();
   const [slash, setSlash] = useState<SendMode>();
   const [sendMenu, setSendMenu] = useState(() => remote.demoFlag("sendmenu"));
   const hold = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -96,7 +95,8 @@ export function Composer({
     setSendMenu(false);
   };
   const i = session.info;
-  const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : d.tools.length > 0 ? "消息…" : i?.planOpen ? "补充你对计划的要求…" : wide ? "消息 · ⌘↵ 发送" : "消息";
+  const keys = sendKeys(fine);
+  const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : d.tools.length > 0 ? "消息…" : i?.planOpen ? "补充你对计划的要求…" : keys ? `消息 · ${keys} 发送` : "消息";
   const canQueue = d.running;
   return (
     <div className={"compose-card" + (dropping ? " drop" : "")} {...cardProps}>

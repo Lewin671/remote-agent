@@ -532,7 +532,6 @@ export function SessionPage({
             remote={remote}
             session={session}
             d={d}
-            wide={wide}
             onSend={(text, mode) => {
               remote.send(
                 sid,

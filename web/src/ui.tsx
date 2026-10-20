@@ -234,6 +234,14 @@ export function usePointerFine(): boolean {
   return useSyncExternalStore(subscribeFine, () => !!fineQuery()?.matches);
 }
 
+/** The send shortcut as an input's placeholder writes it: ⌘↵ on Apple
+ * devices, Ctrl+Enter elsewhere, and nothing on touch, where there is no
+ * keyboard to press it on. */
+export function sendKeys(fine: boolean, platform = navigator.platform): string {
+  if (!fine) return "";
+  return /Mac|iP/.test(platform) ? "⌘↵" : "Ctrl+Enter";
+}
+
 /** Background pages stop live connections; visibility restoration takes a fresh snapshot. */
 export function usePageVisible() {
   return useSyncExternalStore(
