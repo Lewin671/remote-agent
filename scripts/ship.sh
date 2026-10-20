@@ -58,8 +58,15 @@ trap 'exit 1' INT TERM
 say "release $tag ($commit)"
 run=$(gh run list --workflow release.yml --commit "$commit" --event push --limit 1 --json databaseId --jq '.[0].databaseId // empty')
 [ -n "$run" ] || fail "no Release workflow ran for $tag"
-gh run watch "$run" --exit-status >/dev/null || fail "the Release workflow of $tag did not succeed: gh run view $run"
-echo "Release workflow succeeded"
+if gh run watch "$run" --exit-status >/dev/null; then
+	echo "Release workflow succeeded"
+# A failed run can be retried by hand for the same tag; only a run whose
+# checks all passed publishes the release.
+elif [ "$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)" = false ]; then
+	echo "Release workflow failed, but a retry published $tag"
+else
+	fail "the Release workflow of $tag did not succeed and no retry published it: gh run view $run"
+fi
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/remote-agent-ship.XXXXXX")
 rmdir "$work"
