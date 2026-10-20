@@ -394,10 +394,33 @@ it("replays immutable state bytes after more than 72h, refreshing only its indep
   expect(request.lease).not.toEqual(leaseBytes(oldLease));
   expect((await loadSecurity()).stateHash).toEqual(await stateHash(target));
 });
+it("keeps unconfirmed recovery codes in memory while another tab renews the lease", async () => {
+  const { account } = await createAccount(), c = await clients(account);
+  const before = await loadSecurity();
+  await c.authority.prepareRecovery();
+  expect(await readSecurityOperation()).toBeUndefined();
+  const otherTab = await clients(account);
+  await otherTab.authority.renewLeaseNow();
+  expect((await loadSecurity()).lease!.issuedAt).toBeGreaterThanOrEqual(before.lease!.issuedAt);
+  expect((await loadSecurity()).states).toHaveLength(before.states.length);
+  expect(await readSecurityOperation()).toBeUndefined();
+  await c.authority.publishRecovery();
+  expect((await loadSecurity()).states).toHaveLength(before.states.length + 1);
+});
+it("keeps unconfirmed handoff codes out of the durable slot and loses them on restart", async () => {
+  const { target, incoming } = await enrolledClient();
+  await target.authority.prepareHandoffCode();
+  expect(await readSecurityOperation()).toBeUndefined();
+  const restarted = (await clients(incoming)).authority;
+  await expect(restarted.offerHandoff()).rejects.toThrow();
+  expect(await readSecurityOperation()).toBeUndefined();
+  await target.authority.offerHandoff();
+  expect(await readSecurityOperation()).toBeUndefined();
+});
 it("stops when another verified successor changed the parent and does not sign a replacement", async () => {
   const { account } = await createAccount(), c = await clients(account);
   await c.authority.prepareRecovery();
-  const pending = await readSecurityOperation();
+  expect(await readSecurityOperation()).toBeUndefined();
   const record = await loadSecurity(), key = await Authority.newRecovery();
   const other = await Authority.veto(record.states.at(-1)!, key.publicKey, record.secret, account.devicePrivate, BigInt(Date.now()));
   key.seed.fill(0);
@@ -405,8 +428,7 @@ it("stops when another verified successor changed the parent and does not sign a
   const calls = vi.spyOn(c.api, "putSecurityState");
   await expect(c.authority.publishRecovery()).rejects.toThrow("conflict");
   expect(calls).not.toHaveBeenCalled();
-  expect((await readSecurityOperation())!.parent).toEqual(pending!.parent);
-  expect((await readSecurityOperation())!.signed).toBeUndefined();
+  expect(await readSecurityOperation()).toBeUndefined();
 });
 it("keeps lease signing monotonic after a wall-clock rollback and refuses ordinary members", async () => {
   const { account } = await createAccount(), c = await clients(account);
@@ -552,6 +574,11 @@ it.each(["before", "after"] as const)("keeps a single successor across every sta
           const state = fromBinary(PutSecurityStateRequestSchema, signed).states[0].state;
           expect(await stateBytes((await loadSecurity()).states.at(-1)!)).toEqual(state);
         }
+      }
+      if (!pending && (await loadSecurity()).states.length === 1) {
+        // Crash before claiming the slot: no publication was possible. The
+        // display-only code is lost, so explicitly prepare and save a new one.
+        await c.authority.prepareRecovery(); await c.authority.publishRecovery();
       }
       expect(await readSecurityOperation()).toBeUndefined(); expect((await loadSecurity()).states).toHaveLength(2);
     }

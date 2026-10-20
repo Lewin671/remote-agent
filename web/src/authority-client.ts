@@ -36,6 +36,9 @@ export function handoffCandidates(record: SecurityRecord, offers: HandoffOffer[]
 }
 export class AuthorityClient {
   readonly lifecycle: AuthorityLifecycle;
+  // Display drafts never occupy the durable publication slot. No recovery seed
+  // is retained; confirmation claims the slot before any state signature.
+  private codeDraft?: SecurityOperation<StateDraft | { recoveryEd: B; storagePersisted: boolean }>;
   constructor(
     readonly account: StoredAccount,
     readonly security: DeviceSecurityClient,
@@ -367,8 +370,10 @@ export class AuthorityClient {
       await this.resume(check);
       const r = await this.authority(check), recovery = await Authority.newRecovery();
       try {
-        await this.claim("state", { action: "recovery", recoveryEd: recovery.publicKey } satisfies StateDraft, r);
+        if (await readSecurityOperation()) throw new Error("请先完成当前安全操作");
         check();
+        this.codeDraft = operation("state", this.account.server, this.account.deviceId, r.stateHash,
+          { action: "recovery", recoveryEd: recovery.publicKey } satisfies StateDraft);
         return { code: RecoveryCode.encode(recovery.seed, r.pin.genesis) };
       } finally { recovery.seed.fill(0); }
     });
@@ -383,8 +388,9 @@ export class AuthorityClient {
       check();
       const recovery = await Authority.newRecovery();
       try {
-        await this.claim("offer", { recoveryEd: recovery.publicKey, storagePersisted }, r);
         check();
+        this.codeDraft = operation("offer", this.account.server, this.account.deviceId, r.stateHash,
+          { recoveryEd: recovery.publicKey, storagePersisted });
         return { code: RecoveryCode.encode(recovery.seed, r.pin.genesis), storagePersisted };
       } finally { recovery.seed.fill(0); }
     });
@@ -394,10 +400,20 @@ export class AuthorityClient {
   async offerHandoff() { return this.confirmCode("offer"); }
   private async confirmCode(kind: "state" | "offer") {
     return this.lifecycle.run(async (check) => {
-      const op = await readSecurityOperation<StateDraft>();
-      if (!op || op.kind !== kind || (kind === "state" && op.local.action !== "recovery")) throw new SecurityError("conflict");
-      this.bound(op);
-      await saveSecurityOperation(op, { ...op, codeSaved: true });
+      let op = await readSecurityOperation<StateDraft>();
+      if (!op) {
+        const draft = this.codeDraft;
+        if (!draft || draft.kind !== kind) throw new SecurityError("conflict");
+        const r = kind === "state" ? await this.authority(check) : await this.security.sync();
+        check();
+        if (kind === "state" && !equal(r.stateHash, draft.parent)) throw new SecurityError("conflict");
+        await claimSecurityOperation({ ...draft, codeSaved: true }, r.stateHash);
+        this.codeDraft = undefined;
+      } else {
+        if (op.kind !== kind || (kind === "state" && op.local.action !== "recovery")) throw new SecurityError("conflict");
+        this.bound(op);
+        if (!op.codeSaved) await saveSecurityOperation(op, { ...op, codeSaved: true });
+      }
       check();
       await this.resume(check);
     });
@@ -408,7 +424,7 @@ export class AuthorityClient {
   async discardUnpublishedCode() {
     return this.lifecycle.run(async (check) => {
       const op = await readSecurityOperation<StateDraft>();
-      if (!op) return;
+      if (!op) { this.codeDraft = undefined; return; }
       this.bound(op);
       if (op.phase !== "PREPARED" || !(op.kind === "offer" ||
           (op.kind === "state" && op.local.action === "recovery" && !op.signed && !op.codeSaved))) throw new SecurityError("conflict");

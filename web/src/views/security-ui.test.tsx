@@ -224,15 +224,15 @@ it("gives authority-specific exit advice before erasing keys", async () => {
   await mount(<LeaveAlert onCancel={() => {}} />);
   expect(host.textContent).toContain("建议先交接");
 });
-it("does not report renewal when an unfinished code draft prevents it", async () => {
+it("renews while an unconfirmed code remains in memory", async () => {
   const r = demo("role=authority");
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
   await click("恢复码");
   await click("生成新的恢复码");
   await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click());
   await click("现在续期");
-  expect(host.textContent).toContain("请先完成当前安全操作，再续期");
-  expect(host.textContent).not.toContain("远程控制已续期");
+  expect(host.textContent).not.toContain("请先完成当前安全操作，再续期");
+  expect(host.textContent).toContain("远程控制已续期");
 });
 it.each(["authority", "member", "machine"])("keeps the security overview ordered and hides absent pending operations: %s", async role => {
   const r = demo(`role=${role}&recovery=pending`);

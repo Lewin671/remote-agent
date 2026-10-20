@@ -1497,12 +1497,12 @@ export class DemoRemote extends Remote {
     this.authority.hasAccountPublicProfile = async () => this.opts.get("public") !== "missing";
     this.authority.needsRecoveryCodeRotation = async () => this.opts.has("rotation");
     this.authority.renewLeaseNow = async () => { await work(); record.lease.notAfter = BigInt(Date.now() + 72 * 60 * min); };
-    const prepare = async (kind: "offer" | "state") => {
-      await work(); pending = { id: "demo", revision: 0, kind, phase: "PREPARED", codeSaved: false, parent: hash, server: this.account.server, memberID: ME, local: { action: "recovery" } };
+    const prepare = async () => {
+      await work();
       return { code: "RA3 DEMO-ONLY-OFFLINE-BACKUP EXAMPLE-NOT-A-RECOVERY-CODE", storagePersisted: true };
     };
-    this.authority.prepareRecovery = () => prepare("state");
-    this.authority.prepareHandoffCode = () => prepare("offer");
+    this.authority.prepareRecovery = () => prepare();
+    this.authority.prepareHandoffCode = () => prepare();
     this.authority.publishRecovery = async () => { await work(); pending = undefined; this.security.recoveryPending = false; this.changed(); };
     this.authority.offerHandoff = async () => { await work(); pending = undefined; this.metas.get(ME)!.meta.handoffRecoveryEd = new Uint8Array(32); await this.loadDevices(); };
     this.authority.discardUnpublishedCode = async () => { await work(); pending = undefined; };
