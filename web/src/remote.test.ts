@@ -579,6 +579,9 @@ it("restores, for the next visit's first paint, the model lists and settings the
   }
   const identity = await (await probe()).security.localIdentity();
   const first = Kept.open();
+  // Exercise real demo responses/cache writes without its two simulated
+  // 500 ms network delays. This test asserts persistence, not latency.
+  vi.spyOn(first as any, "pause").mockResolvedValue(undefined);
   vi.spyOn(first.security, "localIdentity").mockResolvedValue(identity);
   vi.spyOn(first.security, "historicalMachines").mockResolvedValue(new Set());
   (first as unknown as { seed(): void }).seed(); // the demo's machines, online

@@ -562,8 +562,11 @@ it("starts from what the browser kept: the token, and the last listing", async (
   expect(r.listed).toBe(false);
   expect(r.authHeader()).toBe("Bearer kept-token");
   // A handshake the network dropped keeps the token.
-  Socket.all[0].close();
-  await vi.waitFor(() => expect(Socket.all).toHaveLength(2), { timeout: 3000 });
+  Socket.all[0].closedBy(1006);
+  // Token reuse is independent of the backoff duration (covered separately).
+  // Request the foreground reconnect rather than waiting a real second.
+  r.reconnectNow();
+  await vi.waitFor(() => expect(Socket.all).toHaveLength(2));
   expect(r.authHeader()).toBe("Bearer kept-token");
   expect(login).not.toHaveBeenCalled();
   // The server turning the token away is followed by a login.

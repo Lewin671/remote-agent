@@ -3,6 +3,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
+import { Setup } from "./Pairing";
 
 const calls: {
   stopped: () => boolean;
@@ -42,7 +43,6 @@ afterEach(() => {
 });
 
 async function start() {
-  const { Setup } = await import("./Pairing");
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
