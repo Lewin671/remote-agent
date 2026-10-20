@@ -17,7 +17,7 @@ final class AuthorityPairingModel {
         busy = true; error = ""
         defer { busy = false }
         do {
-            if let initiation { try await coordinator.cancelPairing(initiation) }
+            if let initiation, !delivered, nowMs() < initiation.expiresMs { try await coordinator.cancelPairing(initiation) }
             initiation = try await coordinator.startPairing(replacesDeviceID: replacing)
             candidate = nil; approved = false; delivered = false
         } catch { self.error = errorText(error) }
@@ -64,7 +64,12 @@ struct AddDeviceScreen: View {
             else {
                 GroupLabel(replacing.isEmpty ? "添加设备" : "从原档案重新加入")
                 GroupNote("电脑：在电脑上运行 remote-agent account join，输入下面的配对码。客户端：扫描二维码或输入配对码。")
-                if flow.delivered { GroupBanner("设备已加入。", tone: .plain) }
+                if flow.delivered {
+                    GroupBanner("设备已加入。", tone: .plain)
+                    Btn("添加另一台设备", kind: .primary, enabled: !flow.busy) {
+                        perform { await flow.start($0, replacing: "") }
+                    }.padding(16)
+                }
                 else if let candidate = flow.candidate {
                     GroupLabel("核对图案")
                     Text(candidate.emoji.joined(separator: " "))
@@ -99,6 +104,11 @@ struct AddDeviceScreen: View {
                             else { await flow.poll(c) }
                         }
                     }
+                }
+                if !flow.approved && !flow.error.isEmpty && flow.initiation != nil {
+                    TextAction("重新生成配对码", enabled: !flow.busy) {
+                        perform { await flow.start($0, replacing: replacing) }
+                    }.padding(.horizontal, 16)
                 }
                 if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
             }
