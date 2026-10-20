@@ -33,10 +33,10 @@ struct ClientScreen: View {
                 Ticking { now in details(d, state: state, me: me, online: online, now: now) }
             }
         }
-        .navBar(clientName(d, id: id), subtitle: id == me ? "当前客户端" : "已配对的客户端")
+        .navBar(clientName(d, id: id, among: state.devices), subtitle: id == me ? "当前客户端" : "已配对的客户端")
         .inputAlert(
             isPresented: $editing, title: "客户端名称", initial: d?.meta?.name ?? "",
-            placeholder: defaultClientName(d, id: id), text: "留空就用默认名称"
+            placeholder: defaultClientName(d, id: id, among: state.devices), text: "留空就用默认名称"
         ) { name in
             // The dialog stays until the name is stored, and says so when it is not.
             try await remote.renameDevice(id, name: name.jvmTrim())
@@ -68,7 +68,7 @@ struct ClientScreen: View {
             ) { if id == me { editing = true } }
             if named && id == me {
                 GRow(
-                    "恢复默认名称", value: defaultClientName(d, id: id), action: true,
+                    "恢复默认名称", value: defaultClientName(d, id: id, among: state.devices), action: true,
                     enabled: online && !save.running
                 ) {
                     save.run { try await remote.renameDevice(id, name: "") }

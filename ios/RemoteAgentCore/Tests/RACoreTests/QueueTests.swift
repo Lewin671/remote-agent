@@ -46,7 +46,7 @@ import Testing
         state.devices = [phone.id: phone, named.id: named]
         // This client's own doings are not labelled.
         #expect(originLabel(o(.client, "me"), state: state, me: "me", machine: "MacBook") == nil)
-        #expect(originLabel(o(.client, "aaaab71c"), state: state, me: "me", machine: "MacBook") == "Android · b71c")
+        #expect(originLabel(o(.client, "aaaab71c"), state: state, me: "me", machine: "MacBook") == "Android")
         #expect(originLabel(o(.client, "cccc92de"), state: state, me: "me", machine: "MacBook") == "我的手机")
         // Removed: no part of its ID is shown.
         #expect(originLabel(o(.client, "gone9999"), state: state, me: "me", machine: "MacBook") == "已移除的设备")
@@ -61,17 +61,17 @@ import Testing
         }
         let chrome = meta("", "web", "Chrome on macOS")
         let browser = device(created: at(2026, 9, 27, 0, 0), chrome)
-        #expect(clientName(browser, id: browser.id) == "Chrome · 8a5f")
-        #expect(clientName(device(created: browser.createdMs, meta("", "web", "")), id: browser.id) == "浏览器 · 8a5f")
+        #expect(clientName(browser, id: browser.id, among: [:]) == "Chrome · macOS")
+        #expect(clientName(device(created: browser.createdMs, meta("", "web", "")), id: browser.id, among: [:]) == "浏览器")
         #expect(clientDetail(browser) == "浏览器 · Chrome on macOS")
         let pixel = device(created: at(2025, 12, 1, 0, 0), meta("我的手机", "android", "Android 16 · Pixel 9"))
-        #expect(clientName(pixel, id: pixel.id) == "我的手机")
-        #expect(defaultClientName(pixel, id: pixel.id) == "Android · 8a5f")
+        #expect(clientName(pixel, id: pixel.id, among: [:]) == "我的手机")
+        #expect(defaultClientName(pixel, id: pixel.id, among: [:]) == "Android · Pixel 9")
         #expect(clientDetail(pixel) == "App · Android 16 · Pixel 9")
         let iphone = device(created: pixel.createdMs, meta("", "ios", "iOS 27.0 · iPhone"))
-        #expect(defaultClientName(iphone, id: iphone.id) == "iOS · 8a5f")
+        #expect(defaultClientName(iphone, id: iphone.id, among: [:]) == "iPhone")
         #expect(clientDetail(iphone) == "App · iOS 27.0 · iPhone")
-        #expect(clientName(device(created: pixel.createdMs, meta("", "ios", "")), id: iphone.id) == "iOS · 8a5f")
+        #expect(clientName(device(created: pixel.createdMs, meta("", "ios", "")), id: iphone.id, among: [:]) == "iOS")
         #expect(clientDetail(nil) == "种类未知")
         func used(_ seen: Int64) -> String { clientUsed(device(created: browser.createdMs, seen: seen, chrome), now: now, zone: zone) }
         #expect(used(now - 30_000) == "刚刚使用")
@@ -90,14 +90,38 @@ import Testing
 
     // --- not in Android's tests ---
 
-    @Test func aDescriptionThatStartsWithADigitIsNoPlatformName() {
-        #expect(platformLabel(meta("", "android", "16 · Pixel 9")) == "Android")
-        // A digit of any script, as Kotlin's isDigit.
-        #expect(platformLabel(meta("", "web", "٣ tabs")) == "浏览器")
-        #expect(platformLabel(meta("", "", "")) == "客户端")
-        #expect(platformLabel(nil) == "客户端")
-        // The first word ends at ASCII whitespace.
-        #expect(platformLabel(meta("", "web", "  Safari\ton iOS")) == "Safari")
+    @Test func aDefaultNameTakesTheEndOfTheIdOnlyWhenAnotherClientReadsTheSame() {
+        func client(_ id: String, _ name: String, _ platform: String, _ description: String, kind: PBDeviceKind = .client) -> DeviceView {
+            DeviceView(id: id, kind: kind, createdMs: 0, meta: meta(name, platform, description))
+        }
+        let a = client("aaaa1111", "", "ios", "iOS 27.0 · iPhone")
+        let b = client("bbbb2222", "", "ios", "iOS 26.4 · iPhone")
+        let pad = client("cccc3333", "", "ios", "iOS 27.0 · iPad")
+        let web = client("dddd4444", "", "web", "Safari on macOS")
+        var all = [a.id: a, pad.id: pad, web.id: web]
+        #expect(clientName(a, id: a.id, among: all) == "iPhone")
+        #expect(clientName(pad, id: pad.id, among: all) == "iPad")
+        #expect(clientName(web, id: web.id, among: all) == "Safari · macOS")
+        // A second iPhone: both say which they are.
+        all[b.id] = b
+        #expect(clientName(a, id: a.id, among: all) == "iPhone · 1111")
+        #expect(clientName(b, id: b.id, among: all) == "iPhone · 2222")
+        // The default names are what is compared: one given its own name still counts.
+        let named = client(b.id, "工作手机", "ios", "iOS 26.4 · iPhone")
+        all[b.id] = named
+        #expect(clientName(a, id: a.id, among: all) == "iPhone · 1111")
+        #expect(clientName(named, id: named.id, among: all) == "工作手机")
+        all.removeValue(forKey: b.id)
+        #expect(clientName(a, id: a.id, among: all) == "iPhone")
+        // Computers do not count.
+        all[b.id] = client(b.id, "", "ios", "iOS 26.4 · iPhone", kind: .machine)
+        #expect(clientName(a, id: a.id, among: all) == "iPhone")
+        // What the Android app writes: the system and the phone's name.
+        #expect(plainClientName(meta("", "android", "Android 16 · 小米 14")) == "Android · 小米 14")
+        #expect(plainClientName(meta("", "web", "Firefox")) == "Firefox")
+        #expect(plainClientName(meta("", "web", "")) == "浏览器")
+        #expect(plainClientName(meta("", "ios", "")) == "iOS")
+        #expect(plainClientName(nil) == "客户端")
     }
 
     @Test func clientsEqualInEverythingGoByIdWhateverOrderTheyComeIn() {

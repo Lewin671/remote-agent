@@ -93,11 +93,11 @@ struct SettingsScreen: View {
         GroupLabel("客户端")
         GroupCard {
             ClientRow(
-                client: state.devices[me], id: me, me: me, now: now,
+                client: state.devices[me], id: me, devices: state.devices, me: me, now: now,
                 authority: state.authorityDeviceId)
             for c in others {
                 ClientRow(
-                    client: c, id: c.id, me: me, now: now,
+                    client: c, id: c.id, devices: state.devices, me: me, now: now,
                     authority: state.authorityDeviceId)
             }
             GRow("全部客户端", chevron: true, action: true) { nav.open(.devices) }

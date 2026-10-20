@@ -32,7 +32,7 @@ struct DevicesScreen: View {
         .inputAlert(
             isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }),
             title: "客户端名称", initial: renaming?.meta?.name ?? "",
-            placeholder: renaming.map { defaultClientName($0, id: $0.id) } ?? "", text: "留空就用默认名称"
+            placeholder: renaming.map { defaultClientName($0, id: $0.id, among: state.devices) } ?? "", text: "留空就用默认名称"
         ) { [renaming] name in
             // The dialog stays until the name is stored, and says so when it is not.
             guard let id = renaming?.id else { return }
@@ -66,12 +66,12 @@ struct DevicesScreen: View {
             // Before the list is read this client is still here.
             if clients.isEmpty {
                 ClientRow(
-                    client: nil, id: me, me: me, now: now,
+                    client: nil, id: me, devices: state.devices, me: me, now: now,
                     authority: state.authorityDeviceId)
             }
             for c in clients {
                 ClientRow(
-                    client: c, id: c.id, me: me, now: now,
+                    client: c, id: c.id, devices: state.devices, me: me, now: now,
                     authority: state.authorityDeviceId,
                     onRename: online && c.id == me ? { renaming = c } : nil)
             }

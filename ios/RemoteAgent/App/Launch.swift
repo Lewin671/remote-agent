@@ -90,7 +90,6 @@
 //
 //   app.logout          退出账户, from anywhere
 //   app.open            goes to the route of `defaults write <bundle> debug.route <route>`, as a tap on a row would
-//   name.skip           跳过 of 给这个客户端起个名字, from any page
 //   join.cancel         the join flow
 //   removed.retry       再试一次 on the 已被移出账户 notice
 //   home.scope          chooses the scope -homeScopeTarget names

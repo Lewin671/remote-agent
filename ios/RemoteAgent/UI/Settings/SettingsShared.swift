@@ -193,6 +193,8 @@ struct MachineRow: View {
 struct ClientRow: View {
     let client: DeviceView?
     let id: String
+    /// The account's devices, which a default name is told apart in.
+    let devices: [String: DeviceView]
     let me: String
     let now: Int64
     var authority: String = ""
@@ -203,7 +205,7 @@ struct ClientRow: View {
         let mine = id == me
         let role = id == authority ? "管理端手机" : mine ? "当前客户端" : clientUsed(client, now: now)
         GRow(
-            clientName(client, id: id), sub: client.map { clientDetail($0) },
+            clientName(client, id: id, among: devices), sub: client.map { clientDetail($0) },
             value: role,
             chevron: true
         ) { nav.open(.client(id: id)) }

@@ -352,27 +352,46 @@ public func minutesLeft(deadlineMs: Int64, now: Int64 = nowMs()) -> Int64 { max(
 
 // --- devices and where actions came from ---
 
-private let spaces = Rx("\(Jre.space)+")
+/// A client's name: the one given in its sealed metadata, else its default
+/// (`defaultClientName`). `devices` is the account's list, which the default
+/// is told apart in.
+public func clientName(_ d: DeviceView?, id: String, among devices: [String: DeviceView]) -> String {
+    givenName(d).ifEmpty(defaultClientName(d, id: id, among: devices))
+}
 
-/// What kind of client, from what it says it runs on: Chrome, Safari, Android; a browser that says nothing is 浏览器.
-public func platformLabel(_ meta: PBDeviceMeta?) -> String {
-    let first = spaces.split((meta?.description_p ?? "").jvmTrim()).first ?? ""
-    if let unit = first.utf16.first, !isJvmDigit(unit) { return first }
+private func givenName(_ d: DeviceView?) -> String { (d?.meta?.name ?? "").jvmTrim() }
+
+/// The name a client has until the user gives it one, and again once they
+/// take theirs back: what it is and runs on, from what it says of itself
+/// (Chrome · macOS, Android · Pixel 9, iPhone). The end of its ID follows
+/// only when another client of the account has the same default name.
+public func defaultClientName(_ d: DeviceView?, id: String, among devices: [String: DeviceView]) -> String {
+    let base = plainClientName(d?.meta)
+    let twin = devices.values.contains { o in o.id != id && o.kind == .client && plainClientName(o.meta) == base }
+    return twin ? "\(base) · \(shortId(id))" : base
+}
+
+/// What a client is called by what it says it runs on: the browser and its
+/// system for a web client (「Chrome on macOS」), Android and the phone's
+/// model (「Android 16 · Pixel 9」), the kind of Apple device
+/// (「iOS 27.0 · iPhone」); its kind alone when it says nothing more.
+public func plainClientName(_ meta: PBDeviceMeta?) -> String {
+    let description = (meta?.description_p ?? "").jvmTrim()
+    // What follows the system's version.
+    let model = description.components(separatedBy: " · ").dropFirst().joined(separator: " · ").jvmTrim()
     switch meta?.platform {
-    case "android": return "Android"
-    case "ios": return "iOS"
-    case "web": return "浏览器"
-    default: return "客户端"
+    case "ios":
+        return model.ifEmpty("iOS")
+    case "android":
+        return model.isEmpty ? "Android" : "Android · \(model)"
+    case "web":
+        let words = description.components(separatedBy: " on ").map { $0.jvmTrim() }
+        let browser = words[0]
+        return browser.isEmpty ? "浏览器" : ([browser] + words.dropFirst().prefix(1).filter { !$0.isEmpty }).joined(separator: " · ")
+    default:
+        return "客户端"
     }
 }
-
-/// A client's name: the one given in its sealed metadata, else its kind and the end of its ID (Chrome · a8f2).
-public func clientName(_ d: DeviceView?, id: String) -> String {
-    (d?.meta?.name ?? "").jvmTrim().ifEmpty(defaultClientName(d, id: id))
-}
-
-/// The name a client has until the user gives it one, and again once they take theirs back.
-public func defaultClientName(_ d: DeviceView?, id: String) -> String { "\(platformLabel(d?.meta)) · \(shortId(id))" }
 
 /// What a client is, under its name in the list: an app or a browser, and what it says it runs on.
 public func clientDetail(_ d: DeviceView?) -> String {
@@ -443,7 +462,7 @@ public func originLabel(_ o: PBOrigin?, state: RemoteState, me: String, machine:
         if o.deviceID == me { return nil }
         // Before the device list is read nothing is known of who it was.
         if o.deviceID.isEmpty || state.devices.isEmpty { return "另一客户端" }
-        if let d = state.devices[o.deviceID] { return clientName(d, id: o.deviceID) }
+        if let d = state.devices[o.deviceID] { return clientName(d, id: o.deviceID, among: state.devices) }
         return "已移除的设备"
     case .local: return terminalLabel(machine)
     default: return nil
