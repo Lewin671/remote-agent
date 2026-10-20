@@ -596,20 +596,20 @@ export function SessionPage({
           <ActionSheet
             info={
               <>
-                {agentLabel} · {project} · {mname}
-                <br />
+                <b>
+                  {agentLabel} · {project} · {mname}
+                </b>
                 <span className="mono">
                   {shortPath(session.info?.cwd ?? "")}
                 </span>
-                <br />
-                会话 <span className="mono">{sid}</span>
               </>
             }
             actions={[
               ...(!inactive && mode
                 ? [
                     {
-                      label: `审批模式：${mode.text}`,
+                      label: "审批模式",
+                      value: mode.text,
                       red: mode.text === "完全放行",
                       onClick: () => setSheet("mode"),
                     },
@@ -618,7 +618,8 @@ export function SessionPage({
               ...(!inactive
                 ? [
                     {
-                      label: model ? `模型：${model}` : "会话设置",
+                      label: model ? "模型" : "会话设置",
+                      value: model,
                       onClick: () => setSheet("model"),
                     },
                   ]
@@ -626,7 +627,8 @@ export function SessionPage({
               ...(!inactive && pct !== undefined
                 ? [
                     {
-                      label: `上下文：${pct}%`,
+                      label: "上下文",
+                      value: `${pct}%`,
                       warn: high,
                       onClick: () => setSheet("model"),
                     },

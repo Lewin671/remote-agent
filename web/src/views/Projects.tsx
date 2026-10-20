@@ -222,7 +222,6 @@ export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: G
           info={
             <>
               <b>{menu.name}</b>
-              <br />
               <span className="mono">{shortPath(menu.key)}</span>
             </>
           }

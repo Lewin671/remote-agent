@@ -531,21 +531,18 @@ pre.cmd { background: var(--soft); color: var(--fg2); border-radius: var(--r-xs)
 .alert h5 { margin: 0 0 6px; font-size: 17px; }
 .alert p { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
 .alert.rename .field { margin: 12px 0 8px; }
-.actsheet { position: absolute; left: 8px; right: 8px; bottom: max(20px, env(safe-area-inset-bottom)); }
-@media (min-width: 900px) { .actsheet { left: auto; right: 16px; bottom: auto; top: 56px; width: 320px; } }
-.actsheet .grp2 { background: var(--card); border-radius: var(--r-md); overflow: hidden; margin-top: 8px; }
-.actsheet .ai2 { min-height: 50px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: var(--blue); border-top: 1px solid var(--line); width: 100%; }
-.actsheet .ai2:first-child { border: none; }
-.actsheet .info + .ai2 { border-top: 1px solid var(--line); }
-.actsheet .ai2.red { color: var(--red); } .actsheet .ai2.warn { color: var(--orange-ink); }
-.actsheet .ai2.cancel { font-weight: var(--w6); }
-.actsheet .ai2.two { flex-direction: column; gap: 1px; padding: 6px 14px; }
-.actsheet .ai2.two small { font-size: 12px; color: var(--muted); }
-.actsheet .ai2.two small.err { color: var(--red); }
-.actsheet .ai2.dis > span, .actsheet .ai2.dis:not(.two) { opacity: .4; }
-.actsheet .ai2.busy { color: var(--muted); gap: 6px; }
-.actsheet .info { padding: 10px 14px; font-size: 12px; color: var(--muted); text-align: center; word-break: break-all; }
-.actsheet .info .mono { color: var(--fg2); }
+/* ⋯ menus: a list sheet, as the project picker. */
+.menu-info { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; overflow-wrap: anywhere; }
+.menu-info b { display: block; font-size: 15px; font-weight: var(--w6); color: var(--fg); }
+.menu-info .mono { color: var(--fg2); }
+.menu .list .mi { text-align: left; }
+.menu .list .mi.danger { color: var(--red); }
+.menu .list .mi .md.err { color: var(--red); }
+.menu .list .mi.busy { color: var(--muted); }
+.menu .list .mi .mv { margin-left: auto; color: var(--fg2); font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+.menu .list .mi .mv.red { color: var(--red); }
+.menu .list .mi .mv.warn-text { color: var(--orange-ink); }
+.menu .list .mi .chev { color: var(--faint); font-size: 16px; flex: none; margin-left: -4px; }
 
 /* ---------- banners ---------- */
 .banner { background: var(--soft); border-radius: var(--r-sm); padding: 4px 4px 4px 12px; font-size: 13px; color: var(--fg2); display: flex; gap: 8px; align-items: center; min-height: 38px; }

@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { avatarClass, type Tone } from "./model";
 import type { Remote } from "./remote";
-import { ChevronDown, ChevronLeft, ChevronUp, CloudOff, LoaderCircle, WifiOff, X } from "./icons";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CloudOff, LoaderCircle, WifiOff, X } from "./icons";
 
 export function useRemote(remote: Remote) {
   useSyncExternalStore(remote.subscribe, remote.snapshot);
@@ -96,6 +96,10 @@ export function Alert({
 
 export interface Action {
   label: string;
+  /** What it is now, at the row's end with a ›: a setting that opens
+   * where it is changed (模型 …… GPT-6 ›). */
+  value?: string;
+  /** The value in red (完全放行), or orange (a high context). */
   red?: boolean;
   warn?: boolean;
   onClick: () => void;
@@ -110,38 +114,41 @@ export interface Action {
   keep?: boolean;
 }
 
-/** An iOS-style action sheet: an info line, actions, and 取消. */
+/** A ⋯ menu: a sheet with what it is about at the top and one
+ * left-aligned row per action, drawn as the project picker is
+ * (design-system §6 弹层与对话框). A row with a value reads
+ * 「名称 …… 值 ›」; red marks an action that stops or ends something. */
 export function ActionSheet({ info, actions, onClose }: { info?: ReactNode; actions: Action[]; onClose: () => void }) {
-  useEscape(onClose);
   return (
-    <div className="overlay">
-      <div className="dim" onClick={onClose} />
-      <div className="actsheet" role="menu">
-        <div className="grp2">
-          {info && <div className="info">{info}</div>}
-          {actions.map((a) => (
-            <button
-              key={a.label}
-              className={"ai2" + (a.red ? " red" : a.warn ? " warn" : "") + (a.note ? " two" : "") + (a.disabled ? " dis" : "") + (a.busy ? " busy" : "")}
-              disabled={a.disabled || a.busy}
-              onClick={() => {
-                if (!a.keep) onClose();
-                a.onClick();
-              }}
-            >
-              {a.busy && <LoaderCircle />}
-              {a.note ? <span>{a.label}</span> : a.label}
-              {a.note && <small className={a.noteRed ? "err" : ""}>{a.note}</small>}
-            </button>
-          ))}
-        </div>
-        <div className="grp2">
-          <button className="ai2 cancel" onClick={onClose}>
-            取消
+    <Sheet onClose={onClose} className="menu">
+      {info && <div className="menu-info">{info}</div>}
+      <div className="list" role="menu">
+        {actions.map((a) => (
+          <button
+            key={a.label}
+            role="menuitem"
+            className={"mi" + (a.red && a.value === undefined ? " danger" : "") + (a.disabled ? " dis" : "") + (a.busy ? " busy" : "")}
+            disabled={a.disabled || a.busy}
+            onClick={() => {
+              if (!a.keep) onClose();
+              a.onClick();
+            }}
+          >
+            {a.busy && <LoaderCircle />}
+            <div className="mt">
+              {a.label}
+              {a.note && <div className={"md" + (a.noteRed ? " err" : "")}>{a.note}</div>}
+            </div>
+            {a.value !== undefined && (
+              <>
+                <span className={"mv" + (a.red ? " red" : a.warn ? " warn-text" : "")}>{a.value}</span>
+                <ChevronRight className="chev" />
+              </>
+            )}
           </button>
-        </div>
+        ))}
       </div>
-    </div>
+    </Sheet>
   );
 }
 

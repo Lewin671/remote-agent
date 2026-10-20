@@ -95,7 +95,7 @@ it("keeps the context warning and the settings behind ⋯ on a narrow phone", as
     expect(host.querySelector(".more.context-high")?.getAttribute("aria-label")).toContain("上下文 86%");
     expect(host.querySelector(".cm-plus")?.getAttribute("aria-label")).toBe("添加图片");
     expect(host.querySelector('button[aria-label="发送"]')).toBeTruthy();
-    await fromMenu("上下文：86%");
+    await fromMenu("上下文86%");
     expect(host.textContent).toContain("会话设置");
   } finally {
     act(() => viewport.setViewport({ width: 1024, height: 768 }));
@@ -2277,8 +2277,16 @@ describe("the client-v7 conversation", () => {
     expect(host.querySelector(".compose-card .access-warning")).toBeNull();
     expect(host.querySelector(".navbar .title")?.textContent).toContain("完全放行");
     await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
-    expect(host.querySelector(".actsheet .ai2.red")!.textContent).toBe("审批模式：完全放行");
-    expect(host.querySelector(".actsheet")!.textContent).toContain("模型：");
+    // A list sheet: settings read 「名称 …… 值 ›」, with no session ID and no 取消 card.
+    const rows = [...host.querySelectorAll(".menu .mi")];
+    const mode = rows.find((x) => x.querySelector(".mt")?.textContent === "审批模式")!;
+    expect(mode.querySelector(".mv.red")!.textContent).toBe("完全放行");
+    expect(mode.querySelector(".chev")).toBeTruthy();
+    expect(rows.find((x) => x.querySelector(".mt")?.textContent === "模型")?.querySelector(".mv")?.textContent).toBeTruthy();
+    expect(host.querySelector(".menu-info")!.textContent).not.toContain("会话");
+    expect(host.querySelector(".menu")!.textContent).not.toContain(s.id);
+    expect(button("取消", host.querySelector(".menu")!)).toBeUndefined();
+    expect(rows.find((x) => x.textContent === "结束会话…")?.classList.contains("danger")).toBe(true);
   });
 
   it("starts sessions only with a first message, and keeps the project head in place while typing", async () => {
@@ -2433,7 +2441,7 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
 
 it("sends a fork whose answer was lost again as the same request, and gives it up only once it expired", async () => {
   const r = demo();
-  const row = () => [...host.querySelectorAll<HTMLButtonElement>(".actsheet .ai2")].find((b) => /分叉/.test(b.textContent ?? ""))!;
+  const row = () => [...host.querySelectorAll<HTMLButtonElement>(".menu .mi")].find((b) => /分叉/.test(b.textContent ?? ""))!;
   const s = r.sessions.get("s-idle")!;
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
@@ -2447,7 +2455,7 @@ it("sends a fork whose answer was lost again as the same request, and gives it u
   expect(slot).toBeTruthy();
 
   // Closing the menu and opening it again does not forget it.
-  await click(button("取消")!);
+  await click(host.querySelector<HTMLElement>(".overlay .dim")!);
   await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
   expect(row().textContent).toContain("上次的分叉结果不确定");
 
@@ -2476,7 +2484,7 @@ it("keeps the route opened after a fork was sent when its reply arrives after un
   vi.spyOn(r, "command").mockImplementationOnce(() => new Promise((resolve) => { reply = resolve; }));
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   await fromMenu("分叉会话");
-  await click(button("取消"));
+  await click(host.querySelector<HTMLElement>(".overlay .dim")!);
   act(() => root?.unmount());
   root = undefined;
   location.hash = "#/devices";
@@ -2493,7 +2501,7 @@ it("keeps the route opened after a fork was sent when its reply arrives after un
 
 it("forks a session from ⋯: says why it cannot yet, reports a failure in the menu, and opens the fork", async () => {
   const r = demo();
-  const row = () => [...host.querySelectorAll<HTMLButtonElement>(".actsheet .ai2")].find((b) => /分叉/.test(b.textContent ?? ""))!;
+  const row = () => [...host.querySelectorAll<HTMLButtonElement>(".menu .mi")].find((b) => /分叉/.test(b.textContent ?? ""))!;
 
   // A running session shows the item grayed out, with when it will work.
   mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
@@ -2530,7 +2538,7 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   // complete UI outcome is committed before either assertion.
   await act(async () => { forkGate.release(); await reply; });
   expect(location.hash).toMatch(/^#\/s\/s-fork-/);
-  expect(host.querySelector(".actsheet")).toBeNull();
+  expect(host.querySelector(".menu")).toBeNull();
 
   // The fork carries the conversation and says where it came from.
   const id = decodeURIComponent(location.hash.slice(4));
