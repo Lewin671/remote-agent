@@ -170,7 +170,7 @@ fun DevicesScreen() {
                         .clickable { nav.pair() },
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    IconText(Lucide.Plus, "添加电脑或客户端", p.blue, T.body)
+                    IconText(Lucide.Plus, "添加设备", p.blue, T.body)
                 }
             else
                 Hint(

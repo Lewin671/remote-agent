@@ -28,7 +28,8 @@ class AddDeviceEntryTest {
         )
     private var paired = 0
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, { paired++ }, { _, _ -> }, {}, {}, {})
-    private val empty = RemoteState(conn = ConnState.ONLINE, loaded = true)
+    // Offline: the devices page refreshes from the server when online, which this test has none of.
+    private val empty = RemoteState(conn = ConnState.OFFLINE, loaded = true)
     private val withMachine = empty.copy(machines = mapOf(machine to MachineView(machine, true, 0)))
 
     @After
@@ -86,6 +87,15 @@ class AddDeviceEntryTest {
         show(empty) { EmptyAccount(it) }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
         ui.onNodeWithText(NO_MACHINES_HINT).assertExists()
+    }
+
+    @Test
+    fun devicesPageNamesItsEntryAsSettingsDoes() {
+        show(withMachine.copy(authorityPhone = true)) { DevicesScreen() }
+        ui.onNodeWithText("添加电脑或客户端").assertDoesNotExist()
+        ui.onNodeWithText("添加设备").performScrollTo().performClick()
+        assertEquals(1, paired)
+        ui.onNodeWithText(ADD_DEVICE_HINT).assertDoesNotExist()
     }
 
     @Test
