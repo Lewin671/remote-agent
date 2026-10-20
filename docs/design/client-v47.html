@@ -959,7 +959,7 @@
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v46 的改动</h4><ul><li>停靠区：进会话时要你处理的事默认展开，「收起」后按事项记住，新的一项又默认展开；展开后只有一行头部，内容区最高约占会话内容区的 60%（至少 240），计划正文不再单独限高。</li><li>审批先给命令再给说明；停靠区里的命令不单独限高；首页审批卡的命令最多 6 整行，多出来的「还有 N 行 · 展开」就地展开。</li><li>宽屏审批和计划的按钮行最宽 480，靠左。</li><li>网页和 iOS 没有添加设备页和入口，设置、设备页和空状态改成一句说明；加入页的说明按实际流程写，网页只说输入配对码。</li></ul>
+  <h4>相对 v46 的改动</h4><ul><li>停靠区：进会话时要你处理的事默认展开，「收起」后按事项记住，新的一项又默认展开；展开后只有一行头部，内容区最高约占会话内容区的 60%（至少 240），计划正文不再单独限高。</li><li>审批先给命令再给说明；停靠区里的命令不单独限高；首页审批卡的命令最多 6 整行，多出来的「还有 N 行 · 展开」就地展开。</li><li>宽屏审批和计划的按钮行最宽 480，靠左。</li><li>网页和 iOS 没有添加设备页和入口，设置、设备页和空状态改成一句说明；加入页的说明按实际流程写，网页只说输入配对码；配对说明里称呼对方一律写「管理端手机」。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
@@ -2425,7 +2425,7 @@ git status --short gen/</pre>
       <div class="muted small" style="margin:4px 0 10px">MacBook 在线，可以直接开始</div>
       <div class="btns"><div class="btn pri">开始第一个会话</div></div>
     </div>
-    <div class="st-c">没有在线电脑时改写：在电脑上运行 <code>remote-agent daemon</code>；还没加电脑时，网页和 iOS 只写一句「还没有电脑。在手机 App 的「设置 › 添加设备」里把电脑加进来。」，不放按钮；Android 手机给「添加设备」按钮</div>
+    <div class="st-c">没有在线电脑时改写：在电脑上运行 <code>remote-agent daemon</code>；还没加电脑时，网页和 iOS 只写一句「还没有电脑。在管理端手机上打开「设置 › 添加设备」，把电脑加进来。」，不放按钮；Android 手机给「添加设备」按钮</div>
   </div>
 
   <div class="st">
@@ -3653,7 +3653,7 @@ git status --short gen/</pre>
 <div class="row client"><span class="client-info">客户端 · 92de<small>种类未知</small></span><span class="v">2025年12月1日添加<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
 </div>
 </div>
-<div class="manage-hint">右边是上次使用的时间。这里只能改本机名称。要添加电脑或客户端，在手机 App 的「设置 › 添加设备」里操作。</div>
+<div class="manage-hint">右边是上次使用的时间。这里只能改本机名称。要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。</div>
 </div>
 </div>
 <div class="cap">设备分组：电脑是执行位置，客户端是控制入口。客户端第二行写种类和系统，右边写上次使用的时间，按它从近到远排；还没有使用记录的写添加日期，排在最后。上次使用不表示现在正在查看。这是网页的设备页：网页和 iOS 不能添加或移除设备，底下只有一句说明；Android 管理端手机在这里是「＋ 添加电脑或客户端」，点进去移除</div>
@@ -3939,13 +3939,13 @@ git status --short gen/</pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
         <div class="large" style="padding-top:24px"><h3>加入账户</h3></div>
-        <p class="muted small" style="margin:6px 16px 16px">在已加入的手机 App 里打开「设置 › 添加设备」，把显示的 8 位配对码填在这里。</p>
+        <p class="muted small" style="margin:6px 16px 16px">在管理端手机上打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。</p>
         <div class="field code-in">4829 1756</div>
         <div class="field"><small>服务器</small><span style="color:var(--fg)">https://ra.remote-agent.top</span></div>
         <div class="big"><div class="btn pri">加入</div></div>
       </div>
     </div>
-    <div class="cap">新设备第一次打开（网页）：网页不能扫码，说明只说输入配对码。Android 和 iOS 的这一句是「在已加入的手机 App 里打开「设置 › 添加设备」，扫显示的二维码，或把 8 位配对码填在这里。」，扫码后码和服务器已填好</div>
+    <div class="cap">新设备第一次打开（网页）：网页不能扫码，说明只说输入配对码。Android 和 iOS 的这一句是「在管理端手机上打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。」，扫码后码和服务器已填好</div>
   </div>
 
   <div>
@@ -3954,9 +3954,9 @@ git status --short gen/</pre>
       <div class="body">
         <div class="navbar"><span class="title"><b>核对图案</b></span><a href="#pair-entry" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;text-decoration:none">取消</a></div>
         <div class="emoji" style="margin-top:40px;font-size:40px">🦊 🌵 🚲 🎈</div>
-        <p class="muted center-text small" style="margin:0 24px">核对另一台设备的 4 个图案；一致后先在本机确认，再在管理端手机上允许。<div class="big"><div class="btn pri">图案一致，信任并继续</div></div></p>
+        <p class="muted center-text small" style="margin:0 24px">核对管理端手机上的 4 个图案；一致后先在本机确认，再在管理端手机上允许。<div class="big"><div class="btn pri">图案一致，信任并继续</div></div></p>
         <p class="muted center-text small" style="margin-top:24px"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 请先在本机确认图案</p>
-        <div class="pair-wait-actions"><a class="btn" href="#pair-entry" style="text-decoration:none">图案不一致，返回填码</a><div class="hint">返回后停止这次等待；请让另一台设备拒绝旧请求，再生成新的配对码。</div></div>
+        <div class="pair-wait-actions"><a class="btn" href="#pair-entry" style="text-decoration:none">图案不一致，返回填码</a><div class="hint">返回后停止这次等待；请在管理端手机上拒绝旧请求，再生成新的配对码。</div></div>
       </div>
     </div>
     <div class="cap">新设备先本机确认，再等待对方允许；确认后禁用返回，避免误报取消；「取消」或「图案不一致，返回填码」回到填码页，保留服务器地址、清空旧码；被拒绝、过期、网络失败见下方状态</div>
@@ -3966,7 +3966,7 @@ git status --short gen/</pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
         <div class="large" style="padding-top:24px"><h3>加入账户</h3></div>
-        <div class="pad"><div class="banner">已停止等待这次配对</div><div class="hint">请让另一台设备拒绝旧请求，并生成新的配对码。</div></div>
+        <div class="pad"><div class="banner">已停止等待这次配对</div><div class="hint">请在管理端手机上拒绝旧请求，再生成新的配对码。</div></div>
         <div class="field"><small>配对码</small><span class="muted">输入新的 8 位配对码</span></div>
         <div class="field"><small>服务器</small><span style="color:var(--fg)">https://ra.remote-agent.top</span></div>
         <div class="big"><div class="btn" aria-disabled="true" style="color:var(--muted)">加入</div></div>
@@ -4011,7 +4011,7 @@ git status --short gen/</pre>
     </div>
   </div>
   <div class="st">
-    <div class="st-h">配对 · 已有设备这边</div>
+    <div class="st-h">配对 · 管理端手机这边</div>
     <div class="banner"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 正在把密钥交给新电脑…</div>
     <div class="banner" style="margin-top:8px"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg> 新电脑已加入<b>完成</b></div>
     <div class="banner err" style="margin-top:8px">配对码过期了<b>换一个</b></div>
@@ -4228,7 +4228,7 @@ git status --short gen/</pre>
     </div>
     <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
   </div>
-  <div class="dm gray" style="background:var(--soft);overflow:auto"><div style="max-width:672px;margin:0 auto;padding-top:12px"><div class="large"><h3>设置</h3></div><div class="glabel">电脑</div><div class="grp"><div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><div class="machine-info"><div class="machine-name">MacBook<span class="machine-status"><span class="dot idle"></span>在线</span></div><div class="machine-quota">Codex · 7 天已用 34%</div></div><span class="machine-chevron"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="manage-hint">要添加电脑或客户端，在手机 App 的「设置 › 添加设备」里操作。</div><div class="glabel">客户端</div><div class="grp"><div class="row">Chrome · 8a5f<span class="v">当前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">Pixel 9<span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">外观</div><div class="grp"><div class="row">主题<div class="pick"><span class="on">自动</span><span>亮色</span><span>暗色</span></div></div></div><div class="glabel">版本</div><div class="grp"><div class="row">remote-agent<span class="v">示例版本</span></div></div></div></div>
+  <div class="dm gray" style="background:var(--soft);overflow:auto"><div style="max-width:672px;margin:0 auto;padding-top:12px"><div class="large"><h3>设置</h3></div><div class="glabel">电脑</div><div class="grp"><div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><div class="machine-info"><div class="machine-name">MacBook<span class="machine-status"><span class="dot idle"></span>在线</span></div><div class="machine-quota">Codex · 7 天已用 34%</div></div><span class="machine-chevron"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="manage-hint">要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。</div><div class="glabel">客户端</div><div class="grp"><div class="row">Chrome · 8a5f<span class="v">当前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">Pixel 9<span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">外观</div><div class="grp"><div class="row">主题<div class="pick"><span class="on">自动</span><span>亮色</span><span>暗色</span></div></div></div><div class="glabel">版本</div><div class="grp"><div class="row">remote-agent<span class="v">示例版本</span></div></div></div></div>
 </div></div>
 <div class="cap" style="width:auto;text-align:left">宽屏设置：设置、电脑详情和额度页的内容限制在约 640 宽的居中一列，不随窗口拉满；Android 在平板和横屏上同样处理。网页没有「添加设备」，电脑一组下面只有一句说明。</div>
 <div class="note">

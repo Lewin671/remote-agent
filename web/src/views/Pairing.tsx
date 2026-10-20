@@ -11,9 +11,9 @@ const spaced = (code: string) => `${code.slice(0, 4)} ${code.slice(4)}`;
 /** How this browser joins: the phone that has joined shows a code, and it
  * is typed in here. A browser cannot scan, so the QR code goes unmentioned.
  * The path is the Android app's; the wording matches the other clients'. */
-export const joinLead = "在已加入的手机 App 里打开「设置 › 添加设备」，把显示的 8 位配对码填在这里。";
+export const joinLead = "在管理端手机上打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。";
 export const joinExistingLead =
-  "原设备身份、密钥和历史保留。在手机 App 里打开「设置 › 添加设备」，把显示的 8 位配对码填在这里，再核对四个图案完成绑定。";
+  "原设备身份、密钥和历史保留。在管理端手机上打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对四个图案完成绑定。";
 
 const defaultServer = () =>
   localStorage.getItem("ra-server") ||
@@ -30,13 +30,13 @@ export function joinBanner(e: unknown): {
   if (/security: clock/.test(text))
     return {
       kind: "warn",
-      text: "本机时间比手机慢，操作会被拒绝。请校准系统时间和时区后再加入。",
+      text: "本机时间比管理端手机慢，操作会被拒绝。请校准系统时间和时区后再加入。",
       action: "重试",
     };
   if (e instanceof Error && /security chain is too large/.test(e.message))
     return {
       kind: "err",
-      text: "账户的状态链太长，无法加入；请在手机上重建账户。",
+      text: "账户的状态链太长，无法加入；请在管理端手机上重建账户。",
       action: "",
     };
   // The relay or the device that made the code is of another release.
@@ -63,7 +63,7 @@ export function joinBanner(e: unknown): {
   if (e instanceof ConnectError && e.code === Code.ResourceExhausted)
     return { kind: "err", text: "试得太多了，等一分钟再试", action: "重填" };
   if (/过期.*取消|取消.*过期/.test(text))
-    return { kind: "err", text: "这次配对已失效，请在手机上重新生成配对码", action: "重填" };
+    return { kind: "err", text: "这次配对已失效，请在管理端手机上重新生成配对码", action: "重填" };
   if (/取消/.test(text))
     return { kind: "err", text: "对方拒绝了这次加入", action: "重新开始" };
   if (/过期/.test(text))
@@ -168,7 +168,7 @@ export function Setup({
     setCode("");
     setError({
       kind: "warn",
-      text: "已停止这次等待。请在另一台设备上拒绝旧请求，再生成新的配对码。",
+      text: "已停止这次等待。请在管理端手机上拒绝旧请求，再生成新的配对码。",
       action: "",
     });
     if (location.hash.startsWith("#/pair?")) location.hash = "";
@@ -207,7 +207,7 @@ export function Setup({
         </div>
         <div className="emoji big">{emoji.join(" ")}</div>
         <p className="muted center-text small">
-          核对另一台设备的 4 个图案；一致后先在本机确认，再在手机上允许。
+          核对管理端手机上的 4 个图案；一致后先在本机确认，再在管理端手机上允许。
         </p>
         {comparisonPending && (
           <button
@@ -228,7 +228,7 @@ export function Setup({
           {comparisonPending
             ? "请先在本机确认图案"
             : registering
-              ? "本机已确认，等待手机批准并完成绑定…"
+              ? "本机已确认，等待管理端手机批准并完成绑定…"
               : "等待核对…"}
         </p>
         <div className="pair-wait-actions">
@@ -236,7 +236,7 @@ export function Setup({
             图案不一致，返回填码
           </button>
           <p className="muted center-text small">
-            返回后停止这次等待；请让另一台设备拒绝旧请求，再生成新的配对码。
+            返回后停止这次等待；请在管理端手机上拒绝旧请求，再生成新的配对码。
           </p>
         </div>
       </div>

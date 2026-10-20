@@ -2980,7 +2980,7 @@ class Remote(
                     if (serverAhead || security.clockSkew)
                         throw CommandException("failed_precondition", "手机时钟比服务器快，远程控制暂停；请校准系统时间")
                     if (!Authority.leaseValid(security.record(), clock()))
-                        throw CommandException("failed_precondition", "远程控制已暂停：打开手机 App 上续期后再试")
+                        throw CommandException("failed_precondition", "远程控制已暂停：在管理端手机上续期后再试")
                     security.seal(
                         DeviceSecurity.Purpose.COMMAND,
                         p.machineId,
@@ -3177,7 +3177,7 @@ class Remote(
         syncSecurity()
         val head = security.head()
         if (head.core.authorityID != account.deviceId)
-            throw CommandException("failed_precondition", "请在手机 App 上删除设备")
+            throw CommandException("failed_precondition", "请在管理端手机上删除设备")
         if (deviceId == head.core.authorityID)
             throw CommandException("failed_precondition", "管理端手机不能被普通删除")
         if (head.core.member(deviceId) == null) return

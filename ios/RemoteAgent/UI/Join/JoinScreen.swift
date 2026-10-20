@@ -47,7 +47,7 @@ struct JoinFlow: View {
                         if model.retainedIdentity {
                             JoinText(
                                 text:
-                                    "原设备身份、密钥和历史保留。在已加入的手机 App 里打开「设置 › 添加设备」，扫码或填码后核对四个图案完成绑定。日常使用不需要重复设置。"
+                                    "原设备身份、密钥和历史保留。在管理端手机上打开「设置 › 添加设备」，扫码或填配对码后核对四个图案完成绑定。日常使用不需要重复设置。"
                             )
                         }
                         if model.noticeIsError, let discard { SetupDiscardButton(discard: discard) }
@@ -120,7 +120,7 @@ private struct JoinForm: View {
 
     var body: some View {
         JoinTitle(text: model.retainedIdentity ? "一次性安全设置" : "加入账户")
-        JoinText(text: "在已加入的手机 App 里打开「设置 › 添加设备」，扫显示的二维码，或把 8 位配对码填在这里。")
+        JoinText(text: "在管理端手机上打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。")
         JoinNotice(model: model)
         InputField(
             text: $typed, placeholder: "输入 8 位配对码", look: .code, keyboard: .numberPad,
@@ -193,7 +193,7 @@ private struct Compare: View {
         .padding(.top, 40).padding(.bottom, 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("4 个图案：" + emoji.joined(separator: "，"))
-        Text("核对手机 App 上的 4 个图案；一致后先在本机确认，再在手机 App 上允许。")
+        Text("核对管理端手机上的 4 个图案；一致后先在本机确认，再在管理端手机上允许。")
             .type(T.sm, Theme.muted).multilineTextAlignment(.center)
             .frame(maxWidth: .infinity).padding(.horizontal, 24)
         if model.comparisonPending {
@@ -201,7 +201,7 @@ private struct Compare: View {
                 .horizontal, 16
             ).padding(.top, 16)
         }
-        IconText(Lucide.loaderCircle, model.comparisonPending ? "请先在本机确认图案" : "等待手机批准并完成绑定…")
+        IconText(Lucide.loaderCircle, model.comparisonPending ? "请先在本机确认图案" : "等待管理端手机批准并完成绑定…")
             .frame(maxWidth: .infinity).padding(.top, 24)
         if !model.notice.isEmpty {
             // Registering has begun: the join can no longer be left.
@@ -209,7 +209,7 @@ private struct Compare: View {
         }
         VStack(spacing: 0) {
             Btn("图案不一致，返回填码", action: model.cancel).disabled(!model.canCancel)
-            Hint("返回后停止这次等待；请在手机 App 上拒绝旧请求，再生成新的配对码。")
+            Hint("返回后停止这次等待；请在管理端手机上拒绝旧请求，再生成新的配对码。")
         }
         .padding(.init(top: 24, leading: 16, bottom: 16, trailing: 16))
     }

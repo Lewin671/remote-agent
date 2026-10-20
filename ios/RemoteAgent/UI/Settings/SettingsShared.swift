@@ -43,11 +43,11 @@ struct SettingsPage<Content: View>: View {
 /// The grey explanation under a group (design-system §1, level three): 13
 /// muted, in line with the group's label. Orange or red only when it warns
 /// of something the rows above cannot say.
-/// Where devices are added: only the phone app adds and removes them (architecture §9 「配对」), so
+/// Where devices are added: only the admin phone (管理端手机) adds and removes them (architecture §9 「配对」), so
 /// this client has no page for it, only these words, the same wherever it says so.
-let addDeviceHint = "要添加电脑或客户端，在手机 App 的「设置 › 添加设备」里操作。"
+let addDeviceHint = "要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。"
 /// An account with no computer, on the home page and in 设置.
-let noMachinesHint = "还没有电脑。在手机 App 的「设置 › 添加设备」里把电脑加进来。"
+let noMachinesHint = "还没有电脑。在管理端手机上打开「设置 › 添加设备」，把电脑加进来。"
 
 struct GroupNote: View {
     private let text: String
@@ -201,7 +201,7 @@ struct ClientRow: View {
 
     var body: some View {
         let mine = id == me
-        let role = id == authority ? "管理手机" : mine ? "当前客户端" : clientUsed(client, now: now)
+        let role = id == authority ? "管理端手机" : mine ? "当前客户端" : clientUsed(client, now: now)
         GRow(
             clientName(client, id: id), sub: client.map { clientDetail($0) },
             value: role,
@@ -215,8 +215,8 @@ struct ClientRow: View {
 }
 
 enum DeviceNotes {
-    /// This client is a normal member: only the phone app manages the domain.
-    static let phoneOnly = "添加和移除设备只能在手机 App 上进行。电脑、网页和 iOS 只作为普通成员加入账户。"
+    /// This client is a normal member: only the admin phone manages the domain.
+    static let phoneOnly = "添加和移除设备只能在管理端手机上进行。电脑、网页和 iOS 只作为普通成员加入账户。"
 }
 
 extension View {

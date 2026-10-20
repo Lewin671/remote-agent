@@ -195,7 +195,7 @@ final class FakeJoin: @unchecked Sendable {
         #expect(
             m.step == .form && m.code.isEmpty && m.server == "https://ra.example.com" && !m.canJoin)
         // It says what this device did, and that the other one still holds the request.
-        #expect(m.notice == "已取消本次加入。旧请求可能还占着配对码：请在手机 App 上拒绝它，再生成新码")
+        #expect(m.notice == "已取消本次加入。旧请求可能还占着配对码：请在管理端手机上拒绝它，再生成新的配对码")
         #expect(!m.noticeIsError)
         // The pairing ending because it was stopped changes nothing on the page.
         p.end.resume(throwing: PairError("已取消"))
@@ -253,7 +253,7 @@ final class FakeJoin: @unchecked Sendable {
         await eventually("failed") { m.step == .form }
         #expect(
             m.notice.hasPrefix("不确定") && m.notice.contains("有没有加入")
-                && m.notice.hasSuffix("可以在手机 App 的设置里看看客户端列表"))
+                && m.notice.hasSuffix("可以在管理端手机的设置里看看客户端列表"))
         #expect(m.noticeIsError)
     }
 
@@ -285,7 +285,7 @@ final class FakeJoin: @unchecked Sendable {
             m.secret = value
             m.joinWithSecret()
             #expect(m.step == .form && m.noticeIsError && m.secret.isEmpty)
-            #expect(m.notice.contains("在手机 App 上批准"))
+            #expect(m.notice.contains("在管理端手机上批准"))
             #expect(fake.secrets.isEmpty && joined.accounts.isEmpty)
         }
     }

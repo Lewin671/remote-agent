@@ -130,7 +130,7 @@ export function Settings({
         {machines.length === 0 && <div className="row help">还没有电脑。</div>}
       </div>
       {/* Only the Android phone adds devices (protocol 10): this says where. */}
-      <div className="manage-hint">要添加电脑或客户端，在手机 App 的「设置 › 添加设备」里操作。</div>
+      <div className="manage-hint">要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。</div>
       <div className="glabel">客户端</div>
       <div className="grp">
         <button className="row" onClick={() => go("c/" + me)}>
@@ -513,7 +513,7 @@ export function DevicesPage({
                   ) : (
                     <>
                       {d.id === remote.authorityDeviceId
-                        ? "管理手机"
+                        ? "管理端手机"
                         : clientUsed(d)}
                       <ChevronRight />
                     </>
@@ -524,7 +524,7 @@ export function DevicesPage({
           )}
         </div>
         <div className="manage-hint">
-          右边是上次使用的时间。这里只能改本机名称。要添加电脑或客户端，在手机 App 的「设置 › 添加设备」里操作。
+          右边是上次使用的时间。这里只能改本机名称。要添加电脑或客户端，在管理端手机上打开「设置 › 添加设备」。
         </div>
       </div>
     </div>
@@ -573,7 +573,7 @@ export function ClientPage({
           current
             ? "当前客户端"
             : id === remote.authorityDeviceId
-              ? "管理手机"
+              ? "管理端手机"
               : "已配对的客户端"
         }
       />
@@ -626,8 +626,8 @@ export function ClientPage({
         </div>
         <div className="manage-hint">
           {current
-            ? "修改名称同步到其他客户端。添加和删除设备请在手机 App 上操作。"
-            : "名称和通知开关要在那台设备上设置。删除设备请在手机 App 上操作。"}
+            ? "修改名称同步到其他客户端。添加和删除设备请在管理端手机上操作。"
+            : "名称和通知开关要在那台设备上设置。删除设备请在管理端手机上操作。"}
         </div>
         {error && (
           <div className="gbanner">
@@ -640,7 +640,7 @@ export function ClientPage({
               退出并删除本机密钥
             </button>
           ) : (
-            <div className="row help">删除设备请在手机 App 上操作。</div>
+            <div className="row help">删除设备请在管理端手机上操作。</div>
           )}
         </div>
       </div>
@@ -1198,7 +1198,7 @@ export function MachinePage({
           </>
         )}
         <div className="grp">
-          <div className="row help">删除电脑请在手机 App 上操作。</div>
+          <div className="row help">删除电脑请在管理端手机上操作。</div>
         </div>
       </div>
       {sheet}

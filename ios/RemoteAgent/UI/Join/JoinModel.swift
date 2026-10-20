@@ -281,7 +281,7 @@ final class JoinModel {
         if attempt.registering {
             // Whatever the page says now, this is what is known of the device.
             if current { self.attempt = nil }
-            notice = "不确定\(thisDeviceWord)有没有加入：\(errorText(error))。可以在手机 App 的设置里看看客户端列表"
+            notice = "不确定\(thisDeviceWord)有没有加入：\(errorText(error))。可以在管理端手机的设置里看看客户端列表"
             noticeIsError = true
             if current { step = .form }
             return
@@ -296,7 +296,7 @@ final class JoinModel {
     /// itself, the one-off pairing key goes with the attempt. The server is
     /// kept and the old code cleared. This device leaving does not withdraw
     /// the request on the server, which may still hold the code: the notice
-    /// says to reject it on the other device. Once registering has begun
+    /// says to reject it on the admin phone. Once registering has begun
     /// the join goes on and its outcome is shown instead.
     func cancel() {
         guard let attempt else {
@@ -310,7 +310,7 @@ final class JoinModel {
         }
         self.attempt = nil
         typeCode("")
-        notice = "已取消本次加入。旧请求可能还占着配对码：请在手机 App 上拒绝它，再生成新码"
+        notice = "已取消本次加入。旧请求可能还占着配对码：请在管理端手机上拒绝它，再生成新的配对码"
         noticeIsError = false
         step = .form
     }
@@ -320,7 +320,7 @@ final class JoinModel {
     func joinWithSecret() {
         secret = ""
         step = .form
-        notice = "加入已有账户需要在手机 App 上批准，请使用配对码。"
+        notice = "加入已有账户需要在管理端手机上批准，请使用配对码。"
         noticeIsError = true
     }
 

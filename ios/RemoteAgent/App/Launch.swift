@@ -236,7 +236,7 @@ enum LaunchDriver {
         switch step {
         case "filled": join.show(step: .form, code: "48291756")
         case "error": join.show(step: .form, code: "48291756", notice: "配对码不对，或者已经用过了", error: true)
-        case "cancelled": join.show(step: .form, notice: "已取消本次加入。旧请求可能还占着配对码：请在手机 App 上拒绝它，再生成新码")
+        case "cancelled": join.show(step: .form, notice: "已取消本次加入。旧请求可能还占着配对码：请在管理端手机上拒绝它，再生成新的配对码")
         case "working": join.show(step: .working, code: "48291756")
         case "emoji": join.show(step: .emoji(emoji), code: "48291756")
         case "registering": join.show(step: .emoji(emoji), code: "48291756", notice: "已经在登记\(thisDeviceWord)，稍等结果")

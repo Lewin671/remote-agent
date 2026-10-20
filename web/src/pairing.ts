@@ -152,7 +152,7 @@ function poller(
         throw e;
       }
       if (res.state === PairingState.CANCELED)
-        throw new Error("另一台设备取消了配对");
+        throw new Error("管理端手机取消了配对");
       if (res.state >= want) return res;
       await sleep(1000);
     }
@@ -252,7 +252,7 @@ export async function joinByPairing(
       peek.commit,
     )
   )
-    throw new Error("手机的信任信息与配对承诺不匹配");
+    throw new Error("管理端手机的信任信息与配对承诺不匹配");
   let replace = false;
   if (existing) {
     const status = await securitySetupStatus();
@@ -301,7 +301,7 @@ export async function joinByPairing(
     accountPublicKey.length !== 32 ||
     (await deviceID(accountPublicKey)) !== trust.pin.account
   )
-    throw new Error("账户与手机的信任信息不匹配");
+    throw new Error("账户与管理端手机的信任信息不匹配");
   const approval = new Uint8Array(msg.approval);
   if (
     !(await verifyApproval(

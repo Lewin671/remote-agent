@@ -3060,7 +3060,7 @@ export class Remote {
    * DeviceMeta is self-only in protocol 10. */
   renameDevice(id: string, name: string): Promise<void> {
     if (id !== this.account.deviceId)
-      throw new Error("只能在手机 App 上管理其他设备");
+      throw new Error("只能在管理端手机上管理其他设备");
     return this.changeDeviceMeta(id, (m) => ({
       name: name.trim(),
       platform: m?.platform ?? "",
@@ -3077,7 +3077,7 @@ export class Remote {
     ) => Omit<Partial<DeviceMeta>, "$typeName">,
   ) {
     if (id !== this.account.deviceId)
-      throw new Error("只能在手机 App 上管理其他设备");
+      throw new Error("只能在管理端手机上管理其他设备");
     for (let i = 0; i < 5; i++) {
       await this.loadDevices(false);
       if (this.devicesStatus !== "ready") throw new Error("无法核实设备信息");

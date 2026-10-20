@@ -496,7 +496,7 @@
 
         var body: some View {
             LargeTitle("加入账户")
-            Text("在已加入的手机 App 里打开「设置 › 添加设备」，扫显示的二维码，或把 8 位配对码填在这里。")
+            Text("在管理端手机上打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。")
                 .type(T.sm, Theme.muted).padding(.horizontal, 16).padding(.bottom, 14)
             VStack(spacing: 10) {
                 InputField(text: $code, placeholder: "输入 8 位配对码", look: .code, keyboard: .numberPad)
