@@ -4,16 +4,17 @@ import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient, type Client } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { Authority, authoritySigningTime } from "./authority";
+import { acceptRecoveryPublicProfile } from "./account-public";
 import { accountKey, checkServer, concat, deviceID, importRoot, newDeviceKey, signLogin, utf8, REGISTER_CONTEXT } from "./crypto";
-import { buildRecord, initializeSecurity, securitySetupStatus, type SecurityRecord } from "./device-security-store";
-import { leaseBytes, newSecurityKey, pinOf, SecurityError, signLease, stateBytes } from "./device-security";
+import { buildRecord, initializeSecurity, loadSecurity, parseChain, securitySetupStatus, type SecurityRecord } from "./device-security-store";
+import { equal, leaseBytes, newSecurityKey, pinOf, recoveryBytes, SecurityError, signLease, stateBytes, stateHash, type Pin, type RecoveryStatement, type SecurityState, type Member } from "./device-security";
 import { RecoveryCode } from "./recovery";
 import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, operation, readSecurityOperation, saveSecurityOperation, type SecurityOperation, requestAuthorityPersistence, markRecoveryCodeRotation } from "./security-operation";
 import { loadAccount, loadRegistration, saveAccount, saveAccountPublicProfile, type StoredAccount } from "./storage";
 import { apiBase } from "./remote";
 import { relayFetch } from "./transport";
 import { PROTOCOL_VERSION } from "./protocol";
-import { AuthService, ClientService, RecoveryService, DeviceKind, DeviceRegistrationSchema, RegisterDeviceRequestSchema, type SignupProof } from "./gen/remoteagent/v1/relay_pb";
+import { AuthService, ClientService, RecoveryService, DeviceKind, DeviceRegistrationSchema, RegisterDeviceRequestSchema, SubmitRecoveryRequestSchema, CompleteRecoveryRequestSchema, GetRecoveryContextResponse_Phase as RecoveryPhase, type SignupProof, type GetRecoveryContextResponse } from "./gen/remoteagent/v1/relay_pb";
 
 type B = Uint8Array<ArrayBuffer>;
 interface CreationDraft {
@@ -28,13 +29,32 @@ interface CreationDraft {
   storagePersisted: boolean;
   record?: SecurityRecord;
 }
+interface RecoveryDraft {
+  account: StoredAccount;
+  accountPublicKey: B;
+  x: CryptoKeyPair;
+  pin: Pin;
+  states: SecurityState[];
+  proofs: (RecoveryStatement | undefined)[];
+  target: SecurityState;
+  proof: RecoveryStatement;
+  recoveryId: string;
+  readyMs: bigint;
+  completeRequest?: B;
+}
+interface UnsignedRecoveryDraft extends Omit<RecoveryDraft, "target" | "proof"> {
+  member: Member;
+  recoveryEd: B;
+  secret: B;
+  now: bigint;
+}
 export type AuthorityStartup =
   | { kind: "create" | "recovery"; phase: SecurityOperation["phase"]; codeSaved: boolean; recoveryId?: string; readyMs?: bigint }
   | { kind: "registration" }
   | { kind: "account"; pending: boolean }
   | { kind: "empty" };
 export async function authorityStartup(): Promise<AuthorityStartup> {
-  const pending = await readSecurityOperation<{ recoveryId?: string; readyMs?: bigint }>();
+  const pending = await readSecurityOperation<RecoveryDraft>();
   if (pending?.kind === "create" || pending?.kind === "recovery") return {
     kind: pending.kind, phase: pending.phase, codeSaved: pending.codeSaved,
     recoveryId: pending.kind === "recovery" ? pending.local.recoveryId : undefined,
@@ -173,6 +193,186 @@ export class AuthoritySetup {
     await clearSecurityOperation(op);
   }
   /** Uses a recovery code for public-profile lookup only. No submit call. */
+  private async context(server: string, publicKey: B, sign: (b: B) => Promise<B>, recoveryId: string, prefix: B, check: () => void, local?: SecurityRecord) {
+    const api = this.services(server).recovery;
+    check();
+    const { challenge } = await api.getRecoveryChallenge({});
+    check();
+    if (challenge.length !== 32) throw new SecurityError("untrusted");
+    const signature = await sign(concat(utf8("ra3/recovery-context\0"), challenge, publicKey.length ? publicKey : new Uint8Array(32), utf8(recoveryId)));
+    check();
+    const reply = await api.getRecoveryContext({ recoveryEd: publicKey, recoveryId, challenge, signature });
+    check();
+    const { states, proofs } = await parseChain(reply.states);
+    const pin = await acceptRecoveryPublicProfile(server, reply.accountId, new Uint8Array(reply.accountPublicKey), states, proofs, prefix, local);
+    check();
+    return { ...reply, states, proofs, pin };
+  }
+  async prepareEmergencyRecovery(server: string, code: string) {
+    server = checkServer(server);
+    return this.lifecycle.run(async (check) => {
+      if (await readSecurityOperation()) throw new Error("请先继续原恢复或明确放弃已否决的恢复");
+      if (await loadRegistration()) throw new Error("请先完成设备注册");
+      const decoded = RecoveryCode.decode(code);
+      if (!decoded) throw new Error("恢复码无效");
+      try {
+        const { ed25519 } = await import("@noble/curves/ed25519.js");
+        const publicKey = new Uint8Array(ed25519.getPublicKey(decoded.seed));
+        let local: SecurityRecord | undefined;
+        const status = await securitySetupStatus();
+        if (status === "ready") {
+          const account = await loadAccount();
+          if (account?.server !== server) throw new SecurityError("conflict");
+          local = await loadSecurity();
+        } else if (status !== "missing") throw new SecurityError("storage");
+        const chain = await this.context(server, publicKey, (b) => Promise.resolve(new Uint8Array(ed25519.sign(b, decoded.seed))), "", decoded.genesis, check, local);
+        if (![RecoveryPhase.UNSPECIFIED, RecoveryPhase.PENDING, RecoveryPhase.READY].includes(chain.phase)) throw new Error("请使用当前恢复码重新申请");
+        const device = await newDeviceKey(), x = await newSecurityKey(), fresh = await Authority.newRecovery();
+        try {
+          const member = await Authority.newMember(device.publicKey, x.publicKey, DeviceKind.CLIENT);
+          const parent = chain.states.at(-1)!;
+          // Occupy the slot before any recovery state or statement signature.
+          // The old recovery seed is kept in this call only. A crash before
+          // persisting signatures requires re-entering it, never another state.
+          const op = operation<UnsignedRecoveryDraft>("recovery", server, member.id, await stateHash(parent), {
+            account: { server, devicePrivate: device.privateKey, deviceId: member.id } as StoredAccount,
+            accountPublicKey: new Uint8Array(chain.accountPublicKey), x, pin: chain.pin,
+            states: chain.states, proofs: chain.proofs, recoveryId: "", readyMs: 0n,
+            member, recoveryEd: fresh.publicKey, secret: Authority.newSecret(),
+            now: authoritySigningTime(parent, BigInt(Date.now()), local?.floor, local?.lease),
+          });
+          check();
+          await claimSecurityOperation(op, local?.stateHash);
+          check();
+          await this.signEmergencyDraft(op, decoded.seed, check);
+          // Return code even on submit failure via separate resume API: there
+          // is no network between durable preparation and first code display.
+          return { code: RecoveryCode.encode(fresh.seed, chain.pin.genesis) };
+        } finally { fresh.seed.fill(0); }
+      } finally { decoded.seed.fill(0); }
+    });
+  }
+  private async signEmergencyDraft(op: SecurityOperation<UnsignedRecoveryDraft>, seed: B, check: () => void) {
+    const l = op.local, parent = l.states.at(-1)!;
+    const { ed25519 } = await import("@noble/curves/ed25519.js");
+    if (!equal(ed25519.getPublicKey(seed), parent.core.recoveryEd)) throw new SecurityError("untrusted");
+    check();
+    const { state: target, statement: proof } = await Authority.recovery(parent, l.member,
+      parent.core.members.filter((m) => m.id !== parent.core.authorityID).concat(l.member), l.secret,
+      l.account.devicePrivate, seed, l.recoveryEd, l.now, { beforeSign: check });
+    check();
+    const signed = toBinary(SubmitRecoveryRequestSchema, create(SubmitRecoveryRequestSchema, { state: await stateBytes(target), statement: await recoveryBytes(proof) }));
+    check();
+    const completed: SecurityOperation<RecoveryDraft> = { ...op, signed,
+      local: { account: l.account, accountPublicKey: l.accountPublicKey, x: l.x, pin: l.pin,
+        states: l.states, proofs: l.proofs, target, proof, recoveryId: "", readyMs: 0n } };
+    await saveSecurityOperation<unknown>(op, completed);
+    check();
+  }
+  /** Crash before persisting the recovery signature: reuse the saved identity,
+   * recovery public key and parent; re-enter only the old code in memory. */
+  async continueRecoverySigning(code: string) {
+    return this.lifecycle.run(async (check) => {
+      const op = await readSecurityOperation<UnsignedRecoveryDraft>();
+      if (!op || op.kind !== "recovery" || op.signed) throw new SecurityError("conflict");
+      const decoded = RecoveryCode.decode(code);
+      if (!decoded) throw new Error("恢复码无效");
+      try {
+        if (!equal(decoded.genesis, op.local.pin.genesis.slice(0, 10))) throw new SecurityError("untrusted");
+        const { ed25519 } = await import("@noble/curves/ed25519.js");
+        const pub = new Uint8Array(ed25519.getPublicKey(decoded.seed));
+        const chain = await this.context(op.server, pub, (b) => Promise.resolve(new Uint8Array(ed25519.sign(b, decoded.seed))), "", decoded.genesis, check);
+        if (!equal(await stateHash(chain.states.at(-1)!), op.parent)) throw new SecurityError("conflict");
+        await this.signEmergencyDraft(op, decoded.seed, check);
+      } finally { decoded.seed.fill(0); }
+    });
+  }
+  async discardUnsignedRecovery() {
+    return this.lifecycle.run(async (check) => {
+      const op = await readSecurityOperation();
+      if (!op || op.kind !== "recovery" || op.signed || op.phase !== "PREPARED") throw new SecurityError("conflict");
+      check();
+      await clearSecurityOperation(op);
+    });
+  }
+  /** Publishes the prepared exact request; resume shares this idempotent path. */
+  async submitRecovery() { return this.resumeRecovery(); }
+  async resumeRecovery() {
+    return this.lifecycle.run(async (check) => {
+      let op = await readSecurityOperation<RecoveryDraft>();
+      if (!op || op.kind !== "recovery") throw new SecurityError("conflict");
+      if (!op.signed) throw new Error("恢复签名尚未保存，请重新输入原恢复码继续原草稿");
+      if (!op.local.recoveryId) {
+        check();
+        const reply = await this.services(op.server).recovery.submitRecovery(fromBinary(SubmitRecoveryRequestSchema, op.signed));
+        check();
+        op = await saveSecurityOperation(op, { ...op, phase: "PUBLISHED", local: { ...op.local, recoveryId: reply.recoveryId, readyMs: reply.readyMs } });
+        check();
+      }
+      return this.recoveryContext(op, check);
+    });
+  }
+  private async recoveryContext(op: SecurityOperation<RecoveryDraft>, check: () => void) {
+    const l = op.local;
+    const context = await this.context(op.server, new Uint8Array(), (b) => crypto.subtle.sign("Ed25519", l.account.devicePrivate, b).then((s) => new Uint8Array(s)), l.recoveryId, l.pin.genesis.slice(0, 10), check);
+    if (context.accountId !== l.pin.account || !equal(context.pin.genesis, l.pin.genesis) ||
+        context.states.length < l.states.length || !equal(await stateHash(context.states[l.states.length - 1]), op.parent)) throw new SecurityError("conflict");
+    return context;
+  }
+  async confirmRecoveryCodeSaved() {
+    return this.lifecycle.run(async (check) => {
+      const op = await readSecurityOperation();
+      if (!op || op.kind !== "recovery") throw new SecurityError("conflict");
+      await saveSecurityOperation(op, { ...op, codeSaved: true });
+      check();
+    });
+  }
+  async completeRecovery() {
+    return this.lifecycle.run(async (check) => {
+      let op = await readSecurityOperation<RecoveryDraft>();
+      if (!op || op.kind !== "recovery" || !op.local.recoveryId) throw new SecurityError("conflict");
+      const context = await this.recoveryContext(op, check), l = op.local;
+      if (context.phase === RecoveryPhase.REJECTED) throw new Error("恢复已被否决，请明确重新申请");
+      if (context.phase !== RecoveryPhase.PUBLISHED && context.phase !== RecoveryPhase.READY) throw new Error("48 小时等待尚未结束");
+      if (!l.completeRequest) {
+        const signature = new Uint8Array(await crypto.subtle.sign("Ed25519", l.account.devicePrivate, concat(utf8("ra3/recovery-complete\0"), utf8(l.recoveryId))));
+        check();
+        op = await saveSecurityOperation(op, { ...op, local: { ...l, completeRequest: toBinary(CompleteRecoveryRequestSchema, create(CompleteRecoveryRequestSchema, { recoveryId: l.recoveryId, signature })) } });
+        check();
+      }
+      const response = await this.services(op.server).recovery.completeRecovery(fromBinary(CompleteRecoveryRequestSchema, op.local.completeRequest!));
+      check();
+      if (response.deviceId !== l.account.deviceId || !equal(response.accountPublicKey, l.accountPublicKey)) throw new SecurityError("untrusted");
+      const published = await this.recoveryContext(op, check);
+      const targetHash = await stateHash(l.target);
+      if (published.phase !== RecoveryPhase.PUBLISHED || !equal(await stateHash(published.states.at(-1)!), targetHash)) throw new SecurityError("conflict");
+      await saveAccountPublicProfile(op.server, l.pin, l.accountPublicKey);
+      check();
+      // A prior member's verified prefix may be extended by this recovery.
+      // New identity adoption is an explicit recovery, not initializeSecurity's
+      // same-member repair path; install atomically in the dedicated helper.
+      await adoptRecoveredSecurity(l.pin, published.states, published.proofs, l.account.deviceId, l.x.privateKey);
+      check();
+      await markRecoveryCodeRotation(op.server, l.pin, !op.codeSaved);
+      check();
+      await saveAccount(l.account);
+      check();
+      op = await saveSecurityOperation(op, { ...op, phase: "DELIVERED" });
+      check();
+      await clearSecurityOperation(op);
+      return { needsRecoveryRotation: !op.codeSaved };
+    });
+  }
+  async discardRejectedRecovery() {
+    return this.lifecycle.run(async (check) => {
+      const op = await readSecurityOperation<RecoveryDraft>();
+      if (!op || op.kind !== "recovery" || !op.local.recoveryId) throw new SecurityError("conflict");
+      const context = await this.recoveryContext(op, check);
+      if (context.phase !== RecoveryPhase.REJECTED) throw new Error("恢复仍待处理或结果未明，不能放弃");
+      check();
+      await clearSecurityOperation(op);
+    });
+  }
 }
 async function login(auth: Client<typeof AuthService>, account: StoredAccount, check: () => void) {
   check();
@@ -199,3 +399,7 @@ async function solveSignup(auth: Client<typeof AuthService>, check: () => void):
       return { $typeName: "remoteagent.v1.SignupProof", challenge: challenge.challenge, nonce };
   }
 }
+// Implemented in the security DB so identity replacement and prefix validation
+// are one transaction. The recovery context above supplies the verified chain.
+import { adoptRecoveredSecurity } from "./device-security-store";
+export type RecoveryStatus = Pick<GetRecoveryContextResponse, "phase" | "readyMs" | "recoveryId">;

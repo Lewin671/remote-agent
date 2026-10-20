@@ -780,3 +780,36 @@ export async function updateSecurityEntry<T>(
     };
   });
 }
+
+/** Explicit emergency-recovery adoption can replace a member identity, but
+ * cannot replace its pin or fork/shorten any previously verified prefix. */
+export async function adoptRecoveredSecurity(
+  pin: Pin, states: SecurityState[], proofs: (RecoveryStatement | undefined)[],
+  memberID: string, xPrivate: CryptoKey,
+): Promise<void> {
+  const next = await buildRecord(pin, states, proofs, memberID, xPrivate);
+  if (!proofs.some(Boolean) || states.at(-1)!.core.authorityID !== memberID)
+    throw new SecurityError("untrusted");
+  const db = await database(true);
+  await transaction<void>(db, "readwrite", (store, done, fail) => {
+    const get = store.get(KEY);
+    get.onsuccess = () => {
+      try {
+        const old = get.result as SecurityRecord | undefined;
+        if (old) {
+          validRecord(old);
+          if (!publicPinEqual(old.pin, pin) || old.states.length > states.length ||
+              old.states.some((s, i) => !equal(s.signature, states[i].signature)))
+            throw new SecurityError("conflict");
+          next.floor = next.floor > old.floor ? next.floor : old.floor;
+          for (const key of old.contentKeys) remember(next.contentKeys, key.epoch, key.secret);
+          if (old.memberID === memberID && old.lease) next.lease = old.lease;
+        }
+        if (!old) { putFirstRecord(store, next, () => done(), fail); return; }
+        store.delete(LOGIN_TOKEN);
+        putRecord(store, next);
+        done();
+      } catch (e) { fail(e instanceof Error ? e : new SecurityError("storage")); }
+    };
+  });
+}

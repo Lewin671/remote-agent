@@ -201,6 +201,53 @@ it("initiates real pairing and retains delivery until candidate registration/rec
   expect(isAuthority(await loadSecurity())).toBe(true);
   expect(equal((await loadSecurity()).lease!.head, (await loadSecurity()).stateHash)).toBe(true);
 });
+it("submits exact emergency recovery, rejects early completion, observes unchanged-head hints, and adopts after debug advancement of 48h", async () => {
+  const { account, code } = await createAccount();
+  const oldDB = local, c = await clients(account);
+  const recoveredDB = new IDBFactory(); vi.stubGlobal("indexedDB", recoveredDB);
+  const recovery = new AuthoritySetup(lifecycle());
+  const prepared = await recovery.prepareEmergencyRecovery(server.url, code);
+  expect(prepared.code).toBeTruthy();
+  const pending = await readSecurityOperation();
+  expect(JSON.stringify(pending, (_k, v) => typeof v === "bigint" ? v.toString() : v)).not.toContain(code);
+  const ack = dropAck("SubmitRecovery");
+  await expect(recovery.submitRecovery()).rejects.toThrow(); ack.mockRestore();
+  const status = await recovery.resumeRecovery();
+  expect(status.phase).toBe(1); expect((await readSecurityOperation())!.signed).toEqual(pending!.signed);
+  await expect(recovery.completeRecovery()).rejects.toThrow("48");
+  vi.stubGlobal("indexedDB", oldDB); await c.security.sync();
+  await c.authority.renewLeaseNow(); // Renewal cannot veto.
+  vi.stubGlobal("indexedDB", recoveredDB);
+  expect((await recovery.resumeRecovery()).phase).toBe(1);
+  await recovery.confirmRecoveryCodeSaved();
+  await server.ready(status.recoveryId);
+  const complete = dropAck("CompleteRecovery");
+  await expect(recovery.completeRecovery()).rejects.toThrow(); complete.mockRestore();
+  expect((await recovery.resumeRecovery()).phase).toBe(4);
+  expect(await recovery.completeRecovery()).toEqual({ needsRecoveryRotation: false });
+  expect(await readSecurityOperation()).toBeUndefined();
+  const adopted = await loadSecurity(); expect(isAuthority(adopted)).toBe(true);
+  expect(adopted.states.at(-1)!.prevSecret).toHaveLength(0);
+  const newClient = await clients((await loadAccount())!); await newClient.authority.renewLeaseIfNeeded();
+  expect((await loadSecurity()).lease!.head).toEqual(adopted.stateHash);
+});
+it("keeps a vetoed recovery until an explicit discard and permits a new request with the current code", async () => {
+  const { account, code } = await createAccount(); const c = await clients(account);
+  const recoveryDB = new IDBFactory(); vi.stubGlobal("indexedDB", recoveryDB);
+  const recovery = new AuthoritySetup(lifecycle());
+  await recovery.prepareEmergencyRecovery(server.url, code); await recovery.resumeRecovery();
+  await expect(recovery.discardRejectedRecovery()).rejects.toThrow();
+  vi.stubGlobal("indexedDB", local);
+  const replacement = await c.authority.prepareRecovery(); await c.authority.publishRecovery();
+  vi.stubGlobal("indexedDB", recoveryDB);
+  expect((await recovery.resumeRecovery()).phase).toBe(3);
+  await expect(recovery.prepareEmergencyRecovery(server.url, replacement.code)).rejects.toThrow();
+  await recovery.discardRejectedRecovery();
+  expect(await readSecurityOperation()).toBeUndefined();
+  await recovery.prepareEmergencyRecovery(server.url, replacement.code);
+  expect((await recovery.resumeRecovery()).phase).toBe(1);
+});
+
 it("replays immutable state bytes after more than 72h, refreshing only its independent lease", async () => {
   // Prepare a genesis from the past, then publish its first lease at real
   // server time. The pending successor below models an offline old request.
@@ -293,6 +340,59 @@ it.each(["before", "after"] as const)("recovers creation after every durable wri
   } finally { for (const spy of spies) spy.mockRestore(); }
 }, 60000);
 
+it.each(["before", "after"] as const)("resumes emergency recovery at every durable write and RPC (%s)", async (side) => {
+  let events = 0, failure = -1, fired = false, monitor = false;
+  const step = async <T>(work: () => Promise<T>): Promise<T> => {
+    if (!monitor) return work();
+    const at = events++;
+    if (at === failure && side === "before") { fired = true; throw new Error("injected crash"); }
+    const result = await work();
+    if (at === failure && side === "after") { fired = true; throw new Error("injected crash"); }
+    return result;
+  };
+  const update = securityStore.updateSecurityEntry, adopt = securityStore.adoptRecoveredSecurity;
+  const profile = accountStore.saveAccountPublicProfile, account = accountStore.saveAccount, fetch = globalThis.fetch;
+  const spies = [
+    vi.spyOn(securityStore, "updateSecurityEntry").mockImplementation((...args) => step(() => update(...args))),
+    vi.spyOn(securityStore, "adoptRecoveredSecurity").mockImplementation((...args) => step(() => adopt(...args))),
+    vi.spyOn(accountStore, "saveAccountPublicProfile").mockImplementation((...args) => step(() => profile(...args))),
+    vi.spyOn(accountStore, "saveAccount").mockImplementation((...args) => step(() => account(...args))),
+    vi.spyOn(globalThis, "fetch").mockImplementation((...args) => step(() => fetch(...args))),
+  ];
+  let count = 1;
+  try {
+    for (let index = -1; index < count; index++) {
+      monitor = false; await server.close(); server = await AuthorityServer.start(built.binary);
+      vi.stubGlobal("indexedDB", new IDBFactory()); setup = new AuthoritySetup(lifecycle());
+      const { code } = await createAccount();
+      vi.stubGlobal("indexedDB", new IDBFactory()); const recovery = new AuthoritySetup(lifecycle());
+      events = 0; failure = index; fired = false; monitor = true;
+      try {
+        await recovery.prepareEmergencyRecovery(server.url, code);
+        const status = await recovery.resumeRecovery();
+        await server.ready(status.recoveryId);
+        await recovery.confirmRecoveryCodeSaved();
+        await recovery.completeRecovery();
+      } catch { /* Restart at the committed boundary. */ }
+      monitor = false;
+      if (index === -1) count = events;
+      else expect(fired).toBe(true);
+      const pending = await readSecurityOperation(); const signed = pending?.signed;
+      if (pending) {
+        if (!signed) await recovery.continueRecoverySigning(code);
+        const status = await recovery.resumeRecovery();
+        await server.ready(status.recoveryId);
+        if (signed) expect((await readSecurityOperation())!.signed).toEqual(signed);
+        await recovery.completeRecovery();
+      } else if (!await loadAccount()) {
+        await recovery.prepareEmergencyRecovery(server.url, code);
+        const status = await recovery.resumeRecovery(); await server.ready(status.recoveryId);
+        await recovery.completeRecovery();
+      }
+      expect(await readSecurityOperation()).toBeUndefined(); expect(isAuthority(await loadSecurity())).toBe(true);
+    }
+  } finally { for (const spy of spies) spy.mockRestore(); }
+}, 60000);
 it.each(["before", "after"] as const)("keeps a single successor across every state-publication write and RPC (%s)", async (side) => {
   let events = 0, failure = -1, fired = false, monitor = false;
   const step = async <T>(work: () => Promise<T>): Promise<T> => {
