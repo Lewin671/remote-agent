@@ -221,7 +221,7 @@ data class DeviceView(
     val lastSeenMs: Long = 0,
 )
 
-/** A session's events, contiguous from seq 1. */
+/** Opened transcript pages in sequence order; action state uses only the contiguous prefix. */
 data class SessionEvents(
     val events: List<Event> = emptyList(),
     val loaded: Boolean = false,
@@ -234,6 +234,9 @@ data class SessionEvents(
     val liveError: String? = null,
     val verifiedEvents: List<Event> = events,
     val unavailableCount: Int = 0,
+    /** Partial pages are readable but cannot establish action state across a missing event. */
+    val stateEvents: List<Event> = events,
+    val historyPartial: Boolean = false,
 )
 
 /** Where envelopes are cached between runs. Only ciphertext is stored. */
@@ -2508,7 +2511,7 @@ class Remote(
         trimHistory()
     }
 
-    /** Fetches everything after the last contiguous event. */
+    /** Shows the newest page first, then fills every gap from the contiguous prefix. */
     private suspend fun fetchEvents(sid: String) {
         val b = buffers[sid] ?: return
         if (sessions[sid] == null || !running) return
@@ -2518,38 +2521,62 @@ class Remote(
         }
         b.fetching = true
         val gen = generation
+        fun active() = running && gen == generation && buffers[sid] === b
         try {
             do {
-                if (!running || gen != generation || buffers[sid] !== b) return
+                if (!active()) return
                 b.refetch = false
-                while (true) {
-                    if (!running || gen != generation || buffers[sid] !== b) return
+                var end: Long? = null
+                suspend fun page(after: Long): io.github.lewin671.remoteagent.proto.GetEventsResponse {
+                    val res = api.client.getEvents(
+                        GetEventsRequest.newBuilder().setSessionId(sid)
+                            .setAfterSeq(after).setLimit(500).build(),
+                        Api.headers(currentToken()),
+                    ).value()
+                    if (active()) {
+                        ingest(sid, res.eventsList, fillGaps = false, save = true, live = false)
+                        if (!res.more) end = res.eventsList.lastOrNull()?.seq ?: after
+                    }
+                    return res
+                }
+                val latest = sessions[sid]?.lastSeq?.toULong() ?: 0uL
+                val prefix = b.events.size.toULong()
+                if (latest > prefix + 500u && b.error == null) {
+                    val after = latest - 500u
+                    // A previous run (or disk cache) may already contain this entire tail.
+                    val held = (1uL..500uL).all { n ->
+                        val seq = after + n
+                        seq <= prefix || b.pending.containsKey(seq.toLong())
+                    }
+                    if (!held) {
+                        var cursor = after.toLong()
+                        while (active()) {
+                            val res = page(cursor)
+                            if (!active()) return
+                            val next = res.eventsList.lastOrNull()?.seq ?: cursor
+                            if (!res.more || b.error != null || ucmp(next, cursor) <= 0) break
+                            cursor = next
+                        }
+                    }
+                }
+                while (active()) {
                     val before = b.events.size
-                    val res =
-                        api.client
-                            .getEvents(
-                                GetEventsRequest.newBuilder()
-                                    .setSessionId(sid)
-                                    .setAfterSeq(before.toLong())
-                                    .setLimit(500)
-                                    .build(),
-                                Api.headers(currentToken()),
-                            )
-                            .value()
-                    if (!running || gen != generation || buffers[sid] !== b) return
-                    ingest(sid, res.eventsList, fillGaps = false, save = true, live = false)
-                    if (!running || gen != generation || buffers[sid] !== b) return
-                    // An event that does not open stops progress; asking for the
-                    // same page again would not help.
+                    // The tail request already reached the end. Draining the missing prefix
+                    // can finish without downloading that tail a second time.
+                    if (end != null && ucmp(before.toLong(), end!!) >= 0 && b.pending.isEmpty()) break
+                    val res = page(before.toLong())
+                    if (!active()) return
                     if (!res.more || b.events.size == before) break
                 }
+                if (!active()) return
+                val missing = b.pending.isNotEmpty() || b.events.size.toULong() < latest
+                b.loaded = !missing && b.error == null
+                b.fetchError = if (missing && b.error == null)
+                    "历史记录不连续，请重试读取" else null
             } while (b.refetch)
-            b.loaded = true
-            b.fetchError = null
         } catch (e: Exception) {
-            if (!running || gen != generation) return
+            if (!active()) return
             report(e)
-            // Shown on the session with a retry; the next Ready fetches again too.
             b.fetchError = "没能读取历史：" + errorText(e)
         } finally {
             b.fetching = false
@@ -2586,6 +2613,9 @@ class Remote(
                         live,
                     )
                 if (ev.seq != se.seq || ev.sessionId != sid) throw OpenException("事件的位置被改动")
+                if (buffers[sid] !== b) return
+                // Opening may suspend while resolving a content key; another ingest can win.
+                if (ucmp(se.seq, b.events.size.toLong()) <= 0 || b.pending.containsKey(se.seq)) continue
                 if (Header.parseFrom(se.envelope.header).version == DeviceSecurity.VERSION)
                     b.verifiedSeqs.add(se.seq)
                 b.pending[se.seq] = ev
@@ -2627,6 +2657,7 @@ class Remote(
         sessions[sid]?.let { cur ->
             sessions[sid] = cur.copy(lastSeq = umax(cur.lastSeq, b.events.size.toLong()))
         }
+        if (b.pending.isNotEmpty()) b.loaded = false
         if (fillGaps && b.pending.isNotEmpty()) scope.launch { fetchEvents(sid) }
         publishEvents(sid, b)
         publish()
@@ -2637,7 +2668,7 @@ class Remote(
         if (buffers[sid] !== b) return
         eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value =
             SessionEvents(
-                b.events,
+                if (b.pending.isEmpty()) b.events else b.events.append(b.pending.values.toList()),
                 b.loaded,
                 b.error,
                 b.fetchError,
@@ -2647,6 +2678,8 @@ class Remote(
                     ?: if (sessions[sid]?.checkpointStatus == "waiting") "等待所属电脑更新当前状态" else null,
                 b.verifiedEvents,
                 b.unavailableSeqs.size,
+                stateEvents = b.events,
+                historyPartial = b.pending.isNotEmpty() || ucmp(sessions[sid]?.lastSeq ?: 0, b.events.size.toLong()) > 0,
             )
     }
 

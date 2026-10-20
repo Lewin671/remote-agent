@@ -1631,6 +1631,6 @@ fun currentActions(d: Derived, live: io.github.lewin671.remoteagent.proto.LiveSn
 /** Legacy bodies remain transcript data; only verified bodies establish state. */
 fun currentState(snapshot: SessionEvents, agent: Agent = Agent.AGENT_CODEX): Derived =
     currentActions(
-        derive(if (snapshot.unverifiedLegacy) snapshot.verifiedEvents else snapshot.events, agent),
+        derive(if (snapshot.unverifiedLegacy) snapshot.verifiedEvents else snapshot.stateEvents, agent),
         snapshot.live,
     )

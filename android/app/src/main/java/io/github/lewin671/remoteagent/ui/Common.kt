@@ -399,7 +399,7 @@ fun rememberDerived(
 ): io.github.lewin671.remoteagent.core.Derived {
     val history =
         rememberDerived(
-            if (events.unverifiedLegacy) events.verifiedEvents else events.events,
+            if (events.unverifiedLegacy) events.verifiedEvents else events.stateEvents,
             agent,
         )
     return remember(history, events.live) {
