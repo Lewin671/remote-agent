@@ -66,18 +66,29 @@ it("reports a command unknown when a retry finds the machine gone", async () => 
     },
   };
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  const clockTimeout = globalThis.setTimeout;
+  let scheduled!: () => void;
+  const retryScheduled = new Promise<void>(resolve => { scheduled = resolve; });
+  globalThis.setTimeout = ((...args: Parameters<typeof setTimeout>) => {
+    const handle = clockTimeout(...args);
+    if (args[1] === 1000) scheduled();
+    return handle;
+  }) as typeof setTimeout;
   try {
     const result = r
       .machineCommand(r.machine, { case: "listModels", value: {} })
       .catch((x) => x);
-    await vi.waitFor(() => expect(replies).toHaveLength(1));
-    // Keep the retry delay, but advance its clock after the first response.
+    // Observing the API call does not guarantee its rejection has reached
+    // forward() and registered the timer yet. Advance only after registration.
+    await retryScheduled;
+    expect(replies).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(1000);
     const e = await result;
     expect(e).toBeInstanceOf(CommandError);
     expect((e as CommandError).code).toBe("unknown");
     expect(replies).toHaveLength(0);
   } finally {
+    globalThis.setTimeout = clockTimeout;
     vi.useRealTimers();
   }
 }, 10_000);
