@@ -124,3 +124,24 @@ it("retries the directory when a new security head outlives a failed refresh", a
   await poll();
   expect(attempts).toBe(2);
 }, 20000);
+
+it("preserves a verified handoff offer when renaming this device", async () => {
+  const r = await probe(), self = r.member.account.deviceId;
+  const handoffRecoveryEd = crypto.getRandomValues(new Uint8Array(32));
+  let revision = 1n;
+  let envelope = await r.member.sdk.seal({ kind: 13, purpose: Purpose.DeviceMeta,
+    machine: "", session: "", request: self, seq: revision, deadline: 0n, compression: 0 },
+    toBinary(DeviceMetaSchema, create(DeviceMetaSchema, { name: "before", platform: "web", handoffRecoveryEd })));
+  (r as unknown as { api: object }).api = {
+    listDevices: async () => ({ devices: [create(DeviceSchema, { id: self, kind: DeviceKind.CLIENT, meta: envelope, metaRevision: revision })] }),
+    putDeviceMeta: async (req: { expectedRevision: bigint; meta: Envelope }) => {
+      expect(req.expectedRevision).toBe(revision);
+      envelope = req.meta; revision++;
+      return { applied: true };
+    },
+  };
+  await r.renameDevice(self, "after");
+  expect(r.devices.get(self)?.meta?.name).toBe("after");
+  expect(r.devices.get(self)?.meta?.handoffRecoveryEd).toEqual(handoffRecoveryEd);
+  expect(() => r.renameDevice(r.machine, "other")).toThrow("名称只能在那台设备上修改");
+}, 20000);

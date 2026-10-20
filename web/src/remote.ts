@@ -1,5 +1,5 @@
 import { readSecurityOperation } from "./security-operation";
-import { AuthorityClient } from "./authority-client";
+import { AuthorityClient, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
 import { AuthorityPairing } from "./authority-pairing";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
@@ -87,7 +87,27 @@ import {
   type ListModelsResponse,
   type Session,
 } from "./gen/remoteagent/v1/local_pb";
-import { AuthService, ClientService, PairingService, DeviceKind, DeviceRegistrationSchema, ListMachinesResponseSchema, ListRemoteSessionsResponseSchema, NotifyKind, PeerFrameSchema, ServerFrameSchema, TermHelloSchema, type AccountPrefsObject, AccountPrefsObjectSchema, type Device, type Machine as RemoteMachine, type RemoteSession, type SessionCursor, type StoredEvent } from "./gen/remoteagent/v1/relay_pb";
+import {
+  AuthService,
+  ClientService,
+  PairingService,
+  DeviceKind,
+  DeviceRegistrationSchema,
+  PutDeviceMetaRequestSchema,
+  ListMachinesResponseSchema,
+  ListRemoteSessionsResponseSchema,
+  NotifyKind,
+  PeerFrameSchema,
+  ServerFrameSchema,
+  TermHelloSchema,
+  type AccountPrefsObject,
+  AccountPrefsObjectSchema,
+  type Device,
+  type Machine as RemoteMachine,
+  type RemoteSession,
+  type SessionCursor,
+  type StoredEvent,
+} from "./gen/remoteagent/v1/relay_pb";
 import {
   CommandResultSchema,
   CommandSchema,
@@ -691,10 +711,19 @@ export class Remote {
       fetch: relayFetch, baseUrl: apiBase(account.server), useBinaryFormat: true,
       defaultTimeoutMs: RPC_TIMEOUT_MS, interceptors: [auth],
     }));
-    this.authority = new AuthorityClient(account, this.security, this.api, pairing);
+    this.authority = new AuthorityClient(account, this.security, this.api, pairing,
+      (publicKey, check, persist, request) => this.publishHandoffOffer(publicKey, check, persist, request));
     this.startPairing = (web, replacesDeviceId = "") => AuthorityPairing.start(this.authority, pairing, web, replacesDeviceId);
   }
   readonly startPairing: (web: string, replacesDeviceId?: string) => Promise<AuthorityPairing>;
+  async handoffCandidates(): Promise<HandoffOffer[]> {
+    await this.loadDevices(false);
+    return verifiedHandoffCandidates(await this.security.verifiedRecord(), [...this.devices.values()].flatMap((d) =>
+      d.meta?.handoffRecoveryEd.length === 32 ? [{ id: d.id, recoveryEd: new Uint8Array(d.meta.handoffRecoveryEd) }] : []));
+  }
+  async handoffAuthority(incoming: string) {
+    await this.authority.handoffAuthority(incoming, await this.handoffCandidates());
+  }
   async removeDevice(id: string) { await this.authority.removeDevice(id); await this.loadDevices(false); }
   async deleteMachineRecords(id: string) { await this.authority.deleteMachineRecords(id); await this.refresh(); }
 
@@ -810,6 +839,7 @@ export class Remote {
     >,
     schema: D,
     msg: MessageShape<D>,
+    beforeSign?: () => void,
   ) {
     let purpose = Number(h.kind) as Purpose;
     if (h.kind === PayloadKind.TERMINAL_INPUT) {
@@ -837,6 +867,7 @@ export class Remote {
       },
       toBinary(schema, msg) as Uint8Array<ArrayBuffer>,
       seed,
+      beforeSign,
     );
   }
   static async load(): Promise<Remote | undefined> {
@@ -3118,6 +3149,7 @@ export class Remote {
         name: m?.name ?? "",
         platform: "web",
         description: m?.description || describeBrowser(navigator.userAgent),
+        handoffRecoveryEd: m?.handoffRecoveryEd,
       }));
       this.descriptionPending = false;
     } catch (e) {
@@ -3129,14 +3161,49 @@ export class Remote {
    * DeviceMeta is self-only in protocol 10. */
   renameDevice(id: string, name: string): Promise<void> {
     if (id !== this.account.deviceId)
-      throw new Error("只能在管理端手机上管理其他设备");
+      throw new Error("名称只能在那台设备上修改");
     return this.changeDeviceMeta(id, (m) => ({
       name: name.trim(),
       platform: m?.platform ?? "",
       description: m?.description ?? "",
+      handoffRecoveryEd: m?.handoffRecoveryEd,
     }));
   }
 
+  /** The offer is signed once under the authority lock. A lost CAS ack is
+   * reconciled against verified self metadata; retry never changes its bytes. */
+  private async publishHandoffOffer(
+    publicKey: Uint8Array<ArrayBuffer>, check: () => void,
+    persist: (request: Uint8Array<ArrayBuffer>) => Promise<void>, signed?: Uint8Array<ArrayBuffer>,
+  ) {
+    let request;
+    if (signed) request = fromBinary(PutDeviceMetaRequestSchema, signed);
+    else {
+      await this.loadDevices(false);
+      check();
+      if (this.devicesStatus !== "ready") throw new Error("无法核实设备信息");
+      const own = this.devices.get(this.account.deviceId), revision = own?.metaRev ?? 0n;
+      const meta = await this.sealSecureMessage({ kind: PayloadKind.DEVICE_META,
+        requestId: this.account.deviceId, seq: revision + 1n, sender: this.account.deviceId },
+        DeviceMetaSchema, create(DeviceMetaSchema, { ...create(DeviceMetaSchema, own?.meta), handoffRecoveryEd: publicKey }), check);
+      request = create(PutDeviceMetaRequestSchema, { deviceId: this.account.deviceId, expectedRevision: revision, meta });
+      check();
+      await persist(toBinary(PutDeviceMetaRequestSchema, request));
+      check();
+    }
+    if (request.deviceId !== this.account.deviceId) throw new SecurityError("untrusted");
+    check();
+    const result = await this.api.putDeviceMeta(request);
+    check();
+    if (!result.applied) {
+      await this.loadDevices(false);
+      check();
+      const own = this.devices.get(this.account.deviceId);
+      if (!own?.meta || own.metaRev <= request.expectedRevision || !equalBytes(own.meta.handoffRecoveryEd, publicKey))
+        return false;
+    }
+    return true;
+  }
 
   /** Replaces this device's metadata with change(current). If another tab
    * wrote first, the change is made again on what it wrote. */
@@ -3145,12 +3212,14 @@ export class Remote {
     change: (
       m: DeviceMeta | undefined,
     ) => Omit<Partial<DeviceMeta>, "$typeName">,
+    check: () => void = () => undefined,
   ) {
     if (id !== this.account.deviceId)
-      throw new Error("只能在管理端手机上管理其他设备");
+      throw new Error("名称只能在那台设备上修改");
     for (let i = 0; i < 5; i++) {
       await this.loadDevices(false);
       if (this.devicesStatus !== "ready") throw new Error("无法核实设备信息");
+      check();
       const cur = this.devices.get(id),
         rev = cur?.metaRev ?? 0n;
       const env = await this.sealSecureMessage(
@@ -3162,12 +3231,15 @@ export class Remote {
         },
         DeviceMetaSchema,
         create(DeviceMetaSchema, change(cur?.meta)),
+        check,
       );
+      check();
       const r = await this.api.putDeviceMeta({
         deviceId: id,
         expectedRevision: rev,
         meta: env,
       });
+      check();
       if (r.applied) {
         await this.loadDevices(false);
         return;

@@ -5,7 +5,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { AuthorityServer } from "./test/authority-server";
 import { AuthoritySetup, authorityServices, authorityStartup } from "./authority-setup";
 import { AuthorityLifecycle, readSecurityOperation, isAuthority, operation, claimSecurityOperation } from "./security-operation";
-import { AuthorityClient } from "./authority-client";
+import { AuthorityClient, handoffCandidates } from "./authority-client";
 import { AuthorityPairing } from "./authority-pairing";
 import { loadAccount, type StoredAccount } from "./storage";
 import * as securityStore from "./device-security-store";
@@ -13,7 +13,7 @@ import * as accountStore from "./storage";
 import { loadSecurity, securitySetupStatus } from "./device-security-store";
 import { DeviceSecurityClient } from "./device-security-client";
 import { signLogin, deviceID, newDeviceKey, openMessage, importSessionKey } from "./crypto";
-import { newSecurityKey, pairDomainCommit, Purpose, parseLease } from "./device-security";
+import { newSecurityKey, pairDomainCommit, equal, Purpose, parseLease } from "./device-security";
 import { derivePair, newPairKey, pairDomainTranscript } from "./pair";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { Authority } from "./authority";
@@ -22,6 +22,7 @@ import { SessionSchema } from "./gen/remoteagent/v1/local_pb";
 import { MachineMetaSchema, PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
 import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import { PROTOCOL_VERSION } from "./protocol";
+import { Remote, joinWithApproval } from "./remote";
 import { RecoveryCode } from "./recovery";
 
 let built: ReturnType<typeof AuthorityServer.build>;
@@ -65,7 +66,7 @@ async function clients(account: StoredAccount) {
     installSecurity: (...args) => securityStore.installSecurity(...args),
     touchSecurity: (...args) => securityStore.touchSecurity(...args),
   });
-  const authority = new AuthorityClient(account, security, api, pairing, lifecycle());
+  const authority = new AuthorityClient(account, security, api, pairing, async (publicKey, check, persist, request) => { if (!request) await persist(publicKey); check(); return true; }, lifecycle());
   return { api, pairing, security, authority, token };
 }
 function dropAck(path: string) {
@@ -133,6 +134,53 @@ async function pairCandidate(c: Awaited<ReturnType<typeof clients>>, kind = Devi
   const { msg } = await openMessage(await importSessionKey(new Uint8Array(secrets.key)), approved.payload, { kind: PayloadKind.PAIRING, requestId: joined.pairingId }, PairingPayloadSchema);
   return { initiation, api, joined, device, x, msg, ed };
 }
+it("initiates real pairing and retains delivery until candidate registration/receipt, then hands off to a platform-neutral Client", async () => {
+  const { account } = await createAccount();
+  const c = await clients(account), candidate = await pairCandidate(c, DeviceKind.CLIENT, "", true);
+  await c.authority.resumeSecurityOperation();
+  expect(await readSecurityOperation()).toBeDefined();
+  const adminRecord = await loadSecurity();
+  const { parseChain, buildRecord } = await import("./device-security-store");
+  const chain = await parseChain(candidate.msg.securityStates);
+  const candidateId = await deviceID(candidate.ed);
+  const record = await buildRecord(adminRecord.pin, chain.states, chain.proofs, candidateId, candidate.x.privateKey);
+  const { parseLease } = await import("./device-security"); record.lease = parseLease(new Uint8Array(candidate.msg.lease));
+  const incomingDB = new IDBFactory(); vi.stubGlobal("indexedDB", incomingDB);
+  const incoming = await joinWithApproval(new Uint8Array(candidate.msg.accountPublicKey), server.url, { device: candidate.device, pairingId: candidate.joined.pairingId, approval: candidate.msg.approval, approvalSignature: candidate.msg.approvalSignature }, undefined, record);
+  const receipt = dropAck("GetPairing");
+  await expect(candidate.api.getPairing({ pairingId: candidate.joined.pairingId, candidateToken: candidate.joined.candidateToken, received: true })).rejects.toThrow();
+  receipt.mockRestore();
+  const target = await clients(incoming);
+  vi.stubGlobal("document", { visibilityState: "visible" });
+  class OfferRemote extends Remote { constructor(a: StoredAccount) { super(a, undefined); } }
+  const targetRemote = new OfferRemote(incoming);
+  (targetRemote as unknown as { token: string }).token = target.token;
+  const code = await targetRemote.authority.prepareHandoffCode(); expect(code.code).toBeTruthy();
+  const offerAck = dropAck("PutDeviceMeta");
+  await expect(targetRemote.authority.offerHandoff()).rejects.toThrow(); offerAck.mockRestore();
+  const offerBytes = (await readSecurityOperation())!.signed; expect(offerBytes).toBeDefined();
+  await targetRemote.authority.offerHandoff();
+  expect(await readSecurityOperation()).toBeUndefined();
+  targetRemote.stop();
+  // The real Remote writer above signed and durably saved the public offer;
+  // the coordinator below consumes the corresponding verified public key.
+  const decoded = RecoveryCode.decode(code.code)!;
+  const { ed25519 } = await import("@noble/curves/ed25519.js");
+  const recoveryEd = new Uint8Array(ed25519.getPublicKey(decoded.seed)); decoded.seed.fill(0);
+  vi.stubGlobal("indexedDB", local);
+  await candidate.initiation.finishPairingOperation();
+  expect(await readSecurityOperation()).toBeUndefined();
+  const candidates = handoffCandidates(await loadSecurity(), [{ id: candidateId, recoveryEd }, { id: account.deviceId, recoveryEd }]);
+  expect(candidates.map((o) => o.id)).toEqual([candidateId]);
+  await c.authority.handoffAuthority(candidateId, candidates);
+  const retired = await loadSecurity();
+  expect(retired.member).toBe(false); expect(retired.states.at(-1)!.prevSecret.length).toBeGreaterThan(0);
+  vi.stubGlobal("indexedDB", incomingDB);
+  await target.security.sync();
+  await target.authority.renewLeaseIfNeeded();
+  expect(isAuthority(await loadSecurity())).toBe(true);
+  expect(equal((await loadSecurity()).lease!.head, (await loadSecurity()).stateHash)).toBe(true);
+});
 it("keeps lease signing monotonic after a wall-clock rollback and refuses ordinary members", async () => {
   const { account } = await createAccount(), c = await clients(account);
   const old = (await loadSecurity()).lease!;
@@ -188,6 +236,19 @@ it.each(["before", "after"] as const)("recovers creation after every durable wri
   } finally { for (const spy of spies) spy.mockRestore(); }
 }, 60000);
 
+it("retains canceled delivery until explicit candidate removal, and refuses Machine handoff even with an offer", async () => {
+  const { account } = await createAccount(), c = await clients(account);
+  const candidate = await pairCandidate(c, DeviceKind.MACHINE), id = await deviceID(candidate.ed);
+  expect(handoffCandidates(await loadSecurity(), [{ id, recoveryEd: Authority.newSecret() }])).toEqual([]);
+  await candidate.api.cancelPairing({ pairingId: candidate.joined.pairingId, candidateToken: candidate.joined.candidateToken });
+  await expect(c.authority.resumeSecurityOperation()).rejects.toThrow("交付已失效");
+  expect(await readSecurityOperation()).toBeDefined();
+  await c.authority.removeDevice(id);
+  expect(await readSecurityOperation()).toBeUndefined();
+  const r = await loadSecurity();
+  expect(r.states).toHaveLength(3); expect(r.states.at(-1)!.core.removed).toContain(id);
+  await expect(AuthorityPairing.start(c.authority, c.pairing, "https://app.example.com", id)).rejects.toThrow("档案已删除");
+});
 it("separates machine revocation, archive rejoin with retained sessions, and permanent archive deletion", async () => {
   const { account } = await createAccount(), c = await clients(account);
   const enroll = async (candidate: Awaited<ReturnType<typeof pairCandidate>>) => {

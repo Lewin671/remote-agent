@@ -7,7 +7,8 @@ import { installSecurity, type SecurityRecord } from "./device-security-store";
 import { equal, leaseBytes, parseLease, parseState, recoveryBytes, SecurityError, signLease, stateBytes, stateHash, verifyLease, type Member } from "./device-security";
 import { makePairApproval } from "./pair-approval";
 import { checkPairChainSize } from "./pairing";
-import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, isAuthority, operation, readSecurityOperation, saveSecurityOperation, type SecurityOperation, needsRecoveryCodeRotation } from "./security-operation";
+import { RecoveryCode } from "./recovery";
+import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, isAuthority, operation, readSecurityOperation, saveSecurityOperation, type SecurityOperation, requestAuthorityPersistence, needsRecoveryCodeRotation } from "./security-operation";
 import { loadAccountPublicProfile, type StoredAccount } from "./storage";
 import { ApprovePairingRequestSchema, ClientService, PairingService, PairingState, PutSecurityStateRequestSchema, DeviceKind, PairApprovalSchema, DeleteMachineRecordsRequestSchema } from "./gen/remoteagent/v1/relay_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -22,9 +23,16 @@ export interface PairingDelivery {
   replacesDeviceId: string;
 }
 interface StateDraft {
-  action: "remove" | "pair";
+  action: "remove" | "pair" | "handoff";
   target?: string;
+  recoveryEd?: B;
   pair?: PairingDelivery;
+}
+export interface HandoffOffer { id: string; recoveryEd: B }
+/** Uses only verified member kinds and already verified, self-signed metadata. */
+export function handoffCandidates(record: SecurityRecord, offers: HandoffOffer[]): HandoffOffer[] {
+  return offers.filter((o) => o.recoveryEd.length === 32 && o.id !== record.memberID &&
+    record.states.at(-1)!.core.members.some((m) => m.id === o.id && m.kind === DeviceKind.CLIENT));
 }
 export class AuthorityClient {
   readonly lifecycle: AuthorityLifecycle;
@@ -33,6 +41,7 @@ export class AuthorityClient {
     readonly security: DeviceSecurityClient,
     private readonly api: Client<typeof ClientService>,
     private readonly pairing: Client<typeof PairingService>,
+    private readonly writeOffer: (publicKey: B, check: () => void, persist: (request: B) => Promise<void>, request?: B) => Promise<boolean>,
     lifecycle = new AuthorityLifecycle(),
   ) { this.lifecycle = lifecycle; }
   async isAuthority() { return isAuthority(await this.security.verifiedRecord()); }
@@ -63,6 +72,31 @@ export class AuthorityClient {
     this.bound(op);
     check();
     if (op.kind === "create" || op.kind === "recovery") throw new Error("请回到创建或恢复流程继续原草稿");
+    if (op.kind === "offer") {
+      if (!op.codeSaved) return;
+      const local = op.local as { recoveryEd: B };
+      const r = await this.security.verifiedRecord();
+      if (isAuthority(r) && equal(r.states.at(-1)!.core.recoveryEd, local.recoveryEd)) {
+        await clearSecurityOperation(op);
+        return;
+      }
+      if (!r.member || !equal(r.stateHash, op.parent)) throw new SecurityError("conflict");
+      check();
+      const published = await this.writeOffer(local.recoveryEd, check, async (signed) => {
+        op = await saveSecurityOperation(op!, { ...op!, signed });
+        check();
+      }, op.signed);
+      check();
+      if (!published) {
+        op = await saveSecurityOperation(op, { ...op, local: { ...local, rejected: true } });
+        check();
+        throw new Error("设备信息已变化，原交接申请未应用；可明确放弃后重新准备");
+      }
+      op = await saveSecurityOperation(op, { ...op, phase: "DELIVERED" });
+      check();
+      await clearSecurityOperation(op);
+      return;
+    }
     if (op.kind === "delete-records") {
       const r = await this.authority(check);
       if (!equal(r.stateHash, op.parent)) throw new SecurityError("conflict");
@@ -79,7 +113,19 @@ export class AuthorityClient {
     if (op.kind === "state" && !op.signed) {
       op = await this.signDraft(op as SecurityOperation<StateDraft>, check);
     }
-    let r = await this.security.sync();
+    // A handoff can revoke our token before its ack arrives. Never infer
+    // success from that error; keep the exact intent for explicit reconciliation.
+    let r = await this.security.verifiedRecord();
+    if (op.kind === "state" && op.signed) {
+      const target = await parseState(new Uint8Array(fromBinary(PutSecurityStateRequestSchema, op.signed).states.at(-1)!.state));
+      if (!r.member && await contains(r, await stateHash(target)) && target.core.authorityID !== r.memberID) {
+        op = await saveSecurityOperation(op, { ...op, phase: "DELIVERED" });
+        check();
+        await clearSecurityOperation(op);
+        return;
+      }
+    }
+    r = await this.security.sync();
     check();
     if (op.kind === "lease") {
       if (!equal(r.stateHash, op.parent)) {
@@ -198,6 +244,7 @@ export class AuthorityClient {
     check();
     let next;
     if (draft.action === "remove") next = await Authority.remove(head, [draft.target!], r.secret, Authority.newSecret(), key, now, { beforeSign: check });
+    else if (draft.action === "handoff") next = await Authority.handoff(head, draft.target!, draft.recoveryEd!, r.secret, Authority.newSecret(), key, now, { beforeSign: check });
     else {
       const member = draft.pair!.candidate;
       const old = head.core.members.find((m) => m.id === member.id);
@@ -276,6 +323,57 @@ export class AuthorityClient {
       await this.resume(check);
     });
   }
+  async prepareHandoffCode() {
+    return this.lifecycle.run(async (check) => {
+      if (await readSecurityOperation()) throw new Error("请先完成当前安全操作");
+      const r = await this.security.sync();
+      check();
+      if (!r.member || isAuthority(r)) throw new SecurityError("untrusted");
+      const storagePersisted = await requestAuthorityPersistence();
+      check();
+      const recovery = await Authority.newRecovery();
+      try {
+        await this.claim("offer", { recoveryEd: recovery.publicKey, storagePersisted }, r);
+        check();
+        return { code: RecoveryCode.encode(recovery.seed, r.pin.genesis), storagePersisted };
+      } finally { recovery.seed.fill(0); }
+    });
+  }
+  /** UI calls only after explicit offline-save confirmation. Same API vetoes. */
+  async offerHandoff() { return this.confirmCode("offer"); }
+  private async confirmCode(kind: "offer") {
+    return this.lifecycle.run(async (check) => {
+      const op = await readSecurityOperation<StateDraft>();
+      if (!op || op.kind !== kind) throw new SecurityError("conflict");
+      this.bound(op);
+      await saveSecurityOperation(op, { ...op, codeSaved: true });
+      check();
+      await this.resume(check);
+    });
+  }
+  /** Restart loses code display. Only an unpublished rotation/offer can be
+   * explicitly abandoned; creation/recovery use their original drafts. */
+  async discardUnpublishedCode() {
+    return this.lifecycle.run(async (check) => {
+      const op = await readSecurityOperation<StateDraft>();
+      if (!op) return;
+      this.bound(op);
+      if (op.signed || op.codeSaved || op.phase !== "PREPARED" || op.kind !== "offer") throw new SecurityError("conflict");
+      check();
+      await clearSecurityOperation(op);
+    });
+  }
+  /** A draft with no persisted signature cannot have caused a remote state
+   * mutation. Explicit exit is safe even after expiry or a parent conflict. */
+  async discardRejectedOffer() {
+    return this.lifecycle.run(async (check) => {
+      const op = await readSecurityOperation<{ rejected?: boolean }>();
+      if (!op || op.kind !== "offer" || !op.local.rejected || op.phase !== "PREPARED") throw new SecurityError("conflict");
+      this.bound(op);
+      check();
+      await clearSecurityOperation(op);
+    });
+  }
   async discardUnsignedStateDraft() {
     return this.lifecycle.run(async (check) => {
       const op = await readSecurityOperation();
@@ -283,6 +381,17 @@ export class AuthorityClient {
       this.bound(op);
       check();
       await clearSecurityOperation(op);
+    });
+  }
+  async handoffAuthority(incoming: string, verifiedOffers: HandoffOffer[]) {
+    return this.lifecycle.run(async (check) => {
+      await this.resume(check);
+      const r = await this.authority(check);
+      const offer = handoffCandidates(r, verifiedOffers).find((o) => o.id === incoming);
+      if (!offer) throw new Error("请先在接任设备生成并保存恢复码");
+      await this.claim("state", { action: "handoff", target: incoming, recoveryEd: new Uint8Array(offer.recoveryEd) } satisfies StateDraft, r);
+      check();
+      await this.resume(check);
     });
   }
   async hasMachineArchive(id: string) {
