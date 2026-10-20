@@ -277,7 +277,7 @@ fun defaultModeOf(m: MachineView?, agent: Agent): DefaultMode {
 /** The mode a start uses: chosen, or the CLI's effective default on that machine. */
 fun modeLabel(chosen: Mode?, d: DefaultMode, agent: Agent): String = when {
     chosen != null -> chosen.text
-    !d.known -> "CLI 配置（未读到）"
+    !d.known -> "跟随 CLI 设置"
     d.mode != null -> "默认：${d.mode.text}"
     else -> "默认：${agentName(agent)} 自己的模式"
 } + if (chosen == null && d.varies) "（项目设置可能不同）" else ""
@@ -534,7 +534,7 @@ fun projectSummary(state: RemoteState, c: NewConfig, models: ListModelsResponse?
 }
 
 fun effectiveModeText(chosen: Mode?, default: DefaultMode): String =
-    chosen?.text ?: if (!default.known) "审批：CLI 配置（未读到）" else default.mode?.text ?: "CLI 自己的模式"
+    chosen?.text ?: if (!default.known) "跟随 CLI 设置" else default.mode?.text ?: "CLI 自己的模式"
 
 /** 这个项目已从列表移除 · 重新添加: a notice, not a button in the way. */
 @Composable

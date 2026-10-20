@@ -472,6 +472,8 @@ class ProjectTest {
         // The daemon could not read it: it could be full access.
         val old = machine(io.github.lewin671.remoteagent.proto.AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).build())
         assertEquals(LaunchMode.Send(ApprovalMode.APPROVAL_MODE_UNSPECIFIED), launchMode(null, defaultModeOf(old, Agent.AGENT_CODEX)))
+        assertEquals("跟随 CLI 设置", modeLabel(null, defaultModeOf(old, Agent.AGENT_CODEX), Agent.AGENT_CODEX))
+        assertEquals("跟随 CLI 设置", effectiveModeText(null, defaultModeOf(old, Agent.AGENT_CODEX)))
         // A mode outside the four (accept edits) is known and not full access.
         val edits = machine(info(Agent.AGENT_CLAUDE, ApprovalMode.APPROVAL_MODE_UNSPECIFIED, cli))
         assertEquals(LaunchMode.Send(ApprovalMode.APPROVAL_MODE_UNSPECIFIED), launchMode(null, defaultModeOf(edits, Agent.AGENT_CLAUDE)))

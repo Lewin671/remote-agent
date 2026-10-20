@@ -71,6 +71,9 @@ import io.github.lewin671.remoteagent.proto.StopSessionRequest
 import io.github.lewin671.remoteagent.term.TerminalPane
 import kotlinx.coroutines.launch
 
+internal fun sessionSubtitle(status: Status, mode: String?): String =
+    status.text + if (status == Status.EXITED || mode == null) "" else " · $mode"
+
 @Composable
 fun SessionScreen(sid: String) {
     val remote = LocalRemote.current
@@ -247,11 +250,7 @@ private fun SessionTopBar(
     val high = (pc ?: 0) > 80
     val mode =
         if (status == Status.EXITED) null else io.github.lewin671.remoteagent.core.modeLabel(s)
-    // A starting CLI has not reported its mode yet.
-    val subtitle =
-        status.text +
-            if (status == Status.EXITED || (status == Status.STARTING && mode == null)) ""
-            else " · ${mode?.text ?: "审批：CLI 配置（未读到）"}"
+    val subtitle = sessionSubtitle(status, mode?.text)
     val rich =
         if (mode?.mode == Mode.FULL)
             androidx.compose.ui.text.buildAnnotatedString {
