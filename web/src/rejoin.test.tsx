@@ -34,16 +34,16 @@ it("checks the signing identity before code entry and distinguishes denied from 
   const account = { server: "https://relay.example.com", deviceId: "synthetic-device", devicePrivate: key.privateKey } as storage.StoredAccount;
   for (const denied of [true, false]) {
     let calls = 0;
-    vi.stubGlobal("fetch", vi.fn(async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
       calls++;
-      if (calls === 1) return new Response(new Uint8Array(toBinary(GetChallengeResponseSchema,
+      if (String(input).endsWith("/GetChallenge")) return new Response(new Uint8Array(toBinary(GetChallengeResponseSchema,
         create(GetChallengeResponseSchema, { challenge: new Uint8Array(32) }))), { headers: { "Content-Type": "application/proto" } });
       if (!denied) throw new TypeError("offline");
       return new Response(JSON.stringify({ code: "permission_denied", message: "login failed" }),
         { status: 403, headers: { "Content-Type": "application/json" } });
     }));
     expect(await retainedIdentityDenied(account)).toBe(denied);
-    expect(calls).toBeGreaterThanOrEqual(2);
+    expect(calls).toBe(denied ? 4 : 2);
   }
 });
 

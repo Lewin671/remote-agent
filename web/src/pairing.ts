@@ -450,7 +450,7 @@ async function retainedDeviceKey(
 }
 
 /** A quiet challenge/login; never stores the token or changes the retained key. */
-async function loginRetained(account: StoredAccount) {
+async function loginRetained(account: StoredAccount, signal?: AbortSignal) {
   const api = createClient(
     AuthService,
     createConnectTransport({
@@ -460,16 +460,37 @@ async function loginRetained(account: StoredAccount) {
       defaultTimeoutMs: 15000,
     }),
   );
-  const challenge = await api.getChallenge({ deviceId: account.deviceId });
+  const challenge = await api.getChallenge({ deviceId: account.deviceId }, { signal });
   return api.login({
     protocolVersion: PROTOCOL_VERSION,
     deviceId: account.deviceId,
     challenge: challenge.challenge,
     signature: await signLogin(account.devicePrivate, challenge.challenge),
-  });
+  }, { signal });
 }
 
 export async function retainedIdentityDenied(account: StoredAccount): Promise<boolean> {
-  try { await loginRetained(account); return false; }
-  catch (e) { return e instanceof ConnectError && e.code === Code.PermissionDenied; }
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => { controller.abort(); resolve(false); }, 5_000);
+  });
+  const denied = (e: unknown) => !controller.signal.aborted
+    && e instanceof ConnectError && e.code === Code.PermissionDenied;
+  try {
+    return await Promise.race([deadline, (async () => {
+      try {
+        try { await loginRetained(account, controller.signal); }
+        catch (e) {
+          if (!denied(e)) return false;
+          // A restarted relay may have forgotten the first challenge.
+          await loginRetained(account, controller.signal);
+        }
+        return false;
+      } catch (e) { return denied(e); }
+    })()]);
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
 }
