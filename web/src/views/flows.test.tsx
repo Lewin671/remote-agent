@@ -1751,6 +1751,11 @@ describe("who did what (v2)", () => {
     const maybe = [...host.querySelectorAll(".me.warn small")].map((x) => x.textContent);
     expect(maybe.some((t) => t?.startsWith("可能没发出去："))).toBe(true);
     expect(host.textContent).not.toMatch(/没能发送|不会自动重发|终端里可能留着/);
+    // A connection that timed out leaves it unknown: orange, no red frame.
+    const timedOut = [...host.querySelectorAll(".me")].find((x) => x.textContent?.includes("顺便补一个测试"))!;
+    expect(timedOut.classList.contains("warn")).toBe(true);
+    expect(timedOut.classList.contains("fail")).toBe(false);
+    expect(timedOut.querySelector("small")!.textContent).toBe("可能没发出去：连接超时重试移除此提示");
     const failed = [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("Codex 没认出图片"))!;
     await click(button("重试", failed));
     expect(r.outbox("s-msg").at(-1)?.text).toBe("这两个页面底部的按钮都点不到");

@@ -1646,6 +1646,8 @@ export class DemoRemote extends Remote {
       text: string,
       status: "sending" | "sent" | "failed",
       error?: string,
+      // Whether the computer may have taken it before the answer was lost.
+      unknown?: boolean,
     ) => {
       this.outboxes.set(sid, [
         ...this.outbox(sid),
@@ -1656,6 +1658,7 @@ export class DemoRemote extends Remote {
           text,
           status,
           error,
+          unknown,
         },
       ]);
     };
@@ -1693,7 +1696,8 @@ export class DemoRemote extends Remote {
     out("s-popup", "q-popup", "看下这些脚本是做什么的", "sent");
     out("s-msg", "o-unconf", "把 lint 也跑一下", "sent");
     out("s-msg", "o-sent", "再看下 README 要不要改", "sent");
-    out("s-msg", "o-fail", "顺便补一个测试", "failed", "连接超时");
+    // A send whose answer never came: it may have reached the computer.
+    out("s-msg", "o-fail", "顺便补一个测试", "failed", "连接超时", true);
     out("s-msg", "o-sending", "最后提交", "sending");
     out("s-msg", "o-failed", "这两个页面底部的按钮都点不到", "sent");
     out("s-multi", "q-multi", "补充库存回滚测试。", "sent");
