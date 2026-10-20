@@ -134,6 +134,54 @@ class UnauthenticatedScreensTest {
     }
 
     @Test
+    fun noOperationMeansNoResumeActionAndTheVaultIsReadOffMain() {
+        val read = java.util.concurrent.atomic.AtomicBoolean(false)
+        val readOnMain = java.util.concurrent.atomic.AtomicBoolean(true)
+        show {
+            PendingSecurityOperation(readPending = {
+                readOnMain.set(android.os.Looper.myLooper() == android.os.Looper.getMainLooper())
+                read.set(true)
+                false
+            }, resume = { error("nothing to resume") })
+        }
+        ui.waitUntil { read.get() }
+        ui.waitForIdle()
+        org.junit.Assert.assertFalse(readOnMain.get())
+        ui.onNodeWithText("核实原安全操作").assertDoesNotExist()
+        ui.onNodeWithText("请在管理端查看操作是否已完成。").assertDoesNotExist()
+    }
+
+    @Test
+    fun theResumeActionGoesAwayAfterThePendingOperationCompletes() {
+        val pending = java.util.concurrent.atomic.AtomicBoolean(true)
+        val resumes = java.util.concurrent.atomic.AtomicInteger()
+        show {
+            PendingSecurityOperation(readPending = { pending.get() }, resume = {
+                resumes.incrementAndGet()
+                pending.set(false)
+            })
+        }
+        ui.waitUntil { ui.onAllNodesWithText("核实原安全操作").fetchSemanticsNodes().isNotEmpty() }
+        ui.onNodeWithText("核实原安全操作").performClick()
+        ui.waitUntil { ui.onAllNodesWithText("原安全操作已核实完成。").fetchSemanticsNodes().isNotEmpty() }
+        org.junit.Assert.assertEquals(1, resumes.get())
+        ui.onNodeWithText("核实原安全操作").assertDoesNotExist()
+    }
+
+    @Test
+    fun anOperationCompletedElsewhereDoesNotProduceAnEmptyResumeMessage() {
+        val pending = java.util.concurrent.atomic.AtomicBoolean(true)
+        show {
+            PendingSecurityOperation(readPending = { pending.get() }, resume = { error("already completed") })
+        }
+        ui.waitUntil { ui.onAllNodesWithText("核实原安全操作").fetchSemanticsNodes().isNotEmpty() }
+        pending.set(false)
+        ui.onNodeWithText("核实原安全操作").performClick()
+        ui.waitUntil { ui.onAllNodesWithText("核实原安全操作").fetchSemanticsNodes().isEmpty() }
+        ui.onNodeWithText("原安全操作已核实完成。").assertDoesNotExist()
+    }
+
+    @Test
     fun joinRendersWithoutSignedInNavigation() {
         val app = app()
         show { JoinScreen(app) }

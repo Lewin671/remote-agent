@@ -57,7 +57,6 @@ private sealed interface JoinStep {
 @Composable
 fun RemovedScreen(app: RaApp, remote: Remote) {
     val p = pal
-    val scope = rememberCoroutineScope()
     Column(
         Modifier.fillMaxSize().background(p.card).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.Center,
@@ -72,14 +71,12 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
         )
         RejoinButton(app, "重新加入账户")
-        var result by remember { mutableStateOf("") }
-        TextAction("核实原安全操作", {
-            scope.launch {
-                result = runCatching { remote.resumeSecurityOperation(); "请在管理端查看操作是否已完成。" }
-                    .getOrElse { errorText(it) }
-            }
-        })
-        if (result.isNotEmpty()) Hint(result)
+        androidx.compose.runtime.key(remote) {
+            PendingSecurityOperation(
+                readPending = { app.vault.readSecurityOperation() != null },
+                resume = { remote.resumeSecurityOperation() },
+            )
+        }
         Text(
             "会先删除这台设备上的账户密钥和缓存，再用配对码加入。",
             style = T.sm,
@@ -93,6 +90,42 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
             alignment = Alignment.Center,
         )
     }
+}
+
+/** No action until a background vault read confirms there is work to resume. */
+@Composable
+internal fun PendingSecurityOperation(readPending: () -> Boolean, resume: suspend () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var pending by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        try { pending = withContext(Dispatchers.IO) { readPending() } }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) { result = errorText(e) }
+    }
+    if (pending) {
+        TextAction("核实原安全操作", {
+            if (!busy) {
+                busy = true
+                scope.launch {
+                    try {
+                        result = ""
+                        // The operation may have completed since the page opened.
+                        pending = withContext(Dispatchers.IO) { readPending() }
+                        if (pending) {
+                            resume()
+                            pending = withContext(Dispatchers.IO) { readPending() }
+                            result = if (pending) "原操作尚未完成，请继续核实。" else "原安全操作已核实完成。"
+                        }
+                    } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                    catch (e: Exception) { result = errorText(e) }
+                    finally { busy = false }
+                }
+            }
+        }, enabled = !busy)
+    }
+    if (result.isNotEmpty()) Hint(result)
 }
 
 @Composable
