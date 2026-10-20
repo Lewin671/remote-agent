@@ -77,6 +77,19 @@ class RaApp : Application() {
     val remote: StateFlow<Remote?> = _remote.asStateFlow()
     private val _securitySetup = MutableStateFlow<Account?>(null)
     val securitySetup: StateFlow<Account?> = _securitySetup.asStateFlow()
+    private val _joinGeneration = MutableStateFlow(0)
+    val joinGeneration: StateFlow<Int> = _joinGeneration.asStateFlow()
+    var joinDirectly = false
+        private set
+
+    internal fun clearJoinState(pairing: Boolean) {
+        _securitySetup.value?.let { lastServer = it.server }
+        _securitySetup.value = null
+        _pendingCreation.value = false
+        joinDirectly = pairing
+        _joinGeneration.value += 1
+    }
+
     private val _loaded = MutableStateFlow(false)
     /** The stored account has been read, or there is none. */
     val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
@@ -176,7 +189,7 @@ class RaApp : Application() {
 
     fun loadAccount() {
         if (erasePending) {
-            if (!erasing) scope.launch { logout() }
+            if (!erasing) scope.launch { logout(pairing = joinDirectly) }
             return
         }
         if (_remote.value != null || _securitySetup.value != null || loading) return
@@ -289,6 +302,7 @@ class RaApp : Application() {
     }
 
     private fun use(acct: Account) {
+        joinDirectly = false
         _pendingCreation.value = false
         _securitySetup.value = null
         // Drafts and the like are kept per account, and only in memory.
@@ -387,7 +401,7 @@ class RaApp : Application() {
      * gone every other store is cleared whichever of them fails, so one that does not go cannot
      * leave the next account the images that waited to be sent.
      */
-    suspend fun logout() = finishAccountChange {
+    suspend fun logout(pairing: Boolean = false) = finishAccountChange {
         if (erasing) return@finishAccountChange
         erasing = true
         try {
@@ -395,6 +409,7 @@ class RaApp : Application() {
                 erasePending = true
                 _loaded.value = false
                 _accountError.value = ""
+                clearJoinState(pairing)
                 val leaving = _remote.value
                 leaving?.let { lastServer = it.account.server }
                 // Before anything here suspends: a network callback or a return

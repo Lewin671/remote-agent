@@ -756,5 +756,5 @@ suspend fun existingIdentityRemoved(api: Api, existing: Account): Boolean =
         login(api, existing)
         false
     } catch (e: ConnectException) {
-        if (e.code == Code.PERMISSION_DENIED || e.code == Code.NOT_FOUND) true else throw e
+        if (loginDenied(e)) true else throw e
     }

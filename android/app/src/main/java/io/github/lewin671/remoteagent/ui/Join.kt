@@ -58,7 +58,6 @@ private sealed interface JoinStep {
 fun RemovedScreen(app: RaApp, remote: Remote) {
     val p = pal
     val scope = rememberCoroutineScope()
-    var leaving by remember { mutableStateOf(false) }
     Column(
         Modifier.fillMaxSize().background(p.card).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.Center,
@@ -66,22 +65,21 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
     ) {
         Text("服务器拒绝了这台设备的登录", style = T.h17, color = p.fg, textAlign = TextAlign.Center)
         Text(
-            "可能是设备被移除、服务重置或连接异常。这条消息不能证明安全撤销已经完成，请先重试或在管理端核实。",
+            "可能是设备被移除、服务重置或连接出了问题。请先再试一次；仍无法登录时，请在管理端查看这台设备是否还在账户里。电脑上的会话不受影响。",
             style = T.sm,
             color = p.muted,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
         )
-        Btn(
-            "重新加入账户",
-            {
-                leaving = true
-                scope.launch { app.logout() }
-            },
-            Modifier.fillMaxWidth(),
-            BtnKind.PRIMARY,
-            enabled = !leaving,
-        )
+        RejoinButton(app, "重新加入账户")
+        var result by remember { mutableStateOf("") }
+        TextAction("核实原安全操作", {
+            scope.launch {
+                result = runCatching { remote.resumeSecurityOperation(); "请在管理端查看操作是否已完成。" }
+                    .getOrElse { errorText(it) }
+            }
+        })
+        if (result.isNotEmpty()) Hint(result)
         Text(
             "会先删除这台设备上的账户密钥和缓存，再用配对码加入。",
             style = T.sm,
@@ -92,7 +90,6 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
         TextAction(
             "再试一次",
             { remote.retryLogin() },
-            enabled = !leaving,
             alignment = Alignment.Center,
         )
     }
@@ -100,12 +97,21 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
 
 @Composable
 fun JoinScreen(app: RaApp) {
+    val generation by app.joinGeneration.collectAsState()
+    androidx.compose.runtime.key(generation) { JoinContent(app) }
+}
+
+@Composable
+private fun JoinContent(app: RaApp) {
     val p = pal
     val scope = rememberCoroutineScope()
     val existing by app.securitySetup.collectAsState()
+    val pendingCreation by app.pendingCreation.collectAsState()
+    var checkingIdentity by remember(existing) { mutableStateOf(existing != null) }
     var existingRemoved by remember(existing) { mutableStateOf(false) }
-    LaunchedEffect(existing) {
-        existing?.let { account ->
+    LaunchedEffect(existing, pendingCreation) {
+        existingRemoved = false
+        existing?.takeUnless { pendingCreation }?.let { account ->
             existingRemoved =
                 runCatching {
                         withContext(Dispatchers.IO) {
@@ -117,6 +123,7 @@ fun JoinScreen(app: RaApp) {
                     }
                     .getOrDefault(false)
         }
+        checkingIdentity = false
     }
     var step by remember { mutableStateOf<JoinStep>(JoinStep.Form) }
     var code by remember { mutableStateOf("") }
@@ -130,11 +137,10 @@ fun JoinScreen(app: RaApp) {
     var comparison by remember {
         mutableStateOf<kotlinx.coroutines.CompletableDeferred<Boolean>?>(null)
     }
-    val pendingCreation by app.pendingCreation.collectAsState()
     var mode by
         remember(pendingCreation, existing) {
             mutableStateOf(
-                if (pendingCreation) if (existing == null) "create" else "rebuild" else if (existing != null) "join" else "entry",
+                if (pendingCreation) if (existing == null) "create" else "rebuild" else if (existing != null) "join" else if (app.joinDirectly) "join" else "entry",
             )
         }
 
@@ -214,6 +220,21 @@ fun JoinScreen(app: RaApp) {
         commit = null
         error = "已取消本次加入。旧请求可能还占着配对码：请在管理端上拒绝它，再生成新的配对码"
         step = JoinStep.Form
+    }
+
+    if (checkingIdentity) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("正在连接…", color = p.muted) }
+        return
+    }
+    if (existingRemoved) {
+        Column(Modifier.fillMaxSize().background(p.card).padding(24.dp),
+            verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("服务器不认识这台设备", style = T.h17, color = p.fg)
+            Hint("可能已被移除，或服务已重建。电脑上的会话不受影响。")
+            RejoinButton(app, "用配对码重新加入")
+            Hint("会先删除这台手机上的账户密钥和缓存，再用配对码加入。")
+        }
+        return
     }
 
     if (mode == "entry") {
@@ -342,8 +363,7 @@ fun JoinScreen(app: RaApp) {
                     JoinStep.Scan -> {
                         JoinTitle(if (existing != null) "一次性安全设置" else "加入已有账户")
                         Text(
-                            if (existingRemoved) "这台设备的旧身份已被移除，重新加入会生成新的设备身份，旧历史仍可读。请用管理端重新配对。"
-                            else if (existing != null)
+                            if (existing != null)
                                 "原设备身份、密钥和历史保留。在管理端上打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。"
                             else "在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。",
                             style = T.sm,
@@ -495,4 +515,35 @@ private fun JoinField(
             }
         },
     )
+}
+
+/** Read again at confirmation, so newly pending work cannot be silently erased. */
+@Composable
+private fun RejoinButton(app: RaApp, title: String) {
+    val scope = rememberCoroutineScope()
+    var advice by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    fun leave(confirmed: Boolean) {
+        if (busy) return
+        busy = true
+        scope.launch {
+            try {
+                val warning = withContext(Dispatchers.IO) {
+                    val pending = app.vault.readSecurityOperation() != null || app.vault.loadRegistrationIntent() != null
+                    val admin = if (app.vault.hasSecurityState()) app.vault.readSecurity().let { it.memberID == it.head.core.authorityID } else false
+                    if (pending || admin) authorityExitAdvice(admin, pending) + "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。" else null
+                }
+                if (warning != null && (!confirmed || warning != advice)) advice = warning
+                else app.logout(pairing = true)
+            } catch (e: Exception) { error = errorText(e) }
+            finally { busy = false }
+        }
+    }
+    Btn(title, { leave(false) }, Modifier.fillMaxWidth(), BtnKind.PRIMARY, enabled = !busy)
+    if (error.isNotEmpty()) Hint(error)
+    advice?.let { message ->
+        Confirm("删除本机密钥并重新加入？", message, "重新加入", danger = true,
+            onDismiss = { advice = null }) { leave(true) }
+    }
 }

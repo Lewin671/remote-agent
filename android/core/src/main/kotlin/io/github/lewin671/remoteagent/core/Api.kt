@@ -271,6 +271,7 @@ fun errorText(e: Throwable, state: RemoteState? = null): String =
             networkText(e.exception)
                 ?: when (e.code) {
                     Code.UNAVAILABLE -> "连不上服务器" + (e.message?.let { "：$it" } ?: "")
+                    Code.PERMISSION_DENIED -> if (e.message == "login failed") "服务器不认识这台设备（可能已被移除，或服务已重建）" else e.message ?: e.code.codeName
                     Code.UNAUTHENTICATED -> "登录失效：" + (e.message ?: "")
                     else -> e.message ?: e.code.codeName
                 }
@@ -303,3 +304,7 @@ private fun networkText(e: Throwable?): String? =
         is javax.net.ssl.SSLException -> "安全连接失败：" + (e.message ?: "")
         else -> null
     }
+
+/** Only meaningful for an error returned by a login attempt. */
+fun loginDenied(error: Throwable): Boolean =
+    error is ConnectException && error.code == Code.PERMISSION_DENIED
