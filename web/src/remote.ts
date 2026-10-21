@@ -1340,8 +1340,33 @@ export class Remote {
     const generation = ++this.generation;
     this.conn = "connecting";
     this.changed();
+    // The steps before the stream get the same bound as its handshake: a
+    // lost request or storage that never answers would otherwise leave
+    // 连接中 up for good, with nothing waiting to try again.
+    let step = "读取本机状态";
+    const stall = setTimeout(() => {
+      if (this.closed || generation !== this.generation) return;
+      this.generation++;
+      this.fail(new Error(`${step}超时，正在重连`));
+    }, OPEN_TIMEOUT_MS);
+    let go = false;
+    try {
+      go = await this.preStream(generation, (s) => (step = s));
+    } finally {
+      clearTimeout(stall);
+    }
+    if (go) this.openStream(generation);
+  }
+
+  /** Login and the security head, which the stream needs first. False
+   * when this try ended here, failed or overtaken. */
+  private async preStream(
+    generation: number,
+    at: (step: string) => void,
+  ): Promise<boolean> {
     await this.warm();
-    if (this.closed || generation !== this.generation) return;
+    if (this.closed || generation !== this.generation) return false;
+    at("登录");
     try {
       // A token kept from an earlier visit saves the two login calls. One
       // about to expire is not worth a refused connection; the server
@@ -1353,8 +1378,10 @@ export class Remote {
       }
     } catch (e) {
       if (generation === this.generation && !this.closed) this.fail(e);
-      return;
+      return false;
     }
+    if (this.closed || generation !== this.generation) return false;
+    at("同步设备状态");
     try {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.
@@ -1368,15 +1395,18 @@ export class Remote {
         await this.tokenWrites;
         this.removed = true;
         this.stop();
-        return;
+        return false;
       }
       this.clearClockWarning();
     } catch (e) {
       this.noteClock(e);
       if (generation === this.generation && !this.closed) this.fail(e);
-      return;
+      return false;
     }
-    if (generation !== this.generation || this.closed) return;
+    return !this.closed && generation === this.generation;
+  }
+
+  private openStream(generation: number) {
     const url =
       apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
     const ws = new WebSocket(url);

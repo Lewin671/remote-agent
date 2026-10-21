@@ -182,3 +182,28 @@ it("does not take the authority lock on a device that is not the admin", async (
   expect(renew).not.toHaveBeenCalled();
   expect(request).not.toHaveBeenCalled();
 });
+
+it("bounds a security sync that never answers and retries it", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  const sync = vi.spyOn(r.security, "sync").mockReturnValue(new Promise(() => undefined));
+  r.start(); await flush();
+  expect(r.conn).toBe("connecting"); expect(sync).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(15_000);
+  expect(r.conn).toBe("offline"); expect(r.connError).toBe("同步设备状态超时，正在重连");
+  expect(r.failures).toBe(1); expect(Socket.all).toHaveLength(0);
+  // Waiting out the backoff is not needed: a network back tries at once.
+  sync.mockResolvedValue({ member: true, states: [{ core: { authorityID: "authority" } }] } as never);
+  r.reconnectNow(); await flush();
+  expect(Socket.all).toHaveLength(1);
+  Socket.all[0].frame("ready"); await flush(); expect(r.conn).toBe("online");
+});
+
+it("does not stay connecting when local state never answers", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  vi.spyOn(r as any, "warm").mockReturnValue(new Promise(() => undefined));
+  r.start(); await flush();
+  await vi.advanceTimersByTimeAsync(15_000);
+  expect(r.conn).toBe("offline"); expect(r.connError).toBe("读取本机状态超时，正在重连");
+  await vi.advanceTimersByTimeAsync(1_250 + 15_000);
+  expect(r.failures).toBe(2); expect(Socket.all).toHaveLength(0);
+});
