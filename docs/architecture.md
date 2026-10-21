@@ -37,7 +37,7 @@
 
 各端使用根目录 `version.properties` 中的同一个产品版本，Android 的 `androidVersionCode` 每次发布递增。正式 tag 为 `vMAJOR.MINOR.PATCH`，与文件严格一致；daemon/server 的 `--version`、网页和 App 设置页显示产品版本和源提交。协议版本独立，不随产品版本自动增长；产品版本不同不是拒绝连接的理由，协议版本不同才是（见第 4 节的「版本」）。
 
-Go 构建要求至少 1.26.9，发布流水线用 `govulncheck` 检查代码可达的已知漏洞。
+Go 构建要求至少 1.26.10，发布流水线用 `govulncheck` 检查代码可达的已知漏洞。
 
 发布按开发任务完成触发，不按时间触发：agent 完成一项功能或相关修复并验收后，按 [AGENTS.md](../AGENTS.md) 自动更新版本、推送 tag，无需逐次确认。新功能升 minor，修复升 patch，1.0 以前的不兼容改动升 minor，1.0 起升 major。纯文档、界面稿和测试改动不发版。GitHub 的 `Release` 流水线从 tag 运行 Go、网页、Android 检查，全部通过才发布：正式签名 APK，daemon（macOS 和 Linux 的 arm64、amd64）和 server（Linux 的 arm64、amd64）的压缩包，网页包，以及覆盖全部文件的 `SHA256SUMS`。源提交写在私有 Release 的说明中，各端仍统一版本。我们自己的部署由 `scripts/ship.sh` 从 tag 的源码构建上线（server、Cloudflare Pages 上的网页和本机 daemon），这些压缩包是给别人部署用的，见下文「公开发布」。已发布 tag 和附件不覆盖；暂时失败允许重跑，代码修复使用新版本。
 
