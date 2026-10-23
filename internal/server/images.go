@@ -109,7 +109,7 @@ func (t *tstore) putImage(ctx context.Context, machineID, sessionID, imageID str
 func (t *tstore) image(ctx context.Context, sessionID, imageID string) ([]byte, int64, error) {
 	var env []byte
 	var expires int64
-	err := t.db.QueryRowContext(ctx, `SELECT envelope, expires_ms FROM images WHERE account_id = ? AND session_id = ? AND image_id = ?`, t.acct, sessionID, imageID).Scan(&env, &expires)
+	err := t.reader.QueryRowContext(ctx, `SELECT envelope, expires_ms FROM images WHERE account_id = ? AND session_id = ? AND image_id = ?`, t.acct, sessionID, imageID).Scan(&env, &expires)
 	if err != nil {
 		return nil, 0, err
 	}

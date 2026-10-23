@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
+	"path/filepath"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -22,14 +24,24 @@ import (
 // through a tstore, which is bound to one account and has no way to name
 // another.
 type store struct {
-	db *sql.DB
+	db     *sql.DB // One serialized writer, including transactional reads.
+	reader *sql.DB
+}
+
+// reader exposes only queries. Routing is chosen by each store method, never
+// inferred from SQL. Security transitions, quota checks and reads following
+// writes stay on db (or its transaction); independent reads use reader.
+type reader interface {
+	querier
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }
 
 // tstore is the store of one account. Every statement it runs is limited
 // to its account.
 type tstore struct {
-	db   *sql.DB
-	acct string
+	db     *sql.DB
+	reader reader
+	acct   string
 }
 
 // tenant returns the store of an account.
@@ -37,7 +49,7 @@ func (s *store) tenant(account string) *tstore {
 	if account == "" {
 		panic("tenant store without an account")
 	}
-	return &tstore{db: s.db, acct: account}
+	return &tstore{db: s.db, reader: s.reader, acct: account}
 }
 
 // schemaVersion is PRAGMA user_version of the current layout. The layout
@@ -188,9 +200,15 @@ var errOldLayout = errors.New("this database has the layout of a relay with a si
 	"move it to the current layout as the release notes describe (docs/self-hosting.md, \"Upgrading to v0.41.0\") before starting this version")
 
 func openStore(path string) (*store, error) {
-	// One connection: SQLite serializes writers anyway, and it keeps
-	// transactions simple.
-	dsn := "file:" + path + "?_pragma=journal_mode(WAL)&_pragma=synchronous(FULL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)"
+	// Use the same escaped, absolute file URI for both handles. The writer
+	// creates/checks the schema before any read-only connection is opened.
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	uri := (&url.URL{Scheme: "file", Path: filepath.ToSlash(abs)}).String()
+	pragmas := "&_pragma=synchronous(FULL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)"
+	dsn := uri + "?_pragma=journal_mode(WAL)" + pragmas
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
@@ -230,7 +248,21 @@ func openStore(path string) (*store, error) {
 		db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}
-	return &store{db: db}, nil
+	ro, err := sql.Open("sqlite", uri+"?mode=ro&_pragma=query_only(ON)"+pragmas)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	ro.SetMaxOpenConns(4)
+	ro.SetMaxIdleConns(4)
+	// Fail startup rather than the first authenticated request if read-only
+	// access is unavailable. WAL is persistent and was enabled by the writer.
+	if err := ro.Ping(); err != nil {
+		ro.Close()
+		db.Close()
+		return nil, fmt.Errorf("open read pool: %w", err)
+	}
+	return &store{db: db, reader: ro}, nil
 }
 
 func createSchema(db *sql.DB) error {
@@ -247,7 +279,7 @@ func createSchema(db *sql.DB) error {
 	return tx.Commit()
 }
 
-func (s *store) Close() error { return s.db.Close() }
+func (s *store) Close() error { return errors.Join(s.reader.Close(), s.db.Close()) }
 
 func nowMs() int64 { return time.Now().UnixMilli() }
 
@@ -283,7 +315,7 @@ func (s *store) account(ctx context.Context, id string) (*accountRow, error) {
 }
 
 func (s *store) accounts(ctx context.Context) ([]*accountRow, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+accountColumns+` FROM accounts ORDER BY created_ms, id`)
+	rows, err := s.reader.QueryContext(ctx, `SELECT `+accountColumns+` FROM accounts ORDER BY created_ms, id`)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +333,7 @@ func (s *store) accounts(ctx context.Context) ([]*accountRow, error) {
 
 func (s *store) accountCount(ctx context.Context) (int, error) {
 	var n int
-	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM accounts`).Scan(&n)
+	err := s.reader.QueryRowContext(ctx, `SELECT COUNT(*) FROM accounts`).Scan(&n)
 	return n, err
 }
 
@@ -355,7 +387,7 @@ type accountUsage struct {
 }
 
 func (t *tstore) usage(ctx context.Context) (accountUsage, error) {
-	return usageTx(ctx, t.db, t.acct)
+	return usageTx(ctx, t.reader, t.acct)
 }
 
 func usageTx(ctx context.Context, q querier, acct string) (accountUsage, error) {
@@ -592,7 +624,7 @@ func (s *store) tokenDevice(ctx context.Context, hash []byte) (*device, error) {
 	d := &device{}
 	var kind int32
 	var status int
-	err := s.db.QueryRowContext(ctx, `SELECT t.device_id, t.account_id, t.expires_ms, d.public_key, d.kind, a.plan, a.status
+	err := s.reader.QueryRowContext(ctx, `SELECT t.device_id, t.account_id, t.expires_ms, d.public_key, d.kind, a.plan, a.status
 		FROM tokens t JOIN devices d ON d.id = t.device_id AND d.account_id = t.account_id JOIN accounts a ON a.id = t.account_id
 		WHERE t.hash = ?`, hash).Scan(&d.id, &d.account, &d.expiresMs, &d.publicKey, &kind, &d.plan, &status)
 	if err != nil {
@@ -662,7 +694,7 @@ func (t *tstore) updateMachine(ctx context.Context, id string, meta []byte, revi
 }
 
 func (t *tstore) machines(ctx context.Context) ([]*pb.Machine, error) {
-	rows, err := t.db.QueryContext(ctx, `SELECT id, meta, last_seen_ms FROM machines WHERE account_id = ? ORDER BY id`, t.acct)
+	rows, err := t.reader.QueryContext(ctx, `SELECT id, meta, last_seen_ms FROM machines WHERE account_id = ? ORDER BY id`, t.acct)
 	if err != nil {
 		return nil, err
 	}
@@ -827,7 +859,7 @@ func scanSessions(rows *sql.Rows, budget *sessionBudget, limit int) ([]*pb.Remot
 
 // liveSessions returns every session that has not ended, or a capacity error.
 func (t *tstore) liveSessions(ctx context.Context, budget *sessionBudget) ([]*pb.RemoteSession, error) {
-	rows, err := t.db.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND ended_ms = 0 ORDER BY updated_ms DESC`, t.acct)
+	rows, err := t.reader.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND ended_ms = 0 ORDER BY updated_ms DESC`, t.acct)
 	if err != nil {
 		return nil, err
 	}
@@ -843,7 +875,7 @@ func (t *tstore) endedSessions(ctx context.Context, after *pb.SessionCursor, lim
 		query += ` AND ended_ms <= ? AND (ended_ms < ? OR session_id > ?)`
 		args = append(args, after.EndedMs, after.EndedMs, after.SessionId)
 	}
-	rows, err := t.db.QueryContext(ctx, query+` ORDER BY ended_ms DESC, session_id LIMIT ?`, append(args, limit+1)...)
+	rows, err := t.reader.QueryContext(ctx, query+` ORDER BY ended_ms DESC, session_id LIMIT ?`, append(args, limit+1)...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -863,7 +895,7 @@ func (t *tstore) endedSessions(ctx context.Context, after *pb.SessionCursor, lim
 func (t *tstore) sessionsByID(ctx context.Context, ids []string, budget *sessionBudget) ([]*pb.RemoteSession, error) {
 	var out []*pb.RemoteSession
 	for _, id := range ids {
-		rows, err := t.db.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND session_id = ?`, t.acct, id)
+		rows, err := t.reader.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND session_id = ?`, t.acct, id)
 		if err != nil {
 			return nil, err
 		}
@@ -884,7 +916,7 @@ func (t *tstore) sessionMachine(ctx context.Context, sessionID string) (string, 
 }
 
 func (t *tstore) sessionHeads(ctx context.Context, machineID string) ([]*pb.SessionHead, error) {
-	rows, err := t.db.QueryContext(ctx, `SELECT session_id, last_seq, meta_revision, ended_ms FROM sessions WHERE account_id = ? AND machine_id = ?`, t.acct, machineID)
+	rows, err := t.reader.QueryContext(ctx, `SELECT session_id, last_seq, meta_revision, ended_ms FROM sessions WHERE account_id = ? AND machine_id = ?`, t.acct, machineID)
 	if err != nil {
 		return nil, err
 	}
@@ -973,7 +1005,7 @@ func (t *tstore) appendEvents(ctx context.Context, machineID, sessionID string, 
 }
 
 func (t *tstore) events(ctx context.Context, sessionID string, after uint64, limit int) ([]*pb.StoredEvent, bool, error) {
-	rows, err := t.db.QueryContext(ctx, `SELECT seq, envelope FROM events WHERE account_id = ? AND session_id = ? AND seq > ? ORDER BY seq LIMIT ?`,
+	rows, err := t.reader.QueryContext(ctx, `SELECT seq, envelope FROM events WHERE account_id = ? AND session_id = ? AND seq > ? ORDER BY seq LIMIT ?`,
 		t.acct, sessionID, after, limit+1)
 	if err != nil {
 		return nil, false, err

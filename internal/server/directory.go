@@ -52,7 +52,7 @@ func scanDevice(sc interface{ Scan(...any) error }) (*pb.Device, error) {
 const deviceColumns = `id, kind, created_ms, meta, meta_revision, last_seen_ms`
 
 func (t *tstore) devices(ctx context.Context) ([]*pb.Device, error) {
-	rows, err := t.db.QueryContext(ctx, `SELECT `+deviceColumns+` FROM devices WHERE account_id = ? ORDER BY created_ms, id`, t.acct)
+	rows, err := t.reader.QueryContext(ctx, `SELECT `+deviceColumns+` FROM devices WHERE account_id = ? ORDER BY created_ms, id`, t.acct)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (t *tstore) putDeviceMeta(ctx context.Context, id string, expected uint64, 
 var errNotClient = errors.New("only a client device has metadata of its own")
 
 func (t *tstore) prefs(ctx context.Context, objectID string) (*pb.AccountPrefsObject, error) {
-	return prefsTx(ctx, t.db, t.acct, objectID)
+	return prefsTx(ctx, t.reader, t.acct, objectID)
 }
 
 func prefsTx(ctx context.Context, q querier, acct, objectID string) (*pb.AccountPrefsObject, error) {
