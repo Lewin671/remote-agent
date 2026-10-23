@@ -1,8 +1,12 @@
+import { availableParallelism } from "node:os";
 import { configDefaults, defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vite.config.ts";
 
 export default mergeConfig(viteConfig, defineConfig({
   test: {
+    // Crypto fixtures launch Go processes too. Leave CPU capacity for them and
+    // other suites instead of starting one JS worker per reported core.
+    maxWorkers: Math.min(4, availableParallelism()),
     projects: [
       {
         extends: true,

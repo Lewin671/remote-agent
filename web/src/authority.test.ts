@@ -1,9 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { beforeAll, expect, inject, it } from "vitest";
 import { ed25519, x25519 } from "@noble/curves/ed25519.js";
 import { Authority, authoritySigningTime } from "./authority";
 import { makePairApproval } from "./pair-approval";
@@ -23,16 +19,7 @@ const pub = (b: number): B => new Uint8Array(ed25519.getPublicKey(fill(32, b)));
 const xp = (b: number): B => new Uint8Array(x25519.getPublicKey(fill(32, b)));
 const now = 1700000000000n;
 const random = { grantEkm: () => fill(32, 0x71), prevNonce: fill(12, 0x72), recoveryNonce: fill(32, 0x73) };
-const cwd = fileURLToPath(new URL("..", import.meta.url));
-let directory: string, oracle: string;
-// Compile once as fixture setup; assertions exercise the current Go code
-// without repeatedly paying for go run under Vitest's per-test deadline.
-beforeAll(() => {
-  directory = mkdtempSync(join(tmpdir(), "ra-authority-oracle-"));
-  oracle = join(directory, "oracle");
-  execFileSync("go", ["build", "-o", oracle, "../testdata/authority-oracle"], { cwd, stdio: "pipe", timeout: 60000 });
-}, 120000);
-afterAll(() => { if (directory) rmSync(directory, { recursive: true, force: true }); });
+const oracle = inject("authorityOracleBinary");
 function edKey(b: number) {
   return crypto.subtle.importKey("pkcs8", concat(fromHex("302e020100300506032b657004220420"), fill(32, b)), "Ed25519", false, ["sign"]);
 }

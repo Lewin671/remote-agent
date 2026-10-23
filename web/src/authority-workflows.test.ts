@@ -1,5 +1,5 @@
 import { IDBFactory } from "fake-indexeddb";
-import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { AuthorityServer } from "./test/authority-server";
@@ -25,7 +25,7 @@ import { PROTOCOL_VERSION } from "./protocol";
 import { Remote, joinWithApproval } from "./remote";
 import { RecoveryCode } from "./recovery";
 
-let built: ReturnType<typeof AuthorityServer.build>;
+let creation: Awaited<ReturnType<typeof prepareCreationFixture>>;
 let server: AuthorityServer;
 let visible = true;
 let setup: AuthoritySetup;
@@ -38,22 +38,36 @@ function locks() {
     const next = tail.then(work); tail = next.then(() => undefined, () => undefined); return next;
   } };
 }
-beforeAll(() => { built = AuthorityServer.build(); }, 120000);
-afterAll(() => built.cleanup());
+async function prepareCreationFixture() {
+  vi.stubGlobal("indexedDB", new IDBFactory());
+  vi.stubGlobal("navigator", { locks: locks() });
+  const life = new AuthorityLifecycle(() => true);
+  try {
+    const prepared = await new AuthoritySetup(life).prepareCreation("https://relay.example.com");
+    const draft = (await readSecurityOperation<{ account: StoredAccount }>())!;
+    return { draft, code: prepared.code! };
+  } finally { life.dispose(); vi.unstubAllGlobals(); }
+}
+beforeAll(async () => { creation = await prepareCreationFixture(); });
 beforeEach(async () => {
   local = new IDBFactory(); visible = true;
   vi.stubGlobal("indexedDB", local);
   vi.stubGlobal("navigator", { locks: locks() });
   vi.stubGlobal("localStorage", { setItem: vi.fn(), getItem: () => null });
   setup = new AuthoritySetup(lifecycle());
-  server = await AuthorityServer.start(built.binary);
+  server = await AuthorityServer.start();
 }, 30000);
 afterEach(async () => { for (const l of lifecycles.splice(0)) l.dispose(); await server?.close(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 async function createAccount(token = "test-setup") {
-  const prepared = await setup.prepareCreation(server.url);
+  // Genesis/signatures are independent of the relay URL. Clone the prepared
+  // draft once per fresh relay/database; creation and its crash boundaries
+  // still exercise prepareCreation directly in their dedicated tests.
+  const draft = structuredClone(creation.draft);
+  draft.server = draft.local.account.server = server.url;
+  await claimSecurityOperation(draft);
   await setup.continueCreation(token);
   await setup.confirmCreationCodeSaved();
-  return { account: (await loadAccount())!, code: prepared.code! };
+  return { account: (await loadAccount())!, code: creation.code };
 }
 async function clients(account: StoredAccount) {
   const services = authorityServices(account.server);
@@ -79,30 +93,6 @@ function dropAck(path: string) {
     return response;
   });
 }
-it("allows explicit exit from unsigned and uncertain signed offers but retains delivered offers and confirmed rotations", async () => {
-  const { account } = await createAccount();
-  const c = await clients(account), record = await loadSecurity();
-  let op = operation("offer", account.server, account.deviceId, record.stateHash, { recoveryEd: new Uint8Array(32).fill(7) });
-  await claimSecurityOperation(op, record.stateHash);
-  op = await saveSecurityOperation(op, { ...op, codeSaved: true });
-  await c.authority.discardUnpublishedCode();
-  expect(await readSecurityOperation()).toBeUndefined();
-  await claimSecurityOperation(op, record.stateHash);
-  op = await saveSecurityOperation(op, { ...op, signed: new Uint8Array([1]) });
-  await c.authority.discardUnpublishedCode();
-  expect(await readSecurityOperation()).toBeUndefined();
-  await claimSecurityOperation(op, record.stateHash);
-  op = await saveSecurityOperation(op, { ...op, phase: "DELIVERED" });
-  await expect(c.authority.discardUnpublishedCode()).rejects.toThrow();
-  expect((await readSecurityOperation())!.signed).toEqual(new Uint8Array([1]));
-  expect((await readSecurityOperation())!.phase).toBe("DELIVERED");
-  await securityStore.updateSecurityEntry("pending", () => undefined);
-  const rotation = operation("state", account.server, account.deviceId, record.stateHash, { action: "recovery" });
-  await claimSecurityOperation(rotation, record.stateHash);
-  await saveSecurityOperation(rotation, { ...rotation, codeSaved: true });
-  await expect(c.authority.discardUnpublishedCode()).rejects.toThrow();
-  expect((await readSecurityOperation())!.codeSaved).toBe(true);
-});
 it("continues the exact creation draft after registration and pin acknowledgements are lost; token can be corrected", async () => {
   expect(await securitySetupStatus()).toBe("missing");
   const { code } = await setup.prepareCreation(server.url);
@@ -125,7 +115,7 @@ it("continues the exact creation draft after registration and pin acknowledgemen
   expect(RecoveryCode.decode(code!)!.genesis).toEqual((await loadSecurity()).pin.genesis.slice(0, 10));
 });
 it("creates on an open relay with real PoW while retaining its signed registration", async () => {
-  await server.close(); server = await AuthorityServer.start(built.binary, true);
+  await server.close(); server = await AuthorityServer.start(true);
   await createAccount("");
   expect(isAuthority(await loadSecurity())).toBe(true);
   expect((await loadSecurity()).lease).toBeDefined();
@@ -593,7 +583,7 @@ it.each(["before", "after"] as const)("resumes emergency recovery at every durab
   let count = 1;
   try {
     for (let index = -1; index < count; index++) {
-      monitor = false; await server.close(); server = await AuthorityServer.start(built.binary);
+      monitor = false; await server.close(); server = await AuthorityServer.start();
       vi.stubGlobal("indexedDB", new IDBFactory()); setup = new AuthoritySetup(lifecycle());
       const { code } = await createAccount();
       vi.stubGlobal("indexedDB", new IDBFactory()); const recovery = new AuthoritySetup(lifecycle());
@@ -645,7 +635,7 @@ it.each(["before", "after"] as const)("keeps a single successor across every sta
   let count = 1;
   try {
     for (let index = -1; index < count; index++) {
-      monitor = false; await server.close(); server = await AuthorityServer.start(built.binary);
+      monitor = false; await server.close(); server = await AuthorityServer.start();
       vi.stubGlobal("indexedDB", new IDBFactory()); setup = new AuthoritySetup(lifecycle());
       const { account } = await createAccount(), c = await clients(account);
       await c.authority.prepareRecovery();

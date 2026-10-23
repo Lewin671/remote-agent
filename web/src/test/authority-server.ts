@@ -1,8 +1,5 @@
-import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { inject } from "vitest";
 
 /** The real Go server; only the 48-hour timestamp advancement is a debug
  * trigger. Each process owns a separate temporary database and random port. */
@@ -52,16 +49,8 @@ export class AuthorityServer {
       this.process.stdin.end();
     });
   }
-  static build() {
-    const directory = mkdtempSync(join(tmpdir(), "ra-authority-binary-"));
-    const binary = join(directory, "server");
-    try {
-      execFileSync("go", ["build", "-o", binary, "./internal/testutil/authorityserver"], { cwd: resolve(fileURLToPath(new URL("../../..", import.meta.url))), stdio: "pipe" });
-    } catch (e) { rmSync(directory, { recursive: true, force: true }); throw e; }
-    return { binary, cleanup: () => rmSync(directory, { recursive: true, force: true }) };
-  }
-  static async start(binary: string, open = false) {
-    const server = new AuthorityServer(binary, open);
+  static async start(open = false) {
+    const server = new AuthorityServer(inject("authorityServerBinary"), open);
     server.url = await server.line();
     if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(server.url)) throw new Error("bad isolated server address: " + server.url);
     return server;
