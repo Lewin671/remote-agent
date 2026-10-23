@@ -144,10 +144,7 @@ type Daemon struct {
 	settingsMu       sync.Mutex
 	cached           *pb.DaemonSettings
 
-	// resumeMu makes resumes one at a time: two for the same session
-	// would both pass the checks and share its startup files.
-	cacheMu  sync.Mutex
-	resumeMu sync.Mutex
+	cacheMu sync.Mutex
 }
 
 // New returns a daemon; call Run to start it.
@@ -970,21 +967,6 @@ drain:
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
-	}
-	d.resumeMu.Lock()
-	defer d.resumeMu.Unlock()
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	s.mu.Lock()
-	m = s.meta
-	turnContext = s.context
-	s.mu.Unlock()
-	if !m.Exited {
-		return nil, errRunning
-	}
-	if d.cfg.Tmux.HasSession(m.Tmux) {
-		return nil, errRunning
 	}
 	// Nothing queued before it exited is sent now. While their outcomes
 	// cannot be logged they stay queued, and a started session would be

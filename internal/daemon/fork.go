@@ -42,13 +42,11 @@ func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) 
 	if err != nil {
 		return nil, err
 	}
-	// Match resume's lock order: the source lifecycle, then startup files.
+	// Match resume's lock order: the source lifecycle, then terminal ownership.
 	src.lifecycleMu.Lock()
 	defer src.lifecycleMu.Unlock()
 	src.ctlMu.Lock()
 	defer src.ctlMu.Unlock()
-	d.resumeMu.Lock()
-	defer d.resumeMu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
