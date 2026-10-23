@@ -312,6 +312,9 @@ func (d *Daemon) trimImageCache(limit int64) (int64, error) {
 		}
 		st.mu.Unlock()
 	}
+	if total <= limit {
+		return total, nil
+	}
 	sort.Slice(files, func(i, j int) bool { return files[i].at.Before(files[j].at) })
 	for _, f := range files {
 		if total <= limit {
