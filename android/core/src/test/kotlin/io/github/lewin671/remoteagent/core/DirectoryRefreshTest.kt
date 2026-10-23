@@ -118,6 +118,88 @@ class DirectoryRefreshTest {
         } finally { remote.close(); runCurrent() }
     }
 
+    @Test fun pendingDirectoryCannotRollBackPushedMachineMetadataOrItsCache() = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        peer.machineRows = listOf(fixture.machine(1, "before"))
+        val cache = MemoryCache()
+        val remote = peer.remote(cache)
+        val release = CompletableDeferred<Unit>()
+        try {
+            remote.start(); runCurrent()
+            val reached = CompletableDeferred<Unit>()
+            peer.before = { name, _ -> if (name == "ListDevices") {
+                reached.complete(Unit); release.await()
+            } }
+            val reading = async { remote.refresh() }
+            reached.await()
+            val pushed = fixture.machine(2, "after")
+            peer.machineRows = listOf(pushed)
+            peer.frame(ServerFrame.newBuilder().setMachineUpdated(MachineUpdated.newBuilder().setMachine(pushed)).build())
+            runCurrent()
+            assertEquals("after", remote.state.value.machines.getValue(fixture.machine.id).meta?.hostname)
+            assertEquals(pushed.meta, cache.machines().single().meta)
+            release.complete(Unit)
+            assertTrue(reading.await())
+            runCurrent()
+            val installed = remote.state.value.machines.getValue(fixture.machine.id)
+            assertEquals("after", installed.meta?.hostname)
+            assertEquals(2L, installed.metaRev)
+            assertEquals(pushed.meta, cache.machines().single().meta)
+            // A later listing uses the retained trusted envelope as well.
+            remote.refresh()
+            assertEquals(pushed.meta, cache.machines().single().meta)
+        } finally { release.complete(Unit); remote.close(); runCurrent() }
+    }
+
+    @Test fun anOlderMachineListingCannotReplaceAnInstalledHigherRevision() = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        val newest = fixture.machine(2, "newest")
+        peer.machineRows = listOf(newest)
+        val cache = MemoryCache()
+        val remote = peer.remote(cache)
+        try {
+            remote.start(); runCurrent()
+            peer.machineRows = listOf(fixture.machine(1, "older"))
+            remote.refresh()
+            assertEquals("newest", remote.state.value.machines.getValue(fixture.machine.id).meta?.hostname)
+            assertEquals(2L, remote.state.value.machines.getValue(fixture.machine.id).metaRev)
+            assertEquals(newest.meta, cache.machines().single().meta)
+        } finally { remote.close(); runCurrent() }
+    }
+
+    @Test fun deviceMetadataPushSupersedesAnOlderPendingDirectoryResponse() = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        var device = fixture.device(1, "before")
+        val captured = java.util.IdentityHashMap<com.connectrpc.http.UnaryHTTPRequest, Device>()
+        var hold = false
+        val reached = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        peer.before = { name, request -> if (name == "ListDevices") {
+            captured[request] = device
+            if (hold) { hold = false; reached.complete(Unit); release.await() }
+        } }
+        peer.response = { name, request -> if (name == "ListDevices")
+            ListDevicesResponse.newBuilder().addDevices(captured.getValue(request)).build() else null }
+        val remote = peer.remote()
+        try {
+            remote.start(); runCurrent()
+            assertEquals("before", remote.state.value.devices.getValue(fixture.phone.id).meta?.name)
+            hold = true
+            val reading = async { remote.refresh() }
+            reached.await()
+            device = fixture.device(2, "after")
+            peer.frame(ServerFrame.newBuilder().setDeviceUpdated(DeviceUpdated.newBuilder().setDevice(device)).build())
+            runCurrent()
+            assertEquals("after", remote.state.value.devices.getValue(fixture.phone.id).meta?.name)
+            release.complete(Unit)
+            assertTrue(reading.await())
+            runCurrent()
+            val installed = remote.state.value.devices.getValue(fixture.phone.id)
+            assertEquals("after", installed.meta?.name)
+            assertEquals(2L, installed.metaRev)
+        } finally { release.complete(Unit); remote.close(); runCurrent() }
+    }
+
     @Test fun failedChangedHeadDirectoryDoesNotApplyPushAgainstOldMembership() = runTest {
         val peer = ColdOpenPeer(fixture, this)
         val remote = peer.remote()

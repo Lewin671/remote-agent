@@ -2321,6 +2321,7 @@ class Remote(
                 if (m.hasMeta() && m.meta.securityHeader.size() > 0)
                     metadata["machine:${m.id}"] = m.meta
             }
+            val verifiedMachines = HashMap<String, Envelope>()
             val newDevices = HashMap<String, DeviceView>()
             val newMachines = HashMap(machines)
             for (m in head.core.members) {
@@ -2352,7 +2353,7 @@ class Remote(
                                     Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
                                     MachineMeta::parseFrom,
                                 )
-                            verifiedMachineMetadata[m.id] = env
+                            verifiedMachines[m.id] = env
                             val old = machines[m.id]
                             newMachines[m.id] =
                                 if (old == null)
@@ -2380,6 +2381,8 @@ class Remote(
                     d.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT
             )
                 throw DeviceSecurity.Failure("stale")
+            for ((id, m) in newMachines) if (ucmp(machines[id]?.metaRev ?: 0L, m.metaRev) > 0)
+                throw DeviceSecurity.Failure("stale")
             archiveMachines.clear()
             archiveMachines.addAll(
                 security.chain().flatMap { it.core.members }.filter { it.kind == 1u }.map { it.id },
@@ -2390,6 +2393,7 @@ class Remote(
             trustedMembers.putAll(members)
             trustedMetadata.clear()
             trustedMetadata.putAll(metadata)
+            verifiedMachineMetadata.putAll(verifiedMachines)
             devices.clear()
             devices.putAll(newDevices)
             machines.clear()

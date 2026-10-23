@@ -45,6 +45,16 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
         .setOnline(true).setMeta(seal(DeviceSecurity.Purpose.MACHINE_META, "", revision,
             MachineMeta.newBuilder().setHostname(hostname).build().toByteArray())).build()
 
+    fun device(revision: Long, name: String): Device {
+        val purpose = DeviceSecurity.Purpose.DEVICE_META
+        val header = DeviceSecurity.Header(record.pin.account, record.pin.domain, head.core.epoch,
+            DeviceSecurity.stateHash(head), head.core.contentEpoch, phone.id, purpose.kind, purpose,
+            "", "", phone.id, revision.toULong(), 0uL, 0u)
+        val env = DeviceSecurity.envelope(DeviceSecurity.Wire(DeviceSecurity.form(secret, null, header,
+            DeviceMeta.newBuilder().setName(name).build().toByteArray(), signer)))
+        return Device.newBuilder().setId(phone.id).setKind(DeviceKind.DEVICE_KIND_CLIENT).setMeta(env).build()
+    }
+
     val sessions = listOf("long", "short", "empty").associateWith { sid ->
         RemoteSession.newBuilder().setSessionId(sid).setMachineId(machine.id)
             .setKey(seal(DeviceSecurity.Purpose.SESSION_KEY, sid, 1, seed))
