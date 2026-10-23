@@ -136,6 +136,62 @@ extension ServerTests {
             }
         }
 
+        @Test(arguments: ["device", "machine"])
+        func metadataPushAfterDirectoryResponseRequiresAFreshRead(kind: String) async throws {
+            try await world { w in
+                let writer = try await w.client()
+                let deviceID = writer.account.deviceId
+                try await writer.changeDeviceMeta(deviceID) { $0.name = "old name" }
+                let hold = Signal(), entered = Signal(), release = Signal(), updateSync = Signal()
+                let lists = Counter()
+                w.onClose { release.set() }
+                let http = Intercept.http(for: w.server.url, answered: { request in
+                    if hold.isSet && !entered.isSet && request.url?.path.hasSuffix("/ListDevices") == true {
+                        entered.set()
+                        await release.wait()
+                    }
+                }) { request in
+                    if request.url?.path.hasSuffix("/ListDevices") == true { lists.increment() }
+                    if entered.isSet && request.url?.path.hasSuffix("/GetSecurityStates") == true { updateSync.set() }
+                    return request
+                }
+                let r = try w.remote(try await w.join(), http: http)
+                try await r.refreshTrustedDirectory()
+                let head = await r.directoryHead
+                hold.set()
+                let reading = Task { try await r.refreshTrustedDirectory() }
+                #expect(await entered.wait())
+                let readsWhileHeld = lists.value
+                if kind == "device" {
+                    try await writer.changeDeviceMeta(deviceID) {
+                        $0.name = "new name"
+                        $0.description_p = "new description"
+                    }
+                } else { try await w.daemon.putMachine("new-machine-name") }
+                let headers = Api.headers(token: try await writer.currentToken())
+                let device = try #require(try await writer.api.client.listDevices(request: .init(), headers: headers)
+                    .value().devices.first { $0.id == deviceID })
+                let machine = try #require(try await writer.api.client.listMachines(request: .init(), headers: headers)
+                    .value().machines.first)
+                // Feed the relay's signed update to the same handlers as the stream.
+                let updating = Task {
+                    if kind == "device" { await r.putDevice(device) }
+                    else { await r.machineUpdated(machine) }
+                }
+                #expect(await updateSync.wait())
+                release.set()
+                try await reading.value
+                await updating.value
+                if kind == "device" {
+                    #expect(r.current.devices[deviceID]?.meta?.name == "new name")
+                    #expect(r.current.devices[deviceID]?.meta?.description_p == "new description")
+                    #expect(r.current.devices[deviceID]?.metaRev == device.metaRevision)
+                } else { #expect(r.current.machines[machine.id]?.meta?.hostname == "new-machine-name") }
+                #expect(lists.value > readsWhileHeld)
+                #expect(await r.directoryHead == head)
+            }
+        }
+
         @Test func olderDirectoryReadCannotUndoNewerMachineMetadata() async throws {
             try await world { w in
                 let hold = Signal(), entered = Signal(), release = Signal()

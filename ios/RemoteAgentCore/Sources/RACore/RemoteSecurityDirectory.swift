@@ -14,6 +14,12 @@ extension Remote {
         try await refreshTrustedDirectory(updateMachine: machine, envelopes: envelopes)
     }
 
+    func invalidateDirectoryRead() {
+        guard directoryLoad != nil else { return }
+        directoryVersion += 1
+        directoryHead = nil
+    }
+
     private func refreshTrustedDirectory(updateMachine: String?, envelopes: [PBEnvelope]) async throws {
         let client = try securitySession()
         while !closed {
@@ -26,11 +32,13 @@ extension Remote {
                 do { try await job.task.value }
                 catch {
                     if directoryLoad?.id == job.id { directoryLoad = nil }
+                    if job.version != directoryVersion { continue }
                     if try await client.headStateHash() != job.head { continue }
                     throw error
                 }
                 if directoryLoad?.id == job.id { directoryLoad = nil }
-                if try await client.headStateHash() != directoryHead { continue }
+                let installed = try await client.headStateHash()
+                if job.version != directoryVersion || installed != directoryHead { continue }
                 return
             }
             let recoveryPending = await client.recoveryPending
@@ -49,17 +57,19 @@ extension Remote {
             }
             directoryVersion += 1
             let version = directoryVersion
-            let job = DirectoryLoad(head: head, task: Task { try await self.readTrustedDirectory(record, version: version) })
+            let job = DirectoryLoad(head: head, version: version, task: Task { try await self.readTrustedDirectory(record, version: version) })
             directoryLoad = job
             do { try await job.task.value }
             catch {
                 if directoryLoad?.id == job.id { directoryLoad = nil }
+                if version != directoryVersion { continue }
                 if try await client.headStateHash() != head { continue }
                 throw error
             }
             // Metadata publication may reload the directory; it runs outside this job.
             if directoryLoad?.id == job.id { directoryLoad = nil }
-            if try await client.headStateHash() == directoryHead { return }
+            let installed = try await client.headStateHash()
+            if version == directoryVersion && installed == directoryHead { return }
         }
     }
 
@@ -131,9 +141,9 @@ extension Remote {
             }
             nextDevices[member.id] = view
         }
-        guard !closed, version == directoryVersion else { return }
         let expiration = try await securitySession().leaseExpiration()
         let installed = try await securitySession().identity().1
+        guard !closed, version == directoryVersion else { return }
         guard try DeviceSecurity.stateHash(installed) == hash else {
             throw DeviceSecurity.Failure.stale
         }

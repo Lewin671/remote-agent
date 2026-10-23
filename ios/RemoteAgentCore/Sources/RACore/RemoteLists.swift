@@ -280,6 +280,14 @@ extension Remote {
         return try await job.value
     }
 
+    func machineUpdated(_ machine: PBMachine) async {
+        bump(&machinePushes, machine.id)
+        if machine.hasMeta { invalidateDirectoryRead() }
+        do { try await checkDirectory(machine.id, envelopes: machine.hasMeta ? [machine.meta] : []) }
+        catch { report(error) }
+        await putMachine(machine)
+    }
+
     func putMachine(_ incoming: PBMachine, staleOnline: Bool = false, save: Bool = true) async {
         guard trustedMembers[incoming.id]?.kind == 1 || archiveMachines.contains(incoming.id) else { return }
         let m = incoming
@@ -487,7 +495,10 @@ extension Remote {
         }
         publish()
     }
-    func putDevice(_ ignored: PBDevice) async { await loadDevices() }
+    func putDevice(_ ignored: PBDevice) async {
+        invalidateDirectoryRead()
+        await loadDevices()
+    }
 
     /// Names this client. Device metadata is self-only in protocol 10, so a
     /// name for another member can only be set on that member's own device.

@@ -188,6 +188,7 @@ public actor Remote {
     struct DirectoryLoad {
         let id = UUID()
         let head: Data
+        let version: Int
         let task: Task<Void, Error>
     }
     var directoryLoad: DirectoryLoad?
@@ -830,9 +831,7 @@ public actor Remote {
         case .machineRemoved?:
             _ = await refresh()
         case .machineUpdated(let u)?:
-            bump(&machinePushes, u.machine.id)
-            do { try await checkDirectory(u.machine.id, envelopes: u.machine.hasMeta ? [u.machine.meta] : []) } catch { report(error) }
-            await putMachine(u.machine)
+            await machineUpdated(u.machine)
         case .sessionUpdated(let u)?:
             bump(&sessionPushes, u.session.sessionID)
             do { try await checkDirectory(u.session.machineID, envelopes: [u.session.key, u.session.meta]) } catch { report(error) }
