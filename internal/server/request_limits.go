@@ -101,19 +101,34 @@ func (a *rpcAdmission) forward() error {
 }
 
 func (s *Server) limitRPCRequests(next http.Handler, readTimeout time.Duration) http.Handler {
+	return s.limitRPCRequestsWithWriteTimeouts(next, readTimeout, rpcResponseWriteTimeout, largeRPCResponseWriteTimeout)
+}
+
+func (s *Server) limitRPCRequestsWithWriteTimeouts(next http.Handler, readTimeout, writeTimeout, largeWriteTimeout time.Duration) http.Handler {
 	errorWriter := connect.NewErrorWriter()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, "/remoteagent.v1.") {
 			next.ServeHTTP(w, r)
 			return
 		}
+		response := &rpcResponseWriter{ResponseWriter: w, timeout: rpcWriteTimeout(r.URL.Path, writeTimeout, largeWriteTimeout)}
+		w = response
+		var admission *rpcAdmission
+		defer func() {
+			// Flush net/http's response buffer while admission and the write
+			// deadline still apply, including for a small Connect response.
+			_ = response.FlushError()
+			if admission != nil {
+				admission.release()
+			}
+		}()
 		slots := s.rpcRequests
 		pool := largeRPCPool
 		if r.ContentLength >= 0 && r.ContentLength <= smallRPCBodyBytes && !compressedRPC(r.Header) {
 			slots = s.smallRPCRequests
 			pool = smallRPCPool
 			// The declared length is not trusted to bound the read.
-			r.Body = http.MaxBytesReader(w, r.Body, smallRPCBodyBytes)
+			r.Body = http.MaxBytesReader(response.ResponseWriter, r.Body, smallRPCBodyBytes)
 		}
 		select {
 		case slots <- struct{}{}:
@@ -126,8 +141,7 @@ func (s *Server) limitRPCRequests(next http.Handler, readTimeout time.Duration) 
 			http.Error(w, "too many in-flight RPC requests", http.StatusServiceUnavailable)
 			return
 		}
-		admission := &rpcAdmission{s: s, slots: slots, pool: pool}
-		defer admission.release()
+		admission = &rpcAdmission{s: s, slots: slots, pool: pool}
 		// A context deadline alone cannot unblock net/http's request body read.
 		// Apply a transport read deadline, then clear it for keep-alive reuse.
 		controller := http.NewResponseController(w)

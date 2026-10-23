@@ -91,6 +91,7 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// RPC handlers set response write deadlines; a server-wide timeout would also cut off WebSockets.
 	hs := &http.Server{Addr: *listen, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	ln, err := net.Listen("tcp", *listen)
 	if err != nil {
