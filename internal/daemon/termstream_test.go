@@ -30,24 +30,11 @@ func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
 	}
 	t.Cleanup(func() { _, _ = tc.Run("kill-server") })
 	err := tc.NewSession(tmux.NewSessionOptions{Name: "history", Width: 80, Height: 10,
-		Argv: []string{"/bin/sh", "-c", `i=1; while [ "$i" -le 2500 ]; do printf 'history-%03d\n' "$i"; i=$((i+1)); done; printf '\033[31mcolored-tail\033[0m\n'; exec cat`}})
+		Argv: []string{"/bin/sh", "-c", `i=1; while [ "$i" -le 2500 ]; do printf 'history-%03d\n' "$i"; i=$((i+1)); done; printf '\033[31mcolored-tail\033[0m\n'; "$1" -L "$2" wait-for -S history-ready; exec cat`, "sh", tc.Command()[0], tc.Socket}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		screen, err := tc.Capture("history", false)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if strings.Contains(screen, "colored-tail") {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("pane never finished output: %q", screen)
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	waitForTmuxSignal(t, tc, "history-ready")
 	d := New(Config{Tmux: tc})
 	d.sessions["history"] = &session{meta: meta{Tmux: "history"}}
 	stream, err := d.OpenTerminal("history")
@@ -120,9 +107,10 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 	}
 	t.Cleanup(func() { _, _ = tc.Run("kill-server") })
 	if err := tc.NewSession(tmux.NewSessionOptions{Name: "history", Width: 80, Height: 10,
-		Argv: []string{"/bin/sh", "-c", `i=1; while [ "$i" -le 2500 ]; do printf 'history-%03d\n' "$i"; i=$((i+1)); done; exec cat`}}); err != nil {
+		Argv: []string{"/bin/sh", "-c", `i=1; while [ "$i" -le 2500 ]; do printf 'history-%03d\n' "$i"; i=$((i+1)); done; "$1" -L "$2" wait-for -S history-ready; exec cat`, "sh", tc.Command()[0], tc.Socket}}); err != nil {
 		t.Fatal(err)
 	}
+	waitForTmuxSignal(t, tc, "history-ready")
 	dir := t.TempDir()
 	log, err := eventlog.Open(filepath.Join(dir, "events.jsonl"))
 	if err != nil {
@@ -139,7 +127,7 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 	defer srv.Close()
 	http := httptest.NewServer(srv.Handler())
 	defer http.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	authority, err := remoteclient.NewAuthority(ctx, http.URL, "history-test")

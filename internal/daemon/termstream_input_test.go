@@ -39,16 +39,7 @@ func TestTerminalInputUsesPrivateControlPipe(t *testing.T) {
 	if err := tc.NewSession(tmux.NewSessionOptions{Name: "input", Argv: []string{"/bin/sh", "-c", script, "sh", bin, tc.Socket, output}}); err != nil {
 		t.Fatal(err)
 	}
-	wait := func(channel string) {
-		t.Helper()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		argv := tc.Command("wait-for", channel)
-		if err := exec.CommandContext(ctx, argv[0], argv[1:]...).Run(); err != nil {
-			t.Fatal(err)
-		}
-	}
-	wait("ready")
+	waitForTmuxSignal(t, tc, "ready")
 	d := New(Config{Tmux: tc})
 	d.sessions["input"] = &session{meta: meta{Tmux: "input"}}
 	stream, err := d.OpenTerminal("input")
@@ -56,10 +47,12 @@ func TestTerminalInputUsesPrivateControlPipe(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer stream.Close()
+	// Attachment depends on real subprocess scheduling; the suite timeout
+	// bounds a broken handshake, rather than a separate startup deadline.
 	select {
 	case <-stream.ready:
-	case <-time.After(10 * time.Second):
-		t.Fatal("control connection did not attach")
+	case <-stream.ctx.Done():
+		t.Fatalf("control connection did not attach: %v", stream.ctx.Err())
 	}
 	if err := os.WriteFile(calls, nil, 0600); err != nil {
 		t.Fatal(err)
@@ -78,7 +71,7 @@ func TestTerminalInputUsesPrivateControlPipe(t *testing.T) {
 	if len(invoked) != 0 {
 		t.Fatalf("input launched subprocesses: %q", invoked)
 	}
-	wait("received")
+	waitForTmuxSignal(t, tc, "received")
 	got, err := os.ReadFile(output)
 	if err != nil {
 		t.Fatal(err)
@@ -100,5 +93,21 @@ func TestTerminalInputUsesPrivateControlPipe(t *testing.T) {
 	stream.Close()
 	if err := stream.Input([]byte("after-close")); err == nil {
 		t.Fatal("closed stream accepted input")
+	}
+}
+
+// waitForTmuxSignal waits for an explicit pane barrier. The suite deadline
+// bounds failures without imposing a separate subprocess startup budget.
+func waitForTmuxSignal(t *testing.T, tc *tmux.Client, signal string) {
+	t.Helper()
+	ctx := t.Context()
+	if deadline, ok := t.Deadline(); ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithDeadline(ctx, deadline)
+		defer cancel()
+	}
+	argv := tc.Command("wait-for", signal)
+	if err := exec.CommandContext(ctx, argv[0], argv[1:]...).Run(); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -12,13 +12,17 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
+	"github.com/Lewin671/remote-agent/internal/tmux"
 )
 
 func resumableHarness(t *testing.T) *harness {
 	t.Helper()
 	h := newHarness(t, Config{CodexBin: "/bin/echo", Exe: "remote-agent-test", PollInterval: time.Hour, ScreenInterval: time.Hour})
 	fakeTmux(t, h)
-	h.s.meta.Shell = true
+	// Lifecycle tests do not need the host's directory service or login shell.
+	if err := writeEnvFile(filepath.Join(h.dir, "env.json"), map[string]string{}); err != nil {
+		t.Fatal(err)
+	}
 	h.d.sessions[h.s.meta.ID] = h.s
 	return h
 }
@@ -128,13 +132,9 @@ func TestResumeDrainsOldLoopsWithoutHoldingWorkerLocks(t *testing.T) {
 
 func awaitLifecycleResult(t *testing.T, result <-chan error) error {
 	t.Helper()
-	select {
-	case err := <-result:
-		return err
-	case <-time.After(5 * time.Second):
-		t.Fatal("session lifecycle operation did not finish")
-		return nil
-	}
+	// Successful launches in these tests run fake-tmux subprocesses. Let the
+	// go test timeout diagnose a hang instead of timing process scheduling.
+	return <-result
 }
 
 type blockedLaunchAdapter struct {
@@ -160,7 +160,11 @@ func (a *blockedLaunchAdapter) Argv(l *agent.Launch) ([]string, error) {
 func TestSessionLaunchDoesNotBlockUnrelatedResume(t *testing.T) {
 	for _, operation := range []string{"resume", "fork"} {
 		t.Run(operation, func(t *testing.T) {
-			h := resumableHarness(t)
+			h := newHarness(t, Config{CodexBin: "/bin/echo", Exe: "remote-agent-test"})
+			// HasSession must answer false without spawning anything. Both
+			// launches return from Argv, before tmux or login-shell startup.
+			h.d.cfg.Tmux = &tmux.Client{Bin: filepath.Join(h.dir, "missing-tmux")}
+			h.d.sessions[h.s.meta.ID] = h.s
 			h.writeRollout(taskStarted, `{"type":"event_msg","payload":{"type":"user_message","message":"hello"}}`)
 			h.s.bindRollout("original-cli-session", filepath.Join(h.dir, "rollout.jsonl"))
 			h.s.meta.Exited = true
@@ -184,6 +188,14 @@ func TestSessionLaunchDoesNotBlockUnrelatedResume(t *testing.T) {
 			case err := <-done:
 				t.Fatalf("launch did not reach the barrier: %v", err)
 			}
+			// Detect daemon-wide ownership before adding the other session;
+			// taking mu below would otherwise deadlock on that regression.
+			if !h.d.mu.TryLock() {
+				unblock()
+				_ = awaitLifecycleResult(t, done)
+				t.Fatal("blocked launch owns the daemon session map")
+			}
+			h.d.mu.Unlock()
 			// This is also the same-session serialization boundary. Removing
 			// lifecycleMu must fail even if the second goroutine starts late.
 			if h.s.lifecycleMu.TryLock() {
@@ -206,14 +218,18 @@ func TestSessionLaunchDoesNotBlockUnrelatedResume(t *testing.T) {
 			h.d.mu.Lock()
 			h.d.sessions[other.meta.ID] = other
 			h.d.mu.Unlock()
+			ready := make(chan struct{})
+			close(ready)
+			otherLaunch := &blockedLaunchAdapter{Adapter: other.ag, entered: make(chan struct{}), release: ready}
+			other.ag = otherLaunch
 			resumed := make(chan error, 1)
 			go func() { _, err := h.d.resume(other.meta.ID); resumed <- err }()
 			finished := false
 			select {
 			case err := <-resumed:
 				finished = true
-				if err != nil {
-					t.Error(err)
+				if !errors.Is(err, errBlockedLaunch) || otherLaunch.calls.Load() != 1 {
+					t.Errorf("unrelated resume did not reach its launch: %v", err)
 				}
 			case <-time.After(5 * time.Second):
 				t.Error("blocked session launch prevented an unrelated session from resuming")
@@ -227,7 +243,7 @@ func TestSessionLaunchDoesNotBlockUnrelatedResume(t *testing.T) {
 			}
 			// Join even on a failed independence assertion before closing logs.
 			if !finished {
-				if err := awaitLifecycleResult(t, resumed); err != nil {
+				if err := awaitLifecycleResult(t, resumed); !errors.Is(err, errBlockedLaunch) {
 					t.Error(err)
 				}
 			}
