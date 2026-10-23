@@ -301,23 +301,33 @@ func TestFCMRespectsRetryAfter(t *testing.T) {
 		}
 	}
 
-	fake := newFakeFCM(t)
-	f, err := loadFCM(fake.account)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.sendURL = fake.srv.URL + "/send"
-	f.retryBase = time.Millisecond
-
-	// A wait longer than our own backoff cap is honoured, not shortened.
-	fake.fail = []int{http.StatusTooManyRequests}
-	fake.retryAfter = "1"
-	if err := f.sendRetrying(context.Background(), "tok", map[string]string{}, time.Minute); err != nil {
-		t.Fatal(err)
-	}
-	if gap := fake.sendTimes[1].Sub(fake.sendTimes[0]); gap < time.Second {
-		t.Fatalf("retried after %v, before FCM's Retry-After", gap)
-	}
+	// A Retry-After longer than our backoff cap is honoured. An in-memory
+	// transport keeps the actual retry loop and header parsing in this test
+	// while virtual time avoids a real wait (and RSA/HTTP fixture setup).
+	synctest.Test(t, func(t *testing.T) {
+		var sent []time.Time
+		f := &fcm{
+			access: "test-access", expires: time.Now().Add(time.Hour),
+			sendURL: "https://example.com/send", retryBase: time.Millisecond,
+			client: &http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+				sent = append(sent, time.Now())
+				status, header, body := http.StatusOK, http.Header{}, `{"name":"sent"}`
+				if len(sent) == 1 {
+					status, header, body = http.StatusTooManyRequests, http.Header{"Retry-After": {"120"}}, "unavailable"
+				}
+				return &http.Response{StatusCode: status, Header: header, Body: io.NopCloser(strings.NewReader(body))}, nil
+			})},
+		}
+		if err := f.sendRetrying(context.Background(), "tok", map[string]string{}, time.Minute); err != nil {
+			t.Fatal(err)
+		}
+		if len(sent) != 2 {
+			t.Fatalf("%d sends, want 2", len(sent))
+		}
+		if gap := sent[1].Sub(sent[0]); gap != 120*time.Second {
+			t.Fatalf("retry after %v, want 120s", gap)
+		}
+	})
 
 	// Use virtual time and an in-memory transport for the immediate-return
 	// property: scheduling a real HTTP request must not spend a 1s allowance.
