@@ -318,6 +318,14 @@ func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID s
 	if len(targets) > cap(p.deliveries)-len(p.deliveries) || p.busy[st.acct]+len(targets) > maxAccountPushDeliveries {
 		return errPushBusy
 	}
+	if len(targets) > 0 {
+		if !p.s.beginActivity() {
+			return context.Canceled
+		}
+		// Hold a batch reservation while registering its delivery workers, so
+		// Close cannot finish waiting between individual goroutine starts.
+		defer p.s.activities.Done()
+	}
 	// Reserve every delivery before remembering the key. Rejected work can
 	// be retried with the same key, and no notification is partially queued.
 	for range targets {
@@ -333,7 +341,9 @@ func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID s
 		data["content"] = c
 	}
 	for _, t := range targets {
+		p.s.activities.Add(1)
 		go func() {
+			defer p.s.activities.Done()
 			defer func() {
 				p.mu.Lock()
 				if p.busy[st.acct]--; p.busy[st.acct] <= 0 {
@@ -359,7 +369,7 @@ func (p *pusher) send(st *tstore, deviceID, sub string, payload []byte) {
 	}
 	// webpush-go appends padding to the payload backing array. Each concurrent
 	// delivery must own its input buffer.
-	res, err := webpush.SendNotification(bytes.Clone(payload), &s, &webpush.Options{
+	res, err := webpush.SendNotificationWithContext(p.s.ctx, bytes.Clone(payload), &s, &webpush.Options{
 		HTTPClient: p.client, Subscriber: p.subscriber, VAPIDPublicKey: p.pub, VAPIDPrivateKey: p.priv,
 		TTL: 3600, Urgency: webpush.UrgencyHigh, Topic: "",
 	})
@@ -372,19 +382,19 @@ func (p *pusher) send(st *tstore, deviceID, sub string, payload []byte) {
 	case res.StatusCode == http.StatusNotFound || res.StatusCode == http.StatusGone:
 		// The browser dropped the subscription: this one, not one the
 		// device has registered since the delivery began.
-		_, _ = st.db.Exec(`DELETE FROM push_subs WHERE account_id = ? AND device_id = ? AND subscription = ?`, st.acct, deviceID, sub)
+		_, _ = st.db.ExecContext(p.s.ctx, `DELETE FROM push_subs WHERE account_id = ? AND device_id = ? AND subscription = ?`, st.acct, deviceID, sub)
 	case res.StatusCode >= 300:
 		slog.Warn("web push refused", "device", deviceID, "status", res.StatusCode)
 	}
 }
 
 func (p *pusher) sendFCM(st *tstore, deviceID, token string, data map[string]string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(p.s.ctx, 2*time.Minute)
 	defer cancel()
 	err := p.fcm.sendRetrying(ctx, token, data, 10*time.Minute)
 	switch {
 	case errors.Is(err, errFCMToken):
-		_, _ = st.db.Exec(`DELETE FROM fcm_targets WHERE account_id = ? AND device_id = ? AND token = ?`, st.acct, deviceID, token)
+		_, _ = st.db.ExecContext(ctx, `DELETE FROM fcm_targets WHERE account_id = ? AND device_id = ? AND token = ?`, st.acct, deviceID, token)
 	case err != nil:
 		slog.Warn("fcm push", "device", deviceID, "err", err)
 	}

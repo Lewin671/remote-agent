@@ -111,8 +111,14 @@ type Server struct {
 	pairing  *pairingService
 	recovery *recoveryService
 
-	stop     chan struct{}
-	stopOnce sync.Once
+	stop       chan struct{}
+	stopOnce   sync.Once
+	ctx        context.Context
+	cancel     context.CancelFunc
+	activityMu sync.Mutex
+	closing    bool
+	activities sync.WaitGroup
+	closeErr   error
 
 	streamMu            sync.Mutex
 	streams             map[string]map[*streamAuth]struct{}
@@ -173,29 +179,81 @@ func New(cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{cfg: cfg, store: st, signup: newSignupGuard(), challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, accountStreams: map[string]int{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), smallRPCRequests: make(chan struct{}, maxConcurrentSmallRPCRequests), stop: make(chan struct{})}
+	ctx, cancel := context.WithCancel(context.Background())
+	s := &Server{ctx: ctx, cancel: cancel, cfg: cfg, store: st, signup: newSignupGuard(), challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, accountStreams: map[string]int{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), smallRPCRequests: make(chan struct{}, maxConcurrentSmallRPCRequests), stop: make(chan struct{})}
 	s.hub = newHub(s)
 	s.term = newTermHub(s)
 	s.pairing = newPairingService(s)
 	s.recovery = newRecoveryService(s)
 	if s.push, err = newPusher(s); err != nil {
+		cancel()
 		st.Close()
 		return nil, err
 	}
 	if err := s.seedSecurityChains(context.Background()); err != nil {
+		cancel()
 		st.Close()
 		return nil, err
 	}
-	go s.expireLoop(s.stop)
-	go s.watchDisk(s.stop)
-	go s.sweepAccounts(s.stop)
+	s.startWorker(func() { s.expireLoop(s.stop) })
+	s.startWorker(func() { s.watchDisk(s.stop) })
+	s.startWorker(func() { s.sweepAccounts(s.stop) })
 	return s, nil
 }
 
-// Close closes the database.
+// Close cancels streams, requests and background work, waits for their
+// completion, then closes storage. Concurrent callers share the result.
 func (s *Server) Close() error {
-	s.stopOnce.Do(func() { close(s.stop) })
-	return s.store.Close()
+	s.stopOnce.Do(func() {
+		s.activityMu.Lock()
+		s.closing = true
+		s.cancel()
+		close(s.stop)
+		s.activityMu.Unlock()
+		s.streamMu.Lock()
+		for _, streams := range s.streams {
+			for a := range streams {
+				a.cancel()
+			}
+		}
+		s.streamMu.Unlock()
+		s.activities.Wait()
+		s.closeErr = s.store.Close()
+	})
+	return s.closeErr
+}
+
+func (s *Server) beginActivity() bool {
+	s.activityMu.Lock()
+	defer s.activityMu.Unlock()
+	if s.closing {
+		return false
+	}
+	s.activities.Add(1)
+	return true
+}
+
+func (s *Server) startWorker(fn func()) bool {
+	if !s.beginActivity() {
+		return false
+	}
+	go func() { defer s.activities.Done(); fn() }()
+	return true
+}
+
+func (s *Server) trackRequests(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !s.beginActivity() {
+			http.Error(w, "server is shutting down", http.StatusServiceUnavailable)
+			return
+		}
+		defer s.activities.Done()
+		ctx, cancel := context.WithCancel(r.Context())
+		stop := context.AfterFunc(s.ctx, cancel)
+		defer stop()
+		defer cancel()
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // Handler returns the HTTP handler serving the API and the stream.
@@ -212,7 +270,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/v1/stream", s.hub.serve)
 	mux.HandleFunc("/v1/term", s.term.serve)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
-	return s.cors(s.limitRPCRequests(mux, rpcBodyReadTimeout))
+	return s.trackRequests(s.cors(s.limitRPCRequests(mux, rpcBodyReadTimeout)))
 }
 
 // cors lets the allowed web origins call the API.

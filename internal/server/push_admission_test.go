@@ -114,7 +114,7 @@ func newPushAdmissionServer(t *testing.T) *testServer {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { st.Close() })
-	srv := &Server{store: st}
+	srv := &Server{store: st, ctx: context.Background()}
 	srv.push, err = newPusher(srv)
 	if err != nil {
 		t.Fatal(err)

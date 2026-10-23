@@ -178,10 +178,10 @@ func (s *Server) sweepAccounts(stop <-chan struct{}) {
 		case <-t.C:
 		}
 		for _, id := range s.streamDevices() {
-			d, err := s.store.device(context.Background(), id)
+			d, err := s.store.device(s.ctx, id)
 			if err == nil {
 				var a *accountRow
-				if a, err = s.store.account(context.Background(), d.account); err == nil && a.status == accountActive {
+				if a, err = s.store.account(s.ctx, d.account); err == nil && a.status == accountActive {
 					continue
 				}
 			}

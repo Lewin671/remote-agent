@@ -52,6 +52,9 @@ func (s *Server) streamDevices() []string {
 func (s *Server) beginStream(parent context.Context, token string) (context.Context, *device, context.CancelFunc, error) {
 	s.streamMu.Lock()
 	defer s.streamMu.Unlock()
+	if s.ctx.Err() != nil {
+		return nil, nil, nil, context.Canceled
+	}
 	d, err := s.authenticate(parent, token)
 	if err != nil {
 		return nil, nil, nil, err

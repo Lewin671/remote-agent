@@ -134,12 +134,12 @@ func (s *Server) expireLoop(stop <-chan struct{}) {
 	t := time.NewTicker(time.Hour)
 	defer t.Stop()
 	for {
-		if n, err := s.store.expireImages(context.Background()); err != nil {
+		if n, err := s.store.expireImages(s.ctx); err != nil {
 			slog.Error("expire images", "err", err)
 		} else if n > 0 {
 			slog.Info("expired images", "count", n)
 		}
-		if err := s.store.expireTokens(context.Background()); err != nil {
+		if err := s.store.expireTokens(s.ctx); err != nil {
 			slog.Error("expire tokens", "err", err)
 		}
 		select {

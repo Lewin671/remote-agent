@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/netip"
 	"os"
@@ -91,17 +92,43 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	hs := &http.Server{Addr: *listen, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
-	go func() {
-		<-ctx.Done()
-		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = hs.Shutdown(sctx)
-	}()
-	slog.Info("listening", "version", buildinfo.Version, "commit", buildinfo.Commit, "addr", *listen, "allowed_origins", allowed, "signup", *signup)
-	if err := hs.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	ln, err := net.Listen("tcp", *listen)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "remote-agent-server:", err)
+		_ = srv.Close()
 		os.Exit(1)
 	}
+	slog.Info("listening", "version", buildinfo.Version, "commit", buildinfo.Commit, "addr", *listen, "allowed_origins", allowed, "signup", *signup)
+	if err := serveHTTP(ctx, hs, ln); err != nil {
+		fmt.Fprintln(os.Stderr, "remote-agent-server:", err)
+		_ = srv.Close()
+		os.Exit(1)
+	}
+}
+
+// serveHTTP waits for the active HTTP requests to drain before its caller
+// closes the relay and storage. Hijacked streams are owned by Server.Close.
+func serveHTTP(ctx context.Context, hs *http.Server, ln net.Listener) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		<-ctx.Done()
+		sctx, stop := context.WithTimeout(context.Background(), 5*time.Second)
+		defer stop()
+		err := hs.Shutdown(sctx)
+		if err != nil {
+			_ = hs.Close()
+		}
+		done <- err
+	}()
+	err := hs.Serve(ln)
+	cancel()
+	shutdownErr := <-done
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return shutdownErr
 }
 
 func envOr(key, def string) string {

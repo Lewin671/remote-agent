@@ -147,8 +147,11 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 	h.add(p)
 	defer h.remove(p)
 
-	go h.ping(ctx, conn, p)
-	go h.read(ctx, conn, p)
+	var workers sync.WaitGroup
+	workers.Add(2)
+	go func() { defer workers.Done(); h.ping(ctx, conn, p) }()
+	go func() { defer workers.Done(); h.read(ctx, conn, p) }()
+	defer func() { cancel(); conn.CloseNow(); workers.Wait() }()
 	for {
 		select {
 		case <-ctx.Done():
@@ -250,7 +253,7 @@ func (h *hub) add(p *peer) {
 		slog.Info("machine connected", "machine", p.dev.id)
 		h.account(p.dev.account).machineChanged(p.dev.id)
 	} else {
-		_ = h.s.store.tenant(p.dev.account).touchDevice(context.Background(), p.dev.id)
+		_ = h.s.store.tenant(p.dev.account).touchDevice(h.s.ctx, p.dev.id)
 	}
 }
 
@@ -277,7 +280,7 @@ func (h *hub) remove(p *peer) {
 	}
 	h.mu.Unlock()
 	if p.dev.kind != pb.DeviceKind_DEVICE_KIND_MACHINE {
-		_ = h.s.store.tenant(p.dev.account).touchDevice(context.Background(), p.dev.id)
+		_ = h.s.store.tenant(p.dev.account).touchDevice(h.s.ctx, p.dev.id)
 	}
 	if gone {
 		slog.Info("machine disconnected", "machine", p.dev.id)
@@ -421,7 +424,7 @@ func splitEvents(ev *pb.EventsAppended) []*pb.EventsAppended {
 // the last broadcast is the machine's last state. Clients take the online
 // flag as it comes, so a stale one would stay until the next change.
 func (a accountHub) machineChanged(id string) {
-	if err := a.updateMachine(context.Background(), id, nil, 0); err != nil && !errors.Is(err, errNoRows) {
+	if err := a.updateMachine(a.h.s.ctx, id, nil, 0); err != nil && !errors.Is(err, errNoRows) {
 		slog.Error("load machine", "machine", id, "err", err)
 	}
 }
