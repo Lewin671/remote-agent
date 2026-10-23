@@ -41,6 +41,10 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
             if (purpose.sessionKey) seed else null, header, plain, machineSigner)))
     }
 
+    fun machine(revision: Long, hostname: String): Machine = Machine.newBuilder().setId(machine.id)
+        .setOnline(true).setMeta(seal(DeviceSecurity.Purpose.MACHINE_META, "", revision,
+            MachineMeta.newBuilder().setHostname(hostname).build().toByteArray())).build()
+
     val sessions = listOf("long", "short", "empty").associateWith { sid ->
         RemoteSession.newBuilder().setSessionId(sid).setMachineId(machine.id)
             .setKey(seal(DeviceSecurity.Purpose.SESSION_KEY, sid, 1, seed))
@@ -76,6 +80,7 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
     var before: suspend (String, UnaryHTTPRequest) -> Unit = { _, _ -> }
     var rejectNextHistory = false
     var offline = false
+    var unavailableMethods = setOf("Forward")
     var anonymous = 0
     var refused = 0
     private var minted = 0
@@ -100,7 +105,7 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
             val bearer = request.headers.entries.firstOrNull { it.key.equals("Authorization", true) }?.value?.firstOrNull()
             val auth = name in setOf("GetChallenge", "Login")
             if (!auth && bearer.isNullOrEmpty()) anonymous++
-            val unavailable = offline || name == "Forward"
+            val unavailable = offline || name in unavailableMethods
             if (unavailable || (!auth && bearer != "Bearer $token") || (name == "GetEvents" && rejectNextHistory)) {
                 rejectNextHistory = false
                 onResult(HTTPResponse(trailers = emptyMap(), status = if (unavailable) 503 else 401,

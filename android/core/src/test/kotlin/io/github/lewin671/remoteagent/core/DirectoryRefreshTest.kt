@@ -70,6 +70,64 @@ class DirectoryRefreshTest {
         } finally { remote.close(); runCurrent() }
     }
 
+    @Test fun changedMachineMetadataIsVerifiedWithoutRelistingMembers() = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        peer.machineRows = listOf(fixture.machine(1, "before"))
+        val remote = peer.remote()
+        try {
+            remote.start(); runCurrent()
+            assertEquals("before", remote.state.value.machines.getValue(fixture.machine.id).meta?.hostname)
+            peer.calls.clear()
+            val renamed = fixture.machine(2, "after")
+            peer.frame(ServerFrame.newBuilder().setMachineUpdated(MachineUpdated.newBuilder().setMachine(renamed)).build())
+            runCurrent()
+            assertEquals("after", remote.state.value.machines.getValue(fixture.machine.id).meta?.hostname)
+            val corrupted = fixture.machine(3, "forged").let { row -> row.toBuilder().setMeta(
+                row.meta.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(ByteArray(64)))
+            ).build() }
+            peer.frame(ServerFrame.newBuilder().setMachineUpdated(MachineUpdated.newBuilder().setMachine(corrupted)).build())
+            runCurrent()
+            assertEquals("after", remote.state.value.machines.getValue(fixture.machine.id).meta?.hostname)
+            assertEquals(0, peer.calls.count { it == "ListDevices" || it == "ListMachines" })
+        } finally { remote.close(); runCurrent() }
+    }
+
+    @Test fun failedChangedHeadDirectoryDoesNotApplyPushAgainstOldMembership() = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        val remote = peer.remote()
+        try {
+            remote.start(); runCurrent()
+            val before = remote.state.value.machines.getValue(fixture.machine.id)
+            val removal = fixture.removeMachine()
+            peer.securityRecord = fixture.record.installed(listOf(removal), listOf(null),
+                HeadLease.sign(removal, SigningKey(ByteArray(32) { 1 }), fixture.now))
+            peer.unavailableMethods += "ListDevices"
+            peer.frame(ServerFrame.newBuilder().setMachineUpdated(MachineUpdated.newBuilder()
+                .setMachine(peer.machineRows.first().toBuilder().setLastSeenMs(123))).build())
+            runCurrent()
+            assertEquals(before.lastSeenMs, remote.state.value.machines.getValue(fixture.machine.id).lastSeenMs)
+            assertEquals(ConnState.OFFLINE, remote.state.value.conn)
+        } finally { remote.close(); runCurrent() }
+    }
+
+    @Test fun completedDetachedLoadDoesNotReplaceANewExplicitRefresh() = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        val remote = peer.remote()
+        try {
+            remote.start(); runCurrent()
+            val reached = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            peer.before = { name, _ -> if (name == "ListDevices") { reached.complete(Unit); release.await() } }
+            val abandoned = launch { remote.refreshDevices() }
+            reached.await()
+            abandoned.cancelAndJoin()
+            release.complete(Unit); runCurrent()
+            peer.calls.clear()
+            remote.refreshDevices()
+            assertEquals(1, peer.calls.count { it == "ListDevices" })
+        } finally { remote.close(); runCurrent() }
+    }
+
     @Test fun explicitConcurrentRefreshesShareOneDirectoryRead() = runTest {
         val peer = ColdOpenPeer(fixture, this)
         val remote = peer.remote()

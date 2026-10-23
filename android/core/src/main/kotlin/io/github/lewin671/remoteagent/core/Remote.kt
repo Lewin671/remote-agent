@@ -933,7 +933,7 @@ class Remote(
             ServerFrame.KindCase.MACHINE_UPDATED -> {
                 bump(machinePushes, f.machineUpdated.machine.id)
                 checkDirectory(f.machineUpdated.machine.id, listOf(f.machineUpdated.machine.meta))
-                putMachine(f.machineUpdated.machine)
+                putMachine(f.machineUpdated.machine, pushed = true)
             }
             ServerFrame.KindCase.SESSION_UPDATED -> {
                 bump(sessionPushes, f.sessionUpdated.session.sessionId)
@@ -1288,32 +1288,40 @@ class Remote(
         incoming: Machine,
         staleOnline: Boolean = false,
         save: Boolean = true,
+        pushed: Boolean = false,
     ) {
         if (trustedMembers[incoming.id]?.kind != 1u && incoming.id !in archiveMachines) return
+        val previousMeta = trustedMetadata["machine:${incoming.id}"]
+        val meta = if (pushed && incoming.hasMeta() && trustedMembers[incoming.id]?.kind == 1u)
+            incoming.meta else previousMeta
         val builder = incoming.toBuilder().clearMeta()
-        trustedMetadata["machine:${incoming.id}"]?.let { builder.setMeta(it) }
+        meta?.let { builder.setMeta(it) }
         val m = builder.build()
         val old = machines[m.id]
         var view = old ?: MachineView(m.id, m.online, m.lastSeenMs)
         if (!staleOnline) view = view.copy(online = m.online && trustedMembers[m.id]?.kind == 1u)
         if (m.lastSeenMs > view.lastSeenMs) view = view.copy(lastSeenMs = m.lastSeenMs)
         var store = old == null
-        if (m.hasMeta() &&
-            (old?.meta == null || DeviceSecurity.parseHeader(m.meta.securityHeader.toByteArray()).seq.toLong() != old.metaRev)
-        ) {
+        if (m.hasMeta()) {
             try {
-                val (h, meta) =
-                    openSecureMessage(
-                        keys?.meta ?: ByteArray(0),
-                        m.meta,
-                        Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
-                        MachineMeta::parseFrom,
-                    )
-                if (ucmp(h.seq, view.metaRev) >= 0) {
-                    view = view.copy(meta = meta, metaRev = h.seq)
-                    store = true
+                val unchanged = old?.meta != null && previousMeta == m.meta &&
+                    DeviceSecurity.parseHeader(m.meta.securityHeader.toByteArray()).seq.toLong() == old.metaRev
+                if (!unchanged) {
+                    val (h, opened) =
+                        openSecureMessage(
+                            keys?.meta ?: ByteArray(0),
+                            m.meta,
+                            Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
+                            MachineMeta::parseFrom,
+                        )
+                    if (ucmp(h.seq, view.metaRev) >= 0) {
+                        view = view.copy(meta = opened, metaRev = h.seq)
+                        trustedMetadata["machine:${m.id}"] = m.meta
+                        store = true
+                    }
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 report(e)
             }
         }
@@ -2245,10 +2253,12 @@ class Remote(
         }
         if (changed || recoveryObjectsPending || trustedMembers[machineId]?.kind != 1u || unknownEpoch)
             loadDevices()
+        if (directoryHead?.contentEquals(DeviceSecurity.stateHash(security.head())) != true)
+            throw DeviceSecurity.Failure("stale")
     }
 
     private suspend fun loadDevices(listedMachines: ListMachinesResponse? = null) {
-        val load = directoryLoad ?: scope.async {
+        val load = directoryLoad?.takeIf { !it.isCompleted } ?: scope.async {
             readDirectory(listedMachines)
         }.also { directoryLoad = it }
         try {
