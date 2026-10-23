@@ -59,7 +59,7 @@ func TestRestoreIgnoresInvalidParseDiagnostics(t *testing.T) {
 			old := slog.Default()
 			slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
 			defer slog.SetDefault(old)
-			if err := r.d.restore(); err != nil {
+			if err := r.restore(); err != nil {
 				t.Fatal(err)
 			}
 			s := r.session(id)

@@ -262,6 +262,10 @@ func (d *Daemon) Run(ctx context.Context) error {
 // restore loads every session from disk and reattaches to those whose tmux
 // session is still running.
 func (d *Daemon) restore() error {
+	return d.restoreWithSessionList(d.cfg.Tmux.ListSessions)
+}
+
+func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error)) error {
 	if err := paths.EnsureDir(paths.SessionsDir()); err != nil {
 		return err
 	}
@@ -270,7 +274,7 @@ func (d *Daemon) restore() error {
 		return err
 	}
 	live := map[string]bool{}
-	infos, err := d.cfg.Tmux.ListSessions()
+	infos, err := list()
 	if err != nil {
 		return err
 	}

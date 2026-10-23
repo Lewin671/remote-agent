@@ -122,7 +122,7 @@ func TestRestoreExitedCheckpointReadsFinalTranscript(t *testing.T) {
 		t.Fatal(err)
 	}
 	l.Close()
-	if err = r.d.restore(); err != nil {
+	if err = r.restore(); err != nil {
 		t.Fatal(err)
 	}
 	s := r.session(id)

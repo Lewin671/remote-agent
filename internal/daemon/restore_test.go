@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,6 +22,7 @@ type restoreHarness struct {
 	t     *testing.T
 	d     *Daemon
 	alive string // the file tmux's session list is read from
+	infos []tmux.SessionInfo
 }
 
 func newRestoreHarness(t *testing.T) *restoreHarness {
@@ -60,6 +62,13 @@ func newRestoreHarness(t *testing.T) *restoreHarness {
 	return &restoreHarness{t: t, d: d, alive: alive}
 }
 
+// Recovery assertions use the known fixture list directly. A shell stub's
+// process startup is subject to the real tmux command deadline and says
+// nothing about checkpoint recovery. tmux's own tests cover ListSessions.
+func (r *restoreHarness) restore() error {
+	return r.d.restoreWithSessionList(func() ([]tmux.SessionInfo, error) { return r.infos, nil })
+}
+
 // save writes a session as a previous daemon left it and returns its
 // directory; alive says whether its tmux session still runs.
 func (r *restoreHarness) save(m meta, alive bool) string {
@@ -76,6 +85,7 @@ func (r *restoreHarness) save(m meta, alive bool) string {
 		r.t.Fatal(err)
 	}
 	if alive {
+		r.infos = append(r.infos, tmux.SessionInfo{Name: m.Tmux, SessionID: m.ID, PanePID: 1})
 		f, err := os.OpenFile(r.alive, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 		if err != nil {
 			r.t.Fatal(err)
@@ -90,6 +100,19 @@ func (r *restoreHarness) session(id string) *session {
 	r.d.mu.Lock()
 	defer r.d.mu.Unlock()
 	return r.d.sessions[id]
+}
+
+func TestRestoreStopsWhenTmuxListingFails(t *testing.T) {
+	r := newRestoreHarness(t)
+	r.save(meta{ID: "00000000000000aa"}, true)
+	want := errors.New("tmux listing unavailable")
+	err := r.d.restoreWithSessionList(func() ([]tmux.SessionInfo, error) { return nil, want })
+	if !errors.Is(err, want) {
+		t.Fatalf("restore error: %v", err)
+	}
+	if len(r.d.sessions) != 0 {
+		t.Fatal("restored sessions without knowing tmux liveness")
+	}
 }
 
 // Sessions restored first already run their loops, which look at the
@@ -135,7 +158,7 @@ func TestRestoreRegistersSessionsUnderTheLock(t *testing.T) {
 			}
 		}
 	}()
-	err := r.d.restore()
+	err := r.restore()
 	close(stop)
 	<-done
 	if err != nil {
@@ -171,7 +194,7 @@ func TestRestoreReadsTheTranscriptOfAGoneSession(t *testing.T) {
 	if err := os.WriteFile(rollout, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.d.restore(); err != nil {
+	if err := r.restore(); err != nil {
 		t.Fatal(err)
 	}
 	s := r.session(id)
