@@ -478,3 +478,13 @@ macOS arm64，本 worktree 的 Go 自动测试，加一轮本 worktree 构建的
 - 同一临时账户在网页移除电脑，确认原档案仍可进入重接；再经单独确认删除记录，中继电脑记录数为 0。网页退出时核对唯一管理端的针对性提示，再清除临时浏览器密钥。测试结束关闭测试标签并清理隔离环境；未操作生产中继或日常 daemon。
 
 未覆盖：档案实际重接、六条跨端有向交接、Android/iOS 真机、48 小时恢复的真实等待及全部重启矩阵、真实 Web Push 的允许/拒绝/后台投递、浏览器部分/全部存储损坏和操作系统字号。保存失败等故障由自动测试注入；demo 是视觉检查，不能代替上述真实链路。界面与文案规则见 [design-system](design-system.md#8-文案)，当前界面稿为 [v48](design/client-v48.html)。
+
+
+## Claude 模型菜单短标签（2026-10-23，本地候选）
+
+macOS、本 worktree 构建的 daemon、Claude Code 2.1.300；使用 `scripts/acceptance-claude.sh` 的独立状态目录、tmux socket 和临时工作目录。通过本地 CLI socket 驱动真实 tmux 会话，没有经过 server，也没有直接操作网页、Android 或 iOS，没有操作日常 daemon 或会话。
+
+- 基线复现模型切换、切换事件记录和切回失败，实际错误为 `timed out waiting for the cursor on Sonnet 5.5`；菜单画面与外部行为见 [claude-code-notes §9](claude-code-notes.md#9-切换模型和-effort)。修复后的两次完整脚本均为 `all checks passed`，第二次包含移动后再次核对完整模型名的保护。
+- 最终脚本覆盖消息和事件顺序、批准/拒绝、单选/多选、中断、本地草稿排队、模型与 effort 切换和切回、设置文件校验值不变、权限模式切换、计划批准、停止/恢复及 daemon 重启。模型切换事件和切回是脚本的无输出断言，失败会计入结果。
+- `TestSetModelShortLabels2_1_300` 和 `TestModelRowShortLabels2_1_300` 使用两张真实菜单 fixture 和现有目录 fixture，验证短标签、最后一行说明保留、Default 行排除及同家族不同版本不混淆；`TestSetModelRechecksShortLabelDetail` 验证移到目标行后名称不符时不确认。分别撤掉对应修复后测试失败，恢复后通过；新控制流程测试使用 `testing/synctest`。
+- `go test ./internal/claude -count=1`、`go test ./...` 和 `git diff --check` 通过。临时 daemon、tmux 和状态目录已清理；未修改协议或存储格式，没有推送、发布或部署。未验证其他 Claude Code 版本、短标签菜单的小窗口折行，或 CLI 本次未列完整缓存目录的原因。

@@ -93,7 +93,7 @@ func rowsAfter(plain, title string) []row {
 			if len(out) > 0 && strings.TrimSpace(l) != "" && strings.HasPrefix(l, "  ") && out[len(out)-1].detail == "" {
 				last := &out[len(out)-1]
 				last.label += " " + strings.TrimSpace(l)
-			} else if strings.TrimSpace(l) == "" && len(out) > 0 {
+			} else if strings.TrimSpace(l) == "" && len(out) > 0 && out[len(out)-1].detail == "" {
 				out[len(out)-1].detail = " " // no more continuation
 			}
 			continue
@@ -162,18 +162,20 @@ func shownEffort(plain string) string {
 	return ""
 }
 
-// versionRE matches a version as /model prints it after a model's name.
-var versionRE = regexp.MustCompile(`^\d+(\.\d+)*$`)
+func modelRowMatches(r row, m *Model) bool {
+	return r.label == m.Name || (m.ShortName != "" && r.label == m.ShortName && strings.HasPrefix(r.detail, m.Name+" ·"))
+}
 
 // modelRow is the /model row a model is switched by. Its label is the
-// catalog's name for it; a narrow window may have scrolled the row out of
+// catalog's name, or its short name with the full name in the detail
+// column. A narrow window may have scrolled the row out of
 // sight, in which case the number the row has in the list is used. The
 // menu lists the catalog's models in their order, under "Default
 // (recommended)" as its first row, so the number is the model's place in
 // the catalog plus two; the label is checked after the move.
 func modelRow(cat *Catalog, rows []row, m *Model) (row, error) {
 	for _, r := range rows {
-		if r.label == m.Name {
+		if modelRowMatches(r, m) {
 			return r, nil
 		}
 	}
@@ -249,7 +251,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 	plain, err = waitFor(t, "the cursor on "+label, func(_ agent.Screen, p string) bool {
 		for _, r := range rowsAfter(p, "Select model") {
 			if r.cursor {
-				return r.label == label
+				return modelRowMatches(r, info)
 			}
 		}
 		return false

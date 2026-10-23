@@ -35,6 +35,8 @@ type Model struct {
 	// running a model without one (an ID older than the catalog) has no
 	// row to be switched to by.
 	Name string
+	// ShortName is the family label used by Claude Code's short-label menu.
+	ShortName string
 	// Description is the line /model shows under the name.
 	Description string
 	// Efforts are the effort levels the model takes, from low to max;
@@ -160,6 +162,7 @@ type catalogConfig struct {
 type catalogRow struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
+	ShortName   string `json:"short_name"`
 	Description string `json:"description"`
 	Disabled    bool   `json:"disabled"`
 	Thinking    *struct {
@@ -189,7 +192,7 @@ func parseCatalog(b []byte) *Catalog {
 		if r.ID == "" || r.Disabled {
 			continue
 		}
-		m := &Model{ID: r.ID, Name: r.Name, Description: r.Description}
+		m := &Model{ID: r.ID, Name: r.Name, ShortName: r.ShortName, Description: r.Description}
 		if r.Runtime != nil {
 			m.Efforts = append([]string{}, r.Runtime.EffortLevels...)
 			m.DefaultEffort = r.Runtime.DefaultEffort

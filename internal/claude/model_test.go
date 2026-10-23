@@ -210,3 +210,86 @@ func TestModelRow(t *testing.T) {
 		t.Fatalf("scrolled row: %+v, %v", got, err)
 	}
 }
+
+// Captured on 2.1.300 on 2026-10-23: the menu uses short labels
+// and puts the full model name in the detail column, despite a cached catalog.
+type shortModelTerm struct {
+	*fakeClaude
+	haiku, sonnet string
+}
+
+func (f *shortModelTerm) Capture() (string, error) {
+	if f.menu == nil || f.confirm {
+		return f.fakeClaude.Capture()
+	}
+	screen := f.haiku
+	if f.cursor == 3 {
+		screen = f.sonnet
+	}
+	return strings.ReplaceAll(screen, "Medium effort (default)", efforts[f.effort]+" effort"), nil
+}
+
+func TestSetModelShortLabels2_1_300(t *testing.T) {
+	haiku := readPlain(t, "testdata/model/model-2.1.300-short-haiku.txt")
+	sonnet := readPlain(t, "testdata/model/model-2.1.300-short-sonnet.txt")
+	for _, model := range []string{"claude-sonnet-5-5", "claude-haiku-5-5"} {
+		t.Run(model, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				a, cat := testAdapter(t)
+				f := &shortModelTerm{fakeClaude: &fakeClaude{cat: cat, models: menuOf(cat), cached: true}, haiku: haiku, sonnet: sonnet}
+				if err := a.SetModel(f, model, "low"); err != nil {
+					t.Fatal(err)
+				}
+				keys := "/model|\r|"
+				if model == "claude-sonnet-5-5" {
+					keys += agent.KeyUp + "|"
+				}
+				keys += agent.KeyLeft + "|s|1"
+				if got := strings.Join(f.writes, "|"); got != keys {
+					t.Fatalf("keys %q, want %q", got, keys)
+				}
+			})
+		})
+	}
+}
+
+func TestModelRowShortLabels2_1_300(t *testing.T) {
+	cat := testCatalog(t)
+	rows := rowsAfter(readPlain(t, "testdata/model/model-2.1.300-short-haiku.txt"), "Select model")
+	for _, c := range []struct {
+		id, label string
+		num       int
+	}{
+		{"claude-opus-5-5", "Opus", 2},
+		{"claude-sonnet-5-5", "Sonnet", 4},
+		{"claude-haiku-5-5", "Haiku", 5},
+	} {
+		got, err := modelRow(cat, rows, cat.ByID(c.id))
+		if err != nil || got.num != c.num || got.label != c.label {
+			t.Errorf("%s: %+v, %v", c.id, got, err)
+		}
+	}
+	// Sharing a short name does not make an older model the displayed one.
+	if got, _ := modelRow(cat, rows, cat.ByID("claude-haiku-4-5-20251001")); got.num == 5 {
+		t.Fatal("Haiku 4.5 matched the Haiku 5.5 row")
+	}
+}
+
+// Recheck the full name after moving: a matching family label alone must
+// not allow a switch if the menu no longer offers the requested version.
+func TestSetModelRechecksShortLabelDetail(t *testing.T) {
+	haiku := readPlain(t, "testdata/model/model-2.1.300-short-haiku.txt")
+	sonnet := readPlain(t, "testdata/model/model-2.1.300-short-sonnet.txt")
+	synctest.Test(t, func(t *testing.T) {
+		a, cat := testAdapter(t)
+		f := &shortModelTerm{fakeClaude: &fakeClaude{cat: cat, models: menuOf(cat)}, haiku: haiku, sonnet: strings.ReplaceAll(sonnet, "Sonnet 5.5", "Sonnet 5")}
+		if err := a.SetModel(f, "claude-sonnet-5-5", "low"); err == nil {
+			t.Fatal("switched despite a different model in the selected row")
+		}
+		for _, k := range f.writes {
+			if k == "s" || k == "1" {
+				t.Fatalf("confirmed the wrong model: %q", f.writes)
+			}
+		}
+	})
+}
