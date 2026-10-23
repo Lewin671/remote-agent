@@ -24,9 +24,9 @@ export function median(samples: number[]): number {
 
 /** The link to the server in a word, with its dot: what the sidebar's foot
  * and 设置 say before anything is measured. */
-export function connWord(remote: Remote): { tone: Tone; text: string } {
+export function connWord(remote: Remote, showWaiting = remote.showWaiting): { tone: Tone; text: string } {
   if (remote.conn === "online") return { tone: "idle", text: "已连接" };
-  if (remote.link === "waiting" && !remote.showWaiting) return { tone: "off", text: "" };
+  if (remote.link === "waiting" && !showWaiting) return { tone: "off", text: "" };
   if (remote.everOnline) return { tone: "wait", text: "重连中" };
   return { tone: "off", text: remote.failures >= 2 ? "连不上" : "连接中" };
 }
@@ -48,6 +48,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
   const [server, setServer] = useState<Ping>();
   const [machines, setMachines] = useState(new Map<string, Ping>());
   const [busy, setBusy] = useState(false);
+  const stream = connWord(remote, true);
   const run = useRef(0);
   const list = [...remote.machines.values()].sort((a, b) => Number(b.online) - Number(a.online) || machineName(a).localeCompare(machineName(b)));
   const check = useCallback(async () => {
@@ -94,6 +95,10 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
       </div>
       <div className="setrows conn-check">
         <div className="sr">
+          <span>实时推送</span>
+          <span className="v"><Dot tone={stream.tone} /><em>{stream.text}</em></span>
+        </div>
+        <div className="sr">
           <span>本机网络</span>
           <span className="v">
             <Dot tone={remote.network ? "idle" : "off"} />
@@ -113,6 +118,9 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
           </div>
         ))}
       </div>
+      {remote.conn !== "online" && (
+        <div className="hint">实时推送未连接，会话变化可能延迟。{remote.connError && <>最近一次失败：{remote.connError}</>}</div>
+      )}
       <div className="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div>
       <div className="btns conn-again">
         <button className="btn" disabled={busy} onClick={() => void check()}>
