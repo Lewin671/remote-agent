@@ -980,11 +980,11 @@ export class Remote {
     this.graceTimer = undefined;
     this.waited = false;
     this.waitingNotice = false;
-    this.changed();
+    this.changed(true);
     if (!available) this.reconnectNow(true);
   }
 
-  protected changed() {
+  protected changed(immediate = false) {
     if (this.conn === "online" || this.closed || !this.begun) {
       clearTimeout(this.graceTimer);
       this.graceTimer = undefined;
@@ -998,11 +998,13 @@ export class Remote {
         this.graceTimer = undefined;
         if (this.waitingNotice || notice === this.linkGraceMs) this.waited = true;
         this.waitingNotice = true;
-        this.changed();
+        this.changed(true);
       }, this.waitingNotice ? this.linkGraceMs - notice : notice);
     }
     this.version++;
-    if (this.held) this.dirty = true;
+    // Connection state must reach React even while an older listing is
+    // awaiting metadata. Batching that work must not hide recovery or loss.
+    if (this.held && !immediate) this.dirty = true;
     else for (const fn of this.listeners) fn();
   }
 
@@ -1236,7 +1238,7 @@ export class Remote {
     this.terminals.clear();
     if (this.conn === "online") this.lostAt = Date.now();
     this.conn = "offline";
-    this.changed();
+    this.changed(true);
   }
 
   /** Connects now instead of waiting out the backoff, e.g. when the
@@ -1367,7 +1369,7 @@ export class Remote {
     this.retryTimer = undefined;
     const generation = ++this.generation;
     this.conn = "connecting";
-    this.changed();
+    this.changed(true);
     // The steps before the stream get the same bound as its handshake: a
     // lost request or storage that never answers would otherwise leave
     // 连接中 up for good, with nothing waiting to try again.
@@ -1525,7 +1527,7 @@ export class Remote {
     this.failures++;
     this.connError = errorText(e);
     this.error = errorText(e);
-    this.changed();
+    this.changed(true);
     if (this.closed) return;
     const delay = this.retry;
     this.retry = Math.min(this.retry * 2, 30_000);
@@ -1553,7 +1555,7 @@ export class Remote {
         this.failures = 0;
         this.connError = "";
         this.error = "";
-        this.changed();
+        this.changed(true);
         // Subscribed first, then catch up: nothing falls in between.
         await this.refresh();
         if (this.closed || generation !== this.generation) return;

@@ -283,3 +283,36 @@ it("never flashes a waiting notice when cached content reconnects within one sec
   await vi.advanceTimersByTimeAsync(1_000); Socket.all[1].frame("ready"); await flush();
   expect(bar()).toBe(""); await vi.advanceTimersByTimeAsync(1_000); expect(bar()).toBe("");
 });
+
+it("publishes connection recovery and waiting deadlines during a slow listing batch", async () => {
+  const r = await probe(); vi.useFakeTimers(); r.listed = true;
+  // refresh() batches asynchronous putMachine/putSession calls this way.
+  // An older listing may still be opening metadata when the stream recovers.
+  let finish!: () => void;
+  const batch = (r as any).quietly(async () => {
+    r.touch();
+    await new Promise<void>(resolve => { finish = resolve; });
+  });
+  const seen: string[] = [];
+  const unsubscribe = r.subscribe(() => seen.push(`${r.conn}:${r.link}:${r.showWaiting}`));
+  try {
+    r.start(); await flush();
+    expect(seen.at(-1)).toBe("connecting:waiting:false");
+    Socket.all[0].frame("ready"); await flush();
+    expect(seen.at(-1)).toBe("online:online:false");
+    Socket.all[0].onclose?.({ code: 1006 });
+    expect(seen.at(-1)).toBe("offline:waiting:false");
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(seen.at(-1)).toBe("connecting:waiting:true");
+    await vi.advanceTimersByTimeAsync(8_500);
+    expect(seen.at(-1)).toBe("connecting:no-server:true");
+    Socket.all[1].frame("ready"); await flush();
+    expect(seen.at(-1)).toBe("online:online:false");
+    r.setNetwork(false);
+    expect(seen).toContain("online:online:false");
+    expect(seen.at(-1)).toBe("connecting:no-network:false");
+    r.stop(); expect(seen.at(-1)).toBe("offline:no-network:false");
+  } finally {
+    unsubscribe(); finish(); await batch;
+  }
+});
