@@ -1186,8 +1186,18 @@ func (e *Endpoint) saveFloorLocked(d *record) error {
 	return nil
 }
 
-// Prepare seals locally with a random nonce and no storage write.
+// Prepare compresses and seals an uncompressed payload with a random nonce
+// and no storage write.
 func (e *Endpoint) Prepare(h Header, sessionSeed, plain []byte) (Ciphertext, error) {
+	if h.Compression != 0 || len(plain) > MaxCipherBytes-16 {
+		return Ciphertext{}, ErrInvalid
+	}
+	// Compression can be CPU-intensive; keep it outside the endpoint gate.
+	if h.Purpose != SessionKey && h.Purpose != Image && h.Purpose.kind() != 0 && len(plain) > 256 {
+		if packed := pack(plain); packed != nil {
+			plain, h.Compression = packed, 1
+		}
+	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	d := e.data

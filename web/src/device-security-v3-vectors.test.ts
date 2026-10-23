@@ -143,3 +143,26 @@ it("verifies the chain-v3 fixture, accumulated Removed and a rotated RecoveryEd"
     SecurityError,
   );
 });
+
+it("opens compressed protocol-10 event, metadata and terminal vectors", async () => {
+  const domain = (await import("../../internal/deviceauth/testdata/domain-v3.json")).default;
+  const { openWire, parseWire } = await import("./device-security");
+  const { unpackSecurity } = await import("./device-security-client");
+  const decode = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const genesis = await raw(domain.genesis);
+  const head = await raw(domain.added);
+  const pin: Pin = {
+    account: genesis.core.account,
+    domain: genesis.core.domain,
+    genesis: await stateHash(genesis),
+  };
+  expect(domain.compressed_envelopes).toHaveLength(3);
+  for (const v of domain.compressed_envelopes) {
+    const opened = await openWire(
+      pin, head, head, parseWire(decode(v.wire)),
+      fromHex(domain.content_secret_2), false, head.core.issuedAt, decode(v.seed),
+    );
+    expect(opened.header.compression).toBe(1);
+    expect(unpackSecurity(opened.header, opened.plaintext)).toEqual(decode(v.plain));
+  }
+});

@@ -12,10 +12,11 @@ import (
 )
 
 type vectors struct {
-	HandoffParent vectorState `json:"handoff_parent"`
-	Handoff       vectorState `json:"handoff"`
-	HandoffLease  string      `json:"handoff_lease"`
-	HandoffX      string      `json:"handoff_x"`
+	CompressedEnvelopes []compressedVector `json:"compressed_envelopes"`
+	HandoffParent       vectorState        `json:"handoff_parent"`
+	Handoff             vectorState        `json:"handoff"`
+	HandoffLease        string             `json:"handoff_lease"`
+	HandoffX            string             `json:"handoff_x"`
 
 	Lease             string      `json:"lease"`
 	RenewedLease      string      `json:"renewed_lease"`
@@ -94,7 +95,7 @@ func buildVectors(t *testing.T) vectors {
 	}
 	hl, _ := BuildLease(handoff, newPhoneEd, handoff.Core.IssuedAt)
 	hlr, _ := hl.MarshalBinary()
-	return vectors{HandoffParent: b(handoffParent), Handoff: b(handoff), HandoffLease: base64.StdEncoding.EncodeToString(hlr), HandoffX: hex.EncodeToString(newPhoneX), Lease: base64.StdEncoding.EncodeToString(lr), RenewedLease: base64.StdEncoding.EncodeToString(l2r),
+	return vectors{CompressedEnvelopes: buildCompressedVectors(t, pin, g, added, machineEd, machineX), HandoffParent: b(handoffParent), Handoff: b(handoff), HandoffLease: base64.StdEncoding.EncodeToString(hlr), HandoffX: hex.EncodeToString(newPhoneX), Lease: base64.StdEncoding.EncodeToString(lr), RenewedLease: base64.StdEncoding.EncodeToString(l2r),
 		Account: g.Core.Account, Domain: hex.EncodeToString(g.Core.Domain[:]),
 		PhoneSeed: hex.EncodeToString(phoneEd.Seed()), PhoneX: hex.EncodeToString(phoneX),
 		MachineSeed: hex.EncodeToString(machineEd.Seed()), MachineX: hex.EncodeToString(machineX),

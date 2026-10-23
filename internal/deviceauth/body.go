@@ -10,6 +10,23 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+// pack returns raw DEFLATE only when it reduces the payload size.
+func pack(plain []byte) []byte {
+	var out bytes.Buffer
+	w, err := flate.NewWriter(&out, flate.DefaultCompression)
+	if err != nil {
+		return nil
+	}
+	if _, err := w.Write(plain); err != nil {
+		w.Close()
+		return nil
+	}
+	if err := w.Close(); err != nil || out.Len() >= len(plain) {
+		return nil
+	}
+	return out.Bytes()
+}
+
 // Unpack has an independent expansion limit. Authority metadata verification
 // uses the smaller mutable cap, not the bulk payload's allowance.
 func Unpack(h Header, p []byte) ([]byte, error) {

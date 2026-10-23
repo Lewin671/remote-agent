@@ -4,6 +4,7 @@ import java.io.File
 import java.util.Base64
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.*
@@ -15,6 +16,24 @@ class DeviceSecurityTest {
         Json.parseToJsonElement(File(System.getProperty("domainVectors")).readText()).jsonObject
     private val env =
         Json.parseToJsonElement(File(System.getProperty("v3Vectors")).readText()).jsonObject
+
+    @Test
+    fun compressedProtocol10Envelopes() {
+        val head = added()
+        val fixtures = v["compressed_envelopes"]!!.jsonArray
+        assertEquals(3, fixtures.size)
+        for (fixture in fixtures) {
+            val item = fixture.jsonObject
+            fun bytes(key: String) = Base64.getDecoder().decode(s(item, key))
+            val wire = DeviceSecurity.parseWire(bytes("wire"))
+            val (header, packed) = DeviceSecurity.open(
+                head, head, false, head.core.issuedAt, wire,
+                s("content_secret_2").unhex(), bytes("seed"),
+            )
+            assertEquals(1u, header.compression)
+            assertArrayEquals(bytes("plain"), unpackSecurity(header, packed))
+        }
+    }
 
     private fun s(o: JsonObject, key: String) = o[key]!!.jsonPrimitive.content
 

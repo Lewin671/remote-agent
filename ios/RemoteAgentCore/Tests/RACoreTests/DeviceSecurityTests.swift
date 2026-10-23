@@ -9,6 +9,21 @@ import Testing
     typealias S = DeviceSecurity
     let v: [String: Any]
     init() throws { v = try loadJSON("internal/deviceauth/testdata/domain-v3.json") }
+    @Test func compressedProtocol10Envelopes() throws {
+        let head = try state("added")
+        let fixtures = v["compressed_envelopes"] as! [[String: String]]
+        #expect(fixtures.count == 3)
+        for fixture in fixtures {
+            let wire = try S.parseWire(Data(base64Encoded: fixture["wire"]!)!)
+            let (header, packed) = try S.open(
+                wire, state: head, head: head, live: false, now: head.core.issuedAt,
+                secret: hex("content_secret_2"),
+                sessionSeed: Data(base64Encoded: fixture["seed"]!)!)
+            #expect(header.compression == 1)
+            #expect(try unpackSecurity(header, packed) == Data(base64Encoded: fixture["plain"]!)!)
+        }
+    }
+
     func hex(_ key: String) throws -> Data {
         guard let s = v[key] as? String, let b = Data(hex: s) else { throw S.Failure.invalid }
         return b
