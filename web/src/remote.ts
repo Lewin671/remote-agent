@@ -16,6 +16,7 @@ import {
   RecoveryHistoryUnavailable,
   validateSecurityBody,
   type SecurityStorage,
+  type HistoryResult,
 } from "./device-security-client";
 import {
   parseHeader,
@@ -823,6 +824,7 @@ export class Remote {
     want: Parameters<typeof expect>[1],
     schema: D,
     history = false,
+    historical?: HistoryResult,
   ) {
     if (!env) throw new Error("缺少安全信封");
     if (
@@ -863,9 +865,12 @@ export class Remote {
     }
     let out: Awaited<ReturnType<DeviceSecurityClient["openHistory"]>>;
     try {
-      out = history
-        ? await this.security.openHistory(env, seed)
-        : await this.security.openCurrent(env, seed);
+      if (historical?.status === "rejected") throw historical.reason;
+      out = historical?.status === "fulfilled"
+        ? historical.value
+        : history
+          ? await this.security.openHistory(env, seed)
+          : await this.security.openCurrent(env, seed);
     } catch (e) {
       if (e instanceof RecoveryHistoryUnavailable)
         expect(
@@ -2232,7 +2237,30 @@ export class Remote {
       if (fresh.length && !cached)
         void this.cache?.append(s.id, fresh).catch(() => undefined);
     };
+    const historical = new Map<StoredEvent | CachedEvent, HistoryResult>();
+    if (history) {
+      const rows = stored.filter(se => {
+        if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq) || !se.envelope) return false;
+        try {
+          return fromBinary(HeaderSchema, se.envelope.header).version === 3;
+        } catch {
+          return false; // The normal per-row path reports malformed headers.
+        }
+      });
+      if (rows.length) {
+        try {
+          const results = await this.security.openHistoryBatch(rows.map(se => ({
+            envelope: se.envelope!, seed: this.sessionSeeds.get(s.id),
+          })));
+          rows.forEach((se, i) => historical.set(se, results[i]));
+        } catch (reason) {
+          rows.forEach(se => historical.set(se, { status: "rejected", reason }));
+        }
+      }
+    }
     for (const se of stored) {
+      const opened = historical.get(se);
+      historical.delete(se);
       if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq)) continue;
       try {
         const { msg, size } = await this.openSecureMessage(
@@ -2245,6 +2273,7 @@ export class Remote {
           },
           EventSchema,
           history,
+          opened,
         );
         if (this.buffers.get(s.id) !== b) return;
         if (msg.seq !== se.seq || msg.sessionId !== s.id)

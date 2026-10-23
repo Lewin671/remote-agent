@@ -1,5 +1,6 @@
 import {
   MAX_CLOCK_SKEW,
+  immutableState,
   verifyLease,
   type LeaseCertificate,
   MAX_STATES,
@@ -393,6 +394,7 @@ export async function verifyStoredSecurity(
   r: SecurityRecord,
 ): Promise<SecurityRecord> {
   validRecord(r);
+  r = { ...r, states: r.states.map(immutableState) };
   if (r.states.length !== r.proofs.length) throw new SecurityError("storage");
   // Every transition, authority signature and recovery proof, not only the
   // parent links and the head signature.

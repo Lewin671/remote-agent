@@ -124,11 +124,13 @@ export async function hash(label: string, ...parts: Uint8Array[]): Promise<B> {
     await crypto.subtle.digest("SHA-256", concat(utf8(label), ...parts)),
   );
 }
-async function verify(pub: B, signature: B, message: B): Promise<void> {
-  requireOK(pub.length === 32 && signature.length === 64, "untrusted");
-  const key = await crypto.subtle.importKey("raw", pub, "Ed25519", false, [
-    "verify",
-  ]);
+async function verificationKey(pub: B): Promise<CryptoKey> {
+  requireOK(pub.length === 32, "untrusted");
+  return crypto.subtle.importKey("raw", pub, "Ed25519", false, ["verify"]);
+}
+async function verify(pub: B | CryptoKey, signature: B, message: B): Promise<void> {
+  requireOK(signature.length === 64, "untrusted");
+  const key = pub instanceof Uint8Array ? await verificationKey(pub) : pub;
   requireOK(
     await crypto.subtle.verify("Ed25519", key, signature, message),
     "untrusted",
@@ -166,6 +168,42 @@ export interface SecurityState {
   grants: Grant[];
   prevSecret: B;
   signature: B;
+}
+// Only defensive immutable snapshots may memoize state-derived information.
+// Typed arrays cannot be frozen: accessors return copies of private bytes.
+const stateInfo = new WeakMap<SecurityState, {
+  hash?: Promise<B>;
+  keys: Map<string, Promise<CryptoKey>>;
+}>();
+function immutableObject<T extends object>(source: T): T {
+  const result = (Array.isArray(source) ? [] : {}) as T;
+  for (const [name, value] of Object.entries(source)) {
+    if (value instanceof Uint8Array) {
+      const bytes = new Uint8Array(value);
+      Object.defineProperty(result, name, { enumerable: true, get: () => bytes.slice() });
+    } else {
+      Object.defineProperty(result, name, { enumerable: true,
+        value: value && typeof value === "object" ? immutableObject(value) : value });
+    }
+  }
+  return Object.freeze(result);
+}
+export function immutableState(s: SecurityState): SecurityState {
+  if (stateInfo.has(s)) return s;
+  const snapshot = immutableObject(s);
+  stateInfo.set(snapshot, { keys: new Map() });
+  return snapshot;
+}
+async function originKey(s: SecurityState, m: Member): Promise<B | CryptoKey> {
+  const info = stateInfo.get(s);
+  if (!info) return m.ed;
+  let key = info.keys.get(m.id);
+  if (!key) {
+    key = verificationKey(m.ed);
+    info.keys.set(m.id, key);
+    key.catch(() => info.keys.delete(m.id));
+  }
+  return key;
 }
 export interface Pin {
   account: string;
@@ -293,6 +331,16 @@ async function coreHash(s: SecurityState): Promise<B> {
   return hash("ra3/core\0", await coreBytes(s.core));
 }
 export async function stateHash(s: SecurityState): Promise<B> {
+  const info = stateInfo.get(s);
+  if (!info) return computeStateHash(s);
+  if (!info.hash) {
+    const job = computeStateHash(s);
+    info.hash = job;
+    job.catch(() => { if (info.hash === job) info.hash = undefined; });
+  }
+  return (await info.hash).slice();
+}
+async function computeStateHash(s: SecurityState): Promise<B> {
   const ch = await coreHash(s);
   const g = grantBytes(s);
   return hash("ra3/state\0", ch, g, new Writer().lp(s.prevSecret).bytes());
@@ -1073,7 +1121,7 @@ export async function verifyWire(
   }
   const hh = await hash("", w.header);
   const commit = await commitment(w);
-  await verify(member.ed, w.origin, originBytes(h, hh, commit));
+  await verify(await originKey(s, member), w.origin, originBytes(h, hh, commit));
   return h;
 }
 /** The body decoder must additionally enforce the authenticated purpose and

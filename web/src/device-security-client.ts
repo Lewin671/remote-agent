@@ -8,6 +8,7 @@ import {
 } from "./device-security-store";
 import {
   MAX_CLOCK_SKEW,
+  immutableState,
   parseLease,
   validLease,
   verifyChain,
@@ -40,6 +41,8 @@ import { Inflate } from "fflate";
 import { concat } from "./crypto";
 
 type B = Uint8Array<ArrayBuffer>;
+type OpenedSecurity = { header: SecurityHeader; plaintext: B };
+export type HistoryResult = PromiseSettledResult<OpenedSecurity>;
 export type NewSecurityHeader = Pick<
   SecurityHeader,
   | "kind"
@@ -103,6 +106,7 @@ export class DeviceSecurityClient {
   ): Promise<SecurityRecord> {
     if (!this.active()) throw new SecurityError("storage");
     if (r.memberID !== this.memberID) throw new SecurityError("untrusted");
+    r = { ...r, states: r.states.map(immutableState) };
     const head = r.states[r.states.length - 1];
     await verifyPin(r.pin, head);
     await verifyChain(r.pin, r.states, r.proofs);
@@ -336,6 +340,52 @@ export class DeviceSecurityClient {
     env: Envelope,
     seed?: B,
   ): Promise<{ header: SecurityHeader; plaintext: B }> {
+    return this.openHistorical(env, seed, await this.load());
+  }
+  /** Reusable snapshots require a final revision check before releasing results.
+   * Concurrent writes, including lease/floor changes, invalidate the batch. */
+  async openHistoryBatch(
+    items: { envelope: Envelope; seed?: B }[],
+  ): Promise<HistoryResult[]> {
+    if (!items.length) return [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const record = await this.load();
+      const results = [];
+      let synced = false;
+      const onSync = (updated: SecurityRecord) => { synced = updated !== record; };
+      for (const { envelope, seed } of items) {
+        try {
+          results.push({ status: "fulfilled" as const,
+            value: await this.openHistorical(envelope, seed, record, onSync) });
+        } catch (reason) {
+          results.push({ status: "rejected" as const, reason });
+        }
+        // A future epoch replaces this snapshot. Restart once, rather than
+        // syncing again for every remaining envelope under that epoch.
+        if (synced) break;
+      }
+      if (await this.load() === record) return results;
+    }
+    // Unmarked snapshots cannot be reused. Keep their per-envelope checks.
+    const results = [];
+    for (const { envelope, seed } of items) {
+      try {
+        results.push({ status: "fulfilled" as const, value: await this.openHistory(envelope, seed) });
+      } catch (reason) {
+        results.push({ status: "rejected" as const, reason });
+      }
+    }
+    return results;
+  }
+  private async openHistorical(
+    env: Envelope,
+    seed: B | undefined,
+    r: SecurityRecord,
+    onSync?: (record: SecurityRecord) => void,
+  ): Promise<{ header: SecurityHeader; plaintext: B }> {
+    if (!this.active()) throw new SecurityError("storage");
+    if (r.states.at(-1)!.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
+      throw new SecurityError("clock");
     const w = fromEnvelope(env),
       h = parseHeader(w.header);
     if (
@@ -347,12 +397,12 @@ export class DeviceSecurityClient {
       ].includes(h.purpose)
     )
       throw new SecurityError();
-    let r = await this.load();
     let state = r.states[Number(h.epoch - 1n)];
     if (!state) {
       if (h.epoch <= r.states[r.states.length - 1].core.epoch)
         throw new SecurityError("stale");
       r = await this.sync();
+      onSync?.(r);
       state = r.states[Number(h.epoch - 1n)];
       if (!state) throw new SecurityError("stale");
     }

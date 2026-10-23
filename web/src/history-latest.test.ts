@@ -178,3 +178,18 @@ it("replaces the live plan screen as its named event backfills, before the visib
     expect((r as any).liveSnapshots.get(SID)).toBe(live);
   } finally { first.resolve(); second.resolve(); off(); }
 });
+
+it("uses two revision transactions for an actual historical ingestion batch", async () => {
+  const r = await probe(5, null);
+  const { IDBDatabase, IDBObjectStore } = await import("fake-indexeddb");
+  // Warm validation so the transaction count covers replay, not setup.
+  await (r as any).security.verifiedRecord();
+  const transactions = vi.spyOn(IDBDatabase.prototype, "transaction");
+  const reads = vi.spyOn(IDBObjectStore.prototype, "get");
+  (r as any).api = { getEvents: async () => ({ events: rows.slice(0, 5), more: false }) };
+  r.events(SID);
+  await until(r, () => r.loaded(SID));
+  expect(r.events(SID).map(e => e.seq)).toEqual([1n, 2n, 3n, 4n, 5n]);
+  expect(transactions).toHaveBeenCalledTimes(2);
+  expect(reads.mock.calls.filter(([k]) => k === "record-revision")).toHaveLength(2);
+});
