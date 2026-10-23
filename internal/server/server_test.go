@@ -51,7 +51,15 @@ type testServer struct {
 
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
-	s, err := New(Config{DBPath: filepath.Join(t.TempDir(), "ra.db"), SetupToken: "setup", AllowedOrigins: []string{"http://localhost:5173"}})
+	return newTestServerWithConfig(t, Config{})
+}
+
+func newTestServerWithConfig(t *testing.T, cfg Config) *testServer {
+	t.Helper()
+	cfg.DBPath = filepath.Join(t.TempDir(), "ra.db")
+	cfg.SetupToken = "setup"
+	cfg.AllowedOrigins = []string{"http://localhost:5173"}
+	s, err := New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

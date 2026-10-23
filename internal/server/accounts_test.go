@@ -362,8 +362,7 @@ func TestClientAddr(t *testing.T) {
 }
 
 func TestAdmin(t *testing.T) {
-	ts := newTestServer(t)
-	ts.srv.cfg.MaxAccounts = 2
+	ts := newTestServerWithConfig(t, Config{MaxAccounts: 2, SweepInterval: 10 * time.Millisecond})
 	ctx := context.Background()
 	a := ts.account(t, ts.keys)
 	other, _ := e2e.Derive(e2e.NewKey())
@@ -420,10 +419,6 @@ func TestAdmin(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Its streams end with the sweep.
-	sweep := make(chan struct{})
-	defer close(sweep)
-	ts.srv.cfg.SweepInterval = 10 * time.Millisecond
-	go ts.srv.sweepAccounts(sweep)
 	rctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	for _, conn := range []*websocket.Conn{a.machineFrame.ws, term} {
