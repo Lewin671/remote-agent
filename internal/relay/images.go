@@ -22,7 +22,7 @@ import (
 // reconnects, before it is given up on.
 const maxImageTries = 5
 
-// imageRetry is the wait between tries within one pass.
+// imageRetry is the initial wait; backoff doubles within a three-try pass.
 var imageRetry = 2 * time.Second
 
 // uploadImages uploads the display copies the events refer to. It returns
@@ -73,15 +73,22 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 		if err == nil {
 			return c.imageUploaded(sessionID, imageID, true, res.Msg.ExpiresMs)
 		}
+		if ctx.Err() != nil {
+			return errors.Join(ctx.Err(), err)
+		}
 		failure := rpcSyncError("upload_image", err)
+		code := connect.CodeOf(err)
+		// Admission and storage quotas can both return ResourceExhausted.
+		// Retry capacity failures before falling back to a preview; Unavailable
+		// also gets bounded local retries instead of uncounted reconnects.
+		capacity := code == connect.CodeResourceExhausted || code == connect.CodeUnavailable
 		var se *syncError
-		if errors.As(failure, &se) && se.connection {
+		if errors.As(failure, &se) && se.connection && !capacity {
 			return failure
 		}
-		switch connect.CodeOf(err) {
-		case connect.CodeResourceExhausted, connect.CodeInvalidArgument, connect.CodePermissionDenied, connect.CodeFailedPrecondition:
-			// Will not change by trying again: the quota is full, or the
-			// server refuses this copy.
+		switch code {
+		case connect.CodeInvalidArgument, connect.CodePermissionDenied, connect.CodeFailedPrecondition:
+			// The server refuses this copy independently of current load.
 			slog.Warn("relay: image not stored", "session", sessionID, "image", imageID, "code", connect.CodeOf(err).String())
 			return c.imageUploaded(sessionID, imageID, false, 0)
 		}
@@ -102,7 +109,7 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 		select {
 		case <-ctx.Done():
 			return errors.Join(ctx.Err(), err)
-		case <-time.After(imageRetry):
+		case <-time.After(imageRetry << try):
 		}
 	}
 }
