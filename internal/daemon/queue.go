@@ -118,6 +118,14 @@ func (q *queueState) insert(in input) int {
 }
 
 func (q *queueState) seen(id string) bool {
+	for _, inputs := range [][]input{q.Queue, q.Held} {
+		for _, in := range inputs {
+			if in.RequestID == id {
+				return true
+			}
+		}
+	}
+
 	for _, s := range q.Seen {
 		if s == id {
 			return true

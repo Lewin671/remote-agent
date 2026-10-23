@@ -135,6 +135,10 @@ type Daemon struct {
 	// syncStateDir overrides the durability boundary for state-file fault tests.
 	syncStateDir func(string) error
 
+	inputMu     sync.Mutex
+	inputBytes  int64 // queued + held text and in-progress reservations
+	inputQueues map[string]int64
+
 	scheduleMu sync.Mutex
 	tasks      map[string]*schedule.Task
 	// lateRuns names, by task ID, the execution that ended uncertain
@@ -448,6 +452,15 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaSh
 }
 
 func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionRequest, origin *pb.Origin, viaShell, terminal bool, pathFrom string) (*session, error) {
+	var firstInput *inputReservation
+	if strings.TrimSpace(req.Prompt) != "" || len(req.ImageIds) > 0 {
+		var err error
+		firstInput, err = d.reserveInput("", nil, req.Prompt)
+		if err != nil {
+			return nil, err
+		}
+		defer firstInput.release()
+	}
 	cwd := req.Cwd
 	if cwd == "" {
 		return nil, errors.New("cwd is required")
@@ -579,7 +592,7 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 		// Queued like any message: it is written once the CLI shows its
 		// input box, after startup prompts are answered. A session whose
 		// first message cannot be accepted is not started.
-		if _, err := s.enqueue(req.Prompt, firstRequest, images, origin); err != nil {
+		if _, err := s.enqueueInput(req.Prompt, firstRequest, images, origin, pb.SendMode_SEND_MODE_STEER, firstInput, nil); err != nil {
 			if !queueAccepted(err) {
 				_ = d.cfg.Tmux.KillSession(m.Tmux)
 				return fail(err)

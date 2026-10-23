@@ -131,30 +131,59 @@ func (s *session) enqueue(text, requestID string, images []queuedImage, origin *
 
 // enqueueMode is enqueue with a delivery mode.
 func (s *session) enqueueMode(text, requestID string, images []queuedImage, origin *pb.Origin, mode pb.SendMode) (int, error) {
+	return s.enqueueInput(text, requestID, images, origin, mode, nil, nil)
+}
+
+func (s *session) enqueueUploaded(text, requestID string, ids []string, origin *pb.Origin, mode pb.SendMode) (int, error) {
+	return s.enqueueInput(text, requestID, nil, origin, mode, nil, func(id string) ([]queuedImage, error) {
+		if len(ids) == 0 {
+			return nil, nil
+		}
+		owner, err := imageOwner(origin)
+		if err != nil {
+			return nil, err
+		}
+		return s.d.uploads.take(ids, owner, s.meta.ID, id)
+	})
+}
+
+func (s *session) enqueueInput(text, requestID string, images []queuedImage, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) ([]queuedImage, error)) (int, error) {
 	if mode == pb.SendMode_SEND_MODE_UNSPECIFIED {
 		mode = pb.SendMode_SEND_MODE_STEER
 	}
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.meta.Exited {
-		s.mu.Unlock()
 		return 0, errExited
 	}
 	if s.queueLost {
-		s.mu.Unlock()
 		return 0, errQueueUnreadable
 	}
 	if requestID == "" {
 		requestID = newID(8)
 	} else if s.queue.seen(requestID) {
-		s.mu.Unlock()
 		s.poke()
 		return 0, nil
 	}
+	if reserved == nil {
+		var err error
+		reserved, err = s.d.reserveInput(s.meta.ID, s.queue, text)
+		if err != nil {
+			return 0, err
+		}
+	}
+	defer reserved.release()
+	if take != nil {
+		var err error
+		images, err = take(requestID)
+		if err != nil {
+			return 0, err
+		}
+	}
 	prevQueue, prevSeen := s.queue.Queue, s.queue.Seen
-	pos := s.queue.insert(input{
-		Text: text, RequestID: requestID, Images: images, Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: mode,
-	})
+	pos := s.queue.insert(input{Text: text, RequestID: requestID, Images: images, Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: mode})
 	s.queue.remember(requestID)
+	reserved.commit(s)
 	st := &pb.InputState{RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Text: text, Mode: mode}
 	for _, im := range images {
 		st.ImageIds = append(st.ImageIds, im.ID)
@@ -162,10 +191,12 @@ func (s *session) enqueueMode(text, requestID string, images []queuedImage, orig
 	saved, err := s.saveQueueLocked(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: st}}, origin))
 	if !saved {
 		s.queue.Queue, s.queue.Seen = prevQueue, prevSeen
-		s.mu.Unlock()
+		s.trackPendingInput()
+		if take != nil {
+			s.d.uploads.untake(images, s.meta.ID, requestID)
+		}
 		return 0, err
 	}
-	s.mu.Unlock()
 	if err != nil {
 		return pos, fmt.Errorf("message %s queued at position %d and may still be sent: %w", requestID, pos, err)
 	}

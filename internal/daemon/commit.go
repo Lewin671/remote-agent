@@ -55,6 +55,7 @@ func (s *session) appendLocked(evs []*pb.Event, path string, offset int64) error
 // must not undo memory that already became durable. Hold mu, or be the sole
 // owner while restoring before the session starts.
 func (s *session) saveQueueLocked(evs ...*pb.Event) (saved bool, err error) {
+	s.trackPendingInput()
 	if err := s.queue.saveWith(s.dir, s.d.writeStateFile); err != nil {
 		s.noteStorageLocked(err)
 		if fileReplaced(err) {

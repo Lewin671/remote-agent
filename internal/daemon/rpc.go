@@ -88,31 +88,8 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 		return nil, rpcErr(err)
 	}
 	origin := originOf(ctx)
-	var images []queuedImage
-	if req.Msg.RequestId == "" {
-		req.Msg.RequestId = newID(8)
-	}
-	s.mu.Lock()
-	seen := s.queue.seen(req.Msg.RequestId)
-	s.mu.Unlock()
-	if seen {
-		s.poke()
-		return connect.NewResponse(&pb.SendResponse{}), nil
-	}
-	if len(req.Msg.ImageIds) > 0 {
-		owner, err := imageOwner(origin)
-		if err != nil {
-			return nil, err
-		}
-		if images, err = h.d.uploads.take(req.Msg.ImageIds, owner, s.meta.ID, req.Msg.RequestId); err != nil {
-			return nil, err
-		}
-	}
-	pos, err := s.enqueueMode(req.Msg.Text, req.Msg.RequestId, images, origin, req.Msg.Mode)
+	pos, err := s.enqueueUploaded(req.Msg.Text, req.Msg.RequestId, req.Msg.ImageIds, origin, req.Msg.Mode)
 	if err != nil {
-		if !queueAccepted(err) {
-			h.d.uploads.untake(images, s.meta.ID, req.Msg.RequestId)
-		}
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SendResponse{QueuePosition: int32(pos)}), nil

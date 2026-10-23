@@ -261,6 +261,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		}
 		s.reader = tail.NewReader(m.RolloutPath, off)
 	}
+	s.trackPendingInput()
 	return s, nil
 }
 
