@@ -593,6 +593,20 @@ func (s *session) readBatch() (more, ok bool) {
 		slog.Warn("read rollout", "session", s.meta.ID, "err", errClass(err))
 		return false, false
 	}
+	var group []transcriptBatch
+	flush := func() bool {
+		if len(group) == 0 {
+			return true
+		}
+		if err := s.commitTranscript(group); err != nil {
+			// Parsing already advanced. Rebuild from committed events and
+			// resume at the last successful group's checkpoint.
+			s.retryTranscript(r.Path)
+			return false
+		}
+		group = nil
+		return true
+	}
 	for _, l := range lines {
 		var evs []*pb.Event
 		err = l.Err
@@ -604,6 +618,11 @@ func (s *session) readBatch() (more, ok bool) {
 			evs, err = s.parser.Parse(l.Data)
 		}
 		if err != nil {
+			// A diagnostic failure retries only this line, preserving parser
+			// state from earlier valid lines, so commit those lines first.
+			if !flush() {
+				return false, false
+			}
 			// Parser errors are nonmutating. Keep pending state belonging to
 			// earlier valid records (such as images not emitted yet), rather
 			// than replacing it with an event-log projection that lacks it.
@@ -627,70 +646,25 @@ func (s *session) readBatch() (more, ok bool) {
 		}
 		consume := s.annotate(evs)
 		evs = s.confirmLate(evs)
-		s.mu.Lock()
-		appendErr := s.appendLocked(evs, r.Path, l.End)
-		if appendErr == nil {
-			// Annotation is consumed only after commit, under the same lock
-			// as the projection. A failed append will match this line again.
-			consume()
-			for _, e := range evs {
-				if st := e.GetInputState(); st != nil {
-					delete(s.unproven, st.RequestId)
-				}
-			}
-		}
-		s.mu.Unlock()
-		if appendErr != nil {
-			// Read this line and the rest of the batch again next time,
-			// with a parser that has not seen them: parsing changed its
-			// state (a turn it ended would not end again), so it is
-			// rebuilt from the log, as after a restart, with what only the
-			// rollout before that position tells (Restore).
-			path, off := s.log.Checkpoint()
-			if path != r.Path {
-				off = 0
-			}
-			s.mu.Lock()
-			off = s.rolloutOffset(r.Path, off)
-			s.reader = tail.NewReader(r.Path, off)
-			s.parserReplayPending = true
-			s.parserReplayPath = r.Path
-			s.parserReplayOffset = off
-			s.mu.Unlock()
-			return false, false
-		}
-
-		if len(evs) > 0 {
-			// The log takes writes: an outcome an earlier failure left
-			// owing is logged now.
-			s.settleReceived()
-		}
+		group = append(group, transcriptBatch{
+			batch: eventlog.Batch{Events: evs, Rollout: r.Path, Offset: l.End}, consume: consume,
+		})
+		// These records consume annotation matches or trigger effects that
+		// must precede parsing/annotating the following source line.
+		boundary := false
 		for _, e := range evs {
-			if m := e.GetUserMessage(); m != nil {
-				s.received(m.RequestId)
-				for _, ref := range m.Images {
-					if ref.UploadId != "" && ref.ImageId != "" {
-						s.d.uploads.embedded(ref.UploadId)
-					}
-				}
-			}
-			if e.GetTurnEnded() != nil {
-				// Claude Code: a request still waiting was answered in
-				// the terminal (or interrupted there) since the turn is
-				// over. Codex (0.159.2) may end a turn while an escalated
-				// command still waits for approval in the background; its
-				// hook is still waiting too, and settles the request.
-				if s.ag.Kind() == pb.Agent_AGENT_CLAUDE {
-					s.retractApprovals()
-				}
-				s.afterTurn()
-			}
-			if c := e.GetToolCall(); c != nil {
-				// Its call ran: allowed in the terminal before the
-				// status check saw the prompt.
-				s.retractFor(c)
+			if e.GetUserMessage() != nil || e.GetQuestionAnswered() != nil || e.GetTurnEnded() != nil || e.GetToolCall() != nil {
+				boundary = true
 			}
 		}
+		if len(group) == eventlog.MaxGroupBatches || boundary {
+			if !flush() {
+				return false, false
+			}
+		}
+	}
+	if !flush() {
+		return false, false
 	}
 	return len(lines) > 0, true
 }

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/eventlog"
+	"github.com/Lewin671/remote-agent/internal/tail"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -36,17 +38,108 @@ func (s *session) appendLocked(evs []*pb.Event, path string, offset int64) error
 			}
 		}
 	}
-	err := s.log.Append(s.meta.ID, evs, path, offset)
-	if err != nil || len(evs) > 0 {
+	_, err := s.appendBatchesLocked([]eventlog.Batch{{Events: evs, Rollout: path, Offset: offset}})
+	return err
+}
+
+func (s *session) appendBatchesLocked(batches []eventlog.Batch) (int, error) {
+	n, err := s.log.AppendGroup(s.meta.ID, batches)
+	hasEvents := false
+	for _, batch := range batches[:n] {
+		hasEvents = hasEvents || len(batch.Events) > 0
+	}
+	if err != nil || hasEvents {
 		s.noteStorageLocked(err)
 	}
 	if err != nil {
-		return fmt.Errorf("%w: %w", errEventCommit, err)
+		return 0, fmt.Errorf("%w: %w", errEventCommit, err)
 	}
-	for _, e := range evs {
-		s.observe(e)
+	for _, batch := range batches[:n] {
+		for _, e := range batch.Events {
+			s.observe(e)
+		}
+	}
+	return n, nil
+}
+
+type transcriptBatch struct {
+	batch   eventlog.Batch
+	consume func()
+}
+
+// commitTranscript publishes only successful groups. A byte cap can split
+// the prepared lines into smaller groups; failure leaves earlier groups
+// committed, just as an earlier single-line append was kept before.
+func (s *session) commitTranscript(group []transcriptBatch) error {
+	batches := make([]eventlog.Batch, len(group))
+	for i, line := range group {
+		batches[i] = line.batch
+	}
+	for len(batches) > 0 {
+		s.mu.Lock()
+		n, err := s.appendBatchesLocked(batches)
+		if err != nil {
+			s.mu.Unlock()
+			return err
+		}
+		for _, line := range group[:n] {
+			for _, e := range line.batch.Events {
+				if st := e.GetInputState(); st != nil {
+					delete(s.unproven, st.RequestId)
+				}
+			}
+			line.consume()
+		}
+		s.mu.Unlock()
+		for _, batch := range batches[:n] {
+			s.afterTranscript(batch.Events)
+		}
+		batches, group = batches[n:], group[n:]
 	}
 	return nil
+}
+
+// retryTranscript discards parser state from the uncommitted group. Hold
+// readMu; Replay and Restore run at the start of the next read.
+func (s *session) retryTranscript(path string) {
+	checkpointPath, off := s.log.Checkpoint()
+	if checkpointPath != path {
+		off = 0
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	off = s.rolloutOffset(path, off)
+	s.reader = tail.NewReader(path, off)
+	s.parserReplayPending = true
+	s.parserReplayPath, s.parserReplayOffset = path, off
+}
+
+func (s *session) afterTranscript(evs []*pb.Event) {
+	if len(evs) > 0 {
+		// A previous failure may have left a held outcome owing.
+		s.settleReceived()
+	}
+	for _, e := range evs {
+		if m := e.GetUserMessage(); m != nil {
+			s.received(m.RequestId)
+			for _, ref := range m.Images {
+				if ref.UploadId != "" && ref.ImageId != "" {
+					s.d.uploads.embedded(ref.UploadId)
+				}
+			}
+		}
+		if e.GetTurnEnded() != nil {
+			// Claude retracts terminal approvals when the turn ends;
+			// Codex may still have an escalated command awaiting its hook.
+			if s.ag.Kind() == pb.Agent_AGENT_CLAUDE {
+				s.retractApprovals()
+			}
+			s.afterTurn()
+		}
+		if c := e.GetToolCall(); c != nil {
+			s.retractFor(c)
+		}
+	}
 }
 
 // saveQueueLocked persists the new canonical queue, then attempts its events.

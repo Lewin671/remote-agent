@@ -30,11 +30,15 @@ import (
 )
 
 const (
-	cacheEvents = 256
-	cacheBytes  = 1 << 20
-	indexStride = 128
-	indexLimit  = 256
-	pageLimit   = 512
+	// MaxGroupBatches bounds the number of already-available source lines
+	// sharing a Sync. A single oversized line is committed on its own.
+	MaxGroupBatches = 8
+	maxGroupBytes   = 1 << 20
+	cacheEvents     = 256
+	cacheBytes      = 1 << 20
+	indexStride     = 128
+	indexLimit      = 256
+	pageLimit       = 512
 )
 
 var ErrClosed = errors.New("event log is closed")
@@ -329,74 +333,81 @@ func (l *Log) ensureOpenLocked() error {
 	return nil
 }
 
+// Batch is the events and checkpoint of one original source line.
+type Batch struct {
+	Events  []*pb.Event
+	Rollout string
+	Offset  int64
+}
+
 // Append assigns sequence numbers to evs, writes them in one write, and
 // records the rollout checkpoint. rollout may be empty for events that do
 // not come from the rollout; the previous checkpoint is kept then. Events
-// are modified in place.
+// are modified in place only after Sync succeeds.
 func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset int64) error {
+	_, err := l.AppendGroup(sessionID, []Batch{{Events: evs, Rollout: rollout, Offset: offset}})
+	return err
+}
+
+// AppendGroup commits a prefix of batches with one write and Sync, returning
+// how many were committed. It never waits for more input. A group contains
+// at most MaxGroupBatches and 1 MiB of encoded records, except that an
+// oversized source line remains indivisible and is committed alone.
+// Per-line batch markers and checkpoints keep their existing disk format:
+// after a crash, complete line prefixes can survive an incomplete group.
+// On error no batch in this group is published or modified.
+func (l *Log) AppendGroup(sessionID string, batches []Batch) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.closed {
-		return ErrClosed
+		return 0, ErrClosed
 	}
 	l.touchLocked()
-	if len(evs) == 0 && rollout == "" {
-		return nil
-	}
 	var buf bytes.Buffer
 	var added []anchor
 	seq := l.n
-	for i, e := range evs {
-		seq++
-		e.Seq = seq
-		e.SessionId = sessionID
-		body, err := protojson.Marshal(e)
+	count := 0
+	for _, batch := range batches[:min(len(batches), MaxGroupBatches)] {
+		data, anchors, err := encodeBatch(sessionID, batch, seq, l.size+int64(buf.Len()))
 		if err != nil {
-			return err
+			return 0, err
 		}
-		rec := record{Event: body, More: i < len(evs)-1}
-		// The checkpoint goes on the last record of the batch, so a torn
-		// batch never claims its rollout line was consumed.
-		if !rec.More && rollout != "" {
-			rec.Rollout, rec.Offset = rollout, offset
+		if count > 0 && buf.Len()+len(data) > maxGroupBytes {
+			break
 		}
-		line, err := json.Marshal(rec)
+		buf.Write(data)
+		added = append(added, anchors...)
+		seq += uint64(len(batch.Events))
+		count++
+		if buf.Len() >= maxGroupBytes {
+			break
+		}
+	}
+	if buf.Len() > 0 {
+		if err := l.ensureOpenLocked(); err != nil {
+			return 0, err
+		}
+		// A failed group must leave no bytes behind: subsequent appends
+		// reuse its sequence numbers. Retry a failed truncation first.
+		if err := l.rollback(); err != nil {
+			return 0, err
+		}
+		l.dirty = true
+		n, err := l.f.WriteAt(buf.Bytes(), l.size)
+		if err == nil && n != buf.Len() {
+			err = io.ErrShortWrite
+		}
 		if err != nil {
-			return err
+			_ = l.rollback()
+			return 0, err
 		}
-		if (seq-1)%indexStride == 0 {
-			added = append(added, anchor{seq: seq, offset: l.size + int64(buf.Len())})
+		if err := l.f.Sync(); err != nil {
+			_ = l.rollback()
+			return 0, err
 		}
-		buf.Write(line)
-		buf.WriteByte('\n')
+		l.dirty = false
+		l.size += int64(buf.Len())
 	}
-	if len(evs) == 0 {
-		// Nothing to emit, but remember that the rollout advanced. Only
-		// the in-memory checkpoint moves; the file keeps the last one
-		// written with an event, which merely re-reads lines that
-		// produce no events.
-		l.rollout, l.offset = rollout, offset
-		return nil
-	}
-	if err := l.ensureOpenLocked(); err != nil {
-		return err
-	}
-	// A failed append must leave no bytes behind: the next one would
-	// follow them, and write the same sequence numbers a second time.
-	if err := l.rollback(); err != nil {
-		return err
-	}
-	l.dirty = true
-	if _, err := l.f.WriteAt(buf.Bytes(), l.size); err != nil {
-		_ = l.rollback()
-		return err
-	}
-	if err := l.f.Sync(); err != nil {
-		_ = l.rollback()
-		return err
-	}
-	l.dirty = false
-	l.size += int64(buf.Len())
 	for _, a := range added {
 		l.index = append(l.index, a)
 	}
@@ -404,19 +415,57 @@ func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset i
 		copy(l.index, l.index[len(l.index)-indexLimit:])
 		l.index = l.index[:indexLimit]
 	}
-	if l.cacheOn {
-		for _, e := range evs {
-			l.addCache(e)
+	for _, batch := range batches[:count] {
+		for _, e := range batch.Events {
+			l.n++
+			e.Seq, e.SessionId = l.n, sessionID
+			if l.cacheOn {
+				l.addCache(e)
+			}
+		}
+		if batch.Rollout != "" {
+			// Empty source lines only advance the in-memory checkpoint,
+			// as before; a restart harmlessly re-reads them.
+			l.rollout, l.offset = batch.Rollout, batch.Offset
+			if len(batch.Events) > 0 {
+				l.checkpointSeq = l.n
+			}
 		}
 	}
-	l.n = seq
-	if rollout != "" {
-		l.rollout, l.offset = rollout, offset
-		l.checkpointSeq = seq
+	if buf.Len() > 0 {
+		close(l.changed)
+		l.changed = make(chan struct{})
 	}
-	close(l.changed)
-	l.changed = make(chan struct{})
-	return nil
+	return count, nil
+}
+
+func encodeBatch(sessionID string, batch Batch, seq uint64, offset int64) ([]byte, []anchor, error) {
+	var buf bytes.Buffer
+	var added []anchor
+	for i, e := range batch.Events {
+		seq++
+		// Do not assign even the caller's sequence numbers until Sync.
+		staged := proto.Clone(e).(*pb.Event)
+		staged.Seq, staged.SessionId = seq, sessionID
+		body, err := protojson.Marshal(staged)
+		if err != nil {
+			return nil, nil, err
+		}
+		rec := record{Event: body, More: i < len(batch.Events)-1}
+		if !rec.More && batch.Rollout != "" {
+			rec.Rollout, rec.Offset = batch.Rollout, batch.Offset
+		}
+		line, err := json.Marshal(rec)
+		if err != nil {
+			return nil, nil, err
+		}
+		if (seq-1)%indexStride == 0 {
+			added = append(added, anchor{seq: seq, offset: offset + int64(buf.Len())})
+		}
+		buf.Write(line)
+		buf.WriteByte('\n')
+	}
+	return buf.Bytes(), added, nil
 }
 
 // rollback cuts off what a failed append left in the file. Until that
