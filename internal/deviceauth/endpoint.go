@@ -411,7 +411,16 @@ func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatem
 		}
 	}
 
-	db, err := openDB(path)
+	dbPath := path
+	if path != "" {
+		dir, err := os.MkdirTemp(filepath.Dir(path), ".security-init-")
+		if err != nil {
+			return nil, ErrStorage
+		}
+		defer os.RemoveAll(dir)
+		dbPath = filepath.Join(dir, "security.db")
+	}
+	db, err := openDB(dbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -434,7 +443,7 @@ func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatem
 		}
 		r.Lease = &l
 	}
-	e := &Endpoint{path: path, db: db, data: r}
+	e := &Endpoint{path: dbPath, db: db, data: r}
 	if err := e.cacheChainKeys(); err != nil {
 		db.Close()
 		return nil, err
@@ -443,7 +452,51 @@ func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatem
 		db.Close()
 		return nil, err
 	}
+	if path != "" {
+		if err := publishEndpoint(e, path); err != nil {
+			e.Close()
+			return nil, err
+		}
+		return OpenEndpoint(path)
+	}
 	return e, nil
+}
+
+// Publish only a complete, standalone database. Linking gives atomic creation
+// without overwriting an endpoint that another initializer published first.
+func publishEndpoint(e *Endpoint, path string) error {
+	var busy, frames, checkpointed int
+	if err := e.db.QueryRow(`PRAGMA wal_checkpoint(TRUNCATE)`).Scan(&busy, &frames, &checkpointed); err != nil || busy != 0 {
+		return ErrStorage
+	}
+	if err := e.Close(); err != nil {
+		return ErrStorage
+	}
+	f, err := os.OpenFile(e.path, os.O_RDWR, 0)
+	if err != nil {
+		return ErrStorage
+	}
+	err = f.Chmod(0600)
+	if err == nil {
+		err = f.Sync()
+	}
+	closeErr := f.Close()
+	if err != nil || closeErr != nil {
+		return ErrStorage
+	}
+	if err := os.Link(e.path, path); err != nil {
+		return ErrStorage
+	}
+	dir, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return ErrStorage
+	}
+	err = dir.Sync()
+	closeErr = dir.Close()
+	if err != nil || closeErr != nil {
+		return ErrStorage
+	}
+	return nil
 }
 
 // persistAll writes the header and every state of a fresh endpoint in one
