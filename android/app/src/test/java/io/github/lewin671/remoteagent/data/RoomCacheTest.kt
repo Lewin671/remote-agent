@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.ContextWrapper
 import android.database.sqlite.SQLiteDatabase
+import android.os.Looper
 import androidx.room.Room
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.RemoteSession
@@ -11,6 +12,7 @@ import io.github.lewin671.remoteagent.proto.StoredEvent
 import io.github.lewin671.remoteagent.RaApp
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -19,6 +21,9 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.StandardTestDispatcher
 import java.io.File
+import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.*
@@ -41,8 +46,8 @@ class RoomCacheTest {
     ).setQueryCoroutineContext(StandardTestDispatcher(testScheduler))
         .allowMainThreadQueries().build().also { databases += it }
 
-    private fun TestScope.cache(dao: CacheDao, budget: Long): RoomCache =
-        RoomCache(dao, access, parentScope = backgroundScope, budget = budget, clock = { now })
+    private fun TestScope.cache(dao: CacheDao, budget: Long, reclaim: suspend () -> Unit = {}): RoomCache =
+        RoomCache(dao, access, parentScope = backgroundScope, budget = budget, clock = { now }, reclaim = reclaim)
             .also { caches += it }
 
     private fun event(seq: Long) = StoredEvent.newBuilder().setSeq(seq)
@@ -196,9 +201,9 @@ class RoomCacheTest {
         val dao = database().dao()
         var passes = 0
         val observed = object : CacheDao by dao {
-            override suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>) {
+            override suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>): Boolean {
                 passes++
-                dao.trimEvents(budget, open, openedAt)
+                return dao.trimEvents(budget, open, openedAt)
             }
         }
         val cache = cache(observed, 2 * bytes)
@@ -217,10 +222,10 @@ class RoomCacheTest {
         val release = CompletableDeferred<Unit>()
         var passes = 0
         val observed = object : CacheDao by dao {
-            override suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>) {
+            override suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>): Boolean {
                 passes++
                 if (passes == 1) { entered.complete(Unit); release.await() }
-                dao.trimEvents(budget, open, openedAt)
+                return dao.trimEvents(budget, open, openedAt)
             }
         }
         val cache = cache(observed, 2 * bytes)
@@ -257,12 +262,14 @@ class RoomCacheTest {
         assertEquals(2, dao.events("kept").size)
     }
 
-    @Test fun existingVersionThreeCacheIsUsedAsIsAndReclaimsDeletedPages() = runTest {
+    @Test fun existingVersionThreeCacheIsUsedAsIsWithoutVacuumOnOpen() = runTest {
         val context = RuntimeEnvironment.getApplication()
         val machine = byteArrayOf(1, 2, 3)
         val blob = byteArrayOf(4, 5, 6)
         val session = RemoteSession.newBuilder().setSessionId("old").setMachineId("machine").build()
         val unlisted = session.toBuilder().setSessionId("unlisted").build()
+        var pages = 0
+        var free = 0
         existingDatabase().use { db ->
             db.execSQL("INSERT INTO machines VALUES (?, ?)", arrayOf("machine", machine))
             db.execSQL("INSERT INTO sessions VALUES (?, ?, ?, ?)", arrayOf("old", "machine", session.toByteArray(), 1))
@@ -270,6 +277,11 @@ class RoomCacheTest {
             db.execSQL("INSERT INTO blobs VALUES (?, ?)", arrayOf("preferences", blob))
             db.putEvents("old")
             db.putEvents("unlisted")
+            db.execSQL("INSERT INTO events VALUES (?, ?, ?)", arrayOf("deleted", 1, ByteArray(64 * 1024)))
+            db.execSQL("DELETE FROM events WHERE sessionId = 'deleted'")
+            pages = db.rawQuery("PRAGMA page_count", null).use { it.moveToFirst(); it.getInt(0) }
+            free = db.rawQuery("PRAGMA freelist_count", null).use { it.moveToFirst(); it.getInt(0) }
+            assertTrue(free > 0)
         }
         val db = CacheDb.open(context).also { databases += it }
         val dao = db.dao()
@@ -297,14 +309,88 @@ class RoomCacheTest {
         val cache = cache(dao, Long.MAX_VALUE)
         assertEquals(listOf(event(1), event(2)), cache.events("old"))
         assertEquals(2 * bytes, dao.eventSizes().first { it.sessionId == "old" }.bytes)
-        assertEquals(1, sqlite.query("PRAGMA auto_vacuum").use { it.moveToFirst(); it.getInt(0) })
-        dao.put(listOf(EventRow("large", 1, ByteArray(64 * 1024))))
-        assertEquals(64 * 1024L, dao.eventSizes().first { it.sessionId == "large" }.bytes)
+        assertEquals(0, sqlite.query("PRAGMA auto_vacuum").use { it.moveToFirst(); it.getInt(0) })
+        assertEquals(pages, sqlite.query("PRAGMA page_count").use { it.moveToFirst(); it.getInt(0) })
+        assertEquals(free, sqlite.query("PRAGMA freelist_count").use { it.moveToFirst(); it.getInt(0) })
+    }
+
+    @Test fun backgroundMaintenanceVacuumsOnceAfterEvictionAndReclaimsPages() = runTest {
+        val context = RuntimeEnvironment.getApplication()
+        existingDatabase().use { db ->
+            db.execSQL("INSERT INTO events VALUES (?, ?, ?)", arrayOf("large", 1, ByteArray(64 * 1024)))
+            db.execSQL("INSERT INTO events VALUES (?, ?, ?)", arrayOf("retained", 1, event(1).toByteArray()))
+        }
+        val vacuums = AtomicInteger()
+        val onMain = AtomicBoolean()
+        val db = Room.databaseBuilder(context, CacheDb::class.java, CacheDb.NAME)
+            .setQueryCallback({ sql, _ ->
+                if (sql == "VACUUM") {
+                    vacuums.incrementAndGet()
+                    onMain.set(Looper.myLooper() == Looper.getMainLooper())
+                }
+            }, Executor { it.run() }).build().also { databases += it }
+        val sqlite = db.openHelper.writableDatabase
         fun pages() = sqlite.query("PRAGMA page_count").use { it.moveToFirst(); it.getInt(0) }
         val before = pages()
-        dao.deleteEvents("large")
-        assertTrue("deletion should return pages to the filesystem", pages() < before)
-        assertEquals(listOf(event(1), event(2)), cache.events("old"))
+        val finished = Channel<Unit>(Channel.UNLIMITED)
+        val cache = cache(db.dao(), bytes) {
+            db.reclaimSpace()
+            finished.trySend(Unit)
+        }
+        assertEquals(0, vacuums.get())
+        trim()
+        finished.receive()
+        assertEquals(1, vacuums.get())
+        assertFalse("VACUUM must run off the main thread", onMain.get())
+        assertTrue("evicted pages should be returned to the filesystem", pages() < before)
+        assertEquals(1, sqlite.query("PRAGMA auto_vacuum").use { it.moveToFirst(); it.getInt(0) })
+        assertEquals(listOf(event(1)), cache.events("retained"))
+        cache.setSessionOpen("retained", true)
+        cache.putEvents("later", listOf(event(1)))
+        trim()
+        finished.receive()
+        assertTrue(db.dao().events("later").isEmpty())
+        assertEquals(1, vacuums.get()) // FULL persists; later evictions need no further rewrite.
+    }
+
+    @Test fun maintenanceWaitsForEvictionAndDoesNotHoldTheCacheReadLock() = runTest {
+        val dao = database().dao()
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val cache = cache(dao, 2 * bytes) {
+            entered.complete(Unit)
+            release.await()
+        }
+        cache.seed("a", 10)
+        trim()
+        assertFalse("an under-budget cache needs no rewrite", entered.isCompleted)
+        cache.seed("b", 20)
+        trim()
+        assertTrue(entered.isCompleted)
+        try {
+            val read = async { cache.events("b") }
+            runCurrent()
+            assertTrue("cache reads must not wait for maintenance", read.isCompleted)
+            assertEquals(listOf(event(1), event(2)), read.await())
+        } finally { release.complete(Unit) }
+    }
+
+    @Test fun maintenanceFailureIsNonFatalAndCanRetryAfterAnotherEviction() = runTest {
+        val dao = database().dao()
+        var attempts = 0
+        val cache = cache(dao, 2 * bytes) {
+            if (++attempts == 1) error("unavailable")
+        }
+        cache.seed("a", 10)
+        cache.seed("b", 20)
+        trim()
+        assertEquals(1, attempts)
+        assertEquals(listOf(event(1), event(2)), cache.events("b"))
+        cache.seed("c", 30)
+        trim()
+        assertEquals(2, attempts)
+        assertTrue(dao.events("b").isEmpty())
+        assertEquals(listOf(event(1), event(2)), cache.events("c"))
     }
 
     @Test fun appendingToExistingEventsCountsBlobBytesWithoutDoubleCountingDuplicates() = runTest {
@@ -341,9 +427,10 @@ class RoomCacheTest {
         val dao = CacheDb.open(context).also { databases += it }.dao()
         val trimmed = Channel<Unit>(Channel.UNLIMITED)
         val observed = object : CacheDao by dao {
-            override suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>) {
-                dao.trimEvents(budget, open, openedAt)
+            override suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>): Boolean {
+                val evicted = dao.trimEvents(budget, open, openedAt)
                 trimmed.trySend(Unit)
+                return evicted
             }
         }
         dao.put(listOf(EventRow("opened", 1, event(1).toByteArray()), EventRow("opened", 2, event(2).toByteArray())))
@@ -388,6 +475,7 @@ class RoomCacheTest {
         val context = RuntimeEnvironment.getApplication()
         val db = CacheDb.open(context).also { databases += it }
         assertTrue(db.isOpen)
+        assertEquals(1, db.openHelper.writableDatabase.query("PRAGMA auto_vacuum").use { it.moveToFirst(); it.getInt(0) })
         assertTrue("fresh caches should use Room's default WAL", db.openHelper.writableDatabase.isWriteAheadLoggingEnabled)
         db.dao().put(BlobRow("retained", byteArrayOf(1, 2, 3)))
         db.close()

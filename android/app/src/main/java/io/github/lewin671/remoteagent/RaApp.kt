@@ -313,7 +313,7 @@ class RaApp : Application() {
             Remote(
                 acct,
                 http,
-                RoomCache(cacheDb.dao(), eventAccess, imageEnvelopes),
+                RoomCache(cacheDb.dao(), eventAccess, imageEnvelopes, reclaim = cacheDb::reclaimSpace),
                 securityStorage = vault,
                 tokenStorage = object : io.github.lewin671.remoteagent.core.LoginTokenStore by vault {
                     override fun loadLoginToken(account: Account) =

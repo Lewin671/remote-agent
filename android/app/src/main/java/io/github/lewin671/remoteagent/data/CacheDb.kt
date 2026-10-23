@@ -13,6 +13,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteOpenHelper
+import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import io.github.lewin671.remoteagent.core.CipherCache
 import io.github.lewin671.remoteagent.proto.Machine
 import io.github.lewin671.remoteagent.proto.RemoteSession
@@ -27,6 +29,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 // The cache holds what the server sent, as it was sent: routing fields and
 // envelopes. Nothing decrypted is written to disk.
@@ -80,16 +83,19 @@ interface CacheDao {
     @Query("SELECT id FROM sessions WHERE machineId = :mid") suspend fun sessionsOf(mid: String): List<String>
 
     @Transaction
-    suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>) {
+    suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>): Boolean {
         // SQLite measures BLOB lengths without loading the ciphertext into memory.
         val sessions = eventSizes().sortedWith(compareBy<EventSize> { openedAt[it.sessionId] ?: Long.MIN_VALUE }.thenBy { it.sessionId })
         var total = sessions.sumOf { it.bytes }
+        var evicted = false
         for (session in sessions) {
             if (total <= budget) break
             if (session.sessionId in open) continue
             deleteEvents(session.sessionId)
             total -= session.bytes
+            evicted = true
         }
+        return evicted
     }
 
     // Listed sessions are the listing's first page (architecture §8). An
@@ -113,6 +119,21 @@ interface CacheDao {
 @Database(entities = [MachineRow::class, SessionRow::class, EventRow::class, BlobRow::class], version = 3)
 abstract class CacheDb : RoomDatabase() {
     abstract fun dao(): CacheDao
+    private val maintenanceLock = Mutex()
+
+    suspend fun reclaimSpace() = withContext(Dispatchers.IO) {
+        maintenanceLock.withLock {
+            if (openHelper.databaseName != null) {
+                val db = openHelper.writableDatabase
+                val mode = db.query("PRAGMA auto_vacuum").use { it.moveToFirst(); it.getInt(0) }
+                if (mode != 1) {
+                    // Existing files need one rewrite, after an eviction rather than at startup.
+                    db.execSQL("PRAGMA auto_vacuum=FULL")
+                    db.execSQL("VACUUM")
+                }
+            }
+        }
+    }
 
     companion object {
         const val NAME = "cache.db"
@@ -140,16 +161,29 @@ abstract class CacheDb : RoomDatabase() {
 
         private fun diskBuilder(context: Context) = Room.databaseBuilder(context, CacheDb::class.java, NAME)
             .fallbackToDestructiveMigration(true)
-            .addCallback(object : Callback() {
-                override fun onOpen(db: SupportSQLiteDatabase) {
-                    // Return deleted pages to the filesystem rather than retaining a high-water mark.
-                    val vacuum = db.query("PRAGMA auto_vacuum").use { it.moveToFirst(); it.getInt(0) }
-                    if (vacuum != 1) {
-                        db.execSQL("PRAGMA auto_vacuum=FULL")
-                        db.execSQL("VACUUM")
+            .openHelperFactory { config ->
+                val callback = config.callback
+                val configured = object : SupportSQLiteOpenHelper.Callback(callback.version) {
+                    override fun onConfigure(db: SupportSQLiteDatabase) {
+                        callback.onConfigure(db)
+                        // Configure fresh files before Room creates any tables; no rewrite needed.
+                        if (db.version == 0) db.execSQL("PRAGMA auto_vacuum=FULL")
                     }
+                    override fun onCreate(db: SupportSQLiteDatabase) = callback.onCreate(db)
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = callback.onUpgrade(db, oldVersion, newVersion)
+                    override fun onDowngrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = callback.onDowngrade(db, oldVersion, newVersion)
+                    override fun onOpen(db: SupportSQLiteDatabase) = callback.onOpen(db)
+                    override fun onCorruption(db: SupportSQLiteDatabase) = callback.onCorruption(db)
                 }
-            })
+                FrameworkSQLiteOpenHelperFactory().create(
+                    SupportSQLiteOpenHelper.Configuration.builder(config.context)
+                        .name(config.name)
+                        .callback(configured)
+                        .noBackupDirectory(config.useNoBackupDirectory)
+                        .allowDataLossOnRecovery(config.allowDataLossOnRecovery)
+                        .build(),
+                )
+            }
     }
 }
 
@@ -161,6 +195,7 @@ class RoomCache(
     parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
     private val budget: Long = 256L * 1024 * 1024,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val reclaim: suspend () -> Unit = {},
 ) : CipherCache {
     private val scope = CoroutineScope(parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[kotlinx.coroutines.Job]))
     private val lock = Mutex()
@@ -173,13 +208,16 @@ class RoomCache(
                 delay(1000)
                 while (trims.tryReceive().isSuccess) { /* Coalesce appends during the delay. */ }
                 try {
-                    lock.withLock {
-                        dao.trimEvents(budget, open, access.times())
+                    val evicted = lock.withLock {
+                        val evicted = dao.trimEvents(budget, open, access.times())
                         access.retain(dao.cachedSessionIds().toSet() + open)
+                        evicted
                     }
+                    // WAL readers and cache reads must not wait on our mutex for the rewrite.
+                    if (evicted) reclaim()
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
-                    Log.w("remote-agent", "event cache trim failed: ${e.javaClass.simpleName}")
+                    Log.w("remote-agent", "event cache maintenance failed: ${e.javaClass.simpleName}")
                 }
             }
         }
