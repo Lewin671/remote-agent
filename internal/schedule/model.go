@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"slices"
 	"time"
 )
 
@@ -97,9 +98,29 @@ func DecodeSpec(b []byte) (Spec, error) {
 	return s, nil
 }
 
+// Terminal tasks no longer dispatch automatically. Active executions are still watched.
+func (t *Task) Terminal() bool { return t.Status == "completed" || t.Status == "cancelled" }
+
+func cloneTime(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	out := *t
+	return &out
+}
+
 func Clone(t *Task) *Task {
-	b, _ := json.Marshal(t)
-	var out Task
-	_ = json.Unmarshal(b, &out)
+	out := *t
+	out.Spec.Trigger.At = cloneTime(t.Spec.Trigger.At)
+	out.NextRunAt = cloneTime(t.NextRunAt)
+	out.Runs = slices.Clone(t.Runs)
+	for i := range out.Runs {
+		out.Runs[i].EndedAt = cloneTime(t.Runs[i].EndedAt)
+	}
+	if t.Active != nil {
+		run := *t.Active
+		run.EndedAt = cloneTime(t.Active.EndedAt)
+		out.Active = &run
+	}
 	return &out
 }

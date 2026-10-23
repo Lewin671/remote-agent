@@ -537,21 +537,27 @@ func (d *Daemon) tickSchedules(now time.Time) {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	for _, t := range d.tasks {
+		if t.Terminal() && t.Active == nil && d.lateRuns[t.ID] == "" {
+			continue
+		}
 		prev := schedule.Clone(t)
+		changed := false
 		late, hadLate := d.lateRuns[t.ID]
 		if t.Active != nil {
-			d.watchScheduledRun(t, now)
+			changed = d.watchScheduledRun(t, now)
 		} else {
-			d.reconfirmScheduledRun(t, now)
+			changed = d.reconfirmScheduledRun(t, now)
 		}
 		if t.Status == "waiting_turn" {
 			s, err := d.exact(t.AnchorSession)
 			if err != nil {
 				t.Status = "failed"
 				t.Reason = "source_session_missing"
+				changed = true
 			} else {
 				err := scanEventsSince(s.log, t.AnchorSeq, func(e *pb.Event) bool {
 					t.AnchorSeq = e.Seq
+					changed = true
 					if end := e.GetTurnEnded(); end != nil && (t.AnchorTurn == "" || e.TurnId == "" || e.TurnId == t.AnchorTurn) {
 						if end.Outcome == pb.TurnOutcome_TURN_OUTCOME_ABORTED {
 							t.Status = "paused"
@@ -578,10 +584,12 @@ func (d *Daemon) tickSchedules(now time.Time) {
 				if exited && t.Status == "waiting_turn" {
 					t.Status = "paused"
 					t.Reason = "source_exited_before_turn_end"
+					changed = true
 				}
 			}
 		}
 		if t.Status == "scheduled" && t.Active == nil && t.NextRunAt != nil && !now.Before(*t.NextRunAt) {
+			changed = true
 			late := t.Spec.LateSeconds
 			if late == 0 {
 				late = 86400
@@ -606,9 +614,7 @@ func (d *Daemon) tickSchedules(now time.Time) {
 				d.dispatchScheduled(t, now)
 			}
 		}
-		before, _ := json.Marshal(prev)
-		after, _ := json.Marshal(t)
-		if string(before) != string(after) {
+		if changed {
 			touchTask(t, now)
 			if err := d.saveSchedulesLocked(); err != nil {
 				if t.Dispatches == prev.Dispatches && !fileReplaced(err) {
@@ -736,18 +742,19 @@ func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
 	}
 }
 
-func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
+func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed bool) {
 	run := t.Active
 	if run.Status == "uncertain" {
-		return
+		return false
 	}
 	s, err := d.exact(run.SessionID)
 	if err != nil {
 		d.endScheduledRun(t, now, "failed", "execution_session_missing")
-		return
+		return true
 	}
 	err = scanEventsSince(s.log, run.AfterSeq, func(e *pb.Event) bool {
 		run.AfterSeq = e.Seq
+		changed = true
 		if in := e.GetInputState(); in != nil && in.RequestId == run.RequestID {
 			run.InputPaused = in.Paused
 			switch in.Status {
@@ -795,8 +802,9 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
 		slog.Warn("scan scheduled execution events", "session", run.SessionID, "err", errClass(err))
 	}
 	if t.Active != run {
-		return
+		return true
 	}
+	status, reason := t.Status, t.Reason
 	// Cursor and message/turn identity are persisted together. Replaying after
 	// restart cannot mistake an unrelated earlier turn for this execution.
 	if run.InputPaused && t.Status != "cancelled" && (t.Status != "paused" || t.Reason == "execution_input_paused") {
@@ -812,9 +820,12 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
 	s.mu.Lock()
 	exited := s.meta.Exited
 	s.mu.Unlock()
+	changed = changed || status != t.Status || reason != t.Reason
 	if exited {
 		d.endScheduledRun(t, now, "failed", "execution_session_exited")
+		changed = true
 	}
+	return changed
 }
 
 // unconfirmedRun is why an execution ended uncertain when its message was
@@ -824,7 +835,7 @@ const unconfirmedRun = "message_submission_unconfirmed"
 // reconfirmScheduledRun takes up again the execution of a task that ended
 // uncertain because its message was reported UNCONFIRMED, once the CLI's
 // record confirms the message after all (inject.go, confirmLate), and
-// reports whether it did. Until then, and for good if no record comes, the
+// reports whether any state (including the scan cursor) changed. Until then, and for good if no record comes, the
 // task stays uncertain; the message is never sent again. A task paused
 // meanwhile stays paused: its execution is followed to the end all the
 // same, as one that was running when the task was paused. Any other
@@ -843,11 +854,11 @@ func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) bool {
 	if err != nil {
 		return false
 	}
-	found := false
+	changed := false
 	err = scanEventsSince(s.log, last.AfterSeq, func(e *pb.Event) bool {
 		last.AfterSeq = e.Seq
+		changed = true
 		if in := e.GetInputState(); in != nil && in.RequestId == last.RequestID && in.Status == pb.InputStatus_INPUT_STATUS_SUBMITTED {
-			found = true
 			run := *last
 			run.Status, run.Reason, run.EndedAt = "submitted", "", nil
 			t.Runs = t.Runs[:len(t.Runs)-1]
@@ -864,7 +875,7 @@ func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) bool {
 	if err != nil {
 		slog.Warn("scan uncertain scheduled execution events", "session", last.SessionID, "err", errClass(err))
 	}
-	return found
+	return changed
 }
 func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason string) {
 	t.Active.Status = status
