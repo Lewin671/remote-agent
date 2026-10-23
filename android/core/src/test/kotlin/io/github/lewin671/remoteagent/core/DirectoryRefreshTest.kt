@@ -70,6 +70,22 @@ class DirectoryRefreshTest {
         } finally { remote.close(); runCurrent() }
     }
 
+    @Test fun firstDirectoryMetadataIsCachedAndAnInvalidSameRevisionCannotReplaceIt() = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        val original = fixture.machine(1, "cached-machine")
+        peer.machineRows = listOf(original)
+        val cache = MemoryCache()
+        val remote = peer.remote(cache)
+        try {
+            remote.start(); runCurrent()
+            assertEquals(original.meta, cache.machines().single().meta)
+            peer.machineRows = listOf(original.toBuilder().setMeta(original.meta.toBuilder()
+                .setSignature(com.google.protobuf.ByteString.copyFrom(ByteArray(64)))).build())
+            remote.refresh()
+            assertEquals(original.meta, cache.machines().single().meta)
+        } finally { remote.close(); runCurrent() }
+    }
+
     @Test fun changedMachineMetadataIsVerifiedWithoutRelistingMembers() = runTest {
         val peer = ColdOpenPeer(fixture, this)
         peer.machineRows = listOf(fixture.machine(1, "before"))

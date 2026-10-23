@@ -394,6 +394,7 @@ class Remote(
     private val trustedMembers = HashMap<String, DeviceSecurity.Member>()
     private val archiveMachines = HashSet<String>()
     private val trustedMetadata = HashMap<String, Envelope>()
+    private val verifiedMachineMetadata = HashMap<String, Envelope>()
     private var directoryVersion = 0L
     private var directoryHead: ByteArray? = null
     private var directoryLoad: Deferred<Unit>? = null
@@ -973,6 +974,7 @@ class Remote(
         // opened for a page or a lookup asked for before must not be taken after this.
         removedPushes[id] = (removedPushes[id] ?: 0) + 1
         machines.remove(id)
+        verifiedMachineMetadata.remove(id)
         val sids = sessions.values.filter { it.machineId == id }.map { it.id }
         for (sid in sids) {
             sessions.remove(sid)
@@ -1304,9 +1306,12 @@ class Remote(
         var store = old == null
         if (m.hasMeta()) {
             try {
-                val unchanged = old?.meta != null && previousMeta == m.meta &&
+                val unchanged = old?.meta != null && verifiedMachineMetadata[m.id] == m.meta &&
                     DeviceSecurity.parseHeader(m.meta.securityHeader.toByteArray()).seq.toLong() == old.metaRev
-                if (!unchanged) {
+                if (unchanged) {
+                    // Directory verification can populate memory before the first cache write.
+                    store = true
+                } else {
                     val (h, opened) =
                         openSecureMessage(
                             keys?.meta ?: ByteArray(0),
@@ -1317,6 +1322,7 @@ class Remote(
                     if (ucmp(h.seq, view.metaRev) >= 0) {
                         view = view.copy(meta = opened, metaRev = h.seq)
                         trustedMetadata["machine:${m.id}"] = m.meta
+                        verifiedMachineMetadata[m.id] = m.meta
                         store = true
                     }
                 }
@@ -2326,6 +2332,7 @@ class Remote(
                                     Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
                                     MachineMeta::parseFrom,
                                 )
+                            verifiedMachineMetadata[m.id] = env
                             val old = machines[m.id]
                             newMachines[m.id] =
                                 if (old == null)
