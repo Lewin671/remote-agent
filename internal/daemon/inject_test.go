@@ -126,6 +126,10 @@ func TestSendWithImages(t *testing.T) {
 }
 
 func TestSendWithImagesStopsWhenOneIsNotTaken(t *testing.T) {
+	synctest.Test(t, testSendWithImagesStopsWhenOneIsNotTaken)
+}
+
+func testSendWithImagesStopsWhenOneIsNotTaken(t *testing.T) {
 	h := newHarness(t, Config{})
 	imgs := imagesFor(t, h.dir, "a.png", "b.heic")
 	fakeCodexImages(t, h, map[string]bool{imgs[0].Path: true})

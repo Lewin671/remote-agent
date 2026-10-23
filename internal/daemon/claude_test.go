@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -344,37 +343,82 @@ func TestClaudeContextsAfterModelThenModeSwitch(t *testing.T) {
 
 // A switch recorded while the transcript is being read: once the log has
 // the new model, no later context may carry the old one (review V1 race).
+type pausedContextParser struct {
+	agent.Parser
+	t               *testing.T
+	s               *session
+	parsed, release chan struct{}
+}
+
+func (p *pausedContextParser) Parse(line []byte) ([]*pb.Event, error) {
+	evs, err := p.Parser.Parse(line)
+	for _, e := range evs {
+		if e.GetTurnContext() == nil {
+			continue
+		}
+		// Parsing and committing must own the same lock as settings writes.
+		if p.s.readMu.TryLock() {
+			p.s.readMu.Unlock()
+			p.t.Error("context parsed without owning readMu")
+		}
+		close(p.parsed)
+		<-p.release
+		break
+	}
+	return evs, err
+}
+
 func TestClaudeModelSwitchRacesTranscript(t *testing.T) {
-	for round := 0; round < 15; round++ {
-		h := claudeHarness(t, Config{})
-		path := filepath.Join(h.dir, "rollout.jsonl")
-		h.writeRollout(`{"type":"user","promptId":"p0","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"hi"}}`,
-			`{"type":"assistant","message":{"id":"m0","model":"claude-haiku-4-5-20251001","stop_reason":"end_turn","content":[{"type":"text","text":"x"}]}}`,
-			`{"type":"system","subtype":"turn_duration","durationMs":1}`)
-		h.s.bindRollout("cc-1", path)
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			for i := 0; i < 40; i++ {
-				mode := []string{"default", "acceptEdits"}[i%2]
-				h.writeRollout(fmt.Sprintf(`{"type":"user","promptId":"p%d","origin":{"kind":"human"},"permissionMode":%q,"message":{"role":"user","content":"m"}}`, i+1, mode),
-					`{"type":"system","subtype":"turn_duration","durationMs":1}`)
-				h.s.readRollout()
-			}
-		}()
-		time.Sleep(time.Duration(round%5) * time.Millisecond)
-		h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}})
-		<-done
-		switched := false
-		for _, e := range h.events() {
-			if e.GetSettingsChanged().GetModel() == "sonnet" {
-				switched = true
-			}
-			if c := e.GetTurnContext(); c != nil && switched && c.Model != "sonnet" {
-				t.Fatalf("round %d: context after the switch carries %q", round, c.Model)
+	h := claudeHarness(t, Config{})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p0","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"hi"}}`,
+		`{"type":"assistant","message":{"id":"m0","model":"claude-haiku-4-5-20251001","stop_reason":"end_turn","content":[{"type":"text","text":"x"}]}}`,
+		`{"type":"system","subtype":"turn_duration","durationMs":1}`)
+	h.s.bindRollout("cc-1", path)
+	p := &pausedContextParser{Parser: h.s.parser, t: t, s: h.s, parsed: make(chan struct{}), release: make(chan struct{})}
+	h.s.parser = p
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"permissionMode":"acceptEdits","message":{"role":"user","content":"next"}}`)
+	read := make(chan bool, 1)
+	go func() { read <- h.s.readRollout() }()
+	<-p.parsed
+	switching, switched := make(chan struct{}), make(chan error, 1)
+	go func() {
+		close(switching)
+		switched <- h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}})
+	}()
+	<-switching
+	close(p.release)
+	if !<-read {
+		t.Fatal("transcript read failed")
+	}
+	if err := <-switched; err != nil {
+		t.Fatal(err)
+	}
+	h.s.parser = p.Parser
+	h.writeRollout(`{"type":"system","subtype":"turn_duration","durationMs":1}`,
+		`{"type":"user","promptId":"p2","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"after switch"}}`)
+	if !h.s.readRollout() {
+		t.Fatal("subsequent transcript read failed")
+	}
+	assertClaudeModelAfterSwitch(t, h)
+}
+
+func assertClaudeModelAfterSwitch(t *testing.T, h *harness) {
+	t.Helper()
+	switched, contexts := false, 0
+	for _, e := range h.events() {
+		if e.GetSettingsChanged().GetModel() == "sonnet" {
+			switched = true
+		}
+		if c := e.GetTurnContext(); c != nil && switched {
+			contexts++
+			if c.Model != "sonnet" {
+				t.Fatalf("context after switch carries %q", c.Model)
 			}
 		}
-		h.s.log.Close()
+	}
+	if !switched || contexts == 0 {
+		t.Fatal("no context recorded after model switch")
 	}
 }
 
@@ -412,32 +456,40 @@ func TestClaudeApprovalLargeInputWithdrawn(t *testing.T) {
 // screen's context must not carry the model from before the switch
 // (review V1, checkScreen).
 func TestClaudeScreenModeRacesModelSwitch(t *testing.T) {
-	modes := []string{"⏸ manual mode on", "⏵⏵ accept edits on (shift+tab to cycle)"}
-	for round := 0; round < 40; round++ {
-		h := claudeHarness(t, Config{})
-		h.s.emit(&pb.Event{Kind: &pb.Event_TurnContext{TurnContext: &pb.TurnContext{Model: "claude-haiku-4-5-20251001", PermissionMode: "default"}}})
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			for i := 0; i < 30; i++ {
-				h.term.setScreen(strings.Replace(ccIdle, "⏸ manual mode on", modes[i%2], 1))
-				h.s.checkScreen()
-				h.s.checkScreen()
+	for _, order := range []string{"model first", "screen first", "concurrent"} {
+		t.Run(order, func(t *testing.T) {
+			h := claudeHarness(t, Config{})
+			h.s.emit(&pb.Event{Kind: &pb.Event_TurnContext{TurnContext: &pb.TurnContext{Model: "claude-haiku-4-5-20251001", PermissionMode: "default"}}})
+			mode := "⏵⏵ accept edits on (shift+tab to cycle)"
+			h.term.setScreen(strings.Replace(ccIdle, "⏸ manual mode on", mode, 1))
+			h.s.checkScreen() // first observation; the next one is stable
+			model := func() {
+				if err := h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}}); err != nil {
+					t.Error(err)
+				}
 			}
-		}()
-		time.Sleep(time.Duration(round%7) * 200 * time.Microsecond)
-		h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}})
-		<-done
-		switched := false
-		for _, e := range h.events() {
-			if e.GetSettingsChanged().GetModel() == "sonnet" {
-				switched = true
+			screen := func() { h.s.checkScreen() }
+			switch order {
+			case "model first":
+				model()
+				screen()
+			case "screen first":
+				screen()
+				model()
+			case "concurrent":
+				start, done := make(chan struct{}), make(chan struct{})
+				go func() { defer close(done); <-start; screen() }()
+				close(start)
+				model()
+				<-done
 			}
-			if c := e.GetTurnContext(); c != nil && switched && c.Model != "sonnet" {
-				t.Fatalf("round %d: screen context after the switch carries %q", round, c.Model)
-			}
-		}
-		h.s.log.Close()
+			// A further mode change must also retain the new model, and makes
+			// the assertion non-vacuous when the first screen won the race.
+			h.term.setScreen(ccIdle)
+			h.s.checkScreen()
+			h.s.checkScreen()
+			assertClaudeModelAfterSwitch(t, h)
+		})
 	}
 }
 

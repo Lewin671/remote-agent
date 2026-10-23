@@ -84,12 +84,21 @@ type fakeControl struct{ f *fakeTerm }
 
 func (c *fakeControl) Hold(time.Duration) error {
 	c.f.mu.Lock()
+	if !c.f.held {
+		c.f.ops = append(c.f.ops, "hold")
+	}
 	c.f.held = true
 	c.f.mu.Unlock()
 	return nil
 }
-func (c *fakeControl) Release() error { c.f.mu.Lock(); c.f.held = false; c.f.mu.Unlock(); return nil }
-func (c *fakeControl) Close() error   { return nil }
+func (c *fakeControl) Release() error {
+	c.f.mu.Lock()
+	defer c.f.mu.Unlock()
+	c.f.held = false
+	c.f.ops = append(c.f.ops, "release")
+	return nil
+}
+func (c *fakeControl) Close() error { return nil }
 func (c *fakeControl) Write(b []byte) error {
 	c.f.mu.Lock()
 	defer c.f.mu.Unlock()

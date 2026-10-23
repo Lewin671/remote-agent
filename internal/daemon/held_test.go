@@ -148,6 +148,10 @@ func testCancelHeldSavesTheOthersBeforeClearing(t *testing.T) {
 // The input box could not be emptied: the other messages wait paused and
 // are not written into what the box still holds.
 func TestCancelHeldLeavesTheOthersPausedWhenTheBoxStays(t *testing.T) {
+	synctest.Test(t, testCancelHeldLeavesTheOthersPausedWhenTheBoxStays)
+}
+
+func testCancelHeldLeavesTheOthersPausedWhenTheBoxStays(t *testing.T) {
 	h, _, stuck := heldPair(t)
 	*stuck = true
 	if err := h.s.cancelInputBy("a", originLocal); err != errHeldChanged {

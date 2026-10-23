@@ -243,48 +243,70 @@ func TestHistoryMatchesSession(t *testing.T) {
 // A reply that returns success is the decision Codex gets, even when it
 // races the timeout.
 func TestApprovalReplyRacingTimeout(t *testing.T) {
-	h := newHarness(t, Config{ApprovalTimeout: time.Millisecond})
-	h.writeRollout(turnContextLine("user"))
-	for i := 0; i < 400; i++ {
-		out := make(chan []byte, 1)
-		go func() {
-			b, _ := h.s.hook(context.Background(), permissionPayload(h))
-			out <- b
-		}()
-		var id string
-		timedOut := false
-		for id == "" && !timedOut {
-			h.s.mu.Lock()
-			for k, a := range h.s.approvals {
-				if !a.claimed {
+	for _, at := range []time.Duration{time.Second - time.Nanosecond, time.Second, time.Second + time.Nanosecond} {
+		t.Run(at.String(), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				h := newHarness(t, Config{ApprovalTimeout: time.Second})
+				h.writeRollout(turnContextLine("user"))
+				out := make(chan []byte, 1)
+				go func() {
+					b, _ := h.s.hook(context.Background(), permissionPayload(h))
+					out <- b
+				}()
+				synctest.Wait()
+				var id string
+				h.s.mu.Lock()
+				for k := range h.s.approvals {
 					id = k
 				}
+				h.s.mu.Unlock()
+				if id == "" {
+					t.Fatal("no pending approval")
+				}
+				time.Sleep(at)
+				err := h.s.resolve(id, true, "")
+				b := <-out
+				allowed := strings.Contains(string(b), `"allow"`)
+				if (err == nil) != allowed || allowed != (at < time.Second) {
+					t.Fatalf("resolve=%v, CLI=%s", err, b)
+				}
+			})
+		})
+	}
+	// A resolver claims under mu, then sends its decision outside the lock.
+	// Force the timer to fire in that gap: the hook must await the winner.
+	t.Run("claimed reply arriving after timer", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			h := newHarness(t, Config{ApprovalTimeout: time.Second})
+			h.writeRollout(turnContextLine("user"))
+			out := make(chan []byte, 1)
+			go func() { b, _ := h.s.hook(context.Background(), permissionPayload(h)); out <- b }()
+			synctest.Wait()
+			var a *approval
+			h.s.mu.Lock()
+			for _, pending := range h.s.approvals {
+				a = pending
 			}
 			h.s.mu.Unlock()
-			if id == "" {
-				select {
-				case <-out:
-					// On a busy machine the request timed out before it
-					// was seen here: nothing raced in this round.
-					timedOut = true
-				case <-time.After(50 * time.Microsecond):
-				}
+			if a == nil {
+				t.Fatal("no pending approval")
 			}
-		}
-		if timedOut {
-			continue
-		}
-		time.Sleep(time.Duration(700+(i%12)*50) * time.Microsecond)
-		err := h.s.resolve(id, true, "")
-		b := <-out
-		allowed := strings.Contains(string(b), `"allow"`)
-		if err == nil && !allowed {
-			t.Fatalf("round %d: approve succeeded but Codex got %s", i, b)
-		}
-		if err != nil && allowed {
-			t.Fatalf("round %d: approve failed but Codex got allow", i)
-		}
-	}
+			if !h.s.claim(a) {
+				t.Fatal("could not claim reply")
+			}
+			time.Sleep(time.Second)
+			synctest.Wait()
+			select {
+			case b := <-out:
+				t.Fatalf("timer ignored claimed reply: %s", b)
+			default:
+			}
+			a.decision <- decision{allow: true, origin: originLocal}
+			if b := <-out; !strings.Contains(string(b), `"allow"`) {
+				t.Fatalf("CLI got %s", b)
+			}
+		})
+	})
 }
 
 // A reply after the deadline is refused even if the timer has not fired,
@@ -326,40 +348,64 @@ func TestApprovalReplyAfterDeadline(t *testing.T) {
 	}
 }
 
-// Control operations do not interleave: nothing is written between another
-// operation's hold and release.
+type heldControlTerminal struct {
+	*fakeTerm
+	once          sync.Once
+	held, release chan struct{}
+}
+
+type heldControlBarrier struct {
+	control
+	term *heldControlTerminal
+}
+
+func (t *heldControlTerminal) Control() (control, error) {
+	c, err := t.fakeTerm.Control()
+	return &heldControlBarrier{control: c, term: t}, err
+}
+
+func (c *heldControlBarrier) Hold(d time.Duration) error {
+	if err := c.control.Hold(d); err != nil {
+		return err
+	}
+	c.term.once.Do(func() { close(c.term.held); <-c.term.release })
+	return nil
+}
+
+// Pause an injection while it holds local input, then start an interrupt.
+// Holding ctlMu across the entire operation keeps Esc outside that hold.
 func TestControlOperationsAreSerialized(t *testing.T) {
 	h := newHarness(t, Config{})
+	h.s.checkScreen()
+	h.s.checkScreen()
 	h.s.emit(&pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
-	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
-		wg.Add(2)
-		go func() { defer wg.Done(); h.s.inject(input{Text: "msg"}) }()
-		go func() { defer wg.Done(); h.s.interrupt() }()
+	if _, err := h.s.send("msg", "r1"); err != nil {
+		t.Fatal(err)
 	}
-	wg.Wait()
+	term := &heldControlTerminal{fakeTerm: h.term, held: make(chan struct{}), release: make(chan struct{})}
+	h.s.term = term
+	injected := make(chan error, 1)
+	go func() { _, err := h.s.inject(input{Text: "msg", RequestID: "r1"}); injected <- err }()
+	<-term.held
+	if h.s.ctlMu.TryLock() {
+		h.s.ctlMu.Unlock()
+		t.Error("injection released ctlMu while local input was held")
+	}
+	interrupting, interrupted := make(chan struct{}), make(chan error, 1)
+	go func() { close(interrupting); _, err := h.s.interrupt(); interrupted <- err }()
+	<-interrupting
+	close(term.release)
+	if err := <-injected; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-interrupted; err != nil {
+		t.Fatal(err)
+	}
 	h.term.mu.Lock()
 	ops := append([]string(nil), h.term.ops...)
 	h.term.mu.Unlock()
-	held := false
-	writesInHold := 0
-	for _, op := range ops {
-		switch op {
-		case "hold":
-			if held {
-				t.Fatal("nested hold")
-			}
-			held, writesInHold = true, 0
-		case "release":
-			held = false
-		case "write":
-			if held {
-				writesInHold++
-				if writesInHold > 1 {
-					t.Fatalf("a second write landed inside a hold: %v", ops)
-				}
-			}
-		}
+	if strings.Join(ops, ",") != "hold,write,release,write" {
+		t.Fatalf("injection and interrupt interleaved: %v", ops)
 	}
 }
 
