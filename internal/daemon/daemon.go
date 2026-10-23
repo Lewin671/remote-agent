@@ -222,7 +222,8 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if err := d.loadSchedules(); err != nil {
 		return err
 	}
-	go d.scheduleLoop(ctx)
+	stopSchedules := d.startScheduleLoop(ctx)
+	defer stopSchedules()
 	go d.imageGCLoop(ctx.Done())
 	go d.releaseLogsLoop(ctx.Done())
 	if d.cfg.Started != nil {

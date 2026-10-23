@@ -81,7 +81,7 @@ func TestScheduleBlockedLaunchAllowsRPCsAndOtherDispatches(t *testing.T) {
 	cancel()
 	waitScheduleSignal(t, done, "loop cancellation did not reach launch")
 	got := readTask(t, h.d, task.ID)
-	if got.Status != "cancelled" || got.Active != nil || got.Dispatches != 1 || len(got.Runs) != 1 {
+	if got.Status != "cancelled" || got.Active == nil || got.Active.Status != "dispatching" || got.Dispatches != 1 || len(got.Runs) != 0 {
 		t.Fatalf("cancel overwritten by result: %+v", got)
 	}
 }

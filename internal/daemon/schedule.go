@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -545,7 +546,17 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 	return nil
 }
 
+// startScheduleLoop gives Run ownership of every dispatch until it returns.
+func (d *Daemon) startScheduleLoop(ctx context.Context) func() {
+	ctx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { defer close(done); d.scheduleLoop(ctx) }()
+	return func() { cancel(); <-done }
+}
+
 func (d *Daemon) scheduleLoop(ctx context.Context) {
+	var dispatches sync.WaitGroup
+	defer dispatches.Wait()
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
@@ -553,8 +564,11 @@ func (d *Daemon) scheduleLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case now := <-ticker.C:
+			if ctx.Err() != nil {
+				return
+			}
 			for _, task := range d.prepareScheduledDispatches(now.UTC()) {
-				go d.dispatchScheduled(ctx, task, now.UTC())
+				dispatches.Go(func() { d.dispatchScheduled(ctx, task, now.UTC()) })
 			}
 		}
 	}
@@ -722,14 +736,19 @@ func (d *Daemon) launchScheduledSession(ctx context.Context, t *schedule.Task) (
 
 func (d *Daemon) dispatchScheduled(ctx context.Context, snapshot *schedule.Task, now time.Time) {
 	s, err := d.launchScheduledSession(ctx, snapshot)
+	// Shutdown leaves the durable dispatching boundary for restart recovery,
+	// even when launch or delivery concurrently returns another error.
+	if ctx.Err() != nil {
+		return
+	}
 	if err != nil {
-		d.finishScheduledDispatch(snapshot, now, "could_not_start_session: "+err.Error(), nil)
+		d.finishScheduledDispatch(ctx, snapshot, now, "could_not_start_session: "+err.Error(), nil)
 		return
 	}
 	sessionID, after := s.info().Id, s.log.LastSeq()
 	d.scheduleMu.Lock()
 	t := d.dispatchingTaskLocked(snapshot)
-	if t == nil {
+	if t == nil || ctx.Err() != nil {
 		d.scheduleMu.Unlock()
 		return
 	}
@@ -743,8 +762,7 @@ func (d *Daemon) dispatchScheduled(ctx context.Context, snapshot *schedule.Task,
 		return
 	}
 	d.scheduleMu.Unlock()
-	if err := ctx.Err(); err != nil {
-		d.finishScheduledDispatch(snapshot, now, "could_not_queue_message", err)
+	if ctx.Err() != nil {
 		return
 	}
 	origin := proto.Clone(originSystem).(*pb.Origin)
@@ -754,7 +772,7 @@ func (d *Daemon) dispatchScheduled(ctx context.Context, snapshot *schedule.Task,
 	if !queueAccepted(err) {
 		reason = "could_not_queue_message"
 	}
-	d.finishScheduledDispatch(snapshot, now, reason, err)
+	d.finishScheduledDispatch(ctx, snapshot, now, reason, err)
 }
 
 func (d *Daemon) dispatchingTaskLocked(snapshot *schedule.Task) *schedule.Task {
@@ -774,11 +792,11 @@ func (d *Daemon) uncertainDispatchLocked(t *schedule.Task, reason string) {
 	}
 }
 
-func (d *Daemon) finishScheduledDispatch(snapshot *schedule.Task, now time.Time, reason string, deliveryErr error) {
+func (d *Daemon) finishScheduledDispatch(ctx context.Context, snapshot *schedule.Task, now time.Time, reason string, deliveryErr error) {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	t := d.dispatchingTaskLocked(snapshot)
-	if t == nil {
+	if t == nil || ctx.Err() != nil {
 		return
 	}
 	run := t.Active
