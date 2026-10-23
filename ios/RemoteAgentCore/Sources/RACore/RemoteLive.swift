@@ -139,16 +139,25 @@ extension Remote {
         guard liveJobs[sid] == nil, !closed else { return }
         liveJobs[sid] = Task { [weak self] in
             guard let self else { return }
-            while !Task.isCancelled {
-                await self.refreshLiveSnapshot(sid)
-                if await self.livePollingFinished(sid) { break }
-                do { try await Task.sleep(for: .seconds(5)) } catch { break }
+            while !Task.isCancelled, await self.livePollingTick(sid) {
+                do { try await self.sleep(5000) } catch { break }
             }
             await self.finishLivePolling(sid)
         }
     }
+    /// A disconnected machine may return; an ended or unfollowed session is done.
+    func livePollingTick(_ sid: String) async -> Bool {
+        guard !livePollingFinished(sid) else { return false }
+        if conn == .online, let session = sessions[sid], machines[session.machineId]?.online == true {
+            await refreshLiveSnapshot(sid)
+        }
+        return !livePollingFinished(sid)
+    }
+
     private func livePollingFinished(_ sid: String) -> Bool {
         closed || !running || eventFeeds.withLock { $0[sid]?.followers ?? 0 } == 0
+            || sessions[sid]?.info?.status == .exited
+            || sessions[sid]?.info?.hasEndedAt == true
     }
     private func finishLivePolling(_ sid: String) { liveJobs[sid] = nil }
 }
