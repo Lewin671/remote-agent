@@ -262,6 +262,7 @@ func TestAcceptedLogFullDoesNotEvictLiveEntries(t *testing.T) {
 	now := uint64(time.Now().UnixMilli())
 	filler := bytes.Repeat([]byte{0x5a}, maxAcceptedBytes-300)
 	machine.data.Accepted["filler"] = accepted{Deadline: now + 600_000, Done: true, Result: filler, Persisted: true}
+	machine.indexAccepted()
 	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
 	w, err := client.Prepare(h, nil, commandBody(t))
 	if err != nil {
@@ -335,6 +336,7 @@ func TestAcceptedLogCapsBeforeExecution(t *testing.T) {
 	for i := 0; i < maxAccepted; i++ {
 		machine.data.Accepted[string(rune(i))] = accepted{Deadline: now + 600_000, Done: true}
 	}
+	machine.indexAccepted()
 	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
 	w, err := client.Prepare(h, nil, commandBody(t))
 	if err != nil {

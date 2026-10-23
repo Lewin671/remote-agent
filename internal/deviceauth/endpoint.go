@@ -2,6 +2,7 @@ package deviceauth
 
 import (
 	"bytes"
+	"container/heap"
 	"crypto/ed25519"
 	"database/sql"
 	"errors"
@@ -97,12 +98,15 @@ type accepted struct {
 }
 
 type Endpoint struct {
-	execution sync.Mutex
-	mu        sync.Mutex
-	path      string
-	db        *sql.DB
-	closed    bool
-	data      record
+	execution      sync.Mutex
+	mu             sync.Mutex
+	path           string
+	db             *sql.DB
+	closed         bool
+	data           record
+	acceptedBytes  int
+	volatileExpiry acceptedHeap
+	durableExpiry  acceptedHeap
 }
 
 func chainHead(r record) State { return r.States[r.HeadEpoch] }
@@ -131,20 +135,61 @@ func acceptedChecksum(key string, a accepted) []byte {
 	return h[:]
 }
 
-func acceptedSize(entries map[string]accepted) int {
-	n := 0
-	for key, a := range entries {
-		n += len(key) + len(a.Result) + 128
-	}
-	return n
+func acceptedEntrySize(key string, a accepted) int {
+	return len(key) + len(a.Result) + 128
 }
 
-func cloneAccepted(in map[string]accepted) map[string]accepted {
-	out := make(map[string]accepted, len(in))
-	for k, v := range in {
-		out[k] = v
+// Separate expiry queues let transient frames prune without changing durable
+// replay history. Entries and queue nodes change only after persistence succeeds.
+type acceptedExpiry struct {
+	key      string
+	deadline uint64
+}
+type acceptedHeap []acceptedExpiry
+
+func (h acceptedHeap) Len() int           { return len(h) }
+func (h acceptedHeap) Less(i, j int) bool { return h[i].deadline < h[j].deadline }
+func (h acceptedHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *acceptedHeap) Push(x any)        { *h = append(*h, x.(acceptedExpiry)) }
+func (h *acceptedHeap) Pop() any {
+	old := *h
+	x := old[len(old)-1]
+	old[len(old)-1] = acceptedExpiry{}
+	*h = old[:len(old)-1]
+	return x
+}
+
+// Visit only expired subtrees without mutating the queue while staging a write.
+func (h acceptedHeap) expired(i int, now uint64, visit func(string)) {
+	if i >= len(h) || h[i].deadline > now {
+		return
 	}
-	return out
+	visit(h[i].key)
+	h.expired(2*i+1, now, visit)
+	h.expired(2*i+2, now, visit)
+}
+
+func (e *Endpoint) indexAccepted() {
+	e.acceptedBytes = 0
+	e.volatileExpiry, e.durableExpiry = nil, nil
+	for key, a := range e.data.Accepted {
+		e.acceptedBytes += acceptedEntrySize(key, a)
+		h := &e.volatileExpiry
+		if a.Persisted {
+			h = &e.durableExpiry
+		}
+		*h = append(*h, acceptedExpiry{key, a.Deadline})
+	}
+	heap.Init(&e.volatileExpiry)
+	heap.Init(&e.durableExpiry)
+}
+
+func (e *Endpoint) pruneAccepted(h *acceptedHeap, now uint64) {
+	for len(*h) > 0 && (*h)[0].deadline <= now {
+		key := heap.Pop(h).(acceptedExpiry).key
+		e.acceptedBytes -= acceptedEntrySize(key, e.data.Accepted[key])
+		delete(e.data.Accepted, key)
+	}
 }
 
 // loadAccepted reads the bounded accepted log and checks its manifest, so a
@@ -155,6 +200,7 @@ func loadAccepted(db *sql.DB, r *record) error {
 		return ErrStorage
 	}
 	defer rows.Close()
+	totalBytes := 0
 	for rows.Next() {
 		var key, result, sum []byte
 		var deadline int64
@@ -168,7 +214,8 @@ func loadAccepted(db *sql.DB, r *record) error {
 		}
 		copy(a.Sum[:], sum)
 		r.Accepted[string(key)] = a
-		if len(r.Accepted) > maxAccepted || acceptedSize(r.Accepted) > maxAcceptedBytes {
+		totalBytes += acceptedEntrySize(string(key), a)
+		if len(r.Accepted) > maxAccepted || totalBytes > maxAcceptedBytes {
 			return ErrStorage
 		}
 	}
@@ -187,7 +234,7 @@ func loadAccepted(db *sql.DB, r *record) error {
 
 // persistAccepted writes the changed entry, any pruned entries and the
 // cutoff in one transaction.
-func (e *Endpoint) persistAccepted(entries map[string]accepted, changed string, pruned []string, cutoff uint64) error {
+func (e *Endpoint) persistAccepted(changed string, a accepted, pruned []string, cutoff uint64) error {
 	tx, err := e.db.Begin()
 	if err != nil {
 		return ErrStorage
@@ -198,7 +245,6 @@ func (e *Endpoint) persistAccepted(entries map[string]accepted, changed string, 
 			return ErrStorage
 		}
 	}
-	a := entries[changed]
 	done, failed := 0, 0
 	if a.Done {
 		done = 1
@@ -234,32 +280,40 @@ func (e *Endpoint) startAccepted(key string, deadline, now uint64, persist bool)
 	if deadline <= now {
 		return nil, false, ErrExpired
 	}
-	entries := cloneAccepted(e.data.Accepted)
 	var pruned []string
-	for k, a := range entries {
-		if a.Deadline <= now && (persist || !a.Persisted) {
-			delete(entries, k)
-			if a.Persisted {
-				pruned = append(pruned, k)
-			}
-		}
+	prunedCount, prunedBytes := 0, 0
+	count := func(k string) {
+		prunedCount++
+		prunedBytes += acceptedEntrySize(k, e.data.Accepted[k])
 	}
-	if len(entries) >= maxAccepted {
+	e.volatileExpiry.expired(0, now, count)
+	if persist {
+		e.durableExpiry.expired(0, now, func(k string) { count(k); pruned = append(pruned, k) })
+	}
+	if len(e.data.Accepted)-prunedCount >= maxAccepted {
 		return nil, false, ErrCapacity
 	}
 	a := accepted{Deadline: deadline, Persisted: persist}
-	copy(a.Sum[:], acceptedChecksum(key, a))
-	entries[key] = a
-	if acceptedSize(entries) > maxAcceptedBytes {
+	size := acceptedEntrySize(key, a)
+	if e.acceptedBytes-prunedBytes+size > maxAcceptedBytes {
 		return nil, false, ErrCapacity
 	}
+	copy(a.Sum[:], acceptedChecksum(key, a))
 	cutoff := maxU64(e.data.AcceptedFloor, now)
 	if persist {
-		if err := e.persistAccepted(entries, key, pruned, cutoff); err != nil {
+		if err := e.persistAccepted(key, a, pruned, cutoff); err != nil {
 			return nil, false, err
 		}
 	}
-	e.data.Accepted = entries
+	e.pruneAccepted(&e.volatileExpiry, now)
+	h := &e.volatileExpiry
+	if persist {
+		e.pruneAccepted(&e.durableExpiry, now)
+		h = &e.durableExpiry
+	}
+	e.data.Accepted[key] = a
+	e.acceptedBytes += size
+	heap.Push(h, acceptedExpiry{key, deadline})
 	e.data.AcceptedFloor = cutoff
 	return nil, true, nil
 }
@@ -269,24 +323,23 @@ func (e *Endpoint) finishAccepted(key string, result []byte, failed bool, persis
 	if !ok || a.Done {
 		return ErrInvalid
 	}
-	entries := cloneAccepted(e.data.Accepted)
+	priorSize := acceptedEntrySize(key, a)
+	if len(result) > maxAcceptedBytes-e.acceptedBytes+priorSize-len(key)-128 {
+		// Keep the in-progress entry when the result cannot fit: retrying
+		// must report an unknown outcome rather than execute it again.
+		return ErrCapacity
+	}
 	a.Done = true
 	a.Result = bytes.Clone(result)
 	a.Failed = failed
 	copy(a.Sum[:], acceptedChecksum(key, a))
-	entries[key] = a
-	if acceptedSize(entries) > maxAcceptedBytes {
-		// Never drop an unexpired entry: that would make its request
-		// acceptable a second time. The caller reports the outcome as
-		// unknown instead, and the entry expires by deadline.
-		return ErrCapacity
-	}
 	if persist {
-		if err := e.persistAccepted(entries, key, nil, e.data.AcceptedFloor); err != nil {
+		if err := e.persistAccepted(key, a, nil, e.data.AcceptedFloor); err != nil {
 			return err
 		}
 	}
-	e.data.Accepted = entries
+	e.data.Accepted[key] = a
+	e.acceptedBytes += acceptedEntrySize(key, a) - priorSize
 	return nil
 }
 
@@ -444,6 +497,7 @@ func InitEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatem
 		r.Lease = &l
 	}
 	e := &Endpoint{path: dbPath, db: db, data: r}
+	e.indexAccepted()
 	if err := e.cacheChainKeys(); err != nil {
 		db.Close()
 		return nil, err
@@ -754,6 +808,7 @@ func OpenEndpoint(path string) (*Endpoint, error) {
 		return nil, ErrStorage
 	}
 	e := &Endpoint{path: path, db: db, data: r}
+	e.indexAccepted()
 	if err := e.validate(); err != nil {
 		db.Close()
 		return nil, err
