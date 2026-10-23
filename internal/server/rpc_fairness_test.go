@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"connectrpc.com/connect"
@@ -31,22 +33,24 @@ func TestRPCAccountAdmissionBeforeBodyRead(t *testing.T) {
 		{"large", smallRPCBodyBytes + 1, maxAccountLargeRPCRequests, largeRPCPool},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			entered := make(chan struct{}, tc.limit+1)
+			entered := make(chan string, tc.limit+2)
 			release := make(chan struct{})
-			defer func() { close(release) }()
+			var once sync.Once
+			unblock := func() { once.Do(func() { close(release) }) }
+			defer unblock()
 			h := ts.srv.limitRPCRequests(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				// Reaching here means admission happened before any body read.
-				entered <- struct{}{}
+				entered <- r.Header.Get("Authorization")
 				<-release
 			}), rpcBodyReadTimeout)
 			done := make(chan struct{}, tc.limit+1)
-			request := func(token string) *httptest.ResponseRecorder {
+			request := func(ctx context.Context, token string) *httptest.ResponseRecorder {
 				r := httptest.NewRequest(http.MethodPost, remoteagentv1connect.ClientServiceGetEventsProcedure, strings.NewReader("x"))
 				r.ContentLength = int64(tc.length)
 				r.Header.Set("Content-Type", "application/proto")
 				r.Header.Set("Authorization", "Bearer "+token)
 				w := httptest.NewRecorder()
-				h.ServeHTTP(w, r)
+				h.ServeHTTP(w, r.WithContext(ctx))
 				return w
 			}
 			for i := 0; i < tc.limit; i++ {
@@ -55,28 +59,26 @@ func TestRPCAccountAdmissionBeforeBodyRead(t *testing.T) {
 				if i%2 == 1 {
 					token = a.mtok
 				}
-				go func() { request(token); done <- struct{}{} }()
+				go func() { request(context.Background(), token); done <- struct{}{} }()
 				<-entered
 			}
-			// Refuse A immediately, but let B enter while A holds its share.
+			// A's excess request waits; B can use the remaining global share.
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 			rejected := make(chan *httptest.ResponseRecorder, 1)
-			go func() { rejected <- request(a.ctok) }()
-			var w *httptest.ResponseRecorder
-			select {
-			case w = <-rejected:
-			case <-entered:
-				t.Fatal("account A exceeded its share")
+			go func() { rejected <- request(ctx, a.ctok) }()
+			go func() { request(context.Background(), b.ctok); done <- struct{}{} }()
+			if got := <-entered; got != "Bearer "+b.ctok {
+				t.Fatal("account A exceeded its share before a slot was released")
 			}
-			if w.Code != http.StatusTooManyRequests || !strings.Contains(w.Body.String(), "resource_exhausted") {
-				t.Fatalf("account A excess: %d %s", w.Code, w.Body.String())
+			cancel()
+			if w := <-rejected; !strings.Contains(w.Body.String(), "canceled") {
+				t.Fatalf("canceled wait: %d %s", w.Code, w.Body.String())
 			}
-			go func() { request(b.ctok); done <- struct{}{} }()
-			<-entered
-			close(release)
+			unblock()
 			for range tc.limit + 1 {
 				<-done
 			}
-			release = make(chan struct{})
 			ts.srv.rpcMu.Lock()
 			defer ts.srv.rpcMu.Unlock()
 			if len(ts.srv.accountRPCRequests) != 0 {
@@ -111,9 +113,6 @@ func TestWaitingForwardsHaveSeparateAdmission(t *testing.T) {
 	if len(ts.srv.smallRPCRequests) != 0 || len(ts.srv.rpcRequests) != 0 {
 		t.Fatalf("waiting forwards retained decoder slots: small=%d large=%d", len(ts.srv.smallRPCRequests), len(ts.srv.rpcRequests))
 	}
-	if err := forward(a); connect.CodeOf(err) != connect.CodeResourceExhausted {
-		t.Fatalf("excess forward: %v", err)
-	}
 	if _, err := a.client.ListMachines(ctx, connect.NewRequest(&pb.ListMachinesRequest{})); err != nil {
 		t.Fatalf("waiting forwards blocked a small RPC: %v", err)
 	}
@@ -140,20 +139,19 @@ func TestForwardAdmissionGlobalBoundAndRelease(t *testing.T) {
 	}()
 	for i := 0; i < maxConcurrentForwardRequests; i++ {
 		account := fmt.Sprint(i / maxAccountForwardRequests)
-		ts.srv.smallRPCRequests <- struct{}{}
-		if !ts.srv.takeAccountRPC(account, smallRPCPool) {
-			t.Fatal("decoder admission refused")
+		a, err := ts.srv.admitRPC(context.Background(), account, smallRPCPool, true)
+		if err != nil {
+			t.Fatal(err)
 		}
-		a := &rpcAdmission{s: ts.srv, slots: ts.srv.smallRPCRequests, pool: smallRPCPool, account: account}
 		held = append(held, a)
 		if err := a.forward(); err != nil {
 			t.Fatal(err)
 		}
 	}
-	ts.srv.smallRPCRequests <- struct{}{}
-	account := "another-account"
-	ts.srv.takeAccountRPC(account, smallRPCPool)
-	extra := &rpcAdmission{s: ts.srv, slots: ts.srv.smallRPCRequests, pool: smallRPCPool, account: account}
+	extra, err := ts.srv.admitRPC(context.Background(), "another-account", smallRPCPool, true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer extra.release()
 	if err := extra.forward(); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("global forward limit: %v", err)
@@ -185,30 +183,299 @@ func TestCompressedForwardRetainsLargeDecoderAdmission(t *testing.T) {
 		return err
 	}
 	done := make(chan error, 1)
-	go func() { done <- request() }()
-	call := a.machineFrame.next(t, func(f *pb.ServerFrame) bool { return f.GetForwardCall() != nil }).GetForwardCall()
-	if len(ts.srv.rpcRequests) != 1 || len(ts.srv.forwardRPCRequests) != 1 || len(ts.srv.smallRPCRequests) != 0 {
+	done = make(chan error, maxAccountLargeRPCRequests)
+	calls := make([]*pb.ForwardCall, 0, maxAccountLargeRPCRequests)
+	for range maxAccountLargeRPCRequests {
+		go func() { done <- request() }()
+		calls = append(calls, a.machineFrame.next(t, func(f *pb.ServerFrame) bool { return f.GetForwardCall() != nil }).GetForwardCall())
+	}
+	if len(ts.srv.rpcRequests) != maxAccountLargeRPCRequests || len(ts.srv.forwardRPCRequests) != maxAccountLargeRPCRequests || len(ts.srv.smallRPCRequests) != 0 {
 		t.Fatalf("compressed forward lost its decoder budget: large=%d forward=%d small=%d", len(ts.srv.rpcRequests), len(ts.srv.forwardRPCRequests), len(ts.srv.smallRPCRequests))
 	}
-	if err := request(); connect.CodeOf(err) != connect.CodeResourceExhausted {
-		t.Fatalf("second large request from account A: %v", err)
-	}
-	<-finished
 	if _, err := a.client.ListMachines(ctx, connect.NewRequest(&pb.ListMachinesRequest{})); err != nil {
-		t.Fatalf("large forward blocked small RPC: %v", err)
+		t.Fatal(err)
 	}
-	a.machineFrame.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, Error: "test reply"}}})
-	if err := <-done; connect.CodeOf(err) != connect.CodeAborted {
-		t.Fatalf("forward result: %v", err)
+	reply := func(call *pb.ForwardCall) {
+		a.machineFrame.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, Error: "test reply"}}})
 	}
-	<-finished
-	// A subsequent compressed call must reach the daemon, proving that both
-	// its account and global decoder reservations were released.
+	for _, call := range calls {
+		reply(call)
+	}
+	for range calls {
+		if err := <-done; connect.CodeOf(err) != connect.CodeAborted {
+			t.Fatal(err)
+		}
+		<-finished
+	}
+	ts.srv.rpcMu.Lock()
+	if len(ts.srv.accountRPCRequests) != 0 {
+		ts.srv.rpcMu.Unlock()
+		t.Fatal("account reservations leaked")
+	}
+	ts.srv.rpcMu.Unlock()
 	go func() { done <- request() }()
-	call = a.machineFrame.next(t, func(f *pb.ServerFrame) bool { return f.GetForwardCall() != nil }).GetForwardCall()
-	a.machineFrame.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, Error: "test reply"}}})
+	reply(a.machineFrame.next(t, func(f *pb.ServerFrame) bool { return f.GetForwardCall() != nil }).GetForwardCall())
 	if err := <-done; connect.CodeOf(err) != connect.CodeAborted {
-		t.Fatalf("reused forward slot: %v", err)
+		t.Fatal(err)
 	}
 	<-finished
+}
+
+func newRPCAdmissionServer() *Server {
+	return &Server{rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), smallRPCRequests: make(chan struct{}, maxConcurrentSmallRPCRequests),
+		forwardRPCRequests: make(chan struct{}, maxConcurrentForwardRequests), accountRPCRequests: make(map[string][3]int), rpcChanged: make(chan struct{})}
+}
+
+type rpcAdmissionResult struct {
+	admission *rpcAdmission
+	err       error
+}
+
+func TestRPCAccountBurstWaitsWithoutGlobalSlots(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		pool    rpcPool
+		forward bool
+		limit   int
+	}{
+		{"small", smallRPCPool, false, maxAccountSmallRPCRequests},
+		{"large", largeRPCPool, false, maxAccountLargeRPCRequests},
+		{"forward", smallRPCPool, true, maxAccountForwardRequests},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				s := newRPCAdmissionServer()
+				acquire := func(account string) (*rpcAdmission, error) {
+					a, err := s.admitRPC(context.Background(), account, tc.pool, tc.forward)
+					if err == nil && tc.forward {
+						err = a.forward()
+					}
+					return a, err
+				}
+				held := make([]*rpcAdmission, tc.limit)
+				for i := range held {
+					var err error
+					held[i], err = acquire("A")
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+				counts := s.accountRPCRequests["A"]
+				global := [3]int{len(s.rpcRequests), len(s.smallRPCRequests), len(s.forwardRPCRequests)}
+				done := make(chan rpcAdmissionResult, 1)
+				go func() { a, err := acquire("A"); done <- rpcAdmissionResult{a, err} }()
+				synctest.Wait()
+				select {
+				case got := <-done:
+					t.Fatalf("burst did not wait: %v", got.err)
+				default:
+				}
+				if got := [3]int{len(s.rpcRequests), len(s.smallRPCRequests), len(s.forwardRPCRequests)}; got != global {
+					t.Fatalf("waiting request held global slots: %v -> %v", global, got)
+				}
+				if s.accountRPCRequests["A"] != counts {
+					t.Fatal("waiting request reserved account capacity")
+				}
+				b, err := acquire("B")
+				if err != nil {
+					t.Fatalf("B blocked by A's waiter: %v", err)
+				}
+				b.release()
+				time.Sleep(accountRPCWaitTimeout / 2)
+				held[0].release()
+				synctest.Wait()
+				got := <-done
+				if got.err != nil || got.admission == nil {
+					t.Fatalf("burst failed after capacity returned: %v", got.err)
+				}
+				got.admission.release()
+				for _, a := range held[1:] {
+					a.release()
+				}
+				if len(s.accountRPCRequests) != 0 {
+					t.Fatalf("slots leaked: %v", s.accountRPCRequests)
+				}
+			})
+		})
+	}
+}
+
+func TestRPCAccountWaitTimeoutAndCancellation(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		pool    rpcPool
+		forward bool
+		limit   int
+	}{
+		{"small", smallRPCPool, false, maxAccountSmallRPCRequests},
+		{"large", largeRPCPool, false, maxAccountLargeRPCRequests},
+		{"forward", smallRPCPool, true, maxAccountForwardRequests},
+	} {
+		for _, reason := range []string{"timeout", "cancel", "request deadline"} {
+			t.Run(tc.name+"/"+reason, func(t *testing.T) {
+				synctest.Test(t, func(t *testing.T) {
+					s := newRPCAdmissionServer()
+					held := make([]*rpcAdmission, tc.limit)
+					for i := range held {
+						var err error
+						held[i], err = s.admitRPC(context.Background(), "A", tc.pool, tc.forward)
+						if err == nil && tc.forward {
+							err = held[i].forward()
+						}
+						if err != nil {
+							t.Fatal(err)
+						}
+					}
+					counts := s.accountRPCRequests["A"]
+					ctx, cancel := context.WithCancel(context.Background())
+					if reason == "request deadline" {
+						cancel()
+						ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+					}
+					defer cancel()
+					done := make(chan rpcAdmissionResult, 1)
+					go func() { a, err := s.admitRPC(ctx, "A", tc.pool, tc.forward); done <- rpcAdmissionResult{a, err} }()
+					synctest.Wait()
+					want := connect.CodeResourceExhausted
+					if reason == "cancel" {
+						want = connect.CodeCanceled
+						cancel()
+					} else if reason == "request deadline" {
+						want = connect.CodeDeadlineExceeded
+						time.Sleep(time.Second)
+					} else {
+						time.Sleep(accountRPCWaitTimeout / 2)
+						// An unrelated account's release must not restart the five-second budget.
+						b, err := s.admitRPC(context.Background(), "B", smallRPCPool, false)
+						if err != nil {
+							t.Fatal(err)
+						}
+						b.release()
+						synctest.Wait()
+						time.Sleep(accountRPCWaitTimeout/2 - time.Nanosecond)
+						select {
+						case <-done:
+							t.Fatal("account wait ended before five seconds")
+						default:
+						}
+						time.Sleep(time.Nanosecond)
+					}
+					synctest.Wait()
+					got := <-done
+					if got.admission != nil || connect.CodeOf(got.err) != want {
+						t.Fatalf("wait result: %v %v, want %v", got.admission, got.err, want)
+					}
+					if s.accountRPCRequests["A"] != counts {
+						t.Fatalf("failed wait released an owner's reservation: %v -> %v", counts, s.accountRPCRequests["A"])
+					}
+					for _, a := range held {
+						a.release()
+					}
+					if len(s.accountRPCRequests) != 0 || len(s.rpcRequests) != 0 || len(s.smallRPCRequests) != 0 || len(s.forwardRPCRequests) != 0 {
+						t.Fatal("reservation leaked after failed wait")
+					}
+					canceled, stop := context.WithCancel(context.Background())
+					stop()
+					if a, err := s.admitRPC(canceled, "A", tc.pool, tc.forward); a != nil || connect.CodeOf(err) != connect.CodeCanceled {
+						t.Fatal("canceled request acquired available capacity")
+					}
+				})
+			})
+		}
+	}
+}
+
+func TestForwardAccountWaitPrecedesLargeDecoderAdmission(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		s := newRPCAdmissionServer()
+		held := make([]*rpcAdmission, maxAccountForwardRequests)
+		for i := range held {
+			a, err := s.admitRPC(context.Background(), "A", smallRPCPool, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := a.forward(); err != nil {
+				t.Fatal(err)
+			}
+			held[i] = a
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan rpcAdmissionResult, 1)
+		go func() { a, err := s.admitRPC(ctx, "A", largeRPCPool, true); done <- rpcAdmissionResult{a, err} }()
+		synctest.Wait()
+		if len(s.rpcRequests) != 0 || len(s.smallRPCRequests) != 0 || s.accountRPCRequests["A"] != [3]int{0, 0, maxAccountForwardRequests} {
+			t.Fatal("forward waiter reserved decoder capacity before its forward share")
+		}
+		cancel()
+		synctest.Wait()
+		if got := <-done; got.admission != nil || connect.CodeOf(got.err) != connect.CodeCanceled {
+			t.Fatalf("cancel: %v", got.err)
+		}
+		for _, a := range held {
+			a.release()
+		}
+	})
+}
+
+func TestRPCGlobalRefusalRollsBackAccountReservations(t *testing.T) {
+	s := newRPCAdmissionServer()
+	held := make([]*rpcAdmission, maxConcurrentSmallRPCRequests)
+	for i := range held {
+		var err error
+		held[i], err = s.admitRPC(context.Background(), "", smallRPCPool, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if a, err := s.admitRPC(context.Background(), "A", smallRPCPool, true); a != nil || err != errRPCGlobalAdmission {
+		t.Fatalf("global rejection: %v %v", a, err)
+	}
+	if len(s.accountRPCRequests) != 0 {
+		t.Fatalf("global refusal leaked account shares: %v", s.accountRPCRequests)
+	}
+	for _, a := range held {
+		a.release()
+	}
+}
+
+func TestNormalMultiDeviceRPCBurst(t *testing.T) {
+	// Workload examples, not a bound on arbitrary numbers of devices or tabs.
+	for _, tc := range []struct {
+		name    string
+		pool    rpcPool
+		forward bool
+		count   int
+	}{
+		{"three clients and two machines reading", smallRPCPool, false, 24},
+		{"two machines uploading", largeRPCPool, false, 2},
+		{"three six-image drafts plus six probes and three live polls", smallRPCPool, true, 27},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				s := newRPCAdmissionServer()
+				start := time.Now()
+				var held []*rpcAdmission
+				defer func() {
+					for _, a := range held {
+						a.release()
+					}
+				}()
+				for range tc.count {
+					a, err := s.admitRPC(context.Background(), "A", tc.pool, tc.forward)
+					if err != nil {
+						t.Fatalf("ordinary burst refused: %v", err)
+					}
+					held = append(held, a)
+					if tc.forward {
+						if err := a.forward(); err != nil {
+							t.Fatal(err)
+						}
+					}
+				}
+				if !time.Now().Equal(start) {
+					t.Fatal("ordinary burst waited for account capacity")
+				}
+			})
+		})
+	}
 }

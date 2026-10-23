@@ -129,6 +129,7 @@ type Server struct {
 	forwardRPCRequests  chan struct{}
 	rpcMu               sync.Mutex
 	accountRPCRequests  map[string][3]int
+	rpcChanged          chan struct{}
 
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
@@ -187,6 +188,7 @@ func New(cfg Config) (*Server, error) {
 	s.hub = newHub(s)
 	s.forwardRPCRequests = make(chan struct{}, maxConcurrentForwardRequests)
 	s.accountRPCRequests = make(map[string][3]int)
+	s.rpcChanged = make(chan struct{})
 	s.term = newTermHub(s)
 	s.pairing = newPairingService(s)
 	s.recovery = newRecoveryService(s)
