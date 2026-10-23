@@ -151,3 +151,50 @@ func TestSkeletonUploadAndPrefixFailure(t *testing.T) {
 		})
 	}
 }
+
+type imagePrefixBackend struct{ prefixBackend }
+
+func (b *imagePrefixBackend) Image(string, string) ImageUpload          { return ImageUpload{Payload: []byte{}} }
+func (b *imagePrefixBackend) ImageUploaded(string, string, bool, int64) {}
+
+type imagePrefixMachine struct {
+	prefixMachine
+	entered chan int
+	release chan struct{}
+}
+
+func (m *imagePrefixMachine) PutImage(context.Context, *connect.Request[pb.PutImageRequest]) (*connect.Response[pb.PutImageResponse], error) {
+	m.entered <- len(m.events)
+	<-m.release
+	return connect.NewResponse(&pb.PutImageResponse{}), nil
+}
+
+func TestSyncFlushesPrefixBeforeBlockedImage(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	b := &imagePrefixBackend{prefixBackend{dir: t.TempDir(), events: []*pb.Event{
+		{Seq: 1, SessionId: "session", Time: timestamppb.Now(), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "approval", Command: "echo prefix"}}},
+		{Seq: 2, SessionId: "session", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "before image"}}},
+		{Seq: 3, SessionId: "session", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Images: []*pb.ImageRef{{ImageId: "image", Sync: pb.ImageSync_IMAGE_SYNC_SYNCED}}}}},
+	}}}
+	m := &imagePrefixMachine{entered: make(chan int), release: make(chan struct{})}
+	c := &conn{r: New(b), acct: &Account{}, machine: m}
+	initializeTestSecurity(t, c)
+	done := make(chan error, 1)
+	go func() {
+		_, _, _, err := c.syncSession(context.Background(), "session", nil, nil)
+		done <- err
+	}()
+	if n := <-m.entered; n != 2 {
+		t.Errorf("events published before blocked image = %d, want 2", n)
+	}
+	if m.notifies != 1 {
+		t.Errorf("approval notifications before image = %d, want 1", m.notifies)
+	}
+	close(m.release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if len(m.events) != 3 || m.events[2].Seq != 3 {
+		t.Fatal("image event did not follow its upload")
+	}
+}

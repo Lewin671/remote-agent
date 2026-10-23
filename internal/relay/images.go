@@ -28,13 +28,13 @@ var imageRetry = 2 * time.Second
 // uploadImages uploads the display copies the events refer to. It returns
 // an error only for a failure worth reconnecting over (the server seems
 // unreachable); images that cannot be stored are recorded as failed.
-func (c *conn) uploadImages(ctx context.Context, key []byte, sessionID string, evs []*pb.Event) error {
+func (c *conn) uploadImages(ctx context.Context, key []byte, sessionID string, evs []*pb.Event, beforeUpload func() error) error {
 	for _, e := range evs {
 		for _, ref := range agent.EventImages(e) {
 			if ref.Sync != pb.ImageSync_IMAGE_SYNC_SYNCED || ref.ImageId == "" {
 				continue
 			}
-			if err := c.uploadImage(ctx, key, sessionID, ref.ImageId); err != nil {
+			if err := c.uploadImage(ctx, key, sessionID, ref.ImageId, beforeUpload); err != nil {
 				return err
 			}
 		}
@@ -42,7 +42,7 @@ func (c *conn) uploadImages(ctx context.Context, key []byte, sessionID string, e
 	return nil
 }
 
-func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID string) error {
+func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID string, beforeUpload func() error) error {
 	if err := c.security.endpoint.CheckLease(uint64(time.Now().UnixMilli())); err != nil {
 		return err
 	}
@@ -50,6 +50,10 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 		u := c.imageState(sessionID, imageID)
 		if u.Done || u.Failed {
 			return nil
+		}
+		// Earlier events must not wait behind this image's RPC or retries.
+		if err := beforeUpload(); err != nil {
+			return err
 		}
 		payload := &pb.ImagePayload{}
 		if proto.Unmarshal(u.Payload, payload) != nil {

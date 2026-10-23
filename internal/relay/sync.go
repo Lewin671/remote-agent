@@ -292,7 +292,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 		changed, err := c.r.backend.EachEvents(id, after, func(e *pb.Event) (err error) {
 			defer func() { callbackFailed = err != nil }()
 			// Images first: a client that sees the event can open them.
-			if err := c.uploadImages(ctx, key, id, []*pb.Event{e}); err != nil {
+			if err := c.uploadImages(ctx, key, id, []*pb.Event{e}, flush); err != nil {
 				return err
 			}
 			env, err := c.sealEvent(ctx, key, id, c.withImageStates(id, e))
