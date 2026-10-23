@@ -3,10 +3,10 @@ import { isSkeleton } from "../skeleton";
 // last attempt, so "重试" repeats the same command and the daemon answers
 // it once.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SessionStatus, type ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
-import { agentOf, derive, type Derived } from "../model";
+import { type Derived } from "../model";
 import { stillUnknown } from "../attempt";
 import {
   errorText,
@@ -21,13 +21,7 @@ import { useRemote } from "../ui";
 
 export function useDerived(remote: Remote, sid: string): Derived {
   useEffect(() => remote.retainHistory(sid), [remote, sid]);
-  const events = remote.events(sid);
-  const agent = agentOf(remote.sessions.get(sid));
-  // The array grows in place; its length tells a change.
-  const historical = useMemo(
-    () => derive(events, agent),
-    [events, events.length, agent],
-  );
+  const historical = remote.historicalDerived(sid);
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
     const update = () => {

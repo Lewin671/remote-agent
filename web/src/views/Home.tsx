@@ -15,7 +15,6 @@ import {
   endedMs,
   endedTime,
   askTitle,
-  derive,
   exited,
   machineName,
   minutesLeft,
@@ -298,7 +297,7 @@ export function EndedRow({
 
 function pendingOf(remote: Remote, sid: string) {
   // The few waiting sessions have their events loaded anyway, for the cards.
-  const d = remote.currentDerived(sid, derive(remote.events(sid)));
+  const d = remote.currentDerived(sid, remote.historicalDerived(sid));
   return {
     approval: [...d.approvals.values()][0],
     question: [...d.questions.values()][0],

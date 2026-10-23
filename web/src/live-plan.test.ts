@@ -44,6 +44,7 @@ it("finds the plan event in a history that does not start at the first event", (
 it("shows the dock the event's plan while the snapshot alone says it is pending", () => {
   const events = history();
   const fake = {
+    currentDerivations: new WeakMap(),
     buffers: new Map([["s", { events }]]),
     liveSnapshots: new Map([["s", live()]]),
     sessions: new Map(),

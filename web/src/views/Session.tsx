@@ -828,13 +828,13 @@ function ChatBody({
   // The daemon names the request a recorded message came from; until
   // then, a message it marked submitted (Codex takes one mid-turn and
   // records it later) stays in view as written to the terminal.
-  const recorded = new Set(
+  const recorded = useMemo(() => new Set(
     events.flatMap((e) =>
       e.kind.case === "userMessage" && e.kind.value.requestId
         ? [e.kind.value.requestId]
         : [],
     ),
-  );
+  ), [events, events.length]);
   const awaiting = (o: Outgoing) =>
     phaseOf(o, d.inputs.get(o.sendId)) === "done" &&
     d.accepted.has(o.sendId) &&

@@ -446,6 +446,11 @@ export function livePlanText(
 }
 
 export class Remote {
+  private historicalDerivations = new WeakMap<Event[], { count: number; agent: Agent; value: Derived }>();
+  private currentDerivations = new WeakMap<Derived, {
+    sid: string; live?: LiveSnapshot; checkpoint?: LiveSnapshot; agent: Agent;
+    events?: Event[]; count: number; value: Derived;
+  }>();
   private liveSnapshots = new Map<string, LiveSnapshot>();
   private liveErrors = new Map<string, string>();
   private liveJobs = new Map<string, Promise<void>>();
@@ -2325,6 +2330,15 @@ export class Remote {
     this.liveJobs.set(sid, job);
     return job;
   }
+  historicalDerived(sid: string): Derived {
+    const events = this.events(sid), agent = agentOf(this.sessions.get(sid));
+    const cached = this.historicalDerivations.get(events);
+    if (cached && cached.count === events.length && cached.agent === agent) return cached.value;
+    const value = derive(events, agent);
+    this.historicalDerivations.set(events, { count: events.length, agent, value });
+    return value;
+  }
+
   currentDerived(sid: string, d: Derived): Derived {
     const buffer = this.buffers.get(sid);
     if (buffer?.unverifiedLegacy) {
@@ -2343,14 +2357,23 @@ export class Remote {
       d = buffer.verifiedDerived.value;
     }
     const live = this.liveSnapshots.get(sid);
+    const checkpoint = this.sessions.get(sid)?.checkpoint;
+    const agent = agentOf(this.sessions.get(sid));
+    // The complete prefix may grow while the displayed recent suffix stays
+    // unchanged; that can make the plan text named by a live snapshot readable.
+    const events = buffer?.events, count = events?.length ?? 0;
+    const cached = this.currentDerivations.get(d);
+    if (cached && cached.sid === sid && cached.live === live &&
+        cached.checkpoint === checkpoint && cached.agent === agent &&
+        cached.events === events && cached.count === count) return cached.value;
     const out = {
       ...d,
       approvals: new Map(),
       questions: new Map(),
       plan: undefined,
     } as Derived;
+    this.currentDerivations.set(d, { sid, live, checkpoint, agent, events, count, value: out });
     if (!live) {
-      const checkpoint = this.sessions.get(sid)?.checkpoint;
       if (checkpoint) out.running = checkpoint.running;
       return out;
     }
