@@ -125,6 +125,7 @@ type Server struct {
 	accountStreams      map[string]int
 	pendingStreamHellos chan struct{}
 	rpcRequests         chan struct{}
+	rpcAuthLookups      chan struct{}
 	smallRPCRequests    chan struct{}
 	forwardRPCRequests  chan struct{}
 	rpcMu               sync.Mutex
@@ -187,7 +188,7 @@ func New(cfg Config) (*Server, error) {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	s := &Server{ctx: ctx, cancel: cancel, cfg: cfg, store: st, signup: newSignupGuard(), challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, accountStreams: map[string]int{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), smallRPCRequests: make(chan struct{}, maxConcurrentSmallRPCRequests), stop: make(chan struct{})}
+	s := &Server{ctx: ctx, cancel: cancel, cfg: cfg, store: st, signup: newSignupGuard(), challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, accountStreams: map[string]int{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), rpcAuthLookups: make(chan struct{}, maxConcurrentRPCAuthLookups), smallRPCRequests: make(chan struct{}, maxConcurrentSmallRPCRequests), stop: make(chan struct{})}
 	s.hub = newHub(s)
 	s.forwardRPCRequests = make(chan struct{}, maxConcurrentForwardRequests)
 	s.accountRPCRequests = make(map[string][3]int)
@@ -351,6 +352,9 @@ func (s *Server) authenticate(ctx context.Context, token string) (*device, error
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing token"))
 	}
 	d, err := s.store.tokenDevice(ctx, hashToken(token))
+	if err := rpcContextError(ctx); err != nil {
+		return nil, err
+	}
 	if errors.Is(err, errNoRows) {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid or expired token"))
 	}

@@ -28,6 +28,9 @@ const (
 	maxAccountForwardRequests = 32
 	// Bound parked admission requests across both account and global waiting.
 	maxRPCWaiters = 256
+	// Token lookup precedes account/decoder admission, including for invalid tokens.
+	maxConcurrentRPCAuthLookups = 64
+	rpcAuthLookupTimeout        = 5 * time.Second
 	// Bound account and global admission together before any request body is decoded.
 	rpcAdmissionWaitTimeout = 5 * time.Second
 	rpcBodyReadTimeout      = 15 * time.Second
@@ -154,6 +157,37 @@ func (a *rpcAdmission) forward() error {
 	return nil
 }
 
+// preliminaryRPCAccount bounds database waiters before the normal admission
+// limits can apply. Authentication still repeats after admission/body decoding.
+func (s *Server) preliminaryRPCAccount(ctx context.Context, token string) (string, error) {
+	if err := rpcContextError(ctx); err != nil {
+		return "", err
+	}
+	if token == "" {
+		return "", nil
+	}
+	select {
+	case s.rpcAuthLookups <- struct{}{}:
+		defer func() { <-s.rpcAuthLookups }()
+	default:
+		return "", errRPCGlobalAdmission
+	}
+	lookupCtx, cancel := context.WithTimeout(ctx, rpcAuthLookupTimeout)
+	defer cancel()
+	d, err := s.authenticate(lookupCtx, token)
+	if err := rpcContextError(ctx); err != nil {
+		return "", err
+	}
+	if lookupCtx.Err() != nil {
+		return "", errRPCGlobalAdmission
+	}
+	// Invalid tokens retain unauthenticated admission.
+	if err != nil {
+		return "", nil
+	}
+	return d.account, nil
+}
+
 func (s *Server) limitRPCRequests(next http.Handler, readTimeout time.Duration) http.Handler {
 	return s.limitRPCRequestsWithWriteTimeouts(next, readTimeout, rpcResponseWriteTimeout, largeRPCResponseWriteTimeout)
 }
@@ -184,14 +218,10 @@ func (s *Server) limitRPCRequestsWithWriteTimeouts(next http.Handler, readTimeou
 		}
 		// Determine the account before waiting; authentication is repeated after
 		// decoding to catch revocation while the request was waiting or reading.
-		account := ""
-		if token := bearerToken(r.Header.Get("Authorization")); token != "" {
-			if d, err := s.authenticate(r.Context(), token); err == nil {
-				account = d.account
-			}
+		account, err := s.preliminaryRPCAccount(r.Context(), bearerToken(r.Header.Get("Authorization")))
+		if err == nil {
+			admission, err = s.admitRPC(r.Context(), account, pool, r.URL.Path == remoteagentv1connect.ClientServiceForwardProcedure)
 		}
-		var err error
-		admission, err = s.admitRPC(r.Context(), account, pool, r.URL.Path == remoteagentv1connect.ClientServiceForwardProcedure)
 		controller := http.NewResponseController(w)
 		if err != nil {
 			// Refuse without draining an unfinished body. On HTTP/2 the deadline
