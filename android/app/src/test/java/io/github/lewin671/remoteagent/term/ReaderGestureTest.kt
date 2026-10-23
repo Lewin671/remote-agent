@@ -69,7 +69,7 @@ class ReaderGestureTest {
         // A wide-character line counts its cells the way the reader draws them.
         assertEquals(3, lineCells(listOf(SgrRun("a中"))))
         // Captured when the terminal was 20 cells wide; the live grid has since shrunk to 12.
-        val captured = widestLineCells(listOf(TerminalHistory.Page("p", listOf(listOf(SgrRun("x".repeat(20)))))))
+        val captured = TerminalHistory.Page("p", listOf(listOf(SgrRun("x".repeat(20))))).maxCells
         assertEquals(20, captured)
         val shrunkenGrid = gridWidthPx(12, 10f)
         // The live grid is only a minimum: the extent keeps the captured 20 cells reachable.

@@ -1,6 +1,12 @@
 package io.github.lewin671.remoteagent.term
 
 import io.github.lewin671.remoteagent.proto.TerminalHistoryPage
+import io.github.lewin671.remoteagent.core.PagedList
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -15,8 +21,16 @@ import java.util.UUID
  * only the answer to the newest one is taken; a page that is late, or left over from an
  * earlier reading, is dropped.
  */
-class TerminalHistory(private val scope: CoroutineScope) {
-    data class Page(val id: String, val lines: List<List<SgrRun>>)
+class TerminalHistory(
+    private val scope: CoroutineScope,
+    private val worker: CoroutineDispatcher = Dispatchers.Default,
+    private val parseLine: (String) -> List<SgrRun> = TerminalSgr::parse,
+) {
+    data class Page(val id: String, val lines: List<List<SgrRun>>) {
+        val maxCells: Int = lines.maxOfOrNull { lineCells(it) } ?: 0
+        val items: List<Pair<String, List<SgrRun>>> =
+            lines.indices.reversed().map { i -> "$id:$i" to lines[i] }
+    }
 
     /**
      * [visible] from the gesture that asks for history until reading is left; [entered] once
@@ -32,11 +46,14 @@ class TerminalHistory(private val scope: CoroutineScope) {
         val failed: Boolean = false,
         val expired: Boolean = false,
         val disconnected: Boolean = false,
+        val items: PagedList<Pair<String, List<SgrRun>>> = PagedList.empty(),
+        val maxCells: Int = 0,
     )
 
     private val mutable = MutableStateFlow(State())
     val state: StateFlow<State> = mutable
     private var timeout: Job? = null
+    private var processing: Job? = null
 
     /** Starts reading: the next page is a fresh capture of the terminal. */
     fun open() = replace(State(visible = true))
@@ -46,6 +63,8 @@ class TerminalHistory(private val scope: CoroutineScope) {
 
     private fun replace(next: State) {
         timeout?.cancel()
+        processing?.cancel()
+        processing = null
         mutable.value = next
     }
 
@@ -55,6 +74,8 @@ class TerminalHistory(private val scope: CoroutineScope) {
      */
     fun disconnected() {
         timeout?.cancel()
+        processing?.cancel()
+        processing = null
         val before = mutable.value
         if (!before.visible) return
         mutable.value = if (before.entered) before.copy(pending = "", failed = false, expired = false, disconnected = true) else State()
@@ -78,6 +99,7 @@ class TerminalHistory(private val scope: CoroutineScope) {
     fun receive(page: TerminalHistoryPage) {
         val before = mutable.value
         if (!before.visible || before.pending != page.requestId) return
+        if (processing?.isActive == true) return
         timeout?.cancel()
         if (page.error.isNotEmpty()) {
             // An expired capture cannot be read from again, but that wording belongs to the
@@ -86,16 +108,28 @@ class TerminalHistory(private val scope: CoroutineScope) {
             mutable.value = before.copy(pending = "", failed = !expired, expired = expired)
             return
         }
-        val lines = page.linesList.map { TerminalSgr.parse(it) }
-        if (lines.isEmpty()) {
-            // A session with nothing to scroll back to: no reader at all, and nothing to say.
-            mutable.value = if (before.pages.isEmpty()) State() else before.copy(pending = "")
-            return
+        processing = scope.launch {
+            val prepared = withContext(worker) {
+                val lines = page.linesList.map {
+                    currentCoroutineContext().ensureActive()
+                    parseLine(it)
+                }
+                Page(page.requestId, lines)
+            }
+            val current = mutable.value
+            if (!current.visible || current.pending != page.requestId) return@launch
+            if (prepared.lines.isEmpty()) {
+                // A session with nothing to scroll back to never opens a blank reader.
+                mutable.value = if (current.pages.isEmpty()) State() else current.copy(pending = "")
+                return@launch
+            }
+            mutable.value = current.copy(
+                pending = "", failed = false, expired = false, cursor = page.nextCursor,
+                pages = current.pages + prepared, entered = true,
+                items = current.items.append(prepared.items),
+                maxCells = maxOf(current.maxCells, prepared.maxCells),
+            )
         }
-        mutable.value = before.copy(
-            pending = "", failed = false, expired = false, cursor = page.nextCursor,
-            pages = before.pages + Page(page.requestId, lines), entered = true,
-        )
     }
 
     companion object {

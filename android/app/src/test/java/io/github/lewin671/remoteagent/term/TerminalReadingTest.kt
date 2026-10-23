@@ -35,14 +35,14 @@ class TerminalReadingTest {
         val newest = TerminalHistory.Page("new", listOf(line("a1"), line("a2"), line("a3")))
         val older = TerminalHistory.Page("old", listOf(line("b1"), line("b2"), line("b3")))
 
-        val items = historyItems(listOf(newest, older))
+        val items = newest.items + older.items
         // Item 0 is drawn at the bottom, so the list starts with the newest line of the newest page.
         assertEquals(listOf("a3", "a2", "a1", "b3", "b2", "b1"), items.map { it.second.single().text })
         // What the screen shows from top to bottom is the capture's own order, oldest line first.
         assertEquals(listOf("b1", "b2", "b3", "a1", "a2", "a3"), items.asReversed().map { it.second.single().text })
         // A key names a line's place in its own capture, so an older page only adds items above.
         assertEquals(listOf("new:2", "new:1", "new:0", "old:2", "old:1", "old:0"), items.map { it.first })
-        assertEquals(items.take(3), historyItems(listOf(newest)).take(3))
+        assertEquals(items.take(3), newest.items.take(3))
     }
 
     @Test fun aSmallPullLeavesTheScreenAlone() {

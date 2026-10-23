@@ -86,16 +86,6 @@ import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.roundToInt
 
-/**
- * The reader's items in the order its reverse list draws them: item 0 is the bottom of the
- * screen, so the newest line of the newest page comes first and every page's lines run from its
- * last to its first. Read back to front they are the capture's own order, top to bottom. Each
- * key names a line's place in its own capture, so appending an older page leaves the lines that
- * are already on screen where they are.
- */
-internal fun historyItems(pages: List<TerminalHistory.Page>): List<Pair<String, List<SgrRun>>> =
-    pages.flatMap { page -> page.lines.indices.reversed().map { i -> "${page.id}:$i" to page.lines[i] } }
-
 /** The axis a reader drag is on. */
 internal enum class DragAxis { Horizontal, Vertical }
 
@@ -143,10 +133,6 @@ internal fun lineCells(line: List<SgrRun>): Int {
     }
     return cells
 }
-
-/** The cells of the widest captured line; 0 when nothing has been captured. */
-internal fun widestLineCells(pages: List<TerminalHistory.Page>): Int =
-    pages.maxOfOrNull { page -> page.lines.maxOfOrNull { lineCells(it) } ?: 0 } ?: 0
 
 /**
  * The reader's horizontal extent: wide enough for the captured lines, and never narrower than the
@@ -251,7 +237,7 @@ internal fun TerminalHistoryReader(
         Paint(Paint.ANTI_ALIAS_FLAG).apply { this.typeface = typeface; textSize = fontPx.toFloat() }
     }
     val list = rememberLazyListState()
-    val items = remember(history.pages) { historyItems(history.pages) }
+    val items = history.items
     val canLoadOlder = history.pending.isEmpty() && !history.failed && !history.expired && !history.disconnected
     val last = items.lastIndex
     val nearTop by remember(last) { derivedStateOf { list.layoutInfo.visibleItemsInfo.any { it.index >= last } } }
@@ -267,7 +253,7 @@ internal fun TerminalHistoryReader(
     // the widest captured line, with the live grid only as a minimum, so a narrower window never
     // clips lines that are already on screen. It is also at least the viewport, so a fitted grid
     // still fills the width for a vertical drag.
-    val capturedCells = remember(history.pages) { widestLineCells(history.pages) }
+    val capturedCells = history.maxCells
     val extentPx = readerExtentPx(liveGridWidthPx, capturedCells, cellWidth)
     val widthPx = readerWidth(viewportWidthPx, extentPx)
     val width = with(density) { widthPx.toDp() }
