@@ -398,6 +398,8 @@ class Remote(
     private var directoryVersion = 0L
     private var directoryHead: ByteArray? = null
     private var directoryLoad: Deferred<Unit>? = null
+    private var directoryLoadVersion = 0L
+    private var directoryLoadHead: ByteArray? = null
     private var recoveryObjectsPending = true
     private var leaseEnd = 0L
     @Volatile private var serverAhead = false
@@ -929,8 +931,12 @@ class Remote(
                 putDevice(f.deviceUpdated.device)
                 publish()
             }
-            ServerFrame.KindCase.DEVICE_REMOVED -> loadDevices()
-            ServerFrame.KindCase.MACHINE_REMOVED -> refresh()
+            ServerFrame.KindCase.DEVICE_REMOVED -> reloadDirectory()
+            ServerFrame.KindCase.MACHINE_REMOVED -> {
+                directoryVersion++
+                syncSecurityOnce()
+                refresh()
+            }
             ServerFrame.KindCase.MACHINE_UPDATED -> {
                 bump(machinePushes, f.machineUpdated.machine.id)
                 checkDirectory(f.machineUpdated.machine.id, listOf(f.machineUpdated.machine.meta))
@@ -2264,9 +2270,18 @@ class Remote(
     }
 
     private suspend fun loadDevices(listedMachines: ListMachinesResponse? = null) {
-        val load = directoryLoad?.takeIf { !it.isCompleted } ?: scope.async {
-            readDirectory(listedMachines)
-        }.also { directoryLoad = it }
+        val head = DeviceSecurity.stateHash(security.head())
+        val load = directoryLoad?.takeIf {
+            !it.isCompleted && directoryLoadVersion == directoryVersion &&
+                directoryLoadHead?.contentEquals(head) == true
+        } ?: run {
+            val version = ++directoryVersion
+            scope.async { readDirectory(listedMachines, version) }.also {
+                directoryLoad = it
+                directoryLoadVersion = version
+                directoryLoadHead = head
+            }
+        }
         try {
             load.await()
         } finally {
@@ -2274,8 +2289,7 @@ class Remote(
         }
     }
 
-    private suspend fun readDirectory(listedMachines: ListMachinesResponse?) {
-        val version = ++directoryVersion
+    private suspend fun readDirectory(listedMachines: ListMachinesResponse?, version: Long) {
         try {
             val (_, head) = security.identity()
             val stateHash = DeviceSecurity.stateHash(head)
@@ -2385,8 +2399,15 @@ class Remote(
         publish()
     }
 
-    private suspend fun putDevice(d: io.github.lewin671.remoteagent.proto.Device) {
+    private suspend fun reloadDirectory() {
+        // A push can supersede a response already in flight, even under the same head.
+        directoryVersion++
+        syncSecurityOnce()
         loadDevices()
+    }
+
+    private suspend fun putDevice(d: io.github.lewin671.remoteagent.proto.Device) {
+        reloadDirectory()
     }
 
     /**

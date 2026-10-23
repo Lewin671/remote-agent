@@ -144,6 +144,41 @@ class DirectoryRefreshTest {
         } finally { remote.close(); runCurrent() }
     }
 
+    private fun supersededLoad(headChanged: Boolean) = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        val remote = peer.remote()
+        val release = CompletableDeferred<Unit>()
+        try {
+            remote.start(); runCurrent()
+            peer.calls.clear()
+            val reached = CompletableDeferred<Unit>()
+            var lists = 0
+            peer.before = { name, _ -> if (name == "ListDevices" && ++lists == 1) {
+                reached.complete(Unit); release.await()
+            } }
+            val old = launch { remote.refreshDevices() }
+            reached.await()
+            if (headChanged) {
+                val removal = fixture.removeMachine()
+                peer.securityRecord = fixture.record.installed(listOf(removal), listOf(null),
+                    HeadLease.sign(removal, SigningKey(ByteArray(32) { 1 }), fixture.now))
+                peer.frame(ServerFrame.newBuilder().setMachineUpdated(MachineUpdated.newBuilder()
+                    .setMachine(peer.machineRows.first())).build())
+            } else {
+                peer.frame(ServerFrame.newBuilder().setDeviceUpdated(DeviceUpdated.newBuilder()
+                    .setDevice(Device.newBuilder().setId(fixture.phone.id))).build())
+            }
+            runCurrent()
+            assertEquals("new directory waited for a superseded response", 2, peer.calls.count { it == "ListDevices" })
+            if (headChanged) assertFalse(remote.state.value.devices.containsKey(fixture.machine.id))
+            release.complete(Unit); old.join(); runCurrent()
+            if (headChanged) assertFalse(remote.state.value.devices.containsKey(fixture.machine.id))
+        } finally { release.complete(Unit); remote.close(); runCurrent() }
+    }
+
+    @Test fun changedHeadDoesNotWaitForAnOldDirectoryResponse() = supersededLoad(true)
+    @Test fun devicePushDoesNotReuseADirectoryResponseFromBeforeThePush() = supersededLoad(false)
+
     @Test fun explicitConcurrentRefreshesShareOneDirectoryRead() = runTest {
         val peer = ColdOpenPeer(fixture, this)
         val remote = peer.remote()
