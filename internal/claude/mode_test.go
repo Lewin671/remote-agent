@@ -3,6 +3,7 @@ package claude
 import (
 	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -10,6 +11,45 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 )
+
+// Captured on Claude Code 2.1.300 in an isolated tmux session. A completed
+// turn can leave a live Bash shell; this is a safety refusal, not a failure
+// to parse the mode. Once the shell finishes, the same switch succeeds.
+func TestSetModeWithCapturedBackgroundShell(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		a, _ := testAdapter(t)
+		f := &capturedModeClaude{fakeClaude: &fakeClaude{noBypass: true}}
+		f.mode = index("plan")
+		for _, name := range []string{"background-shell", "finished-shell"} {
+			b, err := os.ReadFile("testdata/mode/" + name + "-2.1.300.txt")
+			if err != nil {
+				t.Fatal(err)
+			}
+			f.capture = string(b)
+			scr := AnalyzeScreen(f.capture)
+			if !scr.ComposerReady || !scr.DraftEmpty || scr.Busy || scr.Mode != "plan" {
+				t.Fatalf("%s: %+v", name, scr)
+			}
+			err = a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false, agent.ModeFacts{Model: "claude-haiku-5-5"})
+			if name == "background-shell" {
+				if !errors.Is(err, agent.ErrBackground) || len(f.writes) != 0 || BackgroundWork(f.capture) != "1 shell" {
+					t.Fatalf("live shell: %v, writes %q", err, f.writes)
+				}
+			} else if err != nil || cycle[f.mode] != "default" || BackgroundWork(f.capture) != "" {
+				t.Fatalf("finished shell: %v, mode %s", err, cycle[f.mode])
+			}
+		}
+	})
+}
+
+type capturedModeClaude struct {
+	*fakeClaude
+	capture string
+}
+
+func (f *capturedModeClaude) Capture() (string, error) {
+	return strings.Replace(f.capture, "⏸ plan mode on", strings.TrimSuffix(f.modeLine(), " (shift+tab to cycle)"), 1), nil
+}
 
 // Current evidence that auto is not on offer wins over having seen it
 // with another model (review verify3 P2).

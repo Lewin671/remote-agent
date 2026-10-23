@@ -207,6 +207,7 @@
 后台工作（haiku 实测）：
 
 - Bash 的 `run_in_background`：工具结果显示 `Running in the background (↓ to manage)`；这一轮的结束行变成 `✻ Worked for 5s · done 4:54 PM · 1 shell still running`，这一行在命令结束后仍留在屏幕上；**模式行**多出 `· 1 shell`（如 `⏵⏵ accept edits on · 1 shell · ← for agents`），命令结束后消失
+- **回合结束不代表后台 shell 结束**（2.1.300，Haiku 5.5，2026-10-23，独立 tmux 实测）：Bash 在后台等待一个文件时，CLI 已显示空闲输入框，模式行仍是 `⏸ manual mode on · 1 shell · ← for agents`；`/plan` 后变成 `⏸ plan mode on · 1 shell · ← for agents`。创建所等的文件后，后台命令结束，模式行的 shell 数量消失。对应捕获画面见 `internal/claude/testdata/mode/`。
 - 后台子代理（Agent 工具的 `run_in_background`）：输入框上方显示 `✻ Waiting for 1 background agent to finish`，模式行下面列出 `⏺ main` 和每个子代理（`◯ general-purpose  <说明>  6s · ↓ 12.9k tokens`）。结束后列表消失，模式行里剩 `/tasks to see subagents`。启动它的那一轮照常以 `turn_duration` 结束，记录里带 `pendingBackgroundAgentCount: 1`
 - Claude Code 也会自己把长命令转到后台（2.1.285，haiku 并行跑 `sleep 45` 实测）：Bash 调用随即返回，结果正文以 `Command running in background with ID:` 开头，调用的输入里只有命令、没有 `run_in_background`，所以只能从结果看出它转到了后台
 - 后台工作结束时，Claude Code 自己发起新的一轮：transcript 先有 `queue-operation`，再有一条正文为 `<task-notification>…` 的用户记录，`origin.kind` 为 `task-notification`、`promptSource` 为 `system`，然后模型回复，以 `turn_duration` 结束

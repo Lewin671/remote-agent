@@ -34,6 +34,7 @@ mkdir -p "$WORK"
 (cd "$ROOT" && go build -o "$BIN" ./cmd/remote-agent) || exit 1
 
 cleanup() {
+	[ -n "${interrupt_stop:-}" ] && touch "$interrupt_stop"
 	[ -n "${DAEMON_PID:-}" ] && kill "$DAEMON_PID" 2>/dev/null
 	tmux -L "$TMUX_SOCK" kill-server 2>/dev/null
 }
@@ -109,6 +110,19 @@ settle() {
 
 last_approval() {
 	events "$1" | grep '"approvalRequested"' | tail -1 | sed -n 's/.*"approvalId":"\([^"]*\)".*/\1/p'
+}
+
+# A turn can end with its Bash command still running in the background.
+# Read the live shell count, not the historical "1 shell still running"
+# summary, which remains in the conversation after the command finishes.
+no_background_shells() {
+	capture=$(tmux -L "$TMUX_SOCK" capture-pane -p -t "$(pane "$1")") || return 1
+	! printf '%s\n' "$capture" | grep -Eq '(^|· )[0-9]+ shells?( ·|[[:space:]]*$)'
+}
+
+finish_interrupt() {
+	touch "$1" || return 1
+	wait_for 30 no_background_shells "$2"
 }
 
 start_daemon 60s
@@ -194,13 +208,19 @@ wait_for 60 idle "$ID" || true
 
 # 6. Interrupt a running turn. A standalone `sleep` is blocked by Claude
 # Code 2.1.300, so use the until-loop its own message suggests.
+interrupt_stop="$target-interrupt-stop"
 seq=$(last_seq "$ID")
-"$BIN" send "$ID" "Run exactly this shell command and nothing else: until [ -f ra-cc-acceptance-never ]; do sleep 2; done"
+"$BIN" send "$ID" "Run exactly this shell command and nothing else: until [ -f '$interrupt_stop' ]; do sleep 2; done"
 if wait_new 60 "$ID" "$seq" '"toolStarted"'; then
 	"$BIN" interrupt "$ID" || true
 	if wait_new 30 "$ID" "$seq" '"TURN_OUTCOME_ABORTED"'; then pass "interrupt aborts the turn"; else fail "interrupt"; fi
 else
 	fail "the interrupt command did not start"
+fi
+if finish_interrupt "$interrupt_stop" "$ID"; then
+	pass "interrupt shell has finished"
+else
+	fail "interrupt shell is still running"
 fi
 wait_for 30 idle "$ID" || true
 
