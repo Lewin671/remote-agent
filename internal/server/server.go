@@ -126,6 +126,9 @@ type Server struct {
 	pendingStreamHellos chan struct{}
 	rpcRequests         chan struct{}
 	smallRPCRequests    chan struct{}
+	forwardRPCRequests  chan struct{}
+	rpcMu               sync.Mutex
+	accountRPCRequests  map[string][3]int
 
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
@@ -182,6 +185,8 @@ func New(cfg Config) (*Server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &Server{ctx: ctx, cancel: cancel, cfg: cfg, store: st, signup: newSignupGuard(), challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, accountStreams: map[string]int{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), smallRPCRequests: make(chan struct{}, maxConcurrentSmallRPCRequests), stop: make(chan struct{})}
 	s.hub = newHub(s)
+	s.forwardRPCRequests = make(chan struct{}, maxConcurrentForwardRequests)
+	s.accountRPCRequests = make(map[string][3]int)
 	s.term = newTermHub(s)
 	s.pairing = newPairingService(s)
 	s.recovery = newRecoveryService(s)
@@ -362,6 +367,13 @@ func (s *Server) authInterceptor() connect.UnaryInterceptorFunc {
 			}
 			if err := s.authorizeDevice(ctx, d, req.Spec().Procedure); err != nil {
 				return nil, err
+			}
+			if req.Spec().Procedure == remoteagentv1connect.ClientServiceForwardProcedure {
+				if admission, ok := ctx.Value(rpcAdmissionKey{}).(*rpcAdmission); ok {
+					if err := admission.forward(); err != nil {
+						return nil, err
+					}
+				}
 			}
 			return next(context.WithValue(ctx, ctxKey{}, d), req)
 		}
