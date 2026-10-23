@@ -14,6 +14,9 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${1:-/tmp/ra-acceptance-work}
 STATE=$(mktemp -d /tmp/ra-acc.XXXXXX)
+# The daemon refuses a state directory with unmarked files, so its log lives
+# next to it.
+LOG="$STATE.daemon.log"
 BIN=/tmp/ra-acceptance-bin/remote-agent
 mkdir -p /tmp/ra-acceptance-bin
 export REMOTE_AGENT_HOME="$STATE"
@@ -32,7 +35,7 @@ cleanup() {
 trap cleanup EXIT
 
 start_daemon() {
-	"$BIN" daemon --codex "$CODEX" --approval-timeout "${1:-60s}" >>"$STATE/daemon.log" 2>&1 &
+	"$BIN" daemon --codex "$CODEX" --approval-timeout "${1:-60s}" >>"$LOG" 2>&1 &
 	DAEMON_PID=$!
 	i=0
 	while [ ! -S "$STATE/daemon.sock" ] && [ $i -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
@@ -187,4 +190,4 @@ fi
 if wait_for 10 status_is "$ID" exited; then pass "stop ends the session"; else fail "stop"; fi
 
 echo
-if [ "$FAILS" = 0 ]; then echo "all checks passed"; else echo "$FAILS check(s) failed; daemon log: $STATE/daemon.log"; exit 1; fi
+if [ "$FAILS" = 0 ]; then echo "all checks passed"; else echo "$FAILS check(s) failed; daemon log: $LOG"; exit 1; fi

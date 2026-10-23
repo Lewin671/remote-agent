@@ -17,6 +17,9 @@ set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${1:-/tmp/ra-cc-acceptance-work}
 STATE=$(mktemp -d /tmp/ra-cc-acc.XXXXXX)
+# The daemon refuses a state directory with unmarked files, so its log lives
+# next to it.
+LOG="$STATE.daemon.log"
 BIN=/tmp/ra-cc-acceptance-bin/remote-agent
 MODEL=claude-haiku-5-5
 OTHER=claude-sonnet-5-5
@@ -37,7 +40,7 @@ cleanup() {
 trap cleanup EXIT
 
 start_daemon() {
-	"$BIN" daemon --claude "$CLAUDE" --approval-timeout "${1:-60s}" >>"$STATE/daemon.log" 2>&1 &
+	"$BIN" daemon --claude "$CLAUDE" --approval-timeout "${1:-60s}" >>"$LOG" 2>&1 &
 	DAEMON_PID=$!
 	i=0
 	while [ ! -S "$STATE/daemon.sock" ] && [ $i -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
@@ -301,4 +304,4 @@ fi
 "$BIN" stop "$ID" >/dev/null 2>&1
 
 echo
-if [ "$FAILS" = 0 ]; then echo "all checks passed"; else echo "$FAILS check(s) failed; daemon log: $STATE/daemon.log"; exit 1; fi
+if [ "$FAILS" = 0 ]; then echo "all checks passed"; else echo "$FAILS check(s) failed; daemon log: $LOG"; exit 1; fi
