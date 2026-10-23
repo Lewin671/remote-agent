@@ -88,10 +88,12 @@ const (
 	// sendQueue is how many frames may wait for a slow stream peer before
 	// it is disconnected; it catches up from history after reconnecting.
 	// sendQueueBytes bounds their size as well: a frame of events can be
-	// near 1 MiB. Clients are sent the same frames, so what waits for all
-	// of them together is no more than what waits for the slowest.
-	sendQueue      = 256
-	sendQueueBytes = 16 << 20
+	// near 1 MiB. Shared broadcasts count against every recipient until
+	// written, bounding distinct backlogs conservatively as well.
+	sendQueue             = 256
+	sendQueueBytes        = 16 << 20
+	accountSendQueueBytes = 32 << 20
+	relaySendQueueBytes   = 96 << 20
 )
 
 // Server is the relay.

@@ -36,6 +36,10 @@ type hub struct {
 	// it in one step, so that broadcasts leave in the order of the states
 	// they report.
 	changeMu sync.Mutex
+
+	queueMu           sync.Mutex
+	queueBytes        int64
+	accountQueueBytes map[string]int64
 }
 
 type peer struct {
@@ -44,6 +48,7 @@ type peer struct {
 	// queued is the bytes of the frames waiting in out or being written.
 	queued atomic.Int64
 	cancel context.CancelFunc
+	closed bool // guarded by hub.queueMu
 }
 
 // queuedFrame holds immutable serialized bytes shared by broadcast recipients.
@@ -58,7 +63,7 @@ type call struct {
 }
 
 func newHub(s *Server) *hub {
-	return &hub{s: s, clients: map[string]map[*peer]bool{}, machines: map[string]*peer{}, calls: map[uint64]*call{}}
+	return &hub{s: s, clients: map[string]map[*peer]bool{}, machines: map[string]*peer{}, calls: map[uint64]*call{}, accountQueueBytes: map[string]int64{}}
 }
 
 // accountHub is the hub as one account sees it.
@@ -153,7 +158,7 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 			wctx, wcancel := context.WithTimeout(ctx, 30*time.Second)
 			err := conn.Write(wctx, websocket.MessageBinary, q.data)
 			wcancel()
-			p.queued.Add(-q.size)
+			h.releaseFrame(p, q.size)
 			if err != nil {
 				return
 			}
@@ -250,6 +255,7 @@ func (h *hub) add(p *peer) {
 }
 
 func (h *hub) remove(p *peer) {
+	h.closeQueue(p)
 	h.mu.Lock()
 	gone := false
 	if p.dev.kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
@@ -298,17 +304,66 @@ func marshalFrame(f *pb.ServerFrame) (queuedFrame, error) {
 }
 
 func (h *hub) sendFrame(p *peer, q queuedFrame) bool {
-	if p.queued.Add(q.size) <= sendQueueBytes {
+	h.queueMu.Lock()
+	if p.closed {
+		h.queueMu.Unlock()
+		return false
+	}
+	acct := p.dev.account
+	if p.queued.Load()+q.size <= sendQueueBytes && h.accountQueueBytes[acct]+q.size <= accountSendQueueBytes && h.queueBytes+q.size <= relaySendQueueBytes {
+		p.queued.Add(q.size)
+		h.queueBytes += q.size
+		h.accountQueueBytes[acct] += q.size
 		select {
 		case p.out <- q:
+			h.queueMu.Unlock()
 			return true
 		default:
+			h.releaseFrameLocked(p, q.size)
 		}
 	}
-	p.queued.Add(-q.size)
+	h.queueMu.Unlock()
 	slog.Warn("stream peer too slow; disconnecting", "device", p.dev.id)
 	p.cancel()
 	return false
+}
+
+// releaseFrame retains the reservation through a blocked socket write.
+func (h *hub) releaseFrame(p *peer, size int64) {
+	h.queueMu.Lock()
+	defer h.queueMu.Unlock()
+	if !p.closed {
+		h.releaseFrameLocked(p, size)
+	}
+}
+
+func (h *hub) releaseFrameLocked(p *peer, size int64) {
+	p.queued.Add(-size)
+	h.queueBytes -= size
+	acct := p.dev.account
+	h.accountQueueBytes[acct] -= size
+	if h.accountQueueBytes[acct] == 0 {
+		delete(h.accountQueueBytes, acct)
+	}
+}
+
+// closeQueue prevents producers from reserving more after disconnect and
+// drops references to unwritten bytes. A racing write releases nothing twice.
+func (h *hub) closeQueue(p *peer) {
+	h.queueMu.Lock()
+	defer h.queueMu.Unlock()
+	if p.closed {
+		return
+	}
+	h.releaseFrameLocked(p, p.queued.Load())
+	p.closed = true
+	for {
+		select {
+		case <-p.out:
+		default:
+			return
+		}
+	}
 }
 
 // broadcast pushes f to every client of the account, after the change is
