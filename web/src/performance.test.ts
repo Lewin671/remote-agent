@@ -426,7 +426,7 @@ it("opens a session from the cached history and downloads only what is new", asy
   const r = await probe();
   const all = await sealedEvents(r, 3);
   const cache = {
-    read: vi.fn(async () => all.slice(0, 2)),
+    read: vi.fn(async (_sid: string, after = 0n) => all.slice(0, 2).filter(e => e.seq > after)),
     append: vi.fn(async () => undefined),
     drop: vi.fn(async () => undefined),
     keep: vi.fn(async () => undefined),

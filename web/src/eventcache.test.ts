@@ -56,3 +56,27 @@ it("never replays a later suffix of an evicted session as a contiguous prefix", 
   await cache.append("s", [event(1n), event(2n)]);
   expect((await cache.read("s")).map(e => e.seq)).toEqual([1n, 2n]);
 });
+
+it("reads bounded cursor batches and stops at a corrupt record or sequence gap", async () => {
+  vi.stubGlobal("indexedDB", new IDBFactory());
+  vi.stubGlobal("IDBKeyRange", IDBKeyRange);
+  const cache = eventCache()!;
+  await cache.append("batch", Array.from({ length: 130 }, (_, i) => event(BigInt(i + 1))));
+  const first = await cache.read("batch");
+  expect(first).toHaveLength(128);
+  expect((await cache.read("batch", 128n)).map(e => e.seq)).toEqual([129n, 130n]);
+  expect(await cache.read("batch", 130n)).toEqual([]);
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const req = indexedDB.open("remote-agent-events", 2);
+    req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+  });
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction("events", "readwrite");
+    tx.objectStore("events").put(new Uint8Array([255]), ["batch", 129]);
+    tx.objectStore("events").delete(["batch", 4]);
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+  expect((await cache.read("batch")).map(e => e.seq)).toEqual([1n, 2n, 3n]);
+  expect(await cache.read("batch", 128n)).toEqual([]);
+});

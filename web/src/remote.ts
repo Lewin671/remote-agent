@@ -2090,23 +2090,29 @@ export class Remote {
     b.restored = true;
     if (!this.cache || b.events.length) return;
     const stale = () => this.closed || this.buffers.get(s.id) !== b;
-    const rows = await this.cache.read(s.id).catch((): CachedEvent[] => []);
-    if (!rows.length || stale()) return;
-    if (BigInt(rows.length) <= s.lastSeq) {
+    let after = 0n;
+    while (!stale()) {
+      const rows = await this.cache.read(s.id, after).catch((): CachedEvent[] => []);
+      if (!rows.length || stale()) return;
+      if (rows[0].seq !== after + 1n || rows.at(-1)!.seq > s.lastSeq) break;
       await this.ingest(s, rows, false, true, true);
-      if (stale() || !b.broken) return;
-      Object.assign(b, {
-        events: [],
-        pending: new Map(),
-        broken: false,
-        bytes: 0,
-        inputStatuses: undefined,
-        verifiedSeqs: undefined,
-        verifiedEvents: undefined,
-        verifiedDerived: undefined,
-        unverifiedLegacy: false,
-      });
+      if (stale()) return;
+      if (b.broken) break;
+      after = BigInt(b.events.length);
     }
+    if (stale()) return;
+    Object.assign(b, {
+      events: [],
+      pending: new Map(),
+      broken: false,
+      bytes: 0,
+      inputStatuses: undefined,
+      verifiedSeqs: undefined,
+      verifiedEvents: undefined,
+      verifiedDerived: undefined,
+      unavailableSeqs: undefined,
+      unverifiedLegacy: false,
+    });
     await this.cache.drop(s.id).catch(() => undefined);
   }
 

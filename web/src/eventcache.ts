@@ -16,8 +16,8 @@ export interface CachedEvent {
 }
 
 export interface EventCache {
-  /** A session's events from seq 1, as far as they are contiguous. */
-  read(sid: string): Promise<CachedEvent[]>;
+  /** At most 128 contiguous events after a previously restored prefix. */
+  read(sid: string, afterSeq?: bigint): Promise<CachedEvent[]>;
   append(sid: string, events: CachedEvent[]): Promise<void>;
   drop(sid: string): Promise<void>;
   /** Forgets the least recently opened sessions until the rest fits the
@@ -100,22 +100,32 @@ function forget(tx: IDBTransaction, sid: string) {
 }
 
 const idbCache: EventCache = {
-  async read(sid) {
+  async read(sid, afterSeq = 0n) {
     const tx = (await db()).transaction([EVENTS, SESSIONS], "readwrite");
-    const keys = result(tx.objectStore(EVENTS).getAllKeys(of(sid)));
-    const values = result(tx.objectStore(EVENTS).getAll(of(sid)) as IDBRequest<Uint8Array[]>);
+    const finished = done(tx);
+    const rows = new Promise<Uint8Array[]>((resolve, reject) => {
+      const out: Uint8Array[] = [];
+      const req = tx.objectStore(EVENTS).openCursor(IDBKeyRange.bound([sid, Number(afterSeq) + 1], [sid, Infinity]));
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor || out.length === 128 ||
+            (cursor.key as [string, number])[1] !== Number(afterSeq) + out.length + 1) {
+          resolve(out);
+          return;
+        }
+        out.push(cursor.value as Uint8Array);
+        cursor.continue();
+      };
+    });
     const usage = (await result(tx.objectStore(SESSIONS).get(sid) as IDBRequest<Usage | undefined>)) ?? { bytes: 0, usedAt: 0 };
     tx.objectStore(SESSIONS).put({ ...usage, usedAt: Date.now() }, sid);
-    const [ks, vs] = [await keys, await values];
-    await done(tx);
+    const [values] = await Promise.all([rows, finished]);
     const out: CachedEvent[] = [];
-    for (let i = 0; i < ks.length; i++) {
-      if ((ks[i] as [string, number])[1] !== i + 1) break;
+    for (const value of values) {
       try {
-        out.push({ seq: BigInt(i + 1), envelope: fromBinary(EnvelopeSchema, vs[i]) });
-      } catch {
-        break;
-      }
+        out.push({ seq: afterSeq + BigInt(out.length) + 1n, envelope: fromBinary(EnvelopeSchema, value) });
+      } catch { break; }
     }
     return out;
   },
