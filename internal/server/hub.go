@@ -353,22 +353,21 @@ func splitEvents(ev *pb.EventsAppended) []*pb.EventsAppended {
 // the last broadcast is the machine's last state. Clients take the online
 // flag as it comes, so a stale one would stay until the next change.
 func (a accountHub) machineChanged(id string) {
+	if err := a.updateMachine(context.Background(), id, nil, 0); err != nil && !errors.Is(err, errNoRows) {
+		slog.Error("load machine", "machine", id, "err", err)
+	}
+}
+
+func (a accountHub) updateMachine(ctx context.Context, id string, meta []byte, revision uint64) error {
 	a.h.changeMu.Lock()
 	defer a.h.changeMu.Unlock()
-	st := a.h.s.store.tenant(a.acct)
-	// The machine was seen just now whichever way it changed: it
-	// connected, sent metadata, or was connected until this moment.
-	_ = st.touchMachine(context.Background(), id)
-	m, err := st.machine(context.Background(), id)
-	if errors.Is(err, errNoRows) {
-		return // removed meanwhile
-	}
+	m, err := a.h.s.store.tenant(a.acct).updateMachine(ctx, id, meta, revision)
 	if err != nil {
-		slog.Error("load machine", "machine", id, "err", err)
-		return
+		return err
 	}
 	m.Online = a.online(id)
 	a.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineUpdated{MachineUpdated: &pb.MachineUpdated{Machine: m}}})
+	return nil
 }
 
 // errUnknown is returned when a command reached the daemon, or may have,

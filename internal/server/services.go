@@ -193,9 +193,6 @@ func (a *authService) Login(ctx context.Context, req *connect.Request[pb.LoginRe
 	if err := t.addToken(ctx, hashToken(token), d.id, expires); err != nil {
 		return nil, internal(err)
 	}
-	if err := t.touchAccount(ctx); err != nil {
-		return nil, internal(err)
-	}
 	return connect.NewResponse(&pb.LoginResponse{DevicePublicKey: bytes.Clone(d.publicKey), Token: token, ExpiresMs: expires}), nil
 }
 
@@ -313,10 +310,9 @@ func (m *machineService) PutMachine(ctx context.Context, req *connect.Request[pb
 	}
 	b, _ := proto.Marshal(req.Msg.Meta)
 	t := m.s.tenantFrom(ctx)
-	if err := t.store.putMachineMeta(ctx, id, b, h.Seq); err != nil {
+	if err := t.hub.updateMachine(ctx, id, b, h.Seq); err != nil {
 		return nil, internal(err)
 	}
-	t.hub.machineChanged(id)
 	return connect.NewResponse(&pb.PutMachineResponse{}), nil
 }
 

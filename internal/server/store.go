@@ -561,15 +561,26 @@ func (t *tstore) registration(ctx context.Context, id string) (registration, err
 const maxDeviceTokens = 16
 
 func (t *tstore) addToken(ctx context.Context, hash []byte, deviceID string, expires int64) error {
-	_, err := t.db.ExecContext(ctx, `INSERT INTO tokens (hash, account_id, device_id, expires_ms) VALUES (?, ?, ?, ?)`, hash, t.acct, deviceID, expires)
+	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	if _, err = t.db.ExecContext(ctx, `DELETE FROM tokens WHERE account_id = ?1 AND device_id = ?2 AND hash NOT IN
-		(SELECT hash FROM tokens WHERE account_id = ?1 AND device_id = ?2 ORDER BY expires_ms DESC LIMIT ?3)`, t.acct, deviceID, maxDeviceTokens); err != nil {
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `INSERT INTO tokens (hash, account_id, device_id, expires_ms) VALUES (?, ?, ?, ?)`, hash, t.acct, deviceID, expires); err != nil {
 		return err
 	}
-	_, err = t.db.ExecContext(ctx, `DELETE FROM tokens WHERE expires_ms < ?`, nowMs())
+	if _, err := tx.ExecContext(ctx, `DELETE FROM tokens WHERE account_id = ?1 AND device_id = ?2 AND hash NOT IN
+  (SELECT hash FROM tokens WHERE account_id = ?1 AND device_id = ?2 ORDER BY expires_ms DESC LIMIT ?3)`, t.acct, deviceID, maxDeviceTokens); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE accounts SET last_active_ms = ? WHERE id = ?`, nowMs(), t.acct); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *store) expireTokens(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM tokens WHERE expires_ms <= ?`, nowMs())
 	return err
 }
 
@@ -621,19 +632,33 @@ func unmarshalEnv(b []byte) *pb.Envelope {
 	return e
 }
 
-// putMachineMeta stores meta unless a newer revision is stored already.
-func (t *tstore) putMachineMeta(ctx context.Context, id string, meta []byte, revision uint64) error {
-	_, err := t.db.ExecContext(ctx, `UPDATE machines SET meta = ?, meta_revision = ? WHERE account_id = ? AND id = ? AND meta_revision <= ?`,
-		meta, revision, t.acct, id, revision)
-	return err
-}
-
-func (t *tstore) touchMachine(ctx context.Context, id string) error {
-	now := nowMs()
-	if _, err := t.db.ExecContext(ctx, `UPDATE machines SET last_seen_ms = ? WHERE account_id = ? AND id = ?`, now, t.acct, id); err != nil {
-		return err
+// updateMachine records activity and optionally newer metadata together.
+func (t *tstore) updateMachine(ctx context.Context, id string, meta []byte, revision uint64) (*pb.Machine, error) {
+	tx, err := t.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
 	}
-	return t.touchAccount(ctx)
+	defer tx.Rollback()
+	now := nowMs()
+	if meta != nil {
+		_, err = tx.ExecContext(ctx, `UPDATE machines SET last_seen_ms = ?, meta = CASE WHEN meta_revision <= ? THEN ? ELSE meta END,
+   meta_revision = MAX(meta_revision, ?) WHERE account_id = ? AND id = ?`, now, revision, meta, revision, t.acct, id)
+	} else {
+		_, err = tx.ExecContext(ctx, `UPDATE machines SET last_seen_ms = ? WHERE account_id = ? AND id = ?`, now, t.acct, id)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE accounts SET last_active_ms = ? WHERE id = ?`, now, t.acct); err != nil {
+		return nil, err
+	}
+	m := &pb.Machine{Id: id}
+	var raw []byte
+	if err := tx.QueryRowContext(ctx, `SELECT meta, last_seen_ms FROM machines WHERE account_id = ? AND id = ?`, t.acct, id).Scan(&raw, &m.LastSeenMs); err != nil {
+		return nil, err
+	}
+	m.Meta = unmarshalEnv(raw)
+	return m, tx.Commit()
 }
 
 func (t *tstore) machines(ctx context.Context) ([]*pb.Machine, error) {

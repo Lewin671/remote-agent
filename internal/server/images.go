@@ -129,7 +129,7 @@ func (s *store) expireImages(ctx context.Context) (int64, error) {
 	return res.RowsAffected()
 }
 
-// expireLoop drops expired images every hour until stop is closed.
+// expireLoop drops expired images and login tokens every hour until stop is closed.
 func (s *Server) expireLoop(stop <-chan struct{}) {
 	t := time.NewTicker(time.Hour)
 	defer t.Stop()
@@ -138,6 +138,9 @@ func (s *Server) expireLoop(stop <-chan struct{}) {
 			slog.Error("expire images", "err", err)
 		} else if n > 0 {
 			slog.Info("expired images", "count", n)
+		}
+		if err := s.store.expireTokens(context.Background()); err != nil {
+			slog.Error("expire tokens", "err", err)
 		}
 		select {
 		case <-stop:
