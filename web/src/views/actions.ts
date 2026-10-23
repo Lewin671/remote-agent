@@ -4,7 +4,7 @@ import { isSkeleton } from "../skeleton";
 // it once.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
+import { SessionStatus, type ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { agentOf, derive, type Derived } from "../model";
 import { stillUnknown } from "../attempt";
@@ -29,9 +29,26 @@ export function useDerived(remote: Remote, sid: string): Derived {
     [events, events.length, agent],
   );
   useEffect(() => {
-    void remote.refreshLiveSnapshot(sid);
-    const timer = setInterval(() => void remote.refreshLiveSnapshot(sid), 5000);
-    return () => clearInterval(timer);
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const update = () => {
+      const session = remote.sessions.get(sid);
+      const eligible = !document.hidden && remote.conn === "online" &&
+        !!session && !session.endedMs && session.info?.status !== SessionStatus.EXITED &&
+        remote.machines.get(session.machineId)?.online;
+      if (!eligible) { clearInterval(timer); timer = undefined; }
+      else if (timer === undefined) {
+        timer = setInterval(() => void remote.refreshLiveSnapshot(sid), 5000);
+        void remote.refreshLiveSnapshot(sid);
+      }
+    };
+    const unsubscribe = remote.subscribe(update);
+    document.addEventListener("visibilitychange", update);
+    update();
+    return () => {
+      clearInterval(timer);
+      unsubscribe();
+      document.removeEventListener("visibilitychange", update);
+    };
   }, [remote, sid]);
   return remote.currentDerived(sid, historical); // eslint-disable-line react-hooks/exhaustive-deps
 }
