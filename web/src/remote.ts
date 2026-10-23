@@ -455,7 +455,7 @@ export class Remote {
   private liveErrors = new Map<string, string>();
   private liveJobs = new Map<string, Promise<void>>();
 
-  private directoryJob?: { head: Uint8Array; promise: Promise<void> };
+  private directoryJob?: { head: Uint8Array; promise: Promise<void>; invalidated?: boolean };
   private directoryHead?: Uint8Array;
   private recoveryObjectsPending = false;
   private trustedMembers = new Map<string, Member>();
@@ -3118,38 +3118,43 @@ export class Remote {
       // Updates still pull and verify the security chain before trusting a
       // cached directory. Payload signatures and routes are checked on open.
       const record = await this.security.sync();
+      const reconciliationPending = update ? !!(await this.authority.pending()) : false;
       const state = record.stateHash;
+      if (!equalBytes(state, await this.security.localStateHash()))
+        return this.loadDevices(describe, update);
       if (this.directoryJob) {
         const job = this.directoryJob;
         await job.promise;
-        if (!equalBytes(job.head, await this.security.localStateHash()))
+        if (job.invalidated || !equalBytes(job.head, await this.security.localStateHash()))
           return this.loadDevices(describe, update);
         if (describe) await this.describeSelf();
         return;
       }
-      let knownEpoch = true;
+      let knownUpdate = true;
       if (update?.meta) {
         try {
           const h = parseHeader(new Uint8Array(update.meta.securityHeader));
-          knownEpoch = record.states.some((s) => s.core.epoch === h.epoch);
-        } catch { knownEpoch = false; }
+          knownUpdate = h.sender === update.machineId &&
+            record.states.some((s) => s.core.epoch === h.epoch);
+        } catch { knownUpdate = false; }
       }
       if (
-        update && knownEpoch && record.member &&
+        update && knownUpdate && record.member &&
         this.devicesStatus === "ready" && this.directoryHead &&
         equalBytes(this.directoryHead, state) &&
         this.trustedMembers.get(update.machineId)?.kind === 1 &&
         record.states.at(-1)!.core.members.some((m) => m.id === update.machineId && m.kind === 1) &&
         !this.recoveryObjectsPending && !this.security.recoveryPending &&
-        !this.reconcilingSecurity && !this.maintaining
+        !reconciliationPending && !this.reconcilingSecurity && !this.maintaining
       ) {
         this.clearClockWarning();
         return;
       }
-      const job = { head: state, promise: this.loadDirectory(record, describe) };
+      const job = { head: state, promise: this.loadDirectory(record, describe), invalidated: false };
       this.directoryJob = job;
       try { await job.promise; }
       finally { if (this.directoryJob === job) this.directoryJob = undefined; }
+      if (job.invalidated) return this.loadDevices(describe, update);
     } catch (e) {
       this.noteClock(e);
       this.devicesStatus = "error";
@@ -3267,6 +3272,7 @@ export class Remote {
         }
         nextDevices.set(m.id, d);
       }
+      if (this.directoryJob?.invalidated) return;
       if (!equalBytes(await this.security.localStateHash(), state))
         throw new Error("设备目录状态已变化");
       for (const [id, d] of nextDevices) {
@@ -3311,6 +3317,7 @@ export class Remote {
   private devicePushes = new Map<string, number>();
 
   private devicePushed(id: string) {
+    if (this.directoryJob) this.directoryJob.invalidated = true;
     this.devicePushes.set(id, (this.devicePushes.get(id) ?? 0) + 1);
   }
 

@@ -26,6 +26,8 @@ export class SyntheticRemote extends Remote {
   ) {
     super(member.account, world.legacyKeys, undefined, member.storage);
     this.seed = seed;
+    // This synthetic member uses in-memory security storage, with no durable operations.
+    this.authority.pending = async () => undefined;
     this.defaults = {
       getEvents: async () => ({ events: [], more: false }),
       listDevices: async () => ({ devices: [] }),

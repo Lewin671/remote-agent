@@ -228,4 +228,74 @@ it("does not reuse a directory while recovery publication or reconciliation is p
   await r.loadDevices(false, { machineId: r.machine });
   expect(api.listDevices).toHaveBeenCalledTimes(3);
   (r as any).reconcilingSecurity = 0;
+  vi.spyOn(r.authority, "pending").mockResolvedValue({} as never);
+  await r.loadDevices(false, { machineId: r.machine });
+  expect(api.listDevices).toHaveBeenCalledTimes(4);
+}, 20000);
+
+it("retries a coalesced directory invalidated by a device metadata push", async () => {
+  const r = await probe(), self = r.member.account.deviceId;
+  const seal = (seq: bigint, name: string) => r.member.sdk.seal({ kind: 13, purpose: Purpose.DeviceMeta,
+    machine: "", session: "", request: self, seq, deadline: 0n, compression: 0 },
+    toBinary(DeviceMetaSchema, create(DeviceMetaSchema, { name, platform: "web" })));
+  let meta = await seal(1n, "before");
+  const next = await seal(2n, "after");
+  let entered!: () => void, release!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const barrier = new Promise<void>(resolve => { release = resolve; });
+  const listDevices = vi.fn(async () => {
+    const snapshot = meta;
+    entered(); await barrier;
+    return { devices: [create(DeviceSchema, { id: self, meta: snapshot })] };
+  });
+  (r as any).api = { listDevices };
+  const first = r.loadDevices(false);
+  await started;
+  meta = next;
+  const push = (r as any).onFrame({ case: "deviceUpdated", value: { device: create(DeviceSchema, { id: self }) } });
+  await r.security.sync();
+  release();
+  await Promise.all([first, push]);
+  expect(listDevices).toHaveBeenCalledTimes(2);
+  expect(r.devices.get(self)?.meta?.name).toBe("after");
+}, 20000);
+
+it("reloads unknown envelope senders and still rejects their payloads", async () => {
+  const r = await probe(), api = countedDirectory(r);
+  await r.loadDevices(false);
+  const row = await r.sessionRow("s");
+  const { headerBytes, parseHeader } = await import("./device-security");
+  const meta = { ...row.meta, securityHeader: headerBytes({
+    ...parseHeader(new Uint8Array(row.meta.securityHeader)), sender: "f".repeat(32),
+  }) };
+  await (r as any).onFrame({ case: "sessionUpdated", value: { session: { ...row, meta } } });
+  expect(api.listDevices).toHaveBeenCalledTimes(2);
+  expect(r.sessions.get("s")?.info).toBeUndefined();
+}, 20000);
+
+it("continues verifying payload signatures when the directory is reused", async () => {
+  const r = await probe(), api = countedDirectory(r);
+  await r.loadDevices(false);
+  const row = await r.sessionRow("s");
+  row.meta.signature[0] ^= 1;
+  await (r as any).onFrame({ case: "sessionUpdated", value: { session: row } });
+  expect(api.listDevices).toHaveBeenCalledTimes(1);
+  expect(r.sessions.get("s")?.info).toBeUndefined();
+}, 20000);
+
+it("shares one full directory listing across concurrent refreshes at the same head", async () => {
+  const r = await probe();
+  let entered!: () => void, release!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const barrier = new Promise<void>(resolve => { release = resolve; });
+  const listDevices = vi.fn(async () => { entered(); await barrier; return { devices: [] }; });
+  (r as any).api = { listDevices };
+  const first = r.loadDevices(false);
+  await started;
+  const second = r.loadDevices(false), third = r.loadDevices(false);
+  await r.security.sync();
+  release();
+  await Promise.all([first, second, third]);
+  expect(listDevices).toHaveBeenCalledTimes(1);
+  expect(r.devicesStatus).toBe("ready");
 }, 20000);
