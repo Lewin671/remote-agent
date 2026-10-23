@@ -236,12 +236,12 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 	case *pb.Command_GetLiveSnapshot:
 		err = on(k.GetLiveSnapshot.SessionId, func() error {
 			owner, ok := r.backend.(interface {
-				LiveSnapshot(string) (*pb.LiveSnapshot, error)
+				LiveSnapshot(context.Context, string) (*pb.LiveSnapshot, error)
 			})
 			if !ok {
 				return connect.NewError(connect.CodeFailedPrecondition, errors.New("live owner snapshot unavailable"))
 			}
-			snapshot, err := owner.LiveSnapshot(sessionID)
+			snapshot, err := owner.LiveSnapshot(ctx, sessionID)
 			if err != nil {
 				return err
 			}

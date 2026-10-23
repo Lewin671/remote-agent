@@ -356,7 +356,7 @@ type checkpointBudgetBackend struct {
 	questionBytes int
 }
 
-func (b checkpointBudgetBackend) LiveSnapshot(id string) (*pb.LiveSnapshot, error) {
+func (b checkpointBudgetBackend) LiveSnapshot(ctx context.Context, id string) (*pb.LiveSnapshot, error) {
 	return &pb.LiveSnapshot{Session: &pb.Session{Id: id}, Actions: []*pb.Event{{SessionId: id, Seq: 1, Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "budget", Questions: []*pb.Question{{Text: strings.Repeat("q", b.questionBytes)}}}}}}}, nil
 }
 

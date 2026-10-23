@@ -430,7 +430,7 @@ func TestOwnerSnapshotAttestsCurrentQueueAndBoundsPrivatePreview(t *testing.T) {
 	h.s.running = true
 	h.s.queue.Queue = []input{{RequestID: "current-input", Text: strings.Repeat("界", 1000), Mode: pb.SendMode_SEND_MODE_QUEUE, Paused: true, Stage: pb.InputStage_INPUT_STAGE_WAITING, Origin: &storedOrigin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceID: "synthetic-client"}}}
 	h.s.mu.Unlock()
-	snapshot, err := h.d.LiveSnapshot(h.s.meta.ID)
+	snapshot, err := h.d.LiveSnapshot(context.Background(), h.s.meta.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

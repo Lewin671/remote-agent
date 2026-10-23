@@ -239,7 +239,7 @@ func (h *handler) SetModel(ctx context.Context, req *connect.Request[pb.SetModel
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.setModelBy(req.Msg.Model, req.Msg.Effort, originOf(ctx)); err != nil {
+	if err := s.setModelBy(ctx, req.Msg.Model, req.Msg.Effort, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SetModelResponse{}), nil
@@ -264,7 +264,7 @@ func (h *handler) SetApprovalMode(ctx context.Context, req *connect.Request[pb.S
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.setApprovalModeBy(req.Msg.Mode, originOf(ctx)); err != nil {
+	if err := s.setApprovalModeBy(ctx, req.Msg.Mode, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SetApprovalModeResponse{}), nil
@@ -286,7 +286,7 @@ func (h *handler) Compact(ctx context.Context, req *connect.Request[pb.CompactRe
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.compact(); err != nil {
+	if err := s.compactContext(ctx); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.CompactResponse{}), nil
@@ -297,7 +297,7 @@ func (h *handler) AnswerPlan(ctx context.Context, req *connect.Request[pb.Answer
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.answerPlanBy(req.Msg.Choice, originOf(ctx)); err != nil {
+	if err := s.answerPlanBy(ctx, req.Msg.Choice, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.AnswerPlanResponse{}), nil

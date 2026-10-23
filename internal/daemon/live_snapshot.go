@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"unicode/utf8"
@@ -12,7 +13,7 @@ import (
 
 // LiveSnapshot reads current owner state rather than replaying a relay's event
 // history. The enclosing result binds the caller's unpredictable request ID.
-func (d *Daemon) LiveSnapshot(id string) (*pb.LiveSnapshot, error) {
+func (d *Daemon) LiveSnapshot(ctx context.Context, id string) (*pb.LiveSnapshot, error) {
 	s, err := d.exact(id)
 	if err != nil {
 		return nil, err
@@ -82,7 +83,7 @@ func (d *Daemon) LiveSnapshot(id string) (*pb.LiveSnapshot, error) {
 	})
 	s.mu.Unlock()
 	if plan {
-		err = s.drive(func(t agent.Term, _ bool) error {
+		err = s.drive(ctx, func(t agent.Term, _ bool) error {
 			styled, err := t.Capture()
 			if err != nil {
 				return err

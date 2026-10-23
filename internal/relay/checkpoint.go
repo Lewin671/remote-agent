@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"context"
 	"fmt"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"google.golang.org/protobuf/proto"
@@ -11,13 +12,13 @@ import (
 // currentCheckpoint writes the owning machine's durable current session state
 // before publication. Every content epoch republishes this same bootstrap path;
 // no readable event prefix or recovery-specific side effect is required.
-func (c *conn) currentCheckpoint(id string, info *pb.Session) ([]byte, error) {
+func (c *conn) currentCheckpoint(ctx context.Context, id string, info *pb.Session) ([]byte, error) {
 	var snapshot *pb.LiveSnapshot
 	if owner, ok := c.r.backend.(interface {
-		LiveSnapshot(string) (*pb.LiveSnapshot, error)
+		LiveSnapshot(context.Context, string) (*pb.LiveSnapshot, error)
 	}); ok {
 		var err error
-		snapshot, err = owner.LiveSnapshot(id)
+		snapshot, err = owner.LiveSnapshot(ctx, id)
 		if err != nil {
 			return nil, err
 		}

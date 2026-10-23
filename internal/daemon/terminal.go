@@ -16,6 +16,7 @@ import (
 type terminal interface {
 	// Capture returns the screen with SGR sequences kept.
 	Capture() (string, error)
+	CaptureContext(context.Context) (string, error)
 	// Poll returns the visible screen and liveness in one bounded operation.
 	Poll(context.Context) (string, bool, error)
 	// Alive reports whether the tmux session still exists.
@@ -43,6 +44,9 @@ type tmuxTerminal struct {
 }
 
 func (t *tmuxTerminal) Capture() (string, error) { return t.tmux.Capture(t.name, true) }
+func (t *tmuxTerminal) CaptureContext(ctx context.Context) (string, error) {
+	return t.tmux.RunContext(ctx, "capture-pane", "-p", "-e", "-t", "="+t.name+":")
+}
 func (t *tmuxTerminal) Poll(ctx context.Context) (string, bool, error) {
 	return t.tmux.Poll(ctx, t.name)
 }

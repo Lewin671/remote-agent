@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"sync/atomic"
@@ -40,7 +41,7 @@ func TestConcurrentPlanAnswersConsumePromptBeforeReleasingControl(t *testing.T) 
 			recording, release := make(chan struct{}), make(chan struct{})
 			a, b := make(chan error, 1), make(chan error, 1)
 			go func() {
-				a <- h.s.answerPlanUsing(pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, first, func(e *pb.Event) error {
+				a <- h.s.answerPlanUsing(context.Background(), pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, first, func(e *pb.Event) error {
 					close(recording)
 					<-release
 					if recordFails {
@@ -54,7 +55,7 @@ func TestConcurrentPlanAnswersConsumePromptBeforeReleasingControl(t *testing.T) 
 				h.s.ctlMu.Unlock()
 				t.Error("plan recording ran after releasing the terminal lock")
 			}
-			go func() { b <- h.s.answerPlanBy(pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, second) }()
+			go func() { b <- h.s.answerPlanBy(context.Background(), pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, second) }()
 			select {
 			case err := <-b:
 				if !errors.Is(err, errRemoteAnswerStale) {
@@ -84,19 +85,19 @@ func TestConcurrentPlanAnswersConsumePromptBeforeReleasingControl(t *testing.T) 
 				t.Fatal(err)
 			}
 			fresh := answerRaceOrigin(h.s, remotePlan, "", "fresh-observation-same-prompt")
-			if err := h.s.answerPlanBy(pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, fresh); !errors.Is(err, errRemoteAnswerStale) {
+			if err := h.s.answerPlanBy(context.Background(), pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, fresh); !errors.Is(err, errRemoteAnswerStale) {
 				t.Errorf("pending answer after status refresh=%v", err)
 			}
 			if !recordFails {
 				restartAnswerHarness(t, h)
-				if err := h.s.answerPlanBy(pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, answerRaceOrigin(h.s, remotePlan, "", "after-replay")); !errors.Is(err, errRemoteAnswerStale) {
+				if err := h.s.answerPlanBy(context.Background(), pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, answerRaceOrigin(h.s, remotePlan, "", "after-replay")); !errors.Is(err, errRemoteAnswerStale) {
 					t.Errorf("replayed pending plan became actionable: %v", err)
 				}
 			}
 			if err := h.s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{PlanOpen: false}}}, plan()); err != nil {
 				t.Fatal(err)
 			}
-			if err := h.s.answerPlanBy(pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, answerRaceOrigin(h.s, remotePlan, "", "new-plan-request")); err != nil {
+			if err := h.s.answerPlanBy(context.Background(), pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, answerRaceOrigin(h.s, remotePlan, "", "new-plan-request")); err != nil {
 				t.Fatalf("new prompt refused: %v", err)
 			}
 		})
@@ -287,11 +288,11 @@ func TestFailedPlanKeysAndUndeliveredApprovalCanRetry(t *testing.T) {
 		}
 		origin := answerRaceOrigin(h.s, remotePlan, "", "failed-keys")
 		h.term.failWrites = true
-		if err := h.s.answerPlanBy(pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, origin); err == nil {
+		if err := h.s.answerPlanBy(context.Background(), pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, origin); err == nil {
 			t.Fatal("key failure hidden")
 		}
 		h.term.failWrites = false
-		if err := h.s.answerPlanBy(pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, answerRaceOrigin(h.s, remotePlan, "", "retry-keys")); err != nil {
+		if err := h.s.answerPlanBy(context.Background(), pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, answerRaceOrigin(h.s, remotePlan, "", "retry-keys")); err != nil {
 			t.Fatalf("failed keys left prompt blocked: %v", err)
 		}
 	})

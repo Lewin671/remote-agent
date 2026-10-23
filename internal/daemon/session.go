@@ -1303,7 +1303,7 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 	prev, had := s.answeredBy[questionID]
 	s.answeredBy[questionID] = origin
 	s.mu.Unlock()
-	if err := s.ag.Answer(heldTerm{s.term, c}, q, index, options); err != nil {
+	if err := s.ag.Answer(heldTerm{s.term, c, context.Background()}, q, index, options); err != nil {
 		s.mu.Lock()
 		if s.answeredBy[questionID] == origin {
 			if had {

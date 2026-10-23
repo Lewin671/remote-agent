@@ -43,7 +43,9 @@ func bail(t agent.Term) {
 			return
 		}
 		_ = t.Write([]byte(agent.KeyEsc))
-		time.Sleep(200 * time.Millisecond)
+		if agent.Wait(t, 200*time.Millisecond) != nil {
+			return
+		}
 	}
 }
 
@@ -240,7 +242,9 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		if err := t.Write([]byte(key)); err != nil {
 			return err
 		}
-		time.Sleep(60 * time.Millisecond)
+		if err := agent.Wait(t, 60*time.Millisecond); err != nil {
+			return err
+		}
 	}
 	plain, err = waitFor(t, "the cursor on "+label, func(_ agent.Screen, p string) bool {
 		for _, r := range rowsAfter(p, "Select model") {
@@ -576,7 +580,9 @@ func settledMode(t agent.Term) (string, error) {
 		if time.Now().After(deadline) {
 			return "", errors.New("timed out waiting for the permission mode")
 		}
-		time.Sleep(100 * time.Millisecond)
+		if err := agent.Wait(t, 100*time.Millisecond); err != nil {
+			return "", err
+		}
 	}
 }
 
@@ -725,7 +731,9 @@ func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, option
 		if err := t.Write([]byte(strconv.Itoa(int(o)))); err != nil {
 			return err
 		}
-		time.Sleep(100 * time.Millisecond)
+		if err := agent.Wait(t, 100*time.Millisecond); err != nil {
+			return err
+		}
 	}
 	if item.MultiSelect {
 		if err := t.Write([]byte(agent.KeyRight)); err != nil {
@@ -745,7 +753,9 @@ func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, option
 		if !scr.QuestionOpen {
 			return nil
 		}
-		time.Sleep(100 * time.Millisecond)
+		if err := agent.Wait(t, 100*time.Millisecond); err != nil {
+			return err
+		}
 	}
 	return nil
 }

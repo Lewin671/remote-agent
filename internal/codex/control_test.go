@@ -1,6 +1,7 @@
 package codex
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -18,6 +19,8 @@ type currentPermissionTerm struct {
 	draft      string
 	writes     []string
 }
+
+func (*currentPermissionTerm) Context() context.Context { return context.Background() }
 
 func (t *currentPermissionTerm) Capture() (string, error) {
 	if t.menu {

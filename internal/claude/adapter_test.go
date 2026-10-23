@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -150,6 +151,8 @@ type fakeClaude struct {
 
 // menuLabels are the rows /model opens with: the catalog's models, or the
 // labels a test set.
+func (*fakeClaude) Context() context.Context { return context.Background() }
+
 func (f *fakeClaude) menuLabels() []string {
 	if f.models != nil {
 		return f.models

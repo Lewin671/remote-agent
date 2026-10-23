@@ -2,6 +2,7 @@ package relay
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,7 +19,7 @@ type checkpointBackend struct {
 }
 
 func (b checkpointBackend) SessionDir(string) string { return b.dir }
-func (b checkpointBackend) LiveSnapshot(id string) (*pb.LiveSnapshot, error) {
+func (b checkpointBackend) LiveSnapshot(ctx context.Context, id string) (*pb.LiveSnapshot, error) {
 	return &pb.LiveSnapshot{Session: &pb.Session{Id: id, Title: "private-current-state", LastSeq: 99}, Running: true}, nil
 }
 
@@ -26,7 +27,7 @@ func TestCheckpointIsDurableEncryptedAndIndependentOfHistory(t *testing.T) {
 	dir := t.TempDir()
 	c := &conn{r: New(checkpointBackend{dir: dir}), acct: &Account{}}
 	initializeTestSecurityKeys(t, c)
-	raw, err := c.currentCheckpoint("session-checkpoint", &pb.Session{Id: "session-checkpoint"})
+	raw, err := c.currentCheckpoint(context.Background(), "session-checkpoint", &pb.Session{Id: "session-checkpoint"})
 	if err != nil {
 		t.Fatal(err)
 	}

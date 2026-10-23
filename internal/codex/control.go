@@ -40,7 +40,9 @@ func bail(t agent.Term) {
 			return
 		}
 		_ = t.Write([]byte(agent.KeyEsc))
-		time.Sleep(200 * time.Millisecond)
+		if agent.Wait(t, 200*time.Millisecond) != nil {
+			return
+		}
 	}
 }
 
@@ -114,7 +116,9 @@ func moveTo(t agent.Term, entries []menuEntry, target int) error {
 		if err := t.Write([]byte(key)); err != nil {
 			return err
 		}
-		time.Sleep(60 * time.Millisecond)
+		if err := agent.Wait(t, 60*time.Millisecond); err != nil {
+			return err
+		}
 	}
 	return nil
 }

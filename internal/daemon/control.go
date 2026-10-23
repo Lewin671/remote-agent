@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"time"
@@ -25,10 +26,22 @@ var (
 type heldTerm struct {
 	term terminal
 	c    control
+	ctx  context.Context
 }
 
-func (h heldTerm) Capture() (string, error) { return h.term.Capture() }
-func (h heldTerm) Write(b []byte) error     { return h.c.Write(b) }
+func (h heldTerm) Context() context.Context { return h.ctx }
+func (h heldTerm) Capture() (string, error) {
+	if err := h.ctx.Err(); err != nil {
+		return "", err
+	}
+	return h.term.CaptureContext(h.ctx)
+}
+func (h heldTerm) Write(b []byte) error {
+	if err := h.ctx.Err(); err != nil {
+		return err
+	}
+	return h.c.Write(b)
+}
 
 // drive runs op with the terminal held for it. The status check is paused
 // meanwhile so that the menus it opens are not reported as popups.
@@ -37,7 +50,10 @@ func (h heldTerm) Write(b []byte) error     { return h.c.Write(b) }
 // not before: an injection that held it until then may have started a
 // turn. Busy means a turn in the transcript, a message written and not yet
 // confirmed, or the screen showing the CLI at work.
-func (s *session) drive(op func(t agent.Term, busy bool) error) error {
+func (s *session) drive(ctx context.Context, op func(t agent.Term, busy bool) error) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	exited := s.meta.Exited
 	s.mu.Unlock()
@@ -46,6 +62,9 @@ func (s *session) drive(op func(t agent.Term, busy bool) error) error {
 	}
 	s.ctlMu.Lock()
 	defer s.ctlMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	exited = s.meta.Exited
 	s.mu.Unlock()
@@ -85,13 +104,20 @@ func (s *session) drive(op func(t agent.Term, busy bool) error) error {
 		s.driving = false
 		s.mu.Unlock()
 	}()
-	time.Sleep(settle)
-	return op(heldTerm{s.term, c}, s.busyNow())
+	term := heldTerm{s.term, c, ctx}
+	if err := agent.Wait(term, settle); err != nil {
+		return err
+	}
+	busy := s.busyNow(term)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return op(term, busy)
 }
 
 // busyNow tells whether a turn runs or is starting; the caller holds the
 // terminal, so no injection happens meanwhile.
-func (s *session) busyNow() bool {
+func (s *session) busyNow(t agent.Term) bool {
 	s.readRollout()
 	s.mu.Lock()
 	busy := s.running || len(s.queue.Queue) > 0 && s.queue.Queue[0].Inflight != nil
@@ -99,8 +125,8 @@ func (s *session) busyNow() bool {
 	if busy {
 		return true
 	}
-	scr, _, err := s.screenNow()
-	return err != nil || scr.Busy
+	styled, err := t.Capture()
+	return err != nil || s.ag.Analyze(styled).Busy
 }
 
 // screenNow captures and analyzes the terminal.
@@ -128,18 +154,18 @@ func (s *session) isRunningNoRead() bool {
 // setModel switches the model and effort for this session only, while no
 // turn is running.
 func (s *session) setModel(model, effort string) error {
-	return s.setModelBy(model, effort, originLocal)
+	return s.setModelBy(context.Background(), model, effort, originLocal)
 }
 
 // setModelBy is setModel on behalf of origin.
-func (s *session) setModelBy(model, effort string, origin *pb.Origin) error {
+func (s *session) setModelBy(ctx context.Context, model, effort string, origin *pb.Origin) error {
 	if err := s.ag.CheckEffort(effort); err != nil {
 		return err
 	}
 	if s.isRunning() {
 		return errBusy
 	}
-	if err := s.drive(func(t agent.Term, busy bool) error {
+	if err := s.drive(ctx, func(t agent.Term, busy bool) error {
 		if busy {
 			return errBusy
 		}
@@ -158,14 +184,14 @@ func (s *session) setModelBy(model, effort string, origin *pb.Origin) error {
 
 // setApprovalMode switches the approval mode.
 func (s *session) setApprovalMode(mode pb.ApprovalMode) error {
-	return s.setApprovalModeBy(mode, originLocal)
+	return s.setApprovalModeBy(context.Background(), mode, originLocal)
 }
 
 // setApprovalModeBy is setApprovalMode on behalf of origin.
-func (s *session) setApprovalModeBy(mode pb.ApprovalMode, origin *pb.Origin) error {
+func (s *session) setApprovalModeBy(ctx context.Context, mode pb.ApprovalMode, origin *pb.Origin) error {
 	// The facts too are read with the terminal held: a model switch that
 	// held it until then changes them.
-	return s.drive(func(t agent.Term, busy bool) error {
+	return s.drive(ctx, func(t agent.Term, busy bool) error {
 		if err := s.ag.SetMode(t, mode, busy, s.modeFacts()); err != nil {
 			return err
 		}
@@ -178,11 +204,13 @@ func (s *session) setApprovalModeBy(mode pb.ApprovalMode, origin *pb.Origin) err
 
 // compact compacts the context while no turn is running. The transcript
 // records it, whoever started it.
-func (s *session) compact() error {
+func (s *session) compact() error { return s.compactContext(context.Background()) }
+
+func (s *session) compactContext(ctx context.Context) error {
 	if s.isRunning() {
 		return errBusy
 	}
-	return s.drive(func(t agent.Term, busy bool) error {
+	return s.drive(ctx, func(t agent.Term, busy bool) error {
 		if busy {
 			return errBusy
 		}
@@ -191,16 +219,18 @@ func (s *session) compact() error {
 }
 
 // answerPlan answers the CLI's prompt about a proposed plan.
-func (s *session) answerPlan(choice pb.PlanChoice) error { return s.answerPlanBy(choice, originLocal) }
-
-// answerPlanBy is answerPlan on behalf of origin, which is recorded.
-func (s *session) answerPlanBy(choice pb.PlanChoice, origin *pb.Origin) error {
-	return s.answerPlanUsing(choice, origin, func(e *pb.Event) error { return s.emit(e) })
+func (s *session) answerPlan(choice pb.PlanChoice) error {
+	return s.answerPlanBy(context.Background(), choice, originLocal)
 }
 
-func (s *session) answerPlanUsing(choice pb.PlanChoice, origin *pb.Origin, record func(*pb.Event) error) error {
+// answerPlanBy is answerPlan on behalf of origin, which is recorded.
+func (s *session) answerPlanBy(ctx context.Context, choice pb.PlanChoice, origin *pb.Origin) error {
+	return s.answerPlanUsing(ctx, choice, origin, func(e *pb.Event) error { return s.emit(e) })
+}
+
+func (s *session) answerPlanUsing(ctx context.Context, choice pb.PlanChoice, origin *pb.Origin, record func(*pb.Event) error) error {
 	// The adapter checks on the held screen that the plan prompt shows.
-	return s.drive(func(t agent.Term, _ bool) error {
+	return s.drive(ctx, func(t agent.Term, _ bool) error {
 		s.mu.Lock()
 		err := s.checkRemoteAnswer(remotePlan, "", false, origin)
 		s.mu.Unlock()

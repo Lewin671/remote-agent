@@ -145,9 +145,10 @@ func (t *blockedStopTerminal) Kill() error {
 	<-t.release
 	return nil
 }
-func (*blockedStopTerminal) Poll(context.Context) (string, bool, error) { return "", false, nil }
-func (*blockedStopTerminal) Alive() bool                                { return false }
-func (*blockedStopTerminal) HostAlive(context.Context) (bool, error)    { return false, nil }
+func (*blockedStopTerminal) Poll(context.Context) (string, bool, error)     { return "", false, nil }
+func (*blockedStopTerminal) CaptureContext(context.Context) (string, error) { return "", nil }
+func (*blockedStopTerminal) Alive() bool                                    { return false }
+func (*blockedStopTerminal) HostAlive(context.Context) (bool, error)        { return false, nil }
 
 func TestConcurrentStopsDoNotOverlapSessionLifecycle(t *testing.T) {
 	h := newHarness(t, Config{})

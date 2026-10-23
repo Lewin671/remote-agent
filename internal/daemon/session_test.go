@@ -56,6 +56,12 @@ func (f *fakeTerm) Poll(context.Context) (string, bool, error) {
 	defer f.mu.Unlock()
 	return f.screen, f.alive, nil
 }
+func (f *fakeTerm) CaptureContext(ctx context.Context) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	return f.Capture()
+}
 func (f *fakeTerm) Alive() bool { f.mu.Lock(); defer f.mu.Unlock(); return f.alive }
 func (f *fakeTerm) Kill() error { f.mu.Lock(); defer f.mu.Unlock(); f.alive = false; return nil }
 func (f *fakeTerm) HostAlive(context.Context) (bool, error) {

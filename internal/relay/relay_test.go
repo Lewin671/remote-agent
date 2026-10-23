@@ -1375,7 +1375,7 @@ type failingCheckpointBackend struct {
 	oversized bool
 }
 
-func (b *failingCheckpointBackend) LiveSnapshot(id string) (*pb.LiveSnapshot, error) {
+func (b *failingCheckpointBackend) LiveSnapshot(ctx context.Context, id string) (*pb.LiveSnapshot, error) {
 	info, err := b.SessionInfo(id)
 	if err != nil {
 		return nil, err
@@ -1419,7 +1419,7 @@ type largeActionCheckpointBackend struct {
 	snapshotError bool
 }
 
-func (b *largeActionCheckpointBackend) LiveSnapshot(id string) (*pb.LiveSnapshot, error) {
+func (b *largeActionCheckpointBackend) LiveSnapshot(ctx context.Context, id string) (*pb.LiveSnapshot, error) {
 	info, err := b.SessionInfo(id)
 	if err != nil {
 		return nil, err

@@ -344,6 +344,8 @@ func PasteBytes(text string) []byte {
 
 // Term is a session's terminal while the daemon holds it for an adapter.
 type Term interface {
+	// Context is the lifetime of the operation holding the terminal.
+	Context() context.Context
 	// Capture returns the screen with escape sequences kept.
 	Capture() (string, error)
 	// Write sends keys.
@@ -368,6 +370,9 @@ const MenuWait = 4 * time.Second
 func WaitFor(t Term, what string, ok func(styled string) bool) (string, error) {
 	deadline := time.Now().Add(MenuWait)
 	for {
+		if err := t.Context().Err(); err != nil {
+			return "", err
+		}
 		styled, err := t.Capture()
 		if err == nil && ok(styled) {
 			return styled, nil
@@ -375,7 +380,24 @@ func WaitFor(t Term, what string, ok func(styled string) bool) (string, error) {
 		if time.Now().After(deadline) {
 			return styled, errors.New("timed out waiting for " + what)
 		}
-		time.Sleep(100 * time.Millisecond)
+		if err := Wait(t, 100*time.Millisecond); err != nil {
+			return "", err
+		}
+	}
+}
+
+// Wait pauses between menu steps, stopping when the operation is canceled.
+func Wait(t Term, d time.Duration) error {
+	if err := t.Context().Err(); err != nil {
+		return err
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-t.Context().Done():
+		return t.Context().Err()
+	case <-timer.C:
+		return t.Context().Err()
 	}
 }
 
@@ -384,7 +406,10 @@ func Slash(t Term, cmd string) error {
 	if err := t.Write([]byte(cmd)); err != nil {
 		return err
 	}
-	time.Sleep(150 * time.Millisecond) // let the command popup catch up
+	// Let the command popup catch up.
+	if err := Wait(t, 150*time.Millisecond); err != nil {
+		return err
+	}
 	return t.Write([]byte(KeyEnter))
 }
 

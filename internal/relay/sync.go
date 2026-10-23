@@ -496,7 +496,7 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 	base := proto.CloneOf(info)
 	base.CurrentCheckpoint = nil
 	base.MachineReplacements = c.acct.Replacements
-	checkpoint, checkpointErr := c.currentCheckpoint(id, info)
+	checkpoint, checkpointErr := c.currentCheckpoint(ctx, id, info)
 	if checkpointErr == nil {
 		var snapshot pb.LiveSnapshot
 		if err := proto.Unmarshal(checkpoint, &snapshot); err != nil {
