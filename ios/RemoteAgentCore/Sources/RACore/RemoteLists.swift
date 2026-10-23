@@ -381,6 +381,7 @@ extension Remote {
             else { return }
             sessions[sid] = view
             if eventFeeds.withLock({ $0[sid]?.followers ?? 0 }) > 0 {
+                startLivePolling(sid)
                 Task { await self.loadEvents(sid) }
             }
             if save && store {

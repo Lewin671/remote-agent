@@ -159,7 +159,11 @@ extension Remote {
             || sessions[sid]?.info?.status == .exited
             || sessions[sid]?.info?.hasEndedAt == true
     }
-    private func finishLivePolling(_ sid: String) { liveJobs[sid] = nil }
+    private func finishLivePolling(_ sid: String) {
+        liveJobs[sid] = nil
+        // Metadata may have resumed the session after the last tick decided to stop.
+        if !Task.isCancelled && !livePollingFinished(sid) { startLivePolling(sid) }
+    }
 }
 
 public func currentState(_ snapshot: SessionEvents, agent: PBAgent = .codex) -> Derived {

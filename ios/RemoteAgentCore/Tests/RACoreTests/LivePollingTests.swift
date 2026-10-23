@@ -5,6 +5,11 @@ import Testing
 @testable import RACore
 
 private extension Remote {
+    func finishEndedPollingForTest(_ sid: String) async {
+        startLivePolling(sid)
+        await liveJobs[sid]?.value
+    }
+
     func preparePollingTest(status: PBSessionStatus = .idle, ended: Bool = false,
         connection: ConnState = .online, machineOnline: Bool = true, active: Bool = true,
         followed: Bool = true) -> AsyncStream<SessionEvents>? {
@@ -70,5 +75,53 @@ private extension Remote {
         defer { withExtendedLifetime(updates) {} }
         #expect(await r.livePollingTick("s") == false)
         #expect(await r.liveErrors.isEmpty)
+    }
+}
+
+extension ServerTests {
+    @Suite struct ResumedLivePollingTests {
+        @Test func resumedMetadataRestartsPollingWithoutResubscribing() async throws {
+            try await World.run(setUp: { w in
+                try await w.daemon.putMachine("test-machine")
+                var ended = session("/test-project", "test session", status: .exited)
+                ended.endedAt.seconds = 1
+                try await w.daemon.putSession("s1", ended, endedMs: 1000)
+                try await w.daemon.connect()
+            }) { w in
+                let r = try await w.client()
+                r.start()
+                _ = try await r.awaitState("ended session online") {
+                    $0.conn == .online && $0.sessions["s1"]?.info?.status == .exited
+                        && $0.machines[w.daemon.id]?.online == true
+                }
+                let feed = r.events("s1")
+                let updates = feed.updates()
+                defer { withExtendedLifetime(updates) {} }
+                await r.finishEndedPollingForTest("s1")
+                #expect(feed.followers == 1)
+                #expect(await r.liveJobs["s1"] == nil)
+                #expect(await r.liveSnapshots["s1"] == nil)
+
+                var approval = PBEvent()
+                approval.approvalRequested.approvalID = "approval-1"
+                var question = PBEvent()
+                question.questionAsked.questionID = "question-1"
+                try await w.daemon.upload("s1", approval, question)
+                try await w.daemon.putSession("s1", session("/test-project", "test session", status: .running))
+                _ = try await r.awaitState("resumed session metadata") {
+                    $0.sessions["s1"]?.info?.status == .running
+                }
+                // Consume the original subscription: a new subscription would
+                // restart polling itself and hide the missing metadata restart.
+                let live = try await withTimeout(3000, sleep: realSleep) {
+                    for await snapshot in updates {
+                        if let live = snapshot.live, live.session.status == .running { return live }
+                    }
+                    throw TestFailure("resumed session did not publish a live snapshot")
+                }
+                #expect(live.actions.contains { $0.approvalRequested.approvalID == "approval-1" })
+                #expect(live.actions.contains { $0.questionAsked.questionID == "question-1" })
+            }
+        }
     }
 }
