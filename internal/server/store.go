@@ -953,9 +953,8 @@ func (t *tstore) events(ctx context.Context, sessionID string, after uint64, lim
 	return out, more, nil
 }
 
-// removeDevice deletes a device of the account and its logins. For a
-// machine it also deletes its sessions and their events. It reports
-// whether the device was a machine.
+// removeDevice deletes a device of the account and its logins, retaining
+// its archives. It reports whether the device was a machine.
 func (t *tstore) removeDevice(ctx context.Context, id string) (bool, error) {
 	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -969,10 +968,9 @@ func (t *tstore) removeDevice(ctx context.Context, id string) (bool, error) {
 	return machine, tx.Commit()
 }
 
-// removeDeviceTx is the removal used both by the old explicit path and when
-// an accepted state drops a member. It keeps a tombstone, ends the device's
-// logins and push targets, and for a machine deletes its sessions, events and
-// images and recomputes the account's event bytes.
+// removeDeviceTx revokes a device when an accepted state drops a member.
+// It keeps a tombstone and ends logins and push targets. Machine archives
+// and their storage accounting stay until explicitly deleted.
 func removeDeviceTx(ctx context.Context, tx *sql.Tx, acct, id string) (bool, error) {
 	// Tombstone and cancel admissions even when there is no device row: a
 	// half-added member must never register with an old approval.
@@ -1000,9 +998,6 @@ func removeDeviceTx(ctx context.Context, tx *sql.Tx, acct, id string) (bool, err
 		if _, err := tx.ExecContext(ctx, q, acct, id); err != nil {
 			return false, err
 		}
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE accounts SET event_bytes = (SELECT COALESCE(SUM(LENGTH(envelope)), 0) FROM events WHERE account_id = ?1) WHERE id = ?1`, acct); err != nil {
-		return false, err
 	}
 	return pb.DeviceKind(kind) == pb.DeviceKind_DEVICE_KIND_MACHINE, nil
 }
