@@ -31,8 +31,15 @@ func checkEnvelope(env *pb.Envelope, want *pb.Header) (*pb.Header, error) {
 	if env == nil {
 		return nil, invalid("missing envelope")
 	}
-	if proto.Size(env) > maxEnvelopeBytes {
-		return nil, invalid("envelope larger than %d bytes", maxEnvelopeBytes)
+	limit := maxEnvelopeBytes
+	switch want.Kind {
+	case pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY:
+		limit = maxSessionKeyEnvelopeBytes
+	case pb.PayloadKind_PAYLOAD_KIND_SESSION_META:
+		limit = maxSessionMetaEnvelopeBytes
+	}
+	if proto.Size(env) > limit {
+		return nil, invalid("envelope larger than %d bytes", limit)
 	}
 	h := &pb.Header{}
 	if err := proto.Unmarshal(env.Header, h); err != nil {
@@ -215,13 +222,14 @@ func (c *clientService) ListMachines(ctx context.Context, req *connect.Request[p
 
 func (c *clientService) ListRemoteSessions(ctx context.Context, req *connect.Request[pb.ListRemoteSessionsRequest]) (*connect.Response[pb.ListRemoteSessionsResponse], error) {
 	t := c.s.tenantFrom(ctx)
+	budget := &sessionBudget{}
 	if ids := req.Msg.SessionIds; len(ids) > 0 {
 		if len(ids) > maxSessionPage {
 			return nil, invalid("at most %d session IDs per request", maxSessionPage)
 		}
-		ss, err := t.store.sessionsByID(ctx, ids)
+		ss, err := t.store.sessionsByID(ctx, ids, budget)
 		if err != nil {
-			return nil, internal(err)
+			return nil, sessionListError(err)
 		}
 		return connect.NewResponse(&pb.ListRemoteSessionsResponse{Sessions: ss}), nil
 	}
@@ -232,17 +240,24 @@ func (c *clientService) ListRemoteSessions(ctx context.Context, req *connect.Req
 	limit = min(limit, maxSessionPage)
 	var out []*pb.RemoteSession
 	if req.Msg.After == nil {
-		live, err := t.store.liveSessions(ctx)
+		live, err := t.store.liveSessions(ctx, budget)
 		if err != nil {
-			return nil, internal(err)
+			return nil, sessionListError(err)
 		}
 		out = live
 	}
-	ended, next, err := t.store.endedSessions(ctx, req.Msg.After, limit)
+	ended, next, err := t.store.endedSessions(ctx, req.Msg.After, limit, budget)
 	if err != nil {
-		return nil, internal(err)
+		return nil, sessionListError(err)
 	}
 	return connect.NewResponse(&pb.ListRemoteSessionsResponse{Sessions: append(out, ended...), Next: next}), nil
+}
+
+func sessionListError(err error) error {
+	if errors.Is(err, errSessionResponseFull) {
+		return errFull("session listing exceeds response byte budget")
+	}
+	return internal(err)
 }
 
 func (c *clientService) GetEvents(ctx context.Context, req *connect.Request[pb.GetEventsRequest]) (*connect.Response[pb.GetEventsResponse], error) {

@@ -782,39 +782,64 @@ func sessionTx(ctx context.Context, q querier, acct, id string) (*pb.RemoteSessi
 
 const sessionColumns = `session_id, machine_id, key, meta, last_seq, updated_ms, ended_ms`
 
-func scanSessions(rows *sql.Rows) ([]*pb.RemoteSession, error) {
+var errSessionResponseFull = errors.New("session response byte budget exhausted")
+
+// sessionBudget counts the protobuf response before decoding envelope blobs.
+// Stored bytes are an upper bound even for noncanonical protobuf encodings.
+type sessionBudget struct{ used int }
+
+func (b *sessionBudget) take(n int) error {
+	if n > maxSessionResponseBytes-b.used {
+		return errSessionResponseFull
+	}
+	b.used += n
+	return nil
+}
+
+func scanSessions(rows *sql.Rows, budget *sessionBudget, limit int) ([]*pb.RemoteSession, bool, error) {
 	defer rows.Close()
 	var out []*pb.RemoteSession
 	for rows.Next() {
+		// The extra ended row establishes the cursor without decoding its blobs
+		// or charging bytes that will not be included in the response.
+		if limit > 0 && len(out) == limit {
+			return out, true, nil
+		}
 		rs := &pb.RemoteSession{}
 		var key, meta []byte
 		if err := rows.Scan(&rs.SessionId, &rs.MachineId, &key, &meta, &rs.LastSeq, &rs.UpdatedMs, &rs.EndedMs); err != nil {
-			return nil, err
+			return nil, false, err
+		}
+		n := proto.Size(rs)
+		for _, raw := range [][]byte{key, meta} {
+			if raw != nil {
+				n += 1 + protowire.SizeBytes(len(raw))
+			}
+		}
+		if err := budget.take(1 + protowire.SizeBytes(n)); err != nil {
+			return nil, false, err
 		}
 		rs.Key, rs.Meta = unmarshalEnv(key), unmarshalEnv(meta)
 		out = append(out, rs)
 	}
-	return out, rows.Err()
+	return out, false, rows.Err()
 }
 
-// liveSessions returns every session that has not ended.
-func (t *tstore) liveSessions(ctx context.Context) ([]*pb.RemoteSession, error) {
+// liveSessions returns every session that has not ended, or a capacity error.
+func (t *tstore) liveSessions(ctx context.Context, budget *sessionBudget) ([]*pb.RemoteSession, error) {
 	rows, err := t.db.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND ended_ms = 0 ORDER BY updated_ms DESC`, t.acct)
 	if err != nil {
 		return nil, err
 	}
-	return scanSessions(rows)
+	out, _, err := scanSessions(rows, budget, 0)
+	return out, err
 }
 
-// endedSessions returns up to limit ended sessions after the cursor, from
-// the latest ended to the earliest, and the cursor for the rest if there
-// are more.
-func (t *tstore) endedSessions(ctx context.Context, after *pb.SessionCursor, limit int) ([]*pb.RemoteSession, *pb.SessionCursor, error) {
+// endedSessions returns up to limit ended sessions and a cursor for the rest.
+func (t *tstore) endedSessions(ctx context.Context, after *pb.SessionCursor, limit int, budget *sessionBudget) ([]*pb.RemoteSession, *pb.SessionCursor, error) {
 	query := `SELECT ` + sessionColumns + ` FROM sessions WHERE account_id = ? AND ended_ms > 0`
 	args := []any{t.acct}
 	if after != nil {
-		// The bound on ended_ms alone lets SQLite seek into the index to
-		// the cursor; without it every page scans the ones before it.
 		query += ` AND ended_ms <= ? AND (ended_ms < ? OR session_id > ?)`
 		args = append(args, after.EndedMs, after.EndedMs, after.SessionId)
 	}
@@ -822,26 +847,31 @@ func (t *tstore) endedSessions(ctx context.Context, after *pb.SessionCursor, lim
 	if err != nil {
 		return nil, nil, err
 	}
-	out, err := scanSessions(rows)
-	if err != nil || len(out) <= limit {
+	out, more, err := scanSessions(rows, budget, limit)
+	if err != nil || !more {
 		return out, nil, err
 	}
-	last := out[limit-1]
-	return out[:limit], &pb.SessionCursor{EndedMs: last.EndedMs, SessionId: last.SessionId}, nil
+	last := out[len(out)-1]
+	next := &pb.SessionCursor{EndedMs: last.EndedMs, SessionId: last.SessionId}
+	if err := budget.take(1 + protowire.SizeBytes(proto.Size(next))); err != nil {
+		return nil, nil, err
+	}
+	return out, next, nil
 }
 
 // sessionsByID returns those of the sessions named that exist.
-func (t *tstore) sessionsByID(ctx context.Context, ids []string) ([]*pb.RemoteSession, error) {
+func (t *tstore) sessionsByID(ctx context.Context, ids []string, budget *sessionBudget) ([]*pb.RemoteSession, error) {
 	var out []*pb.RemoteSession
 	for _, id := range ids {
-		rs, err := sessionTx(ctx, t.db, t.acct, id)
-		if errors.Is(err, sql.ErrNoRows) {
-			continue
-		}
+		rows, err := t.db.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND session_id = ?`, t.acct, id)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, rs)
+		ss, _, err := scanSessions(rows, budget, 0)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, ss...)
 	}
 	return out, nil
 }

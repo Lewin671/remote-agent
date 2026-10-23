@@ -37,7 +37,7 @@ func TestSessionPaging(t *testing.T) {
 	for i := 1; i <= 7; i++ {
 		put(fmt.Sprintf("ended-%d", i), int64(1000*(i/2+1)))
 	}
-	live, err := ts.liveSessions(ctx)
+	live, err := ts.liveSessions(ctx, &sessionBudget{})
 	if err != nil || len(live) != 2 {
 		t.Fatalf("live sessions: %v, %v", live, err)
 	}
@@ -45,7 +45,7 @@ func TestSessionPaging(t *testing.T) {
 	var after *pb.SessionCursor
 	pages := 0
 	for {
-		page, next, err := ts.endedSessions(ctx, after, 3)
+		page, next, err := ts.endedSessions(ctx, after, 3, &sessionBudget{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,7 +66,7 @@ func TestSessionPaging(t *testing.T) {
 		t.Fatalf("ended sessions in %d pages: %v, want %v", pages, got, want)
 	}
 	// A full last page has no cursor after it.
-	if page, next, _ := ts.endedSessions(ctx, nil, 7); len(page) != 7 || next != nil {
+	if page, next, _ := ts.endedSessions(ctx, nil, 7, &sessionBudget{}); len(page) != 7 || next != nil {
 		t.Fatalf("a page of exactly the rest: %d sessions, next %v", len(page), next)
 	}
 
@@ -75,27 +75,27 @@ func TestSessionPaging(t *testing.T) {
 	if _, err := ts.putSession(ctx, "m", "live-a", nil, 1, []byte("meta"), 2, 9000, nil); err != nil {
 		t.Fatal(err)
 	}
-	if live, _ := ts.liveSessions(ctx); len(live) != 1 || live[0].SessionId != "live-b" {
+	if live, _ := ts.liveSessions(ctx, &sessionBudget{}); len(live) != 1 || live[0].SessionId != "live-b" {
 		t.Fatalf("live after one ended: %v", live)
 	}
-	if page, _, _ := ts.endedSessions(ctx, nil, 1); page[0].SessionId != "live-a" {
+	if page, _, _ := ts.endedSessions(ctx, nil, 1, &sessionBudget{}); page[0].SessionId != "live-a" {
 		t.Fatalf("latest ended: %v", page[0].SessionId)
 	}
 	if _, err := ts.putSession(ctx, "m", "live-a", nil, 1, []byte("meta"), 1, 0, nil); err != nil {
 		t.Fatal(err)
 	}
-	if live, _ := ts.liveSessions(ctx); len(live) != 1 {
+	if live, _ := ts.liveSessions(ctx, &sessionBudget{}); len(live) != 1 {
 		t.Fatal("an older revision brought the session back")
 	}
 	if _, err := ts.putSession(ctx, "m", "live-a", nil, 1, []byte("meta"), 3, 0, nil); err != nil {
 		t.Fatal(err)
 	}
-	if live, _ := ts.liveSessions(ctx); len(live) != 2 {
+	if live, _ := ts.liveSessions(ctx, &sessionBudget{}); len(live) != 2 {
 		t.Fatal("a resumed session is not live")
 	}
 
 	// By ID: those that exist, whatever their state.
-	byID, err := ts.sessionsByID(ctx, []string{"ended-1", "nope", "live-b"})
+	byID, err := ts.sessionsByID(ctx, []string{"ended-1", "nope", "live-b"}, &sessionBudget{})
 	if err != nil || len(byID) != 2 || byID[0].SessionId != "ended-1" || byID[0].EndedMs != 1000 {
 		t.Fatalf("by ID: %v, %v", byID, err)
 	}

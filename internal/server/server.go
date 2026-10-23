@@ -70,13 +70,18 @@ type Config struct {
 
 // Limits on what peers may send.
 const (
-	maxEnvelopeBytes       = 1 << 20
-	maxUploadEvents        = 500
-	maxRequestBytes        = 8 << 20
-	maxAuthRequestBytes    = 16 << 10
-	maxPairingRequestBytes = 2 << 20
-	maxFrameBytes          = 2 << 20
-	defaultEventPage       = 200
+	maxEnvelopeBytes = 1 << 20
+	// Session plaintext is a 32-byte key or at most 64 KiB of metadata.
+	// 4 KiB covers both headers, signature, nonce, AEAD tag and framing.
+	maxSessionKeyEnvelopeBytes  = 4 << 10
+	maxSessionMetaEnvelopeBytes = 68 << 10
+	maxSessionResponseBytes     = 32 << 20
+	maxUploadEvents             = 500
+	maxRequestBytes             = 8 << 20
+	maxAuthRequestBytes         = 16 << 10
+	maxPairingRequestBytes      = 2 << 20
+	maxFrameBytes               = 2 << 20
+	defaultEventPage            = 200
 	// Ended sessions per page of the listing.
 	defaultSessionPage = 50
 	maxSessionPage     = 200
