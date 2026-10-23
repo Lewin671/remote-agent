@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"os"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -17,7 +16,7 @@ import (
 type handler struct {
 	remoteagentv1connect.UnimplementedLocalServiceHandler
 	d       *Daemon
-	readDir func(string) ([]os.DirEntry, error)
+	openDir func(string) (directoryReader, error)
 }
 
 func rpcErr(err error) error {
@@ -304,8 +303,8 @@ func (h *handler) AnswerPlan(ctx context.Context, req *connect.Request[pb.Answer
 }
 
 func (h *handler) ListDirectories(ctx context.Context, req *connect.Request[pb.ListDirectoriesRequest]) (*connect.Response[pb.ListDirectoriesResponse], error) {
-	res, err := listDirectories(ctx, req.Msg.Path, h.readDir)
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+	res, err := listDirectories(ctx, req.Msg.Path, h.openDir)
+	if connect.CodeOf(err) == connect.CodeResourceExhausted || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return nil, rpcErr(err)
 	}
 	if err != nil {

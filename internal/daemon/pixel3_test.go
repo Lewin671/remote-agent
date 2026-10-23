@@ -14,7 +14,7 @@ import (
 func TestDirectoryRPCDeadlineDoesNotWaitForBlockedReader(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
 	defer close(release)
-	h := &handler{readDir: func(string) ([]os.DirEntry, error) { close(entered); <-release; return nil, nil }}
+	h := &handler{openDir: func(string) (directoryReader, error) { close(entered); <-release; return nil, os.ErrNotExist }}
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	result := make(chan error, 1)

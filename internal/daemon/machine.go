@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/codex"
@@ -32,8 +34,16 @@ func (d *Daemon) listModels(k pb.Agent) (*pb.ListModelsResponse, error) {
 
 // --- directories ---
 
+const maxDirectoryEntries = 20000
+const directoryBatchSize = 256
+
+type directoryReader interface {
+	ReadDir(int) ([]os.DirEntry, error)
+	Close() error
+}
+
 // listDirectories lists the folders in a directory, hidden ones left out.
-func listDirectories(ctx context.Context, path string, readDir func(string) ([]os.DirEntry, error)) (*pb.ListDirectoriesResponse, error) {
+func listDirectories(ctx context.Context, path string, openDir func(string) (directoryReader, error)) (*pb.ListDirectoriesResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, contextio.Timeout)
 	defer cancel()
 	home, _ := os.UserHomeDir()
@@ -47,38 +57,61 @@ func listDirectories(ctx context.Context, path string, readDir func(string) ([]o
 		return nil, errors.New("path must be absolute")
 	}
 	path = filepath.Clean(path)
-	if readDir == nil {
-		readDir = os.ReadDir
+	if openDir == nil {
+		openDir = func(path string) (directoryReader, error) { return os.Open(path) }
 	}
-	entries, err := contextio.Read(ctx, func() ([]os.DirEntry, error) { return readDir(path) })
-	if err != nil {
-		return nil, fmt.Errorf("list %s: %w", path, err)
-	}
-	out := &pb.ListDirectoriesResponse{Path: path, Home: home}
-	if parent := filepath.Dir(path); parent != path {
-		out.Parent = parent
-	}
-	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".") {
-			continue
+	return contextio.Read(ctx, func() (*pb.ListDirectoriesResponse, error) {
+		dir, err := openDir(path)
+		if err != nil {
+			return nil, fmt.Errorf("list %s: %w", path, err)
 		}
-		isDir := e.IsDir()
-		if e.Type()&os.ModeSymlink != 0 {
-			st, err := contextio.Stat(ctx, filepath.Join(path, e.Name()))
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
+		defer dir.Close()
+		out := &pb.ListDirectoriesResponse{Path: path, Home: home}
+		if parent := filepath.Dir(path); parent != path {
+			out.Parent = parent
+		}
+		scanned := 0
+		for {
+			if err := ctx.Err(); err != nil {
+				return nil, err
 			}
-			isDir = err == nil && st.IsDir()
+			entries, readErr := dir.ReadDir(directoryBatchSize)
+			if readErr != nil && readErr != io.EOF {
+				return nil, fmt.Errorf("list %s: %w", path, readErr)
+			}
+			for _, e := range entries {
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
+				scanned++
+				if scanned > maxDirectoryEntries {
+					return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("directory exceeds the 20000-entry scan limit"))
+				}
+				if strings.HasPrefix(e.Name(), ".") {
+					continue
+				}
+				isDir := e.IsDir()
+				if e.Type()&os.ModeSymlink != 0 {
+					st, err := os.Stat(filepath.Join(path, e.Name()))
+					if ctx.Err() != nil {
+						return nil, ctx.Err()
+					}
+					isDir = err == nil && st.IsDir()
+				}
+				if isDir {
+					out.Dirs = append(out.Dirs, e.Name())
+				}
+			}
+			if readErr == io.EOF {
+				break
+			}
 		}
-		if isDir {
-			out.Dirs = append(out.Dirs, e.Name())
+		sort.Slice(out.Dirs, func(i, j int) bool { return strings.ToLower(out.Dirs[i]) < strings.ToLower(out.Dirs[j]) })
+		if len(out.Dirs) > 1000 {
+			out.Dirs = out.Dirs[:1000]
 		}
-		if len(out.Dirs) >= 1000 {
-			break
-		}
-	}
-	sort.Slice(out.Dirs, func(i, j int) bool { return strings.ToLower(out.Dirs[i]) < strings.ToLower(out.Dirs[j]) })
-	return out, nil
+		return out, nil
+	})
 }
 
 // --- settings ---
