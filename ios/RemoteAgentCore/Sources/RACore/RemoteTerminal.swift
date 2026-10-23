@@ -18,25 +18,36 @@ public protocol TermListener: Sendable {
 /// Input may wait this long, in bytes, to be written before the terminal is given up on.
 private let termSendBudget = 16 << 20
 
+protocol TerminalSocket: Sendable {
+    func send(_ data: Data, done: @escaping @Sendable (Error?) -> Void)
+    func cancel()
+    func close()
+}
+
+extension Socket: TerminalSocket {}
+
 public final class TermConn: Sendable {
     private struct Out {
+        var stopped = false
         var seq: UInt64 = 0
         var queued = 0
         var tail: Task<Void, Never>?
     }
 
-    private let socket: Socket
+    private let socket: any TerminalSocket
+    private let sendBudget: Int
     private let out = OSAllocatedUnfairLock(initialState: Out())
     private let seal: @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> Data
     private let finish: @Sendable (String) -> Void
     private let closeLocal: @Sendable () -> Void
 
     init(
-        socket: Socket,
+        socket: any TerminalSocket, sendBudget: Int = termSendBudget,
         seal: @escaping @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> Data,
         finish: @escaping @Sendable (String) -> Void, closeLocal: @escaping @Sendable () -> Void
     ) {
         self.socket = socket
+        self.sendBudget = sendBudget
         self.seal = seal
         self.finish = finish
         self.closeLocal = closeLocal
@@ -49,22 +60,45 @@ public final class TermConn: Sendable {
         let bytes = (try? frame.serializedData().count) ?? 0
         let deadline = UInt64(Date().timeIntervalSince1970 * 1000) + 60_000
         let failure: String? = out.withLock { o in
-            guard o.queued + bytes <= termSendBudget else { return "终端输入等待授权，已暂停" }
+            guard !o.stopped else { return nil }
+            guard bytes <= sendBudget - o.queued else {
+                o.stopped = true
+                return "终端输入等待发送，已停止"
+            }
             o.seq += 1
             o.queued += bytes
             let seq = o.seq
             let previous = o.tail
-            o.tail = Task { [socket, seal, finish, out] in
+            o.tail = Task { [socket, seal, finish, out, sendBudget] in
                 await previous?.value
+                var reserved = bytes
+                defer {
+                    let released = reserved
+                    out.withLock { $0.queued -= released }
+                }
+                guard !out.withLock({ $0.stopped }) else { return }
                 do {
                     try Task.checkCancellation()
                     let encoded = try await seal(frame, seq, deadline)
-                    socket.send(encoded) { _ in }
+                    let accepted = out.withLock { o in
+                        guard !o.stopped, encoded.count - bytes <= sendBudget - o.queued else { return false }
+                        o.queued += encoded.count - bytes
+                        return true
+                    }
+                    guard accepted else { throw DeviceSecurity.Failure.capacity }
+                    reserved = encoded.count
+                    try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, Error>) in
+                        socket.send(encoded) { error in
+                            if let error { c.resume(throwing: error) } else { c.resume() }
+                        }
+                    }
                 } catch {
-                    finish("终端输入未获授权，已停止")
-                    socket.cancel()
+                    let first = out.withLock { o in
+                        defer { o.stopped = true }
+                        return !o.stopped
+                    }
+                    if first { finish("终端输入发送失败，已停止"); socket.cancel() }
                 }
-                out.withLock { $0.queued -= bytes }
             }
             return nil
         }
@@ -75,6 +109,7 @@ public final class TermConn: Sendable {
     }
 
     public func close() {
+        out.withLock { $0.stopped = true }
         closeLocal()
         socket.close()
     }
