@@ -48,6 +48,10 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
                 Session.newBuilder().setId(sid).setTitle(sid).build().toByteArray()))
             .setLastSeq(when (sid) { "long" -> historySize; "short" -> 2; else -> 0 }.toLong()).build()
     }
+    fun session(sid: String, revision: Long, status: SessionStatus): RemoteSession =
+        sessions.getValue(sid).toBuilder().setMeta(seal(DeviceSecurity.Purpose.SESSION_META, sid, revision,
+            Session.newBuilder().setId(sid).setStatus(status).build().toByteArray())).build()
+
     val events = listOf("long", "short", "empty").associateWith { sid ->
         (1..when (sid) { "long" -> historySize + 1; "short" -> 2; else -> 0 }).map { seq ->
             val event = Event.newBuilder().setSeq(seq.toLong()).setSessionId(sid)
@@ -148,7 +152,8 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
         sockets += it
         test.backgroundScope.launch {
             delay(latencyMs)
-            listener.onOpen(it, Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(101).message("Switching Protocols").build())
+            if (offline) listener.onFailure(it, java.io.IOException("offline"), null)
+            else listener.onOpen(it, Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(101).message("Switching Protocols").build())
         }
     }
 

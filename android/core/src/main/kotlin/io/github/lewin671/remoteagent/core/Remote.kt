@@ -539,6 +539,8 @@ class Remote(
             // Off the caller's (main) thread: clearing waits for any read holding the locks.
             security.clearCache()
             running = false
+            liveJobs.values.forEach { it.cancel() }
+            liveJobs.clear()
             authorityJob.cancel()
             stateJob?.cancel()
             stateJob = null
@@ -599,6 +601,7 @@ class Remote(
     }
 
     private fun publish() {
+        updateLivePollers()
         if (conn == ConnState.ONLINE) offlineSince = 0
         else if (offlineSince == 0L) offlineSince = clock()
         if (conn == ConnState.ONLINE || !running) {
@@ -2453,13 +2456,7 @@ class Remote(
                         f.subscriptionCount.collect { count ->
                             if (count > 0) {
                                 scope.launch { loadEvents(sid) }
-                                if (liveJobs[sid] == null)
-                                    liveJobs[sid] = scope.launch {
-                                        while (true) {
-                                            if (running) refreshLiveSnapshot(sid)
-                                            delay(5000)
-                                        }
-                                    }
+                                updateLivePollers()
                             } else {
                                 liveJobs.remove(sid)?.cancel()
                                 liveSnapshots.remove(sid)
@@ -2482,6 +2479,29 @@ class Remote(
             loadEvents(sid)
         }
         return flow
+    }
+
+    private fun canPollLive(sid: String): Boolean {
+        val session = sessions[sid] ?: return false
+        return running && conn == ConnState.ONLINE &&
+            machines[session.machineId]?.online == true && !exited(session) &&
+            session.listedEndedMs == 0L && session.info?.hasEndedAt() != true &&
+            (eventFlows[sid]?.subscriptionCount?.value ?: 0) > 0
+    }
+
+    private fun updateLivePollers() {
+        for (sid in liveJobs.keys.toList()) {
+            if (!canPollLive(sid)) liveJobs.remove(sid)?.cancel()
+        }
+        for ((sid, flow) in eventFlows) {
+            if (flow.subscriptionCount.value > 0 && canPollLive(sid) && liveJobs[sid] == null)
+                liveJobs[sid] = scope.launch {
+                    while (canPollLive(sid)) {
+                        refreshLiveSnapshot(sid)
+                        delay(5000)
+                    }
+                }
+        }
     }
 
     private fun trimHistory() {
@@ -2908,11 +2928,13 @@ class Remote(
     private suspend fun refreshLiveSnapshot(sid: String) {
         try {
             val fresh = fetchLiveSnapshot(sid)
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
             if (!running) return
             liveSnapshots[sid] = fresh
             liveErrors.remove(sid)
             buffers[sid]?.let { publishEvents(sid, it) }
         } catch (e: Exception) {
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
             if (e is CancellationException) throw e
             liveSnapshots.remove(sid)
             liveErrors[sid] = "无法核实电脑上的待处理请求，请重试或在电脑终端处理"
