@@ -32,6 +32,10 @@ type TermStream struct {
 	done   chan struct{}
 	closed sync.Once
 
+	commandMu sync.Mutex
+	ready     chan struct{} // initial attach command has completed
+	results   chan error    // one outstanding control command at a time
+
 	mu     sync.Mutex
 	fitted bool
 	live   bool // output is passed on; before the snapshot it is dropped
@@ -79,7 +83,7 @@ func (d *Daemon) OpenTerminal(sessionID string) (*TermStream, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
-	t := &TermStream{d: d, owner: s, name: name, pane: strings.TrimSpace(pane), cmd: cmd, stdin: stdin, out: make(chan []byte, termQueue), resize: make(chan struct{}, 1), done: make(chan struct{})}
+	t := &TermStream{d: d, owner: s, name: name, pane: strings.TrimSpace(pane), cmd: cmd, stdin: stdin, out: make(chan []byte, termQueue), resize: make(chan struct{}, 1), done: make(chan struct{}), ready: make(chan struct{}), results: make(chan error, 1)}
 	t.ctx, t.cancel = context.WithCancel(context.Background())
 	go t.read(stdout)
 	return t, nil
@@ -89,9 +93,32 @@ func (d *Daemon) OpenTerminal(sessionID string) (*TermStream, error) {
 func (t *TermStream) read(stdout io.Reader) {
 	r := bufio.NewReaderSize(stdout, 64<<10)
 	prefix := "%output " + t.pane + " "
+	initial, block := true, ""
 	for {
 		line, err := r.ReadString('\n')
-		if strings.HasPrefix(line, prefix) {
+		if strings.HasPrefix(line, "%begin ") {
+			block = strings.TrimPrefix(line, "%begin ")
+		} else if block != "" {
+			failed := line == "%error "+block
+			if failed || line == "%end "+block {
+				block = ""
+				if initial {
+					initial = false
+					if failed {
+						t.end("could not attach to the terminal")
+						return
+					}
+					close(t.ready)
+				} else {
+					var result error
+					if failed {
+						// Do not expose tmux's command/error text: it may echo input.
+						result = errors.New("terminal input command failed")
+					}
+					t.results <- result
+				}
+			}
+		} else if strings.HasPrefix(line, prefix) {
 			data := decodeOutput(strings.TrimSuffix(line[len(prefix):], "\n"))
 			t.mu.Lock()
 			live := t.live
@@ -215,10 +242,35 @@ func (t *TermStream) Reason() string {
 // Input types bytes into the session like the local keyboard does: they
 // reach the PTY host, which holds them while remote input is injected.
 func (t *TermStream) Input(b []byte) error {
-	return t.inputUsing(b, func(args []string) error {
-		_, err := t.d.cfg.Tmux.Run(args...)
+	return t.inputUsing(b, t.command)
+}
+
+// command sends only on the existing private pipe, and waits for its result.
+// A lost reply ends the stream so it cannot be mistaken for the next reply.
+func (t *TermStream) command(args []string) error {
+	t.commandMu.Lock()
+	defer t.commandMu.Unlock()
+	timer := time.AfterFunc(5*time.Second, func() { t.end("terminal input timed out") })
+	defer timer.Stop()
+	select {
+	case <-t.ready:
+	case <-t.ctx.Done():
+		return t.ctx.Err()
+	}
+	if err := t.ctx.Err(); err != nil {
 		return err
-	})
+	}
+	// Arguments here are fixed command/target tokens or hexadecimal bytes.
+	if _, err := io.WriteString(t.stdin, strings.Join(args, " ")+"\n"); err != nil {
+		t.end("terminal input pipe closed")
+		return errors.New("terminal input pipe closed")
+	}
+	select {
+	case err := <-t.results:
+		return err
+	case <-t.ctx.Done():
+		return t.ctx.Err()
+	}
 }
 
 func (t *TermStream) inputUsing(b []byte, run func([]string) error) error {
@@ -232,7 +284,7 @@ func (t *TermStream) inputUsing(b []byte, run func([]string) error) error {
 	}
 	for len(b) > 0 {
 		n := min(len(b), 256)
-		args := []string{"send-keys", "-t", "=" + t.name + ":", "-H"}
+		args := []string{"send-keys", "-t", t.pane, "-H"}
 		for _, c := range b[:n] {
 			args = append(args, fmt.Sprintf("%02x", c))
 		}
