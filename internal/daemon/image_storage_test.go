@@ -137,7 +137,7 @@ func TestRestartReconcilesCancelledAndEmbeddedImageRecords(t *testing.T) {
 	}
 	defer log.Close()
 	// Queue removal saved, crash before reference removal.
-	u.restoreRefs(&session{meta: meta{ID: "s"}, queue: &queueState{}, log: log})
+	restoreImageRefs(t, u, &session{meta: meta{ID: "s"}, queue: &queueState{}, log: log})
 	if _, err := os.Stat(imgs[0].Path); !os.IsNotExist(err) {
 		t.Fatal("cancelled original survived recovery", err)
 	}
@@ -154,7 +154,7 @@ func TestRestartReconcilesCancelledAndEmbeddedImageRecords(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Event durable, crash before embedded acknowledgement and reference release.
-	u.restoreRefs(&session{meta: meta{ID: "s"}, queue: &queueState{}, log: log})
+	restoreImageRefs(t, u, &session{meta: meta{ID: "s"}, queue: &queueState{}, log: log})
 	tr := u.byImage(id)
 	if tr == nil || !tr.Embedded || len(tr.Refs) != 0 {
 		t.Fatalf("lost embedded witness: %v", tr)
@@ -214,5 +214,61 @@ func TestImageQuotaSurvivesRestart(t *testing.T) {
 	}
 	if _, err := h.d.updateSettings(&pb.DaemonSettings{ImageUploadQuotaBytes: -1}); err == nil {
 		t.Fatal("negative quota accepted")
+	}
+}
+
+func restoreImageRefs(t *testing.T, u *uploads, s *session) {
+	t.Helper()
+	records, err := u.referenceRecords()
+	if err != nil {
+		t.Fatal(err)
+	}
+	u.restoreRefs(s, records[s.meta.ID])
+}
+
+func TestRestoreRefsSkipsHistoryWithoutImageRecords(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	u := newUploads()
+	// A nil log makes any unnecessary witness scan fail immediately.
+	u.restoreRefs(&session{meta: meta{ID: "text-only"}}, nil)
+	u.restoreRefs(&session{meta: meta{ID: "incomplete"}, queue: &queueState{}}, []*transfer{{ID: "partial", Session: "incomplete"}})
+}
+
+func TestRestoreRefsUsesOneTransferSnapshot(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	u := newUploads()
+	for _, sessionID := range []string{"first", "second"} {
+		id := storageUpload(t, u)
+		imgs, err := u.take([]string{id}, "phone", sessionID, "request")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := u.expose(imgs); err != nil {
+			t.Fatal(err)
+		}
+	}
+	records, err := u.referenceRecords()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 2 {
+		t.Fatalf("indexed sessions = %d", len(records))
+	}
+	// The restoration must use its snapshot, not load transfers again.
+	for _, sessionID := range []string{"first", "second"} {
+		tr := records[sessionID][0]
+		if err := os.Remove(u.partial(tr.ID) + ".json"); err != nil {
+			t.Fatal(err)
+		}
+		log, err := eventlog.Open(filepath.Join(t.TempDir(), "events.jsonl"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		u.restoreRefs(&session{meta: meta{ID: sessionID}, queue: &queueState{}, log: log}, records[sessionID])
+		log.Close()
+		got, err := u.load(tr.ID)
+		if err != nil || len(got.Refs) != 0 {
+			t.Fatalf("snapshot not reconciled: %v %v", got, err)
+		}
 	}
 }

@@ -370,38 +370,50 @@ func (d *Daemon) imageGCLoop(stop <-chan struct{}) {
 	}
 }
 
-// On startup the saved queue, not an interrupted reference update, wins.
-func (u *uploads) restoreRefs(s *session) {
+// referenceRecords loads the transfer index once before session restoration.
+func (u *uploads) referenceRecords() (map[string][]*transfer, error) {
 	records, err := u.records()
 	if err != nil {
-		slog.Error("list image references", "session", s.meta.ID, "err", errClass(err))
+		return nil, err
+	}
+	bySession := map[string][]*transfer{}
+	for _, t := range records {
+		if t.Session != "" {
+			bySession[t.Session] = append(bySession[t.Session], t)
+		}
+	}
+	return bySession, nil
+}
+
+// On startup the saved queue, not an interrupted reference update, wins.
+func (u *uploads) restoreRefs(s *session, records []*transfer) {
+	if len(records) == 0 {
 		return
 	}
 	wanted := map[string]bool{}
 	for _, t := range records {
-		if t.Session == s.meta.ID && t.ImageID != "" {
+		if t.ImageID != "" {
 			wanted[t.ImageID] = true
 		}
 	}
 	witness := map[string]bool{}
-	if err := s.log.Each(func(e *pb.Event) {
-		if m := e.GetUserMessage(); m != nil {
-			for _, ref := range m.Images {
-				if ref.UploadId != "" && ref.ImageId != "" && wanted[ref.UploadId] {
-					witness[ref.UploadId] = true
+	if len(wanted) > 0 {
+		if err := s.log.Each(func(e *pb.Event) {
+			if m := e.GetUserMessage(); m != nil {
+				for _, ref := range m.Images {
+					if ref.UploadId != "" && ref.ImageId != "" && wanted[ref.UploadId] {
+						witness[ref.UploadId] = true
+					}
 				}
 			}
+		}); err != nil {
+			slog.Error("restore image references", "session", s.meta.ID, "err", errClass(err))
+			return
 		}
-	}); err != nil {
-		slog.Error("restore image references", "session", s.meta.ID, "err", errClass(err))
-		return
 	}
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	for _, t := range records {
-		if t.Session != s.meta.ID {
-			continue
-		}
 		refs := map[string]bool{}
 		for _, in := range s.queue.Queue {
 			for _, im := range in.Images {

@@ -275,6 +275,10 @@ func (d *Daemon) restore() error {
 			live[info.Name+"\x00"+info.SessionID] = true
 		}
 	}
+	imageRecords, err := d.uploads.referenceRecords()
+	if err != nil {
+		slog.Error("list image references", "err", errClass(err))
+	}
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -306,7 +310,7 @@ func (d *Daemon) restore() error {
 		d.mu.Lock()
 		d.sessions[m.ID] = s
 		d.mu.Unlock()
-		d.uploads.restoreRefs(s)
+		d.uploads.restoreRefs(s, imageRecords[m.ID])
 		s.cancelStaleApprovals()
 		if m.Exited && alive {
 			// Marked exited while still running, as when tmux was misread;
