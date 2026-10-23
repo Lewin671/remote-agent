@@ -169,6 +169,8 @@ func decodeImageData(data, transcript string) ([]byte, error) {
 // making and keeping its display copy for the relay. Whatever fails, the
 // ref says what is left (a preview, or only its name).
 func (st *imageStore) process(f agent.FoundImage, transcript string) {
+	permit := imageproc.Acquire()
+	defer permit.Release()
 	ref := f.Ref
 	raw, err := decodeImageData(f.Data, transcript)
 	if err != nil {
@@ -194,7 +196,7 @@ func (st *imageStore) process(f agent.FoundImage, transcript string) {
 		return
 	}
 
-	pr, err := imageproc.Process(raw, imageproc.DefaultLimits, func(e imageproc.Encoded) bool {
+	pr, err := permit.Process(raw, imageproc.DefaultLimits, func(e imageproc.Encoded) bool {
 		return proto.Size(&pb.ImagePayload{Format: e.Format, Width: int32(e.Width), Height: int32(e.Height), Data: e.Data}) <= maxImageEnvelope
 	})
 	if err != nil {

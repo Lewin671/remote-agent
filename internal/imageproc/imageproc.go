@@ -18,6 +18,7 @@ import (
 	"image/gif"
 	"image/jpeg"
 	"image/png"
+	"sync"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"golang.org/x/image/draw"
@@ -49,8 +50,9 @@ var (
 	ErrNoFit    = errors.New("imageproc: the display copy does not fit")
 )
 
-// sem bounds how many images are decoded at once, across sessions.
-var sem = make(chan struct{}, 2)
+// Admission bounds materialized image operations across sessions.
+var admission = sync.NewCond(new(sync.Mutex))
+var admittedImages int
 
 // Sniff tells an image's format by its first bytes.
 func Sniff(b []byte) pb.ImageFormat {
@@ -121,15 +123,45 @@ func Config(b []byte) (pb.ImageFormat, int, int, error) {
 	return f, cfg.Width, cfg.Height, nil
 }
 
+// Permit admits one image operation across sessions. Acquire it before
+// materializing blob/base64 bytes, and release it only after the last use of
+// decoded pixels and derived copies. A permit is used by one goroutine.
+type Permit struct{ active bool }
+
+func Acquire() *Permit {
+	admission.L.Lock()
+	for admittedImages == 2 {
+		admission.Wait()
+	}
+	admittedImages++
+	admission.L.Unlock()
+	return &Permit{active: true}
+}
+
+func (p *Permit) Release() {
+	p.checkActive()
+	p.active = false
+	admission.L.Lock()
+	admittedImages--
+	admission.Signal()
+	admission.L.Unlock()
+}
+
+func (p *Permit) checkActive() {
+	if p == nil || !p.active {
+		panic("imageproc: inactive permit")
+	}
+}
+
 // Decode decodes one image (the first frame of an animation) within lim,
-// turned upright by its EXIF orientation.
-func Decode(b []byte, lim Limits) (image.Image, pb.ImageFormat, error) {
+// turned upright by its EXIF orientation. The permit covers all uses of the
+// returned pixels, including validation, metadata cleaning and encoding.
+func (p *Permit) Decode(b []byte, lim Limits) (image.Image, pb.ImageFormat, error) {
+	p.checkActive()
 	f, err := check(b, lim)
 	if err != nil {
 		return nil, f, err
 	}
-	sem <- struct{}{}
-	defer func() { <-sem }()
 	return decode(b, f)
 }
 
@@ -297,19 +329,20 @@ type Processed struct {
 // copy (see Display for fits), holding one of the permits throughout, so
 // that no more than two images are held decoded at a time.
 func Process(b []byte, lim Limits, fits func(Encoded) bool) (*Processed, error) {
-	f, err := check(b, lim)
-	if err != nil {
-		return nil, err
-	}
-	sem <- struct{}{}
-	defer func() { <-sem }()
-	img, f, err := decode(b, f)
+	p := Acquire()
+	defer p.Release()
+	return p.Process(b, lim, fits)
+}
+
+// Process uses the caller's admission, which can also cover reading the source.
+func (p *Permit) Process(b []byte, lim Limits, fits func(Encoded) bool) (*Processed, error) {
+	img, f, err := p.Decode(b, lim)
 	if err != nil {
 		return nil, err
 	}
 	bd := img.Bounds()
-	p := &Processed{Format: f, Width: bd.Dx(), Height: bd.Dy()}
-	p.Preview, p.PreviewErr = Preview(img)
-	p.Display, p.DisplayErr = Display(img, fits)
-	return p, nil
+	result := &Processed{Format: f, Width: bd.Dx(), Height: bd.Dy()}
+	result.Preview, result.PreviewErr = Preview(img)
+	result.Display, result.DisplayErr = Display(img, fits)
+	return result, nil
 }

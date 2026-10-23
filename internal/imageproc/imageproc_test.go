@@ -67,11 +67,13 @@ func exifJPEG(t *testing.T) []byte {
 }
 
 func TestOrientationAndStripJPEG(t *testing.T) {
+	permit := Acquire()
+	defer permit.Release()
 	b := exifJPEG(t)
 	if o := Orientation(b); o != 6 {
 		t.Fatalf("orientation %d", o)
 	}
-	img, f, err := Decode(b, DefaultLimits)
+	img, f, err := permit.Decode(b, DefaultLimits)
 	if err != nil || f != pb.ImageFormat_IMAGE_FORMAT_JPEG {
 		t.Fatal(err)
 	}
@@ -82,7 +84,7 @@ func TestOrientationAndStripJPEG(t *testing.T) {
 	if r, _, bl, _ := img.At(10, 5).RGBA(); r < 0x8000 || bl > 0x8000 {
 		t.Fatal("turned the wrong way")
 	}
-	clean, err := StripMetadata(b)
+	clean, err := permit.StripMetadata(b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +100,7 @@ func TestOrientationAndStripJPEG(t *testing.T) {
 	if Orientation(plain) != 1 {
 		t.Fatal("orientation not reset in the test image")
 	}
-	clean, err = StripMetadata(plain)
+	clean, err = permit.StripMetadata(plain)
 	if err != nil || bytes.Contains(clean, []byte("GPS-LATITUDE")) {
 		t.Fatalf("strip: %v", err)
 	}
@@ -139,11 +141,13 @@ func TestStripPNGAndWebP(t *testing.T) {
 }
 
 func TestPreviewAndDisplay(t *testing.T) {
+	permit := Acquire()
+	defer permit.Release()
 	big := encPNG(t, noise(3000, 2000, false))
 	if len(big) < 3<<20 {
 		t.Fatalf("test image only %d bytes", len(big))
 	}
-	img, _, err := Decode(big, DefaultLimits)
+	img, _, err := permit.Decode(big, DefaultLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +162,7 @@ func TestPreviewAndDisplay(t *testing.T) {
 	}
 
 	// Transparency keeps PNG, shrinking until it fits.
-	img, _, _ = Decode(encPNG(t, noise(1500, 1500, true)), DefaultLimits)
+	img, _, _ = permit.Decode(encPNG(t, noise(1500, 1500, true)), DefaultLimits)
 	d, err = Display(img, func(e Encoded) bool { return len(e.Data) <= limit })
 	if err != nil || d.Format != pb.ImageFormat_IMAGE_FORMAT_PNG || len(d.Data) > limit {
 		t.Fatalf("transparent display %v %v %d", err, d.Format, len(d.Data))
@@ -169,17 +173,19 @@ func TestPreviewAndDisplay(t *testing.T) {
 }
 
 func TestLimits(t *testing.T) {
+	permit := Acquire()
+	defer permit.Release()
 	b := encPNG(t, noise(100, 100, false))
-	if _, _, err := Decode(b, Limits{MaxBytes: 10, MaxPixels: 1 << 30}); err != ErrTooLarge {
+	if _, _, err := permit.Decode(b, Limits{MaxBytes: 10, MaxPixels: 1 << 30}); err != ErrTooLarge {
 		t.Fatalf("bytes: %v", err)
 	}
-	if _, _, err := Decode(b, Limits{MaxBytes: 1 << 30, MaxPixels: 9999}); err != ErrTooLarge {
+	if _, _, err := permit.Decode(b, Limits{MaxBytes: 1 << 30, MaxPixels: 9999}); err != ErrTooLarge {
 		t.Fatalf("pixels: %v", err)
 	}
-	if _, _, err := Decode([]byte("<svg/>"), DefaultLimits); err == nil {
+	if _, _, err := permit.Decode([]byte("<svg/>"), DefaultLimits); err == nil {
 		t.Fatal("svg accepted")
 	}
-	if _, _, err := Decode(b[:len(b)/2], DefaultLimits); err == nil {
+	if _, _, err := permit.Decode(b[:len(b)/2], DefaultLimits); err == nil {
 		t.Fatal("truncated image accepted")
 	}
 }
@@ -397,6 +403,8 @@ func exifPNG(t *testing.T) []byte {
 // own decoders; the copies made here carry no tag, so the pixels must be
 // turned.
 func TestOrientationOfPNGAndWebP(t *testing.T) {
+	permit := Acquire()
+	defer permit.Release()
 	red := func(img image.Image, x, y int) bool {
 		r, _, b, _ := img.At(x, y).RGBA()
 		return r > 0x8000 && b < 0x8000
@@ -405,7 +413,7 @@ func TestOrientationOfPNGAndWebP(t *testing.T) {
 	if o := Orientation(b); o != 6 {
 		t.Fatalf("png orientation %d", o)
 	}
-	img, f, err := Decode(b, DefaultLimits)
+	img, f, err := permit.Decode(b, DefaultLimits)
 	if err != nil || f != pb.ImageFormat_IMAGE_FORMAT_PNG {
 		t.Fatal(err, f)
 	}
@@ -413,7 +421,7 @@ func TestOrientationOfPNGAndWebP(t *testing.T) {
 	if bd := img.Bounds(); bd.Dx() != 20 || bd.Dy() != 40 || !red(img, 10, 5) || red(img, 10, 35) {
 		t.Fatalf("png not turned upright: %v", bd)
 	}
-	p, err := Process(b, DefaultLimits, func(Encoded) bool { return true })
+	p, err := permit.Process(b, DefaultLimits, func(Encoded) bool { return true })
 	if err != nil || p.Width != 20 || p.Height != 40 || p.Preview.Width != 20 || p.Display.Height != 40 {
 		t.Fatalf("processed png: %v %+v", err, p)
 	}
@@ -423,7 +431,7 @@ func TestOrientationOfPNGAndWebP(t *testing.T) {
 		if o := Orientation(b); o != 6 {
 			t.Fatalf("webp orientation %d (Exif header %v)", o, header)
 		}
-		img, f, err = Decode(b, DefaultLimits)
+		img, f, err = permit.Decode(b, DefaultLimits)
 		if err != nil || f != pb.ImageFormat_IMAGE_FORMAT_WEBP {
 			t.Fatal(err, f)
 		}
@@ -433,7 +441,7 @@ func TestOrientationOfPNGAndWebP(t *testing.T) {
 	}
 	// Stripping the tag alone would leave them on their side.
 	for name, b := range map[string][]byte{"png": exifPNG(t), "webp": exifWebP(6, false)} {
-		clean, err := StripMetadata(b)
+		clean, err := permit.StripMetadata(b)
 		if err != nil || Orientation(clean) != 1 || bytes.Contains(clean, []byte("eXIf")) {
 			t.Fatalf("%s: strip: %v", name, err)
 		}
@@ -443,7 +451,7 @@ func TestOrientationOfPNGAndWebP(t *testing.T) {
 		}
 	}
 	// Orientation 1 and a WebP without EXIF are left alone.
-	img, _, err = Decode(exifWebP(1, false), DefaultLimits)
+	img, _, err = permit.Decode(exifWebP(1, false), DefaultLimits)
 	if bd := img.Bounds(); err != nil || bd.Dx() != 2 || bd.Dy() != 1 || !red(img, 0, 0) || red(img, 1, 0) {
 		t.Fatalf("upright webp: %v %v", err, bd)
 	}

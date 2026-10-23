@@ -312,6 +312,8 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 	if t.Persisted != t.Total {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("only %d of %d bytes arrived", t.Persisted, t.Total))
 	}
+	permit := imageproc.Acquire()
+	defer permit.Release()
 	data, err := os.ReadFile(u.partial(t.ID) + ".part")
 	if err != nil {
 		return nil, err
@@ -329,13 +331,13 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 	if imageproc.Sniff(data) != t.Format {
 		return nil, bad("the bytes are not the format given")
 	}
-	img, _, err := imageproc.Decode(data, imageproc.DefaultLimits)
+	img, _, err := permit.Decode(data, imageproc.DefaultLimits)
 	if err != nil {
 		return nil, bad("the image does not decode")
 	}
 	// Clients remove metadata already; this makes sure no location reaches
 	// the CLI's record if one did not.
-	clean, err := imageproc.StripMetadata(data)
+	clean, err := permit.StripMetadata(data)
 	if err != nil {
 		return nil, bad("the image's metadata cannot be read")
 	}

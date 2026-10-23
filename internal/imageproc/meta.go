@@ -172,9 +172,17 @@ func orient(img image.Image, o int) image.Image {
 // since dropping the orientation alone would leave it on its side: a JPEG
 // at high quality, a PNG or a WebP as PNG (there is no WebP encoder).
 func StripMetadata(b []byte) ([]byte, error) {
+	p := Acquire()
+	defer p.Release()
+	return p.StripMetadata(b)
+}
+
+// StripMetadata reuses an existing admission while validating an upload.
+func (p *Permit) StripMetadata(b []byte) ([]byte, error) {
+	p.checkActive()
 	f := Sniff(b)
 	if Orientation(b) != 1 {
-		img, _, err := Decode(b, DefaultLimits)
+		img, _, err := p.Decode(b, DefaultLimits)
 		if err != nil {
 			return nil, err
 		}
