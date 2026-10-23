@@ -22,7 +22,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// The schedule lock covers mutations and the dispatch boundary. A durable
+// The schedule lock covers mutations, never session launch or input delivery. A durable
 // dispatching record is written before any effect. After a crash there we
 // report uncertainty instead of repeating an operation that may have run.
 func (d *Daemon) loadSchedules() error {
@@ -529,11 +529,14 @@ func (d *Daemon) scheduleLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case now := <-ticker.C:
-			d.tickSchedules(now.UTC())
+			for _, task := range d.prepareScheduledDispatches(now.UTC()) {
+				go d.dispatchScheduled(ctx, task, now.UTC())
+			}
 		}
 	}
 }
-func (d *Daemon) tickSchedules(now time.Time) {
+func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
+	var dispatches []*schedule.Task
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	for _, t := range d.tasks {
@@ -541,7 +544,7 @@ func (d *Daemon) tickSchedules(now time.Time) {
 			continue
 		}
 		prev := schedule.Clone(t)
-		changed := false
+		changed, dispatch := false, false
 		late, hadLate := d.lateRuns[t.ID]
 		if t.Active != nil {
 			changed = d.watchScheduledRun(t, now)
@@ -611,13 +614,20 @@ func (d *Daemon) tickSchedules(now time.Time) {
 				t.NextRunAt = nil
 				t.Reason = "run_limit_reached"
 			} else {
-				d.dispatchScheduled(t, now)
+				if t.ScopedSession != "" && d.restrictMCPTask(t, false) != nil {
+					t.Status, t.Reason = "paused", "agent_schedule_permissions_changed"
+				} else {
+					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching"}
+					t.Status = "dispatching"
+					t.Dispatches++
+					dispatch = true
+				}
 			}
 		}
 		if changed {
 			touchTask(t, now)
 			if err := d.saveSchedulesLocked(); err != nil {
-				if t.Dispatches == prev.Dispatches && !fileReplaced(err) {
+				if !fileReplaced(err) {
 					d.tasks[t.ID] = prev
 					if hadLate {
 						d.lateRuns[t.ID] = late
@@ -631,33 +641,20 @@ func (d *Daemon) tickSchedules(now time.Time) {
 					}
 				}
 				slog.Error("save scheduled tasks", "task", t.ID, "err", errClass(err))
+				continue
+			}
+			if dispatch {
+				dispatches = append(dispatches, schedule.Clone(t))
 			}
 		}
 	}
+	return dispatches
 }
 
-func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
-	if t.ScopedSession != "" {
-		if err := d.restrictMCPTask(t, false); err != nil {
-			t.Status, t.Reason = "paused", "agent_schedule_permissions_changed"
-			return
-		}
-	}
-	run := &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching"}
-	t.Active = run
-	t.Status = "dispatching"
-	t.Dispatches++
-	if err := d.saveSchedulesLocked(); err != nil {
-		if !fileReplaced(err) {
-			t.Active = nil
-			t.Dispatches--
-			t.Status = "scheduled"
-		} else {
-			t.Active.Status = "uncertain"
-			t.Status, t.Reason = "uncertain", "could_not_persist_dispatch"
-			t.NextRunAt = nil
-		}
-		return
+// launchScheduledSession only reads its detached task snapshot.
+func (d *Daemon) launchScheduledSession(ctx context.Context, t *schedule.Task) (*session, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	var s *session
 	var err error
@@ -669,7 +666,7 @@ func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
 			exited := s.meta.Exited
 			s.mu.Unlock()
 			if exited {
-				s, err = d.resume(target.Session)
+				s, err = d.resumeContext(ctx, target.Session)
 				if errors.Is(err, errRunning) {
 					s, err = d.exact(target.Session)
 				}
@@ -694,57 +691,103 @@ func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
 		}
 		terminal := t.SourceSession != "" && !shell
 		// No prompt here: the scheduled input uses its own stable request ID.
-		s, err = d.createBy(&pb.CreateSessionRequest{Cwd: target.Cwd, Agent: kind, Model: target.Model, Effort: target.Effort, Mode: mode, Env: env}, originSystem, shell, terminal, "the session's saved PATH")
+		s, err = d.createByContext(ctx, &pb.CreateSessionRequest{Cwd: target.Cwd, Agent: kind, Model: target.Model, Effort: target.Effort, Mode: mode, Env: env}, originSystem, shell, terminal, "the session's saved PATH")
 	}
+	return s, err
+}
+
+func (d *Daemon) dispatchScheduled(ctx context.Context, snapshot *schedule.Task, now time.Time) {
+	s, err := d.launchScheduledSession(ctx, snapshot)
 	if err != nil {
-		run.Status = "failed"
-		run.Reason = "could_not_start_session: " + err.Error()
-		run.EndedAt = &now
-		t.Runs = appendRun(t.Runs, *run)
-		t.Active = nil
-		t.Status = "failed"
-		t.Reason = run.Reason
-		t.NextRunAt = nil
+		d.finishScheduledDispatch(snapshot, now, "could_not_start_session: "+err.Error(), nil)
 		return
 	}
-	run.SessionID = s.info().Id
-	run.AfterSeq = s.log.LastSeq()
-	// Persist the chosen execution session before injecting any message.
+	sessionID, after := s.info().Id, s.log.LastSeq()
+	d.scheduleMu.Lock()
+	t := d.dispatchingTaskLocked(snapshot)
+	if t == nil {
+		d.scheduleMu.Unlock()
+		return
+	}
+	t.Active.SessionID, t.Active.AfterSeq = sessionID, after
+	touchTask(t, now)
+	// The session identity must be durable before input is accepted.
 	if err := d.saveSchedulesLocked(); err != nil {
-		run.Status = "uncertain"
-		t.Status = "uncertain"
-		t.Reason = "could_not_persist_execution"
+		d.uncertainDispatchLocked(t, "could_not_persist_execution")
+		d.scheduleMu.Unlock()
+		slog.Error("save scheduled execution", "task", snapshot.ID, "err", errClass(err))
+		return
+	}
+	d.scheduleMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		d.finishScheduledDispatch(snapshot, now, "could_not_queue_message", err)
 		return
 	}
 	origin := proto.Clone(originSystem).(*pb.Origin)
-	origin.RequestId = run.RequestID
-	if _, err = s.enqueueMode(t.Spec.Message, run.RequestID, nil, origin, pb.SendMode_SEND_MODE_QUEUE); !queueAccepted(err) {
-		run.Status = "failed"
-		run.Reason = "could_not_queue_message"
-		run.EndedAt = &now
-		t.Runs = appendRun(t.Runs, *run)
-		t.Active = nil
-		t.Status = "failed"
-		t.Reason = run.Reason
-		t.NextRunAt = nil
+	origin.RequestId = snapshot.Active.RequestID
+	_, err = s.enqueueMode(snapshot.Spec.Message, snapshot.Active.RequestID, nil, origin, pb.SendMode_SEND_MODE_QUEUE)
+	reason := ""
+	if !queueAccepted(err) {
+		reason = "could_not_queue_message"
+	}
+	d.finishScheduledDispatch(snapshot, now, reason, err)
+}
+
+func (d *Daemon) dispatchingTaskLocked(snapshot *schedule.Task) *schedule.Task {
+	t := d.tasks[snapshot.ID]
+	if t == nil || t.Active == nil || t.Active.ID != snapshot.Active.ID || t.Active.Status != "dispatching" {
+		return nil
+	}
+	return t
+}
+
+func (d *Daemon) uncertainDispatchLocked(t *schedule.Task, reason string) {
+	t.Active.Status = "uncertain"
+	t.Active.Reason = reason
+	t.NextRunAt = nil
+	if t.Status != "paused" && t.Status != "cancelled" {
+		t.Status, t.Reason = "uncertain", reason
+	}
+}
+
+func (d *Daemon) finishScheduledDispatch(snapshot *schedule.Task, now time.Time, reason string, deliveryErr error) {
+	d.scheduleMu.Lock()
+	defer d.scheduleMu.Unlock()
+	t := d.dispatchingTaskLocked(snapshot)
+	if t == nil {
 		return
 	}
-	run.Status = "queued"
-	t.Status = "queued"
+	run := t.Active
+	if reason != "" {
+		run.Status, run.Reason, run.EndedAt = "failed", reason, &now
+		t.Runs = appendRun(t.Runs, *run)
+		t.Active = nil
+		if t.Status != "paused" && t.Status != "cancelled" {
+			t.Status, t.Reason = "failed", reason
+		}
+	} else {
+		run.Status, run.Reason = "queued", ""
+		if deliveryErr != nil {
+			run.Reason = "message queued, but event recording failed; do not send another copy"
+		}
+		if t.Status != "paused" && t.Status != "cancelled" {
+			t.Status, t.Reason = run.Status, run.Reason
+		}
+	}
 	t.NextRunAt = nil
-	t.Reason = ""
-	if err != nil {
-		// Keep the stable request ID and cursor: the accepted message can
-		// execute as soon as event storage recovers. This is a warning in
-		// the existing task response, not a failed execution to retry.
-		run.Reason = "message queued, but event recording failed; do not send another copy"
-		t.Reason = run.Reason
+	touchTask(t, now)
+	if err := d.saveSchedulesLocked(); err != nil {
+		// Effects may already have happened. Never restore a dispatchable task.
+		if t.Active != nil {
+			d.uncertainDispatchLocked(t, "could_not_persist_dispatch_result")
+		}
+		slog.Error("save scheduled dispatch result", "task", t.ID, "err", errClass(err))
 	}
 }
 
 func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed bool) {
 	run := t.Active
-	if run.Status == "uncertain" {
+	if run.Status == "uncertain" || run.Status == "dispatching" {
 		return false
 	}
 	s, err := d.exact(run.SessionID)

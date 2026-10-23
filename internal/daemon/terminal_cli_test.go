@@ -303,7 +303,7 @@ func TestScheduledSessionFromATerminalFindsTheCLIInItsPATH(t *testing.T) {
 	now := time.Now()
 	task := &schedule.Task{ID: "task1", SourceSession: src, NextRunAt: &now,
 		Spec: schedule.Spec{Message: "go", Target: schedule.Target{Type: "new_session", Cwd: h.dir, Agent: "codex"}}}
-	h.d.dispatchScheduled(task, now)
+	dispatchTestTask(h.d, task, now)
 	if task.Active == nil || task.Active.SessionID == "" {
 		t.Fatalf("the run did not start a session: %+v", task)
 	}
@@ -353,7 +353,7 @@ func TestScheduledSessionFromATerminalFailsWithoutTheCLIInItsPATH(t *testing.T) 
 			now := time.Now()
 			task := &schedule.Task{ID: "task1", SourceSession: src, NextRunAt: &now,
 				Spec: schedule.Spec{Message: "go", Target: schedule.Target{Type: "new_session", Cwd: h.dir, Agent: "codex"}}}
-			h.d.dispatchScheduled(task, now)
+			dispatchTestTask(h.d, task, now)
 			if task.Active != nil {
 				t.Fatalf("the failed run is still active: %+v", task.Active)
 			}

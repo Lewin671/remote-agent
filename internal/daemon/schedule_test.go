@@ -576,3 +576,15 @@ func TestScheduleNewSessionInheritsOnlyExactModes(t *testing.T) {
 		}
 	}
 }
+
+func (d *Daemon) tickSchedules(now time.Time) {
+	for _, task := range d.prepareScheduledDispatches(now) {
+		d.dispatchScheduled(context.Background(), task, now)
+	}
+}
+
+func dispatchTestTask(d *Daemon, task *schedule.Task, now time.Time) {
+	task.Status = "scheduled"
+	d.tasks[task.ID] = task
+	d.tickSchedules(now)
+}
