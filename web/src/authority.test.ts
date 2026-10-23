@@ -1,6 +1,9 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { beforeAll, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { ed25519, x25519 } from "@noble/curves/ed25519.js";
 import { Authority, authoritySigningTime } from "./authority";
 import { makePairApproval } from "./pair-approval";
@@ -21,7 +24,15 @@ const xp = (b: number): B => new Uint8Array(x25519.getPublicKey(fill(32, b)));
 const now = 1700000000000n;
 const random = { grantEkm: () => fill(32, 0x71), prevNonce: fill(12, 0x72), recoveryNonce: fill(32, 0x73) };
 const cwd = fileURLToPath(new URL("..", import.meta.url));
-const go = (...args: string[]) => execFileSync("go", ["run", "../testdata/authority-oracle", "web", ...args], { cwd, encoding: "utf8", timeout: 60000 });
+let directory: string, oracle: string;
+// Compile once as fixture setup; assertions exercise the current Go code
+// without repeatedly paying for go run under Vitest's per-test deadline.
+beforeAll(() => {
+  directory = mkdtempSync(join(tmpdir(), "ra-authority-oracle-"));
+  oracle = join(directory, "oracle");
+  execFileSync("go", ["build", "-o", oracle, "../testdata/authority-oracle"], { cwd, stdio: "pipe", timeout: 60000 });
+}, 120000);
+afterAll(() => { if (directory) rmSync(directory, { recursive: true, force: true }); });
 function edKey(b: number) {
   return crypto.subtle.importKey("pkcs8", concat(fromHex("302e020100300506032b657004220420"), fill(32, b)), "Ed25519", false, ["sign"]);
 }
@@ -31,7 +42,8 @@ function xKey(b: number) {
 let states: Record<string, SecurityState>, signer: CryptoKey;
 let authority: Awaited<ReturnType<typeof Authority.memberWithX>>;
 let machine: typeof authority, client: typeof authority, incoming: typeof authority;
-let output: typeof vectors;
+let output: typeof vectors, regenerated: typeof vectors, verified: string;
+let tamperedStatus: number | null;
 beforeAll(async () => {
   signer = await edKey(0x11);
   authority = await Authority.memberWithX(pub(0x11), fill(32, 0x21), 2);
@@ -56,17 +68,24 @@ beforeAll(async () => {
   const serialized: Record<string, string> = {};
   for (const [name, state] of Object.entries(states)) serialized[name] = b64(await stateBytes(state));
   output = { States: serialized as typeof vectors.States, Recovery: b64(await recoveryBytes(recovered.statement)), Lease: b64(leaseBytes(lease)), HandoffLease: b64(leaseBytes(handoffLease)), Approval: b64(approval.approval), ApprovalSignature: b64(approval.signature), NormalApproval: b64(normalApproval.approval), NormalApprovalSignature: b64(normalApproval.signature), RecoveryCode: RecoveryCode.encode(s(0x31), (await pinOf(states.genesis)).genesis) };
-}, 30000);
+  // Cross-language generation and verification are integration fixture work,
+  // including subprocess scheduling; test deadlines cover only assertions.
+  regenerated = JSON.parse(execFileSync(oracle, ["web"], { encoding: "utf8", timeout: 60000 }));
+  const invoke = (v: typeof vectors) => execFileSync(oracle, ["web", "verify"], { input: JSON.stringify(v), encoding: "utf8", stdio: "pipe", timeout: 60000 });
+  verified = invoke(output);
+  const bad = structuredClone(output);
+  const badLease = unb64(bad.Lease); badLease[badLease.length - 1] ^= 1; bad.Lease = b64(badLease);
+  const rejected = spawnSync(oracle, ["web", "verify"], { input: JSON.stringify(bad), encoding: "utf8", timeout: 60000 });
+  if (rejected.error) throw rejected.error;
+  tamperedStatus = rejected.status;
+}, 120000);
 it("matches regenerated Go bytes for every state, lease, recovery statement and approval", () => {
-  expect(JSON.parse(go())).toEqual(vectors);
+  expect(regenerated).toEqual(vectors);
   expect(output).toEqual(vectors);
 });
 it("Go verifies WebCrypto signatures and opens all TS grants and previous secrets", () => {
-  const invoke = (v: typeof vectors) => execFileSync("go", ["run", "../testdata/authority-oracle", "web", "verify"], { cwd, input: JSON.stringify(v), encoding: "utf8", stdio: "pipe", timeout: 60000 });
-  expect(invoke(output)).toContain("verified:");
-  const bad = structuredClone(output);
-  const lease = unb64(bad.Lease); lease[lease.length - 1] ^= 1; bad.Lease = b64(lease);
-  expect(() => invoke(bad)).toThrow();
+  expect(verified).toContain("verified:");
+  expect(tamperedStatus).toBe(1);
 });
 it("generic membership matches Go, sorts a copy and leaves the parent intact", async () => {
   const parent = await stateBytes(states.pairClient);
