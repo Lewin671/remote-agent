@@ -6,15 +6,6 @@ import (
 	"time"
 )
 
-type rpcGlobalWaiter struct {
-	ctx      context.Context
-	deadline time.Time
-	pools    []rpcPool
-	ready    chan struct{}
-	granted  bool
-	err      error
-}
-
 func (s *Server) globalRPCSlots(pool rpcPool) chan struct{} {
 	switch pool {
 	case smallRPCPool:
@@ -46,10 +37,7 @@ func (s *Server) dispatchGlobalRPCsLocked() {
 	old := s.rpcWaiters
 	pending := old[:0]
 	for _, w := range old {
-		w.err = rpcContextError(w.ctx)
-		if w.err == nil && !time.Now().Before(w.deadline) {
-			w.err = errRPCAdmission
-		}
+		w.err = rpcWaitFailure(w.ctx, w.deadline)
 		if w.err != nil {
 			close(w.ready)
 			continue
@@ -74,7 +62,8 @@ func (s *Server) dispatchGlobalRPCsLocked() {
 	s.rpcWaiters = pending
 }
 
-func (s *Server) waitGlobalRPCs(ctx context.Context, account string, deadline time.Time, pools []rpcPool) error {
+func (s *Server) waitGlobalRPCs(ctx context.Context, r *rpcWaitReservation, deadline time.Time) error {
+	account, pools := r.account, r.pools
 	s.rpcMu.Lock()
 	if account == "" {
 		// Login and pairing retain their immediate, non-queued global admission.
@@ -87,23 +76,26 @@ func (s *Server) waitGlobalRPCs(ctx context.Context, account string, deadline ti
 		}
 		return errRPCGlobalAdmission
 	}
-	w := &rpcGlobalWaiter{ctx: ctx, deadline: deadline, pools: pools, ready: make(chan struct{})}
-	s.rpcWaiters = append(s.rpcWaiters, w)
-	s.dispatchGlobalRPCsLocked()
-	s.rpcMu.Unlock()
-	timer := time.NewTimer(time.Until(deadline))
-	defer timer.Stop()
-	select {
-	case <-w.ready:
-	case <-ctx.Done():
-	case <-timer.C:
+	if err := rpcWaitFailure(ctx, deadline); err != nil {
+		s.rpcMu.Unlock()
+		return err
 	}
+	s.dispatchGlobalRPCsLocked()
+	if !rpcWaiterAhead(s.rpcWaiters, pools) && s.takeGlobalRPCsLocked(pools) {
+		s.rpcMu.Unlock()
+		return nil
+	}
+	if !s.reserveRPCWaiterLocked(r) {
+		s.rpcMu.Unlock()
+		return errRPCAdmission
+	}
+	w := &rpcWaiter{ctx: ctx, deadline: deadline, pools: pools, ready: make(chan struct{})}
+	s.rpcWaiters = append(s.rpcWaiters, w)
+	s.rpcMu.Unlock()
+	w.wait()
 	s.rpcMu.Lock()
 	defer s.rpcMu.Unlock()
-	err := rpcContextError(ctx)
-	if err == nil && !time.Now().Before(deadline) {
-		err = errRPCAdmission
-	}
+	err := rpcWaitFailure(ctx, deadline)
 	if err == nil {
 		err = w.err
 	}
@@ -113,7 +105,7 @@ func (s *Server) waitGlobalRPCs(ctx context.Context, account string, deadline ti
 				<-s.globalRPCSlots(pool)
 			}
 		} else {
-			s.rpcWaiters = slices.DeleteFunc(s.rpcWaiters, func(candidate *rpcGlobalWaiter) bool { return candidate == w })
+			s.rpcWaiters = slices.DeleteFunc(s.rpcWaiters, func(candidate *rpcWaiter) bool { return candidate == w })
 		}
 		s.dispatchGlobalRPCsLocked()
 	}

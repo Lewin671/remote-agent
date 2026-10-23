@@ -26,6 +26,8 @@ const (
 	maxConcurrentForwardRequests = 64
 	// Cover three six-image drafts plus probes and live polls, leaving half the relay pool.
 	maxAccountForwardRequests = 32
+	// Bound parked admission requests across both account and global waiting.
+	maxRPCWaiters = 256
 	// Bound account and global admission together before any request body is decoded.
 	rpcAdmissionWaitTimeout = 5 * time.Second
 	rpcBodyReadTimeout      = 15 * time.Second
@@ -54,7 +56,7 @@ type rpcAdmission struct {
 }
 
 func (s *Server) takeAccountRPCsLocked(account string, pools ...rpcPool) bool {
-	limits := [3]int{maxAccountLargeRPCRequests, maxAccountSmallRPCRequests, maxAccountForwardRequests}
+	limits := rpcAccountShares()
 	counts := s.accountRPCRequests[account]
 	for _, pool := range pools {
 		if counts[pool] >= limits[pool] {
@@ -77,43 +79,6 @@ func rpcContextError(ctx context.Context) error {
 	return nil
 }
 
-// Reserve all account shares together, before decoding or taking any global
-// slot. A Forward reserves its waiting share here too, not after body decoding.
-func (s *Server) waitAccountRPCs(ctx context.Context, account string, deadline time.Time, pools ...rpcPool) error {
-	if account == "" {
-		return rpcContextError(ctx)
-	}
-	timer := time.NewTimer(time.Until(deadline))
-	defer timer.Stop()
-	for {
-		s.rpcMu.Lock()
-		if err := rpcContextError(ctx); err != nil {
-			s.rpcMu.Unlock()
-			return err
-		}
-		if !time.Now().Before(deadline) {
-			s.rpcMu.Unlock()
-			return errRPCAdmission
-		}
-		if s.takeAccountRPCsLocked(account, pools...) {
-			s.rpcMu.Unlock()
-			return nil
-		}
-		changed := s.rpcChanged
-		s.rpcMu.Unlock()
-		select {
-		case <-ctx.Done():
-			return rpcContextError(ctx)
-		case <-timer.C:
-			if err := rpcContextError(ctx); err != nil {
-				return err
-			}
-			return errRPCAdmission
-		case <-changed:
-		}
-	}
-}
-
 var errRPCGlobalAdmission = errors.New("too many in-flight RPC requests")
 
 func (s *Server) admitRPC(ctx context.Context, account string, pool rpcPool, forward bool) (*rpcAdmission, error) {
@@ -124,11 +89,13 @@ func (s *Server) admitRPC(ctx context.Context, account string, pool rpcPool, for
 	if forward {
 		pools = append(pools, forwardRPCPool)
 	}
-	if err := s.waitAccountRPCs(ctx, account, deadline, pools...); err != nil {
+	waiting := &rpcWaitReservation{account: account, pools: pools}
+	defer s.releaseRPCWaiter(waiting)
+	if err := s.waitAccountRPCs(ctx, waiting, deadline); err != nil {
 		return nil, err
 	}
 	a := &rpcAdmission{s: s, pool: pool, account: account, forwardAccount: forward}
-	if err := s.waitGlobalRPCs(ctx, account, deadline, pools); err != nil {
+	if err := s.waitGlobalRPCs(ctx, waiting, deadline); err != nil {
 		a.release()
 		return nil, err
 	}
@@ -143,15 +110,7 @@ func (s *Server) releaseAccountRPC(account string, pool rpcPool) {
 	}
 	s.rpcMu.Lock()
 	defer s.rpcMu.Unlock()
-	counts := s.accountRPCRequests[account]
-	counts[pool]--
-	if counts == [3]int{} {
-		delete(s.accountRPCRequests, account)
-	} else {
-		s.accountRPCRequests[account] = counts
-	}
-	close(s.rpcChanged)
-	s.rpcChanged = make(chan struct{})
+	s.releaseAccountRPCsLocked(account, pool)
 }
 
 func (a *rpcAdmission) release() {

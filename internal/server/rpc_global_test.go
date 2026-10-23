@@ -39,10 +39,12 @@ func TestGlobalRPCBurstFromOneAccount(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		s := newRPCAdmissionServer()
 		held := fillGlobalRPCs(t, s, largeRPCPool)
-		// Six images exceed the four-slot global pool and the two-slot share.
-		entered := make(chan *rpcAdmission, 6)
-		done := make(chan error, 6)
-		for range 6 {
+		// Four images fill the active shares and the bounded waiter allowance.
+		held[0].release()
+		held[1].release()
+		entered := make(chan *rpcAdmission, 4)
+		done := make(chan error, 4)
+		for range 4 {
 			go func() {
 				a, err := s.admitRPC(context.Background(), "A", largeRPCPool, false)
 				if err == nil {
@@ -52,12 +54,10 @@ func TestGlobalRPCBurstFromOneAccount(t *testing.T) {
 			}()
 		}
 		synctest.Wait()
-		if len(entered) != 0 || globalRPCQueueSize(s) != maxAccountLargeRPCRequests {
-			t.Fatal("global wait decoded a body or did not wait")
+		if len(entered) != 2 {
+			t.Fatal("burst did not fill its active share")
 		}
-		held[0].release()
-		held[1].release()
-		for range 3 {
+		for range 2 {
 			synctest.Wait()
 			if len(entered) != 2 {
 				t.Fatalf("burst admissions=%d, want two", len(entered))
@@ -68,7 +68,7 @@ func TestGlobalRPCBurstFromOneAccount(t *testing.T) {
 			second.release()
 		}
 		synctest.Wait()
-		for range 6 {
+		for range 4 {
 			if err := <-done; err != nil {
 				t.Fatalf("burst refused: %v", err)
 			}
@@ -87,8 +87,11 @@ func TestGlobalRPCWaitUsesRemainingAccountDeadline(t *testing.T) {
 		held := fillGlobalRPCs(t, s, largeRPCPool)
 		// Existing requests can hold account shares while waiting globally.
 		for range maxAccountLargeRPCRequests {
-			if err := s.waitAccountRPCs(context.Background(), "A", time.Now().Add(rpcAdmissionWaitTimeout), largeRPCPool); err != nil {
-				t.Fatal(err)
+			s.rpcMu.Lock()
+			ok := s.takeAccountRPCsLocked("A", largeRPCPool)
+			s.rpcMu.Unlock()
+			if !ok {
+				t.Fatal("account fixture could not reserve a share")
 			}
 		}
 		start := time.Now()
@@ -137,8 +140,6 @@ func TestGlobalRPCFIFOAcrossAccounts(t *testing.T) {
 		synctest.Wait()
 		b := startGlobalRPC(s, context.Background(), "B", largeRPCPool, false)
 		synctest.Wait()
-		later := startGlobalRPC(s, context.Background(), "A", largeRPCPool, false)
-		synctest.Wait()
 		if globalRPCQueueSize(s) != 3 {
 			t.Fatal("account waiters entered the global FIFO before owning a share")
 		}
@@ -148,6 +149,8 @@ func TestGlobalRPCFIFOAcrossAccounts(t *testing.T) {
 		if a1.err != nil {
 			t.Fatal(a1.err)
 		}
+		later := startGlobalRPC(s, context.Background(), "A", largeRPCPool, false)
+		synctest.Wait()
 		cancel()
 		synctest.Wait()
 		if got := <-second; got.admission != nil || connect.CodeOf(got.err) != connect.CodeCanceled {

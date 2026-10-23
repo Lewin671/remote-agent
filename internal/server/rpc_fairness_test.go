@@ -232,7 +232,7 @@ func TestCompressedForwardRetainsLargeDecoderAdmission(t *testing.T) {
 
 func newRPCAdmissionServer() *Server {
 	return &Server{rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), smallRPCRequests: make(chan struct{}, maxConcurrentSmallRPCRequests),
-		forwardRPCRequests: make(chan struct{}, maxConcurrentForwardRequests), accountRPCRequests: make(map[string][3]int), rpcChanged: make(chan struct{})}
+		forwardRPCRequests: make(chan struct{}, maxConcurrentForwardRequests), accountRPCRequests: make(map[string][3]int), accountRPCWaiters: make(map[string][3]int), accountRPCQueues: make(map[string][]*rpcWaiter)}
 }
 
 type rpcAdmissionResult struct {
