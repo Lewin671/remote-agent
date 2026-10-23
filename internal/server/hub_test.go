@@ -73,7 +73,11 @@ func TestOnlineStateIsBroadcastInOrder(t *testing.T) {
 		wg.Wait()
 		var last *pb.Machine
 		for len(client.out) > 0 {
-			if m := (<-client.out).frame.GetMachineUpdated(); m != nil {
+			f := &pb.ServerFrame{}
+			if err := proto.Unmarshal((<-client.out).data, f); err != nil {
+				t.Fatal(err)
+			}
+			if m := f.GetMachineUpdated(); m != nil {
 				last = m.Machine
 			}
 		}
@@ -159,5 +163,35 @@ func TestStreamPeerThatKeepsUpIsNotDropped(t *testing.T) {
 		if got := s.next(t, func(f *pb.ServerFrame) bool { return f.GetEventsAppended() != nil }); len(got.GetEventsAppended().Events) != 1 {
 			t.Fatalf("frame %d: %d events", i, len(got.GetEventsAppended().Events))
 		}
+	}
+}
+
+func TestBroadcastSharesSerializedBytes(t *testing.T) {
+	h := newHub(nil)
+	peers := make([]*peer, 3)
+	h.clients["a"] = map[*peer]bool{}
+	for i := range peers {
+		peers[i] = &peer{dev: &device{id: "phone", account: "a"}, out: make(chan queuedFrame, sendQueue), cancel: func() {}}
+		h.clients["a"][peers[i]] = true
+	}
+	f := bigEvents(1024)
+	h.account("a").broadcast(f)
+	first := <-peers[0].out
+	for _, p := range peers[1:] {
+		q := <-p.out
+		if &q.data[0] != &first.data[0] {
+			t.Fatal("broadcast serialized separately for each peer")
+		}
+		if p.queued.Load() != q.size {
+			t.Fatal("bytes released before write")
+		}
+	}
+	f.GetEventsAppended().SessionId = "changed after enqueue"
+	got := &pb.ServerFrame{}
+	if err := proto.Unmarshal(first.data, got); err != nil {
+		t.Fatal(err)
+	}
+	if got.GetEventsAppended().SessionId != "s1" {
+		t.Fatal("queued bytes changed with source frame")
 	}
 }

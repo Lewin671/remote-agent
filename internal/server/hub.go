@@ -46,10 +46,10 @@ type peer struct {
 	cancel context.CancelFunc
 }
 
-// queuedFrame is a frame waiting for a peer, and its serialized size.
+// queuedFrame holds immutable serialized bytes shared by broadcast recipients.
 type queuedFrame struct {
-	frame *pb.ServerFrame
-	size  int64
+	data []byte
+	size int64
 }
 
 type call struct {
@@ -150,14 +150,8 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 			conn.Close(websocket.StatusGoingAway, "")
 			return
 		case q := <-p.out:
-			b, err := proto.Marshal(q.frame)
-			if err != nil {
-				slog.Error("marshal frame", "err", err)
-				p.queued.Add(-q.size)
-				continue
-			}
 			wctx, wcancel := context.WithTimeout(ctx, 30*time.Second)
-			err = conn.Write(wctx, websocket.MessageBinary, b)
+			err := conn.Write(wctx, websocket.MessageBinary, q.data)
 			wcancel()
 			p.queued.Add(-q.size)
 			if err != nil {
@@ -288,7 +282,22 @@ func (h *hub) remove(p *peer) {
 // send queues f for p, dropping the connection if p is too slow: too many
 // frames are waiting for it, or too many bytes.
 func (h *hub) send(p *peer, f *pb.ServerFrame) bool {
-	q := queuedFrame{frame: f, size: int64(proto.Size(f))}
+	q, err := marshalFrame(f)
+	if err != nil {
+		return false
+	}
+	return h.sendFrame(p, q)
+}
+
+func marshalFrame(f *pb.ServerFrame) (queuedFrame, error) {
+	b, err := proto.Marshal(f)
+	if err != nil {
+		slog.Error("marshal frame", "err", err)
+	}
+	return queuedFrame{data: b, size: int64(len(b))}, err
+}
+
+func (h *hub) sendFrame(p *peer, q queuedFrame) bool {
 	if p.queued.Add(q.size) <= sendQueueBytes {
 		select {
 		case p.out <- q:
@@ -315,6 +324,10 @@ func (a accountHub) broadcast(f *pb.ServerFrame) {
 }
 
 func (a accountHub) broadcastFrame(f *pb.ServerFrame) {
+	q, err := marshalFrame(f)
+	if err != nil {
+		return
+	}
 	a.h.mu.Lock()
 	clients := a.h.clients[a.acct]
 	peers := make([]*peer, 0, len(clients))
@@ -323,7 +336,7 @@ func (a accountHub) broadcastFrame(f *pb.ServerFrame) {
 	}
 	a.h.mu.Unlock()
 	for _, p := range peers {
-		a.h.send(p, f)
+		a.h.sendFrame(p, q)
 	}
 }
 
