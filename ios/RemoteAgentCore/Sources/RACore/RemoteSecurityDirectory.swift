@@ -14,6 +14,7 @@ extension Remote {
         try await refreshTrustedDirectory(updateMachine: machine, envelopes: envelopes)
     }
 
+    /// Directory inputs can change without moving the signed security head.
     func invalidateDirectoryRead() {
         guard directoryLoad != nil else { return }
         directoryVersion += 1

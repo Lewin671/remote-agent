@@ -826,10 +826,10 @@ public actor Remote {
             bump(&devicePushes, u.device.id)
             await putDevice(u.device)
             publish()
-        case .deviceRemoved?:
-            await loadDevices()
+        case .deviceRemoved(let u)?:
+            await deviceRemoved(u.deviceID)
         case .machineRemoved?:
-            _ = await refresh()
+            await machineRemoved()
         case .machineUpdated(let u)?:
             await machineUpdated(u.machine)
         case .sessionUpdated(let u)?:

@@ -1497,13 +1497,17 @@ extension ServerTests {
                 hold.set()
                 let reading = Task { await a.refreshDevices() }
                 #expect(await held.wait(10_000))
+                let beforeRemoval = await a.devicePushes[leaving.deviceId] ?? 0
                 try await w.phone.remove([leaving.deviceId])
                 let joined = try await w.join()
-                _ = try await a.awaitState("both pushes") {
-                    $0.devices[leaving.deviceId] == nil && $0.devices[joined.deviceId] != nil
+                try await eventually("removal notification received") {
+                    await a.devicePushes[leaving.deviceId] ?? 0 > beforeRemoval
                 }
                 gate.set()
                 await reading.value
+                _ = try await a.awaitState("both pushes") {
+                    $0.devices[leaving.deviceId] == nil && $0.devices[joined.deviceId] != nil
+                }
                 #expect(a.current.devices[leaving.deviceId] == nil)
                 #expect(a.current.devices[joined.deviceId] != nil)
                 #expect(a.current.devices[a.account.deviceId] != nil)

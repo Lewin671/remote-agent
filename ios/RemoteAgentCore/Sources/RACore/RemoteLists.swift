@@ -12,6 +12,7 @@ extension Remote {
         // opened for a page or a lookup asked for before must not be taken after this.
         bump(&removedPushes, id)
         machines[id] = nil
+        trustedMetadata["machine:" + id] = nil
         let sids = sessions.values.filter { $0.machineId == id }.map(\.id)
         for sid in sids {
             sessions[sid] = nil
@@ -280,6 +281,11 @@ extension Remote {
         return try await job.value
     }
 
+    func machineRemoved() async {
+        invalidateDirectoryRead()
+        _ = await refresh()
+    }
+
     func machineUpdated(_ machine: PBMachine) async {
         bump(&machinePushes, machine.id)
         if machine.hasMeta { invalidateDirectoryRead() }
@@ -445,6 +451,7 @@ extension Remote {
     }
     func putPrefs(_ object: PBAccountPrefsObject, save: Bool = true) async {
         if save {
+            invalidateDirectoryRead()
             await loadPrefs()
             return
         }
@@ -496,6 +503,12 @@ extension Remote {
         }
         publish()
     }
+    func deviceRemoved(_ id: String) async {
+        bump(&devicePushes, id)
+        invalidateDirectoryRead()
+        await loadDevices()
+    }
+
     func putDevice(_ ignored: PBDevice) async {
         invalidateDirectoryRead()
         await loadDevices()

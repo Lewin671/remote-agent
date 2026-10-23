@@ -192,6 +192,146 @@ extension ServerTests {
             }
         }
 
+        private func publishPrefs(_ w: World, revision: UInt64, path: String) async throws -> PBAccountPrefsObject {
+            var header = PBHeader()
+            header.kind = .accountPrefs
+            header.requestID = projectPrefsID
+            header.seq = revision
+            var prefs = PBProjectPrefs()
+            prefs.schema = 1
+            prefs.pinned = [.with { $0.path = path }]
+            var request = PBPutAccountPrefsRequest()
+            request.objectID = projectPrefsID
+            request.expectedRevision = revision - 1
+            request.envelope = try w.phone.fixture.seal(w.phone.account, header, prefs)
+            let result = try await w.phone.api.client.putAccountPrefs(request: request,
+                headers: Api.headers(token: w.phone.token)).value()
+            #expect(result.applied)
+            return result.object
+        }
+
+        @Test(arguments: [false, true])
+        func prefsPushAfterDirectoryResponseRequiresAFreshRead(existing: Bool) async throws {
+            try await world { w in
+                if existing { _ = try await publishPrefs(w, revision: 1, path: "/old-project") }
+                let hold = Signal(), entered = Signal(), release = Signal(), updateSync = Signal()
+                let reads = Counter()
+                w.onClose { release.set() }
+                let http = Intercept.http(for: w.server.url, answered: { request in
+                    if hold.isSet && !entered.isSet && request.url?.path.hasSuffix("/GetAccountPrefs") == true {
+                        entered.set()
+                        await release.wait()
+                    }
+                }) { request in
+                    if request.url?.path.hasSuffix("/GetAccountPrefs") == true { reads.increment() }
+                    if entered.isSet && request.url?.path.hasSuffix("/GetSecurityStates") == true { updateSync.set() }
+                    return request
+                }
+                let r = try w.remote(try await w.join(), http: http)
+                try await r.refreshTrustedDirectory()
+                try await r.readTrustedPrefs()
+                let head = await r.directoryHead
+                hold.set()
+                let reading = Task { try await r.refreshTrustedDirectory() }
+                #expect(await entered.wait())
+                let readsWhileHeld = reads.value
+                let object = try await publishPrefs(w, revision: existing ? 2 : 1, path: "/updated-project")
+                let updating = Task { await r.putPrefs(object) }
+                #expect(await updateSync.wait())
+                release.set()
+                try await reading.value
+                await updating.value
+                #expect(r.current.prefs?.revision == object.revision)
+                #expect(r.current.prefs?.pinned == ["/updated-project"])
+                let metadata = try #require(await r.trustedMetadata["prefs"])
+                #expect(try DeviceSecurity.parseHeader(metadata.securityHeader).seq == object.revision)
+                #expect(reads.value > readsWhileHeld)
+                #expect(await r.directoryHead == head)
+            }
+        }
+
+        @Test func machineRemovalInvalidatesAnOlderDirectoryResponseWithoutChangingHead() async throws {
+            try await world { w in
+                try await w.phone.remove([w.daemon.id])
+                let hold = Signal(), entered = Signal(), release = Signal(), updateSync = Signal()
+                let reads = Counter()
+                w.onClose { release.set() }
+                let http = Intercept.http(for: w.server.url, answered: { request in
+                    if hold.isSet && !entered.isSet && request.url?.path.hasSuffix("/ListMachines") == true {
+                        entered.set()
+                        await release.wait()
+                    }
+                }) { request in
+                    if request.url?.path.hasSuffix("/ListDevices") == true { reads.increment() }
+                    if entered.isSet && request.url?.path.hasSuffix("/GetSecurityStates") == true { updateSync.set() }
+                    return request
+                }
+                let r = try w.remote(try await w.join(), http: http)
+                #expect(await r.refresh())
+                #expect(r.current.machines[w.daemon.id] != nil)
+                let head = await r.directoryHead
+                hold.set()
+                let reading = Task { try await r.refreshTrustedDirectory() }
+                #expect(await entered.wait())
+                let readsWhileHeld = reads.value
+                var deletion = PBDeleteMachineRecordsRequest()
+                deletion.machineID = w.daemon.id
+                _ = try await w.phone.api.client.deleteMachineRecords(request: deletion,
+                    headers: Api.headers(token: w.phone.token)).value()
+                let updating = Task { await r.machineRemoved() }
+                #expect(await updateSync.wait())
+                release.set()
+                try await reading.value
+                await updating.value
+                #expect(r.current.machines[w.daemon.id] == nil)
+                #expect(r.current.sessions["s1"] == nil)
+                #expect(await r.trustedMetadata["machine:" + w.daemon.id] == nil)
+                #expect(reads.value > readsWhileHeld)
+                #expect(await r.directoryHead == head)
+            }
+        }
+
+        @Test func deviceRemovalCannotJoinASecuritySyncThatPredatesTheNotification() async throws {
+            try await world { w in
+                let victim = try await w.join()
+                let holdDirectory = Signal(), directoryEntered = Signal(), releaseDirectory = Signal()
+                let holdSecurity = Signal(), securityEntered = Signal(), releaseSecurity = Signal()
+                w.onClose { releaseDirectory.set(); releaseSecurity.set() }
+                let http = Intercept.http(for: w.server.url, answered: { request in
+                    let path = request.url?.path ?? ""
+                    if holdDirectory.isSet && !directoryEntered.isSet && path.hasSuffix("/ListDevices") {
+                        directoryEntered.set()
+                        await releaseDirectory.wait()
+                    }
+                    if holdSecurity.isSet && !securityEntered.isSet && path.hasSuffix("/GetSecurityStates") {
+                        securityEntered.set()
+                        await releaseSecurity.wait()
+                    }
+                }) { $0 }
+                let r = try w.remote(try await w.join(), http: http)
+                try await r.refreshTrustedDirectory()
+                #expect(r.current.devices[victim.deviceId] != nil)
+                let head = await r.directoryHead
+                holdDirectory.set()
+                let reading = Task { try await r.refreshTrustedDirectory() }
+                #expect(await directoryEntered.wait())
+                holdSecurity.set()
+                let security = try await r.securitySession()
+                let syncing = Task { try await security.sync() }
+                #expect(await securityEntered.wait())
+                try await w.phone.remove([victim.deviceId])
+                let updating = Task { await r.deviceRemoved(victim.deviceId) }
+                try await eventually("removal notification received") { await r.devicePushes[victim.deviceId] == 1 }
+                releaseSecurity.set()
+                _ = try await syncing.value
+                releaseDirectory.set()
+                try await reading.value
+                await updating.value
+                #expect(r.current.devices[victim.deviceId] == nil)
+                #expect(await r.directoryHead != head)
+            }
+        }
+
         @Test func olderDirectoryReadCannotUndoNewerMachineMetadata() async throws {
             try await world { w in
                 let hold = Signal(), entered = Signal(), release = Signal()
