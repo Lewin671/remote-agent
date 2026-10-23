@@ -620,7 +620,7 @@ public struct ChatProjection: Sendable {
         var agent: PBAgent
     }
 
-    private var previous = [PBEvent]()
+    private var previous = PagedList<PBEvent>()
     private var items = [ChatItem]()
     private var context: Context?
 
@@ -639,7 +639,11 @@ public struct ChatProjection: Sendable {
         who: (PBOrigin?) -> String? = { _ in nil }
     ) -> [ChatItem] {
         let next = Context(machine: machine, cwd: cwd, home: home, agent: agent)
-        let append = context == next && !previous.isEmpty && events.count > previous.count && zip(events, previous).allSatisfy { $0 == $1 }
+        // Published histories share immutable pages. Check their append lineage
+        // instead of comparing every old protobuf on every arriving message.
+        let append = context == next && !previous.isEmpty && events.count > previous.count
+            && ((events as? PagedList<PBEvent>).map { $0.extends(previous) }
+                ?? zip(events, previous).allSatisfy { $0 == $1 })
         let tail = append ? Array(events.dropFirst(previous.count)) : []
         let messages = append && tail.allSatisfy {
             switch $0.kind {
@@ -662,10 +666,10 @@ public struct ChatProjection: Sendable {
                 default: break
                 }
             }
-            previous.append(contentsOf: tail)
+            previous = (events as? PagedList<PBEvent>) ?? previous.appending(tail)
         } else {
             items = buildChat(events, d: d, machine: machine, cwd: cwd, home: home, now: now, zone: zone, textOf: textOf, who: who)
-            previous = Array(events)
+            previous = (events as? PagedList<PBEvent>) ?? PagedList(events)
         }
         context = next
         return items

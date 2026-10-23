@@ -362,6 +362,20 @@ import Testing
         #expect(p.update(shorter, d: derive(shorter), machine: "M") == buildChat(shorter, d: derive(shorter), machine: "M"))
     }
 
+    @Test func pagedAppendsAndReplacedBranchesMatchFullBuild() {
+        let first = PagedList(numbered([Mk.user("hello")]))
+        let old = first.appending([Mk.ev(2, Mk.agent("old branch"))])
+        let replacement = first.appending([Mk.ev(2, Mk.agent("replacement")), Mk.ev(3, Mk.user("next"))])
+        var p = ChatProjection()
+        for events in [first, old, replacement, replacement.appending([Mk.ev(4, Mk.agent("reply"))])] {
+            let d = derive(events)
+            #expect(p.update(events, d: d, machine: "M") == buildChat(events, d: d, machine: "M"))
+        }
+        // Switching collection types must still verify the complete prefix.
+        let array = Array(replacement) + [Mk.ev(4, Mk.agent("changed reply")), Mk.ev(5, Mk.user("end"))]
+        #expect(p.update(array, d: derive(array), machine: "M") == buildChat(array, d: derive(array), machine: "M"))
+    }
+
     @Test func ordinaryAppendRetainsExistingRowObjects() {
         // Rows are values here: what is kept is that the old rows are not built again, so they stay equal and in place.
         let first = Mk.ev(1, Mk.user("hello"))

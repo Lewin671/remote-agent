@@ -223,6 +223,17 @@ import Testing
         #expect(further.extends(left) && further.extends(common) && !further.extends(sibling))
     }
 
+    @Test func appendLineDoesNotConfuseBranchesAtFullPageBoundaries() {
+        let common = PagedList(Array(0..<256))
+        let left = common.appending([256])
+        let right = common.appending([999])
+        let rightTail = right.appending(Array(1000..<1300))
+        #expect(left.extends(common) && rightTail.extends(common))
+        #expect(!rightTail.extends(left) && !left.extends(right))
+        #expect(rightTail.extends(right))
+        #expect(!common.extends(left))
+    }
+
     @Test func manySmallAppendsShareTheirFullPages() {
         var list = PagedList<Int>()
         var earlier: [PagedList<Int>] = []

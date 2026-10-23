@@ -67,6 +67,8 @@ public struct PagedList<Element: Sendable>: RandomAccessCollection, Sendable {
     }
 
     private var pages: [Page] = []
+    /// A unique sequence of appends to the whole list, including page boundaries.
+    private var appendLine = Line(filled: 0)
     public private(set) var count = 0
 
     public init() {}
@@ -101,15 +103,19 @@ public struct PagedList<Element: Sendable>: RandomAccessCollection, Sendable {
             offset = end
         }
         next.count = count + values.count
+        if !appendLine.extend(from: count, to: next.count) {
+            next.appendLine = Line(filled: next.count, fork: (appendLine, count))
+        }
         return next
     }
 
     /// Whether this list is `previous` with more appended, in a comparison
-    /// per page, never per event. A sibling snapshot with a replaced tail
+    /// per page for branches, constant time along one append line. A sibling snapshot with a replaced tail
     /// cannot masquerade as an append: its partial page is on another line.
     /// Lists built apart are never each other's continuation, whatever they hold.
     public func extends(_ previous: PagedList) -> Bool {
         if count < previous.count { return false }
+        if appendLine === previous.appendLine { return true }
         for (i, before) in previous.pages.enumerated() where !pages[i].continues(before) { return false }
         return true
     }
