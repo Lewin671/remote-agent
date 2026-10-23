@@ -108,3 +108,18 @@ it("signals foreground security sync with no visible notification and routes bac
   expect(navigate).toHaveBeenCalledWith("/#/settings/security");
   expect(openWindow).not.toHaveBeenCalled();
 });
+
+it("shows push for a hidden client even when it still has a focused window", async () => {
+  const handlers: Record<string, (event: any) => void> = {};
+  const showNotification = vi.fn();
+  const self = {
+    addEventListener: (kind: string, work: (event: any) => void) => { handlers[kind] = work; },
+    clients: { matchAll: async () => [{ visibilityState: "hidden", focused: true }] },
+    registration: { showNotification }, location: { origin: "https://app.example.com" },
+  };
+  new Function("self", "caches", "fetch", source)(self, {}, vi.fn());
+  let work!: Promise<void>;
+  handlers.push({ data: { json: () => ({ tag: "s/NOTIFY_KIND_ATTENTION", body: "attention" }) }, waitUntil: (p: Promise<void>) => { work = p; } });
+  await work;
+  expect(showNotification).toHaveBeenCalledOnce();
+});

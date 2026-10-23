@@ -179,7 +179,7 @@ export function Settings({
         <button className="row" onClick={() => setChecking(true)}>
           连接检测
           <span className="v">
-            <Dot tone={conn.tone} />
+            {conn.text && <Dot tone={conn.tone} />}
             {conn.text}
             <ChevronRight />
           </span>

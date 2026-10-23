@@ -1,6 +1,5 @@
 import { RetainedIdentityDeniedScreen } from "./Rejoin";
 import { authorityStartup } from "./authority-setup";
-import { usePageVisible } from "./ui";
 import {
   lazy,
   Suspense,
@@ -35,6 +34,8 @@ const Setup = lazy(() =>
 );
 const AccountEntry = lazy(() => import("./views/AuthoritySetup").then(m => ({ default: m.AccountEntry })));
 const loading = <div className="center muted">加载中…</div>;
+// Keep brief tab/app switches from rebuilding the stream and terminal.
+const HIDDEN_GRACE_MS = 60_000;
 
 // ?demo in development shows made-up machines and sessions in every state
 // the mockup draws, with no server. It is compiled out of builds.
@@ -51,7 +52,6 @@ async function loadRemote(): Promise<Remote | undefined> {
 }
 
 export function App() {
-  const visible = usePageVisible();
   const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
   const [retained, setRetained] = useState<StoredAccount>();
   const [denied, setDenied] = useState(false);
@@ -124,22 +124,60 @@ export function App() {
     void load();
   }, []);
   useEffect(() => {
-    if (!remote || !visible) return;
-    remote.start();
+    if (!remote) return;
+    let running = false;
+    let hiddenTimer: ReturnType<typeof setTimeout> | undefined;
+    const cancelHidden = () => {
+      clearTimeout(hiddenTimer);
+      hiddenTimer = undefined;
+    };
+    const pause = () => {
+      cancelHidden();
+      if (!running) return;
+      running = false;
+      remote.stop();
+    };
+    const resume = () => {
+      if (document.hidden) return;
+      cancelHidden();
+      running = true;
+      // start is idempotent and also replaces a stale retained stream.
+      remote.start();
+      remote.setNetwork(navigator.onLine);
+    };
+    const visibility = () => {
+      if (!document.hidden) resume();
+      else if (running && hiddenTimer === undefined)
+        hiddenTimer = setTimeout(pause, HIDDEN_GRACE_MS);
+    };
     const online = () => {
+      if (!running) return;
       remote.setNetwork(true);
       remote.reconnectNow(true);
     };
-    const offline = () => remote.setNetwork(false);
-    remote.setNetwork(navigator.onLine);
+    const offline = () => { if (running) remote.setNetwork(false); };
+    document.addEventListener("visibilitychange", visibility);
+    // Frozen timers cannot enforce the grace period. Release sockets in
+    // the event itself, including when entering the back/forward cache.
+    document.addEventListener("freeze", pause);
+    document.addEventListener("resume", resume);
+    addEventListener("pagehide", pause);
+    addEventListener("pageshow", resume);
     addEventListener("online", online);
     addEventListener("offline", offline);
+    resume();
     return () => {
+      document.removeEventListener("visibilitychange", visibility);
+      document.removeEventListener("freeze", pause);
+      document.removeEventListener("resume", resume);
+      removeEventListener("pagehide", pause);
+      removeEventListener("pageshow", resume);
       removeEventListener("online", online);
       removeEventListener("offline", offline);
+      cancelHidden();
       remote.stop();
     };
-  }, [remote, visible]);
+  }, [remote]);
   // Reading what this browser kept takes a moment; the words come only if it takes long.
   if (remote === undefined)
     return <div className="center muted late">加载中…</div>;

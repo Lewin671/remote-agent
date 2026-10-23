@@ -794,6 +794,7 @@ function ListError({ remote }: { remote: Remote }) {
 function HomeConn({ remote }: { remote: Remote }) {
   const link = remote.link;
   if (link === "online") return null;
+  if (link === "waiting" && !remote.showWaiting) return null;
   if (link === "no-network")
     return (
       <span className="conn">
@@ -926,10 +927,10 @@ export function Sidebar({
         <button
           className="link-conn"
           onClick={() => setChecking(true)}
-          aria-label={`${conn.text}，连接检测`}
+          aria-label={conn.text ? `${conn.text}，连接检测` : "连接检测"}
           title="连接检测"
         >
-          <Dot tone={conn.tone} /> {conn.text}
+          {conn.text ? <><Dot tone={conn.tone} /> {conn.text}</> : "连接检测"}
         </button>
       </div>
       {checking && (

@@ -59,3 +59,42 @@ func TestSecurityPushOnlyToAuthority(t *testing.T) {
 		t.Fatalf("security push paths: %v", paths)
 	}
 }
+
+// A hidden browser may retain its stream briefly. Subscription delivery must
+// not depend on whether that client still has a live stream.
+func TestWebPushReachesConnectedClient(t *testing.T) {
+	ts := newTestServer(t)
+	priv, id, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts.stream(t, ts.login(t, priv, id))
+	ts.srv.hub.mu.Lock()
+	connected := len(ts.srv.hub.clients[ts.acct()])
+	ts.srv.hub.mu.Unlock()
+	if connected != 1 {
+		t.Fatalf("expected one connected client, got %d", connected)
+	}
+	delivered := make(chan string, 1)
+	p := ts.srv.push
+	p.client = &http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		delivered <- r.URL.Path
+		return &http.Response{StatusCode: http.StatusCreated, Body: http.NoBody, Request: r}, nil
+	})}
+	if err := p.subscribe(context.Background(), ts.tenant(), id,
+		pushSubscription(t, "https://push.example.com/connected"),
+		[]pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION}); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.notify(ts.tenant(), "session", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "connected-test"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case path := <-delivered:
+		if path != "/connected" {
+			t.Fatalf("unexpected delivery path %q", path)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("connected client did not receive Web Push")
+	}
+}

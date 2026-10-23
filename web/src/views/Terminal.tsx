@@ -1,7 +1,7 @@
 import { TerminalHistory } from "../terminal-history";
 import { wheelAxis } from "../wheel";
 import { BackToLive, TerminalReader, TERM_FONT } from "./TerminalHistory";
-import { usePageVisible, usePointerFine, useRemote } from "../ui";
+import { usePointerFine, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -46,7 +46,6 @@ const keys2: [ReactNode, string, string][] = [
 export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: SessionView; compact?: boolean; wide?: boolean; running: boolean }) {
   useRemote(remote);
   const online = remote.conn === "online";
-  const visible = usePageVisible();
   const fine = usePointerFine();
   const box = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -103,6 +102,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
 
   // Scale the font so the whole width of the tmux window fits.
   const scale = () => {
+    if (document.hidden) return;
     const t = term.current;
     const el = box.current;
     if (!t || !el) return;
@@ -131,7 +131,12 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     // alone, so a phone's keyboard never resizes the remote window.
     let width = box.current!.clientWidth;
     let refit: ReturnType<typeof setTimeout> | undefined;
-    const sized = new ResizeObserver(() => {
+    const resize = () => {
+      if (document.hidden) return;
+      if (pictured.current && conn.current && !autoFitted.current) {
+        autoFitted.current = true;
+        if (!released.current) fitNow.current();
+      }
       scale();
       // A screen taller than the pane (a shorter pane than the window, or
       // an open keyboard) shows its bottom rows, where the prompt is.
@@ -142,13 +147,16 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       width = now;
       clearTimeout(refit);
       refit = setTimeout(() => fittedTo.current && fitNow.current(), 200);
-    });
+    };
+    const sized = new ResizeObserver(resize);
+    document.addEventListener("visibilitychange", resize);
     sized.observe(box.current!);
     sized.observe(host.current!);
     sized.observe(pan.current!);
     return () => {
       typed.dispose();
       sized.disconnect();
+      document.removeEventListener("visibilitychange", resize);
       clearTimeout(refit);
       t.dispose();
       term.current = null;
@@ -215,7 +223,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!visible || !online) return;
+    if (!online) return;
     let alive = true;
     const opening = new AbortController();
     history.close();
@@ -306,7 +314,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       conn.current = null;
       history.close();
     };
-  }, [remote, session.id, attempt, visible, online]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remote, session.id, attempt, online]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = (s: string) => conn.current?.send({ kind: { case: "input", value: enc.encode(s) } });
   // Any key leaves the reader first, then goes to the session as before.
@@ -320,6 +328,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   };
 
   const fit = () => {
+    if (document.hidden) return;
     const el = box.current;
     if (!el) return;
     // At a readable size, how much fits here.
@@ -350,7 +359,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   };
 
   useEffect(() => {
-    if (state !== "live" || !linked || autoFitted.current) return;
+    if (document.hidden || state !== "live" || !linked || autoFitted.current) return;
     autoFitted.current = true;
     if (!released.current) fit();
   }, [state, linked]); // eslint-disable-line react-hooks/exhaustive-deps

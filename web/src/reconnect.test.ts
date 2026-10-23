@@ -1,3 +1,6 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ConnBar } from "./ui";
 import { afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { ServerFrameSchema } from "./gen/remoteagent/v1/relay_pb";
@@ -206,4 +209,77 @@ it("does not stay connecting when local state never answers", async () => {
   expect(r.conn).toBe("offline"); expect(r.connError).toBe("读取本机状态超时，正在重连");
   await vi.advanceTimersByTimeAsync(1_250 + 15_000);
   expect(r.failures).toBe(2); expect(Socket.all).toHaveLength(0);
+});
+
+it.each(["storage", "socket"])("retries a synchronous %s failure instead of leaving startup stuck", async (step) => {
+  const r = await probe(); vi.useFakeTimers();
+  if (step === "storage") {
+    vi.spyOn(r as any, "warm").mockRejectedValueOnce(new Error("storage unavailable"));
+  } else {
+    vi.stubGlobal("WebSocket", class { constructor() { throw new DOMException("blocked", "SecurityError"); } });
+  }
+  // Await the attempt directly so an escaped rejection is a test failure,
+  // rather than an unrelated unhandled rejection from start().
+  await expect((r as any).connect()).resolves.toBeUndefined();
+  expect(r.conn).toBe("offline"); expect(r.failures).toBe(1);
+  expect(r.connError).toContain(step === "storage" ? "storage unavailable" : "blocked");
+  vi.stubGlobal("WebSocket", Socket);
+  await vi.advanceTimersByTimeAsync(1_250); await flush();
+  expect(Socket.all).toHaveLength(1);
+  Socket.all[0].frame("ready"); await flush(); expect(r.conn).toBe("online");
+});
+
+it("ignores a failed local read from an attempt replaced by a network change", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  let reject!: (e: Error) => void;
+  vi.spyOn(r as any, "warm").mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  const old = (r as any).connect(); await flush();
+  r.reconnectNow(true); await flush();
+  Socket.all[0].frame("ready"); await flush();
+  reject(new Error("old read failed"));
+  await expect(old).resolves.toBeUndefined();
+  expect(r.conn).toBe("online"); expect(r.failures).toBe(0);
+  await vi.advanceTimersByTimeAsync(1_250); expect(Socket.all).toHaveLength(1);
+});
+
+it("keeps a recently active stream when foregrounding, but replaces one silent for over thirty seconds", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  r.start(); await flush(); const old = Socket.all[0];
+  old.frame("ready"); await flush();
+  await vi.advanceTimersByTimeAsync(20_000); old.frame("heartbeat"); await flush();
+  await vi.advanceTimersByTimeAsync(30_000); r.start(); await flush();
+  expect(Socket.all).toHaveLength(1); expect(old.closed).toBe(false);
+  await vi.advanceTimersByTimeAsync(1); r.start(); await flush();
+  expect(old.closed).toBe(true); expect(Socket.all).toHaveLength(2);
+  old.frame("ready"); await flush(); expect(r.conn).toBe("connecting");
+  Socket.all[1].frame("ready"); await flush(); expect(r.conn).toBe("online");
+  r.start(); r.start(); await flush(); expect(Socket.all).toHaveLength(2);
+});
+it("cancels an old backoff when foreground startup has already replaced it", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  r.start(); await flush(); Socket.all[0].frame("ready"); await flush();
+  Socket.all[0].onclose?.({ code: 1006 });
+  r.start(); await flush(); expect(Socket.all).toHaveLength(2);
+  await vi.advanceTimersByTimeAsync(1_250); expect(Socket.all).toHaveLength(2);
+});
+
+it("delays only cached waiting notices, preserves offline warnings and the ten-second failure deadline", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  const bar = () => renderToStaticMarkup(createElement(ConnBar, { remote: r }));
+  r.start(); await flush(); expect(bar()).toContain("连接中");
+  Socket.all[0].frame("ready"); await flush(); r.listed = true;
+  Socket.all[0].onclose?.({ code: 1006 });
+  expect(bar()).toBe("");
+  await vi.advanceTimersByTimeAsync(1_499); expect(bar()).toBe("");
+  await vi.advanceTimersByTimeAsync(1); expect(bar()).toContain("正在重连");
+  await vi.advanceTimersByTimeAsync(8_500); expect(bar()).toContain("连不上服务器");
+  r.setNetwork(false); expect(bar()).toContain("本机网络不通");
+});
+it("never flashes a waiting notice when cached content reconnects within one second", async () => {
+  const r = await probe(); vi.useFakeTimers(); r.listed = true;
+  const bar = () => renderToStaticMarkup(createElement(ConnBar, { remote: r }));
+  r.start(); await flush(); Socket.all[0].frame("ready"); await flush();
+  r.stop(); r.start(); await flush(); expect(bar()).toBe("");
+  await vi.advanceTimersByTimeAsync(1_000); Socket.all[1].frame("ready"); await flush();
+  expect(bar()).toBe(""); await vi.advanceTimersByTimeAsync(1_000); expect(bar()).toBe("");
 });

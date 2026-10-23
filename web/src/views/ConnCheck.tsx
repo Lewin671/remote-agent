@@ -26,6 +26,7 @@ export function median(samples: number[]): number {
  * and 设置 say before anything is measured. */
 export function connWord(remote: Remote): { tone: Tone; text: string } {
   if (remote.conn === "online") return { tone: "idle", text: "已连接" };
+  if (remote.link === "waiting" && !remote.showWaiting) return { tone: "off", text: "" };
   if (remote.everOnline) return { tone: "wait", text: "重连中" };
   return { tone: "off", text: remote.failures >= 2 ? "连不上" : "连接中" };
 }

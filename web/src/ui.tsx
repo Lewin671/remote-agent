@@ -174,6 +174,7 @@ export function ConnBar({ remote, className = "connbar" }: { remote: Remote; cla
   if (link === "online") return null;
   // Nothing kept from before to show: the bar says what the connection is for.
   const kept = remote.listed || remote.sessions.size > 0;
+  if (link === "waiting" && !remote.showWaiting) return null;
   if (link === "no-network") return <div className={className}><WifiOff /> 本机网络不通 · {kept ? "显示的是上次的内容" : "联网后才能读取会话"}</div>;
   if (link === "no-server")
     return (
@@ -242,7 +243,7 @@ export function sendKeys(fine: boolean, platform = navigator.platform): string {
   return /Mac|iP/.test(platform) ? "⌘↵" : "Ctrl+Enter";
 }
 
-/** Background pages stop live connections; visibility restoration takes a fresh snapshot. */
+/** Whether foreground UI work should run; App manages the connection lifetime. */
 export function usePageVisible() {
   return useSyncExternalStore(
     (notify) => { document.addEventListener("visibilitychange", notify); return () => document.removeEventListener("visibilitychange", notify); },

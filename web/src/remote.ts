@@ -411,6 +411,9 @@ export async function joinWithApproval(
 /** How long the stream may take from dialing to the server's ready. */
 const OPEN_TIMEOUT_MS = 15_000;
 const STREAM_IDLE_MS = 60_000;
+// One default server heartbeat (20 s), plus 10 s for scheduling/network delay.
+const STREAM_RESUME_IDLE_MS = 30_000;
+const RECONNECT_NOTICE_MS = 1_500;
 const RPC_TIMEOUT_MS = 45_000;
 
 /** What a plan the live snapshot says is pending reads as: the plan event
@@ -490,6 +493,7 @@ export class Remote {
    * counts as out of reach. */
   linkGraceMs = 10_000;
   private waited = false;
+  private waitingNotice = false;
   private graceTimer?: ReturnType<typeof setTimeout>;
   private begun = false;
   // When the link to the server last went down, while it is down: what is
@@ -944,6 +948,11 @@ export class Remote {
     return this.waited ? "no-server" : "waiting";
   }
 
+  /** Cached content needs no banner for a brief reconnect. Cold starts do. */
+  get showWaiting(): boolean {
+    return this.waitingNotice || (!this.listed && this.sessions.size === 0);
+  }
+
   /** Nothing here is known to still hold: the server is out of reach, or
    * has not been reached yet. A connection lost a moment ago does not count. */
   get unlinked(): boolean {
@@ -963,6 +972,7 @@ export class Remote {
     clearTimeout(this.graceTimer);
     this.graceTimer = undefined;
     this.waited = false;
+    this.waitingNotice = false;
     this.changed();
     if (!available) this.reconnectNow(true);
   }
@@ -972,12 +982,17 @@ export class Remote {
       clearTimeout(this.graceTimer);
       this.graceTimer = undefined;
       this.waited = false;
+      this.waitingNotice = false;
     } else if (!this.waited && this.graceTimer === undefined) {
+      // Reuse the link grace timer: first reveal waiting, then declare the
+      // server out of reach at the original total deadline.
+      const notice = Math.min(RECONNECT_NOTICE_MS, this.linkGraceMs);
       this.graceTimer = setTimeout(() => {
         this.graceTimer = undefined;
-        this.waited = true;
+        if (this.waitingNotice || notice === this.linkGraceMs) this.waited = true;
+        this.waitingNotice = true;
         this.changed();
-      }, this.linkGraceMs);
+      }, this.waitingNotice ? this.linkGraceMs - notice : notice);
     }
     this.version++;
     if (this.held) this.dirty = true;
@@ -1096,13 +1111,19 @@ export class Remote {
   // --- connection ---
 
   start() {
+    if (this.removed) return;
     if (
-      this.removed ||
-      (!this.closed &&
-        (this.ws || (this.generation > 0 && this.conn === "connecting")))
-    )
+      !this.closed &&
+      (this.ws || (this.generation > 0 && this.conn === "connecting"))
+    ) {
+      if (this.ws && this.conn === "online" &&
+          Date.now() - this.lastFrameAt > STREAM_RESUME_IDLE_MS)
+        this.reconnectNow(true);
       return;
+    }
     this.closed = false;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = undefined;
     this.authority.lifecycle.resume();
     this.unwatchSecurityPush?.();
     this.unwatchSecurityPush = watchSecurityPush(() => void this.syncSecurity());
@@ -1349,13 +1370,16 @@ export class Remote {
       this.generation++;
       this.fail(new Error(`${step}超时，正在重连`));
     }, OPEN_TIMEOUT_MS);
-    let go = false;
     try {
-      go = await this.preStream(generation, (s) => (step = s));
+      const go = await this.preStream(generation, (s) => (step = s));
+      if (go) this.openStream(generation);
+    } catch (e) {
+      // Storage can reject before login, and WebSocket construction can
+      // throw before callbacks exist. Both belong to this attempt's retry.
+      if (!this.closed && generation === this.generation) this.fail(e);
     } finally {
       clearTimeout(stall);
     }
-    if (go) this.openStream(generation);
   }
 
   /** Login and the security head, which the stream needs first. False
@@ -1406,6 +1430,8 @@ export class Remote {
     return !this.closed && generation === this.generation;
   }
 
+  private lastFrameAt = 0;
+
   private openStream(generation: number) {
     const url =
       apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
@@ -1425,6 +1451,7 @@ export class Remote {
       this.fail(e);
     };
     const watch = () => {
+      this.lastFrameAt = Date.now();
       clearTimeout(this.idleTimer);
       this.idleTimer = setTimeout(
         () => drop(new Error("连接超时，正在重连")),
