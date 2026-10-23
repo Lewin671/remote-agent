@@ -7,11 +7,65 @@ extension Remote {
     /// keeps only the members the state names. Device metadata is self-signed
     /// and is the only source of a client's name.
     func refreshTrustedDirectory() async throws {
-        directoryVersion += 1
-        let version = directoryVersion
+        try await refreshTrustedDirectory(updateMachine: nil, envelopes: [])
+    }
+
+    func checkDirectory(_ machine: String, envelopes: [PBEnvelope]) async throws {
+        try await refreshTrustedDirectory(updateMachine: machine, envelopes: envelopes)
+    }
+
+    private func refreshTrustedDirectory(updateMachine: String?, envelopes: [PBEnvelope]) async throws {
+        let client = try securitySession()
+        while !closed {
+            // Even a reusable directory must first verify the latest security chain.
+            let existing = directoryLoad
+            let record = try await client.sync()
+            let head = try DeviceSecurity.stateHash(record.state)
+            guard try await client.headStateHash() == head else { continue }
+            if let job = existing ?? directoryLoad {
+                do { try await job.task.value }
+                catch {
+                    if directoryLoad?.id == job.id { directoryLoad = nil }
+                    if try await client.headStateHash() != job.head { continue }
+                    throw error
+                }
+                if directoryLoad?.id == job.id { directoryLoad = nil }
+                if try await client.headStateHash() != directoryHead { continue }
+                return
+            }
+            let recoveryPending = await client.recoveryPending
+            guard try await client.headStateHash() == head else { continue }
+            let operationPending = try (securityStorage as? any AuthorityStorage)?.readOperation() != nil
+            let known = envelopes.allSatisfy { env in
+                guard let h = try? DeviceSecurity.parseHeader(env.securityHeader) else { return false }
+                return h.sender == updateMachine && record.states[h.epoch] != nil
+            }
+            if let machine = updateMachine, known, directoryHead == head,
+                record.state.core.member(account.deviceId) != nil,
+                trustedMembers[machine]?.kind == 1, record.state.core.member(machine)?.kind == 1,
+                !recoveryObjectsPending, !recoveryPending, !operationPending {
+                clockWarning = ""
+                return
+            }
+            directoryVersion += 1
+            let version = directoryVersion
+            let job = DirectoryLoad(head: head, task: Task { try await self.readTrustedDirectory(record, version: version) })
+            directoryLoad = job
+            do { try await job.task.value }
+            catch {
+                if directoryLoad?.id == job.id { directoryLoad = nil }
+                if try await client.headStateHash() != head { continue }
+                throw error
+            }
+            // Metadata publication may reload the directory; it runs outside this job.
+            if directoryLoad?.id == job.id { directoryLoad = nil }
+            if try await client.headStateHash() == directoryHead { return }
+        }
+    }
+
+    private func readTrustedDirectory(_ record: DeviceSecurity.Record, version: Int) async throws {
         recoveryObjectsPending = true
         var maintenancePending = false
-        let record = try await securitySession().sync()
         do {
             try await republishRecoveryObjects(record)
         } catch DeviceSecurity.Failure.lease {
@@ -24,8 +78,13 @@ extension Remote {
         let hints = try await api.client.listDevices(
             request: .init(), headers: Api.headers(token: try await currentToken())
         ).value()
+        let machineRows = try await api.client.listMachines(
+            request: .init(), headers: Api.headers(token: try await currentToken())
+        ).value()
         var members: [String: DeviceSecurity.Member] = [:]
         var metadata: [String: PBEnvelope] = [:]
+        for device in hints.devices where device.hasMeta { metadata["device:" + device.id] = device.meta }
+        for machine in machineRows.machines where machine.hasMeta { metadata["machine:" + machine.id] = machine.meta }
         var nextDevices: [String: DeviceView] = [:]
         let token = try await currentToken()
         var prefsRequest = PBGetAccountPrefsRequest()
@@ -41,15 +100,13 @@ extension Remote {
             var view = DeviceView(
                 id: member.id, kind: PBDeviceKind(rawValue: Int(member.kind))!,
                 createdMs: hint?.createdMs ?? 0, lastSeenMs: hint?.lastSeenMs ?? 0)
-            if let hint, hint.hasMeta {
-                let env = hint.meta
-                metadata[(member.kind == 1 ? "machine:" : "device:") + member.id] = env
+            if let env = metadata[(member.kind == 1 ? "machine:" : "device:") + member.id] {
                 do {
                 if member.kind == 2 {
                     let (h, meta) = try await openSecureMessage(
                         envelope: env, want: Place(.deviceMeta, requestId: member.id),
                         as: PBDeviceMeta.self)
-                    try DeviceSecurity.check(h.seq >= hint.metaRevision, .stale)
+                    try DeviceSecurity.check(h.seq >= (hint?.metaRevision ?? 0), .stale)
                     view.meta = meta
                     view.metaRev = h.seq
                 } else {
@@ -75,6 +132,7 @@ extension Remote {
             nextDevices[member.id] = view
         }
         guard !closed, version == directoryVersion else { return }
+        let expiration = try await securitySession().leaseExpiration()
         let installed = try await securitySession().identity().1
         guard try DeviceSecurity.stateHash(installed) == hash else {
             throw DeviceSecurity.Failure.stale
@@ -84,6 +142,17 @@ extension Remote {
                 throw DeviceSecurity.Failure.stale
             }
         }
+        for (id, current) in machines {
+            var next = nextMachines[id] ?? current
+            next.online = current.online
+            next.lastSeenMs = max(next.lastSeenMs, current.lastSeenMs)
+            if current.metaRev >= next.metaRev {
+                next.meta = current.meta
+                next.metaRev = current.metaRev
+                if let env = trustedMetadata["machine:" + id] { metadata["machine:" + id] = env }
+            }
+            nextMachines[id] = next
+        }
         archiveMachines=Set(record.states.values.flatMap{$0.core.members}.filter{$0.kind==1}.map{$0.id})
         for (id,var machine) in nextMachines where members[id] == nil {machine.online=false;nextMachines[id]=machine}
         trustedMembers = members
@@ -91,7 +160,7 @@ extension Remote {
         directoryHead = hash
         recoveryObjectsPending = maintenancePending
         devices = nextDevices
-        leaseEndMs = try await securitySession().leaseExpiration()
+        leaseEndMs = expiration
         authorityDeviceId = head.core.authorityID
         machines = nextMachines.filter { members[$0.key]?.kind == 1 || archiveMachines.contains($0.key) }
         for session in Array(sessions.values) where members[session.machineId]?.kind != 1 && !archiveMachines.contains(session.machineId) {

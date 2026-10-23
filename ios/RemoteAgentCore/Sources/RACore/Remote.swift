@@ -185,6 +185,12 @@ public actor Remote {
     var archiveMachines: Set<String> = []
     var trustedMembers: [String: DeviceSecurity.Member] = [:]
     var trustedMetadata: [String: PBEnvelope] = [:]
+    struct DirectoryLoad {
+        let id = UUID()
+        let head: Data
+        let task: Task<Void, Error>
+    }
+    var directoryLoad: DirectoryLoad?
     var directoryVersion = 0
     var directoryHead: Data?
     var recoveryObjectsPending = true
@@ -825,11 +831,11 @@ public actor Remote {
             _ = await refresh()
         case .machineUpdated(let u)?:
             bump(&machinePushes, u.machine.id)
-            do { try await refreshTrustedDirectory() } catch { report(error) }
+            do { try await checkDirectory(u.machine.id, envelopes: u.machine.hasMeta ? [u.machine.meta] : []) } catch { report(error) }
             await putMachine(u.machine)
         case .sessionUpdated(let u)?:
             bump(&sessionPushes, u.session.sessionID)
-            do { try await refreshTrustedDirectory() } catch { report(error) }
+            do { try await checkDirectory(u.session.machineID, envelopes: [u.session.key, u.session.meta]) } catch { report(error) }
             await putSession(u.session, save: onFirstPage(u.session))
         case .eventsAppended(let a)?:
             let sid = a.sessionID

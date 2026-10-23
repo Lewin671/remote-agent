@@ -288,6 +288,7 @@ extension Remote {
         if !staleOnline { view.online = m.online }
         if m.lastSeenMs > view.lastSeenMs { view.lastSeenMs = m.lastSeenMs }
         var store = old == nil
+        var verifiedMeta = false
         if m.hasMeta {
             do {
                 let (h, meta) = try await openSecureMessage(
@@ -296,6 +297,7 @@ extension Remote {
                 if h.seq >= view.metaRev {
                     view.meta = meta
                     view.metaRev = h.seq
+                    verifiedMeta = true
                     store = true
                 }
             } catch {
@@ -306,6 +308,7 @@ extension Remote {
             return
         }
         machines[m.id] = view
+        if verifiedMeta { trustedMetadata["machine:" + m.id] = m.meta }
         if save && store { await cache?.putMachine(m) }
         publish()
     }
