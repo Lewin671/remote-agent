@@ -49,8 +49,24 @@ fun connWord(state: RemoteState): String = when {
  */
 @Composable
 fun ConnCheckSheet(state: RemoteState, onClose: () -> Unit) {
-    val p = pal
     val remote = LocalRemote.current
+    ConnCheckSheet(
+        state, onClose, remote.account.server,
+        { remote.state.value.machines.values.filter { it.online }.map { it.id } },
+        { remote.pingServer() }, { remote.pingMachine(it) },
+    )
+}
+
+@Composable
+internal fun ConnCheckSheet(
+    state: RemoteState,
+    onClose: () -> Unit,
+    serverAddress: String,
+    onlineMachines: () -> List<String>,
+    pingServer: suspend () -> Long,
+    pingMachine: suspend (String) -> Long,
+) {
+    val p = pal
     var server by remember { mutableStateOf<Ping>(Ping.Wait) }
     val machines = remember { mutableStateMapOf<String, Ping>() }
     var run by remember { mutableStateOf(0) }
@@ -58,15 +74,15 @@ fun ConnCheckSheet(state: RemoteState, onClose: () -> Unit) {
     val list = state.machines.values.sortedWith(compareByDescending<io.github.lewin671.remoteagent.core.MachineView> { it.online }.thenBy { machineLabel(state, it.id) })
     LaunchedEffect(run) {
         busy = true
-        val online = remote.state.value.machines.values.filter { it.online }.map { it.id }
+        val online = onlineMachines()
         server = Ping.Wait
         machines.clear()
         online.forEach { machines[it] = Ping.Wait }
         try {
-            server = Ping.Ok(median(List(3) { remote.pingServer() }))
+            server = Ping.Ok(median(List(3) { pingServer() }))
             coroutineScope {
                 online.map { id ->
-                    async { machines[id] = runCatching { Ping.Ok(remote.pingMachine(id)) }.getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it else Ping.Fail(errorText(it).ifEmpty { "没有回应" }) } }
+                    async { machines[id] = runCatching { Ping.Ok(pingMachine(id)) }.getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it else Ping.Fail(errorText(it).ifEmpty { "没有回应" }) } }
                 }.awaitAll()
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -103,15 +119,21 @@ fun ConnCheckSheet(state: RemoteState, onClose: () -> Unit) {
     Sheet(onClose) {
         SheetHead("连接检测", "完成", onClose)
         Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft)) {
+            line("实时推送") {
+                dotted(if (state.conn == ConnState.ONLINE) p.green else if (state.synced) p.orange else p.gray, connWord(state))
+            }
+            HorizontalDivider(color = p.line, thickness = 1.dp)
             val network = state.link != Link.NO_NETWORK
             line("本机网络") { dotted(if (network) p.green else p.gray, if (network) "正常" else "不通") }
             HorizontalDivider(color = p.line, thickness = 1.dp)
-            line("服务器", remote.account.server.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
+            line("服务器", serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
             for (m in list) {
                 HorizontalDivider(color = p.line, thickness = 1.dp)
                 line(machineLabel(state, m.id)) { if (m.online) result(machines[m.id], SLOW_MACHINE_MS) else dotted(p.gray, "不在线", p.muted) }
             }
         }
+        if (state.conn != ConnState.ONLINE)
+            Hint("实时推送未连接，会话变化可能延迟。" + if (state.error.isNotEmpty()) "最近一次失败：${state.error}" else "")
         Hint("延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。")
         Btn("再测一次", { run++ }, Modifier.fillMaxWidth().padding(top = 12.dp), enabled = !busy)
     }
