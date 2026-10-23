@@ -400,7 +400,7 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 	}
 	// Generic text only; the push never signs anything. The current
 	// authority client is the only recipient.
-	_ = rs.s.push.notifyDevice(t, authority, "", pb.NotifyKind_NOTIFY_KIND_SECURITY, nil, "security/"+recoveryID)
+	_ = rs.s.push.notifyDevice(ctx, t, authority, "", pb.NotifyKind_NOTIFY_KIND_SECURITY, nil, "security/"+recoveryID)
 	return connect.NewResponse(&pb.SubmitRecoveryResponse{RecoveryId: recoveryID, ReadyMs: uint64(ready)}), nil
 }
 

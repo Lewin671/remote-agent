@@ -21,31 +21,31 @@ func TestNotificationDedupeStateIsBounded(t *testing.T) {
 	st := ts.srv.store.tenant
 	// One account has a share of the state; it cannot take the rest.
 	for i := range maxAccountPushRecent {
-		if err := p.notify(st("a"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
+		if err := p.notify(context.Background(), st("a"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := p.notify(st("a"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "overflow"); !errors.Is(err, errPushBusy) {
+	if err := p.notify(context.Background(), st("a"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "overflow"); !errors.Is(err, errPushBusy) {
 		t.Fatalf("one account's notification state is unbounded: %v", err)
 	}
-	if err := p.notify(st("b"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "overflow"); err != nil {
+	if err := p.notify(context.Background(), st("b"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "overflow"); err != nil {
 		t.Fatalf("one account's notifications used up another's: %v", err)
 	}
 	// All of them together have a bound too.
 	for i := 0; len(p.recent) < maxPushRecent; i++ {
 		acct := fmt.Sprintf("acct-%d", i/maxAccountPushRecent)
-		if err := p.notify(st(acct), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
+		if err := p.notify(context.Background(), st(acct), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := p.notify(st("c"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "overflow"); !errors.Is(err, errPushBusy) {
+	if err := p.notify(context.Background(), st("c"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "overflow"); !errors.Is(err, errPushBusy) {
 		t.Fatalf("unbounded notification state: %v", err)
 	}
 	if len(p.recent) != maxPushRecent {
 		t.Fatalf("dedupe map grew to %d", len(p.recent))
 	}
 	// Replays remain successful without consuming capacity.
-	if err := p.notify(st("a"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "0"); err != nil {
+	if err := p.notify(context.Background(), st("a"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "0"); err != nil {
 		t.Fatal(err)
 	}
 	// Expired state is swept before capacity is checked.
@@ -54,7 +54,7 @@ func TestNotificationDedupeStateIsBounded(t *testing.T) {
 		p.recent[k] = pushRecent{acct: r.acct, at: time.Now().Add(-pushDedupe)}
 	}
 	p.mu.Unlock()
-	if err := p.notify(st("c"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "overflow"); err != nil {
+	if err := p.notify(context.Background(), st("c"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "overflow"); err != nil {
 		t.Fatal(err)
 	}
 	if len(p.recent) != 1 {
@@ -85,17 +85,17 @@ func TestNotificationDeliveriesAreBoundedAndOverloadIsRetryable(t *testing.T) {
 	}
 	// One account fills its own share and no more.
 	for i := range maxAccountPushDeliveries / 2 {
-		if err := p.notify(st("acct-0"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
+		if err := p.notify(context.Background(), st("acct-0"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := p.notify(st("acct-0"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "retry"); !errors.Is(err, errPushBusy) {
+	if err := p.notify(context.Background(), st("acct-0"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "retry"); !errors.Is(err, errPushBusy) {
 		t.Fatalf("one account's concurrent pushes are unbounded: %v", err)
 	}
 	// The others fill the relay's.
 	for a := 1; a < accounts; a++ {
 		for i := range maxAccountPushDeliveries / 2 {
-			if err := p.notify(st(fmt.Sprint("acct-", a)), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
+			if err := p.notify(context.Background(), st(fmt.Sprint("acct-", a)), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -104,7 +104,7 @@ func TestNotificationDeliveriesAreBoundedAndOverloadIsRetryable(t *testing.T) {
 		t.Fatalf("deliveries=%d", len(p.deliveries))
 	}
 	last := st(fmt.Sprint("acct-", accounts))
-	if err := p.notify(last, "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "retry"); !errors.Is(err, errPushBusy) {
+	if err := p.notify(context.Background(), last, "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "retry"); !errors.Is(err, errPushBusy) {
 		t.Fatalf("unbounded concurrent pushes: %v", err)
 	}
 	if _, ok := p.recent[pushRecentKey(last.acct, "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, "retry")]; ok {
@@ -118,7 +118,7 @@ func TestNotificationDeliveriesAreBoundedAndOverloadIsRetryable(t *testing.T) {
 		}
 		time.Sleep(time.Millisecond)
 	}
-	if err := p.notify(last, "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "retry"); err != nil {
+	if err := p.notify(context.Background(), last, "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "retry"); err != nil {
 		t.Fatalf("retry after overload: %v", err)
 	}
 	// Wait for the retry's asynchronous network calls before closing SQLite.
@@ -143,7 +143,7 @@ func TestNotificationRetainedKeysHaveBoundedBytes(t *testing.T) {
 	p := ts.srv.push
 	sid := strings.Repeat("s", 512<<10)
 	for i := range 8 {
-		if err := p.notify(ts.tenant(), sid, pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
+		if err := p.notify(context.Background(), ts.tenant(), sid, pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -163,17 +163,17 @@ func TestNotificationRetainedKeysHaveBoundedBytes(t *testing.T) {
 func TestNotificationKeysAreScopedToSession(t *testing.T) {
 	ts := newTestServer(t)
 	p := ts.srv.push
-	if err := p.notify(ts.tenant(), "s-a", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "same"); err != nil {
+	if err := p.notify(context.Background(), ts.tenant(), "s-a", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "same"); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.notify(ts.tenant(), "s-b", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "same"); err != nil {
+	if err := p.notify(context.Background(), ts.tenant(), "s-b", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "same"); err != nil {
 		t.Fatal(err)
 	}
 	if len(p.recent) != 2 {
 		t.Fatal("one session suppressed another session's notification")
 	}
 	// Nor does one account another's, with the same session ID and key.
-	if err := p.notify(ts.srv.store.tenant("other"), "s-a", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "same"); err != nil {
+	if err := p.notify(context.Background(), ts.srv.store.tenant("other"), "s-a", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "same"); err != nil {
 		t.Fatal(err)
 	}
 	if len(p.recent) != 3 {

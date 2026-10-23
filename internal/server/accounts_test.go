@@ -503,7 +503,7 @@ func TestNotificationsStayInTheirAccount(t *testing.T) {
 	if err := p.subscribe(ctx, ts.srv.store.tenant("b"), "client-b", pushSubscription(t, "https://b.example/push"), kinds); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.notify(ts.srv.store.tenant("b"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "k"); err != nil {
+	if err := p.notify(context.Background(), ts.srv.store.tenant("b"), "s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "k"); err != nil {
 		t.Fatal(err)
 	}
 	// Nor can one account's device take another's subscription.

@@ -36,7 +36,7 @@ func TestSecurityPushOnlyToAuthority(t *testing.T) {
 	if err := p.subscribe(ctx, ts.tenant(), otherID, pushSubscription(t, "https://push.example/other"), kinds); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.notifyDevice(ts.tenant(), c.phoneID, "", pb.NotifyKind_NOTIFY_KIND_SECURITY, nil, "security/test"); err != nil {
+	if err := p.notifyDevice(context.Background(), ts.tenant(), c.phoneID, "", pb.NotifyKind_NOTIFY_KIND_SECURITY, nil, "security/test"); err != nil {
 		t.Fatal(err)
 	}
 	deadline := time.Now().Add(5 * time.Second)
@@ -86,7 +86,7 @@ func TestWebPushReachesConnectedClient(t *testing.T) {
 		[]pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION}); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.notify(ts.tenant(), "session", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "connected-test"); err != nil {
+	if err := p.notify(context.Background(), ts.tenant(), "session", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "connected-test"); err != nil {
 		t.Fatal(err)
 	}
 	select {

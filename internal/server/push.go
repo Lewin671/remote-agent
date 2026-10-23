@@ -207,17 +207,17 @@ var pushText = map[pb.NotifyKind]string{
 // serialized NOTIFY envelope for FCM targets, or nil. With a dedupe key the
 // notification is sent once per key; without one, once per session and
 // kind within pushCoalesce.
-func (p *pusher) notify(st *tstore, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
-	return p.notifyTo(st, "", sessionID, kind, content, dedupeKey)
+func (p *pusher) notify(ctx context.Context, st *tstore, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
+	return p.notifyTo(ctx, st, "", sessionID, kind, content, dedupeKey)
 }
 
 // notifyDevice sends to one device only, for account-level notices that must
 // reach the current authority client rather than every member.
-func (p *pusher) notifyDevice(st *tstore, deviceID, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
-	return p.notifyTo(st, deviceID, sessionID, kind, content, dedupeKey)
+func (p *pusher) notifyDevice(ctx context.Context, st *tstore, deviceID, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
+	return p.notifyTo(ctx, st, deviceID, sessionID, kind, content, dedupeKey)
 }
 
-func (p *pusher) notifyTo(st *tstore, deviceID, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
+func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
 	body, ok := pushText[kind]
 	if !ok {
 		return invalid("unknown notification kind")
@@ -227,22 +227,30 @@ func (p *pusher) notifyTo(st *tstore, deviceID, sessionID string, kind pb.Notify
 	if dedupeKey != "" {
 		window = pushDedupe
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	now := time.Now()
-	mine := 0
-	for k, r := range p.recent {
-		if now.Sub(r.at) >= pushDedupe || (!strings.HasPrefix(k, "d/") && now.Sub(r.at) >= pushCoalesce) {
-			delete(p.recent, k)
-		} else if r.acct == st.acct {
-			mine++
+	checkRecent := func() (bool, error) {
+		now := time.Now()
+		mine := 0
+		for k, r := range p.recent {
+			if now.Sub(r.at) >= pushDedupe || (!strings.HasPrefix(k, "d/") && now.Sub(r.at) >= pushCoalesce) {
+				delete(p.recent, k)
+			} else if r.acct == st.acct {
+				mine++
+			}
 		}
+		if r, ok := p.recent[key]; ok && now.Sub(r.at) < window {
+			return true, nil
+		}
+		if len(p.recent) >= maxPushRecent || mine >= maxAccountPushRecent {
+			return false, errPushBusy
+		}
+
+		return false, nil
 	}
-	if r, ok := p.recent[key]; ok && now.Sub(r.at) < window {
-		return nil
-	}
-	if len(p.recent) >= maxPushRecent || mine >= maxAccountPushRecent {
-		return errPushBusy
+	p.mu.Lock()
+	duplicate, err := checkRecent()
+	p.mu.Unlock()
+	if duplicate || err != nil {
+		return err
 	}
 
 	type target struct{ device, sub, token string }
@@ -255,7 +263,7 @@ func (p *pusher) notifyTo(st *tstore, deviceID, sessionID string, kind pb.Notify
 	}
 	webQuery += ` LIMIT ?`
 	webArgs = append(webArgs, maxAccountPushDeliveries+1)
-	rows, err := st.db.Query(webQuery, webArgs...)
+	rows, err := st.db.QueryContext(ctx, webQuery, webArgs...)
 	if err != nil {
 		return err
 	}
@@ -281,7 +289,7 @@ func (p *pusher) notifyTo(st *tstore, deviceID, sessionID string, kind pb.Notify
 		}
 		fcmQuery += ` LIMIT ?`
 		fcmArgs = append(fcmArgs, maxAccountPushDeliveries+1)
-		rows, err := st.db.Query(fcmQuery, fcmArgs...)
+		rows, err := st.db.QueryContext(ctx, fcmQuery, fcmArgs...)
 		if err != nil {
 			return err
 		}
@@ -299,6 +307,14 @@ func (p *pusher) notifyTo(st *tstore, deviceID, sessionID string, kind pb.Notify
 			return err
 		}
 	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if duplicate, err := checkRecent(); duplicate || err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if len(targets) > cap(p.deliveries)-len(p.deliveries) || p.busy[st.acct]+len(targets) > maxAccountPushDeliveries {
 		return errPushBusy
 	}
@@ -310,7 +326,7 @@ func (p *pusher) notifyTo(st *tstore, deviceID, sessionID string, kind pb.Notify
 	if len(targets) > 0 {
 		p.busy[st.acct] += len(targets)
 	}
-	p.recent[key] = pushRecent{acct: st.acct, at: now}
+	p.recent[key] = pushRecent{acct: st.acct, at: time.Now()}
 	payload, _ := json.Marshal(map[string]string{"title": "remote-agent", "body": body, "tag": sessionID + "/" + kind.String(), "session": sessionID})
 	data := map[string]string{"session": sessionID, "kind": strconv.Itoa(int(kind))}
 	if c := base64.StdEncoding.EncodeToString(content); len(content) > 0 && len(c) <= fcmMaxData {
@@ -440,7 +456,7 @@ func (m *machineService) Notify(ctx context.Context, req *connect.Request[pb.Not
 	if len(req.Msg.DedupeKey) > 128 {
 		return nil, invalid("dedupe key too long")
 	}
-	if err := m.s.push.notify(t.store, req.Msg.SessionId, req.Msg.Kind, content, req.Msg.DedupeKey); err != nil {
+	if err := m.s.push.notify(ctx, t.store, req.Msg.SessionId, req.Msg.Kind, content, req.Msg.DedupeKey); err != nil {
 		if errors.Is(err, errPushBusy) {
 			return nil, connect.NewError(connect.CodeResourceExhausted, err)
 		}
