@@ -145,3 +145,87 @@ it("preserves a verified handoff offer when renaming this device", async () => {
   expect(r.devices.get(self)?.meta?.handoffRecoveryEd).toEqual(handoffRecoveryEd);
   expect(() => r.renameDevice(r.machine, "other")).toThrow("名称只能在那台设备上修改");
 }, 20000);
+
+function countedDirectory(r: SyntheticRemote) {
+  const listDevices = vi.fn(async () => ({ devices: [] }));
+  const listMachines = vi.fn(async () => ({ machines: [] }));
+  (r as any).api = { listDevices, listMachines };
+  return { listDevices, listMachines };
+}
+
+it("checks security on every known update without reloading an unchanged directory", async () => {
+  const r = await probe(), api = countedDirectory(r);
+  await r.loadDevices(false);
+  const sync = vi.spyOn(r.security, "sync");
+  const open = vi.spyOn(r as any, "openSecureMessage");
+  const row = await r.sessionRow("s");
+  const frame = (case_: string, value: object) => (r as any).onFrame({ case: case_, value });
+  await frame("sessionUpdated", { session: row });
+  await frame("sessionUpdated", { session: row });
+  await frame("machineUpdated", { machine: { id: r.machine, online: true, lastSeenMs: 1n } });
+  expect(sync).toHaveBeenCalledTimes(3);
+  expect(api.listDevices).toHaveBeenCalledTimes(1);
+  expect(api.listMachines).toHaveBeenCalledTimes(1);
+  // Only each pushed session's own payload is opened, never member metadata.
+  expect(open.mock.calls.every(([, route]) => (route as any).kind === 2)).toBe(true);
+  await r.loadDevices(false);
+  expect(api.listDevices).toHaveBeenCalledTimes(2);
+}, 20000);
+
+it("fully reloads changed heads, removed or unknown machines, and unknown epochs", async () => {
+  const r = await probe(), api = countedDirectory(r);
+  await r.loadDevices(false);
+  const row = await r.sessionRow("s");
+  const update = (value = row) => (r as any).onFrame({ case: "sessionUpdated", value: { session: value } });
+  const other = await r.addClient();
+  await update();
+  expect(api.listDevices).toHaveBeenCalledTimes(2);
+  other.stop();
+  await update({ ...row, machineId: "unknown-machine" });
+  expect(api.listDevices).toHaveBeenCalledTimes(3);
+  const { headerBytes, parseHeader } = await import("./device-security");
+  const meta = { ...row.meta, securityHeader: headerBytes({ ...parseHeader(new Uint8Array(row.meta.securityHeader)), epoch: 999n }) };
+  await update({ ...row, meta });
+  expect(api.listDevices).toHaveBeenCalledTimes(4);
+  await r.world.fixture.remove([r.machine]);
+  await update();
+  expect(api.listDevices).toHaveBeenCalledTimes(5);
+  expect(r.devices.has(r.machine)).toBe(false);
+  await update();
+  expect(api.listDevices).toHaveBeenCalledTimes(6);
+  expect(r.devices.has(r.machine)).toBe(false);
+}, 20000);
+
+it("coalesces directory loads and does not acknowledge a head changed during loading", async () => {
+  const r = await probe();
+  let release!: () => void, entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const barrier = new Promise<void>(resolve => { release = resolve; });
+  const listDevices = vi.fn(async () => { entered(); await barrier; return { devices: [] }; });
+  (r as any).api = { listDevices };
+  const first = r.loadDevices(false);
+  await started;
+  const second = r.loadDevices(false);
+  // Let the joining call observe the in-flight load before changing the head.
+  const sync = r.security.sync();
+  await sync;
+  await r.world.fixture.remove([r.machine]);
+  await r.security.sync();
+  release();
+  await Promise.all([first, second]);
+  expect(listDevices).toHaveBeenCalledTimes(2);
+  expect(r.devices.has(r.machine)).toBe(false);
+  expect((r as any).directoryHead).toEqual(await r.security.localStateHash());
+}, 20000);
+
+it("does not reuse a directory while recovery publication or reconciliation is pending", async () => {
+  const r = await probe(), api = countedDirectory(r);
+  await r.loadDevices(false);
+  (r as any).recoveryObjectsPending = true;
+  await r.loadDevices(false, { machineId: r.machine });
+  expect(api.listDevices).toHaveBeenCalledTimes(2);
+  (r as any).reconcilingSecurity = 1;
+  await r.loadDevices(false, { machineId: r.machine });
+  expect(api.listDevices).toHaveBeenCalledTimes(3);
+  (r as any).reconcilingSecurity = 0;
+}, 20000);
