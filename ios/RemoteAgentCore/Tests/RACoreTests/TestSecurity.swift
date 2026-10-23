@@ -225,14 +225,14 @@ func fixtureRemote(
     log: @escaping @Sendable (String) -> Void = { _ in },
     clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
     sleep: @escaping Sleeper = realSleep,
-    jitter: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) }, frameQueue: Int = 1024,
+    jitter: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) }, frameQueue: Int = 1024, frameQueueBytes: Int = 32 << 20,
     historyIdleMs: Int64 = 60000, historyIdleCount: Int = 8,
     historyIdleBytes: Int64 = 16 * 1024 * 1024, streamOpenMs: Int64 = 15000,
     linkGraceMs: Int64 = 10000, securityStorage: (any DeviceSecurity.Storage)? = nil
 ) throws -> Remote {
     try Remote(
         account: account, http: http, cache: cache, log: log, clock: clock, sleep: sleep,
-        jitter: jitter, frameQueue: frameQueue, historyIdleMs: historyIdleMs,
+        jitter: jitter, frameQueue: frameQueue, frameQueueBytes: frameQueueBytes, historyIdleMs: historyIdleMs,
         historyIdleCount: historyIdleCount, historyIdleBytes: historyIdleBytes,
         streamOpenMs: streamOpenMs, linkGraceMs: linkGraceMs,
         securityStorage: securityStorage

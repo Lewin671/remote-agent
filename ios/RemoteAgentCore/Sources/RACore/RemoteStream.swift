@@ -187,3 +187,21 @@ final class Socket: Sendable {
         }
     }
 }
+
+/// Counts queued frames and the one being processed, until processing returns.
+final class StreamByteBudget: Sendable {
+    private let used = OSAllocatedUnfairLock(initialState: 0)
+    private let limit: Int
+
+    init(limit: Int) { self.limit = max(0, limit) }
+
+    func reserve(_ bytes: Int) -> Bool {
+        used.withLock {
+            guard bytes <= limit - $0 else { return false }
+            $0 += bytes
+            return true
+        }
+    }
+
+    func release(_ bytes: Int) { used.withLock { $0 -= bytes } }
+}

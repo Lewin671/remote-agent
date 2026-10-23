@@ -61,12 +61,12 @@ final class World: @unchecked Sendable {
 
     func remote(
         _ account: Account, http: HTTP? = nil, cache: (any CipherCache)? = nil,
-        frameQueue: Int = 1024,
+        frameQueue: Int = 1024, frameQueueBytes: Int = 32 << 20,
         historyIdleMs: Int64 = 60_000, historyIdleCount: Int = 8, streamOpenMs: Int64 = 15_000,
         linkGraceMs: Int64 = 10_000
     ) throws -> Remote {
         let r = try fixtureRemote(
-            account: account, http: http ?? self.http, cache: cache, frameQueue: frameQueue,
+            account: account, http: http ?? self.http, cache: cache, frameQueue: frameQueue, frameQueueBytes: frameQueueBytes,
             historyIdleMs: historyIdleMs,
             historyIdleCount: historyIdleCount, streamOpenMs: streamOpenMs,
             linkGraceMs: linkGraceMs,
@@ -76,12 +76,12 @@ final class World: @unchecked Sendable {
     }
 
     func client(
-        cache: (any CipherCache)? = nil, http: HTTP? = nil, frameQueue: Int = 1024,
+        cache: (any CipherCache)? = nil, http: HTTP? = nil, frameQueue: Int = 1024, frameQueueBytes: Int = 32 << 20,
         historyIdleMs: Int64 = 60_000,
         historyIdleCount: Int = 8, linkGraceMs: Int64 = 10_000
     ) async throws -> Remote {
         try remote(
-            try await join(), http: http, cache: cache, frameQueue: frameQueue,
+            try await join(), http: http, cache: cache, frameQueue: frameQueue, frameQueueBytes: frameQueueBytes,
             historyIdleMs: historyIdleMs,
             historyIdleCount: historyIdleCount, linkGraceMs: linkGraceMs)
     }
@@ -854,7 +854,8 @@ extension ServerTests {
             }
         }
 
-        @Test func aStreamThatOverflowsIsReplacedAndNothingIsLost() async throws {
+        @Test(arguments: [false, true])
+        func aStreamThatOverflowsIsReplacedAndNothingIsLost(byteLimit: Bool) async throws {
             try await world { w in
                 let acct = try await w.join()
                 let proxy = try CountingProxy(to: w.server.port)
@@ -874,7 +875,8 @@ extension ServerTests {
                     Account(
                         server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed,
                         deviceId: acct.deviceId),
-                    cache: cache, frameQueue: 1)
+                    cache: cache, frameQueue: byteLimit ? 1024 : 1,
+                    frameQueueBytes: byteLimit ? 4096 : 32 << 20)
                 r.start()
                 _ = try await r.awaitEvents("s1", 3)
                 try await eventually("initial events to be cached") {

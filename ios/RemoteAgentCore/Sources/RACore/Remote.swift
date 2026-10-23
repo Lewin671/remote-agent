@@ -152,6 +152,7 @@ public actor Remote {
     nonisolated let jitter: @Sendable () -> Double
     /// Stream frames waiting to be handled before the stream is dropped and caught up from history.
     nonisolated let frameQueue: Int
+    nonisolated let frameQueueBytes: Int
     nonisolated let historyIdleMs: Int64
     nonisolated let historyIdleCount: Int
     nonisolated let historyIdleBytes: Int64
@@ -327,6 +328,7 @@ public actor Remote {
         sleep: @escaping Sleeper = realSleep,
         jitter: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) },
         frameQueue: Int = 1024,
+        frameQueueBytes: Int = 32 << 20,
         historyIdleMs: Int64 = 60_000,
         historyIdleCount: Int = 8,
         historyIdleBytes: Int64 = 16 * 1024 * 1024,
@@ -343,6 +345,7 @@ public actor Remote {
         self.sleep = sleep
         self.jitter = jitter
         self.frameQueue = frameQueue
+        self.frameQueueBytes = frameQueueBytes
         self.historyIdleMs = historyIdleMs
         self.historyIdleCount = historyIdleCount
         self.historyIdleBytes = historyIdleBytes
@@ -710,9 +713,15 @@ public actor Remote {
         // What was queued before that is still handled; nothing is skipped.
         let (frames, queue) = AsyncStream<Data>.makeStream(
             bufferingPolicy: .bufferingOldest(max(frameQueue, 1)))
+        let budget = StreamByteBudget(limit: frameQueueBytes)
         Task.detached {
             while let bytes = try? await socket.receive() {
+                guard budget.reserve(bytes.count) else {
+                    socket.cancel()
+                    break
+                }
                 if case .dropped = queue.yield(bytes) {
+                    budget.release(bytes.count)
                     socket.cancel()
                     break
                 }
@@ -729,12 +738,13 @@ public actor Remote {
                 me.fail(UserError("连接超时，正在重连"))
             }
         }
-        Task { await self.follow(socket, frames, gen) }
+        Task { await self.follow(socket, frames, gen, budget) }
     }
 
     /// Handles a stream's frames in order until it ends or is replaced.
-    private func follow(_ socket: Socket, _ frames: AsyncStream<Data>, _ gen: Int) async {
+    private func follow(_ socket: Socket, _ frames: AsyncStream<Data>, _ gen: Int, _ budget: StreamByteBudget) async {
         for await bytes in frames {
+            defer { budget.release(bytes.count) }
             if ws !== socket || gen != generation { break }
             do {
                 let f = try PBServerFrame(serializedBytes: bytes)
