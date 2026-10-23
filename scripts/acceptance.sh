@@ -90,7 +90,7 @@ start_daemon 60s
 cd "$WORK"
 
 # 1. Start a session; it keeps running without a terminal attached.
-ID=$("$BIN" new -c 'approvals_reviewer="user"')
+ID=$("$BIN" new -c 'approvals_reviewer="user"' -c 'approval_policy="on-request"' -c 'sandbox_mode="workspace-write"')
 if settle "$ID"; then pass "session starts and reaches the input box"; else fail "session start"; fi
 
 # 2-3. Send a message; the turn's events arrive in order.
@@ -148,7 +148,7 @@ approve_case deny
 approve_case timeout
 
 # 4. With auto_review on, the hook stays silent and Codex's reviewer decides.
-AUTO=$("$BIN" new -c 'approvals_reviewer="auto_review"')
+AUTO=$("$BIN" new -c 'approvals_reviewer="auto_review"' -c 'approval_policy="on-request"' -c 'sandbox_mode="workspace-write"')
 settle "$AUTO" || true
 "$BIN" send "$AUTO" "Run exactly this shell command and nothing else: touch $target-auto"
 if wait_for 120 sh -c "'$BIN' events '$AUTO' --json | grep -q '\"turnEnded\"'"; then
