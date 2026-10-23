@@ -79,11 +79,12 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
     private val sockets = mutableListOf<Socket>()
     private val http = Api.defaultHttp()
     fun saved() = MemoryTokens().apply { saved = LoginToken(token, fixture.now + 3 * LOGIN_REFRESH_MARGIN_MS) }
-    fun remote(cache: CipherCache? = null, tokens: LoginTokenStore? = saved()) = Remote(
+    fun remote(cache: CipherCache? = null, tokens: LoginTokenStore? = saved(),
+        sockets: WebSocket.Factory = this) = Remote(
         fixture.account, http, cache,
         clock = { fixture.now + test.testScheduler.currentTime },
         securityStorage = TestSecurityStore(fixture.record), tokenStorage = tokens,
-        dispatcher = StandardTestDispatcher(test.testScheduler), socketFactory = this, rpcTransport = this,
+        dispatcher = StandardTestDispatcher(test.testScheduler), socketFactory = sockets, rpcTransport = this,
     )
 
     override fun unary(request: UnaryHTTPRequest, onResult: (HTTPResponse) -> Unit): () -> Unit {

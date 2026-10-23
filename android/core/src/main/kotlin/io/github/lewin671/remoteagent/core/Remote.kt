@@ -3403,15 +3403,24 @@ class Remote(
         val streamId = newRequestId()
         val opened = CompletableDeferred<Unit>()
         val closed = java.util.concurrent.atomic.AtomicBoolean(false)
-        fun finish(reason: String) {
-            if (closed.compareAndSet(false, true)) listener.onClose(reason)
-        }
         var last = 0L
         val incoming = kotlinx.coroutines.channels.Channel<ByteArray>(64)
         data class QueuedInput(val frame: TerminalFrame, val deadline: Long)
         val outgoing = kotlinx.coroutines.channels.Channel<QueuedInput>(64)
         val queuedBytes = java.util.concurrent.atomic.AtomicLong(0)
-        val reader = scope.launch {
+        val terminalJob = SupervisorJob(scope.coroutineContext[Job])
+        val terminalScope = CoroutineScope(scope.coroutineContext + terminalJob)
+        val socket = java.util.concurrent.atomic.AtomicReference<WebSocket?>()
+        fun cleanup(reason: String? = null) {
+            if (!closed.compareAndSet(false, true)) return
+            incoming.cancel()
+            outgoing.cancel()
+            terminalJob.cancel()
+            socket.get()?.cancel()
+            opened.completeExceptionally(java.io.IOException(reason ?: "终端已关闭"))
+            if (reason != null) listener.onClose(reason)
+        }
+        terminalScope.launch {
             try {
                 for (raw in incoming) {
                     try {
@@ -3436,61 +3445,61 @@ class Remote(
                     }
                 }
             } catch (e: Exception) {
-                finish(errorText(e, state.value))
+                cleanup(errorText(e, state.value))
             }
         }
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
-        val ws =
-            (socketFactory ?: streamHttp).newWebSocket(
-                Request.Builder().url(url).build(),
-                object : WebSocketListener() {
-                    override fun onOpen(webSocket: WebSocket, response: Response) {
-                        val hello =
-                            TermHello.newBuilder()
-                                .setToken(tok)
-                                .setStreamId(streamId)
-                                .setMachineId(s.machineId)
-                                .build()
-                        webSocket.send(hello.toByteArray().toByteString())
-                        opened.complete(Unit)
-                    }
-
-                    override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                        if (closed.get()) return
-                        val raw = bytes.toByteArray()
-                        if (
-                            raw.size > 1 shl 20 ||
-                                queuedBytes.addAndGet(raw.size.toLong()) > 2L * 1024 * 1024 ||
-                                incoming.trySend(raw).isFailure
-                        ) {
-                            finish("终端输出积压，已停止接收")
-                            webSocket.cancel()
-                            incoming.close()
-                        }
-                    }
-
-                    override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                        if (code == POLICY_VIOLATION) rejectToken(tok)
-                        webSocket.close(1000, null)
-                        finish("终端连接断开")
-                    }
-
-                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                        if (code == POLICY_VIOLATION) rejectToken(tok)
-                        finish("终端连接断开")
-                    }
-
-                    override fun onFailure(
-                        webSocket: WebSocket,
-                        t: Throwable,
-                        response: Response?,
-                    ) {
-                        opened.completeExceptionally(Exception("连不上终端"))
-                        finish("终端连接断开：" + errorText(t, state.value))
-                    }
-                },
-            )
         try {
+            val ws =
+                (socketFactory ?: streamHttp).newWebSocket(
+                    Request.Builder().url(url).build(),
+                    object : WebSocketListener() {
+                        override fun onOpen(webSocket: WebSocket, response: Response) {
+                            val hello =
+                                TermHello.newBuilder()
+                                    .setToken(tok)
+                                    .setStreamId(streamId)
+                                    .setMachineId(s.machineId)
+                                    .build()
+                            webSocket.send(hello.toByteArray().toByteString())
+                            opened.complete(Unit)
+                        }
+
+                        override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                            if (closed.get()) return
+                            val raw = bytes.toByteArray()
+                            if (
+                                raw.size > 1 shl 20 ||
+                                    queuedBytes.addAndGet(raw.size.toLong()) > 2L * 1024 * 1024 ||
+                                    incoming.trySend(raw).isFailure
+                            ) {
+                                cleanup("终端输出积压，已停止接收")
+                            }
+                        }
+
+                        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                            if (code == POLICY_VIOLATION) rejectToken(tok)
+                            webSocket.close(1000, null)
+                            cleanup("终端连接断开")
+                        }
+
+                        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                            if (code == POLICY_VIOLATION) rejectToken(tok)
+                            cleanup("终端连接断开")
+                        }
+
+                        override fun onFailure(
+                            webSocket: WebSocket,
+                            t: Throwable,
+                            response: Response?,
+                        ) {
+                            opened.completeExceptionally(Exception("连不上终端"))
+                            cleanup("终端连接断开：" + errorText(t, state.value))
+                        }
+                    },
+                )
+            socket.set(ws)
+            if (closed.get()) ws.cancel()
             withTimeout(20_000) { opened.await() }
             command(
                 sid,
@@ -3502,58 +3511,53 @@ class Remote(
                     )
                     .build(),
             )
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (closed.get()) throw java.io.IOException("终端已关闭")
+            var seq = 0L
+            terminalScope.launch {
+                try {
+                    for (item in outgoing) {
+                        val frame = item.frame
+                        if (closed.get()) break
+                        seq++
+                        val env =
+                            sealSecureMessage(
+                                key,
+                                Header.newBuilder()
+                                    .setKind(PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT)
+                                    .setMachineId(s.machineId)
+                                    .setSessionId(sid)
+                                    .setRequestId(streamId)
+                                    .setSeq(seq)
+                                    .setDeadlineMs(item.deadline)
+                                    .setSender(account.deviceId)
+                                    .build(),
+                                frame,
+                            )
+                        if (!closed.get()) ws.send(env.toByteArray().toByteString())
+                    }
+                } catch (e: Exception) {
+                    cleanup(errorText(e, state.value))
+                }
+            }
+            return TermConn(
+                ws,
+                sendFrame = { frame ->
+                    if (
+                        frame.serializedSize > 64 * 1024 ||
+                            outgoing.trySend(QueuedInput(frame, clock() + 60_000)).isFailure
+                    ) {
+                        cleanup("终端输入等待授权，已暂停")
+                    }
+                },
+                closeLocal = {
+                    cleanup()
+                },
+            )
         } catch (e: Exception) {
-            closed.set(true)
-            ws.cancel()
+            cleanup()
             throw e
         }
-        var seq = 0L
-        val writer = scope.launch {
-            try {
-                for (item in outgoing) {
-                    val frame = item.frame
-                    if (closed.get()) break
-                    seq++
-                    val env =
-                        sealSecureMessage(
-                            key,
-                            Header.newBuilder()
-                                .setKind(PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT)
-                                .setMachineId(s.machineId)
-                                .setSessionId(sid)
-                                .setRequestId(streamId)
-                                .setSeq(seq)
-                                .setDeadlineMs(item.deadline)
-                                .setSender(account.deviceId)
-                                .build(),
-                            frame,
-                        )
-                    if (!closed.get()) ws.send(env.toByteArray().toByteString())
-                }
-            } catch (e: Exception) {
-                finish(errorText(e, state.value))
-                ws.cancel()
-            }
-        }
-        return TermConn(
-            ws,
-            sendFrame = { frame ->
-                if (
-                    frame.serializedSize > 64 * 1024 ||
-                        outgoing.trySend(QueuedInput(frame, clock() + 60_000)).isFailure
-                ) {
-                    finish("终端输入等待授权，已暂停")
-                    ws.cancel()
-                }
-            },
-            closeLocal = {
-                closed.set(true)
-                incoming.close()
-                outgoing.close()
-                reader.cancel()
-                writer.cancel()
-            },
-        )
     }
 
     private fun report(e: Throwable) {
