@@ -73,6 +73,23 @@ func (d *Daemon) saveSchedulesLocked() error {
 	}
 	return d.writeStateFile(filepath.Join(paths.Dir(), "schedules.json"), b)
 }
+
+const maxNonTerminalTasks = 100
+
+func (d *Daemon) nonTerminalTasksLocked() int {
+	count := 0
+	for _, t := range d.tasks {
+		if !t.Terminal() {
+			count++
+		}
+	}
+	return count
+}
+
+func scheduleCapacityError() error {
+	return connect.NewError(connect.CodeResourceExhausted, errors.New("daemon has reached the 100 non-terminal scheduled task limit"))
+}
+
 func touchTask(t *schedule.Task, now time.Time) { t.Revision++; t.UpdatedAt = now }
 func appendRun(runs []schedule.Run, run schedule.Run) []schedule.Run {
 	runs = append(runs, run)
@@ -165,6 +182,9 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 					return json.Marshal(t)
 				}
 			}
+		}
+		if d.nonTerminalTasksLocked() >= maxNonTerminalTasks {
+			return nil, scheduleCapacityError()
 		}
 		t := &schedule.Task{ID: newID(16), Revision: 1, Spec: spec, CreatedAt: now, UpdatedAt: now, SourceSession: q.SessionId, Source: "local", CreationKey: key, CreationHash: hash}
 		if scope != "" {
@@ -295,6 +315,10 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		t.NextRunAt = &now
 	default:
 		return nil, errors.New("unknown schedule operation")
+	}
+	if prev.Terminal() && !t.Terminal() && d.nonTerminalTasksLocked() > maxNonTerminalTasks {
+		d.tasks[t.ID] = prev
+		return nil, scheduleCapacityError()
 	}
 	// A machine-level request takes an agent's task over as the user's own.
 	if scope == "" && (q.Operation == "resume" || q.Operation == "run" || q.Operation == "update") {
