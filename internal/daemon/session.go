@@ -701,7 +701,11 @@ func (s *session) checkScreen() bool {
 }
 
 func (s *session) checkScreenContext(ctx context.Context) bool {
-	if !s.term.Alive() {
+	styled, alive, err := s.term.Poll(ctx)
+	if err != nil {
+		return ctx.Err() == nil
+	}
+	if !alive {
 		if err := s.waitForPTYHostGone(ctx); err != nil {
 			if ctx.Err() != nil {
 				return false
@@ -710,10 +714,6 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 		}
 		s.markExited(s.shellExitDetail())
 		return false
-	}
-	styled, err := s.term.Capture()
-	if err != nil {
-		return true
 	}
 	scr := s.ag.Analyze(styled)
 	s.mu.Lock()

@@ -6,6 +6,7 @@ package tmux
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // MinVersion is the oldest tmux release remote-agent supports.
@@ -39,13 +41,27 @@ func (c *Client) Command(args ...string) []string {
 	return append([]string{c.bin(), "-L", c.Socket}, args...)
 }
 
+// CommandTimeout bounds an individual tmux subprocess, even without a caller deadline.
+const CommandTimeout = 5 * time.Second
+
 func (c *Client) run(args ...string) (string, error) {
+	return c.RunContext(context.Background(), args...)
+}
+
+// RunContext runs one bounded command, stopping when the caller cancels.
+func (c *Client) RunContext(ctx context.Context, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, CommandTimeout)
+	defer cancel()
 	argv := c.Command(args...)
-	cmd := exec.Command(argv[0], argv[1:]...)
+	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	cmd.WaitDelay = time.Second
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() != nil {
+			return stdout.String(), ctx.Err()
+		}
 		msg := strings.TrimSpace(stderr.String())
 		if msg == "" {
 			msg = err.Error()
@@ -191,6 +207,28 @@ func (c *Client) Capture(name string, escapes bool) (string, error) {
 		args = append(args, "-e")
 	}
 	return c.run(args...)
+}
+
+// Poll returns liveness and the visible screen in one invocation. Only an
+// explicit missing session/server means gone; capture/connection failures do
+// not establish exit. A session lost after the marker is checked next poll.
+func (c *Client) Poll(ctx context.Context, name string) (screen string, alive bool, err error) {
+	const marker = "ra-pane-alive\n"
+	out, err := c.RunContext(ctx, "has-session", "-t", exactTarget(name),
+		";", "display-message", "-p", strings.TrimSuffix(marker, "\n"),
+		";", "capture-pane", "-p", "-e", "-t", exactPane(name))
+	if strings.HasPrefix(out, marker) {
+		return strings.TrimPrefix(out, marker), true, err
+	}
+	if err != nil {
+		msg := err.Error()
+		if strings.Contains(msg, "can't find session:") || strings.Contains(msg, "no server running") ||
+			strings.Contains(msg, "error connecting to") && strings.Contains(msg, "No such file or directory") {
+			return "", false, nil
+		}
+		return "", true, err
+	}
+	return "", true, errors.New("tmux poll: missing liveness marker")
 }
 
 // AttachArgv returns the argv that attaches the current terminal to name.

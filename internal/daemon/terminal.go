@@ -16,6 +16,8 @@ import (
 type terminal interface {
 	// Capture returns the screen with SGR sequences kept.
 	Capture() (string, error)
+	// Poll returns the visible screen and liveness in one bounded operation.
+	Poll(context.Context) (string, bool, error)
 	// Alive reports whether the tmux session still exists.
 	Alive() bool
 	// HostAlive reports whether the PTY-host control socket still accepts connections.
@@ -41,8 +43,11 @@ type tmuxTerminal struct {
 }
 
 func (t *tmuxTerminal) Capture() (string, error) { return t.tmux.Capture(t.name, true) }
-func (t *tmuxTerminal) Alive() bool              { return t.tmux.HasSession(t.name) }
-func (t *tmuxTerminal) Kill() error              { return t.tmux.KillSession(t.name) }
+func (t *tmuxTerminal) Poll(ctx context.Context) (string, bool, error) {
+	return t.tmux.Poll(ctx, t.name)
+}
+func (t *tmuxTerminal) Alive() bool { return t.tmux.HasSession(t.name) }
+func (t *tmuxTerminal) Kill() error { return t.tmux.KillSession(t.name) }
 
 func (t *tmuxTerminal) HostAlive(ctx context.Context) (bool, error) {
 	var d net.Dialer
