@@ -3145,7 +3145,8 @@ export class Remote {
         return this.loadDevices(describe, update);
       if (this.directoryJob) {
         const job = this.directoryJob;
-        await job.promise;
+        try { await job.promise; }
+        finally { if (this.directoryJob === job) this.directoryJob = undefined; }
         if (job.invalidated || !equalBytes(job.head, await this.security.localStateHash()))
           return this.loadDevices(describe, update);
         if (describe) await this.describeSelf();
@@ -3171,11 +3172,14 @@ export class Remote {
         this.clearClockWarning();
         return;
       }
-      const job = { head: state, promise: this.loadDirectory(record, describe), invalidated: false };
+      const job = { head: state, promise: this.loadDirectory(record), invalidated: false };
       this.directoryJob = job;
       try { await job.promise; }
       finally { if (this.directoryJob === job) this.directoryJob = undefined; }
       if (job.invalidated) return this.loadDevices(describe, update);
+      // Self-description can reload the directory while publishing metadata.
+      // It must run after the shared job has finished and been cleared.
+      if (describe && this.devicesStatus === "ready") await this.describeSelf();
     } catch (e) {
       this.noteClock(e);
       this.devicesStatus = "error";
@@ -3183,7 +3187,7 @@ export class Remote {
     }
   }
 
-  private async loadDirectory(record: SecurityRecord, describe: boolean) {
+  private async loadDirectory(record: SecurityRecord) {
     this.recoveryObjectsPending = true;
     let publicationPending = false;
     try {
@@ -3322,7 +3326,6 @@ export class Remote {
       this.directoryHead = state;
       this.devicesStatus = "ready";
       this.changed();
-      if (describe) await this.describeSelf();
     } catch (e) {
       this.noteClock(e);
       this.devicesStatus = "error";

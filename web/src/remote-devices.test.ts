@@ -12,6 +12,7 @@ const live: SyntheticRemote[] = [];
 afterEach(async () => {
   for (const r of live.splice(0)) await r.dispose();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 async function probe() {
@@ -299,3 +300,55 @@ it("shares one full directory listing across concurrent refreshes at the same he
   expect(listDevices).toHaveBeenCalledTimes(1);
   expect(r.devicesStatus).toBe("ready");
 }, 20000);
+
+it("describes a newly paired browser without metadata and leaves directory updates usable", async () => {
+  const r = await probe(), self = r.member.account.deviceId;
+  vi.stubGlobal("navigator", { userAgent: "SyntheticBrowser" });
+  let meta: Envelope | undefined;
+  let revision = 0n;
+  const putDeviceMeta = vi.fn(async (req: { deviceId: string; expectedRevision: bigint; meta: Envelope }) => {
+    expect(req.deviceId).toBe(self);
+    expect(req.expectedRevision).toBe(revision);
+    meta = req.meta;
+    revision++;
+    return { applied: true };
+  });
+  (r as any).api = {
+    listDevices: async () => ({ devices: [create(DeviceSchema, { id: self, kind: DeviceKind.CLIENT, meta, metaRevision: revision })] }),
+    putDeviceMeta,
+  };
+  await r.loadDevices();
+  expect(putDeviceMeta).toHaveBeenCalledTimes(1);
+  expect(r.devices.get(self)?.meta?.platform).toBe("web");
+  expect(r.devices.get(self)?.metaRev).toBe(1n);
+  expect((r as any).directoryJob).toBeUndefined();
+  expect((r as any).descriptionPending).toBe(false);
+  await r.loadDevices();
+  const row = await r.sessionRow("s");
+  await (r as any).onFrame({ case: "sessionUpdated", value: { session: row } });
+  expect(r.sessions.get("s")?.info?.title).toBe("synthetic session");
+  expect(putDeviceMeta).toHaveBeenCalledTimes(1);
+  expect((r as any).directoryJob).toBeUndefined();
+}, 10000);
+
+it("clears shared directory work before self-description for both the owner and joined refreshes", async () => {
+  const r = await probe();
+  let entered!: () => void, release!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const barrier = new Promise<void>(resolve => { release = resolve; });
+  const listDevices = vi.fn(async () => { entered(); await barrier; return { devices: [] }; });
+  (r as any).api = { listDevices };
+  const jobs: unknown[] = [];
+  const describe = vi.spyOn(r as any, "describeSelf").mockImplementation(async () => {
+    jobs.push((r as any).directoryJob);
+  });
+  const first = r.loadDevices();
+  await started;
+  const second = r.loadDevices();
+  await r.security.sync();
+  release();
+  await Promise.all([first, second]);
+  expect(listDevices).toHaveBeenCalledTimes(1);
+  expect(describe).toHaveBeenCalledTimes(2);
+  expect(jobs).toEqual([undefined, undefined]);
+});
