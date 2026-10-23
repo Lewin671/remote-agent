@@ -465,27 +465,30 @@ private fun ChatPane(
             initialPrompt,
             initialId,
         ) {
-            ChatProjection()
+            ChatProjectionWorker()
         }
-    val items =
-        remember(events, d, projection) {
-            projection.update(
-                events,
-                d,
+    val projected = remember(remote, s.id) { mutableStateOf(emptyList<ChatItem>()) }
+    // Capture UI-owned outbox state before handing the immutable inputs to the worker.
+    val texts = outbox.associate { it.requestId to it.text }
+    LaunchedEffect(events, d, projection, texts) {
+        projected.value = projection.update(
+            events,
+            d,
+            machine,
+            cwd,
+            home,
+            s.agent(),
+            { texts[it] ?: initialPrompt?.takeIf { _ -> it == initialId } },
+        ) { o ->
+            io.github.lewin671.remoteagent.core.originLabel(
+                o,
+                state,
+                remote.account.deviceId,
                 machine,
-                cwd,
-                home,
-                s.agent(),
-                { Outbox.text(s.id, it) ?: initialPrompt?.takeIf { _ -> it == initialId } },
-            ) { o ->
-                io.github.lewin671.remoteagent.core.originLabel(
-                    o,
-                    state,
-                    remote.account.deviceId,
-                    machine,
-                )
-            }
+            )
         }
+    }
+    val items = projected.value
     val pendingInputs = pendingInputs(d)
     LaunchedEffect(d.inputs, outbox.size) {
         // The messages the CLI has recorded are the chat's own rows from here on.
