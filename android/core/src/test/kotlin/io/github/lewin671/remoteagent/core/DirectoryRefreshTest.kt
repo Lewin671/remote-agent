@@ -3,12 +3,22 @@ package io.github.lewin671.remoteagent.core
 import io.github.lewin671.remoteagent.proto.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DirectoryRefreshTest {
     private val fixture = ColdOpenFixture(2)
+
+    @Test fun closingImmediatelyAfterInitialLoadDoesNotLeakMaintenanceFailures() = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        val remote = peer.remote()
+        try {
+            remote.start()
+            remote.state.first { it.loaded }
+        } finally { remote.close(); runCurrent() }
+    }
 
     @Test fun unchangedHeadChecksSecurityWithoutListingAgain() = runTest {
         val peer = ColdOpenPeer(fixture, this)

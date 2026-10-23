@@ -2270,7 +2270,13 @@ class Remote(
     }
 
     private suspend fun loadDevices(listedMachines: ListMachinesResponse? = null) {
-        val head = DeviceSecurity.stateHash(security.head())
+        val head = try {
+            DeviceSecurity.stateHash(security.head())
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            report(e)
+            return
+        }
         val load = directoryLoad?.takeIf {
             !it.isCompleted && directoryLoadVersion == directoryVersion &&
                 directoryLoadHead?.contentEquals(head) == true
