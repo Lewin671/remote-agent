@@ -31,20 +31,33 @@ import Testing
     }
 
     @Test func bothAttemptsShareTheDeadlineAndCancelTheSlowRetry() async {
-        let attempts = Counter(), cancelled = Counter()
-        let start = ContinuousClock.now
-        let denied = await probeRetainedIdentity(timeoutMs: 500) {
-            if attempts.increment() == 1 {
-                try await Task.sleep(for: .milliseconds(300))
-                throw ConnectError(code: .permissionDenied, message: "login failed")
+        let attempts = Counter(), cancelled = Counter(), timers = Counter()
+        let retry = AsyncStream<Void>.makeStream()
+        let deadline = AsyncStream<Void>.makeStream()
+        let probe = Task {
+            await probeRetainedIdentity(timeoutMs: 500, sleep: { ms in
+                #expect(ms == 500)
+                timers.increment()
+                for await _ in deadline.stream { break }
+                try Task.checkCancellation()
+            }) {
+                if attempts.increment() == 1 {
+                    throw ConnectError(code: .permissionDenied, message: "login failed")
+                }
+                retry.continuation.yield()
+                do { try await Task.sleep(for: .seconds(30)) }
+                catch { cancelled.increment(); throw error }
             }
-            do { try await Task.sleep(for: .seconds(30)) }
-            catch { cancelled.increment(); throw error }
         }
+        // Fire the one shared deadline only once the second attempt is in
+        // flight. Executor scheduling no longer consumes an asserted budget.
+        for await _ in retry.stream { break }
+        deadline.continuation.finish()
+        let denied = await probe.value
         #expect(!denied)
         #expect(attempts.value == 2)
         #expect(cancelled.value == 1)
-        #expect(start.duration(to: .now) < .milliseconds(750))
+        #expect(timers.value == 1)
     }
 
     @Test func aTimedOutRealLoginIsCancelledInsteadOfWaitingForTheHTTPTimeout() async throws {

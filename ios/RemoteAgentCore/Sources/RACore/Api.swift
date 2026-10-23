@@ -426,10 +426,11 @@ public func loginDenied(_ error: Error) -> Bool {
 /// transport failures leave the retained setup available.
 public func probeRetainedIdentity(
     timeoutMs: Int64 = 5_000,
+    sleep: @escaping Sleeper = realSleep,
     attempt: @escaping @Sendable () async throws -> Void
 ) async -> Bool {
     do {
-        return try await withTimeout(timeoutMs, sleep: realSleep) {
+        return try await withTimeout(timeoutMs, sleep: sleep) {
             do {
                 do { try await attempt() }
                 catch where loginDenied(error) {
