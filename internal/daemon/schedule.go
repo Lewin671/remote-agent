@@ -71,7 +71,7 @@ func (d *Daemon) saveSchedulesLocked() error {
 	if err != nil {
 		return err
 	}
-	return writeFileSync(filepath.Join(paths.Dir(), "schedules.json"), b)
+	return d.writeStateFile(filepath.Join(paths.Dir(), "schedules.json"), b)
 }
 func touchTask(t *schedule.Task, now time.Time) { t.Revision++; t.UpdatedAt = now }
 func appendRun(runs []schedule.Run, run schedule.Run) []schedule.Run {
@@ -181,8 +181,10 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		}
 		d.tasks[t.ID] = t
 		if err := d.saveSchedulesLocked(); err != nil {
-			delete(d.tasks, t.ID)
-			return nil, errors.New("could not persist scheduled task")
+			if !fileReplaced(err) {
+				delete(d.tasks, t.ID)
+			}
+			return nil, fmt.Errorf("could not persist scheduled task: %w", err)
 		}
 		return json.Marshal(t)
 	}
@@ -204,9 +206,11 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 	if before := schedule.Clone(t); d.reconfirmScheduledRun(t, now) {
 		touchTask(t, now)
 		if err := d.saveSchedulesLocked(); err != nil {
-			d.tasks[t.ID] = before
-			d.lateRuns[t.ID] = before.Runs[len(before.Runs)-1].ID
-			return nil, errors.New("could not persist scheduled task")
+			if !fileReplaced(err) {
+				d.tasks[t.ID] = before
+				d.lateRuns[t.ID] = before.Runs[len(before.Runs)-1].ID
+			}
+			return nil, fmt.Errorf("could not persist scheduled task: %w", err)
 		}
 	}
 	prev := schedule.Clone(t)
@@ -302,8 +306,10 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 	}
 	touchTask(t, now)
 	if err := d.saveSchedulesLocked(); err != nil {
-		d.tasks[t.ID] = prev
-		return nil, errors.New("could not persist scheduled task")
+		if !fileReplaced(err) {
+			d.tasks[t.ID] = prev
+		}
+		return nil, fmt.Errorf("could not persist scheduled task: %w", err)
 	}
 	// Pausing waits for the uncertain execution's late record; anything
 	// else moves on from it.
@@ -605,7 +611,7 @@ func (d *Daemon) tickSchedules(now time.Time) {
 		if string(before) != string(after) {
 			touchTask(t, now)
 			if err := d.saveSchedulesLocked(); err != nil {
-				if t.Dispatches == prev.Dispatches {
+				if t.Dispatches == prev.Dispatches && !fileReplaced(err) {
 					d.tasks[t.ID] = prev
 					if hadLate {
 						d.lateRuns[t.ID] = late
@@ -636,9 +642,15 @@ func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
 	t.Status = "dispatching"
 	t.Dispatches++
 	if err := d.saveSchedulesLocked(); err != nil {
-		t.Active = nil
-		t.Dispatches--
-		t.Status = "scheduled"
+		if !fileReplaced(err) {
+			t.Active = nil
+			t.Dispatches--
+			t.Status = "scheduled"
+		} else {
+			t.Active.Status = "uncertain"
+			t.Status, t.Reason = "uncertain", "could_not_persist_dispatch"
+			t.NextRunAt = nil
+		}
 		return
 	}
 	var s *session

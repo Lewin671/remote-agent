@@ -555,8 +555,10 @@ func (s *session) setStage(requestID string, stage pb.InputStage, indexes []int3
 		}
 	}
 	s.queue.Queue[0].Stage, s.queue.Queue[0].Indexes = stage, slices.Clone(indexes)
-	if _, err := s.saveQueueLocked(); err != nil {
-		s.queue.Queue[0] = prev
+	if saved, err := s.saveQueueLocked(); err != nil {
+		if !saved {
+			s.queue.Queue[0] = prev
+		}
 		return err
 	}
 	return nil
@@ -864,8 +866,10 @@ func (s *session) markInflight(offset int64, requestID string) error {
 		s.queue.Queue[0] = prev
 		return err
 	}
-	if _, err := s.saveQueueLocked(); err != nil {
-		s.queue.Queue[0] = prev
+	if saved, err := s.saveQueueLocked(); err != nil {
+		if !saved {
+			s.queue.Queue[0] = prev
+		}
 		return err
 	}
 	// Queue messages after this one wait for the turn it lands in. Do not

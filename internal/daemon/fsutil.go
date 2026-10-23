@@ -1,14 +1,38 @@
 package daemon
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 )
 
-// writeFileSync replaces path with data atomically and durably, readable
-// by the owner only: the data is on disk before the call returns, so a
-// crash leaves either the old or the new file.
+type fileReplacedError struct{ error }
+
+func (e *fileReplacedError) Unwrap() error { return e.error }
+
+// fileReplaced means the new file is visible, even if crash durability is unknown.
+func fileReplaced(err error) bool {
+	var replaced *fileReplacedError
+	return errors.As(err, &replaced)
+}
+
+// writeFileSync atomically replaces an owner-only file. Success includes
+// syncing its directory; a fileReplacedError leaves the new file visible
+// but its durability across a crash uncertain.
 func writeFileSync(path string, data []byte) error {
+	return writeFileSyncDir(path, data, syncDir)
+}
+
+func (d *Daemon) writeStateFile(path string, data []byte) error {
+	sync := d.syncStateDir
+	if sync == nil {
+		sync = syncDir
+	}
+	return writeFileSyncDir(path, data, sync)
+}
+
+func writeFileSyncDir(path string, data []byte, sync func(string) error) error {
 	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+"-*.tmp")
 	if err != nil {
 		return err
@@ -29,14 +53,18 @@ func writeFileSync(path string, data []byte) error {
 	if err := os.Rename(tmp, path); err != nil {
 		return err
 	}
-	syncDir(filepath.Dir(path))
+	if err := sync(filepath.Dir(path)); err != nil {
+		return &fileReplacedError{fmt.Errorf("sync directory after replacing file: %w", err)}
+	}
 	return nil
 }
 
 // syncDir makes a rename or new file in dir durable.
-func syncDir(dir string) {
-	if d, err := os.Open(dir); err == nil {
-		_ = d.Sync()
-		d.Close()
+func syncDir(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
 	}
+	defer d.Close()
+	return d.Sync()
 }

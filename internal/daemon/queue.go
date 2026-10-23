@@ -70,11 +70,15 @@ func loadQueue(dir string) (*queueState, error) {
 }
 
 func (q *queueState) save(dir string) error {
+	return q.saveWith(dir, writeFileSync)
+}
+
+func (q *queueState) saveWith(dir string, write func(string, []byte) error) error {
 	b, err := json.Marshal(q)
 	if err != nil {
 		return err
 	}
-	return writeFileSync(filepath.Join(dir, "queue.json"), b)
+	return write(filepath.Join(dir, "queue.json"), b)
 }
 
 // writing reports whether in has started to be written: it can no longer

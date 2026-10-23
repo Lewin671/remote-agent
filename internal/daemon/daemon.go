@@ -132,6 +132,9 @@ type Daemon struct {
 	// reported is each session's last Claude Code status line.
 	reported map[string]quotaReport
 
+	// syncStateDir overrides the durability boundary for state-file fault tests.
+	syncStateDir func(string) error
+
 	scheduleMu sync.Mutex
 	tasks      map[string]*schedule.Task
 	// lateRuns names, by task ID, the execution that ended uncertain

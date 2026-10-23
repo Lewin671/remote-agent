@@ -261,8 +261,10 @@ func (s *session) requeueHeld(held []input, requestID string) ([]input, error) {
 	if len(moved) == 0 {
 		return nil, nil
 	}
-	if _, err := s.saveQueueLocked(); err != nil {
-		s.queue.Queue, s.queue.Held, s.recent = prevQueue, prevHeld, prevRecent
+	if saved, err := s.saveQueueLocked(); err != nil {
+		if !saved {
+			s.queue.Queue, s.queue.Held, s.recent = prevQueue, prevHeld, prevRecent
+		}
 		return nil, err
 	}
 	return moved, nil
