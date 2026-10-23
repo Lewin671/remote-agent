@@ -4,27 +4,55 @@ import (
 	"bytes"
 	"compress/flate"
 	"io"
+	"sync"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+const maxPackBufferCapacity = 1 << 20
+
+type packCompressor struct {
+	out    bytes.Buffer
+	writer *flate.Writer
+}
+
+var packPool sync.Pool
+
+func (c *packCompressor) resetBuffer() {
+	if c.out.Cap() > maxPackBufferCapacity {
+		c.out = bytes.Buffer{}
+	} else {
+		c.out.Reset()
+	}
+}
+
 // pack returns raw DEFLATE only when it reduces the payload size.
 func pack(plain []byte) []byte {
-	var out bytes.Buffer
-	w, err := flate.NewWriter(&out, flate.DefaultCompression)
-	if err != nil {
+	c, _ := packPool.Get().(*packCompressor)
+	if c == nil {
+		c = &packCompressor{}
+		var err error
+		c.writer, err = flate.NewWriter(&c.out, flate.DefaultCompression)
+		if err != nil {
+			return nil
+		}
+	}
+	defer func() {
+		c.resetBuffer()
+		packPool.Put(c)
+	}()
+	c.writer.Reset(&c.out)
+	if _, err := c.writer.Write(plain); err != nil {
+		c.writer.Close()
 		return nil
 	}
-	if _, err := w.Write(plain); err != nil {
-		w.Close()
+	if err := c.writer.Close(); err != nil || c.out.Len() >= len(plain) {
 		return nil
 	}
-	if err := w.Close(); err != nil || out.Len() >= len(plain) {
-		return nil
-	}
-	return out.Bytes()
+	// The caller owns the bytes after this compressor goes back into the pool.
+	return bytes.Clone(c.out.Bytes())
 }
 
 // Unpack has an independent expansion limit. Authority metadata verification
