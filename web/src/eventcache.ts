@@ -41,6 +41,20 @@ interface Usage {
 }
 
 let opening: Promise<IDBDatabase> | undefined;
+let trimJob: Promise<void> | undefined;
+let trimTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleTrim() {
+  if (trimTimer !== undefined) return;
+  trimTimer = setTimeout(() => {
+    trimTimer = undefined;
+    // An append during a trim needs a pass after that trim's snapshot.
+    void (async () => {
+      await trimJob?.catch(() => undefined);
+      await idbCache.trim();
+    })().catch(() => undefined);
+  }, 1000);
+}
 
 function db(): Promise<IDBDatabase> {
   return (opening ??= new Promise<IDBDatabase>((resolve, reject) => {
@@ -112,25 +126,17 @@ const idbCache: EventCache = {
     const usage = (await result(tx.objectStore(SESSIONS).get(sid) as IDBRequest<Usage | undefined>)) ?? { bytes: 0, usedAt: 0 };
     tx.objectStore(SESSIONS).put({ bytes: usage.bytes + rows.reduce((n, [, b]) => n + b.length, 0), usedAt: Date.now() }, sid);
     await done(tx);
+    scheduleTrim();
   },
   async drop(sid) {
     const tx = (await db()).transaction([EVENTS, SESSIONS], "readwrite");
     forget(tx, sid);
     await done(tx);
   },
-  async trim() {
-    const tx = (await db()).transaction([EVENTS, SESSIONS], "readwrite");
-    const ids = result(tx.objectStore(SESSIONS).getAllKeys() as IDBRequest<string[]>);
-    const usages = await result(tx.objectStore(SESSIONS).getAll() as IDBRequest<Usage[]>);
-    const kept = (await ids).map((sid, i) => ({ sid, ...usages[i] }));
-    kept.sort((a, b) => a.usedAt - b.usedAt);
-    let total = kept.reduce((n, s) => n + s.bytes, 0);
-    for (const s of kept) {
-      if (total <= BUDGET) break;
-      forget(tx, s.sid);
-      total -= s.bytes;
-    }
-    await done(tx);
+  trim() {
+    if (trimJob) return trimJob;
+    trimJob = trimCache().finally(() => { trimJob = undefined; });
+    return trimJob;
   },
   async get(name) {
     return result((await db()).transaction(VALUES).objectStore(VALUES).get(name));
@@ -143,13 +149,31 @@ const idbCache: EventCache = {
   },
 };
 
+async function trimCache() {
+  const tx = (await db()).transaction([EVENTS, SESSIONS], "readwrite");
+  const ids = result(tx.objectStore(SESSIONS).getAllKeys() as IDBRequest<string[]>);
+  const usages = await result(tx.objectStore(SESSIONS).getAll() as IDBRequest<Usage[]>);
+  const kept = (await ids).map((sid, i) => ({ sid, ...usages[i] }));
+  kept.sort((a, b) => a.usedAt - b.usedAt);
+  let total = kept.reduce((n, s) => n + s.bytes, 0);
+  for (const s of kept) {
+    if (total <= BUDGET) break;
+    forget(tx, s.sid);
+    total -= s.bytes;
+  }
+  await done(tx);
+}
+
 /** The cache in this browser's IndexedDB; none where there is no IndexedDB. */
 export function eventCache(): EventCache | undefined {
   return typeof indexedDB === "undefined" ? undefined : idbCache;
 }
 
 /** Deletes every cached event, with the account they belong to. */
-export function clearEventCache(): Promise<void> {
+export async function clearEventCache(): Promise<void> {
+  clearTimeout(trimTimer);
+  trimTimer = undefined;
+  await trimJob?.catch(() => undefined);
   if (typeof indexedDB === "undefined") return Promise.resolve();
   return new Promise((resolve) => {
     const req = indexedDB.deleteDatabase(DB);
