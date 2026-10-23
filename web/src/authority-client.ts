@@ -6,7 +6,6 @@ import { DeviceSecurityClient } from "./device-security-client";
 import { installSecurity, type SecurityRecord } from "./device-security-store";
 import { equal, leaseBytes, parseLease, parseState, recoveryBytes, SecurityError, signLease, stateBytes, stateHash, verifyLease, type Member } from "./device-security";
 import { makePairApproval } from "./pair-approval";
-import { checkPairChainSize } from "./pairing";
 import { RecoveryCode } from "./recovery";
 import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, isAuthority, operation, readSecurityOperation, saveSecurityOperation, type SecurityOperation, requestAuthorityPersistence, markRecoveryCodeRotation, needsRecoveryCodeRotation } from "./security-operation";
 import { loadAccountPublicProfile, type StoredAccount } from "./storage";
@@ -285,6 +284,8 @@ export class AuthorityClient {
       const approval = await makePairApproval(head, key, pair.pairingId, pair.candidate.ed, pair.candidate.kind as DeviceKind.CLIENT | DeviceKind.MACHINE, pair.expires, pair.replacesDeviceId, undefined, check);
       check();
       const states = await Promise.all([...r.states, next].map(async (s, i) => ({ state: await stateBytes(s), recovery: r.proofs[i] ? await recoveryBytes(r.proofs[i]!) : new Uint8Array() })));
+      const { checkPairChainSize } = await import("./pairing");
+      check();
       checkPairChainSize(states);
       const payload = await sealMessage(await importSessionKey(pair.key), { kind: PayloadKind.PAIRING, requestId: pair.pairingId, sender: r.memberID }, PairingPayloadSchema,
         create(PairingPayloadSchema, { server: this.account.server, ...approval, approvalSignature: approval.signature, securityStates: states, accountPublicKey: profile.accountPublicKey, lease: leaseBytes(lease!) }));

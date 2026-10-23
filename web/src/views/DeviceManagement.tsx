@@ -1,7 +1,6 @@
 import { Plus } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useRef, useState } from "react";
-import qrcode from "qrcode-generator";
 import type { AuthorityPairing } from "../authority-pairing";
 import { clientName } from "../devices";
 import { errorText, type Remote } from "../remote";
@@ -134,6 +133,7 @@ export function PairCodePage({
 }) {
   useRemote(remote);
   const [pair, setPair] = useState<AuthorityPairing>();
+  const [qr, setQr] = useState<{ url: string; src: string }>();
   const [emoji, setEmoji] = useState<string[]>();
   const [confirmed, setConfirmed] = useState(false);
   const [approved, setApproved] = useState(false);
@@ -180,6 +180,18 @@ export function PairCodePage({
       clearTimeout(timer);
     };
   }, [pair, approved, done, emoji, remote]);
+  const pairURL = pair?.url;
+  useEffect(() => {
+    if (!pairURL) return;
+    let stopped = false;
+    void import("qrcode-generator").then(({ default: qrcode }) => {
+      const q = qrcode(0, "M");
+      q.addData(pairURL);
+      q.make();
+      if (!stopped) setQr({ url: pairURL, src: q.createDataURL(5, 8) });
+    }).catch((e) => { if (!stopped) setError(errorText(e)); });
+    return () => { stopped = true; };
+  }, [pairURL]);
   const run = async (job: () => Promise<void>) => {
     setBusy(true);
     setError("");
@@ -198,14 +210,6 @@ export function PairCodePage({
         <ManagementEntry remote={remote} go={() => {}} />
       </div>
     );
-  const qr = pair
-    ? (() => {
-        const q = qrcode(0, "M");
-        q.addData(pair.url);
-        q.make();
-        return q.createDataURL(5, 8);
-      })()
-    : "";
   return (
     <div className="page">
       <NavBar
@@ -246,7 +250,7 @@ export function PairCodePage({
           </>
         ) : (
           <>
-            <img className="security-qr" src={qr} alt="添加设备的配对二维码" />
+            {qr?.url === pair.url && <img className="security-qr" src={qr.src} alt="添加设备的配对二维码" />}
             <div className="pair-code">
               {pair.code.slice(0, 4)} {pair.code.slice(4)}
             </div>

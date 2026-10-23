@@ -1,6 +1,6 @@
 import { readSecurityOperation } from "./security-operation";
 import { AuthorityClient, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
-import { AuthorityPairing } from "./authority-pairing";
+import type { AuthorityPairing } from "./authority-pairing";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
 import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
@@ -731,7 +731,8 @@ export class Remote {
     }));
     this.authority = new AuthorityClient(account, this.security, this.api, pairing,
       (publicKey, check, persist, request) => this.publishHandoffOffer(publicKey, check, persist, request));
-    this.startPairing = (web, replacesDeviceId = "") => AuthorityPairing.start(this.authority, pairing, web, replacesDeviceId);
+    this.startPairing = async (web, replacesDeviceId = "") =>
+      (await import("./authority-pairing")).AuthorityPairing.start(this.authority, pairing, web, replacesDeviceId);
   }
   readonly startPairing: (web: string, replacesDeviceId?: string) => Promise<AuthorityPairing>;
   async handoffCandidates(): Promise<HandoffOffer[]> {
