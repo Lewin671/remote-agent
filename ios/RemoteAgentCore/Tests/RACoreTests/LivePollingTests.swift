@@ -10,6 +10,22 @@ private extension Remote {
         await liveJobs[sid]?.value
     }
 
+    func seedStaleLiveStateForTest() {
+        var live = PBLiveSnapshot()
+        live.running = true
+        var approval = PBEvent()
+        approval.approvalRequested.approvalID = "old-approval"
+        var question = PBEvent()
+        question.questionAsked.questionID = "old-question"
+        live.actions = [approval, question]
+        liveSnapshots["s"] = live
+        liveErrors["s"] = "old snapshot error"
+        let buffer = Buffer()
+        buffer.loaded = true
+        buffers["s"] = buffer
+        publishEvents("s", buffer)
+    }
+
     func preparePollingTest(status: PBSessionStatus = .idle, ended: Bool = false,
         connection: ConnState = .online, machineOnline: Bool = true, active: Bool = true,
         followed: Bool = true) -> AsyncStream<SessionEvents>? {
@@ -41,6 +57,27 @@ private extension Remote {
         defer { withExtendedLifetime(updates) {} }
         #expect(await r.livePollingTick("s") == false)
         #expect(await r.liveErrors.isEmpty)
+    }
+
+    @Test(arguments: [false, true])
+    func exitedSessionsClearCachedLiveStateAndRepublish(timestamp: Bool) async throws {
+        let r = try remote()
+        defer { r.close() }
+        let updates = await r.preparePollingTest(status: timestamp ? .idle : .exited, ended: timestamp)
+        defer { withExtendedLifetime(updates) {} }
+        await r.seedStaleLiveStateForTest()
+        let feed = r.eventFeed("s")
+        #expect(currentState(feed.value).running)
+        #expect(currentState(feed.value).approvals.count == 1)
+        #expect(currentState(feed.value).questions.count == 1)
+        #expect(await r.livePollingTick("s") == false)
+        #expect(await r.liveSnapshots["s"] == nil)
+        #expect(await r.liveErrors.isEmpty)
+        #expect(feed.value.live == nil)
+        let state = currentState(feed.value)
+        #expect(!state.running)
+        #expect(state.approvals.isEmpty)
+        #expect(state.questions.isEmpty)
     }
 
     @Test(arguments: [ConnState.connecting, .offline])
@@ -80,6 +117,57 @@ private extension Remote {
 
 extension ServerTests {
     @Suite struct ResumedLivePollingTests {
+        @Test func snapshotReturningAfterExitIsClearedAndResumeStillPolls() async throws {
+            try await World.run(setUp: { w in
+                try await w.daemon.putMachine("test-machine")
+                try await w.daemon.putSession("s1", session("/test-project", "test session", status: .running))
+                var started = PBEvent()
+                started.turnStarted = PBTurnStarted()
+                var approval = PBEvent()
+                approval.approvalRequested.approvalID = "approval-1"
+                var question = PBEvent()
+                question.questionAsked.questionID = "question-1"
+                try await w.daemon.upload("s1", started, approval, question)
+                try await w.daemon.connect()
+            }) { w in
+                let entered = Signal(), release = Signal()
+                w.onClose { release.set() }
+                let http = Intercept.http(for: w.server.url, answered: { request in
+                    if !entered.isSet && request.url?.path.hasSuffix("/Forward") == true {
+                        entered.set()
+                        await release.wait()
+                    }
+                }) { $0 }
+                let r = try w.remote(try await w.join(), http: http)
+                r.start()
+                _ = try await r.awaitState("active session online") { $0.synced && $0.sessions["s1"]?.info?.status == .running }
+                let feed = r.events("s1")
+                let updates = feed.updates()
+                let observed = Feed(SessionEvents())
+                let watching = Task { for await snapshot in updates { observed.set(snapshot) } }
+                defer { watching.cancel() }
+                #expect(await entered.wait())
+                let polling = try #require(await r.liveJobs["s1"])
+                var ended = PBEvent()
+                ended.turnEnded = PBTurnEnded()
+                try await w.daemon.upload("s1", ended)
+                try await w.daemon.putSession("s1", session("/test-project", "test session", status: .exited), endedMs: 1000)
+                _ = try await r.awaitState("exited session metadata") { $0.sessions["s1"]?.info?.status == .exited }
+                release.set()
+                await polling.value
+                _ = try await observed.await("ended transcript") { $0.events.count == 4 }
+                #expect(await r.liveSnapshots["s1"] == nil)
+                #expect(feed.value.live == nil)
+                #expect(!currentState(feed.value).running)
+                #expect(currentState(feed.value).approvals.isEmpty)
+                #expect(currentState(feed.value).questions.isEmpty)
+                #expect(feed.followers == 1)
+
+                try await w.daemon.putSession("s1", session("/test-project", "test session", status: .running))
+                _ = try await observed.await("resumed live snapshot") { $0.live?.session.status == .running }
+            }
+        }
+
         @Test func resumedMetadataRestartsPollingWithoutResubscribing() async throws {
             try await World.run(setUp: { w in
                 try await w.daemon.putMachine("test-machine")

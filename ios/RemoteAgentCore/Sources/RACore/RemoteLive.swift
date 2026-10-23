@@ -133,7 +133,8 @@ extension Remote {
             liveSnapshots[sid] = nil
             liveErrors[sid] = "无法核实电脑上的待处理请求，请重试或在电脑终端处理"
         }
-        if let buffer = buffers[sid] { publishEvents(sid, buffer) }
+        if liveSessionEnded(sid) { clearEndedLiveState(sid) }
+        else if let buffer = buffers[sid] { publishEvents(sid, buffer) }
     }
     func startLivePolling(_ sid: String) {
         guard liveJobs[sid] == nil, !closed else { return }
@@ -147,6 +148,7 @@ extension Remote {
     }
     /// A disconnected machine may return; an ended or unfollowed session is done.
     func livePollingTick(_ sid: String) async -> Bool {
+        clearEndedLiveState(sid)
         guard !livePollingFinished(sid) else { return false }
         if conn == .online, let session = sessions[sid], machines[session.machineId]?.online == true {
             await refreshLiveSnapshot(sid)
@@ -154,13 +156,23 @@ extension Remote {
         return !livePollingFinished(sid)
     }
 
+    private func liveSessionEnded(_ sid: String) -> Bool {
+        sessions[sid]?.info?.status == .exited || sessions[sid]?.info?.hasEndedAt == true
+    }
+
+    func clearEndedLiveState(_ sid: String) {
+        guard liveSessionEnded(sid) else { return }
+        let snapshot = liveSnapshots.removeValue(forKey: sid)
+        let error = liveErrors.removeValue(forKey: sid)
+        if snapshot != nil || error != nil, let buffer = buffers[sid] { publishEvents(sid, buffer) }
+    }
+
     private func livePollingFinished(_ sid: String) -> Bool {
-        closed || !running || eventFeeds.withLock { $0[sid]?.followers ?? 0 } == 0
-            || sessions[sid]?.info?.status == .exited
-            || sessions[sid]?.info?.hasEndedAt == true
+        closed || !running || eventFeeds.withLock { $0[sid]?.followers ?? 0 } == 0 || liveSessionEnded(sid)
     }
     private func finishLivePolling(_ sid: String) {
         liveJobs[sid] = nil
+        clearEndedLiveState(sid)
         // Metadata may have resumed the session after the last tick decided to stop.
         if !Task.isCancelled && !livePollingFinished(sid) { startLivePolling(sid) }
     }

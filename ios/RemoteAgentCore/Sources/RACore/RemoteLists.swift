@@ -388,6 +388,7 @@ extension Remote {
                 (sessions[sid]?.metaRev ?? 0) <= view.metaRev
             else { return }
             sessions[sid] = view
+            clearEndedLiveState(sid)
             if eventFeeds.withLock({ $0[sid]?.followers ?? 0 }) > 0 {
                 startLivePolling(sid)
                 Task { await self.loadEvents(sid) }
