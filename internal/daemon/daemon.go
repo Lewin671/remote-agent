@@ -916,6 +916,40 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 	}
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
+	// An exit flag is visible before its workers finish. Drain that generation
+	// before touching the terminal or installing another. Neither lifecycleMu
+	// nor ctlMu may be held while waiting: the old poller can be finalizing
+	// an exit and the injector can still need terminal ownership.
+drain:
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		s.mu.Lock()
+		exited := s.meta.Exited
+		s.mu.Unlock()
+		if !exited {
+			return nil, errRunning
+		}
+		loops := s.sessionLoops
+		if loops.stop == nil {
+			break
+		}
+		select {
+		case <-loops.done:
+			// The generation is still current under lifecycleMu.
+			break drain
+		default:
+		}
+		loops.stop()
+		s.lifecycleMu.Unlock()
+		select {
+		case <-loops.done:
+		case <-ctx.Done():
+		}
+		s.lifecycleMu.Lock()
+		// Recheck both liveness and generation after relinquishing ownership.
+	}
 	s.ctlMu.Lock()
 	defer s.ctlMu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -1011,7 +1045,6 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 	s.mu.Lock()
 	s.meta.Exited = false
 	s.sawComposer = false
-	s.done = make(chan struct{})
 	m = s.meta
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", id, "err", errClass(err))

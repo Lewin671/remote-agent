@@ -64,7 +64,7 @@ type session struct {
 	// images are the session's images and their display copies.
 	images *imageStore
 
-	lifecycleMu sync.Mutex // serializes stop/resume/fork/terminal attachment for this session
+	lifecycleMu sync.Mutex // serializes exit/stop/resume/fork/terminal attachment for this session
 	readMu      sync.Mutex // serializes rollout reads
 	ctlMu       sync.Mutex // serializes use of the PTY host: inject, answer, interrupt
 	parser      agent.Parser
@@ -145,10 +145,16 @@ type session struct {
 	recent []input
 	// unproven are the remembered messages that were reported
 	// UNCONFIRMED: a record of one, coming late, still confirms it.
-	unproven map[string]bool
-	wake     chan struct{} // pokes the injector
-	done     chan struct{} // closed when the session's goroutines stop
-	stop     context.CancelFunc
+	unproven      map[string]bool
+	wake          chan struct{} // pokes the injector
+	*sessionLoops               // replaced only after the previous loops have stopped
+}
+
+// Each generation owns its cancellation and completion handles. Workers keep
+// this instance even when a later resume installs another generation.
+type sessionLoops struct {
+	stop context.CancelFunc
+	done chan struct{}
 }
 
 type approval struct {
@@ -189,23 +195,23 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 	}
 	ag := d.adapter(m.Agent)
 	s := &session{
-		d:          d,
-		ag:         ag,
-		dir:        dir,
-		term:       term,
-		log:        log,
-		parser:     ag.NewParser(),
-		meta:       m,
-		approvals:  map[string]*approval{},
-		questions:  map[string]*pb.QuestionAsked{},
-		answeredBy: map[string]*pb.Origin{},
-		unproven:   map[string]bool{},
-		wake:       make(chan struct{}, 1),
-		done:       make(chan struct{}),
-		status:     pb.SessionStatus_SESSION_STATUS_STARTING,
-		queue:      q,
-		queueLost:  err != nil,
-		images:     openImageStore(dir),
+		d:            d,
+		ag:           ag,
+		dir:          dir,
+		term:         term,
+		log:          log,
+		parser:       ag.NewParser(),
+		meta:         m,
+		approvals:    map[string]*approval{},
+		questions:    map[string]*pb.QuestionAsked{},
+		answeredBy:   map[string]*pb.Origin{},
+		unproven:     map[string]bool{},
+		wake:         make(chan struct{}, 1),
+		sessionLoops: &sessionLoops{done: make(chan struct{})},
+		status:       pb.SessionStatus_SESSION_STATUS_STARTING,
+		queue:        q,
+		queueLost:    err != nil,
+		images:       openImageStore(dir),
 	}
 	if h, err := loadParseHealth(dir); err != nil {
 		// Diagnostics are not recovery state. A damaged or unreadable file
@@ -409,13 +415,14 @@ func (s *session) noteScreenMode(mode string) {
 
 // start runs the session's background loops until it exits or ctx ends.
 func (s *session) start(ctx context.Context) {
-	ctx, s.stop = context.WithCancel(ctx)
-	done := s.done
+	ctx, stop := context.WithCancel(ctx)
+	loops := &sessionLoops{stop: stop, done: make(chan struct{})}
+	s.sessionLoops = loops
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() { defer wg.Done(); s.pollLoop(ctx) }()
 	go func() { defer wg.Done(); s.injectLoop(ctx) }()
-	go func() { wg.Wait(); close(done) }()
+	go func() { wg.Wait(); close(loops.done) }()
 }
 
 func (s *session) pollLoop(ctx context.Context) {
@@ -855,6 +862,14 @@ func (s *session) shellExitDetail() string {
 }
 
 func (s *session) markExited(detail string) error {
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
+	return s.markExitedLocked(detail)
+}
+
+// Callers hold lifecycleMu through settlement, EXITED and cancellation.
+func (s *session) markExitedLocked(detail string) error {
+	loops := s.sessionLoops
 	s.mu.Lock()
 	if s.meta.Exited {
 		s.mu.Unlock()
@@ -883,8 +898,8 @@ func (s *session) markExited(detail string) error {
 	// them when a message is submitted, and the model may look at a path
 	// again later.
 	s.d.uploads.dropSession(m.ID)
-	if s.stop != nil {
-		s.stop()
+	if loops.stop != nil {
+		loops.stop()
 	}
 	if commitErr != nil {
 		return fmt.Errorf("CLI already exited but could not record session state: %w", commitErr)
@@ -1372,7 +1387,7 @@ func (s *session) killContext(ctx context.Context) error {
 		}
 		slog.Warn("pty-host still running after stop", "session", s.meta.ID, "err", errClass(err))
 	}
-	return s.markExited("stopped")
+	return s.markExitedLocked("stopped")
 }
 
 func (s *session) waitForPTYHostGone(parent context.Context) error {
