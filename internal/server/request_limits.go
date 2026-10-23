@@ -26,9 +26,9 @@ const (
 	maxConcurrentForwardRequests = 64
 	// Cover three six-image drafts plus probes and live polls, leaving half the relay pool.
 	maxAccountForwardRequests = 32
-	// Absorb short bursts without retaining global slots or decoded request bodies.
-	accountRPCWaitTimeout = 5 * time.Second
-	rpcBodyReadTimeout    = 15 * time.Second
+	// Bound account and global admission together before any request body is decoded.
+	rpcAdmissionWaitTimeout = 5 * time.Second
+	rpcBodyReadTimeout      = 15 * time.Second
 )
 
 type rpcPool int
@@ -50,6 +50,7 @@ type rpcAdmission struct {
 	account        string
 	decoder        *rpcAdmission
 	forwardAccount bool
+	forwardGlobal  bool
 }
 
 func (s *Server) takeAccountRPCsLocked(account string, pools ...rpcPool) bool {
@@ -78,12 +79,11 @@ func rpcContextError(ctx context.Context) error {
 
 // Reserve all account shares together, before decoding or taking any global
 // slot. A Forward reserves its waiting share here too, not after body decoding.
-func (s *Server) waitAccountRPCs(ctx context.Context, account string, pools ...rpcPool) error {
+func (s *Server) waitAccountRPCs(ctx context.Context, account string, deadline time.Time, pools ...rpcPool) error {
 	if account == "" {
 		return rpcContextError(ctx)
 	}
-	deadline := time.Now().Add(accountRPCWaitTimeout)
-	timer := time.NewTimer(accountRPCWaitTimeout)
+	timer := time.NewTimer(time.Until(deadline))
 	defer timer.Stop()
 	for {
 		s.rpcMu.Lock()
@@ -117,30 +117,24 @@ func (s *Server) waitAccountRPCs(ctx context.Context, account string, pools ...r
 var errRPCGlobalAdmission = errors.New("too many in-flight RPC requests")
 
 func (s *Server) admitRPC(ctx context.Context, account string, pool rpcPool, forward bool) (*rpcAdmission, error) {
+	deadline := time.Now().Add(rpcAdmissionWaitTimeout)
+	// Unauthenticated requests keep only their existing decoder admission.
+	forward = forward && account != ""
 	pools := []rpcPool{pool}
 	if forward {
 		pools = append(pools, forwardRPCPool)
 	}
-	if err := s.waitAccountRPCs(ctx, account, pools...); err != nil {
+	if err := s.waitAccountRPCs(ctx, account, deadline, pools...); err != nil {
 		return nil, err
 	}
 	a := &rpcAdmission{s: s, pool: pool, account: account, forwardAccount: forward}
-	if err := rpcContextError(ctx); err != nil {
+	if err := s.waitGlobalRPCs(ctx, account, deadline, pools); err != nil {
 		a.release()
 		return nil, err
 	}
-	slots := s.rpcRequests
-	if pool == smallRPCPool {
-		slots = s.smallRPCRequests
-	}
-	select {
-	case slots <- struct{}{}:
-		a.slots = slots
-		return a, nil
-	default:
-		a.release()
-		return nil, errRPCGlobalAdmission
-	}
+	a.slots = s.globalRPCSlots(pool)
+	a.forwardGlobal = forward
+	return a, nil
 }
 
 func (s *Server) releaseAccountRPC(account string, pool rpcPool) {
@@ -162,7 +156,11 @@ func (s *Server) releaseAccountRPC(account string, pool rpcPool) {
 
 func (a *rpcAdmission) release() {
 	if a.slots != nil {
-		<-a.slots
+		pools := []rpcPool{a.pool}
+		if a.forwardGlobal {
+			pools = append(pools, forwardRPCPool)
+		}
+		a.s.releaseGlobalRPCs(pools...)
 	}
 	a.s.releaseAccountRPC(a.account, a.pool)
 	if a.decoder != nil {
@@ -173,25 +171,28 @@ func (a *rpcAdmission) release() {
 	}
 }
 
-var errRPCAdmission = connect.NewError(connect.CodeResourceExhausted, errors.New("too many in-flight RPC requests"))
+var errRPCAdmission = func() *connect.Error {
+	err := connect.NewError(connect.CodeResourceExhausted, errors.New("too many in-flight RPC requests"))
+	err.Meta().Set("Retry-After", "1")
+	return err
+}()
 
 func (a *rpcAdmission) forward() error {
-	select {
-	case a.s.forwardRPCRequests <- struct{}{}:
-		a.forwardAccount = false // Its reservation is now owned by the forward pool.
-		if a.pool == largeRPCPool {
-			// Connect retains the decoded request through the response write.
-			// Keep its large-body memory budget, including compressed bodies.
-			decoder := *a
-			a.decoder = &decoder
-		} else {
-			a.release()
-		}
-		a.slots, a.pool = a.s.forwardRPCRequests, forwardRPCPool
-		return nil
-	default:
+	if !a.forwardGlobal {
 		return errRPCAdmission
 	}
+	// Both global slots were reserved before reading the body. Transfer the
+	// forward reservation to the response lifetime without another wait.
+	a.forwardAccount, a.forwardGlobal = false, false
+	if a.pool == largeRPCPool {
+		// Connect retains the decoded request through the response write.
+		decoder := *a
+		a.decoder = &decoder
+	} else {
+		a.release()
+	}
+	a.slots, a.pool = a.s.forwardRPCRequests, forwardRPCPool
+	return nil
 }
 
 func (s *Server) limitRPCRequests(next http.Handler, readTimeout time.Duration) http.Handler {

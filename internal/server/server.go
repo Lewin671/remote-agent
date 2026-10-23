@@ -130,6 +130,7 @@ type Server struct {
 	rpcMu               sync.Mutex
 	accountRPCRequests  map[string][3]int
 	rpcChanged          chan struct{}
+	rpcWaiters          []*rpcGlobalWaiter
 
 	challengeMu sync.Mutex
 	challenges  map[string]challenge

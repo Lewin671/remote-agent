@@ -130,37 +130,47 @@ func TestWaitingForwardsHaveSeparateAdmission(t *testing.T) {
 }
 
 func TestForwardAdmissionGlobalBoundAndRelease(t *testing.T) {
-	ts := newTestServer(t)
-	var held []*rpcAdmission
-	defer func() {
-		for _, a := range held {
+	synctest.Test(t, func(t *testing.T) {
+		s := newRPCAdmissionServer()
+		held := make([]*rpcAdmission, maxConcurrentForwardRequests)
+		for i := range held {
+			a, err := s.admitRPC(context.Background(), fmt.Sprint(i/maxAccountForwardRequests), smallRPCPool, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := a.forward(); err != nil {
+				t.Fatal(err)
+			}
+			held[i] = a
+		}
+		done := make(chan rpcAdmissionResult, 1)
+		go func() {
+			a, err := s.admitRPC(context.Background(), "another-account", smallRPCPool, true)
+			done <- rpcAdmissionResult{a, err}
+		}()
+		synctest.Wait()
+		if len(s.smallRPCRequests) != 0 {
+			t.Fatal("forward waiter reserved a decoder before global admission")
+		}
+		select {
+		case <-done:
+			t.Fatal("forward burst did not wait")
+		default:
+		}
+		held[0].release()
+		synctest.Wait()
+		got := <-done
+		if got.err != nil {
+			t.Fatal(got.err)
+		}
+		if err := got.admission.forward(); err != nil {
+			t.Fatal(err)
+		}
+		got.admission.release()
+		for _, a := range held[1:] {
 			a.release()
 		}
-	}()
-	for i := 0; i < maxConcurrentForwardRequests; i++ {
-		account := fmt.Sprint(i / maxAccountForwardRequests)
-		a, err := ts.srv.admitRPC(context.Background(), account, smallRPCPool, true)
-		if err != nil {
-			t.Fatal(err)
-		}
-		held = append(held, a)
-		if err := a.forward(); err != nil {
-			t.Fatal(err)
-		}
-	}
-	extra, err := ts.srv.admitRPC(context.Background(), "another-account", smallRPCPool, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer extra.release()
-	if err := extra.forward(); connect.CodeOf(err) != connect.CodeResourceExhausted {
-		t.Fatalf("global forward limit: %v", err)
-	}
-	held[0].release()
-	held = held[1:]
-	if err := extra.forward(); err != nil {
-		t.Fatalf("released slot was not reusable: %v", err)
-	}
+	})
 }
 
 func TestCompressedForwardRetainsLargeDecoderAdmission(t *testing.T) {
@@ -182,8 +192,7 @@ func TestCompressedForwardRetainsLargeDecoderAdmission(t *testing.T) {
 		_, err := client.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}))
 		return err
 	}
-	done := make(chan error, 1)
-	done = make(chan error, maxAccountLargeRPCRequests)
+	done := make(chan error, maxAccountLargeRPCRequests)
 	calls := make([]*pb.ForwardCall, 0, maxAccountLargeRPCRequests)
 	for range maxAccountLargeRPCRequests {
 		go func() { done <- request() }()
@@ -281,7 +290,7 @@ func TestRPCAccountBurstWaitsWithoutGlobalSlots(t *testing.T) {
 					t.Fatalf("B blocked by A's waiter: %v", err)
 				}
 				b.release()
-				time.Sleep(accountRPCWaitTimeout / 2)
+				time.Sleep(rpcAdmissionWaitTimeout / 2)
 				held[0].release()
 				synctest.Wait()
 				got := <-done
@@ -344,7 +353,7 @@ func TestRPCAccountWaitTimeoutAndCancellation(t *testing.T) {
 						want = connect.CodeDeadlineExceeded
 						time.Sleep(time.Second)
 					} else {
-						time.Sleep(accountRPCWaitTimeout / 2)
+						time.Sleep(rpcAdmissionWaitTimeout / 2)
 						// An unrelated account's release must not restart the five-second budget.
 						b, err := s.admitRPC(context.Background(), "B", smallRPCPool, false)
 						if err != nil {
@@ -352,7 +361,7 @@ func TestRPCAccountWaitTimeoutAndCancellation(t *testing.T) {
 						}
 						b.release()
 						synctest.Wait()
-						time.Sleep(accountRPCWaitTimeout/2 - time.Nanosecond)
+						time.Sleep(rpcAdmissionWaitTimeout/2 - time.Nanosecond)
 						select {
 						case <-done:
 							t.Fatal("account wait ended before five seconds")
@@ -418,24 +427,26 @@ func TestForwardAccountWaitPrecedesLargeDecoderAdmission(t *testing.T) {
 }
 
 func TestRPCGlobalRefusalRollsBackAccountReservations(t *testing.T) {
-	s := newRPCAdmissionServer()
-	held := make([]*rpcAdmission, maxConcurrentSmallRPCRequests)
-	for i := range held {
-		var err error
-		held[i], err = s.admitRPC(context.Background(), "", smallRPCPool, false)
-		if err != nil {
-			t.Fatal(err)
+	synctest.Test(t, func(t *testing.T) {
+		s := newRPCAdmissionServer()
+		held := make([]*rpcAdmission, maxConcurrentSmallRPCRequests)
+		for i := range held {
+			var err error
+			held[i], err = s.admitRPC(context.Background(), "", smallRPCPool, false)
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
-	}
-	if a, err := s.admitRPC(context.Background(), "A", smallRPCPool, true); a != nil || err != errRPCGlobalAdmission {
-		t.Fatalf("global rejection: %v %v", a, err)
-	}
-	if len(s.accountRPCRequests) != 0 {
-		t.Fatalf("global refusal leaked account shares: %v", s.accountRPCRequests)
-	}
-	for _, a := range held {
-		a.release()
-	}
+		if a, err := s.admitRPC(context.Background(), "A", smallRPCPool, true); a != nil || connect.CodeOf(err) != connect.CodeResourceExhausted {
+			t.Fatalf("global rejection: %v %v", a, err)
+		}
+		if len(s.accountRPCRequests) != 0 || len(s.forwardRPCRequests) != 0 {
+			t.Fatal("global refusal leaked reservations")
+		}
+		for _, a := range held {
+			a.release()
+		}
+	})
 }
 
 func TestNormalMultiDeviceRPCBurst(t *testing.T) {
