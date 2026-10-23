@@ -30,6 +30,9 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
     ).installed(emptyList(), emptyList(), HeadLease.sign(head, signer, now))
     val account = Account("https://example.com", byteArrayOf(), ByteArray(32) { 1 }, phone.id, record.pin.account)
 
+    fun removeMachine(): DeviceSecurity.State = Authority.remove(record.head, listOf(machine.id),
+        secret, ByteArray(32) { 12 }, signer, now)
+
     private fun seal(purpose: DeviceSecurity.Purpose, sid: String, seq: Long, plain: ByteArray): Envelope {
         val header = DeviceSecurity.Header(record.pin.account, record.pin.domain, head.core.epoch,
             DeviceSecurity.stateHash(head), head.core.contentEpoch, machine.id, purpose.kind, purpose,
@@ -60,6 +63,9 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
 internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) : HTTPClientInterface, WebSocket.Factory {
     val calls = mutableListOf<String>()
     val after = mutableListOf<Long>()
+    var securityRecord = fixture.record
+    var machineRows = listOf(Machine.newBuilder().setId(fixture.machine.id).setOnline(true).build())
+    var response: (String, UnaryHTTPRequest) -> com.google.protobuf.MessageLite? = { _, _ -> null }
     var count = fixture.historySize
     var missing = 0L
     var latencyMs = 0L
@@ -97,7 +103,7 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
                     message = Buffer().writeUtf8(if (unavailable) "{\"code\":\"unavailable\"}" else "{\"code\":\"unauthenticated\"}")))
                 return@launch
             }
-            val response: com.google.protobuf.MessageLite = when (name) {
+            val response: com.google.protobuf.MessageLite = response(name, request) ?: when (name) {
                 "GetChallenge" -> GetChallengeResponse.newBuilder().setChallenge(ByteString.copyFrom(ByteArray(32) { 9 })).build()
                 "Login" -> {
                     val login = LoginRequest.parseFrom(request.message.clone().readByteArray())
@@ -106,7 +112,14 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
                     token = "credential-${++minted}"
                     LoginResponse.newBuilder().setToken(token).setExpiresMs(fixture.now + 3 * LOGIN_REFRESH_MARGIN_MS).build()
                 }
-                "ListMachines" -> ListMachinesResponse.newBuilder().addMachines(Machine.newBuilder().setId(fixture.machine.id)).build()
+                "ListMachines" -> ListMachinesResponse.newBuilder().addAllMachines(machineRows).build()
+                "GetSecurityStates" -> {
+                    val after = GetSecurityStatesRequest.parseFrom(request.message.clone().readByteArray()).afterEpoch.toULong()
+                    GetSecurityStatesResponse.newBuilder().setHeadEpoch(securityRecord.head.core.epoch.toLong())
+                        .addAllStates(securityRecord.chain.filter { it.core.epoch > after }.map {
+                            SecurityState.newBuilder().setState(ByteString.copyFrom(DeviceSecurity.stateBytes(it))).build()
+                        }).setLease(ByteString.copyFrom(securityRecord.lease?.bytes() ?: byteArrayOf())).build()
+                }
                 "ListDevices" -> ListDevicesResponse.getDefaultInstance()
                 "ListRemoteSessions" -> ListRemoteSessionsResponse.newBuilder().addAllSessions(fixture.sessions.values).build()
                 "GetAccountPrefs" -> GetAccountPrefsResponse.getDefaultInstance()
@@ -137,6 +150,8 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
             listener.onOpen(it, Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(101).message("Switching Protocols").build())
         }
     }
+
+    fun frame(frame: ServerFrame) { sockets.last().emit(frame) }
 
     fun push(event: StoredEvent) {
         sockets.last().emit(ServerFrame.newBuilder().setEventsAppended(EventsAppended.newBuilder()

@@ -396,6 +396,7 @@ class Remote(
     private val trustedMetadata = HashMap<String, Envelope>()
     private var directoryVersion = 0L
     private var directoryHead: ByteArray? = null
+    private var directoryLoad: Deferred<Unit>? = null
     private var recoveryObjectsPending = true
     private var leaseEnd = 0L
     @Volatile private var serverAhead = false
@@ -928,12 +929,12 @@ class Remote(
             ServerFrame.KindCase.MACHINE_REMOVED -> refresh()
             ServerFrame.KindCase.MACHINE_UPDATED -> {
                 bump(machinePushes, f.machineUpdated.machine.id)
-                loadDevices()
+                checkDirectory(f.machineUpdated.machine.id, listOf(f.machineUpdated.machine.meta))
                 putMachine(f.machineUpdated.machine)
             }
             ServerFrame.KindCase.SESSION_UPDATED -> {
                 bump(sessionPushes, f.sessionUpdated.session.sessionId)
-                loadDevices()
+                checkDirectory(f.sessionUpdated.session.machineId, listOf(f.sessionUpdated.session.key, f.sessionUpdated.session.meta))
                 putSession(f.sessionUpdated.session, save = onFirstPage(f.sessionUpdated.session))
             }
             ServerFrame.KindCase.EVENTS_APPENDED -> {
@@ -1291,10 +1292,12 @@ class Remote(
         val m = builder.build()
         val old = machines[m.id]
         var view = old ?: MachineView(m.id, m.online, m.lastSeenMs)
-        if (!staleOnline) view = view.copy(online = m.online)
+        if (!staleOnline) view = view.copy(online = m.online && trustedMembers[m.id]?.kind == 1u)
         if (m.lastSeenMs > view.lastSeenMs) view = view.copy(lastSeenMs = m.lastSeenMs)
         var store = old == null
-        if (m.hasMeta()) {
+        if (m.hasMeta() &&
+            (old?.meta == null || DeviceSecurity.parseHeader(m.meta.securityHeader.toByteArray()).seq.toLong() != old.metaRev)
+        ) {
             try {
                 val (h, meta) =
                     openSecureMessage(
@@ -2231,7 +2234,28 @@ class Remote(
         publishSecurityStates(listOf(prepared.state))
     }
 
+    private suspend fun checkDirectory(machineId: String, envelopes: List<Envelope>) {
+        val changed = syncSecurityOnce()
+        val unknownEpoch = envelopes.any { env ->
+            !env.securityHeader.isEmpty &&
+                security.stateAt(DeviceSecurity.parseHeader(env.securityHeader.toByteArray()).epoch) == null
+        }
+        if (changed || recoveryObjectsPending || trustedMembers[machineId]?.kind != 1u || unknownEpoch)
+            loadDevices()
+    }
+
     private suspend fun loadDevices(listedMachines: ListMachinesResponse? = null) {
+        val load = directoryLoad ?: scope.async {
+            readDirectory(listedMachines)
+        }.also { directoryLoad = it }
+        try {
+            load.await()
+        } finally {
+            if (load.isCompleted && directoryLoad === load) directoryLoad = null
+        }
+    }
+
+    private suspend fun readDirectory(listedMachines: ListMachinesResponse?) {
         val version = ++directoryVersion
         try {
             val (_, head) = security.identity()
