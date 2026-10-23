@@ -45,6 +45,7 @@ type rpcAdmission struct {
 	slots   chan struct{}
 	pool    rpcPool
 	account string
+	decoder *rpcAdmission
 }
 
 func (s *Server) takeAccountRPC(account string, pool rpcPool) bool {
@@ -81,6 +82,9 @@ func (s *Server) releaseAccountRPC(account string, pool rpcPool) {
 func (a *rpcAdmission) release() {
 	<-a.slots
 	a.s.releaseAccountRPC(a.account, a.pool)
+	if a.decoder != nil {
+		a.decoder.release()
+	}
 }
 
 var errRPCAdmission = connect.NewError(connect.CodeResourceExhausted, errors.New("too many in-flight RPC requests"))
@@ -91,7 +95,14 @@ func (a *rpcAdmission) forward() error {
 	}
 	select {
 	case a.s.forwardRPCRequests <- struct{}{}:
-		a.release()
+		if a.pool == largeRPCPool {
+			// Connect retains the decoded request through the response write.
+			// Keep its large-body memory budget, including compressed bodies.
+			decoder := *a
+			a.decoder = &decoder
+		} else {
+			a.release()
+		}
 		a.slots, a.pool = a.s.forwardRPCRequests, forwardRPCPool
 		return nil
 	default:

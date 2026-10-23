@@ -164,3 +164,51 @@ func TestForwardAdmissionGlobalBoundAndRelease(t *testing.T) {
 		t.Fatalf("released slot was not reusable: %v", err)
 	}
 }
+
+func TestCompressedForwardRetainsLargeDecoderAdmission(t *testing.T) {
+	ts := newTestServer(t)
+	a := ts.account(t, ts.keys)
+	finished := make(chan struct{}, 3)
+	handler := ts.srv.Handler()
+	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handler.ServeHTTP(w, r); finished <- struct{}{} }))
+	defer hs.Close()
+	client := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, hs.URL, withToken(a.ctok), connect.WithSendGzip())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env, err := e2e.Seal(a.keys.Command, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND,
+		MachineId: a.mid, RequestId: "0123456789abcdef0123456789abcdef", DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: a.cid}, []byte("cmd"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := func() error {
+		_, err := client.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}))
+		return err
+	}
+	done := make(chan error, 1)
+	go func() { done <- request() }()
+	call := a.machineFrame.next(t, func(f *pb.ServerFrame) bool { return f.GetForwardCall() != nil }).GetForwardCall()
+	if len(ts.srv.rpcRequests) != 1 || len(ts.srv.forwardRPCRequests) != 1 || len(ts.srv.smallRPCRequests) != 0 {
+		t.Fatalf("compressed forward lost its decoder budget: large=%d forward=%d small=%d", len(ts.srv.rpcRequests), len(ts.srv.forwardRPCRequests), len(ts.srv.smallRPCRequests))
+	}
+	if err := request(); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("second large request from account A: %v", err)
+	}
+	<-finished
+	if _, err := a.client.ListMachines(ctx, connect.NewRequest(&pb.ListMachinesRequest{})); err != nil {
+		t.Fatalf("large forward blocked small RPC: %v", err)
+	}
+	a.machineFrame.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, Error: "test reply"}}})
+	if err := <-done; connect.CodeOf(err) != connect.CodeAborted {
+		t.Fatalf("forward result: %v", err)
+	}
+	<-finished
+	// A subsequent compressed call must reach the daemon, proving that both
+	// its account and global decoder reservations were released.
+	go func() { done <- request() }()
+	call = a.machineFrame.next(t, func(f *pb.ServerFrame) bool { return f.GetForwardCall() != nil }).GetForwardCall()
+	a.machineFrame.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, Error: "test reply"}}})
+	if err := <-done; connect.CodeOf(err) != connect.CodeAborted {
+		t.Fatalf("reused forward slot: %v", err)
+	}
+	<-finished
+}
