@@ -1,6 +1,7 @@
 package io.github.lewin671.remoteagent.data
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import androidx.room.Dao
 import androidx.room.Database
@@ -116,7 +117,28 @@ abstract class CacheDb : RoomDatabase() {
     companion object {
         const val NAME = "cache.db"
 
-        fun open(context: Context): CacheDb = Room.databaseBuilder(context, CacheDb::class.java, NAME)
+        fun open(context: Context): CacheDb {
+            var disk: CacheDb? = null
+            return try {
+                // Check before Room can invoke its existing destructive fallback.
+                // Unsupported files stay untouched and this run uses memory instead.
+                val file = context.getDatabasePath(NAME)
+                if (file.exists()) SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use {
+                    check(it.version == 3) { "Unsupported cache version" }
+                }
+                disk = diskBuilder(context).build()
+                disk.openHelper.writableDatabase
+                disk
+            } catch (e: Exception) {
+                runCatching { disk?.close() }
+                Log.w("remote-agent", "event cache unavailable; using memory: ${e.javaClass.simpleName}")
+                Room.inMemoryDatabaseBuilder(context, CacheDb::class.java).build().also {
+                    it.openHelper.writableDatabase
+                }
+            }
+        }
+
+        private fun diskBuilder(context: Context) = Room.databaseBuilder(context, CacheDb::class.java, NAME)
             .fallbackToDestructiveMigration(true)
             .addCallback(object : Callback() {
                 override fun onOpen(db: SupportSQLiteDatabase) {
@@ -128,7 +150,6 @@ abstract class CacheDb : RoomDatabase() {
                     }
                 }
             })
-            .build()
     }
 }
 

@@ -302,7 +302,8 @@ class RaApp : Application() {
         }
     }
 
-    private fun use(acct: Account) {
+    private suspend fun use(acct: Account) {
+        val cacheDb = withContext(Dispatchers.IO) { db }
         joinDirectly = false
         _pendingCreation.value = false
         _securitySetup.value = null
@@ -312,7 +313,7 @@ class RaApp : Application() {
             Remote(
                 acct,
                 http,
-                RoomCache(db.dao(), eventAccess, imageEnvelopes),
+                RoomCache(cacheDb.dao(), eventAccess, imageEnvelopes),
                 securityStorage = vault,
                 tokenStorage = object : io.github.lewin671.remoteagent.core.LoginTokenStore by vault {
                     override fun loadLoginToken(account: Account) =

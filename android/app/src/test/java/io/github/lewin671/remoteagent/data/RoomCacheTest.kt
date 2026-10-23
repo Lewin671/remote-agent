@@ -1,11 +1,14 @@
 package io.github.lewin671.remoteagent.data
 
 import android.app.Application
+import android.content.Context
+import android.content.ContextWrapper
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.RemoteSession
 import io.github.lewin671.remoteagent.proto.StoredEvent
+import io.github.lewin671.remoteagent.RaApp
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
@@ -355,4 +358,67 @@ class RoomCacheTest {
         assertFalse(access.times().containsKey("legacy-b"))
     }
 
+    @Test fun unsupportedOlderVersionUsesMemoryAndLeavesTheFileBytesUnchanged() = runTest {
+        val context = RuntimeEnvironment.getApplication()
+        existingDatabase(2).use { it.putEvents("old") }
+        val file = context.getDatabasePath(CacheDb.NAME)
+        val original = file.readBytes()
+        val app = RaApp()
+        ContextWrapper::class.java.getDeclaredMethod("attachBaseContext", Context::class.java)
+            .apply { isAccessible = true }.invoke(app, context)
+        val db = app.db.also { databases += it }
+        assertSame(db, app.db)
+        assertTrue("open must validate eagerly", db.isOpen)
+        val cache = cache(db.dao(), Long.MAX_VALUE)
+        assertTrue(cache.events("old").isEmpty())
+        cache.seed("temporary", 20)
+        assertEquals(listOf(event(1), event(2)), cache.events("temporary"))
+        assertArrayEquals(original, file.readBytes())
+        cache.close()
+        backgroundScope.coroutineContext[kotlinx.coroutines.Job]!!.children.toList().forEach { it.join() }
+        db.close()
+        assertArrayEquals(original, file.readBytes())
+        val next = CacheDb.open(context).also { databases += it }
+        assertTrue(next.dao().events("temporary").isEmpty())
+        next.close()
+        assertArrayEquals(original, file.readBytes())
+    }
+
+    @Test fun healthyCacheOpensEagerlyAndRemainsPersistent() = runTest {
+        val context = RuntimeEnvironment.getApplication()
+        val db = CacheDb.open(context).also { databases += it }
+        assertTrue(db.isOpen)
+        assertTrue("fresh caches should use Room's default WAL", db.openHelper.writableDatabase.isWriteAheadLoggingEnabled)
+        db.dao().put(BlobRow("retained", byteArrayOf(1, 2, 3)))
+        db.close()
+        val reopened = CacheDb.open(context).also { databases += it }
+        assertTrue(reopened.isOpen)
+        assertArrayEquals(byteArrayOf(1, 2, 3), reopened.dao().blob("retained")!!.data)
+    }
+
+    @Test fun downgradeUsesMemoryAndLeavesTheFileBytesUnchanged() = runTest {
+        val context = RuntimeEnvironment.getApplication()
+        existingDatabase().use { it.putEvents("old"); it.version = 5 }
+        val file = context.getDatabasePath(CacheDb.NAME)
+        val original = file.readBytes()
+        val db = CacheDb.open(context).also { databases += it }
+        assertTrue(db.isOpen)
+        db.dao().put(BlobRow("temporary", byteArrayOf(1)))
+        assertArrayEquals(byteArrayOf(1), db.dao().blob("temporary")!!.data)
+        db.close()
+        assertArrayEquals(original, file.readBytes())
+    }
+
+    @Test fun schemaValidationFailureUsesMemoryAndLeavesTheFileBytesUnchanged() = runTest {
+        val context = RuntimeEnvironment.getApplication()
+        existingDatabase().use { it.putEvents("old"); it.execSQL("UPDATE room_master_table SET identity_hash = 'invalid'") }
+        val file = context.getDatabasePath(CacheDb.NAME)
+        val original = file.readBytes()
+        val db = CacheDb.open(context).also { databases += it }
+        assertTrue(db.isOpen)
+        db.dao().put(BlobRow("temporary", byteArrayOf(1)))
+        assertArrayEquals(byteArrayOf(1), db.dao().blob("temporary")!!.data)
+        db.close()
+        assertArrayEquals(original, file.readBytes())
+    }
 }
