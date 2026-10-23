@@ -2771,7 +2771,10 @@ class Remote(
     }
 
     /** Sends a command about a session. */
-    suspend fun command(sid: String, cmd: Command): CommandResult {
+    suspend fun command(sid: String, cmd: Command): CommandResult =
+        withContext(dispatcher) { commandOnWorker(sid, cmd) }
+
+    private suspend fun commandOnWorker(sid: String, cmd: Command): CommandResult {
         val s =
             withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
         var actual = cmd
@@ -3004,7 +3007,10 @@ class Remote(
      * with the same request ID, which the daemon runs at most once; when the outcome stays unknown
      * the error says so.
      */
-    suspend fun authorize(p: PreparedCommand): Envelope {
+    suspend fun authorize(p: PreparedCommand): Envelope =
+        withContext(dispatcher) { authorizeOnWorker(p) }
+
+    private suspend fun authorizeOnWorker(p: PreparedCommand): Envelope {
         try {
             return authorizeIntent(p)
         } catch (e: Exception) {
@@ -3052,7 +3058,10 @@ class Remote(
             env
         }
 
-    suspend fun forward(p: PreparedCommand, retryOfUnknown: Boolean = false): CommandResult {
+    suspend fun forward(p: PreparedCommand, retryOfUnknown: Boolean = false): CommandResult =
+        withContext(dispatcher) { forwardOnWorker(p, retryOfUnknown) }
+
+    private suspend fun forwardOnWorker(p: PreparedCommand, retryOfUnknown: Boolean): CommandResult {
         // A machine of another protocol version would refuse it: say which
         // side to update instead of sending.
         protocolMismatch(state.value.machines[p.machineId])?.let {
@@ -3300,7 +3309,10 @@ class Remote(
      * cached; it is opened and checked in memory each time: bound to this machine, session and
      * image, and data that starts with its format's signature.
      */
-    suspend fun image(sid: String, imageId: String): ImageResult {
+    suspend fun image(sid: String, imageId: String): ImageResult =
+        withContext(dispatcher) { imageOnWorker(sid, imageId) }
+
+    private suspend fun imageOnWorker(sid: String, imageId: String): ImageResult {
         val s =
             withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
         val key = sessionKeys[sid] ?: throw CommandException("not_found", "未知会话")
@@ -3309,6 +3321,7 @@ class Remote(
             try {
                 cache?.image(cacheKey)?.let { Envelope.parseFrom(it) }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 null
             }
         if (env == null) {
@@ -3353,6 +3366,7 @@ class Remote(
         try {
             cache?.putImage(cacheKey, env.toByteArray())
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             report(e)
         }
         return ImageResult.Loaded(payload, Header.parseFrom(env.header).version == 1)
