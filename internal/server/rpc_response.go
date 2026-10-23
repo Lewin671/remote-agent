@@ -1,9 +1,13 @@
 package server
 
 import (
+	"math"
+	"mime"
 	"net/http"
 	"time"
 
+	"connectrpc.com/connect"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 )
 
@@ -59,3 +63,27 @@ func (w *rpcResponseWriter) FlushError() error {
 func (w *rpcResponseWriter) Flush() { _ = w.FlushError() }
 
 func (w *rpcResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+// Binary image envelopes are already incompressible. Disable only response
+// compression for Connect protobuf downloads; request gzip decoding and all
+// other codecs/transports keep Connect's defaults.
+func clientServiceHandler(svc *clientService, opts ...connect.HandlerOption) (string, http.Handler) {
+	path, normal := remoteagentv1connect.NewClientServiceHandler(svc, opts...)
+	imageOpts := append([]connect.HandlerOption{}, opts...)
+	imageOpts = append(imageOpts,
+		connect.WithSchema(pb.File_remoteagent_v1_relay_proto.Services().ByName("ClientService").Methods().ByName("GetImage")),
+		connect.WithCompressMinBytes(math.MaxInt))
+	binaryImage := connect.NewUnaryHandler(remoteagentv1connect.ClientServiceGetImageProcedure, svc.GetImage, imageOpts...)
+	return path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contentType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		binary := contentType == "application/proto"
+		if r.Method == http.MethodGet {
+			binary = r.URL.Query().Get("encoding") == "proto"
+		}
+		if r.URL.Path == remoteagentv1connect.ClientServiceGetImageProcedure && binary {
+			binaryImage.ServeHTTP(w, r)
+			return
+		}
+		normal.ServeHTTP(w, r)
+	})
+}

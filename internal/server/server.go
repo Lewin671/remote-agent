@@ -276,7 +276,7 @@ func (s *Server) Handler() http.Handler {
 	// Pairing authenticates per call: the joiner has no login yet.
 	mux.Handle(remoteagentv1connect.NewPairingServiceHandler(s.pairing, connect.WithReadMaxBytes(maxPairingRequestBytes)))
 	mux.Handle(remoteagentv1connect.NewRecoveryServiceHandler(s.recovery, connect.WithReadMaxBytes(maxRequestBytes)))
-	mux.Handle(remoteagentv1connect.NewClientServiceHandler(&clientService{s: s}, authed...))
+	mux.Handle(clientServiceHandler(&clientService{s: s}, authed...))
 	mux.Handle(remoteagentv1connect.NewMachineServiceHandler(&machineService{s: s}, authed...))
 	mux.HandleFunc("/v1/stream", s.hub.serve)
 	mux.HandleFunc("/v1/term", s.term.serve)
