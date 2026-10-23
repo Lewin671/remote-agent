@@ -698,12 +698,19 @@ func TestStopWaitsForPTYHostBeforeReadingFinalTranscript(t *testing.T) {
 	h := newHarness(t, Config{})
 	rollout := filepath.Join(h.dir, "rollout.jsonl")
 	h.s.bindRollout("codex-1", rollout)
-	h.term.setHostAlive(true)
+	term := &barrierHostTerminal{terminal: h.s.term, entered: make(chan struct{}), release: make(chan struct{})}
+	h.s.term = term
+	defer close(term.release)
 
 	done := make(chan error, 1)
 	go func() { done <- h.s.kill() }()
-	eventually(t, "tmux session to be killed", func() bool { return !h.term.Alive() })
-	time.Sleep(100 * time.Millisecond)
+	select {
+	case <-term.entered:
+	case err := <-done:
+		t.Fatalf("stop bypassed the pty-host exit check: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("stop did not check the pty-host")
+	}
 	h.s.mu.Lock()
 	exited := h.s.meta.Exited
 	h.s.mu.Unlock()
@@ -721,8 +728,8 @@ func TestStopWaitsForPTYHostBeforeReadingFinalTranscript(t *testing.T) {
 		`{"timestamp":"2026-09-29T10:00:01Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"AgentMessage","id":"m1","content":[{"text":"written before pty-host exit"}]}}}`,
 		`{"timestamp":"2026-09-29T10:00:02Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"t1"}}`,
 	)
-	h.term.setHostAlive(false)
-	if err := <-done; err != nil {
+	term.release <- struct{}{}
+	if err := awaitLifecycleResult(t, done); err != nil {
 		t.Fatal(err)
 	}
 
@@ -743,40 +750,46 @@ func TestStopWaitsForPTYHostBeforeReadingFinalTranscript(t *testing.T) {
 	}
 }
 
-func TestResumeWaitsForPreviousPTYHost(t *testing.T) {
-	h := newHarness(t, Config{})
-	h.d.mu.Lock()
-	h.d.sessions[h.s.meta.ID] = h.s
-	h.d.mu.Unlock()
-	h.d.cfg.Tmux = &tmux.Client{Bin: filepath.Join(h.dir, "missing-tmux"), Socket: "ra-test"}
-	h.term.setHostAlive(true)
-	h.s.markExited("stopped")
+type barrierHostTerminal struct {
+	terminal
+	entered, release chan struct{}
+}
 
-	started := time.Now()
-	done := make(chan error, 1)
-	go func() { _, err := h.d.resume(h.s.meta.ID); done <- err }()
+func (t *barrierHostTerminal) HostAlive(ctx context.Context) (bool, error) {
+	close(t.entered)
 	select {
-	case err := <-done:
-		t.Fatalf("resume returned while the previous pty-host was alive: %v", err)
-	case <-time.After(100 * time.Millisecond):
-	}
-	h.term.setHostAlive(false)
-	select {
-	case err := <-done:
-		if err == nil {
-			t.Fatal("resume unexpectedly started with the missing tmux executable")
-		}
-	case <-time.After(3 * time.Second):
-		t.Fatal("resume did not continue after the previous pty-host exited")
-	}
-	if elapsed := time.Since(started); elapsed < 100*time.Millisecond {
-		t.Fatalf("resume waited only %s for the previous pty-host", elapsed)
+	case <-t.release:
+		return false, nil
+	case <-ctx.Done():
+		return false, ctx.Err()
 	}
 }
 
-// Codex may confirm a message in history.jsonl and record the user message
-// only later. A daemon restarted in between still ties the record to the
-// message it wrote: its request ID is what a scheduled run waits for.
+func TestResumeWaitsForPreviousPTYHost(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.d.sessions[h.s.meta.ID] = h.s
+	h.d.cfg.Tmux = &tmux.Client{Bin: filepath.Join(h.dir, "missing-tmux"), Socket: "ra-test"}
+	h.s.markExited("stopped")
+	term := &barrierHostTerminal{terminal: h.s.term, entered: make(chan struct{}), release: make(chan struct{})}
+	h.s.term = term
+	defer close(term.release)
+	done := make(chan error, 1)
+	go func() { _, err := h.d.resume(h.s.meta.ID); done <- err }()
+	select {
+	case <-term.entered:
+		// Resume has reached the host-exit check, which cannot complete
+		// until this test explicitly reports that the old host is gone.
+	case err := <-done:
+		t.Fatalf("resume bypassed the previous pty-host: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("resume did not check the previous pty-host")
+	}
+	term.release <- struct{}{}
+	if err := awaitLifecycleResult(t, done); err == nil {
+		t.Fatal("resume unexpectedly started with the missing tmux executable")
+	}
+}
+
 func TestLateRecordIsMatchedAfterRestart(t *testing.T) {
 	h := newHarness(t, Config{})
 	h.s.bindRollout("", filepath.Join(h.dir, "rollout.jsonl"))

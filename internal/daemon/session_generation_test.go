@@ -28,6 +28,9 @@ func TestNaturalExitFinalizesBeforeResume(t *testing.T) {
 	h.term.alive = false
 	// The poller publishes Exited, then stops at its final transcript read.
 	h.s.readMu.Lock()
+	var release sync.Once
+	unblock := func() { release.Do(h.s.readMu.Unlock) }
+	defer unblock()
 	h.s.start(context.Background())
 	oldDone, oldStop := h.s.done, h.s.stop
 	defer oldStop()
@@ -50,7 +53,7 @@ func TestNaturalExitFinalizesBeforeResume(t *testing.T) {
 	h.term.mu.Lock()
 	h.term.alive = true
 	h.term.mu.Unlock()
-	h.s.readMu.Unlock()
+	unblock()
 	if err := awaitLifecycleResult(t, done); err != nil {
 		t.Fatal(err)
 	}

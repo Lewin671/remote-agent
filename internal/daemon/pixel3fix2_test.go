@@ -42,21 +42,13 @@ func TestTerminalInputFramesDoNotInterleaveAcrossStreams(t *testing.T) {
 	go func() { aDone <- a.inputUsing(bytes.Repeat([]byte("a"), 512), write) }()
 	<-entered
 	go func() { bDone <- b.inputUsing([]byte("b"), write) }()
-	var bFinished bool
-	select {
-	case err := <-bDone:
-		bFinished = true
-		t.Errorf("second stream interleaved an unfinished input frame: %v", err)
-	case <-time.After(100 * time.Millisecond):
-	}
+	assertMutexHeld(t, &h.s.ctlMu, "terminal input frame")
 	close(release)
 	if err := <-aDone; err != nil {
 		t.Fatal(err)
 	}
-	if !bFinished {
-		if err := <-bDone; err != nil {
-			t.Fatal(err)
-		}
+	if err := <-bDone; err != nil {
+		t.Fatal(err)
 	}
 	if !slices.Equal(chunks, []string{"61", "61", "62"}) {
 		t.Fatalf("terminal chunk order=%v", chunks)
@@ -80,21 +72,13 @@ func TestTerminalResizeCommitsFitStateWithCommand(t *testing.T) {
 	go func() {
 		b <- stream.resizeUsing(0, 0, false, func(...string) error { physicalFit.Store(false); return nil })
 	}()
-	var bFinished bool
-	select {
-	case err := <-b:
-		bFinished = true
-		t.Errorf("later resize overtook an unfinished terminal command: %v", err)
-	case <-time.After(100 * time.Millisecond):
-	}
+	assertMutexHeld(t, &stream.mu, "resize command and fit-state commit")
 	close(release)
 	if err := <-a; err != nil {
 		t.Fatal(err)
 	}
-	if !bFinished {
-		if err := <-b; err != nil {
-			t.Fatal(err)
-		}
+	if err := <-b; err != nil {
+		t.Fatal(err)
 	}
 	if physicalFit.Load() != stream.fitted {
 		t.Fatalf("terminal fit=%v cache=%v", physicalFit.Load(), stream.fitted)
@@ -119,21 +103,13 @@ func TestSettingsCommitSerializesDiskAndCache(t *testing.T) {
 	}()
 	<-written
 	go func() { _, err := h.d.updateSettings(b); bDone <- err }()
-	var bFinished bool
-	select {
-	case err := <-bDone:
-		bFinished = true
-		t.Errorf("second settings commit overtook unfinished first commit: %v", err)
-	case <-time.After(100 * time.Millisecond):
-	}
+	assertMutexHeld(t, &h.d.settingsCommitMu, "settings disk and cache commit")
 	close(release)
 	if err := <-aDone; err != nil {
 		t.Fatal(err)
 	}
-	if !bFinished {
-		if err := <-bDone; err != nil {
-			t.Fatal(err)
-		}
+	if err := <-bDone; err != nil {
+		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(settingsPath())
 	if err != nil {
@@ -180,7 +156,7 @@ func TestConcurrentStopsDoNotOverlapSessionLifecycle(t *testing.T) {
 	go func() { a <- h.s.kill() }()
 	<-term.entered
 	go func() { b <- h.s.kill() }()
-	time.Sleep(100 * time.Millisecond)
+	assertMutexHeld(t, &h.s.lifecycleMu, "stop lifecycle")
 	if n := term.calls.Load(); n != 1 {
 		t.Errorf("%d stop callbacks entered the lifecycle concurrently", n)
 	}
@@ -278,21 +254,13 @@ func TestConcurrentRenameCommitsMetadataInOrder(t *testing.T) {
 	}()
 	<-written
 	go func() { bDone <- h.s.rename("second") }()
-	var bFinished bool
-	select {
-	case err := <-bDone:
-		bFinished = true
-		t.Errorf("second rename overtook unfinished first commit: %v", err)
-	case <-time.After(100 * time.Millisecond):
-	}
+	assertMutexHeld(t, &h.s.mu, "rename disk and metadata commit")
 	close(release)
 	if err := <-aDone; err != nil {
 		t.Fatal(err)
 	}
-	if !bFinished {
-		if err := <-bDone; err != nil {
-			t.Fatal(err)
-		}
+	if err := <-bDone; err != nil {
+		t.Fatal(err)
 	}
 	m, err := loadMeta(h.s.dir)
 	if err != nil {
@@ -353,5 +321,15 @@ func TestControlCommitRetainsTerminalLockUntilEventRecorded(t *testing.T) {
 				t.Fatal("missing settings event")
 			}
 		})
+	}
+}
+
+// The callback barrier has already been reached. Checking its lock directly
+// proves exclusion without assuming the contender has run within a delay.
+func assertMutexHeld(t *testing.T, mu *sync.Mutex, operation string) {
+	t.Helper()
+	if mu.TryLock() {
+		mu.Unlock()
+		t.Errorf("%s released its serialization lock before completion", operation)
 	}
 }

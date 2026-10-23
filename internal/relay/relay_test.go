@@ -1522,24 +1522,41 @@ func TestSlowStartupPublicationKeepsReadingStream(t *testing.T) {
 
 func TestOrdinaryReconnectDoesNotRepublishCheckpoint(t *testing.T) {
 	var puts atomic.Int32
+	startupDone := make(chan struct{}, 2)
 	e := setupWithHandler(t, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasSuffix(r.URL.Path, "/PutMachine") {
 				puts.Add(1)
 			}
 			next.ServeHTTP(w, r)
+			// syncLoop starts only after ensurePublished and the ordinary
+			// startup machine update have both completed. This is a positive
+			// boundary for counting all startup writes, including duplicates.
+			if strings.HasSuffix(r.URL.Path, "/ListSessionHeads") {
+				startupDone <- struct{}{}
+			}
 		})
 	})
+	waitStartup := func() {
+		t.Helper()
+		select {
+		case <-startupDone:
+		case <-time.After(5 * time.Second):
+			t.Fatal("relay did not finish startup publication")
+		}
+	}
 	e.startRelay()
-	waitFor(t, "first checkpoint", func() bool {
-		_, err := os.Stat(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "security-published"))
-		return err == nil && puts.Load() >= 2
-	})
+	waitStartup()
+	if _, err := os.Stat(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "security-published")); err != nil {
+		t.Fatal(err)
+	}
+	if got := puts.Load(); got != 2 {
+		t.Fatalf("first connection made %d metadata writes, want checkpoint and startup update", got)
+	}
 	e.stopRelay()
 	puts.Store(0)
 	e.startRelay()
-	waitFor(t, "reconnect machine update", func() bool { return puts.Load() >= 1 })
-	time.Sleep(150 * time.Millisecond)
+	waitStartup()
 	if got := puts.Load(); got != 1 {
 		t.Fatalf("ordinary reconnect republished checkpoint: %d metadata writes", got)
 	}

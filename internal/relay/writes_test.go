@@ -39,21 +39,18 @@ func TestConnectionCloseDrainsStartedDiskMutation(t *testing.T) {
 	}()
 	<-syncing // atomic replacement happened; durability still belongs to this connection
 	cancel()
-	go func() { c.writes.close(); close(closed) }()
-	early := false
-	select {
-	case <-closed:
-		early = true
-		t.Error("connection closed before its disk mutation finished")
-	case <-time.After(100 * time.Millisecond):
+	// The writer has reached its durability barrier and must still own the
+	// same mutex close uses to drain it, regardless of closer scheduling.
+	if c.writes.mu.TryLock() {
+		c.writes.mu.Unlock()
+		t.Error("disk mutation released connection ownership before durability completed")
 	}
+	go func() { c.writes.close(); close(closed) }()
 	close(release)
 	if err := <-written; err != nil {
 		t.Fatal(err)
 	}
-	if !early {
-		<-closed
-	}
+	<-closed
 	if err := c.writeDisk(func() error { t.Error("late mutation ran"); return nil }); !errors.Is(err, context.Canceled) {
 		t.Fatalf("late mutation=%v", err)
 	}
