@@ -416,6 +416,9 @@ const STREAM_IDLE_MS = 60_000;
 const STREAM_RESUME_IDLE_MS = 30_000;
 const RECONNECT_NOTICE_MS = 1_500;
 const RPC_TIMEOUT_MS = 45_000;
+// Allow one full RPC plus local verification/storage. Progress starts a
+// fresh budget, so several healthy round trips do not time out in aggregate.
+const SETUP_IDLE_MS = RPC_TIMEOUT_MS + OPEN_TIMEOUT_MS;
 
 /** What a plan the live snapshot says is pending reads as: the plan event
  * it names (planEventSeq), the clean Markdown the CLI proposed, when this
@@ -673,6 +676,7 @@ export class Remote {
   private securityTimer?: ReturnType<typeof setInterval>;
   private openTimer?: ReturnType<typeof setTimeout>;
   private idleTimer?: ReturnType<typeof setTimeout>;
+  private setupProgress?: () => void;
   private terminals = new Map<WebSocket, (reason: string) => void>();
   private listeners = new Set<() => void>();
   private version = 0;
@@ -707,10 +711,12 @@ export class Remote {
       account.deviceId,
       account.devicePrivate,
       async (after, limit) => {
+        this.setupProgress?.();
         const reply = await this.api.getSecurityStates({
           afterEpoch: after,
           limit,
         });
+        this.setupProgress?.();
         return {
           states: reply.states.map((s) => ({
             state: s.state,
@@ -1326,6 +1332,7 @@ export class Remote {
     for (let again = true; ; again = false) {
       try {
         const ch = await auth.getChallenge({ deviceId: this.account.deviceId });
+        this.setupProgress?.();
         const sig = await signLogin(this.account.devicePrivate, ch.challenge);
         const res = await auth.login({
           protocolVersion: PROTOCOL_VERSION,
@@ -1333,6 +1340,7 @@ export class Remote {
           challenge: ch.challenge,
           signature: sig,
         });
+        this.setupProgress?.();
         if (this.closed) return;
         this.token = res.token;
         this.tokenExpires = Number(res.expiresMs);
@@ -1370,17 +1378,27 @@ export class Remote {
     const generation = ++this.generation;
     this.conn = "connecting";
     this.changed(true);
-    // The steps before the stream get the same bound as its handshake: a
-    // lost request or storage that never answers would otherwise leave
-    // 连接中 up for good, with nothing waiting to try again.
-    let step = "读取本机状态";
-    const stall = setTimeout(() => {
+    let step = "";
+    let budget = OPEN_TIMEOUT_MS;
+    let stall: ReturnType<typeof setTimeout> | undefined;
+    const progress = () => {
       if (this.closed || generation !== this.generation) return;
-      this.generation++;
-      this.fail(new Error(`${step}超时，正在重连`));
-    }, OPEN_TIMEOUT_MS);
+      clearTimeout(stall);
+      stall = setTimeout(() => {
+        if (this.closed || generation !== this.generation) return;
+        this.generation++;
+        this.fail(new Error(`${step}超时，正在重连`));
+      }, budget);
+    };
+    const at = (name: string, timeout = OPEN_TIMEOUT_MS) => {
+      step = name;
+      budget = timeout;
+      progress();
+    };
+    this.setupProgress = progress;
+    at("读取本机状态");
     try {
-      const go = await this.preStream(generation, (s) => (step = s));
+      const go = await this.preStream(generation, at);
       if (go) this.openStream(generation);
     } catch (e) {
       // Storage can reject before login, and WebSocket construction can
@@ -1388,6 +1406,7 @@ export class Remote {
       if (!this.closed && generation === this.generation) this.fail(e);
     } finally {
       clearTimeout(stall);
+      if (this.setupProgress === progress) this.setupProgress = undefined;
     }
   }
 
@@ -1395,11 +1414,11 @@ export class Remote {
    * when this try ended here, failed or overtaken. */
   private async preStream(
     generation: number,
-    at: (step: string) => void,
+    at: (step: string, timeout?: number) => void,
   ): Promise<boolean> {
     await this.warm();
     if (this.closed || generation !== this.generation) return false;
-    at("登录");
+    at("登录", SETUP_IDLE_MS);
     try {
       // A token kept from an earlier visit saves the two login calls. One
       // about to expire is not worth a refused connection; the server
@@ -1414,7 +1433,7 @@ export class Remote {
       return false;
     }
     if (this.closed || generation !== this.generation) return false;
-    at("同步设备状态");
+    at("同步设备状态", SETUP_IDLE_MS);
     try {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.

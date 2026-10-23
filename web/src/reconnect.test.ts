@@ -191,12 +191,53 @@ it("bounds a security sync that never answers and retries it", async () => {
   const sync = vi.spyOn(r.security, "sync").mockReturnValue(new Promise(() => undefined));
   r.start(); await flush();
   expect(r.conn).toBe("connecting"); expect(sync).toHaveBeenCalledTimes(1);
-  await vi.advanceTimersByTimeAsync(15_000);
+  await vi.advanceTimersByTimeAsync(60_000);
   expect(r.conn).toBe("offline"); expect(r.connError).toBe("同步设备状态超时，正在重连");
   expect(r.failures).toBe(1); expect(Socket.all).toHaveLength(0);
   // Waiting out the backoff is not needed: a network back tries at once.
   sync.mockResolvedValue({ member: true, states: [{ core: { authorityID: "authority" } }] } as never);
   r.reconnectNow(); await flush();
+  expect(Socket.all).toHaveLength(1);
+  Socket.all[0].frame("ready"); await flush(); expect(r.conn).toBe("online");
+});
+
+it("allows each setup step its own deadline instead of restarting a healthy slow connection", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  let warmed!: () => void, loggedIn!: () => void, synced!: (record: any) => void;
+  vi.spyOn(r as any, "warm").mockReturnValue(new Promise<void>(resolve => { warmed = resolve; }));
+  vi.spyOn(r as any, "login").mockReturnValue(new Promise<void>(resolve => { loggedIn = resolve; }));
+  vi.spyOn(r.security, "sync").mockReturnValue(new Promise(resolve => { synced = resolve; }));
+  r.start(); await flush();
+  await vi.advanceTimersByTimeAsync(14_000); warmed(); await flush();
+  await vi.advanceTimersByTimeAsync(14_000); loggedIn(); await flush();
+  await vi.advanceTimersByTimeAsync(20_000);
+  expect(r.conn).toBe("connecting"); expect(r.failures).toBe(0);
+  synced({ member: true, states: [{ core: { authorityID: "authority" } }] }); await flush();
+  expect(Socket.all).toHaveLength(1);
+  Socket.all[0].frame("ready"); await flush();
+  expect(r.conn).toBe("online"); expect(r.failures).toBe(0);
+});
+
+it("keeps a multi-page security pull alive while its bounded RPCs make progress", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  const replies: (() => void)[] = [];
+  (r as any).api = {
+    getSecurityStates: () => new Promise(resolve => replies.push(() => resolve({ states: [] }))),
+  };
+  let pull: ReturnType<typeof r.security.sync> | undefined;
+  vi.spyOn(r.security, "sync").mockImplementation(() => pull ??= (async () => {
+    // Exercise the same Remote adapter that DeviceSecurityClient.syncLoop
+    // calls for each page, without needing cryptography on a fake clock.
+    for (let i = 0; i < 3; i++) await (r.security as any).fetchStates(0n, 8);
+    return { member: true, states: [{ core: { authorityID: "authority" } }] } as never;
+  })());
+  r.start(); await flush();
+  for (let i = 0; i < 3; i++) {
+    expect(replies).toHaveLength(i + 1);
+    await vi.advanceTimersByTimeAsync(40_000);
+    expect(r.failures).toBe(0);
+    replies[i](); await flush();
+  }
   expect(Socket.all).toHaveLength(1);
   Socket.all[0].frame("ready"); await flush(); expect(r.conn).toBe("online");
 });
