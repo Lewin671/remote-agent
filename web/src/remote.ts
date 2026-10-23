@@ -2370,8 +2370,11 @@ export class Remote {
         out.paused.delete(id);
         out.stages.delete(id);
       }
-    for (const [id, status] of observed.inputs) out.inputs.set(id, status);
-    for (const id of observed.paused) out.paused.add(id);
+    for (const [id, status] of observed.inputs) {
+      out.inputs.set(id, status);
+      if (observed.paused.has(id)) out.paused.add(id);
+      else out.paused.delete(id);
+    }
     for (const [id, stage] of observed.stages) out.stages.set(id, stage);
     for (const [id, reason] of observed.inputReasons)
       out.inputReasons.set(id, reason);
