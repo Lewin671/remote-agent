@@ -18,6 +18,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/eventview"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -295,14 +296,15 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 			if err := c.uploadImages(ctx, key, id, []*pb.Event{e}, flush); err != nil {
 				return err
 			}
-			env, err := c.sealEvent(ctx, key, id, c.withImageStates(id, e))
+			fitted := eventview.Fit(c.withImageStates(id, e))
+			env, err := c.sealFittedEvent(ctx, key, id, fitted)
 			if err != nil {
 				return err
 			}
 			batch = append(batch, &pb.StoredEvent{Seq: e.Seq, Envelope: env})
 			batchBytes += proto.Size(env)
 			if notifyKind(e) != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
-				notifyBatch = append(notifyBatch, fitEvent(slimEvent(e)))
+				notifyBatch = append(notifyBatch, fitted)
 			}
 			if len(batch) >= uploadEvents || batchBytes >= uploadBytes {
 				return flush()
@@ -464,10 +466,13 @@ func metaDigest(server string, key []byte, info *pb.Session, revision uint64) []
 }
 
 func (c *conn) sealEvent(ctx context.Context, key []byte, sessionID string, e *pb.Event) (*pb.Envelope, error) {
-	fitted := fitEvent(slimEvent(e))
+	return c.sealFittedEvent(ctx, key, sessionID, eventview.Fit(e))
+}
+
+func (c *conn) sealFittedEvent(ctx context.Context, key []byte, sessionID string, fitted *pb.Event) (*pb.Envelope, error) {
 	env, err := c.security.sealMessage(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: c.acct.DeviceID, SessionId: sessionID,
-		Seq: e.Seq, Sender: c.acct.DeviceID,
+		Seq: fitted.Seq, Sender: c.acct.DeviceID,
 	}, deviceauth.Event, key, fitted)
 	if err != nil {
 		return nil, localSyncError("encryption", err)
@@ -596,7 +601,7 @@ func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Ses
 		} else {
 			na.ToolInput, cut = clip(a.ToolInputJson, notifyCommand)
 		}
-		na.Truncated = na.Truncated || cut || approvalTextTruncated(a)
+		na.Truncated = na.Truncated || cut || eventview.ApprovalTextTruncated(a)
 		if a.Deadline != nil {
 			na.DeadlineMs = a.Deadline.AsTime().UnixMilli()
 		}
@@ -613,7 +618,7 @@ func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Ses
 	case *pb.Event_TurnEnded:
 		nc.Text, _ = clip(info.GetPreview(), notifyText)
 	}
-	if eventSkeleton(e) {
+	if eventview.IsSkeleton(e) {
 		// A notification must not reintroduce a decision button for an
 		// event whose identity or selectable content was reduced.
 		nc.Text = "内容过大，请在终端查看/回答"

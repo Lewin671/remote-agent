@@ -2,10 +2,10 @@ package daemon
 
 import (
 	"errors"
-	"google.golang.org/protobuf/proto"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/relay"
+	"github.com/Lewin671/remote-agent/internal/eventview"
+	"google.golang.org/protobuf/proto"
 )
 
 var errRemoteAnswerTruncated = errors.New("内容被截断，请在终端处理")
@@ -26,9 +26,9 @@ const (
 type pendingAnswerSafety struct {
 	events    map[uint64]*pb.Event
 	planSeq   uint64
-	approvals map[string]relay.AnswerSafety
-	questions map[string]relay.AnswerSafety
-	plan      relay.AnswerSafety
+	approvals map[string]eventview.AnswerSafety
+	questions map[string]eventview.AnswerSafety
+	plan      eventview.AnswerSafety
 	// Keys succeeded, but the CLI may still show this prompt. Also restored
 	// from PlanAnswered; a new proposal or a closed plan settles the claim.
 	planPending bool
@@ -42,26 +42,28 @@ func (p *pendingAnswerSafety) observe(e *pb.Event) {
 	switch k := e.Kind.(type) {
 	case *pb.Event_ApprovalRequested:
 		if p.approvals == nil {
-			p.approvals = make(map[string]relay.AnswerSafety)
+			p.approvals = make(map[string]eventview.AnswerSafety)
 		}
+		fitted, safety := eventview.Action(e)
 		delete(p.events, p.approvals[k.ApprovalRequested.ApprovalId].EventSeq)
 		if len(p.events) < 128 {
-			p.events[e.Seq] = proto.CloneOf(relay.LiveActionEvent(e))
+			p.events[e.Seq] = proto.CloneOf(fitted)
 		}
-		p.approvals[k.ApprovalRequested.ApprovalId] = relay.RemoteAnswerSafety(e)
+		p.approvals[k.ApprovalRequested.ApprovalId] = safety
 	case *pb.Event_ApprovalResolved:
 		delete(p.events, p.approvals[k.ApprovalResolved.ApprovalId].EventSeq)
 		delete(p.approvals, k.ApprovalResolved.ApprovalId)
 	case *pb.Event_QuestionAsked:
 		if !k.QuestionAsked.Async {
 			if p.questions == nil {
-				p.questions = make(map[string]relay.AnswerSafety)
+				p.questions = make(map[string]eventview.AnswerSafety)
 			}
+			fitted, safety := eventview.Action(e)
 			delete(p.events, p.questions[k.QuestionAsked.QuestionId].EventSeq)
 			if len(p.events) < 128 {
-				p.events[e.Seq] = proto.CloneOf(relay.LiveActionEvent(e))
+				p.events[e.Seq] = proto.CloneOf(fitted)
 			}
-			p.questions[k.QuestionAsked.QuestionId] = relay.RemoteAnswerSafety(e)
+			p.questions[k.QuestionAsked.QuestionId] = safety
 		}
 	case *pb.Event_QuestionAnswered:
 		delete(p.events, p.questions[k.QuestionAnswered.QuestionId].EventSeq)
@@ -74,7 +76,7 @@ func (p *pendingAnswerSafety) observe(e *pb.Event) {
 		clear(p.questions)
 	case *pb.Event_PlanProposed:
 		p.planPending = false
-		p.plan = relay.RemoteAnswerSafety(e)
+		_, p.plan = eventview.Action(e)
 		p.planSeq = e.Seq
 	case *pb.Event_SessionState:
 		if !k.SessionState.PlanOpen {
@@ -85,7 +87,7 @@ func (p *pendingAnswerSafety) observe(e *pb.Event) {
 		}
 	case *pb.Event_PlanAnswered:
 		p.planPending = true
-		p.plan = relay.AnswerSafety{}
+		p.plan = eventview.AnswerSafety{}
 		p.planSeq = 0
 	}
 }
@@ -98,7 +100,7 @@ func (s *session) checkRemoteAnswer(kind remoteAnswerKind, id string, allow bool
 	if origin.GetKind() != pb.OriginKind_ORIGIN_KIND_CLIENT {
 		return nil
 	}
-	var view relay.AnswerSafety
+	var view eventview.AnswerSafety
 	switch kind {
 	case remoteApproval:
 		view = s.answerSafety.approvals[id]
@@ -115,7 +117,7 @@ func (s *session) checkRemoteAnswer(kind remoteAnswerKind, id string, allow bool
 	}
 	// Rewritten IDs always carry the skeleton suffix. They are display text,
 	// never executable aliases, even after settlement or on an ID collision.
-	if kind != remotePlan && relay.TerminalOnlyAnswerID(id) || view.TerminalOnly || allow && view.ApprovalTruncated {
+	if kind != remotePlan && eventview.TerminalOnlyAnswerID(id) || view.TerminalOnly || allow && view.ApprovalTruncated {
 		return errRemoteAnswerTruncated
 	}
 	if kind == remotePlan {

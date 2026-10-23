@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/eventview"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -101,7 +102,7 @@ func TestSkeletonUploadAndPrefixFailure(t *testing.T) {
 			b := &prefixBackend{dir: t.TempDir(), events: []*pb.Event{
 				{Seq: 1, SessionId: "session", Time: timestamppb.Now(), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "approval", Command: "echo prefix"}}},
 				{Seq: 2, SessionId: "session", Time: timestamppb.Now(), Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{}}},
-				{Seq: 3, SessionId: "session", Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: strings.Repeat("q", maxEventBytes+1)}}},
+				{Seq: 3, SessionId: "session", Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: strings.Repeat("q", eventview.MaxBytes+1)}}},
 			}}
 			m := &prefixMachine{fail: tc.stage, cause: connect.NewError(tc.code, errors.New("injected flush failure"))}
 			if tc.stage == "read" {

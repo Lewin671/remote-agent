@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/relay"
+	"github.com/Lewin671/remote-agent/internal/eventview"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -135,7 +135,7 @@ func TestRemoteApprovalSafetyFromOriginalHistory(t *testing.T) {
 				}
 				h.d.sessions[h.s.meta.ID] = h.s
 				rpc := &handler{d: h.d}
-				view := relay.RemoteAnswerSafety(h.events()[0])
+				_, view := eventview.Action(h.events()[0])
 				ids := []string{a.ApprovalId}
 				if view.ID != a.ApprovalId {
 					ids = append(ids, view.ID)
@@ -214,7 +214,7 @@ func TestRemoteQuestionSafetySurvivesRestart(t *testing.T) {
 				rpc := &handler{d: h.d}
 				h.term.setScreen("  Question 1/1 (1 unanswered)\n  Which language?\n  \x1b[1;7m› 1. Go\n")
 				ids := []string{q.QuestionId}
-				view := relay.RemoteAnswerSafety(h.events()[0])
+				_, view := eventview.Action(h.events()[0])
 				if view.ID != q.QuestionId {
 					ids = append(ids, view.ID)
 				}
@@ -444,5 +444,50 @@ func TestOwnerSnapshotAttestsCurrentQueueAndBoundsPrivatePreview(t *testing.T) {
 	}
 	if len(state.Text) > 600 || !strings.HasSuffix(state.Text, "[内容已截断]") {
 		t.Fatal("private preview was not bounded and marked")
+	}
+}
+
+func TestPendingAnswerFitsEachPromptOnce(t *testing.T) {
+	for _, kind := range []string{"approval", "question"} {
+		t.Run(kind, func(t *testing.T) {
+			e := &pb.Event{Seq: 1}
+			if kind == "approval" {
+				e.Kind = &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "a", Command: strings.Repeat("x", 800<<10)}}
+			} else {
+				q := &pb.Question{Text: strings.Repeat("x", 800<<10)}
+				for range 100 {
+					q.Options = append(q.Options, &pb.QuestionOption{Label: "answer"})
+				}
+				e.Kind = &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "q", Questions: []*pb.Question{q}}}
+			}
+			var p pendingAnswerSafety
+			p.observe(e)
+			fitted, safety := eventview.Action(e)
+			if !proto.Equal(p.events[e.Seq], fitted) {
+				t.Fatal("pending representation differs from publication")
+			}
+			if kind == "approval" && p.approvals["a"] != safety || kind == "question" && p.questions["q"] != safety {
+				t.Fatal("safety differs from fitted content")
+			}
+			// Compare observation with one fit plus the retained ownership copy.
+			// Map initialization is excluded by AllocsPerRun's warm-up invocation.
+			var retained *pb.Event
+			once := testing.AllocsPerRun(10, func() { view, _ := eventview.Action(e); retained = proto.CloneOf(view) })
+			observed := testing.AllocsPerRun(10, func() { p.observe(e) })
+			if retained == nil {
+				t.Fatal("missing reference result")
+			}
+			t.Logf("allocations: one fit and copy=%.0f observe=%.0f", once, observed)
+			if observed > once+3 {
+				t.Fatalf("prompt fitted repeatedly: one=%g observed=%g", once, observed)
+			}
+			// The retained body must own its protobuf even when fitting returns e.
+			small := &pb.Event{Seq: 2, Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "small", Command: "before"}}}
+			p.observe(small)
+			small.GetApprovalRequested().Command = "after"
+			if p.events[2].GetApprovalRequested().Command != "before" {
+				t.Fatal("pending event aliases original")
+			}
+		})
 	}
 }

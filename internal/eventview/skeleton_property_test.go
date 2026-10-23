@@ -1,9 +1,8 @@
-package relay
+package eventview
 
 import (
 	"encoding/json"
 	"fmt"
-	"google.golang.org/protobuf/encoding/protojson"
 	"os"
 	"reflect"
 	"strings"
@@ -11,6 +10,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -124,11 +124,11 @@ func TestSkeletonSizePropertyForEveryKind(t *testing.T) {
 					fillSkeletonProperty(e.ProtoReflect().Mutable(kinds.Get(i)).Message(), huge, largeIDs, copies, 0)
 					before := proto.CloneOf(e)
 					got := fitEvent(e)
-					if proto.Size(got) > maxEventBytes || reflect.TypeOf(got.Kind) != reflect.TypeOf(e.Kind) || got.Seq != 17 {
+					if proto.Size(got) > MaxBytes || reflect.TypeOf(got.Kind) != reflect.TypeOf(e.Kind) || got.Seq != 17 {
 						t.Fatal("size, kind or sequence invariant failed")
 					}
 					checkSkeletonIdentityAndState(t, before.ProtoReflect(), got.ProtoReflect())
-					if largeIDs && !eventSkeleton(got) {
+					if largeIDs && !IsSkeleton(got) {
 						t.Fatal("rewritten ID lacks terminal-only marker")
 					}
 					if !proto.Equal(got, fitEvent(e)) {
@@ -154,9 +154,9 @@ func TestSkeletonPreservesIDsUntilMinimalFormIsStillTooLarge(t *testing.T) {
 		t.Fatal("large but fitting identity was shortened")
 	}
 	e.Kind = &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}
-	e.TurnId = strings.Repeat("长🙂", maxEventBytes)
+	e.TurnId = strings.Repeat("长🙂", MaxBytes)
 	got := fitEvent(e)
-	if got.TurnId != shortSkeletonID(e.TurnId) || !eventSkeleton(got) || proto.Size(got) > maxEventBytes {
+	if got.TurnId != shortSkeletonID(e.TurnId) || !IsSkeleton(got) || proto.Size(got) > MaxBytes {
 		t.Fatal("minimal identity fallback failed")
 	}
 }
@@ -173,7 +173,7 @@ func TestSharedSkeletonCorpus(t *testing.T) {
 	if err := json.Unmarshal(raw, &corpus); err != nil {
 		t.Fatal(err)
 	}
-	if corpus.Note != skeletonNote || len(corpus.Events) != 20 {
+	if corpus.Note != SkeletonNote || len(corpus.Events) != 20 {
 		t.Fatal("shared marker / kind coverage changed")
 	}
 	kinds := map[reflect.Type]bool{}
@@ -182,7 +182,7 @@ func TestSharedSkeletonCorpus(t *testing.T) {
 		if err := protojson.Unmarshal(raw, e); err != nil {
 			t.Fatal(err)
 		}
-		if !eventSkeleton(e) || proto.Size(e) > maxEventBytes {
+		if !IsSkeleton(e) || proto.Size(e) > MaxBytes {
 			t.Fatalf("shared skeleton %T is not marked or bounded", e.Kind)
 		}
 		kinds[reflect.TypeOf(e.Kind)] = true
@@ -199,17 +199,17 @@ func TestSkeletonRetainedSchemaHasBoundedSize(t *testing.T) {
 		fillSkeletonProperty(e.ProtoReflect().Mutable(kinds.Get(i)).Message(), strings.Repeat("x", skeletonIDLimit), true, 1, 0)
 		pruneSkeleton(e.ProtoReflect())
 		markSkeleton(e)
-		if n := proto.Size(e); n > maxEventBytes/2 {
+		if n := proto.Size(e); n > MaxBytes/2 {
 			t.Fatalf("%s retained schema grew beyond its proven safety margin: %d", kinds.Get(i).Name(), n)
 		}
 	}
 }
 
 func TestSkeletonIDGoldenFormat(t *testing.T) {
-	if got := shortSkeletonID(strings.Repeat("x", 5000)); got != strings.Repeat("x", 64)+"…#c59d3c0480cc2d71"+skeletonNote {
+	if got := shortSkeletonID(strings.Repeat("x", 5000)); got != strings.Repeat("x", 64)+"…#c59d3c0480cc2d71"+SkeletonNote {
 		t.Fatal("ASCII prefix / SHA-256 prefix changed")
 	}
-	if got := shortSkeletonID(strings.Repeat("长", 2000)); got != strings.Repeat("长", 21)+"…#6ab630594b4d0e9e"+skeletonNote {
+	if got := shortSkeletonID(strings.Repeat("长", 2000)); got != strings.Repeat("长", 21)+"…#6ab630594b4d0e9e"+SkeletonNote {
 		t.Fatal("UTF-8 prefix / SHA-256 prefix changed")
 	}
 	if shortSkeletonID("ordinary-id") != "ordinary-id" {

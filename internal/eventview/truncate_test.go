@@ -1,4 +1,4 @@
-package relay
+package eventview
 
 import (
 	"strings"
@@ -36,7 +36,7 @@ func TestFitEvent(t *testing.T) {
 		{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ToolInputJson: huge, Command: huge}}},
 	} {
 		got := mustFitEvent(t, e)
-		if n := proto.Size(got); n > maxEventBytes {
+		if n := proto.Size(got); n > MaxBytes {
 			t.Fatalf("%T: %d bytes", e.Kind, n)
 		}
 		if proto.Size(e) < 3<<20 {
@@ -46,7 +46,7 @@ func TestFitEvent(t *testing.T) {
 			if !utf8.ValidString(text) {
 				t.Fatalf("%T: invalid UTF-8 after cutting", e.Kind)
 			}
-			if len(text) > 1000 && !strings.HasSuffix(text, truncatedNote) {
+			if len(text) > 1000 && !strings.HasSuffix(text, TruncatedNote) {
 				t.Fatalf("%T: long text without the truncation note", e.Kind)
 			}
 		}
@@ -66,7 +66,7 @@ func TestFitEventMarksOnlyCutOutput(t *testing.T) {
 }
 
 func TestFitEventDropsPreviewsFirst(t *testing.T) {
-	big := make([]byte, maxEventBytes/3)
+	big := make([]byte, MaxBytes/3)
 	e := &pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "keep me", Images: []*pb.ImageRef{
 		{ImageId: "a", Preview: big}, {ImageId: "b", Preview: big[:100]}, {ImageId: "c", Preview: big}, {ImageId: "d", Preview: big},
 	}}}}
@@ -81,7 +81,7 @@ func TestFitEventDropsPreviewsFirst(t *testing.T) {
 		}
 	}
 	// One large preview goes, the largest first; the small one stays.
-	if kept != 3 || len(got.Images[1].Preview) != 100 || proto.Size(mustFitEvent(t, e)) > maxEventBytes {
+	if kept != 3 || len(got.Images[1].Preview) != 100 || proto.Size(mustFitEvent(t, e)) > MaxBytes {
 		t.Fatalf("kept %d previews", kept)
 	}
 	if len(e.GetUserMessage().Images[0].Preview) == 0 {
@@ -95,7 +95,7 @@ func TestFitEventKeepsInputState(t *testing.T) {
 		RequestId: "r1", Status: pb.InputStatus_INPUT_STATUS_QUEUED, Text: strings.Repeat("x", 800<<10), ImageIds: []string{"a", "b"},
 	}}}
 	st := mustFitEvent(t, e).GetInputState()
-	if st == nil || st.RequestId != "r1" || len(st.ImageIds) != 2 || len(st.Text) >= 800<<10 || proto.Size(mustFitEvent(t, e)) > maxEventBytes {
+	if st == nil || st.RequestId != "r1" || len(st.ImageIds) != 2 || len(st.Text) >= 800<<10 || proto.Size(mustFitEvent(t, e)) > MaxBytes {
 		t.Fatalf("got %v", mustFitEvent(t, e).Kind)
 	}
 	g := &pb.Event{Kind: &pb.Event_ImageGenerated{ImageGenerated: &pb.ImageGenerated{CallId: "c", RevisedPrompt: strings.Repeat("p", 900<<10), Images: []*pb.ImageRef{{ImageId: "i"}}}}}

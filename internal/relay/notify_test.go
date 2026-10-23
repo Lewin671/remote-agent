@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/eventview"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -86,9 +87,9 @@ func TestSkeletonNotificationHasNoApprovalActions(t *testing.T) {
 	c := &conn{acct: &Account{DeviceID: "machine"}}
 	initializeTestSecurity(t, c)
 	for _, e := range []*pb.Event{
-		{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "private-prefix…#0123456789abcdef" + skeletonNote, Description: skeletonNote}}},
-		{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "question", Questions: []*pb.Question{{Text: skeletonNote}}}}},
-		{Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: skeletonNote}}},
+		{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "private-prefix…#0123456789abcdef" + eventview.SkeletonNote, Description: eventview.SkeletonNote}}},
+		{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "question", Questions: []*pb.Question{{Text: eventview.SkeletonNote}}}}},
+		{Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: eventview.SkeletonNote}}},
 	} {
 		e.Seq = 7
 		req, err := c.notifyRequest(context.Background(), "session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, e)
@@ -113,10 +114,10 @@ func TestSkeletonNotificationHasNoApprovalActions(t *testing.T) {
 func TestApprovalNotificationRetainsFitTruncation(t *testing.T) {
 	c := &conn{acct: &Account{DeviceID: "machine"}}
 	initializeTestSecurity(t, c)
-	original := &pb.Event{TurnId: strings.Repeat("t", maxEventBytes-512), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "approval", Command: strings.Repeat("c", 4000), Description: "why"}}}
-	fitted := fitEvent(original)
+	original := &pb.Event{TurnId: strings.Repeat("t", eventview.MaxBytes-512), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "approval", Command: strings.Repeat("c", 4000), Description: "why"}}}
+	fitted := eventview.Fit(original)
 	a := fitted.GetApprovalRequested()
-	if eventSkeleton(fitted) || !strings.HasSuffix(a.Command, truncatedNote) || len([]rune(a.Command)) >= notifyCommand {
+	if eventview.IsSkeleton(fitted) || !strings.HasSuffix(a.Command, eventview.TruncatedNote) || len([]rune(a.Command)) >= notifyCommand {
 		t.Fatal("fixture did not produce an already shortened, sub-limit command")
 	}
 	if _, cut := clip(a.Command, notifyCommand); cut {
@@ -142,7 +143,7 @@ func TestApprovalNotificationRecognizesExistingMarkersInEveryField(t *testing.T)
 	c := &conn{acct: &Account{DeviceID: "machine"}}
 	initializeTestSecurity(t, c)
 	for _, field := range []string{"description", "command", "tool_input"} {
-		for _, note := range []string{truncatedNote, skeletonNote} {
+		for _, note := range []string{eventview.TruncatedNote, eventview.SkeletonNote} {
 			t.Run(field+note, func(t *testing.T) {
 				a := &pb.ApprovalRequested{ApprovalId: "approval", Command: "true", Description: "why", ToolInputJson: "{}"}
 				switch field {
@@ -153,7 +154,7 @@ func TestApprovalNotificationRecognizesExistingMarkersInEveryField(t *testing.T)
 				case "tool_input":
 					a.ToolInputJson += note
 				}
-				if !approvalTextTruncated(a) {
+				if !eventview.ApprovalTextTruncated(a) {
 					t.Fatal("existing marker missed")
 				}
 				req, err := c.notifyRequest(context.Background(), "session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, &pb.Event{Seq: 1, Kind: &pb.Event_ApprovalRequested{ApprovalRequested: a}})
@@ -164,7 +165,7 @@ func TestApprovalNotificationRecognizesExistingMarkersInEveryField(t *testing.T)
 				if _, err := openTestSecureMessage(c, nil, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, SessionId: "session", RequestId: req.DedupeKey, Sender: c.acct.DeviceID}, got); err != nil {
 					t.Fatal(err)
 				}
-				if note == skeletonNote {
+				if note == eventview.SkeletonNote {
 					if got.Approval != nil {
 						t.Fatal("skeleton offered notification approval")
 					}

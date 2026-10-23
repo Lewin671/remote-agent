@@ -1,4 +1,4 @@
-package relay
+package eventview
 
 import (
 	"slices"
@@ -8,18 +8,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// maxEventBytes keeps a sealed event well below the server's 1 MiB
+// MaxBytes keeps a sealed event well below the server's 1 MiB
 // envelope limit, including after a terminal-only skeleton fallback.
-const maxEventBytes = 768 << 10
+const MaxBytes = 768 << 10
 
-const truncatedNote = "\n…（remote-agent：内容过长，已截断）"
+const TruncatedNote = "\n…（remote-agent：内容过长，已截断）"
 
 // fitEvent cuts display text and previews without changing event semantics.
 // The local log keeps the full event. If display truncation is insufficient,
 // keep the kind and scalar state in a terminal-only skeleton. Only an ID
 // that still makes that skeleton oversized is replaced by prefix + hash.
 func fitEvent(e *pb.Event) *pb.Event {
-	if proto.Size(e) <= maxEventBytes {
+	if proto.Size(e) <= MaxBytes {
 		return e
 	}
 	e = proto.CloneOf(e)
@@ -29,12 +29,12 @@ func fitEvent(e *pb.Event) *pb.Event {
 	refs := slices.Clone(agent.EventImages(e))
 	slices.SortFunc(refs, func(a, b *pb.ImageRef) int { return len(b.Preview) - len(a.Preview) })
 	for _, ref := range refs {
-		if proto.Size(e) <= maxEventBytes {
+		if proto.Size(e) <= MaxBytes {
 			return e
 		}
 		ref.Preview, ref.PreviewFormat, ref.PreviewWidth, ref.PreviewHeight = nil, pb.ImageFormat_IMAGE_FORMAT_UNSPECIFIED, 0, 0
 	}
-	if proto.Size(e) <= maxEventBytes {
+	if proto.Size(e) <= MaxBytes {
 		return e
 	}
 	var fields []*string
@@ -93,13 +93,13 @@ func fitEvent(e *pb.Event) *pb.Event {
 	for i, f := range fields {
 		original[i] = *f
 	}
-	for cap := maxEventBytes / 2 / max(1, len(fields)); ; cap /= 2 {
+	for cap := MaxBytes / 2 / max(1, len(fields)); ; cap /= 2 {
 		for i, f := range fields {
-			if len(original[i]) > cap+len(truncatedNote) {
-				*f = cutUTF8(original[i], cap) + truncatedNote
+			if len(original[i]) > cap+len(TruncatedNote) {
+				*f = cutUTF8(original[i], cap) + TruncatedNote
 			}
 		}
-		if proto.Size(e) <= maxEventBytes {
+		if proto.Size(e) <= MaxBytes {
 			return e
 		}
 		if cap == 0 {
@@ -109,12 +109,12 @@ func fitEvent(e *pb.Event) *pb.Event {
 				for _, question := range q.Questions {
 					for _, option := range question.Options {
 						if len(option.Label) > 64 {
-							option.Label = cutUTF8(option.Label, 64) + truncatedNote
+							option.Label = cutUTF8(option.Label, 64) + TruncatedNote
 						}
 					}
 				}
 				markSkeleton(e)
-				if proto.Size(e) <= maxEventBytes {
+				if proto.Size(e) <= MaxBytes {
 					return e
 				}
 			}

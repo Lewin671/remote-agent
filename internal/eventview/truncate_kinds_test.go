@@ -1,7 +1,6 @@
-package relay
+package eventview
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -67,12 +66,12 @@ func TestFitEventEveryKind(t *testing.T) {
 				e.TurnId = huge
 				before = proto.CloneOf(e)
 				got := fitEvent(e)
-				if proto.Size(got) > maxEventBytes || reflect.TypeOf(got.Kind) != reflect.TypeOf(e.Kind) || got.Seq != e.Seq || got.SessionId != e.SessionId || !eventSkeleton(got) || got.TurnId != shortSkeletonID(huge) {
+				if proto.Size(got) > MaxBytes || reflect.TypeOf(got.Kind) != reflect.TypeOf(e.Kind) || got.Seq != e.Seq || got.SessionId != e.SessionId || !IsSkeleton(got) || got.TurnId != shortSkeletonID(huge) {
 					t.Fatal("oversized identity skeleton lost")
 				}
 			} else {
 				got := mustFitEvent(t, e)
-				if reflect.TypeOf(got.Kind) != reflect.TypeOf(e.Kind) || proto.Size(got) > maxEventBytes {
+				if reflect.TypeOf(got.Kind) != reflect.TypeOf(e.Kind) || proto.Size(got) > MaxBytes {
 					t.Fatal("kind lost or still oversized")
 				}
 				compareFitted(t, before.ProtoReflect(), got.ProtoReflect(), huge)
@@ -94,7 +93,7 @@ func compareFitted(t *testing.T, want, got protoreflect.Message, huge string) {
 				return
 			}
 			if f.Kind() == protoreflect.StringKind && v.String() == huge {
-				if len(g.String()) >= len(huge) || !utf8.ValidString(g.String()) || !strings.HasSuffix(g.String(), truncatedNote) {
+				if len(g.String()) >= len(huge) || !utf8.ValidString(g.String()) || !strings.HasSuffix(g.String(), TruncatedNote) {
 					t.Errorf("%s not marked / shortened", f.FullName())
 				}
 			} else if !reflect.DeepEqual(v.Interface(), g.Interface()) {
@@ -127,50 +126,8 @@ func TestFitEventRetainsAllOptionLabels(t *testing.T) {
 		t.Fatal("question shape lost")
 	}
 	for i, o := range got.Questions[0].Options {
-		if o.Label != q.Options[i].Label || !strings.HasSuffix(o.Description, truncatedNote) {
+		if o.Label != q.Options[i].Label || !strings.HasSuffix(o.Description, TruncatedNote) {
 			t.Fatal("option label or marker lost")
 		}
-	}
-}
-
-func TestSealEventFitsIrreducibleStructure(t *testing.T) {
-	q := &pb.Question{Id: "q"}
-	for range 4000 {
-		q.Options = append(q.Options, &pb.QuestionOption{Label: strings.Repeat("private-label", 30)})
-	}
-	e := &pb.Event{Seq: 7, SessionId: "session", Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "call", Questions: []*pb.Question{q}}}}
-	before := proto.CloneOf(e)
-	c := &conn{acct: &Account{DeviceID: "machine"}}
-	initializeTestSecurity(t, c)
-	key := make([]byte, 32)
-	env, err := c.sealEvent(context.Background(), key, "session", e)
-	if err != nil || proto.Size(env) > 1<<20 {
-		t.Fatalf("skeleton upload: %v", err)
-	}
-	got := &pb.Event{}
-	if _, err := openTestSecureMessage(c, key, env, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, SessionId: "session", Seq: 7}, got); err != nil {
-		t.Fatal(err)
-	}
-	if got.GetQuestionAsked() == nil || got.GetQuestionAsked().QuestionId != "call" || !eventSkeleton(got) || !proto.Equal(e, before) {
-		t.Fatal("skeleton lost identity, marker or original log")
-	}
-}
-
-func TestSealEventPreservesOversizedQuestion(t *testing.T) {
-	e := &pb.Event{Seq: 7, SessionId: "session", Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "call", Questions: []*pb.Question{{Id: "q", Text: strings.Repeat("长", 1<<20), Options: []*pb.QuestionOption{{Label: "A"}, {Label: "B"}}}}}}}
-	key := make([]byte, 32)
-	c := &conn{acct: &Account{DeviceID: "machine"}}
-	initializeTestSecurity(t, c)
-	env, err := c.sealEvent(context.Background(), key, "session", e)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := &pb.Event{}
-	if _, err := openTestSecureMessage(c, key, env, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: c.acct.DeviceID, SessionId: "session", Seq: 7, Sender: c.acct.DeviceID}, got); err != nil {
-		t.Fatal(err)
-	}
-	q := got.GetQuestionAsked()
-	if q == nil || q.QuestionId != "call" || got.Seq != 7 || !strings.HasSuffix(q.Questions[0].Text, truncatedNote) || q.Questions[0].Options[1].Label != "B" {
-		t.Fatal("encrypted question lost")
 	}
 }
