@@ -249,6 +249,12 @@ data class SessionEvents(
 
 /** Where envelopes are cached between runs. Only ciphertext is stored. */
 interface CipherCache {
+    /** Open transcripts are protected from disk eviction, including memory-only reopens. */
+    suspend fun setSessionOpen(sessionId: String, open: Boolean) {}
+
+    /** Stops cache maintenance before account storage is cleared. */
+    fun close() {}
+
     suspend fun machines(): List<Machine>
 
     suspend fun sessions(): List<RemoteSession>
@@ -590,6 +596,7 @@ class Remote(
     /** Ends this Remote for good. */
     fun close() {
         security.close()
+        cache?.close()
         stop()
         scope.launch { scope.cancel() }
     }
@@ -2502,6 +2509,12 @@ class Remote(
                 MutableStateFlow(SessionEvents()).also { f ->
                     scope.launch {
                         f.subscriptionCount.collect { count ->
+                            try {
+                                cache?.setSessionOpen(sid, count > 0)
+                            } catch (e: Exception) {
+                                if (e is CancellationException) throw e
+                                report(e)
+                            }
                             if (count > 0) {
                                 scope.launch { loadEvents(sid) }
                                 updateLivePollers()

@@ -78,6 +78,64 @@ class NewestHistoryTest {
         } finally { r.close(); runCurrent() }
     }
 
+    @Test fun evictedHistoryRefetchesDespiteThePersistedSessionsLastSeq() = runTest(timeout = 5.seconds) {
+        val peer = ColdOpenPeer(fixture, this)
+        val cache = MemoryCache()
+        cache.putMachine(peer.machineRows.single())
+        cache.putSession(fixture.sessions.getValue("long"))
+        cache.putEvents("long", fixture.events.getValue("long").take(501))
+        cache.dropEvents("long") // Whole-session eviction keeps the session metadata.
+        val r = peer.remote(cache)
+        try {
+            r.start()
+            withTimeout(15000) { r.state.first { it.loaded } }
+            val full = withTimeout(15000) { r.events("long").first { it.loaded } }
+            assertEquals((1L..501L).toList(), full.events.map { it.seq })
+            assertEquals(listOf(1L, 0L), peer.after)
+            assertEquals(full.events, full.stateEvents)
+            assertEquals(501, cache.events("long").size)
+        } finally { r.close(); runCurrent() }
+    }
+
+    @Test fun subscriptionsProtectMemoryOnlyReopens() = runTest(timeout = 5.seconds) {
+        val peer = ColdOpenPeer(fixture, this)
+        val changes = mutableListOf<Pair<String, Boolean>>()
+        val cache = object : CipherCache by MemoryCache() {
+            override suspend fun setSessionOpen(sessionId: String, open: Boolean) {
+                changes += sessionId to open
+            }
+        }
+        val r = peer.remote(cache)
+        try {
+            r.start()
+            withTimeout(15000) { r.state.first { it.loaded } }
+            val flow = r.events("short")
+            val first = backgroundScope.launch { flow.collect {} }
+            withTimeout(15000) { flow.first { it.loaded } }
+            runCurrent()
+            assertEquals("short" to true, changes.lastOrNull())
+            first.cancelAndJoin()
+            runCurrent()
+            assertEquals("short" to false, changes.lastOrNull())
+            val calls = peer.after.size
+            val second = backgroundScope.launch { flow.collect {} }
+            runCurrent()
+            assertEquals("short" to true, changes.lastOrNull())
+            assertEquals(calls, peer.after.size) // The reopen used the in-memory buffer.
+            second.cancelAndJoin()
+        } finally { r.close(); runCurrent() }
+    }
+
+    @Test fun closingRemoteStopsCacheMaintenance() = runTest(timeout = 5.seconds) {
+        var closed = false
+        val cache = object : CipherCache by MemoryCache() {
+            override fun close() { closed = true }
+        }
+        ColdOpenPeer(fixture, this).remote(cache).close()
+        runCurrent()
+        assertTrue(closed)
+    }
+
     private suspend fun TestScope.checkGap(missing: Long) {
         val peer = ColdOpenPeer(fixture, this).also { it.missing = missing }
         val r = peer.remote()

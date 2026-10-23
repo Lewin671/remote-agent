@@ -1,0 +1,358 @@
+package io.github.lewin671.remoteagent.data
+
+import android.app.Application
+import android.database.sqlite.SQLiteDatabase
+import androidx.room.Room
+import io.github.lewin671.remoteagent.proto.Envelope
+import io.github.lewin671.remoteagent.proto.RemoteSession
+import io.github.lewin671.remoteagent.proto.StoredEvent
+import com.google.protobuf.ByteString
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.StandardTestDispatcher
+import java.io.File
+import org.json.JSONObject
+import org.junit.After
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
+
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35], application = Application::class)
+class RoomCacheTest {
+    private val databases = mutableListOf<CacheDb>()
+    private val caches = mutableListOf<RoomCache>()
+    private val access get() = EventAccess(RuntimeEnvironment.getApplication())
+    private var now = 0L
+    private fun TestScope.database(): CacheDb = Room.inMemoryDatabaseBuilder(
+        RuntimeEnvironment.getApplication(), CacheDb::class.java,
+    ).setQueryCoroutineContext(StandardTestDispatcher(testScheduler))
+        .allowMainThreadQueries().build().also { databases += it }
+
+    private fun TestScope.cache(dao: CacheDao, budget: Long): RoomCache =
+        RoomCache(dao, access, parentScope = backgroundScope, budget = budget, clock = { now })
+            .also { caches += it }
+
+    private fun event(seq: Long) = StoredEvent.newBuilder().setSeq(seq)
+        .setEnvelope(Envelope.newBuilder().setCiphertext(ByteString.copyFrom(ByteArray(64) { 7 }))).build()
+    private val bytes get() = event(1).serializedSize.toLong()
+    private suspend fun RoomCache.seed(sid: String, openedAt: Long) {
+        now = openedAt
+        events(sid)
+        putSession(RemoteSession.newBuilder().setSessionId(sid).setMachineId("machine").build())
+        putEvents(sid, listOf(event(1), event(2)))
+    }
+    private fun TestScope.trim() { advanceTimeBy(1000); runCurrent() }
+
+    private fun existingDatabase(version: Int = 3): SQLiteDatabase {
+        val context = RuntimeEnvironment.getApplication()
+        context.deleteDatabase(CacheDb.NAME)
+        val schema = JSONObject(File(System.getProperty("cacheSchemas"),
+            "io.github.lewin671.remoteagent.data.CacheDb/$version.json").readText()).getJSONObject("database")
+        return context.openOrCreateDatabase(CacheDb.NAME, 0, null).apply {
+            execSQL("PRAGMA auto_vacuum=NONE")
+            execSQL("VACUUM")
+            val entities = schema.getJSONArray("entities")
+            for (i in 0 until entities.length()) {
+                val entity = entities.getJSONObject(i)
+                execSQL(entity.getString("createSql").replace("\${TABLE_NAME}", entity.getString("tableName")))
+            }
+            val setup = schema.getJSONArray("setupQueries")
+            for (i in 0 until setup.length()) execSQL(setup.getString(i))
+            this.version = version
+            // Match Room's default journal mode on this device.
+            assertTrue(enableWriteAheadLogging())
+        }
+    }
+
+    private fun SQLiteDatabase.putEvents(sid: String) {
+        for (seq in 1L..2L) execSQL("INSERT INTO events VALUES (?, ?, ?)", arrayOf(sid, seq, event(seq).toByteArray()))
+    }
+
+    @After fun cleanup() {
+        caches.forEach { it.close() }
+        access.clear()
+        databases.forEach { it.close() }
+        RuntimeEnvironment.getApplication().deleteDatabase(CacheDb.NAME)
+    }
+
+    @Test fun budgetEvictsWholeLeastRecentlyOpenedSessionsAndCountsDuplicatesOnce() = runTest {
+        val dao = database().dao()
+        val cache = cache(dao, 4 * bytes)
+        cache.seed("a", 10)
+        cache.seed("b", 20)
+        cache.seed("c", 30)
+        now = 40
+        // Appending is not opening. Duplicate deliveries must not inflate the budget.
+        cache.putEvents("a", listOf(event(2), event(3)))
+        cache.putEvents("b", listOf(event(1), event(2)))
+        trim()
+        assertTrue(dao.events("a").isEmpty())
+        assertEquals(listOf(1L, 2L), dao.events("b").map { it.seq })
+        assertEquals(listOf(1L, 2L), dao.events("c").map { it.seq })
+        assertEquals(4 * bytes, dao.eventSizes().sumOf { it.bytes })
+        assertEquals(3, cache.sessions().size) // Eviction must not remove the listing.
+        assertNull(dao.eventSizes().find { it.sessionId == "a" })
+    }
+
+    @Test fun reopeningInMemoryProtectsAnOversizedCurrentSessionUntilItCloses() = runTest {
+        val dao = database().dao()
+        val cache = cache(dao, bytes)
+        cache.seed("current", 10)
+        cache.seed("other", 20)
+        now = 30
+        cache.setSessionOpen("current", true)
+        trim()
+        assertEquals(2, dao.events("current").size)
+        assertEquals(30L, access.times()["current"])
+        assertTrue(dao.events("other").isEmpty())
+        cache.setSessionOpen("current", false)
+        trim()
+        assertTrue(dao.events("current").isEmpty())
+        assertEquals(0L, dao.eventSizes().sumOf { it.bytes })
+    }
+
+    @Test fun accessOrderSurvivesCacheRestartAndListingUpdates() = runTest {
+        val dao = database().dao()
+        val old = cache(dao, Long.MAX_VALUE)
+        old.seed("a", 10)
+        old.seed("b", 20)
+        now = 30
+        old.events("a")
+        old.putSession(RemoteSession.newBuilder().setSessionId("a").setMachineId("machine").build())
+        old.close()
+        cache(dao, 2 * bytes) // Startup must trim without any append.
+        trim()
+        assertEquals(2, dao.events("a").size)
+        assertTrue(dao.events("b").isEmpty())
+    }
+
+    @Test fun trimPrunesOnlyAccessTimesWithNoRetainedSessionOrEvents() = runTest {
+        val dao = database().dao()
+        val cache = cache(dao, Long.MAX_VALUE)
+        cache.seed("listed", 10)
+        cache.dropEvents("listed")
+        cache.seed("unlisted", 20)
+        cache.unlistSession("unlisted")
+        now = 30
+        cache.events("events-only")
+        cache.putEvents("events-only", listOf(event(1)))
+        cache.events("gone")
+        cache.setSessionOpen("current", true)
+        trim()
+        assertEquals(setOf("listed", "unlisted", "events-only", "current"), access.times().keys)
+        cache.setSessionOpen("current", false)
+        cache.dropEvents("events-only")
+        trim()
+        assertEquals(setOf("listed", "unlisted"), access.times().keys)
+    }
+
+    @Test fun losingAccessTimesOnlyChangesEvictionOrder() = runTest {
+        val dao = database().dao()
+        val old = cache(dao, Long.MAX_VALUE)
+        old.seed("a", 20)
+        old.seed("b", 10)
+        old.close()
+        access.clear()
+        assertEquals(listOf(event(1), event(2)), dao.events("a").map { StoredEvent.parseFrom(it.data) })
+        assertEquals(4 * bytes, dao.eventSizes().sumOf { it.bytes })
+        cache(dao, 2 * bytes)
+        trim()
+        // Missing timestamps tie deterministically by session ID.
+        assertTrue(dao.events("a").isEmpty())
+        assertEquals(listOf(event(1), event(2)), dao.events("b").map { StoredEvent.parseFrom(it.data) })
+    }
+
+    @Test fun evictedSessionWithNewTailRefetchesFromAContiguousPrefix() = runTest {
+        val dao = database().dao()
+        val cache = cache(dao, 2 * bytes)
+        cache.seed("a", 10)
+        dao.trimEvents(0, emptySet(), emptyMap())
+        assertTrue(cache.events("a").isEmpty())
+        // The engine still holding a in memory can append after eviction.
+        cache.putEvents("a", listOf(event(3), event(4)))
+        assertTrue(cache.events("a").isEmpty())
+        // Relay pages refill from zero, preserving the already cached tail.
+        cache.putEvents("a", listOf(event(1)))
+        assertEquals(listOf(1L), cache.events("a").map { it.seq })
+        cache.putEvents("a", listOf(event(2), event(3), event(4)))
+        assertEquals((1L..4L).toList(), cache.events("a").map { it.seq })
+        assertEquals(4 * bytes, dao.eventSizes().find { it.sessionId == "a" }!!.bytes)
+    }
+
+    @Test fun appendsDuringTheCoalescingDelayNeedOnlyOneTrim() = runTest {
+        val dao = database().dao()
+        var passes = 0
+        val observed = object : CacheDao by dao {
+            override suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>) {
+                passes++
+                dao.trimEvents(budget, open, openedAt)
+            }
+        }
+        val cache = cache(observed, 2 * bytes)
+        runCurrent() // Startup trim is waiting for the coalescing delay.
+        cache.seed("a", 10)
+        cache.seed("b", 20)
+        trim()
+        assertEquals(1, passes)
+        trim()
+        assertEquals(1, passes)
+    }
+
+    @Test fun trimsAreCoalescedAndAnAppendDuringATrimGetsAnotherPass() = runTest {
+        val dao = database().dao()
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var passes = 0
+        val observed = object : CacheDao by dao {
+            override suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>) {
+                passes++
+                if (passes == 1) { entered.complete(Unit); release.await() }
+                dao.trimEvents(budget, open, openedAt)
+            }
+        }
+        val cache = cache(observed, 2 * bytes)
+        cache.seed("a", 10)
+        cache.seed("b", 20)
+        assertEquals(0, passes)
+        advanceTimeBy(1000)
+        entered.await()
+        val append = launch { cache.putEvents("b", listOf(event(3))) }
+        runCurrent()
+        assertFalse(append.isCompleted)
+        release.complete(Unit)
+        append.join()
+        assertEquals(1, passes)
+        trim()
+        assertEquals(2, passes)
+        assertTrue(dao.events("b").isEmpty())
+        assertEquals(0L, dao.eventSizes().sumOf { it.bytes })
+    }
+
+    @Test fun deletingSessionsOrMachinesClearsAccessAndCloseCancelsMaintenance() = runTest {
+        val dao = database().dao()
+        val cache = cache(dao, 0)
+        cache.seed("a", 10)
+        cache.seed("b", 20)
+        cache.removeSession("a")
+        assertFalse(access.times().containsKey("a"))
+        cache.removeMachine("machine")
+        assertTrue(dao.eventSizes().isEmpty())
+        assertTrue(access.times().isEmpty())
+        cache.seed("kept", 30)
+        cache.close()
+        trim()
+        assertEquals(2, dao.events("kept").size)
+    }
+
+    @Test fun existingVersionThreeCacheIsUsedAsIsAndReclaimsDeletedPages() = runTest {
+        val context = RuntimeEnvironment.getApplication()
+        val machine = byteArrayOf(1, 2, 3)
+        val blob = byteArrayOf(4, 5, 6)
+        val session = RemoteSession.newBuilder().setSessionId("old").setMachineId("machine").build()
+        val unlisted = session.toBuilder().setSessionId("unlisted").build()
+        existingDatabase().use { db ->
+            db.execSQL("INSERT INTO machines VALUES (?, ?)", arrayOf("machine", machine))
+            db.execSQL("INSERT INTO sessions VALUES (?, ?, ?, ?)", arrayOf("old", "machine", session.toByteArray(), 1))
+            db.execSQL("INSERT INTO sessions VALUES (?, ?, ?, ?)", arrayOf("unlisted", "machine", unlisted.toByteArray(), 0))
+            db.execSQL("INSERT INTO blobs VALUES (?, ?)", arrayOf("preferences", blob))
+            db.putEvents("old")
+            db.putEvents("unlisted")
+        }
+        val db = CacheDb.open(context).also { databases += it }
+        val dao = db.dao()
+        for (sid in listOf("old", "unlisted")) {
+            val rows = dao.events(sid)
+            assertEquals(listOf(1L, 2L), rows.map { it.seq })
+            rows.forEach { assertArrayEquals(event(it.seq).toByteArray(), it.data) }
+        }
+        assertArrayEquals(machine, dao.machines().single().data)
+        assertArrayEquals(blob, dao.blob("preferences")!!.data)
+        assertArrayEquals(session.toByteArray(), dao.sessions().single().data)
+        assertEquals(listOf("old", "unlisted"), dao.sessionsOf("machine").sorted())
+        val sqlite = db.openHelper.writableDatabase
+        sqlite.query("SELECT data, listed FROM sessions WHERE id = 'unlisted'").use {
+            assertTrue(it.moveToFirst())
+            assertArrayEquals(unlisted.toByteArray(), it.getBlob(0))
+            assertEquals(0, it.getInt(1))
+        }
+        assertEquals(3, sqlite.version)
+        sqlite.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'android_metadata'").use {
+            val tables = mutableSetOf<String>()
+            while (it.moveToNext()) tables += it.getString(0)
+            assertEquals(setOf("machines", "sessions", "events", "blobs", "room_master_table"), tables)
+        }
+        val cache = cache(dao, Long.MAX_VALUE)
+        assertEquals(listOf(event(1), event(2)), cache.events("old"))
+        assertEquals(2 * bytes, dao.eventSizes().first { it.sessionId == "old" }.bytes)
+        assertEquals(1, sqlite.query("PRAGMA auto_vacuum").use { it.moveToFirst(); it.getInt(0) })
+        dao.put(listOf(EventRow("large", 1, ByteArray(64 * 1024))))
+        assertEquals(64 * 1024L, dao.eventSizes().first { it.sessionId == "large" }.bytes)
+        fun pages() = sqlite.query("PRAGMA page_count").use { it.moveToFirst(); it.getInt(0) }
+        val before = pages()
+        dao.deleteEvents("large")
+        assertTrue("deletion should return pages to the filesystem", pages() < before)
+        assertEquals(listOf(event(1), event(2)), cache.events("old"))
+    }
+
+    @Test fun appendingToExistingEventsCountsBlobBytesWithoutDoubleCountingDuplicates() = runTest {
+        val dao = database().dao()
+        dao.put(listOf(EventRow("old", 1, event(1).toByteArray()), EventRow("old", 2, event(2).toByteArray())))
+        val cache = cache(dao, Long.MAX_VALUE)
+        cache.putEvents("old", listOf(event(2), event(3)))
+        assertEquals(3 * bytes, dao.eventSizes().first { it.sessionId == "old" }.bytes)
+        assertFalse(access.times().containsKey("old"))
+        assertEquals(listOf(1L, 2L, 3L), dao.events("old").map { it.seq })
+    }
+
+    @Test fun openingExistingEventsProtectsThemFromEviction() = runTest {
+        val dao = database().dao()
+        dao.put(listOf(EventRow("old", 1, event(1).toByteArray()), EventRow("old", 2, event(2).toByteArray())))
+        val cache = cache(dao, bytes)
+        now = 30
+        cache.setSessionOpen("old", true)
+        assertEquals(2 * bytes, dao.eventSizes().first { it.sessionId == "old" }.bytes)
+        assertEquals(30L, access.times()["old"])
+        trim()
+        assertEquals(2, dao.events("old").size)
+        cache.setSessionOpen("old", false)
+        trim()
+        assertTrue(dao.events("old").isEmpty())
+    }
+
+    @Test fun startupTrimIncludesExistingSessionsWithoutAccessTimes() = runTest {
+        val context = RuntimeEnvironment.getApplication()
+        existingDatabase().use { db ->
+            db.putEvents("legacy-a")
+            db.putEvents("legacy-b")
+        }
+        val dao = CacheDb.open(context).also { databases += it }.dao()
+        val trimmed = Channel<Unit>(Channel.UNLIMITED)
+        val observed = object : CacheDao by dao {
+            override suspend fun trimEvents(budget: Long, open: Set<String>, openedAt: Map<String, Long>) {
+                dao.trimEvents(budget, open, openedAt)
+                trimmed.trySend(Unit)
+            }
+        }
+        dao.put(listOf(EventRow("opened", 1, event(1).toByteArray()), EventRow("opened", 2, event(2).toByteArray())))
+        access.opened("opened", 20)
+        cache(observed, 4 * bytes)
+        trim()
+        trimmed.receive() // The file-backed database runs on Room's I/O dispatcher.
+        assertTrue(dao.events("legacy-a").isEmpty())
+        assertEquals(2, dao.events("legacy-b").size)
+        assertEquals(2, dao.events("opened").size)
+        assertEquals(4 * bytes, dao.eventSizes().sumOf { it.bytes })
+        assertFalse(access.times().containsKey("legacy-b"))
+    }
+
+}

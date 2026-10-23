@@ -69,6 +69,7 @@ class RaApp : Application() {
     val vault: Vault by lazy { Vault(this) }
     val prefs: Prefs by lazy { Prefs(this) }
     val db: CacheDb by lazy { CacheDb.open(this) }
+    val eventAccess by lazy { io.github.lewin671.remoteagent.data.EventAccess(this) }
     val http: OkHttpClient by lazy { Api.defaultHttp() }
     val pendingStore by lazy { io.github.lewin671.remoteagent.data.PendingStore(this) }
     val imageEnvelopes by lazy { io.github.lewin671.remoteagent.data.ImageEnvelopes(this) }
@@ -311,7 +312,7 @@ class RaApp : Application() {
             Remote(
                 acct,
                 http,
-                RoomCache(db.dao(), imageEnvelopes),
+                RoomCache(db.dao(), eventAccess, imageEnvelopes),
                 securityStorage = vault,
                 tokenStorage = object : io.github.lewin671.remoteagent.core.LoginTokenStore by vault {
                     override fun loadLoginToken(account: Account) =
@@ -431,6 +432,7 @@ class RaApp : Application() {
                         vault.clear()
                         everyStep(
                             { db.clearAllTables() },
+                            { eventAccess.clear() },
                             { imageEnvelopes.clear() },
                             { pendingStore.clearAll() },
                             { prefs.clear() },

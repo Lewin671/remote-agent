@@ -117,6 +117,8 @@ kotlin {
 
 // The Markdown and terminal history cases the clients read by live outside this build.
 tasks.withType<Test>().configureEach {
+    inputs.dir(file("schemas")).withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty("cacheSchemas", file("schemas").absolutePath)
     inputs.file(rootProject.file("../testdata/projection/vectors.json")).withPathSensitivity(PathSensitivity.NONE)
     systemProperty("projectionVectors", rootProject.file("../testdata/projection/vectors.json").absolutePath)
     inputs.file(rootProject.file("../testdata/markdown/cases.json")).withPathSensitivity(PathSensitivity.NONE)
