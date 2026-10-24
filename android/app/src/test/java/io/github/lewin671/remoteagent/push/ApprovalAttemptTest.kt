@@ -27,6 +27,7 @@ class ApprovalAttemptTest {
         val off = Settings(notifyAttention = false, notifyTurnEnded = false)
         assertTrue(acceptPush(true, NotifyKind.NOTIFY_KIND_SCHEDULED, off))
         assertFalse(acceptPush(false, NotifyKind.NOTIFY_KIND_SCHEDULED, off))
+        assertFalse(acceptPush(true, NotifyKind.NOTIFY_KIND_SCHEDULED, off.copy(notifyScheduled = false)))
     }
 
     private var durable: ApprovalRecord? = null

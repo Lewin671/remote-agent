@@ -94,6 +94,7 @@ sealed interface ChatItem {
 
     /** Images the agent made, as a card of their own. */
     data class Generated(override val key: String, val seq: Long, val prompt: String, val images: List<io.github.lewin671.remoteagent.proto.ImageRef>) : ChatItem
+    data class QuietScheduled(override val key: String, val original: List<ChatItem>, val times: List<Long>, val through: Long) : ChatItem
     data class Agent(override val key: String, val text: String) : ChatItem
     /** Ordinary AI text; async questions are answered through the composer, never the dock. */
     data class AsyncQuestion(override val key: String, val questions: List<Question>) : ChatItem
@@ -326,7 +327,11 @@ fun buildChat(
             Event.KindCase.USER_MESSAGE -> {
                 flush()
                 val imgs = e.userMessage.imagesList
-                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, imgs), e.seq in d.typedLocally, eventTime(e), messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), imgs, e.seq)
+                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, imgs), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), imgs, e.seq)
+            }
+            Event.KindCase.SCHEDULED_NOTIFICATION -> {
+                flush()
+                out += ChatItem.Note(k, "通知你：${e.scheduledNotification.text}", Lucide.Check)
             }
             Event.KindCase.AGENT_MESSAGE -> if (e.agentMessage.text.isNotBlank()) {
                 flush()
@@ -529,6 +534,11 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
     val p = pal
     val chat = LocalChat.current
     when (item) {
+        is ChatItem.QuietScheduled -> {
+            var expanded by rememberSaveable(item.key) { mutableStateOf(false) }
+            TextAction(quietScheduledLabel(item.times) + if (expanded) " · 收起" else " · 展开", { expanded = !expanded }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), color = p.muted)
+            if (expanded) item.original.forEach { ChatItemView(it, agent, cwd, home, onPutBack) }
+        }
         is ChatItem.User -> MeBubble(
             item.text.takeIf { it.isNotBlank() || item.images.isEmpty() },
             caption = item.from,
@@ -676,7 +686,7 @@ class ChatProjection {
             val added = tail.mapNotNull { e ->
                 val key = "e${e.seq}"
                 when (e.kindCase) {
-                    Event.KindCase.USER_MESSAGE -> ChatItem.User(key, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, e.userMessage.imagesList), e.seq in d.typedLocally, eventTime(e), messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), e.userMessage.imagesList, e.seq)
+                    Event.KindCase.USER_MESSAGE -> ChatItem.User(key, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, e.userMessage.imagesList), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), e.userMessage.imagesList, e.seq)
                     Event.KindCase.AGENT_MESSAGE -> e.agentMessage.text.takeIf { it.isNotBlank() }?.let { ChatItem.Agent(key, it) }
                     Event.KindCase.REASONING -> e.reasoning.text.takeIf { it.isNotBlank() }?.let { ChatItem.Thought(key, it) }
                     else -> null

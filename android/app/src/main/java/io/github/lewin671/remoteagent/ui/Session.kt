@@ -153,6 +153,7 @@ fun SessionScreen(sid: String) {
             dark = term,
         )
         ConnBanner(state)
+        if (!term) SessionScheduleStrip(sid)
         SessionTabs(if (term) 1 else 0, hasTerminal, status == Status.POPUP, dark = term) {
             tab = it
             viewPrefs.edit().putInt("tab", it).apply()
@@ -259,9 +260,10 @@ private fun SessionTopBar(
                 pop()
             }
         else null
+    BackHandler(enabled = s.info?.taskOwned == true && !dark) { nav.task(s.machineId, s.info!!.scheduledTaskId) }
     NavBar(
         titleOf(s),
-        nav.back,
+        { if (s.info?.taskOwned == true) nav.task(s.machineId, s.info!!.scheduledTaskId) else nav.back() },
         subtitle = subtitle,
         dot = p.tone(status.tone),
         more = { menu = true },
@@ -316,6 +318,7 @@ private fun SessionTopBar(
                             )
                         }
                     }
+                    add(SheetAction("定时发送…", enabled = canRename && io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[s.machineId])) { nav.newTask(s.id) })
                     add(SheetAction("项目设置", enabled = !forking && projectConfig(state, projectKey(s)) != null) {
                         sheet = 3
                     })
@@ -488,7 +491,11 @@ private fun ChatPane(
             )
         }
     }
-    val items = projected.value
+    var revealedRun by remember(s.id) { mutableStateOf(0L) }
+    val requestedRun = ScheduleJump.requested[s.id]
+    val items = remember(projected.value, events, requestedRun, revealedRun) {
+        foldScheduledChat(projected.value, events, requestedRun ?: revealedRun)
+    }
     val pendingInputs = pendingInputs(d)
     LaunchedEffect(d.inputs, outbox.size) {
         // The messages the CLI has recorded are the chat's own rows from here on.
@@ -531,6 +538,14 @@ private fun ChatPane(
         if (follow) seen = items.size
     }
     LaunchedEffect(atBottom) { if (atBottom) seen = items.size }
+    val jump = ScheduleJump.requested[s.id]
+    LaunchedEffect(jump, items, loaded) {
+        if (jump != null && loaded && items.isNotEmpty()) {
+            val index = items.indexOfFirst { item -> item.key.removePrefix("e").toLongOrNull()?.let { it >= jump } == true || item is ChatItem.QuietScheduled && item.through >= jump }
+            if (index >= 0) { revealedRun = jump; followState.observe(true, false); list.scrollToItem(index + 1); ScheduleJump.requested.remove(s.id) }
+        }
+    }
+
     // The dock may take about 60% of what the session shows, not less than 240 dp.
     var shownHeight by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -642,6 +657,7 @@ private fun ChatPane(
             }
         }
         androidx.compose.runtime.CompositionLocalProvider(LocalDockMax provides dockMax) {
+            if (s.info?.taskOwned == true) Hint("回复后，这个对话会移到会话列表", Modifier.padding(horizontal = 16.dp))
             Bottom(
                 state,
                 s,
@@ -863,7 +879,7 @@ private fun Bottom(
         EndCard(
             "会话已结束",
             buildString {
-                append(exitReason(s.info?.statusDetail.orEmpty()))
+                append(if (s.info?.taskOwned == true) "这次定时任务已结束，聊天记录保留。" else exitReason(s.info?.statusDetail.orEmpty()))
                 if (state.unlinked) append("连上服务器后才能恢复。")
                 else if (m?.online == true)
                     append("恢复会在 ${machineLabel(state, s.machineId)} 上用同样的设置重新打开它，聊天记录都在。")

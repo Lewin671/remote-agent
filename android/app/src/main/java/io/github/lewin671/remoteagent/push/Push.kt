@@ -40,6 +40,7 @@ import kotlin.coroutines.resumeWithException
 object Push {
     const val CHANNEL_ATTENTION = "attention"
     const val CHANNEL_TURN = "turn"
+    const val CHANNEL_SCHEDULED = "scheduled"
     private const val TAG = "remote-agent"
 
     private val _status = MutableStateFlow(PushStatus())
@@ -75,6 +76,9 @@ object Push {
             description = "审批、提问、计划和终端弹窗"
             lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
         })
+        nm.createNotificationChannel(NotificationChannel(CHANNEL_SCHEDULED, "定时任务结果", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
+        })
         nm.createNotificationChannel(NotificationChannel(CHANNEL_TURN, "一轮结束时", NotificationManager.IMPORTANCE_DEFAULT).apply {
             lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
         })
@@ -107,7 +111,7 @@ object Push {
                 if (s.notifyAttention) add(NotifyKind.NOTIFY_KIND_ATTENTION)
                 if (s.notifyTurnEnded) add(NotifyKind.NOTIFY_KIND_TURN_ENDED)
                 add(NotifyKind.NOTIFY_KIND_SECURITY)
-                add(NotifyKind.NOTIFY_KIND_SCHEDULED)
+                if (s.notifyScheduled) add(NotifyKind.NOTIFY_KIND_SCHEDULED)
             }
             // Turning notifications off must not depend on obtaining a Google token.
             val fcm = if (kinds.isEmpty()) "" else {

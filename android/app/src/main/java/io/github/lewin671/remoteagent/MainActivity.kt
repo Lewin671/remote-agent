@@ -15,6 +15,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -84,6 +88,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by app.prefs.settings.collectAsState(Settings())
             RaTheme(settings.theme) {
+                val dark = pal.dark
+                androidx.compose.runtime.SideEffect {
+                    androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = !dark
+                        isAppearanceLightNavigationBars = !dark
+                    }
+                }
                 Surface(Modifier.fillMaxSize(), color = pal.card) {
                     io.github.lewin671.remoteagent.ui.AppSafeArea {
                         val loaded by app.loaded.collectAsState()
@@ -119,7 +130,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun target(i: Intent?): Pair<String, String?>? =
-        i?.getStringExtra(EXTRA_SESSION)?.let { it to i.getStringExtra(Notifier.EXTRA_APPROVAL) }
+        i?.getStringExtra(EXTRA_SESSION)?.let {
+            val seq = i.getLongExtra(Notifier.EXTRA_SCHEDULE_SEQ, 0)
+            if (seq > 0) io.github.lewin671.remoteagent.ui.ScheduleJump.requested[it] = seq
+            it to i.getStringExtra(Notifier.EXTRA_APPROVAL)
+        }
 
     @Composable
     private fun Main(remote: Remote) {
@@ -127,7 +142,7 @@ class MainActivity : ComponentActivity() {
         val focus = LocalFocusManager.current
         // Every page change drops the keyboard first, so the page that leaves
         // does not shrink back under it halfway through the slide.
-        val actions = remember(nav) { focus.clearFocus() }
+        val actions = remember(nav, remote) { focus.clearFocus() }
         val target by openSession
         LaunchedEffect(openDevices.value) {
             if (openDevices.value) {
@@ -169,7 +184,7 @@ class MainActivity : ComponentActivity() {
                 RaApp.instance,
                 entry?.takeIf { route == "session/{id}" }?.arguments?.getString("id"),
             )
-            val tabs = route == "home" || route == "settings"
+            val tabs = route in tabRoutes
             NavHost(
                 nav,
                 "home",
@@ -180,6 +195,9 @@ class MainActivity : ComponentActivity() {
                 popExitTransition = { pagePopExit(initialState, targetState) },
             ) {
                 composable("home") { Tab(remote, nav, "home") { HomeScreen() } }
+                composable("schedules") { Tab(remote, nav, "schedules") { io.github.lewin671.remoteagent.ui.SchedulesScreen() } }
+                page("task/{machine}/{id}") { io.github.lewin671.remoteagent.ui.ScheduleDetailScreen(it.arguments?.getString("machine").orEmpty(), it.arguments?.getString("id").orEmpty()) }
+                page("newtask?session={session}") { io.github.lewin671.remoteagent.ui.NewScheduleScreen(it.arguments?.getString("session").orEmpty()) }
                 composable("settings") { Tab(remote, nav, "settings") { SettingsScreen() } }
                 page("session/{id}") { SessionScreen(it.arguments?.getString("id").orEmpty()) }
                 page("project/{key}?focus={focus}") {
@@ -257,17 +275,25 @@ class MainActivity : ComponentActivity() {
                     .statusOf(it, state.machines[it.machineId])
                     .tone == Tone.WAIT
             }
-        Column(Modifier.fillMaxSize().background(pal.card)) {
-            Box(Modifier.weight(1f)) { content() }
-            io.github.lewin671.remoteagent.ui.TabBar(route, waiting) { r ->
-                if (r == "home") {
-                    if (!nav.popBackStack("home", inclusive = false)) nav.navigate("home")
-                } else nav.navigate("settings") { popUpTo("home") }
+        val snapshots by remote.schedules.state.collectAsState()
+        val attention = snapshots.values.flatMap { it.tasks }.count { io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[it.machine]) && io.github.lewin671.remoteagent.core.taskGroup(it) == io.github.lewin671.remoteagent.core.TaskGroup.ATTENTION }
+        val select: (String) -> Unit = { r ->
+            if (r == "home") {
+                if (!nav.popBackStack("home", inclusive = false)) nav.navigate("home")
+            } else nav.navigate(r) { popUpTo("home"); launchSingleTop = true }
+        }
+        BoxWithConstraints(Modifier.fillMaxSize().background(pal.card)) {
+            if (maxWidth >= 840.dp) Row {
+                io.github.lewin671.remoteagent.ui.SidebarTabs(route, waiting, attention, select)
+                Box(Modifier.weight(1f)) { content() }
+            } else Column {
+                Box(Modifier.weight(1f)) { content() }
+                io.github.lewin671.remoteagent.ui.TabBar(route, waiting, attention, select)
             }
         }
     }
 
-    private fun remember(nav: NavHostController, leave: () -> Unit): Nav {
+    private fun remember(nav: NavHostController, remote: Remote, leave: () -> Unit): Nav {
         fun go(route: String, single: Boolean = false) {
             leave()
             nav.navigate(route) { launchSingleTop = single }
@@ -286,6 +312,22 @@ class MainActivity : ComponentActivity() {
                 if (!nav.popBackStack("home", inclusive = false)) nav.navigate("home")
             },
             settings = { go("settings") },
+            schedules = { go("schedules") },
+            task = { machine, id ->
+                val current = nav.currentBackStackEntry
+                val sid = current?.arguments?.getString("id")
+                if (current?.destination?.route == "session/{id}" && remote.state.value.sessions[sid]?.info?.taskOwned == true) {
+                    leave()
+                    nav.popBackStack()
+                }
+                val currentTask = nav.currentBackStackEntry
+                if (currentTask?.destination?.route != "task/{machine}/{id}" || currentTask.arguments?.getString("id") != id || currentTask.arguments?.getString("machine") != machine) go("task/$machine/$id", true)
+            },
+            newTask = { go("newtask?session=$it") },
+            scheduledSession = { sid, seq ->
+                io.github.lewin671.remoteagent.ui.ScheduleJump.requested[sid] = seq
+                go("session/$sid", single = true)
+            },
             device = { go("device/$it") },
             pair = { go("pair") },
             rejoin = { go("pair?replace=$it") },
@@ -339,7 +381,7 @@ fun routeValue(arg: String?): String = arg.orEmpty()
 private const val PAGE_MS = 300
 private val pageSlide = tween<IntOffset>(PAGE_MS, easing = FastOutSlowInEasing)
 private val viewerFade = tween<Float>(200)
-private val tabRoutes = setOf("home", "settings")
+private val tabRoutes = setOf("home", "schedules", "settings")
 
 private fun tabSwitch(from: NavBackStackEntry, to: NavBackStackEntry) =
     from.destination.route in tabRoutes && to.destination.route in tabRoutes

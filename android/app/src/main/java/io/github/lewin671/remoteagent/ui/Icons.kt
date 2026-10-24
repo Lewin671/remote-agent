@@ -38,6 +38,7 @@ private fun lucide(name: String, vararg paths: String, filled: Boolean = false):
 private fun circle(cx: Int, cy: Int, r: Int) = "M${cx - r} ${cy}a$r $r 0 1 0 ${2 * r} 0a$r $r 0 1 0 ${-2 * r} 0z"
 
 object Lucide {
+    val Clock = lucide("clock", circle(12, 12, 10), "M12 6v6l4 2")
     /** Goes to another page or sheet. */
     val ChevronRight = lucide("chevron-right", "m9 18 6-6-6-6")
 

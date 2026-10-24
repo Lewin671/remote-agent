@@ -18,6 +18,7 @@ data class Settings(
     val notifyAttention: Boolean = true,
     /** Push when a turn ends. */
     val notifyTurnEnded: Boolean = false,
+    val notifyScheduled: Boolean = true,
     /** Show approval content in notifications and allow deciding there. Off by default. */
     val showContent: Boolean = false,
     /** Web client address used in pairing QR codes; empty means derived from the server. */
@@ -31,6 +32,7 @@ class Prefs(private val context: Context) {
     private val theme = stringPreferencesKey("theme")
     private val attention = booleanPreferencesKey("notify_attention")
     private val turnEnded = booleanPreferencesKey("notify_turn_ended")
+    private val scheduled = booleanPreferencesKey("notify_scheduled")
     private val content = booleanPreferencesKey("notify_show_content")
     private val web = stringPreferencesKey("web_origin")
     private val skipped = androidx.datastore.preferences.core.longPreferencesKey("skipped_update")
@@ -40,6 +42,7 @@ class Prefs(private val context: Context) {
             theme = p[theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
             notifyAttention = p[attention] ?: true,
             notifyTurnEnded = p[turnEnded] ?: false,
+            notifyScheduled = p[scheduled] ?: true,
             showContent = p[content] ?: false,
             webOrigin = p[web] ?: "",
             skippedUpdate = p[skipped] ?: 0,
@@ -52,6 +55,7 @@ class Prefs(private val context: Context) {
                 theme = p[theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
                 notifyAttention = p[attention] ?: true,
                 notifyTurnEnded = p[turnEnded] ?: false,
+            notifyScheduled = p[scheduled] ?: true,
                 showContent = p[content] ?: false,
                 webOrigin = p[web] ?: "",
             skippedUpdate = p[skipped] ?: 0,
@@ -60,6 +64,7 @@ class Prefs(private val context: Context) {
             p[theme] = n.theme.name
             p[attention] = n.notifyAttention
             p[turnEnded] = n.notifyTurnEnded
+            p[scheduled] = n.notifyScheduled
             p[content] = n.showContent
             p[web] = n.webOrigin
             p[skipped] = n.skippedUpdate

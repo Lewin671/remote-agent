@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.text
+
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -580,34 +582,7 @@ fun SessionRow(
     val p = pal
     val nav = LocalNav.current
     val st = statusIn(state, s)
-    Row(
-        Modifier.fillMaxWidth()
-            .background(if (selected) p.blueSoft else Color.Transparent)
-            .clickableRow { nav.session(s.id) }
-            .padding(start = 16.dp, end = 16.dp, top = 10.dp),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
-    ) {
-        Box(Modifier.padding(top = 8.dp)) { Dot(p.tone(st.tone)) }
-        Column(
-            Modifier.weight(1f)
-                .then(if (!last) Modifier.bottomLine(p.line) else Modifier)
-                .padding(bottom = 10.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    titleOf(s),
-                    style = T.bodyB,
-                    color = p.fg,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(whenText(s.updatedMs, t), style = T.meta, color = p.muted, maxLines = 1)
-            }
+    SessionListRow(titleOf(s), whenText(s.updatedMs, t), st.tone, last, selected, { nav.session(s.id) }) {
             val pv = previewOf(s, st)
             Text(
                 buildAnnotatedString {
@@ -627,7 +602,9 @@ fun SessionRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val rest = metaLine(state, s, meta)
+            val schedules by LocalRemote.current.schedules.state.collectAsState()
+            val timed = schedules.values.flatMap { it.tasks }.filter { io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[it.machine]) && it.target.text("type") == "resume_session" && it.target.text("session") == s.id && io.github.lewin671.remoteagent.core.taskGroup(it) != io.github.lewin671.remoteagent.core.TaskGroup.ENDED }
+            val rest = listOf(metaLine(state, s, meta), timed.firstOrNull()?.let { "定时 " + io.github.lewin671.remoteagent.core.scheduleFrequency(it.trigger) }.orEmpty()).filter { it.isNotEmpty() }.joinToString(" · ")
             if (rest.isNotEmpty())
                 Text(
                     rest,
@@ -637,7 +614,6 @@ fun SessionRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 1.dp),
                 )
-        }
     }
 }
 

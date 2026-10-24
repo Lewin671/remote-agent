@@ -808,7 +808,7 @@ fun projectModel(c: NewConfig, models: ListModelsResponse, settings: DaemonSetti
  * store, or null when nothing was changed.
  */
 @Composable
-fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: String, agent: Agent, open: String = "", onDone: (PrefsOp.SetSettings?) -> Unit, onClose: () -> Unit) {
+fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: String, agent: Agent, open: String = "", onDone: (PrefsOp.SetSettings?) -> Unit, onClose: () -> Unit, initial: NewConfig? = null, scheduling: Boolean = false) {
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
@@ -816,7 +816,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
     var machine by remember { mutableStateOf(machineId) }
     var tab by remember { mutableStateOf(agent) }
     // The sets changed here, by CLI; the others stay as stored.
-    val edited = remember { mutableStateMapOf<Agent, NewConfig>() }
+    val edited = remember { mutableStateMapOf<Agent, NewConfig>().apply { if (initial != null) put(initial.agent, initial) } }
     var page by remember { mutableStateOf(open) }
     // Models are per machine: on another one every CLI starts over.
     val moved = machine != machineId
@@ -870,7 +870,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     {
                         SetRow("模型", listOf(shownModel?.displayName?.ifEmpty { null } ?: c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" }, { page = "model" })
                     },
-                    *(if (c.agent == Agent.AGENT_CLAUDE) arrayOf<@Composable () -> Unit>({
+                    *(if (c.agent == Agent.AGENT_CLAUDE && !scheduling) arrayOf<@Composable () -> Unit>({
                         // A model without a larger window has nothing to choose.
                         val fixed = shownModel != null && shownModel.contextWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW
                         SetRow("上下文", if (fixed) "标准 200k · 这个模型只有标准窗口" else if (c.standardContext) "标准 200k" else "1M", if (fixed) null else ({ page = "context" }))

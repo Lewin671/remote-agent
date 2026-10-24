@@ -92,7 +92,7 @@ fun Sw(on: Boolean) {
 
 /** A row with a switch; [sub] explains it under the title. */
 @Composable
-private fun ToggleRow(title: String, sub: String, value: Boolean, onChange: (Boolean) -> Unit) {
+fun ToggleRow(title: String, sub: String, value: Boolean, onChange: (Boolean) -> Unit) {
     val p = pal
     Row(
         Modifier.fillMaxWidth()
@@ -248,6 +248,14 @@ fun SettingsScreen() {
                             ToggleRow("一轮结束时", "", settings.notifyTurnEnded) { v ->
                                 scope.launch {
                                     app.prefs.update { it.copy(notifyTurnEnded = v) }
+                                    Push.register(app, remote)
+                                }
+                            }
+                        },
+                        {
+                            ToggleRow("定时任务结果", "", settings.notifyScheduled) { v ->
+                                scope.launch {
+                                    app.prefs.update { it.copy(notifyScheduled = v) }
                                     Push.register(app, remote)
                                 }
                             }

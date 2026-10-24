@@ -23,8 +23,18 @@ class ScheduledPushIdentityTest {
             Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, null, false, event)
         }
         assertEquals(2, shadowOf(manager).allNotifications.size)
+        assertTrue(shadowOf(manager).allNotifications.all { it.channelId == Push.CHANNEL_SCHEDULED })
+        assertEquals("定时任务结果", manager.getNotificationChannel(Push.CHANNEL_SCHEDULED).name.toString())
         Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_ATTENTION, null, false)
         Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_ATTENTION, null, false)
         assertEquals("ordinary notifications retain replacement behavior", 3, shadowOf(manager).allNotifications.size)
     }
+    @Test fun scheduledTitlesUseOnlyAlreadyVerifiedConversationMetadata() {
+        val content = io.github.lewin671.remoteagent.proto.NotifyContent.newBuilder().setTitle("Task").setText("Result").build()
+        val conversation = io.github.lewin671.remoteagent.proto.Session.newBuilder().setTitle("Conversation").build()
+        assertEquals("Conversation", scheduledPushContent(content, conversation).title)
+        assertEquals("Task", scheduledPushContent(content, conversation.toBuilder().setScheduledTaskId("created-by-task").build()).title)
+        assertEquals(content, scheduledPushContent(content, null))
+    }
+
 }

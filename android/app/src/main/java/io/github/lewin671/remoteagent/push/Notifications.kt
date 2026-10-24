@@ -69,16 +69,21 @@ class RaMessagingService : FirebaseMessagingService() {
             return
         }
         val session = data["session"] ?: return
-        val content = data["content"]?.let { open(session, it) }
+        var content = data["content"]?.let { open(session, it) }
         if (data["content"] != null && content == null) return
-        // Scheduled results are not yet shown in the foreground list. Only the
-        // actual session page suppresses them; other kinds retain their foreground rule.
+        // Only the actual session page suppresses scheduled results in the foreground.
+        // Other kinds retain their foreground rule.
         val foreground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
         if (foreground && (kind != NotifyKind.NOTIFY_KIND_SCHEDULED || app.visibleSession == session))
             return
         val eventKey = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) {
             data["event"]?.takeIf { it.isNotEmpty() } ?: return
         } else null
+        if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED && content != null) {
+            // Push reception never loads account keys or starts a metadata request. If the
+            // foreground client already verified the destination, use its conversation title.
+            content = scheduledPushContent(content, app.remote.value?.state?.value?.sessions?.get(session)?.info)
+        }
         Notifier.show(this, session, kind, content, settings.showContent, eventKey)
         // Timing only, for the notes on cold starts; no content.
         Log.i(
@@ -103,6 +108,7 @@ class RaMessagingService : FirebaseMessagingService() {
 object Notifier {
     const val EXTRA_APPROVAL = "approval"
     const val EXTRA_SECURITY = "security"
+    const val EXTRA_SCHEDULE_SEQ = "schedule_seq"
 
     /** A recovery request: generic text only, tapping opens the device page. */
     fun showSecurity(context: Context) {
@@ -135,12 +141,14 @@ object Notifier {
         session: String,
         approval: String? = null,
         code: Int,
+        scheduleSeq: Long = 0,
     ): PendingIntent {
         val i =
             Intent(context, MainActivity::class.java)
                 .putExtra(MainActivity.EXTRA_SESSION, session)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         if (approval != null) i.putExtra(EXTRA_APPROVAL, approval)
+        if (scheduleSeq > 0) i.putExtra(EXTRA_SCHEDULE_SEQ, scheduleSeq)
         return PendingIntent.getActivity(
             context,
             code,
@@ -207,11 +215,13 @@ object Notifier {
             NotifyKind.NOTIFY_KIND_TURN_ENDED -> "一轮对话结束了"
             else -> "有会话在等你处理"
         }
-        val channel =
-            if (kind == NotifyKind.NOTIFY_KIND_TURN_ENDED || kind == NotifyKind.NOTIFY_KIND_SCHEDULED) Push.CHANNEL_TURN
-            else Push.CHANNEL_ATTENTION
+        val channel = when (kind) {
+            NotifyKind.NOTIFY_KIND_SCHEDULED -> Push.CHANNEL_SCHEDULED
+            NotifyKind.NOTIFY_KIND_TURN_ENDED -> Push.CHANNEL_TURN
+            else -> Push.CHANNEL_ATTENTION
+        }
         val approval = c?.takeIf { it.hasApproval() }?.approval
-        val nid = id(session, approval?.approvalId)
+        val nid = id(session, if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) eventKey else approval?.approvalId)
         val locked = context.getSystemService(KeyguardManager::class.java).isDeviceLocked
         val how = display(showContent, c != null, locked, Build.VERSION.SDK_INT)
         val public =
@@ -230,7 +240,7 @@ object Notifier {
                 // No "Open link" chips guessed from the command.
                 .setAllowSystemGeneratedContextualActions(false)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(openIntent(context, session, approval?.approvalId, nid))
+                .setContentIntent(openIntent(context, session, approval?.approvalId, nid, if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) c?.sourceEventSeq ?: 0 else 0))
         if (!how.detailed || c == null) {
             b.setContentTitle("remote-agent").setContentText(generic)
         } else if (approval != null) {
@@ -526,3 +536,7 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
         return androidx.work.ForegroundInfo(inputData.getInt("nid", 0) + 7, n)
     }
 }
+
+/** The daemon supplies the task title; a previously verified ordinary conversation supplies its own. */
+internal fun scheduledPushContent(content: NotifyContent, info: io.github.lewin671.remoteagent.proto.Session?): NotifyContent =
+    if (info != null && info.scheduledTaskId.isEmpty() && info.title.isNotEmpty()) content.toBuilder().setTitle(info.title).build() else content

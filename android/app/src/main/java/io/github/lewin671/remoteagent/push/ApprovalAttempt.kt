@@ -11,7 +11,8 @@ fun acceptPush(hasAccount: Boolean, kind: NotifyKind, settings: Settings): Boole
     NotifyKind.NOTIFY_KIND_ATTENTION -> settings.notifyAttention
     NotifyKind.NOTIFY_KIND_TURN_ENDED -> settings.notifyTurnEnded
     // A recovery request is a security action; never filtered by the chat switches.
-    NotifyKind.NOTIFY_KIND_SECURITY, NotifyKind.NOTIFY_KIND_SCHEDULED -> true
+    NotifyKind.NOTIFY_KIND_SECURITY -> true
+    NotifyKind.NOTIFY_KIND_SCHEDULED -> settings.notifyScheduled
     else -> false
 }
 

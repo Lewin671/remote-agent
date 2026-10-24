@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -192,7 +193,7 @@ fun StatusNavBar(title: String, agent: String?, status: Status, rest: String, on
 fun LargeTitle(text: String, modifier: Modifier = Modifier, action: (() -> Unit)? = null, actionLabel: String = "新会话") {
     val p = pal
     Row(modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = T.title30, color = p.fg, modifier = Modifier.weight(1f).padding(vertical = 3.dp))
+        Text(text, style = if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 840) T.h22 else T.title30, color = p.fg, modifier = Modifier.weight(1f).padding(vertical = 3.dp))
         if (action != null) NewSessionButton(action, actionLabel)
     }
 }
@@ -609,16 +610,17 @@ fun Page(
 
 /** 会话 and 设置 at the bottom of the two first-level pages: 11 labels, blue when chosen, the waiting count on 会话. */
 @Composable
-fun TabBar(route: String?, waiting: Int, onSelect: (String) -> Unit) {
+fun TabBar(route: String?, waiting: Int, scheduledAttention: Int = 0, onSelect: (String) -> Unit) {
     val p = pal
     Row(Modifier.fillMaxWidth().background(p.card).topLine(p.line).padding(top = 6.dp, bottom = 8.dp)) {
-        for ((r, label) in listOf("home" to "会话", "settings" to "设置")) {
+        for ((r, label) in listOf("home" to "会话", "schedules" to "定时", "settings" to "设置")) {
             val on = route == r
             Column(Modifier.weight(1f).heightIn(min = 44.dp).clickable { if (!on) onSelect(r) }, horizontalAlignment = Alignment.CenterHorizontally) {
                 Box {
-                    Ic(if (r == "home") Lucide.MessageSquare else Lucide.Settings, 22.dp, if (on) p.blue else p.muted)
-                    if (r == "home" && waiting > 0) Text(
-                        "$waiting", style = T.tab.copy(fontWeight = platformWeight(FontWeight.Bold), lineHeight = 16.sp), color = Color.White,
+                    Ic(when(r) { "home" -> Lucide.MessageSquare; "schedules" -> Lucide.Clock; else -> Lucide.Settings }, 22.dp, if (on) p.blue else p.muted)
+                    val count = if (r == "home") waiting else if (r == "schedules") scheduledAttention else 0
+                    if (count > 0) Text(
+                        "$count", style = T.tab.copy(fontWeight = platformWeight(FontWeight.Bold), lineHeight = 16.sp), color = Color.White,
                         modifier = Modifier.align(Alignment.TopStart).offset(x = 17.dp, y = (-4).dp).clip(RoundedCornerShape(8.dp)).background(p.orange).padding(horizontal = 5.dp),
                     )
                 }
@@ -662,4 +664,36 @@ fun Mark(icon: ImageVector, color: Color, size: Dp = 12.dp) {
         androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)),
         label = "rotation")
     Ic(icon, size, color, Modifier.rotate(angle))
+}
+
+/** Top-level destinations share the same labels, icons and badge counts on wide displays. */
+@Composable
+fun SidebarTabs(route: String?, waiting: Int, scheduledAttention: Int, onSelect: (String) -> Unit) {
+    Column(Modifier.width(200.dp).fillMaxHeight().background(pal.soft).padding(top = 16.dp)) {
+        Text("remote-agent", style = T.h17, color = pal.fg, modifier = Modifier.padding(16.dp))
+        for ((r, label) in listOf("home" to "会话", "schedules" to "定时", "settings" to "设置")) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).background(if (route == r) pal.blueSoft else Color.Transparent).clickable { onSelect(r) }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                val color = if (route == r) pal.blue else pal.muted
+                Ic(when(r) { "home" -> Lucide.MessageSquare; "schedules" -> Lucide.Clock; else -> Lucide.Settings }, 22.dp, color)
+                Text(label, Modifier.weight(1f).padding(start = 12.dp), style = T.body, color = color)
+                val count = if (r == "home") waiting else if (r == "schedules") scheduledAttention else 0
+                if (count > 0) Text("$count", style = T.metaB, color = pal.orangeInk)
+            }
+        }
+    }
+}
+
+/** Shared by conversations and scheduled tasks; the caller supplies the lower lines. */
+@Composable
+fun SessionListRow(title: String, time: String, tone: io.github.lewin671.remoteagent.core.Tone, last: Boolean = false, selected: Boolean = false, onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    Row(Modifier.fillMaxWidth().background(if (selected) pal.blueSoft else Color.Transparent).clickable(onClick = onClick).padding(start = 16.dp, end = 16.dp, top = 10.dp), horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.Top) {
+        Box(Modifier.padding(top = 8.dp)) { Dot(pal.tone(tone)) }
+        Column(Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(pal.line)).padding(bottom = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, style = T.bodyB, color = pal.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(time, style = T.meta, color = pal.muted, maxLines = 1)
+            }
+            content()
+        }
+    }
 }

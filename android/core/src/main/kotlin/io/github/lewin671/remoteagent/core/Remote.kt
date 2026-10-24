@@ -415,6 +415,16 @@ class Remote(
 
     private val _state = MutableStateFlow(RemoteState())
     val state: StateFlow<RemoteState> = _state.asStateFlow()
+    val schedules by lazy {
+        ScheduleRepository(scope, state,
+            send = { machine, request ->
+                machineCommand(machine, Command.newBuilder().setSchedule(request).build()).schedule.resultJson.toByteArray()
+            },
+            read = { cache?.blob("schedule:$it") },
+            write = { machine, bytes -> cache?.putBlob("schedule:$machine", bytes); Unit },
+            cacheKey = Keys.deriveKey(account.deviceSeed, "android-schedule-cache"),
+        )
+    }
 
     private val machines = HashMap<String, MachineView>()
     private val sessions = HashMap<String, SessionView>()

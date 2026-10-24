@@ -33,7 +33,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
-    implementation(libs.serialization.json)
+    api(libs.serialization.json)
 }
 
 // The integration tests run against the real Go server. Without Go on the
