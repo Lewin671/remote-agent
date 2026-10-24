@@ -546,7 +546,6 @@ export function ScheduleDetail({
   const paused = ["paused", "failed", "uncertain"].includes(task.status);
   const ended = taskGroup(task) === "已结束";
   const systemCancelled = task.status === "cancelled" && attention;
-  const nameReadOnly = taskGroup(task) !== "进行中";
   const failedOnce = task.status === "failed" && oneShot(task);
   const target = task.spec.target;
   const targetSession = remote.sessions.get(target.session ?? "");
@@ -640,22 +639,12 @@ export function ScheduleDetail({
           <Field
             name="任务名"
             value={task.spec.title}
-            disabled={
-              !online ||
-              busy ||
-              nameReadOnly ||
-              !!task.active_run ||
-              !!task.manual_request ||
-              !!pending?.frozen
-            }
+            disabled={!online || busy || !!pending?.frozen}
             onClick={() => {
               setEditBase(task);
               setEdit("name");
             }}
           />
-          {nameReadOnly && (
-            <p className="schedule-name-note">已停下的任务暂不能单独改名。</p>
-          )}
           <Field
             name="什么时候"
             value={timingText(task.spec.trigger)}

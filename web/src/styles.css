@@ -1048,5 +1048,3 @@ input.field { margin: 0; }
 .schedules-page .btn.wide { width: 100%; justify-content: center; }
 .schedule-name { display: block; margin: 8px 16px 0; font-size: 13px; color: var(--muted); }
 .schedule-name input { display: block; width: 100%; min-height: 44px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--fg); font-size: 15px; }
-
-.schedule-name-note { margin: 0; padding: 4px 16px 8px; color: var(--muted); font-size: 12px; }

@@ -581,9 +581,21 @@ it("closes an unchanged task name without sending an update", async () => {
   expect(host.querySelector('[aria-label="重命名任务"]')).toBeNull();
 });
 
-it("does not reactivate stopped tasks or cancel a manual request just to rename", async () => {
-  const r = remote();
-  const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(task());
+it.each<Partial<ScheduleTask>>([
+  { status: "scheduled" },
+  { status: "paused", reason: "user_paused" },
+  { status: "completed" },
+  { status: "cancelled" },
+  { status: "failed", reason: "relay_session_limit" },
+  { status: "uncertain", reason: "restart_dispatching" },
+  { active_run: run("active", { status: "dispatching" }) },
+  { active_run: run("active", { status: "queued" }) },
+  { active_run: run("active", { status: "running" }) },
+  { manual_request: { request_id: "manual" } },
+])("allows a title-only update without replacing execution settings: %j", async (state) => {
+  const original = task({ ...state, runs: [run("history")] });
+  const r = remote([original]);
+  const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(original);
   await mount(
     <ScheduleDetail
       remote={r}
@@ -593,20 +605,21 @@ it("does not reactivate stopped tasks or cancel a manual request just to rename"
       onBack={() => {}}
     />,
   );
-  for (const status of ["paused", "completed", "failed", "uncertain"]) {
-    await act(async () => {
-      r.schedules.get("mac")!.tasks = [task({ status })];
-      r.touch();
-    });
-    expect(button(/^任务名/)?.disabled).toBe(true);
-    expect(host.textContent).toContain("已停下的任务暂不能单独改名。");
-    await click(/^任务名/);
-    expect(write).not.toHaveBeenCalled();
-  }
+  expect(button(/^任务名/)?.disabled).toBe(false);
+  await click(/^任务名/);
+  await input(
+    host.querySelector<HTMLInputElement>('[aria-label="重命名任务"] input')!,
+    "新任务名",
+  );
+  await click("保存");
+  expect(write).toHaveBeenCalledExactlyOnceWith("mac", "task-1", {
+    operation: "update",
+    taskId: "task-1",
+    revision: original.revision,
+    spec: { ...original.spec, title: "新任务名" },
+  });
   await act(async () => {
-    r.schedules.get("mac")!.tasks = [
-      task({ manual_request: { request_id: "manual" } }),
-    ];
+    r.machines.get("mac")!.online = false;
     r.touch();
   });
   expect(button(/^任务名/)?.disabled).toBe(true);
