@@ -44,4 +44,14 @@ class ScheduleComponentsTest {
         assertEquals(original, saved)
     }
 
+    @Test fun turnDelayIsPreservedUntilATimeTypeIsExplicitlySelected() {
+        val original = kotlinx.serialization.json.Json.parseToJsonElement("""{"type":"after_turn","delay_seconds":90,"repeat":true}""") as kotlinx.serialization.json.JsonObject
+        var saved: kotlinx.serialization.json.JsonObject? = null
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { ScheduleTimeSheet(original, { saved = it }, {}) } }
+        ui.onNodeWithText("当前是", substring = true).assertExists()
+        ui.onNodeWithText("每天", useUnmergedTree = true).performClick()
+        ui.onNodeWithText("完成").performClick()
+        assertEquals("calendar", (saved!!["type"] as kotlinx.serialization.json.JsonPrimitive).content)
+    }
+
 }

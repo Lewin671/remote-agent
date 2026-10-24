@@ -338,6 +338,8 @@ fun ScheduleEditor(session: String, existing: ScheduledTask? = null, onClose: ()
 fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: () -> Unit) {
     val original = remember { ScheduleTime.from(initial) }
     var value by remember { mutableStateOf(original) }
+    var replaced by remember { mutableStateOf(false) }
+    val keepTurnDelay = initial.text("type") == "after_turn" && !replaced
     var error by remember { mutableStateOf("") }
     val context = androidx.compose.ui.platform.LocalContext.current
     fun date(current: String, picked: (String) -> Unit) {
@@ -346,9 +348,12 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
     }
     Sheet(close) {
         SheetHead("什么时候", "完成", {
-            try { done(if (value == original) initial else value.trigger()) } catch (e: Exception) { error = e.message ?: "请检查时间" }
+            try { done(if (keepTurnDelay || value == original && !replaced) initial else value.trigger()) } catch (e: Exception) { error = e.message ?: "请检查时间" }
         })
-        ViewTabs(listOf("一次", "每天", "每周", "每隔"), value.kind, { value = value.copy(kind = it) }, inset = 0.dp)
+        ViewTabs(listOf("一次", "每天", "每周", "每隔"), if (keepTurnDelay) -1 else value.kind, { replaced = true; value = value.copy(kind = it) }, inset = 0.dp)
+        if (keepTurnDelay) {
+            Hint("当前是「${scheduleFrequency(initial)}」。直接完成会保留原规则；选择上面的时间类型后再更改。")
+        } else {
         if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
         if (value.kind == 0) ScheduleSetting("日期", value.date) { date(value.date) { value = value.copy(date = it) } }
         if (value.kind != 3) {
@@ -378,6 +383,7 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
         FieldLabel("时区（IANA 名称）")
         ReasonField(value.zone, { value = value.copy(zone = it.trim(), deadline = "") }, "例如 Asia/Shanghai")
         Hint("每天和每周按所选时区运行；每隔按经过的时长计算，创建后先运行一次。电脑醒来后 24 小时内补跑一次。")
+        }
     }
 }
 
