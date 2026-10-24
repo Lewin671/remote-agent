@@ -40,6 +40,7 @@ import io.github.lewin671.remoteagent.proto.StoredEvent
 import io.github.lewin671.remoteagent.proto.StreamHello
 import io.github.lewin671.remoteagent.proto.TermHello
 import io.github.lewin671.remoteagent.proto.TerminalFrame
+import kotlinx.serialization.json.jsonObject
 import java.util.TreeMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -296,6 +297,7 @@ interface CipherCache {
     suspend fun blob(name: String): ByteArray? = null
 
     suspend fun putBlob(name: String, data: ByteArray) {}
+    suspend fun removeBlob(name: String) {}
 }
 
 /** A sealed command ready to send; resending it reuses its request ID and deadline. */
@@ -415,15 +417,27 @@ class Remote(
 
     private val _state = MutableStateFlow(RemoteState())
     val state: StateFlow<RemoteState> = _state.asStateFlow()
-    val schedules by lazy {
+    private val scheduleRepository = lazy {
         ScheduleRepository(scope, state,
             send = { machine, request ->
                 machineCommand(machine, Command.newBuilder().setSchedule(request).build()).schedule.resultJson.toByteArray()
             },
-            read = { cache?.blob("schedule:$it") },
-            write = { machine, bytes -> cache?.putBlob("schedule:$machine", bytes); Unit },
-            cacheKey = Keys.deriveKey(account.deviceSeed, "android-schedule-cache"),
+            read = { cachedSchedules(it) },
+            clear = { cache?.removeBlob("schedule:$it"); Unit },
         )
+    }
+
+    val schedules get() = scheduleRepository.value
+
+    internal suspend fun cachedSchedules(machine: String): ByteArray? = withContext(dispatcher) {
+        if (security.record().head.core.members.none { it.id == machine && it.kind == 1u }) return@withContext null
+        val raw = cache?.blob("schedule:$machine") ?: return@withContext null
+        val snapshot = kotlinx.serialization.json.Json.parseToJsonElement(raw.decodeToString()).jsonObject
+        val env = Envelope.parseFrom(java.util.Base64.getDecoder().decode(snapshot.text("envelope")))
+        val (_, reply) = openSecureMessage(keys?.command ?: ByteArray(0), env,
+            Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machine, requestId = snapshot.text("request")), CommandResult::parseFrom, live = false)
+        require(reply.hasSchedule() && reply.errorCode.isEmpty())
+        reply.schedule.resultJson.toByteArray()
     }
 
     private val machines = HashMap<String, MachineView>()
@@ -728,6 +742,7 @@ class Remote(
             archiveMachines.addAll(
                 security.chain().flatMap { it.core.members }.filter { it.kind == 1u }.map { it.id },
             )
+            for (id in archiveMachines) if (id !in trustedMembers) cache.removeBlob("schedule:$id")
             authorityDeviceId = identity.second.core.authorityID
             leaseEnd = security.record().leaseExpiration()
             for (m in cache.machines()) {
@@ -997,6 +1012,8 @@ class Remote(
         // opened for a page or a lookup asked for before must not be taken after this.
         removedPushes[id] = (removedPushes[id] ?: 0) + 1
         machines.remove(id)
+        if (scheduleRepository.isInitialized()) schedules.forget(id)
+        cache?.removeBlob("schedule:$id")
         verifiedMachineMetadata.remove(id)
         val sids = sessions.values.filter { it.machineId == id }.map { it.id }
         for (sid in sids) {
@@ -2406,6 +2423,11 @@ class Remote(
             )
             for ((id, m) in machines) if (id in archiveMachines && id !in members)
                 newMachines[id] = m.copy(online = false)
+            for (id in archiveMachines) if (id !in members) {
+                if (scheduleRepository.isInitialized()) schedules.forget(id)
+                cache?.removeBlob("schedule:$id")
+            }
+            if (scheduleRepository.isInitialized()) members.keys.forEach { schedules.allow(it) }
             trustedMembers.clear()
             trustedMembers.putAll(members)
             trustedMetadata.clear()
@@ -3201,6 +3223,9 @@ class Remote(
                             msg.errorMessage.ifEmpty { msg.errorCode },
                             fromDaemon = true,
                         )
+                    if (p.command?.hasSchedule() == true && p.command.schedule.operation == "list" && msg.hasSchedule() && trustedMembers[p.machineId]?.kind == 1u) {
+                        cache?.putBlob("schedule:${p.machineId}", scheduleSnapshot(p.requestId, res.result))
+                    }
                     return msg
                 } catch (ce: ConnectException) {
                     waiting = false

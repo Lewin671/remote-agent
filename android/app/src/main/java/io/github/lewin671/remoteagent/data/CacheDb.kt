@@ -67,6 +67,7 @@ class BlobRow(val name: String, val data: ByteArray)
 interface CacheDao {
     @Query("SELECT * FROM blobs WHERE name = :name") suspend fun blob(name: String): BlobRow?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(b: BlobRow)
+    @Query("DELETE FROM blobs WHERE name = :name") suspend fun deleteBlob(name: String)
     @Query("SELECT * FROM machines") suspend fun machines(): List<MachineRow>
     @Query("SELECT * FROM sessions WHERE listed = 1") suspend fun sessions(): List<SessionRow>
     @Query("SELECT * FROM events WHERE sessionId = :sid ORDER BY seq") suspend fun events(sid: String): List<EventRow>
@@ -107,6 +108,7 @@ interface CacheDao {
             deleteSession(sid)
         }
         deleteMachine(id)
+        deleteBlob("schedule:$id")
     }
 
     @Transaction
@@ -269,6 +271,7 @@ class RoomCache(
     }
     override suspend fun unlistSession(id: String) = dao.unlist(id)
     override suspend fun keepOwner(s: RemoteSession) = dao.putIfAbsent(SessionRow(s.sessionId, s.machineId, s.toByteArray(), listed = false))
+    override suspend fun removeBlob(name: String) = dao.deleteBlob(name)
     override suspend fun blob(name: String) = dao.blob(name)?.data
     override suspend fun putBlob(name: String, data: ByteArray) = dao.put(BlobRow(name, data))
 }

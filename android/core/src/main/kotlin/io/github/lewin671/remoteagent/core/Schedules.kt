@@ -174,25 +174,28 @@ class ScheduleRepository(
     private val remoteState: StateFlow<RemoteState>,
     private val send: suspend (String, ScheduleRequest) -> ByteArray,
     private val read: suspend (String) -> ByteArray? = { null },
-    private val write: suspend (String, ByteArray) -> Unit = { _, _ -> },
-    private val cacheKey: ByteArray,
+    private val clear: suspend (String) -> Unit = {},
 ) {
     private val _state = MutableStateFlow<Map<String, ScheduleSnapshot>>(emptyMap())
     val state = _state.asStateFlow()
     private val worker = scope.coroutineContext.minusKey(Job)
     private val loaded = HashSet<String>()
+    private val removed = HashSet<String>()
+    fun forget(id: String) { removed.add(id); loaded.remove(id); jobs.remove(id)?.cancel(); _state.value = _state.value - id }
+    fun allow(id: String) { removed.remove(id) }
     private val locks = HashMap<String, Mutex>()
     private val jobs = HashMap<String, Job>()
     init { scope.launch {
         remoteState.map { s -> s.machines.mapValues { (_, m) -> Triple(scheduleWritable(s, m.id), m.meta?.scheduleRevision ?: 0L, scheduleSupported(m)) } }.distinctUntilChanged().collect { machines ->
+            for (id in _state.value.keys - machines.keys) { forget(id); clear(id) }
             _state.value = _state.value.filterKeys { machines[it]?.third == true }
-            for ((id, flags) in machines) if (flags.third) {
+            for ((id, flags) in machines) if (flags.third && id !in removed) {
                 if (loaded.add(id)) restore(id)
                 if (flags.first && (state.value[id]?.revision != flags.second || state.value[id]?.cached != false)) request(id)
             }
         }
     } }
-    fun tasks(s: RemoteState = remoteState.value) = state.value.values.flatMap { it.tasks }.filter { scheduleSupported(s.machines[it.machine]) }
+    fun tasks(s: RemoteState = remoteState.value) = state.value.values.flatMap { it.tasks }.filter { it.machine !in removed && scheduleSupported(s.machines[it.machine]) }
     private fun set(id: String, f: (ScheduleSnapshot) -> ScheduleSnapshot) { _state.value = _state.value + (id to f(_state.value[id] ?: ScheduleSnapshot())) }
     private fun request(id: String) {
         if (jobs[id]?.isActive == true) return
@@ -204,30 +207,25 @@ class ScheduleRepository(
         }
     }
     suspend fun refresh(id: String, revision: Long = remoteState.value.machines[id]?.meta?.scheduleRevision ?: 0L) = withContext(worker) { locks.getOrPut(id) { Mutex() }.withLock {
-        if (!scheduleWritable(remoteState.value, id)) return@withLock
+        if (id in removed || !scheduleWritable(remoteState.value, id)) return@withLock
         set(id) { it.copy(loading = true, error = "") }
         try {
             val raw = send(id, ScheduleRequest.newBuilder().setOperation("list").build())
             val obj = Json.parseToJsonElement(raw.decodeToString()).jsonObject
             val tasks = (obj["tasks"] as? JsonArray).orEmpty().map { ScheduledTask(id, it.jsonObject) }
-            if (!scheduleSupported(remoteState.value.machines[id])) return@withLock
+            if (id in removed || !scheduleSupported(remoteState.value.machines[id])) return@withLock
             set(id) { ScheduleSnapshot(revision, tasks, cached = false) }
-            val data = buildJsonObject { put("revision", revision); put("data", obj) }.toString().toByteArray()
-            val header = Header.newBuilder().setKind(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT).setMachineId(id).setRequestId("schedule-cache").build()
-            write(id, Envelopes.seal(cacheKey, header, data).toByteArray())
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) { set(id) { it.copy(error = errorText(e)) } }
-        finally { set(id) { it.copy(loading = false) } }
+        finally { if (id !in removed) set(id) { it.copy(loading = false) } }
     }
     }
     private suspend fun restore(id: String) {
         try {
-            val bytes = read(id) ?: return
-            val (h, raw) = Envelopes.open(cacheKey, Envelope.parseFrom(bytes))
-            require(h.machineId == id && h.requestId == "schedule-cache" && h.kind == PayloadKind.PAYLOAD_KIND_COMMAND_RESULT)
+            val raw = read(id) ?: return
             val obj = Json.parseToJsonElement(raw.decodeToString()).jsonObject
-            val tasks = (obj.obj("data")["tasks"] as? JsonArray).orEmpty().map { ScheduledTask(id, it.jsonObject) }
-            set(id) { ScheduleSnapshot(obj.long("revision"), tasks, cached = true) }
+            val tasks = (obj["tasks"] as? JsonArray).orEmpty().map { ScheduledTask(id, it.jsonObject) }
+            if (id !in removed) set(id) { ScheduleSnapshot(tasks = tasks, cached = true) }
         } catch (e: CancellationException) { throw e
         } catch (_: Exception) { set(id) { it.copy(error = "上次的任务列表无法读取，联网后重新读取") } }
     }
@@ -255,3 +253,8 @@ class ScheduleRepository(
         }
     }
 }
+
+/** The exact signed response plus its original request binding, never locally re-encrypted JSON. */
+internal fun scheduleSnapshot(request: String, envelope: Envelope): ByteArray = buildJsonObject {
+    put("request", request); put("envelope", java.util.Base64.getEncoder().encodeToString(envelope.toByteArray()))
+}.toString().toByteArray()

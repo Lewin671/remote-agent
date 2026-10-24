@@ -50,6 +50,13 @@ class RoomCacheTest {
         RoomCache(dao, access, parentScope = backgroundScope, budget = budget, clock = { now }, reclaim = reclaim)
             .also { caches += it }
 
+    @Test fun removingAComputerClearsItsSignedScheduleSnapshotOnly() = runTest {
+        val c=cache(database().dao(),1024)
+        c.putBlob("schedule:removed",byteArrayOf(1));c.putBlob("schedule:retained",byteArrayOf(2))
+        c.removeMachine("removed")
+        assertNull(c.blob("schedule:removed"));assertArrayEquals(byteArrayOf(2),c.blob("schedule:retained"))
+    }
+
     private fun event(seq: Long) = StoredEvent.newBuilder().setSeq(seq)
         .setEnvelope(Envelope.newBuilder().setCiphertext(ByteString.copyFrom(ByteArray(64) { 7 }))).build()
     private val bytes get() = event(1).serializedSize.toLong()

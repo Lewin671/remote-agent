@@ -15,6 +15,7 @@ import io.github.lewin671.remoteagent.proto.UserMessage
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.json.jsonObject
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
@@ -2098,10 +2099,39 @@ class RemoteTest {
             assertTrue(devices.containsKey(joined.deviceId))
             assertTrue(devices.containsKey(a.account.deviceId))
         }
+    @Test fun scheduledSnapshotsKeepSignedRepliesAndVerifyThemAgainOffline() = runBlocking<Unit> {
+        val memory=MemoryCache();val r=client(cache=memory);r.start()
+        r.awaitState("connected") { it.conn==ConnState.ONLINE && it.machines[daemon.account.deviceId]?.online==true }
+        val originalAnswer=daemon.answer
+        val json="""{"tasks":[{"id":"task","spec":{"title":"Private scheduled content"}}]}""".toByteArray()
+        daemon.answer={ h,c -> if(c.hasSchedule()) io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFrom(json))).build() else originalAnswer(h,c) }
+        r.machineCommand(daemon.account.deviceId,io.github.lewin671.remoteagent.proto.Command.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleRequest.newBuilder().setOperation("list")).build())
+        val key="schedule:${daemon.account.deviceId}";val stored=memory.blob(key)!!
+        assertFalse(stored.decodeToString().contains("Private scheduled content"))
+        assertArrayEquals(json,r.cachedSchedules(daemon.account.deviceId))
+        val snapshot=kotlinx.serialization.json.Json.parseToJsonElement(stored.decodeToString()).jsonObject
+        val env=io.github.lewin671.remoteagent.proto.Envelope.parseFrom(java.util.Base64.getDecoder().decode(snapshot.text("envelope")))
+        assertFalse(env.signature.isEmpty);assertFalse(env.securityHeader.isEmpty)
+        memory.putBlob(key,scheduleSnapshot("wrong-request",env))
+        assertTrue(runCatching { r.cachedSchedules(daemon.account.deviceId) }.isFailure)
+        memory.putBlob(key,scheduleSnapshot(snapshot.text("request"),env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(ByteArray(64))).build()))
+        assertTrue(runCatching { r.cachedSchedules(daemon.account.deviceId) }.isFailure)
+        memory.putBlob(key,stored)
+        val cold=fixtureRemote(r.account,http,memory);closers+=AutoCloseable { cold.close() }
+        assertArrayEquals(json,cold.cachedSchedules(daemon.account.deviceId))
+        removeAsAuthority(daemon.phone,daemon.account.deviceId,http)
+        r.refresh()
+        assertNull(memory.blob(key));assertNull(r.cachedSchedules(daemon.account.deviceId))
+    }
+
 }
 
 /** A CipherCache in memory, as the Room one behaves. */
 class MemoryCache : CipherCache {
+    val blobs = ConcurrentHashMap<String, ByteArray>()
+    override suspend fun blob(name: String) = blobs[name]
+    override suspend fun putBlob(name: String, data: ByteArray) { blobs[name] = data }
+    override suspend fun removeBlob(name: String) { blobs.remove(name) }
     val images = ConcurrentHashMap<String, ByteArray>()
 
     override suspend fun image(key: String) = images[key]
@@ -2146,6 +2176,7 @@ class MemoryCache : CipherCache {
 
     override suspend fun removeMachine(id: String) {
         machines.remove(id)
+        blobs.remove("schedule:$id")
         sessions.values
             .filter { it.machineId == id }
             .forEach {

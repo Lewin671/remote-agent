@@ -95,7 +95,7 @@ class SchedulesTest {
         val repo = ScheduleRepository(backgroundScope, remote, send = { _, _ ->
             calls++; if (calls == 1) gate.await()
             """{"tasks":[]}""".toByteArray()
-        }, cacheKey = ByteArray(32))
+        })
         runCurrent(); assertEquals(1, calls)
         remote.value = online(2); runCurrent(); gate.complete(Unit); runCurrent()
         assertEquals(2, calls); assertEquals(2L, repo.state.value["computer"]!!.revision)
@@ -104,20 +104,14 @@ class SchedulesTest {
         // No change and a verified list: reconnect does not poll.
         assertEquals(2, calls)
     }
-    @Test fun cacheIsCiphertextAndOfflineListsAreReadOnly() = runTest {
-        val remote = MutableStateFlow(online())
-        var saved: ByteArray? = null
-        val json = """{"tasks":[${task().json}]}""".toByteArray()
-        val repo = ScheduleRepository(backgroundScope, remote, { _, _ -> json }, write = { _, b -> saved = b }, cacheKey = ByteArray(32))
-        runCurrent()
-        assertFalse(saved!!.decodeToString().contains("Nothing changed"))
-        assertFalse(saved!!.decodeToString().contains("Check"))
-        remote.value = online(1, false); runCurrent()
-        assertEquals(1, repo.tasks().size)
-        assertTrue(runCatching { repo.operate("computer", "pause", task()) }.isFailure)
-        val restored = ScheduleRepository(backgroundScope, remote, { _, _ -> error("offline must not send") }, read = { saved }, cacheKey = ByteArray(32))
-        runCurrent(); assertEquals("Check", restored.tasks().single().title); assertTrue(restored.state.value["computer"]!!.cached)
-        remote.value = online(capable = false); runCurrent(); assertTrue(restored.tasks().isEmpty())
+    @Test fun verifiedOfflineListsAreReadOnlyAndRemovedTasksDisappear() = runTest {
+        val remote = MutableStateFlow(online(connected = false))
+        val bytes = """{"tasks":[${task().json}]}""".toByteArray()
+        var cleared = false
+        val repo = ScheduleRepository(backgroundScope, remote, { _, _ -> error("offline must not send") }, read = { bytes }, clear = { cleared = true })
+        runCurrent(); assertEquals("Check",repo.tasks().single().title); assertTrue(repo.state.value["computer"]!!.cached)
+        assertTrue(runCatching { repo.operate("computer","pause",task()) }.isFailure)
+        remote.value = RemoteState(); runCurrent(); assertTrue(repo.tasks().isEmpty()); assertTrue(cleared)
     }
     @Test fun mutationsCarryRevisionAndCreationIdentityAndConflictsRefresh() = runTest {
         val remote = MutableStateFlow(online())
@@ -126,7 +120,7 @@ class SchedulesTest {
             requests += req
             if(req.operation == "update") throw CommandException("aborted", "scheduled task changed", true)
             (if(req.operation == "list") """{"tasks":[${task().json}]}""" else task().json.toString()).toByteArray()
-        }, cacheKey = ByteArray(32))
+        })
         runCurrent()
         repo.operate("computer", "create", spec = task().spec, requestId = "stable")
         repo.operate("computer", "create", spec = task().spec, requestId = "stable")
@@ -158,7 +152,7 @@ class SchedulesTest {
                 assertEquals("Renamed", spec.text("title")); assertEquals(t.revision, req.expectedRevision)
                 JsonObject(t.json + ("spec" to spec)).toString().toByteArray()
             } else """{"tasks":[]}""".toByteArray()
-        }, cacheKey = ByteArray(32))
+        })
         runCurrent(); requests.clear()
         repo.rename(t, "Check")
         assertTrue(requests.isEmpty())
