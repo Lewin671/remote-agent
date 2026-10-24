@@ -75,8 +75,9 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
         public var from: String?
         public var images: [PBImageRef]
         public var seq: UInt64
+        public var scheduledRunID: String
 
-        public init(key: String, text: String, local: Bool, time: Int64, from: String? = nil, images: [PBImageRef] = [], seq: UInt64 = 0) {
+        public init(key: String, text: String, local: Bool, time: Int64, from: String? = nil, images: [PBImageRef] = [], seq: UInt64 = 0, scheduledRunID: String = "") {
             self.key = key
             self.text = text
             self.local = local
@@ -84,6 +85,7 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
             self.from = from
             self.images = images
             self.seq = seq
+            self.scheduledRunID = scheduledRunID
         }
     }
 
@@ -501,7 +503,10 @@ public func buildChat(
                 .user(
                     .init(
                         key: k, text: imageText(m.text, refs: m.images), local: d.typedLocally.contains(e.seq), time: eventTime(e),
-                        from: sender(e, d: d, machine: machine, who: who), images: m.images, seq: e.seq)))
+                        from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone), images: m.images, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
+        case .scheduledNotification(let notification):
+            flush()
+            out.append(.note(.init(key: k, text: "通知你：" + notification.text)))
         case .agentMessage(let m):
             if !m.text.jvmIsBlank {
                 flush()
@@ -660,7 +665,7 @@ public struct ChatProjection: Sendable {
                         .user(
                             .init(
                                 key: key, text: imageText(m.text, refs: m.images), local: d.typedLocally.contains(e.seq),
-                                time: eventTime(e), from: sender(e, d: d, machine: machine, who: who), images: m.images, seq: e.seq)))
+                                time: eventTime(e), from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone), images: m.images, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
                 case .agentMessage(let m): if !m.text.jvmIsBlank { items.append(.agent(.init(key: key, text: m.text))) }
                 case .reasoning(let r): if !r.text.jvmIsBlank { items.append(.thought(.init(key: key, text: r.text))) }
                 default: break

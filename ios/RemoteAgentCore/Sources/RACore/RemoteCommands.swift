@@ -162,6 +162,10 @@ extension Remote {
                         msg.errorCode, msg.errorMessage.isEmpty ? msg.errorCode : msg.errorMessage,
                         fromDaemon: true)
                 }
+                if case .schedule(let request) = p.command?.kind, request.operation == "list",
+                   (try? decodeScheduleList(msg)) != nil, let bytes = try? res.result.serializedData() {
+                    await cache?.putBlob(name: "schedules/" + p.machineId, data: bytes)
+                }
                 return msg
             } catch let ce as ConnectError {
                 if neverSent(ce.exception) { throw notSent("network", "网络不通，指令没有发出") }
