@@ -20,7 +20,12 @@ final class ScheduleDraft {
         var t = ScheduleTrigger(type: "calendar"); t.time = "08:00"; t.timezone = TimeZone.current.identifier
         trigger = t
     }
+    func creationIssue(session: SessionView?, state: RemoteState) -> String? {
+        guard session == nil, let c = config else { return nil }
+        return (c.mode ?? defaultModeOf(state.machines[c.machineId], agent: c.agent).mode) == .plan ? "计划模式不能创建执行任务，请先选择其他权限" : nil
+    }
     func spec(session: SessionView?, state: RemoteState) -> ScheduleSpec? {
+        guard creationIssue(session: session, state: state) == nil else { return nil }
         var target: ScheduleTarget
         if let session {
             target = ScheduleTarget(type: "resume_session"); target.session = session.id
@@ -80,6 +85,7 @@ struct NewScheduleScreen: View {
                         .disabled(draft.mutation.frozen)
                         if !machine.isEmpty && !supported { Hint("这台电脑需要更新 remote-agent 才能使用定时任务。", color: Theme.orangeInk).padding(.horizontal, 16) }
                         if !machine.isEmpty && supported && !context.schedules.online(machine) { Hint("电脑不在线，连上后才能创建任务。").padding(.horizontal, 16) }
+                        if let issue = draft.creationIssue(session: session, state: state) { Hint(issue, color: Theme.orangeInk).padding(.horizontal, 16) }
                         if sessionID.isEmpty { Hint("每次新开一个对话，归在任务下面。立即运行一次不占自动次数及日历当天名额。").padding(.horizontal, 16) }
                         if !draft.mutation.error.isEmpty { Banner(draft.mutation.error, tone: .error).padding(16) }
                         if draft.mutation.frozen {

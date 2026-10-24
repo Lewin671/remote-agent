@@ -96,6 +96,12 @@ import UIKit
         #expect(try JSONDecoder().decode(ScheduleSpec.self,from:command.schedule.specJson).title==original.spec.title)
         #expect(editor.task?.revision != remote.revision)
     }
+    @Test func planDefaultsRemainPlanAndCannotCreateAnExecutionTask() {
+        let draft=ScheduleDraft();draft.message="检查";draft.config=NewConfig(machineId:"m",cwd:"/example",mode:.plan)
+        #expect(draft.spec(session:nil,state:state())==nil)
+        #expect(draft.creationIssue(session:nil,state:state())=="计划模式不能创建执行任务，请先选择其他权限")
+        #expect(draft.spec(session:SessionView(id:"s",machineId:"m"),state:state())?.target.type=="resume_session")
+    }
     @Test func creationKeyStaysStableForRetriesAndChangesWithTheDefinition() throws {
         let draft = ScheduleDraft(); draft.message = "检查"
         draft.config = NewConfig(machineId: "m", cwd: "/example")
