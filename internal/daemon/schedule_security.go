@@ -29,7 +29,7 @@ func (d *Daemon) restrictMCPTask(t *schedule.Task, freeze bool) error {
 	if err != nil {
 		return mcpScheduleDenied()
 	}
-	if freeze {
+	{
 		tr := t.Spec.Trigger
 		if tr.Type == "interval" && tr.IntervalSeconds < 300 || tr.Type == "after_turn" && tr.Repeat && tr.DelaySeconds < 60 {
 			return connect.NewError(connect.CodePermissionDenied, errors.New("MCP recurring tasks require interval_seconds >= 300 or repeat delay_seconds >= 60"))

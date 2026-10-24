@@ -85,3 +85,35 @@ func TestTakeoverNeedsVerifiedHumanOrExplicitResume(t *testing.T) {
 		t.Fatal("resume takeover lost on replay")
 	}
 }
+
+func TestMCPRunAndResumeRecheckMinimumIntervals(t *testing.T) {
+	for _, typ := range []string{"interval", "after_turn"} {
+		for _, op := range []string{"run", "resume"} {
+			t.Run(typ+op, func(t *testing.T) {
+				h := scopedHarness(t, "ask")
+				tr := schedule.Trigger{Type: typ, IntervalSeconds: 300}
+				if typ == "after_turn" {
+					tr.IntervalSeconds = 0
+					tr.Repeat = true
+					tr.DelaySeconds = 60
+				}
+				spec := taskSpec(tr)
+				raw, err := scopedSchedule(t, h, "create", "", &spec)
+				if err != nil {
+					t.Fatal(err)
+				}
+				task := decodeScopedTask(t, raw)
+				old := h.d.tasks[task.ID]
+				old.Spec.Trigger.IntervalSeconds = 1
+				if typ == "after_turn" {
+					old.Spec.Trigger.IntervalSeconds = 0
+					old.Spec.Trigger.DelaySeconds = 1
+				}
+				old.Status = "paused"
+				if _, err := scopedSchedule(t, h, op, task.ID, nil); connect.CodeOf(err) != connect.CodePermissionDenied {
+					t.Fatalf("%s allowed short interval: %v", op, err)
+				}
+			})
+		}
+	}
+}
