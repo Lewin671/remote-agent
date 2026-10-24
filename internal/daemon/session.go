@@ -1486,7 +1486,7 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	switch p.HookEventName {
 	case "SessionStart":
 		s.bindRollout(p.SessionID, p.TranscriptPath)
-		return nil, s.admitScheduledContext("session start hook", func() error { return nil })
+		return nil, s.withLatestOrCachedContext("session start hook", func() error { return nil })
 	case "PermissionRequest":
 		s.bindRollout(p.SessionID, p.TranscriptPath)
 		return s.permission(ctx, p)
@@ -1496,7 +1496,7 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	}
 	if evs := s.ag.HookEvents(p); len(evs) > 0 {
 		s.bindRollout(p.SessionID, p.TranscriptPath)
-		return nil, s.admitScheduledContext("hook", func() error {
+		return nil, s.withLatestOrCachedContext("hook", func() error {
 			turn := p.TurnID
 			if turn == "" {
 				turn = p.PromptID
@@ -1531,7 +1531,7 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	var tc *pb.TurnContext
 	var exited bool
-	if err := s.admitScheduledContext("permission request", func() error {
+	if err := s.withLatestOrCachedContext("permission request", func() error {
 		s.mu.Lock()
 		tc, exited = s.context, s.meta.Exited
 		s.mu.Unlock()

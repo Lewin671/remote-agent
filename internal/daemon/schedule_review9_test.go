@@ -182,7 +182,7 @@ func TestContextRequestPathsShareAdmission(t *testing.T) {
 				h.s.meta.Exited = true
 				err = h.s.settleExited()
 			}
-			if op == "interrupt" {
+			if op == "interrupt" || op == "hook" {
 				if err != nil {
 					t.Fatalf("cached idle interrupt failed: %v", err)
 				}
@@ -236,17 +236,25 @@ func TestScheduledContextKeepsInspectionAndStoppingAvailable(t *testing.T) {
 	}
 }
 
-func TestHookStartAndPermissionRequireAdmission(t *testing.T) {
+func TestHooksRefreshOrUseCachedContext(t *testing.T) {
 	for _, event := range []string{"SessionStart", "PermissionRequest"} {
-		t.Run(event, func(t *testing.T) {
-			h := scheduleTranscriptHarness(t, true)
-			defer h.s.log.Close()
-			h.s.reader = tail.NewReader(h.dir, 0)
-			h.d.cfg.ApprovalTimeout = 50 * time.Millisecond
-			_, err := h.s.hook(context.Background(), &agent.Hook{HookEventName: event, ToolName: "Bash", ToolInput: json.RawMessage(`{"command":"true"}`)})
-			if connect.CodeOf(err) != connect.CodeUnavailable {
-				t.Fatalf("%s ignored failed admission: %v", event, err)
-			}
-		})
+		for _, fault := range []bool{false, true} {
+			t.Run(event+map[bool]string{false: "/fresh", true: "/fault"}[fault], func(t *testing.T) {
+				h := scheduleTranscriptHarness(t, true)
+				defer h.s.log.Close()
+				native := writeScheduledTranscriptInput(t, h, "scheduled", true)
+				h.d.cfg.ApprovalTimeout = 50 * time.Millisecond
+				if fault {
+					h.s.reader = tail.NewReader(h.dir, 0)
+				}
+				_, err := h.s.hook(context.Background(), &agent.Hook{HookEventName: event, ToolName: "Bash", ToolInput: json.RawMessage(`{"command":"true"}`)})
+				if err != nil {
+					t.Fatalf("%s failed solely because transcript was unavailable: %v", event, err)
+				}
+				if !fault && h.s.scheduledTask != native.ID {
+					t.Fatal("hook did not refresh available transcript")
+				}
+			})
+		}
 	}
 }
