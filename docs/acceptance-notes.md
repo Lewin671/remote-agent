@@ -733,3 +733,23 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 验证结果：`go test ./...` 全量通过；`go test -race ./internal/daemon ./internal/relay ./internal/server ./internal/schedule ./internal/schedulemcp` 五个包全部通过。`python3 scripts/check-schedule-regressions.py --clients` 不带 `--only` 完整执行到退出码 0，95 个 Go 与 23 个三端变异，共 118 个全部实际检出，包含本轮 8 个。执行后核对全部结果名与定义完全一致，所有变异目标均已恢复。
 
 本轮使用隔离 harness、实际原生 parser、合成 transcript 和本地 Connect handler 测试；没有重走真实 CLI、实际推送送达或产品界面，三端产品代码未改。
+
+### 定时任务第十轮反馈：安全控制与通知身份
+
+2026-10-24，只在任务 worktree 提交，协议和产品版本未改，没有推送、发版或部署。入口清单已按本轮原则重写，见 [定时上下文准入](architecture.md#定时上下文的请求准入)：严格读取只覆盖 create/update/resume/run 与 notify_user，不能因为读取失败禁用中断、审批、hooks 或停止调度。
+
+| 反馈 | 修法与回归 |
+|---|---|
+| 1 | Interrupt 两次刷新改为尽力读取，失败记日志，按缓存 running 发 Esc。`TestInterruptSurvivesTranscriptFault` 覆盖读取与事件提交失败；第九轮的新鲜轮次读取测试继续保留 |
+| 2 | SessionStart、PermissionRequest、PreToolUse 改为尽力刷新，失败不返回 Unavailable；缓存中的远程审批照常受理。`TestRemoteApprovalSurvivesTranscriptReadFault` 在读取目录失败时收到真实审批卡并由 resolve 允许；`TestHooksRefreshOrUseCachedContext` 保留新鲜导入和失败缓存两种验证 |
+| 3 | list/get/pause/cancel 不进入 transcript 准入；严格任务写操作在读取锁与调度锁共同持有时完成判断，释放读取锁后继续持调度锁准备与保存。`TestScheduleSafetyOperationsBypassTranscript` 在读取锁被占用且 transcript 不可读时验证本地/MCP 四类操作；`TestScheduleSaveReleasesTranscriptLock` 阻塞 schedules.json 保存，验证读取锁可用而其他任务控制不能超越保存；本地四类严格操作与第八、九轮的先于轮询/读取提交失败测试仍通过。退出结算保留改造前的未决输入安全规则，不再包装为 MCP 身份准入 |
+| 4 | 发消息触发的恢复使用系统来源，生命周期锁覆盖恢复与队列持久受理；恢复本身不清归属。失败重启的 CLI 重新允许原关闭流程处理，成功以既有持久队列接手为准；明确点击恢复仍接手。`TestImplicitResumeWaitsForDurableInputOwnership` 覆盖 CLIENT/LOCAL × 图片过期/额度满/队列保存失败/成功/事件追加失败/目录同步不确定，并核对落盘归属与实际关闭；`TestExplicitResumeStillClaimsTaskSession` 保留明确恢复语义 |
+| 5 | Web tag 增加公开事件去重键，类别仍在末尾；FCM 同时携带 event，Android 用会话/event 的 tag 区分显示，普通通知数字 ID/替换不变。`TestScheduledPushDisplayIdentity`、`TestScheduledFCMIncludesEventIdentity` 核对不同事件共存、同事件重投及实际 FCM 数据；网页实际 worker 测试核对保留 tag 和前台规则；Android `ScheduledPushIdentityTest` 通过 NotificationManager 确认两条结果共存、重投不新增、普通通知仍替换 |
+
+第九轮中要求安全操作因读取失败返回 Unavailable 的测试预期已按本轮产品决定替换，保留新鲜读取的正向覆盖。对应变异同步改为检验新鲜读取或恢复原退出结算的读前边界；没有保留与本轮决定冲突的预期。
+
+本轮验证：`go test ./...` 全量通过；`go test -race ./internal/daemon ./internal/relay ./internal/server ./internal/schedule ./internal/schedulemcp` 五个包全包通过。网页 `pnpm --dir web typecheck` 与 `pnpm --dir web exec vitest run src/sw.test.ts src/push.test.ts` 通过，共 49 个测试；Android `./gradlew :app:testDebugUnitTest` 全量通过，304 个测试，无失败、错误或跳过。
+
+`python3 scripts/check-schedule-regressions.py --clients` 不带 `--only` 完整执行到结束，退出码 0：103 个 Go 与 24 个网页/Android/iOS 变异，共 127 个全部实际检出，包括本轮新增的 9 个。新增位点覆盖中断和审批恢复严格读取、调度安全操作恢复准入、任务落盘重新持有读取锁、隐式恢复提前接手与未重新交给关闭流程、Web tag 丢失事件键、FCM 缺少事件键、Android tag 丢失事件键。每组先通过原测试，变异后要求断言失败，编译失败不算检出；最终核对结果名与全部定义完全一致，源码恢复后只有本轮文档待提交。
+
+环境为隔离 Go harness、实际原生 transcript parser、伪终端、网页实际 worker 脚本与 Robolectric NotificationManager。FCM 测试使用本地假服务核对实际请求数据；没有重走真实 CLI、真实推送服务送达或真机产品界面，iOS 产品代码未改。
