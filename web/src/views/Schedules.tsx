@@ -55,6 +55,7 @@ import {
 import {
   ConfigSheet,
   NewFlow,
+  NewProjectSheet,
   useNewSession,
   useMachineInfo,
   type Go,
@@ -1095,11 +1096,11 @@ function TaskTargetEditor({
         />
       )}
       {project && (
-        <NewFlow
+        <NewProjectSheet
           remote={remote}
-          go={() => {}}
+          fixedMachine={machineId}
           onClose={() => setProject(false)}
-          onPicked={(cwd) => {
+          onDone={(_, cwd) => {
             setCfg((c) => ({ ...c, cwd }));
             setProject(false);
           }}

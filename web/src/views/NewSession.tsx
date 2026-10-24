@@ -1014,8 +1014,8 @@ export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会�
 }
 
 /** A new project: a machine, then a folder on it. */
-export function NewProjectSheet({ remote, onBack, onDone, onClose }: { remote: Remote; onBack?: () => void; onDone: (machineId: string, path: string) => void; onClose: () => void }) {
-  const machines = [...remote.machines.values()].sort((a, b) => Number(b.online) - Number(a.online) || machineName(a).localeCompare(machineName(b)));
+export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine }: { remote: Remote; onBack?: () => void; onDone: (machineId: string, path: string) => void; onClose: () => void; fixedMachine?: string }) {
+  const machines = [...remote.machines.values()].filter(m => !fixedMachine || m.id === fixedMachine).sort((a, b) => Number(b.online) - Number(a.online) || machineName(a).localeCompare(machineName(b)));
   const [machineId, setMachineId] = useState(machines.find((m) => m.online)?.id ?? "");
   const m = remote.machines.get(machineId);
   return (
@@ -1026,7 +1026,7 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose }: { remote: R
             <ChevronLeft />
           </button>
         )}
-        <b>新项目 · 选目录</b>
+        <b>{fixedMachine ? "项目 · 选目录" : "新项目 · 选目录"}</b>
         <button className="link" onClick={onClose}>
           取消
         </button>
@@ -1034,7 +1034,7 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose }: { remote: R
       <div className="recent">
         <small>机器</small>
         {machines.map((x) => (
-          <button key={x.id} className={x.id === machineId ? "on" : ""} disabled={!x.online} onClick={() => setMachineId(x.id)}>
+          <button key={x.id} className={x.id === machineId ? "on" : ""} disabled={!x.online || !!fixedMachine} onClick={() => setMachineId(x.id)}>
             <Dot tone={x.online ? "idle" : "off"} />
             {machineName(x)}
           </button>

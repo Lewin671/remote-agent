@@ -13,7 +13,7 @@ import {
 import { SessionPage } from "./Session";
 import { task, run } from "../test/schedule-fixture";
 import { clockTime, scheduleOffline, scheduleEmpty } from "../schedules";
-import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalMode, Agent } from "../gen/remoteagent/v1/event_pb";
 import type { ScheduleTask } from "../schedules";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -701,12 +701,14 @@ it("defaults dual limits to count and preserves the deadline when only the zone 
 
 it("edits CLI choices and inherited settings only on the task computer",async()=>{
  const t=task();const r=remote([t]);r.sessions.clear();
- const m=r.machines.get("mac")!;const other=structuredClone(m);other.id="other";other.meta!.agents=other.meta!.agents.filter(a=>a.agent===2);r.machines.set("other",other);
+ const m=r.machines.get("mac")!;const other=structuredClone(m);other.id="other";other.meta!.hostname="另一个电脑";other.meta!.agents=other.meta!.agents.filter(a=>a.agent===Agent.CLAUDE);r.machines.set("other",other);
  r.prefs.snap!.prefs.settings[0].path=t.spec.target.cwd!;r.prefs.snap!.prefs.settings[0].machineId="other";
  r.prefs.snap!.prefs.settings[0].agents.forEach(a=>{a.model="other-only-model";a.mode=ApprovalMode.FULL_ACCESS;});
  const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(t);
  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);await click(/^在哪运行/);
- expect(button("Codex")).toBeTruthy();await click("Codex");await click("保存");
+ expect(button("Codex")).toBeTruthy();
+ await click(/^项目/);expect(button("另一个电脑")).toBeUndefined();expect(button("MacBook")?.disabled).toBe(true);await click("取消");
+ await click("Codex");await click("保存");
  expect(send.mock.calls[0][2].spec?.target).toMatchObject({agent:"codex",model:"",mode:"auto"});
 });
 
