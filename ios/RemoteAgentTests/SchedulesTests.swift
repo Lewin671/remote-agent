@@ -148,6 +148,13 @@ import UIKit
 }
 
 @MainActor @Suite struct ScheduleAlignmentTests {
+    @Test func unloadedConversationMetadataUsesTheSharedPlaceholder() {
+        var task = ScheduleStoreTests().task(); task.spec.target = ScheduleTarget(type:"resume_session"); task.spec.target.session = "s"
+        var state = ScheduleStoreTests().state(); state.sessions["s"] = SessionView(id:"s",machineId:"m")
+        #expect(scheduleLocation(task,state:state,machine:"m") == "在对话里")
+        state.sessions["s"]?.info = PBSession.with { $0.title = "修复登录超时" }
+        #expect(scheduleLocation(task,state:state,machine:"m") == "在「修复登录超时」里")
+    }
     @Test func onlySystemStopsAndExpiredPausesShowAReasonBanner() {
         var task = ScheduleStoreTests().task(); task.status = "paused"
         func visible() -> Bool { ScheduleEditAccess(task:task,online:true,saving:false,unknown:false).showsReason }

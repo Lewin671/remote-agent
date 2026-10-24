@@ -95,7 +95,7 @@ export function ScheduleRow({
   const target = task.spec.target;
   const location =
     target.type === "resume_session"
-      ? remote.sessions.has(target.session ?? "") ? `在「${titleOf(remote.sessions.get(target.session!)!)}」里` : "在对话里"
+      ? remote.sessions.get(target.session ?? "")?.info ? `在「${titleOf(remote.sessions.get(target.session!)!)}」里` : "在对话里"
       : projectName(target.cwd ?? "");
   const status =
     remote.conn !== "online" || !m?.online ? scheduleOffline : nextText(task, now);

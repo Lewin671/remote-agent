@@ -649,6 +649,9 @@ it("uses shared empty copy and resolves a missing conversation before naming it"
   await act(async()=>r.touch());
   expect(host.querySelector(".sess .pv")?.textContent).toContain("在对话里");
   expect(host.querySelector(".sess .pv")?.textContent).toContain(t.spec.trigger.timezone);
+  r.sessions.set("not-loaded",{id:"not-loaded",machineId:"mac",key:{} as CryptoKey,metaRev:0n,lastSeq:0n,updatedMs:0n,endedMs:0n});
+  await act(async()=>r.touch());
+  expect(host.querySelector(".sess .pv")?.textContent).toContain("在对话里");
 });
 it("keeps the original interval phase and both unchanged end limits", async () => {
   const trigger={type:"interval" as const,interval_seconds:900,at:"2026-10-01T08:00:00Z",delay_seconds:29,max_runs:5,until:"2027-10-30T08:00:29Z"};

@@ -27,6 +27,7 @@ class SchedulePresentationTest {
         val machine = MachineView("m", true, 0, MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build())
         val state = RemoteState(conn=ConnState.ONLINE, machines=mapOf("m" to machine), sessions=mapOf("s" to SessionView("s", "m", Session.newBuilder().setTitle("修复登录超时").setMode(ApprovalMode.APPROVAL_MODE_AUTO).build())))
         assertEquals("在「修复登录超时」里", taskLocation(task,state))
+        assertEquals("在对话里",taskLocation(task,state.copy(sessions=mapOf("s" to SessionView("s","m")))))
         assertEquals("自动", taskPermission(task,state))
         assertEquals("定时 · 每小时，未连接，显示的是上次的状态", sessionScheduleText(listOf(task),state.copy(conn=ConnState.OFFLINE)))
         val paused = ScheduledTask("m", JsonObject(task.json + ("status" to JsonPrimitive("paused")) + ("reason" to JsonPrimitive("user_paused"))))

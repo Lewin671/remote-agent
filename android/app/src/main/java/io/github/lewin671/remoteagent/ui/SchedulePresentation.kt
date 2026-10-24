@@ -10,7 +10,7 @@ fun scheduleTiming(trigger: JsonObject, localZone: ZoneId = ZoneId.systemDefault
 }
 fun taskLocation(task: ScheduledTask, state: RemoteState): String {
     val target = task.target
-    val location = if (target.text("type") == "resume_session") state.sessions[target.text("session")]?.let { "在「${titleOf(it)}」里" } ?: "在对话里"
+    val location = if (target.text("type") == "resume_session") state.sessions[target.text("session")]?.takeIf { it.info != null }?.let { "在「${titleOf(it)}」里" } ?: "在对话里"
         else "${projectName(target.text("cwd"))} · ${if (target.text("agent") == "claude") "Claude Code" else "Codex"}"
     return location + if (state.machines.size > 1) " · ${machineLabel(state, task.machine)}" else ""
 }

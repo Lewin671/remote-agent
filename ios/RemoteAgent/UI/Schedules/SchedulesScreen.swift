@@ -71,7 +71,9 @@ func scheduleLocation(_ task: ScheduleTask, state: RemoteState, machine: String,
     let target = task.spec.target
     let place: String
     if target.type == "resume_session" {
-        place = target.session.flatMap { state.sessions[$0] }.map { "在「" + titleOf($0) + "」里" } ?? "在对话里"
+        if let sid = target.session, let session = state.sessions[sid], session.info != nil {
+            place = "在「" + titleOf(session) + "」里"
+        } else { place = "在对话里" }
     } else { place = projectName(target.cwd ?? "") + " · " + (target.agent == "claude" ? "Claude Code" : "Codex") }
     return (frequency ? scheduleFrequency(task.spec.trigger, includeZone: true) + " · " : "") + place + (state.machines.count > 1 ? " · " + machineLabel(state, id: machine) : "")
 }
