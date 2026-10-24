@@ -163,7 +163,9 @@ enum LaunchDriver {
 
     /// Called once, before the first frame: puts the model in sample mode when asked to.
     static func prepare(_ model: AppModel) {
-        if joinStep != nil {
+        if args.contains("-scheduleFixture"), ScheduleSamples.prepare(model) {
+            // Fixed, locally authored comparison data; never starts a Remote.
+        } else if joinStep != nil {
             model.showJoinForDemo(lastServer: "https://ra.example.com")
         } else if let demo {
             let remote = Demo.remote()

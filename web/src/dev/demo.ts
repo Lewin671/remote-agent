@@ -69,8 +69,11 @@ import {
   DeviceMetaSchema,
   QuotaState,
   type ProjectPrefs,
+  ProjectPrefsSchema,
 } from "../gen/remoteagent/v1/remote_pb";
 import { PROTOCOL_VERSION } from "../protocol";
+import scheduledFixture from "../../../testdata/schedules/clients.json";
+import type { ScheduleTask } from "../schedules";
 
 type EventKind = MessageInitShape<typeof EventSchema>["kind"];
 type EventInit = MessageInitShape<typeof EventSchema>;
@@ -1477,7 +1480,23 @@ export class DemoRemote extends Remote {
           }),
         ),
       );
+    if (q.has("scheduled-final")) r.seedSchedules();
     return r;
+  }
+
+  private seedSchedules() {
+    const f = scheduledFixture, machine = this.machines.get("mac")!;
+    machine.meta!.hostname = f.machineName;
+    machine.meta!.capabilities = { ...machine.meta!.capabilities!, scheduledTasks: true };
+    this.machines.clear(); this.machines.set("mac", machine);
+    const view = this.sessions.get("s-idle")!;
+    view.id = f.session; view.machineId = "mac";
+    view.info = create(SessionSchema, { id:f.session, title:f.sessionTitle, cwd:"/example/project", agent:Agent.CLAUDE, status:SessionStatus.IDLE, mode:ApprovalMode.AUTO });
+    this.sessions.clear(); this.sessions.set(f.session, view);
+    this.evs.clear();
+    this.evs.set(f.session, [create(EventSchema, {seq:1n,sessionId:f.session,kind:{case:"userMessage",value:{text:"检查 PR 的回复。"}}}),create(EventSchema, {seq:2n,sessionId:f.session,kind:{case:"agentMessage",value:{text:"有变化时会通知你。"}}})]);
+    this.schedules.set("mac", {revision:1n,tasks:f.tasks as ScheduleTask[],loading:false,error:""});
+    this.stored={revision:1n,prefs:create(ProjectPrefsSchema,{schema:1,settings:[{path:"/example/project",machineId:"mac",agent:Agent.CLAUDE,agents:[{agent:Agent.CLAUDE,model:"haiku",mode:ApprovalMode.AUTO}]}]})};
   }
 
   private opts = new URLSearchParams();
@@ -2185,8 +2204,11 @@ export class DemoRemote extends Remote {
     const m = this.machines.get(machineId);
     if (!m?.online)
       throw new CommandError("unavailable", "电脑不在线，指令没有发出");
+    if (this.opts.has("scheduled-final") && cmd.case === "schedule" && cmd.value.operation === "list")
+      return create(CommandResultSchema, {kind:{case:"schedule",value:{resultJson:new TextEncoder().encode(JSON.stringify({tasks:scheduledFixture.tasks}))}}});
     switch (cmd.case) {
       case "listModels":
+        if(this.opts.has("scheduled-final")) return create(CommandResultSchema,{kind:{case:"listModels",value:{defaultModel:"haiku",models:[{slug:"haiku",displayName:"haiku"}]}}});
         if (machineId === "vps") throw new CommandError("unknown", "连接超时");
         return create(CommandResultSchema, {
           kind: {

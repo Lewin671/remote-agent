@@ -41,6 +41,7 @@ if (officialRelease) {
 
 android {
     sourceSets.getByName("test").java.srcDir(rootProject.file("../testdata/projection/kotlin"))
+    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("../testdata/schedules"))
     namespace = "io.github.lewin671.remoteagent"
     compileSdk = 36
 
