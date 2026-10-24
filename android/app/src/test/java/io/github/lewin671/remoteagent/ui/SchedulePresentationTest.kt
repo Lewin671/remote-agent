@@ -14,6 +14,14 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SchedulePresentationTest {
+    @Test fun defaultPermissionIsResolvedBeforeCreatingTheTaskTarget() {
+        val meta=MachineMeta.newBuilder().addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setDefaultMode(ApprovalMode.APPROVAL_MODE_AUTO).setDefaultModeSource(DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG)).build()
+        val state=RemoteState(machines=mapOf("own" to MachineView("own",true,0,meta)))
+        val config=NewConfig("own","/example",Agent.AGENT_CLAUDE)
+        val concrete=resolvedScheduleConfig(config.copy(mode=null),state)
+        assertEquals("auto",scheduleTarget(concrete).text("mode"))
+        assertEquals("full",scheduleTarget(resolvedScheduleConfig(config.copy(mode=Mode.FULL),state)).text("mode"))
+    }
     @Test fun editingScopesDefaultsAndSessionsToTheOwningComputer() {
         val meta=MachineMeta.newBuilder().addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setDefaultMode(ApprovalMode.APPROVAL_MODE_AUTO).setDefaultModeSource(DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG)).build()
         val prefs=ProjectPrefs.newBuilder().addSettings(ProjectSettings.newBuilder().setPath("/example").setMachineId("other").addAgents(AgentSettings.newBuilder().setAgent(Agent.AGENT_CLAUDE).setModel("other-model"))).build()

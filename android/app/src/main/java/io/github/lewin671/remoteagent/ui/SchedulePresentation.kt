@@ -37,3 +37,5 @@ fun scheduleEditingState(state: RemoteState, machine: String): RemoteState = sta
     sessions = state.sessions.filterValues { it.machineId == machine },
     prefs = state.prefs?.let { saved -> saved.copy(prefs = saved.prefs.toBuilder().clearSettings().addAllSettings(saved.prefs.settingsList.filter { it.machineId == machine }).build()) },
 )
+
+fun resolvedScheduleConfig(cfg: NewConfig, state: RemoteState): NewConfig = cfg.copy(mode = cfg.mode ?: defaultModeOf(state.machines[cfg.machineId], cfg.agent).mode)
