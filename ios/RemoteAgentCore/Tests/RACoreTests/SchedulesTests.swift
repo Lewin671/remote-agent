@@ -10,6 +10,24 @@ import RAProto
         var task = ScheduleTask(id: "task", spec: ScheduleSpec(title: "检查", message: "检查回复。没有变化就简短说一句", trigger: ScheduleTrigger(type: "calendar"), target: ScheduleTarget(type: "new_session")), status: status)
         task.reason = reason; return task
     }
+    @Test func timezonesPreserveWallClockAndIntervalEditsKeepPhaseAndUntouchedLimits() throws {
+        var calendar=ScheduleTrigger(type:"calendar");calendar.time="08:15";calendar.timezone="Asia/Shanghai"
+        var draft=ScheduleTiming(trigger:calendar,now:now,zone:zone);draft.timezone="America/Los_Angeles"
+        #expect(try draft.trigger(now:now).time=="08:15")
+        var once=ScheduleTrigger(type:"at");once.at="2026-10-26T00:15:00Z";once.timezone="Asia/Shanghai"
+        var one=ScheduleTiming(trigger:once,now:now,zone:zone);one.timezone="America/Los_Angeles"
+        #expect(try one.trigger(now:now).at=="2026-10-26T15:15:00Z")
+        var original=ScheduleTrigger(type:"interval");original.intervalSeconds=900;original.at="2026-10-01T08:00:00Z";original.delaySeconds=29;original.maxRuns=4;original.until="2026-10-30T08:15:00Z"
+        var editing=ScheduleTiming(trigger:original,now:now,zone:zone);editing.count=5
+        let result=try editing.trigger(now:now)
+        #expect(result.at==original.at && result.delaySeconds==29 && result.until==original.until && result.maxRuns==5)
+        #expect(try ScheduleTiming(trigger:original,now:now,zone:zone).trigger(now:now)==original)
+        editing.kind = .daily; editing.end = .date;editing.timezone="Asia/Shanghai"
+        editing.until=scheduleDate("2026-10-30T00:15:00Z")!;editing.timezone="America/Los_Angeles"
+        #expect(try editing.trigger(now:now).until=="2026-10-30T15:15:00Z")
+        var fresh=ScheduleTiming(now:now);fresh.kind = .interval;fresh.interval=15;fresh.unit=60
+        #expect(try fresh.trigger(now:now).delaySeconds==900)
+    }
     @Test func groupingAndVisibility() {
         #expect(task("failed").group == .attention)
         #expect(task("uncertain").group == .attention)
