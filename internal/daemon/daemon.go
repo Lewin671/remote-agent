@@ -947,6 +947,13 @@ func (d *Daemon) resumeContextBy(ctx context.Context, id string, origin *pb.Orig
 	}
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
+	return d.resumeSessionLocked(ctx, s, origin)
+}
+
+// Caller owns lifecycleMu, including on return. Draining an old generation
+// briefly releases it so finalizers can finish, then rechecks the generation.
+func (d *Daemon) resumeSessionLocked(ctx context.Context, s *session, origin *pb.Origin) (*session, error) {
+	id := s.info().Id
 	// An exit flag is visible before its workers finish. Drain that generation
 	// before touching the terminal or installing another. Neither lifecycleMu
 	// nor ctlMu may be held while waiting: the old poller can be finalizing

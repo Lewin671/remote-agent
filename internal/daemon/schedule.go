@@ -835,17 +835,7 @@ func (d *Daemon) launchScheduledSession(ctx context.Context, t *schedule.Task) (
 	target := t.Spec.Target
 	if target.Type == "resume_session" {
 		s, err = d.exact(target.Session)
-		if err == nil {
-			s.mu.Lock()
-			exited := s.meta.Exited
-			s.mu.Unlock()
-			if exited {
-				s, err = d.resumeContext(ctx, target.Session)
-				if errors.Is(err, errRunning) {
-					s, err = d.exact(target.Session)
-				}
-			}
-		}
+
 	} else {
 		kind, _ := scheduleAgent(target.Agent)
 		mode, _ := scheduleMode(target.Mode)
@@ -889,6 +879,29 @@ func (d *Daemon) queueScheduledSession(ctx context.Context, snapshot *schedule.T
 	// between persisting the session identity and accepting its input.
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
+	if ctx.Err() != nil {
+		return
+	}
+	if snapshot.Spec.Target.Type == "resume_session" {
+		s.mu.Lock()
+		exited := s.meta.Exited
+		s.mu.Unlock()
+		if exited {
+			_, err := d.resumeSessionLocked(ctx, s, originSystem)
+			if errors.Is(err, errRunning) {
+				s.mu.Lock()
+				alive := !s.meta.Exited
+				s.mu.Unlock()
+				if alive {
+					err = nil
+				}
+			}
+			if err != nil {
+				d.finishScheduledDispatch(ctx, snapshot, now, "could_not_start_session: "+err.Error(), nil)
+				return
+			}
+		}
+	}
 	sessionID, after := s.info().Id, s.log.LastSeq()
 	d.scheduleMu.Lock()
 	t := d.dispatchingTaskLocked(snapshot)

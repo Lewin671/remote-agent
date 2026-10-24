@@ -107,6 +107,8 @@ go("r4-02-drop", "internal/daemon/schedule.go", 'case t.Status == "failed" || t.
 go("r4-02-id", "internal/daemon/schedule.go", 'last := &t.Runs[index]', 'index=len(t.Runs)-1; last := &t.Runs[index]', "TestLateConfirmationFindsRunByID")
 go("r4-02-rollback", "internal/daemon/schedule.go", 'd.lateRuns[t.ID] = lateRun', 'd.lateRuns[t.ID] = before.Runs[len(before.Runs)-1].ID; _=lateRun', "TestLateConfirmationRollbackKeepsOriginalRunID")
 
+go("r4-03-lifecycle", "internal/daemon/schedule.go", 'if snapshot.Spec.Target.Type == "resume_session" {', 'if false && snapshot.Spec.Target.Type == "resume_session" {', "TestScheduledResumeRechecksAfterAutomaticClose")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
