@@ -1,9 +1,12 @@
 package daemon
 
 import (
+	"bytes"
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/schedule"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -136,5 +139,40 @@ func TestHumanInterjectionEndsMCPRestrictionAndFollowupNoticesRemainRecorded(t *
 	spec := taskSpec(schedule.Trigger{Type: "after_turn", DelaySeconds: 60})
 	if _, err := scopedSchedule(t, h, "create", "", &spec); err != nil {
 		t.Fatalf("human turn still restricted: %v", err)
+	}
+}
+
+func TestOrdinaryHumanReplayDoesNotWriteMetadata(t *testing.T) {
+	h := scheduleHarness(t)
+	defer func() { h.s.log.Close() }()
+	for i := 0; i < 300; i++ {
+		if err := h.s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{Status: pb.InputStatus_INPUT_STATUS_QUEUED}}}, originLocal)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := h.s.meta.save(h.s.dir); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(h.s.dir, "session.json")
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before = append(before, '\n', ' ')
+	if err = os.WriteFile(path, before, 0600); err != nil {
+		t.Fatal(err)
+	}
+	restartSession(t, h)
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("ordinary replay rewrote session.json")
+	}
+	h.s.scheduledTask = "stale"
+	h.s.takeOverLocked()
+	if h.s.scheduledTask != "" {
+		t.Fatal("ordinary context was not cleared")
 	}
 }

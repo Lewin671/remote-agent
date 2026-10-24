@@ -206,6 +206,8 @@ func humanOrigin(origin *pb.Origin) bool {
 
 func (s *session) takeOverLocked() {
 	s.scheduledTask, s.scheduledRun, s.scheduledNotifications = "", "", 0
-	s.meta.TaskOwned = false
-	s.noteStorageLocked(s.meta.save(s.dir))
+	if s.meta.TaskOwned {
+		s.meta.TaskOwned = false
+		s.noteStorageLocked(s.meta.save(s.dir))
+	}
 }

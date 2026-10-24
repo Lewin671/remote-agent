@@ -48,6 +48,8 @@ for doc in ["scope", "architecture"]:
 go("16-creation", "internal/daemon/daemon.go", 'ScheduledTaskID: origin.GetScheduledTaskId(), TaskOwned: origin.GetScheduledTaskId() != "",', 'ScheduledTaskID: "", TaskOwned: false,', "TestScheduledCreationWritesOwnership")
 go("16-loop", "internal/daemon/schedule.go", "for _, s := range d.scheduledClosures() {", "for _, s := range []*session{} {", "TestRealScheduleLoopClosesCompletedCLI")
 
+go("r2-01-replay-write", "internal/daemon/schedule_events.go", "if s.meta.TaskOwned {\n\t\ts.meta.TaskOwned = false", "if true {\n\t\ts.meta.TaskOwned = false", "TestOrdinaryHumanReplayDoesNotWriteMetadata")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
