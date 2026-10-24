@@ -347,7 +347,8 @@ fun Group(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
  * A row in a group: 15 with a value at the right. A row that goes somewhere
  * has a [chevron], after its value, or at its end without one; one that does
  * something is blue ([action]) or red ([danger]), its chevron right after
- * the text and an [icon] such as a plus before it.
+ * the text and an [icon] such as a plus before it. [singleLineValue] keeps compact
+ * settings on one line, including at large font sizes, and truncates the trailing value.
  */
 @Composable
 fun GRow(
@@ -362,10 +363,11 @@ fun GRow(
     lead: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     icon: ImageVector? = null,
+    singleLineValue: Boolean = false,
 ) {
     val p = pal
     val ink = if (danger) p.red else if (action) p.blue else if (enabled) p.fg else p.muted
-    if (value != null && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f) {
+    if (value != null && !singleLineValue && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f) {
         Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
             .alpha(if (enabled) 1f else .6f).padding(horizontal = 14.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -391,14 +393,14 @@ fun GRow(
                 Ic(icon, iconSize(T.body), ink)
                 Spacer(Modifier.width(6.dp))
             }
-            Text(text, style = T.body, color = ink, modifier = Modifier.weight(1f, fill = false))
+            Text(text, style = T.body, color = ink, maxLines = if (singleLineValue) 1 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             if (chevron && action) {
                 Spacer(Modifier.width(4.dp))
                 Arrow(ink, T.body)
             }
         }
         if (value != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(value, style = T.sm, color = valueColor ?: p.muted, textAlign = TextAlign.End, maxLines = 2, modifier = Modifier.widthIn(max = 200.dp))
+            Text(value, style = T.sm, color = valueColor ?: p.muted, textAlign = TextAlign.End, maxLines = if (singleLineValue) 1 else 2, overflow = if (singleLineValue) TextOverflow.Ellipsis else TextOverflow.Clip, modifier = Modifier.widthIn(max = 200.dp))
             if (chevron) Arrow(p.muted, T.sm)
         }
         trailing?.invoke()

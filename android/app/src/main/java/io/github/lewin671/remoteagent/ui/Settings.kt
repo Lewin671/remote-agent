@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.ui
 
+import androidx.compose.foundation.selection.selectableGroup
+
+import androidx.compose.ui.draw.alpha
+
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -464,10 +468,10 @@ internal fun PushNotice(
  * One setting's few values at the right of its row (主题): a grey capsule with the chosen one raised.
  */
 @Composable
-fun SegPick(items: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+fun SegPick(items: List<String>, selected: Int, enabled: Boolean = true, onSelect: (Int) -> Unit) {
     val p = pal
     Row(
-        Modifier.clip(Radii.SM).background(p.chip).padding(2.dp),
+        Modifier.clip(Radii.SM).background(p.chip).padding(2.dp).selectableGroup().alpha(if (enabled) 1f else .45f),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         items.forEachIndexed { i, s ->
@@ -480,7 +484,7 @@ fun SegPick(items: List<String>, selected: Int, onSelect: (Int) -> Unit) {
                         if (on) (if (p.card == Color.White) p.card else p.track)
                         else Color.Transparent,
                     )
-                    .selectable(selected = on, role = Role.RadioButton) { onSelect(i) }
+                    .selectable(selected = on, enabled = enabled, role = Role.RadioButton) { onSelect(i) }
                     .padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {

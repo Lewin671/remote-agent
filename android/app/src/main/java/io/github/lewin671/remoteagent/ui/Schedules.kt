@@ -186,27 +186,40 @@ fun scheduleAttentionText(task: ScheduledTask, state: RemoteState): String {
 private fun ScheduleRunGroup(group: RunGroup, now: Instant, open: (ScheduledRun) -> Unit) {
     var expanded by rememberSaveable(group.key) { mutableStateOf(false) }
     if (group.quiet && group.runs.size > 1) {
-        ScheduleSetting("${scheduleWhen(group.runs.first().time, now).substringBefore(' ')} · ${group.runs.size} 次，都没有通知", if (expanded) "收起" else "展开") { expanded = !expanded }
+        Box(Modifier.bottomLine(pal.line)) {
+            GRow("${scheduleWhen(group.runs.first().time, now).substringBefore(' ')} · ${group.runs.size} 次，都没有通知", singleLineValue = true, onClick = { expanded = !expanded }, trailing = {
+                ArrowText(if (expanded) "收起" else "展开", pal.blue, down = !expanded, up = expanded)
+            })
+        }
         if (!expanded) return
     }
     group.runs.forEach { run ->
-        Column(Modifier.fillMaxWidth().then(if (run.session.isNotEmpty()) Modifier.clickable { open(run) } else Modifier).bottomLine(pal.line).padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${scheduleWhen(run.time, now)} · ${runResult(run)}" + if (run.json["manual"]?.jsonPrimitive?.booleanOrNull == true) " · 额外运行" else "", Modifier.weight(1f), style = T.body, color = if (run.status == "failed") pal.red else pal.fg)
-                if (run.session.isNotEmpty()) Arrow(pal.faint)
-            }
+        Column(Modifier.fillMaxWidth().then(if (run.session.isNotEmpty()) Modifier.clickable { open(run) } else Modifier).bottomLine(pal.line)) {
+            GRow(
+                "${scheduleWhen(run.time, now)} · ${runResult(run)}" + if (run.json["manual"]?.jsonPrimitive?.booleanOrNull == true) " · 额外运行" else "",
+                chevron = run.session.isNotEmpty(), danger = run.status == "failed", singleLineValue = true,
+            )
             val summary = run.summary.ifEmpty { run.json.text("reason").takeIf { it.isNotEmpty() }?.let(::scheduleReason).orEmpty() }
-            if (summary.isNotEmpty()) Text(summary, style = T.meta, color = pal.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            if (summary.isNotEmpty()) Text(summary, style = T.meta, color = pal.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 16.dp))
         }
     }
 }
 
 @Composable
 fun ScheduleSetting(label: String, value: String, enabled: Boolean = true, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = enabled, onClick = onClick).bottomLine(pal.line).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f), style = T.body, color = pal.fg)
-        Text(value, Modifier.weight(1f, fill = false).padding(start = 8.dp), style = T.sm, color = pal.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        if (enabled) { Spacer(Modifier.width(6.dp)); Arrow(pal.faint) }
+    Box(Modifier.bottomLine(pal.line)) {
+        GRow(label, value, onClick = onClick, chevron = true, enabled = enabled, singleLineValue = true)
+    }
+}
+
+/** A CLI setting uses the same grouped row and small segments as the settings page. */
+@Composable
+internal fun ScheduleAgentSetting(agents: List<Agent>, selected: Agent, enabled: Boolean, onSelect: (Agent) -> Unit) {
+    if (agents.size < 2) return
+    Box(Modifier.bottomLine(pal.line)) {
+        GRow("CLI", trailing = {
+            SegPick(agents.map(::agentName), agents.indexOf(selected), enabled) { onSelect(agents[it]) }
+        })
     }
 }
 
@@ -262,9 +275,9 @@ fun ScheduleEditor(session: String, existing: ScheduledTask? = null, onClose: ()
                 ScheduleSetting("项目", project.takeIf { it.isNotEmpty() }?.let(::projectName) ?: "选择项目", frozen == null && !busy && existing == null) { pickProject = true }
                 if (cfg != null) {
                     val agents = machineAgents(state.machines[cfg.machineId])
-                    if (agents.size > 1) ViewTabs(agents.map(::agentName), agents.indexOf(cfg.agent).coerceAtLeast(0), { i ->
-                        if (frozen == null && !busy) config = projectConfig(state, project, agents[i], cfg.machineId)
-                    })
+                    ScheduleAgentSetting(agents, cfg.agent, frozen == null && !busy) { agent ->
+                        config = projectConfig(state, project, agent, cfg.machineId)
+                    }
                     ScheduleSetting("权限与模型", projectSummary(state, cfg), frozen == null && !busy) { settings = "mode" }
                     if (state.machines.size > 1) ScheduleSetting("电脑", machineLabel(state, cfg.machineId), frozen == null && !busy && existing == null) { settings = "machine" }
                 }
@@ -350,7 +363,7 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
         SheetHead("什么时候", "完成", {
             try { done(if (keepTurnDelay || value == original && !replaced) initial else value.trigger()) } catch (e: Exception) { error = e.message ?: "请检查时间" }
         })
-        ViewTabs(listOf("一次", "每天", "每周", "每隔"), if (keepTurnDelay) -1 else value.kind, { replaced = true; value = value.copy(kind = it) }, inset = 0.dp)
+        SegPick(listOf("一次", "每天", "每周", "每隔"), if (keepTurnDelay) -1 else value.kind) { replaced = true; value = value.copy(kind = it) }
         if (keepTurnDelay) {
             Hint("当前是「${scheduleFrequency(initial)}」。直接完成会保留原规则；选择上面的时间类型后再更改。")
         } else {
@@ -364,7 +377,7 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
         } else {
             FieldLabel("间隔")
             ReasonField(value.interval, { value = value.copy(interval = it) }, "正整数")
-            ViewTabs(listOf("分钟", "小时", "天", "秒"), value.unit, { value = value.copy(unit = it) }, inset = 0.dp)
+            GRow("单位", trailing = { SegPick(listOf("分钟", "小时", "天", "秒"), value.unit) { value = value.copy(unit = it) } })
         }
         if (value.kind == 1) ToggleRow("只在工作日", "周一到周五", value.workdays) { value = value.copy(workdays = it) }
         if (value.kind == 2) {
@@ -375,8 +388,7 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
             Text("已选：" + value.weekdays.sorted().joinToString("、") { listOf("", "周一", "周二", "周三", "周四", "周五", "周六", "周日")[it] }, style = T.meta, color = pal.muted)
         }
         if (value.kind != 0) {
-            FieldLabel("结束")
-            ViewTabs(listOf("不结束", "次数", "日期"), value.end, { value = value.copy(end = it) }, inset = 0.dp)
+            GRow("结束", trailing = { SegPick(listOf("不结束", "次数", "日期"), value.end) { value = value.copy(end = it) } })
             if (value.end == 1) ReasonField(value.count, { value = value.copy(count = it) }, "自动运行次数")
             if (value.end == 2) ScheduleSetting("结束日期", value.until) { date(value.until) { value = value.copy(until = it, deadline = "") } }
         }
