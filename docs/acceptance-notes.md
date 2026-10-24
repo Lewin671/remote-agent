@@ -613,3 +613,26 @@ go run ./scripts/acceptance-schedule
 5. 核对自动 CLI 退出、已结束默认列表排除、按 ID 读回通知和带定时标注的结束事件、用户恢复回复后重新进入默认列表。
 
 以上全部通过，临时环境已清理。调用来自 Go 合成加密客户端，审批由 tmux 按键触发，未声称直接操作三端产品界面；需要处理筛选由三端测试验证。没有额外验证真实满额账户下的 CLI 关闭、真实 Codex 同链路、真手机或实际推送送达。
+
+
+### 定时任务第四轮反馈
+
+2026-10-24，仍是未发布的协议 11，未改产品版本。只在任务 worktree 本地提交，没有推送、发版或部署。此轮修正第三轮把 interval 相位写进用户定义的做法；当前设计见 [architecture §18](architecture.md#18-定时任务)。
+
+| 反馈 | 修法、回归入口与证据 | 本轮实际变异数 |
+|---|---|---|
+| 1 | 相位独立保存在 IntervalPhase，触发定义不再被派生 at 改写；只改非时间字段保持相位，更新用 nextInterval 越过已消费点，派发前另核对上一次自动非跳过 ScheduledAt。`TestIntervalDefinitionRoundTripDoesNotRedispatch` 为省略/显式 at × 客户端/MCP × 无尾记录/手动/跳过，含保存重启、时区偏移原值和只改标题；`TestAutomaticDispatchRejectsConsumedOccurrence` 独立塞入陈旧游标验证最后防线 | 3 |
+| 2 | 手动派发前再查状态：lateRuns 或 uncertain 继续等待；自动任务失败或终结后把原排队请求记为带原因的 skipped。迟到确认及保存失败回滚都按运行 ID，不依赖最后一条历史。`TestPendingManualWaitsForAutomaticConfirmation`、`TestPendingManualSkipsWhenAutomaticStops`、`TestLateConfirmationFindsRunByID`、`TestLateConfirmationRollbackKeepsOriginalRunID` 覆盖等待、失效、尾部插入手动/跳过记录及落盘失败 | 5 |
+| 3 | resume_session 的锁前阶段只选择目标；取得生命周期锁后再检查 Exited，复用持锁的恢复入口并在同一顺序下受理输入，旧 worker 排空期间仍按既有规则释放锁、重新检查代际。`TestScheduledResumeRechecksAfterAutomaticClose` 用真实关闭方法和 barrier 复现选择后已关闭、关闭持锁时准入等待两种顺序，并验证旧关闭请求不影响恢复后的代际 | 1 |
+| 4 | 选择持久队列作为接手事实来源：公共队列保存入口在成功受理或已替换的受理不确定边界接手，启动时也检查 Queue/Held。这样关闭路径不需要重复检查队列，QUEUED 事件丢失和元数据写入未完成都可修复；只改归属，不解除当前轮定时上下文。`TestAcceptedHumanQueueOwnsSessionWithoutQueuedEvent` 覆盖 CLIENT/LOCAL、系统/未知/nil 来源和事件失败/目录同步失败/正常保存；`TestCanonicalHumanQueueRepairsOwnershipOnRestore`、`TestRejectedHumanQueueDoesNotTakeOwnership` 覆盖恢复及未受理反例 | 3 |
+| 5 | failed 的 at、非重复 after_turn 在 resume 时返回 FailedPrecondition，明确提示额外立即执行或修改定义。为使提示可执行，允许在这类失败后显式请求一次手动重试，以 RetryFailed 标明意图，不保存/还原自动计划；失败前已排队的普通请求仍跳过，失败的周期任务仍须恢复或改定义。`TestFailedOneShotResumeRequiresExplicitRetry`、`TestOneShotPendingBeforeFailureIsNotExplicitRetry`、`TestFailedRecurringRunStillRequiresResume` 验证错误不改变任务、提示可执行、自动次数不变和准入边界 | 3 |
+
+`python3 scripts/check-schedule-regressions.py --clients` 的当前 88 个位置全部实际检出，本轮新增 15 个；每组原测试先通过，再临时变异，并在 finally 恢复源文件。相同测试命令在一次运行中只做一次原测试检查；编译失败不算检出。本轮保留的三端需要处理、项目与全部项目计数回归也在脚本中通过原测试和变异验证。
+
+最终 `go test ./...` 全部通过；daemon、relay、server、schedule 的相关 `-race` 通过，包含本轮 interval、挂起请求、迟到回滚、关闭竞争、队列接手及失败一次性任务测试。MCP 正常测试随 Go 全量通过。本轮未改网页、Android、iOS 产品代码，没有额外重跑完整客户端套件。
+
+真实验收使用独立 RA_DEV_DIR、临时账户、本地 server/daemon、独立 tmux socket，Claude Code 2.1.300 / Haiku 5.5，入口仍为 `scripts/acceptance-schedule`。日历任务的手动额外运行、当天原定自动运行和 max_runs=1、审批中重启、默认 ListRemoteSessions 冷读待处理数据、notify_user、CLI 退出、历史回读和人工接手均通过。
+
+新增 interval 真实链路：通过加密 Forward 创建每小时一次的任务，让真实 CLI 完成首次运行；从接口读回整份 Spec，只改标题，再连同原触发配置、原 at 和修订号回交 update。连续观察四秒、覆盖多个真实调度 tick，仍然只有一次派发和原来的运行 ID，NextRunAt 与编辑前相同且晚于已完成 ScheduledAt，触发定义没有被改写。随后确认 CLI 退出并取消未来调度。此路径与原日历链路全部通过，临时环境已清理。
+
+以上为 Go 合成加密客户端与 tmux 审批触发，没有冒称直接操作产品界面。人工存储故障和关闭并发由可控回归测试验证，未在真实 CLI 环境人为破坏磁盘；真手机、真实 Codex 同链路与实际推送送达未覆盖。
