@@ -117,6 +117,8 @@ go("r4-05-resume-error", "internal/daemon/schedule.go", 'if t.Status == "failed"
 go("r4-05-intent", "internal/daemon/schedule.go", 'RetryFailed: t.Status == "failed"', 'RetryFailed: false', "TestFailedOneShotResumeRequiresExplicitRetry")
 go("r4-05-old-request", "internal/daemon/schedule.go", 'request.RetryFailed && oneShotTrigger(t.Spec.Trigger)', 'oneShotTrigger(t.Spec.Trigger)', "TestOneShotPendingBeforeFailureIsNotExplicitRetry")
 
+go("r5-01-recurring-only", "internal/daemon/schedule.go", 'recurringTrigger(t.Spec.Trigger) && last != nil', 'last != nil', "TestFailedAtDefinitionUpdateRetriesSameOccurrence")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

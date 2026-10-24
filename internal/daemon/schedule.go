@@ -387,6 +387,10 @@ func oneShotTrigger(tr schedule.Trigger) bool {
 	return tr.Type == "at" || tr.Type == "after_turn" && !tr.Repeat
 }
 
+func recurringTrigger(tr schedule.Trigger) bool {
+	return tr.Type == "interval" || tr.Type == "calendar" || tr.Type == "after_turn" && tr.Repeat
+}
+
 func scheduleAgent(name string) (pb.Agent, error) {
 	switch name {
 	case "codex":
@@ -739,7 +743,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 					t.NextRunAt = &latest
 				}
 			}
-			if last := lastAutomaticRun(t); last != nil && last.ScheduledAt.Equal(*t.NextRunAt) {
+			if last := lastAutomaticRun(t); recurringTrigger(t.Spec.Trigger) && last != nil && last.ScheduledAt.Equal(*t.NextRunAt) {
 				d.nextSchedule(t, now)
 			} else if now.Sub(*t.NextRunAt) > time.Duration(late)*time.Second {
 				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired"}
