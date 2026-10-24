@@ -106,6 +106,7 @@ final class ScheduleMutation {
     private(set) var error = ""
     private(set) var frozen = false
     private(set) var expired = false
+    private(set) var conflicts = 0
     @ObservationIgnored private let attempt = Attempt()
     func abandon() {
         guard !running else { return }
@@ -127,12 +128,16 @@ final class ScheduleMutation {
             var shown = attempt.settle(error) ?? error
             frozen = attempt.frozen; expired = attempt.expired
             await refresh()
-            if (error as? CommandError)?.code == "aborted" {
-                shown = UserError("任务已在另一端修改，已重新读取。请查看最新设置后再修改。")
-            }
+            if let conflict = recordConflict(error) { shown = conflict }
             self.error = errorText(shown)
             throw shown
         }
+    }
+    func recordConflict(_ error: Error) -> Error? {
+        guard (error as? CommandError)?.code == "aborted" else { return nil }
+        attempt.abandon(); frozen = false; expired = false
+        conflicts += 1
+        return UserError("任务刚被修改，已更新为最新内容")
     }
     func run(remote: Remote, machine: String, command: @escaping () throws -> PBCommand, refresh: @escaping () async -> Void, done: @escaping (PBCommandResult) -> Void = { _ in }) {
         guard !running, !expired else { return }

@@ -148,6 +148,19 @@ import UIKit
 }
 
 @MainActor @Suite struct ScheduleAlignmentTests {
+    @Test func conflictDismissalObservesTheMutationSignal() async throws {
+        await WindowTestGate.shared.acquire();defer { WindowTestGate.shared.release() }
+        let scene=try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let mutation=ScheduleMutation();var dismissed=false
+        let host=UIHostingController(rootView:ScheduleConflictObserver(mutation:mutation) { dismissed=true })
+        let window=UIWindow(windowScene:scene);window.rootViewController=host;window.isHidden=false
+        host.view.layoutIfNeeded();defer { window.isHidden=true }
+        #expect(mutation.recordConflict(CommandError("unavailable","offline")) == nil)
+        let error=try #require(mutation.recordConflict(CommandError("aborted","revision",fromDaemon:true)))
+        #expect(errorText(error)=="任务刚被修改，已更新为最新内容")
+        await eventually("conflict dismisses stale editor") { dismissed }
+        #expect(dismissed && !mutation.frozen)
+    }
     @Test func destinationUsesSharedPlaceholderUntilMetadataLoads() {
         var state=ScheduleStoreTests().state()
         var task=ScheduleStoreTests().task();task.spec.target=ScheduleTarget(type:"resume_session");task.spec.target.session="s"

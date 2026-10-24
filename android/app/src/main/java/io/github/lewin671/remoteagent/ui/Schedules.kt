@@ -165,7 +165,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             check(scheduleRenameAllowed(writable, busy || uncertain)) { "当前任务不能单独改名" }
             busy = true
             try { remote.schedules.rename(base, name) }
-            catch (e: Exception) { uncertain = (e as? CommandException)?.unknown == true; throw e }
+            catch (e: Exception) { uncertain = (e as? CommandException)?.unknown == true; if (e is ScheduleConflictException) { edit = ""; editBase = null; error = errorText(e) }; throw e }
             finally { busy = false }
         }
         if (edit == "time") ScheduleTimeSheet(base.trigger, { operate("update", JsonObject(base.spec + ("trigger" to it))) }, { edit = "" })

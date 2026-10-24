@@ -120,7 +120,7 @@ it("retries create with its frozen request and uses CAS for all task mutations",
       taskId: "task-1",
       revision: 8,
     }),
-  ).rejects.toThrow("已重新读取");
+  ).rejects.toThrow("任务刚被修改，已更新为最新内容");
   expect(
     send.mock.calls.find(
       ([, q]) => q?.case === "schedule" && q.value.operation === "pause",

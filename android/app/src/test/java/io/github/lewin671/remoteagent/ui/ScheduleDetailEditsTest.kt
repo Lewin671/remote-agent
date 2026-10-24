@@ -24,12 +24,14 @@ class ScheduleDetailEditsTest {
     private val original=ScheduledTask("computer",Json.parseToJsonElement("""{"id":"task","revision":3,"status":"scheduled","source":"client","created_at":"2026-10-24T10:00:00Z","spec":{"title":"打开时的名字","message":"打开时的消息","trigger":{"type":"interval","interval_seconds":3600,"delay_seconds":29},"target":{"type":"new_session","cwd":"/example/project","agent":"claude","mode":"auto"}}}""").jsonObject)
     private var latest=original
     private val requests=mutableListOf<ScheduleRequest>()
+    private var conflict=false
     private var backs=0
     private val nav=Nav({backs++},{},{},{},{},{},{},{},{_,_->},{},{},{})
     private lateinit var repository:ScheduleRepository
     private fun prepare() {
         repository=ScheduleRepository(scope,remote.state,send={_,r->
             requests+=r
+            if(conflict && r.operation=="update") throw CommandException("aborted","revision",fromDaemon=true)
             if(r.operation=="cancel") latest=ScheduledTask(latest.machine,JsonObject(latest.json+mapOf("status" to JsonPrimitive("cancelled"),"reason" to JsonPrimitive("user_cancelled"))))
             (if(r.operation=="list") buildJsonObject { put("tasks",JsonArray(listOf(latest.json))) } else latest.json).toString().toByteArray()
         })
@@ -38,6 +40,14 @@ class ScheduleDetailEditsTest {
     }
     private fun render() { ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { ScheduleDetailScreen("computer","task") } } } }
     @After fun close() { scope.cancel();remote.close() }
+    @Test fun renameConflictClosesTheStaleDialogAndRefreshes() {
+        prepare();render();ui.onNodeWithText("任务名").performClick()
+        ui.onNode(hasSetTextAction()).performTextReplacement("新名字")
+        conflict=true;ui.onNodeWithText("保存").performClick()
+        ui.onNode(hasSetTextAction()).assertDoesNotExist()
+        ui.onNodeWithText("任务刚被修改，已更新为最新内容").assertExists()
+        ui.runOnIdle { assertEquals("list",requests.last().operation) }
+    }
     @Test fun existingTaskCannotSelectAnotherComputer() {
         prepare();render();ui.onNodeWithText("在哪运行").performClick()
         ui.onNodeWithText("机器").assertHasNoClickAction()

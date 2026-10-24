@@ -44,6 +44,9 @@ struct ScheduleDetailScreen: View {
                 }
             }
         }
+        .background(ScheduleConflictObserver(mutation: mutation) {
+            timing = false; targetEdit = false; permissions = false; rename = false; message = false
+        })
         .navBar(task?.spec.title ?? "任务详情", subtitle: task.map { $0.stateText(online: store.online(machine)) })
         .kitSheet(isPresented: $timing, size: .large) {
             if let task = editor.task {
@@ -187,4 +190,10 @@ struct ScheduleDetailScreen: View {
             try scheduleCommand(operation: operation, taskID: id, spec: spec, revision: task.revision)
         }, refresh: { await context.schedules.refresh(machine) }, done: { _ in done() })
     }
+}
+
+struct ScheduleConflictObserver: View {
+    let mutation: ScheduleMutation
+    let dismiss: () -> Void
+    var body: some View { Color.clear.frame(width: 0, height: 0).onChange(of: mutation.conflicts) { _, _ in dismiss() } }
 }

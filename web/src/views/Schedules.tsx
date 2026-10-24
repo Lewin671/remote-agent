@@ -515,7 +515,7 @@ export function ScheduleDetail({
         setNotice("已请求立即运行一次，不改变自动计划。");
     } catch (e) {
       setError(errorText(e));
-      if (errorText(e).includes("已重新读取")) {
+      if (errorText(e).includes("任务刚被修改")) {
         setEdit("");
         setEditBase(undefined);
       }

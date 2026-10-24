@@ -687,7 +687,7 @@ export class Remote {
       attempt.settle(error, sent);
       if (error instanceof CommandError && error.code === "aborted") {
         await this.refreshSchedules(machineId);
-        throw new Error("任务已被其他客户端修改，已重新读取。请核对后再保存");
+        throw new Error("任务刚被修改，已更新为最新内容");
       }
       throw error;
     }

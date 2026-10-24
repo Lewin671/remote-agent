@@ -716,3 +716,10 @@ it("shows the shared destination placeholder until target metadata is loaded",as
  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
  expect(button("发到对话")).toBeTruthy();
 });
+
+it("closes a stale editor when the daemon reports a revision conflict",async()=>{
+ const t=task();const r=remote([t]);vi.spyOn(r,"changeSchedule").mockRejectedValue(new Error("任务刚被修改，已更新为最新内容"));
+ await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
+ await click(/^消息/);await input(host.querySelector("textarea")!,"新消息");await click("保存");
+ expect(host.querySelector('[role="dialog"]')).toBeNull();expect(host.textContent).toContain("任务刚被修改，已更新为最新内容");
+});

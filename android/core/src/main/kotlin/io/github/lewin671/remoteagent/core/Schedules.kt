@@ -176,7 +176,7 @@ fun scheduleRunGroups(runs: List<ScheduledRun>, zone: ZoneId = ZoneId.systemDefa
     }
 }
 
-class ScheduleConflictException : IllegalStateException("任务已在另一端修改，已重新读取，请核对后再试")
+class ScheduleConflictException : IllegalStateException("任务刚被修改，已更新为最新内容")
 
 data class ScheduleSnapshot(val revision: Long = -1, val tasks: List<ScheduledTask> = emptyList(), val loading: Boolean = false, val error: String = "", val cached: Boolean = true)
 

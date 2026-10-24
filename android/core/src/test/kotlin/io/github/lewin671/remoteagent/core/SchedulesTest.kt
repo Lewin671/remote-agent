@@ -132,7 +132,7 @@ class SchedulesTest {
         repo.operate("computer", "create", spec = task().spec, requestId = "stable")
         assertEquals(listOf("stable", "stable"), requests.filter { it.operation == "create" }.map { it.requestId })
         val e = runCatching { repo.operate("computer", "update", task(), task().spec) }.exceptionOrNull()
-        assertTrue(e!!.message!!.contains("已重新读取"))
+        assertEquals("任务刚被修改，已更新为最新内容",e!!.message)
         assertEquals(3L, requests.first { it.operation == "update" }.expectedRevision)
         assertEquals("list", requests.last().operation)
     }
