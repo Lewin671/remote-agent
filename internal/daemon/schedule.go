@@ -312,6 +312,9 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 			t.Status = "completed"
 		}
 	case "run":
+		if until := t.Spec.Trigger.Until; until != nil && now.After(*until) {
+			return nil, errors.New("task deadline has passed; update until before running")
+		}
 		if scope != "" {
 			if err := d.restrictMCPTask(t, false); err != nil {
 				return nil, err
@@ -410,6 +413,9 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 	}
 	if tr.Until != nil && tr.Type != "interval" && tr.Type != "calendar" && !(tr.Type == "after_turn" && tr.Repeat) {
 		return errors.New("until requires a recurring trigger")
+	}
+	if tr.Until != nil && now.After(*tr.Until) {
+		return errors.New("until must not be in the past")
 	}
 	var source *session
 	if t.SourceSession != "" {
@@ -511,9 +517,10 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 	t.AnchorTurn = ""
 	t.Reason = ""
 	t.NextRunAt = nil
+	t.RunNow, t.AutomaticNextRunAt = false, nil
 	switch tr.Type {
 	case "calendar":
-		at := tr.NextCalendar(now)
+		at := nextCalendar(t, now)
 		t.NextRunAt, t.Status = &at, "scheduled"
 	case "at":
 		if tr.At == nil || tr.At.IsZero() || tr.Repeat || tr.IntervalSeconds != 0 || tr.DelaySeconds != 0 {

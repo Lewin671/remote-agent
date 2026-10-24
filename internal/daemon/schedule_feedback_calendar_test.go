@@ -1,6 +1,8 @@
 package daemon
 
 import (
+	"context"
+	"encoding/json"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"testing"
@@ -82,5 +84,41 @@ func TestCalendarManualRunPreservesAutomaticOccurrence(t *testing.T) {
 	h.d.tickSchedules(due)
 	if readTask(t, h.d, task.ID).Active == nil {
 		t.Fatal("automatic occurrence lost after manual run")
+	}
+}
+
+func TestCalendarDeadlineAndEditBoundaries(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	now := time.Now()
+	expired := now.Add(-time.Minute)
+	spec := taskSpec(schedule.Trigger{Type: "calendar", Time: "23:59", Timezone: "UTC", Until: &expired})
+	call := func(op, id string, sp schedule.Spec) error {
+		b, _ := json.Marshal(sp)
+		_, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: op, TaskId: id, SessionId: h.s.meta.ID, SpecJson: b}, originLocal)
+		return err
+	}
+	if call("create", "", spec) == nil {
+		t.Fatal("created with past until")
+	}
+	spec.Trigger.Until = nil
+	task := createTask(t, h, spec, "")
+	spec.Trigger.Until = &expired
+	if call("update", task.ID, spec) == nil {
+		t.Fatal("updated with past until")
+	}
+	h.d.tasks[task.ID].Spec.Trigger.Until = &expired
+	if call("run", task.ID, spec) == nil {
+		t.Fatal("ran after until")
+	}
+	// A changed clock on an occupied date immediately advertises the next date.
+	task = h.d.tasks[task.ID]
+	task.Spec.Trigger.Until = nil
+	task.LastCalendarDate = calendarDate(task.Spec.Trigger, now)
+	if err := h.d.prepareSchedule(context.Background(), task, now); err != nil {
+		t.Fatal(err)
+	}
+	if task.NextRunAt == nil || calendarDate(task.Spec.Trigger, *task.NextRunAt) <= task.LastCalendarDate {
+		t.Fatalf("stale next occurrence: %+v", task)
 	}
 }
