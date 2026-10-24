@@ -41,6 +41,16 @@ class TimelineTest {
             .addAllHidden(hidden.map { ProjectPref.newBuilder().setPath(it).build() }).build()),
     )
 
+    @Test fun taskOwnedApprovalsStillNeedAttention() {
+        val base = session("task", "/scheduled", approvals = 1)
+        val owned = base.copy(info = base.info!!.toBuilder().setTaskOwned(true).build())
+        val timeline = homeTimeline(state(owned), HomeScope.All)
+        assertEquals(listOf("task"), timeline.attention.map { it.id })
+        assertTrue(timeline.running.isEmpty())
+        assertTrue(timeline.ended.isEmpty())
+        assertTrue(timeline.meta.project)
+    }
+
     @Test fun taskOwnedSessionsRemainAddressableButDoNotEnterLists() {
         val base = session("task", "/scheduled")
         val owned = base.copy(info = base.info!!.toBuilder().setTaskOwned(true).setScheduledTaskId("task-id").build())

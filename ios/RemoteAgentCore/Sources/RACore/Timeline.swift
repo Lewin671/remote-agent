@@ -166,7 +166,7 @@ public func outsideScope(_ s: SessionView, scope: HomeScope) -> Bool {
 }
 
 public func homeTimeline(_ state: RemoteState, scope: HomeScope, query: String = "", zone: TimeZone = .current) -> HomeTimeline {
-    let all = state.sessions.values.filter { $0.info?.taskOwned != true }
+    let all = state.sessions.values
     let waiting = all.filter { needsAttention($0, machine: state.machines[$0.machineId]) }.sorted(by: attentionOrder(state))
     let waitingIds = Set(waiting.map(\.id))
     let hidden = state.prefs?.hidden ?? []
@@ -174,8 +174,8 @@ public func homeTimeline(_ state: RemoteState, scope: HomeScope, query: String =
         if case .of(let k) = scope { return key.jvmEquals(k) }
         return !hidden.contains(JvmKey(key))
     }
-    let running = all.filter { !exited($0) && !waitingIds.contains($0.id) && !outsideScope($0, scope: scope) }.sorted(by: liveOrder)
-    let ended = all.filter { exited($0) && inScope(projectKey($0)) }.sorted(by: endedOrder)
+    let running = all.filter { $0.info?.taskOwned != true && !exited($0) && !waitingIds.contains($0.id) && !outsideScope($0, scope: scope) }.sorted(by: liveOrder)
+    let ended = all.filter { $0.info?.taskOwned != true && exited($0) && inScope(projectKey($0)) }.sorted(by: endedOrder)
     let live = waiting.filter { !outsideScope($0, scope: scope) } + running
     // How many ended sessions the scope has is the summaries' to say: only
     // some of them are held here. Never fewer than are.

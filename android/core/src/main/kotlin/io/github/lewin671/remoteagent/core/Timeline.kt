@@ -122,12 +122,12 @@ class HomeTimeline(
 fun outsideScope(s: SessionView, scope: HomeScope): Boolean = scope is HomeScope.Of && projectKey(s) != scope.key
 
 fun homeTimeline(state: RemoteState, scope: HomeScope, query: String = "", zone: ZoneId = ZoneId.systemDefault()): HomeTimeline {
-    val all = state.sessions.values.filter { it.info?.taskOwned != true }
+    val all = state.sessions.values
     val waiting = all.filter(::needsAttention).sortedWith(attentionOrder)
     val waitingIds = waiting.mapTo(HashSet()) { it.id }
     val hidden = state.prefs?.hidden.orEmpty()
-    val running = all.filter { !exited(it) && it.id !in waitingIds && !outsideScope(it, scope) }.sortedWith(liveOrder)
-    val ended = all.filter { exited(it) && if (scope is HomeScope.Of) projectKey(it) == scope.key else projectKey(it) !in hidden }.sortedWith(endedOrder)
+    val running = all.filter { it.info?.taskOwned != true && !exited(it) && it.id !in waitingIds && !outsideScope(it, scope) }.sortedWith(liveOrder)
+    val ended = all.filter { it.info?.taskOwned != true && exited(it) && if (scope is HomeScope.Of) projectKey(it) == scope.key else projectKey(it) !in hidden }.sortedWith(endedOrder)
     val live = waiting.filter { !outsideScope(it, scope) } + running
     val inScope = live + ended
     // How many ended sessions the scope has is the summaries' to say: only

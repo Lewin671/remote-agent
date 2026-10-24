@@ -123,7 +123,7 @@ function useScope(remote: Remote) {
 
 /** Sessions waiting for the user, oldest wait first. */
 export function todoList(remote: Remote): SessionView[] {
-  return [...remote.sessions.values()].filter((s) => !s.info?.taskOwned)
+  return [...remote.sessions.values()]
     .filter((s) => needsAttention(s, remote.machines.get(s.machineId)))
     .sort((a, b) => compareAttention(a, b, remote.machines));
 }
@@ -157,7 +157,7 @@ function TodoCard({
   const agent = agentOf(s);
   const a = st.kind === "approval" ? [...d.approvals.values()][0] : undefined;
   const q = st.kind === "question" ? [...d.questions.values()][0] : undefined;
-  const where = metaOf(remote, s, cols);
+  const where = metaOf(remote, s, { ...cols, project: cols.project || !!s.info?.taskOwned });
   const open = () => go("s/" + s.id);
   const kind = a
     ? approvalTitle(a)

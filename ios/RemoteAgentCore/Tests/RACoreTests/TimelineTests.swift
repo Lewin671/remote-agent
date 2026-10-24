@@ -40,6 +40,14 @@ import Testing
             })
     }
 
+    @Test func taskOwnedApprovalsStillNeedAttention() {
+        let owned = Mk.session("task") { $0.cwd = "/scheduled"; $0.taskOwned = true; $0.pendingApprovals = 1; $0.status = .idle }
+        let timeline = homeTimeline(state(owned), scope: .all)
+        #expect(timeline.attention.map(\.id) == ["task"])
+        #expect(timeline.running.isEmpty && timeline.ended.isEmpty)
+        #expect(timeline.meta.project)
+    }
+
     @Test func taskOwnedSessionsRemainAddressableButDoNotEnterLists() {
         let owned = Mk.session("task") { $0.cwd = "/scheduled"; $0.taskOwned = true; $0.scheduledTaskID = "task-id" }
         let snapshot = state(owned)

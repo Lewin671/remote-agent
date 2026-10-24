@@ -21,7 +21,7 @@ import { ALL, saveScope } from "../scope";
 import { loadProjectConfig } from "../storage";
 import { NewBox, NewFlow, ProjectPicker, useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
-import { addProject, ManagePage } from "./Projects";
+import { addProject, ManagePage, sessionCounts } from "./Projects";
 import { SessionPage } from "./Session";
 import { useRemote } from "../ui";
 
@@ -3111,4 +3111,13 @@ describe("devices in settings", () => {
     expect(named("Chrome · macOS").querySelector(".ico svg")).toBeTruthy();
     expect(named("Android · Pixel 9").querySelector(".ico svg")).toBeTruthy();
   });
+});
+
+it("keeps task-owned approvals in attention and counts while omitting idle task sessions", () => {
+ const r=demo(); const s=r.sessions.get("s-plan")!;s.info!.taskOwned=true;
+ expect(todoList(r).map(s=>s.id)).toContain(s.id);
+ expect(sessionCounts(r,[s])).toBe("1 个待处理");
+ s.info!.planOpen=false;s.info!.pendingApprovals=0;s.info!.pendingQuestions=0;s.info!.status=SessionStatus.IDLE;
+ expect(sessionCounts(r,[s])).toBe("");
+ expect(todoList(r).map(s=>s.id)).not.toContain(s.id);
 });
