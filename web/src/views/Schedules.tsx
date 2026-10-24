@@ -260,7 +260,7 @@ export function TimingSheet({
     String((trigger.interval_seconds ?? 3600) / 60),
   );
   const [end, setEnd] = useState(
-    trigger.until ? "date" : trigger.max_runs ? "count" : "none",
+    trigger.max_runs ? "count" : trigger.until ? "date" : "none",
   );
   const [count, setCount] = useState(String(trigger.max_runs || 10));
   const [until, setUntil] = useState(
@@ -305,8 +305,8 @@ export function TimingSheet({
         if (trigger.type === "interval" && seconds === trigger.interval_seconds)
           next = { ...trigger };
       }
-      const initialEnd = trigger.until ? "date" : trigger.max_runs ? "count" : "none";
-      const endChanged = end !== initialEnd || (end === "count" && count !== String(trigger.max_runs || 10)) || (end === "date" && (until !== localInput(trigger.until ?? new Date(Date.now() + 86400_000).toISOString(), initialZone) || zone !== initialZone));
+      const initialEnd = trigger.max_runs ? "count" : trigger.until ? "date" : "none";
+      const endChanged = end !== initialEnd || (end === "count" && count !== String(trigger.max_runs || 10)) || (end === "date" && (until !== localInput(trigger.until ?? new Date(Date.now() + 86400_000).toISOString(), initialZone)));
       if (end !== initialEnd || kind === "at") { delete next.max_runs; delete next.until; }
       else { next.max_runs = trigger.max_runs; next.until = trigger.until; }
       if (kind !== "at" && end === "count") {

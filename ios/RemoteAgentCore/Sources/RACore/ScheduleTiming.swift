@@ -98,7 +98,7 @@ public struct ScheduleTiming: Equatable, Sendable {
                 if end == .count, count != initialCount {
                     guard count > 0 else { throw UserError("运行次数必须大于 0") }; t.maxRuns = Int64(count)
                 }
-                if original.until != nil && (untilParts != initialUntil || timezone != initialZone) {
+                if original.until != nil && (untilParts != initialUntil) {
                     let u = try absolute(untilParts)
                     guard u > now else { throw UserError("结束时间必须在未来") }; t.until = scheduleISO(u)
                 }

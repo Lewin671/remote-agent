@@ -10,6 +10,13 @@ import RAProto
         var task = ScheduleTask(id: "task", spec: ScheduleSpec(title: "检查", message: "检查回复。没有变化就简短说一句", trigger: ScheduleTrigger(type: "calendar"), target: ScheduleTarget(type: "new_session")), status: status)
         task.reason = reason; return task
     }
+    @Test func dualLimitsKeepTheirAbsoluteDeadlineWhenOnlyTimezoneChanges() throws {
+        var t=ScheduleTrigger(type:"calendar");t.time="08:00";t.timezone="America/Los_Angeles";t.maxRuns=5;t.until="2027-10-30T08:00:00Z"
+        var edit=ScheduleTiming(trigger:t,now:now,zone:zone)
+        #expect(edit.end == .count);edit.timezone="Asia/Shanghai"
+        let changed=try edit.trigger(now:now)
+        #expect(changed.until == t.until && changed.maxRuns == 5 && changed.timezone == "Asia/Shanghai")
+    }
     @Test func finalSharedClientContractUsesActualStateProjection() throws {
         struct Fixture: Decodable { let now: String; let timezone: String; let tasks: [ScheduleTask]; let empty: String; let offline: String; let groups: [String: [String]] }
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

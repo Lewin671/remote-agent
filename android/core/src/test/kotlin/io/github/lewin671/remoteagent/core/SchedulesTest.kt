@@ -15,6 +15,12 @@ class SchedulesTest {
     private val utc = ZoneId.of("UTC")
     private fun task(status: String = "scheduled", reason: String = "", runs: String = "[]") = ScheduledTask("computer", Json.parseToJsonElement("""{"id":"task","revision":3,"status":"$status","reason":"$reason","next_run_at":"2026-10-25T08:00:00Z","spec":{"title":"Check","message":"Look","trigger":{"type":"interval","interval_seconds":3600},"target":{"type":"new_session"}},"runs":$runs}""").jsonObject)
     private fun run(id: String, hour: Int, notified: Boolean = false, status: String = "completed") = """{"id":"$id","started_at":"2026-10-24T${hour}:00:00Z","status":"$status","notified":$notified,"notification_text":"Important","final_summary":"Nothing changed"}"""
+    @Test fun dualLimitsSelectCountAndKeepTheAbsoluteDeadlineAcrossZoneChanges() {
+        val t=Json.parseToJsonElement("""{"type":"calendar","time":"08:00","timezone":"America/Los_Angeles","max_runs":5,"until":"2027-10-30T08:00:00Z"}""").jsonObject
+        val edit=ScheduleTime.from(t);assertEquals(1,edit.end)
+        val changed=edit.copy(zone="Asia/Shanghai").trigger(java.time.Instant.parse("2026-10-24T00:00:00Z"))
+        assertEquals(t["until"],changed["until"]);assertEquals(5L,changed.long("max_runs"))
+    }
     @Test fun nonCalendarTimestampOffsetsDoNotBecomeCalendarTimezoneNames() {
         val old=java.util.TimeZone.getDefault()
         try {

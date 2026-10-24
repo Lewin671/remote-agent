@@ -657,9 +657,8 @@ it("keeps the original interval phase and both unchanged end limits", async () =
   const trigger={type:"interval" as const,interval_seconds:900,at:"2026-10-01T08:00:00Z",delay_seconds:29,max_runs:5,until:"2027-10-30T08:00:29Z"};
   const save=vi.fn();await mount(<TimingSheet trigger={trigger} onSave={save} onClose={()=>{}} />);
   await click("完成");expect(save).toHaveBeenCalledWith(trigger);
-  await input(host.querySelector('input[type="datetime-local"]')!,"2027-10-31T08:00");
-  await click("完成");expect(save.mock.calls.at(-1)![0]).toMatchObject({at:trigger.at,delay_seconds:29,max_runs:5});
-  expect(save.mock.calls.at(-1)![0].until).not.toBe(trigger.until);
+  await input(host.querySelectorAll('input[type="number"]')[1],"6");
+  await click("完成");expect(save.mock.calls.at(-1)![0]).toMatchObject({at:trigger.at,delay_seconds:29,max_runs:6,until:trigger.until});
 });
 it("submits the editor's snapshot revision and spec even after remote changes", async () => {
   const old=task();const r=remote([old]);const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(old);
@@ -690,4 +689,12 @@ it("uses the shared new-task explanation in the actual creation page", async () 
   const r = remote([]);
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
   expect(host.querySelector(".manage-hint")?.textContent).toBe("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。");
+});
+
+it("defaults dual limits to count and preserves the deadline when only the zone changes",async()=>{
+ const onSave=vi.fn();const trigger={type:"calendar" as const,time:"08:00",timezone:"America/Los_Angeles",max_runs:5,until:"2027-10-30T08:00:00Z"};
+ await mount(<TimingSheet trigger={trigger} onSave={onSave} onClose={()=>{}} />);
+ expect((host.querySelector('select[aria-label="结束"]') as HTMLSelectElement)?.value || (host.querySelector("select") as HTMLSelectElement)?.value).toBe("count");
+ await input(host.querySelector('input[placeholder="Asia/Shanghai"]')!,"Asia/Shanghai");await click("完成");
+ expect(onSave.mock.calls[0][0]).toMatchObject({max_runs:5,until:trigger.until,timezone:"Asia/Shanghai"});
 });

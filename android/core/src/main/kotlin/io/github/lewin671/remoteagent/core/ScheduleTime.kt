@@ -48,7 +48,7 @@ data class ScheduleTime(
                 if (before != null && end == before.end) {
                     original?.get("max_runs")?.let { put("max_runs", it) }; original?.get("until")?.let { put("until", it) }
                     if (end == 1 && count != before.count) put("max_runs", max)
-                    if (end == 2 && (until != before.until || this@ScheduleTime.deadline != before.deadline || zone != before.zone) && deadline != null) put("until", deadline.toString())
+                    if (end == 2 && (until != before.until || this@ScheduleTime.deadline != before.deadline) && deadline != null) put("until", deadline.toString())
                 } else { if (max > 0) put("max_runs", max); if (deadline != null) put("until", deadline.toString()) }
             }
         }
