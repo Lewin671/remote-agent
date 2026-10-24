@@ -29,6 +29,16 @@ class ScheduleComponentsTest {
         ui.onNodeWithText(task.title).performClick()
         assertTrue(clicked)
     }
+    @Test fun attentionReasonUsesMutedTextRatherThanTheOrangeStatusColor() {
+        val fixture=Json.parseToJsonElement(java.io.File(System.getProperty("scheduleClients")).readText()).jsonObject
+        val task=ScheduledTask("computer",fixture["tasks"]!!.jsonArray.first { it.jsonObject.text("id")=="attention" }.jsonObject)
+        val state=RemoteState(conn=ConnState.ONLINE,machines=mapOf("computer" to MachineView("computer",true,0,MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build())))
+        var muted=androidx.compose.ui.graphics.Color.Unspecified
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { muted=pal.muted; TaskRow(task,state,Instant.parse(fixture.text("now"))) {} } }
+        val layouts=mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        ui.onNodeWithText(scheduleReason(task.reason), useUnmergedTree = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(muted,layouts.single().layoutInput.style.color)
+    }
     @Test fun tabBadgeCountsOnlyAttentionTasksAndNavigates() {
         var selected = ""
         ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { TabBar("home", 4, 2) { selected = it } } }

@@ -68,7 +68,7 @@ fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(
     val tone = when { !online -> Tone.OFF; group == TaskGroup.ATTENTION -> Tone.WAIT; task.active != null -> Tone.RUN; group == TaskGroup.ACTIVE -> Tone.IDLE; else -> Tone.OFF }
     SessionListRow(task.title, if (online) scheduleNext(task, now) else SCHEDULE_OFFLINE, tone, last, onClick = onClick) {
         Text(scheduleTiming(task.trigger) + " · " + taskLocation(task, state), style = T.sm, color = pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(scheduleLastResult(task, now), style = T.meta, color = if (tone == Tone.WAIT) pal.orangeInk else pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(scheduleLastResult(task, now), style = T.meta, color = pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

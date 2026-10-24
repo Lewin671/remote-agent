@@ -18,7 +18,7 @@ fun taskPermission(task: ScheduledTask, state: RemoteState): String = if (task.t
     state.sessions[task.target.text("session")]?.let { modeOf(it)?.text } ?: "跟随对话"
     else when(task.target.text("mode")) { "ask" -> "询问"; "auto" -> "自动"; "full" -> "完全放行"; else -> "跟随 CLI 设置" }
 fun scheduleCreation(task: ScheduledTask, now: Instant): String {
-    val kind = if (task.target.text("type") == "resume_session") "消息等当前这一轮结束后再发，不会打断正在做的事。" else "每次新开一个对话，归在这个任务下面。"
+    val kind = if (task.target.text("type") == "resume_session") "消息发到当前对话，等待当前轮结束。" else "每次新开一个对话，归在这个任务下面。"
     val owner = if (task.json.text("source") == "agent") "Agent 在对话里创建" else "你创建"
     val at = scheduleInstant(task.json.text("created_at"))?.let { " · ${scheduleWhen(it, now)}" }.orEmpty()
     return "$kind $owner$at"
