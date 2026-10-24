@@ -190,3 +190,34 @@ func TestRecurringResumeAndManualFailures(t *testing.T) {
 		}
 	}
 }
+
+func TestSkippedManualTrialRestoresAutomaticDispatch(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	spec := taskSpec(schedule.Trigger{Type: "calendar", Time: "08:00", Timezone: "UTC", MaxRuns: 1})
+	spec.LateSeconds = 60
+	task := createTask(t, h, spec, "")
+	due := time.Now().Add(time.Hour)
+	state := h.d.tasks[task.ID]
+	state.NextRunAt = &due
+	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); err != nil {
+		t.Fatal(err)
+	}
+	late := time.Now().Add(-2 * time.Minute)
+	state.NextRunAt = &late
+	h.d.tickSchedules(time.Now())
+	got := readTask(t, h.d, task.ID)
+	if got.RunNow || len(got.Runs) != 1 || !got.Runs[0].Manual || got.Runs[0].Status != "skipped" || got.NextRunAt == nil || !got.NextRunAt.Equal(due) {
+		t.Fatalf("skipped trial leaked flag: %+v", got)
+	}
+	h.d.tickSchedules(due)
+	got = readTask(t, h.d, task.ID)
+	if got.Active == nil || got.Active.Manual || got.Dispatches != 1 || got.LastCalendarDate != calendarDate(spec.Trigger, due) {
+		t.Fatalf("automatic treated as manual: %+v", got)
+	}
+	completeTask(h, got.Active, due)
+	h.d.tickSchedules(due)
+	if readTask(t, h.d, task.ID).Status != "completed" {
+		t.Fatal("automatic cap bypassed")
+	}
+}

@@ -720,9 +720,14 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				}
 			}
 			if now.Sub(*t.NextRunAt) > time.Duration(late)*time.Second {
-				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired"}
+				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired", Manual: t.RunNow}
 				t.Runs = appendRun(t.Runs, run)
-				d.nextSchedule(t, now)
+				if t.RunNow {
+					t.RunNow = false
+					d.restoreManualSchedule(t, now)
+				} else {
+					d.nextSchedule(t, now)
+				}
 			} else if tr := t.Spec.Trigger; tr.Type == "calendar" && !t.RunNow && t.LastCalendarDate == calendarDate(tr, *t.NextRunAt) {
 				d.nextSchedule(t, now)
 			} else if !t.RunNow && t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
@@ -1102,7 +1107,6 @@ func (d *Daemon) restoreManualSchedule(t *schedule.Task, now time.Time) {
 	t.Status, t.Reason = status, reason
 	t.AutomaticNextRunAt = nil
 	t.AutomaticStatus, t.AutomaticReason = "", ""
-	t.RunNow = false
 	d.expireSchedule(t, now)
 }
 func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {

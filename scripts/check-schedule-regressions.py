@@ -55,6 +55,8 @@ go("r2-02-cold-list", "internal/server/store.go", "AND ended_ms = 0 ORDER BY", "
 go("r2-03-resume", "internal/daemon/schedule.go", 't.Spec.Trigger.Type == "interval" || t.Spec.Trigger.Type == "calendar" {', 'false {', "TestRecurringResumeAndManualFailures")
 go("r2-03-manual-result", "internal/daemon/schedule.go", 'if manual {', 'if false && manual {', "TestRecurringResumeAndManualFailures")
 
+go("r2-04-skipped-manual", "internal/daemon/schedule.go", 't.RunNow = false\n\t\t\t\t\td.restoreManualSchedule(t, now)', 'd.restoreManualSchedule(t, now)', "TestSkippedManualTrialRestoresAutomaticDispatch")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
