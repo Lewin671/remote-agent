@@ -164,15 +164,20 @@ func (s *session) enqueueInputContext(ctx context.Context, text, requestID strin
 		if !resume {
 			break
 		}
-		s.lifecycleMu.Unlock()
-		if _, err := s.d.resumeContextBy(ctx, s.meta.ID, origin); err != nil {
+		// Keep lifecycle ownership through resume and queue persistence. The
+		// system-origin resume does not claim human ownership; saveQueueLocked does.
+		if _, err := s.d.resumeSessionForInputLocked(ctx, s); err != nil {
+			s.lifecycleMu.Unlock()
 			if !errors.Is(err, errRunning) || retries >= 1 {
 				return 0, err
 			}
+			continue
 		}
 		if err := ctx.Err(); err != nil {
+			s.lifecycleMu.Unlock()
 			return 0, err
 		}
+		break
 	}
 	defer s.lifecycleMu.Unlock()
 	return s.enqueueInputReady(text, requestID, images, origin, mode, reserved, take)

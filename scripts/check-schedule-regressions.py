@@ -154,6 +154,9 @@ go("r10-02-approval-fault", "internal/daemon/session.go", 's.withLatestOrCachedC
 go("r10-03-safety-operations", "internal/daemon/schedule.go", 'bound != nil && requiresScheduleAdmission(q.Operation)', 'bound != nil', "TestScheduleSafetyOperationsBypassTranscript")
 go("r10-03-read-lock", "internal/daemon/schedule.go", 'return d.scheduleCommandAdmittedContext(ctx, q, origin, scope)', 'if bound != nil {bound.readMu.Lock(); defer bound.readMu.Unlock()}; return d.scheduleCommandAdmittedContext(ctx, q, origin, scope)', "TestScheduleSaveReleasesTranscriptLock")
 
+go("r10-04-input-origin", "internal/daemon/daemon.go", 'd.resumeSessionLifetimeLocked(ctx, s, originSystem, true)', 'd.resumeSessionLifetimeLocked(ctx, s, originLocal, true)', "TestImplicitResumeWaitsForDurableInputOwnership")
+go("r10-04-rearm", "internal/daemon/daemon.go", 's.meta.TaskCLIClosed = !pendingInput', 's.meta.TaskCLIClosed = true', "TestImplicitResumeWaitsForDurableInputOwnership")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

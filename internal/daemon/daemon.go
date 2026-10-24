@@ -953,6 +953,16 @@ func (d *Daemon) resumeContextBy(ctx context.Context, id string, origin *pb.Orig
 // Caller owns lifecycleMu, including on return. Draining an old generation
 // briefly releases it so finalizers can finish, then rechecks the generation.
 func (d *Daemon) resumeSessionLocked(ctx context.Context, s *session, origin *pb.Origin) (*session, error) {
+	return d.resumeSessionLifetimeLocked(ctx, s, origin, false)
+}
+
+// Input-triggered resume has not accepted a human reply yet. The caller holds
+// lifecycleMu through queue admission; rejection returns this lifetime to cleanup.
+func (d *Daemon) resumeSessionForInputLocked(ctx context.Context, s *session) (*session, error) {
+	return d.resumeSessionLifetimeLocked(ctx, s, originSystem, true)
+}
+
+func (d *Daemon) resumeSessionLifetimeLocked(ctx context.Context, s *session, origin *pb.Origin, pendingInput bool) (*session, error) {
 	id := s.info().Id
 	// An exit flag is visible before its workers finish. Drain that generation
 	// before touching the terminal or installing another. Neither lifecycleMu
@@ -1067,10 +1077,14 @@ drain:
 
 	s.mu.Lock()
 	s.meta.Exited = false
-	// Explicit or scheduled resume starts a new CLI lifetime; never close it
-	// again on behalf of the original new_session execution.
+	// Explicit/scheduled resume is independent of the old creation. An
+	// implicit resume remains owned until canonical input admission takes over.
 	if s.meta.ScheduledTaskID != "" {
-		s.meta.TaskCLIClosed = true
+		s.meta.TaskCLIClosed = !pendingInput
+		if pendingInput && s.meta.TaskOwned {
+			s.scheduledClose = true
+			s.scheduledCloseAfter = time.Time{}
+		}
 	}
 	s.sawComposer = false
 	m = s.meta
