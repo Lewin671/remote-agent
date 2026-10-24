@@ -388,9 +388,9 @@ export function quietSpans(events: Event[]): QuietSpan[] {
           "questionAsked",
           "planProposed",
           "sessionState",
-          "inputState",
           "sessionForked",
-        ].includes(k.case))
+        ].includes(k.case) ||
+        (k.case === "inputState" && (k.value.paused || [InputStatus.FAILED, InputStatus.UNCONFIRMED, InputStatus.CANCELED, InputStatus.NEEDS_TERMINAL, InputStatus.HELD_BY_CLI].includes(k.value.status))))
     )
       safe = false;
     // Visible follow-up content is a fence. Otherwise widening a span to the

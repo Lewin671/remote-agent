@@ -331,6 +331,7 @@ it("still folds quiet rounds across ordinary scheduled queue and idle metadata",
               value: { requestId: "q" + e.seq, status: InputStatus.QUEUED },
             },
           }),
+          e,
           create(EventSchema, {
             origin: e.origin,
             kind: {
@@ -338,7 +339,6 @@ it("still folds quiet rounds across ordinary scheduled queue and idle metadata",
               value: { requestId: "q" + e.seq, status: InputStatus.SUBMITTED },
             },
           }),
-          e,
         ];
       if (e.kind.case === "turnEnded")
         return [
@@ -417,4 +417,9 @@ it("uses the agreed outcome wording and never replaces a failure reason with its
   expect(runResult(run("skip", { status: "skipped" }))).toBe("跳过");
   expect(runResult(run("quiet"))).toBe("没有通知");
   expect(runResult(run("notify", { notified: true }))).toBe("通知了你");
+});
+
+it.each([InputStatus.FAILED, InputStatus.UNCONFIRMED, InputStatus.CANCELED, InputStatus.NEEDS_TERMINAL, InputStatus.HELD_BY_CLI])("keeps blocking scheduled input visible after its message: %s", status => {
+  const events = rounds().flatMap(e => e.kind.case === "userMessage" ? [e, create(EventSchema, {kind:{case:"inputState",value:{status,requestId:"q"}}})] : [e]).map((e,i)=>({...e,seq:BigInt(i+1)}));
+  expect(foldScheduled(timeline(events, derive(events)),events,new Set()).some(x=>x.kind==="quiet")).toBe(false);
 });
