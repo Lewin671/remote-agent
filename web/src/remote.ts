@@ -601,7 +601,7 @@ export class Remote {
             error: "",
           });
           this.changed();
-          await Promise.allSettled([...new Set(tasks.filter(t => t.spec.target.type === "resume_session").map(t => t.spec.target.session).filter((sid): sid is string => !!sid && !this.sessions.has(sid)))].map(sid => this.ensureSession(sid)));
+          void Promise.allSettled([...new Set(tasks.filter(t => t.spec.target.type === "resume_session").map(t => t.spec.target.session).filter((sid): sid is string => !!sid && !this.sessions.get(sid)?.info))].map(sid => this.ensureSession(sid)));
         } catch (e) {
           const state = this.schedules.get(id);
           if (!state || !this.supportsSchedules(id)) return;

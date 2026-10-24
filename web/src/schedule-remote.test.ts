@@ -249,3 +249,14 @@ it("deletes a removed computer's encrypted task snapshot and rejects a late list
  const pending=r.refreshSchedules("computer");r.machines.delete("computer");r.syncSchedules();finish(result({tasks:[task()]}));await pending;
  expect(r.schedules.has("computer")).toBe(false);expect(stored.has("schedules:computer")).toBe(false);
 });
+
+it("does not hold the list slot or revision follow-up while resolving a target",async()=>{
+ const r=probe();const t=task();t.spec.target={type:"resume_session",session:"target"};
+ let release!:()=>void;const waiting=new Promise<void>(resolve=>{release=resolve;});
+ vi.spyOn(r,"ensureSession").mockReturnValue(waiting);
+ const send=vi.spyOn(r,"machineCommand").mockResolvedValue(result({tasks:[t]}));
+ let settled=false;const read=r.refreshSchedules("computer").then(()=>{settled=true;});
+ await vi.waitFor(()=>expect(settled).toBe(true));
+ r.machines.get("computer")!.meta!.scheduleRevision++;
+ await r.refreshSchedules("computer");expect(send).toHaveBeenCalledTimes(2);release();await read;
+});
