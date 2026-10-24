@@ -121,6 +121,7 @@ it("retries create with its frozen request and uses CAS for all task mutations",
       revision: 8,
     }),
   ).rejects.toThrow("任务刚被修改，已更新为最新内容");
+  expect(r.scheduleAttempts.get("computer/task-1")?.frozen).toBe(false);
   expect(
     send.mock.calls.find(
       ([, q]) => q?.case === "schedule" && q.value.operation === "pause",
@@ -259,4 +260,10 @@ it("does not hold the list slot or revision follow-up while resolving a target",
  await vi.waitFor(()=>expect(settled).toBe(true));
  r.machines.get("computer")!.meta!.scheduleRevision++;
  await r.refreshSchedules("computer");expect(send).toHaveBeenCalledTimes(2);release();await read;
+});
+
+it("retains an uncertain relay abort instead of treating it as a task revision conflict",async()=>{
+ const r=probe();vi.spyOn(r,"machineCommand").mockRejectedValue(new CommandError("aborted","relay outcome unknown",false));
+ await expect(r.changeSchedule("computer","task-1",{operation:"pause",taskId:"task-1",revision:1})).rejects.toThrow("relay outcome unknown");
+ expect(r.scheduleAttempts.get("computer/task-1")?.frozen).toBe(true);
 });

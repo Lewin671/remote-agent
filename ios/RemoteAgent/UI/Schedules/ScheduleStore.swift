@@ -144,7 +144,7 @@ final class ScheduleMutation {
         }
     }
     func recordConflict(_ error: Error) -> Error? {
-        guard (error as? CommandError)?.code == "aborted" else { return nil }
+        guard let command = error as? CommandError, command.fromDaemon, command.code == "aborted" else { return nil }
         attempt.abandon(); frozen = false; expired = false
         conflicts += 1
         return UserError("任务刚被修改，已更新为最新内容")

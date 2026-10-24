@@ -166,6 +166,7 @@ import UIKit
         let window=UIWindow(windowScene:scene);window.rootViewController=host;window.isHidden=false
         host.view.layoutIfNeeded();defer { window.isHidden=true }
         #expect(mutation.recordConflict(CommandError("unavailable","offline")) == nil)
+        #expect(mutation.recordConflict(CommandError("aborted","relay outcome unknown")) == nil)
         let error=try #require(mutation.recordConflict(CommandError("aborted","revision",fromDaemon:true)))
         #expect(errorText(error)=="任务刚被修改，已更新为最新内容")
         await eventually("conflict dismisses stale editor") { dismissed }

@@ -685,7 +685,8 @@ export class Remote {
       return task;
     } catch (error) {
       attempt.settle(error, sent);
-      if (error instanceof CommandError && error.code === "aborted") {
+      if (error instanceof CommandError && error.fromDaemon && error.code === "aborted") {
+        attempt.abandon(); // definite schedule revision conflict
         await this.refreshSchedules(machineId);
         throw new Error("任务刚被修改，已更新为最新内容");
       }
