@@ -10,8 +10,8 @@ import (
 )
 
 func TestFailedAtDefinitionUpdateRetriesSameOccurrence(t *testing.T) {
-	for _, titleOnly := range []bool{false, true} {
-		t.Run(map[bool]string{false: "unchanged", true: "title"}[titleOnly], func(t *testing.T) {
+	for _, changed := range []bool{false, true} {
+		t.Run(map[bool]string{false: "unchanged", true: "message"}[changed], func(t *testing.T) {
 			h := scheduleHarness(t)
 			defer h.s.log.Close()
 			now := time.Now()
@@ -24,8 +24,8 @@ func TestFailedAtDefinitionUpdateRetriesSameOccurrence(t *testing.T) {
 			h.d.endScheduledRun(h.d.tasks[task.ID], now.Add(time.Second), "failed", "execution_failed")
 			failed := readTask(t, h.d, task.ID)
 			spec := failed.Spec
-			if titleOnly {
-				spec.Title = "Retry check"
+			if changed {
+				spec.Message = "Retry check"
 			}
 			raw, _ := json.Marshal(spec)
 			if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "update", TaskId: task.ID, ExpectedRevision: failed.Revision, SpecJson: raw}, originLocal); err != nil {

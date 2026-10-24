@@ -173,6 +173,11 @@ go("notify-title-sealed", "internal/relay/sync.go", 'nc.Title, nc.Text = k.Sched
 
 go("schedule-client-environment", "internal/daemon/schedule.go", 'shell := t.SourceSession == ""', 'shell := false', "TestScheduledClientEnvironmentSurvivesDaemonRestart")
 
+go("title-update-state", "internal/daemon/schedule.go", 'if onlyScheduleTitleChanged(t.Spec, updateSpec) {', 'if false && onlyScheduleTitleChanged(t.Spec, updateSpec) {', "TestTitleOnlyUpdatePreservesExecutionState")
+go("title-update-late-run", "internal/daemon/schedule.go", 't.Spec.Title = updateSpec.Title', 'delete(d.lateRuns, t.ID); t.Spec.Title = updateSpec.Title', "TestTitleOnlyUpdatePreservesExecutionState")
+go("title-update-definition", "internal/daemon/schedule.go", 'return err == nil && bytes.Equal(a, b)', 'return err == nil && (bytes.Equal(a, b) || true)', "TestOtherDefinitionChangesKeepUpdateSemantics")
+go("title-update-delegation", "internal/daemon/schedule.go", 'd.restrictMCPTask(schedule.Clone(t), true)', 'd.restrictMCPTask(t, true)', "TestTitleOnlyUpdatePreservesDelegation")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

@@ -296,6 +296,39 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	if q.ExpectedRevision != 0 && q.ExpectedRevision != t.Revision {
 		return nil, connect.NewError(connect.CodeAborted, errors.New("scheduled task changed; reload before editing"))
 	}
+	var updateSpec schedule.Spec
+	if q.Operation == "update" {
+		if len(q.SpecJson) > 64<<10 {
+			return nil, errors.New("task request is too large")
+		}
+		var err error
+		updateSpec, err = schedule.DecodeSpec(q.SpecJson)
+		if err != nil {
+			return nil, err
+		}
+		// Renaming must not reconcile a late execution, replace a live run,
+		// reauthorize delegation or prepare a new automatic plan.
+		if onlyScheduleTitleChanged(t.Spec, updateSpec) {
+			if err := validateScheduleTitle(updateSpec.Title); err != nil {
+				return nil, err
+			}
+			if scope != "" {
+				if err := d.restrictMCPTask(schedule.Clone(t), true); err != nil {
+					return nil, err
+				}
+			}
+			prev := schedule.Clone(t)
+			t.Spec.Title = updateSpec.Title
+			t.Revision++
+			if err := d.saveSchedulesLocked(); err != nil {
+				if !fileReplaced(err) {
+					d.tasks[t.ID] = prev
+				}
+				return nil, fmt.Errorf("could not persist scheduled task: %w", err)
+			}
+			return json.Marshal(t)
+		}
+	}
 	// An execution that was confirmed late is taken up first: no operation
 	// moves on from an execution that is in fact under way.
 	lateRun := d.lateRuns[t.ID]
@@ -315,13 +348,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 		if t.Active != nil {
 			return nil, errors.New("wait for the active execution before replacing the task definition")
 		}
-		if len(q.SpecJson) > 64<<10 {
-			return nil, errors.New("task request is too large")
-		}
-		spec, err := schedule.DecodeSpec(q.SpecJson)
-		if err != nil {
-			return nil, err
-		}
+		spec := updateSpec
 		if !sameIntervalTiming(t.Spec.Trigger, spec.Trigger) {
 			t.IntervalPhase = nil
 		} else if t.Spec.Trigger.Type == "interval" && t.IntervalPhase == nil {
@@ -435,6 +462,28 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	return json.Marshal(t)
 }
 
+// Compare the complete public definition, so new Spec fields cannot silently
+// become rename exceptions. JSON matches the definition returned to clients.
+func onlyScheduleTitleChanged(before, after schedule.Spec) bool {
+	if before.Title == after.Title {
+		return false
+	}
+	before.Title = after.Title
+	a, err := json.Marshal(before)
+	if err != nil {
+		return false
+	}
+	b, err := json.Marshal(after)
+	return err == nil && bytes.Equal(a, b)
+}
+
+func validateScheduleTitle(title string) error {
+	if strings.TrimSpace(title) == "" || len(title) > 512 {
+		return errors.New("title is required and must fit in 512 bytes")
+	}
+	return nil
+}
+
 func oneShotTrigger(tr schedule.Trigger) bool {
 	return tr.Type == "at" || tr.Type == "after_turn" && !tr.Repeat
 }
@@ -472,8 +521,8 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 	spec := &t.Spec
 	tr := &spec.Trigger
 	target := &spec.Target
-	if strings.TrimSpace(spec.Title) == "" || len(spec.Title) > 512 {
-		return errors.New("title is required and must fit in 512 bytes")
+	if err := validateScheduleTitle(spec.Title); err != nil {
+		return err
 	}
 	if strings.TrimSpace(spec.Message) == "" || len(spec.Message) > 32<<10 || strings.ContainsRune(spec.Message, 0) {
 		return errors.New("message is required and must fit in 32768 bytes without NUL")

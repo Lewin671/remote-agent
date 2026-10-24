@@ -805,3 +805,22 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 本轮真实链路由合成加密客户端触发，未重新操作网页或 Android 产品界面、未验收实际推送送达；web/android/ios 目录均未修改。既有日历审批验收未在本轮重跑，实际运行的是新增的环境验收模式。
 
 最终 `go test ./...` 全量通过；`go test -race ./internal/daemon ./internal/relay ./internal/schedule` 三个包全包通过。
+
+
+### 任务改名：保留执行与调度状态
+
+2026-10-24，只在任务 worktree 提交，协议和产品版本未改，没有推送、发版或部署。方案与理由、仅标题差异的边界见 [architecture §18：修改与改名](architecture.md#修改与改名)。
+
+选择在现有 update 中识别改名，客户端继续提交完整定义，不新增操作或协议字段。分支放在迟到执行确认、Active 检查和 prepareSchedule 之前，仍经过原 update 的严格 transcript 准入、任务归属与修订检查；MCP 的权限检查在副本上执行，不改写原委托。改名只更新 Spec.Title 和任务 Revision，其余任务字段与 lateRuns 关联保留。标题校验与普通定义准备共用，存储失败仍区分文件未替换与目录同步不确定。
+
+`TestTitleOnlyUpdatePreservesExecutionState` 覆盖 CLIENT/LOCAL × 暂停、失败周期任务、失败的一次性任务、uncertain、运行中：前置状态走现有派发/暂停/排队/结束/无法确认路径，保留真实的手动请求和执行记录；逐字比较整个返回任务与期望值，除标题和修订号外不允许任何字段变化，再从磁盘重新读取比较。uncertain 场景预先写入迟到的 SUBMITTED 报告，改名自身不能接回或丢掉其关联，之后正常确认仍可执行。
+
+`TestTitleOnlyUpdatePreservesDelegation` 覆盖用户和 MCP 改名，验证 Source/SourceSession/ScopedSession/ScopedMode 不变；MCP 当前权限变化也不重新冻结原委托。`TestTitleOnlyUpdateValidatesAndPersists` 覆盖空白/超长标题、过期修订号、原子写入失败和目录同步不确定。`TestOtherDefinitionChangesKeepUpdateSemantics` 分别改变消息、触发器、目标和补跑窗口，确认仍重排并按用户修改接管；活动执行存在时替换执行定义仍拒绝。
+
+第五轮的一次性失败更新重试回归改为实际修改消息，保留原来完全相同定义更新的回归；不再把纯改名当重试。第四轮相位回归同时改消息和标题，继续验证完整定义替换的相位计算，避免新改名分支绕开原变异目标。
+
+`python3 scripts/check-schedule-regressions.py --only title-update-` 完整检出 4 个新增变异：禁用改名分支、丢弃迟到运行关联、忽略其余定义字段、在原任务上重新冻结委托。另执行 `--only r4-01-update`，原相位变异也实际检出。原测试先通过，变异后要求断言失败，编译失败不算检出；源码恢复。全部 140 个变异位点的目标字符串静态核对仍存在，未将静态核对算作完整变异脚本执行。
+
+最终 `go test ./...` 全量通过；`go test -race ./internal/daemon ./internal/schedule ./internal/schedulemcp ./internal/relay` 四个包全部通过。
+
+本轮使用隔离 Go harness 和 Schedule 命令分派路径；没有真实 CLI、产品界面或推送送达验收。web、android、ios 目录未改。

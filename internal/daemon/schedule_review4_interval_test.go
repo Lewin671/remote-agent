@@ -54,11 +54,12 @@ func TestIntervalDefinitionRoundTripDoesNotRedispatch(t *testing.T) {
 					}
 					restartSession(t, h)
 					setScopedMode(h, "ask")
-					h.s.emit(withOrigin(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "edit title"}}}, originLocal))
+					h.s.emit(withOrigin(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "edit definition"}}}, originLocal))
 					got := readTask(t, h.d, task.ID)
 					phase := *got.IntervalPhase
 					copy := got.Spec
 					copy.Title = "Edited title"
+					copy.Message = "Edited execution message"
 					if scoped {
 						if _, err := scopedSchedule(t, h, "update", task.ID, &copy); err != nil {
 							t.Fatal(err)
@@ -76,7 +77,7 @@ func TestIntervalDefinitionRoundTripDoesNotRedispatch(t *testing.T) {
 						t.Fatalf("roundtrip rewound plan: %+v", got)
 					}
 					if jobs := h.d.prepareScheduledDispatches(now.Add(time.Second)); len(jobs) != 0 || readTask(t, h.d, task.ID).Dispatches != 1 {
-						t.Fatal("title edit redispatched consumed occurrence")
+						t.Fatal("non-time definition edit redispatched consumed occurrence")
 					}
 				})
 			}

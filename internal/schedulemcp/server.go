@@ -72,7 +72,7 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 	mcp.AddTool(server, &mcp.Tool{Name: "schedule_list", Description: "List this bound session's MCP-created Remote Agent scheduled tasks, including status, next execution time, revisions and execution history."}, func(ctx context.Context, _ *mcp.CallToolRequest, _ Empty) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "list", "", 0, nil, "")
 	})
-	mcp.AddTool(server, &mcp.Tool{Name: "schedule_update", Description: "Replace a Remote Agent scheduled task definition; the active execution must finish first. Use expected_revision to avoid overwriting concurrent edits."}, func(ctx context.Context, _ *mcp.CallToolRequest, in UpdateInput) (*mcp.CallToolResult, map[string]any, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "schedule_update", Description: "Replace a Remote Agent scheduled task definition. Changing only its title preserves all scheduling and execution state, including active runs. Other replacements require the active execution to finish first. Use expected_revision to avoid overwriting concurrent edits."}, func(ctx context.Context, _ *mcp.CallToolRequest, in UpdateInput) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "update", in.TaskID, in.ExpectedRevision, &in.Task, "")
 	})
 	for _, item := range []struct{ op, description string }{
