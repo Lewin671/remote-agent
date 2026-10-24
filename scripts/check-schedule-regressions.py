@@ -139,10 +139,10 @@ go("r8-notify-read-failure", "internal/daemon/schedule_events.go", 'if !s.readRo
 
 go("r9-schedule-admission", "internal/daemon/schedule.go", 'bound.admitScheduledContext(q.Operation,', 'func(_ string, decide func() error) error { return decide() }(q.Operation,', "TestMCPAdmissionReadsTranscriptBeforeEveryMutation")
 go("r9-admission-read", "internal/daemon/schedule_events.go", 'if !s.readRolloutLocked() {', 'if false && !s.readRolloutLocked() {', "TestMCPAdmissionReadsTranscriptBeforeEveryMutation")
-go("r9-admission-failure", "internal/daemon/schedule_events.go", 'if !s.readRolloutLocked() {', 'if !s.readRolloutLocked() && false {', "TestAllScheduleOperationsRequireCommittedAdmission")
+go("r9-admission-failure", "internal/daemon/schedule_events.go", 'if !s.readRolloutLocked() {', 'if !s.readRolloutLocked() && false {', "TestContextDependentScheduleOperationsRequireCommittedAdmission")
 go("r9-interrupt-admission", "internal/daemon/session.go", 's.withLatestOrCachedContext("interrupt",', 'func(_ string, decide func() error) error { return decide() }("interrupt",', "TestContextRequestPathsShareAdmission")
 go("r9-hook-admission", "internal/daemon/session.go", 's.withLatestOrCachedContext("hook",', 'func(_ string, decide func() error) error { return decide() }("hook",', "TestContextRequestPathsShareAdmission")
-go("r9-exit-admission", "internal/daemon/session.go", 's.admitScheduledContext("session settlement",', 'func(_ string, decide func() error) error { return decide() }("session settlement",', "TestContextRequestPathsShareAdmission")
+go("r9-exit-admission", "internal/daemon/session.go", 'func (s *session) settleExited() error {', 'func (s *session) settleExited() error { if !s.readRollout() {return nil};', "TestContextRequestPathsShareAdmission")
 
 go("r9-permission-admission", "internal/daemon/session.go", 's.withLatestOrCachedContext("permission request",', 'func(_ string, decide func() error) error { return decide() }("permission request",', "TestHooksRefreshOrUseCachedContext")
 go("r9-hook-start-admission", "internal/daemon/session.go", 's.withLatestOrCachedContext("session start hook",', 'func(_ string, decide func() error) error { return decide() }("session start hook",', "TestHooksRefreshOrUseCachedContext")
@@ -150,6 +150,9 @@ go("r9-hook-start-admission", "internal/daemon/session.go", 's.withLatestOrCache
 go("r10-01-interrupt-fault", "internal/daemon/session.go", 's.withLatestOrCachedContext("interrupt",', 's.admitScheduledContext("interrupt",', "TestInterruptSurvivesTranscriptFault")
 
 go("r10-02-approval-fault", "internal/daemon/session.go", 's.withLatestOrCachedContext("permission request",', 's.admitScheduledContext("permission request",', "TestRemoteApprovalSurvivesTranscriptReadFault")
+
+go("r10-03-safety-operations", "internal/daemon/schedule.go", 'bound != nil && requiresScheduleAdmission(q.Operation)', 'bound != nil', "TestScheduleSafetyOperationsBypassTranscript")
+go("r10-03-read-lock", "internal/daemon/schedule.go", 'return d.scheduleCommandAdmittedContext(ctx, q, origin, scope)', 'if bound != nil {bound.readMu.Lock(); defer bound.readMu.Unlock()}; return d.scheduleCommandAdmittedContext(ctx, q, origin, scope)', "TestScheduleSaveReleasesTranscriptLock")
 
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

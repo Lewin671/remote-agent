@@ -901,58 +901,61 @@ func (s *session) markExitedLocked(detail string) error {
 // without a word. Nothing else touches the queue of an exited session. It
 // returns an error until the final transcript and all outcomes are committed.
 func (s *session) settleExited() error {
-	return s.admitScheduledContext("session settlement", func() error {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		if !s.meta.Exited {
-			return nil
-		}
-		// A dead CLI cannot finish its old turn after a resume. Log the end
-		// only after its final records, and teach the live parser as well as
-		// replay so the next launch starts from the same state.
-		if s.running {
-			if !s.abortTurnLocked("session exited") {
-				return errUnsettled
-			}
-		}
-		s.aborted = false // exiting cancels old input; new input belongs to the next CLI
-		if len(s.queue.Queue) == 0 && len(s.queue.Held) == 0 {
-			return nil
-		}
-		var outcomes []*pb.Event
-		for _, in := range s.queue.Queue {
-			st := &pb.InputState{RequestId: in.RequestID}
-			switch {
-			case in.Inflight == nil:
-				st.Status, st.Reason = pb.InputStatus_INPUT_STATUS_CANCELED, "exited"
-			case s.loggedUserMessage(in):
-				st.Status = pb.InputStatus_INPUT_STATUS_SUBMITTED
-			default:
-				// Written, maybe submitted: as when confirming times out.
-				st.Status = pb.InputStatus_INPUT_STATUS_UNCONFIRMED
-			}
-			outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
-		}
-		for _, in := range s.queue.Held {
-			st := &pb.InputState{RequestId: in.RequestID}
-			if in.received || s.loggedUserMessage(in) {
-				st.Status = pb.InputStatus_INPUT_STATUS_SUBMITTED
-			} else {
-				// The CLI acknowledged holding it, but left no record proving
-				// delivery to the model. Do not claim it was never delivered,
-				// and never replay it automatically in the resumed CLI.
-				st.Status, st.Reason = pb.InputStatus_INPUT_STATUS_UNCONFIRMED, "exited"
-			}
-			outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
-		}
-		if !s.logOutcomeLocked(outcomes...) {
-			return errUnsettled // they stay for the next start, or resume, to settle
-		}
-		s.queue.Queue = nil
-		s.queue.Held = nil
-		s.saveSettledLocked()
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+	if !s.readRolloutLocked() {
+		return errUnsettled
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.meta.Exited {
 		return nil
-	})
+	}
+	// A dead CLI cannot finish its old turn after a resume. Log the end
+	// only after its final records, and teach the live parser as well as
+	// replay so the next launch starts from the same state.
+	if s.running {
+		if !s.abortTurnLocked("session exited") {
+			return errUnsettled
+		}
+	}
+	s.aborted = false // exiting cancels old input; new input belongs to the next CLI
+	if len(s.queue.Queue) == 0 && len(s.queue.Held) == 0 {
+		return nil
+	}
+	var outcomes []*pb.Event
+	for _, in := range s.queue.Queue {
+		st := &pb.InputState{RequestId: in.RequestID}
+		switch {
+		case in.Inflight == nil:
+			st.Status, st.Reason = pb.InputStatus_INPUT_STATUS_CANCELED, "exited"
+		case s.loggedUserMessage(in):
+			st.Status = pb.InputStatus_INPUT_STATUS_SUBMITTED
+		default:
+			// Written, maybe submitted: as when confirming times out.
+			st.Status = pb.InputStatus_INPUT_STATUS_UNCONFIRMED
+		}
+		outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
+	}
+	for _, in := range s.queue.Held {
+		st := &pb.InputState{RequestId: in.RequestID}
+		if in.received || s.loggedUserMessage(in) {
+			st.Status = pb.InputStatus_INPUT_STATUS_SUBMITTED
+		} else {
+			// The CLI acknowledged holding it, but left no record proving
+			// delivery to the model. Do not claim it was never delivered,
+			// and never replay it automatically in the resumed CLI.
+			st.Status, st.Reason = pb.InputStatus_INPUT_STATUS_UNCONFIRMED, "exited"
+		}
+		outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
+	}
+	if !s.logOutcomeLocked(outcomes...) {
+		return errUnsettled // they stay for the next start, or resume, to settle
+	}
+	s.queue.Queue = nil
+	s.queue.Held = nil
+	s.saveSettledLocked()
+	return nil
 }
 
 // Info summarizes the session.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -79,9 +80,9 @@ func TestMCPAdmissionReadsTranscriptBeforeEveryMutation(t *testing.T) {
 	}
 }
 
-func TestAllScheduleOperationsRequireCommittedAdmission(t *testing.T) {
+func TestContextDependentScheduleOperationsRequireCommittedAdmission(t *testing.T) {
 	for _, fault := range []string{"read", "commit"} {
-		for _, op := range []string{"create", "update", "resume", "run", "list", "get", "pause", "cancel", "notify_user"} {
+		for _, op := range []string{"create", "update", "resume", "run", "notify_user"} {
 			t.Run(fault+"/"+op, func(t *testing.T) {
 				h, own := admissionFixture(t, false)
 				defer func() { h.s.log.Close() }()
@@ -186,8 +187,8 @@ func TestContextRequestPathsShareAdmission(t *testing.T) {
 				if err != nil {
 					t.Fatalf("cached idle interrupt failed: %v", err)
 				}
-			} else if connect.CodeOf(err) != connect.CodeUnavailable {
-				t.Fatalf("%s ignored transcript failure: %v", op, err)
+			} else if !errors.Is(err, errUnsettled) {
+				t.Fatalf("settlement discarded uncommitted transcript: %v", err)
 			}
 			if len(h.term.written()) != 0 {
 				t.Fatal("failed admission sent terminal control")
@@ -211,8 +212,8 @@ func TestOwnerScheduleKeepsAuthorityAfterFreshAdmission(t *testing.T) {
 	}
 	h.s.reader = tail.NewReader(h.dir, 0)
 	_, err = h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "list", SessionId: h.s.meta.ID}, originLocal)
-	if connect.CodeOf(err) != connect.CodeUnavailable {
-		t.Fatalf("bound local request bypassed admission: %v", err)
+	if err != nil {
+		t.Fatalf("inspection must remain available on read faults: %v", err)
 	}
 	// Machine-wide history queries have no live session context or model restriction.
 	if _, err = h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "list"}, originLocal); err != nil {
@@ -225,12 +226,9 @@ func TestScheduledContextKeepsInspectionAndStoppingAvailable(t *testing.T) {
 		t.Run(op, func(t *testing.T) {
 			h, own := admissionFixture(t, false)
 			defer h.s.log.Close()
-			native := writeScheduledTranscriptInput(t, h, "scheduled", false)
+			writeScheduledTranscriptInput(t, h, "scheduled", false)
 			if err := admissionRequest(t, h, own, op); err != nil {
 				t.Fatalf("scheduled %s should remain available: %v", op, err)
-			}
-			if h.s.scheduledTask != native.ID {
-				t.Fatal("allowed operation did not refresh context")
 			}
 		})
 	}

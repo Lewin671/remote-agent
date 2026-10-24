@@ -132,6 +132,15 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 	return d.scheduleCommandScopedContext(context.Background(), q, origin, scope)
 }
 
+func requiresScheduleAdmission(operation string) bool {
+	switch operation {
+	case "create", "update", "resume", "run", "notify_user":
+		return true
+	default:
+		return false
+	}
+}
+
 func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.ScheduleRequest, origin *pb.Origin, scope string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -149,42 +158,55 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		if err != nil {
 			return nil, mcpScheduleDenied()
 		}
-	} else if q.SessionId != "" {
+	} else if q.SessionId != "" && requiresScheduleAdmission(q.Operation) {
 		var err error
 		bound, err = d.session(q.SessionId)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if bound == nil {
-		return d.scheduleCommandAdmittedContext(ctx, q, origin, scope, nil)
+	if q.Operation == "notify_user" {
+		var result []byte
+		err := bound.admitScheduledContext("notify_user", func() error {
+			var err error
+			result, err = d.notifyScheduled(q, bound)
+			return err
+		})
+		return result, err
 	}
-	var result []byte
-	err := bound.admitScheduledContext(q.Operation, func() error {
-		var err error
-		result, err = d.scheduleCommandAdmittedContext(ctx, q, origin, scope, bound)
-		return err
-	})
-	return result, err
+	locked := false
+	lockAndCheck := func() error {
+		d.scheduleMu.Lock()
+		locked = true
+		if scope != "" && requiresScheduleAdmission(q.Operation) && d.sessionHasScheduledRunLocked(scope) {
+			return connect.NewError(connect.CodePermissionDenied, errors.New("MCP cannot create, update, resume or run tasks during a scheduled execution"))
+		}
+		return nil
+	}
+	var err error
+	if bound != nil && requiresScheduleAdmission(q.Operation) {
+		err = bound.admitScheduledContext(q.Operation, lockAndCheck)
+	} else {
+		err = lockAndCheck()
+	}
+	if locked {
+		defer d.scheduleMu.Unlock()
+	}
+	if err != nil {
+		return nil, err
+	}
+	// Admission linearizes while holding both readMu and scheduleMu. Keep
+	// scheduleMu through effects, so task controls cannot overtake the decision,
+	// but release readMu before validation, filesystem I/O or durable saves.
+	return d.scheduleCommandAdmittedContext(ctx, q, origin, scope)
 }
 
-// Bound requests hold readMu from admitScheduledContext through all decisions
-// and effects. Machine-wide owner requests have no live session context to admit.
-func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.ScheduleRequest, origin *pb.Origin, scope string, bound *session) ([]byte, error) {
-	if q.Operation == "notify_user" {
-		return d.notifyScheduled(q, bound)
-	}
-	d.scheduleMu.Lock()
-	defer d.scheduleMu.Unlock()
+// Caller holds scheduleMu, but never the transcript read lock.
+func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.ScheduleRequest, origin *pb.Origin, scope string) ([]byte, error) {
 	if d.tasks == nil {
 		d.tasks = map[string]*schedule.Task{}
 	}
 	now := time.Now().UTC()
-	if scope != "" && (q.Operation == "create" || q.Operation == "update" || q.Operation == "resume" || q.Operation == "run") {
-		if d.sessionHasScheduledRunLocked(scope) {
-			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("MCP cannot create, update, resume or run tasks during a scheduled execution"))
-		}
-	}
 	if q.Operation == "list" {
 		tasks := make([]*schedule.Task, 0, len(d.tasks))
 		for _, t := range d.tasks {
