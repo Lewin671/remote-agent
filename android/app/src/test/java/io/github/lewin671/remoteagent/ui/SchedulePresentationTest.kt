@@ -14,6 +14,14 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SchedulePresentationTest {
+    @Test fun editingScopesDefaultsAndSessionsToTheOwningComputer() {
+        val meta=MachineMeta.newBuilder().addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setDefaultMode(ApprovalMode.APPROVAL_MODE_AUTO).setDefaultModeSource(DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG)).build()
+        val prefs=ProjectPrefs.newBuilder().addSettings(ProjectSettings.newBuilder().setPath("/example").setMachineId("other").addAgents(AgentSettings.newBuilder().setAgent(Agent.AGENT_CLAUDE).setModel("other-model"))).build()
+        val state=RemoteState(machines=mapOf("own" to MachineView("own",true,0,meta),"other" to MachineView("other",true,0,meta)),prefs=PrefsObject(1,prefs),sessions=mapOf("other" to SessionView("other","other",Session.newBuilder().setCwd("/example").setAgent(Agent.AGENT_CLAUDE).setModel("other-session-model").build())))
+        val scoped=scheduleEditingState(state,"own")
+        val config=projectStart(scoped,"/example",Agent.AGENT_CLAUDE,"own")!!.config
+        assertEquals("",config.model);assertTrue(scoped.sessions.isEmpty());assertEquals(setOf("own"),scoped.machines.keys)
+    }
     @Test fun canonicalLocalZonesStayImplicitAndOnlyForeignCalendarZonesAreShown() {
         val local = ZoneId.of("America/Los_Angeles")
         fun calendar(zone: String) = buildJsonObject { put("type", "calendar"); put("time", "09:49"); put("timezone", zone) }

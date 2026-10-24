@@ -177,11 +177,11 @@ type Latched = { key: string; machineId: string; agent: Agent; by: Partial<Recor
  * The project's settings name the machine and keep one set of model,
  * effort and mode per CLI; which CLI a start uses is picked next to the
  * box, the project remembering the last one used. */
-export function useNewSession(remote: Remote, key: string, go: Go) {
+export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?: string) {
   // Recomputed on every render: which session is latest changes with any
   // session's activity, not only when sessions come or go.
-  const p = projects(remote.sessions.values(), remote.machines.values(), remote.projectPrefs().settings).find((x) => x.key === key);
-  const saved = remote.projectPrefs().settings.find((s) => s.path === key);
+  const p = projects([...remote.sessions.values()].filter(s => !fixedMachine || s.machineId === fixedMachine), remote.machines.values(), remote.projectPrefs().settings.filter(s => !fixedMachine || s.machineId === fixedMachine)).find((x) => x.key === key);
+  const saved = remote.projectPrefs().settings.find((s) => s.path === key && (!fixedMachine || s.machineId === fixedMachine));
   const start = startOf(remote, key);
   const current = start.attempt;
   const draftKey = "new:" + key;
@@ -195,7 +195,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const own = <T extends Local | Picked | Latched>(x: T | undefined) => (x?.key === key && !start.spent.has(x) ? x : undefined);
   // A request that is on its way, or whose outcome is unknown, was sent
   // with choices of its own. A page that has none goes on from them.
-  const sentWith = current.payload ? start.page : undefined;
+  const sentWith = !fixedMachine && current.payload ? start.page : undefined;
   const [localState, setLocal] = useState<Local>();
   const local = own(localState) ?? sentWith?.local;
   // The CLI picked next to the box, for this draft.
@@ -228,8 +228,8 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // A project none of whose sessions are held starts on a machine that
   // has it, as its summary says, rather than on any machine.
   const known = p?.machines.find((id) => remote.machines.get(id)?.online) ?? p?.machines[0];
-  const baseMachine = remote.draftMachines.get(key) || held?.machineId || saved?.machineId || first?.machineId || freshConfig(remote, key, known).machineId;
-  const machineId = pinned?.machineId ?? local?.machineId ?? baseMachine;
+  const baseMachine = fixedMachine || remote.draftMachines.get(key) || held?.machineId || saved?.machineId || first?.machineId || freshConfig(remote, key, known).machineId;
+  const machineId = fixedMachine ?? pinned?.machineId ?? local?.machineId ?? baseMachine;
   const machine = remote.machines.get(machineId);
   const agents = agentsOf(machine);
   const remembered = saved?.agent ? (saved.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX) : undefined;

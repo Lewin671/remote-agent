@@ -808,7 +808,7 @@ fun projectModel(c: NewConfig, models: ListModelsResponse, settings: DaemonSetti
  * store, or null when nothing was changed.
  */
 @Composable
-fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: String, agent: Agent, open: String = "", onDone: (PrefsOp.SetSettings?) -> Unit, onClose: () -> Unit, initial: NewConfig? = null, scheduling: Boolean = false) {
+fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: String, agent: Agent, open: String = "", onDone: (PrefsOp.SetSettings?) -> Unit, onClose: () -> Unit, initial: NewConfig? = null, scheduling: Boolean = false, lockMachine: Boolean = false) {
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
@@ -865,7 +865,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 }
                 FieldLabel("新会话")
                 val machineRow: @Composable () -> Unit =
-                    { SetRow("机器", machineLabel(state, machine), { page = "machine" }, dot = if (state.machines[machine]?.online == true) p.green else p.gray) }
+                    { SetRow("机器", machineLabel(state, machine), if (lockMachine) null else ({ page = "machine" }), dot = if (state.machines[machine]?.online == true) p.green else p.gray) }
                 val rows = listOf<@Composable () -> Unit>(
                     {
                         SetRow("模型", listOf(shownModel?.displayName?.ifEmpty { null } ?: c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" }, { page = "model" })

@@ -38,6 +38,10 @@ class ScheduleDetailEditsTest {
     }
     private fun render() { ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { ScheduleDetailScreen("computer","task") } } } }
     @After fun close() { scope.cancel();remote.close() }
+    @Test fun existingTaskCannotSelectAnotherComputer() {
+        prepare();render();ui.onNodeWithText("在哪运行").performClick()
+        ui.onNodeWithText("机器").assertHasNoClickAction()
+    }
     @Test fun editorKeepsOpeningRevisionAndFullSpecAfterAnotherClientWrites() {
         prepare();render();ui.onNodeWithText("消息",useUnmergedTree=true).performClick()
         ui.runOnIdle { latest=ScheduledTask(original.machine,JsonObject(original.json+mapOf("revision" to JsonPrimitive(9),"spec" to JsonObject(original.spec+("title" to JsonPrimitive("另一端改名"))))));runBlocking { repository.refresh("computer") } }

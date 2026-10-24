@@ -15,13 +15,9 @@ struct ScheduleConfigSheet: View {
     @State private var error = ""
     @State private var browsing = false
     private var selectionState: RemoteState {
-        var state = model.state
-        if let fixedMachine {
-            state.machines = state.machines.filter { $0.key == fixedMachine }
-            state.sessions = state.sessions.filter { $0.value.machineId == fixedMachine }
-        }
-        return state
+        fixedMachine.map { scheduleEditingState(model.state, machine: $0) } ?? model.state
     }
+
     var body: some View {
         let state = selectionState
         let c = config

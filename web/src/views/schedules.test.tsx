@@ -698,3 +698,14 @@ it("defaults dual limits to count and preserves the deadline when only the zone 
  await input(host.querySelector('input[placeholder="Asia/Shanghai"]')!,"Asia/Shanghai");await click("完成");
  expect(onSave.mock.calls[0][0]).toMatchObject({max_runs:5,until:trigger.until,timezone:"Asia/Shanghai"});
 });
+
+it("edits CLI choices and inherited settings only on the task computer",async()=>{
+ const t=task();const r=remote([t]);r.sessions.clear();
+ const m=r.machines.get("mac")!;const other=structuredClone(m);other.id="other";other.meta!.agents=other.meta!.agents.filter(a=>a.agent===2);r.machines.set("other",other);
+ r.prefs.snap!.prefs.settings[0].path=t.spec.target.cwd!;r.prefs.snap!.prefs.settings[0].machineId="other";
+ r.prefs.snap!.prefs.settings[0].agents.forEach(a=>{a.model="other-only-model";a.mode=ApprovalMode.FULL_ACCESS;});
+ const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(t);
+ await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);await click(/^在哪运行/);
+ expect(button("Codex")).toBeTruthy();await click("Codex");await click("保存");
+ expect(send.mock.calls[0][2].spec?.target).toMatchObject({agent:"codex",model:"",mode:"auto"});
+});

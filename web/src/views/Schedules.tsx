@@ -992,7 +992,7 @@ function TaskTargetEditor({
         } as Record<string, ApprovalMode>
       )[target.mode ?? ""] ?? ApprovalMode.UNSPECIFIED,
   });
-  const base = useNewSession(remote, cfg.cwd, () => undefined);
+  const base = useNewSession(remote, cfg.cwd, () => undefined, machineId);
   const info = useMachineInfo(remote, machineId, cfg.agent);
   const [config, setConfig] = useState(false);
   const [project, setProject] = useState(false);

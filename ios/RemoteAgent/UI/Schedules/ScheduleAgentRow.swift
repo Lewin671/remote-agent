@@ -7,7 +7,9 @@ import UIKit
 struct ScheduleAgentRow: View {
     let state: RemoteState
     @Binding var config: NewConfig?
+    var fixedMachine: String? = nil
     var body: some View {
+        let state = fixedMachine.map { scheduleEditingState(state, machine: $0) } ?? state
         if let c = config {
             let agents = machineAgents(state.machines[c.machineId])
             if agents.count > 1 {

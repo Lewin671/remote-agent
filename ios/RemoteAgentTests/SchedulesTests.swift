@@ -148,6 +148,15 @@ import UIKit
 }
 
 @MainActor @Suite struct ScheduleAlignmentTests {
+    @Test func taskEditorIgnoresOtherComputerDefaults() throws {
+        var state=ScheduleStoreTests().state()
+        state.machines["other"]=state.machines["m"]
+        state.prefs=PrefsObject(revision:1,prefs:PBProjectPrefs.with { $0.settings=[PBProjectSettings.with { $0.path="/example";$0.machineID="other";$0.agents=[PBAgentSettings.with { $0.agent = .claude;$0.model="other-model" }] }] })
+        state.sessions["other"]=SessionView(id:"other",machineId:"other",info:PBSession.with { $0.cwd="/example";$0.agent = .claude;$0.model="other-session-model" })
+        let scoped=scheduleEditingState(state,machine:"m")
+        #expect(scoped.sessions.isEmpty && scoped.prefs?.prefs.settings.isEmpty == true && scoped.machines.count == 1)
+        #expect(projectStart(scoped,key:"/example",pick:.claude,machine:"m")?.config.model == "")
+    }
     @Test func unloadedConversationMetadataUsesTheSharedPlaceholder() {
         var task = ScheduleStoreTests().task(); task.spec.target = ScheduleTarget(type:"resume_session"); task.spec.target.session = "s"
         var state = ScheduleStoreTests().state(); state.sessions["s"] = SessionView(id:"s",machineId:"m")

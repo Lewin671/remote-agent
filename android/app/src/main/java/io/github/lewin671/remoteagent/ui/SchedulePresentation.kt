@@ -31,3 +31,9 @@ fun sessionScheduleText(tasks: List<ScheduledTask>, state: RemoteState, now: Ins
 
 fun schedulePlanBlocked(current: Boolean, config: NewConfig?, state: RemoteState): Boolean =
     !current && config != null && (config.mode ?: defaultModeOf(state.machines[config.machineId],config.agent).mode) == Mode.PLAN
+
+fun scheduleEditingState(state: RemoteState, machine: String): RemoteState = state.copy(
+    machines = state.machines.filterKeys { it == machine },
+    sessions = state.sessions.filterValues { it.machineId == machine },
+    prefs = state.prefs?.let { saved -> saved.copy(prefs = saved.prefs.toBuilder().clearSettings().addAllSettings(saved.prefs.settingsList.filter { it.machineId == machine }).build()) },
+)

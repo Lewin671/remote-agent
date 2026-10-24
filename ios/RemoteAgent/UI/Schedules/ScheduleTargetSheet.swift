@@ -20,7 +20,7 @@ struct ScheduleTargetSheet: View {
             SheetHead("在哪运行", action: "保存", onAction: save)
             if let c = config {
                 GRow("项目", value: projectName(c.cwd), chevron: true) { picker = .project }
-                ScheduleAgentRow(state: model.state, config: $config)
+                ScheduleAgentRow(state: model.state, config: $config, fixedMachine: machine)
                 GRow("权限", value: effectiveModeText(chosen: c.mode, default: defaultModeOf(model.state.machines[machine], agent: c.agent)), chevron: true, valueColor: settingsModeRed(c, default: defaultModeOf(model.state.machines[machine], agent: c.agent)) ? Theme.red : nil) { picker = .mode }
                 GRow("模型", value: c.model.isEmpty ? "默认" : c.model, chevron: true) { picker = .model }
             }
@@ -38,4 +38,12 @@ struct ScheduleTargetSheet: View {
         next.mode = c.mode.map { $0 == .full ? "full" : $0 == .auto ? "auto" : "ask" }
         onSave(next); onClose()
     }
+}
+
+func scheduleEditingState(_ state: RemoteState, machine: String) -> RemoteState {
+    var scoped = state
+    scoped.machines = scoped.machines.filter { $0.key == machine }
+    scoped.sessions = scoped.sessions.filter { $0.value.machineId == machine }
+    if var prefs = scoped.prefs { prefs.prefs.settings = prefs.prefs.settings.filter { $0.machineID == machine }; scoped.prefs = prefs }
+    return scoped
 }

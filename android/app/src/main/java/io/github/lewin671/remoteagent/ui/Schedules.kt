@@ -172,11 +172,11 @@ fun ScheduleDetailScreen(machine: String, id: String) {
         if (edit == "message") ScheduleMessageEditor(base.message, busy, error, { edit = "" }) { text -> operate("update", JsonObject(base.spec + ("message" to JsonPrimitive(text)))) }
         if (edit == "config" || edit == "mode") {
             val cfg = scheduleConfig(base)
-            NewSettingsSheet(state, cfg.cwd, projectName(cfg.cwd), machine, cfg.agent, if (edit == "mode") "mode" else "",
+            NewSettingsSheet(scheduleEditingState(state, machine), cfg.cwd, projectName(cfg.cwd), machine, cfg.agent, if (edit == "mode") "mode" else "",
                 onDone = { op ->
                     val picked = op?.sets?.firstOrNull { it.agent == cfg.agent }
                     if (picked == null) edit = "" else operate("update", JsonObject(base.spec + ("target" to scheduleTarget(agentConfig(machine, cfg.cwd, picked), base.target))))
-                }, onClose = { edit = "" }, initial = cfg, scheduling = true)
+                }, onClose = { edit = "" }, initial = cfg, scheduling = true, lockMachine = true)
         }
         if (deleting) Confirm("删除这个任务？", "停止后续调度，已发出的消息和已开的对话保留。", "删除", true, { deleting = false }) { deleting = false; operate("cancel") }
     }
