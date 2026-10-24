@@ -27,18 +27,18 @@ class SchedulesTest {
         assertEquals("中继上的会话数已满", scheduleReason("relay_session_limit"))
     }
     @Test fun nextTimeUsesLocalDateAndTaskState() {
-        assertEquals("明天 8:00", scheduleNext(task(), now, utc))
+        assertEquals("下次 10月25日 08:00", scheduleNext(task(), now, utc))
         assertEquals("已暂停", scheduleNext(task("paused", "user_paused"), now, utc))
         assertEquals("已停下", scheduleNext(task("failed"), now, utc))
         assertEquals("已结束", scheduleNext(task("completed"), now, utc))
-        assertEquals("今天 1:00", scheduleWhen(Instant.parse("2026-10-25T08:00:00Z"), Instant.parse("2026-10-25T07:00:00Z"), ZoneId.of("America/Los_Angeles")))
+        assertEquals("今天 01:00", scheduleWhen(Instant.parse("2026-10-25T08:00:00Z"), Instant.parse("2026-10-25T07:00:00Z"), ZoneId.of("America/Los_Angeles")))
     }
     @Test fun lastResultCountsOnlyQuietCompletedRunsToday() {
         val quiet = "[${run("a", 12)},${run("b", 13)}]"
         assertEquals("今天 2 次都没有通知", scheduleLastResult(task(runs = quiet), now, utc))
         val notified = "[${run("a", 12)},${run("b", 13, true)}]"
         assertEquals("今天 13:00 通知了你：Important", scheduleLastResult(task(runs = notified), now, utc))
-        assertEquals("今天 13:00 失败：Nothing changed", scheduleLastResult(task(runs = "[${run("b", 13, status = "failed")}]"), now, utc))
+        assertEquals("今天 13:00 失败：运行结果无法确认", scheduleLastResult(task(runs = "[${run("b", 13, status = "failed")}]"), now, utc))
     }
     @Test fun historyGroupsQuietRunsByDayWithoutHidingResults() {
         val t = task(runs = "[${run("a", 12)},${run("b", 13, true)},${run("c", 14)}]")
@@ -67,7 +67,7 @@ class SchedulesTest {
         assertEquals(90L, ScheduleTime.from(trigger).trigger(now).long("interval_seconds"))
         assertEquals("2026-10-25T18:00:00Z", ScheduleTime.from(trigger).trigger(now).text("until"))
         val limited = ScheduledTask("computer", JsonObject(task().json + ("spec" to JsonObject(task().spec + ("trigger" to JsonObject(task().trigger + ("max_runs" to JsonPrimitive(4)))))) + ("dispatches" to JsonPrimitive(1))))
-        assertEquals("还剩 3 次", scheduleLimits(limited, now))
+        assertEquals("自动运行 4 次后", scheduleLimits(limited, now))
     }
     @Test fun invalidTimesAndEndingsAreRejected() {
         listOf(ScheduleTime(0, date = "2020-01-01"), ScheduleTime(zone = "invalid"), ScheduleTime(3, interval = "0"), ScheduleTime(2, weekdays = emptySet()), ScheduleTime(end = 1, count = "0"), ScheduleTime(end = 2, until = "2020-01-01")).forEach {
@@ -124,4 +124,53 @@ class SchedulesTest {
         assertEquals(3L, requests.first { it.operation == "update" }.expectedRevision)
         assertEquals("list", requests.last().operation)
     }
+    @Test fun optionalNamesMatchFirstSentenceWhitespaceAndUnicodeLimits() {
+        assertEquals("项目 早报", scheduleName("\uFEFF  项目\u3000早报 \uFEFF", "消息"))
+        assertEquals("项目早报", scheduleName("  项目早报 ", "其他消息"))
+        assertEquals("每天 检查", scheduleName("", "  每天  检查。发现问题通知我。\n不要做其他事"))
+        assertEquals("Review v1.2", scheduleName("", "Review v1.2. Notify me!"))
+        assertEquals("First", scheduleName("", "First! Second"))
+        assertEquals("第一行", scheduleName("", "第一行\r\n第二行"))
+        val emoji = "😀".repeat(61)
+        assertEquals(60, scheduleName(emoji, "").codePointCount(0, scheduleName(emoji, "").length))
+    }
+    @Test fun renamePreservesTheCompleteSpecAndSameNameDoesNotSend() = runTest {
+        val t = task()
+        val remote = MutableStateFlow(online())
+        val requests = mutableListOf<ScheduleRequest>()
+        val repo = ScheduleRepository(backgroundScope, remote, { _, req ->
+            requests += req
+            if (req.operation == "update") {
+                val spec = Json.parseToJsonElement(req.specJson.toStringUtf8()).jsonObject
+                assertEquals(t.spec - "title", spec - "title")
+                assertEquals("Renamed", spec.text("title")); assertEquals(t.revision, req.expectedRevision)
+                JsonObject(t.json + ("spec" to spec)).toString().toByteArray()
+            } else """{"tasks":[]}""".toByteArray()
+        }, cacheKey = ByteArray(32))
+        runCurrent(); requests.clear()
+        repo.rename(t, "Check")
+        assertTrue(requests.isEmpty())
+        repo.rename(t, " Renamed ")
+        assertEquals(1, requests.count { it.operation == "update" })
+        val states = listOf("scheduled", "waiting_turn", "paused", "failed", "uncertain", "completed", "cancelled", "running")
+        states.forEach { repo.rename(task(it), "Renamed") }
+        repo.rename(ScheduledTask(t.machine, JsonObject(t.json + ("manual_request" to buildJsonObject { put("request_id", "pending") }))), "Renamed")
+        repo.rename(ScheduledTask(t.machine, JsonObject(t.json + ("active_run" to buildJsonObject { put("status", "running") }))), "Renamed")
+        assertEquals(1 + states.size + 2, requests.count { it.operation == "update" })
+        assertTrue(scheduleRenameAllowed(true))
+        assertFalse(scheduleRenameAllowed(false)); assertFalse(scheduleRenameAllowed(true, true))
+    }
+    @Test fun abnormalResultsAndReasonsWinOverEarlierNotificationOrSummary() {
+        val failed = ScheduledRun(Json.parseToJsonElement("""{"status":"failed","notified":true,"notification_text":"Old notice","final_summary":"Old final","reason":"relay_session_limit"}""").jsonObject)
+        assertEquals("失败", runResult(failed)); assertEquals("中继上的会话数已满", failed.summary)
+        assertEquals("无法确认", runResult(ScheduledRun(buildJsonObject { put("status", "uncertain"); put("notified", true) })))
+        assertEquals("电脑返回的原因：new_reason", scheduleReason("new_reason"))
+        assertEquals("运行结果无法确认", scheduleReason(""))
+        assertEquals("消息没能加入待发队列", scheduleReason("could_not_queue_message"))
+        assertEquals("电脑重启前的发送结果无法确认", scheduleReason("restart_dispatching"))
+        assertEquals("还没有运行", scheduleLastResult(task(), now, utc))
+        val active = ScheduledTask("computer", JsonObject(task().json + ("active_run" to Json.parseToJsonElement(run("live", 14, status="running")))))
+        assertFalse(scheduleLastResult(active, now, utc).contains("次都没有通知"))
+    }
+
 }

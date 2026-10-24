@@ -54,4 +54,24 @@ class ScheduleComponentsTest {
         assertEquals("calendar", (saved!!["type"] as kotlinx.serialization.json.JsonPrimitive).content)
     }
 
+    @Test fun renameSelectsTheNameAndSameNameSaveStaysLocal() {
+        val task = io.github.lewin671.remoteagent.core.ScheduledTask("m", kotlinx.serialization.json.Json.parseToJsonElement("""{"id":"t","status":"scheduled","spec":{"title":"项目早报","message":"检查项目。"}}""") as kotlinx.serialization.json.JsonObject)
+        var closed = false
+        var saves = 0
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { ScheduleRenameDialog(task, { closed = true }) { saves++ } } }
+        ui.onNode(hasSetTextAction()).assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.TextSelectionRange, androidx.compose.ui.text.TextRange(0,task.title.length)))
+        ui.onNodeWithText("留空保存会用消息的第一句").assertExists()
+        ui.onNodeWithText("保存").performClick()
+        ui.runOnIdle { assertTrue(closed); assertEquals(0,saves) }
+    }
+    @Test fun uncertainRenameCannotBeSubmittedAgain() {
+        val task = io.github.lewin671.remoteagent.core.ScheduledTask("m", kotlinx.serialization.json.Json.parseToJsonElement("""{"id":"t","status":"scheduled","spec":{"title":"项目早报","message":"检查项目。"}}""") as kotlinx.serialization.json.JsonObject)
+        var saves = 0
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { ScheduleRenameDialog(task, {}) { saves++; throw io.github.lewin671.remoteagent.core.CommandException(io.github.lewin671.remoteagent.core.CommandException.UNKNOWN,"结果未确认") } } }
+        ui.onNode(hasSetTextAction()).performTextReplacement("新任务名")
+        ui.onNodeWithText("保存").performClick()
+        ui.onNodeWithText("保存").assertIsNotEnabled().performClick()
+        ui.runOnIdle { assertEquals(1,saves) }
+    }
+
 }

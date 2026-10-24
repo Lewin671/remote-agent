@@ -35,8 +35,7 @@ fun SchedulesScreen() {
     val t = Instant.ofEpochMilli(now())
     Column(Modifier.fillMaxSize().readableColumn()) {
         LargeTitle("定时任务")
-        ConnBanner(state)
-        ScheduleOffline(state, tasks)
+        if (!state.loaded) ConnBanner(state) else ScheduleOffline(state, tasks)
         LazyColumn(Modifier.weight(1f)) {
             snapshots.forEach { (machine, snapshot) ->
                 if (snapshot.error.isNotEmpty()) item("error-$machine") { Banner(snapshot.error, action = "重试", onAction = { scope.launch { remote.schedules.refresh(machine) } }) }
@@ -52,10 +51,10 @@ fun SchedulesScreen() {
                 if (rows.isNotEmpty()) {
                     item("group-$group") { Label(group.label, rows.size) }
                     items(rows, key = { "${it.machine}/${it.id}" }) { task ->
-                        val where = listOf(taskLocation(task, state), scheduleLimits(task, t)).filter { it.isNotEmpty() }.joinToString(" · ")
-                        TaskRow(task.title, scheduleFrequency(task.trigger) + " · " + where,
-                            if (group == TaskGroup.ATTENTION) scheduleReason(task.reason) else scheduleLastResult(task, t),
-                            scheduleNext(task, t),
+                        val where = taskLocation(task, state)
+                        TaskRow(task.title, scheduleTiming(task.trigger) + " · " + where,
+                            if (group == TaskGroup.ATTENTION && task.allRuns.firstOrNull()?.status !in stoppedScheduleRuns) scheduleReason(task.reason) else scheduleLastResult(task, t),
+                            if (scheduleWritable(state, task.machine)) scheduleNext(task, t) else "未连接",
                             when { !scheduleWritable(state, task.machine) -> Tone.OFF; group == TaskGroup.ATTENTION -> Tone.WAIT; task.active != null -> Tone.RUN; group == TaskGroup.ACTIVE -> Tone.IDLE; else -> Tone.OFF },
                             last = task == rows.last(),
                         ) { nav.task(task.machine, task.id) }
@@ -77,18 +76,10 @@ fun TaskRow(title: String, frequency: String, result: String, next: String, tone
 }
 
 
-fun taskLocation(task: ScheduledTask, state: RemoteState): String {
-    val target = task.target
-    val location = if (target.text("type") == "resume_session") "在「${state.sessions[target.text("session")]?.let(::titleOf) ?: "当前对话"}」里" else "新开对话"
-    return location + if (state.machines.size > 1) " · ${machineLabel(state, task.machine)}" else ""
-}
-
 @Composable
 private fun ScheduleOffline(state: RemoteState, tasks: List<ScheduledTask>) {
-    if (state.conn != ConnState.ONLINE) return
-    tasks.groupBy { it.machine }.forEach { (machine, rows) ->
-        if (state.machines[machine]?.online != true) Banner("${machineLabel(state, machine)} 不在线 · ${rows.size} 个任务显示上次的状态，连接后更新", tone = Tone2.WARN)
-    }
+    if (state.conn != ConnState.ONLINE || tasks.any { state.machines[it.machine]?.online != true })
+        Banner("显示的是上次的任务状态，连上后才能修改", tone = Tone2.WARN)
 }
 
 @Composable
@@ -100,24 +91,26 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     val task = snapshots[machine]?.tasks?.firstOrNull { it.id == id }?.takeIf { scheduleSupported(state.machines[machine]) }
     val writable = scheduleWritable(state, machine)
     val scope = rememberCoroutineScope()
-    var editing by remember { mutableStateOf(false) }
+    var edit by remember { mutableStateOf("") }
     var deleting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    var uncertain by remember { mutableStateOf(false) }
     val t = Instant.ofEpochMilli(now())
-    fun operate(op: String) {
+    fun operate(op: String, spec: JsonObject? = null) {
         if (busy || task == null) return
         busy = true; error = ""
         scope.launch {
-            try { remote.schedules.operate(machine, op, task) }
+            try { remote.schedules.operate(machine, op, task, spec); edit = "" }
             catch (e: kotlinx.coroutines.CancellationException) { throw e }
-            catch (e: Exception) { error = errorText(e) }
+            catch (e: Exception) { error = errorText(e); uncertain = (e as? CommandException)?.unknown == true }
             finally { busy = false }
         }
     }
+    val enabled = writable && !busy && !uncertain
     Column(Modifier.fillMaxSize().background(pal.bg)) {
-        NavBar(task?.title ?: "定时任务", nav.back, subtitle = task?.let { taskLocation(it, state) + " · " + scheduleNext(it, t) })
-        ConnBanner(state)
+        NavBar(task?.title ?: "定时任务", nav.back, subtitle = task?.let { if (writable) scheduleNext(it, t) else "未连接" })
+        if (!state.loaded) ConnBanner(state)
         if (task == null) {
             Banner(snapshots[machine]?.error?.ifEmpty { null } ?: if (snapshots[machine]?.loading == true) "正在读取任务…" else "任务未找到，可能已在另一端删除")
             return@Column
@@ -125,61 +118,86 @@ fun ScheduleDetailScreen(machine: String, id: String) {
         ScheduleOffline(state, listOf(task))
         Column(Modifier.weight(1f).fillMaxWidth().readableColumn().verticalScroll(rememberScrollState())) {
             if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
-            if (taskGroup(task) == TaskGroup.ATTENTION) {
-                Banner(scheduleAttentionText(task, state), tone = Tone2.WARN)
-            }
+            if (uncertain) TextAction("重新读取", { scope.launch { remote.schedules.refresh(machine); if (remote.schedules.state.value[machine]?.error.isNullOrEmpty()) uncertain = false } }, Modifier.padding(horizontal = 16.dp))
+            if (taskGroup(task) == TaskGroup.ATTENTION) Banner(scheduleAttentionText(task, state), tone = Tone2.WARN)
             Card(Modifier.padding(16.dp)) {
                 Column {
-                    ScheduleSetting("什么时候", listOf(scheduleFrequency(task.trigger), scheduleLimits(task, t)).filter { it.isNotEmpty() }.joinToString(" · "), writable && !busy) { editing = true }
+                    ScheduleSetting("任务名", task.title, scheduleRenameAllowed(writable, busy || uncertain)) { edit = "name" }
+                    ScheduleSetting("什么时候", scheduleTiming(task.trigger), enabled) { edit = "time" }
+                    val end = scheduleLimits(task, t)
+                    if (end.isNotEmpty()) ScheduleSetting("结束", end, enabled) { edit = "time" }
                     if (task.target.text("type") == "resume_session") {
                         ScheduleSetting("发到", state.sessions[task.target.text("session")]?.let(::titleOf) ?: "当前对话") { nav.session(task.target.text("session")) }
-                    } else ScheduleSetting("在哪运行", projectName(task.target.text("cwd")) + " · " + if (task.target.text("agent") == "claude") "Claude Code" else "Codex", writable && !busy) { editing = true }
-                    Column(Modifier.padding(16.dp)) {
-                        Text("发给 agent 的话", style = T.meta, color = pal.muted)
-                        Text(task.message, style = T.body, color = pal.fg, modifier = Modifier.padding(top = 8.dp))
-                        TextAction("编辑", { editing = true }, enabled = writable && !busy)
+                    } else ScheduleSetting("在哪运行", taskLocation(task, state), enabled) { edit = "config" }
+                    Box(Modifier.bottomLine(pal.line)) {
+                        GRow("权限", taskPermission(task, state), onClick = if (task.target.text("type") == "new_session") ({ edit = "mode" }) else null,
+                            chevron = task.target.text("type") == "new_session", enabled = enabled, singleLineValue = true)
                     }
+                    ScheduleSetting("消息", "编辑", enabled) { edit = "message" }
+                    Text(task.message, style = T.body, color = pal.fg, modifier = Modifier.padding(14.dp))
                 }
             }
-            Hint(if (task.target.text("type") == "resume_session") "消息等当前这一轮结束后再发，不会打断正在做的事。" else "每次新开对话，回复后会移到会话列表。", Modifier.padding(horizontal = 16.dp))
-            if (task.trigger.text("timezone").isNotEmpty()) Hint("时区：${task.trigger.text("timezone")}", Modifier.padding(horizontal = 16.dp))
-            Hint(if (task.json.text("source") == "agent") "由 Agent 在对话里创建。" else "由你创建。", Modifier.padding(horizontal = 16.dp))
+            Hint(scheduleCreation(task, t), Modifier.padding(horizontal = 16.dp))
             Label("运行记录", task.allRuns.size)
-            val groups = scheduleRunGroups(task.allRuns)
-            if (groups.isEmpty()) Hint("尚未运行", Modifier.padding(horizontal = 16.dp))
+            if (task.allRuns.isEmpty()) Hint("还没有运行", Modifier.padding(horizontal = 16.dp))
             Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Column { groups.forEach { group -> ScheduleRunGroup(group, t) { run -> if (run.session.isNotEmpty()) nav.scheduledSession(run.session, run.seq) } } }
+                Column { scheduleRunGroups(task.allRuns).forEach { group -> ScheduleRunGroup(group, t) { run -> if (run.session.isNotEmpty()) nav.scheduledSession(run.session, run.seq) } } }
             }
+            Hint("“通知了你”表示已请求通知，不保证送达。记录保留最近 100 次，已开的对话仍可查看。", Modifier.padding(horizontal = 16.dp))
             if (taskGroup(task) == TaskGroup.ATTENTION) {
                 val onceFailed = task.status == "failed" && (task.trigger.text("type") == "at" || task.trigger.text("type") == "after_turn" && task.trigger["repeat"]?.jsonPrimitive?.booleanOrNull != true)
-                Btn(if (onceFailed) "立即额外执行一次" else "恢复", { operate(if (onceFailed) "run" else "resume") }, Modifier.fillMaxWidth().padding(16.dp), BtnKind.PRIMARY, writable && !busy)
+                Btn(if (onceFailed) "立即额外执行" else "恢复", { operate(if (onceFailed) "run" else "resume") }, Modifier.fillMaxWidth().padding(16.dp), BtnKind.PRIMARY, enabled)
             }
             Card(Modifier.padding(16.dp)) {
                 Column {
-                    if (taskGroup(task) != TaskGroup.ATTENTION) {
-                        TextAction("立即运行一次", { operate("run") }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = writable && !busy && taskGroup(task) !in setOf(TaskGroup.ENDED))
-                        if (taskGroup(task) != TaskGroup.ENDED) TextAction(if (task.status == "paused") "恢复" else "暂停", { operate(if (task.status == "paused") "resume" else "pause") }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = writable && !busy)
-                    }
-                    TextAction("删除任务", { deleting = true }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), color = pal.red, enabled = writable && !busy && task.status != "cancelled")
+                    TextAction("立即运行一次", { operate("run") }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = enabled && taskGroup(task) !in setOf(TaskGroup.ENDED, TaskGroup.ATTENTION))
+                    if (taskGroup(task) != TaskGroup.ENDED && taskGroup(task) != TaskGroup.ATTENTION) TextAction(if (task.status == "paused") "恢复" else "暂停", { operate(if (task.status == "paused") "resume" else "pause") }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = enabled)
+                    TextAction("删除任务", { deleting = true }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), color = pal.red, enabled = enabled && task.status != "cancelled")
                 }
             }
-            Hint("立即运行一次不占自动次数和日历任务当天的名额。暂停或删除不撤回已经发出的消息。", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Hint("立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         }
     }
-    if (editing && task != null) ScheduleEditor(session = "", existing = task, onClose = { editing = false })
-    if (deleting && task != null) Confirm("删除这个任务？", "停止以后的调度，已经开出的对话和运行记录保留。", "删除", true, { deleting = false }) { deleting = false; operate("cancel") }
+    if (task != null) {
+        if (edit == "name") ScheduleRenameDialog(task, { edit = "" }) { name ->
+            check(scheduleRenameAllowed(writable, busy || uncertain)) { "当前任务不能单独改名" }
+            busy = true
+            try { remote.schedules.rename(task, name) }
+            catch (e: Exception) { uncertain = (e as? CommandException)?.unknown == true; throw e }
+            finally { busy = false }
+        }
+        if (edit == "time") ScheduleTimeSheet(task.trigger, { operate("update", JsonObject(task.spec + ("trigger" to it))) }, { edit = "" })
+        if (edit == "message") ScheduleMessageEditor(task.message, busy, error, { edit = "" }) { text -> operate("update", JsonObject(task.spec + ("message" to JsonPrimitive(text)))) }
+        if (edit == "config" || edit == "mode") {
+            val cfg = scheduleConfig(task)
+            NewSettingsSheet(state, cfg.cwd, projectName(cfg.cwd), machine, cfg.agent, if (edit == "mode") "mode" else "",
+                onDone = { op ->
+                    val picked = op?.sets?.firstOrNull { it.agent == cfg.agent }
+                    if (picked == null) edit = "" else operate("update", JsonObject(task.spec + ("target" to scheduleTarget(agentConfig(machine, cfg.cwd, picked), task.target))))
+                }, onClose = { edit = "" }, initial = cfg, scheduling = true)
+        }
+        if (deleting) Confirm("删除这个任务？", "停止后续调度，已发出的消息和已开的对话保留。", "删除", true, { deleting = false }) { deleting = false; operate("cancel") }
+    }
+}
+
+@Composable
+private fun ScheduleMessageEditor(initial: String, busy: Boolean, error: String, close: () -> Unit, save: (String) -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    Sheet(close) {
+        SheetHead("编辑消息", "取消", close)
+        ReasonField(text, { text = it }, "让 agent 做什么")
+        if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
+        Btn("保存", { save(text) }, Modifier.fillMaxWidth(), BtnKind.PRIMARY, enabled = !busy && text.isNotBlank())
+    }
 }
 
 fun scheduleAttentionText(task: ScheduledTask, state: RemoteState): String {
     val why = scheduleReason(task.reason)
-    if (task.reason == "relay_session_limit") return "$why，任务已停下。清理不再需要的会话后再恢复；从下一次开始运行。"
-    if (task.reason == "agent_schedule_permissions_changed") {
-        val s = state.sessions[task.json.text("scoped_session").ifEmpty { task.target.text("session") }]
-        val mode = if (task.target.text("type") == "new_session") task.target.text("mode") else s?.let(::modeOf)?.name?.lowercase().orEmpty()
-        val label = when(mode) { "ask" -> "询问"; "auto" -> "自动"; "full" -> "完全放行"; else -> "当前对话的权限" }
-        return "$why，任务已暂停。恢复后按「$label」继续运行，并由你接管这个任务。"
-    }
-    return "$why，任务已停下。请先查看运行记录；恢复后从下一次开始，不会重发无法确认的那次。"
+    if (task.reason == "relay_session_limit") return "$why。删除不再需要的会话后可恢复；恢复后从下一次开始运行。"
+    if (task.reason == "agent_schedule_permissions_changed") return "$why。恢复后按「${taskPermission(task, state)}」运行，并由你接管这个任务。"
+    if (task.status == "failed" && (task.trigger.text("type") == "at" || task.trigger.text("type") == "after_turn" && task.trigger["repeat"]?.jsonPrimitive?.booleanOrNull != true))
+        return "$why。查看运行记录后，可立即额外执行，或重新安排时间。"
+    return "$why。请先查看运行记录；恢复后从下一次开始运行，不会重发无法确认的那次。"
 }
 
 @Composable
@@ -188,15 +206,17 @@ private fun ScheduleRunGroup(group: RunGroup, now: Instant, open: (ScheduledRun)
     if (group.quiet && group.runs.size > 1) {
         Box(Modifier.bottomLine(pal.line)) {
             GRow("${scheduleWhen(group.runs.first().time, now).substringBefore(' ')} · ${group.runs.size} 次，都没有通知", singleLineValue = true, onClick = { expanded = !expanded }, trailing = {
-                ArrowText(if (expanded) "收起" else "展开", pal.blue, down = !expanded, up = expanded)
+                Ic(if (expanded) Lucide.ChevronUp else Lucide.ChevronDown, 16.dp, pal.muted)
             })
         }
+        val latest = group.runs.first()
+        Text("最近一次 ${scheduleClock(latest.time)}：${latest.summary}", style = T.meta, color = pal.muted, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp))
         if (!expanded) return
     }
     group.runs.forEach { run ->
         Column(Modifier.fillMaxWidth().then(if (run.session.isNotEmpty()) Modifier.clickable { open(run) } else Modifier).bottomLine(pal.line)) {
             GRow(
-                "${scheduleWhen(run.time, now)} · ${runResult(run)}" + if (run.json["manual"]?.jsonPrimitive?.booleanOrNull == true) " · 额外运行" else "",
+                "${scheduleWhen(run.time, now)} · ${runResult(run)}" + if (run.json["manual"]?.jsonPrimitive?.booleanOrNull == true) " · 手动" else "",
                 chevron = run.session.isNotEmpty(), danger = run.status == "failed", singleLineValue = true,
             )
             val summary = run.summary.ifEmpty { run.json.text("reason").takeIf { it.isNotEmpty() }?.let(::scheduleReason).orEmpty() }
@@ -223,110 +243,91 @@ internal fun ScheduleAgentSetting(agents: List<Agent>, selected: Agent, enabled:
     }
 }
 
-@Composable
-fun NewScheduleScreen(session: String) = ScheduleEditor(session = session, onClose = LocalNav.current.back, page = true)
+fun scheduleConfig(task: ScheduledTask): NewConfig = NewConfig(task.machine, task.target.text("cwd"), if (task.target.text("agent") == "claude") Agent.AGENT_CLAUDE else Agent.AGENT_CODEX,
+    task.target.text("model"), task.target.text("effort"), when(task.target.text("mode")) { "ask" -> Mode.ASK; "auto" -> Mode.AUTO; "full" -> Mode.FULL; else -> null })
+fun scheduleTarget(cfg: NewConfig, base: JsonObject = JsonObject(emptyMap())): JsonObject {
+    val fields = base.toMutableMap()
+    fields.putAll(buildJsonObject {
+        put("type", "new_session"); put("cwd", cfg.cwd); put("agent", if (cfg.agent == Agent.AGENT_CLAUDE) "claude" else "codex")
+        put("model", cfg.model); put("effort", cfg.effort)
+    })
+    if (cfg.mode == null) fields.remove("mode") else fields["mode"] = JsonPrimitive(cfg.mode.name.lowercase())
+    return JsonObject(fields)
+}
 
 @Composable
-fun ScheduleEditor(session: String, existing: ScheduledTask? = null, onClose: () -> Unit, page: Boolean = false) {
+fun NewScheduleScreen(session: String) = ScheduleEditor(session, LocalNav.current.back)
+
+@Composable
+fun ScheduleEditor(session: String, onClose: () -> Unit) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val scope = rememberCoroutineScope()
-    val sessionView = state.sessions[session]
-    val current = existing?.target?.text("type") == "resume_session" || session.isNotEmpty()
-    val destination = existing?.target?.text("session") ?: session
-    var title by remember { mutableStateOf(existing?.title.orEmpty()) }
-    var message by remember { mutableStateOf(existing?.message.orEmpty()) }
-    var project by remember { mutableStateOf(existing?.target?.text("cwd").orEmpty()) }
-    var config by remember { mutableStateOf<NewConfig?>(existing?.takeIf { !current }?.let {
-        NewConfig(it.machine, it.target.text("cwd"), if (it.target.text("agent") == "claude") Agent.AGENT_CLAUDE else Agent.AGENT_CODEX,
-            it.target.text("model"), it.target.text("effort"), when(it.target.text("mode")) { "ask" -> Mode.ASK; "auto" -> Mode.AUTO; "full" -> Mode.FULL; else -> null })
-    }) }
+    val current = session.isNotEmpty()
+    var title by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+    var project by remember { mutableStateOf("") }
+    var config by remember { mutableStateOf<NewConfig?>(null) }
     var pickProject by remember { mutableStateOf(false) }
     var pickDirectory by remember { mutableStateOf(false) }
     var settings by remember { mutableStateOf<String?>(null) }
     var timeOpen by remember { mutableStateOf(false) }
-    var triggerText by rememberSaveable { mutableStateOf((existing?.trigger ?: ScheduleTime().trigger()).toString()) }
+    var triggerText by rememberSaveable { mutableStateOf(ScheduleTime().trigger().toString()) }
     val trigger = remember(triggerText) { Json.parseToJsonElement(triggerText).jsonObject }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    // A stable key survives recomposition/configuration change and every retry. Freeze the spec
-    // after an uncertain create so a retry cannot create another task or change the same key's meaning.
     val request = rememberSaveable { newRequestId() }
     var frozen by remember { mutableStateOf<String?>(null) }
     val start = if (project.isNotEmpty()) projectStart(state, project, config?.agent, config?.machineId) else null
     FetchEarlier(state, page = config == null && start?.settled == false)
     val cfg = config ?: start?.config
-    val machine = existing?.machine ?: if (current) sessionView?.machineId else cfg?.machineId
+    val machine = if (current) state.sessions[session]?.machineId else cfg?.machineId
     val writable = machine != null && scheduleWritable(state, machine)
-    val blocked = machine?.let { if (!scheduleSupported(state.machines[it])) "这台电脑需要更新 remote-agent，才能管理定时任务" else if (!writable) "电脑不在线，连接后才能保存" else null }
-    val content: @Composable ColumnScope.() -> Unit = {
-        Column(Modifier.fillMaxWidth().readableColumn().then(if (page) Modifier.weight(1f) else Modifier).imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    val editable = frozen == null && !busy
+    val blocked = machine?.let { if (!scheduleSupported(state.machines[it])) "这台电脑需要更新 remote-agent，才能管理定时任务" else if (!writable) "显示的是上次的任务状态，连上后才能修改" else null }
+    Column(Modifier.fillMaxSize().background(pal.card)) {
+        NavBar(if (current) "定时发到这个对话" else "新任务", onClose)
+        ConnBanner(state)
+        Column(Modifier.weight(1f).fillMaxWidth().readableColumn().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
             if (blocked != null) Banner(blocked, tone = Tone2.WARN)
-            if (!current || existing != null) {
-                FieldLabel("任务名")
-                ReasonField(title, { if (frozen == null && !busy) title = it }, "可不填，使用消息的第一行")
-            }
-            FieldLabel(if (current) "发给这个对话的话" else "让 agent 做什么")
-            ReasonField(message, { if (frozen == null && !busy) message = it }, "有重要变化时通知我…")
-            ScheduleSetting("什么时候", scheduleFrequency(trigger), frozen == null && !busy) { timeOpen = true }
+            FieldLabel("任务名")
+            ReasonField(title, { if (editable) title = scheduleNameInput(it) }, "留空就用消息的第一句", singleLine = true)
+            FieldLabel("让 agent 做什么")
+            ReasonField(message, { if (editable) message = it }, "检查项目的更新，有值得注意的变化再通知我。")
+            ScheduleSetting("什么时候", scheduleTiming(trigger), editable) { timeOpen = true }
             if (!current) {
-                ScheduleSetting("项目", project.takeIf { it.isNotEmpty() }?.let(::projectName) ?: "选择项目", frozen == null && !busy && existing == null) { pickProject = true }
+                ScheduleSetting("项目", project.takeIf { it.isNotEmpty() }?.let(::projectName) ?: "选择项目", editable) { pickProject = true }
                 if (cfg != null) {
-                    val agents = machineAgents(state.machines[cfg.machineId])
-                    ScheduleAgentSetting(agents, cfg.agent, frozen == null && !busy) { agent ->
-                        config = projectConfig(state, project, agent, cfg.machineId)
-                    }
-                    ScheduleSetting("权限与模型", projectSummary(state, cfg), frozen == null && !busy) { settings = "mode" }
-                    if (state.machines.size > 1) ScheduleSetting("电脑", machineLabel(state, cfg.machineId), frozen == null && !busy && existing == null) { settings = "machine" }
+                    ScheduleAgentSetting(machineAgents(state.machines[cfg.machineId]), cfg.agent, editable) { agent -> config = projectConfig(state, project, agent, cfg.machineId) }
+                    val permission = effectiveModeText(cfg.mode, defaultModeOf(state.machines[cfg.machineId], cfg.agent))
+                    ScheduleSetting("权限", permission, editable) { settings = "mode" }
+                    val model = listOf(cfg.model.ifEmpty { "默认模型" }, cfg.effort).filter { it.isNotEmpty() }.joinToString(" · ")
+                    ScheduleSetting(if (state.machines.size > 1) "机器和模型" else "模型", if (state.machines.size > 1) "${machineLabel(state, cfg.machineId)} · $model" else model, editable) { settings = if (state.machines.size > 1) "" else "model" }
                 }
-                Hint("每次运行新开一个对话，归在这个任务下面。Agent 觉得值得说的时候才通知你。")
+                Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。")
                 if (machine == null && state.machines.values.any { !scheduleSupported(it) }) Hint("电脑需要更新 remote-agent，才能创建定时任务。")
-            } else Hint("消息等这个对话当前这一轮结束后再发，不会打断你正在做的事。")
-            Hint("电脑睡眠或关机时不会运行；醒来后 24 小时内补跑一次，再晚就跳过。")
+            } else Hint("消息等当前这一轮结束后再发，不会打断正在做的事。")
             val ready = writable && !busy && (message.isNotBlank() || frozen != null) && (current || cfg != null && (config != null || start?.settled == true))
-            Btn(if (busy) "保存中…" else if (frozen != null) "重试创建" else if (existing == null) "创建" else "保存", {
+            Btn(if (busy) "创建中…" else if (frozen != null) "重试创建" else "创建", {
                 if (!ready) return@Btn
-                var spec = frozen?.let { Json.parseToJsonElement(it).jsonObject }
-                if (spec == null) {
-                    val target = if (current) buildJsonObject { put("type", "resume_session"); put("session", destination) }
-                    else buildJsonObject {
-                        put("type", "new_session"); put("cwd", project); put("agent", if (cfg!!.agent == Agent.AGENT_CLAUDE) "claude" else "codex")
-                        if (cfg.model.isNotEmpty()) put("model", cfg.model)
-                        if (cfg.effort.isNotEmpty()) put("effort", cfg.effort)
-                        cfg.mode?.let { put("mode", it.name.lowercase()) }
-                    }
-                    spec = JsonObject((existing?.spec.orEmpty()) + taskSpec(title.trim().ifEmpty { message.lineSequence().first().take(60) }, message, trigger, target))
-                    if (existing == null) frozen = spec.toString()
-                }
+                val spec = frozen?.let { Json.parseToJsonElement(it).jsonObject } ?: taskSpec(scheduleName(title, message), message, trigger,
+                    if (current) buildJsonObject { put("type", "resume_session"); put("session", session) } else scheduleTarget(cfg!!)).also { frozen = it.toString() }
                 busy = true; error = ""
-                val saving = spec
                 scope.launch {
                     try {
-                        val result = remote.schedules.operate(machine, if (existing == null) "create" else "update", existing, saving, request)
+                        val result = remote.schedules.operate(machine!!, "create", spec = spec, requestId = request)
                         onClose()
-                        if (existing == null && result != null) nav.task(machine, result.id)
+                        if (result != null) nav.task(machine, result.id)
                     } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                    catch (e: Exception) {
-                        error = errorText(e)
-                        if (e is ScheduleConflictException && existing != null) {
-                            val latest = remote.schedules.state.value[machine]?.tasks?.firstOrNull { it.id == existing.id }
-                            if (latest != null) {
-                                title = latest.title; message = latest.message; triggerText = latest.trigger.toString()
-                                if (!current) config = NewConfig(latest.machine, latest.target.text("cwd"), if (latest.target.text("agent") == "claude") Agent.AGENT_CLAUDE else Agent.AGENT_CODEX,
-                                    latest.target.text("model"), latest.target.text("effort"), when(latest.target.text("mode")) { "ask" -> Mode.ASK; "auto" -> Mode.AUTO; "full" -> Mode.FULL; else -> null })
-                            }
-                        }
-                        if (e is CommandException && e.fromDaemon && !e.unknown) frozen = null
-                    } finally { busy = false }
+                    catch (e: Exception) { error = errorText(e); if (e is CommandException && e.fromDaemon && !e.unknown) frozen = null }
+                    finally { busy = false }
                 }
             }, Modifier.fillMaxWidth().padding(vertical = 16.dp), BtnKind.PRIMARY, ready)
             if (frozen != null) Hint("创建结果尚未确认，再试一次使用同一个请求。返回后可先查看任务列表。")
         }
     }
-    if (page) Column(Modifier.fillMaxSize().background(pal.card)) { NavBar(if (current) "定时发到这个对话" else "新任务", onClose); ConnBanner(state); content() }
-    else Sheet(onClose) { SheetHead("编辑任务", "取消", onClose); content() }
     if (timeOpen) ScheduleTimeSheet(trigger, { triggerText = it.toString(); timeOpen = false }, { timeOpen = false })
     if (pickProject) Sheet({ pickProject = false }) {
         SheetHead("选项目", "取消", { pickProject = false })
@@ -392,7 +393,7 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
             if (value.end == 1) ReasonField(value.count, { value = value.copy(count = it) }, "自动运行次数")
             if (value.end == 2) ScheduleSetting("结束日期", value.until) { date(value.until) { value = value.copy(until = it, deadline = "") } }
         }
-        FieldLabel("时区（IANA 名称）")
+        FieldLabel("时区")
         ReasonField(value.zone, { value = value.copy(zone = it.trim(), deadline = "") }, "例如 Asia/Shanghai")
         Hint("每天和每周按所选时区运行；每隔按经过的时长计算，创建后先运行一次。电脑醒来后 24 小时内补跑一次。")
         }
@@ -408,9 +409,14 @@ fun SessionScheduleStrip(sid: String) {
     if (tasks.isEmpty()) return
     val nav = LocalNav.current
     val next = tasks.minByOrNull { it.next ?: Instant.MAX }!!
-    val text = if (tasks.size == 1) "定时 · ${scheduleFrequency(next.trigger)}，${if (taskGroup(next) == TaskGroup.ACTIVE) "下次 " else ""}${scheduleNext(next)}" else "${tasks.size} 个定时 · 下次 ${scheduleNext(next)}"
+    val text = sessionScheduleText(tasks, state, Instant.ofEpochMilli(now()))
+    var choosing by remember { mutableStateOf(false) }
+    if (choosing) Sheet({ choosing = false }) {
+        SheetHead("定时任务", "取消", { choosing = false })
+        tasks.forEach { task -> GRow(task.title, onClick = { choosing = false; nav.task(task.machine, task.id) }, chevron = true, singleLineValue = true) }
+    }
     Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).background(pal.soft).clickable {
-        if (tasks.size == 1) nav.task(next.machine, next.id) else nav.schedules()
+        if (tasks.size == 1) nav.task(next.machine, next.id) else choosing = true
     }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Ic(Lucide.Clock, 13.dp, pal.muted)
         Text(text, Modifier.weight(1f).padding(start = 6.dp), style = T.meta, color = pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)

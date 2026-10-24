@@ -69,7 +69,7 @@ class RaMessagingService : FirebaseMessagingService() {
             return
         }
         val session = data["session"] ?: return
-        var content = data["content"]?.let { open(session, it) }
+        val content = data["content"]?.let { open(session, it) }
         if (data["content"] != null && content == null) return
         // Only the actual session page suppresses scheduled results in the foreground.
         // Other kinds retain their foreground rule.
@@ -79,11 +79,6 @@ class RaMessagingService : FirebaseMessagingService() {
         val eventKey = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) {
             data["event"]?.takeIf { it.isNotEmpty() } ?: return
         } else null
-        if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED && content != null) {
-            // Push reception never loads account keys or starts a metadata request. If the
-            // foreground client already verified the destination, use its conversation title.
-            content = scheduledPushContent(content, app.remote.value?.state?.value?.sessions?.get(session)?.info)
-        }
         Notifier.show(this, session, kind, content, settings.showContent, eventKey)
         // Timing only, for the notes on cold starts; no content.
         Log.i(
@@ -536,7 +531,3 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
         return androidx.work.ForegroundInfo(inputData.getInt("nid", 0) + 7, n)
     }
 }
-
-/** The daemon supplies the task title; a previously verified ordinary conversation supplies its own. */
-internal fun scheduledPushContent(content: NotifyContent, info: io.github.lewin671.remoteagent.proto.Session?): NotifyContent =
-    if (info != null && info.scheduledTaskId.isEmpty() && info.title.isNotEmpty()) content.toBuilder().setTitle(info.title).build() else content

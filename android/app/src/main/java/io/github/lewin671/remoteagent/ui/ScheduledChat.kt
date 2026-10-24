@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter
 
 object ScheduleJump { val requested = mutableStateMapOf<String, Long>() }
 fun scheduledMessageCaption(e: Event): String? = e.origin.scheduledTaskId.takeIf { it.isNotEmpty() }?.let {
-    "定时任务 · " + Instant.ofEpochMilli(eventTime(e)).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("H:mm"))
+    "定时任务 · " + Instant.ofEpochMilli(eventTime(e)).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))
 }
 
 data class QuietSpan(val task: String, val run: String, val from: Long, val through: Long, val time: Long)
@@ -37,8 +37,10 @@ fun quietScheduledSpans(events: List<Event>): List<QuietSpan> {
         }
         val body = events.subList(start, end)
         val ended = body.filter { it.hasTurnEnded() }
-        if (ended.isEmpty() || ended.any { it.turnEnded.scheduledTaskId != task || it.turnEnded.scheduledRunId != run || it.turnEnded.scheduledNotified || it.turnEnded.outcome != TurnOutcome.TURN_OUTCOME_COMPLETED }) return@forEachIndexed
-        if (body.any { it.hasScheduledNotification() || it.hasApprovalRequested() || it.hasQuestionAsked() || it.hasPlanProposed() }) return@forEachIndexed
+        if (ended.size != 1 || ended.any { it.turnEnded.scheduledTaskId != task || it.turnEnded.scheduledRunId != run || it.turnEnded.scheduledNotified || it.turnEnded.outcome != TurnOutcome.TURN_OUTCOME_COMPLETED }) return@forEachIndexed
+        if (body.any { io.github.lewin671.remoteagent.core.isSkeleton(it) || it.hasScheduledNotification() || it.hasApprovalRequested() || it.hasQuestionAsked() || it.hasPlanProposed() }) return@forEachIndexed
+        val afterEnd = body.drop(body.indexOfLast { it.hasTurnEnded() } + 1)
+        if (afterEnd.any { it.hasAgentMessage() || it.hasReasoning() || it.hasToolStarted() || it.hasToolCall() }) return@forEachIndexed
         // A follow-up has started but has not yet ended: do not hide it.
         if (body.indexOfLast { it.hasTurnStarted() } > body.indexOfLast { it.hasTurnEnded() }) return@forEachIndexed
         out += QuietSpan(task, run, first.seq, body.last().seq, eventTime(first))
@@ -70,7 +72,7 @@ fun foldScheduledChat(items: List<ChatItem>, events: List<Event>, revealSeq: Lon
             }
             end = current.through
             val following = items.getOrNull(next)?.key?.removePrefix("e")?.toLongOrNull()
-            val another = spans.firstOrNull { it.task == span.task && it.from == following }
+            val another = spans.firstOrNull { it.task == span.task && it.from == following && Instant.ofEpochMilli(it.time).atZone(ZoneId.systemDefault()).toLocalDate() == Instant.ofEpochMilli(span.time).atZone(ZoneId.systemDefault()).toLocalDate() }
             if (another == null) break
             current = another
         }
@@ -82,12 +84,11 @@ fun foldScheduledChat(items: List<ChatItem>, events: List<Event>, revealSeq: Lon
     return out
 }
 
-/** Keep high-frequency histories to one readable summary rather than a list of every clock time. */
+/** Shared copy; the view keeps long clock lists to one ellipsized line. */
 fun quietScheduledLabel(times: List<Long>, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
     val dates = times.map { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }.distinct()
-    fun time(ms: Long) = if (dates.size == 1) Instant.ofEpochMilli(ms).atZone(zone).format(DateTimeFormatter.ofPattern("H:mm"))
+    fun time(ms: Long) = if (dates.size == 1) Instant.ofEpochMilli(ms).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm"))
         else io.github.lewin671.remoteagent.core.scheduleWhen(Instant.ofEpochMilli(ms), now, zone)
-    val whenText = if (times.size <= 3) times.joinToString("、", transform = ::time)
-        else "${time(times.first())} 至 ${time(times.last())} · ${times.size} 次"
-    return "$whenText 定时检查 · 没有通知"
+    val whenText = times.joinToString("、", transform = ::time)
+    return "$whenText 定时检查 · 没有新回复"
 }

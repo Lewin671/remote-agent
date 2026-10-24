@@ -536,7 +536,10 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
     when (item) {
         is ChatItem.QuietScheduled -> {
             var expanded by rememberSaveable(item.key) { mutableStateOf(false) }
-            TextAction(quietScheduledLabel(item.times) + if (expanded) " · 收起" else " · 展开", { expanded = !expanded }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), color = p.muted)
+            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { expanded = !expanded }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(quietScheduledLabel(item.times), Modifier.weight(1f), style = T.sm, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Arrow(p.muted, T.sm, down = !expanded, up = expanded)
+            }
             if (expanded) item.original.forEach { ChatItemView(it, agent, cwd, home, onPutBack) }
         }
         is ChatItem.User -> MeBubble(

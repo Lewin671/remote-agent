@@ -604,7 +604,7 @@ fun SessionRow(
             )
             val schedules by LocalRemote.current.schedules.state.collectAsState()
             val timed = schedules.values.flatMap { it.tasks }.filter { io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[it.machine]) && it.target.text("type") == "resume_session" && it.target.text("session") == s.id && io.github.lewin671.remoteagent.core.taskGroup(it) != io.github.lewin671.remoteagent.core.TaskGroup.ENDED }
-            val rest = listOf(metaLine(state, s, meta), timed.firstOrNull()?.let { "定时 " + io.github.lewin671.remoteagent.core.scheduleFrequency(it.trigger) }.orEmpty()).filter { it.isNotEmpty() }.joinToString(" · ")
+            val rest = listOf(metaLine(state, s, meta), when { timed.size > 1 -> "定时 ${timed.size} 个任务"; timed.size == 1 -> "定时 " + io.github.lewin671.remoteagent.core.scheduleFrequency(timed.single().trigger); else -> "" }).filter { it.isNotEmpty() }.joinToString(" · ")
             if (rest.isNotEmpty())
                 Text(
                     rest,

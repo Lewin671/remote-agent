@@ -34,7 +34,7 @@ data class ScheduledRun(val json: JsonObject) {
     val time get() = scheduleInstant(json.text("started_at")) ?: scheduleInstant(json.text("scheduled_at")) ?: Instant.EPOCH
     val status get() = json.text("status")
     val notified get() = (json["notified"] as? JsonPrimitive)?.booleanOrNull == true
-    val summary get() = if (notified) json.text("notification_text") else json.text("final_summary")
+    val summary get() = if (status in stoppedScheduleRuns) scheduleReason(json.text("reason")) else json.text("notification_text").ifEmpty { json.text("final_summary") }.ifEmpty { json.text("reason").takeIf { it.isNotEmpty() }?.let(::scheduleReason).orEmpty() }
     val quiet get() = status == "completed" && !notified
 }
 fun JsonObject.text(k: String) = (this[k] as? JsonPrimitive)?.contentOrNull.orEmpty()
@@ -54,29 +54,48 @@ fun taskGroup(t: ScheduledTask): TaskGroup = when {
 }
 fun scheduleSupported(m: MachineView?) = capabilities(m)?.scheduledTasks == true && protocolMismatch(m) == null
 fun scheduleWritable(s: RemoteState, machine: String) = s.conn == ConnState.ONLINE && s.machines[machine]?.online == true && scheduleSupported(s.machines[machine])
+val stoppedScheduleRuns = setOf("failed", "uncertain", "interrupted", "skipped", "cancelled")
 fun scheduleReason(reason: String): String = when (reason) {
     "relay_session_limit" -> "中继上的会话数已满"
-    "agent_schedule_permissions_changed" -> "项目权限改了"
-    "agent_schedule_interval_below_minimum" -> "Agent 创建的任务间隔低于允许的下限"
-    "agent_schedule_scope_required" -> "需要确认任务权限"
-    "restarted", "dispatch_uncertain", "delivery_uncertain", "uncertain" -> "没能确认是否发出"
-    "late", "too_late", "missed" -> "超过补跑时间，已跳过"
-    "aborted", "interrupted", "execution_interrupted", "source_turn_interrupted" -> "本轮被中断"
-    "exited", "execution_session_exited", "source_exited_before_turn_end" -> "会话已结束"
-    "execution_failed", "dispatch_failed" -> "运行失败"
-    "execution_session_missing", "source_session_missing" -> "找不到原来的会话"
-    "daemon_restarted_during_dispatch", "could_not_persist_dispatch_result" -> "电脑重启时没能确认是否发出"
-    "message_delivery_failed" -> "消息未能发到对话"
-    "execution_input_paused" -> "消息发送已暂停，请先在对话里处理"
-    "message_cancelled" -> "消息已撤回"
-    "user", "user_paused", "" -> "已暂停"
-    else -> reason
+    "execution_failed" -> "运行失败，任务已停下"
+    "execution_interrupted" -> "运行被中断，任务已停下"
+    "execution_session_exited" -> "运行中的对话已结束"
+    "execution_session_missing" -> "找不到运行的对话"
+    "message_delivery_failed" -> "消息没有送达 CLI"
+    "could_not_queue_message" -> "消息没能加入待发队列"
+    "message_cancelled" -> "定时消息在送达前被取消，任务已停下"
+    "execution_input_paused" -> "定时消息已暂停，请先在对话里恢复或取消这条消息"
+    "restart_dispatching" -> "电脑重启前的发送结果无法确认"
+    "agent_schedule_permissions_changed" -> "创建任务时的权限已改变，任务已暂停"
+    "agent_schedule_interval_below_minimum" -> "Agent 创建的任务间隔过短，任务已暂停"
+    "catch_up_window_expired" -> "已超过补跑时间，本次跳过"
+    "user_paused" -> "已暂停"
+    "user_cancelled" -> "已删除"
+    "" -> "运行结果无法确认"
+    else -> "电脑返回的原因：$reason"
 }
-fun scheduleFrequency(t: JsonObject): String = when (t.text("type")) {
-    "at" -> scheduleInstant(t.text("at"))?.let { "一次 · ${scheduleWhen(it, zone = scheduleZone(t))}" } ?: "一次"
+
+/** Unicode characters, rather than UTF-16 code units, match the other clients' 60-character limit. */
+fun clipScheduleName(value: String): String = value.codePoints().limit(60).toArray().let { String(it, 0, it.size) }
+private val scheduleWhitespace = Regex("[\\s\\p{Z}\\uFEFF]+")
+fun scheduleNameInput(value: String): String = clipScheduleName(value.replace(scheduleWhitespace, " ").trimStart())
+fun scheduleName(name: String, message: String): String {
+    val text = message.trim { it.isWhitespace() || it == '\uFEFF' }
+    val first = text.split(Regex("\\r?\\n|[。！？!?]|\\.(?=\\s|$)"), limit = 2).firstOrNull().orEmpty()
+    val explicit = name.replace(scheduleWhitespace, " ").trim()
+    return clipScheduleName(explicit.ifEmpty { first.ifEmpty { text } }.replace(scheduleWhitespace, " ").trim())
+}
+fun renamedScheduleSpec(task: ScheduledTask, name: String): JsonObject? {
+    val resolved = scheduleName(name, task.message)
+    return if (resolved == task.title) null else JsonObject(task.spec + ("title" to JsonPrimitive(resolved)))
+}
+fun scheduleRenameAllowed(online: Boolean, changing: Boolean = false): Boolean = online && !changing
+
+fun scheduleFrequency(t: JsonObject, localZone: ZoneId = ZoneId.systemDefault()): String = when (t.text("type")) {
+    "at" -> scheduleInstant(t.text("at"))?.let { "${scheduleWhen(it, zone = localZone)}，一次" } ?: "一次"
     "calendar" -> {
         val days = (t["weekdays"] as? JsonArray).orEmpty().mapNotNull { it.jsonPrimitive.intOrNull }
-        val prefix = when { days.isEmpty() -> "每天"; days == listOf(1,2,3,4,5) -> "工作日"; else -> "每周" + days.joinToString("、") { listOf("", "一", "二", "三", "四", "五", "六", "日").getOrElse(it) { "?" } } }
+        val prefix = when { days.isEmpty() || days.size == 7 -> "每天"; days == listOf(1,2,3,4,5) -> "工作日"; else -> "每周" + days.joinToString("、") { listOf("", "一", "二", "三", "四", "五", "六", "日").getOrElse(it) { "?" } } }
         "$prefix ${t.text("time")}".trim()
     }
     "interval" -> t.long("interval_seconds").let { when {
@@ -86,13 +105,13 @@ fun scheduleFrequency(t: JsonObject): String = when (t.text("type")) {
         it % 60 == 0L -> "每 ${it / 60} 分钟"
         else -> "每 $it 秒"
     } }
-    "after_turn" -> "本轮结束 ${t.long("delay_seconds")} 秒后" + if ((t["repeat"] as? JsonPrimitive)?.booleanOrNull == true) "，重复" else ""
+    "after_turn" -> "${if ((t["repeat"] as? JsonPrimitive)?.booleanOrNull == true) "每轮" else "当前轮"}结束 ${t.long("delay_seconds")} 秒后"
     else -> "时间未知"
 }
 fun scheduleLimits(task: ScheduledTask, now: Instant = Instant.now()): String = buildList {
     val max = task.trigger.long("max_runs")
-    if (max > 0) add("还剩 ${(max - task.json.long("dispatches")).coerceAtLeast(0)} 次")
-    scheduleInstant(task.trigger.text("until"))?.let { add("到 ${scheduleWhen(it, now)}") }
+    if (max > 0) add("自动运行 $max 次后")
+    scheduleInstant(task.trigger.text("until"))?.let { add(scheduleWhen(it, now)) }
 }.joinToString(" · ")
 
 fun scheduleZone(t: JsonObject): ZoneId = runCatching { ZoneId.of(t.text("timezone")) }.getOrElse {
@@ -100,31 +119,38 @@ fun scheduleZone(t: JsonObject): ZoneId = runCatching { ZoneId.of(t.text("timezo
 }
 fun scheduleWhen(at: Instant, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
     val dt = at.atZone(zone); val today = now.atZone(zone).toLocalDate()
-    val day = when (dt.toLocalDate()) { today -> "今天"; today.plusDays(1) -> "明天"; today.minusDays(1) -> "昨天"; else -> "${if (dt.year != today.year) "${dt.year}年" else ""}${dt.monthValue}月${dt.dayOfMonth}日" }
-    return "$day ${dt.format(DateTimeFormatter.ofPattern("H:mm"))}"
+    val day = when (dt.toLocalDate()) { today -> "今天"; today.minusDays(1) -> "昨天"; else -> "${if (dt.year != today.year) "${dt.year}年" else ""}${dt.monthValue}月${dt.dayOfMonth}日" }
+    return "$day ${dt.format(DateTimeFormatter.ofPattern("HH:mm"))}"
 }
+fun scheduleClock(at: Instant, zone: ZoneId = ZoneId.systemDefault()): String = at.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm"))
 fun scheduleNext(t: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String = when {
     taskGroup(t) == TaskGroup.ATTENTION -> "已停下"
     t.status == "paused" -> "已暂停"
-    t.active != null -> "运行中"
     taskGroup(t) == TaskGroup.ENDED -> "已结束"
-    t.next != null -> scheduleWhen(t.next!!, now, zone)
+    t.active != null -> when(t.active!!.status) { "dispatching" -> "正在启动"; "queued" -> "等待当前轮结束"; else -> "正在运行" }
+    t.next != null -> "下次 " + if (t.next!!.atZone(zone).toLocalDate() == now.atZone(zone).toLocalDate()) scheduleClock(t.next!!, zone) else scheduleWhen(t.next!!, now, zone)
     else -> "等待本轮结束"
 }
-fun runResult(r: ScheduledRun): String = when {
-    r.status == "failed" -> "失败"
-    r.notified -> "通知了你"
-    r.status == "completed" -> "没有通知"
-    r.status == "uncertain" -> "没能确认是否发出"
-    r.status == "skipped" -> "跳过"
-    r.status in setOf("aborted", "interrupted") -> "已中断"
-    else -> "正在运行"
+fun runResult(r: ScheduledRun): String = when (r.status) {
+    "failed" -> "失败"
+    "uncertain" -> "无法确认"
+    "interrupted" -> "已中断"
+    "skipped" -> "跳过"
+    "cancelled" -> "已取消"
+    else -> if (r.notified) "通知了你" else when(r.status) {
+        "completed" -> "没有通知"
+        "dispatching" -> "正在启动"
+        "queued" -> "等待当前轮结束"
+        "running" -> "正在运行"
+        else -> "等待结果"
+    }
 }
 fun scheduleLastResult(t: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
-    val last = t.allRuns.firstOrNull() ?: return "尚未运行"
-    val today = t.runs.filter { it.time.atZone(zone).toLocalDate() == now.atZone(zone).toLocalDate() }
-    if (t.trigger.text("type") == "interval" && today.size > 1 && today.all { it.quiet }) return "今天 ${today.size} 次都没有通知"
-    return "${scheduleWhen(last.time, now, zone)} ${runResult(last)}" + last.summary.takeIf { it.isNotBlank() }?.let { "：$it" }.orEmpty()
+    val last = t.allRuns.firstOrNull() ?: return "还没有运行"
+    val today = t.allRuns.filter { it.time.atZone(zone).toLocalDate() == now.atZone(zone).toLocalDate() }
+    if (today.size > 1 && today.all { it.quiet }) return "今天 ${today.size} 次都没有通知"
+    val detail = if (last.notified || last.status in stoppedScheduleRuns) last.summary else ""
+    return "${scheduleWhen(last.time, now, zone)} ${runResult(last)}" + detail.takeIf { it.isNotBlank() }?.let { "：$it" }.orEmpty()
 }
 data class RunGroup(val key: String, val runs: List<ScheduledRun>, val quiet: Boolean)
 fun scheduleRunGroups(runs: List<ScheduledRun>, zone: ZoneId = ZoneId.systemDefault()): List<RunGroup> {
@@ -204,6 +230,11 @@ class ScheduleRepository(
             set(id) { ScheduleSnapshot(obj.long("revision"), tasks, cached = true) }
         } catch (e: CancellationException) { throw e
         } catch (_: Exception) { set(id) { it.copy(error = "上次的任务列表无法读取，联网后重新读取") } }
+    }
+    suspend fun rename(task: ScheduledTask, name: String): ScheduledTask? {
+        val spec = renamedScheduleSpec(task, name) ?: return task
+        check(scheduleRenameAllowed(scheduleWritable(remoteState.value, task.machine))) { "当前任务不能单独改名" }
+        return operate(task.machine, "update", task, spec)
     }
     suspend fun operate(machine: String, op: String, task: ScheduledTask? = null, spec: JsonObject? = null, requestId: String = ""): ScheduledTask? = withContext(worker) {
         check(scheduleWritable(remoteState.value, machine)) { "电脑不在线，不能修改任务" }

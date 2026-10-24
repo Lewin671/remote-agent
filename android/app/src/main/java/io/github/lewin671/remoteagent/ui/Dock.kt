@@ -482,6 +482,7 @@ fun ReasonField(
     onValue: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
+    singleLine: Boolean = false,
 ) {
     val p = pal
     BasicTextField(
@@ -490,7 +491,8 @@ fun ReasonField(
         modifier.fillMaxWidth().padding(bottom = 8.dp),
         textStyle = T.body.copy(color = p.fg),
         cursorBrush = SolidColor(p.blue),
-        maxLines = 4,
+        maxLines = if (singleLine) 1 else 4,
+        singleLine = singleLine,
         decorationBox = { inner ->
             FieldBox {
                 if (value.isEmpty()) Text(placeholder, style = T.body, color = p.muted)

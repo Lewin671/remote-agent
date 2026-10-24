@@ -29,12 +29,16 @@ class ScheduledPushIdentityTest {
         Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_ATTENTION, null, false)
         assertEquals("ordinary notifications retain replacement behavior", 3, shadowOf(manager).allNotifications.size)
     }
-    @Test fun scheduledTitlesUseOnlyAlreadyVerifiedConversationMetadata() {
-        val content = io.github.lewin671.remoteagent.proto.NotifyContent.newBuilder().setTitle("Task").setText("Result").build()
-        val conversation = io.github.lewin671.remoteagent.proto.Session.newBuilder().setTitle("Conversation").build()
-        assertEquals("Conversation", scheduledPushContent(content, conversation).title)
-        assertEquals("Task", scheduledPushContent(content, conversation.toBuilder().setScheduledTaskId("created-by-task").build()).title)
-        assertEquals(content, scheduledPushContent(content, null))
+    @Test fun scheduledPushShowsTheSignedDaemonTitleAndPreservesItsEventTarget() {
+        val context = RuntimeEnvironment.getApplication()
+        Push.createChannels(context)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val content = io.github.lewin671.remoteagent.proto.NotifyContent.newBuilder().setTitle("任务名来自签名内容").setText("通知正文").setSourceEventSeq(7).build()
+        Notifier.show(context,"session",NotifyKind.NOTIFY_KIND_SCHEDULED,content,true,"scheduled:7")
+        val n = shadowOf(manager).allNotifications.single()
+        assertEquals("任务名来自签名内容", n.extras.getCharSequence("android.title").toString())
+        assertEquals("通知正文", n.extras.getCharSequence("android.text").toString())
+        assertEquals(7L, shadowOf(n.contentIntent).savedIntent.getLongExtra(Notifier.EXTRA_SCHEDULE_SEQ,0))
     }
 
 }
