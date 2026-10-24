@@ -79,3 +79,35 @@ func TestPublicationRefusalBeforeAndAfterAdmission(t *testing.T) {
 		})
 	}
 }
+
+func TestQuotaStopRetriesAndDoesNotInterruptHuman(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
+	h.d.tickSchedules(time.Now().Add(time.Second))
+	run := readTask(t, h.d, task.ID).Active
+	// Publication loses the race with Enter, before the transcript confirms it.
+	zero := int64(0)
+	h.s.queue.Queue[0].Inflight = &zero
+	if err := h.d.SessionPublicationFailed(h.s.meta.ID, "relay_session_limit"); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.term.written()) != 0 {
+		t.Fatal("interrupted before any scheduled turn")
+	}
+	h.s.emit(&pb.Event{TurnId: "late", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}, withOrigin(&pb.Event{TurnId: "late", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{RequestId: run.RequestID}}}, &pb.Origin{ScheduledTaskId: task.ID, ScheduledRunId: run.ID}))
+	h.s.mu.Lock()
+	h.s.queue.Queue = nil
+	h.s.mu.Unlock()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stop := h.d.startScheduleLoop(ctx)
+	defer stop()
+	eventually(t, "real loop interrupts refused late turn", func() bool { return strings.Contains(strings.Join(h.term.written(), ""), string(h.s.ag.Interrupt())) })
+	h.s.emit(withOrigin(&pb.Event{TurnId: "human", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "human takes over"}}}, originLocal))
+	before := len(h.term.written())
+	h.d.stopUnpublishedScheduledRuns()
+	if len(h.term.written()) != before {
+		t.Fatal("quota retry interrupted human turn")
+	}
+}
