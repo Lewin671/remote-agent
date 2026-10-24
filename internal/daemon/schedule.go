@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -950,7 +951,7 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed boo
 			run.NotificationCount++
 		}
 		if msg := e.GetAgentMessage(); msg != nil && run.MessageSeen && (run.TurnID == "" || e.TurnId == "" || e.TurnId == run.TurnID) && msg.Phase == "final_answer" {
-			run.FinalSummary = summary(msg.Text, 200)
+			run.FinalSummary = finalRunSummary(msg.Text)
 		}
 		if end := e.GetTurnEnded(); end != nil && run.MessageSeen && (run.TurnID == "" || e.TurnId == "" || e.TurnId == run.TurnID) {
 			status := "completed"
@@ -1173,4 +1174,25 @@ func visibleSchedules(tasks map[string]*schedule.Task) []byte {
 	}
 	b, _ := json.Marshal(out)
 	return b
+}
+
+func finalRunSummary(text string) string {
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		n := 0
+		for n < len(line) && line[n] == '#' {
+			n++
+		}
+		if n > 0 && n <= 6 && n < len(line) && unicode.IsSpace(rune(line[n])) {
+			line = strings.TrimSpace(line[n:])
+		}
+		lines[i] = line
+	}
+	text = strings.Join(strings.Fields(strings.Join(lines, " ")), " ")
+	runes := []rune(text)
+	if len(runes) > 200 {
+		runes = runes[:200]
+	}
+	return string(runes)
 }
