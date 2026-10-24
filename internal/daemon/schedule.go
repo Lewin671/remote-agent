@@ -805,7 +805,7 @@ func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) (bool, b
 	}
 	request := t.ManualRequest
 	t.ManualRequest = nil
-	run := schedule.Run{ID: newID(8), RequestID: request.RequestID, ScheduledAt: request.RequestedAt, StartedAt: now, Manual: true, Status: "dispatching"}
+	run := schedule.Run{ID: newID(8), RequestID: request.RequestID, ScheduledAt: request.RequestedAt, StartedAt: now, Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching"}
 	late := t.Spec.LateSeconds
 	if late == 0 {
 		late = 86400
@@ -1155,12 +1155,16 @@ func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) bool {
 }
 func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason string) {
 	manual := t.Active.Manual
+	retryFailed := t.Active.RetryFailed
 	t.Active.Status = status
 	t.Active.Reason = reason
 	t.Active.EndedAt = &now
 	t.Runs = appendRun(t.Runs, *t.Active)
 	t.Active = nil
 	if manual {
+		if retryFailed && oneShotTrigger(t.Spec.Trigger) && t.Status == "failed" && status == "completed" {
+			t.Status, t.Reason, t.NextRunAt = "completed", "explicit_retry_succeeded", nil
+		}
 		return
 	}
 	if t.Status == "cancelled" {

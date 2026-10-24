@@ -89,6 +89,7 @@ type Run struct {
 	StartSeq          uint64 `json:"start_seq"`
 	FollowupsClosed   bool   `json:"followups_closed,omitempty"`
 	Manual            bool   `json:"manual,omitempty"`
+	RetryFailed       bool   `json:"retry_failed,omitempty"`
 	Notified          bool   `json:"notified"`
 	NotificationText  string `json:"notification_text,omitempty"`
 	NotificationCount int    `json:"notification_count,omitempty"`

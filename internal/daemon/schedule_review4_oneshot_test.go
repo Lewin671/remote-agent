@@ -49,8 +49,8 @@ func TestFailedOneShotResumeRequiresExplicitRetry(t *testing.T) {
 			completeTask(h, got.Active, now.Add(3*time.Second))
 			h.d.tickSchedules(now.Add(3 * time.Second))
 			got = readTask(t, h.d, task.ID)
-			if automaticPlan(got) != before || got.Active != nil || len(got.Runs) != 2 || !got.Runs[1].Manual || got.Runs[1].Status != "completed" || got.Dispatches != 1 {
-				t.Fatalf("explicit retry changed automatic plan: %+v", got)
+			if got.Status != "completed" || got.Reason != "explicit_retry_succeeded" || got.NextRunAt != nil || got.Active != nil || len(got.Runs) != 2 || !got.Runs[1].Manual || got.Runs[1].Status != "completed" || got.Dispatches != 1 {
+				t.Fatalf("explicit retry did not complete failed task: %+v", got)
 			}
 		})
 	}
