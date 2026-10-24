@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -560,6 +561,14 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 	}
 	_, err = c.machine.PutSession(ctx, connect.NewRequest(request))
 	if err != nil {
+		var refused *connect.Error
+		if errors.As(err, &refused) && refused.Code() == connect.CodeResourceExhausted && strings.HasPrefix(refused.Message(), "relay_session_limit:") {
+			if reporter, ok := c.r.backend.(interface{ SessionPublicationFailed(string, string) error }); ok {
+				if reportErr := reporter.SessionPublicationFailed(id, "relay_session_limit"); reportErr != nil {
+					return 0, localSyncError("publication_failure", reportErr)
+				}
+			}
+		}
 		return 0, rpcSyncError("put_session", err)
 	}
 	slog.Debug("relay: session metadata sent", "session", id)

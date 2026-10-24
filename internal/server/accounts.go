@@ -92,7 +92,7 @@ func (p plan) check(u accountUsage, g grows) error {
 	case g == growsDevices && p.revoked > 0 && u.revoked > p.revoked:
 		return errFull(fmt.Sprintf("this account has removed %d devices on this relay, which takes no new ones", p.revoked))
 	case g == growsSessions && p.sessions > 0 && u.sessions > p.sessions:
-		return errFull(fmt.Sprintf("this account has its %d sessions already on this relay", p.sessions))
+		return errFull("relay_session_limit: this account has reached its session limit on this relay")
 	case g == growsEvents && p.eventBytes > 0 && u.eventBytes > p.eventBytes:
 		return errFull("this account's storage on this relay is full")
 	case g == growsPrefs && p.prefs > 0 && u.prefs > p.prefs:

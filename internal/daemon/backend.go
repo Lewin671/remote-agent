@@ -3,6 +3,7 @@ package daemon
 import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"time"
 )
 
 // The methods below let the relay reach sessions; see relay.Backend.
@@ -73,4 +74,44 @@ func (d *Daemon) ImageUploaded(sessionID, imageID string, ok bool, expiresMs int
 	if s, err := d.exact(sessionID); err == nil {
 		s.images.uploaded(imageID, ok, expiresMs)
 	}
+}
+
+// SessionPublicationFailed translates an unpublishable scheduled conversation
+// into a durable execution failure. The relay invokes it outside scheduling locks.
+func (d *Daemon) SessionPublicationFailed(id, reason string) error {
+	if reason != "relay_session_limit" {
+		return nil
+	}
+	d.scheduleMu.Lock()
+	defer d.scheduleMu.Unlock()
+	changed := false
+	for _, t := range d.tasks {
+		taskChanged := false
+		if t.Active != nil && t.Active.SessionID == id {
+			d.endScheduledRun(t, time.Now().UTC(), "failed", reason)
+			taskChanged = true
+		} else {
+			for i := range t.Runs {
+				r := &t.Runs[i]
+				if r.SessionID == id && (r.Status != "failed" || r.Reason != reason) {
+					r.Status, r.Reason = "failed", reason
+					taskChanged = true
+				}
+			}
+			if taskChanged && t.Status != "cancelled" {
+				t.Status, t.Reason, t.NextRunAt = "failed", reason, nil
+				if t.Active != nil {
+					t.Status = "paused"
+				}
+			}
+		}
+		if taskChanged {
+			touchTask(t, time.Now().UTC())
+			changed = true
+		}
+	}
+	if changed {
+		return d.saveSchedulesLocked()
+	}
+	return nil
 }

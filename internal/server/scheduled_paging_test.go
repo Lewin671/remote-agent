@@ -1,9 +1,11 @@
 package server
 
 import (
+	"connectrpc.com/connect"
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -88,5 +90,29 @@ func TestTaskOwnedPagingExistingLayout(t *testing.T) {
 func TestScheduledPushKind(t *testing.T) {
 	if !validNotifyKinds([]pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_SCHEDULED}) || pushText[pb.NotifyKind_NOTIFY_KIND_SCHEDULED] != "定时任务有新结果" {
 		t.Fatal("scheduled push is not accepted or has non-generic text")
+	}
+}
+
+func TestHiddenSessionsConsumeTrialLimitWithExplicitReason(t *testing.T) {
+	st, err := openStore(filepath.Join(t.TempDir(), "relay.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	ctx := context.Background()
+	_, err = st.db.Exec(`INSERT INTO accounts(id,public_key,plan,created_ms) VALUES('a',x'00','trial',0);INSERT INTO machines(id,account_id) VALUES('m','a')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := st.tenant("a")
+	limit := func(u accountUsage) error { return plans["trial"].check(u, growsSessions) }
+	for i := 0; i < 200; i++ {
+		if _, err := ts.putSession(ctx, "m", fmt.Sprint(i), []byte("key"), 1, []byte("meta"), 1, 1, true, limit); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, err = ts.putSession(ctx, "m", "over-limit", []byte("key"), 1, []byte("meta"), 1, 1, true, limit)
+	if connect.CodeOf(err) != connect.CodeResourceExhausted || !strings.Contains(err.Error(), "relay_session_limit:") {
+		t.Fatalf("hidden quota silently ignored: %v", err)
 	}
 }

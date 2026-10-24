@@ -3,10 +3,14 @@ package relay
 import (
 	"connectrpc.com/connect"
 	"context"
+	"errors"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -110,5 +114,34 @@ func TestScheduledOwnershipHeadMismatchRepublishes(t *testing.T) {
 	sync(head)
 	if service.puts != 2 {
 		t.Fatal("identical routing metadata needlessly resent")
+	}
+}
+
+type publicationFailureBackend struct {
+	ownershipBackend
+	refused string
+}
+
+func (b *publicationFailureBackend) SessionPublicationFailed(id, reason string) error {
+	b.refused = id + ":" + reason
+	return nil
+}
+func TestRelaySessionLimitReachesBackend(t *testing.T) {
+	b := &publicationFailureBackend{ownershipBackend: ownershipBackend{prefixBackend: prefixBackend{dir: t.TempDir()}}}
+	service := &sessionRevisionMachine{validate: func(*pb.PutSessionRequest) error {
+		return connect.NewError(connect.CodeResourceExhausted, errors.New("relay_session_limit: full"))
+	}}
+	mux := http.NewServeMux()
+	path, h := remoteagentv1connect.NewMachineServiceHandler(service)
+	mux.Handle(path, h)
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	c := &conn{r: New(b), acct: &Account{DeviceID: "machine"}, machine: remoteagentv1connect.NewMachineServiceClient(server.Client(), server.URL)}
+	initializeTestSecurity(t, c)
+	if _, err := c.putSession(context.Background(), "session", make([]byte, 32), &pb.Session{Id: "session"}, 0); err == nil {
+		t.Fatal("quota response lost")
+	}
+	if b.refused != "session:relay_session_limit" {
+		t.Fatal("daemon not told why publication failed")
 	}
 }
