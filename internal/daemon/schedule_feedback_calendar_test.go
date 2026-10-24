@@ -223,7 +223,7 @@ func TestSkippedManualTrialRestoresAutomaticDispatch(t *testing.T) {
 }
 
 func TestManualTrialFailureBoundaries(t *testing.T) {
-	for _, ending := range []string{"dispatch_failed", "input_cancelled", "unconfirmed", "interrupted", "user_paused"} {
+	for _, ending := range []string{"dispatch_failed", "input_cancelled", "unconfirmed", "interrupted", "user_paused", "user_cancelled"} {
 		t.Run(ending, func(t *testing.T) {
 			h := scheduleHarness(t)
 			defer h.s.log.Close()
@@ -246,8 +246,12 @@ func TestManualTrialFailureBoundaries(t *testing.T) {
 				} else {
 					h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Paused: true}}})
 					h.d.tickSchedules(now.Add(time.Second))
-					if ending == "user_paused" {
-						if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "pause", TaskId: task.ID}, originLocal); err != nil {
+					if ending == "user_paused" || ending == "user_cancelled" {
+						op := "pause"
+						if ending == "user_cancelled" {
+							op = "cancel"
+						}
+						if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: op, TaskId: task.ID}, originLocal); err != nil {
 							t.Fatal(err)
 						}
 					}
@@ -264,6 +268,12 @@ func TestManualTrialFailureBoundaries(t *testing.T) {
 			reason := ""
 			if ending == "user_paused" {
 				want, reason = "paused", "user_paused"
+			}
+			if ending == "user_cancelled" {
+				if got.Active != nil || got.Status != "cancelled" || got.Reason != "user_cancelled" || got.NextRunAt != nil {
+					t.Fatalf("manual result undid explicit cancellation: %+v", got)
+				}
+				return
 			}
 			if got.Active != nil || got.Status != want || got.Reason != reason || got.NextRunAt == nil || !got.NextRunAt.Equal(due) || len(got.Runs) != 1 {
 				t.Fatalf("manual ending changed automatic plan: %+v", got)

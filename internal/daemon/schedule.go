@@ -1119,6 +1119,9 @@ func (d *Daemon) restoreManualSchedule(t *schedule.Task, now time.Time) {
 		status, reason = t.AutomaticStatus, t.AutomaticReason
 	}
 	t.Status, t.Reason = status, reason
+	if status == "cancelled" {
+		t.NextRunAt = nil
+	}
 	t.AutomaticNextRunAt = nil
 	t.AutomaticStatus, t.AutomaticReason = "", ""
 	d.expireSchedule(t, now)
