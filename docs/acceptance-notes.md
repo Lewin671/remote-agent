@@ -636,3 +636,25 @@ go run ./scripts/acceptance-schedule
 新增 interval 真实链路：通过加密 Forward 创建每小时一次的任务，让真实 CLI 完成首次运行；从接口读回整份 Spec，只改标题，再连同原触发配置、原 at 和修订号回交 update。连续观察四秒、覆盖多个真实调度 tick，仍然只有一次派发和原来的运行 ID，NextRunAt 与编辑前相同且晚于已完成 ScheduledAt，触发定义没有被改写。随后确认 CLI 退出并取消未来调度。此路径与原日历链路全部通过，临时环境已清理。
 
 以上为 Go 合成加密客户端与 tmux 审批触发，没有冒称直接操作产品界面。人工存储故障和关闭并发由可控回归测试验证，未在真实 CLI 环境人为破坏磁盘；真手机、真实 Codex 同链路与实际推送送达未覆盖。
+
+### 定时任务第五轮反馈
+
+2026-10-24，仍是未发布的协议 11，产品版本未改。只在任务 worktree 本地提交，没有推送、发版或部署。当前行为见 [architecture §18](architecture.md#18-定时任务)。
+
+| 反馈 | 修法与回归证据 | 本轮新增实际变异数 |
+|---|---|---|
+| 1 | 同时刻防重复派发只用于 interval、calendar、重复 after_turn。失败 at 的定义原样回交或只改标题后，仍派发原 ScheduledAt 并记录新运行；resume 的错误提示继续提供立即运行和修改定义两条路。`TestFailedAtDefinitionUpdateRetriesSameOccurrence` 验证两条定义回交路径；原周期去重和相位测试保留 | 1 |
+| 2 | ManualRequest 的 RetryFailed 意图传入运行记录并跨重启保留。失败一次性任务的显式重试正常结束后，仍处于 failed 的任务改为 completed，原因 explicit_retry_succeeded；失败、中断保留原计划，用户期间的暂停或取消同样保留。`TestFailedOneShotResumeRequiresExplicitRetry` 核对成功结果；`TestFailedOneShotRetryOutcome` 为 at/非重复 after_turn × 成功/失败/中断 × 无控制/暂停/取消，覆盖运行前后重启、自动计数不变、完成后拒绝再次重试。普通手动执行矩阵继续核对不改变自动计划 | 3 |
+| 3 | 后续扫描与待跟踪判断共用同一个上下文条件：模型已收到定时输入、有会话、上下文尚未关闭，不依赖运行结果。未收到输入的投递仍独占确认游标，防止后续扫描吃掉迟到确认事件。`TestNonCompletedScheduledFollowups` 为 interrupted/failed × 非终态/取消终态 × CLIENT 输入/LOCAL 输入/明确恢复/退出/另一运行接管，核对通知次数与正文、final 摘要、任务和机器修订、重启持久化、重复扫描不重计及上下文结束后不再计入；原迟到确认测试验证游标边界 | 3 |
+
+本轮新增 7 个变异位置均实际检出；另重跑第四轮 15 个位置，全部检出。每组原测试先通过，再临时去掉修复或恢复错误条件；编译失败不算检出，源文件随后恢复。入口为 `python3 scripts/check-schedule-regressions.py --only r5-`（第 3 条补充边界后重跑 `--only r5-03`）和 `--only r4-`。本轮没有重跑全部客户端变异或客户端完整套件，三端产品代码未改。
+
+最终 `go test ./...` 通过。首次全量执行检出了第 3 条扩大扫描范围后吞掉迟到确认游标的回归；补上「模型已收到定时输入」的上下文起点条件后，原迟到确认、手动请求和按 ID 接回测试及全量均通过。没有放宽原测试预期。
+
+相关 race 检查通过：`go test -race ./internal/daemon ./internal/relay ./internal/server ./internal/schedule -run 'Schedule|Scheduled|Followup|FailedOneShot|FailedAt|Manual|OneShot|LateConfirmation|PendingManual|Interval|Calendar|MCP|TaskOwned' -count=1`，四个包均通过，覆盖本轮三个反馈和相关迟到确认路径。
+
+真实 Claude 补测使用独立 RA_DEV_DIR、临时账户、本地 server/daemon、独立 tmux socket，Claude Code 2.1.300 / Haiku 5.5。临时 Go 合成加密客户端创建普通会话和 at/resume_session 任务；定时消息让 Bash 在后台等待外部文件，再在前台运行另一个等待命令。通过加密 Interrupt 中断前台轮，随后在测试环境创建后台等待的文件，没有发送新的人工消息。审批由 tmux 按键触发。
+
+两次都观察到原运行保持 interrupted、任务保持 paused，后台完成自己开的后续轮摘要记回原运行。第一次 notify_user 也成功，原运行保存通知次数 1、正文和 final 摘要；临时程序因反复解码未清空旧 Active 指针而卡在等待，结果从隔离 daemon 存储核对，不能算自动脚本全通过。修正临时程序后再跑，第二次模型把中断理解为用户拒绝继续，主动不调用 notify_user，虽然后台后续轮及其摘要仍正常记回；因此不声称真实 CLI 完整通知场景已稳定自动验收。定向回归以可控事件覆盖通知、摘要、可见修订和全部上下文终点。没有重跑整套日历/手动/自动真实 CLI 链路，没有直接操作产品界面，也未验证实际推送送达。
+
+两套临时环境和临时验收程序均已清理。
