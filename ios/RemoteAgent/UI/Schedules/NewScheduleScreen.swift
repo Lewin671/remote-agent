@@ -72,10 +72,9 @@ struct NewScheduleScreen: View {
                             GRow("什么时候", value: scheduleFrequency(draft.trigger, includeZone: true), chevron: true) { timing = true }
                             if sessionID.isEmpty {
                                 GRow("项目", value: draft.config.map { projectName($0.cwd) } ?? "选择项目", chevron: true) { picker = .project }
-                                GRow("CLI", value: draft.config.map { agentName($0.agent) } ?? "选择 CLI", chevron: true) { picker = .agent }
+                                ScheduleAgentRow(state: state, config: Bindable(draft).config)
                                 GRow("权限", value: draft.config.map { effectiveModeText(chosen: $0.mode, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } ?? "跟随 CLI 设置", chevron: true, valueColor: draft.config.map { settingsModeRed($0, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } == true ? Theme.red : nil) { picker = .mode }
-                                GRow("模型", value: draft.config?.model.isEmpty == false ? draft.config?.model : "默认", chevron: true) { picker = .model }
-                                if state.machines.count > 1 { GRow("机器和模型", value: machineLabel(state, id: machine), chevron: true) { picker = .machine } }
+                                GRow(state.machines.count > 1 ? "机器和模型" : "模型", value: [state.machines.count > 1 ? machineLabel(state, id: machine) : "", draft.config.map { $0.model.isEmpty ? "默认" : $0.model } ?? "默认"].filter { !$0.isEmpty }.joined(separator: " · "), chevron: true) { picker = state.machines.count > 1 ? .machine : .model }
                             }
                         }
                         .disabled(draft.mutation.frozen)

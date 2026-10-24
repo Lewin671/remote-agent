@@ -15,9 +15,9 @@ public struct ScheduleTiming: Equatable, Sendable {
     public var count = 10
     public var until: Date
     public var timezone: String
-    public var afterRepeat = false
+    private var afterTrigger: ScheduleTrigger?
     public init(trigger: ScheduleTrigger? = nil, now: Date = Date(), zone: TimeZone = .current) {
-        timezone = zone.identifier; date = now.addingTimeInterval(300); until = now.addingTimeInterval(86400 * 7)
+        timezone = zone.identifier; date = now.addingTimeInterval(300); until = now.addingTimeInterval(86400)
         guard let t = trigger else { return }
         timezone = t.timezone ?? zone.identifier
         if let at = t.at.flatMap(scheduleDate) { date = at }
@@ -27,7 +27,7 @@ public struct ScheduleTiming: Equatable, Sendable {
             kind = .interval
             let n = Int(t.intervalSeconds ?? 3600)
             unit = n % 3600 == 0 ? 3600 : n % 60 == 0 ? 60 : 1; interval = max(1, n / unit)
-        case "after_turn": kind = .afterTurn; interval = Int(t.delaySeconds ?? 60); unit = 1; afterRepeat = t.repeatAfterTurn == true
+        case "after_turn": kind = .afterTurn; afterTrigger = t
         default:
             let days = Set(t.weekdays ?? [])
             workdays = days == Set(1...5)
@@ -54,11 +54,14 @@ public struct ScheduleTiming: Equatable, Sendable {
                 guard !weekdays.isEmpty else { throw UserError("请至少选择一天") }
                 t.weekdays = weekdays.sorted()
             } else if workdays { t.weekdays = Array(1...5) }
-        case .interval, .afterTurn:
+        case .interval:
             guard interval > 0, interval <= 315_360_000, unit > 0 else { throw UserError("请输入有效的间隔") }
-            if kind == .interval { t.type = "interval"; t.intervalSeconds = Int64(interval) * Int64(unit) }
-            else { t.type = "after_turn"; t.delaySeconds = Int64(interval) * Int64(unit); t.repeatAfterTurn = afterRepeat }
+            t.type = "interval"; t.intervalSeconds = Int64(interval) * Int64(unit)
+        case .afterTurn:
+            guard let original = afterTrigger else { throw UserError("请选择一次、每天、每周或每隔") }
+            t = original
         }
+        t.maxRuns = nil; t.until = nil
         if kind != .once {
             if end == .count {
                 guard count > 0 else { throw UserError("运行次数必须大于 0") }; t.maxRuns = Int64(count)

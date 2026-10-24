@@ -81,7 +81,7 @@ import UIKit
     }
     @Test func taskRowsRemainWithinNarrowAndTabletColumnsAtLargeTextSizes() {
         for width in [320.0, 760] {
-            let row = SessionListRowContent(title: "检查新回复", right: "下次 15:00", third: "今天 4 次都没有通知", color: Theme.gray, last: false) { Text("每小时 · 在「修复登录超时」里").type(T.sm, Theme.muted) }
+            let row = SessionListRowContent(title: "检查新回复", right: "下次 今天 15:00", third: "今天 4 次都没有通知", color: Theme.gray, last: false) { Text("每小时 · 在「修复登录超时」里").type(T.sm, Theme.muted) }
                 .environment(\.dynamicTypeSize, .accessibility3)
             let host = UIHostingController(rootView: row)
             let size = host.sizeThatFits(in: CGSize(width: width, height: 1000))
@@ -105,5 +105,56 @@ import UIKit
         let notified = await ChatBuilder().build(PagedList(events + [notification]), ChatParams()).rows
         guard case .note(let note) = notified.last?.item else { Issue.record("notification is hidden"); return }
         #expect(note.text == "通知你：有新回复")
+    }
+}
+
+@MainActor @Suite struct ScheduleAlignmentTests {
+    @Test func renamingIsIndependentOfTaskStatusExecutionAndPendingRun() {
+        let base = ScheduleStoreTests().task()
+        for status in ["scheduled", "paused", "failed", "uncertain", "completed", "cancelled", "running", "dispatching", "queued"] {
+            var task = base; task.status = status
+            for active in [false, true] {
+                if active { task.active = ScheduleRun(id: "run", startedAt: "2026-10-24T17:00:00Z", status: "running") }
+                let access = ScheduleEditAccess(task: task, online: true, saving: false, unknown: false)
+                #expect(access.rename)
+                #expect(access.definition == !active)
+                #expect(!ScheduleEditAccess(task: task, online: false, saving: false, unknown: false).rename)
+                #expect(!ScheduleEditAccess(task: task, online: true, saving: true, unknown: false).rename)
+                #expect(!ScheduleEditAccess(task: task, online: true, saving: false, unknown: true).rename)
+            }
+        }
+        let json = "{\"request_id\":\"manual\"}".data(using: .utf8)!
+        var pending = base; pending.manualRequest = try? JSONDecoder().decode(ScheduleTask.Manual.self, from: json)
+        let access = ScheduleEditAccess(task: pending, online: true, saving: false, unknown: false)
+        #expect(access.rename && !access.definition)
+    }
+
+    @Test func cliIsANativeInlineSegmentAndDisappearsWithOnlyOneInstalledAgent() async throws {
+        await WindowTestGate.shared.acquire()
+        defer { WindowTestGate.shared.release() }
+        let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        for agents in [[PBAgent.codex, .claude], [.claude]] {
+            var state = ScheduleStoreTests().state()
+            state.machines["m"]?.meta?.agents = agents.map { agent in .with { $0.agent = agent } }
+            let draft = ScheduleDraft(); draft.config = NewConfig(machineId: "m", cwd: "/example", agent: .claude, model: "haiku")
+            let row = ScheduleAgentRow(state: state, config: Bindable(draft).config)
+            let host = UIHostingController(rootView: row)
+            let window = UIWindow(windowScene: scene); window.frame = CGRect(x: 0, y: 0, width: 320, height: 200)
+            window.rootViewController = host; window.isHidden = false
+            func segments(_ view: UIView) -> [UISegmentedControl] { (view as? UISegmentedControl).map { [$0] } ?? view.subviews.flatMap(segments) }
+            for _ in 0..<30 where agents.count > 1 && segments(host.view).isEmpty { try await Task.sleep(for: .milliseconds(10)) }
+            host.view.layoutIfNeeded()
+            let controls = segments(host.view)
+            #expect(controls.count == (agents.count > 1 ? 1 : 0))
+            if let control = controls.first {
+                #expect(control.numberOfSegments == 2)
+                #expect(control.titleForSegment(at: 0) == "Codex" && control.titleForSegment(at: 1) == "Claude Code")
+                #expect(control.selectedSegmentIndex == 1)
+                control.selectedSegmentIndex = 0; control.sendActions(for: .valueChanged)
+                for _ in 0..<20 where draft.config?.agent != .codex { try await Task.sleep(for: .milliseconds(10)) }
+                #expect(draft.config?.agent == .codex && draft.config?.model == "")
+            }
+            window.isHidden = true
+        }
     }
 }

@@ -20,7 +20,7 @@ struct ScheduleTargetSheet: View {
             SheetHead("在哪运行", action: "保存", onAction: save)
             if let c = config {
                 GRow("项目", value: projectName(c.cwd), chevron: true) { picker = .project }
-                GRow("CLI", value: agentName(c.agent), chevron: true) { picker = .agent }
+                ScheduleAgentRow(state: model.state, config: $config)
                 GRow("权限", value: effectiveModeText(chosen: c.mode, default: defaultModeOf(model.state.machines[machine], agent: c.agent)), chevron: true, valueColor: settingsModeRed(c, default: defaultModeOf(model.state.machines[machine], agent: c.agent)) ? Theme.red : nil) { picker = .mode }
                 GRow("模型", value: c.model.isEmpty ? "默认" : c.model, chevron: true) { picker = .model }
             }

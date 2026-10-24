@@ -27,16 +27,50 @@ import RAProto
     }
     @Test func localTimeAndOfflineState() {
         var t = task(); t.nextRunAt = "2026-10-24T18:05:00Z"
-        #expect(t.stateText(online: true, now: now, zone: zone) == "下次 11:05")
+        #expect(t.stateText(online: true, now: now, zone: zone) == "下次 今天 11:05")
         #expect(t.stateText(online: false, now: now, zone: zone) == "未连接")
         t.active = ScheduleRun(id: "r", startedAt: "2026-10-24T17:00:00Z", status: "running")
         #expect(t.stateText(online: false) == "未连接")
         #expect(t.stateText(online: true) == "正在运行")
     }
+    @Test func scheduleDatesUseSharedChineseLocalCalendarWording() {
+        for (at, expected) in [
+            ("2026-10-24T19:59:00Z", "今天 12:59"),
+            ("2026-10-25T15:00:00Z", "明天 08:00"),
+            ("2026-10-26T18:54:00Z", "10月26日 11:54"),
+            ("2026-10-23T18:54:00Z", "10月23日 11:54"),
+            ("2027-10-25T18:54:00Z", "2027年10月25日 11:54"),
+        ] {
+            let date = scheduleDate(at)!
+            #expect(scheduleMoment(date, now: now, zone: zone) == expected)
+            var t = task(); t.nextRunAt = at
+            #expect(t.stateText(online: true, now: now, zone: zone) == "下次 " + expected)
+            var once = ScheduleTrigger(type: "at"); once.at = at
+            #expect(scheduleFrequency(once, zone: zone, now: now) == expected + "，一次")
+        }
+        // UTC is already the next day; local calendar boundaries still decide Today/Tomorrow.
+        let midnight = scheduleDate("2026-10-25T06:59:00Z")!
+        #expect(scheduleMoment(scheduleDate("2026-10-25T07:01:00Z")!, now: midnight, zone: zone) == "明天 00:01")
+        let yearEnd = scheduleDate("2026-12-31T20:00:00Z")!
+        #expect(scheduleMoment(scheduleDate("2027-01-01T20:00:00Z")!, now: yearEnd, zone: zone) == "明天 12:00")
+        let dst = scheduleDate("2026-10-31T17:00:00Z")!
+        #expect(scheduleMoment(scheduleDate("2026-11-01T18:00:00Z")!, now: dst, zone: zone) == "明天 10:00")
+    }
+    @Test func frequenciesMatchSharedClientLabels() {
+        for (seconds, expected) in [(3600, "每小时"), (172800, "每 2 天"), (7200, "每 2 小时"), (300, "每 5 分钟"), (30, "每 30 秒")] {
+            var t = ScheduleTrigger(type: "interval"); t.intervalSeconds = Int64(seconds)
+            #expect(scheduleFrequency(t) == expected)
+        }
+        var after = ScheduleTrigger(type: "after_turn"); after.delaySeconds = 60
+        #expect(scheduleFrequency(after) == "当前轮结束 60 秒后")
+        after.repeatAfterTurn = true; #expect(scheduleFrequency(after) == "每轮结束 60 秒后")
+    }
     @Test func namesNormalizeWhitespaceAndCountCodepoints() {
         #expect(scheduleTitle("  检查 \n PR  ", message: "无关") == "检查 PR")
         #expect(scheduleTitle("", message: "检查 PR。没有变化就停\n第二行") == "检查 PR")
         #expect(scheduleTitle("", message: "Check replies! Next sentence") == "Check replies")
+        #expect(scheduleTitle("", message: "\n  Check v0.45.7. Then stop") == "Check v0.45.7")
+        #expect(scheduleTitle("", message: "。检查新回复") == "。检查新回复")
         #expect(scheduleTitle(String(repeating: "a", count: 70), message: "").count == 60)
     }
     @Test func historyAggregationAndFailurePriority() {
@@ -69,6 +103,7 @@ import RAProto
     }
     @Test func timingRoundtripsAndValidates() throws {
         var draft = ScheduleTiming(now: now, zone: zone)
+        #expect(draft.until == now.addingTimeInterval(86400))
         draft.kind = .weekly; draft.weekdays = [2, 4]; draft.end = .count; draft.count = 6
         let tr = try draft.trigger(now: now)
         #expect(tr.type == "calendar" && tr.weekdays == [2, 4] && tr.maxRuns == 6 && tr.timezone == zone.identifier)
@@ -79,6 +114,13 @@ import RAProto
         #expect(throws: (any Error).self) { try draft.trigger(now: now) }
         draft.interval = 5; draft.unit = 60; draft.end = .date; draft.until = now.addingTimeInterval(600)
         #expect(try draft.trigger(now: now).intervalSeconds == 300)
+        var after = ScheduleTrigger(type: "after_turn"); after.delaySeconds = 0; after.repeatAfterTurn = true; after.maxRuns = 6
+        var preserved = ScheduleTiming(trigger: after, now: now, zone: zone)
+        preserved.kind = .interval; preserved.interval = 10; preserved.unit = 60
+        preserved.kind = .afterTurn
+        #expect(try preserved.trigger(now: now) == after)
+        preserved.end = .never
+        #expect(try preserved.trigger(now: now).maxRuns == nil)
     }
     @Test func commandCarriesCreationIdentityAndExpectedRevision() throws {
         let cmd = try scheduleCommand(operation: "create", spec: task().spec, revision: 7, creationKey: "stable-key", sessionID: "source")

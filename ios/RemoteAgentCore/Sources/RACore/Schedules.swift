@@ -117,7 +117,6 @@ public struct ScheduleTask: Codable, Equatable, Sendable, Identifiable {
         }
     }
     public var visible: Bool { status != "cancelled" || (reason != nil && reason != "user_cancelled") }
-    public var canRename: Bool { group == .active && active == nil && manualRequest == nil }
     public var oneShot: Bool { spec.trigger.type == "at" || (spec.trigger.type == "after_turn" && spec.trigger.repeatAfterTurn != true) }
     public func stateText(online: Bool, now: Date = Date(), zone: TimeZone = .current) -> String {
         guard online else { return "未连接" }
@@ -137,7 +136,7 @@ public struct ScheduleTask: Codable, Equatable, Sendable, Identifiable {
         case .active:
             if manualRequest != nil { return "等待本轮结束" }
             guard let nextRunAt, let d = scheduleDate(nextRunAt) else { return "等待本轮结束" }
-            return "下次 " + scheduleMoment(d, now: now, zone: zone, omitToday: true)
+            return "下次 " + scheduleMoment(d, now: now, zone: zone)
         }
     }
     public func lastResult(now: Date = Date(), zone: TimeZone = .current) -> String {
@@ -174,9 +173,13 @@ public func sortedSchedules(_ tasks: [MachineSchedule], group: ScheduleGroup) ->
 public func scheduleTitle(_ typed: String, message: String) -> String {
     func clean(_ s: String) -> String { s.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
     let entered = clean(typed)
-    let line = message.components(separatedBy: .newlines).first ?? ""
-    let first = line.prefix { !"。？！.!?".contains($0) }
-    return String(String.UnicodeScalarView(clean(entered.isEmpty ? String(first) : entered).unicodeScalars.prefix(60)))
+    let line = Array((message.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: .newlines).first ?? ""))
+    let end = line.indices.first { i in
+        "。？！!?".contains(line[i]) || (line[i] == "." && (i == line.count - 1 || line[i + 1].isWhitespace))
+    } ?? line.count
+    let sentence = String(line.prefix(end))
+    let first = sentence.isEmpty ? message.trimmingCharacters(in: .whitespacesAndNewlines) : sentence
+    return String(String.UnicodeScalarView(clean(entered.isEmpty ? first : entered).unicodeScalars.prefix(60)))
 }
 public func scheduleDate(_ text: String) -> Date? {
     let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -190,27 +193,30 @@ public func scheduleTime(_ date: Date, zone: TimeZone = .current) -> String {
 public func scheduleDay(_ date: Date, now: Date = Date(), zone: TimeZone = .current) -> String {
     var cal = Calendar(identifier: .gregorian); cal.timeZone = zone
     if cal.isDate(date, inSameDayAs: now) { return "今天" }
-    if let yesterday = cal.date(byAdding: .day, value: -1, to: now), cal.isDate(date, inSameDayAs: yesterday) { return "昨天" }
-    let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.timeZone = zone; f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
+    if let tomorrow = cal.date(byAdding: .day, value: 1, to: now), cal.isDate(date, inSameDayAs: tomorrow) { return "明天" }
+    let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.calendar = cal; f.timeZone = zone
+    f.dateFormat = cal.component(.year, from: date) == cal.component(.year, from: now) ? "M月d日" : "yyyy年M月d日"
+    return f.string(from: date)
 }
-public func scheduleMoment(_ date: Date, now: Date = Date(), zone: TimeZone = .current, omitToday: Bool = false) -> String {
-    let day = scheduleDay(date, now: now, zone: zone)
-    return (omitToday && day == "今天" ? "" : day + " ") + scheduleTime(date, zone: zone)
+public func scheduleMoment(_ date: Date, now: Date = Date(), zone: TimeZone = .current) -> String {
+    scheduleDay(date, now: now, zone: zone) + " " + scheduleTime(date, zone: zone)
 }
+
 public func canonicalScheduleZone(_ name: String) -> String {
     scheduleZoneAliases[name] ?? name
 }
 
-public func scheduleFrequency(_ t: ScheduleTrigger, zone: TimeZone = .current, includeZone: Bool = false) -> String {
+public func scheduleFrequency(_ t: ScheduleTrigger, zone: TimeZone = .current, includeZone: Bool = false, now: Date = Date()) -> String {
     switch t.type {
-    case "at": return t.at.flatMap(scheduleDate).map { scheduleMoment($0, zone: zone) } ?? "一次"
+    case "at": return t.at.flatMap(scheduleDate).map { scheduleMoment($0, now: now, zone: zone) + "，一次" } ?? "一次"
     case "interval":
         let n = t.intervalSeconds ?? 0
         if n == 3600 { return "每小时" }
-        if n % 3600 == 0 { return "每隔 \(n / 3600) 小时" }
-        if n % 60 == 0 { return "每隔 \(n / 60) 分钟" }
-        return "每隔 \(n) 秒"
-    case "after_turn": return "本轮结束 \(t.delaySeconds ?? 0) 秒后" + (t.repeatAfterTurn == true ? "重复" : "")
+        if n % 86400 == 0 { return "每 \(n / 86400) 天" }
+        if n % 3600 == 0 { return "每 \(n / 3600) 小时" }
+        if n % 60 == 0 { return "每 \(n / 60) 分钟" }
+        return "每 \(n) 秒"
+    case "after_turn": return (t.repeatAfterTurn == true ? "每轮" : "当前轮") + "结束 \(t.delaySeconds ?? 0) 秒后"
     default:
         let days = (t.weekdays ?? []).sorted()
         let day: String
@@ -254,6 +260,6 @@ public func sessionSchedules(_ tasks: [MachineSchedule], session: SessionView) -
 }
 public func scheduleBarText(_ tasks: [MachineSchedule], online: Bool, now: Date = Date(), zone: TimeZone = .current) -> String {
     guard let first = tasks.sorted(by: { ($0.task.nextRunAt ?? "~") < ($1.task.nextRunAt ?? "~") }).first else { return "" }
-    let prefix = tasks.count == 1 ? "定时 · " + scheduleFrequency(first.task.spec.trigger, zone: zone) : "\(tasks.count) 个定时"
+    let prefix = tasks.count == 1 ? "定时 · " + scheduleFrequency(first.task.spec.trigger, zone: zone, now: now) : "\(tasks.count) 个定时"
     return prefix + (tasks.count == 1 ? "，" : " · ") + first.task.stateText(online: online, now: now, zone: zone)
 }

@@ -54,7 +54,7 @@ struct ScheduleDetailScreen: View {
             }
         }
         .inputAlert(isPresented: $rename, title: "重命名任务", initial: task?.spec.title ?? "", placeholder: "留空就用消息的第一句", confirm: "保存", text: "留空保存会用消息的第一句", limit: 60, lines: 1...1, save: { typed in
-            guard let task, task.canRename else { return }
+            guard let task else { return }
             var spec = task.spec; spec.title = scheduleTitle(typed, message: task.spec.message)
             guard spec.title != task.spec.title else { return }
             try await save(task, spec: spec)
@@ -81,7 +81,8 @@ struct ScheduleDetailScreen: View {
         let failedOnce = task.status == "failed" && task.oneShot
         let systemCancelled = task.status == "cancelled" && task.visible
         let recoveryLabel = systemCancelled ? "重新安排" : failedOnce ? "立即额外执行" : "恢复"
-        let mutable = online && !mutation.running && !mutation.frozen && task.active == nil && task.manualRequest == nil
+        let access = ScheduleEditAccess(task: task, online: online, saving: mutation.running, unknown: mutation.frozen)
+        let mutable = access.definition
         VStack(alignment: .leading, spacing: 0) {
             if model.state.conn == .online && !online { Banner("显示的是上次的任务状态，连上后才能修改").padding(16) }
             if task.group == .attention || (task.group == .paused && !(task.reason ?? "").isEmpty) {
@@ -95,7 +96,7 @@ struct ScheduleDetailScreen: View {
                 TextAction("放弃原请求", enabled: !mutation.running) { mutation.abandon() }.padding(.horizontal, 16)
             }
             GroupCard {
-                GRow("任务名", value: task.spec.title, chevron: task.canRename && mutable, enabled: task.canRename && mutable, onTap: task.canRename && mutable ? { rename = true } : nil)
+                GRow("任务名", value: task.spec.title, chevron: access.rename, enabled: access.rename, onTap: access.rename ? { rename = true } : nil)
                 GRow("什么时候", value: scheduleFrequency(task.spec.trigger, includeZone: true), chevron: mutable, enabled: mutable, onTap: mutable ? { timing = true } : nil)
                 if let count = task.spec.trigger.maxRuns, count > 0 { GRow("结束", value: "自动运行 \(count) 次后", chevron: mutable, onTap: mutable ? { timing = true } : nil) }
                 else if let until = task.spec.trigger.until.flatMap(scheduleDate) { GRow("结束", value: scheduleMoment(until), chevron: mutable, onTap: mutable ? { timing = true } : nil) }
@@ -111,7 +112,6 @@ struct ScheduleDetailScreen: View {
                 GRow("消息", value: "编辑", chevron: mutable, enabled: mutable, onTap: mutable ? { message = true } : nil)
                 Text(task.spec.message).type(T.body, Theme.fg).frame(maxWidth: .infinity, alignment: .leading).padding(14).textSelection(.enabled)
             }.padding(.top, 16)
-            if task.group != .active { Hint("已停下的任务暂不能单独改名。").padding(.horizontal, 16) }
             Hint((task.spec.target.type == "new_session" ? "每次新开一个对话" : "发到当前对话") + " · " + (task.source == "agent" ? "Agent 创建" : "你创建") + (task.createdAt.isEmpty ? "" : " · " + (scheduleDate(task.createdAt).map { scheduleMoment($0) } ?? ""))).padding(.horizontal, 16)
             GroupLabel("运行记录").padding(.top, 16)
             history(task)
@@ -123,7 +123,7 @@ struct ScheduleDetailScreen: View {
                 }.padding(.horizontal, 16).padding(.bottom, 12)
             }
             GroupCard {
-                GRow("立即运行一次", sub: "不占自动次数及日历当天名额", action: true, enabled: mutable && task.group != .ended && task.group != .attention) { perform(task, operation: "run") }
+                GRow("立即运行一次", action: true, enabled: mutable && task.group != .ended && task.group != .attention) { perform(task, operation: "run") }
                 if task.group != .ended && task.group != .attention {
                     GRow(task.group == .paused ? "恢复" : "暂停", action: true, enabled: online && !mutation.running && !mutation.frozen) { perform(task, operation: task.group == .paused ? "resume" : "pause") }
                 }
@@ -133,7 +133,7 @@ struct ScheduleDetailScreen: View {
     }
     private func targetSession(_ task: ScheduleTask) -> SessionView? { task.spec.target.session.flatMap { model.state.sessions[$0] } }
     private func permission(_ task: ScheduleTask) -> String {
-        if task.spec.target.type == "resume_session" { return targetSession(task).flatMap { modeLabel($0) }?.text ?? "跟随对话" }
+        if task.spec.target.type == "resume_session" { return targetSession(task).flatMap { modeLabel($0) }?.text ?? "请在对话里核实当前权限" }
         return ["ask": "询问", "auto": "自动", "full": "完全放行"][task.spec.target.mode ?? ""] ?? "跟随 CLI 设置"
     }
     @ViewBuilder private func history(_ task: ScheduleTask) -> some View {
