@@ -182,7 +182,11 @@ func TestContextRequestPathsShareAdmission(t *testing.T) {
 				h.s.meta.Exited = true
 				err = h.s.settleExited()
 			}
-			if connect.CodeOf(err) != connect.CodeUnavailable {
+			if op == "interrupt" {
+				if err != nil {
+					t.Fatalf("cached idle interrupt failed: %v", err)
+				}
+			} else if connect.CodeOf(err) != connect.CodeUnavailable {
 				t.Fatalf("%s ignored transcript failure: %v", op, err)
 			}
 			if len(h.term.written()) != 0 {

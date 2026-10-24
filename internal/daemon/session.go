@@ -1169,7 +1169,7 @@ func (s *session) interrupt() (bool, error) { return s.interruptBy(originLocal) 
 func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
 	var running, exited bool
 	refresh := func() error {
-		return s.admitScheduledContext("interrupt", func() error {
+		return s.withLatestOrCachedContext("interrupt", func() error {
 			s.mu.Lock()
 			running, exited = s.running, s.meta.Exited
 			s.mu.Unlock()

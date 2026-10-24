@@ -3,6 +3,7 @@ package daemon
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -96,6 +97,17 @@ func (s *session) admitScheduledContext(operation string, decide func() error) e
 	defer s.readMu.Unlock()
 	if !s.readRolloutLocked() {
 		return connect.NewError(connect.CodeUnavailable, errors.New("could not read and commit current transcript; retry "+operation))
+	}
+	return decide()
+}
+
+// Safety controls refresh when possible, but a read fault must not disable
+// interrupting, approving or opening the CLI. readRolloutLocked logs the fault.
+func (s *session) withLatestOrCachedContext(operation string, decide func() error) error {
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+	if !s.readRolloutLocked() {
+		slog.Warn("transcript unavailable; using cached state", "operation", operation)
 	}
 	return decide()
 }
