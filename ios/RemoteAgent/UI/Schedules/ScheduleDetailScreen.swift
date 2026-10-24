@@ -116,7 +116,7 @@ struct ScheduleDetailScreen: View {
                     GRow("在哪运行", value: scheduleLocation(task, state: model.state, machine: machine), chevron: mutable, enabled: mutable, onTap: mutable ? { editor.open(task); targetEdit = true } : nil)
                     GRow("权限", value: permission(task), chevron: mutable, enabled: mutable, valueColor: task.spec.target.mode == "full" ? Theme.red : nil, onTap: mutable ? { editor.open(task); permissions = true } : nil)
                 } else {
-                    GRow("发到", value: targetSession(task).map { titleOf($0) } ?? "对话", chevron: true) {
+                    GRow("发到", value: scheduleDestination(task, state: model.state), chevron: true) {
                         if let sid = task.spec.target.session { nav.open(.session(id: sid)) }
                     }
                     GRow("权限", value: permission(task), valueColor: targetSession(task).map { modeOf($0) == .full } == true ? Theme.red : nil)

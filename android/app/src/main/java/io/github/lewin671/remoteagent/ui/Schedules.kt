@@ -128,7 +128,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                     val end = scheduleLimits(task, t)
                     if (end.isNotEmpty()) ScheduleSetting("结束", end, definitionEnabled) { beginEdit("time") }
                     if (task.target.text("type") == "resume_session") {
-                        ScheduleSetting("发到", state.sessions[task.target.text("session")]?.let(::titleOf) ?: "当前对话") { nav.session(task.target.text("session")) }
+                        ScheduleSetting("发到", scheduleDestination(task, state)) { nav.session(task.target.text("session")) }
                     } else ScheduleSetting("在哪运行", taskLocation(task, state), definitionEnabled) { beginEdit("config") }
                     Box(Modifier.bottomLine(pal.line)) {
                         GRow("权限", taskPermission(task, state), onClick = if (task.target.text("type") == "new_session") ({ beginEdit("mode") }) else null,

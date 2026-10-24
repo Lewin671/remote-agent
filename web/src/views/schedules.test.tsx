@@ -709,3 +709,10 @@ it("edits CLI choices and inherited settings only on the task computer",async()=
  expect(button("Codex")).toBeTruthy();await click("Codex");await click("保存");
  expect(send.mock.calls[0][2].spec?.target).toMatchObject({agent:"codex",model:"",mode:"auto"});
 });
+
+it("shows the shared destination placeholder until target metadata is loaded",async()=>{
+ const t=task();t.spec.target={type:"resume_session",session:"missing"};const r=remote([t]);
+ r.sessions.set("missing",{id:"missing",machineId:"mac",updatedMs:0n,key:{} as CryptoKey,metaRev:0n,lastSeq:0n,endedMs:0n});
+ await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
+ expect(button("发到对话")).toBeTruthy();
+});

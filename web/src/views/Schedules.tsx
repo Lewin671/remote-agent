@@ -648,13 +648,7 @@ export function ScheduleDetail({
             name={target.type === "resume_session" ? "发到" : "在哪运行"}
             value={
               target.type === "resume_session"
-                ? titleOf(
-                    remote.sessions.get(target.session ?? "") ?? {
-                      id: target.session ?? "",
-                      machineId,
-                      updatedMs: 0n,
-                    },
-                  )
+                ? (targetSession?.info ? titleOf(targetSession) : "对话")
                 : [
                     projectName(target.cwd ?? ""),
                     target.agent === "claude" ? "Claude Code" : "Codex",

@@ -47,3 +47,7 @@ func scheduleEditingState(_ state: RemoteState, machine: String) -> RemoteState 
     if var prefs = scoped.prefs { prefs.prefs.settings = prefs.prefs.settings.filter { $0.machineID == machine }; scoped.prefs = prefs }
     return scoped
 }
+func scheduleDestination(_ task: ScheduleTask, state: RemoteState) -> String {
+    guard let sid = task.spec.target.session, let session = state.sessions[sid], session.info != nil else { return "对话" }
+    return titleOf(session)
+}

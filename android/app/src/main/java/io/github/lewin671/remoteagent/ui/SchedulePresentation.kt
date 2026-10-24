@@ -39,3 +39,6 @@ fun scheduleEditingState(state: RemoteState, machine: String): RemoteState = sta
 )
 
 fun resolvedScheduleConfig(cfg: NewConfig, state: RemoteState): NewConfig = cfg.copy(mode = cfg.mode ?: defaultModeOf(state.machines[cfg.machineId], cfg.agent).mode)
+
+fun scheduleDestination(task: ScheduledTask, state: RemoteState): String =
+    state.sessions[task.target.text("session")]?.takeIf { it.info != null }?.let(::titleOf) ?: "对话"

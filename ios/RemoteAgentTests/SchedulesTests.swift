@@ -148,6 +148,14 @@ import UIKit
 }
 
 @MainActor @Suite struct ScheduleAlignmentTests {
+    @Test func destinationUsesSharedPlaceholderUntilMetadataLoads() {
+        var state=ScheduleStoreTests().state()
+        var task=ScheduleStoreTests().task();task.spec.target=ScheduleTarget(type:"resume_session");task.spec.target.session="s"
+        state.sessions["s"]=SessionView(id:"s",machineId:"m")
+        #expect(scheduleDestination(task,state:state)=="对话")
+        state.sessions["s"]?.info=PBSession.with { $0.title="修复登录超时" }
+        #expect(scheduleDestination(task,state:state)=="修复登录超时")
+    }
     @Test func taskEditorIgnoresOtherComputerDefaults() throws {
         var state=ScheduleStoreTests().state()
         state.machines["other"]=state.machines["m"]

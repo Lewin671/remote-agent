@@ -14,6 +14,11 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SchedulePresentationTest {
+    @Test fun destinationIsTheSharedPlaceholderUntilInfoLoads() {
+        val task=ScheduledTask("m",Json.parseToJsonElement("""{"spec":{"target":{"type":"resume_session","session":"s"}}}""").jsonObject)
+        assertEquals("对话",scheduleDestination(task,RemoteState(sessions=mapOf("s" to SessionView("s","m")))))
+        assertEquals("修复登录超时",scheduleDestination(task,RemoteState(sessions=mapOf("s" to SessionView("s","m",Session.newBuilder().setTitle("修复登录超时").build())))))
+    }
     @Test fun defaultPermissionIsResolvedBeforeCreatingTheTaskTarget() {
         val meta=MachineMeta.newBuilder().addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setDefaultMode(ApprovalMode.APPROVAL_MODE_AUTO).setDefaultModeSource(DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG)).build()
         val state=RemoteState(machines=mapOf("own" to MachineView("own",true,0,meta)))
