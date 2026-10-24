@@ -273,3 +273,52 @@ func TestManualPermissionRejectionDoesNotPausePlan(t *testing.T) {
 		}
 	}
 }
+
+func TestManualControlMatrix(t *testing.T) {
+	for _, typ := range []string{"at", "interval", "calendar", "after_turn"} {
+		for _, started := range []bool{false, true} {
+			for _, control := range []string{"pause", "pause_resume", "cancel"} {
+				t.Run(typ+map[bool]string{false: "pending", true: "started"}[started]+control, func(t *testing.T) {
+					h, task := manualFixture(t, typ)
+					defer h.s.log.Close()
+					requestManual(t, h, task.ID)
+					if started {
+						h.d.tickSchedules(time.Now())
+					}
+					op := control
+					if control == "pause_resume" {
+						op = "pause"
+					}
+					if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: op, TaskId: task.ID}, originLocal); err != nil {
+						t.Fatal(err)
+					}
+					if control == "pause_resume" {
+						if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "resume", TaskId: task.ID}, originLocal); err != nil {
+							t.Fatal(err)
+						}
+					}
+					got := readTask(t, h.d, task.ID)
+					plan := automaticPlan(got)
+					if got.ManualRequest != nil {
+						t.Fatal("control retained pending manual request")
+					}
+					if started {
+						if got.Active == nil || !got.Active.Manual {
+							t.Fatal("control removed started manual execution")
+						}
+						completeTask(h, got.Active, time.Now())
+						h.d.tickSchedules(time.Now())
+						if got = readTask(t, h.d, task.ID); got.Active != nil || automaticPlan(got) != plan || len(got.Runs) != 1 || !got.Runs[0].Manual {
+							t.Fatalf("manual completion changed controlled plan: %+v", got)
+						}
+					} else {
+						h.d.tickSchedules(time.Now())
+						if readTask(t, h.d, task.ID).Active != nil {
+							t.Fatal("cleared manual request dispatched")
+						}
+					}
+				})
+			}
+		}
+	}
+}

@@ -80,7 +80,7 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 		{"pause", "Pause future scheduled executions. Does not interrupt or withdraw an already-dispatched message."},
 		{"resume", "Resume a paused Remote Agent scheduled task."},
 		{"cancel", "Cancel future scheduled executions, retaining history. Does not interrupt or withdraw an already-dispatched message."},
-		{"run", "Dispatch a Remote Agent scheduled task now, using its normal execution target. Refuses overlapping executions; calendar manual trials leave automatic dates and max_runs unchanged; other triggers count toward max_runs."},
+		{"run", "Request one extra execution using this task's normal target, for every trigger type. Waits behind an active execution; never overlaps it, changes its automatic plan, or counts toward max_runs. Pause/cancel clears pending manual requests. Refuses uncertain, failed, completed or cancelled tasks; resume or update the definition first."},
 	} {
 		mcp.AddTool(server, &mcp.Tool{Name: "schedule_" + item.op, Description: item.description}, func(ctx context.Context, _ *mcp.CallToolRequest, in IDInput) (*mcp.CallToolResult, map[string]any, error) {
 			return call(ctx, item.op, in.TaskID, in.ExpectedRevision, nil, "")
