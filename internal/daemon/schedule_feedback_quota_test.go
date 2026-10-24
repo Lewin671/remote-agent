@@ -26,15 +26,18 @@ func unpublishedRun(t *testing.T, manual bool) (*harness, *schedule.Task, *sched
 	h.d.tasks[task.ID].Spec.Target.Type = "new_session"
 	h.s.meta.TaskOwned = true
 	h.s.meta.ScheduledTaskID, h.s.meta.ScheduledRunID = task.ID, snapshot.Active.ID
+	if err := h.d.saveSchedulesLocked(); err != nil {
+		t.Fatal(err)
+	}
 	return h, task, snapshot, before
 }
 func TestPublicationRefusalUsesScheduledClosure(t *testing.T) {
 	for _, manual := range []bool{false, true} {
-		for _, order := range []string{"before", "queued", "running", "finished"} {
+		for _, order := range []string{"before", "restarted-before", "queued", "running", "finished"} {
 			t.Run(map[bool]string{false: "automatic", true: "manual"}[manual]+order, func(t *testing.T) {
 				h, task, snapshot, before := unpublishedRun(t, manual)
 				defer h.s.log.Close()
-				if order != "before" {
+				if order != "before" && order != "restarted-before" {
 					h.d.queueScheduledSession(context.Background(), snapshot, time.Now(), h.s)
 				}
 				if order == "running" {
@@ -44,10 +47,15 @@ func TestPublicationRefusalUsesScheduledClosure(t *testing.T) {
 					completeTask(h, snapshot.Active, time.Now())
 					h.d.tickSchedules(time.Now())
 				}
+				if order == "restarted-before" {
+					if err := h.d.loadSchedules(); err != nil {
+						t.Fatal(err)
+					}
+				}
 				if err := h.d.SessionPublicationFailed(h.s.meta.ID, "relay_session_limit"); err != nil {
 					t.Fatal(err)
 				}
-				if order == "before" {
+				if order == "before" || order == "restarted-before" {
 					h.d.queueScheduledSession(context.Background(), snapshot, time.Now(), h.s)
 				}
 				got := readTask(t, h.d, task.ID)

@@ -107,10 +107,11 @@ func (d *Daemon) SessionPublicationFailed(id, reason string) error {
 	}
 	for i := range t.Runs {
 		run := &t.Runs[i]
-		if run.ID != runID || run.SessionID != id {
+		if run.ID != runID || run.SessionID != "" && run.SessionID != id {
 			continue
 		}
-		if run.Status != "failed" || run.Reason != reason {
+		if run.SessionID != id || run.Status != "failed" || run.Reason != reason {
+			run.SessionID = id
 			run.Status, run.Reason = "failed", reason
 			if run.EndedAt == nil {
 				run.EndedAt = &now
