@@ -48,7 +48,7 @@ class ForegroundPushTest {
                     for (kind in listOf(NotifyKind.NOTIFY_KIND_SCHEDULED, NotifyKind.NOTIFY_KIND_ATTENTION, NotifyKind.NOTIFY_KIND_TURN_ENDED, NotifyKind.NOTIFY_KIND_SECURITY)) {
                         manager.cancelAll()
                         val message = RemoteMessage.Builder("synthetic-sender")
-                            .setData(mapOf("session" to "target-session", "kind" to kind.number.toString()))
+                            .setData(mapOf("session" to "target-session", "kind" to kind.number.toString(), "event" to "scheduled:1"))
                             .build()
                         service.onMessageReceived(message)
                         val expected = !foreground || kind == NotifyKind.NOTIFY_KIND_SCHEDULED && visible != "target-session"

@@ -157,6 +157,10 @@ go("r10-03-read-lock", "internal/daemon/schedule.go", 'return d.scheduleCommandA
 go("r10-04-input-origin", "internal/daemon/daemon.go", 'd.resumeSessionLifetimeLocked(ctx, s, originSystem, true)', 'd.resumeSessionLifetimeLocked(ctx, s, originLocal, true)', "TestImplicitResumeWaitsForDurableInputOwnership")
 go("r10-04-rearm", "internal/daemon/daemon.go", 's.meta.TaskCLIClosed = !pendingInput', 's.meta.TaskCLIClosed = true', "TestImplicitResumeWaitsForDurableInputOwnership")
 
+go("r10-05-web-tag", "internal/server/push.go", 'sessionID + "/" + eventKey + "/" + kind.String()', 'sessionID + "/" + kind.String()', "TestScheduledPushDisplayIdentity", "./internal/server")
+
+go("r10-05-fcm-event", "internal/server/push.go", 'data["event"] = dedupeKey', 'data["event"] = ""', "TestScheduledFCMIncludesEventIdentity", "./internal/server")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
@@ -197,6 +201,8 @@ clients.extend([
  ("r6-web-focus", "web/public/sw.js", 'w.focused && (!scheduled', '(!scheduled', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
  ("r6-web-visible", "web/public/sw.js", 'w.visibilityState === "visible" && w.focused', 'w.focused', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
 ])
+
+clients.append(("r10-05-android-tag", "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt", '"scheduled/$session/$eventKey"', '"scheduled/$session"', ["./gradlew",":app:testDebugUnitTest","--tests","*ScheduledPushIdentityTest"], "java.lang.AssertionError"))
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

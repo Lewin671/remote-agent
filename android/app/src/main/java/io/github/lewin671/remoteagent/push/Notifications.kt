@@ -76,7 +76,10 @@ class RaMessagingService : FirebaseMessagingService() {
         val foreground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
         if (foreground && (kind != NotifyKind.NOTIFY_KIND_SCHEDULED || app.visibleSession == session))
             return
-        Notifier.show(this, session, kind, content, settings.showContent)
+        val eventKey = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) {
+            data["event"]?.takeIf { it.isNotEmpty() } ?: return
+        } else null
+        Notifier.show(this, session, kind, content, settings.showContent, eventKey)
         // Timing only, for the notes on cold starts; no content.
         Log.i(
             TAG,
@@ -195,7 +198,9 @@ object Notifier {
         kind: NotifyKind,
         c: NotifyContent?,
         showContent: Boolean,
+        eventKey: String? = null,
     ) {
+        require(kind != NotifyKind.NOTIFY_KIND_SCHEDULED || !eventKey.isNullOrEmpty())
         val nm = context.getSystemService(NotificationManager::class.java)
         val generic = when (kind) {
             NotifyKind.NOTIFY_KIND_SCHEDULED -> "定时任务有新结果"
@@ -269,7 +274,8 @@ object Notifier {
                 .setContentText(c.text.ifEmpty { generic })
         }
         try {
-            nm.notify(nid, b.build())
+            val tag = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) "scheduled/$session/$eventKey" else null
+            nm.notify(tag, nid, b.build())
         } catch (e: SecurityException) {
             // Notifications are not allowed; Settings shows the banner.
         }

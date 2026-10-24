@@ -137,9 +137,9 @@ function pushWorker(windows: PushWindow[]) {
   new Function("self", "caches", "fetch", source)(self, {}, vi.fn());
   return {
     showNotification,
-    push: async (kind: string, session = "target-session") => {
+    push: async (kind: string, session = "target-session", event = "scheduled:1") => {
       let work!: Promise<void>;
-      handlers.push({ data: { json: () => ({ title: "remote-agent", tag: session + "/" + kind, session, body: "定时任务有新结果" }) }, waitUntil: (p: Promise<void>) => { work = p; } });
+      handlers.push({ data: { json: () => ({ title: "remote-agent", tag: session + (kind === "NOTIFY_KIND_SCHEDULED" ? "/" + event : "") + "/" + kind, session, body: "定时任务有新结果" }) }, waitUntil: (p: Promise<void>) => { work = p; } });
       await work;
     },
   };
@@ -164,7 +164,7 @@ for (const kind of ["NOTIFY_KIND_SCHEDULED", "NOTIFY_KIND_ATTENTION", "NOTIFY_KI
     expect(sw.showNotification).toHaveBeenCalledTimes(suppressed ? 0 : 1);
     if (!suppressed) {
       expect(sw.showNotification).toHaveBeenCalledWith("remote-agent", expect.objectContaining({
-        body: "定时任务有新结果", tag: "target-session/" + kind,
+        body: "定时任务有新结果", tag: "target-session/" + (kind === "NOTIFY_KIND_SCHEDULED" ? "scheduled:1/" : "") + kind,
         data: { session: "target-session", security: kind === "NOTIFY_KIND_SECURITY" },
       }));
     }
@@ -194,4 +194,17 @@ it("scheduled push without a session or with an invalid client URL still shows",
   await sw.push("NOTIFY_KIND_SCHEDULED");
   await sw.push("NOTIFY_KIND_SCHEDULED", "");
   expect(sw.showNotification).toHaveBeenCalledTimes(2);
+});
+
+it("scheduled event tags retain separate results and replace only redelivery of the same event", async () => {
+  const sw = pushWorker([{ url: "https://app.example.com/#/", visibilityState: "visible", focused: true }]);
+  await sw.push("NOTIFY_KIND_SCHEDULED", "target-session", "scheduled:7");
+  await sw.push("NOTIFY_KIND_SCHEDULED", "target-session", "scheduled:8");
+  await sw.push("NOTIFY_KIND_SCHEDULED", "target-session", "scheduled:7");
+  expect(sw.showNotification).toHaveBeenCalledTimes(3);
+  const tags = sw.showNotification.mock.calls.map((call) => call[1].tag);
+  expect(new Set(tags).size).toBe(2);
+  expect(tags[0]).toBe(tags[2]);
+  expect(tags[0]).not.toBe(tags[1]);
+  for (const [, options] of sw.showNotification.mock.calls) expect(options.data).toEqual({ session: "target-session", security: false });
 });

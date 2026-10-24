@@ -81,6 +81,15 @@ func pushRecentKey(acct, sessionID string, kind pb.NotifyKind, dedupeKey string)
 	return key
 }
 
+// Keep kind last for service-worker classification. Scheduled display identity
+// uses the same public event key as delivery deduplication, never a task/run ID.
+func pushNotificationTag(sessionID string, kind pb.NotifyKind, eventKey string) string {
+	if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED {
+		return sessionID + "/" + eventKey + "/" + kind.String()
+	}
+	return sessionID + "/" + kind.String()
+}
+
 // pusher sends the notifications of every account. Its VAPID keys and
 // clients identify the relay, not an account; what it reads and deletes
 // is the targets of the account it notifies.
@@ -336,8 +345,11 @@ func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID s
 		p.busy[st.acct] += len(targets)
 	}
 	p.recent[key] = pushRecent{acct: st.acct, at: time.Now()}
-	payload, _ := json.Marshal(map[string]string{"title": "remote-agent", "body": body, "tag": sessionID + "/" + kind.String(), "session": sessionID})
+	payload, _ := json.Marshal(map[string]string{"title": "remote-agent", "body": body, "tag": pushNotificationTag(sessionID, kind, dedupeKey), "session": sessionID})
 	data := map[string]string{"session": sessionID, "kind": strconv.Itoa(int(kind))}
+	if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED {
+		data["event"] = dedupeKey
+	}
 	if c := base64.StdEncoding.EncodeToString(content); len(content) > 0 && len(c) <= fcmMaxData {
 		data["content"] = c
 	}
