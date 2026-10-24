@@ -496,7 +496,7 @@ macOS、本 worktree 构建的 daemon、Claude Code 2.1.300；使用 `scripts/ac
 - 自动测试：`go test ./...`；`go test -race ./internal/daemon ./internal/server ./internal/relay -run 'TestSchedule|TestCalendar|TestMCP|TestTaskOwned'`。覆盖纽约春季不存在时刻、秋季两次相同时刻只取早一次、上海、工作日、补跑、截止及每天一次；任务会话隐藏和接手、退出与恢复、运行中不关 CLI；通知的可用条件、三次上限及跨重启计数、final 摘要；MCP 递归委托和周期最小间隔；现有布局 6 库直接启动、默认分页排除/按 ID 查询、旧修订不能改归属，以及 heads 不一致后重传。
 - 网页：`cd web && pnpm typecheck && pnpm test`，84 个文件、1065 项通过。Android：`cd android && ./gradlew :core:test :app:testDebugUnitTest` 通过。iOS core：`cd ios/RemoteAgentCore && swift test`，83 个 suite、527 项通过。iOS App：`xcodebuild -quiet -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -parallel-testing-enabled NO build test`，328 项通过，零失败。三端验证新字段解析、通知白名单和既有列表对任务归属的处理，没有新增定时界面。
 - iOS App 验收修正了终端测试的传输替身：原来的真实 socket 指向拒绝连接的端口，会在首次发送后停止，导致后续帧断言失败；改用只接受帧的内存 socket 后，保留的行为断言及全套 App 测试通过。默认并行模拟器测试启动曾停在 Xcode 收集诊断，最终以串行方式完成；本次启动的模拟器已关闭。
-- 回归有效性：逐处临时移除或放宽日历解析、截止、CLI 关闭、接手、通知次数限制及重放计数、MCP 周期下限及运行期变更禁令、结束标注、server 排除和 relay 推送抑制，共 11 个变异；每次都由相应新增测试的断言失败检出，之后恢复实现。编译错误没有计入这个结果。
+- 上一轮变异验证的范围：当时只检查了日历解析、截止、关闭方法内部、接手、通知次数及重放、MCP 周期下限及运行期禁令、结束标注、server 排除和 relay 推送抑制这 11 个指定位置，没有删除实际创建路径的归属赋值，也没有断开生产调度循环的关闭调用。因此它不能证明创建和自动关闭的接线已经覆盖；这两个缺口由下方第一轮反馈的生产路径测试补齐。编译错误不算检出。
 - 真实 CLI：`ios/scripts/dev-env.sh start --daemon` 在独立 `RA_DEV_DIR` 启动本地 server/daemon、临时账户、数据库、状态目录和 tmux socket；`RA_DEV_DIR="$RA_DEV_DIR" go run ./scripts/acceptance-schedule` 再建立可控的临时管理客户端和测试电脑，用原生 Claude Code 2.1.300、`claude-haiku-5-5` 走加密 Forward → server → daemon → tmux → CLI → 加密事件回读。创建约两分钟后运行的 UTC 日历任务，CLI 实际调用一次 `notify_user`，运行记录标记已通知，结束后 CLI 退出；默认分页里没有该会话，按 ID 能解密读到会话和历史、通知事件与结束标注；再用客户端恢复并发送一条消息，接手后出现在默认列表。最终一次完整验收通过，环境已停止并清理。
 - 操作边界：这是 Go 协议客户端的自动验收，不是网页、Android 或 iOS 的直接界面操作。Claude 的该次 MCP 工具审批在隔离终端里单次允许，没有持久添加免审批规则。没有接线上中继、日常 Remote Agent 账户或既有会话；真实 CLI 使用已登录的 Claude 凭据并消耗少量额度。
 - 未覆盖：真实 Codex 的这套新增流程、真手机、FCM/Web Push 实际送达、真实夏令时切换及休眠；失败/中断关闭与 daemon 重启补传由自动测试覆盖。`notify_user` 成功只证明已持久记录供投递，不证明用户收到。
@@ -509,3 +509,35 @@ trap 'ios/scripts/dev-env.sh stop' EXIT
 ios/scripts/dev-env.sh start --daemon
 go run ./scripts/acceptance-schedule
 ```
+
+
+### 定时任务第一轮反馈
+
+2026-10-24，协议仍为未发布的 11，产品版本未改。此轮只在任务 worktree 提交，没有推送、发布或部署；设计现状见 [architecture §18](architecture.md#18-定时任务)。
+
+| 反馈 | 修法与回归测试 | 实际检出的变异数 |
+|---|---|---|
+| 1 | 自动派发按 ScheduledAt 的当地日期占用，skipped 不占；下一次只依据 LastCalendarDate。`TestCalendarCatchupOccupiesOccurrenceDateOnly` 覆盖跨午夜补跑、跳过及重启 | 2 |
+| 2 | 手动日历试跑保存自动游标，不消耗自动日期或次数，达到自动 max_runs 后仍可手动试跑；until 仍是硬截止。`TestCalendarManualRunPreservesAutomaticOccurrence` 使用 max_runs=1 | 5 |
+| 3 | 创建/修改拒绝过去的 until，过期任务不能立即运行，改钟点后马上公布真正下一次。`TestCalendarDeadlineAndEditBoundaries` | 3 |
+| 4 | 无用户消息的 CLI 后续轮继承持久上下文、MCP 禁令和结束标注；后续通知仍更新原运行记录。`TestScheduledBackgroundFollowupKeepsContext`、`TestHumanInterjectionEndsMCPRestrictionAndFollowupNoticesRemainRecorded` | 1 |
+| 5 | 只认 CLIENT/LOCAL，明确恢复由真实 ResumeSession RPC 写带来源的恢复事件，接手可重放。`TestTakeoverNeedsVerifiedHumanOrExplicitResume`、`TestExplicitResumeRPCClaimsScheduledSession` | 2 |
+| 6 | 用户中途插话清上下文和本轮定时标注，该轮恢复普通结束推送规则。`TestHumanInterjectionMakesScheduledTurnOrdinary`，relay 的无标注事件规则由既有推送测试覆盖 | 1 |
+| 7 | transcript 未成功读完就推迟关闭。`TestScheduledClosureWaitsForReadableTranscript` | 1 |
+| 8 | 用户受理和关闭共用生命周期顺序，先受理就接手，关闭已开始就等待并恢复；失败后退避五秒，新提交事件可提前唤醒。`TestScheduledCloseAndHumanAdmissionHaveOneOrder`、`TestScheduledCloseBacksOffUntilNewEvent` | 2 |
+| 9 | 活跃或历史 uncertain 运行都排除自动关闭，并先观察运行状态再决定清理。`TestUncertainRunNeverClosesAutomatically` | 1 |
+| 10 | 游标和恢复内部状态照常持久化，但不推进任务 CAS/机器任务修订；客户端可见变化仍推进。`TestScheduleRevisionIgnoresProgressCursors`，并核对既有 late cursor 测试 | 1 |
+| 11 | 三端保留任务审批等待处理项和项目计数，仅排除普通进行中/已结束列表；网页待处理卡强制带项目。网页 flows、Android/iOS Timeline 回归 | 7 |
+| 12 | 最后一条 final 的完整文本去掉 Markdown 标题符号、合并空白后截前 200 字。`TestRunSummaryUsesWholeFinalAnswer` | 1 |
+| 13 | MCP run/resume 也校验周期下限。`TestMCPRunAndResumeRecheckMinimumIntervals` | 1 |
+| 14 | 核实隐藏会话仍计入试用账户 200 个会话的限额；超限从 server 经 relay 明确回传 relay_session_limit，运行持久失败并停止自动续跑。server 实际填满隐藏会话、relay HTTP 回调和 daemon 持久重启测试分别覆盖 | 3 |
+| 15 | scope 与 architecture 明确披露明文定时通知类别及普通结束推送模式的侧信道。`TestScheduledPushMetadataDisclosure`；变异删除整个披露段落 | 2 |
+| 16 | `TestScheduledCreationWritesOwnership` 直接走真实创建和落盘；`TestRealScheduleLoopClosesCompletedCLI` 启动真实调度循环，不直接调用关闭方法。旧记录的覆盖说法已收窄 | 2 |
+
+变异脚本为 `python3 scripts/check-schedule-regressions.py --clients`，共 35 个独立位置；逐次恢复源文件，全部由实际断言失败检出，不把编译错误或没有跑到测试算通过。网页、Android、iOS 的待处理和项目投影分别做了删除修复的验证。文档的两次变异删除整个隐私披露行。
+
+最终验证：`go test ./...`，以及 `go test -race ./internal/daemon ./internal/relay ./internal/server -run 'TestSchedule|TestCalendar|TestMCP|TestHumanInterjection|TestTakeover|TestRelaySession|TestHiddenSessions|TestUncertain|TestExplicitResumeRPC|TestRealScheduleLoop|TestRunSummary'`；`cd web && pnpm typecheck && pnpm test`（84 文件、1066 项）；`cd android && ./gradlew :core:test :app:testDebugUnitTest`；`cd ios/RemoteAgentCore && swift test`（83 suite、528 项）；串行 `xcodebuild -quiet -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -parallel-testing-enabled NO build test`（328 项、零失败）。
+
+真实 CLI 复验使用上方同一复现命令、独立的 RA_DEV_DIR、本地 server/daemon、临时账户、状态和 tmux socket，Claude Code 2.1.300 / Haiku 5.5。Go 加密客户端创建日历任务，经 server、daemon、真实 CLI 调用 notify_user，运行结束退出；默认列表隐藏、按 ID 回读、恢复回复接手全部通过。新增检查在允许那一次 MCP 调用之前，先从中继按活跃运行会话 ID 解密读回 TaskOwned=true 的会话，并确认其中有审批/提问/计划或弹窗等待字段；三端回归测试确认这份数据进入「需要处理」及项目计数。没有将该检查冒称为直接操作客户端界面。
+
+临时环境已清理，模拟器测试已结束。未覆盖的仍是真手机、实际 FCM/Web Push 送达、真实 Codex 的这套新增链路，以及真实休眠和夏令时切换；日期边界、并发、重启及结果不确定场景由自动测试覆盖。没有改变账户配额，也没有声称按 ID 取回的数据属于 server 默认列表。
