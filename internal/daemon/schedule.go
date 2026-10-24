@@ -539,6 +539,9 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 		if tr.At != nil {
 			at = tr.At.UTC()
 		}
+		// Persist the initial phase when a definition is prepared, including
+		// an omitted first occurrence computed from its initial delay.
+		tr.At = &at
 		t.NextRunAt = &at
 		t.Status = "scheduled"
 	case "after_turn":
@@ -1142,15 +1145,7 @@ func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
 	}
 	switch {
 	case tr.Type == "interval":
-		interval := time.Duration(tr.IntervalSeconds) * time.Second
-		base := now
-		if len(t.Runs) > 0 {
-			base = t.Runs[len(t.Runs)-1].ScheduledAt
-		}
-		next := base.Add(interval)
-		if !next.After(now) {
-			next = base.Add((now.Sub(base)/interval + 1) * interval)
-		}
+		next := nextInterval(t, now)
 		t.NextRunAt = &next
 		t.Status = "scheduled"
 	case tr.Type == "calendar":
@@ -1164,6 +1159,37 @@ func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
 		t.Status = "completed"
 		t.NextRunAt = nil
 	}
+}
+
+// Preserve an unconsumed future cursor. Otherwise round up on the initial
+// phase, ignoring manual results, and never repeat a consumed occurrence.
+func nextInterval(t *schedule.Task, now time.Time) time.Time {
+	if t.NextRunAt != nil && t.NextRunAt.After(now) {
+		return *t.NextRunAt
+	}
+	tr := t.Spec.Trigger
+	next := t.CreatedAt.Add(time.Duration(tr.DelaySeconds) * time.Second)
+	if tr.At != nil {
+		next = *tr.At
+	}
+	interval := time.Duration(tr.IntervalSeconds) * time.Second
+	if next.Before(now) {
+		next = next.Add(now.Sub(next) / interval * interval)
+		if next.Before(now) {
+			next = next.Add(interval)
+		}
+	}
+	for i := len(t.Runs) - 1; i >= 0; i-- {
+		run := t.Runs[i]
+		if run.Manual || run.Status == "skipped" {
+			continue
+		}
+		if !next.After(run.ScheduledAt) {
+			next = run.ScheduledAt.Add(interval)
+		}
+		break
+	}
+	return next
 }
 
 // expireSchedule also bounds a future cursor. Active executions finish normally.

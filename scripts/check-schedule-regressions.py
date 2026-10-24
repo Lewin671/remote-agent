@@ -87,6 +87,12 @@ go("r3-B-owner", "internal/daemon/schedule_events.go", 'return s.meta.TaskOwned 
 go("r3-B-resume", "internal/daemon/backend.go", 't.Spec.Target.Type != "new_session" ||', '', "TestRelayQuotaIgnoresResumeSession")
 go("r3-B-no-synchronous-close", "internal/daemon/backend.go", 'now := time.Now().UTC()', '_, _ = s.interruptBy(originSystem); now := time.Now().UTC()', "TestQuotaClosureDoesNotBlockScheduleLoop")
 
+go("r3-C-phase", "internal/daemon/schedule.go", 'next := nextInterval(t, now)', 'next := now.Add(time.Duration(tr.IntervalSeconds)*time.Second)', "TestIntervalResumePreservesPhase")
+go("r3-C-future", "internal/daemon/schedule.go", 'if t.NextRunAt != nil && t.NextRunAt.After(now) {', 'if false && t.NextRunAt != nil && t.NextRunAt.After(now) {', "TestIntervalResumePreservesPhase")
+go("r3-C-initial-delay", "internal/daemon/schedule.go", 'tr.At = &at', '// phase not persisted', "TestIntervalInitialDelayPhaseSurvivesEditAndRestart")
+
+go("r3-C-ignore-manual-history", "internal/daemon/schedule.go", 'if run.Manual || run.Status == "skipped" {', 'if run.Status == "skipped" {', "TestIntervalResumePreservesPhase")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
