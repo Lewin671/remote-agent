@@ -14,7 +14,7 @@ struct SchedulesScreen: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         if model.state.conn == .online && store.tasks.contains(where: { !store.online($0.machineID) }) {
-                            Banner("显示的是上次的任务状态，连上后才能修改").padding(16)
+                            Banner(scheduleOffline).padding(16)
                         }
                         ForEach(store.errors.keys.sorted(), id: \.self) { id in
                             Banner(store.errors[id] ?? "", tone: .error, action: "重试") { Task { await store.refresh(id) } }.padding(16)
@@ -23,7 +23,7 @@ struct SchedulesScreen: View {
                             VStack(spacing: 8) {
                                 Ic(Lucide.clock, size: 32, color: Theme.muted)
                                 Text(store.loading.isEmpty ? "还没有定时任务" : "读取任务…").type(T.h17, Theme.fg)
-                                Text("让 agent 按时检查，有结果再通知你。电脑和 remote-agent 需要保持运行。").type(T.sm, Theme.muted).multilineTextAlignment(.center)
+                                Text(scheduleEmpty).type(T.sm, Theme.muted).multilineTextAlignment(.center)
                             }.padding(.horizontal, 24).padding(.vertical, 64)
                         }
                         Ticking { now in
@@ -71,8 +71,7 @@ func scheduleLocation(_ task: ScheduleTask, state: RemoteState, machine: String,
     let target = task.spec.target
     let place: String
     if target.type == "resume_session" {
-        let title = target.session.flatMap { state.sessions[$0] }.map { titleOf($0) } ?? "对话"
-        place = "在「\(title)」里"
+        place = target.session.flatMap { state.sessions[$0] }.map { "在「" + titleOf($0) + "」里" } ?? "在对话里"
     } else { place = projectName(target.cwd ?? "") + " · " + (target.agent == "claude" ? "Claude Code" : "Codex") }
-    return (frequency ? scheduleFrequency(task.spec.trigger) + " · " : "") + place + (state.machines.count > 1 ? " · " + machineLabel(state, id: machine) : "")
+    return (frequency ? scheduleFrequency(task.spec.trigger, includeZone: true) + " · " : "") + place + (state.machines.count > 1 ? " · " + machineLabel(state, id: machine) : "")
 }

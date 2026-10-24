@@ -75,7 +75,7 @@ struct ScheduleDetailScreen: View {
             guard let task = editor.task, !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
             var spec = task.spec; spec.message = typed; try await save(task, spec: spec)
         })
-        .confirm(isPresented: $delete, title: "删除任务？", text: "停止之后的自动运行。已发出的消息和已开的对话会保留。", confirm: "删除", danger: true) {
+        .confirm(isPresented: $delete, title: "删除这个任务？", text: "停止之后的自动运行。已发出的消息和已开的对话会保留。", confirm: "删除", danger: true) {
             if let task { perform(task, operation: "cancel", done: { nav.back(from: page) }) }
         }
         .debugSignal("schedule.open-run") {
@@ -96,8 +96,8 @@ struct ScheduleDetailScreen: View {
         let access = ScheduleEditAccess(task: task, online: online, saving: mutation.running, unknown: mutation.frozen)
         let mutable = access.definition
         VStack(alignment: .leading, spacing: 0) {
-            if model.state.conn == .online && !online { Banner("显示的是上次的任务状态，连上后才能修改").padding(16) }
-            if task.group == .attention || (task.group == .paused && !(task.reason ?? "").isEmpty) {
+            if model.state.conn == .online && !online { Banner(scheduleOffline).padding(16) }
+            if access.showsReason {
                 Banner(scheduleReason(task.reason), tone: .warn).padding(16)
                 Hint(failedOnce ? "确认后会额外执行一次，不会重新启用自动计划。" : "恢复后会重新安排下一次运行；已经发出的消息不会撤回。").padding(.horizontal, 16)
             }
@@ -110,8 +110,8 @@ struct ScheduleDetailScreen: View {
             GroupCard {
                 GRow("任务名", value: task.spec.title, chevron: access.rename, enabled: access.rename, onTap: access.rename ? { editor.open(task); rename = true } : nil)
                 GRow("什么时候", value: scheduleFrequency(task.spec.trigger, includeZone: true), chevron: mutable, enabled: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil)
-                if let count = task.spec.trigger.maxRuns, count > 0 { GRow("结束", value: "自动运行 \(count) 次后", chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil) }
-                else if let until = task.spec.trigger.until.flatMap(scheduleDate) { GRow("结束", value: scheduleMoment(until), chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil) }
+                let limits = scheduleLimits(task.spec.trigger)
+                if !limits.isEmpty { GRow("结束", value: limits, chevron: mutable, enabled: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil) }
                 if task.spec.target.type == "new_session" {
                     GRow("在哪运行", value: scheduleLocation(task, state: model.state, machine: machine), chevron: mutable, enabled: mutable, onTap: mutable ? { editor.open(task); targetEdit = true } : nil)
                     GRow("权限", value: permission(task), chevron: mutable, enabled: mutable, valueColor: task.spec.target.mode == "full" ? Theme.red : nil, onTap: mutable ? { editor.open(task); permissions = true } : nil)
@@ -124,7 +124,7 @@ struct ScheduleDetailScreen: View {
                 GRow("消息", value: "编辑", chevron: mutable, enabled: mutable, onTap: mutable ? { editor.open(task); message = true } : nil)
                 Text(task.spec.message).type(T.body, Theme.fg).frame(maxWidth: .infinity, alignment: .leading).padding(14).textSelection(.enabled)
             }.padding(.top, 16)
-            Hint((task.spec.target.type == "new_session" ? "每次新开一个对话" : "发到当前对话") + " · " + (task.source == "agent" ? "Agent 创建" : "你创建") + (task.createdAt.isEmpty ? "" : " · " + (scheduleDate(task.createdAt).map { scheduleMoment($0) } ?? ""))).padding(.horizontal, 16)
+            Hint((task.spec.target.type == "new_session" ? "每次新开一个对话" : "发到当前对话") + " · " + task.creator + (task.createdAt.isEmpty ? "" : " · " + (scheduleDate(task.createdAt).map { scheduleMoment($0) } ?? ""))).padding(.horizontal, 16)
             GroupLabel("运行记录").padding(.top, 16)
             history(task)
             Hint("“通知了你”表示已请求通知，不保证送达。记录保留最近 100 次，已开的对话仍可查看。").padding(.horizontal, 16).padding(.bottom, 16)
@@ -135,7 +135,7 @@ struct ScheduleDetailScreen: View {
                 }.padding(.horizontal, 16).padding(.bottom, 12)
             }
             GroupCard {
-                GRow("立即运行一次", action: true, enabled: mutable && task.group != .ended && task.group != .attention) { perform(task, operation: "run") }
+                GRow("立即运行一次", action: true, enabled: access.run) { perform(task, operation: "run") }
                 if task.group != .ended && task.group != .attention {
                     GRow(task.group == .paused ? "恢复" : "暂停", action: true, enabled: online && !mutation.running && !mutation.frozen) { perform(task, operation: task.group == .paused ? "resume" : "pause") }
                 }
@@ -155,7 +155,7 @@ struct ScheduleDetailScreen: View {
             ForEach(groups) { group in
                 let run = group.runs[0]
                 if group.folded {
-                    GRow(scheduleDay(run.date) + " · \(group.runs.count) 次，都没有通知", sub: "最近一次 \(scheduleTime(run.date))：\(run.finalSummary ?? "")", chevron: false) {
+                    GRow(scheduleDay(run.date) + " · \(group.runs.count) 次，都没有通知", sub: "最近一次 \(scheduleTime(run.date))：\(run.foldedSummary)", chevron: false) {
                         if expanded.contains(group.id) { expanded.remove(group.id) } else { expanded.insert(group.id) }
                     }.trailing { Arrow(Theme.muted, direction: expanded.contains(group.id) ? .up : .down) }
                     if expanded.contains(group.id) { ForEach(group.runs) { record($0, task: task) } }
@@ -171,7 +171,7 @@ struct ScheduleDetailScreen: View {
     }
     private func open(_ run: ScheduleRun) {
         guard let sid = run.sessionID, !sid.isEmpty else { return }
-        context.sessionStore.jumpToScheduledRun(sid, runID: run.id, seq: run.startSeq + 1)
+        context.sessionStore.jumpToScheduledRun(sid, runID: run.id, seq: run.firstSeq)
         nav.open(.session(id: sid))
     }
     private func save(_ task: ScheduleTask, spec: ScheduleSpec) async throws {

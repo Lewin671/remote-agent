@@ -64,6 +64,21 @@ import UIKit
         #expect(spec.target.model == nil && spec.target.mode == nil && spec.target.cwd == nil)
         context.scheduleDrafts.clear("s"); #expect(context.scheduleDrafts.of("s") !== draft)
     }
+    @Test func planDefaultsRemainPlanAndCannotCreateAnExecutionTask() {
+        let draft=ScheduleDraft();draft.message="检查";draft.config=NewConfig(machineId:"m",cwd:"/example",mode:.plan)
+        #expect(draft.spec(session:nil,state:state())==nil)
+        #expect(draft.creationIssue(session:nil,state:state())=="计划模式不能创建执行任务，请先选择其他权限")
+        #expect(draft.spec(session:SessionView(id:"s",machineId:"m"),state:state())?.target.type=="resume_session")
+    }
+    @Test func anEditorKeepsItsOpeningRevisionAndCompleteSpecAcrossARefresh() throws {
+        let original=task();let editor=ScheduleEditDraft();editor.open(original)
+        var remote=original;remote.revision=9;remote.spec.title="另一端改名"
+        var edited=try #require(editor.task?.spec);edited.message="本端消息"
+        let command=try editor.command(spec:edited)
+        #expect(command.schedule.expectedRevision==original.revision)
+        #expect(try JSONDecoder().decode(ScheduleSpec.self,from:command.schedule.specJson).title==original.spec.title)
+        #expect(editor.task?.revision != remote.revision)
+    }
     @Test func concurrentManualAndRevisionReadsShareOneMachineSlot() async {
         let store = ScheduleStore(); var started = 0, active = 0, peak = 0, entered = 0
         var holds = [Int: CheckedContinuation<Void, Never>]()
@@ -86,21 +101,6 @@ import UIKit
         holds.removeValue(forKey: 2)?.resume()
         await first.value; await second.value
         #expect(peak == 1 && started >= 3 && store.tasks.first?.task.id == "r\(started)")
-    }
-    @Test func anEditorKeepsItsOpeningRevisionAndCompleteSpecAcrossARefresh() throws {
-        let original=task();let editor=ScheduleEditDraft();editor.open(original)
-        var remote=original;remote.revision=9;remote.spec.title="另一端改名"
-        var edited=try #require(editor.task?.spec);edited.message="本端消息"
-        let command=try editor.command(spec:edited)
-        #expect(command.schedule.expectedRevision==original.revision)
-        #expect(try JSONDecoder().decode(ScheduleSpec.self,from:command.schedule.specJson).title==original.spec.title)
-        #expect(editor.task?.revision != remote.revision)
-    }
-    @Test func planDefaultsRemainPlanAndCannotCreateAnExecutionTask() {
-        let draft=ScheduleDraft();draft.message="检查";draft.config=NewConfig(machineId:"m",cwd:"/example",mode:.plan)
-        #expect(draft.spec(session:nil,state:state())==nil)
-        #expect(draft.creationIssue(session:nil,state:state())=="计划模式不能创建执行任务，请先选择其他权限")
-        #expect(draft.spec(session:SessionView(id:"s",machineId:"m"),state:state())?.target.type=="resume_session")
     }
     @Test func creationKeyStaysStableForRetriesAndChangesWithTheDefinition() throws {
         let draft = ScheduleDraft(); draft.message = "检查"
@@ -148,6 +148,13 @@ import UIKit
 }
 
 @MainActor @Suite struct ScheduleAlignmentTests {
+    @Test func onlySystemStopsAndExpiredPausesShowAReasonBanner() {
+        var task = ScheduleStoreTests().task(); task.status = "paused"
+        func visible() -> Bool { ScheduleEditAccess(task:task,online:true,saving:false,unknown:false).showsReason }
+        task.reason = "user_paused"; #expect(!visible())
+        task.reason = "completed_while_paused"; #expect(visible())
+        task.reason = "agent_schedule_permissions_changed"; #expect(visible())
+    }
     @Test func renamingIsIndependentOfTaskStatusExecutionAndPendingRun() {
         let base = ScheduleStoreTests().task()
         for status in ["scheduled", "paused", "failed", "uncertain", "completed", "cancelled", "running", "dispatching", "queued"] {
@@ -165,7 +172,7 @@ import UIKit
         let json = "{\"request_id\":\"manual\"}".data(using: .utf8)!
         var pending = base; pending.manualRequest = try? JSONDecoder().decode(ScheduleTask.Manual.self, from: json)
         let access = ScheduleEditAccess(task: pending, online: true, saving: false, unknown: false)
-        #expect(access.rename && !access.definition)
+        #expect(access.rename && access.definition && !access.run)
     }
 
     @Test func cliIsANativeInlineSegmentAndDisappearsWithOnlyOneInstalledAgent() async throws {

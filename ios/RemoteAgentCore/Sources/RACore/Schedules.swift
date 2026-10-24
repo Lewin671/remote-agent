@@ -53,6 +53,7 @@ public struct ScheduleRun: Codable, Equatable, Sendable, Identifiable {
     public var startSeq: UInt64
     public var afterSeq: UInt64
     public var inputPaused: Bool?
+    public var firstSeq: UInt64 { (startSeq == 0 ? afterSeq : startSeq) + 1 }
     enum CodingKeys: String, CodingKey {
         case id, status, reason, manual, notified
         case sessionID = "session_id", startedAt = "started_at", notificationText = "notification_text", finalSummary = "final_summary"
@@ -64,6 +65,7 @@ public struct ScheduleRun: Codable, Equatable, Sendable, Identifiable {
     }
     public var date: Date { scheduleDate(startedAt) ?? .distantPast }
     public var silent: Bool { status == "completed" && !notified && inputPaused != true }
+    public var foldedSummary: String { (finalSummary ?? "").isEmpty ? "没有通知" : finalSummary! }
     public var result: String {
         if notified && !["failed", "skipped", "uncertain", "interrupted", "cancelled"].contains(status) { return "通知了你" }
         switch status {
@@ -93,6 +95,7 @@ public struct ScheduleTask: Codable, Equatable, Sendable, Identifiable {
     public var status: String
     public var reason: String?
     public var createdAt: String
+    public var updatedAt: String?
     public var source: String
     public var nextRunAt: String?
     public var runs: [ScheduleRun]?
@@ -101,45 +104,38 @@ public struct ScheduleTask: Codable, Equatable, Sendable, Identifiable {
     public struct Manual: Codable, Equatable, Sendable { public var requestID: String; enum CodingKeys: String, CodingKey { case requestID = "request_id" } }
     enum CodingKeys: String, CodingKey {
         case id, revision, spec, status, reason, source, runs
-        case createdAt = "created_at", nextRunAt = "next_run_at", active = "active_run", manualRequest = "manual_request"
+        case updatedAt = "updated_at", createdAt = "created_at", nextRunAt = "next_run_at", active = "active_run", manualRequest = "manual_request"
     }
     public init(id: String, spec: ScheduleSpec, status: String = "active", revision: UInt64 = 1, createdAt: String = "", source: String = "client") {
         self.id = id; self.spec = spec; self.status = status; self.revision = revision; self.createdAt = createdAt; self.source = source
     }
+    public var creator: String { source == "agent" ? "Agent 在对话里创建" : "你创建" }
     public var history: [ScheduleRun] { ((runs ?? []) + (active.map { [$0] } ?? [])).sorted { $0.date > $1.date } }
     public var group: ScheduleGroup {
         switch status {
         case "failed", "uncertain": return .attention
-        case "paused": return reason == "user_paused" ? .paused : .attention
-        case "cancelled": return reason == nil || reason == "user_cancelled" ? .ended : .attention
+        case "paused": return ["", "user_paused", "completed_while_paused"].contains(reason ?? "") ? .paused : .attention
+        case "cancelled": return (reason ?? "").isEmpty || reason == "user_cancelled" ? .ended : .attention
         case "completed": return .ended
         default: return .active
         }
     }
-    public var visible: Bool { status != "cancelled" || (reason != nil && reason != "user_cancelled") }
+    public var visible: Bool { status != "cancelled" || (!(reason ?? "").isEmpty && reason != "user_cancelled") }
     public var oneShot: Bool { spec.trigger.type == "at" || (spec.trigger.type == "after_turn" && spec.trigger.repeatAfterTurn != true) }
     public func stateText(online: Bool, now: Date = Date(), zone: TimeZone = .current) -> String {
-        guard online else { return "未连接" }
-        if let active {
-            if active.inputPaused == true { return "等待本轮结束" }
-            switch active.status {
-            case "dispatching": return "正在启动"
-            case "queued": return "等待当前轮结束"
-            case "running": return "正在运行"
-            default: break
-            }
-        }
+        guard online else { return scheduleOffline }
+        if let active, ["dispatching", "queued", "running"].contains(active.status) { return "运行中" }
         switch group {
         case .attention: return "已停下"
         case .paused: return "已暂停"
         case .ended: return "已结束"
         case .active:
-            if manualRequest != nil { return "等待本轮结束" }
-            guard let nextRunAt, let d = scheduleDate(nextRunAt) else { return "等待本轮结束" }
+            guard let nextRunAt, let d = scheduleDate(nextRunAt) else { return "下次待定" }
             return "下次 " + scheduleMoment(d, now: now, zone: zone)
         }
     }
     public func lastResult(now: Date = Date(), zone: TimeZone = .current) -> String {
+        if group == .attention { return scheduleReason(reason) }
         let history = history
         var cal = Calendar(identifier: .gregorian); cal.timeZone = zone
         let today = history.filter { cal.isDate($0.date, inSameDayAs: now) }
@@ -149,7 +145,7 @@ public struct ScheduleTask: Codable, Equatable, Sendable, Identifiable {
         guard let last = history.first else { return group == .attention ? scheduleReason(reason) : "还没有运行" }
         let abnormal = ["failed", "skipped", "uncertain", "interrupted", "cancelled"].contains(last.status)
         let detail = (group == .attention && !(reason ?? "").isEmpty) ? scheduleReason(reason) : (last.notified || abnormal ? last.detail : "")
-        let result = group == .attention && last.silent ? "失败" : last.result
+        let result = last.result
         return scheduleMoment(last.date, now: now, zone: zone) + " " + result + (detail.isEmpty ? "" : "：" + detail)
     }
 }
@@ -164,10 +160,15 @@ public struct MachineSchedule: Equatable, Sendable, Identifiable {
     public init(machineID: String, task: ScheduleTask) { self.machineID = machineID; self.task = task }
 }
 public func sortedSchedules(_ tasks: [MachineSchedule], group: ScheduleGroup) -> [MachineSchedule] {
-    tasks.filter { $0.task.group == group }.sorted {
-        let l = $0.task.nextRunAt.flatMap(scheduleDate) ?? .distantFuture
-        let r = $1.task.nextRunAt.flatMap(scheduleDate) ?? .distantFuture
-        return l == r ? $0.id < $1.id : l < r
+    tasks.filter { $0.task.visible && $0.task.group == group }.sorted {
+        if group == .active {
+            let l = $0.task.nextRunAt.flatMap(scheduleDate) ?? .distantFuture
+            let r = $1.task.nextRunAt.flatMap(scheduleDate) ?? .distantFuture
+            return l == r ? $0.id < $1.id : l < r
+        }
+        let l = scheduleDate($0.task.updatedAt ?? $0.task.createdAt) ?? .distantPast
+        let r = scheduleDate($1.task.updatedAt ?? $1.task.createdAt) ?? .distantPast
+        return l == r ? $0.id < $1.id : l > r
     }
 }
 public func scheduleTitle(_ typed: String, message: String) -> String {
@@ -194,6 +195,7 @@ public func scheduleDay(_ date: Date, now: Date = Date(), zone: TimeZone = .curr
     var cal = Calendar(identifier: .gregorian); cal.timeZone = zone
     if cal.isDate(date, inSameDayAs: now) { return "今天" }
     if let tomorrow = cal.date(byAdding: .day, value: 1, to: now), cal.isDate(date, inSameDayAs: tomorrow) { return "明天" }
+    if let yesterday = cal.date(byAdding: .day, value: -1, to: now), cal.isDate(date, inSameDayAs: yesterday) { return "昨天" }
     let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.calendar = cal; f.timeZone = zone
     f.dateFormat = cal.component(.year, from: date) == cal.component(.year, from: now) ? "M月d日" : "yyyy年M月d日"
     return f.string(from: date)
@@ -236,7 +238,7 @@ public func scheduleReason(_ reason: String?) -> String {
         "could_not_queue_message": "消息没能加入待发队列", "message_cancelled": "定时消息在送达前被取消，任务已停下",
         "execution_input_paused": "定时消息已暂停，请先在对话里恢复或取消这条消息", "restart_dispatching": "电脑重启前的发送结果无法确认",
         "agent_schedule_permissions_changed": "创建任务时的权限已改变，任务已暂停",
-        "agent_schedule_interval_below_minimum": "Agent 创建的任务间隔过短，任务已暂停", "catch_up_window_expired": "已超过补跑时间，本次跳过"
+        "agent_schedule_interval_below_minimum": "Agent 创建的任务间隔过短，任务已暂停", "completed_while_paused": "已暂停：期间计划已到期", "catch_up_window_expired": "已超过补跑时间，本次跳过"
     ]
     return known[r] ?? (r.isEmpty ? "运行结果无法确认" : "电脑返回的原因：" + r)
 }
@@ -262,4 +264,11 @@ public func scheduleBarText(_ tasks: [MachineSchedule], online: Bool, now: Date 
     guard let first = tasks.sorted(by: { ($0.task.nextRunAt ?? "~") < ($1.task.nextRunAt ?? "~") }).first else { return "" }
     let prefix = tasks.count == 1 ? "定时 · " + scheduleFrequency(first.task.spec.trigger, zone: zone, now: now) : "\(tasks.count) 个定时"
     return prefix + (tasks.count == 1 ? "，" : " · ") + first.task.stateText(online: online, now: now, zone: zone)
+}
+
+public let scheduleOffline = "未连接，显示的是上次的状态"
+public let scheduleEmpty = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。"
+public let scheduleIntervalHint = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。"
+public func scheduleLimits(_ trigger: ScheduleTrigger, now: Date = Date(), zone: TimeZone = .current) -> String {
+    [trigger.maxRuns.flatMap { $0 > 0 ? "共 \($0) 次" : nil }, trigger.until.flatMap(scheduleDate).map { "到 " + scheduleMoment($0, now: now, zone: zone) }].compactMap { $0 }.joined(separator: "，或")
 }

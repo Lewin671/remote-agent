@@ -52,7 +52,7 @@ struct ScheduleTimingSheet: View {
                         Text("秒").tag(1); Text("分钟").tag(60); Text("小时").tag(3600); Text("天").tag(86400)
                     }.labelsHidden()
                 }
-                if draft.kind == .interval { Hint("固定经过时长，不保证每天同一个当地时间。") }
+                if draft.kind == .interval { Hint(scheduleIntervalHint) }
             } else {
                 Text(scheduleFrequency(original) + "。选择上方其他频率可替换。").type(T.sm, Theme.fg)
             }

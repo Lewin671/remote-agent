@@ -10,6 +10,29 @@ import RAProto
         var task = ScheduleTask(id: "task", spec: ScheduleSpec(title: "检查", message: "检查回复。没有变化就简短说一句", trigger: ScheduleTrigger(type: "calendar"), target: ScheduleTarget(type: "new_session")), status: status)
         task.reason = reason; return task
     }
+    @Test func finalSharedClientContractUsesActualStateProjection() throws {
+        struct Fixture: Decodable { let now: String; let timezone: String; let tasks: [ScheduleTask]; let empty: String; let offline: String; let groups: [String: [String]] }
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let f = try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: root.appendingPathComponent("testdata/schedules/clients.json")))
+        #expect(scheduleEmpty == f.empty && scheduleOffline == f.offline)
+        for group in ScheduleGroup.allCases {
+            #expect(sortedSchedules(f.tasks.map { MachineSchedule(machineID: "computer", task: $0) }, group: group).map { $0.task.id } == f.groups[group.title])
+        }
+        let attention = try #require(f.tasks.first { $0.id == "attention" })
+        #expect(attention.lastResult() == "创建任务时的权限已改变，任务已暂停")
+        #expect(attention.history[0].result == "没有通知")
+        #expect(attention.history[0].foldedSummary == "没有通知")
+        var author = attention; #expect(author.creator == "你创建"); author.source = "agent"; #expect(author.creator == "Agent 在对话里创建")
+        var limits = attention.spec.trigger; limits.maxRuns = 5; limits.until = "2026-10-30T08:00:00Z"
+        #expect(scheduleLimits(limits, now: scheduleDate(f.now)!, zone: TimeZone(identifier:f.timezone)!) == "共 5 次，或到 10月30日 01:00")
+        #expect(scheduleReason("completed_while_paused") == "已暂停：期间计划已到期")
+        var a=task("paused",reason:"user_paused"), b=a
+        a.id="old";a.updatedAt="2026-10-24T10:00:00Z";a.nextRunAt="2026-10-24T20:00:00Z"
+        b.id="new";b.updatedAt="2026-10-24T11:00:00Z";b.nextRunAt="2026-10-25T20:00:00Z"
+        #expect(sortedSchedules([.init(machineID:"m",task:a),.init(machineID:"m",task:b)],group:.paused).map { $0.task.id } == ["new","old"])
+        var run=ScheduleRun(id:"r",startedAt:"",status:"completed");run.startSeq=42;run.afterSeq=9
+        #expect(run.firstSeq==43);run.startSeq=0;#expect(run.firstSeq==10)
+    }
     @Test func timezonesPreserveWallClockAndIntervalEditsKeepPhaseAndUntouchedLimits() throws {
         var calendar=ScheduleTrigger(type:"calendar");calendar.time="08:15";calendar.timezone="Asia/Shanghai"
         var draft=ScheduleTiming(trigger:calendar,now:now,zone:zone);draft.timezone="America/Los_Angeles"
@@ -46,17 +69,17 @@ import RAProto
     @Test func localTimeAndOfflineState() {
         var t = task(); t.nextRunAt = "2026-10-24T18:05:00Z"
         #expect(t.stateText(online: true, now: now, zone: zone) == "下次 今天 11:05")
-        #expect(t.stateText(online: false, now: now, zone: zone) == "未连接")
+        #expect(t.stateText(online: false, now: now, zone: zone) == scheduleOffline)
         t.active = ScheduleRun(id: "r", startedAt: "2026-10-24T17:00:00Z", status: "running")
-        #expect(t.stateText(online: false) == "未连接")
-        #expect(t.stateText(online: true) == "正在运行")
+        #expect(t.stateText(online: false) == scheduleOffline)
+        #expect(t.stateText(online: true) == "运行中")
     }
     @Test func scheduleDatesUseSharedChineseLocalCalendarWording() {
         for (at, expected) in [
             ("2026-10-24T19:59:00Z", "今天 12:59"),
             ("2026-10-25T15:00:00Z", "明天 08:00"),
             ("2026-10-26T18:54:00Z", "10月26日 11:54"),
-            ("2026-10-23T18:54:00Z", "10月23日 11:54"),
+            ("2026-10-23T18:54:00Z", "昨天 11:54"),
             ("2027-10-25T18:54:00Z", "2027年10月25日 11:54"),
         ] {
             let date = scheduleDate(at)!
