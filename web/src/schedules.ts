@@ -85,7 +85,7 @@ export function taskGroup(t: ScheduleTask): ScheduleGroup {
   if (["completed", "cancelled"].includes(t.status)) return "已结束";
   if (
     ["failed", "uncertain"].includes(t.status) ||
-    (t.status === "paused" && t.reason !== "user_paused")
+    (t.status === "paused" && !!t.reason && !["user_paused", "completed_while_paused"].includes(t.reason))
   )
     return "需要你看一下";
   return t.status === "paused" ? "已暂停" : "进行中";
@@ -140,6 +140,9 @@ export function dayKey(at: string | number): string {
 }
 export function dayText(at: string | number, now = Date.now()): string {
   if (dayKey(at) === dayKey(now)) return "今天";
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dayKey(at) === dayKey(tomorrow.getTime())) return "明天";
   const previous = new Date(now);
   previous.setDate(previous.getDate() - 1);
   if (dayKey(at) === dayKey(previous.getTime())) return "昨天";
@@ -210,21 +213,18 @@ export function taskName(name: string, message: string): string {
   );
 }
 export function nextText(t: ScheduleTask, now = Date.now()): string {
+  if (t.active_run && ["dispatching", "queued", "running"].includes(t.active_run.status)) return "运行中";
   const g = taskGroup(t);
   if (g !== "进行中") return g === "需要你看一下" ? "已停下" : g;
-  if (t.active_run)
-    return (
-      (
-        {
-          dispatching: "正在启动",
-          queued: "等待当前轮结束",
-          running: "正在运行",
-        } as Record<string, string>
-      )[t.active_run.status] ?? "正在运行"
-    );
-  if (!t.next_run_at) return "等待本轮结束";
-  return `下次 ${dayKey(t.next_run_at) === dayKey(now) ? clockTime(t.next_run_at) : dateTime(t.next_run_at, now)}`;
+  return t.next_run_at ? `下次 ${dateTime(t.next_run_at, now)}` : "下次待定";
 }
+export const scheduleOffline = "未连接，显示的是上次的状态";
+export const scheduleEmpty = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。";
+export const scheduleIntervalHint = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。";
+export function scheduleLimits(tr: ScheduleTrigger, now = Date.now()): string {
+  return [tr.max_runs ? `共 ${tr.max_runs} 次` : "", tr.until ? `到 ${dateTime(tr.until, now)}` : ""].filter(Boolean).join("，或");
+}
+
 const reasons: Record<string, string> = {
   relay_session_limit: "中继上的会话数已满",
   agent_schedule_permissions_changed: "创建任务时的权限已改变，任务已暂停",
@@ -239,6 +239,7 @@ const reasons: Record<string, string> = {
   execution_input_paused: "定时消息已暂停，请先在对话里恢复或取消这条消息",
   restart_dispatching: "电脑重启前的发送结果无法确认",
   catch_up_window_expired: "已超过补跑时间，本次跳过",
+  completed_while_paused: "已暂停：期间计划已到期",
   user_paused: "已暂停",
   user_cancelled: "已删除",
 };
@@ -285,6 +286,7 @@ export function runSummary(r: ScheduleRun): string {
   );
 }
 export function lastResult(t: ScheduleTask, now = Date.now()): string {
+  if (taskGroup(t) === "需要你看一下") return reasonText(t.reason);
   const runs = allRuns(t);
   const latest = runs[0];
   if (!latest) return "还没有运行";

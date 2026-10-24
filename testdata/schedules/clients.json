@@ -1,0 +1,266 @@
+{
+  "now": "2026-10-24T19:00:00Z",
+  "timezone": "America/Los_Angeles",
+  "machine": "computer",
+  "machineName": "开发电脑",
+  "session": "session-main",
+  "sessionTitle": "修复登录超时",
+  "tasks": [
+    {
+      "revision": 1,
+      "status": "paused",
+      "source": "client",
+      "created_at": "2026-10-24T16:00:00Z",
+      "updated_at": "2026-10-24T18:00:00Z",
+      "dispatches": 0,
+      "id": "attention",
+      "spec": {
+        "title": "每周依赖检查",
+        "message": "检查更新，有新结果时通知我",
+        "target": {
+          "type": "new_session",
+          "cwd": "/example/project",
+          "agent": "claude",
+          "mode": "auto",
+          "model": "haiku"
+        },
+        "trigger": {
+          "type": "interval",
+          "interval_seconds": 3600,
+          "delay_seconds": 3600
+        }
+      },
+      "reason": "agent_schedule_permissions_changed",
+      "runs": [
+        {
+          "id": "completed-before-stop",
+          "session_id": "session-main",
+          "scheduled_at": "2026-10-24T18:00:00Z",
+          "started_at": "2026-10-24T18:00:00Z",
+          "ended_at": "2026-10-24T18:00:00Z",
+          "start_seq": 4,
+          "after_seq": 3,
+          "status": "completed",
+          "notified": false
+        }
+      ]
+    },
+    {
+      "revision": 1,
+      "status": "scheduled",
+      "source": "client",
+      "created_at": "2026-10-24T16:00:00Z",
+      "updated_at": "2026-10-24T18:00:00Z",
+      "dispatches": 0,
+      "id": "quiet",
+      "spec": {
+        "title": "检查 PR 回复",
+        "message": "检查更新，有新结果时通知我",
+        "target": {
+          "type": "new_session",
+          "cwd": "/example/project",
+          "agent": "claude",
+          "mode": "auto",
+          "model": "haiku"
+        },
+        "trigger": {
+          "type": "interval",
+          "interval_seconds": 3600,
+          "delay_seconds": 3600
+        }
+      },
+      "next_run_at": "2026-10-24T22:00:00Z",
+      "runs": [
+        {
+          "id": "quiet-1",
+          "session_id": "session-main",
+          "scheduled_at": "2026-10-24T17:00:00Z",
+          "started_at": "2026-10-24T17:00:00Z",
+          "ended_at": "2026-10-24T17:00:00Z",
+          "start_seq": 4,
+          "after_seq": 3,
+          "status": "completed",
+          "notified": false
+        },
+        {
+          "id": "quiet-2",
+          "session_id": "session-main",
+          "scheduled_at": "2026-10-24T18:00:00Z",
+          "started_at": "2026-10-24T18:00:00Z",
+          "ended_at": "2026-10-24T18:00:00Z",
+          "start_seq": 4,
+          "after_seq": 3,
+          "status": "completed",
+          "notified": false
+        }
+      ]
+    },
+    {
+      "revision": 1,
+      "status": "scheduled",
+      "source": "client",
+      "created_at": "2026-10-24T16:00:00Z",
+      "updated_at": "2026-10-24T18:00:00Z",
+      "dispatches": 0,
+      "id": "conversation",
+      "spec": {
+        "title": "持仓早报",
+        "message": "检查更新，有新结果时通知我",
+        "target": {
+          "type": "resume_session",
+          "session": "session-main"
+        },
+        "trigger": {
+          "type": "calendar",
+          "time": "08:00",
+          "timezone": "Asia/Shanghai"
+        }
+      },
+      "next_run_at": "2026-10-25T15:00:00Z",
+      "runs": [
+        {
+          "id": "notified",
+          "session_id": "session-main",
+          "scheduled_at": "2026-10-24T15:02:00Z",
+          "started_at": "2026-10-24T15:02:00Z",
+          "ended_at": "2026-10-24T15:02:00Z",
+          "start_seq": 4,
+          "after_seq": 3,
+          "status": "completed",
+          "notified": true,
+          "notification_text": "发现新的回复"
+        }
+      ]
+    },
+    {
+      "revision": 1,
+      "status": "paused",
+      "source": "client",
+      "created_at": "2026-10-24T16:00:00Z",
+      "updated_at": "2026-10-24T18:00:00Z",
+      "dispatches": 0,
+      "id": "paused",
+      "spec": {
+        "title": "整理收藏文章",
+        "message": "检查更新，有新结果时通知我",
+        "target": {
+          "type": "new_session",
+          "cwd": "/example/project",
+          "agent": "claude",
+          "mode": "auto",
+          "model": "haiku"
+        },
+        "trigger": {
+          "type": "interval",
+          "interval_seconds": 3600,
+          "delay_seconds": 3600
+        }
+      },
+      "reason": "completed_while_paused",
+      "runs": [
+        {
+          "id": "paused-complete",
+          "session_id": "session-main",
+          "scheduled_at": "2026-10-24T18:00:00Z",
+          "started_at": "2026-10-24T18:00:00Z",
+          "ended_at": "2026-10-24T18:00:00Z",
+          "start_seq": 4,
+          "after_seq": 3,
+          "status": "completed",
+          "notified": false
+        }
+      ]
+    },
+    {
+      "revision": 1,
+      "status": "cancelled",
+      "source": "client",
+      "created_at": "2026-10-24T16:00:00Z",
+      "updated_at": "2026-10-24T18:00:00Z",
+      "dispatches": 0,
+      "id": "deleted",
+      "spec": {
+        "title": "已删除任务",
+        "message": "检查更新，有新结果时通知我",
+        "target": {
+          "type": "new_session",
+          "cwd": "/example/project",
+          "agent": "claude",
+          "mode": "auto",
+          "model": "haiku"
+        },
+        "trigger": {
+          "type": "interval",
+          "interval_seconds": 3600,
+          "delay_seconds": 3600
+        }
+      },
+      "reason": "user_cancelled"
+    },
+    {
+      "revision": 1,
+      "status": "completed",
+      "source": "client",
+      "created_at": "2026-10-24T16:00:00Z",
+      "updated_at": "2026-10-24T18:00:00Z",
+      "dispatches": 0,
+      "id": "done",
+      "spec": {
+        "title": "看一眼 CI 结果",
+        "message": "检查更新，有新结果时通知我",
+        "target": {
+          "type": "new_session",
+          "cwd": "/example/project",
+          "agent": "claude",
+          "mode": "auto",
+          "model": "haiku"
+        },
+        "trigger": {
+          "type": "interval",
+          "interval_seconds": 3600,
+          "delay_seconds": 3600
+        }
+      },
+      "runs": [
+        {
+          "id": "done-run",
+          "session_id": "session-main",
+          "scheduled_at": "2026-10-23T15:00:00Z",
+          "started_at": "2026-10-23T15:00:00Z",
+          "ended_at": "2026-10-23T15:00:00Z",
+          "start_seq": 4,
+          "after_seq": 3,
+          "status": "completed",
+          "notified": false
+        }
+      ]
+    }
+  ],
+  "groups": {
+    "需要你看一下": [
+      "attention"
+    ],
+    "进行中": [
+      "quiet",
+      "conversation"
+    ],
+    "已暂停": [
+      "paused"
+    ],
+    "已结束": [
+      "done"
+    ]
+  },
+  "empty": "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。",
+  "offline": "未连接，显示的是上次的状态",
+  "quietEventOrder": [
+    "userMessage",
+    "submitted",
+    "agentMessage",
+    "turnEnded",
+    "userMessage",
+    "submitted",
+    "agentMessage",
+    "turnEnded"
+  ]
+}

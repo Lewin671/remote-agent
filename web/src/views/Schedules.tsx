@@ -3,7 +3,6 @@ import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { Clock, Plus, ChevronRight, ChevronDown, ChevronUp } from "../icons";
 import {
   agentName,
-  inheritConfig,
   defaultModeOf,
   machineName,
   modeOf,
@@ -27,6 +26,7 @@ import {
 } from "../ui";
 import {
   allRuns,
+  scheduleOffline, scheduleEmpty, scheduleIntervalHint, scheduleLimits,
   clockTime,
   dateTime,
   dayText,
@@ -71,8 +71,7 @@ function TaskOffline({ remote, id }: { remote: Remote; id?: string }) {
     <>
       {remote.conn === "online" && offline.length > 0 && (
         <Banner>
-          {offline.map(machineName).join("、")} 不在线 ·
-          显示的是上次的任务状态，连上后才能修改
+          {scheduleOffline}
         </Banner>
       )}
     </>
@@ -96,23 +95,17 @@ export function ScheduleRow({
   const target = task.spec.target;
   const location =
     target.type === "resume_session"
-      ? `在「${titleOf(
-          remote.sessions.get(target.session ?? "") ?? {
-            id: target.session ?? "",
-            machineId,
-            updatedMs: 0n,
-          },
-        )}」里`
+      ? remote.sessions.has(target.session ?? "") ? `在「${titleOf(remote.sessions.get(target.session!)!)}」里` : "在对话里"
       : projectName(target.cwd ?? "");
   const status =
-    remote.conn !== "online" || !m?.online ? "未连接" : nextText(task, now);
+    remote.conn !== "online" || !m?.online ? scheduleOffline : nextText(task, now);
   return (
     <SessionLine
       tone={taskTone(task, remote.conn === "online" && !!m?.online)}
       title={task.spec.title}
       right={status}
       preview={[
-        frequency(task.spec.trigger),
+        timingText(task.spec.trigger),
         location,
         target.agent === "claude"
           ? "Claude Code"
@@ -165,8 +158,7 @@ export function SchedulesPage({ remote, go }: { remote: Remote; go: Go }) {
             <Clock />
             <b>{loading ? "正在读取任务…" : "还没有定时任务"}</b>
             <p>
-              让 agent
-              定时检查，在有结果时通知你。电脑需要保持运行，手机可以离线。
+              {scheduleEmpty}
             </p>
           </div>
         )}
@@ -314,14 +306,16 @@ export function TimingSheet({
         if (trigger.type === "interval" && seconds === trigger.interval_seconds)
           next = { ...trigger };
       }
-      delete next.max_runs;
-      delete next.until;
+      const initialEnd = trigger.until ? "date" : trigger.max_runs ? "count" : "none";
+      const endChanged = end !== initialEnd || (end === "count" && count !== String(trigger.max_runs || 10)) || (end === "date" && (until !== localInput(trigger.until ?? new Date(Date.now() + 86400_000).toISOString(), initialZone) || zone !== initialZone));
+      if (end !== initialEnd || kind === "at") { delete next.max_runs; delete next.until; }
+      else { next.max_runs = trigger.max_runs; next.until = trigger.until; }
       if (kind !== "at" && end === "count") {
         if (!Number.isSafeInteger(Number(count)) || Number(count) < 1)
           throw new Error("运行次数必须是正整数");
         next.max_runs = Number(count);
       }
-      if (kind !== "at" && end === "date") next.until = zonedISO(until, zone);
+      if (kind !== "at" && end === "date" && endChanged) next.until = zonedISO(until, zone);
       if (
         (next.at && Date.parse(next.at) <= Date.now() && kind === "at") ||
         (next.until && Date.parse(next.until) <= Date.now())
@@ -416,7 +410,7 @@ export function TimingSheet({
                 onChange={(e) => setMinutes(e.target.value)}
               />
             </label>
-            <p className="hint">固定经过时长，不保证每天同一个当地时间。</p>
+            <p className="hint">{scheduleIntervalHint}</p>
           </>
         )}
         {kind === "after" && (
@@ -588,7 +582,7 @@ export function ScheduleDetail({
         sub={
           <>
             <Dot tone={taskTone(task, online)} />
-            {nextText(task, now)}
+            {online ? nextText(task, now) : scheduleOffline}
           </>
         }
         onBack={onBack}
@@ -605,6 +599,7 @@ export function ScheduleDetail({
             {state.error}
           </Banner>
         )}
+        {!attention && task.reason === "completed_while_paused" && <Banner kind="warn">{reasonText(task.reason)}</Banner>}
         {attention && (
           <Banner kind="warn">
             {reasonText(task.reason)}。
@@ -654,14 +649,7 @@ export function ScheduleDetail({
               setEdit("time");
             }}
           />
-          {task.spec.trigger.max_runs ? (
-            <Field
-              name="结束"
-              value={`自动运行 ${task.spec.trigger.max_runs} 次后`}
-            />
-          ) : task.spec.trigger.until ? (
-            <Field name="结束" value={dateTime(task.spec.trigger.until, now)} />
-          ) : null}
+          {scheduleLimits(task.spec.trigger, now) && <Field name="结束" value={scheduleLimits(task.spec.trigger, now)} />}
           <Field
             name={target.type === "resume_session" ? "发到" : "在哪运行"}
             value={
@@ -727,7 +715,7 @@ export function ScheduleDetail({
           {target.type === "new_session"
             ? "每次新开一个对话，归在这个任务下面。"
             : "消息发到当前对话，等待当前轮结束。"}
-          {task.source === "agent" ? "Agent 在对话里创建" : "你创建或接管"} ·{" "}
+          {task.source === "agent" ? "Agent 在对话里创建" : "你创建"} ·{" "}
           {dateTime(task.created_at, now)}
         </p>
         {attention && (
@@ -799,11 +787,11 @@ export function ScheduleDetail({
             <button
               className="row act"
               disabled={
-                !online || busy || !!task.manual_request || !!pending?.frozen
+                !online || busy || !!task.active_run || !!task.manual_request || !!pending?.frozen
               }
               onClick={() => void perform("run")}
             >
-              {task.manual_request ? "等待立即运行" : "立即运行一次"}
+              立即运行一次
             </button>
           )}
           {!ended && !attention && (
@@ -1334,15 +1322,6 @@ function ScheduleCreateConfig({
     }
     setBusy(true);
     setError("");
-    const source = inheritConfig(
-      ns.p && {
-        ...ns.p,
-        sessions: ns.p.sessions.filter((s) => s.machineId === machineId),
-      },
-      remote.machines,
-      project,
-      ns.cfg.agent,
-    )?.from;
     const spec: ScheduleSpec = {
       title: taskName(name, message),
       message: message.trim(),
@@ -1369,9 +1348,7 @@ function ScheduleCreateConfig({
         operation: "create",
         spec,
         requestId: requestId.current,
-        // Keep the same native launch environment that supplied this project's
-        // selected CLI configuration. A task without a source uses daemon defaults.
-        sessionId: session?.id ?? source?.id,
+        sessionId: session?.id,
       });
       onDone(machineId, task);
     } catch (e) {
@@ -1385,7 +1362,7 @@ function ScheduleCreateConfig({
     !online ||
     !message.trim() ||
     busy ||
-    (!session && (!project || ns.reading || !!ns.issue));
+    (!session && (!project || ns.reading || !!ns.issue || (ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) === ApprovalMode.PLAN));
   return (
     <>
       {!session && (
@@ -1460,6 +1437,7 @@ function ScheduleCreateConfig({
         </Banner>
       )}
       {!session && ns.issue && <Banner kind="warn">{ns.issue}</Banner>}
+      {!session && (ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) === ApprovalMode.PLAN && <Banner kind="warn">计划模式不能创建执行任务，请先选择其他权限</Banner>}
       <p className="manage-hint">
         {session
           ? "消息会发到当前对话，等待正在运行的一轮结束。"
@@ -1539,7 +1517,7 @@ export function ScheduleStrip({
           {remote.machines.get(session.machineId)?.online &&
           remote.conn === "online"
             ? nextText(nearest.task, now)
-            : "上次的状态"}
+            : scheduleOffline}
         </span>
         <span className="blue">
           管理 <ChevronRight />

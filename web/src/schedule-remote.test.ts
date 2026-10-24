@@ -236,6 +236,11 @@ it("combines task lists from supported computers while retaining an offline comp
   expect(r.taskEntries().map(e => e.machineId)).toEqual(["computer"]);
 });
 
+it("fetches unloaded task target sessions by ID", async()=>{
+ const r=probe();const t=task();t.spec.target={type:"resume_session",session:"missing-target"};
+ vi.spyOn(r,"machineCommand").mockResolvedValue(result({tasks:[t]}));const fetch=vi.spyOn(r,"ensureSession").mockResolvedValue();
+ await r.refreshSchedules("computer");expect(fetch).toHaveBeenCalledExactlyOnceWith("missing-target");
+});
 it("deletes a removed computer's encrypted task snapshot and rejects a late list",async()=>{
  const r=probe();const stored=new Map<string,unknown>([["schedules:computer",new Uint8Array([1])]]);
  (r as any).cache={set:async(k:string,v:unknown)=>{if(v===undefined)stored.delete(k);else stored.set(k,v);}};

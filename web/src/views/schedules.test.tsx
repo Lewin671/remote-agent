@@ -12,7 +12,8 @@ import {
 } from "./Schedules";
 import { SessionPage } from "./Session";
 import { task, run } from "../test/schedule-fixture";
-import { clockTime } from "../schedules";
+import { clockTime, scheduleOffline, scheduleEmpty } from "../schedules";
+import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import type { ScheduleTask } from "../schedules";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -92,7 +93,7 @@ it("renders attention first, combines machines and keeps cached tasks read-only 
     r.machines.get("mac")!.online = false;
     r.touch();
   });
-  expect(host.textContent).toContain("上次的任务状态");
+  expect(host.textContent).toContain(scheduleOffline);
   expect(host.querySelectorAll(".sess.off")).toHaveLength(2);
   await act(async () =>
     root!.render(
@@ -346,7 +347,7 @@ it("edits a task's run settings without replacing the project's defaults", async
   expect(r.projectPrefs()).toEqual(saved);
 });
 
-it("inherits the native source session used by a new task's selected configuration", async () => {
+it("creates a new-conversation task without borrowing a source session", async () => {
   const r = remote([]);
   const sourceSession = r.sessions.get("s-idle")!;
   r.sessions.clear();
@@ -360,10 +361,9 @@ it("inherits the native source session used by a new task's selected configurati
   if (host.querySelector('[role="alertdialog"]')) await click("完全放行");
   expect(write).toHaveBeenCalled();
   const [machineId, , request] = write.mock.calls[0];
-  expect(request.sessionId).toBeTruthy();
-  const source = r.sessions.get(request.sessionId!)!;
-  expect(source.machineId).toBe(machineId);
-  expect(request.spec?.target.cwd).toBe(source.info?.cwd);
+  expect(machineId).toBe("mac");
+  expect(request.sessionId).toBeUndefined();
+  expect(request.spec?.target.cwd).toBe(sourceSession.info?.cwd);
   expect(request.spec?.target.type).toBe("new_session");
 });
 it("fetches a task execution by ID and reveals the first event after its saved cursor", async () => {
@@ -623,4 +623,62 @@ it.each<Partial<ScheduleTask>>([
     r.touch();
   });
   expect(button(/^任务名/)?.disabled).toBe(true);
+});
+
+it("derives final limits, creator, offline subtitle and running edit guards", async () => {
+  const t = task({active_run: run("active", {status:"running"}), manual_request:{request_id:"manual"}});
+  t.spec.trigger = {type:"interval",interval_seconds:3600,delay_seconds:3600,max_runs:5,until:"2027-10-30T08:00:00Z"};
+  const r=remote([t]);
+  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
+  expect(host.textContent).toContain("共 5 次，或到 ");
+  expect(host.textContent).toContain("你创建");
+  expect(host.textContent).not.toContain("接管");
+  expect(button("立即运行一次")?.disabled).toBe(true);
+  for (const label of [/^什么时候/,/^消息/,/^在哪运行/]) expect(button(label)?.disabled).toBe(true);
+  expect(button(/^任务名/)?.disabled).toBe(false);
+  await act(async()=>{r.machines.get("mac")!.online=false;r.touch();});
+  expect(host.querySelector(".navbar")?.textContent).toContain(scheduleOffline);
+  expect(host.querySelector(".navbar")?.textContent).not.toContain("运行中");
+});
+it("uses shared empty copy and resolves a missing conversation before naming it", async () => {
+  const r=remote([]);
+  await mount(<SchedulesPage remote={r} go={()=>{}} />);
+  expect(host.textContent).toContain(scheduleEmpty);
+  const t=task();t.spec.target={type:"resume_session",session:"not-loaded"};
+  r.schedules.get("mac")!.tasks=[t];
+  await act(async()=>r.touch());
+  expect(host.querySelector(".sess .pv")?.textContent).toContain("在对话里");
+  expect(host.querySelector(".sess .pv")?.textContent).toContain(t.spec.trigger.timezone);
+});
+it("keeps the original interval phase and both unchanged end limits", async () => {
+  const trigger={type:"interval" as const,interval_seconds:900,at:"2026-10-01T08:00:00Z",delay_seconds:29,max_runs:5,until:"2027-10-30T08:00:29Z"};
+  const save=vi.fn();await mount(<TimingSheet trigger={trigger} onSave={save} onClose={()=>{}} />);
+  await click("完成");expect(save).toHaveBeenCalledWith(trigger);
+  await input(host.querySelector('input[type="datetime-local"]')!,"2027-10-31T08:00");
+  await click("完成");expect(save.mock.calls.at(-1)![0]).toMatchObject({at:trigger.at,delay_seconds:29,max_runs:5});
+  expect(save.mock.calls.at(-1)![0].until).not.toBe(trigger.until);
+});
+it("submits the editor's snapshot revision and spec even after remote changes", async () => {
+  const old=task();const r=remote([old]);const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(old);
+  await mount(<ScheduleDetail remote={r} machineId="mac" id={old.id} go={()=>{}} onBack={()=>{}} />);
+  await click(/^消息/);
+  await act(async()=>{r.schedules.get("mac")!.tasks=[task({revision:9,spec:{...old.spec,title:"别人改名"}})];r.touch();});
+  await input(host.querySelector("textarea")!,"我的修改");await click("保存");
+  expect(send.mock.calls[0][2]).toMatchObject({revision:1,spec:{...old.spec,message:"我的修改"}});
+});
+it("keeps plan permission visible and disables scheduled creation", async () => {
+  const r=remote([]);r.sessions.clear();
+  for(const m of r.machines.values())for(const agent of m.meta?.agents??[])agent.defaultMode=ApprovalMode.PLAN;
+  for(const project of r.prefs.snap?.prefs.settings??[]) for(const agent of project.agents) agent.mode=ApprovalMode.PLAN;
+  const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(task());
+  await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);
+  await input(host.querySelector("textarea")!,"检查更新");
+  expect(button("创建")?.disabled).toBe(true);
+  expect(host.textContent).toContain("计划模式不能创建执行任务");expect(send).not.toHaveBeenCalled();
+});
+
+it("derives an empty quiet summary and pending-only run guard from the task",async()=>{
+  const t=task({runs:[run("q1",{notified:false,final_summary:""}),run("q2",{notified:false,final_summary:""})],manual_request:{request_id:"manual"}});
+  const r=remote([t]);await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
+  expect(host.textContent).toContain("：没有通知");expect(button("立即运行一次")?.disabled).toBe(true);
 });

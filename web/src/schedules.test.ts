@@ -1,6 +1,8 @@
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { expect, it } from "vitest";
+import shared from "../../testdata/schedules/clients.json";
+import type { ScheduleTask } from "./schedules";
 import {
   EventSchema,
   TurnOutcome,
@@ -23,6 +25,7 @@ import {
   taskGroup,
   zonedISO,
   timingText,
+  scheduleEmpty, scheduleOffline,
   taskName,
   runResult,
   runSummary,
@@ -109,7 +112,7 @@ it("aggregates today's quiet results without hiding notified or failed runs", ()
 it("derives next time labels by local date, state and active run", () => {
   const now = Date.parse("2026-10-24T10:00:00Z");
   expect(nextText(task(), now)).toBe(
-    `下次 ${clockTime("2026-10-24T15:00:00Z")}`,
+    `下次 今天 ${clockTime("2026-10-24T15:00:00Z")}`,
   );
   expect(nextText(task({ next_run_at: "2026-10-25T15:00:00Z" }), now)).toBe(
     `下次 ${dateTime("2026-10-25T15:00:00Z", now)}`,
@@ -120,7 +123,7 @@ it("derives next time labels by local date, state and active run", () => {
   );
   expect(
     nextText(task({ active_run: run("live", { status: "queued" }) }), now),
-  ).toBe("等待当前轮结束");
+  ).toBe("运行中");
   expect(frequency({ type: "interval", interval_seconds: 3600 })).toBe(
     "每小时",
   );
@@ -420,6 +423,23 @@ it("uses the agreed outcome wording and never replaces a failure reason with its
   expect(runResult(run("notify", { notified: true }))).toBe("通知了你");
 });
 
+it("derives the final shared grouping, attention reason and state copy from tasks", () => {
+  expect(scheduleEmpty).toBe(shared.empty);expect(scheduleOffline).toBe(shared.offline);
+  const tasks = shared.tasks as ScheduleTask[];
+  const groups = groupTasks(tasks.map(task => ({ machineId: shared.machine, task })));
+  expect(Object.fromEntries([...groups].map(([g, tasks]) => [g, tasks.map(e => e.task.id)]))).toEqual(shared.groups);
+  const attention = tasks.find(t => t.id === "attention")!;
+  expect(lastResult(attention, Date.parse(shared.now))).toBe("创建任务时的权限已改变，任务已暂停");
+  expect(runResult(attention.runs![0])).toBe("没有通知");
+  expect(reasonText("completed_while_paused")).toBe("已暂停：期间计划已到期");
+  for (const status of ["dispatching", "queued", "running"])
+    expect(nextText(task({active_run: run("live", {status})}))).toBe("运行中");
+  expect(nextText(task({next_run_at: undefined}))).toBe("下次待定");
+  expect(taskName("", "  检查更新  。第二句")).toBe("检查更新");
+  const now = new Date(2026, 9, 24, 12).getTime();
+  expect(dateTime(new Date(2026, 9, 25, 8).toISOString(), now)).toBe("明天 08:00");
+  expect(nextText(task({next_run_at: new Date(2026, 9, 24, 15).toISOString()}), now)).toBe("下次 今天 15:00");
+});
 it.each([InputStatus.FAILED, InputStatus.UNCONFIRMED, InputStatus.CANCELED, InputStatus.NEEDS_TERMINAL, InputStatus.HELD_BY_CLI])("keeps blocking scheduled input visible after its message: %s", status => {
   const events = rounds().flatMap(e => e.kind.case === "userMessage" ? [e, create(EventSchema, {kind:{case:"inputState",value:{status,requestId:"q"}}})] : [e]).map((e,i)=>({...e,seq:BigInt(i+1)}));
   expect(foldScheduled(timeline(events, derive(events)),events,new Set()).some(x=>x.kind==="quiet")).toBe(false);
