@@ -206,7 +206,7 @@ export function clipTaskName(name: string): string {
 export function taskName(name: string, message: string): string {
   const first = message.trim().split(/\r?\n|[。！？!?]|\.(?=\s|$)/u)[0];
   return clipTaskName(
-    (name.trim() || first || message.trim()).replace(/\s+/g, " "),
+    (name.trim() || first || message.trim()).replace(/\s+/g, " ").trim(),
   );
 }
 export function nextText(t: ScheduleTask, now = Date.now()): string {

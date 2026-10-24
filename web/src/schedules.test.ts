@@ -363,6 +363,7 @@ it("still folds quiet rounds across ordinary scheduled queue and idle metadata",
 });
 
 it("resolves optional task names from the first sentence and keeps explicit names", () => {
+  expect(taskName("", "  检查服务器   。后续消息  ")).toBe("检查服务器");
   expect(taskName("  早间巡检  ", "检查服务器。没事不用通知。")).toBe(
     "早间巡检",
   );
