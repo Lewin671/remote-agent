@@ -65,25 +65,27 @@ import UIKit
         context.scheduleDrafts.clear("s"); #expect(context.scheduleDrafts.of("s") !== draft)
     }
     @Test func concurrentManualAndRevisionReadsShareOneMachineSlot() async {
-        let store=ScheduleStore();var started=0;var active=0;var peak=0
-        var waiters=[CheckedContinuation<[ScheduleTask], any Error>]()
-        store.configure(.init(cached:{ _ in nil },list:{ _ in
-            started += 1;active += 1;peak=max(peak,active)
+        let store = ScheduleStore(); var started = 0, active = 0, peak = 0, entered = 0
+        var holds = [Int: CheckedContinuation<Void, Never>]()
+        store.configure(.init(cached: { _ in nil }, list: { _ in
+            started += 1; let request = started
+            active += 1; peak = max(peak, active)
             defer { active -= 1 }
-            return try await withCheckedThrowingContinuation { waiters.append($0) }
+            if request <= 2 { await withCheckedContinuation { holds[request] = $0 } }
+            return [self.task("r\(request)")]
         }))
-        store.reconcile(state());await settle { started==1 }
-        let first=Task { await store.refresh("m") };let second=Task { await store.refresh("m") }
-        store.reconcile(state(revision:2));await Task.yield()
-        #expect(started==1 && peak==1)
-        var returned=0
-        for _ in 0..<5 {
-            if waiters.isEmpty { await Task.yield() }
-            if !waiters.isEmpty { returned += 1;waiters.removeFirst().resume(returning:[self.task("r\(returned)")]) }
-            await settle { !waiters.isEmpty || store.loading.isEmpty }
-        }
-        await first.value;await second.value
-        #expect(peak==1 && started>=3 && store.tasks.first?.task.id=="r\(returned)")
+        store.reconcile(state())
+        await eventually("first read is suspended") { holds[1] != nil }
+        let first = Task { entered += 1; await store.refresh("m") }
+        let second = Task { entered += 1; await store.refresh("m") }
+        store.reconcile(state(revision: 2))
+        await eventually("both manual refreshes entered") { entered == 2 }
+        #expect(started == 1 && peak == 1)
+        holds.removeValue(forKey: 1)?.resume()
+        await eventually("revision catch-up is suspended") { holds[2] != nil }
+        holds.removeValue(forKey: 2)?.resume()
+        await first.value; await second.value
+        #expect(peak == 1 && started >= 3 && store.tasks.first?.task.id == "r\(started)")
     }
     @Test func creationKeyStaysStableForRetriesAndChangesWithTheDefinition() throws {
         let draft = ScheduleDraft(); draft.message = "检查"
