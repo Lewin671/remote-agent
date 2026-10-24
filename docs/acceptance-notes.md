@@ -927,7 +927,7 @@ rebase 后核对了两边的验收记录：后端原文全部保留，原有内�
 
 公开检查读取本机实际 deny 名单，未使用空名单或伪造条目；扫描日志只以规则编号报告私有条目。本轮没有打发布包，因此未执行要求完整 Release 文件集合的 `--release TAG DIST` 模式，也未核对正式签名 APK、跨平台压缩包和附件清单。
 
-既往 iOS v49 报告中的 `RetainedIdentityTests.logoutClearsPendingBootstrapAndDoesNotResumeIt()` 的 `.untrusted` 在首次整合全量中未复现，不能据此声称已定位或修复。`ResumedLivePollingTests.resumedMetadataRestartsPollingWithoutResubscribing()` 的异步断言已通过后续重复运行定位为测试等待不足，见下方专项记录。未新增真实推送送达、真机界面、iPad、多台真实电脑、实际睡眠/DST 或客户端 Codex 路线的验收证据。
+既往 iOS v49 报告中的两项偶发失败均已通过后续专项复现定位：`RetainedIdentityTests.logoutClearsPendingBootstrapAndDoesNotResumeIt()` 是测试共享全局生命周期通知造成干扰；`ResumedLivePollingTests.resumedMetadataRestartsPollingWithoutResubscribing()` 是测试提前断言。复现、修复和重复运行证据见下方两项专项记录，首次整合全量通过本身不作为修复证据。未新增真实推送送达、真机界面、iPad、多台真实电脑、实际睡眠/DST 或客户端 Codex 路线的验收证据。
 
 检查日志和 xcresult 保存在本地独立输出目录，不提交原日志、截图、测试账户或配对材料。未推送、打 tag、发版、部署或修改 `version.properties`。
 
@@ -947,3 +947,47 @@ rebase 后核对了两边的验收记录：后端原文全部保留，原有内�
 只把这条即时断言改为现有 `eventually` 条件等待，明确等到该会话的 polling task 清空。没有修改产品轮询逻辑、增加固定 sleep 或调大现有等待工具的超时；保留原订阅、单 follower、恢复元数据和原订阅接收 live snapshot 的验证。
 
 `cd ios/RemoteAgentCore && swift test` 全量通过：541 项、84 个 suite，退出码 0；默认需单独开启的真实 daemon 用例仍跳过。40 次修前与 40 次修后逐次日志、退出码和源文件指纹保存在本地专项输出，不提交运行日志或临时账户材料。
+
+### iOS bootstrap：隔离测试的生命周期通知（2026-10-24）
+
+目标为 `RetainedIdentityTests.logoutClearsPendingBootstrapAndDoesNotResumeIt()` 的 `.untrusted`。App 复现起点 `3d4a74e3`，下表原始重复运行使用同一份未修改的 App 测试产物，AppModel、bootstrap 与测试源文件指纹保持不变；交叉影响探针在复现后另行添加。RACore 测试中的条件等待改动不参与 App 构建。Xcode 27.0（27A266a）、Swift 6.4，仅使用已有 iPhone 18 Pro / iOS 27.0；不创建模拟器，不连接线上或使用日常账户。
+
+App 先 `build test` 确认筛选和重复功能确实执行目标，再以 `test-without-building` 使用同一份未修改的产物。没有 shuffle 或失败自动重试。前五组显式指定 `-parallel-testing-enabled NO`，是不同调度配置的对照；最后去掉该覆盖，使用与首次验收一致的 scheme 默认调度，才复现原错误。
+
+| 修前条件 | 目标运行次数 | 目标失败次数 |
+|---|---:|---:|
+| RetainedIdentity suite，40 次各自重启进程，无额外压力 | 40 | 0 |
+| RetainedIdentity + AuthorityVault suites，同一进程，显式关闭 Xcode 并行，无额外压力 | 40 | 0 |
+| 同上，8 个有限 CPU 压力进程 | 40 | 0 |
+| 加 AppModel suite，10 个有限 CPU 压力进程 | 40 | 0 |
+| 完整 App，显式关闭 Xcode 并行，8 个有限 CPU 压力进程 | 3 | 0 |
+| RetainedIdentity + AuthorityVault suites，scheme 默认调度，无额外压力 | 40 | 10 |
+
+压力进程不超过本机 10 核，设有 CPU 时间上限，组结束后统一终止和回收；默认调度的复现与修后对比均没有额外压力进程。前五组只说明这些条件未复现，不能据其通过排除默认调度下的竞争。
+
+主要对比命令为：
+
+```sh
+xcodebuild -quiet -disableAutomaticPackageResolution \
+  -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' \
+  -only-testing:RemoteAgentTests/RetainedIdentityTests \
+  -only-testing:RemoteAgentTests/AuthorityVaultTests \
+  -test-iterations 40 -test-repetition-relaunch-enabled NO \
+  -resultBundlePath <独立输出目录>/result.xcresult test-without-building
+```
+
+实际固定到该已有模拟器的 ID。xcresult 的 Repetition 节点核对目标确实运行 40 次，修前为 30 次通过、10 次 `.untrusted`；两个 suite 共 400 次测试运行，390 通过、10 失败，命令退出码 65。十次失败都在准备 bootstrap 的 `prepareCreation`，尚未执行 logout。
+
+根因是 `AuthorityVaultTests` 用 `NotificationCenter.default` 广播合成的 UIApplication 失活/受保护数据不可用通知，同时 AppModel 测试 fixture 也订阅同一个全局中心。通知会关闭另一测试刚开启的 signing gate，`AuthorityBootstrap` 正确拒绝准备操作；这是跨测试干扰，不是登出后错误恢复，也不是签名验证应被放宽。为单独确认因果，在原生命周期测试中加入一个无关模型及已允许的 ticket，再广播通知并检查该 ticket：修前该确定性检查同样抛出 `.untrusted`。
+
+修复仅增加通知中心的可注入依赖：AppModel 的生产默认仍为 `NotificationCenter.default`，fixture 各持有独立中心，生命周期测试向自己的中心发通知。保留自身失活/锁屏必须撤销签名的全部断言，并保留无关模型 ticket 仍有效的回归检查。没有改变 gate、bootstrap、logout 或恢复的安全逻辑，修复没有添加串行化约束、固定 sleep 或提高超时。
+
+| 默认调度、同一组两个 suite、无额外压力 | 目标运行次数 | 目标失败次数 |
+|---|---:|---:|
+| 修前 | 40 | 10 |
+| 修后，相同命令与条件 | 40 | 0 |
+
+修后 xcresult 核对目标 40 次全部通过，两个 suite 共 400 次测试运行全部通过、0 跳过，退出码 0。修复构建后另有两个 suite 的 10 项检查通过，包含交叉影响回归；完整 App 的 `xcodebuild -quiet -disableAutomaticPackageResolution -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -resultBundlePath <独立输出目录>/full.xcresult build test` 也通过：339 项（动态参数展开后 377 次执行）、0 失败/跳过，退出码 0。
+
+修前默认调度组结束测试后，Xcode 曾停在 `simctl diagnose` 的诊断收集；调度日志显示测试进程已结束，进程采样定位为 `collectSimulatorDiagnostics → simCtlDiagnose` 等待。本轮只停止该诊断子进程，让 Xcode 写完结果，保留真实的退出码 65 和全部 40 次测试结果，没有把收集停顿算成目标测试超时，也没有靠重跑消除那 10 次失败。专项日志、xcresult、源文件指纹和重复运行脚本仅保存在本地输出。

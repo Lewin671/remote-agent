@@ -66,6 +66,7 @@ final class Harness {
     let root = FileManager.default.temporaryDirectory.appending(
         path: "ra-app-\(UUID().uuidString)", directoryHint: .isDirectory)
     let suite = "ra-app-\(UUID().uuidString)"
+    let notificationCenter = NotificationCenter()
     let defaults: UserDefaults
     let settings: SettingsStore
     let pending: PendingStore
@@ -86,6 +87,7 @@ final class Harness {
             vault: vault, cacheRoot: root.appending(path: "cache"), pending: pending)
         parts.network = FakeNetwork()
         parts.defaults = defaults
+        parts.notificationCenter = notificationCenter
         parts.saveJoined = { vault, account in
             try vault.save(account.stored, notifyKey: Data(repeating: 0, count: 32))
         }

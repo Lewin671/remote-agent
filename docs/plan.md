@@ -90,7 +90,6 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - 推送：要用 APNs，server 要加一种推送目标和 APNs 的凭据；做不做未定
 - 在通知里审批：iOS 没有「锁屏上整条不出现」的办法，锁屏上显不显示内容由系统的预览设置决定（[scope.md](scope.md) 第 4 节）；要做得先决定接不接受
 - `ios/` 的改动现在不算产品变化，不触发发版，CI 也不构建它（没有可分发的产物，GitHub 的流水线里也没有 macOS）；有了分发渠道后再定
-- iOS v49 验收曾出现 retained bootstrap 的 `.untrusted`，根因尚未定位；首次整合全量通过不视为修复，证据见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24)
 - SwiftTerm 固定在 1.11.2，升级要另装 Metal Toolchain 或跳过插件校验（[ios-client · 终端](ios-client.md#终端)）
 - 终端仿真器的应答 iOS 不发回电脑，网页和 Android 会发；三端要不要统一未定
 - 设置和设备页里客户端一行的说法 iOS 统一成了「当前客户端 / 上次使用」，Android 的设置页还是「当前 / 已配对」；Android 要不要跟着改

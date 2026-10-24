@@ -104,6 +104,8 @@ final class AppModel {
         var storage: AccountStorage = .standard()
         var network: any NetworkWatching = SystemNetwork()
         var defaults: UserDefaults = .standard
+        /// System lifecycle notifications in production; independent centers for test fixtures.
+        var notificationCenter: NotificationCenter = .default
         /// Opens the account's cache of ciphertext. Called off the main actor.
         var openCache: @Sendable (_ root: URL, _ account: Account) throws -> CipherStore = {
             root, account in
@@ -245,11 +247,11 @@ final class AppModel {
 
     private func installAuthorityProtection(_ gate: AuthorityGate) {
         for name in [UIApplication.willResignActiveNotification, UIApplication.protectedDataWillBecomeUnavailableNotification] {
-            protectionObservers.append(NotificationCenter.default.addObserver(
+            protectionObservers.append(parts.notificationCenter.addObserver(
                 forName: name, object: nil, queue: nil
             ) { _ in gate.set(active: false, protectedDataAvailable: false) })
         }
-        protectionObservers.append(NotificationCenter.default.addObserver(
+        protectionObservers.append(parts.notificationCenter.addObserver(
             forName: UIApplication.protectedDataDidBecomeAvailableNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.updateAuthorityAvailability() }

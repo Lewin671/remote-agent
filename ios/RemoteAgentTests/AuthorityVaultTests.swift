@@ -54,7 +54,12 @@ import UIKit
 
     @MainActor @Test func inactiveAndProtectedDataLossRevokeSigningWithoutDroppingInactiveStreamPolicy() throws {
         defer { try? vault.clear() }
+        let unrelated = Harness(); defer { unrelated.cleanUp() }
+        unrelated.model.bootstrapGate.set(active: true, protectedDataAvailable: true)
+        let unrelatedTicket = try unrelated.model.bootstrapGate.ticket()
+        let notifications = NotificationCenter()
         var parts = AppModel.Parts()
+        parts.notificationCenter = notifications
         parts.storage = AccountStorage(vault: vault, cacheRoot: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString), pending: PendingStore(vault: vault))
         let model = AppModel(settings: SettingsStore(), parts: parts)
         model.scenePhase(.active)
@@ -64,12 +69,14 @@ import UIKit
         #expect(throws: DeviceSecurity.Failure.self) { try model.bootstrapGate.check(ticket) }
         model.scenePhase(.active)
         let resigning = try model.bootstrapGate.ticket()
-        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
         #expect(throws: DeviceSecurity.Failure.self) { try model.bootstrapGate.check(resigning) }
+        try unrelated.model.bootstrapGate.check(unrelatedTicket)
         model.scenePhase(.active)
         let next = try model.bootstrapGate.ticket()
-        NotificationCenter.default.post(name: UIApplication.protectedDataWillBecomeUnavailableNotification, object: nil)
+        notifications.post(name: UIApplication.protectedDataWillBecomeUnavailableNotification, object: nil)
         #expect(throws: DeviceSecurity.Failure.self) { try model.bootstrapGate.check(next) }
+        try unrelated.model.bootstrapGate.check(unrelatedTicket)
         model.scenePhase(.background)
     }
     @Test func rePairingPreservesEdPinHistoryAndFloorWhileReplacingXAndSavingThePublicProfile() throws {
