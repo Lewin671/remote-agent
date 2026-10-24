@@ -130,6 +130,13 @@ func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, scope string) ([]byte, e
 		titles[id] = t.Spec.Title
 	}
 	d.scheduleMu.Unlock()
+	// MCP can arrive before the next poll (and without a permission hook).
+	// Keep transcript consumption and notification admission in one read order.
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+	if !s.readRolloutLocked() {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("could not read and commit current transcript; retry notify_user"))
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.running || s.meta.Exited || s.scheduledTask == "" || s.scheduledRun == "" {
