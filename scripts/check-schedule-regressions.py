@@ -71,6 +71,13 @@ go("r2-08-minimum-reason", "internal/daemon/schedule.go", 't.Reason = "agent_sch
 go("r2-09-followup-id", "internal/daemon/schedule.go", 'for i := range t.Runs {\n\t\tchanged = d.watchScheduledFollowup', 'for i := len(t.Runs)-1; i<len(t.Runs); i++ {\n\t\tchanged = d.watchScheduledFollowup', "TestFollowupSurvivesLaterSkippedRun")
 go("r2-09-terminal-followup", "internal/daemon/schedule.go", '!hasPendingScheduledFollowups(t)', '(len(t.Runs)==0 || t.Runs[len(t.Runs)-1].Status!="completed" || t.Runs[len(t.Runs)-1].FollowupsClosed)', "TestFollowupSurvivesLaterSkippedRun")
 
+go("r2-03-input-pause", "internal/daemon/schedule.go", 'if !(status == "paused" && reason == "user_paused" || status == "cancelled" && reason == "user_cancelled") {', 'if status != "paused" && status != "cancelled" {', "TestManualTrialFailureBoundaries")
+go("r2-03-manual-late", "internal/daemon/schedule.go", 'if !run.Manual {\n\t\t\t\t\td.lateRuns', 'if true {\n\t\t\t\t\td.lateRuns', "TestManualTrialFailureBoundaries")
+
+go("r2-07-late-stop-loop", "internal/daemon/schedule.go", 'd.stopUnpublishedScheduledRuns()', '// quota enforcement removed', "TestQuotaStopRetriesAndDoesNotInterruptHuman")
+
+go("r2-03-explicit-cancel", "internal/daemon/schedule.go", 'if status == "cancelled" {\n\t\tt.NextRunAt = nil', 'if false && status == "cancelled" {\n\t\tt.NextRunAt = nil', "TestManualTrialFailureBoundaries")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
@@ -82,6 +89,18 @@ clients = [
     ("11-ios-project", "ios/RemoteAgentCore/Sources/RACore/Projects.swift", "s.info?.taskOwned != true || needsAttention(s, machine: state.machines[s.machineId])", "s.info?.taskOwned != true", ["swift","test","--filter","taskOwnedApprovalsStillNeedAttention"], "Expectation failed"),
 
 ]
+
+# The same projections, now exercised after encrypted cold listing and refresh.
+for name,file,before,after,cmd,marker in list(clients):
+    if name in ("11-web-attention", "11-web-project"):
+        clients.append((name.replace("11-", "r2-client-"),file,before,after,
+            ["pnpm","--dir","web","exec","vitest","run","src/paging.test.ts","-t","cold listing retains"],marker))
+    if name.startswith(("11-android", "r2-client-android")):
+        clients.append((name.replace("11-", "r2-client-"),file,before,after,
+            ["./gradlew",":core:test","--tests","*DirectoryRefreshTest.coldListingRetainsTaskOwnedApprovalThroughRefresh"],"java.lang.AssertionError"))
+    if name.startswith(("11-ios", "r2-client-ios")):
+        clients.append((name.replace("11-", "r2-client-"),file,before,after,
+            ["swift","test","--filter","coldListingRetainsTaskOwnedApprovalThroughRefresh"],"Expectation failed"))
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -95,13 +114,13 @@ def main():
         original=path.read_text()
         if before not in original: raise SystemExit("Missing mutation target: "+name)
         cwd=ROOT
-        if name.startswith("11-android"):cwd=ROOT/"android"
-        if name.startswith("11-ios"):cwd=ROOT/"ios/RemoteAgentCore"
+        if name.startswith(("11-android", "r2-client-android")):cwd=ROOT/"android"
+        if name.startswith(("11-ios", "r2-client-ios")):cwd=ROOT/"ios/RemoteAgentCore"
         try:
             # 06 intentionally removes both pre-append and replay projections.
             path.write_text(original.replace(before,after) if name=="06-interjection" else original.replace(before,after,1))
             run=subprocess.run(cmd,cwd=cwd,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-            if run.returncode==0 or marker not in run.stdout or "[build failed]" in run.stdout:
+            if run.returncode==0 or marker not in run.stdout or "[build failed]" in run.stdout or "Compilation error" in run.stdout or "compileTestKotlin FAILED" in run.stdout or "emit-module command failed" in run.stdout:
                 print(run.stdout[-6000:],flush=True)
                 raise SystemExit("Mutation was not detected by assertions: "+name)
             print("PASS "+name,flush=True)

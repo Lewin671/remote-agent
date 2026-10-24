@@ -11,6 +11,7 @@ import type {
   SessionCursor,
 } from "./gen/remoteagent/v1/relay_pb";
 import { needsAttention, projects } from "./model";
+import { todoList } from "./views/Home";
 import { Remote, SESSION_PAGE } from "./remote";
 import {
   GoSecurityFixture,
@@ -520,13 +521,15 @@ it("keeps the default session listing page at 50 rows", async () => {
 });
 
 it("cold listing retains task-owned approvals through refresh", async () => {
- const {r,server,calls}=await setup();
- server.set("approval",{machineId:"m1",endedMs:0,taskOwned:true,pendingApprovals:1});
- server.set("quiet",{machineId:"m1",endedMs:0,taskOwned:true});
- await r.refresh(); await r.refresh();
- expect(calls.every(c=>!c.sessionIds?.length)).toBe(true);
- const approval=r.sessions.get("approval")!;
- expect(approval.info?.taskOwned).toBe(true);
- expect(needsAttention(approval,r.machines.get(approval.machineId))).toBe(true);
- expect(projects(r.sessions.values(), r.machines.values()).flatMap(p=>p.sessions.map(s=>s.id))).toEqual(["approval"]);
+  const { r, server, calls } = await setup();
+  server.set("approval", { machineId: "m1", endedMs: 0, taskOwned: true, pendingApprovals: 1 });
+  server.set("quiet", { machineId: "m1", endedMs: 0, taskOwned: true });
+  await r.refresh();
+  await r.refresh();
+  expect(calls.every((c) => !c.sessionIds?.length)).toBe(true);
+  const approval = r.sessions.get("approval")!;
+  expect(approval.info?.taskOwned).toBe(true);
+  expect(needsAttention(approval, r.machines.get(approval.machineId))).toBe(true);
+  expect(todoList(r).map((s) => s.id)).toEqual(["approval"]);
+  expect(projects(r.sessions.values(), r.machines.values()).flatMap((p) => p.sessions.map((s) => s.id))).toEqual(["approval"]);
 });

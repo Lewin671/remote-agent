@@ -46,6 +46,7 @@ class TimelineTest {
         val owned = base.copy(info = base.info!!.toBuilder().setTaskOwned(true).build())
         val timeline = homeTimeline(state(owned), HomeScope.All)
         assertEquals(listOf("task"), timeline.attention.map { it.id })
+        assertEquals(1, projects(state(owned)).size)
         assertEquals(listOf("task"), projects(state(owned)).single().sessions.map { it.id })
         assertTrue(timeline.running.isEmpty())
         assertTrue(timeline.ended.isEmpty())

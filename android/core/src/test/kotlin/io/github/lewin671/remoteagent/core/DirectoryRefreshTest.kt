@@ -22,6 +22,7 @@ class DirectoryRefreshTest {
             val state = remote.state.value
             assertTrue(state.sessions.getValue("empty").info!!.taskOwned)
             assertEquals(listOf("empty"), homeTimeline(state, HomeScope.All).attention.map { it.id })
+            assertEquals(1, projects(state).size)
             assertEquals(listOf("empty"), projects(state).single().sessions.map { it.id })
             assertTrue(homeTimeline(state, HomeScope.All).running.isEmpty())
         } finally { remote.close(); runCurrent() }

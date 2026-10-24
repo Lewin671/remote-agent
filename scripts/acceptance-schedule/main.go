@@ -125,6 +125,17 @@ func main() {
 	var task schedule.Task
 	must(json.Unmarshal(res.GetSchedule().ResultJson, &task))
 	fmt.Println("PASS calendar task created through encrypted Forward; due", at.Format(time.RFC3339))
+	// Restart before the due time: the saved task must still launch, and the
+	// offline client's first directory listing must expose its pending approval.
+	must(process.Process.Signal(os.Interrupt))
+	must(process.Wait())
+	process = exec.Command(binary, "daemon", "--claude", claude)
+	process.Stdout, process.Stderr = log, log
+	must(process.Start())
+	wait(ctx, "restarted daemon serves persisted task", func() bool {
+		r, e := client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "get", TaskId: task.ID}}})
+		return e == nil && r.GetSchedule() != nil
+	})
 	getTask := func() {
 		r, e := client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "get", TaskId: task.ID}}})
 		must(e)
@@ -132,6 +143,7 @@ func main() {
 	}
 	var sid string
 	attentionSeen := false
+	approvalRestarted := false
 	wait(ctx, "calendar dispatch and real CLI completion", func() bool {
 		getTask()
 		if task.Active != nil {
@@ -141,22 +153,46 @@ func main() {
 			// Answer a fresh-project trust prompt only after the CLI draws it.
 			out, _ := exec.Command("tmux", "-L", socket, "capture-pane", "-p", "-t", "ra-"+sid[:8]).Output()
 			if strings.Contains(string(out), "Notify User") && strings.Contains(string(out), "Do you want to proceed?") {
-				// Fetch the hidden conversation by its active-run ID before approving.
-				// Its ordinary attention fields are the data consumed by all
-				// three clients' attention projections, despite task ownership.
-				waiting, e := client.API().ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{SessionIds: []string{sid}}))
-				if e != nil || len(waiting.Msg.Sessions) != 1 {
+				// A fresh encrypted client, with no stream, by-ID fetch or
+				// session cache: this is the same default cold directory read.
+				cold := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
+				waiting, e := cold.API().ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
+				if e != nil {
 					return false
 				}
-				view, e := client.OpenSession(waiting.Msg.Sessions[0])
+				var row *pb.RemoteSession
+				for _, candidate := range waiting.Msg.Sessions {
+					if candidate.SessionId == sid {
+						row = candidate
+					}
+				}
+				if row == nil {
+					return false
+				}
+				view, e := cold.OpenSession(row)
 				must(e)
 				info := view.Info
 				needs := info != nil && (info.PendingApprovals > 0 || info.PendingQuestions > 0 || info.PlanOpen || info.Status == pb.SessionStatus_SESSION_STATUS_BLOCKED)
 				if !needs || !info.TaskOwned {
 					return false
 				}
+				if !approvalRestarted {
+					// Keep the native CLI and its approval dialog alive while
+					// rebuilding daemon state from this session's event log.
+					must(process.Process.Signal(os.Interrupt))
+					must(process.Wait())
+					process = exec.Command(binary, "daemon", "--claude", claude)
+					process.Stdout, process.Stderr = log, log
+					must(process.Start())
+					wait(ctx, "daemon restored the session while approval is pending", func() bool {
+						r, e := client.Do(ctx, view, &pb.Command{Kind: &pb.Command_GetLiveSnapshot{GetLiveSnapshot: &pb.GetLiveSnapshotRequest{SessionId: sid}}})
+						return e == nil && r.GetLiveSnapshot() != nil && r.GetLiveSnapshot().Session.GetTaskOwned() && r.GetLiveSnapshot().Session.GetPendingApprovals() > 0
+					})
+					approvalRestarted = true
+					return false
+				}
 				if !attentionSeen {
-					fmt.Println("PASS task-owned CLI waiting for approval is present in attention data")
+					fmt.Println("PASS cold ListRemoteSessions after daemon restart includes task-owned approval in attention data")
 					attentionSeen = true
 				}
 				// Approve this test tool once, never persist a global allow rule.
