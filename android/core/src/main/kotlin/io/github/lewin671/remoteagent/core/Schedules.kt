@@ -120,10 +120,10 @@ fun scheduleFrequency(t: JsonObject, localZone: ZoneId = ZoneId.systemDefault())
     "after_turn" -> "${if ((t["repeat"] as? JsonPrimitive)?.booleanOrNull == true) "每轮" else "当前轮"}结束 ${t.long("delay_seconds")} 秒后"
     else -> "时间未知"
 }
-fun scheduleLimits(task: ScheduledTask, now: Instant = Instant.now()): String = buildList {
+fun scheduleLimits(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String = buildList {
     val max = task.trigger.long("max_runs")
     if (max > 0) add("共 $max 次")
-    scheduleInstant(task.trigger.text("until"))?.let { add("到 ${scheduleWhen(it, now)}") }
+    scheduleInstant(task.trigger.text("until"))?.let { add("到 ${scheduleWhen(it, now, zone)}") }
 }.joinToString("，或")
 
 fun scheduleZone(t: JsonObject): ZoneId = runCatching { ZoneId.of(t.text("timezone")) }.getOrElse {

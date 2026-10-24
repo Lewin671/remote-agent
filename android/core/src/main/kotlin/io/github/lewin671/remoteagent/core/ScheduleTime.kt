@@ -45,8 +45,10 @@ data class ScheduleTime(
             }
             if (kind != 0) {
                 val before = original?.let { from(it) }
-                if (before != null && end == before.end && count == before.count && until == before.until && this@ScheduleTime.deadline == before.deadline && zone == before.zone) {
+                if (before != null && end == before.end) {
                     original?.get("max_runs")?.let { put("max_runs", it) }; original?.get("until")?.let { put("until", it) }
+                    if (end == 1 && count != before.count) put("max_runs", max)
+                    if (end == 2 && (until != before.until || this@ScheduleTime.deadline != before.deadline || zone != before.zone) && deadline != null) put("until", deadline.toString())
                 } else { if (max > 0) put("max_runs", max); if (deadline != null) put("until", deadline.toString()) }
             }
         }
