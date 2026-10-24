@@ -320,5 +320,42 @@ func main() {
 	})
 	_, err = client.Do(ctx, session, &pb.Command{Kind: &pb.Command_StopSession{StopSession: &pb.StopSessionRequest{SessionId: sid}}})
 	must(err)
+	// Exercise the public whole-definition update path after a real interval
+	// execution, rather than directly adjusting a daemon cursor.
+	first := time.Now().UTC().Add(2 * time.Second)
+	intervalSpec := spec
+	intervalSpec.Title = "Interval update acceptance"
+	intervalSpec.Trigger = schedule.Trigger{Type: "interval", At: &first, IntervalSeconds: 3600}
+	raw, err := json.Marshal(intervalSpec)
+	must(err)
+	created, err := client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "create", SpecJson: raw}}})
+	must(err)
+	task = schedule.Task{}
+	must(json.Unmarshal(created.GetSchedule().ResultJson, &task))
+	intervalRun := waitRun("real interval first execution completed", false)
+	getTask()
+	expectedTrigger, err := json.Marshal(task.Spec.Trigger)
+	must(err)
+	next := *task.NextRunAt
+	edited := task.Spec
+	edited.Title = "Interval update acceptance revised"
+	raw, err = json.Marshal(edited)
+	must(err)
+	_, err = client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "update", TaskId: task.ID, ExpectedRevision: task.Revision, SpecJson: raw}}})
+	must(err)
+	until := time.Now().Add(4 * time.Second)
+	wait(ctx, "whole-definition title-only edit does not repeat the completed interval", func() bool {
+		getTask()
+		trigger, e := json.Marshal(task.Spec.Trigger)
+		must(e)
+		if string(trigger) != string(expectedTrigger) || task.Active != nil || task.Dispatches != 1 || len(task.Runs) != 1 || task.Runs[0].ID != intervalRun.ID || task.NextRunAt == nil || !task.NextRunAt.Equal(next) || !task.NextRunAt.After(intervalRun.ScheduledAt) {
+			panic("title-only interval update repeated or rewound execution")
+		}
+		return !time.Now().Before(until)
+	})
+	sid = intervalRun.SessionID
+	wait(ctx, "interval CLI exited with its original automatic phase intact", func() bool { return getSession() && session.Info.GetStatus() == pb.SessionStatus_SESSION_STATUS_EXITED })
+	_, err = client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "cancel", TaskId: task.ID}}})
+	must(err)
 	fmt.Println("PASS acceptance complete; synthetic client commands used, no product UI or push delivery service exercised")
 }
