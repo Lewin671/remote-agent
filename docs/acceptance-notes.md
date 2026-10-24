@@ -991,3 +991,55 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 修后 xcresult 核对目标 40 次全部通过，两个 suite 共 400 次测试运行全部通过、0 跳过，退出码 0。修复构建后另有两个 suite 的 10 项检查通过，包含交叉影响回归；完整 App 的 `xcodebuild -quiet -disableAutomaticPackageResolution -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -resultBundlePath <独立输出目录>/full.xcresult build test` 也通过：339 项（动态参数展开后 377 次执行）、0 失败/跳过，退出码 0。
 
 修前默认调度组结束测试后，Xcode 曾停在 `simctl diagnose` 的诊断收集；调度日志显示测试进程已结束，进程采样定位为 `collectSimulatorDiagnostics → simCtlDiagnose` 等待。本轮只停止该诊断子进程，让 Xcode 写完结果，保留真实的退出码 65 和全部 40 次测试结果，没有把收集停顿算成目标测试超时，也没有靠重跑消除那 10 次失败。专项日志、xcresult、源文件指纹和重复运行脚本仅保存在本地输出。
+
+### 客户端最终评审修复与三端对照（2026-10-24）
+
+本轮沿用整合分支、产品 0.45.7 / 协议 11。先更新 [v49「各端统一的写法」](design/client-v49.html#schedules)，再逐端修改；该节是文案与行为的维护位置。以下记录本轮检查所覆盖的实际行为，不增加真实 CLI、推送或真机验收结论。
+
+| 缺陷 | 修复与回归证据 |
+|---|---|
+| 网页静默轮遇 SUBMITTED 就不折叠 | `foldScheduled` 只阻止失败、无法确认、取消、需要终端、CLI 持有和 paused 输入。事件测试使用 daemon 的 userMessage → SUBMITTED → reply → turnEnded 顺序，同时核对异常输入仍可见。该顺序依据 `inject.go`，不是新增的真实 CLI 录制。 |
+| 网页自动任务名留空白、移除电脑后留缓存 | 第一句规范化后 trim；回归含句号前空白。移除电脑时清理加密快照及请求状态，晚到的 list 不得重建缓存；回归检查存储删除和晚响应。 |
+| Android 删除后残留、运行跳到上一轮 | repository 对删除状态做可见性过滤，取消成功返回列表；Compose 回归走实际取消和导航。运行游标为 `(start_seq > 0 ? start_seq : after_seq) + 1`，两个分支都有断言。 |
+| Android interval 编辑丢相位 | 同间隔保留原 `at` / `delay_seconds`；新间隔延迟一个完整周期。只改次数时保留原截止日期；回归检查生成的完整 trigger。 |
+| Android / iOS 用保存时的最新修订号及 spec | 打开编辑器时固定完整任务快照，以该 revision / spec 提交。Android Compose 在编辑期间注入另一端修订，再检查实际请求；iOS 检查编辑草稿生成的命令。冲突提示和重读路径保留。 |
+| Android 缓存未保留原签名密文 | Remote 保存原始已验证 envelope 和 request ID，离线重新核对成员、来源签名和响应位置；repository 仅持有内存明文。加密本地测试 server / daemon 回归检查原密文和签名不变、错误 request / 签名被拒绝、冷读和移除后的清理；Room 回归检查只删除对应电脑的任务快照。 |
+| Android 行测试只输入预写文案 | `TaskRow` 接收真实任务及 RemoteState；测试从共享 JSON 推导频率、位置、结果和状态，再检查组件。 |
+| iOS 时区更改带走当地时刻 | 时间草稿保存当地日期、时、分组件，改变时区只改变解释方式；覆盖每天、一次性时间、截止时间及 DST 缺失时刻，未实际等待 DST 切换。 |
+| iOS 新建把 plan 改 ask | 保留 plan，禁用创建并解释原因；草稿回归要求不能生成新对话执行 spec。 |
+| iOS 手动刷新和修订读取竞争 | 所有读取共用按电脑的读槽，刷新等待已有读取及修订追读；令牌防止旧读取清掉新任务。受控 continuation 回归同时请求两次手动刷新并推进修订，检查最大并发为 1、最终数据来自最新读取。 |
+| iOS 历史加载后不重试运行定位 | 同时观察行 ID、loaded 和待定位运行；真实 UIHostingController 回归保持行 ID 不变，只推进 loaded，确认观察器再次执行。 |
+| iOS 手动暂停警告、成功运行被写成失败 | 用户暂停不挂原因横幅；系统停下及暂停期间到期才显示原因。注意组第三行只推导原因，运行本身仍保留成功结果。回归输入任务状态推导实际显示策略和结果。 |
+| iOS interval 相位与运行游标 | 同间隔保留完整 trigger，改一个结束值保留另一结束值；运行定位使用带 after_seq 回退的 firstSeq。RACore 回归覆盖。 |
+
+三端共同读取 `testdata/schedules/clients.json` 核对分组、可见性和原因。界面回归另覆盖时间与时区、双结束条件、创建者、空摘要、执行中及手动请求的禁用、离线状态、新任务无来源会话和 plan 默认值；没有把预写的行标签传给组件来代替状态推导。
+
+新增的 iOS 串行读取回归首次全量执行挂起了一次：固定次数的释放循环可能在后续请求真正进入前结束，留下 continuation。测试进程采样和测试日志核对只有该新增测试未结束，随后停止该次运行；不是原有 bootstrap 或 polling 问题，也不把停止后的退出码当作通过。改为等待“首个读取已挂起”“两个手动刷新均已进入”“修订追读已挂起”三个明确条件，只悬挂前两个读取，逐个恢复，后续读取直接完成。没有固定 sleep 或增加超时。修后 `ScheduleStoreTests` 以 scheme 默认调度重复 40 次，12 项 × 40 = 480 次执行、0 失败/跳过；修后完整 App 也通过。该证据验证本轮新增测试的控制方式，前两项既有偶发问题的专项证据仍见上节。
+
+截图使用同一份编造的任务数据：停下、两个进行中、暂停期间到期、用户删除和结束任务；详情为「检查 PR 回复」，新建采用同名、同消息、project / Claude Code / 自动 / haiku / 每小时，对话为「修复登录超时」。网页通过本机 Chrome 的开发演示，Android 通过现有 API 36 模拟器的 instrumentation gallery，iOS 只使用已有 iPhone 18 Pro / iOS 27 模拟器的 DEBUG fixture 与 route 启动参数。它们渲染实际页面，但没有发送任务给真实 CLI；调试装载和直接界面填写分别记录在本地截图输出。四个亮色画面覆盖原输出，另生成四张三端并排图；截图和比较图仅存本地输出，不把本机路径或图像提交到公开仓库。
+
+首次检查的其余失败均已定位：Android 两条既有断言仍期待旧离线/次日文案，随统一规则更新；新增 plan 默认值用例起初未声明 `defaultModeSource`，产品按“未知默认值”处理是正确的，补齐 fixture 的 CLI_CONFIG 来源后通过。删除过滤变异起初使测试在 `.single()` 抛异常，未被计为断言验证通过，现先显式断言数量。截图驱动还修正了时间浮层误选背景输入框的问题，并检查任务名和键盘收起条件；这些不是产品偶发失败。
+
+最后复核还覆盖了“已有会话占位对象，但 info 尚未加载”：三端在元数据到达前统一显示「在对话里」，不会把占位标题当成对话名。回归输入真实的未加载 SessionView；iOS 另推进到已加载状态，核对恢复为真实标题。固定截图的目标已加载，所以该修正不改变截图内容。
+
+变异工具的 iOS App 检查原先从 quiet 标准输出寻找断言正文，但 Xcode 只打印失败用例名。核对 xcresult 后，改为解析结构化 testFailures，要求指定用例确实出现 expectation failure；运行定位用例的等待工具以 `Issue.record` 报告条件失败，仅接受它的明确条件「loaded history retries jump」；没有用“测试退出非零”或“任意其他用例失败”代替。检查用临时 xcresult，原测试基线必须实际执行且通过；有意制造断言失败的变异关闭 verbose 系统诊断收集，保留测试结果和断言。正常完整 App 检查仍使用原有默认设置。
+
+变异结束后，再次从还原后的 checkout 完成全量检查与正常构建，以下最终命令均已核对退出码：
+
+| 命令（未注明目录时从仓库根执行） | 最终结果 |
+|---|---|
+| `go test ./...` | 通过，退出码 0 |
+| `pnpm --dir web typecheck` | 通过，退出码 0 |
+| `pnpm --dir web test` | 87 个文件、1169 项通过，退出码 0 |
+| `pnpm --dir web build` | 通过，退出码 0；仍有既有的 authority-setup 静态/动态导入分块提示 |
+| `cd android && ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` | 通过，退出码 0；core 398 项、app 332 项，失败/错误/跳过均为 0，debug APK 构建成功 |
+| `cd ios/RemoteAgentCore && swift test` | 退出码 0；Swift Testing 报告 543 项、84 个 suite 通过，另有 RAMarkdown 17 项和 XCTest 1 项通过；需额外开启的真实 daemon 用例仍按默认条件跳过 |
+| `xcodebuild -quiet -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -resultBundlePath <独立输出目录>/app.xcresult build test` | 退出码 0；345 项（动态参数展开后 383 次执行）通过，0 失败/跳过。只使用已有 iPhone 18 Pro / iOS 27.0 |
+| 同一 App 命令，加 `-only-testing:RemoteAgentTests/ScheduleStoreTests -test-iterations 40` | 退出码 0；12 项 × 40 = 480 次通过，0 失败/跳过 |
+| `python3 scripts/check-schedule-regressions.py --clients` | 完整 175 项通过，退出码 0：后端 116、客户端 59（本轮新增 35）；原测试基线通过后逐项恢复缺陷并核对断言失败，结束后源码已还原 |
+| `python3 scripts/public_scan.py web/dist deploy/self-host android/app/build/outputs/apk/debug/app-debug.apk` | 通过，退出码 0；检查本次正常构建的网页包、自部署模板和 debug APK，不代表签名发布产物已检查 |
+| 全部跟踪及未忽略源码逐文件交给 `python3 scripts/public_scan.py` | 1912 个文件，原始退出码 1；仍为前次整合的 16 条既有提示（12 条允许的官方域名、3 条扫描规则字面量、1 条既有符号链接），没有私有名单命中。未修改扫描规则或放行名单 |
+| Android `ScheduleComparisonGallery` instrumentation | 4 项通过；检查实际页面、任务名与键盘收起条件，再保存截图 |
+| `git diff --check` | 通过 |
+
+结果、xcresult 和截图仅保存在本地输出。三端各四张亮色原图已覆盖，并有列表、详情、新建、对话定时条四张并排比较图及输入/截图指纹。Chrome 主题与视口已恢复，临时 Android 测试包和模拟器进程已清理；USB 真机没有操作。没有新增真实推送、真机、iPad、实际睡眠/DST 切换或客户端 Codex 全链路验收。未推送、打 tag、发版、部署或修改 `version.properties`。
