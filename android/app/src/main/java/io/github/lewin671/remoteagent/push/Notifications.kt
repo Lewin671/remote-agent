@@ -137,6 +137,7 @@ object Notifier {
         approval: String? = null,
         code: Int,
         scheduleSeq: Long = 0,
+        scheduleEvent: String? = null,
     ): PendingIntent {
         val i =
             Intent(context, MainActivity::class.java)
@@ -144,6 +145,8 @@ object Notifier {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         if (approval != null) i.putExtra(EXTRA_APPROVAL, approval)
         if (scheduleSeq > 0) i.putExtra(EXTRA_SCHEDULE_SEQ, scheduleSeq)
+        // Extras do not identify PendingIntents; the numeric request code may collide.
+        if (scheduleEvent != null) i.action = "io.github.lewin671.remoteagent.scheduled/$session/$scheduleEvent"
         return PendingIntent.getActivity(
             context,
             code,
@@ -235,7 +238,13 @@ object Notifier {
                 // No "Open link" chips guessed from the command.
                 .setAllowSystemGeneratedContextualActions(false)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(openIntent(context, session, approval?.approvalId, nid, if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) c?.sourceEventSeq ?: 0 else 0))
+                .setContentIntent(
+                    openIntent(
+                        context, session, approval?.approvalId, nid,
+                        scheduleSeq = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) c?.sourceEventSeq ?: 0 else 0,
+                        scheduleEvent = eventKey.takeIf { kind == NotifyKind.NOTIFY_KIND_SCHEDULED },
+                    ),
+                )
         if (!how.detailed || c == null) {
             b.setContentTitle("remote-agent").setContentText(generic)
         } else if (approval != null) {

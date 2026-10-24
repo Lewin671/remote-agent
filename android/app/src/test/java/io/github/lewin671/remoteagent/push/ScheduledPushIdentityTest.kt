@@ -2,6 +2,8 @@ package io.github.lewin671.remoteagent.push
 
 import android.app.Application
 import android.app.NotificationManager
+import io.github.lewin671.remoteagent.MainActivity
+import io.github.lewin671.remoteagent.proto.NotifyContent
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import org.junit.Assert.*
 import org.junit.Test
@@ -29,11 +31,49 @@ class ScheduledPushIdentityTest {
         Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_ATTENTION, null, false)
         assertEquals("ordinary notifications retain replacement behavior", 3, shadowOf(manager).allNotifications.size)
     }
+    @Test fun collidingNumericIdsKeepBothEventsAndTheirOwnTapTargets() {
+        val context = RuntimeEnvironment.getApplication()
+        Push.createChannels(context)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        // Valid decimal event sequences with equal Java hashes, not invented key formats.
+        val first = 720232296L
+        val second = 368856997L
+        assertEquals(Notifier.id("session", "scheduled:$first"), Notifier.id("session", "scheduled:$second"))
+        for (seq in listOf(first, second, first)) {
+            val content = NotifyContent.newBuilder()
+                .setTitle("event-$seq").setSourceEventSeq(seq).build()
+            Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, content, true, "scheduled:$seq")
+        }
+        val notifications = shadowOf(manager).allNotifications
+        assertEquals("different events coexist and retry replaces only itself", 2, notifications.size)
+        for (notification in notifications) {
+            val expected = notification.extras.getCharSequence("android.title").toString().removePrefix("event-").toLong()
+            assertEquals(expected, shadowOf(notification.contentIntent).savedIntent.getLongExtra(Notifier.EXTRA_SCHEDULE_SEQ, 0))
+        }
+    }
+
+    @Test fun equalEventSequencesInDifferentSessionsKeepTheirOwnTapTargets() {
+        val context = RuntimeEnvironment.getApplication()
+        Push.createChannels(context)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        for (session in listOf("first-session", "second-session")) {
+            val content = NotifyContent.newBuilder()
+                .setTitle(session).setSourceEventSeq(7).build()
+            Notifier.show(context, session, NotifyKind.NOTIFY_KIND_SCHEDULED, content, true, "scheduled:7")
+        }
+        val notifications = shadowOf(manager).allNotifications
+        assertEquals(2, notifications.size)
+        for (notification in notifications) {
+            assertEquals(notification.extras.getCharSequence("android.title").toString(),
+                shadowOf(notification.contentIntent).savedIntent.getStringExtra(MainActivity.EXTRA_SESSION))
+        }
+    }
+
     @Test fun scheduledPushShowsTheSignedDaemonTitleAndPreservesItsEventTarget() {
         val context = RuntimeEnvironment.getApplication()
         Push.createChannels(context)
         val manager = context.getSystemService(NotificationManager::class.java)
-        val content = io.github.lewin671.remoteagent.proto.NotifyContent.newBuilder().setTitle("任务名来自签名内容").setText("通知正文").setSourceEventSeq(7).build()
+        val content = NotifyContent.newBuilder().setTitle("任务名来自签名内容").setText("通知正文").setSourceEventSeq(7).build()
         Notifier.show(context,"session",NotifyKind.NOTIFY_KIND_SCHEDULED,content,true,"scheduled:7")
         val n = shadowOf(manager).allNotifications.single()
         assertEquals("任务名来自签名内容", n.extras.getCharSequence("android.title").toString())
