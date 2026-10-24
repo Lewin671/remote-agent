@@ -21,7 +21,7 @@ final class ScheduleStore {
     @ObservationIgnored private var jobs: [String: Task<Void, Never>] = [:]
 
     func follow(_ remote: Remote) async {
-        calls = Calls(cached: { await remote.cachedSchedules($0) }, list: { try await remote.listSchedules($0) }, resolve: { _ = try? await remote.fetchSession($0) })
+        if calls == nil { calls = Calls(cached: { await remote.cachedSchedules($0) }, list: { try await remote.listSchedules($0) }, resolve: { _ = try? await remote.fetchSession($0) }) }
         for await state in remote.state.updates() {
             reconcile(state)
             if Task.isCancelled { break }
@@ -42,45 +42,50 @@ final class ScheduleStore {
         for id in revisions.keys where !supported.contains(id) { revisions[id] = nil; restored.remove(id) }
         tasks.removeAll { !supported.contains($0.machineID) }
         for id in errors.keys where !supported.contains(id) { errors[id] = nil }
-        for id in jobs.keys where !supported.contains(id) { jobs[id]?.cancel(); jobs[id] = nil; loading.remove(id) }
-        for id in supported {
-            guard jobs[id] == nil, let calls else { continue }
-            let needsRestore = !restored.contains(id)
+        for id in jobs.keys where !supported.contains(id) { jobs[id]?.cancel(); jobs[id] = nil; readIDs[id] = nil; loading.remove(id) }
+        for id in supported where jobs[id] == nil {
             let revision = state.machines[id]?.meta?.scheduleRevision ?? 0
-            guard needsRestore || (online(id) && revisions[id] != revision) else { continue }
-            loading.insert(id)
-            jobs[id] = Task {
-                if needsRestore {
-                    let cached = await calls.cached(id)
-                    guard !Task.isCancelled else { return }
-                    restored.insert(id)
-                    if let cached { replace(id, cached) }
-                }
-                if online(id) {
-                    do {
-                        let list = try await calls.list(id)
-                        guard !Task.isCancelled else { return }
-                        replace(id, list); revisions[id] = revision; errors[id] = nil
-                        for sid in Set(list.compactMap { $0.spec.target.session }) where latest.sessions[sid] == nil {
-                            await calls.resolve(sid)
-                        }
-                    } catch {
-                        errors[id] = errorText(error)
-                        // No polling. A revision/reconnection or explicit Retry triggers the next read.
-                        revisions[id] = revision
-                    }
-                }
-                loading.remove(id); jobs[id] = nil
-                reconcile(latest)
-            }
+            if !restored.contains(id) || (online(id) && revisions[id] != revision) { _ = beginRead(id) }
         }
     }
+    @ObservationIgnored private var readIDs: [String: UUID] = [:]
+    /// Every read, including explicit refresh after a mutation, owns the same machine slot.
+    private func beginRead(_ id: String) -> Task<Void, Never>? {
+        guard jobs[id] == nil, let calls else { return jobs[id] }
+        let token = UUID(), revision = latest.machines[id]?.meta?.scheduleRevision ?? 0
+        let needsRestore = !restored.contains(id)
+        readIDs[id] = token; loading.insert(id)
+        let job = Task {
+            defer {
+                if readIDs[id] == token {
+                    loading.remove(id); jobs[id] = nil; readIDs[id] = nil
+                    reconcile(latest)
+                }
+            }
+            if needsRestore {
+                let cached = await calls.cached(id)
+                guard !Task.isCancelled else { return }
+                restored.insert(id)
+                if let cached { replace(id, cached) }
+            }
+            guard online(id) else { return }
+            do {
+                let list = try await calls.list(id)
+                guard !Task.isCancelled else { return }
+                replace(id, list); revisions[id] = revision; errors[id] = nil
+                for sid in Set(list.compactMap { $0.spec.target.session }) where latest.sessions[sid] == nil { await calls.resolve(sid) }
+            } catch {
+                guard !Task.isCancelled else { return }
+                errors[id] = errorText(error); revisions[id] = revision
+            }
+        }
+        jobs[id] = job; return job
+    }
     func refresh(_ id: String) async {
-        guard online(id), let calls else { return }
-        // Serialize list reads so an older response cannot overwrite a post-mutation snapshot.
-        if let job = jobs[id] { await job.value }
-        do { replace(id, try await calls.list(id)); errors[id] = nil }
-        catch { errors[id] = errorText(error) }
+        // Recheck after each suspension: the finished read may have queued a revision catch-up.
+        while let job = jobs[id] { await job.value }
+        guard online(id), let job = beginRead(id) else { return }
+        await job.value
     }
     private func replace(_ id: String, _ list: [ScheduleTask]) {
         guard latest.machines[id]?.meta?.capabilities.scheduledTasks == true else { return }

@@ -63,6 +63,27 @@ import UIKit
         #expect(spec.target.model == nil && spec.target.mode == nil && spec.target.cwd == nil)
         context.scheduleDrafts.clear("s"); #expect(context.scheduleDrafts.of("s") !== draft)
     }
+    @Test func concurrentManualAndRevisionReadsShareOneMachineSlot() async {
+        let store=ScheduleStore();var started=0;var active=0;var peak=0
+        var waiters=[CheckedContinuation<[ScheduleTask], any Error>]()
+        store.configure(.init(cached:{ _ in nil },list:{ _ in
+            started += 1;active += 1;peak=max(peak,active)
+            defer { active -= 1 }
+            return try await withCheckedThrowingContinuation { waiters.append($0) }
+        }))
+        store.reconcile(state());await settle { started==1 }
+        let first=Task { await store.refresh("m") };let second=Task { await store.refresh("m") }
+        store.reconcile(state(revision:2));await Task.yield()
+        #expect(started==1 && peak==1)
+        var returned=0
+        for _ in 0..<5 {
+            if waiters.isEmpty { await Task.yield() }
+            if !waiters.isEmpty { returned += 1;waiters.removeFirst().resume(returning:[self.task("r\(returned)")]) }
+            await settle { !waiters.isEmpty || store.loading.isEmpty }
+        }
+        await first.value;await second.value
+        #expect(peak==1 && started>=3 && store.tasks.first?.task.id=="r\(returned)")
+    }
     @Test func creationKeyStaysStableForRetriesAndChangesWithTheDefinition() throws {
         let draft = ScheduleDraft(); draft.message = "检查"
         draft.config = NewConfig(machineId: "m", cwd: "/example")
