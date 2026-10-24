@@ -52,6 +52,8 @@ type Target struct {
 // Task is persisted by the daemon. Pausing/canceling stops future dispatches,
 // not an execution already handed to a session's input queue.
 type Task struct {
+	AutomaticStatus    string     `json:"automatic_status,omitempty"`
+	AutomaticReason    string     `json:"automatic_reason,omitempty"`
 	RunNow             bool       `json:"run_now,omitempty"`
 	AutomaticNextRunAt *time.Time `json:"automatic_next_run_at,omitempty"`
 	LastCalendarDate   string     `json:"last_calendar_date,omitempty"`

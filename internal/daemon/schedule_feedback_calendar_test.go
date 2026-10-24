@@ -132,3 +132,61 @@ func TestCalendarDeadlineAndEditBoundaries(t *testing.T) {
 		t.Fatalf("stale next occurrence: %+v", task)
 	}
 }
+
+func TestRecurringResumeAndManualFailures(t *testing.T) {
+	for _, typ := range []string{"interval", "calendar"} {
+		for _, limit := range []int64{0, 1} {
+			h := scheduleHarness(t)
+			tr := schedule.Trigger{Type: typ, MaxRuns: limit}
+			if typ == "calendar" {
+				tr.Time, tr.Timezone = "08:00", "UTC"
+			} else {
+				tr.IntervalSeconds = 300
+			}
+			spec := taskSpec(tr)
+			task := createTask(t, h, spec, "")
+			state := h.d.tasks[task.ID]
+			state.Status, state.Reason, state.NextRunAt = "paused", "execution_interrupted", nil
+			state.Dispatches = 1
+			_, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "resume", TaskId: task.ID}, originLocal)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := readTask(t, h.d, task.ID)
+			if limit == 0 && (got.Status != "scheduled" || got.NextRunAt == nil || !got.NextRunAt.After(time.Now())) {
+				t.Fatalf("recurring resume lost: %+v", got)
+			}
+			if limit == 1 && (got.Status != "completed" || got.Reason != "run_limit_reached") {
+				t.Fatalf("limit ignored: %+v", got)
+			}
+			h.s.log.Close()
+		}
+	}
+	for _, status := range []string{"completed", "failed", "interrupted", "uncertain", "cancelled"} {
+		for _, initial := range []string{"scheduled", "paused", "completed"} {
+			t.Run(status+initial, func(t *testing.T) {
+				h := scheduleHarness(t)
+				defer h.s.log.Close()
+				task := createTask(t, h, taskSpec(schedule.Trigger{Type: "calendar", Time: "08:00", Timezone: "UTC"}), "")
+				state := h.d.tasks[task.ID]
+				due := time.Now().Add(time.Hour)
+				state.Status, state.Reason, state.NextRunAt = initial, "original", &due
+				if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); err != nil {
+					t.Fatal(err)
+				}
+				h.d.tickSchedules(time.Now().Add(time.Second))
+				state = h.d.tasks[task.ID]
+				if state.Active == nil {
+					t.Fatal("trial missing")
+				}
+				h.d.endScheduledRun(state, time.Now(), status, "trial result")
+				if state.Status != initial || state.Reason != "original" || state.NextRunAt == nil || !state.NextRunAt.Equal(due) || state.Dispatches != 0 {
+					t.Fatalf("trial changed automatic state: %+v", state)
+				}
+				if state.Runs[len(state.Runs)-1].Status != status {
+					t.Fatal("trial result lost")
+				}
+			})
+		}
+	}
+}

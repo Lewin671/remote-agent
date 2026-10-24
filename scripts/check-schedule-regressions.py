@@ -19,7 +19,7 @@ def go(name, file, before, after, test, package=DAEMON):
 go("01-occurrence-date", "internal/daemon/schedule.go", "calendarDate(t.Spec.Trigger, t.Active.ScheduledAt)", "calendarDate(t.Spec.Trigger, now)", "TestCalendarCatchupOccupiesOccurrenceDateOnly")
 go("01-skipped-date", "internal/daemon/schedule.go", "func nextCalendar(t *schedule.Task, now time.Time) time.Time {", "func nextCalendar(t *schedule.Task, now time.Time) time.Time { if len(t.Runs)>0 {return t.Spec.Trigger.NextCalendar(now.Add(24*time.Hour))};", "TestCalendarCatchupOccupiesOccurrenceDateOnly")
 go("02-manual-date", "internal/daemon/schedule.go", 'if t.Spec.Trigger.Type == "calendar" && !t.RunNow {\n\t\t\t\t\t\tt.LastCalendarDate', 'if t.Spec.Trigger.Type == "calendar" {\n\t\t\t\t\t\tt.LastCalendarDate', "TestCalendarManualRunPreservesAutomaticOccurrence")
-go("02-manual-cursor", "internal/daemon/schedule.go", "if t.AutomaticNextRunAt != nil {", "if false && t.AutomaticNextRunAt != nil {", "TestCalendarManualRunPreservesAutomaticOccurrence")
+go("02-manual-cursor", "internal/daemon/schedule.go", "t.NextRunAt = t.AutomaticNextRunAt", "t.NextRunAt = nil", "TestCalendarManualRunPreservesAutomaticOccurrence")
 go("02-manual-count", "internal/daemon/schedule.go", 'if t.Spec.Trigger.Type != "calendar" || !t.RunNow {', 'if true {', "TestCalendarManualRunPreservesAutomaticOccurrence")
 go("02-manual-limit-command", "internal/daemon/schedule.go", 't.Spec.Trigger.Type != "calendar" && t.Spec.Trigger.MaxRuns > 0', 't.Spec.Trigger.MaxRuns > 0', "TestCalendarManualRunPreservesAutomaticOccurrence")
 go("02-manual-limit-dispatch", "internal/daemon/schedule.go", '!t.RunNow && t.Spec.Trigger.MaxRuns > 0', 't.Spec.Trigger.MaxRuns > 0', "TestCalendarManualRunPreservesAutomaticOccurrence")
@@ -51,6 +51,9 @@ go("16-loop", "internal/daemon/schedule.go", "for _, s := range d.scheduledClosu
 go("r2-01-replay-write", "internal/daemon/schedule_events.go", "if s.meta.TaskOwned {\n\t\ts.meta.TaskOwned = false", "if true {\n\t\ts.meta.TaskOwned = false", "TestOrdinaryHumanReplayDoesNotWriteMetadata")
 
 go("r2-02-cold-list", "internal/server/store.go", "AND ended_ms = 0 ORDER BY", "AND ended_ms = 0 AND NOT EXISTS (SELECT 1 FROM task_owned_sessions AS owned WHERE owned.account_id=sessions.account_id AND owned.session_id=sessions.session_id) ORDER BY", "TestColdListIncludesLiveTaskOwnedApprovals", "./internal/server")
+
+go("r2-03-resume", "internal/daemon/schedule.go", 't.Spec.Trigger.Type == "interval" || t.Spec.Trigger.Type == "calendar" {', 'false {', "TestRecurringResumeAndManualFailures")
+go("r2-03-manual-result", "internal/daemon/schedule.go", 'if manual {', 'if false && manual {', "TestRecurringResumeAndManualFailures")
 
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

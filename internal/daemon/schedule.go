@@ -311,6 +311,8 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		t.Reason = ""
 		if t.Active != nil {
 			t.Status = t.Active.Status
+		} else if t.Spec.Trigger.Type == "interval" || t.Spec.Trigger.Type == "calendar" {
+			d.nextSchedule(t, now)
 		} else if t.NextRunAt != nil {
 			t.Status = "scheduled"
 		} else if t.Spec.Trigger.Type == "after_turn" && prev.Reason != "completed_while_paused" {
@@ -339,12 +341,12 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		if t.Status == "cancelled" {
 			return nil, errors.New("cancelled tasks cannot run; create a new task")
 		}
-		t.Status = "scheduled"
-		t.Reason = ""
 		if t.Spec.Trigger.Type == "calendar" && !t.RunNow {
+			t.AutomaticStatus, t.AutomaticReason = t.Status, t.Reason
 			t.AutomaticNextRunAt = t.NextRunAt
 			t.RunNow = true
 		}
+		t.Status, t.Reason = "scheduled", ""
 		t.NextRunAt = &now
 	default:
 		return nil, errors.New("unknown schedule operation")
@@ -528,6 +530,7 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 	t.Reason = ""
 	t.NextRunAt = nil
 	t.RunNow, t.AutomaticNextRunAt = false, nil
+	t.AutomaticStatus, t.AutomaticReason = "", ""
 	switch tr.Type {
 	case "calendar":
 		at := nextCalendar(t, now)
@@ -885,12 +888,7 @@ func (d *Daemon) finishScheduledDispatch(ctx context.Context, snapshot *schedule
 	}
 	run := t.Active
 	if reason != "" {
-		run.Status, run.Reason, run.EndedAt = "failed", reason, &now
-		t.Runs = appendRun(t.Runs, *run)
-		t.Active = nil
-		if t.Status != "paused" && t.Status != "cancelled" {
-			t.Status, t.Reason = "failed", reason
-		}
+		d.endScheduledRun(t, now, "failed", reason)
 	} else {
 		run.Status, run.Reason = "queued", ""
 		if deliveryErr != nil {
@@ -900,7 +898,9 @@ func (d *Daemon) finishScheduledDispatch(ctx context.Context, snapshot *schedule
 			t.Status, t.Reason = run.Status, run.Reason
 		}
 	}
-	t.NextRunAt = nil
+	if t.Active != nil || !run.Manual {
+		t.NextRunAt = nil
+	}
 	touchTask(t, now)
 	if err := d.saveSchedulesLocked(); err != nil {
 		// Effects may already have happened. Never restore a dispatchable task.
@@ -1054,11 +1054,16 @@ func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) bool {
 	return changed
 }
 func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason string) {
+	manual := t.Active.Manual
 	t.Active.Status = status
 	t.Active.Reason = reason
 	t.Active.EndedAt = &now
 	t.Runs = appendRun(t.Runs, *t.Active)
 	t.Active = nil
+	if manual {
+		d.restoreManualSchedule(t, now)
+		return
+	}
 	if t.Status == "cancelled" {
 		return
 	}
@@ -1086,6 +1091,20 @@ func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason
 	}
 	d.nextSchedule(t, now)
 }
+
+// A calendar trial never changes automatic scheduling, even on failure.
+func (d *Daemon) restoreManualSchedule(t *schedule.Task, now time.Time) {
+	status, reason := t.Status, t.Reason
+	t.NextRunAt = t.AutomaticNextRunAt
+	if status != "paused" && status != "cancelled" {
+		status, reason = t.AutomaticStatus, t.AutomaticReason
+	}
+	t.Status, t.Reason = status, reason
+	t.AutomaticNextRunAt = nil
+	t.AutomaticStatus, t.AutomaticReason = "", ""
+	t.RunNow = false
+	d.expireSchedule(t, now)
+}
 func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
 	defer d.expireSchedule(t, now)
 	tr := t.Spec.Trigger
@@ -1111,10 +1130,6 @@ func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
 		t.Status = "scheduled"
 	case tr.Type == "calendar":
 		next := nextCalendar(t, now)
-		if t.AutomaticNextRunAt != nil {
-			next = *t.AutomaticNextRunAt
-			t.AutomaticNextRunAt = nil
-		}
 		t.NextRunAt, t.Status = &next, "scheduled"
 	case tr.Type == "after_turn" && tr.Repeat:
 		next := now.Add(time.Duration(tr.DelaySeconds) * time.Second)
