@@ -98,7 +98,7 @@ class SchedulesTest {
         val bytes = """{"tasks":[${task().json},${deleted.json}]}""".toByteArray()
         var cleared = false
         val repo = ScheduleRepository(backgroundScope, remote, { _, _ -> error("offline must not send") }, read = { bytes }, clear = { cleared = true })
-        runCurrent(); assertEquals("Check",repo.tasks().single().title); assertTrue(repo.state.value["computer"]!!.cached)
+        runCurrent(); assertEquals(1,repo.tasks().size); assertEquals("Check",repo.tasks().single().title); assertTrue(repo.state.value["computer"]!!.cached)
         assertTrue(runCatching { repo.operate("computer","pause",task()) }.isFailure)
         remote.value = RemoteState(); runCurrent(); assertTrue(repo.tasks().isEmpty()); assertTrue(cleared)
     }
