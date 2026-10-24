@@ -117,3 +117,92 @@ func TestFailedOneShotRetryOutcome(t *testing.T) {
 		}
 	}
 }
+
+func TestNonCompletedScheduledFollowups(t *testing.T) {
+	for _, status := range []string{"interrupted", "failed"} {
+		for _, terminal := range []bool{false, true} {
+			for _, boundary := range []string{"client", "local", "resume", "exit", "scheduled"} {
+				t.Run(status+map[bool]string{false: "/paused", true: "/cancelled"}[terminal]+"/"+boundary, func(t *testing.T) {
+					h := scheduleHarness(t)
+					defer func() { h.s.log.Close() }()
+					task := startScheduledTurn(t, h)
+					if status == "interrupted" {
+						endTimed(t, h, pb.TurnOutcome_TURN_OUTCOME_ABORTED)
+					} else if err := h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: task.Active.RequestID, Status: pb.InputStatus_INPUT_STATUS_FAILED}}}); err != nil {
+						t.Fatal(err)
+					}
+					h.d.tickSchedules(time.Now())
+					if terminal {
+						if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "cancel", TaskId: task.ID}, originLocal); err != nil {
+							t.Fatal(err)
+						}
+					}
+					restartSession(t, h)
+					before := readTask(t, h.d, task.ID)
+					revision := h.d.scheduleRevision
+					if len(before.Runs) != 1 || before.Runs[0].Status != status || !hasPendingScheduledFollowups(before) {
+						t.Fatalf("ended context no longer tracked: %+v", before)
+					}
+					for i := 1; i <= 2; i++ {
+						if err := h.s.emit(&pb.Event{TurnId: "background", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}); err != nil {
+							t.Fatal(err)
+						}
+						if err := notifyTest(t, h, "background result", ""); err != nil {
+							t.Fatal(err)
+						}
+						if err := h.s.emit(&pb.Event{TurnId: "background", Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Phase: "final_answer", Text: "## Background summary"}}}, &pb.Event{TurnId: "background", Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_COMPLETED}}}); err != nil {
+							t.Fatal(err)
+						}
+						h.d.tickSchedules(time.Now())
+						got := readTask(t, h.d, task.ID)
+						r := got.Runs[0]
+						if r.ID != task.Active.ID || r.Status != status || !r.Notified || r.NotificationCount != i || r.NotificationText != "background result" || r.FinalSummary != "Background summary" || automaticPlan(got) != automaticPlan(before) {
+							t.Fatalf("background result lost or changed original outcome: %+v", got)
+						}
+						if got.Revision <= before.Revision || h.d.scheduleRevision <= revision {
+							t.Fatal("followup did not publish visible revisions")
+						}
+						revision = h.d.scheduleRevision
+						before = got
+						h.d.tickSchedules(time.Now())
+						if h.d.scheduleRevision != revision || readTask(t, h.d, task.ID).Runs[0].NotificationCount != i {
+							t.Fatal("followup replay double counted or republished")
+						}
+						restartSession(t, h)
+						if got := readTask(t, h.d, task.ID); got.Revision != before.Revision || got.Runs[0].NotificationCount != i || got.Runs[0].FinalSummary != "Background summary" {
+							t.Fatal("followup result not durable")
+						}
+					}
+					var closeEvent *pb.Event
+					switch boundary {
+					case "client", "local":
+						origin := originLocal
+						if boundary == "client" {
+							origin = &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT}
+						}
+						closeEvent = withOrigin(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "human takes over"}}}, origin)
+					case "resume":
+						closeEvent = withOrigin(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "resumed"}}}, originLocal)
+					case "exit":
+						closeEvent = &pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_EXITED}}}
+					case "scheduled":
+						closeEvent = withOrigin(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "next scheduled input"}}}, &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_SYSTEM, ScheduledTaskId: "another-task", ScheduledRunId: "another-run"})
+					}
+					// Even a late event naming the old ID cannot reopen a closed context.
+					if err := h.s.emit(closeEvent, &pb.Event{Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: task.ID, RunId: task.Active.ID, Text: "after context ended"}}}, &pb.Event{Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Phase: "final_answer", Text: "unrelated final"}}}); err != nil {
+						t.Fatal(err)
+					}
+					h.d.tickSchedules(time.Now())
+					got := readTask(t, h.d, task.ID)
+					if !got.Runs[0].FollowupsClosed || hasPendingScheduledFollowups(got) || got.Runs[0].NotificationCount != 2 || got.Runs[0].FinalSummary != "Background summary" || got.Revision != before.Revision || h.d.scheduleRevision != revision {
+						t.Fatalf("context boundary did not stop tracking: %+v", got)
+					}
+					restartSession(t, h)
+					if hasPendingScheduledFollowups(readTask(t, h.d, task.ID)) {
+						t.Fatal("closed context reopened on restart")
+					}
+				})
+			}
+		}
+	}
+}

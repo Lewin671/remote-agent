@@ -1364,15 +1364,20 @@ func (d *Daemon) watchScheduledFollowups(t *schedule.Task) bool {
 
 func hasPendingScheduledFollowups(t *schedule.Task) bool {
 	for _, run := range t.Runs {
-		if run.Status == "completed" && !run.FollowupsClosed && run.SessionID != "" {
+		if pendingScheduledFollowup(&run) {
 			return true
 		}
 	}
 	return false
 }
 
+func pendingScheduledFollowup(run *schedule.Run) bool {
+	// Before message receipt, the delivery watcher owns the event cursor.
+	return run.MessageSeen && !run.FollowupsClosed && run.SessionID != ""
+}
+
 func (d *Daemon) watchScheduledFollowup(run *schedule.Run) bool {
-	if run.Status != "completed" || run.FollowupsClosed || run.SessionID == "" {
+	if !pendingScheduledFollowup(run) {
 		return false
 	}
 	s, err := d.exact(run.SessionID)

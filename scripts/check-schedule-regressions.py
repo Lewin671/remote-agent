@@ -123,6 +123,11 @@ go("r5-02-result", "internal/daemon/schedule.go", 'if retryFailed && oneShotTrig
 go("r5-02-persist-intent", "internal/daemon/schedule.go", 'RetryFailed: request.RetryFailed', 'RetryFailed: false', "TestFailedOneShotRetryOutcome")
 go("r5-02-success-only", "internal/daemon/schedule.go", '&& status == "completed" {', '{', "TestFailedOneShotRetryOutcome")
 
+go("r5-03-watch-status", "internal/daemon/schedule.go", 'if !pendingScheduledFollowup(run) {', 'if run.Status != "completed" || !pendingScheduledFollowup(run) {', "TestNonCompletedScheduledFollowups")
+go("r5-03-pending-status", "internal/daemon/schedule.go", 'if pendingScheduledFollowup(&run) {', 'if run.Status == "completed" && pendingScheduledFollowup(&run) {', "TestNonCompletedScheduledFollowups")
+
+go("r5-03-context-start", "internal/daemon/schedule.go", 'return run.MessageSeen && !run.FollowupsClosed', 'return !run.FollowupsClosed', "TestScheduleLateConfirmationResumesRun")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
