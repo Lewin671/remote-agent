@@ -311,7 +311,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
                 Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。")
                 if (machine == null && state.machines.values.any { !scheduleSupported(it) }) Hint("电脑需要更新 remote-agent，才能创建定时任务。")
             } else Hint("消息等当前这一轮结束后再发，不会打断正在做的事。")
-            val plan = !current && cfg != null && (cfg.mode ?: defaultModeOf(state.machines[cfg.machineId],cfg.agent).mode) == Mode.PLAN
+            val plan = schedulePlanBlocked(current,cfg,state)
             if (plan) Hint("计划模式不能创建执行任务，请先选择其他权限")
             val ready = !plan && writable && !busy && (message.isNotBlank() || frozen != null) && (current || cfg != null && (config != null || start?.settled == true))
             Btn(if (busy) "创建中…" else if (frozen != null) "重试创建" else "创建", {

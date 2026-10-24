@@ -32,4 +32,14 @@ class SchedulePresentationTest {
         val paused = ScheduledTask("m", JsonObject(task.json + ("status" to JsonPrimitive("paused")) + ("reason" to JsonPrimitive("user_paused"))))
         assertEquals("定时 · 每小时，已暂停", sessionScheduleText(listOf(paused),state))
     }
+    @Test fun planBlocksNewExecutionWithoutChangingTheSelectedPermission() {
+        val config = NewConfig("m","/example/project",Agent.AGENT_CLAUDE,"haiku",mode=Mode.PLAN)
+        assertTrue(schedulePlanBlocked(false,config,RemoteState()))
+        assertFalse(schedulePlanBlocked(true,config,RemoteState()))
+        assertFalse(schedulePlanBlocked(false,config.copy(mode=Mode.AUTO),RemoteState()))
+        val meta = MachineMeta.newBuilder().addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setDefaultMode(ApprovalMode.APPROVAL_MODE_PLAN)).build()
+        val state = RemoteState(machines=mapOf("m" to MachineView("m",true,0,meta)))
+        assertTrue(schedulePlanBlocked(false,config.copy(mode=null),state))
+        assertEquals(Mode.PLAN,config.mode)
+    }
 }

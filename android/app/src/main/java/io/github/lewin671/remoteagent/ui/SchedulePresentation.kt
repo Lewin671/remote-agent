@@ -28,3 +28,6 @@ fun sessionScheduleText(tasks: List<ScheduledTask>, state: RemoteState, now: Ins
     val status = if (!scheduleWritable(state, next.machine)) SCHEDULE_OFFLINE else scheduleNext(next, now)
     return if (tasks.size > 1) "${tasks.size} 个定时 · $status" else "定时 · ${scheduleFrequency(next.trigger)}，$status"
 }
+
+fun schedulePlanBlocked(current: Boolean, config: NewConfig?, state: RemoteState): Boolean =
+    !current && config != null && (config.mode ?: defaultModeOf(state.machines[config.machineId],config.agent).mode) == Mode.PLAN
