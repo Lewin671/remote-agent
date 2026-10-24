@@ -876,7 +876,7 @@ func (s *session) markExitedLocked(detail string) error {
 	s.mu.Unlock()
 	// Read the final records before settling the old turn and input. A
 	// failed read or append is retried when restoring or resuming.
-	settled := s.settleExited()
+	settleErr := s.settleExited()
 	commitErr := s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: detail,
 	}}})
@@ -890,8 +890,8 @@ func (s *session) markExitedLocked(detail string) error {
 	if commitErr != nil {
 		return fmt.Errorf("CLI already exited but could not record session state: %w", commitErr)
 	}
-	if !settled {
-		return errors.New("CLI already exited but final events could not be recorded; restart the daemon or resume to retry")
+	if settleErr != nil {
+		return fmt.Errorf("CLI already exited but final events could not be recorded: %w", settleErr)
 	}
 	return nil
 }
@@ -899,63 +899,60 @@ func (s *session) markExitedLocked(detail string) error {
 // settleExited settles the messages an exited session still has queued:
 // they are not sent after a resume, and each is settled, never dropped
 // without a word. Nothing else touches the queue of an exited session. It
-// reports whether none is left queued.
-func (s *session) settleExited() bool {
-	s.readMu.Lock()
-	defer s.readMu.Unlock()
-	if !s.readRolloutLocked() {
-		return false
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if !s.meta.Exited {
-		return true
-	}
-	// A dead CLI cannot finish its old turn after a resume. Log the end
-	// only after its final records, and teach the live parser as well as
-	// replay so the next launch starts from the same state.
-	if s.running {
-		if !s.abortTurnLocked("session exited") {
-			return false
+// returns an error until the final transcript and all outcomes are committed.
+func (s *session) settleExited() error {
+	return s.admitScheduledContext("session settlement", func() error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if !s.meta.Exited {
+			return nil
 		}
-	}
-	s.aborted = false // exiting cancels old input; new input belongs to the next CLI
-	if len(s.queue.Queue) == 0 && len(s.queue.Held) == 0 {
-		return true
-	}
-	var outcomes []*pb.Event
-	for _, in := range s.queue.Queue {
-		st := &pb.InputState{RequestId: in.RequestID}
-		switch {
-		case in.Inflight == nil:
-			st.Status, st.Reason = pb.InputStatus_INPUT_STATUS_CANCELED, "exited"
-		case s.loggedUserMessage(in):
-			st.Status = pb.InputStatus_INPUT_STATUS_SUBMITTED
-		default:
-			// Written, maybe submitted: as when confirming times out.
-			st.Status = pb.InputStatus_INPUT_STATUS_UNCONFIRMED
+		// A dead CLI cannot finish its old turn after a resume. Log the end
+		// only after its final records, and teach the live parser as well as
+		// replay so the next launch starts from the same state.
+		if s.running {
+			if !s.abortTurnLocked("session exited") {
+				return errUnsettled
+			}
 		}
-		outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
-	}
-	for _, in := range s.queue.Held {
-		st := &pb.InputState{RequestId: in.RequestID}
-		if in.received || s.loggedUserMessage(in) {
-			st.Status = pb.InputStatus_INPUT_STATUS_SUBMITTED
-		} else {
-			// The CLI acknowledged holding it, but left no record proving
-			// delivery to the model. Do not claim it was never delivered,
-			// and never replay it automatically in the resumed CLI.
-			st.Status, st.Reason = pb.InputStatus_INPUT_STATUS_UNCONFIRMED, "exited"
+		s.aborted = false // exiting cancels old input; new input belongs to the next CLI
+		if len(s.queue.Queue) == 0 && len(s.queue.Held) == 0 {
+			return nil
 		}
-		outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
-	}
-	if !s.logOutcomeLocked(outcomes...) {
-		return false // they stay for the next start, or resume, to settle
-	}
-	s.queue.Queue = nil
-	s.queue.Held = nil
-	s.saveSettledLocked()
-	return true
+		var outcomes []*pb.Event
+		for _, in := range s.queue.Queue {
+			st := &pb.InputState{RequestId: in.RequestID}
+			switch {
+			case in.Inflight == nil:
+				st.Status, st.Reason = pb.InputStatus_INPUT_STATUS_CANCELED, "exited"
+			case s.loggedUserMessage(in):
+				st.Status = pb.InputStatus_INPUT_STATUS_SUBMITTED
+			default:
+				// Written, maybe submitted: as when confirming times out.
+				st.Status = pb.InputStatus_INPUT_STATUS_UNCONFIRMED
+			}
+			outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
+		}
+		for _, in := range s.queue.Held {
+			st := &pb.InputState{RequestId: in.RequestID}
+			if in.received || s.loggedUserMessage(in) {
+				st.Status = pb.InputStatus_INPUT_STATUS_SUBMITTED
+			} else {
+				// The CLI acknowledged holding it, but left no record proving
+				// delivery to the model. Do not claim it was never delivered,
+				// and never replay it automatically in the resumed CLI.
+				st.Status, st.Reason = pb.InputStatus_INPUT_STATUS_UNCONFIRMED, "exited"
+			}
+			outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
+		}
+		if !s.logOutcomeLocked(outcomes...) {
+			return errUnsettled // they stay for the next start, or resume, to settle
+		}
+		s.queue.Queue = nil
+		s.queue.Held = nil
+		s.saveSettledLocked()
+		return nil
+	})
 }
 
 // Info summarizes the session.
@@ -1170,10 +1167,18 @@ func (s *session) interrupt() (bool, error) { return s.interruptBy(originLocal) 
 
 // interruptBy is interrupt on behalf of origin.
 func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
-	s.readRollout()
-	s.mu.Lock()
-	running, exited := s.running, s.meta.Exited
-	s.mu.Unlock()
+	var running, exited bool
+	refresh := func() error {
+		return s.admitScheduledContext("interrupt", func() error {
+			s.mu.Lock()
+			running, exited = s.running, s.meta.Exited
+			s.mu.Unlock()
+			return nil
+		})
+	}
+	if err := refresh(); err != nil {
+		return false, err
+	}
 	if exited {
 		return false, errExited
 	}
@@ -1184,10 +1189,9 @@ func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
 	defer s.ctlMu.Unlock()
 	// The turn may have ended while waiting for the lock; Esc in an idle
 	// input box does something else.
-	s.readRollout()
-	s.mu.Lock()
-	running = s.running
-	s.mu.Unlock()
+	if err := refresh(); err != nil {
+		return false, err
+	}
 	if !running {
 		return false, nil
 	}
@@ -1482,7 +1486,7 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	switch p.HookEventName {
 	case "SessionStart":
 		s.bindRollout(p.SessionID, p.TranscriptPath)
-		return nil, nil
+		return nil, s.admitScheduledContext("session start hook", func() error { return nil })
 	case "PermissionRequest":
 		s.bindRollout(p.SessionID, p.TranscriptPath)
 		return s.permission(ctx, p)
@@ -1492,31 +1496,30 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	}
 	if evs := s.ag.HookEvents(p); len(evs) > 0 {
 		s.bindRollout(p.SessionID, p.TranscriptPath)
-		s.readRollout()
-		s.readMu.Lock()
-		turn := p.TurnID
-		if turn == "" {
-			turn = p.PromptID
-		}
-		var fresh []*pb.Event
-		for _, e := range evs {
-			// The transcript may have had it first.
-			if s.parser.Reported(e) {
-				continue
+		return nil, s.admitScheduledContext("hook", func() error {
+			turn := p.TurnID
+			if turn == "" {
+				turn = p.PromptID
 			}
-			e.TurnId = turn
-			fresh = append(fresh, e)
-		}
-		if len(fresh) > 0 {
-			if err := s.emitLocked(false, fresh...); err != nil {
-				s.readMu.Unlock()
-				return nil, err
+			var fresh []*pb.Event
+			for _, e := range evs {
+				// The transcript may have had it first.
+				if s.parser.Reported(e) {
+					continue
+				}
+				e.TurnId = turn
+				fresh = append(fresh, e)
 			}
-			for _, e := range fresh {
-				s.parser.Replay(e)
+			if len(fresh) > 0 {
+				if err := s.emitLocked(false, fresh...); err != nil {
+					return err
+				}
+				for _, e := range fresh {
+					s.parser.Replay(e)
+				}
 			}
-		}
-		s.readMu.Unlock()
+			return nil
+		})
 	}
 	return nil, nil
 }
@@ -1526,11 +1529,16 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 // Otherwise the request waits for a remote answer and is denied when the
 // time runs out.
 func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error) {
-	s.readRollout()
-	s.mu.Lock()
-	tc := s.context
-	exited := s.meta.Exited
-	s.mu.Unlock()
+	var tc *pb.TurnContext
+	var exited bool
+	if err := s.admitScheduledContext("permission request", func() error {
+		s.mu.Lock()
+		tc, exited = s.context, s.meta.Exited
+		s.mu.Unlock()
+		return nil
+	}); err != nil {
+		return nil, err
+	}
 	if exited {
 		return agent.PermissionDecision(false, "remote-agent: session exited"), nil
 	}

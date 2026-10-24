@@ -88,7 +88,19 @@ func (s *session) observeScheduled(e *pb.Event) {
 	}
 }
 
-// Caller holds scheduleMu, never the inverse of a session lock.
+// admitScheduledContext is the sole request admission boundary for decisions
+// based on live scheduled context or its annotations. Never call with scheduleMu
+// or mu held: the order is readMu -> scheduleMu (if needed) -> mu.
+func (s *session) admitScheduledContext(operation string, decide func() error) error {
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+	if !s.readRolloutLocked() {
+		return connect.NewError(connect.CodeUnavailable, errors.New("could not read and commit current transcript; retry "+operation))
+	}
+	return decide()
+}
+
+// Request callers hold the admission read lock and scheduleMu, never mu.
 func (d *Daemon) sessionHasScheduledRunLocked(id string) bool {
 
 	s, err := d.exact(id)
@@ -108,20 +120,14 @@ func (d *Daemon) sessionHasScheduledRunLocked(id string) bool {
 	return false
 }
 
-func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, scope string) ([]byte, error) {
-	if scope == "" || scope != q.SessionId {
-		return nil, errors.New("notify_user requires a bound session MCP")
-	}
+// Caller has passed admitScheduledContext for this bound session.
+func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, s *session) ([]byte, error) {
 	var in struct {
 		Text  string `json:"text"`
 		Title string `json:"title"`
 	}
 	if len(q.SpecJson) > 4096 || json.Unmarshal(q.SpecJson, &in) != nil || strings.TrimSpace(in.Text) == "" || !utf8.ValidString(in.Text) || !utf8.ValidString(in.Title) || utf8.RuneCountInString(in.Text) > 200 || utf8.RuneCountInString(in.Title) > 60 {
 		return nil, errors.New("notify_user requires text (1-200 characters) and optional title (up to 60 characters)")
-	}
-	s, err := d.exact(scope)
-	if err != nil {
-		return nil, err
 	}
 	// Snapshot the title outside the session lock, preserving the lock order.
 	d.scheduleMu.Lock()
@@ -130,13 +136,6 @@ func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, scope string) ([]byte, e
 		titles[id] = t.Spec.Title
 	}
 	d.scheduleMu.Unlock()
-	// MCP can arrive before the next poll (and without a permission hook).
-	// Keep transcript consumption and notification admission in one read order.
-	s.readMu.Lock()
-	defer s.readMu.Unlock()
-	if !s.readRolloutLocked() {
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("could not read and commit current transcript; retry notify_user"))
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.running || s.meta.Exited || s.scheduledTask == "" || s.scheduledRun == "" {

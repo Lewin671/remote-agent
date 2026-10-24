@@ -381,7 +381,7 @@ func TestExitedHeldSweepWaitsForFinalSettlement(t *testing.T) {
 	if len(h.s.queue.Held) != 2 {
 		t.Fatal("delayed terminal sweep settled exited input")
 	}
-	if !h.s.settleExited() {
+	if err := h.s.settleExited(); err != nil {
 		t.Fatal("settlement failed")
 	}
 	if inputStatus(h, "a") != pb.InputStatus_INPUT_STATUS_UNCONFIRMED {

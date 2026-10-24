@@ -1012,8 +1012,8 @@ drain:
 	// Nothing queued before it exited is sent now. While their outcomes
 	// cannot be logged they stay queued, and a started session would be
 	// sent them.
-	if !s.settleExited() {
-		return nil, errUnsettled
+	if err := s.settleExited(); err != nil {
+		return nil, err
 	}
 	if st, err := contextio.Stat(ctx, m.Cwd); err != nil || !st.IsDir() {
 		if ctx.Err() != nil {

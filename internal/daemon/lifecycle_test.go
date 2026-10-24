@@ -155,7 +155,7 @@ func TestExitRetriesFailedFinalAppendBeforeSettlingTurn(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.s.log = l
-	if !h.s.settleExited() {
+	if err := h.s.settleExited(); err != nil {
 		t.Fatal("final append not retried")
 	}
 	var reply, ends int
@@ -181,7 +181,7 @@ func TestExitSettlesHeldInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.reopen()
-	if !h.s.settleExited() {
+	if err := h.s.settleExited(); err != nil {
 		t.Fatal("settlement failed")
 	}
 	for _, id := range []string{"a", "b"} {
@@ -218,7 +218,7 @@ func TestExitSettlesHeldInputOnlyAfterOutcomeIsLogged(t *testing.T) {
 	// A final user message proves one held input reached the model even
 	// when its SUBMITTED outcome has not been written yet.
 	h.s.emit(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "first", RequestId: "a"}}})
-	if !h.s.settleExited() {
+	if err := h.s.settleExited(); err != nil {
 		t.Fatal("settlement failed")
 	}
 	if inputStatus(h, "a") != pb.InputStatus_INPUT_STATUS_SUBMITTED || inputStatus(h, "b") != pb.InputStatus_INPUT_STATUS_UNCONFIRMED {

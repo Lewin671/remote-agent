@@ -133,8 +133,46 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 }
 
 func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.ScheduleRequest, origin *pb.Origin, scope string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if scope != "" && scope != q.SessionId {
+		return nil, mcpScheduleDenied()
+	}
+	if q.Operation == "notify_user" && scope == "" {
+		return nil, errors.New("notify_user requires a bound session MCP")
+	}
+	var bound *session
+	if scope != "" {
+		var err error
+		bound, err = d.exact(scope)
+		if err != nil {
+			return nil, mcpScheduleDenied()
+		}
+	} else if q.SessionId != "" {
+		var err error
+		bound, err = d.session(q.SessionId)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if bound == nil {
+		return d.scheduleCommandAdmittedContext(ctx, q, origin, scope, nil)
+	}
+	var result []byte
+	err := bound.admitScheduledContext(q.Operation, func() error {
+		var err error
+		result, err = d.scheduleCommandAdmittedContext(ctx, q, origin, scope, bound)
+		return err
+	})
+	return result, err
+}
+
+// Bound requests hold readMu from admitScheduledContext through all decisions
+// and effects. Machine-wide owner requests have no live session context to admit.
+func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.ScheduleRequest, origin *pb.Origin, scope string, bound *session) ([]byte, error) {
 	if q.Operation == "notify_user" {
-		return d.notifyScheduled(q, scope)
+		return d.notifyScheduled(q, bound)
 	}
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
@@ -142,14 +180,6 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		d.tasks = map[string]*schedule.Task{}
 	}
 	now := time.Now().UTC()
-	if scope != "" {
-		if scope != q.SessionId {
-			return nil, mcpScheduleDenied()
-		}
-		if _, err := d.exact(scope); err != nil {
-			return nil, mcpScheduleDenied()
-		}
-	}
 	if scope != "" && (q.Operation == "create" || q.Operation == "update" || q.Operation == "resume" || q.Operation == "run") {
 		if d.sessionHasScheduledRunLocked(scope) {
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("MCP cannot create, update, resume or run tasks during a scheduled execution"))
