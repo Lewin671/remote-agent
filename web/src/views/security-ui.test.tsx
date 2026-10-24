@@ -205,7 +205,12 @@ it("requires the candidate to confirm SAS before authority approval and waits fo
   const r = demo("role=authority&pair=compare");
   await mount(<PairCodePage remote={r} onBack={() => {}} />);
   await click("生成配对码");
-  expect(host.querySelector('img[alt="添加设备的配对二维码"]')).toBeTruthy();
+  // Clicking finishes before the lazy QR module necessarily loads. Flush React
+  // work on each attempt and wait for the rendered image, not a fixed delay.
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(host.querySelector('img[alt="添加设备的配对二维码"]')).toBeTruthy();
+  });
   expect(host.textContent).toContain("🌲 🍋 🚲 🐳");
   expect(button("允许加入").disabled).toBe(true);
   await act(async () =>

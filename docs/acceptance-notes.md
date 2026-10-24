@@ -852,6 +852,22 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 按协调规则在 v49 原文件补充「各端统一的写法」，未另出版本；网页采用任务名设置行与会话改名同款的确认框，外地日历时区只在「什么时候」值后追加 IANA 名称。
 
 - `pnpm --dir web typecheck`、`pnpm --dir web test`、`pnpm --dir web build` 通过；网页 87 个文件、1146 项测试。新增检查覆盖可选任务名与首句默认、改名的修订检查及同名不写入、草稿保留、当前对话位置、同区/异区与时区别名、时区保存、异常结果优先显示原因，以及停止任务的改名保护。
-- 末次复核中，已有配对测试曾因异步二维码尚未出现而失败一次；该文件单独重跑与随后全套重跑均通过。本轮未改配对实现或测试。
+- 配对测试的异步二维码断言已完成压力复现与修复，见下节；重跑通过不作为偶发失败已解决的证据。
 - 本机 Chrome 独立无头配置、390 / 1280 宽、亮 / 暗主题，使用开发示例 Remote 的合成任务检查网页真实组件。任务列表、详情、新建页与定时条的 16 张截图覆盖原文件；v49 手机/宽屏截图与改名、外地时区等补充截图一并更新。核对了任务名通过 create/update 的完整定义提交；这轮没有连接线上或日常账户，也没有重跑前一节的真实 CLI 调度验收。当前截图为文案和布局的示例数据，不能作为新的真实调度或推送送达证据。
 - 在另一个独立短 `RA_DEV_DIR` 运行本 checkout 的本地中继与 daemon：创建明天执行的任务 → pause → 只改 title 后 update，确认状态从 paused 变为 scheduled；没有等到执行时刻，也未启动会话 CLI。测试命令显式清除宿主的 `RA_SESSION`，避免给临时 daemon 带入其他会话上下文。环境已清理。网页暂时对已停下任务禁用单独改名，防止只改名字重新启用计划；同名保存不发更新，已有手动请求时也不改名。该后台行为本轮没有修改。
+
+## 配对界面：异步二维码断言（2026-10-24）
+
+目标用例为 `web/src/views/security-ui.test.tsx` 的 `requires the candidate to confirm SAS before authority approval and waits for delivery`。刚 fetch 的 `origin/main` 为 `c7a831a3`；其目标测试、二维码组件、依赖清单、锁文件和 Vitest 配置与本分支修前完全一致。在独立 detached checkout 中测试，未改跟踪文件，仅链接同一套已安装依赖。
+
+环境为 Node 22.23.3、pnpm 10.19.0、Vitest 5.0.2，10 核 CPU。每组使用 8 个 CPU 压力进程，每个进程自限 900 秒，组结束后统一终止并回收。每次新启动 Vitest，保留默认测试超时；整文件命令为 `pnpm exec vitest run src/views/security-ui.test.tsx --maxWorkers=1 --reporter=json --outputFile=<逐次报告>`，在 `web/` 下执行。
+
+| 条件 | 执行次数 | 失败次数 |
+|---|---:|---:|
+| 未修改的 origin/main，只运行目标用例（加 `-t`） | 40 | 0（未复现的对照） |
+| 未修改的 origin/main，整文件 | 40 | 1 |
+| 本分支修复后，同命令、同压力运行整文件 | 40 | 0 |
+
+修前第 23 次整文件运行在原第 208 行失败：图片查询为 `null`，与初次偶发失败一致，其他用例没有失败。根因是测试在点击的 `act` 返回后立即断言，而组件通过独立的 `import("qrcode-generator").then(...)` 生成二维码；React 工作队列清空不保证外部模块已加载。测试改为默认 `vi.waitFor` 等待实际二维码图片出现，每次尝试用 `act` 刷新 React 工作；不加固定 sleep，不调大超时，产品组件未改。
+
+修后压力组共 840 次用例执行全部通过，无 React act 警告；另行执行 `pnpm --dir web typecheck`、`pnpm --dir web test`（87 文件、1146 项）、`pnpm --dir web build` 全部通过。逐次 JSON 报告、失败栈、源码指纹和重复运行脚本保存在本地验收输出中；临时 checkout 和所有压力进程已清理，未连接线上或日常账户。
