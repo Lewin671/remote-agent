@@ -66,6 +66,11 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
         sessions.getValue(sid).toBuilder().setMeta(seal(DeviceSecurity.Purpose.SESSION_META, sid, revision,
             Session.newBuilder().setId(sid).setStatus(status).build().toByteArray())).build()
 
+    fun taskApproval(): RemoteSession = sessions.getValue("empty").toBuilder().setMeta(seal(
+        DeviceSecurity.Purpose.SESSION_META, "empty", 2,
+        Session.newBuilder().setId("empty").setCwd("/scheduled").setTaskOwned(true)
+            .setPendingApprovals(1).setStatus(SessionStatus.SESSION_STATUS_BLOCKED).build().toByteArray())).build()
+
     val events = listOf("long", "short", "empty").associateWith { sid ->
         (1..when (sid) { "long" -> historySize + 1; "short" -> 2; else -> 0 }).map { seq ->
             val event = Event.newBuilder().setSeq(seq.toLong()).setSessionId(sid)

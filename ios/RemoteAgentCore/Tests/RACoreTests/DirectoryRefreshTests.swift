@@ -18,6 +18,24 @@ extension ServerTests {
             }, body)
         }
 
+        @Test func coldListingRetainsTaskOwnedApprovalThroughRefresh() async throws {
+            try await World.run(setUp: { w in
+                try await w.daemon.putMachine("test-machine")
+                var info = session("/scheduled", "approval", status: .blocked)
+                info.taskOwned = true; info.pendingApprovals = 1
+                try await w.daemon.putSession("approval", info)
+                try await w.daemon.connect()
+            }) { w in
+                let r = try await w.client()
+                #expect(await r.refresh()); #expect(await r.refresh())
+                let state = r.current
+                #expect(state.sessions["approval"]?.info?.taskOwned == true)
+                #expect(homeTimeline(state, scope: .all).attention.map(\.id) == ["approval"])
+                #expect(projects(state).first?.sessions.map(\.id) == ["approval"])
+                #expect(homeTimeline(state, scope: .all).running.isEmpty)
+            }
+        }
+
         @Test(arguments: ["machine", "session"])
         func knownMachineUpdatesSyncSecurityWithoutReloadingDirectory(kind: String) async throws {
             try await world { w in

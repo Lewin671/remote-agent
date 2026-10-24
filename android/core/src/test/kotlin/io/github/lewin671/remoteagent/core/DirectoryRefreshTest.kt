@@ -11,6 +11,22 @@ import org.junit.Test
 class DirectoryRefreshTest {
     private val fixture = ColdOpenFixture(2)
 
+    @Test fun coldListingRetainsTaskOwnedApprovalThroughRefresh() = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        peer.response = { method, _ -> if (method == "ListRemoteSessions")
+            ListRemoteSessionsResponse.newBuilder().addSessions(fixture.taskApproval()).build() else null }
+        val remote = peer.remote()
+        try {
+            assertTrue(remote.refresh()); assertTrue(remote.refresh())
+            assertTrue(peer.calls.contains("ListRemoteSessions"))
+            val state = remote.state.value
+            assertTrue(state.sessions.getValue("empty").info!!.taskOwned)
+            assertEquals(listOf("empty"), homeTimeline(state, HomeScope.All).attention.map { it.id })
+            assertEquals(listOf("empty"), projects(state).single().sessions.map { it.id })
+            assertTrue(homeTimeline(state, HomeScope.All).running.isEmpty())
+        } finally { remote.close(); runCurrent() }
+    }
+
     @Test fun closingImmediatelyAfterInitialLoadDoesNotLeakMaintenanceFailures() = runTest {
         val peer = ColdOpenPeer(fixture, this)
         val remote = peer.remote()

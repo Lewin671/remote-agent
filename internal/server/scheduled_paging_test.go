@@ -51,7 +51,7 @@ func TestTaskOwnedPagingExistingLayout(t *testing.T) {
 		put(fmt.Sprintf("task-%03d", i), 1, ended, true)
 	}
 	live, err := ts.liveSessions(ctx, &sessionBudget{})
-	if err != nil || len(live) != 1 || live[0].SessionId != "ordinary-live" {
+	if err != nil || len(live) != 61 {
 		t.Fatalf("live: %v %v", live, err)
 	}
 	page, cursor, err := ts.endedSessions(ctx, nil, 1, &sessionBudget{})
@@ -114,5 +114,19 @@ func TestHiddenSessionsConsumeTrialLimitWithExplicitReason(t *testing.T) {
 	_, err = ts.putSession(ctx, "m", "over-limit", []byte("key"), 1, []byte("meta"), 1, 1, true, limit)
 	if connect.CodeOf(err) != connect.CodeResourceExhausted || !strings.Contains(err.Error(), "relay_session_limit:") {
 		t.Fatalf("hidden quota silently ignored: %v", err)
+	}
+}
+
+func TestColdListIncludesLiveTaskOwnedApprovals(t *testing.T) {
+	ts := newTestServer(t)
+	a := ts.account(t, ts.keys)
+	a.putSession(t, "pending-task")
+	if _, err := ts.srv.store.db.Exec(`INSERT INTO task_owned_sessions(account_id,session_id) SELECT account_id,session_id FROM sessions WHERE session_id='pending-task'`); err != nil {
+		t.Fatal(err)
+	}
+	// Cold read: no stream frame, cached session or explicit ID lookup.
+	res, err := a.client.ListRemoteSessions(context.Background(), connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
+	if err != nil || len(res.Msg.Sessions) != 1 || res.Msg.Sessions[0].SessionId != "pending-task" {
+		t.Fatalf("cold list lost task approval: %v %v", res, err)
 	}
 }

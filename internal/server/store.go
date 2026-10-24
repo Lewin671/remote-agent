@@ -882,7 +882,7 @@ func scanSessions(rows *sql.Rows, budget *sessionBudget, limit int) ([]*pb.Remot
 
 // liveSessions returns every session that has not ended, or a capacity error.
 func (t *tstore) liveSessions(ctx context.Context, budget *sessionBudget) ([]*pb.RemoteSession, error) {
-	rows, err := t.reader.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND ended_ms = 0 AND NOT EXISTS (SELECT 1 FROM task_owned_sessions AS owned WHERE owned.account_id=sessions.account_id AND owned.session_id=sessions.session_id) ORDER BY updated_ms DESC`, t.acct)
+	rows, err := t.reader.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND ended_ms = 0 ORDER BY updated_ms DESC`, t.acct)
 	if err != nil {
 		return nil, err
 	}

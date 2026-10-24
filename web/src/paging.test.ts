@@ -10,7 +10,7 @@ import type {
   RemoteSession,
   SessionCursor,
 } from "./gen/remoteagent/v1/relay_pb";
-import { projects } from "./model";
+import { needsAttention, projects } from "./model";
 import { Remote, SESSION_PAGE } from "./remote";
 import {
   GoSecurityFixture,
@@ -57,7 +57,7 @@ async function setup(pageSize: number | null = PAGE) {
   const wrapped = new Map<string, Envelope>();
   const records = new Map<string, { stamp: string; record: RemoteSession }>();
   // The server's side: sessions with the time they ended, 0 while live.
-  const server = new Map<string, { machineId: string; endedMs: number }>();
+  const server = new Map<string, { machineId: string; endedMs: number; taskOwned?: boolean; pendingApprovals?: number }>();
   let machines = ["m1"];
   // Paging tests need a machine to disappear without the phone: the
   // signed roster is replaced here only to exercise the listing logic.
@@ -89,6 +89,8 @@ async function setup(pageSize: number | null = PAGE) {
     if (cached?.stamp === stamp) return cached.record;
     const info = create(SessionSchema, {
       id,
+      taskOwned: entry.taskOwned,
+      pendingApprovals: entry.pendingApprovals,
       cwd: "/p",
       title: id,
       status: entry.endedMs ? SessionStatus.EXITED : SessionStatus.IDLE,
@@ -515,4 +517,16 @@ it("keeps the default session listing page at 50 rows", async () => {
   await r.refresh();
   expect(SESSION_PAGE).toBe(50);
   expect(calls[0]?.limit).toBe(50);
+});
+
+it("cold listing retains task-owned approvals through refresh", async () => {
+ const {r,server,calls}=await setup();
+ server.set("approval",{machineId:"m1",endedMs:0,taskOwned:true,pendingApprovals:1});
+ server.set("quiet",{machineId:"m1",endedMs:0,taskOwned:true});
+ await r.refresh(); await r.refresh();
+ expect(calls.every(c=>!c.sessionIds?.length)).toBe(true);
+ const approval=r.sessions.get("approval")!;
+ expect(approval.info?.taskOwned).toBe(true);
+ expect(needsAttention(approval,r.machines.get(approval.machineId))).toBe(true);
+ expect(projects(r.sessions.values(), r.machines.values()).flatMap(p=>p.sessions.map(s=>s.id))).toEqual(["approval"]);
 });

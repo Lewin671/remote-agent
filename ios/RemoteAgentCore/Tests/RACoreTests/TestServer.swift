@@ -285,6 +285,7 @@ actor FakeDaemon {
         req.key = try security.seal(account, kh, key)
         req.meta = try security.seal(account, mh, named)
         req.endedMs = endedMs
+        req.taskOwned = info.taskOwned
         _ = try await api.putSession(request: req, headers: Api.headers(token: token)).value()
     }
 
