@@ -195,9 +195,13 @@ object Notifier {
         showContent: Boolean,
     ) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        val generic = if (kind == NotifyKind.NOTIFY_KIND_TURN_ENDED) "一轮对话结束了" else "有会话在等你处理"
+        val generic = when (kind) {
+            NotifyKind.NOTIFY_KIND_SCHEDULED -> "定时任务有新结果"
+            NotifyKind.NOTIFY_KIND_TURN_ENDED -> "一轮对话结束了"
+            else -> "有会话在等你处理"
+        }
         val channel =
-            if (kind == NotifyKind.NOTIFY_KIND_TURN_ENDED) Push.CHANNEL_TURN
+            if (kind == NotifyKind.NOTIFY_KIND_TURN_ENDED || kind == NotifyKind.NOTIFY_KIND_SCHEDULED) Push.CHANNEL_TURN
             else Push.CHANNEL_ATTENTION
         val approval = c?.takeIf { it.hasApproval() }?.approval
         val nid = id(session, approval?.approvalId)

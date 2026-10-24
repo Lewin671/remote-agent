@@ -23,6 +23,7 @@ public func isSkeleton(_ e: PBEvent) -> Bool {
   case .agentMessage(let x): return isSkeleton(x.text)
   case .reasoning(let x): return isSkeleton(x.text)
   case .toolCall(let x): return isSkeleton(x.title)
+  case .scheduledNotification(let x): return isSkeleton(x.text)
   case .turnEnded(let x): return isSkeleton(x.reason)
   case .tokenUsage(let x): return isSkeleton(x.planType)
   case .turnContext(let x): return isSkeleton(x.model)

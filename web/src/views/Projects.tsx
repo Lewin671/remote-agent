@@ -61,6 +61,7 @@ export function sessionCounts(remote: Remote, sessions: Iterable<SessionView>): 
   let todo = 0;
   let live = 0;
   for (const s of sessions) {
+    if (s.info?.taskOwned) continue;
     if (needsAttention(s, remote.machines.get(s.machineId))) todo++;
     else if (!exited(s)) live++;
   }

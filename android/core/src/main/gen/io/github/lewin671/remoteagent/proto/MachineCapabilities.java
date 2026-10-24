@@ -379,6 +379,32 @@ public  final class MachineCapabilities extends
     approvalAlways_ = false;
   }
 
+  public static final int SCHEDULED_TASKS_FIELD_NUMBER = 12;
+  private boolean scheduledTasks_;
+  /**
+   * <code>bool scheduled_tasks = 12 [json_name = "scheduledTasks"];</code>
+   * @return The scheduledTasks.
+   */
+  @java.lang.Override
+  public boolean getScheduledTasks() {
+    return scheduledTasks_;
+  }
+  /**
+   * <code>bool scheduled_tasks = 12 [json_name = "scheduledTasks"];</code>
+   * @param value The scheduledTasks to set.
+   */
+  private void setScheduledTasks(boolean value) {
+    
+    scheduledTasks_ = value;
+  }
+  /**
+   * <code>bool scheduled_tasks = 12 [json_name = "scheduledTasks"];</code>
+   */
+  private void clearScheduledTasks() {
+
+    scheduledTasks_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.MachineCapabilities parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -834,6 +860,34 @@ public  final class MachineCapabilities extends
       return this;
     }
 
+    /**
+     * <code>bool scheduled_tasks = 12 [json_name = "scheduledTasks"];</code>
+     * @return The scheduledTasks.
+     */
+    @java.lang.Override
+    public boolean getScheduledTasks() {
+      return instance.getScheduledTasks();
+    }
+    /**
+     * <code>bool scheduled_tasks = 12 [json_name = "scheduledTasks"];</code>
+     * @param value The scheduledTasks to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledTasks(boolean value) {
+      copyOnWrite();
+      instance.setScheduledTasks(value);
+      return this;
+    }
+    /**
+     * <code>bool scheduled_tasks = 12 [json_name = "scheduledTasks"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScheduledTasks() {
+      copyOnWrite();
+      instance.clearScheduledTasks();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineCapabilities)
   }
   @java.lang.Override
@@ -856,10 +910,11 @@ public  final class MachineCapabilities extends
             "maxChunkBytes_",
             "uploadFormats_",
             "approvalAlways_",
+            "scheduledTasks_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0002\n\u0006\u0000\u0001\u0000\u0002\u0007\u0003\u0004" +
-              "\u0004\u0002\u0005\u0004\u0006,\n\u0007";
+              "\u0000\u0007\u0000\u0000\u0002\f\u0007\u0000\u0001\u0000\u0002\u0007\u0003\u0004" +
+              "\u0004\u0002\u0005\u0004\u0006,\n\u0007\f\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

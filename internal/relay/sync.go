@@ -112,7 +112,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 			state.ended = isEnded
 			head := heads[id]
 			if state.completed || head == nil && state.onServer || head != nil && state.after > head.LastSeq {
-				head = &pb.SessionHead{LastSeq: state.after, EndedMs: EndedMs(state.meta), MetaRevision: head.GetMetaRevision()}
+				head = &pb.SessionHead{LastSeq: state.after, EndedMs: EndedMs(state.meta), TaskOwned: state.meta.GetTaskOwned(), MetaRevision: head.GetMetaRevision()}
 			}
 			go func(id string, head *pb.SessionHead) {
 				after, info, skipped, err := c.syncSession(ctx, id, head, func() {
@@ -214,7 +214,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 	if head != nil {
 		after = head.LastSeq
 		sent = c.sentMeta(id, key, head.MetaRevision)
-		if sent != nil && head.EndedMs != EndedMs(sent) {
+		if sent != nil && (head.EndedMs != EndedMs(sent) || head.TaskOwned != sent.TaskOwned) {
 			sent = nil
 		}
 	}
@@ -539,7 +539,7 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 	if err != nil {
 		return 0, localSyncError("encryption", err)
 	}
-	request := &pb.PutSessionRequest{SessionId: id, Key: keyEnv, Meta: meta, EndedMs: EndedMs(info)}
+	request := &pb.PutSessionRequest{SessionId: id, Key: keyEnv, Meta: meta, EndedMs: EndedMs(info), TaskOwned: info.TaskOwned}
 	if checkpointErr == nil {
 		checkpointErr = c.persistCheckpoint(id, request)
 		if checkpointErr != nil {
@@ -615,6 +615,9 @@ func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Ses
 		nc.Text = "计划待批准"
 	case *pb.Event_SessionState:
 		nc.Text, _ = clip(k.SessionState.Detail, notifyText)
+	case *pb.Event_ScheduledNotification:
+		nc.Title, nc.Text = k.ScheduledNotification.Title, k.ScheduledNotification.Text
+		dedupe = fmt.Sprintf("scheduled:%d", e.Seq)
 	case *pb.Event_TurnEnded:
 		nc.Text, _ = clip(info.GetPreview(), notifyText)
 	}
@@ -710,7 +713,12 @@ func notifyKind(e *pb.Event) pb.NotifyKind {
 		if k.SessionState.Status == pb.SessionStatus_SESSION_STATUS_BLOCKED {
 			return pb.NotifyKind_NOTIFY_KIND_ATTENTION
 		}
+	case *pb.Event_ScheduledNotification:
+		return pb.NotifyKind_NOTIFY_KIND_SCHEDULED
 	case *pb.Event_TurnEnded:
+		if k.TurnEnded.ScheduledTaskId != "" {
+			return pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED
+		}
 		return pb.NotifyKind_NOTIFY_KIND_TURN_ENDED
 	}
 	return pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED

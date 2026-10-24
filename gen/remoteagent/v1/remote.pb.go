@@ -207,9 +207,11 @@ type MachineMeta struct {
 	// The projects this machine has sessions in. Clients list sessions a
 	// page at a time, so they learn of projects, and how many ended sessions
 	// each has, from here rather than from the sessions they happen to hold.
-	Projects      []*ProjectSummary `protobuf:"bytes,13,rep,name=projects,proto3" json:"projects,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Projects []*ProjectSummary `protobuf:"bytes,13,rep,name=projects,proto3" json:"projects,omitempty"`
+	// Persistent task/run change counter; publication coalesces short bursts.
+	ScheduleRevision uint64 `protobuf:"varint,14,opt,name=schedule_revision,json=scheduleRevision,proto3" json:"schedule_revision,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *MachineMeta) Reset() {
@@ -310,6 +312,13 @@ func (x *MachineMeta) GetProjects() []*ProjectSummary {
 		return x.Projects
 	}
 	return nil
+}
+
+func (x *MachineMeta) GetScheduleRevision() uint64 {
+	if x != nil {
+		return x.ScheduleRevision
+	}
+	return 0
 }
 
 // ProjectSummary is what a machine knows of a project beyond its live
@@ -590,6 +599,7 @@ type MachineCapabilities struct {
 	UploadFormats []ImageFormat `protobuf:"varint,6,rep,packed,name=upload_formats,json=uploadFormats,proto3,enum=remoteagent.v1.ImageFormat" json:"upload_formats,omitempty"`
 	// ResolveApprovalRequest.always.
 	ApprovalAlways bool `protobuf:"varint,10,opt,name=approval_always,json=approvalAlways,proto3" json:"approval_always,omitempty"`
+	ScheduledTasks bool `protobuf:"varint,12,opt,name=scheduled_tasks,json=scheduledTasks,proto3" json:"scheduled_tasks,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -662,6 +672,13 @@ func (x *MachineCapabilities) GetUploadFormats() []ImageFormat {
 func (x *MachineCapabilities) GetApprovalAlways() bool {
 	if x != nil {
 		return x.ApprovalAlways
+	}
+	return false
+}
+
+func (x *MachineCapabilities) GetScheduledTasks() bool {
+	if x != nil {
+		return x.ScheduledTasks
 	}
 	return false
 }
@@ -3136,7 +3153,7 @@ var File_remoteagent_v1_remote_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\n" +
-	"\x1bremoteagent/v1/remote.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\"\xc2\x03\n" +
+	"\x1bremoteagent/v1/remote.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\"\xef\x03\n" +
 	"\vMachineMeta\x12\x1a\n" +
 	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x0e\n" +
 	"\x02os\x18\x02 \x01(\tR\x02os\x12\x12\n" +
@@ -3148,7 +3165,8 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	" \x01(\v2#.remoteagent.v1.MachineCapabilitiesR\fcapabilities\x122\n" +
 	"\x06quotas\x18\v \x03(\v2\x1a.remoteagent.v1.AgentQuotaR\x06quotas\x12)\n" +
 	"\x10protocol_version\x18\f \x01(\rR\x0fprotocolVersion\x12:\n" +
-	"\bprojects\x18\r \x03(\v2\x1e.remoteagent.v1.ProjectSummaryR\bprojectsJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06\"\x8e\x01\n" +
+	"\bprojects\x18\r \x03(\v2\x1e.remoteagent.v1.ProjectSummaryR\bprojects\x12+\n" +
+	"\x11schedule_revision\x18\x0e \x01(\x04R\x10scheduleRevisionJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06\"\x8e\x01\n" +
 	"\x0eProjectSummary\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x14\n" +
 	"\x05ended\x18\x02 \x01(\rR\x05ended\x12*\n" +
@@ -3172,7 +3190,7 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\fresets_at_ms\x18\x03 \x01(\x03R\n" +
 	"resetsAtMs\x12%\n" +
 	"\x0ewindow_minutes\x18\x04 \x01(\x03R\rwindowMinutesB\x0f\n" +
-	"\r_used_percent\"\xca\x02\n" +
+	"\r_used_percent\"\xf3\x02\n" +
 	"\x13MachineCapabilities\x12!\n" +
 	"\fimage_upload\x18\x02 \x01(\bR\vimageUpload\x123\n" +
 	"\x16max_images_per_message\x18\x03 \x01(\x05R\x13maxImagesPerMessage\x12(\n" +
@@ -3180,7 +3198,8 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x0fmax_chunk_bytes\x18\x05 \x01(\x05R\rmaxChunkBytes\x12B\n" +
 	"\x0eupload_formats\x18\x06 \x03(\x0e2\x1b.remoteagent.v1.ImageFormatR\ruploadFormats\x12'\n" +
 	"\x0fapproval_always\x18\n" +
-	" \x01(\bR\x0eapprovalAlwaysJ\x04\b\x01\x10\x02J\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	" \x01(\bR\x0eapprovalAlways\x12'\n" +
+	"\x0fscheduled_tasks\x18\f \x01(\bR\x0escheduledTasksJ\x04\b\x01\x10\x02J\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\v\x10\f\"\xb2\x02\n" +
 	"\tAgentInfo\x12+\n" +
 	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x18\n" +

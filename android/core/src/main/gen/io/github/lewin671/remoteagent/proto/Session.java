@@ -34,6 +34,7 @@ public  final class Session extends
     forkedFrom_ = "";
     currentCheckpoint_ = com.google.protobuf.ByteString.EMPTY;
     machineReplacements_ = emptyProtobufList();
+    scheduledTaskId_ = "";
   }
   private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
@@ -1707,7 +1708,7 @@ public  final class Session extends
    *
    * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
    */
-  public java.util.List<? extends io.github.lewin671.remoteagent.proto.MachineReplacementProofOrBuilder>
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.MachineReplacementProofOrBuilder> 
       getMachineReplacementsOrBuilderList() {
     return machineReplacements_;
   }
@@ -1835,6 +1836,112 @@ public  final class Session extends
   private void removeMachineReplacements(int index) {
     ensureMachineReplacementsIsMutable();
     machineReplacements_.remove(index);
+  }
+
+  public static final int SCHEDULED_TASK_ID_FIELD_NUMBER = 35;
+  private java.lang.String scheduledTaskId_;
+  /**
+   * <pre>
+   * Creating task remains known after a user takes over this conversation.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+   * @return The scheduledTaskId.
+   */
+  @java.lang.Override
+  public java.lang.String getScheduledTaskId() {
+    return scheduledTaskId_;
+  }
+  /**
+   * <pre>
+   * Creating task remains known after a user takes over this conversation.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+   * @return The bytes for scheduledTaskId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getScheduledTaskIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(scheduledTaskId_);
+  }
+  /**
+   * <pre>
+   * Creating task remains known after a user takes over this conversation.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+   * @param value The scheduledTaskId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduledTaskId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    scheduledTaskId_ = value;
+  }
+  /**
+   * <pre>
+   * Creating task remains known after a user takes over this conversation.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+   */
+  private void clearScheduledTaskId() {
+
+    scheduledTaskId_ = getDefaultInstance().getScheduledTaskId();
+  }
+  /**
+   * <pre>
+   * Creating task remains known after a user takes over this conversation.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+   * @param value The bytes for scheduledTaskId to set.
+   */
+  private void setScheduledTaskIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    scheduledTaskId_ = value.toStringUtf8();
+
+  }
+
+  public static final int TASK_OWNED_FIELD_NUMBER = 36;
+  private boolean taskOwned_;
+  /**
+   * <pre>
+   * Omit from default session/project listings until user takeover.
+   * </pre>
+   *
+   * <code>bool task_owned = 36 [json_name = "taskOwned"];</code>
+   * @return The taskOwned.
+   */
+  @java.lang.Override
+  public boolean getTaskOwned() {
+    return taskOwned_;
+  }
+  /**
+   * <pre>
+   * Omit from default session/project listings until user takeover.
+   * </pre>
+   *
+   * <code>bool task_owned = 36 [json_name = "taskOwned"];</code>
+   * @param value The taskOwned to set.
+   */
+  private void setTaskOwned(boolean value) {
+    
+    taskOwned_ = value;
+  }
+  /**
+   * <pre>
+   * Omit from default session/project listings until user takeover.
+   * </pre>
+   *
+   * <code>bool task_owned = 36 [json_name = "taskOwned"];</code>
+   */
+  private void clearTaskOwned() {
+
+    taskOwned_ = false;
   }
 
   public static io.github.lewin671.remoteagent.proto.Session parseFrom(
@@ -3798,6 +3905,115 @@ public  final class Session extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Creating task remains known after a user takes over this conversation.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+     * @return The scheduledTaskId.
+     */
+    @java.lang.Override
+    public java.lang.String getScheduledTaskId() {
+      return instance.getScheduledTaskId();
+    }
+    /**
+     * <pre>
+     * Creating task remains known after a user takes over this conversation.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+     * @return The bytes for scheduledTaskId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getScheduledTaskIdBytes() {
+      return instance.getScheduledTaskIdBytes();
+    }
+    /**
+     * <pre>
+     * Creating task remains known after a user takes over this conversation.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+     * @param value The scheduledTaskId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledTaskId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setScheduledTaskId(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Creating task remains known after a user takes over this conversation.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScheduledTaskId() {
+      copyOnWrite();
+      instance.clearScheduledTaskId();
+      return this;
+    }
+    /**
+     * <pre>
+     * Creating task remains known after a user takes over this conversation.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+     * @param value The bytes for scheduledTaskId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledTaskIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setScheduledTaskIdBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Omit from default session/project listings until user takeover.
+     * </pre>
+     *
+     * <code>bool task_owned = 36 [json_name = "taskOwned"];</code>
+     * @return The taskOwned.
+     */
+    @java.lang.Override
+    public boolean getTaskOwned() {
+      return instance.getTaskOwned();
+    }
+    /**
+     * <pre>
+     * Omit from default session/project listings until user takeover.
+     * </pre>
+     *
+     * <code>bool task_owned = 36 [json_name = "taskOwned"];</code>
+     * @param value The taskOwned to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTaskOwned(boolean value) {
+      copyOnWrite();
+      instance.setTaskOwned(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Omit from default session/project listings until user takeover.
+     * </pre>
+     *
+     * <code>bool task_owned = 36 [json_name = "taskOwned"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTaskOwned() {
+      copyOnWrite();
+      instance.clearTaskOwned();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Session)
   }
   @java.lang.Override
@@ -3850,14 +4066,16 @@ public  final class Session extends
             "currentCheckpoint_",
             "machineReplacements_",
             io.github.lewin671.remoteagent.proto.MachineReplacementProof.class,
+            "scheduledTaskId_",
+            "taskOwned_",
           };
           java.lang.String info =
-              "\u0000\"\u0000\u0001\u0001\"\"\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0000$\u0000\u0001\u0001$$\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
               "\u0004\f\u0005\u0208\u0006\u0208\u0007\u0208\b\u1009\u0000\t\u0003\n\u0208\u000b" +
               "\u0208\f\u0004\r\u0004\u000e\u0004\u000f\u0208\u0010\u0208\u0011\u0208\u0012\u0208" +
               "\u0013\u0208\u0014\u0208\u0015\u0002\u0016\u0002\u0017\u0007\u0018\u0208\u0019\f" +
               "\u001a\f\u001b\u0208\u001c\u0007\u001d\u1009\u0001\u001e\u1009\u0002\u001f\u0208" +
-              " \u0003!\n\"\u001b";
+              " \u0003!\n\"\u001b#\u0208$\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

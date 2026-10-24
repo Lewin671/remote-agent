@@ -306,5 +306,16 @@ public interface EventOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.SessionForked getSessionForked();
 
+  /**
+   * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+   * @return Whether the scheduledNotification field is set.
+   */
+  boolean hasScheduledNotification();
+  /**
+   * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+   * @return The scheduledNotification.
+   */
+  io.github.lewin671.remoteagent.proto.ScheduledNotification getScheduledNotification();
+
   public io.github.lewin671.remoteagent.proto.Event.KindCase getKindCase();
 }

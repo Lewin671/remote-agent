@@ -70,4 +70,36 @@ public interface OriginOrBuilder extends
    * @return The observedScreenHash.
    */
   com.google.protobuf.ByteString getObservedScreenHash();
+
+  /**
+   * <pre>
+   * Set by daemon task injection, independent of the originating device.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+   * @return The scheduledTaskId.
+   */
+  java.lang.String getScheduledTaskId();
+  /**
+   * <pre>
+   * Set by daemon task injection, independent of the originating device.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+   * @return The bytes for scheduledTaskId.
+   */
+  com.google.protobuf.ByteString
+      getScheduledTaskIdBytes();
+
+  /**
+   * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+   * @return The scheduledRunId.
+   */
+  java.lang.String getScheduledRunId();
+  /**
+   * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+   * @return The bytes for scheduledRunId.
+   */
+  com.google.protobuf.ByteString
+      getScheduledRunIdBytes();
 }

@@ -38,6 +38,8 @@ message MachineMeta {
   // page at a time, so they learn of projects, and how many ended sessions
   // each has, from here rather than from the sessions they happen to hold.
   repeated ProjectSummary projects = 13;
+  // Persistent task/run change counter; publication coalesces short bursts.
+  uint64 schedule_revision = 14;
 }
 
 // ProjectSummary is what a machine knows of a project beyond its live
@@ -120,6 +122,7 @@ message MachineCapabilities {
   repeated ImageFormat upload_formats = 6;
   // ResolveApprovalRequest.always.
   bool approval_always = 10;
+  bool scheduled_tasks = 12;
 }
 
 message AgentInfo {

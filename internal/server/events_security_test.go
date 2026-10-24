@@ -22,7 +22,7 @@ func TestEventPagesBoundBytesAndPreserveCursor(t *testing.T) {
 	key := e2e.NewKey()
 	env, _ := e2e.Seal(key, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "large-events"}, key[:])
 	raw, _ := marshalEnv(env)
-	if _, err := ts.tenant().putSession(ctx, mid, "large-events", raw, 1, nil, 0, 0, nil); err != nil {
+	if _, err := ts.tenant().putSession(ctx, mid, "large-events", raw, 1, nil, 0, 0, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	const count = 24

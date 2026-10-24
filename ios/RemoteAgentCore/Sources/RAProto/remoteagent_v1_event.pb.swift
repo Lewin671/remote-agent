@@ -970,6 +970,14 @@ public struct PBEvent: @unchecked Sendable {
     set {_uniqueStorage()._kind = .sessionForked(newValue)}
   }
 
+  public var scheduledNotification: PBScheduledNotification {
+    get {
+      if case .scheduledNotification(let v)? = _storage._kind {return v}
+      return PBScheduledNotification()
+    }
+    set {_uniqueStorage()._kind = .scheduledNotification(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Kind: Equatable, Sendable {
@@ -993,6 +1001,7 @@ public struct PBEvent: @unchecked Sendable {
     case imageGenerated(PBImageGenerated)
     case planAnswered(PBPlanAnswered)
     case sessionForked(PBSessionForked)
+    case scheduledNotification(PBScheduledNotification)
 
   }
 
@@ -1021,6 +1030,11 @@ public struct PBOrigin: Sendable {
   public var observedEventSeq: UInt64 = 0
 
   public var observedScreenHash: Data = Data()
+
+  /// Set by daemon task injection, independent of the originating device.
+  public var scheduledTaskID: String = String()
+
+  public var scheduledRunID: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1362,6 +1376,13 @@ public struct PBTurnEnded: Sendable {
   public var reason: String = String()
 
   public var durationMs: Int64 = 0
+
+  /// Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+  public var scheduledTaskID: String = String()
+
+  public var scheduledRunID: String = String()
+
+  public var scheduledNotified: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1705,6 +1726,25 @@ public struct PBInputState: Sendable {
   public init() {}
 }
 
+/// Daemon-owned durable result of notify_user; plaintext stays inside encryption.
+public struct PBScheduledNotification: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var taskID: String = String()
+
+  public var runID: String = String()
+
+  public var title: String = String()
+
+  public var text: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "remoteagent.v1"
@@ -1767,7 +1807,7 @@ extension PBInputStage: SwiftProtobuf._ProtoNameProviding {
 
 extension PBEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Event"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}seq\0\u{3}session_id\0\u{1}time\0\u{3}turn_id\0\u{1}origin\0\u{4}\u{5}user_message\0\u{3}agent_message\0\u{1}reasoning\0\u{3}tool_call\0\u{3}turn_started\0\u{3}turn_ended\0\u{3}token_usage\0\u{3}turn_context\0\u{3}approval_requested\0\u{3}approval_resolved\0\u{3}question_asked\0\u{3}question_answered\0\u{3}session_state\0\u{3}input_state\0\u{3}plan_proposed\0\u{3}settings_changed\0\u{3}tool_started\0\u{3}image_generated\0\u{3}plan_answered\0\u{3}session_forked\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}seq\0\u{3}session_id\0\u{1}time\0\u{3}turn_id\0\u{1}origin\0\u{4}\u{5}user_message\0\u{3}agent_message\0\u{1}reasoning\0\u{3}tool_call\0\u{3}turn_started\0\u{3}turn_ended\0\u{3}token_usage\0\u{3}turn_context\0\u{3}approval_requested\0\u{3}approval_resolved\0\u{3}question_asked\0\u{3}question_answered\0\u{3}session_state\0\u{3}input_state\0\u{3}plan_proposed\0\u{3}settings_changed\0\u{3}tool_started\0\u{3}image_generated\0\u{3}plan_answered\0\u{3}session_forked\0\u{3}scheduled_notification\0")
 
   fileprivate class _StorageClass {
     var _seq: UInt64 = 0
@@ -2075,6 +2115,19 @@ extension PBEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBa
             _storage._kind = .sessionForked(v)
           }
         }()
+        case 30: try {
+          var v: PBScheduledNotification?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .scheduledNotification(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .scheduledNotification(v)
+          }
+        }()
         default: break
         }
       }
@@ -2183,6 +2236,10 @@ extension PBEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBa
         guard case .sessionForked(let v)? = _storage._kind else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 29)
       }()
+      case .scheduledNotification?: try {
+        guard case .scheduledNotification(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 30)
+      }()
       case nil: break
       }
     }
@@ -2211,7 +2268,7 @@ extension PBEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBa
 
 extension PBOrigin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Origin"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}device_id\0\u{3}request_id\0\u{3}observed_event_seq\0\u{3}observed_screen_hash\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}device_id\0\u{3}request_id\0\u{3}observed_event_seq\0\u{3}observed_screen_hash\0\u{3}scheduled_task_id\0\u{3}scheduled_run_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2224,6 +2281,8 @@ extension PBOrigin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationB
       case 3: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
       case 4: try { try decoder.decodeSingularUInt64Field(value: &self.observedEventSeq) }()
       case 5: try { try decoder.decodeSingularBytesField(value: &self.observedScreenHash) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.scheduledTaskID) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.scheduledRunID) }()
       default: break
       }
     }
@@ -2245,6 +2304,12 @@ extension PBOrigin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationB
     if !self.observedScreenHash.isEmpty {
       try visitor.visitSingularBytesField(value: self.observedScreenHash, fieldNumber: 5)
     }
+    if !self.scheduledTaskID.isEmpty {
+      try visitor.visitSingularStringField(value: self.scheduledTaskID, fieldNumber: 6)
+    }
+    if !self.scheduledRunID.isEmpty {
+      try visitor.visitSingularStringField(value: self.scheduledRunID, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2254,6 +2319,8 @@ extension PBOrigin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationB
     if lhs.requestID != rhs.requestID {return false}
     if lhs.observedEventSeq != rhs.observedEventSeq {return false}
     if lhs.observedScreenHash != rhs.observedScreenHash {return false}
+    if lhs.scheduledTaskID != rhs.scheduledTaskID {return false}
+    if lhs.scheduledRunID != rhs.scheduledRunID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2829,7 +2896,7 @@ extension PBTurnStarted: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
 extension PBTurnEnded: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TurnEnded"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}outcome\0\u{1}reason\0\u{3}duration_ms\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}outcome\0\u{1}reason\0\u{3}duration_ms\0\u{3}scheduled_task_id\0\u{3}scheduled_run_id\0\u{3}scheduled_notified\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2840,6 +2907,9 @@ extension PBTurnEnded: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       case 1: try { try decoder.decodeSingularEnumField(value: &self.outcome) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.reason) }()
       case 3: try { try decoder.decodeSingularInt64Field(value: &self.durationMs) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.scheduledTaskID) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.scheduledRunID) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.scheduledNotified) }()
       default: break
       }
     }
@@ -2855,6 +2925,15 @@ extension PBTurnEnded: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
     if self.durationMs != 0 {
       try visitor.visitSingularInt64Field(value: self.durationMs, fieldNumber: 3)
     }
+    if !self.scheduledTaskID.isEmpty {
+      try visitor.visitSingularStringField(value: self.scheduledTaskID, fieldNumber: 4)
+    }
+    if !self.scheduledRunID.isEmpty {
+      try visitor.visitSingularStringField(value: self.scheduledRunID, fieldNumber: 5)
+    }
+    if self.scheduledNotified != false {
+      try visitor.visitSingularBoolField(value: self.scheduledNotified, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2862,6 +2941,9 @@ extension PBTurnEnded: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
     if lhs.outcome != rhs.outcome {return false}
     if lhs.reason != rhs.reason {return false}
     if lhs.durationMs != rhs.durationMs {return false}
+    if lhs.scheduledTaskID != rhs.scheduledTaskID {return false}
+    if lhs.scheduledRunID != rhs.scheduledRunID {return false}
+    if lhs.scheduledNotified != rhs.scheduledNotified {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3530,6 +3612,51 @@ extension PBInputState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     if lhs.imageIds != rhs.imageIds {return false}
     if lhs.mode != rhs.mode {return false}
     if lhs.paused != rhs.paused {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBScheduledNotification: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ScheduledNotification"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}task_id\0\u{3}run_id\0\u{1}title\0\u{1}text\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.taskID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.runID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.title) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.taskID.isEmpty {
+      try visitor.visitSingularStringField(value: self.taskID, fieldNumber: 1)
+    }
+    if !self.runID.isEmpty {
+      try visitor.visitSingularStringField(value: self.runID, fieldNumber: 2)
+    }
+    if !self.title.isEmpty {
+      try visitor.visitSingularStringField(value: self.title, fieldNumber: 3)
+    }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBScheduledNotification, rhs: PBScheduledNotification) -> Bool {
+    if lhs.taskID != rhs.taskID {return false}
+    if lhs.runID != rhs.runID {return false}
+    if lhs.title != rhs.title {return false}
+    if lhs.text != rhs.text {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

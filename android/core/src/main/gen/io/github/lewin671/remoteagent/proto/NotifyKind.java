@@ -40,6 +40,10 @@ public enum NotifyKind
    * <code>NOTIFY_KIND_SECURITY = 3;</code>
    */
   NOTIFY_KIND_SECURITY(3),
+  /**
+   * <code>NOTIFY_KIND_SCHEDULED = 4;</code>
+   */
+  NOTIFY_KIND_SCHEDULED(4),
   UNRECOGNIZED(-1),
   ;
 
@@ -72,6 +76,10 @@ public enum NotifyKind
    * <code>NOTIFY_KIND_SECURITY = 3;</code>
    */
   public static final int NOTIFY_KIND_SECURITY_VALUE = 3;
+  /**
+   * <code>NOTIFY_KIND_SCHEDULED = 4;</code>
+   */
+  public static final int NOTIFY_KIND_SCHEDULED_VALUE = 4;
 
 
   @java.lang.Override
@@ -99,6 +107,7 @@ public enum NotifyKind
       case 1: return NOTIFY_KIND_ATTENTION;
       case 2: return NOTIFY_KIND_TURN_ENDED;
       case 3: return NOTIFY_KIND_SECURITY;
+      case 4: return NOTIFY_KIND_SCHEDULED;
       default: return null;
     }
   }

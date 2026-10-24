@@ -24,6 +24,8 @@ public  final class Origin extends
     deviceId_ = "";
     requestId_ = "";
     observedScreenHash_ = com.google.protobuf.ByteString.EMPTY;
+    scheduledTaskId_ = "";
+    scheduledRunId_ = "";
   }
   public static final int KIND_FIELD_NUMBER = 1;
   private int kind_;
@@ -251,6 +253,122 @@ public  final class Origin extends
   private void clearObservedScreenHash() {
 
     observedScreenHash_ = getDefaultInstance().getObservedScreenHash();
+  }
+
+  public static final int SCHEDULED_TASK_ID_FIELD_NUMBER = 6;
+  private java.lang.String scheduledTaskId_;
+  /**
+   * <pre>
+   * Set by daemon task injection, independent of the originating device.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+   * @return The scheduledTaskId.
+   */
+  @java.lang.Override
+  public java.lang.String getScheduledTaskId() {
+    return scheduledTaskId_;
+  }
+  /**
+   * <pre>
+   * Set by daemon task injection, independent of the originating device.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+   * @return The bytes for scheduledTaskId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getScheduledTaskIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(scheduledTaskId_);
+  }
+  /**
+   * <pre>
+   * Set by daemon task injection, independent of the originating device.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+   * @param value The scheduledTaskId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduledTaskId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    scheduledTaskId_ = value;
+  }
+  /**
+   * <pre>
+   * Set by daemon task injection, independent of the originating device.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+   */
+  private void clearScheduledTaskId() {
+
+    scheduledTaskId_ = getDefaultInstance().getScheduledTaskId();
+  }
+  /**
+   * <pre>
+   * Set by daemon task injection, independent of the originating device.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+   * @param value The bytes for scheduledTaskId to set.
+   */
+  private void setScheduledTaskIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    scheduledTaskId_ = value.toStringUtf8();
+
+  }
+
+  public static final int SCHEDULED_RUN_ID_FIELD_NUMBER = 7;
+  private java.lang.String scheduledRunId_;
+  /**
+   * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+   * @return The scheduledRunId.
+   */
+  @java.lang.Override
+  public java.lang.String getScheduledRunId() {
+    return scheduledRunId_;
+  }
+  /**
+   * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+   * @return The bytes for scheduledRunId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getScheduledRunIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(scheduledRunId_);
+  }
+  /**
+   * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+   * @param value The scheduledRunId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduledRunId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    scheduledRunId_ = value;
+  }
+  /**
+   * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+   */
+  private void clearScheduledRunId() {
+
+    scheduledRunId_ = getDefaultInstance().getScheduledRunId();
+  }
+  /**
+   * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+   * @param value The bytes for scheduledRunId to set.
+   */
+  private void setScheduledRunIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    scheduledRunId_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.Origin parseFrom(
@@ -593,6 +711,124 @@ public  final class Origin extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Set by daemon task injection, independent of the originating device.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+     * @return The scheduledTaskId.
+     */
+    @java.lang.Override
+    public java.lang.String getScheduledTaskId() {
+      return instance.getScheduledTaskId();
+    }
+    /**
+     * <pre>
+     * Set by daemon task injection, independent of the originating device.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+     * @return The bytes for scheduledTaskId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getScheduledTaskIdBytes() {
+      return instance.getScheduledTaskIdBytes();
+    }
+    /**
+     * <pre>
+     * Set by daemon task injection, independent of the originating device.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+     * @param value The scheduledTaskId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledTaskId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setScheduledTaskId(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Set by daemon task injection, independent of the originating device.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScheduledTaskId() {
+      copyOnWrite();
+      instance.clearScheduledTaskId();
+      return this;
+    }
+    /**
+     * <pre>
+     * Set by daemon task injection, independent of the originating device.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 6 [json_name = "scheduledTaskId"];</code>
+     * @param value The bytes for scheduledTaskId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledTaskIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setScheduledTaskIdBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+     * @return The scheduledRunId.
+     */
+    @java.lang.Override
+    public java.lang.String getScheduledRunId() {
+      return instance.getScheduledRunId();
+    }
+    /**
+     * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+     * @return The bytes for scheduledRunId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getScheduledRunIdBytes() {
+      return instance.getScheduledRunIdBytes();
+    }
+    /**
+     * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+     * @param value The scheduledRunId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledRunId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setScheduledRunId(value);
+      return this;
+    }
+    /**
+     * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScheduledRunId() {
+      copyOnWrite();
+      instance.clearScheduledRunId();
+      return this;
+    }
+    /**
+     * <code>string scheduled_run_id = 7 [json_name = "scheduledRunId"];</code>
+     * @param value The bytes for scheduledRunId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledRunIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setScheduledRunIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Origin)
   }
   @java.lang.Override
@@ -614,10 +850,12 @@ public  final class Origin extends
             "requestId_",
             "observedEventSeq_",
             "observedScreenHash_",
+            "scheduledTaskId_",
+            "scheduledRunId_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\f\u0002\u0208" +
-              "\u0003\u0208\u0004\u0003\u0005\n";
+              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0000\u0000\u0001\f\u0002\u0208" +
+              "\u0003\u0208\u0004\u0003\u0005\n\u0006\u0208\u0007\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

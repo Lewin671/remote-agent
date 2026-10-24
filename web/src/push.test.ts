@@ -22,7 +22,7 @@ it("registers existing push preferences for the newly paired device without aski
   remote.loadPrefs = vi.fn(async () => undefined);
   await (remote as any).onFrame({ case: "ready", value: {} });
   await vi.waitFor(() => expect(setPushSubscription).toHaveBeenCalled());
-  expect(setPushSubscription).toHaveBeenCalledWith(JSON.stringify(subscription), [NotifyKind.ATTENTION, NotifyKind.TURN_ENDED, NotifyKind.SECURITY]);
+  expect(setPushSubscription).toHaveBeenCalledWith(JSON.stringify(subscription), [NotifyKind.ATTENTION, NotifyKind.TURN_ENDED, NotifyKind.SECURITY, NotifyKind.SCHEDULED]);
   expect(requestPermission).not.toHaveBeenCalled();
 });
 
@@ -41,7 +41,7 @@ it("does not register a subscription after the account was removed during the re
   expect(remote.setPushSubscription).not.toHaveBeenCalled();
 });
 
-it("keeps security notifications when session notifications are turned off during restore", async () => {
+it("keeps security and scheduled notifications when session notifications are turned off during restore", async () => {
   localStorage.setItem("ra-push", JSON.stringify({ attention: true, turns: true }));
   vi.stubGlobal("Notification", { permission: "granted" });
   vi.stubGlobal("PushManager", class {});
@@ -65,16 +65,16 @@ it("keeps security notifications when session notifications are turned off durin
   key("AAAA");
   await Promise.all([restoring, off]);
   expect(pushPrefs()).toEqual({ attention: false, turns: false });
-  expect(server).toEqual([NotifyKind.SECURITY]);
+  expect(server).toEqual([NotifyKind.SECURITY, NotifyKind.SCHEDULED]);
   expect(browser).not.toBeNull();
 });
 
-it("restores SECURITY alone with both session preferences disabled", async () => {
+it("restores SECURITY and SCHEDULED with both session preferences disabled", async () => {
   vi.stubGlobal("Notification", { permission: "granted" });
   vi.stubGlobal("PushManager", class {});
   const subscription = { endpoint: "https://push.example.com/security" };
   vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: async () => subscription } }) } });
   const remote = { conn: "online", removed: false, setPushSubscription: vi.fn() } as unknown as Remote;
   await restorePushPrefs(remote);
-  expect(remote.setPushSubscription).toHaveBeenCalledWith(JSON.stringify(subscription), [NotifyKind.SECURITY]);
+  expect(remote.setPushSubscription).toHaveBeenCalledWith(JSON.stringify(subscription), [NotifyKind.SECURITY, NotifyKind.SCHEDULED]);
 });

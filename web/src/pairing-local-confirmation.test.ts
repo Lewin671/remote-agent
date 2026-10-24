@@ -54,7 +54,7 @@ async function peer(options: {
           PeekPairingRequestSchema,
           new Uint8Array(await request.arrayBuffer()),
         );
-        expect(peek.protocolVersion).toBe(10);
+        expect(peek.protocolVersion).toBe(11);
         return reply(
           toBinary(
             PeekPairingResponseSchema,
@@ -68,7 +68,7 @@ async function peer(options: {
           JoinPairingRequestSchema,
           new Uint8Array(await request.arrayBuffer()),
         );
-        expect(join.protocolVersion).toBe(10);
+        expect(join.protocolVersion).toBe(11);
         return reply(
           toBinary(
             JoinPairingResponseSchema,

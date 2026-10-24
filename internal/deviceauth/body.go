@@ -179,7 +179,7 @@ func ValidateBody(h Header, p []byte) error {
 			}
 		}
 	case *pb.NotifyContent:
-		if v.MachineId != h.Machine || v.SessionId != h.Session || (v.Kind != pb.NotifyKind_NOTIFY_KIND_ATTENTION && v.Kind != pb.NotifyKind_NOTIFY_KIND_TURN_ENDED) {
+		if v.MachineId != h.Machine || v.SessionId != h.Session || (v.Kind != pb.NotifyKind_NOTIFY_KIND_ATTENTION && v.Kind != pb.NotifyKind_NOTIFY_KIND_TURN_ENDED && v.Kind != pb.NotifyKind_NOTIFY_KIND_SCHEDULED) {
 			return ErrInvalid
 		}
 	case *pb.ProjectPrefs:

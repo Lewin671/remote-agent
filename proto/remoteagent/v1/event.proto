@@ -40,6 +40,7 @@ message Event {
     ImageGenerated image_generated = 27;
     PlanAnswered plan_answered = 28;
     SessionForked session_forked = 29;
+    ScheduledNotification scheduled_notification = 30;
   }
 }
 
@@ -71,6 +72,9 @@ message Origin {
   // Encrypted command preconditions, checked atomically on the owner.
   uint64 observed_event_seq = 4;
   bytes observed_screen_hash = 5;
+  // Set by daemon task injection, independent of the originating device.
+  string scheduled_task_id = 6;
+  string scheduled_run_id = 7;
 }
 
 enum ImageFormat {
@@ -291,6 +295,10 @@ message TurnEnded {
   TurnOutcome outcome = 1;
   string reason = 2;
   int64 duration_ms = 3;
+  // Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+  string scheduled_task_id = 4;
+  string scheduled_run_id = 5;
+  bool scheduled_notified = 6;
 }
 
 message TokenUsage {
@@ -532,4 +540,12 @@ message InputState {
   // so it waits for the user to send it (ResumeInput) or cancel it. Every
   // update of a paused message repeats it; a resumed one clears it.
   bool paused = 8;
+}
+
+// Daemon-owned durable result of notify_user; plaintext stays inside encryption.
+message ScheduledNotification {
+  string task_id = 1;
+  string run_id = 2;
+  string title = 3;
+  string text = 4;
 }

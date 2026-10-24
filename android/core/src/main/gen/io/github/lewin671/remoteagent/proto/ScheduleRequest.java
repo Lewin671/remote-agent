@@ -32,6 +32,7 @@ public  final class ScheduleRequest extends
   /**
    * <pre>
    * create, list, get, update, pause, resume, cancel, run.
+   * notify_user is a bound local-MCP operation only.
    * </pre>
    *
    * <code>string operation = 1 [json_name = "operation"];</code>
@@ -44,6 +45,7 @@ public  final class ScheduleRequest extends
   /**
    * <pre>
    * create, list, get, update, pause, resume, cancel, run.
+   * notify_user is a bound local-MCP operation only.
    * </pre>
    *
    * <code>string operation = 1 [json_name = "operation"];</code>
@@ -57,6 +59,7 @@ public  final class ScheduleRequest extends
   /**
    * <pre>
    * create, list, get, update, pause, resume, cancel, run.
+   * notify_user is a bound local-MCP operation only.
    * </pre>
    *
    * <code>string operation = 1 [json_name = "operation"];</code>
@@ -72,6 +75,7 @@ public  final class ScheduleRequest extends
   /**
    * <pre>
    * create, list, get, update, pause, resume, cancel, run.
+   * notify_user is a bound local-MCP operation only.
    * </pre>
    *
    * <code>string operation = 1 [json_name = "operation"];</code>
@@ -83,6 +87,7 @@ public  final class ScheduleRequest extends
   /**
    * <pre>
    * create, list, get, update, pause, resume, cancel, run.
+   * notify_user is a bound local-MCP operation only.
    * </pre>
    *
    * <code>string operation = 1 [json_name = "operation"];</code>
@@ -215,7 +220,8 @@ public  final class ScheduleRequest extends
   private com.google.protobuf.ByteString specJson_;
   /**
    * <pre>
-   * UTF-8 JSON TaskSpec for create/update (complete replacement).
+   * UTF-8 JSON TaskSpec for create/update (complete replacement), or
+   * {"text":string,"title"?:string} for notify_user.
    * </pre>
    *
    * <code>bytes spec_json = 4 [json_name = "specJson"];</code>
@@ -227,7 +233,8 @@ public  final class ScheduleRequest extends
   }
   /**
    * <pre>
-   * UTF-8 JSON TaskSpec for create/update (complete replacement).
+   * UTF-8 JSON TaskSpec for create/update (complete replacement), or
+   * {"text":string,"title"?:string} for notify_user.
    * </pre>
    *
    * <code>bytes spec_json = 4 [json_name = "specJson"];</code>
@@ -240,7 +247,8 @@ public  final class ScheduleRequest extends
   }
   /**
    * <pre>
-   * UTF-8 JSON TaskSpec for create/update (complete replacement).
+   * UTF-8 JSON TaskSpec for create/update (complete replacement), or
+   * {"text":string,"title"?:string} for notify_user.
    * </pre>
    *
    * <code>bytes spec_json = 4 [json_name = "specJson"];</code>
@@ -462,6 +470,7 @@ public  final class ScheduleRequest extends
     /**
      * <pre>
      * create, list, get, update, pause, resume, cancel, run.
+     * notify_user is a bound local-MCP operation only.
      * </pre>
      *
      * <code>string operation = 1 [json_name = "operation"];</code>
@@ -474,6 +483,7 @@ public  final class ScheduleRequest extends
     /**
      * <pre>
      * create, list, get, update, pause, resume, cancel, run.
+     * notify_user is a bound local-MCP operation only.
      * </pre>
      *
      * <code>string operation = 1 [json_name = "operation"];</code>
@@ -487,6 +497,7 @@ public  final class ScheduleRequest extends
     /**
      * <pre>
      * create, list, get, update, pause, resume, cancel, run.
+     * notify_user is a bound local-MCP operation only.
      * </pre>
      *
      * <code>string operation = 1 [json_name = "operation"];</code>
@@ -502,6 +513,7 @@ public  final class ScheduleRequest extends
     /**
      * <pre>
      * create, list, get, update, pause, resume, cancel, run.
+     * notify_user is a bound local-MCP operation only.
      * </pre>
      *
      * <code>string operation = 1 [json_name = "operation"];</code>
@@ -515,6 +527,7 @@ public  final class ScheduleRequest extends
     /**
      * <pre>
      * create, list, get, update, pause, resume, cancel, run.
+     * notify_user is a bound local-MCP operation only.
      * </pre>
      *
      * <code>string operation = 1 [json_name = "operation"];</code>
@@ -648,7 +661,8 @@ public  final class ScheduleRequest extends
 
     /**
      * <pre>
-     * UTF-8 JSON TaskSpec for create/update (complete replacement).
+     * UTF-8 JSON TaskSpec for create/update (complete replacement), or
+     * {"text":string,"title"?:string} for notify_user.
      * </pre>
      *
      * <code>bytes spec_json = 4 [json_name = "specJson"];</code>
@@ -660,7 +674,8 @@ public  final class ScheduleRequest extends
     }
     /**
      * <pre>
-     * UTF-8 JSON TaskSpec for create/update (complete replacement).
+     * UTF-8 JSON TaskSpec for create/update (complete replacement), or
+     * {"text":string,"title"?:string} for notify_user.
      * </pre>
      *
      * <code>bytes spec_json = 4 [json_name = "specJson"];</code>
@@ -674,7 +689,8 @@ public  final class ScheduleRequest extends
     }
     /**
      * <pre>
-     * UTF-8 JSON TaskSpec for create/update (complete replacement).
+     * UTF-8 JSON TaskSpec for create/update (complete replacement), or
+     * {"text":string,"title"?:string} for notify_user.
      * </pre>
      *
      * <code>bytes spec_json = 4 [json_name = "specJson"];</code>

@@ -126,7 +126,7 @@ func newPusher(s *Server) (*pusher, error) {
 
 func kindBit(k pb.NotifyKind) int {
 	switch k {
-	case pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED, pb.NotifyKind_NOTIFY_KIND_SECURITY:
+	case pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED, pb.NotifyKind_NOTIFY_KIND_SECURITY, pb.NotifyKind_NOTIFY_KIND_SCHEDULED:
 		return 1 << int(k)
 	default:
 		return 0
@@ -198,6 +198,7 @@ func (p *pusher) setFCM(ctx context.Context, t *tstore, deviceID, token string, 
 }
 
 var pushText = map[pb.NotifyKind]string{
+	pb.NotifyKind_NOTIFY_KIND_SCHEDULED:  "定时任务有新结果",
 	pb.NotifyKind_NOTIFY_KIND_ATTENTION:  "有会话在等你处理",
 	pb.NotifyKind_NOTIFY_KIND_TURN_ENDED: "一轮对话结束了",
 	pb.NotifyKind_NOTIFY_KIND_SECURITY:   "有设备申请接管管理权",

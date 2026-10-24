@@ -41,6 +41,15 @@ class TimelineTest {
             .addAllHidden(hidden.map { ProjectPref.newBuilder().setPath(it).build() }).build()),
     )
 
+    @Test fun taskOwnedSessionsRemainAddressableButDoNotEnterLists() {
+        val base = session("task", "/scheduled")
+        val owned = base.copy(info = base.info!!.toBuilder().setTaskOwned(true).setScheduledTaskId("task-id").build())
+        val snapshot = state(owned)
+        assertTrue(snapshot.sessions.containsKey("task"))
+        assertEquals(0, homeTimeline(snapshot, HomeScope.All).size)
+        assertTrue(projects(snapshot).isEmpty())
+    }
+
     @Test
     fun theOnlyListedProjectIsTheDefaultScopeElseEveryProject() {
         assertEquals(HomeScope.All, defaultScope(state()))

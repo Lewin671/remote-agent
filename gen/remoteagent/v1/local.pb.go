@@ -197,8 +197,12 @@ type Session struct {
 	// Authority-signed archive replacements, oldest first. Historical content
 	// keeps its original signed machine route; control always uses the new ID.
 	MachineReplacements []*MachineReplacementProof `protobuf:"bytes,34,rep,name=machine_replacements,json=machineReplacements,proto3" json:"machine_replacements,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Creating task remains known after a user takes over this conversation.
+	ScheduledTaskId string `protobuf:"bytes,35,opt,name=scheduled_task_id,json=scheduledTaskId,proto3" json:"scheduled_task_id,omitempty"`
+	// Omit from default session/project listings until user takeover.
+	TaskOwned     bool `protobuf:"varint,36,opt,name=task_owned,json=taskOwned,proto3" json:"task_owned,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Session) Reset() {
@@ -467,6 +471,20 @@ func (x *Session) GetMachineReplacements() []*MachineReplacementProof {
 		return x.MachineReplacements
 	}
 	return nil
+}
+
+func (x *Session) GetScheduledTaskId() string {
+	if x != nil {
+		return x.ScheduledTaskId
+	}
+	return ""
+}
+
+func (x *Session) GetTaskOwned() bool {
+	if x != nil {
+		return x.TaskOwned
+	}
+	return false
 }
 
 type MachineReplacementProof struct {
@@ -3847,11 +3865,13 @@ func (x *ImageSessionStorage) GetProtectedBytes() int64 {
 type ScheduleRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// create, list, get, update, pause, resume, cancel, run.
+	// notify_user is a bound local-MCP operation only.
 	Operation string `protobuf:"bytes,1,opt,name=operation,proto3" json:"operation,omitempty"`
 	TaskId    string `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
 	// Context for resolving "current" and after_turn; empty for machine callers.
 	SessionId string `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// UTF-8 JSON TaskSpec for create/update (complete replacement).
+	// UTF-8 JSON TaskSpec for create/update (complete replacement), or
+	// {"text":string,"title"?:string} for notify_user.
 	SpecJson []byte `protobuf:"bytes,4,opt,name=spec_json,json=specJson,proto3" json:"spec_json,omitempty"`
 	// Optional optimistic concurrency check; zero omits it.
 	ExpectedRevision uint64 `protobuf:"varint,5,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
@@ -3936,6 +3956,7 @@ func (x *ScheduleRequest) GetRequestId() string {
 type ScheduleResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// UTF-8 JSON Task, or {"tasks":[Task,...]} for list. Includes execution history.
+	// notify_user returns {"notified":true} after durable event recording.
 	ResultJson    []byte `protobuf:"bytes,1,opt,name=result_json,json=resultJson,proto3" json:"result_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3982,8 +4003,7 @@ var File_remoteagent_v1_local_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
-	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\xdc\n" +
-	"\n" +
+	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\xa7\v\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03cwd\x18\x02 \x01(\tR\x03cwd\x12!\n" +
@@ -4023,7 +4043,10 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
 	"forked_seq\x18  \x01(\x04R\tforkedSeq\x12-\n" +
 	"\x12current_checkpoint\x18! \x01(\fR\x11currentCheckpoint\x12Z\n" +
-	"\x14machine_replacements\x18\" \x03(\v2'.remoteagent.v1.MachineReplacementProofR\x13machineReplacements\"S\n" +
+	"\x14machine_replacements\x18\" \x03(\v2'.remoteagent.v1.MachineReplacementProofR\x13machineReplacements\x12*\n" +
+	"\x11scheduled_task_id\x18# \x01(\tR\x0fscheduledTaskId\x12\x1d\n" +
+	"\n" +
+	"task_owned\x18$ \x01(\bR\ttaskOwned\"S\n" +
 	"\x17MachineReplacementProof\x12\x1a\n" +
 	"\bapproval\x18\x01 \x01(\fR\bapproval\x12\x1c\n" +
 	"\tsignature\x18\x02 \x01(\fR\tsignature\"\xa8\x03\n" +

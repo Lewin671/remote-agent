@@ -516,7 +516,7 @@ export function validateSecurityBody(
     h.purpose === 10 &&
     (m.sessionId !== h.session ||
       m.machineId !== h.machine ||
-      ![1, 2].includes(m.kind as number))
+      ![1, 2, 4].includes(m.kind as number))
   )
     throw new SecurityError();
   if (h.purpose === 12 && m.schema !== 1) throw new SecurityError();

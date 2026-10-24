@@ -108,7 +108,7 @@ func checkSkeletonIdentityAndState(t *testing.T, before, after protoreflect.Mess
 
 func TestSkeletonSizePropertyForEveryKind(t *testing.T) {
 	kinds := (&pb.Event{}).ProtoReflect().Descriptor().Oneofs().ByName("kind").Fields()
-	if kinds.Len() != 20 {
+	if kinds.Len() != 21 {
 		t.Fatal("update exhaustive event coverage")
 	}
 	huge := strings.Repeat("内容🙂", 200000)

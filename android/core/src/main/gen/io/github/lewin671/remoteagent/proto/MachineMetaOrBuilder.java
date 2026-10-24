@@ -210,4 +210,14 @@ public interface MachineMetaOrBuilder extends
    * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
    */
   int getProjectsCount();
+
+  /**
+   * <pre>
+   * Persistent task/run change counter; publication coalesces short bursts.
+   * </pre>
+   *
+   * <code>uint64 schedule_revision = 14 [json_name = "scheduleRevision"];</code>
+   * @return The scheduleRevision.
+   */
+  long getScheduleRevision();
 }

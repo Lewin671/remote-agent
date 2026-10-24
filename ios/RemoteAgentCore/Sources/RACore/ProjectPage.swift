@@ -52,7 +52,7 @@ public func savedSettings(_ state: RemoteState, key: String) -> PBProjectSetting
 // Of the sessions held here: every one that has not ended, and the ended ones fetched so far (architecture §8 「会话列表分页」).
 // In the order of the listing, live sessions before ended ones (architecture §8).
 private func projectSessions(_ state: RemoteState, key: String) -> [SessionView] {
-    state.sessions.values.filter { projectKey($0).jvmEquals(key) }.sorted(by: sessionOrder)
+    state.sessions.values.filter { $0.info?.taskOwned != true && projectKey($0).jvmEquals(key) }.sorted(by: sessionOrder)
 }
 
 /// The machines a project has sessions on, by the sessions held here and the

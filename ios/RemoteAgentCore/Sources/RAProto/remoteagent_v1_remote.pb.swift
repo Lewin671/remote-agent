@@ -155,59 +155,92 @@ public enum PBDefaultModeSource: SwiftProtobuf.Enum, Swift.CaseIterable {
 }
 
 /// MachineMeta describes a computer running a daemon.
-public struct PBMachineMeta: Sendable {
+public struct PBMachineMeta: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var hostname: String = String()
+  public var hostname: String {
+    get {return _storage._hostname}
+    set {_uniqueStorage()._hostname = newValue}
+  }
 
-  public var os: String = String()
+  public var os: String {
+    get {return _storage._os}
+    set {_uniqueStorage()._os = newValue}
+  }
 
   /// Home folder, for choosing where to start sessions.
-  public var home: String = String()
+  public var home: String {
+    get {return _storage._home}
+    set {_uniqueStorage()._home = newValue}
+  }
 
   /// `codex --version`, and whether this remote-agent has been checked
   /// against it (by its tests or `remote-agent doctor`).
-  public var codexVersion: String = String()
+  public var codexVersion: String {
+    get {return _storage._codexVersion}
+    set {_uniqueStorage()._codexVersion = newValue}
+  }
 
-  public var codexVerified: Bool = false
+  public var codexVerified: Bool {
+    get {return _storage._codexVerified}
+    set {_uniqueStorage()._codexVerified = newValue}
+  }
 
   /// The CLIs installed on this machine; a client offers only these when
   /// starting a session.
-  public var agents: [PBAgentInfo] = []
+  public var agents: [PBAgentInfo] {
+    get {return _storage._agents}
+    set {_uniqueStorage()._agents = newValue}
+  }
 
   /// What this daemon offers that depends on the machine.
   public var capabilities: PBMachineCapabilities {
-    get {return _capabilities ?? PBMachineCapabilities()}
-    set {_capabilities = newValue}
+    get {return _storage._capabilities ?? PBMachineCapabilities()}
+    set {_uniqueStorage()._capabilities = newValue}
   }
   /// Returns true if `capabilities` has been explicitly set.
-  public var hasCapabilities: Bool {return self._capabilities != nil}
+  public var hasCapabilities: Bool {return _storage._capabilities != nil}
   /// Clears the value of `capabilities`. Subsequent reads from it will return its default value.
-  public mutating func clearCapabilities() {self._capabilities = nil}
+  public mutating func clearCapabilities() {_uniqueStorage()._capabilities = nil}
 
   /// The account usage limits of each installed CLI, as far as the CLI
   /// tells them (Codex: its rollouts; Claude Code: the input of its status
   /// line). A CLI without an entry is not supported by this daemon.
   /// Several entries for one CLI are accounts (or, with account empty,
   /// sessions) that could not be told to be the same.
-  public var quotas: [PBAgentQuota] = []
+  public var quotas: [PBAgentQuota] {
+    get {return _storage._quotas}
+    set {_uniqueStorage()._quotas = newValue}
+  }
 
   /// The protocol version this daemon speaks (internal/protocol). A client
   /// of another version sends it no commands and says which side to update.
-  public var protocolVersion: UInt32 = 0
+  public var protocolVersion: UInt32 {
+    get {return _storage._protocolVersion}
+    set {_uniqueStorage()._protocolVersion = newValue}
+  }
 
   /// The projects this machine has sessions in. Clients list sessions a
   /// page at a time, so they learn of projects, and how many ended sessions
   /// each has, from here rather than from the sessions they happen to hold.
-  public var projects: [PBProjectSummary] = []
+  public var projects: [PBProjectSummary] {
+    get {return _storage._projects}
+    set {_uniqueStorage()._projects = newValue}
+  }
+
+  /// Persistent task/run change counter; publication coalesces short bursts.
+  public var scheduleRevision: UInt64 {
+    get {return _storage._scheduleRevision}
+    set {_uniqueStorage()._scheduleRevision = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _capabilities: PBMachineCapabilities? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// ProjectSummary is what a machine knows of a project beyond its live
@@ -325,6 +358,8 @@ public struct PBMachineCapabilities: Sendable {
 
   /// ResolveApprovalRequest.always.
   public var approvalAlways: Bool = false
+
+  public var scheduledTasks: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1391,78 +1426,139 @@ extension PBDefaultModeSource: SwiftProtobuf._ProtoNameProviding {
 
 extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineMeta"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hostname\0\u{1}os\0\u{2}\u{4}home\0\u{3}codex_version\0\u{3}codex_verified\0\u{1}agents\0\u{1}capabilities\0\u{1}quotas\0\u{3}protocol_version\0\u{1}projects\0\u{c}\u{3}\u{1}\u{c}\u{4}\u{1}\u{c}\u{5}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hostname\0\u{1}os\0\u{2}\u{4}home\0\u{3}codex_version\0\u{3}codex_verified\0\u{1}agents\0\u{1}capabilities\0\u{1}quotas\0\u{3}protocol_version\0\u{1}projects\0\u{3}schedule_revision\0\u{c}\u{3}\u{1}\u{c}\u{4}\u{1}\u{c}\u{5}\u{1}")
+
+  fileprivate class _StorageClass {
+    var _hostname: String = String()
+    var _os: String = String()
+    var _home: String = String()
+    var _codexVersion: String = String()
+    var _codexVerified: Bool = false
+    var _agents: [PBAgentInfo] = []
+    var _capabilities: PBMachineCapabilities? = nil
+    var _quotas: [PBAgentQuota] = []
+    var _protocolVersion: UInt32 = 0
+    var _projects: [PBProjectSummary] = []
+    var _scheduleRevision: UInt64 = 0
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _hostname = source._hostname
+      _os = source._os
+      _home = source._home
+      _codexVersion = source._codexVersion
+      _codexVerified = source._codexVerified
+      _agents = source._agents
+      _capabilities = source._capabilities
+      _quotas = source._quotas
+      _protocolVersion = source._protocolVersion
+      _projects = source._projects
+      _scheduleRevision = source._scheduleRevision
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.hostname) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.os) }()
-      case 6: try { try decoder.decodeSingularStringField(value: &self.home) }()
-      case 7: try { try decoder.decodeSingularStringField(value: &self.codexVersion) }()
-      case 8: try { try decoder.decodeSingularBoolField(value: &self.codexVerified) }()
-      case 9: try { try decoder.decodeRepeatedMessageField(value: &self.agents) }()
-      case 10: try { try decoder.decodeSingularMessageField(value: &self._capabilities) }()
-      case 11: try { try decoder.decodeRepeatedMessageField(value: &self.quotas) }()
-      case 12: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
-      case 13: try { try decoder.decodeRepeatedMessageField(value: &self.projects) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._hostname) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._os) }()
+        case 6: try { try decoder.decodeSingularStringField(value: &_storage._home) }()
+        case 7: try { try decoder.decodeSingularStringField(value: &_storage._codexVersion) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._codexVerified) }()
+        case 9: try { try decoder.decodeRepeatedMessageField(value: &_storage._agents) }()
+        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._capabilities) }()
+        case 11: try { try decoder.decodeRepeatedMessageField(value: &_storage._quotas) }()
+        case 12: try { try decoder.decodeSingularUInt32Field(value: &_storage._protocolVersion) }()
+        case 13: try { try decoder.decodeRepeatedMessageField(value: &_storage._projects) }()
+        case 14: try { try decoder.decodeSingularUInt64Field(value: &_storage._scheduleRevision) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.hostname.isEmpty {
-      try visitor.visitSingularStringField(value: self.hostname, fieldNumber: 1)
-    }
-    if !self.os.isEmpty {
-      try visitor.visitSingularStringField(value: self.os, fieldNumber: 2)
-    }
-    if !self.home.isEmpty {
-      try visitor.visitSingularStringField(value: self.home, fieldNumber: 6)
-    }
-    if !self.codexVersion.isEmpty {
-      try visitor.visitSingularStringField(value: self.codexVersion, fieldNumber: 7)
-    }
-    if self.codexVerified != false {
-      try visitor.visitSingularBoolField(value: self.codexVerified, fieldNumber: 8)
-    }
-    if !self.agents.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.agents, fieldNumber: 9)
-    }
-    try { if let v = self._capabilities {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
-    } }()
-    if !self.quotas.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.quotas, fieldNumber: 11)
-    }
-    if self.protocolVersion != 0 {
-      try visitor.visitSingularUInt32Field(value: self.protocolVersion, fieldNumber: 12)
-    }
-    if !self.projects.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.projects, fieldNumber: 13)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._hostname.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._hostname, fieldNumber: 1)
+      }
+      if !_storage._os.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._os, fieldNumber: 2)
+      }
+      if !_storage._home.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._home, fieldNumber: 6)
+      }
+      if !_storage._codexVersion.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._codexVersion, fieldNumber: 7)
+      }
+      if _storage._codexVerified != false {
+        try visitor.visitSingularBoolField(value: _storage._codexVerified, fieldNumber: 8)
+      }
+      if !_storage._agents.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._agents, fieldNumber: 9)
+      }
+      try { if let v = _storage._capabilities {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      } }()
+      if !_storage._quotas.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._quotas, fieldNumber: 11)
+      }
+      if _storage._protocolVersion != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._protocolVersion, fieldNumber: 12)
+      }
+      if !_storage._projects.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._projects, fieldNumber: 13)
+      }
+      if _storage._scheduleRevision != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._scheduleRevision, fieldNumber: 14)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBMachineMeta, rhs: PBMachineMeta) -> Bool {
-    if lhs.hostname != rhs.hostname {return false}
-    if lhs.os != rhs.os {return false}
-    if lhs.home != rhs.home {return false}
-    if lhs.codexVersion != rhs.codexVersion {return false}
-    if lhs.codexVerified != rhs.codexVerified {return false}
-    if lhs.agents != rhs.agents {return false}
-    if lhs._capabilities != rhs._capabilities {return false}
-    if lhs.quotas != rhs.quotas {return false}
-    if lhs.protocolVersion != rhs.protocolVersion {return false}
-    if lhs.projects != rhs.projects {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._hostname != rhs_storage._hostname {return false}
+        if _storage._os != rhs_storage._os {return false}
+        if _storage._home != rhs_storage._home {return false}
+        if _storage._codexVersion != rhs_storage._codexVersion {return false}
+        if _storage._codexVerified != rhs_storage._codexVerified {return false}
+        if _storage._agents != rhs_storage._agents {return false}
+        if _storage._capabilities != rhs_storage._capabilities {return false}
+        if _storage._quotas != rhs_storage._quotas {return false}
+        if _storage._protocolVersion != rhs_storage._protocolVersion {return false}
+        if _storage._projects != rhs_storage._projects {return false}
+        if _storage._scheduleRevision != rhs_storage._scheduleRevision {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1634,7 +1730,7 @@ extension PBQuotaWindow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
 extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineCapabilities"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}image_upload\0\u{3}max_images_per_message\0\u{3}max_upload_bytes\0\u{3}max_chunk_bytes\0\u{3}upload_formats\0\u{4}\u{4}approval_always\0\u{c}\u{1}\u{1}\u{c}\u{7}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{b}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}image_upload\0\u{3}max_images_per_message\0\u{3}max_upload_bytes\0\u{3}max_chunk_bytes\0\u{3}upload_formats\0\u{4}\u{4}approval_always\0\u{4}\u{2}scheduled_tasks\0\u{c}\u{1}\u{1}\u{c}\u{7}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{b}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1648,6 +1744,7 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 5: try { try decoder.decodeSingularInt32Field(value: &self.maxChunkBytes) }()
       case 6: try { try decoder.decodeRepeatedEnumField(value: &self.uploadFormats) }()
       case 10: try { try decoder.decodeSingularBoolField(value: &self.approvalAlways) }()
+      case 12: try { try decoder.decodeSingularBoolField(value: &self.scheduledTasks) }()
       default: break
       }
     }
@@ -1672,6 +1769,9 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.approvalAlways != false {
       try visitor.visitSingularBoolField(value: self.approvalAlways, fieldNumber: 10)
     }
+    if self.scheduledTasks != false {
+      try visitor.visitSingularBoolField(value: self.scheduledTasks, fieldNumber: 12)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1682,6 +1782,7 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.maxChunkBytes != rhs.maxChunkBytes {return false}
     if lhs.uploadFormats != rhs.uploadFormats {return false}
     if lhs.approvalAlways != rhs.approvalAlways {return false}
+    if lhs.scheduledTasks != rhs.scheduledTasks {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -228,6 +228,44 @@ public  final class PutSessionRequest extends
     endedMs_ = 0L;
   }
 
+  public static final int TASK_OWNED_FIELD_NUMBER = 5;
+  private boolean taskOwned_;
+  /**
+   * <pre>
+   * Clear routing metadata only; task identity remains encrypted.
+   * </pre>
+   *
+   * <code>bool task_owned = 5 [json_name = "taskOwned"];</code>
+   * @return The taskOwned.
+   */
+  @java.lang.Override
+  public boolean getTaskOwned() {
+    return taskOwned_;
+  }
+  /**
+   * <pre>
+   * Clear routing metadata only; task identity remains encrypted.
+   * </pre>
+   *
+   * <code>bool task_owned = 5 [json_name = "taskOwned"];</code>
+   * @param value The taskOwned to set.
+   */
+  private void setTaskOwned(boolean value) {
+    
+    taskOwned_ = value;
+  }
+  /**
+   * <pre>
+   * Clear routing metadata only; task identity remains encrypted.
+   * </pre>
+   *
+   * <code>bool task_owned = 5 [json_name = "taskOwned"];</code>
+   */
+  private void clearTaskOwned() {
+
+    taskOwned_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.PutSessionRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -541,6 +579,46 @@ public  final class PutSessionRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Clear routing metadata only; task identity remains encrypted.
+     * </pre>
+     *
+     * <code>bool task_owned = 5 [json_name = "taskOwned"];</code>
+     * @return The taskOwned.
+     */
+    @java.lang.Override
+    public boolean getTaskOwned() {
+      return instance.getTaskOwned();
+    }
+    /**
+     * <pre>
+     * Clear routing metadata only; task identity remains encrypted.
+     * </pre>
+     *
+     * <code>bool task_owned = 5 [json_name = "taskOwned"];</code>
+     * @param value The taskOwned to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTaskOwned(boolean value) {
+      copyOnWrite();
+      instance.setTaskOwned(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Clear routing metadata only; task identity remains encrypted.
+     * </pre>
+     *
+     * <code>bool task_owned = 5 [json_name = "taskOwned"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTaskOwned() {
+      copyOnWrite();
+      instance.clearTaskOwned();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.PutSessionRequest)
   }
   @java.lang.Override
@@ -562,10 +640,11 @@ public  final class PutSessionRequest extends
             "key_",
             "meta_",
             "endedMs_",
+            "taskOwned_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
-              "\u0000\u0003\u1009\u0001\u0004\u0002";
+              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
+              "\u0000\u0003\u1009\u0001\u0004\u0002\u0005\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

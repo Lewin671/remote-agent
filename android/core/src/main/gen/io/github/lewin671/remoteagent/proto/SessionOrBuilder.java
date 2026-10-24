@@ -464,7 +464,7 @@ public interface SessionOrBuilder extends
    *
    * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
    */
-  java.util.List<io.github.lewin671.remoteagent.proto.MachineReplacementProof>
+  java.util.List<io.github.lewin671.remoteagent.proto.MachineReplacementProof> 
       getMachineReplacementsList();
   /**
    * <pre>
@@ -484,4 +484,34 @@ public interface SessionOrBuilder extends
    * <code>repeated .remoteagent.v1.MachineReplacementProof machine_replacements = 34 [json_name = "machineReplacements"];</code>
    */
   int getMachineReplacementsCount();
+
+  /**
+   * <pre>
+   * Creating task remains known after a user takes over this conversation.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+   * @return The scheduledTaskId.
+   */
+  java.lang.String getScheduledTaskId();
+  /**
+   * <pre>
+   * Creating task remains known after a user takes over this conversation.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 35 [json_name = "scheduledTaskId"];</code>
+   * @return The bytes for scheduledTaskId.
+   */
+  com.google.protobuf.ByteString
+      getScheduledTaskIdBytes();
+
+  /**
+   * <pre>
+   * Omit from default session/project listings until user takeover.
+   * </pre>
+   *
+   * <code>bool task_owned = 36 [json_name = "taskOwned"];</code>
+   * @return The taskOwned.
+   */
+  boolean getTaskOwned();
 }

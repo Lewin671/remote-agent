@@ -27,7 +27,7 @@ func TestSessionPaging(t *testing.T) {
 	ts := st.tenant("a")
 	put := func(id string, ended int64) {
 		t.Helper()
-		if _, err := ts.putSession(ctx, "m", id, []byte("key"), 1, []byte("meta"), 1, ended, nil); err != nil {
+		if _, err := ts.putSession(ctx, "m", id, []byte("key"), 1, []byte("meta"), 1, ended, false, nil); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -72,7 +72,7 @@ func TestSessionPaging(t *testing.T) {
 
 	// A session that ends leaves the live ones; resumed, it returns. An
 	// older revision changes neither.
-	if _, err := ts.putSession(ctx, "m", "live-a", nil, 1, []byte("meta"), 2, 9000, nil); err != nil {
+	if _, err := ts.putSession(ctx, "m", "live-a", nil, 1, []byte("meta"), 2, 9000, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	if live, _ := ts.liveSessions(ctx, &sessionBudget{}); len(live) != 1 || live[0].SessionId != "live-b" {
@@ -81,13 +81,13 @@ func TestSessionPaging(t *testing.T) {
 	if page, _, _ := ts.endedSessions(ctx, nil, 1, &sessionBudget{}); page[0].SessionId != "live-a" {
 		t.Fatalf("latest ended: %v", page[0].SessionId)
 	}
-	if _, err := ts.putSession(ctx, "m", "live-a", nil, 1, []byte("meta"), 1, 0, nil); err != nil {
+	if _, err := ts.putSession(ctx, "m", "live-a", nil, 1, []byte("meta"), 1, 0, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	if live, _ := ts.liveSessions(ctx, &sessionBudget{}); len(live) != 1 {
 		t.Fatal("an older revision brought the session back")
 	}
-	if _, err := ts.putSession(ctx, "m", "live-a", nil, 1, []byte("meta"), 3, 0, nil); err != nil {
+	if _, err := ts.putSession(ctx, "m", "live-a", nil, 1, []byte("meta"), 3, 0, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	if live, _ := ts.liveSessions(ctx, &sessionBudget{}); len(live) != 2 {

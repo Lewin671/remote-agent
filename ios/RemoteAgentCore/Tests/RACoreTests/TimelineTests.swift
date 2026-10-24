@@ -40,6 +40,14 @@ import Testing
             })
     }
 
+    @Test func taskOwnedSessionsRemainAddressableButDoNotEnterLists() {
+        let owned = Mk.session("task") { $0.cwd = "/scheduled"; $0.taskOwned = true; $0.scheduledTaskID = "task-id" }
+        let snapshot = state(owned)
+        #expect(snapshot.sessions["task"] != nil)
+        #expect(homeTimeline(snapshot, scope: .all).size == 0)
+        #expect(projects(snapshot).isEmpty)
+    }
+
     @Test func theOnlyListedProjectIsTheDefaultScopeElseEveryProject() {
         #expect(defaultScope(state()) == .all)
         #expect(defaultScope(state(session("1", "/a"))) == .of(key: "/a"))

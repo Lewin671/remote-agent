@@ -365,7 +365,7 @@ func (m *machineService) PutSession(ctx context.Context, req *connect.Request[pb
 		return nil, invalid("ended_ms must not be negative")
 	}
 	t := m.s.tenantFrom(ctx)
-	rs, err := t.store.putSession(ctx, id, sid, key, keyEpoch, meta, revision, req.Msg.EndedMs, t.limit(m.s, growsSessions))
+	rs, err := t.store.putSession(ctx, id, sid, key, keyEpoch, meta, revision, req.Msg.EndedMs, req.Msg.TaskOwned, t.limit(m.s, growsSessions))
 	var apiErr *connect.Error
 	switch {
 	case errors.As(err, &apiErr):

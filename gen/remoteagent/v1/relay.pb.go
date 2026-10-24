@@ -150,7 +150,8 @@ const (
 	NotifyKind_NOTIFY_KIND_TURN_ENDED NotifyKind = 2
 	// A recovery is pending on the account's authority client. Generic text
 	// only; the app opens the device page.
-	NotifyKind_NOTIFY_KIND_SECURITY NotifyKind = 3
+	NotifyKind_NOTIFY_KIND_SECURITY  NotifyKind = 3
+	NotifyKind_NOTIFY_KIND_SCHEDULED NotifyKind = 4
 )
 
 // Enum value maps for NotifyKind.
@@ -160,12 +161,14 @@ var (
 		1: "NOTIFY_KIND_ATTENTION",
 		2: "NOTIFY_KIND_TURN_ENDED",
 		3: "NOTIFY_KIND_SECURITY",
+		4: "NOTIFY_KIND_SCHEDULED",
 	}
 	NotifyKind_value = map[string]int32{
 		"NOTIFY_KIND_UNSPECIFIED": 0,
 		"NOTIFY_KIND_ATTENTION":   1,
 		"NOTIFY_KIND_TURN_ENDED":  2,
 		"NOTIFY_KIND_SECURITY":    3,
+		"NOTIFY_KIND_SCHEDULED":   4,
 	}
 )
 
@@ -2604,7 +2607,9 @@ type PutSessionRequest struct {
 	Meta *Envelope `protobuf:"bytes,3,opt,name=meta,proto3" json:"meta,omitempty"`
 	// When the session in meta ended, 0 if it has not. Read with meta; the
 	// server keeps it in the clear to page the listing of ended sessions.
-	EndedMs       int64 `protobuf:"varint,4,opt,name=ended_ms,json=endedMs,proto3" json:"ended_ms,omitempty"`
+	EndedMs int64 `protobuf:"varint,4,opt,name=ended_ms,json=endedMs,proto3" json:"ended_ms,omitempty"`
+	// Clear routing metadata only; task identity remains encrypted.
+	TaskOwned     bool `protobuf:"varint,5,opt,name=task_owned,json=taskOwned,proto3" json:"task_owned,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2665,6 +2670,13 @@ func (x *PutSessionRequest) GetEndedMs() int64 {
 		return x.EndedMs
 	}
 	return 0
+}
+
+func (x *PutSessionRequest) GetTaskOwned() bool {
+	if x != nil {
+		return x.TaskOwned
+	}
+	return false
 }
 
 type PutSessionResponse struct {
@@ -2842,7 +2854,9 @@ type SessionHead struct {
 	// Revision of the stored SESSION_META, 0 if none.
 	MetaRevision uint64 `protobuf:"varint,3,opt,name=meta_revision,json=metaRevision,proto3" json:"meta_revision,omitempty"`
 	// The ended_ms stored with it.
-	EndedMs       int64 `protobuf:"varint,4,opt,name=ended_ms,json=endedMs,proto3" json:"ended_ms,omitempty"`
+	EndedMs int64 `protobuf:"varint,4,opt,name=ended_ms,json=endedMs,proto3" json:"ended_ms,omitempty"`
+	// Clear routing metadata only; task identity remains encrypted.
+	TaskOwned     bool `protobuf:"varint,5,opt,name=task_owned,json=taskOwned,proto3" json:"task_owned,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2903,6 +2917,13 @@ func (x *SessionHead) GetEndedMs() int64 {
 		return x.EndedMs
 	}
 	return 0
+}
+
+func (x *SessionHead) GetTaskOwned() bool {
+	if x != nil {
+		return x.TaskOwned
+	}
+	return false
 }
 
 type ListSessionHeadsResponse struct {
@@ -6169,13 +6190,15 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x06result\x18\x01 \x01(\v2\x18.remoteagent.v1.EnvelopeR\x06result\"A\n" +
 	"\x11PutMachineRequest\x12,\n" +
 	"\x04meta\x18\x01 \x01(\v2\x18.remoteagent.v1.EnvelopeR\x04meta\"\x14\n" +
-	"\x12PutMachineResponse\"\xa7\x01\n" +
+	"\x12PutMachineResponse\"\xc6\x01\n" +
 	"\x11PutSessionRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12*\n" +
 	"\x03key\x18\x02 \x01(\v2\x18.remoteagent.v1.EnvelopeR\x03key\x12,\n" +
 	"\x04meta\x18\x03 \x01(\v2\x18.remoteagent.v1.EnvelopeR\x04meta\x12\x19\n" +
-	"\bended_ms\x18\x04 \x01(\x03R\aendedMs\"\x14\n" +
+	"\bended_ms\x18\x04 \x01(\x03R\aendedMs\x12\x1d\n" +
+	"\n" +
+	"task_owned\x18\x05 \x01(\bR\ttaskOwned\"\x14\n" +
 	"\x12PutSessionResponse\"i\n" +
 	"\x13UploadEventsRequest\x12\x1d\n" +
 	"\n" +
@@ -6183,13 +6206,15 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x06events\x18\x02 \x03(\v2\x1b.remoteagent.v1.StoredEventR\x06events\"1\n" +
 	"\x14UploadEventsResponse\x12\x19\n" +
 	"\blast_seq\x18\x01 \x01(\x04R\alastSeq\"\x19\n" +
-	"\x17ListSessionHeadsRequest\"\x87\x01\n" +
+	"\x17ListSessionHeadsRequest\"\xa6\x01\n" +
 	"\vSessionHead\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x19\n" +
 	"\blast_seq\x18\x02 \x01(\x04R\alastSeq\x12#\n" +
 	"\rmeta_revision\x18\x03 \x01(\x04R\fmetaRevision\x12\x19\n" +
-	"\bended_ms\x18\x04 \x01(\x03R\aendedMs\"S\n" +
+	"\bended_ms\x18\x04 \x01(\x03R\aendedMs\x12\x1d\n" +
+	"\n" +
+	"task_owned\x18\x05 \x01(\bR\ttaskOwned\"S\n" +
 	"\x18ListSessionHeadsResponse\x127\n" +
 	"\bsessions\x18\x01 \x03(\v2\x1b.remoteagent.v1.SessionHeadR\bsessions\"#\n" +
 	"\vStreamHello\x12\x14\n" +
@@ -6403,13 +6428,14 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x16PAIRING_STATE_REVEALED\x10\x03\x12\x1a\n" +
 	"\x16PAIRING_STATE_APPROVED\x10\x04\x12\x1a\n" +
 	"\x16PAIRING_STATE_CANCELED\x10\x05\x12\x1b\n" +
-	"\x17PAIRING_STATE_DELIVERED\x10\x06*z\n" +
+	"\x17PAIRING_STATE_DELIVERED\x10\x06*\x95\x01\n" +
 	"\n" +
 	"NotifyKind\x12\x1b\n" +
 	"\x17NOTIFY_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15NOTIFY_KIND_ATTENTION\x10\x01\x12\x1a\n" +
 	"\x16NOTIFY_KIND_TURN_ENDED\x10\x02\x12\x18\n" +
-	"\x14NOTIFY_KIND_SECURITY\x10\x03*P\n" +
+	"\x14NOTIFY_KIND_SECURITY\x10\x03\x12\x19\n" +
+	"\x15NOTIFY_KIND_SCHEDULED\x10\x04*P\n" +
 	"\bPushType\x12\x19\n" +
 	"\x15PUSH_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12PUSH_TYPE_WEB_PUSH\x10\x01\x12\x11\n" +

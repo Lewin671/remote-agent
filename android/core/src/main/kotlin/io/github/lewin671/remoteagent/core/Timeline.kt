@@ -122,7 +122,7 @@ class HomeTimeline(
 fun outsideScope(s: SessionView, scope: HomeScope): Boolean = scope is HomeScope.Of && projectKey(s) != scope.key
 
 fun homeTimeline(state: RemoteState, scope: HomeScope, query: String = "", zone: ZoneId = ZoneId.systemDefault()): HomeTimeline {
-    val all = state.sessions.values
+    val all = state.sessions.values.filter { it.info?.taskOwned != true }
     val waiting = all.filter(::needsAttention).sortedWith(attentionOrder)
     val waitingIds = waiting.mapTo(HashSet()) { it.id }
     val hidden = state.prefs?.hidden.orEmpty()

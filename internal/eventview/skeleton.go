@@ -97,6 +97,8 @@ func markSkeleton(e *pb.Event) {
 	case *pb.Event_ToolCall:
 		k.ToolCall.Title = SkeletonNote
 		k.ToolCall.OutputTruncated = true
+	case *pb.Event_ScheduledNotification:
+		k.ScheduledNotification.Text = SkeletonNote
 	case *pb.Event_TurnEnded:
 		k.TurnEnded.Reason = SkeletonNote
 	case *pb.Event_TokenUsage:

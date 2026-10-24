@@ -38,4 +38,42 @@ public interface TurnEndedOrBuilder extends
    * @return The durationMs.
    */
   long getDurationMs();
+
+  /**
+   * <pre>
+   * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+   * @return The scheduledTaskId.
+   */
+  java.lang.String getScheduledTaskId();
+  /**
+   * <pre>
+   * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+   * @return The bytes for scheduledTaskId.
+   */
+  com.google.protobuf.ByteString
+      getScheduledTaskIdBytes();
+
+  /**
+   * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+   * @return The scheduledRunId.
+   */
+  java.lang.String getScheduledRunId();
+  /**
+   * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+   * @return The bytes for scheduledRunId.
+   */
+  com.google.protobuf.ByteString
+      getScheduledRunIdBytes();
+
+  /**
+   * <code>bool scheduled_notified = 6 [json_name = "scheduledNotified"];</code>
+   * @return The scheduledNotified.
+   */
+  boolean getScheduledNotified();
 }

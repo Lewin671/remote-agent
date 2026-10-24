@@ -150,6 +150,13 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS sessions_ended ON sessions (account_id, ended_ms DESC, session_id);
 CREATE INDEX IF NOT EXISTS sessions_machine ON sessions (account_id, machine_id);
+-- A set separate from sessions: CREATE IF NOT EXISTS works on layout 6
+-- without ALTER, a migration, or requiring operators to rebuild the database.
+CREATE TABLE IF NOT EXISTS task_owned_sessions (
+ account_id TEXT NOT NULL,
+ session_id TEXT NOT NULL,
+ PRIMARY KEY (account_id, session_id)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS events (
 	account_id TEXT NOT NULL,
 	session_id TEXT NOT NULL,
@@ -350,7 +357,7 @@ func (s *store) setAccountStatus(ctx context.Context, id string, status int) err
 
 // accountTables are the tables holding an account's data, in the order
 // its rows are deleted.
-var accountTables = []string{"security_leases", "security_recovery_completed", "security_recovery", "security_states", "pairing_admissions", "events", "images", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
+var accountTables = []string{"security_leases", "security_recovery_completed", "security_recovery", "security_states", "pairing_admissions", "events", "images", "task_owned_sessions", "sessions", "account_prefs", "push_subs", "fcm_targets", "tokens", "machines", "devices"}
 
 // deleteAccount deletes an account and everything stored for it. Its
 // device keys stay revoked, so that its registrations cannot come back.
@@ -730,7 +737,7 @@ var errNoMachine = errors.New("the machine has been removed")
 // with it when the session ended, unless a newer revision is stored. It
 // returns the stored session. limit, if not nil, is checked against the
 // account's usage before a new session is created.
-func (t *tstore) putSession(ctx context.Context, machineID, sessionID string, key []byte, keyEpoch uint64, meta []byte, revision uint64, endedMs int64, limit func(accountUsage) error) (*pb.RemoteSession, error) {
+func (t *tstore) putSession(ctx context.Context, machineID, sessionID string, key []byte, keyEpoch uint64, meta []byte, revision uint64, endedMs int64, taskOwned bool, limit func(accountUsage) error) (*pb.RemoteSession, error) {
 	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -786,6 +793,22 @@ func (t *tstore) putSession(ctx context.Context, machineID, sessionID string, ke
 	}
 	if err != nil {
 		return nil, err
+	}
+	if meta != nil {
+		var storedRevision uint64
+		if err := tx.QueryRowContext(ctx, `SELECT meta_revision FROM sessions WHERE account_id=? AND session_id=?`, t.acct, sessionID).Scan(&storedRevision); err != nil {
+			return nil, err
+		}
+		if revision == storedRevision {
+			if taskOwned {
+				_, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO task_owned_sessions (account_id, session_id) VALUES (?,?)`, t.acct, sessionID)
+			} else {
+				_, err = tx.ExecContext(ctx, `DELETE FROM task_owned_sessions WHERE account_id=? AND session_id=?`, t.acct, sessionID)
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	rs, err := sessionTx(ctx, tx, t.acct, sessionID)
 	if err != nil {
@@ -859,7 +882,7 @@ func scanSessions(rows *sql.Rows, budget *sessionBudget, limit int) ([]*pb.Remot
 
 // liveSessions returns every session that has not ended, or a capacity error.
 func (t *tstore) liveSessions(ctx context.Context, budget *sessionBudget) ([]*pb.RemoteSession, error) {
-	rows, err := t.reader.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND ended_ms = 0 ORDER BY updated_ms DESC`, t.acct)
+	rows, err := t.reader.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE account_id = ? AND ended_ms = 0 AND NOT EXISTS (SELECT 1 FROM task_owned_sessions AS owned WHERE owned.account_id=sessions.account_id AND owned.session_id=sessions.session_id) ORDER BY updated_ms DESC`, t.acct)
 	if err != nil {
 		return nil, err
 	}
@@ -869,7 +892,7 @@ func (t *tstore) liveSessions(ctx context.Context, budget *sessionBudget) ([]*pb
 
 // endedSessions returns up to limit ended sessions and a cursor for the rest.
 func (t *tstore) endedSessions(ctx context.Context, after *pb.SessionCursor, limit int, budget *sessionBudget) ([]*pb.RemoteSession, *pb.SessionCursor, error) {
-	query := `SELECT ` + sessionColumns + ` FROM sessions WHERE account_id = ? AND ended_ms > 0`
+	query := `SELECT ` + sessionColumns + ` FROM sessions WHERE account_id = ? AND ended_ms > 0 AND NOT EXISTS (SELECT 1 FROM task_owned_sessions AS owned WHERE owned.account_id=sessions.account_id AND owned.session_id=sessions.session_id)`
 	args := []any{t.acct}
 	if after != nil {
 		query += ` AND ended_ms <= ? AND (ended_ms < ? OR session_id > ?)`
@@ -916,7 +939,7 @@ func (t *tstore) sessionMachine(ctx context.Context, sessionID string) (string, 
 }
 
 func (t *tstore) sessionHeads(ctx context.Context, machineID string) ([]*pb.SessionHead, error) {
-	rows, err := t.reader.QueryContext(ctx, `SELECT session_id, last_seq, meta_revision, ended_ms FROM sessions WHERE account_id = ? AND machine_id = ?`, t.acct, machineID)
+	rows, err := t.reader.QueryContext(ctx, `SELECT session_id, last_seq, meta_revision, ended_ms, EXISTS(SELECT 1 FROM task_owned_sessions AS owned WHERE owned.account_id=sessions.account_id AND owned.session_id=sessions.session_id) FROM sessions WHERE account_id = ? AND machine_id = ?`, t.acct, machineID)
 	if err != nil {
 		return nil, err
 	}
@@ -924,7 +947,7 @@ func (t *tstore) sessionHeads(ctx context.Context, machineID string) ([]*pb.Sess
 	var out []*pb.SessionHead
 	for rows.Next() {
 		h := &pb.SessionHead{}
-		if err := rows.Scan(&h.SessionId, &h.LastSeq, &h.MetaRevision, &h.EndedMs); err != nil {
+		if err := rows.Scan(&h.SessionId, &h.LastSeq, &h.MetaRevision, &h.EndedMs, &h.TaskOwned); err != nil {
 			return nil, err
 		}
 		out = append(out, h)

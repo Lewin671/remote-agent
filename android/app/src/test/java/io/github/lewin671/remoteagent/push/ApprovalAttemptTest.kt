@@ -23,6 +23,12 @@ class ApprovalAttemptTest {
         assertFalse(acceptPush(true, NotifyKind.NOTIFY_KIND_UNSPECIFIED, Settings()))
     }
 
+    @Test fun scheduledResultsAreIndependentOfOrdinaryTurnPreference() {
+        val off = Settings(notifyAttention = false, notifyTurnEnded = false)
+        assertTrue(acceptPush(true, NotifyKind.NOTIFY_KIND_SCHEDULED, off))
+        assertFalse(acceptPush(false, NotifyKind.NOTIFY_KIND_SCHEDULED, off))
+    }
+
     private var durable: ApprovalRecord? = null
     private val record = { r: ApprovalRecord? -> durable = r; true }
 

@@ -892,6 +892,7 @@ type Event struct {
 	//	*Event_ImageGenerated
 	//	*Event_PlanAnswered
 	//	*Event_SessionForked
+	//	*Event_ScheduledNotification
 	Kind          isEvent_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1149,6 +1150,15 @@ func (x *Event) GetSessionForked() *SessionForked {
 	return nil
 }
 
+func (x *Event) GetScheduledNotification() *ScheduledNotification {
+	if x != nil {
+		if x, ok := x.Kind.(*Event_ScheduledNotification); ok {
+			return x.ScheduledNotification
+		}
+	}
+	return nil
+}
+
 type isEvent_Kind interface {
 	isEvent_Kind()
 }
@@ -1233,6 +1243,10 @@ type Event_SessionForked struct {
 	SessionForked *SessionForked `protobuf:"bytes,29,opt,name=session_forked,json=sessionForked,proto3,oneof"`
 }
 
+type Event_ScheduledNotification struct {
+	ScheduledNotification *ScheduledNotification `protobuf:"bytes,30,opt,name=scheduled_notification,json=scheduledNotification,proto3,oneof"`
+}
+
 func (*Event_UserMessage) isEvent_Kind() {}
 
 func (*Event_AgentMessage) isEvent_Kind() {}
@@ -1273,6 +1287,8 @@ func (*Event_PlanAnswered) isEvent_Kind() {}
 
 func (*Event_SessionForked) isEvent_Kind() {}
 
+func (*Event_ScheduledNotification) isEvent_Kind() {}
+
 // Origin is the source of an action. A client shows a device by name only
 // for ORIGIN_KIND_CLIENT, resolving device_id through ListDevices; a device
 // no longer listed shows as a short ID.
@@ -1286,8 +1302,11 @@ type Origin struct {
 	// Encrypted command preconditions, checked atomically on the owner.
 	ObservedEventSeq   uint64 `protobuf:"varint,4,opt,name=observed_event_seq,json=observedEventSeq,proto3" json:"observed_event_seq,omitempty"`
 	ObservedScreenHash []byte `protobuf:"bytes,5,opt,name=observed_screen_hash,json=observedScreenHash,proto3" json:"observed_screen_hash,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Set by daemon task injection, independent of the originating device.
+	ScheduledTaskId string `protobuf:"bytes,6,opt,name=scheduled_task_id,json=scheduledTaskId,proto3" json:"scheduled_task_id,omitempty"`
+	ScheduledRunId  string `protobuf:"bytes,7,opt,name=scheduled_run_id,json=scheduledRunId,proto3" json:"scheduled_run_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Origin) Reset() {
@@ -1353,6 +1372,20 @@ func (x *Origin) GetObservedScreenHash() []byte {
 		return x.ObservedScreenHash
 	}
 	return nil
+}
+
+func (x *Origin) GetScheduledTaskId() string {
+	if x != nil {
+		return x.ScheduledTaskId
+	}
+	return ""
+}
+
+func (x *Origin) GetScheduledRunId() string {
+	if x != nil {
+		return x.ScheduledRunId
+	}
+	return ""
 }
 
 // ImageRef is one appearance of an image in a session. The same picture
@@ -2176,12 +2209,16 @@ func (*TurnStarted) Descriptor() ([]byte, []int) {
 }
 
 type TurnEnded struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Outcome       TurnOutcome            `protobuf:"varint,1,opt,name=outcome,proto3,enum=remoteagent.v1.TurnOutcome" json:"outcome,omitempty"`
-	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	DurationMs    int64                  `protobuf:"varint,3,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Outcome    TurnOutcome            `protobuf:"varint,1,opt,name=outcome,proto3,enum=remoteagent.v1.TurnOutcome" json:"outcome,omitempty"`
+	Reason     string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	DurationMs int64                  `protobuf:"varint,3,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	// Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+	ScheduledTaskId   string `protobuf:"bytes,4,opt,name=scheduled_task_id,json=scheduledTaskId,proto3" json:"scheduled_task_id,omitempty"`
+	ScheduledRunId    string `protobuf:"bytes,5,opt,name=scheduled_run_id,json=scheduledRunId,proto3" json:"scheduled_run_id,omitempty"`
+	ScheduledNotified bool   `protobuf:"varint,6,opt,name=scheduled_notified,json=scheduledNotified,proto3" json:"scheduled_notified,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *TurnEnded) Reset() {
@@ -2233,6 +2270,27 @@ func (x *TurnEnded) GetDurationMs() int64 {
 		return x.DurationMs
 	}
 	return 0
+}
+
+func (x *TurnEnded) GetScheduledTaskId() string {
+	if x != nil {
+		return x.ScheduledTaskId
+	}
+	return ""
+}
+
+func (x *TurnEnded) GetScheduledRunId() string {
+	if x != nil {
+		return x.ScheduledRunId
+	}
+	return ""
+}
+
+func (x *TurnEnded) GetScheduledNotified() bool {
+	if x != nil {
+		return x.ScheduledNotified
+	}
+	return false
 }
 
 type TokenUsage struct {
@@ -3282,11 +3340,80 @@ func (x *InputState) GetPaused() bool {
 	return false
 }
 
+// Daemon-owned durable result of notify_user; plaintext stays inside encryption.
+type ScheduledNotification struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	RunId         string                 `protobuf:"bytes,2,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Text          string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScheduledNotification) Reset() {
+	*x = ScheduledNotification{}
+	mi := &file_remoteagent_v1_event_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScheduledNotification) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScheduledNotification) ProtoMessage() {}
+
+func (x *ScheduledNotification) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_event_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScheduledNotification.ProtoReflect.Descriptor instead.
+func (*ScheduledNotification) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ScheduledNotification) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *ScheduledNotification) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ScheduledNotification) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *ScheduledNotification) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
 var File_remoteagent_v1_event_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\n" +
-	"\x1aremoteagent/v1/event.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa2\f\n" +
+	"\x1aremoteagent/v1/event.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x82\r\n" +
 	"\x05Event\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x04R\x03seq\x12\x1d\n" +
 	"\n" +
@@ -3317,15 +3444,18 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\ftool_started\x18\x1a \x01(\v2\x1b.remoteagent.v1.ToolStartedH\x00R\vtoolStarted\x12I\n" +
 	"\x0fimage_generated\x18\x1b \x01(\v2\x1e.remoteagent.v1.ImageGeneratedH\x00R\x0eimageGenerated\x12C\n" +
 	"\rplan_answered\x18\x1c \x01(\v2\x1c.remoteagent.v1.PlanAnsweredH\x00R\fplanAnswered\x12F\n" +
-	"\x0esession_forked\x18\x1d \x01(\v2\x1d.remoteagent.v1.SessionForkedH\x00R\rsessionForkedB\x06\n" +
-	"\x04kind\"\xd4\x01\n" +
+	"\x0esession_forked\x18\x1d \x01(\v2\x1d.remoteagent.v1.SessionForkedH\x00R\rsessionForked\x12^\n" +
+	"\x16scheduled_notification\x18\x1e \x01(\v2%.remoteagent.v1.ScheduledNotificationH\x00R\x15scheduledNotificationB\x06\n" +
+	"\x04kind\"\xaa\x02\n" +
 	"\x06Origin\x12.\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1a.remoteagent.v1.OriginKindR\x04kind\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x03 \x01(\tR\trequestId\x12,\n" +
 	"\x12observed_event_seq\x18\x04 \x01(\x04R\x10observedEventSeq\x120\n" +
-	"\x14observed_screen_hash\x18\x05 \x01(\fR\x12observedScreenHash\"\x96\x05\n" +
+	"\x14observed_screen_hash\x18\x05 \x01(\fR\x12observedScreenHash\x12*\n" +
+	"\x11scheduled_task_id\x18\x06 \x01(\tR\x0fscheduledTaskId\x12(\n" +
+	"\x10scheduled_run_id\x18\a \x01(\tR\x0escheduledRunId\"\x96\x05\n" +
 	"\bImageRef\x12\x19\n" +
 	"\bimage_id\x18\x01 \x01(\tR\aimageId\x123\n" +
 	"\x06source\x18\x02 \x01(\x0e2\x1b.remoteagent.v1.ImageSourceR\x06source\x12-\n" +
@@ -3393,12 +3523,15 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\rbackground_id\x18\x0e \x01(\tR\fbackgroundIdB\f\n" +
 	"\n" +
 	"_exit_code\"\r\n" +
-	"\vTurnStarted\"{\n" +
+	"\vTurnStarted\"\x80\x02\n" +
 	"\tTurnEnded\x125\n" +
 	"\aoutcome\x18\x01 \x01(\x0e2\x1b.remoteagent.v1.TurnOutcomeR\aoutcome\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1f\n" +
 	"\vduration_ms\x18\x03 \x01(\x03R\n" +
-	"durationMs\"\xf2\x03\n" +
+	"durationMs\x12*\n" +
+	"\x11scheduled_task_id\x18\x04 \x01(\tR\x0fscheduledTaskId\x12(\n" +
+	"\x10scheduled_run_id\x18\x05 \x01(\tR\x0escheduledRunId\x12-\n" +
+	"\x12scheduled_notified\x18\x06 \x01(\bR\x11scheduledNotified\"\xf2\x03\n" +
 	"\n" +
 	"TokenUsage\x12!\n" +
 	"\finput_tokens\x18\x01 \x01(\x03R\vinputTokens\x12.\n" +
@@ -3484,7 +3617,12 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x04text\x18\x05 \x01(\tR\x04text\x12\x1b\n" +
 	"\timage_ids\x18\x06 \x03(\tR\bimageIds\x12,\n" +
 	"\x04mode\x18\a \x01(\x0e2\x18.remoteagent.v1.SendModeR\x04mode\x12\x16\n" +
-	"\x06paused\x18\b \x01(\bR\x06paused*v\n" +
+	"\x06paused\x18\b \x01(\bR\x06paused\"q\n" +
+	"\x15ScheduledNotification\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x15\n" +
+	"\x06run_id\x18\x02 \x01(\tR\x05runId\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\x12\x12\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text*v\n" +
 	"\n" +
 	"OriginKind\x12\x1b\n" +
 	"\x17ORIGIN_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
@@ -3585,7 +3723,7 @@ func file_remoteagent_v1_event_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_v1_event_proto_enumTypes = make([]protoimpl.EnumInfo, 14)
-var file_remoteagent_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_remoteagent_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_remoteagent_v1_event_proto_goTypes = []any{
 	(OriginKind)(0),               // 0: remoteagent.v1.OriginKind
 	(ImageFormat)(0),              // 1: remoteagent.v1.ImageFormat
@@ -3628,10 +3766,11 @@ var file_remoteagent_v1_event_proto_goTypes = []any{
 	(*QuestionAnswered)(nil),      // 38: remoteagent.v1.QuestionAnswered
 	(*SessionState)(nil),          // 39: remoteagent.v1.SessionState
 	(*InputState)(nil),            // 40: remoteagent.v1.InputState
-	(*timestamppb.Timestamp)(nil), // 41: google.protobuf.Timestamp
+	(*ScheduledNotification)(nil), // 41: remoteagent.v1.ScheduledNotification
+	(*timestamppb.Timestamp)(nil), // 42: google.protobuf.Timestamp
 }
 var file_remoteagent_v1_event_proto_depIdxs = []int32{
-	41, // 0: remoteagent.v1.Event.time:type_name -> google.protobuf.Timestamp
+	42, // 0: remoteagent.v1.Event.time:type_name -> google.protobuf.Timestamp
 	15, // 1: remoteagent.v1.Event.origin:type_name -> remoteagent.v1.Origin
 	21, // 2: remoteagent.v1.Event.user_message:type_name -> remoteagent.v1.UserMessage
 	22, // 3: remoteagent.v1.Event.agent_message:type_name -> remoteagent.v1.AgentMessage
@@ -3653,35 +3792,36 @@ var file_remoteagent_v1_event_proto_depIdxs = []int32{
 	17, // 19: remoteagent.v1.Event.image_generated:type_name -> remoteagent.v1.ImageGenerated
 	19, // 20: remoteagent.v1.Event.plan_answered:type_name -> remoteagent.v1.PlanAnswered
 	18, // 21: remoteagent.v1.Event.session_forked:type_name -> remoteagent.v1.SessionForked
-	0,  // 22: remoteagent.v1.Origin.kind:type_name -> remoteagent.v1.OriginKind
-	2,  // 23: remoteagent.v1.ImageRef.source:type_name -> remoteagent.v1.ImageSource
-	3,  // 24: remoteagent.v1.ImageRef.sync:type_name -> remoteagent.v1.ImageSync
-	1,  // 25: remoteagent.v1.ImageRef.format:type_name -> remoteagent.v1.ImageFormat
-	1,  // 26: remoteagent.v1.ImageRef.preview_format:type_name -> remoteagent.v1.ImageFormat
-	16, // 27: remoteagent.v1.ImageGenerated.images:type_name -> remoteagent.v1.ImageRef
-	5,  // 28: remoteagent.v1.ToolStarted.kind:type_name -> remoteagent.v1.ToolKind
-	16, // 29: remoteagent.v1.UserMessage.images:type_name -> remoteagent.v1.ImageRef
-	5,  // 30: remoteagent.v1.ToolCall.kind:type_name -> remoteagent.v1.ToolKind
-	16, // 31: remoteagent.v1.ToolCall.images:type_name -> remoteagent.v1.ImageRef
-	6,  // 32: remoteagent.v1.ToolCall.background:type_name -> remoteagent.v1.ToolBackground
-	7,  // 33: remoteagent.v1.TurnEnded.outcome:type_name -> remoteagent.v1.TurnOutcome
-	28, // 34: remoteagent.v1.TokenUsage.primary_limit:type_name -> remoteagent.v1.RateLimit
-	28, // 35: remoteagent.v1.TokenUsage.secondary_limit:type_name -> remoteagent.v1.RateLimit
-	8,  // 36: remoteagent.v1.SettingsChanged.mode:type_name -> remoteagent.v1.ApprovalMode
-	41, // 37: remoteagent.v1.ApprovalRequested.deadline:type_name -> google.protobuf.Timestamp
-	9,  // 38: remoteagent.v1.ApprovalResolved.decision:type_name -> remoteagent.v1.ApprovalDecision
-	34, // 39: remoteagent.v1.Question.options:type_name -> remoteagent.v1.QuestionOption
-	35, // 40: remoteagent.v1.QuestionAsked.questions:type_name -> remoteagent.v1.Question
-	37, // 41: remoteagent.v1.QuestionAnswered.answers:type_name -> remoteagent.v1.QuestionAnswer
-	10, // 42: remoteagent.v1.SessionState.status:type_name -> remoteagent.v1.SessionStatus
-	11, // 43: remoteagent.v1.InputState.status:type_name -> remoteagent.v1.InputStatus
-	13, // 44: remoteagent.v1.InputState.stage:type_name -> remoteagent.v1.InputStage
-	12, // 45: remoteagent.v1.InputState.mode:type_name -> remoteagent.v1.SendMode
-	46, // [46:46] is the sub-list for method output_type
-	46, // [46:46] is the sub-list for method input_type
-	46, // [46:46] is the sub-list for extension type_name
-	46, // [46:46] is the sub-list for extension extendee
-	0,  // [0:46] is the sub-list for field type_name
+	41, // 22: remoteagent.v1.Event.scheduled_notification:type_name -> remoteagent.v1.ScheduledNotification
+	0,  // 23: remoteagent.v1.Origin.kind:type_name -> remoteagent.v1.OriginKind
+	2,  // 24: remoteagent.v1.ImageRef.source:type_name -> remoteagent.v1.ImageSource
+	3,  // 25: remoteagent.v1.ImageRef.sync:type_name -> remoteagent.v1.ImageSync
+	1,  // 26: remoteagent.v1.ImageRef.format:type_name -> remoteagent.v1.ImageFormat
+	1,  // 27: remoteagent.v1.ImageRef.preview_format:type_name -> remoteagent.v1.ImageFormat
+	16, // 28: remoteagent.v1.ImageGenerated.images:type_name -> remoteagent.v1.ImageRef
+	5,  // 29: remoteagent.v1.ToolStarted.kind:type_name -> remoteagent.v1.ToolKind
+	16, // 30: remoteagent.v1.UserMessage.images:type_name -> remoteagent.v1.ImageRef
+	5,  // 31: remoteagent.v1.ToolCall.kind:type_name -> remoteagent.v1.ToolKind
+	16, // 32: remoteagent.v1.ToolCall.images:type_name -> remoteagent.v1.ImageRef
+	6,  // 33: remoteagent.v1.ToolCall.background:type_name -> remoteagent.v1.ToolBackground
+	7,  // 34: remoteagent.v1.TurnEnded.outcome:type_name -> remoteagent.v1.TurnOutcome
+	28, // 35: remoteagent.v1.TokenUsage.primary_limit:type_name -> remoteagent.v1.RateLimit
+	28, // 36: remoteagent.v1.TokenUsage.secondary_limit:type_name -> remoteagent.v1.RateLimit
+	8,  // 37: remoteagent.v1.SettingsChanged.mode:type_name -> remoteagent.v1.ApprovalMode
+	42, // 38: remoteagent.v1.ApprovalRequested.deadline:type_name -> google.protobuf.Timestamp
+	9,  // 39: remoteagent.v1.ApprovalResolved.decision:type_name -> remoteagent.v1.ApprovalDecision
+	34, // 40: remoteagent.v1.Question.options:type_name -> remoteagent.v1.QuestionOption
+	35, // 41: remoteagent.v1.QuestionAsked.questions:type_name -> remoteagent.v1.Question
+	37, // 42: remoteagent.v1.QuestionAnswered.answers:type_name -> remoteagent.v1.QuestionAnswer
+	10, // 43: remoteagent.v1.SessionState.status:type_name -> remoteagent.v1.SessionStatus
+	11, // 44: remoteagent.v1.InputState.status:type_name -> remoteagent.v1.InputStatus
+	13, // 45: remoteagent.v1.InputState.stage:type_name -> remoteagent.v1.InputStage
+	12, // 46: remoteagent.v1.InputState.mode:type_name -> remoteagent.v1.SendMode
+	47, // [47:47] is the sub-list for method output_type
+	47, // [47:47] is the sub-list for method input_type
+	47, // [47:47] is the sub-list for extension type_name
+	47, // [47:47] is the sub-list for extension extendee
+	0,  // [0:47] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_event_proto_init() }
@@ -3710,6 +3850,7 @@ func file_remoteagent_v1_event_proto_init() {
 		(*Event_ImageGenerated)(nil),
 		(*Event_PlanAnswered)(nil),
 		(*Event_SessionForked)(nil),
+		(*Event_ScheduledNotification)(nil),
 	}
 	file_remoteagent_v1_event_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
@@ -3718,7 +3859,7 @@ func file_remoteagent_v1_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_event_proto_rawDesc), len(file_remoteagent_v1_event_proto_rawDesc)),
 			NumEnums:      14,
-			NumMessages:   27,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

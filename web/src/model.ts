@@ -168,7 +168,7 @@ export function projects<S extends SessionLike>(
     }
     return p;
   };
-  const sorted = [...sessions].sort(
+  const sorted = [...sessions].filter((s) => !s.info?.taskOwned).sort(
     (a, b) => Number(b.updatedMs - a.updatedMs) || byID(a, b),
   );
   for (const s of sorted) {

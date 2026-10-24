@@ -900,6 +900,44 @@ public  final class MachineMeta extends
     projects_.remove(index);
   }
 
+  public static final int SCHEDULE_REVISION_FIELD_NUMBER = 14;
+  private long scheduleRevision_;
+  /**
+   * <pre>
+   * Persistent task/run change counter; publication coalesces short bursts.
+   * </pre>
+   *
+   * <code>uint64 schedule_revision = 14 [json_name = "scheduleRevision"];</code>
+   * @return The scheduleRevision.
+   */
+  @java.lang.Override
+  public long getScheduleRevision() {
+    return scheduleRevision_;
+  }
+  /**
+   * <pre>
+   * Persistent task/run change counter; publication coalesces short bursts.
+   * </pre>
+   *
+   * <code>uint64 schedule_revision = 14 [json_name = "scheduleRevision"];</code>
+   * @param value The scheduleRevision to set.
+   */
+  private void setScheduleRevision(long value) {
+    
+    scheduleRevision_ = value;
+  }
+  /**
+   * <pre>
+   * Persistent task/run change counter; publication coalesces short bursts.
+   * </pre>
+   *
+   * <code>uint64 schedule_revision = 14 [json_name = "scheduleRevision"];</code>
+   */
+  private void clearScheduleRevision() {
+
+    scheduleRevision_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.proto.MachineMeta parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1918,6 +1956,46 @@ public  final class MachineMeta extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Persistent task/run change counter; publication coalesces short bursts.
+     * </pre>
+     *
+     * <code>uint64 schedule_revision = 14 [json_name = "scheduleRevision"];</code>
+     * @return The scheduleRevision.
+     */
+    @java.lang.Override
+    public long getScheduleRevision() {
+      return instance.getScheduleRevision();
+    }
+    /**
+     * <pre>
+     * Persistent task/run change counter; publication coalesces short bursts.
+     * </pre>
+     *
+     * <code>uint64 schedule_revision = 14 [json_name = "scheduleRevision"];</code>
+     * @param value The scheduleRevision to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduleRevision(long value) {
+      copyOnWrite();
+      instance.setScheduleRevision(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Persistent task/run change counter; publication coalesces short bursts.
+     * </pre>
+     *
+     * <code>uint64 schedule_revision = 14 [json_name = "scheduleRevision"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScheduleRevision() {
+      copyOnWrite();
+      instance.clearScheduleRevision();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineMeta)
   }
   @java.lang.Override
@@ -1948,10 +2026,12 @@ public  final class MachineMeta extends
             "protocolVersion_",
             "projects_",
             io.github.lewin671.remoteagent.proto.ProjectSummary.class,
+            "scheduleRevision_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\r\n\u0000\u0003\u0000\u0001\u0208\u0002\u0208\u0006\u0208" +
-              "\u0007\u0208\b\u0007\t\u001b\n\u1009\u0000\u000b\u001b\f\u000b\r\u001b";
+              "\u0000\u000b\u0000\u0001\u0001\u000e\u000b\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
+              "\u0006\u0208\u0007\u0208\b\u0007\t\u001b\n\u1009\u0000\u000b\u001b\f\u000b\r\u001b" +
+              "\u000e\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

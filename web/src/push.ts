@@ -62,7 +62,7 @@ export function restorePushPrefs(remote: Remote): Promise<void> {
     if (!pushSupported() || Notification.permission !== "granted") return;
     // As saved when its turn comes, not when the connection opened.
     const prefs = pushPrefs();
-    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY];
+    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY, NotifyKind.SCHEDULED];
     const current = () => !remote.removed && remote.conn === "online";
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
@@ -81,7 +81,7 @@ export function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
   return inTurn(async () => {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
-    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY];
+    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY, NotifyKind.SCHEDULED];
     if (kinds.length === 0) {
       await remote.setPushSubscription("", []);
       await sub?.unsubscribe();

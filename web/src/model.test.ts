@@ -1032,3 +1032,9 @@ describe("future times", () => {
     expect(futureTime(new Date(2026, 9, 21, 0, 0, 1).getTime(), now, "time")).toBe("00:00");
   });
 });
+
+it("keeps task-owned sessions out of projects while retaining by-ID session data", () => {
+  const hidden = sess({ taskOwned: true, scheduledTaskId: "task", cwd: "/task" });
+  const ordinary = sess({ cwd: "/ordinary" }, { id: "user" });
+  expect(projects([hidden, ordinary], []).map((p) => p.key)).toEqual(["/ordinary"]);
+});

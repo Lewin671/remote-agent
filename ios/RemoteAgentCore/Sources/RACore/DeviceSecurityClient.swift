@@ -376,7 +376,7 @@ func validateSecurityBody<M: SwiftProtobuf.Message>(_ h: DeviceSecurity.Header, 
     case .image: try DeviceSecurity.check(m is PBImagePayload)
     case .notify:
         guard let n = m as? PBNotifyContent, n.machineID == h.machine, n.sessionID == h.session,
-            n.kind == .attention || n.kind == .turnEnded
+            n.kind == .attention || n.kind == .turnEnded || n.kind == .scheduled
         else { throw DeviceSecurity.Failure.invalid }
     case .terminalInput, .terminalOutput, .terminalResize, .terminalHistory:
         guard let f = m as? PBTerminalFrame else { throw DeviceSecurity.Failure.invalid }

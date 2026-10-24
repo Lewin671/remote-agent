@@ -298,7 +298,7 @@ func (ts *testServer) authority(t *testing.T) *testChain {
 
 // putSession is the fixture's session write with a v3 key envelope epoch.
 func (ts *testServer) putSession(ctx context.Context, machineID, sessionID string, key, meta []byte, revision uint64, endedMs int64, limit func(accountUsage) error) (*pb.RemoteSession, error) {
-	return ts.tenant().putSession(ctx, machineID, sessionID, key, 1, meta, revision, endedMs, limit)
+	return ts.tenant().putSession(ctx, machineID, sessionID, key, 1, meta, revision, endedMs, false, limit)
 }
 
 // Test fixtures explicitly arrange a valid device's signed admission. Tests of

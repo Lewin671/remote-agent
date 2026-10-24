@@ -66,7 +66,7 @@ private struct ProjectSums {
 /// when it was added.
 public func projects(_ state: RemoteState) -> [Project] {
     var byKey = [JvmKey: [SessionView]]()
-    for s in state.sessions.values { byKey[JvmKey(projectKey(s)), default: []].append(s) }
+    for s in state.sessions.values where s.info?.taskOwned != true { byKey[JvmKey(projectKey(s)), default: []].append(s) }
     var sums = [JvmKey: ProjectSums]()
     // The machine whose newest session there is the latest comes first. A
     // machine's own summaries keep the order it listed them in.

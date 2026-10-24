@@ -125,7 +125,7 @@ fun savedSettings(state: RemoteState, key: String): ProjectSettings? = state.pre
 
 // Of the sessions held here: every one that has not ended, and the ended ones fetched so far (architecture §8 「会话列表分页」).
 // In the order of the listing, live sessions before ended ones (architecture §8).
-private fun projectSessions(state: RemoteState, key: String) = state.sessions.values.filter { projectKey(it) == key }.sortedWith(io.github.lewin671.remoteagent.core.sessionOrder)
+private fun projectSessions(state: RemoteState, key: String) = state.sessions.values.filter { it.info?.taskOwned != true && projectKey(it) == key }.sortedWith(io.github.lewin671.remoteagent.core.sessionOrder)
 
 /**
  * The machines a project has sessions on, by the sessions held here and the
@@ -369,7 +369,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val state by remote.state.collectAsState()
     val p = pal
     val t = now()
-    val sessions = state.sessions.values.filter { projectKey(it) == key }.sortedWith(sessionOrder)
+    val sessions = state.sessions.values.filter { it.info?.taskOwned != true && projectKey(it) == key }.sortedWith(sessionOrder)
     val active = sessions.filter { !exited(it) }
     val ended = sessions.filter { exited(it) }
     // The rows are one project's: never the project, the CLI only when its sessions used more than one (client-v27).

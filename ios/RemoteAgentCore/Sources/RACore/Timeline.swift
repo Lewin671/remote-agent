@@ -166,7 +166,7 @@ public func outsideScope(_ s: SessionView, scope: HomeScope) -> Bool {
 }
 
 public func homeTimeline(_ state: RemoteState, scope: HomeScope, query: String = "", zone: TimeZone = .current) -> HomeTimeline {
-    let all = Array(state.sessions.values)
+    let all = state.sessions.values.filter { $0.info?.taskOwned != true }
     let waiting = all.filter { needsAttention($0, machine: state.machines[$0.machineId]) }.sorted(by: attentionOrder(state))
     let waitingIds = Set(waiting.map(\.id))
     let hidden = state.prefs?.hidden ?? []

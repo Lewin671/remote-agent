@@ -107,6 +107,7 @@ func (t *tstore) deleteMachineRecords(ctx context.Context, id string) error {
 	for _, q := range []string{
 		`DELETE FROM events WHERE account_id=?1 AND session_id IN(SELECT session_id FROM sessions WHERE account_id=?1 AND machine_id=?2)`,
 		`DELETE FROM images WHERE account_id=?1 AND machine_id=?2`,
+		`DELETE FROM task_owned_sessions WHERE account_id=?1 AND session_id IN(SELECT session_id FROM sessions WHERE account_id=?1 AND machine_id=?2)`,
 		`DELETE FROM sessions WHERE account_id=?1 AND machine_id=?2`,
 		`DELETE FROM machines WHERE account_id=?1 AND id=?2`,
 		`UPDATE accounts SET event_bytes=(SELECT COALESCE(SUM(LENGTH(envelope)),0) FROM events WHERE account_id=?1) WHERE id=?1`,

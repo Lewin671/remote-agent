@@ -22,6 +22,7 @@ public  final class ScheduleResponse extends
   /**
    * <pre>
    * UTF-8 JSON Task, or {"tasks":[Task,...]} for list. Includes execution history.
+   * notify_user returns {"notified":true} after durable event recording.
    * </pre>
    *
    * <code>bytes result_json = 1 [json_name = "resultJson"];</code>
@@ -34,6 +35,7 @@ public  final class ScheduleResponse extends
   /**
    * <pre>
    * UTF-8 JSON Task, or {"tasks":[Task,...]} for list. Includes execution history.
+   * notify_user returns {"notified":true} after durable event recording.
    * </pre>
    *
    * <code>bytes result_json = 1 [json_name = "resultJson"];</code>
@@ -47,6 +49,7 @@ public  final class ScheduleResponse extends
   /**
    * <pre>
    * UTF-8 JSON Task, or {"tasks":[Task,...]} for list. Includes execution history.
+   * notify_user returns {"notified":true} after durable event recording.
    * </pre>
    *
    * <code>bytes result_json = 1 [json_name = "resultJson"];</code>
@@ -156,6 +159,7 @@ public  final class ScheduleResponse extends
     /**
      * <pre>
      * UTF-8 JSON Task, or {"tasks":[Task,...]} for list. Includes execution history.
+     * notify_user returns {"notified":true} after durable event recording.
      * </pre>
      *
      * <code>bytes result_json = 1 [json_name = "resultJson"];</code>
@@ -168,6 +172,7 @@ public  final class ScheduleResponse extends
     /**
      * <pre>
      * UTF-8 JSON Task, or {"tasks":[Task,...]} for list. Includes execution history.
+     * notify_user returns {"notified":true} after durable event recording.
      * </pre>
      *
      * <code>bytes result_json = 1 [json_name = "resultJson"];</code>
@@ -182,6 +187,7 @@ public  final class ScheduleResponse extends
     /**
      * <pre>
      * UTF-8 JSON Task, or {"tasks":[Task,...]} for list. Includes execution history.
+     * notify_user returns {"notified":true} after durable event recording.
      * </pre>
      *
      * <code>bytes result_json = 1 [json_name = "resultJson"];</code>

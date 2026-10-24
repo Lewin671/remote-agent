@@ -393,6 +393,8 @@ message PutSessionRequest {
   // When the session in meta ended, 0 if it has not. Read with meta; the
   // server keeps it in the clear to page the listing of ended sessions.
   int64 ended_ms = 4;
+  // Clear routing metadata only; task identity remains encrypted.
+  bool task_owned = 5;
 }
 
 message PutSessionResponse {}
@@ -415,6 +417,8 @@ message SessionHead {
   uint64 meta_revision = 3;
   // The ended_ms stored with it.
   int64 ended_ms = 4;
+  // Clear routing metadata only; task identity remains encrypted.
+  bool task_owned = 5;
 }
 
 message ListSessionHeadsResponse {
@@ -530,6 +534,7 @@ enum NotifyKind {
   // A recovery is pending on the account's authority client. Generic text
   // only; the app opens the device page.
   NOTIFY_KIND_SECURITY = 3;
+  NOTIFY_KIND_SCHEDULED = 4;
 }
 
 message SetPushSubscriptionRequest {

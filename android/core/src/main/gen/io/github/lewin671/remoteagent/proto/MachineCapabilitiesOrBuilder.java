@@ -105,4 +105,10 @@ public interface MachineCapabilitiesOrBuilder extends
    * @return The approvalAlways.
    */
   boolean getApprovalAlways();
+
+  /**
+   * <code>bool scheduled_tasks = 12 [json_name = "scheduledTasks"];</code>
+   * @return The scheduledTasks.
+   */
+  boolean getScheduledTasks();
 }

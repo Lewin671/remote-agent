@@ -125,6 +125,10 @@ message Session {
   // Authority-signed archive replacements, oldest first. Historical content
   // keeps its original signed machine route; control always uses the new ID.
   repeated MachineReplacementProof machine_replacements = 34;
+  // Creating task remains known after a user takes over this conversation.
+  string scheduled_task_id = 35;
+  // Omit from default session/project listings until user takeover.
+  bool task_owned = 36;
 }
 
 message MachineReplacementProof {
@@ -546,11 +550,13 @@ message ImageSessionStorage {
 // treating an Agent's private scheduler as the source of truth.
 message ScheduleRequest {
   // create, list, get, update, pause, resume, cancel, run.
+  // notify_user is a bound local-MCP operation only.
   string operation = 1;
   string task_id = 2;
   // Context for resolving "current" and after_turn; empty for machine callers.
   string session_id = 3;
-  // UTF-8 JSON TaskSpec for create/update (complete replacement).
+  // UTF-8 JSON TaskSpec for create/update (complete replacement), or
+  // {"text":string,"title"?:string} for notify_user.
   bytes spec_json = 4;
   // Optional optimistic concurrency check; zero omits it.
   uint64 expected_revision = 5;
@@ -559,5 +565,6 @@ message ScheduleRequest {
 }
 message ScheduleResponse {
   // UTF-8 JSON Task, or {"tasks":[Task,...]} for list. Includes execution history.
+  // notify_user returns {"notified":true} after durable event recording.
   bytes result_json = 1;
 }

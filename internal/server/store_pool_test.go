@@ -36,7 +36,7 @@ func poolTestStore(t *testing.T) (*store, *tstore, []byte) {
 		}
 	}
 	ts := s.tenant("account")
-	if _, err := ts.putSession(ctx, "machine", "session", []byte{}, 1, nil, 0, 0, nil); err != nil {
+	if _, err := ts.putSession(ctx, "machine", "session", []byte{}, 1, nil, 0, 0, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	env := &pb.Envelope{Ciphertext: []byte("sealed")}
@@ -247,7 +247,7 @@ func TestStoreWriteResultsUseWriterSnapshot(t *testing.T) {
 	if err != nil || !applied || !proto.Equal(prefs.GetEnvelope(), env) {
 		t.Fatalf("preferences write result: %v, %v", prefs, err)
 	}
-	session, err := ts.putSession(ctx, "machine", "session", nil, 1, raw, 1, 0, nil)
+	session, err := ts.putSession(ctx, "machine", "session", nil, 1, raw, 1, 0, false, nil)
 	if err != nil || !proto.Equal(session.GetMeta(), env) {
 		t.Fatalf("session write result: %v, %v", session, err)
 	}

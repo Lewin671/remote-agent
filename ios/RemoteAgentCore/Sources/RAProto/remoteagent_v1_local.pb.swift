@@ -333,6 +333,18 @@ public struct PBSession: @unchecked Sendable {
     set {_uniqueStorage()._machineReplacements = newValue}
   }
 
+  /// Creating task remains known after a user takes over this conversation.
+  public var scheduledTaskID: String {
+    get {return _storage._scheduledTaskID}
+    set {_uniqueStorage()._scheduledTaskID = newValue}
+  }
+
+  /// Omit from default session/project listings until user takeover.
+  public var taskOwned: Bool {
+    get {return _storage._taskOwned}
+    set {_uniqueStorage()._taskOwned = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1463,6 +1475,7 @@ public struct PBScheduleRequest: Sendable {
   // methods supported on all messages.
 
   /// create, list, get, update, pause, resume, cancel, run.
+  /// notify_user is a bound local-MCP operation only.
   public var operation: String = String()
 
   public var taskID: String = String()
@@ -1470,7 +1483,8 @@ public struct PBScheduleRequest: Sendable {
   /// Context for resolving "current" and after_turn; empty for machine callers.
   public var sessionID: String = String()
 
-  /// UTF-8 JSON TaskSpec for create/update (complete replacement).
+  /// UTF-8 JSON TaskSpec for create/update (complete replacement), or
+  /// {"text":string,"title"?:string} for notify_user.
   public var specJson: Data = Data()
 
   /// Optional optimistic concurrency check; zero omits it.
@@ -1490,6 +1504,7 @@ public struct PBScheduleResponse: Sendable {
   // methods supported on all messages.
 
   /// UTF-8 JSON Task, or {"tasks":[Task,...]} for list. Includes execution history.
+  /// notify_user returns {"notified":true} after durable event recording.
   public var resultJson: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1511,7 +1526,7 @@ extension PBImageUploadState: SwiftProtobuf._ProtoNameProviding {
 
 extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Session"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}cwd\0\u{3}tmux_session\0\u{1}status\0\u{3}status_detail\0\u{3}codex_session_id\0\u{3}rollout_path\0\u{3}created_at\0\u{3}last_seq\0\u{1}model\0\u{1}effort\0\u{3}pending_approvals\0\u{3}pending_questions\0\u{3}queued_inputs\0\u{1}title\0\u{1}preview\0\u{3}approvals_reviewer\0\u{3}approval_policy\0\u{1}sandbox\0\u{3}collaboration_mode\0\u{3}context_tokens\0\u{3}context_window\0\u{3}plan_open\0\u{3}input_wait\0\u{1}agent\0\u{1}mode\0\u{3}permission_mode\0\u{3}full_access_unavailable\0\u{3}attention_since\0\u{3}ended_at\0\u{3}forked_from\0\u{3}forked_seq\0\u{3}current_checkpoint\0\u{3}machine_replacements\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}cwd\0\u{3}tmux_session\0\u{1}status\0\u{3}status_detail\0\u{3}codex_session_id\0\u{3}rollout_path\0\u{3}created_at\0\u{3}last_seq\0\u{1}model\0\u{1}effort\0\u{3}pending_approvals\0\u{3}pending_questions\0\u{3}queued_inputs\0\u{1}title\0\u{1}preview\0\u{3}approvals_reviewer\0\u{3}approval_policy\0\u{1}sandbox\0\u{3}collaboration_mode\0\u{3}context_tokens\0\u{3}context_window\0\u{3}plan_open\0\u{3}input_wait\0\u{1}agent\0\u{1}mode\0\u{3}permission_mode\0\u{3}full_access_unavailable\0\u{3}attention_since\0\u{3}ended_at\0\u{3}forked_from\0\u{3}forked_seq\0\u{3}current_checkpoint\0\u{3}machine_replacements\0\u{3}scheduled_task_id\0\u{3}task_owned\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -1548,6 +1563,8 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
     var _forkedSeq: UInt64 = 0
     var _currentCheckpoint: Data = Data()
     var _machineReplacements: [PBMachineReplacementProof] = []
+    var _scheduledTaskID: String = String()
+    var _taskOwned: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1592,6 +1609,8 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
       _forkedSeq = source._forkedSeq
       _currentCheckpoint = source._currentCheckpoint
       _machineReplacements = source._machineReplacements
+      _scheduledTaskID = source._scheduledTaskID
+      _taskOwned = source._taskOwned
     }
   }
 
@@ -1644,6 +1663,8 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
         case 32: try { try decoder.decodeSingularUInt64Field(value: &_storage._forkedSeq) }()
         case 33: try { try decoder.decodeSingularBytesField(value: &_storage._currentCheckpoint) }()
         case 34: try { try decoder.decodeRepeatedMessageField(value: &_storage._machineReplacements) }()
+        case 35: try { try decoder.decodeSingularStringField(value: &_storage._scheduledTaskID) }()
+        case 36: try { try decoder.decodeSingularBoolField(value: &_storage._taskOwned) }()
         default: break
         }
       }
@@ -1758,6 +1779,12 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
       if !_storage._machineReplacements.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._machineReplacements, fieldNumber: 34)
       }
+      if !_storage._scheduledTaskID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._scheduledTaskID, fieldNumber: 35)
+      }
+      if _storage._taskOwned != false {
+        try visitor.visitSingularBoolField(value: _storage._taskOwned, fieldNumber: 36)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1801,6 +1828,8 @@ extension PBSession: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
         if _storage._forkedSeq != rhs_storage._forkedSeq {return false}
         if _storage._currentCheckpoint != rhs_storage._currentCheckpoint {return false}
         if _storage._machineReplacements != rhs_storage._machineReplacements {return false}
+        if _storage._scheduledTaskID != rhs_storage._scheduledTaskID {return false}
+        if _storage._taskOwned != rhs_storage._taskOwned {return false}
         return true
       }
       if !storagesAreEqual {return false}

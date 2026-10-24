@@ -55,6 +55,8 @@ func fitEvent(e *pb.Event) *pb.Event {
 		}()
 	case *pb.Event_ToolStarted:
 		fields = []*string{&k.ToolStarted.Title, &k.ToolStarted.Input}
+	case *pb.Event_ScheduledNotification:
+		fields = []*string{&k.ScheduledNotification.Title, &k.ScheduledNotification.Text}
 	case *pb.Event_TurnEnded:
 		fields = []*string{&k.TurnEnded.Reason}
 	case *pb.Event_ApprovalResolved:

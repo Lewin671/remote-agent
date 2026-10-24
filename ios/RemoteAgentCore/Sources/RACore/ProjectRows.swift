@@ -125,7 +125,7 @@ public struct ProjectPage: Equatable, Sendable {
 }
 
 public func projectPage(_ state: RemoteState, key: String) -> ProjectPage {
-    let sessions = state.sessions.values.filter { projectKey($0).jvmEquals(key) }.sorted(by: sessionOrder)
+    let sessions = state.sessions.values.filter { $0.info?.taskOwned != true && projectKey($0).jvmEquals(key) }.sorted(by: sessionOrder)
     let ended = sessions.filter(exited)
     let pr = project(state, key: key)
     let machines = (pr?.machineIds ?? []).map { machineLabel(state, id: $0) }.distinct()

@@ -142,6 +142,7 @@ public enum PBNotifyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   /// A recovery is pending on the account's authority client. Generic text
   /// only; the app opens the device page.
   case security // = 3
+  case scheduled // = 4
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -154,6 +155,7 @@ public enum PBNotifyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 1: self = .attention
     case 2: self = .turnEnded
     case 3: self = .security
+    case 4: self = .scheduled
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -164,6 +166,7 @@ public enum PBNotifyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .attention: return 1
     case .turnEnded: return 2
     case .security: return 3
+    case .scheduled: return 4
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -174,6 +177,7 @@ public enum PBNotifyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     .attention,
     .turnEnded,
     .security,
+    .scheduled,
   ]
 
 }
@@ -1013,6 +1017,9 @@ public struct PBPutSessionRequest: Sendable {
   /// server keeps it in the clear to page the listing of ended sessions.
   public var endedMs: Int64 = 0
 
+  /// Clear routing metadata only; task identity remains encrypted.
+  public var taskOwned: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1081,6 +1088,9 @@ public struct PBSessionHead: Sendable {
 
   /// The ended_ms stored with it.
   public var endedMs: Int64 = 0
+
+  /// Clear routing metadata only; task identity remains encrypted.
+  public var taskOwned: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2254,7 +2264,7 @@ extension PBPairingState: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBNotifyKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0NOTIFY_KIND_UNSPECIFIED\0\u{1}NOTIFY_KIND_ATTENTION\0\u{1}NOTIFY_KIND_TURN_ENDED\0\u{1}NOTIFY_KIND_SECURITY\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0NOTIFY_KIND_UNSPECIFIED\0\u{1}NOTIFY_KIND_ATTENTION\0\u{1}NOTIFY_KIND_TURN_ENDED\0\u{1}NOTIFY_KIND_SECURITY\0\u{1}NOTIFY_KIND_SCHEDULED\0")
 }
 
 extension PBPushType: SwiftProtobuf._ProtoNameProviding {
@@ -3766,7 +3776,7 @@ extension PBPutMachineResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBPutSessionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PutSessionRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{1}key\0\u{1}meta\0\u{3}ended_ms\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{1}key\0\u{1}meta\0\u{3}ended_ms\0\u{3}task_owned\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3778,6 +3788,7 @@ extension PBPutSessionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       case 2: try { try decoder.decodeSingularMessageField(value: &self._key) }()
       case 3: try { try decoder.decodeSingularMessageField(value: &self._meta) }()
       case 4: try { try decoder.decodeSingularInt64Field(value: &self.endedMs) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.taskOwned) }()
       default: break
       }
     }
@@ -3800,6 +3811,9 @@ extension PBPutSessionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if self.endedMs != 0 {
       try visitor.visitSingularInt64Field(value: self.endedMs, fieldNumber: 4)
     }
+    if self.taskOwned != false {
+      try visitor.visitSingularBoolField(value: self.taskOwned, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3808,6 +3822,7 @@ extension PBPutSessionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if lhs._key != rhs._key {return false}
     if lhs._meta != rhs._meta {return false}
     if lhs.endedMs != rhs.endedMs {return false}
+    if lhs.taskOwned != rhs.taskOwned {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3918,7 +3933,7 @@ extension PBListSessionHeadsRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBSessionHead: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionHead"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}last_seq\0\u{3}meta_revision\0\u{3}ended_ms\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}last_seq\0\u{3}meta_revision\0\u{3}ended_ms\0\u{3}task_owned\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3930,6 +3945,7 @@ extension PBSessionHead: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       case 2: try { try decoder.decodeSingularUInt64Field(value: &self.lastSeq) }()
       case 3: try { try decoder.decodeSingularUInt64Field(value: &self.metaRevision) }()
       case 4: try { try decoder.decodeSingularInt64Field(value: &self.endedMs) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.taskOwned) }()
       default: break
       }
     }
@@ -3948,6 +3964,9 @@ extension PBSessionHead: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if self.endedMs != 0 {
       try visitor.visitSingularInt64Field(value: self.endedMs, fieldNumber: 4)
     }
+    if self.taskOwned != false {
+      try visitor.visitSingularBoolField(value: self.taskOwned, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3956,6 +3975,7 @@ extension PBSessionHead: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if lhs.lastSeq != rhs.lastSeq {return false}
     if lhs.metaRevision != rhs.metaRevision {return false}
     if lhs.endedMs != rhs.endedMs {return false}
+    if lhs.taskOwned != rhs.taskOwned {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

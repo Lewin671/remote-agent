@@ -16,6 +16,8 @@ public  final class TurnEnded extends
     TurnEndedOrBuilder {
   private TurnEnded() {
     reason_ = "";
+    scheduledTaskId_ = "";
+    scheduledRunId_ = "";
   }
   public static final int OUTCOME_FIELD_NUMBER = 1;
   private int outcome_;
@@ -131,6 +133,148 @@ public  final class TurnEnded extends
   private void clearDurationMs() {
 
     durationMs_ = 0L;
+  }
+
+  public static final int SCHEDULED_TASK_ID_FIELD_NUMBER = 4;
+  private java.lang.String scheduledTaskId_;
+  /**
+   * <pre>
+   * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+   * @return The scheduledTaskId.
+   */
+  @java.lang.Override
+  public java.lang.String getScheduledTaskId() {
+    return scheduledTaskId_;
+  }
+  /**
+   * <pre>
+   * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+   * @return The bytes for scheduledTaskId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getScheduledTaskIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(scheduledTaskId_);
+  }
+  /**
+   * <pre>
+   * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+   * @param value The scheduledTaskId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduledTaskId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    scheduledTaskId_ = value;
+  }
+  /**
+   * <pre>
+   * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+   */
+  private void clearScheduledTaskId() {
+
+    scheduledTaskId_ = getDefaultInstance().getScheduledTaskId();
+  }
+  /**
+   * <pre>
+   * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+   * </pre>
+   *
+   * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+   * @param value The bytes for scheduledTaskId to set.
+   */
+  private void setScheduledTaskIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    scheduledTaskId_ = value.toStringUtf8();
+
+  }
+
+  public static final int SCHEDULED_RUN_ID_FIELD_NUMBER = 5;
+  private java.lang.String scheduledRunId_;
+  /**
+   * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+   * @return The scheduledRunId.
+   */
+  @java.lang.Override
+  public java.lang.String getScheduledRunId() {
+    return scheduledRunId_;
+  }
+  /**
+   * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+   * @return The bytes for scheduledRunId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getScheduledRunIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(scheduledRunId_);
+  }
+  /**
+   * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+   * @param value The scheduledRunId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduledRunId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    scheduledRunId_ = value;
+  }
+  /**
+   * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+   */
+  private void clearScheduledRunId() {
+
+    scheduledRunId_ = getDefaultInstance().getScheduledRunId();
+  }
+  /**
+   * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+   * @param value The bytes for scheduledRunId to set.
+   */
+  private void setScheduledRunIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    scheduledRunId_ = value.toStringUtf8();
+
+  }
+
+  public static final int SCHEDULED_NOTIFIED_FIELD_NUMBER = 6;
+  private boolean scheduledNotified_;
+  /**
+   * <code>bool scheduled_notified = 6 [json_name = "scheduledNotified"];</code>
+   * @return The scheduledNotified.
+   */
+  @java.lang.Override
+  public boolean getScheduledNotified() {
+    return scheduledNotified_;
+  }
+  /**
+   * <code>bool scheduled_notified = 6 [json_name = "scheduledNotified"];</code>
+   * @param value The scheduledNotified to set.
+   */
+  private void setScheduledNotified(boolean value) {
+    
+    scheduledNotified_ = value;
+  }
+  /**
+   * <code>bool scheduled_notified = 6 [json_name = "scheduledNotified"];</code>
+   */
+  private void clearScheduledNotified() {
+
+    scheduledNotified_ = false;
   }
 
   public static io.github.lewin671.remoteagent.proto.TurnEnded parseFrom(
@@ -353,6 +497,152 @@ public  final class TurnEnded extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+     * @return The scheduledTaskId.
+     */
+    @java.lang.Override
+    public java.lang.String getScheduledTaskId() {
+      return instance.getScheduledTaskId();
+    }
+    /**
+     * <pre>
+     * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+     * @return The bytes for scheduledTaskId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getScheduledTaskIdBytes() {
+      return instance.getScheduledTaskIdBytes();
+    }
+    /**
+     * <pre>
+     * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+     * @param value The scheduledTaskId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledTaskId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setScheduledTaskId(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScheduledTaskId() {
+      copyOnWrite();
+      instance.clearScheduledTaskId();
+      return this;
+    }
+    /**
+     * <pre>
+     * Durable scheduled-turn identity; relay suppresses ordinary turn-end push.
+     * </pre>
+     *
+     * <code>string scheduled_task_id = 4 [json_name = "scheduledTaskId"];</code>
+     * @param value The bytes for scheduledTaskId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledTaskIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setScheduledTaskIdBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+     * @return The scheduledRunId.
+     */
+    @java.lang.Override
+    public java.lang.String getScheduledRunId() {
+      return instance.getScheduledRunId();
+    }
+    /**
+     * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+     * @return The bytes for scheduledRunId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getScheduledRunIdBytes() {
+      return instance.getScheduledRunIdBytes();
+    }
+    /**
+     * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+     * @param value The scheduledRunId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledRunId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setScheduledRunId(value);
+      return this;
+    }
+    /**
+     * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScheduledRunId() {
+      copyOnWrite();
+      instance.clearScheduledRunId();
+      return this;
+    }
+    /**
+     * <code>string scheduled_run_id = 5 [json_name = "scheduledRunId"];</code>
+     * @param value The bytes for scheduledRunId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledRunIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setScheduledRunIdBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bool scheduled_notified = 6 [json_name = "scheduledNotified"];</code>
+     * @return The scheduledNotified.
+     */
+    @java.lang.Override
+    public boolean getScheduledNotified() {
+      return instance.getScheduledNotified();
+    }
+    /**
+     * <code>bool scheduled_notified = 6 [json_name = "scheduledNotified"];</code>
+     * @param value The scheduledNotified to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledNotified(boolean value) {
+      copyOnWrite();
+      instance.setScheduledNotified(value);
+      return this;
+    }
+    /**
+     * <code>bool scheduled_notified = 6 [json_name = "scheduledNotified"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScheduledNotified() {
+      copyOnWrite();
+      instance.clearScheduledNotified();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.TurnEnded)
   }
   @java.lang.Override
@@ -372,10 +662,13 @@ public  final class TurnEnded extends
             "outcome_",
             "reason_",
             "durationMs_",
+            "scheduledTaskId_",
+            "scheduledRunId_",
+            "scheduledNotified_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\f\u0002\u0208" +
-              "\u0003\u0002";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\f\u0002\u0208" +
+              "\u0003\u0002\u0004\u0208\u0005\u0208\u0006\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

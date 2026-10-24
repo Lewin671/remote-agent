@@ -64,4 +64,14 @@ public interface PutSessionRequestOrBuilder extends
    * @return The endedMs.
    */
   long getEndedMs();
+
+  /**
+   * <pre>
+   * Clear routing metadata only; task identity remains encrypted.
+   * </pre>
+   *
+   * <code>bool task_owned = 5 [json_name = "taskOwned"];</code>
+   * @return The taskOwned.
+   */
+  boolean getTaskOwned();
 }

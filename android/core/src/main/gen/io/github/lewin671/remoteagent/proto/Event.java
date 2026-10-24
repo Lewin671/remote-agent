@@ -48,6 +48,7 @@ public  final class Event extends
     IMAGE_GENERATED(27),
     PLAN_ANSWERED(28),
     SESSION_FORKED(29),
+    SCHEDULED_NOTIFICATION(30),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -83,6 +84,7 @@ public  final class Event extends
         case 27: return IMAGE_GENERATED;
         case 28: return PLAN_ANSWERED;
         case 29: return SESSION_FORKED;
+        case 30: return SCHEDULED_NOTIFICATION;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -1419,6 +1421,58 @@ public  final class Event extends
    */
   private void clearSessionForked() {
     if (kindCase_ == 29) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int SCHEDULED_NOTIFICATION_FIELD_NUMBER = 30;
+  /**
+   * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduledNotification() {
+    return kindCase_ == 30;
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ScheduledNotification getScheduledNotification() {
+    if (kindCase_ == 30) {
+       return (io.github.lewin671.remoteagent.proto.ScheduledNotification) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.ScheduledNotification.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduledNotification(io.github.lewin671.remoteagent.proto.ScheduledNotification value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 30;
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduledNotification(io.github.lewin671.remoteagent.proto.ScheduledNotification value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 30 &&
+        kind_ != io.github.lewin671.remoteagent.proto.ScheduledNotification.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.ScheduledNotification.newBuilder((io.github.lewin671.remoteagent.proto.ScheduledNotification) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 30;
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+   */
+  private void clearScheduledNotification() {
+    if (kindCase_ == 30) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -2787,6 +2841,54 @@ public  final class Event extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduledNotification() {
+      return instance.hasScheduledNotification();
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ScheduledNotification getScheduledNotification() {
+      return instance.getScheduledNotification();
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+     */
+    public Builder setScheduledNotification(io.github.lewin671.remoteagent.proto.ScheduledNotification value) {
+      copyOnWrite();
+      instance.setScheduledNotification(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+     */
+    public Builder setScheduledNotification(
+        io.github.lewin671.remoteagent.proto.ScheduledNotification.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduledNotification(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+     */
+    public Builder mergeScheduledNotification(io.github.lewin671.remoteagent.proto.ScheduledNotification value) {
+      copyOnWrite();
+      instance.mergeScheduledNotification(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduledNotification scheduled_notification = 30 [json_name = "scheduledNotification"];</code>
+     */
+    public Builder clearScheduledNotification() {
+      copyOnWrite();
+      instance.clearScheduledNotification();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Event)
   }
   @java.lang.Override
@@ -2831,13 +2933,14 @@ public  final class Event extends
             io.github.lewin671.remoteagent.proto.ImageGenerated.class,
             io.github.lewin671.remoteagent.proto.PlanAnswered.class,
             io.github.lewin671.remoteagent.proto.SessionForked.class,
+            io.github.lewin671.remoteagent.proto.ScheduledNotification.class,
           };
           java.lang.String info =
-              "\u0000\u0019\u0001\u0001\u0001\u001d\u0019\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
+              "\u0000\u001a\u0001\u0001\u0001\u001e\u001a\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
               "\u0003\u1009\u0000\u0004\u0208\u0005\u1009\u0001\n<\u0000\u000b<\u0000\f<\u0000\r" +
               "<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000" +
               "\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a" +
-              "<\u0000\u001b<\u0000\u001c<\u0000\u001d<\u0000";
+              "<\u0000\u001b<\u0000\u001c<\u0000\u001d<\u0000\u001e<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -123,14 +123,14 @@ function useScope(remote: Remote) {
 
 /** Sessions waiting for the user, oldest wait first. */
 export function todoList(remote: Remote): SessionView[] {
-  return [...remote.sessions.values()]
+  return [...remote.sessions.values()].filter((s) => !s.info?.taskOwned)
     .filter((s) => needsAttention(s, remote.machines.get(s.machineId)))
     .sort((a, b) => compareAttention(a, b, remote.machines));
 }
 
 /** Live sessions: not ended, and not already under 需要处理. */
 function liveList(remote: Remote): SessionView[] {
-  return [...remote.sessions.values()]
+  return [...remote.sessions.values()].filter((s) => !s.info?.taskOwned)
     .filter(
       (s) => !exited(s) && !needsAttention(s, remote.machines.get(s.machineId)),
     )
@@ -334,7 +334,7 @@ function Timeline({
   const match = (s: SessionView) =>
     !q || titleOf(s).toLocaleLowerCase().includes(q);
   const within = (s: SessionView) => scope === ALL || projectKey(s) === scope;
-  const inScope = [...remote.sessions.values()].filter(within);
+  const inScope = [...remote.sessions.values()].filter((s) => !s.info?.taskOwned).filter(within);
   const todo = todoList(remote).filter(match);
   const live = liveList(remote).filter(within).filter(match);
   // A removed project's ended sessions are not listed under all projects.

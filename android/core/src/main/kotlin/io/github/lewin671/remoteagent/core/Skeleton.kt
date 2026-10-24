@@ -16,6 +16,7 @@ fun isSkeleton(e: Event): Boolean {
         Event.KindCase.AGENT_MESSAGE -> isSkeleton(e.agentMessage.text)
         Event.KindCase.REASONING -> isSkeleton(e.reasoning.text)
         Event.KindCase.TOOL_CALL -> isSkeleton(e.toolCall.title)
+        Event.KindCase.SCHEDULED_NOTIFICATION -> isSkeleton(e.scheduledNotification.text)
         Event.KindCase.TURN_ENDED -> isSkeleton(e.turnEnded.reason)
         Event.KindCase.TOKEN_USAGE -> isSkeleton(e.tokenUsage.planType)
         Event.KindCase.TURN_CONTEXT -> isSkeleton(e.turnContext.model)
