@@ -692,3 +692,21 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 本轮使用 Go 隔离 harness、可控事件和伪终端验证，没有重走真实 CLI、中继真实满额账户或产品界面。网页、Android、iOS 产品代码未改。
 
 最终 `go test ./...` 全量通过。相关 race 命令 `go test -race ./internal/daemon ./internal/relay ./internal/server ./internal/schedule -run 'Schedule|Scheduled|Publication|Quota|Creation|LateConfirmation|Manual|Interval|Calendar|MCP' -count=1` 四个包均通过，包含本轮改目标、迟到报告、重启和创建来源隔离，以及既有读记录、接手、生命周期竞争与清理退避测试。
+
+### 定时任务第八轮反馈：通知准入先追赶 transcript
+
+2026-10-24，仍是未发布的协议 11，产品版本未改；只在任务 worktree 提交，没有推送、发版或部署。通知准入规则见 [architecture §18](architecture.md#主动通知与客户端发现)。
+
+`notifyScheduled` 先在会话读取锁内读完并提交可用 transcript，再在同一读取顺序中判断上下文并追加通知；读取或提交失败返回 Unavailable，明确要求 retry notify_user，不使用上一次轮询的归属或次数。任务标题快照仍在取得会话锁之前读取，保留原有锁顺序。
+
+`TestNotifyUserReadsTranscriptBeforeAdmission` 使用实际 Codex/Claude parser、临时 transcript 和事件提交路径，覆盖两种 CLI × 首次定时轮/旧定时轮切换到新运行。测试只把输入置于已投递、尚未读到 receipt 的边界，MCP 前不调用轮询或 PermissionRequest hook；Claude 记录使用 bypassPermissions。旧轮已经用满三次通知时，新轮的首次调用仍成功，通知事件和运行计数都归属新任务、新运行及新 turn，旧轮仍保留三次。
+
+`TestNotifyUserRequiresCommittedTranscript` 覆盖 transcript 路径不可读和事件日志提交失败：缓存里仍是合法定时轮，但文件已有新的人工输入，通知必须先返回可重试错误、不增加次数、不按旧轮提交通知。恢复文件或日志后再次调用，先提交人工接手记录，再按普通轮明确拒绝，证明恢复后也不使用陈旧上下文。
+
+失效的 `r2-05-current-turn` 已改为当前创建来源条件：任务 ID、运行 ID 与会话创建元数据匹配；变异删掉这两项关联，让普通轮后排队的 resume 执行错误套用预防限制，仍由原 `TestMCPRestrictionUsesCurrentTurnNotQueue` 检出。本轮新增变异分别去掉主动读取和忽略读取失败，要求两个新测试产生断言失败；编译失败不算检出。
+
+`python3 scripts/check-schedule-regressions.py --clients` 不带 `--only` 完整执行到结束、退出码 0：87 个 Go 与 23 个网页/Android/iOS 变异，共 110 个全部检出。执行后逐一核对结果名与全部定义一致，所有变异目标均已恢复。
+
+本轮回归使用隔离 Go harness 与合成的原生 CLI transcript，没有真实 CLI、产品界面或推送服务送达验收；三端产品代码未改。
+
+最终 `go test ./...` 全量通过。daemon、relay、server、schedule 的相关 race 检查通过，筛选包含本轮 `TestNotifyUser*`；同一筛选在 schedulemcp 包未匹配测试，已补跑 `go test -race ./internal/schedulemcp -count=1`，全包通过。

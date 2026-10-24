@@ -49,7 +49,7 @@ go("r2-02-cold-list", "internal/server/store.go", "AND ended_ms = 0 ORDER BY", "
 go("r2-03-resume", "internal/daemon/schedule.go", 't.Spec.Trigger.Type == "interval" || t.Spec.Trigger.Type == "calendar" {', 'false {', "TestRecurringResumeAndManualFailures")
 
 
-go("r2-05-current-turn", "internal/daemon/schedule_events.go", 'task.Spec.Target.Type == "new_session" && run != nil', 'run != nil', "TestMCPRestrictionUsesCurrentTurnNotQueue")
+go("r2-05-current-turn", "internal/daemon/schedule_events.go", 'task.ID == s.meta.ScheduledTaskID && run != nil && run.ID == s.meta.ScheduledRunID', 'run != nil', "TestMCPRestrictionUsesCurrentTurnNotQueue")
 go("r2-05-queued-human", "internal/daemon/schedule_events.go", 's.claimOwnershipLocked()\n\t}\n\tif st :=', 's.takeOverLocked()\n\t}\n\tif st :=', "TestMCPRestrictionUsesCurrentTurnNotQueue")
 
 go("r2-06-admission-retry", "internal/daemon/inject.go", '|| retries >= 1', '|| retries < 0', "TestHumanAdmissionBoundsRunningResumeRetry")
@@ -133,6 +133,9 @@ go("r7-publication-definition", "internal/daemon/backend.go", 'if t == nil || ru
 go("r7-creation-key", "internal/daemon/schedule_events.go", 'key := scheduledRunKey{s.meta.ScheduledTaskID, s.meta.ScheduledRunID}', 'key := scheduledRunKey{s.meta.ScheduledTaskID, "later-resume-run"}', "TestClosureUsesCreationRunIdentity")
 go("r7-creation-uncertainty", "internal/daemon/schedule_events.go", 'uncertain[key] != s.meta.ID', 'len(uncertain) == 0', "TestClosureUsesCreationRunIdentity")
 go("r7-pre-delivery", "internal/daemon/schedule_events.go", 'task.ID == s.meta.ScheduledTaskID && run != nil && run.ID == s.meta.ScheduledRunID', 'task.Spec.Target.Type == "new_session" && run != nil', "TestPreDeliveryRestrictionUsesCreationIdentity")
+
+go("r8-notify-read", "internal/daemon/schedule_events.go", 'if !s.readRolloutLocked() {', 'if false && !s.readRolloutLocked() {', "TestNotifyUserReadsTranscriptBeforeAdmission")
+go("r8-notify-read-failure", "internal/daemon/schedule_events.go", 'if !s.readRolloutLocked() {', 'if !s.readRolloutLocked() && false {', "TestNotifyUserRequiresCommittedTranscript")
 
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
