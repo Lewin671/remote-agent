@@ -1,6 +1,17 @@
+import Observation
 import RACore
 import RAProto
 import SwiftUI
+
+/// One immutable opening snapshot owns the whole edit, including its compare-and-set revision.
+@MainActor @Observable final class ScheduleEditDraft {
+    private(set) var task: ScheduleTask?
+    func open(_ task: ScheduleTask) { self.task = task }
+    func command(spec: ScheduleSpec) throws -> PBCommand {
+        guard let task else { throw UserError("请先打开任务编辑器") }
+        return try scheduleCommand(operation: "update", taskID: task.id, spec: spec, revision: task.revision)
+    }
+}
 
 struct ScheduleDetailScreen: View {
     let machine: String
@@ -9,6 +20,7 @@ struct ScheduleDetailScreen: View {
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     @Environment(\.page) private var page
+    @State private var editor = ScheduleEditDraft()
     @State private var timing = false
     @State private var rename = false
     @State private var message = false
@@ -34,15 +46,15 @@ struct ScheduleDetailScreen: View {
         }
         .navBar(task?.spec.title ?? "任务详情", subtitle: task.map { ($0.spec.target.type == "new_session" ? "新开对话" : "当前对话") + " · " + $0.stateText(online: store.online(machine)) })
         .kitSheet(isPresented: $timing, size: .large) {
-            if let task {
+            if let task = editor.task {
                 ScheduleTimingSheet(trigger: task.spec.trigger, onSave: { t in var spec = task.spec; spec.trigger = t; update(task, spec: spec) }, onClose: { timing = false })
             }
         }
         .kitSheet(isPresented: $targetEdit, size: .large) {
-            if let task { ScheduleTargetSheet(machine: machine, target: task.spec.target, onSave: { target in var spec = task.spec; spec.target = target; update(task, spec: spec) }, onClose: { targetEdit = false }) }
+            if let task = editor.task { ScheduleTargetSheet(machine: machine, target: task.spec.target, onSave: { target in var spec = task.spec; spec.target = target; update(task, spec: spec) }, onClose: { targetEdit = false }) }
         }
         .kitSheet(isPresented: $permissions) {
-            if let task {
+            if let task = editor.task {
                 ScheduleConfigSheet(page: .mode, config: Binding(get: {
                     NewConfig(machineId: machine, cwd: task.spec.target.cwd ?? "", agent: task.spec.target.agent == "claude" ? .claude : .codex,
                               model: task.spec.target.model ?? "", effort: task.spec.target.effort ?? "", mode: ["ask": Mode.ask, "auto": .auto, "full": .full][task.spec.target.mode ?? ""])
@@ -53,14 +65,14 @@ struct ScheduleDetailScreen: View {
                 }), fixedMachine: machine) { permissions = false }
             }
         }
-        .inputAlert(isPresented: $rename, title: "重命名任务", initial: task?.spec.title ?? "", placeholder: "留空就用消息的第一句", confirm: "保存", text: "留空保存会用消息的第一句", limit: 60, lines: 1...1, save: { typed in
-            guard let task else { return }
+        .inputAlert(isPresented: $rename, title: "重命名任务", initial: editor.task?.spec.title ?? "", placeholder: "留空就用消息的第一句", confirm: "保存", text: "留空保存会用消息的第一句", limit: 60, lines: 1...1, save: { typed in
+            guard let task = editor.task else { return }
             var spec = task.spec; spec.title = scheduleTitle(typed, message: task.spec.message)
             guard spec.title != task.spec.title else { return }
             try await save(task, spec: spec)
         })
-        .inputAlert(isPresented: $message, title: "消息", initial: task?.spec.message ?? "", placeholder: "让 agent 做什么", confirm: "保存", limit: 20000, lines: 4...12, save: { typed in
-            guard let task, !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        .inputAlert(isPresented: $message, title: "消息", initial: editor.task?.spec.message ?? "", placeholder: "让 agent 做什么", confirm: "保存", limit: 20000, lines: 4...12, save: { typed in
+            guard let task = editor.task, !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
             var spec = task.spec; spec.message = typed; try await save(task, spec: spec)
         })
         .confirm(isPresented: $delete, title: "删除任务？", text: "停止之后的自动运行。已发出的消息和已开的对话会保留。", confirm: "删除", danger: true) {
@@ -96,20 +108,20 @@ struct ScheduleDetailScreen: View {
                 TextAction("放弃原请求", enabled: !mutation.running) { mutation.abandon() }.padding(.horizontal, 16)
             }
             GroupCard {
-                GRow("任务名", value: task.spec.title, chevron: access.rename, enabled: access.rename, onTap: access.rename ? { rename = true } : nil)
-                GRow("什么时候", value: scheduleFrequency(task.spec.trigger, includeZone: true), chevron: mutable, enabled: mutable, onTap: mutable ? { timing = true } : nil)
-                if let count = task.spec.trigger.maxRuns, count > 0 { GRow("结束", value: "自动运行 \(count) 次后", chevron: mutable, onTap: mutable ? { timing = true } : nil) }
-                else if let until = task.spec.trigger.until.flatMap(scheduleDate) { GRow("结束", value: scheduleMoment(until), chevron: mutable, onTap: mutable ? { timing = true } : nil) }
+                GRow("任务名", value: task.spec.title, chevron: access.rename, enabled: access.rename, onTap: access.rename ? { editor.open(task); rename = true } : nil)
+                GRow("什么时候", value: scheduleFrequency(task.spec.trigger, includeZone: true), chevron: mutable, enabled: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil)
+                if let count = task.spec.trigger.maxRuns, count > 0 { GRow("结束", value: "自动运行 \(count) 次后", chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil) }
+                else if let until = task.spec.trigger.until.flatMap(scheduleDate) { GRow("结束", value: scheduleMoment(until), chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil) }
                 if task.spec.target.type == "new_session" {
-                    GRow("在哪运行", value: scheduleLocation(task, state: model.state, machine: machine), chevron: mutable, enabled: mutable, onTap: mutable ? { targetEdit = true } : nil)
-                    GRow("权限", value: permission(task), chevron: mutable, enabled: mutable, valueColor: task.spec.target.mode == "full" ? Theme.red : nil, onTap: mutable ? { permissions = true } : nil)
+                    GRow("在哪运行", value: scheduleLocation(task, state: model.state, machine: machine), chevron: mutable, enabled: mutable, onTap: mutable ? { editor.open(task); targetEdit = true } : nil)
+                    GRow("权限", value: permission(task), chevron: mutable, enabled: mutable, valueColor: task.spec.target.mode == "full" ? Theme.red : nil, onTap: mutable ? { editor.open(task); permissions = true } : nil)
                 } else {
                     GRow("发到", value: targetSession(task).map { titleOf($0) } ?? "对话", chevron: true) {
                         if let sid = task.spec.target.session { nav.open(.session(id: sid)) }
                     }
                     GRow("权限", value: permission(task), valueColor: targetSession(task).map { modeOf($0) == .full } == true ? Theme.red : nil)
                 }
-                GRow("消息", value: "编辑", chevron: mutable, enabled: mutable, onTap: mutable ? { message = true } : nil)
+                GRow("消息", value: "编辑", chevron: mutable, enabled: mutable, onTap: mutable ? { editor.open(task); message = true } : nil)
                 Text(task.spec.message).type(T.body, Theme.fg).frame(maxWidth: .infinity, alignment: .leading).padding(14).textSelection(.enabled)
             }.padding(.top, 16)
             Hint((task.spec.target.type == "new_session" ? "每次新开一个对话" : "发到当前对话") + " · " + (task.source == "agent" ? "Agent 创建" : "你创建") + (task.createdAt.isEmpty ? "" : " · " + (scheduleDate(task.createdAt).map { scheduleMoment($0) } ?? ""))).padding(.horizontal, 16)
@@ -118,7 +130,7 @@ struct ScheduleDetailScreen: View {
             Hint("“通知了你”表示已请求通知，不保证送达。记录保留最近 100 次，已开的对话仍可查看。").padding(.horizontal, 16).padding(.bottom, 16)
             if task.group == .attention {
                 Btn(recoveryLabel, kind: .primary, enabled: online && !mutation.running && !mutation.frozen && (task.active == nil || task.active?.status == "uncertain")) {
-                    if systemCancelled && task.oneShot { timing = true }
+                    if systemCancelled && task.oneShot { editor.open(task); timing = true }
                     else { perform(task, operation: systemCancelled ? "update" : failedOnce ? "run" : "resume", spec: systemCancelled ? task.spec : nil) }
                 }.padding(.horizontal, 16).padding(.bottom, 12)
             }
@@ -165,7 +177,7 @@ struct ScheduleDetailScreen: View {
     private func save(_ task: ScheduleTask, spec: ScheduleSpec) async throws {
         guard context.schedules.online(machine) else { throw UserError("电脑不在线，连上后才能修改") }
         try await context.scheduleMutations.of(machine + "/" + id).execute(remote: context.remote, machine: machine, command: {
-            try scheduleCommand(operation: "update", taskID: id, spec: spec, revision: task.revision)
+            try editor.command(spec: spec)
         }, refresh: { await context.schedules.refresh(machine) })
     }
     private func update(_ task: ScheduleTask, spec: ScheduleSpec) { perform(task, operation: "update", spec: spec) }

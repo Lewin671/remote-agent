@@ -87,6 +87,15 @@ import UIKit
         await first.value; await second.value
         #expect(peak == 1 && started >= 3 && store.tasks.first?.task.id == "r\(started)")
     }
+    @Test func anEditorKeepsItsOpeningRevisionAndCompleteSpecAcrossARefresh() throws {
+        let original=task();let editor=ScheduleEditDraft();editor.open(original)
+        var remote=original;remote.revision=9;remote.spec.title="另一端改名"
+        var edited=try #require(editor.task?.spec);edited.message="本端消息"
+        let command=try editor.command(spec:edited)
+        #expect(command.schedule.expectedRevision==original.revision)
+        #expect(try JSONDecoder().decode(ScheduleSpec.self,from:command.schedule.specJson).title==original.spec.title)
+        #expect(editor.task?.revision != remote.revision)
+    }
     @Test func creationKeyStaysStableForRetriesAndChangesWithTheDefinition() throws {
         let draft = ScheduleDraft(); draft.message = "检查"
         draft.config = NewConfig(machineId: "m", cwd: "/example")
