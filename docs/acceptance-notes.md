@@ -581,3 +581,35 @@ go run ./scripts/acceptance-schedule
 ```
 
 临时环境已清理。上述操作是 Go 合成客户端和 tmux 审批触发，未声称直接操作三端产品界面；三端真实列表解密及筛选由客户端回归测试验证。未覆盖真手机、FCM/Web Push 实际送达、真实 Codex 同链路、真实休眠和夏令时切换。
+
+
+### 定时任务第三轮结构重做
+
+2026-10-24，未发布的协议仍为 11，产品版本未改。只在任务 worktree 本地提交，没有推送、发版或部署。目标结构见 [architecture §18](architecture.md#18-定时任务)。前两轮记录保留为当时的验证；其中影子状态和满额专用控制的实现、测试预期与变异位点已被本轮替换。
+
+| 反馈 | 结构及删除项 | 回归与实际变异 |
+|---|---|---|
+| A | `ManualRequest` 保存独立请求时间/ID，与自动计划共用唯一 Active；所有触发类型的额外执行均不计 max_runs。删除 RunNow、全部 Automatic 字段和 restoreManualSchedule；手动生命周期不保存或还原自动状态，也不触发自动迟到接回 | `TestManualExecutionLifecycleMatrix` 为 4 种触发 × 11 个边界，含请求重启、dispatching 重启、queued 重启、派发失败、跳过、输入暂停与各种结束结果；`TestManualControlMatrix` 为 4 种触发 × 待发/已开始 × 暂停/暂停恢复/取消。另覆盖状态准入、uncertain 原迟到游标、权限变化拒绝、双向串行和补跑窗口、暂停恢复不重复占日历日期。14 个变异位置 |
+| B | 满额只关联新开会话，通过创建时持久的 ScheduledRunID 找到 Active 或恢复记录；failed/relay_session_limit 记录交给原自动关闭 worker。删除 stopUnpublishedScheduledRuns、专用撤回/中断及 interruptRunBy；沿用同一读记录、归属检查、生命周期排序和失败退避 | `TestPublicationRefusalUsesScheduledClosure` 为自动/手动 × 报告在关联前、关联前重启、已排队、已开始、已结束；检查持久失败、幂等及关闭。`TestRelayQuotaIgnoresResumeSession`、`TestQuotaClosureReusesReadAndTakeoverSafety`、`TestQuotaClosureDoesNotBlockScheduleLoop` 验证 resume 不入路径、读失败/接手不关、ctlMu 被占用不阻塞调度。8 个变异位置 |
+| C7 | interval 首次时间固定为相位锚点；恢复保留未来游标，否则沿原相位向上取点，跳过已消费的自动时刻，忽略手动历史 | `TestIntervalResumePreservesPhase` 覆盖显式 At/初始延迟、未来/过期/空游标、有无手动历史及整点边界；`TestIntervalInitialDelayPhaseSurvivesEditAndRestart` 覆盖修改定义后保存、重启及再次计算。4 个变异位置 |
+| C8 | 两端全部项目的进行中计数排除 taskOwned，需要处理计数继续包含 | Android/iOS `allProjectCountsExcludeQuietTasksButIncludeApprovals` 核对直接计数、全部项目菜单、待处理列表和进行中列表。2 个变异位置 |
+
+变异脚本仍为 `python3 scripts/check-schedule-regressions.py --clients`。本轮新增/重做 28 个位置，加上仍适用且已重跑的 45 个，共 73 个全部实际检出；完整执行 71 个后，新增的迟到准入和恢复满额关联两个位置分别定向验证。每次恢复原文件，编译失败不算检出。旧机制对应的变异已删除，没有保留针对已删除字段或函数的检查。
+
+最终验证：
+
+- `go test ./...` 通过。并行验证时一条既有 tmux 子进程握手测试曾超时，单独全量重跑通过；没有改动该测试。
+- daemon、relay、server、schedule 的相关 `-race` 通过；新增恢复满额关联另跑 daemon 的满额/关闭相关 race。
+- 网页 `pnpm typecheck && pnpm test`：84 文件、1067 项通过。
+- Android `./gradlew :core:test :app:testDebugUnitTest`：Core 380 项、App 301 项，零失败。
+- iOS Core `swift test`：83 suite、530 项通过。
+
+真实 CLI 使用独立 RA_DEV_DIR、临时账户、本地 server/daemon 和独立 tmux socket，Claude Code 2.1.300 / Haiku 5.5。运行 `scripts/acceptance-schedule`，经加密 Forward 创建每天的日历任务，max_runs=1：
+
+1. 到点前重启 daemon，读回保存的任务，再请求立即运行。
+2. 比较手动请求和完成前后的自动状态、原因、NextRunAt、Dispatches、LastCalendarDate，全部相同；手动运行已完成且 CLI 退出，自动计数仍为 0。
+3. 手动审批挂起时再重启 daemon；加密 GetLiveSnapshot 确认 TaskOwned=true、PendingApprovals>0，新的无缓存客户端从默认 ListRemoteSessions 冷读到待处理数据，然后单次批准 notify_user。
+4. 原定当天自动时刻照常派发真实 CLI，再次核对审批与通知；结束时共两条运行记录、一次自动派发、自动当地日期与原计划相同、任务按 max_runs=1 完成。
+5. 核对自动 CLI 退出、已结束默认列表排除、按 ID 读回通知和带定时标注的结束事件、用户恢复回复后重新进入默认列表。
+
+以上全部通过，临时环境已清理。调用来自 Go 合成加密客户端，审批由 tmux 按键触发，未声称直接操作三端产品界面；需要处理筛选由三端测试验证。没有额外验证真实满额账户下的 CLI 关闭、真实 Codex 同链路、真手机或实际推送送达。
