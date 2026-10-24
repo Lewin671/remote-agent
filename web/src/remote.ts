@@ -507,7 +507,7 @@ export class Remote {
   scheduleFocus = new Map<string, { seq: bigint; runId: string }>();
 
   supportsSchedules(id: string): boolean {
-    return this.machines.get(id)?.meta?.capabilities?.scheduledTasks === true;
+    return this.machines.get(id)?.meta?.capabilities?.scheduledTasks === true && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id));
   }
   taskEntries(): TaskEntry[] {
     return [...this.schedules].flatMap(([machineId, state]) =>
@@ -527,6 +527,7 @@ export class Remote {
   /** Called on remote changes. Only capabilities, connectivity and the monotonic
    * machine revision invalidate a list; there is no task polling timer. */
   syncSchedules() {
+    for (const id of this.schedules.keys()) if (!this.machines.has(id) || (this.archiveMachines.has(id) && !this.trustedMembers.has(id))) this.forgetSchedules(id);
     for (const id of this.scheduleRequests.keys()) {
       if (
         this.conn !== "online" ||
@@ -543,6 +544,12 @@ export class Remote {
       this.scheduleRequests.set(id, key);
       void this.refreshSchedules(id);
     }
+  }
+  private forgetSchedules(id: string) {
+    this.schedules.delete(id);
+    this.scheduleRequests.delete(id);
+    this.scheduleAgain.delete(id);
+    this.keepValue("schedules:" + id, undefined);
   }
   refreshSchedules(id: string): Promise<void> {
     if (this.scheduleLoading.has(id)) {
@@ -594,7 +601,8 @@ export class Remote {
             error: "",
           });
         } catch (e) {
-          const state = this.schedules.get(id)!;
+          const state = this.schedules.get(id);
+          if (!state || !this.supportsSchedules(id)) return;
           this.schedules.set(id, {
             ...state,
             loading: false,
@@ -1283,6 +1291,7 @@ export class Remote {
         );
         this.authorityDeviceId = identity.state.core.authorityID;
         this.archiveMachines = await this.security.historicalMachines();
+        for (const id of this.archiveMachines) if (!this.trustedMembers.has(id)) this.forgetSchedules(id);
         const [machines, sessions, prefs, info] = (
           await Promise.all(
             ["machines", "sessions", "prefs", "info"].map((k) =>
@@ -1952,6 +1961,7 @@ export class Remote {
       for (const id of this.machines.keys()) {
         if (machines.has(id) || pushed(this.machinePushes, mp, id)) continue;
         this.machines.delete(id);
+        this.forgetSchedules(id);
         gone.add(id);
       }
       for (const [id, s] of this.sessions) {
@@ -2926,7 +2936,7 @@ export class Remote {
         }
         if (msg.errorCode)
           throw new CommandError(msg.errorCode, msg.errorMessage, true);
-        if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result) {
+        if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result && this.machines.has(machineId) && this.supportsSchedules(machineId)) {
           this.keepValue("schedules:" + machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
         }
         return msg;
@@ -3573,6 +3583,7 @@ export class Remote {
       for (const [id, m] of this.machines)
         if (this.archiveMachines.has(id) && !members.has(id))
           nextMachines.set(id, { ...m, online: false });
+      for (const id of this.archiveMachines) if (!members.has(id)) this.forgetSchedules(id);
       this.machines = nextMachines;
       this.trustedMembers = members;
       this.devices = nextDevices;

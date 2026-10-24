@@ -235,3 +235,12 @@ it("combines task lists from supported computers while retaining an offline comp
   r.machines.get("second")!.meta!.capabilities!.scheduledTasks = false;
   expect(r.taskEntries().map(e => e.machineId)).toEqual(["computer"]);
 });
+
+it("deletes a removed computer's encrypted task snapshot and rejects a late list",async()=>{
+ const r=probe();const stored=new Map<string,unknown>([["schedules:computer",new Uint8Array([1])]]);
+ (r as any).cache={set:async(k:string,v:unknown)=>{if(v===undefined)stored.delete(k);else stored.set(k,v);}};
+ r.schedules.set("computer",{tasks:[task()],revision:1n,error:"",loading:false});
+ let finish!:(value:ReturnType<typeof result>)=>void;vi.spyOn(r,"machineCommand").mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ const pending=r.refreshSchedules("computer");r.machines.delete("computer");r.syncSchedules();finish(result({tasks:[task()]}));await pending;
+ expect(r.schedules.has("computer")).toBe(false);expect(stored.has("schedules:computer")).toBe(false);
+});
