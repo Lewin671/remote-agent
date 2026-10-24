@@ -47,7 +47,7 @@ func manualFixture(t *testing.T, typ string) (*harness, *schedule.Task) {
 }
 func TestManualExecutionLifecycleMatrix(t *testing.T) {
 	for _, typ := range []string{"at", "interval", "calendar", "after_turn"} {
-		for _, ending := range []string{"completed", "failed", "interrupted", "uncertain", "cancelled", "skipped", "dispatch_rejected", "restart_dispatching", "restart_queued", "input_paused"} {
+		for _, ending := range []string{"completed", "failed", "interrupted", "uncertain", "cancelled", "skipped", "dispatch_rejected", "restart_dispatching", "restart_requested", "restart_queued", "input_paused"} {
 			t.Run(typ+"/"+ending, func(t *testing.T) {
 				h, task := manualFixture(t, typ)
 				defer func() { h.s.log.Close() }()
@@ -57,6 +57,11 @@ func TestManualExecutionLifecycleMatrix(t *testing.T) {
 					t.Fatal("manual request changed automatic plan")
 				}
 				requestID := task.ManualRequest.RequestID
+				if ending == "restart_requested" {
+					if err := h.d.loadSchedules(); err != nil {
+						t.Fatal(err)
+					}
+				}
 				now := time.Now()
 				if ending == "skipped" {
 					task.ManualRequest.RequestedAt = now.Add(-48 * time.Hour)
@@ -98,7 +103,7 @@ func TestManualExecutionLifecycleMatrix(t *testing.T) {
 							t.Fatal("manual input pause changed plan")
 						}
 					}
-					if ending == "restart_queued" || ending == "input_paused" || ending == "completed" {
+					if ending == "restart_requested" || ending == "restart_queued" || ending == "input_paused" || ending == "completed" {
 						run := readTask(t, h.d, task.ID).Active
 						completeTask(h, run, now)
 						h.d.tickSchedules(now)
@@ -320,5 +325,26 @@ func TestManualControlMatrix(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+func TestManualAdmissionDoesNotReconfirmAutomaticRun(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	now := time.Now().Add(time.Second)
+	task, run := unconfirmedTask(t, h, now)
+	before := automaticPlan(readTask(t, h.d, task.ID))
+	h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_SUBMITTED}}})
+	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); err == nil {
+		t.Fatal("manual request took over uncertain automatic recovery")
+	}
+	got := readTask(t, h.d, task.ID)
+	if automaticPlan(got) != before || got.ManualRequest != nil || h.d.lateRuns[task.ID] != run.ID {
+		t.Fatal("manual admission changed automatic recovery")
+	}
+	h.d.tickSchedules(now)
+	got = readTask(t, h.d, task.ID)
+	if got.Active == nil || got.Active.ID != run.ID || got.Active.Manual {
+		t.Fatal("original automatic recovery lost")
 	}
 }

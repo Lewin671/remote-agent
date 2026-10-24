@@ -93,6 +93,8 @@ go("r3-C-initial-delay", "internal/daemon/schedule.go", 'tr.At = &at', '// phase
 
 go("r3-C-ignore-manual-history", "internal/daemon/schedule.go", 'if run.Manual || run.Status == "skipped" {', 'if run.Status == "skipped" {', "TestIntervalResumePreservesPhase")
 
+go("r3-A-late-admission", "internal/daemon/schedule.go", 'q.Operation != "run" && d.reconfirmScheduledRun(t, now)', 'd.reconfirmScheduledRun(t, now)', "TestManualAdmissionDoesNotReconfirmAutomaticRun")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

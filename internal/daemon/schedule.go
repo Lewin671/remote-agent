@@ -246,7 +246,7 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 	}
 	// An execution that was confirmed late is taken up first: no operation
 	// moves on from an execution that is in fact under way.
-	if before := schedule.Clone(t); d.reconfirmScheduledRun(t, now) {
+	if before := schedule.Clone(t); q.Operation != "run" && d.reconfirmScheduledRun(t, now) {
 		touchTask(t, now)
 		if err := d.saveSchedulesLocked(); err != nil {
 			if !fileReplaced(err) {
