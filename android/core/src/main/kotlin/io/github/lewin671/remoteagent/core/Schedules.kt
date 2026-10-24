@@ -126,9 +126,9 @@ fun scheduleLimits(task: ScheduledTask, now: Instant = Instant.now(), zone: Zone
     scheduleInstant(task.trigger.text("until"))?.let { add("到 ${scheduleWhen(it, now, zone)}") }
 }.joinToString("，或")
 
-fun scheduleZone(t: JsonObject): ZoneId = runCatching { ZoneId.of(t.text("timezone")) }.getOrElse {
-    runCatching { OffsetDateTime.parse(t.text("at").ifEmpty { t.text("until") }).offset }.getOrElse { ZoneId.systemDefault() }
-}
+fun scheduleZone(t: JsonObject): ZoneId = if (t.text("type") == "calendar")
+    runCatching { ZoneId.of(t.text("timezone")) }.getOrElse { ZoneId.systemDefault() }
+else ZoneId.systemDefault()
 fun scheduleWhen(at: Instant, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
     val dt = at.atZone(zone); val today = now.atZone(zone).toLocalDate()
     val day = when (dt.toLocalDate()) { today -> "今天"; today.plusDays(1) -> "明天"; today.minusDays(1) -> "昨天"; else -> "${if (dt.year != today.year) "${dt.year}年" else ""}${dt.monthValue}月${dt.dayOfMonth}日" }

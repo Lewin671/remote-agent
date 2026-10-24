@@ -15,6 +15,17 @@ class SchedulesTest {
     private val utc = ZoneId.of("UTC")
     private fun task(status: String = "scheduled", reason: String = "", runs: String = "[]") = ScheduledTask("computer", Json.parseToJsonElement("""{"id":"task","revision":3,"status":"$status","reason":"$reason","next_run_at":"2026-10-25T08:00:00Z","spec":{"title":"Check","message":"Look","trigger":{"type":"interval","interval_seconds":3600},"target":{"type":"new_session"}},"runs":$runs}""").jsonObject)
     private fun run(id: String, hour: Int, notified: Boolean = false, status: String = "completed") = """{"id":"$id","started_at":"2026-10-24T${hour}:00:00Z","status":"$status","notified":$notified,"notification_text":"Important","final_summary":"Nothing changed"}"""
+    @Test fun nonCalendarTimestampOffsetsDoNotBecomeCalendarTimezoneNames() {
+        val old=java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/Los_Angeles"))
+            for(at in listOf("2027-10-24T15:00:00Z","2027-10-24T15:00:00+08:00")) {
+                val input=buildJsonObject { put("type","at");put("at",at) }
+                val edited=ScheduleTime.from(input).copy(kind=1).trigger(java.time.Instant.parse("2026-10-24T00:00:00Z"))
+                assertEquals("America/Los_Angeles",edited.text("timezone"))
+            }
+        } finally { java.util.TimeZone.setDefault(old) }
+    }
     @Test fun groupsStopAfterOneFailureAndSeparateUserPauses() {
         assertEquals(TaskGroup.ATTENTION, taskGroup(task("failed", "execution_failed", "[${run("r", 12, status = "failed")}]")))
         assertEquals(TaskGroup.ATTENTION, taskGroup(task("uncertain")))
