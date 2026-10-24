@@ -85,14 +85,19 @@ func (d *Daemon) SessionPublicationFailed(id, reason string) error {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	changed := false
+	matched := false
 	for _, t := range d.tasks {
 		taskChanged := false
 		if t.Active != nil && t.Active.SessionID == id {
+			matched = true
 			d.endScheduledRun(t, time.Now().UTC(), "failed", reason)
 			taskChanged = true
 		} else {
 			for i := range t.Runs {
 				r := &t.Runs[i]
+				if r.SessionID == id {
+					matched = true
+				}
 				if r.SessionID == id && (r.Status != "failed" || r.Reason != reason) {
 					r.Status, r.Reason = "failed", reason
 					taskChanged = true
@@ -110,7 +115,7 @@ func (d *Daemon) SessionPublicationFailed(id, reason string) error {
 			changed = true
 		}
 	}
-	if changed {
+	if changed || matched {
 		return d.saveSchedulesLocked()
 	}
 	return nil
