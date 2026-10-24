@@ -71,8 +71,10 @@ class RaMessagingService : FirebaseMessagingService() {
         val session = data["session"] ?: return
         val content = data["content"]?.let { open(session, it) }
         if (data["content"] != null && content == null) return
-        // The app is open: it shows the change itself.
-        if (ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+        // Scheduled results are not yet shown in the foreground list. Only the
+        // actual session page suppresses them; other kinds retain their foreground rule.
+        val foreground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+        if (foreground && (kind != NotifyKind.NOTIFY_KIND_SCHEDULED || app.visibleSession == session))
             return
         Notifier.show(this, session, kind, content, settings.showContent)
         // Timing only, for the notes on cold starts; no content.

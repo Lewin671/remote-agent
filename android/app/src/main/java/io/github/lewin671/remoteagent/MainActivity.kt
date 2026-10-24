@@ -44,6 +44,7 @@ import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.Tone
 import io.github.lewin671.remoteagent.data.Settings
 import io.github.lewin671.remoteagent.push.Notifier
+import io.github.lewin671.remoteagent.push.VisiblePushSession
 import io.github.lewin671.remoteagent.ui.ApprovalPage
 import io.github.lewin671.remoteagent.ui.CreateAccountScreen
 import io.github.lewin671.remoteagent.ui.DeviceScreen
@@ -164,6 +165,10 @@ class MainActivity : ComponentActivity() {
         CompositionLocalProvider(LocalRemote provides remote, LocalNav provides actions) {
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
+            VisiblePushSession(
+                RaApp.instance,
+                entry?.takeIf { route == "session/{id}" }?.arguments?.getString("id"),
+            )
             val tabs = route == "home" || route == "settings"
             NavHost(
                 nav,

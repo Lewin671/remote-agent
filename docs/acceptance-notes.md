@@ -658,3 +658,15 @@ go run ./scripts/acceptance-schedule
 两次都观察到原运行保持 interrupted、任务保持 paused，后台完成自己开的后续轮摘要记回原运行。第一次 notify_user 也成功，原运行保存通知次数 1、正文和 final 摘要；临时程序因反复解码未清空旧 Active 指针而卡在等待，结果从隔离 daemon 存储核对，不能算自动脚本全通过。修正临时程序后再跑，第二次模型把中断理解为用户拒绝继续，主动不调用 notify_user，虽然后台后续轮及其摘要仍正常记回；因此不声称真实 CLI 完整通知场景已稳定自动验收。定向回归以可控事件覆盖通知、摘要、可见修订和全部上下文终点。没有重跑整套日历/手动/自动真实 CLI 链路，没有直接操作产品界面，也未验证实际推送送达。
 
 两套临时环境和临时验收程序均已清理。
+
+### 定时任务第六轮反馈：前台通知
+
+2026-10-24，未改协议和产品版本，只在任务 worktree 提交，没有推送、发版或部署。定时结果的前台显示规则见 [architecture §12](architecture.md#12-推送通知)。Android 另将当前导航目的地接入 Activity 的 STARTED 生命周期，离开会话页、进入后台或离开已登录界面时清除可见会话；不使用后台保留的导航栈作为可见依据。网页在同一个窗口上同时核对可见、聚焦和精确解码后的会话路由，多窗口不能把一个窗口的聚焦和另一个窗口的路由拼起来。
+
+Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectric NotificationManager 核对系统通知：前台/后台 × 首页/目标会话/其他会话 × 定时/待处理/轮次结束/账户安全四种类型，共 24 个组合，含定时通用正文及点击跳转会话。`VisiblePushSessionTest` 覆盖切换会话、非会话页面、进入后台、回到前台与移除 UI；现有 DisplayTest 和 ApprovalAttemptTest 保留通知隐私和本地偏好验证。
+
+网页 `sw.test.ts` 执行实际 service worker push listener：四种通知 × 首页/其他会话/目标会话/未聚焦/隐藏/ID 前缀/子路由/编码路由/无效编码，并覆盖多窗口、无会话和无效 URL；已有账户安全的前台同步、后台通知点击和隐藏窗口测试继续通过。`sw.test.ts` 与 `push.test.ts` 共 48 项通过，`pnpm --dir web typecheck` 通过。
+
+`python3 scripts/check-schedule-regressions.py --clients --only r6-` 的 8 个新位置全部实际检出：Android 恢复旧前台拦截、去掉当前会话例外、去掉后台条件、去掉生命周期清除；网页恢复旧前台拦截、去掉当前会话例外、去掉焦点条件、去掉可见性条件。每组原测试先通过，变异后必须产生断言失败，编译失败不算检出，最后恢复原文件。恢复后网页相关 48 项和类型检查再次通过；Android `./gradlew :app:testDebugUnitTest` 全部 303 项通过，零失败。
+
+本轮为 Robolectric 和 service worker 单元测试，没有重走真实 CLI 或测试 FCM/Web Push 服务的实际送达、真机系统通知显示；iOS 和 Go 产品代码未改。

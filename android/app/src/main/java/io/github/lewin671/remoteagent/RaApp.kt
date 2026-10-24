@@ -99,6 +99,8 @@ class RaApp : Application() {
     private val _accountError = MutableStateFlow("")
     /** Why the stored account could not be read, e.g. the phone was locked. */
     val accountError: StateFlow<String> = _accountError.asStateFlow()
+    /** The session page currently visible; cleared when its activity stops or leaves it. */
+    @Volatile internal var visibleSession: String? = null
     @Volatile private var foreground = false
     private var loading = false
     @Volatile private var erasePending = false

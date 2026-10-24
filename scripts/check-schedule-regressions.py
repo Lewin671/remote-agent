@@ -3,7 +3,7 @@
 
 Run from this checkout with no concurrent compiler reading these sources.
 The original bytes are restored even when a check fails. No build error counts
-as a detected mutation. --clients also checks the three attention projections.
+as a detected mutation. --clients also checks client attention and push visibility.
 """
 import argparse
 import subprocess
@@ -155,6 +155,18 @@ for name,file,before,after,cmd,marker in list(clients):
 clients.extend([
  ("r3-android-count", "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Timeline.kt", 'it.info?.taskOwned != true && !exited(it)', '!exited(it)', ["./gradlew",":core:test","--tests","*TimelineTest.allProjectCountsExcludeQuietTasksButIncludeApprovals"], "java.lang.AssertionError"),
  ("r3-ios-count", "ios/RemoteAgentCore/Sources/RACore/Timeline.swift", 's.info?.taskOwned != true && !exited(s)', '!exited(s)', ["swift","test","--filter","allProjectCountsExcludeQuietTasksButIncludeApprovals"], "Expectation failed"),
+])
+
+
+clients.extend([
+ ("r6-android-foreground", "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt", 'foreground && (kind != NotifyKind.NOTIFY_KIND_SCHEDULED || app.visibleSession == session)', 'foreground', ["./gradlew",":app:testDebugUnitTest","--tests","*ForegroundPushTest"], "java.lang.AssertionError"),
+ ("r6-android-viewed", "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt", 'app.visibleSession == session', 'false', ["./gradlew",":app:testDebugUnitTest","--tests","*ForegroundPushTest"], "java.lang.AssertionError"),
+ ("r6-android-background", "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt", 'if (foreground && (kind !=', 'if ((kind !=', ["./gradlew",":app:testDebugUnitTest","--tests","*ForegroundPushTest"], "java.lang.AssertionError"),
+ ("r6-android-lifecycle", "android/app/src/main/java/io/github/lewin671/remoteagent/push/VisiblePushSession.kt", 'onStopOrDispose { app.visibleSession = null }', 'onStopOrDispose { }', ["./gradlew",":app:testDebugUnitTest","--tests","*VisiblePushSessionTest"], "java.lang.AssertionError"),
+ ("r6-web-foreground", "web/public/sw.js", '(!scheduled || viewingSession(w, d.session))', 'true', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
+ ("r6-web-viewed", "web/public/sw.js", 'viewingSession(w, d.session)', 'false', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
+ ("r6-web-focus", "web/public/sw.js", 'w.focused && (!scheduled', '(!scheduled', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
+ ("r6-web-visible", "web/public/sw.js", 'w.visibilityState === "visible" && w.focused', 'w.focused', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
 ])
 
 def main():

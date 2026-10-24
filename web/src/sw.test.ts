@@ -123,3 +123,75 @@ it("shows push for a hidden client even when it still has a focused window", asy
   await work;
   expect(showNotification).toHaveBeenCalledOnce();
 });
+
+// Run the actual push listener, so restoring the old early return fails here.
+type PushWindow = { url: string; visibilityState: string; focused: boolean };
+function pushWorker(windows: PushWindow[]) {
+  const handlers: Record<string, (event: any) => void> = {};
+  const showNotification = vi.fn();
+  const self = {
+    addEventListener: (kind: string, work: (event: any) => void) => { handlers[kind] = work; },
+    clients: { matchAll: async () => windows.map((w) => ({ ...w, postMessage: vi.fn() })) },
+    registration: { showNotification }, location: { origin: "https://app.example.com" },
+  };
+  new Function("self", "caches", "fetch", source)(self, {}, vi.fn());
+  return {
+    showNotification,
+    push: async (kind: string, session = "target-session") => {
+      let work!: Promise<void>;
+      handlers.push({ data: { json: () => ({ title: "remote-agent", tag: session + "/" + kind, session, body: "定时任务有新结果" }) }, waitUntil: (p: Promise<void>) => { work = p; } });
+      await work;
+    },
+  };
+}
+
+const pushWindows = [
+  { name: "home", route: "", focused: true, visible: true, viewing: false },
+  { name: "another session", route: "s/other-session", focused: true, visible: true, viewing: false },
+  { name: "this session", route: "s/target-session", focused: true, visible: true, viewing: true },
+  { name: "unfocused session", route: "s/target-session", focused: false, visible: true, viewing: false },
+  { name: "hidden session", route: "s/target-session", focused: true, visible: false, viewing: false },
+  { name: "session ID prefix", route: "s/target-session-more", focused: true, visible: true, viewing: false },
+  { name: "session child route", route: "s/target-session/approval", focused: true, visible: true, viewing: false },
+  { name: "encoded session", route: "s/%74arget-session", focused: true, visible: true, viewing: true },
+  { name: "invalid encoding", route: "s/%not-encoded", focused: true, visible: true, viewing: false },
+];
+for (const kind of ["NOTIFY_KIND_SCHEDULED", "NOTIFY_KIND_ATTENTION", "NOTIFY_KIND_TURN_ENDED", "NOTIFY_KIND_SECURITY"]) {
+  it.each(pushWindows)(`${kind} foreground delivery on $name`, async (w) => {
+    const sw = pushWorker([{ url: "https://app.example.com/#/" + w.route, visibilityState: w.visible ? "visible" : "hidden", focused: w.focused }]);
+    await sw.push(kind);
+    const suppressed = kind === "NOTIFY_KIND_SCHEDULED" ? w.viewing : w.visible && w.focused;
+    expect(sw.showNotification).toHaveBeenCalledTimes(suppressed ? 0 : 1);
+    if (!suppressed) {
+      expect(sw.showNotification).toHaveBeenCalledWith("remote-agent", expect.objectContaining({
+        body: "定时任务有新结果", tag: "target-session/" + kind,
+        data: { session: "target-session", security: kind === "NOTIFY_KIND_SECURITY" },
+      }));
+    }
+  });
+}
+
+it("scheduled push checks focus and route on the same window", async () => {
+  const sw = pushWorker([
+    { url: "https://app.example.com/#/", visibilityState: "visible", focused: true },
+    { url: "https://app.example.com/#/s/target-session", visibilityState: "visible", focused: false },
+  ]);
+  await sw.push("NOTIFY_KIND_SCHEDULED");
+  expect(sw.showNotification).toHaveBeenCalledOnce();
+});
+
+it("scheduled push is suppressed when any focused visible window opens the exact session", async () => {
+  const sw = pushWorker([
+    { url: "https://app.example.com/#/", visibilityState: "visible", focused: false },
+    { url: "https://app.example.com/#/s/target-session", visibilityState: "visible", focused: true },
+  ]);
+  await sw.push("NOTIFY_KIND_SCHEDULED");
+  expect(sw.showNotification).not.toHaveBeenCalled();
+});
+
+it("scheduled push without a session or with an invalid client URL still shows", async () => {
+  const sw = pushWorker([{ url: "invalid-url", visibilityState: "visible", focused: true }]);
+  await sw.push("NOTIFY_KIND_SCHEDULED");
+  await sw.push("NOTIFY_KIND_SCHEDULED", "");
+  expect(sw.showNotification).toHaveBeenCalledTimes(2);
+});

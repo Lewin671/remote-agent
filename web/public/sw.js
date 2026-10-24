@@ -143,6 +143,18 @@ self.addEventListener("message", (e) => {
   e.waitUntil(refresh().then((ok) => port.postMessage({ ok }), () => port.postMessage({ ok: false })));
 });
 
+// Match the app's session route, including its decoded argument. A different
+// page (or an invalid URL) is never evidence that this result is already visible.
+function viewingSession(window, session) {
+  if (!session) return false;
+  try {
+    const route = new URL(window.url).hash.replace(/^#\/?/, "");
+    return route.startsWith("s/") && decodeURIComponent(route.slice(2)) === session;
+  } catch {
+    return false;
+  }
+}
+
 self.addEventListener("push", (e) => {
   let d = {};
   try {
@@ -152,11 +164,13 @@ self.addEventListener("push", (e) => {
   }
   e.waitUntil(
     (async () => {
-      // Someone is looking at the app already.
+      // Ordinary pushes are suppressed anywhere in the focused app. Scheduled
+      // results are suppressed only while that exact session is being viewed.
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       const security = typeof d.tag === "string" && d.tag.endsWith("/NOTIFY_KIND_SECURITY");
       if (security) for (const w of windows) w.postMessage({ type: "security" });
-      if (windows.some((w) => w.visibilityState === "visible" && w.focused)) return;
+      const scheduled = typeof d.tag === "string" && d.tag.endsWith("/NOTIFY_KIND_SCHEDULED");
+      if (windows.some((w) => w.visibilityState === "visible" && w.focused && (!scheduled || viewingSession(w, d.session)))) return;
       await self.registration.showNotification(d.title || "remote-agent", {
         body: d.body || "",
         tag: d.tag,
