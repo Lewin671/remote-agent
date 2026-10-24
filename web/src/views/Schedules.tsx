@@ -17,7 +17,6 @@ import {
   fromHere,
   Banner,
   ConnBar,
-  Dot,
   NavBar,
   Sheet,
   useNow,
@@ -579,12 +578,7 @@ export function ScheduleDetail({
     <div className="page gray schedules-page">
       <NavBar
         title={task.spec.title}
-        sub={
-          <>
-            <Dot tone={taskTone(task, online)} />
-            {online ? nextText(task, now) : scheduleOffline}
-          </>
-        }
+        sub={online ? nextText(task, now) : scheduleOffline}
         onBack={onBack}
       />
       <ConnBar remote={remote} />
