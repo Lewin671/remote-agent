@@ -94,7 +94,7 @@ private class ProjectSums {
  */
 fun projects(state: RemoteState): List<Project> {
     val byKey = LinkedHashMap<String, MutableList<SessionView>>()
-    for (s in state.sessions.values.filter { it.info?.taskOwned != true }) byKey.getOrPut(projectKey(s)) { mutableListOf() } += s
+    for (s in state.sessions.values.filter { it.info?.taskOwned != true || needsAttention(it) }) byKey.getOrPut(projectKey(s)) { mutableListOf() } += s
     val sums = LinkedHashMap<String, ProjectSums>()
     // The machine whose newest session there is the latest comes first.
     val summaries =

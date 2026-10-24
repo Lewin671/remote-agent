@@ -10,7 +10,7 @@ import { create } from "@bufbuild/protobuf";
 import { MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, PlanProposedSchema, SessionStatus, ToolKind } from "../gen/remoteagent/v1/event_pb";
-import { derive, dockItems } from "../model";
+import { derive, dockItems, projects } from "../model";
 import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
@@ -3117,6 +3117,7 @@ it("keeps task-owned approvals in attention and counts while omitting idle task 
  const r=demo(); const s=r.sessions.get("s-plan")!;s.info!.taskOwned=true;
  expect(todoList(r).map(s=>s.id)).toContain(s.id);
  expect(sessionCounts(r,[s])).toBe("1 个待处理");
+ expect(projects(r.sessions.values(),r.machines.values()).find(p=>p.key===s.info!.cwd)?.sessions.map(x=>x.id)).toContain(s.id);
  s.info!.planOpen=false;s.info!.pendingApprovals=0;s.info!.pendingQuestions=0;s.info!.status=SessionStatus.IDLE;
  expect(sessionCounts(r,[s])).toBe("");
  expect(todoList(r).map(s=>s.id)).not.toContain(s.id);
