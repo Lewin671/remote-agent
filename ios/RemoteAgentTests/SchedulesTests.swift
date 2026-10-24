@@ -161,10 +161,11 @@ import UIKit
     @Test func conflictDismissalObservesTheMutationSignal() async throws {
         await WindowTestGate.shared.acquire();defer { WindowTestGate.shared.release() }
         let scene=try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
-        let mutation=ScheduleMutation();var dismissed=false
-        let host=UIHostingController(rootView:ScheduleConflictObserver(mutation:mutation) { dismissed=true })
+        let mutation=ScheduleMutation();var dismissed=false;var appeared=false
+        let host=UIHostingController(rootView:ScheduleConflictObserver(mutation:mutation) { dismissed=true }.onAppear { appeared=true })
         let window=UIWindow(windowScene:scene);window.rootViewController=host;window.isHidden=false
         host.view.layoutIfNeeded();defer { window.isHidden=true }
+        await eventually("conflict observer visible") { appeared }
         #expect(mutation.recordConflict(CommandError("unavailable","offline")) == nil)
         #expect(mutation.recordConflict(CommandError("aborted","relay outcome unknown")) == nil)
         let error=try #require(mutation.recordConflict(CommandError("aborted","revision",fromDaemon:true)))
