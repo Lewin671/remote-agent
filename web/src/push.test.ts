@@ -64,7 +64,7 @@ it("keeps security and scheduled notifications when session notifications are tu
   await new Promise((resolve) => setTimeout(resolve));
   key("AAAA");
   await Promise.all([restoring, off]);
-  expect(pushPrefs()).toEqual({ attention: false, turns: false });
+  expect(pushPrefs()).toEqual({ attention: false, turns: false, scheduled: true });
   expect(server).toEqual([NotifyKind.SECURITY, NotifyKind.SCHEDULED]);
   expect(browser).not.toBeNull();
 });
@@ -77,4 +77,14 @@ it("restores SECURITY and SCHEDULED with both session preferences disabled", asy
   const remote = { conn: "online", removed: false, setPushSubscription: vi.fn() } as unknown as Remote;
   await restorePushPrefs(remote);
   expect(remote.setPushSubscription).toHaveBeenCalledWith(JSON.stringify(subscription), [NotifyKind.SECURITY, NotifyKind.SCHEDULED]);
+});
+
+it("allows scheduled results to be disabled without disabling security or turn results", async () => {
+  vi.stubGlobal("Notification", { permission: "granted" });
+  const sub = { endpoint: "https://push.example.com/results" };
+  vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: async () => sub } }) } });
+  const remote = { setPushSubscription: vi.fn() } as unknown as Remote;
+  await setPushPrefs(remote, { attention: false, turns: true, scheduled: false });
+  expect(remote.setPushSubscription).toHaveBeenCalledWith(JSON.stringify(sub), [NotifyKind.TURN_ENDED, NotifyKind.SECURITY]);
+  expect(pushPrefs().scheduled).toBe(false);
 });

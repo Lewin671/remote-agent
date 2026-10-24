@@ -761,7 +761,7 @@ function usePush(remote: Remote) {
         <span>会话提醒没开，审批来了不会提醒你</span>
         <button
           disabled={busy}
-          onClick={() => void change({ attention: true, turns: prefs.turns })}
+          onClick={() => void change({ ...prefs, attention: true })}
         >
           开启
         </button>
@@ -809,6 +809,10 @@ function usePush(remote: Remote) {
             disabled={busy || !usable}
             onChange={(v) => void change({ ...prefs, turns: v })}
           />
+        </div>
+        <div className="row">
+          定时任务结果
+          <Switch label="定时任务结果" on={prefs.scheduled !== false} disabled={busy || !usable} onChange={(v) => void change({ ...prefs, scheduled: v })} />
         </div>
       </div>
       <div className="manage-hint">安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。</div>

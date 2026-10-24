@@ -1,3 +1,6 @@
+import { ChevronDown } from "../icons";
+import { ScheduleCreate, ScheduleStrip } from "./Schedules";
+import { clockTime, foldScheduled } from "../schedules";
 import { isSkeleton, skeletonMessage } from "../skeleton";
 import {
   lazy,
@@ -198,6 +201,7 @@ export function SessionPage({
   if (inactive && tab !== "chat") tab = "chat";
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
   const [menu, setMenu] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [forking, setForking] = useState(false);
@@ -514,6 +518,7 @@ export function SessionPage({
           onTerminal={toTerminal}
         />
       )}
+      {session.info?.taskOwned && <div className="schedule-reply-hint">回复后，这个对话会移到会话列表</div>}
       {inactive ? (
         <EndCard
           remote={remote}
@@ -574,6 +579,7 @@ export function SessionPage({
       >
         {header}
         <ConnBar remote={remote} />
+        <ScheduleStrip remote={remote} session={session} go={route => { location.hash = "/" + route; }} />
         {!wide && <div className="segrow">{seg}</div>}
         <div className={"panes p-" + tab}>
           {tab !== "term" && chat}
@@ -604,6 +610,7 @@ export function SessionPage({
               </>
             }
             actions={[
+              { label: "定时发送…", disabled: !machine?.online || remote.conn !== "online" || !remote.supportsSchedules(session.machineId), note: !remote.supportsSchedules(session.machineId) ? "请更新电脑上的 remote-agent" : undefined, onClick: () => setScheduling(true) },
               ...(!inactive && mode
                 ? [
                     {
@@ -690,6 +697,7 @@ export function SessionPage({
             onClose={() => setMenu(false)}
           />
         )}
+        {scheduling && <div className="schedule-session-overlay"><ScheduleCreate remote={remote} session={session} go={route => { setScheduling(false); location.hash = "/" + route; }} onBack={() => setScheduling(false)} /></div>}
         {confirmEnd && (
           <Alert
             title="结束这个会话？"
@@ -772,13 +780,18 @@ function ChatBody({
   const rowStates = useRef(new Map<string, boolean>());
   // Back from another view, the chat is where it was left.
   const [saved] = useState(() => remote.scroll.get(sid));
-  const stick = useRef(saved?.stick ?? true);
+  const [focus] = useState(() => { const value = remote.scheduleFocus.get(sid); remote.scheduleFocus.delete(sid); return value; });
+  const stick = useRef(focus ? false : saved?.stick ?? true);
   const userScrollAt = useRef(0);
   const [unseen, setUnseen] = useState(0);
   const seen = useRef<number | undefined>(undefined);
   const hist = remote.history(sid);
   const restoringHistory = useRef(!hist.loaded);
-  const items = useMemo(() => timeline(events, d), [events, events.length, d]);
+  const [expandedQuiet, setExpandedQuiet] = useState(new Set<string>());
+  const rawItems = useMemo(() => timeline(events, d), [events, events.length, d]);
+  const focusSeq = focus && (events.find(e => e.kind.case === "userMessage" && e.origin?.scheduledRunId === focus.runId)?.seq ?? focus.seq);
+  const items = useMemo(() => foldScheduled(rawItems, events, expandedQuiet, focusSeq), [rawItems, events, events.length, expandedQuiet, focusSeq]);
+  const focusKey = focus && (rawItems.find(it => it.kind === "event" && it.event.kind.case === "userMessage" && it.event.origin?.scheduledRunId === focus.runId) ?? rawItems.find(it => it.kind === "event" && it.event.seq >= focus.seq))?.key;
   const outbox = remote.outbox(sid);
   const prompt = remote.prompts.get(sid);
   const cwd = session.info?.cwd ?? "";
@@ -999,6 +1012,7 @@ function ChatBody({
       >
         <HistoryRows
           items={items}
+          focusKey={focusKey}
           scroller={scroller}
           remote={remote}
           sid={sid}
@@ -1006,7 +1020,7 @@ function ChatBody({
           loaded={hist.loaded || !!hist.error || hist.broken}
           header={header}
           footer={footer}
-          render={(it) => (
+          render={(it) => it.kind === "quiet" ? <button className="schedule-quiet" onClick={() => setExpandedQuiet(old => new Set(old).add(it.key))}>{it.times.join("、")} 定时检查 · 没有新回复 <ChevronDown /></button> : (
             <RowState id={it.key} states={rowStates.current}>
               <Row
                 it={it}
@@ -1191,10 +1205,12 @@ function Row({
               )}
             </div>
           )}
-          {from && <small>{from}</small>}
+          {e.origin?.scheduledTaskId ? <small>定时任务 · {clockTime(Number(e.time?.seconds ?? 0n) * 1000)}</small> : from && <small>{from}</small>}
         </div>
       );
     }
+    case "scheduledNotification":
+      return <div className="sysline schedule-notification">通知你：{k.value.text}</div>;
     case "imageGenerated":
       return <GenCard refs={k.value.images} prompt={k.value.revisedPrompt} />;
     case "agentMessage":

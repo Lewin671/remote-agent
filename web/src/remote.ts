@@ -1,3 +1,5 @@
+import { taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type TaskEntry } from "./schedules";
+import { Attempt } from "./attempt";
 import { readSecurityOperation } from "./security-operation";
 import { AuthorityClient, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
 import type { AuthorityPairing } from "./authority-pairing";
@@ -483,6 +485,221 @@ export class Remote {
     return false;
   }
   machines = new Map<string, MachineView>();
+  schedules = new Map<
+    string,
+    { tasks: ScheduleTask[]; revision: bigint; loading: boolean; error: string }
+  >();
+  private scheduleRequests = new Map<string, string>();
+  private scheduleLoading = new Map<string, Promise<void>>();
+  private scheduleAgain = new Set<string>();
+  readonly scheduleAttempts = new Map<
+    string,
+    Attempt<{
+      operation: string;
+      taskId: string;
+      revision: number;
+      spec?: ScheduleSpec;
+      requestId?: string;
+      sessionId?: string;
+    }>
+  >();
+  // A run selected in task history is revealed even when its quiet rounds fold.
+  scheduleFocus = new Map<string, { seq: bigint; runId: string }>();
+
+  supportsSchedules(id: string): boolean {
+    return this.machines.get(id)?.meta?.capabilities?.scheduledTasks === true;
+  }
+  taskEntries(): TaskEntry[] {
+    return [...this.schedules].flatMap(([machineId, state]) =>
+      this.supportsSchedules(machineId)
+        ? state.tasks.filter(taskVisible).map((task) => ({ machineId, task }))
+        : [],
+    );
+  }
+  sessionTasks(sid: string): TaskEntry[] {
+    return this.taskEntries().filter(
+      ({ task }) =>
+        task.spec.target.type === "resume_session" &&
+        task.spec.target.session === sid &&
+        taskGroup(task) !== "已结束",
+    );
+  }
+  /** Called on remote changes. Only capabilities, connectivity and the monotonic
+   * machine revision invalidate a list; there is no task polling timer. */
+  syncSchedules() {
+    for (const id of this.scheduleRequests.keys()) {
+      if (
+        this.conn !== "online" ||
+        !this.machines.get(id)?.online ||
+        !this.supportsSchedules(id)
+      )
+        this.scheduleRequests.delete(id);
+    }
+    for (const [id, m] of this.machines) {
+      if (this.conn !== "online" || !m.online || !this.supportsSchedules(id))
+        continue;
+      const key = String(m.meta!.scheduleRevision);
+      if (this.scheduleRequests.get(id) === key) continue;
+      this.scheduleRequests.set(id, key);
+      void this.refreshSchedules(id);
+    }
+  }
+  refreshSchedules(id: string): Promise<void> {
+    if (this.scheduleLoading.has(id)) {
+      this.scheduleAgain.add(id);
+      return this.scheduleLoading.get(id)!;
+    }
+    if (
+      this.conn !== "online" ||
+      !this.machines.get(id)?.online ||
+      !this.supportsSchedules(id)
+    )
+      return Promise.resolve();
+    const work = (async () => {
+      do {
+        this.scheduleAgain.delete(id);
+        const revision = this.machines.get(id)?.meta?.scheduleRevision ?? 0n;
+        const previous = this.schedules.get(id);
+        this.schedules.set(id, {
+          tasks: previous?.tasks ?? [],
+          revision: previous?.revision ?? 0n,
+          loading: true,
+          error: "",
+        });
+        this.changed();
+        try {
+          const result = await this.machineCommand(id, {
+            case: "schedule",
+            value: { operation: "list" },
+          });
+          if (result.kind.case !== "schedule")
+            throw new Error("电脑没有返回任务列表");
+          const tasks = (
+            JSON.parse(
+              new TextDecoder().decode(result.kind.value.resultJson),
+            ) as { tasks: ScheduleTask[] }
+          ).tasks;
+          if (!Array.isArray(tasks))
+            throw new Error("电脑返回的任务列表无法读取");
+          if (
+            !this.machines.has(id) ||
+            !this.supportsSchedules(id) ||
+            this.removed
+          )
+            return;
+          this.schedules.set(id, {
+            tasks,
+            revision,
+            loading: false,
+            error: "",
+          });
+        } catch (e) {
+          const state = this.schedules.get(id)!;
+          this.schedules.set(id, {
+            ...state,
+            loading: false,
+            error: errorText(e),
+          });
+        }
+        this.changed();
+      } while (
+        this.scheduleAgain.has(id) &&
+        this.conn === "online" &&
+        this.machines.get(id)?.online
+      );
+    })().finally(async () => {
+      this.scheduleLoading.delete(id);
+      // A reconnect/write can invalidate after the loop tested its condition
+      // but before the promise's finally ran. Do not lose that invalidation.
+      if (this.scheduleAgain.delete(id)) await this.refreshSchedules(id);
+    });
+    this.scheduleLoading.set(id, work);
+    return work;
+  }
+  async changeSchedule(
+    machineId: string,
+    key: string,
+    payload: {
+      operation: string;
+      taskId?: string;
+      revision?: number;
+      spec?: ScheduleSpec;
+      requestId?: string;
+      sessionId?: string;
+    },
+  ): Promise<ScheduleTask> {
+    if (this.conn !== "online" || !this.machines.get(machineId)?.online)
+      throw new Error("电脑不在线，连上后才能修改任务");
+    if (!this.supportsSchedules(machineId))
+      throw new Error("请先更新这台电脑上的 remote-agent，才能使用定时任务");
+    const attemptKey = machineId + "/" + key;
+    let attempt = this.scheduleAttempts.get(attemptKey);
+    if (!attempt) {
+      attempt = new Attempt();
+      this.scheduleAttempts.set(attemptKey, attempt);
+    }
+    if (attempt.expired)
+      throw new Error("上次操作的结果仍未知，请重新读取任务核实后再操作");
+    const sent = attempt.next({
+      ...payload,
+      taskId: payload.taskId ?? "",
+      revision: payload.revision ?? 0,
+    });
+    const q = sent.payload;
+    try {
+      const result = await this.machineCommand(
+        machineId,
+        {
+          case: "schedule",
+          value: {
+            operation: q.operation,
+            taskId: q.taskId,
+            expectedRevision: BigInt(q.revision),
+            requestId: q.requestId,
+            sessionId: q.sessionId,
+            specJson: q.spec
+              ? new TextEncoder().encode(JSON.stringify(q.spec))
+              : undefined,
+          },
+        },
+        sent.slot,
+      );
+      if (result.kind.case !== "schedule") throw new Error("电脑没有返回任务");
+      const task = JSON.parse(
+        new TextDecoder().decode(result.kind.value.resultJson),
+      ) as ScheduleTask;
+      attempt.settle(undefined, sent);
+      // A list already in flight may predate this write; always follow it with
+      // a new list before treating that old result as current.
+      await this.refreshSchedules(machineId);
+      return task;
+    } catch (error) {
+      attempt.settle(error, sent);
+      if (error instanceof CommandError && error.code === "aborted") {
+        await this.refreshSchedules(machineId);
+        throw new Error("任务已被其他客户端修改，已重新读取。请核对后再保存");
+      }
+      throw error;
+    }
+  }
+  async openScheduleRun(
+    machineId: string,
+    run: import("./schedules").ScheduleRun,
+  ) {
+    if (
+      !run.session_id ||
+      (this.sessions.get(run.session_id)?.machineId &&
+        this.sessions.get(run.session_id)?.machineId !== machineId)
+    )
+      return;
+    this.scheduleFocus.set(run.session_id, {
+      seq: BigInt(run.start_seq || run.after_seq) + 1n,
+      runId: run.id,
+    });
+    await this.ensureSession(run.session_id);
+    this.touch();
+    location.hash = "/s/" + encodeURIComponent(run.session_id);
+  }
   sessions = new Map<string, SessionView>();
   conn: ConnState = "connecting";
   error = "";
@@ -1080,6 +1297,18 @@ export class Remote {
               machines.bytes as Uint8Array,
             ).machines) {
               await this.putMachine({ ...m, online: false });
+            }
+            for (const m of this.machines.values()) {
+              try {
+                const kept = mine(await this.cache!.get("schedules:" + m.id));
+                if (!kept || !this.supportsSchedules(m.id) || this.schedules.has(m.id)) continue;
+                const { msg } = await this.openSecureMessage(fromBinary(EnvelopeSchema, kept.bytes as Uint8Array),
+                  { kind: PayloadKind.COMMAND_RESULT, machineId: m.id, sessionId: "", requestId: kept.requestId as string }, CommandResultSchema, true);
+                if (msg.kind.case === "schedule") {
+                  const parsed = JSON.parse(new TextDecoder().decode(msg.kind.value.resultJson)) as { tasks: ScheduleTask[] };
+                  if (Array.isArray(parsed.tasks)) this.schedules.set(m.id, { tasks: parsed.tasks, revision: 0n, loading: false, error: "" });
+                }
+              } catch { /* An unreadable snapshot is never treated as an empty live list. */ }
             }
             for (const s of fromBinary(
               ListRemoteSessionsResponseSchema,
@@ -2697,6 +2926,9 @@ export class Remote {
         }
         if (msg.errorCode)
           throw new CommandError(msg.errorCode, msg.errorMessage, true);
+        if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result) {
+          this.keepValue("schedules:" + machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
+        }
         return msg;
       } catch (e) {
         // The daemon's answer is final; only transport failures are retried.

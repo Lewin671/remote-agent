@@ -1502,6 +1502,7 @@ function visible(e: Event, d: Derived): boolean {
     case "planAnswered":
     case "imageGenerated":
     case "sessionForked":
+    case "scheduledNotification":
       return true;
     case "turnEnded":
       return (

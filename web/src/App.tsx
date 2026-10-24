@@ -26,7 +26,9 @@ import {
   Settings,
 } from "./views/Settings";
 import { PairCodePage, SecurityPage } from "./views/Security";
-import { MessageSquare, Settings as SettingsIcon } from "./icons";
+import { ScheduleCreate, ScheduleDetail, SchedulesPage } from "./views/Schedules";
+import { taskGroup, taskRoute } from "./schedules";
+import { Clock, MessageSquare, Settings as SettingsIcon } from "./icons";
 
 // Joining and pairing bring the QR code and curve code; fetched when used.
 const Setup = lazy(() =>
@@ -228,6 +230,7 @@ function useWide() {
 function Main({ remote }: { remote: Remote }) {
   useRemote(remote);
   const [route, go] = useRoute();
+  useEffect(() => { remote.syncSchedules(); });
   const wide = useWide();
   const [kind, ...rest] = route.split("/");
   const arg = decodeURIComponent(rest.join("/"));
@@ -249,7 +252,7 @@ function Main({ remote }: { remote: Remote }) {
         key={session.id}
         remote={remote}
         session={session}
-        onBack={back}
+        onBack={session.info?.taskOwned && session.info.scheduledTaskId ? () => go(taskRoute(session.machineId, session.info!.scheduledTaskId)) : back}
         wide={wide}
       />
     );
@@ -275,7 +278,13 @@ function Main({ remote }: { remote: Remote }) {
       ) : (
         <div className="center muted">正在打开会话…</div>
       );
-  // A wide window has no project page: the sidebar lists the project and the main area starts a session in it.
+  else if (kind === "tasks") {
+    const [machineId, taskId] = rest.map(decodeURIComponent);
+    page = machineId === "new" ? <ScheduleCreate remote={remote} go={go} onBack={() => go("tasks")} />
+      : taskId ? <ScheduleDetail key={machineId + taskId} remote={remote} machineId={machineId} id={taskId} go={go} onBack={() => go("tasks")} />
+      : <SchedulesPage remote={remote} go={go} />;
+  }
+  // A wide window has no project page: its sidebar lists sessions and the main area starts one.
   else if (kind === "p")
     page = wide ? (
       <WideHome key={arg} remote={remote} go={go} project={arg} />
@@ -315,13 +324,15 @@ function Main({ remote }: { remote: Remote }) {
         <Sidebar
           remote={remote}
           go={go}
+          active={kind === "tasks" ? "tasks" : kind === "settings" ? "settings" : "sessions"}
           selected={session?.id}
           project={kind === "p" ? arg : undefined}
         />
         <main className="dm">{page}</main>
       </div>
     );
-  const tabs = kind === "" || kind === "settings" && !arg;
+  const tabs = kind === "" || kind === "settings" && !arg || kind === "tasks" && !arg;
+  const taskTodo = remote.taskEntries().filter(e => taskGroup(e.task) === "需要你看一下").length;
   const todo = todoList(remote).length;
   return (
     <div className={"phone" + (kind === "settings" ? " gray" : "")}>
@@ -333,6 +344,7 @@ function Main({ remote }: { remote: Remote }) {
             会话
             {todo > 0 && <span className="n">{todo}</span>}
           </button>
+          <button className={kind === "tasks" ? "on" : ""} onClick={() => go("tasks")}><Clock />定时{taskTodo > 0 && <span className="n">{taskTodo}</span>}</button>
           <button
             className={kind === "settings" ? "on" : ""}
             onClick={() => go("settings")}

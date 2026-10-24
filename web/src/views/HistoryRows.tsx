@@ -14,6 +14,7 @@ type Props<T> = {
   header: ReactNode;
   footer: ReactNode;
   loaded: boolean;
+  focusKey?: string;
 };
 
 /** Keep complete event state, but mount only rows near the viewport. */
@@ -22,12 +23,19 @@ export function HistoryRows<T extends { key: string }>(props: Props<T>) {
   const [parent, setParent] = useState<HTMLElement>();
   const [initial] = useState(() => ({ top: remote.scroll.get(sid), long: items.length > 100, loading: !loaded }));
   const shortRestored = useRef(false);
+  const focused = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
-    if (!shortRestored.current && loaded && items.length <= 100 && initial.loading && initial.top && !initial.top.stick && parent) {
+    if (!loaded || !props.focusKey || items.length > 100 || focused.current === props.focusKey) return;
+    const index = items.findIndex(it => it.key === props.focusKey);
+    const row = scroller.current?.querySelector<HTMLElement>(`[data-history-index="${index + 1}"]`);
+    if (row) { row.scrollIntoView?.({ block: "start" }); focused.current = props.focusKey; }
+  }, [loaded, props.focusKey, items, scroller, parent]);
+  useLayoutEffect(() => {
+    if (!props.focusKey && !shortRestored.current && loaded && items.length <= 100 && initial.loading && initial.top && !initial.top.stick && parent) {
       parent.scrollTop = initial.top.top;
       shortRestored.current = true;
     }
-  }, [loaded, items.length, initial, parent]);
+  }, [loaded, items.length, initial, parent, props.focusKey]);
   useEffect(() => { setParent(scroller.current ?? undefined); }, [scroller]);
   // A reclaimed history arrives in pages. Do not restore a position into an
   // incomplete prefix or overwrite its measurements with that prefix.
@@ -37,11 +45,17 @@ export function HistoryRows<T extends { key: string }>(props: Props<T>) {
   return <WindowedRows {...props} parent={parent} initialTop={initial.long || initial.loading ? initial.top : undefined} />;
 }
 
-function WindowedRows<T extends { key: string }>({ items, render, parent, remote, sid, follow, header, footer, initialTop }: Props<T> & {
+function WindowedRows<T extends { key: string }>({ items, render, parent, remote, sid, follow, header, footer, initialTop, focusKey, loaded }: Props<T> & {
   parent: HTMLElement;
   initialTop?: { top: number; stick: boolean };
 }) {
   const list = useRef<VirtuosoHandle>(null);
+  const focused = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (!loaded || !focusKey || focused.current === focusKey) return;
+    const index = items.findIndex(it => it.key === focusKey);
+    if (index >= 0) { list.current?.scrollToIndex({ index: index + 1, align: "start" }); focused.current = focusKey; }
+  }, [focusKey, items, loaded]);
   const currentItems = useRef(items);
   currentItems.current = items;
   const count = useRef(items.length + 2);
@@ -77,7 +91,8 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
     parent.addEventListener("scroll", save, { passive: true });
     return () => parent.removeEventListener("scroll", save);
   }, [parent, save]);
-  const restore = !top.stick && !anchor && saved && saved.count === items.length + 2 && saved.width === parent.clientWidth ? saved.state : undefined;
+  const focusIndex = loaded && focusKey ? items.findIndex(it => it.key === focusKey) : -1;
+  const restore = !focusKey && !top.stick && !anchor && saved && saved.count === items.length + 2 && saved.width === parent.clientWidth ? saved.state : undefined;
   return <Virtuoso
     ref={list}
     className="virtual-history"
@@ -86,7 +101,7 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
     computeItemKey={(index) => index === 0 ? "history-header" : index === items.length + 1 ? "history-footer" : "row-" + items[index - 1].key}
     itemContent={(index) => index === 0 ? <div className="history-boundary">{header}</div> : index === items.length + 1 ? <div className="history-boundary">{footer}</div> : render(items[index - 1])}
     increaseViewportBy={400}
-    {...(restore ? { restoreStateFrom: restore } : anchor ? { initialTopMostItemIndex: anchor }
+    {...(focusIndex >= 0 ? { initialTopMostItemIndex: { index: focusIndex + 1, align: "start" as const } } : restore ? { restoreStateFrom: restore } : anchor ? { initialTopMostItemIndex: anchor }
       : top.stick ? { initialTopMostItemIndex: { index: items.length + 1, align: "end" as const } }
       : { initialScrollTop: top.top })}
     rangeChanged={() => queueMicrotask(save)}

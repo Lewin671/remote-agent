@@ -683,7 +683,7 @@ type Pick = "" | "machine" | "model" | "mode";
 /** 项目设置: the machine, and each CLI's model and mode for new sessions.
  * The tabs show one CLI's set at a time, opening on the CLI picked next
  * to the box; looking at the other one picks nothing. */
-export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClose: () => void; start?: Pick }) {
+export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMachine = false }: { ns: NewSession; onClose: () => void; start?: Pick; scheduled?: boolean; lockMachine?: boolean }) {
   const [pick, setPick] = useState<Pick>(start);
   const [removing, setRemoving] = useState(false);
   // Opened right at one setting: done with it is done with the sheet.
@@ -840,7 +840,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
         <>
           <div className="ps-id"><Avatar name={projectName(cfg.cwd)} size="sm" /><div className="ps-text"><b>{projectName(cfg.cwd)}</b><small>{shortPath(cfg.cwd)}</small></div></div>
           <div className="setrows">
-            <button className="sr" onClick={() => setPick("machine")}>
+            <button className="sr" disabled={lockMachine} onClick={() => setPick("machine")}>
               <span className="lbl">机器</span>
               <span className="v">
                 <Dot tone={machine?.online ? "idle" : "off"} />
@@ -869,7 +869,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
                   <ChevronRight className="chev" />
                 </span>
               </button>
-              {cfg.agent === Agent.CLAUDE && (
+              {cfg.agent === Agent.CLAUDE && !scheduled && (
                 <div className="sr">
                   <span className="lbl">上下文</span>
                   {parts.fixedWindow ? (

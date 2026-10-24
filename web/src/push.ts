@@ -6,6 +6,7 @@ import type { Remote } from "./remote";
 export interface PushPrefs {
   attention: boolean;
   turns: boolean;
+  scheduled?: boolean;
 }
 
 const KEY = "ra-push";
@@ -29,9 +30,9 @@ export function pushState(): PushState {
 
 export function pushPrefs(): PushPrefs {
   try {
-    return { attention: false, turns: false, ...JSON.parse(localStorage.getItem(KEY) || "{}") };
+    return { attention: false, turns: false, scheduled: true, ...JSON.parse(localStorage.getItem(KEY) || "{}") };
   } catch {
-    return { attention: false, turns: false };
+    return { attention: false, turns: false, scheduled: true };
   }
 }
 
@@ -62,7 +63,7 @@ export function restorePushPrefs(remote: Remote): Promise<void> {
     if (!pushSupported() || Notification.permission !== "granted") return;
     // As saved when its turn comes, not when the connection opened.
     const prefs = pushPrefs();
-    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY, NotifyKind.SCHEDULED];
+    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY, ...(prefs.scheduled !== false ? [NotifyKind.SCHEDULED] : [])];
     const current = () => !remote.removed && remote.conn === "online";
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
@@ -81,7 +82,7 @@ export function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
   return inTurn(async () => {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
-    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY, NotifyKind.SCHEDULED];
+    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : []), NotifyKind.SECURITY, ...(prefs.scheduled !== false ? [NotifyKind.SCHEDULED] : [])];
     if (kinds.length === 0) {
       await remote.setPushSubscription("", []);
       await sub?.unsubscribe();

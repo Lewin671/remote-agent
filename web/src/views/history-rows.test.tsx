@@ -102,3 +102,34 @@ it("restores a short but tall history after its cold load finishes", async () =>
   await act(async () => root!.render(page(20, true)));
   expect(scroller.current!.scrollTop).toBe(1200);
 });
+
+it("reveals the selected run after cold loading without restoring the previous reading offset", async () => {
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  const scroller = createRef<HTMLDivElement>();
+  const remote = { scroll: new Map([["s", { top: 1200, stick: false }]]) } as unknown as Remote;
+  const selected: string[] = [];
+  const page = (loaded: boolean) => <div ref={scroller}><HistoryRows items={loaded ? ["1", "2", "3"].map(key => ({ key })) : []} focusKey="2" loaded={loaded} remote={remote} sid="s" scroller={scroller} follow={() => false} header={null} footer={null} render={it => <p ref={el => { if (el?.parentElement) el.parentElement.scrollIntoView = () => { selected.push(it.key); scroller.current!.scrollTop = 222; }; }}>{it.key}</p>} /></div>;
+  await act(async () => root!.render(page(false)));
+  await act(async () => root!.render(page(true)));
+  expect(selected).toEqual(["2"]);
+  expect(scroller.current!.scrollTop).toBe(222);
+  await act(async () => root!.render(null));
+  selected.length = 0;
+  await act(async () => root!.render(page(true)));
+  expect(selected).toEqual(["2"]);
+  expect(scroller.current!.scrollTop).toBe(222);
+});
+it("initially reveals the selected row within a virtual history instead of the old offset", async () => {
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  const scroller = createRef<HTMLDivElement>();
+  const remote = { scroll: new Map([["s", { top: 1200, stick: false }]]) } as unknown as Remote;
+  const items = Array.from({ length: 10000 }, (_, i) => ({ key: String(i), text: "selected row " + i }));
+  await act(async () => root!.render(<VirtuosoMockContext.Provider value={{ viewportHeight: 600, itemHeight: 60 }}><div ref={el => {
+    scroller.current = el; if (!el) return;
+    Object.defineProperties(el, { offsetHeight: { configurable: true, get: () => 600 }, scrollHeight: { configurable: true, get: () => Number.parseFloat((el.querySelector(".virtual-history") as HTMLElement)?.style.height || "600") } });
+    el.getBoundingClientRect = () => new DOMRect(0, 0, 600, 600);
+    el.scrollTo = options => { if (typeof options === "object") el.scrollTop = options.top ?? 0; el.dispatchEvent(new Event("scroll")); };
+  }}><HistoryRows items={items} render={it => <p>{it.text}</p>} scroller={scroller} remote={remote} sid="s" follow={() => false} loaded focusKey="5432" header={null} footer={null} /></div></VirtuosoMockContext.Provider>));
+  await vi.waitFor(async () => { await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); }); expect(host.textContent).toContain("selected row 5432"); });
+  expect(host.querySelectorAll('[data-item-index]').length).toBeLessThan(40);
+});

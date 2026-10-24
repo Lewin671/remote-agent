@@ -9,6 +9,7 @@ import {
   ArrowUp as LArrowUp,
   Check as LCheck,
   Copy as LCopy,
+  Clock as LClock,
   SquareCheck as LSquareCheck,
   ChevronDown as LChevronDown,
   ChevronLeft as LChevronLeft,
@@ -101,3 +102,6 @@ export const CornerDownLeft = icon(LCornerDownLeft);
 export const Keyboard = icon(LKeyboard);
 /** Fits the terminal to this screen. */
 export const Maximize2 = icon(LMaximize2);
+
+/** Scheduled tasks. */
+export const Clock = icon(LClock);

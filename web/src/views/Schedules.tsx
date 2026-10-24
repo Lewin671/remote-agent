@@ -1,0 +1,1453 @@
+import { useRef, useState, type ReactNode } from "react";
+import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
+import { Clock, Plus, ChevronRight, ChevronDown, ChevronUp } from "../icons";
+import {
+  agentName,
+  inheritConfig,
+  defaultModeOf,
+  machineName,
+  modeOf,
+  projectName,
+  projects,
+  titleOf,
+  type NewConfig,
+} from "../model";
+import { errorText, type Remote, type SessionView } from "../remote";
+import {
+  Alert,
+  fromHere,
+  Banner,
+  ConnBar,
+  Dot,
+  NavBar,
+  Sheet,
+  useNow,
+  useRemote,
+} from "../ui";
+import {
+  allRuns,
+  clockTime,
+  dateTime,
+  dayText,
+  frequency,
+  groupRuns,
+  groupTasks,
+  lastResult,
+  localInput,
+  nextText,
+  oneShot,
+  reasonText,
+  runResult,
+  taskGroup,
+  taskRoute,
+  taskTone,
+  zonedISO,
+  type ScheduleRun,
+  type ScheduleSpec,
+  type ScheduleTask,
+  type ScheduleTrigger,
+  type ScheduleTarget,
+} from "../schedules";
+import {
+  ConfigSheet,
+  NewFlow,
+  useNewSession,
+  useMachineInfo,
+  type Go,
+} from "./NewSession";
+import { SessionLine } from "./SessionLine";
+
+function TaskOffline({ remote, id }: { remote: Remote; id?: string }) {
+  const machines = [...remote.machines.values()].filter(
+    (m) => (!id || m.id === id) && remote.supportsSchedules(m.id),
+  );
+  const offline = machines.filter((m) => !m.online);
+  return (
+    <>
+      {remote.conn === "online" && offline.length > 0 && (
+        <Banner>
+          {offline.map(machineName).join("、")} 不在线 ·
+          显示的是上次的任务状态，连上后才能修改
+        </Banner>
+      )}
+    </>
+  );
+}
+export function ScheduleRow({
+  remote,
+  machineId,
+  task,
+  go,
+  now = Date.now(),
+}: {
+  remote: Remote;
+  machineId: string;
+  task: ScheduleTask;
+  go: Go;
+  now?: number;
+}) {
+  const m = remote.machines.get(machineId);
+  const multiple = remote.machines.size > 1;
+  const target = task.spec.target;
+  const location =
+    target.type === "resume_session"
+      ? titleOf(
+          remote.sessions.get(target.session ?? "") ?? {
+            id: target.session ?? "",
+            machineId,
+            updatedMs: 0n,
+          },
+        )
+      : projectName(target.cwd ?? "");
+  const status =
+    remote.conn !== "online" || !m?.online ? "未连接" : nextText(task, now);
+  return (
+    <SessionLine
+      tone={taskTone(task, remote.conn === "online" && !!m?.online)}
+      title={task.spec.title}
+      right={status}
+      preview={[
+        frequency(task.spec.trigger),
+        location,
+        target.agent === "claude"
+          ? "Claude Code"
+          : target.type === "new_session"
+            ? "Codex"
+            : "",
+        multiple ? machineName(m) : "",
+      ]
+        .filter(Boolean)
+        .join(" · ")}
+      meta={lastResult(task, now)}
+      onClick={() => go(taskRoute(machineId, task.id))}
+    />
+  );
+}
+export function SchedulesPage({ remote, go }: { remote: Remote; go: Go }) {
+  useRemote(remote);
+  const now = useNow(60_000);
+  const entries = remote.taskEntries();
+  const groups = groupTasks(entries);
+  const supported = [...remote.machines.keys()].filter((id) =>
+    remote.supportsSchedules(id),
+  );
+  const loading = [...remote.schedules.values()].some((s) => s.loading);
+  const errors = supported.filter((id) => remote.schedules.get(id)?.error);
+  return (
+    <div className="page schedules-page">
+      <ConnBar remote={remote} />
+      <div className="large">
+        <h3>定时任务</h3>
+      </div>
+      <div className="body schedule-body">
+        <TaskOffline remote={remote} />
+        {errors.map((id) => (
+          <Banner
+            key={id}
+            kind="err"
+            action="重试"
+            onAction={() => void remote.refreshSchedules(id)}
+          >
+            {machineName(remote.machines.get(id))} 的任务没能读取：
+            {remote.schedules.get(id)?.error}
+          </Banner>
+        ))}
+        {supported.length === 0 && (
+          <Banner>需要更新电脑上的 remote-agent 才能使用定时任务。</Banner>
+        )}
+        {!entries.length && (
+          <div className="schedule-empty">
+            <Clock />
+            <b>{loading ? "正在读取任务…" : "还没有定时任务"}</b>
+            <p>
+              让 agent
+              定时检查，在有结果时通知你。电脑需要保持运行，手机可以离线。
+            </p>
+          </div>
+        )}
+        {[...groups].map(
+          ([group, tasks]) =>
+            tasks.length > 0 && (
+              <section key={group}>
+                <div className="glabel">
+                  {group}
+                  <span>{tasks.length}</span>
+                </div>
+                {tasks.map((e) => (
+                  <ScheduleRow
+                    key={e.machineId + e.task.id}
+                    remote={remote}
+                    go={go}
+                    now={now}
+                    {...e}
+                  />
+                ))}
+              </section>
+            ),
+        )}
+        <button
+          className="task-new"
+          disabled={!supported.length}
+          onClick={() => go("tasks/new")}
+        >
+          <Plus /> 新任务…
+        </button>
+      </div>
+    </div>
+  );
+}
+function Field({
+  name,
+  value,
+  onClick,
+  disabled,
+}: {
+  name: string;
+  value: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return onClick ? (
+    <button
+      className="row schedule-field"
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <span>{name}</span>
+      <span className="v">
+        {value}
+        <ChevronRight />
+      </span>
+    </button>
+  ) : (
+    <div className="row schedule-field">
+      <span>{name}</span>
+      <span className="v">{value}</span>
+    </div>
+  );
+}
+export function TimingSheet({
+  trigger,
+  onSave,
+  onClose,
+}: {
+  trigger: ScheduleTrigger;
+  onSave: (t: ScheduleTrigger) => void;
+  onClose: () => void;
+}) {
+  const initialZone =
+    trigger.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const [zone, setZone] = useState(initialZone);
+  const [kind, setKind] = useState(
+    trigger.type === "calendar"
+      ? trigger.weekdays?.length && trigger.weekdays.join() !== "1,2,3,4,5"
+        ? "weekly"
+        : "daily"
+      : trigger.type === "after_turn"
+        ? "after"
+        : trigger.type,
+  );
+  const [at, setAt] = useState(
+    localInput(
+      trigger.at ?? new Date(Date.now() + 300_000).toISOString(),
+      initialZone,
+    ),
+  );
+  const [time, setTime] = useState(trigger.time ?? "08:00");
+  const [workdays, setWorkdays] = useState(
+    trigger.weekdays?.join() === "1,2,3,4,5",
+  );
+  const [days, setDays] = useState(
+    trigger.weekdays?.length ? trigger.weekdays : [1],
+  );
+  const [minutes, setMinutes] = useState(
+    String((trigger.interval_seconds ?? 3600) / 60),
+  );
+  const [end, setEnd] = useState(
+    trigger.until ? "date" : trigger.max_runs ? "count" : "none",
+  );
+  const [count, setCount] = useState(String(trigger.max_runs || 10));
+  const [until, setUntil] = useState(
+    localInput(
+      trigger.until ?? new Date(Date.now() + 86400_000).toISOString(),
+      initialZone,
+    ),
+  );
+  const [error, setError] = useState("");
+  const save = () => {
+    try {
+      // Validate IANA names even when a fixed interval doesn't use wall time.
+      new Intl.DateTimeFormat("zh-CN", { timeZone: zone }).format();
+      let next: ScheduleTrigger;
+      if (kind === "at") next = { type: "at", at: zonedISO(at, zone) };
+      else if (kind === "daily" || kind === "weekly") {
+        if (kind === "weekly" && !days.length)
+          throw new Error("请至少选择一天");
+        if (!/^\d\d:\d\d$/.test(time)) throw new Error("请选择时间");
+        next = {
+          type: "calendar",
+          time,
+          timezone: zone,
+          weekdays:
+            kind === "weekly"
+              ? [...days].sort()
+              : workdays
+                ? [1, 2, 3, 4, 5]
+                : [],
+        };
+      } else if (kind === "after") next = { ...trigger };
+      else {
+        const seconds = Number(minutes) * 60;
+        if (!Number.isSafeInteger(seconds) || seconds < 1)
+          throw new Error("间隔至少为 1 秒");
+        next = {
+          type: "interval",
+          interval_seconds: seconds,
+          delay_seconds: seconds,
+        };
+        // Preserve the phase on a non-timing edit of an existing interval.
+        if (trigger.type === "interval" && seconds === trigger.interval_seconds)
+          next = { ...trigger };
+      }
+      delete next.max_runs;
+      delete next.until;
+      if (kind !== "at" && end === "count") {
+        if (!Number.isSafeInteger(Number(count)) || Number(count) < 1)
+          throw new Error("运行次数必须是正整数");
+        next.max_runs = Number(count);
+      }
+      if (kind !== "at" && end === "date") next.until = zonedISO(until, zone);
+      if (
+        (next.at && Date.parse(next.at) <= Date.now() && kind === "at") ||
+        (next.until && Date.parse(next.until) <= Date.now())
+      )
+        throw new Error("请选择未来的时间");
+      onSave(next);
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+  return (
+    <Sheet onClose={onClose} className="timing-sheet">
+      <div className="ns-head">
+        <b>什么时候</b>
+        <button onClick={save}>完成</button>
+      </div>
+      <div className="seg">
+        {[
+          ["at", "一次"],
+          ["daily", "每天"],
+          ["weekly", "每周"],
+          ["interval", "每隔"],
+          ...(kind === "after" ? [["after", "轮结束后"]] : []),
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            className={kind === id ? "on" : ""}
+            onClick={() => setKind(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="schedule-inputs">
+        {kind === "at" && (
+          <label>
+            日期和时间
+            <input
+              type="datetime-local"
+              value={at}
+              onChange={(e) => setAt(e.target.value)}
+            />
+          </label>
+        )}
+        {(kind === "daily" || kind === "weekly") && (
+          <label>
+            时间
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </label>
+        )}
+        {kind === "daily" && (
+          <label className="check-field">
+            只在工作日
+            <input
+              type="checkbox"
+              checked={workdays}
+              onChange={(e) => setWorkdays(e.target.checked)}
+            />
+          </label>
+        )}
+        {kind === "weekly" && (
+          <div className="weekdays">
+            {[1, 2, 3, 4, 5, 6, 7].map((d, i) => (
+              <button
+                key={d}
+                aria-pressed={days.includes(d)}
+                className={days.includes(d) ? "on" : ""}
+                onClick={() =>
+                  setDays((ds) =>
+                    ds.includes(d) ? ds.filter((x) => x !== d) : [...ds, d],
+                  )
+                }
+              >
+                周{["一", "二", "三", "四", "五", "六", "日"][i]}
+              </button>
+            ))}
+          </div>
+        )}
+        {kind === "interval" && (
+          <>
+            <label>
+              间隔（分钟）
+              <input
+                type="number"
+                min="0.0166666667"
+                step="any"
+                value={minutes}
+                onChange={(e) => setMinutes(e.target.value)}
+              />
+            </label>
+            <p className="hint">固定经过时长，不保证每天同一个当地时间。</p>
+          </>
+        )}
+        {kind === "after" && (
+          <p>{frequency(trigger)}。选择上方其他频率可替换。</p>
+        )}
+        {kind !== "at" && (
+          <>
+            <label>
+              结束
+              <select value={end} onChange={(e) => setEnd(e.target.value)}>
+                <option value="none">不结束</option>
+                <option value="count">运行指定次数</option>
+                <option value="date">截止日期</option>
+              </select>
+            </label>
+            {end === "count" && (
+              <label>
+                次数
+                <input
+                  type="number"
+                  min="1"
+                  value={count}
+                  onChange={(e) => setCount(e.target.value)}
+                />
+              </label>
+            )}
+            {end === "date" && (
+              <label>
+                截止时间
+                <input
+                  type="datetime-local"
+                  value={until}
+                  onChange={(e) => setUntil(e.target.value)}
+                />
+              </label>
+            )}
+          </>
+        )}
+        <label>
+          时区
+          <input
+            aria-label="时区"
+            value={zone}
+            onChange={(e) => setZone(e.target.value)}
+            placeholder="Asia/Shanghai"
+          />
+        </label>
+      </div>
+      {error && <Banner kind="err">{error}</Banner>}
+      <div className="hint">
+        电脑睡眠或关机时不会运行；醒来后默认在 24
+        小时内补跑最近一次，再晚就跳过。立即运行一次不占自动计划的次数。
+      </div>
+    </Sheet>
+  );
+}
+
+export function ScheduleDetail({
+  remote,
+  machineId,
+  id,
+  go,
+  onBack,
+}: {
+  remote: Remote;
+  machineId: string;
+  id: string;
+  go: Go;
+  onBack: () => void;
+}) {
+  useRemote(remote);
+  const now = useNow(60_000);
+  const state = remote.schedules.get(machineId);
+  const task = state?.tasks.find((t) => t.id === id);
+  const [edit, setEdit] = useState<"" | "time" | "message" | "target">("");
+  const [draft, setDraft] = useState("");
+  const [title, setTitle] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [expanded, setExpanded] = useState(new Set<string>());
+  const [editBase, setEditBase] = useState<ScheduleTask>();
+  const m = remote.machines.get(machineId);
+  const online = !!m?.online && remote.conn === "online";
+  const perform = async (operation: string, spec?: ScheduleSpec) => {
+    if (!task || busy) return;
+    const navigate = fromHere(go);
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await remote.changeSchedule(machineId, id, {
+        operation,
+        taskId: id,
+        revision: (spec ? editBase : task)?.revision ?? task.revision,
+        spec,
+      });
+      setEdit("");
+      if (operation === "cancel") navigate("tasks");
+      else if (operation === "run")
+        setNotice("已请求立即运行一次，不改变自动计划。");
+    } catch (e) {
+      setError(errorText(e));
+      if (errorText(e).includes("已重新读取")) {
+        setEdit("");
+        setEditBase(undefined);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!task || !remote.supportsSchedules(machineId))
+    return (
+      <div className="page">
+        <NavBar title="定时任务" onBack={onBack} />
+        <div className="center muted">
+          {state?.loading
+            ? "正在读取任务…"
+            : state?.error ||
+              "找不到这个任务。电脑离线且没有缓存时，请连上电脑后重试。"}
+        </div>
+      </div>
+    );
+  const attention = taskGroup(task) === "需要你看一下";
+  const paused = ["paused", "failed", "uncertain"].includes(task.status);
+  const ended = taskGroup(task) === "已结束";
+  const systemCancelled = task.status === "cancelled" && attention;
+  const failedOnce = task.status === "failed" && oneShot(task);
+  const target = task.spec.target;
+  const targetSession = remote.sessions.get(target.session ?? "");
+  const permission =
+    target.type === "new_session"
+      ? (
+          { ask: "询问", auto: "自动", full: "完全放行" } as Record<
+            string,
+            string
+          >
+        )[target.mode ?? ""] || "跟随 CLI 设置"
+      : targetSession
+        ? (modeOf(targetSession)?.text ?? "请在对话里核实当前权限")
+        : "请在对话里核实当前权限";
+  const openRun = (r: ScheduleRun) => {
+    void remote
+      .openScheduleRun(machineId, r)
+      .catch((e) => setError(errorText(e)));
+  };
+  const row = (r: ScheduleRun) => (
+    <button
+      key={r.id}
+      className="row schedule-run"
+      disabled={!r.session_id}
+      onClick={() => openRun(r)}
+    >
+      <span>
+        {dateTime(r.started_at, now)} · {runResult(r)}
+        {r.manual ? " · 手动" : ""}
+        <small>
+          {r.notification_text ||
+            r.final_summary ||
+            (r.reason ? reasonText(r.reason) : "")}
+        </small>
+      </span>
+      {r.session_id && <ChevronRight />}
+    </button>
+  );
+  const pending = remote.scheduleAttempts.get(machineId + "/" + id);
+  return (
+    <div className="page gray schedules-page">
+      <NavBar
+        title={task.spec.title}
+        sub={
+          <>
+            <Dot tone={taskTone(task, online)} />
+            {nextText(task, now)}
+          </>
+        }
+        onBack={onBack}
+      />
+      <ConnBar remote={remote} />
+      <div className="body schedule-body">
+        <TaskOffline remote={remote} id={machineId} />
+        {state?.error && (
+          <Banner
+            kind="err"
+            action="重试"
+            onAction={() => void remote.refreshSchedules(machineId)}
+          >
+            {state.error}
+          </Banner>
+        )}
+        {attention && (
+          <Banner kind="warn">
+            {reasonText(task.reason)}。
+            {task.status === "uncertain"
+              ? "继续可能重复执行上次的消息，请先打开运行记录核实。"
+              : failedOnce
+                ? "可立即额外执行一次，或改时间重排。"
+                : "恢复或重新安排后从下一次自动时间开始，不重发上次消息。"}
+            {task.reason === "agent_schedule_permissions_changed" &&
+              "继续会由你接管任务，按任务中显示的权限运行。"}
+          </Banner>
+        )}
+        {error && <Banner kind="err">{error}</Banner>}
+        {notice && <Banner>{notice}</Banner>}
+        {pending?.frozen && (
+          <Banner
+            kind="warn"
+            action={pending.expired ? "已核实，放弃请求" : "重试同一请求"}
+            onAction={() => {
+              if (pending.expired) {
+                pending.abandon();
+                setError("");
+                remote.touch();
+              } else
+                void perform(pending.payload!.operation, pending.payload?.spec);
+            }}
+          >
+            上次操作结果还没有确认。请核对任务与记录，重试会使用同一个请求。
+          </Banner>
+        )}
+        <div className="grp">
+          <Field
+            name="什么时候"
+            value={frequency(task.spec.trigger)}
+            disabled={!online || busy || !!task.active_run || !!pending?.frozen}
+            onClick={() => {
+              setEditBase(task);
+              setEdit("time");
+            }}
+          />
+          {task.spec.trigger.timezone && (
+            <Field name="时区" value={task.spec.trigger.timezone} />
+          )}
+          {task.spec.trigger.max_runs ? (
+            <Field
+              name="结束"
+              value={`自动运行 ${task.spec.trigger.max_runs} 次后`}
+            />
+          ) : task.spec.trigger.until ? (
+            <Field name="结束" value={dateTime(task.spec.trigger.until, now)} />
+          ) : null}
+          <Field
+            name={target.type === "resume_session" ? "发到" : "在哪运行"}
+            value={
+              target.type === "resume_session"
+                ? titleOf(
+                    remote.sessions.get(target.session ?? "") ?? {
+                      id: target.session ?? "",
+                      machineId,
+                      updatedMs: 0n,
+                    },
+                  )
+                : [
+                    projectName(target.cwd ?? ""),
+                    target.agent === "claude" ? "Claude Code" : "Codex",
+                    remote.machines.size > 1 ? machineName(m) : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+            }
+            disabled={
+              target.type === "new_session" &&
+              (!online || busy || !!task.active_run || !!pending?.frozen)
+            }
+            onClick={
+              target.type === "resume_session"
+                ? () => go("s/" + target.session)
+                : () => {
+                    setEditBase(task);
+                    setEdit("target");
+                  }
+            }
+          />
+          <Field
+            name="权限"
+            value={
+              <span className={permission === "完全放行" ? "red" : ""}>
+                {permission}
+              </span>
+            }
+            disabled={!online || busy || !!task.active_run || !!pending?.frozen}
+            onClick={
+              target.type === "new_session"
+                ? () => {
+                    setEditBase(task);
+                    setEdit("target");
+                  }
+                : undefined
+            }
+          />
+          <Field
+            name="消息"
+            value="编辑"
+            disabled={!online || busy || !!task.active_run || !!pending?.frozen}
+            onClick={() => {
+              setEditBase(task);
+              setDraft(task.spec.message);
+              setTitle(task.spec.title);
+              setEdit("message");
+            }}
+          />
+          <p className="schedule-message">{task.spec.message}</p>
+        </div>
+        <p className="manage-hint">
+          {target.type === "new_session"
+            ? "每次新开一个对话，归在这个任务下面。"
+            : "消息发到当前对话，等待当前轮结束。"}
+          {task.source === "agent" ? "Agent 在对话里创建" : "你创建或接管"} ·{" "}
+          {dateTime(task.created_at, now)}
+        </p>
+        {attention && (
+          <div className="pad">
+            <button
+              className="btn pri wide"
+              disabled={!online || busy || !!pending?.frozen}
+              onClick={() => {
+                if (systemCancelled && oneShot(task)) {
+                  setEditBase(task);
+                  setEdit("time");
+                } else
+                  void perform(
+                    systemCancelled ? "update" : failedOnce ? "run" : "resume",
+                    systemCancelled ? task.spec : undefined,
+                  );
+              }}
+            >
+              {systemCancelled
+                ? "重新安排"
+                : failedOnce
+                  ? "立即额外执行"
+                  : "恢复"}
+            </button>
+          </div>
+        )}
+        <div className="glabel">
+          运行记录<span>{allRuns(task).length}</span>
+        </div>
+        <div className="grp">
+          {!allRuns(task).length && <p className="hint">还没有运行</p>}
+          {groupRuns(task).map((g) =>
+            g.quiet && g.runs.length > 1 ? (
+              <div key={g.key}>
+                <button
+                  className="row schedule-run"
+                  onClick={() =>
+                    setExpanded((old) => {
+                      const n = new Set(old);
+                      if (n.has(g.key)) n.delete(g.key);
+                      else n.add(g.key);
+                      return n;
+                    })
+                  }
+                >
+                  <span>
+                    {dayText(g.runs[0].started_at, now)} · {g.runs.length}{" "}
+                    次，都没有通知
+                    <small>
+                      最近一次 {clockTime(g.runs[0].started_at)}：
+                      {g.runs[0].final_summary || "没有通知"}
+                    </small>
+                  </span>
+                  {expanded.has(g.key) ? <ChevronUp /> : <ChevronDown />}
+                </button>
+                {expanded.has(g.key) && g.runs.map(row)}
+              </div>
+            ) : (
+              g.runs.map(row)
+            ),
+          )}
+        </div>
+        <p className="manage-hint">
+          “通知了你”表示已请求通知，不保证送达。记录保留最近 100
+          次，已开的对话仍可查看。
+        </p>
+        <div className="grp schedule-actions">
+          {!attention && !ended && (
+            <button
+              className="row act"
+              disabled={
+                !online || busy || !!task.manual_request || !!pending?.frozen
+              }
+              onClick={() => void perform("run")}
+            >
+              {task.manual_request ? "等待立即运行" : "立即运行一次"}
+            </button>
+          )}
+          {!ended && !attention && (
+            <button
+              className="row act"
+              disabled={!online || busy || !!pending?.frozen}
+              onClick={() => void perform(paused ? "resume" : "pause")}
+            >
+              {paused ? "恢复" : "暂停"}
+            </button>
+          )}
+          <button
+            className="row red"
+            disabled={!online || busy || !!pending?.frozen}
+            onClick={() => setDeleting(true)}
+          >
+            删除任务
+          </button>
+        </div>
+      </div>
+      {edit === "target" && editBase && (
+        <TaskTargetEditor
+          remote={remote}
+          machineId={machineId}
+          task={editBase}
+          busy={busy}
+          error={error}
+          onClose={() => !busy && setEdit("")}
+          onSave={(target) =>
+            void perform("update", { ...editBase.spec, target })
+          }
+        />
+      )}
+      {edit === "time" && editBase && (
+        <TimingSheet
+          trigger={editBase.spec.trigger}
+          onClose={() => setEdit("")}
+          onSave={(trigger) =>
+            void perform("update", { ...editBase.spec, trigger })
+          }
+        />
+      )}
+      {edit === "message" && editBase && (
+        <Sheet onClose={() => !busy && setEdit("")}>
+          <div className="ns-head">
+            <b>编辑任务</b>
+            <button
+              disabled={busy || !draft.trim() || !title.trim()}
+              onClick={() =>
+                void perform("update", {
+                  ...editBase.spec,
+                  title: title.trim(),
+                  message: draft.trim(),
+                })
+              }
+            >
+              保存
+            </button>
+          </div>
+          <div className="schedule-inputs">
+            <label>
+              任务名
+              <input value={title} onChange={(e) => setTitle(e.target.value)} />
+            </label>
+            <label>
+              消息
+              <textarea
+                rows={6}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+              />
+            </label>
+          </div>
+          {error && <Banner kind="err">{error}</Banner>}
+        </Sheet>
+      )}
+      {deleting && (
+        <Alert
+          title="删除这个任务？"
+          text="停止今后的运行，已发送的消息和已开出的对话保留。"
+          ok="删除"
+          danger
+          onCancel={() => setDeleting(false)}
+          onOk={() => {
+            setDeleting(false);
+            void perform("cancel");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function TaskTargetEditor({
+  remote,
+  machineId,
+  task,
+  busy,
+  error,
+  onSave,
+  onClose,
+}: {
+  remote: Remote;
+  machineId: string;
+  task: ScheduleTask;
+  busy: boolean;
+  error: string;
+  onSave: (target: ScheduleTarget) => void;
+  onClose: () => void;
+}) {
+  const target = task.spec.target;
+  const [cfg, setCfg] = useState<NewConfig>({
+    machineId,
+    cwd: target.cwd ?? "",
+    agent: target.agent === "claude" ? Agent.CLAUDE : Agent.CODEX,
+    model: target.model ?? "",
+    effort: target.effort ?? "",
+    mode:
+      (
+        {
+          ask: ApprovalMode.ASK,
+          auto: ApprovalMode.AUTO,
+          full: ApprovalMode.FULL_ACCESS,
+        } as Record<string, ApprovalMode>
+      )[target.mode ?? ""] ?? ApprovalMode.UNSPECIFIED,
+  });
+  const base = useNewSession(remote, cfg.cwd, () => undefined);
+  const info = useMachineInfo(remote, machineId, cfg.agent);
+  const [config, setConfig] = useState(false);
+  const [project, setProject] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const effectiveMode =
+    cfg.mode || defaultModeOf(remote.machines.get(machineId), cfg.agent).mode;
+  const save = () =>
+    onSave({
+      type: "new_session",
+      cwd: cfg.cwd,
+      agent: cfg.agent === Agent.CLAUDE ? "claude" : "codex",
+      model: cfg.model,
+      effort: cfg.effort,
+      mode: (
+        {
+          [ApprovalMode.ASK]: "ask",
+          [ApprovalMode.AUTO]: "auto",
+          [ApprovalMode.FULL_ACCESS]: "full",
+        } as Record<number, string>
+      )[effectiveMode],
+    });
+  const ns = {
+    ...base,
+    cfg,
+    machine: remote.machines.get(machineId),
+    info,
+    agents: [cfg.agent],
+    configFor: () => cfg,
+    setCfg,
+    unreadFor: () => false,
+    setWatch: () => {},
+  };
+  return (
+    <Sheet onClose={onClose}>
+      <div className="ns-head">
+        <b>在哪运行</b>
+        <button
+          disabled={
+            busy || !effectiveMode || effectiveMode === ApprovalMode.PLAN
+          }
+          onClick={() =>
+            effectiveMode === ApprovalMode.FULL_ACCESS
+              ? setConfirm(true)
+              : save()
+          }
+        >
+          保存
+        </button>
+      </div>
+      <div className="grp">
+        <Field
+          name="项目"
+          value={projectName(cfg.cwd)}
+          onClick={() => setProject(true)}
+        />
+        <Field
+          name="CLI"
+          value={
+            <span className="mini-seg">
+              {base.agents.map((agent) => (
+                <button
+                  key={agent}
+                  className={agent === cfg.agent ? "on" : ""}
+                  onClick={() =>
+                    setCfg({
+                      ...base.configFor(agent),
+                      machineId,
+                      cwd: cfg.cwd,
+                    })
+                  }
+                >
+                  {agentName(agent)}
+                </button>
+              ))}
+            </span>
+          }
+        />
+        <Field
+          name="模型和权限"
+          value={[
+            cfg.model || "默认模型",
+            effectiveMode
+              ? (
+                  {
+                    [ApprovalMode.ASK]: "询问",
+                    [ApprovalMode.AUTO]: "自动",
+                    [ApprovalMode.PLAN]: "计划",
+                    [ApprovalMode.FULL_ACCESS]: "完全放行",
+                  } as Record<number, string>
+                )[effectiveMode]
+              : "请选择权限",
+          ].join(" · ")}
+          onClick={() => setConfig(true)}
+        />
+      </div>
+      <p className="hint">
+        只修改这个任务。它仍在原来的电脑运行；已开出的对话保留原来的设置。
+      </p>
+      {error && <Banner kind="err">{error}</Banner>}
+      {config && (
+        <ConfigSheet
+          ns={ns}
+          scheduled
+          lockMachine
+          onClose={() => setConfig(false)}
+        />
+      )}
+      {project && (
+        <NewFlow
+          remote={remote}
+          go={() => {}}
+          onClose={() => setProject(false)}
+          onPicked={(cwd) => {
+            setCfg((c) => ({ ...c, cwd }));
+            setProject(false);
+          }}
+        />
+      )}
+      {confirm && (
+        <Alert
+          title="以完全放行运行？"
+          text="以后每次运行都不审批。已开出的对话不变。"
+          ok="完全放行"
+          danger
+          onCancel={() => setConfirm(false)}
+          onOk={() => {
+            setConfirm(false);
+            save();
+          }}
+        />
+      )}
+    </Sheet>
+  );
+}
+
+const scheduleDrafts = new WeakMap<
+  Remote,
+  Map<string, { project: string; trigger: ScheduleTrigger }>
+>();
+export function ScheduleCreate({
+  remote,
+  go,
+  onBack,
+  session,
+}: {
+  remote: Remote;
+  go: Go;
+  onBack: () => void;
+  session?: SessionView;
+}) {
+  useRemote(remote);
+  const creationRoute = useRef(location.hash).current;
+  const available = projects(
+    remote.sessions.values(),
+    remote.machines.values(),
+    remote.projectPrefs().settings,
+  ).filter((p) => !remote.projectPrefs().hidden.some((h) => h.path === p.key));
+  const draftKey = "schedule:" + (session?.id ?? "new");
+  const drafts =
+    scheduleDrafts.get(remote) ??
+    new Map<string, { project: string; trigger: ScheduleTrigger }>();
+  scheduleDrafts.set(remote, drafts);
+  const [draft] = useState(() => {
+    const saved = drafts.get(draftKey) ?? {
+      project: available[0]?.key ?? "",
+      trigger: {
+        type: "calendar" as const,
+        time: "08:00",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    };
+    drafts.set(draftKey, saved);
+    return saved;
+  });
+  const [project, pickProject] = useState(draft.project);
+  const setProject = (key: string) => {
+    draft.project = key;
+    pickProject(key);
+  };
+  const [choosing, setChoosing] = useState(false);
+  // A request and its stable creation key survive route changes in Remote.
+  const [message, setMessage] = useState(remote.drafts.get(draftKey) ?? "");
+  const [trigger, pickTrigger] = useState<ScheduleTrigger>(draft.trigger);
+  const setTrigger = (t: ScheduleTrigger) => {
+    draft.trigger = t;
+    pickTrigger(t);
+  };
+  const [timing, setTiming] = useState(false);
+  const setText = (text: string) => {
+    setMessage(text);
+    remote.drafts.set(draftKey, text);
+  };
+  const content = (
+    <>
+      <label className="schedule-prompt">
+        让 agent 做什么
+        <textarea
+          aria-label="让 agent 做什么"
+          rows={5}
+          placeholder="描述要定时做的事，有结果时让 agent 通知你"
+          value={message}
+          onChange={(e) => setText(e.target.value)}
+        />
+      </label>
+      <div className="grp">
+        <Field
+          name="什么时候"
+          value={frequency(trigger)}
+          onClick={() => setTiming(true)}
+        />
+        {!session && (
+          <Field
+            name="项目"
+            value={project ? projectName(project) : "选项目"}
+            onClick={() => setChoosing(true)}
+          />
+        )}
+      </div>
+    </>
+  );
+  return (
+    <div className="page schedules-page">
+      <NavBar title={session ? "定时发到这个对话" : "新任务"} onBack={onBack} />
+      <ConnBar remote={remote} />
+      <div className="body schedule-body">
+        {content}
+        <ScheduleCreateConfig
+          key={session?.id ?? project}
+          remote={remote}
+          project={project}
+          message={message}
+          trigger={trigger}
+          session={session}
+          onDone={(machineId, task) => {
+            remote.drafts.delete(draftKey);
+            drafts.delete(draftKey);
+            if (location.hash === creationRoute)
+              go(session ? "s/" + session.id : taskRoute(machineId, task.id));
+          }}
+        />
+      </div>
+      {choosing && (
+        <NewFlow
+          remote={remote}
+          go={go}
+          onClose={() => setChoosing(false)}
+          onPicked={(key) => {
+            setProject(key);
+            setChoosing(false);
+          }}
+        />
+      )}
+      {timing && (
+        <TimingSheet
+          trigger={trigger}
+          onSave={(t) => {
+            setTrigger(t);
+            setTiming(false);
+          }}
+          onClose={() => setTiming(false)}
+        />
+      )}
+    </div>
+  );
+}
+function ScheduleCreateConfig({
+  remote,
+  project,
+  message,
+  trigger,
+  session,
+  onDone,
+}: {
+  remote: Remote;
+  project: string;
+  message: string;
+  trigger: ScheduleTrigger;
+  session?: SessionView;
+  onDone: (machineId: string, t: ScheduleTask) => void;
+}) {
+  const ns = useNewSession(remote, project, () => undefined);
+  const [config, setConfig] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [full, setFull] = useState(false);
+  const requestId = useRef(crypto.randomUUID());
+  const machineId = session?.machineId ?? ns.cfg.machineId;
+  const supported = remote.supportsSchedules(machineId);
+  const online =
+    remote.conn === "online" && !!remote.machines.get(machineId)?.online;
+  const pendingKey = "create:" + (session?.id ?? project);
+  const pending = remote.scheduleAttempts.get(machineId + "/" + pendingKey);
+  const createTask = async () => {
+    if (!message.trim() || busy) return;
+    const mode = ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode;
+    if (!session && (!mode || mode === ApprovalMode.PLAN)) {
+      setError("请选择询问、自动或完全放行，定时任务不能以计划模式新开对话。");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    const source = inheritConfig(
+      ns.p && {
+        ...ns.p,
+        sessions: ns.p.sessions.filter((s) => s.machineId === machineId),
+      },
+      remote.machines,
+      project,
+      ns.cfg.agent,
+    )?.from;
+    const spec: ScheduleSpec = {
+      title: message
+        .trim()
+        .split(/[\n。！？]/)[0]
+        .slice(0, 60),
+      message: message.trim(),
+      trigger,
+      target: session
+        ? { type: "resume_session", session: session.id }
+        : {
+            type: "new_session",
+            cwd: project,
+            agent: ns.cfg.agent === Agent.CLAUDE ? "claude" : "codex",
+            model: ns.cfg.model,
+            effort: ns.cfg.effort,
+            mode: (
+              {
+                [ApprovalMode.ASK]: "ask",
+                [ApprovalMode.AUTO]: "auto",
+                [ApprovalMode.FULL_ACCESS]: "full",
+              } as Record<number, string>
+            )[mode],
+          },
+    };
+    try {
+      const task = await remote.changeSchedule(machineId, pendingKey, {
+        operation: "create",
+        spec,
+        requestId: requestId.current,
+        // Keep the same native launch environment that supplied this project's
+        // selected CLI configuration. A task without a source uses daemon defaults.
+        sessionId: session?.id ?? source?.id,
+      });
+      onDone(machineId, task);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const disabled =
+    !supported ||
+    !online ||
+    !message.trim() ||
+    busy ||
+    (!session && (!project || ns.reading || !!ns.issue));
+  return (
+    <>
+      {!session && (
+        <div className="grp">
+          <Field
+            name="CLI"
+            value={
+              <span className="mini-seg">
+                {ns.agents.map((a) => (
+                  <button
+                    key={a}
+                    className={ns.cfg.agent === a ? "on" : ""}
+                    disabled={!!pending?.frozen}
+                    onClick={() => ns.setAgent(a)}
+                  >
+                    {agentName(a)}
+                  </button>
+                ))}
+              </span>
+            }
+          />
+          <Field
+            name="权限"
+            value={
+              <span
+                className={
+                  (ns.cfg.mode ||
+                    defaultModeOf(ns.machine, ns.cfg.agent).mode) ===
+                  ApprovalMode.FULL_ACCESS
+                    ? "red"
+                    : ""
+                }
+              >
+                {ns.modeText}
+              </span>
+            }
+            disabled={!!pending?.frozen}
+            onClick={() => setConfig(true)}
+          />
+          <Field
+            name={remote.machines.size > 1 ? "机器和模型" : "模型"}
+            value={
+              remote.machines.size > 1
+                ? [ns.parts.machine, ns.parts.model].join(" · ")
+                : ns.parts.model
+            }
+            disabled={!!pending?.frozen}
+            onClick={() => setConfig(true)}
+          />
+        </div>
+      )}
+      {!supported && (
+        <Banner>需要更新这台电脑上的 remote-agent 才能使用定时任务。</Banner>
+      )}
+      {!online && <Banner>电脑不在线，连上后才能创建任务。</Banner>}
+      {error && <Banner kind="err">{error}</Banner>}
+      {pending?.frozen && (
+        <Banner
+          kind="warn"
+          action={pending.expired ? "已核实，放弃请求" : undefined}
+          onAction={
+            pending.expired
+              ? () => {
+                  pending.abandon();
+                  requestId.current = crypto.randomUUID();
+                  remote.touch();
+                }
+              : undefined
+          }
+        >
+          上次创建结果还没有确认。重试会使用原来的消息、时间和请求键，不会重复创建。
+        </Banner>
+      )}
+      {!session && ns.issue && <Banner kind="warn">{ns.issue}</Banner>}
+      <p className="manage-hint">
+        {session
+          ? "消息会发到当前对话，等待正在运行的一轮结束。"
+          : "每次运行新开一个对话，归在这个任务下面，不进会话列表。"}
+        Agent 有值得告诉你的结果时才通知你。
+      </p>
+      <div className="pad">
+        <button
+          className="btn pri wide"
+          disabled={disabled || pending?.expired}
+          onClick={() => {
+            if (
+              !session &&
+              (ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) ===
+                ApprovalMode.FULL_ACCESS &&
+              !pending?.frozen
+            )
+              setFull(true);
+            else void createTask();
+          }}
+        >
+          {busy ? "正在创建…" : pending?.frozen ? "重试创建" : "创建"}
+        </button>
+      </div>
+      {config && (
+        <ConfigSheet ns={ns} scheduled onClose={() => setConfig(false)} />
+      )}
+      {full && (
+        <Alert
+          title="以完全放行运行？"
+          text="任务每次运行时，所有操作都不审批。"
+          ok="完全放行"
+          danger
+          onCancel={() => setFull(false)}
+          onOk={() => {
+            setFull(false);
+            void createTask();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+export function ScheduleStrip({
+  remote,
+  session,
+  go,
+}: {
+  remote: Remote;
+  session: SessionView;
+  go: Go;
+}) {
+  useRemote(remote);
+  const now = useNow(60_000);
+  const tasks = remote.sessionTasks(session.id);
+  const [choosing, setChoosing] = useState(false);
+  if (!tasks.length) return null;
+  const nearest = [...tasks].sort((a, b) =>
+    (a.task.next_run_at ?? "9999").localeCompare(b.task.next_run_at ?? "9999"),
+  )[0];
+  return (
+    <>
+      <button
+        className="schedule-strip"
+        onClick={() =>
+          tasks.length === 1
+            ? go(taskRoute(nearest.machineId, nearest.task.id))
+            : setChoosing(true)
+        }
+      >
+        <Clock />
+        <span>
+          {tasks.length > 1
+            ? `${tasks.length} 个定时`
+            : `定时 · ${frequency(nearest.task.spec.trigger)}`}
+          ，
+          {remote.machines.get(session.machineId)?.online &&
+          remote.conn === "online"
+            ? nextText(nearest.task, now)
+            : "上次的状态"}
+        </span>
+        <span className="blue">
+          管理 <ChevronRight />
+        </span>
+      </button>
+      {choosing && (
+        <Sheet onClose={() => setChoosing(false)}>
+          <h4>这个对话的定时任务</h4>
+          {tasks.map((e) => (
+            <ScheduleRow key={e.task.id} remote={remote} go={go} {...e} />
+          ))}
+        </Sheet>
+      )}
+    </>
+  );
+}

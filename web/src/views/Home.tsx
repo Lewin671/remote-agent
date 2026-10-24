@@ -1,3 +1,6 @@
+import { Clock, MessageSquare } from "../icons";
+import { SessionLine } from "./SessionLine";
+import { frequency, taskGroup } from "../schedules";
 import { authorityName, RecoveryNotice } from "./Security";
 // The home page: a timeline of sessions within a scope (one project, or
 // all of them), its wide-screen form as the sidebar, and the list rows
@@ -248,25 +251,11 @@ export function SessionRow({
   const pv = previewOf(s, st, waiting ? pendingOf(remote, s.id) : undefined);
   const ended = st.kind === "ended";
   const meta = metaOf(remote, s, cols);
-  return (
-    <button
-      className={`sess ${st.tone}${selected ? " sel" : ""}${last ? " last" : ""}`}
-      onClick={() => go("s/" + s.id)}
-    >
-      <Dot tone={st.tone} />
-      <div className="sm">
-        <div className="row1">
-          <b>{titleOf(s)}</b>
-          <span>{when(ended ? BigInt(endedMs(s)) : s.updatedMs)}</span>
-        </div>
-        <div className="pv">
-          <span className={"stw " + st.tone}>{st.text}</span>
-          {pv && pv !== st.text && ` · ${pv}`}
-        </div>
-        {meta && <div className="mc">{meta}</div>}
-      </div>
-    </button>
-  );
+  const timers = remote.sessionTasks(s.id);
+  const scheduleMeta = timers.length ? "定时 " + (timers.length > 1 ? `${timers.length} 个任务` : frequency(timers[0].task.spec.trigger)) : "";
+  return <SessionLine tone={st.tone} title={titleOf(s)} right={when(ended ? BigInt(endedMs(s)) : s.updatedMs)}
+    preview={<><span className={"stw " + st.tone}>{st.text}</span>{pv && pv !== st.text && ` · ${pv}`}</>}
+    meta={[meta, scheduleMeta].filter(Boolean).join(" · ")} selected={selected} last={last} onClick={() => go("s/" + s.id)} />;
 }
 
 /** An ended session: one line, under the date group that says when. */
@@ -868,11 +857,13 @@ export function Sidebar({
   go,
   selected,
   project,
+  active = "sessions",
 }: {
   remote: Remote;
   go: Go;
   selected?: string;
   project?: string;
+  active?: string;
 }) {
   useRemote(remote);
   const { scope } = useScope(remote);
@@ -919,10 +910,12 @@ export function Sidebar({
           wide
         />
       </div>
+      <nav className="side-tabs">
+        <button className={active === "sessions" ? "on" : ""} onClick={() => go("")}><MessageSquare /> 会话</button>
+        <button className={active === "tasks" ? "on" : ""} onClick={() => go("tasks")}><Clock /> 定时{remote.taskEntries().filter(e => taskGroup(e.task) === "需要你看一下").length > 0 && <span className="task-count">{remote.taskEntries().filter(e => taskGroup(e.task) === "需要你看一下").length}</span>}</button>
+        <button className={active === "settings" ? "on" : ""} onClick={() => go("settings")}><Settings /> 设置</button>
+      </nav>
       <div className="foot">
-        <button onClick={() => go("settings")}>
-          <Settings /> 设置
-        </button>
         <button
           className="link-conn"
           onClick={() => setChecking(true)}
