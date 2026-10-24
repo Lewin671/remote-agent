@@ -116,7 +116,7 @@ func main() {
 	// Use this checkout as a trusted project; never open an existing session.
 	cwd, err := os.Getwd()
 	must(err)
-	at := time.Now().UTC().Add(2 * time.Minute).Truncate(time.Minute)
+	at := time.Now().UTC().Add(3 * time.Minute).Truncate(time.Minute)
 	spec := schedule.Spec{Title: "Calendar acceptance", Message: "This is an isolated scheduled task acceptance check. Call the remote_agent MCP tool notify_user exactly once with text 'Calendar acceptance result' and no title. Then give a short final answer 'Calendar acceptance complete'. Do not create tasks or use any other tool.", Trigger: schedule.Trigger{Type: "calendar", Time: at.Format("15:04"), Timezone: "UTC", MaxRuns: 1}, Target: schedule.Target{Type: "new_session", Cwd: cwd, Agent: "claude", Model: "claude-haiku-5-5", Mode: "ask"}}
 	b, err := json.Marshal(spec)
 	must(err)
@@ -139,75 +139,129 @@ func main() {
 	getTask := func() {
 		r, e := client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "get", TaskId: task.ID}}})
 		must(e)
-		must(json.Unmarshal(r.GetSchedule().ResultJson, &task))
+		var latest schedule.Task
+		must(json.Unmarshal(r.GetSchedule().ResultJson, &latest))
+		task = latest
 	}
 	var sid string
-	attentionSeen := false
 	approvalRestarted := false
-	wait(ctx, "calendar dispatch and real CLI completion", func() bool {
-		getTask()
-		if task.Active != nil {
-			sid = task.Active.SessionID
-		}
-		if sid != "" {
-			// Answer a fresh-project trust prompt only after the CLI draws it.
-			out, _ := exec.Command("tmux", "-L", socket, "capture-pane", "-p", "-t", "ra-"+sid[:8]).Output()
-			if strings.Contains(string(out), "Notify User") && strings.Contains(string(out), "Do you want to proceed?") {
-				// A fresh encrypted client, with no stream, by-ID fetch or
-				// session cache: this is the same default cold directory read.
-				cold := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
-				waiting, e := cold.API().ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
-				if e != nil {
-					return false
-				}
-				var row *pb.RemoteSession
-				for _, candidate := range waiting.Msg.Sessions {
-					if candidate.SessionId == sid {
-						row = candidate
+	waitRun := func(label string, manual bool) schedule.Run {
+		sid = ""
+		attentionSeen := false
+		wait(ctx, label, func() bool {
+			getTask()
+			if task.Active != nil && task.Active.Manual == manual {
+				sid = task.Active.SessionID
+			}
+			if sid != "" {
+				// Answer a fresh-project trust prompt only after the CLI draws it.
+				out, _ := exec.Command("tmux", "-L", socket, "capture-pane", "-p", "-t", "ra-"+sid[:8]).Output()
+				if strings.Contains(string(out), "Notify User") && strings.Contains(string(out), "Do you want to proceed?") {
+					// A fresh encrypted client, with no stream, by-ID fetch or
+					// session cache: this is the same default cold directory read.
+					cold := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
+					waiting, e := cold.API().ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
+					if e != nil {
+						return false
 					}
+					var row *pb.RemoteSession
+					for _, candidate := range waiting.Msg.Sessions {
+						if candidate.SessionId == sid {
+							row = candidate
+						}
+					}
+					if row == nil {
+						return false
+					}
+					view, e := cold.OpenSession(row)
+					must(e)
+					info := view.Info
+					needs := info != nil && (info.PendingApprovals > 0 || info.PendingQuestions > 0 || info.PlanOpen || info.Status == pb.SessionStatus_SESSION_STATUS_BLOCKED)
+					if !needs || !info.TaskOwned {
+						return false
+					}
+					if !approvalRestarted {
+						// Keep the native CLI and its approval dialog alive while
+						// rebuilding daemon state from this session's event log.
+						must(process.Process.Signal(os.Interrupt))
+						must(process.Wait())
+						process = exec.Command(binary, "daemon", "--claude", claude)
+						process.Stdout, process.Stderr = log, log
+						must(process.Start())
+						wait(ctx, "daemon restored the session while approval is pending", func() bool {
+							r, e := client.Do(ctx, view, &pb.Command{Kind: &pb.Command_GetLiveSnapshot{GetLiveSnapshot: &pb.GetLiveSnapshotRequest{SessionId: sid}}})
+							return e == nil && r.GetLiveSnapshot() != nil && r.GetLiveSnapshot().Session.GetTaskOwned() && r.GetLiveSnapshot().Session.GetPendingApprovals() > 0
+						})
+						approvalRestarted = true
+						return false
+					}
+					if !attentionSeen {
+						fmt.Println("PASS cold ListRemoteSessions after daemon restart includes task-owned approval in attention data")
+						attentionSeen = true
+					}
+					// Approve this test tool once, never persist a global allow rule.
+					exec.Command("tmux", "-L", socket, "send-keys", "-t", "ra-"+sid[:8], "Enter").Run()
 				}
-				if row == nil {
-					return false
+				if strings.Contains(string(out), "trust this folder") || strings.Contains(string(out), "Trust this folder") {
+					exec.Command("tmux", "-L", socket, "send-keys", "-t", "ra-"+sid[:8], "Down", "Enter").Run()
 				}
-				view, e := cold.OpenSession(row)
-				must(e)
-				info := view.Info
-				needs := info != nil && (info.PendingApprovals > 0 || info.PendingQuestions > 0 || info.PlanOpen || info.Status == pb.SessionStatus_SESSION_STATUS_BLOCKED)
-				if !needs || !info.TaskOwned {
-					return false
-				}
-				if !approvalRestarted {
-					// Keep the native CLI and its approval dialog alive while
-					// rebuilding daemon state from this session's event log.
-					must(process.Process.Signal(os.Interrupt))
-					must(process.Wait())
-					process = exec.Command(binary, "daemon", "--claude", claude)
-					process.Stdout, process.Stderr = log, log
-					must(process.Start())
-					wait(ctx, "daemon restored the session while approval is pending", func() bool {
-						r, e := client.Do(ctx, view, &pb.Command{Kind: &pb.Command_GetLiveSnapshot{GetLiveSnapshot: &pb.GetLiveSnapshotRequest{SessionId: sid}}})
-						return e == nil && r.GetLiveSnapshot() != nil && r.GetLiveSnapshot().Session.GetTaskOwned() && r.GetLiveSnapshot().Session.GetPendingApprovals() > 0
-					})
-					approvalRestarted = true
-					return false
-				}
-				if !attentionSeen {
-					fmt.Println("PASS cold ListRemoteSessions after daemon restart includes task-owned approval in attention data")
-					attentionSeen = true
-				}
-				// Approve this test tool once, never persist a global allow rule.
-				exec.Command("tmux", "-L", socket, "send-keys", "-t", "ra-"+sid[:8], "Enter").Run()
 			}
-			if strings.Contains(string(out), "trust this folder") || strings.Contains(string(out), "Trust this folder") {
-				exec.Command("tmux", "-L", socket, "send-keys", "-t", "ra-"+sid[:8], "Down", "Enter").Run()
+			for _, run := range task.Runs {
+				if run.Manual != manual {
+					continue
+				}
+				if run.Status != "completed" {
+					panic(fmt.Sprintf("unexpected execution result: %s/%s", run.Status, run.Reason))
+				}
+				return true
+			}
+			return false
+		})
+		if !attentionSeen {
+			panic("no real approval attention data observed")
+		}
+		for _, run := range task.Runs {
+			if run.Manual == manual {
+				if !run.Notified || run.NotificationCount != 1 || run.NotificationText != "Calendar acceptance result" {
+					panic("notification result missing")
+				}
+				return run
 			}
 		}
-		return len(task.Runs) > 0 && task.Runs[len(task.Runs)-1].Status == "completed"
-	})
-	if !attentionSeen {
-		panic("no real approval attention data observed")
+		panic("run disappeared")
 	}
-	run := task.Runs[len(task.Runs)-1]
+	getTask()
+	due := *task.NextRunAt
+	planBefore, _ := json.Marshal([]any{task.Status, task.Reason, task.NextRunAt, task.Dispatches, task.LastCalendarDate})
+	_, err = client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "run", TaskId: task.ID}}})
+	must(err)
+	getTask()
+	planRequested, _ := json.Marshal([]any{task.Status, task.Reason, task.NextRunAt, task.Dispatches, task.LastCalendarDate})
+	if string(planBefore) != string(planRequested) {
+		panic("manual request changed automatic plan")
+	}
+	manualRun := waitRun("manual calendar execution completed through real CLI", true)
+	getTask()
+	planAfter, _ := json.Marshal([]any{task.Status, task.Reason, task.NextRunAt, task.Dispatches, task.LastCalendarDate})
+	if string(planBefore) != string(planAfter) {
+		panic("manual execution changed automatic plan")
+	}
+	wait(ctx, "manual CLI exited without consuming automatic max_runs", func() bool {
+		rows, e := client.API().ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{SessionIds: []string{manualRun.SessionID}}))
+		if e != nil || len(rows.Msg.Sessions) != 1 {
+			return false
+		}
+		view, e := client.OpenSession(rows.Msg.Sessions[0])
+		must(e)
+		return view.Info.GetStatus() == pb.SessionStatus_SESSION_STATUS_EXITED
+	})
+	run := waitRun("same-day automatic calendar execution completed through real CLI", false)
+	getTask()
+	if !run.ScheduledAt.Equal(due) || task.Dispatches != 1 || task.Status != "completed" || len(task.Runs) != 2 || task.LastCalendarDate != due.UTC().Format("2006-01-02") {
+		panic("manual trial displaced automatic occurrence or max_runs")
+	}
+	fmt.Println("PASS manual execution leaves today's automatic occurrence and max_runs=1 intact")
+
 	sid = run.SessionID
 	if !run.Notified || run.NotificationCount != 1 || run.NotificationText != "Calendar acceptance result" {
 		panic(fmt.Sprintf("unexpected notification result: %+v", run))
