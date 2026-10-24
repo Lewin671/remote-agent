@@ -736,8 +736,11 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				t.NextRunAt = nil
 				t.Reason = "run_limit_reached"
 			} else {
-				if t.ScopedSession != "" && d.restrictMCPTask(t, false) != nil {
+				if err := d.restrictMCPTask(t, false); t.ScopedSession != "" && err != nil {
 					t.Status, t.Reason = "paused", "agent_schedule_permissions_changed"
+					if errors.Is(err, errMCPMinimumInterval) {
+						t.Reason = "agent_schedule_interval_below_minimum"
+					}
 				} else {
 					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching", Manual: t.RunNow}
 					t.Status = "dispatching"

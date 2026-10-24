@@ -66,6 +66,8 @@ go("r2-07-before-identity", "internal/daemon/backend.go", 't.ID == taskID && t.A
 go("r2-07-cancel-queue", "internal/daemon/backend.go", '_ = s.cancelInputBy(run.RequestID, originSystem)', '_ = s.cancelInputBy("missing", originSystem)', "TestPublicationRefusalBeforeAndAfterAdmission")
 go("r2-07-interrupt", "internal/daemon/backend.go", 's.interruptRunBy(originSystem, run.ID)', 's.interruptRunBy(originSystem, "missing")', "TestPublicationRefusalBeforeAndAfterAdmission")
 
+go("r2-08-minimum-reason", "internal/daemon/schedule.go", 't.Reason = "agent_schedule_interval_below_minimum"', 't.Reason = "agent_schedule_permissions_changed"', "TestMCPDispatchReportsMinimumIntervalReason")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

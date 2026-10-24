@@ -9,6 +9,8 @@ import (
 	"github.com/Lewin671/remote-agent/internal/schedule"
 )
 
+var errMCPMinimumInterval = errors.New("MCP recurring tasks require interval_seconds >= 300 or repeat delay_seconds >= 60")
+
 func mcpScheduleDenied() error {
 	return connect.NewError(connect.CodePermissionDenied, errors.New("MCP scheduling is limited to this session's own tasks, project, CLI and exact standard permissions; use the user CLI or remote client for other targets"))
 }
@@ -32,7 +34,7 @@ func (d *Daemon) restrictMCPTask(t *schedule.Task, freeze bool) error {
 	{
 		tr := t.Spec.Trigger
 		if tr.Type == "interval" && tr.IntervalSeconds < 300 || tr.Type == "after_turn" && tr.Repeat && tr.DelaySeconds < 60 {
-			return connect.NewError(connect.CodePermissionDenied, errors.New("MCP recurring tasks require interval_seconds >= 300 or repeat delay_seconds >= 60"))
+			return connect.NewError(connect.CodePermissionDenied, errMCPMinimumInterval)
 		}
 	}
 	info := source.info()

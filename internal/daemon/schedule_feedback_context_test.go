@@ -213,3 +213,32 @@ func TestMCPRestrictionUsesCurrentTurnNotQueue(t *testing.T) {
 		}
 	}
 }
+
+func TestMCPDispatchReportsMinimumIntervalReason(t *testing.T) {
+	for _, typ := range []string{"interval", "after_turn"} {
+		h := scopedHarness(t, "ask")
+		tr := schedule.Trigger{Type: typ, IntervalSeconds: 300}
+		if typ == "after_turn" {
+			tr.IntervalSeconds = 0
+			tr.Repeat = true
+			tr.DelaySeconds = 60
+		}
+		spec := taskSpec(tr)
+		raw, err := scopedSchedule(t, h, "create", "", &spec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		task := decodeScopedTask(t, raw)
+		state := h.d.tasks[task.ID]
+		if typ == "interval" {
+			state.Spec.Trigger.IntervalSeconds = 1
+		} else {
+			state.Spec.Trigger.DelaySeconds = 1
+		}
+		h.d.tickSchedules(task.NextRunAt.Add(time.Second))
+		got := readTask(t, h.d, task.ID)
+		if got.Status != "paused" || got.Reason != "agent_schedule_interval_below_minimum" || got.Dispatches != 0 {
+			t.Fatalf("misleading minimum reason: %+v", got)
+		}
+	}
+}
