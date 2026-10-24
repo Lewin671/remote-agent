@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { Clock, Plus, ChevronRight, ChevronDown, ChevronUp } from "../icons";
 import {
@@ -23,6 +23,7 @@ import {
   Sheet,
   useNow,
   useRemote,
+  useEscape,
 } from "../ui";
 import {
   allRuns,
@@ -30,6 +31,10 @@ import {
   dateTime,
   dayText,
   frequency,
+  timingText,
+  taskName,
+  clipTaskName,
+  runSummary,
   groupRuns,
   groupTasks,
   lastResult,
@@ -91,13 +96,13 @@ export function ScheduleRow({
   const target = task.spec.target;
   const location =
     target.type === "resume_session"
-      ? titleOf(
+      ? `在「${titleOf(
           remote.sessions.get(target.session ?? "") ?? {
             id: target.session ?? "",
             machineId,
             updatedMs: 0n,
           },
-        )
+        )}」里`
       : projectName(target.cwd ?? "");
   const status =
     remote.conn !== "online" || !m?.online ? "未连接" : nextText(task, now);
@@ -486,9 +491,10 @@ export function ScheduleDetail({
   const now = useNow(60_000);
   const state = remote.schedules.get(machineId);
   const task = state?.tasks.find((t) => t.id === id);
-  const [edit, setEdit] = useState<"" | "time" | "message" | "target">("");
+  const [edit, setEdit] = useState<"" | "name" | "time" | "message" | "target">(
+    "",
+  );
   const [draft, setDraft] = useState("");
-  const [title, setTitle] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -540,6 +546,7 @@ export function ScheduleDetail({
   const paused = ["paused", "failed", "uncertain"].includes(task.status);
   const ended = taskGroup(task) === "已结束";
   const systemCancelled = task.status === "cancelled" && attention;
+  const nameReadOnly = taskGroup(task) !== "进行中";
   const failedOnce = task.status === "failed" && oneShot(task);
   const target = task.spec.target;
   const targetSession = remote.sessions.get(target.session ?? "");
@@ -569,11 +576,7 @@ export function ScheduleDetail({
       <span>
         {dateTime(r.started_at, now)} · {runResult(r)}
         {r.manual ? " · 手动" : ""}
-        <small>
-          {r.notification_text ||
-            r.final_summary ||
-            (r.reason ? reasonText(r.reason) : "")}
-        </small>
+        <small>{runSummary(r)}</small>
       </span>
       {r.session_id && <ChevronRight />}
     </button>
@@ -635,17 +638,33 @@ export function ScheduleDetail({
         )}
         <div className="grp">
           <Field
+            name="任务名"
+            value={task.spec.title}
+            disabled={
+              !online ||
+              busy ||
+              nameReadOnly ||
+              !!task.active_run ||
+              !!task.manual_request ||
+              !!pending?.frozen
+            }
+            onClick={() => {
+              setEditBase(task);
+              setEdit("name");
+            }}
+          />
+          {nameReadOnly && (
+            <p className="schedule-name-note">已停下的任务暂不能单独改名。</p>
+          )}
+          <Field
             name="什么时候"
-            value={frequency(task.spec.trigger)}
+            value={timingText(task.spec.trigger)}
             disabled={!online || busy || !!task.active_run || !!pending?.frozen}
             onClick={() => {
               setEditBase(task);
               setEdit("time");
             }}
           />
-          {task.spec.trigger.timezone && (
-            <Field name="时区" value={task.spec.trigger.timezone} />
-          )}
           {task.spec.trigger.max_runs ? (
             <Field
               name="结束"
@@ -710,7 +729,6 @@ export function ScheduleDetail({
             onClick={() => {
               setEditBase(task);
               setDraft(task.spec.message);
-              setTitle(task.spec.title);
               setEdit("message");
             }}
           />
@@ -839,16 +857,27 @@ export function ScheduleDetail({
           }
         />
       )}
+      {edit === "name" && editBase && (
+        <TaskNameDialog
+          current={editBase.spec.title}
+          message={editBase.spec.message}
+          busy={busy}
+          error={error}
+          onClose={() => !busy && setEdit("")}
+          onSave={(title) =>
+            void perform("update", { ...editBase.spec, title })
+          }
+        />
+      )}
       {edit === "message" && editBase && (
         <Sheet onClose={() => !busy && setEdit("")}>
           <div className="ns-head">
-            <b>编辑任务</b>
+            <b>编辑消息</b>
             <button
-              disabled={busy || !draft.trim() || !title.trim()}
+              disabled={busy || !draft.trim()}
               onClick={() =>
                 void perform("update", {
                   ...editBase.spec,
-                  title: title.trim(),
                   message: draft.trim(),
                 })
               }
@@ -857,10 +886,6 @@ export function ScheduleDetail({
             </button>
           </div>
           <div className="schedule-inputs">
-            <label>
-              任务名
-              <input value={title} onChange={(e) => setTitle(e.target.value)} />
-            </label>
             <label>
               消息
               <textarea
@@ -886,6 +911,79 @@ export function ScheduleDetail({
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** Same form, focus/select and save/cancel interaction as the session rename dialog. */
+function TaskNameDialog({
+  current,
+  message,
+  busy,
+  error,
+  onSave,
+  onClose,
+}: {
+  current: string;
+  message: string;
+  busy: boolean;
+  error: string;
+  onSave: (name: string) => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(current);
+  const input = useRef<HTMLInputElement>(null);
+  useEscape(onClose);
+  useEffect(() => {
+    input.current?.focus();
+    input.current?.select();
+  }, []);
+  return (
+    <div className="overlay">
+      <div className="dim" onClick={onClose} />
+      <form
+        className="alert rename"
+        role="dialog"
+        aria-modal="true"
+        aria-label="重命名任务"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!busy) {
+            const resolved = taskName(name, message);
+            if (name === current || resolved === current) onClose();
+            else onSave(resolved);
+          }
+        }}
+      >
+        <h5>重命名任务</h5>
+        <input
+          ref={input}
+          className="field"
+          aria-label="任务名"
+          placeholder="留空就用消息的第一句"
+          enterKeyHint="done"
+          value={name}
+          onChange={(e) => setName(clipTaskName(e.target.value))}
+        />
+        {error ? (
+          <p className="red">没能保存：{error}</p>
+        ) : (
+          <p>留空保存会用消息的第一句</p>
+        )}
+        <div className="btns">
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={onClose}
+          >
+            取消
+          </button>
+          <button type="submit" className="btn pri" disabled={busy}>
+            保存
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -1061,7 +1159,7 @@ function TaskTargetEditor({
 
 const scheduleDrafts = new WeakMap<
   Remote,
-  Map<string, { project: string; trigger: ScheduleTrigger }>
+  Map<string, { project: string; name: string; trigger: ScheduleTrigger }>
 >();
 export function ScheduleCreate({
   remote,
@@ -1084,11 +1182,15 @@ export function ScheduleCreate({
   const draftKey = "schedule:" + (session?.id ?? "new");
   const drafts =
     scheduleDrafts.get(remote) ??
-    new Map<string, { project: string; trigger: ScheduleTrigger }>();
+    new Map<
+      string,
+      { project: string; name: string; trigger: ScheduleTrigger }
+    >();
   scheduleDrafts.set(remote, drafts);
   const [draft] = useState(() => {
     const saved = drafts.get(draftKey) ?? {
       project: available[0]?.key ?? "",
+      name: "",
       trigger: {
         type: "calendar" as const,
         time: "08:00",
@@ -1098,6 +1200,12 @@ export function ScheduleCreate({
     drafts.set(draftKey, saved);
     return saved;
   });
+  const [name, pickName] = useState(draft.name);
+  const setName = (value: string) => {
+    const clipped = clipTaskName(value);
+    draft.name = clipped;
+    pickName(clipped);
+  };
   const [project, pickProject] = useState(draft.project);
   const setProject = (key: string) => {
     draft.project = key;
@@ -1118,6 +1226,15 @@ export function ScheduleCreate({
   };
   const content = (
     <>
+      <label className="schedule-name">
+        任务名
+        <input
+          aria-label="任务名"
+          placeholder="留空就用消息的第一句"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </label>
       <label className="schedule-prompt">
         让 agent 做什么
         <textarea
@@ -1131,7 +1248,7 @@ export function ScheduleCreate({
       <div className="grp">
         <Field
           name="什么时候"
-          value={frequency(trigger)}
+          value={timingText(trigger)}
           onClick={() => setTiming(true)}
         />
         {!session && (
@@ -1154,6 +1271,7 @@ export function ScheduleCreate({
           key={session?.id ?? project}
           remote={remote}
           project={project}
+          name={name}
           message={message}
           trigger={trigger}
           session={session}
@@ -1192,6 +1310,7 @@ export function ScheduleCreate({
 function ScheduleCreateConfig({
   remote,
   project,
+  name,
   message,
   trigger,
   session,
@@ -1199,6 +1318,7 @@ function ScheduleCreateConfig({
 }: {
   remote: Remote;
   project: string;
+  name: string;
   message: string;
   trigger: ScheduleTrigger;
   session?: SessionView;
@@ -1235,10 +1355,7 @@ function ScheduleCreateConfig({
       ns.cfg.agent,
     )?.from;
     const spec: ScheduleSpec = {
-      title: message
-        .trim()
-        .split(/[\n。！？]/)[0]
-        .slice(0, 60),
+      title: taskName(name, message),
       message: message.trim(),
       trigger,
       target: session
@@ -1350,7 +1467,7 @@ function ScheduleCreateConfig({
               : undefined
           }
         >
-          上次创建结果还没有确认。重试会使用原来的消息、时间和请求键，不会重复创建。
+          上次创建结果还没有确认。重试会使用原来的任务名、消息、时间和请求键，不会重复创建。
         </Banner>
       )}
       {!session && ns.issue && <Banner kind="warn">{ns.issue}</Banner>}
@@ -1428,9 +1545,8 @@ export function ScheduleStrip({
         <Clock />
         <span>
           {tasks.length > 1
-            ? `${tasks.length} 个定时`
-            : `定时 · ${frequency(nearest.task.spec.trigger)}`}
-          ，
+            ? `${tasks.length} 个定时 · `
+            : `定时 · ${frequency(nearest.task.spec.trigger)}，`}
           {remote.machines.get(session.machineId)?.online &&
           remote.conn === "online"
             ? nextText(nearest.task, now)

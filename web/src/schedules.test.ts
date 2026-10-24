@@ -22,6 +22,10 @@ import {
   reasonText,
   taskGroup,
   zonedISO,
+  timingText,
+  taskName,
+  runResult,
+  runSummary,
 } from "./schedules";
 import { task, run } from "./test/schedule-fixture";
 
@@ -356,4 +360,61 @@ it("still folds quiet rounds across ordinary scheduled queue and idle metadata",
   );
   expect(folded).toHaveLength(1);
   expect(folded[0].kind).toBe("quiet");
+});
+
+it("resolves optional task names from the first sentence and keeps explicit names", () => {
+  expect(taskName("  早间巡检  ", "检查服务器。没事不用通知。")).toBe(
+    "早间巡检",
+  );
+  expect(taskName("", "检查服务器。没事不用通知。")).toBe("检查服务器");
+  expect(taskName(" ", "Check the service. Notify only on changes.")).toBe(
+    "Check the service",
+  );
+  expect(taskName("", "Check v1.2 status! Next sentence")).toBe(
+    "Check v1.2 status",
+  );
+  expect(taskName("", "第一行\n第二行")).toBe("第一行");
+  expect(taskName("每日   检查", "msg")).toBe("每日 检查");
+  expect([...taskName("😀".repeat(61), "msg")]).toHaveLength(60);
+});
+it("only appends a foreign calendar zone to the timing value", () => {
+  const tr = {
+    type: "calendar" as const,
+    time: "09:49",
+    timezone: "America/Los_Angeles",
+  };
+  expect(timingText(tr, "America/Los_Angeles")).toBe("每天 09:49");
+  expect(timingText(tr, "Asia/Shanghai")).toBe(
+    "每天 09:49 · America/Los_Angeles",
+  );
+  expect(timingText({ ...tr, timezone: "Etc/UTC" }, "UTC")).toBe("每天 09:49");
+  expect(timingText({ type: "interval", interval_seconds: 3600 }, "UTC")).toBe(
+    "每小时",
+  );
+});
+it("uses the agreed outcome wording and never replaces a failure reason with its final summary", () => {
+  const failed = run("bad", {
+    status: "failed",
+    reason: "relay_session_limit",
+    final_summary: "最后的摘要",
+    notified: true,
+    notification_text: "之前的通知",
+  });
+  expect(runResult(failed)).toBe("失败");
+  expect(runSummary(failed)).toBe("中继上的会话数已满");
+  expect(lastResult(task({ runs: [failed] }))).toContain(
+    "失败：中继上的会话数已满",
+  );
+  expect(
+    runSummary(
+      run("unknown-reason", {
+        status: "failed",
+        reason: undefined,
+        final_summary: "无关摘要",
+      }),
+    ),
+  ).toBe("运行结果无法确认");
+  expect(runResult(run("skip", { status: "skipped" }))).toBe("跳过");
+  expect(runResult(run("quiet"))).toBe("没有通知");
+  expect(runResult(run("notify", { notified: true }))).toBe("通知了你");
 });

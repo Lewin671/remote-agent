@@ -212,7 +212,7 @@ it("edits calendar time, weekdays, limits and the IANA timezone", async () => {
     max_runs: 6,
   });
 });
-it("creates a current-conversation task with only message and time", async () => {
+it("creates a current-conversation task with message, time and an optional name", async () => {
   const r = remote([]);
   const session = r.sessions.get("s-idle")!;
   const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(task());
@@ -399,4 +399,215 @@ it("starts a newly selected interval after the full interval", async () => {
     interval_seconds: 900,
     delay_seconds: 900,
   });
+});
+
+it("writes the conversation context in the schedule list's second line", async () => {
+  const t = task();
+  t.spec.target = { type: "resume_session", session: "s-idle" };
+  const r = remote([t]);
+  await mount(<SchedulesPage remote={r} go={() => {}} />);
+  const title = r.sessions.get("s-idle")!.info!.title;
+  expect(host.querySelector(".sess .pv")?.textContent).toContain(
+    `在「${title}」里`,
+  );
+});
+it("creates with an optional name above the message and preserves that name in the draft", async () => {
+  const r = remote([]);
+  const session = r.sessions.get("s-idle")!;
+  const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(task());
+  const props = { remote: r, session, go: () => {}, onBack: () => {} };
+  await mount(<ScheduleCreate {...props} />);
+  const name = host.querySelector<HTMLInputElement>(
+    'input[aria-label="任务名"]',
+  )!;
+  expect(name.placeholder).toBe("留空就用消息的第一句");
+  expect(
+    [...host.querySelectorAll(".schedule-body > label, .schedule-body label")]
+      .slice(0, 2)
+      .map((el) => el.textContent),
+  ).toEqual(["任务名", "让 agent 做什么"]);
+  await input(name, "每小时看 PR");
+  await input(
+    host.querySelector("textarea")!,
+    "检查新回复。只在有变化时通知我。",
+  );
+  await act(async () => root!.render(null));
+  await act(async () => root!.render(<ScheduleCreate {...props} />));
+  expect(
+    host.querySelector<HTMLInputElement>('input[aria-label="任务名"]')?.value,
+  ).toBe("每小时看 PR");
+  await click("创建");
+  expect(write.mock.calls[0][2].spec?.title).toBe("每小时看 PR");
+});
+it("edits the task name with the existing rename interaction and keeps the other settings", async () => {
+  const r = remote();
+  const write = vi
+    .spyOn(r, "changeSchedule")
+    .mockImplementation(async (_machine, _key, request) => {
+      const changed = task({ spec: request.spec!, revision: 2 });
+      r.schedules.get("mac")!.tasks = [changed];
+      r.touch();
+      return changed;
+    });
+  await mount(
+    <ScheduleDetail
+      remote={r}
+      machineId="mac"
+      id="task-1"
+      go={() => {}}
+      onBack={() => {}}
+    />,
+  );
+  await click(/^任务名/);
+  const dialog = host.querySelector('[aria-label="重命名任务"]')!;
+  const name = dialog.querySelector<HTMLInputElement>(
+    'input[aria-label="任务名"]',
+  )!;
+  expect(document.activeElement).toBe(name);
+  expect(name.selectionStart).toBe(0);
+  expect(name.selectionEnd).toBe(name.value.length);
+  await input(name, "项目巡检");
+  await click("保存");
+  expect(write).toHaveBeenCalledWith(
+    "mac",
+    "task-1",
+    expect.objectContaining({
+      revision: 1,
+      operation: "update",
+      spec: { ...task().spec, title: "项目巡检" },
+    }),
+  );
+  expect(host.querySelector(".navbar .title b")?.textContent).toBe("项目巡检");
+  await click(/^任务名/);
+  await input(
+    host.querySelector<HTMLInputElement>('[aria-label="重命名任务"] input')!,
+    "",
+  );
+  await click("保存");
+  expect(write.mock.calls[1][2].spec?.title).toBe(task().spec.message);
+});
+it("keeps timezone inside the timing sheet and appends only foreign zones to its value", async () => {
+  const local = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const t = task({
+    spec: {
+      ...task().spec,
+      trigger: { type: "calendar", time: "09:49", timezone: local },
+    },
+  });
+  const r = remote([t]);
+  const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(task());
+  await mount(
+    <ScheduleDetail
+      remote={r}
+      machineId="mac"
+      id="task-1"
+      go={() => {}}
+      onBack={() => {}}
+    />,
+  );
+  expect(
+    [...host.querySelectorAll(".grp > .schedule-field > span:first-child")].map(
+      (el) => el.textContent,
+    ),
+  ).toEqual(["任务名", "什么时候", "在哪运行", "权限", "消息"]);
+  expect(button(/^什么时候/)?.textContent).toBe("什么时候每天 09:49");
+  const zone = local === "UTC" ? "America/Los_Angeles" : "UTC";
+  await act(async () => {
+    t.spec.trigger.timezone = zone;
+    r.touch();
+  });
+  expect(button(/^什么时候/)?.textContent).toBe(`什么时候每天 09:49 · ${zone}`);
+  await click(/^什么时候/);
+  expect(
+    host.querySelector<HTMLInputElement>('input[aria-label="时区"]')?.value,
+  ).toBe(zone);
+  await input(
+    host.querySelector<HTMLInputElement>('input[aria-label="时区"]')!,
+    local,
+  );
+  await click("完成");
+  expect(write).toHaveBeenCalledWith(
+    "mac",
+    "task-1",
+    expect.objectContaining({
+      operation: "update",
+      revision: 1,
+      spec: expect.objectContaining({
+        trigger: expect.objectContaining({
+          type: "calendar",
+          time: "09:49",
+          timezone: local,
+        }),
+      }),
+    }),
+  );
+});
+
+it("uses the shared multiple-task strip wording", async () => {
+  const first = task();
+  first.spec.target = { type: "resume_session", session: "s-idle" };
+  const second = task({ ...first, id: "task-2" });
+  const r = remote([first, second]);
+  await mount(
+    <ScheduleStrip
+      remote={r}
+      session={r.sessions.get("s-idle")!}
+      go={() => {}}
+    />,
+  );
+  expect(host.querySelector(".schedule-strip")?.textContent).toContain(
+    "2 个定时 · 下次",
+  );
+  expect(host.querySelector(".schedule-strip")?.textContent).not.toContain(
+    "2 个定时，",
+  );
+});
+
+it("closes an unchanged task name without sending an update", async () => {
+  const r = remote();
+  const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(task());
+  await mount(
+    <ScheduleDetail
+      remote={r}
+      machineId="mac"
+      id="task-1"
+      go={() => {}}
+      onBack={() => {}}
+    />,
+  );
+  await click(/^任务名/);
+  await click("保存");
+  expect(write).not.toHaveBeenCalled();
+  expect(host.querySelector('[aria-label="重命名任务"]')).toBeNull();
+});
+
+it("does not reactivate stopped tasks or cancel a manual request just to rename", async () => {
+  const r = remote();
+  const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(task());
+  await mount(
+    <ScheduleDetail
+      remote={r}
+      machineId="mac"
+      id="task-1"
+      go={() => {}}
+      onBack={() => {}}
+    />,
+  );
+  for (const status of ["paused", "completed", "failed", "uncertain"]) {
+    await act(async () => {
+      r.schedules.get("mac")!.tasks = [task({ status })];
+      r.touch();
+    });
+    expect(button(/^任务名/)?.disabled).toBe(true);
+    expect(host.textContent).toContain("已停下的任务暂不能单独改名。");
+    await click(/^任务名/);
+    expect(write).not.toHaveBeenCalled();
+  }
+  await act(async () => {
+    r.schedules.get("mac")!.tasks = [
+      task({ manual_request: { request_id: "manual" } }),
+    ];
+    r.touch();
+  });
+  expect(button(/^任务名/)?.disabled).toBe(true);
 });

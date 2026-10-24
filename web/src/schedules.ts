@@ -176,6 +176,39 @@ export function frequency(tr: ScheduleTrigger): string {
       return `${tr.repeat ? "每轮" : "当前轮"}结束 ${tr.delay_seconds ?? 0} 秒后`;
   }
 }
+/** The same explicit zone label on every client; local calendar zones stay implicit. */
+export function timingText(
+  tr: ScheduleTrigger,
+  localZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+): string {
+  const canonical = (zone: string) => {
+    try {
+      return new Intl.DateTimeFormat("zh-CN", {
+        timeZone: zone,
+      }).resolvedOptions().timeZone;
+    } catch {
+      return zone;
+    }
+  };
+  return (
+    frequency(tr) +
+    (tr.type === "calendar" &&
+    tr.timezone &&
+    canonical(tr.timezone) !== canonical(localZone)
+      ? " · " + tr.timezone
+      : "")
+  );
+}
+export function clipTaskName(name: string): string {
+  return [...name].slice(0, 60).join("");
+}
+/** Resolve the optional name at save time; editing a message later preserves it. */
+export function taskName(name: string, message: string): string {
+  const first = message.trim().split(/\r?\n|[。！？!?]|\.(?=\s|$)/u)[0];
+  return clipTaskName(
+    (name.trim() || first || message.trim()).replace(/\s+/g, " "),
+  );
+}
 export function nextText(t: ScheduleTask, now = Date.now()): string {
   const g = taskGroup(t);
   if (g !== "进行中") return g === "需要你看一下" ? "已停下" : g;
@@ -222,22 +255,33 @@ export function allRuns(t: ScheduleTask): ScheduleRun[] {
       b.started_at.localeCompare(a.started_at) || b.id.localeCompare(a.id),
   );
 }
+const stoppedRunLabels: Record<string, string> = {
+  failed: "失败",
+  uncertain: "无法确认",
+  interrupted: "已中断",
+  skipped: "跳过",
+  cancelled: "已取消",
+};
 export function runResult(r: ScheduleRun): string {
+  if (stoppedRunLabels[r.status]) return stoppedRunLabels[r.status];
   if (r.notified) return "通知了你";
   return (
     (
       {
         completed: "没有通知",
-        failed: "失败",
-        uncertain: "无法确认",
-        interrupted: "已中断",
-        skipped: "已跳过",
         dispatching: "正在启动",
         queued: "等待当前轮结束",
         running: "正在运行",
-        cancelled: "已取消",
       } as Record<string, string>
     )[r.status] ?? "等待结果"
+  );
+}
+export function runSummary(r: ScheduleRun): string {
+  if (stoppedRunLabels[r.status]) return reasonText(r.reason);
+  return (
+    r.notification_text ||
+    r.final_summary ||
+    (r.reason ? reasonText(r.reason) : "")
   );
 }
 export function lastResult(t: ScheduleTask, now = Date.now()): string {
@@ -250,7 +294,11 @@ export function lastResult(t: ScheduleTask, now = Date.now()): string {
     today.every((r) => r.status === "completed" && !r.notified)
   )
     return `今天 ${today.length} 次都没有通知`;
-  return `${dateTime(latest.started_at, now)} ${runResult(latest)}${latest.notification_text ? "：" + latest.notification_text : ""}`;
+  const detail =
+    latest.notified || stoppedRunLabels[latest.status]
+      ? runSummary(latest)
+      : "";
+  return `${dateTime(latest.started_at, now)} ${runResult(latest)}${detail ? "：" + detail : ""}`;
 }
 export type RunGroup = {
   key: string;
