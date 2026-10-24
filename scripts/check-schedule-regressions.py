@@ -62,6 +62,10 @@ go("r2-05-queued-human", "internal/daemon/schedule_events.go", 's.claimOwnership
 
 go("r2-06-admission-retry", "internal/daemon/inject.go", '|| retries >= 1', '|| retries < 0', "TestHumanAdmissionBoundsRunningResumeRetry")
 
+go("r2-07-before-identity", "internal/daemon/backend.go", 't.ID == taskID && t.Active.ID == runID ||', 't.ID == taskID && t.Active.ID == runID && false ||', "TestPublicationRefusalBeforeAndAfterAdmission")
+go("r2-07-cancel-queue", "internal/daemon/backend.go", '_ = s.cancelInputBy(run.RequestID, originSystem)', '_ = s.cancelInputBy("missing", originSystem)', "TestPublicationRefusalBeforeAndAfterAdmission")
+go("r2-07-interrupt", "internal/daemon/backend.go", 's.interruptRunBy(originSystem, run.ID)', 's.interruptRunBy(originSystem, "missing")', "TestPublicationRefusalBeforeAndAfterAdmission")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

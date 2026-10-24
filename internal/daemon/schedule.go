@@ -623,6 +623,7 @@ func (d *Daemon) scheduleLoop(ctx context.Context) {
 			}
 			// Closing a CLI can block; lifecycle work shares dispatch ownership,
 			// never the schedule lock, and at most one closer per session.
+			d.stopUnpublishedScheduledRuns()
 			for _, s := range d.scheduledClosures() {
 				cleaningMu.Lock()
 				if !cleaning[s.meta.ID] {
@@ -820,7 +821,7 @@ func (d *Daemon) launchScheduledSession(ctx context.Context, t *schedule.Task) (
 		}
 		terminal := t.SourceSession != "" && !shell
 		// No prompt here: the scheduled input uses its own stable request ID.
-		s, err = d.createByContext(ctx, &pb.CreateSessionRequest{Cwd: target.Cwd, Agent: kind, Model: target.Model, Effort: target.Effort, Mode: mode, Env: env}, &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_SYSTEM, ScheduledTaskId: t.ID}, shell, terminal, "the session's saved PATH")
+		s, err = d.createByContext(ctx, &pb.CreateSessionRequest{Cwd: target.Cwd, Agent: kind, Model: target.Model, Effort: target.Effort, Mode: mode, Env: env}, &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_SYSTEM, ScheduledTaskId: t.ID, ScheduledRunId: t.Active.ID}, shell, terminal, "the session's saved PATH")
 	}
 	return s, err
 }
@@ -836,6 +837,14 @@ func (d *Daemon) dispatchScheduled(ctx context.Context, snapshot *schedule.Task,
 		d.finishScheduledDispatch(ctx, snapshot, now, "could_not_start_session: "+err.Error(), nil)
 		return
 	}
+	d.queueScheduledSession(ctx, snapshot, now, s)
+}
+
+func (d *Daemon) queueScheduledSession(ctx context.Context, snapshot *schedule.Task, now time.Time, s *session) {
+	// Publication refusal and admission have one order, including the gap
+	// between persisting the session identity and accepting its input.
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
 	sessionID, after := s.info().Id, s.log.LastSeq()
 	d.scheduleMu.Lock()
 	t := d.dispatchingTaskLocked(snapshot)
@@ -859,7 +868,7 @@ func (d *Daemon) dispatchScheduled(ctx context.Context, snapshot *schedule.Task,
 	origin := proto.Clone(originSystem).(*pb.Origin)
 	origin.RequestId = snapshot.Active.RequestID
 	origin.ScheduledTaskId, origin.ScheduledRunId = snapshot.ID, snapshot.Active.ID
-	_, err = s.enqueueMode(snapshot.Spec.Message, snapshot.Active.RequestID, nil, origin, pb.SendMode_SEND_MODE_QUEUE)
+	_, err := s.enqueueMode(snapshot.Spec.Message, snapshot.Active.RequestID, nil, origin, pb.SendMode_SEND_MODE_QUEUE)
 	reason := ""
 	if !queueAccepted(err) {
 		reason = "could_not_queue_message"

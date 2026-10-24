@@ -12,6 +12,7 @@ import (
 // meta is the persisted description of a session, session.json.
 type meta struct {
 	TaskCLIClosed   bool   `json:"task_cli_closed,omitempty"`
+	ScheduledRunID  string `json:"scheduled_run_id,omitempty"`
 	ScheduledTaskID string `json:"scheduled_task_id,omitempty"`
 	TaskOwned       bool   `json:"task_owned,omitempty"`
 	ID              string `json:"id"`

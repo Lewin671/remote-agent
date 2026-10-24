@@ -506,7 +506,7 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	}
 	id := newID(8)
 	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true,
-		ScheduledTaskID: origin.GetScheduledTaskId(), TaskOwned: origin.GetScheduledTaskId() != "",
+		ScheduledRunID: origin.GetScheduledRunId(), ScheduledTaskID: origin.GetScheduledTaskId(), TaskOwned: origin.GetScheduledTaskId() != "",
 		StandardContext: req.Agent == pb.Agent_AGENT_CLAUDE && req.StandardContext, Shell: viaShell}
 	// The environment the CLI starts with: a client-created session's
 	// login shell gets what a new terminal gives it and builds the rest

@@ -1168,9 +1168,12 @@ func (s *session) interrupt() (bool, error) { return s.interruptBy(originLocal) 
 
 // interruptBy is interrupt on behalf of origin.
 func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
+	return s.interruptRunBy(origin, "")
+}
+func (s *session) interruptRunBy(origin *pb.Origin, runID string) (bool, error) {
 	s.readRollout()
 	s.mu.Lock()
-	running, exited := s.running, s.meta.Exited
+	running, exited := s.running && (runID == "" || s.scheduledRun == runID), s.meta.Exited
 	s.mu.Unlock()
 	if exited {
 		return false, errExited
@@ -1184,7 +1187,7 @@ func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
 	// input box does something else.
 	s.readRollout()
 	s.mu.Lock()
-	running = s.running
+	running = s.running && (runID == "" || s.scheduledRun == runID)
 	s.mu.Unlock()
 	if !running {
 		return false, nil

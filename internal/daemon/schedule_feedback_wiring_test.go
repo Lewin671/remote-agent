@@ -13,7 +13,7 @@ func TestScheduledCreationWritesOwnership(t *testing.T) {
 	h, task := newScheduledLaunch(t)
 	defer h.s.log.Close()
 	h.d.agents[pb.Agent_AGENT_CODEX] = &scheduleArgvBarrier{Adapter: h.d.agents[pb.Agent_AGENT_CODEX]}
-	snapshot := h.d.tasks[task.ID]
+	snapshot := h.d.prepareScheduledDispatches(time.Now().Add(time.Hour))[0]
 	created, err := h.d.launchScheduledSession(context.Background(), snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -25,7 +25,7 @@ func TestScheduledCreationWritesOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.ScheduledTaskID != task.ID || !m.TaskOwned {
+	if m.ScheduledTaskID != task.ID || m.ScheduledRunID != snapshot.Active.ID || !m.TaskOwned {
 		t.Fatal("creation ownership was not durable")
 	}
 }
