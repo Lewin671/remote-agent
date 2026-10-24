@@ -30,7 +30,7 @@ data class ScheduledTask(val machine: String, val json: JsonObject) {
 data class ScheduledRun(val json: JsonObject) {
     val id get() = json.text("id")
     val session get() = json.text("session_id")
-    val seq get() = json.long("start_seq").takeIf { it > 0 } ?: (json.long("after_seq") + 1)
+    val seq get() = (json.long("start_seq").takeIf { it > 0 } ?: json.long("after_seq")) + 1
     val time get() = scheduleInstant(json.text("started_at")) ?: scheduleInstant(json.text("scheduled_at")) ?: Instant.EPOCH
     val status get() = json.text("status")
     val notified get() = (json["notified"] as? JsonPrimitive)?.booleanOrNull == true

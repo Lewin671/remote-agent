@@ -26,6 +26,10 @@ class SchedulesTest {
         assertEquals(TaskGroup.ENDED, taskGroup(task("cancelled")))
         assertEquals("中继上的会话数已满", scheduleReason("relay_session_limit"))
     }
+    @Test fun cursorStartsAfterDispatchWithZeroStartFallback() {
+        assertEquals(43L,ScheduledRun(buildJsonObject { put("start_seq",42);put("after_seq",9) }).seq)
+        assertEquals(10L,ScheduledRun(buildJsonObject { put("start_seq",0);put("after_seq",9) }).seq)
+    }
     @Test fun nextTimeUsesLocalDateAndTaskState() {
         assertEquals("下次 10月25日 08:00", scheduleNext(task(), now, utc))
         assertEquals("已暂停", scheduleNext(task("paused", "user_paused"), now, utc))
