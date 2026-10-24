@@ -227,3 +227,19 @@ func (s *session) claimOwnershipLocked() {
 		s.noteStorageLocked(s.meta.save(s.dir))
 	}
 }
+
+// Canonical accepted input is the ownership authority, even if its QUEUED
+// event could not be appended. This does not clear the current model turn.
+func (s *session) claimQueuedHumanOwnershipLocked() {
+	if !s.meta.TaskOwned {
+		return
+	}
+	for _, pending := range [][]input{s.queue.Queue, s.queue.Held} {
+		for _, in := range pending {
+			if humanOrigin(in.Origin.pb()) {
+				s.claimOwnershipLocked()
+				return
+			}
+		}
+	}
+}

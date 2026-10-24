@@ -222,6 +222,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		queueLost:    err != nil,
 		images:       openImageStore(dir),
 	}
+	s.claimQueuedHumanOwnershipLocked()
 	if h, err := loadParseHealth(dir); err != nil {
 		// Diagnostics are not recovery state. A damaged or unreadable file
 		// must not hide a live CLI whose metadata, events and queue are valid.

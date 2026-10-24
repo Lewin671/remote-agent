@@ -109,6 +109,10 @@ go("r4-02-rollback", "internal/daemon/schedule.go", 'd.lateRuns[t.ID] = lateRun'
 
 go("r4-03-lifecycle", "internal/daemon/schedule.go", 'if snapshot.Spec.Target.Type == "resume_session" {', 'if false && snapshot.Spec.Target.Type == "resume_session" {', "TestScheduledResumeRechecksAfterAutomaticClose")
 
+go("r4-04-accepted", "internal/daemon/commit.go", 's.claimQueuedHumanOwnershipLocked()\n\tdefer s.poke()', 'defer s.poke()', "TestAcceptedHumanQueueOwnsSessionWithoutQueuedEvent")
+go("r4-04-replaced", "internal/daemon/commit.go", 's.claimQueuedHumanOwnershipLocked()\n\t\t\ts.poke()', 's.poke()', "TestAcceptedHumanQueueOwnsSessionWithoutQueuedEvent")
+go("r4-04-restore", "internal/daemon/session.go", 's.claimQueuedHumanOwnershipLocked()', '// canonical takeover omitted', "TestCanonicalHumanQueueRepairsOwnershipOnRestore")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

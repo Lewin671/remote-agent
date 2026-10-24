@@ -153,11 +153,13 @@ func (s *session) saveQueueLocked(evs ...*pb.Event) (saved bool, err error) {
 	if err := s.queue.saveWith(s.dir, s.d.writeStateFile); err != nil {
 		s.noteStorageLocked(err)
 		if fileReplaced(err) {
+			s.claimQueuedHumanOwnershipLocked()
 			s.poke()
 			return true, fmt.Errorf("%w: %w: %w", errQueueAccepted, errQueueCommit, err)
 		}
 		return false, fmt.Errorf("%w: %w", errQueueCommit, err)
 	}
+	s.claimQueuedHumanOwnershipLocked()
 	defer s.poke()
 	if len(evs) > 0 {
 		if err := s.appendLocked(evs, "", 0); err != nil {
