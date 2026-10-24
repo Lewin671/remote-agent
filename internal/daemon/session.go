@@ -83,6 +83,7 @@ type session struct {
 	scheduledTask          string
 	scheduledRun           string
 	scheduledNotifications int
+	scheduledCloseAfter    time.Time
 	scheduledClose         bool
 	closing                bool
 	mu                     sync.Mutex
@@ -1362,6 +1363,13 @@ func (s *session) killIf(ctx context.Context, scheduledOnly bool) error {
 		return nil
 	}
 	if scheduledOnly {
+		defer func() {
+			s.mu.Lock()
+			if !s.meta.Exited && s.meta.TaskOwned {
+				s.scheduledCloseAfter = time.Now().Add(5 * time.Second)
+			}
+			s.mu.Unlock()
+		}()
 		// Drain native input before deciding ownership. Never run under scheduleMu.
 		if !s.readRollout() {
 			return nil

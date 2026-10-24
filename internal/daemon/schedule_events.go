@@ -54,6 +54,10 @@ func (s *session) annotateScheduled(batches []eventlog.Batch) {
 }
 
 func (s *session) observeScheduled(e *pb.Event) {
+	s.scheduledCloseAfter = time.Time{}
+	if in := e.GetInputState(); in != nil && in.Status == pb.InputStatus_INPUT_STATUS_QUEUED && humanOrigin(e.Origin) {
+		s.takeOverLocked()
+	}
 	if st := e.GetSessionState(); st != nil && st.Detail == "resumed" && humanOrigin(e.Origin) {
 		s.takeOverLocked()
 	}
@@ -163,7 +167,7 @@ func (d *Daemon) scheduledClosures() []*session {
 		if ended[s.meta.ID] {
 			s.scheduledClose = true
 		}
-		ready := s.meta.TaskOwned && !s.meta.TaskCLIClosed && !s.meta.Exited && s.scheduledClose && !s.running
+		ready := s.meta.TaskOwned && !s.meta.TaskCLIClosed && !s.meta.Exited && s.scheduledClose && !s.running && len(s.queue.Queue) == 0 && len(s.queue.Held) == 0 && !time.Now().Before(s.scheduledCloseAfter)
 		s.mu.Unlock()
 		if ready {
 			out = append(out, s)

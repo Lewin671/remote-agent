@@ -148,6 +148,34 @@ func (s *session) enqueueUploaded(text, requestID string, ids []string, origin *
 }
 
 func (s *session) enqueueInput(text, requestID string, images []queuedImage, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) ([]queuedImage, error)) (int, error) {
+	return s.enqueueInputContext(context.Background(), text, requestID, images, origin, mode, reserved, take)
+}
+func (s *session) enqueueInputContext(ctx context.Context, text, requestID string, images []queuedImage, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) ([]queuedImage, error)) (int, error) {
+	if !humanOrigin(origin) {
+		return s.enqueueInputReady(text, requestID, images, origin, mode, reserved, take)
+	}
+	// The lifecycle lock gives admission and automatic shutdown one order.
+	// Never hold it while asking resume to acquire that same lock.
+	for {
+		s.lifecycleMu.Lock()
+		s.mu.Lock()
+		resume := s.meta.Exited && s.meta.ScheduledTaskID != ""
+		s.mu.Unlock()
+		if !resume {
+			break
+		}
+		s.lifecycleMu.Unlock()
+		if _, err := s.d.resumeContextBy(ctx, s.meta.ID, origin); err != nil && !errors.Is(err, errRunning) {
+			return 0, err
+		}
+		if err := ctx.Err(); err != nil {
+			return 0, err
+		}
+	}
+	defer s.lifecycleMu.Unlock()
+	return s.enqueueInputReady(text, requestID, images, origin, mode, reserved, take)
+}
+func (s *session) enqueueInputReady(text, requestID string, images []queuedImage, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) ([]queuedImage, error)) (int, error) {
 	if mode == pb.SendMode_SEND_MODE_UNSPECIFIED {
 		mode = pb.SendMode_SEND_MODE_STEER
 	}

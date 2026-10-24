@@ -88,7 +88,16 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 		return nil, rpcErr(err)
 	}
 	origin := originOf(ctx)
-	pos, err := s.enqueueUploaded(req.Msg.Text, req.Msg.RequestId, req.Msg.ImageIds, origin, req.Msg.Mode)
+	pos, err := s.enqueueInputContext(ctx, req.Msg.Text, req.Msg.RequestId, nil, origin, req.Msg.Mode, nil, func(id string) ([]queuedImage, error) {
+		if len(req.Msg.ImageIds) == 0 {
+			return nil, nil
+		}
+		owner, err := imageOwner(origin)
+		if err != nil {
+			return nil, err
+		}
+		return s.d.uploads.take(req.Msg.ImageIds, owner, s.meta.ID, id)
+	})
 	if err != nil {
 		return nil, rpcErr(err)
 	}
