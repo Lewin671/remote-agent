@@ -703,7 +703,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired"}
 				t.Runs = appendRun(t.Runs, run)
 				d.nextSchedule(t, now)
-			} else if tr := t.Spec.Trigger; tr.Type == "calendar" && t.LastCalendarDate == calendarDate(tr, now) {
+			} else if tr := t.Spec.Trigger; tr.Type == "calendar" && t.LastCalendarDate == calendarDate(tr, *t.NextRunAt) {
 				d.nextSchedule(t, now)
 			} else if t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
 				t.Status = "completed"
@@ -717,7 +717,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 					t.Status = "dispatching"
 					t.Dispatches++
 					if t.Spec.Trigger.Type == "calendar" {
-						t.LastCalendarDate = calendarDate(t.Spec.Trigger, now)
+						t.LastCalendarDate = calendarDate(t.Spec.Trigger, t.Active.ScheduledAt)
 					}
 					dispatch = true
 				}
@@ -1088,17 +1088,7 @@ func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
 		t.NextRunAt = &next
 		t.Status = "scheduled"
 	case tr.Type == "calendar":
-		next := tr.NextCalendar(now)
-		if len(t.Runs) > 0 {
-			// Even an early manual run consumes this local calendar date.
-			loc, _ := time.LoadLocation(tr.Timezone)
-			last := t.Runs[len(t.Runs)-1].StartedAt.In(loc)
-			y, m, d := last.Date()
-			end := time.Date(y, m, d+1, 0, 0, 0, 0, loc).Add(-time.Nanosecond)
-			if end.After(now) {
-				next = tr.NextCalendar(end)
-			}
-		}
+		next := nextCalendar(t, now)
 		t.NextRunAt, t.Status = &next, "scheduled"
 	case tr.Type == "after_turn" && tr.Repeat:
 		next := now.Add(time.Duration(tr.DelaySeconds) * time.Second)
@@ -1129,4 +1119,14 @@ func calendarDate(tr schedule.Trigger, at time.Time) string {
 		return ""
 	}
 	return at.In(loc).Format("2006-01-02")
+}
+
+// Only dates durably reserved by actual automatic dispatches are occupied;
+// skipped occurrences and their bookkeeping times are irrelevant.
+func nextCalendar(t *schedule.Task, now time.Time) time.Time {
+	next := t.Spec.Trigger.NextCalendar(now)
+	for !next.IsZero() && calendarDate(t.Spec.Trigger, next) <= t.LastCalendarDate {
+		next = t.Spec.Trigger.NextCalendar(next)
+	}
+	return next
 }
