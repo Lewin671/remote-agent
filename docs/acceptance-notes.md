@@ -488,3 +488,24 @@ macOS、本 worktree 构建的 daemon、Claude Code 2.1.300；使用 `scripts/ac
 - 最终脚本覆盖消息和事件顺序、批准/拒绝、单选/多选、中断、本地草稿排队、模型与 effort 切换和切回、设置文件校验值不变、权限模式切换、计划批准、停止/恢复及 daemon 重启。模型切换事件和切回是脚本的无输出断言，失败会计入结果。
 - `TestSetModelShortLabels2_1_300` 和 `TestModelRowShortLabels2_1_300` 使用两张真实菜单 fixture 和现有目录 fixture，验证短标签、最后一行说明保留、Default 行排除及同家族不同版本不混淆；`TestSetModelRechecksShortLabelDetail` 验证移到目标行后名称不符时不确认。分别撤掉对应修复后测试失败，恢复后通过；新控制流程测试使用 `testing/synctest`。
 - `go test ./internal/claude -count=1`、`go test ./...` 和 `git diff --check` 通过。临时 daemon、tmux 和状态目录已清理；未修改协议或存储格式，没有推送、发布或部署。未验证其他 Claude Code 版本、短标签菜单的小窗口折行，或 CLI 本次未列完整缓存目录的原因。
+
+### 定时任务第一阶段
+
+2026-10-24，macOS，协议 11；当前 worktree 构建，未发布。后端和协议范围见 [architecture §18](architecture.md#18-定时任务)。
+
+- 自动测试：`go test ./...`；`go test -race ./internal/daemon ./internal/server ./internal/relay -run 'TestSchedule|TestCalendar|TestMCP|TestTaskOwned'`。覆盖纽约春季不存在时刻、秋季两次相同时刻只取早一次、上海、工作日、补跑、截止及每天一次；任务会话隐藏和接手、退出与恢复、运行中不关 CLI；通知的可用条件、三次上限及跨重启计数、final 摘要；MCP 递归委托和周期最小间隔；现有布局 6 库直接启动、默认分页排除/按 ID 查询、旧修订不能改归属，以及 heads 不一致后重传。
+- 网页：`cd web && pnpm typecheck && pnpm test`，84 个文件、1065 项通过。Android：`cd android && ./gradlew :core:test :app:testDebugUnitTest` 通过。iOS core：`cd ios/RemoteAgentCore && swift test`，83 个 suite、527 项通过。iOS App：`xcodebuild -quiet -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -parallel-testing-enabled NO build test`，328 项通过，零失败。三端验证新字段解析、通知白名单和既有列表对任务归属的处理，没有新增定时界面。
+- iOS App 验收修正了终端测试的传输替身：原来的真实 socket 指向拒绝连接的端口，会在首次发送后停止，导致后续帧断言失败；改用只接受帧的内存 socket 后，保留的行为断言及全套 App 测试通过。默认并行模拟器测试启动曾停在 Xcode 收集诊断，最终以串行方式完成；本次启动的模拟器已关闭。
+- 回归有效性：逐处临时移除或放宽日历解析、截止、CLI 关闭、接手、通知次数限制及重放计数、MCP 周期下限及运行期变更禁令、结束标注、server 排除和 relay 推送抑制，共 11 个变异；每次都由相应新增测试的断言失败检出，之后恢复实现。编译错误没有计入这个结果。
+- 真实 CLI：`ios/scripts/dev-env.sh start --daemon` 在独立 `RA_DEV_DIR` 启动本地 server/daemon、临时账户、数据库、状态目录和 tmux socket；`RA_DEV_DIR="$RA_DEV_DIR" go run ./scripts/acceptance-schedule` 再建立可控的临时管理客户端和测试电脑，用原生 Claude Code 2.1.300、`claude-haiku-5-5` 走加密 Forward → server → daemon → tmux → CLI → 加密事件回读。创建约两分钟后运行的 UTC 日历任务，CLI 实际调用一次 `notify_user`，运行记录标记已通知，结束后 CLI 退出；默认分页里没有该会话，按 ID 能解密读到会话和历史、通知事件与结束标注；再用客户端恢复并发送一条消息，接手后出现在默认列表。最终一次完整验收通过，环境已停止并清理。
+- 操作边界：这是 Go 协议客户端的自动验收，不是网页、Android 或 iOS 的直接界面操作。Claude 的该次 MCP 工具审批在隔离终端里单次允许，没有持久添加免审批规则。没有接线上中继、日常 Remote Agent 账户或既有会话；真实 CLI 使用已登录的 Claude 凭据并消耗少量额度。
+- 未覆盖：真实 Codex 的这套新增流程、真手机、FCM/Web Push 实际送达、真实夏令时切换及休眠；失败/中断关闭与 daemon 重启补传由自动测试覆盖。`notify_user` 成功只证明已持久记录供投递，不证明用户收到。
+
+复现时从当前 checkout 在同一个 shell 执行，需已登录的 Claude Code、tmux 和 Go：
+
+```sh
+export RA_DEV_DIR=$(mktemp -d)
+trap 'ios/scripts/dev-env.sh stop' EXIT
+ios/scripts/dev-env.sh start --daemon
+go run ./scripts/acceptance-schedule
+```

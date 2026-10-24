@@ -19,9 +19,9 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | 客户端状态推导 | 三端共同规则与共享事件向量（[契约](architecture.md#客户端状态推导的共同规则)） | 网页真实 CLI（独立无头 Chrome 手机宽/宽屏）；原生自动测试（[记录](acceptance-notes.md#客户端状态推导共享向量)） | 当前 checkpoint 已过自动验收；聊天历史分段读取 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
-| 定时任务 | daemon、本地 `schedule` 命令、托管会话的 MCP 工具、加密的机器管理指令 | 自动测试，加两个 CLI 上的执行验收 | 客户端完全没做；日历周期（当地时间、时区、夏令时）没做 |
+| 定时任务 | 日历与截止、任务会话归属和接手、结束关闭 CLI、主动通知、MCP 委托上限、能力与修订号；本地和加密机器指令 | 自动测试；本阶段验收见 [记录](acceptance-notes.md#定时任务第一阶段) | 三端定时入口、运行历史、静默轮折叠、离线快照和修订订阅未做 |
 
-当前协议为 10，v0.44.0 已包含管理端签名链、独立租约、持久安全操作、当前 checkpoint、到期暂停上传及移除保留档案。任一 Client（网页、Android、iOS）可成为唯一管理端，Machine 不能。任意客户端管理的 core、生命周期和网页界面已在独立工作树实现，三端完整有向交接矩阵、真实 CLI 产品链路和真机通知仍待联合验收，不能视为全能力发布完成。已有协议 10 账户不需重建；旧协议 9→10 的 Android 重建/离线固定路线独立保留。设计见 [architecture §9](architecture.md#9-账户设备和密钥)，边界见 [scope](scope.md#设备加入与移除)，已安装版本以 Release 为准。
+当前 worktree 协议为 11，定时任务的升级搭配见 [architecture §18](architecture.md#协议版本与升级)；尚未发布。v0.44.0 已包含管理端签名链、独立租约、持久安全操作、当前 checkpoint、到期暂停上传及移除保留档案。任一 Client（网页、Android、iOS）可成为唯一管理端，Machine 不能。任意客户端管理的 core、生命周期和网页界面已在独立工作树实现，三端完整有向交接矩阵、真实 CLI 产品链路和真机通知仍待联合验收，不能视为全能力发布完成。已有协议 10 账户不需重建；旧协议 9→10 的 Android 重建/离线固定路线独立保留。设计见 [architecture §9](architecture.md#9-账户设备和密钥)，边界见 [scope](scope.md#设备加入与移除)，已安装版本以 Release 为准。
 
 ## 下一步
 
@@ -30,7 +30,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 1. **任意客户端管理的联合验收**。按 [architecture §9](architecture.md#9-账户设备和密钥) 和 [AGENTS.md](../AGENTS.md)，在独立 `RA_DEV_DIR` 从无账户环境开始，用网页新建账户、加入真实电脑并经 server → daemon → tmux 操作真实 CLI。验收三端六条有向交接、设备移除/档案重接/删除、创建及恢复断点、72 小时租约与 48 小时否决；网页手机宽/宽屏及亮暗主题、iOS/iPad 与通知/锁屏分别核实，未验证部分保留限制。通过后再统一发布任意客户端管理功能，协议仍为 10。
 2. **真机验收**。在自己的 Android 手机和 iPhone（PWA）上走一遍，清单在「待确认 › 真机」。验收标准：清单里每一项有结论，问题修掉或记进本文
 3. **Codex 0.159.2 的命令结果**。按新格式解析退出码或失败，再把 0.159.2 列为已验证版本。验收标准：失败的命令在客户端显示 ✕ 和退出码，`remote-agent doctor` 通过
-4. **定时任务的客户端**。客户端通过 `MachineCapabilities.scheduled_tasks` 判断支持情况，复用 Schedule 机器指令查询和管理任务；先定变更订阅和离线快照，再出界面稿，然后做全局任务页和会话内入口。设计见 [architecture §18](architecture.md#18-定时任务)
+4. **定时任务的客户端**。客户端通过 `MachineCapabilities.scheduled_tasks` 判断支持情况，复用 Schedule 机器指令查询和管理任务；接入 `MachineMeta.schedule_revision` 变更拉取与离线快照，再实现独立「定时」入口、新建/编辑和运行历史，以及对话中的静默轮折叠。设计见 [architecture §18](architecture.md#18-定时任务)
 5. **历史分段读取**。现在事件层从序号 1 读全量，长会话第一次打开慢（瓶颈是下载量，见 [architecture §10](architecture.md#10-报文同步和指令) 的「后台和内存」）；网页再次打开已经靠本地密文缓存只取增量。剩下的是第一次打开：先取最新一段显示，更早的在后台补，需要让状态推导不依赖从序号 1 开始的完整历史。三端共同规则和共享向量已建立，见 [共同规则](architecture.md#客户端状态推导的共同规则)；快照及历史分段读取尚未实现，网页、Android 和 iOS 都要接入
 6. **v8 以后的界面改动补验收**。两端逐屏对照 client-v38（网页的 v8 改动也没有逐屏对照过），并连真实 CLI 走一遍设置类页面
 7. **清理被登录 shell 取代的机制**。客户端开的会话现在由登录 shell 现算环境（[architecture §6](architecture.md#6-接入-codex)），`agent.env`、`daemon.sh install` 写进服务的 `PATH`、以及用户自己的 `~/.local/shims` 包装脚本都只是为了在没有这步之前把环境补上。先在真实使用里观察一段时间：从手机新开的会话能直接用到新装的命令和升级过的 CLI，不需要重装服务或改 `agent.env`；确认后删掉 daemon 读 `agent.env`/`codex.env` 和 install 写 `PATH` 的逻辑，并同步 README 和 architecture §6
