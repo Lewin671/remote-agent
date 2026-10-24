@@ -927,6 +927,23 @@ rebase 后核对了两边的验收记录：后端原文全部保留，原有内�
 
 公开检查读取本机实际 deny 名单，未使用空名单或伪造条目；扫描日志只以规则编号报告私有条目。本轮没有打发布包，因此未执行要求完整 Release 文件集合的 `--release TAG DIST` 模式，也未核对正式签名 APK、跨平台压缩包和附件清单。
 
-既往 iOS v49 报告中的 `RetainedIdentityTests.logoutClearsPendingBootstrapAndDoesNotResumeIt()` 的 `.untrusted` 与 `ResumedLivePollingTests.resumedMetadataRestartsPollingWithoutResubscribing()` 的异步断言偶发失败，本轮全量均未复现。两份测试及 `RemoteLive.swift`、`AuthorityBootstrap.swift` 与 `origin/main` 相同，但仅凭此不能确定失败原因；不能据本轮通过声称已定位或修复。未新增真实推送送达、真机界面、iPad、多台真实电脑、实际睡眠/DST 或客户端 Codex 路线的验收证据。
+既往 iOS v49 报告中的 `RetainedIdentityTests.logoutClearsPendingBootstrapAndDoesNotResumeIt()` 的 `.untrusted` 在首次整合全量中未复现，不能据此声称已定位或修复。`ResumedLivePollingTests.resumedMetadataRestartsPollingWithoutResubscribing()` 的异步断言已通过后续重复运行定位为测试等待不足，见下方专项记录。未新增真实推送送达、真机界面、iPad、多台真实电脑、实际睡眠/DST 或客户端 Codex 路线的验收证据。
 
 检查日志和 xcresult 保存在本地独立输出目录，不提交原日志、截图、测试账户或配对材料。未推送、打 tag、发版、部署或修改 `version.properties`。
+
+### iOS 恢复后轮询：等待异步订阅操作结束（2026-10-24）
+
+问题是 `ResumedLivePollingTests.resumedMetadataRestartsPollingWithoutResubscribing()` 第 190 行对 `liveJobs["s1"] == nil` 的即时断言。验证起点 `3d4a74e3`，目标测试和 `RemoteLive.swift` 与本地 `origin/main` 相同；macOS arm64、Swift 6.4、Go 1.26.10。使用 macOS 上的 `swift test`，不启动新的模拟器，不连接线上。
+
+先用 `cd ios/RemoteAgentCore && swift test --filter ResumedLivePollingTests` 构建，再启动 40 个独立进程逐次执行 `swift test --skip-build --filter ResumedLivePollingTests`。保留外层 `ServerTests` 的 `.serialized` 与原有 suite 顺序，不打乱、不并发多个重复进程、不加额外 CPU 压力。每次两个测试，使用各自的临时 Go server、账户和状态；同一轮 App 单 suite 对照检查在已有 iPhone 模拟器运行，没有额外压力进程。
+
+| 条件 | suite 运行次数 | 目标测试失败次数 |
+|---|---:|---:|
+| 原始代码 | 40 | 2（第 2、37 次） |
+| 修复后，同命令与条件 | 40 | 0 |
+
+两次修前失败均为同一行的 task 非空断言，没有其他断言或超时；记录问题后，原测试继续执行的恢复元数据与真实加密 live snapshot 链路仍完成。根因是 `events()` 和 `updates()` 把 touch/followers 生命周期操作异步排队；`finishEndedPollingForTest()` 只等待取得时的一个 task。稍后排队的操作可以创建另一个检查到会话已结束就退出的 task，此时瞬间看到非空是合法的中间状态，不表示恢复轮询失效。
+
+只把这条即时断言改为现有 `eventually` 条件等待，明确等到该会话的 polling task 清空。没有修改产品轮询逻辑、增加固定 sleep 或调大现有等待工具的超时；保留原订阅、单 follower、恢复元数据和原订阅接收 live snapshot 的验证。
+
+`cd ios/RemoteAgentCore && swift test` 全量通过：541 项、84 个 suite，退出码 0；默认需单独开启的真实 daemon 用例仍跳过。40 次修前与 40 次修后逐次日志、退出码和源文件指纹保存在本地专项输出，不提交运行日志或临时账户材料。

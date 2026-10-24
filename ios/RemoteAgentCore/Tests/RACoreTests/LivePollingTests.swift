@@ -187,7 +187,9 @@ extension ServerTests {
                 defer { withExtendedLifetime(updates) {} }
                 await r.finishEndedPollingForTest("s1")
                 #expect(feed.followers == 1)
-                #expect(await r.liveJobs["s1"] == nil)
+                // events()/updates() post lifecycle work asynchronously. Waiting for
+                // one job does not finish a later job started by that queued work.
+                try await eventually("ended session polling stopped") { await r.liveJobs["s1"] == nil }
                 #expect(await r.liveSnapshots["s1"] == nil)
 
                 var approval = PBEvent()
