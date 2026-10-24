@@ -57,5 +57,30 @@ func TestCalendarCatchupOccupiesOccurrenceDateOnly(t *testing.T) {
 	}
 }
 
-// Referenced by subsequent calendar feedback regressions.
-var _ = pb.ScheduleRequest{}
+func TestCalendarManualRunPreservesAutomaticOccurrence(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "calendar", Time: "08:00", Timezone: "Asia/Shanghai"}), "")
+	now := time.Now()
+	due := now.Add(time.Hour)
+	h.d.tasks[task.ID].NextRunAt = &due
+	_, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.d.tickSchedules(now.Add(time.Second))
+	got := readTask(t, h.d, task.ID)
+	if got.Active == nil || !got.Active.Manual || got.LastCalendarDate != "" {
+		t.Fatalf("manual occupied calendar: %+v", got)
+	}
+	completeTask(h, got.Active, now.Add(time.Second))
+	h.d.tickSchedules(now.Add(time.Second))
+	got = readTask(t, h.d, task.ID)
+	if got.NextRunAt == nil || !got.NextRunAt.Equal(due) {
+		t.Fatalf("manual changed automatic cursor: %+v", got)
+	}
+	h.d.tickSchedules(due)
+	if readTask(t, h.d, task.ID).Active == nil {
+		t.Fatal("automatic occurrence lost after manual run")
+	}
+}

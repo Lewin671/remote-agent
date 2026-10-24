@@ -52,31 +52,34 @@ type Target struct {
 // Task is persisted by the daemon. Pausing/canceling stops future dispatches,
 // not an execution already handed to a session's input queue.
 type Task struct {
-	LastCalendarDate string     `json:"last_calendar_date,omitempty"`
-	ID               string     `json:"id"`
-	Revision         uint64     `json:"revision"`
-	Spec             Spec       `json:"spec"`
-	Status           string     `json:"status"`
-	Reason           string     `json:"reason,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	NextRunAt        *time.Time `json:"next_run_at,omitempty"`
-	SourceSession    string     `json:"source_session,omitempty"`
-	ScopedSession    string     `json:"scoped_session,omitempty"` // MCP delegation bound to this session
-	ScopedMode       string     `json:"scoped_mode,omitempty"`    // that session's standard mode when the delegation was made
-	Source           string     `json:"source"`
-	AnchorSession    string     `json:"anchor_session,omitempty"`
-	AnchorSeq        uint64     `json:"anchor_seq,omitempty"`
-	AnchorTurn       string     `json:"anchor_turn,omitempty"`
-	Dispatches       int64      `json:"dispatches"`
-	Runs             []Run      `json:"runs,omitempty"`
-	Active           *Run       `json:"active_run,omitempty"`
+	RunNow             bool       `json:"run_now,omitempty"`
+	AutomaticNextRunAt *time.Time `json:"automatic_next_run_at,omitempty"`
+	LastCalendarDate   string     `json:"last_calendar_date,omitempty"`
+	ID                 string     `json:"id"`
+	Revision           uint64     `json:"revision"`
+	Spec               Spec       `json:"spec"`
+	Status             string     `json:"status"`
+	Reason             string     `json:"reason,omitempty"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+	NextRunAt          *time.Time `json:"next_run_at,omitempty"`
+	SourceSession      string     `json:"source_session,omitempty"`
+	ScopedSession      string     `json:"scoped_session,omitempty"` // MCP delegation bound to this session
+	ScopedMode         string     `json:"scoped_mode,omitempty"`    // that session's standard mode when the delegation was made
+	Source             string     `json:"source"`
+	AnchorSession      string     `json:"anchor_session,omitempty"`
+	AnchorSeq          uint64     `json:"anchor_seq,omitempty"`
+	AnchorTurn         string     `json:"anchor_turn,omitempty"`
+	Dispatches         int64      `json:"dispatches"`
+	Runs               []Run      `json:"runs,omitempty"`
+	Active             *Run       `json:"active_run,omitempty"`
 	// Creation request identity survives retries and restart.
 	CreationKey  string `json:"creation_key,omitempty"`
 	CreationHash string `json:"creation_hash,omitempty"`
 }
 
 type Run struct {
+	Manual            bool   `json:"manual,omitempty"`
 	Notified          bool   `json:"notified"`
 	NotificationText  string `json:"notification_text,omitempty"`
 	NotificationCount int    `json:"notification_count,omitempty"`
@@ -126,6 +129,7 @@ func Clone(t *Task) *Task {
 	out.Spec.Trigger.Until = cloneTime(t.Spec.Trigger.Until)
 	out.Spec.Trigger.Weekdays = slices.Clone(t.Spec.Trigger.Weekdays)
 	out.NextRunAt = cloneTime(t.NextRunAt)
+	out.AutomaticNextRunAt = cloneTime(t.AutomaticNextRunAt)
 	out.Runs = slices.Clone(t.Runs)
 	for i := range out.Runs {
 		out.Runs[i].EndedAt = cloneTime(t.Runs[i].EndedAt)

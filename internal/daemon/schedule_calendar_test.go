@@ -42,30 +42,6 @@ func TestScheduleUntil(t *testing.T) {
 	}
 }
 
-func TestCalendarManualRunOncePerLocalDate(t *testing.T) {
-	h := scheduleHarness(t)
-	defer h.s.log.Close()
-	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "calendar", Time: "00:00", Timezone: "Asia/Shanghai"}), "")
-	run := func() error {
-		_, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal)
-		return err
-	}
-	if err := run(); err != nil {
-		t.Fatal(err)
-	}
-	now := time.Now().Add(time.Second)
-	h.d.tickSchedules(now)
-	active := readTask(t, h.d, task.ID).Active
-	if active == nil {
-		t.Fatal("not dispatched")
-	}
-	completeTask(h, active, now)
-	h.d.tickSchedules(now)
-	if err := run(); err == nil {
-		t.Fatal("second calendar run in the same local date accepted")
-	}
-}
-
 func TestCalendarCatchupChoosesEarlierFoldAndNoBacklog(t *testing.T) {
 	h := scheduleHarness(t)
 	defer h.s.log.Close()

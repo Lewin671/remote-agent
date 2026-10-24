@@ -312,11 +312,6 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 			t.Status = "completed"
 		}
 	case "run":
-		if tr := t.Spec.Trigger; tr.Type == "calendar" {
-			if t.LastCalendarDate == calendarDate(tr, now) {
-				return nil, errors.New("calendar task already ran on this local date")
-			}
-		}
 		if scope != "" {
 			if err := d.restrictMCPTask(t, false); err != nil {
 				return nil, err
@@ -333,6 +328,10 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		}
 		t.Status = "scheduled"
 		t.Reason = ""
+		if t.Spec.Trigger.Type == "calendar" && !t.RunNow {
+			t.AutomaticNextRunAt = t.NextRunAt
+			t.RunNow = true
+		}
 		t.NextRunAt = &now
 	default:
 		return nil, errors.New("unknown schedule operation")
@@ -693,7 +692,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				latest := t.NextRunAt.Add(now.Sub(*t.NextRunAt) / interval * interval)
 				t.NextRunAt = &latest
 			}
-			if tr := t.Spec.Trigger; tr.Type == "calendar" {
+			if tr := t.Spec.Trigger; tr.Type == "calendar" && !t.RunNow {
 				latest := tr.LatestCalendar(now)
 				if latest.After(*t.NextRunAt) {
 					t.NextRunAt = &latest
@@ -703,7 +702,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired"}
 				t.Runs = appendRun(t.Runs, run)
 				d.nextSchedule(t, now)
-			} else if tr := t.Spec.Trigger; tr.Type == "calendar" && t.LastCalendarDate == calendarDate(tr, *t.NextRunAt) {
+			} else if tr := t.Spec.Trigger; tr.Type == "calendar" && !t.RunNow && t.LastCalendarDate == calendarDate(tr, *t.NextRunAt) {
 				d.nextSchedule(t, now)
 			} else if t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
 				t.Status = "completed"
@@ -713,12 +712,13 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				if t.ScopedSession != "" && d.restrictMCPTask(t, false) != nil {
 					t.Status, t.Reason = "paused", "agent_schedule_permissions_changed"
 				} else {
-					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching"}
+					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching", Manual: t.RunNow}
 					t.Status = "dispatching"
 					t.Dispatches++
-					if t.Spec.Trigger.Type == "calendar" {
+					if t.Spec.Trigger.Type == "calendar" && !t.RunNow {
 						t.LastCalendarDate = calendarDate(t.Spec.Trigger, t.Active.ScheduledAt)
 					}
+					t.RunNow = false
 					dispatch = true
 				}
 			}
@@ -1089,6 +1089,10 @@ func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
 		t.Status = "scheduled"
 	case tr.Type == "calendar":
 		next := nextCalendar(t, now)
+		if t.AutomaticNextRunAt != nil {
+			next = *t.AutomaticNextRunAt
+			t.AutomaticNextRunAt = nil
+		}
 		t.NextRunAt, t.Status = &next, "scheduled"
 	case tr.Type == "after_turn" && tr.Repeat:
 		next := now.Add(time.Duration(tr.DelaySeconds) * time.Second)
