@@ -139,6 +139,7 @@ type Daemon struct {
 	inputBytes  int64 // queued + held text and in-progress reservations
 	inputQueues map[string]int64
 
+	scheduleVisible   []byte
 	scheduleRevision  uint64
 	schedulePublished uint64
 	schedulePublishAt time.Time

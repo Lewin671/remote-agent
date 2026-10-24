@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -46,6 +47,7 @@ func (d *Daemon) loadSchedules() error {
 		return errors.New("cannot load scheduled tasks; refusing to discard them")
 	}
 	d.scheduleRevision = state.Revision
+	d.scheduleVisible = visibleSchedules(state.Tasks)
 	for id, t := range state.Tasks {
 		if t == nil || t.ID != id || t.Revision == 0 {
 			return errors.New("invalid scheduled task state")
@@ -67,17 +69,22 @@ func (d *Daemon) loadSchedules() error {
 	return d.saveSchedulesLocked()
 }
 func (d *Daemon) saveSchedulesLocked() error {
+	visible := visibleSchedules(d.tasks)
+	revision := d.scheduleRevision
+	if !bytes.Equal(visible, d.scheduleVisible) {
+		revision++
+	}
 	b, err := json.Marshal(struct {
 		Version  int                       `json:"version"`
 		Revision uint64                    `json:"revision"`
 		Tasks    map[string]*schedule.Task `json:"tasks"`
-	}{1, d.scheduleRevision + 1, d.tasks})
+	}{1, revision, d.tasks})
 	if err != nil {
 		return err
 	}
 	err = d.writeStateFile(filepath.Join(paths.Dir(), "schedules.json"), b)
 	if err == nil || fileReplaced(err) {
-		d.scheduleRevision++
+		d.scheduleRevision, d.scheduleVisible = revision, visible
 	}
 	return err
 }
@@ -731,7 +738,9 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 			}
 		}
 		if changed {
-			touchTask(t, now)
+			if !bytes.Equal(visibleTask(prev), visibleTask(t)) {
+				touchTask(t, now)
+			}
 			if err := d.saveSchedulesLocked(); err != nil {
 				if !fileReplaced(err) {
 					d.tasks[t.ID] = prev
@@ -1140,4 +1149,28 @@ func nextCalendar(t *schedule.Task, now time.Time) time.Time {
 		next = t.Spec.Trigger.NextCalendar(next)
 	}
 	return next
+}
+
+// Cursors are durable recovery bookkeeping, not client-visible changes.
+func visibleTask(t *schedule.Task) []byte {
+	t = schedule.Clone(t)
+	t.Revision = 0
+	t.UpdatedAt = time.Time{}
+	t.AnchorSeq = 0
+	if t.Active != nil {
+		t.Active.AfterSeq = 0
+	}
+	for i := range t.Runs {
+		t.Runs[i].AfterSeq = 0
+	}
+	b, _ := json.Marshal(t)
+	return b
+}
+func visibleSchedules(tasks map[string]*schedule.Task) []byte {
+	out := map[string]json.RawMessage{}
+	for id, t := range tasks {
+		out[id] = visibleTask(t)
+	}
+	b, _ := json.Marshal(out)
+	return b
 }
