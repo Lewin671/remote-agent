@@ -48,6 +48,9 @@ import RAProto
         editing.kind = .daily; editing.end = .date;editing.timezone="Asia/Shanghai"
         editing.until=scheduleDate("2026-10-30T00:15:00Z")!;editing.timezone="America/Los_Angeles"
         #expect(try editing.trigger(now:now).until=="2026-10-30T15:15:00Z")
+        var gap = ScheduleTrigger(type:"at"); gap.at="2027-03-14T02:30:00Z"; gap.timezone="UTC"
+        var missing = ScheduleTiming(trigger:gap,now:now,zone:zone); missing.timezone="America/Los_Angeles"
+        #expect(throws:(any Error).self) { try missing.trigger(now:now) }
         var fresh=ScheduleTiming(now:now);fresh.kind = .interval;fresh.interval=15;fresh.unit=60
         #expect(try fresh.trigger(now:now).delaySeconds==900)
     }
