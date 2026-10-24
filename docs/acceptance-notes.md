@@ -889,3 +889,44 @@ rebase 后核对了两边的验收记录：后端原文全部保留，原有内�
 真实流程在 Chrome 默认窗口完成；另对 390 / 1280 宽的暂停改名和接手列表重截截图，并更新 v49 的亮暗边界与通知示例。截图、任务改名前后 JSON、真实事件和验证摘要保存在本地验收输出，未写入公开仓库。未重跑真手机、跨夏令时或多台真实电脑联测。
 
 最终 `pnpm --dir web typecheck`、`pnpm --dir web test`（87 文件、1155 项）、`pnpm --dir web build`、`go test ./...` 全部通过。本轮没有改 Go、协议或产品版本；测试环境验收结束后清理，没有推送、发版或部署。
+
+## 定时任务：三端整合（2026-10-24）
+
+环境：`wt/scheduled-tasks-integration`，整合起点 `76e21788`；产品版本 0.45.7、协议 11。macOS arm64，Go 1.26.10、Node 22.23.3、pnpm 10.19.0、Xcode 27.0（27A266a）与 Swift 6.4。App 测试只指定已有的 iPhone 18 Pro / iOS 27.0 模拟器，没有新建模拟器或安装真机。本轮复核代码和各端验收报告，并在整合 checkout 跑自动检查；没有再启动三端真实 CLI 界面链路。
+
+各端先前证据在此合并，不能算成本轮重新完成端到端验收：
+
+| 客户端 | 已有操作与证据 | 限制 |
+|---|---|---|
+| 网页 | 见上方「网页第二阶段」与「后端修复后的网页复验」：本地独立 server/daemon/账户、真实 Claude Code，网页创建每日任务并等待自然触发、通知审批、从记录打开任务会话、恢复回复及接手、暂停改名；390/1280 宽与离线缓存已检查 | Chrome 独立无头配置由 Playwright 操作；后续文案截图有示例数据，不作为新的真实调度证据；没有真机或外部 Web Push 送达 |
+| Android | 独立本地环境与 API 36 模拟器、Claude Code 2.1.300 / Haiku：通过 adb input/UIAutomator 操作界面建账户并配对、创建每日任务并自然触发通知、恢复回复/接手、当前对话任务及两次静默轮折叠、暂停/恢复/取消和冷启动离线缓存 | 后续 v49 的 15 项模拟器页面检查使用固定任务/会话数据，另有普通/200% 字号布局单元测试；不是新的真实 CLI 验收。独立开发包未启用 Firebase，没有 FCM 投递或真机锁屏证据 |
+| iOS | 独立本地环境、原有 iPhone 18 Pro / iOS 27.0、Claude Code 2.1.300 / Haiku：创建每日任务并自然触发通知、按 ID 打开记录、恢复回复/接手、创建当前对话任务、立即额外运行和冷启动密文缓存；v49 重拍用真实 CLI 手动运行生成结果 | App 动作由 DEBUG signal/启动参数调用同一产品逻辑，没有直接点按；v49 重拍未再等待自然触发。静默折叠主要由投影/边界/变异测试覆盖，未额外跑两次真实静默自动轮；没有 APNs、真机或 iPad 验收 |
+
+三端已实现独立定时入口、任务管理和运行历史、对话定时条与静默轮折叠、加密离线快照和修订订阅。核对后端 `ef453e06` 及 Android 当前通知路径，初次 Android 报告所列冷启动标题缺口已修复：最终标题由 daemon 按派发来源写入通知事件，Android 使用签名内容，不再按缓存改写。该结论有代码和自动测试支持，不代表 FCM 已实际送达。功能设计归 [architecture §18](architecture.md#18-定时任务)，全部后续验收事项归 [plan.md 的待确认](plan.md#待确认)。
+
+本轮完整检查：
+
+| 命令（未注明目录时从仓库根执行） | 结果 |
+|---|---|
+| `go test ./...` | 通过，退出码 0 |
+| `pnpm --dir web typecheck` | 通过，退出码 0 |
+| `pnpm --dir web test` | 87 个文件、1155 项测试通过，退出码 0 |
+| `pnpm --dir web build` | 通过，退出码 0；已有静态/动态导入同一模块的分块提示 |
+| `cd android && ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` | 通过，退出码 0；core 393 项、app 326 项（修前 324 项），失败/错误/跳过均为 0，debug APK 构建成功 |
+| `cd ios/RemoteAgentCore && swift test` | 541 项、84 个 suite 通过，退出码 0 |
+| `xcodebuild -quiet -disableAutomaticPackageResolution -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -resultBundlePath <独立结果目录>/ios-app.xcresult build test` | 实际以该已有模拟器的 ID 指定同一目标；退出码 0，339 项测试通过（动态参数展开后 377 次执行），0 失败/跳过。xcresult 的 build 状态 succeeded、errorCount=0；quiet 日志出现“command failed with exit code 0”文字，未将它视为编译失败或靠重跑消除 |
+| `python3 scripts/check-schedule-regressions.py --clients` | 修复后完整复查 140 项通过（后端 116、客户端 24），退出码 0；原始测试基线通过后逐项验证断言能捕获变异，结束后源码恢复 |
+| `python3 scripts/public_scan.py web/dist deploy/self-host` | 通过，退出码 0 |
+| `python3 scripts/public_scan.py android/app/build/outputs/apk/debug/app-debug.apk` | 通过，退出码 0；仅检查本次 debug 产物，不代表签名发布产物已检查 |
+| `git ls-files -z \| xargs -0 python3 scripts/public_scan.py` | 原始退出码 1，共 16 条命中，逐项核对后没有私有名单命中：12 条为允许的官方域名，3 条为扫描器及其测试自身的规则字面量，1 条为既有 `CLAUDE.md → AGENTS.md` 符号链接。官方域名在 v49 的命中沿自 v48，其余均在 origin/main 已存在。该脚本按发布包约束检查，不能直接把全源码的退出码当作产物检查通过 |
+| `git diff --check` | 通过 |
+
+首轮 `python3 scripts/check-schedule-regressions.py --clients` 在 139 项通过后退出 1：`r10-05-android-tag` 去掉 tag 中的事件键后，`ScheduledPushIdentityTest` 仍通过。根因是 Android 客户端把事件键加入数字通知 ID，旧用例的两个事件恰有不同哈希，无法发现 tag 丢失。新增两个有行为断言的用例后，进一步复现点击目标被覆盖：不同会话相同 `scheduled:7`，以及同一会话两个合法数字序号的哈希碰撞，均复用了同一个 PendingIntent；Intent 的 extras 不参与身份判断。修前专项 4 项中 2 项失败，分别得到错误的会话与错误的轮次。
+
+这是整合分支 Android 定时通知路径引入的缺陷：通知 tag 已能区分事件，但点击 Intent 只用事件键的数字哈希。修复提交 `a21e9815` 将会话 ID 和完整事件键加入定时点击 Intent 的 action，普通通知行为保留；专项 4 项通过，完整 Android 检查也通过。`--clients --only r10-05-android-tag` 用新增碰撞用例核对原变异确实触发断言，不靠重跑掩盖失败。全量变异复查结果见上表。以上为 Robolectric 系统行为测试，不代表真实 FCM 送达或真机通知点击已验收。
+
+公开检查读取本机实际 deny 名单，未使用空名单或伪造条目；扫描日志只以规则编号报告私有条目。本轮没有打发布包，因此未执行要求完整 Release 文件集合的 `--release TAG DIST` 模式，也未核对正式签名 APK、跨平台压缩包和附件清单。
+
+既往 iOS v49 报告中的 `RetainedIdentityTests.logoutClearsPendingBootstrapAndDoesNotResumeIt()` 的 `.untrusted` 与 `ResumedLivePollingTests.resumedMetadataRestartsPollingWithoutResubscribing()` 的异步断言偶发失败，本轮全量均未复现。两份测试及 `RemoteLive.swift`、`AuthorityBootstrap.swift` 与 `origin/main` 相同，但仅凭此不能确定失败原因；不能据本轮通过声称已定位或修复。未新增真实推送送达、真机界面、iPad、多台真实电脑、实际睡眠/DST 或客户端 Codex 路线的验收证据。
+
+检查日志和 xcresult 保存在本地独立输出目录，不提交原日志、截图、测试账户或配对材料。未推送、打 tag、发版、部署或修改 `version.properties`。
