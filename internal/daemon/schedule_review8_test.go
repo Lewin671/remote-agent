@@ -112,7 +112,7 @@ func TestNotifyUserReadsTranscriptBeforeAdmission(t *testing.T) {
 				events := h.events()
 				notice := events[len(events)-1]
 				n := notice.GetScheduledNotification()
-				if n == nil || n.TaskId != task.ID || n.RunId != task.Active.ID || n.Title != task.Spec.Title || notice.TurnId != "next" || h.s.scheduledNotifications != 1 {
+				if n == nil || n.TaskId != task.ID || n.RunId != task.Active.ID || n.Title != h.s.info().Title || notice.TurnId != "next" || h.s.scheduledNotifications != 1 {
 					t.Fatalf("notification used stale context: %v", notice)
 				}
 				h.d.tickSchedules(time.Now())

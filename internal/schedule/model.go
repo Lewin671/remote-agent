@@ -86,6 +86,9 @@ type ManualRequest struct {
 }
 
 type Run struct {
+	// Dispatch-time source for notification titles; never infer it from Spec.
+	TargetType        string `json:"target_type"`
+	TaskTitle         string `json:"task_title"`
 	StartSeq          uint64 `json:"start_seq"`
 	FollowupsClosed   bool   `json:"followups_closed,omitempty"`
 	Manual            bool   `json:"manual,omitempty"`

@@ -86,7 +86,7 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 			return call(ctx, item.op, in.TaskID, in.ExpectedRevision, nil, "")
 		})
 	}
-	mcp.AddTool(server, &mcp.Tool{Name: "notify_user", Description: "Notify the user of a result worth their attention during this scheduled task turn. Ordinary turn-end notifications are suppressed for scheduled turns. Only available in a bound scheduled turn, at most 3 times per run. text is required (up to 200 characters); title is optional (up to 60, defaults to the task title). Success means the notification was durably recorded for delivery, not that the user has received it."}, func(ctx context.Context, _ *mcp.CallToolRequest, in NotifyInput) (*mcp.CallToolResult, map[string]any, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "notify_user", Description: "Notify the user of a result worth their attention during this scheduled task turn. Ordinary turn-end notifications are suppressed for scheduled turns. Only available in a bound scheduled turn, at most 3 times per run. text is required (up to 200 characters); title is optional (up to 60, defaults to the dispatch-time task name for new_session or the conversation title for resume_session). Success means the notification was durably recorded for delivery, not that the user has received it."}, func(ctx context.Context, _ *mcp.CallToolRequest, in NotifyInput) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "notify_user", "", 0, in, "")
 	})
 	return server

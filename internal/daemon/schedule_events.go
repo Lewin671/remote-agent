@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
+	"github.com/Lewin671/remote-agent/internal/schedule"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -141,15 +142,25 @@ func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, s *session) ([]byte, err
 	if len(q.SpecJson) > 4096 || json.Unmarshal(q.SpecJson, &in) != nil || strings.TrimSpace(in.Text) == "" || !utf8.ValidString(in.Text) || !utf8.ValidString(in.Title) || utf8.RuneCountInString(in.Text) > 200 || utf8.RuneCountInString(in.Title) > 60 {
 		return nil, errors.New("notify_user requires text (1-200 characters) and optional title (up to 60 characters)")
 	}
-	// Snapshot the title outside the session lock, preserving the lock order.
+	// Read the current run's immutable dispatch source in the established
+	// scheduleMu -> mu order. A task can be edited while an old turn follows up.
 	d.scheduleMu.Lock()
-	titles := map[string]string{}
-	for id, t := range d.tasks {
-		titles[id] = t.Spec.Title
-	}
-	d.scheduleMu.Unlock()
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	var source schedule.Run
+	if task := d.tasks[s.scheduledTask]; task != nil {
+		if task.Active != nil && task.Active.ID == s.scheduledRun {
+			source = *task.Active
+		} else {
+			for _, run := range task.Runs {
+				if run.ID == s.scheduledRun {
+					source = run
+					break
+				}
+			}
+		}
+	}
+	d.scheduleMu.Unlock()
 	if !s.running || s.meta.Exited || s.scheduledTask == "" || s.scheduledRun == "" {
 		return nil, errors.New("notify_user is only available during a scheduled task's turn; ordinary turns already notify on completion")
 	}
@@ -157,7 +168,18 @@ func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, s *session) ([]byte, err
 		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("notify_user is limited to 3 notifications per scheduled run"))
 	}
 	if in.Title == "" {
-		in.Title = string([]rune(titles[s.scheduledTask])[:min(60, utf8.RuneCountInString(titles[s.scheduledTask]))])
+		if source.ID != s.scheduledRun || source.SessionID != s.meta.ID {
+			return nil, errors.New("scheduled execution source is unavailable for the notification title")
+		}
+		switch source.TargetType {
+		case "new_session":
+			in.Title = source.TaskTitle
+		case "resume_session":
+			in.Title = s.infoLocked().Title
+		default:
+			return nil, errors.New("scheduled execution has no recorded target type for the notification title")
+		}
+		in.Title = string([]rune(in.Title)[:min(60, utf8.RuneCountInString(in.Title))])
 	}
 	e := &pb.Event{TurnId: s.turnID, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: s.scheduledTask, RunId: s.scheduledRun, Title: in.Title, Text: in.Text}}}
 	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {

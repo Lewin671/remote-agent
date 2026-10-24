@@ -63,6 +63,36 @@ func TestScheduledNotificationEncryptedContent(t *testing.T) {
 	}
 }
 
+func TestScheduledNotificationTitleSurvivesColdDelivery(t *testing.T) {
+	c := &conn{acct: &Account{DeviceID: "machine"}}
+	initializeTestSecurity(t, c)
+	for _, title := range []string{"派发时的任务名", "恢复对话的名称", "Agent explicit title"} {
+		for _, info := range []*pb.Session{nil, {Title: "Later unrelated title"}} {
+			e := &pb.Event{Seq: 8, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: "private-task", RunId: "private-run", Title: title, Text: "Result"}}}
+			// Replay the committed event, as after a daemon restart or push retry.
+			b, err := proto.Marshal(e)
+			if err != nil {
+				t.Fatal(err)
+			}
+			restored := &pb.Event{}
+			if err := proto.Unmarshal(b, restored); err != nil {
+				t.Fatal(err)
+			}
+			req, err := c.notifyRequest(context.Background(), "session", info, pb.NotifyKind_NOTIFY_KIND_SCHEDULED, restored)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := &pb.NotifyContent{}
+			if _, err := openTestSecureMessage(c, nil, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, SessionId: "session", RequestId: "scheduled:8", Sender: c.acct.DeviceID}, got); err != nil {
+				t.Fatal(err)
+			}
+			if got.Title != title || got.Text != "Result" || got.SourceEventSeq != 8 {
+				t.Fatalf("cold notification lost its resolved title: %v", got)
+			}
+		}
+	}
+}
+
 type ownershipBackend struct{ prefixBackend }
 
 func (b *ownershipBackend) SessionInfo(id string) (*pb.Session, error) {

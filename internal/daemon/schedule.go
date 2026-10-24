@@ -814,7 +814,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 						t.Reason = "agent_schedule_interval_below_minimum"
 					}
 				} else {
-					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching"}
+					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title}
 					t.Status = "dispatching"
 					t.Dispatches++
 					if t.Spec.Trigger.Type == "calendar" {
@@ -857,7 +857,7 @@ func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) (bool, b
 	}
 	request := t.ManualRequest
 	t.ManualRequest = nil
-	run := schedule.Run{ID: newID(8), RequestID: request.RequestID, ScheduledAt: request.RequestedAt, StartedAt: now, Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching"}
+	run := schedule.Run{ID: newID(8), RequestID: request.RequestID, ScheduledAt: request.RequestedAt, StartedAt: now, Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title}
 	late := t.Spec.LateSeconds
 	if late == 0 {
 		late = 86400

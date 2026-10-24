@@ -163,6 +163,14 @@ go("r10-05-fcm-event", "internal/server/push.go", 'data["event"] = dedupeKey', '
 
 go("r11-explicit-running-takeover", "internal/daemon/daemon.go", 'errors.Is(err, errRunning) && humanOrigin(origin)', 'false && errors.Is(err, errRunning) && humanOrigin(origin)', "TestExplicitResumeClaimsRejectedImplicitLifetime")
 
+go("notify-title-resume", "internal/daemon/schedule_events.go", 'in.Title = s.infoLocked().Title', 'in.Title = source.TaskTitle', "TestScheduledNotifyTitleUsesExecutionSource")
+go("notify-title-source", "internal/daemon/schedule_events.go", 'switch source.TargetType {', 'switch d.tasks[s.scheduledTask].Spec.Target.Type {', "TestScheduledNotifyTitleUsesExecutionSource")
+go("notify-title-task-name", "internal/daemon/schedule_events.go", 'in.Title = source.TaskTitle', 'in.Title = d.tasks[s.scheduledTask].Spec.Title', "TestScheduledNotifyTitleUsesExecutionSource")
+go("notify-title-explicit", "internal/daemon/schedule_events.go", 'if in.Title == "" {', 'if true {', "TestScheduledNotifyTitleUsesExecutionSource")
+go("notify-title-auto-snapshot", "internal/daemon/schedule.go", 'Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title}', 'Status: "dispatching", TargetType: "", TaskTitle: ""}', "TestScheduledNotifyTitleUsesExecutionSource")
+go("notify-title-manual-snapshot", "internal/daemon/schedule.go", 'Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title}', 'Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: "", TaskTitle: ""}', "TestScheduledNotifyTitleUsesExecutionSource")
+go("notify-title-sealed", "internal/relay/sync.go", 'nc.Title, nc.Text = k.ScheduledNotification.Title, k.ScheduledNotification.Text', 'nc.Title, nc.Text = info.GetTitle(), k.ScheduledNotification.Text', "TestScheduledNotificationTitleSurvivesColdDelivery", "./internal/relay")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

@@ -625,6 +625,8 @@ func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Ses
 	case *pb.Event_SessionState:
 		nc.Text, _ = clip(k.SessionState.Detail, notifyText)
 	case *pb.Event_ScheduledNotification:
+		// The daemon resolved the default from this execution's source when
+		// recording the event. Preserve it for cold clients and later retries.
 		nc.Title, nc.Text = k.ScheduledNotification.Title, k.ScheduledNotification.Text
 		dedupe = fmt.Sprintf("scheduled:%d", e.Seq)
 	case *pb.Event_TurnEnded:

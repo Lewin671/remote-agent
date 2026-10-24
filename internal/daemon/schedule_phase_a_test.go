@@ -100,7 +100,7 @@ func TestScheduledNotifyAndRestart(t *testing.T) {
 	for _, e := range h.events() {
 		if n := e.GetScheduledNotification(); n != nil {
 			notices++
-			if notices == 1 && n.Title != "Check" {
+			if notices == 1 && n.Title != "Check deployment" {
 				t.Fatalf("default title: %v", n)
 			}
 		}

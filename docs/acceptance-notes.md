@@ -768,3 +768,18 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 `python3 scripts/check-schedule-regressions.py --clients` 不带 `--only` 完整执行到结束，退出码 0：104 个 Go 与 24 个网页/Android/iOS 变异，共 128 个全部实际检出，包含本轮新增位点。原测试先通过，变异后要求断言失败，编译失败不算检出；执行后逐项核对结果名与全部定义完全一致，所有源码变异目标均已恢复。
 
 验证环境为隔离 Go harness、本地 Connect handler、伪终端和合成 transcript；没有真实 CLI、真机界面或推送送达验收，三端产品代码未改。
+
+
+### 定时结果通知标题：按执行来源补齐
+
+2026-10-24，只在任务 worktree 提交，协议和产品版本未改，没有推送、发版或部署。标题规则见 [architecture §18](architecture.md#主动通知与客户端发现)，签名推送与冷启动行为见 [§12](architecture.md#12-推送通知)。
+
+`TestScheduledNotifyTitleUsesExecutionSource` 覆盖 new_session/resume_session × 自动/手动 × 活动运行/修改定义后/修改定义后重启，并分别发送缺省标题与 agent 显式标题。运行预留、来源落盘和输入队列受理走实际 daemon 路径，CLI 创建用既有隔离会话模拟；测试先结束执行、把目标类型与任务名称一并改掉，再在原会话无新人工输入的后续轮次通知，验证来源取自该次运行而非新定义。恢复对话使用用户重命名，区别于首条输入推导的自动标题；新开任务名使用多字节字符并超过 60 字，核对按字符截断。原有先于轮询通知与重启计数测试的标题预期按恢复对话规则更新。
+
+`TestScheduledNotificationTitleSurvivesColdDelivery` 重放已持久通知事件，在会话元数据为空或标题已变的情况下封装并实际解密、验签 NotifyContent，确认最终标题和来源事件序号保持不变，冷客户端不用自行推断目标类型。MCP 工具说明同步更新，客户端与 protobuf 字段未改。
+
+`python3 scripts/check-schedule-regressions.py --only notify-title-` 完整检出 7 个定向变异：恢复对话误用任务名、按当前目标选择类型、按当前任务名显示、忽略显式 title、自动/手动派发漏写快照，以及签名内容重新依赖会话元数据。每组原测试先通过、变异后出现断言失败，编译失败不算检出；源码随后恢复。
+
+最终 `go test ./...` 全量通过；`go test -race ./internal/daemon ./internal/relay ./internal/schedule ./internal/schedulemcp` 四个包全包通过。静态核对全部 135 个既有和新增变异目标仍存在；本轮实际执行的是上述 7 个定向变异，没有将静态检查算作完整脚本验收。
+
+使用隔离 Go harness、合成 transcript、本地签名与加密测试；没有真实 CLI、真机冷启动或推送服务送达验收。web、android、ios 目录未修改。
