@@ -45,7 +45,7 @@ func TestScheduleTickPersistsLateCursorWithoutConfirmation(t *testing.T) {
 	seq := h.s.log.LastSeq()
 	h.d.tickSchedules(now.Add(3 * time.Second))
 	task = readTask(t, h.d, task.ID)
-	if task.Runs[0].AfterSeq != seq || task.Revision != revision+1 {
+	if task.Runs[0].AfterSeq != seq || task.Revision != revision {
 		t.Fatalf("late cursor not saved: %+v", task)
 	}
 	h.d.tickSchedules(now.Add(4 * time.Second))

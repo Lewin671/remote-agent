@@ -117,3 +117,23 @@ func TestMCPRunAndResumeRecheckMinimumIntervals(t *testing.T) {
 		}
 	}
 }
+
+func TestHumanInterjectionEndsMCPRestrictionAndFollowupNoticesRemainRecorded(t *testing.T) {
+	h := scopedHarness(t, "ask")
+	task := startScheduledTurn(t, h)
+	endTimed(t, h, pb.TurnOutcome_TURN_OUTCOME_COMPLETED)
+	h.d.tickSchedules(time.Now())
+	h.s.emit(&pb.Event{TurnId: "follow", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
+	if err := notifyTest(t, h, "followup result", ""); err != nil {
+		t.Fatal(err)
+	}
+	h.d.tickSchedules(time.Now())
+	if got := readTask(t, h.d, task.ID).Runs[0]; !got.Notified || got.NotificationText != "followup result" {
+		t.Fatalf("followup notice lost: %+v", got)
+	}
+	h.s.emit(withOrigin(&pb.Event{TurnId: "follow", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "my request"}}}, originLocal))
+	spec := taskSpec(schedule.Trigger{Type: "after_turn", DelaySeconds: 60})
+	if _, err := scopedSchedule(t, h, "create", "", &spec); err != nil {
+		t.Fatalf("human turn still restricted: %v", err)
+	}
+}

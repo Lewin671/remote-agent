@@ -639,16 +639,17 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	for _, t := range d.tasks {
-		if t.Terminal() && t.Active == nil && d.lateRuns[t.ID] == "" {
+		if t.Terminal() && t.Active == nil && d.lateRuns[t.ID] == "" && (len(t.Runs) == 0 || t.Runs[len(t.Runs)-1].Status != "completed" || t.Runs[len(t.Runs)-1].FollowupsClosed) {
 			continue
 		}
 		prev := schedule.Clone(t)
 		changed, dispatch := false, false
 		late, hadLate := d.lateRuns[t.ID]
+		changed = d.watchScheduledFollowups(t)
 		if t.Active != nil {
-			changed = d.watchScheduledRun(t, now)
+			changed = d.watchScheduledRun(t, now) || changed
 		} else {
-			changed = d.reconfirmScheduledRun(t, now)
+			changed = d.reconfirmScheduledRun(t, now) || changed
 		}
 		if t.Status == "waiting_turn" {
 			s, err := d.exact(t.AnchorSession)
@@ -830,7 +831,7 @@ func (d *Daemon) dispatchScheduled(ctx context.Context, snapshot *schedule.Task,
 		d.scheduleMu.Unlock()
 		return
 	}
-	t.Active.SessionID, t.Active.AfterSeq = sessionID, after
+	t.Active.SessionID, t.Active.AfterSeq, t.Active.StartSeq = sessionID, after, after
 	touchTask(t, now)
 	// The session identity must be durable before input is accepted.
 	if err := d.saveSchedulesLocked(); err != nil {
@@ -1163,6 +1164,7 @@ func visibleTask(t *schedule.Task) []byte {
 	}
 	for i := range t.Runs {
 		t.Runs[i].AfterSeq = 0
+		t.Runs[i].FollowupsClosed = false
 	}
 	b, _ := json.Marshal(t)
 	return b
@@ -1195,4 +1197,41 @@ func finalRunSummary(text string) string {
 		runes = runes[:200]
 	}
 	return string(runes)
+}
+
+func (d *Daemon) watchScheduledFollowups(t *schedule.Task) bool {
+	if len(t.Runs) == 0 {
+		return false
+	}
+	run := &t.Runs[len(t.Runs)-1]
+	if run.Status != "completed" || run.FollowupsClosed || run.SessionID == "" {
+		return false
+	}
+	s, err := d.exact(run.SessionID)
+	if err != nil {
+		return false
+	}
+	changed := false
+	_ = scanEventsSince(s.log, run.AfterSeq, func(e *pb.Event) bool {
+		run.AfterSeq = e.Seq
+		changed = true
+		human := humanOrigin(e.Origin) && (e.GetUserMessage() != nil || e.GetInputState() != nil && e.GetInputState().Status == pb.InputStatus_INPUT_STATUS_QUEUED || e.GetSessionState() != nil && e.GetSessionState().Detail == "resumed")
+		if e.GetSessionState() != nil && e.GetSessionState().Status == pb.SessionStatus_SESSION_STATUS_EXITED {
+			run.FollowupsClosed = true
+			return false
+		}
+		if human || e.GetUserMessage() != nil && e.Origin.GetScheduledRunId() != "" && e.Origin.GetScheduledRunId() != run.ID {
+			run.FollowupsClosed = true
+			return false
+		}
+		if n := e.GetScheduledNotification(); n != nil && n.RunId == run.ID {
+			run.Notified, run.NotificationText = true, n.Text
+			run.NotificationCount++
+		}
+		if m := e.GetAgentMessage(); m != nil && m.Phase == "final_answer" {
+			run.FinalSummary = finalRunSummary(m.Text)
+		}
+		return true
+	})
+	return changed
 }

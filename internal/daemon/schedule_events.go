@@ -55,6 +55,9 @@ func (s *session) annotateScheduled(batches []eventlog.Batch) {
 
 func (s *session) observeScheduled(e *pb.Event) {
 	s.scheduledCloseAfter = time.Time{}
+	if humanOrigin(e.Origin) && (e.GetUserMessage() != nil || e.GetInputState() != nil && e.GetInputState().Status == pb.InputStatus_INPUT_STATUS_QUEUED || e.GetSessionState() != nil && e.GetSessionState().Detail == "resumed") {
+		s.scheduledHumanSeq = e.Seq
+	}
 	if in := e.GetInputState(); in != nil && in.Status == pb.InputStatus_INPUT_STATUS_QUEUED && humanOrigin(e.Origin) {
 		s.takeOverLocked()
 	}
@@ -87,18 +90,22 @@ func (s *session) observeScheduled(e *pb.Event) {
 
 // Caller holds scheduleMu, never the inverse of a session lock.
 func (d *Daemon) sessionHasScheduledRunLocked(id string) bool {
-	for _, task := range d.tasks {
-		if task.Active != nil && task.Active.SessionID == id {
-			return true
-		}
-	}
+
 	s, err := d.exact(id)
 	if err != nil {
 		return false
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.scheduledTask != ""
+	if s.scheduledTask != "" {
+		return true
+	}
+	for _, task := range d.tasks {
+		if run := task.Active; run != nil && run.SessionID == id && !run.MessageSeen && s.scheduledHumanSeq <= run.StartSeq {
+			return true
+		}
+	}
+	return false
 }
 
 func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, scope string) ([]byte, error) {

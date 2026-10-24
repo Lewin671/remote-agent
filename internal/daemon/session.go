@@ -80,6 +80,7 @@ type session struct {
 	copied func(line []byte) bool
 
 	// Rebuilt from durable user/end/notification events, independent of task retention.
+	scheduledHumanSeq      uint64
 	scheduledTask          string
 	scheduledRun           string
 	scheduledNotifications int
