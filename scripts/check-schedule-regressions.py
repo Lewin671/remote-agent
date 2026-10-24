@@ -3,9 +3,11 @@
 
 Run from this checkout with no concurrent compiler reading these sources.
 The original bytes are restored even when a check fails. No build error counts
-as a detected mutation. --clients also checks client attention and push visibility.
+as a detected mutation. App checks require macOS/Xcode and an existing iPhone 18 Pro. --clients also checks client attention and push visibility.
 """
 import argparse
+import json
+import tempfile
 import subprocess
 from pathlib import Path
 
@@ -221,6 +223,90 @@ clients.extend([
 
 clients.append(("r10-05-android-tag", "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt", '"scheduled/$session/$eventKey"', '"scheduled/$session"', ["./gradlew",":app:testDebugUnitTest","--tests","*ScheduledPushIdentityTest"], "java.lang.AssertionError"))
 
+# Final client review: assert real task projections, editor requests and signed cache reads.
+_feedback_web = ["pnpm","--dir","web","exec","vitest","run","src/schedules.test.ts","src/views/schedules.test.tsx","src/schedule-remote.test.ts"]
+_feedback_core = ["./gradlew",":core:test","--tests","*SchedulesTest","--tests","*RemoteTest.scheduledSnapshotsKeepSignedRepliesAndVerifyThemAgainOffline"]
+_feedback_app = ["./gradlew",":app:testDebugUnitTest","--tests","*Schedule*Test"]
+_feedback_swift = ["swift","test","--filter","SchedulesTests"]
+_feedback_ios_app = ["xcodebuild","-quiet","-project","ios/RemoteAgent.xcodeproj","-scheme","RemoteAgent","-destination","platform=iOS Simulator,name=iPhone 18 Pro","-derivedDataPath","/tmp/ra-schedule-client-feedback","-only-testing:RemoteAgentTests/ScheduleStoreTests","-only-testing:RemoteAgentTests/ScheduleAlignmentTests","-only-testing:RemoteAgentTests/ScheduleJumpObserverTests","-collect-test-diagnostics","never","test"]
+def feedback(name, file, before, after, command, marker):
+    clients.append(("final-"+name,file,before,after,command,marker))
+def fw(name,file,before,after): feedback("web-"+name,"web/src/"+file,before,after,_feedback_web,"AssertionError")
+def fa(name,file,before,after,ui=False): feedback("android-"+name,"android/"+file,before,after,_feedback_app if ui else _feedback_core,"java.lang.AssertionError|org.junit.ComparisonFailure")
+def fi(name,file,before,after,app=False): feedback("ios-"+name,"ios/"+file,before,after,_feedback_ios_app if app else _feedback_swift,"Expectation failed")
+fw("submitted","schedules.ts",'(k.case === "inputState" && (k.value.paused || [InputStatus.FAILED, InputStatus.UNCONFIRMED, InputStatus.CANCELED, InputStatus.NEEDS_TERMINAL, InputStatus.HELD_BY_CLI].includes(k.value.status)))','(k.case === "inputState")')
+fw("trim","schedules.ts",'.replace(/\\s+/g, " ").trim()', '.replace(/\\s+/g, " ")')
+fw("removed-cache","remote.ts",'this.keepValue("schedules:" + id, undefined);','// removed computer retains its cache')
+fw("resolve-target","remote.ts",'await Promise.allSettled([...new Set(tasks.filter(t => t.spec.target.type === "resume_session").map(t => t.spec.target.session).filter((sid): sid is string => !!sid && !this.sessions.has(sid)))].map(sid => this.ensureSession(sid)));','// target session fetch omitted')
+fw("paused-expiry","schedules.ts",'!["user_paused", "completed_while_paused"].includes(t.reason)','t.reason !== "user_paused"')
+fw("stopped-result","schedules.ts",'if (taskGroup(t) === "需要你看一下") return reasonText(t.reason);','// render the completed run instead of the stop cause')
+fw("manual-guard","views/Schedules.tsx",'|| !!task.manual_request','')
+fw("interval-phase","views/Schedules.tsx",'if (trigger.type === "interval" && seconds === trigger.interval_seconds)','if (false)')
+fw("interval-delay","views/Schedules.tsx",'delay_seconds: seconds,','delay_seconds: 0,')
+fw("dual-limits","views/Schedules.tsx",'if (end !== initialEnd || kind === "at")','if (endChanged || kind === "at")')
+fw("source","views/Schedules.tsx",'sessionId: session?.id,','sessionId: session?.id ?? [...remote.sessions.keys()][0],')
+fw("quiet-summary","views/Schedules.tsx",'g.runs[0].final_summary || "没有通知"','g.runs[0].final_summary || ""')
+fa("deleted","core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",'it.machine !in removed && scheduleVisible(it) &&','it.machine !in removed &&')
+fa("cursor","core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",'(json.long("start_seq").takeIf { it > 0 } ?: json.long("after_seq")) + 1','(json.long("start_seq").takeIf { it > 0 } ?: json.long("after_seq"))')
+fa("cursor-fallback","core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",'json.long("start_seq").takeIf { it > 0 } ?: json.long("after_seq")','json.long("start_seq")')
+fa("phase","core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt",'original?.text("type") == "interval" && original.long("interval_seconds") == seconds','original?.text("type") == "mutated" && original.long("interval_seconds") == seconds')
+fa("dual-limits","core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt",'before != null && end == before.end','before != null && end == before.end && count == before.count')
+fa("signature","core/src/main/kotlin/io/github/lewin671/remoteagent/core/DeviceSecurity.kt",'verifyEd25519(m.ed, originBytes(h, sha256(w.formed.header), commit), w.formed.origin)', 'true')
+fa("paused-expiry","core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",'setOf("", "user_paused", "completed_while_paused")','setOf("", "user_paused")')
+fa("stopped-result","core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",'if (taskGroup(t) == TaskGroup.ATTENTION) return scheduleReason(t.reason)','// render the last successful run instead of the stop cause')
+fa("revision","app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt",'if (spec != null) editBase ?: task else task','task',True)
+fa("spec-snapshot","app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt",'val base = editBase ?: task','val base = task',True)
+fa("delete-back","app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt",'if (op == "cancel") nav.back()','if (false) nav.back()',True)
+fa("run-guard","core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",'&& t.json["manual_request"] !is JsonObject','',False)
+fi("wall-time","RemoteAgentCore/Sources/RACore/ScheduleTiming.swift",'public var timezone: String','public var timezone: String { didSet { var old = Calendar(identifier:.gregorian); old.timeZone = TimeZone(identifier:oldValue) ?? .current; if let d = old.date(from:dateParts) { dateParts = Self.parts(d,zone:calendar.timeZone) }; if let d = old.date(from:untilParts) { untilParts = Self.parts(d,zone:calendar.timeZone) } } }')
+fi("phase","RemoteAgentCore/Sources/RACore/ScheduleTiming.swift",'if let original, original.type == "interval", original.intervalSeconds == seconds { t = original }','if false { t = ScheduleTrigger(type:"interval") }')
+fi("paused-expiry","RemoteAgentCore/Sources/RACore/Schedules.swift",'["", "user_paused", "completed_while_paused"].contains(reason ?? "")','["", "user_paused"].contains(reason ?? "")')
+fi("stopped-result","RemoteAgentCore/Sources/RACore/Schedules.swift",'if group == .attention { return scheduleReason(reason) }','// render the last successful run instead of the stop cause')
+fi("cursor-fallback","RemoteAgentCore/Sources/RACore/Schedules.swift",'(startSeq == 0 ? afterSeq : startSeq) + 1','startSeq + 1')
+fi("quiet-summary","RemoteAgentCore/Sources/RACore/Schedules.swift",'(finalSummary ?? "").isEmpty ? "没有通知" : finalSummary!','finalSummary ?? ""')
+fi("plan","RemoteAgent/UI/Schedules/NewScheduleScreen.swift",'guard creationIssue(session: session, state: state) == nil else { return nil }','// silently map plan to ask',True)
+fi("revision","RemoteAgent/UI/Schedules/ScheduleDetailScreen.swift",'spec: spec, revision: task.revision)','spec: spec, revision: 0)',True)
+fi("serialize","RemoteAgent/UI/Schedules/ScheduleStore.swift",'while let job = jobs[id] { await job.value }','// refresh does not wait for the revision-triggered request',True)
+fi("jump","RemoteAgent/UI/Session/ChatPane.swift",'Input(rowIDs: rowIDs, loaded: loaded, jump: jump)','Input(rowIDs: rowIDs, loaded: false, jump: jump)',True)
+fi("user-pause-banner","RemoteAgent/UI/Schedules/ScheduleEditAccess.swift",'task.group == .attention || task.reason == "completed_while_paused"','task.group == .attention || (task.group == .paused && !(task.reason ?? "").isEmpty)',True)
+
+# Quiet Xcode output names a failed Swift Testing case without its assertion text.
+# Check the structured result, and require the intended case's expectation failure.
+_IOS_ASSERTIONS = {
+    "final-ios-plan": "ScheduleStoreTests/planDefaultsRemainPlanAndCannotCreateAnExecutionTask()",
+    "final-ios-revision": "ScheduleStoreTests/anEditorKeepsItsOpeningRevisionAndCompleteSpecAcrossARefresh()",
+    "final-ios-serialize": "ScheduleStoreTests/concurrentManualAndRevisionReadsShareOneMachineSlot()",
+    "final-ios-jump": "ScheduleJumpObserverTests/retriesWhenLoadingFinishesWithoutChangingAnyRowID()",
+    "final-ios-user-pause-banner": "ScheduleAlignmentTests/onlySystemStopsAndExpiredPausesShowAReasonBanner()",
+}
+
+def run_check(cmd, cwd, name):
+    if cmd[0] != "xcodebuild":
+        return subprocess.run(cmd, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    with tempfile.TemporaryDirectory(prefix="ra-schedule-mutation-") as directory:
+        bundle = Path(directory)/"result.xcresult"
+        run = subprocess.run([cmd[0], "-resultBundlePath", str(bundle), *cmd[1:]],
+                             cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        run.assertion_detected = False
+        if not (bundle/"Info.plist").is_file(): return run
+        report = subprocess.run(["xcrun", "xcresulttool", "get", "test-results", "summary", "--path", str(bundle)],
+                                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        if report.returncode != 0:
+            run.stdout += "\nUnable to read structured test result: " + report.stdout
+            if run.returncode == 0: run.returncode = 1
+            return run
+        summary = json.loads(report.stdout)
+        if run.returncode == 0 and (summary.get("result") != "Passed" or summary.get("totalTestCount", 0) < 1):
+            run.returncode = 1; run.stdout += "\nNo successful selected test execution"
+        failures = summary.get("testFailures", [])
+        expected = _IOS_ASSERTIONS[name]
+        assertion = ("Issue recorded: never happened: loaded history retries jump"
+                     if name == "final-ios-jump" else "Expectation failed")
+        run.assertion_detected = any(f.get("testIdentifierString") == expected and
+                                    assertion in f.get("failureText", "") for f in failures)
+        run.stdout += "\n" + "\n".join(f.get("testIdentifierString", "") + ": " + f.get("failureText", "") for f in failures)
+        return run
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--clients", action="store_true")
@@ -235,10 +321,10 @@ def main():
         if before not in original: raise SystemExit("Missing mutation target: "+name)
         cwd=ROOT
         if file.startswith("android/"):cwd=ROOT/"android"
-        if file.startswith("ios/"):cwd=ROOT/"ios/RemoteAgentCore"
+        if file.startswith("ios/") and cmd[0] == "swift":cwd=ROOT/"ios/RemoteAgentCore"
         baseline=(str(cwd),tuple(cmd))
         if baseline not in baselines:
-            result=subprocess.run(cmd,cwd=cwd,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+            result=run_check(cmd,cwd,name)
             if result.returncode!=0:
                 print(result.stdout[-6000:],flush=True)
                 raise SystemExit("Original test must pass before mutation: "+name)
@@ -246,8 +332,8 @@ def main():
         try:
             # 06 intentionally removes both pre-append and replay projections.
             path.write_text(original.replace(before,after) if name=="06-interjection" else original.replace(before,after,1))
-            run=subprocess.run(cmd,cwd=cwd,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-            if run.returncode==0 or marker not in run.stdout or "[build failed]" in run.stdout or "Compilation error" in run.stdout or "compileTestKotlin FAILED" in run.stdout or "emit-module command failed" in run.stdout:
+            run=run_check(cmd,cwd,name)
+            if run.returncode==0 or not getattr(run, "assertion_detected", any(part in run.stdout for part in marker.split("|"))) or "[build failed]" in run.stdout or "Compilation error" in run.stdout or "compileTestKotlin FAILED" in run.stdout or "emit-module command failed" in run.stdout:
                 print(run.stdout[-6000:],flush=True)
                 raise SystemExit("Mutation was not detected by assertions: "+name)
             print("PASS "+name,flush=True)
