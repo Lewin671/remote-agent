@@ -19,6 +19,9 @@ func (s *session) annotateScheduled(batches []eventlog.Batch) {
 	task, run, count := s.scheduledTask, s.scheduledRun, s.scheduledNotifications
 	for _, batch := range batches {
 		for _, e := range batch.Events {
+			if st := e.GetSessionState(); st != nil && st.Detail == "resumed" && humanOrigin(e.Origin) {
+				task, run, count = "", "", 0
+			}
 			if m := e.GetUserMessage(); m != nil {
 				// Already annotated native records take this path too. A request ID
 				// lookup also covers daemon-generated confirmations of queued input.
@@ -51,18 +54,20 @@ func (s *session) annotateScheduled(batches []eventlog.Batch) {
 }
 
 func (s *session) observeScheduled(e *pb.Event) {
+	if st := e.GetSessionState(); st != nil && st.Detail == "resumed" && humanOrigin(e.Origin) {
+		s.takeOverLocked()
+	}
 	if m := e.GetUserMessage(); m != nil {
 		if humanOrigin(e.Origin) {
 			s.scheduledTask, s.scheduledRun, s.scheduledNotifications = "", "", 0
 		}
 		if e.Origin.GetScheduledTaskId() != "" {
 			s.scheduledTask, s.scheduledRun, s.scheduledNotifications = e.Origin.ScheduledTaskId, e.Origin.ScheduledRunId, 0
-		} else if e.Origin.GetKind() != pb.OriginKind_ORIGIN_KIND_SYSTEM {
+		} else if humanOrigin(e.Origin) {
 			// The committed user event is the durable source of truth. Replaying
 			// it repairs a failed session.json write without issuing another turn.
 			if s.meta.TaskOwned {
-				s.meta.TaskOwned = false
-				s.noteStorageLocked(s.meta.save(s.dir))
+				s.takeOverLocked()
 			}
 		}
 	}
@@ -179,4 +184,10 @@ func (d *Daemon) publishedScheduleRevision() uint64 {
 
 func humanOrigin(origin *pb.Origin) bool {
 	return origin.GetKind() == pb.OriginKind_ORIGIN_KIND_CLIENT || origin.GetKind() == pb.OriginKind_ORIGIN_KIND_LOCAL
+}
+
+func (s *session) takeOverLocked() {
+	s.scheduledTask, s.scheduledRun, s.scheduledNotifications = "", "", 0
+	s.meta.TaskOwned = false
+	s.noteStorageLocked(s.meta.save(s.dir))
 }

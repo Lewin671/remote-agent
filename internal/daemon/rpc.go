@@ -322,7 +322,7 @@ func (h *handler) ResumeSession(ctx context.Context, req *connect.Request[pb.Res
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if _, err := h.d.resumeContext(ctx, s.meta.ID); err != nil {
+	if _, err := h.d.resumeContextBy(ctx, s.meta.ID, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ResumeSessionResponse{Session: s.info()}), nil

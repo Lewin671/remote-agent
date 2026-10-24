@@ -54,3 +54,34 @@ func TestHumanInterjectionMakesScheduledTurnOrdinary(t *testing.T) {
 		h.s.log.Close()
 	}
 }
+
+func TestTakeoverNeedsVerifiedHumanOrExplicitResume(t *testing.T) {
+	for _, kind := range []pb.OriginKind{pb.OriginKind_ORIGIN_KIND_UNSPECIFIED, pb.OriginKind_ORIGIN_KIND_SYSTEM, pb.OriginKind_ORIGIN_KIND_LOCAL, pb.OriginKind_ORIGIN_KIND_CLIENT} {
+		t.Run(kind.String(), func(t *testing.T) {
+			h := scheduleHarness(t)
+			defer h.s.log.Close()
+			task := startScheduledTurn(t, h)
+			h.s.meta.TaskOwned = true
+			h.s.meta.ScheduledTaskID = task.ID
+			h.s.emit(withOrigin(&pb.Event{TurnId: "timed", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "ambiguous input"}}}, &pb.Origin{Kind: kind}))
+			human := kind == pb.OriginKind_ORIGIN_KIND_LOCAL || kind == pb.OriginKind_ORIGIN_KIND_CLIENT
+			if h.s.info().TaskOwned == human {
+				t.Fatal("wrong takeover for origin")
+			}
+		})
+	}
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	task := startScheduledTurn(t, h)
+	h.s.meta.TaskOwned = true
+	h.s.meta.ScheduledTaskID = task.ID
+	// This is the durable event emitted only by a human-origin ResumeSession.
+	h.s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "resumed"}}}, originLocal))
+	if h.s.info().TaskOwned || h.s.scheduledTask != "" {
+		t.Fatal("explicit resume did not take over")
+	}
+	restartSession(t, h)
+	if h.s.info().TaskOwned || h.s.scheduledTask != "" {
+		t.Fatal("resume takeover lost on replay")
+	}
+}

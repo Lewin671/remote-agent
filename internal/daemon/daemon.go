@@ -937,6 +937,9 @@ func (d *Daemon) resume(id string) (*session, error) {
 }
 
 func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error) {
+	return d.resumeContextBy(ctx, id, originSystem)
+}
+func (d *Daemon) resumeContextBy(ctx context.Context, id string, origin *pb.Origin) (*session, error) {
 	s, err := d.exact(id)
 	if err != nil {
 		return nil, err
@@ -1068,9 +1071,9 @@ drain:
 	}
 	s.mu.Unlock()
 	s.noteShellLaunch()
-	commitErr := s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
+	commitErr := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "resumed",
-	}}})
+	}}}, origin))
 	s.start(d.ctx)
 	slog.Info("resumed session", "session", id)
 	if commitErr != nil {
