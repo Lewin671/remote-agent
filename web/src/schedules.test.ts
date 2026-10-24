@@ -4,6 +4,8 @@ import { expect, it } from "vitest";
 import {
   EventSchema,
   TurnOutcome,
+  InputStatus,
+  SessionStatus,
   type Event,
 } from "./gen/remoteagent/v1/event_pb";
 import { derive, timeline } from "./model";
@@ -219,4 +221,139 @@ it("converts local times in the selected zone and rejects DST gaps", () => {
     "夏令时",
   );
   expect(() => zonedISO("2026-10-24T08:00", "bad/zone")).toThrow();
+});
+
+it("keeps late notifications and autonomous replies outside quiet-round folds", () => {
+  const original = rounds();
+  const notification = create(EventSchema, {
+    time: timestampFromMs(Date.parse("2026-10-24T10:03:00Z")),
+    kind: {
+      case: "scheduledNotification",
+      value: { taskId: "task", runId: "run0", text: "迟到的通知不能隐藏" },
+    },
+  });
+  for (const inserted of [
+    notification,
+    create(EventSchema, {
+      kind: { case: "agentMessage", value: { text: "后续自主回复不能隐藏" } },
+    }),
+  ]) {
+    const events = [
+      ...original.slice(0, 3),
+      inserted,
+      ...original.slice(3),
+    ].map((e, i) => ({ ...e, seq: BigInt(i + 1) }));
+    const raw = timeline(events, derive(events));
+    const folded = foldScheduled(raw, events, new Set());
+    expect(folded.some((item) => item.kind === "quiet")).toBe(false);
+    expect(folded).toEqual(raw);
+  }
+  const late = [...original, notification].map((e, i) => ({
+    ...e,
+    seq: BigInt(i + 1),
+  }));
+  expect(
+    foldScheduled(timeline(late, derive(late)), late, new Set()).some(
+      (item) => item.kind === "quiet",
+    ),
+  ).toBe(false);
+  const grouped = rounds().map((e) => {
+    if (e.kind.case === "agentMessage")
+      return create(EventSchema, {
+        seq: e.seq,
+        time: e.time,
+        origin: e.origin,
+        sessionId: e.sessionId,
+        kind: {
+          case: "toolCall",
+          value: {
+            callId: "before-" + e.seq,
+            status: "completed",
+            title: "check",
+          },
+        },
+      });
+    if (e.kind.case === "turnEnded") e.kind.value.durationMs = 0n;
+    return e;
+  });
+  grouped.push(
+    create(EventSchema, {
+      seq: 7n,
+      kind: {
+        case: "toolCall",
+        value: {
+          callId: "follow-up",
+          status: "completed",
+          title: "follow-up must stay visible",
+        },
+      },
+    }),
+  );
+  const groupedRows = timeline(grouped, derive(grouped));
+  expect(groupedRows.some((item) => item.kind === "tools")).toBe(true);
+  expect(foldScheduled(groupedRows, grouped, new Set())).toEqual(groupedRows);
+});
+it("does not fold across oversized-content markers or local date boundaries", async () => {
+  const { skeletonNote } = await import("./skeleton");
+  const oversized = rounds();
+  if (oversized[1].kind.case === "agentMessage")
+    oversized[1].kind.value.text += skeletonNote;
+  expect(
+    foldScheduled(
+      timeline(oversized, derive(oversized)),
+      oversized,
+      new Set(),
+    ).some((item) => item.kind === "quiet"),
+  ).toBe(false);
+  const dates = rounds();
+  for (const e of dates.slice(3))
+    e.time = timestampFromMs(Date.parse("2026-10-25T10:00:00Z"));
+  expect(
+    foldScheduled(timeline(dates, derive(dates)), dates, new Set()).some(
+      (item) => item.kind === "quiet",
+    ),
+  ).toBe(false);
+});
+
+it("still folds quiet rounds across ordinary scheduled queue and idle metadata", () => {
+  const events = rounds()
+    .flatMap((e) => {
+      if (e.kind.case === "userMessage")
+        return [
+          create(EventSchema, {
+            origin: e.origin,
+            kind: {
+              case: "inputState",
+              value: { requestId: "q" + e.seq, status: InputStatus.QUEUED },
+            },
+          }),
+          create(EventSchema, {
+            origin: e.origin,
+            kind: {
+              case: "inputState",
+              value: { requestId: "q" + e.seq, status: InputStatus.SUBMITTED },
+            },
+          }),
+          e,
+        ];
+      if (e.kind.case === "turnEnded")
+        return [
+          e,
+          create(EventSchema, {
+            kind: {
+              case: "sessionState",
+              value: { status: SessionStatus.IDLE },
+            },
+          }),
+        ];
+      return [e];
+    })
+    .map((e, i) => ({ ...e, seq: BigInt(i + 1) }));
+  const folded = foldScheduled(
+    timeline(events, derive(events)),
+    events,
+    new Set(),
+  );
+  expect(folded).toHaveLength(1);
+  expect(folded[0].kind).toBe("quiet");
 });

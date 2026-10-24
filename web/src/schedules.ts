@@ -1,7 +1,13 @@
 // JSON contract owned by internal/schedule. Only encrypted machine commands
 // carry these definitions; the relay never receives task content in plaintext.
 import type { Tone, Item } from "./model";
-import { TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
+import { isSkeleton } from "./skeleton";
+import {
+  InputStatus,
+  SessionStatus,
+  TurnOutcome,
+  type Event,
+} from "./gen/remoteagent/v1/event_pb";
 
 export interface ScheduleTrigger {
   type: "at" | "calendar" | "interval" | "after_turn";
@@ -291,44 +297,105 @@ export type QuietSpan = {
 };
 export function quietSpans(events: Event[]): QuietSpan[] {
   const spans: QuietSpan[] = [];
+  const identity = (task: string, run: string) => task + "/" + run;
+  // Scheduled context can survive a completed turn and notify during a later
+  // autonomous turn. Classify the whole recorded run before hiding any of it.
+  const notifiedRuns = new Set<string>();
+  for (const e of events) {
+    const k = e.kind;
+    if (k.case === "scheduledNotification")
+      notifiedRuns.add(identity(k.value.taskId, k.value.runId));
+    if (k.case === "turnEnded" && k.value.scheduledNotified)
+      notifiedRuns.add(
+        identity(k.value.scheduledTaskId, k.value.scheduledRunId),
+      );
+  }
   let start: Event | undefined;
   let run = "";
+  let task = "";
   let notified = false;
   let safe = true;
   let boundary = true;
+  let lastDay = "";
+  let tailMayContinue = false;
   for (const e of events) {
     const k = e.kind;
+    const oversized = isSkeleton(e);
     if (k.case === "userMessage") {
-      start = e.origin?.scheduledRunId ? e : undefined;
+      tailMayContinue = false;
+      start =
+        e.origin?.scheduledRunId && e.origin.scheduledTaskId ? e : undefined;
       run = e.origin?.scheduledRunId ?? "";
+      task = e.origin?.scheduledTaskId ?? "";
       notified = false;
-      safe = true;
+      safe = !oversized && !!e.time;
       if (!start) boundary = true;
     } else if (start && k.case === "scheduledNotification") notified = true;
     else if (
       start &&
-      [
-        "approvalRequested",
-        "questionAsked",
-        "planProposed",
-        "sessionState",
-        "inputState",
-        "sessionForked",
-      ].includes(k.case ?? "")
+      (oversized ||
+        !k.case ||
+        [
+          "approvalRequested",
+          "questionAsked",
+          "planProposed",
+          "sessionState",
+          "inputState",
+          "sessionForked",
+        ].includes(k.case))
     )
       safe = false;
+    // Visible follow-up content is a fence. Otherwise widening a span to the
+    // next quiet round could swallow an intervening reply, failure or notice.
+    if (
+      !start &&
+      (oversized ||
+        !k.case ||
+        [
+          "scheduledNotification",
+          "agentMessage",
+          "reasoning",
+          "toolCall",
+          "toolStarted",
+          "approvalRequested",
+          "questionAsked",
+          "planProposed",
+          "settingsChanged",
+          "imageGenerated",
+          "sessionForked",
+        ].includes(k.case) ||
+        (k.case === "inputState" &&
+          ![
+            InputStatus.QUEUED,
+            InputStatus.SUBMITTED,
+            InputStatus.HELD_BY_CLI,
+          ].includes(k.value.status)) ||
+        (k.case === "sessionState" && k.value.status === SessionStatus.EXITED))
+    ) {
+      boundary = true;
+      // A grouped tool row can straddle an invisible short turn end. Unfold
+      // the tail as well, so that such a group cannot hide follow-up calls.
+      if (tailMayContinue) {
+        spans.pop();
+        tailMayContinue = false;
+      }
+    }
     if (k.case !== "turnEnded") continue;
     if (
       start &&
       safe &&
       !notified &&
+      !notifiedRuns.has(identity(task, run)) &&
       !k.value.scheduledNotified &&
+      k.value.scheduledTaskId === task &&
       k.value.scheduledRunId === run &&
       k.value.outcome === TurnOutcome.COMPLETED
     ) {
-      const time = clockTime(Number(start.time?.seconds ?? 0n) * 1000);
+      const at = Number(start.time!.seconds) * 1000;
+      const time = clockTime(at);
+      const day = dayKey(at);
       const last = spans.at(-1);
-      if (!boundary && last) {
+      if (!boundary && last && day === lastDay) {
         last.end = e.seq;
         last.times.push(time);
       } else
@@ -338,12 +405,18 @@ export function quietSpans(events: Event[]): QuietSpan[] {
           end: e.seq,
           times: [time],
         });
+      lastDay = day;
       boundary = false;
-    } else boundary = true;
+      tailMayContinue = true;
+    } else {
+      boundary = true;
+      tailMayContinue = false;
+    }
     start = undefined;
   }
   return spans;
 }
+
 export type ScheduledItem =
   Item | { kind: "quiet"; key: string; times: string[]; rows: Item[] };
 export function foldScheduled(
