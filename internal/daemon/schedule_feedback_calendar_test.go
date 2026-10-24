@@ -221,3 +221,56 @@ func TestSkippedManualTrialRestoresAutomaticDispatch(t *testing.T) {
 		t.Fatal("automatic cap bypassed")
 	}
 }
+
+func TestManualTrialFailureBoundaries(t *testing.T) {
+	for _, ending := range []string{"dispatch_failed", "input_cancelled", "unconfirmed", "interrupted", "user_paused"} {
+		t.Run(ending, func(t *testing.T) {
+			h := scheduleHarness(t)
+			defer h.s.log.Close()
+			now := time.Now()
+			due := now.Add(time.Hour)
+			task := createTask(t, h, taskSpec(schedule.Trigger{Type: "calendar", Time: "08:00", Timezone: "UTC"}), "")
+			h.d.tasks[task.ID].NextRunAt = &due
+			if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); err != nil {
+				t.Fatal(err)
+			}
+			if ending == "dispatch_failed" {
+				snapshot := h.d.prepareScheduledDispatches(now.Add(time.Second))[0]
+				h.d.finishScheduledDispatch(context.Background(), snapshot, now, "could_not_start_session", nil)
+			} else {
+				h.d.tickSchedules(now.Add(time.Second))
+				run := readTask(t, h.d, task.ID).Active
+				if ending == "interrupted" {
+					h.s.emit(&pb.Event{TurnId: "timed", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}, &pb.Event{TurnId: "timed", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{RequestId: run.RequestID}}})
+					endTimed(t, h, pb.TurnOutcome_TURN_OUTCOME_ABORTED)
+				} else {
+					h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Paused: true}}})
+					h.d.tickSchedules(now.Add(time.Second))
+					if ending == "user_paused" {
+						if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "pause", TaskId: task.ID}, originLocal); err != nil {
+							t.Fatal(err)
+						}
+					}
+					status := pb.InputStatus_INPUT_STATUS_CANCELED
+					if ending == "unconfirmed" {
+						status = pb.InputStatus_INPUT_STATUS_UNCONFIRMED
+					}
+					h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: status}}})
+				}
+				h.d.tickSchedules(now.Add(time.Second))
+			}
+			got := readTask(t, h.d, task.ID)
+			want := "scheduled"
+			reason := ""
+			if ending == "user_paused" {
+				want, reason = "paused", "user_paused"
+			}
+			if got.Active != nil || got.Status != want || got.Reason != reason || got.NextRunAt == nil || !got.NextRunAt.Equal(due) || len(got.Runs) != 1 {
+				t.Fatalf("manual ending changed automatic plan: %+v", got)
+			}
+			if h.d.lateRuns[task.ID] != "" {
+				t.Fatal("uncertain manual trial can reclaim automatic state")
+			}
+		})
+	}
+}

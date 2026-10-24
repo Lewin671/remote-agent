@@ -952,7 +952,9 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed boo
 				if d.lateRuns == nil {
 					d.lateRuns = map[string]string{}
 				}
-				d.lateRuns[t.ID] = run.ID
+				if !run.Manual {
+					d.lateRuns[t.ID] = run.ID
+				}
 				d.endScheduledRun(t, now, "uncertain", unconfirmedRun)
 				return false
 			case pb.InputStatus_INPUT_STATUS_CANCELED:
@@ -1113,7 +1115,7 @@ func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason
 func (d *Daemon) restoreManualSchedule(t *schedule.Task, now time.Time) {
 	status, reason := t.Status, t.Reason
 	t.NextRunAt = t.AutomaticNextRunAt
-	if status != "paused" && status != "cancelled" {
+	if !(status == "paused" && reason == "user_paused" || status == "cancelled" && reason == "user_cancelled") {
 		status, reason = t.AutomaticStatus, t.AutomaticReason
 	}
 	t.Status, t.Reason = status, reason
