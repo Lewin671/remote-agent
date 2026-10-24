@@ -22,7 +22,9 @@ final class ScheduleDraft {
     }
     func creationIssue(session: SessionView?, state: RemoteState) -> String? {
         guard session == nil, let c = config else { return nil }
-        return (c.mode ?? defaultModeOf(state.machines[c.machineId], agent: c.agent).mode) == .plan ? "计划模式不能创建执行任务，请先选择其他权限" : nil
+        let mode = c.mode ?? defaultModeOf(state.machines[c.machineId], agent: c.agent).mode
+        if mode == nil { return "请选择明确的权限，再创建定时任务。" }
+        return mode == .plan ? "计划模式不能创建执行任务，请先选择其他权限" : nil
     }
     func spec(session: SessionView?, state: RemoteState) -> ScheduleSpec? {
         guard creationIssue(session: session, state: state) == nil else { return nil }

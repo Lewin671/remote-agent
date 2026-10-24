@@ -18,6 +18,13 @@ import UIKit
         return state
     }
     func settle(_ done: () -> Bool) async { for _ in 0..<100 where !done() { try? await Task.sleep(for: .milliseconds(10)) } }
+    @Test func creationResolvesKnownDefaultsAndRequiresAnExplicitChoiceWhenUnknown() {
+        let draft=ScheduleDraft();draft.message="检查";draft.config=NewConfig(machineId:"m",cwd:"/example",agent:.claude)
+        var known=state();known.machines["m"]?.meta?.agents=[PBAgentInfo.with { $0.agent = .claude;$0.defaultMode = .auto;$0.defaultModeSource = .cliConfig }]
+        #expect(draft.spec(session:nil,state:known)?.target.mode == "auto")
+        #expect(draft.spec(session:nil,state:state()) == nil)
+        #expect(draft.creationIssue(session:nil,state:state()) == "请选择明确的权限，再创建定时任务。")
+    }
     @Test func targetResolutionDoesNotHoldTheListOrRefreshSlot() async {
         let store=ScheduleStore();var reads=0;var hold:CheckedContinuation<Void,Never>?;var finished=false
         var task=task();task.spec.target=ScheduleTarget(type:"resume_session");task.spec.target.session="unloaded"
@@ -114,7 +121,7 @@ import UIKit
     }
     @Test func creationKeyStaysStableForRetriesAndChangesWithTheDefinition() throws {
         let draft = ScheduleDraft(); draft.message = "检查"
-        draft.config = NewConfig(machineId: "m", cwd: "/example")
+        draft.config = NewConfig(machineId: "m", cwd: "/example", mode: .ask)
         var spec = try #require(draft.spec(session: nil, state: state()))
         let first = draft.key(for: spec)
         #expect(draft.key(for: spec) == first)
