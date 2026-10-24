@@ -176,3 +176,40 @@ func TestOrdinaryHumanReplayDoesNotWriteMetadata(t *testing.T) {
 		t.Fatal("ordinary context was not cleared")
 	}
 }
+
+func TestMCPRestrictionUsesCurrentTurnNotQueue(t *testing.T) {
+	for _, op := range []string{"create", "update", "run"} {
+		for _, scheduled := range []bool{false, true} {
+			t.Run(op+map[bool]string{false: "human", true: "scheduled"}[scheduled], func(t *testing.T) {
+				h := scopedHarness(t, "ask")
+				spec := taskSpec(schedule.Trigger{Type: "after_turn", DelaySeconds: 60})
+				raw, err := scopedSchedule(t, h, "create", "", &spec)
+				if err != nil {
+					t.Fatal(err)
+				}
+				own := decodeScopedTask(t, raw)
+				if scheduled {
+					startScheduledTurn(t, h)
+					if _, err = h.s.enqueueMode("later human", "later-human", nil, originLocal, pb.SendMode_SEND_MODE_QUEUE); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					queued := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
+					h.s.emit(withOrigin(&pb.Event{TurnId: "human", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "current human"}}}, originLocal))
+					h.s.emit(&pb.Event{TurnId: "human", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
+					h.d.tickSchedules(time.Now().Add(time.Second))
+					if readTask(t, h.d, queued.ID).Active == nil {
+						t.Fatal("no scheduled queue")
+					}
+				}
+				_, err = scopedSchedule(t, h, op, own.ID, &spec)
+				if scheduled && connect.CodeOf(err) != connect.CodePermissionDenied {
+					t.Fatalf("queued human released restriction: %v", err)
+				}
+				if !scheduled && err != nil {
+					t.Fatalf("queued resume restricted current human: %v", err)
+				}
+			})
+		}
+	}
+}

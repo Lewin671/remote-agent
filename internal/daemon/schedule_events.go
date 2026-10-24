@@ -55,11 +55,11 @@ func (s *session) annotateScheduled(batches []eventlog.Batch) {
 
 func (s *session) observeScheduled(e *pb.Event) {
 	s.scheduledCloseAfter = time.Time{}
-	if humanOrigin(e.Origin) && (e.GetUserMessage() != nil || e.GetInputState() != nil && e.GetInputState().Status == pb.InputStatus_INPUT_STATUS_QUEUED || e.GetSessionState() != nil && e.GetSessionState().Detail == "resumed") {
+	if humanOrigin(e.Origin) && (e.GetUserMessage() != nil || e.GetSessionState() != nil && e.GetSessionState().Detail == "resumed") {
 		s.scheduledHumanSeq = e.Seq
 	}
 	if in := e.GetInputState(); in != nil && in.Status == pb.InputStatus_INPUT_STATUS_QUEUED && humanOrigin(e.Origin) {
-		s.takeOverLocked()
+		s.claimOwnershipLocked()
 	}
 	if st := e.GetSessionState(); st != nil && st.Detail == "resumed" && humanOrigin(e.Origin) {
 		s.takeOverLocked()
@@ -101,7 +101,7 @@ func (d *Daemon) sessionHasScheduledRunLocked(id string) bool {
 		return true
 	}
 	for _, task := range d.tasks {
-		if run := task.Active; run != nil && run.SessionID == id && !run.MessageSeen && s.scheduledHumanSeq <= run.StartSeq {
+		if run := task.Active; task.Spec.Target.Type == "new_session" && run != nil && run.SessionID == id && !run.MessageSeen && s.scheduledHumanSeq <= run.StartSeq {
 			return true
 		}
 	}
@@ -206,6 +206,10 @@ func humanOrigin(origin *pb.Origin) bool {
 
 func (s *session) takeOverLocked() {
 	s.scheduledTask, s.scheduledRun, s.scheduledNotifications = "", "", 0
+	s.claimOwnershipLocked()
+}
+
+func (s *session) claimOwnershipLocked() {
 	if s.meta.TaskOwned {
 		s.meta.TaskOwned = false
 		s.noteStorageLocked(s.meta.save(s.dir))

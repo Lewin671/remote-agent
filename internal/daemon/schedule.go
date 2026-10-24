@@ -1238,7 +1238,7 @@ func (d *Daemon) watchScheduledFollowups(t *schedule.Task) bool {
 	_ = scanEventsSince(s.log, run.AfterSeq, func(e *pb.Event) bool {
 		run.AfterSeq = e.Seq
 		changed = true
-		human := humanOrigin(e.Origin) && (e.GetUserMessage() != nil || e.GetInputState() != nil && e.GetInputState().Status == pb.InputStatus_INPUT_STATUS_QUEUED || e.GetSessionState() != nil && e.GetSessionState().Detail == "resumed")
+		human := humanOrigin(e.Origin) && (e.GetUserMessage() != nil || e.GetSessionState() != nil && e.GetSessionState().Detail == "resumed")
 		if e.GetSessionState() != nil && e.GetSessionState().Status == pb.SessionStatus_SESSION_STATUS_EXITED {
 			run.FollowupsClosed = true
 			return false
