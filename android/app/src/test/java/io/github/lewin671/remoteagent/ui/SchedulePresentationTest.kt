@@ -25,6 +25,7 @@ class SchedulePresentationTest {
         val config=NewConfig("own","/example",Agent.AGENT_CLAUDE)
         val concrete=resolvedScheduleConfig(config.copy(mode=null),state)
         assertEquals("auto",scheduleTarget(concrete).text("mode"))
+        assertNull(resolvedScheduleConfig(config.copy(mode=null),RemoteState()).mode)
         assertEquals("full",scheduleTarget(resolvedScheduleConfig(config.copy(mode=Mode.FULL),state)).text("mode"))
     }
     @Test fun editingScopesDefaultsAndSessionsToTheOwningComputer() {

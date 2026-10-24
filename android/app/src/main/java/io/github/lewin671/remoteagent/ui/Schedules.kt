@@ -313,6 +313,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
             } else Hint("消息等当前这一轮结束后再发，不会打断正在做的事。")
             val plan = schedulePlanBlocked(current,cfg,state)
             if (plan) Hint("计划模式不能创建执行任务，请先选择其他权限")
+            if (!current && cfg != null && resolvedScheduleConfig(cfg, state).mode == null) Hint("请选择明确的权限，再创建定时任务。")
             val ready = !plan && (current || cfg?.let { resolvedScheduleConfig(it, state).mode != null } == true) && writable && !busy && (message.isNotBlank() || frozen != null) && (current || cfg != null && (config != null || start?.settled == true))
             Btn(if (busy) "创建中…" else if (frozen != null) "重试创建" else "创建", {
                 if (!ready) return@Btn
