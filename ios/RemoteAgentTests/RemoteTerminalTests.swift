@@ -10,6 +10,15 @@ import Testing
 /// screen (Android has no test of this).
 @MainActor
 @Suite struct RemoteTerminalTests {
+    // These tests observe frames at sealing, not network delivery. A real
+    // socket to a refused port stops TermConn after its first send and makes
+    // every later frame depend on that asynchronous connection failure.
+    private struct AcceptingSocket: TerminalSocket {
+        func send(_ data: Data, done: @escaping @Sendable (Error?) -> Void) { done(nil) }
+        func cancel() {}
+        func close() {}
+    }
+
     /// The streams asked for, each with the listener it was given, and what was sent on those that opened.
     private final class Streams: @unchecked Sendable {
         private let lock = NSLock()
@@ -33,13 +42,10 @@ import Testing
 
         func conn(_ i: Int) -> TermConn? { lock.withLock { answered[i] } }
 
-        /// The opening command of stream `i` answers. Its socket goes nowhere; what is sent is kept as it is sealed.
+        /// The opening command of stream `i` answers; frames are accepted in memory and kept as sealed.
         func answer(_ i: Int) {
-            let socket = Socket(
-                http: HTTP(), url: URL(string: "ws://127.0.0.1:1/v1/term")!, hello: Data()
-            ) { _ in }
             let conn = TermConn(
-                socket: socket,
+                socket: AcceptingSocket(),
                 seal: { [self] frame, _, _ in
                     lock.withLock { typed.append(frame) }
                     return Data()
