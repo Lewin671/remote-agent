@@ -1006,9 +1006,9 @@ input.field { margin: 0; }
 .schedule-field { width: 100%; flex-wrap: wrap; gap: 8px; }
 .schedule-field > span:first-child { white-space: nowrap; }
 .schedule-field .v { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-left: auto; min-width: 0; overflow-wrap: anywhere; text-align: right; }
-.schedule-field .mini-seg { display: flex; flex-wrap: wrap; gap: 4px; }
-.schedule-field .mini-seg button { min-height: 44px; padding: 4px 8px; border-radius: var(--r-sm); }
-.schedule-field .mini-seg .on { color: var(--blue); background: var(--blue-soft); }
+.schedule-field .mini-seg { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px; border-radius: var(--r-sm); background: var(--soft); }
+.schedule-field .mini-seg button { min-height: 44px; padding: 4px 8px; border-radius: var(--r-sm); color: var(--muted); }
+.schedule-field .mini-seg .on { color: var(--fg); background: var(--card); }
 .schedule-prompt { display: block; padding: 8px 16px 16px; font-size: 13px; color: var(--muted); }
 .schedule-prompt textarea { display: block; width: 100%; resize: vertical; min-height: 120px; border: none; background: transparent; color: var(--fg); font-size: 15px; padding: 12px 0 0; line-height: 1.6; }
 .schedule-inputs { padding: 8px 16px; }
@@ -1024,7 +1024,7 @@ input.field { margin: 0; }
 .schedule-run > span { min-width: 0; flex: 1; overflow-wrap: anywhere; }
 .schedule-run small { display: block; font-size: 12px; color: var(--muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .schedule-run > .ic { flex: none; color: var(--muted); }
-.schedule-message { font-size: 13px; color: var(--muted); padding: 8px 16px 16px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.schedule-message { font-size: 15px; color: var(--fg); padding: 8px 16px 16px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .schedule-actions .row { width: 100%; min-height: 44px; }
 .schedule-strip { display: flex; align-items: center; gap: 8px; margin: 0 16px; min-height: 44px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); flex: none; }
 .schedule-strip > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

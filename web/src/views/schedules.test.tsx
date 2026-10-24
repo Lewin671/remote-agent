@@ -685,3 +685,9 @@ it("derives an empty quiet summary and pending-only run guard from the task",asy
   const r=remote([t]);await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
   expect(host.textContent).toContain("：没有通知");expect(button("立即运行一次")?.disabled).toBe(true);
 });
+
+it("uses the shared new-task explanation in the actual creation page", async () => {
+  const r = remote([]);
+  await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
+  expect(host.querySelector(".manage-hint")?.textContent).toBe("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。");
+});

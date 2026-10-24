@@ -714,7 +714,7 @@ export function ScheduleDetail({
         <p className="manage-hint">
           {target.type === "new_session"
             ? "每次新开一个对话，归在这个任务下面。"
-            : "消息发到当前对话，等待当前轮结束。"}
+            : "消息发到当前对话，等待当前轮结束。"}{" "}
           {task.source === "agent" ? "Agent 在对话里创建" : "你创建"} ·{" "}
           {dateTime(task.created_at, now)}
         </p>
@@ -1442,7 +1442,7 @@ function ScheduleCreateConfig({
         {session
           ? "消息会发到当前对话，等待正在运行的一轮结束。"
           : "每次运行新开一个对话，归在这个任务下面，不进会话列表。"}
-        Agent 有值得告诉你的结果时才通知你。
+        Agent 觉得值得说的时候才通知你。
       </p>
       <div className="pad">
         <button
