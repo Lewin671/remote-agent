@@ -37,7 +37,7 @@ class SchedulePresentationTest {
         assertTrue(schedulePlanBlocked(false,config,RemoteState()))
         assertFalse(schedulePlanBlocked(true,config,RemoteState()))
         assertFalse(schedulePlanBlocked(false,config.copy(mode=Mode.AUTO),RemoteState()))
-        val meta = MachineMeta.newBuilder().addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setDefaultMode(ApprovalMode.APPROVAL_MODE_PLAN)).build()
+        val meta = MachineMeta.newBuilder().addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setDefaultMode(ApprovalMode.APPROVAL_MODE_PLAN).setDefaultModeSource(DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG)).build()
         val state = RemoteState(machines=mapOf("m" to MachineView("m",true,0,meta)))
         assertTrue(schedulePlanBlocked(false,config.copy(mode=null),state))
         assertEquals(Mode.PLAN,config.mode)
