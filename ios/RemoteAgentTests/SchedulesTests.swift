@@ -18,6 +18,16 @@ import UIKit
         return state
     }
     func settle(_ done: () -> Bool) async { for _ in 0..<100 where !done() { try? await Task.sleep(for: .milliseconds(10)) } }
+    @Test func targetResolutionDoesNotHoldTheListOrRefreshSlot() async {
+        let store=ScheduleStore();var reads=0;var hold:CheckedContinuation<Void,Never>?;var finished=false
+        var task=task();task.spec.target=ScheduleTarget(type:"resume_session");task.spec.target.session="unloaded"
+        store.configure(.init(cached:{_ in nil},list:{_ in reads += 1;return [task]},resolve:{_ in if hold == nil { await withCheckedContinuation { hold=$0 } }}))
+        store.reconcile(state());await eventually("target resolution entered") { hold != nil }
+        let refresh=Task { await store.refresh("m");finished=true }
+        await eventually("target does not block refresh") { finished }
+        #expect(finished && reads == 2 && store.loading.isEmpty)
+        hold?.resume();await refresh.value
+    }
     @Test func revisionChangesAndReconnectionsReadButUnrelatedStateDoesNotPoll() async {
         let store = ScheduleStore(); var reads = 0
         store.configure(.init(cached: { _ in nil }, list: { _ in reads += 1; return [self.task()] }))

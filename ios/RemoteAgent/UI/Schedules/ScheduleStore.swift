@@ -20,6 +20,8 @@ final class ScheduleStore {
     @ObservationIgnored private var calls: Calls?
     @ObservationIgnored private var jobs: [String: Task<Void, Never>] = [:]
 
+    @ObservationIgnored private var resolutions: [String: [String: Task<Void, Never>]] = [:]
+
     func follow(_ remote: Remote) async {
         if calls == nil { calls = Calls(cached: { await remote.cachedSchedules($0) }, list: { try await remote.listSchedules($0) }, resolve: { _ = try? await remote.fetchSession($0) }) }
         for await state in remote.state.updates() {
@@ -28,6 +30,7 @@ final class ScheduleStore {
         }
         for job in jobs.values { job.cancel() }
         jobs.removeAll()
+        for machine in resolutions.values { for job in machine.values { job.cancel() } }; resolutions.removeAll()
     }
     func configure(_ calls: Calls) { self.calls = calls }
     func online(_ id: String) -> Bool {
@@ -40,6 +43,7 @@ final class ScheduleStore {
         latest = state
         let supported = Set(state.machines.values.filter { $0.meta?.capabilities.scheduledTasks == true && protocolMismatch($0) == nil }.map(\.id))
         for id in revisions.keys where !supported.contains(id) { revisions[id] = nil; restored.remove(id) }
+        for id in resolutions.keys where !supported.contains(id) { for job in resolutions[id]!.values { job.cancel() }; resolutions[id] = nil }
         tasks.removeAll { !supported.contains($0.machineID) }
         for id in errors.keys where !supported.contains(id) { errors[id] = nil }
         for id in jobs.keys where !supported.contains(id) { jobs[id]?.cancel(); jobs[id] = nil; readIDs[id] = nil; loading.remove(id) }
@@ -73,7 +77,13 @@ final class ScheduleStore {
                 let list = try await calls.list(id)
                 guard !Task.isCancelled else { return }
                 replace(id, list); revisions[id] = revision; errors[id] = nil
-                for sid in Set(list.compactMap { $0.spec.target.session }) where latest.sessions[sid] == nil { await calls.resolve(sid) }
+                for sid in Set(list.compactMap { $0.spec.target.session }) where latest.sessions[sid]?.info == nil && resolutions[id]?[sid] == nil {
+                    resolutions[id, default: [:]][sid] = Task {
+                        await calls.resolve(sid)
+                        guard !Task.isCancelled else { return }
+                        resolutions[id]?[sid] = nil
+                    }
+                }
             } catch {
                 guard !Task.isCancelled else { return }
                 errors[id] = errorText(error); revisions[id] = revision
