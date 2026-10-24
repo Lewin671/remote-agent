@@ -52,6 +52,7 @@ type Target struct {
 // Task is persisted by the daemon. Pausing/canceling stops future dispatches,
 // not an execution already handed to a session's input queue.
 type Task struct {
+	IntervalPhase    *time.Time     `json:"interval_phase,omitempty"`
 	ManualRequest    *ManualRequest `json:"manual_request,omitempty"`
 	LastCalendarDate string         `json:"last_calendar_date,omitempty"`
 	ID               string         `json:"id"`
@@ -136,6 +137,7 @@ func Clone(t *Task) *Task {
 	out.Spec.Trigger.Until = cloneTime(t.Spec.Trigger.Until)
 	out.Spec.Trigger.Weekdays = slices.Clone(t.Spec.Trigger.Weekdays)
 	out.NextRunAt = cloneTime(t.NextRunAt)
+	out.IntervalPhase = cloneTime(t.IntervalPhase)
 	if t.ManualRequest != nil {
 		request := *t.ManualRequest
 		out.ManualRequest = &request

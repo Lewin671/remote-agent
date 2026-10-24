@@ -269,6 +269,12 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		if err != nil {
 			return nil, err
 		}
+		if !sameIntervalTiming(t.Spec.Trigger, spec.Trigger) {
+			t.IntervalPhase = nil
+		} else if t.Spec.Trigger.Type == "interval" && t.IntervalPhase == nil {
+			phase := intervalPhase(t)
+			t.IntervalPhase = &phase
+		}
 		t.Spec = spec
 		if q.SessionId != "" {
 			t.SourceSession = q.SessionId
@@ -282,6 +288,11 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		if err := d.prepareSchedule(ctx, t, now); err != nil {
 			d.tasks[t.ID] = prev
 			return nil, err
+		}
+		if t.Spec.Trigger.Type == "interval" {
+			at := nextInterval(t, now)
+			t.NextRunAt = &at
+			d.expireSchedule(t, now)
 		}
 	case "pause":
 		if t.Status == "cancelled" {
@@ -520,6 +531,9 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 	t.Reason = ""
 	t.NextRunAt = nil
 	t.ManualRequest = nil
+	if tr.Type != "interval" {
+		t.IntervalPhase = nil
+	}
 	switch tr.Type {
 	case "calendar":
 		at := nextCalendar(t, now)
@@ -539,9 +553,10 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 		if tr.At != nil {
 			at = tr.At.UTC()
 		}
-		// Persist the initial phase when a definition is prepared, including
-		// an omitted first occurrence computed from its initial delay.
-		tr.At = &at
+		if t.IntervalPhase == nil {
+			t.IntervalPhase = &at
+		}
+		at = *t.IntervalPhase
 		t.NextRunAt = &at
 		t.Status = "scheduled"
 	case "after_turn":
@@ -715,7 +730,9 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 					t.NextRunAt = &latest
 				}
 			}
-			if now.Sub(*t.NextRunAt) > time.Duration(late)*time.Second {
+			if last := lastAutomaticRun(t); last != nil && last.ScheduledAt.Equal(*t.NextRunAt) {
+				d.nextSchedule(t, now)
+			} else if now.Sub(*t.NextRunAt) > time.Duration(late)*time.Second {
 				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired"}
 				t.Runs = appendRun(t.Runs, run)
 				d.nextSchedule(t, now)
@@ -1164,32 +1181,54 @@ func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
 // Preserve an unconsumed future cursor. Otherwise round up on the initial
 // phase, ignoring manual results, and never repeat a consumed occurrence.
 func nextInterval(t *schedule.Task, now time.Time) time.Time {
-	if t.NextRunAt != nil && t.NextRunAt.After(now) {
+	last := lastAutomaticRun(t)
+	if t.NextRunAt != nil && t.NextRunAt.After(now) && (last == nil || t.NextRunAt.After(last.ScheduledAt)) {
 		return *t.NextRunAt
 	}
-	tr := t.Spec.Trigger
-	next := t.CreatedAt.Add(time.Duration(tr.DelaySeconds) * time.Second)
-	if tr.At != nil {
-		next = *tr.At
+	threshold := now
+	if last != nil && !threshold.After(last.ScheduledAt) {
+		threshold = last.ScheduledAt.Add(time.Nanosecond)
 	}
-	interval := time.Duration(tr.IntervalSeconds) * time.Second
-	if next.Before(now) {
-		next = next.Add(now.Sub(next) / interval * interval)
-		if next.Before(now) {
+	next := intervalPhase(t)
+	interval := time.Duration(t.Spec.Trigger.IntervalSeconds) * time.Second
+	if next.Before(threshold) {
+		next = next.Add(threshold.Sub(next) / interval * interval)
+		if next.Before(threshold) {
 			next = next.Add(interval)
 		}
 	}
+	return next
+}
+
+func intervalPhase(t *schedule.Task) time.Time {
+	if t.IntervalPhase != nil {
+		return *t.IntervalPhase
+	}
+	if t.Spec.Trigger.At != nil {
+		return *t.Spec.Trigger.At
+	}
+	return t.CreatedAt.Add(time.Duration(t.Spec.Trigger.DelaySeconds) * time.Second)
+}
+
+func sameIntervalTiming(a, b schedule.Trigger) bool {
+	if a.Type != "interval" || b.Type != "interval" || a.IntervalSeconds != b.IntervalSeconds || a.DelaySeconds != b.DelaySeconds {
+		return false
+	}
+	if a.At == nil || b.At == nil {
+		return a.At == nil && b.At == nil
+	}
+	return a.At.Equal(*b.At)
+}
+
+func lastAutomaticRun(t *schedule.Task) *schedule.Run {
 	for i := len(t.Runs) - 1; i >= 0; i-- {
-		run := t.Runs[i]
+		run := &t.Runs[i]
 		if run.Manual || run.Status == "skipped" {
 			continue
 		}
-		if !next.After(run.ScheduledAt) {
-			next = run.ScheduledAt.Add(interval)
-		}
-		break
+		return run
 	}
-	return next
+	return nil
 }
 
 // expireSchedule also bounds a future cursor. Active executions finish normally.
@@ -1229,6 +1268,7 @@ func visibleTask(t *schedule.Task) []byte {
 	t.Revision = 0
 	t.UpdatedAt = time.Time{}
 	t.AnchorSeq = 0
+	t.IntervalPhase = nil
 	if t.Active != nil {
 		t.Active.AfterSeq = 0
 	}

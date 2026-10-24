@@ -62,7 +62,7 @@ func TestIntervalInitialDelayPhaseSurvivesEditAndRestart(t *testing.T) {
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
 	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "interval", IntervalSeconds: 86400, DelaySeconds: 3600}), "")
-	if task.Spec.Trigger.At == nil || !task.Spec.Trigger.At.Equal(task.CreatedAt.Add(time.Hour)) {
+	if task.Spec.Trigger.At != nil || task.IntervalPhase == nil || !task.IntervalPhase.Equal(task.CreatedAt.Add(time.Hour)) {
 		t.Fatal("initial delay was not persisted as phase")
 	}
 	due := *task.NextRunAt
@@ -78,6 +78,7 @@ func TestIntervalInitialDelayPhaseSurvivesEditAndRestart(t *testing.T) {
 	// phase from that edit, instead of the task's older creation time.
 	state := h.d.tasks[task.ID]
 	state.Spec.Trigger.At = nil
+	state.IntervalPhase = nil
 	edited := time.Now().Add(2 * time.Hour)
 	if err := h.d.prepareSchedule(t.Context(), state, edited); err != nil {
 		t.Fatal(err)
