@@ -44,7 +44,7 @@ struct ScheduleDetailScreen: View {
                 }
             }
         }
-        .navBar(task?.spec.title ?? "任务详情", subtitle: task.map { ($0.spec.target.type == "new_session" ? "新开对话" : "当前对话") + " · " + $0.stateText(online: store.online(machine)) })
+        .navBar(task?.spec.title ?? "任务详情", subtitle: task.map { $0.stateText(online: store.online(machine)) })
         .kitSheet(isPresented: $timing, size: .large) {
             if let task = editor.task {
                 ScheduleTimingSheet(trigger: task.spec.trigger, onSave: { t in var spec = task.spec; spec.trigger = t; update(task, spec: spec) }, onClose: { timing = false })
@@ -124,8 +124,8 @@ struct ScheduleDetailScreen: View {
                 GRow("消息", value: "编辑", chevron: mutable, enabled: mutable, onTap: mutable ? { editor.open(task); message = true } : nil)
                 Text(task.spec.message).type(T.body, Theme.fg).frame(maxWidth: .infinity, alignment: .leading).padding(14).textSelection(.enabled)
             }.padding(.top, 16)
-            Hint((task.spec.target.type == "new_session" ? "每次新开一个对话" : "发到当前对话") + " · " + task.creator + (task.createdAt.isEmpty ? "" : " · " + (scheduleDate(task.createdAt).map { scheduleMoment($0) } ?? ""))).padding(.horizontal, 16)
-            GroupLabel("运行记录").padding(.top, 16)
+            Hint((task.spec.target.type == "new_session" ? "每次新开一个对话，归在这个任务下面。" : "消息发到当前对话，等待当前轮结束。") + " " + task.creator + (task.createdAt.isEmpty ? "" : " · " + (scheduleDate(task.createdAt).map { scheduleMoment($0) } ?? ""))).padding(.horizontal, 16)
+            GroupLabel("运行记录", count: task.history.count).padding(.top, 16)
             history(task)
             Hint("“通知了你”表示已请求通知，不保证送达。记录保留最近 100 次，已开的对话仍可查看。").padding(.horizontal, 16).padding(.bottom, 16)
             if task.group == .attention {

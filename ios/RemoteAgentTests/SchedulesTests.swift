@@ -203,6 +203,10 @@ import UIKit
                 #expect(control.numberOfSegments == 2)
                 #expect(control.titleForSegment(at: 0) == "Codex" && control.titleForSegment(at: 1) == "Claude Code")
                 #expect(control.selectedSegmentIndex == 1)
+                let normal = control.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor
+                let selected = control.titleTextAttributes(for: .selected)?[.foregroundColor] as? UIColor
+                #expect(normal?.resolvedColor(with: control.traitCollection) == UIColor(Theme.muted).resolvedColor(with: control.traitCollection))
+                #expect(selected?.resolvedColor(with: control.traitCollection) == UIColor(Theme.fg).resolvedColor(with: control.traitCollection))
                 control.selectedSegmentIndex = 0; control.sendActions(for: .valueChanged)
                 for _ in 0..<20 where draft.config?.agent != .codex { try await Task.sleep(for: .milliseconds(10)) }
                 #expect(draft.config?.agent == .codex && draft.config?.model == "")

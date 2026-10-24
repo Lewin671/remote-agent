@@ -38,11 +38,13 @@ struct SectionLabel: View {
 
 /// A label above a group on a grey page.
 struct GroupLabel: View {
+    private let count: Int?
     private let text: String
     private let action: String?
     private let onAction: (() -> Void)?
 
-    init(_ text: String, action: String? = nil, onAction: (() -> Void)? = nil) {
+    init(_ text: String, count: Int? = nil, action: String? = nil, onAction: (() -> Void)? = nil) {
+        self.count = count
         self.text = text
         self.action = action
         self.onAction = onAction
@@ -52,6 +54,7 @@ struct GroupLabel: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(text).type(T.sm, Theme.muted).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
+            if let count { Text(String(count)).type(T.sm, Theme.muted) }
             if let action, onAction != nil { ArrowText(action, style: T.sm).lineLimit(1).fixedSize() }
         }
         .padding(.init(top: 4, leading: 30, bottom: 6, trailing: 30))

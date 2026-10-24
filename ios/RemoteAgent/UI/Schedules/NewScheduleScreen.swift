@@ -70,7 +70,7 @@ struct NewScheduleScreen: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(spacing: 12) {
-                            InputField("任务名（可选）", text: Bindable(draft).name, placeholder: "留空就用消息的第一句").onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
+                            InputField("任务名", text: Bindable(draft).name, placeholder: "留空就用消息的第一句").onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
                             InputField("让 agent 做什么", text: Bindable(draft).message, placeholder: "检查什么，有结果时通知我…", lines: 4...12)
                         }.padding(16).disabled(draft.mutation.frozen)
                         GroupCard {
@@ -86,7 +86,7 @@ struct NewScheduleScreen: View {
                         if !machine.isEmpty && !supported { Hint("这台电脑需要更新 remote-agent 才能使用定时任务。", color: Theme.orangeInk).padding(.horizontal, 16) }
                         if !machine.isEmpty && supported && !context.schedules.online(machine) { Hint("电脑不在线，连上后才能创建任务。").padding(.horizontal, 16) }
                         if let issue = draft.creationIssue(session: session, state: state) { Hint(issue, color: Theme.orangeInk).padding(.horizontal, 16) }
-                        if sessionID.isEmpty { Hint("每次新开一个对话，归在任务下面。立即运行一次不占自动次数及日历当天名额。").padding(.horizontal, 16) }
+                        if sessionID.isEmpty { Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。").padding(.horizontal, 16) }
                         if !draft.mutation.error.isEmpty { Banner(draft.mutation.error, tone: .error).padding(16) }
                         if draft.mutation.frozen {
                             TextAction("放弃原请求", enabled: !draft.mutation.running) { draft.mutation.abandon() }.padding(.horizontal, 16)

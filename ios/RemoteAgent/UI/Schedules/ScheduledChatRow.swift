@@ -31,6 +31,7 @@ struct SessionScheduleBar: View {
         let tasks = sessionSchedules(context.schedules.tasks, session: session)
         if !tasks.isEmpty {
             HStack(spacing: 8) {
+                Ic(Lucide.clock, style: T.meta, color: Theme.muted)
                 Text(scheduleBarText(tasks, online: context.schedules.online(session.machineId))).type(T.meta, Theme.muted).lineLimit(2)
                 Spacer(minLength: 0)
                 TextAction("管理", arrow: true) {
