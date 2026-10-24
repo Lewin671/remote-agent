@@ -20,6 +20,7 @@ func TestScheduledBackgroundFollowupKeepsContext(t *testing.T) {
 	endTimed(t, h, pb.TurnOutcome_TURN_OUTCOME_COMPLETED)
 	h.d.tickSchedules(time.Now())
 	restartSession(t, h)
+	setScopedMode(h, "ask")
 	// Claude background notification creates a turn without a user message.
 	if err := h.s.emit(&pb.Event{TurnId: "followup", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}); err != nil {
 		t.Fatal(err)
