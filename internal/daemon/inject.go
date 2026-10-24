@@ -156,7 +156,7 @@ func (s *session) enqueueInputContext(ctx context.Context, text, requestID strin
 	}
 	// The lifecycle lock gives admission and automatic shutdown one order.
 	// Never hold it while asking resume to acquire that same lock.
-	for {
+	for retries := 0; ; retries++ {
 		s.lifecycleMu.Lock()
 		s.mu.Lock()
 		resume := s.meta.Exited && s.meta.ScheduledTaskID != ""
@@ -165,8 +165,10 @@ func (s *session) enqueueInputContext(ctx context.Context, text, requestID strin
 			break
 		}
 		s.lifecycleMu.Unlock()
-		if _, err := s.d.resumeContextBy(ctx, s.meta.ID, origin); err != nil && !errors.Is(err, errRunning) {
-			return 0, err
+		if _, err := s.d.resumeContextBy(ctx, s.meta.ID, origin); err != nil {
+			if !errors.Is(err, errRunning) || retries >= 1 {
+				return 0, err
+			}
 		}
 		if err := ctx.Err(); err != nil {
 			return 0, err
