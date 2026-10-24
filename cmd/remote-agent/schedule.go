@@ -42,7 +42,7 @@ Triggers:
   at: RFC3339 "at" timestamp with timezone, one occurrence.
   interval: "interval_seconds" >= 1; optional "at" or initial "delay_seconds".
   calendar: "time":"HH:MM", required IANA "timezone", optional "weekdays" [1..7]
-    (Monday=1, Sunday=7; empty means daily). One run per local date.
+    (Monday=1, Sunday=7; empty means daily). One automatic run per occurrence date; manual trials do not consume it.
   after_turn: "delay_seconds" >= 0; optional "repeat":true to delay again after
     each scheduled execution ends. Requires a session; idle means delay from now.
   Recurring triggers accept RFC3339 "until"; "max_runs" optionally limits dispatches. Interrupted turns pause continuation.

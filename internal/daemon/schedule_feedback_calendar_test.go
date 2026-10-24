@@ -62,7 +62,7 @@ func TestCalendarCatchupOccupiesOccurrenceDateOnly(t *testing.T) {
 func TestCalendarManualRunPreservesAutomaticOccurrence(t *testing.T) {
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
-	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "calendar", Time: "08:00", Timezone: "Asia/Shanghai"}), "")
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "calendar", Time: "08:00", Timezone: "Asia/Shanghai", MaxRuns: 1}), "")
 	now := time.Now()
 	due := now.Add(time.Hour)
 	h.d.tasks[task.ID].NextRunAt = &due
@@ -72,7 +72,7 @@ func TestCalendarManualRunPreservesAutomaticOccurrence(t *testing.T) {
 	}
 	h.d.tickSchedules(now.Add(time.Second))
 	got := readTask(t, h.d, task.ID)
-	if got.Active == nil || !got.Active.Manual || got.LastCalendarDate != "" {
+	if got.Active == nil || !got.Active.Manual || got.LastCalendarDate != "" || got.Dispatches != 0 {
 		t.Fatalf("manual occupied calendar: %+v", got)
 	}
 	completeTask(h, got.Active, now.Add(time.Second))
@@ -82,8 +82,18 @@ func TestCalendarManualRunPreservesAutomaticOccurrence(t *testing.T) {
 		t.Fatalf("manual changed automatic cursor: %+v", got)
 	}
 	h.d.tickSchedules(due)
-	if readTask(t, h.d, task.ID).Active == nil {
+	got = readTask(t, h.d, task.ID)
+	if got.Active == nil {
 		t.Fatal("automatic occurrence lost after manual run")
+	}
+	completeTask(h, got.Active, due)
+	h.d.tickSchedules(due)
+	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); err != nil {
+		t.Fatalf("automatic run limit blocked manual trial: %v", err)
+	}
+	h.d.tickSchedules(due.Add(time.Second))
+	if readTask(t, h.d, task.ID).Active == nil {
+		t.Fatal("manual run did not dispatch after automatic limit")
 	}
 }
 

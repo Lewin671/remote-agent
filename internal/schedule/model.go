@@ -36,7 +36,7 @@ type Trigger struct {
 	DelaySeconds    int64      `json:"delay_seconds,omitempty" jsonschema:"Nonnegative delay for after_turn, or initial interval delay; MCP after_turn repeats require at least 60 seconds"`
 	IntervalSeconds int64      `json:"interval_seconds,omitempty" jsonschema:"Recurrence interval; MCP requires at least 300 seconds, explicit user CLI/client at least 1 second"`
 	Repeat          bool       `json:"repeat,omitempty" jsonschema:"For after_turn: repeat the delay after each scheduled execution ends"`
-	MaxRuns         int64      `json:"max_runs,omitempty" jsonschema:"Maximum automatic dispatches; zero means no limit"`
+	MaxRuns         int64      `json:"max_runs,omitempty" jsonschema:"Maximum dispatches; calendar manual trials are excluded; zero means no limit"`
 }
 
 type Target struct {

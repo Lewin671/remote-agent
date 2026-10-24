@@ -20,6 +20,9 @@ go("01-occurrence-date", "internal/daemon/schedule.go", "calendarDate(t.Spec.Tri
 go("01-skipped-date", "internal/daemon/schedule.go", "func nextCalendar(t *schedule.Task, now time.Time) time.Time {", "func nextCalendar(t *schedule.Task, now time.Time) time.Time { if len(t.Runs)>0 {return t.Spec.Trigger.NextCalendar(now.Add(24*time.Hour))};", "TestCalendarCatchupOccupiesOccurrenceDateOnly")
 go("02-manual-date", "internal/daemon/schedule.go", 'if t.Spec.Trigger.Type == "calendar" && !t.RunNow {\n\t\t\t\t\t\tt.LastCalendarDate', 'if t.Spec.Trigger.Type == "calendar" {\n\t\t\t\t\t\tt.LastCalendarDate', "TestCalendarManualRunPreservesAutomaticOccurrence")
 go("02-manual-cursor", "internal/daemon/schedule.go", "if t.AutomaticNextRunAt != nil {", "if false && t.AutomaticNextRunAt != nil {", "TestCalendarManualRunPreservesAutomaticOccurrence")
+go("02-manual-count", "internal/daemon/schedule.go", 'if t.Spec.Trigger.Type != "calendar" || !t.RunNow {', 'if true {', "TestCalendarManualRunPreservesAutomaticOccurrence")
+go("02-manual-limit-command", "internal/daemon/schedule.go", 't.Spec.Trigger.Type != "calendar" && t.Spec.Trigger.MaxRuns > 0', 't.Spec.Trigger.MaxRuns > 0', "TestCalendarManualRunPreservesAutomaticOccurrence")
+go("02-manual-limit-dispatch", "internal/daemon/schedule.go", '!t.RunNow && t.Spec.Trigger.MaxRuns > 0', 't.Spec.Trigger.MaxRuns > 0', "TestCalendarManualRunPreservesAutomaticOccurrence")
 go("03-create-until", "internal/daemon/schedule.go", "if tr.Until != nil && now.After(*tr.Until) {", "if false && tr.Until != nil && now.After(*tr.Until) {", "TestCalendarDeadlineAndEditBoundaries")
 go("03-run-until", "internal/daemon/schedule.go", "if until := t.Spec.Trigger.Until; until != nil && now.After(*until) {", "if until := t.Spec.Trigger.Until; false && until != nil && now.After(*until) {", "TestCalendarDeadlineAndEditBoundaries")
 go("03-edit-next", "internal/daemon/schedule.go", "at := nextCalendar(t, now)", "at := tr.NextCalendar(now)", "TestCalendarDeadlineAndEditBoundaries")
@@ -38,7 +41,10 @@ go("14-daemon-quota", "internal/daemon/backend.go", 'if reason != "relay_session
 go("14-relay-quota", "internal/relay/sync.go", 'strings.HasPrefix(refused.Message(), "relay_session_limit:")', 'false && strings.HasPrefix(refused.Message(), "relay_session_limit:")', "TestRelaySessionLimitReachesBackend", "./internal/relay")
 go("14-server-quota", "internal/server/accounts.go", "relay_session_limit: this account has reached its session limit on this relay", "this account has reached its session limit on this relay", "TestHiddenSessionsConsumeTrialLimitWithExplicitReason", "./internal/server")
 for doc in ["scope", "architecture"]:
-    go("15-disclosure-"+doc, "docs/"+doc+".md", "server 可以据此推断", "中继可据此判断", "TestScheduledPushMetadataDisclosure", "./internal/protocol")
+    file = "docs/"+doc+".md"
+    disclosure = next(line for line in (ROOT/file).read_text().splitlines()
+                      if "NOTIFY_KIND_SCHEDULED" in line and "TURN_ENDED" in line and "server 可以据此推断" in line)
+    go("15-disclosure-"+doc, file, disclosure+"\n", "", "TestScheduledPushMetadataDisclosure", "./internal/protocol")
 go("16-creation", "internal/daemon/daemon.go", 'ScheduledTaskID: origin.GetScheduledTaskId(), TaskOwned: origin.GetScheduledTaskId() != "",', 'ScheduledTaskID: "", TaskOwned: false,', "TestScheduledCreationWritesOwnership")
 go("16-loop", "internal/daemon/schedule.go", "for _, s := range d.scheduledClosures() {", "for _, s := range []*session{} {", "TestRealScheduleLoopClosesCompletedCLI")
 

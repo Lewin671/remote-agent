@@ -330,7 +330,7 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 				return nil, err
 			}
 		}
-		if t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
+		if t.Spec.Trigger.Type != "calendar" && t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
 			return nil, errors.New("task run limit reached; update max_runs before running")
 		}
 		if t.Active != nil {
@@ -722,7 +722,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				d.nextSchedule(t, now)
 			} else if tr := t.Spec.Trigger; tr.Type == "calendar" && !t.RunNow && t.LastCalendarDate == calendarDate(tr, *t.NextRunAt) {
 				d.nextSchedule(t, now)
-			} else if t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
+			} else if !t.RunNow && t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
 				t.Status = "completed"
 				t.NextRunAt = nil
 				t.Reason = "run_limit_reached"
@@ -732,7 +732,9 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				} else {
 					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching", Manual: t.RunNow}
 					t.Status = "dispatching"
-					t.Dispatches++
+					if t.Spec.Trigger.Type != "calendar" || !t.RunNow {
+						t.Dispatches++
+					}
 					if t.Spec.Trigger.Type == "calendar" && !t.RunNow {
 						t.LastCalendarDate = calendarDate(t.Spec.Trigger, t.Active.ScheduledAt)
 					}
