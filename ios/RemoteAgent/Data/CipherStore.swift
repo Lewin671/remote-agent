@@ -175,6 +175,7 @@ final class CipherStore: CipherCache {
                 sql: "DELETE FROM cursors WHERE sessionId IN (SELECT id FROM sessions WHERE machineId = ?)", arguments: [id])
             try db.execute(sql: "DELETE FROM sessions WHERE machineId = ?", arguments: [id])
             try db.execute(sql: "DELETE FROM machines WHERE id = ?", arguments: [id])
+            try db.execute(sql: "DELETE FROM blobs WHERE name = ?", arguments: ["schedules/" + id])
         }
     }
 

@@ -49,7 +49,7 @@ final class HomeScopes {
 
 extension AccountContext {
     /// The scope the home page was left on, for the pages that read or change it.
-    var homeScopes: HomeScopes { memory.value { HomeScopes(root: account.root) } }
+    var homeScopes: HomeScopes { memory.value { HomeScopes(root: account.root, defaults: preferenceDefaults) } }
 }
 
 private struct FetchEarlier: ViewModifier {

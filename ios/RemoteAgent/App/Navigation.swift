@@ -4,7 +4,7 @@
 // NavHost and ui/Common.kt's `Nav`), plus the pages Android opens as sheets
 // or inner pages of 设置.
 //
-// One stack on every size of screen. The two first-level pages, 会话 and
+// One stack on every size of screen. The first-level pages, 会话、定时 and
 // 设置, are the stack's root with the tab bar under them; anything pushed
 // covers the bar, as on Android. An iPad gets the same stack: the mockup's
 // wide layout (a sidebar of sessions beside the session) is a different
@@ -20,6 +20,9 @@ import UIKit
 enum Route: Hashable, Sendable {
     /// 会话: the timeline of sessions. A first-level page.
     case home
+    case schedules
+    case schedule(machine: String, id: String)
+    case newSchedule(session: String = "")
     /// 设置. A first-level page.
     case settings
     /// A session; `terminal` opens it on its terminal.
@@ -66,6 +69,9 @@ enum Route: Hashable, Sendable {
     /// path and comes last, slashes and all.
     var path: String {
         switch self {
+        case .schedules: "schedules"
+        case .schedule(let machine, let id): "schedule/\(machine)/\(id)"
+        case .newSchedule(let session): session.isEmpty ? "new-schedule" : "new-schedule/" + session
         case .home: "home"
         case .settings: "settings"
         case .session(let id, let terminal): (terminal ? "terminal/" : "session/") + id
@@ -104,6 +110,11 @@ enum Route: Hashable, Sendable {
             return p.count == 2 && !p[0].isEmpty && !p[1].isEmpty ? (p[0], p[1]) : nil
         }
         switch (parts[0], rest.isEmpty) {
+        case ("schedules", true): self = .schedules
+        case ("schedule", false):
+            guard let (machine, id) = two() else { return nil }
+            self = .schedule(machine: machine, id: id)
+        case ("new-schedule", _): self = .newSchedule(session: rest)
         case ("home", true): self = .home
         case ("settings", true): self = .settings
         case ("session", false): self = .session(id: rest)
@@ -145,9 +156,9 @@ enum Route: Hashable, Sendable {
     }
 }
 
-/// The two first-level pages.
+/// The three first-level pages.
 enum MainTab: String, Sendable {
-    case home, settings
+    case home, schedules, settings
 }
 
 /// Where the app is: a first-level page and what is pushed over it. Screens
@@ -163,12 +174,18 @@ final class Navigator {
     /// not pushed over itself.
     func open(_ route: Route) {
         switch route {
+        case .schedules:
+            path.removeAll()
+            tab = .schedules
         case .home:
             path.removeAll()
             tab = .home
         case .settings:
             path.removeAll()
             tab = .settings
+        case .schedule, .newSchedule:
+            if path.isEmpty { tab = .schedules }
+            if path.last != route { path.append(route) }
         case .session(let id, _):
             // The same session again, as from a second notification: the page on top is replaced, not stacked.
             if case .session(let top, _)? = path.last, top == id {
@@ -219,6 +236,9 @@ extension Route {
     /// The screen of a pushed destination. Each is in a file of its own under UI/<Area>/.
     @MainActor @ViewBuilder var destination: some View {
         switch self {
+        case .schedules: SchedulesScreen()
+        case .schedule(let machine, let id): ScheduleDetailScreen(machine: machine, id: id)
+        case .newSchedule(let session): NewScheduleScreen(sessionID: session)
         case .home: HomeScreen()
         case .settings: SettingsScreen()
         case .session(let id, let terminal): SessionScreen(id: id, terminal: terminal)
@@ -271,12 +291,14 @@ struct MainView: View {
         .debugSignal("app.open") {
             if let route = Route(path: UserDefaults.standard.string(forKey: "debug.route") ?? "") { nav.open(route) }
         }
+        .debugSignal("app.back") { nav.back() }
+        .task { await context.schedules.follow(context.remote) }
         .environment(nav)
         .environment(context)
     }
 }
 
-/// 会话 or 设置, over the tab bar. Their titles are the pages' own large titles, so the system's bar is hidden here.
+/// 会话、定时 or 设置, over the tab bar. Their titles are the pages' own large titles, so the system's bar is hidden here.
 private struct FirstLevel: View {
     @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
@@ -290,6 +312,7 @@ private struct FirstLevel: View {
         Group {
             switch nav.tab {
             case .home: HomeScreen()
+            case .schedules: SchedulesScreen()
             case .settings: SettingsScreen()
             }
         }
@@ -298,6 +321,7 @@ private struct FirstLevel: View {
             TabBar(
                 [
                     TabBarItem(id: MainTab.home.rawValue, label: "会话", icon: Lucide.messageSquare, badge: waiting),
+                    TabBarItem(id: MainTab.schedules.rawValue, label: "定时", icon: Lucide.clock, badge: context.schedules.tasks.filter { $0.task.group == .attention }.count),
                     TabBarItem(id: MainTab.settings.rawValue, label: "设置", icon: Lucide.settings),
                 ],
                 selected: Binding(get: { nav.tab.rawValue }, set: { nav.tab = MainTab(rawValue: $0) ?? .home }))

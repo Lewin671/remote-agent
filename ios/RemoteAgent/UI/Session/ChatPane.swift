@@ -279,6 +279,7 @@ struct ChatPane: View {
     @State private var allPending = false
     @State private var selecting: SelectedText?
     @State private var announcer = LiveAnnouncer()
+    @State private var appliedScheduledJump: String?
     @State private var announced = false
     @State private var paneHeight: CGFloat = 0
     @FocusState private var typing: Bool
@@ -320,7 +321,11 @@ struct ChatPane: View {
         let state = model.state
         let store = context.sessionStore
         let d = chat.derived
-        let rows = chat.rows
+        let jump = context.sessionStore.scheduledJump(session.id)
+        let rows = chat.rows.flatMap { row in
+            if let jump, row.folded.contains(where: { if case .user(let u) = $0.item { return u.scheduledRunID == jump.runID }; return false }) { return row.folded }
+            return [row]
+        }
         let sid = session.id
         let online = state.conn == .online
         let env = ChatEnv(
@@ -357,7 +362,7 @@ struct ChatPane: View {
                             captionColor: start.failed ? Theme.red : start.warning ? Theme.orangeInk : Theme.muted)
                     }
                     ForEach(rows) { row in
-                        ChatRowView(row: row, env: env).equatable().id(row.id)
+                        ScheduledChatRow(row: row, env: env).id(row.id)
                     }
                     // Offline, the connection bar says the content may be stale and the next
                     // connection fetches again: a failed fetch adds nothing to that.
@@ -428,6 +433,17 @@ struct ChatPane: View {
             .onChange(of: rows.count + pending.count + outgoing.count, initial: true) { _, n in
                 if tracker.count(n) { toEnd(proxy) }
             }
+            .onChange(of: rows.map(\.id), initial: true) { _, _ in
+                if let jump, appliedScheduledJump != jump.runID, chat.loaded, !rows.isEmpty {
+                    tracker.leave()
+                    let exact = rows.first { if case .user(let u) = $0.item { return u.scheduledRunID == jump.runID }; return false }
+                    let fallback = rows.first { $0.id.hasPrefix("e") && (UInt64($0.id.dropFirst()) ?? 0) >= jump.seq }
+                    if let target = exact ?? fallback {
+                        proxy.scrollTo(target.id, anchor: .top)
+                        appliedScheduledJump = jump.runID
+                    }
+                }
+            }
             .debugSignal("session.end") {
                 tracker.jump()
                 toEnd(proxy, animated: true)
@@ -444,6 +460,7 @@ struct ChatPane: View {
                 }
             }
         }
+        .onDisappear { context.sessionStore.clearScheduledJump(sid) }
         .background { KeyboardProbe(track: keyboard).frame(width: 0, height: 0) }
         .onGeometryChange(for: CGFloat.self) {
             $0.safeAreaInsets.bottom
@@ -546,7 +563,10 @@ struct ChatPane: View {
         let machine = state.machines[session.machineId]
         let name = machineLabel(state, id: session.machineId)
         if status == .exited {
-            EndedCard(session: session, machine: machine, name: name)
+            VStack(spacing: 0) {
+                if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").type(T.meta, Theme.muted).padding(8) }
+                EndedCard(session: session, machine: machine, name: name)
+            }
         } else if status == .offline {
             Ticking { now in
                 let seen = machine?.lastSeenMs ?? 0
@@ -597,6 +617,7 @@ struct ChatPane: View {
                     // Another item is another card: what was opened or typed in the one before does not carry over.
                     .id(first.id)
                 }
+                if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").type(T.meta, Theme.muted).padding(8) }
                 SessionComposer(session: session, status: status, derived: d, focus: $typing)
             }
         }
@@ -794,10 +815,9 @@ private struct EndedCard: View {
     var body: some View {
         let state = model.state
         let reachable = machine?.online == true && !state.unlinked
-        let (remote, sid) = (context.remote, session.id)
         SessionEndCard(
             act.running ? "正在恢复…" : "会话已结束",
-            text: endedText(
+            text: session.info?.taskOwned == true ? "定时执行已结束。恢复后可以继续回复，聊天记录都在。" : endedText(
                 detail: session.info?.statusDetail ?? "", unlinked: state.unlinked,
                 machineOnline: machine?.online == true, machine: name),
             dot: act.running ? Theme.blueBg : Theme.gray
@@ -809,16 +829,20 @@ private struct EndedCard: View {
                     enabled: state.conn == .online, background: act.error.isEmpty ? nil : Theme.card
                 ) {
                     SessionHaptics.tap()
-                    act.run {
-                        var cmd = PBCommand()
-                        cmd.resumeSession = .with { $0.sessionID = sid }
-                        try await remote.command(sid, cmd)
-                    }
+                    restore()
                 }
             }
             if !act.error.isEmpty {
                 Text("恢复失败：\(act.error)").type(T.meta, Theme.red).padding(.top, 6)
             }
+        }
+        .debugSignal("session.restore") { if reachable { restore() } }
+    }
+    private func restore() {
+        guard model.state.conn == .online && machine?.online == true else { return }
+        act.run {
+            var cmd = PBCommand(); cmd.resumeSession.sessionID = session.id
+            try await context.remote.command(session.id, cmd)
         }
     }
 }

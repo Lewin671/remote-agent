@@ -25,11 +25,12 @@ import SwiftUI
 struct ChatRow: Identifiable, Equatable, Sendable {
     let item: ChatItem
     let blocks: [MarkdownBlock]
+    var folded: [ChatRow] = []
 
     var id: String { item.key }
 
     /// The blocks are a function of the item, so the item decides.
-    static func == (a: ChatRow, b: ChatRow) -> Bool { a.item == b.item }
+    static func == (a: ChatRow, b: ChatRow) -> Bool { a.item == b.item && a.folded == b.folded }
 }
 
 /// What the rows depend on besides the events: how the session's computer
@@ -122,6 +123,17 @@ actor ChatBuilder {
                 let blocks = parse(reply.text)
                 parsed[reply.key] = Parsed(text: reply.text, blocks: blocks)
                 rows.append(ChatRow(item: item, blocks: blocks))
+            }
+        }
+        for group in silentScheduledGroups(events).reversed() {
+            let first = rows.firstIndex { $0.id == "e\(group.firstSeq)" }
+            let last = rows.lastIndex { row in
+                guard row.id.hasPrefix("e"), let seq = UInt64(row.id.dropFirst()) else { return false }
+                return seq <= group.lastSeq && seq >= group.firstSeq
+            }
+            if let first, let last, last >= first {
+                let children = Array(rows[first...last])
+                rows.replaceSubrange(first...last, with: [ChatRow(item: .note(.init(key: group.id, text: group.text)), blocks: [], folded: children)])
             }
         }
         // Rows that are gone (another history under the same builder) take their blocks with them.

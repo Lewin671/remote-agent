@@ -6,7 +6,7 @@ import RACore
 import SwiftUI
 
 /// The projects as every list shows them, each with an arrow to its new-session box.
-private struct ProjectPickList: View {
+struct ProjectPickList: View {
     let state: RemoteState
     let onPick: (String) -> Void
     let onNew: () -> Void

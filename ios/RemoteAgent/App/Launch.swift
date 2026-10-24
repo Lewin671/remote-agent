@@ -306,3 +306,17 @@ extension View {
     func debugSignal(_ name: String, _ action: @escaping () -> Void) -> some View { self }
 }
 #endif
+
+// Scheduled task acceptance (DEBUG only; account bootstrap is restricted to loopback):
+//   -scheduleAcceptanceNamespace NAME (separate Keychain/cache; retain on every test launch)
+//   -scheduleAcceptanceServer URL -scheduleAcceptanceToken TOKEN
+//       prepares and saves the disposable account recovery code in the simulator's tmp directory,
+//       then runs the UI's durable account creation flow.
+//   schedule.pair.start / schedule.pair.approve   添加设备's existing start/approve actions;
+//       pair-code and pair-sas are written to tmp/schedule-acceptance-* for the isolated daemon.
+//   -route new-schedule[/SESSION] -scheduleCwd PATH -scheduleAgent claude -scheduleModel haiku
+//       -scheduleMode ask|auto|full -scheduleName NAME -scheduleMessage TEXT -scheduleAt RFC3339
+//   schedule.create   fills the test draft and submits through the same encrypted create action.
+//   schedule.open-run / schedule.pause / schedule.run   task detail's corresponding actions.
+//   session.schedule / session.restore   定时发送… / 恢复会话 through the existing product commands.
+//   app.back   the navigation stack's back action.

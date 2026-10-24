@@ -24,6 +24,7 @@ struct HomeSessionRow: View {
     /// The last of its list draws no line under it.
     var last = false
     @Environment(Navigator.self) private var nav
+    @Environment(AccountContext.self) private var context
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .caption) private var dot: CGFloat = 8
 
@@ -36,39 +37,22 @@ struct HomeSessionRow: View {
             Button {
                 nav.open(.session(id: session.id))
             } label: {
-                HStack(alignment: .top, spacing: 11) {
-                    // The dot stands on the title's line whatever the text size: it is centred on a line of the title's own.
-                    Text(" ").type(T.bodyB).hidden().frame(width: dot).overlay { Dot(Theme.dot(tone)) }.accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 0) {
-                        if typeSize.isAccessibilitySize {
-                            // Too large for the two to share a line: the time goes under the rest, at the right.
-                            Text(t.title).type(T.bodyB, Theme.fg).lineLimit(2)
-                            statusLine(t, tone).lineLimit(2)
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(t.meta).type(T.meta, Theme.muted).lineLimit(1)
-                                Spacer(minLength: 0)
-                                Text(t.time).type(T.meta, Theme.muted).lineLimit(1).fixedSize()
-                            }
-                        } else {
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(t.title).type(T.bodyB, Theme.fg).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                                Text(t.time).type(T.meta, Theme.muted).lineLimit(1).fixedSize()
-                            }
-                            statusLine(t, tone).lineLimit(1)
-                            if !t.meta.isEmpty { Text(t.meta).type(T.meta, Theme.muted).lineLimit(1).padding(.top, 1) }
-                        }
-                    }
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .bottomLine(last ? .clear : Theme.line)
+                SessionListRowContent(title: t.title, right: t.time, third: sessionMeta(t.meta), color: Theme.dot(tone), last: last) {
+                    statusLine(t, tone)
                 }
-                .padding(.horizontal, Theme.Space.page).padding(.top, 10)
             }
             .buttonStyle(RowPressStyle())
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(t.spoken)
             .accessibilityAddTraits(.isButton)
         }
+    }
+
+    private func sessionMeta(_ base: String) -> String {
+        let schedules = sessionSchedules(context.schedules.tasks, session: session)
+        guard let first = schedules.first else { return base }
+        let note = schedules.count == 1 ? "定时 " + scheduleFrequency(first.task.spec.trigger) : "定时 \(schedules.count) 个任务"
+        return [base, note].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     /// 「运行中 · 正在执行 go test」: the word carries the state's colour, the rest is muted.

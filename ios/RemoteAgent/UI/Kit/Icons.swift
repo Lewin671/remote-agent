@@ -143,7 +143,7 @@ enum Lucide {
     /// All of them, for the gallery and the tests.
     static let all: [LucideIcon] = [
         chevronRight, chevronLeft, chevronDown, chevronUp, ellipsis, plus, squarePen, arrowUp, square, copy, box,
-        boxChecked, arrowDown, check, x, loaderCircle, minus, search, messageSquare, settings, wifiOff, cloudOff,
+        boxChecked, arrowDown, check, x, loaderCircle, minus, search, messageSquare, clock, settings, wifiOff, cloudOff,
         laptop, globe, smartphone, tablet, arrowLeft, arrowRight, cornerDownLeft, keyboard, maximize2,
     ]
 }

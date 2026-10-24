@@ -39,6 +39,12 @@ extension Remote: SessionCommands {}
 @MainActor
 @Observable
 final class SessionStore {
+    struct ScheduledJump: Equatable { var runID: String; var seq: UInt64 }
+    private var scheduledJumps: [String: ScheduledJump] = [:]
+    func jumpToScheduledRun(_ sid: String, runID: String, seq: UInt64) { scheduledJumps[sid] = ScheduledJump(runID: runID, seq: seq) }
+    func scheduledJump(_ sid: String) -> ScheduledJump? { scheduledJumps[sid] }
+    func clearScheduledJump(_ sid: String) { scheduledJumps[sid] = nil }
+
     /// A cancel asked from here that the daemon has not answered, or why it failed.
     enum CancelState: Equatable, Sendable {
         case canceling

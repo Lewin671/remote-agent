@@ -9,8 +9,13 @@ struct RemoteAgentApp: App {
     @Environment(\.scenePhase) private var phase
 
     init() {
+        #if DEBUG
+        let settings = SettingsStore(defaults: ScheduleAcceptance.defaults ?? .standard)
+        let model = AppModel(settings: settings, parts: ScheduleAcceptance.parts ?? AppModel.Parts())
+        #else
         let settings = SettingsStore()
         let model = AppModel(settings: settings)
+        #endif
         _settings = State(initialValue: settings)
         _model = State(initialValue: model)
         PrivacyShield.shared.install()

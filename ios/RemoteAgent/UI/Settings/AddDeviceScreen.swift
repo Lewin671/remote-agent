@@ -141,6 +141,24 @@ struct AddDeviceScreen: View {
             }
         }
         .navBar("添加设备")
+        .debugSignal("schedule.pair.start") {
+            #if DEBUG
+            guard URL(string: context.account.server)?.host == "127.0.0.1" else { return }
+            perform { c in
+                await flow.start(c, replacing: replacing)
+                if let initiation = flow.initiation { ScheduleAcceptance.write("pair-code", initiation.link.code) }
+            }
+            #endif
+        }
+        .debugSignal("schedule.pair.approve") {
+            #if DEBUG
+            guard URL(string: context.account.server)?.host == "127.0.0.1" else { return }
+            perform { c in
+                await flow.poll(c)
+                if let candidate = flow.candidate { ScheduleAcceptance.write("pair-sas", candidate.emoji.joined(separator: " ")); await flow.approve(c) }
+            }
+            #endif
+        }
         .task {
             // Same in-memory SAS context when returning from another page.
             flow = context.memory.value { AuthorityPairingSessions() }.flow(replacing: replacing)

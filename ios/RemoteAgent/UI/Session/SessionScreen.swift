@@ -158,6 +158,7 @@ private struct SessionPage: View {
             if !act.error.isEmpty {
                 Banner(act.error, tone: .error).padding(.horizontal, 12).padding(.vertical, 6)
             }
+            SessionScheduleBar(session: s)
             ViewTabs(
                 ["聊天", "终端"], selected: Binding(get: { term ? 1 : 0 }, set: { pick($0) }),
                 enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil, dark: term)
@@ -172,6 +173,11 @@ private struct SessionPage: View {
         .tint(Theme.blue)
         // The page's to do, not the chat's or its message box's: it may open on the terminal, and an ended
         // session or one on an offline computer has no box.
+        .task(id: s.info?.scheduledTaskID) {
+            guard s.info?.taskOwned == true, let task = s.info?.scheduledTaskID, !task.isEmpty,
+                  nav.path.last == page, !nav.path.dropLast().contains(.schedule(machine: s.machineId, id: task)) else { return }
+            nav.path.insert(.schedule(machine: s.machineId, id: task), at: max(0, nav.path.count - 1))
+        }
         .task(id: sid) { SessionImages.restore(session: sid, remote: context.remote, store: context.sessionStore) }
         // The second line is the state and the mode, which is red only when it is full access.
         .navBar(
@@ -222,6 +228,9 @@ private struct SessionPage: View {
         .task(id: s.machineId) {
             if s.agent == .claude { models = try? await context.remote.listModels(s.machineId, agent: s.agent) }
         }
+        .debugSignal("session.schedule") {
+            if context.schedules.online(s.machineId) { nav.open(.newSchedule(session: sid), from: page) }
+        }
         .debugSignal("session.menu") { menu = true }
         .debugSignal("session.mode") { sheet = .mode }
         .debugSignal("session.model") { sheet = .model }
@@ -270,6 +279,9 @@ private struct SessionPage: View {
                 })
             }
         }
+        list.append(SheetAction("定时发送…", enabled: reachable && state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true, note: state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true ? "" : "需要更新 remote-agent") {
+            afterMenu { nav.open(.newSchedule(session: sid), from: page) }
+        })
         list.append(SheetAction("项目设置", enabled: !forking && projectConfig(state, key: projectKey(s)) != nil) {
             afterMenu { projectSettings = ProjectSettingsRequest() }
         })

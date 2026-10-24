@@ -34,15 +34,17 @@ import os
 final class AccountContext {
     let account: Account
     let remote: Remote
+    let preferenceDefaults: UserDefaults
     /// What this run keeps in memory for the account: drafts and the like.
     let memory = AccountMemory()
 
     /// This client's device ID.
     var me: String { account.deviceId }
 
-    init(account: Account, remote: Remote) {
+    init(account: Account, remote: Remote, preferenceDefaults: UserDefaults = .standard) {
         self.account = account
         self.remote = remote
+        self.preferenceDefaults = preferenceDefaults
     }
 }
 
@@ -442,7 +444,7 @@ final class AppModel {
         engine = made.engine
         described = nil
         state = made.remote.state.value
-        context = AccountContext(account: account, remote: made.remote)
+        context = AccountContext(account: account, remote: made.remote, preferenceDefaults: parts.defaults)
         installAuthorityProtection(made.remote.authorityGate)
         updateAuthorityAvailability()
         // The account's own view of the store: what is still writing when the account is erased writes nothing.

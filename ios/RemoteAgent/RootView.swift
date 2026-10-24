@@ -11,7 +11,12 @@ struct RootView: View {
 
     var body: some View {
         content
-            .task(id: model.stage) { await LaunchDriver.stageChanged(model) }
+            .task(id: model.stage) {
+                await LaunchDriver.stageChanged(model)
+                #if DEBUG
+                await ScheduleAcceptance.bootstrap(model)
+                #endif
+            }
     }
 
     @ViewBuilder private var content: some View {
