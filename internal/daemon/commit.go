@@ -43,6 +43,7 @@ func (s *session) appendLocked(evs []*pb.Event, path string, offset int64) error
 }
 
 func (s *session) appendBatchesLocked(batches []eventlog.Batch) (int, error) {
+	s.annotateScheduled(batches)
 	n, err := s.log.AppendGroup(s.meta.ID, batches)
 	hasEvents := false
 	for _, batch := range batches[:n] {

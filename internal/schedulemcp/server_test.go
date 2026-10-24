@@ -52,7 +52,7 @@ func TestToolDiscoveryAndCreate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(list.Tools) != 8 {
+	if len(list.Tools) != 9 {
 		t.Fatalf("tool count %d", len(list.Tools))
 	}
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "schedule_create", Arguments: map[string]any{"task": map[string]any{"title": "check", "message": "continue", "trigger": map[string]any{"type": "after_turn", "delay_seconds": 30}, "target": map[string]any{"type": "resume_session", "session": "current"}}, "request_id": "stable"}})

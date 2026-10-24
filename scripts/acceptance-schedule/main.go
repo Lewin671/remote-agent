@@ -1,0 +1,212 @@
+// Run only against ios/scripts/dev-env.sh's throwaway relay:
+// RA_DEV_DIR=<isolated directory> go run ./scripts/acceptance-schedule
+// Uses a synthetic client over encrypted Forward, and a real Claude Haiku CLI.
+package main
+
+import (
+	"context"
+	"crypto/ed25519"
+	"encoding/json"
+	"fmt"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"connectrpc.com/connect"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/relay"
+	"github.com/Lewin671/remote-agent/internal/remoteclient"
+	"github.com/Lewin671/remote-agent/internal/schedule"
+	"github.com/Lewin671/remote-agent/internal/updater"
+)
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+func read(path string) string {
+	b, e := os.ReadFile(path)
+	must(e)
+	return strings.TrimSpace(string(b))
+}
+func wait(ctx context.Context, what string, fn func() bool) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		if fn() {
+			fmt.Println("PASS", what)
+			return
+		}
+		select {
+		case <-ctx.Done():
+			panic("timeout: " + what)
+		case <-ticker.C:
+		}
+	}
+}
+func main() {
+	dir := os.Getenv("RA_DEV_DIR")
+	if dir == "" {
+		panic("RA_DEV_DIR is required")
+	}
+	server := read(filepath.Join(dir, "url"))
+	u, err := url.Parse(server)
+	must(err)
+	if u.Scheme != "http" || u.Hostname() != "127.0.0.1" {
+		panic("refusing a non-local dev relay")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	auth, err := remoteclient.NewAuthority(ctx, server, read(filepath.Join(dir, "setup-token")))
+	must(err)
+	_, ed, err := ed25519.GenerateKey(nil)
+	must(err)
+	x, _, err := deviceauth.NewXKey()
+	must(err)
+	machine, err := auth.Enroll(ctx, ed, x, deviceauth.Machine)
+	must(err)
+	home := filepath.Join(dir, "schedule-home")
+	must(os.MkdirAll(home, 0700))
+	must(updater.EnsureState(home))
+	must(os.Setenv("REMOTE_AGENT_HOME", home))
+	must(machine.Endpoint.Save(filepath.Join(home, "security-v3.db")))
+	acct := &relay.Account{Server: server, Root: auth.Root, DeviceSeed: ed.Seed(), DeviceID: machine.ID, Security: &relay.SecurityConfig{Pin: auth.Pin, XPrivate: x}}
+	must(acct.Save())
+	machine.Endpoint.Close()
+	phone, err := deviceauth.InitEndpoint("", auth.Pin, auth.States, auth.Proofs, auth.Member.ID, auth.Ed.Seed(), auth.X, auth.Lease)
+	must(err)
+	defer phone.Close()
+	keys, err := e2e.Derive(auth.Root)
+	must(err)
+	client := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
+	socket := read(filepath.Join(dir, "tmux-socket")) + "-schedule"
+	must(os.Setenv("REMOTE_AGENT_TMUX_SOCKET", socket))
+	binary := filepath.Join(dir, "bin", "remote-agent")
+	claude, err := exec.LookPath("claude")
+	must(err)
+	log, err := os.OpenFile(filepath.Join(dir, "schedule-daemon.log"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	must(err)
+	defer log.Close()
+	process := exec.Command(binary, "daemon", "--claude", claude)
+	process.Stdout, process.Stderr = log, log
+	must(process.Start())
+	defer func() {
+		process.Process.Signal(os.Interrupt)
+		process.Wait()
+		exec.Command("tmux", "-L", socket, "kill-server").Run()
+	}()
+	wait(ctx, "isolated machine online", func() bool {
+		ms, e := client.Machines(ctx)
+		if e != nil {
+			return false
+		}
+		for _, m := range ms {
+			if m.ID == machine.ID && m.Online {
+				return true
+			}
+		}
+		return false
+	})
+	// Use this checkout as a trusted project; never open an existing session.
+	cwd, err := os.Getwd()
+	must(err)
+	at := time.Now().UTC().Add(2 * time.Minute).Truncate(time.Minute)
+	spec := schedule.Spec{Title: "Calendar acceptance", Message: "This is an isolated scheduled task acceptance check. Call the remote_agent MCP tool notify_user exactly once with text 'Calendar acceptance result' and no title. Then give a short final answer 'Calendar acceptance complete'. Do not create tasks or use any other tool.", Trigger: schedule.Trigger{Type: "calendar", Time: at.Format("15:04"), Timezone: "UTC", MaxRuns: 1}, Target: schedule.Target{Type: "new_session", Cwd: cwd, Agent: "claude", Model: "claude-haiku-5-5", Mode: "ask"}}
+	b, err := json.Marshal(spec)
+	must(err)
+	res, err := client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "create", SpecJson: b}}})
+	must(err)
+	var task schedule.Task
+	must(json.Unmarshal(res.GetSchedule().ResultJson, &task))
+	fmt.Println("PASS calendar task created through encrypted Forward; due", at.Format(time.RFC3339))
+	getTask := func() {
+		r, e := client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "get", TaskId: task.ID}}})
+		must(e)
+		must(json.Unmarshal(r.GetSchedule().ResultJson, &task))
+	}
+	var sid string
+	wait(ctx, "calendar dispatch and real CLI completion", func() bool {
+		getTask()
+		if task.Active != nil {
+			sid = task.Active.SessionID
+		}
+		if sid != "" {
+			// Answer a fresh-project trust prompt only after the CLI draws it.
+			out, _ := exec.Command("tmux", "-L", socket, "capture-pane", "-p", "-t", "ra-"+sid[:8]).Output()
+			if strings.Contains(string(out), "Notify User") && strings.Contains(string(out), "Do you want to proceed?") {
+				// Approve this test tool once, never persist a global allow rule.
+				exec.Command("tmux", "-L", socket, "send-keys", "-t", "ra-"+sid[:8], "Enter").Run()
+			}
+			if strings.Contains(string(out), "trust this folder") || strings.Contains(string(out), "Trust this folder") {
+				exec.Command("tmux", "-L", socket, "send-keys", "-t", "ra-"+sid[:8], "Down", "Enter").Run()
+			}
+		}
+		return len(task.Runs) > 0 && task.Runs[len(task.Runs)-1].Status == "completed"
+	})
+	run := task.Runs[len(task.Runs)-1]
+	sid = run.SessionID
+	if !run.Notified || run.NotificationCount != 1 || run.NotificationText != "Calendar acceptance result" {
+		panic(fmt.Sprintf("unexpected notification result: %+v", run))
+	}
+	fmt.Println("PASS real CLI invoked notify_user; run summary persisted")
+	var session remoteclient.Session
+	getSession := func() bool {
+		r, e := client.API().ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{SessionIds: []string{sid}}))
+		if e != nil || len(r.Msg.Sessions) != 1 {
+			return false
+		}
+		session, e = client.OpenSession(r.Msg.Sessions[0])
+		must(e)
+		return true
+	}
+	wait(ctx, "CLI exited and encrypted session retained by ID", func() bool {
+		return getSession() && session.Info.GetStatus() == pb.SessionStatus_SESSION_STATUS_EXITED && session.Info.TaskOwned
+	})
+	ss, err := client.Sessions(ctx)
+	must(err)
+	for _, s := range ss {
+		if s.ID == sid {
+			panic("task session leaked to default listing")
+		}
+	}
+	evs, err := client.Events(ctx, session, 0)
+	must(err)
+	marked, notice := false, false
+	for _, e := range evs {
+		if end := e.GetTurnEnded(); end != nil && end.ScheduledTaskId == task.ID && end.ScheduledNotified {
+			marked = true
+		}
+		if e.GetScheduledNotification() != nil {
+			notice = true
+		}
+	}
+	if !marked || !notice {
+		panic("remote event stream lost scheduled annotations")
+	}
+	fmt.Println("PASS default listing hides task session; by-ID history contains notification and annotated end")
+	_, err = client.Do(ctx, session, &pb.Command{Kind: &pb.Command_ResumeSession{ResumeSession: &pb.ResumeSessionRequest{SessionId: sid}}})
+	must(err)
+	_, err = client.Do(ctx, session, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: remoteclient.NewRequestID(), Text: "User takeover acceptance. Reply with only 'Taken over'."}}})
+	must(err)
+	wait(ctx, "client reply promotes session into default listing", func() bool {
+		ss, e := client.Sessions(ctx)
+		if e != nil {
+			return false
+		}
+		for _, s := range ss {
+			if s.ID == sid && !s.Info.TaskOwned {
+				return true
+			}
+		}
+		return false
+	})
+	_, err = client.Do(ctx, session, &pb.Command{Kind: &pb.Command_StopSession{StopSession: &pb.StopSessionRequest{SessionId: sid}}})
+	must(err)
+	fmt.Println("PASS acceptance complete; synthetic client commands used, no product UI or push delivery service exercised")
+}

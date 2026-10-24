@@ -153,7 +153,7 @@ func (s *session) enqueueInput(text, requestID string, images []queuedImage, ori
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.meta.Exited {
+	if s.meta.Exited || s.closing {
 		return 0, errExited
 	}
 	if s.queueLost {

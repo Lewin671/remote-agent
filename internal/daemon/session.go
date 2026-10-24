@@ -79,13 +79,19 @@ type session struct {
 	// source's records, which the fork has as events already; nil if none.
 	copied func(line []byte) bool
 
-	mu                  sync.Mutex
-	meta                meta
-	running             bool   // a turn is in progress
-	turnID              string // the turn that still needs an outcome
-	turnPrompt          string // first user message, for a CLI-restored prompt
-	turnOutput          bool   // the turn has produced assistant or tool output
-	restoredPromptSince time.Time
+	// Rebuilt from durable user/end/notification events, independent of task retention.
+	scheduledTask          string
+	scheduledRun           string
+	scheduledNotifications int
+	scheduledClose         bool
+	closing                bool
+	mu                     sync.Mutex
+	meta                   meta
+	running                bool   // a turn is in progress
+	turnID                 string // the turn that still needs an outcome
+	turnPrompt             string // first user message, for a CLI-restored prompt
+	turnOutput             bool   // the turn has produced assistant or tool output
+	restoredPromptSince    time.Time
 	// turnEnds counts the turns that ended; aborted is set when the last
 	// one was interrupted, until the waiting input is paused.
 	turnEnds uint64
@@ -268,6 +274,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 // observe updates derived state from an event. Callers hold s.mu or are
 // the only goroutine touching the session.
 func (s *session) observe(e *pb.Event) {
+	s.observeScheduled(e)
 	s.ordering.observe(e)
 	s.answerSafety.observe(e)
 	switch k := e.Kind.(type) {
@@ -956,6 +963,8 @@ func (s *session) infoLocked() *pb.Session {
 	}
 	out := &pb.Session{
 		Id:               s.meta.ID,
+		ScheduledTaskId:  s.meta.ScheduledTaskID,
+		TaskOwned:        s.meta.TaskOwned,
 		Cwd:              s.meta.Cwd,
 		TmuxSession:      s.meta.Tmux,
 		Status:           status,
@@ -1336,7 +1345,9 @@ func (s *session) kill() error {
 	return s.killContext(context.Background())
 }
 
-func (s *session) killContext(ctx context.Context) error {
+func (s *session) killContext(ctx context.Context) error { return s.killIf(ctx, false) }
+
+func (s *session) killIf(ctx context.Context, scheduledOnly bool) error {
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
 	s.ctlMu.Lock()
@@ -1350,6 +1361,20 @@ func (s *session) killContext(ctx context.Context) error {
 	if exited {
 		return nil
 	}
+	if scheduledOnly {
+		// Drain native input before deciding ownership. Never run under scheduleMu.
+		s.readRollout()
+		s.mu.Lock()
+		eligible := s.meta.TaskOwned && !s.meta.TaskCLIClosed && s.scheduledClose && !s.running && len(s.queue.Queue) == 0 && len(s.queue.Held) == 0
+		if eligible {
+			s.closing = true
+		}
+		s.mu.Unlock()
+		if !eligible {
+			return nil
+		}
+		defer func() { s.mu.Lock(); s.closing = false; s.mu.Unlock() }()
+	}
 	if err := s.term.Kill(); err != nil && s.term.Alive() {
 		return err
 	}
@@ -1361,6 +1386,11 @@ func (s *session) killContext(ctx context.Context) error {
 			return err
 		}
 		slog.Warn("pty-host still running after stop", "session", s.meta.ID, "err", errClass(err))
+	}
+	if scheduledOnly {
+		s.mu.Lock()
+		s.meta.TaskCLIClosed = true
+		s.mu.Unlock()
 	}
 	return s.markExitedLocked("stopped")
 }

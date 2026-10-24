@@ -1,9 +1,11 @@
 package daemon
 
 import (
-	"github.com/Lewin671/remote-agent/internal/schedule"
 	"testing"
 	"time"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/schedule"
 )
 
 func TestScheduleUntil(t *testing.T) {
@@ -37,5 +39,60 @@ func TestScheduleUntil(t *testing.T) {
 				t.Fatalf("next beyond until: %+v", task)
 			}
 		})
+	}
+}
+
+func TestCalendarManualRunOncePerLocalDate(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "calendar", Time: "00:00", Timezone: "Asia/Shanghai"}), "")
+	run := func() error {
+		_, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal)
+		return err
+	}
+	if err := run(); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Add(time.Second)
+	h.d.tickSchedules(now)
+	active := readTask(t, h.d, task.ID).Active
+	if active == nil {
+		t.Fatal("not dispatched")
+	}
+	completeTask(h, active, now)
+	h.d.tickSchedules(now)
+	if err := run(); err == nil {
+		t.Fatal("second calendar run in the same local date accepted")
+	}
+}
+
+func TestCalendarCatchupChoosesEarlierFoldAndNoBacklog(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "calendar", Time: "01:30", Timezone: "America/New_York"}), "")
+	old, _ := time.Parse(time.RFC3339, "2026-10-28T01:30:00-04:00")
+	now, _ := time.Parse(time.RFC3339, "2026-11-01T01:45:00-05:00")
+	want, _ := time.Parse(time.RFC3339, "2026-11-01T01:30:00-04:00")
+	h.d.tasks[task.ID].NextRunAt = &old
+	h.d.tickSchedules(now)
+	got := readTask(t, h.d, task.ID)
+	if got.Active == nil || !got.Active.ScheduledAt.Equal(want) || got.Dispatches != 1 {
+		t.Fatalf("wrong catch-up: %+v", got)
+	}
+	completeTask(h, got.Active, now)
+	h.d.tickSchedules(now)
+	got = readTask(t, h.d, task.ID)
+	next, _ := time.Parse(time.RFC3339, "2026-11-02T01:30:00-05:00")
+	if got.NextRunAt == nil || !got.NextRunAt.Equal(next) {
+		t.Fatalf("wrong next date: %+v", got)
+	}
+}
+
+func TestScheduleCreationRejectsUnknownTimezone(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	raw := []byte(`{"title":"Test","message":"Check","trigger":{"type":"calendar","time":"08:00","timezone":"Unknown/Place"},"target":{"type":"resume_session","session":"current"}}`)
+	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "create", SessionId: h.s.meta.ID, SpecJson: raw}, originLocal); err == nil {
+		t.Fatal("created with unknown timezone")
 	}
 }

@@ -38,12 +38,14 @@ func (d *Daemon) loadSchedules() error {
 		return err
 	}
 	var state struct {
-		Version int                       `json:"version"`
-		Tasks   map[string]*schedule.Task `json:"tasks"`
+		Version  int                       `json:"version"`
+		Revision uint64                    `json:"revision"`
+		Tasks    map[string]*schedule.Task `json:"tasks"`
 	}
 	if json.Unmarshal(b, &state) != nil || state.Version != 1 {
 		return errors.New("cannot load scheduled tasks; refusing to discard them")
 	}
+	d.scheduleRevision = state.Revision
 	for id, t := range state.Tasks {
 		if t == nil || t.ID != id || t.Revision == 0 {
 			return errors.New("invalid scheduled task state")
@@ -66,13 +68,18 @@ func (d *Daemon) loadSchedules() error {
 }
 func (d *Daemon) saveSchedulesLocked() error {
 	b, err := json.Marshal(struct {
-		Version int                       `json:"version"`
-		Tasks   map[string]*schedule.Task `json:"tasks"`
-	}{1, d.tasks})
+		Version  int                       `json:"version"`
+		Revision uint64                    `json:"revision"`
+		Tasks    map[string]*schedule.Task `json:"tasks"`
+	}{1, d.scheduleRevision + 1, d.tasks})
 	if err != nil {
 		return err
 	}
-	return d.writeStateFile(filepath.Join(paths.Dir(), "schedules.json"), b)
+	err = d.writeStateFile(filepath.Join(paths.Dir(), "schedules.json"), b)
+	if err == nil || fileReplaced(err) {
+		d.scheduleRevision++
+	}
+	return err
 }
 
 const maxNonTerminalTasks = 100
@@ -119,6 +126,9 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 }
 
 func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.ScheduleRequest, origin *pb.Origin, scope string) ([]byte, error) {
+	if q.Operation == "notify_user" {
+		return d.notifyScheduled(q, scope)
+	}
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	if d.tasks == nil {
@@ -131,6 +141,11 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		}
 		if _, err := d.exact(scope); err != nil {
 			return nil, mcpScheduleDenied()
+		}
+	}
+	if scope != "" && (q.Operation == "create" || q.Operation == "update" || q.Operation == "resume" || q.Operation == "run") {
+		if d.sessionHasScheduledRunLocked(scope) {
+			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("MCP cannot create, update, resume or run tasks during a scheduled execution"))
 		}
 	}
 	if q.Operation == "list" {
@@ -297,6 +312,11 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 			t.Status = "completed"
 		}
 	case "run":
+		if tr := t.Spec.Trigger; tr.Type == "calendar" {
+			if t.LastCalendarDate == calendarDate(tr, now) {
+				return nil, errors.New("calendar task already ran on this local date")
+			}
+		}
 		if scope != "" {
 			if err := d.restrictMCPTask(t, false); err != nil {
 				return nil, err
@@ -565,6 +585,8 @@ func (d *Daemon) startScheduleLoop(ctx context.Context) func() {
 }
 
 func (d *Daemon) scheduleLoop(ctx context.Context) {
+	cleaning := map[string]bool{}
+	var cleaningMu sync.Mutex
 	var dispatches sync.WaitGroup
 	defer dispatches.Wait()
 	ticker := time.NewTicker(500 * time.Millisecond)
@@ -576,6 +598,21 @@ func (d *Daemon) scheduleLoop(ctx context.Context) {
 		case now := <-ticker.C:
 			if ctx.Err() != nil {
 				return
+			}
+			// Closing a CLI can block; lifecycle work shares dispatch ownership,
+			// never the schedule lock, and at most one closer per session.
+			for _, s := range d.scheduledClosures() {
+				cleaningMu.Lock()
+				if !cleaning[s.meta.ID] {
+					cleaning[s.meta.ID] = true
+					dispatches.Go(func() {
+						defer func() { cleaningMu.Lock(); delete(cleaning, s.meta.ID); cleaningMu.Unlock() }()
+						if err := s.killIf(ctx, true); err != nil {
+							slog.Warn("close scheduled CLI", "err", errClass(err))
+						}
+					})
+				}
+				cleaningMu.Unlock()
 			}
 			for _, task := range d.prepareScheduledDispatches(now.UTC()) {
 				dispatches.Go(func() { d.dispatchScheduled(ctx, task, now.UTC()) })
@@ -666,6 +703,8 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired"}
 				t.Runs = appendRun(t.Runs, run)
 				d.nextSchedule(t, now)
+			} else if tr := t.Spec.Trigger; tr.Type == "calendar" && t.LastCalendarDate == calendarDate(tr, now) {
+				d.nextSchedule(t, now)
 			} else if t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
 				t.Status = "completed"
 				t.NextRunAt = nil
@@ -677,6 +716,9 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching"}
 					t.Status = "dispatching"
 					t.Dispatches++
+					if t.Spec.Trigger.Type == "calendar" {
+						t.LastCalendarDate = calendarDate(t.Spec.Trigger, now)
+					}
 					dispatch = true
 				}
 			}
@@ -748,7 +790,7 @@ func (d *Daemon) launchScheduledSession(ctx context.Context, t *schedule.Task) (
 		}
 		terminal := t.SourceSession != "" && !shell
 		// No prompt here: the scheduled input uses its own stable request ID.
-		s, err = d.createByContext(ctx, &pb.CreateSessionRequest{Cwd: target.Cwd, Agent: kind, Model: target.Model, Effort: target.Effort, Mode: mode, Env: env}, originSystem, shell, terminal, "the session's saved PATH")
+		s, err = d.createByContext(ctx, &pb.CreateSessionRequest{Cwd: target.Cwd, Agent: kind, Model: target.Model, Effort: target.Effort, Mode: mode, Env: env}, &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_SYSTEM, ScheduledTaskId: t.ID}, shell, terminal, "the session's saved PATH")
 	}
 	return s, err
 }
@@ -786,6 +828,7 @@ func (d *Daemon) dispatchScheduled(ctx context.Context, snapshot *schedule.Task,
 	}
 	origin := proto.Clone(originSystem).(*pb.Origin)
 	origin.RequestId = snapshot.Active.RequestID
+	origin.ScheduledTaskId, origin.ScheduledRunId = snapshot.ID, snapshot.Active.ID
 	_, err = s.enqueueMode(snapshot.Spec.Message, snapshot.Active.RequestID, nil, origin, pb.SendMode_SEND_MODE_QUEUE)
 	reason := ""
 	if !queueAccepted(err) {
@@ -885,6 +928,13 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed boo
 			run.MessageSeen = true
 			run.TurnID = e.TurnId
 			run.Status = "running"
+		}
+		if notice := e.GetScheduledNotification(); notice != nil && notice.RunId == run.ID {
+			run.Notified, run.NotificationText = true, notice.Text
+			run.NotificationCount++
+		}
+		if msg := e.GetAgentMessage(); msg != nil && run.MessageSeen && (run.TurnID == "" || e.TurnId == "" || e.TurnId == run.TurnID) && msg.Phase == "final_answer" {
+			run.FinalSummary = summary(msg.Text, 200)
 		}
 		if end := e.GetTurnEnded(); end != nil && run.MessageSeen && (run.TurnID == "" || e.TurnId == "" || e.TurnId == run.TurnID) {
 			status := "completed"
@@ -1071,4 +1121,12 @@ func (d *Daemon) expireSchedule(t *schedule.Task, now time.Time) bool {
 		return true
 	}
 	return false
+}
+
+func calendarDate(tr schedule.Trigger, at time.Time) string {
+	loc, err := time.LoadLocation(tr.Timezone)
+	if err != nil {
+		return ""
+	}
+	return at.In(loc).Format("2006-01-02")
 }

@@ -11,7 +11,10 @@ import (
 
 // meta is the persisted description of a session, session.json.
 type meta struct {
-	ID string `json:"id"`
+	TaskCLIClosed   bool   `json:"task_cli_closed,omitempty"`
+	ScheduledTaskID string `json:"scheduled_task_id,omitempty"`
+	TaskOwned       bool   `json:"task_owned,omitempty"`
+	ID              string `json:"id"`
 	// Agent is the CLI; sessions from before Claude Code support have none
 	// and run Codex.
 	Agent     pb.Agent  `json:"agent,omitempty"`

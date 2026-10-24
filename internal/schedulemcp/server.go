@@ -28,13 +28,17 @@ type UpdateInput struct {
 	ExpectedRevision uint64        `json:"expected_revision,omitempty"`
 	Task             schedule.Spec `json:"task" jsonschema:"Complete replacement definition; an active execution must finish first"`
 }
+type NotifyInput struct {
+	Text  string `json:"text" jsonschema:"Required notification body, up to 200 characters"`
+	Title string `json:"title,omitempty" jsonschema:"Optional title, up to 60 characters; defaults to the task title"`
+}
 type Empty struct{}
 
 // New binds "current" to the Remote Agent session that launched this MCP.
 // The MCP is merely a client; all persistence and timing belong to the daemon.
 func New(client remoteagentv1connect.LocalServiceClient, sessionID, version string) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "remote-agent", Version: version}, nil)
-	call := func(ctx context.Context, op, id string, revision uint64, spec *schedule.Spec, key string) (*mcp.CallToolResult, map[string]any, error) {
+	call := func(ctx context.Context, op, id string, revision uint64, spec any, key string) (*mcp.CallToolResult, map[string]any, error) {
 		var b []byte
 		var err error
 		if spec != nil {
@@ -62,7 +66,7 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 		}
 		return nil, result, nil
 	}
-	mcp.AddTool(server, &mcp.Tool{Name: "schedule_create", Description: "Persist a future Agent message in Remote Agent, visible through its task API. Supports a timestamp, fixed interval, or delay after the current turn ends. Resume only this conversation (target.type=resume_session, session=current) or start a fresh one in the same project and CLI with the exact same standard approval mode (new_session). Plan and unknown/custom permissions cannot delegate tasks. Tasks survive CLI exit and daemon restart; this computer must be running to execute. Only a successful result means the task was saved. After an ambiguous connection error, list tasks before retrying or reuse a stable request_id."}, func(ctx context.Context, _ *mcp.CallToolRequest, in CreateInput) (*mcp.CallToolResult, map[string]any, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "schedule_create", Description: "Persist a future Agent message in Remote Agent, visible through its task API. Supports a timestamp, fixed interval (minimum 300 seconds), calendar time in an IANA timezone, or delay (repeating minimum 60 seconds) after the current turn ends. Resume only this conversation (target.type=resume_session, session=current) or start a fresh one in the same project and CLI with the exact same standard approval mode (new_session). Plan and unknown/custom permissions cannot delegate tasks. Tasks survive CLI exit and daemon restart; this computer must be running to execute. During a scheduled execution you cannot create, update, resume or run tasks. Recurrence may end at max_runs or until. Only a successful result means the task was saved. After an ambiguous connection error, list tasks before retrying or reuse a stable request_id."}, func(ctx context.Context, _ *mcp.CallToolRequest, in CreateInput) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "create", "", 0, &in.Task, in.RequestID)
 	})
 	mcp.AddTool(server, &mcp.Tool{Name: "schedule_list", Description: "List this bound session's MCP-created Remote Agent scheduled tasks, including status, next execution time, revisions and execution history."}, func(ctx context.Context, _ *mcp.CallToolRequest, _ Empty) (*mcp.CallToolResult, map[string]any, error) {
@@ -82,5 +86,8 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 			return call(ctx, item.op, in.TaskID, in.ExpectedRevision, nil, "")
 		})
 	}
+	mcp.AddTool(server, &mcp.Tool{Name: "notify_user", Description: "Notify the user of a result worth their attention during this scheduled task turn. Ordinary turn-end notifications are suppressed for scheduled turns. Only available in a bound scheduled turn, at most 3 times per run. text is required (up to 200 characters); title is optional (up to 60, defaults to the task title). Success means the notification was durably recorded for delivery, not that the user has received it."}, func(ctx context.Context, _ *mcp.CallToolRequest, in NotifyInput) (*mcp.CallToolResult, map[string]any, error) {
+		return call(ctx, "notify_user", "", 0, in, "")
+	})
 	return server
 }

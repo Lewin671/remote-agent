@@ -33,8 +33,8 @@ type Trigger struct {
 	Until           *time.Time `json:"until,omitempty" jsonschema:"RFC3339 timestamp with timezone; no recurring dispatch after this instant"`
 	Type            string     `json:"type" jsonschema:"at (one timestamp), interval (fixed elapsed-time recurrence), calendar (local daily/weekly time), or after_turn (delay from the current turn ending)"`
 	At              *time.Time `json:"at,omitempty" jsonschema:"RFC3339 timestamp with timezone, required for at; optional first occurrence for interval"`
-	DelaySeconds    int64      `json:"delay_seconds,omitempty" jsonschema:"Nonnegative delay for after_turn, or initial delay for interval without at"`
-	IntervalSeconds int64      `json:"interval_seconds,omitempty" jsonschema:"Recurrence interval for interval, minimum 1 second"`
+	DelaySeconds    int64      `json:"delay_seconds,omitempty" jsonschema:"Nonnegative delay for after_turn, or initial interval delay; MCP after_turn repeats require at least 60 seconds"`
+	IntervalSeconds int64      `json:"interval_seconds,omitempty" jsonschema:"Recurrence interval; MCP requires at least 300 seconds, explicit user CLI/client at least 1 second"`
 	Repeat          bool       `json:"repeat,omitempty" jsonschema:"For after_turn: repeat the delay after each scheduled execution ends"`
 	MaxRuns         int64      `json:"max_runs,omitempty" jsonschema:"Maximum automatic dispatches; zero means no limit"`
 }
@@ -52,30 +52,36 @@ type Target struct {
 // Task is persisted by the daemon. Pausing/canceling stops future dispatches,
 // not an execution already handed to a session's input queue.
 type Task struct {
-	ID            string     `json:"id"`
-	Revision      uint64     `json:"revision"`
-	Spec          Spec       `json:"spec"`
-	Status        string     `json:"status"`
-	Reason        string     `json:"reason,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
-	NextRunAt     *time.Time `json:"next_run_at,omitempty"`
-	SourceSession string     `json:"source_session,omitempty"`
-	ScopedSession string     `json:"scoped_session,omitempty"` // MCP delegation bound to this session
-	ScopedMode    string     `json:"scoped_mode,omitempty"`    // that session's standard mode when the delegation was made
-	Source        string     `json:"source"`
-	AnchorSession string     `json:"anchor_session,omitempty"`
-	AnchorSeq     uint64     `json:"anchor_seq,omitempty"`
-	AnchorTurn    string     `json:"anchor_turn,omitempty"`
-	Dispatches    int64      `json:"dispatches"`
-	Runs          []Run      `json:"runs,omitempty"`
-	Active        *Run       `json:"active_run,omitempty"`
+	LastCalendarDate string     `json:"last_calendar_date,omitempty"`
+	ID               string     `json:"id"`
+	Revision         uint64     `json:"revision"`
+	Spec             Spec       `json:"spec"`
+	Status           string     `json:"status"`
+	Reason           string     `json:"reason,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	NextRunAt        *time.Time `json:"next_run_at,omitempty"`
+	SourceSession    string     `json:"source_session,omitempty"`
+	ScopedSession    string     `json:"scoped_session,omitempty"` // MCP delegation bound to this session
+	ScopedMode       string     `json:"scoped_mode,omitempty"`    // that session's standard mode when the delegation was made
+	Source           string     `json:"source"`
+	AnchorSession    string     `json:"anchor_session,omitempty"`
+	AnchorSeq        uint64     `json:"anchor_seq,omitempty"`
+	AnchorTurn       string     `json:"anchor_turn,omitempty"`
+	Dispatches       int64      `json:"dispatches"`
+	Runs             []Run      `json:"runs,omitempty"`
+	Active           *Run       `json:"active_run,omitempty"`
 	// Creation request identity survives retries and restart.
 	CreationKey  string `json:"creation_key,omitempty"`
 	CreationHash string `json:"creation_hash,omitempty"`
 }
 
 type Run struct {
+	Notified          bool   `json:"notified"`
+	NotificationText  string `json:"notification_text,omitempty"`
+	NotificationCount int    `json:"notification_count,omitempty"`
+	FinalSummary      string `json:"final_summary,omitempty"`
+
 	ID          string     `json:"id"`
 	SessionID   string     `json:"session_id,omitempty"`
 	RequestID   string     `json:"request_id"`

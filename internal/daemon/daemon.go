@@ -139,8 +139,11 @@ type Daemon struct {
 	inputBytes  int64 // queued + held text and in-progress reservations
 	inputQueues map[string]int64
 
-	scheduleMu sync.Mutex
-	tasks      map[string]*schedule.Task
+	scheduleRevision  uint64
+	schedulePublished uint64
+	schedulePublishAt time.Time
+	scheduleMu        sync.Mutex
+	tasks             map[string]*schedule.Task
 	// lateRuns names, by task ID, the execution that ended uncertain
 	// because its message was reported UNCONFIRMED and that a late record
 	// may still confirm (schedule.go, reconfirmScheduledRun). Like the
@@ -502,6 +505,7 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	}
 	id := newID(8)
 	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true,
+		ScheduledTaskID: origin.GetScheduledTaskId(), TaskOwned: origin.GetScheduledTaskId() != "",
 		StandardContext: req.Agent == pb.Agent_AGENT_CLAUDE && req.StandardContext, Shell: viaShell}
 	// The environment the CLI starts with: a client-created session's
 	// login shell gets what a new terminal gives it and builds the rest
@@ -650,6 +654,7 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 		sessions = append(sessions, s)
 	}
 	d.mu.Unlock()
+	m.ScheduleRevision = d.publishedScheduleRevision()
 	m.Projects = projectSummaries(sessions)
 	return m
 }
@@ -662,6 +667,10 @@ func projectSummaries(sessions []*session) []*pb.ProjectSummary {
 	byPath := map[string]*pb.ProjectSummary{}
 	for _, s := range sessions {
 		s.mu.Lock()
+		if s.meta.TaskOwned {
+			s.mu.Unlock()
+			continue
+		}
 		cwd, created, exited, ended := s.meta.Cwd, s.meta.CreatedAt.UnixMilli(), s.status == pb.SessionStatus_SESSION_STATUS_EXITED, s.ordering.endedAt
 		s.mu.Unlock()
 		p := byPath[cwd]
@@ -1047,6 +1056,11 @@ drain:
 
 	s.mu.Lock()
 	s.meta.Exited = false
+	// Explicit or scheduled resume starts a new CLI lifetime; never close it
+	// again on behalf of the original new_session execution.
+	if s.meta.ScheduledTaskID != "" {
+		s.meta.TaskCLIClosed = true
+	}
 	s.sawComposer = false
 	m = s.meta
 	if err := m.save(s.dir); err != nil {

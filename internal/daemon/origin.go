@@ -27,23 +27,25 @@ func originOf(ctx context.Context) *pb.Origin {
 
 // storedOrigin is an origin as kept in queue.json.
 type storedOrigin struct {
-	Kind      pb.OriginKind `json:"kind"`
-	DeviceID  string        `json:"device_id,omitempty"`
-	RequestID string        `json:"request_id,omitempty"`
+	ScheduledTaskID string        `json:"scheduled_task_id,omitempty"`
+	ScheduledRunID  string        `json:"scheduled_run_id,omitempty"`
+	Kind            pb.OriginKind `json:"kind"`
+	DeviceID        string        `json:"device_id,omitempty"`
+	RequestID       string        `json:"request_id,omitempty"`
 }
 
 func storeOrigin(o *pb.Origin) *storedOrigin {
 	if o == nil {
 		return nil
 	}
-	return &storedOrigin{Kind: o.Kind, DeviceID: o.DeviceId, RequestID: o.RequestId}
+	return &storedOrigin{ScheduledTaskID: o.ScheduledTaskId, ScheduledRunID: o.ScheduledRunId, Kind: o.Kind, DeviceID: o.DeviceId, RequestID: o.RequestId}
 }
 
 func (o *storedOrigin) pb() *pb.Origin {
 	if o == nil {
 		return nil
 	}
-	return &pb.Origin{Kind: o.Kind, DeviceId: o.DeviceID, RequestId: o.RequestID}
+	return &pb.Origin{ScheduledTaskId: o.ScheduledTaskID, ScheduledRunId: o.ScheduledRunID, Kind: o.Kind, DeviceId: o.DeviceID, RequestId: o.RequestID}
 }
 
 // withOrigin sets e's origin to a copy of o and returns e.
