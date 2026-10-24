@@ -541,3 +541,43 @@ go run ./scripts/acceptance-schedule
 真实 CLI 复验使用上方同一复现命令、独立的 RA_DEV_DIR、本地 server/daemon、临时账户、状态和 tmux socket，Claude Code 2.1.300 / Haiku 5.5。Go 加密客户端创建日历任务，经 server、daemon、真实 CLI 调用 notify_user，运行结束退出；默认列表隐藏、按 ID 回读、恢复回复接手全部通过。新增检查在允许那一次 MCP 调用之前，先从中继按活跃运行会话 ID 解密读回 TaskOwned=true 的会话，并确认其中有审批/提问/计划或弹窗等待字段；三端回归测试确认这份数据进入「需要处理」及项目计数。没有将该检查冒称为直接操作客户端界面。
 
 临时环境已清理，模拟器测试已结束。未覆盖的仍是真手机、实际 FCM/Web Push 送达、真实 Codex 的这套新增链路，以及真实休眠和夏令时切换；日期边界、并发、重启及结果不确定场景由自动测试覆盖。没有改变账户配额，也没有声称按 ID 取回的数据属于 server 默认列表。
+
+
+### 定时任务第二轮反馈
+
+2026-10-24，仍为未发布的协议 11，产品版本未改。以下验证在任务 worktree 完成，仅本地提交，没有推送、发版或部署；当前设计见 [architecture §18](architecture.md#18-定时任务)。
+
+| 反馈 | 修复验证与回归入口 | 本轮实际检出的变异数 |
+|---|---|---|
+| 1 | `TestOrdinaryHumanReplayDoesNotWriteMetadata` 重放 300 条人工 QUEUED，以 session.json 的原始字节哨兵检出重复写入；普通会话的内存上下文仍会清除。既有接手测试核对任务归属变化 | 1 |
+| 2 | `TestColdListIncludesLiveTaskOwnedApprovals` 从真实 server 的默认 ListRemoteSessions 读取；网页 paging、Android/iOS DirectoryRefresh 从加密列表冷启动并再刷新，核对待处理、项目归属及普通列表过滤，未直接填 remote.sessions。SQL 及三端待处理/项目投影分别删除修复 | 7 |
+| 3 | `TestRecurringResumeAndManualFailures` 覆盖 interval/calendar 恢复、max_runs 和各类手动结果；`TestManualTrialFailureBoundaries` 走派发失败、输入暂停后取消、无法确认、中断以及显式暂停/取消的生产路径。手动无法确认不会迟到接回并覆盖自动计划；显式取消保留空游标 | 5 |
+| 4 | `TestSkippedManualTrialRestoresAutomaticDispatch` 真实走试跑过期跳过路径，再走自动派发和 max_runs，核对 RunNow、Manual、Dispatches 和当地日期 | 1 |
+| 5 | `TestMCPRestrictionUsesCurrentTurnNotQueue` 对 create/update/run 分别核对：当前人工轮后排定时消息仍允许、当前定时轮后排人工消息仍拒绝；既有新开会话保护测试保留 | 2 |
+| 6 | `TestHumanAdmissionBoundsRunningResumeRetry` 用 tmux 仍存在而 Exited=true 的状态核对 errRunning 和恰好两次尝试。5 秒 context 仅防回退后无限重试，不把短耗时作为成功标准 | 1 |
+| 7 | `TestPublicationRefusalBeforeAndAfterAdmission` 覆盖报告早于身份回写、已排队、已开始三种顺序，核对持久失败、队列撤回和真实控制写入中的中断键。`TestScheduledCreationWritesOwnership` 核对创建时持久化运行 ID；`TestQuotaStopRetriesAndDoesNotInterruptHuman` 让真实调度循环处理 Enter 后迟到的确认，并核对人工轮不受中断 | 4 |
+| 8 | `TestMCPDispatchReportsMinimumIntervalReason` 分别验证 interval 和重复 after_turn 的专用原因；既有权限变化原因测试仍通过 | 1 |
+| 9 | `TestFollowupSurvivesLaterSkippedRun` 实际插入较新 skipped 后重载任务，验证原运行的通知、摘要、运行 ID 和幂等游标；同时覆盖任务仍调度及已终结两种状态 | 2 |
+
+本轮新增 24 个变异位置，连同上一轮 35 个共 59 个均已实际验证。入口为 `python3 scripts/check-schedule-regressions.py --clients`，也可用 `--only r2-` 定位本轮。此次完整跑过原有及新增位置，后加的显式取消位置和收紧后的 Android 项目断言另行定向复验；未把编译失败当成检出。Android 项目测试先断言项目数再访问 single，避免把空集合异常算作断言证据；本轮 Android 变异要求输出实际 AssertionError。
+
+最终检查全部通过：
+
+- `go test ./...`。
+- `go test -race ./internal/daemon ./internal/relay ./internal/server -run 'Test(Schedule|Calendar|MCP|Human|Takeover|RelaySession|HiddenSessions|Uncertain|ExplicitResumeRPC|RealScheduleLoop|RunSummary|OrdinaryHumanReplay|RecurringResume|SkippedManual|PublicationRefusal|QuotaStop|Followup|ColdList|TaskOwnedPaging|ManualTrial)' -count=1`。
+- 网页 `pnpm typecheck && pnpm test`：84 文件、1067 项。
+- Android `./gradlew :core:test :app:testDebugUnitTest`：Core 379 项、App 301 项，零失败。
+- iOS Core `swift test`：83 suite、529 项。
+
+真实 CLI 验收为本地隔离 server/daemon、临时账户与状态目录、独立 tmux socket，Claude Code 2.1.300 / Haiku 5.5。`scripts/acceptance-schedule` 经加密 Forward 创建日历任务；到点前重启一次 daemon，确认保存的任务仍可读取并派发；真实 MCP 审批已挂起时再重启一次，先通过加密 GetLiveSnapshot 确认重放后的会话 TaskOwned=true 且 PendingApprovals>0，再用没有会话缓存或订阅的新 Go 加密客户端从默认 ListRemoteSessions（未传 session_ids）读回并解密，确认该会话仍在待处理数据里。随后单次批准 notify_user，核对通知、摘要、CLI 退出、已结束默认分页排除、按 ID 历史和人工恢复回复接手。全部通过。
+
+复现时保持同一 shell，让退出清理生效：
+
+```sh
+export RA_DEV_DIR="$(mktemp -d)"
+./ios/scripts/dev-env.sh start --daemon
+trap './ios/scripts/dev-env.sh stop' EXIT
+go run ./scripts/acceptance-schedule
+```
+
+临时环境已清理。上述操作是 Go 合成客户端和 tmux 审批触发，未声称直接操作三端产品界面；三端真实列表解密及筛选由客户端回归测试验证。未覆盖真手机、FCM/Web Push 实际送达、真实 Codex 同链路、真实休眠和夏令时切换。
