@@ -167,6 +167,9 @@ func TestManualAndAutomaticSerialize(t *testing.T) {
 		for _, late := range []bool{true, false} {
 			t.Run(map[bool]string{true: "manual-first", false: "automatic-first"}[manualFirst]+map[bool]string{true: "skip", false: "catchup"}[late], func(t *testing.T) {
 				h, task := manualFixture(t, "calendar")
+				if !manualFirst {
+					task.Spec.Trigger.MaxRuns = 2
+				}
 				defer h.s.log.Close()
 				now := time.Now()
 				due := now.Add(time.Minute)

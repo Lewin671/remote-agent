@@ -246,12 +246,13 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 	}
 	// An execution that was confirmed late is taken up first: no operation
 	// moves on from an execution that is in fact under way.
+	lateRun := d.lateRuns[t.ID]
 	if before := schedule.Clone(t); q.Operation != "run" && d.reconfirmScheduledRun(t, now) {
 		touchTask(t, now)
 		if err := d.saveSchedulesLocked(); err != nil {
 			if !fileReplaced(err) {
 				d.tasks[t.ID] = before
-				d.lateRuns[t.ID] = before.Runs[len(before.Runs)-1].ID
+				d.lateRuns[t.ID] = lateRun
 			}
 			return nil, fmt.Errorf("could not persist scheduled task: %w", err)
 		}
@@ -707,8 +708,9 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 			changed = true
 		}
 		if t.Active == nil && t.ManualRequest != nil {
-			dispatch = d.prepareManualDispatch(t, now)
-			changed = true
+			var manualChanged bool
+			dispatch, manualChanged = d.prepareManualDispatch(t, now)
+			changed = changed || manualChanged
 		}
 		if t.Status == "scheduled" && t.Active == nil && t.NextRunAt != nil && !now.Before(*t.NextRunAt) {
 			changed = true
@@ -786,7 +788,10 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 }
 
 // Manual admission and its result never touch the automatic plan.
-func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) bool {
+func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) (bool, bool) {
+	if d.lateRuns[t.ID] != "" || t.Status == "uncertain" {
+		return false, false
+	}
 	request := t.ManualRequest
 	t.ManualRequest = nil
 	run := schedule.Run{ID: newID(8), RequestID: request.RequestID, ScheduledAt: request.RequestedAt, StartedAt: now, Manual: true, Status: "dispatching"}
@@ -795,6 +800,8 @@ func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) bool {
 		late = 86400
 	}
 	switch {
+	case t.Status == "failed" || t.Terminal():
+		run.Status, run.Reason = "skipped", "task_"+t.Status+"_before_manual_dispatch"
 	case now.Sub(request.RequestedAt) > time.Duration(late)*time.Second:
 		run.Status, run.Reason = "skipped", "catch_up_window_expired"
 	case t.Spec.Trigger.Until != nil && now.After(*t.Spec.Trigger.Until):
@@ -812,10 +819,10 @@ func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) bool {
 	if run.Status != "dispatching" {
 		run.EndedAt = &now
 		t.Runs = appendRun(t.Runs, run)
-		return false
+		return false, true
 	}
 	t.Active = &run
-	return true
+	return true, true
 }
 
 // launchScheduledSession only reads its detached task snapshot.
@@ -1078,11 +1085,21 @@ const unconfirmedRun = "message_submission_unconfirmed"
 func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) bool {
 	id, ok := d.lateRuns[t.ID]
 	paused := t.Status == "paused"
-	if !ok || !paused && (t.Status != "uncertain" || t.Reason != unconfirmedRun) || len(t.Runs) == 0 {
+	if t.Active != nil || !ok || !paused && (t.Status != "uncertain" || t.Reason != unconfirmedRun) || len(t.Runs) == 0 {
 		return false
 	}
-	last := &t.Runs[len(t.Runs)-1]
-	if last.ID != id || last.Status != "uncertain" || last.Reason != unconfirmedRun {
+	index := -1
+	for i := range t.Runs {
+		if t.Runs[i].ID == id {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return false
+	}
+	last := &t.Runs[index]
+	if last.Status != "uncertain" || last.Reason != unconfirmedRun {
 		return false
 	}
 	s, err := d.exact(last.SessionID)
@@ -1096,7 +1113,7 @@ func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) bool {
 		if in := e.GetInputState(); in != nil && in.RequestId == last.RequestID && in.Status == pb.InputStatus_INPUT_STATUS_SUBMITTED {
 			run := *last
 			run.Status, run.Reason, run.EndedAt = "submitted", "", nil
-			t.Runs = t.Runs[:len(t.Runs)-1]
+			t.Runs = append(t.Runs[:index], t.Runs[index+1:]...)
 			t.Active = &run
 			if !paused {
 				t.Status, t.Reason = run.Status, ""

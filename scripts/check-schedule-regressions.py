@@ -101,6 +101,12 @@ go("r4-01-definition", "internal/daemon/schedule.go", 't.IntervalPhase = &at', '
 go("r4-01-update", "internal/daemon/schedule.go", 'at := nextInterval(t, now)', 'at := *t.IntervalPhase', "TestIntervalDefinitionRoundTripDoesNotRedispatch")
 go("r4-01-guard", "internal/daemon/schedule.go", 'last != nil && last.ScheduledAt.Equal(*t.NextRunAt)', 'false && last != nil && last.ScheduledAt.Equal(*t.NextRunAt)', "TestAutomaticDispatchRejectsConsumedOccurrence")
 
+go("r4-02-wait-cursor", "internal/daemon/schedule.go", 'd.lateRuns[t.ID] != "" || t.Status == "uncertain"', 't.Status == "uncertain"', "TestPendingManualWaitsForAutomaticConfirmation")
+go("r4-02-wait-state", "internal/daemon/schedule.go", 'd.lateRuns[t.ID] != "" || t.Status == "uncertain"', 'd.lateRuns[t.ID] != ""', "TestPendingManualWaitsForAutomaticConfirmation")
+go("r4-02-drop", "internal/daemon/schedule.go", 'case t.Status == "failed" || t.Terminal():', 'case false:', "TestPendingManualSkipsWhenAutomaticStops")
+go("r4-02-id", "internal/daemon/schedule.go", 'last := &t.Runs[index]', 'index=len(t.Runs)-1; last := &t.Runs[index]', "TestLateConfirmationFindsRunByID")
+go("r4-02-rollback", "internal/daemon/schedule.go", 'd.lateRuns[t.ID] = lateRun', 'd.lateRuns[t.ID] = before.Runs[len(before.Runs)-1].ID; _=lateRun', "TestLateConfirmationRollbackKeepsOriginalRunID")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
