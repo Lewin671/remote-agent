@@ -143,15 +143,22 @@ func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, scope string) ([]byte, e
 
 func (d *Daemon) scheduledClosures() []*session {
 	ended := map[string]bool{}
+	uncertain := map[string]bool{}
 	d.scheduleMu.Lock()
 	for _, task := range d.tasks {
 		if task.Spec.Target.Type != "new_session" {
 			continue
 		}
 		for _, run := range task.Runs {
+			if run.SessionID != "" {
+				uncertain[run.SessionID] = run.Status == "uncertain"
+			}
 			if run.SessionID != "" && (run.Status == "completed" || run.Status == "failed" || run.Status == "interrupted" || run.Status == "cancelled") {
 				ended[run.SessionID] = true
 			}
+		}
+		if task.Active != nil && task.Active.SessionID != "" && task.Active.Status == "uncertain" {
+			uncertain[task.Active.SessionID] = true
 		}
 	}
 	d.scheduleMu.Unlock()
@@ -167,7 +174,7 @@ func (d *Daemon) scheduledClosures() []*session {
 		if ended[s.meta.ID] {
 			s.scheduledClose = true
 		}
-		ready := s.meta.TaskOwned && !s.meta.TaskCLIClosed && !s.meta.Exited && s.scheduledClose && !s.running && len(s.queue.Queue) == 0 && len(s.queue.Held) == 0 && !time.Now().Before(s.scheduledCloseAfter)
+		ready := !uncertain[s.meta.ID] && s.meta.TaskOwned && !s.meta.TaskCLIClosed && !s.meta.Exited && s.scheduledClose && !s.running && len(s.queue.Queue) == 0 && len(s.queue.Held) == 0 && !time.Now().Before(s.scheduledCloseAfter)
 		s.mu.Unlock()
 		if ready {
 			out = append(out, s)

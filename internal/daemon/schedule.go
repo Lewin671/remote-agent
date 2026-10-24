@@ -605,6 +605,9 @@ func (d *Daemon) scheduleLoop(ctx context.Context) {
 			if ctx.Err() != nil {
 				return
 			}
+			for _, task := range d.prepareScheduledDispatches(now.UTC()) {
+				dispatches.Go(func() { d.dispatchScheduled(ctx, task, now.UTC()) })
+			}
 			// Closing a CLI can block; lifecycle work shares dispatch ownership,
 			// never the schedule lock, and at most one closer per session.
 			for _, s := range d.scheduledClosures() {
@@ -619,9 +622,6 @@ func (d *Daemon) scheduleLoop(ctx context.Context) {
 					})
 				}
 				cleaningMu.Unlock()
-			}
-			for _, task := range d.prepareScheduledDispatches(now.UTC()) {
-				dispatches.Go(func() { d.dispatchScheduled(ctx, task, now.UTC()) })
 			}
 		}
 	}

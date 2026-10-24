@@ -97,3 +97,22 @@ func TestScheduledCloseBacksOffUntilNewEvent(t *testing.T) {
 		t.Fatal("committed event did not wake closure")
 	}
 }
+
+func TestUncertainRunNeverClosesAutomatically(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
+	tsk := h.d.tasks[task.ID]
+	tsk.Spec.Target.Type = "new_session"
+	h.s.meta.TaskOwned = true
+	h.s.scheduledClose = true // even a prior end marker cannot override uncertainty
+	tsk.Runs = []schedule.Run{{SessionID: h.s.meta.ID, Status: "uncertain"}}
+	if len(h.d.scheduledClosures()) != 0 {
+		t.Fatal("closed uncertain historical run")
+	}
+	tsk.Runs = nil
+	tsk.Active = &schedule.Run{SessionID: h.s.meta.ID, Status: "uncertain"}
+	if len(h.d.scheduledClosures()) != 0 {
+		t.Fatal("closed uncertain active run")
+	}
+}
