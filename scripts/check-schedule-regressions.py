@@ -18,11 +18,6 @@ def go(name, file, before, after, test, package=DAEMON):
 
 go("01-occurrence-date", "internal/daemon/schedule.go", "calendarDate(t.Spec.Trigger, t.Active.ScheduledAt)", "calendarDate(t.Spec.Trigger, now)", "TestCalendarCatchupOccupiesOccurrenceDateOnly")
 go("01-skipped-date", "internal/daemon/schedule.go", "func nextCalendar(t *schedule.Task, now time.Time) time.Time {", "func nextCalendar(t *schedule.Task, now time.Time) time.Time { if len(t.Runs)>0 {return t.Spec.Trigger.NextCalendar(now.Add(24*time.Hour))};", "TestCalendarCatchupOccupiesOccurrenceDateOnly")
-go("02-manual-date", "internal/daemon/schedule.go", 'if t.Spec.Trigger.Type == "calendar" && !t.RunNow {\n\t\t\t\t\t\tt.LastCalendarDate', 'if t.Spec.Trigger.Type == "calendar" {\n\t\t\t\t\t\tt.LastCalendarDate', "TestCalendarManualRunPreservesAutomaticOccurrence")
-go("02-manual-cursor", "internal/daemon/schedule.go", "t.NextRunAt = t.AutomaticNextRunAt", "t.NextRunAt = nil", "TestCalendarManualRunPreservesAutomaticOccurrence")
-go("02-manual-count", "internal/daemon/schedule.go", 'if t.Spec.Trigger.Type != "calendar" || !t.RunNow {', 'if true {', "TestCalendarManualRunPreservesAutomaticOccurrence")
-go("02-manual-limit-command", "internal/daemon/schedule.go", 't.Spec.Trigger.Type != "calendar" && t.Spec.Trigger.MaxRuns > 0', 't.Spec.Trigger.MaxRuns > 0', "TestCalendarManualRunPreservesAutomaticOccurrence")
-go("02-manual-limit-dispatch", "internal/daemon/schedule.go", '!t.RunNow && t.Spec.Trigger.MaxRuns > 0', 't.Spec.Trigger.MaxRuns > 0', "TestCalendarManualRunPreservesAutomaticOccurrence")
 go("03-create-until", "internal/daemon/schedule.go", "if tr.Until != nil && now.After(*tr.Until) {", "if false && tr.Until != nil && now.After(*tr.Until) {", "TestCalendarDeadlineAndEditBoundaries")
 go("03-run-until", "internal/daemon/schedule.go", "if until := t.Spec.Trigger.Until; until != nil && now.After(*until) {", "if until := t.Spec.Trigger.Until; false && until != nil && now.After(*until) {", "TestCalendarDeadlineAndEditBoundaries")
 go("03-edit-next", "internal/daemon/schedule.go", "at := nextCalendar(t, now)", "at := tr.NextCalendar(now)", "TestCalendarDeadlineAndEditBoundaries")
@@ -53,9 +48,7 @@ go("r2-01-replay-write", "internal/daemon/schedule_events.go", "if s.meta.TaskOw
 go("r2-02-cold-list", "internal/server/store.go", "AND ended_ms = 0 ORDER BY", "AND ended_ms = 0 AND NOT EXISTS (SELECT 1 FROM task_owned_sessions AS owned WHERE owned.account_id=sessions.account_id AND owned.session_id=sessions.session_id) ORDER BY", "TestColdListIncludesLiveTaskOwnedApprovals", "./internal/server")
 
 go("r2-03-resume", "internal/daemon/schedule.go", 't.Spec.Trigger.Type == "interval" || t.Spec.Trigger.Type == "calendar" {', 'false {', "TestRecurringResumeAndManualFailures")
-go("r2-03-manual-result", "internal/daemon/schedule.go", 'if manual {', 'if false && manual {', "TestRecurringResumeAndManualFailures")
 
-go("r2-04-skipped-manual", "internal/daemon/schedule.go", 't.RunNow = false\n\t\t\t\t\td.restoreManualSchedule(t, now)', 'd.restoreManualSchedule(t, now)', "TestSkippedManualTrialRestoresAutomaticDispatch")
 
 go("r2-05-current-turn", "internal/daemon/schedule_events.go", 'task.Spec.Target.Type == "new_session" && run != nil', 'run != nil', "TestMCPRestrictionUsesCurrentTurnNotQueue")
 go("r2-05-queued-human", "internal/daemon/schedule_events.go", 's.claimOwnershipLocked()\n\t}\n\tif st :=', 's.takeOverLocked()\n\t}\n\tif st :=', "TestMCPRestrictionUsesCurrentTurnNotQueue")
@@ -71,12 +64,25 @@ go("r2-08-minimum-reason", "internal/daemon/schedule.go", 't.Reason = "agent_sch
 go("r2-09-followup-id", "internal/daemon/schedule.go", 'for i := range t.Runs {\n\t\tchanged = d.watchScheduledFollowup', 'for i := len(t.Runs)-1; i<len(t.Runs); i++ {\n\t\tchanged = d.watchScheduledFollowup', "TestFollowupSurvivesLaterSkippedRun")
 go("r2-09-terminal-followup", "internal/daemon/schedule.go", '!hasPendingScheduledFollowups(t)', '(len(t.Runs)==0 || t.Runs[len(t.Runs)-1].Status!="completed" || t.Runs[len(t.Runs)-1].FollowupsClosed)', "TestFollowupSurvivesLaterSkippedRun")
 
-go("r2-03-input-pause", "internal/daemon/schedule.go", 'if !(status == "paused" && reason == "user_paused" || status == "cancelled" && reason == "user_cancelled") {', 'if status != "paused" && status != "cancelled" {', "TestManualTrialFailureBoundaries")
 go("r2-03-manual-late", "internal/daemon/schedule.go", 'if !run.Manual {\n\t\t\t\t\td.lateRuns', 'if true {\n\t\t\t\t\td.lateRuns', "TestManualTrialFailureBoundaries")
 
 go("r2-07-late-stop-loop", "internal/daemon/schedule.go", 'd.stopUnpublishedScheduledRuns()', '// quota enforcement removed', "TestQuotaStopRetriesAndDoesNotInterruptHuman")
 
-go("r2-03-explicit-cancel", "internal/daemon/schedule.go", 'if status == "cancelled" {\n\t\tt.NextRunAt = nil', 'if false && status == "cancelled" {\n\t\tt.NextRunAt = nil', "TestManualTrialFailureBoundaries")
+
+# Third review: replace shadow-state mutations with independent-request invariants.
+go("r3-A-request-plan", "internal/daemon/schedule.go", 't.ManualRequest = &schedule.ManualRequest{', 't.Status="scheduled";t.NextRunAt=&now; t.ManualRequest = &schedule.ManualRequest{', "TestManualExecutionLifecycleMatrix")
+go("r3-A-count", "internal/daemon/schedule.go", 'request := t.ManualRequest', 't.Dispatches++; request := t.ManualRequest', "TestManualExecutionLifecycleMatrix")
+go("r3-A-date", "internal/daemon/schedule.go", 'request := t.ManualRequest', 't.LastCalendarDate="manual-date"; request := t.ManualRequest', "TestManualExecutionLifecycleMatrix")
+go("r3-A-results", "internal/daemon/schedule.go", 'if manual {', 'if false && manual {', "TestManualExecutionLifecycleMatrix")
+go("r3-A-queue-plan", "internal/daemon/schedule.go", '!run.Manual && t.Status != "paused"', 't.Status != "paused"', "TestManualExecutionLifecycleMatrix")
+go("r3-A-queue-cursor", "internal/daemon/schedule.go", 'if !run.Manual {\n\t\tt.NextRunAt = nil', 'if true {\n\t\tt.NextRunAt = nil', "TestManualExecutionLifecycleMatrix")
+go("r3-A-restart", "internal/daemon/schedule.go", 'if !manual {', 'if true || !manual {', "TestManualExecutionLifecycleMatrix")
+go("r3-A-pause", "internal/daemon/schedule.go", 't.Reason = "user_paused"\n\t\tt.ManualRequest = nil', 't.Reason = "user_paused"', "TestManualPendingControlsAndAdmission")
+go("r3-A-cancel", "internal/daemon/schedule.go", 't.Reason = "user_cancelled"\n\t\tt.ManualRequest = nil', 't.Reason = "user_cancelled"', "TestManualPendingControlsAndAdmission")
+go("r3-A-serialize", "internal/daemon/schedule.go", 'if t.Active == nil && t.ManualRequest != nil {', 'if t.ManualRequest != nil {', "TestManualAndAutomaticSerialize")
+go("r3-A-reject-state", "internal/daemon/schedule.go", 't.Status == "uncertain" || t.Status == "failed" || t.Terminal() ||', '', "TestManualPendingControlsAndAdmission")
+go("r3-A-consume-request", "internal/daemon/schedule.go", 'request := t.ManualRequest\n\tt.ManualRequest = nil', 'request := t.ManualRequest', "TestManualExecutionLifecycleMatrix")
+go("r3-A-permission", "internal/daemon/schedule.go", 'run.Status, run.Reason = "failed", "agent_schedule_permissions_changed"', 't.Status="paused";run.Status, run.Reason = "failed", "agent_schedule_permissions_changed"', "TestManualPermissionRejectionDoesNotPausePlan")
 
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
@@ -114,8 +120,8 @@ def main():
         original=path.read_text()
         if before not in original: raise SystemExit("Missing mutation target: "+name)
         cwd=ROOT
-        if name.startswith(("11-android", "r2-client-android")):cwd=ROOT/"android"
-        if name.startswith(("11-ios", "r2-client-ios")):cwd=ROOT/"ios/RemoteAgentCore"
+        if file.startswith("android/"):cwd=ROOT/"android"
+        if file.startswith("ios/"):cwd=ROOT/"ios/RemoteAgentCore"
         try:
             # 06 intentionally removes both pre-append and replay projections.
             path.write_text(original.replace(before,after) if name=="06-interjection" else original.replace(before,after,1))

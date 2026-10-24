@@ -201,8 +201,16 @@ func TestScheduleRetainsAcceptedRunThroughRestartAndCompletion(t *testing.T) {
 		t.Fatalf("accepted run marked failed or lost: %+v", task)
 	}
 	run := *task.Active
-	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); err == nil {
-		t.Fatal("manual retry duplicated a still-active accepted run")
+	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); err != nil {
+		t.Fatal(err)
+	}
+	if got := readTask(t, h.d, task.ID); got.ManualRequest == nil || got.Active.ID != run.ID || len(h.s.queue.Queue) != 1 {
+		t.Fatal("manual request duplicated active input")
+	}
+	// Canceling the pending request is independent of restoring this accepted run.
+	h.d.tasks[task.ID].ManualRequest = nil
+	if err := h.d.saveSchedulesLocked(); err != nil {
+		t.Fatal(err)
 	}
 	if err := h.d.loadSchedules(); err != nil {
 		t.Fatal(err)

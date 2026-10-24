@@ -58,10 +58,11 @@ func TestMCPTracksAcceptedScheduledInput(t *testing.T) {
 		t.Fatalf("MCP exposes accepted run as failure: %+v", task)
 	}
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "schedule_run", Arguments: map[string]any{"task_id": task.ID}})
-	if err != nil || !res.IsError {
-		t.Fatalf("MCP allowed a duplicate active execution: %+v %v", res, err)
+	if err != nil || res.IsError {
+		t.Fatalf("MCP could not queue a separate manual request: %+v %v", res, err)
 	}
-	if len(h.s.queue.Queue) != 1 || task.Dispatches != 1 {
+	task = call("schedule_get", map[string]any{"task_id": task.ID})
+	if task.ManualRequest == nil || len(h.s.queue.Queue) != 1 || task.Dispatches != 1 {
 		t.Fatal("MCP retry duplicated accepted input")
 	}
 }

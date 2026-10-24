@@ -58,14 +58,11 @@ func (d *Daemon) loadSchedules() error {
 		d.tasks[id] = t
 		if t.Active != nil && t.Active.Status == "dispatching" {
 			now := time.Now().UTC()
-			t.Active.Status = "uncertain"
-			t.Active.Reason = "daemon_restarted_during_dispatch"
-			t.Active.EndedAt = &now
-			t.Runs = appendRun(t.Runs, *t.Active)
-			t.Active = nil
-			t.Status = "uncertain"
-			t.Reason = "daemon_restarted_during_dispatch"
-			t.NextRunAt = nil
+			manual := t.Active.Manual
+			d.endScheduledRun(t, now, "uncertain", "daemon_restarted_during_dispatch")
+			if !manual {
+				t.Status, t.Reason, t.NextRunAt = "uncertain", "daemon_restarted_during_dispatch", nil
+			}
 			touchTask(t, now)
 		}
 	}
@@ -292,9 +289,11 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		}
 		t.Status = "paused"
 		t.Reason = "user_paused"
+		t.ManualRequest = nil
 	case "cancel":
 		t.Status = "cancelled"
 		t.Reason = "user_cancelled"
+		t.ManualRequest = nil
 		t.NextRunAt = nil
 	case "resume":
 		if scope != "" {
@@ -302,14 +301,14 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 				return nil, err
 			}
 		}
-		if t.Status != "paused" {
-			return nil, errors.New("only paused tasks can be resumed")
+		if t.Status != "paused" && t.Status != "failed" && t.Status != "uncertain" {
+			return nil, errors.New("only paused, failed or uncertain tasks can be resumed")
 		}
-		if t.Active != nil && t.Active.InputPaused {
+		if t.Active != nil && !t.Active.Manual && t.Active.InputPaused {
 			return nil, errors.New("execution input is paused; use resume-input or cancel that input first")
 		}
 		t.Reason = ""
-		if t.Active != nil {
+		if t.Active != nil && !t.Active.Manual {
 			t.Status = t.Active.Status
 		} else if t.Spec.Trigger.Type == "interval" || t.Spec.Trigger.Type == "calendar" {
 			d.nextSchedule(t, now)
@@ -332,22 +331,13 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 				return nil, err
 			}
 		}
-		if t.Spec.Trigger.Type != "calendar" && t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
-			return nil, errors.New("task run limit reached; update max_runs before running")
+		if t.Status == "uncertain" || t.Status == "failed" || t.Terminal() || d.lateRuns[t.ID] != "" || t.Active != nil && t.Active.Status == "uncertain" {
+			return nil, fmt.Errorf("cannot run task in %s state; resume or update its definition first", t.Status)
 		}
-		if t.Active != nil {
-			return nil, errors.New("this task already has an active execution")
+		if t.ManualRequest != nil {
+			return nil, errors.New("a manual execution is already requested")
 		}
-		if t.Status == "cancelled" {
-			return nil, errors.New("cancelled tasks cannot run; create a new task")
-		}
-		if t.Spec.Trigger.Type == "calendar" && !t.RunNow {
-			t.AutomaticStatus, t.AutomaticReason = t.Status, t.Reason
-			t.AutomaticNextRunAt = t.NextRunAt
-			t.RunNow = true
-		}
-		t.Status, t.Reason = "scheduled", ""
-		t.NextRunAt = &now
+		t.ManualRequest = &schedule.ManualRequest{RequestID: "schedule-" + newID(16), RequestedAt: now}
 	default:
 		return nil, errors.New("unknown schedule operation")
 	}
@@ -372,7 +362,7 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 	}
 	// Pausing waits for the uncertain execution's late record; anything
 	// else moves on from it.
-	if q.Operation != "pause" {
+	if q.Operation != "pause" && q.Operation != "run" {
 		delete(d.lateRuns, t.ID)
 	}
 	return json.Marshal(t)
@@ -529,8 +519,7 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 	t.AnchorTurn = ""
 	t.Reason = ""
 	t.NextRunAt = nil
-	t.RunNow, t.AutomaticNextRunAt = false, nil
-	t.AutomaticStatus, t.AutomaticReason = "", ""
+	t.ManualRequest = nil
 	switch tr.Type {
 	case "calendar":
 		at := nextCalendar(t, now)
@@ -645,7 +634,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	for _, t := range d.tasks {
-		if t.Terminal() && t.Active == nil && d.lateRuns[t.ID] == "" && !hasPendingScheduledFollowups(t) {
+		if t.Terminal() && t.Active == nil && t.ManualRequest == nil && d.lateRuns[t.ID] == "" && !hasPendingScheduledFollowups(t) {
 			continue
 		}
 		prev := schedule.Clone(t)
@@ -700,6 +689,10 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 		if t.Active == nil && d.expireSchedule(t, now) {
 			changed = true
 		}
+		if t.Active == nil && t.ManualRequest != nil {
+			dispatch = d.prepareManualDispatch(t, now)
+			changed = true
+		}
 		if t.Status == "scheduled" && t.Active == nil && t.NextRunAt != nil && !now.Before(*t.NextRunAt) {
 			changed = true
 			late := t.Spec.LateSeconds
@@ -714,24 +707,19 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				latest := t.NextRunAt.Add(now.Sub(*t.NextRunAt) / interval * interval)
 				t.NextRunAt = &latest
 			}
-			if tr := t.Spec.Trigger; tr.Type == "calendar" && !t.RunNow {
+			if tr := t.Spec.Trigger; tr.Type == "calendar" {
 				latest := tr.LatestCalendar(now)
 				if latest.After(*t.NextRunAt) {
 					t.NextRunAt = &latest
 				}
 			}
 			if now.Sub(*t.NextRunAt) > time.Duration(late)*time.Second {
-				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired", Manual: t.RunNow}
+				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired"}
 				t.Runs = appendRun(t.Runs, run)
-				if t.RunNow {
-					t.RunNow = false
-					d.restoreManualSchedule(t, now)
-				} else {
-					d.nextSchedule(t, now)
-				}
-			} else if tr := t.Spec.Trigger; tr.Type == "calendar" && !t.RunNow && t.LastCalendarDate == calendarDate(tr, *t.NextRunAt) {
 				d.nextSchedule(t, now)
-			} else if !t.RunNow && t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
+			} else if tr := t.Spec.Trigger; tr.Type == "calendar" && t.LastCalendarDate == calendarDate(tr, *t.NextRunAt) {
+				d.nextSchedule(t, now)
+			} else if t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
 				t.Status = "completed"
 				t.NextRunAt = nil
 				t.Reason = "run_limit_reached"
@@ -742,15 +730,12 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 						t.Reason = "agent_schedule_interval_below_minimum"
 					}
 				} else {
-					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching", Manual: t.RunNow}
+					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching"}
 					t.Status = "dispatching"
-					if t.Spec.Trigger.Type != "calendar" || !t.RunNow {
-						t.Dispatches++
-					}
-					if t.Spec.Trigger.Type == "calendar" && !t.RunNow {
+					t.Dispatches++
+					if t.Spec.Trigger.Type == "calendar" {
 						t.LastCalendarDate = calendarDate(t.Spec.Trigger, t.Active.ScheduledAt)
 					}
-					t.RunNow = false
 					dispatch = true
 				}
 			}
@@ -766,11 +751,8 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 						d.lateRuns[t.ID] = late
 					}
 				} else {
-					t.Status = "uncertain"
-					t.Reason = "could_not_persist_dispatch_result"
-					t.NextRunAt = nil
 					if t.Active != nil {
-						t.Active.Status = "uncertain"
+						d.uncertainDispatchLocked(t, "could_not_persist_dispatch_result")
 					}
 				}
 				slog.Error("save scheduled tasks", "task", t.ID, "err", errClass(err))
@@ -782,6 +764,39 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 		}
 	}
 	return dispatches
+}
+
+// Manual admission and its result never touch the automatic plan.
+func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) bool {
+	request := t.ManualRequest
+	t.ManualRequest = nil
+	run := schedule.Run{ID: newID(8), RequestID: request.RequestID, ScheduledAt: request.RequestedAt, StartedAt: now, Manual: true, Status: "dispatching"}
+	late := t.Spec.LateSeconds
+	if late == 0 {
+		late = 86400
+	}
+	switch {
+	case now.Sub(request.RequestedAt) > time.Duration(late)*time.Second:
+		run.Status, run.Reason = "skipped", "catch_up_window_expired"
+	case t.Spec.Trigger.Until != nil && now.After(*t.Spec.Trigger.Until):
+		run.Status, run.Reason = "skipped", "until_reached"
+	default:
+		if t.ScopedSession != "" {
+			if err := d.restrictMCPTask(t, false); err != nil {
+				run.Status, run.Reason = "failed", "agent_schedule_permissions_changed"
+				if errors.Is(err, errMCPMinimumInterval) {
+					run.Reason = "agent_schedule_interval_below_minimum"
+				}
+			}
+		}
+	}
+	if run.Status != "dispatching" {
+		run.EndedAt = &now
+		t.Runs = appendRun(t.Runs, run)
+		return false
+	}
+	t.Active = &run
+	return true
 }
 
 // launchScheduledSession only reads its detached task snapshot.
@@ -888,6 +903,10 @@ func (d *Daemon) dispatchingTaskLocked(snapshot *schedule.Task) *schedule.Task {
 }
 
 func (d *Daemon) uncertainDispatchLocked(t *schedule.Task, reason string) {
+	if t.Active.Manual {
+		d.endScheduledRun(t, time.Now().UTC(), "uncertain", reason)
+		return
+	}
 	t.Active.Status = "uncertain"
 	t.Active.Reason = reason
 	t.NextRunAt = nil
@@ -911,11 +930,11 @@ func (d *Daemon) finishScheduledDispatch(ctx context.Context, snapshot *schedule
 		if deliveryErr != nil {
 			run.Reason = "message queued, but event recording failed; do not send another copy"
 		}
-		if t.Status != "paused" && t.Status != "cancelled" {
+		if !run.Manual && t.Status != "paused" && t.Status != "cancelled" {
 			t.Status, t.Reason = run.Status, run.Reason
 		}
 	}
-	if t.Active != nil || !run.Manual {
+	if !run.Manual {
 		t.NextRunAt = nil
 	}
 	touchTask(t, now)
@@ -999,23 +1018,25 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed boo
 	if t.Active != run {
 		return true
 	}
-	status, reason := t.Status, t.Reason
-	// Cursor and message/turn identity are persisted together. Replaying after
-	// restart cannot mistake an unrelated earlier turn for this execution.
-	if run.InputPaused && t.Status != "cancelled" && (t.Status != "paused" || t.Reason == "execution_input_paused") {
-		t.Status = "paused"
-		t.Reason = "execution_input_paused"
-	} else if !run.InputPaused && t.Status == "paused" && t.Reason == "execution_input_paused" {
-		t.Status = run.Status
-		t.Reason = ""
-	}
-	if t.Status != "paused" && t.Status != "cancelled" {
-		t.Status = run.Status
+	if !run.Manual {
+		status, reason := t.Status, t.Reason
+		// Cursor and message/turn identity are persisted together. Replaying after
+		// restart cannot mistake an unrelated earlier turn for this execution.
+		if run.InputPaused && t.Status != "cancelled" && (t.Status != "paused" || t.Reason == "execution_input_paused") {
+			t.Status = "paused"
+			t.Reason = "execution_input_paused"
+		} else if !run.InputPaused && t.Status == "paused" && t.Reason == "execution_input_paused" {
+			t.Status = run.Status
+			t.Reason = ""
+		}
+		if t.Status != "paused" && t.Status != "cancelled" {
+			t.Status = run.Status
+		}
+		changed = changed || status != t.Status || reason != t.Reason
 	}
 	s.mu.Lock()
 	exited := s.meta.Exited
 	s.mu.Unlock()
-	changed = changed || status != t.Status || reason != t.Reason
 	if exited {
 		d.endScheduledRun(t, now, "failed", "execution_session_exited")
 		changed = true
@@ -1080,7 +1101,6 @@ func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason
 	t.Runs = appendRun(t.Runs, *t.Active)
 	t.Active = nil
 	if manual {
-		d.restoreManualSchedule(t, now)
 		return
 	}
 	if t.Status == "cancelled" {
@@ -1111,21 +1131,6 @@ func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason
 	d.nextSchedule(t, now)
 }
 
-// A calendar trial never changes automatic scheduling, even on failure.
-func (d *Daemon) restoreManualSchedule(t *schedule.Task, now time.Time) {
-	status, reason := t.Status, t.Reason
-	t.NextRunAt = t.AutomaticNextRunAt
-	if !(status == "paused" && reason == "user_paused" || status == "cancelled" && reason == "user_cancelled") {
-		status, reason = t.AutomaticStatus, t.AutomaticReason
-	}
-	t.Status, t.Reason = status, reason
-	if status == "cancelled" {
-		t.NextRunAt = nil
-	}
-	t.AutomaticNextRunAt = nil
-	t.AutomaticStatus, t.AutomaticReason = "", ""
-	d.expireSchedule(t, now)
-}
 func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
 	defer d.expireSchedule(t, now)
 	tr := t.Spec.Trigger

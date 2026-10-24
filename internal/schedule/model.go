@@ -36,7 +36,7 @@ type Trigger struct {
 	DelaySeconds    int64      `json:"delay_seconds,omitempty" jsonschema:"Nonnegative delay for after_turn, or initial interval delay; MCP after_turn repeats require at least 60 seconds"`
 	IntervalSeconds int64      `json:"interval_seconds,omitempty" jsonschema:"Recurrence interval; MCP requires at least 300 seconds, explicit user CLI/client at least 1 second"`
 	Repeat          bool       `json:"repeat,omitempty" jsonschema:"For after_turn: repeat the delay after each scheduled execution ends"`
-	MaxRuns         int64      `json:"max_runs,omitempty" jsonschema:"Maximum dispatches; calendar manual trials are excluded; zero means no limit"`
+	MaxRuns         int64      `json:"max_runs,omitempty" jsonschema:"Maximum dispatches; manual runs are excluded; zero means no limit"`
 }
 
 type Target struct {
@@ -52,32 +52,35 @@ type Target struct {
 // Task is persisted by the daemon. Pausing/canceling stops future dispatches,
 // not an execution already handed to a session's input queue.
 type Task struct {
-	AutomaticStatus    string     `json:"automatic_status,omitempty"`
-	AutomaticReason    string     `json:"automatic_reason,omitempty"`
-	RunNow             bool       `json:"run_now,omitempty"`
-	AutomaticNextRunAt *time.Time `json:"automatic_next_run_at,omitempty"`
-	LastCalendarDate   string     `json:"last_calendar_date,omitempty"`
-	ID                 string     `json:"id"`
-	Revision           uint64     `json:"revision"`
-	Spec               Spec       `json:"spec"`
-	Status             string     `json:"status"`
-	Reason             string     `json:"reason,omitempty"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
-	NextRunAt          *time.Time `json:"next_run_at,omitempty"`
-	SourceSession      string     `json:"source_session,omitempty"`
-	ScopedSession      string     `json:"scoped_session,omitempty"` // MCP delegation bound to this session
-	ScopedMode         string     `json:"scoped_mode,omitempty"`    // that session's standard mode when the delegation was made
-	Source             string     `json:"source"`
-	AnchorSession      string     `json:"anchor_session,omitempty"`
-	AnchorSeq          uint64     `json:"anchor_seq,omitempty"`
-	AnchorTurn         string     `json:"anchor_turn,omitempty"`
-	Dispatches         int64      `json:"dispatches"`
-	Runs               []Run      `json:"runs,omitempty"`
-	Active             *Run       `json:"active_run,omitempty"`
+	ManualRequest    *ManualRequest `json:"manual_request,omitempty"`
+	LastCalendarDate string         `json:"last_calendar_date,omitempty"`
+	ID               string         `json:"id"`
+	Revision         uint64         `json:"revision"`
+	Spec             Spec           `json:"spec"`
+	Status           string         `json:"status"`
+	Reason           string         `json:"reason,omitempty"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+	NextRunAt        *time.Time     `json:"next_run_at,omitempty"`
+	SourceSession    string         `json:"source_session,omitempty"`
+	ScopedSession    string         `json:"scoped_session,omitempty"` // MCP delegation bound to this session
+	ScopedMode       string         `json:"scoped_mode,omitempty"`    // that session's standard mode when the delegation was made
+	Source           string         `json:"source"`
+	AnchorSession    string         `json:"anchor_session,omitempty"`
+	AnchorSeq        uint64         `json:"anchor_seq,omitempty"`
+	AnchorTurn       string         `json:"anchor_turn,omitempty"`
+	Dispatches       int64          `json:"dispatches"`
+	Runs             []Run          `json:"runs,omitempty"`
+	Active           *Run           `json:"active_run,omitempty"`
 	// Creation request identity survives retries and restart.
 	CreationKey  string `json:"creation_key,omitempty"`
 	CreationHash string `json:"creation_hash,omitempty"`
+}
+
+// ManualRequest is an extra execution, independent of the automatic plan.
+type ManualRequest struct {
+	RequestID   string    `json:"request_id"`
+	RequestedAt time.Time `json:"requested_at"`
 }
 
 type Run struct {
@@ -133,7 +136,10 @@ func Clone(t *Task) *Task {
 	out.Spec.Trigger.Until = cloneTime(t.Spec.Trigger.Until)
 	out.Spec.Trigger.Weekdays = slices.Clone(t.Spec.Trigger.Weekdays)
 	out.NextRunAt = cloneTime(t.NextRunAt)
-	out.AutomaticNextRunAt = cloneTime(t.AutomaticNextRunAt)
+	if t.ManualRequest != nil {
+		request := *t.ManualRequest
+		out.ManualRequest = &request
+	}
 	out.Runs = slices.Clone(t.Runs)
 	for i := range out.Runs {
 		out.Runs[i].EndedAt = cloneTime(t.Runs[i].EndedAt)

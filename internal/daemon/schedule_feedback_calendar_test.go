@@ -88,13 +88,10 @@ func TestCalendarManualRunPreservesAutomaticOccurrence(t *testing.T) {
 	}
 	completeTask(h, got.Active, due)
 	h.d.tickSchedules(due)
-	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); err != nil {
-		t.Fatalf("automatic run limit blocked manual trial: %v", err)
+	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); err == nil {
+		t.Fatal("completed task accepted manual request")
 	}
-	h.d.tickSchedules(due.Add(time.Second))
-	if readTask(t, h.d, task.ID).Active == nil {
-		t.Fatal("manual run did not dispatch after automatic limit")
-	}
+
 }
 
 func TestCalendarDeadlineAndEditBoundaries(t *testing.T) {
@@ -163,7 +160,7 @@ func TestRecurringResumeAndManualFailures(t *testing.T) {
 		}
 	}
 	for _, status := range []string{"completed", "failed", "interrupted", "uncertain", "cancelled"} {
-		for _, initial := range []string{"scheduled", "paused", "completed"} {
+		for _, initial := range []string{"scheduled", "paused"} {
 			t.Run(status+initial, func(t *testing.T) {
 				h := scheduleHarness(t)
 				defer h.s.log.Close()
@@ -204,10 +201,10 @@ func TestSkippedManualTrialRestoresAutomaticDispatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	late := time.Now().Add(-2 * time.Minute)
-	state.NextRunAt = &late
+	state.ManualRequest.RequestedAt = late
 	h.d.tickSchedules(time.Now())
 	got := readTask(t, h.d, task.ID)
-	if got.RunNow || len(got.Runs) != 1 || !got.Runs[0].Manual || got.Runs[0].Status != "skipped" || got.NextRunAt == nil || !got.NextRunAt.Equal(due) {
+	if got.ManualRequest != nil || len(got.Runs) != 1 || !got.Runs[0].Manual || got.Runs[0].Status != "skipped" || got.NextRunAt == nil || !got.NextRunAt.Equal(due) {
 		t.Fatalf("skipped trial leaked flag: %+v", got)
 	}
 	h.d.tickSchedules(due)

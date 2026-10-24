@@ -40,8 +40,8 @@ func TestScheduleQuotaAndCreationDedupe(t *testing.T) {
 	}
 	createTask(t, h, spec, "freed-slot")
 	h.d.tasks[task.ID].Status = "completed"
-	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); connect.CodeOf(err) != connect.CodeResourceExhausted {
-		t.Fatalf("reactivation exceeded quota: %v", err)
+	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "run", TaskId: task.ID}, originLocal); err == nil {
+		t.Fatalf("completed task accepted manual run: %v", err)
 	}
 	if readTask(t, h.d, task.ID).Status != "completed" {
 		t.Fatal("rejected reactivation changed task")
