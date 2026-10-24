@@ -1363,7 +1363,9 @@ func (s *session) killIf(ctx context.Context, scheduledOnly bool) error {
 	}
 	if scheduledOnly {
 		// Drain native input before deciding ownership. Never run under scheduleMu.
-		s.readRollout()
+		if !s.readRollout() {
+			return nil
+		}
 		s.mu.Lock()
 		eligible := s.meta.TaskOwned && !s.meta.TaskCLIClosed && s.scheduledClose && !s.running && len(s.queue.Queue) == 0 && len(s.queue.Held) == 0
 		if eligible {
