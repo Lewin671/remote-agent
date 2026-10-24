@@ -10,6 +10,13 @@ import RAProto
         var task = ScheduleTask(id: "task", spec: ScheduleSpec(title: "检查", message: "检查回复。没有变化就简短说一句", trigger: ScheduleTrigger(type: "calendar"), target: ScheduleTarget(type: "new_session")), status: status)
         task.reason = reason; return task
     }
+    @Test func timestampOffsetsDoNotBecomeCalendarZoneNames() throws {
+        for at in ["2027-10-24T15:00:00Z","2027-10-24T15:00:00+08:00"] {
+            var t=ScheduleTrigger(type:"at");t.at=at
+            var edit=ScheduleTiming(trigger:t,now:now,zone:zone);edit.kind = .daily
+            #expect(try edit.trigger(now:now).timezone == zone.identifier)
+        }
+    }
     @Test func dualLimitsKeepTheirAbsoluteDeadlineWhenOnlyTimezoneChanges() throws {
         var t=ScheduleTrigger(type:"calendar");t.time="08:00";t.timezone="America/Los_Angeles";t.maxRuns=5;t.until="2027-10-30T08:00:00Z"
         var edit=ScheduleTiming(trigger:t,now:now,zone:zone)

@@ -725,3 +725,9 @@ it("closes a stale editor when the daemon reports a revision conflict",async()=>
  await click(/^消息/);await input(host.querySelector("textarea")!,"新消息");await click("保存");
  expect(host.querySelector('[role="dialog"]')).toBeNull();expect(host.textContent).toContain("任务刚被修改，已更新为最新内容");
 });
+
+it.each(["2027-10-24T15:00:00Z","2027-10-24T15:00:00+08:00"])("uses the local IANA zone when converting timestamp %s to a calendar",async(at)=>{
+ const save=vi.fn();await mount(<TimingSheet trigger={{type:"at",at}} onSave={save} onClose={()=>{}} />);
+ await click("每天");await click("完成");
+ expect(save.mock.calls[0][0].timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+});
