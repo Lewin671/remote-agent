@@ -47,12 +47,14 @@ func (d *Daemon) loadSchedules() error {
 	if json.Unmarshal(b, &state) != nil || state.Version != 1 {
 		return errors.New("cannot load scheduled tasks; refusing to discard them")
 	}
-	d.scheduleRevision = state.Revision
-	d.scheduleVisible = visibleSchedules(state.Tasks)
 	for id, t := range state.Tasks {
 		if t == nil || t.ID != id || t.Revision == 0 {
 			return errors.New("invalid scheduled task state")
 		}
+	}
+	d.scheduleRevision = state.Revision
+	d.scheduleVisible = visibleSchedules(state.Tasks)
+	for id, t := range state.Tasks {
 		d.tasks[id] = t
 		if t.Active != nil && t.Active.Status == "dispatching" {
 			now := time.Now().UTC()
