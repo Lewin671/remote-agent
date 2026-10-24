@@ -902,14 +902,15 @@ func (d *Daemon) launchScheduledSession(ctx context.Context, t *schedule.Task) (
 	} else {
 		kind, _ := scheduleAgent(target.Agent)
 		mode, _ := scheduleMode(target.Mode)
+		// Without a source, use the same login-shell launch as client creation.
 		// A run continues its source session's way: one that started
 		// through the login shell does so again (its environment is
 		// computed then), any other keeps the saved environment. A run
 		// derived from a terminal is terminal-origin even when its saved
 		// environment cannot be read: it must not fall back to the
 		// daemon's CLI.
-		env := map[string]string{}
-		shell := false
+		var env map[string]string
+		shell := t.SourceSession == ""
 		if t.SourceSession != "" {
 			if m, err := loadMeta(paths.SessionDir(t.SourceSession)); err == nil {
 				shell = m.Shell

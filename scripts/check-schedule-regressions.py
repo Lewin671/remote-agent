@@ -171,6 +171,8 @@ go("notify-title-auto-snapshot", "internal/daemon/schedule.go", 'Status: "dispat
 go("notify-title-manual-snapshot", "internal/daemon/schedule.go", 'Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title}', 'Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: "", TaskTitle: ""}', "TestScheduledNotifyTitleUsesExecutionSource")
 go("notify-title-sealed", "internal/relay/sync.go", 'nc.Title, nc.Text = k.ScheduledNotification.Title, k.ScheduledNotification.Text', 'nc.Title, nc.Text = info.GetTitle(), k.ScheduledNotification.Text', "TestScheduledNotificationTitleSurvivesColdDelivery", "./internal/relay")
 
+go("schedule-client-environment", "internal/daemon/schedule.go", 'shell := t.SourceSession == ""', 'shell := false', "TestScheduledClientEnvironmentSurvivesDaemonRestart")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

@@ -783,3 +783,25 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 最终 `go test ./...` 全量通过；`go test -race ./internal/daemon ./internal/relay ./internal/schedule ./internal/schedulemcp` 四个包全包通过。静态核对全部 135 个既有和新增变异目标仍存在；本轮实际执行的是上述 7 个定向变异，没有将静态检查算作完整脚本验收。
 
 使用隔离 Go harness、合成 transcript、本地签名与加密测试；没有真实 CLI、真机冷启动或推送服务送达验收。web、android、ios 目录未修改。
+
+
+### 无来源任务会话：登录 shell 派发与重启恢复
+
+2026-10-24，只在任务 worktree 提交，协议和产品版本未改，没有推送、发版或部署。启动来源规则见 [architecture §18](architecture.md#触发与执行)，环境和 CLI 解析统一沿用 [§6](architecture.md#6-接入-codex)。
+
+根因在派发时的来源分类：没有 SourceSession 时仍写 Shell=false，创建走直接启动并保存不含 PATH 的调用方环境。首次派发使用 daemon 已找到的 CLI 路径，非 clean-env 的 PTY 还可能继承 daemon 环境，所以首次启动可以成功；恢复按 Shell=false 的既有规则在保存的 PATH 查找 CLI，才确定报错。恢复的严格 PATH 查找本身没有改。无来源任务现经同一 createByContext 的客户端登录 shell 分支创建并保存 Shell=true；来源会话存在时的登录 shell/终端 PATH 继承规则保留。
+
+`TestScheduledClientEnvironmentSurvivesDaemonRestart` 覆盖 Codex/Claude × 无来源/客户端来源 × 保存环境过期/缺失：断言登录 shell 的 clean-env 和命令名参数、非空起点 PATH、agent.env 叠加，且不传 daemon 缓存的 CLI 绝对路径；停止后由全新 Daemon 从磁盘恢复，再走现有显式恢复路径，验证启动方式仍正确、环境重新生成。既有终端来源成功查找和 PATH 缺失时拒绝的测试继续通过。`python3 scripts/check-schedule-regressions.py --only schedule-client-environment` 实际检出恢复旧 Shell=false 分类的变异：原测试通过，变异后断言失败，源码恢复。
+
+真实 CLI 验收使用本机 Claude Code（`claude --version` 为 2.1.300）、Haiku `claude-haiku-5-5`、本 worktree 构建的修前与修后二进制。两侧各用短路径、独立的 RA_DEV_DIR、临时账户、本地中继、状态目录和 tmux socket；测试前保留修前二进制，未修改日常 daemon 或现有会话。通过 `go run ./scripts/acceptance-schedule --environment` 的合成客户端经加密 Forward 创建任务（SessionId/SourceSession 均为空），真实 Claude 收到排队提示并返回指定回复，原生 transcript 通过 daemon 和 server 回到合成客户端，执行完成后由原关闭流程结束 CLI；全程 daemon 只带 daemon 子命令，没有 --claude，并清除 REMOTE_AGENT_CLAUDE 覆盖。
+
+| 阶段 | 真实结果 |
+|---|---|
+| 修前 | 首次派发收到真实回复并自动关闭；磁盘 Shell=false 且保存环境无 PATH；重启 daemon 后，客户端 ResumeSession 明确失败，提示 claude was not found in the session's saved PATH |
+| 修后 | 首次派发由登录 shell 解析真实 Claude，Shell=true 且保存的是非空起点 PATH；自动关闭后重启 daemon，客户端恢复成功，再发送消息并收到第二次真实回复；随后停止会话，确认 tmux 中已无该 CLI |
+
+新增验收模式通过 RA_DEV_AGENT_BIN 选择修前/修后二进制，RA_DEV_EXPECT_ENV_FAILURE=1 要求修前出现上述确切失败，不把任意启动错误算作复现。首次启动测试曾遇到临时中继进程生命周期和 macOS Unix socket 路径过长两个 harness 问题，修正为同一受控进程内保活、短路径 RA_DEV_DIR 后重新完整执行；这些失败不计入产品复现。两次最终验收均退出 0，临时中继、daemon、tmux 和状态目录已清理。
+
+本轮真实链路由合成加密客户端触发，未重新操作网页或 Android 产品界面、未验收实际推送送达；web/android/ios 目录均未修改。既有日历审批验收未在本轮重跑，实际运行的是新增的环境验收模式。
+
+最终 `go test ./...` 全量通过；`go test -race ./internal/daemon ./internal/relay ./internal/schedule` 三个包全包通过。

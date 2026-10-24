@@ -1,6 +1,9 @@
 // Run only against ios/scripts/dev-env.sh's throwaway relay:
 // RA_DEV_DIR=<isolated directory> go run ./scripts/acceptance-schedule
 // Uses a synthetic client over encrypted Forward, and a real Claude Haiku CLI.
+// Add --environment to verify source-less task creation and post-restart resume.
+// RA_DEV_AGENT_BIN selects a before/after binary; RA_DEV_EXPECT_ENV_FAILURE=1
+// requires the old missing-PATH failure rather than accepting success.
 package main
 
 import (
@@ -87,14 +90,25 @@ func main() {
 	client := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
 	socket := read(filepath.Join(dir, "tmux-socket")) + "-schedule"
 	must(os.Setenv("REMOTE_AGENT_TMUX_SOCKET", socket))
-	binary := filepath.Join(dir, "bin", "remote-agent")
-	claude, err := exec.LookPath("claude")
-	must(err)
+	binary := os.Getenv("RA_DEV_AGENT_BIN")
+	if binary == "" {
+		binary = filepath.Join(dir, "bin", "remote-agent")
+	}
 	log, err := os.OpenFile(filepath.Join(dir, "schedule-daemon.log"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	must(err)
 	defer log.Close()
-	process := exec.Command(binary, "daemon", "--claude", claude)
-	process.Stdout, process.Stderr = log, log
+	newDaemon := func() *exec.Cmd {
+		cmd := exec.Command(binary, "daemon")
+		// The scenario must use command-name lookup, never a daemon CLI override.
+		for _, entry := range os.Environ() {
+			if !strings.HasPrefix(entry, "REMOTE_AGENT_CLAUDE=") {
+				cmd.Env = append(cmd.Env, entry)
+			}
+		}
+		cmd.Stdout, cmd.Stderr = log, log
+		return cmd
+	}
+	process := newDaemon()
 	must(process.Start())
 	defer func() {
 		process.Process.Signal(os.Interrupt)
@@ -113,6 +127,15 @@ func main() {
 		}
 		return false
 	})
+	if len(os.Args) == 2 && os.Args[1] == "--environment" {
+		runEnvironmentAcceptance(ctx, client, machine.ID, home, socket, func() {
+			must(process.Process.Signal(os.Interrupt))
+			must(process.Wait())
+			process = newDaemon()
+			must(process.Start())
+		})
+		return
+	}
 	// Use this checkout as a trusted project; never open an existing session.
 	cwd, err := os.Getwd()
 	must(err)
@@ -129,8 +152,7 @@ func main() {
 	// offline client's first directory listing must expose its pending approval.
 	must(process.Process.Signal(os.Interrupt))
 	must(process.Wait())
-	process = exec.Command(binary, "daemon", "--claude", claude)
-	process.Stdout, process.Stderr = log, log
+	process = newDaemon()
 	must(process.Start())
 	wait(ctx, "restarted daemon serves persisted task", func() bool {
 		r, e := client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "get", TaskId: task.ID}}})
@@ -185,8 +207,7 @@ func main() {
 						// rebuilding daemon state from this session's event log.
 						must(process.Process.Signal(os.Interrupt))
 						must(process.Wait())
-						process = exec.Command(binary, "daemon", "--claude", claude)
-						process.Stdout, process.Stderr = log, log
+						process = newDaemon()
 						must(process.Start())
 						wait(ctx, "daemon restored the session while approval is pending", func() bool {
 							r, e := client.Do(ctx, view, &pb.Command{Kind: &pb.Command_GetLiveSnapshot{GetLiveSnapshot: &pb.GetLiveSnapshotRequest{SessionId: sid}}})
