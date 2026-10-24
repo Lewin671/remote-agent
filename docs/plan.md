@@ -19,7 +19,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | 客户端状态推导 | 三端共同规则与共享事件向量（[契约](architecture.md#客户端状态推导的共同规则)） | 网页真实 CLI（独立无头 Chrome 手机宽/宽屏）；原生自动测试（[记录](acceptance-notes.md#客户端状态推导共享向量)） | 当前 checkpoint 已过自动验收；聊天历史分段读取 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
-| 定时任务 | 日历与截止、任务会话归属和接手、结束关闭 CLI、主动通知、MCP 委托上限、能力与修订号；本地和加密机器指令 | 后端验收见 [第五轮记录](acceptance-notes.md#定时任务第五轮反馈)；Android/网页前台定时结果通知回归与变异见 [第六轮记录](acceptance-notes.md#定时任务第六轮反馈前台通知) | 三端定时入口、运行历史、静默轮折叠、离线快照和修订订阅未做 |
+| 定时任务 | 日历与截止、任务会话归属和接手、结束关闭 CLI、主动通知、MCP 委托上限、能力与修订号；本地和加密机器指令 | 后端验收见 [第七轮记录](acceptance-notes.md#定时任务第七轮反馈按不可变创建来源清理)；Android/网页前台定时结果通知回归与变异见 [第六轮记录](acceptance-notes.md#定时任务第六轮反馈前台通知) | 三端定时入口、运行历史、静默轮折叠、离线快照和修订订阅未做 |
 
 当前 worktree 协议为 11，定时任务的升级搭配见 [architecture §18](architecture.md#协议版本与升级)；尚未发布。v0.44.0 已包含管理端签名链、独立租约、持久安全操作、当前 checkpoint、到期暂停上传及移除保留档案。任一 Client（网页、Android、iOS）可成为唯一管理端，Machine 不能。任意客户端管理的 core、生命周期和网页界面已在独立工作树实现，三端完整有向交接矩阵、真实 CLI 产品链路和真机通知仍待联合验收，不能视为全能力发布完成。已有协议 10 账户不需重建；旧协议 9→10 的 Android 重建/离线固定路线独立保留。设计见 [architecture §9](architecture.md#9-账户设备和密钥)，边界见 [scope](scope.md#设备加入与移除)，已安装版本以 Release 为准。
 

@@ -105,7 +105,7 @@ func TestRelayQuotaIgnoresResumeSession(t *testing.T) {
 	defer h.s.log.Close()
 	task := startScheduledTurn(t, h)
 	// Even retained creation provenance must not turn a resume into this path.
-	h.s.meta.ScheduledTaskID, h.s.meta.ScheduledRunID = task.ID, task.Active.ID
+	h.s.meta.ScheduledTaskID, h.s.meta.ScheduledRunID = task.ID, "original-creation-run"
 	before := readTask(t, h.d, task.ID)
 	if err := h.d.SessionPublicationFailed(h.s.meta.ID, "relay_session_limit"); err != nil {
 		t.Fatal(err)

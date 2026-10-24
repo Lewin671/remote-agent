@@ -94,8 +94,9 @@ func (d *Daemon) SessionPublicationFailed(id, reason string) error {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	t := d.tasks[taskID]
-	// An already-published conversation cannot create a new relay row.
-	if t == nil || t.Spec.Target.Type != "new_session" || runID == "" {
+	// These IDs are written only when the task creates this session. A
+	// later definition or resume does not change its creation provenance.
+	if t == nil || runID == "" {
 		return nil
 	}
 	now := time.Now().UTC()

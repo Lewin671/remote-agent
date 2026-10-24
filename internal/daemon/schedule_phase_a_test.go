@@ -192,7 +192,7 @@ func TestScheduledFailedDeliveryClosesCLI(t *testing.T) {
 	defer h.s.log.Close()
 	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
 	h.s.meta.TaskOwned = true
-	h.s.meta.ScheduledTaskID = task.ID
+	h.s.meta.ScheduledTaskID, h.s.meta.ScheduledRunID = task.ID, "failed"
 	h.d.tasks[task.ID].Spec.Target.Type = "new_session"
 	h.d.tasks[task.ID].Runs = []schedule.Run{{ID: "failed", SessionID: h.s.meta.ID, Status: "failed"}}
 	candidates := h.d.scheduledClosures()

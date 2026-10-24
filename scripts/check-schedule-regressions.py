@@ -28,7 +28,7 @@ go("06-interjection", "internal/daemon/schedule_events.go", "if humanOrigin(e.Or
 go("07-read", "internal/daemon/session.go", "if !s.readRollout() {\n\t\t\treturn nil", "if false && !s.readRollout() {\n\t\t\treturn nil", "TestScheduledClosureWaitsForReadableTranscript")
 go("08-input-order", "internal/daemon/inject.go", "if !humanOrigin(origin) {", "if true || !humanOrigin(origin) {", "TestScheduledCloseAndHumanAdmissionHaveOneOrder")
 go("08-backoff", "internal/daemon/schedule_events.go", "&& !time.Now().Before(s.scheduledCloseAfter)", "", "TestScheduledCloseBacksOffUntilNewEvent")
-go("09-uncertain", "internal/daemon/schedule_events.go", "!uncertain[s.meta.ID] && ", "", "TestUncertainRunNeverClosesAutomatically")
+go("09-uncertain", "internal/daemon/schedule_events.go", "uncertain[key] != s.meta.ID && ", "", "TestUncertainRunNeverClosesAutomatically")
 go("10-revision", "internal/daemon/schedule.go", "if !bytes.Equal(visible, d.scheduleVisible) {", "if true || !bytes.Equal(visible, d.scheduleVisible) {", "TestScheduleRevisionIgnoresProgressCursors")
 go("12-summary", "internal/daemon/schedule.go", "run.FinalSummary = finalRunSummary(msg.Text)", "run.FinalSummary = summary(msg.Text, 200)", "TestRunSummaryUsesWholeFinalAnswer")
 go("13-minimum", "internal/daemon/schedule_security.go", "\t{\n\t\ttr := t.Spec.Trigger", "\tif freeze {\n\t\ttr := t.Spec.Trigger", "TestMCPRunAndResumeRecheckMinimumIntervals")
@@ -80,11 +80,11 @@ go("r3-A-consume-request", "internal/daemon/schedule.go", 'request := t.ManualRe
 go("r3-A-permission", "internal/daemon/schedule.go", 'run.Status, run.Reason = "failed", "agent_schedule_permissions_changed"', 't.Status="paused";run.Status, run.Reason = "failed", "agent_schedule_permissions_changed"', "TestManualPermissionRejectionDoesNotPausePlan")
 
 go("r3-B-association", "internal/daemon/backend.go", 'run.ID == runID &&', 'run.ID == runID && run.SessionID != "" &&', "TestPublicationRefusalUsesScheduledClosure")
-go("r3-B-route", "internal/daemon/schedule_events.go", 'rejected[run.SessionID] = run.ID', '// quota closure route removed', "TestPublicationRefusalUsesScheduledClosure")
+go("r3-B-route", "internal/daemon/schedule_events.go", 'rejected[key] = run.SessionID', '// quota closure route removed', "TestPublicationRefusalUsesScheduledClosure")
 go("r3-B-busy", "internal/daemon/schedule_events.go", 's.scheduledCloseRejected ||', 'false ||', "TestPublicationRefusalUsesScheduledClosure")
 go("r3-B-read", "internal/daemon/session.go", 'if !s.readRollout() {\n\t\t\treturn nil', 'if false && !s.readRollout() {\n\t\t\treturn nil', "TestQuotaClosureReusesReadAndTakeoverSafety")
 go("r3-B-owner", "internal/daemon/schedule_events.go", 'return s.meta.TaskOwned &&', 'return true &&', "TestQuotaClosureReusesReadAndTakeoverSafety")
-go("r3-B-resume", "internal/daemon/backend.go", 't.Spec.Target.Type != "new_session" ||', '', "TestRelayQuotaIgnoresResumeSession")
+go("r3-B-resume", "internal/daemon/backend.go", 'run.ID == runID &&', 'true &&', "TestRelayQuotaIgnoresResumeSession")
 go("r3-B-no-synchronous-close", "internal/daemon/backend.go", 'now := time.Now().UTC()', '_, _ = s.interruptBy(originSystem); now := time.Now().UTC()', "TestQuotaClosureDoesNotBlockScheduleLoop")
 
 go("r3-C-phase", "internal/daemon/schedule.go", 'next := nextInterval(t, now)', 'next := now.Add(time.Duration(tr.IntervalSeconds)*time.Second)', "TestIntervalResumePreservesPhase")
@@ -127,6 +127,12 @@ go("r5-03-watch-status", "internal/daemon/schedule.go", 'if !pendingScheduledFol
 go("r5-03-pending-status", "internal/daemon/schedule.go", 'if pendingScheduledFollowup(&run) {', 'if run.Status == "completed" && pendingScheduledFollowup(&run) {', "TestNonCompletedScheduledFollowups")
 
 go("r5-03-context-start", "internal/daemon/schedule.go", 'return run.MessageSeen && !run.FollowupsClosed', 'return !run.FollowupsClosed', "TestScheduleLateConfirmationResumesRun")
+
+go("r7-closure-definition", "internal/daemon/schedule_events.go", 'for _, task := range d.tasks {\n\t\tfor _, run := range task.Runs {', 'for _, task := range d.tasks {\n if task.Spec.Target.Type != "new_session" {continue}\n\t\tfor _, run := range task.Runs {', "TestRejectedCreationSurvivesTargetEdit")
+go("r7-publication-definition", "internal/daemon/backend.go", 'if t == nil || runID == "" {', 'if t == nil || t.Spec.Target.Type != "new_session" || runID == "" {', "TestLatePublicationRefusalAfterTargetEdit")
+go("r7-creation-key", "internal/daemon/schedule_events.go", 'key := scheduledRunKey{s.meta.ScheduledTaskID, s.meta.ScheduledRunID}', 'key := scheduledRunKey{s.meta.ScheduledTaskID, "later-resume-run"}', "TestClosureUsesCreationRunIdentity")
+go("r7-creation-uncertainty", "internal/daemon/schedule_events.go", 'uncertain[key] != s.meta.ID', 'len(uncertain) == 0', "TestClosureUsesCreationRunIdentity")
+go("r7-pre-delivery", "internal/daemon/schedule_events.go", 'task.ID == s.meta.ScheduledTaskID && run != nil && run.ID == s.meta.ScheduledRunID', 'task.Spec.Target.Type == "new_session" && run != nil', "TestPreDeliveryRestrictionUsesCreationIdentity")
 
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

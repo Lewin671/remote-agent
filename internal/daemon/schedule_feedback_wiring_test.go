@@ -35,9 +35,9 @@ func TestRealScheduleLoopClosesCompletedCLI(t *testing.T) {
 	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
 	h.d.tasks[task.ID].Status = "completed"
 	h.d.tasks[task.ID].Spec.Target.Type = "new_session"
-	h.d.tasks[task.ID].Runs = []schedule.Run{{SessionID: h.s.meta.ID, Status: "completed"}}
+	h.d.tasks[task.ID].Runs = []schedule.Run{{ID: "creation-run", SessionID: h.s.meta.ID, Status: "completed"}}
 	h.s.meta.TaskOwned = true
-	h.s.meta.ScheduledTaskID = task.ID
+	h.s.meta.ScheduledTaskID, h.s.meta.ScheduledRunID = task.ID, "creation-run"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stop := h.d.startScheduleLoop(ctx)

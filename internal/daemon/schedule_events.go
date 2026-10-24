@@ -101,7 +101,7 @@ func (d *Daemon) sessionHasScheduledRunLocked(id string) bool {
 		return true
 	}
 	for _, task := range d.tasks {
-		if run := task.Active; task.Spec.Target.Type == "new_session" && run != nil && run.SessionID == id && !run.MessageSeen && s.scheduledHumanSeq <= run.StartSeq {
+		if run := task.Active; task.ID == s.meta.ScheduledTaskID && run != nil && run.ID == s.meta.ScheduledRunID && run.SessionID == id && !run.MessageSeen && s.scheduledHumanSeq <= run.StartSeq {
 			return true
 		}
 	}
@@ -148,28 +148,31 @@ func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, scope string) ([]byte, e
 	return []byte(`{"notified":true}`), nil
 }
 
+// Creation identity is immutable even when the task changes its target.
+type scheduledRunKey struct {
+	taskID, runID string
+}
+
 func (d *Daemon) scheduledClosures() []*session {
-	ended := map[string]bool{}
-	rejected := map[string]string{}
-	uncertain := map[string]bool{}
+	ended := map[scheduledRunKey]string{}
+	rejected := map[scheduledRunKey]string{}
+	uncertain := map[scheduledRunKey]string{}
 	d.scheduleMu.Lock()
 	for _, task := range d.tasks {
-		if task.Spec.Target.Type != "new_session" {
-			continue
-		}
 		for _, run := range task.Runs {
+			key := scheduledRunKey{task.ID, run.ID}
 			if run.Status == "failed" && run.Reason == "relay_session_limit" {
-				rejected[run.SessionID] = run.ID
+				rejected[key] = run.SessionID
 			}
-			if run.SessionID != "" {
-				uncertain[run.SessionID] = run.Status == "uncertain"
+			if run.Status == "uncertain" {
+				uncertain[key] = run.SessionID
 			}
 			if run.SessionID != "" && (run.Status == "completed" || run.Status == "failed" || run.Status == "interrupted" || run.Status == "cancelled") {
-				ended[run.SessionID] = true
+				ended[key] = run.SessionID
 			}
 		}
 		if task.Active != nil && task.Active.SessionID != "" && task.Active.Status == "uncertain" {
-			uncertain[task.Active.SessionID] = true
+			uncertain[scheduledRunKey{task.ID, task.Active.ID}] = task.Active.SessionID
 		}
 	}
 	d.scheduleMu.Unlock()
@@ -182,11 +185,12 @@ func (d *Daemon) scheduledClosures() []*session {
 	out := sessions[:0]
 	for _, s := range sessions {
 		s.mu.Lock()
-		if ended[s.meta.ID] {
+		key := scheduledRunKey{s.meta.ScheduledTaskID, s.meta.ScheduledRunID}
+		if ended[key] == s.meta.ID {
 			s.scheduledClose = true
 		}
-		s.scheduledCloseRejected = rejected[s.meta.ID] != "" && rejected[s.meta.ID] == s.meta.ScheduledRunID
-		ready := !uncertain[s.meta.ID] && s.scheduledCloseEligibleLocked() && !time.Now().Before(s.scheduledCloseAfter)
+		s.scheduledCloseRejected = rejected[key] == s.meta.ID
+		ready := uncertain[key] != s.meta.ID && s.scheduledCloseEligibleLocked() && !time.Now().Before(s.scheduledCloseAfter)
 		s.mu.Unlock()
 		if ready {
 			out = append(out, s)

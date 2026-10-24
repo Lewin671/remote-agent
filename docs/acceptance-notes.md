@@ -670,3 +670,25 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 `python3 scripts/check-schedule-regressions.py --clients --only r6-` 的 8 个新位置全部实际检出：Android 恢复旧前台拦截、去掉当前会话例外、去掉后台条件、去掉生命周期清除；网页恢复旧前台拦截、去掉当前会话例外、去掉焦点条件、去掉可见性条件。每组原测试先通过，变异后必须产生断言失败，编译失败不算检出，最后恢复原文件。恢复后网页相关 48 项和类型检查再次通过；Android `./gradlew :app:testDebugUnitTest` 全部 303 项通过，零失败。
 
 本轮为 Robolectric 和 service worker 单元测试，没有重走真实 CLI 或测试 FCM/Web Push 服务的实际送达、真机系统通知显示；iOS 和 Go 产品代码未改。
+
+### 定时任务第七轮反馈：按不可变创建来源清理
+
+2026-10-24，只在任务 worktree 提交，协议和产品版本未改，没有推送、发版或部署。采用会话元数据里已有的不可变创建来源，不新增存储字段或迁移；当前规则见 [architecture §18](architecture.md#18-定时任务)。
+
+逐处检查 schedule 相关的定义读取，修正以下三处：
+
+| 位置 | 结果 |
+|---|---|
+| `scheduledClosures` | 不再按任务当前目标过滤历史。结束、满额拒绝和 uncertain 三张表以任务/运行 ID 为键，表内会话 ID 再与创建元数据匹配；后来的其他运行不影响创建运行的清理 |
+| `SessionPublicationFailed` | 按会话创建时保存的任务/运行 ID 关联 Active 或历史记录，不再要求当前目标是 new_session；改目标后到达的旧报告仍持久记录，重复报告保持幂等 |
+| `sessionHasScheduledRunLocked` | 收到派发消息前的 MCP 预防限制同样按创建任务/运行 ID 精确判断，删除对当前目标类型的依赖 |
+
+其余读取已核对：`launchScheduledSession`、`queueScheduledSession` 用派发前复制的独立任务快照；公开 update 在 Active 存在时拒绝替换定义，所以 `watchScheduledRun`/`endScheduledRun` 的活动执行期间不会换定义。`prepareSchedule`、`nextSchedule`、相位/日历计算、截止与 MCP 延迟准入读取当前定义是安排未来执行；`lastAutomaticRun` 按运行自己的 Manual/Status 判断。`notifyScheduled` 读当前标题只是缺省通知标题的展示规则，不用于判定历史执行类型、关联或清理。会话创建元数据只在 `createByContext` 初始化，恢复和人工接手均保留这对 ID。
+
+`TestRejectedCreationSurvivesTargetEdit` 覆盖自动/手动 × 排队/运行中 × 直接/重启：先收到满额拒绝并选中 closer，清理完成前通过公开 update 改成 resume_session，连续三次清理扫描仍保留原拒绝标记，最后沿既有 killIf 关闭 CLI。`TestLatePublicationRefusalAfterTargetEdit` 覆盖自动/手动 × 直接/重启：运行先结束并改目标，再收到旧会话的满额报告，原运行被正确记录失败，重复报告不增加修订号，忙碌的原 CLI 仍被清理。`TestClosureUsesCreationRunIdentity` 覆盖创建运行和后续运行的 completed/uncertain/满额失败互不覆盖；`TestPreDeliveryRestrictionUsesCreationIdentity` 直接验证预防限制只依赖创建来源并核对任务/运行 ID 不匹配的反例。旧测试的合成会话补齐真实创建元数据；普通 resume 保留的是先前创建运行 ID，而非把本次 resume ID 伪装成创建来源。
+
+变异入口：`python3 scripts/check-schedule-regressions.py --only r7-`，5 个新位置均实际检出，包括恢复两处当前目标过滤、错误选择后续运行、混用其他运行的 uncertain 和恢复 MCP 的当前目标判断。此前的 `--only r3-B-` 8 个满额路径变异，以及 `--only 09-uncertain`，也全部实际检出；因清理表已改为创建 ID 键，相关旧变异位点同步更新。每个原测试先通过，变异后必须断言失败，编译失败不算检出，源文件随后恢复。
+
+本轮使用 Go 隔离 harness、可控事件和伪终端验证，没有重走真实 CLI、中继真实满额账户或产品界面。网页、Android、iOS 产品代码未改。
+
+最终 `go test ./...` 全量通过。相关 race 命令 `go test -race ./internal/daemon ./internal/relay ./internal/server ./internal/schedule -run 'Schedule|Scheduled|Publication|Quota|Creation|LateConfirmation|Manual|Interval|Calendar|MCP' -count=1` 四个包均通过，包含本轮改目标、迟到报告、重启和创建来源隔离，以及既有读记录、接手、生命周期竞争与清理退避测试。
