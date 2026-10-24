@@ -131,6 +131,7 @@ func main() {
 		must(json.Unmarshal(r.GetSchedule().ResultJson, &task))
 	}
 	var sid string
+	attentionSeen := false
 	wait(ctx, "calendar dispatch and real CLI completion", func() bool {
 		getTask()
 		if task.Active != nil {
@@ -140,6 +141,24 @@ func main() {
 			// Answer a fresh-project trust prompt only after the CLI draws it.
 			out, _ := exec.Command("tmux", "-L", socket, "capture-pane", "-p", "-t", "ra-"+sid[:8]).Output()
 			if strings.Contains(string(out), "Notify User") && strings.Contains(string(out), "Do you want to proceed?") {
+				// Fetch the hidden conversation by its active-run ID before approving.
+				// Its ordinary attention fields are the data consumed by all
+				// three clients' attention projections, despite task ownership.
+				waiting, e := client.API().ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{SessionIds: []string{sid}}))
+				if e != nil || len(waiting.Msg.Sessions) != 1 {
+					return false
+				}
+				view, e := client.OpenSession(waiting.Msg.Sessions[0])
+				must(e)
+				info := view.Info
+				needs := info != nil && (info.PendingApprovals > 0 || info.PendingQuestions > 0 || info.PlanOpen || info.Status == pb.SessionStatus_SESSION_STATUS_BLOCKED)
+				if !needs || !info.TaskOwned {
+					return false
+				}
+				if !attentionSeen {
+					fmt.Println("PASS task-owned CLI waiting for approval is present in attention data")
+					attentionSeen = true
+				}
 				// Approve this test tool once, never persist a global allow rule.
 				exec.Command("tmux", "-L", socket, "send-keys", "-t", "ra-"+sid[:8], "Enter").Run()
 			}
@@ -149,6 +168,9 @@ func main() {
 		}
 		return len(task.Runs) > 0 && task.Runs[len(task.Runs)-1].Status == "completed"
 	})
+	if !attentionSeen {
+		panic("no real approval attention data observed")
+	}
 	run := task.Runs[len(task.Runs)-1]
 	sid = run.SessionID
 	if !run.Notified || run.NotificationCount != 1 || run.NotificationText != "Calendar acceptance result" {
