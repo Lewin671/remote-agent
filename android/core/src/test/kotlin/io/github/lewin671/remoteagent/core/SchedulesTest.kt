@@ -30,6 +30,14 @@ class SchedulesTest {
         assertEquals(43L,ScheduledRun(buildJsonObject { put("start_seq",42);put("after_seq",9) }).seq)
         assertEquals(10L,ScheduledRun(buildJsonObject { put("start_seq",0);put("after_seq",9) }).seq)
     }
+    @Test fun intervalEditsPreservePhaseAndUntouchedEndings() {
+        val original=Json.parseToJsonElement("""{"type":"interval","interval_seconds":900,"at":"2026-10-01T08:00:00Z","delay_seconds":29,"max_runs":4,"until":"2026-10-30T08:00:29Z"}""").jsonObject
+        val edited=ScheduleTime.from(original).copy(count="5").trigger(now)
+        assertEquals(original["at"],edited["at"]);assertEquals(original["delay_seconds"],edited["delay_seconds"])
+        assertEquals(original,ScheduleTime.from(original).trigger(now))
+        val fresh=ScheduleTime(kind=3,interval="15",unit=0).trigger(now)
+        assertEquals(900L,fresh.long("delay_seconds"))
+    }
     @Test fun nextTimeUsesLocalDateAndTaskState() {
         assertEquals("下次 10月25日 08:00", scheduleNext(task(), now, utc))
         assertEquals("已暂停", scheduleNext(task("paused", "user_paused"), now, utc))

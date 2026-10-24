@@ -17,6 +17,7 @@ data class ScheduleTime(
     val count: String = "",
     val until: String = LocalDate.now().plusMonths(1).toString(),
     val deadline: String = "",
+    val original: JsonObject? = null,
 ) {
     fun trigger(now: Instant = Instant.now()): JsonObject {
         val tz = ZoneId.of(zone)
@@ -36,10 +37,18 @@ data class ScheduleTime(
                     val seconds = Math.multiplyExact(interval.toLong(), listOf(60L, 3600L, 86400L, 1L)[unit])
                     require(seconds > 0) { "间隔要大于 0" }
                     put("type", "interval"); put("interval_seconds", seconds)
+                    if (original?.text("type") == "interval" && original.long("interval_seconds") == seconds) {
+                        original["at"]?.let { put("at", it) }; original["delay_seconds"]?.let { put("delay_seconds", it) }
+                    } else put("delay_seconds", seconds)
                 }
                 else -> error("请选择时间类型")
             }
-            if (kind != 0) { if (max > 0) put("max_runs", max); if (deadline != null) put("until", deadline.toString()) }
+            if (kind != 0) {
+                val before = original?.let { from(it) }
+                if (before != null && end == before.end && count == before.count && until == before.until && this@ScheduleTime.deadline == before.deadline && zone == before.zone) {
+                    original?.get("max_runs")?.let { put("max_runs", it) }; original?.get("until")?.let { put("until", it) }
+                } else { if (max > 0) put("max_runs", max); if (deadline != null) put("until", deadline.toString()) }
+            }
         }
     }
     companion object {
@@ -56,7 +65,7 @@ data class ScheduleTime(
                 interval = if (secs > 0) (secs / listOf(60L,3600L,86400L,1L)[unit]).coerceAtLeast(1).toString() else "1", unit = unit,
                 end = if (t.long("max_runs") > 0) 1 else if (t.text("until").isNotEmpty()) 2 else 0,
                 count = t.long("max_runs").takeIf { it > 0 }?.toString().orEmpty(),
-                deadline = t.text("until"), until = scheduleInstant(t.text("until"))?.atZone(z)?.toLocalDate()?.toString() ?: LocalDate.now(z).plusMonths(1).toString())
+                original = t, deadline = t.text("until"), until = scheduleInstant(t.text("until"))?.atZone(z)?.toLocalDate()?.toString() ?: LocalDate.now(z).plusMonths(1).toString())
         }
     }
 }
