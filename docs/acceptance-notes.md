@@ -710,3 +710,26 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 本轮回归使用隔离 Go harness 与合成的原生 CLI transcript，没有真实 CLI、产品界面或推送服务送达验收；三端产品代码未改。
 
 最终 `go test ./...` 全量通过。daemon、relay、server、schedule 的相关 race 检查通过，筛选包含本轮 `TestNotifyUser*`；同一筛选在 schedulemcp 包未匹配测试，已补跑 `go test -race ./internal/schedulemcp -count=1`，全包通过。
+
+### 定时任务第九轮反馈：统一请求准入
+
+2026-10-24，只在任务 worktree 提交，协议和产品版本未改，没有推送、发版或部署。完整请求清单、每处处理及不依赖实时定时身份的路径说明集中在 [architecture：定时上下文的请求准入](architecture.md#定时上下文的请求准入)。
+
+抽出唯一的 `session.admitScheduledContext`，读取与第八轮 notify_user 相同的 `readMu`，读完并提交全部可用记录后才执行判断回调；失败返回明确可重试的 Unavailable。绑定会话的 Schedule 统一从外层进入，之后才取得 scheduleMu，通知不再有独立读取分支。显式用户绑定调用同样追赶记录，机器级管理权限保留；没有绑定会话、只读持久任务定义的机器查询不臆造一个实时会话准入。
+
+除四个 MCP 写操作和 notify_user 外，MCP 的 list/get/pause/cancel、Hook 的 SessionStart/PermissionRequest/有事件的 PreToolUse、Interrupt 的两次当前轮判断，以及 Stop/Resume/自动恢复的退出结算均复用该函数。权限等待不持有读取锁。退出结算从 bool 改为 error，把读取失败沿 Stop/Resume 请求原样传回，不能被转换成普通“未完成”判断或继续使用旧标注。原生事件提交归约、历史标注推送筛选、不可变创建来源和持久队列接手均按清单单列，未混同实时准入。
+
+回归证据：
+
+- `TestMCPAdmissionReadsTranscriptBeforeEveryMutation`：真实 Codex/Claude parser × create/update/resume/run，各用新的普通 resume_session，没有创建来源兜底；定时输入已在 transcript 但未轮询。四个 MCP 操作全部返回明确的定时上下文 PermissionDenied，任务状态不变，当前身份导入为正确任务/运行。
+- `TestAllScheduleOperationsRequireCommittedAdmission`：九个 Schedule 操作 × transcript 读取失败/事件提交失败，均返回 Unavailable，不改任务或通知计数；恢复后先提交人工接手，再按新上下文执行，notify_user 按普通轮拒绝。
+- `TestContextRequestPathsShareAdmission`：Interrupt、Hook 事件、退出结算各覆盖先于轮询的成功路径和读取失败；结算生成的缺失 TurnEnded 带正确任务/运行标注，失败不发控制键。
+- `TestHookStartAndPermissionRequireAdmission`：SessionStart 和 PermissionRequest 的读取失败不会被忽略。
+- `TestScheduledContextKeepsInspectionAndStoppingAvailable`：定时轮的 list/get/pause/cancel 仍可用且先导入当前身份。
+- `TestOwnerScheduleKeepsAuthorityAfterFreshAdmission`：用户 CLI 的绑定调用也刷新状态，保持管理权；源会话读取失败返回 Unavailable，机器级无绑定查询仍可用。
+
+第八轮的通知先于轮询、旧通知次数用满后的新运行归属、读取/提交失败与恢复回归继续通过。新增 8 个变异分别断开 Schedule 接线、跳过公共读取、忽略公共读取失败，以及断开 Interrupt、PreToolUse、退出结算、PermissionRequest、SessionStart 的公共准入接线；每组要求原测试通过、变异后出现断言失败，编译失败不算检出。
+
+验证结果：`go test ./...` 全量通过；`go test -race ./internal/daemon ./internal/relay ./internal/server ./internal/schedule ./internal/schedulemcp` 五个包全部通过。`python3 scripts/check-schedule-regressions.py --clients` 不带 `--only` 完整执行到退出码 0，95 个 Go 与 23 个三端变异，共 118 个全部实际检出，包含本轮 8 个。执行后核对全部结果名与定义完全一致，所有变异目标均已恢复。
+
+本轮使用隔离 harness、实际原生 parser、合成 transcript 和本地 Connect handler 测试；没有重走真实 CLI、实际推送送达或产品界面，三端产品代码未改。

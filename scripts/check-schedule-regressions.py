@@ -137,6 +137,16 @@ go("r7-pre-delivery", "internal/daemon/schedule_events.go", 'task.ID == s.meta.S
 go("r8-notify-read", "internal/daemon/schedule_events.go", 'if !s.readRolloutLocked() {', 'if false && !s.readRolloutLocked() {', "TestNotifyUserReadsTranscriptBeforeAdmission")
 go("r8-notify-read-failure", "internal/daemon/schedule_events.go", 'if !s.readRolloutLocked() {', 'if !s.readRolloutLocked() && false {', "TestNotifyUserRequiresCommittedTranscript")
 
+go("r9-schedule-admission", "internal/daemon/schedule.go", 'bound.admitScheduledContext(q.Operation,', 'func(_ string, decide func() error) error { return decide() }(q.Operation,', "TestMCPAdmissionReadsTranscriptBeforeEveryMutation")
+go("r9-admission-read", "internal/daemon/schedule_events.go", 'if !s.readRolloutLocked() {', 'if false && !s.readRolloutLocked() {', "TestMCPAdmissionReadsTranscriptBeforeEveryMutation")
+go("r9-admission-failure", "internal/daemon/schedule_events.go", 'if !s.readRolloutLocked() {', 'if !s.readRolloutLocked() && false {', "TestAllScheduleOperationsRequireCommittedAdmission")
+go("r9-interrupt-admission", "internal/daemon/session.go", 's.admitScheduledContext("interrupt",', 'func(_ string, decide func() error) error { return decide() }("interrupt",', "TestContextRequestPathsShareAdmission")
+go("r9-hook-admission", "internal/daemon/session.go", 's.admitScheduledContext("hook",', 'func(_ string, decide func() error) error { return decide() }("hook",', "TestContextRequestPathsShareAdmission")
+go("r9-exit-admission", "internal/daemon/session.go", 's.admitScheduledContext("session settlement",', 'func(_ string, decide func() error) error { return decide() }("session settlement",', "TestContextRequestPathsShareAdmission")
+
+go("r9-permission-admission", "internal/daemon/session.go", 's.admitScheduledContext("permission request",', 'func(_ string, decide func() error) error { return decide() }("permission request",', "TestHookStartAndPermissionRequireAdmission")
+go("r9-hook-start-admission", "internal/daemon/session.go", 's.admitScheduledContext("session start hook",', 'func(_ string, decide func() error) error { return decide() }("session start hook",', "TestHookStartAndPermissionRequireAdmission")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
