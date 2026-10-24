@@ -86,6 +86,7 @@ type session struct {
 	scheduledNotifications int
 	scheduledCloseAfter    time.Time
 	scheduledClose         bool
+	scheduledCloseRejected bool
 	closing                bool
 	mu                     sync.Mutex
 	meta                   meta
@@ -1168,12 +1169,9 @@ func (s *session) interrupt() (bool, error) { return s.interruptBy(originLocal) 
 
 // interruptBy is interrupt on behalf of origin.
 func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
-	return s.interruptRunBy(origin, "")
-}
-func (s *session) interruptRunBy(origin *pb.Origin, runID string) (bool, error) {
 	s.readRollout()
 	s.mu.Lock()
-	running, exited := s.running && (runID == "" || s.scheduledRun == runID), s.meta.Exited
+	running, exited := s.running, s.meta.Exited
 	s.mu.Unlock()
 	if exited {
 		return false, errExited
@@ -1187,7 +1185,7 @@ func (s *session) interruptRunBy(origin *pb.Origin, runID string) (bool, error) 
 	// input box does something else.
 	s.readRollout()
 	s.mu.Lock()
-	running = s.running && (runID == "" || s.scheduledRun == runID)
+	running = s.running
 	s.mu.Unlock()
 	if !running {
 		return false, nil
@@ -1379,7 +1377,7 @@ func (s *session) killIf(ctx context.Context, scheduledOnly bool) error {
 			return nil
 		}
 		s.mu.Lock()
-		eligible := s.meta.TaskOwned && !s.meta.TaskCLIClosed && s.scheduledClose && !s.running && len(s.queue.Queue) == 0 && len(s.queue.Held) == 0
+		eligible := s.scheduledCloseEligibleLocked()
 		if eligible {
 			s.closing = true
 		}

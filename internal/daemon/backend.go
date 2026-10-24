@@ -1,10 +1,8 @@
 package daemon
 
 import (
-	"errors"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
-	"github.com/Lewin671/remote-agent/internal/schedule"
 	"time"
 )
 
@@ -94,80 +92,39 @@ func (d *Daemon) SessionPublicationFailed(id, reason string) error {
 	taskID, runID := s.meta.ScheduledTaskID, s.meta.ScheduledRunID
 	s.mu.Unlock()
 	d.scheduleMu.Lock()
-	var rejected []schedule.Run
-	changed := false
-	matched := false
-	for _, t := range d.tasks {
-		taskChanged := false
-		if t.Active != nil && (t.Active.SessionID == id || t.Active.SessionID == "" &&
-			(t.ID == taskID && t.Active.ID == runID || t.Spec.Target.Type == "resume_session" && t.Spec.Target.Session == id)) {
-			t.Active.SessionID = id
-			rejected = append(rejected, *t.Active)
-			matched = true
-			d.endScheduledRun(t, time.Now().UTC(), "failed", reason)
-			taskChanged = true
-		} else {
-			automaticChanged := false
-			for i := range t.Runs {
-				r := &t.Runs[i]
-				if r.SessionID == id {
-					matched = true
-					rejected = append(rejected, *r)
-				}
-				if r.SessionID == id && (r.Status != "failed" || r.Reason != reason) {
-					r.Status, r.Reason = "failed", reason
-					automaticChanged = automaticChanged || !r.Manual
-					taskChanged = true
-				}
+	defer d.scheduleMu.Unlock()
+	t := d.tasks[taskID]
+	// An already-published conversation cannot create a new relay row.
+	if t == nil || t.Spec.Target.Type != "new_session" || runID == "" {
+		return nil
+	}
+	now := time.Now().UTC()
+	if run := t.Active; run != nil && run.ID == runID && (run.SessionID == "" || run.SessionID == id) {
+		run.SessionID = id
+		d.endScheduledRun(t, now, "failed", reason)
+		touchTask(t, now)
+		return d.saveSchedulesLocked()
+	}
+	for i := range t.Runs {
+		run := &t.Runs[i]
+		if run.ID != runID || run.SessionID != id {
+			continue
+		}
+		if run.Status != "failed" || run.Reason != reason {
+			run.Status, run.Reason = "failed", reason
+			if run.EndedAt == nil {
+				run.EndedAt = &now
 			}
-			if automaticChanged && t.Status != "cancelled" {
+			if !run.Manual && t.Status != "cancelled" {
 				t.Status, t.Reason, t.NextRunAt = "failed", reason, nil
 				if t.Active != nil {
 					t.Status = "paused"
 				}
 			}
+			touchTask(t, now)
 		}
-		if taskChanged {
-			touchTask(t, time.Now().UTC())
-			changed = true
-		}
+		// Retry a previous state-file failure even if memory already matches.
+		return d.saveSchedulesLocked()
 	}
-	var saveErr error
-	if changed || matched {
-		saveErr = d.saveSchedulesLocked()
-	}
-	d.scheduleMu.Unlock()
-	for _, run := range rejected {
-		saveErr = errors.Join(saveErr, s.stopUnpublishedScheduledRun(run))
-	}
-	return saveErr
-}
-
-// Retry uncertain cancellation/delivery and interrupt failures from durable
-// failed runs, including after a daemon restart. Never interrupt a human turn.
-func (d *Daemon) stopUnpublishedScheduledRuns() {
-	d.scheduleMu.Lock()
-	var runs []schedule.Run
-	for _, task := range d.tasks {
-		for _, run := range task.Runs {
-			if run.Reason == "relay_session_limit" {
-				runs = append(runs, run)
-			}
-		}
-	}
-	d.scheduleMu.Unlock()
-	for _, run := range runs {
-		if s, err := d.exact(run.SessionID); err == nil {
-			_ = s.stopUnpublishedScheduledRun(run)
-		}
-	}
-}
-
-func (s *session) stopUnpublishedScheduledRun(run schedule.Run) error {
-	_ = s.cancelInputBy(run.RequestID, originSystem)
-	_, err := s.interruptRunBy(originSystem, run.ID)
-	if errors.Is(err, errExited) {
-		return nil
-	}
-	return err
+	return nil
 }

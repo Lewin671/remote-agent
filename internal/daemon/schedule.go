@@ -612,7 +612,6 @@ func (d *Daemon) scheduleLoop(ctx context.Context) {
 			}
 			// Closing a CLI can block; lifecycle work shares dispatch ownership,
 			// never the schedule lock, and at most one closer per session.
-			d.stopUnpublishedScheduledRuns()
 			for _, s := range d.scheduledClosures() {
 				cleaningMu.Lock()
 				if !cleaning[s.meta.ID] {

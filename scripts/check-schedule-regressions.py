@@ -32,7 +32,6 @@ go("09-uncertain", "internal/daemon/schedule_events.go", "!uncertain[s.meta.ID] 
 go("10-revision", "internal/daemon/schedule.go", "if !bytes.Equal(visible, d.scheduleVisible) {", "if true || !bytes.Equal(visible, d.scheduleVisible) {", "TestScheduleRevisionIgnoresProgressCursors")
 go("12-summary", "internal/daemon/schedule.go", "run.FinalSummary = finalRunSummary(msg.Text)", "run.FinalSummary = summary(msg.Text, 200)", "TestRunSummaryUsesWholeFinalAnswer")
 go("13-minimum", "internal/daemon/schedule_security.go", "\t{\n\t\ttr := t.Spec.Trigger", "\tif freeze {\n\t\ttr := t.Spec.Trigger", "TestMCPRunAndResumeRecheckMinimumIntervals")
-go("14-daemon-quota", "internal/daemon/backend.go", 'if reason != "relay_session_limit" {', 'if true || reason != "relay_session_limit" {', "TestRelaySessionLimitFailsScheduledExecutionDurably")
 go("14-relay-quota", "internal/relay/sync.go", 'strings.HasPrefix(refused.Message(), "relay_session_limit:")', 'false && strings.HasPrefix(refused.Message(), "relay_session_limit:")', "TestRelaySessionLimitReachesBackend", "./internal/relay")
 go("14-server-quota", "internal/server/accounts.go", "relay_session_limit: this account has reached its session limit on this relay", "this account has reached its session limit on this relay", "TestHiddenSessionsConsumeTrialLimitWithExplicitReason", "./internal/server")
 for doc in ["scope", "architecture"]:
@@ -55,9 +54,6 @@ go("r2-05-queued-human", "internal/daemon/schedule_events.go", 's.claimOwnership
 
 go("r2-06-admission-retry", "internal/daemon/inject.go", '|| retries >= 1', '|| retries < 0', "TestHumanAdmissionBoundsRunningResumeRetry")
 
-go("r2-07-before-identity", "internal/daemon/backend.go", 't.ID == taskID && t.Active.ID == runID ||', 't.ID == taskID && t.Active.ID == runID && false ||', "TestPublicationRefusalBeforeAndAfterAdmission")
-go("r2-07-cancel-queue", "internal/daemon/backend.go", '_ = s.cancelInputBy(run.RequestID, originSystem)', '_ = s.cancelInputBy("missing", originSystem)', "TestPublicationRefusalBeforeAndAfterAdmission")
-go("r2-07-interrupt", "internal/daemon/backend.go", 's.interruptRunBy(originSystem, run.ID)', 's.interruptRunBy(originSystem, "missing")', "TestPublicationRefusalBeforeAndAfterAdmission")
 
 go("r2-08-minimum-reason", "internal/daemon/schedule.go", 't.Reason = "agent_schedule_interval_below_minimum"', 't.Reason = "agent_schedule_permissions_changed"', "TestMCPDispatchReportsMinimumIntervalReason")
 
@@ -66,7 +62,6 @@ go("r2-09-terminal-followup", "internal/daemon/schedule.go", '!hasPendingSchedul
 
 go("r2-03-manual-late", "internal/daemon/schedule.go", 'if !run.Manual {\n\t\t\t\t\td.lateRuns', 'if true {\n\t\t\t\t\td.lateRuns', "TestManualTrialFailureBoundaries")
 
-go("r2-07-late-stop-loop", "internal/daemon/schedule.go", 'd.stopUnpublishedScheduledRuns()', '// quota enforcement removed', "TestQuotaStopRetriesAndDoesNotInterruptHuman")
 
 
 # Third review: replace shadow-state mutations with independent-request invariants.
@@ -83,6 +78,14 @@ go("r3-A-serialize", "internal/daemon/schedule.go", 'if t.Active == nil && t.Man
 go("r3-A-reject-state", "internal/daemon/schedule.go", 't.Status == "uncertain" || t.Status == "failed" || t.Terminal() ||', '', "TestManualPendingControlsAndAdmission")
 go("r3-A-consume-request", "internal/daemon/schedule.go", 'request := t.ManualRequest\n\tt.ManualRequest = nil', 'request := t.ManualRequest', "TestManualExecutionLifecycleMatrix")
 go("r3-A-permission", "internal/daemon/schedule.go", 'run.Status, run.Reason = "failed", "agent_schedule_permissions_changed"', 't.Status="paused";run.Status, run.Reason = "failed", "agent_schedule_permissions_changed"', "TestManualPermissionRejectionDoesNotPausePlan")
+
+go("r3-B-association", "internal/daemon/backend.go", 'run.ID == runID &&', 'run.ID == runID && run.SessionID != "" &&', "TestPublicationRefusalUsesScheduledClosure")
+go("r3-B-route", "internal/daemon/schedule_events.go", 'rejected[run.SessionID] = run.ID', '// quota closure route removed', "TestPublicationRefusalUsesScheduledClosure")
+go("r3-B-busy", "internal/daemon/schedule_events.go", 's.scheduledCloseRejected ||', 'false ||', "TestPublicationRefusalUsesScheduledClosure")
+go("r3-B-read", "internal/daemon/session.go", 'if !s.readRollout() {\n\t\t\treturn nil', 'if false && !s.readRollout() {\n\t\t\treturn nil', "TestQuotaClosureReusesReadAndTakeoverSafety")
+go("r3-B-owner", "internal/daemon/schedule_events.go", 'return s.meta.TaskOwned &&', 'return true &&', "TestQuotaClosureReusesReadAndTakeoverSafety")
+go("r3-B-resume", "internal/daemon/backend.go", 't.Spec.Target.Type != "new_session" ||', '', "TestRelayQuotaIgnoresResumeSession")
+go("r3-B-no-synchronous-close", "internal/daemon/backend.go", 'now := time.Now().UTC()', '_, _ = s.interruptBy(originSystem); now := time.Now().UTC()', "TestQuotaClosureDoesNotBlockScheduleLoop")
 
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
@@ -107,6 +110,11 @@ for name,file,before,after,cmd,marker in list(clients):
     if name.startswith(("11-ios", "r2-client-ios")):
         clients.append((name.replace("11-", "r2-client-"),file,before,after,
             ["swift","test","--filter","coldListingRetainsTaskOwnedApprovalThroughRefresh"],"Expectation failed"))
+
+clients.extend([
+ ("r3-android-count", "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Timeline.kt", 'it.info?.taskOwned != true && !exited(it)', '!exited(it)', ["./gradlew",":core:test","--tests","*TimelineTest.allProjectCountsExcludeQuietTasksButIncludeApprovals"], "java.lang.AssertionError"),
+ ("r3-ios-count", "ios/RemoteAgentCore/Sources/RACore/Timeline.swift", 's.info?.taskOwned != true && !exited(s)', '!exited(s)', ["swift","test","--filter","allProjectCountsExcludeQuietTasksButIncludeApprovals"], "Expectation failed"),
+])
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

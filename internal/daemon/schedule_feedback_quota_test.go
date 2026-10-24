@@ -2,112 +2,166 @@ package daemon
 
 import (
 	"context"
-	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/schedule"
-	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/schedule"
+	"github.com/Lewin671/remote-agent/internal/tail"
 )
 
-func TestRelaySessionLimitFailsScheduledExecutionDurably(t *testing.T) {
+func unpublishedRun(t *testing.T, manual bool) (*harness, *schedule.Task, *schedule.Task, string) {
+	t.Helper()
 	h := scheduleHarness(t)
-	defer h.s.log.Close()
-	task := startScheduledTurn(t, h)
-	if err := h.d.SessionPublicationFailed(h.s.meta.ID, "relay_session_limit"); err != nil {
-		t.Fatal(err)
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "interval", IntervalSeconds: 3600, DelaySeconds: 3600}), "")
+	if manual {
+		requestManual(t, h, task.ID)
+	} else {
+		now := time.Now()
+		h.d.tasks[task.ID].NextRunAt = &now
 	}
-	if err := h.d.loadSchedules(); err != nil {
-		t.Fatal(err)
-	}
-	got := readTask(t, h.d, task.ID)
-	if got.Status != "failed" || got.Reason != "relay_session_limit" || got.Active != nil || got.NextRunAt != nil || len(got.Runs) != 1 || got.Runs[0].Status != "failed" || got.Runs[0].Reason != "relay_session_limit" {
-		t.Fatalf("quota not surfaced: %+v", got)
-	}
-	h.d.tickSchedules(time.Now().Add(time.Hour))
-	if readTask(t, h.d, task.ID).Dispatches != 1 {
-		t.Fatal("quota failure kept dispatching")
+	before := automaticPlan(h.d.tasks[task.ID])
+	snapshot := h.d.prepareScheduledDispatches(time.Now())[0]
+	h.d.tasks[task.ID].Spec.Target.Type = "new_session"
+	h.s.meta.TaskOwned = true
+	h.s.meta.ScheduledTaskID, h.s.meta.ScheduledRunID = task.ID, snapshot.Active.ID
+	return h, task, snapshot, before
+}
+func TestPublicationRefusalUsesScheduledClosure(t *testing.T) {
+	for _, manual := range []bool{false, true} {
+		for _, order := range []string{"before", "queued", "running", "finished"} {
+			t.Run(map[bool]string{false: "automatic", true: "manual"}[manual]+order, func(t *testing.T) {
+				h, task, snapshot, before := unpublishedRun(t, manual)
+				defer h.s.log.Close()
+				if order != "before" {
+					h.d.queueScheduledSession(context.Background(), snapshot, time.Now(), h.s)
+				}
+				if order == "running" {
+					h.s.emit(&pb.Event{TurnId: "native", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}, withOrigin(&pb.Event{TurnId: "native", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{RequestId: snapshot.Active.RequestID}}}, &pb.Origin{ScheduledTaskId: task.ID, ScheduledRunId: snapshot.Active.ID}))
+				}
+				if order == "finished" {
+					completeTask(h, snapshot.Active, time.Now())
+					h.d.tickSchedules(time.Now())
+				}
+				if err := h.d.SessionPublicationFailed(h.s.meta.ID, "relay_session_limit"); err != nil {
+					t.Fatal(err)
+				}
+				if order == "before" {
+					h.d.queueScheduledSession(context.Background(), snapshot, time.Now(), h.s)
+				}
+				got := readTask(t, h.d, task.ID)
+				if got.Active != nil || len(got.Runs) != 1 || got.Runs[0].ID != snapshot.Active.ID || got.Runs[0].SessionID != h.s.meta.ID || got.Runs[0].Status != "failed" || got.Runs[0].Reason != "relay_session_limit" {
+					t.Fatalf("quota result lost: %+v", got)
+				}
+				if manual {
+					if automaticPlan(got) != before {
+						t.Fatal("manual quota changed automatic plan")
+					}
+				} else if got.Status != "failed" || got.NextRunAt != nil {
+					t.Fatal("automatic quota did not stop plan")
+				}
+				if len(h.term.written()) != 0 {
+					t.Fatal("quota used dedicated control writes")
+				}
+				revision := got.Revision
+				if err := h.d.SessionPublicationFailed(h.s.meta.ID, "relay_session_limit"); err != nil {
+					t.Fatal(err)
+				}
+				if readTask(t, h.d, task.ID).Revision != revision {
+					t.Fatal("duplicate quota report changed result")
+				}
+				if err := h.d.loadSchedules(); err != nil {
+					t.Fatal(err)
+				}
+				closers := h.d.scheduledClosures()
+				if len(closers) != 1 {
+					t.Fatal("rejected new session did not enter automatic closure")
+				}
+				if err := closers[0].killIf(context.Background(), true); err != nil {
+					t.Fatal(err)
+				}
+				if h.term.Alive() || !h.s.meta.TaskCLIClosed || !h.s.meta.Exited {
+					t.Fatal("rejected CLI not closed by normal lifecycle")
+				}
+				if len(h.term.written()) != 0 {
+					t.Fatal("closure sent interrupt instead of closing CLI")
+				}
+			})
+		}
 	}
 }
 
-func TestPublicationRefusalBeforeAndAfterAdmission(t *testing.T) {
-	for _, order := range []string{"before", "queued", "running"} {
-		t.Run(order, func(t *testing.T) {
-			h := scheduleHarness(t)
+func TestRelayQuotaIgnoresResumeSession(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	task := startScheduledTurn(t, h)
+	// Even retained creation provenance must not turn a resume into this path.
+	h.s.meta.ScheduledTaskID, h.s.meta.ScheduledRunID = task.ID, task.Active.ID
+	before := readTask(t, h.d, task.ID)
+	if err := h.d.SessionPublicationFailed(h.s.meta.ID, "relay_session_limit"); err != nil {
+		t.Fatal(err)
+	}
+	got := readTask(t, h.d, task.ID)
+	if got.Revision != before.Revision || got.Active == nil || got.Active.ID != before.Active.ID || len(got.Runs) != 0 || len(h.d.scheduledClosures()) != 0 || !h.term.Alive() {
+		t.Fatal("resume_session entered quota cleanup")
+	}
+}
+
+func TestQuotaClosureReusesReadAndTakeoverSafety(t *testing.T) {
+	for _, human := range []bool{false, true} {
+		t.Run(map[bool]string{false: "unread", true: "takeover"}[human], func(t *testing.T) {
+			h, _, snapshot, _ := unpublishedRun(t, false)
 			defer h.s.log.Close()
-			task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
-			now := time.Now().Add(time.Second)
-			snapshots := h.d.prepareScheduledDispatches(now)
-			snapshot := snapshots[0]
-			h.d.tasks[task.ID].Spec.Target.Type = "new_session"
-			h.s.meta.ScheduledTaskID, h.s.meta.ScheduledRunID = task.ID, snapshot.Active.ID
-			if order != "before" {
-				h.d.queueScheduledSession(context.Background(), snapshot, now, h.s)
-			}
-			if order == "running" {
-				h.s.emit(&pb.Event{TurnId: "timed", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}},
-					withOrigin(&pb.Event{TurnId: "timed", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{RequestId: snapshot.Active.RequestID}}}, &pb.Origin{ScheduledTaskId: task.ID, ScheduledRunId: snapshot.Active.ID}))
-				// The native CLI has consumed it; it is no longer a cancellable queue item.
-				h.s.mu.Lock()
-				h.s.queue.Queue = nil
-				h.s.mu.Unlock()
-			}
+			h.d.queueScheduledSession(context.Background(), snapshot, time.Now(), h.s)
+			h.s.emit(&pb.Event{TurnId: "native", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
 			if err := h.d.SessionPublicationFailed(h.s.meta.ID, "relay_session_limit"); err != nil {
 				t.Fatal(err)
 			}
-			if order == "before" {
-				h.d.queueScheduledSession(context.Background(), snapshot, now, h.s)
+			if len(h.d.scheduledClosures()) != 1 {
+				t.Fatal("missing closer")
 			}
-			got := readTask(t, h.d, task.ID)
-			if got.Active != nil || len(got.Runs) != 1 || got.Runs[0].Reason != "relay_session_limit" || got.Runs[0].SessionID != h.s.meta.ID {
-				t.Fatalf("refusal lost: %+v", got)
+			if human {
+				if _, err := h.s.send("human takes over", "human"); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				h.s.reader = tail.NewReader(h.dir, 0)
 			}
-			if len(h.s.queue.Queue) != 0 {
-				t.Fatal("invisible scheduled input still queued")
-			}
-			if order == "running" && !strings.Contains(strings.Join(h.term.written(), ""), string(h.s.ag.Interrupt())) {
-				t.Fatal("invisible turn was not interrupted")
-			}
-			if order != "running" && len(h.term.written()) != 0 {
-				t.Fatal("refusal wrote hidden work")
-			}
-			if err := h.d.loadSchedules(); err != nil {
+			if err := h.s.killIf(context.Background(), true); err != nil {
 				t.Fatal(err)
 			}
-			if readTask(t, h.d, task.ID).Runs[0].Reason != "relay_session_limit" {
-				t.Fatal("failure not durable")
+			if !h.term.Alive() || len(h.term.written()) != 0 {
+				t.Fatal("quota bypassed unread transcript or takeover safety")
+			}
+			if len(h.d.scheduledClosures()) != 0 {
+				t.Fatal("quota bypassed takeover or closure backoff")
 			}
 		})
 	}
 }
 
-func TestQuotaStopRetriesAndDoesNotInterruptHuman(t *testing.T) {
-	h := scheduleHarness(t)
+func TestQuotaClosureDoesNotBlockScheduleLoop(t *testing.T) {
+	h, _, snapshot, _ := unpublishedRun(t, false)
 	defer h.s.log.Close()
-	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
-	h.d.tickSchedules(time.Now().Add(time.Second))
-	run := readTask(t, h.d, task.ID).Active
-	// Publication loses the race with Enter, before the transcript confirms it.
-	zero := int64(0)
-	h.s.queue.Queue[0].Inflight = &zero
-	if err := h.d.SessionPublicationFailed(h.s.meta.ID, "relay_session_limit"); err != nil {
-		t.Fatal(err)
+	h.d.queueScheduledSession(context.Background(), snapshot, time.Now(), h.s)
+	h.s.emit(&pb.Event{TurnId: "native", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}, withOrigin(&pb.Event{TurnId: "native", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{RequestId: snapshot.Active.RequestID}}}, &pb.Origin{ScheduledTaskId: snapshot.ID, ScheduledRunId: snapshot.Active.ID}))
+	h.s.ctlMu.Lock()
+	var once sync.Once
+	release := func() { once.Do(h.s.ctlMu.Unlock) }
+	defer release()
+	reported := make(chan error, 1)
+	go func() { reported <- h.d.SessionPublicationFailed(h.s.meta.ID, "relay_session_limit") }()
+	select {
+	case err := <-reported:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("quota report waited for terminal control")
 	}
-	if len(h.term.written()) != 0 {
-		t.Fatal("interrupted before any scheduled turn")
-	}
-	h.s.emit(&pb.Event{TurnId: "late", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}, withOrigin(&pb.Event{TurnId: "late", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{RequestId: run.RequestID}}}, &pb.Origin{ScheduledTaskId: task.ID, ScheduledRunId: run.ID}))
-	h.s.mu.Lock()
-	h.s.queue.Queue = nil
-	h.s.mu.Unlock()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stop := h.d.startScheduleLoop(ctx)
-	defer stop()
-	eventually(t, "real loop interrupts refused late turn", func() bool { return strings.Contains(strings.Join(h.term.written(), ""), string(h.s.ag.Interrupt())) })
-	h.s.emit(withOrigin(&pb.Event{TurnId: "human", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "human takes over"}}}, originLocal))
-	before := len(h.term.written())
-	h.d.stopUnpublishedScheduledRuns()
-	if len(h.term.written()) != before {
-		t.Fatal("quota retry interrupted human turn")
-	}
+	other := createTask(t, h, taskSpec(schedule.Trigger{Type: "interval", IntervalSeconds: 3600, DelaySeconds: 2}), "")
+	stop := h.d.startScheduleLoop(context.Background())
+	defer func() { release(); stop() }()
+	eventually(t, "scheduler advances while quota closer waits for ctlMu", func() bool { return readTask(t, h.d, other.ID).Dispatches == 1 })
 }

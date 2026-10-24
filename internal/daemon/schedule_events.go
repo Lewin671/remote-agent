@@ -150,6 +150,7 @@ func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, scope string) ([]byte, e
 
 func (d *Daemon) scheduledClosures() []*session {
 	ended := map[string]bool{}
+	rejected := map[string]string{}
 	uncertain := map[string]bool{}
 	d.scheduleMu.Lock()
 	for _, task := range d.tasks {
@@ -157,6 +158,9 @@ func (d *Daemon) scheduledClosures() []*session {
 			continue
 		}
 		for _, run := range task.Runs {
+			if run.Status == "failed" && run.Reason == "relay_session_limit" {
+				rejected[run.SessionID] = run.ID
+			}
 			if run.SessionID != "" {
 				uncertain[run.SessionID] = run.Status == "uncertain"
 			}
@@ -181,13 +185,21 @@ func (d *Daemon) scheduledClosures() []*session {
 		if ended[s.meta.ID] {
 			s.scheduledClose = true
 		}
-		ready := !uncertain[s.meta.ID] && s.meta.TaskOwned && !s.meta.TaskCLIClosed && !s.meta.Exited && s.scheduledClose && !s.running && len(s.queue.Queue) == 0 && len(s.queue.Held) == 0 && !time.Now().Before(s.scheduledCloseAfter)
+		s.scheduledCloseRejected = rejected[s.meta.ID] != "" && rejected[s.meta.ID] == s.meta.ScheduledRunID
+		ready := !uncertain[s.meta.ID] && s.scheduledCloseEligibleLocked() && !time.Now().Before(s.scheduledCloseAfter)
 		s.mu.Unlock()
 		if ready {
 			out = append(out, s)
 		}
 	}
 	return out
+}
+
+// Rejected new sessions have no published conversation to finish. They use
+// the same closure owner, transcript read, takeover check and retry policy.
+func (s *session) scheduledCloseEligibleLocked() bool {
+	return s.meta.TaskOwned && !s.meta.TaskCLIClosed && !s.meta.Exited && s.scheduledClose &&
+		(s.scheduledCloseRejected || !s.running && len(s.queue.Queue) == 0 && len(s.queue.Held) == 0)
 }
 
 func (d *Daemon) publishedScheduleRevision() uint64 {
