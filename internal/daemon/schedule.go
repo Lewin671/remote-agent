@@ -645,7 +645,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	for _, t := range d.tasks {
-		if t.Terminal() && t.Active == nil && d.lateRuns[t.ID] == "" && (len(t.Runs) == 0 || t.Runs[len(t.Runs)-1].Status != "completed" || t.Runs[len(t.Runs)-1].FollowupsClosed) {
+		if t.Terminal() && t.Active == nil && d.lateRuns[t.ID] == "" && !hasPendingScheduledFollowups(t) {
 			continue
 		}
 		prev := schedule.Clone(t)
@@ -1235,10 +1235,23 @@ func finalRunSummary(text string) string {
 }
 
 func (d *Daemon) watchScheduledFollowups(t *schedule.Task) bool {
-	if len(t.Runs) == 0 {
-		return false
+	changed := false
+	for i := range t.Runs {
+		changed = d.watchScheduledFollowup(&t.Runs[i]) || changed
 	}
-	run := &t.Runs[len(t.Runs)-1]
+	return changed
+}
+
+func hasPendingScheduledFollowups(t *schedule.Task) bool {
+	for _, run := range t.Runs {
+		if run.Status == "completed" && !run.FollowupsClosed && run.SessionID != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *Daemon) watchScheduledFollowup(run *schedule.Run) bool {
 	if run.Status != "completed" || run.FollowupsClosed || run.SessionID == "" {
 		return false
 	}

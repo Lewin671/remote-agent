@@ -242,3 +242,50 @@ func TestMCPDispatchReportsMinimumIntervalReason(t *testing.T) {
 		}
 	}
 }
+
+func TestFollowupSurvivesLaterSkippedRun(t *testing.T) {
+	for _, terminal := range []bool{false, true} {
+		h := scheduleHarness(t)
+		defer func() { h.s.log.Close() }()
+		now := time.Now()
+		spec := taskSpec(schedule.Trigger{Type: "calendar", Time: "08:00", Timezone: "UTC"})
+		spec.LateSeconds = 60
+		task := createTask(t, h, spec, "")
+		h.d.tasks[task.ID].NextRunAt = &now
+		h.d.tickSchedules(now)
+		run := readTask(t, h.d, task.ID).Active
+		completeTask(h, run, now)
+		h.d.tickSchedules(now)
+		next := *readTask(t, h.d, task.ID).NextRunAt
+		h.d.tickSchedules(next.Add(2 * time.Minute))
+		if got := readTask(t, h.d, task.ID); len(got.Runs) != 2 || got.Runs[1].Status != "skipped" {
+			t.Fatalf("no real skip: %+v", got)
+		}
+		if terminal {
+			h.d.tasks[task.ID].Status = "completed"
+		}
+		if err := h.d.saveSchedulesLocked(); err != nil {
+			t.Fatal(err)
+		}
+		if err := h.d.loadSchedules(); err != nil {
+			t.Fatal(err)
+		}
+		h.s.emit(&pb.Event{TurnId: "follow", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
+		if err := notifyTest(t, h, "late result", ""); err != nil {
+			t.Fatal(err)
+		}
+		h.s.emit(&pb.Event{TurnId: "follow", Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Phase: "final_answer", Text: "late final summary"}}})
+		h.d.tickSchedules(next.Add(3 * time.Minute))
+		got := readTask(t, h.d, task.ID)
+		if got.Runs[0].ID != run.ID || got.Runs[0].NotificationCount != 1 || got.Runs[0].NotificationText != "late result" || got.Runs[0].FinalSummary != "late final summary" {
+			t.Fatalf("earlier followup lost behind skipped run: %+v", got.Runs[0])
+		}
+		if got.Runs[1].Notified || got.Runs[1].FinalSummary != "" {
+			t.Fatal("followup attributed to skipped run")
+		}
+		h.d.tickSchedules(next.Add(4 * time.Minute))
+		if readTask(t, h.d, task.ID).Runs[0].NotificationCount != 1 {
+			t.Fatal("notification replay double counted")
+		}
+	}
+}
