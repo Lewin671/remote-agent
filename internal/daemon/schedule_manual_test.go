@@ -145,6 +145,14 @@ func TestManualPendingControlsAndAdmission(t *testing.T) {
 			t.Run(typ+status, func(t *testing.T) {
 				h, task := manualFixture(t, typ)
 				defer h.s.log.Close()
+				if status == "failed" && oneShotTrigger(task.Spec.Trigger) {
+					task.Status = "failed"
+					requestManual(t, h, task.ID)
+					if task.ManualRequest == nil || !task.ManualRequest.RetryFailed || task.Status != "failed" {
+						t.Fatal("failed one-shot retry was not explicit")
+					}
+					return
+				}
 				task.Status = strings.TrimSuffix(status, "-late")
 				if strings.HasSuffix(status, "-late") {
 					h.d.lateRuns = map[string]string{task.ID: "late-original"}

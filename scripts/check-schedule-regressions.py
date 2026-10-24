@@ -75,7 +75,7 @@ go("r3-A-restart", "internal/daemon/schedule.go", 'if !manual {', 'if true || !m
 go("r3-A-pause", "internal/daemon/schedule.go", 't.Reason = "user_paused"\n\t\tt.ManualRequest = nil', 't.Reason = "user_paused"', "TestManualPendingControlsAndAdmission")
 go("r3-A-cancel", "internal/daemon/schedule.go", 't.Reason = "user_cancelled"\n\t\tt.ManualRequest = nil', 't.Reason = "user_cancelled"', "TestManualPendingControlsAndAdmission")
 go("r3-A-serialize", "internal/daemon/schedule.go", 'if t.Active == nil && t.ManualRequest != nil {', 'if t.ManualRequest != nil {', "TestManualAndAutomaticSerialize")
-go("r3-A-reject-state", "internal/daemon/schedule.go", 't.Status == "uncertain" || t.Status == "failed" || t.Terminal() ||', '', "TestManualPendingControlsAndAdmission")
+go("r3-A-reject-state", "internal/daemon/schedule.go", 't.Status == "uncertain" || t.Status == "failed" && !oneShotTrigger(t.Spec.Trigger) || t.Terminal() ||', '', "TestManualPendingControlsAndAdmission")
 go("r3-A-consume-request", "internal/daemon/schedule.go", 'request := t.ManualRequest\n\tt.ManualRequest = nil', 'request := t.ManualRequest', "TestManualExecutionLifecycleMatrix")
 go("r3-A-permission", "internal/daemon/schedule.go", 'run.Status, run.Reason = "failed", "agent_schedule_permissions_changed"', 't.Status="paused";run.Status, run.Reason = "failed", "agent_schedule_permissions_changed"', "TestManualPermissionRejectionDoesNotPausePlan")
 
@@ -103,7 +103,7 @@ go("r4-01-guard", "internal/daemon/schedule.go", 'last != nil && last.ScheduledA
 
 go("r4-02-wait-cursor", "internal/daemon/schedule.go", 'd.lateRuns[t.ID] != "" || t.Status == "uncertain"', 't.Status == "uncertain"', "TestPendingManualWaitsForAutomaticConfirmation")
 go("r4-02-wait-state", "internal/daemon/schedule.go", 'd.lateRuns[t.ID] != "" || t.Status == "uncertain"', 'd.lateRuns[t.ID] != ""', "TestPendingManualWaitsForAutomaticConfirmation")
-go("r4-02-drop", "internal/daemon/schedule.go", 'case t.Status == "failed" || t.Terminal():', 'case false:', "TestPendingManualSkipsWhenAutomaticStops")
+go("r4-02-drop", "internal/daemon/schedule.go", 'case t.Status == "failed" && !(request.RetryFailed && oneShotTrigger(t.Spec.Trigger)) || t.Terminal():', 'case false:', "TestPendingManualSkipsWhenAutomaticStops")
 go("r4-02-id", "internal/daemon/schedule.go", 'last := &t.Runs[index]', 'index=len(t.Runs)-1; last := &t.Runs[index]', "TestLateConfirmationFindsRunByID")
 go("r4-02-rollback", "internal/daemon/schedule.go", 'd.lateRuns[t.ID] = lateRun', 'd.lateRuns[t.ID] = before.Runs[len(before.Runs)-1].ID; _=lateRun', "TestLateConfirmationRollbackKeepsOriginalRunID")
 
@@ -112,6 +112,10 @@ go("r4-03-lifecycle", "internal/daemon/schedule.go", 'if snapshot.Spec.Target.Ty
 go("r4-04-accepted", "internal/daemon/commit.go", 's.claimQueuedHumanOwnershipLocked()\n\tdefer s.poke()', 'defer s.poke()', "TestAcceptedHumanQueueOwnsSessionWithoutQueuedEvent")
 go("r4-04-replaced", "internal/daemon/commit.go", 's.claimQueuedHumanOwnershipLocked()\n\t\t\ts.poke()', 's.poke()', "TestAcceptedHumanQueueOwnsSessionWithoutQueuedEvent")
 go("r4-04-restore", "internal/daemon/session.go", 's.claimQueuedHumanOwnershipLocked()', '// canonical takeover omitted', "TestCanonicalHumanQueueRepairsOwnershipOnRestore")
+
+go("r4-05-resume-error", "internal/daemon/schedule.go", 'if t.Status == "failed" && oneShotTrigger(t.Spec.Trigger) {', 'if false && t.Status == "failed" && oneShotTrigger(t.Spec.Trigger) {', "TestFailedOneShotResumeRequiresExplicitRetry")
+go("r4-05-intent", "internal/daemon/schedule.go", 'RetryFailed: t.Status == "failed"', 'RetryFailed: false', "TestFailedOneShotResumeRequiresExplicitRetry")
+go("r4-05-old-request", "internal/daemon/schedule.go", 'request.RetryFailed && oneShotTrigger(t.Spec.Trigger)', 'oneShotTrigger(t.Spec.Trigger)', "TestOneShotPendingBeforeFailureIsNotExplicitRetry")
 
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
@@ -148,6 +152,7 @@ def main():
     p.add_argument("--only", default="")
     args=p.parse_args()
     selected=checks+(clients if args.clients else [])
+    baselines=set()
     for name,file,before,after,cmd,marker in selected:
         if args.only and args.only not in name: continue
         path=ROOT/file
@@ -156,6 +161,13 @@ def main():
         cwd=ROOT
         if file.startswith("android/"):cwd=ROOT/"android"
         if file.startswith("ios/"):cwd=ROOT/"ios/RemoteAgentCore"
+        baseline=(str(cwd),tuple(cmd))
+        if baseline not in baselines:
+            result=subprocess.run(cmd,cwd=cwd,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+            if result.returncode!=0:
+                print(result.stdout[-6000:],flush=True)
+                raise SystemExit("Original test must pass before mutation: "+name)
+            baselines.add(baseline)
         try:
             # 06 intentionally removes both pre-append and replay projections.
             path.write_text(original.replace(before,after) if name=="06-interjection" else original.replace(before,after,1))

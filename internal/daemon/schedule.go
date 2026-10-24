@@ -316,6 +316,9 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		if t.Status != "paused" && t.Status != "failed" && t.Status != "uncertain" {
 			return nil, errors.New("only paused, failed or uncertain tasks can be resumed")
 		}
+		if t.Status == "failed" && oneShotTrigger(t.Spec.Trigger) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("failed one-shot tasks cannot be resumed; use run (立即运行一次) for an extra execution, or update the definition to retry the plan"))
+		}
 		if t.Active != nil && !t.Active.Manual && t.Active.InputPaused {
 			return nil, errors.New("execution input is paused; use resume-input or cancel that input first")
 		}
@@ -343,13 +346,13 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 				return nil, err
 			}
 		}
-		if t.Status == "uncertain" || t.Status == "failed" || t.Terminal() || d.lateRuns[t.ID] != "" || t.Active != nil && t.Active.Status == "uncertain" {
+		if t.Status == "uncertain" || t.Status == "failed" && !oneShotTrigger(t.Spec.Trigger) || t.Terminal() || d.lateRuns[t.ID] != "" || t.Active != nil && t.Active.Status == "uncertain" {
 			return nil, fmt.Errorf("cannot run task in %s state; resume or update its definition first", t.Status)
 		}
 		if t.ManualRequest != nil {
 			return nil, errors.New("a manual execution is already requested")
 		}
-		t.ManualRequest = &schedule.ManualRequest{RequestID: "schedule-" + newID(16), RequestedAt: now}
+		t.ManualRequest = &schedule.ManualRequest{RequestID: "schedule-" + newID(16), RequestedAt: now, RetryFailed: t.Status == "failed"}
 	default:
 		return nil, errors.New("unknown schedule operation")
 	}
@@ -378,6 +381,10 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		delete(d.lateRuns, t.ID)
 	}
 	return json.Marshal(t)
+}
+
+func oneShotTrigger(tr schedule.Trigger) bool {
+	return tr.Type == "at" || tr.Type == "after_turn" && !tr.Repeat
 }
 
 func scheduleAgent(name string) (pb.Agent, error) {
@@ -800,7 +807,7 @@ func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) (bool, b
 		late = 86400
 	}
 	switch {
-	case t.Status == "failed" || t.Terminal():
+	case t.Status == "failed" && !(request.RetryFailed && oneShotTrigger(t.Spec.Trigger)) || t.Terminal():
 		run.Status, run.Reason = "skipped", "task_"+t.Status+"_before_manual_dispatch"
 	case now.Sub(request.RequestedAt) > time.Duration(late)*time.Second:
 		run.Status, run.Reason = "skipped", "catch_up_window_expired"

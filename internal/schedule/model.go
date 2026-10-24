@@ -80,6 +80,7 @@ type Task struct {
 
 // ManualRequest is an extra execution, independent of the automatic plan.
 type ManualRequest struct {
+	RetryFailed bool      `json:"retry_failed,omitempty"`
 	RequestID   string    `json:"request_id"`
 	RequestedAt time.Time `json:"requested_at"`
 }
