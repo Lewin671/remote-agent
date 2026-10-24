@@ -386,6 +386,12 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 	if tr.At != nil && (tr.At.Before(now.Add(-time.Duration(maxSeconds)*time.Second)) || tr.At.After(now.Add(time.Duration(maxSeconds)*time.Second))) {
 		return errors.New("timestamp must be within ten years of now")
 	}
+	if err := tr.ValidateCalendar(); err != nil {
+		return err
+	}
+	if tr.Until != nil && tr.Type != "interval" && tr.Type != "calendar" && !(tr.Type == "after_turn" && tr.Repeat) {
+		return errors.New("until requires a recurring trigger")
+	}
 	var source *session
 	if t.SourceSession != "" {
 		var err error
@@ -487,6 +493,9 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 	t.Reason = ""
 	t.NextRunAt = nil
 	switch tr.Type {
+	case "calendar":
+		at := tr.NextCalendar(now)
+		t.NextRunAt, t.Status = &at, "scheduled"
 	case "at":
 		if tr.At == nil || tr.At.IsZero() || tr.Repeat || tr.IntervalSeconds != 0 || tr.DelaySeconds != 0 {
 			return errors.New("at requires a timestamp and no recurrence or delay")
@@ -541,8 +550,9 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 			t.Status = "scheduled"
 		}
 	default:
-		return errors.New("trigger type must be at, interval or after_turn")
+		return errors.New("trigger type must be at, interval, calendar or after_turn")
 	}
+	d.expireSchedule(t, now)
 	return nil
 }
 
@@ -629,6 +639,9 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				}
 			}
 		}
+		if t.Active == nil && d.expireSchedule(t, now) {
+			changed = true
+		}
 		if t.Status == "scheduled" && t.Active == nil && t.NextRunAt != nil && !now.Before(*t.NextRunAt) {
 			changed = true
 			late := t.Spec.LateSeconds
@@ -642,6 +655,12 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				interval := time.Duration(tr.IntervalSeconds) * time.Second
 				latest := t.NextRunAt.Add(now.Sub(*t.NextRunAt) / interval * interval)
 				t.NextRunAt = &latest
+			}
+			if tr := t.Spec.Trigger; tr.Type == "calendar" {
+				latest := tr.LatestCalendar(now)
+				if latest.After(*t.NextRunAt) {
+					t.NextRunAt = &latest
+				}
 			}
 			if now.Sub(*t.NextRunAt) > time.Duration(late)*time.Second {
 				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired"}
@@ -996,6 +1015,7 @@ func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason
 	d.nextSchedule(t, now)
 }
 func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
+	defer d.expireSchedule(t, now)
 	tr := t.Spec.Trigger
 	t.Reason = ""
 	if tr.MaxRuns > 0 && t.Dispatches >= tr.MaxRuns {
@@ -1017,6 +1037,19 @@ func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
 		}
 		t.NextRunAt = &next
 		t.Status = "scheduled"
+	case tr.Type == "calendar":
+		next := tr.NextCalendar(now)
+		if len(t.Runs) > 0 {
+			// Even an early manual run consumes this local calendar date.
+			loc, _ := time.LoadLocation(tr.Timezone)
+			last := t.Runs[len(t.Runs)-1].StartedAt.In(loc)
+			y, m, d := last.Date()
+			end := time.Date(y, m, d+1, 0, 0, 0, 0, loc).Add(-time.Nanosecond)
+			if end.After(now) {
+				next = tr.NextCalendar(end)
+			}
+		}
+		t.NextRunAt, t.Status = &next, "scheduled"
 	case tr.Type == "after_turn" && tr.Repeat:
 		next := now.Add(time.Duration(tr.DelaySeconds) * time.Second)
 		t.NextRunAt = &next
@@ -1025,4 +1058,17 @@ func (d *Daemon) nextSchedule(t *schedule.Task, now time.Time) {
 		t.Status = "completed"
 		t.NextRunAt = nil
 	}
+}
+
+// expireSchedule also bounds a future cursor. Active executions finish normally.
+func (d *Daemon) expireSchedule(t *schedule.Task, now time.Time) bool {
+	until := t.Spec.Trigger.Until
+	if until == nil || t.Active != nil || t.Terminal() {
+		return false
+	}
+	if now.After(*until) || t.NextRunAt != nil && t.NextRunAt.After(*until) {
+		t.Status, t.Reason, t.NextRunAt = "completed", "until_reached", nil
+		return true
+	}
+	return false
 }
