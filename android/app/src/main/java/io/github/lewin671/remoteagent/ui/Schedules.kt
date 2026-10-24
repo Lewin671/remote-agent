@@ -103,7 +103,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
         if (busy || task == null) return
         busy = true; error = ""
         scope.launch {
-            try { remote.schedules.operate(machine, op, if (spec != null) editBase ?: task else task, spec); edit = ""; editBase = null }
+            try { remote.schedules.operate(machine, op, if (spec != null) editBase ?: task else task, spec); edit = ""; editBase = null; if (op == "cancel") nav.back() }
             catch (e: kotlinx.coroutines.CancellationException) { throw e }
             catch (e: Exception) { error = errorText(e); uncertain = (e as? CommandException)?.unknown == true; if (e is ScheduleConflictException) { edit = ""; editBase = null } }
             finally { busy = false }

@@ -48,4 +48,9 @@ class ScheduleDetailEditsTest {
             assertEquals(JsonObject(original.spec+("message" to JsonPrimitive("本端修改"))),Json.parseToJsonElement(sent.specJson.toStringUtf8()))
         }
     }
+    @Test fun deletionReturnsToListAndHidesTheCancelledTask() {
+        prepare();render();ui.onNodeWithText("删除任务").performScrollTo().performClick()
+        ui.onNodeWithText("删除这个任务？").assertExists();ui.onNodeWithText("删除",useUnmergedTree=true).performClick()
+        ui.runOnIdle { assertEquals(1,backs);assertTrue(repository.tasks().isEmpty()) }
+    }
 }

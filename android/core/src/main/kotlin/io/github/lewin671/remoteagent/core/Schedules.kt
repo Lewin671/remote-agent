@@ -169,6 +169,8 @@ data class ScheduleSnapshot(val revision: Long = -1, val tasks: List<ScheduledTa
 
 /** Event-driven discovery. The in-flight request captures the advertised revision, so metadata
  * arriving during a read is fetched afterwards. Failed reads wait for a revision/reconnect/retry. */
+fun scheduleVisible(t: ScheduledTask) = t.status != "cancelled" || t.reason.isNotEmpty() && t.reason != "user_cancelled"
+
 class ScheduleRepository(
     private val scope: CoroutineScope,
     private val remoteState: StateFlow<RemoteState>,
@@ -195,7 +197,7 @@ class ScheduleRepository(
             }
         }
     } }
-    fun tasks(s: RemoteState = remoteState.value) = state.value.values.flatMap { it.tasks }.filter { it.machine !in removed && scheduleSupported(s.machines[it.machine]) }
+    fun tasks(s: RemoteState = remoteState.value) = state.value.values.flatMap { it.tasks }.filter { it.machine !in removed && scheduleVisible(it) && scheduleSupported(s.machines[it.machine]) }
     private fun set(id: String, f: (ScheduleSnapshot) -> ScheduleSnapshot) { _state.value = _state.value + (id to f(_state.value[id] ?: ScheduleSnapshot())) }
     private fun request(id: String) {
         if (jobs[id]?.isActive == true) return
