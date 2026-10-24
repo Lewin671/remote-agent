@@ -433,7 +433,7 @@ struct ChatPane: View {
             .onChange(of: rows.count + pending.count + outgoing.count, initial: true) { _, n in
                 if tracker.count(n) { toEnd(proxy) }
             }
-            .onChange(of: rows.map(\.id), initial: true) { _, _ in
+            .modifier(ScheduledJumpObserver(rowIDs: rows.map(\.id), loaded: chat.loaded, jump: jump) {
                 if let jump, appliedScheduledJump != jump.runID, chat.loaded, !rows.isEmpty {
                     tracker.leave()
                     let exact = rows.first { if case .user(let u) = $0.item { return u.scheduledRunID == jump.runID }; return false }
@@ -443,7 +443,7 @@ struct ChatPane: View {
                         appliedScheduledJump = jump.runID
                     }
                 }
-            }
+            })
             .debugSignal("session.end") {
                 tracker.jump()
                 toEnd(proxy, animated: true)
@@ -844,5 +844,21 @@ private struct EndedCard: View {
             var cmd = PBCommand(); cmd.resumeSession.sessionID = session.id
             try await context.remote.command(session.id, cmd)
         }
+    }
+}
+
+/// Loading can finish without changing row IDs; that transition must retry a pending jump.
+struct ScheduledJumpObserver: ViewModifier {
+    let rowIDs: [String]
+    let loaded: Bool
+    let jump: SessionStore.ScheduledJump?
+    let apply: () -> Void
+    private struct Input: Equatable {
+        let rowIDs: [String]
+        let loaded: Bool
+        let jump: SessionStore.ScheduledJump?
+    }
+    func body(content: Content) -> some View {
+        content.onChange(of: Input(rowIDs: rowIDs, loaded: loaded, jump: jump), initial: true) { _, _ in apply() }
     }
 }

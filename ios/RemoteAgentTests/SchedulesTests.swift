@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import RACore
 import RAProto
@@ -177,5 +178,32 @@ import UIKit
             }
             window.isHidden = true
         }
+    }
+}
+
+@MainActor @Observable private final class ScheduledJumpProbe {
+    var loaded = false
+    var jump = SessionStore.ScheduledJump(runID:"run",seq:5)
+    var attempts = 0
+}
+@MainActor @Suite struct ScheduleJumpObserverTests {
+    @Test func retriesWhenLoadingFinishesWithoutChangingAnyRowID() async throws {
+        await WindowTestGate.shared.acquire();defer { WindowTestGate.shared.release() }
+        let scene=try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let probe=ScheduledJumpProbe()
+        // Keep the observable values in a real SwiftUI body, not a captured one-time view value.
+        struct Host:View {
+            let probe:ScheduledJumpProbe
+            var body:some View { Text("history").modifier(ScheduledJumpObserver(rowIDs:["e5"],loaded:probe.loaded,jump:probe.jump) { probe.attempts += 1 }) }
+        }
+        let host=UIHostingController(rootView:Host(probe:probe))
+        let window=UIWindow(windowScene:scene);window.frame=CGRect(x:0,y:0,width:320,height:200);window.rootViewController=host;window.isHidden=false
+        defer { window.isHidden=true }
+        await eventually("initial jump observation") { probe.attempts==1 }
+        probe.loaded=true
+        await eventually("loaded history retries jump") { probe.attempts==2 }
+        probe.jump = .init(runID:"another",seq:8)
+        await eventually("another requested run") { probe.attempts==3 }
+        #expect(probe.attempts==3)
     }
 }
