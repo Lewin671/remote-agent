@@ -30,6 +30,9 @@ func (s *session) annotateScheduled(batches []eventlog.Batch) {
 						}
 					}
 				}
+				if humanOrigin(e.Origin) {
+					task, run, count = "", "", 0
+				}
 				if e.Origin.GetScheduledTaskId() != "" {
 					task, run, count = e.Origin.ScheduledTaskId, e.Origin.ScheduledRunId, 0
 				}
@@ -42,7 +45,6 @@ func (s *session) annotateScheduled(batches []eventlog.Batch) {
 				e.Kind = &pb.Event_TurnEnded{TurnEnded: proto.CloneOf(end)}
 				end = e.GetTurnEnded()
 				end.ScheduledTaskId, end.ScheduledRunId, end.ScheduledNotified = task, run, count > 0
-				task, run, count = "", "", 0
 			}
 		}
 	}
@@ -50,6 +52,9 @@ func (s *session) annotateScheduled(batches []eventlog.Batch) {
 
 func (s *session) observeScheduled(e *pb.Event) {
 	if m := e.GetUserMessage(); m != nil {
+		if humanOrigin(e.Origin) {
+			s.scheduledTask, s.scheduledRun, s.scheduledNotifications = "", "", 0
+		}
 		if e.Origin.GetScheduledTaskId() != "" {
 			s.scheduledTask, s.scheduledRun, s.scheduledNotifications = e.Origin.ScheduledTaskId, e.Origin.ScheduledRunId, 0
 		} else if e.Origin.GetKind() != pb.OriginKind_ORIGIN_KIND_SYSTEM {
@@ -68,7 +73,6 @@ func (s *session) observeScheduled(e *pb.Event) {
 		if end.ScheduledTaskId != "" {
 			s.scheduledClose = true
 		}
-		s.scheduledTask, s.scheduledRun, s.scheduledNotifications = "", "", 0
 	}
 }
 
@@ -85,7 +89,7 @@ func (d *Daemon) sessionHasScheduledRunLocked(id string) bool {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.running && s.scheduledTask != ""
+	return s.scheduledTask != ""
 }
 
 func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, scope string) ([]byte, error) {
@@ -171,4 +175,8 @@ func (d *Daemon) publishedScheduleRevision() uint64 {
 		d.schedulePublishAt = time.Now().Add(2 * time.Second)
 	}
 	return d.schedulePublished
+}
+
+func humanOrigin(origin *pb.Origin) bool {
+	return origin.GetKind() == pb.OriginKind_ORIGIN_KIND_CLIENT || origin.GetKind() == pb.OriginKind_ORIGIN_KIND_LOCAL
 }
