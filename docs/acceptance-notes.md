@@ -1043,3 +1043,25 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 | `git diff --check` | 通过 |
 
 结果、xcresult 和截图仅保存在本地输出。三端各四张亮色原图已覆盖，并有列表、详情、新建、对话定时条四张并排比较图及输入/截图指纹。Chrome 主题与视口已恢复，临时 Android 测试包和模拟器进程已清理；USB 真机没有操作。没有新增真实推送、真机、iPad、实际睡眠/DST 切换或客户端 Codex 全链路验收。未推送、打 tag、发版、部署或修改 `version.properties`。
+
+### 三端四图：文案、颜色与定时条收尾（2026-10-24）
+
+产品 0.45.7 / 协议 11，整合分支本地候选。逐张复核列表、详情、新建、对话定时条的三端并排图，先在 [v49「各端统一的写法」](design/client-v49.html#schedule-shared-copy) 明确规则，再修三端。新建说明逐字统一；详情副标题只留状态；Android 注意组原因改为 muted；iOS 定时条补 Lucide clock，作为装饰对读屏隐藏。
+
+额外发现并修正的差异：iOS 新建标签去掉「（可选）」（仍允许留空）；详情任务类型及创建者说明对齐完整句子，运行记录标题补实际条数；网页详情消息正文改为 15 号 fg，并去掉副标题额外的彩色状态点；CLI 分段选择选中项为 fg 字和浅底，未选项为 muted（网页去蓝色，iOS 局部设置原生 UISegmentedControl 的文字色，保留原生选择行为）。Android 当前对话任务的创建说明也对齐 v49。
+
+| 本轮命令 | 结果 |
+|---|---|
+| `pnpm --dir web typecheck`、`pnpm --dir web test`、`pnpm --dir web build` | 最终全部退出码 0；87 个文件、1170 项通过，保留既有 authority-setup 分块提示 |
+| `cd android && ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest` | 通过；增加颜色回归后再跑前三项，core 398、app 333，失败/错误/跳过均为 0 |
+| Android `ScheduleComparisonGallery` instrumentation | 4 项通过，从共享 JSON 渲染真实四屏并重截 |
+| `xcodebuild -quiet -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath <临时构建目录> -resultBundlePath <独立输出目录>/app.xcresult build test` | 最终退出码 0；345 项、参数展开后 383 次执行，0 失败/跳过；结构化构建结果 0 错误、0 警告，仅用已有 iPhone 18 Pro / iOS 27 |
+| `python3 scripts/public_scan.py web/dist deploy/self-host android/app/build/outputs/apk/debug/app-debug.apk` | 退出码 0；只代表本地正常构建产物及自部署模板，不代表签名发布产物 |
+| 将本轮修改的 14 个源码/文档文件交给 `python3 scripts/public_scan.py` | 原始退出码 1；仅 acceptance-notes 与 v49 中既有的允许官方域名，与本轮开始前核对一致，没有私有名单命中；未修改扫描规则 |
+| `git diff --check` | 通过 |
+
+网页新增回归检查实际新建页面的完整说明；Android 从共享任务推导真实注意行，再检查原因 Text 的实际布局文字色；iOS 在真实宿主窗口内检查原生分段控件的普通/选中颜色及切换后的配置。网页说明、Android 原因颜色各临时恢复旧实现后，对应断言确实失败，源码随后恢复，最终正常测试和构建通过。Android 新测试初稿读到了合并语义节点中的标题色，改为未合并节点定位原因 Text；这是确定的测试定位问题，没有靠重跑掩盖。iOS 初次计数引用用了不存在的属性，改用既有 history；新增原生控件协调器明确限定 MainActor，最终构建无新增警告。未发生需要以重跑解释的测试偶发失败。
+
+三端各四张亮色原图和四张并排图已覆盖，网页另更新 1280 宽版本；输入仍为 `testdata/schedules/clients.json`，并刷新本地截图 SHA-256 清单。网页使用 Chrome 的真实点击与填写；普通视口截图被设备预览缩放后，改用完整页面截图并核对 390×844，未用缩放后的错误截图交付。Android 使用现有 API 36 模拟器 instrumentation；iOS 使用 DEBUG fixture / route 启动参数。截图是合成固定数据，不能代替真实 CLI 验收。未新增真机、iPad、推送送达、睡眠或 DST 实测。本轮是客户端显示收尾，没有重跑 Go、RACore 或完整 175 项变异检查，前节证据保持原范围。
+
+只在 `wt/scheduled-tasks-integration` 提交，没有 push、tag、发版、部署或修改 `version.properties`。Chrome 主题、视口与临时测试设备在截图后恢复。

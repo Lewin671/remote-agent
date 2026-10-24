@@ -4316,14 +4316,14 @@ git status --short gen/</pre>
 <p>列表第三行包括停下原因一律用 muted；橙色只用于需要处理的状态点和类型词，遵守 design-system 第 1、2 节。</p>
 <p>分组固定为「需要你看一下 / 进行中 / 已暂停 / 已结束」；定时入口角标只数「需要你看一下」。completed_while_paused 归「已暂停」；用户删除（cancelled + user_cancelled）的任务不显示，删除成功后回到列表。「需要你看一下」按更新时间从新到旧，「进行中」按下次时间从早到晚，「已暂停」「已结束」按更新时间从新到旧。离线任务用灰点；任务页、详情副标题和对话定时条统一写「未连接，显示的是上次的状态」，不再宣称下次时间或运行中。列表末尾统一为「新任务…」。空列表标题「还没有定时任务」，说明「在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。」</p>
 <h4>详情：设置行与顺序</h4>
-<p>导航栏副标题只写状态，例如「下次 今天 15:00」，不加「新开对话 / 当前对话」；任务类型在设置下方说明。消息正文用 15 号 fg，不用 muted。运行记录标题右侧用 muted 显示实际记录条数，包含折叠组内的各次运行。</p>
+<p>导航栏副标题统一用 muted 文字，不加状态点，只写状态，例如「下次 今天 15:00」，不加「新开对话 / 当前对话」；任务类型在设置下方说明。消息正文用 15 号 fg，不用 muted。运行记录标题右侧用 muted 显示实际记录条数，包含折叠组内的各次运行。</p>
 <ol><li>任务名：当前名字；允许修改时可进入改名。</li><li>什么时候：频率，只有外地日历时区才追加 IANA 名称；点开时间弹层。</li><li>结束：只在设置了次数或截止日期时出现；次数写「共 N 次」，截止写「到 本机日期与时刻」，两项都有时都写，例如「共 5 次，或到 10月30日 08:00」；在「什么时候」弹层修改。</li><li>新开对话写「在哪运行」：项目 · CLI，电脑不止一台才追加电脑名；当前对话写「发到」：对话标题，点进该对话。</li><li>权限：新开对话显示任务的权限并可编辑；当前对话显示该对话的当前权限，设置跟随对话。</li><li>消息：右侧「编辑」，下方完整显示消息正文。</li></ol>
 <p>设置后是任务类型、创建者和创建时间说明：新开对话固定写「每次新开一个对话，归在这个任务下面。」，当前对话写「消息发到当前对话，等待当前轮结束。」，后接创建者和「 · 创建时间」；创建者统一写「你创建」或「Agent 在对话里创建」，不写「接管」。再是「运行记录」，最后依次「立即运行一次」「暂停 / 恢复」「删除任务」。失败一次就停在「需要你看一下」，说明原因与继续的后果；此时唯一的实心按钮是「恢复 / 重新安排」，失败的一次性任务用「立即额外执行」。删除确认标题统一为「删除这个任务？」，已发出的消息和已开的对话保留；立即运行一次不占自动次数及日历当天名额。有执行在跑或已有排队手动请求时，禁用「立即运行一次」。执行在跑时禁用「什么时候 / 消息 / 在哪运行」的编辑，改名仍可用；离线、保存中及结果未确认的保护照旧。用户手动暂停不显示原因警告横幅。</p>
 <h4>新建：行与顺序</h4>
 <ol><li>任务名：标签不加「（可选）」，允许留空，占位「留空就用消息的第一句」。</li><li>让 agent 做什么：必填消息。</li><li>什么时候：一次 / 每天 / 每周 / 每隔，加时间、只在工作日、结束次数或日期、时区；时区默认本机。</li><li>从定时页新建时：项目 → CLI → 权限 → 模型；多台电脑时最后一行写「机器和模型」。项目、CLI、权限与模型复用新建会话的选择器和默认值。</li><li>创建：本页唯一的实心按钮；默认权限为计划模式时禁用，说明「计划模式不能创建执行任务，请先选择其他权限」。新开对话任务不传来源会话，不从同项目会话取来源，统一走 daemon 的无来源登录 shell 路径。</li></ol>
 <p>从会话「定时发送…」进入时，页面标题为「定时发到这个对话」，仅列任务名、让 agent 做什么、什么时候、创建；项目、CLI、权限和模型随当前对话，不再重复选择。</p>
 <p>「每隔」的新任务第一次在一个完整间隔之后运行，写入 delay_seconds = interval_seconds。三端说明统一为「第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。」编辑频率未改变时，原 trigger 的 at、delay_seconds 原样保留，只修改用户动过的字段；只改结束条件不能重置相位。编辑器打开时保存完整 spec 和修订号，保存只基于该快照提交；冲突时提示并重读，不把编辑叠到其他端的新 spec 上。</p>
-<p>新开对话的新建页底部说明逐字统一为「每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。」CLI 分段选择的选中项用 fg 字、card 底，未选用 muted 字、soft 底，与原生选择器一致。</p>
+<p>新开对话的新建页底部说明逐字统一为「每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。」CLI 分段选择的选中项用 fg 字、card 底，未选用 muted 字、灰色底，与原生选择器一致。</p>
 <h4>运行记录：结果与原因</h4>
 <p>每条记录第一行「本机日期 HH:mm · 结果」，时间取该次运行的开始时刻；手动运行末尾追加「 · 手动」。已请求通知写「通知了你」，第二行通知正文；失败等异常状态优先。正常完成且没有通知写「没有通知」，第二行最终摘要。跳过固定写「跳过」，失败固定写「失败」，第二行优先显示明确原因，不能被最终摘要或此前通知遮住。跳过且没有会话的记录不可进入。所有时刻使用中文 24 小时制、补齐两位、不带秒。</p>
 <table><thead><tr><th>原因</th><th>各端一致的文案</th></tr></thead><tbody>
@@ -4656,7 +4656,7 @@ git status --short gen/</pre>
   <div>
     <div class="phone gray">
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">每隔 15 分钟看一下服务器负载</span></b><span>新开对话 · 下次 09:45</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">每隔 15 分钟看一下服务器负载</span></b><span>下次 今天 09:45</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
       <div class="body gray">
         <div class="grp"><div class="row"><span>任务名</span><span class="v">每隔 15 分钟看一下服务器负载<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>什么时候</span><span class="v">每 15 分钟<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>在哪运行</span><span class="v">ops · Codex · iMac<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>消息</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">检查项目的更新，有值得注意的变化再通知我。</p></div>
         <div class="glabel">运行记录</div>
