@@ -43,21 +43,15 @@ fun SchedulesScreen() {
             if (tasks.isEmpty()) item {
                 Column(Modifier.padding(horizontal = 32.dp, vertical = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(if (snapshots.values.any { it.loading }) "正在读取任务…" else "还没有定时任务", style = T.h17, color = pal.fg)
-                    Text("在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。", style = T.sm, color = pal.muted, modifier = Modifier.padding(top = 12.dp))
+                    Text(SCHEDULE_EMPTY, style = T.sm, color = pal.muted, modifier = Modifier.padding(top = 12.dp))
                 }
             }
             TaskGroup.entries.forEach { group ->
-                val rows = tasks.filter { taskGroup(it) == group }.sortedWith(compareBy<ScheduledTask> { it.next ?: Instant.MAX }.thenBy { it.title })
+                val rows = scheduleSorted(tasks, group)
                 if (rows.isNotEmpty()) {
                     item("group-$group") { Label(group.label, rows.size) }
                     items(rows, key = { "${it.machine}/${it.id}" }) { task ->
-                        val where = taskLocation(task, state)
-                        TaskRow(task.title, scheduleTiming(task.trigger) + " · " + where,
-                            if (group == TaskGroup.ATTENTION && task.allRuns.firstOrNull()?.status !in stoppedScheduleRuns) scheduleReason(task.reason) else scheduleLastResult(task, t),
-                            if (scheduleWritable(state, task.machine)) scheduleNext(task, t) else "未连接",
-                            when { !scheduleWritable(state, task.machine) -> Tone.OFF; group == TaskGroup.ATTENTION -> Tone.WAIT; task.active != null -> Tone.RUN; group == TaskGroup.ACTIVE -> Tone.IDLE; else -> Tone.OFF },
-                            last = task == rows.last(),
-                        ) { nav.task(task.machine, task.id) }
+                        TaskRow(task, state, t, last = task == rows.last()) { nav.task(task.machine, task.id) }
                     }
                 }
             }
@@ -68,10 +62,13 @@ fun SchedulesScreen() {
 
 /** Same geometry and typography as the conversation rows, with status-independent task content. */
 @Composable
-fun TaskRow(title: String, frequency: String, result: String, next: String, tone: Tone, last: Boolean = false, onClick: () -> Unit) {
-    SessionListRow(title, next, tone, last, onClick = onClick) {
-        Text(frequency, style = T.sm, color = pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(result, style = T.meta, color = if (tone == Tone.WAIT) pal.orangeInk else pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(), last: Boolean = false, onClick: () -> Unit) {
+    val online = scheduleWritable(state, task.machine)
+    val group = taskGroup(task)
+    val tone = when { !online -> Tone.OFF; group == TaskGroup.ATTENTION -> Tone.WAIT; task.active != null -> Tone.RUN; group == TaskGroup.ACTIVE -> Tone.IDLE; else -> Tone.OFF }
+    SessionListRow(task.title, if (online) scheduleNext(task, now) else SCHEDULE_OFFLINE, tone, last, onClick = onClick) {
+        Text(scheduleTiming(task.trigger) + " · " + taskLocation(task, state), style = T.sm, color = pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(scheduleLastResult(task, now), style = T.meta, color = if (tone == Tone.WAIT) pal.orangeInk else pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -79,7 +76,7 @@ fun TaskRow(title: String, frequency: String, result: String, next: String, tone
 @Composable
 private fun ScheduleOffline(state: RemoteState, tasks: List<ScheduledTask>) {
     if (state.conn != ConnState.ONLINE || tasks.any { state.machines[it.machine]?.online != true })
-        Banner("显示的是上次的任务状态，连上后才能修改", tone = Tone2.WARN)
+        Banner(SCHEDULE_OFFLINE, tone = Tone2.WARN)
 }
 
 @Composable
@@ -110,8 +107,9 @@ fun ScheduleDetailScreen(machine: String, id: String) {
         }
     }
     val enabled = writable && !busy && !uncertain
+    val definitionEnabled = enabled && task?.let(::scheduleDefinitionAllowed) == true
     Column(Modifier.fillMaxSize().background(pal.bg)) {
-        NavBar(task?.title ?: "定时任务", nav.back, subtitle = task?.let { if (writable) scheduleNext(it, t) else "未连接" })
+        NavBar(task?.title ?: "定时任务", nav.back, subtitle = task?.let { if (writable) scheduleNext(it, t) else SCHEDULE_OFFLINE })
         if (!state.loaded) ConnBanner(state)
         if (task == null) {
             Banner(snapshots[machine]?.error?.ifEmpty { null } ?: if (snapshots[machine]?.loading == true) "正在读取任务…" else "任务未找到，可能已在另一端删除")
@@ -122,20 +120,21 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
             if (uncertain) TextAction("重新读取", { scope.launch { remote.schedules.refresh(machine); if (remote.schedules.state.value[machine]?.error.isNullOrEmpty()) uncertain = false } }, Modifier.padding(horizontal = 16.dp))
             if (taskGroup(task) == TaskGroup.ATTENTION) Banner(scheduleAttentionText(task, state), tone = Tone2.WARN)
+            else if (task.reason == "completed_while_paused") Banner(scheduleReason(task.reason), tone = Tone2.WARN)
             Card(Modifier.padding(16.dp)) {
                 Column {
                     ScheduleSetting("任务名", task.title, scheduleRenameAllowed(writable, busy || uncertain)) { beginEdit("name") }
-                    ScheduleSetting("什么时候", scheduleTiming(task.trigger), enabled) { beginEdit("time") }
+                    ScheduleSetting("什么时候", scheduleTiming(task.trigger), definitionEnabled) { beginEdit("time") }
                     val end = scheduleLimits(task, t)
-                    if (end.isNotEmpty()) ScheduleSetting("结束", end, enabled) { beginEdit("time") }
+                    if (end.isNotEmpty()) ScheduleSetting("结束", end, definitionEnabled) { beginEdit("time") }
                     if (task.target.text("type") == "resume_session") {
                         ScheduleSetting("发到", state.sessions[task.target.text("session")]?.let(::titleOf) ?: "当前对话") { nav.session(task.target.text("session")) }
-                    } else ScheduleSetting("在哪运行", taskLocation(task, state), enabled) { beginEdit("config") }
+                    } else ScheduleSetting("在哪运行", taskLocation(task, state), definitionEnabled) { beginEdit("config") }
                     Box(Modifier.bottomLine(pal.line)) {
                         GRow("权限", taskPermission(task, state), onClick = if (task.target.text("type") == "new_session") ({ beginEdit("mode") }) else null,
-                            chevron = task.target.text("type") == "new_session", enabled = enabled, singleLineValue = true)
+                            chevron = task.target.text("type") == "new_session", enabled = definitionEnabled, singleLineValue = true)
                     }
-                    ScheduleSetting("消息", "编辑", enabled) { beginEdit("message") }
+                    ScheduleSetting("消息", "编辑", definitionEnabled) { beginEdit("message") }
                     Text(task.message, style = T.body, color = pal.fg, modifier = Modifier.padding(14.dp))
                 }
             }
@@ -152,7 +151,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             }
             Card(Modifier.padding(16.dp)) {
                 Column {
-                    TextAction("立即运行一次", { operate("run") }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = enabled && taskGroup(task) !in setOf(TaskGroup.ENDED, TaskGroup.ATTENTION))
+                    TextAction("立即运行一次", { operate("run") }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = enabled && scheduleRunAllowed(task))
                     if (taskGroup(task) != TaskGroup.ENDED && taskGroup(task) != TaskGroup.ATTENTION) TextAction(if (task.status == "paused") "恢复" else "暂停", { operate(if (task.status == "paused") "resume" else "pause") }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = enabled)
                     TextAction("删除任务", { deleting = true }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), color = pal.red, enabled = enabled && task.status != "cancelled")
                 }
@@ -213,7 +212,7 @@ private fun ScheduleRunGroup(group: RunGroup, now: Instant, open: (ScheduledRun)
             })
         }
         val latest = group.runs.first()
-        Text("最近一次 ${scheduleClock(latest.time)}：${latest.summary}", style = T.meta, color = pal.muted, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp))
+        Text("最近一次 ${scheduleClock(latest.time)}：${latest.foldedSummary}", style = T.meta, color = pal.muted, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp))
         if (!expanded) return
     }
     group.runs.forEach { run ->
@@ -288,7 +287,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
     val machine = if (current) state.sessions[session]?.machineId else cfg?.machineId
     val writable = machine != null && scheduleWritable(state, machine)
     val editable = frozen == null && !busy
-    val blocked = machine?.let { if (!scheduleSupported(state.machines[it])) "这台电脑需要更新 remote-agent，才能管理定时任务" else if (!writable) "显示的是上次的任务状态，连上后才能修改" else null }
+    val blocked = machine?.let { if (!scheduleSupported(state.machines[it])) "这台电脑需要更新 remote-agent，才能管理定时任务" else if (!writable) SCHEDULE_OFFLINE else null }
     Column(Modifier.fillMaxSize().background(pal.card)) {
         NavBar(if (current) "定时发到这个对话" else "新任务", onClose)
         ConnBanner(state)
@@ -312,7 +311,9 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
                 Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。")
                 if (machine == null && state.machines.values.any { !scheduleSupported(it) }) Hint("电脑需要更新 remote-agent，才能创建定时任务。")
             } else Hint("消息等当前这一轮结束后再发，不会打断正在做的事。")
-            val ready = writable && !busy && (message.isNotBlank() || frozen != null) && (current || cfg != null && (config != null || start?.settled == true))
+            val plan = !current && cfg != null && (cfg.mode ?: defaultModeOf(state.machines[cfg.machineId],cfg.agent).mode) == Mode.PLAN
+            if (plan) Hint("计划模式不能创建执行任务，请先选择其他权限")
+            val ready = !plan && writable && !busy && (message.isNotBlank() || frozen != null) && (current || cfg != null && (config != null || start?.settled == true))
             Btn(if (busy) "创建中…" else if (frozen != null) "重试创建" else "创建", {
                 if (!ready) return@Btn
                 val spec = frozen?.let { Json.parseToJsonElement(it).jsonObject } ?: taskSpec(scheduleName(title, message), message, trigger,
@@ -392,13 +393,13 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
             Text("已选：" + value.weekdays.sorted().joinToString("、") { listOf("", "周一", "周二", "周三", "周四", "周五", "周六", "周日")[it] }, style = T.meta, color = pal.muted)
         }
         if (value.kind != 0) {
-            GRow("结束", trailing = { SegPick(listOf("不结束", "次数", "日期"), value.end) { value = value.copy(end = it) } })
+            GRow("结束", trailing = { SegPick(listOf("不结束", "运行指定次数", "截止日期"), value.end) { value = value.copy(end = it) } })
             if (value.end == 1) ReasonField(value.count, { value = value.copy(count = it) }, "自动运行次数")
             if (value.end == 2) ScheduleSetting("结束日期", value.until) { date(value.until) { value = value.copy(until = it, deadline = "") } }
         }
         FieldLabel("时区")
         ReasonField(value.zone, { value = value.copy(zone = it.trim(), deadline = "") }, "例如 Asia/Shanghai")
-        Hint("每天和每周按所选时区运行；每隔按经过的时长计算，创建后先运行一次。电脑醒来后 24 小时内补跑一次。")
+        Hint(SCHEDULE_INTERVAL_HINT)
         }
     }
 }

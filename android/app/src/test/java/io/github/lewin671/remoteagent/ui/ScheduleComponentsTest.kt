@@ -3,7 +3,10 @@ package io.github.lewin671.remoteagent.ui
 import android.app.Application
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import io.github.lewin671.remoteagent.core.Tone
+import io.github.lewin671.remoteagent.core.*
+import io.github.lewin671.remoteagent.proto.*
+import kotlinx.serialization.json.*
+import java.time.Instant
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -17,10 +20,13 @@ class ScheduleComponentsTest {
     @get:Rule val ui = createComposeRule()
     @Test fun taskRowOpensItsDetailAndShowsAllThreeLines() {
         var clicked = false
-        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { TaskRow("Task", "每小时 · 新开对话", "今天 3 次都没有通知", "明天 8:00", Tone.IDLE) { clicked = true } } }
-        ui.onNodeWithText("每小时 · 新开对话").assertIsDisplayed()
-        ui.onNodeWithText("今天 3 次都没有通知").assertIsDisplayed()
-        ui.onNodeWithText("Task").performClick()
+        val fixture=Json.parseToJsonElement(java.io.File(System.getProperty("scheduleClients")).readText()).jsonObject
+        val task=ScheduledTask("computer",fixture["tasks"]!!.jsonArray.first { it.jsonObject.text("id")=="quiet" }.jsonObject)
+        val state=RemoteState(conn=ConnState.ONLINE,machines=mapOf("computer" to MachineView("computer",true,0,MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build())))
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { TaskRow(task,state,Instant.parse(fixture.text("now"))) { clicked = true } } }
+        ui.onNodeWithText("每小时 · project · Claude Code").assertIsDisplayed()
+        ui.onNodeWithText("今天 2 次都没有通知").assertIsDisplayed()
+        ui.onNodeWithText(task.title).performClick()
         assertTrue(clicked)
     }
     @Test fun tabBadgeCountsOnlyAttentionTasksAndNavigates() {

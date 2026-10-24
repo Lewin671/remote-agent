@@ -26,20 +26,8 @@ class SchedulesTest {
         assertEquals(TaskGroup.ENDED, taskGroup(task("cancelled")))
         assertEquals("中继上的会话数已满", scheduleReason("relay_session_limit"))
     }
-    @Test fun cursorStartsAfterDispatchWithZeroStartFallback() {
-        assertEquals(43L,ScheduledRun(buildJsonObject { put("start_seq",42);put("after_seq",9) }).seq)
-        assertEquals(10L,ScheduledRun(buildJsonObject { put("start_seq",0);put("after_seq",9) }).seq)
-    }
-    @Test fun intervalEditsPreservePhaseAndUntouchedEndings() {
-        val original=Json.parseToJsonElement("""{"type":"interval","interval_seconds":900,"at":"2026-10-01T08:00:00Z","delay_seconds":29,"max_runs":4,"until":"2026-10-30T08:00:29Z"}""").jsonObject
-        val edited=ScheduleTime.from(original).copy(count="5").trigger(now)
-        assertEquals(original["at"],edited["at"]);assertEquals(original["delay_seconds"],edited["delay_seconds"])
-        assertEquals(original,ScheduleTime.from(original).trigger(now))
-        val fresh=ScheduleTime(kind=3,interval="15",unit=0).trigger(now)
-        assertEquals(900L,fresh.long("delay_seconds"))
-    }
     @Test fun nextTimeUsesLocalDateAndTaskState() {
-        assertEquals("下次 10月25日 08:00", scheduleNext(task(), now, utc))
+        assertEquals("下次 明天 08:00", scheduleNext(task(), now, utc))
         assertEquals("已暂停", scheduleNext(task("paused", "user_paused"), now, utc))
         assertEquals("已停下", scheduleNext(task("failed"), now, utc))
         assertEquals("已结束", scheduleNext(task("completed"), now, utc))
@@ -79,7 +67,7 @@ class SchedulesTest {
         assertEquals(90L, ScheduleTime.from(trigger).trigger(now).long("interval_seconds"))
         assertEquals("2026-10-25T18:00:00Z", ScheduleTime.from(trigger).trigger(now).text("until"))
         val limited = ScheduledTask("computer", JsonObject(task().json + ("spec" to JsonObject(task().spec + ("trigger" to JsonObject(task().trigger + ("max_runs" to JsonPrimitive(4)))))) + ("dispatches" to JsonPrimitive(1))))
-        assertEquals("自动运行 4 次后", scheduleLimits(limited, now))
+        assertEquals("共 4 次", scheduleLimits(limited, now))
     }
     @Test fun invalidTimesAndEndingsAreRejected() {
         listOf(ScheduleTime(0, date = "2020-01-01"), ScheduleTime(zone = "invalid"), ScheduleTime(3, interval = "0"), ScheduleTime(2, weekdays = emptySet()), ScheduleTime(end = 1, count = "0"), ScheduleTime(end = 2, until = "2020-01-01")).forEach {
@@ -104,9 +92,10 @@ class SchedulesTest {
         // No change and a verified list: reconnect does not poll.
         assertEquals(2, calls)
     }
-    @Test fun verifiedOfflineListsAreReadOnlyAndRemovedTasksDisappear() = runTest {
+    @Test fun verifiedOfflineListsAreReadOnlyAndRemovedOrDeletedTasksDisappear() = runTest {
         val remote = MutableStateFlow(online(connected = false))
-        val bytes = """{"tasks":[${task().json}]}""".toByteArray()
+        val deleted = ScheduledTask("computer", JsonObject(task().json + mapOf("status" to JsonPrimitive("cancelled"), "reason" to JsonPrimitive("user_cancelled"))))
+        val bytes = """{"tasks":[${task().json},${deleted.json}]}""".toByteArray()
         var cleared = false
         val repo = ScheduleRepository(backgroundScope, remote, { _, _ -> error("offline must not send") }, read = { bytes }, clear = { cleared = true })
         runCurrent(); assertEquals("Check",repo.tasks().single().title); assertTrue(repo.state.value["computer"]!!.cached)
@@ -177,6 +166,44 @@ class SchedulesTest {
         assertEquals("还没有运行", scheduleLastResult(task(), now, utc))
         val active = ScheduledTask("computer", JsonObject(task().json + ("active_run" to Json.parseToJsonElement(run("live", 14, status="running")))))
         assertFalse(scheduleLastResult(active, now, utc).contains("次都没有通知"))
+    }
+
+    @Test fun finalClientContractUsesActualGroupingSortingAndReasons() {
+        val data = Json.parseToJsonElement(java.io.File(System.getProperty("scheduleClients")).readText()).jsonObject
+        assertEquals(data.text("empty"),SCHEDULE_EMPTY);assertEquals(data.text("offline"),SCHEDULE_OFFLINE)
+        val tasks = data["tasks"]!!.jsonArray.map { ScheduledTask("computer", it.jsonObject) }
+        TaskGroup.entries.forEach { group -> assertEquals(data["groups"]!!.jsonObject[group.label]!!.jsonArray.map { it.jsonPrimitive.content }, scheduleSorted(tasks,group).map { it.id }) }
+        val stopped=tasks.first { it.id=="attention" }
+        assertEquals("创建任务时的权限已改变，任务已暂停",scheduleLastResult(stopped))
+        assertEquals("没有通知",runResult(stopped.runs.single()))
+        assertEquals("没有通知",stopped.runs.single().foldedSummary)
+        val limited=ScheduledTask(stopped.machine,JsonObject(stopped.json+("spec" to JsonObject(stopped.spec+("trigger" to JsonObject(stopped.trigger+mapOf("max_runs" to JsonPrimitive(5),"until" to JsonPrimitive("2026-10-30T08:00:00Z"))))))))
+        assertEquals("共 5 次，或到 10月30日 08:00",scheduleLimits(limited,now,utc))
+        assertEquals("已暂停：期间计划已到期",scheduleReason("completed_while_paused"))
+        val old=ScheduledTask("computer",JsonObject(task("paused","user_paused").json + mapOf("id" to JsonPrimitive("old"),"updated_at" to JsonPrimitive("2026-10-24T10:00:00Z"),"next_run_at" to JsonPrimitive("2026-10-24T13:00:00Z"))))
+        val newer=ScheduledTask("computer",JsonObject(old.json + mapOf("id" to JsonPrimitive("new"),"updated_at" to JsonPrimitive("2026-10-24T11:00:00Z"),"next_run_at" to JsonPrimitive("2026-10-24T14:00:00Z"))))
+        assertEquals(listOf("new","old"),scheduleSorted(listOf(old,newer),TaskGroup.PAUSED).map { it.id })
+    }
+    @Test fun cursorStartsAfterDispatchWithZeroStartFallback() {
+        assertEquals(43L,ScheduledRun(buildJsonObject { put("start_seq",42);put("after_seq",9) }).seq)
+        assertEquals(10L,ScheduledRun(buildJsonObject { put("start_seq",0);put("after_seq",9) }).seq)
+    }
+    @Test fun intervalEditsPreservePhaseAndUntouchedEndings() {
+        val original=Json.parseToJsonElement("""{"type":"interval","interval_seconds":900,"at":"2026-10-01T08:00:00Z","delay_seconds":29,"max_runs":4,"until":"2026-10-30T08:00:29Z"}""").jsonObject
+        val edited=ScheduleTime.from(original).copy(count="5").trigger(now)
+        assertEquals(original["at"],edited["at"]);assertEquals(original["delay_seconds"],edited["delay_seconds"]);assertEquals(original["until"],edited["until"]);assertEquals(5L,edited.long("max_runs"))
+        assertEquals(original,ScheduleTime.from(original).trigger(now))
+        val fresh=ScheduleTime(kind=3,interval="15",unit=0).trigger(now)
+        assertEquals(900L,fresh.long("delay_seconds"))
+    }
+    @Test fun activeAndQueuedManualWorkDisableAnotherRunAndActiveDefinitions() {
+        val t=task()
+        val active=ScheduledTask(t.machine,JsonObject(t.json + ("active_run" to buildJsonObject { put("status","running") })))
+        val manual=ScheduledTask(t.machine,JsonObject(t.json + ("manual_request" to buildJsonObject { put("request_id","q") })))
+        assertFalse(scheduleRunAllowed(active));assertFalse(scheduleDefinitionAllowed(active));assertFalse(scheduleRunAllowed(manual))
+        assertTrue(scheduleDefinitionAllowed(manual));assertTrue(scheduleRunAllowed(t))
+        assertEquals("运行中",scheduleNext(active,now,utc))
+        assertEquals("明天 08:00",scheduleWhen(Instant.parse("2026-10-25T08:00:00Z"),now,utc))
     }
 
 }

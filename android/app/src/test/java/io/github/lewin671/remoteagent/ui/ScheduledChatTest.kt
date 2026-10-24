@@ -55,7 +55,7 @@ class ScheduledChatTest {
         val label = quietScheduledLabel(many, start, zone)
         assertTrue(label.startsWith("14:00、14:01")); assertTrue(label.endsWith("定时检查 · 没有新回复"))
         val days = quietScheduledLabel(listOf(start.toEpochMilli(), start.plusSeconds(86400).toEpochMilli()), start, zone)
-        assertTrue(days.contains("今天")); assertTrue(days.contains("10月25日"))
+        assertTrue(days.contains("今天")); assertTrue(days.contains("明天"))
     }
 
     @Test fun crossDayRunsAndAutonomousFollowupsRemainVisible() {

@@ -121,6 +121,8 @@ tasks.withType<Test>().configureEach {
     systemProperty("cacheSchemas", file("schemas").absolutePath)
     inputs.file(rootProject.file("../testdata/projection/vectors.json")).withPathSensitivity(PathSensitivity.NONE)
     systemProperty("projectionVectors", rootProject.file("../testdata/projection/vectors.json").absolutePath)
+    inputs.file(rootProject.file("../testdata/schedules/clients.json")).withPathSensitivity(PathSensitivity.NONE)
+    systemProperty("scheduleClients", rootProject.file("../testdata/schedules/clients.json").absolutePath)
     inputs.file(rootProject.file("../testdata/markdown/cases.json")).withPathSensitivity(PathSensitivity.NONE)
     inputs.file(rootProject.file("../testdata/terminal/history-sgr.json")).withPathSensitivity(PathSensitivity.NONE)
 }

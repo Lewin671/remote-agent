@@ -53,4 +53,15 @@ class ScheduleDetailEditsTest {
         ui.onNodeWithText("删除这个任务？").assertExists();ui.onNodeWithText("删除",useUnmergedTree=true).performClick()
         ui.runOnIdle { assertEquals(1,backs);assertTrue(repository.tasks().isEmpty()) }
     }
+    @Test fun activeExecutionDisablesDefinitionAndRunButStillAllowsRename() {
+        latest=ScheduledTask(original.machine,JsonObject(original.json+("active_run" to buildJsonObject { put("id","active");put("status","running") })))
+        prepare();render()
+        ui.onNodeWithText("任务名").assertHasClickAction()
+        for(label in listOf("什么时候","消息","在哪运行")) ui.onNodeWithText(label).assertIsNotEnabled()
+        ui.onNodeWithText("立即运行一次").performScrollTo().assertIsNotEnabled()
+    }
+    @Test fun pendingManualRequestDisablesAnotherRun() {
+        latest=ScheduledTask(original.machine,JsonObject(original.json+("manual_request" to buildJsonObject { put("request_id","queued") })))
+        prepare();render();ui.onNodeWithText("立即运行一次").performScrollTo().assertIsNotEnabled()
+    }
 }

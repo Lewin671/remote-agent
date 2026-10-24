@@ -35,6 +35,7 @@ data class ScheduledRun(val json: JsonObject) {
     val status get() = json.text("status")
     val notified get() = (json["notified"] as? JsonPrimitive)?.booleanOrNull == true
     val summary get() = if (status in stoppedScheduleRuns) scheduleReason(json.text("reason")) else json.text("notification_text").ifEmpty { json.text("final_summary") }.ifEmpty { json.text("reason").takeIf { it.isNotEmpty() }?.let(::scheduleReason).orEmpty() }
+    val foldedSummary get() = json.text("final_summary").ifBlank { "没有通知" }
     val quiet get() = status == "completed" && !notified
 }
 fun JsonObject.text(k: String) = (this[k] as? JsonPrimitive)?.contentOrNull.orEmpty()
@@ -47,11 +48,21 @@ fun taskSpec(title: String, message: String, trigger: JsonObject, target: JsonOb
 
 enum class TaskGroup(val label: String) { ATTENTION("需要你看一下"), ACTIVE("进行中"), PAUSED("已暂停"), ENDED("已结束") }
 fun taskGroup(t: ScheduledTask): TaskGroup = when {
+    t.status == "cancelled" && t.reason.isNotEmpty() && t.reason != "user_cancelled" -> TaskGroup.ATTENTION
     t.status in setOf("failed", "uncertain") || (t.status == "paused" && t.reason !in setOf("", "user_paused", "completed_while_paused")) -> TaskGroup.ATTENTION
     t.status == "paused" -> TaskGroup.PAUSED
     t.status in setOf("completed", "cancelled") -> TaskGroup.ENDED
     else -> TaskGroup.ACTIVE
 }
+const val SCHEDULE_OFFLINE = "未连接，显示的是上次的状态"
+const val SCHEDULE_EMPTY = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。"
+const val SCHEDULE_INTERVAL_HINT = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。"
+fun scheduleVisible(t: ScheduledTask) = t.status != "cancelled" || t.reason.isNotEmpty() && t.reason != "user_cancelled"
+fun scheduleSorted(tasks: List<ScheduledTask>, group: TaskGroup) = tasks.filter { scheduleVisible(it) && taskGroup(it) == group }.sortedWith(
+    if (group == TaskGroup.ACTIVE) compareBy<ScheduledTask> { it.next ?: Instant.MAX }.thenBy { it.machine }.thenBy { it.id }
+    else compareByDescending<ScheduledTask> { scheduleInstant(it.json.text("updated_at")) ?: Instant.EPOCH }.thenBy { it.machine }.thenBy { it.id })
+fun scheduleRunAllowed(t: ScheduledTask) = t.active == null && t.json["manual_request"] !is JsonObject && taskGroup(t) !in setOf(TaskGroup.ATTENTION, TaskGroup.ENDED)
+fun scheduleDefinitionAllowed(t: ScheduledTask) = t.active == null
 fun scheduleSupported(m: MachineView?) = capabilities(m)?.scheduledTasks == true && protocolMismatch(m) == null
 fun scheduleWritable(s: RemoteState, machine: String) = s.conn == ConnState.ONLINE && s.machines[machine]?.online == true && scheduleSupported(s.machines[machine])
 val stoppedScheduleRuns = setOf("failed", "uncertain", "interrupted", "skipped", "cancelled")
@@ -69,6 +80,7 @@ fun scheduleReason(reason: String): String = when (reason) {
     "agent_schedule_permissions_changed" -> "创建任务时的权限已改变，任务已暂停"
     "agent_schedule_interval_below_minimum" -> "Agent 创建的任务间隔过短，任务已暂停"
     "catch_up_window_expired" -> "已超过补跑时间，本次跳过"
+    "completed_while_paused" -> "已暂停：期间计划已到期"
     "user_paused" -> "已暂停"
     "user_cancelled" -> "已删除"
     "" -> "运行结果无法确认"
@@ -110,26 +122,26 @@ fun scheduleFrequency(t: JsonObject, localZone: ZoneId = ZoneId.systemDefault())
 }
 fun scheduleLimits(task: ScheduledTask, now: Instant = Instant.now()): String = buildList {
     val max = task.trigger.long("max_runs")
-    if (max > 0) add("自动运行 $max 次后")
-    scheduleInstant(task.trigger.text("until"))?.let { add(scheduleWhen(it, now)) }
-}.joinToString(" · ")
+    if (max > 0) add("共 $max 次")
+    scheduleInstant(task.trigger.text("until"))?.let { add("到 ${scheduleWhen(it, now)}") }
+}.joinToString("，或")
 
 fun scheduleZone(t: JsonObject): ZoneId = runCatching { ZoneId.of(t.text("timezone")) }.getOrElse {
     runCatching { OffsetDateTime.parse(t.text("at").ifEmpty { t.text("until") }).offset }.getOrElse { ZoneId.systemDefault() }
 }
 fun scheduleWhen(at: Instant, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
     val dt = at.atZone(zone); val today = now.atZone(zone).toLocalDate()
-    val day = when (dt.toLocalDate()) { today -> "今天"; today.minusDays(1) -> "昨天"; else -> "${if (dt.year != today.year) "${dt.year}年" else ""}${dt.monthValue}月${dt.dayOfMonth}日" }
+    val day = when (dt.toLocalDate()) { today -> "今天"; today.plusDays(1) -> "明天"; today.minusDays(1) -> "昨天"; else -> "${if (dt.year != today.year) "${dt.year}年" else ""}${dt.monthValue}月${dt.dayOfMonth}日" }
     return "$day ${dt.format(DateTimeFormatter.ofPattern("HH:mm"))}"
 }
 fun scheduleClock(at: Instant, zone: ZoneId = ZoneId.systemDefault()): String = at.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm"))
 fun scheduleNext(t: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String = when {
+    t.active?.status in setOf("dispatching", "queued", "running") -> "运行中"
     taskGroup(t) == TaskGroup.ATTENTION -> "已停下"
-    t.status == "paused" -> "已暂停"
+    taskGroup(t) == TaskGroup.PAUSED -> "已暂停"
     taskGroup(t) == TaskGroup.ENDED -> "已结束"
-    t.active != null -> when(t.active!!.status) { "dispatching" -> "正在启动"; "queued" -> "等待当前轮结束"; else -> "正在运行" }
-    t.next != null -> "下次 " + if (t.next!!.atZone(zone).toLocalDate() == now.atZone(zone).toLocalDate()) scheduleClock(t.next!!, zone) else scheduleWhen(t.next!!, now, zone)
-    else -> "等待本轮结束"
+    t.next != null -> "下次 " + scheduleWhen(t.next!!, now, zone)
+    else -> "下次待定"
 }
 fun runResult(r: ScheduledRun): String = when (r.status) {
     "failed" -> "失败"
@@ -146,6 +158,7 @@ fun runResult(r: ScheduledRun): String = when (r.status) {
     }
 }
 fun scheduleLastResult(t: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
+    if (taskGroup(t) == TaskGroup.ATTENTION) return scheduleReason(t.reason)
     val last = t.allRuns.firstOrNull() ?: return "还没有运行"
     val today = t.allRuns.filter { it.time.atZone(zone).toLocalDate() == now.atZone(zone).toLocalDate() }
     if (today.size > 1 && today.all { it.quiet }) return "今天 ${today.size} 次都没有通知"
@@ -169,8 +182,6 @@ data class ScheduleSnapshot(val revision: Long = -1, val tasks: List<ScheduledTa
 
 /** Event-driven discovery. The in-flight request captures the advertised revision, so metadata
  * arriving during a read is fetched afterwards. Failed reads wait for a revision/reconnect/retry. */
-fun scheduleVisible(t: ScheduledTask) = t.status != "cancelled" || t.reason.isNotEmpty() && t.reason != "user_cancelled"
-
 class ScheduleRepository(
     private val scope: CoroutineScope,
     private val remoteState: StateFlow<RemoteState>,
