@@ -947,7 +947,18 @@ func (d *Daemon) resumeContextBy(ctx context.Context, id string, origin *pb.Orig
 	}
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
-	return d.resumeSessionLocked(ctx, s, origin)
+	resumed, err := d.resumeSessionLocked(ctx, s, origin)
+	if errors.Is(err, errRunning) && humanOrigin(origin) {
+		// A rejected input may have restarted this CLI just before an explicit
+		// resume. Claim it before a pending automatic closer gets lifecycleMu.
+		s.mu.Lock()
+		if s.meta.TaskOwned {
+			s.claimOwnershipLocked()
+			resumed, err = s, nil
+		}
+		s.mu.Unlock()
+	}
+	return resumed, err
 }
 
 // Caller owns lifecycleMu, including on return. Draining an old generation

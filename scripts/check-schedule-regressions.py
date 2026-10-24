@@ -161,6 +161,8 @@ go("r10-05-web-tag", "internal/server/push.go", 'sessionID + "/" + eventKey + "/
 
 go("r10-05-fcm-event", "internal/server/push.go", 'data["event"] = dedupeKey', 'data["event"] = ""', "TestScheduledFCMIncludesEventIdentity", "./internal/server")
 
+go("r11-explicit-running-takeover", "internal/daemon/daemon.go", 'errors.Is(err, errRunning) && humanOrigin(origin)', 'false && errors.Is(err, errRunning) && humanOrigin(origin)', "TestExplicitResumeClaimsRejectedImplicitLifetime")
+
 clients = [
     ("11-web-attention", "web/src/views/Home.tsx", "return [...remote.sessions.values()]\n    .filter((s) => needsAttention", "return [...remote.sessions.values()].filter(s=>!s.info?.taskOwned)\n    .filter((s) => needsAttention", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),
     ("11-web-count", "web/src/views/Projects.tsx", "for (const s of sessions) {", "for (const s of sessions) { if(s.info?.taskOwned)continue;", ["pnpm","--dir","web","exec","vitest","run","src/views/flows.test.tsx","-t","keeps task-owned approvals"], "AssertionError"),

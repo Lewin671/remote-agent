@@ -753,3 +753,18 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 `python3 scripts/check-schedule-regressions.py --clients` 不带 `--only` 完整执行到结束，退出码 0：103 个 Go 与 24 个网页/Android/iOS 变异，共 127 个全部实际检出，包括本轮新增的 9 个。新增位点覆盖中断和审批恢复严格读取、调度安全操作恢复准入、任务落盘重新持有读取锁、隐式恢复提前接手与未重新交给关闭流程、Web tag 丢失事件键、FCM 缺少事件键、Android tag 丢失事件键。每组先通过原测试，变异后要求断言失败，编译失败不算检出；最终核对结果名与全部定义完全一致，源码恢复后只有本轮文档待提交。
 
 环境为隔离 Go harness、实际原生 transcript parser、伪终端、网页实际 worker 脚本与 Robolectric NotificationManager。FCM 测试使用本地假服务核对实际请求数据；没有重走真实 CLI、真实推送服务送达或真机产品界面，iOS 产品代码未改。
+
+
+### 定时任务第十一轮反馈：运行中的显式恢复接手
+
+2026-10-24，只在任务 worktree 提交，协议和产品版本未改，没有推送、发版或部署。归属规则见 [定时任务的触发与执行](architecture.md#触发与执行)。
+
+`resumeContextBy` 遇到 errRunning 时，若来源明确为 CLIENT/LOCAL 且会话仍 TaskOwned，在尚未释放 lifecycleMu 时复用 claimOwnershipLocked 保存人工接手，并返回现有会话。它不另起 CLI，不清除当前轮次定时上下文；没有任务归属、系统或未知来源的已运行恢复仍返回原错误。
+
+`TestExplicitResumeClaimsRejectedImplicitLifetime` 经真实恢复与队列受理路径制造 CLIENT/LOCAL × 图片过期/额度满/队列保存失败，再冻结下一个调度 tick 前的窗口：先选出关闭候选，再通过 ResumeSession handler 显式恢复，核对成功响应、TaskOwned 落盘解除、创建 ID 保留、没有新增终端命令、新扫描不再选中，以及此前已选中的候选执行 killIf 时也放弃关闭。`TestRunningResumeTakeoverRequiresHumanOwnedTask` 核对系统/未知来源与普通会话的行为不变。新增变异 r11-explicit-running-takeover 禁用这条接手分支，要求原测试通过、变异后断言失败。
+
+`go test ./...` 全量通过；`go test -race ./internal/daemon ./internal/relay ./internal/server ./internal/schedule ./internal/schedulemcp` 五个包全部通过。本轮定向变异已实际检出。
+
+`python3 scripts/check-schedule-regressions.py --clients` 不带 `--only` 完整执行到结束，退出码 0：104 个 Go 与 24 个网页/Android/iOS 变异，共 128 个全部实际检出，包含本轮新增位点。原测试先通过，变异后要求断言失败，编译失败不算检出；执行后逐项核对结果名与全部定义完全一致，所有源码变异目标均已恢复。
+
+验证环境为隔离 Go harness、本地 Connect handler、伪终端和合成 transcript；没有真实 CLI、真机界面或推送送达验收，三端产品代码未改。
