@@ -92,6 +92,8 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     val writable = scheduleWritable(state, machine)
     val scope = rememberCoroutineScope()
     var edit by remember { mutableStateOf("") }
+    var editBase by remember { mutableStateOf<ScheduledTask?>(null) }
+    fun beginEdit(kind: String) { editBase = task; edit = kind }
     var deleting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -101,9 +103,9 @@ fun ScheduleDetailScreen(machine: String, id: String) {
         if (busy || task == null) return
         busy = true; error = ""
         scope.launch {
-            try { remote.schedules.operate(machine, op, task, spec); edit = "" }
+            try { remote.schedules.operate(machine, op, if (spec != null) editBase ?: task else task, spec); edit = ""; editBase = null }
             catch (e: kotlinx.coroutines.CancellationException) { throw e }
-            catch (e: Exception) { error = errorText(e); uncertain = (e as? CommandException)?.unknown == true }
+            catch (e: Exception) { error = errorText(e); uncertain = (e as? CommandException)?.unknown == true; if (e is ScheduleConflictException) { edit = ""; editBase = null } }
             finally { busy = false }
         }
     }
@@ -122,18 +124,18 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             if (taskGroup(task) == TaskGroup.ATTENTION) Banner(scheduleAttentionText(task, state), tone = Tone2.WARN)
             Card(Modifier.padding(16.dp)) {
                 Column {
-                    ScheduleSetting("任务名", task.title, scheduleRenameAllowed(writable, busy || uncertain)) { edit = "name" }
-                    ScheduleSetting("什么时候", scheduleTiming(task.trigger), enabled) { edit = "time" }
+                    ScheduleSetting("任务名", task.title, scheduleRenameAllowed(writable, busy || uncertain)) { beginEdit("name") }
+                    ScheduleSetting("什么时候", scheduleTiming(task.trigger), enabled) { beginEdit("time") }
                     val end = scheduleLimits(task, t)
-                    if (end.isNotEmpty()) ScheduleSetting("结束", end, enabled) { edit = "time" }
+                    if (end.isNotEmpty()) ScheduleSetting("结束", end, enabled) { beginEdit("time") }
                     if (task.target.text("type") == "resume_session") {
                         ScheduleSetting("发到", state.sessions[task.target.text("session")]?.let(::titleOf) ?: "当前对话") { nav.session(task.target.text("session")) }
-                    } else ScheduleSetting("在哪运行", taskLocation(task, state), enabled) { edit = "config" }
+                    } else ScheduleSetting("在哪运行", taskLocation(task, state), enabled) { beginEdit("config") }
                     Box(Modifier.bottomLine(pal.line)) {
-                        GRow("权限", taskPermission(task, state), onClick = if (task.target.text("type") == "new_session") ({ edit = "mode" }) else null,
+                        GRow("权限", taskPermission(task, state), onClick = if (task.target.text("type") == "new_session") ({ beginEdit("mode") }) else null,
                             chevron = task.target.text("type") == "new_session", enabled = enabled, singleLineValue = true)
                     }
-                    ScheduleSetting("消息", "编辑", enabled) { edit = "message" }
+                    ScheduleSetting("消息", "编辑", enabled) { beginEdit("message") }
                     Text(task.message, style = T.body, color = pal.fg, modifier = Modifier.padding(14.dp))
                 }
             }
@@ -159,21 +161,22 @@ fun ScheduleDetailScreen(machine: String, id: String) {
         }
     }
     if (task != null) {
-        if (edit == "name") ScheduleRenameDialog(task, { edit = "" }) { name ->
+        val base = editBase ?: task
+        if (edit == "name") ScheduleRenameDialog(base, { edit = "" }) { name ->
             check(scheduleRenameAllowed(writable, busy || uncertain)) { "当前任务不能单独改名" }
             busy = true
-            try { remote.schedules.rename(task, name) }
+            try { remote.schedules.rename(base, name) }
             catch (e: Exception) { uncertain = (e as? CommandException)?.unknown == true; throw e }
             finally { busy = false }
         }
-        if (edit == "time") ScheduleTimeSheet(task.trigger, { operate("update", JsonObject(task.spec + ("trigger" to it))) }, { edit = "" })
-        if (edit == "message") ScheduleMessageEditor(task.message, busy, error, { edit = "" }) { text -> operate("update", JsonObject(task.spec + ("message" to JsonPrimitive(text)))) }
+        if (edit == "time") ScheduleTimeSheet(base.trigger, { operate("update", JsonObject(base.spec + ("trigger" to it))) }, { edit = "" })
+        if (edit == "message") ScheduleMessageEditor(base.message, busy, error, { edit = "" }) { text -> operate("update", JsonObject(base.spec + ("message" to JsonPrimitive(text)))) }
         if (edit == "config" || edit == "mode") {
-            val cfg = scheduleConfig(task)
+            val cfg = scheduleConfig(base)
             NewSettingsSheet(state, cfg.cwd, projectName(cfg.cwd), machine, cfg.agent, if (edit == "mode") "mode" else "",
                 onDone = { op ->
                     val picked = op?.sets?.firstOrNull { it.agent == cfg.agent }
-                    if (picked == null) edit = "" else operate("update", JsonObject(task.spec + ("target" to scheduleTarget(agentConfig(machine, cfg.cwd, picked), task.target))))
+                    if (picked == null) edit = "" else operate("update", JsonObject(base.spec + ("target" to scheduleTarget(agentConfig(machine, cfg.cwd, picked), base.target))))
                 }, onClose = { edit = "" }, initial = cfg, scheduling = true)
         }
         if (deleting) Confirm("删除这个任务？", "停止后续调度，已发出的消息和已开的对话保留。", "删除", true, { deleting = false }) { deleting = false; operate("cancel") }
