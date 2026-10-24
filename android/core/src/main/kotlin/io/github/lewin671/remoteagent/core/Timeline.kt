@@ -271,7 +271,7 @@ data class ScopeRow(val scope: HomeScope, val name: String, val detail: String, 
 /** Counts use the same waiting/running split as the home, including offline computers. */
 fun activityCounts(sessions: Collection<SessionView>): String {
     val waiting = sessions.count(::needsAttention)
-    val running = sessions.count { !exited(it) && !needsAttention(it) }
+    val running = sessions.count { it.info?.taskOwned != true && !exited(it) && !needsAttention(it) }
     return listOfNotNull(
         if (waiting > 0) "$waiting 个待处理" else null,
         if (running > 0) "$running 个进行中" else null,

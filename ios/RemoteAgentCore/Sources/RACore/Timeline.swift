@@ -335,7 +335,7 @@ public func sessionCounts(_ state: RemoteState, _ sessions: some Sequence<Sessio
     for s in sessions {
         if needsAttention(s, machine: state.machines[s.machineId]) {
             waiting += 1
-        } else if !exited(s) {
+        } else if s.info?.taskOwned != true && !exited(s) {
             live += 1
         }
     }

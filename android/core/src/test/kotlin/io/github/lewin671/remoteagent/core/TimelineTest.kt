@@ -53,6 +53,17 @@ class TimelineTest {
         assertTrue(timeline.meta.project)
     }
 
+    @Test fun allProjectCountsExcludeQuietTasksButIncludeApprovals() {
+        val ordinary = arrayOf(session("a", "/a"), session("b", "/b"))
+        val quiet = session("quiet", "/task").let { it.copy(info = it.info!!.toBuilder().setTaskOwned(true).build()) }
+        val approval = session("approval", "/task", approvals = 1).let { it.copy(info = it.info!!.toBuilder().setTaskOwned(true).build()) }
+        val snapshot = state(*ordinary, quiet, approval)
+        assertEquals("1 个待处理 · 2 个进行中", activityCounts(snapshot.sessions.values))
+        assertEquals("1 个待处理 · 2 个进行中", scopeRows(snapshot, HomeScope.All).first().detail)
+        assertEquals(listOf("approval"), homeTimeline(snapshot, HomeScope.All).attention.map { it.id })
+        assertEquals(setOf("a", "b"), homeTimeline(snapshot, HomeScope.All).running.map { it.id }.toSet())
+    }
+
     @Test fun taskOwnedSessionsRemainAddressableButDoNotEnterLists() {
         val base = session("task", "/scheduled")
         val owned = base.copy(info = base.info!!.toBuilder().setTaskOwned(true).setScheduledTaskId("task-id").build())

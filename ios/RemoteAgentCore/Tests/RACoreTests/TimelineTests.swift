@@ -49,6 +49,16 @@ import Testing
         #expect(timeline.meta.project)
     }
 
+    @Test func allProjectCountsExcludeQuietTasksButIncludeApprovals() {
+        let quiet = Mk.session("quiet") { $0.cwd = "/task"; $0.taskOwned = true }
+        let approval = Mk.session("approval") { $0.cwd = "/task"; $0.taskOwned = true; $0.pendingApprovals = 1; $0.status = .idle }
+        let snapshot = state(session("a", "/a"), session("b", "/b"), quiet, approval)
+        #expect(sessionCounts(snapshot, snapshot.sessions.values) == "1 个待处理 · 2 个进行中")
+        #expect(scopeRows(snapshot, current: .all).first?.detail == "1 个待处理 · 2 个进行中")
+        #expect(homeTimeline(snapshot, scope: .all).attention.map(\.id) == ["approval"])
+        #expect(Set(homeTimeline(snapshot, scope: .all).running.map(\.id)) == ["a", "b"])
+    }
+
     @Test func taskOwnedSessionsRemainAddressableButDoNotEnterLists() {
         let owned = Mk.session("task") { $0.cwd = "/scheduled"; $0.taskOwned = true; $0.scheduledTaskID = "task-id" }
         let snapshot = state(owned)
