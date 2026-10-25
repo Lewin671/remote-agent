@@ -26,7 +26,6 @@ public struct ScheduleTiming: Equatable, Sendable {
     private var initialEnd: End = .never
     private var initialCount = 10
     private var initialUntil = DateComponents()
-    private var initialZone = ""
     private var calendar: Calendar {
         var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: timezone) ?? .current; return c
     }
@@ -60,7 +59,7 @@ public struct ScheduleTiming: Equatable, Sendable {
             if t.until != nil { end = .date }
             if let n = t.maxRuns, n > 0 { count = Int(n); end = .count }
         }
-        initialEnd = end; initialCount = count; initialUntil = untilParts; initialZone = timezone
+        initialEnd = end; initialCount = count; initialUntil = untilParts
     }
     private func absolute(_ parts: DateComponents) throws -> Date {
         guard let d = calendar.date(from: parts), Self.parts(d, zone: calendar.timeZone) == parts else {
