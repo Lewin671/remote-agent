@@ -373,7 +373,7 @@ _last_cipher_app = [x for x in _feedback_ios_app if not x.startswith("-only-test
 feedback("ios-last-review-delete-blob","ios/RemoteAgent/Data/CipherStore.swift",'await write { db in try db.execute(sql: "DELETE FROM blobs WHERE name = ?", arguments: [name]) }',"// do not delete",_last_cipher_app,"Expectation failed")
 fw('last-review-cache-read', 'remote.ts', 'if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed) return;', '// accept a revoked cached result')
 fw('last-review-cache-write', 'remote.ts', 'if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed)\n      await this.keepValue("schedules:" + id, undefined);', '// accept a late cached result')
-feedback("android-last-review-cache-write","android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",'if (trustedMembers[p.machineId]?.kind != 1u) cache?.removeBlob("schedule:${p.machineId}")',"// accept late snapshot",["./gradlew",":core:test","--tests","*RemoteTest.scheduledSnapshotCannotReturnAfterRevocationDuringCacheWrite"],"java.lang.AssertionError")
+feedback("android-last-review-cache-write","android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",'if (!currentScheduleMember(p.machineId)) cache?.removeBlob("schedule:${p.machineId}")',"// accept late snapshot",["./gradlew",":core:test","--tests","*RemoteTest.scheduledSnapshotCannotReturnAfterRevocationDuringCacheWrite"],"java.lang.AssertionError")
 fa('last-review-cache-error', 'core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt', '} catch (_: Exception) { if (id !in removed) set(id)', '} catch (_: Exception) { set(id)')
 fa('last-review-list-error', 'core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt', '} catch (e: Exception) { if (id !in removed) set(id)', '} catch (e: Exception) { set(id)')
 fw('last-review-failed-tools', 'schedules.ts', '(k.case === "toolCall" && (!toolOk(k.value) || isBackground(k.value))) ||', '')
@@ -394,6 +394,8 @@ fw("last-review-late-tool", "schedules.ts", 'toolsThrough <= e.seq &&', 'true &&
 fa("last-review-late-tool", "app/src/main/java/io/github/lewin671/remoteagent/ui/ScheduledChat.kt", '(derived.completedAt[it.seq] ?: Long.MAX_VALUE) > ended.single().seq', 'derived.completedAt[it.seq] == null', True)
 
 fi("last-review-late-tool", "RemoteAgentCore/Sources/RACore/ScheduledChat.swift", 'r.toolsThrough <= e.seq, ', '')
+
+feedback("android-last-review-cache-read","android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",'require(reply.hasSchedule() && reply.errorCode.isEmpty())\n        if (!currentScheduleMember(machine)) { cache?.removeBlob("schedule:$machine"); return@withContext null }','require(reply.hasSchedule() && reply.errorCode.isEmpty())',["./gradlew",":core:test","--tests","*RemoteTest.scheduledSnapshotCannotReturnAfterRevocationDuringCacheRead"],"java.lang.AssertionError")
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

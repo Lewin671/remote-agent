@@ -429,14 +429,16 @@ class Remote(
 
     val schedules get() = scheduleRepository.value
 
+    private fun currentScheduleMember(machine: String) = security.record().head.core.members.any { it.id == machine && it.kind == 1u }
     internal suspend fun cachedSchedules(machine: String): ByteArray? = withContext(dispatcher) {
-        if (security.record().head.core.members.none { it.id == machine && it.kind == 1u }) return@withContext null
+        if (!currentScheduleMember(machine)) { cache?.removeBlob("schedule:$machine"); return@withContext null }
         val raw = cache?.blob("schedule:$machine") ?: return@withContext null
         val snapshot = kotlinx.serialization.json.Json.parseToJsonElement(raw.decodeToString()).jsonObject
         val env = Envelope.parseFrom(java.util.Base64.getDecoder().decode(snapshot.text("envelope")))
         val (_, reply) = openSecureMessage(keys?.command ?: ByteArray(0), env,
             Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machine, requestId = snapshot.text("request")), CommandResult::parseFrom, live = false)
         require(reply.hasSchedule() && reply.errorCode.isEmpty())
+        if (!currentScheduleMember(machine)) { cache?.removeBlob("schedule:$machine"); return@withContext null }
         reply.schedule.resultJson.toByteArray()
     }
 
@@ -3223,9 +3225,9 @@ class Remote(
                             msg.errorMessage.ifEmpty { msg.errorCode },
                             fromDaemon = true,
                         )
-                    if (p.command?.hasSchedule() == true && p.command.schedule.operation == "list" && msg.hasSchedule() && trustedMembers[p.machineId]?.kind == 1u) {
+                    if (p.command?.hasSchedule() == true && p.command.schedule.operation == "list" && msg.hasSchedule() && currentScheduleMember(p.machineId)) {
                         cache?.putBlob("schedule:${p.machineId}", scheduleSnapshot(p.requestId, res.result))
-                        if (trustedMembers[p.machineId]?.kind != 1u) cache?.removeBlob("schedule:${p.machineId}")
+                        if (!currentScheduleMember(p.machineId)) cache?.removeBlob("schedule:${p.machineId}")
                     }
                     return msg
                 } catch (ce: ConnectException) {
