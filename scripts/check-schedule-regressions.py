@@ -359,6 +359,42 @@ fi("r3-cutoff-display", "RemoteAgentCore/Sources/RACore/ScheduleTiming.swift", '
 fa("r3-cutoff-display", "core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt", 'until = local ?: until, deadline = if (deadline.isNotEmpty()) deadline else instant?.toString().orEmpty()', 'until = until, deadline = ""')
 fa("r3-cutoff-zone-ui", "app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt", 'value.inZone(it.trim())', 'value.copy(zone = it.trim(), deadline = "")', ui=True)
 
+go('last-review-input-dedup', 'internal/daemon/inject.go', 'if requestID != "" && s.queue.seen(requestID) {', 'if false && requestID != "" && s.queue.seen(requestID) {', 'TestAcceptedInputRetryHasNoLifecycleSideEffects')
+go('last-review-input-ready-order', 'internal/daemon/inject.go', '\tif requestID != "" && s.queue.seen(requestID) {\n\t\tif !s.meta.Exited && !s.closing {\n\t\t\ts.poke()\n\t\t}\n\t\treturn 0, nil\n\t}\n\tif s.meta.Exited || s.closing {\n\t\treturn 0, errExited\n\t}', '\tif s.meta.Exited || s.closing { return 0, errExited }\n\tif requestID != "" && s.queue.seen(requestID) { s.poke(); return 0, nil }', 'TestAcceptedInputRetryHasNoLifecycleSideEffects')
+_last_swift = ["swift","test","--filter","ScheduleRevocationTests"]
+def last_swift(name,file,before,after): feedback("ios-last-review-"+name,"ios/RemoteAgentCore/Sources/RACore/"+file,before,after,_last_swift,"Expectation failed")
+fi('last-review-members', 'RemoteAgent/UI/Schedules/ScheduleStore.swift', 'state.currentMachines.contains($0.id) && ', '', True)
+last_swift('published-members', 'Remote.swift', 's.currentMachines = Set(trustedMembers.values.filter { $0.kind == 1 }.map(\\.id))', 's.currentMachines = Set(machines.keys)')
+last_swift('cache-members', 'RemoteSchedules.swift', '        guard currentScheduleMember(machineID) else { await cache?.removeBlob(name: "schedules/" + machineID); return nil }\n', '')
+last_swift('cache-live-prune', 'RemoteSecurityDirectory.swift', '        for id in archiveMachines where trustedMembers[id]?.kind != 1 { await cache?.removeBlob(name: "schedules/" + id) }', '// retain archive task snapshot')
+last_swift('cache-cold-prune', 'Remote.swift', '            for id in archiveMachines where trustedMembers[id]?.kind != 1 { await cache.removeBlob(name: "schedules/" + id) }', '// retain archive task snapshot')
+last_swift('cache-write', 'RemoteSchedules.swift', 'if !currentScheduleMember(machine) { await cache?.removeBlob(name: "schedules/" + machine) }', '// retain late snapshot')
+_last_cipher_app = [x for x in _feedback_ios_app if not x.startswith("-only-testing:")] + ["-only-testing:RemoteAgentTests/CipherStoreTests"]
+feedback("ios-last-review-delete-blob","ios/RemoteAgent/Data/CipherStore.swift",'await write { db in try db.execute(sql: "DELETE FROM blobs WHERE name = ?", arguments: [name]) }',"// do not delete",_last_cipher_app,"Expectation failed")
+fw('last-review-cache-read', 'remote.ts', 'if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed) return;', '// accept a revoked cached result')
+fw('last-review-cache-write', 'remote.ts', 'if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed)\n      await this.keepValue("schedules:" + id, undefined);', '// accept a late cached result')
+feedback("android-last-review-cache-write","android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",'if (trustedMembers[p.machineId]?.kind != 1u) cache?.removeBlob("schedule:${p.machineId}")',"// accept late snapshot",["./gradlew",":core:test","--tests","*RemoteTest.scheduledSnapshotCannotReturnAfterRevocationDuringCacheWrite"],"java.lang.AssertionError")
+fa('last-review-cache-error', 'core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt', '} catch (_: Exception) { if (id !in removed) set(id)', '} catch (_: Exception) { set(id)')
+fa('last-review-list-error', 'core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt', '} catch (e: Exception) { if (id !in removed) set(id)', '} catch (e: Exception) { set(id)')
+fw('last-review-failed-tools', 'schedules.ts', '(k.case === "toolCall" && (!toolOk(k.value) || isBackground(k.value))) ||', '')
+fa('last-review-failed-tools', 'app/src/main/java/io/github/lewin671/remoteagent/ui/ScheduledChat.kt', 'it.hasToolCall() && (!toolOk(it.toolCall) || io.github.lewin671.remoteagent.core.wentToBackground(it.toolCall)) ||', '', True)
+fi('last-review-failed-tools', 'RemoteAgentCore/Sources/RACore/ScheduledChat.swift', 'if !toolOk(t) || wentToBackground(t) { round?.safe = false }', 'if false { round?.safe = false }')
+fw('last-review-pending-tools', 'schedules.ts', '(k.case === "toolStarted" && typeof derived.toolEnds.get(e.seq) !== "bigint") ||', '')
+fa('last-review-pending-tools', 'app/src/main/java/io/github/lewin671/remoteagent/ui/ScheduledChat.kt', 'it.hasToolStarted() && (derived.completedAt[it.seq] ?: Long.MAX_VALUE) > ended.single().seq ||', '', True)
+fi('last-review-pending-tools', 'RemoteAgentCore/Sources/RACore/ScheduledChat.swift', 'if derived.completedAt[e.seq] == nil { round?.safe = false }', 'if false { round?.safe = false }')
+fw('last-review-terminal-row', 'schedules.ts', '(k.case === "turnContext" && derived.terminalChanges.has(e.seq)) ||', '')
+fa('last-review-terminal-row', 'app/src/main/java/io/github/lewin671/remoteagent/ui/ScheduledChat.kt', 'it.hasTurnContext() && derived.terminalChanges.containsKey(it.seq) ||', '', True)
+fi('last-review-terminal-row', 'RemoteAgentCore/Sources/RACore/ScheduledChat.swift', 'case .turnContext: if derived.terminalChanges[e.seq] != nil { round?.safe = false }', 'case .turnContext: break')
+fw('last-review-visible-row', 'schedules.ts', '          "questionAnswered",\n          "settingsChanged",\n          "imageGenerated",\n', '')
+fa('last-review-visible-row', 'app/src/main/java/io/github/lewin671/remoteagent/ui/ScheduledChat.kt', 'it.hasSettingsChanged() || it.hasQuestionAnswered() || it.hasImageGenerated() || it.hasSessionForked() ||', '', True)
+fi('last-review-visible-row', 'RemoteAgentCore/Sources/RACore/ScheduledChat.swift', 'case .scheduledNotification, .approvalRequested, .questionAsked, .questionAnswered, .settingsChanged, .planProposed, .imageGenerated, .sessionForked:', 'case .scheduledNotification, .approvalRequested, .questionAsked, .planProposed, .imageGenerated, .sessionForked:')
+_IOS_ASSERTIONS.update({"final-ios-last-review-members":"ScheduleStoreTests/revokedArchiveDropsTasksBadgeAndPendingRead()","final-ios-last-review-delete-blob":"CipherStoreTests/blobsAreKeptByName()"})
+
+fw("last-review-late-tool", "schedules.ts", 'toolsThrough <= e.seq &&', 'true &&')
+fa("last-review-late-tool", "app/src/main/java/io/github/lewin671/remoteagent/ui/ScheduledChat.kt", '(derived.completedAt[it.seq] ?: Long.MAX_VALUE) > ended.single().seq', 'derived.completedAt[it.seq] == null', True)
+
+fi("last-review-late-tool", "RemoteAgentCore/Sources/RACore/ScheduledChat.swift", 'r.toolsThrough <= e.seq, ', '')
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--clients", action="store_true")
@@ -386,8 +422,8 @@ def main():
                 raise SystemExit("Original test must pass before mutation: "+name)
             baselines.add(baseline)
         try:
-            # 06 intentionally removes both pre-append and replay projections.
-            path.write_text(original.replace(before,after) if name=="06-interjection" else original.replace(before,after,1))
+            # These checks remove all projections of one invariant, including both sides of an await.
+            path.write_text(original.replace(before,after) if name in {"06-interjection", "final-ios-last-review-cache-members"} else original.replace(before,after,1))
             run=run_check(cmd,cwd,name)
             if run.returncode==0 or not getattr(run, "assertion_detected", any(part in run.stdout for part in marker.split("|"))) or "[build failed]" in run.stdout or "Compilation error" in run.stdout or "compileTestKotlin FAILED" in run.stdout or "emit-module command failed" in run.stdout:
                 print(run.stdout[-6000:],flush=True)
