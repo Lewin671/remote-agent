@@ -1174,3 +1174,19 @@ iOS 同一路径也有问题：配置页换电脑时用项目继承取值，可�
 网页的切换动作已清空模型、effort、权限并重选可用 CLI；操作回归从旧电脑的指定模型/high/完全放行切到另一电脑，不改设置直接完成，确认页面显示与实际创建请求均为新电脑的 CLI、默认模型/effort、询问权限。此路径未发现需要修改的产品代码。
 
 三端各新增一项去修复检查：恢复 Android 空编辑集返回、恢复 iOS 项目继承、让网页重新携带旧配置，均由对应回归断言检出；编译错误不作为检出证据。
+
+最终检查（同一修复代码，未改产品/协议版本）：
+
+| 命令 | 结果 |
+|---|---|
+| Android 目录：`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` | 退出 0；core 405 项、app 348 项，0 失败/错误/跳过；Debug APK 构建成功 |
+| `pnpm --dir web typecheck` | 退出 0 |
+| `pnpm --dir web test` | 88 个文件、1202 项通过 |
+| `pnpm --dir web build` | 退出 0 |
+| `xcodebuild -quiet -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build test`（使用独立临时 `-derivedDataPath`、`-resultBundlePath`） | 最终 xcresult 为 Passed，352 项通过，0 失败、0 跳过；仅使用已有 iPhone 18 Pro |
+| `python3 scripts/check-schedule-regressions.py --clients` | 同一次完整执行退出 0，243/243 个去修复变体被预期断言检出；后端 118、客户端 125；包含本轮新增的三端检查，正常基线均通过 |
+| `python3 scripts/public_scan.py web/dist deploy/self-host android/app/build/outputs/apk/debug/app-debug.apk` | 退出 0；仅代表正常本地网页产物、自部署模板和 Debug APK |
+| 本轮变更的受跟踪文件交给 `python3 scripts/public_scan.py` | 原始退出码 1，仅报 acceptance-notes 中原有的官方域名，无新增私有名单命中；未改扫描规则 |
+| `git diff --check` | 通过 |
+
+证据范围：Android 为 Compose 实际操作创建页并捕获任务请求；网页为 DOM 操作创建页并捕获请求；iOS 为配置页选择动作绑定草稿、核对显示来源和提交 spec，并跑完整 App 测试。未补真机或真实 CLI 端到端验收。只在整合分支本地提交，未 push、tag、发版、部署或改 `version.properties`；测试结束关闭已有 iPhone 模拟器。
