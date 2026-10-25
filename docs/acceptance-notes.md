@@ -1145,3 +1145,22 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 - 静默折叠：网页与 Android 复用聊天工具成功判断，failed 或非零退出码的工具结果阻止整轮折叠；iOS 原有失败判断补了同样的负向覆盖。三端另外保护轮内设置变更、回答、图像/分叉、实际终端设置变化、未完成及后台工具等应保持可见的内容；正常已完成、成功工具的静默轮仍能折叠，规则写进 v49。
 - 折叠自查发现跨轮结果问题：工具在上一轮开始、下一轮才失败，结果会绘回旧起点；只检查结果所在轮仍可能隐藏旧行。三端同一结构的测试在修复前各失败 1 项；修复要求工具结果序号不晚于该轮结束序号，对应测试修复后通过。修复前后均为确定性的断言验证，没有通过固定 sleep、延长超时或偶然重跑掩盖。
 - 最后核对补修 Android 底层缓存读取：暂停 `blob` 后撤销电脑，旧实现会在历史解密后返回旧任务字节，新增用例修复前失败 1 项。读取完成后再次核对签名记录，读取前发现已撤销也清掉快照；写入检查同步使用当前签名记录，避免目录内存映射更新期间的窗口。基线通过，移除读取后检查时断言失败。
+
+最终正常检查与负向回归：全部在整合 worktree 执行，产品版本和协议版本未改。Xcode 使用独立临时构建及结果目录，只选已有 iPhone 18 Pro；未创建其他测试机型。
+
+| 命令 | 结果 |
+|---|---|
+| `go test ./...` | 退出 0，全部包通过 |
+| `go test -race ./internal/daemon ./internal/relay ./internal/schedule` | 退出 0，三个相关包通过，无 race 报告 |
+| `pnpm --dir web typecheck` | 退出 0 |
+| `pnpm --dir web test` | 88 个文件、1201 项通过 |
+| `pnpm --dir web build` | 退出 0 |
+| Android 目录：`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` | 最后一次补修后退出 0；core 405 项、app 346 项，0 失败/错误/跳过；Debug APK 构建成功 |
+| `ios/RemoteAgentCore` 目录：`swift test` | 最终 Swift Testing 554 项、0 失败，真实 daemon/Codex 用例 1 项按环境开关跳过；另有 Markdown 17 项及 XCTest 1 项通过 |
+| `xcodebuild -quiet -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build test`（带独立临时 `-derivedDataPath` 和 `-resultBundlePath`） | 跨轮工具修复后的最终 xcresult 为 Passed，351 项通过，0 失败、0 跳过 |
+| `python3 scripts/check-schedule-regressions.py --clients` | 最终同一次完整执行退出 0，240/240 个变体被预期断言检出：后端 118、客户端 122；本轮新增 30。正常基线均通过，编译错误不算检出；补 Android 底层读取检查前中断的执行不计入这个结果 |
+| `python3 scripts/public_scan.py web/dist deploy/self-host android/app/build/outputs/apk/debug/app-debug.apk` | 最后一次 Android 构建后退出 0；仅代表正常本地网页产物、自部署模板和 Debug APK |
+| 本轮变更的受跟踪文件交给 `python3 scripts/public_scan.py` | 原始退出码 1，只报两份文档原有的官方域名，未新增私有名单命中；未改扫描规则 |
+| `git diff --check` | 通过 |
+
+本轮自查覆盖三端任务列表、角标、在线/冷启动缓存、挂起读写及错误回调；后端本地与中继输入、持久化受理、额度/图片/所有权顺序，以及中继安全受理日志和任务创建键；三端折叠的轮内/轮间独立行、失败/未完成/后台工具、跨轮结果绘回旧起点。自查结论限于这些代码路径与自动测试；未新增真机推送、真机/iPad、实际睡眠/DST 或真实 CLI 客户端端到端路线验收。只在整合分支本地提交，未 push、tag、发版、部署或改 `version.properties`。
