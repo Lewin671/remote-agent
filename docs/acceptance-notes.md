@@ -1107,3 +1107,7 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 未新增真实推送送达、真机/iPad、两台真实电脑、实际睡眠/DST 或客户端 Codex 完整路线验收。只在整合分支本地提交，未 push、tag、发版、部署或修改 `version.properties`。
 
 清理：Chrome 测试页关闭且主题/视口恢复；Android 临时包卸载、模拟器退出；已有 iPhone 模拟器恢复为关闭状态；本地网页开发服务器停止。保留本地日志、xcresult、固定数据图片和指纹供复核。
+
+### 定时任务末轮 5 项 P2 修复（2026-10-24，整合分支）
+
+- Android 系统取消（`cancelled/message_cancelled`）：循环任务通过提交完整定义重新安排，一次任务先打开时间编辑器；明确删除保持可用。Compose 测试验证操作、修订号和删除返回。分别移除恢复与删除修复后，测试均以断言失败检出（`check-schedule-regressions.py --clients --only r3-cancelled`，2/2）。网页与 iOS 已有同样的重新安排分支，未改动协议或 daemon。

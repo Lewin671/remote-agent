@@ -68,6 +68,28 @@ class ScheduleDetailEditsTest {
         ui.onNodeWithText("删除这个任务？").assertExists();ui.onNodeWithText("删除",useUnmergedTree=true).performClick()
         ui.runOnIdle { assertEquals(1,backs);assertTrue(repository.tasks().isEmpty()) }
     }
+    private fun cancelled(trigger: JsonObject = original.trigger) {
+        latest=ScheduledTask(original.machine,JsonObject(original.json+mapOf("status" to JsonPrimitive("cancelled"),"reason" to JsonPrimitive("message_cancelled"),"spec" to JsonObject(original.spec+("trigger" to trigger)))))
+    }
+    @Test fun systemCancelledRecurringTaskReschedulesWithDefinitionAndCanBeDeleted() {
+        cancelled();prepare();render()
+        ui.onNodeWithText("重新安排").performScrollTo().performClick()
+        ui.runOnIdle {
+            assertEquals(1,requests.count { it.operation=="update" })
+            val sent=requests.single { it.operation=="update" }
+            assertEquals(latest.spec,Json.parseToJsonElement(sent.specJson.toStringUtf8()));assertEquals(3L,sent.expectedRevision)
+            assertFalse(requests.any { it.operation=="resume" })
+        }
+        ui.onNodeWithText("删除任务").performScrollTo().assertIsEnabled().performClick()
+        ui.onNodeWithText("删除",useUnmergedTree=true).performClick()
+        ui.runOnIdle { assertEquals(1,requests.count { it.operation=="cancel" });assertEquals(1,backs) }
+    }
+    @Test fun systemCancelledOneShotRequiresNewTimingBeforeRescheduling() {
+        cancelled(buildJsonObject { put("type","at");put("at","2026-10-01T10:00:00Z") });prepare();render()
+        ui.onNodeWithText("重新安排").performScrollTo().performClick()
+        ui.onNodeWithText("完成").assertExists()
+        ui.runOnIdle { assertFalse(requests.any { it.operation=="resume" || it.operation=="update" }) }
+    }
     @Test fun activeExecutionDisablesDefinitionAndRunButStillAllowsRename() {
         latest=ScheduledTask(original.machine,JsonObject(original.json+("active_run" to buildJsonObject { put("id","active");put("status","running") })))
         prepare();render()

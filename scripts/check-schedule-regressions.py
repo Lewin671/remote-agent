@@ -343,6 +343,9 @@ _IOS_ASSERTIONS.update({
  "final-ios-r2-conflict-dismiss": "ScheduleAlignmentTests/conflictDismissalObservesTheMutationSignal()",
 })
 
+fa("r3-cancelled-recovery", "app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt", 'if (systemCancelled) "update" else if (onceFailed) "run" else "resume"', 'if (onceFailed) "run" else "resume"', ui=True)
+fa("r3-cancelled-delete", "app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt", 'color = pal.red, enabled = enabled)', 'color = pal.red, enabled = enabled && task.status != "cancelled")', ui=True)
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--clients", action="store_true")

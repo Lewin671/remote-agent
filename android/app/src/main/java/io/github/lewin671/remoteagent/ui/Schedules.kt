@@ -147,13 +147,17 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             Hint("“通知了你”表示已请求通知，不保证送达。记录保留最近 100 次，已开的对话仍可查看。", Modifier.padding(horizontal = 16.dp))
             if (taskGroup(task) == TaskGroup.ATTENTION) {
                 val onceFailed = task.status == "failed" && (task.trigger.text("type") == "at" || task.trigger.text("type") == "after_turn" && task.trigger["repeat"]?.jsonPrimitive?.booleanOrNull != true)
-                Btn(if (onceFailed) "立即额外执行" else "恢复", { operate(if (onceFailed) "run" else "resume") }, Modifier.fillMaxWidth().padding(16.dp), BtnKind.PRIMARY, enabled)
+                val systemCancelled = task.status == "cancelled"
+                Btn(if (systemCancelled) "重新安排" else if (onceFailed) "立即额外执行" else "恢复", {
+                    if (systemCancelled && (task.trigger.text("type") == "at" || task.trigger.text("type") == "after_turn" && task.trigger["repeat"]?.jsonPrimitive?.booleanOrNull != true)) beginEdit("time")
+                    else operate(if (systemCancelled) "update" else if (onceFailed) "run" else "resume", if (systemCancelled) task.spec else null)
+                }, Modifier.fillMaxWidth().padding(16.dp), BtnKind.PRIMARY, enabled)
             }
             Card(Modifier.padding(16.dp)) {
                 Column {
                     TextAction("立即运行一次", { operate("run") }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = enabled && scheduleRunAllowed(task))
                     if (taskGroup(task) != TaskGroup.ENDED && taskGroup(task) != TaskGroup.ATTENTION) TextAction(if (task.status == "paused") "恢复" else "暂停", { operate(if (task.status == "paused") "resume" else "pause") }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), enabled = enabled)
-                    TextAction("删除任务", { deleting = true }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), color = pal.red, enabled = enabled && task.status != "cancelled")
+                    TextAction("删除任务", { deleting = true }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), color = pal.red, enabled = enabled)
                 }
             }
             Hint("立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
