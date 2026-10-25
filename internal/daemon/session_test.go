@@ -313,7 +313,12 @@ func TestPermissionWithAutoReviewAbstains(t *testing.T) {
 }
 
 func TestPermissionAllowDenyTimeout(t *testing.T) {
+	synctest.Test(t, testPermissionAllowDenyTimeout)
+}
+
+func testPermissionAllowDenyTimeout(t *testing.T) {
 	h := newHarness(t, Config{ApprovalTimeout: 200 * time.Millisecond})
+	defer h.s.log.Close()
 	h.writeRollout(turnContextLine("user"))
 
 	type result struct {
@@ -327,14 +332,17 @@ func TestPermissionAllowDenyTimeout(t *testing.T) {
 			ch <- result{out, err}
 		}()
 		var id string
-		eventually(t, "approval request", func() bool {
-			h.s.mu.Lock()
-			defer h.s.mu.Unlock()
-			for k := range h.s.approvals {
-				id = k
-			}
-			return id != ""
-		})
+		// Wait for the hook to publish and block; real CPU/IO delays do not spend
+		// the 200ms virtual deadline used by the timeout branch below.
+		synctest.Wait()
+		h.s.mu.Lock()
+		for k := range h.s.approvals {
+			id = k
+		}
+		h.s.mu.Unlock()
+		if id == "" {
+			t.Fatal("approval did not enter its waiting state")
+		}
 		return id, ch
 	}
 
