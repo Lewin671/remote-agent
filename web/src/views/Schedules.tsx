@@ -1351,7 +1351,7 @@ function ScheduleCreateConfig({
     !online ||
     !message.trim() ||
     busy ||
-    (!session && (!project || ns.reading || !!ns.issue || (ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) === ApprovalMode.PLAN));
+    (!session && (!project || ns.reading || !!ns.issue || !(ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) || (ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) === ApprovalMode.PLAN));
   return (
     <>
       {!session && (
