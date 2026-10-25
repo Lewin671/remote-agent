@@ -1115,3 +1115,23 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 - 三端静默折叠：Android 的区间在该轮 `turnEnded` 截止，轮间聊天行自然成为边界；iOS 补齐设置、提问回答、终端上下文等边界；网页已有设置边界，补齐提问回答、终端上下文和额外轮结束边界。测试覆盖模型、权限、压缩及其他轮间事件，原文保留；网页与 iOS 的去修复检查已检出断言失败，Android 同类检查及最终全量结果见本节末尾。
 - 截止显示按 v49 统一：保留绝对时刻，换时区立即重算输入值；显式修改截止后再换时区也如此。网页区分显示换算与截止编辑；Android 不再清空已有截止并按新时区换算日期；iOS 直接保存截止 `Date`，避免夏令时回拨的重叠时刻被拆分再还原成另一次。新增三端时间模型/编辑器测试（含 iOS 回拨重叠案例）；Android 两处、网页一处去修复断言检查均检出。实际设备睡眠和真实夏令时切换未验证。
 - 网页间隔：未编辑时保留原整数秒及相位，编辑后的分钟换算仅消除浮点误差，再校验正整数秒。31、62、123 秒逐项验证原值保存、加一分钟和真正非整数秒拒绝；去掉修复时断言失败。Android/iOS 的整数单位换算没有该浮点路径，补了相同秒数的整数、初始延迟与相位保留测试。
+
+截止显示另外做了原文件验证：临时换回该修复提交之前的 iOS `ScheduleTiming.swift`，同一组 `swift test --filter SchedulesTests` 出现 2 个失败用例、7 条断言失败（含截止显示、回拨重叠时刻、手动修改后换时区）；恢复修复后 18 项全部通过。没有用编译失败代替负向证明。
+
+最终检查的代码为上述 5 个独立修复提交，产品版本与协议版本均未修改。命令在仓库根目录执行，表内注明子目录的除外；Xcode 使用独立临时构建目录和 xcresult，只使用已有 iPhone 18 Pro。
+
+| 检查命令 | 结果 |
+|---|---|
+| `go test ./...` | 退出 0，全部包通过 |
+| `pnpm --dir web typecheck` | 退出 0 |
+| `pnpm --dir web test` | 88 个文件、1189 项通过 |
+| `pnpm --dir web build` | 退出 0，网页包构建成功 |
+| Android 目录：`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` | 退出 0；core 402 项、app 343 项，0 失败/错误/跳过；Debug APK 构建成功 |
+| `ios/RemoteAgentCore` 目录：`swift test` | 退出 0；Swift Testing 548 项，0 失败；真实 daemon 用例 1 项按环境开关跳过 |
+| `xcodebuild -quiet -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build test`（加独立临时 `-derivedDataPath`、`-resultBundlePath`） | 最终 App 测试 350 项通过，0 失败、0 跳过；xcresult 为 Passed |
+| `python3 scripts/check-schedule-regressions.py --clients` | 同一次完整执行退出 0，210/210 检出预期断言失败：后端 116 项、客户端 94 项；本轮新增 12 项，覆盖全部 5 个问题及相关三端路径 |
+| `python3 scripts/public_scan.py web/dist deploy/self-host android/app/build/outputs/apk/debug/app-debug.apk` | 退出 0；仅代表本地正常网页产物、自部署模板和 Debug APK |
+| 本轮变更的受跟踪文件交给 `python3 scripts/public_scan.py` | 原始退出码 1；只报两份文档既有官方域名，数量与修复前一致，没有私有名单命中；未改扫描规则 |
+| `git diff --check` | 通过 |
+
+本轮是自动测试和模拟器验收，未补真实 CLI 的客户端端到端链路、真机推送送达、真机/iPad、两台真实电脑、实际睡眠或实际夏令时切换。回拨时间单元测试不能代替真实系统切换验收。只在整合分支本地提交，未 push、tag、发版、部署或改 `version.properties`。
