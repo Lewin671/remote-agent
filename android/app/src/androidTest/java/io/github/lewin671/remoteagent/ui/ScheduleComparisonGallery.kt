@@ -17,6 +17,10 @@ import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.*
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.*
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import android.view.inspector.WindowInspector
 import kotlinx.serialization.json.*
 import org.junit.*
 
@@ -24,6 +28,7 @@ import org.junit.*
 class ScheduleComparisonGallery {
     @get:Rule val ui=createAndroidComposeRule<ComponentActivity>()
     private val remote=Remote(Account("http://127.0.0.1:1",ByteArray(32),ByteArray(32),"sample-client"),Api.defaultHttp())
+    private val fixtureScope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     private val nav=Nav({},{},{},{},{},{},{},{},{_,_->},{},{},{})
     private val fixture by lazy { Json.parseToJsonElement(InstrumentationRegistry.getInstrumentation().context.assets.open("clients.json").bufferedReader().readText()).jsonObject }
     private val machine get()=fixture.text("machine")
@@ -31,6 +36,11 @@ class ScheduleComparisonGallery {
     private val tasks by lazy { fixture["tasks"]!!.jsonArray.map { ScheduledTask(machine,it.jsonObject) } }
     private val task get()=tasks.first { it.id=="quiet" }
     @Before fun prepare() {
+        val repository=ScheduleRepository(fixtureScope,remote.state,send={_,request ->
+            check(request.operation=="list")
+            buildJsonObject { put("tasks",JsonArray(tasks.filter(::scheduleVisible).map { it.json })) }.toString().toByteArray()
+        })
+        remote.javaClass.getDeclaredField("scheduleRepository").apply { isAccessible=true }.set(remote,lazy { repository })
         val meta=MachineMeta.newBuilder().setHostname(fixture.text("machineName")).setProtocolVersion(PROTOCOL_VERSION).setScheduleRevision(1)
             .setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true))
             .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).setDefaultMode(ApprovalMode.APPROVAL_MODE_AUTO))
@@ -57,12 +67,24 @@ class ScheduleComparisonGallery {
         ui.waitForIdle()
         ui.waitUntil(5000) { androidx.core.view.ViewCompat.getRootWindowInsets(ui.activity.window.decorView)?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) != true }
         val i=InstrumentationRegistry.getInstrumentation()
+        // Semantics can settle before a newly attached dialog reaches the display.
+        // Commit its window and the following frame instead of sleeping for an animation.
+        repeat(2) {
+            lateinit var committed:CountDownLatch
+            i.runOnMainSync {
+                val roots=WindowInspector.getGlobalWindowViews().filter { it.isShown && it.isHardwareAccelerated }
+                check(roots.isNotEmpty())
+                committed=CountDownLatch(roots.size)
+                roots.forEach { view -> view.viewTreeObserver.registerFrameCommitCallback { committed.countDown() };view.postInvalidateOnAnimation() }
+            }
+            check(committed.await(5,TimeUnit.SECONDS)) { "visible windows did not commit a frame" }
+        }
         val dir=File(i.targetContext.getExternalFilesDir(null),"schedule-layout").apply { mkdirs() }
         File(dir,"$name-light.png").outputStream().use { requireNotNull(i.uiAutomation.takeScreenshot()).compress(Bitmap.CompressFormat.PNG,100,it) }
     }
-    @Test fun list() { content { Column { Box(Modifier.weight(1f)) { SchedulesScreen() };TabBar("schedules",0,1) {} } };ui.onAllNodesWithText("检查 PR 回复")[0].assertExists();save("tasks") }
+    @Test fun list() { content { Column { Box(Modifier.weight(1f)) { SchedulesScreen() };TabBar("schedules",0,1) {} } };ui.onAllNodesWithText("检查 PR 回复")[0].assertExists();ui.onNodeWithText("网络不通",substring=true).assertDoesNotExist();save("tasks") }
     @Test fun detail() { content { ScheduleDetailScreen(machine,"quiet") };ui.onAllNodesWithText("检查 PR 回复")[0].assertExists();save("detail") }
-    @Test fun targetEditor() { content { ScheduleDetailScreen(machine,"quiet") };ui.onNodeWithText("在哪运行",useUnmergedTree=true).performClick();ui.onNodeWithText("机器").assertHasNoClickAction();save("target-editor") }
+    @Test fun targetEditor() { content { ScheduleDetailScreen(machine,"quiet") };ui.onNodeWithText("在哪运行",useUnmergedTree=true).performClick();ui.onNodeWithText("机器").assertHasNoClickAction();ui.onNodeWithText("任务设置").assertIsDisplayed();save("target-editor") }
     @Test fun chat() { content { SessionScreen(sid) };ui.waitUntil(5000) { ui.onAllNodesWithText("定时 ·",substring=true).fetchSemanticsNodes().isNotEmpty() };save("chat-strip") }
     @Test fun newTask() {
         var clear:()->Unit={}
@@ -76,5 +98,5 @@ class ScheduleComparisonGallery {
         ui.runOnIdle { clear() };ui.onAllNodes(hasSetTextAction())[0].assert(hasText(task.title))
         ui.onNodeWithText("每小时").assertExists();save("new")
     }
-    @After fun close() { remote.close() }
+    @After fun close() { fixtureScope.cancel();remote.close() }
 }
