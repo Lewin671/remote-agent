@@ -657,7 +657,7 @@ it("keeps the original interval phase and both unchanged end limits", async () =
   const trigger={type:"interval" as const,interval_seconds:900,at:"2026-10-01T08:00:00Z",delay_seconds:29,max_runs:5,until:"2027-10-30T08:00:29Z"};
   const save=vi.fn();await mount(<TimingSheet trigger={trigger} onSave={save} onClose={()=>{}} />);
   await click("完成");expect(save).toHaveBeenCalledWith(trigger);
-  await input(host.querySelectorAll('input[type="number"]')[1],"6");
+  await input(host.querySelectorAll<HTMLInputElement>('input[type="number"]')[1],"6");
   await click("完成");expect(save.mock.calls.at(-1)![0]).toMatchObject({at:trigger.at,delay_seconds:29,max_runs:6,until:trigger.until});
 });
 it("submits the editor's snapshot revision and spec even after remote changes", async () => {
