@@ -397,6 +397,11 @@ fi("last-review-late-tool", "RemoteAgentCore/Sources/RACore/ScheduledChat.swift"
 
 feedback("android-last-review-cache-read","android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",'require(reply.hasSchedule() && reply.errorCode.isEmpty())\n        if (!currentScheduleMember(machine)) { cache?.removeBlob("schedule:$machine"); return@withContext null }','require(reply.hasSchedule() && reply.errorCode.isEmpty())',["./gradlew",":core:test","--tests","*RemoteTest.scheduledSnapshotCannotReturnAfterRevocationDuringCacheRead"],"java.lang.AssertionError")
 
+feedback("android-creation-machine-config", "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Project.kt", 'if (lockMachine || scheduling) PrefsOp.SetSettings', 'if (lockMachine) PrefsOp.SetSettings', ["./gradlew", ":app:testDebugUnitTest", "--tests", "*ScheduleCreationMachineTest.completingAfterSwitchAndCliSelectionReturnsExactlyTheDisplayedConfig"], "java.lang.AssertionError")
+fi("creation-machine-config", "RemoteAgent/UI/Schedules/ScheduleConfigSheet.swift", 'config = switchMachine(c, machineId: id, agents: machineAgents(state.machines[id]))', 'config = projectStart(state, key: c.cwd, pick: c.agent, machine: id)?.config ?? NewConfig(machineId: id, cwd: c.cwd, agent: c.agent)', True)
+fw("creation-machine-config", "model.ts", 'agent: agents.includes(cfg.agent) ? cfg.agent : agents[0],\n    model: "",\n    effort: "",\n    mode: ApprovalMode.UNSPECIFIED,', 'agent: agents.includes(cfg.agent) ? cfg.agent : agents[0],\n    model: cfg.model,\n    effort: cfg.effort,\n    mode: cfg.mode,')
+_IOS_ASSERTIONS["final-ios-creation-machine-config"] = "ScheduleStoreTests/switchingCreationComputerUsesOnlyItsDisplayedDefaults(agents:)"
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--clients", action="store_true")

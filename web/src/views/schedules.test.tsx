@@ -13,6 +13,7 @@ import {
 import { SessionPage } from "./Session";
 import { task, run } from "../test/schedule-fixture";
 import { clockTime, scheduleOffline, scheduleEmpty } from "../schedules";
+import { DefaultModeSource } from "../gen/remoteagent/v1/remote_pb";
 import { ApprovalMode, Agent } from "../gen/remoteagent/v1/event_pb";
 import type { ScheduleTask } from "../schedules";
 
@@ -762,4 +763,31 @@ it("converts cutoff display across zones while retaining the absolute instant", 
   await input(cutoff(),"2027-11-01T09:30");
   await input(zone,"UTC");expect(cutoff().value).toBe("2027-11-01T00:30");
   await click("完成");expect(save.mock.calls.at(-1)![0].until).toBe("2027-11-01T00:30:00.000Z");
+});
+
+it("creates with the new computer's displayed defaults after switching without editing",async()=>{
+  const r=remote([]);const old=r.machines.get("mac")!, next=structuredClone(old);
+  old.meta!.agents=old.meta!.agents.filter(a=>a.agent===Agent.CODEX);
+  old.meta!.agents[0].defaultMode=ApprovalMode.FULL_ACCESS;old.meta!.agents[0].defaultModeSource=DefaultModeSource.CLI_CONFIG;
+  next.id="new";next.meta!.hostname="新电脑";next.meta!.agents=[{...old.meta!.agents[0],agent:Agent.CLAUDE,defaultMode:ApprovalMode.ASK}];
+  r.machines.clear();r.machines.set("mac",old);r.machines.set("new",next);
+  const source=r.sessions.get("s-idle")!, path=source.info!.cwd;
+  const another={...source,id:"new-session",machineId:"new",info:{...source.info!,id:"new-session",agent:Agent.CLAUDE}};
+  r.sessions.clear();r.sessions.set(source.id,source);r.sessions.set(another.id,another);
+  const stored=r.prefs.snap!.prefs.settings[0];stored.path=path;stored.machineId="mac";stored.agent=Agent.CODEX;
+  stored.agents=[{...stored.agents[0],agent:Agent.CODEX,model:"gpt-6-astra",effort:"high",mode:ApprovalMode.FULL_ACCESS}];
+  const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(task());
+  await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);
+  await input(host.querySelector("textarea")!,"检查回复");
+  await click(/^机器和模型/);
+  const machineRow=[...host.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.querySelector(".lbl")?.textContent==="机器");
+  expect(machineRow,host.textContent??"").toBeTruthy();await act(async()=>machineRow!.click());
+  expect(button(/改用 新电脑/),host.textContent??"").toBeTruthy();await click(/改用 新电脑/);
+  await click("完成");
+  expect(button(/^机器和模型/)?.textContent).toContain("新电脑");
+  expect(button(/^权限/)?.textContent).toContain("询问");
+  expect(button(/^机器和模型/)?.textContent).not.toContain("gpt-6-astra");
+  await click("创建");expect(send).toHaveBeenCalledTimes(1);
+  const [machine,,request]=send.mock.calls[0];expect(machine).toBe("new");
+  expect(request.spec?.target).toMatchObject({agent:"claude",model:"",effort:"",mode:"ask",cwd:path});
 });

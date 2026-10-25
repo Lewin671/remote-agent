@@ -35,6 +35,21 @@ import UIKit
         cold.reconcile(removed);await eventually("revoked cold store settled") { cold.loading.isEmpty }
         #expect(cold.tasks.isEmpty && restores == 0)
     }
+    @Test(arguments: [[PBAgent.codex], [.codex,.claude]])
+    func switchingCreationComputerUsesOnlyItsDisplayedDefaults(agents: [PBAgent]) throws {
+        var state=self.state();state.currentMachines.insert("new");let path="/example/project"
+        state.machines["new"]=MachineView(id:"new",online:true,lastSeenMs:0,meta:PBMachineMeta.with { $0.capabilities.scheduledTasks=true;$0.protocolVersion=protocolVersion;$0.agents=agents.map { agent in .with { $0.agent=agent;$0.defaultMode = .ask;$0.defaultModeSource = .cliConfig } } })
+        state.prefs=PrefsObject(revision:1,prefs:PBProjectPrefs.with { $0.settings=[PBProjectSettings.with { $0.path=path;$0.machineID="m";$0.agents=[PBAgent.codex,.claude].map { agent in .with { $0.agent=agent;$0.model="old-model";$0.effort="high";$0.mode = .fullAccess } } }] })
+        let draft=ScheduleDraft();draft.message="检查回复";draft.config=NewConfig(machineId:"m",cwd:path,agent:.claude,model:"old-model",effort:"high",mode:.full)
+        let binding=Binding<NewConfig?>(get:{draft.config},set:{draft.config=$0})
+        let sheet=ScheduleConfigSheet(page:.machine,config:binding,onClose:{})
+        sheet.selectMachine("new",state:state)
+        let selected=try #require(draft.config), agent:PBAgent=agents.contains(.claude) ? .claude:.codex
+        #expect(selected == NewConfig(machineId:"new",cwd:path,agent:agent))
+        #expect(effectiveModeText(chosen:selected.mode,default:defaultModeOf(state.machines["new"],agent:agent)) == "询问")
+        let target=try #require(draft.spec(session:nil,state:state)).target
+        #expect(target.agent == (agent == .claude ? "claude":"codex") && target.model == nil && target.effort == nil && target.mode == "ask")
+    }
     @Test func creationResolvesKnownDefaultsAndRequiresAnExplicitChoiceWhenUnknown() {
         let draft=ScheduleDraft();draft.message="检查";draft.config=NewConfig(machineId:"m",cwd:"/example",agent:.claude)
         var known=state();known.machines["m"]?.meta?.agents=[PBAgentInfo.with { $0.agent = .claude;$0.defaultMode = .auto;$0.defaultModeSource = .cliConfig }]

@@ -38,7 +38,7 @@ struct ScheduleConfigSheet: View {
                 ForEach(machineRows(state, cwd: c.cwd, agent: c.agent)) { row in
                     let supported = state.machines[row.id]?.meta?.capabilities.scheduledTasks == true
                     ListItem(row.name, desc: supported ? row.note : "需要更新 remote-agent 才能使用定时任务", checked: row.id == c.machineId, enabled: row.online && supported) {
-                        config = projectStart(state, key: c.cwd, pick: c.agent, machine: row.id)?.config ?? NewConfig(machineId: row.id, cwd: c.cwd, agent: c.agent)
+                        selectMachine(row.id, state: state)
                     }
                 }
                 FieldLabel("模型")
@@ -66,6 +66,11 @@ struct ScheduleConfigSheet: View {
             } catch { self.error = errorText(error) }
         }
     }
+    func selectMachine(_ id: String, state: RemoteState) {
+        guard let c = config else { return }
+        config = switchMachine(c, machineId: id, agents: machineAgents(state.machines[id]))
+    }
+
     @ViewBuilder private func modelChoices(_ c: NewConfig?) -> some View {
         if let c, let models {
             ListItem("默认", checked: c.model.isEmpty) { config?.model = ""; config?.effort = "" }

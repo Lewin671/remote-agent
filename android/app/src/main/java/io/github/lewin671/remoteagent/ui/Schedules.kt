@@ -350,8 +350,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
     if (settingsPage != null && cfg != null) NewSettingsSheet(state, project, projectName(project), cfg.machineId, cfg.agent, settingsPage,
         onDone = { op ->
             if (op != null) {
-                val picked = op.sets.firstOrNull { it.agent == op.agent } ?: op.sets.firstOrNull()
-                config = if (picked != null) agentConfig(op.machineId, project, picked) else cfg.copy(machineId = op.machineId)
+                config = agentConfig(op.machineId, project, op.sets.single { it.agent == op.agent })
             }
             settings = null
         }, onClose = { settings = null }, initial = cfg, scheduling = true)
