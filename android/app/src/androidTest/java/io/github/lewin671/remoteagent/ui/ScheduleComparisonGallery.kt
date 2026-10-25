@@ -62,6 +62,7 @@ class ScheduleComparisonGallery {
     }
     @Test fun list() { content { Column { Box(Modifier.weight(1f)) { SchedulesScreen() };TabBar("schedules",0,1) {} } };ui.onAllNodesWithText("检查 PR 回复")[0].assertExists();save("tasks") }
     @Test fun detail() { content { ScheduleDetailScreen(machine,"quiet") };ui.onAllNodesWithText("检查 PR 回复")[0].assertExists();save("detail") }
+    @Test fun targetEditor() { content { ScheduleDetailScreen(machine,"quiet") };ui.onNodeWithText("在哪运行",useUnmergedTree=true).performClick();ui.onNodeWithText("机器").assertHasNoClickAction();save("target-editor") }
     @Test fun chat() { content { SessionScreen(sid) };ui.waitUntil(5000) { ui.onAllNodesWithText("定时 ·",substring=true).fetchSemanticsNodes().isNotEmpty() };save("chat-strip") }
     @Test fun newTask() {
         var clear:()->Unit={}
