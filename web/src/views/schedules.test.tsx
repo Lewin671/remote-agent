@@ -765,6 +765,15 @@ it("converts cutoff display across zones while retaining the absolute instant", 
   await click("完成");expect(save.mock.calls.at(-1)![0].until).toBe("2027-11-01T00:30:00.000Z");
 });
 
+it("keeps an edited cutoff instant when a zone change lands it in a repeated wall time", async () => {
+  const save=vi.fn();await mount(<TimingSheet trigger={{type:"calendar",time:"08:00",timezone:"UTC",until:"2027-10-30T00:00:00Z"}} onSave={save} onClose={()=>{}} />);
+  const cutoff=()=>host.querySelector<HTMLInputElement>('input[type="datetime-local"]')!;
+  await input(cutoff(),"2027-11-07T06:30");
+  await input(host.querySelector<HTMLInputElement>('input[aria-label="时区"]')!,"America/New_York");
+  expect(cutoff().value).toBe("2027-11-07T01:30");
+  await click("完成");expect(save.mock.calls.at(-1)![0].until).toBe("2027-11-07T06:30:00.000Z");
+});
+
 it("creates with the new computer's displayed defaults after switching without editing",async()=>{
   const r=remote([]);const old=r.machines.get("mac")!, next=structuredClone(old);
   old.meta!.agents=old.meta!.agents.filter(a=>a.agent===Agent.CODEX);

@@ -327,7 +327,8 @@ export function TimingSheet({
           throw new Error("运行次数必须是正整数");
         next.max_runs = Number(count);
       }
-      if (kind !== "at" && end === "date" && endChanged) next.until = zonedISO(until, zone);
+      // The tracked instant survives zone changes; re-resolving the displayed wall time can shift it in a DST overlap.
+      if (kind !== "at" && end === "date" && endChanged) next.until = untilInstant || zonedISO(until, zone);
       if (
         (next.at && Date.parse(next.at) <= Date.now() && kind === "at") ||
         (next.until && Date.parse(next.until) <= Date.now())
