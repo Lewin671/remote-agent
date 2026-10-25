@@ -829,7 +829,8 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
     fun edit(next: NewConfig) {
         edited[cur] = next
     }
-    fun done() = onDone(if (!moved && edited.isEmpty()) null else PrefsOp.SetSettings(cwd, machine, moved = moved, sets = edited.values.map { it.agentSettings() }))
+    fun done() = onDone(if (lockMachine) PrefsOp.SetSettings(cwd, machine, agent = cur, sets = listOf(c.agentSettings()))
+        else if (!moved && edited.isEmpty()) null else PrefsOp.SetSettings(cwd, machine, moved = moved, sets = edited.values.map { it.agentSettings() }))
     var models by remember { mutableStateOf<ListModelsResponse?>(null) }
     var modelsError by remember { mutableStateOf("") }
     LaunchedEffect(c.machineId, c.agent, page == "model") {

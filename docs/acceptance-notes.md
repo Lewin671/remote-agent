@@ -1111,3 +1111,4 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 ### 定时任务末轮 5 项 P2 修复（2026-10-24，整合分支）
 
 - Android 系统取消（`cancelled/message_cancelled`）：循环任务通过提交完整定义重新安排，一次任务先打开时间编辑器；明确删除保持可用。Compose 测试验证操作、修订号和删除返回。分别移除恢复与删除修复后，测试均以断言失败检出（`check-schedule-regressions.py --clients --only r3-cancelled`，2/2）。网页与 iOS 已有同样的重新安排分支，未改动协议或 daemon。
+- Android 运行位置编辑器：任务设置完成时返回当前 CLI 及它的配置，详情回调按返回的 CLI 保存。Compose 测试从 Claude 切到 Codex、选择完全放行后检查发出的定义；恢复旧回调或旧返回值各自都会断言失败（`--only r3-selected-cli`、`--only r3-return-cli`）。网页和 iOS 保存的是当前配置，没有按打开时 CLI 回取的分支。

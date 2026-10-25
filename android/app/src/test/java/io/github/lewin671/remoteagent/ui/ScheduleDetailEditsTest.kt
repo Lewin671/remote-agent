@@ -36,7 +36,7 @@ class ScheduleDetailEditsTest {
             (if(r.operation=="list") buildJsonObject { put("tasks",JsonArray(listOf(latest.json))) } else latest.json).toString().toByteArray()
         })
         remote.javaClass.getDeclaredField("scheduleRepository").apply { isAccessible=true }.set(remote,lazy { repository })
-        remote.showForTest(RemoteState(conn=ConnState.ONLINE,loaded=true,machines=mapOf("computer" to MachineView("computer",true,0,MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build()))))
+        remote.showForTest(RemoteState(conn=ConnState.ONLINE,loaded=true,machines=mapOf("computer" to MachineView("computer",true,0,MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX)).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build()))))
     }
     private fun render() { ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { ScheduleDetailScreen("computer","task") } } } }
     @After fun close() { scope.cancel();remote.close() }
@@ -52,6 +52,18 @@ class ScheduleDetailEditsTest {
         prepare();render();ui.onNodeWithText("在哪运行").performClick()
         ui.onNodeWithText("机器").assertHasNoClickAction()
         ui.onNodeWithText("任务设置").assertExists();ui.onNodeWithText("设为常用").assertDoesNotExist();ui.onNodeWithText("移除项目…").assertDoesNotExist()
+    }
+    @Test fun targetEditorSavesTheSelectedCliAndItsPermission() {
+        prepare();render();ui.onNodeWithText("在哪运行").performClick()
+        ui.onNodeWithText("Codex",useUnmergedTree=true).performClick()
+        ui.onAllNodesWithText("权限").onLast().performClick()
+        ui.onNodeWithText("完全放行",useUnmergedTree=true).performClick()
+        ui.onNodeWithText("完成").performClick()
+        ui.runOnIdle {
+            assertEquals(1,requests.count { it.operation=="update" })
+            val target=Json.parseToJsonElement(requests.single { it.operation=="update" }.specJson.toStringUtf8()).jsonObject["target"]!!.jsonObject
+            assertEquals("codex",target.text("agent"));assertEquals("full",target.text("mode"))
+        }
     }
     @Test fun editorKeepsOpeningRevisionAndFullSpecAfterAnotherClientWrites() {
         prepare();render();ui.onNodeWithText("消息",useUnmergedTree=true).performClick()

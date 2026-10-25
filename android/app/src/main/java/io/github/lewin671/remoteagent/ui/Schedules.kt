@@ -178,7 +178,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             val cfg = scheduleConfig(base)
             NewSettingsSheet(scheduleEditingState(state, machine), cfg.cwd, projectName(cfg.cwd), machine, cfg.agent, if (edit == "mode") "mode" else "",
                 onDone = { op ->
-                    val picked = op?.sets?.firstOrNull { it.agent == cfg.agent }
+                    val picked = op?.sets?.firstOrNull { it.agent == op.agent }
                     if (picked == null) edit = "" else operate("update", JsonObject(base.spec + ("target" to scheduleTarget(agentConfig(machine, cfg.cwd, picked), base.target))))
                 }, onClose = { edit = "" }, initial = cfg, scheduling = true, lockMachine = true)
         }
@@ -350,7 +350,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
     if (settingsPage != null && cfg != null) NewSettingsSheet(state, project, projectName(project), cfg.machineId, cfg.agent, settingsPage,
         onDone = { op ->
             if (op != null) {
-                val picked = op.sets.firstOrNull { it.agent == cfg.agent } ?: op.sets.firstOrNull()
+                val picked = op.sets.firstOrNull { it.agent == op.agent } ?: op.sets.firstOrNull()
                 config = if (picked != null) agentConfig(op.machineId, project, picked) else cfg.copy(machineId = op.machineId)
             }
             settings = null
