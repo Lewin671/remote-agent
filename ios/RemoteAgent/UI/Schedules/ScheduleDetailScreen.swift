@@ -81,6 +81,9 @@ struct ScheduleDetailScreen: View {
         .confirm(isPresented: $delete, title: "删除这个任务？", text: "停止之后的自动运行。已发出的消息和已开的对话会保留。", confirm: "删除", danger: true) {
             if let task { perform(task, operation: "cancel", done: { nav.back(from: page) }) }
         }
+        .debugSignal("schedule.edit-target") {
+            if let current = store.task(machine: machine, id: id) { editor.open(current); targetEdit = true }
+        }
         .debugSignal("schedule.open-run") {
             if let run = store.task(machine: machine, id: id)?.history.first(where: { !($0.sessionID ?? "").isEmpty }) { open(run) }
         }

@@ -320,5 +320,6 @@ extension View {
 //       -scheduleMode ask|auto|full -scheduleName NAME -scheduleMessage TEXT -scheduleAt RFC3339
 //   schedule.create   fills the test draft and submits through the same encrypted create action.
 //   schedule.open-run / schedule.pause / schedule.run   task detail's corresponding actions.
+//   schedule.edit-target   opens the existing task target editor for fixture screenshots.
 //   session.schedule / session.restore   定时发送… / 恢复会话 through the existing product commands.
 //   app.back   the navigation stack's back action.
