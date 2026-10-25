@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -174,60 +175,66 @@ func TestManualAndAutomaticSerialize(t *testing.T) {
 	for _, manualFirst := range []bool{true, false} {
 		for _, late := range []bool{true, false} {
 			t.Run(map[bool]string{true: "manual-first", false: "automatic-first"}[manualFirst]+map[bool]string{true: "skip", false: "catchup"}[late], func(t *testing.T) {
-				h, task := manualFixture(t, "calendar")
-				if !manualFirst {
-					task.Spec.Trigger.MaxRuns = 2
-				}
-				defer h.s.log.Close()
-				now := time.Now()
-				due := now.Add(time.Minute)
-				task.NextRunAt = &due
-				task.Spec.LateSeconds = 60
-				if manualFirst {
-					requestManual(t, h, task.ID)
-					h.d.tickSchedules(now)
-				} else {
-					h.d.tickSchedules(due)
-					requestManual(t, h, task.ID)
-				}
-				first := readTask(t, h.d, task.ID).Active
-				if first == nil || first.Manual != manualFirst {
-					t.Fatal("wrong first execution")
-				}
-				at := due.Add(time.Second)
-				if late {
-					at = due.Add(2 * time.Minute)
-				}
-				// A pending manual request can also expire while the automatic run owns Active.
-				if !manualFirst {
-					h.d.tasks[task.ID].ManualRequest.RequestedAt = due
-				}
-				h.d.tickSchedules(at)
-				if readTask(t, h.d, task.ID).Active.ID != first.ID {
-					t.Fatal("overlapping execution")
-				}
-				completeTask(h, first, at)
-				h.d.tickSchedules(at)
-				got := readTask(t, h.d, task.ID)
-				if late {
-					if got.Active != nil || len(got.Runs) != 2 || got.Runs[1].Status != "skipped" || got.Runs[1].Manual == manualFirst {
-						t.Fatalf("missing serialized skip: %+v", got)
+				synctest.Test(t, func(t *testing.T) {
+					// Advance only virtual time into the UTC boundary that exposed the invalid fixture.
+					time.Sleep(23*time.Hour + 56*time.Minute)
+					h, task := manualFixture(t, "calendar")
+					if !manualFirst {
+						task.Spec.Trigger.MaxRuns = 2
 					}
-				} else {
-					if got.Active == nil || got.Active.Manual == manualFirst {
-						t.Fatalf("waiting execution lost: %+v", got)
+					defer h.s.log.Close()
+					now := time.Now()
+					due := now.UTC().Truncate(time.Minute).Add(time.Minute)
+					// NextRunAt must be an actual occurrence of the declared calendar.
+					task.Spec.Trigger.Time = due.Format("15:04")
+					task.NextRunAt = &due
+					task.Spec.LateSeconds = 60
+					if manualFirst {
+						requestManual(t, h, task.ID)
+						h.d.tickSchedules(now)
+					} else {
+						h.d.tickSchedules(due)
+						requestManual(t, h, task.ID)
 					}
-					completeTask(h, got.Active, at)
+					first := readTask(t, h.d, task.ID).Active
+					if first == nil || first.Manual != manualFirst {
+						t.Fatal("wrong first execution")
+					}
+					at := due.Add(time.Second)
+					if late {
+						at = due.Add(2 * time.Minute)
+					}
+					// A pending manual request can also expire while the automatic run owns Active.
+					if !manualFirst {
+						h.d.tasks[task.ID].ManualRequest.RequestedAt = due
+					}
 					h.d.tickSchedules(at)
-				}
-				got = readTask(t, h.d, task.ID)
-				want := int64(1)
-				if manualFirst && late {
-					want = 0
-				}
-				if got.Dispatches != want {
-					t.Fatalf("manual consumed max_runs: %+v", got)
-				}
+					if readTask(t, h.d, task.ID).Active.ID != first.ID {
+						t.Fatal("overlapping execution")
+					}
+					completeTask(h, first, at)
+					h.d.tickSchedules(at)
+					got := readTask(t, h.d, task.ID)
+					if late {
+						if got.Active != nil || len(got.Runs) != 2 || got.Runs[1].Status != "skipped" || got.Runs[1].Manual == manualFirst {
+							t.Fatalf("missing serialized skip: %+v", got)
+						}
+					} else {
+						if got.Active == nil || got.Active.Manual == manualFirst {
+							t.Fatalf("waiting execution lost: %+v", got)
+						}
+						completeTask(h, got.Active, at)
+						h.d.tickSchedules(at)
+					}
+					got = readTask(t, h.d, task.ID)
+					want := int64(1)
+					if manualFirst && late {
+						want = 0
+					}
+					if got.Dispatches != want {
+						t.Fatalf("manual consumed max_runs: %+v", got)
+					}
+				})
 			})
 		}
 	}
