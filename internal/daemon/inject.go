@@ -159,6 +159,15 @@ func (s *session) enqueueInputContext(ctx context.Context, text, requestID strin
 	for retries := 0; ; retries++ {
 		s.lifecycleMu.Lock()
 		s.mu.Lock()
+		// A durable retry must not start a new CLI lifetime or claim ownership.
+		if requestID != "" && s.queue.seen(requestID) {
+			if !s.meta.Exited && !s.closing {
+				s.poke()
+			}
+			s.mu.Unlock()
+			s.lifecycleMu.Unlock()
+			return 0, nil
+		}
 		resume := s.meta.Exited && s.meta.ScheduledTaskID != ""
 		s.mu.Unlock()
 		if !resume {
@@ -188,17 +197,20 @@ func (s *session) enqueueInputReady(text, requestID string, images []queuedImage
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.meta.Exited || s.closing {
-		return 0, errExited
-	}
 	if s.queueLost {
 		return 0, errQueueUnreadable
 	}
+	if requestID != "" && s.queue.seen(requestID) {
+		if !s.meta.Exited && !s.closing {
+			s.poke()
+		}
+		return 0, nil
+	}
+	if s.meta.Exited || s.closing {
+		return 0, errExited
+	}
 	if requestID == "" {
 		requestID = newID(8)
-	} else if s.queue.seen(requestID) {
-		s.poke()
-		return 0, nil
 	}
 	if reserved == nil {
 		var err error
