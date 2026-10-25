@@ -707,6 +707,7 @@ it("edits CLI choices and inherited settings only on the task computer",async()=
  const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(t);
  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);await click(/^在哪运行/);
  expect(button("Codex")).toBeTruthy();
+ await click(/^模型和权限/);expect(host.textContent).toContain("任务设置");expect(button("设为常用")).toBeUndefined();expect(button("移除项目…")).toBeUndefined();await click("完成");
  await click(/^项目/);expect(button("另一个电脑")).toBeUndefined();expect(button("MacBook")?.disabled).toBe(true);await click("取消");
  await click("Codex");await click("保存");
  expect(send.mock.calls[0][2].spec?.target).toMatchObject({agent:"codex",model:"",mode:"auto"});

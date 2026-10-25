@@ -51,6 +51,7 @@ class ScheduleDetailEditsTest {
     @Test fun existingTaskCannotSelectAnotherComputer() {
         prepare();render();ui.onNodeWithText("在哪运行").performClick()
         ui.onNodeWithText("机器").assertHasNoClickAction()
+        ui.onNodeWithText("任务设置").assertExists();ui.onNodeWithText("设为常用").assertDoesNotExist();ui.onNodeWithText("移除项目…").assertDoesNotExist()
     }
     @Test fun editorKeepsOpeningRevisionAndFullSpecAfterAnotherClientWrites() {
         prepare();render();ui.onNodeWithText("消息",useUnmergedTree=true).performClick()

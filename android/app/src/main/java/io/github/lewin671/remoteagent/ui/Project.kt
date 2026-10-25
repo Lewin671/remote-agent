@@ -848,13 +848,13 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
             .onSuccess { settings = it }
     }
     val used = projectMachines(state, cwd)
-    val blockedPrefs = prefsBlocked(state)
+    val blockedPrefs = if (lockMachine) null else prefsBlocked(state)
     val defaults = defaultModeOf(state.machines[c.machineId], c.agent)
     val shownModel = models?.let { projectModel(c, it, settings) }
     Sheet(onClose) {
         when (page) {
             "" -> {
-                SheetHead("项目设置", if (blockedPrefs == null) "完成" else null, { done() })
+                SheetHead(if (lockMachine) "任务设置" else "项目设置", if (blockedPrefs == null) "完成" else null, { done() })
                 if (blockedPrefs != null) Banner(blockedPrefs)
                 Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Avatar(cwd, 22)
@@ -875,7 +875,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                         val fixed = shownModel != null && shownModel.contextWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW
                         SetRow("上下文", if (fixed) "标准 200k · 这个模型只有标准窗口" else if (c.standardContext) "标准 200k" else "1M", if (fixed) null else ({ page = "context" }))
                     }) else emptyArray()),
-                    { SetRow("审批", effectiveModeText(c.mode, defaults), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null) },
+                    { SetRow(if (lockMachine) "权限" else "审批", effectiveModeText(c.mode, defaults), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null) },
                 )
                 @Composable
                 fun card(rows: List<@Composable () -> Unit>) = Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft)) {
@@ -899,16 +899,18 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     card(listOf(machineRow))
                     ViewTabs(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, inset = 0.dp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
                     card(rows)
-                    Hint("两个 CLI 各存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
+                    Hint(if (lockMachine) "只修改这个任务；已开出的对话保留原来的设置。" else "两个 CLI 各存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
                 } else {
                     card(listOf(machineRow) + rows)
-                    Hint("只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
+                    Hint(if (lockMachine) "只修改这个任务；已开出的对话保留原来的设置。" else "只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
                 }
+                if (!lockMachine) {
                 TextAction(if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) "取消常用" else "设为常用", {
                     PrefsChanges.run(remote, if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) PrefsOp.Unpin(cwd) else PrefsOp.Pin(cwd))
                 }, enabled = blockedPrefs == null)
                 TextAction("移除项目…", { removing = true }, enabled = blockedPrefs == null, color = p.red)
                 if (removing) RemoveProjectConfirm(cwd, onDismiss = { removing = false }) { onClose(); nav.home() }
+                }
             }
             "machine" -> {
                 SheetHead("机器", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })

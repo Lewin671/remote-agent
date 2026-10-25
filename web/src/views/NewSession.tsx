@@ -684,6 +684,7 @@ type Pick = "" | "machine" | "model" | "mode";
  * The tabs show one CLI's set at a time, opening on the CLI picked next
  * to the box; looking at the other one picks nothing. */
 export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMachine = false }: { ns: NewSession; onClose: () => void; start?: Pick; scheduled?: boolean; lockMachine?: boolean }) {
+  const taskEditing = scheduled && lockMachine;
   const [pick, setPick] = useState<Pick>(start);
   const [removing, setRemoving] = useState(false);
   // Opened right at one setting: done with it is done with the sheet.
@@ -823,7 +824,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
       </div>
     );
   }
-  const titles: Record<Pick, string> = { "": "项目设置", machine: "机器", model: "模型", mode: "审批" };
+  const titles: Record<Pick, string> = { "": taskEditing ? "任务设置" : "项目设置", machine: "机器", model: "模型", mode: taskEditing ? "权限" : "审批" };
   const modelLine = parts.model;
   const many = ns.agents.length > 1;
   if (open && pick && pick !== "machine") body = <div className="hint">正在读取这个项目上次的设置…</div>;
@@ -883,7 +884,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
                 </div>
               )}
               <button className="sr" onClick={() => setPick("mode")}>
-                <span className="lbl">审批</span>
+                <span className="lbl">{taskEditing ? "权限" : "审批"}</span>
                 <span className="v">
                   <em>{modeTextOf(cfg, machine)}</em>
                   <ChevronRight className="chev" />
@@ -896,12 +897,12 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
               没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型
             </Banner>
           )}
-          <div className="hint">{many ? "两个 CLI 各存一套，新建时用哪个在输入框旁选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</div>
-          <div className="setrows">
+          <div className="hint">{taskEditing ? "只修改这个任务；已开出的对话保留原来的设置。" : <>{many ? "两个 CLI 各存一套，新建时用哪个在输入框旁选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</>}</div>
+          {!taskEditing && <div className="setrows">
             <button className="sr" disabled={!!prefsBlocked(remote)} onClick={pinAction(remote, cfg.cwd).run}>{pinAction(remote, cfg.cwd).label}</button>
             <button className="sr red" disabled={!!prefsBlocked(remote)} onClick={() => setRemoving(true)}>移除项目…</button>
-          </div>
-          {removing && (
+          </div>}
+          {!taskEditing && removing && (
             <RemoveProjectAlert
               remote={remote}
               path={cfg.cwd}
