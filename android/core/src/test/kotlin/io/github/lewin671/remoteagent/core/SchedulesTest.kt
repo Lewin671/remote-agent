@@ -15,6 +15,29 @@ class SchedulesTest {
     private val utc = ZoneId.of("UTC")
     private fun task(status: String = "scheduled", reason: String = "", runs: String = "[]") = ScheduledTask("computer", Json.parseToJsonElement("""{"id":"task","revision":3,"status":"$status","reason":"$reason","next_run_at":"2026-10-25T08:00:00Z","spec":{"title":"Check","message":"Look","trigger":{"type":"interval","interval_seconds":3600},"target":{"type":"new_session"}},"runs":$runs}""").jsonObject)
     private fun run(id: String, hour: Int, notified: Boolean = false, status: String = "completed") = """{"id":"$id","started_at":"2026-10-24T${hour}:00:00Z","status":"$status","notified":$notified,"notification_text":"Important","final_summary":"Nothing changed"}"""
+    @Test fun nonexistentWallTimesAreRejectedForOnceAndCutoffDates() {
+        val message = "这个时区在该时刻发生夏令时跳转，请换一个时间"
+        val missing = ScheduleTime(kind = 0, date = "2027-03-14", time = "02:30", zone = "America/Los_Angeles")
+        assertEquals(message, runCatching { missing.trigger(now) }.exceptionOrNull()?.message)
+        // Date-only cutoffs must reject an entirely skipped local date too.
+        val skipped = ScheduleTime(end = 2, until = "2011-12-30", zone = "Pacific/Apia")
+        assertEquals(message, runCatching { skipped.trigger(Instant.parse("2010-01-01T00:00:00Z")) }.exceptionOrNull()?.message)
+        assertEquals("calendar", missing.copy(kind = 1).trigger(now).text("type"))
+    }
+    @Test fun repeatedWallTimesChooseTheEarlierOccurrenceAndCutoffsKeepTheirInstant() {
+        for ((zone, date, time, expected) in listOf(
+            listOf("America/Los_Angeles", "2027-11-07", "01:30", "2027-11-07T08:30:00Z"),
+            listOf("Europe/Berlin", "2027-10-31", "02:30", "2027-10-31T00:30:00Z")
+        )) {
+            assertEquals(expected, ScheduleTime(kind = 0, date = date, time = time, zone = zone).trigger(now).text("at"))
+        }
+        val cutoff = ScheduleTime(end = 2, until = "2027-11-07", zone = "America/Los_Angeles")
+        assertEquals("2027-11-08T07:59:59Z", cutoff.trigger(now).text("until"))
+        val existing = cutoff.copy(deadline = "2027-11-07T09:30:00Z")
+        assertEquals(existing.deadline, existing.inZone("UTC").trigger(now).text("until"))
+        // A skipped next day must not invalidate the selected day's last second.
+        assertEquals("2011-12-30T09:59:59Z", cutoff.copy(zone = "Pacific/Apia", until = "2011-12-29").trigger(Instant.parse("2010-01-01T00:00:00Z")).text("until"))
+    }
     @Test fun dualLimitsSelectCountAndKeepTheAbsoluteDeadlineAcrossZoneChanges() {
         val t=Json.parseToJsonElement("""{"type":"calendar","time":"08:00","timezone":"America/Los_Angeles","max_runs":5,"until":"2027-10-30T08:00:00Z"}""").jsonObject
         val edit=ScheduleTime.from(t);assertEquals(1,edit.end)

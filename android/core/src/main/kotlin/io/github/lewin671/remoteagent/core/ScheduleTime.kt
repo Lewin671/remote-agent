@@ -22,7 +22,7 @@ data class ScheduleTime(
     /** Cutoffs are instants; only the main schedule's wall clock stays fixed across zones. */
     fun inZone(next: String): ScheduleTime {
         val instant = scheduleInstant(deadline) ?: runCatching {
-            LocalDate.parse(until).plusDays(1).atStartOfDay(ZoneId.of(zone)).toInstant().minusSeconds(1)
+            cutoff(ZoneId.of(zone))
         }.getOrNull()
         val local = runCatching { instant?.atZone(ZoneId.of(next))?.toLocalDate()?.toString() }.getOrNull()
         return copy(zone = next, until = local ?: until, deadline = if (deadline.isNotEmpty()) deadline else instant?.toString().orEmpty())
@@ -30,12 +30,14 @@ data class ScheduleTime(
     fun trigger(now: Instant = Instant.now()): JsonObject {
         val tz = ZoneId.of(zone)
         val clock = LocalTime.parse(time)
-        val timestamp = LocalDate.parse(date).atTime(clock).atZone(tz).toInstant()
         val max = if (end == 1) count.toLong().also { require(it > 0) { "次数要大于 0" } } else 0
-        val deadline = if (end == 2) (if (deadline.isNotEmpty()) Instant.parse(deadline) else LocalDate.parse(until).plusDays(1).atStartOfDay(tz).toInstant().minusSeconds(1)).also { require(it > now) { "结束日期已经过去" } } else null
+        val deadline = if (end == 2) (if (deadline.isNotEmpty()) Instant.parse(deadline) else cutoff(tz)).also { require(it > now) { "结束日期已经过去" } } else null
         return buildJsonObject {
             when (kind) {
-                0 -> { require(timestamp > now) { "请选择未来的时间" }; put("type", "at"); put("at", timestamp.toString()) }
+                0 -> {
+                    val timestamp = absolute(LocalDate.parse(date).atTime(clock), tz)
+                    require(timestamp > now) { "请选择未来的时间" }; put("type", "at"); put("at", timestamp.toString())
+                }
                 1, 2 -> {
                     put("type", "calendar"); put("time", clock.toString()); put("timezone", tz.id)
                     val days = if (kind == 1) { if (workdays) (1..5).toSet() else emptySet() } else weekdays.also { require(it.isNotEmpty()) { "至少选一天" } }
@@ -61,6 +63,15 @@ data class ScheduleTime(
             }
         }
     }
+    private fun cutoff(tz: ZoneId): Instant = absolute(LocalDate.parse(until).atTime(23, 59, 59), tz)
+
+    private fun absolute(local: LocalDateTime, tz: ZoneId): Instant {
+        val offsets = tz.rules.getValidOffsets(local)
+        require(offsets.isNotEmpty()) { "这个时区在该时刻发生夏令时跳转，请换一个时间" }
+        // ZoneRules lists the earlier occurrence first when the clock repeats.
+        return local.toInstant(offsets.first())
+    }
+
     companion object {
         fun from(t: JsonObject): ScheduleTime {
             val z = scheduleZone(t)

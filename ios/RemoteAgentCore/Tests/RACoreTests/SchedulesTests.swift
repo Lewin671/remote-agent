@@ -10,6 +10,29 @@ import RAProto
         var task = ScheduleTask(id: "task", spec: ScheduleSpec(title: "检查", message: "检查回复。没有变化就简短说一句", trigger: ScheduleTrigger(type: "calendar"), target: ScheduleTarget(type: "new_session")), status: status)
         task.reason = reason; return task
     }
+    @Test func repeatedWallTimesChooseFirstForOnceAndEditedCutoff() throws {
+        for (name, wall, first, second) in [
+            ("America/Los_Angeles", "2027-11-07T01:30:00Z", "2027-11-07T08:30:00Z", "2027-11-07T09:30:00Z"),
+            ("Europe/Berlin", "2027-10-31T02:30:00Z", "2027-10-31T00:30:00Z", "2027-10-31T01:30:00Z")
+        ] {
+            var at = ScheduleTrigger(type: "at"); at.at = wall; at.timezone = "UTC"
+            var once = ScheduleTiming(trigger: at, now: now, zone: zone); once.timezone = name
+            #expect(try once.trigger(now: now).at == first)
+            var cutoff = ScheduleTiming(now: now, zone: TimeZone(identifier: name)!)
+            cutoff.end = .date; cutoff.until = scheduleDate(second)!
+            #expect(cutoff.until == scheduleDate(first)!)
+            #expect(try cutoff.trigger(now: now).until == first)
+            // Selecting the default cutoff without editing it follows the same rule.
+            let before = scheduleDate(second)!.addingTimeInterval(-86400)
+            var defaultCutoff = ScheduleTiming(now: before, zone: TimeZone(identifier: name)!)
+            defaultCutoff.end = .date
+            #expect(defaultCutoff.until == scheduleDate(first)!)
+            #expect(try defaultCutoff.trigger(now: before).until == first)
+            var saved = ScheduleTrigger(type: "calendar"); saved.time = "08:00"; saved.timezone = name; saved.until = second
+            let unchanged = ScheduleTiming(trigger: saved, now: now, zone: zone)
+            #expect(try unchanged.trigger(now: now).until == second)
+        }
+    }
     @Test func timestampOffsetsDoNotBecomeCalendarZoneNames() throws {
         for at in ["2027-10-24T15:00:00Z","2027-10-24T15:00:00+08:00"] {
             var t=ScheduleTrigger(type:"at");t.at=at
@@ -81,7 +104,7 @@ import RAProto
         #expect(try editing.trigger(now:now).until=="2026-10-30T00:15:00Z")
         var gap = ScheduleTrigger(type:"at"); gap.at="2027-03-14T02:30:00Z"; gap.timezone="UTC"
         var missing = ScheduleTiming(trigger:gap,now:now,zone:zone); missing.timezone="America/Los_Angeles"
-        #expect(throws:(any Error).self) { try missing.trigger(now:now) }
+        #expect(throws: UserError("这个时区在该时刻发生夏令时跳转，请换一个时间")) { try missing.trigger(now:now) }
         var fresh=ScheduleTiming(now:now);fresh.kind = .interval;fresh.interval=15;fresh.unit=60
         #expect(try fresh.trigger(now:now).delaySeconds==900)
     }

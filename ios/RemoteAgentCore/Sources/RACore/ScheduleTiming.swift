@@ -12,7 +12,14 @@ public struct ScheduleTiming: Equatable, Sendable {
         get { calendar.date(from: dateParts) ?? .distantFuture }
         set { dateParts = Self.parts(newValue, zone: calendar.timeZone) }
     }
-    public var until: Date { didSet { untilEdited = true } }
+    public var until: Date {
+        didSet {
+            // A new local selection uses the first repeated wall time. Stored
+            // cutoffs and timezone changes keep their existing absolute instant.
+            until = calendar.date(from: Self.parts(until, zone: calendar.timeZone)) ?? until
+            untilEdited = true
+        }
+    }
     public var weekdays: Set<Int> = [1]
     public var workdays = false
     public var interval = 1
@@ -56,6 +63,8 @@ public struct ScheduleTiming: Equatable, Sendable {
             if let n = t.maxRuns, n > 0 { count = Int(n); end = .count }
         }
         initialEnd = end; initialCount = count
+        // A newly selected default cutoff follows the same fold rule as an edit.
+        if trigger?.until == nil { until = calendar.date(from: Self.parts(until, zone: calendar.timeZone)) ?? until }
     }
     private func absolute(_ parts: DateComponents) throws -> Date {
         guard let d = calendar.date(from: parts), Self.parts(d, zone: calendar.timeZone) == parts else {

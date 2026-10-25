@@ -535,12 +535,14 @@ export function zonedISO(local: string, timezone: string): string {
     second: "2-digit",
     hourCycle: "h23",
   });
-  let value = target;
-  for (let i = 0; i < 4; i++) {
-    const shown = Date.parse(format.format(value).replace(" ", "T") + "Z");
-    if (shown === target) return new Date(value).toISOString();
-    value += target - shown;
-  }
+  const wall = (instant: number) => Date.parse(format.format(instant).replace(" ", "T") + "Z");
+  // Sample both sides of a transition; iteration from UTC alone can choose the
+  // second occurrence in zones east of UTC. Only exact round trips are valid.
+  const candidates = [-86400_000, 0, 86400_000].map(delta => {
+    const sample = target + delta;
+    return target - (wall(sample) - sample);
+  }).filter(instant => wall(instant) === target);
+  if (candidates.length) return new Date(Math.min(...candidates)).toISOString();
   throw new Error("这个时区在该时刻发生夏令时跳转，请换一个时间");
 }
 export function localInput(at: string, timezone: string): string {

@@ -791,3 +791,21 @@ it("creates with the new computer's displayed defaults after switching without e
   const [machine,,request]=send.mock.calls[0];expect(machine).toBe("new");
   expect(request.spec?.target).toMatchObject({agent:"claude",model:"",effort:"",mode:"ask",cwd:path});
 });
+
+
+it.each(["at", "cutoff"])("rejects a DST gap and saves the first repeated time for %s", async (field) => {
+  vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-24T00:00:00Z"));
+  const save = vi.fn();
+  await mount(<TimingSheet trigger={field === "at" ? {type:"at", at:"2027-01-01T12:00:00Z"} : {type:"calendar", time:"08:00", timezone:"America/Los_Angeles", until:"2027-01-01T12:00:00Z"}} onSave={save} onClose={()=>{}} />);
+  const zone = host.querySelector<HTMLInputElement>('input[aria-label="时区"]')!;
+  await input(zone, "America/Los_Angeles");
+  const local = host.querySelector<HTMLInputElement>('input[type="datetime-local"]')!;
+  await input(local, "2027-03-14T02:30");
+  await click("完成");
+  expect(save).not.toHaveBeenCalled();
+  expect(host.textContent).toContain("这个时区在该时刻发生夏令时跳转，请换一个时间");
+  await input(zone, "Europe/Berlin");
+  await input(local, "2027-10-31T02:30");
+  await click("完成");
+  expect(save.mock.calls.at(-1)![0][field === "at" ? "at" : "until"]).toBe("2027-10-31T00:30:00.000Z");
+});

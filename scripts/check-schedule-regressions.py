@@ -402,6 +402,15 @@ fi("creation-machine-config", "RemoteAgent/UI/Schedules/ScheduleConfigSheet.swif
 fw("creation-machine-config", "model.ts", 'agent: agents.includes(cfg.agent) ? cfg.agent : agents[0],\n    model: "",\n    effort: "",\n    mode: ApprovalMode.UNSPECIFIED,', 'agent: agents.includes(cfg.agent) ? cfg.agent : agents[0],\n    model: cfg.model,\n    effort: cfg.effort,\n    mode: cfg.mode,')
 _IOS_ASSERTIONS["final-ios-creation-machine-config"] = "ScheduleStoreTests/switchingCreationComputerUsesOnlyItsDisplayedDefaults(agents:)"
 
+# DST wall-time review: missing local times must fail, repeated ones choose first.
+fa("dst-once-gap", "core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt", 'val timestamp = absolute(LocalDate.parse(date).atTime(clock), tz)', 'val timestamp = LocalDate.parse(date).atTime(clock).atZone(tz).toInstant()')
+fa("dst-cutoff-gap", "core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt", 'private fun cutoff(tz: ZoneId): Instant = absolute(LocalDate.parse(until).atTime(23, 59, 59), tz)', 'private fun cutoff(tz: ZoneId): Instant = LocalDate.parse(until).plusDays(1).atStartOfDay(tz).toInstant().minusSeconds(1)')
+fa("dst-first-occurrence", "core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt", 'local.toInstant(offsets.first())', 'local.toInstant(offsets.last())')
+fw("dst-first-occurrence", "schedules.ts", 'Math.min(...candidates)', 'Math.max(...candidates)')
+fi("dst-cutoff-first-occurrence", "RemoteAgentCore/Sources/RACore/ScheduleTiming.swift", '            until = calendar.date(from: Self.parts(until, zone: calendar.timeZone)) ?? until\n', '')
+
+fi("dst-default-cutoff-first-occurrence", "RemoteAgentCore/Sources/RACore/ScheduleTiming.swift", '        if trigger?.until == nil { until = calendar.date(from: Self.parts(until, zone: calendar.timeZone)) ?? until }\n', '')
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--clients", action="store_true")

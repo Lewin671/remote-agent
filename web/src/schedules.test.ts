@@ -231,6 +231,12 @@ it("converts local times in the selected zone and rejects DST gaps", () => {
   expect(() => zonedISO("2026-10-24T08:00", "bad/zone")).toThrow();
 });
 
+it("resolves repeated wall times to the first occurrence in western and eastern zones", () => {
+  expect(zonedISO("2027-11-07T01:30", "America/Los_Angeles")).toBe("2027-11-07T08:30:00.000Z");
+  expect(zonedISO("2027-10-31T02:30", "Europe/Berlin")).toBe("2027-10-31T00:30:00.000Z");
+  expect(() => zonedISO("2027-03-14T02:30", "America/Los_Angeles")).toThrow("这个时区在该时刻发生夏令时跳转，请换一个时间");
+});
+
 it("keeps late notifications and autonomous replies outside quiet-round folds", () => {
   const original = rounds();
   const notification = create(EventSchema, {

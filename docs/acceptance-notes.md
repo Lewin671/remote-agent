@@ -1190,3 +1190,32 @@ iOS 同一路径也有问题：配置页换电脑时用项目继承取值，可�
 | `git diff --check` | 通过 |
 
 证据范围：Android 为 Compose 实际操作创建页并捕获任务请求；网页为 DOM 操作创建页并捕获请求；iOS 为配置页选择动作绑定草稿、核对显示来源和提交 spec，并跑完整 App 测试。未补真机或真实 CLI 端到端验收。只在整合分支本地提交，未 push、tag、发版、部署或改 `version.properties`；测试结束关闭已有 iPhone 模拟器。
+
+### 定时任务夏令时输入与重复时刻复审（2026-10-24，整合分支）
+
+Android 一次性时间原来直接用 `atZone()`，会把 America/Los_Angeles 的 `2027-03-14 02:30` 挪到 03:30。现在先检查当地时刻的有效偏移；没有偏移时拒绝保存，提示与网页、iOS 逐字一致：「这个时区在该时刻发生夏令时跳转，请换一个时间」。一次性时间只在选中该类型时转换，不对日历规则的钟点套用一次性输入校验。Android 截止选择器只有日期，按所选日 23:59:59 做同样的校验；测试覆盖 Pacific/Apia 整天被跳过的日期，以及其前一天仍能正常截止，避免通过次日午夜转换静默移日。已有精确截止时间仍保留绝对时刻。
+
+三端核对还发现两处重复时刻差异并一起修复：网页从 UTC 反复逼近当地时刻，在柏林时区会先命中较晚一次，改为核对跳转两侧偏移并选最早的有效绝对时刻；iOS 的一次性时间已取较早一次，新编辑或直接选用默认截止时间原来可能保留较晚一次，现在也取较早一次。原样打开的既有截止时间、以及只切换时区时，不重新选择重复时刻。v49「各端统一的写法」已写明这条边界及统一提示。
+
+回归覆盖洛杉矶 `2027-11-07 01:30` → `08:30Z`，柏林 `2027-10-31 02:30` → `00:30Z`，均为较早一次。后端原日历实现按 UTC 顺序扫描，已经取较早一次；本轮只补这两个日期的 Go 用例，未改后端调度。网页另用实际时间弹层 DOM 操作验证一次性与截止输入：春季空缺时不提交、显示统一提示，秋季重复时提交较早一次。iOS 核对草稿选择值、默认值、提交 trigger 和未编辑既有截止时间；Android 核对实际转换后的 trigger。
+
+修复前新增测试均先失败：Android 空缺时刻测试 1 项断言失败；网页转换测试 32 项通过、柏林重复时刻 1 项失败（得到 `01:30Z` 而非 `00:30Z`）；iOS 新编辑截止、默认截止分别在修复前各有 1 项测试失败，均在洛杉矶和柏林的显示值及提交值断言上失败。没有用编译错误代替回归证据。
+
+最终检查（产品及协议版本未改）：
+
+| 命令 | 结果 |
+|---|---|
+| Android 目录：`./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` | 退出 0；core 407 项、app 348 项，0 失败/错误/跳过；Debug APK 构建成功 |
+| `pnpm --dir web typecheck` | 退出 0 |
+| `pnpm --dir web test` | 88 个文件、1205 项通过 |
+| `pnpm --dir web build` | 退出 0 |
+| RACore 目录：`swift test` | 555 项、85 个 suite，退出 0；1 项真实 daemon/CLI 测试按条件跳过，其余通过 |
+| `xcodebuild -quiet -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build test`（独立临时 `-derivedDataPath`、`-resultBundlePath`） | 最终 xcresult 为 Passed，352 项通过，0 失败/跳过；仅使用已有 iPhone 18 Pro |
+| `go test ./internal/schedule -run TestCalendarNext -count=1` | 退出 0；包含新增的洛杉矶、柏林较早一次用例 |
+| `python3 scripts/check-schedule-regressions.py --clients` | 同一次完整执行退出 0，249/249 个去修复变体被预期断言检出；后端 118、客户端 131，所有正常基线通过；本轮新增 6 项均检出（Android 空缺一次性/截止日期、Android 较早一次、网页较早一次、iOS 编辑截止/默认截止较早一次）；结束后逐文件哈希核对所有临时改写均已恢复 |
+| `python3 scripts/public_scan.py web/dist deploy/self-host android/app/build/outputs/apk/debug/app-debug.apk` | 退出 0 |
+| 本轮变更的受跟踪文件交给 `python3 scripts/public_scan.py` | 原始退出码 1，仅报 acceptance-notes 与 v49 原有的官方域名；两份文档的官方域名数量均未变，没有新增私有名单命中，未改扫描规则 |
+
+`git diff --check` 通过，`version.properties` 与本轮开始时完全一致。检查结束确认已有 iPhone 模拟器处于关闭状态。
+
+本轮是日期换算与客户端自动测试，未跨越真实系统夏令时切换，未补真机选择器或真实 CLI 端到端验收；计划中的实际睡眠/DST 验收仍未完成。仅在整合分支本地提交，未 push、tag、发版、部署或改 `version.properties`。
