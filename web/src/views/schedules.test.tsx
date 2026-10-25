@@ -731,3 +731,11 @@ it.each(["2027-10-24T15:00:00Z","2027-10-24T15:00:00+08:00"])("uses the local IA
  await click("每天");await click("完成");
  expect(save.mock.calls[0][0].timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
 });
+
+it("requires a concrete permission when neither project nor CLI has a known default",async()=>{
+ const r=remote([]);r.sessions.clear();
+ for(const machine of r.machines.values()) for(const agent of machine.meta?.agents??[]) {agent.defaultMode=ApprovalMode.UNSPECIFIED;agent.defaultModeSource=0;}
+ for(const setting of r.prefs.snap?.prefs.settings??[]) for(const agent of setting.agents) agent.mode=ApprovalMode.UNSPECIFIED;
+ await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);await input(host.querySelector("textarea")!,"检查");
+ expect(button("创建")?.disabled).toBe(true);expect(host.textContent).toContain("请选择明确的权限，再创建定时任务。");
+});

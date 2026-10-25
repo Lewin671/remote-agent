@@ -1427,6 +1427,7 @@ function ScheduleCreateConfig({
       )}
       {!session && ns.issue && <Banner kind="warn">{ns.issue}</Banner>}
       {!session && (ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) === ApprovalMode.PLAN && <Banner kind="warn">计划模式不能创建执行任务，请先选择其他权限</Banner>}
+      {!session && !(ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) && <p className="manage-hint">请选择明确的权限，再创建定时任务。</p>}
       <p className="manage-hint">
         {session
           ? "消息会发到当前对话，等待正在运行的一轮结束。"
