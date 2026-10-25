@@ -191,6 +191,20 @@ import RAProto
         var end = PBEvent(); end.seq = seq + 2; end.turnEnded.outcome = .completed; end.turnEnded.scheduledRunID = run
         return [user, reply, end]
     }
+    @Test func visibleInterRoundEventsAreFoldingBoundaries() {
+        var model=PBEvent();model.settingsChanged.model="new-model"
+        var mode=PBEvent();mode.settingsChanged.mode = .auto
+        var compact=PBEvent();compact.settingsChanged.compacted=true
+        var answer=PBEvent();answer.questionAnswered.questionID="q"
+        var context=PBEvent();context.turnContext.model="new-model"
+        var ended=PBEvent();ended.turnEnded.durationMs=1000
+        var image=PBEvent();image.imageGenerated.revisedPrompt="image"
+        var exit=PBEvent();exit.sessionState.status = .exited
+        for var event in [model,mode,compact,answer,context,ended,image,exit] {
+            event.seq=4
+            #expect(silentScheduledGroups(round(1,run:"a")+[event]+round(5,run:"b"),zone:zone).isEmpty)
+        }
+    }
     @Test func foldsOnlyConsecutiveSuccessfulSilentScheduledRounds() {
         let first = round(1, run: "a"), second = round(4, at: "2026-10-24T16:00:00Z", run: "b")
         #expect(silentScheduledGroups(first, zone: zone).isEmpty)

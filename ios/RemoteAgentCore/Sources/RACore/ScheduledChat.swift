@@ -57,7 +57,11 @@ public func silentScheduledGroups(_ events: some Sequence<PBEvent>, zone: TimeZo
             }
         } else {
             switch e.kind {
-            case .agentMessage, .reasoning, .toolStarted, .toolCall, .scheduledNotification, .approvalRequested, .questionAsked, .planProposed, .imageGenerated, .sessionForked:
+            case .agentMessage, .reasoning, .toolStarted, .toolCall, .scheduledNotification, .approvalRequested, .questionAsked, .questionAnswered, .planProposed, .imageGenerated, .sessionForked, .settingsChanged, .turnContext, .turnEnded:
+                finish()
+            case .inputState(let input):
+                if input.paused || [.failed, .needsTerminal, .unconfirmed, .canceled, .heldByCli].contains(input.status) { finish() }
+            case .sessionState(let state) where state.status == .exited:
                 finish()
             default: break
             }

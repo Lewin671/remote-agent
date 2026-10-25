@@ -43,7 +43,7 @@ fun quietScheduledSpans(events: List<Event>): List<QuietSpan> {
         if (afterEnd.any { it.hasAgentMessage() || it.hasReasoning() || it.hasToolStarted() || it.hasToolCall() }) return@forEachIndexed
         // A follow-up has started but has not yet ended: do not hide it.
         if (body.indexOfLast { it.hasTurnStarted() } > body.indexOfLast { it.hasTurnEnded() }) return@forEachIndexed
-        out += QuietSpan(task, run, first.seq, body.last().seq, eventTime(first))
+        out += QuietSpan(task, run, first.seq, ended.single().seq, eventTime(first))
     }
     return out
 }

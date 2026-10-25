@@ -444,3 +444,18 @@ it.each([InputStatus.FAILED, InputStatus.UNCONFIRMED, InputStatus.CANCELED, Inpu
   const events = rounds().flatMap(e => e.kind.case === "userMessage" ? [e, create(EventSchema, {kind:{case:"inputState",value:{status,requestId:"q"}}})] : [e]).map((e,i)=>({...e,seq:BigInt(i+1)}));
   expect(foldScheduled(timeline(events, derive(events)),events,new Set()).some(x=>x.kind==="quiet")).toBe(false);
 });
+
+it.each([
+  {case:"settingsChanged",value:{model:"new-model"}},
+  {case:"settingsChanged",value:{mode:2}},
+  {case:"questionAnswered",value:{questionId:"q"}},
+  {case:"turnContext",value:{model:"new-model"}},
+  {case:"turnEnded",value:{durationMs:1000n}},
+] as MessageInitShape<typeof EventSchema>["kind"][])("preserves visible inter-round events: $case", kind => {
+  const events=rounds();
+  events.splice(3,0,create(EventSchema,{seq:4n,kind}));
+  events.forEach((event,i)=>event.seq=BigInt(i+1));
+  const raw=timeline(events,derive(events));
+  expect(foldScheduled(raw,events,new Set())).toEqual(raw);
+  expect(quietSpans(events).every(span=>!(span.start<4n && span.end>4n))).toBe(true);
+});

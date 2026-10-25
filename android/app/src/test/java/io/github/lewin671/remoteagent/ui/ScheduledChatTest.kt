@@ -14,6 +14,23 @@ class ScheduledChatTest {
             Event.newBuilder().setSeq(from+2).setTurnEnded(TurnEnded.newBuilder().setOutcome(outcome).setScheduledTaskId(if(scheduled) "task" else "").setScheduledRunId(if(scheduled) run else "").setScheduledNotified(notified)).build(),
         )
     }
+    @Test fun visibleInterRoundEventsStayOutsideQuietSpans() {
+        val changes=listOf(
+            Event.newBuilder().setSettingsChanged(SettingsChanged.newBuilder().setModel("new-model")),
+            Event.newBuilder().setSettingsChanged(SettingsChanged.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_AUTO)),
+            Event.newBuilder().setSettingsChanged(SettingsChanged.newBuilder().setCompacted(true)),
+            Event.newBuilder().setQuestionAnswered(QuestionAnswered.newBuilder().setQuestionId("q")),
+            Event.newBuilder().setTurnContext(TurnContext.newBuilder().setModel("new-model")),
+            Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setDurationMs(1000)),
+            Event.newBuilder().setSessionState(SessionState.newBuilder().setStatus(SessionStatus.SESSION_STATUS_EXITED)),
+        )
+        changes.forEach { change ->
+            val events=turn(1,"a")+change.setSeq(4).build()+turn(5,"b")
+            val rows=buildChat(events,derive(events),"Computer")
+            if(rows.any { it.key=="e4" }) assertEquals(rows,foldScheduledChat(rows,events))
+            assertFalse(quietScheduledSpans(events).any { it.from<4 && it.through>=4 })
+        }
+    }
     @Test fun consecutiveQuietTurnsFoldAndKeepOriginalText() {
         val events = turn(1,"a") + turn(4,"b")
         val rows = buildChat(events, derive(events), "Computer")

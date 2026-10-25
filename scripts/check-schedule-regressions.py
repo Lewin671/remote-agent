@@ -349,6 +349,10 @@ fa("r3-cancelled-delete", "app/src/main/java/io/github/lewin671/remoteagent/ui/S
 fa("r3-selected-cli", "app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt", 'it.agent == op.agent', 'it.agent == cfg.agent', ui=True)
 fa("r3-return-cli", "app/src/main/java/io/github/lewin671/remoteagent/ui/Project.kt", 'agent = cur, sets = listOf(c.agentSettings())', 'agent = agent, sets = edited.values.map { it.agentSettings() }', ui=True)
 
+fw("r3-visible-boundaries", "schedules.ts", '          "questionAnswered",\n          "turnContext",\n          "turnEnded",\n', '')
+fa("r3-visible-boundaries", "app/src/main/java/io/github/lewin671/remoteagent/ui/ScheduledChat.kt", 'ended.single().seq, eventTime(first)', 'body.last().seq, eventTime(first)', ui=True)
+fi("r3-visible-boundaries", "RemoteAgentCore/Sources/RACore/ScheduledChat.swift", '.questionAsked, .questionAnswered, .planProposed, .imageGenerated, .sessionForked, .settingsChanged, .turnContext, .turnEnded:', '.questionAsked, .planProposed, .imageGenerated, .sessionForked:')
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--clients", action="store_true")

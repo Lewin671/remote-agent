@@ -411,6 +411,9 @@ export function quietSpans(events: Event[]): QuietSpan[] {
           "questionAsked",
           "planProposed",
           "settingsChanged",
+          "questionAnswered",
+          "turnContext",
+          "turnEnded",
           "imageGenerated",
           "sessionForked",
         ].includes(k.case) ||
