@@ -1065,3 +1065,45 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 三端各四张亮色原图和四张并排图已覆盖，网页另更新 1280 宽版本；输入仍为 `testdata/schedules/clients.json`，并刷新本地截图 SHA-256 清单。网页使用 Chrome 的真实点击与填写；普通视口截图被设备预览缩放后，改用完整页面截图并核对 390×844，未用缩放后的错误截图交付。Android 使用现有 API 36 模拟器 instrumentation；iOS 使用 DEBUG fixture / route 启动参数。截图是合成固定数据，不能代替真实 CLI 验收。未新增真机、iPad、推送送达、睡眠或 DST 实测。本轮是客户端显示收尾，没有重跑 Go、RACore 或完整 175 项变异检查，前节证据保持原范围。
 
 只在 `wt/scheduled-tasks-integration` 提交，没有 push、tag、发版、部署或修改 `version.properties`。Chrome 主题、视口与临时测试设备在截图后恢复。
+
+### 客户端最终复审收尾（2026-10-24）
+
+产品 0.45.7 / 协议 11，`wt/scheduled-tasks-integration` 本地候选。先补 [v49「各端统一的写法」](design/client-v49.html#schedule-shared-copy)，再按最终复审逐项处理；以下是代码及测试证据，不新增真实 CLI、推送或真机验收结论。
+
+| 复审项 | 修复与回归证据 |
+|---|---|
+| 1 非日历时间的时区 | Android 不再从时间戳偏移推导时区，打开编辑器使用本机时区。输入 `Z` 和数字偏移的时间戳，再转为每天，断言发送 IANA 名称。网页、iOS 没有同类偏移推导，另补相同输入的回归。 |
+| 2 锁定电脑 | Android 编辑入口传锁定标志；网页模型/权限和目录选择均固定在任务电脑，选目录不再修改项目偏好；iOS 沿用固定电脑入口。真实组件回归检查机器不可选。截图又确认复用的项目设置仍露出全局项目操作，网页和 Android 已在任务编辑中隐藏它们、改写标题和说明，并覆盖实际组件。 |
+| 3 电脑自己的默认值 | 网页固定启动配置来源；Android/iOS 在任务编辑中只向选择器提供该电脑的会话和项目设置。两个合成电脑使用不同 CLI、模型和权限，检查可见选项、实际配置推导及网页提交的目标；不是预写文案测试。 |
+| 4 修订冲突 | Android 改名冲突关闭旧弹窗；iOS 用冲突信号关闭各编辑入口；网页统一提示并释放被 daemon 明确拒绝的旧请求。中继的未知 abort 仍保留原请求，不能按冲突丢弃。回归覆盖重读、关闭、请求槽和未知结果的区别；iOS 观察器先等出现再触发冲突。 |
+| 5 固定默认权限 | Android 创建时解析所选 CLI 默认权限为明确模式；三端在默认值未知时均要求明确选择，网页同步禁用创建按钮，iOS 不再生成空权限的新任务。回归使用有/无来源标记的真实 AgentInfo，检查生成定义及创建状态。 |
+| 6 双重结束条件 | 网页初始选项改为次数，三端均保留原截止值；iOS 不再因单独换时区而重算截止绝对时刻。回归同时给次数和截止日期，改时区/次数后检查完整 trigger；原相位回归继续覆盖 interval。 |
+| 7 目标读取不占列表槽 | 网页异步加载未就绪目标，不等待它才完成列表读取/保存；iOS 发现同源等待，也移到独立、去重并随账户/电脑取消的任务。受控挂起目标读取时，验证列表刷新及修订追读仍能完成。 |
+| 8 详情目标占位 | 三端在缺目标或 info 未就绪时使用统一占位；加载后恢复标题。网页检查实际详情 DOM，原生检查从真实 SessionView 推导的结果。 |
+| 9 界面稿示例 | 纠正停下状态、注意组纯原因、完整日期词、离线灰点/说明、运行中禁用立即运行、模型行及记录计数；补 DOM 回归检查示意画面，恢复容量失败的旧写法时断言失败。 |
+
+变异检查的原测试基线必须通过，恢复一个缺陷后必须出现断言失败。原有 175 项加本轮 23 项，共 198 个不同变异均取得通过证据。过程分段保留：`python3 scripts/check-schedule-regressions.py --clients` 在 143 项通过后因旧定位字符串多一个括号退出 1；修正定位并增加全量预检后，以 `--clients --only final-`、`--clients --only r2-`、`--clients --only r2-task-settings-only` 完成覆盖，后两组最终退出 0。iOS 条件等待以 `Issue.record` 报告失败，检查器只接受指定用例及明确条件，不能把编译错误或无关失败当成发现缺陷。界面稿追加核对后另跑 `--clients --only final-r2-design`，退出 0。Go 串行夹具修正后另跑 `--only r3-A-serialize`，退出 0。没有把分组结果描述为单次全量命令退出 0。
+
+首次 `go test ./...` 还发现两项测试时钟问题，均未修改 Go 产品代码：
+
+- `TestManualAndAutomaticSerialize` 是整合后端新增测试。它把 NextRunAt 设为任意一分钟后，触发器却仍写每天 23:59；UTC 23:56 附近，调度器会正确选择更新的 23:59 occurrence，使“应跳过”的断言不成立。原样两项各重复 40 次均未失败；把旧夹具放入 UTC 23:56 的虚拟时钟，串行测试 40/40 失败。修正为下一完整分钟及一致的日历触发器，同一虚拟场景重复 40 次，0 失败。`time.Sleep` 只推进虚拟时钟，不等待墙钟。
+- `TestPermissionAllowDenyTimeout` 与本地 origin/main 基线相同。全量中允许分支越过真实 200ms 截止而失败，原样重复 40 次未再复现。代码确认测试把允许/拒绝断言绑定到墙钟预算；调度或 I/O 延迟可以合法导致过期，未进一步区分两者。按项目已有 `synctest` 做法控制时钟，用 Wait 等请求发布并进入等待，再验证允许、拒绝和原来的 200ms 超时；没有增加超时或固定 sleep。修后按原执行顺序两项各重复 40 次，均 0 失败。测试改动有明确时钟依据，未把未再次复现说成已复现。
+
+| 最终正常检查（未注明目录时从仓库根执行） | 结果 |
+|---|---|
+| `go test ./...` | 修正上述测试后退出 0；Go 产品源码未改 |
+| `pnpm --dir web typecheck`、`pnpm --dir web test`、`pnpm --dir web build` | 退出 0；88 文件、1180 项通过，保留既有 authority-setup 分块提示。界面稿最后追加的断言另跑目标文件通过，并再次核对类型与构建 |
+| `cd android && ./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest` | 退出 0；core 400、app 338，0 失败/错误/跳过，正常 debug APK 与测试 APK 构建通过 |
+| `cd ios/RemoteAgentCore && swift test` | 退出 0；545 项/84 suite，另有 RAMarkdown 17 项及 XCTest 1 项通过；真实 daemon 用例仍按默认门槛跳过 |
+| `xcodebuild -quiet -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath <临时构建目录> -resultBundlePath <独立输出目录>/app.xcresult build test` | 退出 0；350 项、参数展开 388 次，0 失败/跳过，仅用已有 iPhone 18 Pro / iOS 27。补 DEBUG 截图入口后再次全量通过 |
+| 同一 App 命令选择 `ScheduleStoreTests` / `ScheduleAlignmentTests`，加 `-test-iterations 40` | 21 项 × 40 = 840 次，0 失败/跳过；包含读取槽、冲突观察及配置边界 |
+| Android `ScheduleComparisonGallery` instrumentation | 修正截图驱动后 5 项 × 3 轮 = 15 次通过；列表固定读取共享 JSON，弹层可见后等待窗口提交绘制，无固定 sleep。初稿误读网络与旧帧的截图已覆盖，不算产品偶发失败 |
+| `python3 scripts/public_scan.py web/dist deploy/self-host android/app/build/outputs/apk/debug/app-debug.apk` | 退出 0；只代表本地正常网页包、自部署模板与 debug APK，不代表签名发布产物 |
+| 本轮 30 个修改文件逐个交给 `python3 scripts/public_scan.py` | 原始退出码 1；只命中 acceptance-notes 与 v49 中既有的允许官方域名，已和本轮起点核对，没有私有名单命中；未修改扫描规则 |
+| `git diff --check` | 通过 |
+
+四张原并排图、各端主画面及网页宽屏图已覆盖，另补运行位置编辑器对照；固定输入仍为 `testdata/schedules/clients.json`。网页是 Chrome 直接点击/填写；Android 是 instrumentation；iOS 主画面由 DEBUG fixture/route 展示，附加编辑器由现有 DEBUG 通知机制调用同一个入口，再用 simctl 截图。当前控制工具未接入 Simulator 原生窗口，未把该画面记为直接点击验收。图片与 SHA-256 清单仅在本地输出。
+
+未新增真实推送送达、真机/iPad、两台真实电脑、实际睡眠/DST 或客户端 Codex 完整路线验收。只在整合分支本地提交，未 push、tag、发版、部署或修改 `version.properties`。
+
+清理：Chrome 测试页关闭且主题/视口恢复；Android 临时包卸载、模拟器退出；已有 iPhone 模拟器恢复为关闭状态；本地网页开发服务器停止。保留本地日志、xcresult、固定数据图片和指纹供复核。
