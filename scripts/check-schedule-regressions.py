@@ -237,7 +237,7 @@ def fi(name,file,before,after,app=False): feedback("ios-"+name,"ios/"+file,befor
 fw("submitted","schedules.ts",'(k.case === "inputState" && (k.value.paused || [InputStatus.FAILED, InputStatus.UNCONFIRMED, InputStatus.CANCELED, InputStatus.NEEDS_TERMINAL, InputStatus.HELD_BY_CLI].includes(k.value.status)))','(k.case === "inputState")')
 fw("trim","schedules.ts",'.replace(/\\s+/g, " ").trim()', '.replace(/\\s+/g, " ")')
 fw("removed-cache","remote.ts",'this.keepValue("schedules:" + id, undefined);','// removed computer retains its cache')
-fw("resolve-target","remote.ts",'await Promise.allSettled([...new Set(tasks.filter(t => t.spec.target.type === "resume_session").map(t => t.spec.target.session).filter((sid): sid is string => !!sid && !this.sessions.has(sid)))].map(sid => this.ensureSession(sid)));','// target session fetch omitted')
+fw("resolve-target","remote.ts",'void Promise.allSettled([...new Set(tasks.filter(t => t.spec.target.type === "resume_session").map(t => t.spec.target.session).filter((sid): sid is string => !!sid && !this.sessions.get(sid)?.info))].map(sid => this.ensureSession(sid)));','// target session fetch omitted')
 fw("paused-expiry","schedules.ts",'!["user_paused", "completed_while_paused"].includes(t.reason)','t.reason !== "user_paused"')
 fw("stopped-result","schedules.ts",'if (taskGroup(t) === "需要你看一下") return reasonText(t.reason);','// render the completed run instead of the stop cause')
 fw("manual-guard","views/Schedules.tsx",'|| !!task.manual_request','')
@@ -300,12 +300,46 @@ def run_check(cmd, cwd, name):
             run.returncode = 1; run.stdout += "\nNo successful selected test execution"
         failures = summary.get("testFailures", [])
         expected = _IOS_ASSERTIONS[name]
-        assertion = ("Issue recorded: never happened: loaded history retries jump"
-                     if name == "final-ios-jump" else "Expectation failed")
+        assertion = {
+            "final-ios-jump": "Issue recorded: never happened: loaded history retries jump",
+            "final-ios-r2-conflict-dismiss": "Issue recorded: never happened: conflict dismisses stale editor",
+            "final-ios-r2-target-read-slot-ios": "Issue recorded: never happened: target does not block refresh",
+        }.get(name, "Expectation failed")
         run.assertion_detected = any(f.get("testIdentifierString") == expected and
                                     assertion in f.get("failureText", "") for f in failures)
         run.stdout += "\n" + "\n".join(f.get("testIdentifierString", "") + ": " + f.get("failureText", "") for f in failures)
         return run
+
+# Final re-review: failures must be assertions in real derivations or rendered editors.
+fw("r2-machine-defaults", "views/Schedules.tsx", 'useNewSession(remote, cfg.cwd, () => undefined, machineId)', 'useNewSession(remote, cfg.cwd, () => undefined)')
+fw("r2-dual-end", "views/Schedules.tsx", 'trigger.max_runs ? "count" : trigger.until ? "date" : "none"', 'trigger.until ? "date" : trigger.max_runs ? "count" : "none"')
+fw("r2-target-placeholder", "views/Schedules.tsx", '(targetSession?.info ? titleOf(targetSession) : "对话")', '(targetSession?.info ? titleOf(targetSession) : "未知项目")')
+fw("r2-conflict-close", "views/Schedules.tsx", 'if (errorText(e).includes("任务刚被修改"))', 'if (false)')
+fw("r2-target-read-slot", "remote.ts", 'void Promise.allSettled([...new Set(tasks.filter', 'await Promise.allSettled([...new Set(tasks.filter')
+fa("r2-editor-zone", "core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt", 'else ZoneId.systemDefault()', 'else ZoneId.of("Z")')
+fa("r2-lock-machine", "app/src/main/java/io/github/lewin671/remoteagent/ui/Project.kt", 'if (lockMachine) null else ({ page = "machine" })', '({ page = "machine" })', True)
+fa("r2-machine-defaults", "app/src/main/java/io/github/lewin671/remoteagent/ui/SchedulePresentation.kt", 'saved.prefs.settingsList.filter { it.machineId == machine }', 'saved.prefs.settingsList', True)
+fa("r2-resolve-mode", "app/src/main/java/io/github/lewin671/remoteagent/ui/SchedulePresentation.kt", 'cfg.mode ?: defaultModeOf(state.machines[cfg.machineId], cfg.agent).mode', 'cfg.mode', True)
+fa("r2-placeholder", "app/src/main/java/io/github/lewin671/remoteagent/ui/SchedulePresentation.kt", '?.let(::titleOf) ?: "对话"', '?.let(::titleOf) ?: "当前对话"', True)
+fa("r2-rename-close", "app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt", 'if (e is ScheduleConflictException) { edit = ""; editBase = null; error = errorText(e) }', 'if (e is ScheduleConflictException) { error = errorText(e) }', True)
+fi("r2-cutoff-instant", "RemoteAgentCore/Sources/RACore/ScheduleTiming.swift", '(untilParts != initialUntil)', '(untilParts != initialUntil || timezone != original.timezone)')
+fi("r2-machine-defaults", "RemoteAgent/UI/Schedules/ScheduleTargetSheet.swift", 'prefs.prefs.settings.filter { $0.machineID == machine }', 'prefs.prefs.settings', True)
+fi("r2-placeholder", "RemoteAgent/UI/Schedules/ScheduleTargetSheet.swift", 'session.info != nil else { return "对话" }', 'session.info != nil else { return "当前对话" }', True)
+fi("r2-conflict-dismiss", "RemoteAgent/UI/Schedules/ScheduleDetailScreen.swift", '.onChange(of: mutation.conflicts) { _, _ in dismiss() }', '.onChange(of: mutation.conflicts) { _, _ in }', True)
+fi("r2-target-read-slot-ios", "RemoteAgent/UI/Schedules/ScheduleStore.swift", 'resolutions[id, default: [:]][sid] = Task {', 'await calls.resolve(sid); resolutions[id, default: [:]][sid] = Task {', True)
+fw("r2-project-machine", "views/Schedules.tsx", 'fixedMachine={machineId}', '')
+fw("r2-clear-rejected-attempt", "remote.ts", 'attempt.abandon(); // definite schedule revision conflict', '// retain rejected revision')
+fi("r2-unknown-permission", "RemoteAgent/UI/Schedules/NewScheduleScreen.swift", 'if mode == nil {', 'if false {', True)
+fi("r2-daemon-conflict", "RemoteAgent/UI/Schedules/ScheduleStore.swift", 'command.fromDaemon, command.code == "aborted"', 'command.code == "aborted"', True)
+feedback("r2-design", "docs/design/client-v49.html", '<div class="mc">中继上的会话数已满</div>', '<div class="mc">今天 08:00 失败：中继上的会话数已满</div>', ["pnpm","--dir","web","exec","vitest","run","src/views/schedule-design.test.ts"], "AssertionError")
+_IOS_ASSERTIONS.update({
+ "final-ios-r2-unknown-permission": "ScheduleStoreTests/creationResolvesKnownDefaultsAndRequiresAnExplicitChoiceWhenUnknown()",
+ "final-ios-r2-daemon-conflict": "ScheduleAlignmentTests/conflictDismissalObservesTheMutationSignal()",
+ "final-ios-r2-target-read-slot-ios": "ScheduleStoreTests/targetResolutionDoesNotHoldTheListOrRefreshSlot()",
+ "final-ios-r2-machine-defaults": "ScheduleAlignmentTests/taskEditorIgnoresOtherComputerDefaults()",
+ "final-ios-r2-placeholder": "ScheduleAlignmentTests/destinationUsesSharedPlaceholderUntilMetadataLoads()",
+ "final-ios-r2-conflict-dismiss": "ScheduleAlignmentTests/conflictDismissalObservesTheMutationSignal()",
+})
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -313,6 +347,10 @@ def main():
     p.add_argument("--only", default="")
     args=p.parse_args()
     selected=checks+(clients if args.clients else [])
+    # Check all locators before paying for any test baseline or changing source.
+    for name, file, before, _, _, _ in selected:
+        if args.only and args.only not in name: continue
+        if before not in (ROOT/file).read_text(): raise SystemExit("Missing mutation target: "+name)
     baselines=set()
     for name,file,before,after,cmd,marker in selected:
         if args.only and args.only not in name: continue
