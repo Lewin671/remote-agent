@@ -30,8 +30,9 @@ data class ScheduleTime(
     fun trigger(now: Instant = Instant.now()): JsonObject {
         val tz = ZoneId.of(zone)
         val clock = LocalTime.parse(time)
-        val max = if (end == 1) count.toLong().also { require(it > 0) { "次数要大于 0" } } else 0
-        val deadline = if (end == 2) (if (deadline.isNotEmpty()) Instant.parse(deadline) else cutoff(tz)).also { require(it > now) { "结束日期已经过去" } } else null
+        // A one-shot trigger carries no limits, so hidden ending controls are not validated.
+        val max = if (kind != 0 && end == 1) count.toLong().also { require(it > 0) { "次数要大于 0" } } else 0
+        val deadline = if (kind != 0 && end == 2) (if (deadline.isNotEmpty()) Instant.parse(deadline) else cutoff(tz)).also { require(it > now) { "结束日期已经过去" } } else null
         return buildJsonObject {
             when (kind) {
                 0 -> {

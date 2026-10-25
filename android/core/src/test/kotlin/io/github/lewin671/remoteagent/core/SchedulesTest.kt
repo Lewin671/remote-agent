@@ -38,6 +38,14 @@ class SchedulesTest {
         // A skipped next day must not invalidate the selected day's last second.
         assertEquals("2011-12-30T09:59:59Z", cutoff.copy(zone = "Pacific/Apia", until = "2011-12-29").trigger(Instant.parse("2010-01-01T00:00:00Z")).text("until"))
     }
+    @Test fun switchingToOnceIgnoresHiddenRecurrenceLimits() {
+        val t=Json.parseToJsonElement("""{"type":"calendar","time":"08:00","timezone":"UTC","until":"2026-10-01T00:00:00Z"}""").jsonObject
+        val once=ScheduleTime.from(t).copy(kind=0,date="2026-10-25")
+        assertEquals(2,once.end)
+        val trigger=once.trigger(now)
+        assertEquals("at",trigger.text("type"));assertNull(trigger["until"])
+        assertEquals("at",ScheduleTime(kind=0,date="2026-10-25",end=1,count="").trigger(now).text("type"))
+    }
     @Test fun dualLimitsSelectCountAndKeepTheAbsoluteDeadlineAcrossZoneChanges() {
         val t=Json.parseToJsonElement("""{"type":"calendar","time":"08:00","timezone":"America/Los_Angeles","max_runs":5,"until":"2027-10-30T08:00:00Z"}""").jsonObject
         val edit=ScheduleTime.from(t);assertEquals(1,edit.end)
