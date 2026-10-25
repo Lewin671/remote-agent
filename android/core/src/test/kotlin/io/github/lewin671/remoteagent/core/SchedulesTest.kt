@@ -140,6 +140,21 @@ class SchedulesTest {
         assertTrue(runCatching { repo.operate("computer","pause",task()) }.isFailure)
         remote.value = RemoteState(); runCurrent(); assertTrue(repo.tasks().isEmpty()); assertTrue(cleared)
     }
+    @Test fun forgottenMachineCannotReturnThroughLateReadErrors() = runTest {
+        for(cached in listOf(true,false)) {
+            val remote=MutableStateFlow(online(connected=false));val entered=CompletableDeferred<Unit>();val release=CompletableDeferred<Unit>()
+            val repo=ScheduleRepository(backgroundScope,remote,send={_,_->entered.complete(Unit);release.await();error("late list failure")},read={if(cached){entered.complete(Unit);release.await();error("late cache failure")}else null})
+            runCurrent()
+            val request=if(cached)null else {
+                remote.value=online()
+                backgroundScope.launch(start=CoroutineStart.UNDISPATCHED) {repo.refresh("computer")}
+            }
+            runCurrent();assertTrue(entered.isCompleted)
+            repo.forget("computer");release.complete(Unit);runCurrent()
+            assertFalse("removed snapshot resurrected by error, cached=$cached",repo.state.value.containsKey("computer"))
+            request?.join()
+        }
+    }
     @Test fun mutationsCarryRevisionAndCreationIdentityAndConflictsRefresh() = runTest {
         val remote = MutableStateFlow(online())
         val requests = mutableListOf<ScheduleRequest>()

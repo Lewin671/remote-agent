@@ -3225,6 +3225,7 @@ class Remote(
                         )
                     if (p.command?.hasSchedule() == true && p.command.schedule.operation == "list" && msg.hasSchedule() && trustedMembers[p.machineId]?.kind == 1u) {
                         cache?.putBlob("schedule:${p.machineId}", scheduleSnapshot(p.requestId, res.result))
+                        if (trustedMembers[p.machineId]?.kind != 1u) cache?.removeBlob("schedule:${p.machineId}")
                     }
                     return msg
                 } catch (ce: ConnectException) {

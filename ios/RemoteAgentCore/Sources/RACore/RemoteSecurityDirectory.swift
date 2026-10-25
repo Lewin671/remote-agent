@@ -180,6 +180,7 @@ extension Remote {
             listed.remove(session.id)
         }
         publish()
+        for id in archiveMachines where trustedMembers[id]?.kind != 1 { await cache?.removeBlob(name: "schedules/" + id) }
     }
 
     /// The stored envelope's epoch is the resumable republish marker. Only a

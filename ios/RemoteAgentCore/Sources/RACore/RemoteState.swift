@@ -81,6 +81,8 @@ public let sessionPage = 50
 
 public struct RemoteState: Equatable, Sendable {
     public var machines: [String: MachineView] = [:]
+    /// Current signed machine members; `machines` also contains readable archives.
+    public var currentMachines: Set<String> = []
     public var sessions: [String: SessionView] = [:]
     public var conn: ConnState = .connecting
     public var error = ""

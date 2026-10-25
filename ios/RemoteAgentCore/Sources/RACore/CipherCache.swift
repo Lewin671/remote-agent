@@ -32,6 +32,7 @@ public protocol CipherCache: Sendable {
     /// Other sealed objects by name, such as the account's project preferences.
     func blob(name: String) async -> Data?
     func putBlob(name: String, data: Data) async
+    func removeBlob(name: String) async
 }
 
 extension CipherCache {

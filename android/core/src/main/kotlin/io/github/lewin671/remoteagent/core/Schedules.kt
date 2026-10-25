@@ -229,7 +229,7 @@ class ScheduleRepository(
             if (id in removed || !scheduleSupported(remoteState.value.machines[id])) return@withLock
             set(id) { ScheduleSnapshot(revision, tasks, cached = false) }
         } catch (e: CancellationException) { throw e
-        } catch (e: Exception) { set(id) { it.copy(error = errorText(e)) } }
+        } catch (e: Exception) { if (id !in removed) set(id) { it.copy(error = errorText(e)) } }
         finally { if (id !in removed) set(id) { it.copy(loading = false) } }
     }
     }
@@ -240,7 +240,7 @@ class ScheduleRepository(
             val tasks = (obj["tasks"] as? JsonArray).orEmpty().map { ScheduledTask(id, it.jsonObject) }
             if (id !in removed) set(id) { ScheduleSnapshot(tasks = tasks, cached = true) }
         } catch (e: CancellationException) { throw e
-        } catch (_: Exception) { set(id) { it.copy(error = "上次的任务列表无法读取，联网后重新读取") } }
+        } catch (_: Exception) { if (id !in removed) set(id) { it.copy(error = "上次的任务列表无法读取，联网后重新读取") } }
     }
     suspend fun rename(task: ScheduledTask, name: String): ScheduledTask? {
         val spec = renamedScheduleSpec(task, name) ?: return task

@@ -1314,12 +1314,7 @@ export class Remote {
               try {
                 const kept = mine(await this.cache!.get("schedules:" + m.id));
                 if (!kept || !this.supportsSchedules(m.id) || this.schedules.has(m.id)) continue;
-                const { msg } = await this.openSecureMessage(fromBinary(EnvelopeSchema, kept.bytes as Uint8Array),
-                  { kind: PayloadKind.COMMAND_RESULT, machineId: m.id, sessionId: "", requestId: kept.requestId as string }, CommandResultSchema, true);
-                if (msg.kind.case === "schedule") {
-                  const parsed = JSON.parse(new TextDecoder().decode(msg.kind.value.resultJson)) as { tasks: ScheduleTask[] };
-                  if (Array.isArray(parsed.tasks)) this.schedules.set(m.id, { tasks: parsed.tasks, revision: 0n, loading: false, error: "" });
-                }
+                await this.restoreScheduleSnapshot(m.id, kept);
               } catch { /* An unreadable snapshot is never treated as an empty live list. */ }
             }
             for (const s of fromBinary(
@@ -1356,8 +1351,23 @@ export class Remote {
     })());
   }
 
+  private async restoreScheduleSnapshot(id: string, kept: Record<string, unknown>) {
+    const { msg } = await this.openSecureMessage(fromBinary(EnvelopeSchema, kept.bytes as Uint8Array),
+      { kind: PayloadKind.COMMAND_RESULT, machineId: id, sessionId: "", requestId: kept.requestId as string }, CommandResultSchema, true);
+    if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed) return;
+    if (msg.kind.case === "schedule") {
+      const parsed = JSON.parse(new TextDecoder().decode(msg.kind.value.resultJson)) as { tasks: ScheduleTask[] };
+      if (Array.isArray(parsed.tasks)) this.schedules.set(id, { tasks: parsed.tasks, revision: 0n, loading: false, error: "" });
+    }
+  }
+  private async keepScheduleSnapshot(id: string, value: Record<string, unknown>) {
+    await this.keepValue("schedules:" + id, value);
+    if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed)
+      await this.keepValue("schedules:" + id, undefined);
+  }
+
   private keepValue(name: string, value: Record<string, unknown> | undefined) {
-    void this.cache
+    return this.cache
       ?.set(
         name,
         value && {
@@ -2940,7 +2950,7 @@ export class Remote {
         if (msg.errorCode)
           throw new CommandError(msg.errorCode, msg.errorMessage, true);
         if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result && this.machines.has(machineId) && this.supportsSchedules(machineId)) {
-          this.keepValue("schedules:" + machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
+          await this.keepScheduleSnapshot(machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
         }
         return msg;
       } catch (e) {

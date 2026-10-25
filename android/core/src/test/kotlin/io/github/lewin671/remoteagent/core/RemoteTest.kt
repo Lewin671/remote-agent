@@ -2099,6 +2099,24 @@ class RemoteTest {
             assertTrue(devices.containsKey(joined.deviceId))
             assertTrue(devices.containsKey(a.account.deviceId))
         }
+    @Test fun scheduledSnapshotCannotReturnAfterRevocationDuringCacheWrite() = runBlocking<Unit> {
+        val memory=MemoryCache();val entered=CompletableDeferred<Unit>();val release=CompletableDeferred<Unit>()
+        val cache=object:CipherCache by memory {
+            override suspend fun putBlob(name:String,data:ByteArray) {
+                if(name.startsWith("schedule:")) {entered.complete(Unit);release.await()}
+                memory.putBlob(name,data)
+            }
+        }
+        val r=client(cache=cache);r.start()
+        try {
+            r.awaitState("connected") {it.conn==ConnState.ONLINE && it.machines[daemon.account.deviceId]?.online==true}
+            daemon.answer={_,_->CommandResult.newBuilder().setSchedule(ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFromUtf8("{\"tasks\":[]}"))).build()}
+            val writing=async {r.machineCommand(daemon.account.deviceId,Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build())}
+            entered.await();removeAsAuthority(daemon.phone,daemon.account.deviceId,http);r.refresh()
+            release.complete(Unit);writing.await()
+            assertNull(memory.blob("schedule:${daemon.account.deviceId}"))
+        } finally {release.complete(Unit)}
+    }
     @Test fun scheduledSnapshotsKeepSignedRepliesAndVerifyThemAgainOffline() = runBlocking<Unit> {
         val memory=MemoryCache();val r=client(cache=memory);r.start()
         r.awaitState("connected") { it.conn==ConnState.ONLINE && it.machines[daemon.account.deviceId]?.online==true }

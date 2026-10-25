@@ -24,12 +24,23 @@ public func decodeScheduleList(_ result: PBCommandResult) throws -> [ScheduleTas
 extension Remote {
     /// Revalidates the cached signed ciphertext against its machine before opening it.
     public func cachedSchedules(_ machineID: String) async -> [ScheduleTask]? {
+        guard currentScheduleMember(machineID) else { await cache?.removeBlob(name: "schedules/" + machineID); return nil }
         guard let data = await cache?.blob(name: "schedules/" + machineID),
               let env = try? PBEnvelope(serializedBytes: data),
               let h = try? PBHeader(serializedBytes: env.header), h.kind == .commandResult,
               let (_, result) = try? await openSecureMessage(envelope: env, want: Place(.commandResult, machineId: machineID, requestId: h.requestID), as: PBCommandResult.self, history: true)
         else { return nil }
+        guard currentScheduleMember(machineID) else { await cache?.removeBlob(name: "schedules/" + machineID); return nil }
         return try? decodeScheduleList(result)
+    }
+    func currentScheduleMember(_ id: String) -> Bool {
+        !closed && (try? securityIdentity().1.core.member(id)?.kind) == 1
+    }
+    func keepScheduleSnapshot(_ machine: String, data: Data) async {
+        guard currentScheduleMember(machine) else { return }
+        await cache?.putBlob(name: "schedules/" + machine, data: data)
+        // A directory removal can overtake the suspended cache write.
+        if !currentScheduleMember(machine) { await cache?.removeBlob(name: "schedules/" + machine) }
     }
     public func listSchedules(_ machineID: String) async throws -> [ScheduleTask] {
         try decodeScheduleList(await machineCommand(machineID, scheduleCommand(operation: "list")))

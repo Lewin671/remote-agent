@@ -14,10 +14,27 @@ import UIKit
     func state(online: Bool = true, revision: UInt64 = 1) -> RemoteState {
         var state = RemoteState(); state.conn = online ? .online : .offline; state.link = online ? .online : .noServer
         var meta = PBMachineMeta(); meta.capabilities.scheduledTasks = true; meta.protocolVersion = protocolVersion; meta.scheduleRevision = revision
+        state.currentMachines = ["m"]
         state.machines["m"] = MachineView(id: "m", online: online, lastSeenMs: 0, meta: meta)
         return state
     }
     func settle(_ done: () -> Bool) async { for _ in 0..<100 where !done() { try? await Task.sleep(for: .milliseconds(10)) } }
+    @Test func revokedArchiveDropsTasksBadgeAndPendingRead() async {
+        let store=ScheduleStore();var attention=task();attention.status="paused";attention.reason="agent_schedule_permissions_changed"
+        var release:CheckedContinuation<Void,Never>?;var returned=false
+        store.configure(.init(cached:{_ in [attention]},list:{_ in await withCheckedContinuation { release=$0 };returned=true;return [attention]}))
+        store.reconcile(state());await eventually("list is suspended") { release != nil }
+        #expect(store.tasks.count == 1)
+        var removed=state(online:false);removed.currentMachines=[] // archived metadata is deliberately retained
+        store.reconcile(removed)
+        #expect(store.tasks.isEmpty && store.loading.isEmpty && !store.online("m"))
+        release?.resume();await eventually("revoked read returned") { returned }
+        #expect(store.tasks.isEmpty)
+        let cold=ScheduleStore();var restores=0
+        cold.configure(.init(cached:{_ in restores += 1;return [attention]},list:{_ in []}))
+        cold.reconcile(removed);await eventually("revoked cold store settled") { cold.loading.isEmpty }
+        #expect(cold.tasks.isEmpty && restores == 0)
+    }
     @Test func creationResolvesKnownDefaultsAndRequiresAnExplicitChoiceWhenUnknown() {
         let draft=ScheduleDraft();draft.message="检查";draft.config=NewConfig(machineId:"m",cwd:"/example",agent:.claude)
         var known=state();known.machines["m"]?.meta?.agents=[PBAgentInfo.with { $0.agent = .claude;$0.defaultMode = .auto;$0.defaultModeSource = .cliConfig }]

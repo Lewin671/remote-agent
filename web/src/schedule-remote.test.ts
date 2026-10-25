@@ -267,3 +267,19 @@ it("retains an uncertain relay abort instead of treating it as a task revision c
  await expect(r.changeSchedule("computer","task-1",{operation:"pause",taskId:"task-1",revision:1})).rejects.toThrow("relay outcome unknown");
  expect(r.scheduleAttempts.get("computer/task-1")?.frozen).toBe(true);
 });
+it("does not restore a revoked archive after cached decryption suspends",async()=>{
+  const r=probe();let finish!: (v:unknown)=>void;
+  vi.spyOn(r as any,"openSecureMessage").mockImplementation(()=>new Promise(resolve=>{finish=resolve}));
+  const {toBinary}=await import("@bufbuild/protobuf");const {EnvelopeSchema}=await import("./gen/remoteagent/v1/envelope_pb");
+  const restoring=(r as any).restoreScheduleSnapshot("computer",{bytes:toBinary(EnvelopeSchema,create(EnvelopeSchema)),requestId:"read"});
+  (r as any).archiveMachines.add("computer");r.machines.get("computer")!.online=false;r.syncSchedules();
+  finish({msg:result({tasks:[task()]})});await restoring;
+  expect(r.schedules.has("computer")).toBe(false);expect(r.taskEntries()).toEqual([]);
+});
+it("removes a snapshot whose cache write completes after revocation",async()=>{
+  const r=probe();const stored=new Map<string,unknown>();let finish!:()=>void;
+  (r as any).cache={set:async(k:string,v:unknown)=>{if(v)await new Promise<void>(resolve=>{finish=resolve});stored.set(k,v)}};
+  const writing=(r as any).keepScheduleSnapshot("computer",{bytes:new Uint8Array([1]),requestId:"read"});
+  (r as any).archiveMachines.add("computer");r.machines.get("computer")!.online=false;r.syncSchedules();
+  finish();await writing;expect(stored.get("schedules:computer")).toBeUndefined();
+});

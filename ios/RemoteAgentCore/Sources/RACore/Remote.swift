@@ -552,6 +552,7 @@ public actor Remote {
         }
         var s = RemoteState()
         s.machines = machines
+        s.currentMachines = Set(trustedMembers.values.filter { $0.kind == 1 }.map(\.id))
         s.sessions = sessions
         s.conn = conn
         s.error = error
@@ -646,6 +647,7 @@ public actor Remote {
             authorityDeviceId = identity.1.core.authorityID
             leaseEndMs = try await securitySession().leaseExpiration()
             archiveMachines=try await securitySession().historicalMachines()
+            for id in archiveMachines where trustedMembers[id]?.kind != 1 { await cache.removeBlob(name: "schedules/" + id) }
         } catch {
             report(error)
             return

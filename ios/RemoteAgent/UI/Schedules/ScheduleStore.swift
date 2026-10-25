@@ -34,15 +34,16 @@ final class ScheduleStore {
     }
     func configure(_ calls: Calls) { self.calls = calls }
     func online(_ id: String) -> Bool {
-        latest.conn == .online && latest.machines[id]?.online == true && latest.machines[id]?.meta?.capabilities.scheduledTasks == true && protocolMismatch(latest.machines[id]) == nil
+        latest.currentMachines.contains(id) && latest.conn == .online && latest.machines[id]?.online == true && latest.machines[id]?.meta?.capabilities.scheduledTasks == true && protocolMismatch(latest.machines[id]) == nil
     }
     func reconcile(_ state: RemoteState) {
         let reconnected = latest.conn != .online && state.conn == .online
         if reconnected { revisions.removeAll() }
         for (id, m) in state.machines where m.online && latest.machines[id]?.online != true { revisions[id] = nil }
         latest = state
-        let supported = Set(state.machines.values.filter { $0.meta?.capabilities.scheduledTasks == true && protocolMismatch($0) == nil }.map(\.id))
-        for id in revisions.keys where !supported.contains(id) { revisions[id] = nil; restored.remove(id) }
+        let supported = Set(state.machines.values.filter { state.currentMachines.contains($0.id) && $0.meta?.capabilities.scheduledTasks == true && protocolMismatch($0) == nil }.map(\.id))
+        restored.formIntersection(supported)
+        for id in revisions.keys where !supported.contains(id) { revisions[id] = nil }
         for id in resolutions.keys where !supported.contains(id) { for job in resolutions[id]!.values { job.cancel() }; resolutions[id] = nil }
         tasks.removeAll { !supported.contains($0.machineID) }
         for id in errors.keys where !supported.contains(id) { errors[id] = nil }
@@ -98,7 +99,7 @@ final class ScheduleStore {
         await job.value
     }
     private func replace(_ id: String, _ list: [ScheduleTask]) {
-        guard latest.machines[id]?.meta?.capabilities.scheduledTasks == true else { return }
+        guard latest.currentMachines.contains(id), latest.machines[id]?.meta?.capabilities.scheduledTasks == true else { return }
         tasks.removeAll { $0.machineID == id }
         tasks += list.filter(\.visible).map { MachineSchedule(machineID: id, task: $0) }
     }

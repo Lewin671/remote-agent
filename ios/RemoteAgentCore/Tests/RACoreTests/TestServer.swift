@@ -477,6 +477,7 @@ final class MemoryCache: CipherCache, @unchecked Sendable {
     }
     func blob(name: String) async -> Data? { lock.withLock { blobs[name] } }
     func putBlob(name: String, data: Data) async { lock.withLock { blobs[name] = data } }
+    func removeBlob(name: String) async { lock.withLock { blobs[name] = nil } }
 
     func machines() async -> [PBMachine] { lock.withLock { Array(machineStore.values) } }
     func sessions() async -> [PBRemoteSession] { lock.withLock { Array(sessionStore.values) } }
@@ -532,6 +533,8 @@ final class HookedCache: CipherCache, @unchecked Sendable {
     private var _machines: (@Sendable () async -> Void)?
     private var _events: (@Sendable (String) async -> [PBStoredEvent])?
     private var _putEvents: (@Sendable (String, [PBStoredEvent]) async -> Void)?
+    private var _blob: (@Sendable (String, Data?) async -> Data?)?
+    private var _putBlob: (@Sendable (String, Data) async -> Void)?
     private var _putMachine: (@Sendable (PBMachine) async -> Void)?
 
     init(_ inner: MemoryCache = MemoryCache()) { self.inner = inner }
@@ -544,6 +547,8 @@ final class HookedCache: CipherCache, @unchecked Sendable {
     func hookPutEvents(_ f: (@Sendable (String, [PBStoredEvent]) async -> Void)?) {
         lock.withLock { _putEvents = f }
     }
+    func hookBlob(_ f: (@Sendable (String, Data?) async -> Data?)?) { lock.withLock { _blob = f } }
+    func hookPutBlob(_ f: (@Sendable (String, Data) async -> Void)?) { lock.withLock { _putBlob = f } }
     func hookPutMachine(_ f: (@Sendable (PBMachine) async -> Void)?) {
         lock.withLock { _putMachine = f }
     }
@@ -574,8 +579,16 @@ final class HookedCache: CipherCache, @unchecked Sendable {
     func putImage(key: String, envelope: Data) async {
         await inner.putImage(key: key, envelope: envelope)
     }
-    func blob(name: String) async -> Data? { await inner.blob(name: name) }
-    func putBlob(name: String, data: Data) async { await inner.putBlob(name: name, data: data) }
+    func blob(name: String) async -> Data? {
+        let value = await inner.blob(name: name)
+        if let f = lock.withLock({ _blob }) { return await f(name, value) }
+        return value
+    }
+    func putBlob(name: String, data: Data) async {
+        if let f = lock.withLock({ _putBlob }) { await f(name, data) }
+        await inner.putBlob(name: name, data: data)
+    }
+    func removeBlob(name: String) async { await inner.removeBlob(name: name) }
 }
 
 /// Something a test waits for, set once.

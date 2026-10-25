@@ -221,6 +221,10 @@ final class CipherStore: CipherCache {
         }
     }
 
+    func removeBlob(name: String) async {
+        await write { db in try db.execute(sql: "DELETE FROM blobs WHERE name = ?", arguments: [name]) }
+    }
+
     // MARK: Beyond the protocol
 
     /// The highest sequence number stored for a session, 0 when it has no events: where fetching resumes.

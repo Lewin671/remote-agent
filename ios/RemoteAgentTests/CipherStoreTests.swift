@@ -181,6 +181,9 @@ private struct Stop: Error {}
         await store.putBlob(name: "project-prefs", data: Data([4]))
         #expect(await store.blob(name: "project-prefs") == Data([4]))
         #expect(await store.blob(name: "other") == Data())
+        await store.removeBlob(name: "project-prefs")
+        #expect(await store.blob(name: "project-prefs") == nil)
+        #expect(await store.blob(name: "other") == Data())
     }
 
     @Test func imageEnvelopesAreKeptAndTheLeastRecentlyUsedGoFirst() async throws {

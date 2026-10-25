@@ -20,6 +20,7 @@ import SwiftProtobuf
             $0.capabilities.scheduledTasks = true
             $0.agents = [PBAgent.codex, .claude].map { agent in .with { $0.agent = agent; $0.defaultMode = .auto } }
         }
+        state.currentMachines = [f.machine]
         state.machines[f.machine] = MachineView(id:f.machine,online:true,lastSeenMs:0,meta:meta)
         let info = PBSession.with {
             $0.id = f.session; $0.title = f.sessionTitle; $0.cwd = "/example/project"

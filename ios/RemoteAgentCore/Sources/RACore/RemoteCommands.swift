@@ -164,7 +164,7 @@ extension Remote {
                 }
                 if case .schedule(let request) = p.command?.kind, request.operation == "list",
                    (try? decodeScheduleList(msg)) != nil, let bytes = try? res.result.serializedData() {
-                    await cache?.putBlob(name: "schedules/" + p.machineId, data: bytes)
+                    await keepScheduleSnapshot(p.machineId, data: bytes)
                 }
                 return msg
             } catch let ce as ConnectError {
