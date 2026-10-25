@@ -349,6 +349,7 @@ fa("r3-cancelled-delete", "app/src/main/java/io/github/lewin671/remoteagent/ui/S
 fa("r3-selected-cli", "app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt", 'it.agent == op.agent', 'it.agent == cfg.agent', ui=True)
 fa("r3-return-cli", "app/src/main/java/io/github/lewin671/remoteagent/ui/Project.kt", 'agent = cur, sets = listOf(c.agentSettings())', 'agent = agent, sets = edited.values.map { it.agentSettings() }', ui=True)
 
+fw("r3-integral-seconds", "views/Schedules.tsx", 'const seconds = trigger.type === "interval" && minutes === String(trigger.interval_seconds! / 60)\n          ? trigger.interval_seconds!\n          : Math.abs(rawSeconds - rounded) <= Number.EPSILON * Math.max(1, Math.abs(rawSeconds)) * 2 ? rounded : rawSeconds;', 'const seconds = rawSeconds;')
 fw("r3-visible-boundaries", "schedules.ts", '          "questionAnswered",\n          "turnContext",\n          "turnEnded",\n', '')
 fa("r3-visible-boundaries", "app/src/main/java/io/github/lewin671/remoteagent/ui/ScheduledChat.kt", 'ended.single().seq, eventTime(first)', 'body.last().seq, eventTime(first)', ui=True)
 fi("r3-visible-boundaries", "RemoteAgentCore/Sources/RACore/ScheduledChat.swift", '.questionAsked, .questionAnswered, .planProposed, .imageGenerated, .sessionForked, .settingsChanged, .turnContext, .turnEnded:', '.questionAsked, .planProposed, .imageGenerated, .sessionForked:')

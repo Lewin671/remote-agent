@@ -85,6 +85,14 @@ import RAProto
         var fresh=ScheduleTiming(now:now);fresh.kind = .interval;fresh.interval=15;fresh.unit=60
         #expect(try fresh.trigger(now:now).delaySeconds==900)
     }
+    @Test func indivisibleMinuteIntervalsKeepExactIntegerSeconds() throws {
+        for seconds: Int64 in [31,62,123] {
+            var trigger=ScheduleTrigger(type:"interval");trigger.intervalSeconds=seconds;trigger.delaySeconds=29;trigger.at="2026-10-01T08:00:00Z"
+            let edit=ScheduleTiming(trigger:trigger,now:now,zone:zone)
+            #expect(edit.unit == 1 && edit.interval == Int(seconds))
+            #expect(try edit.trigger(now:now) == trigger)
+        }
+    }
     @Test func groupingAndVisibility() {
         #expect(task("failed").group == .attention)
         #expect(task("uncertain").group == .attention)

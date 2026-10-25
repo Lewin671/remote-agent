@@ -33,6 +33,15 @@ class SchedulesTest {
         assertEquals("2027-11-01",edit.until)
         assertEquals("2027-11-01T14:59:59Z",edit.trigger(now).text("until"))
     }
+    @Test fun indivisibleMinuteIntervalsUseExactIntegerSeconds() {
+        for(seconds in listOf(31L,62L,123L)) {
+            val t=buildJsonObject { put("type","interval");put("interval_seconds",seconds);put("delay_seconds",29);put("at","2026-10-01T08:00:00Z") }
+            val edit=ScheduleTime.from(t)
+            assertEquals(3,edit.unit);assertEquals(seconds.toString(),edit.interval)
+            val saved=edit.trigger(now)
+            assertEquals(seconds,saved.long("interval_seconds"));assertEquals(29L,saved.long("delay_seconds"));assertEquals(t["at"],saved["at"])
+        }
+    }
     @Test fun nonCalendarTimestampOffsetsDoNotBecomeCalendarTimezoneNames() {
         val old=java.util.TimeZone.getDefault()
         try {

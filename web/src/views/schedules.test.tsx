@@ -741,6 +741,15 @@ it("requires a concrete permission when neither project nor CLI has a known defa
  expect(button("创建")?.disabled).toBe(true);expect(host.textContent).toContain("请选择明确的权限，再创建定时任务。");
 });
 
+it.each([31,62,123])("preserves an unchanged %i-second interval exactly", async seconds => {
+  const trigger={type:"interval" as const,interval_seconds:seconds,delay_seconds:29,at:"2026-10-01T08:00:00Z"};
+  const save=vi.fn();await mount(<TimingSheet trigger={trigger} onSave={save} onClose={()=>{}} />);
+  await click("完成");expect(save).toHaveBeenLastCalledWith(trigger);
+  await input(host.querySelector<HTMLInputElement>('input[type="number"]')!,String(seconds/60+1));
+  await click("完成");expect(save).toHaveBeenLastCalledWith({type:"interval",interval_seconds:seconds+60,delay_seconds:seconds+60});
+  await input(host.querySelector<HTMLInputElement>('input[type="number"]')!,"0.511");
+  save.mockClear();await click("完成");expect(save).not.toHaveBeenCalled();expect(host.textContent).toContain("间隔至少为 1 秒");
+});
 it("converts cutoff display across zones while retaining the absolute instant", async () => {
   const trigger={type:"calendar" as const,time:"08:00",timezone:"Asia/Shanghai",until:"2027-10-30T00:15:29Z"};
   const save=vi.fn();await mount(<TimingSheet trigger={trigger} onSave={save} onClose={()=>{}} />);

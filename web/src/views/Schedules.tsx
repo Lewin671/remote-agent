@@ -302,7 +302,11 @@ export function TimingSheet({
         };
       } else if (kind === "after") next = { ...trigger };
       else {
-        const seconds = Number(minutes) * 60;
+        const rawSeconds = Number(minutes) * 60;
+        const rounded = Math.round(rawSeconds);
+        const seconds = trigger.type === "interval" && minutes === String(trigger.interval_seconds! / 60)
+          ? trigger.interval_seconds!
+          : Math.abs(rawSeconds - rounded) <= Number.EPSILON * Math.max(1, Math.abs(rawSeconds)) * 2 ? rounded : rawSeconds;
         if (!Number.isSafeInteger(seconds) || seconds < 1)
           throw new Error("间隔至少为 1 秒");
         next = {
