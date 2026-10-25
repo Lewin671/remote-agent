@@ -18,11 +18,28 @@ import RAProto
         }
     }
     @Test func dualLimitsKeepTheirAbsoluteDeadlineWhenOnlyTimezoneChanges() throws {
-        var t=ScheduleTrigger(type:"calendar");t.time="08:00";t.timezone="America/Los_Angeles";t.maxRuns=5;t.until="2027-10-30T08:00:00Z"
+        var t=ScheduleTrigger(type:"calendar");t.time="08:00";t.timezone="America/Los_Angeles";t.maxRuns=5;t.until="2027-10-30T16:00:00+08:00"
         var edit=ScheduleTiming(trigger:t,now:now,zone:zone)
         #expect(edit.end == .count);edit.timezone="Asia/Shanghai"
         let changed=try edit.trigger(now:now)
         #expect(changed.until == t.until && changed.maxRuns == 5 && changed.timezone == "Asia/Shanghai")
+    }
+    @Test func cutoffDisplayTracksAbsoluteInstantAcrossZoneChanges() throws {
+        var trigger=ScheduleTrigger(type:"calendar");trigger.time="08:00";trigger.timezone="Asia/Shanghai";trigger.until="2027-10-30T00:15:29Z"
+        var edit=ScheduleTiming(trigger:trigger,now:now,zone:zone)
+        for next in ["America/Los_Angeles","UTC","Asia/Tokyo"] {
+            edit.timezone=next
+            #expect(edit.until == scheduleDate(trigger.until!)!)
+            #expect(try edit.trigger(now:now).until == trigger.until)
+        }
+        var repeated=trigger;repeated.timezone="UTC";repeated.until="2026-11-01T06:30:00Z"
+        var overlap=ScheduleTiming(trigger:repeated,now:now,zone:zone);overlap.timezone="America/New_York"
+        #expect(overlap.until == scheduleDate(repeated.until!)!)
+        #expect(try overlap.trigger(now:now).until == repeated.until)
+        let chosen=scheduleDate("2027-11-01T12:34:00Z")!
+        edit.until=chosen;edit.timezone="America/Los_Angeles"
+        #expect(edit.until == chosen)
+        #expect(try edit.trigger(now:now).until == scheduleISO(chosen))
     }
     @Test func finalSharedClientContractUsesActualStateProjection() throws {
         struct Fixture: Decodable { let now: String; let timezone: String; let tasks: [ScheduleTask]; let empty: String; let offline: String; let groups: [String: [String]] }
@@ -61,7 +78,7 @@ import RAProto
         #expect(try ScheduleTiming(trigger:original,now:now,zone:zone).trigger(now:now)==original)
         editing.kind = .daily; editing.end = .date;editing.timezone="Asia/Shanghai"
         editing.until=scheduleDate("2026-10-30T00:15:00Z")!;editing.timezone="America/Los_Angeles"
-        #expect(try editing.trigger(now:now).until=="2026-10-30T15:15:00Z")
+        #expect(try editing.trigger(now:now).until=="2026-10-30T00:15:00Z")
         var gap = ScheduleTrigger(type:"at"); gap.at="2027-03-14T02:30:00Z"; gap.timezone="UTC"
         var missing = ScheduleTiming(trigger:gap,now:now,zone:zone); missing.timezone="America/Los_Angeles"
         #expect(throws:(any Error).self) { try missing.trigger(now:now) }

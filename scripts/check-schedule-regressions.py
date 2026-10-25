@@ -258,7 +258,7 @@ fa("revision","app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt"
 fa("spec-snapshot","app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt",'val base = editBase ?: task','val base = task',True)
 fa("delete-back","app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt",'if (op == "cancel") nav.back()','if (false) nav.back()',True)
 fa("run-guard","core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",'&& t.json["manual_request"] !is JsonObject','',False)
-fi("wall-time","RemoteAgentCore/Sources/RACore/ScheduleTiming.swift",'public var timezone: String','public var timezone: String { didSet { var old = Calendar(identifier:.gregorian); old.timeZone = TimeZone(identifier:oldValue) ?? .current; if let d = old.date(from:dateParts) { dateParts = Self.parts(d,zone:calendar.timeZone) }; if let d = old.date(from:untilParts) { untilParts = Self.parts(d,zone:calendar.timeZone) } } }')
+fi("wall-time","RemoteAgentCore/Sources/RACore/ScheduleTiming.swift",'public var timezone: String','public var timezone: String { didSet { var old = Calendar(identifier:.gregorian); old.timeZone = TimeZone(identifier:oldValue) ?? .current; if let d = old.date(from:dateParts) { dateParts = Self.parts(d,zone:calendar.timeZone) } } }')
 fi("phase","RemoteAgentCore/Sources/RACore/ScheduleTiming.swift",'if let original, original.type == "interval", original.intervalSeconds == seconds { t = original }','if false { t = ScheduleTrigger(type:"interval") }')
 fi("paused-expiry","RemoteAgentCore/Sources/RACore/Schedules.swift",'["", "user_paused", "completed_while_paused"].contains(reason ?? "")','["", "user_paused"].contains(reason ?? "")')
 fi("stopped-result","RemoteAgentCore/Sources/RACore/Schedules.swift",'if group == .attention { return scheduleReason(reason) }','// render the last successful run instead of the stop cause')
@@ -322,7 +322,7 @@ fa("r2-machine-defaults", "app/src/main/java/io/github/lewin671/remoteagent/ui/S
 fa("r2-resolve-mode", "app/src/main/java/io/github/lewin671/remoteagent/ui/SchedulePresentation.kt", 'cfg.mode ?: defaultModeOf(state.machines[cfg.machineId], cfg.agent).mode', 'cfg.mode', True)
 fa("r2-placeholder", "app/src/main/java/io/github/lewin671/remoteagent/ui/SchedulePresentation.kt", '?.let(::titleOf) ?: "对话"', '?.let(::titleOf) ?: "当前对话"', True)
 fa("r2-rename-close", "app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt", 'if (e is ScheduleConflictException) { edit = ""; editBase = null; error = errorText(e) }', 'if (e is ScheduleConflictException) { error = errorText(e) }', True)
-fi("r2-cutoff-instant", "RemoteAgentCore/Sources/RACore/ScheduleTiming.swift", '(untilParts != initialUntil)', '(untilParts != initialUntil || timezone != original.timezone)')
+fi("r2-cutoff-instant", "RemoteAgentCore/Sources/RACore/ScheduleTiming.swift", 'if original.until != nil && untilEdited {', 'if original.until != nil && (untilEdited || timezone != original.timezone) {')
 fi("r2-machine-defaults", "RemoteAgent/UI/Schedules/ScheduleTargetSheet.swift", 'prefs.prefs.settings.filter { $0.machineID == machine }', 'prefs.prefs.settings', True)
 fi("r2-placeholder", "RemoteAgent/UI/Schedules/ScheduleTargetSheet.swift", 'session.info != nil else { return "对话" }', 'session.info != nil else { return "当前对话" }', True)
 fi("r2-conflict-dismiss", "RemoteAgent/UI/Schedules/ScheduleDetailScreen.swift", '.onChange(of: mutation.conflicts) { _, _ in dismiss() }', '.onChange(of: mutation.conflicts) { _, _ in }', True)
@@ -352,6 +352,11 @@ fa("r3-return-cli", "app/src/main/java/io/github/lewin671/remoteagent/ui/Project
 fw("r3-visible-boundaries", "schedules.ts", '          "questionAnswered",\n          "turnContext",\n          "turnEnded",\n', '')
 fa("r3-visible-boundaries", "app/src/main/java/io/github/lewin671/remoteagent/ui/ScheduledChat.kt", 'ended.single().seq, eventTime(first)', 'body.last().seq, eventTime(first)', ui=True)
 fi("r3-visible-boundaries", "RemoteAgentCore/Sources/RACore/ScheduledChat.swift", '.questionAsked, .questionAnswered, .planProposed, .imageGenerated, .sessionForked, .settingsChanged, .turnContext, .turnEnded:', '.questionAsked, .planProposed, .imageGenerated, .sessionForked:')
+fw("r3-cutoff-display", "views/Schedules.tsx", 'setUntil(localInput(untilInstant, nextZone));', 'void untilInstant;')
+fi("r3-cutoff-display", "RemoteAgentCore/Sources/RACore/ScheduleTiming.swift", 'public var timezone: String', 'public var timezone: String { didSet { var old = Calendar(identifier:.gregorian); old.timeZone = TimeZone(identifier:oldValue) ?? .current; let parts = old.dateComponents([.year,.month,.day,.hour,.minute,.second],from:until); until = calendar.date(from:parts) ?? until } }')
+
+fa("r3-cutoff-display", "core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt", 'until = local ?: until, deadline = if (deadline.isNotEmpty()) deadline else instant?.toString().orEmpty()', 'until = until, deadline = ""')
+fa("r3-cutoff-zone-ui", "app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt", 'value.inZone(it.trim())', 'value.copy(zone = it.trim(), deadline = "")', ui=True)
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

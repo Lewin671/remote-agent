@@ -1,21 +1,18 @@
 import Foundation
 
-/// Picker values are local calendar components. Changing the zone never changes the wall clock.
+/// Schedule wall time stays fixed across zones; the cutoff stays at its absolute instant.
 public struct ScheduleTiming: Equatable, Sendable {
     public enum Kind: Int, CaseIterable, Sendable { case once, daily, weekly, interval, afterTurn }
     public enum End: Int, CaseIterable, Sendable { case never, count, date }
     public var kind: Kind = .daily
     private var dateParts: DateComponents
-    private var untilParts: DateComponents
+    private var untilEdited = false
     public var timezone: String
     public var date: Date {
         get { calendar.date(from: dateParts) ?? .distantFuture }
         set { dateParts = Self.parts(newValue, zone: calendar.timeZone) }
     }
-    public var until: Date {
-        get { calendar.date(from: untilParts) ?? .distantFuture }
-        set { untilParts = Self.parts(newValue, zone: calendar.timeZone) }
-    }
+    public var until: Date { didSet { untilEdited = true } }
     public var weekdays: Set<Int> = [1]
     public var workdays = false
     public var interval = 1
@@ -25,7 +22,6 @@ public struct ScheduleTiming: Equatable, Sendable {
     private var original: ScheduleTrigger?
     private var initialEnd: End = .never
     private var initialCount = 10
-    private var initialUntil = DateComponents()
     private var calendar: Calendar {
         var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: timezone) ?? .current; return c
     }
@@ -37,7 +33,7 @@ public struct ScheduleTiming: Equatable, Sendable {
         let editingZone = trigger?.timezone.flatMap(TimeZone.init(identifier:)) ?? zone
         timezone = trigger?.timezone ?? zone.identifier
         dateParts = Self.parts(trigger?.at.flatMap(scheduleDate) ?? now.addingTimeInterval(300), zone: editingZone)
-        untilParts = Self.parts(trigger?.until.flatMap(scheduleDate) ?? now.addingTimeInterval(86400), zone: editingZone)
+        until = trigger?.until.flatMap(scheduleDate) ?? now.addingTimeInterval(86400)
         original = trigger
         if let t = trigger {
             switch t.type {
@@ -59,7 +55,7 @@ public struct ScheduleTiming: Equatable, Sendable {
             if t.until != nil { end = .date }
             if let n = t.maxRuns, n > 0 { count = Int(n); end = .count }
         }
-        initialEnd = end; initialCount = count; initialUntil = untilParts
+        initialEnd = end; initialCount = count
     }
     private func absolute(_ parts: DateComponents) throws -> Date {
         guard let d = calendar.date(from: parts), Self.parts(d, zone: calendar.timeZone) == parts else {
@@ -97,8 +93,8 @@ public struct ScheduleTiming: Equatable, Sendable {
                 if end == .count, count != initialCount {
                     guard count > 0 else { throw UserError("运行次数必须大于 0") }; t.maxRuns = Int64(count)
                 }
-                if original.until != nil && (untilParts != initialUntil) {
-                    let u = try absolute(untilParts)
+                if original.until != nil && untilEdited {
+                    let u = until
                     guard u > now else { throw UserError("结束时间必须在未来") }; t.until = scheduleISO(u)
                 }
             } else {
@@ -107,7 +103,7 @@ public struct ScheduleTiming: Equatable, Sendable {
                     guard count > 0 else { throw UserError("运行次数必须大于 0") }; t.maxRuns = Int64(count)
                 }
                 if end == .date {
-                    let u = try absolute(untilParts)
+                    let u = until
                     guard u > now else { throw UserError("结束时间必须在未来") }; t.until = scheduleISO(u)
                 }
             }

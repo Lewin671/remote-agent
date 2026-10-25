@@ -21,6 +21,18 @@ class SchedulesTest {
         val changed=edit.copy(zone="Asia/Shanghai").trigger(java.time.Instant.parse("2026-10-24T00:00:00Z"))
         assertEquals(t["until"],changed["until"]);assertEquals(5L,changed.long("max_runs"))
     }
+    @Test fun cutoffDisplayAndSubmissionKeepTheirInstantWhenTimezoneChanges() {
+        val t=Json.parseToJsonElement("""{"type":"calendar","time":"08:00","timezone":"Asia/Shanghai","until":"2027-10-30T00:15:29Z"}""").jsonObject
+        var edit=ScheduleTime.from(t)
+        assertEquals("2027-10-30",edit.until)
+        edit=edit.inZone("America/Los_Angeles")
+        assertEquals("2027-10-29",edit.until);assertEquals(t["until"],edit.trigger(now)["until"])
+        edit=edit.inZone("Asia/Tokyo")
+        assertEquals("2027-10-30",edit.until);assertEquals(t["until"],edit.trigger(now)["until"])
+        edit=edit.copy(until="2027-11-01",deadline="").inZone("UTC")
+        assertEquals("2027-11-01",edit.until)
+        assertEquals("2027-11-01T14:59:59Z",edit.trigger(now).text("until"))
+    }
     @Test fun nonCalendarTimestampOffsetsDoNotBecomeCalendarTimezoneNames() {
         val old=java.util.TimeZone.getDefault()
         try {

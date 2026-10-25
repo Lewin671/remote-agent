@@ -19,6 +19,14 @@ data class ScheduleTime(
     val deadline: String = "",
     val original: JsonObject? = null,
 ) {
+    /** Cutoffs are instants; only the main schedule's wall clock stays fixed across zones. */
+    fun inZone(next: String): ScheduleTime {
+        val instant = scheduleInstant(deadline) ?: runCatching {
+            LocalDate.parse(until).plusDays(1).atStartOfDay(ZoneId.of(zone)).toInstant().minusSeconds(1)
+        }.getOrNull()
+        val local = runCatching { instant?.atZone(ZoneId.of(next))?.toLocalDate()?.toString() }.getOrNull()
+        return copy(zone = next, until = local ?: until, deadline = if (deadline.isNotEmpty()) deadline else instant?.toString().orEmpty())
+    }
     fun trigger(now: Instant = Instant.now()): JsonObject {
         val tz = ZoneId.of(zone)
         val clock = LocalTime.parse(time)
@@ -48,7 +56,7 @@ data class ScheduleTime(
                 if (before != null && end == before.end) {
                     original?.get("max_runs")?.let { put("max_runs", it) }; original?.get("until")?.let { put("until", it) }
                     if (end == 1 && count != before.count) put("max_runs", max)
-                    if (end == 2 && (until != before.until || this@ScheduleTime.deadline != before.deadline) && deadline != null) put("until", deadline.toString())
+                    if (end == 2 && (this@ScheduleTime.deadline != before.deadline || this@ScheduleTime.deadline.isEmpty() && until != before.until) && deadline != null) put("until", deadline.toString())
                 } else { if (max > 0) put("max_runs", max); if (deadline != null) put("until", deadline.toString()) }
             }
         }

@@ -740,3 +740,17 @@ it("requires a concrete permission when neither project nor CLI has a known defa
  await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);await input(host.querySelector("textarea")!,"检查");
  expect(button("创建")?.disabled).toBe(true);expect(host.textContent).toContain("请选择明确的权限，再创建定时任务。");
 });
+
+it("converts cutoff display across zones while retaining the absolute instant", async () => {
+  const trigger={type:"calendar" as const,time:"08:00",timezone:"Asia/Shanghai",until:"2027-10-30T00:15:29Z"};
+  const save=vi.fn();await mount(<TimingSheet trigger={trigger} onSave={save} onClose={()=>{}} />);
+  const cutoff=()=>host.querySelector<HTMLInputElement>('input[type="datetime-local"]')!;
+  const zone=host.querySelector<HTMLInputElement>('input[aria-label="时区"]')!;
+  expect(cutoff().value).toBe("2027-10-30T08:15");
+  await input(zone,"America/Los_Angeles");expect(cutoff().value).toBe("2027-10-29T17:15");
+  await click("完成");expect(save.mock.calls.at(-1)![0].until).toBe(trigger.until);
+  await input(zone,"Asia/Tokyo");expect(cutoff().value).toBe("2027-10-30T09:15");
+  await input(cutoff(),"2027-11-01T09:30");
+  await input(zone,"UTC");expect(cutoff().value).toBe("2027-11-01T00:30");
+  await click("完成");expect(save.mock.calls.at(-1)![0].until).toBe("2027-11-01T00:30:00.000Z");
+});

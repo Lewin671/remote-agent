@@ -270,6 +270,14 @@ export function TimingSheet({
       initialZone,
     ),
   );
+  const [untilInstant, setUntilInstant] = useState(trigger.until ?? new Date(Date.now() + 86400_000).toISOString());
+  const [untilEdited, setUntilEdited] = useState(false);
+  const changeZone = (nextZone: string) => {
+    setZone(nextZone);
+    if (untilInstant) {
+      try { setUntil(localInput(untilInstant, nextZone)); } catch { /* Keep partial IANA input editable. */ }
+    }
+  };
   const [error, setError] = useState("");
   const save = () => {
     try {
@@ -307,7 +315,7 @@ export function TimingSheet({
           next = { ...trigger };
       }
       const initialEnd = trigger.max_runs ? "count" : trigger.until ? "date" : "none";
-      const endChanged = end !== initialEnd || (end === "count" && count !== String(trigger.max_runs || 10)) || (end === "date" && (until !== localInput(trigger.until ?? new Date(Date.now() + 86400_000).toISOString(), initialZone)));
+      const endChanged = end !== initialEnd || (end === "count" && count !== String(trigger.max_runs || 10)) || (end === "date" && untilEdited);
       if (end !== initialEnd || kind === "at") { delete next.max_runs; delete next.until; }
       else { next.max_runs = trigger.max_runs; next.until = trigger.until; }
       if (kind !== "at" && end === "count") {
@@ -443,7 +451,11 @@ export function TimingSheet({
                 <input
                   type="datetime-local"
                   value={until}
-                  onChange={(e) => setUntil(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setUntil(value); setUntilEdited(true);
+                    try { setUntilInstant(zonedISO(value, zone)); } catch { setUntilInstant(""); }
+                  }}
                 />
               </label>
             )}
@@ -454,7 +466,7 @@ export function TimingSheet({
           <input
             aria-label="时区"
             value={zone}
-            onChange={(e) => setZone(e.target.value)}
+            onChange={(e) => changeZone(e.target.value)}
             placeholder="Asia/Shanghai"
           />
         </label>

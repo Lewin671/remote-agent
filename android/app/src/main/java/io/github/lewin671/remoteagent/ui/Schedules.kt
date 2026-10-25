@@ -403,7 +403,7 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
             if (value.end == 2) ScheduleSetting("结束日期", value.until) { date(value.until) { value = value.copy(until = it, deadline = "") } }
         }
         FieldLabel("时区")
-        ReasonField(value.zone, { value = value.copy(zone = it.trim(), deadline = "") }, "例如 Asia/Shanghai")
+        ReasonField(value.zone, { value = value.inZone(it.trim()) }, "例如 Asia/Shanghai")
         Hint(SCHEDULE_INTERVAL_HINT)
         }
     }

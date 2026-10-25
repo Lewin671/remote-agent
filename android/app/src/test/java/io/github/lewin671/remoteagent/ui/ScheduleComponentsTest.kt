@@ -52,6 +52,17 @@ class ScheduleComponentsTest {
         ui.onNodeWithText("定时检查", substring = true).performClick()
         ui.onNodeWithText("Original result").assertExists()
     }
+    @Test fun cutoffPickerReformatsTheDateWhenTimezoneChanges() {
+        val original=Json.parseToJsonElement("""{"type":"calendar","time":"08:00","timezone":"Asia/Shanghai","until":"2027-10-30T00:15:29Z"}""").jsonObject
+        var saved:JsonObject?=null
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { ScheduleTimeSheet(original,{saved=it},{}) } }
+        ui.onNodeWithText("2027-10-30",useUnmergedTree=true).assertExists()
+        ui.onNode(hasSetTextAction()).performTextReplacement("America/Los_Angeles")
+        ui.onNodeWithText("2027-10-29",useUnmergedTree=true).assertExists()
+        ui.onNodeWithText("完成").performScrollTo().performClick()
+        assertNotNull("完成应提交转换后的截止时间",saved)
+        assertEquals(original["until"],saved?.get("until"))
+    }
     @Test fun completingAnUnchangedTimeSheetPreservesAgentTriggerAndExactDeadline() {
         val original = kotlinx.serialization.json.Json.parseToJsonElement("""{"type":"after_turn","delay_seconds":90,"repeat":true,"until":"2027-01-01T18:00:00Z"}""") as kotlinx.serialization.json.JsonObject
         var saved: kotlinx.serialization.json.JsonObject? = null
