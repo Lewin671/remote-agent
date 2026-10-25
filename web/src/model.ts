@@ -1557,7 +1557,7 @@ export function backgroundNote(b: ToolBackground): string {
   return "调用已返回，命令转到了后台；" + rest;
 }
 
-function toolOk(t: ToolCall): boolean {
+export function toolOk(t: ToolCall): boolean {
   return (
     t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0)
   );

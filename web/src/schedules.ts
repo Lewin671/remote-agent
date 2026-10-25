@@ -1,6 +1,6 @@
 // JSON contract owned by internal/schedule. Only encrypted machine commands
 // carry these definitions; the relay never receives task content in plaintext.
-import type { Tone, Item } from "./model";
+import { derive, isBackground, toolOk, type Tone, type Item } from "./model";
 import { isSkeleton } from "./skeleton";
 import {
   InputStatus,
@@ -347,6 +347,7 @@ export type QuietSpan = {
 };
 export function quietSpans(events: Event[]): QuietSpan[] {
   const spans: QuietSpan[] = [];
+  const derived = derive(events);
   const identity = (task: string, run: string) => task + "/" + run;
   // Scheduled context can survive a completed turn and notify during a later
   // autonomous turn. Classify the whole recorded run before hiding any of it.
@@ -365,6 +366,7 @@ export function quietSpans(events: Event[]): QuietSpan[] {
   let task = "";
   let notified = false;
   let safe = true;
+  let toolsThrough = 0n;
   let boundary = true;
   let lastDay = "";
   let tailMayContinue = false;
@@ -379,15 +381,22 @@ export function quietSpans(events: Event[]): QuietSpan[] {
       task = e.origin?.scheduledTaskId ?? "";
       notified = false;
       safe = !oversized && !!e.time;
+      toolsThrough = 0n;
       if (!start) boundary = true;
     } else if (start && k.case === "scheduledNotification") notified = true;
     else if (
       start &&
       (oversized ||
+        (k.case === "toolCall" && (!toolOk(k.value) || isBackground(k.value))) ||
+        (k.case === "toolStarted" && typeof derived.toolEnds.get(e.seq) !== "bigint") ||
+        (k.case === "turnContext" && derived.terminalChanges.has(e.seq)) ||
         !k.case ||
         [
           "approvalRequested",
           "questionAsked",
+          "questionAnswered",
+          "settingsChanged",
+          "imageGenerated",
           "planProposed",
           "sessionState",
           "sessionForked",
@@ -433,10 +442,15 @@ export function quietSpans(events: Event[]): QuietSpan[] {
         tailMayContinue = false;
       }
     }
+    if (start && k.case === "toolStarted") {
+      const end = derived.toolEnds.get(e.seq);
+      if (typeof end === "bigint" && end > toolsThrough) toolsThrough = end;
+    }
     if (k.case !== "turnEnded") continue;
     if (
       start &&
       safe &&
+      toolsThrough <= e.seq &&
       !notified &&
       !notifiedRuns.has(identity(task, run)) &&
       !k.value.scheduledNotified &&

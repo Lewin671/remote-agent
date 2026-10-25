@@ -19,6 +19,7 @@ data class QuietSpan(val task: String, val run: String, val from: Long, val thro
  * interruptions, notifications and incomplete runs always remain visible. */
 fun quietScheduledSpans(events: List<Event>): List<QuietSpan> {
     val out = mutableListOf<QuietSpan>()
+    val derived = io.github.lewin671.remoteagent.core.derive(events)
     val starts = events.indices.filter { events[it].hasUserMessage() }
     starts.forEachIndexed { i, start ->
         val first = events[start]
@@ -38,7 +39,10 @@ fun quietScheduledSpans(events: List<Event>): List<QuietSpan> {
         val body = events.subList(start, end)
         val ended = body.filter { it.hasTurnEnded() }
         if (ended.size != 1 || ended.any { it.turnEnded.scheduledTaskId != task || it.turnEnded.scheduledRunId != run || it.turnEnded.scheduledNotified || it.turnEnded.outcome != TurnOutcome.TURN_OUTCOME_COMPLETED }) return@forEachIndexed
-        if (body.any { io.github.lewin671.remoteagent.core.isSkeleton(it) || it.hasScheduledNotification() || it.hasApprovalRequested() || it.hasQuestionAsked() || it.hasPlanProposed() }) return@forEachIndexed
+        if (body.any { io.github.lewin671.remoteagent.core.isSkeleton(it) || it.hasToolCall() && (!toolOk(it.toolCall) || io.github.lewin671.remoteagent.core.wentToBackground(it.toolCall)) ||
+            it.hasToolStarted() && (derived.completedAt[it.seq] ?: Long.MAX_VALUE) > ended.single().seq ||
+            it.hasTurnContext() && derived.terminalChanges.containsKey(it.seq) ||
+            it.hasSettingsChanged() || it.hasQuestionAnswered() || it.hasImageGenerated() || it.hasSessionForked() || it.hasScheduledNotification() || it.hasApprovalRequested() || it.hasQuestionAsked() || it.hasPlanProposed() }) return@forEachIndexed
         val afterEnd = body.drop(body.indexOfLast { it.hasTurnEnded() } + 1)
         if (afterEnd.any { it.hasAgentMessage() || it.hasReasoning() || it.hasToolStarted() || it.hasToolCall() }) return@forEachIndexed
         // A follow-up has started but has not yet ended: do not hide it.

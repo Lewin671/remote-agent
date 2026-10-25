@@ -230,6 +230,36 @@ import RAProto
             #expect(silentScheduledGroups(round(1,run:"a")+[event]+round(5,run:"b"),zone:zone).isEmpty)
         }
     }
+    @Test func failedToolsAndProtectedInRoundRowsRemainVisible() {
+        var failed=PBEvent();failed.toolCall.title="failed";failed.toolCall.status="failed"
+        var nonzero=PBEvent();nonzero.toolCall.title="nonzero";nonzero.toolCall.exitCode=7
+        var background=PBEvent();background.toolCall.title="background";background.toolCall.background = .stillRunning
+        var pending=PBEvent();pending.toolStarted.callID="pending";pending.toolStarted.title="pending"
+        var setting=PBEvent();setting.settingsChanged.model="other-model"
+        var answer=PBEvent();answer.questionAnswered.questionID="q"
+        for var e in [failed,nonzero,background,pending,setting,answer] {
+            e.seq=2;var first=round(1,run:"a");first[1]=e
+            #expect(silentScheduledGroups(first+round(4,run:"b"),zone:zone).isEmpty)
+        }
+        var success=PBEvent();success.seq=2;success.toolCall.status="completed";success.toolCall.exitCode=0
+        var first=round(1,run:"a");first[1]=success
+        #expect(silentScheduledGroups(first+round(4,run:"b"),zone:zone).count == 1)
+    }
+    @Test func terminalSettingChangesInsideRoundsRemainVisible() {
+        var first=round(1,run:"a")
+        var initial=PBEvent();initial.seq=0;initial.turnContext.model="old-model"
+        first[1].turnContext.model="new-model"
+        let events=[initial]+first+round(4,run:"b")
+        #expect(derive(events).terminalChanges[2] != nil)
+        #expect(silentScheduledGroups(events,zone:zone).isEmpty)
+    }
+    @Test func lateFailedToolResultCannotHideAtTheEarlierStart() {
+        var second=round(4,run:"b");second[1].toolStarted.title="late";second[1].toolStarted.callID="late"
+        var third=round(7,run:"c");third[1].toolCall.title="late";third[1].toolCall.callID="late";third[1].toolCall.status="failed";third[1].toolCall.exitCode=7
+        let events=round(1,run:"a")+second+third
+        #expect(derive(events).completedAt[5] == 8)
+        #expect(silentScheduledGroups(events,zone:zone).isEmpty)
+    }
     @Test func foldsOnlyConsecutiveSuccessfulSilentScheduledRounds() {
         let first = round(1, run: "a"), second = round(4, at: "2026-10-24T16:00:00Z", run: "b")
         #expect(silentScheduledGroups(first, zone: zone).isEmpty)

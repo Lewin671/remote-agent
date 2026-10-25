@@ -31,6 +31,39 @@ class ScheduledChatTest {
             assertFalse(quietScheduledSpans(events).any { it.from<4 && it.through>=4 })
         }
     }
+    @Test fun failedToolsAndProtectedInRoundRowsNeverFold() {
+        val protected=listOf(
+            Event.newBuilder().setToolCall(ToolCall.newBuilder().setTitle("failed").setStatus("failed")),
+            Event.newBuilder().setToolCall(ToolCall.newBuilder().setTitle("nonzero").setStatus("completed").setExitCode(7)),
+            Event.newBuilder().setToolCall(ToolCall.newBuilder().setTitle("background").setStatus("completed").setBackground(ToolBackground.TOOL_BACKGROUND_STILL_RUNNING)),
+            Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setTitle("pending").setCallId("pending")),
+            Event.newBuilder().setSettingsChanged(SettingsChanged.newBuilder().setModel("other-model")),
+            Event.newBuilder().setQuestionAnswered(QuestionAnswered.newBuilder().setQuestionId("q")),
+            Event.newBuilder().setImageGenerated(ImageGenerated.newBuilder().setRevisedPrompt("image")),
+        )
+        protected.forEach { change ->
+            val first=turn(1,"a").toMutableList();first[1]=change.setSeq(2).build()
+            val events=first+turn(4,"b");val rows=buildChat(events,derive(events),"Computer")
+            assertEquals(rows,foldScheduledChat(rows,events))
+            assertFalse(quietScheduledSpans(events).any { it.from==1L })
+        }
+        val first=turn(1,"a").toMutableList();first[1]=Event.newBuilder().setSeq(2).setToolCall(ToolCall.newBuilder().setTitle("ok").setStatus("completed").setExitCode(0)).build()
+        val events=first+turn(4,"b")
+        assertTrue(foldScheduledChat(buildChat(events,derive(events),"Computer"),events).single() is ChatItem.QuietScheduled)
+    }
+    @Test fun terminalSettingChangesInsideScheduledRoundsRemainVisible() {
+        val first=turn(1,"a").toMutableList();first[1]=Event.newBuilder().setSeq(2).setTurnContext(TurnContext.newBuilder().setModel("new-model")).build()
+        val events=listOf(Event.newBuilder().setSeq(0).setTurnContext(TurnContext.newBuilder().setModel("old-model")).build())+first+turn(4,"b")
+        assertTrue(derive(events).terminalChanges.containsKey(2))
+        val rows=buildChat(events,derive(events),"Computer");assertEquals(rows,foldScheduledChat(rows,events))
+    }
+    @Test fun lateFailedResultCannotHideAtItsEarlierStartRow() {
+        val second=turn(4,"b").toMutableList();second[1]=Event.newBuilder().setSeq(5).setToolStarted(ToolStarted.newBuilder().setTitle("late").setCallId("late")).build()
+        val third=turn(7,"c").toMutableList();third[1]=Event.newBuilder().setSeq(8).setToolCall(ToolCall.newBuilder().setTitle("late").setCallId("late").setStatus("failed").setExitCode(7)).build()
+        val events=turn(1,"a")+second+third
+        assertEquals(8L,derive(events).completedAt[5L])
+        val rows=buildChat(events,derive(events),"Computer");assertEquals(rows,foldScheduledChat(rows,events))
+    }
     @Test fun consecutiveQuietTurnsFoldAndKeepOriginalText() {
         val events = turn(1,"a") + turn(4,"b")
         val rows = buildChat(events, derive(events), "Computer")

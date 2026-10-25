@@ -10,9 +10,10 @@ public struct SilentScheduledGroup: Equatable, Sendable, Identifiable {
 }
 /// Only explicit, completed scheduled rounds fold. Content outside those boundaries stays visible,
 /// including autonomous followups, a later notification and oversized-content placeholders.
-private struct Round { var start: UInt64; var time: Int64; var run: String; var safe = true }
+private struct Round { var start: UInt64; var time: Int64; var run: String; var safe = true; var toolsThrough: UInt64 = 0 }
 public func silentScheduledGroups(_ events: some Sequence<PBEvent>, zone: TimeZone = .current) -> [SilentScheduledGroup] {
     let history = Array(events)
+    let derived = derive(history)
     let unsafeRuns = Set(history.compactMap { event -> String? in
         switch event.kind {
         case .scheduledNotification(let n): return n.runID.isEmpty ? nil : n.runID
@@ -42,14 +43,19 @@ public func silentScheduledGroups(_ events: some Sequence<PBEvent>, zone: TimeZo
         if round != nil {
             if isSkeleton(e) { round?.safe = false }
             switch e.kind {
-            case .scheduledNotification, .approvalRequested, .questionAsked, .planProposed, .imageGenerated, .sessionForked:
+            case .scheduledNotification, .approvalRequested, .questionAsked, .questionAnswered, .settingsChanged, .planProposed, .imageGenerated, .sessionForked:
                 round?.safe = false
-            case .toolCall(let t): if !toolOk(t) { round?.safe = false }
+            case .toolCall(let t): if !toolOk(t) || wentToBackground(t) { round?.safe = false }
+            case .toolStarted:
+                if derived.completedAt[e.seq] == nil { round?.safe = false }
+                let through = max(round?.toolsThrough ?? 0, derived.completedAt[e.seq] ?? 0)
+                round?.toolsThrough = through
+            case .turnContext: if derived.terminalChanges[e.seq] != nil { round?.safe = false }
             case .inputState(let input):
                 if input.paused || [.failed, .needsTerminal, .unconfirmed, .canceled, .heldByCli].contains(input.status) { round?.safe = false }
             case .sessionState(let state): if state.status == .exited || state.status == .blocked { round?.safe = false }
             case .turnEnded(let end):
-                if let r = round, r.safe, end.outcome == .completed, !end.scheduledNotified, end.scheduledRunID == r.run {
+                if let r = round, r.safe, r.toolsThrough <= e.seq, end.outcome == .completed, !end.scheduledNotified, end.scheduledRunID == r.run {
                     streak.append(.init(firstSeq: r.start, lastSeq: e.seq, times: [r.time]))
                 } else { finish() }
                 round = nil

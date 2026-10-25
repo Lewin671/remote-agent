@@ -6,6 +6,7 @@ import type { ScheduleTask } from "./schedules";
 import {
   EventSchema,
   TurnOutcome,
+  ToolBackground,
   InputStatus,
   SessionStatus,
   type Event,
@@ -458,4 +459,40 @@ it.each([
   const raw=timeline(events,derive(events));
   expect(foldScheduled(raw,events,new Set())).toEqual(raw);
   expect(quietSpans(events).every(span=>!(span.start<4n && span.end>4n))).toBe(true);
+});
+it.each([
+  {case:"toolCall",value:{title:"failed command",status:"failed"}},
+  {case:"toolCall",value:{title:"nonzero command",status:"completed",exitCode:7}},
+  {case:"toolCall",value:{title:"background command",status:"completed",background:ToolBackground.STILL_RUNNING}},
+  {case:"toolStarted",value:{title:"unfinished command",callId:"pending"}},
+  {case:"settingsChanged",value:{model:"other-model"}},
+  {case:"questionAnswered",value:{questionId:"q"}},
+  {case:"imageGenerated",value:{revisedPrompt:"image"}},
+] as MessageInitShape<typeof EventSchema>["kind"][])("keeps protected in-round content visible: $case",kind=>{
+  const events=rounds();events[1]=create(EventSchema,{seq:events[1].seq,time:events[1].time,origin:events[1].origin,kind});
+  const raw=timeline(events,derive(events));
+  expect(foldScheduled(raw,events,new Set())).toEqual(raw);
+  expect(quietSpans(events).some(s=>s.start===1n)).toBe(false);
+});
+it("still folds completed successful tool results",()=>{
+  const events=rounds();events[1]=create(EventSchema,{seq:events[1].seq,time:events[1].time,origin:events[1].origin,kind:{case:"toolCall",value:{title:"ok",status:"completed",exitCode:0}}});
+  expect(quietSpans(events)[0].times).toHaveLength(2);
+});
+
+it("preserves terminal setting changes inside a scheduled round",()=>{
+  const events=rounds();events[1]=create(EventSchema,{seq:2n,kind:{case:"turnContext",value:{model:"new-model"}}});
+  events.unshift(create(EventSchema,{seq:0n,kind:{case:"turnContext",value:{model:"old-model"}}}));
+  expect(derive(events).terminalChanges.has(2n)).toBe(true);
+  const rows=timeline(events,derive(events));expect(foldScheduled(rows,events,new Set())).toEqual(rows);
+});
+it("keeps a failed result painted back onto a tool started in an earlier round",()=>{
+  const events=rounds();
+  events[4]=create(EventSchema,{seq:5n,kind:{case:"toolStarted",value:{title:"late command",callId:"late"}}});
+  events.push(
+    create(EventSchema,{seq:7n,time:events[0].time,origin:{scheduledTaskId:"task",scheduledRunId:"late-run"},kind:{case:"userMessage",value:{text:"next check"}}}),
+    create(EventSchema,{seq:8n,kind:{case:"toolCall",value:{title:"late command",callId:"late",status:"failed",exitCode:7}}}),
+    create(EventSchema,{seq:9n,kind:{case:"turnEnded",value:{outcome:TurnOutcome.COMPLETED,scheduledTaskId:"task",scheduledRunId:"late-run"}}}),
+  );
+  expect(derive(events).toolEnds.get(5n)).toBe(8n);
+  const rows=timeline(events,derive(events));expect(foldScheduled(rows,events,new Set())).toEqual(rows);
 });
