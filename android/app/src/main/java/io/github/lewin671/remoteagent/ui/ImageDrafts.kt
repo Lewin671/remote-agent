@@ -409,14 +409,24 @@ class ImageDraft(
     internal fun bindAbort(img: PendingImage, value: Remote? = remote) {
         val connection = value ?: return
         val machine = img.machineId ?: return
+        val owner = RaApp.scopeOrNull() ?: return
+        bindAbort(img, connection.uploadChannel(machine), owner)
+    }
+
+    internal fun bindAbort(img: PendingImage, channel: io.github.lewin671.remoteagent.core.UploadChannel, owner: kotlinx.coroutines.CoroutineScope) {
         val transfer = img.transferId
-        img.abortTransfer = {
-            RaApp.scopeOrNull()?.launch { runCatching { connection.uploadChannel(machine).abort(transfer) } }
-        }
+        img.abortTransfer = { owner.launch { runCatching { channel.abort(transfer) } } }
     }
 
     internal fun retarget(value: Remote, target: String?) {
+        if (target == null) return
         bindRemote(value)
+        retarget(target)
+    }
+
+    /** An unresolved selection is not a machine switch, including during draft restoration. */
+    internal fun retarget(target: String?) {
+        if (target == null) return
         var changed = false
         for (img in images) if (img.machineId != null && img.machineId != target) {
             img.stopUpload()

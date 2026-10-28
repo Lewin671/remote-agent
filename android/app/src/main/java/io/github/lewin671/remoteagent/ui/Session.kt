@@ -443,6 +443,8 @@ private fun ChatPane(
     val cwd = s.info?.cwd.orEmpty()
     val home = state.machines[s.machineId]?.meta?.home.orEmpty()
     val outbox = Outbox.of(s.id)
+    // Durable records regain their abort action before either removal or restore-to-input is offered.
+    outbox.flatMap { it.images }.forEach { ImageDrafts.forSession(s.id).bindAbort(it, remote) }
     // Messages with images from an earlier run are followed until the CLI has them.
     LaunchedEffect(s.id, outbox.any { it.images.isNotEmpty() }) {
         if (outbox.any { it.images.isNotEmpty() }) Outbox.watch(remote, s.id)
@@ -1301,6 +1303,8 @@ internal fun putBack(
     val d = ImageDrafts.forSession(sid)
     val s = remote.state.value.sessions[sid]
     val max = maxImages(s?.let { remote.state.value.machines[it.machineId] })
+    // Restored outbox entries have their durable transfer identity but no live abort closure.
+    o.images.forEach { d.bindAbort(it, remote) }
     if (o.images.isNotEmpty() && !d.attach(o.images, max, o.original, io.github.lewin671.remoteagent.core.maxFiles(s?.let { remote.state.value.machines[it.machineId] }))) return false
     val cur = Outbox.draft(sid).value
     Outbox.draft(sid).value = if (cur.isBlank()) o.text else cur.trimEnd() + "\n" + o.text

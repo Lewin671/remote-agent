@@ -137,6 +137,59 @@ class FileUploadLifecycleTest {
         assertTrue(secondOpened)
     }
 
+    @Test fun anUnresolvedMachinePreservesRestoredCompletedFilesUntilARealSwitch() = runBlocking {
+        val disk = MemoryFiles()
+        val original = file("large").apply {
+            fileBytes = MAX_FILE_BYTES; sizeVerified = true
+            machineId = "saved-machine"; transferId = "saved-transfer"; fileId = "saved-file"
+            expiresMs = Long.MAX_VALUE; state = PendingImage.State.Ready
+        }
+        saveImages(disk, "new:project", listOf(original), false)
+        saveOrder(disk, "new:project", listOf(original), false)
+        val restored = loadImages(disk, "new:project").first.single()
+        val d = ImageDraft("new:project", disk).apply { images += restored }
+        var aborted = 0
+        restored.abortTransfer = { aborted++ }
+        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), okhttp3.OkHttpClient())
+        try {
+            val turn = restored.generation
+            d.retarget(remote, null) // ProjectStart/follow has not resolved yet after process death.
+            assertEquals(0, aborted)
+            assertEquals(turn, restored.generation)
+            assertEquals("saved-transfer", restored.transferId)
+            assertEquals("saved-file", restored.fileId)
+            assertEquals(Long.MAX_VALUE, restored.expiresMs)
+            assertTrue(restored.readyFor("saved-machine"))
+            d.retarget(remote, "saved-machine")
+            assertEquals(0, aborted)
+            assertTrue(restored.readyFor("saved-machine"))
+            d.retarget(remote, "other-machine")
+            assertEquals(1, aborted)
+            assertNull(restored.fileId)
+            assertNotEquals("saved-transfer", restored.transferId)
+        } finally { remote.close() }
+    }
+
+    @Test fun bindingARestoredOutboxEntryAbortsItsOldTransferWhenPuttingItBack() = runBlocking {
+        val disk = MemoryFiles()
+        val original = file("pending").apply {
+            machineId = "m"; transferId = "old-transfer"; fileId = "old-file"
+            expiresMs = Long.MAX_VALUE; state = PendingImage.State.Ready
+        }
+        val records = OutgoingRecords(disk)
+        records.save("s", Outgoing("request", "message", images = listOf(original), fileIds = listOf("old-file")), false)
+        val restored = records.load("s").single().images.single()
+        assertNull(restored.abortTransfer)
+        val channel = Channel()
+        val d = draft("putback")
+        d.bindAbort(restored, channel, this)
+        assertTrue(d.attach(listOf(restored), 6))
+        yield()
+        assertEquals(listOf("old-transfer"), channel.aborted)
+        assertNull(restored.fileId)
+        assertNotEquals("old-transfer", restored.transferId)
+    }
+
     @Test fun errorsAndUriOwnershipArePrecise() {
         assertEquals("上传连接中断，请重试", uploadErrorText(java.io.IOException("network")))
         assertTrue(uploadErrorText(FileSourceException(java.io.IOException())).contains("源文件"))

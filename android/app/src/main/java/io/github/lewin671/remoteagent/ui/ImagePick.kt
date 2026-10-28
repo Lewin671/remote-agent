@@ -159,7 +159,7 @@ internal fun RefreshDraftUploads(draft: ImageDraft, remote: Remote, machineId: S
     val fileBlocked = fileDraftBlocked(draft, machine)
     val deadlines = draft.images.map { it.expiresMs }
     LaunchedEffect(draft, machineId, blocked, fileBlocked, deadlines, draft.images.size, draft.restoring) {
-        if (!draft.restoring) draft.retarget(remote, machineId)
+        if (!draft.restoring && machineId != null) draft.retarget(remote, machineId)
         if (draft.restoring || machineId == null || machine?.online != true || remote.state.value.conn != io.github.lewin671.remoteagent.core.ConnState.ONLINE) return@LaunchedEffect
         if (blocked != null && !io.github.lewin671.remoteagent.core.filesSupported(machine)) return@LaunchedEffect
         draft.sendAllTo(remote, machineId)
