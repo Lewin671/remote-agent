@@ -17,7 +17,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | Android App | 当前界面稿的手机画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI（到 v8）；v7、v8 的画面用示例数据对照过；定时任务见下行，其余 v9 以后的改动主要过自动测试 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；下方「Android 的小缺口」 |
 | iOS App | 当前界面稿的手机画面；原生终端；从 App 发图、文件和看大图。没有推送，也没有在通知里审批（[ios-client · 还不能做的](ios-client.md#还不能做的)） | 模拟器真实 CLI：文件选择/发送已由 XCUITest 点按真实系统选择器（[记录](acceptance-notes.md#ios-原生选择器实测2026-10-28)），其余链路主要由调试信号触发（[记录](acceptance-notes.md#11-ios)）；各画面用三组示例数据看过亮色、暗色和特大字号 | 没有签名身份，没装过真机；手工手势、VoiceOver 朗读、硬件键盘、iPad 横屏都没验证；下方「iOS」一组待确认 |
 | 客户端状态推导 | 三端共同规则与共享事件向量（[契约](architecture.md#客户端状态推导的共同规则)） | 网页真实 CLI（独立无头 Chrome 手机宽/宽屏）；原生自动测试（[记录](acceptance-notes.md#客户端状态推导共享向量)） | 当前 checkpoint 已过自动验收；聊天历史分段读取 |
-| 客户端文件附件 | 协议、daemon、网页，以及 Android 的系统选择、流式上传、文件条目与草稿恢复 | Phase A 见 [验收记录](acceptance-notes.md#文件附件phase-a2026-10-28)；Android 的自动测试、模拟器直接操作与真实 Codex / Claude Code 见 [Phase B](acceptance-notes.md#文件附件androidphase-b2026-10-28) | iOS 接入；Android 真机、云文件来源、混合附件和大文件实测 |
+| 客户端文件附件 | 协议、daemon 与网页、Android、iOS 三端已整合：文件选择、原样上传、文件条目、草稿恢复和逐请求能力检查；尚未发布 | [网页](acceptance-notes.md#文件附件phase-a2026-10-28)、[Android](acceptance-notes.md#文件附件androidphase-b2026-10-28)、[iOS](acceptance-notes.md#文件附件iosphase-b2026-10-28) 的自动测试与隔离真实 CLI；原生模拟器的系统文件选择器已操作 | 真机、云文件提供器、大文件内存与故障恢复的联合验收，见「待确认 › 文件附件」 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
 | 定时任务 | daemon 调度、本地 CLI/MCP、加密机器指令；网页、Android、iOS 的独立入口、新建/编辑、运行历史、对话定时条与静默轮折叠、加密离线快照和修订订阅；当前整合分支尚未发布 | 三端本地真实 Claude Code 链路：网页与 Android 为界面操作，iOS 为 DEBUG 动作；自动检查与各端证据边界见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24) | 真机界面及推送送达、iPad、多台真实电脑、实际睡眠/DST 和客户端 Codex 路线，见「待确认 › 定时任务」 |
@@ -28,7 +28,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 按顺序做；第一项是当前的主要工作。
 
-1. **iOS 文件附件与三端整合**。iOS 按 [session-files.md](session-files.md) 接入文件流程；Android 已完成接入和隔离 Codex 验收，见 [记录](acceptance-notes.md#文件附件androidphase-b2026-10-28)。Android 已整合 Phase A 并跑通原生 Claude Code；补图片按文件发送、混合附件和各端大文件的真实链路。
+1. **文件附件的三端联合验收**。按 [session-files.md](session-files.md) 和「待确认 › 文件附件」，在独立测试环境补真机、云文件提供器、大文件内存峰值及断连恢复。验收标准：逐项记录环境、直接界面操作与调试触发的区别、真实 CLI 结果及资源占用；修复确认的问题，未覆盖的流程继续明确标为未验证。
 2. **任意客户端管理的联合验收**。按 [architecture §9](architecture.md#9-账户设备和密钥) 和 [AGENTS.md](../AGENTS.md)，在独立 `RA_DEV_DIR` 从无账户环境开始，用网页新建账户、加入真实电脑并经 server → daemon → tmux 操作真实 CLI。验收三端六条有向交接、设备移除/档案重接/删除、创建及恢复断点、72 小时租约与 48 小时否决；网页手机宽/宽屏及亮暗主题、iOS/iPad 与通知/锁屏分别核实，未验证部分保留限制。通过后再统一发布任意客户端管理功能，协议仍为 10。
 3. **真机验收**。在自己的 Android 手机和 iPhone（PWA）上走一遍，清单在「待确认 › 真机」。验收标准：清单里每一项有结论，问题修掉或记进本文
 4. **Codex 0.159.2 的命令结果**。按新格式解析退出码或失败，再把 0.159.2 列为已验证版本。验收标准：失败的命令在客户端显示 ✕ 和退出码，`remote-agent doctor` 通过
@@ -55,7 +55,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 - 会话用过的文件在会话结束前不可回收，可能填满默认 1 GiB 附件配额；目前接受这一限制，之后要不要增加显式管理和容量策略未定（[设计](session-files.md#保留配额与恢复)）。
 
-- Phase A 的网页真实系统选择器/移动拖放、网络断连、跨真实 daemon 重启恢复和六个 100 MiB 文件的浏览器内存峰值尚未实测，覆盖边界见 [验收记录](acceptance-notes.md#文件附件phase-a2026-10-28)。Android 已完成发送与 Claude Code 联合验收；尚未覆盖真机、云文档提供器、100 MiB 真机内存、传输中的断连/进程回收、排队跨 daemon 重启和真实机器切换；iOS 接入待整合。
+- 尚未实测：网页真实系统选择器与移动拖放；Android / iOS 真机及云文档提供器的下载、授权跨重启；六个 100 MiB 文件的浏览器和设备内存峰值；混合图片／文件及图片按文件发送的完整真实链路；传输中断网、进程回收、跨真实 daemon 重启恢复和两台真实机器切换。各端既有覆盖与限制见 [网页](acceptance-notes.md#文件附件phase-a2026-10-28)、[Android](acceptance-notes.md#文件附件androidphase-b2026-10-28)、[iOS](acceptance-notes.md#文件附件iosphase-b2026-10-28) 验收；自动测试不能代替这些流程。
 
 **真机**
 
@@ -80,7 +80,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - 客户端暂时没有结构化的会话存储故障或「已持久受理但记录失败」状态；同步 RPC 能返回明确错误文字，但三端仍按通用错误呈现，新建会话也不能同时返回会话结果和记录警告。本地 send 对此仍以非零退出报告记录错误。是否增加独立的协议字段及客户端呈现，未定。现有 `StatusDetail` 只承载 CLI 状态说明，不能拼入诊断（[architecture · 事件提交](architecture.md#10-报文同步和指令)）
 - 损坏的会话事件记录目前会阻塞后续读取，daemon 重启也可能跳过该会话。需要设计保留原日志的损坏记录隔离、可确认序号的占位、状态不确定性和恢复流程，再统一处理日志索引、批次与 checkpoint；本轮暂不修复。
 - Android 通知的系统布局可能截断未被 daemon 截短的审批正文，现有 `truncated` 不能证明已显示全文。要不要把所有「允许」改为「查看全文」，或改用能确认全文已显示的自有审批界面，未定（[android-client · 按钮](android-client.md#推送和通知里审批)）
-- 新会话首条图片和网页首条文件的本地副本目前随创建成功释放（iOS 图片同样如此）；创建响应没有首条消息的队列请求 ID。要不要在协议里返回该 ID 后接入待确认记录，或先保留为可恢复的草稿、只在用户移除时释放，未定；文件恢复时没有本机副本必须提示重新选择（[session-images.md](session-images.md)、[session-files.md](session-files.md)）
+- 新会话首条附件没有绑定到该首条消息的持久待确认记录；创建响应没有首条消息的队列请求 ID。要不要在协议里返回该 ID 后接入待确认记录，或先保留为可恢复的草稿、只在用户移除时释放，未定；文件恢复时没有本机副本必须提示重新选择（[session-images.md](session-images.md)、[session-files.md](session-files.md)）
 - 网页上一个新会话的请求还没回来时，给下一条草稿加的图片会在那个会话启动成功时一起清掉（图片托盘按项目共用）；Android 和 iOS 只取走请求带的那几张。要不要让网页也这样，未定
 - Codex 让一条命令先返回、转到后台继续跑时，聊天里是一次「已完成」的工具调用加一次名为 `exec` 的调用，读起来像两件事。要不要把这两条并成一条，未定（在 Codex 0.162.0 上看到）
 - 额度页的「重新读取」和「API 计费」状态在界面稿和 [architecture · 账户额度](architecture.md#账户额度) 里有，网页和 Android 都还没有实现；做不做、何时做未定

@@ -1542,6 +1542,7 @@ rebase 到本地 `wt/file-upload` 的 `f23f0801`，只遇到 `acceptance-notes.m
 ```
 
 通过：core 427、app 383、terminal 7 个单元测试，共 817 个，无失败或跳过；Debug APK、测试 APK 及发布流水线使用的 Release lint 全部通过。`Medium_Phone_API_36.0` 模拟器的 `FilesLayoutTest` 4 个界面测试全部通过（亮/暗、200% 字号、44 dp 控件、能力菜单、纯文件历史）。结束后卸载两个独立 `.fileuploadcheck` 测试包并停止模拟器。本轮没有重跑真实 CLI 或真机链路，旧实测仍按各自记录的基线与边界理解。未推送、发布、部署或操作日常账户、daemon、真机。
+
 ## 文件附件（iOS，Phase B，2026-10-28）
 
 环境：当前 iOS 任务 checkout，基于 Phase A `4f9149fc`，协议 11，尚未发布；Xcode 27.0（27A266a），复用已有 iPhone 18 Pro / iOS 27.0 模拟器。独立 `RA_DEV_DIR` 经 `ios/scripts/dev-env.sh start --no-account` 构建并启动本地 server；iOS 使用独立测试命名空间创建临时管理账户，核对四图案后配对测试电脑，daemon 使用独立状态目录和 tmux socket。复用已安装的 Claude Code 2.1.300 / Haiku 5.5 medium，新建专用 CLI 会话，不连接线上服务、日常 remote-agent 身份或已有会话。
@@ -1651,3 +1652,21 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 - 直接附件恢复、完整消息放回和历史远端文件恢复都在修改草稿、清除旧 ID 或删除待发记录之前拒绝并提示更新。无附件的文字放回仍可使用。新建首条文件消息在准备请求时拒绝并保留原草稿。
 
 最终 `swift test --package-path ios/RemoteAgentCore`：RACore 585 项（91 suites）、Markdown 17 项通过；已有 iPhone 18 Pro / iOS 27.0 上 `xcodebuild ... build test` 的 App 367 项（44 suites）与构建通过；`git diff --check` 通过。本轮未重复选择器或真实 CLI 端到端验收，未新增 XCUITest target。临时 Go 测试环境由 fixture 清理，模拟器已关闭；未推送或发布。
+
+
+## 文件附件：三端整合（2026-10-28）
+
+当前整合 checkout 包含 `wt/file-upload` 的 `198bd94c`（协议、daemon、网页与 Android）以及 iOS 实现；产品版本 0.46.3、协议 11，尚未发布。网页、Android 和 iOS 的文件选择、上传、文件条目、来源恢复及逐请求能力检查已在同一 checkout 中整合。各端真实 CLI 与系统选择器的证据范围分别见本文件的 Phase A、Android Phase B 和 iOS Phase B 部分。
+
+环境：本地 Go / pnpm；Xcode 27.0、已有 iPhone 18 Pro / iOS 27.0 模拟器；Android 使用 JDK 17、SDK 36。自动检查结果：
+
+| 检查 | 结果 |
+|---|---|
+| `go test ./...` | 全部通过 |
+| 网页 `pnpm typecheck` / `pnpm test` / `pnpm build` | 全部通过；90 个测试文件、1252 项测试 |
+| `swift test --package-path ios/RemoteAgentCore` | RACore 585 项、Markdown 17 项通过 |
+| iOS `xcodebuild ... build test` | App 367 项及构建通过 |
+| Android `./gradlew --no-daemon --no-configuration-cache :core:test :terminal:testReleaseUnitTest :app:testDebugUnitTest -PdevBuild=true` | core 427、terminal 7、app 383 项通过，共 817 项，无失败或跳过；terminal 使用 `:terminal:testReleaseUnitTest --rerun` 实际执行通过 |
+| `git diff --check` | 通过 |
+
+本次是同一整合代码的自动检查，没有新增真实设备、云提供器、系统选择器操作或真实 CLI 端到端证据。剩余联合验收维护在 [plan.md](plan.md#待确认)，包括真机、云文件下载与持久授权、大文件峰值内存、混合附件及断连／进程回收／daemon 重启恢复。Go 与原生测试 fixture 使用的临时服务已结束，iOS 模拟器已关闭；未安装真机 App、推送、发布或升级日常 daemon。
