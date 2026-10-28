@@ -18,6 +18,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/claude"
 	"github.com/Lewin671/remote-agent/internal/codex"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestSafeFileName(t *testing.T) {
@@ -81,9 +82,9 @@ func TestFileTransferValidationAndOwnership(t *testing.T) {
 		{"name", func(r *pb.BeginImageUploadRequest) { r.FileName = strings.Repeat("中", 86) }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			r := base
-			tt.change(&r)
-			if _, err := u.begin(&r, "phone"); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			r := proto.Clone(&base).(*pb.BeginImageUploadRequest)
+			tt.change(r)
+			if _, err := u.begin(r, "phone"); connect.CodeOf(err) != connect.CodeInvalidArgument {
 				t.Fatal(err)
 			}
 		})
@@ -91,9 +92,9 @@ func TestFileTransferValidationAndOwnership(t *testing.T) {
 	if _, err := u.begin(&base, "phone"); err != nil {
 		t.Fatal(err)
 	}
-	other := base
+	other := proto.Clone(&base).(*pb.BeginImageUploadRequest)
 	other.FileName = "other.txt"
-	if _, err := u.begin(&other, "phone"); connect.CodeOf(err) != connect.CodeAlreadyExists {
+	if _, err := u.begin(other, "phone"); connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatal(err)
 	}
 	if _, err := u.begin(&base, "other"); connect.CodeOf(err) != connect.CodePermissionDenied {

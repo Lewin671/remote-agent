@@ -70,11 +70,12 @@ type transfer struct {
 	Height      int32  `json:"height,omitempty"`
 	CompletedMs int64  `json:"completed_ms,omitempty"`
 	// Set once a message used it.
-	Session  string          `json:"session,omitempty"`
-	Exposed  bool            `json:"exposed,omitempty"`
-	Embedded bool            `json:"embedded,omitempty"`
-	Refs     map[string]bool `json:"refs,omitempty"`
-	AccessMs int64           `json:"access_ms,omitempty"`
+	Session   string          `json:"session,omitempty"`
+	Returning bool            `json:"returning,omitempty"`
+	Exposed   bool            `json:"exposed,omitempty"`
+	Embedded  bool            `json:"embedded,omitempty"`
+	Refs      map[string]bool `json:"refs,omitempty"`
+	AccessMs  int64           `json:"access_ms,omitempty"`
 }
 
 func (t *transfer) state() pb.ImageUploadState {
@@ -482,6 +483,12 @@ func (u *uploads) reconcile() {
 		if err != nil || t.Session == "" || t.artifactID() == "" {
 			continue
 		}
+		if t.Returning {
+			if err := u.returnPending(t); err != nil {
+				slog.Error("finish upload rollback", "err", errClass(err))
+			}
+			continue
+		}
 		name := t.relativeName()
 		if _, err := os.Stat(u.pending(name)); err != nil {
 			continue
@@ -512,6 +519,12 @@ func (u *uploads) release(sessionID string) {
 		if err != nil || t.Session != sessionID || t.artifactID() == "" {
 			continue
 		}
+		if t.Returning {
+			if err := u.returnPending(t); err != nil {
+				slog.Error("return upload", "err", errClass(err))
+			}
+			continue
+		}
 		name := t.relativeName()
 		src := t.sessionPath(u)
 		if _, err := os.Stat(src); err == nil {
@@ -519,14 +532,17 @@ func (u *uploads) release(sessionID string) {
 				continue
 			}
 			if err := os.Rename(src, u.pending(name)); err != nil {
-				slog.Error("return image", "image", t.ImageID, "err", errClass(err))
+				slog.Error("return upload", "err", errClass(err))
 				continue
 			}
-		}
-		if err := u.syncUploadDirs(filepath.Dir(u.pending(name))); err != nil {
-			slog.Error("sync returned upload", "err", errClass(err))
+			if err := u.syncUploadDirs(filepath.Dir(u.pending(name))); err != nil {
+				slog.Error("sync returned upload", "err", errClass(err))
+				continue
+			}
+		} else if !os.IsNotExist(err) {
 			continue
 		}
+
 		if t.FileID != "" {
 			_ = os.Remove(filepath.Dir(src))
 		}
@@ -626,6 +642,12 @@ func (u *uploads) gcLocked(now time.Time) {
 			}
 			continue
 		}
+		if t.Returning {
+			if err := u.returnPending(t); err != nil {
+				referenced[strings.Split(t.relativeName(), string(filepath.Separator))[0]] = true
+				continue
+			}
+		}
 		if t.FileID == "" && t.Session != "" && len(t.Refs) == 0 && !t.Exposed {
 			if err := u.removeOriginal(t); err == nil {
 				continue
@@ -645,8 +667,18 @@ func (u *uploads) gcLocked(now time.Time) {
 		}
 		if t.artifactID() != "" {
 			referenced[strings.Split(t.relativeName(), string(filepath.Separator))[0]] = true
-			// Complete uploads no longer need the received original.
-			_ = os.Remove(u.partial(t.ID) + ".part")
+			// A completion record can be visible after a failed metadata fsync.
+			// Re-sync it before GC removes the retained original, just like an
+			// explicit Complete retry. Keep the bytes if the sync still fails.
+			if t.FileID != "" {
+				if _, err := os.Stat(u.partial(t.ID) + ".part"); err == nil {
+					if _, err := u.durableFileStatus(t); err != nil {
+						slog.Error("sync completed upload", "err", errClass(err))
+					}
+				}
+			} else {
+				_ = os.Remove(u.partial(t.ID) + ".part")
+			}
 		}
 	}
 	pending, _ := os.ReadDir(filepath.Join(u.dir, "pending"))

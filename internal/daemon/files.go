@@ -234,6 +234,18 @@ func (u *uploads) selectUploads(imageIDs, fileIDs []string, device, session stri
 					t = u.byFile(id)
 				}
 			}
+			// A rejected claim may still be returning after an earlier I/O error.
+			// Finish that intent before any new acceptance can reuse its session path.
+			if t != nil && t.Returning && t.Device == device {
+				if err := u.returnPending(t); err != nil {
+					return nil, err
+				}
+				var err error
+				t, err = u.load(t.ID)
+				if err != nil && connect.CodeOf(err) != connect.CodeNotFound {
+					return nil, err
+				}
+			}
 			switch {
 			case t == nil || session == "" && t.Session != "":
 				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("%s %s is not on this machine; upload it again", label, id))
@@ -281,17 +293,26 @@ func (u *uploads) takeUploads(images, files []string, device, session, request s
 	}
 	var moved []*transfer
 	undo := func() {
+		// A failed reverse move must keep the session owner: startup can then
+		// locate/reconcile either copy. Never describe session bytes as pending.
+		retained := map[*transfer]bool{}
 		for _, t := range moved {
-			dst := u.pending(t.relativeName())
-			if u.mkdirUploadDir(filepath.Dir(dst)) == nil && os.Rename(t.sessionPath(u), dst) == nil {
-				_ = u.syncUploadDirs(filepath.Dir(dst))
-				if t.FileID != "" {
-					_ = os.Remove(filepath.Dir(t.sessionPath(u)))
-				}
+			t.Returning = true
+			if err := u.save(t); err != nil {
+				retained[t] = true
+				continue
+			}
+			if err := u.returnPending(t); err != nil {
+				retained[t] = true
 			}
 		}
 		for t, old := range before {
+			owner := t.Session
 			*t = old
+			if retained[t] {
+				t.Session = owner
+				t.Returning = true
+			}
 			_ = u.save(t)
 		}
 	}
@@ -461,4 +482,50 @@ func (u *uploads) durableFileStatus(t *transfer) (*pb.ImageUploadStatus, error) 
 	}
 	_ = os.Remove(u.partial(t.ID) + ".part")
 	return t.status(), nil
+}
+
+// Complete a rejected claim's return after an interrupted/failed reverse move.
+// Session stays authoritative until pending bytes and both directory entries
+// are durable. This also handles a crash after rename but before metadata save.
+func (u *uploads) returnPending(t *transfer) error {
+	src := t.sessionPath(u)
+	dst := u.pending(t.relativeName())
+	if _, err := os.Stat(src); err == nil {
+		if err := u.mkdirUploadDir(filepath.Dir(dst)); err != nil {
+			return err
+		}
+		if err := os.Rename(src, dst); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if _, err := os.Stat(dst); err == nil {
+		if err := u.syncUploadDirs(filepath.Dir(dst)); err != nil {
+			return err
+		}
+		if _, err := os.Stat(filepath.Dir(src)); err == nil {
+			if err := u.syncUploadDirs(filepath.Dir(src)); err != nil {
+				return err
+			}
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	// If both copies vanished there is no directory entry left to sync.
+	// Still release the provisional owner so the stale record can expire.
+	owner, refs := t.Session, t.Refs
+	t.Session, t.Returning = "", false
+	t.Refs = nil
+	if err := u.save(t); err != nil {
+		t.Session, t.Returning = owner, true
+		t.Refs = refs
+		return err
+	}
+	if t.FileID != "" {
+		_ = os.Remove(filepath.Dir(src))
+	}
+	return nil
 }

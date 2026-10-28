@@ -395,6 +395,9 @@ func (u *uploads) restoreRefs(s *session, records []*transfer) {
 	}
 	wanted := map[string]bool{}
 	for _, t := range records {
+		if t.Returning {
+			continue
+		}
 		if t.ImageID != "" {
 			wanted[t.ImageID] = true
 		}
@@ -417,6 +420,10 @@ func (u *uploads) restoreRefs(s *session, records []*transfer) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	for _, t := range records {
+		// Rejected claims are owned by recovery, not the accepted queue.
+		if t.Returning {
+			continue
+		}
 		refs := map[string]bool{}
 		for _, in := range s.queue.Held {
 			for _, f := range in.Files {
