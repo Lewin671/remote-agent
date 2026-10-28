@@ -70,7 +70,7 @@ internal fun FileStrip(draft: ImageDraft, remote: Remote, machineId: String?) {
     Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         draft.documents.forEach { file ->
             FileChip(file.fileName!!, file.fileBytes, file.state,
-                onRetry = { machineId?.let { draft.upload(remote, file, it) } }, onRemove = { draft.remove(file) })
+                onRetry = { machineId?.let { draft.upload(remote, file, it, forceFresh = true) } }, onRemove = { draft.remove(file) })
         }
         fileDraftBlocked(draft, remote.state.value.machines[machineId])?.let { Text(it, style = T.meta, color = pal.red) }
         Text("文件原样发送，包含其中的元数据。", style = T.meta, color = pal.muted)

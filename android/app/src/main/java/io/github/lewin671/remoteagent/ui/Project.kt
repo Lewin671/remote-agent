@@ -643,6 +643,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
                 remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
             } catch (e: Exception) {
                 val err = start.attempt.settle(e) ?: e
+                if (!start.attempt.frozen) start.taken.forEach { it.allowAbort() }
                 throw err
             }
         }) { r ->
@@ -660,7 +661,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
             if (text.trim() == start.prompt) text = ""
             val taken = start.taken
             images.detach(taken)
-            taken.forEach { it.release() }
+            taken.forEach { it.release(abort = false) }
             start.taken = emptyList()
         }
     }
@@ -1163,6 +1164,7 @@ object Starts {
         var taken: List<PendingImage> = emptyList()
             set(value) {
                 field = value
+                value.forEach { it.protectTransfer() }
                 imageIds = value.filterNot { it.isFile }.mapNotNull { it.imageId }
                 fileIds = value.filter { it.isFile }.mapNotNull { it.fileId }
                 preparedImages = value.map { it.processed }

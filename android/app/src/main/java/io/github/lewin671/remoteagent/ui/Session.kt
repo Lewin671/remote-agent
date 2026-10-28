@@ -583,7 +583,15 @@ private fun ChatPane(
                             // A message the session ended before writing: text and images back.
                             val o = Outbox.find(s.id, requestId)
                             if (o != null) putBack(remote, s.id, o)
-                            else Outbox.draft(s.id).value = text
+                            else {
+                                val accepted = d.accepted[requestId]
+                                val input = d.inputDetails[requestId]
+                                val tray = ImageDrafts.forSession(s.id)
+                                val machineView = state.machines[s.machineId]
+                                if (tray.restoreReferences(accepted?.files?.takeIf { it.isNotEmpty() } ?: input?.filesList.orEmpty(), accepted?.imageIds?.takeIf { it.isNotEmpty() } ?: input?.imageIdsList.orEmpty(), maxImages(machineView), io.github.lewin671.remoteagent.core.maxFiles(machineView))) {
+                                    Outbox.draft(s.id).value = text
+                                }
+                            }
                         }
                     }
                     // Offline, the connection banner says the content may be stale and
@@ -809,7 +817,7 @@ private fun OutgoingView(
                     "移除此提示" to
                         {
                             Outbox.remove(sid, o)
-                            o.images.forEach { it.release() }
+                            o.images.forEach { it.release(abort = false) }
                         }
                 feedback.text to p.orangeInk
             }
@@ -832,7 +840,7 @@ private fun OutgoingView(
                     "移除此提示" to
                         {
                             Outbox.remove(sid, o)
-                            o.images.forEach { it.release() }
+                            o.images.forEach { it.release(abort = false) }
                         }
                 feedback.text to if (feedback.uncertain) p.orangeInk else p.red
             }

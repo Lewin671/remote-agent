@@ -62,15 +62,15 @@ internal fun fileDraftBlocked(draft: ImageDraft, machine: MachineView?): String?
     return draft.documents.filter { it.sizeVerified }.firstNotNullOfOrNull { fileLimitError(it.fileBytes, 0, maxFiles(machine), maxFileBytes(machine)) }
 }
 
-internal fun ImageDraft.uploadDocument(remote: Remote, entry: PendingImage, target: String) {
+internal fun ImageDraft.uploadDocument(remote: Remote, entry: PendingImage, target: String, forceFresh: Boolean = false) {
     bindRemote(remote)
     val machine = remote.state.value.machines[target]
     if (!filesSupported(machine)) {
-        entry.stopUpload()
-        entry.state = PendingImage.State.Failed("这台电脑不支持发送文件，请更新电脑上的 remote-agent")
+        val turn = entry.stopUpload()
+        if (entry.valid(turn)) entry.state = PendingImage.State.Failed("这台电脑不支持发送文件，请更新电脑上的 remote-agent")
         return
     }
-    startDocumentUpload(entry, target, RaApp.instance.scope, remote.uploadChannel(target), maxFileBytes(machine)) {
+    startDocumentUpload(entry, target, RaApp.instance.scope, remote.uploadChannel(target), maxFileBytes(machine), forceFresh = forceFresh) {
         RaApp.instance.contentResolver.openInputStream(Uri.parse(entry.uri)) ?: throw java.io.FileNotFoundException()
     }
 }
@@ -78,19 +78,17 @@ internal fun ImageDraft.uploadDocument(remote: Remote, entry: PendingImage, targ
 /** Injectable channel/source/scope exercise cancellation races without an Android runtime. */
 internal fun ImageDraft.startDocumentUpload(
     entry: PendingImage, target: String, owner: CoroutineScope, channel: UploadChannel, limit: Long,
-    io: CoroutineDispatcher = Dispatchers.IO, open: () -> InputStream,
+    io: CoroutineDispatcher = Dispatchers.IO, forceFresh: Boolean = false, open: () -> InputStream,
 ) {
-    if (!needsUpload(entry, target)) return
-    val changed = entry.machineId != target || entry.fileId != null && entry.expiresMs <= System.currentTimeMillis()
-    entry.stopUpload(abort = changed)
-    synchronized(entry) {
-        if (changed) entry.transferId = newRequestId()
-        entry.fileId = null
-        entry.machineId = target
-        entry.expiresMs = 0
-        entry.state = PendingImage.State.Processing
+    if (!forceFresh && !needsUpload(entry, target)) return
+    val changed = forceFresh || entry.state is PendingImage.State.Failed || entry.transportMachine() != target || entry.protectedTransfer == entry.transferId || entry.fileId != null && entry.expiresMs <= System.currentTimeMillis()
+    var turn = entry.stopUpload(abort = changed)
+    if (!entry.activate(turn, target, fresh = changed)) return
+    if (!entry.hasSource()) {
+        entry.change(turn, target) { entry.state = PendingImage.State.Failed("这个文件没有本机副本，请移除后重新选择") }
+        persistOrder()
+        return
     }
-    val turn = entry.generation
     fun bindAbort() {
         val transfer = entry.transferId
         entry.abortTransfer = { owner.launch { runCatching { channel.abort(transfer) } } }
@@ -104,17 +102,19 @@ internal fun ImageDraft.startDocumentUpload(
                 var result: UploadedFile? = null
                 for (attempt in 0..1) {
                     try {
+                        val attemptTurn = turn
+                        val transfer = entry.transferId
                         result = withContext(io) {
-                            uploadFile(channel, entry.transferId, entry.fileName!!, entry.fileBytes, open, maxBytes = limit,
+                            uploadFile(channel, transfer, entry.fileName!!, entry.fileBytes, open, maxBytes = limit,
                                 onPrepared = { actual ->
-                                    entry.change(turn, target) {
+                                    entry.change(attemptTurn, target) {
                                         entry.fileBytes = actual
                                         entry.sizeVerified = true
                                         entry.state = PendingImage.State.Uploading(0f)
                                         prepared(entry)
                                     }
                                 },
-                                onProgress = { done, total -> entry.change(turn, target) {
+                                onProgress = { done, total -> entry.change(attemptTurn, target) {
                                     entry.state = PendingImage.State.Uploading(if (total > 0) done.toFloat() / total else 1f)
                                 } },
                             )
@@ -122,15 +122,14 @@ internal fun ImageDraft.startDocumentUpload(
                         break
                     } catch (e: CommandException) {
                         if (attempt > 0 || !restartUpload(e)) throw e
-                        val previous = entry.transferId
-                        runCatching { channel.abort(previous) }
-                        if (!entry.change(turn, target) {
-                            entry.transferId = newRequestId(); entry.state = PendingImage.State.Processing
-                            bindAbort(); persistOrder()
-                        }) return@serial
+                        if (!entry.current(turn, target)) return@serial
+                        turn = entry.stopUpload(cancelWork = false)
+                        if (!entry.activate(turn, target, fresh = true)) return@serial
+                        bindAbort(); persistOrder()
                     }
                 }
                 entry.change(turn, target) {
+                    entry.machineId = target
                     entry.fileId = checkNotNull(result).fileId
                     entry.expiresMs = result.expiresMs
                     entry.state = PendingImage.State.Ready
@@ -142,4 +141,12 @@ internal fun ImageDraft.startDocumentUpload(
             entry.change(turn, target) { entry.state = PendingImage.State.Failed(uploadErrorText(e)) }
         }
     }
+}
+
+/** History references without local sources remain visible and block partial/text-only resends. */
+internal fun ImageDraft.restoreReferences(files: List<io.github.lewin671.remoteagent.proto.SentFile>, imageIds: List<String>, maxImages: Int, maxFiles: Int): Boolean {
+    if (files.isEmpty() && imageIds.isEmpty()) return true
+    val missing = files.map { PendingImage(newRequestId(), null, it.name, it.sizeBytes, retainSource = false) } +
+        imageIds.map { PendingImage(newRequestId(), null, retainSource = false) }
+    return attach(missing, maxImages, fileMax = maxFiles)
 }

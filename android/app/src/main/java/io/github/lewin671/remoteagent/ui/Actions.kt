@@ -417,7 +417,7 @@ object Outbox {
     fun settle(sid: String, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputState>) {
         for (o in recorded(of(sid), inputs)) {
             remove(sid, o)
-            o.images.forEach { it.release() }
+            o.images.forEach { it.release(abort = false) }
         }
     }
 

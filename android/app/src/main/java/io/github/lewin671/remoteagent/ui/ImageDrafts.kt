@@ -47,14 +47,60 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
     init { if (retainSource) PendingUris.retain(this) }
     internal var generation = 0L
     internal var abortTransfer: (() -> Unit)? = null
-    internal fun current(turn: Long, machine: String) = synchronized(this) { ownerAccount === AccountMemory.token && generation == turn && machineId == machine }
+    internal fun current(turn: Long, machine: String) = synchronized(this) { ownerAccount === AccountMemory.token && generation == turn && transportMachine() == machine }
     internal fun change(turn: Long, machine: String, work: () -> Unit): Boolean = synchronized(this) {
-        if (ownerAccount !== AccountMemory.token || generation != turn || machineId != machine) false else { work(); true }
+        if (ownerAccount !== AccountMemory.token || generation != turn || transportMachine() != machine) false else { work(); true }
     }
-    internal fun stopUpload(abort: Boolean = true) {
-        synchronized(this) { generation++ }
-        job?.cancel()
-        if (abort) { abortTransfer?.invoke(); abortTransfer = null }
+    /** The previous transport is a resume/abort candidate, never proof that the draft is sendable. */
+    internal var transferMachine: String? = null
+    internal var protectedTransfer: String? = null
+    internal fun transportMachine(): String? = machineId ?: transferMachine
+    internal fun protectTransfer() { synchronized(this) { protectedTransfer = transferId } }
+    internal fun allowAbort() { synchronized(this) { protectedTransfer = null } }
+    internal fun valid(turn: Long) = synchronized(this) { ownerAccount === AccountMemory.token && generation == turn }
+    internal fun invalidateResults(): Long {
+        val oldJob: Job?
+        val turn = synchronized(this) { generation++; oldJob = job; job = null; generation }
+        oldJob?.cancel()
+        return turn
+    }
+    /** All readiness is cleared before cancellation callbacks or abort can re-enter the draft. */
+    internal fun stopUpload(abort: Boolean = true, cancelWork: Boolean = true, staleBytes: Boolean = false, onInvalidated: () -> Unit = {}): Long {
+        val oldJob: Job?
+        val cancelTransfer: (() -> Unit)?
+        val turn = synchronized(this) {
+            generation++
+            transferMachine = transportMachine()
+            cancelTransfer = if (abort && protectedTransfer != transferId) abortTransfer else null
+            if (abort) { abortTransfer = null; transferMachine = null }
+            if (staleBytes) stale = true
+            state = State.Processing
+            imageId = null; fileId = null; machineId = null; expiresMs = 0
+            oldJob = if (cancelWork) job else null
+            if (cancelWork) job = null
+            generation
+        }
+        onInvalidated()
+        oldJob?.cancel()
+        cancelTransfer?.invoke()
+        return turn
+    }
+    internal fun activate(turn: Long, target: String, fresh: Boolean): Boolean = synchronized(this) {
+        if (!valid(turn)) false else {
+            if (fresh) transferId = newRequestId()
+            transferMachine = target
+            true
+        }
+    }
+    internal fun hasSource() = if (isFile) !uri.isNullOrEmpty() else processed != null || !uri.isNullOrEmpty()
+    internal fun restoreToDraft() {
+        val turn = stopUpload(abort = false)
+        if (!valid(turn)) return
+        state = when {
+            !hasSource() -> State.Failed(if (isFile) "这个文件没有本机副本，请移除后重新选择" else "这张图没有本机副本，请移除后重新选择")
+            needsProcessing -> State.Failed("需要重新处理或重新选择图片")
+            else -> State.Processing
+        }
     }
     val isFile: Boolean get() = fileName != null
     var fileId: String? = null
@@ -84,14 +130,16 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
         !needsProcessing && state == State.Ready && machineId == machine && (if (isFile) fileId != null else imageId != null) && expiresMs > now
 
     internal fun uploaded(result: io.github.lewin671.remoteagent.core.UploadedImage) {
+        machineId = transportMachine()
         imageId = result.imageId
         expiresMs = result.expiresMs
         state = State.Ready
     }
 
     /** Lets go of the bytes, the thumbnail and the picker's grant. */
-    fun release() {
-        stopUpload()
+    fun release(abort: Boolean = true) {
+        val turn = stopUpload(abort)
+        if (!valid(turn)) return
         processed = null
         thumb = null
         PendingUris.release(this)
@@ -105,7 +153,7 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
  * count: the latest target wins and the old upload is dropped.
  */
 fun needsUpload(img: PendingImage, machineId: String): Boolean =
-    !img.needsProcessing && !img.readyFor(machineId) && !(img.machineId == machineId && (img.job?.isActive == true || img.state is PendingImage.State.Uploading))
+    !img.needsProcessing && !img.readyFor(machineId) && !(img.transportMachine() == machineId && (img.job?.isActive == true || img.state is PendingImage.State.Uploading))
 
 /** Whether a machine takes images, and if not, why, in words. */
 fun uploadBlocked(m: MachineView?, online: Boolean, name: String): String? {
@@ -136,9 +184,9 @@ internal fun saveImages(files: SealedFiles, folder: String, images: List<Pending
             files.put(folder, img.id + ".file", out.toByteArray())
             continue
         }
-        val p = img.processed ?: continue
-        files.put(folder, img.id + ".img", p.bytes)
-        val meta = listOf(p.format.number, p.width, p.height, if (original) 1 else 0, img.uri.orEmpty(), p.note).joinToString("\n")
+        val p = img.processed
+        if (p != null) files.put(folder, img.id + ".img", p.bytes)
+        val meta = listOf(p?.format?.number ?: 0, p?.width ?: 0, p?.height ?: 0, if (original) 1 else 0, img.uri.orEmpty(), p?.note.orEmpty()).joinToString("\n")
         files.put(folder, img.id + ".meta", meta.toByteArray())
     }
 }
@@ -146,12 +194,13 @@ internal fun saveImages(files: SealedFiles, folder: String, images: List<Pending
 internal fun saveUpload(files: SealedFiles, folder: String, img: PendingImage) {
     val bytes = java.io.ByteArrayOutputStream()
     synchronized(img) { java.io.DataOutputStream(bytes).use {
-        it.writeUTF(img.transferId); it.writeUTF(img.machineId.orEmpty())
+        it.writeUTF(img.transferId); it.writeUTF(img.transportMachine().orEmpty())
         it.writeUTF(img.imageId.orEmpty()); it.writeUTF(img.fileId.orEmpty()); it.writeLong(img.expiresMs)
     } }
     files.put(folder, img.id + ".upload", bytes.toByteArray())
 }
 
+/** Decode pending-request ownership; live drafts invalidate this before publishing their entries. */
 private fun restoreUpload(files: SealedFiles, folder: String, img: PendingImage) {
     val bytes = files.get(folder, img.id + ".upload") ?: return
     java.io.DataInputStream(java.io.ByteArrayInputStream(bytes)).use {
@@ -191,12 +240,12 @@ internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -
             continue
         }
         val meta = files.get(folder, "$id.meta")?.toString(Charsets.UTF_8)?.split("\n") ?: continue
-        val bytes = files.get(folder, "$id.img") ?: continue
+        val bytes = files.get(folder, "$id.img")
         if (meta.size < 6) continue
         val img = PendingImage(id, meta[4].takeIf { it.isNotEmpty() }, retainSource = false)
-        img.processed = Processed(bytes, ImageFormat.forNumber(meta[0].toInt()) ?: ImageFormat.IMAGE_FORMAT_JPEG, meta[1].toInt(), meta[2].toInt(), meta[5])
+        img.processed = bytes?.let { Processed(it, ImageFormat.forNumber(meta[0].toInt()) ?: ImageFormat.IMAGE_FORMAT_JPEG, meta[1].toInt(), meta[2].toInt(), meta[5]) }
         img.stale = (meta[3] == "1") != original
-        img.thumb = thumb(bytes)
+        img.thumb = bytes?.let(thumb)
         // Uploads are the daemon's for a while only: send them again.
         img.state = PendingImage.State.Failed(if (img.stale) "需要按当前模式重新处理" else "需要重新传到电脑")
         restoreUpload(files, folder, img)
@@ -277,7 +326,7 @@ class ImageDraft(
     private fun saveNow() {
         runCatching { files.transaction {
             val now = images.toList()
-            val fresh = synchronized(marks) { now.filter { it.isFile || it.id !in saved && it.id !in stale && it.processed != null }.map { it to (turns[it.id] ?: 0) } }
+            val fresh = synchronized(marks) { now.filter { it.isFile || it.id !in saved && it.id !in stale }.map { it to (turns[it.id] ?: 0) } }
             saveImages(files, key, fresh.map { it.first }, original)
             saveOrder(files, key, now, original)
             synchronized(marks) { for ((img, turn) in fresh) if ((turns[img.id] ?: 0) == turn) saved += img.id }
@@ -301,9 +350,9 @@ class ImageDraft(
     private fun settle() {
         val ready = waiting.filter { (ids, _) ->
             ids.all { id ->
-                // One without bytes has nothing a copy elsewhere could hold either.
+                // Even a failed remote-only entry needs its metadata kept before the old record goes.
                 val img = images.firstOrNull { it.id == id }
-                (img == null || !img.isFile && img.processed == null) || synchronized(marks) { id in saved }
+                img == null || synchronized(marks) { id in saved }
             }
         }
         waiting.removeAll(ready.toSet())
@@ -331,8 +380,8 @@ class ImageDraft(
     }
 
     private fun process(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
-        img.stopUpload()
-        val turn = img.generation
+        val turn = img.stopUpload(staleBytes = true)
+        if (!img.valid(turn)) return
         invalidate(img)
         img.state = PendingImage.State.Processing
         img.machineId = null
@@ -346,7 +395,7 @@ class ImageDraft(
                 img.processed = p
                 img.thumb = preview
                 prepared(img)
-                machine()?.let { upload(remote, img, it) } ?: run { img.state = PendingImage.State.Failed("先选一台电脑") }
+                (selectedMachine ?: machine())?.let { upload(remote, img, it) } ?: run { img.state = PendingImage.State.Failed("先选一台电脑") }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -359,36 +408,32 @@ class ImageDraft(
      * Sends the image to [machineId] unless it is there or on its way there.
      * An upload to another machine is dropped: the latest target wins.
      */
-    fun upload(remote: Remote, img: PendingImage, machineId: String) {
-        if (img.isFile) { uploadDocument(remote, img, machineId); return }
+    fun upload(remote: Remote, img: PendingImage, machineId: String, forceFresh: Boolean = false) {
+        if (img.isFile) { uploadDocument(remote, img, machineId, forceFresh); return }
         val p = img.processed ?: return
-        if (!needsUpload(img, machineId)) return
+        if (!forceFresh && !needsUpload(img, machineId)) return
         val channel = remote.uploadChannel(machineId)
-        val changed = img.machineId != machineId || (img.imageId != null && img.expiresMs <= System.currentTimeMillis())
-        img.stopUpload(abort = changed)
-        synchronized(img) {
-            if (changed) { img.transferId = newRequestId(); img.imageId = null }
-            img.machineId = machineId
-            img.expiresMs = 0
-        }
-        val turn = img.generation
+        val changed = forceFresh || img.state is PendingImage.State.Failed || img.transportMachine() != machineId || img.protectedTransfer == img.transferId || (img.imageId != null && img.expiresMs <= System.currentTimeMillis())
+        var turn = img.stopUpload(abort = changed)
+        if (!img.activate(turn, machineId, fresh = changed)) return
         bindAbort(img, remote)
-        img.state = PendingImage.State.Uploading(0f)
         persistOrder()
         img.job = RaApp.instance.scope.launch {
             try {
                 var result: io.github.lewin671.remoteagent.core.UploadedImage? = null
                 for (attempt in 0..1) {
                     try {
-                        result = uploadImage(channel, img.transferId, p.bytes) { done, total ->
-                            img.change(turn, machineId) { img.state = PendingImage.State.Uploading(if (total > 0) done.toFloat() / total else 0f) }
+                        val attemptTurn = turn
+                        val transfer = img.transferId
+                        result = uploadImage(channel, transfer, p.bytes) { done, total ->
+                            img.change(attemptTurn, machineId) { img.state = PendingImage.State.Uploading(if (total > 0) done.toFloat() / total else 0f) }
                         }
                         break
                     } catch (e: CommandException) {
                         if (attempt > 0 || !io.github.lewin671.remoteagent.core.restartUpload(e)) throw e
-                        val previous = img.transferId
-                        runCatching { channel.abort(previous) }
-                        if (!img.change(turn, machineId) { img.transferId = newRequestId() }) return@launch
+                        if (!img.current(turn, machineId)) return@launch
+                        turn = img.stopUpload(cancelWork = false)
+                        if (!img.activate(turn, machineId, fresh = true)) return@launch
                         bindAbort(img, remote); persistOrder()
                     }
                 }
@@ -408,7 +453,7 @@ class ImageDraft(
     }
     internal fun bindAbort(img: PendingImage, value: Remote? = remote) {
         val connection = value ?: return
-        val machine = img.machineId ?: return
+        val machine = img.transportMachine() ?: return
         val owner = RaApp.scopeOrNull() ?: return
         bindAbort(img, connection.uploadChannel(machine), owner)
     }
@@ -424,17 +469,17 @@ class ImageDraft(
         retarget(target)
     }
 
+    private var selectedMachine: String? = null
     /** An unresolved selection is not a machine switch, including during draft restoration. */
     internal fun retarget(target: String?) {
         if (target == null) return
+        selectedMachine = target
         var changed = false
-        for (img in images) if (img.machineId != null && img.machineId != target) {
-            img.stopUpload()
-            synchronized(img) {
-                img.transferId = newRequestId()
-                img.machineId = null; img.imageId = null; img.fileId = null; img.expiresMs = 0
-                img.state = PendingImage.State.Failed("需要重新传到电脑")
-            }
+        for (img in images) if (img.transportMachine() != null && img.transportMachine() != target) {
+            val turn = img.stopUpload()
+            if (!img.valid(turn)) continue
+            img.transferId = newRequestId()
+            img.state = PendingImage.State.Processing
             changed = true
         }
         if (changed) persistOrder()
@@ -443,17 +488,18 @@ class ImageDraft(
     /** Makes sure every image is on [machineId], e.g. after the new-session card changed machines. */
     fun sendAllTo(remote: Remote, machineId: String) {
         retarget(remote, machineId)
+        if (selectedMachine != machineId) return
         val machine = remote.state.value.machines[machineId]
         for (img in images) {
             if (img.isFile && fileDraftBlocked(this, machine) != null) continue
             if (!img.isFile && capabilities(machine)?.imageUpload != true) continue
-            if (!img.needsProcessing && !img.readyFor(machineId)) upload(remote, img, machineId)
+            if (img.hasSource() && !img.needsProcessing && !img.readyFor(machineId)) upload(remote, img, machineId)
         }
     }
 
     fun retry(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
         if (img.needsProcessing && img.uri != null) process(context, img, remote, machine)
-        else machine()?.let { upload(remote, img, it) }
+        else machine()?.let { upload(remote, img, it, forceFresh = true) }
     }
 
     /** Originals or compressed, for this message: every image is prepared again from what was picked. */
@@ -500,7 +546,11 @@ class ImageDraft(
      */
     fun detach(taken: List<PendingImage>) {
         images.removeAll(taken.toSet())
-        for (img in taken) forget(img)
+        for (img in taken) {
+            img.protectTransfer()
+            img.invalidateResults()
+            forget(img)
+        }
         if (pictures.isEmpty()) original = false
         persistOrder()
         settle()
@@ -526,13 +576,13 @@ class ImageDraft(
         }
         if (pictures.isEmpty()) original = wereOriginal
         for (img in back) {
-            img.stopUpload()
+            img.allowAbort()
+            val turn = img.stopUpload(onInvalidated = {
+                if (!img.hasSource()) img.state = PendingImage.State.Failed(if (img.isFile) "这个文件没有本机副本，请移除后重新选择" else "这张图没有本机副本，请移除后重新选择")
+                images += img
+            })
+            if (!img.valid(turn)) continue
             img.transferId = newRequestId()
-            img.imageId = null
-            img.fileId = null
-            img.machineId = null
-            img.state = PendingImage.State.Failed("需要重新传到电脑")
-            images += img
         }
         persistOrder()
         return true
@@ -559,12 +609,13 @@ class ImageDraft(
                 val (list, orig) = withContext(Dispatchers.IO) { loadImages(files, key, thumb) }
                 if (account !== AccountMemory.token) { list.forEach { PendingUris.release(it) }; return@launch }
                 original = orig
-                list.forEach { PendingUris.retain(it) }
+                list.forEach { it.restoreToDraft(); PendingUris.retain(it) }
                 images += list
                 synchronized(marks) {
                     saved += list.filterNot { it.stale }.map { it.id }
                     stale += list.filter { it.stale }.map { it.id }
                 }
+                persistOrder()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
