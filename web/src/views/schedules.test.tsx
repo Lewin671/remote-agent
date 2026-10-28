@@ -2,6 +2,7 @@
 import { create } from "@bufbuild/protobuf";
 import { CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
 import { act } from "react";
+import { Sidebar } from "./Home";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
@@ -845,4 +846,17 @@ it("clears the real navigation badge on opening the list and sees notifications 
   await r.refreshSchedules("mac");
   r.conn = "offline";
   expect(r.scheduleBadge()).toBe(1);
+});
+
+it("counts unread notifications in the wide sidebar's schedules entry too", async () => {
+  const r = remote([]);
+  let tasks: ScheduleTask[] = [];
+  vi.spyOn(r, "machineCommand").mockImplementation(async () => create(CommandResultSchema, {
+    kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
+  }));
+  await r.refreshSchedules("mac");
+  tasks = [task({ runs: [run("new-notice", { notified: true })] })];
+  await r.refreshSchedules("mac");
+  await mount(<Sidebar remote={r} go={() => {}} />);
+  expect(host.querySelector(".task-count")?.textContent).toBe("1");
 });
