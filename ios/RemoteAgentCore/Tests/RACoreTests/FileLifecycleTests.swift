@@ -11,11 +11,12 @@ private actor FileMachine {
     var rejectFirst = false
     var holdFirst = false
     var loseComplete = false
+    var pendingComplete = false
     var completes = 0
     var waiting: CheckedContinuation<Void, Never>?
     var validation: (@Sendable (String, String) throws -> Bool)?
-    func configure(reject: Bool = false, hold: Bool = false, loseComplete: Bool = false, validation: (@Sendable (String, String) throws -> Bool)? = nil) {
-        rejectFirst = reject; holdFirst = hold; self.loseComplete = loseComplete; self.validation = validation
+    func configure(reject: Bool = false, hold: Bool = false, loseComplete: Bool = false, pendingComplete: Bool = false, validation: (@Sendable (String, String) throws -> Bool)? = nil) {
+        rejectFirst = reject; holdFirst = hold; self.loseComplete = loseComplete; self.pendingComplete = pendingComplete; self.validation = validation
     }
     func begin(_ machine: String, _ id: String, total: Int64) async throws -> PBImageUploadStatus {
         if let validation { #expect(try validation(machine, id), "transfer must be on disk before Begin") }
@@ -47,6 +48,7 @@ private actor FileMachine {
     func complete(_ machine: String, _ id: String) throws -> PBImageUploadStatus {
         completes += 1
         if loseComplete { loseComplete = false; throw UploadError(code: "network", message: "lost Complete response") }
+        if pendingComplete { pendingComplete = false; return state(machine, id) }
         transfers[machine + id]?.done = true
         return state(machine, id)
     }
@@ -173,10 +175,10 @@ private final class WorkerProgress: @unchecked Sendable {
         _ = try await first.value
     }
 
-    @Test func allPersistedBytesStillNeedCompleteAfterAnUnknownReply() async throws {
+    @Test(arguments: [true, false]) func allPersistedBytesStillNeedCompleteWhileHashing(replyLost: Bool) async throws {
         let (url, img) = try picked(); defer { try? FileManager.default.removeItem(at: url) }
         let server = FileMachine()
-        await server.configure(loseComplete: true)
+        await server.configure(loseComplete: replyLost, pendingComplete: !replyLost)
         await server.seedPartial("a", "all-bytes", bytes: Data(repeating: 65, count: 8192), total: 8192)
         let source = try #require(img.file)
         let uploaded = try await uploadFile(FileMachineChannel(server: server, machine: "a"), transferId: "all-bytes", source: source)

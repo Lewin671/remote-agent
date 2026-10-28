@@ -282,11 +282,17 @@ public func uploadFile(
             onProgress(status.persistedBytes, refreshed.size)
         }
         guard status.persistedBytes >= 0, status.persistedBytes <= refreshed.size else { throw UserError("电脑报告的上传进度不对") }
-        // RECEIVING with all bytes persisted still needs Complete, including after an unknown Complete response.
+        // Hashing may still be in flight, even when Complete itself returns RECEIVING.
+        var checking = 0
         while status.state == .receiving {
             try Task.checkCancellation()
             do {
                 status = try await channel.complete(transferId: transferId)
+                if status.state == .receiving && status.persistedBytes == refreshed.size {
+                    checking += 1
+                    guard checking < 3 else { throw UserError("电脑仍在校验附件，请稍后重试") }
+                    continue
+                }
                 guard status.state == .complete else { throw UserError("电脑没有确认文件上传完成，请重试") }
             } catch where again(error) { status = try await channel.status(transferId: transferId) }
         }
