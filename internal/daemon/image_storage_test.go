@@ -234,7 +234,7 @@ func TestRestoreRefsSkipsHistoryWithoutImageRecords(t *testing.T) {
 	u.restoreRefs(&session{meta: meta{ID: "incomplete"}, queue: &queueState{}}, []*transfer{{ID: "partial", Session: "incomplete"}})
 }
 
-func TestRestoreRefsUsesOneTransferSnapshot(t *testing.T) {
+func TestRestoreRefsIndexesSessionsWithoutRecreatingRemovedRecords(t *testing.T) {
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	u := newUploads()
 	for _, sessionID := range []string{"first", "second"} {
@@ -254,7 +254,8 @@ func TestRestoreRefsUsesOneTransferSnapshot(t *testing.T) {
 	if len(records) != 2 {
 		t.Fatalf("indexed sessions = %d", len(records))
 	}
-	// The restoration must use its snapshot, not load transfers again.
+	// The index selects each session without rescanning all transfers, but
+	// record contents must be reloaded before writing: removal wins.
 	for _, sessionID := range []string{"first", "second"} {
 		tr := records[sessionID][0]
 		if err := os.Remove(u.partial(tr.ID) + ".json"); err != nil {
@@ -267,8 +268,8 @@ func TestRestoreRefsUsesOneTransferSnapshot(t *testing.T) {
 		u.restoreRefs(&session{meta: meta{ID: sessionID}, queue: &queueState{}, log: log}, records[sessionID])
 		log.Close()
 		got, err := u.load(tr.ID)
-		if err != nil || len(got.Refs) != 0 {
-			t.Fatalf("snapshot not reconciled: %v %v", got, err)
+		if connect.CodeOf(err) != connect.CodeNotFound {
+			t.Fatalf("snapshot recreated removed record: %v %v", got, err)
 		}
 	}
 }

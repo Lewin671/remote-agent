@@ -414,9 +414,18 @@ func (u *uploads) restoreRefs(s *session, records []*transfer) {
 	}
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	for _, t := range records {
-		// Rejected claims are owned by recovery, not the accepted queue.
-		if t.Returning || t.Deleting {
+	for _, snapshot := range records {
+		// The startup index and event scan ran before this lock. Reload so a
+		// stale snapshot cannot overwrite deletion/return intent or recreate
+		// a record already removed while earlier sessions were restoring.
+		t, err := u.load(snapshot.ID)
+		if err != nil {
+			if connect.CodeOf(err) != connect.CodeNotFound {
+				slog.Error("reload image references", "err", errClass(err))
+			}
+			continue
+		}
+		if t.Session != s.meta.ID || t.artifactID() != snapshot.artifactID() || t.Returning || t.Deleting {
 			continue
 		}
 		refs := map[string]bool{}

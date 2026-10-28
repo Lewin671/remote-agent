@@ -6,7 +6,7 @@
 
 文件沿用图片命名的机器级 Begin / Put / Status / Complete / Abort 指令，端到端加密，经中继转发到电脑；中继不保存文件正文，不解析名字、哈希和路径。设备身份由命令签名证明，传输和完成 ID 都只允许原设备续传或发送。文件上传独立受 `file_upload` capability 控制；旧 daemon 不声明，网页就不提供文件选择，不提升协议版本。四端生成代码同步，原生客户端的手写代码在下一阶段接入。已接受的边界：客户端若仍缓存支持文件的旧 capability，而电脑已换回不支持文件的 daemon，旧 daemon 会忽略未知的 file_ids；不提升协议版本时不能保证这次请求携带文件，客户端需先刷新机器信息。
 
-单文件 100 MiB，每条消息最多 6 个文件，另可带 6 张图片。原始文件名最多 255 UTF-8 字节；非空文件名选择文件传输，格式必须为 UNSPECIFIED。允许空文件。每块最多 768 KiB，重复块与断点续传沿用图片规则。客户端调用 Complete 丢回复后，若 Status 仍是 RECEIVING 且 persisted_bytes 等于 total_bytes，说明校验可能仍在锁外进行；应使用相同 transfer_id 重试幂等 Complete 或继续查询，不能把缺少 file_id 当成上传失败而重传全部字节。Android / iOS 各自的上传实现也遵循这条规则；完成时只流式核对总长度、SHA-256（通过打开的描述符在全局上传锁外读取，重新加锁后核对归属、状态和文件身份），不解码、不压缩、不删元数据，字节原样保存。网页明确提示「文件原样发送，包含其中的元数据」。
+单文件 100 MiB，每条消息最多 6 个文件，另可带 6 张图片。原始文件名最多 255 UTF-8 字节；非空文件名选择文件传输，格式必须为 UNSPECIFIED。允许空文件。每块最多 768 KiB，重复块与断点续传沿用图片规则。客户端调用 Complete 丢回复后，若 Status 仍是 RECEIVING 且 persisted_bytes 等于 total_bytes，说明校验可能仍在锁外进行；应使用相同 transfer_id 重试幂等 Complete 或继续查询，不能把缺少 file_id 当成上传失败而重传全部字节。Android / iOS 各自的上传实现也遵循这条规则；完成时只流式核对总长度、SHA-256（通过打开的描述符在全局上传锁外读取，重新加锁后先核对归属与 Deleting，再核对状态和文件身份），不解码、不压缩、不删元数据，字节原样保存。网页明确提示「文件原样发送，包含其中的元数据」。
 
 ## 落盘与原生输入
 
@@ -31,10 +31,11 @@ CLI 自己决定怎样读取文件；路径引用不保证特定格式一定内�
 | 无记录 → receiving / Begin | 建立并同步 partial、pending 目录及祖先 → 创建、同步空 `.part` → 保存记录 | 记录未提交时重试 Begin；无记录的 `.part` 由 GC 清理。已提交的 Begin 返回相同状态 |
 | receiving → receiving / Put | 写入块 → 文件 fsync → 保存 persisted 偏移 | 记录不领先于已同步字节；状态查询后的重传验证已确认的重叠部分，覆盖尚未确认的尾部 |
 | receiving → complete / Complete | 校验、建立目标目录并同步 → 写清理后的图片或硬链接原文件 → 同步目标目录及祖先 → 保存完成记录 → unlink `.part` → 同步 partial | 完成记录之前保留原始副本，重试 Complete；无记录的目标按孤儿清理。记录可见但同步失败时保留目标与原始副本；Complete 重试、启动和 GC 先重同步目标与记录再清理 `.part` |
+| 文件锁外哈希 → 锁内完成重检 / Complete | 重读记录 → 验证设备归属 → 拒绝 Deleting → 检查完成状态或原文件身份 → 继续完成 | Abort 的 unlink 或目录同步失败也已提交删除意图；不能返回旧的完成 ID 或提交新完成记录，由启动 / GC 继续删除。图片完成全程持上传锁，没有这一解锁窗口 |
 | pending → session / take、启动 reconcile、GC | 保存 Session 前向意图 → 建立并同步目标目录 → rename → 同步目标及源目录 → 保存本次引用 | 意图已提交时恢复入口按同方向补完移动和两侧同步；受理调用失败则走下行的返回流程，批量领取恢复全部原有引用 |
 | session → pending / untake、批量领取撤回、失败创建、未启动会话 release | 保存 Session + Returning（本次拒绝的引用已撤回）→ 同一个移动入口 rename → 同步目标及源目录 → 清除 Session、Returning、Refs 并保存 | mkdir、rename 或任一同步失败都保留方向与旧 owner；启动、GC 和再次领取先完成返回，不能向已消失的会话重新领取。清除 owner 的写入失败同样可以重试 |
 | 已在 Returning / startup、GC、再次领取、session exit | 重同步返回意图 → 检查字节在两侧的实际位置 → 补移动与两侧同步 → 清除 owner | rename 后崩溃不重复反向移动。源目录已不存在时同步最近的现存祖先；两侧字节都已消失则解除临时归属，使记录可以过期 |
-| 已受理消息引用变化 / queue、Held、结束、取消、重启 | 队列变化持久化 → 保存引用；图片另保存 Exposed / Embedded 证据 | 启动按持久队列与图片历史恢复引用；Returning / Deleting 不参与引用重建。Held 图片不持有队列引用，文件持有；文件最后一条引用消失仍保留到会话退出 |
+| 已受理消息引用变化 / queue、Held、结束、取消、重启 | 队列变化持久化 → 保存引用；图片另保存 Exposed / Embedded 证据 | 启动按持久队列与图片历史恢复引用；加锁后重新加载记录并核对会话与附件身份，不能用先前快照覆盖新的 Returning / Deleting 或重建已删除记录。Returning / Deleting 不参与引用重建。Held 图片不持有队列引用，文件持有；文件最后一条引用消失仍保留到会话退出 |
 | receiving / pending → 删除 / Abort、过期 GC | 保存 Deleting → 删除目标字节 → 同步字节所在目录 → 删除 `.part` 并同步 partial → 删除记录并同步 partial | 删除意图保留到字节删除已同步；启动和 GC 幂等重试。待删除 ID 不再可完成、领取或通过状态查询作为有效上传 |
 | session 图片 → 删除 / 未暴露图片取消、已内嵌图片 LRU | 与上一行共用 `deleteUpload` | 删除失败不丢记录，启动、GC 或存储清理重试；Returning 不进入 LRU |
 | session → 删除 / 会话退出、Exited GC、无元数据孤儿清理 | 对每条记录先完成 Returning，其他走 `deleteUpload` → 无失败才删剩余会话目录并同步 | 仍返回中的字节不能随退出目录删除；Exited 元数据及每条删除意图支持重试 |

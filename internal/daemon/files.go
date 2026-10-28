@@ -135,6 +135,11 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 	if err := u.owned(current, t.Device); err != nil {
 		return nil, err
 	}
+	// Abort may have committed its intent while hashing, then failed to
+	// unlink or sync. Deleting overrides both receiving and completed state.
+	if current.Deleting {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted"))
+	}
 	if current.state() != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING {
 		return u.durableFileStatus(current)
 	}

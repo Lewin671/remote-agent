@@ -1352,3 +1352,11 @@ pnpm --dir web test --reporter=json --outputFile=/tmp/ra-file-upload-feedback-2-
 - 另测未启动会话在返回意图、两侧目录同步、清除 owner 失败时保留 Starting 元数据并重试；会话清理不能删除尚未返回的图片或文件；图片完成记录原子替换后 fsync 失败时保留目标与 `.part`，启动 / GC 重同步后再移除 `.part`。
 - 网页用两个 Tray：第二个草稿阻塞全局文件上传槽位，分别触发第一个的 A → B → A、重试、过期、恢复、移除；在同一调用栈和 abort 回调里检查 ready 为 false、旧 ID 已清除，释放槽位后只接收新 generation 的完成结果。新增 5 个场景在旧实现全部失败，修复后通过；无本机副本的图片恢复也立即清除历史 ID。
 - 网页 `pnpm typecheck`、默认并发的 `pnpm test`（90 文件、1235 测试）、`pnpm build` 通过；`go vet ./...` 通过。`go test ./...` 通过（daemon 包 186.103 秒）。
+
+### 文件哈希重入锁与引用恢复快照复审（2026-10-28）
+
+本轮只做本地 Go 回归，没有改变协议、CLI 输入或运行真实 CLI 验收；状态约束维护在 [session-files.md](session-files.md#上传记录与字节的状态转换)。
+
+- `TestHashReloadRejectsDeletionTombstone` 用 channel 暂停锁外哈希，在 receiving 或另一 Complete 已完成时执行 Abort，分别让 unlink / 目录同步失败并留下持久 Deleting，再恢复哈希；8 个场景验证返回 NotFound、不返回文件 ID、不改写 tombstone，且启动 / GC 能继续删除。
+- 审查全部上传锁释放、重新加载和延后使用记录的位置：图片完成始终持锁；引用恢复的启动索引与历史扫描发生在锁外，因此锁内必须重读记录。`TestRestoreRefsReloadsSnapshotBeforeWriting` 覆盖文件 / 图片快照读取之后开始删除、返回或记录已移除的 6 个场景，确认旧快照不能清除意图或重建记录。既有多会话索引测试同步改为检查缺失记录不重建。
+- 新增 14 个场景在修复前全部失败，修复后通过；`go test ./...`、`go vet ./...` 均通过。
