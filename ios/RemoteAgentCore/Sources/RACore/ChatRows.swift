@@ -74,16 +74,18 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
         public var time: Int64
         public var from: String?
         public var images: [PBImageRef]
+        public var files: [PBSentFile]
         public var seq: UInt64
         public var scheduledRunID: String
 
-        public init(key: String, text: String, local: Bool, time: Int64, from: String? = nil, images: [PBImageRef] = [], seq: UInt64 = 0, scheduledRunID: String = "") {
+        public init(key: String, text: String, local: Bool, time: Int64, from: String? = nil, images: [PBImageRef] = [], files: [PBSentFile] = [], seq: UInt64 = 0, scheduledRunID: String = "") {
             self.key = key
             self.text = text
             self.local = local
             self.time = time
             self.from = from
             self.images = images
+            self.files = files
             self.seq = seq
             self.scheduledRunID = scheduledRunID
         }
@@ -215,11 +217,13 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
     public struct Unsent: Equatable, Sendable {
         public var key: String
         public var requestId: String
+        public var files: [PBSentFile]
         public var text: String?
 
-        public init(key: String, requestId: String, text: String?) {
+        public init(key: String, requestId: String, text: String?, files: [PBSentFile] = []) {
             self.key = key
             self.requestId = requestId
+            self.files = files
             self.text = text
         }
     }
@@ -482,7 +486,11 @@ public func buildChat(
         }
         if let ids = unsentAt[e.seq] {
             flush()
-            for id in ids { out.append(.unsent(.init(key: "u\(id)", requestId: id, text: textOf(id)))) }
+            for id in ids {
+                let files = d.inputDetails[id]?.files ?? []
+                let text = textOf(id) ?? (files.isEmpty ? nil : d.accepted[id]?.text ?? d.inputDetails[id]?.text)
+                out.append(.unsent(.init(key: "u\(id)", requestId: id, text: text, files: files)))
+            }
         }
         switch e.kind {
         case .toolStarted:
@@ -502,8 +510,8 @@ public func buildChat(
             out.append(
                 .user(
                     .init(
-                        key: k, text: imageText(m.text, refs: m.images), local: d.typedLocally.contains(e.seq), time: eventTime(e),
-                        from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone), images: m.images, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
+                        key: k, text: imageText(withoutFileLines(m.text, files: m.files), refs: m.images), local: d.typedLocally.contains(e.seq), time: eventTime(e),
+                        from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone), images: m.images, files: m.files, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
         case .scheduledNotification(let notification):
             flush()
             out.append(.note(.init(key: k, text: "通知你：" + notification.text)))
@@ -664,8 +672,8 @@ public struct ChatProjection: Sendable {
                     items.append(
                         .user(
                             .init(
-                                key: key, text: imageText(m.text, refs: m.images), local: d.typedLocally.contains(e.seq),
-                                time: eventTime(e), from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone), images: m.images, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
+                                key: key, text: imageText(withoutFileLines(m.text, files: m.files), refs: m.images), local: d.typedLocally.contains(e.seq),
+                                time: eventTime(e), from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone), images: m.images, files: m.files, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
                 case .agentMessage(let m): if !m.text.jvmIsBlank { items.append(.agent(.init(key: key, text: m.text))) }
                 case .reasoning(let r): if !r.text.jvmIsBlank { items.append(.thought(.init(key: key, text: r.text))) }
                 default: break

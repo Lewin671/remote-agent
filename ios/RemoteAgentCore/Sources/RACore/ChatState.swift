@@ -239,6 +239,7 @@ struct EventReducer: Sendable {
             if let before {
                 if st.mode == .unspecified { detail.mode = before.mode }
                 if st.text.isEmpty { detail.text = before.text }
+                if st.files.isEmpty { detail.files = before.files }
             }
             d.inputDetails[st.requestID] = detail
             if let prev = d.accepted[st.requestID] {
@@ -247,7 +248,7 @@ struct EventReducer: Sendable {
                     next.stage = st.stage
                     d.accepted[st.requestID] = next
                 }
-            } else if st.status == .queued && (!st.text.isEmpty || !st.imageIds.isEmpty) {
+            } else if st.status == .queued && (!st.text.isEmpty || !st.imageIds.isEmpty || !st.files.isEmpty) {
                 d.accepted[st.requestID] = Accepted(text: st.text, imageIds: st.imageIds, origin: e.originOrNil, stage: st.stage)
             }
             if st.status == .failed || st.status == .needsTerminal { d.failures[st.requestID] = st.reason }
@@ -483,6 +484,7 @@ public func queued(_ d: Derived) -> [String] {
 }
 
 public struct PendingInput: Equatable, Sendable, Identifiable {
+    public var files: [PBSentFile]
     public var id: String
     public var text: String
     public var mode: PBSendMode
@@ -490,13 +492,14 @@ public struct PendingInput: Equatable, Sendable, Identifiable {
     public var held: Bool
     public var origin: PBOrigin?
 
-    public init(id: String, text: String, mode: PBSendMode, paused: Bool, held: Bool, origin: PBOrigin?) {
+    public init(id: String, text: String, mode: PBSendMode, paused: Bool, held: Bool, origin: PBOrigin?, files: [PBSentFile] = []) {
         self.id = id
         self.text = text
         self.mode = mode
         self.paused = paused
         self.held = held
         self.origin = origin
+        self.files = files
     }
 }
 
@@ -507,7 +510,7 @@ public func pendingInputs(_ d: Derived) -> [PendingInput] {
         let accepted = d.accepted[st.requestID]
         return PendingInput(
             id: st.requestID, text: accepted?.text ?? st.text, mode: st.mode != .unspecified ? st.mode : .steer,
-            paused: st.paused, held: st.status == .heldByCli, origin: accepted?.origin)
+            paused: st.paused, held: st.status == .heldByCli, origin: accepted?.origin, files: st.files)
     }
 }
 

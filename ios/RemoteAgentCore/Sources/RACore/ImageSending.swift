@@ -79,21 +79,29 @@ public final class ImageUploads {
     /// Sends the image to `machineId` unless it is there or on its way there.
     /// An upload to another machine is dropped: the latest target wins.
     public func upload(_ img: PendingImage, machineId: String) {
-        guard let p = img.processed, img.startUpload(to: machineId, now: clock()) else { return }
+        guard img.hasSource, img.startUpload(to: machineId, now: clock()) else { return }
         let ch = channel(machineId)
         img.job = Task {
             do {
-                let uploaded: UploadedImage
-                do {
-                    uploaded = try await uploadImage(ch, transferId: img.transferId, data: p.bytes) { done, total in
+                @MainActor func send() async throws -> UploadedImage {
+                    let progress: @MainActor (Int64, Int64) -> Void = { done, total in
                         if !Task.isCancelled, img.machineId == machineId {
                             img.state = .uploading(progress: total > 0 ? Float(done) / Float(total) : 0)
                         }
                     }
+                    if let file = img.file {
+                        return try await uploadFile(ch, transferId: img.transferId, source: file, onProgress: progress)
+                    }
+                    guard let p = img.processed else { throw UserError("读不到这张图片") }
+                    return try await uploadImage(ch, transferId: img.transferId, data: p.bytes, onProgress: progress)
+                }
+                let uploaded: UploadedImage
+                do {
+                    uploaded = try await send()
                 } catch let e as any UploadFailure where e.code == "not_found" && !Task.isCancelled {
                     // The transfer expired on the daemon: start a new one.
                     img.transferId = newRequestId()
-                    uploaded = try await uploadImage(ch, transferId: img.transferId, data: p.bytes)
+                    uploaded = try await send()
                 }
                 if Task.isCancelled { return }
                 if img.machineId == machineId {
@@ -128,7 +136,7 @@ public final class ImageUploads {
 
     /// What a tap on a failed image does: prepares it if that is what failed, sends it otherwise.
     public func retry(_ draft: ImageDraft, _ img: PendingImage, machine: @escaping @MainActor () -> String?) {
-        if img.needsProcessing || img.processed == nil {
+        if !img.isFile && (img.needsProcessing || img.processed == nil) {
             process(draft, img, machine: machine)
         } else if let m = machine() {
             upload(img, machineId: m)
@@ -137,13 +145,13 @@ public final class ImageUploads {
 
     /// Whether 原图 can still change what a draft sends: some image of it can be read again.
     public func canReprepare(_ draft: ImageDraft) -> Bool {
-        !draft.images.isEmpty && draft.images.allSatisfy { img in img.uri.map(readable) ?? false }
+        !draft.photos.isEmpty && draft.photos.allSatisfy { img in img.uri.map(readable) ?? false }
     }
 
     /// Originals or compressed, for this message: every image that can still be read is prepared again from what was picked.
     public func setOriginal(_ draft: ImageDraft, _ v: Bool, machine: @escaping @MainActor () -> String?) {
         guard canReprepare(draft), draft.setOriginal(v) else { return }
-        for img in draft.images {
+        for img in draft.photos {
             if let uri = img.uri, readable(uri) { process(draft, img, machine: machine) }
         }
     }

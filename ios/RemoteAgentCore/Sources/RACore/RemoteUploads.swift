@@ -30,6 +30,16 @@ private struct MachineUploads: UploadChannel {
         }.beginImageUpload.status
     }
 
+    func beginFile(transferId: String, name: String, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
+        try await run {
+            $0.beginImageUpload.transferID = transferId
+            $0.beginImageUpload.fileName = name
+            $0.beginImageUpload.format = .unspecified
+            $0.beginImageUpload.totalBytes = total
+            $0.beginImageUpload.sha256 = sha256
+        }.beginImageUpload.status
+    }
+
     func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus {
         try await run {
             $0.putImageChunk.transferID = transferId

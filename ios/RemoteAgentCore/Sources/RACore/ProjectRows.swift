@@ -297,7 +297,7 @@ public func canStartSession(_ state: RemoteState, config c: NewConfig?, drafting
 }
 
 /// The command that starts a session with its first message. `mode` unspecified leaves it to the CLI's own configuration.
-public func createSessionCommand(_ c: NewConfig, prompt: String, mode: PBApprovalMode, imageIds: [String] = []) -> PBCommand {
+public func createSessionCommand(_ c: NewConfig, prompt: String, mode: PBApprovalMode, imageIds: [String] = [], fileIds: [String] = []) -> PBCommand {
     var cmd = PBCommand()
     cmd.createSession = .with {
         $0.cwd = c.cwd
@@ -308,6 +308,7 @@ public func createSessionCommand(_ c: NewConfig, prompt: String, mode: PBApprova
         $0.mode = mode
         $0.standardContext = c.agent == .claude && c.standardContext
         $0.imageIds = imageIds
+        $0.fileIds = fileIds
     }
     return cmd
 }
