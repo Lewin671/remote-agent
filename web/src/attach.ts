@@ -139,8 +139,9 @@ export class Tray {
   }
 
   remove(key: string) {
-    this.items.find((i) => i.key === key)?.abort?.();
+    const item = this.items.find((i) => i.key === key);
     this.items = this.items.filter((i) => i.key !== key);
+    if (item) this.invalidate(item);
     this.gen.delete(key);
     this.note = "";
     this.onChange();
@@ -192,7 +193,7 @@ export class Tray {
 
   /** Every image is on the current machine. */
   ready(): boolean {
-    return this.items.length > 0 && (!this.files().length || this.fileSupported) && this.items.every((i) => i.state === "done" && i.machineId === this.machineId && (i.expiresMs ?? 0) > Date.now());
+    return this.items.length > 0 && (!this.files().length || this.fileSupported) && this.items.every((i) => i.state === "done" && !!(i.kind === "file" ? i.fileId : i.imageId) && i.machineId === this.machineId && (i.expiresMs ?? 0) > Date.now());
   }
 
   /** Expired uploads have local bytes, but need a new transfer before sending. */
@@ -219,15 +220,25 @@ export class Tray {
     return this.images().reduce((n, i) => n + (i.bytes ?? 0), 0);
   }
 
+  // Invalidate before abort callbacks or either shared queue can yield. An old
+  // result can never restore readiness, even on a rapid machine A → B → A.
+  private invalidate(item: TrayItem): number {
+    const g = (this.gen.get(item.key) ?? 0) + 1;
+    this.gen.set(item.key, g);
+    const abort = item.abort;
+    Object.assign(item, { state: "preparing", progress: 0, error: undefined, imageId: undefined, fileId: undefined, expiresMs: undefined, machineId: undefined, abort: undefined });
+    abort?.();
+    return g;
+  }
+
   private async run(item: TrayItem, prepare: boolean) {
+    const g = this.invalidate(item);
+    this.onChange();
     if (item.remoteOnly) {
-      this.gen.set(item.key, (this.gen.get(item.key) ?? 0) + 1);
       Object.assign(item, { state: "failed", error: item.kind === "file" ? "这个文件没有本机副本，请移除后重新选择" : "这张图没有本机副本，请移除后重新选择" });
       this.onChange();
       return;
     }
-    const g = (this.gen.get(item.key) ?? 0) + 1;
-    this.gen.set(item.key, g);
     const current = () => this.gen.get(item.key) === g;
     const set = (patch: Partial<TrayItem>) => {
       if (!current()) return;
@@ -235,9 +246,6 @@ export class Tray {
       this.onChange();
     };
     const machineId = this.machineId;
-    // What an earlier generation left on a machine is not needed now.
-    item.abort?.();
-    item.abort = undefined;
     // At most one 100 MiB file is read/hashed/uploaded at a time across drafts.
     let release: (() => void) | undefined;
     if (item.kind === "file") {

@@ -142,7 +142,7 @@ describe("putting a message's images back (review W2, W4)", () => {
     expect(tray.canSwitchOriginal()).toBe(false);
     tray.setOriginal(true);
     expect(tray.original).toBe(false);
-    expect(tray.imageIds()).toEqual(["remote-1"]);
+    expect(tray.imageIds()).toEqual([]);
     // Another machine cannot get it: it says so rather than sending nothing.
     tray.retarget("vps");
     await vi.waitFor(() => expect(tray.items[0].state).toBe("failed"));
@@ -307,4 +307,41 @@ it("explains unreadable dropped file entries and never uploads substituted empty
   await vi.waitFor(() => expect(tray.failed()).toBe(true));
   expect(tray.items[0].error).toContain("文件夹不能直接发送");
   expect(upload).not.toHaveBeenCalled();
+});
+
+// A second draft holds the shared slot while the first supersedes a completed
+// transfer. Assertions run without yielding, including inside abort callbacks.
+it.each(["retarget", "retry", "expiry", "restore", "remove"])("invalidates file readiness synchronously on %s with another draft uploading", async (action) => {
+  const aborted: string[] = [];
+  let release!: () => void;
+  let n = 0;
+  const make = (blocked = false) => {
+    const tray = new Tray(async () => png(), async (_m, _p, _progress, started) => {
+      const id = "f" + ++n;
+      started?.(() => { aborted.push(id); expect(tray.ready()).toBe(false); expect(tray.fileIds()).not.toContain(id); });
+      if (blocked) await new Promise<void>((resolve) => { release = resolve; });
+      return { imageId: "", fileId: id, expiresMs: Number.MAX_SAFE_INTEGER };
+    }, () => undefined);
+    tray.machineId = "A"; tray.fileSupported = true;
+    return tray;
+  };
+  const first = make();
+  const source = new File(["data"], "data.csv");
+  first.addFiles([source]);
+  await vi.waitFor(() => expect(first.ready()).toBe(true));
+  const old = first.fileIds()[0];
+  const second = make(true); second.addFiles([source]);
+  await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+  try {
+    if (action === "retarget") { first.retarget("B"); first.retarget("A"); }
+    if (action === "retry") first.retry(first.items[0].key);
+    if (action === "expiry") { first.items[0].expiresMs = 0; first.refreshExpired(); }
+    if (action === "restore") { first.clear(); first.restoreFiles([{ fileId: old, name: "data.csv", size: 4, file: source }]); }
+    if (action === "remove") first.remove(first.items[0].key);
+    expect(first.ready()).toBe(false);
+    expect(first.fileIds()).not.toContain(old);
+    if (action !== "restore") expect(aborted).toContain(old);
+  } finally { release(); }
+  await vi.waitFor(() => expect(second.ready()).toBe(true));
+  if (action !== "remove") await vi.waitFor(() => expect(first.ready()).toBe(true));
 });
