@@ -83,6 +83,7 @@ import {
 } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
 import {
+  ImageUploadState,
   DaemonSettingsSchema,
   ListModelsResponseSchema,
   SessionSchema,
@@ -3960,16 +3961,25 @@ export class Remote {
     const step = async (cmd: CommandKind) => {
       for (let i = 0; ; i++) {
         try {
-          return statusOf(await this.machineCommand(machineId, cmd));
+          const st = statusOf(await this.machineCommand(machineId, cmd));
+          if (cmd?.case === "completeImageUpload" && st.state === ImageUploadState.RECEIVING && Number(st.persistedBytes) === total) {
+            if (i >= 2) throw new Error("电脑仍在校验附件，请稍后重试");
+            continue;
+          }
+          return st;
         } catch (e) {
           if (!uncertain(e) || i >= 2) throw e;
           try {
-            return statusOf(
+            const st = statusOf(
               await this.machineCommand(machineId, {
                 case: "getImageUploadStatus",
                 value: { transferId },
               }),
             );
+            // Hashing may still be in flight outside the upload lock. Retry
+            // Complete with the same transfer, never restart the byte upload.
+            if (cmd?.case === "completeImageUpload" && st.state === ImageUploadState.RECEIVING && Number(st.persistedBytes) === total) continue;
+            return st;
           } catch (e2) {
             if (!uncertain(e2) || i >= 2) throw e2;
           }

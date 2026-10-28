@@ -913,3 +913,22 @@ it("uploads files through shared RPCs with UNSPECIFIED format and separate IDs",
   expect(result).toEqual({ imageId: "", fileId: "file-1", expiresMs: 123456789 });
   expect(calls.map((c) => c?.case)).toEqual(["beginImageUpload", "putImageChunk", "completeImageUpload"]);
 });
+
+it("retries Complete on the same transfer while hashing after a lost reply, without reuploading bytes", async () => {
+  const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const calls: string[] = [];
+  let transfer = ""; let complete = 0; let persisted = 0n;
+  const r = { machineCommand: async (_m: string, cmd: CommandKind) => {
+    if (!cmd?.case) throw new Error("missing command");
+    calls.push(cmd.case);
+    if (cmd.case === "beginImageUpload") transfer = cmd.value.transferId!;
+    else expect(cmd.value).toMatchObject({ transferId: transfer });
+    if (cmd.case === "putImageChunk") persisted = 4n;
+    if (cmd.case === "completeImageUpload" && ++complete === 1) throw new CommandError("unknown", "lost completion reply");
+    const done = cmd.case === "completeImageUpload";
+    return create(CommandResultSchema, { kind: { case: cmd.case as "beginImageUpload", value: { status: { transferId: transfer, state: done ? 2 : 1, persistedBytes: persisted, totalBytes: 4n, maxChunkBytes: 786432, fileId: done ? "ready" : "", expiresMs: 123456789n } } } });
+  } };
+  const result = await Remote.prototype.uploadImage.call(r as unknown as Remote, "mac", { bytes: new Uint8Array([0,1,2,3]), format: "file", fileName: "data.bin" });
+  expect(result.fileId).toBe("ready");
+  expect(calls).toEqual(["beginImageUpload", "putImageChunk", "completeImageUpload", "getImageUploadStatus", "completeImageUpload"]);
+});
