@@ -688,6 +688,10 @@ it("derives an empty quiet summary and pending-only run guard from the task",asy
 
 it("uses the shared new-task explanation in the actual creation page", async () => {
   const r = remote([]);
+  // The default project follows demo session times, some fixed to the time of
+  // day; give every machine a known default permission so the page under test
+  // is the same whichever project comes first.
+  for (const m of r.machines.values()) if (m.meta) m.meta.agents = r.machines.get("mac")!.meta!.agents;
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
   expect(host.querySelector(".manage-hint")?.textContent).toBe("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。");
 });
