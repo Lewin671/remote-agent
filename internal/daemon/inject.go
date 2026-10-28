@@ -233,6 +233,9 @@ func (s *session) enqueueInputReady(text, requestID string, images []queuedImage
 	composed := ""
 	if len(files) > 0 {
 		composed = composeFiles(text, files, s.ag.Kind())
+		if text == "" && len(images) > 0 {
+			composed = "\n\n" + composed
+		}
 	}
 	pos := s.queue.insert(input{Text: text, RequestID: requestID, Images: images, Files: files, Composed: composed, Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: mode})
 	s.queue.remember(requestID)

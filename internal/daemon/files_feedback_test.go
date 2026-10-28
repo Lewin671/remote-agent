@@ -17,6 +17,37 @@ import (
 	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
+func TestFilePasteAlwaysHasTextPrefix(t *testing.T) {
+	f := queuedFile{ID: strings.Repeat("a", 32), Name: "x.png", Path: "/uploads/s/files/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/x.png"}
+	for _, kind := range []pb.Agent{pb.Agent_AGENT_CODEX, pb.Agent_AGENT_CLAUDE} {
+		want := "File: " + f.Path
+		if kind == pb.Agent_AGENT_CLAUDE {
+			want = `File: @"` + f.Path + `" (file)`
+		}
+		for _, text := range []string{"", "user text"} {
+			got := composeFiles(text, []queuedFile{f}, kind)
+			expected := want
+			if text != "" {
+				expected = text + "\n\n" + want
+			}
+			if got != expected {
+				t.Fatalf("composition %q != %q", got, expected)
+			}
+			in := input{Text: text, Files: []queuedFile{f}, Composed: got}
+			if !in.matches(got) || in.matches("[Image #1]") {
+				t.Fatal("file text confirmation changed")
+			}
+			in.Images = []queuedImage{{ID: "image", Path: "/image.png"}}
+			in.Indexes = []int32{2}
+			if !in.matches("[Image #2]" + got) {
+				t.Fatal("mixed no-text confirmation changed")
+			}
+			if titleFrom(fileMessageText(&pb.UserMessage{Text: got, Files: sentFiles([]queuedFile{f})})) != titleFrom(text) {
+				t.Fatal("file label leaked into title")
+			}
+		}
+	}
+}
 func TestSafeFileNamePreservesCombiningMarks(t *testing.T) {
 	for _, name := range []string{"नमस्ते.txt", "สวัสดี.log", "عَرَبِيّ.csv"} {
 		if got := safeFileName(name); got != name {
@@ -267,6 +298,27 @@ func TestRestoreHeldRefsMatchesRuntimeForFilesAndImages(t *testing.T) {
 	}
 }
 
+func TestImageAndFileOnlyQueueSeparatesFileLinesFromPlaceholder(t *testing.T) {
+	h := newHarness(t, Config{})
+	files := []queuedFile{{ID: strings.Repeat("f", 32), Name: "x.png", Path: "/uploads/s/files/ffffffffffffffffffffffffffffffff/x.png"}}
+	images := []queuedImage{{ID: "image", Path: "/image.png"}}
+	if _, err := h.s.enqueueInput("", "r", images, files, originLocal, pb.SendMode_SEND_MODE_STEER, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	in := h.s.queue.Queue[0]
+	if in.Composed != "\n\nFile: "+files[0].Path {
+		t.Fatalf("no image/file separator: %q", in.Composed)
+	}
+	in.Indexes = []int32{1}
+	recorded := "[Image #1]" + in.Composed
+	if !in.matches(recorded) {
+		t.Fatal("separated mixed message not confirmed")
+	}
+	u := &uploads{dir: "/uploads"}
+	if got := u.recognizeFiles("s", recorded); len(got) != 1 || got[0].FileId != files[0].ID {
+		t.Fatal("file not recognized after image", got)
+	}
+}
 func TestUntakeReusedUnexposedImageKeepsAcceptedPath(t *testing.T) {
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	u := newUploads()

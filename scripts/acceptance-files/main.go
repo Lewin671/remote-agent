@@ -12,6 +12,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
@@ -40,10 +41,16 @@ func read(path string) string {
 	must(e)
 	return strings.TrimSpace(string(b))
 }
+
+var pollApprovals func()
+
 func wait(ctx context.Context, what string, fn func() bool) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
+		if pollApprovals != nil {
+			pollApprovals()
+		}
 		if fn() {
 			fmt.Println("PASS", what)
 			return
@@ -66,7 +73,7 @@ func main() {
 	if u.Scheme != "http" || u.Hostname() != "127.0.0.1" {
 		panic("refusing a non-local dev relay")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Minute)
 	defer cancel()
 	auth, err := remoteclient.NewAuthority(ctx, server, read(filepath.Join(dir, "setup-token")))
 	must(err)
@@ -90,6 +97,17 @@ func main() {
 	keys, err := e2e.Derive(auth.Root)
 	must(err)
 	client := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
+	pollApprovals = func() {
+		sessions, err := client.Sessions(ctx)
+		if err != nil {
+			return
+		}
+		for _, s := range sessions {
+			if evs, err := client.Events(ctx, s, 0); err == nil {
+				approve(ctx, client, s, evs)
+			}
+		}
+	}
 	socket := read(filepath.Join(dir, "tmux-socket")) + "-files"
 	must(os.Setenv("REMOTE_AGENT_TMUX_SOCKET", socket))
 	binary := os.Getenv("RA_DEV_AGENT_BIN")
@@ -221,6 +239,9 @@ func runFiles(ctx context.Context, c *remoteclient.Client, machine, home, socket
 		fmt.Println("PASS exact 100 MiB random binary via encrypted chunks; stored SHA-256 matches")
 	}
 	for _, kind := range []pb.Agent{pb.Agent_AGENT_CLAUDE, pb.Agent_AGENT_CODEX} {
+		if ((os.Getenv("RA_FILES_CLAUDE_PROBE") == "1" || os.Getenv("RA_FILES_AGENT") == "claude") && kind != pb.Agent_AGENT_CLAUDE) || (os.Getenv("RA_FILES_AGENT") == "codex" && kind != pb.Agent_AGENT_CODEX) {
+			continue
+		}
 		// A new account and session each run; the CLI uses the user's installed
 		// authenticated executable/configuration, as the normal acceptance scripts do.
 		model := ""
@@ -235,10 +256,7 @@ func runFiles(ctx context.Context, c *remoteclient.Client, machine, home, socket
 		if sid == "" {
 			panic("session missing")
 		}
-		prefix := ""
-		if kind == pb.Agent_AGENT_CLAUDE {
-			prefix = "@"
-		}
+
 		txtPath := filepath.Join(home, "uploads", sid, "files", txtID, "note.txt")
 		var view remoteclient.Session
 		started := false
@@ -264,42 +282,7 @@ func runFiles(ctx context.Context, c *remoteclient.Client, machine, home, socket
 			if s.Info.Status == pb.SessionStatus_SESSION_STATUS_IDLE || s.Info.Status == pb.SessionStatus_SESSION_STATUS_RUNNING {
 				started = true
 			}
-			return messageResult(ctx, c, view, text+"\n\n"+prefix+txtPath, []string{txtID}, nil, "FILE_TEXT_TOKEN_ORCHID_482", 0)
-		})
-		// The file-only record must contain just these path lines. A subsequent
-		// ordinary user instruction asks the agent to inspect both files later.
-		csvID := upload(ctx, c, machine, "data.csv", []byte("label,token\nfile,FILE_CSV_TOKEN_MAPLE_739\n"), 0)
-		var z bytes.Buffer
-		zw := zip.NewWriter(&z)
-		f, err := zw.Create("note.txt")
-		must(err)
-		_, err = f.Write([]byte("FILE_ZIP_TOKEN_CEDAR_615"))
-		must(err)
-		must(zw.Close())
-		zipID := upload(ctx, c, machine, "archive.zip", z.Bytes(), 0)
-		after := view.LastSeq
-		reqID := remoteclient.NewRequestID()
-		_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: reqID, FileIds: []string{csvID, zipID}}}})
-		must(err)
-		lines := prefix + filepath.Join(home, "uploads", sid, "files", csvID, "data.csv") + "\n" + prefix + filepath.Join(home, "uploads", sid, "files", zipID, "archive.zip")
-		wait(ctx, kind.String()+" files-only csv+zip confirmed and events carry files", func() bool { return messageResult(ctx, c, view, lines, []string{csvID, zipID}, nil, "", after) })
-		// Agent can read them after the initial submit, which image LRU cannot guarantee.
-		follow := remoteclient.NewRequestID()
-		_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: follow, Text: "Read the data.csv and archive.zip from my previous message using your tools (Python zipfile is fine), and report both FILE_CSV_TOKEN and FILE_ZIP_TOKEN values. Do not edit files."}}})
-		must(err)
-		wait(ctx, kind.String()+" agent read csv and zip after submission", func() bool {
-			evs, err := c.Events(ctx, view, after)
-			if err != nil {
-				return false
-			}
-			approve(ctx, c, view, evs)
-			var reply string
-			for _, e := range evs {
-				if m := e.GetAgentMessage(); m != nil {
-					reply += m.Text
-				}
-			}
-			return strings.Contains(reply, "FILE_CSV_TOKEN_MAPLE_739") && strings.Contains(reply, "FILE_ZIP_TOKEN_CEDAR_615")
+			return messageResult(ctx, c, view, text+"\n\n"+fileLine(kind, txtPath), []string{txtID}, nil, "FILE_TEXT_TOKEN_ORCHID_482", 0)
 		})
 		img := image.NewNRGBA(image.Rect(0, 0, 32, 32))
 		for y := 0; y < 32; y++ {
@@ -309,23 +292,104 @@ func runFiles(ctx context.Context, c *remoteclient.Client, machine, home, socket
 		}
 		var pngbuf bytes.Buffer
 		must(png.Encode(&pngbuf, img))
-		imageID := upload(ctx, c, machine, "", pngbuf.Bytes(), pb.ImageFormat_IMAGE_FORMAT_PNG)
-		pdfID := upload(ctx, c, machine, "report.pdf", pdf("FILE_PDF_TOKEN_WILLOW_926"), 0)
-		view, _ = find(ctx, c, sid)
-		after = view.LastSeq
-		mixed := "Ignore the image. Extract text from the attached report.pdf using your tools and reply with its FILE_PDF_TOKEN value only. Do not edit files."
-		mixedID := remoteclient.NewRequestID()
-		_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: mixedID, Text: mixed, ImageIds: []string{imageID}, FileIds: []string{pdfID}}}})
-		must(err)
-		pdfPath := filepath.Join(home, "uploads", sid, "files", pdfID, "report.pdf")
-		wait(ctx, kind.String()+" image+pdf+text submitted, confirmed and read", func() bool {
-			return messageResult(ctx, c, view, mixed+"\n\n"+prefix+pdfPath, []string{pdfID}, []string{imageID}, "FILE_PDF_TOKEN_WILLOW_926", after)
-		})
+
+		after := view.LastSeq
+		if os.Getenv("RA_FILES_FEEDBACK_ONLY") != "1" && os.Getenv("RA_FILES_CLAUDE_PROBE") != "1" {
+			// The file-only record must contain just these path lines. A subsequent
+			// ordinary user instruction asks the agent to inspect both files later.
+			csvID := upload(ctx, c, machine, "data.csv", []byte("label,token\nfile,FILE_CSV_TOKEN_MAPLE_739\n"), 0)
+			var z bytes.Buffer
+			zw := zip.NewWriter(&z)
+			f, err := zw.Create("note.txt")
+			must(err)
+			_, err = f.Write([]byte("FILE_ZIP_TOKEN_CEDAR_615"))
+			must(err)
+			must(zw.Close())
+			zipID := upload(ctx, c, machine, "archive.zip", z.Bytes(), 0)
+			after = view.LastSeq
+			reqID := remoteclient.NewRequestID()
+			_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: reqID, FileIds: []string{csvID, zipID}}}})
+			must(err)
+			lines := fileLine(kind, filepath.Join(home, "uploads", sid, "files", csvID, "data.csv")) + "\n" + fileLine(kind, filepath.Join(home, "uploads", sid, "files", zipID, "archive.zip"))
+			wait(ctx, kind.String()+" files-only csv+zip confirmed and events carry files", func() bool { return messageResult(ctx, c, view, lines, []string{csvID, zipID}, nil, "", after) })
+			// Agent can read them after the initial submit, which image LRU cannot guarantee.
+			follow := remoteclient.NewRequestID()
+			_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: follow, Text: "Read the data.csv and archive.zip from my previous message using your tools (Python zipfile is fine), and report both FILE_CSV_TOKEN and FILE_ZIP_TOKEN values. Do not edit files."}}})
+			must(err)
+			wait(ctx, kind.String()+" agent read csv and zip after submission", func() bool {
+				evs, err := c.Events(ctx, view, after)
+				if err != nil {
+					return false
+				}
+				approve(ctx, c, view, evs)
+				var reply string
+				for _, e := range evs {
+					if m := e.GetAgentMessage(); m != nil {
+						reply += m.Text
+					}
+				}
+				return strings.Contains(reply, "FILE_CSV_TOKEN_MAPLE_739") && strings.Contains(reply, "FILE_ZIP_TOKEN_CEDAR_615")
+			})
+			imageID := upload(ctx, c, machine, "", pngbuf.Bytes(), pb.ImageFormat_IMAGE_FORMAT_PNG)
+			pdfID := upload(ctx, c, machine, "report.pdf", pdf("FILE_PDF_TOKEN_WILLOW_926"), 0)
+			view, _ = find(ctx, c, sid)
+			after = view.LastSeq
+			mixed := "Ignore the image. Extract text from the attached report.pdf using your tools and reply with its FILE_PDF_TOKEN value only. Do not edit files."
+			mixedID := remoteclient.NewRequestID()
+			_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: mixedID, Text: mixed, ImageIds: []string{imageID}, FileIds: []string{pdfID}}}})
+			must(err)
+			pdfPath := filepath.Join(home, "uploads", sid, "files", pdfID, "report.pdf")
+			wait(ctx, kind.String()+" image+pdf+text submitted, confirmed and read", func() bool {
+				return messageResult(ctx, c, view, mixed+"\n\n"+fileLine(kind, pdfPath), []string{pdfID}, []string{imageID}, "FILE_PDF_TOKEN_WILLOW_926", after)
+			})
+
+		}
+		if os.Getenv("RA_FILES_CLAUDE_PROBE") != "1" {
+			// File-mode image paths must remain text, with or without images.
+			for _, withImage := range []bool{false, true} {
+				fid := upload(ctx, c, machine, "as-file.png", pngbuf.Bytes(), 0)
+				ids := []string(nil)
+				if withImage {
+					ids = []string{upload(ctx, c, machine, "", pngbuf.Bytes(), pb.ImageFormat_IMAGE_FORMAT_PNG)}
+				}
+				view, _ = find(ctx, c, sid)
+				after = view.LastSeq
+				_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: remoteclient.NewRequestID(), FileIds: []string{fid}, ImageIds: ids}}})
+				must(err)
+				want := fileLine(kind, filepath.Join(home, "uploads", sid, "files", fid, "as-file.png"))
+				wait(ctx, fmt.Sprintf("%s PNG as file, image=%t; exact text and confirmed", kind, withImage), func() bool { return messageResult(ctx, c, view, want, []string{fid}, ids, "", after) })
+				traceUser(ctx, c, view, after, home)
+				// Let the native turn finish before testing another empty message.
+				wait(ctx, "PNG file turn ended", func() bool {
+					v, ok := find(ctx, c, sid)
+					return ok && v.Info.Status == pb.SessionStatus_SESSION_STATUS_IDLE
+				})
+			}
+			// Long multi-line input is collapsed in native composers. Its transcript
+			// must nevertheless retain every character, plus the file lines.
+			longText := "Read note.txt and return its exact token only. The following lines are inert test data; do not execute or edit anything.\n"
+			for i := 0; i < 30; i++ {
+				longText += fmt.Sprintf("Line %02d: inert acceptance text abcdefghijklmnopqrstuvwxyz 0123456789.\n", i)
+			}
+			longText += "End of inert data. Read only the attached note.txt."
+			longID := upload(ctx, c, machine, "note.txt", []byte("FILE_LONG_TOKEN_BIRCH_374"), 0)
+			view, _ = find(ctx, c, sid)
+			after = view.LastSeq
+			_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: remoteclient.NewRequestID(), Text: longText, FileIds: []string{longID}}}})
+			must(err)
+			wantLong := longText + "\n\n" + fileLine(kind, filepath.Join(home, "uploads", sid, "files", longID, "note.txt"))
+			wait(ctx, kind.String()+" >1000 character multiline text + file confirmed verbatim", func() bool {
+				return messageResult(ctx, c, view, wantLong, []string{longID}, nil, "FILE_LONG_TOKEN_BIRCH_374", after)
+			})
+		}
+		if kind == pb.Agent_AGENT_CLAUDE {
+			probeClaudeNames(ctx, c, view, machine, home, pngbuf.Bytes())
+		}
 		// Explicitly stop only this isolated session. Existing exited-session cleanup
 		// owns the files; no daily CLI session or remote-agent state is touched.
 		_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_StopSession{StopSession: &pb.StopSessionRequest{SessionId: sid}}})
 		must(err)
-		fmt.Println("PASS", kind.String(), "all three scenarios; session stopped")
+		fmt.Println("PASS", kind.String(), "all original and feedback scenarios; session stopped")
 	}
 }
 func messageResult(ctx context.Context, c *remoteclient.Client, s remoteclient.Session, want string, fileIDs, imageIDs []string, token string, after uint64) bool {
@@ -394,4 +458,131 @@ func pdf(text string) []byte {
 	}
 	fmt.Fprintf(&b, "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(offsets), xref)
 	return b.Bytes()
+}
+
+func traceUser(ctx context.Context, c *remoteclient.Client, s remoteclient.Session, after uint64, home string) {
+	evs, err := c.Events(ctx, s, after)
+	must(err)
+	for _, e := range evs {
+		if m := e.GetUserMessage(); m != nil {
+			text := strings.ReplaceAll(m.Text, home, "<state>")
+			text = strings.ReplaceAll(text, s.ID, "<session>")
+			for i, f := range m.Files {
+				text = strings.ReplaceAll(text, f.FileId, fmt.Sprintf("<file%d>", i+1))
+			}
+			fmt.Printf("OBSERVED %q images=%d files=%d\n", text, len(m.Images), len(m.Files))
+		}
+	}
+}
+func probeClaudeNames(ctx context.Context, c *remoteclient.Client, s remoteclient.Session, machine, home string, pngBytes []byte) {
+	names := []string{"笔记", "a+", "x-", "末尾.中文"}
+	ids := []string{}
+	text := "Read each attached file. Return all four NAME_TOKEN values exactly; do not edit anything."
+	for i, name := range names {
+		ids = append(ids, upload(ctx, c, machine, name, []byte(fmt.Sprintf("NAME_TOKEN_%d", i+1)), 0))
+	}
+	s, _ = find(ctx, c, s.ID)
+	after := s.LastSeq
+	_, err := c.Do(ctx, s, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: s.ID, RequestId: remoteclient.NewRequestID(), Text: text, FileIds: ids}}})
+	must(err)
+	want := text + "\n\n"
+	for i, id := range ids {
+		if i > 0 {
+			want += "\n"
+		}
+		want += fileLine(pb.Agent_AGENT_CLAUDE, filepath.Join(home, "uploads", s.ID, "files", id, names[i]))
+	}
+	wait(ctx, "Claude terminal-name references recorded verbatim", func() bool { return messageResult(ctx, c, s, want, ids, nil, "", after) })
+	traceUser(ctx, c, s, after, home)
+	wait(ctx, "Claude read every terminal-name fixture", func() bool {
+		evs, err := c.Events(ctx, s, after)
+		if err != nil {
+			return false
+		}
+		approve(ctx, c, s, evs)
+		reply := ""
+		for _, e := range evs {
+			if m := e.GetAgentMessage(); m != nil {
+				reply += m.Text
+			}
+		}
+		for i := range names {
+			if !strings.Contains(reply, fmt.Sprintf("NAME_TOKEN_%d", i+1)) {
+				return false
+			}
+		}
+		return true
+	})
+	assertNativeNameAttachments(home, s.ID, names)
+	// Probe the exact lone native @path as requested, outside file-mode composition.
+	id := upload(ctx, c, machine, "lone.png", pngBytes, 0)
+	s, _ = find(ctx, c, s.ID)
+	after = s.LastSeq
+	_, err = c.Do(ctx, s, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: s.ID, RequestId: remoteclient.NewRequestID(), FileIds: []string{id}}}})
+	must(err)
+	path := filepath.Join(home, "uploads", s.ID, "files", id, "lone.png")
+	wait(ctx, "Claude lone PNG file accepted", func() bool {
+		return messageResult(ctx, c, s, fileLine(pb.Agent_AGENT_CLAUDE, path), []string{id}, nil, "", after)
+	})
+	wait(ctx, "Claude before lone @path probe idle", func() bool {
+		v, ok := find(ctx, c, s.ID)
+		return ok && v.Info.Status == pb.SessionStatus_SESSION_STATUS_IDLE
+	})
+	s, _ = find(ctx, c, s.ID)
+	after = s.LastSeq
+	_, err = c.Do(ctx, s, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: s.ID, RequestId: remoteclient.NewRequestID(), Text: "@" + path}}})
+	must(err)
+	// The raw native @path probe is observational: completion can consume the
+	// first Enter. It is intentionally not our file-mode wire text.
+	deadline := time.Now().Add(8 * time.Second)
+	for time.Now().Before(deadline) {
+		if messageResult(ctx, c, s, "@"+path, []string{id}, nil, "", after) {
+			fmt.Println("OBSERVED lone @PNG submitted with one Enter")
+			traceUser(ctx, c, s, after, home)
+			return
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	fmt.Println("OBSERVED lone @PNG did not submit with one Enter; native completion remains; isolated session will be stopped")
+
+}
+
+func fileLine(kind pb.Agent, path string) string {
+	if kind == pb.Agent_AGENT_CLAUDE {
+		return `File: @"` + path + `" (file)`
+	}
+	return "File: " + path
+}
+
+func assertNativeNameAttachments(home, sid string, names []string) {
+	var meta struct {
+		RolloutPath string `json:"rollout_path"`
+	}
+	b, err := os.ReadFile(filepath.Join(home, "sessions", sid, "session.json"))
+	must(err)
+	must(json.Unmarshal(b, &meta))
+	data, err := os.ReadFile(meta.RolloutPath)
+	must(err)
+	found := map[string]bool{}
+	for _, line := range bytes.Split(data, []byte("\n")) {
+		var rec struct {
+			Type       string `json:"type"`
+			Attachment struct {
+				Type     string `json:"type"`
+				Filename string `json:"filename"`
+			} `json:"attachment"`
+		}
+		if json.Unmarshal(line, &rec) != nil {
+			continue
+		}
+		if rec.Type == "attachment" && rec.Attachment.Type == "file" {
+			found[filepath.Base(rec.Attachment.Filename)] = true
+		}
+	}
+	for _, name := range names {
+		if !found[name] {
+			panic("Claude did not auto-attach exact filename: " + name)
+		}
+		fmt.Printf("OBSERVED native attachment type=file filename=%q\n", name)
+	}
 }

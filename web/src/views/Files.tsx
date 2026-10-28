@@ -39,7 +39,8 @@ export function withoutFileLines(text: string, files: Pick<SentFile, "path">[]):
   const lines = text.split("\n");
   const hidden = new Set<number>();
   lines.forEach((line, i) => {
-    if (paths.has(line) || line.startsWith("@") && paths.has(line.slice(1))) {
+    const path = line.startsWith('File: @"') && line.endsWith('" (file)') ? "@" + line.slice(8, -8) : line.startsWith("File: @") && line.endsWith(" (file)") ? line.slice(6, -7) : line.startsWith("File: ") ? line.slice(6) : line;
+    if (paths.has(path) || path.startsWith("@") && paths.has(path.slice(1))) {
       hidden.add(i);
       if (i > 0 && lines[i - 1] === "") hidden.add(i - 1);
     }

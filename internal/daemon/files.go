@@ -373,7 +373,7 @@ func (u *uploads) recognizeFiles(session, text string) []*pb.SentFile {
 	var out []*pb.SentFile
 	seen := map[string]bool{}
 	for _, line := range strings.Split(text, "\n") {
-		path := strings.TrimPrefix(line, "@")
+		path := fileLinePath(line)
 		if !strings.HasPrefix(path, root) || filepath.Clean(path) != path {
 			continue
 		}
@@ -408,9 +408,9 @@ func composeFiles(text string, files []queuedFile, kind pb.Agent) string {
 	}
 	lines := make([]string, 0, len(files))
 	for _, f := range files {
-		line := f.Path
+		line := "File: " + f.Path
 		if kind == pb.Agent_AGENT_CLAUDE {
-			line = "@" + line
+			line = `File: @"` + f.Path + `" (file)`
 		}
 		lines = append(lines, line)
 	}
@@ -423,7 +423,7 @@ func fileMessageText(m *pb.UserMessage) string {
 	lines := strings.Split(m.Text, "\n")
 	for _, f := range m.Files {
 		for i, line := range lines {
-			if line == f.Path || line == "@"+f.Path {
+			if fileLinePath(line) == f.Path {
 				lines[i] = ""
 			}
 		}
@@ -440,6 +440,17 @@ func (u *uploads) releaseFiles(files []queuedFile, session, request string) {
 			_ = u.save(t)
 		}
 	}
+}
+
+// Exact forms from native input/history and the current upload composer.
+func fileLinePath(line string) string {
+	if strings.HasPrefix(line, `File: @"`) && strings.HasSuffix(line, `" (file)`) {
+		return strings.TrimSuffix(strings.TrimPrefix(line, `File: @"`), `" (file)`)
+	}
+	if strings.HasPrefix(line, "File: @") {
+		return strings.TrimSuffix(strings.TrimPrefix(line, "File: @"), " (file)")
+	}
+	return strings.TrimPrefix(strings.TrimPrefix(line, "File: "), "@")
 }
 
 // A lost/failed metadata fsync may have left the new completion record visible.

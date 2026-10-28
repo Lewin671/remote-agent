@@ -175,7 +175,7 @@ func TestFilesAcceptanceLifetimeQuotaAndRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(q.Queue) != 1 || len(q.Queue[0].Files) != 1 || q.Queue[0].messageText() != "inspect\n\n"+f.Path {
+	if len(q.Queue) != 1 || len(q.Queue[0].Files) != 1 || q.Queue[0].messageText() != "inspect\n\nFile: "+f.Path {
 		t.Fatalf("recovery lost file: %+v", q)
 	}
 	// Restart reference restoration and cleanup cannot discard session files,
@@ -225,11 +225,14 @@ func TestFileCompositionConfirmationAndParsedRecognition(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			prefix := ""
+			prefix := "File: "
 			if kind == pb.Agent_AGENT_CLAUDE {
-				prefix = "@"
+				prefix = "File: @"
 			}
 			line := prefix + all.Files[0].Path
+			if kind == pb.Agent_AGENT_CLAUDE {
+				line = `File: @"` + all.Files[0].Path + `" (file)`
+			}
 			for _, text := range []string{"", "inspect\nplease"} {
 				want := line
 				if text != "" {
