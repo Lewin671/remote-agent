@@ -2847,9 +2847,10 @@ class Remote(
     // --- commands ---
 
     /** Seals a command. The header names no session for machine commands. */
-    fun prepare(machineId: String, sessionId: String, cmd: Command): PreparedCommand {
-        val requestId = newRequestId()
-        val deadline = clock() + COMMAND_TTL_MS
+    fun prepare(
+        machineId: String, sessionId: String, cmd: Command,
+        requestId: String = newRequestId(), deadlineMs: Long = clock() + COMMAND_TTL_MS,
+    ): PreparedCommand {
         // Signed by this device, so a daemon can tell who sent it
         // (architecture §9).
         val versioned = cmd.toBuilder().setProtocolVersion(PROTOCOL_VERSION).build()
@@ -2861,7 +2862,7 @@ class Remote(
             machineId,
             sessionId,
             requestId,
-            deadline,
+            deadlineMs,
             Envelope.getDefaultInstance(),
             observed,
         )
@@ -3155,10 +3156,29 @@ class Remote(
             env
         }
 
+    /** Every file-bearing path uses current metadata; a local refusal cannot settle an earlier try. */
+    fun requireFileSupport(machineId: String?, hasFiles: Boolean, mayHaveRun: Boolean = false) {
+        if (hasFiles && !filesSupported(state.value.machines[machineId]))
+            throw CommandException(
+                if (mayHaveRun) CommandException.UNKNOWN else "failed_precondition",
+                if (mayHaveRun) "$FILE_UPLOAD_UPDATE_REQUIRED；上一次的结果仍不确定，能力恢复后可重试同一请求" else FILE_UPLOAD_UPDATE_REQUIRED,
+            )
+    }
+
+    private fun checkFileCapability(p: PreparedCommand, mayHaveRun: Boolean) {
+        val hasFiles = when (p.command?.kindCase) {
+            Command.KindCase.SEND -> p.command.send.fileIdsCount > 0
+            Command.KindCase.CREATE_SESSION -> p.command.createSession.fileIdsCount > 0
+            else -> false
+        }
+        requireFileSupport(p.machineId, hasFiles, mayHaveRun)
+    }
+
     suspend fun forward(p: PreparedCommand, retryOfUnknown: Boolean = false): CommandResult =
         withContext(dispatcher) { forwardOnWorker(p, retryOfUnknown) }
 
     private suspend fun forwardOnWorker(p: PreparedCommand, retryOfUnknown: Boolean): CommandResult {
+        checkFileCapability(p, retryOfUnknown)
         // A machine of another protocol version would refuse it: say which
         // side to update instead of sending.
         protocolMismatch(state.value.machines[p.machineId])?.let {
@@ -3187,10 +3207,12 @@ class Remote(
                 waiting = false
                 var sentToken: String? = null
                 try {
+                    checkFileCapability(p, mayHaveRun)
                     sentToken = currentToken()
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     val authorized = authorize(p)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    checkFileCapability(p, mayHaveRun)
                     waiting = true
                     mayHaveRun = true
                     val res =

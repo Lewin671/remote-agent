@@ -1521,3 +1521,24 @@ JDK 17、SDK 36，沿用独立 `.fileuploadcheck` 包，执行：
 ```
 
 通过：core 423、app 376、terminal 7 个单元测试，共 806 个；Debug/测试 APK 和 Release lint。API 36 模拟器重跑 `FilesLayoutTest` 的 4 个测试通过，覆盖亮暗主题、200% 字号、44 dp 移除、能力菜单及纯文件历史无空气泡。结束后卸载独立测试包并停止模拟器。本轮没有重跑真实 CLI 或真机链路，既有实测保留其原基线与覆盖边界；首条消息的本机来源缓存限制没有扩大为完整恢复保证。
+
+### Android 文件能力逐请求检查（2026-10-28）
+
+rebase 到本地 `wt/file-upload` 的 `f23f0801`，只遇到 `acceptance-notes.md` 的文档冲突并保留双方记录，无代码冲突。复读 `session-files.md` 全文及相对前一基线的变化：新客户端要求是逐请求能力检查；领取与受理证据、锁外哈希的传输代次检查属于 daemon，本轮没有修改 Go、网页或协议。
+
+新增 4 个 core 回归使用隔离真实中继与签名 fake daemon，覆盖 Send / Create 在能力为 false、缺字段或机器信息缺失时拒绝整条操作，图片/文字仍可发送；签名期间能力消失；未知结果在降级期间不发送、不解除 frozen，恢复能力后沿用原请求 ID、截止时间和附件；自动网络重试前重新检查能力并保留未知状态。修复前运行这 4 个测试全部失败，加入检查后通过。测试在受控的机器状态发布点注入能力变化，属于故障注入，不是实际安装旧 daemon 的端到端验收。
+
+新增 7 个 app 回归覆盖：存盘前及存盘期间失去能力不移走草稿；失败/未知 Outbox 的重试；本机条目与纯历史引用放回前拒绝且保留文字、旧记录及传输；能力恢复后的纯历史引用保留失败条目阻止部分发送；进程重启保留外层请求身份与首次文件 ID；明确失败可以更新外层指令身份和截止时间，但未知请求不能更新。临时移除两个放回检查后，对应两个测试均以断言失败，恢复检查后通过。旧的「文件在存盘期间到期」测试显式启用文件能力，仍验证到期路径。
+
+待确认记录新增一个加密 `intent` 对象，保存外层指令 ID、截止时间和目标机器；明确拒绝后重试只先更新此对象，再发送，不重写附件正文。升级要求：较早构建的待确认消息缓存需清理重建，附件重新选择；没有迁移或兼容读取。用户应先核对旧未知请求是否已执行，再决定重新发送。
+
+最终代码在 JDK 17、SDK 36 上运行：
+
+```sh
+./gradlew --no-daemon --no-configuration-cache --max-workers=1 \
+  :core:test --rerun :terminal:testReleaseUnitTest :app:testDebugUnitTest \
+  :app:assembleDebug :app:assembleDebugAndroidTest :app:lintVitalRelease \
+  -PdevBuild=true -PappIdSuffix=.fileuploadcheck
+```
+
+通过：core 427、app 383、terminal 7 个单元测试，共 817 个，无失败或跳过；Debug APK、测试 APK 及发布流水线使用的 Release lint 全部通过。`Medium_Phone_API_36.0` 模拟器的 `FilesLayoutTest` 4 个界面测试全部通过（亮/暗、200% 字号、44 dp 控件、能力菜单、纯文件历史）。结束后卸载两个独立 `.fileuploadcheck` 测试包并停止模拟器。本轮没有重跑真实 CLI 或真机链路，旧实测仍按各自记录的基线与边界理解。未推送、发布、部署或操作日常账户、daemon、真机。

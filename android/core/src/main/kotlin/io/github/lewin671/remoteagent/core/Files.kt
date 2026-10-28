@@ -9,6 +9,7 @@ import kotlin.coroutines.coroutineContext
 
 const val MAX_FILES = 6
 const val MAX_FILE_BYTES = 100L * 1024 * 1024
+const val FILE_UPLOAD_UPDATE_REQUIRED = "这台电脑不支持发送文件，请更新电脑上的 remote-agent"
 fun filesSupported(m: MachineView?) = capabilities(m)?.fileUpload == true
 fun maxFiles(m: MachineView?) = capabilities(m)?.maxFilesPerMessage?.takeIf { it > 0 }?.coerceAtMost(MAX_FILES) ?: MAX_FILES
 fun maxFileBytes(m: MachineView?) = capabilities(m)?.maxFileUploadBytes?.takeIf { it > 0 }?.coerceAtMost(MAX_FILE_BYTES) ?: MAX_FILE_BYTES

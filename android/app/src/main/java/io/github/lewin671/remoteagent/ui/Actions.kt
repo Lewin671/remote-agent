@@ -68,7 +68,17 @@ class Outgoing(
     val original: Boolean = false,
     val mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER,
     val fileIds: List<String> = emptyList(),
+    /** Frozen before persistence/dispatch, including after process death. */
+    commandDeadlineMs: Long = System.currentTimeMillis() + io.github.lewin671.remoteagent.core.COMMAND_TTL_MS,
+    targetMachineId: String? = null,
+    commandRequestId: String = newRequestId(),
 ) {
+    var commandRequestId: String = commandRequestId
+        private set
+    var commandDeadlineMs: Long = commandDeadlineMs
+        private set
+    var targetMachineId: String? = targetMachineId
+        private set
     enum class State { SENDING, SENT, FAILED, UNKNOWN }
 
     var state by mutableStateOf(State.SENDING)
@@ -81,11 +91,18 @@ class Outgoing(
     internal suspend fun deliver(send: suspend (SendRequest) -> Unit) {
         if (state == State.SENDING && delivering) return
         val wasUnknown = state == State.UNKNOWN
+        val wasFailed = state == State.FAILED
         delivering = true
         state = State.SENDING
         error = ""
         missingImages = false
         try {
+            // A definite rejection permits a fresh outer command. The message's dedupe ID and
+            // payload stay the same. Unknown outcomes never renew either command field.
+            if (wasFailed) {
+                commandRequestId = newRequestId()
+                commandDeadlineMs = System.currentTimeMillis() + io.github.lewin671.remoteagent.core.COMMAND_TTL_MS
+            }
             send(SendRequest.newBuilder().setText(text).setRequestId(requestId).addAllImageIds(imageIds).addAllFileIds(fileIds).setMode(mode).build())
             state = State.SENT
         } catch (e: Exception) {
@@ -98,6 +115,14 @@ class Outgoing(
         } finally {
             delivering = false
         }
+    }
+
+    internal fun prepareDelivery(remote: Remote, sid: String, request: SendRequest): io.github.lewin671.remoteagent.core.PreparedCommand {
+        val machine = targetMachineId ?: remote.state.value.sessions[sid]?.machineId
+            ?: throw CommandException("not_found", "未知会话")
+        targetMachineId = machine
+        return remote.prepare(machine, sid, remote.cmd { send = request.toBuilder().setSessionId(sid).build() },
+            requestId = commandRequestId, deadlineMs = commandDeadlineMs)
     }
 
     private var delivering = false
@@ -188,6 +213,7 @@ class OutgoingRecords(private val files: SealedFiles) {
             saveImages(files, f, o.images, original)
             saveOrder(files, f, o.images, original)
             files.put(f, "text", o.text.toByteArray())
+            writeIntent(f, o)
             files.put(f, "ids", o.imageIds.joinToString("\n").toByteArray())
             files.put(f, "mode", o.mode.name.toByteArray())
             if (o.fileIds.isNotEmpty()) files.put(f, "file-ids", o.fileIds.joinToString("\n").toByteArray())
@@ -212,13 +238,28 @@ class OutgoingRecords(private val files: SealedFiles) {
             val mode = files.get(f, "mode")?.toString(Charsets.UTF_8)?.let { runCatching { io.github.lewin671.remoteagent.proto.SendMode.valueOf(it) }.getOrNull() }
                 ?: io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER
             val fileIds = files.get(f, "file-ids")?.toString(Charsets.UTF_8)?.split("\n")?.filter { it.isNotEmpty() }.orEmpty()
-            Outgoing(req, text, ids, images, original, mode, fileIds).apply {
+            val intent = files.get(f, "intent") ?: error("待确认记录格式已变更，请清理旧记录并重新选择附件")
+            val (commandId, deadline, machine) = java.io.DataInputStream(intent.inputStream()).use {
+                Triple(it.readUTF(), it.readLong(), it.readUTF().ifEmpty { null })
+            }
+            Outgoing(req, text, ids, images, original, mode, fileIds, deadline, machine, commandId).apply {
                 // From a run that ended: whether it reached the computer is not known.
                 state = Outgoing.State.UNKNOWN
                 error = "App 重启过，不确定这条有没有送到"
             }
         }
     }
+
+    private fun writeIntent(folder: String, o: Outgoing) {
+        val bytes = java.io.ByteArrayOutputStream()
+        java.io.DataOutputStream(bytes).use {
+            it.writeUTF(o.commandRequestId); it.writeLong(o.commandDeadlineMs); it.writeUTF(o.targetMachineId.orEmpty())
+        }
+        files.put(folder, "intent", bytes.toByteArray())
+    }
+
+    /** Renewing a definitely rejected command does not rewrite the local attachment bytes. */
+    fun saveIntent(sid: String, o: Outgoing) = files.transaction { writeIntent(folder(sid, o.requestId), o) }
 
     fun remove(sid: String, requestId: String) = files.transaction {
         files.clearFolder(folder(sid, requestId))
@@ -310,17 +351,21 @@ object Outbox {
         onKept: (Result<Unit>) -> Unit,
     ) {
         if (keeping(sid)) return
+        val machine = images.firstOrNull()?.machineId
+        try { remote.requireFileSupport(machine, fileIds.isNotEmpty()) }
+        catch (e: CommandException) { onKept(Result.failure(e)); return }
         keepingNow[sid] = true
-        val o = Outgoing(newRequestId(), text, imageIds, images, original, mode, fileIds)
+        val o = Outgoing(newRequestId(), text, imageIds, images, original, mode, fileIds, targetMachineId = machine)
         val account = AccountMemory.token
         val ownedRecords = if (store == null) records else null
         val keep = store ?: { s: String, message: Outgoing, orig: Boolean -> ownedRecords!!.save(s, message, orig) }
         val drop = discard ?: { s: String, id: String -> ownedRecords?.remove(s, id); Unit }
-        val machine = images.firstOrNull()?.machineId
         scope.launch {
             val kept = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching {
                     keep(sid, o, original)
+                    try { remote.requireFileSupport(machine, fileIds.isNotEmpty()) }
+                    catch (e: CommandException) { drop(sid, o.requestId); throw e }
                     // Saving large originals can outlast the upload. Nothing has been sent yet:
                     // discard this record and leave the draft to upload again with a fresh ID.
                     if (machine == null || images.any { !it.readyFor(machine) } ||
@@ -381,9 +426,20 @@ object Outbox {
     }
 
     fun deliver(scope: CoroutineScope, remote: Remote, sid: String, o: Outgoing) {
+        val account = AccountMemory.token
         scope.launch {
+            if (account !== AccountMemory.token) return@launch
+            val retry = o.state == Outgoing.State.UNKNOWN
+            val failed = o.state == Outgoing.State.FAILED
             o.deliver { request ->
-                remote.command(sid, remote.cmd { send = request.toBuilder().setSessionId(sid).build() })
+                val prepared = o.prepareDelivery(remote, sid, request)
+                remote.requireFileSupport(prepared.machineId, o.fileIds.isNotEmpty(), retry)
+                if (failed && o.images.isNotEmpty()) {
+                    val kept = records
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { kept.saveIntent(sid, o) }
+                    if (account !== AccountMemory.token) throw kotlinx.coroutines.CancellationException("account changed")
+                }
+                remote.forward(prepared, retryOfUnknown = retry)
             }
         }
     }

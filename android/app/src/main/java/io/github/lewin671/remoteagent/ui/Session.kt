@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.Mode
+import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.Status
@@ -586,11 +587,9 @@ private fun ChatPane(
                             else {
                                 val accepted = d.accepted[requestId]
                                 val input = d.inputDetails[requestId]
-                                val tray = ImageDrafts.forSession(s.id)
-                                val machineView = state.machines[s.machineId]
-                                if (tray.restoreReferences(accepted?.files?.takeIf { it.isNotEmpty() } ?: input?.filesList.orEmpty(), accepted?.imageIds?.takeIf { it.isNotEmpty() } ?: input?.imageIdsList.orEmpty(), maxImages(machineView), io.github.lewin671.remoteagent.core.maxFiles(machineView))) {
-                                    Outbox.draft(s.id).value = text
-                                }
+                                putBackReferences(remote, s.id, text,
+                                    accepted?.files?.takeIf { it.isNotEmpty() } ?: input?.filesList.orEmpty(),
+                                    accepted?.imageIds?.takeIf { it.isNotEmpty() } ?: input?.imageIdsList.orEmpty())
                             }
                         }
                     }
@@ -1310,6 +1309,7 @@ internal fun putBack(
 ): Boolean {
     val d = ImageDrafts.forSession(sid)
     val s = remote.state.value.sessions[sid]
+    if (!canRestoreFiles(remote, s?.machineId, o.fileIds.isNotEmpty() || o.images.any { it.isFile }, d)) return false
     val max = maxImages(s?.let { remote.state.value.machines[it.machineId] })
     // Restored outbox entries have their durable transfer identity but no live abort closure.
     o.images.forEach { d.bindAbort(it, remote) }
@@ -1318,5 +1318,23 @@ internal fun putBack(
     Outbox.draft(sid).value = if (cur.isBlank()) o.text else cur.trimEnd() + "\n" + o.text
     Outbox.takeBack(sid, o, d)
     s?.let { d.sendAllTo(remote, it.machineId) }
+    return true
+}
+
+/** Check before changing text, transfers or the failed record, including remote-only history. */
+private fun canRestoreFiles(remote: Remote, machine: String?, hasFiles: Boolean, draft: ImageDraft): Boolean =
+    try { remote.requireFileSupport(machine, hasFiles); true }
+    catch (e: io.github.lewin671.remoteagent.core.CommandException) { draft.notice = e.message.orEmpty(); false }
+
+internal fun putBackReferences(
+    remote: Remote, sid: String, text: String,
+    files: List<io.github.lewin671.remoteagent.proto.SentFile>, imageIds: List<String>,
+): Boolean {
+    val tray = ImageDrafts.forSession(sid)
+    val target = remote.state.value.sessions[sid]?.machineId
+    if (!canRestoreFiles(remote, target, files.isNotEmpty(), tray)) return false
+    val machine = remote.state.value.machines[target]
+    if (!tray.restoreReferences(files, imageIds, maxImages(machine), io.github.lewin671.remoteagent.core.maxFiles(machine))) return false
+    Outbox.draft(sid).value = text
     return true
 }
