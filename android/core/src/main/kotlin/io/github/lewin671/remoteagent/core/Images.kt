@@ -383,7 +383,7 @@ suspend fun uploadImage(
     suspend fun <T> step(block: suspend () -> T, resync: suspend () -> Unit): T {
         while (true) {
             try {
-                return block()
+                return block().also { tries = 0 }
             } catch (e: CommandException) {
                 if (!e.unknown && e.code != "network" || tries >= retries) throw e
                 tries++

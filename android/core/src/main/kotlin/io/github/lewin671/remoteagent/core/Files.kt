@@ -107,7 +107,7 @@ suspend fun uploadFile(
     val hash = digest.digest()
     var tries = 0
     suspend fun <T> step(block: suspend () -> T, resync: suspend () -> Unit): T {
-        while (true) try { return block() } catch (e: CommandException) {
+        while (true) try { return block().also { tries = 0 } } catch (e: CommandException) {
             if (e.code == "aborted" && e.message.orEmpty().contains("transfer changed")) throw e
             if ((!e.unknown && e.code != "network") || tries++ >= retries) throw e
             resync()

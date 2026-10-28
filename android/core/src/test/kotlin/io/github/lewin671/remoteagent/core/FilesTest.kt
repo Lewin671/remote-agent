@@ -102,6 +102,27 @@ class FilesTest {
         assertEquals(expected.size.toLong(), progress.last())
     }
 
+    @Test fun successfulChunksDoNotConsumeTheRetryBudgetForComplete() = runBlocking {
+        val data = byteArrayOf(1, 2, 3)
+        val daemon = Channel(data)
+        var puts = 0
+        var completes = 0
+        val ch = object : UploadChannel by daemon {
+            override suspend fun put(transferId: String, offset: Long, data: ByteArray): ImageUploadStatus {
+                if (puts++ < 3) throw CommandException(CommandException.UNKNOWN, "chunk reply lost")
+                return daemon.put(transferId, offset, data)
+            }
+            override suspend fun complete(transferId: String): ImageUploadStatus {
+                if (completes++ < 3) throw CommandException(CommandException.UNKNOWN, "complete reply lost")
+                return daemon.complete(transferId)
+            }
+        }
+        val result = uploadFile(ch, "same-transfer", "data.zip", data.size.toLong(), { ByteArrayInputStream(data) })
+        assertEquals("file-id", result.fileId)
+        assertEquals(4, puts)
+        assertEquals(4, completes)
+    }
+
     @Test fun acceptsEmptyFilesAndRejectsAChangedSource() = runBlocking {
         assertEquals("file-id", uploadFile(Channel(byteArrayOf()), "t", "data.zip", 0, { ByteArrayInputStream(byteArrayOf()) }).fileId)
         val bytes = byteArrayOf(1, 2)
