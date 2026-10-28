@@ -354,6 +354,7 @@ interface UploadChannel {
     suspend fun beginFile(transferId: String, name: String, total: Long, sha256: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus = error("文件上传不可用")
     suspend fun put(transferId: String, offset: Long, data: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus
     suspend fun status(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus
+    suspend fun abort(transferId: String)
     suspend fun complete(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus
 }
 
@@ -399,7 +400,9 @@ suspend fun uploadImage(
         st = step({ ch.put(transferId, off, data.copyOfRange(off.toInt(), end)) }) { st = ch.status(transferId) }
     }
     onProgress(total, total)
-    if (st.state == io.github.lewin671.remoteagent.proto.ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING) {
+    var completing = 0
+    while (st.state == io.github.lewin671.remoteagent.proto.ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING) {
+        if (completing++ > retries) throw CommandException("unavailable", "电脑尚未确认附件上传完成，请重试")
         st = step({ ch.complete(transferId) }) { st = ch.status(transferId) }
     }
     if (st.imageId.isEmpty()) throw CommandException("internal", "电脑没有给出图片 ID")

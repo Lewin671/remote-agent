@@ -57,7 +57,8 @@ class AttachmentsTest {
             override suspend fun begin(transferId: String, format: ImageFormat, total: Long, sha256: ByteArray) = status
             override suspend fun put(transferId: String, offset: Long, data: ByteArray) = error("already complete")
             override suspend fun status(transferId: String) = error("already complete")
-            override suspend fun complete(transferId: String) = error("already complete")
+            override suspend fun abort(transferId: String) {}
+        override suspend fun complete(transferId: String) = error("already complete")
         }
         val image = img("expiry")
         image.processed = Processed(byteArrayOf(0x89.toByte(), 80, 78, 71, 13, 10, 26, 10), ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
@@ -279,7 +280,7 @@ class AttachmentsTest {
         d.remove(a)
         held.countDown()
         thread.submit {}.get()
-        assertEquals(setOf("session:s/b.img", "session:s/b.meta", "session:s/order"), files.data.keys.toSet())
+        assertEquals(setOf("session:s/b.img", "session:s/b.meta", "session:s/b.upload", "session:s/order"), files.data.keys.toSet())
         assertEquals("0\nb", String(files.get("session:s", "order")!!))
         // The same for a draft dropped whole.
         d.attach(listOf(img("c")), 6)

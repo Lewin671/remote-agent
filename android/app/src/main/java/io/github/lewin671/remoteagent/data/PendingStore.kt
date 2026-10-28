@@ -22,7 +22,7 @@ import javax.crypto.spec.SecretKeySpec
  * for the Keystore to handle quickly); the Keystore wraps that key. Nothing
  * here goes into backups, and logging out deletes it all.
  */
-class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedFiles {
+class PendingStore(private val context: Context) : io.github.lewin671.remoteagent.ui.SealedFiles {
     private val scopes = FileScopes(this)
     fun scoped() = scopes.scoped()
     fun invalidate() = scopes.invalidate()
@@ -36,6 +36,7 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
         val keep = outboxFolders() ?: return 0
         val n = ImageDiskPolicy.expireDrafts(dir, keep)
         if (n > 0) prefs.edit().putInt("expired-drafts", expired + n).apply()
+        releaseUnusedUriPermissions()
         return n
     }
 
@@ -81,6 +82,7 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
             check(tmp.renameTo(f)) { "没能保存待发图片" }
         } finally { tmp.delete() }
         f.parentFile?.setLastModified(System.currentTimeMillis())
+        if (name == "order") releaseUnusedUriPermissions()
     }
 
     @Synchronized override fun get(folder: String, name: String): ByteArray? {
@@ -93,11 +95,40 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
 
     override @Synchronized fun remove(folder: String, name: String) {
         File(folder(folder), name).delete()
+        releaseUnusedUriPermissions()
     }
 
     @Synchronized override fun clearFolder(folder: String) {
         folder(folder).deleteRecursively()
+        releaseUnusedUriPermissions()
     }
+
+    /** Inspect only small metadata files; never load image/file bodies to collect grants. */
+    private fun recordedUris(): Set<String>? {
+        val k = cachedKey ?: storedKey() ?: return if (keyFile.exists()) null else emptySet()
+        return runCatching {
+            val uris = mutableSetOf<String>()
+            for (folder in dir.listFiles().orEmpty().filter { it.isDirectory }) {
+                val order = File(folder, "order")
+                if (!order.exists()) continue
+                val ids = open(order.readBytes(), k).toString(Charsets.UTF_8).split("\n").drop(1)
+                for (id in ids.filter { it.isNotEmpty() }) {
+                    val file = File(folder, "$id.file")
+                    val meta = File(folder, "$id.meta")
+                    if (file.exists()) java.io.DataInputStream(java.io.ByteArrayInputStream(open(file.readBytes(), k))).use { uris += it.readUTF() }
+                    else if (meta.exists()) uris += open(meta.readBytes(), k).toString(Charsets.UTF_8).split("\n")[4]
+                }
+            }
+            uris.filter { it.isNotEmpty() }.toSet()
+        }.getOrNull()
+    }
+
+    @Synchronized fun releaseUnusedUriPermissions() { runCatching {
+        val grants = context.contentResolver.persistedUriPermissions.map { it.uri.toString() }.toSet()
+        val unused = io.github.lewin671.remoteagent.ui.unusedUriPermissions(grants, io.github.lewin671.remoteagent.ui.PendingUris.uris(), recordedUris())
+        for (uri in unused) runCatching { context.contentResolver.releasePersistableUriPermission(android.net.Uri.parse(uri), android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+    } }
+
 
     @Synchronized fun clearAll() {
         invalidate()

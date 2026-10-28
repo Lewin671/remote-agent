@@ -222,6 +222,7 @@ class UploadTest {
             return st()
         }
         override suspend fun status(transferId: String) = st()
+        override suspend fun abort(transferId: String) {}
         override suspend fun complete(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus {
             if (stored.size.toLong() != total || !sha256(stored).contentEquals(sha)) throw CommandException("data_loss", "hash", fromDaemon = true)
             done = true
@@ -252,7 +253,8 @@ class UploadTest {
     @Test
     fun aRefusalIsAnErrorNotASuccess() {
         val d = object : UploadChannel by FakeDaemon() {
-            override suspend fun complete(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus =
+            override suspend fun abort(transferId: String) {}
+        override suspend fun complete(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus =
                 throw CommandException("invalid_argument", "not an image", fromDaemon = true)
         }
         val e = runCatching { kotlinx.coroutines.runBlocking { uploadImage(d, "t", png) } }.exceptionOrNull()

@@ -75,6 +75,7 @@ class FilesTest {
             return state()
         }
         override suspend fun status(transferId: String) = state()
+        override suspend fun abort(transferId: String) {}
         override suspend fun complete(transferId: String): ImageUploadStatus {
             assertArrayEquals(expected, bytes.toByteArray())
             return ImageUploadStatus.newBuilder().setState(ImageUploadState.IMAGE_UPLOAD_STATE_COMPLETE).setFileId("file-id").setExpiresMs(123).build()
@@ -103,8 +104,15 @@ class FilesTest {
 
     @Test fun acceptsEmptyFilesAndRejectsAChangedSource() = runBlocking {
         assertEquals("file-id", uploadFile(Channel(byteArrayOf()), "t", "data.zip", 0, { ByteArrayInputStream(byteArrayOf()) }).fileId)
-        val failed = runCatching { uploadFile(Channel(byteArrayOf(1)), "t", "data.zip", 1, { ByteArrayInputStream(byteArrayOf(1, 2)) }) }
-        assertTrue(failed.exceptionOrNull()!!.message!!.contains("文件已改变"))
+        val bytes = byteArrayOf(1, 2)
+        for (hint in listOf(0L, 1L, 999L)) {
+            var actual = -1L
+            uploadFile(Channel(bytes), "t", "data.zip", hint, { ByteArrayInputStream(bytes) }, onPrepared = { actual = it })
+            assertEquals(2L, actual)
+        }
+        var opens = 0
+        val changed = runCatching { uploadFile(Channel(bytes), "t", "data.zip", 2, { ByteArrayInputStream(if (opens++ == 0) bytes else byteArrayOf(2, 1)) }) }
+        assertTrue(changed.exceptionOrNull() is FileContentChanged)
     }
 
     @Test fun aHundredMiBSourceIsReadInTwoBoundedPasses() = runBlocking {
@@ -130,7 +138,8 @@ class FilesTest {
                 return receiving()
             }
             override suspend fun status(transferId: String) = receiving()
-            override suspend fun complete(transferId: String): ImageUploadStatus {
+            override suspend fun abort(transferId: String) {}
+        override suspend fun complete(transferId: String): ImageUploadStatus {
                 assertArrayEquals(expectedHash, actual.digest())
                 return ImageUploadStatus.newBuilder().setFileId("large").build()
             }

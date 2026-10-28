@@ -3523,6 +3523,10 @@ class Remote(
                 .getImageUploadStatus
                 .status
 
+            override suspend fun abort(transferId: String) {
+                run { abortImageUpload = io.github.lewin671.remoteagent.proto.AbortImageUploadRequest.newBuilder().setTransferId(transferId).build() }
+            }
+
             override suspend fun complete(transferId: String) = run {
                 completeImageUpload =
                     io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.newBuilder()

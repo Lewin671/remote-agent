@@ -161,6 +161,7 @@ object AccountMemory {
         Cancels.clear()
         PrefsChanges.clear()
         ImageDrafts.clear()
+        PendingUris.clear()
         ViewerImages.clear()
         Resolves.clear()
         QuestionPicks.clear()
@@ -278,8 +279,10 @@ object Outbox {
             val loaded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching { records.load(sid, thumb) }.getOrDefault(emptyList())
             }
-            if (account !== AccountMemory.token || bySession[sid] !== list) return@launch
-            list += loaded.filter { old -> list.none { it.requestId == old.requestId } }
+            if (account !== AccountMemory.token || bySession[sid] !== list) { loaded.flatMap { it.images }.forEach { PendingUris.release(it) }; return@launch }
+            val restored = loaded.filter { old -> list.none { it.requestId == old.requestId } }
+            restored.flatMap { it.images }.forEach { PendingUris.retain(it) }
+            list += restored
         }
     }
 

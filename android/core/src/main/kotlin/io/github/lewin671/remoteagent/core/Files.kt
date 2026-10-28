@@ -54,72 +54,107 @@ fun withoutFileLines(text: String, files: List<SentFile>): String {
 
 data class UploadedFile(val fileId: String, val expiresMs: Long)
 
-/** Two streaming passes. Only one chunk is held; reopen at the durable offset after an unknown result. */
+/** IO from the provider is distinguished from network IO by where it happened. */
+class FileSourceException(cause: Exception) : Exception("无法读取源文件，请移除后重新选择文件", cause)
+class FileContentChanged : Exception("文件在上传时发生变化，请重试或重新选择文件")
+fun isUploadHashMismatch(e: Throwable) = e is CommandException && e.code == "invalid_argument" && e.message.orEmpty().contains("hash", ignoreCase = true)
+fun restartUpload(e: Throwable) = e is CommandException && (e.code == "already_exists" || e.code == "not_found" || isUploadHashMismatch(e))
+fun uploadErrorText(e: Throwable): String = when {
+    e is FileSourceException || e is FileContentChanged -> e.message!!
+    isUploadHashMismatch(e) -> "文件校验失败，请重试或重新选择文件"
+    e is CommandException && e.code == "already_exists" -> "附件传输内容已改变，请重试"
+    e is CommandException && e.code == "aborted" -> "附件传输已中止或发生变化，请重试"
+    e is java.io.IOException -> "上传连接中断，请重试"
+    else -> errorText(e)
+}
+
+/** One file's preparation and network transfer across every draft. Canceling a waiter releases its place. */
+object FileUploads {
+    private val lock = kotlinx.coroutines.sync.Mutex()
+    suspend fun <T> serial(work: suspend () -> T): T {
+        lock.lock()
+        try { return work() } finally { lock.unlock() }
+    }
+}
+
+/** Metadata size is only a hint. Hash the actual bytes, then verify the upload pass against them. */
 suspend fun uploadFile(
     ch: UploadChannel, transferId: String, name: String, total: Long,
     open: () -> InputStream, maxChunk: Int = DEFAULT_CHUNK_BYTES, retries: Int = 3,
+    maxBytes: Long = MAX_FILE_BYTES,
+    onPrepared: (Long) -> Unit = {},
     onProgress: (Long, Long) -> Unit = { _, _ -> },
 ): UploadedFile {
     require(name.isNotBlank() && name.toByteArray().size <= 255) { "文件名过长或为空，请重命名后重新选择" }
-    require(total in 0..MAX_FILE_BYTES) { "文件过大，单个文件最多 100 MB" }
+    fun <T> source(work: () -> T): T = try { work() } catch (e: java.io.IOException) { throw FileSourceException(e) } catch (e: SecurityException) { throw FileSourceException(e) }
+    fun openSource(): InputStream = object : java.io.FilterInputStream(source { open() }) {
+        override fun close() { try { super.close() } catch (e: java.io.IOException) { throw FileSourceException(e) } }
+    }
     val digest = MessageDigest.getInstance("SHA-256")
-    open().use { input ->
+    var actual = 0L
+    openSource().use { input ->
         val buffer = ByteArray(64 * 1024)
-        var read = 0L
         while (true) {
             coroutineContext.ensureActive()
-            val n = input.read(buffer)
+            val n = source { input.read(buffer) }
             if (n < 0) break
-            read += n
-            require(read <= total) { "文件已改变，请重新选择文件" }
+            actual += n
+            require(actual <= minOf(maxBytes, MAX_FILE_BYTES)) { "文件过大，单个文件最多 ${fileSize(minOf(maxBytes, MAX_FILE_BYTES))}" }
             digest.update(buffer, 0, n)
         }
-        require(read == total) { "文件已改变，请重新选择文件" }
     }
+    onPrepared(actual)
     val hash = digest.digest()
     var tries = 0
     suspend fun <T> step(block: suspend () -> T, resync: suspend () -> Unit): T {
         while (true) try { return block() } catch (e: CommandException) {
+            if (e.code == "aborted" && e.message.orEmpty().contains("transfer changed")) throw e
             if ((!e.unknown && e.code != "network") || tries++ >= retries) throw e
             resync()
         }
     }
-    var st = step({ ch.beginFile(transferId, name, total, hash) }) {}
+    var st = step({ ch.beginFile(transferId, name, actual, hash) }) {}
     val chunk = minOf(maxChunk, DEFAULT_CHUNK_BYTES, st.maxChunkBytes.takeIf { it > 0 } ?: DEFAULT_CHUNK_BYTES)
     require(chunk > 0)
-    var source: InputStream? = null
-    var cursor = 0L
-    try {
-        while (st.state == ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING && st.persistedBytes < total) {
-            coroutineContext.ensureActive()
-            val offset = st.persistedBytes
-            require(offset in 0..total) { "电脑返回的文件进度无效" }
-            if (source == null || cursor > offset) {
-                source?.close()
-                source = open()
-                cursor = 0
-            }
-            val input = checkNotNull(source)
-            while (cursor < offset) {
+    if (st.state == ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING) {
+        require(st.persistedBytes in 0..actual) { "电脑返回的文件进度无效" }
+        // Read even the resumed prefix: changes there must not silently pass verification.
+        val check = MessageDigest.getInstance("SHA-256")
+        openSource().use { input ->
+            var cursor = 0L
+            val prefix = ByteArray(64 * 1024)
+            while (cursor < st.persistedBytes) {
                 coroutineContext.ensureActive()
-                val n = input.skip(offset - cursor)
-                if (n == 0L) { check(input.read() >= 0) { "无法读取源文件，请重新选择文件" }; cursor++ } else cursor += n
+                val n = source { input.read(prefix, 0, minOf(prefix.size.toLong(), st.persistedBytes - cursor).toInt()) }
+                if (n < 0) throw FileContentChanged()
+                check.update(prefix, 0, n); cursor += n
             }
-            val data = ByteArray(minOf(chunk.toLong(), total - offset).toInt())
-            var n = 0
-            while (n < data.size) {
+            while (cursor < actual) {
                 coroutineContext.ensureActive()
-                val got = input.read(data, n, data.size - n)
-                check(got >= 0) { "无法读取源文件，请重新选择文件" }
-                n += got
+                val offset = cursor
+                val data = ByteArray(minOf(chunk.toLong(), actual - cursor).toInt())
+                var n = 0
+                while (n < data.size) {
+                    val got = source { input.read(data, n, data.size - n) }
+                    if (got < 0) throw FileContentChanged()
+                    n += got
+                }
+                check.update(data); cursor += data.size
+                onProgress(offset, actual)
+                st = step({ ch.put(transferId, offset, data) }) { st = ch.status(transferId) }
             }
-            cursor += n
-            onProgress(offset, total)
-            st = step({ ch.put(transferId, offset, data) }) { st = ch.status(transferId) }
+            if (source { input.read() } != -1 || !check.digest().contentEquals(hash)) {
+                runCatching { ch.abort(transferId) }
+                throw FileContentChanged()
+            }
         }
-    } finally { source?.close() }
-    if (st.state == ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING) st = step({ ch.complete(transferId) }) { st = ch.status(transferId) }
+    }
+    var completing = 0
+    while (st.state == ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING) {
+        if (completing++ > retries) throw CommandException("unavailable", "电脑尚未确认附件上传完成，请重试")
+        st = step({ ch.complete(transferId) }) { st = ch.status(transferId) }
+    }
     if (st.fileId.isEmpty()) throw CommandException("internal", "电脑没有返回文件 ID")
-    onProgress(total, total)
+    onProgress(actual, actual)
     return UploadedFile(st.fileId, st.expiresMs)
 }
