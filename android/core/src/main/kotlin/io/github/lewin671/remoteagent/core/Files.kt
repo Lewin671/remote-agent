@@ -40,7 +40,7 @@ fun withoutFileLines(text: String, files: List<SentFile>): String {
     val hidden = HashSet<Int>()
     lines.forEachIndexed { i, line ->
         val path = when {
-            line.startsWith("File: @") && line.endsWith(" (file)") -> line.substring(6, line.length - 7)
+            line.startsWith("File: @\"") && line.endsWith("\" (file)") -> "@" + line.substring(8, line.length - 8)
             line.startsWith("File: ") -> line.drop(6)
             else -> line
         }
