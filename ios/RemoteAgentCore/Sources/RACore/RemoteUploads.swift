@@ -40,6 +40,10 @@ private struct MachineUploads: UploadChannel {
         }.beginImageUpload.status
     }
 
+    func abort(transferId: String) async throws {
+        _ = try await run { $0.abortImageUpload.transferID = transferId }
+    }
+
     func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus {
         try await run {
             $0.putImageChunk.transferID = transferId

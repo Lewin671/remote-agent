@@ -177,6 +177,10 @@ final class ImageCenter {
                 return self?.sources[uri] != nil
             })
         uploads.onPrepared = { [weak self] img in self?.makeThumb(img) }
+        uploads.onFileChanged = { [weak self] img in
+            guard let self, !closed, let draft = drafts.values.first(where: { $0.images.contains(where: { $0 === img }) }) else { throw CancellationError() }
+            try await draft.persistFile(img)
+        }
     }
 
     private func close() {
@@ -271,7 +275,7 @@ final class ImageCenter {
         let d = draft(key)
         let allowed = d.filesAllowed(for: machine)
         if !allowed {
-            for item in d.documents {
+            for item in d.documents where item.hasSource {
                 item.job?.cancel()
                 item.refreshJob?.cancel()
                 item.state = .failed(error: fileSupported(machine) ? "附件超过这台电脑的文件数量或大小上限，请移除后重新选择" : "这台电脑不支持发送文件")
@@ -367,6 +371,7 @@ final class ImageCenter {
     }
 
     func retry(_ key: String, _ img: PendingImage) {
+        if img.isFile && !img.hasSource { return }
         if img.isFile, !draft(key).filesAllowed(for: fileMachines[key]) {
             img.state = .failed(error: "这台电脑不支持这些文件，请检查文件数量和大小或换一台电脑")
             return
@@ -375,6 +380,7 @@ final class ImageCenter {
     }
 
     func remove(_ key: String, _ img: PendingImage) {
+        uploads.discard(img)
         draft(key).remove(img)
         forget([img])
     }
@@ -386,7 +392,7 @@ final class ImageCenter {
     /// Takes images out of a draft once a started session carries them.
     func used(_ key: String, _ taken: [PendingImage]) {
         draft(key).detach(taken)
-        for img in taken { img.release() }
+        for img in taken { uploads.discard(img, keeping: img.machineId); img.release() }
         forget(taken)
     }
 
@@ -576,7 +582,7 @@ final class ImageCenter {
     private func settle(_ sid: String, _ inputs: [String: PBInputState], _ store: SessionStore) {
         for o in recorded(kept[sid] ?? [], inputs: inputs) {
             store.remove(sid, o)
-            release(sid, o)
+            release(sid, o, accepted: true)
         }
     }
 
@@ -595,10 +601,10 @@ final class ImageCenter {
         }
     }
 
-    private func release(_ sid: String, _ o: Outgoing) {
+    private func release(_ sid: String, _ o: Outgoing, accepted: Bool = false) {
         letGo(sid, o)
         dropRecord(sid, o.requestId)
-        for img in o.images { img.release() }
+        for img in o.images { uploads.discard(img, keeping: accepted ? img.machineId : nil); img.release() }
         forget(o.images)
     }
 
@@ -652,6 +658,11 @@ final class ImageCenter {
         {
             status(transferId, done: false)
         }
+
+        func beginFile(transferId: String, name: String, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
+            status(transferId, done: false)
+        }
+        func abort(transferId: String) async throws {}
 
         func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus
         {

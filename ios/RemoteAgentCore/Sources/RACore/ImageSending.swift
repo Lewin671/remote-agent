@@ -21,6 +21,7 @@ public final class ImageUploads {
     private let readable: @MainActor (_ uri: String) -> Bool
     /// Told when an image has new bytes, for whoever draws its thumbnail.
     public var onPrepared: (@MainActor (PendingImage) -> Void)?
+    public var onFileChanged: (@MainActor (PendingImage) async throws -> Void)?
 
     public init(
         prepare: @escaping Prepare, channel: @escaping @Sendable (_ machineId: String) -> any UploadChannel,
@@ -84,13 +85,19 @@ public final class ImageUploads {
         img.job = Task {
             do {
                 @MainActor func send() async throws -> UploadedImage {
+                    try Task.checkCancellation()
+                    if img.isFile { try await self.onFileChanged?(img) }
+                    try Task.checkCancellation()
                     let progress: @MainActor (Int64, Int64) -> Void = { done, total in
                         if !Task.isCancelled, img.machineId == machineId {
                             img.state = .uploading(progress: total > 0 ? Float(done) / Float(total) : 0)
                         }
                     }
                     if let file = img.file {
-                        return try await uploadFile(ch, transferId: img.transferId, source: file, onProgress: progress)
+                        return try await uploadFile(ch, transferId: img.transferId, source: file, onSource: { refreshed in
+                            img.file?.bookmark = refreshed.bookmark
+                            try await self.onFileChanged?(img)
+                        }, onProgress: progress)
                     }
                     guard let p = img.processed else { throw UserError("读不到这张图片") }
                     return try await uploadImage(ch, transferId: img.transferId, data: p.bytes, onProgress: progress)
@@ -98,21 +105,52 @@ public final class ImageUploads {
                 let uploaded: UploadedImage
                 do {
                     uploaded = try await send()
-                } catch let e as any UploadFailure where e.code == "not_found" && !Task.isCancelled {
-                    // The transfer expired on the daemon: start a new one.
+                } catch let e as any UploadFailure where (e.code == "not_found" || (img.isFile && e.code == "already_exists")) && !Task.isCancelled {
+                    // Changed sources and expired reservations need a fresh, durably recorded transfer.
+                    if img.isFile {
+                        try await ch.abort(transferId: img.transferId)
+                    }
                     img.transferId = newRequestId()
+                    img.imageId = nil
+                    if img.isFile { img.file?.transfers[machineId] = FileTransfer(transferId: img.transferId) }
                     uploaded = try await send()
                 }
                 if Task.isCancelled { return }
                 if img.machineId == machineId {
                     img.imageId = uploaded.imageId
                     img.expiresMs = uploaded.expiresMs
+                    if img.isFile {
+                        img.file?.transfers[machineId] = FileTransfer(transferId: img.transferId, fileId: uploaded.imageId, expiresMs: uploaded.expiresMs)
+                        try await onFileChanged?(img)
+                        try Task.checkCancellation()
+                    }
                     img.state = .ready
                     scheduleRefresh(img, machineId: machineId, expiresMs: uploaded.expiresMs)
                 }
             } catch {
                 if Task.isCancelled || error is CancellationError { return }
-                if img.machineId == machineId { img.state = .failed(error: errorText(error)) }
+                if img.machineId == machineId { img.state = .failed(error: img.isFile ? fileUploadError(error) : errorText(error)) }
+            }
+        }
+    }
+
+    /// Remove every unused reservation. The accepted target is kept once a message owns it.
+    @discardableResult
+    public func discard(_ img: PendingImage, keeping machine: String? = nil) -> Task<Void, Never> {
+        img.job?.cancel()
+        img.refreshJob?.cancel()
+        let abandoned = img.file?.transfers.filter { $0.key != machine } ?? [:]
+        let channel = self.channel
+        return Task {
+            for (target, transfer) in abandoned {
+                let ch = channel(target)
+                for attempt in 0..<3 {
+                    do { try await ch.abort(transferId: transfer.transferId); break }
+                    catch {
+                        guard let failure = error as? any UploadFailure,
+                            failure.unknown || failure.code == "network", attempt < 2 else { break }
+                    }
+                }
             }
         }
     }

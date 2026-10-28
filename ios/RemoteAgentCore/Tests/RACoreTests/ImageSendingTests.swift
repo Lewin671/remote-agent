@@ -69,6 +69,11 @@ private actor FakeMachines {
 }
 
 private struct FakeChannel: UploadChannel {
+        func beginFile(transferId: String, name: String, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
+            throw UserError("unexpected file upload in image test")
+        }
+        func abort(transferId: String) async throws {}
+
     let machines: FakeMachines
     let machine: String
 

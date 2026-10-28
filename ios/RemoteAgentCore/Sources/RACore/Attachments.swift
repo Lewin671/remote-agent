@@ -51,7 +51,7 @@ public final class PendingImage: Identifiable {
 
     public var file: PickedFile?
     public var isFile: Bool { file != nil }
-    public var hasSource: Bool { file != nil || processed != nil }
+    public var hasSource: Bool { file.map(\.hasSource) ?? (processed != nil) }
     public var processed: Processed?
     public var needsProcessing = false
     public var state: State = .processing
@@ -84,14 +84,20 @@ public final class PendingImage: Identifiable {
     }
 
     /// Marks the image as on its way to `machineId`, unless it is there or on
-    /// its way there already; true when an upload is to be started. An upload
-    /// to another machine is dropped: the latest target wins, with a transfer
-    /// of its own.
+    /// its way there already; true when an upload is to be started. Files keep
+    /// one reservation per machine; images restart when their target changes.
     public func startUpload(to machineId: String, now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> Bool {
         if !needsUpload(self, machineId: machineId, now: now) { return false }
         job?.cancel()
         refreshJob?.cancel()
-        if self.machineId != machineId || (imageId != nil && expiresMs <= now) {
+        if var file {
+            let target = file.transfers[machineId] ?? FileTransfer()
+            file.machineId = machineId
+            file.transfers[machineId] = target
+            self.file = file
+            transferId = target.transferId
+            imageId = target.fileId
+        } else if self.machineId != machineId || (imageId != nil && expiresMs <= now) {
             transferId = newRequestId()
             imageId = nil
         }
@@ -146,6 +152,7 @@ private func text(_ d: Data) -> String { String(decoding: d, as: UTF8.self) }
 func saveImages(_ files: any SealedFiles, folder: String, images: [StoredImage], original: Bool) throws {
     for img in images {
         if let file = img.file {
+            guard file.hasSource else { continue }
             try files.put(folder: folder, name: img.id + ".file", data: JSONEncoder().encode(file))
             continue
         }
@@ -192,10 +199,16 @@ private func reviveStored(_ stored: [StoredImage]) -> [PendingImage] {
     stored.map { s in
         let img = PendingImage(id: s.id, uri: s.uri)
         img.file = s.file
+        if let file = s.file, let machine = file.machineId, let transfer = file.transfers[machine] {
+            img.machineId = machine
+            img.transferId = transfer.transferId
+            img.imageId = transfer.fileId
+            img.expiresMs = transfer.expiresMs
+        }
         img.processed = s.processed
         img.needsProcessing = s.needsProcessing
         // Uploads are the daemon's for a while only: send them again.
-        img.state = .failed(error: "需要重新传到电脑")
+        img.state = .failed(error: img.isFile ? "需要核对电脑上的文件" : "需要重新传到电脑")
         return img
     }
 }
@@ -257,7 +270,7 @@ public final class ImageDraft {
         let now = images
         let fresh = now.filter { saved[$0.id] == nil && !stale.contains($0.id) && $0.hasSource }
         let write = fresh.map { StoredImage(id: $0.id, uri: $0.uri, processed: $0.processed, file: $0.file, needsProcessing: $0.needsProcessing) }
-        let ids = now.map(\.id)
+        let ids = now.filter { !$0.isFile || $0.hasSource }.map(\.id)
         // Taken as written now; put back below if the write fails.
         lastSave += 1
         let save = lastSave
@@ -271,6 +284,26 @@ public final class ImageDraft {
         } then: { [weak self] failure in
             self?.wrote(write.map(\.id), save, failure)
         }
+    }
+
+    /// A transfer ID must reach disk before Begin can reserve quota on the machine.
+    public func persistFile(_ img: PendingImage) async throws {
+        try Task.checkCancellation()
+        guard images.contains(where: { $0 === img }), let file = img.file, file.hasSource else { throw CancellationError() }
+        let data = try JSONEncoder().encode(file)
+        let (files, key, id) = (files, key, img.id)
+        let ids = images.filter { !$0.isFile || $0.hasSource }.map(\.id)
+        let original = original
+        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, Error>) in
+            enqueue {
+                try files.put(folder: key, name: id + ".file", data: data)
+                try saveOrder(files, folder: key, ids: ids, original: original)
+            } then: { failure in
+                if let failure { done.resume(throwing: UserError("文件上传状态未保存：\(failure)")) }
+                else { done.resume() }
+            }
+        }
+        try Task.checkCancellation()
     }
 
     /// Runs `work` after the saves and removals asked for before it, then tells the main actor how it went.
@@ -415,6 +448,7 @@ public final class ImageDraft {
     /// `wereOriginal` nil keeps what the draft has.
     @discardableResult
     public func attach(_ back: [PendingImage], max: Int, maxFiles: Int = 6, wereOriginal: Bool? = nil) -> Bool {
+        if back.isEmpty { return true }
         guard !restoring else { notice = "正在恢复待发附件，请稍后再放回"; return false }
         let backPhotos = back.filter { !$0.isFile }.count
         if photos.count + backPhotos > max {
@@ -432,7 +466,7 @@ public final class ImageDraft {
             img.refreshJob?.cancel()
             img.imageId = nil
             img.machineId = nil
-            img.state = .failed(error: "需要重新传到电脑")
+            img.state = .failed(error: img.isFile && !img.hasSource ? "这个文件没有本机副本，请移除后重新选择" : "需要重新传到电脑")
             images.append(img)
         }
         persist()

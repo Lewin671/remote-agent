@@ -5,6 +5,7 @@ import Testing
 @testable import RACore
 
 private actor FileReceiver: UploadChannel {
+    func abort(transferId: String) async throws {}
     var received = Data()
     var name = ""
     var digest = Data()
@@ -107,7 +108,7 @@ private actor FileReceiver: UploadChannel {
         #expect(withoutFileLines("看看\n\n@\(f.path)", files: [f]) == "看看")
         #expect(withoutFileLines(f.path, files: [f]).isEmpty)
         #expect(withoutFileLines("看看\n\nFile: \(f.path)", files: [f]) == "看看")
-        #expect(withoutFileLines("File: @\(f.path) (file)", files: [f]).isEmpty)
+        #expect(withoutFileLines("File: @\(f.path) (file)", files: [f]) == "File: @\(f.path) (file)")
         #expect(withoutFileLines("看看\n\nFile: @\"\(f.path)\" (file)", files: [f]) == "看看")
         #expect(withoutFileLines("File: @\(f.path) (file) more", files: [f]) == "File: @\(f.path) (file) more")
         let ordinary = "提到 \(f.path)\n\(f.path)  \n/elsewhere/file\n\n尾巴"
@@ -138,7 +139,7 @@ private actor FileReceiver: UploadChannel {
         item.imageId = "file-2"; item.state = .ready; item.expiresMs = 3
         let transfer = item.transferId
         #expect(item.startUpload(to: "other", now: 4))
-        #expect(item.transferId != transfer && item.imageId == nil)
+        #expect(item.transferId == transfer, "Begin/Status decides whether the cached reservation expired")
     }
 
     @Test func filesCountSeparatelyAndRestoreForcesUploadWhileUnknownRequestsKeepIDs() throws {

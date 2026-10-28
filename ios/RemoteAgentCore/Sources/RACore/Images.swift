@@ -401,6 +401,7 @@ public let defaultChunkBytes = 768 * 1024
 
 /// The daemon's upload commands for one machine; each call is one machine command.
 public protocol UploadChannel: Sendable {
+    func abort(transferId: String) async throws
     func beginFile(transferId: String, name: String, total: Int64, sha256: Data) async throws -> PBImageUploadStatus
     func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data) async throws -> PBImageUploadStatus
     func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus
