@@ -277,7 +277,7 @@ fun SettingsScreen() {
             )
             PushNotice(push) { Push.fix(app, remote) }
             GLabel("本机存储")
-            Group(rows = listOf { GRow("图片存储", onClick = { storage = true }, chevron = true) })
+            Group(rows = listOf { GRow("附件存储", onClick = { storage = true }, chevron = true) })
             GLabel("外观")
             Group(
                 rows =
@@ -1392,13 +1392,13 @@ private fun MachineImageStorage(
                     .joinToString(" · ")
             }
             .orEmpty()
-    GLabel("图片存储")
+    GLabel("附件存储")
     Group(
         rows =
             listOf(
                 {
                     GRow(
-                        "上传的图片",
+                        "上传的图片和文件",
                         usage?.let {
                             imageBytes(it.uploadBytes) + if (parts.isNotEmpty()) " · $parts" else ""
                         } ?: "读取中…",
@@ -1427,7 +1427,7 @@ private fun MachineImageStorage(
             ),
     )
     Text(
-        "图片存在这台电脑上。正在发送和执行中用到的图片不会被清理；预览缓存最多 150 MiB，自动回收。",
+        "附件存在这台电脑上。会话使用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。",
         style = T.sm,
         color = pal.muted,
         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
@@ -1458,7 +1458,7 @@ private fun MachineImageStorage(
 }
 
 /**
- * 图片存储 · 这台手机 (Android): drafts and the viewing cache, limited apart; clearing the cache keeps
+ * 附件存储 · 这台手机 (Android): drafts and the viewing cache, limited apart; clearing the cache keeps
  * drafts.
  */
 /** Fonts bundled in the app, each with its SIL OFL 1.1 text from res/raw. */
@@ -1556,14 +1556,14 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
         Column(Modifier.fillMaxSize().background(p.soft)) {
             NavBar("设置", onBack)
-            GLabel("图片存储 · 这台手机")
+            GLabel("附件存储 · 这台手机")
             Group(
                 rows =
                     listOf(
-                        { GRow("待发和待确认图片", "${imageBytes(used)} / 256 MiB") },
+                        { GRow("待发和待确认附件", "${imageBytes(used)} / 256 MiB") },
                         {
                             Text(
-                                "草稿闲置 7 天后清理；待确认消息保留到确认或移除。容量不足时提醒，保留已有内容。",
+                                "图片草稿和文件来源信息闲置 7 天后清理；待确认消息保留到确认或移除。文件正文不复制到手机，容量不足时保留已有内容。",
                                 style = T.meta,
                                 color = p.muted,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),

@@ -49,6 +49,13 @@ class FilesLayoutTest {
         ui.runOnIdle { assertEquals(1, filePicks); assertEquals(0, picturePicks) }
     }
 
+    @Test fun filesOnlyHistoryHasChipsWithoutAnEmptyBubble() {
+        val file = io.github.lewin671.remoteagent.proto.SentFile.newBuilder().setName("data.csv").setSizeBytes(3).build()
+        ui.setContent { RaTheme(ThemeMode.LIGHT) { ChatItemView(ChatItem.User("u", "", false, 0, files = listOf(file)), "Codex") } }
+        ui.onNodeWithText("data.csv").assertIsDisplayed()
+        ui.onAllNodes(hasText("", substring = false), useUnmergedTree = true).assertCountEquals(0)
+    }
+
     @Test fun aMachineWithoutFilesKeepsTheDirectPhotoAction() {
         var picks = 0
         ui.setContent { RaTheme(ThemeMode.LIGHT) { ComposeBox("", {}, "消息", false, {}, { picks++ }) } }

@@ -544,7 +544,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             if (expanded) item.original.forEach { ChatItemView(it, agent, cwd, home, onPutBack) }
         }
         is ChatItem.User -> MeBubble(
-            item.text.takeIf { it.isNotBlank() || item.images.isEmpty() },
+            sentBubbleText(item.text, item.images.isNotEmpty(), item.files.isNotEmpty()),
             caption = item.from,
             top = if (item.images.isNotEmpty() || item.files.isNotEmpty()) ({ Column {
                 if (item.images.isNotEmpty()) ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp))
@@ -706,3 +706,5 @@ class ChatProjection {
         return items
     }
 }
+
+internal fun sentBubbleText(text: String, images: Boolean, files: Boolean): String? = text.takeIf { it.isNotBlank() || !images && !files }
