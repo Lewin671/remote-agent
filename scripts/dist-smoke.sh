@@ -18,41 +18,18 @@ cleanup() {
 trap cleanup EXIT
 
 # The published layout, served from disk.
-mkdir -p "$work/releases/latest/download" "$work/releases/download/$tag" "$work/home" "$work/no-service"
-# Never contact the real user's service manager, even on a logged-in Mac.
-# A fresh install must not contact them; an upgrade without a user manager
-# must still install the binary successfully.
-for manager in launchctl systemctl; do
-	printf '#!/bin/sh\nexit 1\n' >"$work/no-service/$manager"
-	chmod 755 "$work/no-service/$manager"
-done
+mkdir -p "$work/releases/latest/download" "$work/releases/download/$tag" "$work/home"
 cp "$ROOT"/dist/remote-agent-*"$tag"*.tar.gz "$work/releases/download/$tag/"
 (cd "$work/releases/download/$tag" && if command -v sha256sum >/dev/null; then sha256sum ./*.tar.gz; else shasum -a 256 ./*.tar.gz; fi | sed 's|  \./|  |' >SHA256SUMS)
 echo "version=${tag#v}" >"$work/releases/latest/download/latest.properties"
 install() {
-	(cd "$work" && HOME="$work/home" REMOTE_AGENT_HOME="$work/state-install" BIN_DIR="$work/home/.local/bin" XDG_DATA_HOME="$work/home/.local/share" PATH="$work/no-service:$PATH" REMOTE_AGENT_AUTO_UPDATE=1 REMOTE_AGENT_RELEASES="file://$work/releases" sh "$ROOT/install.sh" "$@")
+	(cd "$work" && HOME="$work/home" REMOTE_AGENT_RELEASES="file://$work/releases" sh "$ROOT/install.sh" "$@")
 }
 
-install >"$work/install.log" 2>&1
-cat "$work/install.log"
-grep -qx '  remote-agent-service install        run the daemon in the background, now and at login' "$work/install.log"
-[ ! -e "$work/state-install/update-auto.json" ]
+install
 agent="$work/home/.local/bin/remote-agent"
 "$agent" --version
 [ -x "$work/home/.local/bin/remote-agent-service" ]
-if [ "$(uname -s)" = Darwin ]; then
-	unit=$work/home/Library/LaunchAgents/com.github.lewin671.remote-agent.plist
-else
-	unit=$work/home/.config/systemd/user/remote-agent.service
-fi
-[ ! -e "$unit" ]
-# Simulate an earlier service, with every service-manager command blocked.
-mkdir -p "$(dirname "$unit")"
-printf '%s\n' "$agent" >"$unit"
-install >"$work/upgrade.log" 2>&1
-cat "$work/upgrade.log"
-grep -qx 'Could not start the background service; run: remote-agent-service install' "$work/upgrade.log"
-[ ! -e "$work/state-install/update-auto.json" ]
 
 install web
 [ -f "$work/remote-agent-web/index.html" ] && [ -f "$work/remote-agent-web/_headers" ]

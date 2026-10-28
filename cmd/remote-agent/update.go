@@ -23,11 +23,7 @@ const updateUsage = `Usage:
   remote-agent update auto enable [--time HH:MM]
   remote-agent update auto disable
 
-Automatic updates are enabled daily at 04:00 local time when a release daemon's
-background service is installed, or upgraded via install.sh. Existing choices,
-including "update auto disable", are kept. Set REMOTE_AGENT_AUTO_UPDATE=0 for
-remote-agent-service install or install.sh to skip enabling; enable later with
-"update auto enable". A fresh install.sh only prints service setup instructions.
+Automatic updates are off by default. Times use this computer's local timezone.
 Only official release installations managed by remote-agent-service can update.
 Both paths require matching protocol/storage generations, release permission,
 and 30 seconds without active work or pending interactions. Breaking upgrades

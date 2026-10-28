@@ -105,16 +105,6 @@ remote-agent-service install
 
 runs the daemon in the background, now and at every login (launchd on macOS, systemd user service on Linux). `remote-agent-service status | log | restart | stop | uninstall` manage it. Restarting the daemon does not interrupt sessions running in tmux.
 
-Automatic updates are enabled daily at 04:00 local time when a release daemon's background service is installed with `remote-agent-service install`, or upgraded via `install.sh`. A fresh `install.sh` only prints the service setup instructions above. Use `remote-agent update auto disable` to turn updates off, or `remote-agent update auto enable --time 04:00` to enable/change the time. Both setup paths keep any existing `update-auto.json` choice, including an explicit disable, across reinstalls and upgrades. State is in `~/.remote-agent` unless `REMOTE_AGENT_HOME` is set. To skip enabling, pass `REMOTE_AGENT_AUTO_UPDATE=0` to the service installation or release upgrade command:
-
-```sh
-REMOTE_AGENT_AUTO_UPDATE=0 remote-agent-service install
-# When upgrading an existing service:
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | REMOTE_AGENT_AUTO_UPDATE=0 sh
-```
-
-This skips setup without changing any existing choice. If enabling fails, installation still succeeds and prints how to enable later; a failed first enable leaves no choice file, so the next service install or upgrade can retry. Source builds are detected by the installed command's channel and skipped quietly; they do not self-update. See [daemon updates](reference.md#updating) for update limits.
-
 Connect the computer to your relay after a client has created the account. The authority shows a pairing code:
 
 ```sh
