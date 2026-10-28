@@ -351,6 +351,7 @@ const val DEFAULT_CHUNK_BYTES = 768 * 1024
 /** The daemon's upload commands for one machine; each call is one machine command. */
 interface UploadChannel {
     suspend fun begin(transferId: String, format: ImageFormat, total: Long, sha256: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus
+    suspend fun beginFile(transferId: String, name: String, total: Long, sha256: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus = error("文件上传不可用")
     suspend fun put(transferId: String, offset: Long, data: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus
     suspend fun status(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus
     suspend fun complete(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus

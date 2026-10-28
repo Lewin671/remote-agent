@@ -3496,6 +3496,13 @@ class Remote(
                 .beginImageUpload
                 .status
 
+            override suspend fun beginFile(transferId: String, name: String, total: Long, sha256: ByteArray) = run {
+                beginImageUpload = io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.newBuilder()
+                    .setTransferId(transferId).setFileName(name)
+                    .setFormat(io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_UNSPECIFIED)
+                    .setTotalBytes(total).setSha256(com.google.protobuf.ByteString.copyFrom(sha256)).build()
+            }.beginImageUpload.status
+
             override suspend fun put(transferId: String, offset: Long, data: ByteArray) = run {
                 putImageChunk =
                     io.github.lewin671.remoteagent.proto.PutImageChunkRequest.newBuilder()

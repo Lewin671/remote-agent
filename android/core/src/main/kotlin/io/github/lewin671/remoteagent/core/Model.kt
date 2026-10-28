@@ -728,6 +728,7 @@ data class Accepted(
     val imageIds: List<String>,
     val origin: io.github.lewin671.remoteagent.proto.Origin?,
     val stage: io.github.lewin671.remoteagent.proto.InputStage,
+    val files: List<io.github.lewin671.remoteagent.proto.SentFile> = emptyList(),
 )
 
 data class Compaction(val before: Int?, val after: Int? = null)
@@ -858,16 +859,17 @@ internal class EventReducer(agent: Agent) {
                                 if (before != null && st.mode == SendMode.SEND_MODE_UNSPECIFIED)
                                     mode = before.mode
                                 if (before != null && st.text.isEmpty()) text = before.text
+                                if (before != null && st.filesCount == 0) addAllFiles(before.filesList)
                             }
                             .build()
                     val prev = d.accepted[st.requestId]
                     if (
                         prev == null &&
                             st.status == InputStatus.INPUT_STATUS_QUEUED &&
-                            (st.text.isNotEmpty() || st.imageIdsCount > 0)
+                            (st.text.isNotEmpty() || st.imageIdsCount > 0 || st.filesCount > 0)
                     ) {
                         d.accepted[st.requestId] =
-                            Accepted(st.text, st.imageIdsList, e.originOrNull(), st.stage)
+                            Accepted(st.text, st.imageIdsList, e.originOrNull(), st.stage, st.filesList)
                     } else if (
                         prev != null &&
                             st.stage !=
@@ -1302,6 +1304,7 @@ data class PendingInput(
     val paused: Boolean,
     val held: Boolean,
     val origin: io.github.lewin671.remoteagent.proto.Origin?,
+    val files: List<io.github.lewin671.remoteagent.proto.SentFile> = emptyList(),
 )
 
 /** Only inputs the model has not received; event order is acceptance order. */
@@ -1320,6 +1323,7 @@ fun pendingInputs(d: Derived): List<PendingInput> =
             st.paused,
             st.status == InputStatus.INPUT_STATUS_HELD_BY_CLI,
             accepted?.origin,
+            accepted?.files ?: st.filesList,
         )
     }
 
