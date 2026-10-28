@@ -633,6 +633,15 @@ func (u *uploads) gcLocked(now time.Time) {
 			}
 			continue
 		}
+		// GC runs after session liveness restoration. Check exit metadata
+		// before forward recovery so missing bytes/directories cannot prevent
+		// an exited record's cleanup. Explicit returns/deletions take priority.
+		if !t.Returning && !t.Deleting && t.Session != "" {
+			if m, err := loadMeta(paths.SessionDir(t.Session)); err == nil && m.Exited {
+				u.dropSessionLocked(t.Session)
+				continue
+			}
+		}
 		if err := u.recoverUpload(t); err != nil {
 			if t.artifactID() != "" {
 				referenced[strings.Split(t.relativeName(), string(filepath.Separator))[0]] = true
@@ -644,14 +653,6 @@ func (u *uploads) gcLocked(now time.Time) {
 		}
 		if t.FileID == "" && t.Session != "" && len(t.Refs) == 0 && !t.Exposed {
 			if err := u.removeOriginal(t); err == nil {
-				continue
-			}
-		}
-		if t.Session != "" {
-			if m, err := loadMeta(paths.SessionDir(t.Session)); err == nil && m.Exited {
-				// Retry record deletion even if the image directory was
-				// already deleted before a crash or a failed unlink.
-				u.dropSessionLocked(t.Session)
 				continue
 			}
 		}

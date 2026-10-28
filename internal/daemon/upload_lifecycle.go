@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 // step gives fault tests the same boundaries used by every caller. A crash
@@ -212,6 +211,8 @@ func (u *uploads) deleteUpload(t *transfer) error {
 
 // Startup and periodic GC use the same direction/priority. In particular a
 // Returning upload cannot be moved forward or deleted as an exited session's.
+// This also runs BEFORE session liveness restoration: only persisted transfer
+// intents authorize deletion here. Exit-based cleanup belongs to later GC.
 func (u *uploads) recoverUpload(t *transfer) error {
 	if t.Deleting {
 		return u.deleteUpload(t)
@@ -220,11 +221,6 @@ func (u *uploads) recoverUpload(t *transfer) error {
 		return u.returnPending(t)
 	}
 	if t.Session != "" {
-		// Exited metadata remains a cleanup witness even if the entire upload
-		// directory disappeared before its record could be unlinked.
-		if m, err := loadMeta(paths.SessionDir(t.Session)); err == nil && m.Exited {
-			return u.deleteUpload(t)
-		}
 		if err := u.moveUpload(t); err != nil {
 			return err
 		}

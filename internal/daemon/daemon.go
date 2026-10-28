@@ -211,6 +211,8 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 	d.ctx = ctx
 	d.loadQuotas()
+	// Finish transfer intents before restoring queue refs, without treating
+	// persisted Exited as final: tmux may still be alive and reattach below.
 	d.uploads.reconcile()
 	if err := d.restore(); err != nil {
 		return err
@@ -228,6 +230,8 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 	stopSchedules := d.startScheduleLoop(ctx)
 	defer stopSchedules()
+	// Exit/orphan cleanup and image-original LRU require restored liveness and
+	// turn pins for every session. Never start storage GC during restoration.
 	go d.imageGCLoop(ctx.Done())
 	go d.releaseLogsLoop(ctx.Done())
 	if d.cfg.Started != nil {
@@ -302,14 +306,24 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 			slog.Warn("skip session", "session", filepath.Base(dir), "err", errClass(err))
 			continue
 		}
+		alive := live[m.Tmux+"\x00"+m.ID]
+		if d.unstarted(m, dir, alive) {
+			continue
+		}
+		reattached := m.Exited && alive
+		if reattached {
+			// Liveness does not depend on readable session history. Persist the
+			// correction before opening it, so a skipped/corrupt log cannot let
+			// later storage GC mistake this live session for an exited one.
+			m.Exited, m.ScheduledClosed = false, false
+			if err := m.save(dir); err != nil {
+				// Run must not start GC while disk still authorizes stale cleanup.
+				return fmt.Errorf("save reattached session liveness: %w", err)
+			}
+		}
 		log, err := eventlog.Open(filepath.Join(dir, "events.jsonl"))
 		if err != nil {
 			slog.Warn("skip session", "session", filepath.Base(dir), "err", errClass(err))
-			continue
-		}
-		alive := live[m.Tmux+"\x00"+m.ID]
-		if d.unstarted(m, dir, alive) {
-			log.Close()
 			continue
 		}
 		s, err := newSession(d, dir, *m, d.terminal(m), log)
@@ -325,16 +339,9 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 		d.mu.Unlock()
 		d.uploads.restoreRefs(s, imageRecords[m.ID])
 		s.cancelStaleApprovals()
-		if m.Exited && alive {
+		if reattached {
 			// Marked exited while still running, as when tmux was misread;
 			// stopping or ending kills the tmux session.
-			s.mu.Lock()
-			s.meta.Exited = false
-			s.meta.ScheduledClosed = false
-			if err := s.meta.save(dir); err != nil {
-				slog.Error("save session", "session", m.ID, "err", errClass(err))
-			}
-			s.mu.Unlock()
 			_ = s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 				Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "reattached",
 			}}})
