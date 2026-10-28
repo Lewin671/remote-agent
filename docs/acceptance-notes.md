@@ -1320,3 +1320,25 @@ RA_DEV_DIR=/tmp/ra-files-feedback-codex-final ios/scripts/dev-env.sh stop
 自动回归新增：首次领取归属与失败重用不退回已有附件、批量失败恢复全部旧引用、完成和移动的目录祖先 fsync 及故障注入、完成记录可见但同步失败时保留两份链接并在重试时重新同步、哈希锁外并发与 abort/re-begin 的文件身份复核、组合标记文件名、清理空目录、Held 运行时/重启引用一致、图片与文件行分隔、网页精确隐藏带引号的文件行、文件夹/不可读文件拒绝，以及菜单选择/外部点击/Escape 关闭。
 
 `go test ./...`、网页 `pnpm typecheck`、`pnpm test --maxWorkers=2`、`pnpm build` 通过。网页为 90 个测试文件、1228 个测试；首次默认并发运行的无关 lazy-qr 测试超时，单独复跑及限制并发的全套通过。真实 CLI 的用户正文与传输校验没有放宽。临时环境与会话均清理；未做真机或直接网页选择器的新增端到端验收。持续会话文件不可回收而可能填满配额的已接受限制记在 plan.md。
+
+### 文件附件第二轮复审与 QR 测试稳定性（2026-10-28）
+
+本轮没有改文件正文组合、CLI 注入或提交确认，也没有修改 Android/iOS 手写上传实现，因此按复审要求不重复完整真实 CLI 验收。
+
+- 逆向移动在 mkdir、rename 后同步等阶段失败时，保留会话归属与持久化回退意图；启动恢复、GC 和下一次领取先完成返回 pending，才允许重新受理。测试同时覆盖图片/文件、字节仍在会话目录/已经回到 pending，以及崩溃前尚未清掉的拒绝请求引用。
+- GC 遇到完成记录可见但元数据 fsync 曾失败的文件，先重新同步完成记录，仍失败就保留 `.part`，成功才删除原始副本。未完成会话创建的文件已经消失时，release 清掉归属，使记录按未使用期限过期；普通领取与待回退两种状态均验证。
+- Complete 丢回复，随后 Status 为 RECEIVING 且全部字节已持久化时，网页以同一 transfer_id 再发 Complete；回归验证只传一次字节，不开启新传输。供原生客户端遵循的规则写在 [session-files.md](session-files.md)。
+- 新会话首条文件没有本机副本时，放回输入框产生明确的失败条目，提示重新选择并禁止发送。只补文档和回归，未重设计首条附件缓存；取舍仍在 plan.md 待确认。
+- `files_test.go` 的 Protobuf 请求副本改用 proto.Clone；`go vet ./...` 通过。
+
+**QR 超时根因与修正证据**：`lazy-qr.test.tsx` 是既有测试（文件最初加入于 `7e33bc83`），不是本轮文件上传新增。它在组件触发动态加载后，再次 import qrcode-generator 作为完成屏障；这个屏障依赖真实的 Vite 动态模块加载耗时，而不直接等待 UI 所依赖的异步操作。向旧测试的模块工厂注入 6 秒延迟，日志停在 `QR_TEST waiting for dynamic module barrier`，工厂尚未完成，测试在 5018 ms 触发默认 5000 ms 超时；这复现了可导致超时的加载依赖，不把当时机器忙的推测当成已采集的历史调用栈。
+
+修正把 QR 生成提为保留动态 import 的异步操作，视图测试控制其 pending/resolve：未生成配对码前不调用、等待中不显示图片、无关更新不重新生成、完成后显示正确 URL。测试不再用第二次模块 import 等待，不加固定睡眠，不提高超时，不降低默认并发。构建仍把 qrcode-generator 放在动态 chunk。
+
+随后在默认 vitest 配置下连续执行 10 次全套，每次 90 个测试文件、1230 个测试全部通过，合计 12300 次测试；QR 单测耗时为 31.93–147.65 ms。每次仅增加报告器参数：
+
+```sh
+pnpm --dir web test --reporter=json --outputFile=/tmp/ra-file-upload-feedback-2-web-runs/run-N.json
+```
+
+其中 N 依次为 1 到 10，没有 maxWorkers 或 testTimeout 覆盖。另跑 `pnpm --dir web typecheck`、`pnpm --dir web build`、`go test ./...` 与 `go vet ./...`，全部通过。受控失败日志和各轮 JSON 报告位于临时目录，未把测试日志原文提交到仓库。

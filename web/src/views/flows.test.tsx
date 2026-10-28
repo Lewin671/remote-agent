@@ -3177,3 +3177,22 @@ it("creates a session with files-only and retains file IDs for an unknown retry"
   expect(calls[1].slot?.requestId).toBe(calls[0].slot?.requestId);
   expect(calls[1].cmd).toEqual(calls[0].cmd);
 });
+
+it("requires reselecting a new-session first file when its local source has been released", async () => {
+  const r = demo(); const s = r.sessions.get("s-idle")!;
+  r.machines.get(s.machineId)!.meta!.capabilities!.fileUpload = true;
+  const file = { fileId: "first-file", name: "first.csv", sizeBytes: 7n, path: "/uploads/s/files/first/first.csv" };
+  for (const kind of [
+    { case: "inputState", value: { requestId: "first", status: InputStatus.QUEUED, text: "read first", files: [file] } },
+    { case: "inputState", value: { requestId: "first", status: InputStatus.FAILED, reason: "write_failed" } },
+  ]) r.events(s.id).push(create(EventSchema, { seq: BigInt(r.events(s.id).length + 1), origin: { kind: OriginKind.CLIENT, deviceId: r.account.deviceId }, kind: kind as never }));
+  const upload = vi.spyOn(r, "uploadImage");
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await click(button("放回输入框", host.querySelector(".me.fail")!));
+  const tray = r.trays.get(s.id)!;
+  expect(tray.files()[0].state).toBe("failed");
+  expect(tray.files()[0].remoteOnly).toBe(true);
+  expect(host.textContent).toContain("这个文件没有本机副本，请移除后重新选择");
+  expect(sendButton()?.disabled).toBe(true);
+  expect(upload).not.toHaveBeenCalled();
+});
