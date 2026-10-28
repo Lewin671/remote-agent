@@ -1440,3 +1440,37 @@ JDK 17、Android SDK 36；从 `android/` 执行，使用独立 `.fileuploadcheck
 ### 未覆盖
 
 端到端使用 Android 分支继承的 Phase A daemon，尚未整合 Phase A 后续提交的引用与持久性修复；新版带引号引用的隐藏用纯函数测试覆盖，整合后仍需联合复跑。未测 Claude Code、图片按文件发送的真实 CLI、图片与文件混发、云文档提供器、真手机、六个 100 MiB 文件的设备内存峰值、真实网络断连、自然过期、跨 daemon 重启和两台真实机器切换。对应逻辑的单元测试不能替代这些流程；待验证范围见 [plan.md](plan.md#待确认)。
+
+### Android 文件附件复审第一轮（2026-10-28）
+
+按评审先 rebase 到本地 `wt/file-upload`，收尾时再次 rebase，最终基线为 `72bfe67a`。需要解决的冲突只有验收/计划文档冲突，保留双方记录；没有手动合并代码冲突，没有修改 Go、网页或 proto。以下是 Android 修正后的新增验证，首条消息本机来源的已知限制继续按 [session-files.md](session-files.md#历史事件与网页) 保留。
+
+自动检查使用前述 JDK 17、独立 `.fileuploadcheck` 包和串行 Gradle。最终 rebase 后执行（另跑 `go test ./internal/daemon` 核对新增的 Go 回退修复）：
+
+```sh
+./gradlew --no-daemon --no-configuration-cache --max-workers=1 \
+  :core:test --rerun :terminal:testReleaseUnitTest :app:testDebugUnitTest \
+  :app:assembleDebug :app:assembleDebugAndroidTest :app:lintVitalRelease \
+  -PdevBuild=true -PappIdSuffix=.fileuploadcheck
+```
+
+通过：core 419、app 360、terminal 7 个单元测试；两个 APK 构建与 Release lint。`FilesLayoutTest` 再运行 4 个测试通过，包括原有亮/暗、200% 字号、44 dp 移除按钮和能力菜单，以及文件消息没有空正文节点。回归测试核对：
+
+- 大小提示为 0、偏小或偏大时，采用哈希实际读取大小；哈希与上传两次读取内容不同才报来源变化。100 MiB 流式读取仍通过。
+- 已收满而尚未完成时重复 Complete；保存并恢复原 transfer ID、file ID、机器、大小和到期时间；有效完成结果可直接复用。
+- 换目标时旧传输收到 Abort；故意延迟且忽略取消的旧完成不能覆盖新机器结果；移除也中止传输。图片复用同一 generation / Abort 路径。
+- AlreadyExists、daemon 哈希失败会先中止，再以新 ID 自动重试一次；网络 IO 与来源读取错误使用不同中文文案；文件在等待和哈希时保持准备状态，跨草稿同时上传串行化。
+- URI 仍有内存或持久记录引用时不回收；无引用时允许回收；记录读不出时保留权限。取不到持久权限时的选择提示已接入，未用真实云提供器复现。
+
+端到端仍用 `Medium_Phone_API_36.0`，独立临时账户、数据库、状态目录、自动端口和 tmux socket。Android 界面创建账户并批准配对；隔离 CLI 只建立空白项目入口。先在 `143ccf1b` 验证一轮；更新到 `82a75cd8` 后，从该 checkout 重建并重启隔离 server/daemon，沿用这套临时状态，在新的真实 Claude Code 2.1.300 / Opus 5.5 会话重跑下表。收尾纳入 `72bfe67a` 的 Go 拒绝回退修复后，重跑 Android 检查与 daemon 回归；没有在该最后提交上再次驱动界面，Android 代码与文件行规则未变：
+
+| 模拟器界面操作 | 观察结果 |
+|---|---|
+| 项目新建会话里输入文字，＋ › 文件，经系统文档选择器选 `note.txt` 后点开始 | 22 B 文件条目；Claude 返回 `ANDROID_CLAUDE_TXT_41`；首次文件行采用带双引号的现行格式，聊天隐藏引用行 |
+| 在会话中经同一真实选择器多选 ZIP / CSV，无文字 | 140 B / 36 B 文件条目，历史没有空气泡；Claude 返回 `ANDROID_CLAUDE_ZIP_63`、`ANDROID_CLAUDE_CSV_52` |
+| 发送 CSV/ZIP 前强制结束 App，再打开原会话 | 两个条目立即复用完成结果；电脑的两个 pending file ID 前后完全相同，没有额外上传文件；之后从界面发送成功 |
+| 用系统 `dumpsys activity permissions` 检查独立测试 App 的持久读权限 | 草稿中为 2 个；重启后仍为 2 个；消息确认且不再有草稿/待确认引用后为 0 个 |
+
+最终新会话中三个落盘文件的 SHA-256 分别与测试源相同。文件选择、文字输入、开始和发送均是 adb 输入事件驱动的实际界面操作；首次 Claude 目录信任提示用 App 原生终端的方向键与回车确认。强制结束 App 是故障注入；临时文件准备、空白项目入口、电脑 hash 与 ID 核对、权限 dump 属于调试准备/观察，没有替代 Android 发上传或消息指令，也没有伪造 Agent 回复。使用项目继承的完全放行模式。
+
+结束后卸载独立 App/测试包，删除模拟器测试文件和 adb reverse，停止模拟器，用 dev-env stop 清理临时账户、server/daemon、tmux 和数据库。未新增真机、云提供器、传输中杀进程/断网、自然到期、两台真实机器切换、大文件设备内存峰值、图片文件混发和读取审批模式验收；接入点与故障状态由自动测试覆盖，不能代替这些实际流程。
