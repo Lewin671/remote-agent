@@ -165,6 +165,47 @@ public  final class SessionState extends
     planOpen_ = false;
   }
 
+  public static final int SCHEDULED_CLOSED_FIELD_NUMBER = 4;
+  private boolean scheduledClosed_;
+  /**
+   * <pre>
+   * Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
+   * run's CLI; detail stays "stopped".
+   * </pre>
+   *
+   * <code>bool scheduled_closed = 4 [json_name = "scheduledClosed"];</code>
+   * @return The scheduledClosed.
+   */
+  @java.lang.Override
+  public boolean getScheduledClosed() {
+    return scheduledClosed_;
+  }
+  /**
+   * <pre>
+   * Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
+   * run's CLI; detail stays "stopped".
+   * </pre>
+   *
+   * <code>bool scheduled_closed = 4 [json_name = "scheduledClosed"];</code>
+   * @param value The scheduledClosed to set.
+   */
+  private void setScheduledClosed(boolean value) {
+    
+    scheduledClosed_ = value;
+  }
+  /**
+   * <pre>
+   * Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
+   * run's CLI; detail stays "stopped".
+   * </pre>
+   *
+   * <code>bool scheduled_closed = 4 [json_name = "scheduledClosed"];</code>
+   */
+  private void clearScheduledClosed() {
+
+    scheduledClosed_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.SessionState parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -417,6 +458,49 @@ public  final class SessionState extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
+     * run's CLI; detail stays "stopped".
+     * </pre>
+     *
+     * <code>bool scheduled_closed = 4 [json_name = "scheduledClosed"];</code>
+     * @return The scheduledClosed.
+     */
+    @java.lang.Override
+    public boolean getScheduledClosed() {
+      return instance.getScheduledClosed();
+    }
+    /**
+     * <pre>
+     * Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
+     * run's CLI; detail stays "stopped".
+     * </pre>
+     *
+     * <code>bool scheduled_closed = 4 [json_name = "scheduledClosed"];</code>
+     * @param value The scheduledClosed to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScheduledClosed(boolean value) {
+      copyOnWrite();
+      instance.setScheduledClosed(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
+     * run's CLI; detail stays "stopped".
+     * </pre>
+     *
+     * <code>bool scheduled_closed = 4 [json_name = "scheduledClosed"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScheduledClosed() {
+      copyOnWrite();
+      instance.clearScheduledClosed();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.SessionState)
   }
   @java.lang.Override
@@ -436,10 +520,11 @@ public  final class SessionState extends
             "status_",
             "detail_",
             "planOpen_",
+            "scheduledClosed_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\f\u0002\u0208" +
-              "\u0003\u0007";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\f\u0002\u0208" +
+              "\u0003\u0007\u0004\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

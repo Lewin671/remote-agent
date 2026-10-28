@@ -131,6 +131,7 @@ public struct Derived: Equatable, Sendable {
     /// with reason "exited". An exit alone does not invent input outcomes.
     public var unsent = OrderedMap<String, UInt64>()
     public var running = false
+    public var scheduledClosed = false
     public var compactions = [UInt64: Compaction]()
     public var usage: PBTokenUsage?
     public var plan: PBPlanProposed?
@@ -356,6 +357,7 @@ struct EventReducer: Sendable {
             if !m.isEmpty { mode = m }
             if !planning && !c.model.isEmpty { model = mm }
         case .sessionState(let s):
+            d.scheduledClosed = s.status == .exited && s.scheduledClosed
             if s.status == .exited { endTools() }
         case .sessionForked:
             // What came before is a copy of the source's history: nothing

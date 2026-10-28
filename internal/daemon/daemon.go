@@ -330,6 +330,7 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 			// stopping or ending kills the tmux session.
 			s.mu.Lock()
 			s.meta.Exited = false
+			s.meta.ScheduledClosed = false
 			if err := s.meta.save(dir); err != nil {
 				slog.Error("save session", "session", m.ID, "err", errClass(err))
 			}
@@ -1088,6 +1089,7 @@ drain:
 
 	s.mu.Lock()
 	s.meta.Exited = false
+	s.meta.ScheduledClosed = false
 	// Explicit/scheduled resume is independent of the old creation. An
 	// implicit resume remains owned until canonical input admission takes over.
 	if s.meta.ScheduledTaskID != "" {

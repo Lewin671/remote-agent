@@ -50,4 +50,15 @@ public interface SessionStateOrBuilder extends
    * @return The planOpen.
    */
   boolean getPlanOpen();
+
+  /**
+   * <pre>
+   * Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
+   * run's CLI; detail stays "stopped".
+   * </pre>
+   *
+   * <code>bool scheduled_closed = 4 [json_name = "scheduledClosed"];</code>
+   * @return The scheduledClosed.
+   */
+  boolean getScheduledClosed();
 }

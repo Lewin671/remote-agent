@@ -757,6 +757,7 @@ class Derived(
      */
     val unsent: LinkedHashMap<String, Long> = LinkedHashMap(),
     var running: Boolean = false,
+    var scheduledClosed: Boolean = false,
     var usage: TokenUsage? = null,
     val compactions: HashMap<Long, Compaction> = HashMap(),
     var plan: PlanProposed? = null,
@@ -1068,7 +1069,8 @@ internal class EventReducer(agent: Agent) {
                     if (m.isNotEmpty()) mode = m
                     if (!planning && c.model.isNotEmpty()) model = mm
                 }
-                Event.KindCase.SESSION_STATE ->
+                Event.KindCase.SESSION_STATE -> {
+                    d.scheduledClosed = e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED && e.sessionState.scheduledClosed
                     if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
                         d.running = false
                         d.approvals.clear()
@@ -1081,6 +1083,7 @@ internal class EventReducer(agent: Agent) {
                         d.tools.clear()
                         d.background.clear()
                     }
+                }
                 // What came before is a copy of the source's history: nothing
                 // of it is pending or running in this session.
                 Event.KindCase.SESSION_FORKED -> {
@@ -1123,6 +1126,7 @@ internal class EventReducer(agent: Agent) {
             typedLocally = HashSet(d.typedLocally),
             terminalChanges = HashMap(d.terminalChanges),
             running = d.running,
+            scheduledClosed = d.scheduledClosed,
             usage = d.usage,
             plan = d.plan,
             compactions = HashMap(d.compactions),
@@ -1642,6 +1646,7 @@ fun currentActions(
         failures = d.failures,
         unsent = d.unsent,
         running = live?.running ?: d.running,
+        scheduledClosed = d.scheduledClosed,
         usage = d.usage,
         compactions = d.compactions,
         plan = plan,

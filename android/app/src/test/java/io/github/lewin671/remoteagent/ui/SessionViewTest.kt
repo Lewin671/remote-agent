@@ -33,6 +33,9 @@ class SessionViewTest {
             "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI within 1m0s），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
             exitReason("the login shell did not start the CLI within 1m0s"),
         )
+        assertEquals("定时任务运行已结束，会话自动关闭了。", exitReason("stopped", true))
+        assertEquals("会话是被手动结束的。", exitReason("stopped", false))
+        assertEquals("tmux 会话已经不在了。", exitReason("tmux session gone", true))
         // Every other detail keeps the words the card had before.
         assertEquals("会话是被手动结束的。", exitReason("stopped"))
         assertEquals("tmux 会话已经不在了。", exitReason(""))

@@ -463,6 +463,9 @@ message SessionState {
   string detail = 2;
   // The stable terminal screen is asking whether to implement a plan.
   bool plan_open = 3;
+  // Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
+  // run's CLI; detail stays "stopped".
+  bool scheduled_closed = 4;
 }
 
 enum InputStatus {

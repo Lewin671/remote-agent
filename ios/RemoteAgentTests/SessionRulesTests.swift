@@ -22,6 +22,7 @@ extension Ref<LiveAnnouncer> {
 }
 
 @Suite struct ChatScrollTests {
+
     @Test func aChatAtItsEndStaysThereAsContentArrives() {
         let scroll = Ref(ChatScroll())
         #expect(scroll.changed(rows: 10))
@@ -104,6 +105,13 @@ extension Ref<LiveAnnouncer> {
 }
 
 @Suite struct SessionWordsTests {
+    @Test func scheduledCloseUsesExplicitCauseAndKeepsManualWording() {
+        #expect(exitReason("stopped", scheduledClosed: true) == "定时任务运行已结束，会话自动关闭了。")
+        #expect(exitReason("stopped", scheduledClosed: false) == "会话是被手动结束的。")
+        #expect(exitReason("tmux session gone", scheduledClosed: true) == "tmux 会话已经不在了。")
+        #expect(endedText(detail: "stopped", scheduledClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix("定时任务运行已结束，会话自动关闭了。"))
+    }
+
     private func pending(mode: PBSendMode = .steer, paused: Bool = false, held: Bool = false) -> PendingInput {
         PendingInput(id: "q", text: "t", mode: mode, paused: paused, held: held, origin: nil)
     }

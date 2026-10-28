@@ -1219,3 +1219,21 @@ Android 一次性时间原来直接用 `atZone()`，会把 America/Los_Angeles �
 `git diff --check` 通过，`version.properties` 与本轮开始时完全一致。检查结束确认已有 iPhone 模拟器处于关闭状态。
 
 本轮是日期换算与客户端自动测试，未跨越真实系统夏令时切换，未补真机选择器或真实 CLI 端到端验收；计划中的实际睡眠/DST 验收仍未完成。仅在整合分支本地提交，未 push、tag、发版、部署或改 `version.properties`。
+
+## 定时任务：通知未读角标与自动关闭原因（2026-10-28，基于 v0.46.0 的未发布工作区）
+
+按 [v49 统一文案](design/client-v49.html#schedule-shared-copy) 实现三端入口角标。后台已有的加密任务列表包含运行 ID 和通知标记；未新增请求、server 行为或协议版本变更。自动关闭通过新增的 `SessionState.scheduled_closed` 明确区分，`detail` 仍为 `stopped`；daemon 持久化最近关闭原因，并覆盖保存元数据后、写入退出事件前中断的恢复路径。
+
+| 检查 | 结果 |
+|---|---|
+| `go test ./...` | 24 个有测试的包通过，0 失败；另有 8 个包无测试 |
+| 网页：`pnpm run typecheck`、`pnpm exec vitest run`、`pnpm run build` | 类型检查、生产构建通过；89 个文件、1210 项测试通过，0 失败 |
+| Android：`./gradlew --no-daemon --no-configuration-cache :core:test :app:testDebugUnitTest -PdevBuild=true` | Core 412 项、App 348 项通过，0 失败/跳过 |
+| RACore：`swift test` | 报告 556 项、86 个 suite，通过；其中独立真实 daemon/CLI 测试按条件跳过，另用下述隔离验收覆盖本次链路 |
+| iOS App：`xcodebuild build test`，RemoteAgent scheme、已有 iPhone 18 Pro | xcresult 为 Passed，355 项通过，0 失败/跳过；未创建模拟器 |
+| 临时移除新增行为后运行新增测试，再逐字节恢复源码 | Go 自动关闭标记 1 项、网页 3 项、Android Core 3 项和 App 文案 1 项、iOS Core 1 项、iOS 角标 2 项和文案 1 项均出现预期断言失败；不以编译错误计为检出。恢复后以上正常检查通过 |
+| 隔离环境：`ios/scripts/dev-env.sh start --no-account`，`go run ./scripts/acceptance-schedule` | 本 checkout 构建 server/daemon，临时账户、独立数据库、状态目录与 tmux socket；真实 Claude Code 调用 `notify_user`，22 项断言通过。加密客户端取回自动退出标记，daemon 重启后仍为 true，恢复会话再手动结束后为 false |
+
+客户端测试覆盖首次有效列表不提示历史通知、运行从未通知变为已通知、打开定时列表清除通知未读、列表停留期间的新结果、与异常任务取并集去重、用户取消/删除后不保留角标，以及跨启动持久化和中继/客户端身份/电脑隔离。网页组件测试另外从后台列表刷新走到实际列表挂载和离开；Android 测试覆盖 repository 的角标流和离线保留；iOS 测试覆盖 account-scoped store 与 UserDefaults。
+
+真实 CLI 验收由合成客户端通过加密 Forward 发起，经过 server、daemon、原生 CLI 后回到客户端；不是产品界面点击。未覆盖系统推送投递、Android/iOS 真机界面或真实设备上的跨启动操作。临时服务与 tmux 环境已清理，仅使用已有的 iPhone 18 Pro，结束时已关闭。未提交、推送、打 tag、发布、部署或修改产品/协议版本。

@@ -310,7 +310,7 @@ func main() {
 	}
 	evs, err := client.Events(ctx, session, 0)
 	must(err)
-	marked, notice := false, false
+	marked, notice, automaticClose := false, false, false
 	for _, e := range evs {
 		if end := e.GetTurnEnded(); end != nil && end.ScheduledTaskId == task.ID && end.ScheduledNotified {
 			marked = true
@@ -318,11 +318,38 @@ func main() {
 		if e.GetScheduledNotification() != nil {
 			notice = true
 		}
+		if state := e.GetSessionState(); state.GetStatus() == pb.SessionStatus_SESSION_STATUS_EXITED && state.GetDetail() == "stopped" {
+			automaticClose = state.GetScheduledClosed()
+		}
 	}
-	if !marked || !notice {
+	if !marked || !notice || !automaticClose {
 		panic("remote event stream lost scheduled annotations")
 	}
 	fmt.Println("PASS default listing hides task session; by-ID history contains notification and annotated end")
+	must(process.Process.Signal(os.Interrupt))
+	must(process.Wait())
+	process = newDaemon()
+	must(process.Start())
+	wait(ctx, "restarted daemon accepts fresh encrypted commands", func() bool {
+		r, e := client.DoMachine(ctx, machine.ID, &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "list"}}})
+		return e == nil && r.GetSchedule() != nil
+	})
+	wait(ctx, "scheduled exit cause survives daemon restart", func() bool {
+		if !getSession() || session.Info.GetStatus() != pb.SessionStatus_SESSION_STATUS_EXITED {
+			return false
+		}
+		events, e := client.Events(ctx, session, 0)
+		if e != nil {
+			return false
+		}
+		var state *pb.SessionState
+		for _, event := range events {
+			if event.GetSessionState() != nil {
+				state = event.GetSessionState()
+			}
+		}
+		return state.GetStatus() == pb.SessionStatus_SESSION_STATUS_EXITED && state.GetDetail() == "stopped" && state.GetScheduledClosed()
+	})
 	_, err = client.Do(ctx, session, &pb.Command{Kind: &pb.Command_ResumeSession{ResumeSession: &pb.ResumeSessionRequest{SessionId: sid}}})
 	must(err)
 	_, err = client.Do(ctx, session, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: remoteclient.NewRequestID(), Text: "User takeover acceptance. Reply with only 'Taken over'."}}})
@@ -341,6 +368,22 @@ func main() {
 	})
 	_, err = client.Do(ctx, session, &pb.Command{Kind: &pb.Command_StopSession{StopSession: &pb.StopSessionRequest{SessionId: sid}}})
 	must(err)
+	wait(ctx, "resumed scheduled conversation keeps manual stop cause", func() bool {
+		if !getSession() || session.Info.GetStatus() != pb.SessionStatus_SESSION_STATUS_EXITED {
+			return false
+		}
+		events, e := client.Events(ctx, session, 0)
+		if e != nil {
+			return false
+		}
+		var state *pb.SessionState
+		for _, event := range events {
+			if event.GetSessionState() != nil {
+				state = event.GetSessionState()
+			}
+		}
+		return state.GetStatus() == pb.SessionStatus_SESSION_STATUS_EXITED && state.GetDetail() == "stopped" && !state.GetScheduledClosed()
+	})
 	// Exercise the public whole-definition update path after a real interval
 	// execution, rather than directly adjusting a daemon cursor.
 	first := time.Now().UTC().Add(2 * time.Second)

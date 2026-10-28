@@ -124,15 +124,16 @@ type session struct {
 	// model family in use then: which modes are on offer depends on it.
 	seenModes map[string]map[string]bool
 	// Why queued input is not being written, and since when.
-	waitReason    string
-	waitSince     time.Time
-	warned        bool
-	status        pb.SessionStatus
-	detail        string
-	storageFault  string
-	storageWarnAt time.Time
-	parseHealth   parseHealth
-	parseWarnAt   time.Time
+	waitReason      string
+	waitSince       time.Time
+	warned          bool
+	status          pb.SessionStatus
+	detail          string
+	scheduledClosed bool // latest SessionState, rebuilt from the event log
+	storageFault    string
+	storageWarnAt   time.Time
+	parseHealth     parseHealth
+	parseWarnAt     time.Time
 	// Retain a transcript reset until its diagnostic watermark invalidation
 	// is durable, even if the file grows again while storage is unavailable.
 	parseHealthResetPending bool
@@ -255,6 +256,14 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 	s.restorePause(seen)
 	s.restoreReceived(seen)
 	s.restoreRecent(seen)
+	// Recover an exit whose metadata was saved before its event was committed.
+	if m.Exited && m.ScheduledClosed && (s.status != pb.SessionStatus_SESSION_STATUS_EXITED || s.detail != "stopped" || !s.scheduledClosed) {
+		if err := s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
+			Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: "stopped", ScheduledClosed: true,
+		}}}); err != nil {
+			return nil, fmt.Errorf("restore scheduled exit: %w", err)
+		}
+	}
 	if m.Exited {
 		s.status = pb.SessionStatus_SESSION_STATUS_EXITED
 	}
@@ -331,6 +340,7 @@ func (s *session) observe(e *pb.Event) {
 			s.readySince = time.Now()
 		}
 		s.status, s.detail = k.SessionState.Status, k.SessionState.Detail
+		s.scheduledClosed = k.SessionState.ScheduledClosed
 		s.planOpen = k.SessionState.PlanOpen
 		if s.status != pb.SessionStatus_SESSION_STATUS_STARTING {
 			s.sawComposer = true
@@ -855,6 +865,10 @@ func (s *session) markExited(detail string) error {
 
 // Callers hold lifecycleMu through settlement, EXITED and cancellation.
 func (s *session) markExitedLocked(detail string) error {
+	return s.markExitedWithCauseLocked(detail, false)
+}
+
+func (s *session) markExitedWithCauseLocked(detail string, scheduledClosed bool) error {
 	loops := s.sessionLoops
 	s.mu.Lock()
 	if s.meta.Exited {
@@ -862,6 +876,7 @@ func (s *session) markExitedLocked(detail string) error {
 		return nil
 	}
 	s.meta.Exited = true
+	s.meta.ScheduledClosed = scheduledClosed
 	m := s.meta
 	for id, a := range s.approvals {
 		if !a.claimed {
@@ -878,7 +893,7 @@ func (s *session) markExitedLocked(detail string) error {
 	// failed read or append is retried when restoring or resuming.
 	settleErr := s.settleExited()
 	commitErr := s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
-		Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: detail,
+		Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: detail, ScheduledClosed: scheduledClosed,
 	}}})
 	// Images sent for the session are kept while it runs: Codex reads
 	// them when a message is submitted, and the model may look at a path
@@ -1412,7 +1427,7 @@ func (s *session) killIf(ctx context.Context, scheduledOnly bool) error {
 		s.meta.TaskCLIClosed = true
 		s.mu.Unlock()
 	}
-	return s.markExitedLocked("stopped")
+	return s.markExitedWithCauseLocked("stopped", scheduledOnly)
 }
 
 func (s *session) waitForPTYHostGone(parent context.Context) error {

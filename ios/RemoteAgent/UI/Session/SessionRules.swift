@@ -271,8 +271,8 @@ private let loginShellDetail = "the login shell"
 private let loginShellTimeoutDetail = "did not start the CLI within"
 
 /// What the card says when a session ended, and whether it can be resumed from here now.
-func endedText(detail: String, unlinked: Bool, machineOnline: Bool, machine: String) -> String {
-    let how = exitReason(detail)
+func endedText(detail: String, scheduledClosed: Bool = false, unlinked: Bool, machineOnline: Bool, machine: String) -> String {
+    let how = exitReason(detail, scheduledClosed: scheduledClosed)
     if unlinked { return how + "连上服务器后才能恢复。" }
     if machineOnline { return how + "恢复会在 \(machine) 上用同样的设置重新打开它，聊天记录都在。" }
     return how + "\(machine) 不在线，连上后才能恢复。"
@@ -281,7 +281,8 @@ func endedText(detail: String, unlinked: Bool, machineOnline: Bool, machine: Str
 /// Why the session ended, in plain words. A login shell that could not start
 /// the CLI says so in the daemon's own words (they name the command or the
 /// timeout), with what the user can do about it.
-func exitReason(_ detail: String) -> String {
+func exitReason(_ detail: String, scheduledClosed: Bool = false) -> String {
+    if detail == "stopped" && scheduledClosed { return "定时任务运行已结束，会话自动关闭了。" }
     if detail == "stopped" { return "会话是被手动结束的。" }
     if detail.hasPrefix(loginShellDetail) {
         let stuck = detail.contains(loginShellTimeoutDetail) ? "，可能卡在等待输入" : ""

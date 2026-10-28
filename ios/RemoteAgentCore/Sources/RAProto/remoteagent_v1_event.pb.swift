@@ -1681,6 +1681,10 @@ public struct PBSessionState: Sendable {
   /// The stable terminal screen is asking whether to implement a plan.
   public var planOpen: Bool = false
 
+  /// Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
+  /// run's CLI; detail stays "stopped".
+  public var scheduledClosed: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3514,7 +3518,7 @@ extension PBQuestionAnswered: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension PBSessionState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionState"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}status\0\u{1}detail\0\u{3}plan_open\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}status\0\u{1}detail\0\u{3}plan_open\0\u{3}scheduled_closed\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3525,6 +3529,7 @@ extension PBSessionState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       case 1: try { try decoder.decodeSingularEnumField(value: &self.status) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.detail) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.planOpen) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.scheduledClosed) }()
       default: break
       }
     }
@@ -3540,6 +3545,9 @@ extension PBSessionState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if self.planOpen != false {
       try visitor.visitSingularBoolField(value: self.planOpen, fieldNumber: 3)
     }
+    if self.scheduledClosed != false {
+      try visitor.visitSingularBoolField(value: self.scheduledClosed, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3547,6 +3555,7 @@ extension PBSessionState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if lhs.status != rhs.status {return false}
     if lhs.detail != rhs.detail {return false}
     if lhs.planOpen != rhs.planOpen {return false}
+    if lhs.scheduledClosed != rhs.scheduledClosed {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
