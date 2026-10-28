@@ -64,6 +64,10 @@ import Testing
         defer { try? FileManager.default.removeItem(at: url) }
         let account = Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff")
         let remote = try Remote(account: account, http: AppModel.http)
+        var state = RemoteState()
+        state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with { $0.capabilities.fileUpload = true })
+        state.sessions["session"] = SessionView(id: "session", machineId: "mac")
+        await remote.showForTest(state: state)
         let files = VolatileFiles()
         ImageCenter.install(remote: remote, files: files)
         defer { ImageCenter.remove(remote) }

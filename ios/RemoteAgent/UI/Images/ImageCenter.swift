@@ -494,6 +494,11 @@ final class ImageCenter {
         let draft = draft(Self.sessionKey(sid))
         let picked = draft.images
         if picked.isEmpty { return false }
+        do { try remote.requireFileCapability(machineId: machineId, hasFiles: picked.contains(where: \.isFile)) }
+        catch {
+            Task { done(.failure(error)) }
+            return true
+        }
         uploads.sendAll(draft, machineId: machineId)
         guard draft.ready(machineId: machineId) else {
             Task { done(.failure(UserError("附件需要重新传到电脑，请上传完成后再发送"))) }
@@ -521,6 +526,12 @@ final class ImageCenter {
             // send, and logging out has taken what was written.
             if closed {
                 done(.failure(UserError("已退出账户")))
+                return
+            }
+            do { try remote.requireFileCapability(machineId: machineId, hasFiles: !o.fileIds.isEmpty) }
+            catch {
+                try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }.value
+                done(.failure(error))
                 return
             }
             // Saving originals can outlast an upload. Nothing has been sent yet.
@@ -563,6 +574,7 @@ final class ImageCenter {
 
     /// Puts a message's images back into its session's draft; false when they do not fit, and then nothing moved.
     func putBack(sid: String, max: Int, maxFiles: Int = 6, _ o: Outgoing) -> Bool {
+        guard canRestoreFiles(sid, hasFiles: !o.fileIds.isEmpty || o.images.contains(where: \.isFile)) else { return false }
         if o.images.isEmpty { return true }
         let draft = draft(Self.sessionKey(sid))
         if o.state == .failed { for img in o.images { img.releaseUploadProtection(requestId: o.requestId) } }
@@ -571,6 +583,29 @@ final class ImageCenter {
         // Its images live on in the draft. Its record goes once they are on disk there: until then it is the
         // only copy a reclaimed process would find.
         draft.whenKept(o.images.map(\.id)) { [weak self] in self?.dropRecord(sid, o.requestId) }
+        return true
+    }
+
+    private func canRestoreFiles(_ sid: String, hasFiles: Bool) -> Bool {
+        let machine = remote.current.sessions[sid]?.machineId ?? ""
+        do { try remote.requireFileCapability(machineId: machine, hasFiles: hasFiles); return true }
+        catch { say(Self.sessionKey(sid), errorText(error)); return false }
+    }
+
+    /// History can hold remote-only files. Check capability before creating
+    /// placeholders or appending any part of the message to the composer.
+    @discardableResult
+    func putBack(sid: String, text: String, files: [PBSentFile], store: SessionStore) -> Bool {
+        guard canRestoreFiles(sid, hasFiles: !files.isEmpty) else { return false }
+        let machine = remote.current.sessions[sid].flatMap { remote.current.machines[$0.machineId] }
+        let picked = files.map { file in
+            let item = PendingImage(id: newRequestId(), uri: nil)
+            item.file = PickedFile(remote: file)
+            item.state = .failed(error: "这个文件没有本机副本，请移除后重新选择")
+            return item
+        }
+        guard draft(Self.sessionKey(sid)).attach(picked, max: imageLimit(for: machine), maxFiles: fileLimit(for: machine)) else { return false }
+        store.appendToDraft(sid, text)
         return true
     }
 

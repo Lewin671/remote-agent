@@ -7,6 +7,27 @@ public let maxFiles = 6
 public let maxFileBytes: Int64 = 100 * 1024 * 1024
 
 public func fileSupported(_ machine: MachineView?) -> Bool { capabilities(machine)?.fileUpload == true }
+public let fileCapabilityUpdate = "这台电脑尚未声明文件发送能力，请更新电脑上的 remote-agent 后再试"
+
+/// Inspect the immutable command, including already prepared retries.
+func requiresFileCapability(_ command: PBCommand) -> Bool {
+    switch command.kind {
+    case .send(let request): return !request.fileIds.isEmpty
+    case .createSession(let request): return !request.fileIds.isEmpty
+    case .beginImageUpload(let request): return !request.fileName.isEmpty
+    default: return false
+    }
+}
+
+extension Remote {
+    /// Current advertised metadata is the only capability authority. No metadata
+    /// means no file permission; never downgrade a file request to text.
+    public nonisolated func requireFileCapability(machineId: String, hasFiles: Bool) throws {
+        if hasFiles && !fileSupported(state.value.machines[machineId]) {
+            throw CommandError("file_upload_unsupported", fileCapabilityUpdate)
+        }
+    }
+}
 public func fileLimit(for machine: MachineView?) -> Int {
     let n = Int(capabilities(machine)?.maxFilesPerMessage ?? 0)
     return n > 0 ? min(n, maxFiles) : maxFiles
@@ -54,7 +75,7 @@ public func withoutFileLines(_ text: String, files: [PBSentFile]) -> String {
     return lines.enumerated().filter { !hidden.contains($0.offset) }.map(\.element).joined(separator: "\n")
 }
 
-/// One durable transfer per target. Switching machines does not abandon reserved quota.
+/// Durable metadata for resuming a current transfer and retiring superseded reservations.
 public struct FileTransfer: Codable, Equatable, Sendable {
     public var transferId: String
     public var fileId: String?

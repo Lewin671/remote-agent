@@ -484,17 +484,7 @@ struct ChatPane: View {
                             store: store)
                     } else {
                         let center = ImageCenter.of(context.remote)
-                        let draft = center.draft(ImageCenter.sessionKey(sid))
-                        let picked = files.map { file in
-                            let item = PendingImage(id: newRequestId(), uri: nil)
-                            item.file = PickedFile(remote: file)
-                            item.state = .failed(error: "这个文件没有本机副本，请移除后重新选择")
-                            return item
-                        }
-                        let machine = model.state.machines[session.machineId]
-                        if draft.attach(picked, max: imageLimit(for: machine), maxFiles: fileLimit(for: machine)) {
-                            store.appendToDraft(sid, text)
-                        }
+                        center.putBack(sid: sid, text: text, files: files, store: store)
                     }
                 },
                 select: selectMessage)

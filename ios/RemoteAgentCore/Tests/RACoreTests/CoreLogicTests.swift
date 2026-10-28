@@ -12,7 +12,7 @@ import Testing
             n += 1
             return PreparedCommand(
                 machineId: "m", sessionId: "", requestId: "req-\(n)", deadlineMs: 1000,
-                envelope: PBEnvelope())
+                command: PBCommand())
         }
     }
 

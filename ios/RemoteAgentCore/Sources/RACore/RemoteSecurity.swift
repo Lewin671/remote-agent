@@ -67,10 +67,7 @@ extension Remote {
                 "failed_precondition", "本机时间比安全状态慢 5 分钟以上，控制已暂停；请校准系统时间后重试")
         }
         let client = try securitySession()
-        guard let cmd = p.command else {
-            _ = try DeviceSecurity.fromEnvelope(p.envelope)
-            return p.envelope
-        }
+        let cmd = p.command
         if verifyObservation && isObservedAction(cmd) {
             let fresh = try await fetchLiveSnapshot(p.sessionId)
             let verified = try observedCommand(cmd, snapshot: fresh)

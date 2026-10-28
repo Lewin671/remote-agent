@@ -22,14 +22,14 @@ public let commandTTLMs: Int64 = 60_000
 /// How long after the lists could not be fetched they are asked for again; twice as long each time, up to half a minute.
 let listRetryMs: Int64 = 2_000
 
-/// A sealed command ready to send; resending it reuses its request ID and deadline.
+/// An immutable local intent; retries reuse its request ID, deadline and payload.
 public final class PreparedCommand: @unchecked Sendable {
     public let machineId: String
     public let sessionId: String
     public let requestId: String
     public let deadlineMs: Int64
-    public let envelope: PBEnvelope
-    let command: PBCommand?
+    /// Immutable plaintext intent stays local so every retry can recheck its requirements.
+    let command: PBCommand
     private let sealLock = NSLock()
     private var sealJob: Task<PBEnvelope, Error>?
     private var sealID: UUID?
@@ -75,17 +75,6 @@ public final class PreparedCommand: @unchecked Sendable {
 
     public init(
         machineId: String, sessionId: String, requestId: String, deadlineMs: Int64,
-        envelope: PBEnvelope
-    ) {
-        self.machineId = machineId
-        self.sessionId = sessionId
-        self.requestId = requestId
-        self.deadlineMs = deadlineMs
-        self.envelope = envelope
-        self.command = nil
-    }
-    init(
-        machineId: String, sessionId: String, requestId: String, deadlineMs: Int64,
         command: PBCommand
     ) {
         self.machineId = machineId
@@ -93,7 +82,6 @@ public final class PreparedCommand: @unchecked Sendable {
         self.requestId = requestId
         self.deadlineMs = deadlineMs
         self.command = command
-        self.envelope = PBEnvelope()
     }
 }
 

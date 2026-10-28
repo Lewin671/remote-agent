@@ -23,10 +23,11 @@ public enum ImageResult: Equatable, Sendable {
 }
 
 extension Remote {
-    /// Seals a command. The header names no session for machine commands.
+    /// Prepares an intent; authorization and sealing happen before forwarding.
     public nonisolated func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws
         -> PreparedCommand
     {
+        try requireFileCapability(machineId: machineId, hasFiles: requiresFileCapability(cmd))
         let requestId = newRequestId()
         let deadline = clock() + commandTTLMs
         var h = PBHeader()
@@ -49,6 +50,7 @@ extension Remote {
     /// Sends a command about a session.
     @discardableResult
     public func command(_ sid: String, _ cmd: PBCommand) async throws -> PBCommandResult {
+        try requireFileCapability(machineId: state.value.sessions[sid]?.machineId ?? "", hasFiles: requiresFileCapability(cmd))
         guard let s = sessions[sid] else { throw CommandError("not_found", "未知会话") }
         return try await forward(try prepare(machineId: s.machineId, sessionId: sid, cmd))
     }
@@ -131,6 +133,7 @@ extension Remote {
         // no old-key ciphertext is sent while authority freshness is unknown.
         while true {
             do {
+                try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
                 if token.isEmpty { token = try await relogin(mayHaveRun) }
                 let stateHash = try await authorizationStateHash()
                 req.command = try await p.authorizationTask(stateHash: stateHash) {
@@ -140,6 +143,8 @@ extension Remote {
                     }
                 }.value
                 try Task.checkCancellation()
+                // Login, authorization and signing can suspend across a machine refresh.
+                try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
                 mayHaveRun = true
                 let res = try await api.client.forward(
                     request: req, headers: Api.headers(token: token)
@@ -162,7 +167,7 @@ extension Remote {
                         msg.errorCode, msg.errorMessage.isEmpty ? msg.errorCode : msg.errorMessage,
                         fromDaemon: true)
                 }
-                if case .schedule(let request) = p.command?.kind, request.operation == "list",
+                if case .schedule(let request) = p.command.kind, request.operation == "list",
                    (try? decodeScheduleList(msg)) != nil, let bytes = try? res.result.serializedData() {
                     await keepScheduleSnapshot(p.machineId, data: bytes)
                 }
@@ -193,6 +198,10 @@ extension Remote {
                 throw CommandError(CommandError.unknownOutcome, "中继未提供可验证的执行结果，请重试同一请求")
             } catch {
                 if let answer = error as? CommandError, answer.fromDaemon { throw answer }
+                if let refusal = error as? CommandError, refusal.code == "file_upload_unsupported" {
+                    if mayHaveRun { throw CommandError(CommandError.unknownOutcome, "上一次的结果仍不确定：" + refusal.message) }
+                    throw refusal
+                }
                 if mayHaveRun {
                     throw CommandError(CommandError.unknownOutcome, "未收到可验证的执行结果，请重试同一请求")
                 }

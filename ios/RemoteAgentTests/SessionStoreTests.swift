@@ -35,7 +35,7 @@ final class FakeCommands: SessionCommands, @unchecked Sendable {
         lock.withLock {
             made += 1
             commands.append(cmd)
-            return PreparedCommand(machineId: machineId, sessionId: sessionId, requestId: "r\(made)", deadlineMs: 0, envelope: PBEnvelope())
+            return PreparedCommand(machineId: machineId, sessionId: sessionId, requestId: "r\(made)", deadlineMs: 0, command: cmd)
         }
     }
 
