@@ -1570,3 +1570,21 @@ rebase 到本地 `wt/file-upload` 的 `f23f0801`，只遇到 `acceptance-notes.m
 结束前无需 fetch，读取 Phase A 工作树的最新 15 条提交、`session-files.md` 和网页 `withoutFileLines`，同步到 `55d1e45f` 下的精确引用行规则（包括 Claude 的带引号 `File: @"…" (file)`）；新格式由 iOS 单元测试覆盖。本轮运行的 daemon 来自上述初始基线，完整客户端链路的引用仍是该基线的格式，最新 daemon 格式待整合后联合验收。本任务没有修改 Go、网页或协议生成代码，没有发现需要新增协议字段的问题。
 
 测试结束已退出临时 iOS 账户，清理独立环境并关闭该模拟器；没有升级日常 daemon、安装真机 App、推送或发布。
+
+### iOS 文件附件复审回归（2026-10-28）
+
+先 rebase 到本地 Phase A，收尾时再次检查并 rebase 到 `82a75cd8`；冲突仅涉及验收/计划文档，保留了双方记录。客户端文件引用遵循该基线的带引号 Claude 形式和 Codex 固定前缀，删除了未加引号且带 `(file)` 的旧形式识别。
+
+上传记录现在随加密 `.file` 草稿保存每台机器的 transfer ID、完成文件 ID 和期限。Begin 预留空间之前先持久化记录；重启、部分续传和切回机器复用同一预留。移除草稿或未发送消息调用 Abort；源内容变化导致 already_exists 时先 Abort 再建立新传输。文件提供者读取通过 NSFileCoordinator 协调，过时书签刷新后持久化；全进程仅一个文件执行哈希/上传，取消会传给后台读取任务，每块读取使用 autoreleasepool。没有本机副本的远端条目只留在当前内存中，明确要求重选，不尝试上传或保存空书签。文字单独放回输入框不等待附件恢复。
+
+自动检查：`swift test --package-path ios/RemoteAgentCore` 的 RACore 573 项与 Markdown 17 项通过；iPhone 18 Pro 上 `xcodebuild ... build test` 的 358 项 App 测试及构建通过。新增回归覆盖原预留落盘后才 Begin、重启复用已完成/部分传输、切回机器不新增预留、already_exists 中止旧预留后重传、移除时中止全部机器的未使用副本、全局串行、取消工作线程、刷新书签并恢复、空书签不上传/不写盘、文件夹及选择后大小变化的专用文案，以及 buildChat 层的精确引用行隐藏。Complete 丢回复后或直接返回 RECEIVING 且全部字节已齐时，都以同一传输再发 Complete，不重传字节；两种情况各有测试。
+
+真实链路仍用独立 dev-env、临时 iOS 管理账户和隔离 daemon/tmux，复用已有 iPhone 18 Pro / iOS 27.0，不连接日常账户或 daemon。文档 URL 与发送由 DEBUG 入口触发，经过 iOS → server → relay → daemon → Claude Code 2.1.300 / Haiku 5.5，再把事件同步回 iOS：
+
+- 在第一次 rebase 的 daemon 上，文字＋TXT 返回正确标记；纯 CSV＋ZIP 返回 CSV 合计 18 与 ZIP 内标记。已发送文件显示条目，精确引用行隐藏。
+- 同一环境先上传两个未发送文件，终止并重开 App 后，原传输 ID 保持不变；移除一个文件后，电脑上的对应预留记录和 pending 文件实际删除，另一个文件继续使用原 ID。
+- 再次 rebase 到 `82a75cd8` 后，从该 checkout 重建 server/daemon，建立新的临时账户与会话，重新验证文字＋TXT 的真实链路和带引号文件引用。
+
+上述重启和移除由调试入口驱动，预留复用与 Abort 结果同时检查了隔离 daemon 的实际落盘记录；不是仅看客户端状态。系统「＋ › 文件」、相册选择器与菜单组合的直接 UI 操作仍未验收，计算机控制工具没有 Simulator 入口；不能把 DEBUG 文件导入当作真实系统选择器操作。真实 iCloud/第三方提供者的下载与授权、真机、六个 100 MiB 文件的峰值内存仍未实测。书签更新、大小变化、取消和串行规则由自动测试验证。
+
+两轮临时账户均已退出并清理缓存，独立 server/daemon、数据库、tmux 和文件夹已清理，复用的模拟器已关闭。没有推送、发布、升级日常 daemon 或操作真实手机。
