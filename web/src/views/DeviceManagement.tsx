@@ -1,3 +1,4 @@
+import { pairingQRCode } from "../qr-code";
 import { Plus } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useRef, useState } from "react";
@@ -184,11 +185,8 @@ export function PairCodePage({
   useEffect(() => {
     if (!pairURL) return;
     let stopped = false;
-    void import("qrcode-generator").then(({ default: qrcode }) => {
-      const q = qrcode(0, "M");
-      q.addData(pairURL);
-      q.make();
-      if (!stopped) setQr({ url: pairURL, src: q.createDataURL(5, 8) });
+    void pairingQRCode(pairURL).then((src) => {
+      if (!stopped) setQr({ url: pairURL, src });
     }).catch((e) => { if (!stopped) setError(errorText(e)); });
     return () => { stopped = true; };
   }, [pairURL]);
