@@ -19,6 +19,7 @@ final class NewSessionDraft {
         var prompt: String
         var config: NewConfig
         var imageIds: [String]
+        var fileIds: [String] = []
     }
 
     var text = ""
@@ -68,7 +69,7 @@ final class NewSessionDraft {
         let typed = promptText(text)
         let attached = images?.images ?? []
         guard !typed.isEmpty || !attached.isEmpty, attached.allSatisfy({ $0.readyFor(cfg.machineId) }) else { return }
-        let wanted = Start(prompt: typed, config: cfg, imageIds: attached.compactMap(\.imageId))
+        let wanted = Start(prompt: typed, config: cfg, imageIds: attached.filter { !$0.isFile }.compactMap(\.imageId), fileIds: attached.filter(\.isFile).compactMap(\.imageId))
         // Another message, other images, another machine or other settings is a new start; the unknown one is given up.
         // An image uploaded again after its deadline is the same picked image, so the unknown start keeps its image IDs.
         let same = typed == sent?.prompt && cfg == sent?.config &&
@@ -92,7 +93,7 @@ final class NewSessionDraft {
                     preparedImages = attached.map(\.processed)
                     return try remote.prepare(
                         machineId: cfg.machineId, sessionId: "",
-                        createSessionCommand(cfg, prompt: typed, mode: cfg.mode?.proto ?? .unspecified, imageIds: wanted.imageIds))
+                        createSessionCommand(cfg, prompt: typed, mode: cfg.mode?.proto ?? .unspecified, imageIds: wanted.imageIds, fileIds: wanted.fileIds))
                 }
                 let result = try await remote.forward(prepared, retryOfUnknown: retry)
                 attempt.settle()

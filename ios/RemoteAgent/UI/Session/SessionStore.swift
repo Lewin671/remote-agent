@@ -187,6 +187,7 @@ final class SessionStore {
             $0.text = o.text
             $0.requestID = o.requestId
             $0.imageIds = o.imageIds
+            $0.fileIds = o.fileIds
             $0.mode = o.mode
         }
         // Not tied to the page: a message keeps going when its page is left.
@@ -200,10 +201,10 @@ final class SessionStore {
                 // unknown message unknown, keeping the same request (Android's Outgoing.deliver).
                 let unknown = uncertain(error) || (wasUnknown && ce?.fromDaemon != true)
                 o.state = unknown ? .unknown : .failed
-                o.missingImages = !unknown && ce?.fromDaemon == true && ce?.code == "not_found" && !o.imageIds.isEmpty &&
+                o.missingImages = !unknown && ce?.fromDaemon == true && ce?.code == "not_found" && (!o.imageIds.isEmpty || !o.fileIds.isEmpty) &&
                     ce?.message.contains("is not on this machine; upload it again") == true
                 // Put back, the text and the images stay and the images go up again.
-                o.error = o.missingImages ? "图片不在电脑上" : errorText(error)
+                o.error = o.missingImages ? (o.fileIds.isEmpty ? "图片不在电脑上" : o.imageIds.isEmpty ? "文件不在电脑上" : "附件不在电脑上") : errorText(error)
             }
             delivering.remove(o.requestId)
         }

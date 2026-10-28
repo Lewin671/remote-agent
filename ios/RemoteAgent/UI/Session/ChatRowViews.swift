@@ -36,7 +36,7 @@ struct ChatActions: Sendable {
     /// Opens another session, as from the line where a fork left it.
     var session: @MainActor (String) -> Void = { _ in }
     /// Puts a message the session ended before writing back into the box.
-    var putBack: @MainActor (_ requestId: String, _ text: String) -> Void = { _, _ in }
+    var putBack: @MainActor (_ requestId: String, _ text: String, _ files: [PBSentFile]) -> Void = { _, _, _ in }
     /// Shows a message's text for selecting parts of it.
     var select: @MainActor (String) -> Void = { _ in }
 }
@@ -76,16 +76,17 @@ struct ChatRowView: View, Equatable {
         switch row.item {
         case .user(let m):
             ChatBubble(
-                m.text.jvmIsBlank && !m.images.isEmpty ? nil : m.text,
+                m.text.jvmIsBlank && (!m.images.isEmpty || !m.files.isEmpty) ? nil : m.text,
                 caption: m.from
             ) {
+                FileChips(files: m.files)
                 if !m.images.isEmpty {
                     ChatImageRow(m.images) { actions.image(m.seq, $0) }.padding(.bottom, 4)
                 }
             }
             .messageMenu(m.text, actions: actions)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(m.text.isEmpty ? "图片" : m.text)
+            .accessibilityLabel(m.text.isEmpty ? (m.files.isEmpty ? "图片" : "文件") : m.text)
             .accessibilityValue(m.from ?? "你发的消息")
         case .agent(let m):
             // The row's own menu answers the long press (复制, and 选择文字 for a part of it), not the text's.
@@ -156,8 +157,8 @@ struct ChatRowView: View, Equatable {
             PlanCard(key: p.key, text: p.text)
         case .unsent(let u):
             ChatBubble(
-                u.text ?? "一条排队的消息", caption: notSentText("会话已结束"), captionColor: Theme.red,
-                links: u.text.map { text in [ChatLink("放回输入框") { actions.putBack(u.requestId, text) }] } ?? [])
+                u.text?.isEmpty == false ? u.text : (u.files.isEmpty ? "一条排队的消息" : nil), caption: notSentText("会话已结束"), captionColor: Theme.red,
+                links: u.text.map { text in [ChatLink("放回输入框") { actions.putBack(u.requestId, text, u.files) }] } ?? []) { FileChips(files: u.files) }
         case .turnEnd(let t):
             ChatSepLine(t.text)
         case .fork(let f):

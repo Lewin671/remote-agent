@@ -83,6 +83,8 @@ final class ImageCenter {
         /// The choice between the photo library and the clipboard.
         case choose
         case photos
+        case attachments
+        case documents
     }
 
     // MARK: One per account
@@ -122,6 +124,7 @@ final class ImageCenter {
     @ObservationIgnored private var readers: [CheckedContinuation<Void, Never>] = []
     /// The machine each draft's images go to now.
     @ObservationIgnored private var targets: [String: String] = [:]
+    @ObservationIgnored private var fileMachines: [String: MachineView] = [:]
     /// Messages with images sent from here, by session, until the CLI has them.
     @ObservationIgnored private var kept: [String: [Outgoing]] = [:]
     @ObservationIgnored private var restored = Set<String>()
@@ -259,12 +262,26 @@ final class ImageCenter {
     }
 
     /// The machine a draft's images go to from now on; they are sent there when it can take them.
-    func aim(_ key: String, at machineId: String?, blocked: Bool) {
+    func aim(_ key: String, at machineId: String?, blocked: Bool, machine: MachineView? = nil) {
         targets[key] = machineId
+        fileMachines[key] = machine
         #if DEBUG
             if frozen { return }
         #endif
-        if let machineId, !blocked { uploads.sendAll(draft(key), machineId: machineId) }
+        let d = draft(key)
+        let allowed = d.filesAllowed(for: machine)
+        if !allowed {
+            for item in d.documents {
+                item.job?.cancel()
+                item.refreshJob?.cancel()
+                item.state = .failed(error: fileSupported(machine) ? "附件超过这台电脑的文件数量或大小上限，请移除后重新选择" : "这台电脑不支持发送文件")
+            }
+        }
+        if let machineId, !blocked {
+            for item in d.toSend(machineId: machineId) where !item.isFile || allowed {
+                uploads.upload(item, machineId: machineId)
+            }
+        }
     }
 
     private func machine(_ key: String) -> @MainActor () -> String? {
@@ -272,10 +289,12 @@ final class ImageCenter {
     }
 
     /// ＋ was tapped.
-    func plus(_ key: String, blocked: String?, max: Int) {
+    func plus(_ key: String, blocked: String?, max: Int, filesSupported: Bool = false) {
         if let blocked {
             say(key, blocked)
-        } else if draft(key).images.count >= max {
+        } else if filesSupported {
+            picking[key] = .attachments
+        } else if draft(key).photos.count >= max {
             say(key, "一条消息最多 \(max) 张")
         } else {
             // Asking whether the clipboard has an image does not read it, so nothing is asked of the user yet.
@@ -300,6 +319,41 @@ final class ImageCenter {
         uploads.add(draft, uris: uris, machine: machine(key))
     }
 
+    /// Import a document's persistent grant, off the UI thread. Its bytes stay at the source.
+    func addFiles(_ key: String, _ urls: [URL], machine: MachineView?, online: Bool) {
+        guard let blocked = fileUploadBlocked(machine, online: online) else {
+            let limit = fileLimit(for: machine)
+            let bytes = fileByteLimit(for: machine)
+            let d = draft(key)
+            Task {
+                await restoredDraft(key)
+                guard !closed else { return }
+                for url in urls {
+                    guard !closed else { return }
+                    if d.documents.count >= limit {
+                        say(key, "一条消息最多 \(limit) 个文件，多选的文件没有加入")
+                        break
+                    }
+                    do {
+                        let file = try await Task.detached { try PickedFile(url: url, maxBytes: bytes) }.value
+                        guard !closed else { return }
+                        guard d.documents.count < limit else {
+                            say(key, "一条消息最多 \(limit) 个文件")
+                            break
+                        }
+                        let item = PendingImage(id: newRequestId(), uri: nil)
+                        item.file = file
+                        item.state = .failed(error: "需要重新传到电脑")
+                        d.append([item])
+                        if let target = targets[key], d.filesAllowed(for: fileMachines[key]) { uploads.upload(item, machineId: target) }
+                    } catch { say(key, errorText(error)) }
+                }
+            }
+            return
+        }
+        say(key, blocked)
+    }
+
     /// Adds the images on the clipboard.
     func paste(_ key: String, max: Int) {
         let providers = UIPasteboard.general.itemProviders.filter {
@@ -313,6 +367,10 @@ final class ImageCenter {
     }
 
     func retry(_ key: String, _ img: PendingImage) {
+        if img.isFile, !draft(key).filesAllowed(for: fileMachines[key]) {
+            img.state = .failed(error: "这台电脑不支持这些文件，请检查文件数量和大小或换一台电脑")
+            return
+        }
         uploads.retry(draft(key), img, machine: machine(key))
     }
 
@@ -410,12 +468,12 @@ final class ImageCenter {
         if picked.isEmpty { return false }
         uploads.sendAll(draft, machineId: machineId)
         guard draft.ready(machineId: machineId) else {
-            Task { done(.failure(UserError("图片需要重新传到电脑，请上传完成后再发送"))) }
+            Task { done(.failure(UserError("附件需要重新传到电脑，请上传完成后再发送"))) }
             return true
         }
         let original = draft.original
         let o = Outgoing(
-            requestId: newRequestId(), text: text, imageIds: draft.ids(machineId: machineId),
+            requestId: newRequestId(), text: text, imageIds: draft.ids(machineId: machineId), fileIds: draft.fileIds(machineId: machineId),
             images: picked, original: original, mode: mode)
         let record = o.record
         let records = records
@@ -438,13 +496,14 @@ final class ImageCenter {
                 return
             }
             // Saving originals can outlast an upload. Nothing has been sent yet.
-            guard picked.count == o.imageIds.count,
-                zip(picked, o.imageIds).allSatisfy({ $0.readyFor(machineId) && $0.imageId == $1 })
+            guard picked.filter({ !$0.isFile }).compactMap(\.imageId) == o.imageIds,
+                picked.filter(\.isFile).compactMap(\.imageId) == o.fileIds,
+                picked.allSatisfy({ $0.readyFor(machineId) })
             else {
                 try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }
                     .value
                 uploads.sendAll(draft, machineId: machineId)
-                done(.failure(UserError("图片需要重新传到电脑，请上传完成后再发送")))
+                done(.failure(UserError("附件需要重新传到电脑，请上传完成后再发送")))
                 return
             }
             // The message has them now; images picked meanwhile stay in the box.
@@ -474,10 +533,10 @@ final class ImageCenter {
     }
 
     /// Puts a message's images back into its session's draft; false when they do not fit, and then nothing moved.
-    func putBack(sid: String, max: Int, _ o: Outgoing) -> Bool {
+    func putBack(sid: String, max: Int, maxFiles: Int = 6, _ o: Outgoing) -> Bool {
         if o.images.isEmpty { return true }
         let draft = draft(Self.sessionKey(sid))
-        guard draft.attach(o.images, max: max, wereOriginal: o.original) else { return false }
+        guard draft.attach(o.images, max: max, maxFiles: maxFiles, wereOriginal: o.original) else { return false }
         letGo(sid, o)
         // Its images live on in the draft. Its record goes once they are on disk there: until then it is the
         // only copy a reclaimed process would find.
@@ -549,6 +608,11 @@ final class ImageCenter {
     }
 
     #if DEBUG
+        /// Resolve a debug pick when the signal arrives, after project settings have loaded.
+        func debugAddFiles(_ key: String, _ urls: [URL]) {
+            addFiles(key, urls, machine: fileMachines[key], online: remote.current.conn == .online)
+        }
+
         /// Shows a message with images as it would stand after sending, for sample data.
         func debugShow(_ sid: String, _ o: Outgoing, store: SessionStore) {
             if store.find(sid, requestId: o.requestId) == nil { store.add(sid, o) }

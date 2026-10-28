@@ -49,6 +49,7 @@ struct SessionImageContext {
     let blocked: String?
     /// The most images one message may carry there (`imageLimit`).
     let limit: Int
+    var machine: MachineView? = nil
 }
 
 @MainActor
@@ -60,20 +61,20 @@ enum SessionImages {
 
     /// 1. The ＋ was tapped: shows the picker, or says why this computer takes no images now (it is dimmed then).
     static func plusTapped(_ context: SessionImageContext) {
-        center(context).plus(ImageCenter.sessionKey(context.sessionId), blocked: context.blocked, max: context.limit)
+        center(context).plus(ImageCenter.sessionKey(context.sessionId), blocked: context.blocked, max: context.limit, filesSupported: fileSupported(context.machine))
     }
 
     /// 3. The session's draft holds images.
     static func hasImages(_ context: SessionImageContext) -> Bool { !draft(context).images.isEmpty }
 
     static func refresh(_ context: SessionImageContext) {
-        center(context).aim(ImageCenter.sessionKey(context.sessionId), at: context.machineId, blocked: context.blocked != nil)
+        center(context).aim(ImageCenter.sessionKey(context.sessionId), at: context.machineId, blocked: context.blocked != nil, machine: context.machine)
     }
 
     /// 3. Every image of the draft is on the computer.
     static func ready(_ context: SessionImageContext) -> Bool {
         let d = draft(context)
-        return !d.restoring && (d.images.isEmpty || d.ready(machineId: context.machineId))
+        return !d.restoring && d.filesAllowed(for: context.machine) && (d.images.isEmpty || d.ready(machineId: context.machineId))
     }
 
     /// 4. Sends `text` with the draft's images, or returns false when the draft has none.
@@ -98,7 +99,7 @@ enum SessionImages {
 
     /// 6. Puts a message's images back into the draft; false when they do not fit, and then nothing moved.
     static func putBack(_ context: SessionImageContext, _ message: Outgoing) -> Bool {
-        center(context).putBack(sid: context.sessionId, max: context.limit, message)
+        center(context).putBack(sid: context.sessionId, max: context.limit, maxFiles: fileLimit(for: context.machine), message)
     }
 
     /// 6. A message that was not submitted goes back into its session's box, text and images, for the user to
@@ -107,7 +108,8 @@ enum SessionImages {
     @discardableResult
     static func putBack(_ message: Outgoing, session: String, state: RemoteState, remote: Remote, store: SessionStore) -> Bool {
         let max = imageLimit(for: state.sessions[session].flatMap { state.machines[$0.machineId] })
-        guard ImageCenter.of(remote).putBack(sid: session, max: max, message) else { return false }
+        let machine = state.sessions[session].flatMap { state.machines[$0.machineId] }
+        guard ImageCenter.of(remote).putBack(sid: session, max: max, maxFiles: fileLimit(for: machine), message) else { return false }
         store.putBack(session, message)
         return true
     }
@@ -127,7 +129,7 @@ enum SessionImages {
             let center = ImageCenter.of(context.remote)
             ImageStrip(
                 center: center, key: ImageCenter.sessionKey(context.sessionId), machineId: context.machineId, blocked: context.blocked,
-                max: context.limit
+                max: context.limit, machine: context.machine
             )
             .sessionImageDebug(context)
         }

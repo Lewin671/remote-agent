@@ -24,12 +24,13 @@ struct ProjectImageContext {
     let blocked: String?
     /// The most images the first message may carry there (`imageLimit`).
     let limit: Int
+    let machine: MachineView?
 
     init(state: RemoteState, key: String, config: NewConfig?, remote: Remote) {
         self.key = key
         self.remote = remote
         machineId = config?.machineId
-        let machine = machineId.flatMap { state.machines[$0] }
+        machine = machineId.flatMap { state.machines[$0] }
         blocked = uploadBlocked(machine, online: state.conn == .online, name: machineId.map { machineLabel(state, id: $0) } ?? "")
         limit = imageLimit(for: machine)
     }
@@ -47,19 +48,19 @@ enum ProjectImages {
 
     /// What a tap on ＋ does: picks images for the draft, or says why none can be added.
     static func pick(_ context: ProjectImageContext) {
-        center(context).plus(ImageCenter.projectKey(context.key), blocked: context.blocked, max: context.limit)
+        center(context).plus(ImageCenter.projectKey(context.key), blocked: context.blocked, max: context.limit, filesSupported: fileSupported(context.machine))
     }
 
     static func hasImages(_ context: ProjectImageContext) -> Bool { !draft(context).images.isEmpty }
 
     static func refresh(_ context: ProjectImageContext) {
-        center(context).aim(ImageCenter.projectKey(context.key), at: context.machineId, blocked: context.blocked != nil)
+        center(context).aim(ImageCenter.projectKey(context.key), at: context.machineId, blocked: context.blocked != nil, machine: context.machine)
     }
 
     /// Every image of the draft is on the machine the session starts on: never a start with some of them.
     static func ready(_ context: ProjectImageContext) -> Bool {
         let d = draft(context)
-        return !d.restoring && (d.images.isEmpty || d.ready(machineId: context.machineId))
+        return !d.restoring && d.filesAllowed(for: context.machine) && (d.images.isEmpty || d.ready(machineId: context.machineId))
     }
 
     /// A session started with these images: they leave the draft, and what was held for them goes.
@@ -74,7 +75,7 @@ enum ProjectImages {
         var body: some View {
             ImageStrip(
                 center: ImageCenter.of(context.remote), key: ImageCenter.projectKey(context.key), machineId: context.machineId,
-                blocked: context.blocked, max: context.limit
+                blocked: context.blocked, max: context.limit, machine: context.machine
             )
             .projectImageDebug(context)
         }

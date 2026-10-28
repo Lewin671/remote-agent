@@ -19,6 +19,7 @@ struct ImageStrip: View {
     /// Why that computer takes no images now, in words; nil when it does.
     let blocked: String?
     let max: Int
+    var machine: MachineView? = nil
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -29,18 +30,21 @@ struct ImageStrip: View {
         var machine: String?
         var blocked: Bool
         var count: Int
+        var filesSupported: Bool
+        var fileLimit: Int
+        var byteLimit: Int64
     }
 
     var body: some View {
         let draft = center.draft(key)
         let notice = center.notices[key]
         VStack(alignment: .leading, spacing: 0) {
-            if draft.images.isEmpty {
-                if let notice { line(notice, Theme.orangeInk).padding(.horizontal, 2).padding(.vertical, 2) }
+            if draft.photos.isEmpty {
+                if let text = notice ?? (draft.notice.isEmpty ? nil : draft.notice) { line(text, Theme.orangeInk).padding(.horizontal, 2).padding(.vertical, 2) }
             } else {
                 tray(draft)
                 meta(draft)
-                let failed = draft.images.lazy.compactMap { img -> String? in
+                let failed = draft.photos.lazy.compactMap { img -> String? in
                     if case .failed(let why) = img.state { return why }
                     return nil
                 }.first
@@ -49,17 +53,30 @@ struct ImageStrip: View {
                 {
                     line(text, Theme.orangeInk)
                 }
-                let notes = draft.images.compactMap { $0.processed?.note }.filter { !$0.isEmpty }
+                let notes = draft.photos.compactMap { $0.processed?.note }.filter { !$0.isEmpty }
                 if draft.original, !notes.isEmpty { line(unique(notes).joined(separator: "；"), Theme.muted) }
+            }
+            if !draft.documents.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(draft.documents) { item in
+                        if let file = item.file {
+                            FileChip(name: file.name, size: file.size, state: item.state,
+                                     retry: { center.retry(key, item) }, remove: { center.remove(key, item) })
+                        }
+                    }
+                    Text("文件原样发送，包含其中的元数据。").type(T.meta, Theme.muted)
+                    Text("\(draft.documents.count) / \(fileLimit(for: machine)) 个文件").type(T.meta, Theme.muted)
+                }
+                .padding(.horizontal, 6).padding(.vertical, 6)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .modifier(ImagePickerHost(center: center, key: key, max: max))
-        .onChange(of: Aim(machine: machineId, blocked: blocked != nil, count: draft.images.count), initial: true) { _, aim in
-            center.aim(key, at: aim.machine, blocked: aim.blocked)
+        .modifier(ImagePickerHost(center: center, key: key, max: max, machine: machine, blocked: blocked))
+        .onChange(of: Aim(machine: machineId, blocked: blocked != nil, count: draft.images.count, filesSupported: fileSupported(machine), fileLimit: fileLimit(for: machine), byteLimit: fileByteLimit(for: machine)), initial: true) { _, aim in
+            center.aim(key, at: aim.machine, blocked: aim.blocked, machine: machine)
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { center.aim(key, at: machineId, blocked: blocked != nil) }
+            if phase == .active { center.aim(key, at: machineId, blocked: blocked != nil, machine: machine) }
         }
         // A reason is said for a moment, not kept under the box.
         .task(id: notice) {
@@ -85,9 +102,9 @@ struct ImageStrip: View {
         let side = min(scaledSide, 80)
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(Array(draft.images.enumerated()), id: \.element.id) { i, img in
+                ForEach(Array(draft.photos.enumerated()), id: \.element.id) { i, img in
                     DraftThumb(
-                        image: img, thumb: center.thumb(img), side: side, index: i + 1, count: draft.images.count,
+                        image: img, thumb: center.thumb(img), side: side, index: i + 1, count: draft.photos.count,
                         showProgress: draft.original,
                         onRetry: { center.retry(key, img) },
                         onRemove: {
@@ -126,8 +143,8 @@ struct ImageStrip: View {
         .accessibilityValue(draft.original ? "已选，共 \(megabytes) MB" : "未选")
         .accessibilityHint(canChange ? "只对这一条消息生效" : "这些图片是上次留下的，不能再换成原图或压缩图")
         .accessibilityAddTraits(.isToggle)
-        let count = Text("\(draft.images.count) / \(max)").type(T.meta, Theme.muted)
-            .accessibilityLabel("已选 \(draft.images.count) 张，最多 \(max) 张")
+        let count = Text("\(draft.photos.count) / \(max)").type(T.meta, Theme.muted)
+            .accessibilityLabel("已选 \(draft.photos.count) 张，最多 \(max) 张")
         return ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) {
                 toggle
@@ -237,27 +254,47 @@ private struct ImagePickerHost: ViewModifier {
     let center: ImageCenter
     let key: String
     let max: Int
+    let machine: MachineView?
+    let blocked: String?
     @State private var picked: [PhotosPickerItem] = []
     /// 从相册选择 was chosen in the menu: the picker comes up once the menu is down.
-    @State private var photosNext = false
+    @State private var next: ImageCenter.Pick?
 
     func body(content: Content) -> some View {
-        let room = Swift.max(max - center.draft(key).images.count, 1)
+        let room = Swift.max(max - center.draft(key).photos.count, 1)
         content
             .actionMenu(
-                isPresented: Binding(get: { center.picking[key] == .choose }, set: { if !$0, center.picking[key] == .choose { center.picking[key] = nil } }),
-                actions: [
-                    SheetAction("从相册选择") { photosNext = true },
+                isPresented: Binding(get: { center.picking[key] == .choose || center.picking[key] == .attachments }, set: { if !$0, center.picking[key] == .choose || center.picking[key] == .attachments { center.picking[key] = nil } }),
+                actions: center.picking[key] == .attachments ? [
+                    SheetAction("图片") {
+                        next = .photos
+                        if center.draft(key).photos.count >= max {
+                            center.say(key, "一条消息最多 \(max) 张")
+                            next = nil
+                        } else if UIPasteboard.general.hasImages { next = .choose }
+                    },
+                    SheetAction("文件") { next = .documents },
+                ] : [
+                    SheetAction("从相册选择") { next = .photos },
                     SheetAction("粘贴剪贴板里的图片") { center.paste(key, max: max) },
                 ]
             )
             .onChange(of: center.picking[key]) { _, now in
-                guard now == nil, photosNext else { return }
-                photosNext = false
+                guard now == nil, let show = next else { return }
+                next = nil
                 Task {
                     // One presentation at a time: the menu's cover has to be gone first.
                     try? await Task.sleep(for: .milliseconds(350))
-                    center.picking[key] = .photos
+                    center.picking[key] = show
+                }
+            }
+            .fileImporter(
+                isPresented: Binding(get: { center.picking[key] == .documents }, set: { if !$0, center.picking[key] == .documents { center.picking[key] = nil } }),
+                allowedContentTypes: [.item], allowsMultipleSelection: true
+            ) { result in
+                switch result {
+                case .success(let urls): center.addFiles(key, urls, machine: machine, online: blocked == nil)
+                case .failure: center.say(key, "读不到源文件，请重新选择")
                 }
             }
             .photosPicker(
@@ -280,7 +317,12 @@ struct OutgoingImageThumbs: View {
     let message: Outgoing
 
     var body: some View {
-        let shown = message.images.prefix(4).compactMap { img in center.thumb(img).map { (img.id, $0) } }
+        let shown = message.images.filter { !$0.isFile }.prefix(4).compactMap { img in center.thumb(img).map { (img.id, $0) } }
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(message.images.filter(\.isFile)) { item in
+                if let file = item.file { FileChip(name: file.name, size: file.size) }
+            }
+        }
         if !shown.isEmpty {
             HStack(spacing: 4) {
                 ForEach(shown, id: \.0) { _, thumb in
@@ -291,7 +333,7 @@ struct OutgoingImageThumbs: View {
             }
             .padding(.bottom, 4)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(message.images.count) 张图片")
+            .accessibilityLabel("\(message.images.filter { !$0.isFile }.count) 张图片")
         }
     }
 }

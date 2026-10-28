@@ -101,7 +101,7 @@ struct SessionComposer: View {
             sessionId: session.id, machineId: session.machineId, remote: context.remote, store: context.sessionStore,
             blocked: uploadBlocked(
                 machine, online: model.state.conn == .online, name: machineLabel(model.state, id: session.machineId)),
-            limit: imageLimit(for: machine))
+            limit: imageLimit(for: machine), machine: machine)
     }
 
     private func send(_ mode: PBSendMode) {

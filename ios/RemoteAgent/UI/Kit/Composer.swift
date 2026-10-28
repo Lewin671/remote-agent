@@ -80,7 +80,7 @@ struct ComposerPill<Top: View, Trailing: View>: View {
                     .opacity(plus == .on ? 1 : 0.4)
                     // The two buttons keep a size a thumb knows; the words between them are what grows.
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                    .accessibilityLabel("添加图片")
+                    .accessibilityLabel("添加附件")
                 TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(Theme.muted), axis: .vertical)
                     .lineLimit(1...6)
                     .type(T.body, Theme.fg)

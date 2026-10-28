@@ -28,6 +28,12 @@ enum ImageDebug {
     }
 
     private static var added = false
+    private static var filesAdded = false
+    static func documentURLs() -> [URL] {
+        guard !filesAdded, let paths = value("-fileAdd") else { return [] }
+        filesAdded = true
+        return paths.split(separator: ",").map { URL(fileURLWithPath: String($0)) }
+    }
 
     /// The files `-imageAdd` names, once.
     static func launchFiles() -> [Data] {
@@ -167,20 +173,28 @@ private struct ImageDraftDebug: ViewModifier {
     let blocked: String?
     let max: Int
     var session: (id: String, store: SessionStore)?
+    var fileMachine: MachineView?
 
     func body(content: Content) -> some View {
         content
             .task(id: key) {
                 ImageDebug.seed(center, key: key, machine: machine)
                 if let session { ImageDebug.outgoing(center, sid: session.id, store: session.store) }
+                let documents = ImageDebug.documentURLs()
+                if !documents.isEmpty { center.addFiles(key, documents, machine: fileMachine, online: blocked == nil) }
                 let files = ImageDebug.launchFiles()
                 if !files.isEmpty { center.add(key, files.map { .data($0) }, max: max) }
+            }
+            .debugSignal("files.add") {
+                let paths = UserDefaults.standard.string(forKey: "debug.filePaths") ?? ""
+                let urls = paths.split(separator: ",").map { URL(fileURLWithPath: String($0)) }
+                center.debugAddFiles(key, urls)
             }
             .debugSignal("images.add") {
                 let files = ImageDebug.files(UserDefaults.standard.string(forKey: "debug.imagePaths") ?? "")
                 if !files.isEmpty { center.add(key, files.map { .data($0) }, max: max) }
             }
-            .debugSignal("images.pick") { center.plus(key, blocked: blocked, max: max) }
+            .debugSignal("images.pick") { center.plus(key, blocked: blocked, max: max, filesSupported: fileSupported(fileMachine)) }
             .debugSignal("images.original") { center.setOriginal(key, !center.draft(key).original) }
             .debugSignal("images.retry") {
                 for img in center.draft(key).images {
@@ -206,13 +220,13 @@ extension View {
     func sessionImageDebug(_ context: SessionImageContext) -> some View {
         modifier(ImageDraftDebug(
             center: ImageCenter.of(context.remote), key: ImageCenter.sessionKey(context.sessionId), machine: context.machineId,
-            blocked: context.blocked, max: context.limit, session: (context.sessionId, context.store)))
+            blocked: context.blocked, max: context.limit, session: (context.sessionId, context.store), fileMachine: context.machine))
     }
 
     func projectImageDebug(_ context: ProjectImageContext) -> some View {
         modifier(ImageDraftDebug(
             center: ImageCenter.of(context.remote), key: ImageCenter.projectKey(context.key), machine: context.machineId,
-            blocked: context.blocked, max: context.limit))
+            blocked: context.blocked, max: context.limit, fileMachine: context.machine))
     }
 }
 #else

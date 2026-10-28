@@ -276,13 +276,21 @@ enum DebugSignals {
     }
 }
 
+@MainActor private final class DebugSignalAction {
+    var run: (() -> Void)?
+}
+
 private struct DebugSignal: ViewModifier {
     let name: String
     let action: () -> Void
+    @State private var current = DebugSignalAction()
 
     func body(content: Content) -> some View {
-        content
-            .onAppear { DebugSignals.on(name, action) }
+        // A project can finish loading after appearing. Signals must invoke its current
+        // action, just as a tap does, rather than the first frame's machine and limits.
+        current.run = action
+        return content
+            .onAppear { DebugSignals.on(name) { current.run?() } }
             .onDisappear { DebugSignals.off(name) }
     }
 }
@@ -323,3 +331,7 @@ extension View {
 //   schedule.edit-target   opens the existing task target editor for fixture screenshots.
 //   session.schedule / session.restore   定时发送… / 恢复会话 through the existing product commands.
 //   app.back   the navigation stack's back action.
+
+// File attachments (DEBUG only; UI/Images/ImageDebug.swift):
+//   -fileAdd <path[,path...]> feeds document URLs through the picker-result flow (streamed, unchanged).
+//   files.add reads debug.filePaths from the app defaults and uses the same flow.

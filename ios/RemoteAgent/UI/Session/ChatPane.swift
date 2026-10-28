@@ -476,14 +476,25 @@ struct ChatPane: View {
             ChatActions(
                 image: { seq, index in nav.open(.image(session: sid, seq: seq, index: index)) },
                 session: { nav.open(.session(id: $0)) },
-                putBack: { requestId, text in
+                putBack: { requestId, text, files in
                     // A message the session ended before writing: its text goes back into the box.
                     if let o = store.find(sid, requestId: requestId) {
                         SessionImages.putBack(
                             o, session: sid, state: model.state, remote: context.remote,
                             store: store)
                     } else {
-                        store.appendToDraft(sid, text)
+                        let center = ImageCenter.of(context.remote)
+                        let draft = center.draft(ImageCenter.sessionKey(sid))
+                        let picked = files.map { file in
+                            let item = PendingImage(id: newRequestId(), uri: nil)
+                            item.file = PickedFile(remote: file)
+                            item.state = .failed(error: "这个文件没有本机副本，请移除后重新选择")
+                            return item
+                        }
+                        let machine = model.state.machines[session.machineId]
+                        if draft.attach(picked, max: imageLimit(for: machine), maxFiles: fileLimit(for: machine)) {
+                            store.appendToDraft(sid, text)
+                        }
                     }
                 },
                 select: selectMessage)
@@ -659,9 +670,9 @@ private struct PendingBubble: View {
                     expanded.toggle()
                 } label: {
                     ChatBubble(
-                        pending.text.isEmpty ? "（图片）" : pending.text, pending: true,
+                        pending.text.isEmpty ? (pending.files.isEmpty ? "（图片）" : nil) : pending.text, pending: true,
                         lines: expanded ? nil : 4, padded: false
-                    )
+                    ) { FileChips(files: pending.files) }
                     .padding(.vertical, -8)
                     .opacity(canceling ? 0.5 : 1)
                 }

@@ -51,7 +51,7 @@ import Testing
 
 @Suite struct IconTests {
     @Test func everyIconParsesIntoItsGrid() {
-        #expect(Lucide.all.count == 32)
+        #expect(Lucide.all.count == 33)
         for icon in Lucide.all {
             let box = icon.path.boundingRect
             #expect(!icon.path.isEmpty, "\(icon.name)")

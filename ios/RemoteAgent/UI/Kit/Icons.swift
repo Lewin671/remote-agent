@@ -65,6 +65,7 @@ enum Lucide {
         SVGPath.circle(cx: 5, cy: 12, r: 1))
     /// Adds to the message, or to the end of a list.
     static let plus = LucideIcon("plus", "M5 12h14", "M12 5v14")
+    static let file = LucideIcon("file", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z", "M14 2v6h6")
     /// A new session.
     static let squarePen = LucideIcon(
         "square-pen",
@@ -142,7 +143,7 @@ enum Lucide {
 
     /// All of them, for the gallery and the tests.
     static let all: [LucideIcon] = [
-        chevronRight, chevronLeft, chevronDown, chevronUp, ellipsis, plus, squarePen, arrowUp, square, copy, box,
+        chevronRight, chevronLeft, chevronDown, chevronUp, ellipsis, plus, file, squarePen, arrowUp, square, copy, box,
         boxChecked, arrowDown, check, x, loaderCircle, minus, search, messageSquare, clock, settings, wifiOff, cloudOff,
         laptop, globe, smartphone, tablet, arrowLeft, arrowRight, cornerDownLeft, keyboard, maximize2,
     ]
