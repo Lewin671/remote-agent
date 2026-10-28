@@ -158,6 +158,9 @@ message CreateSessionRequest {
   // Claude Code only: hold the session to the standard context window
   // instead of the 1M one its models otherwise get.
   bool standard_context = 11;
+  // Completed file uploads owned by the signing device, in order (at most 6).
+  // Needs file_upload. The prompt may be empty with images or files.
+  repeated string file_ids = 12;
 }
 
 message CreateSessionResponse {
@@ -183,7 +186,7 @@ message GetSessionResponse {
 
 message SendRequest {
   string session_id = 1;
-  // May be empty when image_ids are given.
+  // May be empty when image_ids or file_ids are given.
   string text = 2;
   // Stable ID chosen by the caller; retries with the same ID are not sent twice.
   string request_id = 3;
@@ -197,6 +200,8 @@ message SendRequest {
   // as the input box is free, into the current turn; queue holds it until
   // the turn ends. The same while idle. Needs MachineCapabilities.send_modes.
   SendMode mode = 5;
+  // As-is files, referenced in the injected text; needs file_upload.
+  repeated string file_ids = 6;
 }
 
 message SendResponse {
@@ -455,7 +460,8 @@ enum ImageUploadState {
   IMAGE_UPLOAD_STATE_USED = 3;
 }
 
-// ImageUploadStatus is the state of a transfer, returned by every upload
+// The image-named transfer RPCs carry both images and arbitrary files.
+// ImageUploadStatus is the state of either transfer, returned by every upload
 // call. Unknown or expired transfers fail with "not_found".
 message ImageUploadStatus {
   string transfer_id = 1;
@@ -474,6 +480,8 @@ message ImageUploadStatus {
   int64 expires_ms = 8;
   // Most bytes one PutImageChunk may carry.
   int32 max_chunk_bytes = 9;
+  // Set for a completed file transfer; image_id stays empty.
+  string file_id = 10;
 }
 
 message BeginImageUploadRequest {
@@ -487,6 +495,10 @@ message BeginImageUploadRequest {
   int64 total_bytes = 3;
   // SHA-256 of the whole file, checked on completion.
   bytes sha256 = 4;
+  // Nonempty selects an as-is file transfer (needs file_upload). Original name,
+  // at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+  // max_file_upload_bytes; completion checks only length and SHA-256.
+  string file_name = 5;
 }
 
 message BeginImageUploadResponse {
@@ -513,7 +525,8 @@ message GetImageUploadStatusResponse {
   ImageUploadStatus status = 1;
 }
 
-// CompleteImageUploadRequest checks the length, hash and format and that
+// For files completion checks length and hash only, preserving all bytes.
+// CompleteImageUploadRequest checks the image length, hash and format and that
 // the image decodes, then makes it ready to send. Completing again returns
 // the same image ID.
 message CompleteImageUploadRequest {

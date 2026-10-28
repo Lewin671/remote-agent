@@ -405,6 +405,96 @@ public  final class MachineCapabilities extends
     scheduledTasks_ = false;
   }
 
+  public static final int FILE_UPLOAD_FIELD_NUMBER = 13;
+  private boolean fileUpload_;
+  /**
+   * <pre>
+   * Arbitrary files, as-is; requires an upload root without whitespace.
+   * </pre>
+   *
+   * <code>bool file_upload = 13 [json_name = "fileUpload"];</code>
+   * @return The fileUpload.
+   */
+  @java.lang.Override
+  public boolean getFileUpload() {
+    return fileUpload_;
+  }
+  /**
+   * <pre>
+   * Arbitrary files, as-is; requires an upload root without whitespace.
+   * </pre>
+   *
+   * <code>bool file_upload = 13 [json_name = "fileUpload"];</code>
+   * @param value The fileUpload to set.
+   */
+  private void setFileUpload(boolean value) {
+    
+    fileUpload_ = value;
+  }
+  /**
+   * <pre>
+   * Arbitrary files, as-is; requires an upload root without whitespace.
+   * </pre>
+   *
+   * <code>bool file_upload = 13 [json_name = "fileUpload"];</code>
+   */
+  private void clearFileUpload() {
+
+    fileUpload_ = false;
+  }
+
+  public static final int MAX_FILE_UPLOAD_BYTES_FIELD_NUMBER = 14;
+  private long maxFileUploadBytes_;
+  /**
+   * <code>int64 max_file_upload_bytes = 14 [json_name = "maxFileUploadBytes"];</code>
+   * @return The maxFileUploadBytes.
+   */
+  @java.lang.Override
+  public long getMaxFileUploadBytes() {
+    return maxFileUploadBytes_;
+  }
+  /**
+   * <code>int64 max_file_upload_bytes = 14 [json_name = "maxFileUploadBytes"];</code>
+   * @param value The maxFileUploadBytes to set.
+   */
+  private void setMaxFileUploadBytes(long value) {
+    
+    maxFileUploadBytes_ = value;
+  }
+  /**
+   * <code>int64 max_file_upload_bytes = 14 [json_name = "maxFileUploadBytes"];</code>
+   */
+  private void clearMaxFileUploadBytes() {
+
+    maxFileUploadBytes_ = 0L;
+  }
+
+  public static final int MAX_FILES_PER_MESSAGE_FIELD_NUMBER = 15;
+  private int maxFilesPerMessage_;
+  /**
+   * <code>int32 max_files_per_message = 15 [json_name = "maxFilesPerMessage"];</code>
+   * @return The maxFilesPerMessage.
+   */
+  @java.lang.Override
+  public int getMaxFilesPerMessage() {
+    return maxFilesPerMessage_;
+  }
+  /**
+   * <code>int32 max_files_per_message = 15 [json_name = "maxFilesPerMessage"];</code>
+   * @param value The maxFilesPerMessage to set.
+   */
+  private void setMaxFilesPerMessage(int value) {
+    
+    maxFilesPerMessage_ = value;
+  }
+  /**
+   * <code>int32 max_files_per_message = 15 [json_name = "maxFilesPerMessage"];</code>
+   */
+  private void clearMaxFilesPerMessage() {
+
+    maxFilesPerMessage_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.proto.MachineCapabilities parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -888,6 +978,102 @@ public  final class MachineCapabilities extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Arbitrary files, as-is; requires an upload root without whitespace.
+     * </pre>
+     *
+     * <code>bool file_upload = 13 [json_name = "fileUpload"];</code>
+     * @return The fileUpload.
+     */
+    @java.lang.Override
+    public boolean getFileUpload() {
+      return instance.getFileUpload();
+    }
+    /**
+     * <pre>
+     * Arbitrary files, as-is; requires an upload root without whitespace.
+     * </pre>
+     *
+     * <code>bool file_upload = 13 [json_name = "fileUpload"];</code>
+     * @param value The fileUpload to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFileUpload(boolean value) {
+      copyOnWrite();
+      instance.setFileUpload(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Arbitrary files, as-is; requires an upload root without whitespace.
+     * </pre>
+     *
+     * <code>bool file_upload = 13 [json_name = "fileUpload"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFileUpload() {
+      copyOnWrite();
+      instance.clearFileUpload();
+      return this;
+    }
+
+    /**
+     * <code>int64 max_file_upload_bytes = 14 [json_name = "maxFileUploadBytes"];</code>
+     * @return The maxFileUploadBytes.
+     */
+    @java.lang.Override
+    public long getMaxFileUploadBytes() {
+      return instance.getMaxFileUploadBytes();
+    }
+    /**
+     * <code>int64 max_file_upload_bytes = 14 [json_name = "maxFileUploadBytes"];</code>
+     * @param value The maxFileUploadBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxFileUploadBytes(long value) {
+      copyOnWrite();
+      instance.setMaxFileUploadBytes(value);
+      return this;
+    }
+    /**
+     * <code>int64 max_file_upload_bytes = 14 [json_name = "maxFileUploadBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMaxFileUploadBytes() {
+      copyOnWrite();
+      instance.clearMaxFileUploadBytes();
+      return this;
+    }
+
+    /**
+     * <code>int32 max_files_per_message = 15 [json_name = "maxFilesPerMessage"];</code>
+     * @return The maxFilesPerMessage.
+     */
+    @java.lang.Override
+    public int getMaxFilesPerMessage() {
+      return instance.getMaxFilesPerMessage();
+    }
+    /**
+     * <code>int32 max_files_per_message = 15 [json_name = "maxFilesPerMessage"];</code>
+     * @param value The maxFilesPerMessage to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxFilesPerMessage(int value) {
+      copyOnWrite();
+      instance.setMaxFilesPerMessage(value);
+      return this;
+    }
+    /**
+     * <code>int32 max_files_per_message = 15 [json_name = "maxFilesPerMessage"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMaxFilesPerMessage() {
+      copyOnWrite();
+      instance.clearMaxFilesPerMessage();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineCapabilities)
   }
   @java.lang.Override
@@ -911,10 +1097,13 @@ public  final class MachineCapabilities extends
             "uploadFormats_",
             "approvalAlways_",
             "scheduledTasks_",
+            "fileUpload_",
+            "maxFileUploadBytes_",
+            "maxFilesPerMessage_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0000\u0002\f\u0007\u0000\u0001\u0000\u0002\u0007\u0003\u0004" +
-              "\u0004\u0002\u0005\u0004\u0006,\n\u0007\f\u0007";
+              "\u0000\n\u0000\u0000\u0002\u000f\n\u0000\u0001\u0000\u0002\u0007\u0003\u0004\u0004" +
+              "\u0002\u0005\u0004\u0006,\n\u0007\f\u0007\r\u0007\u000e\u0002\u000f\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

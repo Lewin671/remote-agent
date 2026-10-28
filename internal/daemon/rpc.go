@@ -80,7 +80,7 @@ func (h *handler) GetSession(ctx context.Context, req *connect.Request[pb.GetSes
 }
 
 func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]) (*connect.Response[pb.SendResponse], error) {
-	if req.Msg.Text == "" && len(req.Msg.ImageIds) == 0 {
+	if req.Msg.Text == "" && len(req.Msg.ImageIds) == 0 && len(req.Msg.FileIds) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("text is empty"))
 	}
 	s, err := h.d.session(req.Msg.SessionId)
@@ -88,15 +88,15 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 		return nil, rpcErr(err)
 	}
 	origin := originOf(ctx)
-	pos, err := s.enqueueInputContext(ctx, req.Msg.Text, req.Msg.RequestId, nil, origin, req.Msg.Mode, nil, func(id string) ([]queuedImage, error) {
-		if len(req.Msg.ImageIds) == 0 {
-			return nil, nil
+	pos, err := s.enqueueInputContext(ctx, req.Msg.Text, req.Msg.RequestId, nil, nil, origin, req.Msg.Mode, nil, func(id string) (messageUploads, error) {
+		if len(req.Msg.ImageIds) == 0 && len(req.Msg.FileIds) == 0 {
+			return messageUploads{}, nil
 		}
 		owner, err := imageOwner(origin)
 		if err != nil {
-			return nil, err
+			return messageUploads{}, err
 		}
-		return s.d.uploads.take(req.Msg.ImageIds, owner, s.meta.ID, id)
+		return s.d.uploads.takeUploads(req.Msg.ImageIds, req.Msg.FileIds, owner, s.meta.ID, id)
 	})
 	if err != nil {
 		return nil, rpcErr(err)

@@ -17,6 +17,7 @@ public  final class BeginImageUploadRequest extends
   private BeginImageUploadRequest() {
     transferId_ = "";
     sha256_ = com.google.protobuf.ByteString.EMPTY;
+    fileName_ = "";
   }
   public static final int TRANSFER_ID_FIELD_NUMBER = 1;
   private java.lang.String transferId_;
@@ -233,6 +234,84 @@ public  final class BeginImageUploadRequest extends
   private void clearSha256() {
 
     sha256_ = getDefaultInstance().getSha256();
+  }
+
+  public static final int FILE_NAME_FIELD_NUMBER = 5;
+  private java.lang.String fileName_;
+  /**
+   * <pre>
+   * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+   * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+   * max_file_upload_bytes; completion checks only length and SHA-256.
+   * </pre>
+   *
+   * <code>string file_name = 5 [json_name = "fileName"];</code>
+   * @return The fileName.
+   */
+  @java.lang.Override
+  public java.lang.String getFileName() {
+    return fileName_;
+  }
+  /**
+   * <pre>
+   * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+   * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+   * max_file_upload_bytes; completion checks only length and SHA-256.
+   * </pre>
+   *
+   * <code>string file_name = 5 [json_name = "fileName"];</code>
+   * @return The bytes for fileName.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFileNameBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(fileName_);
+  }
+  /**
+   * <pre>
+   * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+   * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+   * max_file_upload_bytes; completion checks only length and SHA-256.
+   * </pre>
+   *
+   * <code>string file_name = 5 [json_name = "fileName"];</code>
+   * @param value The fileName to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFileName(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    fileName_ = value;
+  }
+  /**
+   * <pre>
+   * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+   * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+   * max_file_upload_bytes; completion checks only length and SHA-256.
+   * </pre>
+   *
+   * <code>string file_name = 5 [json_name = "fileName"];</code>
+   */
+  private void clearFileName() {
+
+    fileName_ = getDefaultInstance().getFileName();
+  }
+  /**
+   * <pre>
+   * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+   * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+   * max_file_upload_bytes; completion checks only length and SHA-256.
+   * </pre>
+   *
+   * <code>string file_name = 5 [json_name = "fileName"];</code>
+   * @param value The bytes for fileName to set.
+   */
+  private void setFileNameBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    fileName_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.BeginImageUploadRequest parseFrom(
@@ -557,6 +636,85 @@ public  final class BeginImageUploadRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+     * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+     * max_file_upload_bytes; completion checks only length and SHA-256.
+     * </pre>
+     *
+     * <code>string file_name = 5 [json_name = "fileName"];</code>
+     * @return The fileName.
+     */
+    @java.lang.Override
+    public java.lang.String getFileName() {
+      return instance.getFileName();
+    }
+    /**
+     * <pre>
+     * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+     * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+     * max_file_upload_bytes; completion checks only length and SHA-256.
+     * </pre>
+     *
+     * <code>string file_name = 5 [json_name = "fileName"];</code>
+     * @return The bytes for fileName.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getFileNameBytes() {
+      return instance.getFileNameBytes();
+    }
+    /**
+     * <pre>
+     * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+     * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+     * max_file_upload_bytes; completion checks only length and SHA-256.
+     * </pre>
+     *
+     * <code>string file_name = 5 [json_name = "fileName"];</code>
+     * @param value The fileName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFileName(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setFileName(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+     * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+     * max_file_upload_bytes; completion checks only length and SHA-256.
+     * </pre>
+     *
+     * <code>string file_name = 5 [json_name = "fileName"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFileName() {
+      copyOnWrite();
+      instance.clearFileName();
+      return this;
+    }
+    /**
+     * <pre>
+     * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+     * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+     * max_file_upload_bytes; completion checks only length and SHA-256.
+     * </pre>
+     *
+     * <code>string file_name = 5 [json_name = "fileName"];</code>
+     * @param value The bytes for fileName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFileNameBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setFileNameBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.BeginImageUploadRequest)
   }
   @java.lang.Override
@@ -577,10 +735,11 @@ public  final class BeginImageUploadRequest extends
             "format_",
             "totalBytes_",
             "sha256_",
+            "fileName_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "\u0003\u0002\u0004\n";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u0002\u0004\n\u0005\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

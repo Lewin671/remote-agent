@@ -56,21 +56,21 @@ func TestImplicitResumeWaitsForDurableInputOwnership(t *testing.T) {
 					}
 				}
 				// The callback runs under mu: inspect the cached metadata without relocking.
-				take := func(string) ([]queuedImage, error) {
+				take := func(string) (messageUploads, error) {
 					if !h.s.meta.TaskOwned {
-						return nil, errors.New("ownership claimed before input admission")
+						return messageUploads{}, errors.New("ownership claimed before input admission")
 					}
 					switch fault {
 					case "image":
-						return nil, errors.New("expired upload")
+						return messageUploads{}, errors.New("expired upload")
 					case "event":
 						h.s.log.Close()
 					case "directory-sync":
 						h.d.syncStateDir = failStateSync()
 					}
-					return nil, nil
+					return messageUploads{}, nil
 				}
-				_, err := h.s.enqueueInputContext(context.Background(), "Human reply", "human-reply", nil, origin, pb.SendMode_SEND_MODE_QUEUE, nil, take)
+				_, err := h.s.enqueueInputContext(context.Background(), "Human reply", "human-reply", nil, nil, origin, pb.SendMode_SEND_MODE_QUEUE, nil, take)
 				if h.s.stop != nil {
 					h.s.stop()
 					select {

@@ -17,6 +17,9 @@ type input struct {
 	RequestID string `json:"request_id,omitempty"`
 	// Images are pasted before the text, in order.
 	Images []queuedImage `json:"images,omitempty"`
+	Files  []queuedFile  `json:"files,omitempty"`
+	// Composed text, including file lines, kept durably for confirmation.
+	Composed string `json:"composed,omitempty"`
 	// Origin is who sent it.
 	Origin *storedOrigin `json:"origin,omitempty"`
 	// Mode is how it is delivered while a turn runs: steer (the default)

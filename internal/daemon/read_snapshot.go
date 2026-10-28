@@ -14,7 +14,6 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/contextio"
-	"github.com/Lewin671/remote-agent/internal/imageproc"
 	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
@@ -88,7 +87,7 @@ func (d *Daemon) imageStorageSnapshotUsing(ctx context.Context, readDir func(str
 			if t.Session == "" && time.Now().UnixMilli() >= t.expiresMs() {
 				continue
 			}
-			if t.ImageID == "" {
+			if t.artifactID() == "" {
 				usage.ReservedBytes += max(int64(0), t.Total-t.Persisted)
 				continue
 			}
@@ -96,7 +95,10 @@ func (d *Daemon) imageStorageSnapshotUsing(ctx context.Context, readDir func(str
 			if t.Session != "" {
 				owner = t.Session
 			}
-			path := filepath.Join(uploadsDir, owner, t.ImageID+"."+imageproc.Ext(t.Format))
+			path := filepath.Join(uploadsDir, owner, t.relativeName())
+			if t.Session != "" {
+				path = t.sessionPath(&uploads{dir: uploadsDir})
+			}
 			fi, err := os.Stat(path)
 			if os.IsNotExist(err) {
 				continue
@@ -139,7 +141,7 @@ func (d *Daemon) imageStorageSnapshotUsing(ctx context.Context, readDir func(str
 			}
 			usage.UploadBytes += fi.Size()
 			ext := filepath.Ext(path)
-			if !known[path] && (ext == ".part" || ext == ".png" || ext == ".jpg" || ext == ".webp" || ext == ".gif") {
+			if !known[path] && uploadDataPath(uploadsDir, path, ext) {
 				usage.ProtectedBytes += fi.Size()
 				rel, _ := filepath.Rel(uploadsDir, path)
 				owner := strings.Split(rel, string(filepath.Separator))[0]

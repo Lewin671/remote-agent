@@ -104,4 +104,24 @@ public interface ImageUploadStatusOrBuilder extends
    * @return The maxChunkBytes.
    */
   int getMaxChunkBytes();
+
+  /**
+   * <pre>
+   * Set for a completed file transfer; image_id stays empty.
+   * </pre>
+   *
+   * <code>string file_id = 10 [json_name = "fileId"];</code>
+   * @return The fileId.
+   */
+  java.lang.String getFileId();
+  /**
+   * <pre>
+   * Set for a completed file transfer; image_id stays empty.
+   * </pre>
+   *
+   * <code>string file_id = 10 [json_name = "fileId"];</code>
+   * @return The bytes for fileId.
+   */
+  com.google.protobuf.ByteString
+      getFileIdBytes();
 }

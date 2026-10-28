@@ -1261,6 +1261,27 @@ public struct PBUserMessage: Sendable {
   /// it; the event's origin says who sent it.
   public var requestID: String = String()
 
+  /// Recognized upload path lines. text remains exactly as the CLI recorded it.
+  public var files: [PBSentFile] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBSentFile: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var fileID: String = String()
+
+  public var name: String = String()
+
+  public var sizeBytes: Int64 = 0
+
+  public var path: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1724,6 +1745,10 @@ public struct PBInputState: Sendable {
   /// so it waits for the user to send it (ResumeInput) or cancel it. Every
   /// update of a paused message repeats it; a resumed one clears it.
   public var paused: Bool = false
+
+  /// With the first QUEUED state: file references for the shared queue.
+  /// text is the original user text, without the injected path lines.
+  public var files: [PBSentFile] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2677,7 +2702,7 @@ extension PBToolStarted: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
 extension PBUserMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UserMessage"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{2}\u{2}images\0\u{3}request_id\0\u{c}\u{2}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{2}\u{2}images\0\u{3}request_id\0\u{1}files\0\u{c}\u{2}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2688,6 +2713,7 @@ extension PBUserMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       case 1: try { try decoder.decodeSingularStringField(value: &self.text) }()
       case 3: try { try decoder.decodeRepeatedMessageField(value: &self.images) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
+      case 5: try { try decoder.decodeRepeatedMessageField(value: &self.files) }()
       default: break
       }
     }
@@ -2703,6 +2729,9 @@ extension PBUserMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if !self.requestID.isEmpty {
       try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 4)
     }
+    if !self.files.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.files, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2710,6 +2739,52 @@ extension PBUserMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if lhs.text != rhs.text {return false}
     if lhs.images != rhs.images {return false}
     if lhs.requestID != rhs.requestID {return false}
+    if lhs.files != rhs.files {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSentFile: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SentFile"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}file_id\0\u{1}name\0\u{3}size_bytes\0\u{1}path\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.fileID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.sizeBytes) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.fileID.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileID, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if self.sizeBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.sizeBytes, fieldNumber: 3)
+    }
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSentFile, rhs: PBSentFile) -> Bool {
+    if lhs.fileID != rhs.fileID {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.sizeBytes != rhs.sizeBytes {return false}
+    if lhs.path != rhs.path {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3563,7 +3638,7 @@ extension PBSessionState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
 extension PBInputState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".InputState"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}status\0\u{1}reason\0\u{1}stage\0\u{1}text\0\u{3}image_ids\0\u{1}mode\0\u{1}paused\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}status\0\u{1}reason\0\u{1}stage\0\u{1}text\0\u{3}image_ids\0\u{1}mode\0\u{1}paused\0\u{1}files\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3579,6 +3654,7 @@ extension PBInputState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
       case 6: try { try decoder.decodeRepeatedStringField(value: &self.imageIds) }()
       case 7: try { try decoder.decodeSingularEnumField(value: &self.mode) }()
       case 8: try { try decoder.decodeSingularBoolField(value: &self.paused) }()
+      case 9: try { try decoder.decodeRepeatedMessageField(value: &self.files) }()
       default: break
       }
     }
@@ -3609,6 +3685,9 @@ extension PBInputState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     if self.paused != false {
       try visitor.visitSingularBoolField(value: self.paused, fieldNumber: 8)
     }
+    if !self.files.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.files, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3621,6 +3700,7 @@ extension PBInputState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     if lhs.imageIds != rhs.imageIds {return false}
     if lhs.mode != rhs.mode {return false}
     if lhs.paused != rhs.paused {return false}
+    if lhs.files != rhs.files {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

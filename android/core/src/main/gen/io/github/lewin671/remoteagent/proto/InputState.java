@@ -24,6 +24,7 @@ public  final class InputState extends
     reason_ = "";
     text_ = "";
     imageIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+    files_ = emptyProtobufList();
   }
   public static final int REQUEST_ID_FIELD_NUMBER = 1;
   private java.lang.String requestId_;
@@ -537,6 +538,158 @@ public  final class InputState extends
   private void clearPaused() {
 
     paused_ = false;
+  }
+
+  public static final int FILES_FIELD_NUMBER = 9;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.SentFile> files_;
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.SentFile> getFilesList() {
+    return files_;
+  }
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.SentFileOrBuilder> 
+      getFilesOrBuilderList() {
+    return files_;
+  }
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  @java.lang.Override
+  public int getFilesCount() {
+    return files_.size();
+  }
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.SentFile getFiles(int index) {
+    return files_.get(index);
+  }
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.SentFileOrBuilder getFilesOrBuilder(
+      int index) {
+    return files_.get(index);
+  }
+  private void ensureFilesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.SentFile> tmp = files_;
+    if (!tmp.isModifiable()) {
+      files_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFiles(
+      int index, io.github.lewin671.remoteagent.proto.SentFile value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFilesIsMutable();
+    files_.set(index, value);
+  }
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addFiles(io.github.lewin671.remoteagent.proto.SentFile value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFilesIsMutable();
+    files_.add(value);
+  }
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addFiles(
+      int index, io.github.lewin671.remoteagent.proto.SentFile value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFilesIsMutable();
+    files_.add(index, value);
+  }
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  private void addAllFiles(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.SentFile> values) {
+    ensureFilesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, files_);
+  }
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  private void clearFiles() {
+    files_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  private void removeFiles(int index) {
+    ensureFilesIsMutable();
+    files_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.proto.InputState parseFrom(
@@ -1169,6 +1322,168 @@ public  final class InputState extends
       return this;
     }
 
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.SentFile> getFilesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getFilesList());
+    }
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    @java.lang.Override
+    public int getFilesCount() {
+      return instance.getFilesCount();
+    }/**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.SentFile getFiles(int index) {
+      return instance.getFiles(index);
+    }
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    public Builder setFiles(
+        int index, io.github.lewin671.remoteagent.proto.SentFile value) {
+      copyOnWrite();
+      instance.setFiles(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    public Builder setFiles(
+        int index, io.github.lewin671.remoteagent.proto.SentFile.Builder builderForValue) {
+      copyOnWrite();
+      instance.setFiles(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    public Builder addFiles(io.github.lewin671.remoteagent.proto.SentFile value) {
+      copyOnWrite();
+      instance.addFiles(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    public Builder addFiles(
+        int index, io.github.lewin671.remoteagent.proto.SentFile value) {
+      copyOnWrite();
+      instance.addFiles(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    public Builder addFiles(
+        io.github.lewin671.remoteagent.proto.SentFile.Builder builderForValue) {
+      copyOnWrite();
+      instance.addFiles(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    public Builder addFiles(
+        int index, io.github.lewin671.remoteagent.proto.SentFile.Builder builderForValue) {
+      copyOnWrite();
+      instance.addFiles(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    public Builder addAllFiles(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.SentFile> values) {
+      copyOnWrite();
+      instance.addAllFiles(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    public Builder clearFiles() {
+      copyOnWrite();
+      instance.clearFiles();
+      return this;
+    }
+    /**
+     * <pre>
+     * With the first QUEUED state: file references for the shared queue.
+     * text is the original user text, without the injected path lines.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+     */
+    public Builder removeFiles(int index) {
+      copyOnWrite();
+      instance.removeFiles(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.InputState)
   }
   @java.lang.Override
@@ -1193,10 +1508,12 @@ public  final class InputState extends
             "imageIds_",
             "mode_",
             "paused_",
+            "files_",
+            io.github.lewin671.remoteagent.proto.SentFile.class,
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0001\u0000\u0001\u0208\u0002\f\u0003\u0208" +
-              "\u0004\f\u0005\u0208\u0006\u021a\u0007\f\b\u0007";
+              "\u0000\t\u0000\u0000\u0001\t\t\u0000\u0002\u0000\u0001\u0208\u0002\f\u0003\u0208" +
+              "\u0004\f\u0005\u0208\u0006\u021a\u0007\f\b\u0007\t\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

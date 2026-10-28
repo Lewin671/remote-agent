@@ -214,6 +214,15 @@ message UserMessage {
   // The Send request that submitted this message, when the daemon matched
   // it; the event's origin says who sent it.
   string request_id = 4;
+  // Recognized upload path lines. text remains exactly as the CLI recorded it.
+  repeated SentFile files = 5;
+}
+
+message SentFile {
+  string file_id = 1;
+  string name = 2;
+  int64 size_bytes = 3;
+  string path = 4;
 }
 
 message AgentMessage {
@@ -543,6 +552,9 @@ message InputState {
   // so it waits for the user to send it (ResumeInput) or cancel it. Every
   // update of a paused message repeats it; a resumed one clears it.
   bool paused = 8;
+  // With the first QUEUED state: file references for the shared queue.
+  // text is the original user text, without the injected path lines.
+  repeated SentFile files = 9;
 }
 
 // Daemon-owned durable result of notify_user; plaintext stays inside encryption.

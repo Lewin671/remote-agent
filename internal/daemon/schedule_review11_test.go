@@ -27,13 +27,13 @@ func TestExplicitResumeClaimsRejectedImplicitLifetime(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				take := func(string) ([]queuedImage, error) {
+				take := func(string) (messageUploads, error) {
 					if fault == "image" {
-						return nil, errors.New("expired upload")
+						return messageUploads{}, errors.New("expired upload")
 					}
-					return nil, nil
+					return messageUploads{}, nil
 				}
-				_, err := h.s.enqueueInputContext(context.Background(), "Reply", "rejected-reply", nil, origin, pb.SendMode_SEND_MODE_QUEUE, nil, take)
+				_, err := h.s.enqueueInputContext(context.Background(), "Reply", "rejected-reply", nil, nil, origin, pb.SendMode_SEND_MODE_QUEUE, nil, take)
 				if err == nil || queueAccepted(err) {
 					t.Fatalf("input was not rejected: %v", err)
 				}

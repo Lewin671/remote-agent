@@ -111,4 +111,26 @@ public interface MachineCapabilitiesOrBuilder extends
    * @return The scheduledTasks.
    */
   boolean getScheduledTasks();
+
+  /**
+   * <pre>
+   * Arbitrary files, as-is; requires an upload root without whitespace.
+   * </pre>
+   *
+   * <code>bool file_upload = 13 [json_name = "fileUpload"];</code>
+   * @return The fileUpload.
+   */
+  boolean getFileUpload();
+
+  /**
+   * <code>int64 max_file_upload_bytes = 14 [json_name = "maxFileUploadBytes"];</code>
+   * @return The maxFileUploadBytes.
+   */
+  long getMaxFileUploadBytes();
+
+  /**
+   * <code>int32 max_files_per_message = 15 [json_name = "maxFilesPerMessage"];</code>
+   * @return The maxFilesPerMessage.
+   */
+  int getMaxFilesPerMessage();
 }

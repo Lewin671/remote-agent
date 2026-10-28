@@ -60,6 +60,7 @@ func (d *Daemon) LiveSnapshot(ctx context.Context, id string) (*pb.LiveSnapshot,
 				text = text[:end] + "… [内容已截断]"
 			}
 			state := &pb.InputState{RequestId: in.RequestID, Status: status, Stage: in.Stage, Text: text, Mode: in.Mode, Paused: in.Paused}
+			state.Files = sentFiles(in.Files)
 			for _, image := range in.Images {
 				state.ImageIds = append(state.ImageIds, image.ID)
 			}

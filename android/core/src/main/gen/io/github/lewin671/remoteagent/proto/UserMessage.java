@@ -18,6 +18,7 @@ public  final class UserMessage extends
     text_ = "";
     images_ = emptyProtobufList();
     requestId_ = "";
+    files_ = emptyProtobufList();
   }
   public static final int TEXT_FIELD_NUMBER = 1;
   private java.lang.String text_;
@@ -260,6 +261,147 @@ public  final class UserMessage extends
     checkByteStringIsUtf8(value);
     requestId_ = value.toStringUtf8();
 
+  }
+
+  public static final int FILES_FIELD_NUMBER = 5;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.SentFile> files_;
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.SentFile> getFilesList() {
+    return files_;
+  }
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.SentFileOrBuilder> 
+      getFilesOrBuilderList() {
+    return files_;
+  }
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  @java.lang.Override
+  public int getFilesCount() {
+    return files_.size();
+  }
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.SentFile getFiles(int index) {
+    return files_.get(index);
+  }
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.SentFileOrBuilder getFilesOrBuilder(
+      int index) {
+    return files_.get(index);
+  }
+  private void ensureFilesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.SentFile> tmp = files_;
+    if (!tmp.isModifiable()) {
+      files_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFiles(
+      int index, io.github.lewin671.remoteagent.proto.SentFile value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFilesIsMutable();
+    files_.set(index, value);
+  }
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addFiles(io.github.lewin671.remoteagent.proto.SentFile value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFilesIsMutable();
+    files_.add(value);
+  }
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addFiles(
+      int index, io.github.lewin671.remoteagent.proto.SentFile value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFilesIsMutable();
+    files_.add(index, value);
+  }
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  private void addAllFiles(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.SentFile> values) {
+    ensureFilesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, files_);
+  }
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  private void clearFiles() {
+    files_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  private void removeFiles(int index) {
+    ensureFilesIsMutable();
+    files_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.proto.UserMessage parseFrom(
@@ -609,6 +751,156 @@ public  final class UserMessage extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.SentFile> getFilesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getFilesList());
+    }
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    @java.lang.Override
+    public int getFilesCount() {
+      return instance.getFilesCount();
+    }/**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.SentFile getFiles(int index) {
+      return instance.getFiles(index);
+    }
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    public Builder setFiles(
+        int index, io.github.lewin671.remoteagent.proto.SentFile value) {
+      copyOnWrite();
+      instance.setFiles(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    public Builder setFiles(
+        int index, io.github.lewin671.remoteagent.proto.SentFile.Builder builderForValue) {
+      copyOnWrite();
+      instance.setFiles(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    public Builder addFiles(io.github.lewin671.remoteagent.proto.SentFile value) {
+      copyOnWrite();
+      instance.addFiles(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    public Builder addFiles(
+        int index, io.github.lewin671.remoteagent.proto.SentFile value) {
+      copyOnWrite();
+      instance.addFiles(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    public Builder addFiles(
+        io.github.lewin671.remoteagent.proto.SentFile.Builder builderForValue) {
+      copyOnWrite();
+      instance.addFiles(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    public Builder addFiles(
+        int index, io.github.lewin671.remoteagent.proto.SentFile.Builder builderForValue) {
+      copyOnWrite();
+      instance.addFiles(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    public Builder addAllFiles(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.SentFile> values) {
+      copyOnWrite();
+      instance.addAllFiles(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    public Builder clearFiles() {
+      copyOnWrite();
+      instance.clearFiles();
+      return this;
+    }
+    /**
+     * <pre>
+     * Recognized upload path lines. text remains exactly as the CLI recorded it.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+     */
+    public Builder removeFiles(int index) {
+      copyOnWrite();
+      instance.removeFiles(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.UserMessage)
   }
   @java.lang.Override
@@ -629,10 +921,12 @@ public  final class UserMessage extends
             "images_",
             io.github.lewin671.remoteagent.proto.ImageRef.class,
             "requestId_",
+            "files_",
+            io.github.lewin671.remoteagent.proto.SentFile.class,
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0004\u0003\u0000\u0001\u0000\u0001\u0208\u0003\u001b" +
-              "\u0004\u0208";
+              "\u0000\u0004\u0000\u0000\u0001\u0005\u0004\u0000\u0002\u0000\u0001\u0208\u0003\u001b" +
+              "\u0004\u0208\u0005\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

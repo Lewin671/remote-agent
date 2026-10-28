@@ -401,6 +401,10 @@ public struct PBCreateSessionRequest: Sendable {
   /// instead of the 1M one its models otherwise get.
   public var standardContext: Bool = false
 
+  /// Completed file uploads owned by the signing device, in order (at most 6).
+  /// Needs file_upload. The prompt may be empty with images or files.
+  public var fileIds: [String] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -492,7 +496,7 @@ public struct PBSendRequest: Sendable {
 
   public var sessionID: String = String()
 
-  /// May be empty when image_ids are given.
+  /// May be empty when image_ids or file_ids are given.
   public var text: String = String()
 
   /// Stable ID chosen by the caller; retries with the same ID are not sent twice.
@@ -509,6 +513,9 @@ public struct PBSendRequest: Sendable {
   /// as the input box is free, into the current turn; queue holds it until
   /// the turn ends. The same while idle. Needs MachineCapabilities.send_modes.
   public var mode: PBSendMode = .unspecified
+
+  /// As-is files, referenced in the injected text; needs file_upload.
+  public var fileIds: [String] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1215,7 +1222,8 @@ public struct PBForkSessionResponse: Sendable {
   fileprivate var _session: PBSession? = nil
 }
 
-/// ImageUploadStatus is the state of a transfer, returned by every upload
+/// The image-named transfer RPCs carry both images and arbitrary files.
+/// ImageUploadStatus is the state of either transfer, returned by every upload
 /// call. Unknown or expired transfers fail with "not_found".
 public struct PBImageUploadStatus: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -1247,6 +1255,9 @@ public struct PBImageUploadStatus: Sendable {
   /// Most bytes one PutImageChunk may carry.
   public var maxChunkBytes: Int32 = 0
 
+  /// Set for a completed file transfer; image_id stays empty.
+  public var fileID: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1270,6 +1281,11 @@ public struct PBBeginImageUploadRequest: Sendable {
 
   /// SHA-256 of the whole file, checked on completion.
   public var sha256: Data = Data()
+
+  /// Nonempty selects an as-is file transfer (needs file_upload). Original name,
+  /// at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+  /// max_file_upload_bytes; completion checks only length and SHA-256.
+  public var fileName: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1369,7 +1385,8 @@ public struct PBGetImageUploadStatusResponse: Sendable {
   fileprivate var _status: PBImageUploadStatus? = nil
 }
 
-/// CompleteImageUploadRequest checks the length, hash and format and that
+/// For files completion checks length and hash only, preserving all bytes.
+/// CompleteImageUploadRequest checks the image length, hash and format and that
 /// the image decodes, then makes it ready to send. Completing again returns
 /// the same image ID.
 public struct PBCompleteImageUploadRequest: Sendable {
@@ -1876,7 +1893,7 @@ extension PBMachineReplacementProof: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBCreateSessionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CreateSessionRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}cwd\0\u{1}args\0\u{1}env\0\u{1}prompt\0\u{1}model\0\u{1}effort\0\u{1}mode\0\u{1}agent\0\u{3}image_ids\0\u{4}\u{2}standard_context\0\u{c}\u{a}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}cwd\0\u{1}args\0\u{1}env\0\u{1}prompt\0\u{1}model\0\u{1}effort\0\u{1}mode\0\u{1}agent\0\u{3}image_ids\0\u{4}\u{2}standard_context\0\u{3}file_ids\0\u{c}\u{a}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1894,6 +1911,7 @@ extension PBCreateSessionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       case 8: try { try decoder.decodeSingularEnumField(value: &self.agent) }()
       case 9: try { try decoder.decodeRepeatedStringField(value: &self.imageIds) }()
       case 11: try { try decoder.decodeSingularBoolField(value: &self.standardContext) }()
+      case 12: try { try decoder.decodeRepeatedStringField(value: &self.fileIds) }()
       default: break
       }
     }
@@ -1930,6 +1948,9 @@ extension PBCreateSessionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     if self.standardContext != false {
       try visitor.visitSingularBoolField(value: self.standardContext, fieldNumber: 11)
     }
+    if !self.fileIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.fileIds, fieldNumber: 12)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1944,6 +1965,7 @@ extension PBCreateSessionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     if lhs.agent != rhs.agent {return false}
     if lhs.imageIds != rhs.imageIds {return false}
     if lhs.standardContext != rhs.standardContext {return false}
+    if lhs.fileIds != rhs.fileIds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2109,7 +2131,7 @@ extension PBGetSessionResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBSendRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SendRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{1}text\0\u{3}request_id\0\u{3}image_ids\0\u{1}mode\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{1}text\0\u{3}request_id\0\u{3}image_ids\0\u{1}mode\0\u{3}file_ids\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2122,6 +2144,7 @@ extension PBSendRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       case 3: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
       case 4: try { try decoder.decodeRepeatedStringField(value: &self.imageIds) }()
       case 5: try { try decoder.decodeSingularEnumField(value: &self.mode) }()
+      case 6: try { try decoder.decodeRepeatedStringField(value: &self.fileIds) }()
       default: break
       }
     }
@@ -2143,6 +2166,9 @@ extension PBSendRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if self.mode != .unspecified {
       try visitor.visitSingularEnumField(value: self.mode, fieldNumber: 5)
     }
+    if !self.fileIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.fileIds, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2152,6 +2178,7 @@ extension PBSendRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if lhs.requestID != rhs.requestID {return false}
     if lhs.imageIds != rhs.imageIds {return false}
     if lhs.mode != rhs.mode {return false}
+    if lhs.fileIds != rhs.fileIds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3540,7 +3567,7 @@ extension PBForkSessionResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBImageUploadStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ImageUploadStatus"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}transfer_id\0\u{1}state\0\u{3}persisted_bytes\0\u{3}total_bytes\0\u{3}image_id\0\u{1}width\0\u{1}height\0\u{3}expires_ms\0\u{3}max_chunk_bytes\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}transfer_id\0\u{1}state\0\u{3}persisted_bytes\0\u{3}total_bytes\0\u{3}image_id\0\u{1}width\0\u{1}height\0\u{3}expires_ms\0\u{3}max_chunk_bytes\0\u{3}file_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3557,6 +3584,7 @@ extension PBImageUploadStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       case 7: try { try decoder.decodeSingularInt32Field(value: &self.height) }()
       case 8: try { try decoder.decodeSingularInt64Field(value: &self.expiresMs) }()
       case 9: try { try decoder.decodeSingularInt32Field(value: &self.maxChunkBytes) }()
+      case 10: try { try decoder.decodeSingularStringField(value: &self.fileID) }()
       default: break
       }
     }
@@ -3590,6 +3618,9 @@ extension PBImageUploadStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if self.maxChunkBytes != 0 {
       try visitor.visitSingularInt32Field(value: self.maxChunkBytes, fieldNumber: 9)
     }
+    if !self.fileID.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileID, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3603,6 +3634,7 @@ extension PBImageUploadStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if lhs.height != rhs.height {return false}
     if lhs.expiresMs != rhs.expiresMs {return false}
     if lhs.maxChunkBytes != rhs.maxChunkBytes {return false}
+    if lhs.fileID != rhs.fileID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3610,7 +3642,7 @@ extension PBImageUploadStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBBeginImageUploadRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".BeginImageUploadRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}transfer_id\0\u{1}format\0\u{3}total_bytes\0\u{1}sha256\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}transfer_id\0\u{1}format\0\u{3}total_bytes\0\u{1}sha256\0\u{3}file_name\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3622,6 +3654,7 @@ extension PBBeginImageUploadRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 2: try { try decoder.decodeSingularEnumField(value: &self.format) }()
       case 3: try { try decoder.decodeSingularInt64Field(value: &self.totalBytes) }()
       case 4: try { try decoder.decodeSingularBytesField(value: &self.sha256) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.fileName) }()
       default: break
       }
     }
@@ -3640,6 +3673,9 @@ extension PBBeginImageUploadRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if !self.sha256.isEmpty {
       try visitor.visitSingularBytesField(value: self.sha256, fieldNumber: 4)
     }
+    if !self.fileName.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileName, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3648,6 +3684,7 @@ extension PBBeginImageUploadRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.format != rhs.format {return false}
     if lhs.totalBytes != rhs.totalBytes {return false}
     if lhs.sha256 != rhs.sha256 {return false}
+    if lhs.fileName != rhs.fileName {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

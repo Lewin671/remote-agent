@@ -131,28 +131,28 @@ func (s *session) enqueue(text, requestID string, images []queuedImage, origin *
 
 // enqueueMode is enqueue with a delivery mode.
 func (s *session) enqueueMode(text, requestID string, images []queuedImage, origin *pb.Origin, mode pb.SendMode) (int, error) {
-	return s.enqueueInput(text, requestID, images, origin, mode, nil, nil)
+	return s.enqueueInput(text, requestID, images, nil, origin, mode, nil, nil)
 }
 
 func (s *session) enqueueUploaded(text, requestID string, ids []string, origin *pb.Origin, mode pb.SendMode) (int, error) {
-	return s.enqueueInput(text, requestID, nil, origin, mode, nil, func(id string) ([]queuedImage, error) {
+	return s.enqueueInput(text, requestID, nil, nil, origin, mode, nil, func(id string) (messageUploads, error) {
 		if len(ids) == 0 {
-			return nil, nil
+			return messageUploads{}, nil
 		}
 		owner, err := imageOwner(origin)
 		if err != nil {
-			return nil, err
+			return messageUploads{}, err
 		}
-		return s.d.uploads.take(ids, owner, s.meta.ID, id)
+		return s.d.uploads.takeUploads(ids, nil, owner, s.meta.ID, id)
 	})
 }
 
-func (s *session) enqueueInput(text, requestID string, images []queuedImage, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) ([]queuedImage, error)) (int, error) {
-	return s.enqueueInputContext(context.Background(), text, requestID, images, origin, mode, reserved, take)
+func (s *session) enqueueInput(text, requestID string, images []queuedImage, files []queuedFile, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) (messageUploads, error)) (int, error) {
+	return s.enqueueInputContext(context.Background(), text, requestID, images, files, origin, mode, reserved, take)
 }
-func (s *session) enqueueInputContext(ctx context.Context, text, requestID string, images []queuedImage, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) ([]queuedImage, error)) (int, error) {
+func (s *session) enqueueInputContext(ctx context.Context, text, requestID string, images []queuedImage, files []queuedFile, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) (messageUploads, error)) (int, error) {
 	if !humanOrigin(origin) {
-		return s.enqueueInputReady(text, requestID, images, origin, mode, reserved, take)
+		return s.enqueueInputReady(text, requestID, images, files, origin, mode, reserved, take)
 	}
 	// The lifecycle lock gives admission and automatic shutdown one order.
 	// Never hold it while asking resume to acquire that same lock.
@@ -189,9 +189,9 @@ func (s *session) enqueueInputContext(ctx context.Context, text, requestID strin
 		break
 	}
 	defer s.lifecycleMu.Unlock()
-	return s.enqueueInputReady(text, requestID, images, origin, mode, reserved, take)
+	return s.enqueueInputReady(text, requestID, images, files, origin, mode, reserved, take)
 }
-func (s *session) enqueueInputReady(text, requestID string, images []queuedImage, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) ([]queuedImage, error)) (int, error) {
+func (s *session) enqueueInputReady(text, requestID string, images []queuedImage, files []queuedFile, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) (messageUploads, error)) (int, error) {
 	if mode == pb.SendMode_SEND_MODE_UNSPECIFIED {
 		mode = pb.SendMode_SEND_MODE_STEER
 	}
@@ -222,16 +222,18 @@ func (s *session) enqueueInputReady(text, requestID string, images []queuedImage
 	defer reserved.release()
 	if take != nil {
 		var err error
-		images, err = take(requestID)
+		var all messageUploads
+		all, err = take(requestID)
+		images, files = all.Images, all.Files
 		if err != nil {
 			return 0, err
 		}
 	}
 	prevQueue, prevSeen := s.queue.Queue, s.queue.Seen
-	pos := s.queue.insert(input{Text: text, RequestID: requestID, Images: images, Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: mode})
+	pos := s.queue.insert(input{Text: text, RequestID: requestID, Images: images, Files: files, Composed: composeFiles(text, files, s.ag.Kind()), Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: mode})
 	s.queue.remember(requestID)
 	reserved.commit(s)
-	st := &pb.InputState{RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Text: text, Mode: mode}
+	st := &pb.InputState{RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Text: text, Mode: mode, Files: sentFiles(files)}
 	for _, im := range images {
 		st.ImageIds = append(st.ImageIds, im.ID)
 	}
@@ -241,6 +243,7 @@ func (s *session) enqueueInputReady(text, requestID string, images []queuedImage
 		s.trackPendingInput()
 		if take != nil {
 			s.d.uploads.untake(images, s.meta.ID, requestID)
+			s.d.uploads.untakeFiles(files, s.meta.ID, requestID)
 		}
 		return 0, err
 	}
@@ -437,7 +440,7 @@ func (s *session) inject(in input) (inputOutcome, error) {
 		s.unmarkInflight(in.RequestID, pb.InputStage_INPUT_STAGE_WAITING)
 		return notWritten, nil
 	}
-	if err := c.Write(s.ag.Paste(in.Text)); err != nil {
+	if err := c.Write(s.ag.Paste(in.messageText())); err != nil {
 		// A failed reply does not prove the bytes were not written, so
 		// the message is only settled from the CLI's records, never
 		// resent.
@@ -649,6 +652,7 @@ func (s *session) finishInput(in input, status pb.InputStatus, reason string) {
 		return // the session exited and reports it, or it stays for another try
 	}
 	s.d.uploads.releaseRefs(in.Images, s.meta.ID, in.RequestID)
+	s.d.uploads.releaseFiles(in.Files, s.meta.ID, in.RequestID)
 }
 
 // heads reports whether requestID is the head message.
@@ -722,7 +726,7 @@ func (in input) matches(recorded string) bool {
 		}
 		recorded = stripped
 	}
-	return normalizeText(recorded) == normalizeText(in.Text)
+	return normalizeText(recorded) == normalizeText(in.messageText())
 }
 
 // matchesMessage reports whether a parsed user message is this message,
@@ -773,6 +777,7 @@ func (s *session) loggedUserMessage(in input) bool {
 // nothing was written for came from the local terminal. It returns what
 // uses the match up, run once the event is logged. Callers hold s.mu.
 func (s *session) annotateUserMessage(e *pb.Event, m *pb.UserMessage) func() {
+	m.Files = s.d.uploads.recognizeFiles(s.meta.ID, m.Text)
 	type cand struct {
 		in   input
 		head bool

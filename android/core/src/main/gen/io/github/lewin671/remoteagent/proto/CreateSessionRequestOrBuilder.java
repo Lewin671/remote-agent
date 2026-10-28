@@ -258,4 +258,49 @@ java.lang.String defaultValue);
    * @return The standardContext.
    */
   boolean getStandardContext();
+
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @return A list containing the fileIds.
+   */
+  java.util.List<java.lang.String>
+      getFileIdsList();
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @return The count of fileIds.
+   */
+  int getFileIdsCount();
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @param index The index of the element to return.
+   * @return The fileIds at the given index.
+   */
+  java.lang.String getFileIds(int index);
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @param index The index of the element to return.
+   * @return The fileIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getFileIdsBytes(int index);
 }

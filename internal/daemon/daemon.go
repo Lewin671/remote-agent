@@ -463,7 +463,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaSh
 
 func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionRequest, origin *pb.Origin, viaShell, terminal bool, pathFrom string) (*session, error) {
 	var firstInput *inputReservation
-	if strings.TrimSpace(req.Prompt) != "" || len(req.ImageIds) > 0 {
+	if strings.TrimSpace(req.Prompt) != "" || len(req.ImageIds) > 0 || len(req.FileIds) > 0 {
 		var err error
 		firstInput, err = d.reserveInput("", nil, req.Prompt)
 		if err != nil {
@@ -490,11 +490,11 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	}
 	// The first message's images must be here before a session starts.
 	owner := ""
-	if len(req.ImageIds) > 0 {
+	if len(req.ImageIds) > 0 || len(req.FileIds) > 0 {
 		if owner, err = imageOwner(origin); err != nil {
 			return nil, err
 		}
-		if err := d.uploads.check(req.ImageIds, owner); err != nil {
+		if err := d.uploads.checkUploads(req.ImageIds, req.FileIds, owner); err != nil {
 			return nil, err
 		}
 	}
@@ -558,7 +558,8 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	// The first message's images move into the session before the CLI
 	// starts: if they cannot, nothing starts.
 	firstRequest := newID(8)
-	images, err := d.uploads.take(req.ImageIds, owner, id, firstRequest)
+	all, err := d.uploads.takeUploads(req.ImageIds, req.FileIds, owner, id, firstRequest)
+	images, files := all.Images, all.Files
 	if err != nil {
 		os.Remove(envFile)
 		log.Close()
@@ -566,6 +567,7 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	}
 	fail := func(err error) (*session, error) {
 		d.uploads.untake(images, id, firstRequest)
+		d.uploads.untakeFiles(files, id, firstRequest)
 		log.Close()
 		_ = os.RemoveAll(dir) // a session that never started leaves nothing
 		return nil, err
@@ -599,11 +601,11 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 		return fail(err)
 	}
 	var acceptedErr error
-	if strings.TrimSpace(req.Prompt) != "" || len(images) > 0 {
+	if strings.TrimSpace(req.Prompt) != "" || len(images) > 0 || len(files) > 0 {
 		// Queued like any message: it is written once the CLI shows its
 		// input box, after startup prompts are answered. A session whose
 		// first message cannot be accepted is not started.
-		if _, err := s.enqueueInput(req.Prompt, firstRequest, images, origin, pb.SendMode_SEND_MODE_STEER, firstInput, nil); err != nil {
+		if _, err := s.enqueueInput(req.Prompt, firstRequest, images, files, origin, pb.SendMode_SEND_MODE_STEER, firstInput, nil); err != nil {
 			if !queueAccepted(err) {
 				_ = d.cfg.Tmux.KillSession(m.Tmux)
 				return fail(err)

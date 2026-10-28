@@ -60,6 +60,7 @@ type sentInput struct {
 	text    string
 	origin  *pb.Origin
 	images  bool
+	files   []*pb.SentFile
 	written bool
 	last    loggedInput
 }
@@ -180,7 +181,7 @@ func (l *logged) note(e *pb.Event) {
 			if !wanted && (st.Status != pb.InputStatus_INPUT_STATUS_QUEUED || st.Stage != pb.InputStage_INPUT_STAGE_SUBMITTING) {
 				return
 			}
-			in = &sentInput{text: st.Text, origin: e.Origin, images: len(st.ImageIds) > 0}
+			in = &sentInput{text: st.Text, origin: e.Origin, images: len(st.ImageIds) > 0, files: st.Files}
 			l.sent[id] = in
 		}
 		in.last = state
@@ -224,7 +225,11 @@ func (l *logged) note(e *pb.Event) {
 func (s *session) restoreRecent(l *logged) {
 	for _, id := range l.written {
 		if in := l.sent[id]; in != nil && !in.images {
-			s.recent = append(s.recent, input{Text: in.text, RequestID: id, Origin: storeOrigin(in.origin)})
+			var files []queuedFile
+			for _, f := range in.files {
+				files = append(files, queuedFile{f.FileId, f.Name, f.SizeBytes, f.Path})
+			}
+			s.recent = append(s.recent, input{Text: in.text, Files: files, Composed: composeFiles(in.text, files, s.meta.Agent), RequestID: id, Origin: storeOrigin(in.origin)})
 		}
 	}
 	for _, in := range s.queue.Held {

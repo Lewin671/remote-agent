@@ -7,7 +7,8 @@ package io.github.lewin671.remoteagent.proto;
 
 /**
  * <pre>
- * ImageUploadStatus is the state of a transfer, returned by every upload
+ * The image-named transfer RPCs carry both images and arbitrary files.
+ * ImageUploadStatus is the state of either transfer, returned by every upload
  * call. Unknown or expired transfers fail with "not_found".
  * </pre>
  *
@@ -22,6 +23,7 @@ public  final class ImageUploadStatus extends
   private ImageUploadStatus() {
     transferId_ = "";
     imageId_ = "";
+    fileId_ = "";
   }
   public static final int TRANSFER_ID_FIELD_NUMBER = 1;
   private java.lang.String transferId_;
@@ -384,6 +386,74 @@ public  final class ImageUploadStatus extends
     maxChunkBytes_ = 0;
   }
 
+  public static final int FILE_ID_FIELD_NUMBER = 10;
+  private java.lang.String fileId_;
+  /**
+   * <pre>
+   * Set for a completed file transfer; image_id stays empty.
+   * </pre>
+   *
+   * <code>string file_id = 10 [json_name = "fileId"];</code>
+   * @return The fileId.
+   */
+  @java.lang.Override
+  public java.lang.String getFileId() {
+    return fileId_;
+  }
+  /**
+   * <pre>
+   * Set for a completed file transfer; image_id stays empty.
+   * </pre>
+   *
+   * <code>string file_id = 10 [json_name = "fileId"];</code>
+   * @return The bytes for fileId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFileIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(fileId_);
+  }
+  /**
+   * <pre>
+   * Set for a completed file transfer; image_id stays empty.
+   * </pre>
+   *
+   * <code>string file_id = 10 [json_name = "fileId"];</code>
+   * @param value The fileId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFileId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    fileId_ = value;
+  }
+  /**
+   * <pre>
+   * Set for a completed file transfer; image_id stays empty.
+   * </pre>
+   *
+   * <code>string file_id = 10 [json_name = "fileId"];</code>
+   */
+  private void clearFileId() {
+
+    fileId_ = getDefaultInstance().getFileId();
+  }
+  /**
+   * <pre>
+   * Set for a completed file transfer; image_id stays empty.
+   * </pre>
+   *
+   * <code>string file_id = 10 [json_name = "fileId"];</code>
+   * @param value The bytes for fileId to set.
+   */
+  private void setFileIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    fileId_ = value.toStringUtf8();
+
+  }
+
   public static io.github.lewin671.remoteagent.proto.ImageUploadStatus parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -469,7 +539,8 @@ public  final class ImageUploadStatus extends
 
   /**
    * <pre>
-   * ImageUploadStatus is the state of a transfer, returned by every upload
+   * The image-named transfer RPCs carry both images and arbitrary files.
+   * ImageUploadStatus is the state of either transfer, returned by every upload
    * call. Unknown or expired transfers fail with "not_found".
    * </pre>
    *
@@ -865,6 +936,75 @@ public  final class ImageUploadStatus extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Set for a completed file transfer; image_id stays empty.
+     * </pre>
+     *
+     * <code>string file_id = 10 [json_name = "fileId"];</code>
+     * @return The fileId.
+     */
+    @java.lang.Override
+    public java.lang.String getFileId() {
+      return instance.getFileId();
+    }
+    /**
+     * <pre>
+     * Set for a completed file transfer; image_id stays empty.
+     * </pre>
+     *
+     * <code>string file_id = 10 [json_name = "fileId"];</code>
+     * @return The bytes for fileId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getFileIdBytes() {
+      return instance.getFileIdBytes();
+    }
+    /**
+     * <pre>
+     * Set for a completed file transfer; image_id stays empty.
+     * </pre>
+     *
+     * <code>string file_id = 10 [json_name = "fileId"];</code>
+     * @param value The fileId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFileId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setFileId(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Set for a completed file transfer; image_id stays empty.
+     * </pre>
+     *
+     * <code>string file_id = 10 [json_name = "fileId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFileId() {
+      copyOnWrite();
+      instance.clearFileId();
+      return this;
+    }
+    /**
+     * <pre>
+     * Set for a completed file transfer; image_id stays empty.
+     * </pre>
+     *
+     * <code>string file_id = 10 [json_name = "fileId"];</code>
+     * @param value The bytes for fileId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFileIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setFileIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ImageUploadStatus)
   }
   @java.lang.Override
@@ -890,10 +1030,11 @@ public  final class ImageUploadStatus extends
             "height_",
             "expiresMs_",
             "maxChunkBytes_",
+            "fileId_",
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0000\u0001\t\t\u0000\u0000\u0000\u0001\u0208\u0002\f\u0003\u0002" +
-              "\u0004\u0002\u0005\u0208\u0006\u0004\u0007\u0004\b\u0002\t\u0004";
+              "\u0000\n\u0000\u0000\u0001\n\n\u0000\u0000\u0000\u0001\u0208\u0002\f\u0003\u0002" +
+              "\u0004\u0002\u0005\u0208\u0006\u0004\u0007\u0004\b\u0002\t\u0004\n\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

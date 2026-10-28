@@ -12,7 +12,9 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260929172509-b39ff6d641ec
 	golang.org/x/image v0.46.0
+	golang.org/x/sys v0.48.0
 	golang.org/x/term v0.45.0
+	golang.org/x/text v0.42.0
 	google.golang.org/protobuf v1.36.10
 	modernc.org/sqlite v1.60.1
 	rsc.io/qr v0.2.0
@@ -32,7 +34,6 @@ require (
 	golang.org/x/crypto v0.56.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	modernc.org/libc v1.77.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect

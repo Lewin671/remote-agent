@@ -315,6 +315,9 @@ func (d *Daemon) capabilities() *pb.MachineCapabilities {
 	c := &pb.MachineCapabilities{ScheduledTasks: true}
 	if d.uploads.usable() {
 		c.ImageUpload = true
+		c.FileUpload = true
+		c.MaxFileUploadBytes = maxFileUploadBytes
+		c.MaxFilesPerMessage = maxMessageFiles
 		c.MaxImagesPerMessage = maxMessageImages
 		c.MaxUploadBytes = maxUploadBytes
 		c.MaxChunkBytes = maxUploadChunk

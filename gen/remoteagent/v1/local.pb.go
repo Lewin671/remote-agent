@@ -561,8 +561,11 @@ type CreateSessionRequest struct {
 	// Claude Code only: hold the session to the standard context window
 	// instead of the 1M one its models otherwise get.
 	StandardContext bool `protobuf:"varint,11,opt,name=standard_context,json=standardContext,proto3" json:"standard_context,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Completed file uploads owned by the signing device, in order (at most 6).
+	// Needs file_upload. The prompt may be empty with images or files.
+	FileIds       []string `protobuf:"bytes,12,rep,name=file_ids,json=fileIds,proto3" json:"file_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateSessionRequest) Reset() {
@@ -663,6 +666,13 @@ func (x *CreateSessionRequest) GetStandardContext() bool {
 		return x.StandardContext
 	}
 	return false
+}
+
+func (x *CreateSessionRequest) GetFileIds() []string {
+	if x != nil {
+		return x.FileIds
+	}
+	return nil
 }
 
 type CreateSessionResponse struct {
@@ -889,7 +899,7 @@ func (x *GetSessionResponse) GetSession() *Session {
 type SendRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// May be empty when image_ids are given.
+	// May be empty when image_ids or file_ids are given.
 	Text string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
 	// Stable ID chosen by the caller; retries with the same ID are not sent twice.
 	RequestId string `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
@@ -902,7 +912,9 @@ type SendRequest struct {
 	// When a turn is running: steer (the default) writes the message as soon
 	// as the input box is free, into the current turn; queue holds it until
 	// the turn ends. The same while idle. Needs MachineCapabilities.send_modes.
-	Mode          SendMode `protobuf:"varint,5,opt,name=mode,proto3,enum=remoteagent.v1.SendMode" json:"mode,omitempty"`
+	Mode SendMode `protobuf:"varint,5,opt,name=mode,proto3,enum=remoteagent.v1.SendMode" json:"mode,omitempty"`
+	// As-is files, referenced in the injected text; needs file_upload.
+	FileIds       []string `protobuf:"bytes,6,rep,name=file_ids,json=fileIds,proto3" json:"file_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -970,6 +982,13 @@ func (x *SendRequest) GetMode() SendMode {
 		return x.Mode
 	}
 	return SendMode_SEND_MODE_UNSPECIFIED
+}
+
+func (x *SendRequest) GetFileIds() []string {
+	if x != nil {
+		return x.FileIds
+	}
+	return nil
 }
 
 type SendResponse struct {
@@ -3114,7 +3133,8 @@ func (x *ForkSessionResponse) GetSession() *Session {
 	return nil
 }
 
-// ImageUploadStatus is the state of a transfer, returned by every upload
+// The image-named transfer RPCs carry both images and arbitrary files.
+// ImageUploadStatus is the state of either transfer, returned by every upload
 // call. Unknown or expired transfers fail with "not_found".
 type ImageUploadStatus struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
@@ -3134,6 +3154,8 @@ type ImageUploadStatus struct {
 	ExpiresMs int64 `protobuf:"varint,8,opt,name=expires_ms,json=expiresMs,proto3" json:"expires_ms,omitempty"`
 	// Most bytes one PutImageChunk may carry.
 	MaxChunkBytes int32 `protobuf:"varint,9,opt,name=max_chunk_bytes,json=maxChunkBytes,proto3" json:"max_chunk_bytes,omitempty"`
+	// Set for a completed file transfer; image_id stays empty.
+	FileId        string `protobuf:"bytes,10,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3231,6 +3253,13 @@ func (x *ImageUploadStatus) GetMaxChunkBytes() int32 {
 	return 0
 }
 
+func (x *ImageUploadStatus) GetFileId() string {
+	if x != nil {
+		return x.FileId
+	}
+	return ""
+}
+
 type BeginImageUploadRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 128 random bits, hex, chosen by the client. Beginning the same
@@ -3242,7 +3271,11 @@ type BeginImageUploadRequest struct {
 	// At most MachineCapabilities.max_upload_bytes.
 	TotalBytes int64 `protobuf:"varint,3,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
 	// SHA-256 of the whole file, checked on completion.
-	Sha256        []byte `protobuf:"bytes,4,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	Sha256 []byte `protobuf:"bytes,4,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	// Nonempty selects an as-is file transfer (needs file_upload). Original name,
+	// at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+	// max_file_upload_bytes; completion checks only length and SHA-256.
+	FileName      string `protobuf:"bytes,5,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3303,6 +3336,13 @@ func (x *BeginImageUploadRequest) GetSha256() []byte {
 		return x.Sha256
 	}
 	return nil
+}
+
+func (x *BeginImageUploadRequest) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
 }
 
 type BeginImageUploadResponse struct {
@@ -3543,7 +3583,8 @@ func (x *GetImageUploadStatusResponse) GetStatus() *ImageUploadStatus {
 	return nil
 }
 
-// CompleteImageUploadRequest checks the length, hash and format and that
+// For files completion checks length and hash only, preserving all bytes.
+// CompleteImageUploadRequest checks the image length, hash and format and that
 // the image decodes, then makes it ready to send. Completing again returns
 // the same image ID.
 type CompleteImageUploadRequest struct {
@@ -4049,7 +4090,7 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"task_owned\x18$ \x01(\bR\ttaskOwned\"S\n" +
 	"\x17MachineReplacementProof\x12\x1a\n" +
 	"\bapproval\x18\x01 \x01(\fR\bapproval\x12\x1c\n" +
-	"\tsignature\x18\x02 \x01(\fR\tsignature\"\xa8\x03\n" +
+	"\tsignature\x18\x02 \x01(\fR\tsignature\"\xc3\x03\n" +
 	"\x14CreateSessionRequest\x12\x10\n" +
 	"\x03cwd\x18\x01 \x01(\tR\x03cwd\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\x12?\n" +
@@ -4060,7 +4101,8 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x04mode\x18\a \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\x12+\n" +
 	"\x05agent\x18\b \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x1b\n" +
 	"\timage_ids\x18\t \x03(\tR\bimageIds\x12)\n" +
-	"\x10standard_context\x18\v \x01(\bR\x0fstandardContext\x1a6\n" +
+	"\x10standard_context\x18\v \x01(\bR\x0fstandardContext\x12\x19\n" +
+	"\bfile_ids\x18\f \x03(\tR\afileIds\x1a6\n" +
 	"\bEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\n" +
@@ -4075,7 +4117,7 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"G\n" +
 	"\x12GetSessionResponse\x121\n" +
-	"\asession\x18\x01 \x01(\v2\x17.remoteagent.v1.SessionR\asession\"\xaa\x01\n" +
+	"\asession\x18\x01 \x01(\v2\x17.remoteagent.v1.SessionR\asession\"\xc5\x01\n" +
 	"\vSendRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x12\n" +
@@ -4083,7 +4125,8 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
 	"request_id\x18\x03 \x01(\tR\trequestId\x12\x1b\n" +
 	"\timage_ids\x18\x04 \x03(\tR\bimageIds\x12,\n" +
-	"\x04mode\x18\x05 \x01(\x0e2\x18.remoteagent.v1.SendModeR\x04mode\"5\n" +
+	"\x04mode\x18\x05 \x01(\x0e2\x18.remoteagent.v1.SendModeR\x04mode\x12\x19\n" +
+	"\bfile_ids\x18\x06 \x03(\tR\afileIds\"5\n" +
 	"\fSendResponse\x12%\n" +
 	"\x0equeue_position\x18\x01 \x01(\x05R\rqueuePosition\"1\n" +
 	"\x10InterruptRequest\x12\x1d\n" +
@@ -4218,7 +4261,7 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"H\n" +
 	"\x13ForkSessionResponse\x121\n" +
-	"\asession\x18\x01 \x01(\v2\x17.remoteagent.v1.SessionR\asession\"\xc6\x02\n" +
+	"\asession\x18\x01 \x01(\v2\x17.remoteagent.v1.SessionR\asession\"\xdf\x02\n" +
 	"\x11ImageUploadStatus\x12\x1f\n" +
 	"\vtransfer_id\x18\x01 \x01(\tR\n" +
 	"transferId\x126\n" +
@@ -4231,14 +4274,17 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x06height\x18\a \x01(\x05R\x06height\x12\x1d\n" +
 	"\n" +
 	"expires_ms\x18\b \x01(\x03R\texpiresMs\x12&\n" +
-	"\x0fmax_chunk_bytes\x18\t \x01(\x05R\rmaxChunkBytes\"\xa8\x01\n" +
+	"\x0fmax_chunk_bytes\x18\t \x01(\x05R\rmaxChunkBytes\x12\x17\n" +
+	"\afile_id\x18\n" +
+	" \x01(\tR\x06fileId\"\xc5\x01\n" +
 	"\x17BeginImageUploadRequest\x12\x1f\n" +
 	"\vtransfer_id\x18\x01 \x01(\tR\n" +
 	"transferId\x123\n" +
 	"\x06format\x18\x02 \x01(\x0e2\x1b.remoteagent.v1.ImageFormatR\x06format\x12\x1f\n" +
 	"\vtotal_bytes\x18\x03 \x01(\x03R\n" +
 	"totalBytes\x12\x16\n" +
-	"\x06sha256\x18\x04 \x01(\fR\x06sha256\"U\n" +
+	"\x06sha256\x18\x04 \x01(\fR\x06sha256\x12\x1b\n" +
+	"\tfile_name\x18\x05 \x01(\tR\bfileName\"U\n" +
 	"\x18BeginImageUploadResponse\x129\n" +
 	"\x06status\x18\x01 \x01(\v2!.remoteagent.v1.ImageUploadStatusR\x06status\"c\n" +
 	"\x14PutImageChunkRequest\x12\x1f\n" +

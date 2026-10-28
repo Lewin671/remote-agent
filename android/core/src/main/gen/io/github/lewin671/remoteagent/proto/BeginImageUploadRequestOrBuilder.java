@@ -72,4 +72,28 @@ public interface BeginImageUploadRequestOrBuilder extends
    * @return The sha256.
    */
   com.google.protobuf.ByteString getSha256();
+
+  /**
+   * <pre>
+   * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+   * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+   * max_file_upload_bytes; completion checks only length and SHA-256.
+   * </pre>
+   *
+   * <code>string file_name = 5 [json_name = "fileName"];</code>
+   * @return The fileName.
+   */
+  java.lang.String getFileName();
+  /**
+   * <pre>
+   * Nonempty selects an as-is file transfer (needs file_upload). Original name,
+   * at most 255 UTF-8 bytes. format must be UNSPECIFIED, total_bytes at most
+   * max_file_upload_bytes; completion checks only length and SHA-256.
+   * </pre>
+   *
+   * <code>string file_name = 5 [json_name = "fileName"];</code>
+   * @return The bytes for fileName.
+   */
+  com.google.protobuf.ByteString
+      getFileNameBytes();
 }

@@ -318,7 +318,7 @@ func (s *session) observe(e *pb.Event) {
 			s.turnPrompt = k.UserMessage.Text
 		}
 		if s.title == "" {
-			s.title = titleFrom(k.UserMessage.Text)
+			s.title = titleFrom(fileMessageText(k.UserMessage))
 		}
 	case *pb.Event_AgentMessage:
 		s.turnOutput = true
@@ -1147,6 +1147,7 @@ func (s *session) cancelInputBy(requestID string, origin *pb.Origin) error {
 	s.saveSettledLocked()
 	s.mu.Unlock()
 	s.d.uploads.releaseRefs(prev[idx].Images, s.meta.ID, requestID)
+	s.d.uploads.releaseFiles(prev[idx].Files, s.meta.ID, requestID)
 	return nil
 }
 

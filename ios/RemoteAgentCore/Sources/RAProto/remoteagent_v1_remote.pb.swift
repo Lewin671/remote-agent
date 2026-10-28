@@ -361,6 +361,13 @@ public struct PBMachineCapabilities: Sendable {
 
   public var scheduledTasks: Bool = false
 
+  /// Arbitrary files, as-is; requires an upload root without whitespace.
+  public var fileUpload: Bool = false
+
+  public var maxFileUploadBytes: Int64 = 0
+
+  public var maxFilesPerMessage: Int32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1730,7 +1737,7 @@ extension PBQuotaWindow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
 extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineCapabilities"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}image_upload\0\u{3}max_images_per_message\0\u{3}max_upload_bytes\0\u{3}max_chunk_bytes\0\u{3}upload_formats\0\u{4}\u{4}approval_always\0\u{4}\u{2}scheduled_tasks\0\u{c}\u{1}\u{1}\u{c}\u{7}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{b}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}image_upload\0\u{3}max_images_per_message\0\u{3}max_upload_bytes\0\u{3}max_chunk_bytes\0\u{3}upload_formats\0\u{4}\u{4}approval_always\0\u{4}\u{2}scheduled_tasks\0\u{3}file_upload\0\u{3}max_file_upload_bytes\0\u{3}max_files_per_message\0\u{c}\u{1}\u{1}\u{c}\u{7}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{b}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1745,6 +1752,9 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 6: try { try decoder.decodeRepeatedEnumField(value: &self.uploadFormats) }()
       case 10: try { try decoder.decodeSingularBoolField(value: &self.approvalAlways) }()
       case 12: try { try decoder.decodeSingularBoolField(value: &self.scheduledTasks) }()
+      case 13: try { try decoder.decodeSingularBoolField(value: &self.fileUpload) }()
+      case 14: try { try decoder.decodeSingularInt64Field(value: &self.maxFileUploadBytes) }()
+      case 15: try { try decoder.decodeSingularInt32Field(value: &self.maxFilesPerMessage) }()
       default: break
       }
     }
@@ -1772,6 +1782,15 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.scheduledTasks != false {
       try visitor.visitSingularBoolField(value: self.scheduledTasks, fieldNumber: 12)
     }
+    if self.fileUpload != false {
+      try visitor.visitSingularBoolField(value: self.fileUpload, fieldNumber: 13)
+    }
+    if self.maxFileUploadBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.maxFileUploadBytes, fieldNumber: 14)
+    }
+    if self.maxFilesPerMessage != 0 {
+      try visitor.visitSingularInt32Field(value: self.maxFilesPerMessage, fieldNumber: 15)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1783,6 +1802,9 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.uploadFormats != rhs.uploadFormats {return false}
     if lhs.approvalAlways != rhs.approvalAlways {return false}
     if lhs.scheduledTasks != rhs.scheduledTasks {return false}
+    if lhs.fileUpload != rhs.fileUpload {return false}
+    if lhs.maxFileUploadBytes != rhs.maxFileUploadBytes {return false}
+    if lhs.maxFilesPerMessage != rhs.maxFilesPerMessage {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

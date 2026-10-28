@@ -104,7 +104,7 @@ func (u *uploads) removeOriginal(t *transfer) error {
 
 // A minute also covers the gap between user-message and turn-start records.
 func reclaimable(t *transfer, pins map[string]bool) bool {
-	return t.Session != "" && len(t.Refs) == 0 && t.Embedded && !pins[t.Session] && time.Since(time.UnixMilli(t.AccessMs)) >= time.Minute
+	return t.FileID == "" && t.Session != "" && len(t.Refs) == 0 && t.Embedded && !pins[t.Session] && time.Since(time.UnixMilli(t.AccessMs)) >= time.Minute
 }
 
 func (u *uploads) records() ([]*transfer, error) {
@@ -172,13 +172,13 @@ func (u *uploads) usage(clean bool, pins map[string]bool) (*pb.ImageStorageUsage
 				return nil, err
 			}
 		}
-		if t.ImageID == "" {
+		if t.artifactID() == "" {
 			usage.ReservedBytes += max(int64(0), t.Total-t.Persisted)
 			continue
 		}
-		path := u.pending(t.ImageID + "." + imageproc.Ext(t.Format))
+		path := u.pending(t.relativeName())
 		if t.Session != "" {
-			path = filepath.Join(u.sessionDir(t.Session), filepath.Base(path))
+			path = t.sessionPath(u)
 		}
 		fi, err := os.Stat(path)
 		if err != nil {
@@ -222,7 +222,7 @@ func (u *uploads) usage(clean bool, pins map[string]bool) (*pb.ImageStorageUsage
 			// Files without a record (a crash between the two writes) count
 			// as protected, rather than disappearing from the breakdown.
 			ext := filepath.Ext(path)
-			if !known[path] && (ext == ".part" || ext == ".png" || ext == ".jpg" || ext == ".webp" || ext == ".gif") {
+			if !known[path] && uploadDataPath(u.dir, path, ext) {
 				usage.ProtectedBytes += fi.Size()
 				rel, _ := filepath.Rel(u.dir, path)
 				owner := strings.Split(rel, string(filepath.Separator))[0]
@@ -418,7 +418,12 @@ func (u *uploads) restoreRefs(s *session, records []*transfer) {
 	defer u.mu.Unlock()
 	for _, t := range records {
 		refs := map[string]bool{}
-		for _, in := range s.queue.Queue {
+		for _, in := range append(append([]input{}, s.queue.Queue...), s.queue.Held...) {
+			for _, f := range in.Files {
+				if f.ID == t.FileID {
+					refs[in.RequestID] = true
+				}
+			}
 			for _, im := range in.Images {
 				if im.ID == t.ImageID {
 					refs[in.RequestID] = true
@@ -432,7 +437,7 @@ func (u *uploads) restoreRefs(s *session, records []*transfer) {
 		if err := u.save(t); err != nil {
 			continue
 		}
-		if len(refs) == 0 && !t.Exposed {
+		if t.FileID == "" && len(refs) == 0 && !t.Exposed {
 			_ = u.removeOriginal(t)
 		}
 	}

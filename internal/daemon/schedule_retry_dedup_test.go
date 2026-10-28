@@ -38,7 +38,7 @@ func TestAcceptedInputRetryHasNoLifecycleSideEffects(t *testing.T) {
 					wg.Add(1)
 					go func() {
 						defer wg.Done()
-						pos, err := h.s.enqueueInputContext(context.Background(), "retry", "accepted", nil, origin, pb.SendMode_SEND_MODE_QUEUE, nil, func(string) ([]queuedImage, error) { t.Error("retry consumed images"); return nil, nil })
+						pos, err := h.s.enqueueInputContext(context.Background(), "retry", "accepted", nil, nil, origin, pb.SendMode_SEND_MODE_QUEUE, nil, func(string) (messageUploads, error) { t.Error("retry consumed images"); return messageUploads{}, nil })
 						if err != nil || pos != 0 {
 							t.Errorf("retry: pos=%d err=%v", pos, err)
 						}

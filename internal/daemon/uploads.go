@@ -11,11 +11,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -36,12 +36,14 @@ import (
 // session's images when it ends.
 
 const (
-	maxUploadBytes   = 20 << 20
-	maxUploadChunk   = 768 << 10
-	maxMessageImages = 6
-	partialTTL       = time.Hour
-	unusedTTL        = 24 * time.Hour
-	maxUploadStorage = int64(1 << 30)
+	maxFileUploadBytes = 100 << 20
+	maxMessageFiles    = 6
+	maxUploadBytes     = 20 << 20
+	maxUploadChunk     = 768 << 10
+	maxMessageImages   = 6
+	partialTTL         = time.Hour
+	unusedTTL          = 24 * time.Hour
+	maxUploadStorage   = int64(1 << 30)
 )
 
 var uploadFormats = []pb.ImageFormat{
@@ -52,6 +54,9 @@ var uploadFormats = []pb.ImageFormat{
 // transfer is uploads/partial/<id>.json.
 type transfer struct {
 	ID        string         `json:"id"`
+	FileName  string         `json:"file_name,omitempty"`
+	SafeName  string         `json:"safe_name,omitempty"`
+	FileID    string         `json:"file_id,omitempty"`
 	Device    string         `json:"device"`
 	Format    pb.ImageFormat `json:"format"`
 	Total     int64          `json:"total"`
@@ -75,7 +80,7 @@ func (t *transfer) state() pb.ImageUploadState {
 	switch {
 	case t.Session != "":
 		return pb.ImageUploadState_IMAGE_UPLOAD_STATE_USED
-	case t.ImageID != "":
+	case t.artifactID() != "":
 		return pb.ImageUploadState_IMAGE_UPLOAD_STATE_COMPLETE
 	}
 	return pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING
@@ -84,7 +89,7 @@ func (t *transfer) state() pb.ImageUploadState {
 func (t *transfer) status() *pb.ImageUploadStatus {
 	st := &pb.ImageUploadStatus{
 		TransferId: t.ID, State: t.state(), PersistedBytes: t.Persisted, TotalBytes: t.Total,
-		ImageId: t.ImageID, Width: t.Width, Height: t.Height, MaxChunkBytes: maxUploadChunk,
+		ImageId: t.ImageID, FileId: t.FileID, Width: t.Width, Height: t.Height, MaxChunkBytes: maxUploadChunk,
 	}
 	switch t.state() {
 	case pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING:
@@ -146,7 +151,7 @@ func (u *uploads) load(id string) (*transfer, error) {
 }
 
 func (t *transfer) expiresMs() int64 {
-	if t.ImageID == "" {
+	if t.artifactID() == "" {
 		return t.UpdatedMs + partialTTL.Milliseconds()
 	}
 	return t.CompletedMs + unusedTTL.Milliseconds()
@@ -196,9 +201,15 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 	switch {
 	case !validHexID(req.TransferId):
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a transfer ID is 32 hex digits"))
-	case imageproc.Ext(req.Format) == "":
+	case req.FileName != "" && (!utf8.ValidString(req.FileName) || len(req.FileName) > 255):
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("file_name must be at most 255 UTF-8 bytes"))
+	case req.FileName != "" && req.Format != pb.ImageFormat_IMAGE_FORMAT_UNSPECIFIED:
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a file transfer must use UNSPECIFIED format"))
+	case req.FileName == "" && imageproc.Ext(req.Format) == "":
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the format must be PNG, JPEG, WebP or GIF"))
-	case req.TotalBytes <= 0 || req.TotalBytes > maxUploadBytes:
+	case req.FileName != "" && (req.TotalBytes < 0 || req.TotalBytes > maxFileUploadBytes):
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a file must be 0 to %d bytes", maxFileUploadBytes))
+	case req.FileName == "" && (req.TotalBytes <= 0 || req.TotalBytes > maxUploadBytes):
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("an image must be 1 to %d bytes", maxUploadBytes))
 	case len(req.Sha256) != sha256.Size:
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("sha256 must be 32 bytes"))
@@ -210,7 +221,7 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 		if err := u.owned(t, device); err != nil {
 			return nil, err
 		}
-		if t.Format != req.Format || t.Total != req.TotalBytes || !bytes.Equal(t.SHA256, req.Sha256) {
+		if t.FileName != req.FileName || t.Format != req.Format || t.Total != req.TotalBytes || !bytes.Equal(t.SHA256, req.Sha256) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("the transfer exists with other parameters"))
 		}
 		return t.status(), nil
@@ -226,7 +237,7 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 			return nil, err
 		}
 	}
-	t := &transfer{ID: req.TransferId, Device: device, Format: req.Format, Total: req.TotalBytes, SHA256: req.Sha256, UpdatedMs: time.Now().UnixMilli()}
+	t := &transfer{FileName: req.FileName, SafeName: safeFileName(req.FileName), ID: req.TransferId, Device: device, Format: req.Format, Total: req.TotalBytes, SHA256: req.Sha256, UpdatedMs: time.Now().UnixMilli()}
 	f, err := os.OpenFile(u.partial(t.ID)+".part", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, err
@@ -312,6 +323,9 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 	if t.Persisted != t.Total {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("only %d of %d bytes arrived", t.Persisted, t.Total))
 	}
+	if t.FileName != "" {
+		return u.completeFile(t)
+	}
 	permit := imageproc.Acquire()
 	defer permit.Release()
 	data, err := os.ReadFile(u.partial(t.ID) + ".part")
@@ -389,8 +403,8 @@ func (u *uploads) remove(id string) {
 	b, err := os.ReadFile(u.partial(id) + ".json")
 	if err == nil {
 		t := &transfer{}
-		if json.Unmarshal(b, t) == nil && t.ImageID != "" && t.Session == "" {
-			if err := os.Remove(u.pending(t.ImageID + "." + imageproc.Ext(t.Format))); err != nil && !os.IsNotExist(err) {
+		if json.Unmarshal(b, t) == nil && t.artifactID() != "" && t.Session == "" {
+			if err := os.RemoveAll(u.pending(t.relativeName())); err != nil && !os.IsNotExist(err) {
 				slog.Error("remove unused image", "image", t.ImageID, "err", errClass(err))
 				return // keep its record so GC can retry
 			}
@@ -426,118 +440,12 @@ type queuedImage struct {
 // same device; an image this session already used (a message resent after
 // it failed) may be named again. Nothing moves unless all can.
 func (u *uploads) take(ids []string, device, sessionID, request string) ([]queuedImage, error) {
-	if len(ids) == 0 {
-		return nil, nil
-	}
-	if len(ids) > maxMessageImages {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a message has at most %d images", maxMessageImages))
-	}
-	u.mu.Lock()
-	defer u.mu.Unlock()
-	var ts []*transfer
-	seen := map[string]bool{}
-	for _, id := range ids {
-		t := u.byImage(id)
-		switch {
-		case !validHexID(id) || t == nil:
-			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("image %s is not on this machine; upload it again", id))
-		case seen[id]:
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("image %s is named twice", id))
-		case t.Device != device:
-			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("image %s was sent by another device", id))
-		case t.Session != "" && t.Session != sessionID:
-			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("image %s belongs to another session", id))
-		}
-		seen[id] = true
-		ts = append(ts, t)
-	}
-	if err := os.MkdirAll(u.sessionDir(sessionID), 0o700); err != nil {
-		return nil, err
-	}
-	// Ownership is saved before a file moves, so that a crash between
-	// the two leaves a record reconcile can finish; unsaved ownership
-	// fails the call before anything moves.
-	var claimed []*transfer
-	release := func() {
-		for _, t := range claimed {
-			t.Session = ""
-			if err := u.save(t); err != nil {
-				slog.Error("save transfer", "transfer", t.ID, "err", errClass(err))
-			}
-		}
-	}
-	for _, t := range ts {
-		if t.Session == "" {
-			t.Session = sessionID
-			if err := u.save(t); err != nil {
-				t.Session = ""
-				release()
-				return nil, err
-			}
-			claimed = append(claimed, t)
-		}
-	}
-	var out []queuedImage
-	var moved []*transfer
-	undo := func() {
-		for _, t := range moved {
-			name := t.ImageID + "." + imageproc.Ext(t.Format)
-			_ = os.Rename(filepath.Join(u.sessionDir(sessionID), name), u.pending(name))
-		}
-		release()
-	}
-	for _, t := range ts {
-		name := t.ImageID + "." + imageproc.Ext(t.Format)
-		dst := filepath.Join(u.sessionDir(sessionID), name)
-		if slices.Contains(claimed, t) {
-			if err := os.Rename(u.pending(name), dst); err != nil {
-				undo()
-				return nil, err
-			}
-			moved = append(moved, t)
-		} else if _, err := os.Stat(dst); err != nil {
-			undo()
-			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("image %s is gone; upload it again", t.ImageID))
-		}
-		out = append(out, queuedImage{ID: t.ImageID, Path: dst})
-	}
-	for _, t := range ts {
-		if t.Refs == nil {
-			t.Refs = map[string]bool{}
-		}
-		t.Refs[request] = true
-		t.AccessMs = time.Now().UnixMilli()
-		if err := u.save(t); err != nil {
-			return nil, err
-		}
-	}
-	syncDir(u.sessionDir(sessionID))
-	syncDir(filepath.Join(u.dir, "pending"))
-	return out, nil
+	all, err := u.takeUploads(ids, nil, device, sessionID, request)
+	return all.Images, err
 }
 
-// check tells whether take would accept the images, without moving them.
 func (u *uploads) check(ids []string, device string) error {
-	if len(ids) > maxMessageImages {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a message has at most %d images", maxMessageImages))
-	}
-	u.mu.Lock()
-	defer u.mu.Unlock()
-	seen := map[string]bool{}
-	for _, id := range ids {
-		if seen[id] {
-			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("image %s is named twice", id))
-		}
-		seen[id] = true
-		t := u.byImage(id)
-		switch {
-		case !validHexID(id) || t == nil || t.Session != "":
-			return connect.NewError(connect.CodeNotFound, fmt.Errorf("image %s is not on this machine; upload it again", id))
-		case t.Device != device:
-			return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("image %s was sent by another device", id))
-		}
-	}
-	return nil
+	return u.checkUploads(ids, nil, device)
 }
 
 // reconcile finishes moves a crash cut short: an image recorded as a
@@ -552,15 +460,15 @@ func (u *uploads) reconcile() {
 			continue
 		}
 		t, err := u.load(strings.TrimSuffix(e.Name(), ".json"))
-		if err != nil || t.Session == "" || t.ImageID == "" {
+		if err != nil || t.Session == "" || t.artifactID() == "" {
 			continue
 		}
-		name := t.ImageID + "." + imageproc.Ext(t.Format)
+		name := t.relativeName()
 		if _, err := os.Stat(u.pending(name)); err != nil {
 			continue
 		}
-		if err := os.MkdirAll(u.sessionDir(t.Session), 0o700); err == nil {
-			if err := os.Rename(u.pending(name), filepath.Join(u.sessionDir(t.Session), name)); err != nil {
+		if err := os.MkdirAll(filepath.Dir(t.sessionPath(u)), 0o700); err == nil {
+			if err := os.Rename(u.pending(name), t.sessionPath(u)); err != nil {
 				slog.Error("finish image move", "image", t.ImageID, "err", errClass(err))
 			}
 		}
@@ -578,12 +486,15 @@ func (u *uploads) release(sessionID string) {
 			continue
 		}
 		t, err := u.load(strings.TrimSuffix(e.Name(), ".json"))
-		if err != nil || t.Session != sessionID || t.ImageID == "" {
+		if err != nil || t.Session != sessionID || t.artifactID() == "" {
 			continue
 		}
-		name := t.ImageID + "." + imageproc.Ext(t.Format)
-		src := filepath.Join(u.sessionDir(sessionID), name)
+		name := t.relativeName()
+		src := t.sessionPath(u)
 		if _, err := os.Stat(src); err == nil {
+			if err := os.MkdirAll(filepath.Dir(u.pending(name)), 0o700); err != nil {
+				continue
+			}
 			if err := os.Rename(src, u.pending(name)); err != nil {
 				slog.Error("return image", "image", t.ImageID, "err", errClass(err))
 				continue
@@ -684,7 +595,7 @@ func (u *uploads) gcLocked(now time.Time) {
 			}
 			continue
 		}
-		if t.Session != "" && len(t.Refs) == 0 && !t.Exposed {
+		if t.FileID == "" && t.Session != "" && len(t.Refs) == 0 && !t.Exposed {
 			if err := u.removeOriginal(t); err == nil {
 				continue
 			}
@@ -701,20 +612,20 @@ func (u *uploads) gcLocked(now time.Time) {
 			u.remove(t.ID)
 			continue
 		}
-		if t.ImageID != "" {
-			referenced[t.ImageID+"."+imageproc.Ext(t.Format)] = true
+		if t.artifactID() != "" {
+			referenced[strings.Split(t.relativeName(), string(filepath.Separator))[0]] = true
 			// Complete uploads no longer need the received original.
 			_ = os.Remove(u.partial(t.ID) + ".part")
 		}
 	}
 	pending, _ := os.ReadDir(filepath.Join(u.dir, "pending"))
 	for _, e := range pending {
-		if e.IsDir() || referenced[e.Name()] {
+		if referenced[e.Name()] {
 			continue
 		}
 		fi, err := e.Info()
 		if err == nil && (strings.HasSuffix(e.Name(), ".tmp") || now.Sub(fi.ModTime()) >= unusedTTL) {
-			if err := os.Remove(u.pending(e.Name())); err != nil {
+			if err := os.RemoveAll(u.pending(e.Name())); err != nil {
 				slog.Error("remove orphan image", "err", errClass(err))
 			}
 		}
@@ -771,7 +682,7 @@ func (u *uploads) room(add int64) error {
 				return err
 			}
 			var t transfer
-			if json.Unmarshal(b, &t) == nil && t.ImageID == "" && validHexID(t.ID) {
+			if json.Unmarshal(b, &t) == nil && t.artifactID() == "" && validHexID(t.ID) {
 				var received int64
 				if fi, err := os.Stat(u.partial(t.ID) + ".part"); err == nil {
 					received = fi.Size()

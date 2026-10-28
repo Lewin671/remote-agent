@@ -7,7 +7,8 @@ package io.github.lewin671.remoteagent.proto;
 
 /**
  * <pre>
- * CompleteImageUploadRequest checks the length, hash and format and that
+ * For files completion checks length and hash only, preserving all bytes.
+ * CompleteImageUploadRequest checks the image length, hash and format and that
  * the image decodes, then makes it ready to send. Completing again returns
  * the same image ID.
  * </pre>
@@ -156,7 +157,8 @@ public  final class CompleteImageUploadRequest extends
 
   /**
    * <pre>
-   * CompleteImageUploadRequest checks the length, hash and format and that
+   * For files completion checks length and hash only, preserving all bytes.
+   * CompleteImageUploadRequest checks the image length, hash and format and that
    * the image decodes, then makes it ready to send. Completing again returns
    * the same image ID.
    * </pre>

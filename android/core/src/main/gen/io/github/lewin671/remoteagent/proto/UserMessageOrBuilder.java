@@ -67,4 +67,30 @@ public interface UserMessageOrBuilder extends
    */
   com.google.protobuf.ByteString
       getRequestIdBytes();
+
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.SentFile> 
+      getFilesList();
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.SentFile getFiles(int index);
+  /**
+   * <pre>
+   * Recognized upload path lines. text remains exactly as the CLI recorded it.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 5 [json_name = "files"];</code>
+   */
+  int getFilesCount();
 }

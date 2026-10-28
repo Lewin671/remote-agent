@@ -157,4 +157,33 @@ public interface InputStateOrBuilder extends
    * @return The paused.
    */
   boolean getPaused();
+
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.SentFile> 
+      getFilesList();
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.SentFile getFiles(int index);
+  /**
+   * <pre>
+   * With the first QUEUED state: file references for the shared queue.
+   * text is the original user text, without the injected path lines.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SentFile files = 9 [json_name = "files"];</code>
+   */
+  int getFilesCount();
 }

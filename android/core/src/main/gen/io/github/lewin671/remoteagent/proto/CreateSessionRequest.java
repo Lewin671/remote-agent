@@ -21,6 +21,7 @@ public  final class CreateSessionRequest extends
     model_ = "";
     effort_ = "";
     imageIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+    fileIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   public static final int CWD_FIELD_NUMBER = 1;
   private java.lang.String cwd_;
@@ -788,6 +789,146 @@ java.lang.String defaultValue) {
   private void clearStandardContext() {
 
     standardContext_ = false;
+  }
+
+  public static final int FILE_IDS_FIELD_NUMBER = 12;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> fileIds_;
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @return A list containing the fileIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getFileIdsList() {
+    return fileIds_;
+  }
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @return The count of fileIds.
+   */
+  @java.lang.Override
+  public int getFileIdsCount() {
+    return fileIds_.size();
+  }
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @param index The index of the element to return.
+   * @return The fileIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getFileIds(int index) {
+    return fileIds_.get(index);
+  }
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the fileIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFileIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        fileIds_.get(index));
+  }
+  private void ensureFileIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        fileIds_;  if (!tmp.isModifiable()) {
+      fileIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The fileIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFileIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFileIdsIsMutable();
+    fileIds_.set(index, value);
+  }
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @param value The fileIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addFileIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFileIdsIsMutable();
+    fileIds_.add(value);
+  }
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @param values The fileIds to add.
+   */
+  private void addAllFileIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureFileIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, fileIds_);
+  }
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   */
+  private void clearFileIds() {
+    fileIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * Completed file uploads owned by the signing device, in order (at most 6).
+   * Needs file_upload. The prompt may be empty with images or files.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+   * @param value The bytes of the fileIds to add.
+   */
+  private void addFileIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureFileIdsIsMutable();
+    fileIds_.add(value.toStringUtf8());
   }
 
   public static io.github.lewin671.remoteagent.proto.CreateSessionRequest parseFrom(
@@ -1676,6 +1817,143 @@ java.lang.String defaultValue) {
       return this;
     }
 
+    /**
+     * <pre>
+     * Completed file uploads owned by the signing device, in order (at most 6).
+     * Needs file_upload. The prompt may be empty with images or files.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+     * @return A list containing the fileIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getFileIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getFileIdsList());
+    }
+    /**
+     * <pre>
+     * Completed file uploads owned by the signing device, in order (at most 6).
+     * Needs file_upload. The prompt may be empty with images or files.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+     * @return The count of fileIds.
+     */
+    @java.lang.Override
+    public int getFileIdsCount() {
+      return instance.getFileIdsCount();
+    }
+    /**
+     * <pre>
+     * Completed file uploads owned by the signing device, in order (at most 6).
+     * Needs file_upload. The prompt may be empty with images or files.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+     * @param index The index of the element to return.
+     * @return The fileIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getFileIds(int index) {
+      return instance.getFileIds(index);
+    }
+    /**
+     * <pre>
+     * Completed file uploads owned by the signing device, in order (at most 6).
+     * Needs file_upload. The prompt may be empty with images or files.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the fileIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getFileIdsBytes(int index) {
+      return instance.getFileIdsBytes(index);
+    }
+    /**
+     * <pre>
+     * Completed file uploads owned by the signing device, in order (at most 6).
+     * Needs file_upload. The prompt may be empty with images or files.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The fileIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFileIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setFileIds(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Completed file uploads owned by the signing device, in order (at most 6).
+     * Needs file_upload. The prompt may be empty with images or files.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+     * @param value The fileIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addFileIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addFileIds(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Completed file uploads owned by the signing device, in order (at most 6).
+     * Needs file_upload. The prompt may be empty with images or files.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+     * @param values The fileIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllFileIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllFileIds(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * Completed file uploads owned by the signing device, in order (at most 6).
+     * Needs file_upload. The prompt may be empty with images or files.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFileIds() {
+      copyOnWrite();
+      instance.clearFileIds();
+      return this;
+    }
+    /**
+     * <pre>
+     * Completed file uploads owned by the signing device, in order (at most 6).
+     * Needs file_upload. The prompt may be empty with images or files.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 12 [json_name = "fileIds"];</code>
+     * @param value The bytes of the fileIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addFileIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addFileIdsBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CreateSessionRequest)
   }
   @java.lang.Override
@@ -1703,10 +1981,12 @@ java.lang.String defaultValue) {
             "agent_",
             "imageIds_",
             "standardContext_",
+            "fileIds_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0000\u0001\u000b\n\u0001\u0002\u0000\u0001\u0208\u0002\u021a\u0003" +
-              "2\u0004\u0208\u0005\u0208\u0006\u0208\u0007\f\b\f\t\u021a\u000b\u0007";
+              "\u0000\u000b\u0000\u0000\u0001\f\u000b\u0001\u0003\u0000\u0001\u0208\u0002\u021a" +
+              "\u00032\u0004\u0208\u0005\u0208\u0006\u0208\u0007\f\b\f\t\u021a\u000b\u0007\f\u021a" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

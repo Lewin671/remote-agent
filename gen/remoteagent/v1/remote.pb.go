@@ -600,8 +600,12 @@ type MachineCapabilities struct {
 	// ResolveApprovalRequest.always.
 	ApprovalAlways bool `protobuf:"varint,10,opt,name=approval_always,json=approvalAlways,proto3" json:"approval_always,omitempty"`
 	ScheduledTasks bool `protobuf:"varint,12,opt,name=scheduled_tasks,json=scheduledTasks,proto3" json:"scheduled_tasks,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Arbitrary files, as-is; requires an upload root without whitespace.
+	FileUpload         bool  `protobuf:"varint,13,opt,name=file_upload,json=fileUpload,proto3" json:"file_upload,omitempty"`
+	MaxFileUploadBytes int64 `protobuf:"varint,14,opt,name=max_file_upload_bytes,json=maxFileUploadBytes,proto3" json:"max_file_upload_bytes,omitempty"`
+	MaxFilesPerMessage int32 `protobuf:"varint,15,opt,name=max_files_per_message,json=maxFilesPerMessage,proto3" json:"max_files_per_message,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *MachineCapabilities) Reset() {
@@ -681,6 +685,27 @@ func (x *MachineCapabilities) GetScheduledTasks() bool {
 		return x.ScheduledTasks
 	}
 	return false
+}
+
+func (x *MachineCapabilities) GetFileUpload() bool {
+	if x != nil {
+		return x.FileUpload
+	}
+	return false
+}
+
+func (x *MachineCapabilities) GetMaxFileUploadBytes() int64 {
+	if x != nil {
+		return x.MaxFileUploadBytes
+	}
+	return 0
+}
+
+func (x *MachineCapabilities) GetMaxFilesPerMessage() int32 {
+	if x != nil {
+		return x.MaxFilesPerMessage
+	}
+	return 0
 }
 
 type AgentInfo struct {
@@ -3190,7 +3215,7 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\fresets_at_ms\x18\x03 \x01(\x03R\n" +
 	"resetsAtMs\x12%\n" +
 	"\x0ewindow_minutes\x18\x04 \x01(\x03R\rwindowMinutesB\x0f\n" +
-	"\r_used_percent\"\xf3\x02\n" +
+	"\r_used_percent\"\xfa\x03\n" +
 	"\x13MachineCapabilities\x12!\n" +
 	"\fimage_upload\x18\x02 \x01(\bR\vimageUpload\x123\n" +
 	"\x16max_images_per_message\x18\x03 \x01(\x05R\x13maxImagesPerMessage\x12(\n" +
@@ -3199,7 +3224,11 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x0eupload_formats\x18\x06 \x03(\x0e2\x1b.remoteagent.v1.ImageFormatR\ruploadFormats\x12'\n" +
 	"\x0fapproval_always\x18\n" +
 	" \x01(\bR\x0eapprovalAlways\x12'\n" +
-	"\x0fscheduled_tasks\x18\f \x01(\bR\x0escheduledTasksJ\x04\b\x01\x10\x02J\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"\x0fscheduled_tasks\x18\f \x01(\bR\x0escheduledTasks\x12\x1f\n" +
+	"\vfile_upload\x18\r \x01(\bR\n" +
+	"fileUpload\x121\n" +
+	"\x15max_file_upload_bytes\x18\x0e \x01(\x03R\x12maxFileUploadBytes\x121\n" +
+	"\x15max_files_per_message\x18\x0f \x01(\x05R\x12maxFilesPerMessageJ\x04\b\x01\x10\x02J\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\v\x10\f\"\xb2\x02\n" +
 	"\tAgentInfo\x12+\n" +
 	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x18\n" +

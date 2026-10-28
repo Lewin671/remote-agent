@@ -19,6 +19,7 @@ public  final class SendRequest extends
     text_ = "";
     requestId_ = "";
     imageIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+    fileIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   public static final int SESSION_ID_FIELD_NUMBER = 1;
   private java.lang.String sessionId_;
@@ -72,7 +73,7 @@ public  final class SendRequest extends
   private java.lang.String text_;
   /**
    * <pre>
-   * May be empty when image_ids are given.
+   * May be empty when image_ids or file_ids are given.
    * </pre>
    *
    * <code>string text = 2 [json_name = "text"];</code>
@@ -84,7 +85,7 @@ public  final class SendRequest extends
   }
   /**
    * <pre>
-   * May be empty when image_ids are given.
+   * May be empty when image_ids or file_ids are given.
    * </pre>
    *
    * <code>string text = 2 [json_name = "text"];</code>
@@ -97,7 +98,7 @@ public  final class SendRequest extends
   }
   /**
    * <pre>
-   * May be empty when image_ids are given.
+   * May be empty when image_ids or file_ids are given.
    * </pre>
    *
    * <code>string text = 2 [json_name = "text"];</code>
@@ -112,7 +113,7 @@ public  final class SendRequest extends
   }
   /**
    * <pre>
-   * May be empty when image_ids are given.
+   * May be empty when image_ids or file_ids are given.
    * </pre>
    *
    * <code>string text = 2 [json_name = "text"];</code>
@@ -123,7 +124,7 @@ public  final class SendRequest extends
   }
   /**
    * <pre>
-   * May be empty when image_ids are given.
+   * May be empty when image_ids or file_ids are given.
    * </pre>
    *
    * <code>string text = 2 [json_name = "text"];</code>
@@ -443,6 +444,137 @@ public  final class SendRequest extends
     mode_ = 0;
   }
 
+  public static final int FILE_IDS_FIELD_NUMBER = 6;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> fileIds_;
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @return A list containing the fileIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getFileIdsList() {
+    return fileIds_;
+  }
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @return The count of fileIds.
+   */
+  @java.lang.Override
+  public int getFileIdsCount() {
+    return fileIds_.size();
+  }
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @param index The index of the element to return.
+   * @return The fileIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getFileIds(int index) {
+    return fileIds_.get(index);
+  }
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the fileIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFileIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        fileIds_.get(index));
+  }
+  private void ensureFileIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        fileIds_;  if (!tmp.isModifiable()) {
+      fileIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The fileIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFileIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFileIdsIsMutable();
+    fileIds_.set(index, value);
+  }
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @param value The fileIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addFileIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureFileIdsIsMutable();
+    fileIds_.add(value);
+  }
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @param values The fileIds to add.
+   */
+  private void addAllFileIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureFileIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, fileIds_);
+  }
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   */
+  private void clearFileIds() {
+    fileIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @param value The bytes of the fileIds to add.
+   */
+  private void addFileIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureFileIdsIsMutable();
+    fileIds_.add(value.toStringUtf8());
+  }
+
   public static io.github.lewin671.remoteagent.proto.SendRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -591,7 +723,7 @@ public  final class SendRequest extends
 
     /**
      * <pre>
-     * May be empty when image_ids are given.
+     * May be empty when image_ids or file_ids are given.
      * </pre>
      *
      * <code>string text = 2 [json_name = "text"];</code>
@@ -603,7 +735,7 @@ public  final class SendRequest extends
     }
     /**
      * <pre>
-     * May be empty when image_ids are given.
+     * May be empty when image_ids or file_ids are given.
      * </pre>
      *
      * <code>string text = 2 [json_name = "text"];</code>
@@ -616,7 +748,7 @@ public  final class SendRequest extends
     }
     /**
      * <pre>
-     * May be empty when image_ids are given.
+     * May be empty when image_ids or file_ids are given.
      * </pre>
      *
      * <code>string text = 2 [json_name = "text"];</code>
@@ -631,7 +763,7 @@ public  final class SendRequest extends
     }
     /**
      * <pre>
-     * May be empty when image_ids are given.
+     * May be empty when image_ids or file_ids are given.
      * </pre>
      *
      * <code>string text = 2 [json_name = "text"];</code>
@@ -644,7 +776,7 @@ public  final class SendRequest extends
     }
     /**
      * <pre>
-     * May be empty when image_ids are given.
+     * May be empty when image_ids or file_ids are given.
      * </pre>
      *
      * <code>string text = 2 [json_name = "text"];</code>
@@ -967,6 +1099,134 @@ public  final class SendRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * As-is files, referenced in the injected text; needs file_upload.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+     * @return A list containing the fileIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getFileIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getFileIdsList());
+    }
+    /**
+     * <pre>
+     * As-is files, referenced in the injected text; needs file_upload.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+     * @return The count of fileIds.
+     */
+    @java.lang.Override
+    public int getFileIdsCount() {
+      return instance.getFileIdsCount();
+    }
+    /**
+     * <pre>
+     * As-is files, referenced in the injected text; needs file_upload.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+     * @param index The index of the element to return.
+     * @return The fileIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getFileIds(int index) {
+      return instance.getFileIds(index);
+    }
+    /**
+     * <pre>
+     * As-is files, referenced in the injected text; needs file_upload.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the fileIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getFileIdsBytes(int index) {
+      return instance.getFileIdsBytes(index);
+    }
+    /**
+     * <pre>
+     * As-is files, referenced in the injected text; needs file_upload.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The fileIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFileIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setFileIds(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * As-is files, referenced in the injected text; needs file_upload.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+     * @param value The fileIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addFileIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addFileIds(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * As-is files, referenced in the injected text; needs file_upload.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+     * @param values The fileIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllFileIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllFileIds(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * As-is files, referenced in the injected text; needs file_upload.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFileIds() {
+      copyOnWrite();
+      instance.clearFileIds();
+      return this;
+    }
+    /**
+     * <pre>
+     * As-is files, referenced in the injected text; needs file_upload.
+     * </pre>
+     *
+     * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+     * @param value The bytes of the fileIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addFileIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addFileIdsBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.SendRequest)
   }
   @java.lang.Override
@@ -988,10 +1248,11 @@ public  final class SendRequest extends
             "requestId_",
             "imageIds_",
             "mode_",
+            "fileIds_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u021a\u0005\f";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u021a\u0005\f\u0006\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

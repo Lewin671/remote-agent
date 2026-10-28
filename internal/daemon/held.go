@@ -61,6 +61,7 @@ func (s *session) hold(in input) {
 		return
 	}
 	s.d.uploads.releaseRefs(in.Images, s.meta.ID, in.RequestID)
+	s.d.uploads.releaseFiles(in.Files, s.meta.ID, in.RequestID)
 }
 
 // received settles a held message once the model got it: the user message
@@ -183,7 +184,7 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
 	footer := scr.Footer
 	var want []string
 	for _, in := range held {
-		want = append(want, in.Text)
+		want = append(want, in.messageText())
 	}
 	if !l.holding() {
 		return errHeldChanged
@@ -252,7 +253,7 @@ func (s *session) requeueHeld(held []input, requestID string) ([]input, error) {
 		s.queue.Held = slices.Delete(slices.Clone(s.queue.Held), i, i+1)
 		s.recent = slices.DeleteFunc(slices.Clone(s.recent), func(in input) bool { return in.RequestID == h.RequestID })
 		in := input{
-			Text: h.Text, RequestID: h.RequestID, Origin: h.Origin, Stage: pb.InputStage_INPUT_STAGE_WAITING,
+			Text: h.Text, Files: h.Files, Composed: h.Composed, RequestID: h.RequestID, Origin: h.Origin, Stage: pb.InputStage_INPUT_STAGE_WAITING,
 			Mode: pb.SendMode_SEND_MODE_STEER, Paused: true,
 		}
 		s.queue.insert(in)

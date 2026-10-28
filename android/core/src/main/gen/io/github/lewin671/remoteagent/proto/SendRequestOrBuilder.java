@@ -24,7 +24,7 @@ public interface SendRequestOrBuilder extends
 
   /**
    * <pre>
-   * May be empty when image_ids are given.
+   * May be empty when image_ids or file_ids are given.
    * </pre>
    *
    * <code>string text = 2 [json_name = "text"];</code>
@@ -33,7 +33,7 @@ public interface SendRequestOrBuilder extends
   java.lang.String getText();
   /**
    * <pre>
-   * May be empty when image_ids are given.
+   * May be empty when image_ids or file_ids are given.
    * </pre>
    *
    * <code>string text = 2 [json_name = "text"];</code>
@@ -141,4 +141,45 @@ public interface SendRequestOrBuilder extends
    * @return The mode.
    */
   io.github.lewin671.remoteagent.proto.SendMode getMode();
+
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @return A list containing the fileIds.
+   */
+  java.util.List<java.lang.String>
+      getFileIdsList();
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @return The count of fileIds.
+   */
+  int getFileIdsCount();
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @param index The index of the element to return.
+   * @return The fileIds at the given index.
+   */
+  java.lang.String getFileIds(int index);
+  /**
+   * <pre>
+   * As-is files, referenced in the injected text; needs file_upload.
+   * </pre>
+   *
+   * <code>repeated string file_ids = 6 [json_name = "fileIds"];</code>
+   * @param index The index of the element to return.
+   * @return The fileIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getFileIdsBytes(int index);
 }
