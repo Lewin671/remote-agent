@@ -1516,7 +1516,7 @@ export type ImageUploadStatus = Message<"remoteagent.v1.ImageUploadStatus"> & {
 
   /**
    * Unix milliseconds when the daemon deletes the unfinished transfer (an
-   * hour after its last chunk) or the unused image (24 hours after it
+   * hour after its last chunk) or the unused attachment (24 hours after it
    * completed).
    *
    * @generated from field: int64 expires_ms = 8;
@@ -1566,7 +1566,7 @@ export type BeginImageUploadRequest = Message<"remoteagent.v1.BeginImageUploadRe
   format: ImageFormat;
 
   /**
-   * At most MachineCapabilities.max_upload_bytes.
+   * At most max_upload_bytes for images, max_file_upload_bytes for files.
    *
    * @generated from field: int64 total_bytes = 3;
    */
@@ -1764,7 +1764,9 @@ export const AbortImageUploadResponseSchema: GenMessage<AbortImageUploadResponse
   messageDesc(file_remoteagent_v1_local, 61);
 
 /**
- * Collected locally and sealed with the settings reply; the server sees no usage.
+ * Upload bytes and reservations include both images and files. Used files are
+ * always protected until session cleanup, never reclaimable. Collected locally
+ * and sealed with the settings reply; the server sees no usage.
  *
  * @generated from message remoteagent.v1.ImageStorageUsage
  */
@@ -1968,14 +1970,14 @@ export enum ImageUploadState {
   RECEIVING = 1,
 
   /**
-   * All bytes arrived and were checked; image_id is ready to be sent.
+   * All bytes arrived and were checked; image_id or file_id is ready.
    *
    * @generated from enum value: IMAGE_UPLOAD_STATE_COMPLETE = 2;
    */
   COMPLETE = 2,
 
   /**
-   * A message that uses the image was accepted.
+   * A message that uses the image or file was accepted.
    *
    * @generated from enum value: IMAGE_UPLOAD_STATE_USED = 3;
    */
@@ -2185,7 +2187,7 @@ export const LocalService: GenService<{
     output: typeof UpdateSettingsResponseSchema;
   },
   /**
-   * Image upload: a client sends each image to the machine in chunks,
+   * Shared image/file upload: a client sends each attachment in chunks,
    * before the Send or CreateSession that uses it. These are machine
    * commands (no session). A transfer belongs to the device that began it.
    *

@@ -591,7 +591,7 @@ type MachineCapabilities struct {
 	// has spaces, which the CLIs do not take in image paths.
 	ImageUpload         bool  `protobuf:"varint,2,opt,name=image_upload,json=imageUpload,proto3" json:"image_upload,omitempty"`
 	MaxImagesPerMessage int32 `protobuf:"varint,3,opt,name=max_images_per_message,json=maxImagesPerMessage,proto3" json:"max_images_per_message,omitempty"`
-	// Largest file BeginImageUpload accepts.
+	// Largest image BeginImageUpload accepts.
 	MaxUploadBytes int64 `protobuf:"varint,4,opt,name=max_upload_bytes,json=maxUploadBytes,proto3" json:"max_upload_bytes,omitempty"`
 	// Largest data in one PutImageChunk.
 	MaxChunkBytes int32 `protobuf:"varint,5,opt,name=max_chunk_bytes,json=maxChunkBytes,proto3" json:"max_chunk_bytes,omitempty"`

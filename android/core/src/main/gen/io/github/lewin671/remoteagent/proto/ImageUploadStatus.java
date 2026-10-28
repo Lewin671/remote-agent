@@ -309,7 +309,7 @@ public  final class ImageUploadStatus extends
   /**
    * <pre>
    * Unix milliseconds when the daemon deletes the unfinished transfer (an
-   * hour after its last chunk) or the unused image (24 hours after it
+   * hour after its last chunk) or the unused attachment (24 hours after it
    * completed).
    * </pre>
    *
@@ -323,7 +323,7 @@ public  final class ImageUploadStatus extends
   /**
    * <pre>
    * Unix milliseconds when the daemon deletes the unfinished transfer (an
-   * hour after its last chunk) or the unused image (24 hours after it
+   * hour after its last chunk) or the unused attachment (24 hours after it
    * completed).
    * </pre>
    *
@@ -337,7 +337,7 @@ public  final class ImageUploadStatus extends
   /**
    * <pre>
    * Unix milliseconds when the daemon deletes the unfinished transfer (an
-   * hour after its last chunk) or the unused image (24 hours after it
+   * hour after its last chunk) or the unused attachment (24 hours after it
    * completed).
    * </pre>
    *
@@ -853,7 +853,7 @@ public  final class ImageUploadStatus extends
     /**
      * <pre>
      * Unix milliseconds when the daemon deletes the unfinished transfer (an
-     * hour after its last chunk) or the unused image (24 hours after it
+     * hour after its last chunk) or the unused attachment (24 hours after it
      * completed).
      * </pre>
      *
@@ -867,7 +867,7 @@ public  final class ImageUploadStatus extends
     /**
      * <pre>
      * Unix milliseconds when the daemon deletes the unfinished transfer (an
-     * hour after its last chunk) or the unused image (24 hours after it
+     * hour after its last chunk) or the unused attachment (24 hours after it
      * completed).
      * </pre>
      *
@@ -883,7 +883,7 @@ public  final class ImageUploadStatus extends
     /**
      * <pre>
      * Unix milliseconds when the daemon deletes the unfinished transfer (an
-     * hour after its last chunk) or the unused image (24 hours after it
+     * hour after its last chunk) or the unused attachment (24 hours after it
      * completed).
      * </pre>
      *

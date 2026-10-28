@@ -114,7 +114,7 @@ message MachineCapabilities {
   // has spaces, which the CLIs do not take in image paths.
   bool image_upload = 2;
   int32 max_images_per_message = 3;
-  // Largest file BeginImageUpload accepts.
+  // Largest image BeginImageUpload accepts.
   int64 max_upload_bytes = 4;
   // Largest data in one PutImageChunk.
   int32 max_chunk_bytes = 5;

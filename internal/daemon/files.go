@@ -41,8 +41,10 @@ func safeFileName(name string) string {
 	if len(name) <= 100 {
 		return name
 	}
-	ext := utf8Prefix(filepath.Ext(name), 99)
-	return utf8Prefix(strings.TrimSuffix(name, filepath.Ext(name)), 100-len(ext)) + ext
+	stem := strings.TrimSuffix(name, filepath.Ext(name))
+	_, firstBytes := utf8.DecodeRuneInString(stem)
+	ext := utf8Prefix(filepath.Ext(name), 100-firstBytes)
+	return utf8Prefix(stem, 100-len(ext)) + ext
 }
 
 func utf8Prefix(s string, n int) string {

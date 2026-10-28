@@ -230,7 +230,11 @@ func (s *session) enqueueInputReady(text, requestID string, images []queuedImage
 		}
 	}
 	prevQueue, prevSeen := s.queue.Queue, s.queue.Seen
-	pos := s.queue.insert(input{Text: text, RequestID: requestID, Images: images, Files: files, Composed: composeFiles(text, files, s.ag.Kind()), Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: mode})
+	composed := ""
+	if len(files) > 0 {
+		composed = composeFiles(text, files, s.ag.Kind())
+	}
+	pos := s.queue.insert(input{Text: text, RequestID: requestID, Images: images, Files: files, Composed: composed, Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: mode})
 	s.queue.remember(requestID)
 	reserved.commit(s)
 	st := &pb.InputState{RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Text: text, Mode: mode, Files: sentFiles(files)}

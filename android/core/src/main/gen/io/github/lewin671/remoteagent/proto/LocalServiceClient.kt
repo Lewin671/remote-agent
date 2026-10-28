@@ -298,7 +298,7 @@ public class LocalServiceClient(
 
 
   /**
-   *  Image upload: a client sends each image to the machine in chunks,
+   *  Shared image/file upload: a client sends each attachment in chunks,
    *  before the Send or CreateSession that uses it. These are machine
    *  commands (no session). A transfer belongs to the device that began it.
    */

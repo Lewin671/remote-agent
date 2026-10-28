@@ -347,7 +347,7 @@ public struct PBMachineCapabilities: Sendable {
 
   public var maxImagesPerMessage: Int32 = 0
 
-  /// Largest file BeginImageUpload accepts.
+  /// Largest image BeginImageUpload accepts.
   public var maxUploadBytes: Int64 = 0
 
   /// Largest data in one PutImageChunk.

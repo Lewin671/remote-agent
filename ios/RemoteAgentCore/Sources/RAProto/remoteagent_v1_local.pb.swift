@@ -78,10 +78,10 @@ public enum PBImageUploadState: SwiftProtobuf.Enum, Swift.CaseIterable {
   /// Chunks are arriving; persisted_bytes says how many are on disk.
   case receiving // = 1
 
-  /// All bytes arrived and were checked; image_id is ready to be sent.
+  /// All bytes arrived and were checked; image_id or file_id is ready.
   case complete // = 2
 
-  /// A message that uses the image was accepted.
+  /// A message that uses the image or file was accepted.
   case used // = 3
   case UNRECOGNIZED(Int)
 
@@ -1248,7 +1248,7 @@ public struct PBImageUploadStatus: Sendable {
   public var height: Int32 = 0
 
   /// Unix milliseconds when the daemon deletes the unfinished transfer (an
-  /// hour after its last chunk) or the unused image (24 hours after it
+  /// hour after its last chunk) or the unused attachment (24 hours after it
   /// completed).
   public var expiresMs: Int64 = 0
 
@@ -1276,7 +1276,7 @@ public struct PBBeginImageUploadRequest: Sendable {
   /// PNG, JPEG, WebP or GIF; the daemon checks the bytes are that format.
   public var format: PBImageFormat = .unspecified
 
-  /// At most MachineCapabilities.max_upload_bytes.
+  /// At most max_upload_bytes for images, max_file_upload_bytes for files.
   public var totalBytes: Int64 = 0
 
   /// SHA-256 of the whole file, checked on completion.
@@ -1444,7 +1444,9 @@ public struct PBAbortImageUploadResponse: Sendable {
   public init() {}
 }
 
-/// Collected locally and sealed with the settings reply; the server sees no usage.
+/// Upload bytes and reservations include both images and files. Used files are
+/// always protected until session cleanup, never reclaimable. Collected locally
+/// and sealed with the settings reply; the server sees no usage.
 public struct PBImageStorageUsage: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for

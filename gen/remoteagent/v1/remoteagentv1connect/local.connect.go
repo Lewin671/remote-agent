@@ -153,7 +153,7 @@ type LocalServiceClient interface {
 	ListDirectories(context.Context, *connect.Request[v1.ListDirectoriesRequest]) (*connect.Response[v1.ListDirectoriesResponse], error)
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
-	// Image upload: a client sends each image to the machine in chunks,
+	// Shared image/file upload: a client sends each attachment in chunks,
 	// before the Send or CreateSession that uses it. These are machine
 	// commands (no session). A transfer belongs to the device that began it.
 	BeginImageUpload(context.Context, *connect.Request[v1.BeginImageUploadRequest]) (*connect.Response[v1.BeginImageUploadResponse], error)
@@ -575,7 +575,7 @@ type LocalServiceHandler interface {
 	ListDirectories(context.Context, *connect.Request[v1.ListDirectoriesRequest]) (*connect.Response[v1.ListDirectoriesResponse], error)
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
-	// Image upload: a client sends each image to the machine in chunks,
+	// Shared image/file upload: a client sends each attachment in chunks,
 	// before the Send or CreateSession that uses it. These are machine
 	// commands (no session). A transfer belongs to the device that began it.
 	BeginImageUpload(context.Context, *connect.Request[v1.BeginImageUploadRequest]) (*connect.Response[v1.BeginImageUploadResponse], error)

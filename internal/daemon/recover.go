@@ -229,7 +229,11 @@ func (s *session) restoreRecent(l *logged) {
 			for _, f := range in.files {
 				files = append(files, queuedFile{f.FileId, f.Name, f.SizeBytes, f.Path})
 			}
-			s.recent = append(s.recent, input{Text: in.text, Files: files, Composed: composeFiles(in.text, files, s.meta.Agent), RequestID: id, Origin: storeOrigin(in.origin)})
+			composed := ""
+			if len(files) > 0 {
+				composed = composeFiles(in.text, files, s.meta.Agent)
+			}
+			s.recent = append(s.recent, input{Text: in.text, Files: files, Composed: composed, RequestID: id, Origin: storeOrigin(in.origin)})
 		}
 	}
 	for _, in := range s.queue.Held {

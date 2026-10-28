@@ -47,7 +47,7 @@ service LocalService {
   rpc ListDirectories(ListDirectoriesRequest) returns (ListDirectoriesResponse);
   rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse);
   rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
-  // Image upload: a client sends each image to the machine in chunks,
+  // Shared image/file upload: a client sends each attachment in chunks,
   // before the Send or CreateSession that uses it. These are machine
   // commands (no session). A transfer belongs to the device that began it.
   rpc BeginImageUpload(BeginImageUploadRequest) returns (BeginImageUploadResponse);
@@ -454,9 +454,9 @@ enum ImageUploadState {
   IMAGE_UPLOAD_STATE_UNSPECIFIED = 0;
   // Chunks are arriving; persisted_bytes says how many are on disk.
   IMAGE_UPLOAD_STATE_RECEIVING = 1;
-  // All bytes arrived and were checked; image_id is ready to be sent.
+  // All bytes arrived and were checked; image_id or file_id is ready.
   IMAGE_UPLOAD_STATE_COMPLETE = 2;
-  // A message that uses the image was accepted.
+  // A message that uses the image or file was accepted.
   IMAGE_UPLOAD_STATE_USED = 3;
 }
 
@@ -475,7 +475,7 @@ message ImageUploadStatus {
   int32 width = 6;
   int32 height = 7;
   // Unix milliseconds when the daemon deletes the unfinished transfer (an
-  // hour after its last chunk) or the unused image (24 hours after it
+  // hour after its last chunk) or the unused attachment (24 hours after it
   // completed).
   int64 expires_ms = 8;
   // Most bytes one PutImageChunk may carry.
@@ -491,7 +491,7 @@ message BeginImageUploadRequest {
   string transfer_id = 1;
   // PNG, JPEG, WebP or GIF; the daemon checks the bytes are that format.
   ImageFormat format = 2;
-  // At most MachineCapabilities.max_upload_bytes.
+  // At most max_upload_bytes for images, max_file_upload_bytes for files.
   int64 total_bytes = 3;
   // SHA-256 of the whole file, checked on completion.
   bytes sha256 = 4;
@@ -543,7 +543,9 @@ message AbortImageUploadRequest {
 
 message AbortImageUploadResponse {}
 
-// Collected locally and sealed with the settings reply; the server sees no usage.
+// Upload bytes and reservations include both images and files. Used files are
+// always protected until session cleanup, never reclaimable. Collected locally
+// and sealed with the settings reply; the server sees no usage.
 message ImageStorageUsage {
   int64 upload_bytes = 1;
   int64 reserved_bytes = 2;

@@ -29,7 +29,7 @@ public interface MachineCapabilitiesOrBuilder extends
 
   /**
    * <pre>
-   * Largest file BeginImageUpload accepts.
+   * Largest image BeginImageUpload accepts.
    * </pre>
    *
    * <code>int64 max_upload_bytes = 4 [json_name = "maxUploadBytes"];</code>

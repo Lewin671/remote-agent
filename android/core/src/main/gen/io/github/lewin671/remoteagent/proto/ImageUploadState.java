@@ -25,7 +25,7 @@ public enum ImageUploadState
   IMAGE_UPLOAD_STATE_RECEIVING(1),
   /**
    * <pre>
-   * All bytes arrived and were checked; image_id is ready to be sent.
+   * All bytes arrived and were checked; image_id or file_id is ready.
    * </pre>
    *
    * <code>IMAGE_UPLOAD_STATE_COMPLETE = 2;</code>
@@ -33,7 +33,7 @@ public enum ImageUploadState
   IMAGE_UPLOAD_STATE_COMPLETE(2),
   /**
    * <pre>
-   * A message that uses the image was accepted.
+   * A message that uses the image or file was accepted.
    * </pre>
    *
    * <code>IMAGE_UPLOAD_STATE_USED = 3;</code>
@@ -56,7 +56,7 @@ public enum ImageUploadState
   public static final int IMAGE_UPLOAD_STATE_RECEIVING_VALUE = 1;
   /**
    * <pre>
-   * All bytes arrived and were checked; image_id is ready to be sent.
+   * All bytes arrived and were checked; image_id or file_id is ready.
    * </pre>
    *
    * <code>IMAGE_UPLOAD_STATE_COMPLETE = 2;</code>
@@ -64,7 +64,7 @@ public enum ImageUploadState
   public static final int IMAGE_UPLOAD_STATE_COMPLETE_VALUE = 2;
   /**
    * <pre>
-   * A message that uses the image was accepted.
+   * A message that uses the image or file was accepted.
    * </pre>
    *
    * <code>IMAGE_UPLOAD_STATE_USED = 3;</code>

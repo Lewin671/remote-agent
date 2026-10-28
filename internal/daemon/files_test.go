@@ -30,9 +30,9 @@ func TestSafeFileName(t *testing.T) {
 			t.Errorf("%q: %q want %q", tt.in, got, tt.want)
 		}
 	}
-	for _, name := range []string{strings.Repeat("a", 300) + ".txt", "a." + strings.Repeat("中", 100)} {
+	for _, name := range []string{strings.Repeat("a", 300) + ".txt", "a." + strings.Repeat("中", 100), "中." + strings.Repeat("a", 150)} {
 		got := safeFileName(name)
-		if len(got) > 100 || !utf8.ValidString(got) {
+		if len(got) > 100 || !utf8.ValidString(got) || strings.HasPrefix(got, ".") || strings.HasPrefix(got, "-") {
 			t.Fatalf("unsafe cap: %q", got)
 		}
 	}
@@ -354,4 +354,127 @@ func TestFileCapabilityWhitespace(t *testing.T) {
 		t.Fatal("whitespace path advertised")
 	}
 	_ = testPNG(t, 1, 1, color.RGBA{A: 255})
+}
+
+func TestFileExpiryAndMixedAcceptanceRollback(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	u := newUploads()
+	fileID := uploadFile(t, u, "unused.csv", []byte("hello"))
+	tr := u.byFile(fileID)
+	tr.CompletedMs = time.Now().Add(-unusedTTL - time.Second).UnixMilli()
+	if err := u.save(tr); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := u.status(context.Background(), tr.ID, "phone"); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatal(err)
+	}
+	u.gc(time.Now())
+	if _, err := os.Stat(u.pending(tr.relativeName())); !os.IsNotExist(err) {
+		t.Fatal("unused file did not expire", err)
+	}
+	sum := sha256.Sum256([]byte("abcdef"))
+	id := newID(16)
+	if _, err := u.begin(&pb.BeginImageUploadRequest{TransferId: id, FileName: "partial.bin", TotalBytes: 6, Sha256: sum[:]}, "phone"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := u.put(&pb.PutImageChunkRequest{TransferId: id, Data: []byte("abc")}, "phone"); err != nil {
+		t.Fatal(err)
+	}
+	part, err := u.load(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := part.UpdatedMs
+	if _, err := u.put(&pb.PutImageChunkRequest{TransferId: id, Data: []byte("abc")}, "phone"); err != nil {
+		t.Fatal(err)
+	}
+	part, _ = u.load(id)
+	if part.UpdatedMs != updated {
+		t.Fatal("duplicate chunk extended TTL")
+	}
+	part.UpdatedMs = time.Now().Add(-partialTTL - time.Second).UnixMilli()
+	u.save(part)
+	u.gc(time.Now())
+	if _, err := os.Stat(u.partial(id) + ".part"); !os.IsNotExist(err) {
+		t.Fatal("partial file did not expire")
+	}
+	image := storageUpload(t, u)
+	fileID = uploadFile(t, u, "move.bin", []byte("bytes"))
+	all, err := u.takeUploads([]string{image}, []string{fileID}, "phone", "session", "r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u.untake(all.Images, "session", "r")
+	u.untakeFiles(all.Files, "session", "r")
+	if err := u.checkUploads([]string{image}, []string{fileID}, "phone"); err != nil {
+		t.Fatal("acceptance rollback did not return all uploads", err)
+	}
+	os.Remove(u.pending(u.byFile(fileID).relativeName()))
+	if err := u.checkUploads(nil, []string{fileID}, "phone"); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatal("missing bytes passed pre-launch check", err)
+	}
+}
+
+func TestQueuedFileRestoresThroughDaemonStartup(t *testing.T) {
+	r := newRestoreHarness(t)
+	sid := "00000000000000bb"
+	dir := r.save(meta{ID: sid}, true)
+	id := uploadFile(t, r.d.uploads, "saved.csv", []byte("a,b"))
+	all, err := r.d.uploads.takeUploads(nil, []string{id}, "phone", sid, "r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := input{RequestID: "r", Text: "saved", Files: all.Files, Composed: composeFiles("saved", all.Files, pb.Agent_AGENT_CODEX), Paused: true, Mode: pb.SendMode_SEND_MODE_QUEUE, Stage: pb.InputStage_INPUT_STAGE_WAITING}
+	if err := (&queueState{Queue: []input{in}, Seen: []string{"r"}}).save(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.restore(); err != nil {
+		t.Fatal(err)
+	}
+	s := r.session(sid)
+	if s == nil {
+		t.Fatal("session not restored")
+	}
+	s.mu.Lock()
+	got := s.queue.Queue[0]
+	s.mu.Unlock()
+	if len(got.Files) != 1 || got.Files[0].Path != all.Files[0].Path || !got.matches(in.Composed) || !got.Paused {
+		t.Fatalf("restored input: %+v", got)
+	}
+	if _, err := r.d.uploads.usage(true, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(got.Files[0].Path); err != nil {
+		t.Fatal("startup/cleanup deleted queued file", err)
+	}
+}
+
+func TestHeldFilesRequeueAndLateRecoveryKeepComposedText(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	files := []queuedFile{{ID: strings.Repeat("f", 32), Name: "a.csv", Size: 3, Path: "/uploads/s/files/ffffffffffffffffffffffffffffffff/a.csv"}}
+	in := input{RequestID: "r", Text: "original", Files: files, Composed: composeFiles("original", files, pb.Agent_AGENT_CLAUDE)}
+	h.s.queue.Held = []input{in}
+	moved, err := h.s.requeueHeld([]input{in}, "other")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(moved) != 1 || !moved[0].matches(in.Composed) || len(moved[0].Files) != 1 {
+		t.Fatalf("held file lost: %+v", moved)
+	}
+	q, err := loadQueue(h.dir)
+	if err != nil || len(q.Queue) != 1 || !q.Queue[0].matches(in.Composed) {
+		t.Fatalf("held persistence: %v %v", q, err)
+	}
+	// A submitting request whose event record arrives only after restart can
+	// reconstruct file lines from the first shared queue event.
+	l := newLogged(&queueState{}, []string{"late"})
+	l.note(&pb.Event{Seq: 1, Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: "late", Status: pb.InputStatus_INPUT_STATUS_QUEUED, Text: in.Text, Files: sentFiles(files)}}})
+	l.note(&pb.Event{Seq: 2, Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: "late", Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_SUBMITTING}}})
+	l.note(&pb.Event{Seq: 3, Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: "late", Status: pb.InputStatus_INPUT_STATUS_SUBMITTED}}})
+	h.s.recent = nil
+	h.s.meta.Agent = pb.Agent_AGENT_CLAUDE
+	h.s.restoreRecent(l)
+	if len(h.s.recent) != 1 || !h.s.recent[0].matches(in.Composed) {
+		t.Fatal("late file confirmation lost after restart")
+	}
 }

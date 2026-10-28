@@ -85,9 +85,9 @@ const (
 	ImageUploadState_IMAGE_UPLOAD_STATE_UNSPECIFIED ImageUploadState = 0
 	// Chunks are arriving; persisted_bytes says how many are on disk.
 	ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING ImageUploadState = 1
-	// All bytes arrived and were checked; image_id is ready to be sent.
+	// All bytes arrived and were checked; image_id or file_id is ready.
 	ImageUploadState_IMAGE_UPLOAD_STATE_COMPLETE ImageUploadState = 2
-	// A message that uses the image was accepted.
+	// A message that uses the image or file was accepted.
 	ImageUploadState_IMAGE_UPLOAD_STATE_USED ImageUploadState = 3
 )
 
@@ -3149,7 +3149,7 @@ type ImageUploadStatus struct {
 	Width   int32  `protobuf:"varint,6,opt,name=width,proto3" json:"width,omitempty"`
 	Height  int32  `protobuf:"varint,7,opt,name=height,proto3" json:"height,omitempty"`
 	// Unix milliseconds when the daemon deletes the unfinished transfer (an
-	// hour after its last chunk) or the unused image (24 hours after it
+	// hour after its last chunk) or the unused attachment (24 hours after it
 	// completed).
 	ExpiresMs int64 `protobuf:"varint,8,opt,name=expires_ms,json=expiresMs,proto3" json:"expires_ms,omitempty"`
 	// Most bytes one PutImageChunk may carry.
@@ -3268,7 +3268,7 @@ type BeginImageUploadRequest struct {
 	TransferId string `protobuf:"bytes,1,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
 	// PNG, JPEG, WebP or GIF; the daemon checks the bytes are that format.
 	Format ImageFormat `protobuf:"varint,2,opt,name=format,proto3,enum=remoteagent.v1.ImageFormat" json:"format,omitempty"`
-	// At most MachineCapabilities.max_upload_bytes.
+	// At most max_upload_bytes for images, max_file_upload_bytes for files.
 	TotalBytes int64 `protobuf:"varint,3,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
 	// SHA-256 of the whole file, checked on completion.
 	Sha256 []byte `protobuf:"bytes,4,opt,name=sha256,proto3" json:"sha256,omitempty"`
@@ -3755,7 +3755,9 @@ func (*AbortImageUploadResponse) Descriptor() ([]byte, []int) {
 	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{61}
 }
 
-// Collected locally and sealed with the settings reply; the server sees no usage.
+// Upload bytes and reservations include both images and files. Used files are
+// always protected until session cleanup, never reclaimable. Collected locally
+// and sealed with the settings reply; the server sees no usage.
 type ImageStorageUsage struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	UploadBytes      int64                  `protobuf:"varint,1,opt,name=upload_bytes,json=uploadBytes,proto3" json:"upload_bytes,omitempty"`

@@ -7,7 +7,9 @@ package io.github.lewin671.remoteagent.proto;
 
 /**
  * <pre>
- * Collected locally and sealed with the settings reply; the server sees no usage.
+ * Upload bytes and reservations include both images and files. Used files are
+ * always protected until session cleanup, never reclaimable. Collected locally
+ * and sealed with the settings reply; the server sees no usage.
  * </pre>
  *
  * Protobuf type {@code remoteagent.v1.ImageStorageUsage}
@@ -333,7 +335,9 @@ public  final class ImageStorageUsage extends
 
   /**
    * <pre>
-   * Collected locally and sealed with the settings reply; the server sees no usage.
+   * Upload bytes and reservations include both images and files. Used files are
+   * always protected until session cleanup, never reclaimable. Collected locally
+   * and sealed with the settings reply; the server sees no usage.
    * </pre>
    *
    * Protobuf type {@code remoteagent.v1.ImageStorageUsage}

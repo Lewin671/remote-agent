@@ -283,7 +283,7 @@ export type MachineCapabilities = Message<"remoteagent.v1.MachineCapabilities"> 
   maxImagesPerMessage: number;
 
   /**
-   * Largest file BeginImageUpload accepts.
+   * Largest image BeginImageUpload accepts.
    *
    * @generated from field: int64 max_upload_bytes = 4;
    */

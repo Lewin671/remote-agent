@@ -237,7 +237,10 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 			return nil, err
 		}
 	}
-	t := &transfer{FileName: req.FileName, SafeName: safeFileName(req.FileName), ID: req.TransferId, Device: device, Format: req.Format, Total: req.TotalBytes, SHA256: req.Sha256, UpdatedMs: time.Now().UnixMilli()}
+	t := &transfer{FileName: req.FileName, ID: req.TransferId, Device: device, Format: req.Format, Total: req.TotalBytes, SHA256: req.Sha256, UpdatedMs: time.Now().UnixMilli()}
+	if req.FileName != "" {
+		t.SafeName = safeFileName(req.FileName)
+	}
 	f, err := os.OpenFile(u.partial(t.ID)+".part", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, err

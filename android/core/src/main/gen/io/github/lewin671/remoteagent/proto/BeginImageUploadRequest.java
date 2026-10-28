@@ -163,7 +163,7 @@ public  final class BeginImageUploadRequest extends
   private long totalBytes_;
   /**
    * <pre>
-   * At most MachineCapabilities.max_upload_bytes.
+   * At most max_upload_bytes for images, max_file_upload_bytes for files.
    * </pre>
    *
    * <code>int64 total_bytes = 3 [json_name = "totalBytes"];</code>
@@ -175,7 +175,7 @@ public  final class BeginImageUploadRequest extends
   }
   /**
    * <pre>
-   * At most MachineCapabilities.max_upload_bytes.
+   * At most max_upload_bytes for images, max_file_upload_bytes for files.
    * </pre>
    *
    * <code>int64 total_bytes = 3 [json_name = "totalBytes"];</code>
@@ -187,7 +187,7 @@ public  final class BeginImageUploadRequest extends
   }
   /**
    * <pre>
-   * At most MachineCapabilities.max_upload_bytes.
+   * At most max_upload_bytes for images, max_file_upload_bytes for files.
    * </pre>
    *
    * <code>int64 total_bytes = 3 [json_name = "totalBytes"];</code>
@@ -558,7 +558,7 @@ public  final class BeginImageUploadRequest extends
 
     /**
      * <pre>
-     * At most MachineCapabilities.max_upload_bytes.
+     * At most max_upload_bytes for images, max_file_upload_bytes for files.
      * </pre>
      *
      * <code>int64 total_bytes = 3 [json_name = "totalBytes"];</code>
@@ -570,7 +570,7 @@ public  final class BeginImageUploadRequest extends
     }
     /**
      * <pre>
-     * At most MachineCapabilities.max_upload_bytes.
+     * At most max_upload_bytes for images, max_file_upload_bytes for files.
      * </pre>
      *
      * <code>int64 total_bytes = 3 [json_name = "totalBytes"];</code>
@@ -584,7 +584,7 @@ public  final class BeginImageUploadRequest extends
     }
     /**
      * <pre>
-     * At most MachineCapabilities.max_upload_bytes.
+     * At most max_upload_bytes for images, max_file_upload_bytes for files.
      * </pre>
      *
      * <code>int64 total_bytes = 3 [json_name = "totalBytes"];</code>
