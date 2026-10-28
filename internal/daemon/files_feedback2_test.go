@@ -149,7 +149,7 @@ func TestGCResyncsCompletionRecordBeforeDeletingRetainedPart(t *testing.T) {
 	}
 	synced := false
 	u.syncDir = func(dir string) error {
-		if filepath.Base(dir) == "partial" {
+		if filepath.Base(dir) == "partial" && !synced {
 			if _, err := os.Stat(u.partial(tid) + ".part"); err != nil {
 				t.Fatal("partial unlinked before metadata sync", err)
 			}

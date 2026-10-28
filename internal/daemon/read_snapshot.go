@@ -34,6 +34,9 @@ func (u *uploads) status(ctx context.Context, id, device string) (*pb.ImageUploa
 	if err := json.Unmarshal(b, t); err != nil {
 		return nil, err
 	}
+	if t.Deleting {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted"))
+	}
 	if t.Session == "" && time.Now().UnixMilli() >= t.expiresMs() {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer expired; upload it again"))
 	}

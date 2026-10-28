@@ -78,7 +78,7 @@ func (u *uploads) releaseRefs(imgs []queuedImage, sessionID, request string) {
 	defer u.mu.Unlock()
 	for _, im := range imgs {
 		t := u.byImage(im.ID)
-		if t == nil || t.Session != sessionID {
+		if t == nil || t.Returning || t.Deleting || t.Session != sessionID {
 			continue
 		}
 		delete(t.Refs, request)
@@ -94,17 +94,12 @@ func (u *uploads) releaseRefs(imgs []queuedImage, sessionID, request string) {
 }
 
 func (u *uploads) removeOriginal(t *transfer) error {
-	path := filepath.Join(u.sessionDir(t.Session), t.ImageID+"."+imageproc.Ext(t.Format))
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	u.remove(t.ID)
-	return nil
+	return u.deleteUpload(t)
 }
 
 // A minute also covers the gap between user-message and turn-start records.
 func reclaimable(t *transfer, pins map[string]bool) bool {
-	return t.FileID == "" && t.Session != "" && len(t.Refs) == 0 && t.Embedded && !pins[t.Session] && time.Since(time.UnixMilli(t.AccessMs)) >= time.Minute
+	return !t.Returning && !t.Deleting && t.FileID == "" && t.Session != "" && len(t.Refs) == 0 && t.Embedded && !pins[t.Session] && time.Since(time.UnixMilli(t.AccessMs)) >= time.Minute
 }
 
 func (u *uploads) records() ([]*transfer, error) {
@@ -395,7 +390,7 @@ func (u *uploads) restoreRefs(s *session, records []*transfer) {
 	}
 	wanted := map[string]bool{}
 	for _, t := range records {
-		if t.Returning {
+		if t.Returning || t.Deleting {
 			continue
 		}
 		if t.ImageID != "" {
@@ -421,7 +416,7 @@ func (u *uploads) restoreRefs(s *session, records []*transfer) {
 	defer u.mu.Unlock()
 	for _, t := range records {
 		// Rejected claims are owned by recovery, not the accepted queue.
-		if t.Returning {
+		if t.Returning || t.Deleting {
 			continue
 		}
 		refs := map[string]bool{}

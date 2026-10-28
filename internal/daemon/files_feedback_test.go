@@ -112,8 +112,15 @@ func TestTakeRollbackRemovesRefsFromPreviouslyOwnedTransfers(t *testing.T) {
 	if tr := u.byFile(a); tr.Refs["rejected"] || !tr.Refs["accepted"] || tr.Session != "s" {
 		t.Fatalf("old references changed: %+v", tr)
 	}
-	if tr := u.byFile(b); tr.Session != "" || len(tr.Refs) != 0 {
-		t.Fatalf("new claim left behind: %+v", tr)
+	// The same injected fsync error also blocks the reverse move's pending
+	// directory. Keep its owner+direction until both entries can be synced.
+	if tr := u.byFile(b); tr.Session != "s" || !tr.Returning || len(tr.Refs) != 0 {
+		t.Fatalf("new claim lost recoverable return: %+v", tr)
+	}
+	u.syncDir = nil
+	u.reconcile()
+	if tr := u.byFile(b); tr.Session != "" || tr.Returning || len(tr.Refs) != 0 {
+		t.Fatalf("new claim left behind after recovery: %+v", tr)
 	}
 }
 func TestFileCompletionSyncsDirectoryAncestryAndKeepsPartialOnSyncFailure(t *testing.T) {

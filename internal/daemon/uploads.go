@@ -71,6 +71,7 @@ type transfer struct {
 	CompletedMs int64  `json:"completed_ms,omitempty"`
 	// Set once a message used it.
 	Session   string          `json:"session,omitempty"`
+	Deleting  bool            `json:"deleting,omitempty"`
 	Returning bool            `json:"returning,omitempty"`
 	Exposed   bool            `json:"exposed,omitempty"`
 	Embedded  bool            `json:"embedded,omitempty"`
@@ -107,12 +108,14 @@ func (t *transfer) status() *pb.ImageUploadStatus {
 type uploads struct {
 	dir string
 
-	mu       sync.Mutex
-	quota    int64
-	limits   func() int64
-	pins     func() map[string]bool
-	syncDir  func(string) error
-	hashFile func(io.Writer, io.Reader) (int64, error)
+	mu               sync.Mutex
+	quota            int64
+	limits           func() int64
+	pins             func() map[string]bool
+	syncDir          func(string) error
+	hashFile         func(io.Writer, io.Reader) (int64, error)
+	beforeUploadStep func(string) error
+	afterUploadStep  func(string)
 }
 
 func newUploads() *uploads {
@@ -229,6 +232,12 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 		if err := u.owned(t, device); err != nil {
 			return nil, err
 		}
+		if t.Deleting {
+			if err := u.deleteUpload(t); err != nil {
+				return nil, err
+			}
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer was deleted; begin a new transfer"))
+		}
 		if t.FileName != req.FileName || t.Format != req.Format || t.Total != req.TotalBytes || !bytes.Equal(t.SHA256, req.Sha256) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("the transfer exists with other parameters"))
 		}
@@ -241,7 +250,7 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 		return nil, err
 	}
 	for _, d := range []string{filepath.Join(u.dir, "partial"), filepath.Join(u.dir, "pending")} {
-		if err := os.MkdirAll(d, 0o700); err != nil {
+		if err := u.step("begin-directory", func() error { return u.mkdirUploadDir(d) }); err != nil {
 			return nil, err
 		}
 	}
@@ -249,12 +258,19 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 	if req.FileName != "" {
 		t.SafeName = safeFileName(req.FileName)
 	}
-	f, err := os.OpenFile(u.partial(t.ID)+".part", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
+	var f *os.File
+	if err := u.step("begin-create", func() error {
+		var err error
+		f, err = os.OpenFile(u.partial(t.ID)+".part", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+		return err
+	}); err != nil {
 		return nil, err
 	}
-	f.Close()
-	if err := u.save(t); err != nil {
+	defer f.Close()
+	if err := u.step("begin-bytes", f.Sync); err != nil {
+		return nil, err
+	}
+	if err := u.step("begin-record", func() error { return u.save(t) }); err != nil {
 		return nil, err
 	}
 	return t.status(), nil
@@ -272,6 +288,8 @@ func (u *uploads) put(req *pb.PutImageChunkRequest, device string) (*pb.ImageUpl
 	}
 	n := int64(len(req.Data))
 	switch {
+	case t.Deleting:
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted"))
 	case t.state() != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING:
 		if req.Offset+n <= t.Total {
 			return t.status(), nil // a late retry of a chunk of a finished upload
@@ -302,16 +320,16 @@ func (u *uploads) put(req *pb.PutImageChunkRequest, device string) (*pb.ImageUpl
 		}
 	}
 	if req.Offset+n > t.Persisted {
-		if _, err := f.WriteAt(req.Data[t.Persisted-req.Offset:], t.Persisted); err != nil {
+		if err := u.step("chunk-write", func() error { _, err := f.WriteAt(req.Data[t.Persisted-req.Offset:], t.Persisted); return err }); err != nil {
 			return nil, err
 		}
-		if err := f.Sync(); err != nil {
+		if err := u.step("chunk-bytes", f.Sync); err != nil {
 			return nil, err
 		}
 		t.Persisted = req.Offset + n
 		t.UpdatedMs = time.Now().UnixMilli()
 	}
-	if err := u.save(t); err != nil {
+	if err := u.step("chunk-record", func() error { return u.save(t) }); err != nil {
 		return nil, err
 	}
 	return t.status(), nil
@@ -328,8 +346,11 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 	if err := u.owned(t, device); err != nil {
 		return nil, err
 	}
+	if t.Deleting {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted"))
+	}
 	if t.state() != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING {
-		if t.FileID != "" {
+		if t.artifactID() != "" {
 			return u.durableFileStatus(t)
 		}
 		return t.status(), nil
@@ -379,17 +400,9 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 	}
 	format := imageproc.Sniff(clean)
 	imageID := newID(16)
-	if err := writeFileSync(u.pending(imageID+"."+imageproc.Ext(format)), clean); err != nil {
-		return nil, err
-	}
 	b := img.Bounds()
 	t.ImageID, t.Width, t.Height, t.CompletedMs, t.Format = imageID, int32(b.Dx()), int32(b.Dy()), time.Now().UnixMilli(), format
-	if err := u.save(t); err != nil {
-		_ = os.Remove(u.pending(imageID + "." + imageproc.Ext(format)))
-		return nil, err
-	}
-	_ = os.Remove(u.partial(t.ID) + ".part")
-	return t.status(), nil
+	return u.commitUpload(t, func(dst string) error { return writeFileSync(dst, clean) })
 }
 
 func (u *uploads) abort(id, device string) error {
@@ -408,28 +421,26 @@ func (u *uploads) abort(id, device string) error {
 	if t.Session != "" {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("a message already uses the image"))
 	}
-	u.remove(t.ID)
-	return nil
+	return u.deleteUpload(t)
 }
 
 // remove deletes a transfer and its files. Callers hold u.mu.
 func (u *uploads) remove(id string) {
 	b, err := os.ReadFile(u.partial(id) + ".json")
-	if err == nil {
-		t := &transfer{}
-		if json.Unmarshal(b, t) == nil && t.artifactID() != "" && t.Session == "" {
-			path := u.pending(t.relativeName())
-			if t.FileID != "" {
-				path = filepath.Dir(path)
-			}
-			if err := os.RemoveAll(path); err != nil && !os.IsNotExist(err) {
-				slog.Error("remove unused image", "image", t.ImageID, "err", errClass(err))
-				return // keep its record so GC can retry
-			}
-		}
+	if os.IsNotExist(err) {
+		return
 	}
-	_ = os.Remove(u.partial(id) + ".part")
-	_ = os.Remove(u.partial(id) + ".json")
+	if err != nil {
+		return
+	}
+	t := &transfer{}
+	if json.Unmarshal(b, t) != nil {
+		// A corrupt record has no trustworthy byte path; its orphans are swept.
+		t = &transfer{ID: id}
+	}
+	if err := u.deleteUpload(t); err != nil {
+		slog.Error("remove upload", "err", errClass(err))
+	}
 }
 
 // byImage finds the transfer that produced an image. Callers hold u.mu.
@@ -480,26 +491,9 @@ func (u *uploads) reconcile() {
 			continue
 		}
 		t, err := u.load(strings.TrimSuffix(e.Name(), ".json"))
-		if err != nil || t.Session == "" || t.artifactID() == "" {
-			continue
-		}
-		if t.Returning {
-			if err := u.returnPending(t); err != nil {
-				slog.Error("finish upload rollback", "err", errClass(err))
-			}
-			continue
-		}
-		name := t.relativeName()
-		if _, err := os.Stat(u.pending(name)); err != nil {
-			continue
-		}
-		if err := u.mkdirUploadDir(filepath.Dir(t.sessionPath(u))); err == nil {
-			if err := os.Rename(u.pending(name), t.sessionPath(u)); err != nil {
-				slog.Error("finish image move", "image", t.ImageID, "err", errClass(err))
-			} else if err := u.syncUploadDirs(filepath.Dir(t.sessionPath(u))); err != nil {
-				slog.Error("sync upload move", "err", errClass(err))
-			} else if t.FileID != "" {
-				_ = os.Remove(filepath.Dir(u.pending(name)))
+		if err == nil {
+			if err := u.recoverUpload(t); err != nil {
+				slog.Error("recover upload", "err", errClass(err))
 			}
 		}
 	}
@@ -507,53 +501,40 @@ func (u *uploads) reconcile() {
 
 // release gives the images a session was sent back to pending, for a
 // session whose creation did not finish.
-func (u *uploads) release(sessionID string) {
+func (u *uploads) release(sessionID string) error {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	entries, _ := os.ReadDir(filepath.Join(u.dir, "partial"))
+	entries, err := os.ReadDir(filepath.Join(u.dir, "partial"))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var result error
 	for _, e := range entries {
 		if !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
 		t, err := u.load(strings.TrimSuffix(e.Name(), ".json"))
-		if err != nil || t.Session != sessionID || t.artifactID() == "" {
-			continue
-		}
-		if t.Returning {
-			if err := u.returnPending(t); err != nil {
-				slog.Error("return upload", "err", errClass(err))
+		if err != nil {
+			if connect.CodeOf(err) != connect.CodeNotFound {
+				result = errors.Join(result, err)
 			}
 			continue
 		}
-		name := t.relativeName()
-		src := t.sessionPath(u)
-		if _, err := os.Stat(src); err == nil {
-			if err := u.mkdirUploadDir(filepath.Dir(u.pending(name))); err != nil {
-				continue
-			}
-			if err := os.Rename(src, u.pending(name)); err != nil {
-				slog.Error("return upload", "err", errClass(err))
-				continue
-			}
-			if err := u.syncUploadDirs(filepath.Dir(u.pending(name))); err != nil {
-				slog.Error("sync returned upload", "err", errClass(err))
-				continue
-			}
-		} else if !os.IsNotExist(err) {
+		if t.Session != sessionID || t.artifactID() == "" {
 			continue
 		}
-
-		if t.FileID != "" {
-			_ = os.Remove(filepath.Dir(src))
-		}
-		t.Session = ""
-		t.Refs = nil
-		if err := u.save(t); err != nil {
-			slog.Error("save transfer", "transfer", t.ID, "err", errClass(err))
+		if err := u.startReturn(t); err != nil {
+			result = errors.Join(result, err)
 		}
 	}
-	_ = os.Remove(filepath.Join(u.sessionDir(sessionID), "files"))
-	_ = os.Remove(u.sessionDir(sessionID))
+	if result == nil {
+		_ = os.Remove(filepath.Join(u.sessionDir(sessionID), "files"))
+		_ = os.Remove(u.sessionDir(sessionID))
+	}
+	return result
 }
 
 // untake returns images of a message that was not accepted after all to
@@ -579,17 +560,39 @@ func (u *uploads) dropSessionLocked(sessionID string) {
 	if sessionID == "" || sessionID == "partial" || sessionID == "pending" || strings.ContainsAny(sessionID, "/.\\") {
 		return
 	}
-	if err := os.RemoveAll(u.sessionDir(sessionID)); err != nil {
-		slog.Error("remove session images", "session", sessionID, "err", errClass(err))
+	entries, err := os.ReadDir(filepath.Join(u.dir, "partial"))
+	if err != nil && !os.IsNotExist(err) {
 		return
 	}
-	entries, _ := os.ReadDir(filepath.Join(u.dir, "partial"))
+	failed := false
 	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".json") {
-			t, err := u.load(strings.TrimSuffix(e.Name(), ".json"))
-			if err == nil && t.Session == sessionID {
-				u.remove(t.ID)
+		if !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		t, err := u.load(strings.TrimSuffix(e.Name(), ".json"))
+		if err != nil {
+			if connect.CodeOf(err) != connect.CodeNotFound {
+				failed = true
 			}
+			continue
+		}
+		if t.Session != sessionID {
+			continue
+		}
+		if t.Returning {
+			err = u.returnPending(t)
+		} else {
+			err = u.deleteUpload(t)
+		}
+		if err != nil {
+			failed = true
+			slog.Error("clean session upload", "err", errClass(err))
+		}
+	}
+	// An unresolved return owns bytes here even if session metadata vanished.
+	if !failed {
+		if err := os.RemoveAll(u.sessionDir(sessionID)); err == nil {
+			_ = u.syncUploadDirs(u.dir)
 		}
 	}
 }
@@ -630,11 +633,14 @@ func (u *uploads) gcLocked(now time.Time) {
 			}
 			continue
 		}
-		if t.Returning {
-			if err := u.returnPending(t); err != nil {
+		if err := u.recoverUpload(t); err != nil {
+			if t.artifactID() != "" {
 				referenced[strings.Split(t.relativeName(), string(filepath.Separator))[0]] = true
-				continue
 			}
+			continue
+		}
+		if t.Deleting {
+			continue
 		}
 		if t.FileID == "" && t.Session != "" && len(t.Refs) == 0 && !t.Exposed {
 			if err := u.removeOriginal(t); err == nil {
@@ -655,18 +661,6 @@ func (u *uploads) gcLocked(now time.Time) {
 		}
 		if t.artifactID() != "" {
 			referenced[strings.Split(t.relativeName(), string(filepath.Separator))[0]] = true
-			// A completion record can be visible after a failed metadata fsync.
-			// Re-sync it before GC removes the retained original, just like an
-			// explicit Complete retry. Keep the bytes if the sync still fails.
-			if t.FileID != "" {
-				if _, err := os.Stat(u.partial(t.ID) + ".part"); err == nil {
-					if _, err := u.durableFileStatus(t); err != nil {
-						slog.Error("sync completed upload", "err", errClass(err))
-					}
-				}
-			} else {
-				_ = os.Remove(u.partial(t.ID) + ".part")
-			}
 		}
 	}
 	pending, _ := os.ReadDir(filepath.Join(u.dir, "pending"))

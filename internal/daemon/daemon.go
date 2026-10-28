@@ -402,7 +402,12 @@ func (d *Daemon) unstarted(m *meta, dir string, alive bool) bool {
 		}
 		return false
 	}
-	d.uploads.release(m.ID)
+	if err := d.uploads.release(m.ID); err != nil {
+		slog.Error("return unstarted session uploads", "session", m.ID, "err", errClass(err))
+		// Keep Starting metadata so the next startup retries, without restoring
+		// this rejected creation as a normal exited session.
+		return true
+	}
 	if err := os.RemoveAll(dir); err != nil {
 		slog.Error("remove unstarted session", "session", m.ID, "err", errClass(err))
 	}
@@ -566,10 +571,15 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 		return nil, err
 	}
 	fail := func(err error) (*session, error) {
-		d.uploads.untake(images, id, firstRequest)
-		d.uploads.untakeFiles(files, id, firstRequest)
+		returnErr := d.uploads.release(id)
 		log.Close()
-		_ = os.RemoveAll(dir) // a session that never started leaves nothing
+		if returnErr == nil {
+			_ = os.RemoveAll(dir)
+		} else {
+			// Starting metadata is the retry witness if persisting return intent
+			// itself failed. Never discard it before every return succeeds.
+			slog.Error("return failed session uploads", "err", errClass(returnErr))
+		}
 		return nil, err
 	}
 	argv := d.ptyHostArgv(dir, &m, bin, cliArgs, envFile)

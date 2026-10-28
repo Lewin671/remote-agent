@@ -154,29 +154,9 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the bytes do not match the hash"))
 	}
 	t.FileID, t.CompletedMs = newID(16), time.Now().UnixMilli()
-	dst := u.pending(t.relativeName())
-	if err := u.mkdirUploadDir(filepath.Dir(dst)); err != nil {
-		_ = os.Remove(filepath.Dir(dst))
-		return nil, err
-	}
-	// Keep the durable original until both the new link and its full ancestry
-	// have been synced and the completion record has committed.
-	if err := os.Link(u.partial(t.ID)+".part", dst); err != nil {
-		_ = os.Remove(filepath.Dir(dst))
-		return nil, err
-	}
-	if err := u.syncUploadDirs(filepath.Dir(dst)); err != nil {
-		_ = os.RemoveAll(filepath.Dir(dst))
-		return nil, err
-	}
-	if err := u.save(t); err != nil {
-		if !fileReplaced(err) {
-			_ = os.RemoveAll(filepath.Dir(dst))
-		}
-		return nil, err
-	}
-	_ = os.Remove(u.partial(t.ID) + ".part")
-	return t.status(), nil
+	return u.commitUpload(t, func(dst string) error {
+		return os.Link(u.partial(t.ID)+".part", dst)
+	})
 }
 
 type queuedFile struct {
@@ -237,7 +217,7 @@ func (u *uploads) selectUploads(imageIDs, fileIDs []string, device, session stri
 			}
 			// A rejected claim may still be returning after an earlier I/O error.
 			// Finish that intent before any new acceptance can reuse its session path.
-			if t != nil && t.Returning && t.Device == device {
+			if t != nil && !t.Deleting && t.Returning && t.Device == device {
 				if err := u.returnPending(t); err != nil {
 					return nil, err
 				}
@@ -248,7 +228,7 @@ func (u *uploads) selectUploads(imageIDs, fileIDs []string, device, session stri
 				}
 			}
 			switch {
-			case t == nil || session == "" && t.Session != "":
+			case t == nil || t.Deleting || session == "" && t.Session != "":
 				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("%s %s is not on this machine; upload it again", label, id))
 			case seen[id]:
 				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s %s is named twice", label, id))
@@ -292,60 +272,28 @@ func (u *uploads) takeUploads(images, files []string, device, session, request s
 		copy.Refs = maps.Clone(t.Refs)
 		before[t] = copy
 	}
-	var moved []*transfer
 	undo := func() {
-		// A failed reverse move must keep the session owner: startup can then
-		// locate/reconcile either copy. Never describe session bytes as pending.
-		retained := map[*transfer]bool{}
-		for _, t := range moved {
-			t.Returning = true
-			if err := u.save(t); err != nil {
-				retained[t] = true
-				continue
-			}
-			if err := u.returnPending(t); err != nil {
-				retained[t] = true
-			}
-		}
 		for t, old := range before {
-			owner := t.Session
-			*t = old
-			if retained[t] {
-				t.Session = owner
-				t.Returning = true
+			if old.Session == "" && t.Session != "" {
+				t.Refs = nil
+				// Includes an interrupted claim save or a move not yet renamed.
+				// Never overwrite a failed return with the old unowned snapshot.
+				if err := u.startReturn(t); err != nil {
+					slog.Error("undo upload claim", "err", errClass(err))
+				}
+			} else {
+				*t = old
+				_ = u.save(t)
 			}
-			_ = u.save(t)
 		}
 	}
 	for _, t := range ts {
 		newClaim := t.Session == ""
 		if newClaim {
 			t.Session = session
-			if err := u.mkdirUploadDir(filepath.Dir(t.sessionPath(u))); err != nil {
+			if err := u.moveUpload(t); err != nil {
 				undo()
 				return out, err
-			}
-			// Persist ownership first so startup can finish a crash-cut move.
-			if err := u.save(t); err != nil {
-				undo()
-				return out, err
-			}
-			src := u.pending(t.relativeName())
-			if err := os.Rename(src, t.sessionPath(u)); err != nil {
-				undo()
-				return out, err
-			}
-			moved = append(moved, t)
-			if err := u.syncUploadDirs(filepath.Dir(t.sessionPath(u))); err != nil {
-				undo()
-				return out, err
-			}
-			if err := u.syncUploadDirs(filepath.Dir(src)); err != nil {
-				undo()
-				return out, err
-			}
-			if t.FileID != "" {
-				_ = os.Remove(filepath.Dir(src))
 			}
 		}
 		if t.Refs == nil {
@@ -353,7 +301,7 @@ func (u *uploads) takeUploads(images, files []string, device, session, request s
 		}
 		t.Refs[request] = true
 		t.AccessMs = time.Now().UnixMilli()
-		if err := u.save(t); err != nil {
+		if err := u.step("claim-reference", func() error { return u.save(t) }); err != nil {
 			undo()
 			return out, err
 		}
@@ -384,17 +332,14 @@ func (u *uploads) untakeClaim(t *transfer, newClaim bool, session, request strin
 	}
 	delete(t.Refs, request)
 	returning := newClaim && len(t.Refs) == 0 && !t.Exposed
+	var err error
 	if returning {
-		t.Returning = true
+		err = u.startReturn(t)
+	} else {
+		err = u.save(t)
 	}
-	if err := u.save(t); err != nil {
-		slog.Error("save rejected upload return", "err", errClass(err))
-		return
-	}
-	if returning {
-		if err := u.returnPending(t); err != nil {
-			slog.Error("return rejected upload", "err", errClass(err))
-		}
+	if err != nil {
+		slog.Error("return rejected upload", "err", errClass(err))
 	}
 }
 
@@ -467,7 +412,7 @@ func (u *uploads) releaseFiles(files []queuedFile, session, request string) {
 	defer u.mu.Unlock()
 	for _, f := range files {
 		t := u.byFile(f.ID)
-		if t != nil && t.Session == session {
+		if t != nil && !t.Returning && !t.Deleting && t.Session == session {
 			delete(t.Refs, request)
 			_ = u.save(t)
 		}
@@ -480,61 +425,4 @@ func fileLinePath(line string) string {
 		return strings.TrimSuffix(strings.TrimPrefix(line, `File: @"`), `" (file)`)
 	}
 	return strings.TrimPrefix(strings.TrimPrefix(line, "File: "), "@")
-}
-
-// A lost/failed metadata fsync may have left the new completion record visible.
-// A retry must actually sync it before acknowledging durability and unlinking
-// the retained partial, rather than just returning the visible status.
-func (u *uploads) durableFileStatus(t *transfer) (*pb.ImageUploadStatus, error) {
-	if err := u.save(t); err != nil {
-		return nil, err
-	}
-	_ = os.Remove(u.partial(t.ID) + ".part")
-	return t.status(), nil
-}
-
-// Complete a rejected claim's return after an interrupted/failed reverse move.
-// Session stays authoritative until pending bytes and both directory entries
-// are durable. This also handles a crash after rename but before metadata save.
-func (u *uploads) returnPending(t *transfer) error {
-	src := t.sessionPath(u)
-	dst := u.pending(t.relativeName())
-	if _, err := os.Stat(src); err == nil {
-		if err := u.mkdirUploadDir(filepath.Dir(dst)); err != nil {
-			return err
-		}
-		if err := os.Rename(src, dst); err != nil {
-			return err
-		}
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-	if _, err := os.Stat(dst); err == nil {
-		if err := u.syncUploadDirs(filepath.Dir(dst)); err != nil {
-			return err
-		}
-		if _, err := os.Stat(filepath.Dir(src)); err == nil {
-			if err := u.syncUploadDirs(filepath.Dir(src)); err != nil {
-				return err
-			}
-		} else if !os.IsNotExist(err) {
-			return err
-		}
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-	// If both copies vanished there is no directory entry left to sync.
-	// Still release the provisional owner so the stale record can expire.
-	owner, refs := t.Session, t.Refs
-	t.Session, t.Returning = "", false
-	t.Refs = nil
-	if err := u.save(t); err != nil {
-		t.Session, t.Returning = owner, true
-		t.Refs = refs
-		return err
-	}
-	if t.FileID != "" {
-		_ = os.Remove(filepath.Dir(src))
-	}
-	return nil
 }
