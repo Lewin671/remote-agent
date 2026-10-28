@@ -1,3 +1,4 @@
+import { FileChips, withoutFileLines } from "./Files";
 import { ChevronDown } from "../icons";
 import { ScheduleCreate, ScheduleStrip } from "./Schedules";
 import { clockTime, foldScheduled } from "../schedules";
@@ -237,7 +238,9 @@ export function SessionPage({
     // another client's images are not put into this input.
     const ours = !!o || acc?.origin?.deviceId === remote.account.deviceId;
     const ids = ours ? (o?.imageIds ?? acc?.imageIds ?? []) : [];
-    const foreign = !ours && (acc?.imageIds.length ?? 0) > 0;
+    const files = ours ? (o?.files ?? acc?.files ?? []) : [];
+    const foreign = !ours && ((acc?.imageIds.length ?? 0) > 0 || (acc?.files?.length ?? 0) > 0);
+    if (tray.files().length + files.length > tray.maxFiles) return setToast(`输入框放不下这条消息的 ${files.length} 个文件；先移除一些再放回`);
     // All of the message or none of it: never a message short of images.
     if (
       ids.length &&
@@ -251,8 +254,9 @@ export function SessionPage({
       )
     )
       return setToast(
-        `输入框里已有 ${tray.items.length} 张图，放不下这条消息的 ${ids.length} 张；先移除一些再放回`,
+        `输入框里已有 ${tray.images().length} 张图，放不下这条消息的 ${ids.length} 张；先移除一些再放回`,
       );
+    tray.restoreFiles(files.map((f, i) => ({ fileId: f.fileId, name: f.name, size: Number(f.sizeBytes), file: o?.files?.[i]?.file })));
     if (o) remote.dismissSend(sid, o.sendId);
     const draft = remote.drafts.get(sid) ?? "";
     remote.drafts.set(
@@ -261,7 +265,7 @@ export function SessionPage({
     );
     if (foreign)
       setToast(
-        "这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片",
+        acc?.files?.length ? "这条消息的附件是另一客户端上传的，只放回了文字；需要的话在这里重新选择附件" : "这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片",
       );
     setComposerKey((k) => k + 1);
     setTimeout(() => composer.current?.focus());
@@ -543,12 +547,13 @@ export function SessionPage({
                 sid,
                 text,
                 tray.imageIds(),
-                tray.items.map((i) => i.thumb!).filter(Boolean),
+                tray.images().map((i) => i.thumb!).filter(Boolean),
                 mode,
                 {
                   original: tray.original,
-                  files: tray.items.map((i) => i.file),
+                  files: tray.images().map((i) => i.file),
                 },
+                tray.files().map((i) => ({ fileId: i.fileId!, name: i.name!, sizeBytes: BigInt(i.bytes ?? 0), path: "", file: i.file })),
               );
               tray.clear();
             }}
@@ -1080,11 +1085,12 @@ function Pending({
     return (
       <div className={"me " + (o.unknown ? "warn" : "fail")}>
         <LocalThumbs blobs={o.thumbs} />
+        <FileChips files={o.files} />
         {o.text && <div>{o.text}</div>}
         <small>
           {o.unknown ? "可能没发出去：" : "没发出去："}
           {o.error}
-          {!o.unknown && !!o.imageIds?.length && (
+          {!o.unknown && (!!o.imageIds?.length || !!o.files?.length) && (
             <button
               onClick={() => {
                 onRestore(o.text, o.sendId);
@@ -1107,6 +1113,7 @@ function Pending({
   return (
     <div className={"me" + (phase === "sending" ? " pending" : "")}>
       <LocalThumbs blobs={o.thumbs} />
+      <FileChips files={o.files} />
       {o.text && <div>{o.text}</div>}
       <small>
         {phase === "sending" ? (
@@ -1189,10 +1196,11 @@ function Row({
             ? ""
             : label;
       const images = k.value.images;
-      const segs = splitPlaceholders(k.value.text, images);
+      const segs = splitPlaceholders(withoutFileLines(k.value.text, k.value.files), images);
       return (
         <div className="me">
           <ImageStrip refs={images} numbered />
+          <FileChips files={k.value.files} />
           {segs.length > 0 && (
             <div>
               {segs.map((x, i) =>
@@ -1342,9 +1350,11 @@ function Row({
         // the text can go back into the input, to send after resuming.
         const text = textOf.get(k.value.requestId);
         const images = d.accepted.get(k.value.requestId)?.imageIds.length ?? 0;
-        return text !== undefined && (text || images) ? (
+        const files = d.accepted.get(k.value.requestId)?.files;
+        return text !== undefined && (text || images || files?.length) ? (
           <div className="me fail unsent">
-            <div>{text || `${images} 张图片`}</div>
+            <FileChips files={files} />
+            <div>{text || (images ? `${images} 张图片` : "")}</div>
             <small>
               没发出去：会话已结束
               <button onClick={() => onRestore(text, k.value.requestId)}>
@@ -1365,13 +1375,15 @@ function Row({
         const text = textOf.get(k.value.requestId) ?? "";
         const why = inputFailure(k.value.reason, agent);
         const images = d.accepted.get(k.value.requestId)?.imageIds ?? [];
+        const files = d.accepted.get(k.value.requestId)?.files;
         const mine = remote
           .outbox(sid)
           .some((o) => o.sendId === k.value.requestId);
         if (k.value.status === InputStatus.NEEDS_TERMINAL)
           return (
             <div className="me warn">
-              <div>{text || "一条消息"}</div>
+              <FileChips files={files} />
+              <div>{text || (files?.length ? "" : "一条消息")}</div>
               <small>
                 可能没发出去：{why}
                 {onTerminal && <button onClick={onTerminal}>去终端</button>}
@@ -1380,18 +1392,19 @@ function Row({
           );
         return (
           <div className="me fail">
+            <FileChips files={files} />
             {!text && images.length > 0 ? (
               <div>{images.length} 张图片</div>
             ) : (
-              <div>{text || "一条消息"}</div>
+              <div>{text || (files?.length ? "" : "一条消息")}</div>
             )}
             <small>
               没发出去：{why}
-              {mine && (text || images.length > 0) && (
+              {mine && (text || images.length > 0 || !!files?.length) && (
                 <button
                   disabled={remote.replaced.has(k.value.requestId)}
                   onClick={() =>
-                    remote.resend(sid, k.value.requestId, text, images)
+                    remote.resend(sid, k.value.requestId, text, images, [], remote.outbox(sid).find((o) => o.sendId === k.value.requestId)?.files ?? files)
                   }
                 >
                   {remote.replaced.has(k.value.requestId)
@@ -1399,7 +1412,7 @@ function Row({
                     : "重试"}
                 </button>
               )}
-              {(text || images.length > 0) && (
+              {(text || images.length > 0 || !!files?.length) && (
                 <button onClick={() => onRestore(text, k.value.requestId)}>
                   放回输入框
                 </button>

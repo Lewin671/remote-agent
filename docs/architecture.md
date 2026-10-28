@@ -1,6 +1,6 @@
 # 架构与技术决策
 
-项目边界见 [scope.md](scope.md)。本文记录各端怎么划分、彼此怎么通信、怎么接入 Codex 和 Claude Code，以及技术决策和理由。几个主题另有文档：Android 客户端见 [android-client.md](android-client.md)，iOS 客户端见 [ios-client.md](ios-client.md)，会话里的图片见 [session-images.md](session-images.md)。两个 CLI 的实测行为见 [codex-notes.md](codex-notes.md) 和 [claude-code-notes.md](claude-code-notes.md)，还没定的问题见 [plan.md](plan.md) 的「待确认」。
+项目边界见 [scope.md](scope.md)。本文记录各端怎么划分、彼此怎么通信、怎么接入 Codex 和 Claude Code，以及技术决策和理由。几个主题另有文档：Android 客户端见 [android-client.md](android-client.md)，iOS 客户端见 [ios-client.md](ios-client.md)，会话里的图片见 [session-images.md](session-images.md)，文件附件见 [session-files.md](session-files.md)。两个 CLI 的实测行为见 [codex-notes.md](codex-notes.md) 和 [claude-code-notes.md](claude-code-notes.md)，还没定的问题见 [plan.md](plan.md) 的「待确认」。
 
 章节编号被代码注释引用（如 `architecture §13`），所以不重排、不改号。
 
@@ -365,7 +365,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 项目在范围菜单、新建时的选项目和项目管理三处是同一个列表：同样的分组和排序、同样的两行（名字；路径加进行中的数量，没有进行中而它的电脑都不在线时写「电脑不在线」）、同样的「新项目…」，只有行尾不同。两端各由一个共用的组件画，免得三处各自演变。
 
-主页和范围菜单见 [client-v49 · 主页](design/client-v49.html#home)，项目管理的布局与具体交互见 [client-v49 · 项目管理](design/client-v49.html#projects)。目标机器离线时由用户选这次用的机器，不改项目设置，也不在输入中途自动更换机器或 CLI。在新建输入框旁切换 CLI 保留草稿，改用项目设置里这个 CLI 的那一套。
+主页和范围菜单见 [client-v50 · 主页](design/client-v50.html#home)，项目管理的布局与具体交互见 [client-v50 · 项目管理](design/client-v50.html#projects)。目标机器离线时由用户选这次用的机器，不改项目设置，也不在输入中途自动更换机器或 CLI。在新建输入框旁切换 CLI 保留草稿，改用项目设置里这个 CLI 的那一套。
 
 ## 9. 账户、设备和密钥
 
@@ -474,7 +474,7 @@ open 模式下带对 setup token 的照样建 owner 账户。工作量证明挡�
 
 ### 断线时显示什么
 
-从客户端到电脑要经过三段：本机网络、服务器、电脑。客户端只报离自己最近的那一段故障，并且只在连接提示条一处说；更远的一段此刻无从得知，不沿用断线前的说法。界面见 [client-v49 · 断线](design/client-v49.html#link)。
+从客户端到电脑要经过三段：本机网络、服务器、电脑。客户端只报离自己最近的那一段故障，并且只在连接提示条一处说；更远的一段此刻无从得知，不沿用断线前的说法。界面见 [client-v50 · 断线](design/client-v50.html#link)。
 
 | 判断 | 结论 | 没结束的会话 |
 |---|---|---|
@@ -686,7 +686,7 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 
 ### 账户额度
 
-设备页提供额度详情，按这台机器上安装的 CLI 分组，显示 CLI 登录账户的用量；它与会话上下文占用、累计 token、remote-agent 的图片存储配额分别展示。不同 CLI 不相加，不按模型或会话切分账户额度；不同机器也不凭套餐名推断为同一个账户。界面见 [client-v49 · 账户额度](design/client-v49.html#quota)。
+设备页提供额度详情，按这台机器上安装的 CLI 分组，显示 CLI 登录账户的用量；它与会话上下文占用、累计 token、remote-agent 的图片存储配额分别展示。不同 CLI 不相加，不按模型或会话切分账户额度；不同机器也不凭套餐名推断为同一个账户。界面见 [client-v50 · 账户额度](design/client-v50.html#quota)。
 
 Codex 继续用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数据从哪读)）。Claude Code 的 transcript 没有账户额度，额度只在状态栏命令的输入里（[claude-code-notes §2](claude-code-notes.md#2-transcript)）。
 
@@ -705,9 +705,11 @@ Codex 继续用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数
 - 读取失败：说明失败并保留带时间的上次记录；「重新读取」只重读本机已采集数据，不能保证向服务商刷新，机器离线时置灰。额度页不提供跳转终端的入口，不支持读取时只提示可在本机 CLI 里查看 `/usage`。
 - 确认换登录账户后清掉旧账户快照；无法可靠识别账户变更时不复用持久化缓存，显示未获取。多会话的账户额度不累加，只有能确认同一账户的数据才能合并，取最新的：Codex 按 rollout 里的上报时间；Claude Code 的状态栏输入不带时间，空闲会话会一直重复它上一次回复时的数字，所以逐个窗口比较，重置时间晚的算新，重置时间相同时取已用比例高的（一个窗口内用量只增不减），落后的上报不覆盖记录、也不刷新「最近收到」；状态栏输入也不带账户，所以换登录账户后，某个会话原样重复它在旧账户下报过的数字时不算新账户的（那是它上一次回复时旧账户的额度），等它的数字变了才计入；未知账户归属时保留来源会话区分。
 
-## 17. 会话里的图片
+## 17. 会话里的图片和文件
 
 见 [session-images.md](session-images.md)：从 CLI 的记录里取图、两种尺寸、加密上传、保存期限和配额，以及从客户端发图片、注入、失败处理和存储清理。
+
+任意文件的上传和 CLI 文本引用见 [session-files.md](session-files.md)；与图片共用机器级加密分块指令和电脑上传配额。
 
 ## 18. 定时任务
 
@@ -766,7 +768,7 @@ MCP 每次操作先确认 daemon 支持受限委托；不支持时拒绝工具�
 
 `MachineCapabilities.scheduled_tasks` 表示可管理任务。`MachineMeta.schedule_revision` 只携带单调修订号，不携带任务列表；任务、运行记录、通知或下次时间等客户端可见状态变化时递增；事件游标和恢复记账不递增。修订号跨重启保留，以两秒窗口合并元数据更新。三端均按能力筛选机器，在修订号变化、电脑上线或中继重连后用既有加密 Schedule 机器指令重新取列表，不另加任务轮询。各端只缓存经过验证的签名密文响应，离线时重新验证并显示上次任务状态，禁止修改；任务内容在内存中解密。
 
-三端通过独立「定时」入口聚合各电脑任务，提供新建/编辑、改名、暂停/恢复、立即额外运行和删除确认，以及按天查看运行历史。删除沿用 cancel 语义，停止未来调度，保留已开的对话。会话菜单可创建当前对话任务，对话定时条提供管理入口；运行记录按 ID 打开任务会话，并定位对应轮次。连续静默轮只有在同天、明确完成且没有通知、待处理或后续回复时才折叠；定位的轮次展开。任务会话接手沿用既有恢复/回复流程，不因打开运行记录就解除归属。界面与共同文案见 [client-v49 · 定时任务](design/client-v49.html#schedules)；iOS 的原生控件与无 APNs 边界见 [ios-client.md](ios-client.md)。
+三端通过独立「定时」入口聚合各电脑任务，提供新建/编辑、改名、暂停/恢复、立即额外运行和删除确认，以及按天查看运行历史。删除沿用 cancel 语义，停止未来调度，保留已开的对话。会话菜单可创建当前对话任务，对话定时条提供管理入口；运行记录按 ID 打开任务会话，并定位对应轮次。连续静默轮只有在同天、明确完成且没有通知、待处理或后续回复时才折叠；定位的轮次展开。任务会话接手沿用既有恢复/回复流程，不因打开运行记录就解除归属。界面与共同文案见 [client-v50 · 定时任务](design/client-v50.html#schedules)；iOS 的原生控件与无 APNs 边界见 [ios-client.md](ios-client.md)。
 
 ### 协议版本与升级
 

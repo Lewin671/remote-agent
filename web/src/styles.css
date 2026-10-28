@@ -676,7 +676,7 @@ pre.cmd { background: var(--soft); color: var(--fg2); border-radius: var(--r-xs)
   display: flex; align-items: center; justify-content: center; flex: none; font-size: 20px; }
 .go44.off, .go44:disabled { opacity: .4; }
 .compose-card .att-tray, .compose-card .att-meta, .compose-card > .banner { grid-column: 1 / -1; }
-.compose-card:has(.att-tray) .draft, .compose-card:has(.att-tray) .compose-menu, .compose-card:has(.att-tray) .go44 { grid-row: 3; }
+.compose-card:has(.attachments) .draft, .compose-card:has(.attachments) .compose-menu, .compose-card:has(.attachments) .go44 { grid-row: 2; }
 .compose-card .att-tray { grid-row: 1; padding: 6px 6px 8px; }
 .compose-card .att-meta { grid-row: 2; padding: 0 8px 6px; }
 .desk .compose-card { margin-bottom: 12px; }
@@ -823,7 +823,7 @@ input.field { margin: 0; }
 .att-hint { font-size: 12px; color: var(--muted); padding: 0 2px 6px; }
 .att-tray + .att-meta + .banner, .compose-card > .banner { margin-bottom: 6px; }
 .drop { position: relative; }
-.drop::after { content: "松开以添加图片"; position: absolute; inset: 0; border: 2px dashed var(--blue); border-radius: 18px; background: var(--blue-soft); color: var(--blue); font-size: 13px; font-weight: var(--w6); display: flex; align-items: center; justify-content: center; }
+.drop::after { content: "松开以添加附件"; position: absolute; inset: 0; border: 2px dashed var(--blue); border-radius: 18px; background: var(--blue-soft); color: var(--blue); font-size: 13px; font-weight: var(--w6); display: flex; align-items: center; justify-content: center; }
 .pic.local { width: 72px; height: 96px; }
 .me .pics .pic.local img { object-fit: cover; }
 
@@ -875,7 +875,7 @@ input.field { margin: 0; }
 .setrows + .cli-tabs { margin-top: 10px; }
 .cli-tabs + .setrows { margin-top: 8px; }
 .send-wrap { position: relative; grid-column: 3; grid-row: 1; align-self: end; }
-.compose-card:has(.att-tray) .send-wrap { grid-row: 3; }
+.compose-card:has(.attachments) .send-wrap { grid-row: 2; }
 .send-wrap .go44 { border-color: var(--card); }
 .go44.stop { background: var(--chip); color: var(--red); font-size: 13px; }
 .send-menu { position: absolute; bottom: calc(100% + 8px); right: 0; width: max-content; max-width: min(260px, 80vw); background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: 0 6px 24px #0002; z-index: 20; padding: 4px 8px; }
@@ -1048,3 +1048,25 @@ input.field { margin: 0; }
 .schedules-page .btn.wide { width: 100%; justify-content: center; }
 .schedule-name { display: block; margin: 8px 16px 0; font-size: 13px; color: var(--muted); }
 .schedule-name input { display: block; width: 100%; min-height: 44px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--fg); font-size: 15px; }
+
+/* File attachments share a chip across draft, queue and user message. */
+.attach-wrap { position: relative; display: inline-flex; }
+.attach-menu { position: absolute; bottom: calc(100% + 4px); left: 0; z-index: 25; min-width: 112px; padding: 4px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); box-shadow: 0 4px 16px #0001; }
+.attach-menu button { display: block; text-align: left; min-height: 44px; padding: 0 14px; width: 100%; color: var(--fg); }
+.attach-menu button:hover { background: var(--soft); }
+.file-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.file-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; padding: 4px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--soft); color: var(--fg2); text-align: left; }
+.file-chip > .ic { flex: none; font-size: 18px; color: var(--muted); }
+.file-info { min-width: 0; max-width: 220px; display: block; }
+.file-name { display: flex; min-width: 0; font-size: 13px; }
+.file-name > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: pre; min-width: 0; }
+.file-name > span:last-child { flex: 0 0 auto; max-width: 50%; white-space: pre; overflow: hidden; direction: rtl; text-align: left; }
+.file-info small { display: block; color: var(--muted); font-size: 12px; }
+.file-info progress { display: block; width: 100%; height: 3px; accent-color: var(--blue); }
+.file-chip button { min-width: 44px; min-height: 44px; color: var(--blue); flex: none; font-size: 12px; }
+.file-chip.failed .file-info small { color: var(--red); }
+.me > .file-chips { margin-bottom: 6px; padding: 0; background: none; max-width: 100%; border-radius: 0; }
+
+.compose-card > .attachments { grid-column: 1 / -1; grid-row: 1; min-width: 0; }
+
+.me .file-chip small { text-align: left; margin: 0; }

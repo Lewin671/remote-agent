@@ -1,0 +1,45 @@
+# 从客户端发文件
+
+本文写任意文件如何从客户端到原生 CLI、保留多久以及网页怎样显示；图片自身的编码、占位和确认见 [session-images.md](session-images.md)，外部工具证据见 [Claude Code](claude-code-notes.md#文件路径引用)、[Codex](codex-notes.md#文件路径引用)，验收见 [acceptance-notes.md](acceptance-notes.md#文件附件phase-a2026-10-28)。协议字段以 proto 为准；Android、iOS 的接入进度见 [plan.md](plan.md)。
+
+## 传输与信任边界
+
+文件沿用图片命名的机器级 Begin / Put / Status / Complete / Abort 指令，端到端加密，经中继转发到电脑；中继不保存文件正文，不解析名字、哈希和路径。设备身份由命令签名证明，传输和完成 ID 都只允许原设备续传或发送。文件上传独立受 `file_upload` capability 控制；旧 daemon 不声明，网页就不提供文件选择，不提升协议版本。四端生成代码同步，原生客户端的手写代码在下一阶段接入。
+
+单文件 100 MiB，每条消息最多 6 个文件，另可带 6 张图片。原始文件名最多 255 UTF-8 字节；非空文件名选择文件传输，格式必须为 UNSPECIFIED。允许空文件。每块最多 768 KiB，重复块与断点续传沿用图片规则；完成时只流式核对总长度、SHA-256，不解码、不压缩、不删元数据，字节原样保存。网页明确提示「文件原样发送，包含其中的元数据」。
+
+## 落盘与原生输入
+
+完成文件位于 `uploads/pending/<file id>/<safe name>`；消息被受理时整体检查图片与文件，移动到 `uploads/<session id>/files/<file id>/<safe name>`。新会话先确认所有文件实际存在再启动 CLI。目录 0700、文件 0600；所有路径由 daemon 生成。原始名字取 basename，NFC 规范化，非 Unicode 字母/数字及 `._-+=,` 的字符换成 `_`，连续 `_` 合并，去掉前导 `.`/`-`；以 UTF-8 边界截到 100 字节并保留扩展名，空名字用 `file`。上传根目录含任意空白时，图片和文件能力都关闭，避免 Claude 的 `@` 在空白处结束。
+
+图片仍先逐张粘贴为占位，文件不走图片占位。最后一次 bracketed paste 的正文是用户文字加两个换行，再按客户端顺序每文件一行：Claude Code 使用 `@<绝对路径>`，Codex 使用纯绝对路径。没有用户文字时只写文件行。按现有提交锁、租约、阶段落盘和 Enter 规则发送；确认比较的是组合后的整段正文和本次图片证据。原始用户文字、文件列表和组合正文保存在 queue.json，steer、queue、CLI 暂存和重启恢复不重新解释路径或换顺序。标题只取用户文字，纯文件或图片消息不生成标题。
+
+CLI 自己决定怎样读取文件；路径引用不保证特定格式一定内嵌进模型上下文。Claude 的小文本自动附件、大文件太大及 ZIP 工具读取的区别见工具实测。daemon 不读取 Agent 在回复中提及的任意文件；用户文件的事件信息只对会话上传目录里的精确路径行做 stat，不把文件内容发送回客户端。
+
+## 保留、配额与恢复
+
+图片和文件共享电脑原有上传配额，默认 1 GiB；未完成的剩余字节预留也计入。空间不够时沿用图片 ResourceExhausted 消息和设置入口。未完成传输一小时无新字节过期，未使用的完成文件 24 小时过期；状态查询和重复块不延期。
+
+文件一旦被消息受理就属于会话，Agent 可在后续任意一轮再次读取。它不进入图片 LRU，即使消息取消、执行结束、没有队列引用，也保留到整个会话上传目录被现有退出清理删除。ImageStorageUsage 的上传占用包含文件；使用中的文件始终计入 protected，不计入 reclaimable；清理按钮不能删除它。启动时补完中断的移动，再恢复持久队列；失败新会话的文件退回 pending。未使用文件和中断完成留下的孤儿目录按期限清理。
+
+## 历史事件与网页
+
+daemon 在每个解析出的用户消息里识别精确的 `@<path>` 或 `<path>` 行：路径必须位于本会话的 `uploads/<session id>/files/<file id>/<safe name>`。识别不依赖传输记录或内存请求，所以本机输入、历史重放和重启后仍有效；文件已删除时大小为 0。UserMessage 保留 CLI 原文，另带 SentFile；共享排队事件也带文件引用，正文仍是原始用户文字。旧客户端继续看到原始路径。
+
+网页只隐藏事件中已识别的完整路径行及其前一行空分隔，不隐藏包含路径的普通句子。草稿、排队、发送中、失败后恢复与已发送消息都用同一个文件条目：文件图标、名字中间省略、大小，上传中显示进度，失败可重试，编辑时可移除。
+
+电脑声明文件能力时，两个输入框的＋打开「图片 / 文件」小菜单；否则沿用直接选图。拖放、粘贴的非图片归文件，图片归图片；从「文件」选中的图片也原样发送。两类数量分别计算。大文件逐个读取、用浏览器原生 SHA-256 计算并上传，完成后释放字节缓冲，保留源 File 对象用于换机器、到期和恢复时重传。不新增哈希依赖。网页仅在当前账户内存保留文件，刷新后要重新选择；过期上传不能发送，恢复到输入框必须重新上传本机副本，没有副本就提示重选。未知结果请求保留首次文件 ID，不因草稿重传而修改。
+
+界面见 [client-v50 · 文件](design/client-v50.html#files)。
+
+## 协议改动的依赖
+
+| 读写位置 | 责任与边界 |
+|---|---|
+| `proto/remoteagent/v1/{local,remote,event}.proto`，Go / web / Android / iOS 的 buf 模板 | capability、原始文件名、完成文件 ID、发送/新建文件 ID、用户消息与共享队列的 SentFile；只改原生端生成代码 |
+| `internal/daemon/{rpc,daemon,uploads,files}.go` | 签名来源、文件验证、会话受理、无空白路径、原样存储 |
+| `internal/daemon/{queue,inject,held,recover,session,live_snapshot}.go` | 持久输入、原生粘贴、组合正文确认、标题和用户消息注释；快照保留文件信息 |
+| `internal/daemon/{image_storage,read_snapshot,images}.go` | 图片/文件共用配额，文件 protected 与 capability |
+| `internal/relay/handle.go`、`relay.go` | 原命令完整转发到本地 RPC，不解读文件；relay WebSocket 读上限 4 MiB |
+| `internal/server/{services,server,hub,request_limits}.go` | 中继只见密文：信封 1 MiB、RPC 请求 8 MiB、WebSocket 帧 2 MiB；大 RPC 全局并发 4、每账户 2，Forward 全局 64、每账户 32；均为逐请求/并发限制，不累计整份文件大小。768 KiB 块与现有加密开销可容纳，无需放宽限制；文件不走中继显示图片存储配额 |
+| `web/src/{attach,remote,model}.ts` 与 `views/{Attach,Files,NewSession,Session,Queue}.tsx` | 共用上传机制、独立限制、到期/换机器/恢复、请求不确定性、共享事件和文件条目 |

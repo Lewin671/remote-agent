@@ -7,7 +7,8 @@
 
 export interface Prepared {
   bytes: Uint8Array;
-  format: "jpeg" | "png" | "webp" | "gif";
+  format: "jpeg" | "png" | "webp" | "gif" | "file";
+  fileName?: string;
   width: number;
   height: number;
 }
@@ -15,11 +16,14 @@ export interface Prepared {
 /** Prepares a chosen file: compressed, or the original when asked. */
 export type Prepare = (file: Blob, original: boolean) => Promise<Prepared>;
 /** Uploads prepared bytes to a machine; resolves the image ID and its deadline. */
-export interface UploadedImage { imageId: string; expiresMs: number }
+export interface UploadedImage { imageId: string; fileId?: string; expiresMs: number }
 
 export type Upload = (machineId: string, p: Prepared, progress: (done: number, total: number) => void, started?: (abort: () => void) => void) => Promise<UploadedImage>;
 
 export interface TrayItem {
+  kind?: "file";
+  name?: string;
+  fileId?: string;
   key: string;
   file: Blob; // as chosen, for preparing again
   state: "preparing" | "uploading" | "done" | "failed";
@@ -41,6 +45,7 @@ export interface TrayItem {
 
 // One decoder across all drafts. A superseded request waits its turn and
 // checks its generation before allocating a bitmap.
+let fileTransfers = Promise.resolve();
 let preparation = Promise.resolve();
 async function prepareSerial<T>(current: () => boolean, work: () => Promise<T>): Promise<T | undefined> {
   const previous = preparation;
@@ -58,6 +63,9 @@ export class Tray {
   original = false;
   note = "";
   machineId = "";
+  fileSupported = false;
+  maxFiles = 6;
+  maxFileBytes = 100 * 1024 * 1024;
   // Called when images are first chosen, as typing the first letter is: a
   // new session's draft then holds its project and settings.
   onAdd?: () => void;
@@ -74,7 +82,7 @@ export class Tray {
 
   /** Adds files in the order chosen, up to max in all. */
   add(files: Blob[]) {
-    const room = Math.max(0, this.max - this.items.length);
+    const room = Math.max(0, this.max - this.images().length);
     const taken = files.slice(0, room);
     if (taken.length) this.onAdd?.();
     const left = files.length - taken.length;
@@ -91,8 +99,8 @@ export class Tray {
    * uploaded again: the machine may have cleaned up the old file. All or nothing:
    * false, with nothing added, when they do not all fit. */
   restore(images: { imageId: string; thumb?: Blob; file?: Blob }[], original = false): boolean {
-    if (this.items.length + images.length > this.max) return false;
-    if (!this.items.length) this.original = original;
+    if (this.images().length + images.length > this.max) return false;
+    if (!this.images().length) this.original = original;
     for (const im of images) {
       const item: TrayItem = { key: "t" + ++keys, file: im.file ?? im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId, remoteOnly: !im.file && !im.thumb };
       this.items.push(item);
@@ -100,6 +108,34 @@ export class Tray {
     }
     this.onChange();
     return true;
+  }
+
+  images(): TrayItem[] { return this.items.filter((i) => i.kind !== "file"); }
+  files(): TrayItem[] { return this.items.filter((i) => i.kind === "file"); }
+  fileIds(): string[] { return this.files().map((i) => i.fileId!).filter(Boolean); }
+
+  addFiles(files: File[]) {
+    if (!this.fileSupported) { this.note = "这台电脑不支持发送文件，请更新电脑上的 remote-agent"; this.onChange(); return; }
+    const notes: string[] = [];
+    let added = false;
+    for (const file of files) {
+      if (this.files().length >= this.maxFiles) { notes.push(`一条消息最多 ${this.maxFiles} 个文件`); break; }
+      if (file.size > this.maxFileBytes) { notes.push(`「${file.name}」超过单个文件 ${Math.round(this.maxFileBytes / 1024 / 1024)} MB 的上限`); continue; }
+      if (!file.name || new TextEncoder().encode(file.name).length > 255) { notes.push("文件名不能超过 255 字节，请重命名后选择"); continue; }
+      const item: TrayItem = { key: "t" + ++keys, file, kind: "file", name: file.name, bytes: file.size, state: "preparing", progress: 0 };
+      this.items.push(item); added = true; void this.run(item, true);
+    }
+    if (added) this.onAdd?.();
+    this.note = notes.join("；"); this.onChange();
+  }
+
+  restoreFiles(files: { fileId: string; name: string; size: number; file?: Blob }[]): boolean {
+    if (this.files().length + files.length > this.maxFiles) return false;
+    for (const f of files) {
+      const item: TrayItem = { key: "t" + ++keys, kind: "file", name: f.name, bytes: f.size, fileId: f.fileId, file: f.file ?? new Blob(), state: "preparing", progress: 0, remoteOnly: !f.file };
+      this.items.push(item); void this.run(item, true);
+    }
+    this.onChange(); return true;
   }
 
   remove(key: string) {
@@ -112,14 +148,14 @@ export class Tray {
 
   /** Whether 原图 can change: not while an image has no bytes to prepare. */
   canSwitchOriginal(): boolean {
-    return !this.items.some((i) => i.remoteOnly);
+    return !this.images().some((i) => i.remoteOnly);
   }
 
   /** 原图 for this message: every image is prepared and sent again. */
   setOriginal(v: boolean) {
     if (v === this.original || !this.canSwitchOriginal()) return;
     this.original = v;
-    for (const i of this.items) void this.run(i, true);
+    for (const i of this.images()) void this.run(i, true);
     this.onChange();
   }
 
@@ -151,12 +187,12 @@ export class Tray {
   }
 
   full(): boolean {
-    return this.items.length >= this.max;
+    return this.images().length >= this.max;
   }
 
   /** Every image is on the current machine. */
   ready(): boolean {
-    return this.items.length > 0 && this.items.every((i) => i.state === "done" && i.machineId === this.machineId && (i.expiresMs ?? 0) > Date.now());
+    return this.items.length > 0 && (!this.files().length || this.fileSupported) && this.items.every((i) => i.state === "done" && i.machineId === this.machineId && (i.expiresMs ?? 0) > Date.now());
   }
 
   /** Expired uploads have local bytes, but need a new transfer before sending. */
@@ -176,17 +212,17 @@ export class Tray {
   }
 
   imageIds(): string[] {
-    return this.items.map((i) => i.imageId!).filter(Boolean);
+    return this.images().map((i) => i.imageId!).filter(Boolean);
   }
 
   totalBytes(): number {
-    return this.items.reduce((n, i) => n + (i.bytes ?? 0), 0);
+    return this.images().reduce((n, i) => n + (i.bytes ?? 0), 0);
   }
 
   private async run(item: TrayItem, prepare: boolean) {
     if (item.remoteOnly) {
       this.gen.set(item.key, (this.gen.get(item.key) ?? 0) + 1);
-      Object.assign(item, { state: "failed", error: "这张图没有本机副本，请移除后重新选择" });
+      Object.assign(item, { state: "failed", error: item.kind === "file" ? "这个文件没有本机副本，请移除后重新选择" : "这张图没有本机副本，请移除后重新选择" });
       this.onChange();
       return;
     }
@@ -202,16 +238,26 @@ export class Tray {
     // What an earlier generation left on a machine is not needed now.
     item.abort?.();
     item.abort = undefined;
+    // At most one 100 MiB file is read/hashed/uploaded at a time across drafts.
+    let release: (() => void) | undefined;
+    if (item.kind === "file") {
+      const previous = fileTransfers;
+      fileTransfers = new Promise<void>((resolve) => { release = resolve; });
+      await previous;
+    }
     try {
+      if (!current()) return;
+      if (item.kind === "file" && !this.fileSupported) throw new Error("这台电脑不支持发送文件，请更新电脑上的 remote-agent");
+      if (item.kind === "file" && item.file.size > this.maxFileBytes) throw new Error(`单个文件不能超过 ${Math.round(this.maxFileBytes / 1024 / 1024)} MB`);
       if (prepare || !this.fresh(item)) {
         // What was prepared the other way is never sent in its place.
         const original = this.original;
-        set({ state: "preparing", progress: 0, error: undefined, imageId: undefined, machineId: undefined, prepared: undefined, preparedOriginal: undefined });
-        const p = await prepareSerial(current, () => this.prepare(item.file, original));
+        set({ state: "preparing", progress: 0, error: undefined, imageId: undefined, fileId: undefined, machineId: undefined, prepared: undefined, preparedOriginal: undefined });
+        const p = await prepareSerial(current, async () => item.kind === "file" ? { bytes: new Uint8Array(await item.file.arrayBuffer()), format: "file" as const, fileName: item.name, width: 0, height: 0 } : this.prepare(item.file, original));
         if (!current() || !p) return;
-        set({ prepared: p, preparedOriginal: original, bytes: p.bytes.length, thumb: new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: "image/" + p.format }) });
+        set({ prepared: p, preparedOriginal: original, bytes: p.bytes.length, thumb: item.kind === "file" ? undefined : new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: "image/" + p.format }) });
       }
-      set({ state: "uploading", progress: 0, error: undefined, imageId: undefined, machineId: undefined });
+      set({ state: "uploading", progress: 0, error: undefined, imageId: undefined, fileId: undefined, machineId: undefined });
       const uploaded = await this.upload(
         machineId,
         item.prepared!,
@@ -222,9 +268,9 @@ export class Tray {
           else abort();
         },
       );
-      set({ state: "done", progress: 1, imageId: uploaded.imageId, expiresMs: uploaded.expiresMs, machineId });
+      set({ state: "done", progress: 1, imageId: uploaded.imageId, fileId: uploaded.fileId, expiresMs: uploaded.expiresMs, machineId, ...(item.kind === "file" ? { prepared: undefined } : {}) });
     } catch (e) {
       set({ state: "failed", error: e instanceof Error ? e.message : String(e) });
-    }
+    } finally { if (item.kind === "file" && current()) item.prepared = undefined; release?.(); }
   }
 }

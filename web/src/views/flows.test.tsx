@@ -3122,3 +3122,58 @@ it("keeps task-owned approvals in attention and counts while omitting idle task 
  expect(sessionCounts(r,[s])).toBe("");
  expect(todoList(r).map(s=>s.id)).not.toContain(s.id);
 });
+
+it("sends files-only messages and restores a missing file from its original File", async () => {
+  const r = demo(); const s = r.sessions.get("s-idle")!;
+  r.machines.get(s.machineId)!.meta!.capabilities!.fileUpload = true;
+  let uploads = 0;
+  r.uploadImage = async (_m, p) => ({ imageId: "", fileId: (p as { fileName?: string }).fileName! + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
+  const sent: CommandKind[] = [];
+  r.command = async (_sid, cmd) => { sent.push(cmd); throw new CommandError("not_found", "file id is not on this machine; upload it again"); };
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const source = new File(["a,b\n1,2"], "data.csv", { type: "text/csv" });
+  await act(async () => {
+    const picker = host.querySelector<HTMLInputElement>('input[type=file]:not([accept])')!;
+    Object.defineProperty(picker, "files", { value: [source], configurable: true });
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+  await click(sendButton());
+  await vi.waitFor(() => expect(host.textContent).toContain("附件不在电脑上"));
+  expect(sent[0]).toMatchObject({ case: "send", value: { text: "", imageIds: [], fileIds: ["data.csv1"] } });
+  expect(host.querySelector(".me.fail .file-chip")?.textContent).toContain("data.csv");
+  await click(button("放回输入框"));
+  const tray = r.trays.get(s.id)!;
+  await vi.waitFor(() => expect(tray.fileIds()).toEqual(["data.csv2"]));
+  expect(tray.files()[0].file).toBe(source);
+  expect(tray.imageIds()).toEqual([]); expect(r.outbox(s.id)).toEqual([]);
+});
+
+it("creates a session with files-only and retains file IDs for an unknown retry", async () => {
+  const r = demo(); const machine = r.machines.get("mac") ?? [...r.machines.values()].find((m) => m.meta?.capabilities?.imageUpload)!;
+  machine.meta!.capabilities!.fileUpload = true;
+  r.prepareImage = async () => ({ bytes: new Uint8Array(1), format: "png", width: 1, height: 1 });
+  r.uploadImage = async () => ({ imageId: "", fileId: "file-first", expiresMs: Number.MAX_SAFE_INTEGER });
+  const calls: { cmd: CommandKind; slot?: RequestSlot }[] = [];
+  const real = r.machineCommand.bind(r);
+  r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot) => {
+    if (cmd?.case !== "createSession") return real(m, cmd);
+    calls.push({ cmd, slot });
+    if (calls.length === 1) throw new CommandError("unknown", "连接中断");
+    return create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "new-files" } } } });
+  };
+  // The default demo project selects the image-capable machine.
+  const go = vi.fn();
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={go} onBack={() => undefined} />);
+  const picker = host.querySelector<HTMLInputElement>('input[type=file]:not([accept])')!;
+  await act(async () => { Object.defineProperty(picker, "files", { value: [new File(["x"], "a.csv")], configurable: true }); picker.dispatchEvent(new Event("change", { bubbles: true })); });
+  await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+  await click(sendButton());
+  await vi.waitFor(() => expect(calls).toHaveLength(1));
+  expect(calls[0].cmd).toMatchObject({ case: "createSession", value: { prompt: "", fileIds: ["file-first"] } });
+  await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
+  await click(button("重试"));
+  await vi.waitFor(() => expect(calls).toHaveLength(2));
+  expect(calls[1].slot?.requestId).toBe(calls[0].slot?.requestId);
+  expect(calls[1].cmd).toEqual(calls[0].cmd);
+});

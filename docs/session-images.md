@@ -2,7 +2,7 @@
 
 本文写会话里的图片怎么从 CLI 的记录里取出、编码、加密上传和显示，以及客户端怎么把图片发给 Agent、失败时怎么收场、电脑和手机上各存多少。信封、指令和密钥的通用规则见 [architecture.md](architecture.md)，取值里还没定的见 [plan.md](plan.md) 的「待确认」。
 
-客户端显示会话里出现过的图片，也能发图片给 Agent。显示的图片包括：用户粘贴的（电脑上或客户端发的）、Agent 查看的（Claude Code 的 `Read`，Codex 的 `view_image`、浏览器截图等）、Codex 生成的。界面见 [design/client-v49.html](design/client-v49.html#images)，两个 CLI 怎么记录图片见 [codex-notes §1](codex-notes.md#1-数据从哪读)、[claude-code-notes §2](claude-code-notes.md#2-transcript)。
+客户端显示会话里出现过的图片，也能发图片给 Agent。显示的图片包括：用户粘贴的（电脑上或客户端发的）、Agent 查看的（Claude Code 的 `Read`，Codex 的 `view_image`、浏览器截图等）、Codex 生成的。界面见 [design/client-v50.html](design/client-v50.html#images)，两个 CLI 怎么记录图片见 [codex-notes §1](codex-notes.md#1-数据从哪读)、[claude-code-notes §2](claude-code-notes.md#2-transcript)。
 
 ## 显示会话里的图片
 
@@ -27,6 +27,7 @@
 - **默认压缩**：网页各草稿共用单图准备队列，切换原图或移除后跳过尚未开始的旧请求；Android 也只同时准备一张图，避免多张源图的解码内存叠加；iOS 同样一次只读、只准备一张，相册里选的图按文件交接，先看大小，超过读取上限的不读进内存（剪贴板给的是字节，没有大小可先问）。选图后在本机解码，缩到长边不超过 2048px，编码成 JPEG（带透明的用 PNG），iPhone 的 HEIC 这类格式也在这一步转掉；图片数据留出加密信封的开销；压缩图和原图统一走下面的分块协议，每个信封不超过 1 MiB。两个 CLI 本来就会把大图缩到 2000px 上下（notes），所以默认压缩基本不损失模型能看到的内容，还能避免 Codex 把几 MB 的原图写进 rollout
 - **原图**：每条消息可以选择发原图，保留原始的像素和画质，适合有小字的截图。PNG、JPEG、WebP、GIF 原样发送；两个 CLI 不认的格式（HEIC 等）按原始尺寸转成高质量 JPEG。单张不超过 20 MB，按不超过 1 MiB 的信封分块传给 daemon，daemon 按顺序拼好、核对总长度和哈希后才算传完。界面上说明两个 CLI 仍会自己缩小过大的图
 - **去掉元数据**：两种方式都去掉 EXIF 等元数据再发出，照片里的拍摄位置不会经 CLI 送到模型服务商。去掉之前先按 EXIF 里的方向把图转正，否则手机照片会横着或倒着交给 CLI，和客户端预览不一致。默认压缩在解码时按方向转正，重新编码后元数据自然没有了；原图的 JPEG 带方向标记时先无损旋转（尺寸不是 MCU 整数倍、做不了无损旋转时，以最高质量重新编码），再删掉 APP1 等元数据段（整个文件都要删，包括扫描之间和 EOI 之前的注释、APP 段，EOI 之后的内容也丢掉），PNG 删掉文本和 `eXIf` 块，GIF 删掉注释扩展和除循环播放以外的应用扩展（XMP 在里面），帧不动，没有方向标记的不改动像素数据
+- **共享传输**：图片命名的分块 RPC 同时承载任意文件；文件原样保存、按正文路径引用，生命周期不同，见 [session-files.md](session-files.md)。
 - **先传图、再发消息**：图片传给机器，不传给会话：每张图用机器级指令（header 里不带会话 ID，见 [architecture §13](architecture.md#13-daemon-设置与远程新建会话)）分块发给 daemon，原图也不会被 60 秒的指令期限卡住。
   - **分块和续传**：传输 ID 由客户端生成，每块带偏移，daemon 逐块落盘（fsync）后才回复已持久化的长度，重发的块必须和已收到的字节一致；中断后客户端查询状态从断点接着传。
   - **完成时的检查**：完成时 daemon 核对总长度、SHA-256、文件头的格式并确认能解码，再去掉 EXIF、XMP 和文本块（客户端已经去过一遍，这里兜底，带方向标记的图转正后重新编码：JPEG 仍是 JPEG，PNG 和 WebP 编码成 PNG），写到 `~/.remote-agent/uploads/pending/<图片 ID>.<扩展名>`（权限 0600，路径由 daemon 决定，不含空格，否则两个 CLI 都不认；`REMOTE_AGENT_HOME` 的路径带空格时 daemon 不声明上传能力），返回图片 ID。

@@ -923,6 +923,7 @@ export interface Derived {
     {
       text: string;
       imageIds: string[];
+      files?: import("./gen/remoteagent/v1/event_pb").SentFile[];
       origin?: Event["origin"];
       mode: SendMode;
     }
@@ -1047,11 +1048,12 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         if (
           k.value.status === InputStatus.QUEUED &&
           !d.accepted.has(k.value.requestId) &&
-          (k.value.text || k.value.imageIds.length)
+          (k.value.text || k.value.imageIds.length || k.value.files.length)
         )
           d.accepted.set(k.value.requestId, {
             text: k.value.text,
             imageIds: [...k.value.imageIds],
+            ...(k.value.files.length ? { files: [...k.value.files] } : {}),
             origin: e.origin,
             mode: k.value.mode,
           });
@@ -1376,6 +1378,7 @@ export interface Outgoing {
   // This device's copies of them, shown until the CLI records the message.
   thumbs?: Blob[];
   attachments?: { original: boolean; files: Blob[] };
+  files?: { fileId: string; name: string; sizeBytes: bigint; path: string; file?: Blob }[];
   missingImages?: boolean;
   status: "sending" | "sent" | "failed";
   error?: string;

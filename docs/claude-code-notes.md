@@ -250,3 +250,9 @@ Claude Code 自己有一份模型目录：`/model` 列什么、每个模型的�
 2026-09-30，Claude Code 2.1.285、haiku，使用独立的状态目录、tmux socket 和临时工作目录实测：通过启动时的 `--mcp-config` 注册 stdio MCP，没有注入会话指令。用户消息要求安排“本轮结束后 2 秒”，模型调用 `schedule_create`，daemon 在本轮结束后发出消息，同一对话收到回复。
 
 另以本地 schedule 命令创建一次性恢复任务，退出 CLI 并重启 daemon，到时间自动恢复，CLI 对话 ID 不变、消息收到回复；定时新开对话也收到回复。托管会话环境中的 `CLAUDE_CODE_DISABLE_CRON` 为 `1`；官方说明该变量禁用会话调度、cron 工具和 `/loop`（[scheduled-tasks](https://code.claude.com/docs/en/scheduled-tasks#disable-scheduled-tasks)）。本次没有进一步让模型调用 cron 来验证拒绝，也没有修改全局环境。恢复后模型再次调用 `schedule_list` 成功；其他用户 MCP 的实际连接尚未逐一实测，配置合并由单元测试覆盖。
+
+## 文件路径引用
+
+**2026-10-28，Claude Code 2.1.300，真实交互 CLI / tmux 实测。** 将一段多行文字连同末尾三个 `@/绝对路径` 行一次 bracketed paste，再按 Enter：正常提交，transcript 的 user 记录保留原文；小文本产生 type=file 的 attachment，4.7 MB 日志产生 `at_mention_reference`，`unread` 为 `too_large`，ZIP 没有自动内嵌，模型随后用工具处理。工作目录外的 `@` 引用没有先弹 Read 权限提示，单独用普通路径再调用 Read 则会请求权限。这是任务准备阶段提供的手动观察；文件格式和大小影响的是 CLI 如何读取，不影响原文提交。
+
+同日 Phase A 再经加密 Go 客户端 → 本地中继 → daemon → tmux 验证：文字＋TXT、仅 CSV＋ZIP、图片＋PDF＋文字均保持 `@` 文件行，daemon 匹配到提交确认，事件带文件引用。小 TXT 和 CSV 被自动读入；ZIP 及 PDF 的工具读取仍可能要求审批，允许后读出了文件标记。仅路径消息还可在之后一条消息要求重新读取 CSV、ZIP。完整条件与未覆盖范围见 [验收记录](acceptance-notes.md#文件附件phase-a2026-10-28)，产品据此怎样组合正文见 [session-files.md](session-files.md)。

@@ -892,3 +892,24 @@ it("retries authorized actions with their original observation after completion"
     );
   }
 });
+
+
+it("uploads files through shared RPCs with UNSPECIFIED format and separate IDs", async () => {
+  const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const calls: CommandKind[] = [];
+  const bytes = new Uint8Array([0, 1, 255, 10]);
+  const r = { machineCommand: async (_m: string, cmd: CommandKind) => {
+    if (!cmd) throw new Error("missing command");
+    calls.push(cmd);
+    if (cmd.case === "beginImageUpload") {
+      expect(cmd.value.fileName).toBe("报告.pdf"); expect(cmd.value.format).toBe(0); expect(cmd.value.totalBytes).toBe(4n);
+      expect(cmd.value.sha256).toHaveLength(32);
+    }
+    if (cmd.case === "putImageChunk") expect(cmd.value.data).toEqual(bytes);
+    const done = cmd.case === "completeImageUpload";
+    return create(CommandResultSchema, { kind: { case: cmd.case as "beginImageUpload", value: { status: { persistedBytes: cmd.case === "beginImageUpload" ? 0n : 4n, totalBytes: 4n, maxChunkBytes: 786432, fileId: done ? "file-1" : "", expiresMs: 123456789n } } } });
+  } };
+  const result = await Remote.prototype.uploadImage.call(r as unknown as Remote, "mac", { bytes, format: "file", fileName: "报告.pdf" });
+  expect(result).toEqual({ imageId: "", fileId: "file-1", expiresMs: 123456789 });
+  expect(calls.map((c) => c?.case)).toEqual(["beginImageUpload", "putImageChunk", "completeImageUpload"]);
+});

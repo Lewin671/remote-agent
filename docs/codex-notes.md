@@ -225,3 +225,9 @@ codex-cli 0.159.2，GPT-6-Luna low，2026-10-03。
 2026-09-30，Codex CLI 0.159.2、GPT-6-Luna low，使用独立的状态目录、tmux socket 和临时工作目录实测：单次 `-c mcp_servers.remote_agent=...` 注册 stdio MCP；没有注入会话指令。用户消息要求安排“本轮结束后 2 秒”，模型调用 `schedule_create`，daemon 在本轮结束后发出后续消息，同一对话记录了回复。
 
 另以本地 schedule 命令创建一次性恢复任务，退出 CLI 并重启 daemon，到时间自动恢复，CLI 对话 ID 不变、消息收到回复；恢复后模型再次调用 `schedule_list` 成功。以固定周期和一次运行上限新开对话，也收到回复且只执行一次。以上直接验证工具调用、调度、恢复和新建，不代表完整 doctor 验收。MCP 的单次配置方式与配置项见 [官方文档](https://learn.chatgpt.com/docs/extend/mcp)。
+
+## 文件路径引用
+
+**2026-10-28，Codex CLI 0.165.0，真实交互 CLI / tmux 实测。** 用加密 Go 客户端经本地中继、daemon 发送多行消息，最后每个文件是一行纯绝对路径，再由 daemon 的 bracketed paste＋Enter 提交。测试模型为 `gpt-6.1-sol`，实际 TurnContext 为 `workspace-write`、`on-request`、`approvals_reviewer=user`，没有为上传目录添加可写范围或改成完全放行。
+
+文字＋TXT、仅 CSV＋ZIP、图片＋PDF＋文字都能提交；rollout 里的用户文字保持路径行，daemon 确认匹配到正文及本次图片，事件带文件引用。Agent 用工具读出了工作目录外上传目录中的 TXT、CSV、ZIP 内容和 PDF 文字，纯路径消息也可在下一轮要求读取；普通只读操作未因为上传目录在 cwd 外而被 sandbox 拒绝。文件路径本身不会变成图片占位，混合消息只有图片走 `[Image #N]`。证据覆盖上述版本与运行条件，不保证模型对任意格式都会主动选择工具；详细验收见 [acceptance-notes.md](acceptance-notes.md#文件附件phase-a2026-10-28)，组合规则见 [session-files.md](session-files.md)。

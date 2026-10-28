@@ -3022,10 +3022,11 @@ export class Remote {
     wasUnknown = false,
     imageIds: string[] = [],
     mode = SendMode.STEER,
+    fileIds: string[] = [],
   ): Promise<RequestSlot> {
     const cmd: CommandKind = {
       case: "send",
-      value: { sessionId: sid, text, requestId: sendId, imageIds, mode },
+      value: { sessionId: sid, text, requestId: sendId, imageIds, fileIds, mode },
     };
     try {
       await this.command(sid, cmd, slot);
@@ -3074,6 +3075,7 @@ export class Remote {
     thumbs: Blob[] = [],
     mode = SendMode.STEER,
     attachments?: Outgoing["attachments"],
+    files?: Outgoing["files"],
   ): string {
     const o: Outgoing = {
       sendId: newRequestID(),
@@ -3083,6 +3085,7 @@ export class Remote {
       thumbs,
       mode,
       attachments,
+      files,
       status: "sending",
     };
     this.outboxes.set(sid, [...this.outbox(sid), o]);
@@ -3103,9 +3106,10 @@ export class Remote {
     text: string,
     imageIds: string[] = [],
     thumbs: Blob[] = [],
+    files?: Outgoing["files"],
   ) {
     if (this.replaced.has(failedId)) return;
-    this.replaced.set(failedId, this.send(sid, text, imageIds, thumbs));
+    this.replaced.set(failedId, this.send(sid, text, imageIds, thumbs, SendMode.STEER, undefined, files));
   }
 
   /** The CLI recorded these messages: the history now holds them, so the
@@ -3152,6 +3156,7 @@ export class Remote {
         o.unknown,
         o.imageIds,
         o.mode,
+        o.files?.map((f) => f.fileId),
       );
       this.patchOut(sid, o.sendId, { status: "sent", ...slot });
     } catch (e) {
@@ -3162,12 +3167,12 @@ export class Remote {
         !still &&
         e instanceof CommandError &&
         e.code === "not_found" &&
-        !!o.imageIds?.length &&
+        (!!o.imageIds?.length || !!o.files?.length) &&
         e.message.includes("is not on this machine; upload it again");
       this.patchOut(sid, o.sendId, {
         status: "failed",
         error: missingImages
-          ? "图片不在电脑上"
+          ? o.files?.length ? "附件不在电脑上" : "图片不在电脑上"
           : errorText(e),
         missingImages,
         unknown: still,
@@ -3923,10 +3928,10 @@ export class Remote {
    * there; the machine checks the length and hash at the end. */
   async uploadImage(
     machineId: string,
-    p: { bytes: Uint8Array; format: string },
+    p: { bytes: Uint8Array; format: string; fileName?: string },
     progress: (done: number, total: number) => void = () => undefined,
     started: (abort: () => void) => void = () => undefined,
-  ): Promise<{ imageId: string; expiresMs: number }> {
+  ): Promise<{ imageId: string; fileId?: string; expiresMs: number }> {
     const format =
       {
         jpeg: ImageFormat.JPEG,
@@ -3973,7 +3978,7 @@ export class Remote {
     };
     let st = await step({
       case: "beginImageUpload",
-      value: { transferId, format, totalBytes: BigInt(total), sha256 },
+      value: { transferId, format, fileName: p.fileName ?? "", totalBytes: BigInt(total), sha256 },
     });
     // Dropped later (removed, 原图 switched, another machine): the machine
     // is told so rather than keeping it until it expires.
@@ -4003,8 +4008,8 @@ export class Remote {
     }
     progress(total, total);
     st = await step({ case: "completeImageUpload", value: { transferId } });
-    if (!st.imageId) throw new Error("电脑没有返回图片 ID");
-    return { imageId: st.imageId, expiresMs: Number(st.expiresMs) };
+    if (p.fileName ? !st.fileId : !st.imageId) throw new Error("电脑没有返回附件 ID");
+    return { imageId: st.imageId, ...(st.fileId ? { fileId: st.fileId } : {}), expiresMs: Number(st.expiresMs) };
   }
 
   // Display copies opened this visit, newest last, so a picture seen once

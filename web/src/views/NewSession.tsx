@@ -327,6 +327,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
       standardContext: cfg.agent === Agent.CLAUDE && !!cfg.standardContext,
       // The images are part of what is started: other images, another start.
       imageIds: tray.imageIds(),
+      fileIds: tray.fileIds(),
     },
   });
   /** Whether sending prompt now would be a different start from the one
@@ -337,6 +338,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     // Renewing an upload changes only its transport ID, never the unknown request.
     const wanted = payloadFor(prompt, mode);
     wanted.req.imageIds = pending.req.imageIds;
+    wanted.req.fileIds = pending.req.fileIds;
     return JSON.stringify(wanted) !== JSON.stringify(pending) || start.images.length !== tray.items.length ||
       start.images.some((im, i) => im.key !== tray.items[i].key || im.prepared !== tray.items[i].prepared);
   };
@@ -546,7 +548,7 @@ export function NewBox({
       tray={tray}
       note={
         <>
-          {moved && tray.busy() && <Banner>已换到 {moved}，图片正在重新上传</Banner>}
+          {moved && tray.busy() && <Banner>已换到 {moved}，附件正在重新上传</Banner>}
           {toast && (
             <Banner action="知道了" onAction={() => setToast("")}>
               {toast}

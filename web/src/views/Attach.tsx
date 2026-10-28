@@ -7,6 +7,7 @@ import { Tray, type TrayItem } from "../attach";
 import { machineName } from "../model";
 import type { MachineView, Remote } from "../remote";
 import { Banner } from "../ui";
+import { FileChip } from "./Files";
 import { Plus, X } from "../icons";
 
 /** The tray of a draft (a session's input, or a project's new-session
@@ -19,6 +20,10 @@ export function useTray(remote: Remote, key: string, machineId: string, max: num
     remote.trays.set(key, t);
   }
   t.max = max;
+  const caps = remote.machines.get(machineId)?.meta?.capabilities;
+  t.fileSupported = !!caps?.fileUpload;
+  t.maxFiles = caps?.maxFilesPerMessage || 6;
+  t.maxFileBytes = Number(caps?.maxFileUploadBytes || 100n * 1024n * 1024n);
   const tray = t;
   useEffect(() => {
     tray.retarget(machineId);
@@ -57,57 +62,48 @@ export function maxImages(m: MachineView | undefined): number {
 }
 
 /** Image files in a drop or a paste. */
-export function imageFiles(list: FileList | DataTransferItemList | null | undefined): File[] {
+export function attachmentFiles(list: FileList | DataTransferItemList | null | undefined): File[] {
   if (!list) return [];
   const out: File[] = [];
   for (const x of Array.from(list as ArrayLike<File | DataTransferItem>)) {
     const f = x instanceof File ? x : (x as DataTransferItem).kind === "file" ? (x as DataTransferItem).getAsFile() : null;
-    if (f && f.type.startsWith("image/")) out.push(f);
+    if (f) out.push(f);
   }
   return out;
 }
 
-/** 添加图片 in the input's ＋ menu: opens the system's image picker.
- * Unavailable, it says why. */
-export function AttachButton({
-  tray,
-  blocked,
-  onBlocked,
-  className = "cm-plus",
-  label = <Plus />,
-}: {
-  tray: Tray;
-  blocked: string;
-  onBlocked: (why: string) => void;
-  className?: string;
-  // The ＋ on the input's left; it opens the image picker itself.
-  label?: ReactNode;
+export function imageFiles(list: FileList | DataTransferItemList | null | undefined): File[] {
+  return attachmentFiles(list).filter((f) => f.type.startsWith("image/"));
+}
+
+/** A quiet two-choice menu only when the machine offers file uploads. */
+export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", label = <Plus /> }: {
+  tray: Tray; blocked: string; onBlocked: (why: string) => void; className?: string; label?: ReactNode;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const off = !!blocked || tray.full();
-  return (
-    <>
-      <button
-        className={className + (off ? " off" : "")}
-        aria-label="添加图片"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => (blocked ? onBlocked(blocked) : tray.full() ? onBlocked(`一条消息最多 ${tray.max} 张`) : input.current?.click())}
-      >
-        {label}
-      </button>
-      <input
-        ref={input}
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={(e) => {
-          tray.add(imageFiles(e.currentTarget.files));
-          e.currentTarget.value = "";
-        }}
-      />
-    </>
-  );
+  const files = useRef<HTMLInputElement>(null);
+  const wrap = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false); };
+    const escape = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", close); document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", escape); };
+  }, [open]);
+  const pick = (file: boolean) => {
+    setOpen(false);
+    if (blocked) return onBlocked(blocked);
+    if (file ? tray.files().length >= tray.maxFiles : tray.full()) return onBlocked(file ? `一条消息最多 ${tray.maxFiles} 个文件` : `一条消息最多 ${tray.max} 张`);
+    (file ? files : input).current?.click();
+  };
+  return <span className="attach-wrap" ref={wrap}>
+    <button className={className + (blocked || !tray.fileSupported && tray.full() ? " off" : "")} aria-label={tray.fileSupported ? "添加附件" : "添加图片"} aria-expanded={tray.fileSupported ? open : undefined}
+      onMouseDown={(e) => e.preventDefault()} onClick={() => blocked ? onBlocked(blocked) : tray.fileSupported ? setOpen(!open) : pick(false)}>{label}</button>
+    {open && <div className="attach-menu" role="menu"><button role="menuitem" onClick={() => pick(false)}>图片</button><button role="menuitem" onClick={() => pick(true)}>文件</button></div>}
+    <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => { tray.add(imageFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
+    <input ref={files} type="file" multiple hidden onChange={(e) => { tray.addFiles(attachmentFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
+  </span>;
 }
 
 function Thumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () => void; onRetry: () => void }) {
@@ -149,13 +145,15 @@ function mb(n: number): string {
  * message, and how many of how many. */
 export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
   if (tray.items.length === 0 && !tray.note) return null;
-  const failed = tray.items.filter((i) => i.state === "failed");
+  const images = tray.images();
+  const files = tray.files();
+  const failed = images.filter((i) => i.state === "failed");
   return (
-    <>
-      {tray.items.length > 0 && (
+    <div className="attachments">
+      {images.length > 0 && (
         <>
           <div className="att-tray">
-            {tray.items.map((i) => (
+            {images.map((i) => (
               <Thumb key={i.key} item={i} onRemove={() => tray.remove(i.key)} onRetry={() => tray.retry(i.key)} />
             ))}
           </div>
@@ -172,12 +170,17 @@ export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
               原图{tray.original && tray.totalBytes() > 0 ? ` · 共 ${mb(tray.totalBytes())}` : ""}
             </button>
             <span>
-              {tray.items.length} / {tray.max}
+              {images.length} / {tray.max}
             </span>
           </div>
         </>
       )}
-      {tray.original && tray.items.length > 0 && <div className="att-hint">原图保住画质；两个 CLI 仍会把过大的图缩到 2000px 左右。</div>}
+      {tray.original && images.length > 0 && <div className="att-hint">原图保住画质；两个 CLI 仍会把过大的图缩到 2000px 左右。</div>}
+      {files.length > 0 && <>
+        <div className="att-tray file-chips">{files.map((i) => <FileChip key={i.key} file={{ name: i.name!, sizeBytes: BigInt(i.bytes ?? 0) }} state={i.state} progress={i.progress} error={i.error} onRetry={() => tray.retry(i.key)} onRemove={() => tray.remove(i.key)} />)}</div>
+        <div className="att-hint">文件原样发送，包含其中的元数据。</div>
+        {files.some((i) => i.state === "failed") && <Banner kind="err">{files.find((i) => i.state === "failed")?.error}。点「重试」或移除后才能发送</Banner>}
+      </>}
       {failed.length > 0 && (
         <Banner kind="err">
           {failed.length} 张图没能传到电脑：{failed[0].error}。点「重试」或移除后才能发送
@@ -185,7 +188,7 @@ export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
       )}
       {tray.note && <Banner>{tray.note}</Banner>}
       {note}
-    </>
+    </div>
   );
 }
 
@@ -195,7 +198,12 @@ export function useDropPaste(tray: Tray, blocked: string, onBlocked: (why: strin
   const take = (files: File[]) => {
     if (!files.length) return false;
     if (blocked) onBlocked(blocked);
-    else tray.add(files);
+    else {
+      const images = files.filter((f) => f.type.startsWith("image/"));
+      const other = files.filter((f) => !f.type.startsWith("image/"));
+      if (images.length) tray.add(images);
+      if (other.length) tray.addFiles(other);
+    }
     return true;
   };
   return {
@@ -210,10 +218,10 @@ export function useDropPaste(tray: Tray, blocked: string, onBlocked: (why: strin
       onDragLeave: () => setOver(false),
       onDrop: (e: DragEvent) => {
         setOver(false);
-        if (take(imageFiles(e.dataTransfer.files))) e.preventDefault();
+        if (take(attachmentFiles(e.dataTransfer.files))) e.preventDefault();
       },
       onPaste: (e: ClipboardEvent) => {
-        if (take(imageFiles(e.clipboardData.items))) e.preventDefault();
+        if (take(attachmentFiles(e.clipboardData.items))) e.preventDefault();
       },
     },
   };

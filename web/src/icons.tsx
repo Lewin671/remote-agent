@@ -33,6 +33,7 @@ import {
   SquarePen as LSquarePen,
   Tablet as LTablet,
   X as LX,
+  File as LFile,
   type LucideIcon,
   type LucideProps,
   WifiOff as LWifiOff,
@@ -45,6 +46,8 @@ function icon(Icon: LucideIcon, base = "ic", fixed?: LucideProps) {
     return <Icon size="1em" aria-hidden {...fixed} {...props} className={className ? `${base} ${className}` : base} />;
   };
 }
+
+export const FileIcon = icon(LFile);
 
 /** Goes to another page or sheet. */
 export const ChevronRight = icon(LChevronRight);

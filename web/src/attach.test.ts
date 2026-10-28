@@ -246,3 +246,55 @@ it("puts the original option and source file back, then prepares in that mode", 
   expect(prepare).toHaveBeenCalledWith(source, true);
   expect(tray.totalBytes()).toBe(100);
 });
+
+it("sends files as-is, keeps image and file limits independent, and frees upload buffers", async () => {
+  const prepare = vi.fn(async () => png());
+  const seen: Prepared[] = [];
+  const tray = new Tray(prepare, async (_m, p) => { seen.push(p); return { imageId: p.format === "file" ? "" : "img", fileId: p.fileName, expiresMs: Number.MAX_SAFE_INTEGER }; }, () => undefined);
+  tray.fileSupported = true; tray.machineId = "mac";
+  tray.add(Array.from({ length: 6 }, () => file("img")));
+  const raw = new File(["EXIF\x00data"], "photo.png", { type: "image/png" });
+  tray.addFiles([raw, ...Array.from({ length: 6 }, (_, i) => new File(["x"], `data${i}.csv`))]);
+  await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  expect(tray.images()).toHaveLength(6); expect(tray.files()).toHaveLength(6);
+  expect(tray.note).toContain("最多 6 个文件"); expect(prepare).toHaveBeenCalledTimes(6);
+  const p = seen.find((p) => p.fileName === "photo.png")!;
+  expect(p.format).toBe("file"); expect(new TextDecoder().decode(p.bytes)).toBe("EXIF\x00data");
+  expect(tray.files().every((f) => !f.prepared)).toBe(true);
+  expect(tray.imageIds()).toHaveLength(6); expect(tray.fileIds()).toHaveLength(6);
+  tray.setOriginal(true);
+  await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  expect(seen.filter((p) => p.fileName)).toHaveLength(6);
+});
+
+it("rejects unsupported, oversized and long-named files before reading any bytes", () => {
+  const { tray, upload } = setup();
+  const source = new File(["data"], "x.csv");
+  const read = vi.spyOn(source, "arrayBuffer");
+  tray.addFiles([source]); expect(tray.note).toContain("不支持发送文件");
+  tray.fileSupported = true; tray.maxFileBytes = 3;
+  tray.addFiles([source]); expect(tray.note).toContain("超过单个文件");
+  tray.addFiles([new File([], "中".repeat(86))]); expect(tray.note).toContain("255 字节");
+  expect(tray.items).toHaveLength(0); expect(read).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
+});
+
+it("retries failed files, reuploads after expiry and machine switch, and restores only from local bytes", async () => {
+  let n = 0;
+  const machines: string[] = [];
+  const tray = new Tray(async () => png(), async (m) => {
+    machines.push(m); if (++n === 1) throw new Error("网络中断");
+    return { imageId: "", fileId: "f" + n, expiresMs: Date.now() + 60000 };
+  }, () => undefined);
+  tray.fileSupported = true; tray.machineId = "mac";
+  const source = new File(["x,y"], "data.csv"); tray.addFiles([source]);
+  await vi.waitFor(() => expect(tray.failed()).toBe(true)); expect(tray.ready()).toBe(false);
+  tray.retry(tray.items[0].key); await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  tray.items[0].expiresMs = 0; tray.refreshExpired(); expect(tray.ready()).toBe(false);
+  await vi.waitFor(() => expect(tray.fileIds()).toEqual(["f3"]));
+  tray.retarget("other"); await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  expect(machines).toEqual(["mac", "mac", "mac", "other"]);
+  tray.clear(); expect(tray.restoreFiles([{ fileId: "old", name: "data.csv", size: 3, file: source }])).toBe(true);
+  await vi.waitFor(() => expect(tray.fileIds()).toEqual(["f5"]));
+  tray.clear(); tray.restoreFiles([{ fileId: "gone", name: "data.csv", size: 3 }]);
+  await vi.waitFor(() => expect(tray.failed()).toBe(true)); expect(tray.items[0].error).toContain("重新选择");
+});

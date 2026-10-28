@@ -26,6 +26,7 @@
 | [architecture.md](architecture.md) | 设计 | 部署和发布、报文分层、通信方式、技术决策、接入 Codex 和 Claude Code、审批、项目、账户和密钥、同步和指令、终端、推送、daemon 设置、账户额度、定时任务 |
 | [android-client.md](android-client.md) | 设计 | Android 客户端自己的选型和约束：模块、生命周期、密钥保管、原生终端、更新、推送和在通知里审批 |
 | [ios-client.md](ios-client.md) | 设计 | iOS 客户端自己的选型和约束：工程和模块、和其他端保持一致的办法、生命周期、密钥保管、原生终端、还不能做的部分 |
+| [session-files.md](session-files.md) | 设计 | 从客户端发送任意文件：原样分块上传、CLI 路径引用、生命周期、网页交互与协议依赖 |
 | [session-images.md](session-images.md) | 设计 | 会话里的图片：取图、编码、加密上传、保存期限，以及从客户端发图片、失败处理和存储清理 |
 | [codex-notes.md](codex-notes.md) | 实测 | Codex 的行为：数据来源、菜单、hook、审批模式、弹窗、中断、模型提问 |
 | [claude-code-notes.md](claude-code-notes.md) | 实测 | Claude Code 的行为：启动、transcript、hook、权限模式、模型提问、计划、中断 |
@@ -34,7 +35,7 @@
 | [design-system.md](design-system.md) | 设计 | 界面的视觉与交互规范：信息层级、颜色、字号、圆角、图标、组件、对话正文的排版和文案，及审查清单 |
 | [plan.md](plan.md) | 计划 | 各部分的当前状态和缺口、下一步、待确认事项、已完成的里程碑 |
 | [acceptance-notes.md](acceptance-notes.md) | 验收 | 各阶段和各端做过的验收：自动测试、真实 CLI、模拟器，以及复现办法 |
-| [design/client-v49.html](design/client-v49.html) | 界面稿 | 当前界面稿：网页（手机和宽屏）和 Android 的全部画面和状态。旧版本在 git 历史里，见第 5 节 |
+| [design/client-v50.html](design/client-v50.html) | 界面稿 | 当前界面稿：网页（手机和宽屏）和 Android 的全部画面和状态。旧版本在 git 历史里，见第 5 节 |
 
 根目录的 README（英文，附 README.zh-CN.md）面向使用者，只放一眼能看完的东西：动画、四条要点、试用、自部署简版、限制和链接；组件、命令、安全模型、下载校验和更新放在 reference.md。README、reference 和自部署指南是公开的门面，内容以本目录的设计文档为准，两种语言同步改；AGENTS.md 只写开发流程和给 agent 的规则，其中重述的核心约束属于有意保留的摘要，以 scope.md 为准。
 

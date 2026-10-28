@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v49 · 2026-10-24 UTC</title>
+<title>remote-agent 客户端设计稿 v50 · 2026-10-28 UTC</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -956,6 +956,19 @@
 .admin-entry .entry-row { padding-top: 12px; padding-bottom: 12px; }
 .admin-entry .row-name { flex: 1; }
 .admin-entry .row-name small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+.file-chips { display:flex; flex-wrap:wrap; gap:6px; min-width:0; }
+.file-chip { display:inline-flex; align-items:center; gap:8px; max-width:100%; padding:4px 8px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--soft); color:var(--fg2); }
+.file-chip .file-info { min-width:0; max-width:200px; }
+.file-chip .file-name { display:flex; font-size:13px; min-width:0; }
+.file-name span:first-child { white-space:pre; overflow:hidden; text-overflow:ellipsis; }
+.file-name span:last-child { white-space:pre; }
+.file-chip small { display:block; font-size:12px; color:var(--muted); }
+.file-chip button { min-width:44px; min-height:44px; color:var(--blue); }
+.file-chip progress { width:100%; height:3px; accent-color:var(--blue); }
+.file-chip.failed small { color:var(--red); }
+.file-plus-menu { display:inline-flex; flex-direction:column; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--card); padding:4px; margin-bottom:8px; min-width:112px; box-shadow:0 4px 16px #0001; }
+.file-plus-menu button { min-height:44px; text-align:left; padding:0 14px; color:var(--fg); }
 </style>
 <style>  /* 定时任务探索稿新增 */
   .tasknew { display:flex; align-items:center; gap:8px; min-height:44px; padding:4px 16px 0 13px; color:var(--blue); font-weight:600; }
@@ -1011,17 +1024,17 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android / iOS 设计稿 · v49 · 2026-10-24 UTC · 上一版 v48 在 git 历史里（<code>git log -- docs/design/client-v48.html</code>）</div>
+    <div class="sub">PWA / Android / iOS 设计稿 · v50 · 2026-10-28 UTC · 上一版 v49 在 git 历史里（<code>git log -- docs/design/client-v49.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v48 的改动</h4><ul><li>新增独立定时入口、任务分组、详情、时间设置、新建和运行记录。</li><li>对话新增定时条、定时发送菜单、通知记录、静默轮折叠和回复接手说明。</li><li>失败一次即停；中继会话数已满显示明确原因；立即运行一次不占自动计划次数。</li><li>补宽屏任务列表、详情与新建；推送设置增加定时任务结果开关。</li><li>统一任务名、当前对话位置、时区附注、行序与运行文案；「各端统一的写法」作为三端共同依据。</li></ul>
+  <h4>相对 v49 的改动</h4><ul><li>网页输入框在电脑支持文件时，＋增加「图片 / 文件」小菜单。</li><li>文件在草稿、排队和已发送消息中共用文件条目，展示名称、大小、上传进度、失败重试和编辑时的移除。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节"><a href="#schedules">定时任务</a>
-  <a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
+  <a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#files">文件</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
 </nav>
 <!-- ============================= -->
 <section id="account-management"><h2>任意客户端管理 · v48</h2><p class="hint">将来时刻使用本地 24 小时制、不带秒：今天 03:59、明天 03:59，其余为 10月22日 03:59；配对码写「有效期至 05:02」。</p><div class="screens"><div><div class="phone admin-screen admin-entry"><div class="sb"><span>9:41</span><span>100%</span></div><div class="large"><h3>remote-agent</h3></div><div class="admin-body"><div class="grp"><div class="row entry-row"><span class="row-name">新建账户<small>这台设备成为管理端</small></span><span class="v"><svg class="ic"><use href="#lu-chevron-right"/></svg></span></div><div class="row entry-row"><span class="row-name">加入已有账户<small>用管理端给的配对码加入</small></span><span class="v"><svg class="ic"><use href="#lu-chevron-right"/></svg></span></div><div class="row entry-row"><span class="row-name">用恢复码找回管理权<small>管理端丢失时使用</small></span><span class="v"><svg class="ic"><use href="#lu-chevron-right"/></svg></span></div></div></div></div><p class="cap">未登录：三入口同名同序。</p></div>
@@ -2630,6 +2643,15 @@ git status --short gen/</pre>
 </div>
 
 <!-- ============================= -->
+<h2 id="files">网页：从客户端发文件</h2>
+<p class="note">设计约束见 <a href="../session-files.md">session-files.md</a>。电脑声明支持文件时，两个输入框的＋使用同一个小菜单；没有文件能力时直接打开图片选择。下列文件条目也用于共享队列、发送气泡和放回输入框后的草稿。</p>
+<div class="grid">
+<div class="phone"><div class="navbar"><b>＋菜单</b></div><div style="padding:16px"><div class="file-plus-menu"><button>图片</button><button>文件</button></div><p class="muted">文件原样发送，包含其中的元数据。</p></div></div>
+<div class="phone"><div class="navbar"><b>草稿 · 上传中</b></div><div style="padding:16px"><span class="file-chip "><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="file-info"><span class="file-name"><span>季度分析-完整版-</span><span>含补充说明.pdf</span></span><small>8.2 MB · 上传 40%</small><progress max="1" value="0.4"></progress></span></span><button aria-label="移除文件">×</button><p class="muted">文件原样发送，包含其中的元数据。</p></div></div>
+<div class="phone"><div class="navbar"><b>草稿 · 失败</b></div><div style="padding:16px"><span class="file-chip failed"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="file-info"><span class="file-name"><span>数据.</span><span>csv</span></span><small>12.0 KB · 上传失败</small></span></span><button style="color:var(--blue)">重试</button><button aria-label="移除文件">×</button></div></div>
+<div class="phone"><div class="navbar"><b>已发送 / 排队</b></div><div style="padding:16px"><p>看看这两份资料。</p><div class="file-chips"><span class="file-chip "><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="file-info"><span class="file-name"><span>季度分析</span><span>.pdf</span></span><small>8.2 MB</small></span></span><span class="file-chip "><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="file-info"><span class="file-name"><span>数据.</span><span>csv</span></span><small>12.0 KB</small></span></span></div><p class="muted">这一轮结束后发 · 第 2 条</p></div></div>
+</div>
+
 <h2 id="images">会话里的图片</h2>
 <div class="note" style="margin:0 0 20px">显示会话里已经出现过的图片：在电脑上粘贴的、Agent 查看的（Claude Code 读取图片文件，Codex 查看图片、浏览器截图）、Codex 生成的，以及从客户端发出的。预览和消息一起到达，按原始比例占位，不会加载完再把内容顶开；点开才下载大图。终端视图不变，Claude Code 在终端里仍显示 <code>[Image #1]</code>。</div>
 <div class="screens">

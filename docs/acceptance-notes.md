@@ -477,7 +477,7 @@ macOS arm64，本 worktree 的 Go 自动测试，加一轮本 worktree 构建的
 - 产品链路从独立 `RA_DEV_DIR` 的 `dev-env.sh start --no-account` 开始：临时账户/数据库/状态目录/tmux socket/自动分配端口，显式允许临时网页 origin。Chrome 直接操作创建账户、确认恢复码保存、发配对码；CLI 先确认 SAS，网页再批准，测试电脑加入并启动 daemon。会话由测试 CLI 创建，网页直接发送无文件操作的简短消息，经本地 server → daemon → tmux → 真实 Codex 0.163.0，网页收到约定回复。没有用调试调用代替消息发送或配对批准。
 - 同一临时账户在网页移除电脑，确认原档案仍可进入重接；再经单独确认删除记录，中继电脑记录数为 0。网页退出时核对唯一管理端的针对性提示，再清除临时浏览器密钥。测试结束关闭测试标签并清理隔离环境；未操作生产中继或日常 daemon。
 
-未覆盖：档案实际重接、六条跨端有向交接、Android/iOS 真机、48 小时恢复的真实等待及全部重启矩阵、真实 Web Push 的允许/拒绝/后台投递、浏览器部分/全部存储损坏和操作系统字号。保存失败等故障由自动测试注入；demo 是视觉检查，不能代替上述真实链路。界面与文案规则见 [design-system](design-system.md#8-文案)，当前界面稿为 [v49](design/client-v49.html)。
+未覆盖：档案实际重接、六条跨端有向交接、Android/iOS 真机、48 小时恢复的真实等待及全部重启矩阵、真实 Web Push 的允许/拒绝/后台投递、浏览器部分/全部存储损坏和操作系统字号。保存失败等故障由自动测试注入；demo 是视觉检查，不能代替上述真实链路。界面与文案规则见 [design-system](design-system.md#8-文案)，当前界面稿为 [v49](design/client-v50.html)。
 
 
 ## Claude 模型菜单短标签（2026-10-23，本地候选）
@@ -827,7 +827,7 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 
 ## 定时任务：网页第二阶段（2026-10-24，本地候选）
 
-基于协议 11、产品版本 0.45.7 的开发 checkout；仅网页与界面稿，没有发布或部署。使用本机 Google Chrome 156.0.8078.48 的独立无头配置，由 Playwright 驱动；真实 CLI 为 Claude Code 2.1.300 / Haiku 4.5。界面见 [client-v49 · 定时任务](design/client-v49.html#schedules)。
+基于协议 11、产品版本 0.45.7 的开发 checkout；仅网页与界面稿，没有发布或部署。使用本机 Google Chrome 156.0.8078.48 的独立无头配置，由 Playwright 驱动；真实 CLI 为 Claude Code 2.1.300 / Haiku 4.5。界面见 [client-v50 · 定时任务](design/client-v50.html#schedules)。
 
 - 环境由 `RA_DEV_DIR="$(mktemp -d /tmp/ra-web.XXXXXX)" ios/scripts/dev-env.sh start --no-account` 创建；测试过程沿用该目录。网页通过 setup token 建临时账户，核对配对图案后用 `ios/scripts/dev-env.sh join CODE --daemon` 加入电脑。中继端口由脚本分配；独立数据库、daemon 状态与 tmux socket，不连接线上、不使用日常中继账户。网页使用 `pnpm --dir web build` 的本地预览，不使用演示数据。
 - 390 和 1280 宽各创建一个几分钟后触发的每日新开对话任务，选择 Haiku 4.5 / 询问。两次均由时钟自动触发，未用 run 指令或改系统时间代替。通过网页批准真实 MCP `notify_user`，对话显示通知事件；任务列表与详情显示“通知了你”及正文。两次自动调度计数均为 1。
@@ -994,7 +994,7 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 
 ### 客户端最终评审修复与三端对照（2026-10-24）
 
-本轮沿用整合分支、产品 0.45.7 / 协议 11。先更新 [v49「各端统一的写法」](design/client-v49.html#schedules)，再逐端修改；该节是文案与行为的维护位置。以下记录本轮检查所覆盖的实际行为，不增加真实 CLI、推送或真机验收结论。
+本轮沿用整合分支、产品 0.45.7 / 协议 11。先更新 [v49「各端统一的写法」](design/client-v50.html#schedules)，再逐端修改；该节是文案与行为的维护位置。以下记录本轮检查所覆盖的实际行为，不增加真实 CLI、推送或真机验收结论。
 
 | 缺陷 | 修复与回归证据 |
 |---|---|
@@ -1046,7 +1046,7 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 
 ### 三端四图：文案、颜色与定时条收尾（2026-10-24）
 
-产品 0.45.7 / 协议 11，整合分支本地候选。逐张复核列表、详情、新建、对话定时条的三端并排图，先在 [v49「各端统一的写法」](design/client-v49.html#schedule-shared-copy) 明确规则，再修三端。新建说明逐字统一；详情副标题只留状态；Android 注意组原因改为 muted；iOS 定时条补 Lucide clock，作为装饰对读屏隐藏。
+产品 0.45.7 / 协议 11，整合分支本地候选。逐张复核列表、详情、新建、对话定时条的三端并排图，先在 [v49「各端统一的写法」](design/client-v50.html#schedule-shared-copy) 明确规则，再修三端。新建说明逐字统一；详情副标题只留状态；Android 注意组原因改为 muted；iOS 定时条补 Lucide clock，作为装饰对读屏隐藏。
 
 额外发现并修正的差异：iOS 新建标签去掉「（可选）」（仍允许留空）；详情任务类型及创建者说明对齐完整句子，运行记录标题补实际条数；网页详情消息正文改为 15 号 fg，并去掉副标题额外的彩色状态点；CLI 分段选择选中项为 fg 字和浅底，未选项为 muted（网页去蓝色，iOS 局部设置原生 UISegmentedControl 的文字色，保留原生选择行为）。Android 当前对话任务的创建说明也对齐 v49。
 
@@ -1068,7 +1068,7 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 
 ### 客户端最终复审收尾（2026-10-24）
 
-产品 0.45.7 / 协议 11，`wt/scheduled-tasks-integration` 本地候选。先补 [v49「各端统一的写法」](design/client-v49.html#schedule-shared-copy)，再按最终复审逐项处理；以下是代码及测试证据，不新增真实 CLI、推送或真机验收结论。
+产品 0.45.7 / 协议 11，`wt/scheduled-tasks-integration` 本地候选。先补 [v49「各端统一的写法」](design/client-v50.html#schedule-shared-copy)，再按最终复审逐项处理；以下是代码及测试证据，不新增真实 CLI、推送或真机验收结论。
 
 | 复审项 | 修复与回归证据 |
 |---|---|
@@ -1222,7 +1222,7 @@ Android 一次性时间原来直接用 `atZone()`，会把 America/Los_Angeles �
 
 ## 定时任务：通知未读角标与自动关闭原因（2026-10-28，基于 v0.46.0 的未发布工作区）
 
-按 [v49 统一文案](design/client-v49.html#schedule-shared-copy) 实现三端入口角标。后台已有的加密任务列表包含运行 ID 和通知标记；未新增请求、server 行为或协议版本变更。自动关闭通过新增的 `SessionState.scheduled_closed` 明确区分，`detail` 仍为 `stopped`；daemon 持久化最近关闭原因，并覆盖保存元数据后、写入退出事件前中断的恢复路径。
+按 [v49 统一文案](design/client-v50.html#schedule-shared-copy) 实现三端入口角标。后台已有的加密任务列表包含运行 ID 和通知标记；未新增请求、server 行为或协议版本变更。自动关闭通过新增的 `SessionState.scheduled_closed` 明确区分，`detail` 仍为 `stopped`；daemon 持久化最近关闭原因，并覆盖保存元数据后、写入退出事件前中断的恢复路径。
 
 | 检查 | 结果 |
 |---|---|
@@ -1237,3 +1237,43 @@ Android 一次性时间原来直接用 `atZone()`，会把 America/Los_Angeles �
 客户端测试覆盖首次有效列表不提示历史通知、运行从未通知变为已通知、打开定时列表清除通知未读、列表停留期间的新结果、与异常任务取并集去重、用户取消/删除后不保留角标，以及跨启动持久化和中继/客户端身份/电脑隔离。网页组件测试另外从后台列表刷新走到实际列表挂载和离开；Android 测试覆盖 repository 的角标流和离线保留；iOS 测试覆盖 account-scoped store 与 UserDefaults。
 
 真实 CLI 验收由合成客户端通过加密 Forward 发起，经过 server、daemon、原生 CLI 后回到客户端；不是产品界面点击。未覆盖系统推送投递、Android/iOS 真机界面或真实设备上的跨启动操作。临时服务与 tmux 环境已清理，仅使用已有的 iPhone 18 Pro，结束时已关闭。未提交、推送、打 tag、发布、部署或修改产品/协议版本。
+
+## 文件附件：Phase A（2026-10-28）
+
+范围为 capability 控制的文件协议、Go daemon、网页及四端生成代码；Android / iOS 没有修改手写发送界面。未发布、未部署，没有触碰日常 remote-agent daemon 或账户。
+
+### 自动检查
+
+- `buf generate`，以及分别在 `web` 执行 `pnpm gen`、在 `android` 和 `ios` 执行 `buf generate`：四端生成成功，协议版本不变。
+- `go test ./...`：通过。新增文件测试覆盖安全名字、NFC 和 UTF-8 截断、大小/格式/哈希/归属、原样完成、混合受理与回滚、缺文件启动前拒绝、组合正文和带图片确认、两个 CLI 解析出的路径行、文件配额与清理保护、过期、重启队列和 CLI 暂存恢复。
+- 网页 `pnpm typecheck`、`pnpm test`（90 个测试文件、1223 个测试）、`pnpm build`：通过。新增测试覆盖能力菜单、文件选图保留原样、拖放/粘贴分流、独立数量与字节限制、失败重试、到期和换机器重传、纯文件发送/新建、不确定新建请求保持文件 ID、恢复本机源 File、共享排队事件、精确隐藏路径行和文件条目状态。
+
+### 真实 CLI 链路
+
+用当前 checkout 构建，独立 `RA_DEV_DIR`，由 `ios/scripts/dev-env.sh start --no-account` 启动临时数据库和本机中继；`scripts/acceptance-files` 新建临时管理账户、签发测试机器成员，独立状态目录与 tmux socket 起测试 daemon。复用本机已认证的真实 CLI 安装与 CLI 配置，测试的是新建会话；不使用日常 remote-agent 身份或已有会话。Go 客户端通过签名加密 Forward，经 server → relay → daemon → tmux/真实 CLI，反向解密读取会话事件；没有直接调用本地 Send RPC 代替客户端链路。
+
+可复跑命令（目录示例由测试者选择，不使用脚本默认共享目录；启动和 runner 放同一 shell 保住子进程）：
+
+```sh
+export RA_DEV_DIR=$(mktemp -d /tmp/ra-files-acceptance.XXXXXX)
+ios/scripts/dev-env.sh start --no-account
+RA_FILES_LARGE=1 go run ./scripts/acceptance-files
+ios/scripts/dev-env.sh stop
+```
+
+| 条件 | Claude Code 2.1.300 / Haiku 5.5 | Codex 0.165.0 / gpt-6.1-sol |
+|---|---|---|
+| 文字＋小 TXT，作为新会话首条消息 | 原文末尾 `@` 路径；已确认；Agent 返回 TXT 标记；事件有 files | 原文末尾纯路径；已确认；Agent 工具读取 TXT 标记；事件有 files |
+| 仅 CSV＋ZIP，无用户文字 | 文件顺序和两行 `@` 路径正确；已确认；事件带两文件 | 文件顺序和两行纯路径正确；已确认；事件带两文件 |
+| 下一条文字要求读取上一条 CSV / ZIP | 两个标记均读出，证明提交后仍可读取；ZIP 用工具 | 两个标记均读出，证明 sandbox 内工具能读取上传目录 |
+| 图片＋PDF＋文字 | 图片占位＋文字＋PDF 的 `@` 行；已确认；事件同时带 image upload ID 与 file ID；读出 PDF 标记 | 图片占位＋文字＋PDF 纯路径行；已确认；两种附件事件正确；读出 PDF 标记 |
+
+两端六组各跑通两次，均有 SUBMITTED 和匹配的 UserMessage.request_id，没有 FAILED / NEEDS_TERMINAL。Codex 实际 TurnContext 为 workspace-write、on-request、user reviewer，没有放宽 sandbox 或额外可写目录。第二轮增加精确 100 MiB 随机二进制文件，经 768 KiB 分块加密上传，完成后本机 SHA-256 与源数据一致，未触发中继单请求或账户累计限额；文件留在 pending，由测试环境最终清理。
+
+第一轮 Claude 的 ZIP/PDF 读取审批由隔离 tmux 终端允许，是调试操作；第二轮脚本自动从事件读取审批并通过加密 ResolveApproval 允许，两端完整重跑通过。文件和消息内容始终从 Go 客户端发出。测试会话逐个 StopSession，上传目录由会话退出逻辑删除；runner 结束停止测试 daemon 和 tmux，最后用 dev-env `stop` 清理临时中继、数据库与状态目录。
+
+### 界面与未覆盖
+
+在本机 Google Chrome 原生窗口里打开当前 React 附件组件的临时预览，检查 375px 与宽屏列、亮暗主题、＋菜单、长文件名中间省略（保留尾部扩展名）、大小、进度、失败重试和移除，以及已发送文件条目；临时页面、Vite 服务和标签页已清理。Chrome 扩展 host 未连接，没有使用内置浏览器。组件检查使用本地夹具；消息端到端由 Go 客户端驱动，未声称通过网页实际选择器连接真实 CLI 发送。
+
+未覆盖：Android / iOS 手写界面及真机、网页刷新后的系统重新选择、真实移动系统拖放/粘贴、真实网络断连续传、长时间自然过期、磁盘实际写满和 1 GiB 用满、跨真实 daemon 重启的端到端排队恢复。对应逻辑以自动测试覆盖；100 MiB 验证为 Go 加密客户端，未测浏览器同时选择六个 100 MiB 文件的内存峰值。后续进度与待实测范围统一见 [plan.md](plan.md)。
