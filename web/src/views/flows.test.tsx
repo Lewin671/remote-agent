@@ -3196,3 +3196,22 @@ it("requires reselecting a new-session first file when its local source has been
   expect(sendButton()?.disabled).toBe(true);
   expect(upload).not.toHaveBeenCalled();
 });
+
+it("rejects restoring a failed file message before changing draft or dismissing it after downgrade", async () => {
+  const r = demo(); const s = r.sessions.get("s-idle")!;
+  const machine = r.machines.get(s.machineId)!; machine.meta!.capabilities!.fileUpload = true;
+  const file = { fileId: "failed-file", name: "failed.csv", sizeBytes: 4n, path: "/uploads/s/files/failed/failed.csv", file: new File(["data"], "failed.csv") };
+  r.command = async () => { throw new CommandError("unavailable", "offline"); };
+  const id = r.send(s.id, "keep this text", [], [], undefined, undefined, [file]);
+  await vi.waitFor(() => expect(r.outbox(s.id)[0]?.status).toBe("failed"));
+  r.drafts.set(s.id, "existing draft");
+  machine.meta!.capabilities!.fileUpload = false;
+  const upload = vi.spyOn(r, "uploadImage");
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await click(button("放回输入框", host.querySelector(".me.fail")!));
+  expect(host.textContent).toContain("请更新电脑上的 remote-agent");
+  expect(r.drafts.get(s.id)).toBe("existing draft");
+  expect(r.outbox(s.id).some(o => o.sendId === id)).toBe(true);
+  expect(r.trays.get(s.id)?.items).toHaveLength(0);
+  expect(upload).not.toHaveBeenCalled();
+});

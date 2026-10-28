@@ -345,3 +345,13 @@ it.each(["retarget", "retry", "expiry", "restore", "remove"])("invalidates file 
   await vi.waitFor(() => expect(second.ready()).toBe(true));
   if (action !== "remove") await vi.waitFor(() => expect(first.ready()).toBe(true));
 });
+
+it("rejects file restoration synchronously when the refreshed capability is off", () => {
+  const { tray, upload } = setup(); tray.fileSupported = false;
+  const source = new File(["bytes"], "file.csv");
+  const read = vi.spyOn(source, "arrayBuffer");
+  expect(tray.restoreFiles([{ fileId: "old", name: "file.csv", size: source.size, file: source }])).toBe(false);
+  expect(tray.note).toContain("请更新电脑上的 remote-agent");
+  expect(tray.items).toHaveLength(0);
+  expect(read).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
+});

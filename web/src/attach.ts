@@ -1,3 +1,5 @@
+export const FILE_UPLOAD_UPDATE_REQUIRED = "这台电脑不支持发送文件，请更新电脑上的 remote-agent";
+
 // Images chosen to go with a message (architecture §17 从客户端发图片):
 // each is prepared on this device (compressed, or the original with its
 // metadata removed) and uploaded to the machine on its own as soon as it
@@ -115,7 +117,7 @@ export class Tray {
   fileIds(): string[] { return this.files().map((i) => i.fileId!).filter(Boolean); }
 
   addFiles(files: File[]) {
-    if (!this.fileSupported) { this.note = "这台电脑不支持发送文件，请更新电脑上的 remote-agent"; this.onChange(); return; }
+    if (!this.fileSupported) { this.note = FILE_UPLOAD_UPDATE_REQUIRED; this.onChange(); return; }
     const notes: string[] = [];
     let added = false;
     for (const file of files) {
@@ -130,6 +132,7 @@ export class Tray {
   }
 
   restoreFiles(files: { fileId: string; name: string; size: number; file?: Blob }[]): boolean {
+    if (files.length && !this.fileSupported) { this.note = FILE_UPLOAD_UPDATE_REQUIRED; this.onChange(); return false; }
     if (this.files().length + files.length > this.maxFiles) return false;
     for (const f of files) {
       const item: TrayItem = { key: "t" + ++keys, kind: "file", name: f.name, bytes: f.size, fileId: f.fileId, file: f.file ?? new Blob(), state: "preparing", progress: 0, remoteOnly: !f.file };
@@ -255,7 +258,7 @@ export class Tray {
     }
     try {
       if (!current()) return;
-      if (item.kind === "file" && !this.fileSupported) throw new Error("这台电脑不支持发送文件，请更新电脑上的 remote-agent");
+      if (item.kind === "file" && !this.fileSupported) throw new Error(FILE_UPLOAD_UPDATE_REQUIRED);
       if (item.kind === "file" && item.file.size > this.maxFileBytes) throw new Error(`单个文件不能超过 ${Math.round(this.maxFileBytes / 1024 / 1024)} MB`);
       if (prepare || !this.fresh(item)) {
         // What was prepared the other way is never sent in its place.

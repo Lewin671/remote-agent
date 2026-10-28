@@ -132,7 +132,7 @@ export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { stillUnknown } from "./attempt";
 import { describeBrowser, type DeviceInfo } from "./devices";
-import type { Prepare, Tray } from "./attach";
+import { FILE_UPLOAD_UPDATE_REQUIRED, type Prepare, type Tray } from "./attach";
 import {
   commitOp,
   emptyPrefs,
@@ -514,6 +514,17 @@ export class Remote {
   >();
   // A run selected in task history is revealed even when its quiet rounds fold.
   scheduleFocus = new Map<string, { seq: bigint; runId: string }>();
+
+  /** Current machine metadata, checked again for every file-bearing attempt. */
+  fileUploadIssue(machineId: string): string {
+    return this.machines.get(machineId)?.meta?.capabilities?.fileUpload === true ? "" : FILE_UPLOAD_UPDATE_REQUIRED;
+  }
+
+  private checkFileCapability(machineId: string, cmd: CommandKind, mayHaveRun = false) {
+    if ((cmd?.case !== "send" && cmd?.case !== "createSession") || !cmd.value.fileIds?.length) return;
+    const issue = this.fileUploadIssue(machineId);
+    if (issue) throw new CommandError(mayHaveRun ? "unknown" : "failed_precondition", issue);
+  }
 
   supportsSchedules(id: string): boolean {
     return this.machines.get(id)?.meta?.capabilities?.scheduledTasks === true && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id));
@@ -2905,6 +2916,7 @@ export class Remote {
           ? `${machineName(m)} 上的 remote-agent 版本较旧，请在电脑上更新后再试`
           : "这个网页版本较旧，请刷新或更新后再试",
       );
+    this.checkFileCapability(machineId, cmd);
     // Signed by this device, so the daemon knows who sent it whatever the
     // server says (the server also checks the sender is the caller).
     let env: Envelope;
@@ -2944,6 +2956,9 @@ export class Remote {
     let mayHaveRun = false;
     for (let attempt = 0; ; attempt++) {
       try {
+        // Metadata may refresh while sealing, logging in or backing off.
+        // Check the immutable authorized payload, including unknown retries.
+        this.checkFileCapability(machineId, cmd, mayHaveRun);
         // Once C is handed to an untrusted relay, no outer status proves it
         // was not executed. Only an authenticated daemon result is final.
         mayHaveRun = true;

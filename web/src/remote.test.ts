@@ -932,3 +932,113 @@ it("retries Complete on the same transfer while hashing after a lost reply, with
   expect(result.fileId).toBe("ready");
   expect(calls).toEqual(["beginImageUpload", "putImageChunk", "completeImageUpload", "getImageUploadStatus", "completeImageUpload"]);
 });
+
+it.each(["send", "createSession"] as const)("rejects file-bearing %s when refreshed capability is false", async (kind) => {
+  const r = await probe();
+  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { PROTOCOL_VERSION } = await import("./protocol");
+  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: false } }) });
+  const forward = vi.fn(async () => { throw new ConnectError("reached transport", Code.InvalidArgument); });
+  (r as unknown as { api: object }).api = { forward };
+  const cmd = kind === "send" ? { case: "send" as const, value: { sessionId: "s", text: "text with file", fileIds: ["file"] } } : { case: "createSession" as const, value: { prompt: "text with file", fileIds: ["file"] } };
+  const error = await (kind === "send" ? r.command("s", cmd) : r.machineCommand(r.machine, cmd)).catch(e => e);
+  expect(error).toBeInstanceOf(CommandError);
+  expect(error.code).toBe("failed_precondition");
+  expect(error.message).toContain("请更新电脑上的 remote-agent");
+  expect(forward).not.toHaveBeenCalled();
+});
+
+it.each([false, true])("blocks file resend/retry after downgrade and keeps unknown identity: %s", async (unknown) => {
+  const r = await probe();
+  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { PROTOCOL_VERSION } = await import("./protocol");
+  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) });
+  const forward = vi.fn(async () => { throw new ConnectError("no authenticated result", Code.InvalidArgument); });
+  (r as unknown as { api: object }).api = { forward };
+  const file = { fileId: "file", name: "file.csv", sizeBytes: 4n, path: "/uploads/s/files/file/file.csv" };
+  const id = r.send("s", "text with file", [], [], undefined, undefined, [file]);
+  await vi.waitFor(() => expect(r.outbox("s")[0]?.status).toBe("failed"));
+  const original = { ...r.outbox("s")[0], unknown };
+  (r as any).outboxes.set("s", [original]);
+  r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false;
+  const attempts = forward.mock.calls.length;
+  r.retrySend("s", id);
+  await vi.waitFor(() => expect(r.outbox("s")[0]?.error).toContain("请更新电脑上的 remote-agent"));
+  expect(forward).toHaveBeenCalledTimes(attempts);
+  expect(r.outbox("s")[0]?.files).toEqual([file]);
+  expect(r.outbox("s")[0]?.unknown).toBe(unknown);
+  if (unknown) expect(r.outbox("s")[0]).toMatchObject({ requestId: original.requestId, deadline: original.deadline });
+  r.resend("s", "daemon-rejected", "text with file", [], [], [file]);
+  await vi.waitFor(() => expect(r.outbox("s").at(-1)?.error).toContain("请更新电脑上的 remote-agent"));
+  expect(forward).toHaveBeenCalledTimes(attempts);
+});
+
+it("checks the canonical file-bearing payload again on an authorized create retry", async () => {
+  const r = await probe();
+  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { PROTOCOL_VERSION } = await import("./protocol");
+  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) });
+  const forward = vi.fn(async () => { throw new ConnectError("no result", Code.InvalidArgument); });
+  (r as unknown as { api: object }).api = { forward };
+  const slot = newSlot();
+  await r.machineCommand(r.machine, { case: "createSession", value: { prompt: "first", fileIds: ["file"] } }, slot).catch(() => undefined);
+  expect(forward).toHaveBeenCalledOnce();
+  r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false;
+  // A caller cannot strip the files from an already authorized request.
+  const error = await r.machineCommand(r.machine, { case: "createSession", value: { prompt: "changed" } }, slot).catch(e => e);
+  expect(error.message).toContain("请更新电脑上的 remote-agent");
+  expect(forward).toHaveBeenCalledOnce();
+});
+
+it("rechecks file capability after asynchronous sealing before first dispatch", async () => {
+  const r = await probe();
+  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { PROTOCOL_VERSION } = await import("./protocol");
+  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) });
+  const seal = (r as any).sealSecureMessage.bind(r);
+  vi.spyOn(r as any, "sealSecureMessage").mockImplementation(async (...args: unknown[]) => {
+    const envelope = await seal(...args);
+    r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false;
+    return envelope;
+  });
+  const forward = vi.fn(async () => { throw new ConnectError("reached transport", Code.InvalidArgument); });
+  (r as unknown as { api: object }).api = { forward };
+  const error = await r.command("s", { case: "send", value: { text: "text", fileIds: ["file"] } }).catch(e => e);
+  expect(error.message).toContain("请更新电脑上的 remote-agent");
+  expect(forward).not.toHaveBeenCalled();
+});
+
+it("blocks an automatic file retry after metadata refresh and keeps its outcome unknown", async () => {
+  const r = await probe();
+  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { PROTOCOL_VERSION } = await import("./protocol");
+  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) });
+  const forward = vi.fn(async () => { r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false; throw new ConnectError("no reply", Code.DeadlineExceeded); });
+  (r as unknown as { api: object }).api = { forward };
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  const timer = globalThis.setTimeout;
+  let scheduled!: () => void;
+  const retryScheduled = new Promise<void>(resolve => { scheduled = resolve; });
+  globalThis.setTimeout = ((...args: Parameters<typeof setTimeout>) => { const handle = timer(...args); if (args[1] === 1000) scheduled(); return handle; }) as typeof setTimeout;
+  try {
+    const done = r.command("s", { case: "send", value: { text: "text", fileIds: ["file"] } }).catch(e => e);
+    await retryScheduled;
+    await vi.advanceTimersByTimeAsync(1000);
+    const error = await done;
+    expect(error.code).toBe("unknown");
+    expect(error.message).toContain("请更新电脑上的 remote-agent");
+    expect(forward).toHaveBeenCalledOnce();
+  } finally { globalThis.setTimeout = timer; vi.useRealTimers(); }
+});
+
+it.each(["send", "createSession"] as const)("allows text/image-only %s with file capability off", async (kind) => {
+  const r = await probe();
+  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { PROTOCOL_VERSION } = await import("./protocol");
+  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: false } }) });
+  const forward = vi.fn(async () => { throw new ConnectError("transport reached", Code.InvalidArgument); });
+  (r as unknown as { api: object }).api = { forward };
+  const cmd = kind === "send" ? { case: "send" as const, value: { text: "text", imageIds: ["image"] } } : { case: "createSession" as const, value: { prompt: "text", imageIds: ["image"] } };
+  await (kind === "send" ? r.command("s", cmd) : r.machineCommand(r.machine, cmd)).catch(() => undefined);
+  expect(forward).toHaveBeenCalledOnce();
+});

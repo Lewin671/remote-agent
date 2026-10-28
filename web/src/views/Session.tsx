@@ -238,7 +238,10 @@ export function SessionPage({
     // another client's images are not put into this input.
     const ours = !!o || acc?.origin?.deviceId === remote.account.deviceId;
     const ids = ours ? (o?.imageIds ?? acc?.imageIds ?? []) : [];
-    const files = ours ? (o?.files ?? acc?.files ?? []) : [];
+    const sourceFiles = o?.files ?? acc?.files ?? [];
+    const fileIssue = sourceFiles.length ? remote.fileUploadIssue(session.machineId) : "";
+    if (fileIssue) return setToast(fileIssue);
+    const files = ours ? sourceFiles : [];
     const foreign = !ours && ((acc?.imageIds.length ?? 0) > 0 || (acc?.files?.length ?? 0) > 0);
     if (tray.files().length + files.length > tray.maxFiles) return setToast(`输入框放不下这条消息的 ${files.length} 个文件；先移除一些再放回`);
     // All of the message or none of it: never a message short of images.
