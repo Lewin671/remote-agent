@@ -79,7 +79,7 @@ Android App 始终用同一把密钥签名，证书的 SHA-256 指纹是：
 ## 更新
 
 - **Android App**：从本仓库的 Release 自动更新，见 **设置 › 版本**。
-- **Daemon**：`remote-agent update check`、`remote-agent update` 和 `remote-agent update status`。自动更新默认关闭；用 `remote-agent update auto enable --time 04:00`（本机时间）为这台电脑开启，用 `remote-agent update auto disable` 关闭。更新时通过 HTTPS 校验大小和 SHA-256，原子替换二进制，tmux 会话不中断，新 daemon 起不来就回滚。改变协议或存储数据的升级不会自动进行，请按发布说明操作。
+- **Daemon**：`remote-agent update check`、`remote-agent update` 和 `remote-agent update status`。Release daemon 用 `remote-agent-service install` 安装后台服务，或根目录 `install.sh` 升级已有服务时，默认在本机时间每天 04:00 自动更新。新装 `install.sh` 只提示服务安装步骤。用 `remote-agent update auto disable` 关闭，`remote-agent update auto enable --time 04:00` 开启或改时间。daemon 状态目录已有的 `update-auto.json` 会保留选择，包括显式关闭，重装和升级也不改变。运行服务安装命令或 Release 安装器时设置 `REMOTE_AGENT_AUTO_UPDATE=0` 可跳过启用，不改变已有选择。设置失败不影响安装成功，会提示手动开启；首次启用失败不留下选择文件，下次安装服务或升级时可重试。源码构建按已安装命令的渠道识别并静默跳过，不自更新。更新时通过 HTTPS 校验大小和 SHA-256，原子替换二进制，tmux 会话不中断，新 daemon 起不来就回滚。改变协议或存储数据的升级不会自动进行，请按发布说明操作。
 - **中继和网页**：用新版本重新运行安装脚本。
 
 ## 源码结构

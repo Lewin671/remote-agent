@@ -12,6 +12,10 @@
 #
 # REMOTE_AGENT_VERSION picks a release (such as v0.32.0) instead of the latest;
 # BIN_DIR is where the command goes (default ~/.local/bin).
+# REMOTE_AGENT_HOME is the daemon state directory (default ~/.remote-agent).
+# REMOTE_AGENT_AUTO_UPDATE=0 skips enabling daily updates on service upgrades
+# (default 04:00 local); pass it to remote-agent-service install for new services.
+# An existing update-auto.json is always kept, including an explicit disable.
 # Every download is checked against the release's SHA256SUMS.
 set -eu
 
@@ -91,8 +95,12 @@ install_daemon() {
 		unit=$HOME/.config/systemd/user/remote-agent.service
 	fi
 	if [ -f "$unit" ] && grep -qF "$dir/remote-agent" "$unit"; then
-		BIN=$dir/remote-agent "$dir/remote-agent-service" restart
-		say "Restarted the background service. Sessions in tmux were not interrupted."
+		if BIN=$dir/remote-agent "$dir/remote-agent-service" restart; then
+			say "Restarted the background service. Sessions in tmux were not interrupted."
+			BIN=$dir/remote-agent "$dir/remote-agent-service" setup-auto-update
+		else
+			say "Could not start the background service; run: remote-agent-service install"
+		fi
 	elif [ -f "$unit" ]; then
 		say "The background service runs another binary. To switch it to this one:"
 		say "  BIN=$dir/remote-agent $dir/remote-agent-service install"

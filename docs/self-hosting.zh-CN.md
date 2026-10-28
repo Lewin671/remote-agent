@@ -105,6 +105,16 @@ remote-agent-service install
 
 让 daemon 在后台运行，并在每次登录时自动启动（macOS 用 launchd，Linux 用 systemd 用户服务）。日常用 `remote-agent-service status | log | restart | stop | uninstall` 管理。重启 daemon 不会打断 tmux 里正在运行的会话。
 
+Release daemon 用 `remote-agent-service install` 安装后台服务，或经 `install.sh` 升级已有服务时，默认在本机时间每天 04:00 自动更新。新装 `install.sh` 只提示上面的服务安装步骤。用 `remote-agent update auto disable` 关闭，`remote-agent update auto enable --time 04:00` 开启或改时间。两处都会保留已有 `update-auto.json` 的选择（包括显式关闭），重装和升级也不改变。状态目录默认是 `~/.remote-agent`，可用 `REMOTE_AGENT_HOME` 改位置。不想启用时，把 `REMOTE_AGENT_AUTO_UPDATE=0` 传给服务安装或 Release 升级命令：
+
+```sh
+REMOTE_AGENT_AUTO_UPDATE=0 remote-agent-service install
+# 升级已有服务时：
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | REMOTE_AGENT_AUTO_UPDATE=0 sh
+```
+
+这只跳过设置，不改变已有选择。启用失败不影响安装成功，会提示之后如何手动开启；首次启用失败不留下选择文件，下次安装服务或升级时可重试。源码构建按已安装命令的渠道识别并静默跳过，不自更新。更新限制见 [daemon 更新](reference.zh-CN.md#更新)。
+
 等客户端建好账户后，再把电脑连到中继。管理端显示配对码：
 
 ```sh

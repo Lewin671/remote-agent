@@ -6,6 +6,10 @@
 #
 # install  writes the service for the binary at $BIN (default: the
 #          remote-agent in PATH, else ~/bin/remote-agent) and starts it
+# Release service installs enable daily updates at 04:00 local unless a choice
+# is already recorded. REMOTE_AGENT_AUTO_UPDATE=0 skips enabling. Source builds
+# are detected from the installed command and skipped quietly.
+#
 # restart  restarts it, e.g. after installing a new binary
 # log      follows its log
 #
@@ -58,6 +62,27 @@ wait_up() {
 	done
 	echo "the daemon did not come up within 15s; see $0 log" >&2
 	return 1
+}
+
+# Shared by service installation and install.sh after a successful upgrade
+# restart. This action never starts or installs the daemon service itself.
+configure_auto_update() {
+	channel=$("$BIN" update-build-info 2>/dev/null | sed -n 's/^[[:space:]]*"channel":[[:space:]]*"\([^"]*\)".*/\1/p')
+	[ "$channel" != source ] || return 0
+	# Any recorded choice belongs to the user, including an explicit disable.
+	if [ -e "$STATE/update-auto.json" ] || [ -L "$STATE/update-auto.json" ]; then
+		return 0
+	fi
+	if [ "${REMOTE_AGENT_AUTO_UPDATE:-1}" = 0 ]; then
+		echo "Automatic-update setup skipped (REMOTE_AGENT_AUTO_UPDATE=0)."
+		return 0
+	fi
+	# auto enable performs its own bounded wait for the installed daemon.
+	if [ "$channel" = release ] && "$BIN" update auto enable >/dev/null 2>&1; then
+		echo "Automatic updates enabled (daily at 04:00 local time)."
+	else
+		echo "Automatic updates are off; enable with: remote-agent update auto enable"
+	fi
 }
 
 install() {
@@ -129,11 +154,14 @@ EOF
 	fi
 	echo "installed $UNIT for $BIN; log: $LOG"
 	wait_up
+	configure_auto_update
 }
 
 cmd=${1:-status}
 case $cmd in
 install) install ;;
+# Internal entry point for the release installer; shares the install policy.
+setup-auto-update) configure_auto_update ;;
 uninstall)
 	if [ "$(uname)" = Darwin ]; then
 		launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true

@@ -134,16 +134,11 @@ func (u *Updater) Auto(ctx context.Context, enabled bool, at string) error {
 		if err = u.service.Verify(ctx, u.exe, u.state); err != nil {
 			return err
 		}
-		h, err := u.health(ctx)
-		if err != nil {
+		// An installer may have just restarted the service. Wait for the
+		// installed version and service PID, with the same bounded health check
+		// used after updates, before loading the automatic task.
+		if err = u.waitHealthy(ctx, u.current, false); err != nil {
 			return err
-		}
-		if h.Executable != u.exe || h.Version != u.current.Version {
-			return errors.New("restart the installed daemon before enabling automatic updates")
-		}
-		pid, e := u.service.PID(ctx)
-		if e != nil || pid != h.PID {
-			return errors.New("running daemon is not managed by the service")
 		}
 		disk, e := u.probe(ctx, u.exe)
 		if e != nil {
@@ -168,29 +163,41 @@ func (u *Updater) Auto(ctx context.Context, enabled bool, at string) error {
 			}
 		}
 	}
+	configPath := filepath.Join(u.state, "update-auto.json")
+	previous, readErr := os.ReadFile(configPath)
+	if readErr != nil && !os.IsNotExist(readErr) {
+		return readErr
+	}
 	// The scheduled command checks this flag too, so a failure to unload the
 	// OS task cannot keep installing versions after the user disables updates.
-	if err = writeJSON(filepath.Join(u.state, "update-auto.json"), AutoConfig{Enabled: enabled, Time: at, Executable: u.exe}); err != nil {
+	if err = writeJSON(configPath, AutoConfig{Enabled: enabled, Time: at, Executable: u.exe}); err != nil {
 		return err
 	}
 	if runtime.GOOS == "darwin" {
-		_, _ = command(ctx, "/bin/launchctl", "bootout", domain()+"/"+updateLabel)
+		_, _ = u.autoCommand(ctx, "/bin/launchctl", "bootout", domain()+"/"+updateLabel)
 		if enabled {
-			_, err = command(ctx, "/bin/launchctl", "bootstrap", domain(), filepath.Join(home, "Library/LaunchAgents", updateLabel+".plist"))
+			_, err = u.autoCommand(ctx, "/bin/launchctl", "bootstrap", domain(), filepath.Join(home, "Library/LaunchAgents", updateLabel+".plist"))
 		}
 	} else {
-		_, err = command(ctx, "systemctl", "--user", "daemon-reload")
+		_, err = u.autoCommand(ctx, "systemctl", "--user", "daemon-reload")
 		if err == nil {
 			action := "disable"
 			if enabled {
 				action = "enable"
 			}
-			_, err = command(ctx, "systemctl", "--user", action, "--now", "remote-agent-update.timer")
+			_, err = u.autoCommand(ctx, "systemctl", "--user", action, "--now", "remote-agent-update.timer")
 		}
 	}
 	if err != nil && enabled {
-		_ = writeJSON(filepath.Join(u.state, "update-auto.json"), AutoConfig{Executable: u.exe, Time: at})
-		return err
+		// A failed enable is not a user's choice to disable updates. Restore
+		// the previous choice, or leave no file so the installer can retry.
+		var restoreErr error
+		if os.IsNotExist(readErr) {
+			restoreErr = os.Remove(configPath)
+		} else {
+			restoreErr = atomicFile(configPath, previous, 0600)
+		}
+		return errors.Join(err, restoreErr)
 	}
 	if !enabled {
 		for path := range files {
@@ -200,7 +207,7 @@ func (u *Updater) Auto(ctx context.Context, enabled bool, at string) error {
 		}
 	}
 	if !enabled && runtime.GOOS == "linux" {
-		_, e := command(ctx, "systemctl", "--user", "daemon-reload")
+		_, e := u.autoCommand(ctx, "systemctl", "--user", "daemon-reload")
 		err = errors.Join(err, e)
 	}
 	return err

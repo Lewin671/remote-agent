@@ -71,6 +71,7 @@ type Updater struct {
 	http                          *http.Client
 	health                        func(context.Context) (Health, error)
 	service                       service
+	autoCommand                   func(context.Context, string, ...string) (string, error)
 	probe                         func(context.Context, string) (Health, error)
 	stableFor, healthTimeout      time.Duration
 }
@@ -96,7 +97,7 @@ func New(exe, state string) (*Updater, error) {
 	if err != nil {
 		return nil, err
 	}
-	u := &Updater{exe: exe, state: state, platform: runtime.GOOS + "-" + runtime.GOARCH, baseURL: releases, current: Build(), http: downloadClient(), service: systemService{}, stableFor: 5 * time.Second, healthTimeout: 30 * time.Second}
+	u := &Updater{exe: exe, state: state, platform: runtime.GOOS + "-" + runtime.GOARCH, baseURL: releases, current: Build(), http: downloadClient(), service: systemService{}, autoCommand: command, stableFor: 5 * time.Second, healthTimeout: 30 * time.Second}
 	u.health = func(ctx context.Context) (Health, error) { return ReadHealth(ctx, filepath.Join(state, "daemon.sock")) }
 	u.probe = func(ctx context.Context, path string) (Health, error) {
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

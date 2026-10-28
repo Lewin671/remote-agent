@@ -53,13 +53,13 @@ Go 构建要求至少 1.26.10，发布流水线用 `govulncheck` 检查代码可
 
 发布失败时，手动运行 `Release` 并填入 tag 重跑。产物和 tag 校验使用 tagged checkout，发布工具和隐私扫描使用本次工作流所在的提交，因此修复工具后可重试旧版本；网页包的成员名单取自该 tag 的 `web/public`。需要修复产品代码时仍发新版本；不填 tag 则跑全端检查和打包演练，不公开任何版本。Release 的说明只用 tag 中面向用户的变化和升级要求，不带提交日志或部署信息。
 
-Release 不自动部署 VPS/Cloudflare：我们自己的部署在 Release 工作流成功后由本机的 `scripts/ship.sh` 一次上线，从 tag 的干净 checkout 构建并嵌入版本和源提交，按 server（代码有变才部署）、网页、本机 daemon 的顺序逐个部署并核对线上版本，不从 Release 晋级产物，也不需要在 GitHub 存服务器或 Cloudflare 的凭据。别人的 daemon 可由本机用户显式开启兼容版本自动更新；App 的更新也要在手机上点一下，再由系统确认安装。各端不保证跨版本互通：协议版本变了就要一起升级，数据格式变了要手动迁移或重建，这些升级要求写在发布说明中。
+Release 不自动部署 VPS/Cloudflare：我们自己的部署在 Release 工作流成功后由本机的 `scripts/ship.sh` 一次上线，从 tag 的干净 checkout 构建并嵌入版本和源提交，按 server（代码有变才部署）、网页、本机 daemon 的顺序逐个部署并核对线上版本，不从 Release 晋级产物，也不需要在 GitHub 存服务器或 Cloudflare 的凭据。Release daemon 安装后台服务或经 `install.sh` 升级已有服务时，默认开启兼容版本自动更新，用户可关闭；App 的更新也要在手机上点一下，再由系统确认安装。各端不保证跨版本互通：协议版本变了就要一起升级，数据格式变了要手动迁移或重建，这些升级要求写在发布说明中。
 
 ### daemon 更新
 
 `remote-agent update check` 检查最新正式版；`update`（可加 `--version X.Y.Z`）安装比磁盘当前版本新的兼容版；`update status` 显示运行版本、空闲状态、自动更新设置和最近结果。首次使用需通过公开 Release 安装器升级到带更新命令的版本。源码构建带 `source` 渠道，只有 `build-dist.sh` 产出的 `release` 渠道允许自更新，避免覆盖开发者安装。
 
-自动更新默认关闭，每台机器单独用 `update auto enable --time 04:00` 开启、`update auto disable` 关闭。macOS 使用独立 LaunchAgent（本地日历时间，登录时也检查，睡眠错过的日历触发在唤醒后合并执行）；Linux 使用独立 systemd user oneshot 和带 `Persistent=true` 的 timer，随机延后最多 10 分钟。Linux 的用户服务需保持用户 manager 运行，和 daemon 自身的服务前提相同。定时器触发独立保留的 `remote-agent.updater` 副本（每次更新前刷新为当前已验证的安装），它在无残留事务时读取磁盘当前版本，避免副本版本落后阻止后续更新；新主程序无法执行时仍可恢复事务。定时器仅触发这个本地 CLI 更新进程，不改 daemon 的 unit 或安装时的 PATH，也不在 daemon 进程里更新自己。
+Release daemon 用 `remote-agent-service install` 安装后台服务，或根目录 `install.sh` 成功重启升级后的已有服务时，默认开启每日自动更新（本机时间 04:00），用 `update auto disable` 关闭、`update auto enable --time 04:00` 开启或改时间。两处共用服务脚本中的规则，只在状态目录没有 `update-auto.json` 时启用；已有文件中的选择（包括显式关闭）跨重装和升级保留。启用失败恢复原文件，原先没有文件就不留下记录，供下次安装服务或升级时重试。运行服务安装命令或 Release 安装器时设置 `REMOTE_AGENT_AUTO_UPDATE=0` 可跳过启用，不改变已有选择。新装 `install.sh` 只提示下一步，不安装或启动后台服务；已有服务重启失败时不尝试启用。启用失败只提示手动命令，不影响安装成功。启用前最多等待 30 秒，确认当前版本和服务 PID 的健康状态。规则读取已安装命令的 `update-build-info` 渠道字段，`source` 静默跳过，源码构建及其安装脚本不自更新。macOS 使用独立 LaunchAgent（本地日历时间，登录时也检查，睡眠错过的日历触发在唤醒后合并执行）；Linux 使用独立 systemd user oneshot 和带 `Persistent=true` 的 timer，随机延后最多 10 分钟。Linux 的用户服务需保持用户 manager 运行，和 daemon 自身的服务前提相同。定时器触发独立保留的 `remote-agent.updater` 副本（每次更新前刷新为当前已验证的安装），它在无残留事务时读取磁盘当前版本，避免副本版本落后阻止后续更新；新主程序无法执行时仍可恢复事务。定时器仅触发这个本地 CLI 更新进程，不改 daemon 的 unit 或安装时的 PATH，也不在 daemon 进程里更新自己。
 
 更新清单复用每个 tag 的 `latest.properties`，附件名由版本和平台推导；每平台大小与 SHA-256 来自已校验的 `SHA256SUMS`，公开发布时再次核对附件和清单。清单与下载通过 HTTPS，附件重定向不得降到 HTTP。信任根是官方 GitHub 发布账户与 TLS；SHA-256 校验传输和文件一致性，不是独立的发布签名。只取正式版，不降级；先确定最新版本，再从固定 tag 获取清单和附件。最新版本不兼容时记录阻止原因，不自动寻找更旧版本。
 
@@ -71,7 +71,7 @@ Release 不自动部署 VPS/Cloudflare：我们自己的部署在 Release 工作
 
 更新进程按安装路径持有排他锁，校验下载及压缩包固定成员，验证候选程序报告的版本、渠道、协议和代数后，将旧二进制备份、事务日志和目录同步落盘，再原子替换并重启服务。新版本和服务 PID 必须一致且稳定至少 5 秒；失败恢复旧二进制并重启。目录里保留 `remote-agent.previous` 一份上一版供人工恢复；依赖声明更新到状态目录的 `THIRD_PARTY_NOTICES.txt`。不改会话数据、账户或 tmux server。
 
-中断后的下一次 `update` 先处理残留事务，再访问发布源：确认新版本健康则提交，否则回滚。自动恢复累计三次仍失败就停止并要求人工重试；已回滚的同一目标版不再自动安装，用户可运行一次手动 `update` 重试。自动更新未开启时，可手动用 `remote-agent.updater update --helper-for /绝对路径/remote-agent` 触发同样的恢复入口；该参数只允许从目标旁的更新器副本调用。最近结果和失败原因保存在状态目录，`update status` 可查；LaunchAgent 输出在 `update.log`，Linux 输出在 user journal。自动更新开关不会由安装器或 Release 默认打开。
+中断后的下一次 `update` 先处理残留事务，再访问发布源：确认新版本健康则提交，否则回滚。自动恢复累计三次仍失败就停止并要求人工重试；已回滚的同一目标版不再自动安装，用户可运行一次手动 `update` 重试。自动更新未开启时，可手动用 `remote-agent.updater update --helper-for /绝对路径/remote-agent` 触发同样的恢复入口；该参数只允许从目标旁的更新器副本调用。最近结果和失败原因保存在状态目录，`update status` 可查；LaunchAgent 输出在 `update.log`，Linux 输出在 user journal。
 
 
 ## 2. 报文分层
