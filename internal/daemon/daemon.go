@@ -591,19 +591,21 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	}
 	argv := d.ptyHostArgv(dir, &m, bin, cliArgs, envFile)
 	defer d.beginStart(id)()
-	err = d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
-		Name: m.Tmux, Dir: cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
+	err = d.uploads.step("create-cli", func() error {
+		return d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
+			Name: m.Tmux, Dir: cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
+		})
 	})
 	if err != nil {
 		os.Remove(envFile)
 		return fail(err)
 	}
-	if err := d.cfg.Tmux.SetSessionOption(m.Tmux, "@ra_session_id", id); err != nil {
+	if err := d.uploads.step("create-cli-id", func() error { return d.cfg.Tmux.SetSessionOption(m.Tmux, "@ra_session_id", id) }); err != nil {
 		_ = d.cfg.Tmux.KillSession(m.Tmux)
 		return fail(err)
 	}
 	// The tmux status line is not part of the CLI's experience.
-	_ = d.cfg.Tmux.SetSessionOption(m.Tmux, "status", "off")
+	_ = d.uploads.step("create-cli-status", func() error { return d.cfg.Tmux.SetSessionOption(m.Tmux, "status", "off") })
 
 	s, err := newSession(d, dir, m, d.terminal(&m), log)
 	if err != nil {
@@ -611,9 +613,11 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 		return fail(err)
 	}
 	s.noteShellLaunch()
-	if err := s.emit(&pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
-		Status: pb.SessionStatus_SESSION_STATUS_STARTING,
-	}}}); err != nil {
+	if err := d.uploads.step("create-starting-event", func() error {
+		return s.emit(&pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
+			Status: pb.SessionStatus_SESSION_STATUS_STARTING,
+		}}})
+	}); err != nil {
 		_ = d.cfg.Tmux.KillSession(m.Tmux)
 		return fail(err)
 	}

@@ -34,6 +34,20 @@ func TestStartupPreservesUploadsUntilSessionLivenessIsRestored(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+				// This fixture represents a previously accepted message, not a
+				// provisional claim. Commit its queue, acknowledge the transfer
+				// marker, then settle the queue before simulating the stale exit.
+				q := &queueState{Queue: []input{{RequestID: "accepted", Images: taken.Images, Files: taken.Files}}}
+				if err := q.save(dir); err != nil {
+					t.Fatal(err)
+				}
+				if pending := u.confirmAcceptance(sid, append(append([]string{}, ims...), files...)); len(pending) != 0 {
+					t.Fatal(pending)
+				}
+				q.Queue = nil
+				if err := q.save(dir); err != nil {
+					t.Fatal(err)
+				}
 				path := ""
 				if image {
 					path = taken.Images[0].Path

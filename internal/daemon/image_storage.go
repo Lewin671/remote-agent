@@ -383,79 +383,103 @@ func (u *uploads) referenceRecords() (map[string][]*transfer, error) {
 	return bySession, nil
 }
 
-// On startup the saved queue, not an interrupted reference update, wins.
+// On startup durable queue/history acceptance wins over provisional claims.
 func (u *uploads) restoreRefs(s *session, records []*transfer) {
-	if len(records) == 0 {
+	if len(records) == 0 || s.queueLost {
 		return
 	}
 	wanted := map[string]bool{}
 	for _, t := range records {
-		if t.Returning || t.Deleting {
-			continue
+		if t.artifactID() != "" && !t.Returning && !t.Deleting {
+			wanted[t.artifactID()] = true
 		}
-		if t.ImageID != "" {
-			wanted[t.ImageID] = true
+	}
+	if len(wanted) == 0 {
+		return
+	}
+	accepted := map[string]bool{}
+	refsByID := map[string]map[string]bool{}
+	add := func(id, request string, ref bool) {
+		if !wanted[id] {
+			return
+		}
+		accepted[id] = true
+		if ref {
+			if refsByID[id] == nil {
+				refsByID[id] = map[string]bool{}
+			}
+			refsByID[id][request] = true
+		}
+	}
+	for _, id := range s.queue.PendingUploads {
+		add(id, "", false)
+	}
+	for kind, list := range [][]input{s.queue.Queue, s.queue.Held} {
+		for _, in := range list {
+			for _, f := range in.Files {
+				add(f.ID, in.RequestID, true)
+			}
+			for _, im := range in.Images {
+				add(im.ID, in.RequestID, kind == 0)
+			}
 		}
 	}
 	witness := map[string]bool{}
-	if len(wanted) > 0 {
-		if err := s.log.Each(func(e *pb.Event) {
-			if m := e.GetUserMessage(); m != nil {
-				for _, ref := range m.Images {
-					if ref.UploadId != "" && ref.ImageId != "" && wanted[ref.UploadId] {
-						witness[ref.UploadId] = true
-					}
+	// History binds acceptance to artifact IDs, never just a request ID:
+	// the dedup window may have expired and that request ID may be reused.
+	if err := s.log.Each(func(e *pb.Event) {
+		if in := e.GetInputState(); in != nil && (in.Status == pb.InputStatus_INPUT_STATUS_QUEUED || in.Status == pb.InputStatus_INPUT_STATUS_HELD_BY_CLI) {
+			for _, f := range in.Files {
+				add(f.FileId, "", false)
+			}
+			for _, id := range in.ImageIds {
+				add(id, "", false)
+			}
+		}
+		if m := e.GetUserMessage(); m != nil {
+			for _, f := range m.Files {
+				add(f.FileId, "", false)
+			}
+			for _, im := range m.Images {
+				if im.UploadId != "" && im.ImageId != "" {
+					add(im.UploadId, "", false)
+					witness[im.UploadId] = true
 				}
 			}
-		}); err != nil {
-			slog.Error("restore image references", "session", s.meta.ID, "err", errClass(err))
-			return
 		}
+	}); err != nil {
+		slog.Error("restore upload acceptance", "session", s.meta.ID, "err", errClass(err))
+		return
 	}
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	for _, snapshot := range records {
-		// The startup index and event scan ran before this lock. Reload so a
-		// stale snapshot cannot overwrite deletion/return intent or recreate
-		// a record already removed while earlier sessions were restoring.
 		t, err := u.load(snapshot.ID)
 		if err != nil {
 			if connect.CodeOf(err) != connect.CodeNotFound {
-				slog.Error("reload image references", "err", errClass(err))
+				slog.Error("reload upload references", "err", errClass(err))
 			}
 			continue
 		}
 		if t.Session != s.meta.ID || t.artifactID() != snapshot.artifactID() || t.Returning || t.Deleting {
 			continue
 		}
-		refs := map[string]bool{}
-		for _, in := range s.queue.Held {
-			for _, f := range in.Files {
-				if f.ID == t.FileID {
-					refs[in.RequestID] = true
-				}
+		id := t.artifactID()
+		if !t.Accepted && !accepted[id] && !t.Exposed && !t.Embedded {
+			if err := u.startReturn(t); err != nil {
+				slog.Error("return unaccepted upload", "err", errClass(err))
 			}
+			continue
 		}
-		for _, in := range s.queue.Queue {
-			for _, f := range in.Files {
-				if f.ID == t.FileID {
-					refs[in.RequestID] = true
-				}
-			}
-			for _, im := range in.Images {
-				if im.ID == t.ImageID {
-					refs[in.RequestID] = true
-				}
-			}
-		}
-		t.Refs = refs
+		t.Accepted = true
+		t.Refs = refsByID[id]
 		if witness[t.ImageID] {
 			t.Embedded = true
 		}
 		if err := u.save(t); err != nil {
 			continue
 		}
-		if t.FileID == "" && len(refs) == 0 && !t.Exposed {
+		if t.FileID == "" && len(t.Refs) == 0 && !t.Exposed {
 			_ = u.removeOriginal(t)
 		}
 	}

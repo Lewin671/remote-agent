@@ -136,10 +136,17 @@ func TestRestartReconcilesCancelledAndEmbeddedImageRecords(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer log.Close()
+	// Acceptance was durable before cancellation removed the queue entry.
+	if err := log.Append("s", []*pb.Event{{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: "cancelled", Status: pb.InputStatus_INPUT_STATUS_QUEUED, ImageIds: []string{id}}}}}, "", 0); err != nil {
+		t.Fatal(err)
+	}
 	// Queue removal saved, crash before reference removal.
 	restoreImageRefs(t, u, &session{meta: meta{ID: "s"}, queue: &queueState{}, log: log})
 	if _, err := os.Stat(imgs[0].Path); !os.IsNotExist(err) {
 		t.Fatal("cancelled original survived recovery", err)
+	}
+	if tr := u.byImage(id); tr != nil {
+		t.Fatal("accepted cancelled image returned as an unused draft", tr)
 	}
 	id = storageUpload(t, u)
 	imgs, err = u.take([]string{id}, "phone", "s", "sent")

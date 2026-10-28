@@ -1,9 +1,12 @@
 package daemon
 
 import (
+	"connectrpc.com/connect"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
@@ -124,10 +127,10 @@ func (u *uploads) moveUpload(t *transfer) error {
 	// Both missing on return means there are no bytes left to recover; let the
 	// unowned record expire instead of pinning it to a vanished session forever.
 	if t.Returning {
-		owner, refs := t.Session, t.Refs
-		t.Session, t.Returning, t.Refs = "", false, nil
+		owner, refs, accepted := t.Session, t.Refs, t.Accepted
+		t.Session, t.Returning, t.Refs, t.Accepted = "", false, nil, false
 		if err := u.step("move-clear", func() error { return u.save(t) }); err != nil {
-			t.Session, t.Returning, t.Refs = owner, true, refs
+			t.Session, t.Returning, t.Refs, t.Accepted = owner, true, refs, accepted
 			return err
 		}
 	}
@@ -234,4 +237,57 @@ func (u *uploads) recoverUpload(t *transfer) error {
 		}
 	}
 	return nil
+}
+
+// Called only after queue.json, including these witnesses, is durable. Keep
+// failed markers in the queue's bridge until a later write can acknowledge
+// them. A new claim cannot mark itself accepted just by saving ownership.
+func (u *uploads) confirmAcceptance(session string, ids []string) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	// The quota index may skip unreadable records, but acceptance cannot:
+	// failing to find an artifact is not proof that its witness can retire.
+	entries, err := os.ReadDir(filepath.Join(u.dir, "partial"))
+	if err != nil {
+		slog.Error("read upload acceptance", "err", errClass(err))
+		return ids
+	}
+	byID := map[string]*transfer{}
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		t, err := u.load(strings.TrimSuffix(entry.Name(), ".json"))
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			if _, statErr := os.Stat(u.partial(strings.TrimSuffix(entry.Name(), ".json")) + ".json"); os.IsNotExist(statErr) {
+				continue
+			}
+			// An unreadable/incomplete record can look expired to load().
+			// Its continued presence is not evidence of a completed deletion.
+			return ids
+		}
+		if err != nil {
+			slog.Error("read upload acceptance", "err", errClass(err))
+			return ids
+		}
+		byID[t.artifactID()] = t
+	}
+	var pending []string
+	for _, id := range ids {
+		t := byID[id]
+		if t == nil || t.Session != session || t.Returning || t.Deleting {
+			continue
+		}
+		t.Accepted = true
+		// Re-save even a visible true value: a previous record fsync may
+		// have failed. Visibility alone must not retire the queue witness.
+		if err := u.step("acceptance-record", func() error { return u.save(t) }); err != nil {
+			pending = append(pending, id)
+			slog.Error("save upload acceptance", "err", errClass(err))
+		}
+	}
+	return pending
 }

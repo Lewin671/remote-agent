@@ -296,6 +296,7 @@ func (u *uploads) takeUploads(images, files []string, device, session, request s
 		newClaim := t.Session == ""
 		if newClaim {
 			t.Session = session
+			t.Accepted = false
 			if err := u.moveUpload(t); err != nil {
 				undo()
 				return out, err
@@ -336,7 +337,7 @@ func (u *uploads) untakeClaim(t *transfer, newClaim bool, session, request strin
 		return
 	}
 	delete(t.Refs, request)
-	returning := newClaim && len(t.Refs) == 0 && !t.Exposed
+	returning := newClaim && !t.Accepted && len(t.Refs) == 0 && !t.Exposed
 	var err error
 	if returning {
 		err = u.startReturn(t)
@@ -419,6 +420,7 @@ func (u *uploads) releaseFiles(files []queuedFile, session, request string) {
 		t := u.byFile(f.ID)
 		if t != nil && !t.Returning && !t.Deleting && t.Session == session {
 			delete(t.Refs, request)
+			t.Accepted = true // Only durable accepted messages release references.
 			_ = u.save(t)
 		}
 	}

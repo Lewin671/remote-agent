@@ -1370,3 +1370,13 @@ pnpm --dir web test --reporter=json --outputFile=/tmp/ra-file-upload-feedback-2-
 - `TestLiveUploadProtectionDoesNotDependOnReadableHistory` 覆盖文件／图片在历史打不开或元数据修正写入失败时的 4 个边界，修复前全部失败。现在先持久化活会话的 Exited 修正再加载历史；持久化失败则启动失败，不能启动 GC。
 - 网页在没有 QUEUED 历史的 HELD_BY_CLI LiveSnapshot 上验证 Codex／Claude、纯文件／文字与图片混合，共 4 个回归，旧代码全部缺少文件条目。另一个回归验证已有 QUEUED 原文和来源不被 Held 快照的截断文字覆盖，只有实时模式更新且历史投影不被修改；该回归在仅接收 Held 元数据、尚未保护已有内容的实现中失败。
 - `go test ./...`、`go vet ./...`、网页 `pnpm typecheck`、默认并发 `pnpm test`（90 文件、1240 测试）及 `pnpm build` 全部通过。
+
+### 领取与持久受理之间的崩溃恢复（2026-10-28）
+
+本轮使用临时目录、真实文件操作和 tmux 替身验证 daemon 发送／新建会话路径，没有新增真实 CLI 端到端验收，也没有修改客户端。领取、受理及证据不可读时的规则维护在 [session-files.md](session-files.md#上传记录与字节的状态转换)。
+
+- `TestUploadClaimAcceptanceCrashMatrix` 从领取意图、目录创建、rename、两侧目录同步、引用保存延伸到队列提交，覆盖图片／文件、Send／CreateSession、每个边界前后崩溃；CreateSession 还覆盖 tmux 创建、登记 ID、status 设置及初始事件。初始 72 个场景中旧实现有 36 个失败；新增 queue rename 前后目录 fsync 边界、Accepted 标记写入边界后，共 88 个场景在修复后通过。崩溃用 panic 跳过调用方回退，再由全新 uploads 实例与实际会话恢复流程读取持久状态，不模拟真实 CLI 执行。
+- 补测队列 rename 后 fsync 失败、目录项回滚到旧队列时，不能提前保存 Accepted；原始 QUEUED 事件缺失、受理标记 fsync 持续失败、之后消息取消时，临时受理见证仍随 queue.json 保留。恢复会继续保留已受理文件，已受理且未暴露的取消图片仍删除。记录暂不可读也不能丢弃见证；该边界在修正前单独复现失败。
+- 补测 Accepted 标记、历史 QUEUED / 用户消息、Held 元数据各自可以保留已受理文件；另一个附件使用过的同名 request ID 不算本次受理，队列不可读时保留未知归属。确认成功的标记不在后续阶段更新中反复写入，临时见证会在后续队列保存中移除。
+- 既有重附着保护夹具补上真实队列持久化与受理确认，避免把未受理领取当作已受理消息；取消图片夹具补上受理历史，并确认记录被删除而非退回草稿。
+- `go test ./...`、`go vet ./...` 全部通过。

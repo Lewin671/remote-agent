@@ -150,15 +150,22 @@ func (s *session) afterTranscript(evs []*pb.Event) {
 // owner while restoring before the session starts.
 func (s *session) saveQueueLocked(evs ...*pb.Event) (saved bool, err error) {
 	s.trackPendingInput()
-	if err := s.queue.saveWith(s.dir, s.d.writeStateFile); err != nil {
+	previousWitnesses := s.queue.PendingUploads
+	s.queue.PendingUploads = s.queue.uploadWitnesses()
+	if err := s.d.uploads.step("queue-commit", func() error { return s.queue.saveWith(s.dir, s.d.writeStateFile) }); err != nil {
 		s.noteStorageLocked(err)
 		if fileReplaced(err) {
 			s.claimQueuedHumanOwnershipLocked()
 			s.poke()
 			return true, fmt.Errorf("%w: %w: %w", errQueueAccepted, errQueueCommit, err)
 		}
+		s.queue.PendingUploads = previousWitnesses
 		return false, fmt.Errorf("%w: %w", errQueueCommit, err)
 	}
+	s.queue.acceptClaims()
+	// queue.json is now durable proof of acceptance. Marker failures keep
+	// witnesses in this and every later queue save, even after cancellation.
+	s.queue.PendingUploads = s.d.uploads.confirmAcceptance(s.meta.ID, s.queue.PendingUploads)
 	s.claimQueuedHumanOwnershipLocked()
 	defer s.poke()
 	if len(evs) > 0 {

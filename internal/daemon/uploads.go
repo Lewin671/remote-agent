@@ -69,7 +69,9 @@ type transfer struct {
 	Width       int32  `json:"width,omitempty"`
 	Height      int32  `json:"height,omitempty"`
 	CompletedMs int64  `json:"completed_ms,omitempty"`
-	// Set once a message used it.
+	// Session reserves a claim before acceptance. Accepted records durable
+	// acceptance in that session even after its final request reference ends.
+	Accepted  bool            `json:"accepted,omitempty"`
 	Session   string          `json:"session,omitempty"`
 	Deleting  bool            `json:"deleting,omitempty"`
 	Returning bool            `json:"returning,omitempty"`

@@ -55,6 +55,10 @@ type queueState struct {
 	// Held are messages the CLI took into its own queue during a turn
 	// (Claude Code) and the model has not received yet (held.go).
 	Held []input `json:"held,omitempty"`
+	// Acceptance witnesses retained until the transfer's Accepted marker is
+	// durably saved. They survive cancellation/settlement and are independent
+	// of the bounded request-ID deduplication list.
+	PendingUploads []string `json:"pending_uploads,omitempty"`
 }
 
 func loadQueue(dir string) (*queueState, error) {
@@ -141,5 +145,51 @@ func (q *queueState) remember(id string) {
 	q.Seen = append(q.Seen, id)
 	if len(q.Seen) > maxSeen {
 		q.Seen = q.Seen[len(q.Seen)-maxSeen:]
+	}
+}
+
+// Include prior unacknowledged witnesses even when the corresponding message
+// is leaving the queue. Only a durable transfer marker may retire a witness.
+func (q *queueState) uploadWitnesses() []string {
+	var ids []string
+	seen := map[string]bool{}
+	add := func(id string) {
+		if id != "" && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	for _, id := range q.PendingUploads {
+		add(id)
+	}
+	for _, list := range [][]input{q.Queue, q.Held} {
+		for _, in := range list {
+			for _, im := range in.Images {
+				if im.NewClaim {
+					add(im.ID)
+				}
+			}
+			for _, f := range in.Files {
+				if f.NewClaim {
+					add(f.ID)
+				}
+			}
+		}
+	}
+	return ids
+}
+
+// A durable queue write consumes the per-call rollback receipts. Later stage
+// updates need only retain witnesses whose transfer marker is still pending.
+func (q *queueState) acceptClaims() {
+	for _, list := range [][]input{q.Queue, q.Held} {
+		for _, in := range list {
+			for i := range in.Images {
+				in.Images[i].NewClaim = false
+			}
+			for i := range in.Files {
+				in.Files[i].NewClaim = false
+			}
+		}
 	}
 }
