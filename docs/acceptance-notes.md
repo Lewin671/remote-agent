@@ -1380,3 +1380,11 @@ pnpm --dir web test --reporter=json --outputFile=/tmp/ra-file-upload-feedback-2-
 - 补测 Accepted 标记、历史 QUEUED / 用户消息、Held 元数据各自可以保留已受理文件；另一个附件使用过的同名 request ID 不算本次受理，队列不可读时保留未知归属。确认成功的标记不在后续阶段更新中反复写入，临时见证会在后续队列保存中移除。
 - 既有重附着保护夹具补上真实队列持久化与受理确认，避免把未受理领取当作已受理消息；取消图片夹具补上受理历史，并确认记录被删除而非退回草稿。
 - `go test ./...`、`go vet ./...` 全部通过。
+
+### 哈希与传输重建的身份隔离（2026-10-28）
+
+本轮使用临时上传目录和 channel 排定并发顺序；不依赖文件系统碰巧回收 inode，没有新增真实 CLI 验收。代次与描述符约束维护在 [session-files.md](session-files.md#上传记录与字节的状态转换)。
+
+- `TestFileHashCannotCompleteAnotherBeginGeneration` 在原哈希已算完但尚未重新加锁时 Abort 并复用同一 transfer_id。一个场景用保留的硬链接让新 `.part` 确定性拥有相同 inode、相同名字／长度／哈希参数，却写入不同字节；另一个场景让新一轮先完成。旧实现两种情况均返回成功的文件 ID；修复后旧 Complete 均返回 Aborted，不改变新一轮状态或字节，尚未完成的新一轮仍须通过自己的哈希校验。
+- `TestRepeatedBeginKeepsActiveHashAndDescriptorThroughCompletion` 确认幂等 Begin 不改变活跃传输代次，哈希描述符在完成记录提交时仍打开，方法返回后关闭；该场景在修复前因描述符提前关闭而失败。
+- 新增 3 个场景修复前全部失败，修复后通过；既有锁外哈希 Abort／重建、Deleting tombstone 回归通过。`go test ./...`、`go vet ./...` 全部通过。

@@ -114,9 +114,11 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Pin the hashed object through the locked recheck and completion too;
+	// the persisted generation remains authoritative even if identities match.
+	defer f.Close()
 	before, err := f.Stat()
 	if err != nil {
-		f.Close()
 		return nil, err
 	}
 	hash := u.hashFile
@@ -126,7 +128,6 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 	h := sha256.New()
 	u.mu.Unlock()
 	n, hashErr := hash(h, f)
-	f.Close()
 	u.mu.Lock()
 	current, err := u.load(t.ID)
 	if err != nil {
@@ -139,6 +140,11 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 	// unlink or sync. Deleting overrides both receiving and completed state.
 	if current.Deleting {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted"))
+	}
+	// Check before the completed fast path: it may belong to a replacement
+	// Begin which another Complete already finished while this hash ran.
+	if current.Generation != t.Generation {
+		return nil, connect.NewError(connect.CodeAborted, errors.New("the transfer changed while its bytes were being checked"))
 	}
 	if current.state() != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING {
 		return u.durableFileStatus(current)

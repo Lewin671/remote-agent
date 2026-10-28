@@ -54,16 +54,19 @@ var uploadFormats = []pb.ImageFormat{
 
 // transfer is uploads/partial/<id>.json.
 type transfer struct {
-	ID        string         `json:"id"`
-	FileName  string         `json:"file_name,omitempty"`
-	SafeName  string         `json:"safe_name,omitempty"`
-	FileID    string         `json:"file_id,omitempty"`
-	Device    string         `json:"device"`
-	Format    pb.ImageFormat `json:"format"`
-	Total     int64          `json:"total"`
-	SHA256    []byte         `json:"sha256"`
-	Persisted int64          `json:"persisted"`
-	UpdatedMs int64          `json:"updated_ms"`
+	ID string `json:"id"`
+	// A fresh Begin gets a new identity even if its external ID and bytes'
+	// inode are reused. Idempotent Begin retries keep the existing value.
+	Generation string         `json:"generation"`
+	FileName   string         `json:"file_name,omitempty"`
+	SafeName   string         `json:"safe_name,omitempty"`
+	FileID     string         `json:"file_id,omitempty"`
+	Device     string         `json:"device"`
+	Format     pb.ImageFormat `json:"format"`
+	Total      int64          `json:"total"`
+	SHA256     []byte         `json:"sha256"`
+	Persisted  int64          `json:"persisted"`
+	UpdatedMs  int64          `json:"updated_ms"`
 	// Set once complete.
 	ImageID     string `json:"image_id,omitempty"`
 	Width       int32  `json:"width,omitempty"`
@@ -256,7 +259,7 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 			return nil, err
 		}
 	}
-	t := &transfer{FileName: req.FileName, ID: req.TransferId, Device: device, Format: req.Format, Total: req.TotalBytes, SHA256: req.Sha256, UpdatedMs: time.Now().UnixMilli()}
+	t := &transfer{Generation: newID(16), FileName: req.FileName, ID: req.TransferId, Device: device, Format: req.Format, Total: req.TotalBytes, SHA256: req.Sha256, UpdatedMs: time.Now().UnixMilli()}
 	if req.FileName != "" {
 		t.SafeName = safeFileName(req.FileName)
 	}
