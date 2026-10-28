@@ -449,9 +449,6 @@ func fileLinePath(line string) string {
 	if strings.HasPrefix(line, `File: @"`) && strings.HasSuffix(line, `" (file)`) {
 		return strings.TrimSuffix(strings.TrimPrefix(line, `File: @"`), `" (file)`)
 	}
-	if strings.HasPrefix(line, "File: @") {
-		return strings.TrimSuffix(strings.TrimPrefix(line, "File: @"), " (file)")
-	}
 	return strings.TrimPrefix(strings.TrimPrefix(line, "File: "), "@")
 }
 
