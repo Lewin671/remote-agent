@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -70,6 +71,7 @@ type transfer struct {
 	CompletedMs int64  `json:"completed_ms,omitempty"`
 	// Set once a message used it.
 	Session  string          `json:"session,omitempty"`
+	Claim    string          `json:"claim,omitempty"`
 	Exposed  bool            `json:"exposed,omitempty"`
 	Embedded bool            `json:"embedded,omitempty"`
 	Refs     map[string]bool `json:"refs,omitempty"`
@@ -105,10 +107,12 @@ func (t *transfer) status() *pb.ImageUploadStatus {
 type uploads struct {
 	dir string
 
-	mu     sync.Mutex
-	quota  int64
-	limits func() int64
-	pins   func() map[string]bool
+	mu       sync.Mutex
+	quota    int64
+	limits   func() int64
+	pins     func() map[string]bool
+	syncDir  func(string) error
+	hashFile func(io.Writer, io.Reader) (int64, error)
 }
 
 func newUploads() *uploads {
@@ -162,7 +166,11 @@ func (u *uploads) save(t *transfer) error {
 	if err != nil {
 		return err
 	}
-	return writeFileSync(u.partial(t.ID)+".json", b)
+	sync := u.syncDir
+	if sync == nil {
+		sync = syncDir
+	}
+	return writeFileSyncDir(u.partial(t.ID)+".json", b, sync)
 }
 
 func validHexID(id string) bool {
@@ -321,6 +329,9 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 		return nil, err
 	}
 	if t.state() != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING {
+		if t.FileID != "" {
+			return u.durableFileStatus(t)
+		}
 		return t.status(), nil
 	}
 	if t.Persisted != t.Total {
@@ -407,7 +418,11 @@ func (u *uploads) remove(id string) {
 	if err == nil {
 		t := &transfer{}
 		if json.Unmarshal(b, t) == nil && t.artifactID() != "" && t.Session == "" {
-			if err := os.RemoveAll(u.pending(t.relativeName())); err != nil && !os.IsNotExist(err) {
+			path := u.pending(t.relativeName())
+			if t.FileID != "" {
+				path = filepath.Dir(path)
+			}
+			if err := os.RemoveAll(path); err != nil && !os.IsNotExist(err) {
 				slog.Error("remove unused image", "image", t.ImageID, "err", errClass(err))
 				return // keep its record so GC can retry
 			}
@@ -470,9 +485,13 @@ func (u *uploads) reconcile() {
 		if _, err := os.Stat(u.pending(name)); err != nil {
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(t.sessionPath(u)), 0o700); err == nil {
+		if err := u.mkdirUploadDir(filepath.Dir(t.sessionPath(u))); err == nil {
 			if err := os.Rename(u.pending(name), t.sessionPath(u)); err != nil {
 				slog.Error("finish image move", "image", t.ImageID, "err", errClass(err))
+			} else if err := u.syncUploadDirs(filepath.Dir(t.sessionPath(u))); err != nil {
+				slog.Error("sync upload move", "err", errClass(err))
+			} else if t.FileID != "" {
+				_ = os.Remove(filepath.Dir(u.pending(name)))
 			}
 		}
 	}
@@ -495,7 +514,7 @@ func (u *uploads) release(sessionID string) {
 		name := t.relativeName()
 		src := t.sessionPath(u)
 		if _, err := os.Stat(src); err == nil {
-			if err := os.MkdirAll(filepath.Dir(u.pending(name)), 0o700); err != nil {
+			if err := u.mkdirUploadDir(filepath.Dir(u.pending(name))); err != nil {
 				continue
 			}
 			if err := os.Rename(src, u.pending(name)); err != nil {
@@ -503,12 +522,21 @@ func (u *uploads) release(sessionID string) {
 				continue
 			}
 		}
+		if err := u.syncUploadDirs(filepath.Dir(u.pending(name))); err != nil {
+			slog.Error("sync returned upload", "err", errClass(err))
+			continue
+		}
+		if t.FileID != "" {
+			_ = os.Remove(filepath.Dir(src))
+		}
 		t.Session = ""
+		t.Claim = ""
 		t.Refs = nil
 		if err := u.save(t); err != nil {
 			slog.Error("save transfer", "transfer", t.ID, "err", errClass(err))
 		}
 	}
+	_ = os.Remove(filepath.Join(u.sessionDir(sessionID), "files"))
 	_ = os.Remove(u.sessionDir(sessionID))
 }
 
@@ -523,12 +551,13 @@ func (u *uploads) untake(imgs []queuedImage, sessionID, request string) {
 			continue
 		}
 		delete(t.Refs, request)
-		if t.Exposed || len(t.Refs) > 0 {
+		if t.Claim != request || t.Exposed || len(t.Refs) > 0 {
 			_ = u.save(t)
 			continue
 		}
 		if os.Rename(im.Path, u.pending(filepath.Base(im.Path))) == nil {
 			t.Session = ""
+			t.Claim = ""
 			t.Refs = nil
 			_ = u.save(t)
 		}
@@ -705,7 +734,7 @@ func (u *uploads) room(add int64) error {
 		quota = u.limits()
 	}
 	if used+add > quota {
-		return connect.NewError(connect.CodeResourceExhausted, errors.New("this machine's image upload storage is full; end unused sessions or wait for unused images to expire"))
+		return connect.NewError(connect.CodeResourceExhausted, errors.New("这台电脑的附件存储已满；请结束不用的会话、等待未使用附件过期或提高限额"))
 	}
 	return nil
 }

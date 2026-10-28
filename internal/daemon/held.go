@@ -61,7 +61,6 @@ func (s *session) hold(in input) {
 		return
 	}
 	s.d.uploads.releaseRefs(in.Images, s.meta.ID, in.RequestID)
-	s.d.uploads.releaseFiles(in.Files, s.meta.ID, in.RequestID)
 }
 
 // received settles a held message once the model got it: the user message
@@ -111,8 +110,10 @@ func (s *session) dropHeld(requestID string, status pb.InputStatus, reason strin
 	if !s.logOutcomeLocked(outcome) {
 		return false
 	}
+	files := s.queue.Held[i].Files
 	s.queue.Held = append(s.queue.Held[:i:i], s.queue.Held[i+1:]...)
 	s.saveSettledLocked()
+	s.d.uploads.releaseFiles(files, s.meta.ID, requestID)
 	return true
 }
 

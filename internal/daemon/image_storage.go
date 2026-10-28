@@ -149,7 +149,7 @@ func (u *uploads) makeRoom(add int64, pins map[string]bool) error {
 			return err
 		}
 	}
-	return connect.NewError(connect.CodeResourceExhausted, errors.New("图片空间不足：可回收图片已清理；请在设备的图片存储中查看占用、结束不用的会话或提高限额"))
+	return connect.NewError(connect.CodeResourceExhausted, errors.New("附件空间不足：可回收内容已清理；请在设备的附件存储中查看占用、结束不用的会话或提高限额"))
 }
 
 func (u *uploads) usage(clean bool, pins map[string]bool) (*pb.ImageStorageUsage, error) {
@@ -418,7 +418,14 @@ func (u *uploads) restoreRefs(s *session, records []*transfer) {
 	defer u.mu.Unlock()
 	for _, t := range records {
 		refs := map[string]bool{}
-		for _, in := range append(append([]input{}, s.queue.Queue...), s.queue.Held...) {
+		for _, in := range s.queue.Held {
+			for _, f := range in.Files {
+				if f.ID == t.FileID {
+					refs[in.RequestID] = true
+				}
+			}
+		}
+		for _, in := range s.queue.Queue {
 			for _, f := range in.Files {
 				if f.ID == t.FileID {
 					refs[in.RequestID] = true

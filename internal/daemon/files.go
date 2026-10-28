@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,7 +26,7 @@ func safeFileName(name string) string {
 	var b strings.Builder
 	underscore := false
 	for _, r := range name {
-		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && !strings.ContainsRune("._-+=,", r) {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && !unicode.IsMark(r) && !strings.ContainsRune("._-+=,", r) {
 			r = '_'
 		}
 		if r == '_' && underscore {
@@ -76,35 +77,101 @@ func (t *transfer) sessionPath(u *uploads) string {
 	return filepath.Join(u.sessionDir(t.Session), t.relativeName())
 }
 
-// Files are hashed as a stream. No decoding, metadata removal or 100 MiB buffer.
+// syncUploadDirs makes every new directory entry durable, including the
+// parent entry that names uploads itself. Tests can fail a specific fsync.
+func (u *uploads) syncUploadDirs(dir string) error {
+	sync := u.syncDir
+	if sync == nil {
+		sync = syncDir
+	}
+	for {
+		if err := sync(dir); err != nil {
+			return err
+		}
+		if dir == filepath.Dir(u.dir) {
+			return nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return errors.New("upload directory is outside the state root")
+		}
+		dir = parent
+	}
+}
+func (u *uploads) mkdirUploadDir(dir string) error {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	return u.syncUploadDirs(dir)
+}
+
+// Caller holds u.mu. Hash through an open descriptor without holding the
+// global lock, then reload ownership/state and verify this is still the same
+// partial file (abort + re-begin must never complete the old bytes).
 func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 	f, err := os.Open(u.partial(t.ID) + ".part")
 	if err != nil {
 		return nil, err
 	}
+	before, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	hash := u.hashFile
+	if hash == nil {
+		hash = io.Copy
+	}
 	h := sha256.New()
-	n, err := io.Copy(h, f)
+	u.mu.Unlock()
+	n, hashErr := hash(h, f)
 	f.Close()
+	u.mu.Lock()
+	current, err := u.load(t.ID)
 	if err != nil {
 		return nil, err
 	}
-	if n != t.Total || !bytes.Equal(h.Sum(nil), t.SHA256) {
+	if err := u.owned(current, t.Device); err != nil {
+		return nil, err
+	}
+	if current.state() != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING {
+		return u.durableFileStatus(current)
+	}
+	now, err := os.Stat(u.partial(t.ID) + ".part")
+	if err != nil {
+		return nil, err
+	}
+	if !os.SameFile(before, now) || current.FileName != t.FileName || current.Total != t.Total || !bytes.Equal(current.SHA256, t.SHA256) {
+		return nil, connect.NewError(connect.CodeAborted, errors.New("the transfer changed while its bytes were being checked"))
+	}
+	if hashErr != nil {
+		return nil, hashErr
+	}
+	t = current
+	if n != t.Total || t.Persisted != t.Total || !bytes.Equal(h.Sum(nil), t.SHA256) {
 		u.remove(t.ID)
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the bytes do not match the hash"))
 	}
 	t.FileID, t.CompletedMs = newID(16), time.Now().UnixMilli()
 	dst := u.pending(t.relativeName())
-	if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+	if err := u.mkdirUploadDir(filepath.Dir(dst)); err != nil {
+		_ = os.Remove(filepath.Dir(dst))
 		return nil, err
 	}
-	// A hard link preserves the durable original through the record commit, with
-	// no second copy of the bytes. Startup GC removes an interrupted orphan.
+	// Keep the durable original until both the new link and its full ancestry
+	// have been synced and the completion record has committed.
 	if err := os.Link(u.partial(t.ID)+".part", dst); err != nil {
+		_ = os.Remove(filepath.Dir(dst))
 		return nil, err
 	}
-	syncDir(filepath.Dir(dst))
-	if err := u.save(t); err != nil {
+	if err := u.syncUploadDirs(filepath.Dir(dst)); err != nil {
 		_ = os.RemoveAll(filepath.Dir(dst))
+		return nil, err
+	}
+	if err := u.save(t); err != nil {
+		if !fileReplaced(err) {
+			_ = os.RemoveAll(filepath.Dir(dst))
+		}
 		return nil, err
 	}
 	_ = os.Remove(u.partial(t.ID) + ".part")
@@ -202,38 +269,59 @@ func (u *uploads) takeUploads(images, files []string, device, session, request s
 	if err != nil {
 		return out, err
 	}
-	// Persist ownership before each move; reconcile finishes an interrupted move.
-	var claimed, moved []*transfer
+	// Preserve every pre-call reference, including transfers already owned by
+	// this session. A partial failure undoes all refs, not only new claims.
+	before := map[*transfer]transfer{}
+	for _, t := range ts {
+		copy := *t
+		copy.Refs = maps.Clone(t.Refs)
+		before[t] = copy
+	}
+	var moved []*transfer
 	undo := func() {
 		for _, t := range moved {
-			_ = os.MkdirAll(filepath.Dir(u.pending(t.relativeName())), 0o700)
-			_ = os.Rename(t.sessionPath(u), u.pending(t.relativeName()))
+			dst := u.pending(t.relativeName())
+			if u.mkdirUploadDir(filepath.Dir(dst)) == nil && os.Rename(t.sessionPath(u), dst) == nil {
+				_ = u.syncUploadDirs(filepath.Dir(dst))
+				if t.FileID != "" {
+					_ = os.Remove(filepath.Dir(t.sessionPath(u)))
+				}
+			}
 		}
-		for _, t := range claimed {
-			t.Session = ""
-			delete(t.Refs, request)
+		for t, old := range before {
+			*t = old
 			_ = u.save(t)
 		}
 	}
 	for _, t := range ts {
 		if t.Session == "" {
-			t.Session = session
+			t.Session, t.Claim = session, request
+			if err := u.mkdirUploadDir(filepath.Dir(t.sessionPath(u))); err != nil {
+				undo()
+				return out, err
+			}
+			// Persist ownership first so startup can finish a crash-cut move.
 			if err := u.save(t); err != nil {
-				t.Session = ""
 				undo()
 				return out, err
 			}
-			claimed = append(claimed, t)
-			if err := os.MkdirAll(filepath.Dir(t.sessionPath(u)), 0o700); err != nil {
-				undo()
-				return out, err
-			}
-			if err := os.Rename(u.pending(t.relativeName()), t.sessionPath(u)); err != nil {
+			src := u.pending(t.relativeName())
+			if err := os.Rename(src, t.sessionPath(u)); err != nil {
 				undo()
 				return out, err
 			}
 			moved = append(moved, t)
-			syncDir(filepath.Dir(t.sessionPath(u)))
+			if err := u.syncUploadDirs(filepath.Dir(t.sessionPath(u))); err != nil {
+				undo()
+				return out, err
+			}
+			if err := u.syncUploadDirs(filepath.Dir(src)); err != nil {
+				undo()
+				return out, err
+			}
+			if t.FileID != "" {
+				_ = os.Remove(filepath.Dir(src))
+			}
 		}
 		if t.Refs == nil {
 			t.Refs = map[string]bool{}
@@ -250,7 +338,6 @@ func (u *uploads) takeUploads(images, files []string, device, session, request s
 			out.Images = append(out.Images, queuedImage{t.ImageID, t.sessionPath(u)})
 		}
 	}
-	syncDir(filepath.Join(u.dir, "pending"))
 	return out, nil
 }
 
@@ -263,13 +350,17 @@ func (u *uploads) untakeFiles(files []queuedFile, session, request string) {
 			continue
 		}
 		delete(t.Refs, request)
-		if len(t.Refs) > 0 || t.Exposed {
+		if t.Claim != request || len(t.Refs) > 0 || t.Exposed {
 			_ = u.save(t)
 			continue
 		}
 		dst := u.pending(t.relativeName())
-		if os.MkdirAll(filepath.Dir(dst), 0o700) == nil && os.Rename(t.sessionPath(u), dst) == nil {
+		src := t.sessionPath(u)
+		if u.mkdirUploadDir(filepath.Dir(dst)) == nil && os.Rename(src, dst) == nil {
+			_ = u.syncUploadDirs(filepath.Dir(dst))
+			_ = os.Remove(filepath.Dir(src))
 			t.Session = ""
+			t.Claim = ""
 			_ = u.save(t)
 		}
 	}
@@ -349,4 +440,15 @@ func (u *uploads) releaseFiles(files []queuedFile, session, request string) {
 			_ = u.save(t)
 		}
 	}
+}
+
+// A lost/failed metadata fsync may have left the new completion record visible.
+// A retry must actually sync it before acknowledging durability and unlinking
+// the retained partial, rather than just returning the visible status.
+func (u *uploads) durableFileStatus(t *transfer) (*pb.ImageUploadStatus, error) {
+	if err := u.save(t); err != nil {
+		return nil, err
+	}
+	_ = os.Remove(u.partial(t.ID) + ".part")
+	return t.status(), nil
 }
