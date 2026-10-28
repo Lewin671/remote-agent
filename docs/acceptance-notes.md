@@ -1388,3 +1388,12 @@ pnpm --dir web test --reporter=json --outputFile=/tmp/ra-file-upload-feedback-2-
 - `TestFileHashCannotCompleteAnotherBeginGeneration` 在原哈希已算完但尚未重新加锁时 Abort 并复用同一 transfer_id。一个场景用保留的硬链接让新 `.part` 确定性拥有相同 inode、相同名字／长度／哈希参数，却写入不同字节；另一个场景让新一轮先完成。旧实现两种情况均返回成功的文件 ID；修复后旧 Complete 均返回 Aborted，不改变新一轮状态或字节，尚未完成的新一轮仍须通过自己的哈希校验。
 - `TestRepeatedBeginKeepsActiveHashAndDescriptorThroughCompletion` 确认幂等 Begin 不改变活跃传输代次，哈希描述符在完成记录提交时仍打开，方法返回后关闭；该场景在修复前因描述符提前关闭而失败。
 - 新增 3 个场景修复前全部失败，修复后通过；既有锁外哈希 Abort／重建、Deleting tombstone 回归通过。`go test ./...`、`go vet ./...` 全部通过。
+
+### 文件能力刷新后的重发拦截与空托盘提示（2026-10-28）
+
+本轮使用网页 DOM 测试和 SyntheticRemote 的真实签名／封装路径配合传输替身，没有新增浏览器操作或真实 CLI 端到端验收。各端能力检查规则维护在 [session-files.md](session-files.md#传输与信任边界)。
+
+- 新增的初始 7 个场景在旧实现全部失败：Send／CreateSession 能力关闭、普通失败／未知结果重试与失败消息重发、已授权新建请求重试、恢复到输入框、空新会话托盘的纯文件夹 drop。修复后全部通过。
+- 转发测试检查实际传输调用次数，确认当前 file_upload 不是 true 时不发送 file_ids，也不把负载改成纯文字；已授权请求按首次负载检查，调用方不能删附件来绕过。额外覆盖封装期间刷新能力、自动网络重试前刷新能力，以及文件能力关闭时纯文字／图片请求仍可转发。未知结果保留原请求身份和附件，不能因本地拒绝改称未执行。
+- 恢复拒绝发生在追加草稿、移除失败记录或重新上传之前；直接 Tray 文件恢复也同步拒绝并显示更新提示。纯文件夹 drop 在空新会话托盘显示原有 ZIP 提示，不创建附件条目；空 note 不增加托盘容器。
+- 网页 `pnpm typecheck`、默认并发 `pnpm test`（90 文件、1252 测试）、`pnpm build` 及 `go test ./...` 全部通过。
