@@ -125,6 +125,8 @@ final class ImageCenter {
     /// The machine each draft's images go to now.
     @ObservationIgnored private var targets: [String: String] = [:]
     @ObservationIgnored private var fileMachines: [String: MachineView] = [:]
+    @ObservationIgnored private var blockedKeys = Set<String>()
+    @ObservationIgnored private var aimedKeys = Set<String>()
     /// Messages with images sent from here, by session, until the CLI has them.
     @ObservationIgnored private var kept: [String: [Outgoing]] = [:]
     @ObservationIgnored private var restored = Set<String>()
@@ -267,17 +269,29 @@ final class ImageCenter {
 
     /// The machine a draft's images go to from now on; they are sent there when it can take them.
     func aim(_ key: String, at machineId: String?, blocked: Bool, machine: MachineView? = nil) {
+        let known = aimedKeys.contains(key)
+        let changed = known && targets[key] != machineId
+        if machineId != nil { aimedKeys.insert(key) }
         targets[key] = machineId
         fileMachines[key] = machine
+        if blocked { blockedKeys.insert(key) } else { blockedKeys.remove(key) }
         #if DEBUG
             if frozen { return }
         #endif
         let d = draft(key)
+        for item in d.images {
+            let initialDifferentTarget = !known && machineId != nil && item.historyMachineId != nil && item.historyMachineId != machineId
+            if changed || initialDifferentTarget {
+                uploads.retarget(item)
+                if !item.isFile && item.needsProcessing {
+                    uploads.process(d, item, machine: self.machine(key))
+                }
+            }
+        }
         let allowed = d.filesAllowed(for: machine)
         if !allowed {
             for item in d.documents where item.hasSource {
-                item.job?.cancel()
-                item.refreshJob?.cancel()
+                item.invalidate()
                 item.state = .failed(error: fileSupported(machine) ? "附件超过这台电脑的文件数量或大小上限，请移除后重新选择" : "这台电脑不支持发送文件")
             }
         }
@@ -289,7 +303,10 @@ final class ImageCenter {
     }
 
     private func machine(_ key: String) -> @MainActor () -> String? {
-        { [weak self] in self?.targets[key] }
+        { [weak self] in
+            guard let self, !closed, !blockedKeys.contains(key) else { return nil }
+            return targets[key]
+        }
     }
 
     /// ＋ was tapped.
@@ -349,7 +366,7 @@ final class ImageCenter {
                         item.file = file
                         item.state = .failed(error: "需要重新传到电脑")
                         d.append([item])
-                        if let target = targets[key], d.filesAllowed(for: fileMachines[key]) { uploads.upload(item, machineId: target) }
+                        if let target = self.machine(key)(), d.filesAllowed(for: fileMachines[key]) { uploads.upload(item, machineId: target) }
                     } catch { say(key, errorText(error)) }
                 }
             }
@@ -371,8 +388,13 @@ final class ImageCenter {
     }
 
     func retry(_ key: String, _ img: PendingImage) {
-        if img.isFile && !img.hasSource { return }
+        if img.isFile && !img.hasSource {
+            img.invalidate()
+            img.state = .failed(error: "这个文件没有本机副本，请移除后重新选择")
+            return
+        }
         if img.isFile, !draft(key).filesAllowed(for: fileMachines[key]) {
+            img.invalidate()
             img.state = .failed(error: "这台电脑不支持这些文件，请检查文件数量和大小或换一台电脑")
             return
         }
@@ -380,8 +402,8 @@ final class ImageCenter {
     }
 
     func remove(_ key: String, _ img: PendingImage) {
-        uploads.discard(img)
         draft(key).remove(img)
+        uploads.discard(img)
         forget([img])
     }
 
@@ -390,9 +412,9 @@ final class ImageCenter {
     }
 
     /// Takes images out of a draft once a started session carries them.
-    func used(_ key: String, _ taken: [PendingImage]) {
+    func used(_ key: String, _ taken: [PendingImage], machineId: String? = nil) {
         draft(key).detach(taken)
-        for img in taken { uploads.discard(img, keeping: img.machineId); img.release() }
+        for img in taken { uploads.discard(img, keeping: machineId ?? img.historyMachineId); img.release() }
         forget(taken)
     }
 
@@ -512,7 +534,8 @@ final class ImageCenter {
                 done(.failure(UserError("附件需要重新传到电脑，请上传完成后再发送")))
                 return
             }
-            // The message has them now; images picked meanwhile stay in the box.
+            // The immutable request owns these transports before the composer lets them go.
+            for img in picked { img.protectUpload(machineId: machineId, transferId: img.transferId, requestId: o.requestId) }
             draft.detach(picked)
             store.add(sid, o)
             hold(sid, o, store)
@@ -542,6 +565,7 @@ final class ImageCenter {
     func putBack(sid: String, max: Int, maxFiles: Int = 6, _ o: Outgoing) -> Bool {
         if o.images.isEmpty { return true }
         let draft = draft(Self.sessionKey(sid))
+        if o.state == .failed { for img in o.images { img.releaseUploadProtection(requestId: o.requestId) } }
         guard draft.attach(o.images, max: max, maxFiles: maxFiles, wereOriginal: o.original) else { return false }
         letGo(sid, o)
         // Its images live on in the draft. Its record goes once they are on disk there: until then it is the
@@ -604,7 +628,11 @@ final class ImageCenter {
     private func release(_ sid: String, _ o: Outgoing, accepted: Bool = false) {
         letGo(sid, o)
         dropRecord(sid, o.requestId)
-        for img in o.images { uploads.discard(img, keeping: accepted ? img.machineId : nil); img.release() }
+        for img in o.images {
+            if o.state == .failed { img.releaseUploadProtection(requestId: o.requestId) }
+            uploads.discard(img, keeping: accepted ? img.historyMachineId : nil)
+            img.release()
+        }
         forget(o.images)
     }
 

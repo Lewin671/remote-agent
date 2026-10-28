@@ -37,6 +37,7 @@ final class NewSessionDraft {
     /// The images the prepared request names, kept for a retry of the same request.
     @ObservationIgnored private var taken: [PendingImage] = []
     @ObservationIgnored private var preparedImages: [Processed?] = []
+    @ObservationIgnored private var takenTransfers: [String] = []
     private(set) var running = false
     private(set) var error = ""
     private(set) var frozen = false
@@ -78,23 +79,35 @@ final class NewSessionDraft {
             attempt.abandon()
             taken = []
             preparedImages = []
+            takenTransfers = []
         }
         // An unknown start is resent as prepared, with the mode it had.
         let retry = attempt.frozen
         running = true
         error = ""
+        // Prepare and protect the immutable snapshot synchronously. A retarget in
+        // the next UI action must not abort an attachment this request already owns.
+        let prepared: PreparedCommand
+        do {
+            prepared = try attempt.next {
+                sent = wanted
+                prompt = typed
+                taken = attached
+                preparedImages = attached.map(\.processed)
+                takenTransfers = attached.map(\.transferId)
+                return try remote.prepare(
+                    machineId: cfg.machineId, sessionId: "",
+                    createSessionCommand(cfg, prompt: typed, mode: cfg.mode?.proto ?? .unspecified, imageIds: wanted.imageIds, fileIds: wanted.fileIds))
+            }
+            for (img, transfer) in zip(taken, takenTransfers) {
+                img.protectUpload(machineId: sent?.config.machineId ?? cfg.machineId, transferId: transfer, requestId: prepared.requestId)
+            }
+        } catch {
+            finish(errorText(attempt.settle(error) ?? error))
+            return
+        }
         Task {
             do {
-                let prepared = try attempt.next {
-                    sent = wanted
-                    prompt = typed
-                    // The images this request carries; any picked after it stay in the draft.
-                    taken = attached
-                    preparedImages = attached.map(\.processed)
-                    return try remote.prepare(
-                        machineId: cfg.machineId, sessionId: "",
-                        createSessionCommand(cfg, prompt: typed, mode: cfg.mode?.proto ?? .unspecified, imageIds: wanted.imageIds, fileIds: wanted.fileIds))
-                }
                 let result = try await remote.forward(prepared, retryOfUnknown: retry)
                 attempt.settle()
                 finish("")
@@ -104,12 +117,17 @@ final class NewSessionDraft {
                     let used = taken
                     taken = []
                     preparedImages = []
+                    takenTransfers = []
                     if !used.isEmpty { onImagesUsed(used) }
                     // What the session started with is what the request said, not what the page says by now.
                     onStarted(sid, sent?.config ?? cfg, prompt)
                 }
             } catch {
-                finish(errorText(attempt.settle(error) ?? error))
+                let settled = attempt.settle(error) ?? error
+                if !attempt.frozen {
+                    for img in taken { img.releaseUploadProtection(requestId: prepared.requestId) }
+                }
+                finish(errorText(settled))
             }
         }
     }
@@ -119,6 +137,7 @@ final class NewSessionDraft {
         attempt.abandon()
         taken = []
         preparedImages = []
+        takenTransfers = []
         finish("")
     }
 

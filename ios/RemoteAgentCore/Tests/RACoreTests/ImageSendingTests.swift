@@ -227,13 +227,13 @@ private actor Gate {
         await machines.hold()
         u.upload(img, machineId: "mac")
         let first = img.transferId
-        #expect(img.state == .uploading(progress: 0) && img.machineId == "mac")
+        #expect(img.state == .processing && img.uploadTarget == "mac" && img.machineId == nil)
         // A second ask for the same machine adds nothing.
         u.upload(img, machineId: "mac")
         #expect(img.transferId == first)
         // The new-session card changed machines: the upload under way is dropped.
         u.upload(img, machineId: "vps")
-        #expect(img.transferId != first && img.machineId == "vps" && img.imageId == nil)
+        #expect(img.transferId != first && img.uploadTarget == "vps" && img.machineId == nil && img.imageId == nil)
         await machines.letGo()
         await settled(img)
         #expect(img.readyFor("vps") && !img.readyFor("mac"))
@@ -329,8 +329,10 @@ private actor Gate {
         await img.job?.value
         #expect(img.transferId != transfer && img.expiresMs == 1200)
         #expect(await machines.transfers("mac").count == 2)
+        let refresh = img.refreshJob
         d.detach([img])
-        #expect(img.refreshJob?.isCancelled == true)
+        #expect(refresh?.isCancelled == true && img.refreshJob == nil)
+        #expect(img.imageId == nil && img.machineId == nil && img.expiresMs == 0)
     }
 
     @Test func anImageStillBeingPreparedAgainIsNotTakenForSaved() async throws {
@@ -370,7 +372,7 @@ private actor Gate {
         await machines.letGo()
         try? await Task.sleep(nanoseconds: 30_000_000)
         #expect(d.images.isEmpty && img.imageId == nil && img.processed == nil)
-        #expect(img.state == .uploading(progress: 0))
+        #expect(img.imageId == nil && img.machineId == nil && !img.readyFor("mac"))
     }
 }
 

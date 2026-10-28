@@ -65,7 +65,7 @@ enum ProjectImages {
 
     /// A session started with these images: they leave the draft, and what was held for them goes.
     static func used(_ context: ProjectImageContext, _ taken: [PendingImage]) {
-        center(context).used(ImageCenter.projectKey(context.key), taken)
+        center(context).used(ImageCenter.projectKey(context.key), taken, machineId: context.machineId)
     }
 
     /// The attached images, over the text inside the new-session box.

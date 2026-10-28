@@ -1606,3 +1606,22 @@ XCUITest 工程和交互驱动全部在临时目录运行，没有向仓库添�
 临时 XCUITest 驱动运行通过；关键结果另由 UI 辅助功能树/截图、真实 CLI 和电脑落盘内容复核。随后核对并 rebase 到最新本地 `wt/file-upload`，重跑 RACore 573 项、Markdown 17 项、App 358 项测试及 App 构建，均通过。
 
 本次只验证模拟器内 On My iPhone 的本地源文件和图片选择器打开/取消；没有选择或发送相册图片，未新增照片或修改图库。最低支持的 iOS 17、真机、iCloud/第三方提供者、VoiceOver、混合附件和大文件峰值内存仍未实测。临时账户、种入文件、UI runner、独立环境及模拟器均在结束时清理；未推送或发布。
+
+
+### iOS 同步失效与请求交接回归（2026-10-28）
+
+先 rebase 到 `76c3c14f`，收尾检查发现基线再次前进，随后 rebase 到 `7a962879`。两次冲突均只在验收文档，保留双方记录，没有代码冲突。重新核对 [session-files.md](session-files.md) 的全部客户端规则，图片与文件共用同步失效和 generation 检查；本节的新规则取代前述「切回机器复用预留」的旧验收行为，同一目标重启续传仍保留。
+
+`swift test --package-path ios/RemoteAgentCore` 全量 RACore 578 项、Markdown 17 项通过；已有 iPhone 18 Pro / iOS 27.0 上 `xcodebuild ... build test` 全量 App 361 项及构建通过。新增回归直接断言：
+
+- 就绪附件重试时，在持久化或 Abort 之前已清除 ID、完成机器、期限和发送资格；没有当前目标的重试也退休旧预留，重连后使用新 ID。
+- A → B → A 的旧 Abort 被暂停时，新 A 使用独立 ID；释放迟到 Abort 后，新完成文件仍存在。App 离线切换同样立即失效。
+- 发送交接后故意保留未取消的旧 Complete，下一代阻塞在持久化时释放旧结果，旧 generation 不能回写 ready 或 ID。
+- 移除后的任务取消回调直接观察草稿为空、旧 ID 已清除。恢复草稿不把持久化的历史 ID 发布为可发送状态。
+- 未知发送记录重启恢复后保护首次附件引用；每个 request ID 的保护独立，拒绝另一个请求不会解除未知请求的保护。新建会话在 start 返回、下一次 UI 操作之前已保护原始请求快照；已知拒绝可以释放其保护。
+
+本轮没有新增仓库内 XCUITest target；原生文件/照片选择器未改，未重复点选，直接 UI 验收仍见上一节。
+
+真实链路使用从上述新基线 checkout 重建的独立 dev-env、临时 iOS 管理账户、隔离 daemon 状态目录和 tmux，复用已有 iPhone 18 Pro / iOS 27.0，CLI 为 Claude Code 2.1.300 / Haiku 5.5 low。通过 DEBUG `-fileAdd` 导入合成 100 B TXT，再以 `session.send` 发送无文字消息；实际经过 iOS 签名加密命令 → server → relay → daemon → 原生 CLI。CLI 收到带引号的文件引用并返回文件内验证标记，电脑收到文件与源文件 SHA-256 一致；iOS 历史显示单个文件条目和正确回复、隐藏注入路径，输入框清空。这是调试触发的真实链路回归，不是本轮系统选择器操作。
+
+临时账户已退出，确认待发目录为空；独立 server/daemon、数据库、tmux、合成源文件和测试命名空间缓存均已清理，模拟器已关闭。没有推送或发布。

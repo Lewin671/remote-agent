@@ -131,15 +131,15 @@ private actor FileReceiver: UploadChannel {
         #expect(!restored.ready(machineId: "mac"))
         let item = try #require(restored.documents.first)
         #expect(item.startUpload(to: "mac", now: 1))
-        item.imageId = "file-1"; item.state = .ready; item.expiresMs = 5
+        item.machineId = "mac"; item.imageId = "file-1"; item.state = .ready; item.expiresMs = 5
         #expect(item.readyFor("mac", now: 2))
         #expect(!item.startUpload(to: "mac", now: 2))
         #expect(item.startUpload(to: "other", now: 2))
         #expect(item.imageId == nil)
-        item.imageId = "file-2"; item.state = .ready; item.expiresMs = 3
+        item.machineId = "other"; item.imageId = "file-2"; item.state = .ready; item.expiresMs = 3
         let transfer = item.transferId
         #expect(item.startUpload(to: "other", now: 4))
-        #expect(item.transferId == transfer, "Begin/Status decides whether the cached reservation expired")
+        #expect(item.transferId != transfer && item.imageId == nil && item.machineId == nil, "expiry invalidates the old completion synchronously")
     }
 
     @Test func filesCountSeparatelyAndRestoreForcesUploadWhileUnknownRequestsKeepIDs() throws {

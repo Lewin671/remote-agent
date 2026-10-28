@@ -32,6 +32,12 @@ public struct Processed: Equatable, Sendable {
     }
 }
 
+/// A transport reference for cleanup only; never a sendable completion ID.
+struct UploadReservation: Hashable, Sendable {
+    var machine: String
+    var transfer: String
+}
+
 /// One image picked for a message. It is processed on the phone, then sent
 /// to the machine the message goes to; changing machines sends it again.
 /// The processed bytes stay (encrypted on disk) until the CLI has the
@@ -56,12 +62,79 @@ public final class PendingImage: Identifiable {
     public var needsProcessing = false
     public var state: State = .processing
 
-    /// The machine it goes to (the latest asked for) and the image ID the daemon gave it there.
+    /// The verified completion's machine and artifact ID; nil while preparing or uploading.
     public var machineId: String?
     public var imageId: String?
     public var expiresMs: Int64 = 0
     @ObservationIgnored public var refreshJob: Task<Void, Never>?
     public var transferId: String = newRequestId()
+    @ObservationIgnored public private(set) var generation = 0
+    @ObservationIgnored public private(set) var uploadTarget: String?
+    @ObservationIgnored private var transferMachine: String?
+    @ObservationIgnored private var retired: [UploadReservation] = []
+    @ObservationIgnored private var handedOff: [UploadReservation: Set<String>] = [:]
+
+    public func protectUpload(machineId: String, transferId: String, requestId: String) {
+        handedOff[UploadReservation(machine: machineId, transfer: transferId), default: []].insert(requestId)
+    }
+
+    public func releaseUploadProtection(requestId: String) {
+        for reference in Array(handedOff.keys) {
+            handedOff[reference]?.remove(requestId)
+            if handedOff[reference]?.isEmpty == true { handedOff[reference] = nil }
+        }
+    }
+
+    func protectFiles(_ ids: [String], requestId: String) {
+        for (machine, transfer) in file?.transfers ?? [:] where transfer.fileId.map(ids.contains) == true {
+            protectUpload(machineId: machine, transferId: transfer.transferId, requestId: requestId)
+        }
+    }
+
+    func canAbort(_ reference: UploadReservation) -> Bool { handedOff[reference]?.isEmpty ?? true }
+
+    var currentUploadIsProtected: Bool {
+        guard let machine = historyMachineId else { return false }
+        return !canAbort(UploadReservation(machine: machine, transfer: transferId))
+    }
+
+    /// Historical ownership is kept apart from the live, sendable completion.
+    public var historyMachineId: String? { file?.machineId ?? transferMachine ?? machineId }
+
+    var reservations: [UploadReservation] {
+        if let file { return file.transfers.map { UploadReservation(machine: $0.key, transfer: $0.value.transferId) } }
+        return historyMachineId.map { [UploadReservation(machine: $0, transfer: transferId)] } ?? []
+    }
+
+    /// Clear readiness before cancellation handlers, aborts, or any suspension can observe it.
+    public func invalidate(retiring: Bool = false, cancelUpload: Bool = true) {
+        let old = reservations
+        if !retiring, transferMachine == nil { transferMachine = machineId }
+        generation += 1
+        state = .processing
+        imageId = nil
+        machineId = nil
+        expiresMs = 0
+        uploadTarget = nil
+        if retiring {
+            retired.append(contentsOf: old.filter(canAbort))
+            for reference in old { file?.transfers[reference.machine] = nil }
+            file?.machineId = nil
+            transferMachine = nil
+            transferId = newRequestId()
+        }
+        let work = job, timer = refreshJob
+        job = nil; refreshJob = nil
+        if cancelUpload { work?.cancel() }
+        timer?.cancel()
+    }
+
+    func takeRetired() -> [UploadReservation] {
+        defer { retired = [] }
+        return retired
+    }
+
+    public func isCurrent(_ token: Int) -> Bool { generation == token }
     /// What is preparing or uploading it now, to stop when that is overtaken.
     @ObservationIgnored public var job: Task<Void, Never>?
 
@@ -74,38 +147,32 @@ public final class PendingImage: Identifiable {
         !needsProcessing && state == .ready && machineId == machine && imageId != nil && expiresMs > now
     }
 
-    /// Lets go of the bytes and stops what works on it.
+    /// Lets go of local bytes after synchronously invalidating the old result.
     public func release() {
-        job?.cancel()
-        refreshJob?.cancel()
-        refreshJob = nil
-        job = nil
+        invalidate()
         processed = nil
     }
 
-    /// Marks the image as on its way to `machineId`, unless it is there or on
-    /// its way there already; true when an upload is to be started. Files keep
-    /// one reservation per machine; images restart when their target changes.
-    public func startUpload(to machineId: String, now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> Bool {
-        if !needsUpload(self, machineId: machineId, now: now) { return false }
-        job?.cancel()
-        refreshJob?.cancel()
+    /// Files can resume a historical transfer after a restart. Explicit supersession
+    /// retires its reservation so a delayed Abort can never delete a newer A → B → A upload.
+    public func startUpload(to target: String, now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> Bool {
+        if !needsUpload(self, machineId: target, now: now) { return false }
+        let previous = historyMachineId
+        let deadline = expiresMs > 0 ? expiresMs : (file?.transfers[target]?.expiresMs ?? 0)
+        let expired = deadline > 0 && deadline <= now
+        invalidate(retiring: (previous != nil && previous != target) || expired)
         if var file {
-            let target = file.transfers[machineId] ?? FileTransfer()
-            file.machineId = machineId
-            file.transfers[machineId] = target
+            let transfer = file.transfers[target] ?? FileTransfer()
+            file.machineId = target
+            file.transfers[target] = transfer
             self.file = file
-            transferId = target.transferId
-            imageId = target.fileId
-        } else if self.machineId != machineId || (imageId != nil && expiresMs <= now) {
-            transferId = newRequestId()
-            imageId = nil
+            transferId = transfer.transferId
         }
-        self.machineId = machineId
-        expiresMs = 0
-        state = .uploading(progress: 0)
+        transferMachine = target
+        uploadTarget = target
         return true
     }
+
 }
 
 /// Whether `img` must (again) be sent to `machineId`: not when it is there
@@ -114,7 +181,10 @@ public final class PendingImage: Identifiable {
 @MainActor
 public func needsUpload(_ img: PendingImage, machineId: String, now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> Bool {
     var uploadingThere = false
-    if case .uploading = img.state { uploadingThere = img.machineId == machineId }
+    switch img.state {
+    case .processing, .uploading: uploadingThere = img.uploadTarget == machineId
+    default: break
+    }
     return !img.needsProcessing && img.hasSource && !img.readyFor(machineId, now: now) && !uploadingThere
 }
 
@@ -200,10 +270,7 @@ private func reviveStored(_ stored: [StoredImage]) -> [PendingImage] {
         let img = PendingImage(id: s.id, uri: s.uri)
         img.file = s.file
         if let file = s.file, let machine = file.machineId, let transfer = file.transfers[machine] {
-            img.machineId = machine
             img.transferId = transfer.transferId
-            img.imageId = transfer.fileId
-            img.expiresMs = transfer.expiresMs
         }
         img.processed = s.processed
         img.needsProcessing = s.needsProcessing
@@ -364,8 +431,8 @@ public final class ImageDraft {
 
     /// An image is being prepared again: its bytes, in memory and on disk, are the old ones until `prepared`.
     public func invalidate(_ img: PendingImage) {
+        img.invalidate(retiring: true)
         img.needsProcessing = true
-        img.refreshJob?.cancel()
         saved[img.id] = nil
         stale.insert(img.id)
     }
@@ -388,8 +455,8 @@ public final class ImageDraft {
 
     public func remove(_ img: PendingImage) {
         images.removeAll { $0 === img }
-        forget(img)
         img.release()
+        forget(img)
         persist()
         settle()
     }
@@ -428,7 +495,7 @@ public final class ImageDraft {
 
     /// The images to send to `machineId` now, e.g. after the new-session card changed machines: those prepared and not there.
     public func toSend(machineId: String, now: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> [PendingImage] {
-        images.filter { !$0.needsProcessing && $0.hasSource && !$0.readyFor(machineId, now: now) && $0.state != .processing }
+        images.filter { needsUpload($0, machineId: machineId, now: now) }
     }
 
     /// Takes `taken` out of the draft once a message carries them; images
@@ -436,7 +503,7 @@ public final class ImageDraft {
     /// The caller keeps the images until the CLI has them.
     public func detach(_ taken: [PendingImage]) {
         images.removeAll { img in taken.contains { $0 === img } }
-        for img in taken { img.refreshJob?.cancel(); forget(img) }
+        for img in taken { img.invalidate(cancelUpload: !img.currentUploadIsProtected); forget(img) }
         if images.isEmpty { original = false }
         persist()
         settle()
@@ -462,10 +529,7 @@ public final class ImageDraft {
         if photos.isEmpty { original = wereOriginal ?? original }
         for img in back {
             if !img.isFile, let wereOriginal, wereOriginal != original { img.needsProcessing = true }
-            img.expiresMs = 0
-            img.refreshJob?.cancel()
-            img.imageId = nil
-            img.machineId = nil
+            img.invalidate(retiring: !img.isFile)
             img.state = .failed(error: img.isFile && !img.hasSource ? "这个文件没有本机副本，请移除后重新选择" : "需要重新传到电脑")
             images.append(img)
         }
@@ -649,6 +713,7 @@ public struct OutgoingRecords: Sendable {
     @MainActor
     public static func revive(_ r: OutgoingRecord) -> Outgoing {
         let o = Outgoing(requestId: r.requestId, text: r.text, imageIds: r.imageIds, fileIds: r.fileIds, images: reviveStored(r.images), original: r.original, mode: r.mode)
+        for img in o.images { img.protectFiles(r.fileIds, requestId: r.requestId) }
         o.state = .unknown
         o.error = "App 重启过，不确定这条有没有送到"
         return o

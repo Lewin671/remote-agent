@@ -13,6 +13,10 @@ private actor FileMachine {
     var loseComplete = false
     var pendingComplete = false
     var completes = 0
+    var holdCompletion = false
+    var waitingCompletion: CheckedContinuation<Void, Never>?
+    var heldAbort: String?
+    var waitingAbort: CheckedContinuation<Void, Never>?
     var waiting: CheckedContinuation<Void, Never>?
     var validation: (@Sendable (String, String) throws -> Bool)?
     func configure(reject: Bool = false, hold: Bool = false, loseComplete: Bool = false, pendingComplete: Bool = false, validation: (@Sendable (String, String) throws -> Bool)? = nil) {
@@ -30,6 +34,10 @@ private actor FileMachine {
         return state(machine, id)
     }
     func release() { waiting?.resume(); waiting = nil }
+    func holdNextCompletion() { holdCompletion = true }
+    func releaseCompletion() { waitingCompletion?.resume(); waitingCompletion = nil }
+    func holdAbort(_ transfer: String) { heldAbort = transfer }
+    func releaseAbort() { waitingAbort?.resume(); waitingAbort = nil }
     func state(_ machine: String, _ id: String) -> PBImageUploadStatus {
         let t = transfers[machine + id]
         return .with {
@@ -45,15 +53,18 @@ private actor FileMachine {
         transfers[machine + id]?.data.append(bytes)
         return state(machine, id)
     }
-    func complete(_ machine: String, _ id: String) throws -> PBImageUploadStatus {
+    func complete(_ machine: String, _ id: String) async throws -> PBImageUploadStatus {
         completes += 1
         if loseComplete { loseComplete = false; throw UploadError(code: "network", message: "lost Complete response") }
         if pendingComplete { pendingComplete = false; return state(machine, id) }
         transfers[machine + id]?.done = true
+        if holdCompletion { holdCompletion = false; await withCheckedContinuation { waitingCompletion = $0 } }
         return state(machine, id)
     }
-    func abort(_ machine: String, _ id: String) {
-        aborted.append((machine, id)); transfers[machine + id] = nil
+    func abort(_ machine: String, _ id: String) async {
+        aborted.append((machine, id))
+        if heldAbort == id { heldAbort = nil; await withCheckedContinuation { waitingAbort = $0 } }
+        transfers[machine + id] = nil
     }
     func seedPartial(_ machine: String, _ id: String, bytes: Data, total: Int64) {
         transfers[machine + id] = Transfer(data: bytes, total: total)
@@ -80,6 +91,16 @@ private final class WorkerProgress: @unchecked Sendable {
     var count: Int { lock.withLock { value } }
 }
 
+private actor FileTestGate {
+    var released = false
+    var waiting: [CheckedContinuation<Void, Never>] = []
+    func wait() async {
+        if released { return }
+        await withCheckedContinuation { waiting.append($0) }
+    }
+    func open() { released = true; for w in waiting { w.resume() }; waiting = [] }
+}
+
 @MainActor @Suite struct FileLifecycleTests {
     private func picked() throws -> (URL, PendingImage) {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".txt")
@@ -102,7 +123,7 @@ private final class WorkerProgress: @unchecked Sendable {
         Issue.record("timed out waiting for file transfer")
     }
 
-    @Test func completedTransfersSurviveRelaunchAndSwitchingBack() async throws {
+    @Test func currentTransferSurvivesRelaunchAndSupersededTargetsAreRetired() async throws {
         let (url, img) = try picked(); defer { try? FileManager.default.removeItem(at: url); img.release() }
         let disk = MemoryFiles(), server = FileMachine()
         let draft = ImageDraft(key: "draft", files: disk, saves: nil); draft.append([img])
@@ -116,19 +137,21 @@ private final class WorkerProgress: @unchecked Sendable {
         #expect(img.readyFor("a"))
         u.upload(img, machineId: "b"); await img.job?.value
         u.upload(img, machineId: "a"); await img.job?.value
-        #expect(img.transferId == first && img.readyFor("a"))
+        #expect(img.transferId != first && img.readyFor("a"))
+        let current = img.transferId
         let restored = ImageDraft(key: "draft", files: disk, saves: nil); try restored.restore()
         let revived = try #require(restored.documents.first)
         defer { revived.release() }
-        #expect(revived.transferId == first && !revived.readyFor("a"))
+        #expect(revived.transferId == current && !revived.readyFor("a"))
+        #expect(revived.imageId == nil && revived.machineId == nil && revived.expiresMs == 0)
         let next = driver(server, restored)
         next.upload(revived, machineId: "a"); await revived.job?.value
-        #expect(revived.readyFor("a") && revived.transferId == first)
-        #expect(await server.transfers.count == 2)
-        #expect(await server.begins.filter { $0.0 == "a" }.allSatisfy { $0.1 == first })
+        #expect(revived.readyFor("a") && revived.transferId == current)
+        #expect(await server.transfers.count == 1)
+        #expect(await server.begins.filter { $0.0 == "a" }.map { $0.1 } == [first, current, current])
         await next.discard(revived).value
         #expect(await server.transfers.isEmpty)
-        #expect(await server.aborted.count == 2)
+        #expect(await server.aborted.count == 3)
     }
 
     @Test func aRelaunchedPartialUploadUsesItsOriginalReservation() async throws {
@@ -173,6 +196,117 @@ private final class WorkerProgress: @unchecked Sendable {
         do { _ = try await second.value; Issue.record("queued file ignored cancellation") } catch { #expect(error is CancellationError) }
         await server.release()
         _ = try await first.value
+    }
+
+    @Test func retryOfAReadyFileInvalidatesSynchronouslyBeforePersistenceOrAbort() async throws {
+        let (url, img) = try picked(); defer { try? FileManager.default.removeItem(at: url); img.release() }
+        let server = FileMachine(), disk = MemoryFiles()
+        let draft = ImageDraft(key: "retry", files: disk, saves: nil); draft.append([img])
+        let u = driver(server, draft)
+        u.upload(img, machineId: "a"); await img.job?.value
+        let old = img.transferId, token = img.generation
+        #expect(img.readyFor("a"))
+        u.retry(draft, img, machine: { "a" })
+        #expect(img.generation > token && !draft.ready(machineId: "a"))
+        #expect(img.imageId == nil && img.machineId == nil && img.expiresMs == 0)
+        #expect(draft.fileIds(machineId: "a").isEmpty)
+        await img.job?.value
+        #expect(img.readyFor("a") && img.transferId != old)
+        #expect(await server.aborted.contains { $0.1 == old })
+    }
+
+    @Test func aDelayedAbortCannotDeleteTheNewAAfterAToBToA() async throws {
+        let (url, img) = try picked(); defer { try? FileManager.default.removeItem(at: url); img.release() }
+        let server = FileMachine(), draft = ImageDraft(key: "aba", files: MemoryFiles(), saves: nil)
+        draft.append([img]); let u = driver(server, draft)
+        u.upload(img, machineId: "a"); await img.job?.value
+        let first = img.transferId
+        await server.holdAbort(first)
+        u.upload(img, machineId: "b")
+        let b = img.job
+        await until { await server.waitingAbort != nil }
+        #expect(!img.readyFor("a") && img.imageId == nil && img.machineId == nil)
+        u.upload(img, machineId: "a")
+        #expect(!img.readyFor("a") && draft.fileIds(machineId: "a").isEmpty)
+        await img.job?.value
+        let current = img.transferId
+        #expect(img.readyFor("a") && current != first)
+        await server.releaseAbort(); await b?.value
+        #expect(img.readyFor("a") && img.transferId == current)
+        #expect(await server.transfers["a" + current]?.done == true)
+        #expect(await server.transfers["a" + first] == nil)
+    }
+
+    @Test func retryWithoutATargetRetiresTheReservationBeforeReconnection() async throws {
+        let (url, img) = try picked(); defer { try? FileManager.default.removeItem(at: url); img.release() }
+        let server = FileMachine(), draft = ImageDraft(key: "offline-retry", files: MemoryFiles(), saves: nil)
+        draft.append([img]); let u = driver(server, draft)
+        u.upload(img, machineId: "a"); await img.job?.value
+        let old = img.transferId
+        u.retry(draft, img, machine: { nil })
+        #expect(img.imageId == nil && img.machineId == nil && img.expiresMs == 0)
+        #expect(img.file?.transfers.isEmpty == true && img.transferId != old)
+        await until { await server.aborted.contains { $0.1 == old } }
+        u.upload(img, machineId: "a"); await img.job?.value
+        #expect(img.readyFor("a") && img.transferId != old)
+    }
+
+    @Test func lateCompletionAfterHandoffCannotPublishReadinessWhileTheNextGenerationWaits() async throws {
+        let (url, img) = try picked(); defer { try? FileManager.default.removeItem(at: url); img.release() }
+        let server = FileMachine(), draft = ImageDraft(key: "late", files: MemoryFiles(), saves: nil)
+        draft.append([img]); let u = driver(server, draft)
+        await server.holdNextCompletion()
+        u.upload(img, machineId: "a")
+        let first = try #require(img.job)
+        await until { await server.waitingCompletion != nil }
+        let transfer = img.transferId
+        img.protectUpload(machineId: "a", transferId: transfer, requestId: "in-flight")
+        let request = Outgoing(requestId: "in-flight", text: "", fileIds: ["file-" + transfer], images: [img])
+        draft.detach([img])
+        #expect(!first.isCancelled, "handoff must not cancel the request's transport")
+        #expect(img.imageId == nil && img.machineId == nil && img.expiresMs == 0)
+        draft.append([img])
+        let gate = FileTestGate()
+        var blocked = false
+        u.onFileChanged = { item in
+            try await draft.persistFile(item)
+            if !blocked { blocked = true; await gate.wait() }
+        }
+        u.upload(img, machineId: "a")
+        let next = img.job
+        await until { blocked }
+        await server.releaseCompletion(); await first.value
+        #expect(!draft.ready(machineId: "a") && draft.fileIds(machineId: "a").isEmpty)
+        #expect(img.imageId == nil && img.machineId == nil && img.expiresMs == 0)
+        #expect(request.fileIds == ["file-" + transfer])
+        await gate.open(); await next?.value
+        #expect(img.readyFor("a"))
+        #expect(await server.aborted.isEmpty)
+    }
+
+    @Test func requestProtectionIsImmutableScopedAndExcludesOnlyTheHandedOffReservation() async throws {
+        let (url, img) = try picked(); defer { try? FileManager.default.removeItem(at: url); img.release() }
+        let server = FileMachine(), draft = ImageDraft(key: "owned", files: MemoryFiles(), saves: nil)
+        draft.append([img]); let u = driver(server, draft)
+        u.upload(img, machineId: "a"); await img.job?.value
+        let first = img.transferId, firstID = try #require(img.imageId)
+        img.protectUpload(machineId: "a", transferId: first, requestId: "unknown")
+        img.protectUpload(machineId: "a", transferId: first, requestId: "refused")
+        img.releaseUploadProtection(requestId: "refused")
+        let o = Outgoing(requestId: "unknown", text: "", fileIds: [firstID], images: [img])
+        let records = OutgoingRecords(files: MemoryFiles())
+        try records.save(sid: "s", o.record, original: false)
+        let restored = try #require(records.load(sid: "s").first)
+        await u.discard(try #require(restored.images.first)).value
+        draft.detach([img])
+        await u.discard(img, keeping: "a").value
+        #expect(await server.aborted.isEmpty)
+        draft.append([img]); u.upload(img, machineId: "b"); await img.job?.value
+        #expect(img.readyFor("b") && o.fileIds == [firstID])
+        #expect(await server.transfers["a" + first]?.done == true)
+        await u.discard(img, keeping: "a").value
+        #expect(await server.transfers.count == 1, "a newer unused upload must be reclaimed even when the request used the same source")
+        #expect(await server.transfers["a" + first]?.done == true)
     }
 
     @Test(arguments: [true, false]) func allPersistedBytesStillNeedCompleteWhileHashing(replyLost: Bool) async throws {

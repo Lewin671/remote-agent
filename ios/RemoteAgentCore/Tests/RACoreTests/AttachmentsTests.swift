@@ -153,12 +153,14 @@ private final class FailureCount: @unchecked Sendable {
 
     @Test func anUploadToAnotherMachineIsReplacedByTheLatestTarget() {
         let i = img("a")
+        #expect(i.startUpload(to: "old"))
         i.state = .uploading(progress: 0.5)
-        i.machineId = "old"
         #expect(needsUpload(i, machineId: "new"))
         #expect(!needsUpload(i, machineId: "old"))
         i.state = .ready
         i.machineId = "new"
+        i.imageId = "new-id"
+        i.expiresMs = Int64.max
         #expect(!needsUpload(i, machineId: "new"))
     }
 
@@ -253,22 +255,23 @@ private final class FailureCount: @unchecked Sendable {
     @Test func whatIsPutBackGoesToTheComputerAgainUnderANewTransfer() {
         let d = draft("session:s", MemoryFiles())
         let i = img("a")
+        let transfer = i.transferId
         d.attach([i], max: 6)
         // Put back: the daemon may have used the old upload up.
         #expect(i.state == .failed(error: "需要重新传到电脑"))
         #expect(i.imageId == nil && i.machineId == nil)
         #expect(!d.ready(machineId: "mac"))
         #expect(d.toSend(machineId: "mac").map(\.id) == ["a"])
-        let transfer = i.transferId
         #expect(i.startUpload(to: "mac"))
-        #expect(i.state == .uploading(progress: 0) && i.machineId == "mac")
+        #expect(i.state == .processing && i.uploadTarget == "mac" && i.machineId == nil)
         #expect(i.transferId != transfer)
         // On its way there: nothing to start again. Another machine takes over with a transfer of its own.
         #expect(!i.startUpload(to: "mac"))
         let second = i.transferId
         #expect(i.startUpload(to: "vps"))
-        #expect(i.transferId != second && i.machineId == "vps")
+        #expect(i.transferId != second && i.uploadTarget == "vps" && i.machineId == nil)
         i.imageId = "img-9"
+        i.machineId = "vps"
         i.expiresMs = Int64.max
         i.state = .ready
         #expect(d.ready(machineId: "vps") && d.ids(machineId: "vps") == ["img-9"])

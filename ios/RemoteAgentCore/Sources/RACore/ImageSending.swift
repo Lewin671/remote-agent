@@ -1,25 +1,16 @@
-// What happens to a picked image between the picker and the message it
-// goes with: it is prepared, then sent to the machine the message goes to,
-// and both can be asked for again (architecture §17). The part of Android's
-// `ImageDraft` (ui/ImageDrafts.kt) that drives jobs: `add`, `process`,
-// `upload`, `sendAllTo`, `retry` and `setOriginal`. Reading the picked
-// bytes and the machine's upload commands are handed in, so the rules are
-// tested without a picker or a daemon.
+// Preparing and transferring attachments share synchronous invalidation: no await
+// may leave a superseded completion visible to a composer (docs/session-files.md).
 import Foundation
 import RAProto
 
 @MainActor
 public final class ImageUploads {
-    /// Reads what was picked at `uri` and prepares it, compressed or as an original. Runs off the main actor.
     public typealias Prepare = @Sendable (_ uri: String, _ original: Bool) async throws -> Processed
-
     private let clock: @MainActor () -> Int64
     private let sleep: @Sendable (Int64) async throws -> Void
     private let prepare: Prepare
     private let channel: @Sendable (_ machineId: String) -> any UploadChannel
-    /// Whether what was picked at a URI can still be read: not after the run that picked it.
     private let readable: @MainActor (_ uri: String) -> Bool
-    /// Told when an image has new bytes, for whoever draws its thumbnail.
     public var onPrepared: (@MainActor (PendingImage) -> Void)?
     public var onFileChanged: (@MainActor (PendingImage) async throws -> Void)?
 
@@ -29,14 +20,10 @@ public final class ImageUploads {
         clock: @escaping @MainActor () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
         sleep: @escaping @Sendable (Int64) async throws -> Void = { try await Task.sleep(for: .milliseconds($0)) }
     ) {
-        self.clock = clock
-        self.sleep = sleep
-        self.prepare = prepare
-        self.channel = channel
-        self.readable = readable
+        self.clock = clock; self.sleep = sleep; self.prepare = prepare
+        self.channel = channel; self.readable = readable
     }
 
-    /// Adds what was picked at `uris` (already cut to what fits, `ImageDraft.admit`) and starts preparing each.
     @discardableResult
     public func add(_ draft: ImageDraft, uris: [String], machine: @escaping @MainActor () -> String?) -> [PendingImage] {
         let added = uris.map { PendingImage(id: newRequestId(), uri: $0) }
@@ -45,148 +32,175 @@ public final class ImageUploads {
         return added
     }
 
-    /// Prepares an image from what was picked, again if need be, and sends it to the machine `machine` names then.
+    private func check(_ img: PendingImage, _ token: Int) throws {
+        try Task.checkCancellation()
+        guard img.isCurrent(token) else { throw CancellationError() }
+    }
+
     public func process(_ draft: ImageDraft, _ img: PendingImage, machine: @escaping @MainActor () -> String?) {
-        img.job?.cancel()
         draft.invalidate(img)
-        img.state = .processing
-        img.machineId = nil
-        img.imageId = nil
-        img.transferId = newRequestId()
-        guard let uri = img.uri else {
-            img.state = .failed(error: "读不到这张图片")
-            return
-        }
-        let original = draft.original
-        let prepare = self.prepare
+        let token = img.generation
+        let cleanup = abort(img.takeRetired())
+        guard let uri = img.uri else { img.state = .failed(error: "读不到这张图片"); return }
+        let original = draft.original, prepare = self.prepare
         img.job = Task { [weak self] in
+            guard let self else { return }
             do {
+                await cleanup.value
+                try check(img, token)
                 let p = try await prepare(uri, original)
-                // Overtaken: removed, or being prepared again.
-                if Task.isCancelled { return }
+                try check(img, token)
                 img.processed = p
-                self?.onPrepared?(img)
-                // Kept for a reclaimed process; sending does not depend on it.
+                onPrepared?(img)
                 draft.prepared(img)
                 img.job = nil
-                if let m = machine() { self?.upload(img, machineId: m) } else { img.state = .failed(error: "先选一台电脑") }
+                if let m = machine() { upload(img, machineId: m) }
+                else { img.state = .failed(error: "先选一台电脑") }
             } catch {
-                if Task.isCancelled || error is CancellationError { return }
+                if Task.isCancelled || !img.isCurrent(token) || error is CancellationError { return }
                 img.state = .failed(error: errorText(error))
             }
         }
     }
 
-    /// Sends the image to `machineId` unless it is there or on its way there.
-    /// An upload to another machine is dropped: the latest target wins.
+    /// A selected target changed even if it is offline, unsupported, or temporarily absent.
+    public func retarget(_ img: PendingImage) {
+        img.invalidate(retiring: true)
+        _ = abort(img.takeRetired())
+    }
+
     public func upload(_ img: PendingImage, machineId: String) {
-        guard img.hasSource, img.startUpload(to: machineId, now: clock()) else { return }
+        guard img.hasSource else {
+            img.invalidate()
+            img.state = .failed(error: img.isFile ? "这个文件没有本机副本，请移除后重新选择" : "读不到这张图片")
+            return
+        }
+        guard img.startUpload(to: machineId, now: clock()) else { return }
+        let token = img.generation
+        let cleanup = abort(img.takeRetired())
         let ch = channel(machineId)
+        var transfer = img.transferId
         img.job = Task {
             do {
-                @MainActor func send() async throws -> UploadedImage {
-                    try Task.checkCancellation()
+                await cleanup.value
+                try check(img, token)
+                @MainActor func keep() async throws {
+                    try check(img, token)
                     if img.isFile { try await self.onFileChanged?(img) }
-                    try Task.checkCancellation()
+                    try check(img, token)
+                }
+                @MainActor func send() async throws -> UploadedImage {
+                    try await keep()
                     let progress: @MainActor (Int64, Int64) -> Void = { done, total in
-                        if !Task.isCancelled, img.machineId == machineId {
-                            img.state = .uploading(progress: total > 0 ? Float(done) / Float(total) : 0)
-                        }
+                        guard img.isCurrent(token), !Task.isCancelled else { return }
+                        img.state = .uploading(progress: total > 0 ? Float(done) / Float(total) : 0)
                     }
                     if let file = img.file {
-                        return try await uploadFile(ch, transferId: img.transferId, source: file, onSource: { refreshed in
+                        return try await uploadFile(ch, transferId: transfer, source: file, onSource: { refreshed in
+                            try self.check(img, token)
                             img.file?.bookmark = refreshed.bookmark
-                            try await self.onFileChanged?(img)
+                            try await keep()
                         }, onProgress: progress)
                     }
                     guard let p = img.processed else { throw UserError("读不到这张图片") }
-                    return try await uploadImage(ch, transferId: img.transferId, data: p.bytes, onProgress: progress)
+                    return try await uploadImage(ch, transferId: transfer, data: p.bytes, onProgress: progress)
                 }
                 let uploaded: UploadedImage
                 do {
                     uploaded = try await send()
-                } catch let e as any UploadFailure where (e.code == "not_found" || (img.isFile && e.code == "already_exists")) && !Task.isCancelled {
-                    // Changed sources and expired reservations need a fresh, durably recorded transfer.
-                    if img.isFile {
-                        try await ch.abort(transferId: img.transferId)
-                    }
-                    img.transferId = newRequestId()
-                    img.imageId = nil
-                    if img.isFile { img.file?.transfers[machineId] = FileTransfer(transferId: img.transferId) }
+                } catch let error as any UploadFailure where error.code == "not_found" || (img.isFile && error.code == "already_exists") {
+                    try check(img, token)
+                    // Only this generation's transport can be replaced. A late abort must
+                    // never target a newer generation's reservation on the same machine.
+                    let abandoned = transfer
+                    img.imageId = nil; img.machineId = nil; img.expiresMs = 0
+                    img.state = .processing
+                    if img.isFile { try await ch.abort(transferId: abandoned) }
+                    try check(img, token)
+                    transfer = newRequestId()
+                    img.transferId = transfer
+                    if img.isFile { img.file?.transfers[machineId] = FileTransfer(transferId: transfer) }
                     uploaded = try await send()
                 }
-                if Task.isCancelled { return }
-                if img.machineId == machineId {
-                    img.imageId = uploaded.imageId
-                    img.expiresMs = uploaded.expiresMs
-                    if img.isFile {
-                        img.file?.transfers[machineId] = FileTransfer(transferId: img.transferId, fileId: uploaded.imageId, expiresMs: uploaded.expiresMs)
-                        try await onFileChanged?(img)
-                        try Task.checkCancellation()
-                    }
-                    img.state = .ready
-                    scheduleRefresh(img, machineId: machineId, expiresMs: uploaded.expiresMs)
+                try check(img, token)
+                if img.isFile {
+                    img.file?.transfers[machineId] = FileTransfer(transferId: transfer, fileId: uploaded.imageId, expiresMs: uploaded.expiresMs)
+                    try await keep()
                 }
+                try check(img, token)
+                // Publish a completion only after the whole operation and its persistence succeeded.
+                img.imageId = uploaded.imageId
+                img.machineId = machineId
+                img.expiresMs = uploaded.expiresMs
+                img.state = .ready
+                scheduleRefresh(img, machineId: machineId, expiresMs: uploaded.expiresMs, token: token)
             } catch {
-                if Task.isCancelled || error is CancellationError { return }
-                if img.machineId == machineId { img.state = .failed(error: img.isFile ? fileUploadError(error) : errorText(error)) }
+                if Task.isCancelled || !img.isCurrent(token) || error is CancellationError { return }
+                img.imageId = nil; img.machineId = nil; img.expiresMs = 0
+                img.state = .failed(error: img.isFile ? fileUploadError(error) : errorText(error))
             }
         }
     }
 
-    /// Remove every unused reservation. The accepted target is kept once a message owns it.
-    @discardableResult
-    public func discard(_ img: PendingImage, keeping machine: String? = nil) -> Task<Void, Never> {
-        img.job?.cancel()
-        img.refreshJob?.cancel()
-        let abandoned = img.file?.transfers.filter { $0.key != machine } ?? [:]
-        let channel = self.channel
+    private func abort(_ references: [UploadReservation]) -> Task<Void, Never> {
+        let unique = Set(references), channel = self.channel
         return Task {
-            for (target, transfer) in abandoned {
-                let ch = channel(target)
+            for reference in unique {
+                let ch = channel(reference.machine)
                 for attempt in 0..<3 {
-                    do { try await ch.abort(transferId: transfer.transferId); break }
+                    do { try await ch.abort(transferId: reference.transfer); break }
                     catch {
                         guard let failure = error as? any UploadFailure,
-                            failure.unknown || failure.code == "network", attempt < 2 else { break }
+                              failure.unknown || failure.code == "network", attempt < 2 else { break }
                     }
                 }
             }
         }
     }
 
-    private func scheduleRefresh(_ img: PendingImage, machineId: String, expiresMs: Int64) {
+    /// Draft membership is removed by the caller before this cleanup. Accepted
+    /// requests retain their immutable ID snapshot and their machine's reservation.
+    @discardableResult
+    public func discard(_ img: PendingImage, keeping machine: String? = nil) -> Task<Void, Never> {
+        let unused = img.reservations.filter(img.canAbort)
+        img.invalidate(cancelUpload: machine == nil)
+        for reference in unused { img.file?.transfers[reference.machine] = nil }
+        return abort(unused + img.takeRetired())
+    }
+
+    private func scheduleRefresh(_ img: PendingImage, machineId: String, expiresMs: Int64, token: Int) {
         guard expiresMs > clock() else { return }
-        let delay = max(1, expiresMs - clock())
-        let sleep = self.sleep
+        let delay = max(1, expiresMs - clock()), sleep = self.sleep
         img.refreshJob?.cancel()
         img.refreshJob = Task { [weak self, weak img] in
             do { try await sleep(delay) } catch { return }
-            guard let self, let img, !Task.isCancelled else { return }
+            guard let self, let img, !Task.isCancelled, img.isCurrent(token) else { return }
             self.upload(img, machineId: machineId)
         }
     }
 
-    /// Makes sure every image is on `machineId`, e.g. after the new-session card changed machines.
     public func sendAll(_ draft: ImageDraft, machineId: String) {
         for img in draft.toSend(machineId: machineId, now: clock()) { upload(img, machineId: machineId) }
     }
 
-    /// What a tap on a failed image does: prepares it if that is what failed, sends it otherwise.
     public func retry(_ draft: ImageDraft, _ img: PendingImage, machine: @escaping @MainActor () -> String?) {
-        if !img.isFile && (img.needsProcessing || img.processed == nil) {
+        img.invalidate(retiring: true)
+        if img.isFile && !img.hasSource {
+            _ = abort(img.takeRetired())
+            img.state = .failed(error: "这个文件没有本机副本，请移除后重新选择")
+        } else if !img.isFile && (img.needsProcessing || img.processed == nil) {
             process(draft, img, machine: machine)
-        } else if let m = machine() {
-            upload(img, machineId: m)
+        } else if let m = machine() { upload(img, machineId: m) }
+        else {
+            _ = abort(img.takeRetired())
+            img.state = .failed(error: "先选一台电脑")
         }
     }
 
-    /// Whether 原图 can still change what a draft sends: some image of it can be read again.
     public func canReprepare(_ draft: ImageDraft) -> Bool {
         !draft.photos.isEmpty && draft.photos.allSatisfy { img in img.uri.map(readable) ?? false }
     }
 
-    /// Originals or compressed, for this message: every image that can still be read is prepared again from what was picked.
     public func setOriginal(_ draft: ImageDraft, _ v: Bool, machine: @escaping @MainActor () -> String?) {
         guard canReprepare(draft), draft.setOriginal(v) else { return }
         for img in draft.photos {
