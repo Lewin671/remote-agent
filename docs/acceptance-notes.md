@@ -1542,3 +1542,31 @@ rebase 到本地 `wt/file-upload` 的 `f23f0801`，只遇到 `acceptance-notes.m
 ```
 
 通过：core 427、app 383、terminal 7 个单元测试，共 817 个，无失败或跳过；Debug APK、测试 APK 及发布流水线使用的 Release lint 全部通过。`Medium_Phone_API_36.0` 模拟器的 `FilesLayoutTest` 4 个界面测试全部通过（亮/暗、200% 字号、44 dp 控件、能力菜单、纯文件历史）。结束后卸载两个独立 `.fileuploadcheck` 测试包并停止模拟器。本轮没有重跑真实 CLI 或真机链路，旧实测仍按各自记录的基线与边界理解。未推送、发布、部署或操作日常账户、daemon、真机。
+## 文件附件（iOS，Phase B，2026-10-28）
+
+环境：当前 iOS 任务 checkout，基于 Phase A `4f9149fc`，协议 11，尚未发布；Xcode 27.0（27A266a），复用已有 iPhone 18 Pro / iOS 27.0 模拟器。独立 `RA_DEV_DIR` 经 `ios/scripts/dev-env.sh start --no-account` 构建并启动本地 server；iOS 使用独立测试命名空间创建临时管理账户，核对四图案后配对测试电脑，daemon 使用独立状态目录和 tmux socket。复用已安装的 Claude Code 2.1.300 / Haiku 5.5 medium，新建专用 CLI 会话，不连接线上服务、日常 remote-agent 身份或已有会话。
+
+自动检查：
+
+| 命令 | 结果 |
+|---|---|
+| `swift test --package-path ios/RemoteAgentCore` | RACore 565 项、Markdown 17 项通过 |
+| `cd ios && buf generate` | 通过，生成代码没有差异 |
+| `xcodebuild -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -parallel-testing-enabled NO build test` | 构建及 358 项 App 测试通过 |
+| `git diff --check` | 通过 |
+
+新增测试覆盖文件 capability 和机器声明的数量/大小上限、100 MiB 边界（稀疏文件，不整份读入）、名称中间省略与扩展名、精确引用行隐藏、流式哈希与分块、响应丢失后的续传、空文件、源文件删除、书签草稿恢复、文件与图片分别计数、换机器及到期后更换传输、未知发送/新建请求保留首次文件 ID、共享队列文件投影，以及机器撤回文件能力时取消已有自动重传任务。文件草稿只写书签元数据，没有 `.img` 正文副本。
+
+真实链路：文档 URL 由 DEBUG 的 `-fileAdd` / `files.add` 交给与系统选择结果共用的导入函数；文字和发送分别用 `session.draft` / `session.send`，新建用 `project.start` 触发。全部上传和发送经过 iOS 的签名加密命令 → server → relay → daemon → tmux / 真实 Claude Code，反向事件回到 iOS。没有用本地 Send RPC 代替客户端发送，也没有把示例事件当作链路结果。首个专用会话由本地 CLI 创建，目录信任提示通过测试 tmux 按键处理；新建首条文件消息则由 iOS 发起。
+
+| 场景 | 结果 |
+|---|---|
+| 会话内文字＋TXT | CLI 收到原样 TXT，返回文件中的验证标记；iOS 已发送消息显示名称、大小条目，正文不显示注入路径 |
+| 同会话纯文件 CSV＋ZIP | 无用户文字发送；CLI 读到 CSV 的两行数据和合计 18，解压 ZIP 后返回内部验证标记；iOS 显示两个文件条目及回复 |
+| 新建会话文字＋TXT | 项目草稿在 App 重启后从加密书签记录恢复并重新上传；iOS 发起新建，CLI 首轮读到 TXT 并返回标记；跳转后的历史显示文件条目 |
+
+草稿和已发送文件条目在模拟器亮色界面上查看过。没有通过计算机控制工具直接点按系统文档选择器（该工具无法连接 Simulator），因此这次不是手指操作验收；真实 iCloud / 第三方文件提供者的授权跨重启、真机、VoiceOver、暗色/大字号人工检查、六个 100 MiB 文件的内存峰值、混合图片＋文件及断网/daemon 重启恢复未实测。源丢失、重传与未知结果规则由自动测试覆盖。
+
+结束前无需 fetch，读取 Phase A 工作树的最新 15 条提交、`session-files.md` 和网页 `withoutFileLines`，同步到 `55d1e45f` 下的精确引用行规则（包括 Claude 的带引号 `File: @"…" (file)`）；新格式由 iOS 单元测试覆盖。本轮运行的 daemon 来自上述初始基线，完整客户端链路的引用仍是该基线的格式，最新 daemon 格式待整合后联合验收。本任务没有修改 Go、网页或协议生成代码，没有发现需要新增协议字段的问题。
+
+测试结束已退出临时 iOS 账户，清理独立环境并关闭该模拟器；没有升级日常 daemon、安装真机 App、推送或发布。
