@@ -227,7 +227,7 @@ func (s *session) restoreRecent(l *logged) {
 		if in := l.sent[id]; in != nil && !in.images {
 			var files []queuedFile
 			for _, f := range in.files {
-				files = append(files, queuedFile{f.FileId, f.Name, f.SizeBytes, f.Path})
+				files = append(files, queuedFile{ID: f.FileId, Name: f.Name, Size: f.SizeBytes, Path: f.Path})
 			}
 			composed := ""
 			if len(files) > 0 {

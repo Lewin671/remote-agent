@@ -71,7 +71,6 @@ type transfer struct {
 	CompletedMs int64  `json:"completed_ms,omitempty"`
 	// Set once a message used it.
 	Session  string          `json:"session,omitempty"`
-	Claim    string          `json:"claim,omitempty"`
 	Exposed  bool            `json:"exposed,omitempty"`
 	Embedded bool            `json:"embedded,omitempty"`
 	Refs     map[string]bool `json:"refs,omitempty"`
@@ -449,8 +448,10 @@ func (u *uploads) byImage(imageID string) *transfer {
 
 // queuedImage is an image of a queued message: its upload ID and file.
 type queuedImage struct {
-	ID   string `json:"id"`
-	Path string `json:"path"`
+	// Only this take call may undo a new claim. Never persisted in queue.json.
+	NewClaim bool   `json:"-"`
+	ID       string `json:"id"`
+	Path     string `json:"path"`
 }
 
 // take moves the images of a message being accepted into the session's
@@ -530,7 +531,6 @@ func (u *uploads) release(sessionID string) {
 			_ = os.Remove(filepath.Dir(src))
 		}
 		t.Session = ""
-		t.Claim = ""
 		t.Refs = nil
 		if err := u.save(t); err != nil {
 			slog.Error("save transfer", "transfer", t.ID, "err", errClass(err))
@@ -551,13 +551,12 @@ func (u *uploads) untake(imgs []queuedImage, sessionID, request string) {
 			continue
 		}
 		delete(t.Refs, request)
-		if t.Claim != request || t.Exposed || len(t.Refs) > 0 {
+		if !im.NewClaim || t.Exposed || len(t.Refs) > 0 {
 			_ = u.save(t)
 			continue
 		}
 		if os.Rename(im.Path, u.pending(filepath.Base(im.Path))) == nil {
 			t.Session = ""
-			t.Claim = ""
 			t.Refs = nil
 			_ = u.save(t)
 		}

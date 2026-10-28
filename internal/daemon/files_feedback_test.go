@@ -384,3 +384,32 @@ func TestFileCompletionRecordSyncFailureKeepsBothDurableCopies(t *testing.T) {
 		t.Fatal("successful retry left partial")
 	}
 }
+
+func TestFailedReplayAfterDedupWindowKeepsAcceptedFile(t *testing.T) {
+	h := newHarness(t, Config{})
+	u := h.d.uploads
+	id := uploadFile(t, u, "accepted.txt", []byte("keep"))
+	first, err := u.takeUploads(nil, []string{id}, "phone", h.s.meta.ID, "replayed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u.releaseFiles(first.Files, h.s.meta.ID, "replayed")
+	// The old ID fell out of the bounded queue dedup history. Even an identical
+	// request ID cannot turn a reused file into this call's new claim.
+	h.s.queue.Seen = nil
+	if err := os.Mkdir(filepath.Join(h.dir, "queue.json"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	_, err = h.s.enqueueInput("retry", "replayed", nil, nil, originLocal, pb.SendMode_SEND_MODE_QUEUE, nil, func(request string) (messageUploads, error) {
+		return u.takeUploads(nil, []string{id}, "phone", h.s.meta.ID, request)
+	})
+	if err == nil {
+		t.Fatal("queue failure not injected")
+	}
+	if tr := u.byFile(id); tr.Session != h.s.meta.ID {
+		t.Fatal("same-ID reuse detached accepted file")
+	}
+	if _, err := os.Stat(first.Files[0].Path); err != nil {
+		t.Fatal("same-ID reuse lost file", err)
+	}
+}

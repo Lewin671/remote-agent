@@ -179,10 +179,12 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 }
 
 type queuedFile struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Size int64  `json:"size"`
-	Path string `json:"path"`
+	// Ephemeral receipt for acceptance rollback, not session ownership state.
+	NewClaim bool   `json:"-"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Size     int64  `json:"size"`
+	Path     string `json:"path"`
 }
 type messageUploads struct {
 	Images []queuedImage
@@ -294,8 +296,9 @@ func (u *uploads) takeUploads(images, files []string, device, session, request s
 		}
 	}
 	for _, t := range ts {
-		if t.Session == "" {
-			t.Session, t.Claim = session, request
+		newClaim := t.Session == ""
+		if newClaim {
+			t.Session = session
 			if err := u.mkdirUploadDir(filepath.Dir(t.sessionPath(u))); err != nil {
 				undo()
 				return out, err
@@ -333,9 +336,9 @@ func (u *uploads) takeUploads(images, files []string, device, session, request s
 			return out, err
 		}
 		if t.FileID != "" {
-			out.Files = append(out.Files, queuedFile{t.FileID, t.SafeName, t.Total, t.sessionPath(u)})
+			out.Files = append(out.Files, queuedFile{ID: t.FileID, Name: t.SafeName, Size: t.Total, Path: t.sessionPath(u), NewClaim: newClaim})
 		} else {
-			out.Images = append(out.Images, queuedImage{t.ImageID, t.sessionPath(u)})
+			out.Images = append(out.Images, queuedImage{ID: t.ImageID, Path: t.sessionPath(u), NewClaim: newClaim})
 		}
 	}
 	return out, nil
@@ -350,7 +353,7 @@ func (u *uploads) untakeFiles(files []queuedFile, session, request string) {
 			continue
 		}
 		delete(t.Refs, request)
-		if t.Claim != request || len(t.Refs) > 0 || t.Exposed {
+		if !f.NewClaim || len(t.Refs) > 0 || t.Exposed {
 			_ = u.save(t)
 			continue
 		}
@@ -360,7 +363,6 @@ func (u *uploads) untakeFiles(files []queuedFile, session, request string) {
 			_ = u.syncUploadDirs(filepath.Dir(dst))
 			_ = os.Remove(filepath.Dir(src))
 			t.Session = ""
-			t.Claim = ""
 			_ = u.save(t)
 		}
 	}
