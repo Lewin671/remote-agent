@@ -2724,8 +2724,15 @@ export class Remote {
     for (const [id, stage] of observed.stages) out.stages.set(id, stage);
     for (const [id, reason] of observed.inputReasons)
       out.inputReasons.set(id, reason);
-    for (const [id, accepted] of observed.accepted)
-      out.accepted.set(id, accepted);
+    for (const [id, accepted] of observed.accepted) {
+      const prior = out.accepted.get(id);
+      // Held snapshots fill gaps in history, but their text may be truncated.
+      // Keep known accepted content/origin; only its live delivery mode changes.
+      out.accepted.set(id,
+        prior && observed.inputs.get(id) === InputStatus.HELD_BY_CLI
+          ? { ...prior, mode: accepted.mode || prior.mode }
+          : accepted);
+    }
     for (const event of live.actions) {
       if (event.kind.case === "approvalRequested")
         out.approvals.set(event.kind.value.approvalId, event.kind.value);

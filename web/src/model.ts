@@ -1046,7 +1046,8 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
           d.inputs.get(k.value.requestId) === InputStatus.UNCONFIRMED;
         d.inputs.set(k.value.requestId, k.value.status);
         if (
-          k.value.status === InputStatus.QUEUED &&
+          (k.value.status === InputStatus.QUEUED ||
+            k.value.status === InputStatus.HELD_BY_CLI) &&
           !d.accepted.has(k.value.requestId) &&
           (k.value.text || k.value.imageIds.length || k.value.files.length)
         )
