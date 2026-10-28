@@ -81,7 +81,7 @@ internal fun ImageDraft.startDocumentUpload(
     io: CoroutineDispatcher = Dispatchers.IO, forceFresh: Boolean = false, open: () -> InputStream,
 ) {
     if (!forceFresh && !needsUpload(entry, target)) return
-    val changed = forceFresh || entry.state is PendingImage.State.Failed || entry.transportMachine() != target || entry.protectedTransfer == entry.transferId || entry.fileId != null && entry.expiresMs <= System.currentTimeMillis()
+    val changed = forceFresh || entry.state is PendingImage.State.Failed || entry.transportMachine() != target || entry.isProtected() || entry.fileId != null && entry.expiresMs <= System.currentTimeMillis()
     var turn = entry.stopUpload(abort = changed)
     if (!entry.activate(turn, target, fresh = changed)) return
     if (!entry.hasSource()) {

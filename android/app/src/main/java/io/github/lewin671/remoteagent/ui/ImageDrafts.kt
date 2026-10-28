@@ -53,10 +53,13 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
     }
     /** The previous transport is a resume/abort candidate, never proof that the draft is sendable. */
     internal var transferMachine: String? = null
-    internal var protectedTransfer: String? = null
+    private val protectedTransfers = mutableMapOf<Any, String>()
     internal fun transportMachine(): String? = machineId ?: transferMachine
-    internal fun protectTransfer() { synchronized(this) { protectedTransfer = transferId } }
-    internal fun allowAbort() { synchronized(this) { protectedTransfer = null } }
+    internal fun isProtected() = synchronized(this) { transferId in protectedTransfers.values }
+    internal fun protectTransfer(owner: Any = Any()) { synchronized(this) { protectedTransfers[owner] = transferId } }
+    internal fun allowAbort(owner: Any? = null) { synchronized(this) {
+        if (owner == null) protectedTransfers.clear() else protectedTransfers.remove(owner)
+    } }
     internal fun valid(turn: Long) = synchronized(this) { ownerAccount === AccountMemory.token && generation == turn }
     internal fun invalidateResults(): Long {
         val oldJob: Job?
@@ -71,7 +74,7 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
         val turn = synchronized(this) {
             generation++
             transferMachine = transportMachine()
-            cancelTransfer = if (abort && protectedTransfer != transferId) abortTransfer else null
+            cancelTransfer = if (abort && !isProtected()) abortTransfer else null
             if (abort) { abortTransfer = null; transferMachine = null }
             if (staleBytes) stale = true
             state = State.Processing
@@ -413,7 +416,7 @@ class ImageDraft(
         val p = img.processed ?: return
         if (!forceFresh && !needsUpload(img, machineId)) return
         val channel = remote.uploadChannel(machineId)
-        val changed = forceFresh || img.state is PendingImage.State.Failed || img.transportMachine() != machineId || img.protectedTransfer == img.transferId || (img.imageId != null && img.expiresMs <= System.currentTimeMillis())
+        val changed = forceFresh || img.state is PendingImage.State.Failed || img.transportMachine() != machineId || img.isProtected() || (img.imageId != null && img.expiresMs <= System.currentTimeMillis())
         var turn = img.stopUpload(abort = changed)
         if (!img.activate(turn, machineId, fresh = changed)) return
         bindAbort(img, remote)

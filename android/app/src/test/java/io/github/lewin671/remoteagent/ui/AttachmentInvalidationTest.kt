@@ -187,6 +187,20 @@ class AttachmentInvalidationTest {
         assertEquals(listOf("file-file"), requests.last().fileIdsList)
     }
 
+    @Test fun aRejectedNewStartDoesNotUnprotectAnEarlierUnknownRequestUsingTheSameTransfer() {
+        val entry = ready(); val d = draft().apply { images += entry }
+        var aborts = 0; entry.abortTransfer = { aborts++ }
+        val start = Starts.Start().apply { taken = listOf(entry) }
+        val unknownOwner = start.transferOwner
+        val frozen = start.fileIds.toList()
+        start.taken = listOf(entry) // a later prepared request after abandoning the unknown outcome
+        assertNotSame(unknownOwner, start.transferOwner)
+        entry.allowAbort(start.transferOwner) // only the later request was definitely refused
+        d.remove(entry)
+        assertEquals(0, aborts)
+        assertEquals(listOf("file-file"), frozen)
+    }
+
     @Test fun anUnknownNewSessionOwnsItsOriginalTransferWhenItsDraftIsRemoved() {
         val entry = ready(); val d = draft().apply { images += entry }
         var aborts = 0; entry.abortTransfer = { aborts++ }

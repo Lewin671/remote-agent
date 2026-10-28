@@ -643,7 +643,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
                 remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
             } catch (e: Exception) {
                 val err = start.attempt.settle(e) ?: e
-                if (!start.attempt.frozen) start.taken.forEach { it.allowAbort() }
+                if (!start.attempt.frozen) start.taken.forEach { it.allowAbort(start.transferOwner) }
                 throw err
             }
         }) { r ->
@@ -1159,12 +1159,15 @@ object Starts {
             private set
         var fileIds: List<String> = emptyList()
             private set
+        internal var transferOwner: Any = Any()
+            private set
         private var preparedImages: List<Processed?> = emptyList()
         /** The images the prepared request names, kept for a retry of the same request. */
         var taken: List<PendingImage> = emptyList()
             set(value) {
                 field = value
-                value.forEach { it.protectTransfer() }
+                transferOwner = Any()
+                value.forEach { it.protectTransfer(transferOwner) }
                 imageIds = value.filterNot { it.isFile }.mapNotNull { it.imageId }
                 fileIds = value.filter { it.isFile }.mapNotNull { it.fileId }
                 preparedImages = value.map { it.processed }
