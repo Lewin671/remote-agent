@@ -1474,3 +1474,25 @@ JDK 17、Android SDK 36；从 `android/` 执行，使用独立 `.fileuploadcheck
 最终新会话中三个落盘文件的 SHA-256 分别与测试源相同。文件选择、文字输入、开始和发送均是 adb 输入事件驱动的实际界面操作；首次 Claude 目录信任提示用 App 原生终端的方向键与回车确认。强制结束 App 是故障注入；临时文件准备、空白项目入口、电脑 hash 与 ID 核对、权限 dump 属于调试准备/观察，没有替代 Android 发上传或消息指令，也没有伪造 Agent 回复。使用项目继承的完全放行模式。
 
 结束后卸载独立 App/测试包，删除模拟器测试文件和 adb reverse，停止模拟器，用 dev-env stop 清理临时账户、server/daemon、tmux 和数据库。未新增真机、云提供器、传输中杀进程/断网、自然到期、两台真实机器切换、大文件设备内存峰值、图片文件混发和读取审批模式验收；接入点与故障状态由自动测试覆盖，不能代替这些实际流程。
+
+### Android 文件附件复审第二轮（2026-10-28）
+
+基线仍为 `72bfe67a`。收尾检查 `wt/file-upload` 尚未出现更新且干净的提交；耐久性工作区仍有未提交改动，本轮没有提前合入或继续等待。没有推送、发布或更新日常 daemon。
+
+新增回归核对：
+
+- 100 MiB 文件条目从磁盘恢复后，目标机器尚未解析（null）和仍为原机器都不 Abort、不清除 transfer/file ID、到期时间或 generation；切换到另一台非空机器才中止旧传输。
+- 一个分块连续失败三次后成功，Complete 仍可独立失败三次并成功，不共用已耗尽的重试计数；图片上传使用同一重置规则。
+- URI 清理合并保存批次，在请求安静后执行一次；长保存突发不会定时反复扫描。扫描期间又有请求时只补一次，单次失败不杀死清理任务。目录读取、解密及系统权限调用不在 PendingStore 锁内；记录版本变化时不应用旧扫描结果。
+- 从持久待确认记录恢复的附件在提供移除/放回入口前重新绑定原机器的 Abort；放回时中止原 transfer ID，随后换新 ID。此前未发布分支的 `.file` 格式差异及重新选择要求已写进修复提交说明，没有加入迁移分支。
+
+JDK 17、SDK 36，沿用独立 `.fileuploadcheck` 包，执行：
+
+```sh
+./gradlew --no-daemon --no-configuration-cache --max-workers=1 \
+  :core:test :terminal:testReleaseUnitTest :app:testDebugUnitTest \
+  :app:assembleDebug :app:assembleDebugAndroidTest :app:lintVitalRelease \
+  -PdevBuild=true -PappIdSuffix=.fileuploadcheck
+```
+
+结果：core 420、app 365、terminal 7 个单元测试全部通过；Debug APK、测试 APK 与 Release lint 通过。最后的清理调度调用调整后，完整 app 单元测试、两个 APK 与 Release lint 再次通过。`Medium_Phone_API_36.0` 上运行 `FilesLayoutTest` 的 4 个界面测试通过（亮/暗、200% 字号、44 dp 移除按钮、能力菜单、纯文件历史无空气泡）。测试后卸载独立 App/测试包并停止模拟器。本轮没有新增真实 CLI 或真机验收，相关证据仍以上一轮所列版本和边界为准。
