@@ -198,7 +198,7 @@ internal fun saveUpload(files: SealedFiles, folder: String, img: PendingImage) {
     val bytes = java.io.ByteArrayOutputStream()
     synchronized(img) { java.io.DataOutputStream(bytes).use {
         it.writeUTF(img.transferId); it.writeUTF(img.transportMachine().orEmpty())
-        it.writeUTF(img.imageId.orEmpty()); it.writeUTF(img.fileId.orEmpty()); it.writeLong(img.expiresMs)
+        it.writeUTF(img.imageId.orEmpty()); it.writeUTF(img.fileId.orEmpty()); it.writeLong(img.expiresMs); it.writeBoolean(img.stale)
     } }
     files.put(folder, img.id + ".upload", bytes.toByteArray())
 }
@@ -209,6 +209,7 @@ private fun restoreUpload(files: SealedFiles, folder: String, img: PendingImage)
     java.io.DataInputStream(java.io.ByteArrayInputStream(bytes)).use {
         img.transferId = it.readUTF(); img.machineId = it.readUTF().ifEmpty { null }
         img.imageId = it.readUTF().ifEmpty { null }; img.fileId = it.readUTF().ifEmpty { null }; img.expiresMs = it.readLong()
+        img.stale = it.readBoolean() || img.stale
     }
     if (img.machineId?.let { img.readyForStoredUpload(it) } == true) img.state = PendingImage.State.Ready
 }
@@ -329,7 +330,7 @@ class ImageDraft(
     private fun saveNow() {
         runCatching { files.transaction {
             val now = images.toList()
-            val fresh = synchronized(marks) { now.filter { it.isFile || it.id !in saved && it.id !in stale }.map { it to (turns[it.id] ?: 0) } }
+            val fresh = synchronized(marks) { now.filter { it.isFile || it.id !in saved && (it.id !in stale || it.uri.isNullOrEmpty()) }.map { it to (turns[it.id] ?: 0) } }
             saveImages(files, key, fresh.map { it.first }, original)
             saveOrder(files, key, now, original)
             synchronized(marks) { for ((img, turn) in fresh) if ((turns[img.id] ?: 0) == turn) saved += img.id }
@@ -413,6 +414,7 @@ class ImageDraft(
      */
     fun upload(remote: Remote, img: PendingImage, machineId: String, forceFresh: Boolean = false) {
         if (img.isFile) { uploadDocument(remote, img, machineId, forceFresh); return }
+        if (img.needsProcessing) return
         val p = img.processed ?: return
         if (!forceFresh && !needsUpload(img, machineId)) return
         val channel = remote.uploadChannel(machineId)
@@ -500,18 +502,32 @@ class ImageDraft(
         }
     }
 
-    fun retry(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
-        if (img.needsProcessing && img.uri != null) process(context, img, remote, machine)
-        else machine()?.let { upload(remote, img, it, forceFresh = true) }
+    private fun missingImageSource(img: PendingImage) {
+        val turn = img.stopUpload(staleBytes = true)
+        if (!img.valid(turn)) return
+        unmark(img, preparing = true)
+        img.state = PendingImage.State.Failed("这张图没有可重新处理的本机副本，请移除后重新选择")
     }
 
-    /** Originals or compressed, for this message: every image is prepared again from what was picked. */
-    fun setOriginal(context: Context, v: Boolean, remote: Remote, machine: () -> String?) {
+    fun retry(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
+        if (img.needsProcessing) {
+            if (!img.uri.isNullOrEmpty()) process(context, img, remote, machine)
+            else { missingImageSource(img); persistOrder() }
+        } else machine()?.let { upload(remote, img, it, forceFresh = true) }
+    }
+
+    /** The policy is shared by UI and tests; unavailable sources cannot keep old-mode readiness. */
+    internal fun changeOriginal(v: Boolean, reprocess: (PendingImage) -> Unit) {
         if (restoring || v == original) return
         original = v
-        for (img in pictures) if (img.uri != null) process(context, img, remote, machine)
+        for (img in pictures) {
+            if (!img.uri.isNullOrEmpty()) reprocess(img) else missingImageSource(img)
+        }
         persistOrder()
     }
+
+    fun setOriginal(context: Context, v: Boolean, remote: Remote, machine: () -> String?) =
+        changeOriginal(v) { process(context, it, remote, machine) }
 
     fun remove(img: PendingImage) {
         images.remove(img)

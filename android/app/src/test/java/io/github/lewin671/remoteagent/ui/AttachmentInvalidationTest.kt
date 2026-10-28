@@ -56,6 +56,31 @@ class AttachmentInvalidationTest {
         }
     }
 
+    @Test fun changingOriginalWithoutAReadableSourceInvalidatesBeforeAbortAndCannotUploadStaleBytes() = runBlocking {
+        val disk = MemoryFiles()
+        val entry = PendingImage("no-original", null).apply {
+            processed = Processed(byteArrayOf(1), ImageFormat.IMAGE_FORMAT_PNG, 1, 1)
+            machineId = "A"; imageId = "old-image"; expiresMs = Long.MAX_VALUE; state = PendingImage.State.Ready
+        }
+        val d = draft("no-original", disk).apply { images += entry }
+        var aborted = false
+        entry.abortTransfer = { invalid(entry); assertTrue(entry.needsProcessing); aborted = true }
+        d.changeOriginal(true) { error("missing URI cannot be processed") }
+        assertTrue(aborted)
+        assertTrue(entry.state is PendingImage.State.Failed)
+        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), okhttp3.OkHttpClient())
+        try {
+            d.upload(remote, entry, "A", forceFresh = true)
+            assertNull(entry.job); assertNull(entry.imageId); assertFalse(d.ready("A"))
+        } finally { remote.close() }
+        val back = draft("no-original", disk)
+        back.restore(this) { null }.join()
+        assertEquals(1, back.images.size)
+        assertTrue(back.images.single().needsProcessing)
+        assertTrue(back.images.single().state is PendingImage.State.Failed)
+        assertFalse(back.ready("A"))
+    }
+
     @Test fun rapidMachineRoundTripWhileTheGlobalSlotIsBlockedCannotReuseOldReadiness() = runBlocking {
         val entered = CompletableDeferred<Unit>(); val release = CompletableDeferred<Unit>()
         val holder = launch { FileUploads.serial { entered.complete(Unit); release.await() } }
