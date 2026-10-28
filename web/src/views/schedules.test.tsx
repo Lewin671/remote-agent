@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+import { create } from "@bufbuild/protobuf";
+import { CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
@@ -821,4 +823,26 @@ it.each(["at", "cutoff"])("rejects a DST gap and saves the first repeated time f
   await input(local, "2027-10-31T02:30");
   await click("完成");
   expect(save.mock.calls.at(-1)![0][field === "at" ? "at" : "until"]).toBe("2027-10-31T00:30:00.000Z");
+});
+
+it("clears the real navigation badge on opening the list and sees notifications arriving while it stays open", async () => {
+  const r = remote([]);
+  let tasks: ScheduleTask[] = [];
+  vi.spyOn(r, "machineCommand").mockImplementation(async () => create(CommandResultSchema, {
+    kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
+  }));
+  await r.refreshSchedules("mac"); // A real empty result, not a loading placeholder.
+  tasks = [task({ runs: [run("new-notice", { notified: true })] })];
+  await r.refreshSchedules("mac");
+  expect(r.scheduleBadge()).toBe(1);
+  await mount(<SchedulesPage remote={r} go={() => {}} />);
+  expect(r.scheduleBadge()).toBe(0);
+  tasks[0].runs!.push(run("while-open", { notified: true }));
+  await act(async () => { await r.refreshSchedules("mac"); });
+  expect(r.scheduleBadge()).toBe(0);
+  await act(async () => root!.unmount()); root = undefined;
+  tasks[0].runs!.push(run("later-notice", { notified: true }));
+  await r.refreshSchedules("mac");
+  r.conn = "offline";
+  expect(r.scheduleBadge()).toBe(1);
 });

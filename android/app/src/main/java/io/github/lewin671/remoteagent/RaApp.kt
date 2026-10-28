@@ -317,6 +317,11 @@ class RaApp : Application() {
                 http,
                 RoomCache(cacheDb.dao(), eventAccess, imageEnvelopes, reclaim = cacheDb::reclaimSpace),
                 securityStorage = vault,
+                scheduleSeen = io.github.lewin671.remoteagent.core.ScheduleSeen(
+                    listOf(acct.server, acct.deviceId),
+                    read = { getSharedPreferences("schedule-seen", MODE_PRIVATE).getString(it, null) },
+                    write = { key, value -> getSharedPreferences("schedule-seen", MODE_PRIVATE).edit().putString(key, value).apply() },
+                ),
                 tokenStorage = object : io.github.lewin671.remoteagent.core.LoginTokenStore by vault {
                     override fun loadLoginToken(account: Account) =
                         if (foreground) vault.loadLoginToken(account) else null

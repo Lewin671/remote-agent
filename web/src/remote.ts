@@ -1,4 +1,4 @@
-import { taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type TaskEntry } from "./schedules";
+import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type TaskEntry } from "./schedules";
 import { Attempt } from "./attempt";
 import { readSecurityOperation } from "./security-operation";
 import { AuthorityClient, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
@@ -489,6 +489,14 @@ export class Remote {
     string,
     { tasks: ScheduleTask[]; revision: bigint; loading: boolean; error: string }
   >();
+  private scheduleSeenState?: ScheduleSeen;
+  private get scheduleSeen() {
+    return this.scheduleSeenState ??= new ScheduleSeen([this.account.server, this.account.deviceId], {
+      getItem: key => localStorage.getItem(key), setItem: (key, value) => localStorage.setItem(key, value),
+    });
+  }
+  scheduleBadge() { return this.scheduleSeen.count(this.taskEntries()); }
+  setSchedulesOpen(open: boolean) { this.scheduleSeen.setOpen(open); this.changed(); }
   private scheduleRequests = new Map<string, string>();
   private scheduleLoading = new Map<string, Promise<void>>();
   private scheduleAgain = new Set<string>();
@@ -546,6 +554,7 @@ export class Remote {
     }
   }
   private forgetSchedules(id: string) {
+    this.scheduleSeen.forget(id);
     this.schedules.delete(id);
     this.scheduleRequests.delete(id);
     this.scheduleAgain.delete(id);
@@ -594,6 +603,7 @@ export class Remote {
             this.removed
           )
             return;
+          this.scheduleSeen.observe(id, tasks);
           this.schedules.set(id, {
             tasks,
             revision,
@@ -1357,7 +1367,10 @@ export class Remote {
     if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed) return;
     if (msg.kind.case === "schedule") {
       const parsed = JSON.parse(new TextDecoder().decode(msg.kind.value.resultJson)) as { tasks: ScheduleTask[] };
-      if (Array.isArray(parsed.tasks)) this.schedules.set(id, { tasks: parsed.tasks, revision: 0n, loading: false, error: "" });
+      if (Array.isArray(parsed.tasks)) {
+        this.scheduleSeen.observe(id, parsed.tasks);
+        this.schedules.set(id, { tasks: parsed.tasks, revision: 0n, loading: false, error: "" });
+      }
     }
   }
   private async keepScheduleSnapshot(id: string, value: Record<string, unknown>) {

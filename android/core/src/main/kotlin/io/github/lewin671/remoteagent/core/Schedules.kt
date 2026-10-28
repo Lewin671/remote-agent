@@ -180,6 +180,39 @@ class ScheduleConflictException : IllegalStateException("任务刚被修改，�
 
 data class ScheduleSnapshot(val revision: Long = -1, val tasks: List<ScheduledTask> = emptyList(), val loading: Boolean = false, val error: String = "", val cached: Boolean = true)
 
+/** Persist only opaque task/run identities, scoped to this relay and client identity. */
+class ScheduleSeen(
+    private val scope: List<String> = emptyList(),
+    private val read: (String) -> String? = { null },
+    private val write: (String, String) -> Unit = { _, _ -> },
+) {
+    private val seen = HashMap<String, Set<String>>()
+    private val loaded = HashMap<String, Set<String>>()
+    private var open = false
+    private fun key(machine: String) = "ra-schedule-seen:" + JsonArray((scope + machine).map(::JsonPrimitive)).toString()
+    private fun token(task: String, run: String) = JsonArray(listOf(task, run).map(::JsonPrimitive)).toString()
+    private fun save(machine: String, ids: Set<String>) {
+        seen[machine] = ids
+        runCatching { write(key(machine), JsonArray(ids.map(::JsonPrimitive)).toString()) }
+    }
+    @Synchronized fun observe(machine: String, tasks: List<ScheduledTask>) {
+        val ids = tasks.flatMap { t -> t.allRuns.filter { it.notified }.map { token(t.id, it.id) } }.toSet()
+        loaded[machine] = ids
+        if (machine !in seen) {
+            val stored = runCatching { read(key(machine))?.let { raw -> Json.parseToJsonElement(raw).jsonArray.map { it.jsonPrimitive.also { p -> require(p.isString) }.content }.toSet() } }.getOrNull()
+            if (stored != null) seen[machine] = stored else save(machine, ids)
+        }
+        if (open) save(machine, ids)
+    }
+    @Synchronized fun setOpen(value: Boolean) {
+        open = value
+        if (value) loaded.forEach { (machine, ids) -> save(machine, ids) }
+    }
+    @Synchronized fun forget(machine: String) { loaded.remove(machine) }
+    @Synchronized fun count(tasks: List<ScheduledTask>) = tasks.count { t -> scheduleVisible(t) &&
+        (taskGroup(t) == TaskGroup.ATTENTION || t.allRuns.any { it.notified && seen[t.machine]?.contains(token(t.id, it.id)) == false }) }
+}
+
 /** Event-driven discovery. The in-flight request captures the advertised revision, so metadata
  * arriving during a read is fetched afterwards. Failed reads wait for a revision/reconnect/retry. */
 class ScheduleRepository(
@@ -188,13 +221,18 @@ class ScheduleRepository(
     private val send: suspend (String, ScheduleRequest) -> ByteArray,
     private val read: suspend (String) -> ByteArray? = { null },
     private val clear: suspend (String) -> Unit = {},
+    private val seen: ScheduleSeen = ScheduleSeen(),
 ) {
     private val _state = MutableStateFlow<Map<String, ScheduleSnapshot>>(emptyMap())
     val state = _state.asStateFlow()
+    private val _badge = MutableStateFlow(0)
+    val badge = _badge.asStateFlow()
+    fun setListOpen(open: Boolean) { seen.setOpen(open); updateBadge() }
+    private fun updateBadge() { _badge.value = seen.count(tasks()) }
     private val worker = scope.coroutineContext.minusKey(Job)
     private val loaded = HashSet<String>()
     private val removed = HashSet<String>()
-    fun forget(id: String) { removed.add(id); loaded.remove(id); jobs.remove(id)?.cancel(); _state.value = _state.value - id }
+    fun forget(id: String) { removed.add(id); loaded.remove(id); seen.forget(id); jobs.remove(id)?.cancel(); _state.value = _state.value - id; updateBadge() }
     fun allow(id: String) { removed.remove(id) }
     private val locks = HashMap<String, Mutex>()
     private val jobs = HashMap<String, Job>()
@@ -202,6 +240,7 @@ class ScheduleRepository(
         remoteState.map { s -> s.machines.mapValues { (_, m) -> Triple(scheduleWritable(s, m.id), m.meta?.scheduleRevision ?: 0L, scheduleSupported(m)) } }.distinctUntilChanged().collect { machines ->
             for (id in _state.value.keys - machines.keys) { forget(id); clear(id) }
             _state.value = _state.value.filterKeys { machines[it]?.third == true }
+            updateBadge()
             for ((id, flags) in machines) if (flags.third && id !in removed) {
                 if (loaded.add(id)) restore(id)
                 if (flags.first && (state.value[id]?.revision != flags.second || state.value[id]?.cached != false)) request(id)
@@ -209,7 +248,7 @@ class ScheduleRepository(
         }
     } }
     fun tasks(s: RemoteState = remoteState.value) = state.value.values.flatMap { it.tasks }.filter { it.machine !in removed && scheduleVisible(it) && scheduleSupported(s.machines[it.machine]) }
-    private fun set(id: String, f: (ScheduleSnapshot) -> ScheduleSnapshot) { _state.value = _state.value + (id to f(_state.value[id] ?: ScheduleSnapshot())) }
+    private fun set(id: String, f: (ScheduleSnapshot) -> ScheduleSnapshot) { _state.value = _state.value + (id to f(_state.value[id] ?: ScheduleSnapshot())); updateBadge() }
     private fun request(id: String) {
         if (jobs[id]?.isActive == true) return
         jobs[id] = scope.launch {
@@ -227,6 +266,7 @@ class ScheduleRepository(
             val obj = Json.parseToJsonElement(raw.decodeToString()).jsonObject
             val tasks = (obj["tasks"] as? JsonArray).orEmpty().map { ScheduledTask(id, it.jsonObject) }
             if (id in removed || !scheduleSupported(remoteState.value.machines[id])) return@withLock
+            seen.observe(id, tasks)
             set(id) { ScheduleSnapshot(revision, tasks, cached = false) }
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) { if (id !in removed) set(id) { it.copy(error = errorText(e)) } }
@@ -238,7 +278,7 @@ class ScheduleRepository(
             val raw = read(id) ?: return
             val obj = Json.parseToJsonElement(raw.decodeToString()).jsonObject
             val tasks = (obj["tasks"] as? JsonArray).orEmpty().map { ScheduledTask(id, it.jsonObject) }
-            if (id !in removed) set(id) { ScheduleSnapshot(tasks = tasks, cached = true) }
+            if (id !in removed) { seen.observe(id, tasks); set(id) { ScheduleSnapshot(tasks = tasks, cached = true) } }
         } catch (e: CancellationException) { throw e
         } catch (_: Exception) { if (id !in removed) set(id) { it.copy(error = "上次的任务列表无法读取，联网后重新读取") } }
     }

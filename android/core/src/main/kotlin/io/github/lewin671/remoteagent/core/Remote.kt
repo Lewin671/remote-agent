@@ -374,6 +374,7 @@ class Remote(
     private val linkGraceMs: Long = 10_000,
     private val securityStorage: DeviceSecurity.Storage? = null,
     tokenStorage: LoginTokenStore? = null,
+    private val scheduleSeen: ScheduleSeen = ScheduleSeen(),
     private val dispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
     private val socketFactory: WebSocket.Factory? = null,
     rpcTransport: com.connectrpc.http.HTTPClientInterface? = null,
@@ -424,6 +425,7 @@ class Remote(
             },
             read = { cachedSchedules(it) },
             clear = { cache?.removeBlob("schedule:$it"); Unit },
+            seen = scheduleSeen,
         )
     }
 

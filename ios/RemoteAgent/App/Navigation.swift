@@ -321,7 +321,7 @@ private struct FirstLevel: View {
             TabBar(
                 [
                     TabBarItem(id: MainTab.home.rawValue, label: "会话", icon: Lucide.messageSquare, badge: waiting),
-                    TabBarItem(id: MainTab.schedules.rawValue, label: "定时", icon: Lucide.clock, badge: context.schedules.tasks.filter { $0.task.group == .attention }.count),
+                    TabBarItem(id: MainTab.schedules.rawValue, label: "定时", icon: Lucide.clock, badge: context.schedules.badgeCount),
                     TabBarItem(id: MainTab.settings.rawValue, label: "设置", icon: Lucide.settings),
                 ],
                 selected: Binding(get: { nav.tab.rawValue }, set: { nav.tab = MainTab(rawValue: $0) ?? .home }))

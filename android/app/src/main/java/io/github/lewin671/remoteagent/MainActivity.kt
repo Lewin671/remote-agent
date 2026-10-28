@@ -275,8 +275,7 @@ class MainActivity : ComponentActivity() {
                     .statusOf(it, state.machines[it.machineId])
                     .tone == Tone.WAIT
             }
-        val snapshots by remote.schedules.state.collectAsState()
-        val attention = snapshots.values.flatMap { it.tasks }.count { io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[it.machine]) && io.github.lewin671.remoteagent.core.taskGroup(it) == io.github.lewin671.remoteagent.core.TaskGroup.ATTENTION }
+        val attention by remote.schedules.badge.collectAsState()
         val select: (String) -> Unit = { r ->
             if (r == "home") {
                 if (!nav.popBackStack("home", inclusive = false)) nav.navigate("home")

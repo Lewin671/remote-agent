@@ -123,6 +123,10 @@ export function ScheduleRow({
 }
 export function SchedulesPage({ remote, go }: { remote: Remote; go: Go }) {
   useRemote(remote);
+  useEffect(() => {
+    remote.setSchedulesOpen(true);
+    return () => remote.setSchedulesOpen(false);
+  }, [remote]);
   const now = useNow(60_000);
   const entries = remote.taskEntries();
   const groups = groupTasks(entries);

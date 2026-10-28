@@ -145,6 +145,24 @@ class SchedulesTest {
     }
     private fun online(revision: Long = 1, connected: Boolean = true, capable: Boolean = true) = RemoteState(conn = if(connected) ConnState.ONLINE else ConnState.OFFLINE, machines = mapOf("computer" to MachineView("computer", connected, 0,
         MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setScheduleRevision(revision).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(capable)).build())))
+    @Test fun backgroundListsDriveUnreadBadgeAndOpeningTheListMarksLoadedResultsSeen() = runTest {
+        val remote = MutableStateFlow(online())
+        var list = emptyList<ScheduledTask>()
+        val repo = ScheduleRepository(backgroundScope, remote, send = { _, _ ->
+            buildJsonObject { put("tasks", JsonArray(list.map { it.json })) }.toString().toByteArray()
+        })
+        runCurrent(); assertEquals(0, repo.badge.value)
+        list = listOf(task(runs = "[${run("new", 12, true)}]"))
+        remote.value = online(2); runCurrent(); assertEquals(1, repo.badge.value)
+        remote.value = online(2, false); runCurrent(); assertEquals(1, repo.badge.value)
+        repo.setListOpen(true); assertEquals(0, repo.badge.value)
+        remote.value = online(3); list = listOf(task(runs = "[${run("arriving", 13, true)}]"))
+        runCurrent(); assertEquals(0, repo.badge.value)
+        repo.setListOpen(false)
+        list = listOf(task(runs = "[${run("later", 14, true)}]"))
+        remote.value = online(4); runCurrent(); assertEquals(1, repo.badge.value)
+        remote.value = RemoteState(); runCurrent(); assertEquals(0, repo.badge.value)
+    }
     @Test fun repositorySubscribesWithoutPollingAndRefetchesRevisionArrivingDuringRead() = runTest {
         val remote = MutableStateFlow(online())
         var calls = 0

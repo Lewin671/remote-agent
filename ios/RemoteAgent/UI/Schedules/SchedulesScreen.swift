@@ -44,6 +44,8 @@ struct SchedulesScreen: View {
                 }
             }
         }
+        .onAppear { store.setListOpen(true) }
+        .onDisappear { store.setListOpen(false) }
     }
 }
 struct ScheduleListRow: View {

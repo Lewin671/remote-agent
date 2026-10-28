@@ -23,6 +23,10 @@ fun SchedulesScreen() {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
     val snapshots by remote.schedules.state.collectAsState()
+    DisposableEffect(remote) {
+        remote.schedules.setListOpen(true)
+        onDispose { remote.schedules.setListOpen(false) }
+    }
     val tasks = remote.schedules.tasks(state)
     val targets = tasks.filter { it.target.text("type") == "resume_session" }.map { it.target.text("session") }.distinct()
     LaunchedEffect(targets, state.conn) {

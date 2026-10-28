@@ -27,7 +27,7 @@ import {
 } from "./views/Settings";
 import { PairCodePage, SecurityPage } from "./views/Security";
 import { ScheduleCreate, ScheduleDetail, SchedulesPage } from "./views/Schedules";
-import { taskGroup, taskRoute } from "./schedules";
+import { taskRoute } from "./schedules";
 import { Clock, MessageSquare, Settings as SettingsIcon } from "./icons";
 
 // Joining and pairing bring the QR code and curve code; fetched when used.
@@ -332,7 +332,7 @@ function Main({ remote }: { remote: Remote }) {
       </div>
     );
   const tabs = kind === "" || kind === "settings" && !arg || kind === "tasks" && !arg;
-  const taskTodo = remote.taskEntries().filter(e => taskGroup(e.task) === "需要你看一下").length;
+  const taskTodo = remote.scheduleBadge();
   const todo = todoList(remote).length;
   return (
     <div className={"phone" + (kind === "settings" ? " gray" : "")}>

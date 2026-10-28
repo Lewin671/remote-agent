@@ -8,6 +8,67 @@ import UIKit
 @testable import RemoteAgent
 
 @MainActor @Suite struct ScheduleStoreTests {
+    @Test func unreadBadgeBaselinesHistoryUnionsAttentionAndClearsOnlyAtTheList() async {
+        let store = ScheduleStore()
+        var current = task()
+        current.runs = [ScheduleRun(id: "old", startedAt: "", status: "completed", notified: true)]
+        store.configure(.init(cached: { _ in nil }, list: { _ in [current] }))
+        store.reconcile(state()); await eventually("initial list loaded") { store.loading.isEmpty && !store.tasks.isEmpty }
+        #expect(store.badgeCount == 0)
+        current.active = ScheduleRun(id: "new", startedAt: "", status: "running")
+        await store.refresh("m"); #expect(store.badgeCount == 0)
+        current.active?.notified = true
+        await store.refresh("m"); #expect(store.badgeCount == 1)
+        current.status = "failed"
+        var other = task("other"); other.status = "uncertain"
+        store.configure(.init(cached: { _ in nil }, list: { _ in [current, other] }))
+        await store.refresh("m"); #expect(store.badgeCount == 2) // The notified failed task counts once.
+        store.setListOpen(true); #expect(store.badgeCount == 2) // Attention remains after notifications are seen.
+        current.status = "scheduled"; other.status = "scheduled"
+        await store.refresh("m"); #expect(store.badgeCount == 0)
+        current.runs?.append(ScheduleRun(id: "while-open", startedAt: "", status: "completed", notified: true))
+        await store.refresh("m"); #expect(store.badgeCount == 0)
+        store.setListOpen(false)
+        current.runs?.append(ScheduleRun(id: "later", startedAt: "", status: "completed", notified: true))
+        await store.refresh("m"); #expect(store.badgeCount == 1)
+        current.status = "cancelled"; current.reason = "user_cancelled"
+        await store.refresh("m"); #expect(store.badgeCount == 0)
+        store.configure(.init(cached: { _ in nil }, list: { _ in [] }))
+        await store.refresh("m"); #expect(store.badgeCount == 0)
+    }
+    @Test func unreadBadgePersistsAcrossLaunchAndIsolatesRelayAccountAndMachine() async throws {
+        let suite = "schedule-badge-test-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        func make(_ scope: [String], _ list: [ScheduleTask]) async -> ScheduleStore {
+            let store = ScheduleStore(defaults: defaults, scope: scope)
+            store.configure(.init(cached: { _ in nil }, list: { _ in list }))
+            store.reconcile(state())
+            await eventually("read settled") { store.loading.isEmpty }
+            return store
+        }
+        let scope = ["relay-a", "client-a"]
+        _ = await make(scope, []) // A real empty list establishes a baseline.
+        var current = task()
+        current.runs = [ScheduleRun(id: "r", startedAt: "", status: "completed", notified: true)]
+        let reload = await make(scope, [current])
+        #expect(reload.badgeCount == 1)
+        for scope in [["relay-b", "client-a"], ["relay-a", "client-b"]] {
+            let other = await make(scope, [current]); #expect(other.badgeCount == 0)
+        }
+        var otherState = state()
+        otherState.currentMachines = ["other-machine"]
+        let removed = otherState.machines.removeValue(forKey: "m")
+        let machine = try #require(removed)
+        otherState.machines["other-machine"] = MachineView(id: "other-machine", online: true, lastSeenMs: 0, meta: machine.meta)
+        let other = ScheduleStore(defaults: defaults, scope: scope)
+        other.configure(.init(cached: { _ in [current] }, list: { _ in [current] }))
+        other.reconcile(otherState); await eventually("other machine loaded") { other.loading.isEmpty }
+        #expect(other.badgeCount == 0)
+        reload.setListOpen(true)
+        let seen = await make(scope, [current]); #expect(seen.badgeCount == 0)
+    }
+
     func task(_ id: String = "t") -> ScheduleTask {
         ScheduleTask(id: id, spec: ScheduleSpec(title: "检查 PR", message: "检查新回复，有变化时通知我", trigger: ScheduleTrigger(type: "interval"), target: ScheduleTarget(type: "new_session")))
     }

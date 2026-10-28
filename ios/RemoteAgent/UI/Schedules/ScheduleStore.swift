@@ -11,6 +11,36 @@ final class ScheduleStore {
         var list: (String) async throws -> [ScheduleTask]
         var resolve: (String) async -> Void = { _ in }
     }
+    @ObservationIgnored private let defaults: UserDefaults?
+    @ObservationIgnored private let scope: [String]
+    @ObservationIgnored private var listOpen = false
+    @ObservationIgnored private var loaded: [String: Set<String>] = [:]
+    private var seen: [String: Set<String>] = [:]
+    init(defaults: UserDefaults? = nil, scope: [String] = []) { self.defaults = defaults; self.scope = scope }
+    private func key(_ machine: String) -> String { "ra-schedule-seen:" + String(data: try! JSONEncoder().encode(scope + [machine]), encoding: .utf8)! }
+    private func token(_ task: String, _ run: String) -> String { String(data: try! JSONEncoder().encode([task, run]), encoding: .utf8)! }
+    private func saveSeen(_ machine: String, _ ids: Set<String>) {
+        seen[machine] = ids; defaults?.set(Array(ids), forKey: key(machine))
+    }
+    private func observe(_ machine: String, _ list: [ScheduleTask]) {
+        let ids = Set(list.flatMap { t in t.history.filter(\.notified).map { token(t.id, $0.id) } })
+        loaded[machine] = ids
+        if seen[machine] == nil {
+            if let stored = defaults?.stringArray(forKey: key(machine)) { seen[machine] = Set(stored) }
+            else { saveSeen(machine, ids) }
+        }
+        if listOpen { saveSeen(machine, ids) }
+    }
+    func setListOpen(_ open: Bool) {
+        listOpen = open
+        if open { for (machine, ids) in loaded { saveSeen(machine, ids) } }
+    }
+    var badgeCount: Int {
+        tasks.filter { entry in
+            let t = entry.task
+            return t.visible && (t.group == .attention || t.history.contains { $0.notified && seen[entry.machineID]?.contains(token(t.id, $0.id)) == false })
+        }.count
+    }
     private(set) var tasks: [MachineSchedule] = []
     private(set) var errors: [String: String] = [:]
     private(set) var loading: Set<String> = []
@@ -45,6 +75,7 @@ final class ScheduleStore {
         restored.formIntersection(supported)
         for id in revisions.keys where !supported.contains(id) { revisions[id] = nil }
         for id in resolutions.keys where !supported.contains(id) { for job in resolutions[id]!.values { job.cancel() }; resolutions[id] = nil }
+        loaded = loaded.filter { supported.contains($0.key) }
         tasks.removeAll { !supported.contains($0.machineID) }
         for id in errors.keys where !supported.contains(id) { errors[id] = nil }
         for id in jobs.keys where !supported.contains(id) { jobs[id]?.cancel(); jobs[id] = nil; readIDs[id] = nil; loading.remove(id) }
@@ -100,6 +131,7 @@ final class ScheduleStore {
     }
     private func replace(_ id: String, _ list: [ScheduleTask]) {
         guard latest.currentMachines.contains(id), latest.machines[id]?.meta?.capabilities.scheduledTasks == true else { return }
+        observe(id, list)
         tasks.removeAll { $0.machineID == id }
         tasks += list.filter(\.visible).map { MachineSchedule(machineID: id, task: $0) }
     }
@@ -164,6 +196,6 @@ final class ScheduleMutation {
     }
 }
 extension AccountContext {
-    var schedules: ScheduleStore { memory.value { ScheduleStore() } }
+    var schedules: ScheduleStore { memory.value { ScheduleStore(defaults: preferenceDefaults, scope: [account.server, account.deviceId]) } }
     var scheduleMutations: ScheduleMutations { memory.value { ScheduleMutations() } }
 }

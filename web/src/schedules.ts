@@ -558,3 +558,38 @@ export function localInput(at: string, timezone: string): string {
     .format(new Date(at))
     .replace(" ", "T");
 }
+
+/** Only opaque run identities are persisted; task content stays in the encrypted cache. */
+export class ScheduleSeen {
+  private seen = new Map<string, Set<string>>();
+  private loaded = new Map<string, Set<string>>();
+  private open = false;
+  constructor(private scope: string[], private storage: Pick<Storage, "getItem" | "setItem">) {}
+  private key(machine: string) { return "ra-schedule-seen:" + JSON.stringify([...this.scope, machine]); }
+  private save(machine: string, ids: Set<string>) {
+    this.seen.set(machine, ids);
+    try { this.storage.setItem(this.key(machine), JSON.stringify([...ids])); } catch { /* Keep working in memory when storage is unavailable. */ }
+  }
+  observe(machine: string, tasks: ScheduleTask[]) {
+    const ids = new Set(tasks.flatMap(t => allRuns(t).filter(r => r.notified).map(r => JSON.stringify([t.id, r.id]))));
+    this.loaded.set(machine, ids);
+    if (!this.seen.has(machine)) {
+      try {
+        const stored: unknown = JSON.parse(this.storage.getItem(this.key(machine)) ?? "null");
+        if (Array.isArray(stored) && stored.every(x => typeof x === "string")) this.seen.set(machine, new Set(stored));
+      } catch { /* A missing or unreadable baseline starts with known notifications seen. */ }
+      if (!this.seen.has(machine)) this.save(machine, ids);
+    }
+    if (this.open) this.save(machine, ids);
+  }
+  setOpen(open: boolean) {
+    this.open = open;
+    if (open) for (const [machine, ids] of this.loaded) this.save(machine, ids);
+  }
+  forget(machine: string) { this.loaded.delete(machine); }
+  count(entries: TaskEntry[]) {
+    return entries.filter(({ machineId, task }) => taskVisible(task) && (
+      taskGroup(task) === "需要你看一下" || allRuns(task).some(r => r.notified && this.seen.has(machineId) && !this.seen.get(machineId)!.has(JSON.stringify([task.id, r.id])))
+    )).length;
+  }
+}
