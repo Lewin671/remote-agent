@@ -40,7 +40,9 @@ public func withoutFileLines(_ text: String, files: [PBSentFile]) -> String {
     var hidden = Set<Int>()
     for (i, line) in lines.enumerated() {
         let path: String
-        if line.hasPrefix("File: @"), line.hasSuffix(" (file)") {
+        if line.hasPrefix("File: @\""), line.hasSuffix("\" (file)") {
+            path = "@" + String(line.dropFirst(8).dropLast(8))
+        } else if line.hasPrefix("File: @"), line.hasSuffix(" (file)") {
             path = String(line.dropFirst(6).dropLast(7))
         } else if line.hasPrefix("File: ") {
             path = String(line.dropFirst(6))

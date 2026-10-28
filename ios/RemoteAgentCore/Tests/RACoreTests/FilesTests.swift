@@ -108,6 +108,7 @@ private actor FileReceiver: UploadChannel {
         #expect(withoutFileLines(f.path, files: [f]).isEmpty)
         #expect(withoutFileLines("看看\n\nFile: \(f.path)", files: [f]) == "看看")
         #expect(withoutFileLines("File: @\(f.path) (file)", files: [f]).isEmpty)
+        #expect(withoutFileLines("看看\n\nFile: @\"\(f.path)\" (file)", files: [f]) == "看看")
         #expect(withoutFileLines("File: @\(f.path) (file) more", files: [f]) == "File: @\(f.path) (file) more")
         let ordinary = "提到 \(f.path)\n\(f.path)  \n/elsewhere/file\n\n尾巴"
         #expect(withoutFileLines(ordinary, files: [f]) == ordinary)
