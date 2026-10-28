@@ -1342,3 +1342,13 @@ pnpm --dir web test --reporter=json --outputFile=/tmp/ra-file-upload-feedback-2-
 ```
 
 其中 N 依次为 1 到 10，没有 maxWorkers 或 testTimeout 覆盖。另跑 `pnpm --dir web typecheck`、`pnpm --dir web build`、`go test ./...` 与 `go vet ./...`，全部通过。受控失败日志和各轮 JSON 报告位于临时目录，未把测试日志原文提交到仓库。
+
+### 附件状态转换与草稿失效复审（2026-10-28）
+
+本轮在 `wt/file-upload` 本地临时目录运行自动测试；没有改 CLI 正文、粘贴和确认规则，没有重复真实 CLI 或浏览器界面端到端验收，也没有修改 Android/iOS 的上传实现。状态与恢复约束维护在 [session-files.md](session-files.md#上传记录与字节的状态转换)。
+
+- 修复前，扩展既有退回测试到未启动会话 release：文件 / 图片 × mkdir、rename、意图记录 fsync、pending fsync、session fsync × 启动 / GC，新增 20 个场景全部失败；同一测试的 untake 场景原本通过。修复后两种入口共 40 个场景通过。
+- `TestUploadTransitionFaultMatrix` 覆盖 Begin、Put、Complete、take、untake、release、Returning 恢复、正向 reconcile、Abort、过期、会话退出，以及图片取消和 LRU。每个步骤前注入 I/O 失败，或在真实操作完成后 panic 跳过调用方撤回；再用全新 uploads 实例分别执行启动或 GC 恢复，共 560 个场景。断言字节保留、拒绝的附件可重用、删除可重试，以及 rename 前已有持久 owner、清除 owner 前两侧目录均已同步、unlink 原始副本前完成记录已经提交。这是进程中断边界测试，不模拟磁盘断电后的文件系统回滚。
+- 另测未启动会话在返回意图、两侧目录同步、清除 owner 失败时保留 Starting 元数据并重试；会话清理不能删除尚未返回的图片或文件；图片完成记录原子替换后 fsync 失败时保留目标与 `.part`，启动 / GC 重同步后再移除 `.part`。
+- 网页用两个 Tray：第二个草稿阻塞全局文件上传槽位，分别触发第一个的 A → B → A、重试、过期、恢复、移除；在同一调用栈和 abort 回调里检查 ready 为 false、旧 ID 已清除，释放槽位后只接收新 generation 的完成结果。新增 5 个场景在旧实现全部失败，修复后通过；无本机副本的图片恢复也立即清除历史 ID。
+- 网页 `pnpm typecheck`、默认并发的 `pnpm test`（90 文件、1235 测试）、`pnpm build` 通过；`go vet ./...` 通过。`go test ./...` 通过（daemon 包 186.103 秒）。
