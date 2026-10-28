@@ -731,6 +731,23 @@ data class Accepted(
     val files: List<io.github.lewin671.remoteagent.proto.SentFile> = emptyList(),
 )
 
+/** Sparse status updates retain payload and mode; known accepted text/origin outrank held previews. */
+private fun retainInputDetails(st: InputState, before: InputState?): InputState = st.toBuilder().apply {
+    if (before != null) {
+        if (st.mode == SendMode.SEND_MODE_UNSPECIFIED) mode = before.mode
+        if (st.text.isEmpty()) text = before.text
+        if (st.filesCount == 0) addAllFiles(before.filesList)
+        if (st.imageIdsCount == 0) addAllImageIds(before.imageIdsList)
+    }
+}.build()
+
+private fun retainAccepted(prior: Accepted, observed: Accepted): Accepted = prior.copy(
+    origin = prior.origin ?: observed.origin,
+    stage = observed.stage.takeIf { it != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED } ?: prior.stage,
+    files = prior.files.ifEmpty { observed.files },
+    imageIds = prior.imageIds.ifEmpty { observed.imageIds },
+)
+
 data class Compaction(val before: Int?, val after: Int? = null)
 
 class Derived(
@@ -853,29 +870,13 @@ internal class EventReducer(agent: Agent) {
                     val late = d.inputs[st.requestId] == InputStatus.INPUT_STATUS_UNCONFIRMED
                     d.inputs[st.requestId] = st.status
                     val before = d.inputDetails[st.requestId]
-                    d.inputDetails[st.requestId] =
-                        st.toBuilder()
-                            .apply {
-                                if (before != null && st.mode == SendMode.SEND_MODE_UNSPECIFIED)
-                                    mode = before.mode
-                                if (before != null && st.text.isEmpty()) text = before.text
-                                if (before != null && st.filesCount == 0) addAllFiles(before.filesList)
-                            }
-                            .build()
+                    d.inputDetails[st.requestId] = retainInputDetails(st, before)
                     val prev = d.accepted[st.requestId]
-                    if (
-                        prev == null &&
-                            st.status == InputStatus.INPUT_STATUS_QUEUED &&
-                            (st.text.isNotEmpty() || st.imageIdsCount > 0 || st.filesCount > 0)
-                    ) {
-                        d.accepted[st.requestId] =
-                            Accepted(st.text, st.imageIdsList, e.originOrNull(), st.stage, st.filesList)
-                    } else if (
-                        prev != null &&
-                            st.stage !=
-                                io.github.lewin671.remoteagent.proto.InputStage
-                                    .INPUT_STAGE_UNSPECIFIED
-                    ) {
+                    val carriesInput = st.text.isNotEmpty() || st.imageIdsCount > 0 || st.filesCount > 0
+                    if ((st.status == InputStatus.INPUT_STATUS_QUEUED || st.status == InputStatus.INPUT_STATUS_HELD_BY_CLI) && carriesInput) {
+                        val observed = Accepted(st.text, st.imageIdsList, e.originOrNull(), st.stage, st.filesList)
+                        d.accepted[st.requestId] = if (prev == null) observed else retainAccepted(prev, observed)
+                    } else if (prev != null && st.stage != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED) {
                         d.accepted[st.requestId] = prev.copy(stage = st.stage)
                     }
                     if (
@@ -1323,7 +1324,7 @@ fun pendingInputs(d: Derived): List<PendingInput> =
             st.paused,
             st.status == InputStatus.INPUT_STATUS_HELD_BY_CLI,
             accepted?.origin,
-            accepted?.files ?: st.filesList,
+            accepted?.files?.takeIf { it.isNotEmpty() } ?: st.filesList,
         )
     }
 
@@ -1635,8 +1636,11 @@ fun currentActions(
             details.remove(id)
         }
         inputs.putAll(observed.inputs)
-        details.putAll(observed.inputDetails)
-        accepted.putAll(observed.accepted)
+        for ((id, input) in observed.inputDetails) details[id] = retainInputDetails(input, details[id])
+        for ((id, input) in observed.accepted) {
+            val prior = accepted[id]
+            accepted[id] = if (prior != null && observed.inputs[id] == InputStatus.INPUT_STATUS_HELD_BY_CLI) retainAccepted(prior, input) else input
+        }
     }
     return Derived(
         approvals = approvals,
