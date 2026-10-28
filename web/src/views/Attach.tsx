@@ -144,7 +144,7 @@ function mb(n: number): string {
 /** The chosen images above the text: each with its upload, 原图 for this
  * message, and how many of how many. */
 export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
-  if (tray.items.length === 0 && !tray.note) return null;
+  if (tray.items.length === 0 && !tray.note) return <>{note}</>;
   const images = tray.images();
   const files = tray.files();
   const failed = images.filter((i) => i.state === "failed");

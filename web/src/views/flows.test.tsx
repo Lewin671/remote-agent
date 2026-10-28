@@ -3197,6 +3197,18 @@ it("requires reselecting a new-session first file when its local source has been
   expect(upload).not.toHaveBeenCalled();
 });
 
+it("shows a folder-only rejection in an empty new-session tray", async () => {
+  const r = demo();
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+  const input = host.querySelector("textarea")!;
+  const folder = new File([], "folder");
+  const drop = new Event("drop", { bubbles: true, cancelable: true });
+  Object.defineProperty(drop, "dataTransfer", { value: { files: [folder], items: [{ kind: "file", webkitGetAsEntry: () => ({ isDirectory: true }), getAsFile: () => folder }] } });
+  await act(async () => input.dispatchEvent(drop));
+  expect(host.textContent).toContain("不能直接发送文件夹，请先压缩成 ZIP 再选择文件");
+  expect(host.querySelectorAll(".file-chip, .tthumb")).toHaveLength(0);
+});
+
 it("rejects restoring a failed file message before changing draft or dismissing it after downgrade", async () => {
   const r = demo(); const s = r.sessions.get("s-idle")!;
   const machine = r.machines.get(s.machineId)!; machine.meta!.capabilities!.fileUpload = true;
