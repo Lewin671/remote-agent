@@ -620,7 +620,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     val act = rememberAction()
     // Whether a session can be started with the draft as it is: ↑ is drawn by it, and 重试 after a
     // failure is held to it too.
-    val canStart = !images.restoring && config != null && settled && !act.running && machineOnline && startable(text, images.images, config.machineId)
+    val canStart = !images.restoring && !images.readingFiles && fileDraftBlocked(images, machine?.let { state.machines[it] }) == null && config != null && settled && !act.running && machineOnline && startable(text, images.images, config.machineId)
     fun launch(cfg: NewConfig, mode: ApprovalMode) {
         // While an earlier start's outcome is unknown, only it is sent
         // again, as it was: the daemon then answers from its log instead
@@ -637,7 +637,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
                     val ids = start.imageIds
                     remote.prepare(cfg.machineId, "", remote.cmd {
                         createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(start.prompt).setAgent(cfg.agent)
-                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).setStandardContext(cfg.agent == Agent.AGENT_CLAUDE && cfg.standardContext).addAllImageIds(ids).build()
+                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).setStandardContext(cfg.agent == Agent.AGENT_CLAUDE && cfg.standardContext).addAllImageIds(ids).addAllFileIds(start.fileIds).build()
                     })
                 }
                 remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
@@ -715,7 +715,8 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         text, { text = it }, "描述任务…",
         canSend = canStart,
         onSend = ::start,
-        onPlus = pick, plusEnabled = !images.restoring && blocked == null,
+        onFile = rememberDocumentPicker(images, remote, machine),
+        onPlus = pick, plusEnabled = !images.restoring && (blocked == null || io.github.lewin671.remoteagent.core.filesSupported(machine?.let { state.machines[it] }) && machineOnline),
         sendLabel = "开始", focusRequester = fr,
         top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
     )
@@ -1155,12 +1156,15 @@ object Starts {
         /** The upload IDs frozen when the request is prepared; draft images can be uploaded again. */
         var imageIds: List<String> = emptyList()
             private set
+        var fileIds: List<String> = emptyList()
+            private set
         private var preparedImages: List<Processed?> = emptyList()
         /** The images the prepared request names, kept for a retry of the same request. */
         var taken: List<PendingImage> = emptyList()
             set(value) {
                 field = value
-                imageIds = value.mapNotNull { it.imageId }
+                imageIds = value.filterNot { it.isFile }.mapNotNull { it.imageId }
+                fileIds = value.filter { it.isFile }.mapNotNull { it.fileId }
                 preparedImages = value.map { it.processed }
             }
 

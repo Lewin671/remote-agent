@@ -90,6 +90,7 @@ sealed interface ChatItem {
         val from: String? = null,
         val images: List<io.github.lewin671.remoteagent.proto.ImageRef> = emptyList(),
         val seq: Long = 0,
+        val files: List<io.github.lewin671.remoteagent.proto.SentFile> = emptyList(),
     ) : ChatItem
 
     /** Images the agent made, as a card of their own. */
@@ -327,7 +328,7 @@ fun buildChat(
             Event.KindCase.USER_MESSAGE -> {
                 flush()
                 val imgs = e.userMessage.imagesList
-                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, imgs), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), imgs, e.seq)
+                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(io.github.lewin671.remoteagent.core.withoutFileLines(e.userMessage.text, e.userMessage.filesList), imgs), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), imgs, e.seq, e.userMessage.filesList)
             }
             Event.KindCase.SCHEDULED_NOTIFICATION -> {
                 flush()
@@ -545,7 +546,10 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.User -> MeBubble(
             item.text.takeIf { it.isNotBlank() || item.images.isEmpty() },
             caption = item.from,
-            top = if (item.images.isNotEmpty()) ({ ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp)) }) else null,
+            top = if (item.images.isNotEmpty() || item.files.isNotEmpty()) ({ Column {
+                if (item.images.isNotEmpty()) ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp))
+                FileChips(item.files)
+            } }) else null,
         )
         is ChatItem.Agent -> Markdown(item.text, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), bleed = 14.dp)
         is ChatItem.AsyncQuestion -> SelectionContainer {
@@ -689,7 +693,7 @@ class ChatProjection {
             val added = tail.mapNotNull { e ->
                 val key = "e${e.seq}"
                 when (e.kindCase) {
-                    Event.KindCase.USER_MESSAGE -> ChatItem.User(key, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, e.userMessage.imagesList), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), e.userMessage.imagesList, e.seq)
+                    Event.KindCase.USER_MESSAGE -> ChatItem.User(key, io.github.lewin671.remoteagent.core.imageText(io.github.lewin671.remoteagent.core.withoutFileLines(e.userMessage.text, e.userMessage.filesList), e.userMessage.imagesList), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), e.userMessage.imagesList, e.seq, e.userMessage.filesList)
                     Event.KindCase.AGENT_MESSAGE -> e.agentMessage.text.takeIf { it.isNotBlank() }?.let { ChatItem.Agent(key, it) }
                     Event.KindCase.REASONING -> e.reasoning.text.takeIf { it.isNotBlank() }?.let { ChatItem.Thought(key, it) }
                     else -> null

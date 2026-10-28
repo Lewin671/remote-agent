@@ -36,12 +36,13 @@ interface SealedFiles {
 }
 
 /**
- * One image picked for a message. It is processed on the phone, then sent
- * to the machine the message goes to; changing machines sends it again.
- * The processed bytes stay (encrypted on disk) until the CLI has the
- * message, so nothing has to be picked again.
+ * One picked attachment in the existing image queue. Pictures keep processed
+ * bytes encrypted on disk; documents keep only their URI, name and size.
+ * Both follow the message's machine and stay recoverable until confirmation.
  */
-class PendingImage(val id: String, val uri: String?) {
+class PendingImage(val id: String, val uri: String?, val fileName: String? = null, val fileBytes: Long = 0) {
+    val isFile: Boolean get() = fileName != null
+    var fileId: String? = null
     sealed interface State {
         data object Processing : State
         data class Uploading(val progress: Float) : State
@@ -52,7 +53,7 @@ class PendingImage(val id: String, val uri: String?) {
     var processed by mutableStateOf<Processed?>(null)
     /** Old bytes may stay for recovery, but cannot be uploaded for the new mode. */
     internal var stale by mutableStateOf(false)
-    val needsProcessing: Boolean get() = processed == null || stale
+    val needsProcessing: Boolean get() = !isFile && (processed == null || stale)
     var thumb by mutableStateOf<ImageBitmap?>(null)
     var state by mutableStateOf<State>(State.Processing)
 
@@ -65,7 +66,7 @@ class PendingImage(val id: String, val uri: String?) {
     internal var job: Job? = null
 
     fun readyFor(machine: String, now: Long = System.currentTimeMillis()) =
-        !needsProcessing && state == State.Ready && machineId == machine && imageId != null && expiresMs > now
+        !needsProcessing && state == State.Ready && machineId == machine && (if (isFile) fileId != null else imageId != null) && expiresMs > now
 
     internal fun uploaded(result: io.github.lewin671.remoteagent.core.UploadedImage) {
         imageId = result.imageId
@@ -78,7 +79,9 @@ class PendingImage(val id: String, val uri: String?) {
         job?.cancel()
         processed = null
         thumb = null
-        uri?.let { u -> runCatching { RaApp.instance.contentResolver.releasePersistableUriPermission(Uri.parse(u), Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
+        // A SAF grant is shared by every draft that picked this URI. Keep document grants
+        // until account cleanup, rather than revoking another pending message's source.
+        if (!isFile) uri?.let { u -> runCatching { RaApp.instance.contentResolver.releasePersistableUriPermission(Uri.parse(u), Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
     }
 }
 
@@ -111,6 +114,14 @@ private const val ORDER = "order"
 /** Writes images under [folder]. Which of the folder's images belong to it, and in what order, is [saveOrder]'s to say. */
 internal fun saveImages(files: SealedFiles, folder: String, images: List<PendingImage>, original: Boolean) {
     for (img in images) {
+        if (img.isFile) {
+            val out = java.io.ByteArrayOutputStream()
+            java.io.DataOutputStream(out).use {
+                it.writeUTF(img.uri.orEmpty()); it.writeUTF(img.fileName!!); it.writeLong(img.fileBytes)
+            }
+            files.put(folder, img.id + ".file", out.toByteArray())
+            continue
+        }
         val p = img.processed ?: continue
         files.put(folder, img.id + ".img", p.bytes)
         val meta = listOf(p.format.number, p.width, p.height, if (original) 1 else 0, img.uri.orEmpty(), p.note).joinToString("\n")
@@ -133,6 +144,15 @@ internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -
     val original = order.firstOrNull() == "1"
     val out = mutableListOf<PendingImage>()
     for (id in order.drop(1).filter { it.isNotEmpty() }) {
+        val file = files.get(folder, "$id.file")
+        if (file != null) {
+            val img = java.io.DataInputStream(java.io.ByteArrayInputStream(file)).use {
+                PendingImage(id, it.readUTF(), it.readUTF(), it.readLong())
+            }
+            img.state = PendingImage.State.Failed("需要重新传到电脑；源文件无法读取时请重新选择文件")
+            out += img
+            continue
+        }
         val meta = files.get(folder, "$id.meta")?.toString(Charsets.UTF_8)?.split("\n") ?: continue
         val bytes = files.get(folder, "$id.img") ?: continue
         if (meta.size < 6) continue
@@ -160,7 +180,12 @@ class ImageDraft(
     /** What they run in; without one (tests) they run in place. */
     private val scope: kotlinx.coroutines.CoroutineScope? = RaApp.scopeOrNull(),
 ) {
+    internal val accountToken = AccountMemory.token
     val images = mutableStateListOf<PendingImage>()
+    val pictures: List<PendingImage> get() = images.filterNot { it.isFile }
+    val documents: List<PendingImage> get() = images.filter { it.isFile }
+    var readingFiles by mutableStateOf(false)
+        internal set
     var restoring by mutableStateOf(false)
         private set
     private var restoreJob: Job? = null
@@ -173,7 +198,7 @@ class ImageDraft(
 
     fun add(context: Context, picked: List<Uri>, max: Int, remote: Remote, machine: () -> String?) {
         if (restoring) return
-        val (taken, left) = takePicked(images.size, picked, max)
+        val (taken, left) = takePicked(pictures.size, picked, max)
         notice = if (left > 0) "一条消息最多 $max 张，多选的 $left 张没有加入" else ""
         for (uri in taken) {
             // Kept readable for "原图" later; the picker grant may not last.
@@ -215,12 +240,12 @@ class ImageDraft(
     private fun saveNow() {
         runCatching {
             val now = images.toList()
-            val fresh = synchronized(marks) { now.filter { it.id !in saved && it.id !in stale && it.processed != null }.map { it to (turns[it.id] ?: 0) } }
+            val fresh = synchronized(marks) { now.filter { it.id !in saved && it.id !in stale && (it.processed != null || it.isFile) }.map { it to (turns[it.id] ?: 0) } }
             saveImages(files, key, fresh.map { it.first }, original)
             saveOrder(files, key, now, original)
             synchronized(marks) { for ((img, turn) in fresh) if ((turns[img.id] ?: 0) == turn) saved += img.id }
         }.onFailure {
-            notice = "这张图未保存到手机：${errorText(it)}。当前仍可发送，关闭应用后可能丢失"
+            notice = "附件未保存到手机：${errorText(it)}。当前仍可发送，关闭应用后可能丢失"
             android.util.Log.w("remote-agent", "pending images not kept: ${it.javaClass.simpleName}")
         }
         scope?.launch { settle() } ?: settle()
@@ -241,7 +266,7 @@ class ImageDraft(
             ids.all { id ->
                 // One without bytes has nothing a copy elsewhere could hold either.
                 val img = images.firstOrNull { it.id == id }
-                img?.processed == null || synchronized(marks) { id in saved }
+                (img == null || !img.isFile && img.processed == null) || synchronized(marks) { id in saved }
             }
         }
         waiting.removeAll(ready.toSet())
@@ -296,6 +321,7 @@ class ImageDraft(
      * An upload to another machine is dropped: the latest target wins.
      */
     fun upload(remote: Remote, img: PendingImage, machineId: String) {
+        if (img.isFile) { uploadDocument(remote, img, machineId); return }
         val p = img.processed ?: return
         if (!needsUpload(img, machineId)) return
         img.job?.cancel()
@@ -331,7 +357,12 @@ class ImageDraft(
 
     /** Makes sure every image is on [machineId], e.g. after the new-session card changed machines. */
     fun sendAllTo(remote: Remote, machineId: String) {
-        for (img in images) if (!img.needsProcessing && !img.readyFor(machineId) && img.state !is PendingImage.State.Processing) upload(remote, img, machineId)
+        val machine = remote.state.value.machines[machineId]
+        for (img in images) {
+            if (img.isFile && fileDraftBlocked(this, machine) != null) continue
+            if (!img.isFile && capabilities(machine)?.imageUpload != true) continue
+            if (!img.needsProcessing && !img.readyFor(machineId) && img.state !is PendingImage.State.Processing) upload(remote, img, machineId)
+        }
     }
 
     fun retry(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
@@ -343,7 +374,7 @@ class ImageDraft(
     fun setOriginal(context: Context, v: Boolean, remote: Remote, machine: () -> String?) {
         if (restoring || v == original) return
         original = v
-        for (img in images) if (img.uri != null) process(context, img, remote, machine)
+        for (img in pictures) if (img.uri != null) process(context, img, remote, machine)
         persistOrder()
     }
 
@@ -362,13 +393,16 @@ class ImageDraft(
             runCatching {
                 files.remove(key, img.id + ".img")
                 files.remove(key, img.id + ".meta")
+                files.remove(key, img.id + ".file")
             }
         }
     }
 
-    fun ready(machineId: String?) = !restoring && machineId != null && images.isNotEmpty() && images.all { it.readyFor(machineId) }
+    fun ready(machineId: String?) = !restoring && !readingFiles && machineId != null && images.isNotEmpty() && images.all { it.readyFor(machineId) }
 
-    fun ids(machineId: String): List<String> = images.mapNotNull { if (it.readyFor(machineId)) it.imageId else null }
+    fun ids(machineId: String): List<String> = pictures.mapNotNull { if (it.readyFor(machineId)) it.imageId else null }
+
+    fun fileIds(machineId: String): List<String> = documents.mapNotNull { if (it.readyFor(machineId)) it.fileId else null }
 
     val totalBytes: Long get() = images.sumOf { it.processed?.bytes?.size?.toLong() ?: 0L }
 
@@ -380,7 +414,7 @@ class ImageDraft(
     fun detach(taken: List<PendingImage>) {
         images.removeAll(taken.toSet())
         for (img in taken) forget(img)
-        if (images.isEmpty()) original = false
+        if (pictures.isEmpty()) original = false
         persistOrder()
         settle()
     }
@@ -390,18 +424,24 @@ class ImageDraft(
      * is dropped: when they do not fit with what is here already, nothing
      * is put back and [notice] says why. Returns whether they went in.
      */
-    fun attach(back: List<PendingImage>, max: Int, wereOriginal: Boolean = original): Boolean {
+    fun attach(back: List<PendingImage>, max: Int, wereOriginal: Boolean = original, fileMax: Int = io.github.lewin671.remoteagent.core.MAX_FILES): Boolean {
         if (restoring) {
             notice = "正在恢复待发图片，请稍后再放回"
             return false
         }
-        if (images.size + back.size > max) {
-            notice = "输入框里已有 ${images.size} 张图，放回这 ${back.size} 张会超过 $max 张。先移除一些再放回"
+        if (documents.size + back.count { it.isFile } > fileMax) {
+            notice = "放回后会超过 $fileMax 个文件，先移除一些再放回"
             return false
         }
-        if (images.isEmpty()) original = wereOriginal
+        if (pictures.size + back.count { !it.isFile } > max) {
+            notice = "输入框里已有 ${pictures.size} 张图，放回这 ${back.count { !it.isFile }} 张会超过 $max 张。先移除一些再放回"
+            return false
+        }
+        if (pictures.isEmpty()) original = wereOriginal
         for (img in back) {
+            img.job?.cancel()
             img.imageId = null
+            img.fileId = null
             img.machineId = null
             img.state = PendingImage.State.Failed("需要重新传到电脑")
             images += img

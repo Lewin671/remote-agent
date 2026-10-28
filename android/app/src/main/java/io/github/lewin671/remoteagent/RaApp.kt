@@ -443,6 +443,9 @@ class RaApp : Application() {
                             { eventAccess.clear() },
                             { imageEnvelopes.clear() },
                             { pendingStore.clearAll() },
+                            { contentResolver.persistedUriPermissions.forEach { permission ->
+                                runCatching { contentResolver.releasePersistableUriPermission(permission.uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+                            } },
                             { prefs.clear() },
                         )
                     }

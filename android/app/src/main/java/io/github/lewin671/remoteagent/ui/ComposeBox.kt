@@ -69,6 +69,7 @@ fun ComposeBox(
     onPlus: () -> Unit,
     modifier: Modifier = Modifier,
     plusEnabled: Boolean = true,
+    onFile: (() -> Unit)? = null,
     sendLabel: String = "发送",
     focusRequester: FocusRequester? = null,
     onFocus: (Boolean) -> Unit = {},
@@ -79,6 +80,7 @@ fun ComposeBox(
     hasDraft: Boolean = text.isNotBlank(),
 ) {
     val p = pal
+    var attachMenu by remember { mutableStateOf(false) }
     var sendMenu by remember { mutableStateOf(false) }
     val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
     Box(modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 12.dp)) {
@@ -87,11 +89,15 @@ fun ComposeBox(
             Row(verticalAlignment = Alignment.Bottom) {
                 Box(
                     Modifier.size(44.dp).alpha(if (plusEnabled) 1f else .4f)
-                        .clickable(enabled = plusEnabled, role = Role.Button, onClickLabel = "添加图片") { onPlus() }
-                        .semantics { contentDescription = "添加图片" },
+                        .clickable(enabled = plusEnabled, role = Role.Button, onClickLabel = if (onFile != null) "添加附件" else "添加图片") { if (onFile != null) attachMenu = true else onPlus() }
+                        .semantics { contentDescription = if (onFile != null) "添加附件" else "添加图片" },
                     contentAlignment = Alignment.Center,
                 ) {
                     Ic(Lucide.Plus, 22.dp, p.muted)
+                    androidx.compose.material3.DropdownMenu(expanded = attachMenu && onFile != null, onDismissRequest = { attachMenu = false }) {
+                        androidx.compose.material3.DropdownMenuItem(text = { Text("图片") }, onClick = { attachMenu = false; onPlus() })
+                        androidx.compose.material3.DropdownMenuItem(text = { Text("文件") }, onClick = { attachMenu = false; onFile?.invoke() })
+                    }
                 }
                 BasicTextField(
                     text, onText,

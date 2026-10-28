@@ -55,6 +55,7 @@ object Lucide {
     val Ellipsis = lucide("ellipsis", circle(12, 12, 1), circle(19, 12, 1), circle(5, 12, 1))
 
     /** Adds to the message, or to the end of a list. */
+    val File = lucide("file", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z", "M14 2v6h6")
     val Plus = lucide("plus", "M5 12h14", "M12 5v14")
 
     /** A new session. */

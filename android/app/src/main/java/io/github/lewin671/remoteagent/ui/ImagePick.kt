@@ -53,7 +53,7 @@ import io.github.lewin671.remoteagent.core.Remote
 @Composable
 fun rememberImagePicker(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?, max: Int): () -> Unit {
     val context = LocalContext.current
-    val room = (max - draft.images.size).coerceAtLeast(0)
+    val room = (max - draft.pictures.size).coerceAtLeast(0)
     val many = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxOf(2, room))) { uris ->
         if (uris.isNotEmpty()) draft.add(context, uris, max, remote) { machineId }
     }
@@ -101,13 +101,15 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         Text("正在恢复待发图片…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.meta, color = p.muted)
         return
     }
-    if (draft.images.isEmpty()) {
-        if (notice != null) Text(notice, Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.meta, color = p.orangeInk)
+    FileStrip(draft, remote, machineId)
+    if (draft.pictures.isEmpty()) {
+        val line = notice ?: draft.notice.takeIf { it.isNotEmpty() }
+        if (line != null) Text(line, Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.meta, color = p.orangeInk)
         return
     }
     Column(Modifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, top = 2.dp)) {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (img in draft.images) {
+            for (img in draft.pictures) {
                 Box(Modifier.size(56.dp).clip(Radii.SM).background(p.soft).border(1.dp, Color(0x1A000000), Radii.SM)) {
                     img.thumb?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                     when (val st = img.state) {
@@ -139,10 +141,10 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
                 Text(" 原图" + if (draft.original) " · 共 ${"%.1f".format(draft.totalBytes / 1024.0 / 1024.0)} MB" else "", style = T.meta, color = p.fg2)
             }
             Spacer(Modifier.weight(1f))
-            Text("${draft.images.size} / $max", style = T.meta, color = p.muted)
+            Text("${draft.pictures.size} / $max", style = T.meta, color = p.muted)
         }
-        val failed = draft.images.mapNotNull { (it.state as? PendingImage.State.Failed)?.error }.firstOrNull()
-        val notes = draft.images.mapNotNull { it.processed?.note?.takeIf { n -> n.isNotEmpty() } }.distinct()
+        val failed = draft.pictures.mapNotNull { (it.state as? PendingImage.State.Failed)?.error }.firstOrNull()
+        val notes = draft.pictures.mapNotNull { it.processed?.note?.takeIf { n -> n.isNotEmpty() } }.distinct()
         val line = notice ?: draft.notice.takeIf { it.isNotEmpty() } ?: failed?.let { "有图没能传到电脑：$it，点按重试或移除" }
         if (line != null) Text(line, style = T.meta, color = p.orangeInk, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
         if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.meta, color = p.muted, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
@@ -152,9 +154,12 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
 /** Upload again when an unused image expires, including after the page returns from the background. */
 @Composable
 internal fun RefreshDraftUploads(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?) {
+    val machine = remote.state.value.machines[machineId]
+    val fileBlocked = fileDraftBlocked(draft, machine)
     val deadlines = draft.images.map { it.expiresMs }
-    LaunchedEffect(draft, machineId, blocked, deadlines, draft.images.size, draft.restoring) {
-        if (draft.restoring || machineId == null || blocked != null) return@LaunchedEffect
+    LaunchedEffect(draft, machineId, blocked, fileBlocked, deadlines, draft.images.size, draft.restoring) {
+        if (draft.restoring || machineId == null || machine?.online != true || remote.state.value.conn != io.github.lewin671.remoteagent.core.ConnState.ONLINE) return@LaunchedEffect
+        if (blocked != null && !io.github.lewin671.remoteagent.core.filesSupported(machine)) return@LaunchedEffect
         draft.sendAllTo(remote, machineId)
         val next = draft.images.filter { it.readyFor(machineId) }.minOfOrNull { it.expiresMs }
         if (next != null) {

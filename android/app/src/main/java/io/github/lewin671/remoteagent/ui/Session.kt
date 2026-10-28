@@ -712,7 +712,8 @@ private fun PendingBubble(
                 .clickable { expanded = !expanded }
                 .padding(10.dp)
         ) {
-            Text(
+            FileChips(pending.files)
+            if (pending.text.isNotEmpty() || pending.files.isEmpty()) Text(
                 pending.text.ifEmpty { "（图片）" },
                 style = T.body,
                 color = p.fg,
@@ -835,12 +836,13 @@ private fun OutgoingView(
             }
         }
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
-        if (o.images.isNotEmpty())
+        FileChips(o.images.filter { it.isFile }.map { io.github.lewin671.remoteagent.proto.SentFile.newBuilder().setFileId(it.fileId.orEmpty()).setName(it.fileName!!).setSizeBytes(it.fileBytes).build() })
+        if (o.images.any { !it.isFile })
             Row(
                 Modifier.align(Alignment.End).padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                for (img in o.images.take(4)) img.thumb?.let {
+                for (img in o.images.filterNot { it.isFile }.take(4)) img.thumb?.let {
                     androidx.compose.foundation.Image(
                         it,
                         null,
@@ -1007,7 +1009,7 @@ internal fun Composer(
     val pick = rememberImagePicker(images, remote, s.machineId, blocked, maxImg)
     fun send(mode: SendMode = SendMode.SEND_MODE_STEER) {
         val msg = text.trim()
-        if (images.restoring || (msg.isEmpty() && images.images.isEmpty())) return
+        if (images.restoring || images.readingFiles || fileDraftBlocked(images, machine) != null || (msg.isEmpty() && images.images.isEmpty())) return
         images.sendAllTo(remote, s.machineId)
         // Every image must be on the computer first: never a message with some of them.
         if (!images.ready(s.machineId) && images.images.isNotEmpty()) return
@@ -1028,6 +1030,7 @@ internal fun Composer(
             picked,
             images.original,
             mode,
+            fileIds = images.fileIds(s.machineId),
         ) { kept ->
             kept
                 .onSuccess {
@@ -1050,14 +1053,15 @@ internal fun Composer(
                 else -> "消息"
             },
         canSend =
-            !images.restoring &&
+            !images.restoring && !images.readingFiles && fileDraftBlocked(images, machine) == null &&
                 !keeping &&
                 online &&
                 (text.isNotBlank() || images.images.isNotEmpty()) &&
                 (images.images.isEmpty() || images.ready(s.machineId)),
         onSend = { send() },
         onPlus = pick,
-        plusEnabled = !images.restoring && blocked == null,
+        onFile = rememberDocumentPicker(images, remote, s.machineId),
+        plusEnabled = !images.restoring && (blocked == null || io.github.lewin671.remoteagent.core.filesSupported(machine) && online && machine?.online == true),
         onQueue = if (running) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt =
             if (running)
@@ -1297,7 +1301,7 @@ internal fun putBack(
     val d = ImageDrafts.forSession(sid)
     val s = remote.state.value.sessions[sid]
     val max = maxImages(s?.let { remote.state.value.machines[it.machineId] })
-    if (o.images.isNotEmpty() && !d.attach(o.images, max, o.original)) return false
+    if (o.images.isNotEmpty() && !d.attach(o.images, max, o.original, io.github.lewin671.remoteagent.core.maxFiles(s?.let { remote.state.value.machines[it.machineId] }))) return false
     val cur = Outbox.draft(sid).value
     Outbox.draft(sid).value = if (cur.isBlank()) o.text else cur.trimEnd() + "\n" + o.text
     Outbox.takeBack(sid, o, d)

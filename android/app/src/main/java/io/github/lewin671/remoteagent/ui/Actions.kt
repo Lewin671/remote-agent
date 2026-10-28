@@ -67,6 +67,7 @@ class Outgoing(
     /** They were sent as originals. */
     val original: Boolean = false,
     val mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER,
+    val fileIds: List<String> = emptyList(),
 ) {
     enum class State { SENDING, SENT, FAILED, UNKNOWN }
 
@@ -85,15 +86,15 @@ class Outgoing(
         error = ""
         missingImages = false
         try {
-            send(SendRequest.newBuilder().setText(text).setRequestId(requestId).addAllImageIds(imageIds).setMode(mode).build())
+            send(SendRequest.newBuilder().setText(text).setRequestId(requestId).addAllImageIds(imageIds).addAllFileIds(fileIds).setMode(mode).build())
             state = State.SENT
         } catch (e: Exception) {
             val ce = e as? CommandException
             val unknown = ce?.unknown == true || (wasUnknown && ce?.fromDaemon != true)
             state = if (unknown) State.UNKNOWN else State.FAILED
             missingImages = !unknown && ce?.fromDaemon == true && ce.code == "not_found" &&
-                imageIds.isNotEmpty() && ce.message.orEmpty().contains("is not on this machine; upload it again")
-            error = if (missingImages) "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留" else errorText(e)
+                (imageIds.isNotEmpty() || fileIds.isNotEmpty()) && ce.message.orEmpty().contains("is not on this machine; upload it again")
+            error = if (missingImages) { if (fileIds.isNotEmpty()) "附件不在电脑上。放回输入框后会重新上传，文字和附件都会保留" else "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留" } else errorText(e)
         } finally {
             delivering = false
         }
@@ -188,6 +189,7 @@ class OutgoingRecords(private val files: SealedFiles) {
             files.put(f, "text", o.text.toByteArray())
             files.put(f, "ids", o.imageIds.joinToString("\n").toByteArray())
             files.put(f, "mode", o.mode.name.toByteArray())
+            if (o.fileIds.isNotEmpty()) files.put(f, "file-ids", o.fileIds.joinToString("\n").toByteArray())
             val line = "$sid\t${o.requestId}"
             val idx = index()
             if (line !in idx) writeIndex(idx + line)
@@ -208,7 +210,8 @@ class OutgoingRecords(private val files: SealedFiles) {
             val (images, original) = loadImages(files, f, thumb)
             val mode = files.get(f, "mode")?.toString(Charsets.UTF_8)?.let { runCatching { io.github.lewin671.remoteagent.proto.SendMode.valueOf(it) }.getOrNull() }
                 ?: io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER
-            Outgoing(req, text, ids, images, original, mode).apply {
+            val fileIds = files.get(f, "file-ids")?.toString(Charsets.UTF_8)?.split("\n")?.filter { it.isNotEmpty() }.orEmpty()
+            Outgoing(req, text, ids, images, original, mode, fileIds).apply {
                 // From a run that ended: whether it reached the computer is not known.
                 state = Outgoing.State.UNKNOWN
                 error = "App 重启过，不确定这条有没有送到"
@@ -300,11 +303,12 @@ object Outbox {
         mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER,
         store: ((String, Outgoing, Boolean) -> Unit)? = null,
         discard: ((String, String) -> Unit)? = null,
+        fileIds: List<String> = emptyList(),
         onKept: (Result<Unit>) -> Unit,
     ) {
         if (keeping(sid)) return
         keepingNow[sid] = true
-        val o = Outgoing(newRequestId(), text, imageIds, images, original, mode)
+        val o = Outgoing(newRequestId(), text, imageIds, images, original, mode, fileIds)
         val account = AccountMemory.token
         val ownedRecords = if (store == null) records else null
         val keep = store ?: { s: String, message: Outgoing, orig: Boolean -> ownedRecords!!.save(s, message, orig) }
@@ -316,11 +320,11 @@ object Outbox {
                     keep(sid, o, original)
                     // Saving large originals can outlast the upload. Nothing has been sent yet:
                     // discard this record and leave the draft to upload again with a fresh ID.
-                    if (machine == null || images.size != imageIds.size || images.indices.any { i ->
-                        !images[i].readyFor(machine) || images[i].imageId != imageIds[i]
-                    }) {
+                    if (machine == null || images.any { !it.readyFor(machine) } ||
+                        images.filterNot { it.isFile }.mapNotNull { it.imageId } != imageIds ||
+                        images.filter { it.isFile }.mapNotNull { it.fileId } != fileIds) {
                         drop(sid, o.requestId)
-                        throw IllegalStateException("图片需要重新传到电脑，请上传完成后再发送")
+                        throw IllegalStateException("附件需要重新传到电脑，请上传完成后再发送")
                     }
                 }
             }
