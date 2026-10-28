@@ -563,19 +563,7 @@ func (u *uploads) untake(imgs []queuedImage, sessionID, request string) {
 	defer u.mu.Unlock()
 	for _, im := range imgs {
 		t := u.byImage(im.ID)
-		if t == nil || t.Session != sessionID {
-			continue
-		}
-		delete(t.Refs, request)
-		if !im.NewClaim || t.Exposed || len(t.Refs) > 0 {
-			_ = u.save(t)
-			continue
-		}
-		if os.Rename(im.Path, u.pending(filepath.Base(im.Path))) == nil {
-			t.Session = ""
-			t.Refs = nil
-			_ = u.save(t)
-		}
+		u.untakeClaim(t, im.NewClaim, sessionID, request)
 	}
 }
 

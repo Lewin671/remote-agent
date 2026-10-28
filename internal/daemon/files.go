@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -370,21 +371,29 @@ func (u *uploads) untakeFiles(files []queuedFile, session, request string) {
 	defer u.mu.Unlock()
 	for _, f := range files {
 		t := u.byFile(f.ID)
-		if t == nil || t.Session != session {
-			continue
-		}
-		delete(t.Refs, request)
-		if !f.NewClaim || len(t.Refs) > 0 || t.Exposed {
-			_ = u.save(t)
-			continue
-		}
-		dst := u.pending(t.relativeName())
-		src := t.sessionPath(u)
-		if u.mkdirUploadDir(filepath.Dir(dst)) == nil && os.Rename(src, dst) == nil {
-			_ = u.syncUploadDirs(filepath.Dir(dst))
-			_ = os.Remove(filepath.Dir(src))
-			t.Session = ""
-			_ = u.save(t)
+		u.untakeClaim(t, f.NewClaim, session, request)
+	}
+}
+
+// Callers hold u.mu. Only this call's newly claimed, unexposed upload can
+// return to pending. Persist that intent before mkdir/rename, so a failure
+// leaves recovery able to distinguish rejection from an accepted attachment.
+func (u *uploads) untakeClaim(t *transfer, newClaim bool, session, request string) {
+	if t == nil || t.Session != session {
+		return
+	}
+	delete(t.Refs, request)
+	returning := newClaim && len(t.Refs) == 0 && !t.Exposed
+	if returning {
+		t.Returning = true
+	}
+	if err := u.save(t); err != nil {
+		slog.Error("save rejected upload return", "err", errClass(err))
+		return
+	}
+	if returning {
+		if err := u.returnPending(t); err != nil {
+			slog.Error("return rejected upload", "err", errClass(err))
 		}
 	}
 }
