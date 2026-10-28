@@ -1397,3 +1397,46 @@ pnpm --dir web test --reporter=json --outputFile=/tmp/ra-file-upload-feedback-2-
 - 转发测试检查实际传输调用次数，确认当前 file_upload 不是 true 时不发送 file_ids，也不把负载改成纯文字；已授权请求按首次负载检查，调用方不能删附件来绕过。额外覆盖封装期间刷新能力、自动网络重试前刷新能力，以及文件能力关闭时纯文字／图片请求仍可转发。未知结果保留原请求身份和附件，不能因本地拒绝改称未执行。
 - 恢复拒绝发生在追加草稿、移除失败记录或重新上传之前；直接 Tray 文件恢复也同步拒绝并显示更新提示。纯文件夹 drop 在空新会话托盘显示原有 ZIP 提示，不创建附件条目；空 note 不增加托盘容器。
 - 网页 `pnpm typecheck`、默认并发 `pnpm test`（90 文件、1252 测试）、`pnpm build` 及 `go test ./...` 全部通过。
+## 文件附件：Android Phase B（2026-10-28）
+
+范围为 Android 手写客户端。基于 Phase A 的 `4f9149fc`，产品版本仍为 0.46.3，协议 11；没有发布、推送、部署，没有操作日常 daemon、日常账户或真手机。原生保留文件源 URI 和加密元数据的取舍见 [android-client.md](android-client.md#文件附件)。
+
+### 自动检查
+
+JDK 17、Android SDK 36；从 `android/` 执行，使用独立 `.fileuploadcheck` 包，推送关闭：
+
+```sh
+./gradlew --no-daemon --no-configuration-cache --max-workers=1 \
+  :core:test :terminal:testReleaseUnitTest :app:testDebugUnitTest \
+  :app:assembleDebug -PdevBuild=true -PappIdSuffix=.fileuploadcheck
+./gradlew --no-daemon --no-configuration-cache --max-workers=1 \
+  :app:assembleDebugAndroidTest -PdevBuild=true -PappIdSuffix=.fileuploadcheck
+```
+
+- core 419、app 354、terminal 7 个单元测试全部通过。文件测试覆盖 capability、电脑声明的限制、空文件、图片与文件独立计数、保留扩展名和 Unicode 的中间省略、只隐藏事件证明的完整引用行、元数据草稿与待确认消息恢复、到期/换机器/放回重传、保存期间过期阻止发送、不确定结果保留原始文件 ID，以及分块结果未知后的重试。
+- 100 MiB 的生成式 InputStream 测试通过：源只打开两次（增量哈希、顺序上传），读取缓冲有界，接收端核对完整 SHA-256；测试没有创建整份 100 MiB 字节数组。普通文件状态恢复只写入小型 `.file` 元数据，不出现图片 `.img` 副本。
+- 最新 Phase A 的 `781fa9b1` 修改了 CLI 引用格式；完成前复核 `wt/file-upload` 的设计和网页 helper（含 `143ccf1b` 删除废弃形式），Android 跟随其带引号的 Claude `File: @"…" (file)` 规则。更新后单独重跑 `:core:test --tests io.github.lewin671.remoteagent.core.FilesTest`（7 个）以及完整 app 单元测试和 APK 构建，通过。没有把 Phase A 的 Go/web 改动带入 Android 分支。
+- `:app:lintVitalRelease` 通过。
+- `FilesLayoutTest` 在 API 36 模拟器运行 3 个测试，通过：320 dp、200% 字号、亮暗主题下的长文件名、上传/失败条目、移除按钮至少 44 dp、附件菜单，以及无文件能力时直接选图。初次检查发现移除按钮可见宽度为 40 dp，显式设为 44 dp 后复验通过。
+- 资源并发较高时，两次完整运行分别出现已有 RemoteTest 的重连等待超时和本地测试 server 启动超时；暂停模拟器、串行 Gradle 后，419 个 core 测试全部通过。失败夹具遗留的本地 server 已停止。
+
+### 模拟器 → 真实 Codex
+
+使用 `Medium_Phone_API_36.0`，真实 Codex 0.165.0 / GPT-6.1-Sol。当前 checkout 构建 server 和 daemon，独立 `RA_DEV_DIR`、临时账户/数据库/状态目录/tmux socket；端口由 dev-env 自动分配，使用对应的 `adb reverse`。通过 Android 界面创建管理账户、展示配对码并批准测试电脑；电脑用 `dev-env.sh join` 加入。项目中的空白会话由隔离 CLI 创建，仅用于让项目出现在 App 列表；测试文件由 adb 写入模拟器的独立临时目录。这些属于测试准备，不算客户端发送操作。
+
+下面的选择、输入与提交均通过模拟器真实界面的 adb 输入事件完成，没有用调试 API 替代上传或 Send/CreateSession：
+
+| 操作 | 结果 |
+|---|---|
+| 项目的新建会话输入框，＋ → 文件 → 系统文档选择器选 `note.txt`，附带文字后点开始 | 新会话和共享等待条目显示 17 B 文件条目；Codex 读取文件并返回 `ANDROID_TXT_7J4P`；已发送消息保留文字和条目，隐藏注入的路径行 |
+| 会话输入框，＋ → 文件，在系统选择器多选 `bundle.zip` / `data.csv`，不输入文字 | 两文件分别显示 135 B / 31 B；请求经 server → daemon → 原生 tmux Codex；Agent 使用工具读取 CSV 和 ZIP 内文件，返回 `ANDROID_CSV_9K2M`、`ANDROID_ZIP_5R8N`；历史只显示两条文件条目，顺序和选择器返回顺序相同 |
+| 发送 CSV/ZIP 前强制结束 App，再打开原会话 | 草稿恢复 URI、文件名和大小，无需重选，重新上传后可发送；确认电脑上三个会话文件的 SHA-256 均与测试源一致 |
+| 再选 TXT，删除模拟器上的源文件，强制结束并重开 App | 恢复条目显示「上传失败」「无法读取源文件，请移除后重新选择文件」，保留重试/移除入口，发送禁用；从界面移除后草稿清空 |
+
+进程强制结束和删除源文件是故障注入；电脑侧的目录/hash 核对和 tmux 捕获是调试观察。没有用它们注入测试消息、伪造 CLI 回复或代替 Android 发送。会话采用项目继承的完全放行模式，未覆盖询问模式的读取审批。
+
+界面测试与端到端结束后，卸载独立测试 App/测试包，删除模拟器测试文件和 adb reverse，停止模拟器；dev-env stop 清理临时 daemon、server、tmux、数据库和账户资料。
+
+### 未覆盖
+
+端到端使用 Android 分支继承的 Phase A daemon，尚未整合 Phase A 后续提交的引用与持久性修复；新版带引号引用的隐藏用纯函数测试覆盖，整合后仍需联合复跑。未测 Claude Code、图片按文件发送的真实 CLI、图片与文件混发、云文档提供器、真手机、六个 100 MiB 文件的设备内存峰值、真实网络断连、自然过期、跨 daemon 重启和两台真实机器切换。对应逻辑的单元测试不能替代这些流程；待验证范围见 [plan.md](plan.md#待确认)。

@@ -17,7 +17,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | Android App | 当前界面稿的手机画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI（到 v8）；v7、v8 的画面用示例数据对照过；定时任务见下行，其余 v9 以后的改动主要过自动测试 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；下方「Android 的小缺口」 |
 | iOS App | 当前界面稿的手机画面；原生终端；从 App 发图和看大图。没有推送，也没有在通知里审批（[ios-client · 还不能做的](ios-client.md#还不能做的)） | 模拟器上的真实 CLI，操作由调试信号触发而不是手指（[记录](acceptance-notes.md#11-ios)）；各画面用三组示例数据看过亮色、暗色和特大字号 | 没有签名身份，没装过真机；所有手势、VoiceOver 朗读、硬件键盘、iPad 横屏都没验证；下方「iOS」一组待确认 |
 | 客户端状态推导 | 三端共同规则与共享事件向量（[契约](architecture.md#客户端状态推导的共同规则)） | 网页真实 CLI（独立无头 Chrome 手机宽/宽屏）；原生自动测试（[记录](acceptance-notes.md#客户端状态推导共享向量)） | 当前 checkpoint 已过自动验收；聊天历史分段读取 |
-| 客户端文件附件（Phase A） | 协议、daemon、网页：原样上传和文件条目 | 自动测试与隔离真实 CLI，见 [验收记录](acceptance-notes.md#文件附件phase-a2026-10-28) | Android / iOS 手写发送与文件条目；真机选择、拖放和分享流程 |
+| 客户端文件附件 | 协议、daemon、网页，以及 Android 的系统选择、流式上传、文件条目与草稿恢复 | Phase A 见 [验收记录](acceptance-notes.md#文件附件phase-a2026-10-28)；Android 的自动测试、模拟器直接操作与真实 Codex 见 [Phase B](acceptance-notes.md#文件附件androidphase-b2026-10-28) | iOS 接入；Android 与 Phase A 最新 daemon 整合、Claude Code、真机和大文件实测 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
 | 定时任务 | daemon 调度、本地 CLI/MCP、加密机器指令；网页、Android、iOS 的独立入口、新建/编辑、运行历史、对话定时条与静默轮折叠、加密离线快照和修订订阅；当前整合分支尚未发布 | 三端本地真实 Claude Code 链路：网页与 Android 为界面操作，iOS 为 DEBUG 动作；自动检查与各端证据边界见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24) | 真机界面及推送送达、iPad、多台真实电脑、实际睡眠/DST 和客户端 Codex 路线，见「待确认 › 定时任务」 |
@@ -28,7 +28,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 按顺序做；第一项是当前的主要工作。
 
-1. **Android / iOS 文件附件**。按 [session-files.md](session-files.md) 接入 capability、原样传输、共享队列、文件条目、草稿恢复和限制提示；使用同一分支的生成协议，分别跑真实 CLI 的三组文件场景。
+1. **iOS 文件附件与三端整合**。iOS 按 [session-files.md](session-files.md) 接入文件流程；Android 已完成接入和隔离 Codex 验收，见 [记录](acceptance-notes.md#文件附件androidphase-b2026-10-28)。整合 Phase A 最新 daemon 后，补原生 Claude Code、图片按文件发送和各端大文件的真实链路。
 2. **任意客户端管理的联合验收**。按 [architecture §9](architecture.md#9-账户设备和密钥) 和 [AGENTS.md](../AGENTS.md)，在独立 `RA_DEV_DIR` 从无账户环境开始，用网页新建账户、加入真实电脑并经 server → daemon → tmux 操作真实 CLI。验收三端六条有向交接、设备移除/档案重接/删除、创建及恢复断点、72 小时租约与 48 小时否决；网页手机宽/宽屏及亮暗主题、iOS/iPad 与通知/锁屏分别核实，未验证部分保留限制。通过后再统一发布任意客户端管理功能，协议仍为 10。
 3. **真机验收**。在自己的 Android 手机和 iPhone（PWA）上走一遍，清单在「待确认 › 真机」。验收标准：清单里每一项有结论，问题修掉或记进本文
 4. **Codex 0.159.2 的命令结果**。按新格式解析退出码或失败，再把 0.159.2 列为已验证版本。验收标准：失败的命令在客户端显示 ✕ 和退出码，`remote-agent doctor` 通过
@@ -55,7 +55,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 - 会话用过的文件在会话结束前不可回收，可能填满默认 1 GiB 附件配额；目前接受这一限制，之后要不要增加显式管理和容量策略未定（[设计](session-files.md#保留配额与恢复)）。
 
-- Phase A 的网页真实系统选择器/移动拖放、网络断连、跨真实 daemon 重启恢复和六个 100 MiB 文件的浏览器内存峰值尚未实测，覆盖边界见 [验收记录](acceptance-notes.md#文件附件phase-a2026-10-28)；Android / iOS 文件发送是下一阶段。
+- Phase A 的网页真实系统选择器/移动拖放、网络断连、跨真实 daemon 重启恢复和六个 100 MiB 文件的浏览器内存峰值尚未实测，覆盖边界见 [验收记录](acceptance-notes.md#文件附件phase-a2026-10-28)。Android 已完成发送接入；尚未覆盖真机、云文档提供器、100 MiB 真机内存、网络断连、跨 daemon 重启、真实机器切换和最新版 Phase A 的联合验收；iOS 接入待整合。
 
 **真机**
 
