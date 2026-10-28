@@ -1360,3 +1360,13 @@ pnpm --dir web test --reporter=json --outputFile=/tmp/ra-file-upload-feedback-2-
 - `TestHashReloadRejectsDeletionTombstone` 用 channel 暂停锁外哈希，在 receiving 或另一 Complete 已完成时执行 Abort，分别让 unlink / 目录同步失败并留下持久 Deleting，再恢复哈希；8 个场景验证返回 NotFound、不返回文件 ID、不改写 tombstone，且启动 / GC 能继续删除。
 - 审查全部上传锁释放、重新加载和延后使用记录的位置：图片完成始终持锁；引用恢复的启动索引与历史扫描发生在锁外，因此锁内必须重读记录。`TestRestoreRefsReloadsSnapshotBeforeWriting` 覆盖文件 / 图片快照读取之后开始删除、返回或记录已移除的 6 个场景，确认旧快照不能清除意图或重建记录。既有多会话索引测试同步改为检查缺失记录不重建。
 - 新增 14 个场景在修复前全部失败，修复后通过；`go test ./...`、`go vet ./...` 均通过。
+
+### 启动重附着附件保护与 Held 快照复审（2026-10-28）
+
+本轮使用本地临时目录、tmux 列表／命令替身和网页 DOM 测试；没有新增真实 CLI 或浏览器操作验收，没有修改 Android/iOS 客户端。设计规则见 [session-files.md](session-files.md)。
+
+- `TestStartupPreservesUploadsUntilSessionLivenessIsRestored` 依照实际启动顺序先 reconcile 再恢复会话，覆盖文件／图片 × tmux 仍存活、已消失、列表失败共 6 个场景，旧代码全部失败。修复后，重附着保留字节和 owner，列表失败不清理，确认退出后 GC 才删除；既有上传目录已消失的退出记录清理回归仍通过。
+- 启动顺序审查：reconcile 只补完已持久化的 transfer 意图；未启动会话 release 先核对 tmux；引用恢复只按队列／Exposed 证据清理未暴露图片；退出／孤儿清理和图片原件 LRU 在全部会话恢复之后启动。会话读取期间的图片缓存 trim 只处理可重新生成的 display / preview，不删除上传原件。
+- `TestLiveUploadProtectionDoesNotDependOnReadableHistory` 覆盖文件／图片在历史打不开或元数据修正写入失败时的 4 个边界，修复前全部失败。现在先持久化活会话的 Exited 修正再加载历史；持久化失败则启动失败，不能启动 GC。
+- 网页在没有 QUEUED 历史的 HELD_BY_CLI LiveSnapshot 上验证 Codex／Claude、纯文件／文字与图片混合，共 4 个回归，旧代码全部缺少文件条目。另一个回归验证已有 QUEUED 原文和来源不被 Held 快照的截断文字覆盖，只有实时模式更新且历史投影不被修改；该回归在仅接收 Held 元数据、尚未保护已有内容的实现中失败。
+- `go test ./...`、`go vet ./...`、网页 `pnpm typecheck`、默认并发 `pnpm test`（90 文件、1240 测试）及 `pnpm build` 全部通过。
