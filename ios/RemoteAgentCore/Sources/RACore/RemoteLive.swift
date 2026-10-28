@@ -91,8 +91,16 @@ public func currentActions(
         }
     }
     for id in observed.inputs.keys { result.inputs[id] = observed.inputs[id] }
-    for id in observed.inputDetails.keys { result.inputDetails[id] = observed.inputDetails[id] }
-    for (id, accepted) in observed.accepted { result.accepted[id] = accepted }
+    for (id, detail) in observed.inputDetails.entries {
+        result.inputDetails[id] = retainingInputMetadata(detail, from: history.inputDetails[id])
+        if var accepted = result.accepted[id], detail.stage != .unspecified {
+            accepted.stage = detail.stage
+            result.accepted[id] = accepted
+        }
+    }
+    // The live snapshot can contain truncated text and need not repeat the
+    // original sender. Keep the accepted history; only missing entries recover.
+    for (id, accepted) in observed.accepted where result.accepted[id] == nil { result.accepted[id] = accepted }
     result.running = live.running
     for event in live.actions {
         switch event.kind {

@@ -5,6 +5,17 @@
 import Foundation
 import RAProto
 
+/// Phase-only updates carry no replacement attachment metadata.
+func retainingInputMetadata(_ state: PBInputState, from previous: PBInputState?) -> PBInputState {
+    guard let previous else { return state }
+    var result = state
+    if state.mode == .unspecified { result.mode = previous.mode }
+    if state.text.isEmpty { result.text = previous.text }
+    if state.imageIds.isEmpty { result.imageIds = previous.imageIds }
+    if state.files.isEmpty { result.files = previous.files }
+    return result
+}
+
 // --- events ---
 
 public struct RunningTool: Equatable, Sendable {
@@ -234,26 +245,19 @@ struct EventReducer: Sendable {
         case .inputState(let st):
             let late = d.inputs[st.requestID] == .unconfirmed
             d.inputs[st.requestID] = st.status
-            let before = d.inputDetails[st.requestID]
-            var detail = st
-            if let before {
-                if st.mode == .unspecified { detail.mode = before.mode }
-                if st.text.isEmpty { detail.text = before.text }
-                if st.files.isEmpty { detail.files = before.files }
-            }
-            d.inputDetails[st.requestID] = detail
+            d.inputDetails[st.requestID] = retainingInputMetadata(st, from: d.inputDetails[st.requestID])
             if let prev = d.accepted[st.requestID] {
                 if st.stage != .unspecified {
                     var next = prev
                     next.stage = st.stage
                     d.accepted[st.requestID] = next
                 }
-            } else if st.status == .queued && (!st.text.isEmpty || !st.imageIds.isEmpty || !st.files.isEmpty) {
+            } else if (st.status == .queued || st.status == .heldByCli) && (!st.text.isEmpty || !st.imageIds.isEmpty || !st.files.isEmpty) {
                 d.accepted[st.requestID] = Accepted(text: st.text, imageIds: st.imageIds, origin: e.originOrNil, stage: st.stage)
             }
             if st.status == .failed || st.status == .needsTerminal { d.failures[st.requestID] = st.reason }
             if st.status == .canceled && st.reason == "exited" { d.unsent[st.requestID] = e.seq }
-            if st.status == .queued && queuedAt[st.requestID] == nil { queuedAt[st.requestID] = e.seq }
+            if (st.status == .queued || st.status == .heldByCli) && queuedAt[st.requestID] == nil { queuedAt[st.requestID] = e.seq }
             if st.status == .submitted {
                 // Codex marks a message submitted before recording it;
                 // Claude Code records the message first and the state
