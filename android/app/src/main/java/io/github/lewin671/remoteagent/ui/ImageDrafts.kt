@@ -95,7 +95,7 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
         processed = null
         thumb = null
         PendingUris.release(this)
-        RaApp.scopeOrNull()?.launch(Dispatchers.IO) { RaApp.instance.pendingStore.releaseUnusedUriPermissions() }
+        RaApp.scopeOrNull()?.launch(Dispatchers.IO) { RaApp.instance.pendingStore.requestUriCleanup() }
     }
 }
 

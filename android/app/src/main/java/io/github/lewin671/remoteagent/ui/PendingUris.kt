@@ -6,6 +6,10 @@ internal object PendingUris {
     @Synchronized fun retain(entry: PendingImage) { entry.uri?.let { live[entry] = it } }
     @Synchronized fun release(entry: PendingImage) { live.remove(entry) }
     @Synchronized fun uris(): Set<String> = live.filterKeys { it.ownerAccount === AccountMemory.token }.values.toSet()
+    /** Serialize the last ownership check with a new pick acquiring its persistent grant. */
+    @Synchronized fun withoutReference(uri: String, work: () -> Unit) {
+        if (live.none { (entry, source) -> source == uri && entry.ownerAccount === AccountMemory.token }) work()
+    }
     @Synchronized fun clear() { live.clear() }
 }
 

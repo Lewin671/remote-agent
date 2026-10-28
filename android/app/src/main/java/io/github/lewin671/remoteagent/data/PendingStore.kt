@@ -25,7 +25,16 @@ import javax.crypto.spec.SecretKeySpec
 class PendingStore(private val context: Context) : io.github.lewin671.remoteagent.ui.SealedFiles {
     private val scopes = FileScopes(this)
     fun scoped() = scopes.scoped()
-    fun invalidate() = scopes.invalidate()
+    fun invalidate() { scopes.invalidate(); requestUriCleanup() }
+
+    @Volatile private var uriRevision = 0L
+    private var cleanedUriRevision = -1L
+    private val uriCleanup by lazy {
+        CoalescedWork(kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)) { cleanupUriPermissions() }
+    }
+
+    /** Only a revision bump and a conflated signal; no scan or provider IPC on the caller. */
+    @Synchronized fun requestUriCleanup() { uriRevision++; uriCleanup.request() }
 
     private val prefs = context.getSharedPreferences("image-storage", Context.MODE_PRIVATE)
     private val limit = ImageDiskPolicy.DRAFT_LIMIT
@@ -35,8 +44,10 @@ class PendingStore(private val context: Context) : io.github.lewin671.remoteagen
         // An index that is there and does not open says nothing about what to keep: nothing goes.
         val keep = outboxFolders() ?: return 0
         val n = ImageDiskPolicy.expireDrafts(dir, keep)
-        if (n > 0) prefs.edit().putInt("expired-drafts", expired + n).apply()
-        releaseUnusedUriPermissions()
+        if (n > 0) {
+            prefs.edit().putInt("expired-drafts", expired + n).apply()
+            requestUriCleanup()
+        } else uriCleanup.request()
         return n
     }
 
@@ -82,7 +93,7 @@ class PendingStore(private val context: Context) : io.github.lewin671.remoteagen
             check(tmp.renameTo(f)) { "没能保存待发图片" }
         } finally { tmp.delete() }
         f.parentFile?.setLastModified(System.currentTimeMillis())
-        if (name == "order") releaseUnusedUriPermissions()
+        requestUriCleanup()
     }
 
     @Synchronized override fun get(folder: String, name: String): ByteArray? {
@@ -95,17 +106,17 @@ class PendingStore(private val context: Context) : io.github.lewin671.remoteagen
 
     override @Synchronized fun remove(folder: String, name: String) {
         File(folder(folder), name).delete()
-        releaseUnusedUriPermissions()
+        requestUriCleanup()
     }
 
     @Synchronized override fun clearFolder(folder: String) {
         folder(folder).deleteRecursively()
-        releaseUnusedUriPermissions()
+        requestUriCleanup()
     }
 
     /** Inspect only small metadata files; never load image/file bodies to collect grants. */
-    private fun recordedUris(): Set<String>? {
-        val k = cachedKey ?: storedKey() ?: return if (keyFile.exists()) null else emptySet()
+    private fun recordedUris(k: ByteArray?, hadKey: Boolean): Set<String>? {
+        if (k == null) return if (hadKey) null else emptySet()
         return runCatching {
             val uris = mutableSetOf<String>()
             for (folder in dir.listFiles().orEmpty().filter { it.isDirectory }) {
@@ -123,12 +134,36 @@ class PendingStore(private val context: Context) : io.github.lewin671.remoteagen
         }.getOrNull()
     }
 
-    @Synchronized fun releaseUnusedUriPermissions() { runCatching {
-        val grants = context.contentResolver.persistedUriPermissions.map { it.uri.toString() }.toSet()
-        val unused = io.github.lewin671.remoteagent.ui.unusedUriPermissions(grants, io.github.lewin671.remoteagent.ui.PendingUris.uris(), recordedUris())
-        for (uri in unused) runCatching { context.contentResolver.releasePersistableUriPermission(android.net.Uri.parse(uri), android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-    } }
+    private data class UriScan(val revision: Long, val key: ByteArray?, val hadKey: Boolean)
+    private fun current(scan: UriScan) = uriRevision == scan.revision
 
+    private fun cleanupUriPermissions() {
+        // Copy only the identity/key under the lock. Directory reads, decryption and IPC run outside it.
+        val scan = synchronized(this) {
+            if (cleanedUriRevision == uriRevision) null
+            else UriScan(uriRevision, cachedKey?.copyOf(), keyFile.exists())
+        } ?: return
+        var k = scan.key
+        try {
+            if (k == null) k = storedKey()
+            val recorded = recordedUris(k, scan.hadKey)
+            if (recorded != null) {
+                val grants = context.contentResolver.persistedUriPermissions.map { it.uri.toString() }.toSet()
+                for (uri in grants - recorded) {
+                    if (!current(scan)) break
+                    io.github.lewin671.remoteagent.ui.PendingUris.withoutReference(uri) {
+                        if (current(scan)) runCatching {
+                            context.contentResolver.releasePersistableUriPermission(android.net.Uri.parse(uri), android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    }
+                }
+            }
+            synchronized(this) {
+                if (uriRevision == scan.revision) cleanedUriRevision = scan.revision
+                else uriCleanup.request()
+            }
+        } finally { k?.fill(0) }
+    }
 
     @Synchronized fun clearAll() {
         invalidate()
