@@ -1496,3 +1496,28 @@ JDK 17、SDK 36，沿用独立 `.fileuploadcheck` 包，执行：
 ```
 
 结果：core 420、app 365、terminal 7 个单元测试全部通过；Debug APK、测试 APK 与 Release lint 通过。最后的清理调度调用调整后，完整 app 单元测试、两个 APK 与 Release lint 再次通过。`Medium_Phone_API_36.0` 上运行 `FilesLayoutTest` 的 4 个界面测试通过（亮/暗、200% 字号、44 dp 移除按钮、能力菜单、纯文件历史无空气泡）。测试后卸载独立 App/测试包并停止模拟器。本轮没有新增真实 CLI 或真机验收，相关证据仍以上一轮所列版本和边界为准。
+
+### Android 同步失效与耐久性基线整合（2026-10-28）
+
+先 rebase 到 `76c3c14f`，其后纳入新的干净本地基线，最终为 `5a558746`。每次只遇到验收文档冲突，保留双方记录；没有代码冲突或手工合并代码。复读该基线的 [客户端规则](session-files.md#历史事件与网页)，Android 的对应处理见 [设计](android-client.md#文件附件)。未推送、发布或操作日常 daemon。
+
+新增 11 个 app 回归场景核对：
+
+- 图片和文件在旧 job 的取消回调、Abort 回调执行前，generation、准备状态、旧 ID、公开机器和到期值已同步失效；旧回调不能恢复它们。全局文件槽位阻塞时的 A → B → A、重试和过期同样不能提前发送。
+- 放回条目先以失效状态加入已有草稿，再运行 Abort；缺本机来源的图片/文件立即失败，只有历史引用的恢复不能退化为只发文字，失败条目重启后仍保留。
+- 磁盘恢复的完成记录不直接启用发送。目标为 null 不 Abort；原机器解析后验证本机来源，再用同一 transfer ID Begin 确认。模拟已完成结果时读取一次来源做哈希、Put 次数为 0，仍可复用原完成 ID。
+- 发送后清空使迟到结果无效，已发送或未知请求的首次附件快照不变、不会被 Abort。新建请求的持有标记相互独立，后续请求被明确拒绝不会解除更早未知请求的保护。
+- 原图切换时缓存先过时；URI 缺失时强制重试不能上传旧模式字节，重启也不能把旧缓存当成当前模式。`.upload` 加入显式过时位，较早未发布分支的草稿/待确认存储需要清理并重新选择，提交说明已注明，没有迁移分支。
+
+新基线还要求无 QUEUED 历史的 HELD_BY_CLI 快照可恢复附件。新增 3 个 core 测试覆盖纯文件 HELD 的条目/来源/模式、完整 QUEUED 正文与来源不被截断预览覆盖但模式可变，以及后续状态事件保留文件、图片 ID 和缺失元数据。
+
+最终基线执行：
+
+```sh
+./gradlew --no-daemon --no-configuration-cache --max-workers=1 \
+  :core:test --rerun :terminal:testReleaseUnitTest :app:testDebugUnitTest \
+  :app:assembleDebug :app:assembleDebugAndroidTest :app:lintVitalRelease \
+  -PdevBuild=true -PappIdSuffix=.fileuploadcheck
+```
+
+通过：core 423、app 376、terminal 7 个单元测试，共 806 个；Debug/测试 APK 和 Release lint。API 36 模拟器重跑 `FilesLayoutTest` 的 4 个测试通过，覆盖亮暗主题、200% 字号、44 dp 移除、能力菜单及纯文件历史无空气泡。结束后卸载独立测试包并停止模拟器。本轮没有重跑真实 CLI 或真机链路，既有实测保留其原基线与覆盖边界；首条消息的本机来源缓存限制没有扩大为完整恢复保证。
