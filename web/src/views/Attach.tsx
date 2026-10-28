@@ -218,7 +218,14 @@ export function useDropPaste(tray: Tray, blocked: string, onBlocked: (why: strin
       onDragLeave: () => setOver(false),
       onDrop: (e: DragEvent) => {
         setOver(false);
-        if (take(attachmentFiles(e.dataTransfer.files))) e.preventDefault();
+        const items = Array.from(e.dataTransfer.items ?? []);
+        const folders = items.filter((item) => item.kind === "file" && item.webkitGetAsEntry?.()?.isDirectory);
+        if (folders.length) {
+          e.preventDefault();
+          onBlocked("不能直接发送文件夹，请先压缩成 ZIP 再选择文件");
+          const files = items.filter((item) => !folders.includes(item));
+          take(attachmentFiles(files as unknown as DataTransferItemList));
+        } else if (take(attachmentFiles(e.dataTransfer.files))) e.preventDefault();
       },
       onPaste: (e: ClipboardEvent) => {
         if (take(attachmentFiles(e.clipboardData.items))) e.preventDefault();

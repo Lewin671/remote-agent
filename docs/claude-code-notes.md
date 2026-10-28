@@ -256,3 +256,17 @@ Claude Code 自己有一份模型目录：`/model` 列什么、每个模型的�
 **2026-10-28，Claude Code 2.1.300，真实交互 CLI / tmux 实测。** 将一段多行文字连同末尾三个 `@/绝对路径` 行一次 bracketed paste，再按 Enter：正常提交，transcript 的 user 记录保留原文；小文本产生 type=file 的 attachment，4.7 MB 日志产生 `at_mention_reference`，`unread` 为 `too_large`，ZIP 没有自动内嵌，模型随后用工具处理。工作目录外的 `@` 引用没有先弹 Read 权限提示，单独用普通路径再调用 Read 则会请求权限。这是任务准备阶段提供的手动观察；文件格式和大小影响的是 CLI 如何读取，不影响原文提交。
 
 同日 Phase A 再经加密 Go 客户端 → 本地中继 → daemon → tmux 验证：文字＋TXT、仅 CSV＋ZIP、图片＋PDF＋文字均保持 `@` 文件行，daemon 匹配到提交确认，事件带文件引用。小 TXT 和 CSV 被自动读入；ZIP 及 PDF 的工具读取仍可能要求审批，允许后读出了文件标记。仅路径消息还可在之后一条消息要求重新读取 CSV、ZIP。完整条件与未覆盖范围见 [验收记录](acceptance-notes.md#文件附件phase-a2026-10-28)，产品据此怎样组合正文见 [session-files.md](session-files.md)。
+
+
+**同日文件边界复测，2.1.300 / Haiku 5.5，交互 tmux，证据为 transcript 与加密客户端事件。** 仅 `@/绝对路径/x.png`，或以该引用结尾的单行文字，会留下原生文件补全菜单，第一次 Enter 没有提交（8 秒观察窗口内无用户记录）。`File: @"/绝对路径/x.png" (file)` 在一次 bracketed paste＋Enter 后正常提交，user.text 保留原文；一个 PNG 文件的事件是 images=0/files=1。带一张图片、没有用户文字时，实际正文为 `[Image #2]\n\nFile: @"<path>/as-file.png" (file)`，images=1/files=1，提交确认成功。超过 1000 字符的多行正文＋文件经原生长粘贴后也能逐字匹配 transcript 并确认。
+
+文件名 `笔记`、`a+`、`x-`、`末尾.中文` 未加引号时没有正确产生 file 附件，其中两个被当成上级目录；模型随后使用 Read 补读，需要审批，不能算 @ 解析正确。改为下列引用后，四个名字都产生 filename 精确匹配的原生 `attachment.type=file`，读出 NAME_TOKEN_1 到 NAME_TOKEN_4，没有依靠 Read 补读：
+
+```text
+File: @"<uploads>/<session>/files/<file1>/笔记" (file)
+File: @"<uploads>/<session>/files/<file2>/a+" (file)
+File: @"<uploads>/<session>/files/<file3>/x-" (file)
+File: @"<uploads>/<session>/files/<file4>/末尾.中文" (file)
+```
+
+这里只替换动态路径根和 ID；引号、前缀及末尾标记都是实际输入和 user 记录的文字。产品组合形式由 [session-files.md](session-files.md) 维护。

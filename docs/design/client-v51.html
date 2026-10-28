@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v50 · 2026-10-28 UTC</title>
+<title>remote-agent 客户端设计稿 v51 · 2026-10-28 UTC</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -1024,14 +1024,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android / iOS 设计稿 · v50 · 2026-10-28 UTC · 上一版 v49 在 git 历史里（<code>git log -- docs/design/client-v49.html</code>）</div>
+    <div class="sub">PWA / Android / iOS 设计稿 · v51 · 2026-10-28 UTC · 上一版 v50 在 git 历史里（<code>git log -- docs/design/client-v50.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v49 的改动</h4><ul><li>网页输入框在电脑支持文件时，＋增加「图片 / 文件」小菜单。</li><li>文件在草稿、排队和已发送消息中共用文件条目，展示名称、大小、上传进度、失败重试和编辑时的移除。</li></ul>
+  <h4>相对 v50 的改动</h4><ul><li>电脑设置统一称为「附件存储」，说明已使用文件保留到会话结束，清理不删除会话文件。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节"><a href="#schedules">定时任务</a>
   <a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#files">文件</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
@@ -3544,7 +3544,7 @@ git status --short gen/</pre>
           <div class="row">审批模式<span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
           <div class="row">审批超时<span class="v">10 分钟<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
         </div>
-        <div class="glabel">Claude Code · 新项目默认设置</div><div class="grp"><div class="row">模型<span class="v">Sonnet<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">推理强度<span class="v">high<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">审批模式<span class="v">询问<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">图片存储</div><div class="grp"><div class="row col"><div style="display:flex"><span>上传的图片</span><span class="v">200.0 MiB</span></div><div class="hint">可清理 120.0 MiB</div></div><div class="row">空间上限<span class="v">1.0 GiB<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">预览缓存<span class="v">32.0 MiB</span></div><div class="row act">清理…<span class="v">可释放 152.0 MiB</span></div></div><div class="pad small muted">图片存在这台电脑上。正在发送和执行中用到的图片不会被清理；预览缓存最多 150 MiB，自动回收。</div>
+        <div class="glabel">Claude Code · 新项目默认设置</div><div class="grp"><div class="row">模型<span class="v">Sonnet<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">推理强度<span class="v">high<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">审批模式<span class="v">询问<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">附件存储</div><div class="grp"><div class="row col"><div style="display:flex"><span>上传的图片和文件</span><span class="v">200.0 MiB</span></div><div class="hint">可清理 120.0 MiB</div></div><div class="row">空间上限<span class="v">1.0 GiB<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">预览缓存<span class="v">32.0 MiB</span></div><div class="row act">清理…<span class="v">可释放 152.0 MiB</span></div></div><div class="pad small muted">附件存在这台电脑上。会话使用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。</div>
         <div class="glabel">项目</div>
         <div class="grp">
           <div class="row">foo<span class="v">~/Code/foo</span></div>
@@ -3554,7 +3554,7 @@ git status --short gen/</pre>
         <div class="pad small muted">移除会断开连接并吊销权限，保留中继上的会话和图片。另行确认“删除这台电脑的记录”才清除档案。</div>
       </div>
     </div>
-    <div class="cap">设置 › 设备：每个 CLI 一行额度摘要，点任一行进入额度详情；已安装 CLI 版本、两套新项目默认值（项目设置从这里开始），未安装的 CLI 不显示设置；图片存储只在大小不为零时写「可清理」「正在上传」，没有可清理的内容时清理行不可点；详情底部「移除这台机器…」打开二次确认</div>
+    <div class="cap">设置 › 设备：每个 CLI 一行额度摘要，点任一行进入额度详情；已安装 CLI 版本、两套新项目默认值（项目设置从这里开始），未安装的 CLI 不显示设置；附件存储只在大小不为零时写「可清理」「正在上传」，没有可清理的内容时清理行不可点；详情底部「移除这台机器…」打开二次确认</div>
   </div>
 </div>
 

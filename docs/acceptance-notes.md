@@ -477,7 +477,7 @@ macOS arm64，本 worktree 的 Go 自动测试，加一轮本 worktree 构建的
 - 产品链路从独立 `RA_DEV_DIR` 的 `dev-env.sh start --no-account` 开始：临时账户/数据库/状态目录/tmux socket/自动分配端口，显式允许临时网页 origin。Chrome 直接操作创建账户、确认恢复码保存、发配对码；CLI 先确认 SAS，网页再批准，测试电脑加入并启动 daemon。会话由测试 CLI 创建，网页直接发送无文件操作的简短消息，经本地 server → daemon → tmux → 真实 Codex 0.163.0，网页收到约定回复。没有用调试调用代替消息发送或配对批准。
 - 同一临时账户在网页移除电脑，确认原档案仍可进入重接；再经单独确认删除记录，中继电脑记录数为 0。网页退出时核对唯一管理端的针对性提示，再清除临时浏览器密钥。测试结束关闭测试标签并清理隔离环境；未操作生产中继或日常 daemon。
 
-未覆盖：档案实际重接、六条跨端有向交接、Android/iOS 真机、48 小时恢复的真实等待及全部重启矩阵、真实 Web Push 的允许/拒绝/后台投递、浏览器部分/全部存储损坏和操作系统字号。保存失败等故障由自动测试注入；demo 是视觉检查，不能代替上述真实链路。界面与文案规则见 [design-system](design-system.md#8-文案)，当前界面稿为 [v49](design/client-v50.html)。
+未覆盖：档案实际重接、六条跨端有向交接、Android/iOS 真机、48 小时恢复的真实等待及全部重启矩阵、真实 Web Push 的允许/拒绝/后台投递、浏览器部分/全部存储损坏和操作系统字号。保存失败等故障由自动测试注入；demo 是视觉检查，不能代替上述真实链路。界面与文案规则见 [design-system](design-system.md#8-文案)，当前界面稿为 [v51](design/client-v51.html)。
 
 
 ## Claude 模型菜单短标签（2026-10-23，本地候选）
@@ -827,7 +827,7 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 
 ## 定时任务：网页第二阶段（2026-10-24，本地候选）
 
-基于协议 11、产品版本 0.45.7 的开发 checkout；仅网页与界面稿，没有发布或部署。使用本机 Google Chrome 156.0.8078.48 的独立无头配置，由 Playwright 驱动；真实 CLI 为 Claude Code 2.1.300 / Haiku 4.5。界面见 [client-v50 · 定时任务](design/client-v50.html#schedules)。
+基于协议 11、产品版本 0.45.7 的开发 checkout；仅网页与界面稿，没有发布或部署。使用本机 Google Chrome 156.0.8078.48 的独立无头配置，由 Playwright 驱动；真实 CLI 为 Claude Code 2.1.300 / Haiku 4.5。界面见 [client-v51 · 定时任务](design/client-v51.html#schedules)。
 
 - 环境由 `RA_DEV_DIR="$(mktemp -d /tmp/ra-web.XXXXXX)" ios/scripts/dev-env.sh start --no-account` 创建；测试过程沿用该目录。网页通过 setup token 建临时账户，核对配对图案后用 `ios/scripts/dev-env.sh join CODE --daemon` 加入电脑。中继端口由脚本分配；独立数据库、daemon 状态与 tmux socket，不连接线上、不使用日常中继账户。网页使用 `pnpm --dir web build` 的本地预览，不使用演示数据。
 - 390 和 1280 宽各创建一个几分钟后触发的每日新开对话任务，选择 Haiku 4.5 / 询问。两次均由时钟自动触发，未用 run 指令或改系统时间代替。通过网页批准真实 MCP `notify_user`，对话显示通知事件；任务列表与详情显示“通知了你”及正文。两次自动调度计数均为 1。
@@ -994,7 +994,7 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 
 ### 客户端最终评审修复与三端对照（2026-10-24）
 
-本轮沿用整合分支、产品 0.45.7 / 协议 11。先更新 [v49「各端统一的写法」](design/client-v50.html#schedules)，再逐端修改；该节是文案与行为的维护位置。以下记录本轮检查所覆盖的实际行为，不增加真实 CLI、推送或真机验收结论。
+本轮沿用整合分支、产品 0.45.7 / 协议 11。先更新 [v51「各端统一的写法」](design/client-v51.html#schedules)，再逐端修改；该节是文案与行为的维护位置。以下记录本轮检查所覆盖的实际行为，不增加真实 CLI、推送或真机验收结论。
 
 | 缺陷 | 修复与回归证据 |
 |---|---|
@@ -1046,7 +1046,7 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 
 ### 三端四图：文案、颜色与定时条收尾（2026-10-24）
 
-产品 0.45.7 / 协议 11，整合分支本地候选。逐张复核列表、详情、新建、对话定时条的三端并排图，先在 [v49「各端统一的写法」](design/client-v50.html#schedule-shared-copy) 明确规则，再修三端。新建说明逐字统一；详情副标题只留状态；Android 注意组原因改为 muted；iOS 定时条补 Lucide clock，作为装饰对读屏隐藏。
+产品 0.45.7 / 协议 11，整合分支本地候选。逐张复核列表、详情、新建、对话定时条的三端并排图，先在 [v51「各端统一的写法」](design/client-v51.html#schedule-shared-copy) 明确规则，再修三端。新建说明逐字统一；详情副标题只留状态；Android 注意组原因改为 muted；iOS 定时条补 Lucide clock，作为装饰对读屏隐藏。
 
 额外发现并修正的差异：iOS 新建标签去掉「（可选）」（仍允许留空）；详情任务类型及创建者说明对齐完整句子，运行记录标题补实际条数；网页详情消息正文改为 15 号 fg，并去掉副标题额外的彩色状态点；CLI 分段选择选中项为 fg 字和浅底，未选项为 muted（网页去蓝色，iOS 局部设置原生 UISegmentedControl 的文字色，保留原生选择行为）。Android 当前对话任务的创建说明也对齐 v49。
 
@@ -1068,7 +1068,7 @@ xcodebuild -quiet -disableAutomaticPackageResolution \
 
 ### 客户端最终复审收尾（2026-10-24）
 
-产品 0.45.7 / 协议 11，`wt/scheduled-tasks-integration` 本地候选。先补 [v49「各端统一的写法」](design/client-v50.html#schedule-shared-copy)，再按最终复审逐项处理；以下是代码及测试证据，不新增真实 CLI、推送或真机验收结论。
+产品 0.45.7 / 协议 11，`wt/scheduled-tasks-integration` 本地候选。先补 [v51「各端统一的写法」](design/client-v51.html#schedule-shared-copy)，再按最终复审逐项处理；以下是代码及测试证据，不新增真实 CLI、推送或真机验收结论。
 
 | 复审项 | 修复与回归证据 |
 |---|---|
@@ -1222,7 +1222,7 @@ Android 一次性时间原来直接用 `atZone()`，会把 America/Los_Angeles �
 
 ## 定时任务：通知未读角标与自动关闭原因（2026-10-28，基于 v0.46.0 的未发布工作区）
 
-按 [v49 统一文案](design/client-v50.html#schedule-shared-copy) 实现三端入口角标。后台已有的加密任务列表包含运行 ID 和通知标记；未新增请求、server 行为或协议版本变更。自动关闭通过新增的 `SessionState.scheduled_closed` 明确区分，`detail` 仍为 `stopped`；daemon 持久化最近关闭原因，并覆盖保存元数据后、写入退出事件前中断的恢复路径。
+按 [v51 统一文案](design/client-v51.html#schedule-shared-copy) 实现三端入口角标。后台已有的加密任务列表包含运行 ID 和通知标记；未新增请求、server 行为或协议版本变更。自动关闭通过新增的 `SessionState.scheduled_closed` 明确区分，`detail` 仍为 `stopped`；daemon 持久化最近关闭原因，并覆盖保存元数据后、写入退出事件前中断的恢复路径。
 
 | 检查 | 结果 |
 |---|---|
@@ -1277,3 +1277,46 @@ ios/scripts/dev-env.sh stop
 在本机 Google Chrome 原生窗口里打开当前 React 附件组件的临时预览，检查 375px 与宽屏列、亮暗主题、＋菜单、长文件名中间省略（保留尾部扩展名）、大小、进度、失败重试和移除，以及已发送文件条目；临时页面、Vite 服务和标签页已清理。Chrome 扩展 host 未连接，没有使用内置浏览器。组件检查使用本地夹具；消息端到端由 Go 客户端驱动，未声称通过网页实际选择器连接真实 CLI 发送。
 
 未覆盖：Android / iOS 手写界面及真机、网页刷新后的系统重新选择、真实移动系统拖放/粘贴、真实网络断连续传、长时间自然过期、磁盘实际写满和 1 GiB 用满、跨真实 daemon 重启的端到端排队恢复。对应逻辑以自动测试覆盖；100 MiB 验证为 Go 加密客户端，未测浏览器同时选择六个 100 MiB 文件的内存峰值。后续进度与待实测范围统一见 [plan.md](plan.md)。
+
+### 文件附件复审回归（2026-10-28）
+
+基于 Phase A 复审修正文件正文和持久化。当前文件行以 [session-files.md](session-files.md) 为准：Claude 的路径加双引号和末尾标记，Codex 加固定前缀；有图片而无用户文字时，用两个换行隔开图片占位与文件行。以下为实际新运行的结果，不以旧版三组验收代替边界验证。
+
+独立 `RA_DEV_DIR`、当前 checkout 的本地 server/daemon、临时账户、独立状态与 tmux，继续使用加密 Go 客户端经 server → daemon → 真实 CLI。运行的入口：
+
+```sh
+RA_DEV_DIR=/tmp/ra-files-feedback-final ios/scripts/dev-env.sh start --no-account
+RA_DEV_DIR=/tmp/ra-files-feedback-final RA_FILES_FEEDBACK_ONLY=1 go run ./scripts/acceptance-files
+RA_DEV_DIR=/tmp/ra-files-feedback-final ios/scripts/dev-env.sh stop
+
+RA_DEV_DIR=/tmp/ra-files-feedback-quoted-final ios/scripts/dev-env.sh start --no-account
+RA_DEV_DIR=/tmp/ra-files-feedback-quoted-final RA_FILES_AGENT=claude go run ./scripts/acceptance-files
+RA_DEV_DIR=/tmp/ra-files-feedback-quoted-final ios/scripts/dev-env.sh stop
+
+RA_DEV_DIR=/tmp/ra-files-feedback-codex-final ios/scripts/dev-env.sh start --no-account
+RA_DEV_DIR=/tmp/ra-files-feedback-codex-final RA_FILES_AGENT=codex RA_FILES_LARGE=1 go run ./scripts/acceptance-files
+RA_DEV_DIR=/tmp/ra-files-feedback-codex-final ios/scripts/dev-env.sh stop
+```
+
+第一个运行覆盖两端 PNG 文件边界和长文字；第二个使用最终引用形式完整重跑 Claude 的原三组、两组 PNG、长文字和特殊文件名；第三个完整重跑 Codex 的原三组、两组 PNG、长文字，并再验 100 MiB 随机文件哈希，全部通过。Claude 2.1.300 / Haiku 5.5，Codex 0.165.0 / gpt-6.1-sol，Codex 仍为 workspace-write/on-request/user reviewer。文件和消息从加密客户端发送；必要的测试夹具工具读取审批由客户端 ResolveApproval 允许。探索旧引用补全行为时曾在隔离终端手动加末尾标记及允许读取，最终完整运行不依赖这些调试动作。
+
+| 场景 | 实际结果 |
+|---|---|
+| 单 PNG 从「文件」发送，无文字 | 两端都是 images=0/files=1，原文保留文件行，UserMessage 匹配请求并 SUBMITTED |
+| 一张图片＋单 PNG 文件，无文字 | 两端都是 images=1/files=1，只有图片产生占位；文件行和占位分行，已确认 |
+| 2272 字符、32 行用户文字＋TXT | 两端经原生长粘贴后（未单独截图折叠占位），完整 user.text 与组合正文逐字比对成功，已确认，返回 FILE_LONG_TOKEN_BIRCH_374；用户文字 SHA-256 为 `3bdc947162a55eaafef07dff6a5289fffa38d6f81fa34d4a8270ccc57a35ecea` |
+| Claude 无扩展名、非 ASCII 和符号结尾 | `笔记`、`a+`、`x-`、`末尾.中文` 四个 filename 都产生精确的原生 attachment.type=file，并返回四个 NAME_TOKEN；未加引号的失败解析及最终形式见 [Claude 实测](claude-code-notes.md#文件路径引用) |
+| Claude 原生单行 `@…/lone.png` | 一次 Enter 后 8 秒无用户提交，留下文件补全；仅作观察，随后停止隔离会话，不把它当成功发送 |
+
+实际正文的动态目录和 ID 替换为占位符，其余字符原样保留（JSON 中 `\n` 是换行，`\"` 是引号）：
+
+```json
+"File: <uploads>/<session>/files/<file1>/as-file.png"
+"[Image #1] \n\nFile: <uploads>/<session>/files/<file1>/as-file.png"
+"File: @\"<uploads>/<session>/files/<file1>/as-file.png\" (file)"
+"[Image #2]\n\nFile: @\"<uploads>/<session>/files/<file1>/as-file.png\" (file)"
+```
+
+自动回归新增：首次领取归属与失败重用不退回已有附件、批量失败恢复全部旧引用、完成和移动的目录祖先 fsync 及故障注入、完成记录可见但同步失败时保留两份链接并在重试时重新同步、哈希锁外并发与 abort/re-begin 的文件身份复核、组合标记文件名、清理空目录、Held 运行时/重启引用一致、图片与文件行分隔、网页精确隐藏带引号的文件行、文件夹/不可读文件拒绝，以及菜单选择/外部点击/Escape 关闭。
+
+`go test ./...`、网页 `pnpm typecheck`、`pnpm test --maxWorkers=2`、`pnpm build` 通过。网页为 90 个测试文件、1228 个测试；首次默认并发运行的无关 lazy-qr 测试超时，单独复跑及限制并发的全套通过。真实 CLI 的用户正文与传输校验没有放宽。临时环境与会话均清理；未做真机或直接网页选择器的新增端到端验收。持续会话文件不可回收而可能填满配额的已接受限制记在 plan.md。

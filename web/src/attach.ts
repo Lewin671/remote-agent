@@ -253,7 +253,7 @@ export class Tray {
         // What was prepared the other way is never sent in its place.
         const original = this.original;
         set({ state: "preparing", progress: 0, error: undefined, imageId: undefined, fileId: undefined, machineId: undefined, prepared: undefined, preparedOriginal: undefined });
-        const p = await prepareSerial(current, async () => item.kind === "file" ? { bytes: new Uint8Array(await item.file.arrayBuffer()), format: "file" as const, fileName: item.name, width: 0, height: 0 } : this.prepare(item.file, original));
+        const p = await prepareSerial(current, async () => item.kind === "file" ? { bytes: new Uint8Array(await readAttachment(item.file)), format: "file" as const, fileName: item.name, width: 0, height: 0 } : this.prepare(item.file, original));
         if (!current() || !p) return;
         set({ prepared: p, preparedOriginal: original, bytes: p.bytes.length, thumb: item.kind === "file" ? undefined : new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: "image/" + p.format }) });
       }
@@ -273,4 +273,9 @@ export class Tray {
       set({ state: "failed", error: e instanceof Error ? e.message : String(e) });
     } finally { if (item.kind === "file" && current()) item.prepared = undefined; release?.(); }
   }
+}
+
+async function readAttachment(file: Blob): Promise<ArrayBuffer> {
+ try { return await file.arrayBuffer(); }
+ catch { throw new Error("无法读取这个文件；文件夹不能直接发送，请压缩后选择，或重新选择可读取的文件"); }
 }

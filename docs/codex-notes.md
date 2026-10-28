@@ -228,6 +228,21 @@ codex-cli 0.159.2，GPT-6-Luna low，2026-10-03。
 
 ## 文件路径引用
 
-**2026-10-28，Codex CLI 0.165.0，真实交互 CLI / tmux 实测。** 用加密 Go 客户端经本地中继、daemon 发送多行消息，最后每个文件是一行纯绝对路径，再由 daemon 的 bracketed paste＋Enter 提交。测试模型为 `gpt-6.1-sol`，实际 TurnContext 为 `workspace-write`、`on-request`、`approvals_reviewer=user`，没有为上传目录添加可写范围或改成完全放行。
+**2026-10-28，Codex CLI 0.165.0，真实交互 CLI / tmux 实测。** 用加密 Go 客户端经本地中继、daemon 发送多行消息，最后每个文件是一行带 `File: ` 前缀的绝对路径，再由 daemon 的 bracketed paste＋Enter 提交。测试模型为 `gpt-6.1-sol`，实际 TurnContext 为 `workspace-write`、`on-request`、`approvals_reviewer=user`，没有为上传目录添加可写范围或改成完全放行。
 
-文字＋TXT、仅 CSV＋ZIP、图片＋PDF＋文字都能提交；rollout 里的用户文字保持路径行，daemon 确认匹配到正文及本次图片，事件带文件引用。Agent 用工具读出了工作目录外上传目录中的 TXT、CSV、ZIP 内容和 PDF 文字，纯路径消息也可在下一轮要求读取；普通只读操作未因为上传目录在 cwd 外而被 sandbox 拒绝。文件路径本身不会变成图片占位，混合消息只有图片走 `[Image #N]`。证据覆盖上述版本与运行条件，不保证模型对任意格式都会主动选择工具；详细验收见 [acceptance-notes.md](acceptance-notes.md#文件附件phase-a2026-10-28)，组合规则见 [session-files.md](session-files.md)。
+文字＋TXT、仅 CSV＋ZIP、图片＋PDF＋文字都能提交；rollout 里的用户文字保持路径行，daemon 确认匹配到正文及本次图片，事件带文件引用。Agent 用工具读出了工作目录外上传目录中的 TXT、CSV、ZIP 内容和 PDF 文字，纯文件消息也可在下一轮要求读取；普通只读操作未因为上传目录在 cwd 外而被 sandbox 拒绝。单独粘贴一个 PNG 的纯路径会变成图片占位，因此文件模式固定加 `File: `；实测单 PNG 文件、图片＋单 PNG 文件且无文字时，只有按图片方式发送的那张产生 `[Image #N]`。超 1000 字符的多行文字＋文件也逐字匹配 rollout 并确认提交。证据覆盖上述版本与运行条件，不保证模型对任意格式都会主动选择工具；详细验收见 [acceptance-notes.md](acceptance-notes.md#文件附件phase-a2026-10-28)，组合规则见 [session-files.md](session-files.md)。
+
+
+上述版本的文件边界场景实际用户正文（动态路径根和 ID 以占位符替换，其余字符保留）：
+
+```text
+File: <uploads>/<session>/files/<file1>/as-file.png
+```
+
+有一张图片而无用户文字时：
+
+```json
+"[Image #1] \n\nFile: <uploads>/<session>/files/<file1>/as-file.png"
+```
+
+两者事件分别为 images=0/files=1 和 images=1/files=1，均 SUBMITTED。`[Image #1]` 后的空格来自 Codex，确认规则按现有空白规范化比较；前缀和文件路径不会被当成图片。

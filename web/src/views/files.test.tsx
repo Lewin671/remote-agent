@@ -73,3 +73,57 @@ it("preserves files-only shared queue metadata through later stage updates", () 
   ], Agent.CODEX);
   expect(d.accepted.get("r")?.files).toEqual([file]); expect(d.accepted.get("r")?.text).toBe("");
 });
+
+it("hides labeled file lines without hiding ordinary File: sentences", () => {
+  const files = [{ path: "/uploads/s/files/id/x.png" }];
+  for (const prefix of ["File: ", "File: @"]) {
+    expect(withoutFileLines("\n" + prefix + files[0].path, files)).toBe("");
+    expect(withoutFileLines("hello\n\n" + prefix + files[0].path, files)).toBe("hello");
+    expect(withoutFileLines(prefix + files[0].path + " more", files)).toBe(prefix + files[0].path + " more");
+  }
+});
+
+it("closes the plus menu after either choice, outside pointerdown and Escape", async () => {
+  const t = tray(); mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
+  const plus = () => host.querySelector<HTMLButtonElement>('button[aria-label="添加附件"]')!;
+  const menus = () => host.querySelectorAll('[role="menu"]');
+  const inputs = [...host.querySelectorAll<HTMLInputElement>('input[type="file"]')];
+  const clicks = inputs.map((input) => vi.spyOn(input, "click").mockImplementation(() => undefined));
+  for (const label of ["图片", "文件"]) {
+    await act(async () => plus().click());
+    expect(menus()).toHaveLength(1);
+    await act(async () => [...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === label)!.click());
+    expect(menus()).toHaveLength(0);
+  }
+  expect(clicks.every((c) => c.mock.calls.length === 1)).toBe(true);
+  await act(async () => plus().click());
+  await act(async () => document.body.dispatchEvent(new Event("pointerdown", { bubbles: true })));
+  expect(menus()).toHaveLength(0);
+  await act(async () => plus().click());
+  await act(async () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  expect(menus()).toHaveLength(0);
+});
+
+it("rejects dropped folders before reading or uploading zero-byte entries", async () => {
+  const t = tray(); const blocked = vi.fn();
+  function Drop() { const drop = useDropPaste(t, "", blocked); return <div {...drop.props}>drop</div>; }
+  mount(<Drop />);
+  const folder = new File([], "folder");
+  const file = new File([], "empty.txt");
+  const event = new Event("drop", { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "dataTransfer", { value: { files: [folder, file], items: [
+    { kind: "file", webkitGetAsEntry: () => ({ isDirectory: true }), getAsFile: () => folder },
+    { kind: "file", webkitGetAsEntry: () => ({ isDirectory: false }), getAsFile: () => file },
+  ] } });
+  await act(async () => host.firstElementChild!.dispatchEvent(event));
+  expect(blocked).toHaveBeenCalledWith("不能直接发送文件夹，请先压缩成 ZIP 再选择文件");
+  await vi.waitFor(() => expect(t.ready()).toBe(true));
+  expect(t.files().map((f) => f.name)).toEqual(["empty.txt"]);
+});
+
+it("hides the exact quoted Claude reference and preserves surrounding text", () => {
+ const path="/uploads/s/files/id/笔记";
+ expect(withoutFileLines(`File: @"${path}" (file)`,[{path}])).toBe("");
+ expect(withoutFileLines(`hello\n\nFile: @"${path}" (file)`,[{path}])).toBe("hello");
+ expect(withoutFileLines(`File: @"${path}" (file) extra`,[{path}])).toContain("extra");
+});

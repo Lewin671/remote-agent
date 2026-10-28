@@ -1294,11 +1294,11 @@ function ImageStorageSettings({
     : "";
   return (
     <>
-      <div className="glabel">图片存储</div>
+      <div className="glabel">附件存储</div>
       <div className="grp">
         <div className="row col">
           <div className="line">
-            <span>上传的图片</span>
+            <span>上传的图片和文件</span>
             <span className="v">
               {usage ? storageSize(usage.uploadBytes) : "读取中…"}
             </span>
@@ -1356,7 +1356,7 @@ function ImageStorageSettings({
         </button>
       </div>
       <div className="manage-hint">
-        图片存在这台电脑上。正在发送和执行中用到的图片不会被清理；预览缓存最多
+        附件存在这台电脑上。会话使用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多
         150 MiB，自动回收。
       </div>
       {error && (
@@ -1366,8 +1366,8 @@ function ImageStorageSettings({
       )}
       {clean && (
         <Alert
-          title="清理可回收图片？"
-          text="清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话历史保留；尚未同步的大图会只显示预览。"
+          title="清理可回收附件和缓存？"
+          text="清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话文件和历史保留；尚未同步的大图会只显示预览。"
           ok="清理"
           onCancel={() => setClean(false)}
           onOk={async () => {

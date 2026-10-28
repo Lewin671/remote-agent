@@ -298,3 +298,13 @@ it("retries failed files, reuploads after expiry and machine switch, and restore
   tray.clear(); tray.restoreFiles([{ fileId: "gone", name: "data.csv", size: 3 }]);
   await vi.waitFor(() => expect(tray.failed()).toBe(true)); expect(tray.items[0].error).toContain("重新选择");
 });
+
+it("explains unreadable dropped file entries and never uploads substituted empty bytes", async () => {
+  const source = new File([], "unreadable");
+  vi.spyOn(source, "arrayBuffer").mockRejectedValue(new Error("EISDIR"));
+  const { tray, upload } = setup(); tray.fileSupported = true;
+  tray.addFiles([source]);
+  await vi.waitFor(() => expect(tray.failed()).toBe(true));
+  expect(tray.items[0].error).toContain("文件夹不能直接发送");
+  expect(upload).not.toHaveBeenCalled();
+});
