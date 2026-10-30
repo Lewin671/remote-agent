@@ -1042,6 +1042,15 @@
 .schedule-shared details.impl{margin-top:24px;border-top:1px solid var(--line)}
 .schedule-shared details.impl summary{justify-content:flex-start;color:var(--muted)}
 .schedule-shared details.impl[open] summary .ic{transform:rotate(180deg)}
+.schedule-chapter .clamp6{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:6;overflow:hidden}
+.schedule-chapter .schedule-mock-message.clamp6{padding-bottom:0;margin-bottom:4px;white-space:pre-wrap}
+.schedule-chapter .me > div > .clamp6{white-space:pre-wrap}
+.schedule-chapter .msg-more{display:flex;align-items:center;gap:4px;min-height:44px;padding:0 16px;font-size:13px;color:var(--blue)}
+.schedule-chapter .msg-editor{white-space:pre-wrap;font-size:15px;line-height:1.5;padding:12px 16px;overflow-wrap:anywhere;color:var(--fg)}
+.schedule-chapter .msg-editor .caret{display:inline-block;width:2px;height:18px;background:var(--blue);vertical-align:-3px;margin-left:1px}
+.schedule-chapter .tfield.big.long .msg{white-space:pre-wrap;max-height:calc(15px * 1.5 * 8);overflow:hidden;-webkit-mask-image:linear-gradient(#000 80%,transparent);mask-image:linear-gradient(#000 80%,transparent)}
+.schedule-chapter .msgbox{max-height:calc(15px * 1.5 * 4 + 20px);overflow:auto}
+.schedule-chapter .me small b{cursor:pointer}
 </style>
 </head>
 <body>
@@ -1065,10 +1074,11 @@
 <li>新建：「让 agent 做什么」放在任务名前面；时间弹层补「每周」「每隔」两种画面。</li>
 <li>补画面：到点时对话正忙的排队定时消息、目标对话找不到、未连接的详情；折叠的定时检查行加展开箭头。</li>
 <li>宽屏改为侧栏列表、右侧详情的两栏；主页宽屏侧栏底部补上「会话 / 定时 / 设置」标签，与客户端一致。</li>
+<li>新增「长描述」：详情最多 6 行加「展开全文」，整页编辑器，新建框限高内滚，对话里定时消息折到 6 行；已填描述时任务名占位文字显示将要用的名字。</li>
 <li>夏令时、修订冲突、已看记录等实现规则收进本章末尾默认收起的「实现约束」。</li>
 </ul>
 </div>
-<nav class="review-nav" aria-label="设计稿章节"><a href="#schedules">定时任务</a><a href="#schedule-wide">定时 · 宽屏</a>
+<nav class="review-nav" aria-label="设计稿章节"><a href="#schedules">定时任务</a><a href="#schedule-long">定时 · 长描述</a><a href="#schedule-wide">定时 · 宽屏</a>
   <a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#files">文件</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
 </nav>
 <!-- ============================= -->
@@ -4373,7 +4383,7 @@ git status --short gen/</pre>
 <h4>日期与时刻</h4>
 <p>将来的时刻写「今天 15:00」「明天 08:00」，过去的时刻写「今天 08:00」「昨天 08:00」；其余写「10月25日 08:00」，不是今年的带年份。按本机日历判断今天、明天和昨天。所有时刻均为 24 小时制，补齐两位、不带秒；列表右侧保留日期词，写「下次 今天 15:00」。</p>
 <h4>任务名与时区</h4>
-<p>新建时「任务名」可选，放在消息下面，占位文字固定为「留空就用消息的第一句」。任务名最多 60 个字符；两端空白去掉，连续空白合为一个空格。留空时，取消息第一行的第一句（中文句号、问号、感叹号，或英文句末标点前的文字），超过 60 个字符截到 60 个。任务名用于任务列表、详情标题和新开对话的通知标题。</p>
+<p>新建时「任务名」可选，放在消息下面，占位文字固定为「留空就用消息的第一句」。任务名最多 60 个字符；两端空白去掉，连续空白合为一个空格。留空时，取消息第一个非空行的第一句（中文句号、问号、感叹号，或英文句末标点前的文字），去掉末尾的逗号、冒号、分号，超过 60 个字符截到 60 个。已填消息时，占位文字换成「留空会用：」加将要使用的名字。任务名用于任务列表、详情标题和新开对话的通知标题。</p>
 <p>详情「设置」组最后一行是「任务名」，行尾显示当前名字和进入箭头；点开后沿用会话改名的交互：标题「重命名任务」，输入框选中当前名字，下方「留空保存会用消息的第一句」，按钮「取消 / 保存」。留空保存按当前消息重新生成；之后编辑消息不会自动改任务名。同名保存直接关闭，不发送更新。任务在任何状态都可以改名，包括已停下、已暂停、已结束、运行中及已有立即运行请求；离线、正在保存或修改结果未确认时不能改名。</p>
 <p>时区只在「什么时候」弹层选择，默认本机 IANA 时区，可以修改；详情不单独列时区。日历任务的列表第二行频率与详情「什么时候」值，仅在任务时区与本机时区不同时追加 IANA 名称，固定写成「每天 09:49 · America/Los_Angeles」；相同时只写「每天 09:49」。一次性绝对时间、运行记录和「下次」时刻转换为本机时间显示；固定间隔不附加时区名称。</p>
 <h4>列表</h4>
@@ -4387,13 +4397,22 @@ git status --short gen/</pre>
 <p>新建入口是大标题右侧的加号按钮（Lucide plus，读屏名「新任务」），和主页新会话按钮在同一个位置；宽屏放在侧栏标题右侧。列表里不再另放「新任务…」行。空列表标题「还没有定时任务」，说明「在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以点右上角的 ＋ 自己建。」</p>
 <p>定时入口的角标数「需要你看一下」的任务，加上有未读通知的任务，每个任务只计一次；打开定时列表就把已加载的通知记为已看。具体的已看规则见末尾「实现约束」。</p>
 <h4>详情：从上到下</h4>
-<ol><li>已停下时：原因横幅（橙色字，说清原因和继续的后果），紧接着唯一的实心按钮「恢复」；失败的一次性任务改为「立即额外执行」。已暂停不显示横幅，「恢复」放在底部操作组里。</li><li>「让 agent 做什么」：和新建页同名；右侧「编辑」，下方完整显示消息正文，15 号 fg。</li><li>「运行记录」：组标题右侧用 muted 显示实际记录条数，包含折叠组内的各次运行；最多列最近 5 条，其余点「查看全部 N 次」。</li><li>「设置」：什么时候 → 结束（只在设置了次数或截止时出现）→ 在哪运行 / 发到 → 权限 → 任务名。</li><li>类型说明：新开对话「每次新开一个对话，归在这个任务下面。」，当前对话「消息发到当前对话，等待当前轮结束。」，后接「你创建」或「Agent 在对话里创建」和「 · 创建时间」。</li><li>操作组：「立即运行一次」「暂停 / 恢复」「删除任务」。</li></ol>
+<ol><li>已停下时：原因横幅（橙色字，说清原因和继续的后果），紧接着唯一的实心按钮「恢复」；失败的一次性任务改为「立即额外执行」。已暂停不显示横幅，「恢复」放在底部操作组里。</li><li>「让 agent 做什么」：和新建页同名；右侧「编辑」，下方显示消息正文，15 号 fg，长描述的规则见下面「长描述」。</li><li>「运行记录」：组标题右侧用 muted 显示实际记录条数，包含折叠组内的各次运行；最多列最近 5 条，其余点「查看全部 N 次」。</li><li>「设置」：什么时候 → 结束（只在设置了次数或截止时出现）→ 在哪运行 / 发到 → 权限 → 任务名。</li><li>类型说明：新开对话「每次新开一个对话，归在这个任务下面。」，当前对话「消息发到当前对话，等待当前轮结束。」，后接「你创建」或「Agent 在对话里创建」和「 · 创建时间」。</li><li>操作组：「立即运行一次」「暂停 / 恢复」「删除任务」。</li></ol>
 <p>理由：打开一个任务最常做的是看它做了什么、跑出了什么，设置很少改，所以消息和结果在上、设置在下；停下的任务要做的事只有一件，放在第一屏。</p>
 <p>设置各行：「什么时候」写频率，点开时间弹层；「结束」次数写「共 N 次」，截止写「到 今天 18:00」这类本机时刻，两项都有时写「共 5 次，或到 10月30日 08:00」，在「什么时候」弹层修改；新开对话写「在哪运行」：项目 · CLI，电脑不止一台才追加电脑名；当前对话写「发到」：对话标题，点进该对话；权限在新开对话里显示任务自己的权限并可编辑，在当前对话里显示该对话当前的权限、没有进入箭头。</p>
 <p>删除确认标题统一为「删除这个任务？」，已发出的消息和已开的对话保留。立即运行一次不占自动次数及日历当天名额。有执行在跑或已有排队的手动请求时，禁用「立即运行一次」；执行在跑时禁用「什么时候 / 让 agent 做什么 / 在哪运行」的编辑，改名仍可用。</p>
 <h4>新建：从上到下</h4>
 <ol><li>让 agent 做什么：必填。</li><li>任务名：标签不加「（可选）」，允许留空，占位「留空就用消息的第一句」。</li><li>什么时候：一次 / 每天 / 每周 / 每隔；每天可选「只在工作日」，每周选星期几（可多选），每隔选间隔；都有结束（不结束、次数、日期）和时区，时区默认本机。</li><li>从定时页新建时：项目 → CLI → 权限 → 模型；多台电脑时最后一行写「机器和模型」，复用新建会话的选择器和默认值。</li><li>类型说明「每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。」</li><li>创建：本页唯一的实心按钮；权限为计划模式时禁用，说明「计划模式不能创建执行任务，请先选择其他权限」。</li></ol>
 <p>从会话「定时发送…」进入时是底部弹层，标题「定时发到这个对话」，只列让 agent 做什么、任务名、什么时候、创建；项目、CLI、权限和模型随当前对话。选「每隔」时，弹层下方说明「第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。」CLI 分段选择与星期选择的选中项用 fg 字、card 底，未选用 muted 字、灰色底，与原生选择器一致。</p>
+<h4>长描述</h4>
+<p>任务描述可以很长（上限 32 KB，多行、带编号都常见），各处按原文换行显示，长路径在任意位置换行，不撑出屏幕。</p>
+<ul>
+<li>详情（含宽屏）：最多显示 6 行；超出时下面一行「展开全文」（chevron-down），点开在原地看全部，末尾变成「收起」，展开状态不记住。目的是让运行记录留在第一屏。</li>
+<li>编辑：点「编辑」进整页编辑器，导航栏「取消 / 让 agent 做什么 / 保存」，正文占满屏幕、自己滚动，键盘弹出时「保存」仍可点。有改动时「取消」先确认「放弃修改？」；内容为空或超过 32 KB 时「保存」不可用，超长时底部写「太长了，最多 32 KB」。</li>
+<li>新建页：描述框随内容长高，最多 8 行，再多在框里滚动，下面的设置和「创建」不会被推出屏幕；「定时发到这个对话」弹层里最多 4 行，同样在框里滚动。超长规则同编辑。</li>
+<li>对话里：定时发出的消息（两种任务都一样）最多显示 6 行，下面一行「定时任务 · 08:00 · 展开全文」，点开在原地展开。同一段描述每次运行都会重发，不折叠会把对话刷长；你自己发的消息不受影响。</li>
+<li>列表、定时条和通知都不显示描述，只用任务名，所以描述再长也不影响它们。</li>
+</ul>
 <h4>运行记录：结果与原因</h4>
 <p>每条记录第一行「本机日期 HH:mm · 结果」，时间取该次运行的开始时刻（补跑就是实际开始的时刻）；手动运行末尾追加「 · 手动」。已请求通知写「通知了你」，第二行通知正文；失败等异常状态优先。正常完成且没有通知写「没有通知」，第二行最终摘要。跳过固定写「跳过」，失败固定写「失败」，第二行优先显示明确原因，不能被最终摘要或此前通知遮住。跳过且没有会话的记录不可进入。</p>
 <table><thead><tr><th>原因</th><th>各端一致的文案</th></tr></thead><tbody>
@@ -4862,6 +4881,100 @@ git status --short gen/</pre>
       </div>
     </div>
     <div class="cap">未连接：显示上次的内容，所有编辑和操作都不可用，箭头去掉；不显示「下次」时间，免得把旧状态当成真的</div>
+  </div>
+</div>
+
+<!-- ============================= -->
+<h2 id="schedule-long">长描述</h2>
+<div class="screens">
+
+  <div>
+    <div class="phone gray">
+      <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">持仓早报</span></b><span>下次 明天 08:00</span></span><span class="more"></span></div>
+      <div class="body gray">
+        <div class="grp"><div class="row"><span>让 agent 做什么</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message clamp6">每天早上 8 点前帮我整理持仓相关的信息：
+1. 逐个看 NVDA、GOOGL、AVGO、AMZN、TLT 的新闻和公告，只挑会影响价格的；
+2. 和上次的报告比，标出新增的变化，不要重复已经说过的；
+3. 期权仓位算一下离行权价的距离，低于 5% 的单独列出来；
+4. 财报、分红、拆股等日历事件列出未来两周的；
+5. 宏观只看美联储、CPI、非农和 10 年期、30 年期美债收益率；
+6. 引用的数据写明来源和时间；
+7. 用中文，先结论后细节，控制在一屏以内；
+8. 有重要变化才通知我，通知只写一句最要紧的；
+9. 没有变化就简短说一句「没有新的重要消息」；
+10. 不要下单，也不要改任何文件。</p><div class="msg-more" role="button" aria-expanded="false">展开全文<svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></div></div>
+        <div class="glabel"><span>运行记录</span><span>23</span></div>
+        <div class="grp">
+          <div class="row"><span class="row-name">今天 08:02 · 通知了你<small class="clamp1">NVDA 财报前隐含波动率升到 62%…</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+          <div class="row"><span class="row-name">昨天 08:01 · 没有通知<small class="clamp1">没有新的重要消息。</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+          <div class="row act">查看全部 23 次</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">详情：描述最多显示 6 行，下面一行「展开全文」，点开在原地看全部、再点「收起」；运行记录始终留在第一屏。换行和编号按原文显示，长路径在任意位置换行</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back txt">取消</span><span class="title"><b>让 agent 做什么</b></span><span class="more txt" style="font-size:15px;font-weight:600;width:auto;padding-right:12px">保存</span></div>
+      <div class="body"><div class="msg-editor">每天早上 8 点前帮我整理持仓相关的信息：
+1. 逐个看 NVDA、GOOGL、AVGO、AMZN、TLT 的新闻和公告，只挑会影响价格的；
+2. 和上次的报告比，标出新增的变化，不要重复已经说过的；
+3. 期权仓位算一下离行权价的距离，低于 5% 的单独列出来；
+4. 财报、分红、拆股等日历事件列出未来两周的；
+5. 宏观只看美联储、CPI、非农和 10 年期、30 年期美债收益率；
+6. 引用的数据写明来源和时间；
+7. 用中文，先结论后细节，控制在一屏以内；
+8. 有重要变化才通知我，通知只写一句最要紧的；
+9. 没有变化就简短说一句「没有新的重要消息」；
+10. 不要下单，也不要改任何文件。<span class="caret"></span></div></div>
+    </div>
+    <div class="cap">编辑：点「编辑」进整页编辑器，正文占满屏幕、自己滚动，键盘弹出时「保存」仍在导航栏。改了内容再点「取消」先确认「放弃修改？」。超过 32 KB 时底部写「太长了，最多 32 KB」，「保存」不可用</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back txt">取消</span><span class="title"><b>新任务</b></span><span class="more"></span></div>
+      <div class="body">
+        <div class="tfield big long"><div class="lbl">让 agent 做什么</div><div class="msg">每天早上 8 点前帮我整理持仓相关的信息：
+1. 逐个看 NVDA、GOOGL、AVGO、AMZN、TLT 的新闻和公告，只挑会影响价格的；
+2. 和上次的报告比，标出新增的变化，不要重复已经说过的；
+3. 期权仓位算一下离行权价的距离，低于 5% 的单独列出来；
+4. 财报、分红、拆股等日历事件列出未来两周的；
+5. 宏观只看美联储、CPI、非农和 10 年期、30 年期美债收益率；
+6. 引用的数据写明来源和时间；</div></div>
+        <label class="schedule-mock-name">任务名<input placeholder="留空会用：每天早上 8 点前帮我整理持仓相关的信息" aria-label="任务名" readonly=""></label>
+        <div class="tfield"><span>什么时候</span><span class="v">每天 08:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+        <div class="tfield"><span>项目</span><span class="v">notes<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+        <div class="tfield"><span>CLI</span><span class="v"><span class="mini-seg"><span>Codex</span><span class="on">Claude Code</span></span></span></div>
+        <div class="tfield"><span>权限</span><span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+        <div class="pad16" style="margin-top:12px"><div class="btn pri wide">创建</div></div>
+      </div>
+    </div>
+    <div class="cap">新建：描述框随内容长高，到 8 行为止，再多就在框里滚动，下面的选项和「创建」不会被推出屏幕。填了描述后，任务名的占位文字直接显示将要用的名字</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">持仓早报 · 今天 08:00</span></b><span><span class="dot idle"></span>空闲 · 自动</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
+      <div class="body chat">
+        <div class="me"><div><span class="clamp6">每天早上 8 点前帮我整理持仓相关的信息：
+1. 逐个看 NVDA、GOOGL、AVGO、AMZN、TLT 的新闻和公告，只挑会影响价格的；
+2. 和上次的报告比，标出新增的变化，不要重复已经说过的；
+3. 期权仓位算一下离行权价的距离，低于 5% 的单独列出来；
+4. 财报、分红、拆股等日历事件列出未来两周的；</span></div><small>定时任务 · 08:00 · <b>展开全文</b></small></div>
+        <div class="tool grp"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"></use></svg></span><b>搜索了 9 次，读了上次的报告</b></div>
+        <div class="ai"><p><b>需要注意</b></p><ul><li>NVDA 财报在下周三，隐含波动率升到 62%。你卖的 Put 离行权价只剩 4%。</li></ul><p>其余持仓没有新的公告。</p></div>
+        <div class="tool"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"></use></svg></span><code>通知你：NVDA 财报前隐含波动率…</code></div>
+      </div>
+      <div class="reply-hint">回复后，这个对话会移到会话列表</div>
+      <div class="compose-card slim"><div class="draft">追问…</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"></use></svg></span></div></div>
+    </div>
+    <div class="cap">运行开出的对话：同一段描述每次都会发一遍，所以定时发出的消息最多显示 6 行，下面「定时任务 · 08:00 · 展开全文」，点开原地看全文。你自己发的消息不受影响</div>
   </div>
 </div>
 
