@@ -45,3 +45,10 @@ internal fun pendingInputLabel(
 internal fun pendingInputCaption(label: String, index: Int, total: Int, origin: String?, showPosition: Boolean = true): String =
     label + (if (total > 1 && showPosition) " · 第 $index 条" else "") +
         (if (origin != null && origin != "本客户端") " · $origin" else "")
+
+internal fun scheduledPendingCaption(pending: PendingInput, events: List<io.github.lewin671.remoteagent.proto.Event>, label: String): String? {
+    if (pending.origin?.scheduledTaskId.isNullOrEmpty()) return null
+    val accepted = events.firstOrNull { it.hasInputState() && it.inputState.requestId == pending.id && it.inputState.status == InputStatus.INPUT_STATUS_QUEUED }
+    val clock = accepted?.let { io.github.lewin671.remoteagent.core.scheduleClock(java.time.Instant.ofEpochMilli(io.github.lewin671.remoteagent.core.eventTime(it))) }
+    return listOfNotNull("定时任务", clock, label).joinToString(" · ")
+}

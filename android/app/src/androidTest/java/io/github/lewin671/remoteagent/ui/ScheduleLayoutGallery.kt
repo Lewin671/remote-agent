@@ -1,6 +1,9 @@
 package io.github.lewin671.remoteagent.ui
 
 import android.graphics.Bitmap
+import android.view.inspector.WindowInspector
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
@@ -19,15 +22,18 @@ import io.github.lewin671.remoteagent.proto.*
 import java.io.File
 import java.time.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 
-/** Fixed v49 examples. The stopped Remote has no account, server or command authority. */
+/** Fixed v52 examples. The stopped Remote has no account, server or command authority. */
+@OptIn(ExperimentalTestApi::class)
 class ScheduleLayoutGallery {
     @get:Rule val ui = createAndroidComposeRule<ComponentActivity>()
     private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "layout-client"), Api.defaultHttp())
+    private val fixtureScope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private var dark by mutableStateOf(false)
     private val machine = "layout-computer"
@@ -81,11 +87,15 @@ class ScheduleLayoutGallery {
         )
         val histories=mapOf("layout-session" to history(),"layout-owned" to ownedHistory)
         val live=state.sessions.mapValues { LiveSnapshot.newBuilder().setSession(it.value.info).build() }
+        val repository=ScheduleRepository(fixtureScope,remote.state,send={ _, request ->
+            check(request.operation == "list")
+            buildJsonObject { put("tasks",JsonArray(tasks.map { it.json })) }.toString().toByteArray()
+        })
+        remote.javaClass.getDeclaredField("scheduleRepository").apply { isAccessible=true }.set(remote,lazy { repository })
         remote.showForTest(state.copy(conn=ConnState.OFFLINE),histories,live=live)
-        val repo=remote.schedules
         @Suppress("UNCHECKED_CAST")
-        val snapshots=repo.javaClass.getDeclaredField("_state").apply { isAccessible=true }.get(repo) as MutableStateFlow<Map<String,ScheduleSnapshot>>
-        snapshots.value=mapOf(machine to ScheduleSnapshot(1,tasks,cached=false))
+        val snapshots=repository.javaClass.getDeclaredField("_state").apply { isAccessible=true }.get(repository) as MutableStateFlow<Map<String,ScheduleSnapshot>>
+        snapshots.value=mapOf(machine to ScheduleSnapshot(1,tasks,cached=offline))
         remote.showForTest(state,histories,live=live)
         ui.activityRule.scenario.onActivity { it.enableEdgeToEdge() }
     }
@@ -98,14 +108,27 @@ class ScheduleLayoutGallery {
         } }
     }
     private fun save(name: String) {
-        ui.waitForIdle(); Thread.sleep(600)
+        ui.waitForIdle()
+        // System bars and the native sheet window animate outside Compose's test clock.
+        Thread.sleep(350)
         val instrumentation=InstrumentationRegistry.getInstrumentation()
+        repeat(2) {
+            lateinit var committed: CountDownLatch
+            instrumentation.runOnMainSync {
+                val roots=WindowInspector.getGlobalWindowViews().filter { it.isShown && it.isHardwareAccelerated }
+                check(roots.isNotEmpty())
+                committed=CountDownLatch(roots.size)
+                roots.forEach { view -> view.viewTreeObserver.registerFrameCommitCallback { committed.countDown() }; view.postInvalidateOnAnimation() }
+            }
+            check(committed.await(5,TimeUnit.SECONDS)) { "visible windows did not commit a frame" }
+        }
         val dir=File(instrumentation.targetContext.getExternalFilesDir(null),"schedule-layout").apply { mkdirs() }
         File(dir,"$name.png").outputStream().use { requireNotNull(instrumentation.uiAutomation.takeScreenshot()).compress(Bitmap.CompressFormat.PNG,100,it) }
     }
     private fun both(name: String) { save("$name-light");ui.runOnIdle { dark=true };save("$name-dark");ui.runOnIdle { dark=false } }
     @Composable private fun TaskPage() {
-        Column(Modifier.fillMaxSize()) { Box(Modifier.weight(1f)) { SchedulesScreen() }; TabBar("schedules",0,1) {} }
+        val badge by remote.schedules.badge.collectAsState()
+        Column(Modifier.fillMaxSize()) { Box(Modifier.weight(1f)) { SchedulesScreen() }; TabBar("schedules",0,badge) {} }
     }
     @Test fun detail() { prepare();content { ScheduleDetailScreen(machine,task.id) };both("detail") }
     @Test fun foreignTimezone() {
@@ -114,23 +137,28 @@ class ScheduleLayoutGallery {
         val spec = JsonObject(task.spec + ("trigger" to trigger))
         val foreign = ScheduledTask(machine, JsonObject(task.json + ("spec" to spec)))
         prepare(listOf(foreign));content { ScheduleDetailScreen(machine,foreign.id) }
-        ui.onNodeWithText("每天 08:00 · $zone").assertExists();save("detail-foreign-light")
+        ui.onNodeWithText("每天 08:00 · $zone").assertExists();both("detail-foreign")
     }
     @Test fun currentDetail() { prepare();content { ScheduleDetailScreen(machine,current.id) };both("current-detail") }
-    @Test fun rename() { prepare();content { ScheduleDetailScreen(machine,task.id) };ui.onNodeWithText("任务名").performClick();ui.onNodeWithText("重命名任务").assertIsDisplayed();both("rename") }
-    @Test fun failedTask() { prepare(listOf(failed));content { ScheduleDetailScreen(machine,failed.id) };ui.onNodeWithText("任务名").assertHasClickAction();both("failure");ui.onNodeWithText("任务名").performClick();ui.onNodeWithText("重命名任务").assertIsDisplayed() }
+    @Test fun rename() { prepare();content { ScheduleDetailScreen(machine,task.id) };ui.onNodeWithText("任务名").performScrollTo().performClick();ui.onNodeWithText("重命名任务").assertIsDisplayed();both("rename") }
+    @Test fun failedTask() { prepare(listOf(failed));content { ScheduleDetailScreen(machine,failed.id) };ui.onNodeWithText("任务名").assertHasClickAction();both("detail-stopped-failure");ui.onNodeWithText("任务名").performScrollTo().performClick();ui.onNodeWithText("重命名任务").assertIsDisplayed() }
     @Test fun newTask() {
         prepare();var clear:()->Unit={}
         content { val focus=LocalFocusManager.current;clear={focus.clearFocus(force=true)};NewScheduleScreen("") }
-        ui.onAllNodes(hasSetTextAction())[1].performTextReplacement("每天检查项目的更新，有值得注意的变化再通知我。")
+        ui.onAllNodes(hasSetTextAction())[0].performTextReplacement("每天检查项目的更新，有值得注意的变化再通知我。")
         ui.runOnIdle { clear() };ui.onNodeWithText("选择项目").performClick();ui.onNodeWithText("project",useUnmergedTree=true).performClick()
-        ui.onNodeWithText("留空就用消息的第一句").assertExists();ui.onNodeWithText("权限").assertExists();ui.onNodeWithText("模型").assertExists();both("new")
+        ui.onNodeWithText("留空会用：",substring=true).assertExists();ui.onNodeWithText("权限").assertExists();ui.onNodeWithText("模型").assertExists();both("new")
     }
-    @Test fun timeSettings() { prepare();content { ScheduleTimeSheet(task.trigger,{}, {}) };both("time");ui.onNodeWithText("每隔").performClick();both("interval") }
+    @Test fun timeSettings() {
+        prepare();content { ScheduleTimeSheet(task.trigger,{}, {}) };both("time-daily")
+        ui.onNodeWithText("一次").performClick();both("time-once")
+        ui.onNodeWithText("每周").performClick();ui.onNodeWithText("五").performClick();both("time-weekly")
+        ui.onNodeWithText("每隔").performClick();both("time-interval")
+    }
     @Test fun scheduledSend() {
         prepare();var clear:()->Unit={}
         content { val focus=LocalFocusManager.current;clear={focus.clearFocus(force=true)};NewScheduleScreen("layout-session") }
-        ui.onAllNodes(hasSetTextAction())[1].performTextReplacement(current.message);ui.runOnIdle {clear()};both("send")
+        ui.onAllNodes(hasSetTextAction())[0].performTextReplacement(current.message);ui.runOnIdle {clear()};both("send")
     }
     @Test fun tasks() {
         val paused=ScheduledTask(machine,JsonObject(task.json+mapOf("id" to JsonPrimitive("paused"),"status" to JsonPrimitive("paused"),"reason" to JsonPrimitive("user_paused"))))
@@ -147,15 +175,73 @@ class ScheduleLayoutGallery {
     @Test fun jump() { prepare();ScheduleJump.requested["layout-session"]=6;content { SessionScreen("layout-session") };save("current-run-jump-light") }
     @Test fun takeover() { prepare(owned=true);content { SessionScreen("layout-owned") };ui.onNodeWithText("回复后，这个对话会移到会话列表").assertExists();both("takeover") }
     @Test fun deleteConfirm() { prepare();content { ScheduleDetailScreen(machine,task.id) };ui.onNodeWithText("删除任务").performScrollTo().performClick();ui.onNodeWithText("删除这个任务？").assertExists();save("delete-confirm-light") }
+
+    private val longMessage = (1..16).joinToString("\n") { "$it. 检查项目里的更新、构建和测试；有重要结果再通知我。" }
+    @Test fun empty() { prepare(emptyList());content { TaskPage() };both("tasks-empty") }
+    @Test fun offlineDetail() { prepare(offline=true);content { ScheduleDetailScreen(machine,task.id) };both("detail-offline");ui.onNodeWithText("连上后才能修改、运行或删除。",substring=true).performScrollTo();both("detail-offline-actions") }
+    @Test fun permissionsStopped() {
+        val stopped=ScheduledTask(machine,JsonObject(task.json+mapOf("status" to JsonPrimitive("paused"),"reason" to JsonPrimitive("agent_schedule_permissions_changed"))))
+        prepare(listOf(stopped));content { ScheduleDetailScreen(machine,stopped.id) };both("detail-stopped-permissions")
+    }
+    @Test fun uncertainTask() {
+        val stopped=ScheduledTask(machine,JsonObject(task.json+mapOf("status" to JsonPrimitive("uncertain"),"reason" to JsonPrimitive("restart_dispatching"))))
+        prepare(listOf(stopped));content { ScheduleDetailScreen(machine,stopped.id) }
+        ui.onNodeWithText("继续可能重复执行上次的消息，请先打开运行记录核实。",substring=true).assertExists()
+        both("detail-stopped-uncertain")
+    }
+    @Test fun failedOnceTask() {
+        val spec=JsonObject(failed.spec+("trigger" to buildJsonObject { put("type","at");put("at",at(8).toString()) }))
+        val stopped=ScheduledTask(machine,JsonObject(failed.json+("spec" to spec)))
+        prepare(listOf(stopped));content { ScheduleDetailScreen(machine,stopped.id) }
+        ui.onNodeWithText("可立即额外执行一次，或改时间重排。",substring=true).assertExists()
+        both("detail-stopped-once")
+    }
+    @Test fun missingTarget() {
+        val failedRun=buildJsonObject { put("id","missing-target-run");put("started_at",at(15).toString());put("status","failed");put("reason","execution_session_missing") }
+        val stopped=ScheduledTask(machine,JsonObject(current.json+mapOf("status" to JsonPrimitive("failed"),"reason" to JsonPrimitive("execution_session_missing"),"runs" to JsonArray(current.runs.map { it.json }+failedRun))))
+        prepare(listOf(stopped));remote.showForTest(remote.state.value.copy(sessions=remote.state.value.sessions - "layout-session"));content { ScheduleDetailScreen(machine,stopped.id) };both("detail-stopped-missing-target")
+    }
+    @Test fun highFrequency() {
+        val runs = buildJsonArray {
+            (1..38).forEach { n -> add(buildJsonObject {
+                put("id","frequent-$n"); put("started_at",at(8).plusSeconds(n*60L).toString())
+                put("status","completed"); put("notified",false)
+            }) }
+        }
+        val many=ScheduledTask(machine,JsonObject(current.json+("runs" to runs)))
+        prepare(listOf(many));content { ScheduleDetailScreen(machine,many.id) };both("detail-high-frequency")
+        ui.onNodeWithText("查看全部 38 次").assertExists()
+    }
+    @Test fun crowdedOffline() {
+        val crowded=(1..12).map { n -> ScheduledTask(machine,JsonObject(task.json+mapOf("id" to JsonPrimitive("crowded-$n"),"spec" to JsonObject(task.spec+("title" to JsonPrimitive("每周检查依赖并把需要升级的大版本整理成清单 $n")))))) }
+        prepare(crowded,offline=true);content { TaskPage() };both("tasks-crowded-offline")
+    }
+    @Test fun longDetail() {
+        val long=ScheduledTask(machine,JsonObject(task.json+("spec" to JsonObject(task.spec+("message" to JsonPrimitive(longMessage))))))
+        prepare(listOf(long));content { ScheduleDetailScreen(machine,long.id) };both("detail-long")
+        ui.onNodeWithText("展开全文").performClick();both("detail-long-expanded")
+    }
+    @Test fun messageEditor() { prepare();content { ScheduleMessageEditor(longMessage,false,"",{},{}) };both("message-editor") }
+    @Test fun longNewTask() {
+        prepare();var clear:()->Unit={}
+        content { val focus=LocalFocusManager.current;clear={focus.clearFocus(force=true)};NewScheduleScreen("") }
+        ui.onAllNodes(hasSetTextAction())[0].performTextReplacement(longMessage);ui.onAllNodes(hasSetTextAction())[0].performTextInputSelection(androidx.compose.ui.text.TextRange.Zero);ui.runOnIdle { clear() };ui.onNodeWithText("选择项目").performClick();ui.onNodeWithText("project",useUnmergedTree=true).performClick();both("new-long")
+    }
+    @Test fun longChatMessage() {
+        prepare();content { Column { NavBar("修复登录超时",{});MeBubble(longMessage,caption="定时任务 · 08:00",foldScheduled=true) } };both("chat-long-scheduled")
+    }
+    @Test fun queuedMessage() {
+        prepare();val origin=Origin.newBuilder().setScheduledTaskId(current.id).build()
+        val queued=Event.newBuilder().setSeq(9).setTime(stamp(15)).setOrigin(origin).setInputState(InputState.newBuilder().setRequestId("queued-schedule").setText(current.message).setStatus(InputStatus.INPUT_STATUS_QUEUED).setMode(SendMode.SEND_MODE_QUEUE)).build()
+        val status=Event.newBuilder().setSeq(10).setTime(stamp(15)).setInputState(InputState.newBuilder().setRequestId("queued-schedule").setStatus(InputStatus.INPUT_STATUS_QUEUED).setMode(SendMode.SEND_MODE_QUEUE)).build()
+        remote.showForTest(remote.state.value,mapOf("layout-session" to history()+listOf(queued,status)),live=mapOf("layout-session" to LiveSnapshot.newBuilder().setSession(remote.state.value.sessions["layout-session"]!!.info).addActions(queued).build()))
+        content { SessionScreen("layout-session") };ui.onNodeWithText("定时任务 · 15:00 · 这一轮结束后发").assertExists();both("chat-queued-scheduled")
+    }
     private fun shell(command: String) {
         android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
     }
-    @Test fun wide() {
-        shell("wm size 1920x1200");shell("wm density 240");Thread.sleep(1000)
-        prepare();content { Row { SidebarTabs("schedules",0,1) {};Box(Modifier.weight(1f)) { SchedulesScreen() } } };save("tasks-wide-light")
-    }
     @After fun close() {
-        remote.close();ScheduleJump.requested.clear()
+        fixtureScope.cancel();remote.close();ScheduleJump.requested.clear()
         shell("wm size 1080x1920");shell("wm density 420")
     }
 

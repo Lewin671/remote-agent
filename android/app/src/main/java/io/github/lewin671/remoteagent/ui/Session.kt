@@ -613,6 +613,7 @@ private fun ChatPane(
                         PendingBubble(
                             s.id,
                             visiblePending[i],
+                            events,
                             i + 1,
                             pendingInputs.size,
                             state,
@@ -683,6 +684,7 @@ private fun ChatPane(
 private fun PendingBubble(
     sid: String,
     pending: io.github.lewin671.remoteagent.core.PendingInput,
+    events: List<io.github.lewin671.remoteagent.proto.Event>,
     index: Int,
     total: Int,
     state: RemoteState,
@@ -735,7 +737,7 @@ private fun PendingBubble(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                pendingInputCaption(label, index, total, origin, !pending.paused && !pending.held && cancel == null),
+                scheduledPendingCaption(pending, events, label) ?: pendingInputCaption(label, index, total, origin, !pending.paused && !pending.held && cancel == null),
                 style = T.meta,
                 color = if (cancel is Cancels.State.Failed) p.red else p.muted,
                 maxLines = 1,

@@ -42,3 +42,25 @@ fun resolvedScheduleConfig(cfg: NewConfig, state: RemoteState): NewConfig = cfg.
 
 fun scheduleDestination(task: ScheduledTask, state: RemoteState): String =
     state.sessions[task.target.text("session")]?.takeIf { it.info != null }?.let(::titleOf) ?: "对话"
+
+fun scheduleTargetMissing(task: ScheduledTask): Boolean =
+    task.target.text("type") == "resume_session" && task.reason == "execution_session_missing"
+
+fun scheduleFailedOnce(task: ScheduledTask): Boolean = task.status == "failed" &&
+    (task.trigger.text("type") == "at" || task.trigger.text("type") == "after_turn" && task.trigger["repeat"]?.jsonPrimitive?.booleanOrNull != true)
+
+fun scheduleAttentionText(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
+    if (scheduleTargetMissing(task)) {
+        val last = task.allRuns.firstOrNull()
+        val started = last?.let { scheduleInstant(it.json.text("started_at")) ?: scheduleInstant(it.json.text("scheduled_at")) }
+        val prefix = started?.let { "${scheduleWhen(it, now, zone)} 的" }.orEmpty()
+        return "${prefix}运行失败，任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。"
+    }
+    val next = when {
+        task.status == "uncertain" -> "继续可能重复执行上次的消息，请先打开运行记录核实。"
+        scheduleFailedOnce(task) -> "可立即额外执行一次，或改时间重排。"
+        else -> "恢复或重新安排后从下一次自动时间开始，不重发上次消息。"
+    }
+    val takeover = if (task.reason == "agent_schedule_permissions_changed") "继续会由你接管任务，按任务中显示的权限运行。" else ""
+    return "${scheduleReason(task.reason)}。$next$takeover"
+}

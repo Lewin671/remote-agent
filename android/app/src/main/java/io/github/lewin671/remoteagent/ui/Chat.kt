@@ -447,8 +447,11 @@ fun MeBubble(
     links: List<Pair<String, () -> Unit>> = emptyList(),
     padded: Boolean = true,
     top: (@Composable () -> Unit)? = null,
+    foldScheduled: Boolean = false,
 ) {
     val p = pal
+    var expanded by remember(text) { mutableStateOf(false) }
+    var long by remember(text) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(horizontal = if (padded) 14.dp else 0.dp, vertical = 8.dp), horizontalAlignment = Alignment.End) {
         top?.invoke()
         if (text != null) Box(Modifier.fillMaxWidth(0.8f), contentAlignment = Alignment.CenterEnd) {
@@ -457,7 +460,7 @@ fun MeBubble(
                 Modifier.clip(shape).background(if (failed) p.chip else p.soft)
                     .then(if (failed) Modifier.border(1.5.dp, p.red, shape) else Modifier).padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
-                androidx.compose.foundation.text.selection.SelectionContainer { Text(text, style = T.body, color = p.fg) }
+                androidx.compose.foundation.text.selection.SelectionContainer { Text(text, style = T.body, color = p.fg, maxLines = if (foldScheduled && !expanded) 6 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis, onTextLayout = { if (!expanded) long = it.hasVisualOverflow }) }
             }
         }
         if (caption != null || links.isNotEmpty()) Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -465,7 +468,7 @@ fun MeBubble(
                 Mark(captionIcon, captionColor ?: p.muted, iconSize(T.meta))
                 Spacer(Modifier.width(4.dp))
             }
-            if (caption != null) Text(caption, style = T.meta, color = captionColor ?: p.muted, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false))
+            if (caption != null) Text(caption + if (foldScheduled && long) " · ${if (expanded) "收起" else "展开全文"}" else "", style = T.meta, color = captionColor ?: p.muted, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false).then(if (foldScheduled && long) Modifier.heightIn(min = 44.dp).clickable { expanded = !expanded } else Modifier))
             for ((label, go) in links) Text(label, style = T.metaB, color = p.blue, modifier = Modifier.padding(start = 6.dp).clickable(onClick = go))
         }
     }
@@ -546,6 +549,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.User -> MeBubble(
             sentBubbleText(item.text, item.images.isNotEmpty(), item.files.isNotEmpty()),
             caption = item.from,
+            foldScheduled = item.from?.startsWith("定时任务 · ") == true,
             top = if (item.images.isNotEmpty() || item.files.isNotEmpty()) ({ Column {
                 if (item.images.isNotEmpty()) ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp))
                 FileChips(item.files)

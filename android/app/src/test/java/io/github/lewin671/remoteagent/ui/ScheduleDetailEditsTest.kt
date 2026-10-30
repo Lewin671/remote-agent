@@ -2,6 +2,8 @@ package io.github.lewin671.remoteagent.ui
 
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import io.github.lewin671.remoteagent.core.*
@@ -41,7 +43,7 @@ class ScheduleDetailEditsTest {
     private fun render() { ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { ScheduleDetailScreen("computer","task") } } } }
     @After fun close() { scope.cancel();remote.close() }
     @Test fun renameConflictClosesTheStaleDialogAndRefreshes() {
-        prepare();render();ui.onNodeWithText("任务名").performClick()
+        prepare();render();ui.onNodeWithText("任务名").performScrollTo().performClick()
         ui.onNode(hasSetTextAction()).performTextReplacement("新名字")
         conflict=true;ui.onNodeWithText("保存").performClick()
         ui.onNode(hasSetTextAction()).assertDoesNotExist()
@@ -49,12 +51,12 @@ class ScheduleDetailEditsTest {
         ui.runOnIdle { assertEquals("list",requests.last().operation) }
     }
     @Test fun existingTaskCannotSelectAnotherComputer() {
-        prepare();render();ui.onNodeWithText("在哪运行").performClick()
+        prepare();render();ui.onNodeWithText("在哪运行").performScrollTo().performClick()
         ui.onNodeWithText("机器").assertHasNoClickAction()
         ui.onNodeWithText("任务设置").assertExists();ui.onNodeWithText("设为常用").assertDoesNotExist();ui.onNodeWithText("移除项目…").assertDoesNotExist()
     }
     @Test fun targetEditorSavesTheSelectedCliAndItsPermission() {
-        prepare();render();ui.onNodeWithText("在哪运行").performClick()
+        prepare();render();ui.onNodeWithText("在哪运行").performScrollTo().performClick()
         ui.onNodeWithText("Codex",useUnmergedTree=true).performClick()
         ui.onAllNodesWithText("权限").onLast().performClick()
         ui.onNodeWithText("完全放行",useUnmergedTree=true).performClick()
@@ -66,7 +68,7 @@ class ScheduleDetailEditsTest {
         }
     }
     @Test fun editorKeepsOpeningRevisionAndFullSpecAfterAnotherClientWrites() {
-        prepare();render();ui.onNodeWithText("消息",useUnmergedTree=true).performClick()
+        prepare();render();ui.onNodeWithText("编辑",useUnmergedTree=true).performClick()
         ui.runOnIdle { latest=ScheduledTask(original.machine,JsonObject(original.json+mapOf("revision" to JsonPrimitive(9),"spec" to JsonObject(original.spec+("title" to JsonPrimitive("另一端改名"))))));runBlocking { repository.refresh("computer") } }
         ui.onNode(hasSetTextAction()).performTextReplacement("本端修改");ui.onNodeWithText("保存").performClick()
         ui.runOnIdle {
@@ -85,7 +87,7 @@ class ScheduleDetailEditsTest {
     }
     @Test fun systemCancelledRecurringTaskReschedulesWithDefinitionAndCanBeDeleted() {
         cancelled();prepare();render()
-        ui.onNodeWithText("重新安排").performScrollTo().performClick()
+        ui.onNodeWithText("恢复").performScrollTo().performClick()
         ui.runOnIdle {
             assertEquals(1,requests.count { it.operation=="update" })
             val sent=requests.single { it.operation=="update" }
@@ -98,19 +100,60 @@ class ScheduleDetailEditsTest {
     }
     @Test fun systemCancelledOneShotRequiresNewTimingBeforeRescheduling() {
         cancelled(buildJsonObject { put("type","at");put("at","2026-10-01T10:00:00Z") });prepare();render()
-        ui.onNodeWithText("重新安排").performScrollTo().performClick()
+        ui.onNodeWithText("恢复").performScrollTo().performClick()
         ui.onNodeWithText("完成").assertExists()
         ui.runOnIdle { assertFalse(requests.any { it.operation=="resume" || it.operation=="update" }) }
     }
     @Test fun activeExecutionDisablesDefinitionAndRunButStillAllowsRename() {
         latest=ScheduledTask(original.machine,JsonObject(original.json+("active_run" to buildJsonObject { put("id","active");put("status","running") })))
         prepare();render()
-        ui.onNodeWithText("任务名").assertHasClickAction()
-        for(label in listOf("什么时候","消息","在哪运行")) ui.onNodeWithText(label).assertIsNotEnabled()
+        ui.onNodeWithText("任务名").performScrollTo().assertHasClickAction()
+        for(label in listOf("什么时候","编辑","在哪运行")) ui.onNodeWithText(label).performScrollTo().assertIsNotEnabled()
         ui.onNodeWithText("立即运行一次").performScrollTo().assertIsNotEnabled()
     }
     @Test fun pendingManualRequestDisablesAnotherRun() {
         latest=ScheduledTask(original.machine,JsonObject(original.json+("manual_request" to buildJsonObject { put("request_id","queued") })))
         prepare();render();ui.onNodeWithText("立即运行一次").performScrollTo().assertIsNotEnabled()
     }
+    @Test fun endedTasksCollapseAndRememberExpansionOnThisDevice() {
+        latest=ScheduledTask(original.machine,JsonObject(original.json+("status" to JsonPrimitive("completed"))))
+        prepare()
+        val context=androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        context.getSharedPreferences("schedule-display",0).edit().clear().commit()
+        var showing by androidx.compose.runtime.mutableStateOf(true)
+        var newTasks=0
+        ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides Nav({},{},{},{},{},{},{},{},{_,_->},{},{},{},newTask={newTasks++})) { if(showing) SchedulesScreen() } } }
+        ui.onNodeWithText(original.title).assertDoesNotExist()
+        ui.onNodeWithContentDescription("新任务").performClick()
+        ui.runOnIdle { assertEquals(1,newTasks) }
+        ui.onNodeWithText("已结束").performClick()
+        ui.onNodeWithText(original.title).assertExists()
+        ui.runOnIdle { showing=false };ui.waitForIdle();ui.runOnIdle { showing=true }
+        ui.onNodeWithText(original.title).assertExists()
+        context.getSharedPreferences("schedule-display",0).edit().clear().commit()
+    }
+    @Test fun detailLimitsHistoryPreviewAndExpandsAllRecords() {
+        val runs=buildJsonArray { (1..7).forEach { n -> add(buildJsonObject { put("id","run-$n");put("started_at","2026-10-24T10:0$n:00Z");put("status","completed");put("notified",true);put("notification_text","记录 $n") }) } }
+        latest=ScheduledTask(original.machine,JsonObject(original.json+("runs" to runs)))
+        prepare();render()
+        ui.onNodeWithText("记录 1").assertDoesNotExist()
+        ui.onNodeWithText("查看全部 7 次").performScrollTo().performClick()
+        ui.onNodeWithText("记录 1").assertExists()
+    }
+    @Test fun offlineDetailDisablesEditsAndExplainsWhenTheyReturn() {
+        prepare();render()
+        ui.runOnIdle { val state=remote.state.value;remote.showForTest(state.copy(conn=ConnState.OFFLINE)) }
+        ui.onAllNodesWithText(SCHEDULE_OFFLINE).assertCountEquals(1)
+        for (label in listOf("编辑","什么时候","在哪运行","任务名","立即运行一次","删除任务")) ui.onNodeWithText(label).performScrollTo().assertIsNotEnabled()
+        ui.onNodeWithText("连上后才能修改、运行或删除。",substring=true).performScrollTo().assertExists()
+    }
+
+    @Test fun missingConversationKeepsRecoveryOnlyInTheActionGroup() {
+        latest=ScheduledTask(original.machine,JsonObject(original.json+mapOf("status" to JsonPrimitive("failed"),"reason" to JsonPrimitive("execution_session_missing"),"spec" to JsonObject(original.spec+("target" to buildJsonObject { put("type","resume_session");put("session","gone") })))))
+        prepare();render()
+        ui.onAllNodesWithText("恢复").assertCountEquals(1)
+        ui.onNodeWithText("恢复").performScrollTo().performClick()
+        ui.runOnIdle { assertEquals(1,requests.count { it.operation=="resume" }) }
+    }
+
 }

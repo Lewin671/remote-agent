@@ -44,7 +44,7 @@ class ScheduleCreationMachineTest {
         ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { ScheduleEditor(""){} } } }
         ui.onNodeWithText("选择项目",useUnmergedTree=true).performClick()
         ui.onNodeWithText("project",useUnmergedTree=true).performClick()
-        ui.onAllNodes(hasSetTextAction()).onLast().performTextReplacement("检查回复")
+        ui.onAllNodes(hasSetTextAction()).onFirst().performTextReplacement("检查回复")
         ui.onNodeWithText("机器和模型",useUnmergedTree=true).performScrollTo().performClick()
         ui.onNodeWithText("机器",useUnmergedTree=true).performClick();ui.onNodeWithText("新电脑",useUnmergedTree=true).performClick()
         ui.onNodeWithText("默认模型",useUnmergedTree=true).assertExists();ui.onNodeWithText("询问",useUnmergedTree=true).assertExists()

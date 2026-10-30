@@ -55,7 +55,10 @@ fun taskGroup(t: ScheduledTask): TaskGroup = when {
     else -> TaskGroup.ACTIVE
 }
 const val SCHEDULE_OFFLINE = "未连接，显示的是上次的状态"
-const val SCHEDULE_EMPTY = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。"
+const val SCHEDULE_OFFLINE_ROW = "未连接"
+const val SCHEDULE_MESSAGE_MAX_BYTES = 32 * 1024
+fun scheduleMessageValid(message: String) = message.isNotBlank() && message.toByteArray(Charsets.UTF_8).size <= SCHEDULE_MESSAGE_MAX_BYTES
+const val SCHEDULE_EMPTY = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以点右上角的 ＋ 自己建。"
 const val SCHEDULE_INTERVAL_HINT = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。"
 fun scheduleVisible(t: ScheduledTask) = t.status != "cancelled" || t.reason.isNotEmpty() && t.reason != "user_cancelled"
 fun scheduleSorted(tasks: List<ScheduledTask>, group: TaskGroup) = tasks.filter { scheduleVisible(it) && taskGroup(it) == group }.sortedWith(
@@ -77,8 +80,8 @@ fun scheduleReason(reason: String): String = when (reason) {
     "message_cancelled" -> "定时消息在送达前被取消，任务已停下"
     "execution_input_paused" -> "定时消息已暂停，请先在对话里恢复或取消这条消息"
     "restart_dispatching" -> "电脑重启前的发送结果无法确认"
-    "agent_schedule_permissions_changed" -> "创建任务时的权限已改变，任务已暂停"
-    "agent_schedule_interval_below_minimum" -> "Agent 创建的任务间隔过短，任务已暂停"
+    "agent_schedule_permissions_changed" -> "创建任务时的权限已改变，任务已停下"
+    "agent_schedule_interval_below_minimum" -> "Agent 创建的任务间隔过短，任务已停下"
     "catch_up_window_expired" -> "已超过补跑时间，本次跳过"
     "completed_while_paused" -> "已暂停：期间计划已到期"
     "user_paused" -> "已暂停"
@@ -93,9 +96,10 @@ private val scheduleWhitespace = Regex("[\\s\\p{Z}\\uFEFF]+")
 fun scheduleNameInput(value: String): String = clipScheduleName(value.replace(scheduleWhitespace, " ").trimStart())
 fun scheduleName(name: String, message: String): String {
     val text = message.trim { it.isWhitespace() || it == '\uFEFF' }
-    val first = text.split(Regex("\\r?\\n|[。！？!?]|\\.(?=\\s|$)"), limit = 2).firstOrNull().orEmpty()
+    val line = text.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty()
+    val first = line.split(Regex("\\r?\\n|[。！？!?]|\\.(?=\\s|$)"), limit = 2).firstOrNull().orEmpty()
     val explicit = name.replace(scheduleWhitespace, " ").trim()
-    return clipScheduleName(explicit.ifEmpty { first.ifEmpty { text } }.replace(scheduleWhitespace, " ").trim())
+    return clipScheduleName(explicit.ifEmpty { first.ifEmpty { line }.replace(scheduleWhitespace, " ").trim().trimEnd(',', '，', ':', '：', ';', '；').trimEnd() })
 }
 fun renamedScheduleSpec(task: ScheduledTask, name: String): JsonObject? {
     val resolved = scheduleName(name, task.message)
@@ -161,7 +165,7 @@ fun scheduleLastResult(t: ScheduledTask, now: Instant = Instant.now(), zone: Zon
     if (taskGroup(t) == TaskGroup.ATTENTION) return scheduleReason(t.reason)
     val last = t.allRuns.firstOrNull() ?: return "还没有运行"
     val today = t.allRuns.filter { it.time.atZone(zone).toLocalDate() == now.atZone(zone).toLocalDate() }
-    if (today.size > 1 && today.all { it.quiet }) return "今天 ${today.size} 次都没有通知"
+    if (today.size > 1 && today.all { it.quiet }) return "今天 ${today.size} 次，都没有通知"
     val detail = if (last.notified || last.status in stoppedScheduleRuns) last.summary else ""
     return "${scheduleWhen(last.time, now, zone)} ${runResult(last)}" + detail.takeIf { it.isNotBlank() }?.let { "：$it" }.orEmpty()
 }

@@ -80,7 +80,7 @@ class ScheduleComparisonGallery {
             check(committed.await(5,TimeUnit.SECONDS)) { "visible windows did not commit a frame" }
         }
         val dir=File(i.targetContext.getExternalFilesDir(null),"schedule-layout").apply { mkdirs() }
-        File(dir,"$name-light.png").outputStream().use { requireNotNull(i.uiAutomation.takeScreenshot()).compress(Bitmap.CompressFormat.PNG,100,it) }
+        File(dir,"comparison-$name-light.png").outputStream().use { requireNotNull(i.uiAutomation.takeScreenshot()).compress(Bitmap.CompressFormat.PNG,100,it) }
     }
     @Test fun list() { content { Column { Box(Modifier.weight(1f)) { SchedulesScreen() };TabBar("schedules",0,1) {} } };ui.onAllNodesWithText("检查 PR 回复")[0].assertExists();ui.onNodeWithText("网络不通",substring=true).assertDoesNotExist();save("tasks") }
     @Test fun detail() { content { ScheduleDetailScreen(machine,"quiet") };ui.onAllNodesWithText("检查 PR 回复")[0].assertExists();save("detail") }
@@ -89,13 +89,13 @@ class ScheduleComparisonGallery {
     @Test fun newTask() {
         var clear:()->Unit={}
         content { val focus=LocalFocusManager.current;clear={focus.clearFocus(force=true)};NewScheduleScreen("") }
-        ui.onAllNodes(hasSetTextAction())[0].performTextReplacement(task.title)
-        ui.onAllNodes(hasSetTextAction())[1].performTextReplacement(task.message)
+        ui.onAllNodes(hasSetTextAction())[0].performTextReplacement(task.message)
+        ui.onAllNodes(hasSetTextAction())[1].performTextReplacement(task.title)
         ui.runOnIdle { clear() }
         ui.onNodeWithText("选择项目").performClick();ui.onNodeWithText("project",useUnmergedTree=true).performClick()
         ui.onNodeWithText("什么时候").performClick();ui.onNodeWithText("每隔").performClick()
         ui.onNodeWithText("小时").performClick();ui.onNodeWithText("完成").performClick()
-        ui.runOnIdle { clear() };ui.onAllNodes(hasSetTextAction())[0].assert(hasText(task.title))
+        ui.runOnIdle { clear() };ui.onAllNodes(hasSetTextAction())[1].assert(hasText(task.title))
         ui.onNodeWithText("每小时").assertExists();save("new")
     }
     @After fun close() { fixtureScope.cancel();remote.close() }

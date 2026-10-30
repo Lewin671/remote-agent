@@ -104,7 +104,7 @@ class SchedulesTest {
     }
     @Test fun lastResultCountsOnlyQuietCompletedRunsToday() {
         val quiet = "[${run("a", 12)},${run("b", 13)}]"
-        assertEquals("今天 2 次都没有通知", scheduleLastResult(task(runs = quiet), now, utc))
+        assertEquals("今天 2 次，都没有通知", scheduleLastResult(task(runs = quiet), now, utc))
         val notified = "[${run("a", 12)},${run("b", 13, true)}]"
         assertEquals("今天 13:00 通知了你：Important", scheduleLastResult(task(runs = notified), now, utc))
         assertEquals("今天 13:00 失败：运行结果无法确认", scheduleLastResult(task(runs = "[${run("b", 13, status = "failed")}]"), now, utc))
@@ -273,10 +273,12 @@ class SchedulesTest {
     @Test fun finalClientContractUsesActualGroupingSortingAndReasons() {
         val data = Json.parseToJsonElement(java.io.File(System.getProperty("scheduleClients")).readText()).jsonObject
         assertEquals(data.text("empty"),SCHEDULE_EMPTY);assertEquals(data.text("offline"),SCHEDULE_OFFLINE)
+        assertEquals(data.text("offlineRow"),SCHEDULE_OFFLINE_ROW)
+        data["titleFromMessage"]!!.jsonArray.forEach { pair -> assertEquals(pair.jsonArray[1].jsonPrimitive.content, scheduleName("",pair.jsonArray[0].jsonPrimitive.content)) }
         val tasks = data["tasks"]!!.jsonArray.map { ScheduledTask("computer", it.jsonObject) }
         TaskGroup.entries.forEach { group -> assertEquals(data["groups"]!!.jsonObject[group.label]!!.jsonArray.map { it.jsonPrimitive.content }, scheduleSorted(tasks,group).map { it.id }) }
         val stopped=tasks.first { it.id=="attention" }
-        assertEquals("创建任务时的权限已改变，任务已暂停",scheduleLastResult(stopped))
+        assertEquals("创建任务时的权限已改变，任务已停下",scheduleLastResult(stopped))
         assertEquals("没有通知",runResult(stopped.runs.single()))
         assertEquals("没有通知",stopped.runs.single().foldedSummary)
         val limited=ScheduledTask(stopped.machine,JsonObject(stopped.json+("spec" to JsonObject(stopped.spec+("trigger" to JsonObject(stopped.trigger+mapOf("max_runs" to JsonPrimitive(5),"until" to JsonPrimitive("2026-10-30T08:00:00Z"))))))))
@@ -285,6 +287,13 @@ class SchedulesTest {
         val old=ScheduledTask("computer",JsonObject(task("paused","user_paused").json + mapOf("id" to JsonPrimitive("old"),"updated_at" to JsonPrimitive("2026-10-24T10:00:00Z"),"next_run_at" to JsonPrimitive("2026-10-24T13:00:00Z"))))
         val newer=ScheduledTask("computer",JsonObject(old.json + mapOf("id" to JsonPrimitive("new"),"updated_at" to JsonPrimitive("2026-10-24T11:00:00Z"),"next_run_at" to JsonPrimitive("2026-10-24T14:00:00Z"))))
         assertEquals(listOf("new","old"),scheduleSorted(listOf(old,newer),TaskGroup.PAUSED).map { it.id })
+    }
+    @Test fun messageLimitCountsUtf8Bytes() {
+        assertTrue(scheduleMessageValid("a".repeat(32768)))
+        assertFalse(scheduleMessageValid("a".repeat(32769)))
+        assertTrue(scheduleMessageValid("中".repeat(10922)))
+        assertFalse(scheduleMessageValid("中".repeat(10923)))
+        assertFalse(scheduleMessageValid(" \n "))
     }
     @Test fun cursorStartsAfterDispatchWithZeroStartFallback() {
         assertEquals(43L,ScheduledRun(buildJsonObject { put("start_seq",42);put("after_seq",9) }).seq)

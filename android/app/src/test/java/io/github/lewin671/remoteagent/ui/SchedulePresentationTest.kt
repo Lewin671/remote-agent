@@ -65,4 +65,32 @@ class SchedulePresentationTest {
         assertTrue(schedulePlanBlocked(false,config.copy(mode=null),state))
         assertEquals(Mode.PLAN,config.mode)
     }
+    @Test fun stoppedBannerCopyMatchesTheSharedRulesExactly() {
+        fun task(status: String, reason: String, trigger: String = """{"type":"interval","interval_seconds":3600}""", target: String = """{"type":"new_session"}""") = ScheduledTask("m",buildJsonObject {
+            put("status",status); put("reason",reason)
+            put("spec",buildJsonObject { put("trigger",Json.parseToJsonElement(trigger));put("target",Json.parseToJsonElement(target)) })
+        })
+        val recurring="恢复或重新安排后从下一次自动时间开始，不重发上次消息。"
+        assertEquals("中继上的会话数已满。$recurring",scheduleAttentionText(task("failed","relay_session_limit")))
+        assertEquals("电脑重启前的发送结果无法确认。继续可能重复执行上次的消息，请先打开运行记录核实。",scheduleAttentionText(task("uncertain","restart_dispatching")))
+        for (trigger in listOf("""{"type":"at"}""","""{"type":"after_turn","repeat":false}""")) {
+            assertEquals("运行失败，任务已停下。可立即额外执行一次，或改时间重排。",scheduleAttentionText(task("failed","execution_failed",trigger)))
+            assertEquals("运行失败，任务已停下。继续可能重复执行上次的消息，请先打开运行记录核实。",scheduleAttentionText(task("uncertain","execution_failed",trigger)))
+        }
+        assertEquals("运行失败，任务已停下。$recurring",scheduleAttentionText(task("failed","execution_failed","""{"type":"after_turn","repeat":true}""")))
+        assertEquals("创建任务时的权限已改变，任务已停下。${recurring}继续会由你接管任务，按任务中显示的权限运行。",scheduleAttentionText(task("paused","agent_schedule_permissions_changed")))
+        assertEquals("Agent 创建的任务间隔过短，任务已停下。$recurring",scheduleAttentionText(task("paused","agent_schedule_interval_below_minimum")))
+        val missing=task("failed","execution_session_missing",target="""{"type":"resume_session","session":"gone"}""")
+        val runs=buildJsonArray {
+            add(buildJsonObject { put("id","earlier");put("started_at","2026-10-24T10:00:00Z") })
+            add(buildJsonObject { put("id","failed");put("scheduled_at","2026-10-24T14:00:00Z");put("started_at","2026-10-24T15:02:00Z") })
+        }
+        assertEquals("今天 15:02 的运行失败，任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。",scheduleAttentionText(ScheduledTask("m",JsonObject(missing.json+("runs" to runs))),java.time.Instant.parse("2026-10-24T16:00:00Z"),ZoneId.of("UTC")))
+        assertTrue(scheduleTargetMissing(missing))
+        val exited=task("failed","execution_session_exited",target="""{"type":"resume_session","session":"gone"}""")
+        assertFalse(scheduleTargetMissing(exited))
+        assertEquals("运行中的对话已结束。$recurring",scheduleAttentionText(exited))
+        assertFalse(scheduleTargetMissing(task("failed","execution_session_missing")))
+    }
+
 }
