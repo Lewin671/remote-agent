@@ -90,6 +90,7 @@ private struct SessionPage: View {
     @State private var tab: Int
     @State private var menu = false
     @State private var sheet: SessionSheet?
+    @State private var scheduleSending = false
     @State private var rename = false
     @State private var projectSettings: ProjectSettingsRequest?
     @State private var confirmStop = false
@@ -215,6 +216,15 @@ private struct SessionPage: View {
                     onClose: { projectSettings = nil })
             }
         }
+        .sheet(isPresented: $scheduleSending) {
+            NavigationStack {
+                NewScheduleScreen(sessionID: sid, onCreated: { route in
+                    guard scheduleSending else { return }
+                    scheduleSending = false; nav.open(route, from: page)
+                })
+                .toolbar { ToolbarItem(placement: .topBarLeading) { TextAction("取消") { scheduleSending = false } } }
+            }.presentationDetents([.large]).presentationDragIndicator(.visible)
+        }
         .sessionRename(isPresented: $rename, session: s)
         .confirm(
             isPresented: $confirmStop, title: "结束这个会话？",
@@ -228,8 +238,13 @@ private struct SessionPage: View {
         .task(id: s.machineId) {
             if s.agent == .claude { models = try? await context.remote.listModels(s.machineId, agent: s.agent) }
         }
+        .task {
+            #if DEBUG
+            if model.isDemo, HomeLaunch.value("-schedulePanel") == "session-schedule" { scheduleSending = true }
+            #endif
+        }
         .debugSignal("session.schedule") {
-            if context.schedules.online(s.machineId) { nav.open(.newSchedule(session: sid), from: page) }
+            if context.schedules.online(s.machineId) { scheduleSending = true }
         }
         .debugSignal("session.menu") { menu = true }
         .debugSignal("session.mode") { sheet = .mode }
@@ -280,7 +295,7 @@ private struct SessionPage: View {
             }
         }
         list.append(SheetAction("定时发送…", enabled: reachable && state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true, note: state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true ? "" : "需要更新 remote-agent") {
-            afterMenu { nav.open(.newSchedule(session: sid), from: page) }
+            afterMenu { scheduleSending = true }
         })
         list.append(SheetAction("项目设置", enabled: !forking && projectConfig(state, key: projectKey(s)) != nil) {
             afterMenu { projectSettings = ProjectSettingsRequest() }

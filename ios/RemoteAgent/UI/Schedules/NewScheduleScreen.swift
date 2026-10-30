@@ -39,7 +39,7 @@ final class ScheduleDraft {
             target.mode = mode.map { $0 == .full ? "full" : $0 == .auto ? "auto" : "ask" }
         } else { return nil }
         let title = scheduleTitle(name, message: message)
-        guard !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !title.isEmpty else { return nil }
+        guard scheduleMessageValid(message), !title.isEmpty else { return nil }
         return ScheduleSpec(title: title, message: message, trigger: trigger, target: target)
     }
 }
@@ -52,6 +52,7 @@ extension AccountContext { var scheduleDrafts: ScheduleDrafts { memory.value { S
 
 struct NewScheduleScreen: View {
     let sessionID: String
+    var onCreated: ((Route) -> Void)? = nil
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
@@ -72,8 +73,9 @@ struct NewScheduleScreen: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(spacing: 12) {
-                            InputField("任务名", text: Bindable(draft).name, placeholder: "留空就用消息的第一句").onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
-                            InputField("让 agent 做什么", text: Bindable(draft).message, placeholder: "检查什么，有结果时通知我…", lines: 4...12)
+                            InputField("让 agent 做什么", text: Bindable(draft).message, placeholder: "检查什么，有结果时通知我…", lines: 1...(sessionID.isEmpty ? 8 : 4))
+                            if draft.message.utf8.count > scheduleMessageLimit { Hint("太长了，最多 32 KB", color: Theme.red) }
+                            InputField("任务名", text: Bindable(draft).name, placeholder: draft.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "留空就用消息的第一句" : "留空会用：" + scheduleTitle("", message: draft.message)).onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
                         }.padding(16).disabled(draft.mutation.frozen)
                         GroupCard {
                             GRow("什么时候", value: scheduleFrequency(draft.trigger, includeZone: true), chevron: true) { timing = true }
@@ -88,6 +90,7 @@ struct NewScheduleScreen: View {
                         if !machine.isEmpty && !supported { Hint("这台电脑需要更新 remote-agent 才能使用定时任务。", color: Theme.orangeInk).padding(.horizontal, 16) }
                         if !machine.isEmpty && supported && !context.schedules.online(machine) { Hint("电脑不在线，连上后才能创建任务。").padding(.horizontal, 16) }
                         if let issue = draft.creationIssue(session: session, state: state) { Hint(issue, color: Theme.orangeInk).padding(.horizontal, 16) }
+                        if !sessionID.isEmpty && draft.trigger.type == "interval" { Hint(scheduleIntervalHint).padding(.horizontal, 16) }
                         if sessionID.isEmpty { Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。").padding(.horizontal, 16) }
                         if !draft.mutation.error.isEmpty { Banner(draft.mutation.error, tone: .error).padding(16) }
                         if draft.mutation.frozen {
@@ -104,6 +107,11 @@ struct NewScheduleScreen: View {
         }
         .kitSheet(item: $picker, size: .large) { page in
             ScheduleConfigSheet(page: page, config: Bindable(draft).config) { picker = nil }
+        }
+        .task {
+            #if DEBUG
+            if model.isDemo { timing = HomeLaunch.value("-schedulePanel")?.hasPrefix("timing-") == true }
+            #endif
         }
         .task(id: state.machines.keys.sorted()) {
             if draft.config == nil, let p = listedProjects(state).first { draft.config = projectStart(state, key: p.key)?.config }
@@ -139,7 +147,8 @@ struct NewScheduleScreen: View {
         }, refresh: { await context.schedules.refresh(machine) }) { result in
             guard case .schedule(let response) = result.kind, let task = try? JSONDecoder().decode(ScheduleTask.self, from: response.resultJson) else { return }
             context.scheduleDrafts.clear(sessionID)
-            if nav.showing(page) {
+            if let onCreated { onCreated(.schedule(machine: machine, id: task.id)) }
+            else if nav.showing(page) {
                 nav.back()
                 nav.open(.schedule(machine: machine, id: task.id))
             }

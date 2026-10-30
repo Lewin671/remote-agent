@@ -121,6 +121,7 @@ public struct ScheduleTask: Codable, Equatable, Sendable, Identifiable {
         }
     }
     public var visible: Bool { status != "cancelled" || (!(reason ?? "").isEmpty && reason != "user_cancelled") }
+    public var missingTarget: Bool { spec.target.type == "resume_session" && ["source_session_missing", "execution_session_missing"].contains(reason ?? "") }
     public var oneShot: Bool { spec.trigger.type == "at" || (spec.trigger.type == "after_turn" && spec.trigger.repeatAfterTurn != true) }
     public func stateText(online: Bool, now: Date = Date(), zone: TimeZone = .current) -> String {
         guard online else { return scheduleOffline }
@@ -140,7 +141,7 @@ public struct ScheduleTask: Codable, Equatable, Sendable, Identifiable {
         var cal = Calendar(identifier: .gregorian); cal.timeZone = zone
         let today = history.filter { cal.isDate($0.date, inSameDayAs: now) }
         if today.count > 1 && today.allSatisfy(\.silent) && group != .attention {
-            return "今天 \(today.count) 次都没有通知"
+            return "今天 \(today.count) 次，都没有通知"
         }
         guard let last = history.first else { return group == .attention ? scheduleReason(reason) : "还没有运行" }
         let abnormal = ["failed", "skipped", "uncertain", "interrupted", "cancelled"].contains(last.status)
@@ -180,7 +181,8 @@ public func scheduleTitle(_ typed: String, message: String) -> String {
     } ?? line.count
     let sentence = String(line.prefix(end))
     let first = sentence.isEmpty ? message.trimmingCharacters(in: .whitespacesAndNewlines) : sentence
-    return String(String.UnicodeScalarView(clean(entered.isEmpty ? first : entered).unicodeScalars.prefix(60)))
+    let fallback = String(clean(first).reversed().drop(while: { "，,:：;；".contains($0) }).reversed())
+    return String(String.UnicodeScalarView((entered.isEmpty ? fallback : entered).unicodeScalars.prefix(60)))
 }
 public func scheduleDate(_ text: String) -> Date? {
     let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -237,8 +239,8 @@ public func scheduleReason(_ reason: String?) -> String {
         "execution_session_missing": "找不到运行的对话", "message_delivery_failed": "消息没有送达 CLI",
         "could_not_queue_message": "消息没能加入待发队列", "message_cancelled": "定时消息在送达前被取消，任务已停下",
         "execution_input_paused": "定时消息已暂停，请先在对话里恢复或取消这条消息", "restart_dispatching": "电脑重启前的发送结果无法确认",
-        "agent_schedule_permissions_changed": "创建任务时的权限已改变，任务已暂停",
-        "agent_schedule_interval_below_minimum": "Agent 创建的任务间隔过短，任务已暂停", "completed_while_paused": "已暂停：期间计划已到期", "catch_up_window_expired": "已超过补跑时间，本次跳过"
+        "agent_schedule_permissions_changed": "创建任务时的权限已改变，任务已停下",
+        "agent_schedule_interval_below_minimum": "Agent 创建的任务间隔过短，任务已停下", "completed_while_paused": "已暂停：期间计划已到期", "catch_up_window_expired": "已超过补跑时间，本次跳过"
     ]
     return known[r] ?? (r.isEmpty ? "运行结果无法确认" : "电脑返回的原因：" + r)
 }
@@ -266,8 +268,13 @@ public func scheduleBarText(_ tasks: [MachineSchedule], online: Bool, now: Date 
     return prefix + (tasks.count == 1 ? "，" : " · ") + first.task.stateText(online: online, now: now, zone: zone)
 }
 
+public let scheduleMessageLimit = 32 * 1024
+public func scheduleMessageValid(_ message: String) -> Bool {
+    !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && message.utf8.count <= scheduleMessageLimit
+}
+public let scheduleOfflineRow = "未连接"
 public let scheduleOffline = "未连接，显示的是上次的状态"
-public let scheduleEmpty = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。"
+public let scheduleEmpty = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以点右上角的 ＋ 自己建。"
 public let scheduleIntervalHint = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。"
 public func scheduleLimits(_ trigger: ScheduleTrigger, now: Date = Date(), zone: TimeZone = .current) -> String {
     [trigger.maxRuns.flatMap { $0 > 0 ? "共 \($0) 次" : nil }, trigger.until.flatMap(scheduleDate).map { "到 " + scheduleMoment($0, now: now, zone: zone) }].compactMap { $0 }.joined(separator: "，或")

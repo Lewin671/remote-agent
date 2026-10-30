@@ -10,6 +10,42 @@ import RAProto
         var task = ScheduleTask(id: "task", spec: ScheduleSpec(title: "检查", message: "检查回复。没有变化就简短说一句", trigger: ScheduleTrigger(type: "calendar"), target: ScheduleTarget(type: "new_session")), status: status)
         task.reason = reason; return task
     }
+    @Test func messageLimitCountsUTF8BytesAndKeepsOriginalWhitespace() {
+        #expect(!scheduleMessageValid(" \n\t"))
+        #expect(scheduleMessageValid(String(repeating: "a", count: 32768)))
+        #expect(!scheduleMessageValid(String(repeating: "a", count: 32769)))
+        #expect(scheduleMessageValid(String(repeating: "中", count: 10922)))
+        #expect(!scheduleMessageValid(String(repeating: "中", count: 10923)))
+    }
+    @Test func switchingAllTimingKindsRetainsSelectionsAndRejectsEmptyWeek() throws {
+        var edit = ScheduleTiming(now: now, zone: zone)
+        let chosen = now.addingTimeInterval(7200)
+        edit.date = chosen; edit.until = now.addingTimeInterval(86400 * 5)
+        edit.end = .count; edit.count = 7; edit.weekdays = [2, 4]
+        for kind in [ScheduleTiming.Kind.once, .weekly, .interval, .daily, .weekly] {
+            edit.kind = kind
+            #expect(edit.date == chosen && edit.count == 7 && edit.end == .count && edit.weekdays == [2, 4])
+        }
+        edit.weekdays = []
+        #expect(throws: UserError("请至少选择一天")) { try edit.trigger(now: now) }
+        edit.weekdays = [2, 4]
+        #expect(try edit.trigger(now: now).weekdays == [2, 4])
+    }
+    @Test func missingTargetIsOnlyTheOriginalConversationTask() {
+        var t = task("failed", reason: "execution_session_missing")
+        #expect(!t.missingTarget)
+        t.spec.target.type = "resume_session"; #expect(t.missingTarget)
+        t.reason = "execution_failed"; #expect(!t.missingTarget)
+    }
+    @Test func queuedScheduledOriginKeepsItsFirstTimestampOnUpdates() {
+        var queued = PBEvent(); queued.seq = 1; queued.time.seconds = 1800000000
+        queued.origin.scheduledRunID = "run"; queued.inputState.requestID = "request"
+        queued.inputState.text = "检查"; queued.inputState.status = .queued; queued.inputState.mode = .queue
+        var update = queued; update.seq = 2; update.time.seconds += 60
+        let pending = pendingInputs(derive([queued, update]))
+        #expect(pending.count == 1 && pending[0].time == 1800000000000)
+        #expect(pending[0].origin?.scheduledRunID == "run")
+    }
     @Test func repeatedWallTimesChooseFirstForOnceAndEditedCutoff() throws {
         for (name, wall, first, second) in [
             ("America/Los_Angeles", "2027-11-07T01:30:00Z", "2027-11-07T08:30:00Z", "2027-11-07T09:30:00Z"),
@@ -65,15 +101,16 @@ import RAProto
         #expect(try edit.trigger(now:now).until == scheduleISO(chosen))
     }
     @Test func finalSharedClientContractUsesActualStateProjection() throws {
-        struct Fixture: Decodable { let now: String; let timezone: String; let tasks: [ScheduleTask]; let empty: String; let offline: String; let groups: [String: [String]] }
+        struct Fixture: Decodable { let now: String; let timezone: String; let tasks: [ScheduleTask]; let empty: String; let offline: String; let offlineRow: String; let titleFromMessage: [[String]]; let groups: [String: [String]] }
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let f = try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: root.appendingPathComponent("testdata/schedules/clients.json")))
-        #expect(scheduleEmpty == f.empty && scheduleOffline == f.offline)
+        #expect(scheduleEmpty == f.empty && scheduleOffline == f.offline && scheduleOfflineRow == f.offlineRow)
+        for pair in f.titleFromMessage { #expect(scheduleTitle("", message: pair[0]) == pair[1]) }
         for group in ScheduleGroup.allCases {
             #expect(sortedSchedules(f.tasks.map { MachineSchedule(machineID: "computer", task: $0) }, group: group).map { $0.task.id } == f.groups[group.title])
         }
         let attention = try #require(f.tasks.first { $0.id == "attention" })
-        #expect(attention.lastResult() == "创建任务时的权限已改变，任务已暂停")
+        #expect(attention.lastResult() == "创建任务时的权限已改变，任务已停下")
         #expect(attention.history[0].result == "没有通知")
         #expect(attention.history[0].foldedSummary == "没有通知")
         var author = attention; #expect(author.creator == "你创建"); author.source = "agent"; #expect(author.creator == "Agent 在对话里创建")
@@ -187,7 +224,7 @@ import RAProto
         var one = a; one.finalSummary = "没有新变化"; t.runs = [one]
         #expect(t.lastResult(now: now, zone: zone) == "今天 08:00 没有通知")
         t.runs = [a, b]
-        #expect(t.lastResult(now: now, zone: zone) == "今天 2 次都没有通知")
+        #expect(t.lastResult(now: now, zone: zone) == "今天 2 次，都没有通知")
         #expect(scheduleHistoryGroups(t.history, zone: zone).count == 1)
         var bad = ScheduleRun(id: "bad", startedAt: "2026-10-24T16:30:00Z", status: "failed", notified: true)
         bad.notificationText = "旧的通知"; bad.finalSummary = "误导的摘要"; bad.reason = "relay_session_limit"

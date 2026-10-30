@@ -268,7 +268,7 @@ fi("plan","RemoteAgent/UI/Schedules/NewScheduleScreen.swift",'guard creationIssu
 fi("revision","RemoteAgent/UI/Schedules/ScheduleDetailScreen.swift",'spec: spec, revision: task.revision)','spec: spec, revision: 0)',True)
 fi("serialize","RemoteAgent/UI/Schedules/ScheduleStore.swift",'while let job = jobs[id] { await job.value }','// refresh does not wait for the revision-triggered request',True)
 fi("jump","RemoteAgent/UI/Session/ChatPane.swift",'Input(rowIDs: rowIDs, loaded: loaded, jump: jump)','Input(rowIDs: rowIDs, loaded: false, jump: jump)',True)
-fi("user-pause-banner","RemoteAgent/UI/Schedules/ScheduleEditAccess.swift",'task.group == .attention || task.reason == "completed_while_paused"','task.group == .attention || (task.group == .paused && !(task.reason ?? "").isEmpty)',True)
+fi("user-pause-banner","RemoteAgent/UI/Schedules/ScheduleEditAccess.swift",'showsReason = task.group == .attention','showsReason = task.group == .attention || task.group == .paused',True)
 
 # Quiet Xcode output names a failed Swift Testing case without its assertion text.
 # Check the structured result, and require the intended case's expectation failure.

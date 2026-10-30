@@ -75,19 +75,23 @@ struct ChatRowView: View, Equatable {
     var body: some View {
         switch row.item {
         case .user(let m):
-            ChatBubble(
-                m.text.jvmIsBlank && (!m.images.isEmpty || !m.files.isEmpty) ? nil : m.text,
-                caption: m.from
-            ) {
-                FileChips(files: m.files)
-                if !m.images.isEmpty {
-                    ChatImageRow(m.images) { actions.image(m.seq, $0) }.padding(.bottom, 4)
+            if !m.scheduledRunID.isEmpty {
+                ScheduledUserMessage(message: m)
+            } else {
+                ChatBubble(
+                    m.text.jvmIsBlank && (!m.images.isEmpty || !m.files.isEmpty) ? nil : m.text,
+                    caption: m.from
+                ) {
+                    FileChips(files: m.files)
+                    if !m.images.isEmpty {
+                        ChatImageRow(m.images) { actions.image(m.seq, $0) }.padding(.bottom, 4)
+                    }
                 }
+                .messageMenu(m.text, actions: actions)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(m.text.isEmpty ? (m.files.isEmpty ? "图片" : "文件") : m.text)
+                .accessibilityValue(m.from ?? "你发的消息")
             }
-            .messageMenu(m.text, actions: actions)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(m.text.isEmpty ? (m.files.isEmpty ? "图片" : "文件") : m.text)
-            .accessibilityValue(m.from ?? "你发的消息")
         case .agent(let m):
             // The row's own menu answers the long press (复制, and 选择文字 for a part of it), not the text's.
             MarkdownView(blocks: row.blocks, bleed: chatMargin, selectable: false)
@@ -685,4 +689,18 @@ func planFolds(_ text: String, lines: Int) -> Bool {
 /// A plan's first lines as plain text, for where it is shown cut short.
 func planPreview(_ text: String, lines: Int) -> String {
     text.jvmLines().map { plain($0) }.filter { !$0.jvmIsBlank }.prefix(lines).joined(separator: "\n")
+}
+
+struct ScheduledUserMessage: View {
+    let message: ChatItem.User
+    @Environment(\.chatActions) private var actions
+    @Environment(\.dynamicTypeSize) private var typeSize
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 0) {
+            TrailingFraction(fraction: 0.8, whole: typeSize.isAccessibilitySize) {
+                ScheduleMessageText(text: message.text, caption: message.from, bubble: true)
+            }
+        }.frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, chatMargin).padding(.vertical, 8)
+            .messageMenu(message.text, actions: actions)
+    }
 }

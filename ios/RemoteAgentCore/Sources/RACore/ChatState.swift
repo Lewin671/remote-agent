@@ -93,12 +93,14 @@ public struct Accepted: Equatable, Sendable {
     public var imageIds: [String]
     public var origin: PBOrigin?
     public var stage: PBInputStage
+    public var time: Int64
 
-    public init(text: String, imageIds: [String], origin: PBOrigin?, stage: PBInputStage) {
+    public init(text: String, imageIds: [String], origin: PBOrigin?, stage: PBInputStage, time: Int64 = 0) {
         self.text = text
         self.imageIds = imageIds
         self.origin = origin
         self.stage = stage
+        self.time = time
     }
 }
 
@@ -253,7 +255,7 @@ struct EventReducer: Sendable {
                     d.accepted[st.requestID] = next
                 }
             } else if (st.status == .queued || st.status == .heldByCli) && (!st.text.isEmpty || !st.imageIds.isEmpty || !st.files.isEmpty) {
-                d.accepted[st.requestID] = Accepted(text: st.text, imageIds: st.imageIds, origin: e.originOrNil, stage: st.stage)
+                d.accepted[st.requestID] = Accepted(text: st.text, imageIds: st.imageIds, origin: e.originOrNil, stage: st.stage, time: eventTime(e))
             }
             if st.status == .failed || st.status == .needsTerminal { d.failures[st.requestID] = st.reason }
             if st.status == .canceled && st.reason == "exited" { d.unsent[st.requestID] = e.seq }
@@ -495,13 +497,15 @@ public struct PendingInput: Equatable, Sendable, Identifiable {
     public var paused: Bool
     public var held: Bool
     public var origin: PBOrigin?
+    public var time: Int64
 
-    public init(id: String, text: String, mode: PBSendMode, paused: Bool, held: Bool, origin: PBOrigin?, files: [PBSentFile] = []) {
+    public init(id: String, text: String, mode: PBSendMode, paused: Bool, held: Bool, origin: PBOrigin?, files: [PBSentFile] = [], time: Int64 = 0) {
         self.id = id
         self.text = text
         self.mode = mode
         self.paused = paused
         self.held = held
+        self.time = time
         self.origin = origin
         self.files = files
     }
@@ -514,7 +518,7 @@ public func pendingInputs(_ d: Derived) -> [PendingInput] {
         let accepted = d.accepted[st.requestID]
         return PendingInput(
             id: st.requestID, text: accepted?.text ?? st.text, mode: st.mode != .unspecified ? st.mode : .steer,
-            paused: st.paused, held: st.status == .heldByCli, origin: accepted?.origin, files: st.files)
+            paused: st.paused, held: st.status == .heldByCli, origin: accepted?.origin, files: st.files, time: accepted?.time ?? 0)
     }
 }
 

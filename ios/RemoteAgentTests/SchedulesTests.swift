@@ -8,6 +8,23 @@ import UIKit
 @testable import RemoteAgent
 
 @MainActor @Suite struct ScheduleStoreTests {
+    @Test func creationUsesTheDisplayedFallbackAndRejectsAnOversizeDescription() throws {
+        let draft = ScheduleDraft()
+        draft.config = NewConfig(machineId: "m", cwd: "/example", agent: .claude, mode: .auto)
+        draft.message = "\n每日检查：\n1. 检查构建。\n2. 汇报结果。"
+        let spec = try #require(draft.spec(session: nil, state: state()))
+        #expect(spec.title == "每日检查" && spec.message == draft.message)
+        draft.message = String(repeating: "中", count: 10923)
+        #expect(draft.spec(session: nil, state: state()) == nil)
+    }
+    @Test func scheduledQueueCaptionDoesNotChangeOrdinaryPendingMessages() {
+        var p = PendingInput(id: "q", text: "检查", mode: .queue, paused: false, held: false, origin: nil, time: 1800000000000)
+        #expect(scheduledPendingLabel(p, label: "这一轮结束后发") == nil)
+        p.origin = .with { $0.scheduledRunID = "run" }
+        #expect(scheduledPendingLabel(p, label: "这一轮结束后发") == "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: 1800000000)) + " · 这一轮结束后发")
+        p.paused = true
+        #expect(scheduledPendingLabel(p, label: "已暂停")?.hasSuffix(" · 已暂停") == true)
+    }
     @Test func unreadBadgeBaselinesHistoryUnionsAttentionAndClearsOnlyAtTheList() async {
         let store = ScheduleStore()
         var current = task()
@@ -230,7 +247,7 @@ import UIKit
     }
     @Test func taskRowsRemainWithinNarrowAndTabletColumnsAtLargeTextSizes() {
         for width in [320.0, 760] {
-            let row = SessionListRowContent(title: "检查新回复", right: "下次 今天 15:00", third: "今天 4 次都没有通知", color: Theme.gray, last: false) { Text("每小时 · 在「修复登录超时」里").type(T.sm, Theme.muted) }
+            let row = SessionListRowContent(title: "检查新回复", right: "下次 今天 15:00", third: "今天 4 次，都没有通知", color: Theme.gray, last: false) { Text("每小时 · 在「修复登录超时」里").type(T.sm, Theme.muted) }
                 .environment(\.dynamicTypeSize, .accessibility3)
             let host = UIHostingController(rootView: row)
             let size = host.sizeThatFits(in: CGSize(width: width, height: 1000))
@@ -258,6 +275,75 @@ import UIKit
 }
 
 @MainActor @Suite struct ScheduleAlignmentTests {
+    @Test func stopBannerMatchesTheSharedContinuationWording() {
+        var task = ScheduleStoreTests().task(); task.status = "failed"; task.reason = "execution_failed"
+        #expect(scheduleStopBanner(task) == "运行失败，任务已停下。恢复或重新安排后从下一次自动时间开始，不重发上次消息。")
+        task.spec.trigger.type = "at"
+        #expect(scheduleStopBanner(task) == "运行失败，任务已停下。可立即额外执行一次，或改时间重排。")
+        task.status = "uncertain"; task.reason = "restart_dispatching"
+        #expect(scheduleStopBanner(task) == "电脑重启前的发送结果无法确认。继续可能重复执行上次的消息，请先打开运行记录核实。")
+        task.status = "paused"; task.reason = "agent_schedule_permissions_changed"
+        #expect(scheduleStopBanner(task) == "创建任务时的权限已改变，任务已停下。恢复或重新安排后从下一次自动时间开始，不重发上次消息。继续会由你接管任务，按任务中显示的权限运行。")
+        task.status = "uncertain"
+        #expect(scheduleStopBanner(task) == "创建任务时的权限已改变，任务已停下。继续可能重复执行上次的消息，请先打开运行记录核实。继续会由你接管任务，按任务中显示的权限运行。")
+    }
+    @Test func missingConversationBannerUsesOnlyTheMatchingFailedRunAndLocalDateRules() {
+        var task = ScheduleStoreTests().task(); task.status = "failed"; task.reason = "execution_session_missing"
+        task.spec.target.type = "resume_session"
+        let now = scheduleDate("2026-10-30T20:00:00Z")!, zone = TimeZone(identifier: "America/Los_Angeles")!
+        let suffix = "任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。"
+        #expect(scheduleStopBanner(task, now: now, zone: zone) == suffix)
+        var failed = ScheduleRun(id: "missing", startedAt: "2026-10-30T15:00:00Z", status: "failed")
+        failed.reason = task.reason
+        var other = ScheduleRun(id: "other", startedAt: "2026-10-30T16:00:00Z", status: "failed"); other.reason = "execution_failed"
+        task.runs = [failed, other]
+        #expect(scheduleStopBanner(task, now: now, zone: zone) == "今天 08:00 的运行失败，" + suffix)
+        failed.startedAt = "2026-10-29T15:00:00Z"; task.runs = [failed]
+        #expect(scheduleStopBanner(task, now: now, zone: zone) == "昨天 08:00 的运行失败，" + suffix)
+        task.runs = [other]
+        #expect(scheduleStopBanner(task, now: now, zone: zone) == suffix)
+    }
+    @Test func offlineListNoticeNamesEachOfflineComputerOnce() {
+        var state = ScheduleStoreTests().state()
+        state.machines["a"] = MachineView(id: "a", online: false, lastSeenMs: 0, meta: .with { $0.hostname = "iMac" })
+        state.machines["b"] = MachineView(id: "b", online: false, lastSeenMs: 0, meta: .with { $0.hostname = "构建电脑" })
+        let task = ScheduleStoreTests().task()
+        let rows = ["b", "a", "a", "m"].map { MachineSchedule(machineID: $0, task: task) }
+        #expect(scheduleOfflineNotice(rows, state: state, online: { $0 == "m" }) == "iMac、构建电脑 未连接，显示的是上次的状态")
+        #expect(scheduleOfflineNotice(rows, state: state, online: { $0 != "a" }) == "iMac 未连接，显示的是上次的状态")
+        #expect(scheduleOfflineNotice(rows, state: state, online: { _ in true }) == nil)
+    }
+    @Test(arguments: ["at", "calendar"])
+    func nativePickersDoNotSilentlyReplaceRetainedInstants(type: String) async throws {
+        await WindowTestGate.shared.acquire(); defer { WindowTestGate.shared.release() }
+        let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let stored = "2020-01-02T08:15:00Z"
+        var trigger = ScheduleTrigger(type: type); trigger.timezone = "UTC"
+        if type == "at" { trigger.at = stored }
+        else { trigger.time = "08:00"; trigger.until = stored }
+        let host = UIHostingController(rootView: ScheduleTimingSheet(trigger: trigger, onSave: { _ in }, onClose: {}))
+        host.safeAreaRegions = []
+        let window = UIWindow(windowScene: scene); window.rootViewController = host; window.isHidden = false
+        defer { window.isHidden = true }
+        func pickers(_ v: UIView) -> [UIDatePicker] { (v as? UIDatePicker).map { [$0] } ?? v.subviews.flatMap(pickers) }
+        await eventually("retained date picker mounted") { pickers(host.view).contains { $0.datePickerMode == .dateAndTime } }
+        let picker = try #require(pickers(host.view).first { $0.datePickerMode == .dateAndTime })
+        #expect(picker.date == scheduleDate(stored))
+        #expect(picker.minimumDate == nil)
+    }
+    @Test func aLongDescriptionKeepsHistoryWithinTheFirstScreen() async throws {
+        await WindowTestGate.shared.acquire(); defer { WindowTestGate.shared.release() }
+        let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let text = (1...40).map { "\($0). 检查构建并保留原文换行。" }.joined(separator: "\n")
+        let host = UIHostingController(rootView: ScheduleMessageText(text: text).environment(\.dynamicTypeSize, .large))
+        host.safeAreaRegions = []
+        let window = UIWindow(windowScene: scene); window.frame = CGRect(x: 0, y: 0, width: 320, height: 600)
+        window.rootViewController = host; window.isHidden = false; defer { window.isHidden = true }
+        for _ in 0..<30 { host.view.layoutIfNeeded(); try await Task.sleep(for: .milliseconds(10)) }
+        let size = host.sizeThatFits(in: CGSize(width: 288, height: 4000))
+        #expect(size.height < 230, "six lines and the disclosure must not lay out all 40 lines")
+        #expect(size.height > 100, "the preview must keep the text visible")
+    }
     @Test func conflictDismissalObservesTheMutationSignal() async throws {
         await WindowTestGate.shared.acquire();defer { WindowTestGate.shared.release() }
         let scene=try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
@@ -297,11 +383,12 @@ import UIKit
         state.sessions["s"]?.info = PBSession.with { $0.title = "修复登录超时" }
         #expect(scheduleLocation(task,state:state,machine:"m") == "在「修复登录超时」里")
     }
-    @Test func onlySystemStopsAndExpiredPausesShowAReasonBanner() {
+    @Test("Only system stops show a reason banner; an expired manual pause stays quiet")
+    func onlySystemStopsAndExpiredPausesShowAReasonBanner() {
         var task = ScheduleStoreTests().task(); task.status = "paused"
         func visible() -> Bool { ScheduleEditAccess(task:task,online:true,saving:false,unknown:false).showsReason }
         task.reason = "user_paused"; #expect(!visible())
-        task.reason = "completed_while_paused"; #expect(visible())
+        task.reason = "completed_while_paused"; #expect(!visible())
         task.reason = "agent_schedule_permissions_changed"; #expect(visible())
     }
     @Test func renamingIsIndependentOfTaskStatusExecutionAndPendingRun() {
@@ -345,6 +432,7 @@ import UIKit
                 #expect(control.numberOfSegments == 2)
                 #expect(control.titleForSegment(at: 0) == "Codex" && control.titleForSegment(at: 1) == "Claude Code")
                 #expect(control.selectedSegmentIndex == 1)
+                #expect(control.selectedSegmentTintColor?.resolvedColor(with: control.traitCollection) == UIColor(Theme.card).resolvedColor(with: control.traitCollection))
                 let normal = control.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor
                 let selected = control.titleTextAttributes(for: .selected)?[.foregroundColor] as? UIColor
                 #expect(normal?.resolvedColor(with: control.traitCollection) == UIColor(Theme.muted).resolvedColor(with: control.traitCollection))

@@ -169,6 +169,7 @@ struct GRow: View {
     private let danger: Bool
     private let enabled: Bool
     private let valueColor: Color?
+    private let valueLines: Int
     private let icon: LucideIcon?
     private let onTap: (() -> Void)?
     private var lead: AnyView?
@@ -179,7 +180,7 @@ struct GRow: View {
     /// `sub` is a second line under the text, 13 muted: what a client runs on, a computer's quota in short.
     init(
         _ text: String, sub: String? = nil, value: String? = nil, chevron: Bool = false, action: Bool = false, danger: Bool = false,
-        enabled: Bool = true, valueColor: Color? = nil, icon: LucideIcon? = nil, onTap: (() -> Void)? = nil
+        enabled: Bool = true, valueColor: Color? = nil, valueLines: Int = 2, icon: LucideIcon? = nil, onTap: (() -> Void)? = nil
     ) {
         self.text = text
         self.sub = sub
@@ -189,6 +190,7 @@ struct GRow: View {
         self.danger = danger
         self.enabled = enabled
         self.valueColor = valueColor
+        self.valueLines = valueLines
         self.icon = icon
         self.onTap = onTap
     }
@@ -253,7 +255,7 @@ struct GRow: View {
                         title.padding(.vertical, 11)
                         HStack(spacing: 4) {
                             valueLead.padding(.trailing, 1)
-                            Text(value).type(T.sm, valueColor ?? Theme.muted).multilineTextAlignment(.trailing).lineLimit(2)
+                            Text(value).type(T.sm, valueColor ?? Theme.muted).multilineTextAlignment(.trailing).lineLimit(valueLines)
                             if chevron { Arrow(Theme.muted) }
                         }
                     }

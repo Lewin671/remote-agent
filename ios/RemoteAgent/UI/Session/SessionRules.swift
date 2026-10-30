@@ -67,6 +67,12 @@ func pendingLabel(
     return "插入这一轮"
 }
 
+func scheduledPendingLabel(_ pending: PendingInput, label: String) -> String? {
+    guard let origin = pending.origin, !origin.scheduledRunID.isEmpty else { return nil }
+    let time = pending.time > 0 ? " · " + scheduleTime(Date(timeIntervalSince1970: Double(pending.time) / 1000)) : ""
+    return "定时任务" + time + " · " + label
+}
+
 /// Its place while more than one waits, followed by the sender when it was
 /// another client. Paused, held and canceling messages do not show a place.
 func pendingSuffix(_ p: PendingInput, origin: String?, index: Int, of count: Int, cancel: SessionStore.CancelState? = nil) -> String {

@@ -8,6 +8,7 @@
 # It says nothing when all of it passes. When a step fails it prints that
 # step's output and stops.
 #
+#   IOS_BUILD_JOBS    compiler jobs (default 4, for shared development machines).
 #   IOS_DESTINATION   the xcodebuild destination; by default the iPhone 18
 #                     Pro simulator, or the first iPhone simulator there is
 #                     when this Mac has none of that name.
@@ -24,7 +25,7 @@ fail() {
 }
 
 # 1
-(cd "$ios/RemoteAgentCore" && swift test) >"$out" 2>&1 || fail "the package's tests failed (swift test in ios/RemoteAgentCore)"
+(cd "$ios/RemoteAgentCore" && swift test --jobs "${IOS_BUILD_JOBS:-4}") >"$out" 2>&1 || fail "the package's tests failed (swift test in ios/RemoteAgentCore)"
 
 # 2
 command -v buf >/dev/null 2>&1 || { : >"$out"; fail "buf is not installed; it generates ios/RemoteAgentCore/Sources/RAProto"; }
@@ -49,5 +50,5 @@ if [ -z "$destination" ]; then
         destination="platform=iOS Simulator,id=$id"
     fi
 fi
-xcodebuild -quiet -project "$ios/RemoteAgent.xcodeproj" -scheme RemoteAgent -destination "$destination" build test >"$out" 2>&1 \
+xcodebuild -quiet -collect-test-diagnostics never -parallel-testing-enabled NO -jobs "${IOS_BUILD_JOBS:-4}" -project "$ios/RemoteAgent.xcodeproj" -scheme RemoteAgent -destination "$destination" build test >"$out" 2>&1 \
     || fail "the app did not build or its tests failed (xcodebuild build test, $destination)"

@@ -328,6 +328,13 @@ extension View {
 //       -scheduleMode ask|auto|full -scheduleName NAME -scheduleMessage TEXT -scheduleAt RFC3339
 //   schedule.create   fills the test draft and submits through the same encrypted create action.
 //   schedule.open-run / schedule.pause / schedule.run   task detail's corresponding actions.
+//   -scheduleFixture -schedulePanel editor|timing-once|timing-daily|timing-weekly|timing-interval|session-schedule
+//   -scheduleScene chat-long|chat-queue|chat-folded / -scheduleOffline yes   synthetic comparison states
+//   -scheduleEditorKeyboard yes   focuses the editor (software keyboard depends on Simulator settings)
+//   schedule.history.all   shows each retained run
+//   schedule.detail.end / schedule.message.change / schedule.message.cancel   comparison states
+//   schedule.description.toggle   expands/collapses the visible scheduled description
+//   schedule.edit-message / schedule.message.save (-scheduleEditedMessage TEXT)   full-page message edit/save
 //   schedule.edit-target   opens the existing task target editor for fixture screenshots.
 //   session.schedule / session.restore   定时发送… / 恢复会话 through the existing product commands.
 //   app.back   the navigation stack's back action.

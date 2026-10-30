@@ -7,7 +7,7 @@ struct ScheduleEditAccess {
     let run: Bool
     let showsReason: Bool
     init(task: ScheduleTask, online: Bool, saving: Bool, unknown: Bool) {
-        showsReason = task.group == .attention || task.reason == "completed_while_paused"
+        showsReason = task.group == .attention
         rename = online && !saving && !unknown
         definition = rename && task.active == nil
         run = definition && task.manualRequest == nil && task.group != .ended && task.group != .attention
