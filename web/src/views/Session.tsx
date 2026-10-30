@@ -1,5 +1,7 @@
+import { Sheet } from "../ui";
 import { FileChips, withoutFileLines } from "./Files";
-import { ChevronDown } from "../icons";
+import { ChevronDown, ChevronLeft } from "../icons";
+import { ScheduleText } from "./ScheduleText";
 import { ScheduleCreate, ScheduleStrip } from "./Schedules";
 import { clockTime, foldScheduled } from "../schedules";
 import { isSkeleton, skeletonMessage } from "../skeleton";
@@ -466,6 +468,7 @@ export function SessionPage({
   const header = wide ? (
     <header className="dh">
       <div className="r1">
+        {session.info?.taskOwned && <button className="schedule-run-back" aria-label="返回" title="返回任务" onClick={onBack}><ChevronLeft /></button>}
         <Dot tone={st.tone} />
         <b>{title}</b>
         <span className="muted">
@@ -706,7 +709,7 @@ export function SessionPage({
             onClose={() => setMenu(false)}
           />
         )}
-        {scheduling && <div className="schedule-session-overlay"><ScheduleCreate remote={remote} session={session} go={route => { setScheduling(false); location.hash = "/" + route; }} onBack={() => setScheduling(false)} /></div>}
+        {scheduling && <Sheet className="schedule-session-sheet" onClose={() => setScheduling(false)}><div className="schedule-session-overlay"><ScheduleCreate remote={remote} session={session} go={route => { setScheduling(false); location.hash = "/" + route; }} onBack={() => setScheduling(false)} /></div></Sheet>}
         {confirmEnd && (
           <Alert
             title="结束这个会话？"
@@ -1204,7 +1207,7 @@ function Row({
         <div className="me">
           <ImageStrip refs={images} numbered />
           <FileChips files={k.value.files} />
-          {segs.length > 0 && (
+          {e.origin?.scheduledTaskId ? <ScheduleText key={e.seq.toString()} text={k.value.text} meta={`定时任务 · ${clockTime(Number(e.time?.seconds ?? 0n) * 1000)}`} /> : segs.length > 0 && (
             <div>
               {segs.map((x, i) =>
                 "text" in x ? (
@@ -1217,7 +1220,7 @@ function Row({
               )}
             </div>
           )}
-          {e.origin?.scheduledTaskId ? <small>定时任务 · {clockTime(Number(e.time?.seconds ?? 0n) * 1000)}</small> : from && <small>{from}</small>}
+          {!e.origin?.scheduledTaskId && from && <small>{from}</small>}
         </div>
       );
     }

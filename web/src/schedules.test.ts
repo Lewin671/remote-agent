@@ -26,7 +26,7 @@ import {
   taskGroup,
   zonedISO,
   timingText,
-  scheduleEmpty, scheduleOffline,
+  scheduleEmpty, scheduleOffline, scheduleOfflineRow, validScheduleMessage,
   taskName,
   runResult,
   runSummary,
@@ -88,7 +88,7 @@ it("aggregates today's quiet results without hiding notified or failed runs", ()
     run("old", { started_at: "2026-10-23T11:00:00Z" }),
   ];
   const t = task({ runs, active_run: runs[1] });
-  expect(lastResult(t, now)).toBe("今天 2 次都没有通知");
+  expect(lastResult(t, now)).toBe("今天 2 次，都没有通知");
   expect(groupRuns(t).map((g) => g.runs.map((r) => r.id))).toEqual([
     ["2", "1"],
     ["old"],
@@ -436,7 +436,7 @@ it("derives the final shared grouping, attention reason and state copy from task
   const groups = groupTasks(tasks.map(task => ({ machineId: shared.machine, task })));
   expect(Object.fromEntries([...groups].map(([g, tasks]) => [g, tasks.map(e => e.task.id)]))).toEqual(shared.groups);
   const attention = tasks.find(t => t.id === "attention")!;
-  expect(lastResult(attention, Date.parse(shared.now))).toBe("创建任务时的权限已改变，任务已暂停");
+  expect(lastResult(attention, Date.parse(shared.now))).toBe("创建任务时的权限已改变，任务已停下");
   expect(runResult(attention.runs![0])).toBe("没有通知");
   expect(reasonText("completed_while_paused")).toBe("已暂停：期间计划已到期");
   for (const status of ["dispatching", "queued", "running"])
@@ -501,4 +501,13 @@ it("keeps a failed result painted back onto a tool started in an earlier round",
   );
   expect(derive(events).toolEnds.get(5n)).toBe(8n);
   const rows=timeline(events,derive(events));expect(foldScheduled(rows,events,new Set())).toEqual(rows);
+});
+
+it("uses the shared v52 title and offline-row vectors and UTF-8 message limit", () => {
+  expect(scheduleOfflineRow).toBe(shared.offlineRow);
+  for (const [message, expected] of shared.titleFromMessage) expect(taskName("", message)).toBe(expected);
+  expect(validScheduleMessage(" ")).toBe(false);
+  expect(validScheduleMessage("a".repeat(32768))).toBe(true);
+  expect(validScheduleMessage("a".repeat(32769))).toBe(false);
+  expect(validScheduleMessage("中".repeat(10923))).toBe(false);
 });

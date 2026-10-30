@@ -26,8 +26,8 @@ import {
   Settings,
 } from "./views/Settings";
 import { PairCodePage, SecurityPage } from "./views/Security";
+import { groupTasks, taskRoute } from "./schedules";
 import { ScheduleCreate, ScheduleDetail, SchedulesPage } from "./views/Schedules";
-import { taskRoute } from "./schedules";
 import { Clock, MessageSquare, Settings as SettingsIcon } from "./icons";
 
 // Joining and pairing bring the QR code and curve code; fetched when used.
@@ -234,7 +234,9 @@ function Main({ remote }: { remote: Remote }) {
   const wide = useWide();
   const [kind, ...rest] = route.split("/");
   const arg = decodeURIComponent(rest.join("/"));
+  const firstTask = kind === "tasks" && wide ? [...groupTasks(remote.taskEntries()).values()].flat()[0] : undefined;
   const session = kind === "s" ? remote.sessions.get(arg) : undefined;
+  const scheduleSession = session?.info?.taskOwned && session.info.scheduledTaskId ? taskRoute(session.machineId, session.info.scheduledTaskId) : undefined;
   const back = () => (history.length > 1 ? history.back() : go(""));
   // A session opened from a link may not be among the pages of the
   // listing held here: it is asked for by its ID.
@@ -282,7 +284,7 @@ function Main({ remote }: { remote: Remote }) {
     const [machineId, taskId] = rest.map(decodeURIComponent);
     page = machineId === "new" ? <ScheduleCreate remote={remote} go={go} onBack={() => go("tasks")} />
       : taskId ? <ScheduleDetail key={machineId + taskId} remote={remote} machineId={machineId} id={taskId} go={go} onBack={() => go("tasks")} />
-      : <SchedulesPage remote={remote} go={go} />;
+      : wide ? firstTask ? <ScheduleDetail key={firstTask.machineId + firstTask.task.id} remote={remote} machineId={firstTask.machineId} id={firstTask.task.id} go={go} onBack={() => go("tasks")} /> : <ScheduleCreate remote={remote} go={go} onBack={() => go("tasks")} /> : <SchedulesPage remote={remote} go={go} />;
   }
   // A wide window has no project page: its sidebar lists sessions and the main area starts one.
   else if (kind === "p")
@@ -324,7 +326,8 @@ function Main({ remote }: { remote: Remote }) {
         <Sidebar
           remote={remote}
           go={go}
-          active={kind === "tasks" ? "tasks" : kind === "settings" ? "settings" : "sessions"}
+          active={kind === "tasks" || scheduleSession ? "tasks" : kind === "settings" ? "settings" : "sessions"}
+          selectedTask={scheduleSession ?? (kind === "tasks" && !arg && firstTask ? taskRoute(firstTask.machineId, firstTask.task.id) : route)}
           selected={session?.id}
           project={kind === "p" ? arg : undefined}
         />

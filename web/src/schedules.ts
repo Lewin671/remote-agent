@@ -209,7 +209,7 @@ export function clipTaskName(name: string): string {
 export function taskName(name: string, message: string): string {
   const first = message.trim().split(/\r?\n|[。！？!?]|\.(?=\s|$)/u)[0];
   return clipTaskName(
-    (name.trim() || first || message.trim()).replace(/\s+/g, " ").trim(),
+    (name.trim() || first?.trim().replace(/[，,:：;；]+$/u, "") || message.trim()).replace(/\s+/g, " ").trim(),
   );
 }
 export function nextText(t: ScheduleTask, now = Date.now()): string {
@@ -218,8 +218,13 @@ export function nextText(t: ScheduleTask, now = Date.now()): string {
   if (g !== "进行中") return g === "需要你看一下" ? "已停下" : g;
   return t.next_run_at ? `下次 ${dateTime(t.next_run_at, now)}` : "下次待定";
 }
+export const scheduleOfflineRow = "未连接";
+export const scheduleMessageLimit = 32 * 1024;
+export function validScheduleMessage(message: string): boolean {
+  return !!message.trim() && new TextEncoder().encode(message).length <= scheduleMessageLimit;
+}
 export const scheduleOffline = "未连接，显示的是上次的状态";
-export const scheduleEmpty = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。";
+export const scheduleEmpty = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以点右上角的 ＋ 自己建。";
 export const scheduleIntervalHint = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。";
 export function scheduleLimits(tr: ScheduleTrigger, now = Date.now()): string {
   return [tr.max_runs ? `共 ${tr.max_runs} 次` : "", tr.until ? `到 ${dateTime(tr.until, now)}` : ""].filter(Boolean).join("，或");
@@ -227,8 +232,8 @@ export function scheduleLimits(tr: ScheduleTrigger, now = Date.now()): string {
 
 const reasons: Record<string, string> = {
   relay_session_limit: "中继上的会话数已满",
-  agent_schedule_permissions_changed: "创建任务时的权限已改变，任务已暂停",
-  agent_schedule_interval_below_minimum: "Agent 创建的任务间隔过短，任务已暂停",
+  agent_schedule_permissions_changed: "创建任务时的权限已改变，任务已停下",
+  agent_schedule_interval_below_minimum: "Agent 创建的任务间隔过短，任务已停下",
   execution_failed: "运行失败，任务已停下",
   execution_interrupted: "运行被中断，任务已停下",
   execution_session_exited: "运行中的对话已结束",
@@ -295,7 +300,7 @@ export function lastResult(t: ScheduleTask, now = Date.now()): string {
     today.length > 1 &&
     today.every((r) => r.status === "completed" && !r.notified)
   )
-    return `今天 ${today.length} 次都没有通知`;
+    return `今天 ${today.length} 次，都没有通知`;
   const detail =
     latest.notified || stoppedRunLabels[latest.status]
       ? runSummary(latest)

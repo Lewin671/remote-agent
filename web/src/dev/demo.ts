@@ -1485,7 +1485,7 @@ export class DemoRemote extends Remote {
   }
 
   private seedSchedules() {
-    const f = scheduledFixture, machine = this.machines.get("mac")!;
+    const f = structuredClone(scheduledFixture), machine = this.machines.get("mac")!;
     machine.meta!.hostname = f.machineName;
     machine.meta!.capabilities = { ...machine.meta!.capabilities!, scheduledTasks: true };
     this.machines.clear(); this.machines.set("mac", machine);
@@ -1495,7 +1495,37 @@ export class DemoRemote extends Remote {
     this.sessions.clear(); this.sessions.set(f.session, view);
     this.evs.clear();
     this.evs.set(f.session, [create(EventSchema, {seq:1n,sessionId:f.session,kind:{case:"userMessage",value:{text:"检查 PR 的回复。"}}}),create(EventSchema, {seq:2n,sessionId:f.session,kind:{case:"agentMessage",value:{text:"有变化时会通知你。"}}})]);
-    this.schedules.set("mac", {revision:1n,tasks:f.tasks as ScheduleTask[],loading:false,error:""});
+    const tasks = f.tasks as ScheduleTask[];
+    const sample = this.opts.get("schedule-case");
+    const longPrompt = "每天早上 8 点前帮我整理项目相关的信息：\n" + Array.from({length: 14}, (_, i) => `${i + 1}. 检查项目中的更新与讨论，保留重要变化的来源；有需要处理的内容就通知我。`).join("\n");
+    const quiet = tasks.find(t => t.id === "quiet")!;
+    if (sample === "long" || sample === "chat") quiet.spec.message = longPrompt;
+    if (sample === "high") quiet.runs = Array.from({length: 38}, (_, i) => ({ ...quiet.runs![0], id: `quiet-${i}`, started_at: new Date(Date.now() - i * 60_000).toISOString(), final_summary: "没有新回复" }));
+    if (sample === "crowded") for (let i = 0; i < 15; i++) tasks.push({...structuredClone(quiet), id: `extra-${i}`, spec: {...quiet.spec, title: `检查项目 ${i + 1} 的更新与讨论`}});
+    if (sample === "offline") machine.online = false;
+    const stopped = tasks.find(t => t.id === "attention")!;
+    if (sample === "missing") {
+      stopped.spec.target = { type:"resume_session",session:"missing" };
+      stopped.status = "failed";
+      stopped.reason = "execution_session_missing";
+      stopped.runs = stopped.runs?.map(r => ({ ...r, status:"failed", reason:"execution_session_missing", session_id:undefined }));
+    }
+    if (sample === "failed-once") { stopped.status = "failed"; stopped.reason = "execution_failed"; stopped.spec.trigger = {type:"at",at:new Date().toISOString()}; }
+    if (sample === "failed") { stopped.status = "failed"; stopped.reason = "relay_session_limit"; }
+    if (sample === "interval-stop") stopped.reason = "agent_schedule_interval_below_minimum";
+    this.drafts.set("schedule:" + f.session, sample === "long" ? longPrompt : "");
+    if (sample === "uncertain") { stopped.status = "uncertain"; stopped.reason = "restart_dispatching"; }
+    this.drafts.set("schedule:new", sample === "long" ? longPrompt : "");
+    if (sample === "chat" || sample === "queue") {
+      const origin = { scheduledTaskId: "conversation", scheduledRunId: "demo-run" };
+      this.evs.set(f.session, [create(EventSchema, {seq:1n,sessionId:f.session,time:timestampFromMs(Date.now() - min),origin,kind:{case:"userMessage",value:{text:longPrompt}}}), create(EventSchema, {seq:2n,sessionId:f.session,kind:{case:"agentMessage",value:{text:"我会逐项检查，有变化时通知你。"}}}), ...(sample === "queue" ? [create(EventSchema, {seq:3n,sessionId:f.session,time:timestampFromMs(Date.now()),origin,kind:{case:"inputState",value:{requestId:"scheduled-queue",text:"再检查一下讨论中的新回复，有需要处理的变化就通知我。",status:InputStatus.QUEUED,mode:SendMode.QUEUE}}})] : [])]);
+    }
+    if (sample === "fold") this.evs.set(f.session, [0, 1].flatMap(i => [
+      create(EventSchema, {seq:BigInt(i*3+1),sessionId:f.session,time:timestampFromMs(Date.now() - (2-i)*60*min),origin:{scheduledTaskId:"conversation",scheduledRunId:`quiet-${i}`},kind:{case:"userMessage",value:{text:"检查新回复"}}}),
+      create(EventSchema, {seq:BigInt(i*3+2),sessionId:f.session,kind:{case:"agentMessage",value:{text:"没有新回复。"}}}),
+      create(EventSchema, {seq:BigInt(i*3+3),sessionId:f.session,kind:{case:"turnEnded",value:{durationMs:1000n,outcome:TurnOutcome.COMPLETED,scheduledTaskId:"conversation",scheduledRunId:`quiet-${i}`}}}),
+    ]));
+    this.schedules.set("mac", {revision:1n,tasks:sample === "empty" ? [] : tasks,loading:false,error:""});
     this.stored={revision:1n,prefs:create(ProjectPrefsSchema,{schema:1,settings:[{path:"/example/project",machineId:"mac",agent:Agent.CLAUDE,agents:[{agent:Agent.CLAUDE,model:"haiku",mode:ApprovalMode.AUTO}]}]})};
   }
 
@@ -2205,7 +2235,7 @@ export class DemoRemote extends Remote {
     if (!m?.online)
       throw new CommandError("unavailable", "电脑不在线，指令没有发出");
     if (this.opts.has("scheduled-final") && cmd.case === "schedule" && cmd.value.operation === "list")
-      return create(CommandResultSchema, {kind:{case:"schedule",value:{resultJson:new TextEncoder().encode(JSON.stringify({tasks:scheduledFixture.tasks}))}}});
+      return create(CommandResultSchema, {kind:{case:"schedule",value:{resultJson:new TextEncoder().encode(JSON.stringify({tasks:this.schedules.get("mac")?.tasks ?? []}))}}});
     switch (cmd.case) {
       case "listModels":
         if(this.opts.has("scheduled-final")) return create(CommandResultSchema,{kind:{case:"listModels",value:{defaultModel:"haiku",models:[{slug:"haiku",displayName:"haiku"}]}}});

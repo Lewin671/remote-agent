@@ -13,6 +13,10 @@ import {
   SchedulesPage,
   TimingSheet,
 } from "./Schedules";
+import { PendingBubbles } from "./Queue";
+import { derive } from "../model";
+import { timestampFromMs } from "@bufbuild/protobuf/wkt";
+import { EventSchema, InputStatus, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { SessionPage } from "./Session";
 import { task, run } from "../test/schedule-fixture";
 import { clockTime, scheduleOffline, scheduleEmpty } from "../schedules";
@@ -304,7 +308,7 @@ it("keeps a delivery cancellation visible and re-arms the schedule explicitly", 
     />,
   );
   expect(host.textContent).toContain("送达前被取消");
-  await click("重新安排");
+  await click("恢复");
   expect(write).toHaveBeenCalledWith(
     "mac",
     "task-1",
@@ -415,7 +419,7 @@ it("writes the conversation context in the schedule list's second line", async (
     `在「${title}」里`,
   );
 });
-it("creates with an optional name above the message and preserves that name in the draft", async () => {
+it("creates with an optional name after the message and preserves that name in the draft", async () => {
   const r = remote([]);
   const session = r.sessions.get("s-idle")!;
   const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(task());
@@ -429,7 +433,7 @@ it("creates with an optional name above the message and preserves that name in t
     [...host.querySelectorAll(".schedule-body > label, .schedule-body label")]
       .slice(0, 2)
       .map((el) => el.textContent),
-  ).toEqual(["任务名", "让 agent 做什么"]);
+  ).toEqual(["让 agent 做什么", "任务名"]);
   await input(name, "每小时看 PR");
   await input(
     host.querySelector("textarea")!,
@@ -513,7 +517,7 @@ it("keeps timezone inside the timing sheet and appends only foreign zones to its
     [...host.querySelectorAll(".grp > .schedule-field > span:first-child")].map(
       (el) => el.textContent,
     ),
-  ).toEqual(["任务名", "什么时候", "在哪运行", "权限", "消息"]);
+  ).toEqual(["什么时候", "在哪运行", "权限", "任务名"]);
   expect(button(/^什么时候/)?.textContent).toBe("什么时候每天 09:49");
   const zone = local === "UTC" ? "America/Los_Angeles" : "UTC";
   await act(async () => {
@@ -638,7 +642,7 @@ it("derives final limits, creator, offline subtitle and running edit guards", as
   expect(host.textContent).toContain("你创建");
   expect(host.textContent).not.toContain("接管");
   expect(button("立即运行一次")?.disabled).toBe(true);
-  for (const label of [/^什么时候/,/^消息/,/^在哪运行/]) expect(button(label)?.disabled).toBe(true);
+  for (const label of [/^什么时候/,/^编辑$/,/^在哪运行/]) expect(button(label)?.disabled).toBe(true);
   expect(button(/^任务名/)?.disabled).toBe(false);
   await act(async()=>{r.machines.get("mac")!.online=false;r.touch();});
   expect(host.querySelector(".navbar")?.textContent).toContain(scheduleOffline);
@@ -667,7 +671,7 @@ it("keeps the original interval phase and both unchanged end limits", async () =
 it("submits the editor's snapshot revision and spec even after remote changes", async () => {
   const old=task();const r=remote([old]);const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(old);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={old.id} go={()=>{}} onBack={()=>{}} />);
-  await click(/^消息/);
+  await click(/^编辑$/);
   await act(async()=>{r.schedules.get("mac")!.tasks=[task({revision:9,spec:{...old.spec,title:"别人改名"}})];r.touch();});
   await input(host.querySelector("textarea")!,"我的修改");await click("保存");
   expect(send.mock.calls[0][2]).toMatchObject({revision:1,spec:{...old.spec,message:"我的修改"}});
@@ -731,7 +735,7 @@ it("shows the shared destination placeholder until target metadata is loaded",as
 it("closes a stale editor when the daemon reports a revision conflict",async()=>{
  const t=task();const r=remote([t]);vi.spyOn(r,"changeSchedule").mockRejectedValue(new Error("任务刚被修改，已更新为最新内容"));
  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
- await click(/^消息/);await input(host.querySelector("textarea")!,"新消息");await click("保存");
+ await click(/^编辑$/);await input(host.querySelector("textarea")!,"新消息");await click("保存");
  expect(host.querySelector('[role="dialog"]')).toBeNull();expect(host.textContent).toContain("任务刚被修改，已更新为最新内容");
 });
 
@@ -859,4 +863,145 @@ it("counts unread notifications in the wide sidebar's schedules entry too", asyn
   await r.refreshSchedules("mac");
   await mount(<Sidebar remote={r} go={() => {}} />);
   expect(host.querySelector(".task-count")?.textContent).toBe("1");
+});
+
+it("puts new task in the header and remembers the ended group on this device", async () => {
+  const r = remote([task({id:"done",status:"completed"})]);
+  const go = vi.fn();
+  await mount(<SchedulesPage remote={r} go={go} />);
+  expect(host.querySelector(".large button")?.getAttribute("aria-label")).toBe("新任务");
+  expect(host.querySelector(".task-new")).toBeNull();
+  expect(host.querySelectorAll(".sess")).toHaveLength(0);
+  await click(/已结束/);
+  expect(host.querySelectorAll(".sess")).toHaveLength(1);
+  expect(localStorage.getItem("schedule-ended-open")).toBe("true");
+  await act(async () => root!.render(<SchedulesPage key="remount" remote={r} go={go} />));
+  expect(host.querySelectorAll(".sess")).toHaveLength(1);
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="新任务"]')!.click());
+  expect(go).toHaveBeenCalledWith("tasks/new");
+});
+it("uses short offline rows and hides editing arrows with the computer disconnected", async () => {
+  const r = remote(); r.machines.get("mac")!.online = false;
+  await mount(<SchedulesPage remote={r} go={()=>{}} />);
+  expect(host.querySelector(".row1")?.textContent).toContain("未连接");
+  expect(host.querySelector(".row1")?.textContent).not.toContain("上次");
+  await act(async()=>root!.render(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={()=>{}} onBack={()=>{}} />));
+  expect(host.querySelectorAll(".schedule-field .ic")).toHaveLength(0);
+  expect(host.textContent).toContain("连上后才能修改、运行或删除。");
+  expect(button("编辑")?.disabled).toBe(true);
+});
+it("shows five recent runs before settings and expands all history on request", async () => {
+  const r = remote([task({runs:Array.from({length:8}, (_, i)=>run(`r${i}`, {notified:true,started_at:new Date(1792828800000+i*3600000).toISOString()}))})]);
+  await mount(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={()=>{}} onBack={()=>{}} />);
+  expect(host.querySelectorAll(".schedule-run")).toHaveLength(5);
+  expect(host.textContent!.indexOf("让 agent 做什么")).toBeLessThan(host.textContent!.indexOf("运行记录"));
+  expect(host.textContent!.indexOf("运行记录")).toBeLessThan(host.textContent!.indexOf("设置"));
+  await click("查看全部 8 次");
+  expect(host.querySelectorAll(".schedule-run")).toHaveLength(8);
+});
+it("opens a full message editor, guards cancel and validates UTF-8 bytes", async () => {
+  const t = task(); t.spec.message = Array.from({length:9}, (_,i)=>`检查第 ${i} 项`).join("\n");
+  const r = remote([t]); const write = vi.spyOn(r,"changeSchedule").mockResolvedValue(t);
+  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
+  await click("展开全文");
+  expect(host.querySelector(".schedule-text.expanded")).not.toBeNull();
+  await click("收起"); await click("编辑");
+  expect(host.querySelector(".schedule-editor")).not.toBeNull();
+  await input(host.querySelector("textarea")!,"中".repeat(11000));
+  expect(button("保存")?.disabled).toBe(true);
+  expect(host.textContent).toContain("太长了，最多 32 KB");
+  await input(host.querySelector("textarea")!,"   "); expect(button("保存")?.disabled).toBe(true);
+  await input(host.querySelector("textarea")!,"第一行\n第二行");
+  await click("取消"); expect(host.querySelector('[role="alertdialog"]')?.textContent).toContain("放弃修改？");
+  expect(write).not.toHaveBeenCalled(); await click("放弃修改");
+  expect(host.querySelector(".schedule-editor")).toBeNull();
+  await click("编辑"); expect(host.querySelector("textarea")?.value).toBe(t.spec.message);
+});
+it("shows the generated task name as a live placeholder and rejects an oversized creation", async () => {
+  const r = remote([]); const write = vi.spyOn(r,"changeSchedule").mockResolvedValue(task());
+  await mount(<ScheduleCreate remote={r} session={r.sessions.get("s-idle")!} go={()=>{}} onBack={()=>{}} />);
+  await input(host.querySelector("textarea")!,"检查项目更新：\n逐条列出");
+  expect(host.querySelector<HTMLInputElement>('[aria-label="任务名"]')?.placeholder).toBe("留空会用：检查项目更新");
+  await input(host.querySelector("textarea")!,"x".repeat(32769));
+  expect(button("创建")?.disabled).toBe(true); expect(host.textContent).toContain("太长了，最多 32 KB"); expect(write).not.toHaveBeenCalled();
+});
+it("disables weekly completion without selected days and hides interval timezone", async () => {
+  const save = vi.fn(); await mount(<TimingSheet trigger={{type:"calendar",time:"09:30",weekdays:[1],timezone:"UTC",max_runs:4}} onSave={save} onClose={()=>{}} />);
+  await click("周一"); expect(button("完成")?.disabled).toBe(true);
+  await click("每隔"); expect(host.querySelector('[aria-label="时区"]')).toBeNull();
+  await click("一次"); await click("每周"); expect(button("完成")?.disabled).toBe(true);
+  await click("周五"); await click("完成");
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({time:"09:30",weekdays:[5],max_runs:4,timezone:"UTC"}));
+});
+it("keeps manual pauses banner-free and leaves missing-target recovery in the action group", async () => {
+  const t = task({status:"paused",reason:"completed_while_paused"}); const r = remote([t]);
+  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
+  expect(host.querySelector(".banner.warn")).toBeNull(); expect(host.querySelector(".pri")).toBeNull();
+  await act(async()=>{ t.reason="execution_session_missing";t.spec.target={type:"resume_session",session:"missing"};r.touch(); });
+  expect(host.querySelector(".pri")).toBeNull(); expect(host.querySelector(".schedule-actions")?.textContent).toContain("恢复");
+});
+it("replaces the wide session timeline with a task list and keeps navigation tabs", async () => {
+  const r=remote(); await mount(<Sidebar remote={r} active="tasks" selectedTask="tasks/mac/task-1" go={()=>{}} />);
+  expect(host.querySelector(".schedule-sidebar")).not.toBeNull(); expect(host.querySelector(".schedule-selected")).not.toBeNull();
+  expect(host.querySelector('[aria-label="新会话"]')).toBeNull(); expect(host.querySelector('[aria-label="新任务"]')).not.toBeNull();
+  expect(host.querySelector(".side-tabs")?.textContent).toContain("会话");
+});
+
+it("renders scheduled queue metadata from the accepted event and keeps cancellation available", async () => {
+  const r = remote(); const session = r.sessions.get("s-idle")!;
+  const when = new Date(2026,9,30,15).getTime();
+  const events = [create(EventSchema,{seq:1n,sessionId:session.id,time:timestampFromMs(when),origin:{scheduledTaskId:"task-1",scheduledRunId:"run-1"},kind:{case:"inputState",value:{requestId:"scheduled-input",text:"检查新回复",mode:SendMode.QUEUE,status:InputStatus.QUEUED}}})];
+  vi.spyOn(r,"events").mockReturnValue(events);
+  const command = vi.spyOn(r,"command").mockResolvedValue(create(CommandResultSchema));
+  await mount(<PendingBubbles remote={r} session={session} d={derive(events,Agent.CLAUDE)} />);
+  expect(host.querySelector(".pending-meta")?.textContent).toContain("定时任务 · 15:00 · 这一轮结束后发");
+  await click("取消");
+  expect(command).toHaveBeenCalledWith(session.id,expect.objectContaining({case:"cancelInput",value:{sessionId:session.id,requestId:"scheduled-input"}}));
+});
+
+it("keeps the complete quiet-day count in the preview and can show every execution", async () => {
+  const r = remote([task({runs:Array.from({length:38},(_,i)=>run(`quiet-${i}`))})]);
+  await mount(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={()=>{}} onBack={()=>{}} />);
+  expect(button(/38 次，都没有通知/)).toBeTruthy();
+  expect(host.querySelectorAll(".schedule-run")).toHaveLength(1);
+  await click("查看全部 38 次");
+  expect(host.querySelectorAll(".schedule-run")).toHaveLength(38);
+});
+it("offers a return to the owning task from a wide run conversation", async () => {
+  const r = remote();const session = r.sessions.get("s-idle")!;
+  session.info!.taskOwned = true;session.info!.scheduledTaskId = "task-1";
+  const back = vi.fn();
+  await mount(<SessionPage remote={r} session={session} wide onBack={back} />);
+  const control=host.querySelector<HTMLButtonElement>('.schedule-run-back');
+  expect(control?.getAttribute("aria-label")).toBe("返回");
+  await act(async()=>control!.click());expect(back).toHaveBeenCalledOnce();
+});
+
+it.each([0, 1, 2, 400])("explains missing-target failures using that run's local start date (%s days ago)", async daysAgo => {
+  const now = new Date(2026, 9, 30, 16);
+  vi.spyOn(Date, "now").mockReturnValue(now.getTime());
+  const started = new Date(2026, 9, 30 - daysAgo, 15);
+  const expectedDay = daysAgo === 0 ? "今天" : daysAgo === 1 ? "昨天" : daysAgo === 2 ? "10月28日" : "2025年9月25日";
+  const failed = run("missing-target", {started_at: started.toISOString(), status:"failed", reason:"execution_session_missing", session_id:undefined});
+  const t = task({status:"failed", reason:"execution_session_missing", runs:[
+    run("later-completed", {started_at:now.toISOString()}),
+    run("unrelated-failure", {started_at:new Date(now.getTime()-60_000).toISOString(), status:"failed", reason:"execution_failed"}),
+    failed,
+  ]});
+  t.spec.target = {type:"resume_session",session:"missing"};
+  const r = remote([t]);
+  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
+  expect(host.querySelector(".banner.warn")?.textContent).toBe(`${expectedDay} 15:00 的运行失败，任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。`);
+  expect(host.querySelector(".pri")).toBeNull();
+});
+it("does not invent a failure time when a missing-target task has no recorded run", async () => {
+  const t = task({status:"failed",reason:"execution_session_missing"});
+  t.spec.target = {type:"resume_session",session:"missing"};
+  await mount(<ScheduleDetail remote={remote([t])} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
+  expect(host.querySelector(".banner.warn")?.textContent).toBe("任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。");
+});
+it("preserves other failure banner wording", async () => {
+  const t = task({status:"failed",reason:"relay_session_limit"});
+  await mount(<ScheduleDetail remote={remote([t])} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
+  expect(host.querySelector(".banner.warn")?.textContent).toBe("中继上的会话数已满。恢复或重新安排后从下一次自动时间开始，不重发上次消息。");
 });

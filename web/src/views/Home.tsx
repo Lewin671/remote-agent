@@ -1,4 +1,5 @@
 import { Clock, MessageSquare } from "../icons";
+import { SchedulesPage } from "./Schedules";
 import { SessionLine } from "./SessionLine";
 import { frequency } from "../schedules";
 import { authorityName, RecoveryNotice } from "./Security";
@@ -858,12 +859,14 @@ export function Sidebar({
   selected,
   project,
   active = "sessions",
+  selectedTask,
 }: {
   remote: Remote;
   go: Go;
   selected?: string;
   project?: string;
   active?: string;
+  selectedTask?: string;
 }) {
   useRemote(remote);
   const { scope } = useScope(remote);
@@ -871,6 +874,7 @@ export function Sidebar({
   const [checking, setChecking] = useState(false);
   return (
     <aside className="side">
+      {active === "tasks" ? <SchedulesPage remote={remote} go={go} sidebar selected={selectedTask} /> : <>
       <div className="sh">
         {/* The main area follows the scope unless it shows something else. */}
         <ScopeTitle
@@ -910,6 +914,7 @@ export function Sidebar({
           wide
         />
       </div>
+      </>}
       <nav className="side-tabs">
         <button className={active === "sessions" ? "on" : ""} onClick={() => go("")}><MessageSquare /> 会话</button>
         <button className={active === "tasks" ? "on" : ""} onClick={() => go("tasks")}><Clock /> 定时{remote.scheduleBadge() > 0 && <span className="task-count">{remote.scheduleBadge()}</span>}</button>

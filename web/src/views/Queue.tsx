@@ -1,3 +1,4 @@
+import { clockTime } from "../schedules";
 import { FileChips } from "./Files";
 import { isSkeleton, skeletonMessage } from "../skeleton";
 // The message queue in full (client-v2 队列完整页): every message the
@@ -68,6 +69,8 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
       const held = d.inputs.get(id) === InputStatus.HELD_BY_CLI;
       const from = a?.origin && a.origin.deviceId !== remote.account.deviceId ? originLabel(a.origin, ctx) : "";
       const mode = a?.mode ?? o?.mode;
+      const queuedTime = a?.origin?.scheduledTaskId ? remote.events(sid).find(e => e.kind.case === "inputState" && e.kind.value.requestId === id && e.time)?.time : undefined;
+      const scheduleLabel = a?.origin?.scheduledTaskId ? `定时任务${queuedTime ? " · " + clockTime(Number(queuedTime.seconds) * 1000) : ""} · ` : "";
       const message = a?.text || o?.text || (id === promptIdOf(remote, sid, d) ? remote.prompts.get(sid) : undefined) || ((a?.imageIds.length ?? o?.imageIds?.length ?? 0) ? `${a?.imageIds.length ?? o?.imageIds?.length} 张图片` : (a?.files?.length ?? o?.files?.length ?? 0) ? "" : "另一客户端的消息");
       // A few words for what it waits for (design-system §6 输入框).
       const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : resume?.state === "failed" ? "发送没成功，仍已暂停" : resume?.state === "sending" ? "正在发送…" : paused ? "已暂停" : held ? "插入这一轮" : mode === SendMode.QUEUE ? "这一轮结束后发" : starting ? `等 ${agentName(agentOf(session))} 就绪后发出` : "插入这一轮";
@@ -75,7 +78,7 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
         <LocalThumbs blobs={o?.thumbs} />
         <FileChips files={a?.files ?? o?.files} />
         <button className={"pending-text" + (expanded.has(id) ? " expanded" : "")} onClick={() => setExpanded((old) => new Set(old.has(id) ? [...old].filter((x) => x !== id) : [...old, id]))}>{message}</button>
-        <div className="pending-meta"><span>{status}{ids.length > 1 && !paused && !held && !c?.state && ` · 第 ${i + 1} 条`}{from && ` · ${from}`}</span>
+        <div className="pending-meta"><span>{scheduleLabel}{status}{ids.length > 1 && !paused && !held && !c?.state && ` · 第 ${i + 1} 条`}{from && ` · ${from}`}</span>
           {paused && <button disabled={resume?.state === "sending"} onClick={() => void act(id, true)}>{resume?.state === "failed" ? "重试" : "发送"}</button>}
           {c?.state === "failed" ? <button onClick={() => void act(id)}>重试</button> : c?.state !== "canceling" && <button onClick={() => void act(id)}>取消</button>}
         </div>
