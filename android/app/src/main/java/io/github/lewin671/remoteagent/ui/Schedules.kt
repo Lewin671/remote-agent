@@ -109,8 +109,10 @@ fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(
 
 @Composable
 private fun ScheduleOffline(state: RemoteState, tasks: List<ScheduledTask>) {
-    if (state.conn != ConnState.ONLINE || tasks.any { state.machines[it.machine]?.online != true })
-        Banner(SCHEDULE_OFFLINE, tone = Tone2.WARN)
+    // The connection bar speaks for a lost relay; this names the computers that are away.
+    val away = tasks.map { it.machine }.distinct().filter { state.machines[it]?.online != true }
+    if (state.conn == ConnState.ONLINE && away.isNotEmpty())
+        Banner(away.joinToString("、") { machineLabel(state, it) } + " " + SCHEDULE_OFFLINE)
 }
 
 @Composable
