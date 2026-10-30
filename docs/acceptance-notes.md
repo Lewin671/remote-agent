@@ -1670,3 +1670,21 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 | `git diff --check` | 通过 |
 
 本次是同一整合代码的自动检查，没有新增真实设备、云提供器、系统选择器操作或真实 CLI 端到端证据。剩余联合验收维护在 [plan.md](plan.md#待确认)，包括真机、云文件下载与持久授权、大文件峰值内存、混合附件及断连／进程回收／daemon 重启恢复。Go 与原生测试 fixture 使用的临时服务已结束，iOS 模拟器已关闭；未安装真机 App、推送、发布或升级日常 daemon。
+
+## 定时任务：三端按 client-v52 改版（2026-10-30）
+
+产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v52 · 定时任务](design/client-v52.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
+
+| 检查 | 结果 |
+|---|---|
+| `go test ./...` | 全部通过 |
+| 网页 `pnpm typecheck` / `pnpm test` / `pnpm build` | 全部通过；90 个测试文件、1270 项测试 |
+| Android `./gradlew --no-daemon --no-configuration-cache :core:test :terminal:testReleaseUnitTest :app:testDebugUnitTest :app:assembleDebug -PdevBuild=true` | core 428、terminal 7、app 394 项通过，无失败或跳过 |
+| `ios/scripts/check.sh` | 通过（RACore 589 项、Markdown 17 项；App 构建与测试） |
+| `git diff --check` | 通过 |
+
+真实链路：各端在独立的 dev-env（临时账户、库、tmux socket）里连真实 Claude Code 2.1.300 / Haiku 4.5，走了新建多行描述任务 → 立即运行一次 → 从运行记录打开那次对话并看到预期回复 → 修改描述保存 → 在会话里用「定时发送…」建当前对话任务。网页为 Chrome 无头配置里的界面操作；Android 为模拟器上的 UI 自动化（`adb reverse` 连本地 server，项目默认值由测试预置）；iOS 为模拟器上的 DEBUG 动作触发。三端各截了亮暗两套画面逐屏对照界面稿，停下横幅、离线详情和消息卡片的写法按网页逐字对齐。
+
+未覆盖：到点自动派发与对话忙时的真实排队（由单测和示例画面覆盖）、真实推送送达、断网与故障恢复、跨端修订冲突、DST、真机与软键盘、iPad 和 Android 宽屏。
+
+同一轮修了 iOS 一条偶现失败的用例：`aTimedOutRealLoginIsCancelledInsteadOfWaitingForTheHTTPTimeout` 给 login 真实的 100 ms，负载高时签名耗时超过它，请求还没发出就超时（一次全量检查中 `requests.value == 1` 在 0.290 s 失败）。改为注入计时器、在请求发出后才触发超时；修改后在四个忙循环下单跑 20 次全部通过。原版在本机单跑 20 次、整套 5 轮均未复现，证据只有那一次失败记录。
