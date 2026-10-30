@@ -331,7 +331,7 @@ fw("r2-project-machine", "views/Schedules.tsx", 'fixedMachine={machineId}', '')
 fw("r2-clear-rejected-attempt", "remote.ts", 'attempt.abandon(); // definite schedule revision conflict', '// retain rejected revision')
 fi("r2-unknown-permission", "RemoteAgent/UI/Schedules/NewScheduleScreen.swift", 'if mode == nil {', 'if false {', True)
 fi("r2-daemon-conflict", "RemoteAgent/UI/Schedules/ScheduleStore.swift", 'command.fromDaemon, command.code == "aborted"', 'command.code == "aborted"', True)
-feedback("r2-design", "docs/design/client-v51.html", '<div class="mc">中继上的会话数已满</div>', '<div class="mc">今天 08:00 失败：中继上的会话数已满</div>', ["pnpm","--dir","web","exec","vitest","run","src/views/schedule-design.test.ts"], "AssertionError")
+feedback("r2-design", "docs/design/client-v52.html", '<div class="mc">中继上的会话数已满</div>', '<div class="mc">今天 08:00 失败：中继上的会话数已满</div>', ["pnpm","--dir","web","exec","vitest","run","src/views/schedule-design.test.ts"], "AssertionError")
 fw("r2-task-settings-only", "views/NewSession.tsx", 'const taskEditing = scheduled && lockMachine;', 'const taskEditing = false;')
 fa("r2-task-settings-only", "app/src/main/java/io/github/lewin671/remoteagent/ui/Project.kt", 'if (!lockMachine) {', 'if (true) {', True)
 _IOS_ASSERTIONS.update({

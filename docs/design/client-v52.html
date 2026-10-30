@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v51 · 2026-10-28 UTC</title>
+<title>remote-agent 客户端设计稿 v52 · 2026-10-30 UTC</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -1016,7 +1016,34 @@
 
 .schedule-chapter .quiet::before,.schedule-chapter .quiet::after{display:none} .schedule-wide{display:flex;min-height:540px;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--card);margin:24px 0}.schedule-wide aside{display:flex;flex-direction:column;width:240px;padding:16px;background:var(--soft);border-right:1px solid var(--line)}.schedule-wide .nav{margin-top:auto;display:flex;flex-direction:column;gap:4px}.schedule-wide .nav div{display:flex;gap:8px;align-items:center;min-height:44px;color:var(--muted)}.schedule-wide main{flex:1;padding:24px;min-width:0}.schedule-wide h3{font-size:22px}.schedule-wide .schedule-content{max-width:760px;margin:auto}
 </style>
-<style>.schedule-mock-name{display:block;margin:8px 16px;font-size:13px;color:var(--muted)}.schedule-mock-name input{display:block;width:100%;min-height:44px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg);font:inherit;font-size:15px}.schedule-mock-message{padding:8px 16px 16px;margin:0;color:var(--fg);font-size:15px;white-space:pre-wrap}.schedule-shared{margin:16px 0 32px}.schedule-shared h3{font-size:17px}.schedule-shared h4{font-size:15px;margin:24px 0 8px}.schedule-shared table{width:100%;border-collapse:collapse;font-size:13px}.schedule-shared th,.schedule-shared td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:8px 12px;overflow-wrap:anywhere}.schedule-shared th{font-size:12px;font-weight:400;color:var(--muted)}</style></head>
+<style>.schedule-mock-name{display:block;margin:8px 16px;font-size:13px;color:var(--muted)}.schedule-mock-name input{display:block;width:100%;min-height:44px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg);font:inherit;font-size:15px}.schedule-mock-message{padding:8px 16px 16px;margin:0;color:var(--fg);font-size:15px;white-space:pre-wrap}.schedule-shared{margin:16px 0 32px}.schedule-shared h3{font-size:17px}.schedule-shared h4{font-size:15px;margin:24px 0 8px}.schedule-shared table{width:100%;border-collapse:collapse;font-size:13px}.schedule-shared th,.schedule-shared td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:8px 12px;overflow-wrap:anywhere}.schedule-shared th{font-size:12px;font-weight:400;color:var(--muted)}</style><style>/* v52 定时任务 */
+.side .stabs{display:flex;border-top:1px solid var(--line);flex:none}
+.side .stabs span{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;font-size:13px;color:var(--muted)}
+.side .stabs span.on{color:var(--blue);font-weight:600}
+.side .stabs .n{font-style:normal;font-size:11px;font-weight:700;color:var(--on-solid);background:var(--orange);border-radius:9px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+.side .foot{border-top:0}
+.schedule-chapter .fold-row{display:flex;justify-content:space-between;align-items:center;min-height:44px;margin:4px 16px 0;padding-left:13px;font-size:13px;color:var(--muted)}
+.side .fold-row{margin:4px 14px 0;padding-left:0}
+.schedule-chapter .large .newbtn .ic{width:24px;height:24px;stroke-width:1.8}
+.schedule-chapter .fold-row .v{display:flex;align-items:center;gap:6px}
+.schedule-chapter .glabel{display:flex;justify-content:space-between;font-size:13px;padding:8px 30px 6px}
+.schedule-chapter .glabel span:last-child{font-variant-numeric:tabular-nums}
+.schedule-chapter .quiet{justify-content:center;min-height:44px;margin:4px 0}
+.schedule-chapter .quiet .ic{flex:none}
+.schedule-chapter .wk{display:flex;gap:6px;padding:12px 0 4px}
+.schedule-chapter .wk span{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);background:var(--seg);font-size:13px;color:var(--muted)}
+.schedule-chapter .wk span.on{background:var(--card);color:var(--fg);font-weight:600;box-shadow:inset 0 0 0 1px var(--line)}
+.schedule-chapter .row .v{min-width:0}
+.schedule-chapter .grp .row > .v{max-width:62%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.schedule-chapter .sched-pane{max-width:620px;width:100%;margin:0 auto;padding:28px 0 40px;overflow:hidden}
+.schedule-chapter .sched-pane > h3{font-size:22px;margin:0 16px}
+.schedule-chapter .sched-pane > p.hint{margin:2px 16px 16px}
+.schedule-chapter .desk .dm{overflow:hidden;background:var(--soft)}
+.schedule-shared details.impl{margin-top:24px;border-top:1px solid var(--line)}
+.schedule-shared details.impl summary{justify-content:flex-start;color:var(--muted)}
+.schedule-shared details.impl[open] summary .ic{transform:rotate(180deg)}
+</style>
+</head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="lu-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lu-square-open" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-square-check" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lu-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="lu-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="lu-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lu-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lu-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol><symbol id="lu-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lu-square-pen" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></symbol><symbol id="lu-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol><symbol id="lu-square" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol><symbol id="lu-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lu-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="lu-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="lu-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="lu-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol><symbol id="lu-message-square" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></symbol><symbol id="lu-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="lu-laptop" viewBox="0 0 24 24"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/></symbol><symbol id="lu-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol><symbol id="lu-smartphone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></symbol><symbol id="lu-tablet" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></symbol><symbol id="lu-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol><symbol id="lu-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lu-corner-down-left" viewBox="0 0 24 24"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></symbol><symbol id="lu-keyboard" viewBox="0 0 24 24"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></symbol><symbol id="lu-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol><symbol id="lu-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/></symbol><symbol id="lu-maximize-2" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/><path d="M9 21H3v-6"/></symbol><symbol id="lu-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol></svg>
 <div class="wrap">
@@ -1024,16 +1051,24 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android / iOS 设计稿 · v51 · 2026-10-28 UTC · 上一版 v50 在 git 历史里（<code>git log -- docs/design/client-v50.html</code>）</div>
+    <div class="sub">PWA / Android / iOS 设计稿 · v52 · 2026-10-30 UTC · 上一版 v51 在 git 历史里（<code>git log -- docs/design/client-v51.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v50 的改动</h4><ul><li>电脑设置统一称为「附件存储」，说明已使用文件保留到会话结束，清理不删除会话文件。</li></ul>
+  <h4>相对 v51 的改动（定时任务）</h4><ul>
+<li>新增「两种任务」「状态词」两节：「已停下」只指电脑停下、等你处理的任务，「已暂停」只指手动暂停；两条原因文案改为「…任务已停下」，详情副标题不再带状态点。</li>
+<li>详情改为从上到下「让 agent 做什么 → 运行记录 → 设置 → 操作」，「消息」行改名「让 agent 做什么」与新建页一致；已停下时原因横幅下面紧跟「恢复」。</li>
+<li>列表：新建入口移到大标题右侧的 ＋（宽屏在侧栏标题右侧），去掉列表末尾的「新任务…」；「已结束」默认收起成一行；离线行内只写「未连接」；合计写「今天 N 次，都没有通知」。</li>
+<li>新建：「让 agent 做什么」放在任务名前面；时间弹层补「每周」「每隔」两种画面。</li>
+<li>补画面：到点时对话正忙的排队定时消息、目标对话找不到、未连接的详情；折叠的定时检查行加展开箭头。</li>
+<li>宽屏改为侧栏列表、右侧详情的两栏；主页宽屏侧栏底部补上「会话 / 定时 / 设置」标签，与客户端一致。</li>
+<li>夏令时、修订冲突、已看记录等实现规则收进本章末尾默认收起的「实现约束」。</li>
+</ul>
 </div>
-<nav class="review-nav" aria-label="设计稿章节"><a href="#schedules">定时任务</a>
+<nav class="review-nav" aria-label="设计稿章节"><a href="#schedules">定时任务</a><a href="#schedule-wide">定时 · 宽屏</a>
   <a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#files">文件</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
 </nav>
 <!-- ============================= -->
@@ -4129,7 +4164,7 @@ git status --short gen/</pre>
         <div class="label">近 7 天</div>
         <div class="old"><span>介绍下这个项目</span><span>foo · 周二</span></div>
       </div>
-      <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
+      <nav class="stabs"><span class="on"><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg>会话</span><span><svg class="ic" aria-hidden="true"><use href="#lu-clock"/></svg>定时</span><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg>设置</span></nav><div class="foot"><span></span><span><span class="dot idle"></span> 已连接</span></div>
     </div>
     <div class="dm">
       <div class="start">
@@ -4167,7 +4202,7 @@ git status --short gen/</pre>
         <div class="old"><span>升级到 Go 1.25</span><span>9月27日</span></div>
         <div class="tail">共 71 个，滚到底加载更早的</div>
       </div>
-      <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
+      <nav class="stabs"><span class="on"><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg>会话</span><span><svg class="ic" aria-hidden="true"><use href="#lu-clock"/></svg>定时</span><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg>设置</span></nav><div class="foot"><span></span><span><span class="dot idle"></span> 已连接</span></div>
     </div>
     <div class="dm">
       <div class="dh">
@@ -4231,7 +4266,7 @@ git status --short gen/</pre>
         <div class="old"><span>升级到 Go 1.25</span><span>9月27日</span></div>
         <div class="tail">共 71 个，滚到底加载更早的</div>
       </div>
-      <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
+      <nav class="stabs"><span class="on"><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg>会话</span><span><svg class="ic" aria-hidden="true"><use href="#lu-clock"/></svg>定时</span><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg>设置</span></nav><div class="foot"><span></span><span><span class="dot idle"></span> 已连接</span></div>
     </div>
     <div class="dm">
       <div class="start">
@@ -4260,7 +4295,7 @@ git status --short gen/</pre>
         <div class="old"><span>拆分 handler 包</span><span>7:10</span></div>
         <div class="old"><span>给登录接口加限流</span><span>6:42</span></div>
       </div>
-      <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
+      <nav class="stabs"><span class="on"><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg>会话</span><span><svg class="ic" aria-hidden="true"><use href="#lu-clock"/></svg>定时</span><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg>设置</span></nav><div class="foot"><span></span><span><span class="dot idle"></span> 已连接</span></div>
       <div class="pop"><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>1 个待处理 · 4 个进行中</small></div><span class="ck"></span></div><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 1 个待处理 · 3 个进行中</small></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="ck"></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div><div class="pi act">管理项目<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div></div></div>
     </div>
     <div class="dm">
@@ -4288,7 +4323,7 @@ git status --short gen/</pre>
       <div class="label">今天</div>
       <div class="old"><span>发布秋季文章</span><span>blog · 7:50</span></div>
     </div>
-    <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
+    <nav class="stabs"><span class="on"><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg>会话</span><span><svg class="ic" aria-hidden="true"><use href="#lu-clock"/></svg>定时</span><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg>设置</span></nav><div class="foot"><span></span><span><span class="dot idle"></span> 已连接</span></div>
   </div>
   <div class="dm"><div class="wpage"><h3 style="margin:0;font-size:22px">项目管理</h3><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 1 个待处理 · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div></div>
 </div></div>
@@ -4304,7 +4339,7 @@ git status --short gen/</pre>
       <div class="label">今天</div>
       <div class="old"><span>发布秋季文章</span><span>blog · 7:50</span></div>
     </div>
-    <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
+    <nav class="stabs"><span class="on"><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg>会话</span><span><svg class="ic" aria-hidden="true"><use href="#lu-clock"/></svg>定时</span><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg>设置</span></nav><div class="foot"><span></span><span><span class="dot idle"></span> 已连接</span></div>
   </div>
   <div class="dm gray" style="background:var(--soft);overflow:auto"><div style="max-width:672px;margin:0 auto;padding-top:12px"><div class="large"><h3>设置</h3></div><div class="glabel">电脑</div><div class="grp"><div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><span class="row-name">MacBook<small>Codex · 7 天已用 34%</small></span><span class="v"><span class="dot idle"></span>在线<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="manage-hint">要添加电脑或客户端，在管理端（Pixel 9）上打开「设置 › 添加设备」。</div><div class="glabel">客户端</div><div class="grp"><div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-globe"/></svg></span><span class="row-name">Chrome · macOS</span><span class="v">当前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-smartphone"/></svg></span><span class="row-name">Pixel 9</span><span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">外观</div><div class="grp"><div class="row">主题<div class="pick"><span class="on">自动</span><span>亮色</span><span>暗色</span></div></div></div><div class="glabel">版本</div><div class="grp"><div class="row">remote-agent<span class="v">示例版本</span></div></div></div></div>
 </div></div>
@@ -4322,38 +4357,45 @@ git status --short gen/</pre>
 <section id="schedules" class="schedule-chapter"><h2>定时任务</h2>
 <div class="note schedule-shared" id="schedule-shared-copy">
 <h3>各端统一的写法</h3>
-<p>本节是网页、Android 和 iOS 的共同依据。以下字段、行序、文案与标点三端一致；平台可以不同的只有原生选择器本身。原生日期、时间、星期和时区选择器也必须保持同样的选项、默认值和含义。</p>
+<p>本节是网页、Android 和 iOS 的共同依据。以下字段、行序、文案与标点三端一致；平台可以不同的只有原生选择器本身。原生日期、时间、星期和时区选择器也必须保持同样的选项、默认值和含义。实现层面的约束收在本节末尾的「实现约束」里。</p>
+<h4>两种任务</h4>
+<p>「新开对话」：每次运行在指定项目新开一个对话，归在任务下面，不进会话列表；从定时页新建的都是这种。「当前对话」：消息发到一个已有对话，等当前轮结束再发；从会话 ⋯ 菜单的「定时发送…」或在对话里让 agent 建。两种任务共用同一套列表行和详情，只靠下面三处区分，不另加类型标签：列表第二行（新开对话写「项目 · CLI」，当前对话写「在「对话标题」里」）、详情设置里的「在哪运行 / 发到」、设置下方的类型说明。</p>
+<h4>状态词</h4>
+<p>任务的状态只用下表这几个词，列表第一行右侧、详情导航栏副标题和对话定时条用同一个词，不另造说法；副标题只写状态，不加状态点。</p>
+<table><thead><tr><th>状态</th><th>写法</th><th>什么时候用</th></tr></thead><tbody>
+<tr><td>运行中</td><td>运行中</td><td>有执行在跑，包括等当前轮结束的那一段</td></tr>
+<tr><td>等下一次</td><td>下次 今天 15:00</td><td>进行中；尚无法计算时写「下次待定」</td></tr>
+<tr><td>已停下</td><td>已停下</td><td>「需要你看一下」组里的全部任务：运行失败、权限变化、间隔过短、结果无法确认。是电脑停下的，等你处理</td></tr>
+<tr><td>已暂停</td><td>已暂停</td><td>只用于你（或 agent 应你要求）手动暂停的任务，不显示原因横幅</td></tr>
+<tr><td>已结束</td><td>已结束</td><td>次数或截止时间用完、一次性任务已运行</td></tr>
+<tr><td>未连接</td><td>未连接</td><td>所在电脑不在线。列表行内只写这三个字，完整说明「未连接，显示的是上次的状态」写在任务页顶部提示条、详情副标题和对话定时条，不再宣称下次时间或运行中</td></tr>
+</tbody></table>
 <h4>日期与时刻</h4>
 <p>将来的时刻写「今天 15:00」「明天 08:00」，过去的时刻写「今天 08:00」「昨天 08:00」；其余写「10月25日 08:00」，不是今年的带年份。按本机日历判断今天、明天和昨天。所有时刻均为 24 小时制，补齐两位、不带秒；列表右侧保留日期词，写「下次 今天 15:00」。</p>
 <h4>任务名与时区</h4>
-<p>新建时「任务名」可选，占位文字固定为「留空就用消息的第一句」。任务名最多 60 个字符；两端空白去掉，连续空白合为一个空格。留空时，取消息第一行的第一句（中文句号、问号、感叹号，或英文句末标点前的文字），超过 60 个字符截到 60 个。任务名用于任务列表与详情。通知的最终标题由 daemon 按执行来源填入：新开对话缺省用派发时任务名的前 60 字，当前对话缺省用目标会话当前显示标题的前 60 字，agent 显式 title 优先。客户端直接使用事件中的最终标题，不按任务当前定义或本地会话缓存推断；已记录的通知不追溯改名。网页 Web Push 为保护隐私仍只显示通用文案「定时任务有新结果」。</p>
-<p>详情采用设置区第一行「任务名」，行尾显示当前名字和进入箭头；点开后沿用会话改名的交互：标题「重命名任务」，输入框选中当前名字，下方「留空保存会用消息的第一句」，按钮「取消 / 保存」。留空保存按当前消息重新生成；之后编辑消息不会自动改任务名。同名保存直接关闭，不发送更新。</p><p>任务在任何状态都可以改名，包括暂停、失败、无法确认、已结束、运行中及已有立即运行请求。各端继续提交完整定义，只改标题；改名保持任务状态、调度、活动执行与运行记录不变。离线、正在保存或修改结果未确认时不能改名。</p>
-<p>时区只在「什么时候」弹层选择，默认本机 IANA 时区，可以修改；详情不单独列时区。日历任务的列表第二行频率与详情「什么时候」值，仅在任务时区与本机时区不同时追加 IANA 名称，固定写成「每天 09:49 · America/Los_Angeles」；相同时只写「每天 09:49」。时区别名按 IANA 的规范名称比较，不把同一时区的别名当成不同地区。一次性绝对时间、运行记录和「下次」时刻转换为本机时间显示；固定间隔不附加时区名称。</p>
-<p>一次性时间和新选的截止时间按所选时区校验：当地时刻因夏令时跳转而不存在时，不自动挪动，拒绝保存并统一提示「这个时区在该时刻发生夏令时跳转，请换一个时间」。Android 的截止日期取所选日的 23:59:59，同样拒绝不存在的当地时刻或整个日期。秋季时钟回拨导致同一当地时刻出现两次时，新选的一次性时间和截止时间都取较早的一次，与后端日历规则一致；例如 America/Los_Angeles 的 2027-11-07 01:30 取 08:30Z（UTC−07:00），不取 09:30Z。已有截止时间以及只切换时区时，仍保留原来的绝对时刻，不重新选择重复时刻。</p>
-<h4>列表：三行固定顺序</h4>
+<p>新建时「任务名」可选，放在消息下面，占位文字固定为「留空就用消息的第一句」。任务名最多 60 个字符；两端空白去掉，连续空白合为一个空格。留空时，取消息第一行的第一句（中文句号、问号、感叹号，或英文句末标点前的文字），超过 60 个字符截到 60 个。任务名用于任务列表、详情标题和新开对话的通知标题。</p>
+<p>详情「设置」组最后一行是「任务名」，行尾显示当前名字和进入箭头；点开后沿用会话改名的交互：标题「重命名任务」，输入框选中当前名字，下方「留空保存会用消息的第一句」，按钮「取消 / 保存」。留空保存按当前消息重新生成；之后编辑消息不会自动改任务名。同名保存直接关闭，不发送更新。任务在任何状态都可以改名，包括已停下、已暂停、已结束、运行中及已有立即运行请求；离线、正在保存或修改结果未确认时不能改名。</p>
+<p>时区只在「什么时候」弹层选择，默认本机 IANA 时区，可以修改；详情不单独列时区。日历任务的列表第二行频率与详情「什么时候」值，仅在任务时区与本机时区不同时追加 IANA 名称，固定写成「每天 09:49 · America/Los_Angeles」；相同时只写「每天 09:49」。一次性绝对时间、运行记录和「下次」时刻转换为本机时间显示；固定间隔不附加时区名称。</p>
+<h4>列表</h4>
 <table><thead><tr><th>行</th><th>写什么</th><th>例子</th></tr></thead><tbody>
-<tr><td>第一行</td><td>左侧任务名；右侧有执行在跑时写「运行中」，否则写「下次 …」；尚无法计算时写「下次待定」。停下、暂停、结束分别写「已停下 / 已暂停 / 已结束」，不写「等待本轮结束」。离线统一写「未连接，显示的是上次的状态」。</td><td>检查 PR 回复　下次 今天 15:00</td></tr>
-<tr><td>第二行</td><td>频率与在哪运行。新开对话写项目、CLI；当前对话必须写「在「对话标题」里」，不只写标题。有多台电脑才在末尾写电脑名。目标对话尚未加载时先按 ID 读取，取得之前写「在对话里」。</td><td>每小时 · 在「修复登录超时」里<br>每天 08:00 · notes · Claude Code</td></tr>
-<tr><td>第三行</td><td>进行中和已暂停的任务写最近一次结果；没有记录写「还没有运行」。停下的任务（「需要你看一下」组）只写下面原因表的原因，不把正常完成的运行改写为失败。今天的运行全部完成且没有通知时合计，不逐条列。</td><td>今天 08:02 通知了你：…<br>今天 14:00 没有通知<br>今天 N 次都没有通知<br>中继上的会话数已满</td></tr>
+<tr><td>第一行</td><td>左侧任务名，长了截断；右侧状态词（见上表）。</td><td>检查 PR 回复　下次 今天 15:00</td></tr>
+<tr><td>第二行</td><td>频率与在哪运行。新开对话写项目、CLI；当前对话写「在「对话标题」里」，不只写标题。有多台电脑才在末尾写电脑名。目标对话尚未加载时写「在对话里」。</td><td>每小时 · 在「修复登录超时」里<br>每天 08:00 · notes · Claude Code</td></tr>
+<tr><td>第三行</td><td>进行中和已暂停的任务写最近一次结果，没有记录写「还没有运行」。已停下的任务只写下面原因表的原因。今天的运行全部完成且没有通知时合计成「今天 N 次，都没有通知」，不逐条列。</td><td>今天 08:02 通知了你：…<br>今天 14:00 没有通知<br>今天 38 次，都没有通知<br>中继上的会话数已满</td></tr>
 </tbody></table>
-<p>列表第三行包括停下原因一律用 muted；橙色只用于需要处理的状态点和类型词，遵守 design-system 第 1、2 节。</p>
-<p>分组固定为「需要你看一下 / 进行中 / 已暂停 / 已结束」；定时入口角标统计「需要你看一下」的任务与有未读通知的任务的并集，每个任务只计一次。一次运行的 notified 为 true，且本客户端尚未在定时列表中看过它时，算作未读；同一次运行的后续通知不重复计数。打开定时列表，将当前已加载的通知全部记为已看；列表停留期间新加载的通知也记为已看。已看状态仅存本客户端，按中继、账户（客户端设备身份）和电脑隔离；首次取得某台电脑的有效列表（含已验证缓存）时，将当时已有通知记为已看，不为历史通知亮角标。离线可沿用已验证缓存，用户删除的任务不计数，任务详情和对话不清除角标。completed_while_paused 归「已暂停」；用户删除（cancelled + user_cancelled）的任务不显示，删除成功后回到列表。「需要你看一下」按更新时间从新到旧，「进行中」按下次时间从早到晚，「已暂停」「已结束」按更新时间从新到旧。离线任务用灰点；任务页、详情副标题和对话定时条统一写「未连接，显示的是上次的状态」，不再宣称下次时间或运行中。列表末尾统一为「新任务…」。空列表标题「还没有定时任务」，说明「在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。」</p>
-<h4>已有任务编辑的边界</h4>
-<p>任务归属创建它的 daemon；编辑已有任务时锁定所在电脑，电脑行不可选择。复用项目设置选择器时，弹层标题改为「任务设置」，只修改这个任务，不提供「设为常用 / 移除项目」等项目管理操作；选择目录也不改全局项目偏好。CLI 选项、模型、权限和默认值只从该电脑取得，不继承同路径项目在另一台电脑上的设置。新建任务选择「默认」权限时，保存前解析为所选电脑、所选 CLI 的明确权限；无法确定默认权限时先选择明确权限，不能留空保存。修订冲突后关闭编辑框，重新拉取，提示「任务刚被修改，已更新为最新内容」；再次编辑使用最新快照。</p>
-<p>非日历任务打开时间编辑器时，默认使用本机 IANA 时区，不从时间戳里的 Z 或数字偏移推导时区名。同时存在次数和截止日期时，结束选项默认「运行指定次数」，截止日期原样保留；仅改变时区不改变已有截止日期的绝对时刻，截止输入框立即按新时区换算显示，显示与提交保持一致。已经手动修改的截止时刻也按这个规则换算。详情「发到」在目标元数据未加载时统一显示「对话」，加载后显示标题；目标会话在任务列表读取位之外异步加载，不阻塞保存或修订追读。</p>
-<h4>详情：设置行与顺序</h4>
-<p>导航栏副标题统一用 muted 文字，不加状态点，只写状态，例如「下次 今天 15:00」，不加「新开对话 / 当前对话」；任务类型在设置下方说明。消息正文用 15 号 fg，不用 muted。运行记录标题右侧用 muted 显示实际记录条数，包含折叠组内的各次运行。</p>
-<ol><li>任务名：当前名字；允许修改时可进入改名。</li><li>什么时候：频率，只有外地日历时区才追加 IANA 名称；点开时间弹层。</li><li>结束：只在设置了次数或截止日期时出现；次数写「共 N 次」，截止写「到 本机日期与时刻」，两项都有时都写，例如「共 5 次，或到 10月30日 08:00」；在「什么时候」弹层修改。</li><li>新开对话写「在哪运行」：项目 · CLI，电脑不止一台才追加电脑名；当前对话写「发到」：对话标题，点进该对话。</li><li>权限：新开对话显示任务的权限并可编辑；当前对话显示该对话的当前权限，设置跟随对话。</li><li>消息：右侧「编辑」，下方完整显示消息正文。</li></ol>
-<p>设置后是任务类型、创建者和创建时间说明：新开对话固定写「每次新开一个对话，归在这个任务下面。」，当前对话写「消息发到当前对话，等待当前轮结束。」，后接创建者和「 · 创建时间」；创建者统一写「你创建」或「Agent 在对话里创建」，不写「接管」。再是「运行记录」，最后依次「立即运行一次」「暂停 / 恢复」「删除任务」。失败一次就停在「需要你看一下」，说明原因与继续的后果；此时唯一的实心按钮是「恢复 / 重新安排」，失败的一次性任务用「立即额外执行」。删除确认标题统一为「删除这个任务？」，已发出的消息和已开的对话保留；立即运行一次不占自动次数及日历当天名额。有执行在跑或已有排队手动请求时，禁用「立即运行一次」。执行在跑时禁用「什么时候 / 消息 / 在哪运行」的编辑，改名仍可用；离线、保存中及结果未确认的保护照旧。用户手动暂停不显示原因警告横幅。</p>
-<h4>新建：行与顺序</h4>
-<ol><li>任务名：标签不加「（可选）」，允许留空，占位「留空就用消息的第一句」。</li><li>让 agent 做什么：必填消息。</li><li>什么时候：一次 / 每天 / 每周 / 每隔，加时间、只在工作日、结束次数或日期、时区；时区默认本机。</li><li>从定时页新建时：项目 → CLI → 权限 → 模型；多台电脑时最后一行写「机器和模型」。项目、CLI、权限与模型复用新建会话的选择器和默认值。</li><li>创建：本页唯一的实心按钮；默认权限为计划模式时禁用，说明「计划模式不能创建执行任务，请先选择其他权限」。新开对话任务不传来源会话，不从同项目会话取来源，统一走 daemon 的无来源登录 shell 路径。</li></ol>
-<p>从会话「定时发送…」进入时，页面标题为「定时发到这个对话」，仅列任务名、让 agent 做什么、什么时候、创建；项目、CLI、权限和模型随当前对话，不再重复选择。</p>
-<p>「每隔」的新任务第一次在一个完整间隔之后运行，写入 delay_seconds = interval_seconds。三端说明统一为「第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。」编辑频率未改变时，原 trigger 的 at、delay_seconds 原样保留，只修改用户动过的字段；只改结束条件不能重置相位。编辑器打开时保存完整 spec 和修订号，保存只基于该快照提交；冲突时提示并重读，不把编辑叠到其他端的新 spec 上。</p>
-<p>新开对话的新建页底部说明逐字统一为「每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。」CLI 分段选择的选中项用 fg 字、card 底，未选用 muted 字、灰色底，与原生选择器一致。</p>
-<h4>自动关闭的对话</h4>
-<p>会话状态为 exited、detail 为 stopped 且 SessionState.scheduled_closed 为 true 时，结束说明统一为「定时任务运行已结束，会话自动关闭了。」；手动结束仍为「会话是被手动结束的。」不按任务归属或运行结果猜测关闭原因。</p>
+<p>第三行包括停下原因一律用 muted；橙色只用于需要处理的状态点，遵守 design-system 第 1、2 节。离线任务用灰点。</p>
+<p>分组依次是「需要你看一下 / 进行中 / 已暂停」，最后是默认收起的「已结束 N」一行，点一下在原地展开（chevron-down），这台设备记住展开状态；组里没有任务就不显示这组。「需要你看一下」按更新时间从新到旧，「进行中」按下次时间从早到晚，「已暂停」「已结束」按更新时间从新到旧。用户删除的任务不显示，删除成功后回到列表。</p>
+<p>新建入口是大标题右侧的加号按钮（Lucide plus，读屏名「新任务」），和主页新会话按钮在同一个位置；宽屏放在侧栏标题右侧。列表里不再另放「新任务…」行。空列表标题「还没有定时任务」，说明「在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以点右上角的 ＋ 自己建。」</p>
+<p>定时入口的角标数「需要你看一下」的任务，加上有未读通知的任务，每个任务只计一次；打开定时列表就把已加载的通知记为已看。具体的已看规则见末尾「实现约束」。</p>
+<h4>详情：从上到下</h4>
+<ol><li>已停下时：原因横幅（橙色字，说清原因和继续的后果），紧接着唯一的实心按钮「恢复」；失败的一次性任务改为「立即额外执行」。已暂停不显示横幅，「恢复」放在底部操作组里。</li><li>「让 agent 做什么」：和新建页同名；右侧「编辑」，下方完整显示消息正文，15 号 fg。</li><li>「运行记录」：组标题右侧用 muted 显示实际记录条数，包含折叠组内的各次运行；最多列最近 5 条，其余点「查看全部 N 次」。</li><li>「设置」：什么时候 → 结束（只在设置了次数或截止时出现）→ 在哪运行 / 发到 → 权限 → 任务名。</li><li>类型说明：新开对话「每次新开一个对话，归在这个任务下面。」，当前对话「消息发到当前对话，等待当前轮结束。」，后接「你创建」或「Agent 在对话里创建」和「 · 创建时间」。</li><li>操作组：「立即运行一次」「暂停 / 恢复」「删除任务」。</li></ol>
+<p>理由：打开一个任务最常做的是看它做了什么、跑出了什么，设置很少改，所以消息和结果在上、设置在下；停下的任务要做的事只有一件，放在第一屏。</p>
+<p>设置各行：「什么时候」写频率，点开时间弹层；「结束」次数写「共 N 次」，截止写「到 今天 18:00」这类本机时刻，两项都有时写「共 5 次，或到 10月30日 08:00」，在「什么时候」弹层修改；新开对话写「在哪运行」：项目 · CLI，电脑不止一台才追加电脑名；当前对话写「发到」：对话标题，点进该对话；权限在新开对话里显示任务自己的权限并可编辑，在当前对话里显示该对话当前的权限、没有进入箭头。</p>
+<p>删除确认标题统一为「删除这个任务？」，已发出的消息和已开的对话保留。立即运行一次不占自动次数及日历当天名额。有执行在跑或已有排队的手动请求时，禁用「立即运行一次」；执行在跑时禁用「什么时候 / 让 agent 做什么 / 在哪运行」的编辑，改名仍可用。</p>
+<h4>新建：从上到下</h4>
+<ol><li>让 agent 做什么：必填。</li><li>任务名：标签不加「（可选）」，允许留空，占位「留空就用消息的第一句」。</li><li>什么时候：一次 / 每天 / 每周 / 每隔；每天可选「只在工作日」，每周选星期几（可多选），每隔选间隔；都有结束（不结束、次数、日期）和时区，时区默认本机。</li><li>从定时页新建时：项目 → CLI → 权限 → 模型；多台电脑时最后一行写「机器和模型」，复用新建会话的选择器和默认值。</li><li>类型说明「每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。」</li><li>创建：本页唯一的实心按钮；权限为计划模式时禁用，说明「计划模式不能创建执行任务，请先选择其他权限」。</li></ol>
+<p>从会话「定时发送…」进入时是底部弹层，标题「定时发到这个对话」，只列让 agent 做什么、任务名、什么时候、创建；项目、CLI、权限和模型随当前对话。选「每隔」时，弹层下方说明「第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。」CLI 分段选择与星期选择的选中项用 fg 字、card 底，未选用 muted 字、灰色底，与原生选择器一致。</p>
 <h4>运行记录：结果与原因</h4>
-<p>每条记录第一行「本机日期 HH:mm · 结果」，时间取该次运行的开始时刻；手动运行末尾追加「 · 手动」。已请求通知写「通知了你」，第二行通知正文；失败等异常状态优先。正常完成且没有通知写「没有通知」，第二行最终摘要。跳过固定写「跳过」，失败固定写「失败」，第二行优先显示明确原因，不能被最终摘要或此前通知遮住。跳过且没有会话的记录不可进入。所有时刻使用中文 24 小时制、补齐两位、不带秒。</p>
+<p>每条记录第一行「本机日期 HH:mm · 结果」，时间取该次运行的开始时刻（补跑就是实际开始的时刻）；手动运行末尾追加「 · 手动」。已请求通知写「通知了你」，第二行通知正文；失败等异常状态优先。正常完成且没有通知写「没有通知」，第二行最终摘要。跳过固定写「跳过」，失败固定写「失败」，第二行优先显示明确原因，不能被最终摘要或此前通知遮住。跳过且没有会话的记录不可进入。</p>
 <table><thead><tr><th>原因</th><th>各端一致的文案</th></tr></thead><tbody>
 <tr><td>relay_session_limit</td><td>中继上的会话数已满</td></tr>
 <tr><td>execution_failed</td><td>运行失败，任务已停下</td></tr>
@@ -4363,17 +4405,31 @@ git status --short gen/</pre>
 <tr><td>message_cancelled</td><td>定时消息在送达前被取消，任务已停下</td></tr>
 <tr><td>execution_input_paused</td><td>定时消息已暂停，请先在对话里恢复或取消这条消息</td></tr>
 <tr><td>restart_dispatching</td><td>电脑重启前的发送结果无法确认</td></tr>
-<tr><td>agent_schedule_permissions_changed</td><td>创建任务时的权限已改变，任务已暂停</td></tr>
-<tr><td>agent_schedule_interval_below_minimum</td><td>Agent 创建的任务间隔过短，任务已暂停</td></tr>
+<tr><td>agent_schedule_permissions_changed</td><td>创建任务时的权限已改变，任务已停下</td></tr>
+<tr><td>agent_schedule_interval_below_minimum</td><td>Agent 创建的任务间隔过短，任务已停下</td></tr>
 <tr><td>catch_up_window_expired</td><td>已超过补跑时间，本次跳过</td></tr>
 <tr><td>completed_while_paused</td><td>已暂停：期间计划已到期</td></tr>
 <tr><td>未知原因 / 没有原因</td><td>电脑返回的原因：原文 / 运行结果无法确认</td></tr>
 </tbody></table>
-<p>其余结果固定为「正在启动 / 等待当前轮结束 / 正在运行 / 无法确认 / 已中断 / 已取消 / 等待结果」。同一天完成且没有通知的记录合成「今天 · N 次，都没有通知」（其他日期替换「今天」），下方「最近一次 HH:mm：摘要」；摘要为空时写「最近一次 HH:mm：没有通知」，不留空冒号。点开逐条查看；有通知、跳过或失败的记录单独列。说明固定为「“通知了你”表示已请求通知，不保证送达。记录保留最近 100 次，已开的对话仍可查看。」</p>
-<h4>对话内：定时条与折叠</h4>
-<p>定时条行首统一为 Lucide clock，跟随 muted 文字色，作为装饰图标对读屏隐藏。一个任务：「定时 · 每小时，下次 今天 15:00」，右侧「管理」和进入箭头。多个任务：「2 个定时 · 下次 今天 15:00」，点管理先选择任务。暂停、失败或离线时用实际状态替换下次时刻，不把上次的状态当成在线事实。会话列表第三行追加「定时 每小时」，多个任务写「定时 N 个任务」。</p>
-<p>定时发出的消息下面写「定时任务 · 08:00」；主动通知事件独占一行「通知你：正文」。同一天连续至少两次已完成、没有通知且没有待处理事项的定时轮折成「14:00、15:00 定时检查 · 没有新回复」，用展开箭头，点开看原文；一轮不折。通知、失败（包括工具结果标为 failed 或带非零退出码）、未完成工具、设置变更/回答/终端变更等独立聊天行、内容过大占位和自主后续回复不能被折叠隐藏，跨日期不合并。工具结果必须在该轮结束前返回；迟到结果绘回原工具行时也不能被折叠隐藏。任务开出但尚未接手的对话，输入区上方固定写「回复后，这个对话会移到会话列表」，返回到任务详情；已结束时沿用恢复会话流程。</p>
+<p>其余结果固定为「正在启动 / 等待当前轮结束 / 正在运行 / 无法确认 / 已中断 / 已取消 / 等待结果」。同一天完成且没有通知的记录合成「今天 · N 次，都没有通知」（其他日期替换「今天」），下方「最近一次 HH:mm：摘要」；摘要为空时写「最近一次 HH:mm：没有通知」，不留空冒号。点开在原地逐条展开；有通知、跳过或失败的记录单独列。说明固定为「“通知了你”表示已请求通知，不保证送达。记录保留最近 100 次，已开的对话仍可查看。」</p>
+<h4>对话内：定时条、排队与折叠</h4>
+<p>定时条行首统一为 Lucide clock，跟随 muted 文字色，作为装饰图标对读屏隐藏。一个任务：「定时 · 每小时，下次 今天 15:00」，右侧「管理」和进入箭头。多个任务：「2 个定时 · 下次 今天 15:00」，点管理先选择任务。已停下、已暂停或未连接时用状态词替换下次时刻。会话列表第三行追加「定时 每小时」，多个任务写「定时 N 个任务」。</p>
+<p>到点时对话正忙，定时消息和普通排队消息一样留在对话末尾，写「定时任务 · 15:00 · 这一轮结束后发」，右侧「取消」；取消后任务停下，原因「定时消息在送达前被取消」。发出后消息下面写「定时任务 · 15:00」；主动通知事件独占一行「通知你：正文」。</p>
+<p>同一天连续至少两次已完成、没有通知且没有待处理事项的定时轮折成一行「14:00、15:00 定时检查 · 没有新回复」，行尾 chevron-down，点开在原地展开原文；一轮不折，跨日期不合并。通知、失败、未完成工具、独立聊天行、内容过大占位和自主后续回复不能被折叠隐藏。任务开出但尚未接手的对话，输入区上方固定写「回复后，这个对话会移到会话列表」，返回到任务详情；已结束时沿用恢复会话流程，结束说明为「定时任务运行已结束，会话自动关闭了。」</p>
+<details class="impl"><summary>实现约束（三端一致；看画面时可以跳过）<svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></summary>
+<p><b>通知标题。</b>通知的最终标题由 daemon 按执行来源填入：新开对话缺省用派发时任务名的前 60 字，当前对话缺省用目标会话当前显示标题的前 60 字，agent 显式 title 优先。客户端直接使用事件中的最终标题，不按任务当前定义或本地会话缓存推断；已记录的通知不追溯改名。网页 Web Push 为保护隐私只显示通用文案「定时任务有新结果」。</p>
+<p><b>改名。</b>各端继续提交完整定义，只改标题；改名保持任务状态、调度、活动执行与运行记录不变。</p>
+<p><b>角标与已看。</b>一次运行的 notified 为 true，且本客户端尚未在定时列表中看过它时，算作未读；同一次运行的后续通知不重复计数。打开定时列表，将当前已加载的通知全部记为已看；列表停留期间新加载的通知也记为已看。已看状态仅存本客户端，按中继、账户（客户端设备身份）和电脑隔离；首次取得某台电脑的有效列表（含已验证缓存）时，将当时已有通知记为已看，不为历史通知亮角标。离线可沿用已验证缓存，用户删除的任务不计数，任务详情和对话不清除角标。completed_while_paused 归「已暂停」；用户删除（cancelled + user_cancelled）的任务不显示。</p>
+<p><b>时区与夏令时。</b>时区别名按 IANA 的规范名称比较，不把同一时区的别名当成不同地区。一次性时间和新选的截止时间按所选时区校验：当地时刻因夏令时跳转而不存在时，不自动挪动，拒绝保存并统一提示「这个时区在该时刻发生夏令时跳转，请换一个时间」。Android 的截止日期取所选日的 23:59:59，同样拒绝不存在的当地时刻或整个日期。秋季时钟回拨导致同一当地时刻出现两次时，新选的一次性时间和截止时间都取较早的一次，与后端日历规则一致；例如 America/Los_Angeles 的 2027-11-07 01:30 取 08:30Z（UTC−07:00），不取 09:30Z。已有截止时间以及只切换时区时，仍保留原来的绝对时刻，不重新选择重复时刻。非日历任务打开时间编辑器时，默认使用本机 IANA 时区，不从时间戳里的 Z 或数字偏移推导时区名。同时存在次数和截止日期时，结束选项默认「运行指定次数」，截止日期原样保留；仅改变时区不改变已有截止日期的绝对时刻，截止输入框立即按新时区换算显示，显示与提交保持一致，已经手动修改的截止时刻也按这个规则换算。</p>
+<p><b>编辑已有任务。</b>任务归属创建它的 daemon；编辑已有任务时锁定所在电脑，电脑行不可选择。复用项目设置选择器时，弹层标题改为「任务设置」，只修改这个任务，不提供「设为常用 / 移除项目」等项目管理操作；选择目录也不改全局项目偏好。CLI 选项、模型、权限和默认值只从该电脑取得，不继承同路径项目在另一台电脑上的设置。新建任务选择「默认」权限时，保存前解析为所选电脑、所选 CLI 的明确权限；无法确定默认权限时先选择明确权限，不能留空保存。编辑器打开时保存完整 spec 和修订号，保存只基于该快照提交；修订冲突后关闭编辑框，重新拉取，提示「任务刚被修改，已更新为最新内容」，再次编辑使用最新快照，不把编辑叠到其他端的新 spec 上。离线、保存中及结果未确认时禁止修改。</p>
+<p><b>每隔的相位。</b>「每隔」的新任务第一次在一个完整间隔之后运行，写入 delay_seconds = interval_seconds。编辑频率未改变时，原 trigger 的 at、delay_seconds 原样保留，只修改用户动过的字段；只改结束条件不能重置相位。</p>
+<p><b>来源与目标。</b>新开对话任务不传来源会话，不从同项目会话取来源，统一走 daemon 的无来源登录 shell 路径。详情「发到」在目标元数据未加载时统一显示「对话」，加载后显示标题；目标会话在任务列表读取位之外按 ID 异步加载，不阻塞保存或修订追读。</p>
+<p><b>自动关闭。</b>会话状态为 exited、detail 为 stopped 且 SessionState.scheduled_closed 为 true 时，才写「定时任务运行已结束，会话自动关闭了。」；手动结束仍为「会话是被手动结束的。」不按任务归属或运行结果猜测关闭原因。</p>
+<p><b>折叠。</b>失败包括工具结果标为 failed 或带非零退出码；工具结果必须在该轮结束前返回，迟到结果绘回原工具行时也不能被折叠隐藏。运行记录定位到的轮次展开。</p>
+</details>
 </div>
+
+<!-- ============================= -->
 <h2 id="schedule-list">任务列表</h2>
 <div class="screens">
 
@@ -4381,59 +4437,57 @@ git status --short gen/</pre>
     <div class="phone">
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
-        <div class="large"><h3>定时任务</h3></div>
+        <div class="large"><h3>定时任务</h3><div class="hit"><div class="newbtn" role="button" aria-label="新任务"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg></div></div></div>
         <div class="label">需要你看一下 <span>1</span></div>
-        <div class="sess"><span class="dot wait"></span><div class="sm"><div class="row1"><b>每周依赖检查</b><span>已停下</span></div><div class="pv">每周一 09:00 · foo · Codex</div><div class="mc">创建任务时的权限已改变，任务已暂停</div></div></div>
-        <div class="label">进行中 <span>3</span></div>
+        <div class="sess"><span class="dot wait"></span><div class="sm"><div class="row1"><b>每周依赖检查</b><span>已停下</span></div><div class="pv">每周一 09:00 · foo · Codex</div><div class="mc">创建任务时的权限已改变，任务已停下</div></div></div>
+        <div class="label">进行中 <span>2</span></div>
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>盯 PR #482 的回复</b><span>运行中</span></div><div class="pv">每小时 · 在「修复登录超时」里</div><div class="mc">今天 14:00 没有通知</div></div></div>
-        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>持仓早报</b><span>下次 明天 08:00</span></div><div class="pv">每天 08:00 · notes · Claude Code</div><div class="mc">今天 08:02 通知了你：NVDA 财报前隐含波动率…</div></div></div>
-        <div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>每周 AI 新闻总结</b><span>下次 10月26日 09:00</span></div><div class="pv">每周一 09:00 · notes · Claude Code</div><div class="mc">10月20日 09:04 通知了你：本周三条值得看…</div></div></div>
-        <div class="label">已暂停</div>
+        <div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>持仓早报</b><span>下次 明天 08:00</span></div><div class="pv">每天 08:00 · notes · Claude Code</div><div class="mc">今天 08:02 通知了你：NVDA 财报前隐含波动率…</div></div></div>
+        
+        <div class="label">已暂停 <span>1</span></div>
         <div class="sess last"><span class="dot off"></span><div class="sm"><div class="row1"><b>整理收藏的文章</b><span>已暂停</span></div><div class="pv">每周日 21:00 · notes · Claude Code</div><div class="mc">还没有运行</div></div></div>
-        <div class="label">已结束</div>
-        <div class="sess last"><span class="dot off"></span><div class="sm"><div class="row1"><b>明早看一眼 CI 结果</b><span>已结束</span></div><div class="pv">10月23日 08:00，一次 · foo · Codex</div><div class="mc">还没有运行</div></div></div>
-        <div class="tasknew"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg>新任务…</div>
+        <div class="fold-row" role="button" aria-expanded="false"><span>已结束</span><span class="v">1<svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></span></div>
       </div>
       <div class="tabbar"><div><i><svg class="ic" aria-hidden="true"><use href="#lu-message-square"></use></svg></i>会话</div><div class="on"><i><svg class="ic" aria-hidden="true"><use href="#lu-clock"></use></svg></i>定时<span class="n">1</span></div><div><i><svg class="ic" aria-hidden="true"><use href="#lu-settings"></use></svg></i>设置</div></div>
     </div>
-    <div class="cap">定时任务页（日常）：和会话列表同一套行。需要你处理的在最上面，标签栏的角标只数这一类；进行中按下次运行时间排；第二行写频率和在哪运行，第三行写上一次的结果</div>
+    <div class="cap">日常：和会话列表同一套行。已停下的在最上面；角标数这一组和有未读通知的任务。新建是右上角的 ＋，和主页新会话同一个位置。已结束的默认收起成一行，不占地方</div>
   </div>
 
   <div>
     <div class="phone">
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
-        <div class="large"><h3>定时任务</h3></div>
+        <div class="large"><h3>定时任务</h3><div class="hit"><div class="newbtn" role="button" aria-label="新任务"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg></div></div></div>
         <div class="empty">
           <b>还没有定时任务</b>
-          <p>在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以在这里新建。</p>
-          <span class="act"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg>新任务…</span>
+          <p>在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以点右上角的 ＋ 自己建。</p>
         </div>
       </div>
       <div class="tabbar"><div><i><svg class="ic" aria-hidden="true"><use href="#lu-message-square"></use></svg></i>会话</div><div class="on"><i><svg class="ic" aria-hidden="true"><use href="#lu-clock"></use></svg></i>定时</div><div><i><svg class="ic" aria-hidden="true"><use href="#lu-settings"></use></svg></i>设置</div></div>
     </div>
-    <div class="cap">空白：一句话说明两种建法，一个文字操作。没有实心按钮，因为这里不是必须做的事</div>
+    <div class="cap">空白：一句话说明两种建法。入口只有右上角一个，不在页面中间再放一个按钮</div>
   </div>
 
   <div>
     <div class="phone">
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
-        <div class="large"><h3>定时任务</h3></div>
+        <div class="large"><h3>定时任务</h3><div class="hit"><div class="newbtn" role="button" aria-label="新任务"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg></div></div></div>
         <div class="banner tb"><svg class="ic" aria-hidden="true"><use href="#lu-cloud-off"></use></svg><span>iMac 未连接，显示的是上次的状态</span></div>
         <div class="label">需要你看一下 <span>2</span></div>
-        <div class="sess"><span class="dot off"></span><div class="sm"><div class="row1"><b>每周依赖检查并且把需要升级的大版本整理成清单</b><span>未连接，显示的是上次的状态</span></div><div class="pv">每周一 09:00 · foo · Codex · iMac</div><div class="mc">运行结果无法确认</div></div></div>
+        <div class="sess"><span class="dot off"></span><div class="sm"><div class="row1"><b>每周依赖检查并且把需要升级的大版本整理成清单</b><span>未连接</span></div><div class="pv">每周一 09:00 · foo · Codex · iMac</div><div class="mc">运行结果无法确认</div></div></div>
         <div class="sess"><span class="dot wait"></span><div class="sm"><div class="row1"><b>持仓早报</b><span>已停下</span></div><div class="pv">每天 08:00 · notes · Claude Code · MacBook</div><div class="mc">中继上的会话数已满</div></div></div>
         <div class="label">进行中 <span>9</span></div>
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>盯 PR #482 的回复</b><span>运行中</span></div><div class="pv">每小时 · 在「修复登录超时并补上限流和重试的测试」里 · MacBook</div><div class="mc">今天 14:00 没有通知</div></div></div>
-        <div class="sess"><span class="dot off"></span><div class="sm"><div class="row1"><b>夜间跑全量回归</b><span>未连接，显示的是上次的状态</span></div><div class="pv">每天 23:30 · foo · Codex · iMac</div><div class="mc">还没有运行</div></div></div>
+        <div class="sess"><span class="dot off"></span><div class="sm"><div class="row1"><b>夜间跑全量回归</b><span>未连接</span></div><div class="pv">每天 23:30 · foo · Codex · iMac</div><div class="mc">还没有运行</div></div></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>每隔 15 分钟看一下服务器负载</b><span>下次 今天 09:45</span></div><div class="pv">每 15 分钟 · ops · Codex · MacBook</div><div class="mc">今天 38 次，都没有通知</div></div></div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>每周 AI 新闻总结</b><span>下次 10月26日 09:00</span></div><div class="pv">每周一 09:00 · notes · Claude Code</div><div class="mc">10月20日 09:04 通知了你</div></div></div>
-        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>每隔 15 分钟看一下服务器负载</b><span>下次 今天 09:45</span></div><div class="pv">每 15 分钟 · ops · Codex · MacBook</div><div class="mc">今天 38 次都没有通知</div></div></div>
-        <div class="tail">还有 5 个进行中、12 个已结束</div>
+        <div class="tail">还有 5 个进行中</div>
+        <div class="fold-row" role="button" aria-expanded="false"><span>已结束</span><span class="v">12<svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></span></div>
       </div>
       <div class="tabbar"><div><i><svg class="ic" aria-hidden="true"><use href="#lu-message-square"></use></svg></i>会话<span class="n">3</span></div><div class="on"><i><svg class="ic" aria-hidden="true"><use href="#lu-clock"></use></svg></i>定时<span class="n">2</span></div><div><i><svg class="ic" aria-hidden="true"><use href="#lu-settings"></use></svg></i>设置</div></div>
     </div>
-    <div class="cap">拥挤：标题长就截断；有多台电脑才写电脑名。电脑不在线时顶部一条提示，对应任务灰点并写「未连接，显示的是上次的状态」。高频任务第三行合计「今天 N 次都没有通知」，不逐条刷屏</div>
+    <div class="cap">拥挤：标题长就截断；有多台电脑才写电脑名。电脑不在线时顶部一条完整说明，行内只写「未连接」加灰点，不和任务名抢宽度。高频任务第三行合计「今天 38 次，都没有通知」</div>
   </div>
 
   <div>
@@ -4463,18 +4517,20 @@ git status --short gen/</pre>
   <div>
     <div class="phone gray">
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">持仓早报</span></b><span>下次 明天 08:00</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">持仓早报</span></b><span>下次 明天 08:00</span></span><span class="more"></span></div>
       <div class="body gray">
-        <div class="grp"><div class="row"><span>任务名</span><span class="v">持仓早报<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>什么时候</span><span class="v">每天 08:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>在哪运行</span><span class="v">notes · Claude Code<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>消息</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">看一下我持仓相关的新闻和公告，和上次的报告比，有重要变化就通知我；没有就简短说一句。</p></div>
-        <div class="hint gh">每次新开一个对话，归在这个任务下面。你创建 · 今天 07:00</div>
-        <div class="glabel">运行记录<span>23</span></div>
+        <div class="grp"><div class="row"><span>让 agent 做什么</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">看一下我持仓相关的新闻和公告，和上次的报告比，有重要变化就通知我；没有就简短说一句。</p></div>
+        <div class="glabel"><span>运行记录</span><span>23</span></div>
         <div class="grp">
           <div class="row"><span class="row-name">今天 08:02 · 通知了你<small class="clamp1">NVDA 财报前隐含波动率升到 62%…</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
           <div class="row"><span class="row-name">昨天 08:01 · 没有通知<small class="clamp1">没有新的重要消息。</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
-          <div class="row"><span class="row-name">10月22日 08:47 · 没有通知<small>电脑在睡眠，醒来后补跑</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
-          <div class="row"><span class="row-name">10月21日 08:00 · 跳过<small>电脑不在线超过 24 小时</small></span></div>
+          <div class="row"><span class="row-name">10月22日 08:47 · 没有通知<small class="clamp1">没有新的重要消息。</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+          <div class="row"><span class="row-name">10月21日 08:00 · 跳过<small>已超过补跑时间，本次跳过</small></span></div>
           <div class="row act">查看全部 23 次</div>
         </div>
+        <div class="glabel"><span>设置</span></div>
+        <div class="grp"><div class="row"><span>什么时候</span><span class="v">每天 08:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>在哪运行</span><span class="v">notes · Claude Code<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>任务名</span><span class="v">持仓早报<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div></div>
+        <div class="hint gh">每次新开一个对话，归在这个任务下面。你创建 · 今天 07:00</div>
         <div class="grp">
           <div class="row act">立即运行一次</div>
           <div class="row act">暂停</div>
@@ -4482,22 +4538,24 @@ git status --short gen/</pre>
         </div>
       </div>
     </div>
-    <div class="cap">新开对话的任务：上面是设置，下面是每次运行。点运行记录进那一次的对话（这些对话只从这里进）；跳过的那次没有对话，不能点。「立即运行一次」不占当天的名额，08:00 照常运行。删除要确认，已经开出的对话保留</div>
+    <div class="cap">新开对话的任务：先看它做什么、跑出了什么，设置在下面。点一条记录进那一次的对话（这些对话只从这里进）；10月22日那次是电脑醒来后补跑的，时间写实际开始的 08:47；跳过的没有对话，不能点。「立即运行一次」不占当天的名额</div>
   </div>
 
   <div>
     <div class="phone gray">
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">盯 PR #482 的回复</span></b><span>运行中</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">盯 PR #482 的回复</span></b><span>运行中</span></span><span class="more"></span></div>
       <div class="body gray">
-        <div class="grp"><div class="row"><span>任务名</span><span class="v">盯 PR #482 的回复<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>什么时候</span><span class="v">每小时<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>结束</span><span class="v">今天 18:00</span></div><div class="row"><span>发到</span><span class="v">修复登录超时<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">自动</span></div><div class="row"><span>消息</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">看看 PR #482 有没有新回复，有就总结一下并通知我。</p></div>
-        <div class="hint gh">消息发到当前对话，等待当前轮结束。Agent 在对话里创建 · 今天 09:00</div>
-        <div class="glabel">运行记录<span>3</span></div>
+        <div class="grp"><div class="row"><span>让 agent 做什么</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">看看 PR #482 有没有新回复，有就总结一下并通知我。</p></div>
+        <div class="glabel"><span>运行记录</span><span>3</span></div>
         <div class="grp">
           <div class="row"><span class="row-name">今天 15:00 · 正在运行</span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
           <div class="row"><span class="row-name">今天 14:00 · 没有通知<small class="clamp1">没有新回复。</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
           <div class="row"><span class="row-name">今天 13:00 · 通知了你<small class="clamp1">@lin 要求把重试次数改成可配置…</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
         </div>
+        <div class="glabel"><span>设置</span></div>
+        <div class="grp"><div class="row"><span>什么时候</span><span class="v">每小时<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>结束</span><span class="v">到 今天 18:00</span></div><div class="row"><span>发到</span><span class="v">修复登录超时<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">自动</span></div><div class="row"><span>任务名</span><span class="v">盯 PR #482 的回复<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div></div>
+        <div class="hint gh">消息发到当前对话，等待当前轮结束。Agent 在对话里创建 · 今天 09:00</div>
         <div class="grp">
           <div class="row act" aria-disabled="true" style="opacity:.4;pointer-events:none">立即运行一次</div>
           <div class="row act">暂停</div>
@@ -4505,7 +4563,7 @@ git status --short gen/</pre>
         </div>
       </div>
     </div>
-    <div class="cap">当前对话的任务：「发到」点进那个对话；运行记录点进去跳到对话里那一轮的位置。写明是谁建的（你，还是 agent 在对话里建的）</div>
+    <div class="cap">当前对话的任务：同一个顺序。「发到」点进那个对话；运行记录点进去跳到对话里那一轮。正在跑时「立即运行一次」不可用；权限跟着对话，所以没有进入箭头</div>
   </div>
 
   <div>
@@ -4526,7 +4584,48 @@ git status --short gen/</pre>
         <div class="hint">电脑睡眠或关机时不会运行；醒来后 24 小时内补跑一次，再晚就跳过。</div>
       </div>
     </div>
-    <div class="cap">改时间：四种写法用一个分段切换。「每隔」是固定间隔（如每 15 分钟、每小时）；「结束」可以选次数或日期。时区默认用这台手机的，可以改</div>
+    <div class="cap">改时间 · 每天：四种写法用一个分段切换，切换时保留已填的时间和结束条件。时区默认用这台设备的，可以改</div>
+  </div>
+
+  <div>
+    <div class="phone gray">
+      <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body gray"><div class="large"><h3>&nbsp;</h3></div></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="ns-head"><b>什么时候</b><span>完成</span></div>
+        <div class="seg"><div>一次</div><div>每天</div><div class="on">每周</div><div>每隔</div></div>
+        <div class="wk" role="group" aria-label="星期"><span class="on" aria-pressed="true">一</span><span aria-pressed="false">二</span><span aria-pressed="false">三</span><span aria-pressed="false">四</span><span class="on" aria-pressed="true">五</span><span aria-pressed="false">六</span><span aria-pressed="false">日</span></div>
+        <div class="setlist">
+          <div class="sr"><span>时间</span><span class="v">09:00</span></div>
+          <div class="sr"><span>结束</span><span class="v">共 8 次</span></div>
+          <div class="sr"><span>时区</span><span class="v">Asia/Shanghai</span></div>
+        </div>
+        <div class="hint">电脑睡眠或关机时不会运行；醒来后 24 小时内补跑一次，再晚就跳过。</div>
+      </div>
+    </div>
+    <div class="cap">每周：星期可以多选，选中的和 CLI 分段同一种画法；一个都不选时「完成」不可用。列表里写「每周一、五 09:00」</div>
+  </div>
+
+  <div>
+    <div class="phone gray">
+      <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body gray"><div class="large"><h3>&nbsp;</h3></div></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="ns-head"><b>什么时候</b><span>完成</span></div>
+        <div class="seg"><div>一次</div><div>每天</div><div>每周</div><div class="on">每隔</div></div>
+        <div class="setlist">
+          <div class="sr"><span>间隔</span><span class="v">15 分钟</span></div>
+          <div class="sr"><span>结束</span><span class="v">到 今天 18:00</span></div>
+        </div>
+        <div class="hint">第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。</div>
+        <div class="hint">电脑睡眠或关机时不会运行；醒来后 24 小时内补跑一次，再晚就跳过。</div>
+      </div>
+    </div>
+    <div class="cap">每隔：固定间隔，不跟日历和时区走，所以没有时区一行。最短 5 分钟</div>
   </div>
 </div>
 
@@ -4539,7 +4638,8 @@ git status --short gen/</pre>
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar"><span class="back txt">取消</span><span class="title"><b>新任务</b></span><span class="more"></span></div>
       <div class="body">
-        <label class="schedule-mock-name">任务名<input placeholder="留空就用消息的第一句" aria-label="任务名" readonly=""></label><div class="tfield big"><div class="lbl">让 agent 做什么</div><div class="msg">每天早上看一下我持仓相关的新闻和公告，有重要变化就通知我。</div></div>
+        <div class="tfield big"><div class="lbl">让 agent 做什么</div><div class="msg">每天早上看一下我持仓相关的新闻和公告，有重要变化就通知我。</div></div>
+        <label class="schedule-mock-name">任务名<input placeholder="留空就用消息的第一句" aria-label="任务名" readonly=""></label>
         <div class="tfield"><span>什么时候</span><span class="v">每天 08:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
         <div class="tfield"><span>项目</span><span class="v">notes<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
         <div class="tfield"><span>CLI</span><span class="v"><span class="mini-seg"><span>Codex</span><span class="on">Claude Code</span></span></span></div>
@@ -4549,7 +4649,7 @@ git status --short gen/</pre>
         <div class="pad16"><div class="btn pri wide">创建</div></div>
       </div>
     </div>
-    <div class="cap">从定时任务页新建的，都是「新开对话」的任务。项目、CLI、权限沿用新建会话的选择器和默认值；电脑不止一台时最后一行写「机器和模型」</div>
+    <div class="cap">从定时页新建的都是「新开对话」的任务。先写让 agent 做什么，任务名紧跟在下面、可以留空；项目、CLI、权限沿用新建会话的选择器和默认值；电脑不止一台时最后一行写「机器和模型」</div>
   </div>
 
   <div>
@@ -4577,14 +4677,15 @@ git status --short gen/</pre>
       <div class="sheet">
         <div class="grab"></div>
         <div class="ns-head"><b>定时发到这个对话</b><span>取消</span></div>
-        <label class="schedule-mock-name">任务名<input placeholder="留空就用消息的第一句" aria-label="任务名" readonly=""></label><div class="msgbox">看看 PR #482 有没有新回复，有就告诉我</div>
+        <div class="msgbox">看看 PR #482 有没有新回复，有就告诉我</div>
+        <label class="schedule-mock-name">任务名<input placeholder="留空就用消息的第一句" aria-label="任务名" readonly=""></label>
         <div class="setlist">
-          <div class="sr"><span>什么时候</span><span class="v">每小时 · 到 18:00</span></div>
+          <div class="sr"><span>什么时候</span><span class="v">每小时 · 到 今天 18:00</span></div>
         </div>
         <div class="btn pri wide" style="margin-top:12px">创建</div>
       </div>
     </div>
-    <div class="cap">不经过 agent、自己定：会话的 ⋯ 菜单里加一项「定时发送…」。任务名可选，再填消息和时间；项目、CLI、权限都跟着这个对话</div>
+    <div class="cap">不经过 agent、自己定：会话的 ⋯ 菜单里「定时发送…」。和新任务页同样的顺序，只是项目、CLI、权限都跟着这个对话，不用再选</div>
   </div>
 </div>
 
@@ -4602,7 +4703,7 @@ git status --short gen/</pre>
         <div class="notif"><div class="nh"><span class="app"></span>remote-agent<span>1 小时前</span></div><b>修复登录超时</b><p>PR #482：@lin 要求把重试次数改成可配置</p></div>
       </div>
     </div>
-    <div class="cap">通知：缺省标题由 daemon 按本次执行来源确定，新开对话用派发时任务名，当前对话用目标会话当前标题；agent 显式标题优先。客户端不推断标题。正文是 agent 想告诉你的那句话，点开进对应那一次。Android 走加密推送，可以显示内容；网页推送目前只能写「定时任务有新结果」</div>
+    <div class="cap">通知：新开对话用任务名作标题，当前对话用那个对话的标题；正文是 agent 想告诉你的那句话，点开进对应那一次。Android 走加密推送，可以显示内容；网页推送目前只能写「定时任务有新结果」</div>
   </div>
 
   <div>
@@ -4631,8 +4732,24 @@ git status --short gen/</pre>
   <div>
     <div class="phone">
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span><span class="dot idle"></span>空闲 · 自动</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span><span class="dot run"></span>运行中 · 自动</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
       <div class="tstrip"><svg class="ic" aria-hidden="true"><use href="#lu-clock"></use></svg><span>定时 · 每小时，下次 今天 16:00</span><b>管理<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></b></div>
+      <div class="body chat">
+        <div class="me"><div>把重试次数改成可配置，默认 3 次，改完跑全量测试</div></div>
+        <div class="tool grp"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"></use></svg></span><b>编辑 2 个文件</b></div>
+        <div class="ai">改好了，正在跑全量测试，大约还要几分钟。</div>
+        <div class="me pending"><div><span class="clamp">看看 PR #482 有没有新回复，有就总结一下并通知我。</span></div><small><span class="pt">定时任务 · 15:00 · 这一轮结束后发</span><b>取消</b></small></div>
+      </div>
+      <div class="compose-card slim"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"></use></svg></span></div></div>
+    </div>
+    <div class="cap">到点时对话正忙：定时消息和普通排队消息一个画法，留在末尾等这一轮结束，可以取消（取消后任务停下）。任务详情里这次写「等待当前轮结束」</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span><span class="dot idle"></span>空闲 · 自动</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
+      <div class="tstrip"><svg class="ic" aria-hidden="true"><use href="#lu-clock"></use></svg><span>定时 · 每小时，下次 今天 17:00</span><b>管理<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></b></div>
       <div class="body chat">
         <div class="me"><div>看看 PR #482 有没有新回复，有就总结一下并通知我。</div><small>定时任务 · 13:00</small></div>
         <div class="ai">@lin 要求把重试次数改成可配置，其余没有意见。要我现在改吗？</div>
@@ -4640,11 +4757,11 @@ git status --short gen/</pre>
         <div class="me"><div>改吧，默认还是 3 次</div></div>
         <div class="tool grp"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"></use></svg></span><b>编辑 2 个文件，测试通过</b></div>
         <div class="ai">改好并推上去了。</div>
-        <div class="quiet">14:00、15:00 定时检查 · 没有新回复</div>
+        <div class="quiet" role="button" aria-expanded="false"><span>14:00、15:00、16:00 定时检查 · 没有新回复</span><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></div>
       </div>
       <div class="compose-card slim"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"></use></svg></span></div></div>
     </div>
-    <div class="cap">当前对话里的定时轮：有结果的照常显示；连续几次没有通知的折成一行「14:00、15:00 定时检查 · 没有新回复」，点开看原文，不把对话刷长</div>
+    <div class="cap">当前对话里的定时轮：有结果的照常显示；连续几次没有通知的折成一行，行尾向下箭头，点开在原地看原文，不把对话刷长</div>
   </div>
 </div>
 
@@ -4655,54 +4772,170 @@ git status --short gen/</pre>
   <div>
     <div class="phone gray">
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">每周依赖检查</span></b><span><span class="dot wait"></span>已暂停</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">每周依赖检查</span></b><span>已停下</span></span><span class="more"></span></div>
       <div class="body gray">
-        <div class="gwarn">项目 foo 的权限从「自动」改成了「完全放行」，这个任务已暂停。恢复后按任务里显示的权限运行。</div>
-        <div class="grp"><div class="row"><span>任务名</span><span class="v">每周依赖检查<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>什么时候</span><span class="v">每周一 09:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>在哪运行</span><span class="v">foo · Codex<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">完全放行<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>消息</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">检查项目的更新，有值得注意的变化再通知我。</p></div>
-        <div class="pad16"><div class="btn pri wide">恢复</div></div>
-        <div class="grp" style="margin-top:12px"><div class="row" style="color:var(--red)">删除任务</div></div>
+        <div class="gwarn">项目 foo 的权限从「自动」改成了「完全放行」，这个任务已停下。恢复后按下面显示的权限运行。</div>
+        <div class="pad16" style="margin-bottom:12px"><div class="btn pri wide">恢复</div></div>
+        <div class="grp"><div class="row"><span>让 agent 做什么</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">检查项目依赖的更新，有值得注意的变化再通知我。</p></div>
+        <div class="glabel"><span>设置</span></div>
+        <div class="grp"><div class="row"><span>什么时候</span><span class="v">每周一 09:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>在哪运行</span><span class="v">foo · Codex<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">完全放行<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>任务名</span><span class="v">每周依赖检查<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div></div>
+        <div class="hint gh">每次新开一个对话，归在这个任务下面。Agent 在对话里创建 · 10月20日 10:12</div>
+        <div class="grp"><div class="row" style="color:var(--red)">删除任务</div></div>
       </div>
     </div>
-    <div class="cap">需要你看一下（权限变了）：说清原因和继续的后果，唯一的实心按钮是「恢复」。由 agent 建的任务，权限一变也停在这里，等你确认</div>
+    <div class="cap">已停下 · 权限变了：原因和后果写在最上面，紧跟着唯一的实心按钮「恢复」，打开就能处理。agent 建的任务权限一变也停在这里，等你确认</div>
   </div>
 
   <div>
     <div class="phone gray">
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">持仓早报</span></b><span><span class="dot wait"></span>已暂停</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">持仓早报</span></b><span>已停下</span></span><span class="more"></span></div>
       <div class="body gray">
         <div class="gwarn">今天 08:00 的运行失败，任务已停下：中继上的会话数已满。恢复后从下一次自动时间开始。</div>
-        <div class="grp"><div class="row"><span>任务名</span><span class="v">持仓早报<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>什么时候</span><span class="v">每天 08:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>在哪运行</span><span class="v">notes · Claude Code<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>消息</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">检查项目的更新，有值得注意的变化再通知我。</p></div><div class="glabel">运行记录<span>3</span></div>
+        <div class="pad16" style="margin-bottom:12px"><div class="btn pri wide">恢复</div></div>
+        <div class="grp"><div class="row"><span>让 agent 做什么</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">看一下我持仓相关的新闻和公告，和上次的报告比，有重要变化就通知我；没有就简短说一句。</p></div>
+        <div class="glabel"><span>运行记录</span><span>3</span></div>
         <div class="grp">
           <div class="row"><span class="row-name" style="color:var(--red)">今天 08:00 · 失败<small>中继上的会话数已满</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
           <div class="row"><span class="row-name">昨天 08:01 · 没有通知<small class="clamp1">没有新的重要消息。</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
           <div class="row"><span class="row-name">10月22日 08:02 · 通知了你<small class="clamp1">TLT 30 年期收益率回到 4.5%…</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
         </div>
-        <div class="pad16"><div class="btn pri wide">恢复</div></div>
+        <div class="glabel"><span>设置</span></div>
+        <div class="grp"><div class="row"><span>什么时候</span><span class="v">每天 08:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>在哪运行</span><span class="v">notes · Claude Code<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div></div>
       </div>
     </div>
-    <div class="cap">运行失败：失败一次任务就停下，进「需要你看一下」，免得每天白跑；只写电脑明确返回的失败原因，恢复后从下一次开始运行。中继上会话数已满也是这样，原因写「中继上的会话数已满」</div>
+    <div class="cap">已停下 · 运行失败：失败一次就停，免得每天白跑。只写电脑明确返回的原因，恢复后从下一次开始；设置和删除在下面，同新开对话的详情</div>
   </div>
 
   <div>
     <div class="phone gray">
       <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">每隔 15 分钟看一下服务器负载</span></b><span>下次 今天 09:45</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">盯 PR #482 的回复</span></b><span>已停下</span></span><span class="more"></span></div>
       <div class="body gray">
-        <div class="grp"><div class="row"><span>任务名</span><span class="v">每隔 15 分钟看一下服务器负载<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>什么时候</span><span class="v">每 15 分钟<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>在哪运行</span><span class="v">ops · Codex · iMac<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>消息</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">检查项目的更新，有值得注意的变化再通知我。</p></div>
-        <div class="glabel">运行记录<span>100</span></div>
+        <div class="gwarn">今天 15:00 的运行失败，任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。</div>
+        <div class="grp"><div class="row"><span>让 agent 做什么</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">看看 PR #482 有没有新回复，有就总结一下并通知我。</p></div>
+        <div class="glabel"><span>运行记录</span><span>4</span></div>
+        <div class="grp">
+          <div class="row"><span class="row-name" style="color:var(--red)">今天 15:00 · 失败<small>找不到运行的对话</small></span></div>
+          <div class="row"><span class="row-name">今天 · 2 次，都没有通知<small>最近一次 14:00：没有新回复。</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></span></div>
+        </div>
+        <div class="glabel"><span>设置</span></div>
+        <div class="grp"><div class="row"><span>什么时候</span><span class="v">每小时<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>发到</span><span class="v">对话</span></div></div>
+        <div class="grp"><div class="row act">恢复</div><div class="row" style="color:var(--red)">删除任务</div></div>
+      </div>
+    </div>
+    <div class="cap">已停下 · 目标对话不在了：恢复也没用，所以这里没有实心按钮，「恢复」退回操作组；「发到」读不到标题时写「对话」，不能点</div>
+  </div>
+
+  <div>
+    <div class="phone gray">
+      <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">每隔 15 分钟看一下服务器负载</span></b><span>下次 今天 09:45</span></span><span class="more"></span></div>
+      <div class="body gray">
+        <div class="grp"><div class="row"><span>让 agent 做什么</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">看一下服务器负载，超过 8 或有进程内存异常增长就通知我。</p></div>
+        <div class="glabel"><span>运行记录</span><span>100</span></div>
         <div class="grp">
           <div class="row"><span class="row-name">今天 · 38 次，都没有通知<small>最近一次 09:30：负载 0.4，正常</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></span></div>
           <div class="row"><span class="row-name">昨天 22:15 · 通知了你<small class="clamp1">负载 9.8，xray 进程内存涨到 1.2 GB</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
-          <div class="row"><span class="row-name">昨天 · 61 次，都没有通知</span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></span></div>
+          <div class="row"><span class="row-name">昨天 · 61 次，都没有通知<small>最近一次 23:45：负载 0.6，正常</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></span></div>
+          <div class="row act">查看全部 100 次</div>
         </div>
-        <div class="hint gh">没有通知的运行按天合并；对话都保留，展开后可以逐个打开。</div>
+        <div class="hint gh">“通知了你”表示已请求通知，不保证送达。记录保留最近 100 次，已开的对话仍可查看。</div>
+        <div class="glabel"><span>设置</span></div>
+        <div class="grp"><div class="row"><span>什么时候</span><span class="v">每 15 分钟<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>在哪运行</span><span class="v">ops · Codex · iMac<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div></div>
       </div>
     </div>
-    <div class="cap">高频任务：没有通知的运行按天合并成一行，点开再展开；有通知的单独列出。不自动删除任何一次的对话</div>
+    <div class="cap">高频任务：没有通知的运行按天合并成一行，点开在原地展开；有通知的单独列出。长任务名在导航栏截断，设置里的任务名行同样截断成一行</div>
+  </div>
+
+  <div>
+    <div class="phone gray">
+      <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><span class="title"><b><span class="tname">夜间跑全量回归</span></b><span>未连接，显示的是上次的状态</span></span><span class="more"></span></div>
+      <div class="body gray">
+        <div class="grp"><div class="row"><span>让 agent 做什么</span><span class="v" style="opacity:.4">编辑</span></div><p class="schedule-mock-message">跑一遍全量回归测试，有失败就通知我，附上失败用例和日志位置。</p></div>
+        <div class="glabel"><span>运行记录</span><span>0</span></div>
+        <div class="grp"><div class="row"><span class="row-name">还没有运行</span></div></div>
+        <div class="glabel"><span>设置</span></div>
+        <div class="grp"><div class="row"><span>什么时候</span><span class="v">每天 23:30</span></div><div class="row"><span>在哪运行</span><span class="v">foo · Codex · iMac</span></div><div class="row"><span>权限</span><span class="v">自动</span></div><div class="row"><span>任务名</span><span class="v">夜间跑全量回归</span></div></div>
+        <div class="hint gh">iMac 连上后才能修改、运行或删除。</div>
+      </div>
+    </div>
+    <div class="cap">未连接：显示上次的内容，所有编辑和操作都不可用，箭头去掉；不显示「下次」时间，免得把旧状态当成真的</div>
   </div>
 </div>
-<h3>宽屏 · 任务列表</h3><div class="schedule-wide"><aside><b>全部项目</b><p class="hint">会话列表</p><div class="nav"><div><svg class="ic" aria-hidden="true"><use href="#lu-message-square"></use></svg>会话</div><div><svg class="ic" aria-hidden="true"><use href="#lu-clock"></use></svg>定时 · 1</div><div><svg class="ic" aria-hidden="true"><use href="#lu-settings"></use></svg>设置</div></div></aside><main><div class="schedule-content"><h3>定时任务</h3><div class="label">需要你看一下</div><div class="sess"><span class="dot wait"></span><div class="sm"><div class="row1"><b>每日检查</b><span>已停下</span></div><div class="pv">每天 08:00 · notes · Claude Code</div><div class="mc">中继上的会话数已满</div></div></div><div class="label">进行中</div><div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>检查新回复</b><span>下次 今天 15:00</span></div><div class="pv">每小时 · 在「修复登录超时」里</div><div class="mc">今天 4 次都没有通知</div></div></div><div class="tasknew"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg>新任务…</div></div></main></div><h3>宽屏 · 任务详情</h3><div class="schedule-wide"><aside><b>全部项目</b><p class="hint">会话列表</p><div class="nav"><div><svg class="ic" aria-hidden="true"><use href="#lu-message-square"></use></svg>会话</div><div><svg class="ic" aria-hidden="true"><use href="#lu-clock"></use></svg>定时 · 1</div><div><svg class="ic" aria-hidden="true"><use href="#lu-settings"></use></svg>设置</div></div></aside><main><div class="schedule-content"><h3>检查新回复</h3><p class="hint">下次 今天 15:00</p><div class="grp"><div class="row"><span>任务名</span><span class="v">检查新回复<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>什么时候</span><span class="v">每小时<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>发到</span><span class="v">修复登录超时<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">自动</span></div><div class="row"><span>消息</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">检查新回复，有变化时通知我。</p></div><div class="label">运行记录<span>5</span></div><div class="grp"><div class="row">今天 · 4 次，都没有通知<span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></span></div><div class="row">昨天 15:00 · 通知了你<span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div></div><div class="grp"><div class="row act">立即运行一次</div><div class="row act">暂停</div><div class="row" style="color:var(--red)">删除任务</div></div></div></main></div><h3>宽屏 · 新建</h3><div class="schedule-wide"><aside><b>全部项目</b><p class="hint">会话列表</p><div class="nav"><div><svg class="ic" aria-hidden="true"><use href="#lu-message-square"></use></svg>会话</div><div><svg class="ic" aria-hidden="true"><use href="#lu-clock"></use></svg>定时 · 1</div><div><svg class="ic" aria-hidden="true"><use href="#lu-settings"></use></svg>设置</div></div></aside><main><div class="schedule-content"><h3>新任务</h3><label class="schedule-mock-name">任务名<input placeholder="留空就用消息的第一句" aria-label="任务名" readonly=""></label><div class="tfield big"><div class="lbl">让 agent 做什么</div><div class="msg">检查新回复，有结果通知我。</div></div><div class="grp"><div class="row">什么时候<span class="v">每天 08:00 <svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row">项目<span class="v">notes <svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row">CLI<span class="v">Claude Code</span></div><div class="row">权限<span class="v">自动 <svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row">模型<span class="v">haiku <svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div></div><p class="hint">每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。</p><div class="btn pri wide">创建</div></div></main></div><h3>网页推送设置</h3><div class="grp"><div class="row">定时任务结果<span class="sw"></span></div></div><p class="hint">默认开启，与一轮结束时独立。Web Push 仅显示「定时任务有新结果」。</p></section>
+
+<!-- ============================= -->
+<h2 id="schedule-wide">宽屏</h2>
+<div class="note" style="margin-bottom:16px">宽屏和会话一样分两栏：选了侧栏底部的「定时」，侧栏换成任务列表，右边是选中任务的详情；点 ＋ 右边换成新建表单。行、分组、详情的顺序和手机完全一致，只是不再逐页进入。</div>
+<div class="desk">
+  <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>定时任务</span></div>
+  <div class="dg">
+    <div class="side">
+      <div class="sh"><b>定时任务</b><span class="nb" role="button" aria-label="新任务"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg></span></div>
+      <div class="scroll">
+        <div class="label">需要你看一下 <span>1</span></div>
+        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>每周依赖检查</b><span>已停下</span></div><div class="pv">每周一 09:00 · foo · Codex</div><div class="mc">创建任务时的权限已改变，任务已停下</div></div></div>
+        <div class="label">进行中 <span>3</span></div>
+        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>盯 PR #482 的回复</b><span>运行中</span></div><div class="pv">每小时 · 在「修复登录超时」里</div><div class="mc">今天 14:00 没有通知</div></div></div>
+        <div class="sess sel"><span class="dot idle"></span><div class="sm"><div class="row1"><b>持仓早报</b><span>下次 明天 08:00</span></div><div class="pv">每天 08:00 · notes · Claude Code</div><div class="mc">今天 08:02 通知了你：NVDA 财报前…</div></div></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>每周 AI 新闻总结</b><span>下次 10月26日 09:00</span></div><div class="pv">每周一 09:00 · notes · Claude Code</div><div class="mc">10月20日 09:04 通知了你</div></div></div>
+        <div class="fold-row" role="button" aria-expanded="false"><span>已结束</span><span class="v">1<svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"></use></svg></span></div>
+      </div>
+      <nav class="stabs"><span><svg class="ic" aria-hidden="true"><use href="#lu-message-square"></use></svg>会话</span><span class="on"><svg class="ic" aria-hidden="true"><use href="#lu-clock"></use></svg>定时<i class="n">1</i></span><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"></use></svg>设置</span></nav>
+      <div class="foot"><span></span><span><span class="dot idle"></span> 已连接</span></div>
+    </div>
+    <div class="dm">
+      <div class="sched-pane">
+        <h3>持仓早报</h3><p class="hint">下次 明天 08:00</p>
+        <div class="grp"><div class="row"><span>让 agent 做什么</span><span class="v">编辑<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><p class="schedule-mock-message">看一下我持仓相关的新闻和公告，和上次的报告比，有重要变化就通知我；没有就简短说一句。</p></div>
+        <div class="glabel"><span>运行记录</span><span>23</span></div>
+        <div class="grp">
+          <div class="row"><span class="row-name">今天 08:02 · 通知了你<small class="clamp1">NVDA 财报前隐含波动率升到 62%，你的卖 Put 离行权价只剩 4%…</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+          <div class="row"><span class="row-name">昨天 08:01 · 没有通知<small class="clamp1">没有新的重要消息。</small></span><span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+          <div class="row act">查看全部 23 次</div>
+        </div>
+        <div class="glabel"><span>设置</span></div>
+        <div class="grp"><div class="row"><span>什么时候</span><span class="v">每天 08:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>在哪运行</span><span class="v">notes · Claude Code<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>权限</span><span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div><div class="row"><span>任务名</span><span class="v">持仓早报<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div></div>
+        <div class="hint gh">每次新开一个对话，归在这个任务下面。你创建 · 今天 07:00</div>
+        <div class="grp"><div class="row act">立即运行一次</div><div class="row act">暂停</div><div class="row" style="color:var(--red)">删除任务</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="cap" style="width:auto;text-align:left">宽屏 · 定时：侧栏底部三个标签和手机标签栏同名同序同计数；选中的任务在侧栏高亮，右边是它的详情。点运行记录在右边打开那一次的对话，返回回到详情</div>
+
+<div class="desk" style="margin-top:32px">
+  <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>新任务</span></div>
+  <div class="dg">
+    <div class="side">
+      <div class="sh"><b>定时任务</b><span class="nb" role="button" aria-label="新任务"><svg class="ic" aria-hidden="true"><use href="#lu-plus"></use></svg></span></div>
+      <div class="scroll">
+        <div class="label">进行中 <span>1</span></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>检查新回复</b><span>下次 今天 15:00</span></div><div class="pv">每小时 · 在「修复登录超时」里</div><div class="mc">今天 4 次，都没有通知</div></div></div>
+      </div>
+      <nav class="stabs"><span><svg class="ic" aria-hidden="true"><use href="#lu-message-square"></use></svg>会话</span><span class="on"><svg class="ic" aria-hidden="true"><use href="#lu-clock"></use></svg>定时</span><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"></use></svg>设置</span></nav>
+      <div class="foot"><span></span><span><span class="dot idle"></span> 已连接</span></div>
+    </div>
+    <div class="dm">
+      <div class="sched-pane">
+        <h3>新任务</h3>
+        <div class="tfield big"><div class="lbl">让 agent 做什么</div><div class="msg">每天早上看一下我持仓相关的新闻和公告，有重要变化就通知我。</div></div>
+        <label class="schedule-mock-name">任务名<input placeholder="留空就用消息的第一句" aria-label="任务名" readonly=""></label>
+        <div class="tfield"><span>什么时候</span><span class="v">每天 08:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+        <div class="tfield"><span>项目</span><span class="v">notes<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+        <div class="tfield"><span>CLI</span><span class="v"><span class="mini-seg"><span>Codex</span><span class="on">Claude Code</span></span></span></div>
+        <div class="tfield"><span>权限</span><span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+        <div class="tfield"><span>模型</span><span class="v">haiku<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+        <div class="hint pad16">每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。</div>
+        <div class="pad16"><div class="btn pri wide">创建</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="cap" style="width:auto;text-align:left">宽屏 · 新建：表单在右边，行和顺序同手机；取消或创建后回到刚才选中的任务</div>
+
+<h3>网页推送设置</h3><div class="grp"><div class="row">定时任务结果<span class="sw"></span></div></div><p class="hint">默认开启，与一轮结束时独立。Web Push 仅显示「定时任务有新结果」。</p></section>
 </div>
 <script>
   // Theme switch for reviewing the mockup; not part of the design.
