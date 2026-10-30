@@ -72,7 +72,7 @@ function TaskOffline({ remote, id }: { remote: Remote; id?: string }) {
     <>
       {remote.conn === "online" && offline.length > 0 && (
         <Banner>
-          {scheduleOffline}
+          {offline.map((m) => machineName(m)).join("、")} {scheduleOffline}
         </Banner>
       )}
     </>
@@ -608,7 +608,6 @@ export function ScheduleDetail({
       />
       <ConnBar remote={remote} />
       <div className="body schedule-body">
-        <TaskOffline remote={remote} id={machineId} />
         {state?.error && (
           <Banner
             kind="err"
