@@ -2,7 +2,9 @@ package daemon
 
 import (
 	"encoding/json"
+	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/schedule"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -246,5 +248,100 @@ func TestAgentNoticeAfterUndeliverableIsNotDaemonNotice(t *testing.T) {
 	recordRunNotification(&run, &pb.Event{Seq: 1, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{RunId: "run", Text: "agent result"}}})
 	if run.NotificationSource != "agent" || !run.Notified {
 		t.Fatalf("wrong notification history: %+v", run)
+	}
+}
+
+func TestScheduledFinishRelayRefusalUsesOnlySource(t *testing.T) {
+	for _, sourceAvailable := range []bool{false, true} {
+		t.Run(map[bool]string{false: "no-source", true: "source"}[sourceAvailable], func(t *testing.T) {
+			h := scheduleHarness(t)
+			defer h.s.log.Close()
+			spec := taskSpec(schedule.Trigger{Type: "after_turn"})
+			task := createTask(t, h, spec, "")
+			current := h.d.tasks[task.ID]
+			current.Spec.Target.Type = "new_session"
+			pending := h.d.prepareScheduledDispatches(time.Now().Add(time.Second))
+			if len(pending) != 1 {
+				t.Fatal("no reservation")
+			}
+			run := current.Active
+			run.StartSeq = 100 // sequence from the rejected log, never a source-log cursor
+			if !sourceAvailable {
+				current.SourceSession = ""
+				run.NotificationSessionID = ""
+			}
+			dir := t.TempDir()
+			log, err := eventlog.Open(filepath.Join(dir, "events.jsonl"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer log.Close()
+			m := h.s.meta
+			m.ID = "fedcba9876543210"
+			m.TaskOwned = true
+			m.ScheduledTaskID = task.ID
+			m.ScheduledRunID = run.ID
+			rejected, err := newSession(h.d, dir, m, h.term, log)
+			if err != nil {
+				t.Fatal(err)
+			}
+			h.d.sessions[m.ID] = rejected
+			run.SessionID = m.ID
+			if err = h.d.SessionPublicationFailed(m.ID, "relay_session_limit"); err != nil {
+				t.Fatal(err)
+			}
+			saved := current.Runs[0]
+			h.d.tickSchedules(time.Now())
+			got := readTask(t, h.d, task.ID).Runs[0]
+			if got.Notified != sourceAvailable {
+				t.Fatalf("wrong delivery outcome: %+v", got)
+			}
+			wantSource := "undeliverable"
+			if sourceAvailable {
+				wantSource = "daemon"
+			}
+			if got.NotificationSource != wantSource {
+				t.Fatalf("wrong delivery source: %+v", got)
+			}
+			if log.LastSeq() != 0 {
+				t.Fatal("notice appended to relay-rejected session")
+			}
+			count := 0
+			for _, e := range h.events() {
+				if n := e.GetScheduledNotification(); n != nil {
+					count++
+					if n.Text != "定时任务运行失败：relay_session_limit" || n.RunId != run.ID {
+						t.Fatalf("wrong source notice: %v", n)
+					}
+				}
+			}
+			want := 0
+			if sourceAvailable {
+				want = 1
+			}
+			if count != want {
+				t.Fatalf("source notices=%d want=%d", count, want)
+			}
+			if sourceAvailable {
+				// Replaying after append-before-save must scan the source log from zero.
+				current.Runs[0] = saved
+				if err = h.d.saveSchedulesLocked(); err != nil {
+					t.Fatal(err)
+				}
+				if err = h.d.loadSchedules(); err != nil {
+					t.Fatal(err)
+				}
+				h.d.tickSchedules(time.Now())
+				count = 0
+				for _, e := range h.events() {
+					if e.GetScheduledNotification() != nil {
+						count++
+					}
+				}
+				if count != 1 || readTask(t, h.d, task.ID).Runs[0].NotificationCount != 1 {
+					t.Fatal("source fallback duplicated on replay")
+				}
+			}
+		})
 	}
 }

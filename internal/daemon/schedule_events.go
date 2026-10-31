@@ -348,8 +348,12 @@ func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) b
 		return false
 	}
 	sid := run.SessionID
-	if sid == "" {
+	scanAfter := run.StartSeq
+	if sid == "" || run.Reason == "relay_session_limit" {
+		// The execution session was never published. Its source is the only
+		// usable route, and sequence numbers belong to that different log.
 		sid = run.NotificationSessionID
+		scanAfter = 0
 	}
 	s, err := d.exact(sid)
 	if err != nil {
@@ -361,7 +365,7 @@ func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) b
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	before := run.NotificationSeq
-	if err := scanEventsSince(s.log, run.StartSeq, func(e *pb.Event) bool {
+	if err := scanEventsSince(s.log, scanAfter, func(e *pb.Event) bool {
 		if n := e.GetScheduledNotification(); n != nil && n.TaskId == taskID && n.RunId == run.ID {
 			recordRunNotification(run, e)
 		}
