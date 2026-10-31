@@ -127,6 +127,10 @@ func main() {
 		}
 		return false
 	})
+	if len(os.Args) == 2 && os.Args[1] == "--finish-notify" {
+		runFinishNotifyAcceptance(ctx, client, machine.ID, socket)
+		return
+	}
 	if len(os.Args) == 2 && os.Args[1] == "--environment" {
 		runEnvironmentAcceptance(ctx, client, machine.ID, home, socket, func() {
 			must(process.Process.Signal(os.Interrupt))

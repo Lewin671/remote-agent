@@ -1673,7 +1673,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 定时任务：三端按 client-v52 改版（2026-10-30）
 
-产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v52 · 定时任务](design/client-v53.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
+产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v53 · 定时任务](design/client-v53.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
 
 | 检查 | 结果 |
 |---|---|
@@ -1688,3 +1688,18 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 未覆盖：到点自动派发与对话忙时的真实排队（由单测和示例画面覆盖）、真实推送送达、断网与故障恢复、跨端修订冲突、DST、真机与软键盘、iPad 和 Android 宽屏。
 
 同一轮修了 iOS 一条偶现失败的用例：`aTimedOutRealLoginIsCancelledInsteadOfWaitingForTheHTTPTimeout` 给 login 真实的 100 ms，负载高时签名耗时超过它，请求还没发出就超时（一次全量检查中 `requests.value == 1` 在 0.290 s 失败）。改为注入计时器、在请求发出后才触发超时；修改后在四个忙循环下单跑 20 次全部通过。原版在本机单跑 20 次、整套 5 轮均未复现，证据只有那一次失败记录。
+
+
+## 定时任务完成通知与接管说明（2026-10-30）
+
+基于 v0.48.1 的独立 worktree，Go 1.26.10（darwin/arm64）、Claude Code 2.1.300、Xcode 27.0 / iOS 27 模拟器，协议 12，产品版本未修改；只本地提交，不推送、发版或部署。设计与升级要求见 [architecture §18](architecture.md#18-定时任务)，界面见 [client-v53](design/client-v53.html#schedules)。
+
+- 最终 `go test ./...` 全部通过；`go test ./internal/protocol -count=1` 的文档/协议约束检查也通过。通知标题复用原规则，包括允许尚未生成会话标题的缺失值；`TestScheduledFinish|TestScheduledNotifyTitleUsesExecutionSource` 定向复核通过。
+- 后端定向测试：`go test ./internal/daemon -run 'TestScheduledFinish|TestScheduledNotificationPolicySnapshot|TestMCPTakenOver' -count=1` 通过。覆盖缺省/显式开启、手动运行、已由 agent 通知不补发、关闭时不补发但仍允许 agent 通知、200 字摘要、失败/中断正文、来源会话承载启动失败通知、事件不可写时不记已通知及恢复重试、事件提交而任务保存前重启去重、策略快照、非法值拒绝、接管任务列表只读/来源/全部六种操作报错及跨会话拒绝。后续轮次回归 `TestFollowupSurvivesLaterSkippedRun|TestNonCompletedScheduledFollowups` 通过，保留 daemon 与 agent 通知的合计计数及原始运行结果。
+- `python3 scripts/check-schedule-regressions.py --only schedule-notify`：7 项通过。逐项移除完成通知、关闭开关、失败正文、持久事件去重、默认策略、接管列表可见性和专用报错，均由断言检出；恢复原文件。未用编译错误冒充检出。
+- 网页：`pnpm --dir web typecheck`、`pnpm --dir web exec vitest run --maxWorkers=4` 通过（90 文件、1,271 项）。最后一次开关修订与界面稿调整后，额外运行 `src/views/schedules.test.tsx`（71 项）、`src/views/schedule-design.test.ts`（1 项）及类型检查通过。新测试操作创建/详情开关，并检查完整定义保留原字段；配对测试使用共享协议常量。
+- Android：全量 core 初次 429 项中一项既有安全操作测试 `lostSecurityPublicationReplyResumesWithoutACompetingSuccessor` 失败；`./gradlew :core:test --tests '*SchedulesTest' --tests '*RemoteTest.lostSecurityPublicationReplyResumesWithoutACompetingSuccessor' :app:testDebugUnitTest --no-daemon` 复测通过（core 29 项、App 394 项）。没有修改安全模块；新 core 测试覆盖默认开启、关掉后改名保留策略和通知来源显示。
+- iOS Core：`swift test --package-path ios/RemoteAgentCore --jobs 4` 的 590 项中一项附件能力测试 `aPreparedOrUnknownRequestIsBlockedUntilSupportReturns` 首次失败；`swift test --package-path ios/RemoteAgentCore --skip-build --filter 'Schedule|VersionTests|FileCapabilityForwardTests'` 复测 37 项通过，含原失败用例、通知策略编解码和四端协议一致性。没有修改附件模块。
+- iOS App：`xcodebuild -quiet -collect-test-diagnostics never -parallel-testing-enabled NO -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath <独立构建目录> build test` 返回 0；xcresult 汇总为 Passed，374 项全部通过（iOS 27 模拟器）。包含创建草稿的默认开启和关闭提交测试；没有把模拟器单元测试算作真机或手动界面验收。
+- 真实 CLI：独立 `RA_DEV_DIR`，`ios/scripts/dev-env.sh start --no-account` 后运行 `RA_DEV_DIR=… go run ./scripts/acceptance-schedule --finish-notify`。调试客户端通过加密 Forward 创建缺省开启通知的任务；真实 Claude Code（Haiku 5.5）不调用任何工具，只返回指定最终回复；daemon 记录完成状态、摘要及唯一一条 SYSTEM 来源的定时通知，客户端从中继的加密历史核对标题和正文。使用真实 CLI 与 server/daemon 链路，操作由调试客户端触发，没有直接操作产品界面。随后 `dev-env.sh stop` 清理中继、临时账户/库/状态和独立 tmux 环境，没有使用日常 daemon 或账户。
+- 未覆盖：OS Web Push/FCM 实际送达、Android/iOS 真机界面和 Codex 的本轮 E2E；Chrome 扩展 host 不可用，未切换到内置浏览器，网页没有追加人工可视验收。无会话的启动失败通知和升级前缺少接管来源的记录，边界与待确认项见 [plan](plan.md#待确认)。
