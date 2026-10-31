@@ -275,8 +275,9 @@ func TestAgentNoticeAfterUndeliverableIsNotDaemonNotice(t *testing.T) {
 }
 
 func TestScheduledFinishRelayRefusalUsesOnlySource(t *testing.T) {
-	for _, sourceAvailable := range []bool{false, true} {
-		t.Run(map[bool]string{false: "no-source", true: "source"}[sourceAvailable], func(t *testing.T) {
+	for _, name := range []string{"no-source", "source", "rejected-source"} {
+		t.Run(name, func(t *testing.T) {
+			sourceAvailable := name == "source"
 			h := scheduleHarness(t)
 			defer h.s.log.Close()
 			spec := taskSpec(schedule.Trigger{Type: "after_turn"})
@@ -310,6 +311,9 @@ func TestScheduledFinishRelayRefusalUsesOnlySource(t *testing.T) {
 			}
 			h.d.sessions[m.ID] = rejected
 			run.SessionID = m.ID
+			if name == "rejected-source" {
+				run.NotificationSessionID = m.ID
+			}
 			if err = h.d.SessionPublicationFailed(m.ID, "relay_session_limit"); err != nil {
 				t.Fatal(err)
 			}

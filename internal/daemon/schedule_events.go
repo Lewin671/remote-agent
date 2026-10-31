@@ -353,6 +353,9 @@ func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) b
 		// The execution session was never published. Its source is the only
 		// usable route, and sequence numbers belong to that different log.
 		sid = run.NotificationSessionID
+		if run.Reason == "relay_session_limit" && sid == run.SessionID {
+			sid = ""
+		}
 		scanAfter = 0
 	}
 	s, err := d.exact(sid)
