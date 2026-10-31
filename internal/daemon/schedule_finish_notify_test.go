@@ -34,7 +34,7 @@ func TestScheduledFinishNotification(t *testing.T) {
 			run.NotifyOnFinish = tc.policy != "agent_only"
 			run.Manual = tc.manual
 			if tc.agent {
-				if err := notifyTest(t, h, "Agent result", ""); err != nil {
+				if err := notifyTest(t, h, "Agent result"); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -57,7 +57,7 @@ func TestScheduledFinishNotification(t *testing.T) {
 			for _, e := range h.events() {
 				if n := e.GetScheduledNotification(); n != nil {
 					count++
-					if !tc.agent && (n.Text != tc.body || n.Title != "Check deployment" || e.Origin.GetKind() != pb.OriginKind_ORIGIN_KIND_SYSTEM) {
+					if !tc.agent && (n.Text != tc.body || n.Title != task.Spec.Title || e.Origin.GetKind() != pb.OriginKind_ORIGIN_KIND_SYSTEM) {
 						t.Fatalf("fallback: %v", e)
 					}
 				}

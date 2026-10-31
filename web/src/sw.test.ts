@@ -1,7 +1,14 @@
-// The service worker's keeping of the page (public/sw.js), run against a
+// The service worker's keeping of the page (src/sw.js), run against a
 // made-up cache, network and set of open pages.
 import { afterEach, expect, it, vi } from "vitest";
-import source from "../public/sw.js?raw";
+import rawSource from "./sw.js?raw";
+import { scheduledPushContent } from "./sw-notify";
+const source = rawSource.replace(/^import .*$/m, "");
+function worker(...args: unknown[]) {
+  const body = args.pop() as string;
+  const fn = new Function("scheduledPushContent", ...args as string[], body);
+  return (...values: unknown[]) => fn(scheduledPushContent, ...values);
+}
 
 const PAGE = '<script type="module" src="/assets/index-new.js"></script><link rel="stylesheet" href="/assets/index-new.css">';
 
@@ -40,7 +47,7 @@ function load(answers: Record<string, Answer[]>) {
     location: { origin: "https://app.example.com" },
   };
   const caches = { open: async () => cache };
-  new Function("self", "caches", "fetch", source)(self, caches, fetch);
+  worker("self", "caches", "fetch", source)(self, caches, fetch);
   // A page asks for the newest build; the answer comes on the port.
   const ask = () =>
     new Promise<unknown>((resolve) => {
@@ -94,7 +101,7 @@ it("signals foreground security sync with no visible notification and routes bac
     clients: { matchAll: async () => [window], openWindow },
     registration: { showNotification }, location: { origin: "https://app.example.com" },
   };
-  new Function("self", "caches", "fetch", source)(self, {}, vi.fn());
+  worker("self", "caches", "fetch", source)(self, {}, vi.fn());
   let work!: Promise<void>;
   const push = { data: { json: () => ({ tag: "/NOTIFY_KIND_SECURITY", body: "security" }) }, waitUntil: (p: Promise<void>) => { work = p; } };
   handlers.push(push); await work;
@@ -117,7 +124,7 @@ it("shows push for a hidden client even when it still has a focused window", asy
     clients: { matchAll: async () => [{ visibilityState: "hidden", focused: true }] },
     registration: { showNotification }, location: { origin: "https://app.example.com" },
   };
-  new Function("self", "caches", "fetch", source)(self, {}, vi.fn());
+  worker("self", "caches", "fetch", source)(self, {}, vi.fn());
   let work!: Promise<void>;
   handlers.push({ data: { json: () => ({ tag: "s/NOTIFY_KIND_ATTENTION", body: "attention" }) }, waitUntil: (p: Promise<void>) => { work = p; } });
   await work;
@@ -134,7 +141,7 @@ function pushWorker(windows: PushWindow[]) {
     clients: { matchAll: async () => windows.map((w) => ({ ...w, postMessage: vi.fn() })) },
     registration: { showNotification }, location: { origin: "https://app.example.com" },
   };
-  new Function("self", "caches", "fetch", source)(self, {}, vi.fn());
+  worker("self", "caches", "fetch", source)(self, {}, vi.fn());
   return {
     showNotification,
     push: async (kind: string, session = "target-session", event = "scheduled:1") => {

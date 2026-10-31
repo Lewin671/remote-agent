@@ -33,7 +33,7 @@ func TestScheduleRevisionIgnoresProgressCursors(t *testing.T) {
 	if h.d.scheduleRevision != revision {
 		t.Fatal("unchanged reload advanced revision")
 	}
-	if err := notifyTest(t, h, "useful result", ""); err != nil {
+	if err := notifyTest(t, h, "useful result"); err != nil {
 		t.Fatal(err)
 	}
 	h.d.tickSchedules(time.Now())

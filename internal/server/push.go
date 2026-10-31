@@ -23,9 +23,9 @@ import (
 )
 
 // Push. Daemons say that something happened in a session; the server
-// sends every subscribed client a notification. Web Push gets generic text,
-// never content (scope §4). FCM targets (the Android app) also get the
-// daemon's content sealed with the notify key, passed through as it is.
+// sends every subscribed client a notification. FCM and scheduled Web Push
+// targets also get the daemon's signed, encrypted NotifyContent, passed through
+// as it is. All other Web Push kinds carry only generic text (scope §4).
 // Either push service can read the payload's session ID, which the server
 // sees anyway.
 
@@ -214,8 +214,8 @@ var pushText = map[pb.NotifyKind]string{
 }
 
 // notify pushes a notification to subscribed clients. content is a
-// serialized NOTIFY envelope for FCM targets, or nil. With a dedupe key the
-// notification is sent once per key; without one, once per session and
+// serialized NOTIFY envelope for FCM and scheduled Web Push targets, or nil.
+// With a dedupe key the notification is sent once per key; without one, once per session and
 // kind within pushCoalesce.
 func (p *pusher) notify(ctx context.Context, st *tstore, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
 	return p.notifyTo(ctx, st, "", sessionID, kind, content, dedupeKey)
@@ -228,7 +228,7 @@ func (p *pusher) notifyDevice(ctx context.Context, st *tstore, deviceID, session
 }
 
 func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
-	body, ok := pushText[kind]
+	_, ok := pushText[kind]
 	if !ok {
 		return invalid("unknown notification kind")
 	}
@@ -345,7 +345,7 @@ func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID s
 		p.busy[st.acct] += len(targets)
 	}
 	p.recent[key] = pushRecent{acct: st.acct, at: time.Now()}
-	payload, _ := json.Marshal(map[string]string{"title": "remote-agent", "body": body, "tag": pushNotificationTag(sessionID, kind, dedupeKey), "session": sessionID})
+	payload := webPushPayload(sessionID, kind, content, dedupeKey)
 	data := map[string]string{"session": sessionID, "kind": strconv.Itoa(int(kind))}
 	if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED {
 		data["event"] = dedupeKey
@@ -373,6 +373,23 @@ func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID s
 		}()
 	}
 	return nil
+}
+
+// RFC 8291: 4096 octets minus the 86-byte header, delimiter and GCM tag.
+// Count the entire JSON, including base64 expansion and routing metadata.
+const webPushMaxPayload = 3993
+
+func webPushPayload(sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) []byte {
+	data := map[string]string{"title": "remote-agent", "body": pushText[kind], "tag": pushNotificationTag(sessionID, kind, dedupeKey), "session": sessionID}
+	generic, _ := json.Marshal(data)
+	if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED && len(content) > 0 && base64.StdEncoding.EncodedLen(len(content)) <= webPushMaxPayload {
+		data["content"] = base64.StdEncoding.EncodeToString(content)
+		payload, _ := json.Marshal(data)
+		if len(payload) <= webPushMaxPayload {
+			return payload
+		}
+	}
+	return generic
 }
 
 func (p *pusher) send(st *tstore, deviceID, sub string, payload []byte) {

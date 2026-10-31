@@ -1,8 +1,10 @@
 package daemon
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"strings"
 	"time"
@@ -136,11 +138,13 @@ func (d *Daemon) sessionHasScheduledRunLocked(id string) bool {
 // Caller has passed admitScheduledContext for this bound session.
 func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, s *session) ([]byte, error) {
 	var in struct {
-		Text  string `json:"text"`
-		Title string `json:"title"`
+		Text string `json:"text"`
 	}
-	if len(q.SpecJson) > 4096 || json.Unmarshal(q.SpecJson, &in) != nil || strings.TrimSpace(in.Text) == "" || !utf8.ValidString(in.Text) || !utf8.ValidString(in.Title) || utf8.RuneCountInString(in.Text) > 200 || utf8.RuneCountInString(in.Title) > 60 {
-		return nil, errors.New("notify_user requires text (1-200 characters) and optional title (up to 60 characters)")
+	decoder := json.NewDecoder(bytes.NewReader(q.SpecJson))
+	decoder.DisallowUnknownFields()
+	var extra any
+	if len(q.SpecJson) > 4096 || decoder.Decode(&in) != nil || decoder.Decode(&extra) != io.EOF || strings.TrimSpace(in.Text) == "" || !utf8.ValidString(in.Text) || utf8.RuneCountInString(in.Text) > 200 {
+		return nil, errors.New("notify_user accepts only text (1-200 characters); title is no longer accepted, the notification title is always the task name")
 	}
 	// Read the current run's immutable dispatch source in the established
 	// scheduleMu -> mu order. A task can be edited while an old turn follows up.
@@ -167,16 +171,14 @@ func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, s *session) ([]byte, err
 	if s.scheduledNotifications >= 3 {
 		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("notify_user is limited to 3 notifications per scheduled run"))
 	}
-	if in.Title == "" {
-		if source.ID != s.scheduledRun || source.SessionID != s.meta.ID {
-			return nil, errors.New("scheduled execution source is unavailable for the notification title")
-		}
-		if source.TargetType != "new_session" && source.TargetType != "resume_session" {
-			return nil, errors.New("scheduled execution has no recorded target type for the notification title")
-		}
-		in.Title = scheduledNotificationTitle(&source, s)
+	if source.ID != s.scheduledRun || source.SessionID != s.meta.ID {
+		return nil, errors.New("scheduled execution source is unavailable for the notification title")
 	}
-	e := &pb.Event{TurnId: s.turnID, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: s.scheduledTask, RunId: s.scheduledRun, Title: in.Title, Text: in.Text}}}
+	if source.TargetType != "new_session" && source.TargetType != "resume_session" {
+		return nil, errors.New("scheduled execution has no recorded target type for the notification title")
+	}
+	title := scheduledNotificationTitle(&source)
+	e := &pb.Event{TurnId: s.turnID, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: s.scheduledTask, RunId: s.scheduledRun, Title: title, Text: in.Text}}}
 	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
 		return nil, err
 	}
@@ -283,15 +285,9 @@ func (s *session) claimQueuedHumanOwnershipLocked() {
 	}
 }
 
-// Caller holds the session lock. Shared with notify_user so title rules cannot drift.
-func scheduledNotificationTitle(run *schedule.Run, s *session) string {
-	title := ""
-	switch run.TargetType {
-	case "new_session":
-		title = run.TaskTitle
-	case "resume_session":
-		title = s.infoLocked().Title
-	}
+// Both notification sources use the immutable dispatch-time task name.
+func scheduledNotificationTitle(run *schedule.Run) string {
+	title := run.TaskTitle
 	return string([]rune(title)[:min(60, utf8.RuneCountInString(title))])
 }
 
@@ -406,7 +402,7 @@ func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) b
 	if run.TargetType != "new_session" && run.TargetType != "resume_session" {
 		return false
 	}
-	title := scheduledNotificationTitle(run, s)
+	title := scheduledNotificationTitle(run)
 	e := &pb.Event{TurnId: run.TurnID, Origin: originSystem, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: taskID, RunId: run.ID, Title: title, Text: text}}}
 	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
 		return false

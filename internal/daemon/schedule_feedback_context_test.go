@@ -128,7 +128,7 @@ func TestHumanInterjectionEndsMCPRestrictionAndFollowupNoticesRemainRecorded(t *
 	endTimed(t, h, pb.TurnOutcome_TURN_OUTCOME_COMPLETED)
 	h.d.tickSchedules(time.Now())
 	h.s.emit(&pb.Event{TurnId: "follow", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
-	if err := notifyTest(t, h, "followup result", ""); err != nil {
+	if err := notifyTest(t, h, "followup result"); err != nil {
 		t.Fatal(err)
 	}
 	h.d.tickSchedules(time.Now())
@@ -271,7 +271,7 @@ func TestFollowupSurvivesLaterSkippedRun(t *testing.T) {
 			t.Fatal(err)
 		}
 		h.s.emit(&pb.Event{TurnId: "follow", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
-		if err := notifyTest(t, h, "late result", ""); err != nil {
+		if err := notifyTest(t, h, "late result"); err != nil {
 			t.Fatal(err)
 		}
 		h.s.emit(&pb.Event{TurnId: "follow", Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Phase: "final_answer", Text: "late final summary"}}})

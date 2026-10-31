@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import react from "@vitejs/plugin-react";
+import { serviceWorker } from "./service-worker.ts";
 import { defineConfig, type Plugin } from "vite";
 
 // The built page only runs its own scripts and only talks to the server.
@@ -87,7 +88,7 @@ export default defineConfig({
     "import.meta.env.VITE_PRODUCT_VERSION": JSON.stringify(version),
     "import.meta.env.VITE_BUILD_COMMIT": JSON.stringify(commit),
   },
-  plugins: [react(), csp()],
+  plugins: [react(), csp(), serviceWorker()],
   build: {
     rollupOptions: {
       output: {

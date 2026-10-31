@@ -165,13 +165,16 @@ go("r10-05-fcm-event", "internal/server/push.go", 'data["event"] = dedupeKey', '
 
 go("r11-explicit-running-takeover", "internal/daemon/daemon.go", 'errors.Is(err, errRunning) && humanOrigin(origin)', 'false && errors.Is(err, errRunning) && humanOrigin(origin)', "TestExplicitResumeClaimsRejectedImplicitLifetime")
 
-go("notify-title-resume", "internal/daemon/schedule_events.go", 'in.Title = s.infoLocked().Title', 'in.Title = source.TaskTitle', "TestScheduledNotifyTitleUsesExecutionSource")
-go("notify-title-source", "internal/daemon/schedule_events.go", 'switch source.TargetType {', 'switch d.tasks[s.scheduledTask].Spec.Target.Type {', "TestScheduledNotifyTitleUsesExecutionSource")
-go("notify-title-task-name", "internal/daemon/schedule_events.go", 'in.Title = source.TaskTitle', 'in.Title = d.tasks[s.scheduledTask].Spec.Title', "TestScheduledNotifyTitleUsesExecutionSource")
-go("notify-title-explicit", "internal/daemon/schedule_events.go", 'if in.Title == "" {', 'if true {', "TestScheduledNotifyTitleUsesExecutionSource")
-go("notify-title-auto-snapshot", "internal/daemon/schedule.go", 'Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title}', 'Status: "dispatching", TargetType: "", TaskTitle: ""}', "TestScheduledNotifyTitleUsesExecutionSource")
-go("notify-title-manual-snapshot", "internal/daemon/schedule.go", 'Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title}', 'Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: "", TaskTitle: ""}', "TestScheduledNotifyTitleUsesExecutionSource")
+go("notify-title-resume", "internal/daemon/schedule_events.go", 'title := scheduledNotificationTitle(&source)', 'title := scheduledNotificationTitle(&source); if source.TargetType == "resume_session" { title = s.infoLocked().Title }', "TestScheduledNotifyTitleUsesExecutionSource")
+go("notify-title-finish", "internal/daemon/schedule_events.go", 'title := scheduledNotificationTitle(run)', 'title := s.infoLocked().Title', "TestFinishNotificationTitleIsTaskNameForBothTargets")
+go("notify-title-task-name", "internal/daemon/schedule_events.go", 'title := scheduledNotificationTitle(&source)', 'title := d.tasks[s.scheduledTask].Spec.Title', "TestScheduledNotifyTitleUsesExecutionSource")
+go("notify-title-removed-parameter", "internal/daemon/schedule_events.go", 'decoder.DisallowUnknownFields()', '', "TestNotifyUserRejectsTitle")
+go("notify-title-auto-snapshot", "internal/daemon/schedule.go", 'Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title, NotifyOnFinish:', 'Status: "dispatching", TargetType: "", TaskTitle: "", NotifyOnFinish:', "TestScheduledNotifyTitleUsesExecutionSource")
+go("notify-title-manual-snapshot", "internal/daemon/schedule.go", 'Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title, NotifyOnFinish:', 'Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: "", TaskTitle: "", NotifyOnFinish:', "TestScheduledNotifyTitleUsesExecutionSource")
 go("notify-title-sealed", "internal/relay/sync.go", 'nc.Title, nc.Text = k.ScheduledNotification.Title, k.ScheduledNotification.Text', 'nc.Title, nc.Text = info.GetTitle(), k.ScheduledNotification.Text', "TestScheduledNotificationTitleSurvivesColdDelivery", "./internal/relay")
+go("notify-title-web-cipher", "internal/server/push.go", 'if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED && len(content) > 0', 'if false && kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED && len(content) > 0', "TestWebPushOnlyScheduledCarriesCiphertext", "./internal/server")
+go("notify-title-web-kind", "internal/server/push.go", 'if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED && len(content) > 0', 'if len(content) > 0', "TestWebPushOnlyScheduledCarriesCiphertext", "./internal/server")
+go("notify-title-web-limit", "internal/server/push.go", 'if len(payload) <= webPushMaxPayload {', 'if true {', "TestWebPushPayloadLimitCountsBase64AndJSON", "./internal/server")
 
 go("schedule-client-environment", "internal/daemon/schedule.go", 'shell := t.SourceSession == ""', 'shell := false', "TestScheduledClientEnvironmentSurvivesDaemonRestart")
 
@@ -215,10 +218,10 @@ clients.extend([
  ("r6-android-viewed", "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt", 'app.visibleSession == session', 'false', ["./gradlew",":app:testDebugUnitTest","--tests","*ForegroundPushTest"], "java.lang.AssertionError"),
  ("r6-android-background", "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt", 'if (foreground && (kind !=', 'if ((kind !=', ["./gradlew",":app:testDebugUnitTest","--tests","*ForegroundPushTest"], "java.lang.AssertionError"),
  ("r6-android-lifecycle", "android/app/src/main/java/io/github/lewin671/remoteagent/push/VisiblePushSession.kt", 'onStopOrDispose { app.visibleSession = null }', 'onStopOrDispose { }', ["./gradlew",":app:testDebugUnitTest","--tests","*VisiblePushSessionTest"], "java.lang.AssertionError"),
- ("r6-web-foreground", "web/public/sw.js", '(!scheduled || viewingSession(w, d.session))', 'true', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
- ("r6-web-viewed", "web/public/sw.js", 'viewingSession(w, d.session)', 'false', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
- ("r6-web-focus", "web/public/sw.js", 'w.focused && (!scheduled', '(!scheduled', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
- ("r6-web-visible", "web/public/sw.js", 'w.visibilityState === "visible" && w.focused', 'w.focused', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
+ ("r6-web-foreground", "web/src/sw.js", '(!scheduled || viewingSession(w, d.session))', 'true', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
+ ("r6-web-viewed", "web/src/sw.js", 'viewingSession(w, d.session)', 'false', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
+ ("r6-web-focus", "web/src/sw.js", 'w.focused && (!scheduled', '(!scheduled', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
+ ("r6-web-visible", "web/src/sw.js", 'w.visibilityState === "visible" && w.focused', 'w.focused', ["pnpm","--dir","web","exec","vitest","run","src/sw.test.ts"], "AssertionError"),
 ])
 
 clients.append(("r10-05-android-tag", "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt", '"scheduled/$session/$eventKey"', '"scheduled/$session"', ["./gradlew",":app:testDebugUnitTest","--tests","*ScheduledPushIdentityTest"], "java.lang.AssertionError"))
@@ -427,6 +430,14 @@ go("leader-notify-undeliverable", "internal/daemon/schedule_events.go", 'run.Not
 go("leader-notify-relay-route", "internal/daemon/schedule_events.go", 'if sid == "" || run.Reason == "relay_session_limit" {', 'if sid == "" {', "TestScheduledFinishRelayRefusalUsesOnlySource")
 
 go("leader-notify-source-cursor", "internal/daemon/schedule_events.go", 'run.NotificationSource = "daemon"', 'run.NotificationSource = "daemon"; run.NotificationSeq = e.Seq', "TestScheduledFinishRelayRefusalUsesOnlySource")
+
+clients += [
+ ("notify-title-sw-decrypt", "web/src/sw-notify.ts", 'return { title: c.title, body: c.text };', 'return generic;', ["pnpm","--dir","web","exec","vitest","run","src/sw-notify.test.ts"], "AssertionError"),
+ ("notify-title-sw-signature", "web/src/device-security.ts", 'const header = await verifyWire(p, s, head, w, live, now);', 'const header = parseHeader(w.header);', ["pnpm","--dir","web","exec","vitest","run","src/sw-notify.test.ts"], "AssertionError"),
+ ("notify-title-sw-display", "web/src/sw.js", 'showNotification(content.title', 'showNotification("remote-agent"', ["pnpm","--dir","web","exec","vitest","run","src/sw-notify.test.ts"], "AssertionError"),
+ ("notify-title-android-default", "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt", '(scheduled || showContent) && hasContent', 'showContent && hasContent', ["./gradlew",":app:testDebugUnitTest","--tests","*ScheduledPushIdentityTest"], "testDebugUnitTest FAILED"),
+ ("notify-title-android-locked", "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt", '&& hasContent && !locked', '&& hasContent', ["./gradlew",":app:testDebugUnitTest","--tests","*ScheduledPushIdentityTest"], "testDebugUnitTest FAILED"),
+]
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

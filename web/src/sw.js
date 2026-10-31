@@ -1,5 +1,6 @@
 // Service worker: shows push notifications and opens their session.
-// Notifications carry generic text only; the content stays encrypted.
+import { scheduledPushContent } from "./sw-notify";
+// Scheduled content is verified and decrypted locally; other pushes remain generic.
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
@@ -159,6 +160,7 @@ self.addEventListener("push", (e) => {
   let d = {};
   try {
     d = e.data ? e.data.json() : {};
+    if (!d || typeof d !== "object" || Array.isArray(d)) d = {};
   } catch {
     d = {};
   }
@@ -171,8 +173,9 @@ self.addEventListener("push", (e) => {
       if (security) for (const w of windows) w.postMessage({ type: "security" });
       const scheduled = typeof d.tag === "string" && d.tag.endsWith("/NOTIFY_KIND_SCHEDULED");
       if (windows.some((w) => w.visibilityState === "visible" && w.focused && (!scheduled || viewingSession(w, d.session)))) return;
-      await self.registration.showNotification(d.title || "remote-agent", {
-        body: d.body || "",
+      const content = await scheduledPushContent(d);
+      await self.registration.showNotification(content.title, {
+        body: content.body,
         tag: d.tag,
         renotify: true,
         icon: "/icon-192.png",

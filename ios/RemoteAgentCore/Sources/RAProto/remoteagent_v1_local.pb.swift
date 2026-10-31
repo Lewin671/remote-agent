@@ -1503,7 +1503,7 @@ public struct PBScheduleRequest: Sendable {
   public var sessionID: String = String()
 
   /// UTF-8 JSON TaskSpec for create/update (complete replacement), or
-  /// {"text":string,"title"?:string} for notify_user.
+  /// {"text":string} for notify_user.
   public var specJson: Data = Data()
 
   /// Optional optimistic concurrency check; zero omits it.

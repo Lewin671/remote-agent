@@ -221,7 +221,7 @@ public  final class ScheduleRequest extends
   /**
    * <pre>
    * UTF-8 JSON TaskSpec for create/update (complete replacement), or
-   * {"text":string,"title"?:string} for notify_user.
+   * {"text":string} for notify_user.
    * </pre>
    *
    * <code>bytes spec_json = 4 [json_name = "specJson"];</code>
@@ -234,7 +234,7 @@ public  final class ScheduleRequest extends
   /**
    * <pre>
    * UTF-8 JSON TaskSpec for create/update (complete replacement), or
-   * {"text":string,"title"?:string} for notify_user.
+   * {"text":string} for notify_user.
    * </pre>
    *
    * <code>bytes spec_json = 4 [json_name = "specJson"];</code>
@@ -248,7 +248,7 @@ public  final class ScheduleRequest extends
   /**
    * <pre>
    * UTF-8 JSON TaskSpec for create/update (complete replacement), or
-   * {"text":string,"title"?:string} for notify_user.
+   * {"text":string} for notify_user.
    * </pre>
    *
    * <code>bytes spec_json = 4 [json_name = "specJson"];</code>
@@ -662,7 +662,7 @@ public  final class ScheduleRequest extends
     /**
      * <pre>
      * UTF-8 JSON TaskSpec for create/update (complete replacement), or
-     * {"text":string,"title"?:string} for notify_user.
+     * {"text":string} for notify_user.
      * </pre>
      *
      * <code>bytes spec_json = 4 [json_name = "specJson"];</code>
@@ -675,7 +675,7 @@ public  final class ScheduleRequest extends
     /**
      * <pre>
      * UTF-8 JSON TaskSpec for create/update (complete replacement), or
-     * {"text":string,"title"?:string} for notify_user.
+     * {"text":string} for notify_user.
      * </pre>
      *
      * <code>bytes spec_json = 4 [json_name = "specJson"];</code>
@@ -690,7 +690,7 @@ public  final class ScheduleRequest extends
     /**
      * <pre>
      * UTF-8 JSON TaskSpec for create/update (complete replacement), or
-     * {"text":string,"title"?:string} for notify_user.
+     * {"text":string} for notify_user.
      * </pre>
      *
      * <code>bytes spec_json = 4 [json_name = "specJson"];</code>

@@ -92,7 +92,7 @@ public enum PayloadKind
   PAYLOAD_KIND_PAIRING(9),
   /**
    * <pre>
-   * A NotifyContent a daemon sends with Notify for the Android app, sealed
+   * A NotifyContent a daemon sends with Notify for push clients, sealed
    * with the notify key; the header's request_id is the notification's
    * dedupe key.
    * </pre>
@@ -209,7 +209,7 @@ public enum PayloadKind
   public static final int PAYLOAD_KIND_PAIRING_VALUE = 9;
   /**
    * <pre>
-   * A NotifyContent a daemon sends with Notify for the Android app, sealed
+   * A NotifyContent a daemon sends with Notify for push clients, sealed
    * with the notify key; the header's request_id is the notification's
    * dedupe key.
    * </pre>

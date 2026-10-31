@@ -1,6 +1,9 @@
 package io.github.lewin671.remoteagent.push
 
 import android.app.Application
+import android.app.KeyguardManager
+import android.app.Notification
+import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.proto.NotifyContent
@@ -40,7 +43,7 @@ class ScheduledPushIdentityTest {
         val second = 368856997L
         assertEquals(Notifier.id("session", "scheduled:$first"), Notifier.id("session", "scheduled:$second"))
         for (seq in listOf(first, second, first)) {
-            val content = NotifyContent.newBuilder()
+            val content = NotifyContent.newBuilder().setKind(NotifyKind.NOTIFY_KIND_SCHEDULED)
                 .setTitle("event-$seq").setSourceEventSeq(seq).build()
             Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, content, true, "scheduled:$seq")
         }
@@ -57,7 +60,7 @@ class ScheduledPushIdentityTest {
         Push.createChannels(context)
         val manager = context.getSystemService(NotificationManager::class.java)
         for (session in listOf("first-session", "second-session")) {
-            val content = NotifyContent.newBuilder()
+            val content = NotifyContent.newBuilder().setKind(NotifyKind.NOTIFY_KIND_SCHEDULED)
                 .setTitle(session).setSourceEventSeq(7).build()
             Notifier.show(context, session, NotifyKind.NOTIFY_KIND_SCHEDULED, content, true, "scheduled:7")
         }
@@ -73,12 +76,44 @@ class ScheduledPushIdentityTest {
         val context = RuntimeEnvironment.getApplication()
         Push.createChannels(context)
         val manager = context.getSystemService(NotificationManager::class.java)
-        val content = NotifyContent.newBuilder().setTitle("任务名来自签名内容").setText("通知正文").setSourceEventSeq(7).build()
-        Notifier.show(context,"session",NotifyKind.NOTIFY_KIND_SCHEDULED,content,true,"scheduled:7")
+        val content = NotifyContent.newBuilder().setKind(NotifyKind.NOTIFY_KIND_SCHEDULED).setTitle("任务名来自签名内容").setText("通知正文").setSourceEventSeq(7).build()
+        Notifier.show(context,"session",NotifyKind.NOTIFY_KIND_SCHEDULED,content,false,"scheduled:7")
         val n = shadowOf(manager).allNotifications.single()
         assertEquals("任务名来自签名内容", n.extras.getCharSequence("android.title").toString())
         assertEquals("通知正文", n.extras.getCharSequence("android.text").toString())
+        assertEquals(NotificationCompat.VISIBILITY_SECRET, n.visibility)
+        assertEquals("定时任务有新结果", n.publicVersion.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+        assertTrue(n.actions.isNullOrEmpty())
         assertEquals(7L, shadowOf(n.contentIntent).savedIntent.getLongExtra(Notifier.EXTRA_SCHEDULE_SEQ,0))
+    }
+
+    @Test fun approvalRelabelledAsScheduledStaysGenericWithoutContentSetting() {
+        val context = RuntimeEnvironment.getApplication()
+        Push.createChannels(context)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val content = NotifyContent.newBuilder().setKind(NotifyKind.NOTIFY_KIND_ATTENTION).setTitle("Private session")
+            .setSourceEventSeq(7).setApproval(io.github.lewin671.remoteagent.proto.NotifyApproval.newBuilder()
+                .setApprovalId("approval").setCommand("cat secret")).build()
+        Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, content, false, "scheduled:7")
+        val n = shadowOf(manager).allNotifications.single()
+        assertEquals("remote-agent", n.extras.getCharSequence("android.title").toString())
+        assertEquals("定时任务有新结果", n.extras.getCharSequence("android.text").toString())
+    }
+
+    @Test fun lockedScheduledPushIsGenericEvenWhenContentIsEnabled() {
+        val context = RuntimeEnvironment.getApplication()
+        Push.createChannels(context)
+        shadowOf(context.getSystemService(KeyguardManager::class.java)).setIsDeviceLocked(true)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val content = NotifyContent.newBuilder().setKind(NotifyKind.NOTIFY_KIND_SCHEDULED).setTitle("Private task").setText("Private summary").setSourceEventSeq(7).build()
+        for (showContent in listOf(false, true)) {
+            Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, content, showContent, "scheduled:7")
+            val n = shadowOf(manager).allNotifications.single()
+            assertEquals("remote-agent", n.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+            assertEquals("定时任务有新结果", n.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+            assertEquals(NotificationCompat.VISIBILITY_PRIVATE, n.visibility)
+            assertEquals("定时任务有新结果", n.publicVersion.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+        }
     }
 
 }

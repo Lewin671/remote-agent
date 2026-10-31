@@ -591,7 +591,7 @@ func clip(s string, n int) (string, bool) {
 }
 
 // notifyRequest describes event e for a push. The content is sealed with
-// the notify key for the Android app; the server only passes it on.
+// the notify key for push clients; the server only passes it on.
 // Approvals and questions are pushed once each, by their ID.
 func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Session, kind pb.NotifyKind, e *pb.Event) (*pb.NotifyRequest, error) {
 	nc := &pb.NotifyContent{SourceEventSeq: e.Seq, MachineId: c.acct.DeviceID, SessionId: sessionID, Kind: kind}
@@ -625,7 +625,7 @@ func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Ses
 	case *pb.Event_SessionState:
 		nc.Text, _ = clip(k.SessionState.Detail, notifyText)
 	case *pb.Event_ScheduledNotification:
-		// The daemon resolved the default from this execution's source when
+		// The daemon fixed the task title from this execution's source when
 		// recording the event. Preserve it for cold clients and later retries.
 		nc.Title, nc.Text = k.ScheduledNotification.Title, k.ScheduledNotification.Text
 		dedupe = fmt.Sprintf("scheduled:%d", e.Seq)

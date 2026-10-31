@@ -7,7 +7,7 @@ package io.github.lewin671.remoteagent.proto;
 
 /**
  * <pre>
- * NotifyContent is what a daemon tells the Android app in a push, sealed
+ * NotifyContent is what a daemon tells clients in a push, sealed
  * with the notify key so that the server and FCM only see ciphertext.
  * </pre>
  *
@@ -484,7 +484,7 @@ public  final class NotifyContent extends
 
   /**
    * <pre>
-   * NotifyContent is what a daemon tells the Android app in a push, sealed
+   * NotifyContent is what a daemon tells clients in a push, sealed
    * with the notify key so that the server and FCM only see ciphertext.
    * </pre>
    *

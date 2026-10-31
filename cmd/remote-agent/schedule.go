@@ -54,6 +54,7 @@ Targets:
 "notify":"finish" (default when omitted) requests a completion notification if
 this run has no notify_user call. "notify":"agent_only" disables the fallback;
 use notify_user in the scheduled turn for selected results or exceptions.
+notify_user accepts only text; its notification title is always the task name.
 "late_seconds" bounds catch-up after offline/sleep; default 86400 seconds.
 Missed intervals are coalesced; executions of the same task never overlap.
 Pause/cancel stop future dispatches, not work already dispatched. Use normal

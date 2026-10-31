@@ -26,9 +26,9 @@ func startScheduledTurn(t *testing.T, h *harness) *schedule.Task {
 	}
 	return task
 }
-func notifyTest(t *testing.T, h *harness, text, title string) error {
+func notifyTest(t *testing.T, h *harness, text string) error {
 	t.Helper()
-	b, _ := json.Marshal(map[string]string{"text": text, "title": title})
+	b, _ := json.Marshal(map[string]string{"text": text})
 	_, err := h.d.scheduleCommandScoped(&pb.ScheduleRequest{Operation: "notify_user", SessionId: h.s.meta.ID, SpecJson: b}, originLocal, h.s.meta.ID)
 	return err
 }
@@ -54,28 +54,28 @@ func restartSession(t *testing.T, h *harness) {
 func TestScheduledNotifyAndRestart(t *testing.T) {
 	h := scheduleHarness(t)
 	defer func() { h.s.log.Close() }()
-	if notifyTest(t, h, "hello", "") == nil {
+	if notifyTest(t, h, "hello") == nil {
 		t.Fatal("ordinary idle session notified")
 	}
 	task := startScheduledTurn(t, h)
 	if got := h.events()[len(h.events())-1].Origin; got.GetScheduledTaskId() != task.ID || got.GetScheduledRunId() != task.Active.ID {
 		t.Fatalf("unmarked input: %v", got)
 	}
-	for _, tc := range []struct{ text, title string }{{"", ""}, {strings.Repeat("字", 201), ""}, {"body", strings.Repeat("字", 61)}} {
-		if notifyTest(t, h, tc.text, tc.title) == nil {
+	for _, text := range []string{"", strings.Repeat("字", 201)} {
+		if notifyTest(t, h, text) == nil {
 			t.Fatal("unbounded notice")
 		}
 	}
-	if err := notifyTest(t, h, "结果一", ""); err != nil {
+	if err := notifyTest(t, h, "结果一"); err != nil {
 		t.Fatal(err)
 	}
 	restartSession(t, h)
 	for i := 0; i < 2; i++ {
-		if err := notifyTest(t, h, "结果二", "自定标题"); err != nil {
+		if err := notifyTest(t, h, "结果二"); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := notifyTest(t, h, "fourth", ""); connect.CodeOf(err) != connect.CodeResourceExhausted {
+	if err := notifyTest(t, h, "fourth"); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("fourth notice: %v", err)
 	}
 	// Neither the task's scan cursor nor a restart should lose the last final answer.
@@ -87,7 +87,7 @@ func TestScheduledNotifyAndRestart(t *testing.T) {
 	if e.ScheduledTaskId != task.ID || e.ScheduledRunId != task.Active.ID || !e.ScheduledNotified {
 		t.Fatalf("end annotation: %v", e)
 	}
-	if notifyTest(t, h, "after end", "") == nil {
+	if notifyTest(t, h, "after end") == nil {
 		t.Fatal("notified outside the scheduled turn")
 	}
 	restartSession(t, h)
@@ -100,7 +100,7 @@ func TestScheduledNotifyAndRestart(t *testing.T) {
 	for _, e := range h.events() {
 		if n := e.GetScheduledNotification(); n != nil {
 			notices++
-			if notices == 1 && n.Title != "Check deployment" {
+			if notices == 1 && n.Title != task.Spec.Title {
 				t.Fatalf("default title: %v", n)
 			}
 		}

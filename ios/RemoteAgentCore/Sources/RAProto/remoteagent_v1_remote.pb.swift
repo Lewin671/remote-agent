@@ -1154,7 +1154,7 @@ public struct PBPairingPayload: Sendable {
   public init() {}
 }
 
-/// NotifyContent is what a daemon tells the Android app in a push, sealed
+/// NotifyContent is what a daemon tells clients in a push, sealed
 /// with the notify key so that the server and FCM only see ciphertext.
 public struct PBNotifyContent: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the

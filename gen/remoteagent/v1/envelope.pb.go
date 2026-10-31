@@ -46,7 +46,7 @@ const (
 	// A PairingPayload, sealed with the key both pairing devices derived;
 	// the header's request_id is the pairing ID.
 	PayloadKind_PAYLOAD_KIND_PAIRING PayloadKind = 9
-	// A NotifyContent a daemon sends with Notify for the Android app, sealed
+	// A NotifyContent a daemon sends with Notify for push clients, sealed
 	// with the notify key; the header's request_id is the notification's
 	// dedupe key.
 	PayloadKind_PAYLOAD_KIND_NOTIFY PayloadKind = 10

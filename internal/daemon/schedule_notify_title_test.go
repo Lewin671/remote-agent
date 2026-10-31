@@ -76,17 +76,11 @@ func TestScheduledNotifyTitleUsesExecutionSource(t *testing.T) {
 							t.Fatal(err)
 						}
 					}
-					for _, explicit := range []string{"", "Agent supplied title"} {
-						if err := notifyTest(t, h, "A useful result", explicit); err != nil {
+					for range 2 {
+						if err := notifyTest(t, h, "A useful result"); err != nil {
 							t.Fatal(err)
 						}
-						want := explicit
-						if want == "" {
-							want = "对话的自定名称"
-							if target == "new_session" {
-								want = strings.Repeat("任务", 30)
-							}
-						}
+						want := strings.Repeat("任务", 30)
 						events := h.events()
 						n := events[len(events)-1].GetScheduledNotification()
 						if n == nil || n.RunId != run.ID || n.Title != want {
@@ -96,5 +90,49 @@ func TestScheduledNotifyTitleUsesExecutionSource(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+func TestNotifyUserRejectsTitle(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	startScheduledTurn(t, h)
+	for _, raw := range []string{`{"text":"result","title":"Agent title"}`, `{"text":"result","title":""}`, `{"text":"result","other":true}`, `{"text":"result"} {}`} {
+		_, err := h.d.scheduleCommandScoped(&pb.ScheduleRequest{Operation: "notify_user", SessionId: h.s.meta.ID, SpecJson: []byte(raw)}, originLocal, h.s.meta.ID)
+		if err == nil {
+			t.Fatalf("accepted unsupported input %s", raw)
+		}
+	}
+	if h.s.scheduledNotifications != 0 {
+		t.Fatal("invalid input consumed notification quota")
+	}
+	if err := notifyTest(t, h, "result"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFinishNotificationTitleIsTaskNameForBothTargets(t *testing.T) {
+	for _, target := range []string{"new_session", "resume_session"} {
+		t.Run(target, func(t *testing.T) {
+			h := scheduleHarness(t)
+			defer h.s.log.Close()
+			task := startScheduledTurn(t, h)
+			run := h.d.tasks[task.ID].Active
+			run.TargetType, run.TaskTitle = target, "Dispatch task name"
+			if err := h.s.rename("Different conversation title"); err != nil {
+				t.Fatal(err)
+			}
+			endTimed(t, h, pb.TurnOutcome_TURN_OUTCOME_COMPLETED)
+			h.d.tickSchedules(time.Now())
+			for _, e := range h.events() {
+				if n := e.GetScheduledNotification(); n != nil {
+					if n.Title != "Dispatch task name" || n.Text == "" {
+						t.Fatalf("wrong completion notification: %v", n)
+					}
+					return
+				}
+			}
+			t.Fatal("missing completion notification")
+		})
 	}
 }

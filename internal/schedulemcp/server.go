@@ -29,8 +29,7 @@ type UpdateInput struct {
 	Task             schedule.Spec `json:"task" jsonschema:"Complete replacement definition; an active execution must finish first"`
 }
 type NotifyInput struct {
-	Text  string `json:"text" jsonschema:"Required notification body, up to 200 characters"`
-	Title string `json:"title,omitempty" jsonschema:"Optional title, up to 60 characters; defaults to the task title"`
+	Text string `json:"text" jsonschema:"Required notification body, up to 200 characters"`
 }
 type Empty struct{}
 
@@ -86,7 +85,7 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 			return call(ctx, item.op, in.TaskID, in.ExpectedRevision, nil, "")
 		})
 	}
-	mcp.AddTool(server, &mcp.Tool{Name: "notify_user", Description: "Notify the user of a result worth their attention during this scheduled task turn. Ordinary turn-end notifications are suppressed for scheduled turns. Only available in a bound scheduled turn, at most 3 times per run. text is required (up to 200 characters); title is optional (up to 60, defaults to the dispatch-time task name for new_session or the conversation title for resume_session). Success means the notification was durably recorded for delivery, not that the user has received it."}, func(ctx context.Context, _ *mcp.CallToolRequest, in NotifyInput) (*mcp.CallToolResult, map[string]any, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "notify_user", Description: "Notify the user of a result worth their attention during this scheduled task turn. Ordinary turn-end notifications are suppressed for scheduled turns. Only available in a bound scheduled turn, at most 3 times per run. text is required (up to 200 characters). The notification title is always the dispatch-time task name and cannot be overridden. Success means the notification was durably recorded for delivery, not that the user has received it."}, func(ctx context.Context, _ *mcp.CallToolRequest, in NotifyInput) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "notify_user", "", 0, in, "")
 	})
 	return server

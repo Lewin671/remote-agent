@@ -177,16 +177,17 @@ object Notifier {
     data class Display(val detailed: Boolean, val buttons: Boolean, val visibility: Int)
 
     /**
-     * Content only when turned on and the phone is unlocked, and then hidden from the lock screen
+     * Scheduled content is on by default; other content requires the setting. Only while unlocked,
+     * and then hidden from the lock screen
      * altogether (VISIBILITY_SECRET): VISIBILITY_PRIVATE alone shows everything to users who allow
      * sensitive content on the lock screen. Buttons only from API 31, where they can require
      * unlocking; below that a tap opens the approval page in the app.
      */
-    fun display(showContent: Boolean, hasContent: Boolean, locked: Boolean, sdk: Int): Display {
-        val detailed = showContent && hasContent && !locked
+    fun display(showContent: Boolean, hasContent: Boolean, locked: Boolean, sdk: Int, scheduled: Boolean = false): Display {
+        val detailed = (scheduled || showContent) && hasContent && !locked
         return Display(
             detailed = detailed,
-            buttons = detailed && sdk >= 31,
+            buttons = detailed && !scheduled && sdk >= 31,
             visibility =
                 if (detailed) NotificationCompat.VISIBILITY_SECRET
                 else NotificationCompat.VISIBILITY_PRIVATE,
@@ -194,7 +195,20 @@ object Notifier {
     }
 
     /**
-     * Shows a push. Without [showContent], only generic text: tapping it opens the session. With
+     * The cleartext kind and event come from the server; only the signed content proves a
+     * scheduled result. A replayed approval or turn preview relabelled as scheduled stays generic.
+     */
+    fun scheduledContent(kind: NotifyKind, c: NotifyContent?, eventKey: String?): Boolean =
+        kind == NotifyKind.NOTIFY_KIND_SCHEDULED &&
+            c != null &&
+            c.kind == NotifyKind.NOTIFY_KIND_SCHEDULED &&
+            !c.hasApproval() &&
+            c.sourceEventSeq > 0 &&
+            eventKey == "scheduled:${c.sourceEventSeq}"
+
+    /**
+     * Shows a push. Scheduled results show content while unlocked. Other kinds without [showContent]
+     * use generic text: tapping opens the session. With
      * it, the approval itself and 拒绝 / 允许 buttons that need the phone unlocked. The lock screen
      * only ever gets generic text.
      */
@@ -221,7 +235,7 @@ object Notifier {
         val approval = c?.takeIf { it.hasApproval() }?.approval
         val nid = id(session, if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) eventKey else approval?.approvalId)
         val locked = context.getSystemService(KeyguardManager::class.java).isDeviceLocked
-        val how = display(showContent, c != null, locked, Build.VERSION.SDK_INT)
+        val how = display(showContent, c != null, locked, Build.VERSION.SDK_INT, scheduledContent(kind, c, eventKey))
         val public =
             NotificationCompat.Builder(context, channel)
                 .setSmallIcon(R.drawable.ic_notify)

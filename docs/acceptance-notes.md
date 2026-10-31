@@ -770,21 +770,6 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 验证环境为隔离 Go harness、本地 Connect handler、伪终端和合成 transcript；没有真实 CLI、真机界面或推送送达验收，三端产品代码未改。
 
 
-### 定时结果通知标题：按执行来源补齐
-
-2026-10-24，只在任务 worktree 提交，协议和产品版本未改，没有推送、发版或部署。标题规则见 [architecture §18](architecture.md#主动通知与客户端发现)，签名推送与冷启动行为见 [§12](architecture.md#12-推送通知)。
-
-`TestScheduledNotifyTitleUsesExecutionSource` 覆盖 new_session/resume_session × 自动/手动 × 活动运行/修改定义后/修改定义后重启，并分别发送缺省标题与 agent 显式标题。运行预留、来源落盘和输入队列受理走实际 daemon 路径，CLI 创建用既有隔离会话模拟；测试先结束执行、把目标类型与任务名称一并改掉，再在原会话无新人工输入的后续轮次通知，验证来源取自该次运行而非新定义。恢复对话使用用户重命名，区别于首条输入推导的自动标题；新开任务名使用多字节字符并超过 60 字，核对按字符截断。原有先于轮询通知与重启计数测试的标题预期按恢复对话规则更新。
-
-`TestScheduledNotificationTitleSurvivesColdDelivery` 重放已持久通知事件，在会话元数据为空或标题已变的情况下封装并实际解密、验签 NotifyContent，确认最终标题和来源事件序号保持不变，冷客户端不用自行推断目标类型。MCP 工具说明同步更新，客户端与 protobuf 字段未改。
-
-`python3 scripts/check-schedule-regressions.py --only notify-title-` 完整检出 7 个定向变异：恢复对话误用任务名、按当前目标选择类型、按当前任务名显示、忽略显式 title、自动/手动派发漏写快照，以及签名内容重新依赖会话元数据。每组原测试先通过、变异后出现断言失败，编译失败不算检出；源码随后恢复。
-
-最终 `go test ./...` 全量通过；`go test -race ./internal/daemon ./internal/relay ./internal/schedule ./internal/schedulemcp` 四个包全包通过。静态核对全部 135 个既有和新增变异目标仍存在；本轮实际执行的是上述 7 个定向变异，没有将静态检查算作完整脚本验收。
-
-使用隔离 Go harness、合成 transcript、本地签名与加密测试；没有真实 CLI、真机冷启动或推送服务送达验收。web、android、ios 目录未修改。
-
-
 ### 无来源任务会话：登录 shell 派发与重启恢复
 
 2026-10-24，只在任务 worktree 提交，协议和产品版本未改，没有推送、发版或部署。启动来源规则见 [architecture §18](architecture.md#触发与执行)，环境和 CLI 解析统一沿用 [§6](architecture.md#6-接入-codex)。
@@ -876,7 +861,7 @@ Android `ForegroundPushTest` 直接调用实际 FCM 回调，并通过 Robolectr
 
 rebase 后核对了两边的验收记录：后端原文全部保留，原有内容只更新一处 v48 → v49 链接；网页第二阶段、各端写法和配对测试三节均只保留一份。基于后端 `b8c7ef85` 的纯改名分支，网页去掉按停止状态、活动执行和手动请求禁用改名的条件，保留离线、正在保存和未确认请求保护。组件测试覆盖 scheduled、paused、completed、cancelled、failed、uncertain，以及 dispatching / queued / running 的活动运行和手动请求，核对发送完整定义且仅标题变化，继续使用原修订号。
 
-核对 daemon 的通知事件与 NotifyContent 路径后，网页没有依赖任务当前定义或会话缓存推断通知标题的逻辑需要删除：聊天只显示事件正文，Web Push 使用中继给出的通用文案。v49 更正了此前「当前对话通知也用任务名」的规则和示例，统一采用新开对话的派发任务名、当前对话的会话显示标题、显式 title 优先；最终标题由 daemon 持久记录，客户端不重新推断。
+最终通知标题由 daemon 持久记录，客户端不按任务当前定义或会话缓存重新推断；当前标题与通知内容边界见 [定时结果通知](architecture.md#12-推送通知)。
 
 真实链路使用本 checkout 构建的中继和 daemon、产品构建的网页预览、本机 Google Chrome 独立无头配置、Claude Code 2.1.300 / Haiku 5.5。独立短路径 `RA_DEV_DIR`，临时账户、数据库、状态目录、项目和 tmux socket；清除宿主 `RA_SESSION` 与 CLI 路径覆盖。网页建管理账户并核对配对图案，电脑加入后 daemon 以裸 `daemon` 参数启动，没有 `--claude` 或其他 CLI 路径参数。
 
@@ -1719,3 +1704,18 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 - Android：`./gradlew :core:test --tests '*SchedulesTest' :app:testDebugUnitTest --tests '*Schedule*' --no-daemon` 通过，core 28 项、App 56 项；活动执行状态下实际点击开关并检查提交值及修订号。未运行或修改本次范围以外的非定时安全测试。
 - iOS：`swift test --package-path ios/RemoteAgentCore --jobs 4 --filter 'Schedule|VersionTests'` 通过，33 项。模拟器以同一独立 DerivedData 构建并运行 ScheduleStoreTests（20 项），随后 `xcodebuild … test-without-building -only-testing:RemoteAgentTests/ScheduleAlignmentTests -only-testing:RemoteAgentTests/ScheduleJumpObserverTests`（13 项）通过，xcresult 均为 Passed；原生 App 仍未验证真机和推送送达。
 - 工具说明检查：`go test ./internal/schedulemcp ./cmd/remote-agent ./internal/protocol` 通过。接受的后续回合通知、uncertain 不补发、原来源承载启动失败和无来源缺口统一写在 [architecture §18](architecture.md#主动通知与客户端发现)。本轮未重跑真实 CLI E2E，不把上轮实测当作本轮新增验收。
+
+
+## 定时结果：固定任务名与网页本机解密（2026-10-31）
+
+工作区改动未提交、推送、发版或部署；产品版本仍为 0.49.0，协议仍为 12。当前边界见 [scope §4](scope.md#4-信任边界)，实现和升级要求见 [推送](architecture.md#12-推送通知)与[协议版本](architecture.md#协议版本与升级)。
+
+`go test ./...` 全量通过；网页 `pnpm test` 为 91 个文件、1285 项通过，`pnpm typecheck` 和 `pnpm build` 通过；Android `./gradlew :app:testDebugUnitTest` 395 项通过；iOS `swift test --filter VersionTests` 两项通过；发布清单和版本工具的 23 项 Python 测试通过。实际网页构建文件与 public_scan 允许清单一致（许可证由 build-dist 后续添加）。
+
+定向回归覆盖两种 target 的派发任务名、Agent 主动与 daemon 完成通知、自动/手动派发、编辑任务与重启、拒绝旧 title 参数、仅定时 Web Push 携带密文及完整 JSON 大小限制。SW 使用真实安全模块和 IndexedDB 模拟存储，验证成功后实际调用 push 处理器显示任务名与摘要，验证失败、未知状态、缺密钥、过期租约、超限和错路由均回退。另从实际 Go 发送端生成压缩签名信封，核对 SW 能解开。Android 直接检查 showContent=false 时的通知标题、正文、点击事件、visibility 和 public version，以及锁屏收到时的通用文案。
+
+`python3 scripts/check-schedule-regressions.py --clients --only notify-title-` 实际检出全部 15 项定向变异；每项先通过基线，再要求变异后断言失败，编译失败不算通过，全部源码随后恢复。未重跑完整历史变异全集。
+
+`RA_RUN_SCHEDULE_PUSH_E2E=1 go test ./internal/server -run '^TestScheduledWebPushDaemonE2E$' -count=1 -v` 通过。dev-env.sh 从当前 checkout 构建二进制，独立 RA_DEV_DIR、临时账户、数据库、daemon 状态和 tmux socket；测试另起仅替换 HTTP 发送传输的本地 relay。合成加密客户端经 relay 创建任务，真实 Claude Code 2.1.300 / Haiku 5.5 到点完成，daemon 记录通知，relay 发出 Web Push；测试传输独立解开外层后，payload 仍无明文任务名或摘要，客户端再验签解密内层 NotifyContent 并核对结果。环境已清理，无线上中继、日常账户或会话参与。
+
+这是协议客户端触发，未直接操作产品界面；真实 CLI 场景覆盖 daemon 完成通知，Agent notify_user 与 resume_session 由回归测试覆盖。Chrome 扩展未连接，未验证真实浏览器 SW、iPhone PWA、外部 Web Push 投递或 Android 真机 FCM/锁屏；未使用内置浏览器。没有执行完整发布打包或 iOS 全量测试。

@@ -66,7 +66,7 @@ func TestScheduledNotificationEncryptedContent(t *testing.T) {
 func TestScheduledNotificationTitleSurvivesColdDelivery(t *testing.T) {
 	c := &conn{acct: &Account{DeviceID: "machine"}}
 	initializeTestSecurity(t, c)
-	for _, title := range []string{"派发时的任务名", "恢复对话的名称", "Agent explicit title"} {
+	for _, title := range []string{"派发时的任务名", "另一项任务名", "Task name"} {
 		for _, info := range []*pb.Session{nil, {Title: "Later unrelated title"}} {
 			e := &pb.Event{Seq: 8, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: "private-task", RunId: "private-run", Title: title, Text: "Result"}}}
 			// Replay the committed event, as after a daemon restart or push retry.

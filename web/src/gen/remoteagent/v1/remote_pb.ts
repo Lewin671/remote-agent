@@ -1061,7 +1061,7 @@ export const PairingPayloadSchema: GenMessage<PairingPayload> = /*@__PURE__*/
   messageDesc(file_remoteagent_v1_remote, 15);
 
 /**
- * NotifyContent is what a daemon tells the Android app in a push, sealed
+ * NotifyContent is what a daemon tells clients in a push, sealed
  * with the notify key so that the server and FCM only see ciphertext.
  *
  * @generated from message remoteagent.v1.NotifyContent

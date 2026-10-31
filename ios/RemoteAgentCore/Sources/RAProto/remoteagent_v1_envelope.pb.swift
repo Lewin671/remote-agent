@@ -54,7 +54,7 @@ public enum PBPayloadKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   /// the header's request_id is the pairing ID.
   case pairing // = 9
 
-  /// A NotifyContent a daemon sends with Notify for the Android app, sealed
+  /// A NotifyContent a daemon sends with Notify for push clients, sealed
   /// with the notify key; the header's request_id is the notification's
   /// dedupe key.
   case notify // = 10

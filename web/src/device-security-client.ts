@@ -63,8 +63,8 @@ export interface StatePage {
 }
 /** Reads the server's signed state chain after an epoch. */
 export type FetchStates = (after: bigint, limit: number) => Promise<StatePage>;
-/** Foreground client only. A service worker is never given a full content key,
- * member signing key or recipient private key to implement background sync. */
+/** Foreground security client. The notification worker separately reads local
+ * security state to open scheduled notifications; it never signs or syncs. */
 /** Storage operations preserve atomic head changes and strict
  * durability in production. Explicit in-memory implementations belong to tests. */
 export interface SecurityStorage {

@@ -92,7 +92,7 @@ func TestNotifyUserReadsTranscriptBeforeAdmission(t *testing.T) {
 						t.Fatal("could not establish old cached turn")
 					}
 					for i := 0; i < 3; i++ {
-						if err := notifyTest(t, h, "Old result", ""); err != nil {
+						if err := notifyTest(t, h, "Old result"); err != nil {
 							t.Fatal(err)
 						}
 					}
@@ -106,13 +106,13 @@ func TestNotifyUserReadsTranscriptBeforeAdmission(t *testing.T) {
 				if previous && cachedRun != old.Active.ID || !previous && cachedRun != "" {
 					t.Fatal("unexpected cached context")
 				}
-				if err := notifyTest(t, h, "Fresh result", ""); err != nil {
+				if err := notifyTest(t, h, "Fresh result"); err != nil {
 					t.Fatalf("legitimate pre-poll MCP notification rejected: %v", err)
 				}
 				events := h.events()
 				notice := events[len(events)-1]
 				n := notice.GetScheduledNotification()
-				if n == nil || n.TaskId != task.ID || n.RunId != task.Active.ID || n.Title != h.s.info().Title || notice.TurnId != "next" || h.s.scheduledNotifications != 1 {
+				if n == nil || n.TaskId != task.ID || n.RunId != task.Active.ID || n.Title != task.Active.TaskTitle || notice.TurnId != "next" || h.s.scheduledNotifications != 1 {
 					t.Fatalf("notification used stale context: %v", notice)
 				}
 				h.d.tickSchedules(time.Now())
@@ -148,7 +148,7 @@ func TestNotifyUserRequiresCommittedTranscript(t *testing.T) {
 			} else if err := h.s.log.Close(); err != nil {
 				t.Fatal(err)
 			}
-			err := notifyTest(t, h, "Must not use stale context", "")
+			err := notifyTest(t, h, "Must not use stale context")
 			if connect.CodeOf(err) != connect.CodeUnavailable || !strings.Contains(err.Error(), "retry notify_user") {
 				t.Fatalf("failure did not return clear retryable error: %v", err)
 			}
@@ -168,7 +168,7 @@ func TestNotifyUserRequiresCommittedTranscript(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			err = notifyTest(t, h, "No longer scheduled", "")
+			err = notifyTest(t, h, "No longer scheduled")
 			if err == nil || connect.CodeOf(err) == connect.CodeUnavailable || !strings.Contains(err.Error(), "ordinary turns") {
 				t.Fatalf("recovery used old scheduled context: %v", err)
 			}

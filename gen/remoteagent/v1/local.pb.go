@@ -3914,7 +3914,7 @@ type ScheduleRequest struct {
 	// Context for resolving "current" and after_turn; empty for machine callers.
 	SessionId string `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	// UTF-8 JSON TaskSpec for create/update (complete replacement), or
-	// {"text":string,"title"?:string} for notify_user.
+	// {"text":string} for notify_user.
 	SpecJson []byte `protobuf:"bytes,4,opt,name=spec_json,json=specJson,proto3" json:"spec_json,omitempty"`
 	// Optional optimistic concurrency check; zero omits it.
 	ExpectedRevision uint64 `protobuf:"varint,5,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`

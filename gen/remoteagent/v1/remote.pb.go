@@ -2395,7 +2395,7 @@ func (x *PairingPayload) GetLease() []byte {
 	return nil
 }
 
-// NotifyContent is what a daemon tells the Android app in a push, sealed
+// NotifyContent is what a daemon tells clients in a push, sealed
 // with the notify key so that the server and FCM only see ciphertext.
 type NotifyContent struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`

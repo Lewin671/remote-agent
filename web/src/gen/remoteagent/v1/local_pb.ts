@@ -1866,7 +1866,7 @@ export type ScheduleRequest = Message<"remoteagent.v1.ScheduleRequest"> & {
 
   /**
    * UTF-8 JSON TaskSpec for create/update (complete replacement), or
-   * {"text":string,"title"?:string} for notify_user.
+   * {"text":string} for notify_user.
    *
    * @generated from field: bytes spec_json = 4;
    */

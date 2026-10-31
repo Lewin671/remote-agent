@@ -88,6 +88,12 @@ func main() {
 	keys, err := e2e.Derive(auth.Root)
 	must(err)
 	client := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
+	if subscription := os.Getenv("RA_DEV_WEB_PUSH_SUBSCRIPTION"); subscription != "" {
+		_, err := client.API().SetPushSubscription(ctx, connect.NewRequest(&pb.SetPushSubscriptionRequest{
+			SubscriptionJson: read(subscription), Kinds: []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_SCHEDULED},
+		}))
+		must(err)
+	}
 	socket := read(filepath.Join(dir, "tmux-socket")) + "-schedule"
 	must(os.Setenv("REMOTE_AGENT_TMUX_SOCKET", socket))
 	binary := os.Getenv("RA_DEV_AGENT_BIN")
@@ -129,6 +135,9 @@ func main() {
 	})
 	if len(os.Args) == 2 && os.Args[1] == "--finish-notify" {
 		runFinishNotifyAcceptance(ctx, client, machine.ID, socket)
+		if payload := os.Getenv("RA_DEV_WEB_PUSH_PAYLOAD"); payload != "" {
+			verifyWebPush(ctx, client, phone, payload)
+		}
 		return
 	}
 	if len(os.Args) == 2 && os.Args[1] == "--environment" {

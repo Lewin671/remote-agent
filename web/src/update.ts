@@ -1,5 +1,5 @@
 // Moving on to a newer build. The service worker keeps the page last
-// fetched and answers with it (public/sw.js); a newer one is in once the
+// fetched and answers with it (src/sw.js); a newer one is in once the
 // kept page runs another script than this one. Then reloading starts it.
 
 import { useSyncExternalStore } from "react";

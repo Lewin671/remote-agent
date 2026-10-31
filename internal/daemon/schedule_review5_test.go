@@ -147,7 +147,7 @@ func TestNonCompletedScheduledFollowups(t *testing.T) {
 						if err := h.s.emit(&pb.Event{TurnId: "background", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}); err != nil {
 							t.Fatal(err)
 						}
-						if err := notifyTest(t, h, "background result", ""); err != nil {
+						if err := notifyTest(t, h, "background result"); err != nil {
 							t.Fatal(err)
 						}
 						if err := h.s.emit(&pb.Event{TurnId: "background", Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Phase: "final_answer", Text: "## Background summary"}}}, &pb.Event{TurnId: "background", Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_COMPLETED}}}); err != nil {

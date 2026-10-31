@@ -2,6 +2,7 @@ package schedulemcp
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -54,6 +55,30 @@ func TestToolDiscoveryAndCreate(t *testing.T) {
 	}
 	if len(list.Tools) != 9 {
 		t.Fatalf("tool count %d", len(list.Tools))
+	}
+	for _, tool := range list.Tools {
+		if tool.Name == "notify_user" {
+			raw, err := json.Marshal(tool.InputSchema)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var schema struct {
+				Properties map[string]any `json:"properties"`
+			}
+			if err := json.Unmarshal(raw, &schema); err != nil {
+				t.Fatal(err)
+			}
+			if len(schema.Properties) != 1 || schema.Properties["text"] == nil {
+				t.Fatalf("unexpected notify schema: %s", raw)
+			}
+		}
+	}
+	bad, callErr := cs.CallTool(ctx, &mcp.CallToolParams{Name: "notify_user", Arguments: map[string]any{"text": "result", "title": "Agent title"}})
+	if callErr == nil && !bad.IsError {
+		t.Fatal("MCP accepted removed title parameter")
+	}
+	if len(b.requests) != 0 {
+		t.Fatal("invalid MCP input reached daemon")
 	}
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "schedule_create", Arguments: map[string]any{"task": map[string]any{"title": "check", "message": "continue", "trigger": map[string]any{"type": "after_turn", "delay_seconds": 30}, "target": map[string]any{"type": "resume_session", "session": "current"}}, "request_id": "stable"}})
 	if err != nil || res.IsError {
