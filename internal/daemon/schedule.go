@@ -201,6 +201,16 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 	return d.scheduleCommandAdmittedContext(ctx, q, origin, scope)
 }
 
+// Only these fields remain visible to the original MCP after user takeover.
+type takenOverScheduleView struct {
+	ID          string             `json:"id"`
+	Title       string             `json:"title"`
+	Status      string             `json:"status"`
+	NextRunAt   *time.Time         `json:"next_run_at,omitempty"`
+	Takeover    *schedule.Takeover `json:"takeover"`
+	MCPReadOnly bool               `json:"mcp_read_only"`
+}
+
 // Caller holds scheduleMu, but never the transcript read lock.
 func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.ScheduleRequest, origin *pb.Origin, scope string) ([]byte, error) {
 	if d.tasks == nil {
@@ -212,9 +222,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 		for _, t := range d.tasks {
 			if scope != "" {
 				if t.Takeover != nil && t.Takeover.Session == scope {
-					view := schedule.Clone(t)
-					view.MCPReadOnly = true
-					tasks = append(tasks, view)
+					tasks = append(tasks, t)
 					continue
 				}
 				if t.ScopedSession != scope || t.SourceSession != scope {
@@ -229,9 +237,22 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 			}
 			return tasks[i].CreatedAt.Before(tasks[j].CreatedAt)
 		})
+		// A taken-over task is visible only as an ownership receipt. Build
+		// an allowlisted response instead of redacting the current definition.
+		views := make([]any, 0, len(tasks))
+		for _, task := range tasks {
+			if scope != "" && task.Takeover != nil && task.Takeover.Session == scope {
+				views = append(views, takenOverScheduleView{
+					ID: task.ID, Title: task.Spec.Title, Status: task.Status,
+					NextRunAt: task.NextRunAt, Takeover: task.Takeover, MCPReadOnly: true,
+				})
+			} else {
+				views = append(views, task)
+			}
+		}
 		return json.Marshal(struct {
-			Tasks []*schedule.Task `json:"tasks"`
-		}{tasks})
+			Tasks []any `json:"tasks"`
+		}{views})
 	}
 	if q.Operation == "create" {
 		if len(q.SpecJson) > 64<<10 || len(q.RequestId) > 256 {

@@ -59,8 +59,7 @@ type Takeover struct {
 }
 
 type Task struct {
-	Takeover    *Takeover `json:"takeover,omitempty"`
-	MCPReadOnly bool      `json:"mcp_read_only,omitempty"` // response annotation for scoped lists only
+	Takeover *Takeover `json:"takeover,omitempty"`
 
 	IntervalPhase    *time.Time     `json:"interval_phase,omitempty"`
 	ManualRequest    *ManualRequest `json:"manual_request,omitempty"`

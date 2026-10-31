@@ -29,6 +29,12 @@ func TestMCPTakenOverTasksVisibleButReadOnly(t *testing.T) {
 			}
 			// A later machine edit can change SourceSession, but never the creator evidence.
 			h.d.tasks[task.ID].SourceSession = "another-source"
+			current := h.d.tasks[task.ID]
+			current.Spec.Message = "user-private-message"
+			current.Spec.Target = schedule.Target{Type: "new_session", Cwd: "/work/user-private-target"}
+			current.Runs = []schedule.Run{{ID: "private-run", SessionID: "user-private-session", FinalSummary: "user-private-summary", NotificationText: "user-private-notice"}}
+			current.Active = &schedule.Run{ID: "active-private-run", SessionID: "user-private-active-session"}
+
 			if err = h.d.saveSchedulesLocked(); err != nil {
 				t.Fatal(err)
 			}
@@ -40,13 +46,30 @@ func TestMCPTakenOverTasksVisibleButReadOnly(t *testing.T) {
 				t.Fatal(err)
 			}
 			var list struct {
-				Tasks []schedule.Task `json:"tasks"`
+				Tasks []takenOverScheduleView `json:"tasks"`
 			}
 			if err = json.Unmarshal(raw, &list); err != nil {
 				t.Fatal(err)
 			}
 			if len(list.Tasks) != 1 || !list.Tasks[0].MCPReadOnly || list.Tasks[0].Takeover.Via != via {
 				t.Fatalf("missing read-only takeover: %s", raw)
+			}
+			var fields struct {
+				Tasks []map[string]json.RawMessage `json:"tasks"`
+			}
+			if err := json.Unmarshal(raw, &fields); err != nil {
+				t.Fatal(err)
+			}
+			allowed := map[string]bool{"id": true, "title": true, "status": true, "next_run_at": true, "takeover": true, "mcp_read_only": true}
+			for key := range fields.Tasks[0] {
+				if !allowed[key] {
+					t.Fatalf("taken-over view leaked field %q: %s", key, raw)
+				}
+			}
+			for _, secret := range []string{"user-private", "private-run", "spec", "runs", "active_run", "creation_key", "source_session"} {
+				if strings.Contains(string(raw), secret) {
+					t.Fatalf("taken-over list leaked %q: %s", secret, raw)
+				}
 			}
 			for _, op := range []string{"get", "update", "pause", "resume", "run", "cancel"} {
 				_, err = scopedSchedule(t, h, op, task.ID, &spec)
