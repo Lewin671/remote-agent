@@ -1,0 +1,190 @@
+package daemon
+
+import (
+	"encoding/json"
+	"github.com/Lewin671/remote-agent/internal/schedule"
+	"strings"
+	"testing"
+	"time"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+)
+
+func TestScheduledFinishNotification(t *testing.T) {
+	for _, tc := range []struct {
+		name, policy, status, body string
+		agent, manual              bool
+	}{
+		{name: "default", status: "completed", body: strings.Repeat("字", 200)},
+		{name: "explicit", policy: "finish", status: "completed", body: strings.Repeat("字", 200)},
+		{name: "manual", status: "completed", body: strings.Repeat("字", 200), manual: true},
+		{name: "agent", status: "completed", agent: true},
+		{name: "disabled", policy: "agent_only", status: "completed"},
+		{name: "disabled-agent", policy: "agent_only", status: "completed", agent: true},
+		{name: "failed", status: "failed", body: "定时任务运行失败：execution_failed"},
+		{name: "interrupted", status: "interrupted", body: "定时任务运行已中断。"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := scheduleHarness(t)
+			defer func() { h.s.log.Close() }()
+			task := startScheduledTurn(t, h)
+			run := h.d.tasks[task.ID].Active
+			run.NotifyOnFinish = tc.policy != "agent_only"
+			run.Manual = tc.manual
+			if tc.agent {
+				if err := notifyTest(t, h, "Agent result", ""); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := h.s.emit(&pb.Event{TurnId: "timed", Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Phase: "final_answer", Text: "# " + strings.Repeat("字", 230)}}}); err != nil {
+				t.Fatal(err)
+			}
+			if tc.status == "failed" {
+				h.d.watchScheduledRun(h.d.tasks[task.ID], time.Now())
+				h.d.endScheduledRun(h.d.tasks[task.ID], time.Now(), "failed", "execution_failed")
+			} else {
+				outcome := pb.TurnOutcome_TURN_OUTCOME_COMPLETED
+				if tc.status == "interrupted" {
+					outcome = pb.TurnOutcome_TURN_OUTCOME_ABORTED
+				}
+				endTimed(t, h, outcome)
+			}
+			h.d.tickSchedules(time.Now())
+			got := readTask(t, h.d, task.ID).Runs[0]
+			count := 0
+			for _, e := range h.events() {
+				if n := e.GetScheduledNotification(); n != nil {
+					count++
+					if !tc.agent && (n.Text != tc.body || n.Title != "Check deployment" || e.Origin.GetKind() != pb.OriginKind_ORIGIN_KIND_SYSTEM) {
+						t.Fatalf("fallback: %v", e)
+					}
+				}
+			}
+			want := 1
+			if tc.policy == "agent_only" && !tc.agent {
+				want = 0
+			}
+			if count != want || got.NotificationCount != want || got.Notified != (want > 0) {
+				t.Fatalf("event/run mismatch: count=%d run=%+v", count, got)
+			}
+			source := "daemon"
+			if tc.agent {
+				source = "agent"
+			}
+			if want == 0 {
+				source = ""
+			}
+			if got.NotificationSource != source {
+				t.Fatalf("wrong source: %+v", got)
+			}
+			// A restart and repeated ticks must not duplicate the persistent event.
+			restartSession(t, h)
+			h.d.tickSchedules(time.Now())
+			h.d.tickSchedules(time.Now())
+			if after := readTask(t, h.d, task.ID).Runs[0]; after.NotificationCount != want {
+				t.Fatalf("duplicate after replay: %+v", after)
+			}
+		})
+	}
+}
+
+func TestScheduledFinishRetryUsesDurableEventAsAuthority(t *testing.T) {
+	h := scheduleHarness(t)
+	defer func() { h.s.log.Close() }()
+	task := startScheduledTurn(t, h)
+	endTimed(t, h, pb.TurnOutcome_TURN_OUTCOME_COMPLETED)
+	// Settle the execution while the event log is unavailable for notification.
+	h.s.log.Close()
+	run := h.d.tasks[task.ID].Active
+	run.MessageSeen = true
+	h.d.endScheduledRun(h.d.tasks[task.ID], time.Now(), "completed", "")
+	if h.d.finishScheduledNotification(task.ID, &h.d.tasks[task.ID].Runs[0]) || h.d.tasks[task.ID].Runs[0].Notified {
+		t.Fatal("failed append marked notified")
+	}
+	repairEventLog(t, h)
+	saved := h.d.tasks[task.ID].Runs[0]
+	saved.FollowupsClosed = true // force event-authority recovery, not the ordinary follow-up watcher
+	h.d.tickSchedules(time.Now())
+	if !readTask(t, h.d, task.ID).Runs[0].Notified {
+		t.Fatal("failed notification was not retried")
+	}
+	// Simulate process death after event append, before saving schedules.json.
+	h.d.tasks[task.ID].Runs[0] = saved
+	if err := h.d.saveSchedulesLocked(); err != nil {
+		t.Fatal(err)
+	}
+	restartSession(t, h)
+	h.d.tickSchedules(time.Now())
+	count := 0
+	for _, e := range h.events() {
+		if e.GetScheduledNotification() != nil {
+			count++
+		}
+	}
+	got := readTask(t, h.d, task.ID).Runs[0]
+	if count != 1 || !got.Notified || got.NotificationSource != "daemon" || got.NotificationCount != 1 {
+		t.Fatalf("lost/duplicate event after crash: %d %+v", count, got)
+	}
+}
+
+func TestScheduledNotificationPolicySnapshot(t *testing.T) {
+	for _, policy := range []string{"", "finish", "agent_only", "invalid"} {
+		t.Run(policy, func(t *testing.T) {
+			h := scheduleHarness(t)
+			defer h.s.log.Close()
+			spec := taskSpec(schedule.Trigger{Type: "after_turn"})
+			spec.Notify = policy
+			raw, _ := json.Marshal(spec)
+			data, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "create", SessionId: h.s.meta.ID, SpecJson: raw}, originLocal)
+			if policy == "invalid" {
+				if err == nil {
+					t.Fatal("accepted unknown notification policy")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var task schedule.Task
+			if err = json.Unmarshal(data, &task); err != nil {
+				t.Fatal(err)
+			}
+			pending := h.d.prepareScheduledDispatches(time.Now().Add(time.Second))
+			if len(pending) != 1 || pending[0].Active.NotifyOnFinish != (policy != "agent_only") {
+				t.Fatal("policy not captured at dispatch")
+			}
+			// Editing the definition later cannot change this run's policy.
+			h.d.tasks[task.ID].Spec.Notify = "agent_only"
+			if h.d.tasks[task.ID].Active.NotifyOnFinish != (policy != "agent_only") {
+				t.Fatal("policy snapshot changed")
+			}
+		})
+	}
+}
+
+func TestScheduledFinishLaunchFailureUsesSourceSnapshot(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	spec := taskSpec(schedule.Trigger{Type: "after_turn"})
+	task := createTask(t, h, spec, "")
+	h.d.tasks[task.ID].Spec.Target.Type = "new_session"
+	pending := h.d.prepareScheduledDispatches(time.Now().Add(time.Second))
+	if len(pending) != 1 {
+		t.Fatal("no reservation")
+	}
+	active := h.d.tasks[task.ID]
+	// No execution session could be created; the source still owns a log.
+	active.SourceSession = "different-source"
+	active.Spec.Title = "later title"
+	h.d.endScheduledRun(active, time.Now(), "failed", "could_not_start_session")
+	h.d.tickSchedules(time.Now())
+	got := readTask(t, h.d, task.ID).Runs[0]
+	if !got.Notified || got.SessionID != "" || got.NotificationSource != "daemon" || got.NotificationText != "定时任务运行失败：could_not_start_session" {
+		t.Fatalf("missing launch failure notification: %+v", got)
+	}
+	events := h.events()
+	notice := events[len(events)-1].GetScheduledNotification()
+	if notice == nil || notice.Title != spec.Title {
+		t.Fatalf("wrong failure event title: %v", notice)
+	}
+}

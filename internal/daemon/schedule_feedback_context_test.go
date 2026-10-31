@@ -277,14 +277,14 @@ func TestFollowupSurvivesLaterSkippedRun(t *testing.T) {
 		h.s.emit(&pb.Event{TurnId: "follow", Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Phase: "final_answer", Text: "late final summary"}}})
 		h.d.tickSchedules(next.Add(3 * time.Minute))
 		got := readTask(t, h.d, task.ID)
-		if got.Runs[0].ID != run.ID || got.Runs[0].NotificationCount != 1 || got.Runs[0].NotificationText != "late result" || got.Runs[0].FinalSummary != "late final summary" {
+		if got.Runs[0].ID != run.ID || got.Runs[0].NotificationCount != 2 || got.Runs[0].NotificationText != "late result" || got.Runs[0].FinalSummary != "late final summary" {
 			t.Fatalf("earlier followup lost behind skipped run: %+v", got.Runs[0])
 		}
 		if got.Runs[1].Notified || got.Runs[1].FinalSummary != "" {
 			t.Fatal("followup attributed to skipped run")
 		}
 		h.d.tickSchedules(next.Add(4 * time.Minute))
-		if readTask(t, h.d, task.ID).Runs[0].NotificationCount != 1 {
+		if readTask(t, h.d, task.ID).Runs[0].NotificationCount != 2 {
 			t.Fatal("notification replay double counted")
 		}
 	}

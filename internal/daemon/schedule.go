@@ -534,6 +534,9 @@ func scheduleMode(name string) (pb.ApprovalMode, error) {
 
 func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time.Time) error {
 	spec := &t.Spec
+	if spec.Notify != "" && spec.Notify != "finish" && spec.Notify != "agent_only" {
+		return errors.New("notify must be finish or agent_only")
+	}
 	tr := &spec.Trigger
 	target := &spec.Target
 	if err := validateScheduleTitle(spec.Title); err != nil {
@@ -779,7 +782,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	for _, t := range d.tasks {
-		if t.Terminal() && t.Active == nil && t.ManualRequest == nil && d.lateRuns[t.ID] == "" && !hasPendingScheduledFollowups(t) {
+		if t.Terminal() && t.Active == nil && t.ManualRequest == nil && d.lateRuns[t.ID] == "" && !hasPendingScheduledFollowups(t) && !hasPendingFinishNotifications(t) {
 			continue
 		}
 		prev := schedule.Clone(t)
@@ -790,6 +793,9 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 			changed = d.watchScheduledRun(t, now) || changed
 		} else {
 			changed = d.reconfirmScheduledRun(t, now) || changed
+		}
+		for i := range t.Runs {
+			changed = d.finishScheduledNotification(t.ID, &t.Runs[i]) || changed
 		}
 		if t.Status == "waiting_turn" {
 			s, err := d.exact(t.AnchorSession)
@@ -878,7 +884,7 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 						t.Reason = "agent_schedule_interval_below_minimum"
 					}
 				} else {
-					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title}
+					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title, NotifyOnFinish: t.Spec.Notify != "agent_only", NotificationSessionID: scheduleNotificationSession(t)}
 					t.Status = "dispatching"
 					t.Dispatches++
 					if t.Spec.Trigger.Type == "calendar" {
@@ -921,7 +927,7 @@ func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) (bool, b
 	}
 	request := t.ManualRequest
 	t.ManualRequest = nil
-	run := schedule.Run{ID: newID(8), RequestID: request.RequestID, ScheduledAt: request.RequestedAt, StartedAt: now, Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title}
+	run := schedule.Run{ID: newID(8), RequestID: request.RequestID, ScheduledAt: request.RequestedAt, StartedAt: now, Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title, NotifyOnFinish: t.Spec.Notify != "agent_only", NotificationSessionID: scheduleNotificationSession(t)}
 	late := t.Spec.LateSeconds
 	if late == 0 {
 		late = 86400
@@ -1157,8 +1163,7 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed boo
 			run.Status = "running"
 		}
 		if notice := e.GetScheduledNotification(); notice != nil && notice.RunId == run.ID {
-			run.Notified, run.NotificationText = true, notice.Text
-			run.NotificationCount++
+			recordRunNotification(run, e)
 		}
 		if msg := e.GetAgentMessage(); msg != nil && run.MessageSeen && (run.TurnID == "" || e.TurnId == "" || e.TurnId == run.TurnID) && msg.Phase == "final_answer" {
 			run.FinalSummary = finalRunSummary(msg.Text)
@@ -1437,6 +1442,7 @@ func visibleTask(t *schedule.Task) []byte {
 	for i := range t.Runs {
 		t.Runs[i].AfterSeq = 0
 		t.Runs[i].FollowupsClosed = false
+		t.Runs[i].NotificationSeq = 0
 	}
 	b, _ := json.Marshal(t)
 	return b
@@ -1515,8 +1521,7 @@ func (d *Daemon) watchScheduledFollowup(run *schedule.Run) bool {
 			return false
 		}
 		if n := e.GetScheduledNotification(); n != nil && n.RunId == run.ID {
-			run.Notified, run.NotificationText = true, n.Text
-			run.NotificationCount++
+			recordRunNotification(run, e)
 		}
 		if m := e.GetAgentMessage(); m != nil && m.Phase == "final_answer" {
 			run.FinalSummary = finalRunSummary(m.Text)

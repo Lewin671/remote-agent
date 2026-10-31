@@ -51,6 +51,9 @@ Targets:
   new_session: "cwd", "agent" (codex/claude), "model", "effort", "mode"
     (ask/auto/full). Missing fields inherit the creating session where possible.
     New sessions cannot start in Plan mode; choose an explicit start mode then.
+"notify":"finish" (default when omitted) requests a completion notification if
+this run has no notify_user call. "notify":"agent_only" disables the fallback;
+use notify_user in the scheduled turn for selected results or exceptions.
 "late_seconds" bounds catch-up after offline/sleep; default 86400 seconds.
 Missed intervals are coalesced; executions of the same task never overlap.
 Pause/cancel stop future dispatches, not work already dispatched. Use normal

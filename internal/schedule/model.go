@@ -18,6 +18,8 @@ const MCPScopeHeader = "X-Remote-Agent-Schedule-Scope"
 
 // Spec is a complete task definition; updates replace it atomically.
 type Spec struct {
+	Notify string `json:"notify,omitempty" jsonschema:"finish (default, including when omitted): daemon notifies at completion if the agent did not; agent_only: only explicit notify_user calls notify"`
+
 	Title   string  `json:"title" jsonschema:"Short name visible in task lists"`
 	Message string  `json:"message" jsonschema:"Message to send to the Agent when triggered"`
 	Trigger Trigger `json:"trigger"`
@@ -94,6 +96,12 @@ type ManualRequest struct {
 }
 
 type Run struct {
+	// Snapshot the policy at dispatch; later edits must not change an old run.
+	NotifyOnFinish        bool   `json:"notify_on_finish,omitempty"`
+	NotificationSessionID string `json:"notification_session_id,omitempty"`
+	NotificationSeq       uint64 `json:"notification_seq,omitempty"`
+	NotificationSource    string `json:"notification_source,omitempty"` // agent, daemon, or agent_and_daemon
+
 	// Dispatch-time source for notification titles; never infer it from Spec.
 	TargetType        string `json:"target_type"`
 	TaskTitle         string `json:"task_title"`

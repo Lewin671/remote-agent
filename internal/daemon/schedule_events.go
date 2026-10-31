@@ -171,15 +171,10 @@ func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, s *session) ([]byte, err
 		if source.ID != s.scheduledRun || source.SessionID != s.meta.ID {
 			return nil, errors.New("scheduled execution source is unavailable for the notification title")
 		}
-		switch source.TargetType {
-		case "new_session":
-			in.Title = source.TaskTitle
-		case "resume_session":
-			in.Title = s.infoLocked().Title
-		default:
+		in.Title = scheduledNotificationTitle(&source, s)
+		if in.Title == "" {
 			return nil, errors.New("scheduled execution has no recorded target type for the notification title")
 		}
-		in.Title = string([]rune(in.Title)[:min(60, utf8.RuneCountInString(in.Title))])
 	}
 	e := &pb.Event{TurnId: s.turnID, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: s.scheduledTask, RunId: s.scheduledRun, Title: in.Title, Text: in.Text}}}
 	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
@@ -286,4 +281,116 @@ func (s *session) claimQueuedHumanOwnershipLocked() {
 			}
 		}
 	}
+}
+
+// Caller holds the session lock. Shared with notify_user so title rules cannot drift.
+func scheduledNotificationTitle(run *schedule.Run, s *session) string {
+	title := ""
+	switch run.TargetType {
+	case "new_session":
+		title = run.TaskTitle
+	case "resume_session":
+		title = s.infoLocked().Title
+	}
+	return string([]rune(title)[:min(60, utf8.RuneCountInString(title))])
+}
+
+func recordRunNotification(run *schedule.Run, e *pb.Event) {
+	if e.Seq <= run.NotificationSeq {
+		return
+	}
+	n := e.GetScheduledNotification()
+	run.Notified, run.NotificationText = true, n.Text
+	run.NotificationCount++
+	run.NotificationSeq = e.Seq
+	source := "agent"
+	if e.Origin.GetKind() == pb.OriginKind_ORIGIN_KIND_SYSTEM {
+		source = "daemon"
+	}
+	if run.NotificationSource != "" && run.NotificationSource != source {
+		source = "agent_and_daemon"
+	}
+	run.NotificationSource = source
+}
+
+func scheduleNotificationSession(t *schedule.Task) string {
+	if t.Spec.Target.Type == "resume_session" {
+		return t.Spec.Target.Session
+	}
+	return t.SourceSession
+}
+
+func pendingFinishNotification(run *schedule.Run) bool {
+	if !run.NotifyOnFinish || run.Notified || run.EndedAt == nil {
+		return false
+	}
+	switch run.Status {
+	case "completed", "failed", "interrupted", "cancelled":
+		return true
+	}
+	return false
+}
+func hasPendingFinishNotifications(t *schedule.Task) bool {
+	for i := range t.Runs {
+		if pendingFinishNotification(&t.Runs[i]) {
+			return true
+		}
+	}
+	return false
+}
+
+// Caller holds scheduleMu. The session log is the durable notification authority:
+// scan it under mu before appending, covering races with notify_user, retries and
+// a crash between event append and schedules.json. Never mark an append failure
+// as notified; the next tick retries through this same event/relay path.
+func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) bool {
+	if !pendingFinishNotification(run) {
+		return false
+	}
+	sid := run.SessionID
+	if sid == "" {
+		sid = run.NotificationSessionID
+	}
+	s, err := d.exact(sid)
+	if err != nil {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	before := run.NotificationSeq
+	if err := scanEventsSince(s.log, run.StartSeq, func(e *pb.Event) bool {
+		if n := e.GetScheduledNotification(); n != nil && n.TaskId == taskID && n.RunId == run.ID {
+			recordRunNotification(run, e)
+		}
+		return true
+	}); err != nil {
+		return false
+	}
+	if run.Notified {
+		return run.NotificationSeq != before
+	}
+	text := run.FinalSummary
+	switch run.Status {
+	case "failed":
+		text = "定时任务运行失败：" + run.Reason
+	case "interrupted":
+		text = "定时任务运行已中断。"
+	case "cancelled":
+		text = "定时任务运行已取消。"
+	default:
+		if text == "" {
+			text = "定时任务运行完成。"
+		}
+	}
+	text = string([]rune(text)[:min(200, utf8.RuneCountInString(text))])
+	title := scheduledNotificationTitle(run, s)
+	if title == "" {
+		return false
+	}
+	e := &pb.Event{TurnId: run.TurnID, Origin: originSystem, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: taskID, RunId: run.ID, Title: title, Text: text}}}
+	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
+		return false
+	}
+	recordRunNotification(run, e)
+	return true
 }

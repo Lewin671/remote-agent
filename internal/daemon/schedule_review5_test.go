@@ -156,7 +156,7 @@ func TestNonCompletedScheduledFollowups(t *testing.T) {
 						h.d.tickSchedules(time.Now())
 						got := readTask(t, h.d, task.ID)
 						r := got.Runs[0]
-						if r.ID != task.Active.ID || r.Status != status || !r.Notified || r.NotificationCount != i || r.NotificationText != "background result" || r.FinalSummary != "Background summary" || automaticPlan(got) != automaticPlan(before) {
+						if r.ID != task.Active.ID || r.Status != status || !r.Notified || r.NotificationCount != i+1 || r.NotificationSource != "agent_and_daemon" || r.NotificationText != "background result" || r.FinalSummary != "Background summary" || automaticPlan(got) != automaticPlan(before) {
 							t.Fatalf("background result lost or changed original outcome: %+v", got)
 						}
 						if got.Revision <= before.Revision || h.d.scheduleRevision <= revision {
@@ -165,11 +165,11 @@ func TestNonCompletedScheduledFollowups(t *testing.T) {
 						revision = h.d.scheduleRevision
 						before = got
 						h.d.tickSchedules(time.Now())
-						if h.d.scheduleRevision != revision || readTask(t, h.d, task.ID).Runs[0].NotificationCount != i {
+						if h.d.scheduleRevision != revision || readTask(t, h.d, task.ID).Runs[0].NotificationCount != i+1 {
 							t.Fatal("followup replay double counted or republished")
 						}
 						restartSession(t, h)
-						if got := readTask(t, h.d, task.ID); got.Revision != before.Revision || got.Runs[0].NotificationCount != i || got.Runs[0].FinalSummary != "Background summary" {
+						if got := readTask(t, h.d, task.ID); got.Revision != before.Revision || got.Runs[0].NotificationCount != i+1 || got.Runs[0].FinalSummary != "Background summary" {
 							t.Fatal("followup result not durable")
 						}
 					}
@@ -194,7 +194,7 @@ func TestNonCompletedScheduledFollowups(t *testing.T) {
 					}
 					h.d.tickSchedules(time.Now())
 					got := readTask(t, h.d, task.ID)
-					if !got.Runs[0].FollowupsClosed || hasPendingScheduledFollowups(got) || got.Runs[0].NotificationCount != 2 || got.Runs[0].FinalSummary != "Background summary" || got.Revision != before.Revision || h.d.scheduleRevision != revision {
+					if !got.Runs[0].FollowupsClosed || hasPendingScheduledFollowups(got) || got.Runs[0].NotificationCount != 3 || got.Runs[0].FinalSummary != "Background summary" || got.Revision != before.Revision || h.d.scheduleRevision != revision {
 						t.Fatalf("context boundary did not stop tracking: %+v", got)
 					}
 					restartSession(t, h)

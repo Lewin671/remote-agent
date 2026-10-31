@@ -9,4 +9,4 @@ const val ENVELOPE_VERSION = 1
  * with Version in the Go package internal/protocol and PROTOCOL_VERSION in web/src. It is not
  * ENVELOPE_VERSION, which stored data keeps.
  */
-const val PROTOCOL_VERSION = 11
+const val PROTOCOL_VERSION = 12
