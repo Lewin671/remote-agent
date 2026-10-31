@@ -320,3 +320,38 @@ func TestFailedPlanKeysAndUndeliveredApprovalCanRetry(t *testing.T) {
 		}
 	})
 }
+
+// A client answers a multi-question call one index at a time. The first
+// answer stays pending until the transcript records the whole call, which
+// must not block the next index, while repeating an entered index stays stale.
+func TestRemoteMultiQuestionAnswersEachIndex(t *testing.T) {
+	h := newHarness(t, Config{})
+	if err := h.s.emit(&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{
+		QuestionId: "q", Questions: []*pb.Question{{Text: "Which time zone?"}, {Text: "Which model?"}},
+	}}}); err != nil {
+		t.Fatal(err)
+	}
+	first, second := int32(0), int32(1)
+	h.term.setScreen("  \x1b[2mQuestion 1/2 (2 unanswered)\x1b[0m\n  Which time zone?\n  \x1b[1;7m› 1. Beijing\n")
+	if err := h.s.answerBy("q", []int32{1}, &first, answerRaceOrigin(h.s, remoteQuestion, "q", "first-index")); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.s.answerBy("q", []int32{1}, &first, answerRaceOrigin(h.s, remoteQuestion, "q", "repeat-first-index")); !errors.Is(err, errRemoteAnswerStale) {
+		t.Errorf("repeated first index=%v, want stale", err)
+	}
+	h.term.setScreen("  \x1b[2mQuestion 2/2 (1 unanswered)\x1b[0m\n  Which model?\n  \x1b[1;7m› 1. Opus\n")
+	if err := h.s.answerBy("q", []int32{1}, &second, answerRaceOrigin(h.s, remoteQuestion, "q", "second-index")); err != nil {
+		t.Fatalf("second index after the first: %v", err)
+	}
+	if err := h.s.answerBy("q", []int32{1}, &second, answerRaceOrigin(h.s, remoteQuestion, "q", "repeat-second-index")); !errors.Is(err, errRemoteAnswerStale) {
+		t.Errorf("repeated second index=%v, want stale", err)
+	}
+	if w := h.term.written(); len(w) != 2 {
+		t.Errorf("writes %q, want one per index", w)
+	}
+	ev := &pb.Event{Kind: &pb.Event_QuestionAnswered{QuestionAnswered: &pb.QuestionAnswered{QuestionId: "q"}}}
+	h.s.annotate([]*pb.Event{ev})
+	if o := ev.GetOrigin(); o.GetRequestId() != "second-index" {
+		t.Errorf("recorded origin %v, want the last answer", o)
+	}
+}

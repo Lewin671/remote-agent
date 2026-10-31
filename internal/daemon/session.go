@@ -143,7 +143,7 @@ type session struct {
 	// answeredBy and interruptedBy remember who answered a question or
 	// interrupted the turn through remote-agent, for the transcript
 	// record that follows.
-	answeredBy    map[string]*pb.Origin
+	answeredBy    map[string]*questionClaim
 	interruptedBy *pb.Origin
 	queue         *queueState
 	// queueLost: queue.json was there but could not be read. It may hold
@@ -214,7 +214,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		meta:         m,
 		approvals:    map[string]*approval{},
 		questions:    map[string]*pb.QuestionAsked{},
-		answeredBy:   map[string]*pb.Origin{},
+		answeredBy:   map[string]*questionClaim{},
 		unproven:     map[string]bool{},
 		wake:         make(chan struct{}, 1),
 		sessionLoops: &sessionLoops{done: make(chan struct{})},
@@ -1246,7 +1246,7 @@ func (s *session) answer(questionID string, options []int32, index *int32) error
 func (s *session) answerBy(questionID string, options []int32, index *int32, origin *pb.Origin) error {
 	s.readRollout()
 	s.mu.Lock()
-	if err := s.checkRemoteAnswer(remoteQuestion, questionID, false, origin); err != nil {
+	if err := s.checkRemoteQuestion(questionID, index, origin); err != nil {
 		s.mu.Unlock()
 		return err
 	}
@@ -1284,7 +1284,7 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 	s.readRollout()
 	s.mu.Lock()
 	q, ok := s.questions[questionID]
-	err = s.checkRemoteAnswer(remoteQuestion, questionID, false, origin)
+	err = s.checkRemoteQuestion(questionID, index, origin)
 	s.mu.Unlock()
 	if err != nil {
 		return err
@@ -1311,15 +1311,20 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 	// Known before the keys go out: the transcript may record the answer
 	// before Answer returns.
 	s.mu.Lock()
-	prev, had := s.answeredBy[questionID]
-	s.answeredBy[questionID] = origin
+	claim := s.answeredBy[questionID]
+	if claim == nil {
+		claim = &questionClaim{parts: map[int32]bool{}}
+		s.answeredBy[questionID] = claim
+	}
+	prev, part := claim.origin, claimPart(index)
+	claim.origin, claim.parts[part] = origin, true
 	s.mu.Unlock()
 	if err := s.ag.Answer(heldTerm{s.term, c, context.Background()}, q, index, options); err != nil {
 		s.mu.Lock()
-		if s.answeredBy[questionID] == origin {
-			if had {
-				s.answeredBy[questionID] = prev
-			} else {
+		if s.answeredBy[questionID] == claim && claim.origin == origin {
+			claim.origin = prev
+			delete(claim.parts, part)
+			if len(claim.parts) == 0 {
 				delete(s.answeredBy, questionID)
 			}
 		}
@@ -1327,6 +1332,31 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 		return err
 	}
 	return nil
+}
+
+// questionClaim is what this daemon has entered for a question call whose
+// answer the transcript has not recorded yet. A call that asks several
+// questions is answered one index at a time, so each index is claimed on its
+// own: entering the first answer must not block the next one.
+type questionClaim struct {
+	origin *pb.Origin     // the latest answerer
+	parts  map[int32]bool // question indexes entered; -1 for a call without index
+}
+
+func claimPart(index *int32) int32 {
+	if index == nil {
+		return -1
+	}
+	return *index
+}
+
+// claimed reports whether an answer for index is already on its way.
+func (c *questionClaim) claimed(index *int32) bool {
+	if c == nil {
+		return false
+	}
+	part := claimPart(index)
+	return c.parts[part] || c.parts[-1] || part == -1 && len(c.parts) > 0
 }
 
 // annotate records who caused parsed events, as far as the daemon knows:
@@ -1341,9 +1371,9 @@ func (s *session) annotate(evs []*pb.Event) (consume func()) {
 		switch k := e.Kind.(type) {
 		case *pb.Event_QuestionAnswered:
 			id := k.QuestionAnswered.QuestionId
-			o := s.answeredBy[id]
-			if o == nil {
-				o = originLocal
+			o := originLocal
+			if c := s.answeredBy[id]; c != nil && c.origin != nil {
+				o = c.origin
 			}
 			withOrigin(e, o)
 			done = append(done, func() { delete(s.answeredBy, id) })

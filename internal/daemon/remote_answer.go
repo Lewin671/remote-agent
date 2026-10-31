@@ -105,9 +105,6 @@ func (s *session) checkRemoteAnswer(kind remoteAnswerKind, id string, allow bool
 	case remoteApproval:
 		view = s.answerSafety.approvals[id]
 	case remoteQuestion:
-		if _, pending := s.answeredBy[id]; pending {
-			return errRemoteAnswerStale
-		}
 		view = s.answerSafety.questions[id]
 	case remotePlan:
 		if s.answerSafety.planPending {
@@ -128,6 +125,16 @@ func (s *session) checkRemoteAnswer(kind remoteAnswerKind, id string, allow bool
 		return errRemoteAnswerStale
 	}
 	return nil
+}
+
+// checkRemoteQuestion is checkRemoteAnswer for the index-th question of a
+// call (nil: the one showing), refusing an index this daemon has already
+// entered while the transcript has not recorded the answer.
+func (s *session) checkRemoteQuestion(id string, index *int32, origin *pb.Origin) error {
+	if origin.GetKind() == pb.OriginKind_ORIGIN_KIND_CLIENT && s.answeredBy[id].claimed(index) {
+		return errRemoteAnswerStale
+	}
+	return s.checkRemoteAnswer(remoteQuestion, id, false, origin)
 }
 
 var errRemoteAnswerStale = errors.New("current prompt was not verified or changed; refresh the owner snapshot")
