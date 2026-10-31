@@ -469,7 +469,9 @@ internal fun listLine(line: CharSequence): Pair<String, String>? {
 private fun isList(line: String): Boolean = listRe.matcher(line).matches()
 private fun isOrdered(line: String): Boolean = listLine(line)?.first?.get(0)?.isDigit() == true
 
-/** Splits a table row into cells, at pipes outside `code` and not escaped. */
+private val brRe = Regex("<br\\s*/?>", RegexOption.IGNORE_CASE)
+
+/** Splits a table row into cells, at pipes outside `code` and not escaped. A `<br>` outside `code` becomes a line break, since a row cannot hold one otherwise. */
 fun tableCells(line: String): List<String> {
     var s = line.trimSpace().removePrefix("|")
     // A pipe after an odd run of backslashes is escaped.
@@ -499,7 +501,13 @@ fun tableCells(line: String): List<String> {
                 cell.setLength(0)
                 i++
             }
-            else -> cell.append(s[i++])
+            else -> {
+                val br = if (s[i] == '<' && code == 0) brRe.matchAt(s, i) else null
+                if (br != null) {
+                    cell.append('\n')
+                    i = br.range.last + 1
+                } else cell.append(s[i++])
+            }
         }
     }
     cells += cell.toString().trimSpace()
@@ -1006,7 +1014,7 @@ private fun TableBlock(t: Block.Table, color: Color, bleed: Dp) {
                         null -> if (numeric[ci]) TextAlign.Right else TextAlign.Left
                     }
                     RichText(
-                        remember(cell, p) { richText(inlineSpans(cell), p) },
+                        remember(cell, p) { richLines(cell, p) },
                         (if (ri == 0) headStyle else cellStyle).copy(textAlign = align, fontFeatureSettings = if (numeric[ci]) "tnum" else null),
                     )
                 }

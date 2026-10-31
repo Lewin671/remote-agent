@@ -193,7 +193,7 @@ extension View {
     }
 }
 
-/// Inline Markdown as text. `lines` keeps the single line breaks of a paragraph; a heading or a cell has none.
+/// Inline Markdown as text. `lines` keeps the single line breaks of a paragraph or of a cell's `<br>`; a heading has none.
 struct InlineText: View, Equatable {
     let source: String
     var lines = false

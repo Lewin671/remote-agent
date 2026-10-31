@@ -211,6 +211,9 @@ func cells(_ line: Scalars) -> [String] {
         } else if c == "|", code == 0 {
             push()
             i += 1
+        } else if c == "<", code == 0, let next = brEnd(row, i, end) {
+            cell.append("\n")
+            i = next
         } else {
             cell.append(c)
             i += 1
@@ -218,6 +221,15 @@ func cells(_ line: Scalars) -> [String] {
     }
     push()
     return out
+}
+
+/// Where a `<br>`, `<br/>` or `<br />` starting at `i` ends, in any case: a row cannot hold a line break otherwise.
+private func brEnd(_ row: Scalars, _ i: Int, _ end: Int) -> Int? {
+    guard i + 3 < end, row[i + 1] == "b" || row[i + 1] == "B", row[i + 2] == "r" || row[i + 2] == "R" else { return nil }
+    var j = i + 3
+    while j < end, row[j] == " " || row[j] == "\t" { j += 1 }
+    if j < end, row[j] == "/" { j += 1 }
+    return j < end && row[j] == ">" ? j + 1 : nil
 }
 
 func blocks(_ lines: [Scalars], depth: Int) -> [MarkdownBlock] {

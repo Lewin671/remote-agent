@@ -871,6 +871,33 @@
    ]
   },
   {
+   "name": "table cells break lines at br outside code",
+   "md": "| 用法 | 例句 |\n| --- | --- |\n| 坚持要 | `She insisted.` 她坚持<br>`Let me pay.` 让我付 |\n| 写法 | a<BR/>b<br />c `x<br>y` |",
+   "want": [
+    {
+     "kind": "table",
+     "head": [
+      "用法",
+      "例句"
+     ],
+     "align": [
+      null,
+      null
+     ],
+     "rows": [
+      [
+       "坚持要",
+       "`She insisted.` 她坚持\n`Let me pay.` 让我付"
+      ],
+      [
+       "写法",
+       "a\nb\nc `x<br>y`"
+      ]
+     ]
+    }
+   ]
+  },
+  {
    "name": "mismatched separator is not a table",
    "md": "| a | b |\n| --- |\n| 1 | 2 |",
    "want": [

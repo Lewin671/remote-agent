@@ -165,7 +165,7 @@ struct TableView: View, Equatable {
             : TextSpec(
                 size: theme.tableCellSize, lineHeight: theme.tableLineHeight, color: theme.color(tone), codeSize: theme.inlineCodeSize,
                 alignment: side.text, tabular: numeric)
-        return InlineText(source: text, spec: spec, look: look)
+        return InlineText(source: text, lines: true, spec: spec, look: look)
             .equatable()
             .layoutValue(key: CellAlignment.self, value: side == .left ? 0 : side == .center ? 0.5 : 1)
             .accessibilityAddTraits(row == 0 ? .isHeader : [])

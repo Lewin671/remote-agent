@@ -6,7 +6,7 @@
 // cases in testdata/markdown, and how each element looks is
 // docs/design-system.md §7.
 
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useEffect, useMemo, useRef, useState } from "react";
 import { Box, BoxChecked, Check, ChevronDown, ChevronUp, Copy, X } from "./icons";
 import { useRowExpanded } from "./views/RowState";
 
@@ -322,7 +322,8 @@ function headingText(rest: string): string {
 }
 
 /** Splits a table row into cells, at pipes outside `code` and not
- * escaped. */
+ * escaped. A `<br>` outside `code` becomes a line break, since a row
+ * cannot hold one otherwise. */
 export function tableCells(line: string): string[] {
   let s = line.trim();
   if (s.startsWith("|")) s = s.slice(1);
@@ -334,6 +335,7 @@ export function tableCells(line: string): string[] {
   };
   if (s.endsWith("|") && !escaped(s.length - 1)) s = s.slice(0, -1);
   const cells: string[] = [];
+  const br = /<br\s*\/?>/iy;
   let cur = "";
   let code = 0;
   const ticks = new Map<number, number>();
@@ -355,6 +357,9 @@ export function tableCells(line: string): string[] {
     } else if (c === "|" && !code) {
       cells.push(cur.trim());
       cur = "";
+    } else if (c === "<" && !code && (br.lastIndex = i, br.test(s))) {
+      cur += "\n";
+      i = br.lastIndex - 1;
     } else cur += c;
   }
   cells.push(cur.trim());
@@ -539,6 +544,20 @@ function Lines({ text }: { text: string }) {
   );
 }
 
+/** A cell's text, its `<br>`s become line breaks. */
+function CellLines({ text }: { text: string }) {
+  return (
+    <>
+      {text.split("\n").map((l, i) => (
+        <Fragment key={i}>
+          {i > 0 && <br />}
+          <Rich text={l} />
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 /** Copies a code block; the icon says for a moment how it went. */
 function CopyButton({ text }: { text: string }) {
   const [state, setState] = useState<"" | "ok" | "fail">("");
@@ -631,7 +650,7 @@ function Table({ b }: { b: Extract<Block, { kind: "table" }> }) {
           <tr>
             {b.head.map((c, k) => (
               <th key={k} {...cell(k)}>
-                <div className={tableCellClass(c)}><Rich text={c} /></div>
+                <div className={tableCellClass(c)}><CellLines text={c} /></div>
               </th>
             ))}
           </tr>
@@ -641,7 +660,7 @@ function Table({ b }: { b: Extract<Block, { kind: "table" }> }) {
             <tr key={n}>
               {b.head.map((_, k) => (
                 <td key={k} {...cell(k)}>
-                  <div className={tableCellClass(r[k] ?? "")}><Rich text={r[k] ?? ""} /></div>
+                  <div className={tableCellClass(r[k] ?? "")}><CellLines text={r[k] ?? ""} /></div>
                 </td>
               ))}
             </tr>

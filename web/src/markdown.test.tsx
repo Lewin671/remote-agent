@@ -290,3 +290,7 @@ describe("a reply's elements (design-system §7)", () => {
     expect(out).toBe('<s>旧</s> 见 <a href="https://example.com/a" target="_blank" rel="noopener noreferrer nofollow">https://example.com/a</a>。');
   });
 });
+
+it("breaks a table cell's lines at <br>", () => {
+  expect(html("| a | b |\n| --- | --- |\n| x | `p` 一<br>`q` 二 |")).toContain("<code>p</code> 一<br/><code>q</code> 二");
+});
