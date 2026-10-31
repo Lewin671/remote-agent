@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 
 	"connectrpc.com/connect"
@@ -111,4 +112,15 @@ func exactScheduleMode(info *pb.Session) string {
 		return "full"
 	}
 	return ""
+}
+
+func mcpTaskAccessDenied(t *schedule.Task, scope string) error {
+	if t.Takeover != nil && t.Takeover.Session == scope {
+		via := "local command line"
+		if t.Takeover.Via == "client" {
+			via = "client"
+		}
+		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("this task is now read-only to the agent: a user operation in the %s transferred it to user management; the agent can no longer access or modify it through MCP. Ask the user to edit it in the client or use remote-agent schedule …", via))
+	}
+	return mcpScheduleDenied()
 }

@@ -51,7 +51,15 @@ type Target struct {
 
 // Task is persisted by the daemon. Pausing/canceling stops future dispatches,
 // not an execution already handed to a session's input queue.
+type Takeover struct {
+	Session string `json:"session"` // original delegated session, retained after user edits
+	Via     string `json:"via"`     // client or local
+}
+
 type Task struct {
+	Takeover    *Takeover `json:"takeover,omitempty"`
+	MCPReadOnly bool      `json:"mcp_read_only,omitempty"` // response annotation for scoped lists only
+
 	IntervalPhase    *time.Time     `json:"interval_phase,omitempty"`
 	ManualRequest    *ManualRequest `json:"manual_request,omitempty"`
 	LastCalendarDate string         `json:"last_calendar_date,omitempty"`
@@ -138,6 +146,10 @@ func cloneTime(t *time.Time) *time.Time {
 
 func Clone(t *Task) *Task {
 	out := *t
+	if t.Takeover != nil {
+		takeover := *t.Takeover
+		out.Takeover = &takeover
+	}
 	out.Spec.Trigger.At = cloneTime(t.Spec.Trigger.At)
 	out.Spec.Trigger.Until = cloneTime(t.Spec.Trigger.Until)
 	out.Spec.Trigger.Weekdays = slices.Clone(t.Spec.Trigger.Weekdays)

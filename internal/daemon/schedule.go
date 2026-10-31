@@ -210,8 +210,16 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	if q.Operation == "list" {
 		tasks := make([]*schedule.Task, 0, len(d.tasks))
 		for _, t := range d.tasks {
-			if scope != "" && (t.ScopedSession != scope || t.SourceSession != scope) {
-				continue
+			if scope != "" {
+				if t.Takeover != nil && t.Takeover.Session == scope {
+					view := schedule.Clone(t)
+					view.MCPReadOnly = true
+					tasks = append(tasks, view)
+					continue
+				}
+				if t.ScopedSession != scope || t.SourceSession != scope {
+					continue
+				}
 			}
 			tasks = append(tasks, t)
 		}
@@ -249,7 +257,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 			for _, t := range d.tasks {
 				if t.CreationKey == key {
 					if scope != "" && (t.ScopedSession != scope || t.SourceSession != scope) {
-						return nil, mcpScheduleDenied()
+						return nil, mcpTaskAccessDenied(t, scope)
 					}
 					if t.CreationHash != hash {
 						return nil, errors.New("creation key already belongs to a different task")
@@ -288,7 +296,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 		return nil, errNotFound
 	}
 	if scope != "" && (t.ScopedSession != scope || t.SourceSession != scope) {
-		return nil, mcpScheduleDenied()
+		return nil, mcpTaskAccessDenied(t, scope)
 	}
 	if q.Operation == "get" {
 		return json.Marshal(t)
@@ -441,6 +449,13 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	}
 	// A machine-level request takes an agent's task over as the user's own.
 	if scope == "" && (q.Operation == "resume" || q.Operation == "run" || q.Operation == "update") {
+		if t.ScopedSession != "" {
+			via := "local"
+			if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT {
+				via = "client"
+			}
+			t.Takeover = &schedule.Takeover{Session: t.ScopedSession, Via: via}
+		}
 		t.ScopedSession, t.ScopedMode = "", ""
 		t.Source = "local"
 		if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT {
