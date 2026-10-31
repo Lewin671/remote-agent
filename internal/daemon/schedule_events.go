@@ -171,10 +171,10 @@ func (d *Daemon) notifyScheduled(q *pb.ScheduleRequest, s *session) ([]byte, err
 		if source.ID != s.scheduledRun || source.SessionID != s.meta.ID {
 			return nil, errors.New("scheduled execution source is unavailable for the notification title")
 		}
-		in.Title = scheduledNotificationTitle(&source, s)
-		if in.Title == "" {
+		if source.TargetType != "new_session" && source.TargetType != "resume_session" {
 			return nil, errors.New("scheduled execution has no recorded target type for the notification title")
 		}
+		in.Title = scheduledNotificationTitle(&source, s)
 	}
 	e := &pb.Event{TurnId: s.turnID, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: s.scheduledTask, RunId: s.scheduledRun, Title: in.Title, Text: in.Text}}}
 	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
@@ -383,10 +383,10 @@ func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) b
 		}
 	}
 	text = string([]rune(text)[:min(200, utf8.RuneCountInString(text))])
-	title := scheduledNotificationTitle(run, s)
-	if title == "" {
+	if run.TargetType != "new_session" && run.TargetType != "resume_session" {
 		return false
 	}
+	title := scheduledNotificationTitle(run, s)
 	e := &pb.Event{TurnId: run.TurnID, Origin: originSystem, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: taskID, RunId: run.ID, Title: title, Text: text}}}
 	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
 		return false
