@@ -284,6 +284,13 @@ func TestScheduledFinishRelayRefusalUsesOnlySource(t *testing.T) {
 			task := createTask(t, h, spec, "")
 			current := h.d.tasks[task.ID]
 			current.Spec.Target.Type = "new_session"
+			// A long-lived source log has a different sequence space from
+			// the fresh execution log.
+			for i := 0; i < 5; i++ {
+				if err := h.s.emit(&pb.Event{Kind: &pb.Event_TurnContext{TurnContext: &pb.TurnContext{}}}); err != nil {
+					t.Fatal(err)
+				}
+			}
 			pending := h.d.prepareScheduledDispatches(time.Now().Add(time.Second))
 			if len(pending) != 1 {
 				t.Fatal("no reservation")
@@ -350,6 +357,11 @@ func TestScheduledFinishRelayRefusalUsesOnlySource(t *testing.T) {
 				t.Fatalf("source notices=%d want=%d", count, want)
 			}
 			if sourceAvailable {
+				folded := got
+				recordRunNotification(&folded, &pb.Event{Seq: 1, SessionId: m.ID, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: task.ID, RunId: run.ID, Text: "later agent notice"}}})
+				if folded.NotificationCount != 2 || folded.NotificationSource != "agent_and_daemon" {
+					t.Fatalf("source-log cursor swallowed a later execution notice: %+v", folded)
+				}
 				// Replaying after append-before-save must scan the source log from zero.
 				current.Runs[0] = saved
 				if err = h.d.saveSchedulesLocked(); err != nil {

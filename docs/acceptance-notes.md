@@ -1712,9 +1712,9 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 - `go test ./...` 全部通过，新增及受影响的 daemon 测试无失败。
 - MCP 接管收据使用独立的字段白名单，不返回 Spec、运行记录及内部来源。`TestMCPTakenOverTasksVisibleButReadOnly` 改写接管后的消息、目标、摘要、通知正文及会话 ID 后，检查字段集合和敏感标记均未出现在 scoped list；原有六种操作拒绝仍验证。
 - 无来源（显式 `SourceSession == ""`）或来源会话已从 daemon 删除时，完成通知保存为 undeliverable、Notified=false；`TestScheduledFinishUndeliverableStopsRetrying` 覆盖多次 tick、来源重新出现及重启后不重试。后续真实 agent 通知不会被误算为 agent_and_daemon。
-- `TestScheduledFinishRelayRefusalUsesOnlySource` 通过真实 `SessionPublicationFailed` 入口标记中继拒绝，验证执行日志不写补发，只向来源写失败通知；缺来源和来源指向被拒绝会话都标为不可投递。用执行日志的高序号和来源日志的低序号验证追加后未保存任务的重放去重。
+- `TestScheduledFinishRelayRefusalUsesOnlySource` 通过真实 `SessionPublicationFailed` 入口标记中继拒绝，验证执行日志不写补发，只向来源写失败通知；缺来源和来源指向被拒绝会话都标为不可投递。用两个日志不同的序号验证追加后未保存任务的重放去重；来源补发不推进执行日志的通知游标，后续低序号 agent 通知仍正确计数为 agent_and_daemon。
 - 只有 title/notify 变化走轻量更新。`TestTitleNotifyOnlyUpdatePreservesPlanAndTakesOver` 在五种状态、仅开关/开关加标题、本机/客户端/MCP 入口组合下，对完整响应及重载结果逐字段比较，检查排期、相位、手动请求、活动快照、历史、迟到关联与委托/接管。非法值保持原状态；原只改名回归仍通过。
-- `TestScheduledNotificationPolicySnapshot` 在派发后走真实 update 改为相反策略，排队并结束该运行，核对持久通知事件及运行结果；不以字段自己等于自己作完成判断。`python3 scripts/check-schedule-regressions.py --only leader-notify` 四项通过：改成读取当前 Spec、移除轻量路径、不标不可投递、错误使用中继拒绝的执行会话，均由断言检出。
+- `TestScheduledNotificationPolicySnapshot` 在派发后走真实 update 改为相反策略，排队并结束该运行，核对持久通知事件及运行结果；不以字段自己等于自己作完成判断。`python3 scripts/check-schedule-regressions.py --only leader-notify` 五项通过：改成读取当前 Spec、移除轻量路径、不标不可投递、错误使用中继拒绝的执行会话、把来源日志序号写入执行日志游标，均由断言检出。
 - 网页：`pnpm --dir web typecheck` 和 `pnpm --dir web exec vitest run --maxWorkers=4` 通过（90 文件、1,272 项），包含运行中开关可用、离线禁用、完整定义提交以及 undeliverable 文案。
 - Android：`./gradlew :core:test --tests '*SchedulesTest' :app:testDebugUnitTest --tests '*Schedule*' --no-daemon` 通过，core 28 项、App 56 项；活动执行状态下实际点击开关并检查提交值及修订号。未运行或修改本次范围以外的非定时安全测试。
 - iOS：`swift test --package-path ios/RemoteAgentCore --jobs 4 --filter 'Schedule|VersionTests'` 通过，33 项。模拟器以同一独立 DerivedData 构建并运行 ScheduleStoreTests（20 项），随后 `xcodebuild … test-without-building -only-testing:RemoteAgentTests/ScheduleAlignmentTests -only-testing:RemoteAgentTests/ScheduleJumpObserverTests`（13 项）通过，xcresult 均为 Passed；原生 App 仍未验证真机和推送送达。

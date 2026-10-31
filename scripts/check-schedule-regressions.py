@@ -415,7 +415,7 @@ fi("dst-default-cutoff-first-occurrence", "RemoteAgentCore/Sources/RACore/Schedu
 go("schedule-notify-fallback", "internal/daemon/schedule_events.go", "func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) bool {", "func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) bool { return false;", "TestScheduledFinishNotification")
 go("schedule-notify-opt-out", "internal/daemon/schedule_events.go", 'if !run.NotifyOnFinish || run.Notified || run.NotificationSource == "undeliverable" || run.EndedAt == nil {', 'if run.Notified || run.NotificationSource == "undeliverable" || run.EndedAt == nil {', "TestScheduledFinishNotification")
 go("schedule-notify-failure-body", "internal/daemon/schedule_events.go", 'text = "定时任务运行失败：" + run.Reason', 'text = "定时任务运行完成。"', "TestScheduledFinishNotification")
-go("schedule-notify-event-authority", "internal/daemon/schedule_events.go", "if run.Notified {\n\t\treturn run.NotificationSeq != before", "if false && run.Notified {\n\t\treturn run.NotificationSeq != before", "TestScheduledFinishRetryUsesDurableEventAsAuthority")
+go("schedule-notify-event-authority", "internal/daemon/schedule_events.go", "if run.Notified {\n\t\treturn true", "if false && run.Notified {\n\t\treturn true", "TestScheduledFinishRetryUsesDurableEventAsAuthority")
 go("schedule-notify-policy", "internal/daemon/schedule.go", 'NotifyOnFinish: t.Spec.Notify != "agent_only"', 'NotifyOnFinish: false', "TestScheduledNotificationPolicySnapshot")
 go("schedule-notify-takeover-list", "internal/daemon/schedule.go", 'if t.Takeover != nil && t.Takeover.Session == scope {', 'if false && t.Takeover != nil && t.Takeover.Session == scope {', "TestMCPTakenOverTasksVisibleButReadOnly")
 go("schedule-notify-takeover-error", "internal/daemon/schedule_security.go", 'if t.Takeover != nil && t.Takeover.Session == scope {', 'if false && t.Takeover != nil && t.Takeover.Session == scope {', "TestMCPTakenOverTasksVisibleButReadOnly")
@@ -425,6 +425,8 @@ go("leader-notify-snapshot-consumption", "internal/daemon/schedule_events.go", "
 go("leader-notify-light-update", "internal/daemon/schedule.go", 'if onlyScheduleTitleOrNotifyChanged(t.Spec, updateSpec) {', 'if false && onlyScheduleTitleOrNotifyChanged(t.Spec, updateSpec) {', "TestTitleNotifyOnlyUpdatePreservesPlanAndTakesOver")
 go("leader-notify-undeliverable", "internal/daemon/schedule_events.go", 'run.NotificationSource = "undeliverable"', 'run.NotificationSource = ""', "TestScheduledFinishUndeliverableStopsRetrying")
 go("leader-notify-relay-route", "internal/daemon/schedule_events.go", 'if sid == "" || run.Reason == "relay_session_limit" {', 'if sid == "" {', "TestScheduledFinishRelayRefusalUsesOnlySource")
+
+go("leader-notify-source-cursor", "internal/daemon/schedule_events.go", 'run.NotificationSource = "daemon"', 'run.NotificationSource = "daemon"; run.NotificationSeq = e.Seq', "TestScheduledFinishRelayRefusalUsesOnlySource")
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

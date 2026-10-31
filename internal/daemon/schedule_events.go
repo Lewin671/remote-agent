@@ -367,17 +367,27 @@ func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) b
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	before := run.NotificationSeq
+	record := func(e *pb.Event) {
+		if sid == run.SessionID {
+			recordRunNotification(run, e)
+		} else if !run.Notified {
+			// Source-log sequence numbers must not advance the execution-log
+			// cursor, or a later agent notice in that log could be discarded.
+			run.Notified, run.NotificationText = true, e.GetScheduledNotification().Text
+			run.NotificationCount++
+			run.NotificationSource = "daemon"
+		}
+	}
 	if err := scanEventsSince(s.log, scanAfter, func(e *pb.Event) bool {
 		if n := e.GetScheduledNotification(); n != nil && n.TaskId == taskID && n.RunId == run.ID {
-			recordRunNotification(run, e)
+			record(e)
 		}
 		return true
 	}); err != nil {
 		return false
 	}
 	if run.Notified {
-		return run.NotificationSeq != before
+		return true
 	}
 	text := run.FinalSummary
 	switch run.Status {
@@ -401,6 +411,6 @@ func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) b
 	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
 		return false
 	}
-	recordRunNotification(run, e)
+	record(e)
 	return true
 }
