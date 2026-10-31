@@ -266,3 +266,26 @@ export function fromHere<A extends unknown[]>(then: (...args: A) => void): (...a
     if (location.hash === here) then(...args);
   };
 }
+
+export function Switch({
+  on,
+  disabled,
+  onChange,
+  label,
+}: {
+  on: boolean;
+  disabled?: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      className={"sw" + (on ? "" : " off")}
+      disabled={disabled}
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={() => onChange(!on)}
+    />
+  );
+}

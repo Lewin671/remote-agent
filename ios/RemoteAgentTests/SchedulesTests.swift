@@ -13,7 +13,9 @@ import UIKit
         draft.config = NewConfig(machineId: "m", cwd: "/example", agent: .claude, mode: .auto)
         draft.message = "\n每日检查：\n1. 检查构建。\n2. 汇报结果。"
         let spec = try #require(draft.spec(session: nil, state: state()))
-        #expect(spec.title == "每日检查" && spec.message == draft.message)
+        #expect(spec.title == "每日检查" && spec.message == draft.message && spec.notifyOnFinish)
+        draft.notifyFinish = false
+        #expect(draft.spec(session: nil, state: state())?.notify == "agent_only")
         draft.message = String(repeating: "中", count: 10923)
         #expect(draft.spec(session: nil, state: state()) == nil)
     }

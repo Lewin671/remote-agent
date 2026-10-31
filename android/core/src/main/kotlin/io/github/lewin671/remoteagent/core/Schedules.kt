@@ -20,6 +20,7 @@ data class ScheduledTask(val machine: String, val json: JsonObject) {
     val target get() = spec.obj("target")
     val title get() = spec.text("title")
     val message get() = spec.text("message")
+    val notifyOnFinish get() = spec.text("notify") != "agent_only"
     val status get() = json.text("status")
     val reason get() = json.text("reason")
     val next get() = scheduleInstant(json.text("next_run_at"))
@@ -33,6 +34,7 @@ data class ScheduledRun(val json: JsonObject) {
     val seq get() = (json.long("start_seq").takeIf { it > 0 } ?: json.long("after_seq")) + 1
     val time get() = scheduleInstant(json.text("started_at")) ?: scheduleInstant(json.text("scheduled_at")) ?: Instant.EPOCH
     val status get() = json.text("status")
+    val notificationSource get() = when (json.text("notification_source")) { "agent" -> "agent 通知"; "daemon" -> "完成后通知"; "agent_and_daemon" -> "agent 通知、完成后通知"; else -> "" }
     val notified get() = (json["notified"] as? JsonPrimitive)?.booleanOrNull == true
     val summary get() = if (status in stoppedScheduleRuns) scheduleReason(json.text("reason")) else json.text("notification_text").ifEmpty { json.text("final_summary") }.ifEmpty { json.text("reason").takeIf { it.isNotEmpty() }?.let(::scheduleReason).orEmpty() }
     val foldedSummary get() = json.text("final_summary").ifBlank { "没有通知" }

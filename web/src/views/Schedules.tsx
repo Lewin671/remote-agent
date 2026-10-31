@@ -13,6 +13,7 @@ import {
 } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
 import {
+  Switch,
   Alert,
   fromHere,
   Banner,
@@ -42,6 +43,7 @@ import {
   oneShot,
   reasonText,
   runResult,
+  notificationSource,
   taskGroup,
   taskRoute,
   taskTone,
@@ -513,7 +515,7 @@ export function ScheduleDetail({
   const [editBase, setEditBase] = useState<ScheduleTask>();
   const m = remote.machines.get(machineId);
   const online = !!m?.online && remote.conn === "online";
-  const perform = async (operation: string, spec?: ScheduleSpec) => {
+  const perform = async (operation: string, spec?: ScheduleSpec, base?: ScheduleTask) => {
     if (!task || busy) return;
     const navigate = fromHere(go);
     setBusy(true);
@@ -523,7 +525,7 @@ export function ScheduleDetail({
       await remote.changeSchedule(machineId, id, {
         operation,
         taskId: id,
-        revision: (spec ? editBase : task)?.revision ?? task.revision,
+        revision: (spec ? base ?? editBase : task)?.revision ?? task.revision,
         spec,
       });
       setEdit("");
@@ -583,7 +585,7 @@ export function ScheduleDetail({
       onClick={() => openRun(r)}
     >
       <span>
-        {dateTime(r.started_at, now)} · {runResult(r)}
+        {dateTime(r.started_at, now)} · {runResult(r)}{notificationSource(r) && ` · ${notificationSource(r)}`}
         {r.manual ? " · 手动" : ""}
         <small>{runSummary(r)}</small>
       </span>
@@ -652,6 +654,7 @@ export function ScheduleDetail({
             上次操作结果还没有确认。请核对任务与记录，重试会使用同一个请求。
           </Banner>
         )}
+        <div className="grp"><Field name="完成后通知" value={<Switch label="完成后通知" on={task.spec.notify !== "agent_only"} disabled={!online || busy || !!task.active_run || !!pending?.frozen} onChange={on => void perform("update", { ...task.spec, notify: on ? "finish" : "agent_only" }, task)} />} /></div>
         <section className="schedule-description">
           <div className="schedule-description-head"><span>让 agent 做什么</span><button disabled={!online || busy || !!task.active_run || !!pending?.frozen} onClick={() => { setEditBase(task); setEdit("message"); }}>编辑{online && !busy && !task.active_run && !pending?.frozen && <ChevronRight />}</button></div>
           <ScheduleText key={task.spec.message} text={task.spec.message} />
@@ -1099,7 +1102,7 @@ function TaskTargetEditor({
 
 const scheduleDrafts = new WeakMap<
   Remote,
-  Map<string, { project: string; name: string; trigger: ScheduleTrigger }>
+  Map<string, { project: string; name: string; trigger: ScheduleTrigger; notifyFinish?: boolean }>
 >();
 export function ScheduleCreate({
   remote,
@@ -1124,7 +1127,7 @@ export function ScheduleCreate({
     scheduleDrafts.get(remote) ??
     new Map<
       string,
-      { project: string; name: string; trigger: ScheduleTrigger }
+      { project: string; name: string; trigger: ScheduleTrigger; notifyFinish?: boolean }
     >();
   scheduleDrafts.set(remote, drafts);
   const [draft] = useState(() => {
@@ -1154,6 +1157,8 @@ export function ScheduleCreate({
   const [choosing, setChoosing] = useState(false);
   // A request and its stable creation key survive route changes in Remote.
   const [message, setMessage] = useState(remote.drafts.get(draftKey) ?? "");
+  const [notifyFinish, pickNotifyFinish] = useState(draft.notifyFinish ?? true);
+  const setNotifyFinish = (on: boolean) => { draft.notifyFinish = on; pickNotifyFinish(on); };
   const [trigger, pickTrigger] = useState<ScheduleTrigger>(draft.trigger);
   const setTrigger = (t: ScheduleTrigger) => {
     draft.trigger = t;
@@ -1190,6 +1195,7 @@ export function ScheduleCreate({
           value={timingText(trigger)}
           onClick={() => setTiming(true)}
         />
+        <Field name="完成后通知" value={<Switch label="完成后通知" on={notifyFinish} onChange={setNotifyFinish} />} />
         {!session && (
           <Field
             name="项目"
@@ -1214,6 +1220,7 @@ export function ScheduleCreate({
           name={name}
           message={message}
           trigger={trigger}
+          notifyFinish={notifyFinish}
           session={session}
           onDone={(machineId, task) => {
             remote.drafts.delete(draftKey);
@@ -1253,6 +1260,7 @@ function ScheduleCreateConfig({
   name,
   message,
   trigger,
+  notifyFinish,
   session,
   onDone,
 }: {
@@ -1261,6 +1269,7 @@ function ScheduleCreateConfig({
   name: string;
   message: string;
   trigger: ScheduleTrigger;
+  notifyFinish: boolean;
   session?: SessionView;
   onDone: (machineId: string, t: ScheduleTask) => void;
 }) {
@@ -1288,6 +1297,7 @@ function ScheduleCreateConfig({
     const spec: ScheduleSpec = {
       title: taskName(name, message),
       message: message.trim(),
+      notify: notifyFinish ? "finish" : "agent_only",
       trigger,
       target: session
         ? { type: "resume_session", session: session.id }
@@ -1406,7 +1416,7 @@ function ScheduleCreateConfig({
         {session
           ? "消息会发到当前对话，等待正在运行的一轮结束。"
           : "每次运行新开一个对话，归在这个任务下面，不进会话列表。"}
-        Agent 觉得值得说的时候才通知你。
+        完成后默认通知；关闭后仅由 agent 主动通知。
       </p>
       <div className="pad">
         <button

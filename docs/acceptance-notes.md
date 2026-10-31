@@ -1673,7 +1673,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 定时任务：三端按 client-v52 改版（2026-10-30）
 
-产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v52 · 定时任务](design/client-v52.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
+产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v52 · 定时任务](design/client-v53.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
 
 | 检查 | 结果 |
 |---|---|

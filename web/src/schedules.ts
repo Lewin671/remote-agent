@@ -31,6 +31,7 @@ export interface ScheduleTarget {
   mode?: string;
 }
 export interface ScheduleSpec {
+  notify?: "finish" | "agent_only";
   title: string;
   message: string;
   trigger: ScheduleTrigger;
@@ -51,6 +52,7 @@ export interface ScheduleRun {
   notified: boolean;
   notification_text?: string;
   notification_count?: number;
+  notification_source?: "agent" | "daemon" | "agent_and_daemon";
   final_summary?: string;
   manual?: boolean;
 }
@@ -268,6 +270,9 @@ const stoppedRunLabels: Record<string, string> = {
   skipped: "跳过",
   cancelled: "已取消",
 };
+export function notificationSource(r: ScheduleRun): string {
+  return ({ agent: "agent 通知", daemon: "完成后通知", agent_and_daemon: "agent 通知、完成后通知" } as Record<string, string>)[r.notification_source ?? ""] ?? "";
+}
 export function runResult(r: ScheduleRun): string {
   if (stoppedRunLabels[r.status]) return stoppedRunLabels[r.status];
   if (r.notified) return "通知了你";

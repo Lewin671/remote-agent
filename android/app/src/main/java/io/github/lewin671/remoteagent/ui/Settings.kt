@@ -96,12 +96,12 @@ fun Sw(on: Boolean) {
 
 /** A row with a switch; [sub] explains it under the title. */
 @Composable
-fun ToggleRow(title: String, sub: String, value: Boolean, onChange: (Boolean) -> Unit) {
+fun ToggleRow(title: String, sub: String, value: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
     val p = pal
     Row(
         Modifier.fillMaxWidth()
             .heightIn(min = 44.dp)
-            .clickable { onChange(!value) }
+            .clickable(enabled = enabled) { onChange(!value) }
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),

@@ -7,6 +7,7 @@ import SwiftUI
 final class ScheduleDraft {
     var name = ""
     var message = ""
+    var notifyFinish = true
     var trigger: ScheduleTrigger
     var config: NewConfig?
     private(set) var creationKey = UUID().uuidString
@@ -40,7 +41,9 @@ final class ScheduleDraft {
         } else { return nil }
         let title = scheduleTitle(name, message: message)
         guard scheduleMessageValid(message), !title.isEmpty else { return nil }
-        return ScheduleSpec(title: title, message: message, trigger: trigger, target: target)
+        var spec = ScheduleSpec(title: title, message: message, trigger: trigger, target: target)
+        spec.notifyOnFinish = notifyFinish
+        return spec
     }
 }
 @MainActor final class ScheduleDrafts {
@@ -78,6 +81,7 @@ struct NewScheduleScreen: View {
                             InputField("任务名", text: Bindable(draft).name, placeholder: draft.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "留空就用消息的第一句" : "留空会用：" + scheduleTitle("", message: draft.message)).onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
                         }.padding(16).disabled(draft.mutation.frozen)
                         GroupCard {
+                            ToggleRow("完成后通知", isOn: Bindable(draft).notifyFinish)
                             GRow("什么时候", value: scheduleFrequency(draft.trigger, includeZone: true), chevron: true) { timing = true }
                             if sessionID.isEmpty {
                                 GRow("项目", value: draft.config.map { projectName($0.cwd) } ?? "选择项目", chevron: true) { picker = .project }
@@ -91,7 +95,7 @@ struct NewScheduleScreen: View {
                         if !machine.isEmpty && supported && !context.schedules.online(machine) { Hint("电脑不在线，连上后才能创建任务。").padding(.horizontal, 16) }
                         if let issue = draft.creationIssue(session: session, state: state) { Hint(issue, color: Theme.orangeInk).padding(.horizontal, 16) }
                         if !sessionID.isEmpty && draft.trigger.type == "interval" { Hint(scheduleIntervalHint).padding(.horizontal, 16) }
-                        if sessionID.isEmpty { Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。").padding(.horizontal, 16) }
+                        if sessionID.isEmpty { Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。").padding(.horizontal, 16) }
                         if !draft.mutation.error.isEmpty { Banner(draft.mutation.error, tone: .error).padding(16) }
                         if draft.mutation.frozen {
                             TextAction("放弃原请求", enabled: !draft.mutation.running) { draft.mutation.abandon() }.padding(.horizontal, 16)

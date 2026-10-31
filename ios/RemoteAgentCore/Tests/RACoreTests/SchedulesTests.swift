@@ -348,3 +348,18 @@ import RAProto
         }
     }
 }
+
+@Suite struct ScheduleCompletionNotificationTests {
+    @Test func completionPolicyDefaultsOnAndRoundTripsOptOut() throws {
+        let raw = Data(#"{"title":"Check","message":"Look","trigger":{"type":"interval","interval_seconds":3600},"target":{"type":"new_session"}}"#.utf8)
+        var spec = try JSONDecoder().decode(ScheduleSpec.self, from: raw)
+        #expect(spec.notifyOnFinish)
+        spec.notifyOnFinish = false
+        spec.title = "Renamed"
+        let decoded = try JSONDecoder().decode(ScheduleSpec.self, from: JSONEncoder().encode(spec))
+        #expect(decoded.notify == "agent_only" && !decoded.notifyOnFinish)
+        var run = ScheduleRun(id: "r", startedAt: "", status: "completed", notified: true)
+        run.notificationSource = "daemon"
+        #expect(run.notificationLabel == "完成后通知")
+    }
+}

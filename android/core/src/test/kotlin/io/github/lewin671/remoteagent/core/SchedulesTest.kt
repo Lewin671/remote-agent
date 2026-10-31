@@ -11,6 +11,15 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SchedulesTest {
+    @Test fun completionNotificationDefaultsOnAndSurvivesEdits() {
+        val original = task()
+        assertTrue(original.notifyOnFinish)
+        val off = ScheduledTask("computer", JsonObject(original.json + ("spec" to JsonObject(original.spec + ("notify" to JsonPrimitive("agent_only"))))))
+        assertFalse(off.notifyOnFinish)
+        assertEquals("agent_only", renamedScheduleSpec(off, "Renamed")!!.text("notify"))
+        val run = ScheduledRun(buildJsonObject { put("notification_source", "daemon"); put("notified", true) })
+        assertEquals("完成后通知", run.notificationSource)
+    }
     private val now = Instant.parse("2026-10-24T14:00:00Z")
     private val utc = ZoneId.of("UTC")
     private fun task(status: String = "scheduled", reason: String = "", runs: String = "[]") = ScheduledTask("computer", Json.parseToJsonElement("""{"id":"task","revision":3,"status":"$status","reason":"$reason","next_run_at":"2026-10-25T08:00:00Z","spec":{"title":"Check","message":"Look","trigger":{"type":"interval","interval_seconds":3600},"target":{"type":"new_session"}},"runs":$runs}""").jsonObject)

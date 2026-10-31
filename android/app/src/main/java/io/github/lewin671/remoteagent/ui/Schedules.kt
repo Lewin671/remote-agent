@@ -167,6 +167,9 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                 if (!targetMissing) Btn(if (onceFailed) "立即额外执行" else "恢复", { recover() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), BtnKind.PRIMARY, enabled)
             }
             Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                ToggleRow("完成后通知", "", task.notifyOnFinish, enabled = definitionEnabled, onChange = { on -> if (definitionEnabled) { editBase = task; operate("update", JsonObject(task.spec + ("notify" to JsonPrimitive(if (on) "finish" else "agent_only")))) } })
+            }
+            Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Column {
                     Row(Modifier.fillMaxWidth().bottomLine(pal.line).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("让 agent 做什么", Modifier.weight(1f), style = T.body, color = pal.fg)
@@ -297,7 +300,7 @@ private fun ScheduleRunGroup(group: RunGroup, now: Instant, open: (ScheduledRun)
     group.runs.forEach { run ->
         Column(Modifier.fillMaxWidth().then(if (run.session.isNotEmpty()) Modifier.clickable { open(run) } else Modifier).bottomLine(pal.line)) {
             GRow(
-                "${scheduleWhen(run.time, now)} · ${runResult(run)}" + if (run.json["manual"]?.jsonPrimitive?.booleanOrNull == true) " · 手动" else "",
+                "${scheduleWhen(run.time, now)} · ${runResult(run)}" + run.notificationSource.takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty() + if (run.json["manual"]?.jsonPrimitive?.booleanOrNull == true) " · 手动" else "",
                 chevron = run.session.isNotEmpty(), danger = run.status == "failed", singleLineValue = true,
             )
             val summary = run.summary.ifEmpty { run.json.text("reason").takeIf { it.isNotEmpty() }?.let(::scheduleReason).orEmpty() }
@@ -352,6 +355,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
     val current = session.isNotEmpty()
     var title by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var notifyFinish by rememberSaveable { mutableStateOf(true) }
     var project by remember { mutableStateOf("") }
     var config by remember { mutableStateOf<NewConfig?>(null) }
     var pickProject by remember { mutableStateOf(false) }
@@ -382,6 +386,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
             if (message.toByteArray(Charsets.UTF_8).size > SCHEDULE_MESSAGE_MAX_BYTES) Hint("太长了，最多 32 KB")
             FieldLabel("任务名")
             ReasonField(title, { if (editable) title = scheduleNameInput(it) }, if (message.isBlank()) "留空就用消息的第一句" else "留空会用：${scheduleName("", message)}", singleLine = true)
+            ToggleRow("完成后通知", "", notifyFinish, enabled = editable) { notifyFinish = it }
             ScheduleSetting("什么时候", scheduleTiming(trigger), editable) { timeOpen = true }
             if (!current) {
                 ScheduleSetting("项目", project.takeIf { it.isNotEmpty() }?.let(::projectName) ?: "选择项目", editable) { pickProject = true }
@@ -392,7 +397,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
                     val model = listOf(cfg.model.ifEmpty { "默认模型" }, cfg.effort).filter { it.isNotEmpty() }.joinToString(" · ")
                     ScheduleSetting(if (state.machines.size > 1) "机器和模型" else "模型", if (state.machines.size > 1) "${machineLabel(state, cfg.machineId)} · $model" else model, editable) { settings = if (state.machines.size > 1) "" else "model" }
                 }
-                Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。")
+                Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。")
                 if (machine == null && state.machines.values.any { !scheduleSupported(it) }) Hint("电脑需要更新 remote-agent，才能创建定时任务。")
             } else Hint("消息等当前这一轮结束后再发，不会打断正在做的事。")
             val plan = schedulePlanBlocked(current,cfg,state)
@@ -402,7 +407,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
             Btn(if (busy) "创建中…" else if (frozen != null) "重试创建" else "创建", {
                 if (!ready) return@Btn
                 val spec = frozen?.let { Json.parseToJsonElement(it).jsonObject } ?: taskSpec(scheduleName(title, message), message, trigger,
-                    if (current) buildJsonObject { put("type", "resume_session"); put("session", session) } else scheduleTarget(resolvedScheduleConfig(cfg!!, state))).also { frozen = it.toString() }
+                    if (current) buildJsonObject { put("type", "resume_session"); put("session", session) } else scheduleTarget(resolvedScheduleConfig(cfg!!, state))).let { JsonObject(it + ("notify" to JsonPrimitive(if (notifyFinish) "finish" else "agent_only"))) }.also { frozen = it.toString() }
                 busy = true; error = ""
                 scope.launch(Dispatchers.Main.immediate) {
                     try {

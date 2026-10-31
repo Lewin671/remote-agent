@@ -2,8 +2,8 @@
 import { expect, it } from "vitest";
 const fs = "node:fs";
 const { readFileSync } = (await import(/* @vite-ignore */ fs)) as { readFileSync(path: string, enc: string): string };
-it("keeps the v52 schedule examples consistent with status and date wording", () => {
-  const doc = new DOMParser().parseFromString(readFileSync("../docs/design/client-v52.html", "utf8"), "text/html");
+it("keeps the v53 schedule examples consistent with status and date wording", () => {
+  const doc = new DOMParser().parseFromString(readFileSync("../docs/design/client-v53.html", "utf8"), "text/html");
   const chapter = doc.querySelector("#schedules")!;
   const create = doc.querySelector("#schedule-create")!.nextElementSibling!;
   expect([...create.querySelectorAll(".phone .tfield > span:first-child")].map(e => e.textContent)).toContain("模型");

@@ -156,6 +156,9 @@ struct ScheduleDetailScreen: View {
                     .padding(.horizontal, 16).padding(.vertical, 12)
             }
             GroupCard {
+                ToggleRow("完成后通知", isOn: Binding(get: { task.spec.notifyOnFinish }, set: { on in var spec = task.spec; spec.notifyOnFinish = on; update(task, spec: spec) })).disabled(!mutable)
+            }.padding(.top, 16)
+            GroupCard {
                 GRow("让 agent 做什么", value: "编辑", chevron: mutable, valueColor: mutable ? Theme.blue : Theme.muted, onTap: mutable ? { editor.open(task); message = true } : nil)
                 ScheduleMessageText(text: task.spec.message).padding(14)
             }.padding(.top, 16)
@@ -229,7 +232,7 @@ struct ScheduleDetailScreen: View {
     }
     private func record(_ run: ScheduleRun, task: ScheduleTask) -> some View {
         let sid = run.sessionID ?? ""
-        return GRow(scheduleMoment(run.date) + " · " + run.result + (run.manual == true ? " · 手动" : ""), sub: run.detail, chevron: !sid.isEmpty, danger: run.status == "failed", onTap: sid.isEmpty ? nil : {
+        return GRow(scheduleMoment(run.date) + " · " + run.result + (run.notificationLabel.isEmpty ? "" : " · " + run.notificationLabel) + (run.manual == true ? " · 手动" : ""), sub: run.detail, chevron: !sid.isEmpty, danger: run.status == "failed", onTap: sid.isEmpty ? nil : {
             open(run)
         })
     }

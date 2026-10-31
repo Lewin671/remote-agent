@@ -1,3 +1,4 @@
+import { Switch } from "../ui";
 import { useEffect, useState } from "react";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import type {
@@ -671,29 +672,6 @@ function ClockBanner({ remote }: { remote: Remote }) {
     <div className="pad">
       <Banner kind="warn">{remote.clockWarning}</Banner>
     </div>
-  );
-}
-
-function Switch({
-  on,
-  disabled,
-  onChange,
-  label,
-}: {
-  on: boolean;
-  disabled?: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      className={"sw" + (on ? "" : " off")}
-      disabled={disabled}
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={() => onChange(!on)}
-    />
   );
 }
 

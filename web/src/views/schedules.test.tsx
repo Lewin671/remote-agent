@@ -517,7 +517,7 @@ it("keeps timezone inside the timing sheet and appends only foreign zones to its
     [...host.querySelectorAll(".grp > .schedule-field > span:first-child")].map(
       (el) => el.textContent,
     ),
-  ).toEqual(["什么时候", "在哪运行", "权限", "任务名"]);
+  ).toEqual(["完成后通知", "什么时候", "在哪运行", "权限", "任务名"]);
   expect(button(/^什么时候/)?.textContent).toBe("什么时候每天 09:49");
   const zone = local === "UTC" ? "America/Los_Angeles" : "UTC";
   await act(async () => {
@@ -700,7 +700,7 @@ it("uses the shared new-task explanation in the actual creation page", async () 
   // is the same whichever project comes first.
   for (const m of r.machines.values()) if (m.meta) m.meta.agents = r.machines.get("mac")!.meta!.agents;
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
-  expect(host.querySelector(".manage-hint")?.textContent).toBe("每次运行新开一个对话，归在这个任务下面，不进会话列表。Agent 觉得值得说的时候才通知你。");
+  expect(host.querySelector(".manage-hint")?.textContent).toBe("每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。");
 });
 
 it("defaults dual limits to count and preserves the deadline when only the zone changes",async()=>{
@@ -1004,4 +1004,25 @@ it("preserves other failure banner wording", async () => {
   const t = task({status:"failed",reason:"relay_session_limit"});
   await mount(<ScheduleDetail remote={remote([t])} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
   expect(host.querySelector(".banner.warn")?.textContent).toBe("中继上的会话数已满。恢复或重新安排后从下一次自动时间开始，不重发上次消息。");
+});
+
+it("defaults completion notifications on, submits opt-out, and edits the full snapshot", async () => {
+  const r = remote([]);
+  const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(task());
+  await mount(<ScheduleCreate remote={r} session={r.sessions.get("s-idle")!} go={()=>{}} onBack={()=>{}} />);
+  const toggle = host.querySelector<HTMLButtonElement>('[role="switch"][aria-label="完成后通知"]')!;
+  expect(toggle.getAttribute("aria-checked")).toBe("true");
+  await act(async () => toggle.click());
+  await input(host.querySelector("textarea")!, "检查完成通知");
+  await click("创建");
+  expect(write.mock.calls[0][2].spec?.notify).toBe("agent_only");
+  await act(async () => root!.unmount()); root = undefined; host.remove();
+  const original = task({ spec: { ...task().spec, notify: "agent_only", late_seconds: 123 } });
+  r.schedules.set("mac", { tasks: [original], revision: 1n, loading: false, error: "" });
+  write.mockClear();
+  await mount(<ScheduleDetail remote={r} machineId="mac" id={original.id} go={()=>{}} onBack={()=>{}} />);
+  const edit = host.querySelector<HTMLButtonElement>('[role="switch"][aria-label="完成后通知"]')!;
+  expect(edit.getAttribute("aria-checked")).toBe("false");
+  await act(async () => edit.click());
+  expect(write.mock.calls[0][2].spec).toEqual({ ...original.spec, notify: "finish" });
 });

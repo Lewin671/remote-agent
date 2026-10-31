@@ -8,7 +8,12 @@ public struct ScheduleSpec: Codable, Equatable, Sendable {
     public var trigger: ScheduleTrigger
     public var target: ScheduleTarget
     public var lateSeconds: Int64?
-    enum CodingKeys: String, CodingKey { case title, message, trigger, target; case lateSeconds = "late_seconds" }
+    public var notify: String?
+    public var notifyOnFinish: Bool {
+        get { notify != "agent_only" }
+        set { notify = newValue ? "finish" : "agent_only" }
+    }
+    enum CodingKeys: String, CodingKey { case title, message, trigger, target, notify; case lateSeconds = "late_seconds" }
     public init(title: String, message: String, trigger: ScheduleTrigger, target: ScheduleTarget) {
         self.title = title; self.message = message; self.trigger = trigger; self.target = target
     }
@@ -49,6 +54,7 @@ public struct ScheduleRun: Codable, Equatable, Sendable, Identifiable {
     public var manual: Bool?
     public var notified: Bool
     public var notificationText: String?
+    public var notificationSource: String?
     public var finalSummary: String?
     public var startSeq: UInt64
     public var afterSeq: UInt64
@@ -56,6 +62,7 @@ public struct ScheduleRun: Codable, Equatable, Sendable, Identifiable {
     public var firstSeq: UInt64 { (startSeq == 0 ? afterSeq : startSeq) + 1 }
     enum CodingKeys: String, CodingKey {
         case id, status, reason, manual, notified
+        case notificationSource = "notification_source"
         case sessionID = "session_id", startedAt = "started_at", notificationText = "notification_text", finalSummary = "final_summary"
         case startSeq = "start_seq", afterSeq = "after_seq", inputPaused = "input_paused"
     }
@@ -66,6 +73,9 @@ public struct ScheduleRun: Codable, Equatable, Sendable, Identifiable {
     public var date: Date { scheduleDate(startedAt) ?? .distantPast }
     public var silent: Bool { status == "completed" && !notified && inputPaused != true }
     public var foldedSummary: String { (finalSummary ?? "").isEmpty ? "没有通知" : finalSummary! }
+    public var notificationLabel: String {
+        switch notificationSource { case "agent": "agent 通知"; case "daemon": "完成后通知"; case "agent_and_daemon": "agent 通知、完成后通知"; default: "" }
+    }
     public var result: String {
         if notified && !["failed", "skipped", "uncertain", "interrupted", "cancelled"].contains(status) { return "通知了你" }
         switch status {
