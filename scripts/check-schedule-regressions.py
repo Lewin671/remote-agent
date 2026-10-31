@@ -176,7 +176,7 @@ go("notify-title-sealed", "internal/relay/sync.go", 'nc.Title, nc.Text = k.Sched
 go("schedule-client-environment", "internal/daemon/schedule.go", 'shell := t.SourceSession == ""', 'shell := false', "TestScheduledClientEnvironmentSurvivesDaemonRestart")
 
 go("title-update-state", "internal/daemon/schedule.go", 'if onlyScheduleTitleOrNotifyChanged(t.Spec, updateSpec) {', 'if false && onlyScheduleTitleOrNotifyChanged(t.Spec, updateSpec) {', "TestTitleOnlyUpdatePreservesExecutionState")
-go("title-update-late-run", "internal/daemon/schedule.go", 't.Spec.Title = updateSpec.Title', 'delete(d.lateRuns, t.ID); t.Spec.Title = updateSpec.Title', "TestTitleOnlyUpdatePreservesExecutionState")
+go("title-update-late-run", "internal/daemon/schedule.go", 't.Spec.Title, t.Spec.Notify = updateSpec.Title, updateSpec.Notify', 'delete(d.lateRuns, t.ID); t.Spec.Title, t.Spec.Notify = updateSpec.Title, updateSpec.Notify', "TestTitleOnlyUpdatePreservesExecutionState")
 go("title-update-definition", "internal/daemon/schedule.go", 'return err == nil && bytes.Equal(a, b)', 'return err == nil && (bytes.Equal(a, b) || true)', "TestOtherDefinitionChangesKeepUpdateSemantics")
 go("title-update-delegation", "internal/daemon/schedule.go", 'd.restrictMCPTask(schedule.Clone(t), true)', 'd.restrictMCPTask(t, true)', "TestTitleOnlyUpdatePreservesDelegation")
 

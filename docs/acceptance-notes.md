@@ -1703,3 +1703,19 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 - iOS App：`xcodebuild -quiet -collect-test-diagnostics never -parallel-testing-enabled NO -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath <独立构建目录> build test` 返回 0；xcresult 汇总为 Passed，374 项全部通过（iOS 27 模拟器）。包含创建草稿的默认开启和关闭提交测试；没有把模拟器单元测试算作真机或手动界面验收。
 - 真实 CLI：独立 `RA_DEV_DIR`，`ios/scripts/dev-env.sh start --no-account` 后运行 `RA_DEV_DIR=… go run ./scripts/acceptance-schedule --finish-notify`。调试客户端通过加密 Forward 创建缺省开启通知的任务；真实 Claude Code（Haiku 5.5）不调用任何工具，只返回指定最终回复；daemon 记录完成状态、摘要及唯一一条 SYSTEM 来源的定时通知，客户端从中继的加密历史核对标题和正文。使用真实 CLI 与 server/daemon 链路，操作由调试客户端触发，没有直接操作产品界面。随后 `dev-env.sh stop` 清理中继、临时账户/库/状态和独立 tmux 环境，没有使用日常 daemon 或账户。
 - 未覆盖：OS Web Push/FCM 实际送达、Android/iOS 真机界面和 Codex 的本轮 E2E；Chrome 扩展 host 不可用，未切换到内置浏览器，网页没有追加人工可视验收。无会话的启动失败通知和升级前缺少接管来源的记录，边界与待确认项见 [plan](plan.md#待确认)。
+
+
+### 定时任务 leader 复核修正（2026-10-30）
+
+仍在同一隔离 worktree，仅新增本地提交，协议保持 12，未推送、发布或部署；未修改安全操作和附件能力测试。
+
+- `go test ./...` 全部通过，新增及受影响的 daemon 测试无失败。
+- MCP 接管收据使用独立的字段白名单，不返回 Spec、运行记录及内部来源。`TestMCPTakenOverTasksVisibleButReadOnly` 改写接管后的消息、目标、摘要、通知正文及会话 ID 后，检查字段集合和敏感标记均未出现在 scoped list；原有六种操作拒绝仍验证。
+- 无来源（显式 `SourceSession == ""`）或来源会话已从 daemon 删除时，完成通知保存为 undeliverable、Notified=false；`TestScheduledFinishUndeliverableStopsRetrying` 覆盖多次 tick、来源重新出现及重启后不重试。后续真实 agent 通知不会被误算为 agent_and_daemon。
+- `TestScheduledFinishRelayRefusalUsesOnlySource` 通过真实 `SessionPublicationFailed` 入口标记中继拒绝，验证执行日志不写补发，只向来源写失败通知；缺来源和来源指向被拒绝会话都标为不可投递。用执行日志的高序号和来源日志的低序号验证追加后未保存任务的重放去重。
+- 只有 title/notify 变化走轻量更新。`TestTitleNotifyOnlyUpdatePreservesPlanAndTakesOver` 在五种状态、仅开关/开关加标题、本机/客户端/MCP 入口组合下，对完整响应及重载结果逐字段比较，检查排期、相位、手动请求、活动快照、历史、迟到关联与委托/接管。非法值保持原状态；原只改名回归仍通过。
+- `TestScheduledNotificationPolicySnapshot` 在派发后走真实 update 改为相反策略，排队并结束该运行，核对持久通知事件及运行结果；不以字段自己等于自己作完成判断。`python3 scripts/check-schedule-regressions.py --only leader-notify` 四项通过：改成读取当前 Spec、移除轻量路径、不标不可投递、错误使用中继拒绝的执行会话，均由断言检出。
+- 网页：`pnpm --dir web typecheck` 和 `pnpm --dir web exec vitest run --maxWorkers=4` 通过（90 文件、1,272 项），包含运行中开关可用、离线禁用、完整定义提交以及 undeliverable 文案。
+- Android：`./gradlew :core:test --tests '*SchedulesTest' :app:testDebugUnitTest --tests '*Schedule*' --no-daemon` 通过，core 28 项、App 56 项；活动执行状态下实际点击开关并检查提交值及修订号。未运行或修改本次范围以外的非定时安全测试。
+- iOS：`swift test --package-path ios/RemoteAgentCore --jobs 4 --filter 'Schedule|VersionTests'` 通过，33 项。模拟器以同一独立 DerivedData 构建并运行 ScheduleStoreTests（20 项），随后 `xcodebuild … test-without-building -only-testing:RemoteAgentTests/ScheduleAlignmentTests -only-testing:RemoteAgentTests/ScheduleJumpObserverTests`（13 项）通过，xcresult 均为 Passed；原生 App 仍未验证真机和推送送达。
+- 工具说明检查：`go test ./internal/schedulemcp ./cmd/remote-agent ./internal/protocol` 通过。接受的后续回合通知、uncertain 不补发、原来源承载启动失败和无来源缺口统一写在 [architecture §18](architecture.md#主动通知与客户端发现)。本轮未重跑真实 CLI E2E，不把上轮实测当作本轮新增验收。

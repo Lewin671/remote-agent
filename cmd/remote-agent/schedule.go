@@ -58,7 +58,9 @@ use notify_user in the scheduled turn for selected results or exceptions.
 Missed intervals are coalesced; executions of the same task never overlap.
 Pause/cancel stop future dispatches, not work already dispatched. Use normal
 session input cancellation/interruption to stop that work. History retains 100 runs.
-Running, changing the execution definition, or resuming an agent-created task from
+Title/notify-only edits preserve the plan and active run; a new notification
+policy applies only to future dispatches.
+Running, changing the execution definition or notification policy, or resuming an agent-created task from
 the client or local command line transfers it to user management. MCP can then
 only list it as read-only; use the client or remote-agent schedule to manage it.
 `
