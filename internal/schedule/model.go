@@ -99,7 +99,7 @@ type Run struct {
 	NotifyOnFinish        bool   `json:"notify_on_finish,omitempty"`
 	NotificationSessionID string `json:"notification_session_id,omitempty"`
 	NotificationSeq       uint64 `json:"notification_seq,omitempty"`
-	NotificationSource    string `json:"notification_source,omitempty"` // agent, daemon, or agent_and_daemon
+	NotificationSource    string `json:"notification_source,omitempty"` // agent, daemon, agent_and_daemon, or undeliverable
 
 	// Dispatch-time source for notification titles; never infer it from Spec.
 	TargetType        string `json:"target_type"`

@@ -188,3 +188,63 @@ func TestScheduledFinishLaunchFailureUsesSourceSnapshot(t *testing.T) {
 		t.Fatalf("wrong failure event title: %v", notice)
 	}
 }
+
+func TestScheduledFinishUndeliverableStopsRetrying(t *testing.T) {
+	for _, name := range []string{"no-source", "deleted-source"} {
+		t.Run(name, func(t *testing.T) {
+			h := scheduleHarness(t)
+			defer h.s.log.Close()
+			source := ""
+			if name == "deleted-source" {
+				source = h.s.meta.ID
+			}
+			spec := taskSpec(schedule.Trigger{Type: "after_turn"})
+			task := createTask(t, h, spec, "")
+			current := h.d.tasks[task.ID]
+			current.SourceSession = source
+			current.Spec.Target.Type = "new_session"
+			pending := h.d.prepareScheduledDispatches(time.Now().Add(time.Second))
+			if len(pending) != 1 {
+				t.Fatal("no reserved execution")
+			}
+			if current.Active.NotificationSessionID != source || current.SourceSession != source {
+				t.Fatal("source snapshot differs")
+			}
+			h.d.endScheduledRun(current, time.Now(), "failed", "could_not_start_session")
+			if source != "" {
+				delete(h.d.sessions, source)
+			}
+			h.d.tickSchedules(time.Now())
+			got := readTask(t, h.d, task.ID)
+			run := got.Runs[0]
+			if run.NotificationSource != "undeliverable" || run.Notified || run.NotificationCount != 0 || hasPendingFinishNotifications(got) {
+				t.Fatalf("not settled as undeliverable: %+v", run)
+			}
+			rev := got.Revision
+			for i := 0; i < 3; i++ {
+				h.d.tickSchedules(time.Now())
+			}
+			if h.d.finishScheduledNotification(task.ID, &h.d.tasks[task.ID].Runs[0]) || readTask(t, h.d, task.ID).Revision != rev {
+				t.Fatal("undeliverable notice retried")
+			}
+			restartSession(t, h)
+			h.d.tickSchedules(time.Now())
+			if got := readTask(t, h.d, task.ID); got.Runs[0].NotificationSource != "undeliverable" || hasPendingFinishNotifications(got) {
+				t.Fatal("restart lost undeliverable state")
+			}
+			for _, e := range h.events() {
+				if e.GetScheduledNotification() != nil {
+					t.Fatal("undeliverable run emitted a notification")
+				}
+			}
+		})
+	}
+}
+
+func TestAgentNoticeAfterUndeliverableIsNotDaemonNotice(t *testing.T) {
+	run := schedule.Run{ID: "run", NotificationSource: "undeliverable"}
+	recordRunNotification(&run, &pb.Event{Seq: 1, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{RunId: "run", Text: "agent result"}}})
+	if run.NotificationSource != "agent" || !run.Notified {
+		t.Fatalf("wrong notification history: %+v", run)
+	}
+}

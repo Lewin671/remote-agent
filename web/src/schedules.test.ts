@@ -29,6 +29,7 @@ import {
   scheduleEmpty, scheduleOffline, scheduleOfflineRow, validScheduleMessage,
   taskName,
   runResult,
+  notificationSource,
   runSummary,
 } from "./schedules";
 import { task, run } from "./test/schedule-fixture";
@@ -510,4 +511,10 @@ it("uses the shared v52 title and offline-row vectors and UTF-8 message limit", 
   expect(validScheduleMessage("a".repeat(32768))).toBe(true);
   expect(validScheduleMessage("a".repeat(32769))).toBe(false);
   expect(validScheduleMessage("中".repeat(10923))).toBe(false);
+});
+
+it("shows undeliverable completion attempts without claiming they notified", () => {
+ const value = run("undeliverable", {notified:false, notification_source:"undeliverable"});
+ expect(notificationSource(value)).toBe("无法请求通知");
+ expect(runResult(value)).toBe("没有通知");
 });

@@ -74,7 +74,7 @@ public struct ScheduleRun: Codable, Equatable, Sendable, Identifiable {
     public var silent: Bool { status == "completed" && !notified && inputPaused != true }
     public var foldedSummary: String { (finalSummary ?? "").isEmpty ? "没有通知" : finalSummary! }
     public var notificationLabel: String {
-        switch notificationSource { case "agent": "agent 通知"; case "daemon": "完成后通知"; case "agent_and_daemon": "agent 通知、完成后通知"; default: "" }
+        switch notificationSource { case "agent": "agent 通知"; case "daemon": "完成后通知"; case "agent_and_daemon": "agent 通知、完成后通知"; case "undeliverable": "无法请求通知"; default: "" }
     }
     public var result: String {
         if notified && !["failed", "skipped", "uncertain", "interrupted", "cancelled"].contains(status) { return "通知了你" }

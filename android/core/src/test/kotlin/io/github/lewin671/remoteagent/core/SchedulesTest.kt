@@ -19,6 +19,9 @@ class SchedulesTest {
         assertEquals("agent_only", renamedScheduleSpec(off, "Renamed")!!.text("notify"))
         val run = ScheduledRun(buildJsonObject { put("notification_source", "daemon"); put("notified", true) })
         assertEquals("完成后通知", run.notificationSource)
+        val unavailable = ScheduledRun(buildJsonObject { put("status", "completed"); put("notification_source", "undeliverable"); put("notified", false) })
+        assertEquals("无法请求通知", unavailable.notificationSource)
+        assertEquals("没有通知", runResult(unavailable))
     }
     private val now = Instant.parse("2026-10-24T14:00:00Z")
     private val utc = ZoneId.of("UTC")

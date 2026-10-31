@@ -361,5 +361,7 @@ import RAProto
         var run = ScheduleRun(id: "r", startedAt: "", status: "completed", notified: true)
         run.notificationSource = "daemon"
         #expect(run.notificationLabel == "完成后通知")
+        run.notificationSource = "undeliverable"; run.notified = false
+        #expect(run.notificationLabel == "无法请求通知" && run.result == "没有通知")
     }
 }

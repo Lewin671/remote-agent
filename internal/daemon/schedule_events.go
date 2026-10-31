@@ -307,7 +307,7 @@ func recordRunNotification(run *schedule.Run, e *pb.Event) {
 	if e.Origin.GetKind() == pb.OriginKind_ORIGIN_KIND_SYSTEM {
 		source = "daemon"
 	}
-	if run.NotificationSource != "" && run.NotificationSource != source {
+	if run.NotificationSource == "agent_and_daemon" || run.NotificationSource == "agent" && source == "daemon" || run.NotificationSource == "daemon" && source == "agent" {
 		source = "agent_and_daemon"
 	}
 	run.NotificationSource = source
@@ -321,7 +321,7 @@ func scheduleNotificationSession(t *schedule.Task) string {
 }
 
 func pendingFinishNotification(run *schedule.Run) bool {
-	if !run.NotifyOnFinish || run.Notified || run.EndedAt == nil {
+	if !run.NotifyOnFinish || run.Notified || run.NotificationSource == "undeliverable" || run.EndedAt == nil {
 		return false
 	}
 	switch run.Status {
@@ -353,7 +353,10 @@ func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) b
 	}
 	s, err := d.exact(sid)
 	if err != nil {
-		return false
+		// A missing destination cannot recover through an event-append retry.
+		// This is an outcome, never a claim that a notification was recorded.
+		run.NotificationSource = "undeliverable"
+		return true
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
