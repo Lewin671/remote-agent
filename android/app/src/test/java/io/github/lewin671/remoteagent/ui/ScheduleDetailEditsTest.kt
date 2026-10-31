@@ -110,6 +110,12 @@ class ScheduleDetailEditsTest {
         ui.onNodeWithText("任务名").performScrollTo().assertHasClickAction()
         for(label in listOf("什么时候","编辑","在哪运行")) ui.onNodeWithText(label).performScrollTo().assertIsNotEnabled()
         ui.onNodeWithText("立即运行一次").performScrollTo().assertIsNotEnabled()
+        ui.onNodeWithText("完成后通知").performScrollTo().assertIsEnabled().performClick()
+        ui.runOnIdle {
+            val sent=requests.single { it.operation=="update" }
+            assertEquals("agent_only",Json.parseToJsonElement(sent.specJson.toStringUtf8()).jsonObject.text("notify"))
+            assertEquals(3L,sent.expectedRevision)
+        }
     }
     @Test fun pendingManualRequestDisablesAnotherRun() {
         latest=ScheduledTask(original.machine,JsonObject(original.json+("manual_request" to buildJsonObject { put("request_id","queued") })))

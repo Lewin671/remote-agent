@@ -175,7 +175,7 @@ go("notify-title-sealed", "internal/relay/sync.go", 'nc.Title, nc.Text = k.Sched
 
 go("schedule-client-environment", "internal/daemon/schedule.go", 'shell := t.SourceSession == ""', 'shell := false', "TestScheduledClientEnvironmentSurvivesDaemonRestart")
 
-go("title-update-state", "internal/daemon/schedule.go", 'if onlyScheduleTitleChanged(t.Spec, updateSpec) {', 'if false && onlyScheduleTitleChanged(t.Spec, updateSpec) {', "TestTitleOnlyUpdatePreservesExecutionState")
+go("title-update-state", "internal/daemon/schedule.go", 'if onlyScheduleTitleOrNotifyChanged(t.Spec, updateSpec) {', 'if false && onlyScheduleTitleOrNotifyChanged(t.Spec, updateSpec) {', "TestTitleOnlyUpdatePreservesExecutionState")
 go("title-update-late-run", "internal/daemon/schedule.go", 't.Spec.Title = updateSpec.Title', 'delete(d.lateRuns, t.ID); t.Spec.Title = updateSpec.Title', "TestTitleOnlyUpdatePreservesExecutionState")
 go("title-update-definition", "internal/daemon/schedule.go", 'return err == nil && bytes.Equal(a, b)', 'return err == nil && (bytes.Equal(a, b) || true)', "TestOtherDefinitionChangesKeepUpdateSemantics")
 go("title-update-delegation", "internal/daemon/schedule.go", 'd.restrictMCPTask(schedule.Clone(t), true)', 'd.restrictMCPTask(t, true)', "TestTitleOnlyUpdatePreservesDelegation")
@@ -421,6 +421,10 @@ go("schedule-notify-takeover-list", "internal/daemon/schedule.go", 'if t.Takeove
 go("schedule-notify-takeover-error", "internal/daemon/schedule_security.go", 'if t.Takeover != nil && t.Takeover.Session == scope {', 'if false && t.Takeover != nil && t.Takeover.Session == scope {', "TestMCPTakenOverTasksVisibleButReadOnly")
 
 go("leader-notify-snapshot-consumption", "internal/daemon/schedule_events.go", "func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) bool {", 'func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) bool { run.NotifyOnFinish = d.tasks[taskID].Spec.Notify != "agent_only";', "TestScheduledNotificationPolicySnapshot")
+
+go("leader-notify-light-update", "internal/daemon/schedule.go", 'if onlyScheduleTitleOrNotifyChanged(t.Spec, updateSpec) {', 'if false && onlyScheduleTitleOrNotifyChanged(t.Spec, updateSpec) {', "TestTitleNotifyOnlyUpdatePreservesPlanAndTakesOver")
+go("leader-notify-undeliverable", "internal/daemon/schedule_events.go", 'run.NotificationSource = "undeliverable"', 'run.NotificationSource = ""', "TestScheduledFinishUndeliverableStopsRetrying")
+go("leader-notify-relay-route", "internal/daemon/schedule_events.go", 'if sid == "" || run.Reason == "relay_session_limit" {', 'if sid == "" {', "TestScheduledFinishRelayRefusalUsesOnlySource")
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

@@ -156,7 +156,7 @@ struct ScheduleDetailScreen: View {
                     .padding(.horizontal, 16).padding(.vertical, 12)
             }
             GroupCard {
-                ToggleRow("完成后通知", isOn: Binding(get: { task.spec.notifyOnFinish }, set: { on in var spec = task.spec; spec.notifyOnFinish = on; update(task, spec: spec) })).disabled(!mutable)
+                ToggleRow("完成后通知", isOn: Binding(get: { task.spec.notifyOnFinish }, set: { on in var spec = task.spec; spec.notifyOnFinish = on; update(task, spec: spec) })).disabled(!access.rename)
             }.padding(.top, 16)
             GroupCard {
                 GRow("让 agent 做什么", value: "编辑", chevron: mutable, valueColor: mutable ? Theme.blue : Theme.muted, onTap: mutable ? { editor.open(task); message = true } : nil)

@@ -654,7 +654,7 @@ export function ScheduleDetail({
             上次操作结果还没有确认。请核对任务与记录，重试会使用同一个请求。
           </Banner>
         )}
-        <div className="grp"><Field name="完成后通知" value={<Switch label="完成后通知" on={task.spec.notify !== "agent_only"} disabled={!online || busy || !!task.active_run || !!pending?.frozen} onChange={on => void perform("update", { ...task.spec, notify: on ? "finish" : "agent_only" }, task)} />} /></div>
+        <div className="grp"><Field name="完成后通知" value={<Switch label="完成后通知" on={task.spec.notify !== "agent_only"} disabled={!online || busy || !!pending?.frozen} onChange={on => void perform("update", { ...task.spec, notify: on ? "finish" : "agent_only" }, task)} />} /></div>
         <section className="schedule-description">
           <div className="schedule-description-head"><span>让 agent 做什么</span><button disabled={!online || busy || !!task.active_run || !!pending?.frozen} onClick={() => { setEditBase(task); setEdit("message"); }}>编辑{online && !busy && !task.active_run && !pending?.frozen && <ChevronRight />}</button></div>
           <ScheduleText key={task.spec.message} text={task.spec.message} />

@@ -637,6 +637,7 @@ it("derives final limits, creator, offline subtitle and running edit guards", as
   const t = task({active_run: run("active", {status:"running"}), manual_request:{request_id:"manual"}});
   t.spec.trigger = {type:"interval",interval_seconds:3600,delay_seconds:3600,max_runs:5,until:"2027-10-30T08:00:00Z"};
   const r=remote([t]);
+  const write=vi.spyOn(r,"changeSchedule").mockResolvedValue(t);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
   expect(host.textContent).toContain("共 5 次，或到 ");
   expect(host.textContent).toContain("你创建");
@@ -644,9 +645,14 @@ it("derives final limits, creator, offline subtitle and running edit guards", as
   expect(button("立即运行一次")?.disabled).toBe(true);
   for (const label of [/^什么时候/,/^编辑$/,/^在哪运行/]) expect(button(label)?.disabled).toBe(true);
   expect(button(/^任务名/)?.disabled).toBe(false);
+  const notice = host.querySelector<HTMLButtonElement>('[role="switch"][aria-label="完成后通知"]')!;
+  expect(notice.disabled).toBe(false);
+  await act(async()=>notice.click());
+  expect(write.mock.calls[0][2].spec).toEqual({...t.spec,notify:"agent_only"});
   await act(async()=>{r.machines.get("mac")!.online=false;r.touch();});
   expect(host.querySelector(".navbar")?.textContent).toContain(scheduleOffline);
   expect(host.querySelector(".navbar")?.textContent).not.toContain("运行中");
+  expect(host.querySelector<HTMLButtonElement>('[role="switch"][aria-label="完成后通知"]')!.disabled).toBe(true);
 });
 it("uses shared empty copy and resolves a missing conversation before naming it", async () => {
   const r=remote([]);

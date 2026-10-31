@@ -158,9 +158,13 @@ func TestScheduledNotificationPolicySnapshot(t *testing.T) {
 			// Change the live definition to the opposite policy, then complete
 			// the actual reserved/queued execution. Only event outcomes count.
 			current := h.d.tasks[task.ID]
-			current.Spec.Notify = "agent_only"
+			updated := current.Spec
+			updated.Notify = "agent_only"
 			if policy == "agent_only" {
-				current.Spec.Notify = "finish"
+				updated.Notify = "finish"
+			}
+			if _, err := titleUpdateRequest(t, h, schedule.Clone(current), updated, originLocal, ""); err != nil {
+				t.Fatal(err)
 			}
 			h.d.queueScheduledSession(t.Context(), pending[0], time.Now(), h.s)
 			completeTask(h, pending[0].Active, time.Now())

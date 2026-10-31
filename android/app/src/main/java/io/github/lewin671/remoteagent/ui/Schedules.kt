@@ -167,7 +167,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                 if (!targetMissing) Btn(if (onceFailed) "立即额外执行" else "恢复", { recover() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), BtnKind.PRIMARY, enabled)
             }
             Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                ToggleRow("完成后通知", "", task.notifyOnFinish, enabled = definitionEnabled, onChange = { on -> if (definitionEnabled) { editBase = task; operate("update", JsonObject(task.spec + ("notify" to JsonPrimitive(if (on) "finish" else "agent_only")))) } })
+                ToggleRow("完成后通知", "", task.notifyOnFinish, enabled = enabled, onChange = { on -> if (enabled) { editBase = task; operate("update", JsonObject(task.spec + ("notify" to JsonPrimitive(if (on) "finish" else "agent_only")))) } })
             }
             Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Column {

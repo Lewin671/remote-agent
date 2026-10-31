@@ -335,10 +335,14 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 		if err != nil {
 			return nil, err
 		}
-		// Renaming must not reconcile a late execution, replace a live run,
-		// reauthorize delegation or prepare a new automatic plan.
-		if onlyScheduleTitleChanged(t.Spec, updateSpec) {
+		// Title/notification edits do not reconcile, replace an active run,
+		// or prepare a new automatic plan. Notification edits still transfer
+		// delegated tasks to the human owner, unlike a title-only rename.
+		if onlyScheduleTitleOrNotifyChanged(t.Spec, updateSpec) {
 			if err := validateScheduleTitle(updateSpec.Title); err != nil {
+				return nil, err
+			}
+			if err := validateScheduleNotify(updateSpec.Notify); err != nil {
 				return nil, err
 			}
 			if scope != "" {
@@ -347,7 +351,11 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 				}
 			}
 			prev := schedule.Clone(t)
-			t.Spec.Title = updateSpec.Title
+			notifyChanged := t.Spec.Notify != updateSpec.Notify
+			t.Spec.Title, t.Spec.Notify = updateSpec.Title, updateSpec.Notify
+			if scope == "" && notifyChanged {
+				takeOverScheduledTask(t, origin)
+			}
 			t.Revision++
 			if err := d.saveSchedulesLocked(); err != nil {
 				if !fileReplaced(err) {
@@ -470,18 +478,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	}
 	// A machine-level request takes an agent's task over as the user's own.
 	if scope == "" && (q.Operation == "resume" || q.Operation == "run" || q.Operation == "update") {
-		if t.ScopedSession != "" {
-			via := "local"
-			if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT {
-				via = "client"
-			}
-			t.Takeover = &schedule.Takeover{Session: t.ScopedSession, Via: via}
-		}
-		t.ScopedSession, t.ScopedMode = "", ""
-		t.Source = "local"
-		if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT {
-			t.Source = "client"
-		}
+		takeOverScheduledTask(t, origin)
 	}
 	touchTask(t, now)
 	if err := d.saveSchedulesLocked(); err != nil {
@@ -499,18 +496,37 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 }
 
 // Compare the complete public definition, so new Spec fields cannot silently
-// become rename exceptions. JSON matches the definition returned to clients.
-func onlyScheduleTitleChanged(before, after schedule.Spec) bool {
-	if before.Title == after.Title {
+// become lightweight-update exceptions. JSON matches the public definition.
+func onlyScheduleTitleOrNotifyChanged(before, after schedule.Spec) bool {
+	if before.Title == after.Title && before.Notify == after.Notify {
 		return false
 	}
-	before.Title = after.Title
+	before.Title, before.Notify = after.Title, after.Notify
 	a, err := json.Marshal(before)
 	if err != nil {
 		return false
 	}
 	b, err := json.Marshal(after)
 	return err == nil && bytes.Equal(a, b)
+}
+
+// Caller holds scheduleMu. Keep first takeover provenance across later edits.
+func takeOverScheduledTask(t *schedule.Task, origin *pb.Origin) {
+	via := "local"
+	if origin.GetKind() == pb.OriginKind_ORIGIN_KIND_CLIENT {
+		via = "client"
+	}
+	if t.ScopedSession != "" {
+		t.Takeover = &schedule.Takeover{Session: t.ScopedSession, Via: via}
+	}
+	t.ScopedSession, t.ScopedMode, t.Source = "", "", via
+}
+
+func validateScheduleNotify(notify string) error {
+	if notify != "" && notify != "finish" && notify != "agent_only" {
+		return errors.New("notify must be finish or agent_only")
+	}
+	return nil
 }
 
 func validateScheduleTitle(title string) error {
@@ -555,8 +571,8 @@ func scheduleMode(name string) (pb.ApprovalMode, error) {
 
 func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time.Time) error {
 	spec := &t.Spec
-	if spec.Notify != "" && spec.Notify != "finish" && spec.Notify != "agent_only" {
-		return errors.New("notify must be finish or agent_only")
+	if err := validateScheduleNotify(spec.Notify); err != nil {
+		return err
 	}
 	tr := &spec.Trigger
 	target := &spec.Target
