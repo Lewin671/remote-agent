@@ -155,10 +155,29 @@ func TestScheduledNotificationPolicySnapshot(t *testing.T) {
 			if len(pending) != 1 || pending[0].Active.NotifyOnFinish != (policy != "agent_only") {
 				t.Fatal("policy not captured at dispatch")
 			}
-			// Editing the definition later cannot change this run's policy.
-			h.d.tasks[task.ID].Spec.Notify = "agent_only"
-			if h.d.tasks[task.ID].Active.NotifyOnFinish != (policy != "agent_only") {
-				t.Fatal("policy snapshot changed")
+			// Change the live definition to the opposite policy, then complete
+			// the actual reserved/queued execution. Only event outcomes count.
+			current := h.d.tasks[task.ID]
+			current.Spec.Notify = "agent_only"
+			if policy == "agent_only" {
+				current.Spec.Notify = "finish"
+			}
+			h.d.queueScheduledSession(t.Context(), pending[0], time.Now(), h.s)
+			completeTask(h, pending[0].Active, time.Now())
+			h.d.tickSchedules(time.Now())
+			got := readTask(t, h.d, task.ID).Runs[0]
+			want := 1
+			if policy == "agent_only" {
+				want = 0
+			}
+			count := 0
+			for _, e := range h.events() {
+				if e.GetScheduledNotification() != nil {
+					count++
+				}
+			}
+			if got.Status != "completed" || got.Notified != (want > 0) || got.NotificationCount != want || count != want {
+				t.Fatalf("completion followed mutable spec instead of dispatch policy: policy=%q current=%q events=%d run=%+v", policy, current.Spec.Notify, count, got)
 			}
 		})
 	}

@@ -413,12 +413,14 @@ fi("dst-default-cutoff-first-occurrence", "RemoteAgentCore/Sources/RACore/Schedu
 
 # Task-level completion notices and user takeover explanations.
 go("schedule-notify-fallback", "internal/daemon/schedule_events.go", "func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) bool {", "func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) bool { return false;", "TestScheduledFinishNotification")
-go("schedule-notify-opt-out", "internal/daemon/schedule_events.go", "if !run.NotifyOnFinish || run.Notified || run.EndedAt == nil {", "if run.Notified || run.EndedAt == nil {", "TestScheduledFinishNotification")
+go("schedule-notify-opt-out", "internal/daemon/schedule_events.go", 'if !run.NotifyOnFinish || run.Notified || run.NotificationSource == "undeliverable" || run.EndedAt == nil {', 'if run.Notified || run.NotificationSource == "undeliverable" || run.EndedAt == nil {', "TestScheduledFinishNotification")
 go("schedule-notify-failure-body", "internal/daemon/schedule_events.go", 'text = "定时任务运行失败：" + run.Reason', 'text = "定时任务运行完成。"', "TestScheduledFinishNotification")
 go("schedule-notify-event-authority", "internal/daemon/schedule_events.go", "if run.Notified {\n\t\treturn run.NotificationSeq != before", "if false && run.Notified {\n\t\treturn run.NotificationSeq != before", "TestScheduledFinishRetryUsesDurableEventAsAuthority")
 go("schedule-notify-policy", "internal/daemon/schedule.go", 'NotifyOnFinish: t.Spec.Notify != "agent_only"', 'NotifyOnFinish: false', "TestScheduledNotificationPolicySnapshot")
 go("schedule-notify-takeover-list", "internal/daemon/schedule.go", 'if t.Takeover != nil && t.Takeover.Session == scope {', 'if false && t.Takeover != nil && t.Takeover.Session == scope {', "TestMCPTakenOverTasksVisibleButReadOnly")
 go("schedule-notify-takeover-error", "internal/daemon/schedule_security.go", 'if t.Takeover != nil && t.Takeover.Session == scope {', 'if false && t.Takeover != nil && t.Takeover.Session == scope {', "TestMCPTakenOverTasksVisibleButReadOnly")
+
+go("leader-notify-snapshot-consumption", "internal/daemon/schedule_events.go", "func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) bool {", 'func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) bool { run.NotifyOnFinish = d.tasks[taskID].Spec.Notify != "agent_only";', "TestScheduledNotificationPolicySnapshot")
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
