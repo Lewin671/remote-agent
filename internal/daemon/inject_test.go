@@ -289,3 +289,63 @@ func testSendWithImagesAfterTerminalResize(t *testing.T) {
 		}
 	}
 }
+
+// Codex takes a pasted image path as text until it has set the session
+// up, which it shows by putting its status line under the input box.
+// Images wait for that even when the box has been up for a while.
+func TestImagesWaitWhileCodexLoads(t *testing.T) {
+	synctest.Test(t, testImagesWaitWhileCodexLoads)
+}
+
+func testImagesWaitWhileCodexLoads(t *testing.T) {
+	const loading = "\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n  ? for shortcuts\n"
+	h := newHarness(t, Config{})
+	imgs := imagesFor(t, h.dir, "a.png")
+	fakeCodexImages(t, h, map[string]bool{imgs[0].Path: true})
+	h.term.setScreen(loading)
+	h.s.enqueue("look", "r1", imgs, originLocal)
+	runInjector(t, h)
+	h.s.mu.Lock()
+	h.s.readySince = time.Now()
+	h.s.mu.Unlock()
+	time.Sleep(2 * imageStartDelay)
+	synctest.Wait()
+	if w := h.term.written(); len(w) != 0 {
+		t.Fatalf("wrote while Codex was loading: %q", w)
+	}
+	h.term.setScreen(idleScreen)
+	time.Sleep(injectBase + injectPerImage + h.d.cfg.SubmitTimeout)
+	synctest.Wait()
+	if st := inputStates(h, "r1"); len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+		t.Fatalf("input states %v", st)
+	}
+}
+
+// A path the CLI shows as text may wrap over several lines in a narrow
+// terminal; it is still ours to clear.
+func TestImageNotTakenWrappedIsCleared(t *testing.T) {
+	synctest.Test(t, testImageNotTakenWrappedIsCleared)
+}
+
+func testImageNotTakenWrappedIsCleared(t *testing.T) {
+	h := newHarness(t, Config{})
+	imgs := imagesFor(t, h.dir, "a.heic")
+	fakeCodexImages(t, h, nil)
+	inner := h.term.onWrite
+	h.term.onWrite = func(f *fakeTerm, b string) {
+		inner(f, b)
+		dir := filepath.Dir(imgs[0].Path) + "/"
+		f.screen = strings.Replace(f.screen, imgs[0].Path, dir+"\n  "+filepath.Base(imgs[0].Path), 1)
+	}
+	h.s.enqueue("look", "r1", imgs, originLocal)
+	runInjector(t, h)
+	time.Sleep(injectBase + injectPerImage + h.d.cfg.SubmitTimeout)
+	synctest.Wait()
+	st := inputStates(h, "r1")
+	if len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_FAILED || st[len(st)-1].Reason != "image_not_recognized" {
+		t.Fatalf("input states %v", st)
+	}
+	if w := h.term.written(); w[len(w)-1] != "\x15" {
+		t.Fatalf("input box not cleared: %q", w)
+	}
+}

@@ -40,6 +40,10 @@ const (
 	// imageStartDelay is how long a new session's input box must have
 	// been ready before images are pasted into it.
 	imageStartDelay = 3 * time.Second
+	// loadingWait bounds how long images wait for a CLI still setting up
+	// the session (Screen.Loading) after its input box showed: a Codex
+	// with its status line turned off looks the same for good.
+	loadingWait = 20 * time.Second
 )
 
 // conversionWindow is how long, after a restart, an image pasted before it
@@ -379,8 +383,11 @@ func (s *session) inject(in input) (inputOutcome, error) {
 	s.mu.Lock()
 	starting := s.status == pb.SessionStatus_SESSION_STATUS_STARTING
 	// Just after it starts, Codex has once taken a pasted image path as
-	// plain text; images wait until the input box has been up a moment.
-	young := len(in.Images) > 0 && !s.readySince.IsZero() && time.Since(s.readySince) < imageStartDelay
+	// plain text; images wait until the input box has been up a moment,
+	// and while Codex shows it is still setting the session up, which
+	// can take seconds more.
+	up := time.Since(s.readySince)
+	young := len(in.Images) > 0 && !s.readySince.IsZero() && (up < imageStartDelay || scr.Loading && up < loadingWait)
 	s.mu.Unlock()
 	if starting || young {
 		return notWritten, nil
@@ -532,11 +539,11 @@ func (s *session) clearPasted(c control, l *lease, in input, got []int32, footer
 	if !ok {
 		return false
 	}
-	// A line break is not something this message pasted: Ctrl-U deletes
-	// one line only, and another line may be the user's.
-	if strings.Contains(text, "\n") {
-		return false
-	}
+	// Only what was pasted may be there, with no line breaks of its own:
+	// lines are a narrow terminal wrapping a path shown as text. Should
+	// a line break be real, Ctrl-U leaves a line and the box is not
+	// verified empty below.
+	text = strings.ReplaceAll(text, "\n", "")
 	if text == "" {
 		return !timedOut
 	}

@@ -164,3 +164,21 @@ func TestAnalyzeScreen0159(t *testing.T) {
 		t.Fatalf("%+v", scr)
 	}
 }
+
+// Codex 0.165.0 (2026-11-01): right after it starts, the input box shows
+// with only the shortcut hint under it; the status line comes once the
+// session is set up. Until then a pasted image path is taken as text.
+func TestScreenLoading(t *testing.T) {
+	for name, want := range map[string]Screen{
+		"loading": {ComposerReady: true, DraftEmpty: true, Footer: "? for shortcuts", Loading: true},
+		"idle":    {ComposerReady: true, DraftEmpty: true, Footer: "GPT-6.1 Terra high · ~/code/demo"},
+	} {
+		b, err := os.ReadFile("testdata/screen-0.165.0-" + name + ".txt")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := AnalyzeScreen(string(b)); got != want {
+			t.Errorf("%s: %+v, want %+v", name, got, want)
+		}
+	}
+}

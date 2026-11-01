@@ -23,7 +23,16 @@ type Screen struct {
 	// Footer is the plain status line under the input box, e.g.
 	// "GPT-6-Sol medium · ~/code/foo".
 	Footer string
+	// Loading: the input box shows only the shortcut hint under it, as
+	// it does before Codex has set the session up. A pasted image path
+	// is then taken as plain text. (So is the input box with the status
+	// line turned off, which this cannot tell apart.)
+	Loading bool
 }
+
+// loadingFooterRE is the line under the input box before the status line
+// shows.
+var loadingFooterRE = regexp.MustCompile(`^\? for shortcuts$`)
 
 // A current footer may append the cycle shortcut and warning indicators.
 var planModeRE = regexp.MustCompile(`(?:^|\s)Plan mode(?:$|\s+(?:\(|⚠))`)
@@ -123,6 +132,7 @@ func AnalyzeScreen(styled string) Screen {
 	}
 	if composer >= 0 && s.Popup == "" {
 		s.ComposerReady = true
+		s.Loading = loadingFooterRE.MatchString(s.Footer)
 		// Only the placeholder proves the box is empty. A bare prompt may
 		// head a multi-line draft whose text is on later lines, and those
 		// cannot be told apart from the footer, so it counts as a draft.
@@ -261,12 +271,21 @@ func ComposerText(styled, footer string) (string, bool) {
 // narrow: unknown trailing text must never be silently dropped.
 var footerHintRE = regexp.MustCompile(`^(?:\? for shortcuts(?:\s+⚠ \d+ warnings? · f2 to view)?|⚠ \d+ warnings? · f2 to view)$`)
 
-// sameFooter recognizes only spacing and terminal-width elision changes.
-// In particular, an ellipsis cannot consume another status field or the
-// warning badge. A changed model/effort or warning count is not accepted.
+// warningBadgeRE is the warning badge at the end of a line.
+var warningBadgeRE = regexp.MustCompile(`\s*⚠ \d+ warnings? · f2 to view$`)
+
+// sameFooter recognizes only spacing and terminal-width elision changes,
+// and the warning badge moving: Codex 0.165 shows it on the row under the
+// status line while the input box is empty, and may move it onto the
+// status line once the box holds a draft. An ellipsis cannot consume
+// another status field or the warning badge. A changed model/effort or
+// warning count is not accepted.
 func sameFooter(a, b string) bool {
 	a = strings.Join(strings.Fields(a), " ")
 	b = strings.Join(strings.Fields(b), " ")
+	if warningBadgeRE.MatchString(a) != warningBadgeRE.MatchString(b) {
+		a, b = warningBadgeRE.ReplaceAllString(a, ""), warningBadgeRE.ReplaceAllString(b, "")
+	}
 	if a == b {
 		return true
 	}

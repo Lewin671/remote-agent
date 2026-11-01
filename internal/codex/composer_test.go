@@ -68,3 +68,28 @@ func TestComposerTextResizedFooter(t *testing.T) {
 		}
 	}
 }
+
+// Codex 0.165.0 (2026-11-01): a path taken as text wraps over two lines,
+// and the warning badge, under the status line while the input box was
+// empty, has moved onto it.
+func TestComposerTextWrappedPathMovedBadge(t *testing.T) {
+	b, err := os.ReadFile("testdata/composer/path-wrapped-0.165.0.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	empty, err := os.ReadFile("testdata/screen-0.165.0-idle.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, ok := ComposerText(string(b), AnalyzeScreen(string(empty)).Footer)
+	if want := "/Users/someone/.remote-agent/uploads/\n0123456789abcdef/0123456789abcdef0123456789abcdef.jpg"; !ok || got != want {
+		t.Fatalf("%q %v, want %q", got, ok, want)
+	}
+	// A badge on both sides still has to be the same.
+	if sameFooter("GPT-6.1 Terra high · ~/x ⚠ 1 warning · f2 to view", "GPT-6.1 Terra high · ~/x ⚠ 2 warnings · f2 to view") {
+		t.Fatal("accepted a changed warning count")
+	}
+	if sameFooter("GPT-6.1 Terra high · ~/x ⚠ 1 warning · f2 to view", "GPT-6.1 Terra low · ~/x") {
+		t.Fatal("accepted a changed effort")
+	}
+}
