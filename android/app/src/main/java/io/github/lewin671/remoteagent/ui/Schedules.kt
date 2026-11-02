@@ -19,6 +19,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.Text
+import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -38,10 +41,7 @@ fun SchedulesScreen() {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
     val snapshots by remote.schedules.state.collectAsState()
-    DisposableEffect(remote) {
-        remote.schedules.setListOpen(true)
-        onDispose { remote.schedules.setListOpen(false) }
-    }
+    val unread by remote.schedules.unread.collectAsState()
     val tasks = remote.schedules.tasks(state)
     val targets = tasks.filter { it.target.text("type") == "resume_session" }.map { it.target.text("session") }.distinct()
     LaunchedEffect(targets, state.conn) {
@@ -86,7 +86,7 @@ fun SchedulesScreen() {
                         else Label(group.label, rows.size)
                     }
                     if (group != TaskGroup.ENDED || endedOpen) items(rows, key = { "${it.machine}/${it.id}" }) { task ->
-                        TaskRow(task, state, t, last = task == rows.last()) { nav.task(task.machine, task.id) }
+                        TaskRow(task, state, t, last = task == rows.last(), unread = unread[ScheduleTaskKey(task.machine, task.id)] ?: 0) { nav.task(task.machine, task.id) }
                     }
                 }
             }
@@ -96,13 +96,19 @@ fun SchedulesScreen() {
 
 /** Same geometry and typography as the conversation rows, with status-independent task content. */
 @Composable
-fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(), last: Boolean = false, onClick: () -> Unit) {
+fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(), last: Boolean = false, unread: Int = 0, onClick: () -> Unit) {
     val online = scheduleWritable(state, task.machine)
     val group = taskGroup(task)
     val tone = when { !online -> Tone.OFF; group == TaskGroup.ATTENTION -> Tone.WAIT; task.active != null -> Tone.RUN; group == TaskGroup.ACTIVE -> Tone.IDLE; else -> Tone.OFF }
-    SessionListRow(task.title, if (online) scheduleNext(task, now) else SCHEDULE_OFFLINE_ROW, tone, last, onClick = onClick) {
-        Text(scheduleTiming(task.trigger) + " · " + taskLocation(task, state), style = T.sm, color = pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(scheduleLastResult(task, now), style = T.meta, color = pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    SessionListRow(task.title, scheduleNotificationTime(task, now), tone, last, onClick = onClick, titleStyle = if (unread > 0) T.bodyB else T.body) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(schedulePreview(task, now), Modifier.weight(1f), style = T.sm, color = if (unread > 0) pal.fg else pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (unread > 0) Box(Modifier.clip(CircleShape).background(pal.blueBg).semantics { contentDescription = "$unread 条未读通知" }.padding(horizontal = 6.dp, vertical = 2.dp), contentAlignment = Alignment.Center) {
+                Text(if (unread > 99) "99+" else "$unread", style = T.metaB, color = Color.White)
+            }
+        }
+        Text(scheduleTiming(task.trigger) + " · " + taskLocation(task, state) + " · " + if (online) scheduleNext(task, now) else SCHEDULE_OFFLINE_ROW,
+            style = T.meta, color = pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -122,6 +128,12 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     val state by remote.state.collectAsState()
     val snapshots by remote.schedules.state.collectAsState()
     val task = snapshots[machine]?.tasks?.firstOrNull { it.id == id }?.takeIf { scheduleSupported(state.machines[machine]) }
+    val entryUnread by remote.schedules.detailUnread.collectAsState()
+    LifecycleStartEffect(remote, machine, id) {
+        remote.schedules.openTask(machine, id)
+        onStopOrDispose { remote.schedules.hideTask(machine, id) }
+    }
+    DisposableEffect(remote, machine, id) { onDispose { remote.schedules.closeTask(machine, id) } }
     val writable = scheduleWritable(state, machine)
     val scope = rememberCoroutineScope()
     var edit by remember { mutableStateOf("") }
@@ -183,7 +195,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             if (task.allRuns.isEmpty()) Hint("还没有运行", Modifier.padding(horizontal = 16.dp))
             else Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Column {
-                    scheduleRunGroups(if (allRuns) task.allRuns else task.allRuns.take(5)).forEach { group -> ScheduleRunGroup(group, t) { run -> if (run.session.isNotEmpty()) nav.scheduledSession(run.session, run.seq) } }
+                    scheduleRunGroups(if (allRuns) task.allRuns else task.allRuns.take(5)).forEach { group -> ScheduleRunGroup(group, t, entryUnread) { run -> if (run.session.isNotEmpty()) nav.scheduledSession(run.session, run.seq) } }
                     if (!allRuns && task.allRuns.size > 5) TextAction("查看全部 ${task.allRuns.size} 次", { allRuns = true }, Modifier.fillMaxWidth())
                 }
             }
@@ -285,7 +297,7 @@ fun ScheduleMessageEditor(initial: String, busy: Boolean, error: String, close: 
 }
 
 @Composable
-private fun ScheduleRunGroup(group: RunGroup, now: Instant, open: (ScheduledRun) -> Unit) {
+internal fun ScheduleRunGroup(group: RunGroup, now: Instant, entryUnread: Set<String> = emptySet(), open: (ScheduledRun) -> Unit) {
     var expanded by rememberSaveable(group.key) { mutableStateOf(false) }
     if (group.quiet && group.runs.size > 1) {
         Box(Modifier.bottomLine(pal.line)) {
@@ -302,6 +314,7 @@ private fun ScheduleRunGroup(group: RunGroup, now: Instant, open: (ScheduledRun)
             GRow(
                 "${scheduleWhen(run.time, now)} · ${runResult(run)}" + run.notificationSource.takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty() + if (run.json["manual"]?.jsonPrimitive?.booleanOrNull == true) " · 手动" else "",
                 chevron = run.session.isNotEmpty(), danger = run.status == "failed", singleLineValue = true,
+                lead = if (run.id in entryUnread) ({ Box(Modifier.size(6.dp).background(pal.blueBg, CircleShape).semantics { contentDescription = "本次查看前未读" }) }) else null,
             )
             val summary = run.summary.ifEmpty { run.json.text("reason").takeIf { it.isNotEmpty() }?.let(::scheduleReason).orEmpty() }
             if (summary.isNotEmpty()) Text(summary, style = T.meta, color = pal.muted, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 16.dp))

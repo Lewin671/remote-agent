@@ -101,6 +101,10 @@ class RaApp : Application() {
     val accountError: StateFlow<String> = _accountError.asStateFlow()
     /** The session page currently visible; cleared when its activity stops or leaves it. */
     @Volatile internal var visibleSession: String? = null
+        set(value) {
+            field = value
+            _remote.value?.schedules?.setVisibleSession(value)
+        }
     @Volatile private var foreground = false
     private var loading = false
     @Volatile private var erasePending = false
@@ -321,6 +325,7 @@ class RaApp : Application() {
                     listOf(acct.server, acct.deviceId),
                     read = { getSharedPreferences("schedule-seen", MODE_PRIVATE).getString(it, null) },
                     write = { key, value -> getSharedPreferences("schedule-seen", MODE_PRIVATE).edit().putString(key, value).apply() },
+                    onRead = { runs -> io.github.lewin671.remoteagent.push.Notifier.dismissScheduled(this@RaApp, runs) },
                 ),
                 tokenStorage = object : io.github.lewin671.remoteagent.core.LoginTokenStore by vault {
                     override fun loadLoginToken(account: Account) =

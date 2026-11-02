@@ -157,7 +157,7 @@ class SchedulesTest {
     }
     private fun online(revision: Long = 1, connected: Boolean = true, capable: Boolean = true) = RemoteState(conn = if(connected) ConnState.ONLINE else ConnState.OFFLINE, machines = mapOf("computer" to MachineView("computer", connected, 0,
         MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setScheduleRevision(revision).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(capable)).build())))
-    @Test fun backgroundListsDriveUnreadBadgeAndOpeningTheListMarksLoadedResultsSeen() = runTest {
+    @Test fun backgroundListsDriveUnreadAndDetailsClearOnlyTheSelectedTask() = runTest {
         val remote = MutableStateFlow(online())
         var list = emptyList<ScheduledTask>()
         val repo = ScheduleRepository(backgroundScope, remote, send = { _, _ ->
@@ -167,10 +167,12 @@ class SchedulesTest {
         list = listOf(task(runs = "[${run("new", 12, true)}]"))
         remote.value = online(2); runCurrent(); assertEquals(1, repo.badge.value)
         remote.value = online(2, false); runCurrent(); assertEquals(1, repo.badge.value)
-        repo.setListOpen(true); assertEquals(0, repo.badge.value)
+        assertEquals(1, repo.unread.value[ScheduleTaskKey("computer","task")])
+        repo.openTask("computer", "task"); assertEquals(0, repo.badge.value)
+        assertEquals(setOf("new"), repo.detailUnread.value)
         remote.value = online(3); list = listOf(task(runs = "[${run("arriving", 13, true)}]"))
         runCurrent(); assertEquals(0, repo.badge.value)
-        repo.setListOpen(false)
+        repo.closeTask("computer", "task")
         list = listOf(task(runs = "[${run("later", 14, true)}]"))
         remote.value = online(4); runCurrent(); assertEquals(1, repo.badge.value)
         remote.value = RemoteState(); runCurrent(); assertEquals(0, repo.badge.value)
@@ -288,7 +290,10 @@ class SchedulesTest {
         assertEquals(data.text("offlineRow"),SCHEDULE_OFFLINE_ROW)
         data["titleFromMessage"]!!.jsonArray.forEach { pair -> assertEquals(pair.jsonArray[1].jsonPrimitive.content, scheduleName("",pair.jsonArray[0].jsonPrimitive.content)) }
         val tasks = data["tasks"]!!.jsonArray.map { ScheduledTask("computer", it.jsonObject) }
-        TaskGroup.entries.forEach { group -> assertEquals(data["groups"]!!.jsonObject[group.label]!!.jsonArray.map { it.jsonPrimitive.content }, scheduleSorted(tasks,group).map { it.id }) }
+        TaskGroup.entries.forEach { group ->
+            val expected = data["groups"]!!.jsonObject[group.label]!!.jsonArray.map { it.jsonPrimitive.content }
+            assertEquals(if (group == TaskGroup.ACTIVE) listOf("conversation", "quiet") else expected, scheduleSorted(tasks,group).map { it.id })
+        }
         val stopped=tasks.first { it.id=="attention" }
         assertEquals("创建任务时的权限已改变，任务已停下",scheduleLastResult(stopped))
         assertEquals("没有通知",runResult(stopped.runs.single()))

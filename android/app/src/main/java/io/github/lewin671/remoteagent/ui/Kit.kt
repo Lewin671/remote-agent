@@ -687,12 +687,12 @@ fun SidebarTabs(route: String?, waiting: Int, scheduledAttention: Int, onSelect:
 
 /** Shared by conversations and scheduled tasks; the caller supplies the lower lines. */
 @Composable
-fun SessionListRow(title: String, time: String, tone: io.github.lewin671.remoteagent.core.Tone, last: Boolean = false, selected: Boolean = false, onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+fun SessionListRow(title: String, time: String, tone: io.github.lewin671.remoteagent.core.Tone, last: Boolean = false, selected: Boolean = false, onClick: () -> Unit, titleStyle: TextStyle = T.bodyB, content: @Composable ColumnScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().background(if (selected) pal.blueSoft else Color.Transparent).clickable(onClick = onClick).padding(start = 16.dp, end = 16.dp, top = 10.dp), horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.padding(top = 8.dp)) { Dot(pal.tone(tone)) }
         Column(Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(pal.line)).padding(bottom = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(title, style = T.bodyB, color = pal.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(title, style = titleStyle, color = pal.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Text(time, style = T.meta, color = pal.muted, maxLines = 1)
             }
             content()

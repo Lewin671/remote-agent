@@ -34,6 +34,24 @@ class ScheduledPushIdentityTest {
         Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_ATTENTION, null, false)
         assertEquals("ordinary notifications retain replacement behavior", 3, shadowOf(manager).allNotifications.size)
     }
+    @Test fun readingARunDismissesOnlyItsExactLatestNotification() {
+        val context = RuntimeEnvironment.getApplication()
+        Push.createChannels(context)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        for ((session, seq) in listOf("session" to 7, "session" to 8, "other" to 8)) {
+            Notifier.show(context, session, NotifyKind.NOTIFY_KIND_SCHEDULED, null, false, "scheduled:$seq")
+        }
+        Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_ATTENTION, null, false)
+        fun run(json: String) = io.github.lewin671.remoteagent.core.ScheduledRun(kotlinx.serialization.json.Json.parseToJsonElement(json) as kotlinx.serialization.json.JsonObject)
+        Notifier.dismissScheduled(context, listOf(run("""{"notified":true,"session_id":"session","notification_session_id":"other","notification_seq":8}""")))
+        assertEquals(3, shadowOf(manager).allNotifications.size)
+        assertTrue(manager.activeNotifications.none { it.tag == "scheduled/session/scheduled:8" })
+        assertTrue(manager.activeNotifications.any { it.tag == "scheduled/other/scheduled:8" })
+        // Missing sequence numbers must never cancel a guessed event or an ordinary notification.
+        Notifier.dismissScheduled(context, listOf(run("""{"notified":true,"session_id":"session","start_seq":6,"after_seq":6}""")))
+        assertEquals(3, shadowOf(manager).allNotifications.size)
+    }
+
     @Test fun collidingNumericIdsKeepBothEventsAndTheirOwnTapTargets() {
         val context = RuntimeEnvironment.getApplication()
         Push.createChannels(context)

@@ -24,10 +24,47 @@ class ScheduleComponentsTest {
         val task=ScheduledTask("computer",fixture["tasks"]!!.jsonArray.first { it.jsonObject.text("id")=="quiet" }.jsonObject)
         val state=RemoteState(conn=ConnState.ONLINE,machines=mapOf("computer" to MachineView("computer",true,0,MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build())))
         ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { TaskRow(task,state,Instant.parse(fixture.text("now"))) { clicked = true } } }
-        ui.onNodeWithText("每小时 · project · Claude Code").assertIsDisplayed()
+        ui.onNodeWithText("每小时 · project · Claude Code · 下次", substring = true).assertIsDisplayed()
         ui.onNodeWithText("今天 2 次，都没有通知").assertIsDisplayed()
         ui.onNodeWithText(task.title).performClick()
         assertTrue(clicked)
+    }
+    @Test fun unreadRowUsesBodyInkEmphasisAndCapsTheBadgeWithoutWrapping() {
+        val run = buildJsonObject { put("id", "r"); put("status", "completed"); put("notified", true); put("started_at", "2026-10-24T08:00:00Z"); put("notification_text", "最近摘要".repeat(100)) }
+        val task = ScheduledTask("computer", buildJsonObject {
+            put("id", "task"); put("status", "scheduled"); put("runs", JsonArray(listOf(run)))
+            put("spec", buildJsonObject { put("title", "很长的任务名".repeat(30)) })
+        })
+        var fg = androidx.compose.ui.graphics.Color.Unspecified
+        ui.setContent {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, 2f)) {
+                RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.DARK) { fg = pal.fg; TaskRow(task, RemoteState(), unread = 120) {} }
+            }
+        }
+        ui.onNodeWithText("99+").assertExists()
+        ui.onNodeWithContentDescription("120 条未读通知").assertExists()
+        fun layout(text: String): androidx.compose.ui.text.TextLayoutResult {
+            val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            ui.onNodeWithText(text, useUnmergedTree = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            return layouts.single()
+        }
+        val preview = layout(run.text("notification_text"))
+        assertEquals(fg, preview.layoutInput.style.color)
+        assertEquals(1, preview.lineCount)
+        assertEquals(T.bodyB.fontWeight, layout(task.title).layoutInput.style.fontWeight)
+        assertEquals(1, layout(task.title).lineCount)
+        ui.onNodeWithText(SCHEDULE_OFFLINE_ROW, substring = true, useUnmergedTree = true).assertExists()
+    }
+    @Test fun visitDotsAppearOnlyForTheUnreadRunsCapturedOnEntry() {
+        val runs = (1..2).map { ScheduledRun(buildJsonObject { put("id", "r$it"); put("notified", true); put("status", "completed"); put("started_at", "2026-10-24T08:00:00Z") }) }
+        val highlighted = androidx.compose.runtime.mutableStateOf(setOf("r1"))
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { androidx.compose.foundation.layout.Column {
+            ScheduleRunGroup(RunGroup("runs", runs, false), Instant.parse("2026-10-24T09:00:00Z"), highlighted.value) {}
+        } } }
+        ui.onAllNodesWithContentDescription("本次查看前未读", useUnmergedTree = true).assertCountEquals(1)
+        ui.runOnIdle { highlighted.value = emptySet() }
+        ui.onAllNodesWithContentDescription("本次查看前未读", useUnmergedTree = true).assertCountEquals(0)
     }
     @Test fun attentionReasonUsesMutedTextRatherThanTheOrangeStatusColor() {
         val fixture=Json.parseToJsonElement(java.io.File(System.getProperty("scheduleClients")).readText()).jsonObject
@@ -39,7 +76,7 @@ class ScheduleComponentsTest {
         ui.onNodeWithText(scheduleReason(task.reason), useUnmergedTree = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
         assertEquals(muted,layouts.single().layoutInput.style.color)
     }
-    @Test fun tabBadgeCountsOnlyAttentionTasksAndNavigates() {
+    @Test fun tabBadgeShowsTheSharedScheduleCountAndNavigates() {
         var selected = ""
         ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { TabBar("home", 4, 2) { selected = it } } }
         ui.onNodeWithText("2").assertExists()

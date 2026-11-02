@@ -32,6 +32,7 @@ import io.github.lewin671.remoteagent.core.CommandException
 import io.github.lewin671.remoteagent.core.PreparedCommand
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.core.long
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.NotifyContent
@@ -156,6 +157,19 @@ object Notifier {
     }
 
     fun id(session: String, approval: String?): Int = (approval ?: session).hashCode()
+
+    /** Run records identify the latest event exactly; never infer sequences for earlier notices. */
+    fun dismissScheduled(context: Context, runs: List<io.github.lewin671.remoteagent.core.ScheduledRun>) {
+        val nm = context.getSystemService(NotificationManager::class.java)
+        runs.forEach { run ->
+            val seq = run.json.long("notification_seq")
+            // notification_seq belongs to the execution log, not notification_session_id.
+            if (run.notified && run.session.isNotEmpty() && seq > 0) {
+                val event = "scheduled:$seq"
+                nm.cancel("scheduled/${run.session}/$event", id(run.session, event))
+            }
+        }
+    }
 
     /**
      * An approval's title and line, as the web names it: a command is 请求执行 with the command, any
