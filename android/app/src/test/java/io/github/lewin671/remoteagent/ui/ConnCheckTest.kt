@@ -25,6 +25,8 @@ class ConnCheckTest {
     @get:Rule val ui = createComposeRule()
     private var serverCalls = 0
     private var machineCalls = 0
+    private var reconnectCalls = 0
+    private var clockMs = 10_000L
     private val machine = "test-machine"
     private val waiting = RemoteState(
         conn = ConnState.OFFLINE, link = Link.WAITING, synced = true, loaded = true,
@@ -39,6 +41,7 @@ class ConnCheckTest {
                     state(), {}, "https://example.com", { listOf(machine) },
                     { serverCalls++; 12L },
                     { id -> assertEquals(machine, id); machineCalls++; 34L },
+                    { reconnectCalls++ }, { clockMs },
                 )
             }
         }
@@ -46,22 +49,29 @@ class ConnCheckTest {
 
     @Test fun disconnectedPushStaysVisibleWhenRoundTripsSucceedAndRecoveryDoesNotRerunProbes() {
         val failure = "同步设备状态超时，正在重连"
-        var state by mutableStateOf(waiting.copy(error = failure))
+        var state by mutableStateOf(waiting.copy(connError = failure))
         show { state }
         ui.onNodeWithText("12 ms").assertExists()
         ui.onNodeWithText("34 ms").assertExists()
         ui.onNodeWithText("重连中").assertExists()
         ui.onNodeWithText(hint + "最近一次失败：$failure").assertExists()
+        ui.onNodeWithText("立即重连").performScrollTo().performClick()
+        ui.runOnIdle {
+            assertEquals(1, reconnectCalls)
+            assertEquals(3, serverCalls)
+            assertEquals(1, machineCalls)
+        }
         val push = ui.onNodeWithText("实时推送").fetchSemanticsNode().boundsInRoot
         val network = ui.onNodeWithText("本机网络").fetchSemanticsNode().boundsInRoot
         assertTrue(push.top < network.top)
         ui.runOnIdle {
             assertEquals(3, serverCalls)
             assertEquals(1, machineCalls)
-            state = state.copy(conn = ConnState.ONLINE, link = Link.ONLINE, error = "")
+            state = state.copy(conn = ConnState.ONLINE, link = Link.ONLINE, connError = "")
         }
         ui.onNodeWithText("已连接").assertExists()
         ui.onNodeWithText(hint, substring = true).assertDoesNotExist()
+        ui.onNodeWithText("立即重连").assertDoesNotExist()
         ui.runOnIdle {
             assertEquals(3, serverCalls)
             assertEquals(1, machineCalls)
@@ -74,22 +84,43 @@ class ConnCheckTest {
     }
 
     @Test fun initialWaitingIsShownWithoutAnEmptyFailureSentence() {
-        show { waiting.copy(conn = ConnState.CONNECTING, synced = false) }
+        show { waiting.copy(conn = ConnState.CONNECTING, synced = false, connStep = "登录", connStartedAtMs = 7000) }
         ui.onNodeWithText("实时推送").assertExists()
         ui.onNodeWithText("连接中").assertExists()
-        ui.onNodeWithText(hint).assertExists()
+        ui.onNodeWithText("正在连接：登录，已 3 秒。").assertExists()
+        ui.onNodeWithText(hint, substring = true).assertDoesNotExist()
         ui.onNodeWithText("最近一次失败：", substring = true).assertDoesNotExist()
     }
 
+    @Test fun reconnectProgressTicksAndChangesStepUntilFailure() {
+        var state by mutableStateOf(waiting.copy(conn = ConnState.CONNECTING, connStep = "读取本机状态", connStartedAtMs = 7000, error = "普通请求错误"))
+        show { state }
+        ui.onNodeWithText("正在重连：读取本机状态，已 3 秒。").assertExists()
+        ui.onNodeWithText(hint, substring = true).assertDoesNotExist()
+        ui.runOnIdle { clockMs += 1000 }
+        ui.mainClock.advanceTimeBy(1000)
+        ui.onNodeWithText("正在重连：读取本机状态，已 4 秒。").assertExists()
+        ui.runOnIdle { state = state.copy(connStep = "建立推送连接") }
+        ui.onNodeWithText("正在重连：建立推送连接，已 4 秒。").assertExists()
+        ui.runOnIdle { state = state.copy(connStartedAtMs = clockMs) }
+        ui.onNodeWithText("正在重连：建立推送连接，已 0 秒。").assertExists()
+        ui.runOnIdle { state = state.copy(conn = ConnState.OFFLINE, connError = "没有回应", connStep = "", connStartedAtMs = null) }
+        ui.onNodeWithText(hint + "最近一次失败：没有回应").assertExists()
+        ui.onNodeWithText("正在重连：", substring = true).assertDoesNotExist()
+        ui.runOnIdle { state = state.copy(conn = ConnState.CONNECTING, connStep = "登录", connStartedAtMs = clockMs) }
+        ui.onNodeWithText("正在重连：登录，已 0 秒。上一次失败：没有回应").assertExists()
+        ui.onNodeWithText(hint, substring = true).assertDoesNotExist()
+    }
+
     @Test fun unreachableInitialStreamUsesExistingFailureWording() {
-        show { waiting.copy(link = Link.NO_SERVER, synced = false, error = "没有回应") }
+        show { waiting.copy(link = Link.NO_SERVER, synced = false, connError = "没有回应") }
         ui.onNodeWithText("连不上").assertExists()
         ui.onNodeWithText(hint + "最近一次失败：没有回应").assertExists()
         ui.onNodeWithText("12 ms").assertExists()
     }
 
     @Test fun onlineStreamHasNoDisconnectedHintEvenWithAnEarlierError() {
-        show { waiting.copy(conn = ConnState.ONLINE, link = Link.ONLINE, error = "earlier failure") }
+        show { waiting.copy(conn = ConnState.ONLINE, link = Link.ONLINE, connError = "earlier failure") }
         ui.onNodeWithText("实时推送").assertExists()
         ui.onNodeWithText("已连接").assertExists()
         ui.onNodeWithText(hint, substring = true).assertDoesNotExist()

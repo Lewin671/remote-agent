@@ -33,6 +33,7 @@ import io.github.lewin671.remoteagent.core.median
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 
 /** The link to the server in a word: what 设置 says before anything is measured. */
 fun connWord(state: RemoteState): String = when {
@@ -54,6 +55,7 @@ fun ConnCheckSheet(state: RemoteState, onClose: () -> Unit) {
         state, onClose, remote.account.server,
         { remote.state.value.machines.values.filter { it.online }.map { it.id } },
         { remote.pingServer() }, { remote.pingMachine(it) },
+        { remote.reconnectNow() },
     )
 }
 
@@ -65,12 +67,26 @@ internal fun ConnCheckSheet(
     onlineMachines: () -> List<String>,
     pingServer: suspend () -> Long,
     pingMachine: suspend (String) -> Long,
+    reconnectNow: () -> Unit,
+    clock: () -> Long = System::currentTimeMillis,
 ) {
     val p = pal
     var server by remember { mutableStateOf<Ping>(Ping.Wait) }
     val machines = remember { mutableStateMapOf<String, Ping>() }
     var run by remember { mutableStateOf(0) }
     var busy by remember { mutableStateOf(true) }
+    val startedAt = state.connStartedAtMs
+    val connecting = state.conn != ConnState.ONLINE && state.connStep.isNotEmpty() && startedAt != null
+    var tick by remember(startedAt) { mutableStateOf(clock()) }
+    LaunchedEffect(connecting, startedAt) {
+        if (connecting) {
+            tick = clock()
+            while (true) {
+                delay(1000)
+                tick = clock()
+            }
+        }
+    }
     val list = state.machines.values.sortedWith(compareByDescending<io.github.lewin671.remoteagent.core.MachineView> { it.online }.thenBy { machineLabel(state, it.id) })
     LaunchedEffect(run) {
         busy = true
@@ -132,9 +148,22 @@ internal fun ConnCheckSheet(
                 line(machineLabel(state, m.id)) { if (m.online) result(machines[m.id], SLOW_MACHINE_MS) else dotted(p.gray, "不在线", p.muted) }
             }
         }
-        if (state.conn != ConnState.ONLINE)
-            Hint("实时推送未连接，会话变化可能延迟。" + if (state.error.isNotEmpty()) "最近一次失败：${state.error}" else "")
+        if (state.conn != ConnState.ONLINE) {
+            Hint(when {
+                state.connStep.isNotEmpty() && startedAt != null -> {
+                    val seconds = ((tick - startedAt) / 1000).coerceAtLeast(0)
+                    "正在${if (state.synced) "重连" else "连接"}：${state.connStep}，已 $seconds 秒。" +
+                        if (state.connError.isNotEmpty()) "上一次失败：${state.connError}" else ""
+                }
+                state.connError.isNotEmpty() -> "实时推送未连接，会话变化可能延迟。最近一次失败：${state.connError}"
+                state.link == Link.NO_NETWORK -> "本机网络不通，联网后会重新连接。"
+                else -> "实时推送未连接。"
+            })
+        }
         Hint("延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。")
-        Btn("再测一次", { run++ }, Modifier.fillMaxWidth().padding(top = 12.dp), enabled = !busy)
+        Btns(Modifier.padding(top = 12.dp)) {
+            if (state.conn != ConnState.ONLINE) Btn("立即重连", reconnectNow, Modifier.weight(1f))
+            Btn("再测一次", { run++ }, Modifier.weight(1f), enabled = !busy)
+        }
     }
 }

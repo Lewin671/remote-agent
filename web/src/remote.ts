@@ -756,6 +756,10 @@ export class Remote {
   removalVerified = false;
   failures = 0;
   connError = "";
+  private connAttempt?: { step: string; startedAt: number };
+  /** Progress of the current attempt, including the wait for Ready. */
+  get connStep(): string { return this.connAttempt?.step ?? ""; }
+  get connStartedAt(): number | undefined { return this.connAttempt?.startedAt; }
   // The browser's word on whether this device has a network at all; it
   // cannot tell a network that is up but leads nowhere.
   network = typeof navigator === "undefined" || navigator.onLine !== false;
@@ -1536,6 +1540,7 @@ export class Remote {
     this.terminals.clear();
     if (this.conn === "online") this.lostAt = Date.now();
     this.conn = "offline";
+    this.connAttempt = undefined;
     this.changed(true);
   }
 
@@ -1669,7 +1674,7 @@ export class Remote {
     this.retryTimer = undefined;
     const generation = ++this.generation;
     this.conn = "connecting";
-    this.changed(true);
+    const attempt = this.connAttempt = { step: "读取本机状态", startedAt: Date.now() };
     let step = "";
     let budget = OPEN_TIMEOUT_MS;
     let stall: ReturnType<typeof setTimeout> | undefined;
@@ -1684,6 +1689,8 @@ export class Remote {
     };
     const at = (name: string, timeout = OPEN_TIMEOUT_MS) => {
       step = name;
+      attempt.step = name;
+      this.changed(true);
       budget = timeout;
       progress();
     };
@@ -1691,7 +1698,11 @@ export class Remote {
     at("读取本机状态");
     try {
       const go = await this.preStream(generation, at);
-      if (go) this.openStream(generation);
+      if (go) {
+        attempt.step = "建立推送连接";
+        this.changed(true);
+        this.openStream(generation);
+      }
     } catch (e) {
       // Storage can reject before login, and WebSocket construction can
       // throw before callbacks exist. Both belong to this attempt's retry.
@@ -1837,6 +1848,7 @@ export class Remote {
     this.conn = "offline";
     this.failures++;
     this.connError = errorText(e);
+    this.connAttempt = undefined;
     this.error = errorText(e);
     this.changed(true);
     if (this.closed) return;
@@ -1861,6 +1873,7 @@ export class Remote {
         clearTimeout(this.openTimer);
         this.retry = 1000;
         this.conn = "online";
+        this.connAttempt = undefined;
         this.lostAt = undefined;
         this.everOnline = true;
         this.failures = 0;

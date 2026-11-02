@@ -1658,7 +1658,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 定时任务：三端按 client-v52 改版（2026-10-30）
 
-产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v54 · 定时任务](design/client-v54.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
+产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v55 · 定时任务](design/client-v55.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
 
 | 检查 | 结果 |
 |---|---|
@@ -1677,7 +1677,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 定时任务完成通知与接管说明（2026-10-30）
 
-基于 v0.48.1 的独立 worktree，Go 1.26.10（darwin/arm64）、Claude Code 2.1.300、Xcode 27.0 / iOS 27 模拟器，协议 12，产品版本未修改；只本地提交，不推送、发版或部署。设计与升级要求见 [architecture §18](architecture.md#18-定时任务)，界面见 [client-v54](design/client-v54.html#schedules)。
+基于 v0.48.1 的独立 worktree，Go 1.26.10（darwin/arm64）、Claude Code 2.1.300、Xcode 27.0 / iOS 27 模拟器，协议 12，产品版本未修改；只本地提交，不推送、发版或部署。设计与升级要求见 [architecture §18](architecture.md#18-定时任务)，界面见 [client-v55](design/client-v55.html#schedules)。
 
 - 最终 `go test ./...` 全部通过；`go test ./internal/protocol -count=1` 的文档/协议约束检查也通过。通知标题复用原规则，包括允许尚未生成会话标题的缺失值；`TestScheduledFinish|TestScheduledNotifyTitleUsesExecutionSource` 定向复核通过。
 - 后端定向测试：`go test ./internal/daemon -run 'TestScheduledFinish|TestScheduledNotificationPolicySnapshot|TestMCPTakenOver' -count=1` 通过。覆盖缺省/显式开启、手动运行、已由 agent 通知不补发、关闭时不补发但仍允许 agent 通知、200 字摘要、失败/中断正文、来源会话承载启动失败通知、事件不可写时不记已通知及恢复重试、事件提交而任务保存前重启去重、策略快照、非法值拒绝、接管任务列表只读/来源/全部六种操作报错及跨会话拒绝。后续轮次回归 `TestFollowupSurvivesLaterSkippedRun|TestNonCompletedScheduledFollowups` 通过，保留 daemon 与 agent 通知的合计计数及原始运行结果。
@@ -1722,7 +1722,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 定时任务 IM 未读：网页（2026-11-01）
 
-基于 `64707901`、产品版本 0.50.2、协议 12 的独立 worktree，仅修改 `web/` 和 `docs/`，不提交、推送、发版或部署。界面与共同文案见 [client-v54 · 定时任务](design/client-v54.html#schedules)，视觉样式见 [design-system](design-system.md#6-组件)。本节只记录自动检查及边界，视觉验收由负责人完成。
+基于 `64707901`、产品版本 0.50.2、协议 12 的独立 worktree，仅修改 `web/` 和 `docs/`，不提交、推送、发版或部署。界面与共同文案见 [client-v55 · 定时任务](design/client-v55.html#schedules)，视觉样式见 [design-system](design-system.md#6-组件)。本节只记录自动检查及边界，视觉验收由负责人完成。
 
 ### 自动检查
 
@@ -1782,3 +1782,13 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 - 按任务要求不使用电脑操作或图形界面工具。本轮没有浏览器操作、截图或目视验收；亮色/暗色、200% 字号、真实窄屏/宽屏布局、长文字省略和点击区域的实际效果由负责人验收。第 9 节清单中颜色 token、字重、元信息、图标、按钮数量和布局约束已做代码自查，不能代替视觉验收。
 - 没有启动隔离 server/daemon，也未触发真实 CLI、实际 Web Push 或系统通知点击。React/模拟 DOM 与模拟 Service Worker API 验证的是客户端行为，不作为整条产品链路或真实通知送达/关闭的证据。Android/iOS 仅更新共同界面稿，未修改或运行它们的代码与测试。
 - 时间来源继续为 `ended_at || started_at`。运行记录没有通知事件时刻，不能精确反映同一次运行中多条或迟到通知的实际发送时间。
+
+## 连接检测：区分正在重连与重连失败（2026-11-02）
+
+基于 v0.51.0 的独立 worktree，只改网页、Android 客户端和文档，协议不变。界面见 [client-v55 · 连接检测](design/client-v55.html)。
+
+- 起因：网页从后台切回前台后打开连接检测，看到「实时推送 · 重连中」和「会话变化可能延迟」，服务器和电脑的往返却都正常。实际是切回前台后的重连还在进行，界面分不出这和卡住的区别。
+- 网页：`pnpm test` 92 个文件 1322 项通过，`pnpm run build` 通过。`reconnect.test.ts` 核对每一步的进度、失败和停止时清掉进度、新尝试重新计时且保留上一次失败原因；`conn-check.test.tsx` 核对步骤和秒数每秒刷新、进行中带上一次失败原因、失败后才出现原有提示、「立即重连」只在不在线时出现并调用 `reconnectNow`。
+- Android：`:core:test` 和 `:app:testDebugUnitTest` 通过，覆盖同样的状态与文案。
+- 演示页（本机 Chrome，390 宽，暗色）：`conn=reconnecting` 显示「正在重连：同步设备状态，已 N 秒。」，「立即重连」和「再测一次」并排；`conn=noserver` 显示「实时推送未连接，会话变化可能延迟。最近一次失败：连接超时」，点「立即重连」后变为「正在重连：同步设备状态，已 2 秒。上一次失败：连接超时」。
+- 没覆盖：演示页的步骤是固定值，没有在真实 server/daemon 上看切回前台的整个过程；Android 只跑了单元测试，没有在模拟器或真机上看；亮色、宽屏和 200% 字号没看。

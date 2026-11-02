@@ -1335,9 +1335,13 @@ class RemoteTest {
             r.start()
             r.awaitState("online") { it.conn == ConnState.ONLINE }
             assertEquals(1, logins.get())
+            assertEquals("", r.state.value.connStep)
+            assertNull(r.state.value.connStartedAtMs)
             // The app went to the background and came back: no second login.
             r.stop()
             r.awaitState("offline") { it.conn == ConnState.OFFLINE }
+            assertEquals("", r.state.value.connStep)
+            assertNull(r.state.value.connStartedAtMs)
             r.start()
             r.awaitState("online again") { it.conn == ConnState.ONLINE }
             assertEquals(1, logins.get())
@@ -1373,11 +1377,18 @@ class RemoteTest {
                 )
             closers += AutoCloseable { r.close() }
             r.start()
+            val progress = r.awaitState("waiting for Ready") { it.connStep == "建立推送连接" }
+            assertTrue(progress.connStartedAtMs != null)
+            assertEquals("", progress.connError)
             r.awaitState("missing Ready timeout") {
                 it.conn == ConnState.OFFLINE && it.error.contains("超时")
             }
+            assertEquals("", r.state.value.connStep)
+            assertNull(r.state.value.connStartedAtMs)
             r.reconnectNow()
             r.awaitState("replacement ready") { it.conn == ConnState.ONLINE }
+            assertEquals("", r.state.value.connStep)
+            assertNull(r.state.value.connStartedAtMs)
             assertEquals(2, hole.attempts.get())
         }
 
@@ -1449,7 +1460,13 @@ class RemoteTest {
                 r.close()
             }
             r.start()
+            val login = r.awaitState("login progress") { it.connStep == "登录" }
+            assertTrue(login.connStartedAtMs != null)
+            assertEquals("", login.connError)
             r.awaitState("login timeout") { it.conn == ConnState.OFFLINE }
+            assertEquals("", r.state.value.connStep)
+            assertNull(r.state.value.connStartedAtMs)
+            assertEquals(r.state.value.error, r.state.value.connError)
             assertFalse(r.state.value.removed)
             blocked.set(false)
             r.reconnectNow()

@@ -1876,6 +1876,16 @@ export class DemoRemote extends Remote {
   // The link's state is the one asked for, whatever this browser's network.
   override setNetwork() {}
 
+  private demoAttempt?: { startedAt: number };
+  override get connStep(): string { return this.demoAttempt ? "同步设备状态" : ""; }
+  override get connStartedAt(): number | undefined { return this.demoAttempt?.startedAt; }
+
+  override reconnectNow() {
+    this.conn = "connecting";
+    this.demoAttempt = { startedAt: Date.now() };
+    this.changed();
+  }
+
   override start() {
     const c = this.opts.get("conn");
     this.listed = this.opts.get("list") !== "fail";
@@ -1909,6 +1919,7 @@ export class DemoRemote extends Remote {
         connError: "证书无效",
       });
     else Object.assign(this, { conn: "online", everOnline: true });
+    this.demoAttempt = c === "connecting" || c === "reconnecting" ? { startedAt: Date.now() } : undefined;
     if (this.conn !== "online") this.lostAt = Date.now() - 70_000;
     this.changed();
     void this.loadDevices();

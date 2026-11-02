@@ -48,6 +48,15 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
   const [server, setServer] = useState<Ping>();
   const [machines, setMachines] = useState(new Map<string, Ping>());
   const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(Date.now);
+  const startedAt = remote.connStartedAt;
+  const connecting = remote.conn !== "online" && !!remote.connStep && startedAt !== undefined;
+  useEffect(() => {
+    if (!connecting) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [connecting, startedAt]);
   const stream = connWord(remote, true);
   const run = useRef(0);
   const list = [...remote.machines.values()].sort((a, b) => Number(b.online) - Number(a.online) || machineName(a).localeCompare(machineName(b)));
@@ -119,10 +128,15 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
         ))}
       </div>
       {remote.conn !== "online" && (
-        <div className="hint">实时推送未连接，会话变化可能延迟。{remote.connError && <>最近一次失败：{remote.connError}</>}</div>
+        <div className="hint">{connecting
+          ? `正在${remote.everOnline ? "重连" : "连接"}：${remote.connStep}，已 ${Math.max(0, Math.floor((now - startedAt!) / 1000))} 秒。${remote.connError && `上一次失败：${remote.connError}`}`
+          : remote.connError
+            ? `实时推送未连接，会话变化可能延迟。最近一次失败：${remote.connError}`
+            : remote.network ? "实时推送未连接。" : "本机网络不通，联网后会重新连接。"}</div>
       )}
       <div className="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div>
       <div className="btns conn-again">
+        {remote.conn !== "online" && <button className="btn" onClick={() => remote.reconnectNow(true)}>立即重连</button>}
         <button className="btn" disabled={busy} onClick={() => void check()}>
           再测一次
         </button>

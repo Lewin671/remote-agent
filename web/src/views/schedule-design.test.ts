@@ -2,8 +2,8 @@
 import { expect, it } from "vitest";
 const fs = "node:fs";
 const { readFileSync } = (await import(/* @vite-ignore */ fs)) as { readFileSync(path: string, enc: string): string };
-it("keeps the v54 schedule examples consistent with status and date wording", () => {
-  const doc = new DOMParser().parseFromString(readFileSync("../docs/design/client-v54.html", "utf8"), "text/html");
+it("keeps the v55 schedule examples consistent with status and date wording", () => {
+  const doc = new DOMParser().parseFromString(readFileSync("../docs/design/client-v55.html", "utf8"), "text/html");
   const chapter = doc.querySelector("#schedules")!;
   const create = doc.querySelector("#schedule-create")!.nextElementSibling!;
   expect([...create.querySelectorAll(".phone .tfield > span:first-child")].map(e => e.textContent)).toContain("模型");
@@ -35,7 +35,7 @@ it("keeps the v54 schedule examples consistent with status and date wording", ()
 });
 
 it("includes unread, crowded and no-notification examples for phone, Android and wide layouts", () => {
-  const doc = new DOMParser().parseFromString(readFileSync("../docs/design/client-v54.html", "utf8"), "text/html");
+  const doc = new DOMParser().parseFromString(readFileSync("../docs/design/client-v55.html", "utf8"), "text/html");
   const list = doc.querySelector("#schedule-list")!.nextElementSibling!;
   expect(list.querySelectorAll(".sess.schedule-line.unread").length).toBeGreaterThan(0);
   expect(list.querySelector('[aria-label="104 条未读通知"]')?.textContent).toBe("99+");

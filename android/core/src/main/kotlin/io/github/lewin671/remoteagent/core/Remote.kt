@@ -198,6 +198,11 @@ data class RemoteState(
     val clockWarning: Boolean = false,
     /** The failure behind [error] in its own words, for the details. */
     val errorDetail: String = "",
+    /** Current attempt, including the wait for Ready; empty outside an attempt. */
+    val connStep: String = "",
+    val connStartedAtMs: Long? = null,
+    /** Last connection failure, separate from errors reported by ordinary requests. */
+    val connError: String = "",
 ) {
     /** Display metadata never determines authority; the ID comes from the verified head. */
     val authorityName: String
@@ -456,6 +461,14 @@ class Remote(
     private val legacySessions = HashSet<String>()
     private var conn = ConnState.CONNECTING
     private var error = ""
+    private var connStep = ""
+    private var connStartedAtMs: Long? = null
+    private var connError = ""
+
+    private fun clearConnProgress() {
+        connStep = ""
+        connStartedAtMs = null
+    }
     private var loaded = false
     private var offlineSince = 0L
     private var errorDetail = ""
@@ -595,6 +608,8 @@ class Remote(
             ws?.cancel()
             ws = null
             conn = ConnState.OFFLINE
+            clearConnProgress()
+            connError = ""
             error = ""
             errorDetail = ""
             unresolved = false
@@ -685,6 +700,9 @@ class Remote(
                 recoveryPending = security.recoveryPending,
                 recoveryReadyMs = security.recoveryReadyMs,
                 clockWarning = serverAhead || security.clockSkew,
+                connStep = connStep,
+                connStartedAtMs = connStartedAtMs,
+                connError = connError,
             )
     }
 
@@ -712,6 +730,8 @@ class Remote(
                         ws?.close(1000, null)
                         ws = null
                         conn = ConnState.OFFLINE
+                        clearConnProgress()
+                        connError = ""
                         publish()
                     }
                 throw e
@@ -792,9 +812,13 @@ class Remote(
         if (!running) return
         val gen = generation
         conn = ConnState.CONNECTING
+        connStartedAtMs = clock()
+        connStep = "读取本机状态"
         publish()
         restored()
         if (!running || gen != generation) return
+        connStep = "登录"
+        publish()
         val token = try {
             withTimeout(streamOpenMs) { currentToken() }
         } catch (e: Exception) {
@@ -803,6 +827,8 @@ class Remote(
             return
         }
         if (!running || gen != generation) return
+        connStep = "建立推送连接"
+        publish()
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/stream"
         // Bounded: a reader that falls behind drops the stream and catches up
         // from history after reconnecting, instead of queueing without end.
@@ -920,7 +946,9 @@ class Remote(
 
     private fun fail(e: Throwable) {
         conn = ConnState.OFFLINE
+        clearConnProgress()
         error = errorText(e, state.value)
+        connError = error
         errorDetail = detailText(e)
         unresolved = unresolvedHost(e)
         publish()
@@ -942,6 +970,8 @@ class Remote(
                 val gen = generation
                 retry = 1000
                 conn = ConnState.ONLINE
+                clearConnProgress()
+                connError = ""
                 error = ""
                 errorDetail = ""
                 unresolved = false

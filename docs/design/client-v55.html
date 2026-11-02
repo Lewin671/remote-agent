@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v54 · 2026-11-01</title>
+<title>remote-agent 客户端设计稿 v55 · 2026-11-01</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -1073,17 +1073,16 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android / iOS 设计稿 · v54 · 2026-11-01 · 上一版 v53 在 git 历史里（<code>git log -- docs/design/client-v53.html</code>）</div>
+    <div class="sub">PWA / Android / iOS 设计稿 · v55 · 2026-11-01 · 上一版 v54 在 git 历史里（<code>git log -- docs/design/client-v54.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v53 的改动（定时任务）</h4><ul>
-<li>任务列表改为 IM 会话行：最近通知时间、摘要、蓝色未读数；时间规则和下次运行合并到第三行，组内按最近通知排序。</li>
-<li>打开列表保留未读；进入任务详情或运行对话才已读。详情用蓝点保留本次进入时的未读位置。</li>
-<li>手机与宽屏共用通知条数角标；补齐网页、Android 的日常、拥挤、无通知和详情画面。</li>
+  <h4>相对 v54 的改动（连接检测）</h4><ul>
+<li>网页和 Android 的实时推送连接进行中显示当前步骤与本轮已用秒数，每秒刷新。</li>
+<li>失败后显示最近一次失败原因；主连接不在线时增加「立即重连」，与只测延时的「再测一次」分开。</li>
 </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节"><a href="#schedules">定时任务</a><a href="#schedule-long">定时 · 长描述</a><a href="#schedule-wide">定时 · 宽屏</a>
@@ -2229,28 +2228,42 @@ git status --short gen/</pre>
 
 <!-- ============================= -->
 <h2 id="conncheck">连接检测</h2>
-<div class="note" style="margin:0 0 20px">连着但觉得慢、或者时断时续时，用它看是哪一段的问题。入口有两个：设置 › 账户里的「连接检测」一行（行尾写当前的连接状态），和宽屏侧栏底部的连接状态。打开就测一次，「再测一次」重测，平时不在后台测。按离本机由近到远列出：本机网络、服务器、每台电脑；延时是一次往返的时间，服务器一行取三次里居中的一次。服务器 500 ms 以上、电脑 1500 ms 以上用橙点并写「较慢」。</div>
+<div class="note" style="margin:0 0 20px">连着但觉得慢、或者时断时续时，用它看是哪一段的问题。入口有两个：设置 › 账户里的「连接检测」一行（行尾写当前的连接状态），和宽屏侧栏底部的连接状态。打开就测一次，「再测一次」重测，平时不在后台测。网页和 Android 首行显示实时推送的主连接状态；进行中写当前步骤与已用秒数，失败后才写原因。主连接不在线时有「立即重连」，「再测一次」只测延时。iOS 不列实时推送。按离本机由近到远列出：本机网络、服务器、每台电脑；延时是一次往返的时间，服务器一行取三次里居中的一次。服务器 500 ms 以上、电脑 1500 ms 以上用橙点并写「较慢」。</div>
 <div class="screens">
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><span class="dot idle"></span><em>86 ms</em></span></div><div class="sr"><span>MacBook</span><span class="v"><span class="dot idle"></span><em>132 ms</em></span></div><div class="sr"><span>VPS-dev</span><span class="v"><span class="dot wait"></span><em>2140 ms · 较慢</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">再测一次</div></div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>实时推送</span><span class="v"><span class="dot idle"></span><em>已连接</em></span></div><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><span class="dot idle"></span><em>86 ms</em></span></div><div class="sr"><span>MacBook</span><span class="v"><span class="dot idle"></span><em>132 ms</em></span></div><div class="sr"><span>VPS-dev</span><span class="v"><span class="dot wait"></span><em>2140 ms · 较慢</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">再测一次</div></div></div>
 </div>
 <div class="cap">测完：每一段一行。不在线的电脑不测，写「不在线」</div>
 </div>
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><em style="color:var(--muted)"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 检测中…</em></span></div><div class="sr"><span>MacBook</span><span class="v"><em style="color:var(--muted)"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 检测中…</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">再测一次</div></div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>实时推送</span><span class="v"><span class="dot idle"></span><em>已连接</em></span></div><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><em style="color:var(--muted)"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 检测中…</em></span></div><div class="sr"><span>MacBook</span><span class="v"><em style="color:var(--muted)"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 检测中…</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">再测一次</div></div></div>
 </div>
 <div class="cap">打开时和「再测一次」后：先测服务器，再同时测各台在线的电脑；测的时候按钮按禁用显示</div>
 </div>
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><em style="color:var(--red)">没有回应</em></span></div><div class="sr"><span>MacBook</span><span class="v"><em style="color:var(--muted)">未检测</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">再测一次</div></div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>实时推送</span><span class="v"><span class="dot idle"></span><em>已连接</em></span></div><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><em style="color:var(--red)">没有回应</em></span></div><div class="sr"><span>MacBook</span><span class="v"><em style="color:var(--muted)">未检测</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">再测一次</div></div></div>
 </div>
 <div class="cap">服务器没有回应：原因用红字写在这一行，后面的电脑不测，写「未检测」</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>实时推送</span><span class="v"><span class="dot wait"></span><em>重连中</em></span></div><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><span class="dot idle"></span><em>86 ms</em></span></div><div class="sr"><span>MacBook</span><span class="v"><span class="dot idle"></span><em>132 ms</em></span></div><div class="sr"><span>VPS-dev</span><span class="v"><span class="dot wait"></span><em>2140 ms · 较慢</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">正在重连：同步设备状态，已 3 秒。</div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">立即重连</div><div class="btn">再测一次</div></div></div>
+</div>
+<div class="cap">正在重连：步骤和秒数持续更新；延时测通不代表实时推送已连接。Android 按实际流程显示读取本机状态、登录或建立推送连接。</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>实时推送</span><span class="v"><span class="dot wait"></span><em>重连中</em></span></div><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><span class="dot idle"></span><em>86 ms</em></span></div><div class="sr"><span>MacBook</span><span class="v"><span class="dot idle"></span><em>132 ms</em></span></div><div class="sr"><span>VPS-dev</span><span class="v"><span class="dot wait"></span><em>2140 ms · 较慢</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">实时推送未连接，会话变化可能延迟。最近一次失败：连接超时</div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">立即重连</div><div class="btn">再测一次</div></div></div>
+</div>
+<div class="cap">等待重试：显示失败原因；立即重连重新建立主连接，再测一次只重测延时。</div>
 </div>
 </div>
 <h2 id="update">App 更新</h2>

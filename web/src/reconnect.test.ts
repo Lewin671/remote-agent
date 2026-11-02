@@ -208,14 +208,44 @@ it("allows each setup step its own deadline instead of restarting a healthy slow
   vi.spyOn(r as any, "login").mockReturnValue(new Promise<void>(resolve => { loggedIn = resolve; }));
   vi.spyOn(r.security, "sync").mockReturnValue(new Promise(resolve => { synced = resolve; }));
   r.start(); await flush();
+  const startedAt = r.connStartedAt;
+  expect(startedAt).toBe(Date.now()); expect(r.connStep).toBe("读取本机状态");
   await vi.advanceTimersByTimeAsync(14_000); warmed(); await flush();
+  expect(r.connStep).toBe("登录"); expect(r.connStartedAt).toBe(startedAt);
   await vi.advanceTimersByTimeAsync(14_000); loggedIn(); await flush();
+  expect(r.connStep).toBe("同步设备状态"); expect(r.connStartedAt).toBe(startedAt);
   await vi.advanceTimersByTimeAsync(20_000);
   expect(r.conn).toBe("connecting"); expect(r.failures).toBe(0);
   synced({ member: true, states: [{ core: { authorityID: "authority" } }] }); await flush();
   expect(Socket.all).toHaveLength(1);
+  expect(r.connStep).toBe("建立推送连接"); expect(r.connStartedAt).toBe(startedAt);
+  Socket.all[0].onopen?.();
+  expect(r.connStep).toBe("建立推送连接");
   Socket.all[0].frame("ready"); await flush();
   expect(r.conn).toBe("online"); expect(r.failures).toBe(0);
+  expect(r.connStep).toBe(""); expect(r.connStartedAt).toBeUndefined();
+});
+
+it("clears attempt progress on failure and stop, starts afresh on retries and network changes", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  const seen: string[] = [];
+  const unsubscribe = r.subscribe(() => seen.push(r.connStep));
+  try {
+    r.start(); await flush(); const startedAt = r.connStartedAt;
+    expect(seen).toEqual(expect.arrayContaining(["读取本机状态", "登录", "同步设备状态", "建立推送连接"]));
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(r.connStep).toBe(""); expect(r.connStartedAt).toBeUndefined(); expect(r.connError).not.toBe("");
+    // The last failure stays for the banner's details until Ready.
+    const failed = r.connError;
+    r.reconnectNow(true); await flush();
+    expect(r.connError).toBe(failed); expect(r.connStartedAt).toBeGreaterThan(startedAt!);
+    await vi.advanceTimersByTimeAsync(100);
+    r.setNetwork(false); await flush();
+    expect(r.connStartedAt).toBe(Date.now()); expect(r.connStep).toBe("建立推送连接");
+    r.stop(); expect(r.connStep).toBe(""); expect(r.connStartedAt).toBeUndefined();
+    Socket.all.at(-1)!.frame("ready"); await flush();
+    expect(r.connStep).toBe(""); expect(r.connStartedAt).toBeUndefined();
+  } finally { unsubscribe(); }
 });
 
 it("keeps a multi-page security pull alive while its bounded RPCs make progress", async () => {
