@@ -1493,18 +1493,14 @@ func visibleSchedules(tasks map[string]*schedule.Task) []byte {
 	return b
 }
 
+// finalRunSummary is the reply as one line of plain text, for the run
+// list and the completion notification: Markdown marks would show there
+// as they are, so headings, quotes, list and table marks, fences, emphasis,
+// inline code and link targets go.
 func finalRunSummary(text string) string {
 	lines := strings.Split(text, "\n")
 	for i, line := range lines {
-		line = strings.TrimSpace(line)
-		n := 0
-		for n < len(line) && line[n] == '#' {
-			n++
-		}
-		if n > 0 && n <= 6 && n < len(line) && unicode.IsSpace(rune(line[n])) {
-			line = strings.TrimSpace(line[n:])
-		}
-		lines[i] = line
+		lines[i] = plainLine(strings.TrimSpace(line))
 	}
 	text = strings.Join(strings.Fields(strings.Join(lines, " ")), " ")
 	runes := []rune(text)
@@ -1512,6 +1508,76 @@ func finalRunSummary(text string) string {
 		runes = runes[:200]
 	}
 	return string(runes)
+}
+
+func plainLine(line string) string {
+	if strings.HasPrefix(line, "```") || strings.HasPrefix(line, "~~~") || tableRule(line) {
+		return ""
+	}
+	for strings.HasPrefix(line, ">") {
+		line = strings.TrimSpace(line[1:])
+	}
+	n := 0
+	for n < len(line) && line[n] == '#' {
+		n++
+	}
+	if n > 0 && n <= 6 && n < len(line) && unicode.IsSpace(rune(line[n])) {
+		line = strings.TrimSpace(line[n:])
+	}
+	if len(line) > 1 && strings.ContainsRune("-*+", rune(line[0])) && unicode.IsSpace(rune(line[1])) {
+		line = strings.TrimSpace(line[1:])
+	}
+	if strings.HasPrefix(line, "[ ] ") || strings.HasPrefix(line, "[x] ") || strings.HasPrefix(line, "[X] ") {
+		line = line[4:]
+	}
+	if strings.HasPrefix(line, "|") {
+		cells := strings.Split(strings.Trim(line, "|"), "|")
+		for j, c := range cells {
+			cells[j] = strings.TrimSpace(c)
+		}
+		line = strings.Join(cells, " ")
+	}
+	line = strings.NewReplacer("**", "", "~~", "", "`", "").Replace(line)
+	return plainLinks(line)
+}
+
+// tableRule says whether line is the rule under a table's header, like
+// "|---|:--:|".
+func tableRule(line string) bool {
+	if !strings.Contains(line, "-") || !strings.Contains(line, "|") {
+		return false
+	}
+	return strings.Trim(line, "|-: ") == ""
+}
+
+// plainLinks keeps the text of [text](target) links and images.
+func plainLinks(line string) string {
+	var b strings.Builder
+	for {
+		open := strings.Index(line, "[")
+		if open < 0 {
+			break
+		}
+		mid := strings.Index(line[open:], "](")
+		if mid < 0 {
+			break
+		}
+		mid += open
+		end := strings.Index(line[mid:], ")")
+		if end < 0 {
+			break
+		}
+		end += mid
+		start := open
+		if start > 0 && line[start-1] == '!' {
+			start--
+		}
+		b.WriteString(line[:start])
+		b.WriteString(line[open+1 : mid])
+		line = line[end+1:]
+	}
+	b.WriteString(line)
+	return b.String()
 }
 
 func (d *Daemon) watchScheduledFollowups(t *schedule.Task) bool {

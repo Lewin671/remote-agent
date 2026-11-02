@@ -19,3 +19,11 @@ func TestRunSummaryUsesWholeFinalAnswer(t *testing.T) {
 		t.Fatalf("unhelpful summary: %q", got)
 	}
 }
+
+func TestFinalRunSummaryDropsMarkdown(t *testing.T) {
+	in := "# 早间简报\n**总结：** 平稳\n| 城市 | 天气 |\n|---|:--:|\n| 杭州 | 晴 |\n- **市场：** 涨\n- [x] 已复核\n> 引用\n```go\nx := 1\n```\n见[链接](https://example.com)和 `code`，![图](a.png)"
+	want := "早间简报 总结： 平稳 城市 天气 杭州 晴 市场： 涨 已复核 引用 x := 1 见链接和 code，图"
+	if got := finalRunSummary(in); got != want {
+		t.Fatalf("finalRunSummary = %q, want %q", got, want)
+	}
+}
