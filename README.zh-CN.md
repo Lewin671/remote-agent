@@ -15,7 +15,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/demo-dark.zh-CN.svg">
-  <img src="docs/assets/demo-light.zh-CN.svg" alt="电脑上 tmux 里的 Claude Code 请求执行 go test；请求以密文经过自己部署的中继；在手机上允许后，同一个会话接着运行。" width="880">
+  <img src="docs/assets/demo-light.zh-CN.svg" alt="动画概览：Claude Code 以原生形态跑在你电脑的 tmux 里，请求执行 go test；请求加密后经过你自己部署的中继，中继只看得到密文；你在手机上允许；测试在电脑上运行，结果回到手机；手机打开同一个会话的实时终端；再从手机发出下一条消息，它出现在电脑的终端里。" width="880">
 </picture>
 
 </div>

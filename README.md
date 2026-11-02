@@ -15,7 +15,7 @@ Open-source remote control for AI coding agents. Chat, approve permissions, watc
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/demo-dark.svg">
-  <img src="docs/assets/demo-light.svg" alt="Claude Code in tmux on a computer asks to run go test; the request crosses a self-hosted relay as ciphertext; it is approved on a phone and the same session carries on." width="880">
+  <img src="docs/assets/demo-light.svg" alt="Animated overview: Claude Code runs natively in tmux on your computer and asks to run go test; the request is encrypted and crosses a relay you host, which sees only ciphertext; you approve it on your phone; the tests run on the computer and the results reach the phone; the phone opens the live terminal of the same session; the next message is sent from the phone and appears in the terminal." width="880">
 </picture>
 
 </div>
