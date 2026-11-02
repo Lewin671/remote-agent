@@ -271,6 +271,7 @@ extension Route {
 /// The app once an account is in use: the stack, with the account's context and the navigator in the environment.
 struct MainView: View {
     let context: AccountContext
+    @Environment(AppModel.self) private var model
     @State private var nav: Navigator
 
     init(context: AccountContext, start: Route? = nil) {
@@ -293,8 +294,21 @@ struct MainView: View {
         }
         .debugSignal("app.back") { nav.back() }
         .task { await context.schedules.follow(context.remote) }
+        .modifier(ScheduleViewingObserver(store: context.schedules, page: nav.path.last, foreground: model.foreground))
         .environment(nav)
         .environment(context)
+    }
+}
+
+/// Visibility follows navigation, including routes opened from links and returning from a session.
+struct ScheduleViewingObserver: ViewModifier {
+    let store: ScheduleStore
+    let page: Route?
+    let foreground: Bool
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: page, initial: true) { _, _ in store.setViewing(page, foreground: foreground) }
+            .onChange(of: foreground) { _, _ in store.setViewing(page, foreground: foreground) }
     }
 }
 

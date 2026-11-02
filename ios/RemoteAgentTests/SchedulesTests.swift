@@ -27,33 +27,100 @@ import UIKit
         p.paused = true
         #expect(scheduledPendingLabel(p, label: "已暂停")?.hasSuffix(" · 已暂停") == true)
     }
-    @Test func unreadBadgeBaselinesHistoryUnionsAttentionAndClearsOnlyAtTheList() async {
+    @Test func unreadRunsAreCountedAndOnlyTheViewedTaskOrSessionIsRead() async throws {
         let store = ScheduleStore()
         var current = task()
         current.runs = [ScheduleRun(id: "old", startedAt: "", status: "completed", notified: true)]
-        store.configure(.init(cached: { _ in nil }, list: { _ in [current] }))
-        store.reconcile(state()); await eventually("initial list loaded") { store.loading.isEmpty && !store.tasks.isEmpty }
-        #expect(store.badgeCount == 0)
-        current.active = ScheduleRun(id: "new", startedAt: "", status: "running")
-        await store.refresh("m"); #expect(store.badgeCount == 0)
-        current.active?.notified = true
-        await store.refresh("m"); #expect(store.badgeCount == 1)
-        current.status = "failed"
         var other = task("other"); other.status = "uncertain"
         store.configure(.init(cached: { _ in nil }, list: { _ in [current, other] }))
-        await store.refresh("m"); #expect(store.badgeCount == 2) // The notified failed task counts once.
-        store.setListOpen(true); #expect(store.badgeCount == 2) // Attention remains after notifications are seen.
+        store.reconcile(state()); await eventually("initial list loaded") { store.loading.isEmpty && !store.tasks.isEmpty }
+        #expect(store.badgeCount == 1) // Existing history is the baseline; attention still counts.
+        current.runs! += [
+            ScheduleRun(id: "a", startedAt: "", status: "completed", notified: true, sessionID: "shared"),
+            ScheduleRun(id: "b", startedAt: "", status: "completed", notified: true, sessionID: "shared"),
+            ScheduleRun(id: "silent", startedAt: "", status: "completed", sessionID: "shared")
+        ]
+        current.active = ScheduleRun(id: "c", startedAt: "", status: "running", notified: true, sessionID: "different")
+        current.status = "failed"
+        other.runs = [ScheduleRun(id: "same-session", startedAt: "", status: "completed", notified: true, sessionID: "shared")]
+        await store.refresh("m")
+        #expect(store.badgeCount == 4) // max(3, 1) + max(1, 1), never 6.
+        store.setViewing(.schedules, foreground: true)
+        #expect(store.badgeCount == 4)
+        current.runs?.append(ScheduleRun(id: "tab-open", startedAt: "", status: "completed", notified: true))
+        await store.refresh("m"); #expect(store.badgeCount == 5)
+        store.setViewing(.session(id: "shared"), foreground: true)
+        #expect(store.unreadRunIDs(machine: "m", task: current) == ["c", "tab-open"])
+        #expect(store.unreadRunIDs(machine: "m", task: other).isEmpty)
+        #expect(store.badgeCount == 3)
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        #expect(store.badgeCount == 2) // Both attention tasks remain.
+        #expect(store.detailUnread == ["c", "tab-open"])
+        #expect(store.wasUnreadOnEntry(machine: "m", task: "t", run: "c"))
+        #expect(!store.wasUnreadOnEntry(machine: "other", task: "t", run: "c"))
+        current.runs?.append(ScheduleRun(id: "detail-open", startedAt: "", status: "completed", notified: true))
+        await store.refresh("m")
+        #expect(store.unreadRunIDs(machine: "m", task: current).isEmpty)
+        #expect(store.detailUnread == ["c", "tab-open"]) // Arrival during the visit is read, without an entry dot.
+        store.setViewing(.schedules, foreground: true)
+        #expect(store.detailUnread.isEmpty)
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        #expect(store.detailUnread.isEmpty)
         current.status = "scheduled"; other.status = "scheduled"
+        store.setViewing(nil, foreground: true)
         await store.refresh("m"); #expect(store.badgeCount == 0)
-        current.runs?.append(ScheduleRun(id: "while-open", startedAt: "", status: "completed", notified: true))
-        await store.refresh("m"); #expect(store.badgeCount == 0)
-        store.setListOpen(false)
         current.runs?.append(ScheduleRun(id: "later", startedAt: "", status: "completed", notified: true))
         await store.refresh("m"); #expect(store.badgeCount == 1)
         current.status = "cancelled"; current.reason = "user_cancelled"
         await store.refresh("m"); #expect(store.badgeCount == 0)
         store.configure(.init(cached: { _ in nil }, list: { _ in [] }))
         await store.refresh("m"); #expect(store.badgeCount == 0)
+    }
+    @Test func viewingSessionConsumesNewRunsButBackgroundDoesNot() async {
+        let store = ScheduleStore()
+        var current = task(); current.spec.target.type = "resume_session"; current.spec.target.session = "shared"
+        store.configure(.init(cached: { _ in nil }, list: { _ in [current] }))
+        store.reconcile(state()); await eventually("loaded") { store.loading.isEmpty }
+        store.setViewing(.session(id: "shared"), foreground: true)
+        current.runs = [ScheduleRun(id: "a", startedAt: "", status: "completed", notified: true, sessionID: "shared")]
+        await store.refresh("m"); #expect(store.badgeCount == 0)
+        store.setViewing(.session(id: "shared"), foreground: false)
+        current.runs?.append(ScheduleRun(id: "b", startedAt: "", status: "completed", notified: true, sessionID: "shared"))
+        await store.refresh("m"); #expect(store.badgeCount == 1)
+        store.setViewing(.session(id: "shared"), foreground: true)
+        #expect(store.badgeCount == 0)
+        current.active = ScheduleRun(id: "c", startedAt: "", status: "running", notified: true, sessionID: "shared")
+        await store.refresh("m"); #expect(store.badgeCount == 0)
+    }
+    @Test func anUnloadedDetailCapturesUnreadAfterCachedHistoryArrives() async {
+        let store = ScheduleStore()
+        var current = task()
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        store.configure(.init(cached: { _ in [] }, list: { _ in
+            current.runs = [ScheduleRun(id: "new", startedAt: "", status: "completed", notified: true)]
+            return [current]
+        }))
+        store.reconcile(state()); await eventually("detail loaded") { store.loading.isEmpty }
+        #expect(store.badgeCount == 0 && store.detailUnread == ["new"])
+    }
+    @Test func unreadCountsAboveNinetyNineAndDetailReadsAreMachineScoped() async {
+        let store = ScheduleStore()
+        var current = task()
+        var state = state(); state.currentMachines.insert("second")
+        state.machines["second"] = MachineView(id: "second", online: true, lastSeenMs: 0, meta: state.machines["m"]?.meta)
+        store.configure(.init(cached: { _ in [] }, list: { _ in [current] }))
+        store.reconcile(state); await eventually("both computers loaded") { store.loading.isEmpty }
+        current.runs = (0..<100).map { ScheduleRun(id: "r-\($0)", startedAt: "", status: "completed", notified: true) }
+        await store.refresh("m"); await store.refresh("second")
+        #expect(store.badgeCount == 200)
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        #expect(store.badgeCount == 100 && store.detailUnread.count == 100)
+        #expect(store.unreadRunIDs(machine: "second", task: current).count == 100)
+        var offline = state; offline.conn = .offline
+        store.reconcile(offline)
+        #expect(store.badgeCount == 100)
+        offline.currentMachines.remove("second"); store.reconcile(offline)
+        #expect(store.badgeCount == 0)
     }
     @Test func unreadBadgePersistsAcrossLaunchAndIsolatesRelayAccountAndMachine() async throws {
         let suite = "schedule-badge-test-" + UUID().uuidString
@@ -84,7 +151,7 @@ import UIKit
         other.configure(.init(cached: { _ in [current] }, list: { _ in [current] }))
         other.reconcile(otherState); await eventually("other machine loaded") { other.loading.isEmpty }
         #expect(other.badgeCount == 0)
-        reload.setListOpen(true)
+        reload.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
         let seen = await make(scope, [current]); #expect(seen.badgeCount == 0)
     }
 
@@ -256,6 +323,50 @@ import UIKit
             #expect(size.width <= width + 0.5 && size.height >= 44)
         }
     }
+    @Test func navigationObserverKeepsListUnreadAndReadsTheSelectedDetail() async throws {
+        await WindowTestGate.shared.acquire(); defer { WindowTestGate.shared.release() }
+        let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let nav = Navigator(), store = ScheduleStore()
+        var current = task()
+        store.configure(.init(cached: { _ in [] }, list: { _ in [current] }))
+        store.reconcile(state()); await eventually("baseline loaded") { store.loading.isEmpty }
+        current.runs = [ScheduleRun(id: "new", startedAt: "", status: "completed", notified: true)]
+        await store.refresh("m")
+        struct Host: View {
+            let nav: Navigator
+            let store: ScheduleStore
+            var body: some View { Text("navigation").modifier(ScheduleViewingObserver(store: store, page: nav.path.last, foreground: true)) }
+        }
+        let host = UIHostingController(rootView: Host(nav: nav, store: store))
+        let window = UIWindow(windowScene: scene); window.rootViewController = host; window.isHidden = false
+        defer { window.isHidden = true }
+        nav.open(.schedules)
+        host.view.layoutIfNeeded()
+        for _ in 0..<5 { await Task.yield() }
+        #expect(store.badgeCount == 1)
+        nav.open(.schedule(machine: "m", id: "t"))
+        await eventually("navigation reads detail") { store.badgeCount == 0 }
+        #expect(store.detailUnread == ["new"])
+        nav.open(.session(id: "s"))
+        await eventually("leaving detail removes entry dots") { store.detailUnread.isEmpty }
+    }
+    @Test func unreadRowsAndBadgesFitLongTextAtTwoHundredPercentInBothThemes() {
+        #expect(ScheduleUnreadBadge(count: 100).text == "99+")
+        #expect(ScheduleUnreadBadge(count: 99).text == "99")
+        for width in [320.0, 760] {
+            for scheme in [ColorScheme.light, .dark] {
+                let row = SessionListRowContent(title: String(repeating: "很长的任务名", count: 12), right: "昨天", third: String(repeating: "每小时 · 项目 · Codex · 电脑 · 下次 今天 15:00", count: 5), color: Theme.green, last: false, titleStyle: T.bodyB, singleLinePreview: true) {
+                    HStack(spacing: 8) {
+                        Text(String(repeating: "很长的通知摘要", count: 30)).type(T.sm, Theme.fg).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                        ScheduleUnreadBadge(count: 999)
+                    }
+                }.environment(\.dynamicTypeSize, .accessibility3).environment(\.colorScheme, scheme)
+                let host = UIHostingController(rootView: row)
+                let size = host.sizeThatFits(in: CGSize(width: width, height: 1000))
+                #expect(size.width <= width + 0.5 && size.height >= 44 && size.height < 500)
+            }
+        }
+    }
     @Test func builderKeepsNotificationAndScheduledCaptionVisibleAndFoldsSilentRounds() async throws {
         var events = [PBEvent]()
         for i in 0..<2 {
@@ -384,6 +495,8 @@ import UIKit
         #expect(scheduleLocation(task,state:state,machine:"m") == "在对话里")
         state.sessions["s"]?.info = PBSession.with { $0.title = "修复登录超时" }
         #expect(scheduleLocation(task,state:state,machine:"m") == "在「修复登录超时」里")
+        state.sessions["s"]?.info?.agent = .claude
+        #expect(scheduleLocation(task,state:state,machine:"m",frequency:true).contains("在「修复登录超时」里 · Claude Code"))
     }
     @Test("Only system stops show a reason banner; an expired manual pause stays quiet")
     func onlySystemStopsAndExpiredPausesShowAReasonBanner() {

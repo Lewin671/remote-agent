@@ -55,8 +55,6 @@ struct SchedulesScreen: View {
                 }
             }
         }
-        .onAppear { store.setListOpen(true) }
-        .onDisappear { store.setListOpen(false) }
     }
 }
 struct ScheduleListRow: View {
@@ -69,15 +67,33 @@ struct ScheduleListRow: View {
     var body: some View {
         let task = entry.task
         let online = context.schedules.online(entry.machineID)
-        let right = online ? task.stateText(online: true, now: Date(timeIntervalSince1970: Double(now) / 1000)) : scheduleOfflineRow
-        let subtitle = scheduleLocation(task, state: model.state, machine: entry.machineID, frequency: true)
-        let result = task.lastResult(now: Date(timeIntervalSince1970: Double(now) / 1000))
+        let date = Date(timeIntervalSince1970: Double(now) / 1000)
+        let right = task.latestNotification.map { whenText(Int64($0.notificationTime.timeIntervalSince1970 * 1000), now: now) } ?? ""
+        let status = online ? task.stateText(online: true, now: date) : scheduleOfflineRow
+        let metadata = scheduleLocation(task, state: model.state, machine: entry.machineID, frequency: true) + " · " + status
+        let unread = context.schedules.unreadCount(entry)
         Button { nav.open(.schedule(machine: entry.machineID, id: task.id)) } label: {
-            SessionListRowContent(title: task.spec.title, right: right, third: result,
-                                  color: !online ? Theme.gray : task.group == .attention ? Theme.orange : task.group == .active ? (task.active != nil ? Theme.blue : Theme.green) : Theme.gray, last: last) {
-                Text(subtitle).type(T.sm, Theme.muted)
+            SessionListRowContent(title: task.spec.title, right: right, third: metadata,
+                                  color: !online ? Theme.gray : task.group == .attention ? Theme.orange : task.group == .active ? (task.active != nil ? Theme.blue : Theme.green) : Theme.gray, last: last,
+                                  titleStyle: unread > 0 ? T.bodyB : T.body.with(weight: .medium), singleLinePreview: true) {
+                HStack(spacing: 8) {
+                    Text(task.notificationPreview(now: date)).type(T.sm, unread > 0 ? Theme.fg : Theme.muted)
+                        .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                    if unread > 0 { ScheduleUnreadBadge(count: unread) }
+                }
             }
         }.buttonStyle(RowPressStyle()).accessibilityElement(children: .combine)
+    }
+}
+
+struct ScheduleUnreadBadge: View {
+    let count: Int
+    var text: String { count > 99 ? "99+" : String(count) }
+    var body: some View {
+        Text(text).type(T.meta.with(weight: .bold), Theme.onSolid)
+            .padding(.horizontal, 8).padding(.vertical, 2)
+            .background(Theme.blueBg, in: Capsule()).fixedSize()
+            .accessibilityLabel("\(count) 条未读通知")
     }
 }
 func scheduleLocation(_ task: ScheduleTask, state: RemoteState, machine: String, frequency: Bool = false) -> String {
@@ -85,7 +101,7 @@ func scheduleLocation(_ task: ScheduleTask, state: RemoteState, machine: String,
     let place: String
     if target.type == "resume_session" {
         if let sid = target.session, let session = state.sessions[sid], session.info != nil {
-            place = "在「" + titleOf(session) + "」里"
+            place = "在「" + titleOf(session) + "」里" + (frequency ? " · " + agentName(session.agent) : "")
         } else { place = "在对话里" }
     } else { place = projectName(target.cwd ?? "") + " · " + (target.agent == "claude" ? "Claude Code" : "Codex") }
     return (frequency ? scheduleFrequency(task.spec.trigger, includeZone: true) + " · " : "") + place + (state.machines.count > 1 ? " · " + machineLabel(state, id: machine) : "")

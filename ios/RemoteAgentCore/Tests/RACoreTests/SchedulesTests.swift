@@ -107,7 +107,9 @@ import RAProto
         #expect(scheduleEmpty == f.empty && scheduleOffline == f.offline && scheduleOfflineRow == f.offlineRow)
         for pair in f.titleFromMessage { #expect(scheduleTitle("", message: pair[0]) == pair[1]) }
         for group in ScheduleGroup.allCases {
-            #expect(sortedSchedules(f.tasks.map { MachineSchedule(machineID: "computer", task: $0) }, group: group).map { $0.task.id } == f.groups[group.title])
+            // The shared fixture predates notification-first ordering.
+            let expected = group == .active ? ["conversation", "quiet"] : f.groups[group.title]
+            #expect(sortedSchedules(f.tasks.map { MachineSchedule(machineID: "computer", task: $0) }, group: group).map { $0.task.id } == expected)
         }
         let attention = try #require(f.tasks.first { $0.id == "attention" })
         #expect(attention.lastResult() == "创建任务时的权限已改变，任务已停下")
@@ -167,6 +169,78 @@ import RAProto
         var a = task(), b = task(); a.nextRunAt = "2026-10-24T18:00:00Z"; b.nextRunAt = "2026-10-24T17:00:00Z"
         let entries = [MachineSchedule(machineID: "a", task: a), MachineSchedule(machineID: "b", task: b)]
         #expect(sortedSchedules(entries, group: .active).map(\.machineID) == ["b", "a"])
+    }
+    @Test func notificationsLeadEveryGroupAndKeepTheOldOrderForUnnotifiedTasks() {
+        for (status, group) in [("failed", ScheduleGroup.attention), ("active", .active), ("paused", .paused), ("completed", .ended)] {
+            func make(_ id: String, next: String, updated: String, notifiedAt: String? = nil) -> MachineSchedule {
+                var t = task(status); t.id = id; t.nextRunAt = next; t.updatedAt = updated
+                // A later silent run cannot move a notification down or change its preview.
+                t.runs = [ScheduleRun(id: "silent", startedAt: "2026-10-30T00:00:00Z", status: "completed")]
+                if let notifiedAt { t.runs?.append(ScheduleRun(id: "notice", startedAt: notifiedAt, status: "completed", notified: true)) }
+                return .init(machineID: id, task: t)
+            }
+            let early = make("early", next: "2026-10-24T17:00:00Z", updated: "2026-10-24T10:00:00Z")
+            let late = make("late", next: "2026-10-24T18:00:00Z", updated: "2026-10-24T11:00:00Z")
+            let old = make("old", next: "2026-10-24T19:00:00Z", updated: "2026-10-24T12:00:00Z", notifiedAt: "2026-10-24T08:00:00Z")
+            let new = make("new", next: "2026-10-24T20:00:00Z", updated: "2026-10-24T09:00:00Z", notifiedAt: "2026-10-24T09:00:00Z")
+            let expected = ["new", "old"] + (group == .active ? ["early", "late"] : ["late", "early"])
+            #expect(sortedSchedules([late, old, early, new], group: group).map(\.machineID) == expected)
+            var cancelled = new; cancelled.task.status = "cancelled"; cancelled.task.reason = "user_cancelled"
+            #expect(sortedSchedules([cancelled], group: group).isEmpty)
+        }
+    }
+    @Test func notificationTimeDecodesAndFallsBackWithoutChangingTheHistoryDate() throws {
+        let data = Data(#"{"id":"notice","started_at":"2026-10-24T17:00:00Z","ended_at":"2026-10-24T20:00:00Z","scheduled_at":"2026-10-24T16:00:00Z","status":"completed","notified":true,"start_seq":0,"after_seq":0}"#.utf8)
+        var run = try JSONDecoder().decode(ScheduleRun.self, from: data)
+        let started = try #require(scheduleDate(run.startedAt))
+        #expect(run.notificationTime == scheduleDate("2026-10-24T20:00:00Z"))
+        #expect(run.date == started)
+        #expect(try JSONDecoder().decode(ScheduleRun.self, from: JSONEncoder().encode(run)) == run)
+        run.endedAt = nil
+        #expect(run.notificationTime == started && run.date == started)
+        run.endedAt = "" // Missing/invalid times use the next available timestamp.
+        #expect(run.notificationTime == started)
+        run.startedAt = ""
+        #expect(run.notificationTime == scheduleDate("2026-10-24T16:00:00Z"))
+        #expect(run.date == .distantPast)
+        run.scheduledAt = nil
+        #expect(run.notificationTime == .distantPast && run.date == .distantPast)
+    }
+    @Test func notificationsUseEndTimeForSelectionPreviewAndEveryGroupSort() throws {
+        var earlyStart = ScheduleRun(id: "early-start", startedAt: "2026-10-24T17:00:00Z", status: "completed", notified: true)
+        earlyStart.endedAt = "2026-10-24T20:00:00Z"; earlyStart.notificationText = "开始早，最后才结束"
+        var lateStart = ScheduleRun(id: "late-start", startedAt: "2026-10-24T18:00:00Z", status: "completed", notified: true)
+        lateStart.endedAt = "2026-10-24T19:00:00Z"; lateStart.notificationText = "开始晚，先结束"
+        var combined = task(); combined.runs = [earlyStart, lateStart]
+        #expect(combined.history.map(\.id) == ["late-start", "early-start"])
+        #expect(combined.latestNotification?.id == "early-start")
+        #expect(combined.notificationPreview() == earlyStart.notificationText)
+        let selected = try #require(combined.latestNotification)
+        let notificationMS = Int64(selected.notificationTime.timeIntervalSince1970 * 1000)
+        let now = try #require(scheduleDate("2026-10-24T21:30:00Z"))
+        #expect(whenText(notificationMS, now: Int64(now.timeIntervalSince1970 * 1000), zone: TimeZone(secondsFromGMT: 0)!) == "20:00")
+        for (status, group) in [("failed", ScheduleGroup.attention), ("active", .active), ("paused", .paused), ("completed", .ended)] {
+            var earlyTask = task(status); earlyTask.id = "early-task"; earlyTask.runs = [earlyStart]
+            var lateTask = task(status); lateTask.id = "late-task"; lateTask.runs = [lateStart]
+            #expect(sortedSchedules([.init(machineID: "m", task: lateTask), .init(machineID: "m", task: earlyTask)], group: group).map { $0.task.id } == ["early-task", "late-task"])
+        }
+    }
+    @Test func notificationPreviewUsesNoticeThenFinalSummaryAndAttentionReason() {
+        var t = task()
+        #expect(t.latestNotification == nil && t.notificationPreview() == "还没有运行")
+        var r = ScheduleRun(id: "notice", startedAt: "2026-10-24T08:00:00Z", status: "completed", notified: true)
+        r.notificationText = "新回复"; r.finalSummary = "检查完了"
+        t.runs = [r, ScheduleRun(id: "silent", startedAt: "2026-10-25T08:00:00Z", status: "completed")]
+        #expect(t.latestNotification?.id == "notice" && t.notificationPreview() == "新回复")
+        t.runs?[0].notificationText = "  "; #expect(t.notificationPreview() == "检查完了")
+        t.runs?[0].finalSummary = nil; #expect(t.notificationPreview() == "通知了你")
+        t.active = ScheduleRun(id: "active-notice", startedAt: "2026-10-26T08:00:00Z", status: "running", notified: true)
+        t.active?.notificationText = "运行中有变化"
+        #expect(t.latestNotification?.id == "active-notice" && t.notificationPreview() == "运行中有变化")
+        t.active?.status = "interrupted"; t.active?.reason = "execution_interrupted"
+        #expect(t.notificationPreview() == "运行被中断，任务已停下")
+        t.status = "failed"; t.reason = "relay_session_limit"
+        #expect(t.notificationPreview() == "中继上的会话数已满")
     }
     @Test func localTimeAndOfflineState() {
         var t = task(); t.nextRunAt = "2026-10-24T18:05:00Z"

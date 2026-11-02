@@ -49,6 +49,8 @@ public struct ScheduleRun: Codable, Equatable, Sendable, Identifiable {
     public var id: String
     public var sessionID: String?
     public var startedAt: String
+    public var endedAt: String?
+    public var scheduledAt: String?
     public var status: String
     public var reason: String?
     public var manual: Bool?
@@ -63,6 +65,7 @@ public struct ScheduleRun: Codable, Equatable, Sendable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, status, reason, manual, notified
         case notificationSource = "notification_source"
+        case endedAt = "ended_at", scheduledAt = "scheduled_at"
         case sessionID = "session_id", startedAt = "started_at", notificationText = "notification_text", finalSummary = "final_summary"
         case startSeq = "start_seq", afterSeq = "after_seq", inputPaused = "input_paused"
     }
@@ -71,6 +74,10 @@ public struct ScheduleRun: Codable, Equatable, Sendable, Identifiable {
         startSeq = 0; afterSeq = 0
     }
     public var date: Date { scheduleDate(startedAt) ?? .distantPast }
+    /// Notification ordering is independent of the history's start-time ordering.
+    public var notificationTime: Date {
+        endedAt.flatMap(scheduleDate) ?? scheduleDate(startedAt) ?? scheduledAt.flatMap(scheduleDate) ?? .distantPast
+    }
     public var silent: Bool { status == "completed" && !notified && inputPaused != true }
     public var foldedSummary: String { (finalSummary ?? "").isEmpty ? "没有通知" : finalSummary! }
     public var notificationLabel: String {
@@ -121,6 +128,19 @@ public struct ScheduleTask: Codable, Equatable, Sendable, Identifiable {
     }
     public var creator: String { source == "agent" ? "Agent 在对话里创建" : "你创建" }
     public var history: [ScheduleRun] { ((runs ?? []) + (active.map { [$0] } ?? [])).sorted { $0.date > $1.date } }
+    public var latestNotification: ScheduleRun? {
+        history.filter(\.notified).max { $0.notificationTime < $1.notificationTime }
+    }
+    public func notificationPreview(now: Date = Date(), zone: TimeZone = .current) -> String {
+        if group == .attention { return scheduleReason(reason) }
+        guard let run = latestNotification else { return lastResult(now: now, zone: zone) }
+        // A stopped run shows its readable reason, as on web and Android, not the daemon's notice text.
+        if ["failed", "skipped", "uncertain", "interrupted", "cancelled"].contains(run.status) { return scheduleReason(run.reason) }
+        for text in [run.notificationText, run.finalSummary] {
+            if let text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return text }
+        }
+        return run.result
+    }
     public var group: ScheduleGroup {
         switch status {
         case "failed", "uncertain": return .attention
@@ -172,6 +192,9 @@ public struct MachineSchedule: Equatable, Sendable, Identifiable {
 }
 public func sortedSchedules(_ tasks: [MachineSchedule], group: ScheduleGroup) -> [MachineSchedule] {
     tasks.filter { $0.task.visible && $0.task.group == group }.sorted {
+        let ln = $0.task.latestNotification, rn = $1.task.latestNotification
+        if (ln != nil) != (rn != nil) { return ln != nil }
+        if let ln, let rn, ln.notificationTime != rn.notificationTime { return ln.notificationTime > rn.notificationTime }
         if group == .active {
             let l = $0.task.nextRunAt.flatMap(scheduleDate) ?? .distantFuture
             let r = $1.task.nextRunAt.flatMap(scheduleDate) ?? .distantFuture

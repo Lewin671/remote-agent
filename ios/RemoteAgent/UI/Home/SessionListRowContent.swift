@@ -7,6 +7,8 @@ struct SessionListRowContent<Second: View>: View {
     let third: String
     let color: Color
     let last: Bool
+    var titleStyle: TypeStyle = T.bodyB
+    var singleLinePreview = false
     @ViewBuilder let second: () -> Second
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .caption) private var dot: CGFloat = 8
@@ -15,13 +17,13 @@ struct SessionListRowContent<Second: View>: View {
             Text(" ").type(T.bodyB).hidden().frame(width: dot).overlay { Dot(color) }.accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
                 if typeSize.isAccessibilitySize {
-                    Text(title).type(T.bodyB, Theme.fg).lineLimit(2)
-                    second().lineLimit(2)
+                    Text(title).type(titleStyle, Theme.fg).lineLimit(singleLinePreview ? 1 : 2)
+                    second().lineLimit(singleLinePreview ? 1 : 2)
                     Text(third).type(T.meta, Theme.muted).lineLimit(2)
                     Text(right).type(T.meta, Theme.muted).frame(maxWidth: .infinity, alignment: .trailing)
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(title).type(T.bodyB, Theme.fg).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                        Text(title).type(titleStyle, Theme.fg).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
                         Text(right).type(T.meta, Theme.muted).lineLimit(1).fixedSize()
                     }
                     second().lineLimit(1)

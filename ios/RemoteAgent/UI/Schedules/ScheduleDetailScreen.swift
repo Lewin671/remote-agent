@@ -235,6 +235,12 @@ struct ScheduleDetailScreen: View {
         return GRow(scheduleMoment(run.date) + " · " + run.result + (run.notificationLabel.isEmpty ? "" : " · " + run.notificationLabel) + (run.manual == true ? " · 手动" : ""), sub: run.detail, chevron: !sid.isEmpty, danger: run.status == "failed", onTap: sid.isEmpty ? nil : {
             open(run)
         })
+        .lead {
+            if context.schedules.wasUnreadOnEntry(machine: machine, task: id, run: run.id) {
+                Dot(Theme.blue)
+            }
+        }
+        .accessibilityValue(context.schedules.wasUnreadOnEntry(machine: machine, task: id, run: run.id) ? "进入时未读" : "")
     }
     private func open(_ run: ScheduleRun) {
         guard let sid = run.sessionID, !sid.isEmpty else { return }
